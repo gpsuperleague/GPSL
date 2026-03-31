@@ -1,81 +1,3 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>GPSL Player Database</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 4px 8px;
-      font-size: 12px;
-    }
-    th {
-      position: sticky;
-      top: 0;
-      background: #f5f5f5;
-      cursor: pointer;
-      z-index: 1;
-    }
-    th.sort-asc::after { content: " ▲"; font-size: 10px; }
-    th.sort-desc::after { content: " ▼"; font-size: 10px; }
-
-    #controls {
-      margin-bottom: 10px;
-      display: flex;
-      gap: 20px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-  </style>
-</head>
-
-<body>
-
-<h1>GPSL – Player Database</h1>
-
-<div id="controls">
-  <div>
-    <label>Rows per page:
-      <select id="pageSizeSelect">
-        <option value="100">100</option>
-        <option value="250">250</option>
-        <option value="500">500</option>
-        <option value="1000" selected>1000</option>
-      </select>
-    </label>
-  </div>
-
-  <div>
-    <strong>Market value:</strong>
-    <label>Min
-      <input type="number" id="mv-min" style="width:80px;">
-    </label>
-    <label>Max
-      <input type="number" id="mv-max" style="width:80px;">
-    </label>
-    <button id="applyMV">Apply</button>
-  </div>
-
-  <button id="clearFiltersBtn">Clear filters</button>
-</div>
-
-<div id="filters" style="margin-bottom:20px;"></div>
-
-<table id="playersTable">
-  <thead id="tableHead"></thead>
-  <tbody id="tableBody"></tbody>
-</table>
-
-<div id="pagination" style="margin-top:20px;"></div>
-
 <script type="module">
   import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 
@@ -83,8 +5,6 @@
     'https://omyyogfumrjoaweuawjn.supabase.co',
     'sb_publishable_CURtFl2L_eTebwwjNvm_Yw_A_D5tudt'
   )
-
-  window.supabase = supabase
 
   // EXACT CASE-SENSITIVE COLUMN NAMES
   const COLUMNS = [
@@ -100,8 +20,11 @@
     "Season_Signed"
   ]
 
+  // FULL DATASET (loaded once)
+  let ALL_PLAYERS = []
+  let FILTERED_PLAYERS = []
+
   let PAGE_SIZE = 1000
-  let TOTAL_ROWS = 0
   let CURRENT_PAGE = 1
   let CURRENT_FILTERS = {}
   let CURRENT_SORT_COLUMN = null
@@ -109,62 +32,66 @@
   let MV_MIN = null
   let MV_MAX = null
 
-  async function loadTotalCount() {
-    const { count } = await supabase
-      .from('Players')
-      .select('*', { count: 'exact', head: true })
-
-    TOTAL_ROWS = count
-  }
-
-  async function loadPage(page = 1) {
-    CURRENT_PAGE = page
-
-    const from = (page - 1) * PAGE_SIZE
-    const to = from + PAGE_SIZE - 1
-
-    let query = supabase
-      .from('Players')
-      .select(COLUMNS.join(','), { count: 'exact', head: false })
+  // Apply ALL filters + sorting client-side
+  function applyAllFiltersAndSorting() {
+    let data = [...ALL_PLAYERS]
 
     // TEXT FILTERS
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
-      if (value.trim() !== "") {
-        query = query.ilike(col, `%${value}%`)
-      }
+      const v = value.trim().toLowerCase()
+      if (!v) return
+      data = data.filter(row => {
+        const cell = row[col]
+        return cell !== null && String(cell).toLowerCase().includes(v)
+      })
     })
 
-    // NUMERIC FILTERS (CORRECTED)
-    if (MV_MIN !== null) query = query.gte("market_value", MV_MIN)
-    if (MV_MAX !== null) query = query.lte("market_value", MV_MAX)
+    // NUMERIC FILTERS
+    if (MV_MIN !== null) {
+      data = data.filter(row => row.market_value >= MV_MIN)
+    }
+    if (MV_MAX !== null) {
+      data = data.filter(row => row.market_value <= MV_MAX)
+    }
 
     // SORTING
     if (CURRENT_SORT_COLUMN) {
-      query = query.order(CURRENT_SORT_COLUMN, {
-        ascending: CURRENT_SORT_DIR === 'asc'
+      const col = CURRENT_SORT_COLUMN
+      const dir = CURRENT_SORT_DIR === 'asc' ? 1 : -1
+
+      data.sort((a, b) => {
+        const va = a[col]
+        const vb = b[col]
+
+        // numeric columns
+        if (["Age", "Rating", "market_value", "Maximum_Reserve_Price"].includes(col)) {
+          return (Number(va) - Number(vb)) * dir
+        }
+
+        // string columns
+        const sa = (va ?? "").toString().toLowerCase()
+        const sb = (vb ?? "").toString().toLowerCase()
+        if (sa < sb) return -1 * dir
+        if (sa > sb) return 1 * dir
+        return 0
       })
     }
 
-    // PAGINATION AFTER FILTERS + SORT
-    query = query.range(from, to)
+    FILTERED_PLAYERS = data
+    CURRENT_PAGE = 1
+    render()
+  }
 
-    const { data, error, count } = await query
-
-    if (error) {
-      console.error(error)
-      return
-    }
-
-    TOTAL_ROWS = count
-    renderTable(data)
+  function render() {
+    renderTable()
     renderPagination()
   }
 
-  function renderTable(players) {
+  function renderTable() {
     const tableHead = document.getElementById("tableHead")
     const tableBody = document.getElementById("tableBody")
 
-    if (!players || players.length === 0) {
+    if (!FILTERED_PLAYERS.length) {
       tableHead.innerHTML = "<tr><th>No data</th></tr>"
       tableBody.innerHTML = ""
       return
@@ -182,7 +109,11 @@
       </tr>
     `
 
-    tableBody.innerHTML = players
+    const start = (CURRENT_PAGE - 1) * PAGE_SIZE
+    const end = start + PAGE_SIZE
+    const rows = FILTERED_PLAYERS.slice(start, end)
+
+    tableBody.innerHTML = rows
       .map(player => `
         <tr>
           ${COLUMNS.map(col => `<td>${player[col]}</td>`).join("")}
@@ -200,17 +131,16 @@
           CURRENT_SORT_COLUMN = col
           CURRENT_SORT_DIR = 'asc'
         }
-        loadPage(1)
+        applyAllFiltersAndSorting()
       }
     })
   }
 
   function renderPagination() {
-    const pages = Math.ceil(TOTAL_ROWS / PAGE_SIZE)
     const container = document.getElementById("pagination")
-
     container.innerHTML = ""
 
+    const pages = Math.ceil(FILTERED_PLAYERS.length / PAGE_SIZE)
     if (pages <= 1) return
 
     for (let i = 1; i <= pages; i++) {
@@ -218,7 +148,10 @@
       btn.textContent = i
       btn.style.margin = "4px"
       btn.disabled = i === CURRENT_PAGE
-      btn.onclick = () => loadPage(i)
+      btn.onclick = () => {
+        CURRENT_PAGE = i
+        render()
+      }
       container.appendChild(btn)
     }
   }
@@ -238,7 +171,7 @@
       const el = document.getElementById(`filter-${col}`)
       el.addEventListener("input", () => {
         CURRENT_FILTERS[col] = el.value
-        loadPage(1)
+        applyAllFiltersAndSorting()
       })
     })
   }
@@ -247,14 +180,14 @@
     const pageSizeSelect = document.getElementById("pageSizeSelect")
     pageSizeSelect.addEventListener("change", () => {
       PAGE_SIZE = Number(pageSizeSelect.value)
-      loadPage(1)
+      CURRENT_PAGE = 1
+      render()
     })
 
     const mvMinInput = document.getElementById("mv-min")
     const mvMaxInput = document.getElementById("mv-max")
     const applyMV = document.getElementById("applyMV")
 
-    // FIXED NUMERIC FILTER HANDLER
     applyMV.addEventListener("click", () => {
       const minVal = mvMinInput.value.trim()
       const maxVal = mvMaxInput.value.trim()
@@ -262,7 +195,7 @@
       MV_MIN = minVal === "" ? null : Number(minVal)
       MV_MAX = maxVal === "" ? null : Number(maxVal)
 
-      loadPage(1)
+      applyAllFiltersAndSorting()
     })
 
     document.getElementById("clearFiltersBtn").addEventListener("click", () => {
@@ -276,19 +209,28 @@
       mvMinInput.value = ""
       mvMaxInput.value = ""
 
-      loadPage(1)
+      applyAllFiltersAndSorting()
     })
   }
 
   async function init() {
     setupControls()
     setupFilters()
-    await loadTotalCount()
-    loadPage(1)
+
+    const { data, error } = await supabase
+      .from('Players')
+      .select(COLUMNS.join(','))
+
+    if (error) {
+      console.error(error)
+      return
+    }
+
+    ALL_PLAYERS = data || []
+    FILTERED_PLAYERS = [...ALL_PLAYERS]
+
+    render()
   }
 
   init()
 </script>
-
-</body>
-</html>
