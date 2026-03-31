@@ -34,12 +34,6 @@
       align-items: center;
       flex-wrap: wrap;
     }
-
-    #info {
-      margin: 10px 0;
-      font-size: 12px;
-      color: #555;
-    }
   </style>
 </head>
 
@@ -73,7 +67,6 @@
   <button id="clearFiltersBtn">Clear filters</button>
 </div>
 
-<div id="info"></div>
 <div id="filters" style="margin-bottom:20px;"></div>
 
 <table id="playersTable">
@@ -83,7 +76,6 @@
 
 <div id="pagination" style="margin-top:20px;"></div>
 
-<!-- ⭐ SCRIPT AT THE VERY BOTTOM (Option C) -->
 <script type="module">
   import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 
@@ -105,10 +97,8 @@
     "Season_Signed"
   ]
 
-  let ALL_PLAYERS = []
-  let FILTERED_PLAYERS = []
-
   let PAGE_SIZE = 1000
+  let TOTAL_ROWS = 0
   let CURRENT_PAGE = 1
   let CURRENT_FILTERS = {}
   let CURRENT_SORT_COLUMN = null
@@ -116,62 +106,58 @@
   let MV_MIN = null
   let MV_MAX = null
 
-  function applyAllFiltersAndSorting() {
-    let data = [...ALL_PLAYERS]
+  async function loadTotalCount() {
+    const { count } = await supabase
+      .from('Players')
+      .select('*', { count: 'exact', head: true })
+
+    TOTAL_ROWS = count
+  }
+
+  async function loadPage(page = 1) {
+    CURRENT_PAGE = page
+
+    const from = (page - 1) * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+
+    let query = supabase
+      .from('Players')
+      .select(COLUMNS.join(','), { count: 'exact' })
 
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
-      const v = value.trim().toLowerCase()
-      if (!v) return
-      data = data.filter(row => {
-        const cell = row[col]
-        return cell !== null && String(cell).toLowerCase().includes(v)
-      })
+      if (value.trim() !== "") {
+        query = query.ilike(col, `%${value}%`)
+      }
     })
 
-    if (MV_MIN !== null) data = data.filter(row => row.market_value >= MV_MIN)
-    if (MV_MAX !== null) data = data.filter(row => row.market_value <= MV_MAX)
+    if (MV_MIN !== null) query = query.gte("market_value", MV_MIN)
+    if (MV_MAX !== null) query = query.lte("market_value", MV_MAX)
 
     if (CURRENT_SORT_COLUMN) {
-      const col = CURRENT_SORT_COLUMN
-      const dir = CURRENT_SORT_DIR === 'asc' ? 1 : -1
-
-      data.sort((a, b) => {
-        const va = a[col]
-        const vb = b[col]
-
-        if (["Age", "Rating", "market_value", "Maximum_Reserve_Price"].includes(col)) {
-          return (Number(va) - Number(vb)) * dir
-        }
-
-        const sa = (va ?? "").toString().toLowerCase()
-        const sb = (vb ?? "").toString().toLowerCase()
-        if (sa < sb) return -1 * dir
-        if (sa > sb) return 1 * dir
-        return 0
+      query = query.order(CURRENT_SORT_COLUMN, {
+        ascending: CURRENT_SORT_DIR === 'asc'
       })
     }
 
-    FILTERED_PLAYERS = data
-    CURRENT_PAGE = 1
-    render()
-  }
+    query = query.range(from, to)
 
-  function render() {
-    renderInfo()
-    renderTable()
+    const { data, error, count } = await query
+
+    if (error) {
+      console.error(error)
+      return
+    }
+
+    TOTAL_ROWS = count
+    renderTable(data)
     renderPagination()
   }
 
-  function renderInfo() {
-    const info = document.getElementById("info")
-    info.textContent = `Showing ${FILTERED_PLAYERS.length} players (from ${ALL_PLAYERS.length} total)`
-  }
-
-  function renderTable() {
+  function renderTable(players) {
     const tableHead = document.getElementById("tableHead")
     const tableBody = document.getElementById("tableBody")
 
-    if (!FILTERED_PLAYERS.length) {
+    if (!players || players.length === 0) {
       tableHead.innerHTML = "<tr><th>No data</th></tr>"
       tableBody.innerHTML = ""
       return
@@ -189,11 +175,7 @@
       </tr>
     `
 
-    const start = (CURRENT_PAGE - 1) * PAGE_SIZE
-    const end = start + PAGE_SIZE
-    const rows = FILTERED_PLAYERS.slice(start, end)
-
-    tableBody.innerHTML = rows
+    tableBody.innerHTML = players
       .map(player => `
         <tr>
           ${COLUMNS.map(col => `<td>${player[col]}</td>`).join("")}
@@ -210,16 +192,17 @@
           CURRENT_SORT_COLUMN = col
           CURRENT_SORT_DIR = 'asc'
         }
-        applyAllFiltersAndSorting()
+        loadPage(1)
       }
     })
   }
 
   function renderPagination() {
+    const pages = Math.ceil(TOTAL_ROWS / PAGE_SIZE)
     const container = document.getElementById("pagination")
+
     container.innerHTML = ""
 
-    const pages = Math.ceil(FILTERED_PLAYERS.length / PAGE_SIZE)
     if (pages <= 1) return
 
     for (let i = 1; i <= pages; i++) {
@@ -227,10 +210,7 @@
       btn.textContent = i
       btn.style.margin = "4px"
       btn.disabled = i === CURRENT_PAGE
-      btn.onclick = () => {
-        CURRENT_PAGE = i
-        render()
-      }
+      btn.onclick = () => loadPage(i)
       container.appendChild(btn)
     }
   }
@@ -250,7 +230,7 @@
       const el = document.getElementById(`filter-${col}`)
       el.addEventListener("input", () => {
         CURRENT_FILTERS[col] = el.value
-        applyAllFiltersAndSorting()
+        loadPage(1)
       })
     })
   }
@@ -259,8 +239,7 @@
     const pageSizeSelect = document.getElementById("pageSizeSelect")
     pageSizeSelect.addEventListener("change", () => {
       PAGE_SIZE = Number(pageSizeSelect.value)
-      CURRENT_PAGE = 1
-      render()
+      loadPage(1)
     })
 
     const mvMinInput = document.getElementById("mv-min")
@@ -274,7 +253,7 @@
       MV_MIN = minVal === "" ? null : Number(minVal)
       MV_MAX = maxVal === "" ? null : Number(maxVal)
 
-      applyAllFiltersAndSorting()
+      loadPage(1)
     })
 
     document.getElementById("clearFiltersBtn").addEventListener("click", () => {
@@ -288,33 +267,15 @@
       mvMinInput.value = ""
       mvMaxInput.value = ""
 
-      applyAllFiltersAndSorting()
+      loadPage(1)
     })
   }
 
   async function init() {
     setupControls()
     setupFilters()
-
-    // ⭐ FIX: Fetch ALL rows (no 1000-row limit)
-    const { count } = await supabase
-      .from('Players')
-      .select('*', { count: 'exact', head: true })
-
-    const { data, error } = await supabase
-      .from('Players')
-      .select(COLUMNS.join(','))
-      .range(0, count - 1)
-
-    if (error) {
-      console.error(error)
-      return
-    }
-
-    ALL_PLAYERS = data || []
-    FILTERED_PLAYERS = [...ALL_PLAYERS]
-
-    render()
+    await loadTotalCount()
+    loadPage(1)
   }
 
   init()
