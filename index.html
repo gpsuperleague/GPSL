@@ -1,15 +1,3 @@
-<h1>GPSL – Super League</h1>
-<p>Player Database</p>
-
-<!-- Filters -->
-<div id="filters"></div>
-
-<!-- Table -->
-<table id="playersTable" border="1" cellpadding="6" style="margin-top:20px;">
-  <thead id="tableHead"></thead>
-  <tbody id="tableBody"></tbody>
-</table>
-
 <script type="module">
   console.log("Script loaded")
 
@@ -20,24 +8,52 @@
     'sb_publishable_CURtFl2L_eTebwwjNvm_Yw_A_D5tudt'
   )
 
-  let ALL_PLAYERS = []   // ⭐ store full dataset here
+  const PAGE_SIZE = 1000
+  let TOTAL_ROWS = 0
+  let CURRENT_PAGE = 1
+  let CURRENT_FILTERS = {}
 
-  async function loadPlayers() {
-    const { data, error } = await supabase
+  // Load total rows (unfiltered)
+  async function loadTotalCount() {
+    const { count } = await supabase
       .from('Players')
-      .select('*')        // ⭐ no limit — fetch ALL rows
+      .select('*', { count: 'exact', head: true })
 
-    console.log("Supabase test:", data, error)
+    TOTAL_ROWS = count
+    console.log("Total players:", TOTAL_ROWS)
+  }
+
+  // Load a page with filters applied to the entire table
+  async function loadPage(page = 1) {
+    CURRENT_PAGE = page
+
+    const from = (page - 1) * PAGE_SIZE
+    const to = from + PAGE_SIZE - 1
+
+    let query = supabase
+      .from('Players')
+      .select('*', { count: 'exact' })   // count AFTER filters
+
+    // Apply filters BEFORE pagination
+    Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
+      if (value.trim() !== "") {
+        query = query.ilike(col, `%${value}%`)
+      }
+    })
+
+    // Now apply pagination
+    query = query.range(from, to)
+
+    const { data, error, count } = await query
 
     if (error) {
-      console.error("Error loading players:", error)
+      console.error(error)
       return
     }
 
-    ALL_PLAYERS = data   // ⭐ store full dataset
-
-    renderTable(ALL_PLAYERS)
-    renderFilters(ALL_PLAYERS)
+    TOTAL_ROWS = count   // filtered count
+    renderTable(data)
+    renderPagination()
   }
 
   function renderTable(players) {
@@ -53,23 +69,34 @@
     const columns = Object.keys(players[0])
 
     tableHead.innerHTML = `
-      <tr>
-        ${columns.map(col => `<th>${col}</th>`).join("")}
-      </tr>
+      <tr>${columns.map(col => `<th>${col}</th>`).join("")}</tr>
     `
 
     tableBody.innerHTML = players
       .map(player => `
-        <tr>
-          ${columns.map(col => `<td>${player[col]}</td>`).join("")}
-        </tr>
+        <tr>${columns.map(col => `<td>${player[col]}</td>`).join("")}</tr>
       `)
       .join("")
   }
 
-  function renderFilters(players) {
+  function renderPagination() {
+    const pages = Math.ceil(TOTAL_ROWS / PAGE_SIZE)
+    const container = document.getElementById("pagination")
+
+    container.innerHTML = ""
+
+    for (let i = 1; i <= pages; i++) {
+      const btn = document.createElement("button")
+      btn.textContent = i
+      btn.style.margin = "4px"
+      btn.disabled = i === CURRENT_PAGE
+      btn.onclick = () => loadPage(i)
+      container.appendChild(btn)
+    }
+  }
+
+  function setupFilters(columns) {
     const filtersDiv = document.getElementById("filters")
-    const columns = Object.keys(players[0])
 
     filtersDiv.innerHTML = columns
       .map(col => `
@@ -80,26 +107,29 @@
       .join("<br>")
 
     columns.forEach(col => {
-      document.getElementById(`filter-${col}`).addEventListener("input", applyFilters)
+      document.getElementById(`filter-${col}`).addEventListener("input", () => {
+        CURRENT_FILTERS[col] = document.getElementById(`filter-${col}`).value
+        loadPage(1)   // restart at page 1 when filtering
+      })
     })
   }
 
-  function applyFilters() {
-    const columns = Object.keys(ALL_PLAYERS[0])
+  async function init() {
+    await loadTotalCount()
 
-    let filtered = [...ALL_PLAYERS]   // ⭐ always filter the FULL dataset
+    // Load one row to detect columns
+    const { data } = await supabase
+      .from('Players')
+      .select('*')
+      .range(0, 0)
 
-    columns.forEach(col => {
-      const value = document.getElementById(`filter-${col}`).value.toLowerCase()
-      if (value.trim() !== "") {
-        filtered = filtered.filter(p =>
-          String(p[col]).toLowerCase().includes(value)
-        )
-      }
-    })
+    if (data && data.length > 0) {
+      setupFilters(Object.keys(data[0]))
+    }
 
-    renderTable(filtered)
+    loadPage(1)
   }
 
-  loadPlayers()
+  init()
 </script>
+<div id="pagination" style="margin-top:20px;"></div>
