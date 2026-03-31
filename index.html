@@ -84,10 +84,9 @@
     'sb_publishable_CURtFl2L_eTebwwjNvm_Yw_A_D5tudt'
   )
 
-  // Expose for console debugging
   window.supabase = supabase
 
-  // FINAL COLUMN LIST (EXACT CASE-SENSITIVE NAMES)
+  // EXACT CASE-SENSITIVE COLUMN NAMES
   const COLUMNS = [
     "Name",
     "Position",
@@ -128,25 +127,25 @@
       .from('Players')
       .select(COLUMNS.join(','), { count: 'exact', head: false })
 
-    // Text filters
+    // TEXT FILTERS
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
       if (value.trim() !== "") {
         query = query.ilike(col, `%${value}%`)
       }
     })
 
-    // Server-side numeric filtering
-    if (MV_MIN) query = query.gte("market_value", MV_MIN)
-    if (MV_MAX) query = query.lte("market_value", MV_MAX)
+    // NUMERIC FILTERS (CORRECTED)
+    if (MV_MIN !== null) query = query.gte("market_value", MV_MIN)
+    if (MV_MAX !== null) query = query.lte("market_value", MV_MAX)
 
-    // Server-side sorting
+    // SORTING
     if (CURRENT_SORT_COLUMN) {
       query = query.order(CURRENT_SORT_COLUMN, {
         ascending: CURRENT_SORT_DIR === 'asc'
       })
     }
 
-    // Pagination AFTER sorting
+    // PAGINATION AFTER FILTERS + SORT
     query = query.range(from, to)
 
     const { data, error, count } = await query
@@ -191,7 +190,7 @@
       `)
       .join("")
 
-    // Sorting handlers
+    // SORTING HANDLERS
     Array.from(tableHead.querySelectorAll("th")).forEach(th => {
       const col = th.getAttribute("data-col")
       th.onclick = () => {
@@ -201,8 +200,6 @@
           CURRENT_SORT_COLUMN = col
           CURRENT_SORT_DIR = 'asc'
         }
-
-        // Always reset to page 1
         loadPage(1)
       }
     })
@@ -257,9 +254,14 @@
     const mvMaxInput = document.getElementById("mv-max")
     const applyMV = document.getElementById("applyMV")
 
+    // FIXED NUMERIC FILTER HANDLER
     applyMV.addEventListener("click", () => {
-      MV_MIN = mvMinInput.value
-      MV_MAX = mvMaxInput.value
+      const minVal = mvMinInput.value.trim()
+      const maxVal = mvMaxInput.value.trim()
+
+      MV_MIN = minVal === "" ? null : Number(minVal)
+      MV_MAX = maxVal === "" ? null : Number(maxVal)
+
       loadPage(1)
     })
 
