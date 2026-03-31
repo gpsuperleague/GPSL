@@ -66,7 +66,7 @@
   </p>
 
   <!-- Link to your existing database page -->
-  <a href="players.html" class="button">Enter Player Database</a>
+  <a href="GPDB.html" class="button">Enter Player Database</a>
 
   <footer>© GPSL</footer>
 
