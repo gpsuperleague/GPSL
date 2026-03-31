@@ -87,6 +87,20 @@
   // Expose for console debugging
   window.supabase = supabase
 
+  // FINAL COLUMN LIST
+  const COLUMNS = [
+    "name",
+    "position",
+    "nation",
+    "age",
+    "rating",
+    "playstyle",
+    "maximum_reserve_price",
+    "market_value",
+    "contracted_team",
+    "season_signed"
+  ]
+
   let PAGE_SIZE = 1000
   let TOTAL_ROWS = 0
   let CURRENT_PAGE = 1
@@ -112,7 +126,7 @@
 
     let query = supabase
       .from('Players')
-      .select('*', { count: 'exact', head: false })
+      .select(COLUMNS.join(','), { count: 'exact', head: false })
 
     // Text filters
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
@@ -125,7 +139,7 @@
     if (MV_MIN) query = query.gte("market_value", MV_MIN)
     if (MV_MAX) query = query.lte("market_value", MV_MAX)
 
-    // Server-side sorting (Option B)
+    // Server-side sorting
     if (CURRENT_SORT_COLUMN) {
       query = query.order(CURRENT_SORT_COLUMN, {
         ascending: CURRENT_SORT_DIR === 'asc'
@@ -157,16 +171,14 @@
       return
     }
 
-    const columns = Object.keys(players[0])
-
     tableHead.innerHTML = `
       <tr>
-        ${columns.map(col => {
+        ${COLUMNS.map(col => {
           let cls = ""
           if (CURRENT_SORT_COLUMN === col) {
             cls = CURRENT_SORT_DIR === 'asc' ? 'sort-asc' : 'sort-desc'
           }
-          return `<th data-col="${col}" class="${cls}">${col}</th>`
+          return `<th data-col="${col}" class="${cls}">${col.replace(/_/g, " ")}</th>`
         }).join("")}
       </tr>
     `
@@ -174,7 +186,7 @@
     tableBody.innerHTML = players
       .map(player => `
         <tr>
-          ${columns.map(col => `<td>${player[col]}</td>`).join("")}
+          ${COLUMNS.map(col => `<td>${player[col]}</td>`).join("")}
         </tr>
       `)
       .join("")
@@ -190,7 +202,7 @@
           CURRENT_SORT_DIR = 'asc'
         }
 
-        // Option B: ALWAYS reset to page 1
+        // Always reset to page 1
         loadPage(1)
       }
     })
@@ -214,18 +226,18 @@
     }
   }
 
-  function setupFilters(columns) {
+  function setupFilters() {
     const filtersDiv = document.getElementById("filters")
 
-    filtersDiv.innerHTML = columns
+    filtersDiv.innerHTML = COLUMNS
       .map(col => `
-        <label>${col}:
+        <label>${col.replace(/_/g, " ")}:
           <input type="text" id="filter-${col}" placeholder="Filter ${col}">
         </label>
       `)
       .join(" &nbsp; ")
 
-    columns.forEach(col => {
+    COLUMNS.forEach(col => {
       const el = document.getElementById(`filter-${col}`)
       el.addEventListener("input", () => {
         CURRENT_FILTERS[col] = el.value
@@ -268,17 +280,8 @@
 
   async function init() {
     setupControls()
+    setupFilters()
     await loadTotalCount()
-
-    const { data } = await supabase
-      .from('Players')
-      .select('*')
-      .range(0, 0)
-
-    if (data && data.length > 0) {
-      setupFilters(Object.keys(data[0]))
-    }
-
     loadPage(1)
   }
 
