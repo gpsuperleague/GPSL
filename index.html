@@ -3,25 +3,90 @@
 <head>
   <meta charset="UTF-8">
   <title>GPSL Player Database</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #f5f5f5;
+      cursor: pointer;
+      z-index: 1;
+    }
+    th.sort-asc::after {
+      content: " ▲";
+      font-size: 10px;
+    }
+    th.sort-desc::after {
+      content: " ▼";
+      font-size: 10px;
+    }
+    #controls {
+      margin-bottom: 10px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    #filters label {
+      font-size: 12px;
+    }
+    #filters input {
+      font-size: 12px;
+      margin-left: 4px;
+    }
+  </style>
 </head>
 
 <body>
 
 <h1>GPSL – Player Database</h1>
 
-<!-- FILTERS GO HERE -->
+<div id="controls">
+  <div>
+    <label>Rows per page:
+      <select id="pageSizeSelect">
+        <option value="100">100</option>
+        <option value="250">250</option>
+        <option value="500">500</option>
+        <option value="1000" selected>1000</option>
+      </select>
+    </label>
+  </div>
+
+  <div>
+    <strong>Market value:</strong>
+    <label>Min
+      <input type="number" id="mv-min" style="width:80px;">
+    </label>
+    <label>Max
+      <input type="number" id="mv-max" style="width:80px;">
+    </label>
+  </div>
+
+  <button id="clearFiltersBtn">Clear filters</button>
+</div>
+
 <div id="filters" style="margin-bottom:20px;"></div>
 
-<!-- TABLE GOES HERE -->
-<table id="playersTable" border="1" cellpadding="6" style="margin-top:20px; border-collapse: collapse;">
+<table id="playersTable">
   <thead id="tableHead"></thead>
   <tbody id="tableBody"></tbody>
 </table>
 
-<!-- PAGINATION BUTTONS -->
 <div id="pagination" style="margin-top:20px;"></div>
 
-<!-- YOUR SCRIPT -->
 <script type="module">
   console.log("Script loaded")
 
@@ -32,10 +97,14 @@
     'sb_publishable_CURtFl2L_eTebwwjNvm_Yw_A_D5tudt'
   )
 
-  const PAGE_SIZE = 1000
+  let PAGE_SIZE = 1000
   let TOTAL_ROWS = 0
   let CURRENT_PAGE = 1
   let CURRENT_FILTERS = {}
+  let CURRENT_SORT_COLUMN = null
+  let CURRENT_SORT_DIR = 'asc' // 'asc' | 'desc'
+  let MV_MIN = null
+  let MV_MAX = null
 
   async function loadTotalCount() {
     const { count } = await supabase
@@ -54,14 +123,32 @@
 
     let query = supabase
       .from('Players')
-      .select('*', { count: 'exact', head: false })   // FIXED
+      .select('*', { count: 'exact', head: false })
 
+    // Text filters
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
       if (value.trim() !== "") {
         query = query.ilike(col, `%${value}%`)
       }
     })
 
+    // Market value min/max (column name has a space)
+    if (MV_MIN !== null && MV_MIN !== "") {
+      query = query.gte('market value', Number(MV_MIN))
+    }
+    if (MV_MAX !== null && MV_MAX !== "") {
+      query = query.lte('market value', Number(MV_MAX))
+    }
+
+    // Sorting
+    if (CURRENT_SORT_COLUMN) {
+      query = query.order(CURRENT_SORT_COLUMN, {
+        ascending: CURRENT_SORT_DIR === 'asc',
+        nullsFirst: false
+      })
+    }
+
+    // Pagination
     query = query.range(from, to)
 
     const { data, error, count } = await query
@@ -80,7 +167,7 @@
     const tableHead = document.getElementById("tableHead")
     const tableBody = document.getElementById("tableBody")
 
-    if (players.length === 0) {
+    if (!players || players.length === 0) {
       tableHead.innerHTML = "<tr><th>No data</th></tr>"
       tableBody.innerHTML = ""
       return
@@ -88,15 +175,42 @@
 
     const columns = Object.keys(players[0])
 
+    // Header with sorting
     tableHead.innerHTML = `
-      <tr>${columns.map(col => `<th>${col}</th>`).join("")}</tr>
+      <tr>
+        ${columns.map(col => {
+          let cls = ""
+          if (CURRENT_SORT_COLUMN === col) {
+            cls = CURRENT_SORT_DIR === 'asc' ? 'sort-asc' : 'sort-desc'
+          }
+          return `<th data-col="${col}" class="${cls}">${col}</th>`
+        }).join("")}
+      </tr>
     `
 
+    // Rows
     tableBody.innerHTML = players
       .map(player => `
-        <tr>${columns.map(col => `<td>${player[col]}</td>`).join("")}</tr>
+        <tr>
+          ${columns.map(col => `<td>${player[col]}</td>`).join("")}
+        </tr>
       `)
       .join("")
+
+    // Attach sort handlers
+    Array.from(tableHead.querySelectorAll("th")).forEach(th => {
+      const col = th.getAttribute("data-col")
+      if (!col) return
+      th.onclick = () => {
+        if (CURRENT_SORT_COLUMN === col) {
+          CURRENT_SORT_DIR = CURRENT_SORT_DIR === 'asc' ? 'desc' : 'asc'
+        } else {
+          CURRENT_SORT_COLUMN = col
+          CURRENT_SORT_DIR = 'asc'
+        }
+        loadPage(1)
+      }
+    })
   }
 
   function renderPagination() {
@@ -104,6 +218,8 @@
     const container = document.getElementById("pagination")
 
     container.innerHTML = ""
+
+    if (pages <= 1) return
 
     for (let i = 1; i <= pages; i++) {
       const btn = document.createElement("button")
@@ -120,21 +236,60 @@
 
     filtersDiv.innerHTML = columns
       .map(col => `
-        <label>${col}: 
+        <label>${col}:
           <input type="text" id="filter-${col}" placeholder="Filter ${col}">
         </label>
       `)
-      .join("<br>")
+      .join(" &nbsp; ")
 
     columns.forEach(col => {
-      document.getElementById(`filter-${col}`).addEventListener("input", () => {
-        CURRENT_FILTERS[col] = document.getElementById(`filter-${col}`).value
+      const el = document.getElementById(`filter-${col}`)
+      if (!el) return
+      el.addEventListener("input", () => {
+        CURRENT_FILTERS[col] = el.value
         loadPage(1)
       })
     })
   }
 
+  function setupControls() {
+    const pageSizeSelect = document.getElementById("pageSizeSelect")
+    pageSizeSelect.addEventListener("change", () => {
+      PAGE_SIZE = Number(pageSizeSelect.value)
+      loadPage(1)
+    })
+
+    const mvMinInput = document.getElementById("mv-min")
+    const mvMaxInput = document.getElementById("mv-max")
+
+    mvMinInput.addEventListener("input", () => {
+      MV_MIN = mvMinInput.value
+      loadPage(1)
+    })
+
+    mvMaxInput.addEventListener("input", () => {
+      MV_MAX = mvMaxInput.value
+      loadPage(1)
+    })
+
+    document.getElementById("clearFiltersBtn").addEventListener("click", () => {
+      CURRENT_FILTERS = {}
+      MV_MIN = null
+      MV_MAX = null
+      CURRENT_SORT_COLUMN = null
+      CURRENT_SORT_DIR = 'asc'
+
+      // Clear inputs
+      document.querySelectorAll('#filters input').forEach(i => i.value = "")
+      mvMinInput.value = ""
+      mvMaxInput.value = ""
+
+      loadPage(1)
+    })
+  }
+
   async function init() {
+    setupControls()
     await loadTotalCount()
 
     const { data } = await supabase
