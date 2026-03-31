@@ -132,14 +132,6 @@
       }
     })
 
-    // Market value min/max (column name has a space)
-    if (MV_MIN !== null && MV_MIN !== "") {
-      query = query.gte('market value', Number(MV_MIN))
-    }
-    if (MV_MAX !== null && MV_MAX !== "") {
-      query = query.lte('market value', Number(MV_MAX))
-    }
-
     // Sorting
     if (CURRENT_SORT_COLUMN) {
       query = query.order(CURRENT_SORT_COLUMN, {
@@ -163,6 +155,12 @@
     renderPagination()
   }
 
+  function parseMarketValue(raw) {
+    if (raw === null || raw === undefined) return NaN
+    const cleaned = String(raw).replace(/[^0-9.-]/g, "")
+    return Number(cleaned)
+  }
+
   function renderTable(players) {
     const tableHead = document.getElementById("tableHead")
     const tableBody = document.getElementById("tableBody")
@@ -173,7 +171,26 @@
       return
     }
 
-    const columns = Object.keys(players[0])
+    // Apply market value min/max on the current page
+    let filteredPlayers = players
+    if ((MV_MIN !== null && MV_MIN !== "") || (MV_MAX !== null && MV_MAX !== "")) {
+      const minVal = MV_MIN !== null && MV_MIN !== "" ? Number(MV_MIN) : -Infinity
+      const maxVal = MV_MAX !== null && MV_MAX !== "" ? Number(MV_MAX) : Infinity
+
+      filteredPlayers = players.filter(p => {
+        const v = parseMarketValue(p["market value"])
+        if (isNaN(v)) return false
+        return v >= minVal && v <= maxVal
+      })
+    }
+
+    if (filteredPlayers.length === 0) {
+      tableHead.innerHTML = "<tr><th>No data</th></tr>"
+      tableBody.innerHTML = ""
+      return
+    }
+
+    const columns = Object.keys(filteredPlayers[0])
 
     // Header with sorting
     tableHead.innerHTML = `
@@ -189,7 +206,7 @@
     `
 
     // Rows
-    tableBody.innerHTML = players
+    tableBody.innerHTML = filteredPlayers
       .map(player => `
         <tr>
           ${columns.map(col => `<td>${player[col]}</td>`).join("")}
@@ -279,7 +296,6 @@
       CURRENT_SORT_COLUMN = null
       CURRENT_SORT_DIR = 'asc'
 
-      // Clear inputs
       document.querySelectorAll('#filters input').forEach(i => i.value = "")
       mvMinInput.value = ""
       mvMaxInput.value = ""
