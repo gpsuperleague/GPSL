@@ -1,2 +1,21 @@
 <h1>GPSL – Super League</h1>
 <p>Website coming soon.</p>
+<script type="module">
+  import { createClient } from 'https://esm.sh/@supabase/supabase-js'
+
+  const supabase = createClient(
+    'https://omyyogfumrjoaweuawjn.supabase.co',
+    'sb_publishable_CURtFl2L_eTebwwjNvm_Yw_A_D5tudt'
+  )
+
+  async function testConnection() {
+    const { data, error } = await supabase
+      .from('players')
+      .select('*')
+      .limit(5)
+
+    console.log('Supabase test:', data, error)
+  }
+
+  testConnection()
+</script>
