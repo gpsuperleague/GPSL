@@ -10,7 +10,7 @@
 
   async function testConnection() {
     const { data, error } = await supabase
-      .from('Players')
+      .from('Players')   // ← FIXED
       .select('*')
       .limit(5)
 
