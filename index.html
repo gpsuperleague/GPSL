@@ -20,11 +20,12 @@
     'sb_publishable_CURtFl2L_eTebwwjNvm_Yw_A_D5tudt'
   )
 
+  let ALL_PLAYERS = []   // ⭐ store full dataset here
+
   async function loadPlayers() {
     const { data, error } = await supabase
       .from('Players')
-      .select('*')
-      .limit(100)
+      .select('*')        // ⭐ no limit — fetch ALL rows
 
     console.log("Supabase test:", data, error)
 
@@ -33,8 +34,10 @@
       return
     }
 
-    renderTable(data)
-    renderFilters(data)
+    ALL_PLAYERS = data   // ⭐ store full dataset
+
+    renderTable(ALL_PLAYERS)
+    renderFilters(ALL_PLAYERS)
   }
 
   function renderTable(players) {
@@ -49,14 +52,12 @@
 
     const columns = Object.keys(players[0])
 
-    // Build table header
     tableHead.innerHTML = `
       <tr>
         ${columns.map(col => `<th>${col}</th>`).join("")}
       </tr>
     `
 
-    // Build table rows
     tableBody.innerHTML = players
       .map(player => `
         <tr>
@@ -78,18 +79,15 @@
       `)
       .join("<br>")
 
-    // Add filter listeners
     columns.forEach(col => {
-      document.getElementById(`filter-${col}`).addEventListener("input", () => {
-        applyFilters(players)
-      })
+      document.getElementById(`filter-${col}`).addEventListener("input", applyFilters)
     })
   }
 
-  function applyFilters(players) {
-    const columns = Object.keys(players[0])
+  function applyFilters() {
+    const columns = Object.keys(ALL_PLAYERS[0])
 
-    let filtered = [...players]
+    let filtered = [...ALL_PLAYERS]   // ⭐ always filter the FULL dataset
 
     columns.forEach(col => {
       const value = document.getElementById(`filter-${col}`).value.toLowerCase()
