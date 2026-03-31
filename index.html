@@ -77,8 +77,6 @@
 <div id="pagination" style="margin-top:20px;"></div>
 
 <script type="module">
-  console.log("Script loaded")
-
   import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 
   const supabase = createClient(
@@ -101,7 +99,6 @@
       .select('*', { count: 'exact', head: true })
 
     TOTAL_ROWS = count
-    console.log("Total players:", TOTAL_ROWS)
   }
 
   async function loadPage(page = 1) {
@@ -120,6 +117,10 @@
         query = query.ilike(col, `%${value}%`)
       }
     })
+
+    // Server-side numeric filtering
+    if (MV_MIN) query = query.gte("market_value", MV_MIN)
+    if (MV_MAX) query = query.lte("market_value", MV_MAX)
 
     // Sorting
     if (CURRENT_SORT_COLUMN) {
@@ -143,12 +144,6 @@
     renderPagination()
   }
 
-  // Convert "₿ 1,200,000" → 1200000
-  function parseMarketValue(raw) {
-    if (!raw) return NaN
-    return Number(String(raw).replace(/[^\d]/g, ""))
-  }
-
   function renderTable(players) {
     const tableHead = document.getElementById("tableHead")
     const tableBody = document.getElementById("tableBody")
@@ -159,26 +154,7 @@
       return
     }
 
-    // Apply market value filter CLIENT-SIDE
-    let filteredPlayers = players
-    if (MV_MIN || MV_MAX) {
-      const minVal = MV_MIN ? Number(MV_MIN) : -Infinity
-      const maxVal = MV_MAX ? Number(MV_MAX) : Infinity
-
-      filteredPlayers = players.filter(p => {
-        const v = parseMarketValue(p["market value"])
-        if (isNaN(v)) return false
-        return v >= minVal && v <= maxVal
-      })
-    }
-
-    if (filteredPlayers.length === 0) {
-      tableHead.innerHTML = "<tr><th>No data</th></tr>"
-      tableBody.innerHTML = ""
-      return
-    }
-
-    const columns = Object.keys(filteredPlayers[0])
+    const columns = Object.keys(players[0])
 
     // Header with sorting
     tableHead.innerHTML = `
@@ -194,7 +170,7 @@
     `
 
     // Rows
-    tableBody.innerHTML = filteredPlayers
+    tableBody.innerHTML = players
       .map(player => `
         <tr>
           ${columns.map(col => `<td>${player[col]}</td>`).join("")}
