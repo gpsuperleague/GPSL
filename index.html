@@ -97,6 +97,15 @@
     "Season_Signed"
   ]
 
+  const DROPDOWN_COLUMNS = [
+    "Nation",
+    "Position",
+    "Age",
+    "Rating",
+    "Playstyle",
+    "Contracted_Team"
+  ]
+
   let PAGE_SIZE = 1000
   let TOTAL_ROWS = 0
   let CURRENT_PAGE = 1
@@ -126,7 +135,11 @@
 
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
       if (value.trim() !== "") {
-        query = query.ilike(col, `%${value}%`)
+        if (DROPDOWN_COLUMNS.includes(col)) {
+          query = query.eq(col, value)
+        } else {
+          query = query.ilike(col, `%${value}%`)
+        }
       }
     })
 
@@ -215,20 +228,53 @@
     }
   }
 
+  async function populateDropdowns() {
+    for (const col of DROPDOWN_COLUMNS) {
+      const { data, error } = await supabase
+        .from("Players")
+        .select(col)
+        .not(col, "is", null)
+
+      if (error) continue
+
+      const select = document.getElementById(`filter-${col}`)
+      const uniqueValues = [...new Set(data.map(row => row[col]))].sort()
+
+      uniqueValues.forEach(v => {
+        const opt = document.createElement("option")
+        opt.value = v
+        opt.textContent = v
+        select.appendChild(opt)
+      })
+    }
+  }
+
   function setupFilters() {
     const filtersDiv = document.getElementById("filters")
 
     filtersDiv.innerHTML = COLUMNS
-      .map(col => `
-        <label>${col.replace(/_/g, " ")}:
-          <input type="text" id="filter-${col}" placeholder="Filter ${col}">
-        </label>
-      `)
+      .map(col => {
+        if (DROPDOWN_COLUMNS.includes(col)) {
+          return `
+            <label>${col.replace(/_/g, " ")}:
+              <select id="filter-${col}">
+                <option value="">All</option>
+              </select>
+            </label>
+          `
+        } else {
+          return `
+            <label>${col.replace(/_/g, " ")}:
+              <input type="text" id="filter-${col}" placeholder="Filter ${col}">
+            </label>
+          `
+        }
+      })
       .join(" &nbsp; ")
 
     COLUMNS.forEach(col => {
       const el = document.getElementById(`filter-${col}`)
-      el.addEventListener("input", () => {
+      el.addEventListener("change", () => {
         CURRENT_FILTERS[col] = el.value
         loadPage(1)
       })
@@ -263,7 +309,7 @@
       CURRENT_SORT_COLUMN = null
       CURRENT_SORT_DIR = 'asc'
 
-      document.querySelectorAll('#filters input').forEach(i => i.value = "")
+      document.querySelectorAll('#filters input, #filters select').forEach(i => i.value = "")
       mvMinInput.value = ""
       mvMaxInput.value = ""
 
@@ -274,6 +320,7 @@
   async function init() {
     setupControls()
     setupFilters()
+    await populateDropdowns()
     await loadTotalCount()
     loadPage(1)
   }
