@@ -1,309 +1,157 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>GPSL Player Database</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Players</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 4px 8px;
-      font-size: 12px;
-    }
-    th {
-      position: sticky;
-      top: 0;
-      background: #f5f5f5;
-      cursor: pointer;
-      z-index: 1;
-    }
-    th.sort-asc::after { content: " ▲"; font-size: 10px; }
-    th.sort-desc::after { content: " ▼"; font-size: 10px; }
-
-    #controls {
-      margin-bottom: 10px;
-      display: flex;
-      gap: 20px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
+    body { font-family: Arial, sans-serif; padding: 20px; background: #111; color: #eee; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 8px; border-bottom: 1px solid #444; text-align: left; }
+    th { cursor: pointer; background: #222; }
+    tr:hover { background: #1a1a1a; }
+    input, select { padding: 6px; margin-right: 10px; }
+    .pagination { margin-top: 20px; }
+    button { padding: 6px 12px; margin-right: 10px; }
   </style>
 </head>
-
 <body>
 
-<h1>GPSL – Player Database</h1>
+  <h1>Players</h1>
 
-<div id="controls">
+  <!-- Filters -->
   <div>
-    <label>Rows per page:
-      <select id="pageSizeSelect">
-        <option value="100">100</option>
-        <option value="250">250</option>
-        <option value="500">500</option>
-        <option value="1000" selected>1000</option>
-      </select>
-    </label>
+    <input id="searchName" placeholder="Search name">
+    <input id="searchClub" placeholder="Search club">
+    <input id="searchNation" placeholder="Search nation">
+    <input id="minValue" type="number" placeholder="Min market value">
+    <input id="maxValue" type="number" placeholder="Max market value">
+    <button onclick="applyFilters()">Apply</button>
   </div>
 
-  <div>
-    <strong>Market value:</strong>
-    <label>Min
-      <input type="number" id="mv-min" style="width:80px;">
-    </label>
-    <label>Max
-      <input type="number" id="mv-max" style="width:80px;">
-    </label>
-    <button id="applyMV">Apply</button>
+  <!-- Table -->
+  <table>
+    <thead>
+      <tr>
+        <th onclick="setSort('name')">Name</th>
+        <th onclick="setSort('club')">Club</th>
+        <th onclick="setSort('nation')">Nation</th>
+        <th onclick="setSort('market_value')">Market Value</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <!-- Pagination -->
+  <div class="pagination">
+    <button onclick="prevPage()">Prev</button>
+    <span id="pageInfo"></span>
+    <button onclick="nextPage()">Next</button>
   </div>
 
-  <button id="clearFiltersBtn">Clear filters</button>
-</div>
+<script>
+  const supabase = supabase.createClient(
+    "YOUR_URL",
+    "YOUR_ANON_KEY"
+  );
 
-<div id="filters" style="margin-bottom:20px;"></div>
+  let page = 1;
+  const pageSize = 1000;
 
-<table id="playersTable">
-  <thead id="tableHead"></thead>
-  <tbody id="tableBody"></tbody>
-</table>
+  let sortColumn = "name";
+  let sortDirection = "asc";
 
-<div id="pagination" style="margin-top:20px;"></div>
+  let filters = {
+    name: "",
+    club: "",
+    nation: "",
+    minValue: null,
+    maxValue: null
+  };
 
-<script type="module">
-  console.log("Script loaded")
+  function applyFilters() {
+    filters.name = document.getElementById("searchName").value.trim();
+    filters.club = document.getElementById("searchClub").value.trim();
+    filters.nation = document.getElementById("searchNation").value.trim();
+    filters.minValue = document.getElementById("minValue").value || null;
+    filters.maxValue = document.getElementById("maxValue").value || null;
 
-  import { createClient } from 'https://esm.sh/@supabase/supabase-js'
-
-  const supabase = createClient(
-    'https://omyyogfumrjoaweuawjn.supabase.co',
-    'sb_publishable_CURtFl2L_eTebwwjNvm_Yw_A_D5tudt'
-  )
-
-  let PAGE_SIZE = 1000
-  let TOTAL_ROWS = 0
-  let CURRENT_PAGE = 1
-  let CURRENT_FILTERS = {}
-  let CURRENT_SORT_COLUMN = null
-  let CURRENT_SORT_DIR = 'asc'
-  let MV_MIN = null
-  let MV_MAX = null
-
-  async function loadTotalCount() {
-    const { count } = await supabase
-      .from('Players')
-      .select('*', { count: 'exact', head: true })
-
-    TOTAL_ROWS = count
-    console.log("Total players:", TOTAL_ROWS)
+    page = 1;
+    loadPlayers();
   }
 
-  async function loadPage(page = 1) {
-    CURRENT_PAGE = page
+  function setSort(column) {
+    if (sortColumn === column) {
+      sortDirection = sortDirection === "asc" ? "desc" : "asc";
+    } else {
+      sortColumn = column;
+      sortDirection = "asc";
+    }
+    loadPlayers();
+  }
 
-    const from = (page - 1) * PAGE_SIZE
-    const to = from + PAGE_SIZE - 1
-
-    let query = supabase
-      .from('Players')
-      .select('*', { count: 'exact', head: false })
+  async function loadPlayers() {
+    let query = supabase.from("Players").select("*", { count: "exact" });
 
     // Text filters
-    Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
-      if (value.trim() !== "") {
-        query = query.ilike(col, `%${value}%`)
-      }
-    })
+    if (filters.name) query = query.ilike("name", `%${filters.name}%`);
+    if (filters.club) query = query.ilike("club", `%${filters.club}%`);
+    if (filters.nation) query = query.ilike("nation", `%${filters.nation}%`);
+
+    // Numeric filters (server-side)
+    if (filters.minValue) query = query.gte("market_value", filters.minValue);
+    if (filters.maxValue) query = query.lte("market_value", filters.maxValue);
 
     // Sorting
-    if (CURRENT_SORT_COLUMN) {
-      query = query.order(CURRENT_SORT_COLUMN, {
-        ascending: CURRENT_SORT_DIR === 'asc'
-      })
-    }
+    query = query.order(sortColumn, { ascending: sortDirection === "asc" });
 
     // Pagination
-    query = query.range(from, to)
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+    query = query.range(from, to);
 
-    const { data, error, count } = await query
+    const { data, count, error } = await query;
 
     if (error) {
-      console.error(error)
-      return
+      console.error(error);
+      return;
     }
 
-    TOTAL_ROWS = count
-    renderTable(data)
-    renderPagination()
-  }
-
-  // Convert "₿ 1,200,000" → 1200000
-  function parseMarketValue(raw) {
-    if (!raw) return NaN
-    return Number(String(raw).replace(/[^\d]/g, ""))
+    renderTable(data);
+    document.getElementById("pageInfo").textContent =
+      `Page ${page} — Showing ${data.length} of ${count}`;
   }
 
   function renderTable(players) {
-    const tableHead = document.getElementById("tableHead")
-    const tableBody = document.getElementById("tableBody")
+    const tbody = document.getElementById("tableBody");
+    tbody.innerHTML = "";
 
-    if (!players || players.length === 0) {
-      tableHead.innerHTML = "<tr><th>No data</th></tr>"
-      tableBody.innerHTML = ""
-      return
-    }
-
-    // Apply market value filter CLIENT-SIDE
-    let filteredPlayers = players
-    if (MV_MIN || MV_MAX) {
-      const minVal = MV_MIN ? Number(MV_MIN) : -Infinity
-      const maxVal = MV_MAX ? Number(MV_MAX) : Infinity
-
-      filteredPlayers = players.filter(p => {
-        const v = parseMarketValue(p["market value"])
-        if (isNaN(v)) return false
-        return v >= minVal && v <= maxVal
-      })
-    }
-
-    if (filteredPlayers.length === 0) {
-      tableHead.innerHTML = "<tr><th>No data</th></tr>"
-      tableBody.innerHTML = ""
-      return
-    }
-
-    const columns = Object.keys(filteredPlayers[0])
-
-    // Header with sorting
-    tableHead.innerHTML = `
-      <tr>
-        ${columns.map(col => {
-          let cls = ""
-          if (CURRENT_SORT_COLUMN === col) {
-            cls = CURRENT_SORT_DIR === 'asc' ? 'sort-asc' : 'sort-desc'
-          }
-          return `<th data-col="${col}" class="${cls}">${col}</th>`
-        }).join("")}
-      </tr>
-    `
-
-    // Rows
-    tableBody.innerHTML = filteredPlayers
-      .map(player => `
-        <tr>
-          ${columns.map(col => `<td>${player[col]}</td>`).join("")}
-        </tr>
-      `)
-      .join("")
-
-    // Sorting handlers
-    Array.from(tableHead.querySelectorAll("th")).forEach(th => {
-      const col = th.getAttribute("data-col")
-      th.onclick = () => {
-        if (CURRENT_SORT_COLUMN === col) {
-          CURRENT_SORT_DIR = CURRENT_SORT_DIR === 'asc' ? 'desc' : 'asc'
-        } else {
-          CURRENT_SORT_COLUMN = col
-          CURRENT_SORT_DIR = 'asc'
-        }
-        loadPage(1)
-      }
-    })
+    players.forEach(p => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${p.name}</td>
+        <td>${p.club}</td>
+        <td>${p.nation}</td>
+        <td>${p.market_value.toLocaleString()}</td>
+      `;
+      tbody.appendChild(row);
+    });
   }
 
-  function renderPagination() {
-    const pages = Math.ceil(TOTAL_ROWS / PAGE_SIZE)
-    const container = document.getElementById("pagination")
+  function nextPage() {
+    page++;
+    loadPlayers();
+  }
 
-    container.innerHTML = ""
-
-    if (pages <= 1) return
-
-    for (let i = 1; i <= pages; i++) {
-      const btn = document.createElement("button")
-      btn.textContent = i
-      btn.style.margin = "4px"
-      btn.disabled = i === CURRENT_PAGE
-      btn.onclick = () => loadPage(i)
-      container.appendChild(btn)
+  function prevPage() {
+    if (page > 1) {
+      page--;
+      loadPlayers();
     }
   }
 
-  function setupFilters(columns) {
-    const filtersDiv = document.getElementById("filters")
-
-    filtersDiv.innerHTML = columns
-      .map(col => `
-        <label>${col}:
-          <input type="text" id="filter-${col}" placeholder="Filter ${col}">
-        </label>
-      `)
-      .join(" &nbsp; ")
-
-    columns.forEach(col => {
-      const el = document.getElementById(`filter-${col}`)
-      el.addEventListener("input", () => {
-        CURRENT_FILTERS[col] = el.value
-        loadPage(1)
-      })
-    })
-  }
-
-  function setupControls() {
-    const pageSizeSelect = document.getElementById("pageSizeSelect")
-    pageSizeSelect.addEventListener("change", () => {
-      PAGE_SIZE = Number(pageSizeSelect.value)
-      loadPage(1)
-    })
-
-    const mvMinInput = document.getElementById("mv-min")
-    const mvMaxInput = document.getElementById("mv-max")
-    const applyMV = document.getElementById("applyMV")
-
-    applyMV.addEventListener("click", () => {
-      MV_MIN = mvMinInput.value
-      MV_MAX = mvMaxInput.value
-      loadPage(1)
-    })
-
-    document.getElementById("clearFiltersBtn").addEventListener("click", () => {
-      CURRENT_FILTERS = {}
-      MV_MIN = null
-      MV_MAX = null
-      CURRENT_SORT_COLUMN = null
-      CURRENT_SORT_DIR = 'asc'
-
-      document.querySelectorAll('#filters input').forEach(i => i.value = "")
-      mvMinInput.value = ""
-      mvMaxInput.value = ""
-
-      loadPage(1)
-    })
-  }
-
-  async function init() {
-    setupControls()
-    await loadTotalCount()
-
-    const { data } = await supabase
-      .from('Players')
-      .select('*')
-      .range(0, 0)
-
-    if (data && data.length > 0) {
-      setupFilters(Object.keys(data[0]))
-    }
-
-    loadPage(1)
-  }
-
-  init()
+  loadPlayers();
 </script>
 
 </body>
