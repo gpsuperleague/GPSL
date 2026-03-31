@@ -83,7 +83,7 @@
 
 <div id="pagination" style="margin-top:20px;"></div>
 
-<!-- ⭐ SCRIPT MOVED TO THE BOTTOM (Option C) -->
+<!-- ⭐ SCRIPT AT THE VERY BOTTOM (Option C) -->
 <script type="module">
   import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 
@@ -296,9 +296,15 @@
     setupControls()
     setupFilters()
 
+    // ⭐ FIX: Fetch ALL rows (no 1000-row limit)
+    const { count } = await supabase
+      .from('Players')
+      .select('*', { count: 'exact', head: true })
+
     const { data, error } = await supabase
       .from('Players')
       .select(COLUMNS.join(','))
+      .range(0, count - 1)
 
     if (error) {
       console.error(error)
