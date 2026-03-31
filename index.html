@@ -84,6 +84,9 @@
     'sb_publishable_CURtFl2L_eTebwwjNvm_Yw_A_D5tudt'
   )
 
+  // Expose for console debugging
+  window.supabase = supabase
+
   let PAGE_SIZE = 1000
   let TOTAL_ROWS = 0
   let CURRENT_PAGE = 1
@@ -122,14 +125,14 @@
     if (MV_MIN) query = query.gte("market_value", MV_MIN)
     if (MV_MAX) query = query.lte("market_value", MV_MAX)
 
-    // Sorting
+    // Server-side sorting (Option B)
     if (CURRENT_SORT_COLUMN) {
       query = query.order(CURRENT_SORT_COLUMN, {
         ascending: CURRENT_SORT_DIR === 'asc'
       })
     }
 
-    // Pagination
+    // Pagination AFTER sorting
     query = query.range(from, to)
 
     const { data, error, count } = await query
@@ -156,7 +159,6 @@
 
     const columns = Object.keys(players[0])
 
-    // Header with sorting
     tableHead.innerHTML = `
       <tr>
         ${columns.map(col => {
@@ -169,7 +171,6 @@
       </tr>
     `
 
-    // Rows
     tableBody.innerHTML = players
       .map(player => `
         <tr>
@@ -188,6 +189,8 @@
           CURRENT_SORT_COLUMN = col
           CURRENT_SORT_DIR = 'asc'
         }
+
+        // Option B: ALWAYS reset to page 1
         loadPage(1)
       }
     })
