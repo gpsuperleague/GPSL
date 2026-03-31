@@ -24,27 +24,15 @@
       cursor: pointer;
       z-index: 1;
     }
-    th.sort-asc::after {
-      content: " ▲";
-      font-size: 10px;
-    }
-    th.sort-desc::after {
-      content: " ▼";
-      font-size: 10px;
-    }
+    th.sort-asc::after { content: " ▲"; font-size: 10px; }
+    th.sort-desc::after { content: " ▼"; font-size: 10px; }
+
     #controls {
       margin-bottom: 10px;
       display: flex;
       gap: 20px;
       align-items: center;
       flex-wrap: wrap;
-    }
-    #filters label {
-      font-size: 12px;
-    }
-    #filters input {
-      font-size: 12px;
-      margin-left: 4px;
     }
   </style>
 </head>
@@ -73,6 +61,7 @@
     <label>Max
       <input type="number" id="mv-max" style="width:80px;">
     </label>
+    <button id="applyMV">Apply</button>
   </div>
 
   <button id="clearFiltersBtn">Clear filters</button>
@@ -102,7 +91,7 @@
   let CURRENT_PAGE = 1
   let CURRENT_FILTERS = {}
   let CURRENT_SORT_COLUMN = null
-  let CURRENT_SORT_DIR = 'asc' // 'asc' | 'desc'
+  let CURRENT_SORT_DIR = 'asc'
   let MV_MIN = null
   let MV_MAX = null
 
@@ -135,8 +124,7 @@
     // Sorting
     if (CURRENT_SORT_COLUMN) {
       query = query.order(CURRENT_SORT_COLUMN, {
-        ascending: CURRENT_SORT_DIR === 'asc',
-        nullsFirst: false
+        ascending: CURRENT_SORT_DIR === 'asc'
       })
     }
 
@@ -155,10 +143,10 @@
     renderPagination()
   }
 
+  // Convert "₿ 1,200,000" → 1200000
   function parseMarketValue(raw) {
-    if (raw === null || raw === undefined) return NaN
-    const cleaned = String(raw).replace(/[^0-9.-]/g, "")
-    return Number(cleaned)
+    if (!raw) return NaN
+    return Number(String(raw).replace(/[^\d]/g, ""))
   }
 
   function renderTable(players) {
@@ -171,11 +159,11 @@
       return
     }
 
-    // Apply market value min/max on the current page
+    // Apply market value filter CLIENT-SIDE
     let filteredPlayers = players
-    if ((MV_MIN !== null && MV_MIN !== "") || (MV_MAX !== null && MV_MAX !== "")) {
-      const minVal = MV_MIN !== null && MV_MIN !== "" ? Number(MV_MIN) : -Infinity
-      const maxVal = MV_MAX !== null && MV_MAX !== "" ? Number(MV_MAX) : Infinity
+    if (MV_MIN || MV_MAX) {
+      const minVal = MV_MIN ? Number(MV_MIN) : -Infinity
+      const maxVal = MV_MAX ? Number(MV_MAX) : Infinity
 
       filteredPlayers = players.filter(p => {
         const v = parseMarketValue(p["market value"])
@@ -214,10 +202,9 @@
       `)
       .join("")
 
-    // Attach sort handlers
+    // Sorting handlers
     Array.from(tableHead.querySelectorAll("th")).forEach(th => {
       const col = th.getAttribute("data-col")
-      if (!col) return
       th.onclick = () => {
         if (CURRENT_SORT_COLUMN === col) {
           CURRENT_SORT_DIR = CURRENT_SORT_DIR === 'asc' ? 'desc' : 'asc'
@@ -261,7 +248,6 @@
 
     columns.forEach(col => {
       const el = document.getElementById(`filter-${col}`)
-      if (!el) return
       el.addEventListener("input", () => {
         CURRENT_FILTERS[col] = el.value
         loadPage(1)
@@ -278,13 +264,10 @@
 
     const mvMinInput = document.getElementById("mv-min")
     const mvMaxInput = document.getElementById("mv-max")
+    const applyMV = document.getElementById("applyMV")
 
-    mvMinInput.addEventListener("input", () => {
+    applyMV.addEventListener("click", () => {
       MV_MIN = mvMinInput.value
-      loadPage(1)
-    })
-
-    mvMaxInput.addEventListener("input", () => {
       MV_MAX = mvMaxInput.value
       loadPage(1)
     })
