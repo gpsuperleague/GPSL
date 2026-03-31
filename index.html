@@ -195,14 +195,12 @@
             let value = player[col]
 
             // ⭐ Display market_value as Bitcoin, no decimals
-            if (col === "market_value" && value !== null) {
-              value = new Intl.NumberFormat("en-GB", {
-                style: "currency",
-                currency: "BTC",
-                maximumFractionDigits: 0,
-                minimumFractionDigits: 0
-              }).format(value)
-            }
+          if (col === "market_value" && value !== null) {
+            value = "₿" + new Intl.NumberFormat("en-GB", {
+              maximumFractionDigits: 0,
+              minimumFractionDigits: 0
+            }).format(value)
+          }
 
             return `<td>${value}</td>`
           }).join("")}
