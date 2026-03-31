@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL – Home</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 48px;
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+    }
+
+    p {
+      font-size: 18px;
+      max-width: 600px;
+      margin-bottom: 40px;
+      opacity: 0.85;
+    }
+
+    a.button {
+      display: inline-block;
+      padding: 14px 28px;
+      background: #ff9900;
+      color: #111;
+      text-decoration: none;
+      font-size: 20px;
+      border-radius: 6px;
+      font-weight: bold;
+      transition: 0.2s;
+    }
+
+    a.button:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
+    }
+
+    footer {
+      position: absolute;
+      bottom: 20px;
+      font-size: 14px;
+      opacity: 0.5;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>GPSL</h1>
+  <p>
+    Welcome to the Global Player Simulation League.  
+    Explore player data, analyse squads, and dive into the stats that power the league.
+  </p>
+
+  <!-- Link to your existing database page -->
+  <a href="players.html" class="button">Enter Player Database</a>
+
+  <footer>© GPSL</footer>
+
+</body>
+</html>
