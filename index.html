@@ -1,7 +1,18 @@
 <h1>GPSL – Super League</h1>
-<p>Website coming in 10 months</p>
+<p>Player Database</p>
+
+<!-- Filters -->
+<div id="filters"></div>
+
+<!-- Table -->
+<table id="playersTable" border="1" cellpadding="6" style="margin-top:20px;">
+  <thead id="tableHead"></thead>
+  <tbody id="tableBody"></tbody>
+</table>
+
 <script type="module">
   console.log("Script loaded")
+
   import { createClient } from 'https://esm.sh/@supabase/supabase-js'
 
   const supabase = createClient(
@@ -9,14 +20,88 @@
     'sb_publishable_CURtFl2L_eTebwwjNvm_Yw_A_D5tudt'
   )
 
-  async function testConnection() {
+  async function loadPlayers() {
     const { data, error } = await supabase
-      .from('Players')   // ← FIXED
+      .from('Players')
       .select('*')
-      .limit(5)
+      .limit(100)
 
-    console.log('Supabase test:', data, error)
+    console.log("Supabase test:", data, error)
+
+    if (error) {
+      console.error("Error loading players:", error)
+      return
+    }
+
+    renderTable(data)
+    renderFilters(data)
   }
 
-  testConnection()
+  function renderTable(players) {
+    const tableHead = document.getElementById("tableHead")
+    const tableBody = document.getElementById("tableBody")
+
+    if (players.length === 0) {
+      tableHead.innerHTML = "<tr><th>No data</th></tr>"
+      tableBody.innerHTML = ""
+      return
+    }
+
+    const columns = Object.keys(players[0])
+
+    // Build table header
+    tableHead.innerHTML = `
+      <tr>
+        ${columns.map(col => `<th>${col}</th>`).join("")}
+      </tr>
+    `
+
+    // Build table rows
+    tableBody.innerHTML = players
+      .map(player => `
+        <tr>
+          ${columns.map(col => `<td>${player[col]}</td>`).join("")}
+        </tr>
+      `)
+      .join("")
+  }
+
+  function renderFilters(players) {
+    const filtersDiv = document.getElementById("filters")
+    const columns = Object.keys(players[0])
+
+    filtersDiv.innerHTML = columns
+      .map(col => `
+        <label>${col}: 
+          <input type="text" id="filter-${col}" placeholder="Filter ${col}">
+        </label>
+      `)
+      .join("<br>")
+
+    // Add filter listeners
+    columns.forEach(col => {
+      document.getElementById(`filter-${col}`).addEventListener("input", () => {
+        applyFilters(players)
+      })
+    })
+  }
+
+  function applyFilters(players) {
+    const columns = Object.keys(players[0])
+
+    let filtered = [...players]
+
+    columns.forEach(col => {
+      const value = document.getElementById(`filter-${col}`).value.toLowerCase()
+      if (value.trim() !== "") {
+        filtered = filtered.filter(p =>
+          String(p[col]).toLowerCase().includes(value)
+        )
+      }
+    })
+
+    renderTable(filtered)
+  }
+
+  loadPlayers()
 </script>
