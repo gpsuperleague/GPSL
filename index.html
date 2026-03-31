@@ -32,7 +32,8 @@
 
     let query = supabase
       .from('Players')
-      .select('*', { count: 'exact' })   // count AFTER filters
+      .select('*', { count: 'exact', head: false })   // ⭐ FIXED
+
 
     // Apply filters BEFORE pagination
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
