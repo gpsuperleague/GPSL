@@ -13,7 +13,6 @@
   let CURRENT_PAGE = 1
   let CURRENT_FILTERS = {}
 
-  // Load total rows (unfiltered)
   async function loadTotalCount() {
     const { count } = await supabase
       .from('Players')
@@ -23,7 +22,6 @@
     console.log("Total players:", TOTAL_ROWS)
   }
 
-  // Load a page with filters applied to the entire table
   async function loadPage(page = 1) {
     CURRENT_PAGE = page
 
@@ -32,17 +30,14 @@
 
     let query = supabase
       .from('Players')
-      .select('*', { count: 'exact', head: false })   // ⭐ FIXED
+      .select('*', { count: 'exact', head: false })   // FIXED
 
-
-    // Apply filters BEFORE pagination
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
       if (value.trim() !== "") {
         query = query.ilike(col, `%${value}%`)
       }
     })
 
-    // Now apply pagination
     query = query.range(from, to)
 
     const { data, error, count } = await query
@@ -52,7 +47,7 @@
       return
     }
 
-    TOTAL_ROWS = count   // filtered count
+    TOTAL_ROWS = count
     renderTable(data)
     renderPagination()
   }
@@ -110,7 +105,7 @@
     columns.forEach(col => {
       document.getElementById(`filter-${col}`).addEventListener("input", () => {
         CURRENT_FILTERS[col] = document.getElementById(`filter-${col}`).value
-        loadPage(1)   // restart at page 1 when filtering
+        loadPage(1)
       })
     })
   }
@@ -118,7 +113,6 @@
   async function init() {
     await loadTotalCount()
 
-    // Load one row to detect columns
     const { data } = await supabase
       .from('Players')
       .select('*')
