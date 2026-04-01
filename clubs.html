@@ -3,14 +3,14 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const supabase = createClient(
   'https://omyyogfumrjoaweuawjn.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
+  'YOUR_PUBLIC_ANON_KEY'
 )
 
 async function loadClubs() {
   const { data, error } = await supabase
     .from("Clubs")
     .select("*")
-    .order("name", { ascending: true })
+    .order("Club", { ascending: true })   // <-- FIXED
 
   if (error) {
     console.error(error)
@@ -27,8 +27,8 @@ async function loadClubs() {
     }
 
     div.innerHTML = `
-      <img src="badges/${club.short_name}.png" alt="${club.name} badge">
-      <div>${club.name}</div>
+      <img src="badges/${club.ShortName}.png" alt="${club.Club} badge">
+      <div>${club.Club}</div>
     `
 
     container.appendChild(div)
