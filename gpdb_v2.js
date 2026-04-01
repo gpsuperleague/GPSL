@@ -193,7 +193,20 @@ async function populateDropdowns() {
       console.log("DEBUG:", col, data.slice(0, 10));
 
       if (data) {
-        allValues.push(...data.map(row => row[col]));
+    allValues.push(
+      ...data.map(row => {
+        const v = row[col];
+
+        // ⭐ Special handling for Contracted_Team
+        if (col === "Contracted_Team") {
+          if (v === null || v === undefined || v === "") {
+            return "FREE AGENT";   // ⭐ Normalise empty values
+          }
+        }
+
+    return v;
+  })
+);
       }
     }
 
