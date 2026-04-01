@@ -249,8 +249,9 @@ async function populateDropdowns() {
 
     // Step 1 — get total rows
     const { count } = await supabase
-      .from("Players")
-      .select("id", { count: "exact", head: true });
+    .from("Players")
+    .select("id", { count: "exact" })
+    .limit(1);
 
     if (!count) continue;
 
