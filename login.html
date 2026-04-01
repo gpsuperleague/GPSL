@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL Login</title>
+</head>
+
+<body>
+
+  <h1>Login</h1>
+
+  <input id="email" type="email" placeholder="Email"><br><br>
+  <input id="password" type="password" placeholder="Password"><br><br>
+
+  <button onclick="login()">Login</button>
+
+  <!-- 🔥 Firebase scripts go HERE, at the bottom -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+  <!-- Your Firebase config file -->
+  <script src="firebase.js"></script>
+
+  <script>
+    function login() {
+      const email = document.getElementById('email').value;
+      const pass = document.getElementById('password').value;
+
+      auth.signInWithEmailAndPassword(email, pass)
+        .then(() => window.location = 'dashboard.html')
+        .catch(err => alert(err.message));
+    }
+  </script>
+
+</body>
+</html>
