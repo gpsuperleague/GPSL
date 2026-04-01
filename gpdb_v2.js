@@ -60,23 +60,27 @@ async function loadPage(page = 1) {
     .from('Players')
     .select(COLUMNS.join(','), { count: 'exact' })
 
-Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
-  if (value.trim() === "") return;
+  // Apply filters
+  Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
+    if (value.trim() === "") return;
 
-  if (DROPDOWN_COLUMNS.includes(col)) {
+    if (DROPDOWN_COLUMNS.includes(col)) {
 
-    // ⭐ Special case: FREE AGENT
-    if (col === "Contracted_Team" && value === "FREE AGENT") {
-      query = query.or(`${col}.is.null,${col}.eq.''`);
+      // ⭐ FREE AGENT logic (Option B)
+      if (col === "Contracted_Team" && value === "FREE AGENT") {
+        query = query.or(
+          `${col}.is.null,` +
+          `${col}.eq.'' ,` +
+          `${col}.eq.' '`
+        );
+      } else {
+        query = query.eq(col, value);
+      }
+
     } else {
-      query = query.eq(col, value);
+      query = query.ilike(col, `%${value}%`);
     }
-
-  } else {
-    // Text input filters
-    query = query.ilike(col, `%${value}%`);
-  }
-});
+  });
 
   if (MV_MIN !== null) query = query.gte("market_value", MV_MIN)
   if (MV_MAX !== null) query = query.lte("market_value", MV_MAX)
@@ -184,7 +188,7 @@ async function populateDropdowns() {
     // Step 1 — get total rows
     const { count } = await supabase
       .from("Players")
-      .select("ID", { count: "exact" })   // FIXED
+      .select("ID", { count: "exact" })
       .limit(1);
 
     if (!count) continue;
@@ -195,51 +199,49 @@ async function populateDropdowns() {
 
       const { data } = await supabase
         .from("Players")
-        .select(`ID, ${col}`)             // FIXED
+        .select(`ID, ${col}`)
         .range(from, to);
 
-      console.log("DEBUG:", col, data.slice(0, 10));
-      if (col === "Contracted_Team") {
-  data.forEach(row => console.log("RAW Contracted_Team:", row.Contracted_Team));
-}
-
       if (data) {
-    allValues.push(
-      ...data.map(row => {
-        const v = row[col];
+        allValues.push(
+          ...data.map(row => {
+            const v = row[col];
 
-        // ⭐ Special handling for Contracted_Team
-        if (col === "Contracted_Team") {
-          if (v === null || v === undefined || v === "") {
-            return "FREE AGENT";   // ⭐ Normalise empty values
-          }
-        }
+            // ⭐ Normalise FREE AGENT values
+            if (col === "Contracted_Team") {
+              if (
+                v === null ||
+                v === undefined ||
+                v === "" ||
+                v === " "
+              ) {
+                return "FREE AGENT";
+              }
+            }
 
-    return v;
-  })
-);
+            return v;
+          })
+        );
       }
     }
 
     // Step 3 — clean + dedupe
-   let uniqueValues;
+    let uniqueValues;
 
     if (col === "Season_Signed") {
-      // numeric
       uniqueValues = [...new Set(
         allValues
           .filter(v => v !== null && v !== undefined && v !== "")
           .map(v => Number(v))
       )].sort((a, b) => a - b);
     } else {
-      // text
       uniqueValues = [...new Set(
         allValues
           .filter(v => v !== null && v !== undefined && v !== "")
           .map(v => String(v).trim())
       )].sort((a, b) => String(a).localeCompare(String(b)));
-    
-      // ⭐ Move FREE AGENT to the top
+
+      // ⭐ Move FREE AGENT to top
       if (col === "Contracted_Team") {
         uniqueValues = [
           "FREE AGENT",
@@ -261,9 +263,9 @@ async function populateDropdowns() {
 function setupFilters() {
   const filtersDiv = document.getElementById("filters")
 
-filtersDiv.innerHTML = COLUMNS
-  .filter(col => !FILTER_EXCLUDE.includes(col))
-  .map(col => {
+  filtersDiv.innerHTML = COLUMNS
+    .filter(col => !FILTER_EXCLUDE.includes(col))
+    .map(col => {
       if (DROPDOWN_COLUMNS.includes(col)) {
         return `
           <label>${col.replace(/_/g, " ")}:
@@ -282,15 +284,15 @@ filtersDiv.innerHTML = COLUMNS
     })
     .join(" &nbsp; ")
 
-    COLUMNS
-      .filter(col => !FILTER_EXCLUDE.includes(col))
-      .forEach(col => {
-    const el = document.getElementById(`filter-${col}`)
-    el.addEventListener("change", () => {
-      CURRENT_FILTERS[col] = el.value
-      loadPage(1)
+  COLUMNS
+    .filter(col => !FILTER_EXCLUDE.includes(col))
+    .forEach(col => {
+      const el = document.getElementById(`filter-${col}`)
+      el.addEventListener("change", () => {
+        CURRENT_FILTERS[col] = el.value
+        loadPage(1)
+      })
     })
-  })
 }
 
 function setupControls() {
