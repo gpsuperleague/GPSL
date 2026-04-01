@@ -199,6 +199,9 @@ async function populateDropdowns() {
         .range(from, to);
 
       console.log("DEBUG:", col, data.slice(0, 10));
+      if (col === "Contracted_Team") {
+  data.forEach(row => console.log("RAW Contracted_Team:", row.Contracted_Team));
+}
 
       if (data) {
     allValues.push(
