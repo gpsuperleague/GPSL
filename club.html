@@ -3,25 +3,21 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const supabase = createClient(
   'https://omyyogfumrjoaweuawjn.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
+  'YOUR_PUBLIC_ANON_KEY'
 )
 
-// Read ?id=12 from URL
+// Read ?club=Ajax from URL
 const params = new URLSearchParams(window.location.search)
 const clubName = params.get("club")
 
+// Set page title
 document.getElementById("clubName").textContent = clubName
-
-const { data: players } = await supabase
-  .from("Players")
-  .select("*")
-  .eq("Contracted_Team", clubName)
 
 async function loadClub() {
   const { data: club, error } = await supabase
     .from("Clubs")
     .select("*")
-    .eq("id", clubId)
+    .eq("Club", clubName)
     .single()
 
   if (error) {
@@ -29,15 +25,15 @@ async function loadClub() {
     return
   }
 
-  // Set page title
-  document.getElementById("clubName").textContent = club.name
+  // You can later display stadium, capacity, colours, etc.
+  console.log("Club info:", club)
 }
 
 async function loadPlayers() {
   const { data, error } = await supabase
     .from("Players")
     .select("*")
-    .eq("club_id", clubId)
+    .eq("Contracted_Team", clubName)
 
   if (error) {
     console.error(error)
