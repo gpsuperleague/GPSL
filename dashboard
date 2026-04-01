@@ -1,6 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL Dashboard</title>
+</head>
 
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<body>
 
-<script src="firebase.js"></script>
+  <h1>GPSL Dashboard</h1>
+
+  <p id="welcome"></p>
+
+  <button onclick="logout()">Logout</button>
+
+  <hr>
+
+  <h2>Your Club Area</h2>
+  <div id="clubArea">
+    <!-- Club-specific content will go here -->
+  </div>
+
+  <!-- 🔥 Firebase scripts (always at the bottom) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+  <!-- Your Firebase config -->
+  <script src="firebase.js"></script>
+
+  <script>
+    // Redirect if not logged in
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        window.location = "login.html"
+        return
+      }
+
+      // Show user email
+      document.getElementById("welcome").innerText =
+        "Logged in as: " + user.email
+
+      // Load club ownership (later)
+      loadClubArea(user.uid)
+    })
+
+    function logout() {
+      auth.signOut().then(() => {
+        window.location = "login.html"
+      })
+    }
+
+    function loadClubArea(uid) {
+      // Placeholder — later we will load the user's club from Firestore
+      document.getElementById("clubArea").innerHTML =
+        "<p>Your club data will appear here.</p>"
+    }
+  </script>
+
+</body>
+</html>
