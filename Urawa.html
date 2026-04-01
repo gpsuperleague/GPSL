@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Urawa Reds</title>
+  <title>Club Squad</title>
 </head>
 <body>
 
-<h1 id="Urawa Reds"></h1>
+<h1 id="clubName"></h1>
+
 <table border="1" cellpadding="6">
   <thead id="tableHead"></thead>
   <tbody id="tableBody"></tbody>
@@ -19,9 +20,11 @@ const supabase = createClient(
   'YOUR_PUBLIC_ANON_KEY'
 )
 
+// Read ?team=Urawa%20Reds from URL
 const params = new URLSearchParams(window.location.search)
 const team = params.get("team")
 
+// Set page title
 document.getElementById("clubName").textContent = team
 
 async function loadPlayers() {
