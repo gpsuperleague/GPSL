@@ -240,13 +240,15 @@
     }
   }
 
-  async function populateDropdowns() {
+ async function populateDropdowns() {
   for (const col of DROPDOWN_COLUMNS) {
 
-    // Step 1 — get total rows for this column
-    const { count } = await supabase
+    // Step 1 — get total rows
+    const { count, error: countErr } = await supabase
       .from("Players")
       .select(col, { count: "exact", head: true });
+
+    if (countErr || !count) continue;
 
     // Step 2 — fetch ALL rows for that column
     const { data, error } = await supabase
@@ -254,15 +256,23 @@
       .select(col)
       .range(0, count - 1);
 
-    if (error) continue;
+    if (error || !data) continue;
 
     const select = document.getElementById(`filter-${col}`);
 
-    // Step 3 — extract unique values
-    const uniqueValues = [...new Set(data.map(row => row[col]))]
-      .filter(v => v !== null && v !== "")
-      .sort();
+    // Step 3 — extract unique values safely
+    const uniqueValues = [...new Set(
+      data
+        .map(row => row[col])
+        .filter(v => v !== null && v !== "" && v !== undefined)
+        .map(v => typeof v === "string" ? v.trim() : v)
+    )].sort((a, b) => {
+      // numeric sort for Age, Rating
+      if (typeof a === "number" && typeof b === "number") return a - b;
+      return String(a).localeCompare(String(b));
+    });
 
+    // Step 4 — populate dropdown
     uniqueValues.forEach(v => {
       const opt = document.createElement("option");
       opt.value = v;
