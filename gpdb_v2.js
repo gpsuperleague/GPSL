@@ -30,6 +30,7 @@ const DROPDOWN_COLUMNS = [
   "Rating",
   "Playstyle",
   "Contracted_Team"
+  "Season_Signed"
 ]
 
 let PAGE_SIZE = 1000
