@@ -211,23 +211,31 @@ async function populateDropdowns() {
     }
 
     // Step 3 — clean + dedupe
-    let uniqueValues;
+   let uniqueValues;
 
-if (col === "Season_Signed") {
-  // ⭐ Numeric column
-  uniqueValues = [...new Set(
-    allValues
-      .filter(v => v !== null && v !== undefined && v !== "")
-      .map(v => Number(v))
-  )].sort((a, b) => a - b);
-} else {
-  // ⭐ Text columns
-  uniqueValues = [...new Set(
-    allValues
-      .filter(v => v !== null && v !== undefined && v !== "")
-      .map(v => String(v).trim())
-  )].sort((a, b) => String(a).localeCompare(String(b)));
-}
+    if (col === "Season_Signed") {
+      // numeric
+      uniqueValues = [...new Set(
+        allValues
+          .filter(v => v !== null && v !== undefined && v !== "")
+          .map(v => Number(v))
+      )].sort((a, b) => a - b);
+    } else {
+      // text
+      uniqueValues = [...new Set(
+        allValues
+          .filter(v => v !== null && v !== undefined && v !== "")
+          .map(v => String(v).trim())
+      )].sort((a, b) => String(a).localeCompare(String(b)));
+    
+      // ⭐ Move FREE AGENT to the top
+      if (col === "Contracted_Team") {
+        uniqueValues = [
+          "FREE AGENT",
+          ...uniqueValues.filter(v => v !== "FREE AGENT")
+        ];
+      }
+    }
 
     // Step 4 — populate dropdown
     uniqueValues.forEach(v => {
