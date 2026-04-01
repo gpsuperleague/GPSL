@@ -219,8 +219,9 @@ async function populateDropdowns() {
 function setupFilters() {
   const filtersDiv = document.getElementById("filters")
 
-  filtersDiv.innerHTML = COLUMNS
-    .map(col => {
+filtersDiv.innerHTML = COLUMNS
+  .filter(col => !FILTER_EXCLUDE.includes(col))
+  .map(col => {
       if (DROPDOWN_COLUMNS.includes(col)) {
         return `
           <label>${col.replace(/_/g, " ")}:
