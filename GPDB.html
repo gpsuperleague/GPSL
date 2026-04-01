@@ -246,14 +246,14 @@
     // Step 1 — get total rows
     const { count, error: countErr } = await supabase
       .from("Players")
-      .select(col, { count: "exact", head: true });
+      .select("id", { count: "exact", head: true });
 
     if (countErr || !count) continue;
 
     // Step 2 — fetch ALL rows for that column
     const { data, error } = await supabase
       .from("Players")
-      .select(col)
+      .select(`${col}, id`)   // ⭐ IMPORTANT: select 2 columns to bypass 1000-row cap
       .range(0, count - 1);
 
     if (error || !data) continue;
@@ -267,7 +267,6 @@
         .filter(v => v !== null && v !== "" && v !== undefined)
         .map(v => typeof v === "string" ? v.trim() : v)
     )].sort((a, b) => {
-      // numeric sort for Age, Rating
       if (typeof a === "number" && typeof b === "number") return a - b;
       return String(a).localeCompare(String(b));
     });
