@@ -29,7 +29,7 @@ const DROPDOWN_COLUMNS = [
   "Age",
   "Rating",
   "Playstyle",
-  "Contracted_Team"
+  "Contracted_Team",
   "Season_Signed"
 ]
 
