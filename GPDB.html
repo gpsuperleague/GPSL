@@ -243,6 +243,10 @@
 async function populateDropdowns() {
   for (const col of DROPDOWN_COLUMNS) {
 
+    const select = document.getElementById(`filter-${col}`);
+    let allValues = [];
+    const batchSize = 1000;
+
     // Step 1 — get total rows
     const { count } = await supabase
       .from("Players")
@@ -250,21 +254,24 @@ async function populateDropdowns() {
 
     if (!count) continue;
 
-    // Step 2 — fetch ALL rows (bypass 1000-row limit by selecting 2 columns)
-    const { data } = await supabase
-      .from("Players")
-      .select(`id, ${col}`)
-      .range(0, count - 1);
+    // Step 2 — fetch in batches
+    for (let from = 0; from < count; from += batchSize) {
+      const to = Math.min(from + batchSize - 1, count - 1);
 
-    if (!data) continue;
+      const { data } = await supabase
+        .from("Players")
+        .select(`id, ${col}`)
+        .range(from, to);
 
-    const select = document.getElementById(`filter-${col}`);
+      if (data) {
+        allValues.push(...data.map(row => row[col]));
+      }
+    }
 
-    // Step 3 — extract unique values
+    // Step 3 — clean + dedupe
     const uniqueValues = [...new Set(
-      data
-        .map(row => row[col])
-        .filter(v => v && v !== "" && v !== " ")   // remove empty strings
+      allValues
+        .filter(v => v && v.trim && v.trim() !== "")
         .map(v => typeof v === "string" ? v.trim() : v)
     )].sort((a, b) => {
       if (typeof a === "number" && typeof b === "number") return a - b;
