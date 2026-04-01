@@ -199,12 +199,10 @@ async function populateDropdowns() {
     // Step 3 — clean + dedupe
     const uniqueValues = [...new Set(
       allValues
-      .filter(v => v !== null && v !== undefined && v !== "")
-      .map(v => typeof v === "string" ? v.trim() : v)
-    )].sort((a, b) => {
-      if (typeof a === "number" && typeof b === "number") return a - b;
-      return String(a).localeCompare(String(b));
-    });
+       .filter(v => v !== null && v !== undefined && v !== "")
+       .map(v => Number(v))   // ⭐ force numeric
+  )]
+     .sort((a, b) => a - b);    // ⭐ numeric sort
 
     // Step 4 — populate dropdown
     uniqueValues.forEach(v => {
