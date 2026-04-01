@@ -1,121 +1,120 @@
-  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-  const supabase = createClient(
-    'https://omyyogfumrjoaweuawjn.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
-  )
+const supabase = createClient(
+  'https://omyyogfumrjoaweuawjn.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
+)
 
-  const COLUMNS = [
-    "Name",
-    "Position",
-    "Nation",
-    "Age",
-    "Rating",
-    "Playstyle",
-    "Maximum_Reserve_Price",
-    "market_value",
-    "Contracted_Team",
-    "Season_Signed"
-  ]
+const COLUMNS = [
+  "Name",
+  "Position",
+  "Nation",
+  "Age",
+  "Rating",
+  "Playstyle",
+  "Maximum_Reserve_Price",
+  "market_value",
+  "Contracted_Team",
+  "Season_Signed"
+]
 
-  const DROPDOWN_COLUMNS = [
-    "Nation",
-    "Position",
-    "Age",
-    "Rating",
-    "Playstyle",
-    "Contracted_Team"
-  ]
+const DROPDOWN_COLUMNS = [
+  "Nation",
+  "Position",
+  "Age",
+  "Rating",
+  "Playstyle",
+  "Contracted_Team"
+]
 
-  let PAGE_SIZE = 1000
-  let TOTAL_ROWS = 0
-  let CURRENT_PAGE = 1
-  let CURRENT_FILTERS = {}
-  let CURRENT_SORT_COLUMN = null
-  let CURRENT_SORT_DIR = 'asc'
-  let MV_MIN = null
-  let MV_MAX = null
+let PAGE_SIZE = 1000
+let TOTAL_ROWS = 0
+let CURRENT_PAGE = 1
+let CURRENT_FILTERS = {}
+let CURRENT_SORT_COLUMN = null
+let CURRENT_SORT_DIR = 'asc'
+let MV_MIN = null
+let MV_MAX = null
 
-  async function loadTotalCount() {
-    const { count } = await supabase
-      .from('Players')
-      .select('*', { count: 'exact', head: true })
+async function loadTotalCount() {
+  const { count } = await supabase
+    .from('Players')
+    .select('*', { count: 'exact', head: true })
 
-    TOTAL_ROWS = count
-  }
+  TOTAL_ROWS = count
+}
 
-  async function loadPage(page = 1) {
-    CURRENT_PAGE = page
+async function loadPage(page = 1) {
+  CURRENT_PAGE = page
 
-    const from = (page - 1) * PAGE_SIZE
-    const to = from + PAGE_SIZE - 1
+  const from = (page - 1) * PAGE_SIZE
+  const to = from + PAGE_SIZE - 1
 
-    let query = supabase
-      .from('Players')
-      .select(COLUMNS.join(','), { count: 'exact' })
+  let query = supabase
+    .from('Players')
+    .select(COLUMNS.join(','), { count: 'exact' })
 
-    Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
-      if (value.trim() !== "") {
-        if (DROPDOWN_COLUMNS.includes(col)) {
-          query = query.eq(col, value)
-        } else {
-          query = query.ilike(col, `%${value}%`)
-        }
+  Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
+    if (value.trim() !== "") {
+      if (DROPDOWN_COLUMNS.includes(col)) {
+        query = query.eq(col, value)
+      } else {
+        query = query.ilike(col, `%${value}%`)
       }
+    }
+  })
+
+  if (MV_MIN !== null) query = query.gte("market_value", MV_MIN)
+  if (MV_MAX !== null) query = query.lte("market_value", MV_MAX)
+
+  if (CURRENT_SORT_COLUMN) {
+    query = query.order(CURRENT_SORT_COLUMN, {
+      ascending: CURRENT_SORT_DIR === 'asc'
     })
-
-    if (MV_MIN !== null) query = query.gte("market_value", MV_MIN)
-    if (MV_MAX !== null) query = query.lte("market_value", MV_MAX)
-
-    if (CURRENT_SORT_COLUMN) {
-      query = query.order(CURRENT_SORT_COLUMN, {
-        ascending: CURRENT_SORT_DIR === 'asc'
-      })
-    }
-
-    query = query.range(from, to)
-
-    const { data, error, count } = await query
-
-    if (error) {
-      console.error(error)
-      return
-    }
-
-    TOTAL_ROWS = count
-    renderTable(data)
-    renderPagination()
   }
 
-  function renderTable(players) {
-    const tableHead = document.getElementById("tableHead")
-    const tableBody = document.getElementById("tableBody")
+  query = query.range(from, to)
 
-    if (!players || players.length === 0) {
-      tableHead.innerHTML = "<tr><th>No data</th></tr>"
-      tableBody.innerHTML = ""
-      return
-    }
+  const { data, error, count } = await query
 
-    tableHead.innerHTML = `
+  if (error) {
+    console.error(error)
+    return
+  }
+
+  TOTAL_ROWS = count
+  renderTable(data)
+  renderPagination()
+}
+
+function renderTable(players) {
+  const tableHead = document.getElementById("tableHead")
+  const tableBody = document.getElementById("tableBody")
+
+  if (!players || players.length === 0) {
+    tableHead.innerHTML = "<tr><th>No data</th></tr>"
+    tableBody.innerHTML = ""
+    return
+  }
+
+  tableHead.innerHTML = `
+    <tr>
+      ${COLUMNS.map(col => {
+        let cls = ""
+        if (CURRENT_SORT_COLUMN === col) {
+          cls = CURRENT_SORT_DIR === 'asc' ? 'sort-asc' : 'sort-desc'
+        }
+        return `<th data-col="${col}" class="${cls}">${col.replace(/_/g, " ")}</th>`
+      }).join("")}
+    </tr>
+  `
+
+  tableBody.innerHTML = players
+    .map(player => `
       <tr>
         ${COLUMNS.map(col => {
-          let cls = ""
-          if (CURRENT_SORT_COLUMN === col) {
-            cls = CURRENT_SORT_DIR === 'asc' ? 'sort-asc' : 'sort-desc'
-          }
-          return `<th data-col="${col}" class="${cls}">${col.replace(/_/g, " ")}</th>`
-        }).join("")}
-      </tr>
-    `
+          let value = player[col]
 
-    tableBody.innerHTML = players
-      .map(player => `
-        <tr>
-          ${COLUMNS.map(col => {
-            let value = player[col]
-
-            // ⭐ Display market_value as Bitcoin, no decimals
           if (col === "market_value" && value !== null) {
             value = "₿ " + new Intl.NumberFormat("en-GB", {
               maximumFractionDigits: 0,
@@ -123,43 +122,43 @@
             }).format(value)
           }
 
-            return `<td>${value}</td>`
-          }).join("")}
-        </tr>
-      `)
-      .join("")
+          return `<td>${value}</td>`
+        }).join("")}
+      </tr>
+    `)
+    .join("")
 
-    Array.from(tableHead.querySelectorAll("th")).forEach(th => {
-      const col = th.getAttribute("data-col")
-      th.onclick = () => {
-        if (CURRENT_SORT_COLUMN === col) {
-          CURRENT_SORT_DIR = CURRENT_SORT_DIR === 'asc' ? 'desc' : 'asc'
-        } else {
-          CURRENT_SORT_COLUMN = col
-          CURRENT_SORT_DIR = 'asc'
-        }
-        loadPage(1)
+  Array.from(tableHead.querySelectorAll("th")).forEach(th => {
+    const col = th.getAttribute("data-col")
+    th.onclick = () => {
+      if (CURRENT_SORT_COLUMN === col) {
+        CURRENT_SORT_DIR = CURRENT_SORT_DIR === 'asc' ? 'desc' : 'asc'
+      } else {
+        CURRENT_SORT_COLUMN = col
+        CURRENT_SORT_DIR = 'asc'
       }
-    })
-  }
-
-  function renderPagination() {
-    const pages = Math.ceil(TOTAL_ROWS / PAGE_SIZE)
-    const container = document.getElementById("pagination")
-
-    container.innerHTML = ""
-
-    if (pages <= 1) return
-
-    for (let i = 1; i <= pages; i++) {
-      const btn = document.createElement("button")
-      btn.textContent = i
-      btn.style.margin = "4px"
-      btn.disabled = i === CURRENT_PAGE
-      btn.onclick = () => loadPage(i)
-      container.appendChild(btn)
+      loadPage(1)
     }
+  })
+}
+
+function renderPagination() {
+  const pages = Math.ceil(TOTAL_ROWS / PAGE_SIZE)
+  const container = document.getElementById("pagination")
+
+  container.innerHTML = ""
+
+  if (pages <= 1) return
+
+  for (let i = 1; i <= pages; i++) {
+    const btn = document.createElement("button")
+    btn.textContent = i
+    btn.style.margin = "4px"
+    btn.disabled = i === CURRENT_PAGE
+    btn.onclick = () => loadPage(i)
+    container.appendChild(btn)
   }
+}
 
 async function populateDropdowns() {
   for (const col of DROPDOWN_COLUMNS) {
@@ -170,9 +169,9 @@ async function populateDropdowns() {
 
     // Step 1 — get total rows
     const { count } = await supabase
-    .from("Players")
-    .select("id", { count: "exact" })
-    .limit(1);
+      .from("Players")
+      .select("ID", { count: "exact" })   // FIXED
+      .limit(1);
 
     if (!count) continue;
 
@@ -182,9 +181,9 @@ async function populateDropdowns() {
 
       const { data } = await supabase
         .from("Players")
-        .select(`id, ${col}`)
+        .select(`ID, ${col}`)             // FIXED
         .range(from, to);
-      
+
       console.log("DEBUG:", col, data.slice(0, 10));
 
       if (data) {
@@ -212,80 +211,80 @@ async function populateDropdowns() {
   }
 }
 
-  function setupFilters() {
-    const filtersDiv = document.getElementById("filters")
+function setupFilters() {
+  const filtersDiv = document.getElementById("filters")
 
-    filtersDiv.innerHTML = COLUMNS
-      .map(col => {
-        if (DROPDOWN_COLUMNS.includes(col)) {
-          return `
-            <label>${col.replace(/_/g, " ")}:
-              <select id="filter-${col}">
-                <option value="">All</option>
-              </select>
-            </label>
-          `
-        } else {
-          return `
-            <label>${col.replace(/_/g, " ")}:
-              <input type="text" id="filter-${col}" placeholder="Filter ${col}">
-            </label>
-          `
-        }
-      })
-      .join(" &nbsp; ")
-
-    COLUMNS.forEach(col => {
-      const el = document.getElementById(`filter-${col}`)
-      el.addEventListener("change", () => {
-        CURRENT_FILTERS[col] = el.value
-        loadPage(1)
-      })
+  filtersDiv.innerHTML = COLUMNS
+    .map(col => {
+      if (DROPDOWN_COLUMNS.includes(col)) {
+        return `
+          <label>${col.replace(/_/g, " ")}:
+            <select id="filter-${col}">
+              <option value="">All</option>
+            </select>
+          </label>
+        `
+      } else {
+        return `
+          <label>${col.replace(/_/g, " ")}:
+            <input type="text" id="filter-${col}" placeholder="Filter ${col}">
+          </label>
+        `
+      }
     })
-  }
+    .join(" &nbsp; ")
 
-  function setupControls() {
-    const pageSizeSelect = document.getElementById("pageSizeSelect")
-    pageSizeSelect.addEventListener("change", () => {
-      PAGE_SIZE = Number(pageSizeSelect.value)
+  COLUMNS.forEach(col => {
+    const el = document.getElementById(`filter-${col}`)
+    el.addEventListener("change", () => {
+      CURRENT_FILTERS[col] = el.value
       loadPage(1)
     })
+  })
+}
 
-    const mvMinInput = document.getElementById("mv-min")
-    const mvMaxInput = document.getElementById("mv-max")
-    const applyMV = document.getElementById("applyMV")
-
-    applyMV.addEventListener("click", () => {
-      const minVal = mvMinInput.value.trim()
-      const maxVal = mvMaxInput.value.trim()
-
-      MV_MIN = minVal === "" ? null : Number(minVal)
-      MV_MAX = maxVal === "" ? null : Number(maxVal)
-
-      loadPage(1)
-    })
-
-    document.getElementById("clearFiltersBtn").addEventListener("click", () => {
-      CURRENT_FILTERS = {}
-      MV_MIN = null
-      MV_MAX = null
-      CURRENT_SORT_COLUMN = null
-      CURRENT_SORT_DIR = 'asc'
-
-      document.querySelectorAll('#filters input, #filters select').forEach(i => i.value = "")
-      mvMinInput.value = ""
-      mvMaxInput.value = ""
-
-      loadPage(1)
-    })
-  }
-
-  async function init() {
-    setupControls()
-    setupFilters()
-    await populateDropdowns()
-    await loadTotalCount()
+function setupControls() {
+  const pageSizeSelect = document.getElementById("pageSizeSelect")
+  pageSizeSelect.addEventListener("change", () => {
+    PAGE_SIZE = Number(pageSizeSelect.value)
     loadPage(1)
-  }
+  })
 
-  init()
+  const mvMinInput = document.getElementById("mv-min")
+  const mvMaxInput = document.getElementById("mv-max")
+  const applyMV = document.getElementById("applyMV")
+
+  applyMV.addEventListener("click", () => {
+    const minVal = mvMinInput.value.trim()
+    const maxVal = mvMaxInput.value.trim()
+
+    MV_MIN = minVal === "" ? null : Number(minVal)
+    MV_MAX = maxVal === "" ? null : Number(maxVal)
+
+    loadPage(1)
+  })
+
+  document.getElementById("clearFiltersBtn").addEventListener("click", () => {
+    CURRENT_FILTERS = {}
+    MV_MIN = null
+    MV_MAX = null
+    CURRENT_SORT_COLUMN = null
+    CURRENT_SORT_DIR = 'asc'
+
+    document.querySelectorAll('#filters input, #filters select').forEach(i => i.value = "")
+    mvMinInput.value = ""
+    mvMaxInput.value = ""
+
+    loadPage(1)
+  })
+}
+
+async function init() {
+  setupControls()
+  setupFilters()
+  await populateDropdowns()
+  await loadTotalCount()
+  loadPage(1)
+}
+
+init()
