@@ -1,37 +1,36 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Club Squad</title>
-</head>
-<body>
-
-<h1 id="clubName"></h1>
-
-<table border="1" cellpadding="6">
-  <thead id="tableHead"></thead>
-  <tbody id="tableBody"></tbody>
-</table>
-
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
 const supabase = createClient(
   'https://omyyogfumrjoaweuawjn.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
+  'YOUR_PUBLIC_ANON_KEY'
 )
 
-// Read ?team=Urawa%20Reds from URL
+// Read ?id=12 from URL
 const params = new URLSearchParams(window.location.search)
-const team = params.get("team")
+const clubId = params.get("id")
 
-// Set page title
-document.getElementById("clubName").textContent = team
+async function loadClub() {
+  const { data: club, error } = await supabase
+    .from("Clubs")
+    .select("*")
+    .eq("id", clubId)
+    .single()
+
+  if (error) {
+    console.error(error)
+    return
+  }
+
+  // Set page title
+  document.getElementById("clubName").textContent = club.name
+}
 
 async function loadPlayers() {
   const { data, error } = await supabase
     .from("Players")
     .select("*")
-    .eq("Contracted_Team", team)
+    .eq("club_id", clubId)
 
   if (error) {
     console.error(error)
@@ -59,8 +58,6 @@ async function loadPlayers() {
   `).join("")
 }
 
+loadClub()
 loadPlayers()
 </script>
-
-</body>
-</html>
