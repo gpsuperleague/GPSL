@@ -60,15 +60,23 @@ async function loadPage(page = 1) {
     .from('Players')
     .select(COLUMNS.join(','), { count: 'exact' })
 
-  Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
-    if (value.trim() !== "") {
-      if (DROPDOWN_COLUMNS.includes(col)) {
-        query = query.eq(col, value)
-      } else {
-        query = query.ilike(col, `%${value}%`)
-      }
+Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
+  if (value.trim() === "") return;
+
+  if (DROPDOWN_COLUMNS.includes(col)) {
+
+    // ⭐ Special case: FREE AGENT
+    if (col === "Contracted_Team" && value === "FREE AGENT") {
+      query = query.or(`${col}.is.null,${col}.eq.''`);
+    } else {
+      query = query.eq(col, value);
     }
-  })
+
+  } else {
+    // Text input filters
+    query = query.ilike(col, `%${value}%`);
+  }
+});
 
   if (MV_MIN !== null) query = query.gte("market_value", MV_MIN)
   if (MV_MAX !== null) query = query.lte("market_value", MV_MAX)
