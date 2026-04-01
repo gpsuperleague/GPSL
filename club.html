@@ -8,7 +8,14 @@ const supabase = createClient(
 
 // Read ?id=12 from URL
 const params = new URLSearchParams(window.location.search)
-const clubId = params.get("id")
+const clubName = params.get("club")
+
+document.getElementById("clubName").textContent = clubName
+
+const { data: players } = await supabase
+  .from("Players")
+  .select("*")
+  .eq("Contracted_Team", clubName)
 
 async function loadClub() {
   const { data: club, error } = await supabase
