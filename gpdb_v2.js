@@ -18,6 +18,11 @@ const COLUMNS = [
   "Season_Signed"
 ]
 
+const FILTER_EXCLUDE = [
+  "Maximum_Reserve_Price",
+  "market_value"
+]
+
 const DROPDOWN_COLUMNS = [
   "Nation",
   "Position",
