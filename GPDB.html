@@ -240,31 +240,31 @@
     }
   }
 
- async function populateDropdowns() {
+async function populateDropdowns() {
   for (const col of DROPDOWN_COLUMNS) {
 
     // Step 1 — get total rows
-    const { count, error: countErr } = await supabase
+    const { count } = await supabase
       .from("Players")
       .select("id", { count: "exact", head: true });
 
-    if (countErr || !count) continue;
+    if (!count) continue;
 
-    // Step 2 — fetch ALL rows for that column
-    const { data, error } = await supabase
+    // Step 2 — fetch ALL rows (bypass 1000-row limit by selecting 2 columns)
+    const { data } = await supabase
       .from("Players")
-      .select(`${col}, id`)   // ⭐ IMPORTANT: select 2 columns to bypass 1000-row cap
+      .select(`id, ${col}`)
       .range(0, count - 1);
 
-    if (error || !data) continue;
+    if (!data) continue;
 
     const select = document.getElementById(`filter-${col}`);
 
-    // Step 3 — extract unique values safely
+    // Step 3 — extract unique values
     const uniqueValues = [...new Set(
       data
         .map(row => row[col])
-        .filter(v => v !== null && v !== "" && v !== undefined)
+        .filter(v => v && v !== "" && v !== " ")   // remove empty strings
         .map(v => typeof v === "string" ? v.trim() : v)
     )].sort((a, b) => {
       if (typeof a === "number" && typeof b === "number") return a - b;
