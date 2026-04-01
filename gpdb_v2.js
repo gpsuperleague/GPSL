@@ -198,12 +198,23 @@ async function populateDropdowns() {
     }
 
     // Step 3 — clean + dedupe
-    const uniqueValues = [...new Set(
-      allValues
-       .filter(v => v !== null && v !== undefined && v !== "")
-       .map(v => Number(v))   // ⭐ force numeric
-  )]
-     .sort((a, b) => a - b);    // ⭐ numeric sort
+    let uniqueValues;
+
+if (col === "Season_Signed") {
+  // ⭐ Numeric column
+  uniqueValues = [...new Set(
+    allValues
+      .filter(v => v !== null && v !== undefined && v !== "")
+      .map(v => Number(v))
+  )].sort((a, b) => a - b);
+} else {
+  // ⭐ Text columns
+  uniqueValues = [...new Set(
+    allValues
+      .filter(v => v !== null && v !== undefined && v !== "")
+      .map(v => String(v).trim())
+  )].sort((a, b) => String(a).localeCompare(String(b)));
+}
 
     // Step 4 — populate dropdown
     uniqueValues.forEach(v => {
