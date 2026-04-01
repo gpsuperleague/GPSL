@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Urawa Reds</title>
+</head>
+<body>
+
+<h1 id="Urawa Reds"></h1>
+<table border="1" cellpadding="6">
+  <thead id="tableHead"></thead>
+  <tbody id="tableBody"></tbody>
+</table>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+const supabase = createClient(
+  'https://omyyogfumrjoaweuawjn.supabase.co',
+  'YOUR_PUBLIC_ANON_KEY'
+)
+
+const params = new URLSearchParams(window.location.search)
+const team = params.get("team")
+
+document.getElementById("clubName").textContent = team
+
+async function loadPlayers() {
+  const { data, error } = await supabase
+    .from("Players")
+    .select("*")
+    .eq("Contracted_Team", team)
+
+  if (error) {
+    console.error(error)
+    return
+  }
+
+  const head = document.getElementById("tableHead")
+  const body = document.getElementById("tableBody")
+
+  if (!data.length) {
+    head.innerHTML = "<tr><th>No players found</th></tr>"
+    return
+  }
+
+  const cols = Object.keys(data[0])
+
+  head.innerHTML = `
+    <tr>${cols.map(c => `<th>${c.replace(/_/g, " ")}</th>`).join("")}</tr>
+  `
+
+  body.innerHTML = data.map(player => `
+    <tr>
+      ${cols.map(c => `<td>${player[c]}</td>`).join("")}
+    </tr>
+  `).join("")
+}
+
+loadPlayers()
+</script>
+
+</body>
+</html>
