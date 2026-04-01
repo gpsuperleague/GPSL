@@ -1,5 +1,3 @@
-<script type="module" src="gpdb.js"></script>
-<script type="module">
   import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
   const supabase = createClient(
@@ -291,4 +289,3 @@ async function populateDropdowns() {
   }
 
   init()
-</script>
