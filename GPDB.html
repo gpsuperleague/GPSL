@@ -262,6 +262,8 @@ async function populateDropdowns() {
         .from("Players")
         .select(`id, ${col}`)
         .range(from, to);
+      
+      console.log("DEBUG:", col, data.slice(0, 10));
 
       if (data) {
         allValues.push(...data.map(row => row[col]));
