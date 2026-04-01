@@ -241,25 +241,36 @@
   }
 
   async function populateDropdowns() {
-    for (const col of DROPDOWN_COLUMNS) {
-      const { data, error } = await supabase
-        .from("Players")
-        .select(col)
-        .not(col, "is", null)
+  for (const col of DROPDOWN_COLUMNS) {
 
-      if (error) continue
+    // Step 1 — get total rows for this column
+    const { count } = await supabase
+      .from("Players")
+      .select(col, { count: "exact", head: true });
 
-      const select = document.getElementById(`filter-${col}`)
-      const uniqueValues = [...new Set(data.map(row => row[col]))].sort()
+    // Step 2 — fetch ALL rows for that column
+    const { data, error } = await supabase
+      .from("Players")
+      .select(col)
+      .range(0, count - 1);
 
-      uniqueValues.forEach(v => {
-        const opt = document.createElement("option")
-        opt.value = v
-        opt.textContent = v
-        select.appendChild(opt)
-      })
-    }
+    if (error) continue;
+
+    const select = document.getElementById(`filter-${col}`);
+
+    // Step 3 — extract unique values
+    const uniqueValues = [...new Set(data.map(row => row[col]))]
+      .filter(v => v !== null && v !== "")
+      .sort();
+
+    uniqueValues.forEach(v => {
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = v;
+      select.appendChild(opt);
+    });
   }
+}
 
   function setupFilters() {
     const filtersDiv = document.getElementById("filters")
