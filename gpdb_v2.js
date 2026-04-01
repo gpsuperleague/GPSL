@@ -240,7 +240,9 @@ filtersDiv.innerHTML = COLUMNS
     })
     .join(" &nbsp; ")
 
-  COLUMNS.forEach(col => {
+    COLUMNS
+      .filter(col => !FILTER_EXCLUDE.includes(col))
+      .forEach(col => {
     const el = document.getElementById(`filter-${col}`)
     el.addEventListener("change", () => {
       CURRENT_FILTERS[col] = el.value
