@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Clubs</title>
+  <style>
+    .club-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 20px;
+      padding: 20px;
+    }
+    .club-card {
+      text-align: center;
+      cursor: pointer;
+    }
+    .club-card img {
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Clubs</h1>
+<div id="clubs" class="club-grid"></div>
+
+<script type="module">
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+
+const supabase = createClient(
+  'https://omyyogfumrjoaweuawjn.supabase.co',
+  'YOUR_PUBLIC_ANON_KEY'
+)
+
+async function loadClubs() {
+  const { data, error } = await supabase
+    .from("Players")
+    .select("Contracted_Team")
+
+  if (error) {
+    console.error(error)
+    return
+  }
+
+  // Extract unique clubs, ignoring NULL and empty
+  const clubs = [...new Set(
+    data
+      .map(r => r.Contracted_Team)
+      .filter(v => v && v.trim() !== "")
+  )].sort()
+
+  const container = document.getElementById("clubs")
+
+  clubs.forEach(club => {
+    const div = document.createElement("div")
+    div.className = "club-card"
+    div.onclick = () => {
+      window.location.href = `club.html?team=${encodeURIComponent(club)}`
+    }
+
+    div.innerHTML = `
+      <img src="badges/${club}.png" alt="${club} badge">
+      <div>${club}</div>
+    `
+
+    container.appendChild(div)
+  })
+}
+
+loadClubs()
+</script>
+
+</body>
+</html>
