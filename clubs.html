@@ -1,3 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Clubs</title>
+  <style>
+    .club-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 20px;
+      padding: 20px;
+    }
+    .club-card {
+      text-align: center;
+      cursor: pointer;
+    }
+    .club-card img {
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
+    }
+  </style>
+</head>
+
+<body>
+
+<nav style="margin-bottom:20px;">
+  <a href="index.html">Home</a> |
+  <a href="GPDB.html">GPDB</a>
+</nav>
+
+<h1>Clubs</h1>
+
+<div id="clubs" class="club-grid"></div>
+
+<!-- ✅ SCRIPT GOES HERE — at the bottom, before </body> -->
 <script type="module">
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
@@ -18,6 +53,10 @@ async function loadClubs() {
   }
 
   const container = document.getElementById("clubs")
+  if (!container) {
+    console.error("Element #clubs not found")
+    return
+  }
 
   data.forEach(club => {
     const div = document.createElement("div")
@@ -37,3 +76,6 @@ async function loadClubs() {
 
 loadClubs()
 </script>
+
+</body>
+</html>
