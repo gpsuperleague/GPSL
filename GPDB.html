@@ -3,20 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <title>GPSL Player Database</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
     }
+
+    /* Button styling to match index/dashboard */
+    a.button, button.button {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #ff9900;
+      color: #111;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 6px;
+      margin: 5px;
+      transition: 0.2s;
+      cursor: pointer;
+    }
+
+    a.button:hover, button.button:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
+    }
+
     table {
       border-collapse: collapse;
       width: 100%;
     }
+
     th, td {
       border: 1px solid #ccc;
       padding: 4px 8px;
       font-size: 12px;
     }
+
     th {
       position: sticky;
       top: 0;
@@ -24,6 +47,7 @@
       cursor: pointer;
       z-index: 1;
     }
+
     th.sort-asc::after { content: " ▲"; font-size: 10px; }
     th.sort-desc::after { content: " ▼"; font-size: 10px; }
 
@@ -38,51 +62,77 @@
 </head>
 
 <body>
-  <nav style="margin-bottom:20px;">
-  <a href="index.html">Home</a> |
-  <a href="clubs.html">Clubs</a> |
-  <a href="dashboard.html">Club Dashboard</a>
-  
-</nav>
 
-<h1>GPSL – Player Database</h1>
+  <!-- Dynamic navigation will be inserted here -->
+  <div id="nav" style="margin-bottom:20px;"></div>
 
-<div id="controls">
-  <div>
-    <label>Rows per page:
-      <select id="pageSizeSelect">
-        <option value="100">100</option>
-        <option value="250">250</option>
-        <option value="500">500</option>
-        <option value="1000" selected>1000</option>
-      </select>
-    </label>
+  <h1>GPSL – Player Database</h1>
+
+  <div id="controls">
+    <div>
+      <label>Rows per page:
+        <select id="pageSizeSelect">
+          <option value="100">100</option>
+          <option value="250">250</option>
+          <option value="500">500</option>
+          <option value="1000" selected>1000</option>
+        </select>
+      </label>
+    </div>
+
+    <div>
+      <strong>Market value:</strong>
+      <label>Min
+        <input type="number" id="mv-min" style="width:80px;">
+      </label>
+      <label>Max
+        <input type="number" id="mv-max" style="width:80px;">
+      </label>
+      <button id="applyMV">Apply</button>
+    </div>
+
+    <button id="clearFiltersBtn">Clear filters</button>
   </div>
 
-  <div>
-    <strong>Market value:</strong>
-    <label>Min
-      <input type="number" id="mv-min" style="width:80px;">
-    </label>
-    <label>Max
-      <input type="number" id="mv-max" style="width:80px;">
-    </label>
-    <button id="applyMV">Apply</button>
-  </div>
+  <div id="filters" style="margin-bottom:20px;"></div>
 
-  <button id="clearFiltersBtn">Clear filters</button>
-</div>
+  <table id="playersTable">
+    <thead id="tableHead"></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
 
-<div id="filters" style="margin-bottom:20px;"></div>
+  <div id="pagination" style="margin-top:20px;"></div>
 
-<table id="playersTable">
-  <thead id="tableHead"></thead>
-  <tbody id="tableBody"></tbody>
-</table>
+  <!-- GPDB logic -->
+  <script type="module" src="gpdb_v2.js"></script>
 
-<div id="pagination" style="margin-top:20px;"></div>
+  <!-- Firebase scripts -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="firebase.js"></script>
 
-<script type="module" src="gpdb_v2.js"></script>
+  <script>
+    // Protect page + build navigation
+    auth.onAuthStateChanged(user => {
+      const nav = document.getElementById("nav");
+
+      if (!user) {
+        window.location = "login.html";
+        return;
+      }
+
+      nav.innerHTML = `
+        <a href="index.html" class="button">Home</a>
+        <a href="clubs.html" class="button">Clubs</a>
+        <a href="dashboard.html" class="button">Dashboard</a>
+        <button onclick="logout()" class="button">Logout</button>
+      `;
+    });
+
+    function logout() {
+      auth.signOut().then(() => window.location = "login.html");
+    }
+  </script>
 
 </body>
 </html>
