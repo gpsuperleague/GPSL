@@ -132,44 +132,45 @@
     // LOAD CLUB BADGE + PLAYERS
     // -------------------------------
     function loadClubDetails(shortName) {
-  const badgePath = `images/club_badges/${shortName}.png`;
+      const badgePath = `images/club_badges/${shortName}.png`;
 
-  fetchClubPlayers(shortName).then(players => {
-    console.log("Players loaded:", players);
+      fetchClubPlayers(shortName).then(players => {
+        console.log("Players loaded:", players);
 
-    document.getElementById("clubArea").innerHTML = `
-      <div style="text-align:center; margin-bottom:20px;">
-        <img src="${badgePath}" style="width:140px; height:auto; margin-bottom:10px;">
-        <h2 style="margin:0; color:#fff;">${shortName}</h2>
-      </div>
+        document.getElementById("clubArea").innerHTML = `
+          <div style="text-align:center; margin-bottom:20px;">
+            <img src="${badgePath}" style="width:140px; height:auto; margin-bottom:10px;">
+            <h2 style="margin:0; color:#fff;">${shortName}</h2>
+          </div>
 
-      <h3 style="color:#ff9900; border-bottom:1px solid #444; padding-bottom:5px;">
-        Squad
-      </h3>
+          <h3 style="color:#ff9900; border-bottom:1px solid #444; padding-bottom:5px;">
+            Squad
+          </h3>
 
-      <table style="width:100%; border-collapse:collapse; color:#ddd; font-size:14px;">
-        <thead>
-          <tr style="background:#222;">
-            <th style="padding:6px; text-align:left;">Name</th>
-            <th style="padding:6px; text-align:left;">Position</th>
-            <th style="padding:6px; text-align:left;">Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${players.map(p => `
-            <tr style="border-bottom:1px solid #333;">
-              <td style="padding:6px;">${p.Name}</td>
-              <td style="padding:6px;">${p.Position || "-"}</td>
-              <td style="padding:6px;">£${p.MarketValue}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    `;
-  });
-}
+          <table style="width:100%; border-collapse:collapse; color:#ddd; font-size:14px;">
+            <thead>
+              <tr style="background:#222;">
+                <th style="padding:6px; text-align:left;">Name</th>
+                <th style="padding:6px; text-align:left;">Position</th>
+                <th style="padding:6px; text-align:left;">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${players.map(p => `
+                <tr style="border-bottom:1px solid #333;">
+                  <td style="padding:6px;">${p.Name}</td>
+                  <td style="padding:6px;">${p.Position || "-"}</td>
+                  <td style="padding:6px;">£${p.MarketValue}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        `;
+      });
+    }
+
     // -------------------------------
-    // FETCH PLAYERS FROM SUPABASE (2‑step lookup)
+    // FETCH PLAYERS FROM SUPABASE (2‑step lookup + position sorting)
     // -------------------------------
     async function fetchClubPlayers(shortName) {
 
@@ -199,6 +200,28 @@
         console.error("Player fetch error:", playerError);
         return [];
       }
+
+      // Step 3 — Sort by football position order
+      const positionOrder = {
+        "GK": 1,
+        "LB": 2,
+        "CB": 3,
+        "RB": 4,
+        "DMF": 5,
+        "LMF": 6,
+        "CMF": 7,
+        "RMF": 8,
+        "AMF": 9,
+        "LWF": 10,
+        "CF": 11,
+        "RWF": 12
+      };
+
+      players.sort((a, b) => {
+        const posA = positionOrder[a.Position] || 999;
+        const posB = positionOrder[b.Position] || 999;
+        return posA - posB;
+      });
 
       return players || [];
     }
