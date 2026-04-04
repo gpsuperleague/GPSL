@@ -62,22 +62,18 @@
 
   <script src="firebase.js"></script>
 
-  <!-- Supabase -->
-<script type="module">
-  import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+  <!-- Supabase (ESM module) -->
+  <script type="module">
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-  window.supabaseClient = createClient(
-    "https://omyyogfumrjoaweuawjn.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
-  );
-</script>
-  <script>
-    const supabaseClient = supabase.createClient(
-      'https://omyyogfumrjoaweuawjn.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
+    // Make Supabase available globally
+    window.supabaseClient = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
     );
   </script>
 
+  <!-- Dashboard logic -->
   <script>
     // -------------------------------
     // AUTH + NAVIGATION
@@ -160,7 +156,7 @@
     // FETCH PLAYERS FROM SUPABASE
     // -------------------------------
     async function fetchClubPlayers(shortName) {
-      const { data, error } = await supabaseClient
+      const { data, error } = await window.supabaseClient
         .from("Players")
         .select("*")
         .eq("ClubShort", shortName)
