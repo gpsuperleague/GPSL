@@ -192,7 +192,7 @@
       // Step 2 — Fetch players using the full club name
       const { data: players, error: playerError } = await window.supabaseClient
         .from("Players")
-        .select("Name, Position, Nation, Age, Rating, Playstyle, Season_Signed, MarketValue")
+        .select("Name, Position, Nation, Age, Rating, Playstyle, Season_Signed, market_value")
         .eq("Contracted_Team", fullName)
         .order("Name", { ascending: true });
 
