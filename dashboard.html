@@ -159,7 +159,7 @@
       const { data, error } = await window.supabaseClient
         .from("Players")
         .select("*")
-        .eq("ClubShort", shortName)
+        .eq("clubShort", shortName)
         .order("Name", { ascending: true });
 
       if (error) console.error("Supabase error:", error);
