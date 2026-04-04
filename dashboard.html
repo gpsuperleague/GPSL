@@ -3,6 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <title>GPSL Dashboard</title>
+
+  <!-- Button styling to match index.html -->
+  <style>
+    a.button, button.button {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #ff9900;
+      color: #111;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 6px;
+      margin: 5px;
+      transition: 0.2s;
+      cursor: pointer;
+    }
+
+    a.button:hover, button.button:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
+    }
+  </style>
 </head>
 
 <body>
@@ -11,16 +32,8 @@
 
   <p id="welcome"></p>
 
- <button onclick="logout()">Logout</button>
-
-<br><br>
-
-<!-- Navigation links -->
-<a href="index.html" class="button">Home</a>
-<a href="GPDB.html" class="button">Player Database</a>
-<a href="clubs.html" class="button">Clubs</a>
-
-<hr>
+  <!-- Dynamic navigation will be inserted here -->
+  <div id="nav"></div>
 
   <hr>
 
@@ -29,40 +42,50 @@
     <!-- Club-specific content will go here -->
   </div>
 
-  <!-- 🔥 Firebase scripts (always at the bottom) -->
+  <!-- Firebase scripts -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
-  <!-- Your Firebase config -->
   <script src="firebase.js"></script>
 
   <script>
-    // Redirect if not logged in
+    // Protect the page + build navigation
     auth.onAuthStateChanged(user => {
+      const nav = document.getElementById("nav");
+
       if (!user) {
-        window.location = "login.html"
-        return
+        // Not logged in → redirect to login
+        window.location = "login.html";
+        return;
       }
 
-      // Show user email
+      // Logged in → show user email
       document.getElementById("welcome").innerText =
-        "Logged in as: " + user.email
+        "Logged in as: " + user.email;
 
-      // Load club ownership (later)
-      loadClubArea(user.uid)
-    })
+      // Build navigation bar
+      nav.innerHTML = `
+        <a href="index.html" class="button">Home</a>
+        <a href="GPDB.html" class="button">Player Database</a>
+        <a href="clubs.html" class="button">Clubs</a>
+        <a href="dashboard.html" class="button">Dashboard</a>
+        <button onclick="logout()" class="button">Logout</button>
+      `;
+
+      // Load club area (placeholder for now)
+      loadClubArea(user.uid);
+    });
 
     function logout() {
       auth.signOut().then(() => {
-        window.location = "login.html"
-      })
+        window.location = "login.html";
+      });
     }
 
     function loadClubArea(uid) {
-      // Placeholder — later we will load the user's club from Firestore
       document.getElementById("clubArea").innerHTML =
-        "<p>Your club data will appear here.</p>"
+        "<p>Your club data will appear here.</p>";
     }
   </script>
 
