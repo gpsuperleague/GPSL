@@ -29,7 +29,7 @@
       transform: scale(1.05);
     }
 
-    /* Styled page title (matches dashboard header style) */
+    /* Styled page title */
     #pageTitle {
       background:#222;
       color:#ff9900;
@@ -87,7 +87,7 @@
 
 <body>
 
-  <!-- Dynamic navigation will be inserted here -->
+  <!-- Dynamic navigation -->
   <div id="nav" style="margin-bottom:20px;"></div>
 
   <!-- Styled page title -->
@@ -109,29 +109,12 @@
       <button id="applyMV" class="button">Apply</button>
     </div>
 
-    <!-- Group 3: Core Player Filters -->
-    <div class="filter-group">
-      <strong>Player Filters</strong>
-      <label>Name <input type="text" id="filter-name"></label>
-      <label>Position <input type="text" id="filter-position"></label>
-      <label>Nation <input type="text" id="filter-nation"></label>
-      <label>Age <input type="number" id="filter-age" style="width:60px;"></label>
-      <label>Rating <input type="number" id="filter-rating" style="width:60px;"></label>
-    </div>
-
-    <!-- Group 4: Secondary Filters -->
-    <div class="filter-group">
-      <strong>Additional Filters</strong>
-      <label>Playstyle <input type="text" id="filter-playstyle"></label>
-      <label>Contracted Team <input type="text" id="filter-team"></label>
-      <label>Season Signed <input type="number" id="filter-season" style="width:80px;"></label>
-    </div>
-
   </div>
 
-  <!-- UPDATED: Dynamic dropdown filters now styled -->
+  <!-- UPDATED: Only dropdown filters remain -->
   <div class="filter-group" id="filters" style="margin-bottom:20px;">
-    <strong>Dropdown Filters</strong>
+    <strong>Filters</strong>
+    <!-- gpdb_v2.js injects dropdowns here -->
   </div>
 
   <table id="playersTable">
@@ -141,7 +124,7 @@
 
   <div id="pagination" style="margin-top:20px;"></div>
 
-  <!-- Rows per page moved to bottom -->
+  <!-- Rows per page at bottom -->
   <div id="rowsPerPage" style="margin-top:20px;">
     <label>Rows per page:
       <select id="pageSizeSelect">
