@@ -61,27 +61,45 @@
       color:#ffaa22;
     }
 
+    /* GPSL-styled table */
     table {
-      border-collapse: collapse;
       width: 100%;
-    }
-
-    th, td {
-      border: 1px solid #ccc;
-      padding: 4px 8px;
-      font-size: 12px;
+      border-collapse: collapse;
+      background: #1a1a1a;
+      color: #ddd;
+      border-radius: 6px;
+      overflow: hidden;
     }
 
     th {
+      background: #222;
+      color: #ff9900;
+      padding: 8px;
+      font-size: 13px;
+      border-bottom: 2px solid #444;
       position: sticky;
       top: 0;
-      background: #f5f5f5;
+      z-index: 2;
       cursor: pointer;
-      z-index: 1;
     }
 
     th.sort-asc::after { content: " ▲"; font-size: 10px; }
     th.sort-desc::after { content: " ▼"; font-size: 10px; }
+
+    td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #333;
+      font-size: 12px;
+    }
+
+    tbody tr:hover {
+      background: #2a2a2a;
+    }
+
+    #pagination {
+      color: #ff9900;
+      font-weight: bold;
+    }
   </style>
 </head>
 
@@ -111,10 +129,9 @@
 
   </div>
 
-  <!-- UPDATED: Only dropdown filters remain -->
+  <!-- Dropdown filters (injected by JS) -->
   <div class="filter-group" id="filters" style="margin-bottom:20px;">
     <strong>Filters</strong>
-    <!-- gpdb_v2.js injects dropdowns here -->
   </div>
 
   <table id="playersTable">
