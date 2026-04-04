@@ -25,7 +25,7 @@
     }
 
     /* Club area styling */
-#clubArea {
+    #clubArea {
       width: 50%;
       min-width: 500px;
       max-width: 900px;
@@ -36,6 +36,17 @@
       background: #1a1a1a;
       border-radius: 8px;
     }
+
+    /* Styled login badge */
+    #welcome {
+      background:#222;
+      color:#ff9900;
+      padding:8px 14px;
+      border-radius:6px;
+      display:inline-block;
+      margin-bottom:10px;
+      font-size:14px;
+    }
   </style>
 </head>
 
@@ -43,7 +54,7 @@
 
   <h1 id="dashboardTitle">GPSL Dashboard</h1>
 
-  <p id="welcome"></p>
+  <div id="welcome"></div>
 
   <!-- Dynamic navigation will be inserted here -->
   <div id="nav"></div>
@@ -95,8 +106,8 @@
         return;
       }
 
-      document.getElementById("welcome").innerText =
-        "Logged in as: " + user.email;
+      document.getElementById("welcome").innerHTML =
+        `<strong>User:</strong> ${user.email}`;
 
       nav.innerHTML = `
         <a href="index.html" class="button">Home</a>
@@ -105,9 +116,6 @@
         <button onclick="logout()" class="button">Logout</button>
       `;
 
-      console.log("User UID:", user.uid);
-
-      // Load the user's assigned club
       loadClubArea(user.uid);
     });
 
@@ -122,7 +130,6 @@
     // -------------------------------
     function loadClubArea(uid) {
       db.collection("users").doc(uid).get().then(doc => {
-        console.log("Firestore user doc:", doc.data());
 
         if (!doc.exists) {
           document.getElementById("clubArea").innerHTML =
@@ -131,8 +138,6 @@
         }
 
         const clubShort = doc.data().club;
-        console.log("Assigned club:", clubShort);
-
         loadClubDetails(clubShort);
       });
     }
@@ -143,8 +148,13 @@
     function loadClubDetails(shortName) {
       const badgePath = `images/club_badges/${shortName}.png`;
 
-      fetchClubPlayers(shortName).then(players => {
-        console.log("Players loaded:", players);
+      fetchClubPlayers(shortName).then(result => {
+
+        const { fullName, players } = result;
+
+        // Update dashboard title dynamically
+        document.getElementById("dashboardTitle").innerText =
+          `${fullName} Dashboard`;
 
         document.getElementById("clubArea").innerHTML = `
           <div style="text-align:center; margin-bottom:20px;">
@@ -157,93 +167,68 @@
           </h3>
 
           <table style="width:100%; border-collapse:collapse; color:#ddd; font-size:14px;">
-        <thead>
-          <tr style="background:#222;">
-            <th style="padding:6px; text-align:left;">Name</th>
-            <th style="padding:6px; text-align:left;">Position</th>
-            <th style="padding:6px; text-align:left;">Nation</th>
-            <th style="padding:6px; text-align:left;">Age</th>
-            <th style="padding:6px; text-align:left;">Rating</th>
-            <th style="padding:6px; text-align:left;">Playstyle</th>
-            <th style="padding:6px; text-align:left;">Signed</th>
-            <th style="padding:6px; text-align:left;">Value</th>
-          </tr>
-        </thead>
-         <tbody>
-          ${players.map(p => `
-            <tr style="border-bottom:1px solid #333;">
-              <td style="padding:6px;">${p.Name}</td>
-              <td style="padding:6px;">${p.Position}</td>
-              <td style="padding:6px;">${p.Nation}</td>
-              <td style="padding:6px;">${p.Age}</td>
-              <td style="padding:6px;">${p.Rating}</td>
-              <td style="padding:6px;">${p.Playstyle}</td>
-              <td style="padding:6px;">${p.Season_Signed}</td>
-              <td style="padding:6px;">${formatBTC(p.market_value)}</td>
-            </tr>
-          `).join("")}
-        </tbody>
+            <thead>
+              <tr style="background:#222;">
+                <th style="padding:6px; text-align:left;">Name</th>
+                <th style="padding:6px; text-align:left;">Position</th>
+                <th style="padding:6px; text-align:left;">Nation</th>
+                <th style="padding:6px; text-align:left;">Age</th>
+                <th style="padding:6px; text-align:left;">Rating</th>
+                <th style="padding:6px; text-align:left;">Playstyle</th>
+                <th style="padding:6px; text-align:left;">Signed</th>
+                <th style="padding:6px; text-align:left;">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${players.map(p => `
+                <tr style="border-bottom:1px solid #333;">
+                  <td style="padding:6px;">${p.Name}</td>
+                  <td style="padding:6px;">${p.Position}</td>
+                  <td style="padding:6px;">${p.Nation}</td>
+                  <td style="padding:6px;">${p.Age}</td>
+                  <td style="padding:6px;">${p.Rating}</td>
+                  <td style="padding:6px;">${p.Playstyle}</td>
+                  <td style="padding:6px;">${p.Season_Signed}</td>
+                  <td style="padding:6px;">${formatBTC(p.market_value)}</td>
+                </tr>
+              `).join("")}
+            </tbody>
           </table>
         `;
       });
     }
 
     // -------------------------------
-    // FETCH PLAYERS FROM SUPABASE (2‑step lookup + position sorting)
+    // FETCH PLAYERS FROM SUPABASE
     // -------------------------------
     async function fetchClubPlayers(shortName) {
 
-      // Step 1 — Look up the full club name from Clubs table
-      const { data: clubData, error: clubError } = await window.supabaseClient
+      const { data: clubData } = await window.supabaseClient
         .from("Clubs")
         .select("Club")
         .eq("ShortName", shortName)
         .single();
 
-      if (clubError) {
-        console.error("Club lookup error:", clubError);
-        return [];
-      }
-
       const fullName = clubData?.Club;
-      console.log("Full club name:", fullName);
 
-      // Step 2 — Fetch players using the full club name
-      const { data: players, error: playerError } = await window.supabaseClient
+      const { data: players } = await window.supabaseClient
         .from("Players")
         .select("Name, Position, Nation, Age, Rating, Playstyle, Season_Signed, market_value")
         .eq("Contracted_Team", fullName)
         .order("Name", { ascending: true });
 
-      if (playerError) {
-        console.error("Player fetch error:", playerError);
-        return [];
-      }
-
-      // Step 3 — Sort by football position order
       const positionOrder = {
-        "GK": 1,
-        "LB": 2,
-        "CB": 3,
-        "RB": 4,
-        "DMF": 5,
-        "LMF": 6,
-        "CMF": 7,
-        "RMF": 8,
-        "AMF": 9,
-        "LWF": 10,
-        "CF": 11,
-        "SS": 12,
-        "RWF": 13
+        "GK": 1, "LB": 2, "CB": 3, "RB": 4,
+        "DMF": 5, "LMF": 6, "CMF": 7, "RMF": 8,
+        "AMF": 9, "LWF": 10, "CF": 11, "SS": 12, "RWF": 13
       };
 
-      players.sort((a, b) => {
-        const posA = positionOrder[a.Position] || 999;
-        const posB = positionOrder[b.Position] || 999;
-        return posA - posB;
-      });
+      players.sort((a, b) =>
+        (positionOrder[a.Position] || 999) -
+        (positionOrder[b.Position] || 999)
+      );
 
-      return players || [];
+      return { fullName, players };
     }
   </script>
 
