@@ -77,10 +77,16 @@
       padding: 8px;
       font-size: 13px;
       border-bottom: 2px solid #444;
+      border-right: 1px solid #333;
       position: sticky;
       top: 0;
       z-index: 2;
       cursor: pointer;
+      text-align: center;
+    }
+
+    th:last-child {
+      border-right: none;
     }
 
     th.sort-asc::after { content: " ▲"; font-size: 10px; }
@@ -89,11 +95,27 @@
     td {
       padding: 6px 8px;
       border-bottom: 1px solid #333;
+      border-right: 1px solid #333;
       font-size: 12px;
+      text-align: center;
     }
 
+    td:last-child {
+      border-right: none;
+    }
+
+    /* Alternating row shading */
+    tbody tr:nth-child(odd) {
+      background: #1f1f1f;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #262626;
+    }
+
+    /* Hover highlight */
     tbody tr:hover {
-      background: #2a2a2a;
+      background: #333 !important;
     }
 
     #pagination {
