@@ -23,6 +23,19 @@
       background: #ffaa22;
       transform: scale(1.05);
     }
+
+    /* Optional: make the club area look tidy */
+    #clubArea {
+      width: 25%;
+      min-width: 250px;
+      max-width: 400px;
+      height: 80vh;
+      overflow-y: auto;
+      border: 1px solid #333;
+      padding: 10px;
+      background: #1a1a1a;
+      border-radius: 8px;
+    }
   </style>
 </head>
 
@@ -49,22 +62,27 @@
 
   <script src="firebase.js"></script>
 
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // Protect the page + build navigation
+    const supabase = supabase.createClient("YOUR_SUPABASE_URL", "YOUR_SUPABASE_KEY");
+  </script>
+
+  <script>
+    // -------------------------------
+    // AUTH + NAVIGATION
+    // -------------------------------
     auth.onAuthStateChanged(user => {
       const nav = document.getElementById("nav");
 
       if (!user) {
-        // Not logged in → redirect to login
         window.location = "login.html";
         return;
       }
 
-      // Logged in → show user email
       document.getElementById("welcome").innerText =
         "Logged in as: " + user.email;
 
-      // Build navigation bar
       nav.innerHTML = `
         <a href="index.html" class="button">Home</a>
         <a href="GPDB.html" class="button">Player Database</a>
@@ -72,7 +90,7 @@
         <button onclick="logout()" class="button">Logout</button>
       `;
 
-      // Load club area (placeholder for now)
+      // Load the user's assigned club
       loadClubArea(user.uid);
     });
 
@@ -82,9 +100,55 @@
       });
     }
 
+    // -------------------------------
+    // LOAD USER'S CLUB FROM FIRESTORE
+    // -------------------------------
     function loadClubArea(uid) {
-      document.getElementById("clubArea").innerHTML =
-        "<p>Your club data will appear here.</p>";
+      db.collection("users").doc(uid).get().then(doc => {
+        if (!doc.exists) {
+          document.getElementById("clubArea").innerHTML =
+            "<p>No club assigned. Contact admin.</p>";
+          return;
+        }
+
+        const clubShort = doc.data().club; // e.g. "URD"
+        loadClubDetails(clubShort);
+      });
+    }
+
+    // -------------------------------
+    // LOAD CLUB BADGE + PLAYERS
+    // -------------------------------
+    function loadClubDetails(shortName) {
+      const badgePath = `images/club_badges/${shortName}.png`;
+
+      fetchClubPlayers(shortName).then(players => {
+        document.getElementById("clubArea").innerHTML = `
+          <div style="text-align:center;">
+            <img src="${badgePath}" style="width:120px; height:auto;">
+            <h3>${shortName}</h3>
+          </div>
+
+          <div style="max-height:300px; overflow-y:auto; border:1px solid #444; padding:10px;">
+            ${players.map(p => `
+              <div>${p.Name} — £${p.MarketValue}</div>
+            `).join("")}
+          </div>
+        `;
+      });
+    }
+
+    // -------------------------------
+    // FETCH PLAYERS FROM SUPABASE
+    // -------------------------------
+    async function fetchClubPlayers(shortName) {
+      const { data } = await supabase
+        .from("Players")
+        .select("*")
+        .eq("ClubShort", shortName)
+        .order("Name", { ascending: true });
+
+      return data || [];
     }
   </script>
 
