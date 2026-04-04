@@ -157,22 +157,32 @@
           </h3>
 
           <table style="width:100%; border-collapse:collapse; color:#ddd; font-size:14px;">
-            <thead>
-              <tr style="background:#222;">
-                <th style="padding:6px; text-align:left;">Name</th>
-                <th style="padding:6px; text-align:left;">Position</th>
-                <th style="padding:6px; text-align:left;">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${players.map(p => `
-                <tr style="border-bottom:1px solid #333;">
-                  <td style="padding:6px;">${p.Name}</td>
-                  <td style="padding:6px;">${p.Position || "-"}</td>
-                  <td style="padding:6px;">${formatBTC(p.market_value)}</td>
-                </tr>
-              `).join("")}
-            </tbody>
+        <thead>
+          <tr style="background:#222;">
+            <th style="padding:6px; text-align:left;">Name</th>
+            <th style="padding:6px; text-align:left;">Position</th>
+            <th style="padding:6px; text-align:left;">Nation</th>
+            <th style="padding:6px; text-align:left;">Age</th>
+            <th style="padding:6px; text-align:left;">Rating</th>
+            <th style="padding:6px; text-align:left;">Playstyle</th>
+            <th style="padding:6px; text-align:left;">Signed</th>
+            <th style="padding:6px; text-align:left;">Value</th>
+          </tr>
+        </thead>
+         <tbody>
+          ${players.map(p => `
+            <tr style="border-bottom:1px solid #333;">
+              <td style="padding:6px;">${p.Name}</td>
+              <td style="padding:6px;">${p.Position}</td>
+              <td style="padding:6px;">${p.Nation}</td>
+              <td style="padding:6px;">${p.Age}</td>
+              <td style="padding:6px;">${p.Rating}</td>
+              <td style="padding:6px;">${p.Playstyle}</td>
+              <td style="padding:6px;">${p.Season_Signed}</td>
+              <td style="padding:6px;">${formatBTC(p.market_value)}</td>
+            </tr>
+          `).join("")}
+        </tbody>
           </table>
         `;
       });
