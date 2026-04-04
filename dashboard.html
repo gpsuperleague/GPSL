@@ -153,18 +153,38 @@
     }
 
     // -------------------------------
-    // FETCH PLAYERS FROM SUPABASE
+    // FETCH PLAYERS FROM SUPABASE (2‑step lookup)
     // -------------------------------
     async function fetchClubPlayers(shortName) {
-      const { data, error } = await window.supabaseClient
+
+      // Step 1 — Look up the full club name from Clubs table
+      const { data: clubData, error: clubError } = await window.supabaseClient
+        .from("Clubs")
+        .select("Club")
+        .eq("ShortName", shortName)
+        .single();
+
+      if (clubError) {
+        console.error("Club lookup error:", clubError);
+        return [];
+      }
+
+      const fullName = clubData?.Club;
+      console.log("Full club name:", fullName);
+
+      // Step 2 — Fetch players using the full club name
+      const { data: players, error: playerError } = await window.supabaseClient
         .from("Players")
         .select("*")
-        .eq("clubShort", shortName)
+        .eq("Contracted_Team", fullName)
         .order("Name", { ascending: true });
 
-      if (error) console.error("Supabase error:", error);
+      if (playerError) {
+        console.error("Player fetch error:", playerError);
+        return [];
+      }
 
-      return data || [];
+      return players || [];
     }
   </script>
 
