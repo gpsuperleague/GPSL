@@ -47,6 +47,27 @@
       margin-bottom:10px;
       font-size:14px;
     }
+
+    /* Styled dashboard title with badge */
+    #dashboardTitle {
+      background:#222;
+      color:#ff9900;
+      padding:10px 16px;
+      border-radius:6px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      margin-bottom:10px;
+      font-size:24px;
+      font-weight:bold;
+      width: fit-content;
+    }
+
+    #dashboardTitle img {
+      width:32px;
+      height:32px;
+      border-radius:4px;
+    }
   </style>
 </head>
 
@@ -152,9 +173,11 @@
 
         const { fullName, players } = result;
 
-        // Update dashboard title dynamically
-        document.getElementById("dashboardTitle").innerText =
-          `${fullName} Dashboard`;
+        // Update dashboard title dynamically WITH BADGE
+        document.getElementById("dashboardTitle").innerHTML = `
+          <img src="images/club_badges/${shortName}.png" alt="badge">
+          ${fullName} Dashboard
+        `;
 
         document.getElementById("clubArea").innerHTML = `
           <div style="text-align:center; margin-bottom:20px;">
