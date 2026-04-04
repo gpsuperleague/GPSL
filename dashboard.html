@@ -75,6 +75,15 @@
 
   <!-- Dashboard logic -->
   <script>
+
+    // -------------------------------
+    // FORMATTER: Bitcoin + space + commas
+    // -------------------------------
+    function formatBTC(num) {
+      if (!num || isNaN(num)) return "₿ 0";
+      return "₿ " + Number(num).toLocaleString("en-GB");
+    }
+
     // -------------------------------
     // AUTH + NAVIGATION
     // -------------------------------
@@ -160,7 +169,7 @@
                 <tr style="border-bottom:1px solid #333;">
                   <td style="padding:6px;">${p.Name}</td>
                   <td style="padding:6px;">${p.Position || "-"}</td>
-                  <td style="padding:6px;">£${p.market_value}</td>
+                  <td style="padding:6px;">${formatBTC(p.market_value)}</td>
                 </tr>
               `).join("")}
             </tbody>
