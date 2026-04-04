@@ -1,5 +1,5 @@
 const firebaseConfig = {
-  apiKey: "AIzaSyD1bGkjhR5QHYjlOZ4DPADMir_-W8O6Qsk"",
+  apiKey: "AIzaSyD1bGkjhR5QHYjlOZ4DPADMir_-W8O6Qsk",
   authDomain: "gpsl-31bb8.firebaseapp.com",
   projectId: "gpsl-31bb8",
   storageBucket: "gpsl-31bb8.firebasestorage.app",
