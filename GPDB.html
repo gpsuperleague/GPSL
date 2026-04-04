@@ -41,6 +41,26 @@
       font-weight:bold;
     }
 
+    /* Filter group styling */
+    .filter-group {
+      background:#222;
+      color:#ff9900;
+      padding:10px 14px;
+      border-radius:6px;
+      margin-bottom:12px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:center;
+    }
+
+    .filter-group strong {
+      width:100%;
+      font-size:14px;
+      margin-bottom:4px;
+      color:#ffaa22;
+    }
+
     table {
       border-collapse: collapse;
       width: 100%;
@@ -62,14 +82,6 @@
 
     th.sort-asc::after { content: " ▲"; font-size: 10px; }
     th.sort-desc::after { content: " ▼"; font-size: 10px; }
-
-    #controls {
-      margin-bottom: 10px;
-      display: flex;
-      gap: 20px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
   </style>
 </head>
 
@@ -81,30 +93,40 @@
   <!-- Styled page title -->
   <h1 id="pageTitle">GPSL – Player Database</h1>
 
+  <!-- FILTER PANEL -->
   <div id="controls">
-    <div>
-      <label>Rows per page:
-        <select id="pageSizeSelect">
-          <option value="100">100</option>
-          <option value="250">250</option>
-          <option value="500">500</option>
-          <option value="1000" selected>1000</option>
-        </select>
-      </label>
+
+    <!-- Group 1: Clear Filters -->
+    <div class="filter-group">
+      <button id="clearFiltersBtn" class="button">Clear Filters</button>
     </div>
 
-    <div>
-      <strong>Market value:</strong>
-      <label>Min
-        <input type="number" id="mv-min" style="width:80px;">
-      </label>
-      <label>Max
-        <input type="number" id="mv-max" style="width:80px;">
-      </label>
-      <button id="applyMV">Apply</button>
+    <!-- Group 2: Market Value -->
+    <div class="filter-group">
+      <strong>Market Value</strong>
+      <label>Min <input type="number" id="mv-min" style="width:80px;"></label>
+      <label>Max <input type="number" id="mv-max" style="width:80px;"></label>
+      <button id="applyMV" class="button">Apply</button>
     </div>
 
-    <button id="clearFiltersBtn">Clear filters</button>
+    <!-- Group 3: Core Player Filters -->
+    <div class="filter-group">
+      <strong>Player Filters</strong>
+      <label>Name <input type="text" id="filter-name"></label>
+      <label>Position <input type="text" id="filter-position"></label>
+      <label>Nation <input type="text" id="filter-nation"></label>
+      <label>Age <input type="number" id="filter-age" style="width:60px;"></label>
+      <label>Rating <input type="number" id="filter-rating" style="width:60px;"></label>
+    </div>
+
+    <!-- Group 4: Secondary Filters -->
+    <div class="filter-group">
+      <strong>Additional Filters</strong>
+      <label>Playstyle <input type="text" id="filter-playstyle"></label>
+      <label>Contracted Team <input type="text" id="filter-team"></label>
+      <label>Season Signed <input type="number" id="filter-season" style="width:80px;"></label>
+    </div>
+
   </div>
 
   <div id="filters" style="margin-bottom:20px;"></div>
@@ -115,6 +137,18 @@
   </table>
 
   <div id="pagination" style="margin-top:20px;"></div>
+
+  <!-- Rows per page moved to bottom -->
+  <div id="rowsPerPage" style="margin-top:20px;">
+    <label>Rows per page:
+      <select id="pageSizeSelect">
+        <option value="100">100</option>
+        <option value="250">250</option>
+        <option value="500">500</option>
+        <option value="1000" selected>1000</option>
+      </select>
+    </label>
+  </div>
 
   <!-- GPDB logic -->
   <script type="module" src="gpdb_v2.js"></script>
