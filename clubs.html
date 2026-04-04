@@ -1,18 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>Clubs</title>
+
   <style>
+    /* Button styling to match index/dashboard */
+    a.button, button.button {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #ff9900;
+      color: #111;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 6px;
+      margin: 5px;
+      transition: 0.2s;
+      cursor: pointer;
+    }
+
+    a.button:hover, button.button:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
+    }
+
     .club-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
       gap: 20px;
       padding: 20px;
     }
+
     .club-card {
       text-align: center;
       cursor: pointer;
     }
+
     .club-card img {
       width: 100px;
       height: 100px;
@@ -23,60 +46,85 @@
 
 <body>
 
-<nav style="margin-bottom:20px;">
-  <a href="index.html">Home</a> |
-  <a href="GPDB.html">GPDB</a> |
-  <a href="dashboard.html">Club Dashboard</a>
-</nav>
+  <!-- Dynamic navigation goes here -->
+  <div id="nav" style="margin-bottom:20px;"></div>
 
-<h1>Clubs</h1>
+  <h1>Clubs</h1>
 
-<div id="clubs" class="club-grid"></div>
+  <div id="clubs" class="club-grid"></div>
 
-<!-- ✅ SCRIPT GOES HERE — at the bottom, before </body> -->
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+  <!-- Supabase club loading -->
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-const supabase = createClient(
-  'https://omyyogfumrjoaweuawjn.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
-)
+    const supabase = createClient(
+      'https://omyyogfumrjoaweuawjn.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
+    )
 
-async function loadClubs() {
-  const { data, error } = await supabase
-    .from("Clubs")
-    .select("*")
-    .order("Club", { ascending: true })
+    async function loadClubs() {
+      const { data, error } = await supabase
+        .from("Clubs")
+        .select("*")
+        .order("Club", { ascending: true })
 
-  if (error) {
-    console.error(error)
-    return
-  }
+      if (error) {
+        console.error(error)
+        return
+      }
 
-  const container = document.getElementById("clubs")
-  if (!container) {
-    console.error("Element #clubs not found")
-    return
-  }
+      const container = document.getElementById("clubs")
+      if (!container) {
+        console.error("Element #clubs not found")
+        return
+      }
 
-  data.forEach(club => {
-    const div = document.createElement("div")
-    div.className = "club-card"
-    div.onclick = () => {
-      window.location.href = `club.html?club=${encodeURIComponent(club.Club)}`
+      data.forEach(club => {
+        const div = document.createElement("div")
+        div.className = "club-card"
+        div.onclick = () => {
+          window.location.href = `club.html?club=${encodeURIComponent(club.Club)}`
+        }
+
+        div.innerHTML = `
+          <img src="images/club_badges/${club.ShortName}.png" alt="${club.Club} badge">
+          <div>${club.Club}</div>
+        `
+
+        container.appendChild(div)
+      })
     }
 
-    div.innerHTML = `
-      <img src="images/club_badges/${club.ShortName}.png" alt="${club.Club} badge">
-      <div>${club.Club}</div>
-    `
+    loadClubs()
+  </script>
 
-    container.appendChild(div)
-  })
-}
+  <!-- Firebase scripts -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="firebase.js"></script>
 
-loadClubs()
-</script>
+  <script>
+    // Protect page + build navigation
+    auth.onAuthStateChanged(user => {
+      const nav = document.getElementById("nav");
+
+      if (!user) {
+        window.location = "login.html";
+        return;
+      }
+
+      nav.innerHTML = `
+        <a href="index.html" class="button">Home</a>
+        <a href="GPDB.html" class="button">Player Database</a>
+        <a href="dashboard.html" class="button">Dashboard</a>
+        <button onclick="logout()" class="button">Logout</button>
+      `;
+    });
+
+    function logout() {
+      auth.signOut().then(() => window.location = "login.html");
+    }
+  </script>
 
 </body>
 </html>
