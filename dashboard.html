@@ -24,7 +24,7 @@
       transform: scale(1.05);
     }
 
-    /* Optional: make the club area look tidy */
+    /* Club area styling */
     #clubArea {
       width: 25%;
       min-width: 250px;
@@ -62,10 +62,18 @@
 
   <script src="firebase.js"></script>
 
+  <!-- Initialise Firestore -->
+  <script>
+    const db = firebase.firestore();
+  </script>
+
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const supabase = supabase.createClient('https://omyyogfumrjoaweuawjn.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4');
+    const supabaseClient = supabase.createClient(
+      'https://omyyogfumrjoaweuawjn.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
+    );
   </script>
 
   <script>
@@ -90,6 +98,8 @@
         <button onclick="logout()" class="button">Logout</button>
       `;
 
+      console.log("User UID:", user.uid);
+
       // Load the user's assigned club
       loadClubArea(user.uid);
     });
@@ -105,13 +115,17 @@
     // -------------------------------
     function loadClubArea(uid) {
       db.collection("users").doc(uid).get().then(doc => {
+        console.log("Firestore user doc:", doc.data());
+
         if (!doc.exists) {
           document.getElementById("clubArea").innerHTML =
             "<p>No club assigned. Contact admin.</p>";
           return;
         }
 
-        const clubShort = doc.data().club; // e.g. "URD"
+        const clubShort = doc.data().club;
+        console.log("Assigned club:", clubShort);
+
         loadClubDetails(clubShort);
       });
     }
@@ -123,6 +137,8 @@
       const badgePath = `images/club_badges/${shortName}.png`;
 
       fetchClubPlayers(shortName).then(players => {
+        console.log("Players loaded:", players);
+
         document.getElementById("clubArea").innerHTML = `
           <div style="text-align:center;">
             <img src="${badgePath}" style="width:120px; height:auto;">
@@ -142,11 +158,13 @@
     // FETCH PLAYERS FROM SUPABASE
     // -------------------------------
     async function fetchClubPlayers(shortName) {
-      const { data } = await supabase
+      const { data, error } = await supabaseClient
         .from("Players")
         .select("*")
         .eq("ClubShort", shortName)
         .order("Name", { ascending: true });
+
+      if (error) console.error("Supabase error:", error);
 
       return data || [];
     }
