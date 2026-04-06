@@ -199,7 +199,7 @@ async function populateDropdowns() {
 
       const { data } = await supabase
         .from("Players")
-        .select(`ID, ${col}`)
+        .select(`Konami_ID, ${col}`)
         .range(from, to);
 
       if (data) {
