@@ -188,7 +188,7 @@ async function populateDropdowns() {
     // Step 1 — get total rows
     const { count } = await supabase
       .from("Players")
-      .select("ID", { count: "exact" })
+      .select("Konami_ID", { count: "exact" })
       .limit(1);
 
     if (!count) continue;
