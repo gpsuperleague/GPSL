@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL Transfer Market</title>
+
+  <style>
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+    }
+
+    h1 {
+      background:#222;
+      color:#ff9900;
+      padding:10px 16px;
+      border-radius:6px;
+      width: fit-content;
+      margin:20px auto;
+      font-size:26px;
+      font-weight:bold;
+    }
+
+    table.gpsl-table {
+      width: 90%;
+      max-width: 1100px;
+      margin: 20px auto;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    table.gpsl-table th {
+      background: #222;
+      color: #ff9900;
+      padding: 8px;
+      text-align: left;
+    }
+
+    table.gpsl-table td {
+      padding: 8px;
+      border-bottom: 1px solid #333;
+    }
+
+    table.gpsl-table tr:nth-child(even) {
+      background: #181818;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Global Transfer Market</h1>
+
+  <table class="gpsl-table" id="marketTable">
+    <thead>
+      <tr>
+        <th>Player</th>
+        <th>Pos</th>
+        <th>Rating</th>
+        <th>Seller</th>
+        <th>Reserve</th>
+        <th>Time Remaining</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <!-- Supabase -->
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    const supabase = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+    );
+
+    function formatBTC(num) {
+      if (!num || isNaN(num)) return "₿ 0";
+      return "₿ " + Number(num).toLocaleString("en-GB");
+    }
+
+    function timeRemaining(expiry) {
+      const end = new Date(expiry).getTime();
+      const now = Date.now();
+      const diff = end - now;
+
+      if (diff <= 0) return "Expired";
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+      return `${hours}h ${mins}m`;
+    }
+
+    async function loadMarket() {
+      // Get all listings
+      const { data: listings } = await supabase
+        .from("Player_Transfer_Listings")
+        .select("*");
+
+      if (!listings) return;
+
+      // Get all players referenced
+      const playerIds = [...new Set(listings.map(l => l.player_id))];
+
+      const { data: players } = await supabase
+        .from("Players")
+        .select("*")
+        .in("Konami_ID", playerIds);
+
+      const table = document.querySelector("#marketTable tbody");
+      table.innerHTML = "";
+
+      listings.forEach(listing => {
+        const player = players.find(p => String(p.Konami_ID) === String(listing.player_id));
+        if (!player) return;
+
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${player.Name}</td>
+          <td>${player.Position}</td>
+          <td>${player.Rating}</td>
+          <td>${listing.seller_club_id}</td>
+          <td>${formatBTC(listing.reserve_price)}</td>
+          <td>${timeRemaining(listing.end_time)}</td>
+          <td>Active</td>
+        `;
+
+        table.appendChild(row);
+      });
+    }
+
+    loadMarket();
+  </script>
+
+</body>
+</html>
