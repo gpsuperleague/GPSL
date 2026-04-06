@@ -83,7 +83,7 @@
         <th>Player</th>
         <th>Pos</th>
         <th>Rating</th>
-        <th>Seller</th>
+        <th>Value</th>
         <th>Reserve</th>
         <th>Time Remaining</th>
         <th>Status</th>
@@ -146,7 +146,6 @@
     });
 
     async function loadMarket() {
-      // Load listings (now includes market_value + reserve_price)
       const { data: listings } = await supabase
         .from("Player_Transfer_Listings")
         .select("*");
@@ -175,7 +174,7 @@
           <td>${player.Name}</td>
           <td>${player.Position}</td>
           <td>${player.Rating}</td>
-          <td>${listing.seller_club_id}</td>
+          <td>${formatBTC(player.market_value)}</td>
           <td>${formatBTC(listing.reserve_price)}</td>
           <td>${timeRemaining(listing.end_time)}</td>
           <td>Active</td>
