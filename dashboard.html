@@ -198,10 +198,11 @@
 
       const { data: clubData } = await window.supabaseClient
         .from("Clubs")
-        .select("Club")
+        .select("Club_ID, Club")
         .eq("ShortName", shortName)
         .single();
 
+      const clubId = clubData.Club_ID;
       const fullName = clubData.Club;
 
       const { data: players } = await window.supabaseClient
@@ -213,7 +214,7 @@
         await window.supabaseClient
           .from("Player_Transfer_Listings")
           .select("*")
-          .eq("seller_club", fullName)
+          .eq("seller_club_id", clubId)
           .eq("status", "active");
 
       if (listingsError) {
@@ -369,7 +370,7 @@ Are you absolutely sure?
             .from("Player_Transfer_Listings")
             .insert({
               player_id: id,
-              seller_club: fullName,
+              seller_club_id: clubId,
               reserve_price: reserve,
               status: "active",
               created_at: new Date().toISOString(),
