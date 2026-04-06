@@ -209,11 +209,18 @@
         .select("*")
         .eq("Contracted_Team", fullName);
 
-      const { data: listings } = await window.supabaseClient
-        .from("Transfer_Listings")
-        .select("*")
-        .eq("seller_club", fullName)
-        .eq("status", "active");
+      const { data: listingsData, error: listingsError } =
+        await window.supabaseClient
+          .from("Transfer_Listings")
+          .select("*")
+          .eq("seller_club", fullName)
+          .eq("status", "active");
+
+      if (listingsError) {
+        console.error("Listings error:", listingsError);
+      }
+
+      const listings = listingsData || [];
 
       const listedSet = new Set(listings.map(l => l.player_id));
 
