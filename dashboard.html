@@ -4,8 +4,13 @@
   <meta charset="UTF-8">
   <title>GPSL Dashboard</title>
 
-  <!-- Button styling to match index.html -->
   <style>
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+    }
+
     a.button, button.button {
       display: inline-block;
       padding: 10px 20px;
@@ -24,31 +29,16 @@
       transform: scale(1.05);
     }
 
-    /* Club area styling */
     #clubArea {
-      width: 50%;
-      min-width: 500px;
-      max-width: 900px;
-      height: 80vh;
-      overflow-y: auto;
-      border: 1px solid #333;
-      padding: 10px;
+      width: 90%;
+      max-width: 1100px;
+      margin: auto;
+      padding: 20px;
       background: #1a1a1a;
       border-radius: 8px;
+      border: 1px solid #333;
     }
 
-    /* Styled login badge */
-    #welcome {
-      background:#222;
-      color:#ff9900;
-      padding:8px 14px;
-      border-radius:6px;
-      display:inline-block;
-      margin-bottom:10px;
-      font-size:14px;
-    }
-
-    /* Styled dashboard title with badge */
     #dashboardTitle {
       background:#222;
       color:#ff9900;
@@ -57,7 +47,7 @@
       display:flex;
       align-items:center;
       gap:10px;
-      margin-bottom:10px;
+      margin:20px auto;
       font-size:24px;
       font-weight:bold;
       width: fit-content;
@@ -69,7 +59,6 @@
       border-radius:4px;
     }
 
-    /* Styled Club Area header */
     #clubAreaHeader {
       background:#222;
       color:#ff9900;
@@ -80,6 +69,53 @@
       font-size:20px;
       font-weight:bold;
     }
+
+    table.gpsl-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 14px;
+    }
+
+    table.gpsl-table th {
+      background: #222;
+      color: #ff9900;
+      padding: 8px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    table.gpsl-table td {
+      padding: 8px;
+      border-bottom: 1px solid #333;
+    }
+
+    table.gpsl-table tr:nth-child(even) {
+      background: #181818;
+    }
+
+    .listed-lock {
+      background: #ff9900;
+      color: #111;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 12px;
+      display: inline-block;
+    }
+
+    .section-header {
+      margin-top: 40px;
+      background:#222;
+      color:#ff9900;
+      padding:8px 14px;
+      border-radius:6px;
+      font-size:20px;
+      font-weight:bold;
+      display:inline-block;
+    }
   </style>
 </head>
 
@@ -88,49 +124,35 @@
   <h1 id="dashboardTitle">GPSL Dashboard</h1>
 
   <div id="welcome"></div>
-
-  <!-- Dynamic navigation will be inserted here -->
   <div id="nav"></div>
 
   <hr>
 
   <h2 id="clubAreaHeader">Your Club Area</h2>
-  <div id="clubArea">
-    <!-- Club-specific content will go here -->
-  </div>
+  <div id="clubArea"></div>
 
-  <!-- Firebase scripts -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-
   <script src="firebase.js"></script>
 
-  <!-- Supabase (ESM module) -->
+  <!-- Supabase -->
   <script type="module">
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-    // Make Supabase available globally
     window.supabaseClient = createClient(
       "https://omyyogfumrjoaweuawjn.supabase.co",
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
     );
   </script>
 
-  <!-- Dashboard logic -->
   <script>
-
-    // -------------------------------
-    // FORMATTER: Bitcoin + space + commas
-    // -------------------------------
     function formatBTC(num) {
       if (!num || isNaN(num)) return "₿ 0";
       return "₿ " + Number(num).toLocaleString("en-GB");
     }
 
-    // -------------------------------
-    // AUTH + NAVIGATION
-    // -------------------------------
     auth.onAuthStateChanged(user => {
       const nav = document.getElementById("nav");
 
@@ -158,12 +180,8 @@
       });
     }
 
-    // -------------------------------
-    // LOAD USER'S CLUB FROM FIRESTORE
-    // -------------------------------
     function loadClubArea(uid) {
       db.collection("users").doc(uid).get().then(doc => {
-
         if (!doc.exists) {
           document.getElementById("clubArea").innerHTML =
             "<p>No club assigned. Contact admin.</p>";
@@ -175,68 +193,8 @@
       });
     }
 
-    // -------------------------------
-    // LOAD CLUB BADGE + PLAYERS
-    // -------------------------------
-    function loadClubDetails(shortName) {
+    async function loadClubDetails(shortName) {
       const badgePath = `images/club_badges/${shortName}.png`;
-
-      fetchClubPlayers(shortName).then(result => {
-
-        const { fullName, players } = result;
-
-        // Update dashboard title dynamically WITH BADGE
-        document.getElementById("dashboardTitle").innerHTML = `
-          <img src="images/club_badges/${shortName}.png" alt="badge">
-          ${fullName} Dashboard
-        `;
-
-        document.getElementById("clubArea").innerHTML = `
-          <div style="text-align:center; margin-bottom:20px;">
-            <img src="${badgePath}" style="width:140px; height:auto; margin-bottom:10px;">
-            <h2 style="margin:0; color:#fff;">${shortName}</h2>
-          </div>
-
-          <h3 style="color:#ff9900; border-bottom:1px solid #444; padding-bottom:5px;">
-            Squad
-          </h3>
-
-          <table style="width:100%; border-collapse:collapse; color:#ddd; font-size:14px;">
-            <thead>
-              <tr style="background:#222;">
-                <th style="padding:6px; text-align:left;">Name</th>
-                <th style="padding:6px; text-align:left;">Position</th>
-                <th style="padding:6px; text-align:left;">Nation</th>
-                <th style="padding:6px; text-align:left;">Age</th>
-                <th style="padding:6px; text-align:left;">Rating</th>
-                <th style="padding:6px; text-align:left;">Playstyle</th>
-                <th style="padding:6px; text-align:left;">Signed</th>
-                <th style="padding:6px; text-align:left;">Value</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${players.map(p => `
-                <tr style="border-bottom:1px solid #333;">
-                  <td style="padding:6px;">${p.Name}</td>
-                  <td style="padding:6px;">${p.Position}</td>
-                  <td style="padding:6px;">${p.Nation}</td>
-                  <td style="padding:6px;">${p.Age}</td>
-                  <td style="padding:6px;">${p.Rating}</td>
-                  <td style="padding:6px;">${p.Playstyle}</td>
-                  <td style="padding:6px;">${p.Season_Signed}</td>
-                  <td style="padding:6px;">${formatBTC(p.market_value)}</td>
-                </tr>
-              `).join("")}
-            </tbody>
-          </table>
-        `;
-      });
-    }
-
-    // -------------------------------
-    // FETCH PLAYERS FROM SUPABASE
-    // -------------------------------
-    async function fetchClubPlayers(shortName) {
 
       const { data: clubData } = await window.supabaseClient
         .from("Clubs")
@@ -244,13 +202,20 @@
         .eq("ShortName", shortName)
         .single();
 
-      const fullName = clubData?.Club;
+      const fullName = clubData.Club;
 
       const { data: players } = await window.supabaseClient
         .from("Players")
-        .select("Name, Position, Nation, Age, Rating, Playstyle, Season_Signed, market_value")
-        .eq("Contracted_Team", fullName)
-        .order("Name", { ascending: true });
+        .select("*")
+        .eq("Contracted_Team", fullName);
+
+      const { data: listings } = await window.supabaseClient
+        .from("Transfer_Listings")
+        .select("*")
+        .eq("seller_club", fullName)
+        .eq("status", "active");
+
+      const listedSet = new Set(listings.map(l => l.player_id));
 
       const positionOrder = {
         "GK": 1, "LB": 2, "CB": 3, "RB": 4,
@@ -263,7 +228,164 @@
         (positionOrder[b.Position] || 999)
       );
 
-      return { fullName, players };
+      document.getElementById("dashboardTitle").innerHTML = `
+        <img src="${badgePath}">
+        ${fullName} Dashboard
+      `;
+
+      let html = `
+        <div style="text-align:center; margin-bottom:20px;">
+          <img src="${badgePath}" style="width:140px;">
+          <h2 style="margin:0; color:#fff;">${fullName}</h2>
+        </div>
+
+        <h3 class="section-header">Squad</h3>
+
+        <table class="gpsl-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Pos</th>
+              <th>Nation</th>
+              <th>Age</th>
+              <th>Rating</th>
+              <th>Style</th>
+              <th>Value</th>
+              <th>List Player</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      players.forEach(p => {
+        const isListed = listedSet.has(p.Konami_ID);
+
+        html += `
+          <tr>
+            <td>${p.Name}</td>
+            <td>${p.Position}</td>
+            <td>${p.Nation}</td>
+            <td>${p.Age}</td>
+            <td>${p.Rating}</td>
+            <td>${p.Playstyle}</td>
+            <td>${formatBTC(p.market_value)}</td>
+            <td>
+              ${
+                isListed
+                  ? `<span class="listed-lock">🔒 LISTED</span>`
+                  : `<input type="checkbox" class="listPlayer"
+                       data-id="${p.Konami_ID}"
+                       data-name="${p.Name}"
+                       data-mv="${p.market_value}"
+                     >`
+              }
+            </td>
+          </tr>
+        `;
+      });
+
+      html += `
+          </tbody>
+        </table>
+
+        <h3 class="section-header">Your Listed Players</h3>
+
+        <table class="gpsl-table" id="listedTable">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Pos</th>
+              <th>Rating</th>
+              <th>Reserve</th>
+              <th>Time Remaining</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      listings.forEach(l => {
+        const player = players.find(p => p.Konami_ID === l.player_id);
+        if (!player) return;
+
+        const timeLeft = timeRemaining(l.expires_at);
+
+        html += `
+          <tr>
+            <td>${player.Name}</td>
+            <td>${player.Position}</td>
+            <td>${player.Rating}</td>
+            <td>${formatBTC(l.reserve_price)}</td>
+            <td>${timeLeft}</td>
+            <td>Active</td>
+          </tr>
+        `;
+      });
+
+      html += `
+          </tbody>
+        </table>
+      `;
+
+      document.getElementById("clubArea").innerHTML = html;
+
+      document.querySelectorAll(".listPlayer").forEach(cb => {
+        cb.addEventListener("change", async () => {
+          if (!cb.checked) return;
+
+          const name = cb.dataset.name;
+          const id = cb.dataset.id;
+          const mv = Number(cb.dataset.mv);
+
+          const reserve = Math.round(mv * 1.5);
+
+          const confirmMsg = `
+You are about to list ${name} for transfer.
+
+This action is permanent. There are NO take-backs.
+
+The reserve price will be automatically set to:
+${formatBTC(reserve)}
+
+If any bid meets or exceeds this amount within 24 hours,
+the player WILL be sold automatically.
+
+Are you absolutely sure?
+          `;
+
+          if (!confirm(confirmMsg)) {
+            cb.checked = false;
+            return;
+          }
+
+          await window.supabaseClient
+            .from("Transfer_Listings")
+            .insert({
+              player_id: id,
+              seller_club: fullName,
+              reserve_price: reserve,
+              status: "active",
+              created_at: new Date().toISOString(),
+              expires_at: new Date(Date.now() + 24*60*60*1000).toISOString()
+            });
+
+          alert("Player listed successfully.");
+          loadClubDetails(shortName);
+        });
+      });
+    }
+
+    function timeRemaining(expiry) {
+      const end = new Date(expiry).getTime();
+      const now = Date.now();
+      const diff = end - now;
+
+      if (diff <= 0) return "Expired";
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+      return `${hours}h ${mins}m`;
     }
   </script>
 
