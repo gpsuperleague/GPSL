@@ -211,7 +211,7 @@
 
       const { data: listingsData, error: listingsError } =
         await window.supabaseClient
-          .from("Transfer_Listings")
+          .from("Player_Transfer_Listings")
           .select("*")
           .eq("seller_club", fullName)
           .eq("status", "active");
@@ -366,7 +366,7 @@ Are you absolutely sure?
           }
 
           await window.supabaseClient
-            .from("Transfer_Listings")
+            .from("Player_Transfer_Listings")
             .insert({
               player_id: id,
               seller_club: fullName,
