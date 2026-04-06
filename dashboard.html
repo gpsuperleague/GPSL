@@ -104,257 +104,267 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="firebase.js"></script>
 
-  <!-- Supabase -->
+  <!-- ⭐ EVERYTHING BELOW IS ONE CLEAN MODULE SCRIPT -->
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-    window.supabaseClient = createClient(
+    /* ⭐ Supabase Client */
+    const supabase = createClient(
       "https://omyyogfumrjoaweuawjn.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+      "YOUR_ANON_KEY_HERE"
     );
-  </script>
-  <script>
-  function formatBTC(num) {
-    if (!num || isNaN(num)) return "₿ 0";
-    return "₿ " + Number(num).toLocaleString("en-GB");
-  }
 
-  auth.onAuthStateChanged(async user => {
-    const nav = document.getElementById("nav");
-
-    if (!user) {
-      window.location = "login.html";
-      return;
+    /* Utility */
+    function formatBTC(num) {
+      if (!num || isNaN(num)) return "₿ 0";
+      return "₿ " + Number(num).toLocaleString("en-GB");
     }
 
-    document.getElementById("welcome").innerHTML =
-      `<strong>User:</strong> ${user.email}`;
+    function timeRemaining(expiry) {
+      const end = new Date(expiry).getTime();
+      const now = Date.now();
+      const diff = end - now;
 
-    nav.innerHTML = `
-      <a href="index.html" class="button">Home</a>
-      <a href="GPDB.html" class="button">Player Database</a>
-      <a href="clubs.html" class="button">Clubs</a>
-      <a href="all_listings.html" class="button">Transfer-List</a>
-      <button onclick="logout()" class="button">Logout</button>
-    `;
+      if (diff <= 0) return "Expired";
 
-    // ⭐ Ensure OwnerUID is set automatically
-    await window.supabaseClient
-      .from("Clubs")
-      .update({ OwnerUID: user.uid })
-      .eq("OwnerUID", null);
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-    loadClubArea(user.uid);
-    loadOwnerSettings(user.uid);
-  });
-
-  function logout() {
-    auth.signOut().then(() => {
-      window.location = "login.html";
-    });
-  }
-
-  /* ⭐ OWNER SETTINGS LOGIC */
-  async function loadOwnerSettings(uid) {
-    const ownerInput = document.getElementById("ownerInput");
-    const editBtn = document.getElementById("editOwnerBtn");
-    const saveBtn = document.getElementById("saveOwnerBtn");
-
-    const { data: club } = await window.supabaseClient
-      .from("Clubs")
-      .select("Club, Owner")
-      .eq("OwnerUID", uid)
-      .single();
-
-    if (club) {
-      ownerInput.value = club.Owner || "";
+      return `${hours}h ${mins}m`;
     }
 
-    editBtn.onclick = () => {
-      ownerInput.removeAttribute("readonly");
-      editBtn.style.display = "none";
-      saveBtn.style.display = "block";
-    };
-
-    saveBtn.onclick = async () => {
-      const newOwner = ownerInput.value.trim();
-
-      await window.supabaseClient
-        .from("Clubs")
-        .update({ Owner: newOwner })
-        .eq("Club", club.Club);
-
-      ownerInput.setAttribute("readonly", true);
-      saveBtn.style.display = "none";
-      editBtn.style.display = "block";
-    };
-  }
-      function loadClubArea(uid) {
-    db.collection("users").doc(uid).get().then(doc => {
-      if (!doc.exists) {
-        document.getElementById("clubArea").innerHTML =
-          "<p>No club assigned. Contact admin.</p>";
+    /* ⭐ Firebase Auth Listener */
+    auth.onAuthStateChanged(async user => {
+      if (!user) {
+        window.location = "login.html";
         return;
       }
 
-      const clubShort = doc.data().club;
-      loadClubDetails(clubShort);
+      document.getElementById("welcome").innerHTML =
+        `<strong>User:</strong> ${user.email}`;
+
+      document.getElementById("nav").innerHTML = `
+        <a href="index.html" class="button">Home</a>
+        <a href="GPDB.html" class="button">Player Database</a>
+        <a href="clubs.html" class="button">Clubs</a>
+        <a href="all_listings.html" class="button">Transfer-List</a>
+        <button onclick="auth.signOut().then(()=>window.location='login.html')" class="button">Logout</button>
+      `;
+
+      /* ⭐ Ensure OwnerUID is set ONCE */
+      await supabase
+        .from("Clubs")
+        .update({ OwnerUID: user.uid })
+        .eq("OwnerUID", null);
+
+      loadOwnerSettings(user.uid);
+      loadClubArea(user.uid);
     });
-  }
 
-  async function loadClubDetails(shortName) {
-    const badgePath = `images/club_badges/${shortName}.png`;
+    /* ⭐ OWNER SETTINGS PANEL */
+    async function loadOwnerSettings(uid) {
+      const ownerInput = document.getElementById("ownerInput");
+      const editBtn = document.getElementById("editOwnerBtn");
+      const saveBtn = document.getElementById("saveOwnerBtn");
 
-    const { data: clubData } = await window.supabaseClient
-      .from("Clubs")
-      .select("Club")
-      .eq("ShortName", shortName)
-      .single();
+      const { data: club } = await supabase
+        .from("Clubs")
+        .select("Club, Owner")
+        .eq("OwnerUID", uid)
+        .single();
 
-    if (!clubData) {
-      document.getElementById("clubArea").innerHTML =
-        "<p>Unable to load club details.</p>";
-      return;
+      if (club) {
+        ownerInput.value = club.Owner || "";
+      }
+
+      editBtn.onclick = () => {
+        ownerInput.removeAttribute("readonly");
+        editBtn.style.display = "none";
+        saveBtn.style.display = "block";
+      };
+
+      saveBtn.onclick = async () => {
+        const newOwner = ownerInput.value.trim();
+
+        await supabase
+          .from("Clubs")
+          .update({ Owner: newOwner })
+          .eq("Club", club.Club);
+
+        ownerInput.setAttribute("readonly", true);
+        saveBtn.style.display = "none";
+        editBtn.style.display = "block";
+      };
     }
 
-    const fullName = clubData.Club;
+    /* ⭐ LOAD CLUB AREA */
+    function loadClubArea(uid) {
+      db.collection("users").doc(uid).get().then(doc => {
+        if (!doc.exists) {
+          document.getElementById("clubArea").innerHTML =
+            "<p>No club assigned. Contact admin.</p>";
+          return;
+        }
 
-    const { data: players } = await window.supabaseClient
-      .from("Players")
-      .select("*")
-      .eq("Contracted_Team", fullName);
+        const clubShort = doc.data().club;
+        loadClubDetails(clubShort);
+      });
+    }
 
-    const { data: listingsData } = await window.supabaseClient
-      .from("Player_Transfer_Listings")
-      .select("*")
-      .eq("seller_club_id", fullName);
+    /* ⭐ LOAD CLUB DETAILS */
+    async function loadClubDetails(shortName) {
+      const badgePath = `images/club_badges/${shortName}.png`;
 
-    const listings = listingsData || [];
-    const listedSet = new Set(listings.map(l => String(l.player_id)));
+      const { data: clubData } = await supabase
+        .from("Clubs")
+        .select("Club")
+        .eq("ShortName", shortName)
+        .single();
 
-    const positionOrder = {
-      "GK": 1, "LB": 2, "CB": 3, "RB": 4,
-      "DMF": 5, "LMF": 6, "CMF": 7, "RMF": 8,
-      "AMF": 9, "LWF": 10, "CF": 11, "SS": 12, "RWF": 13
-    };
+      if (!clubData) {
+        document.getElementById("clubArea").innerHTML =
+          "<p>Unable to load club details.</p>";
+        return;
+      }
 
-    players.sort((a, b) =>
-      (positionOrder[a.Position] || 999) -
-      (positionOrder[b.Position] || 999)
-    );
+      const fullName = clubData.Club;
 
-    document.getElementById("dashboardTitle").innerHTML = `
-      <img src="${badgePath}">
-      ${fullName} Dashboard
-    `;
+      const { data: players } = await supabase
+        .from("Players")
+        .select("*")
+        .eq("Contracted_Team", fullName);
 
-    let html = `
-      <div style="text-align:center; margin-bottom:20px;">
-        <img src="${badgePath}" style="width:140px;">
-        <h2 style="margin:0; color:#fff;">${fullName}</h2>
-      </div>
+      const { data: listingsData } = await supabase
+        .from("Player_Transfer_Listings")
+        .select("*")
+        .eq("seller_club_id", fullName);
 
-      <h3 class="section-header">Squad</h3>
+      const listings = listingsData || [];
+      const listedSet = new Set(listings.map(l => String(l.player_id)));
 
-      <table class="gpsl-table">
-        <thead>
+      const positionOrder = {
+        "GK": 1, "LB": 2, "CB": 3, "RB": 4,
+        "DMF": 5, "LMF": 6, "CMF": 7, "RMF": 8,
+        "AMF": 9, "LWF": 10, "CF": 11, "SS": 12, "RWF": 13
+      };
+
+      players.sort((a, b) =>
+        (positionOrder[a.Position] || 999) -
+        (positionOrder[b.Position] || 999)
+      );
+
+      document.getElementById("dashboardTitle").innerHTML = `
+        <img src="${badgePath}">
+        ${fullName} Dashboard
+      `;
+
+      let html = `
+        <div style="text-align:center; margin-bottom:20px;">
+          <img src="${badgePath}" style="width:140px;">
+          <h2 style="margin:0; color:#fff;">${fullName}</h2>
+        </div>
+
+        <h3 class="section-header">Squad</h3>
+
+        <table class="gpsl-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Pos</th>
+              <th>Nation</th>
+              <th>Age</th>
+              <th>Rating</th>
+              <th>Style</th>
+              <th>Value</th>
+              <th>List Player</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      players.forEach(p => {
+        const isListed = listedSet.has(String(p.Konami_ID));
+
+        html += `
           <tr>
-            <th>Name</th>
-            <th>Pos</th>
-            <th>Nation</th>
-            <th>Age</th>
-            <th>Rating</th>
-            <th>Style</th>
-            <th>Value</th>
-            <th>List Player</th>
+            <td>${p.Name}</td>
+            <td>${p.Position}</td>
+            <td>${p.Nation}</td>
+            <td>${p.Age}</td>
+            <td>${p.Rating}</td>
+            <td>${p.Playstyle}</td>
+            <td>${formatBTC(p.market_value)}</td>
+            <td>
+              ${
+                isListed
+                  ? `<span class="listed-lock">🔒 LISTED</span>`
+                  : `<input type="checkbox" class="listPlayer"
+                       data-id="${p.Konami_ID}"
+                       data-name="${p.Name}"
+                       data-mv="${p.market_value}"
+                     >`
+              }
+            </td>
           </tr>
-        </thead>
-        <tbody>
-    `;
-
-    players.forEach(p => {
-      const isListed = listedSet.has(String(p.Konami_ID));
+        `;
+      });
 
       html += `
-        <tr>
-          <td>${p.Name}</td>
-          <td>${p.Position}</td>
-          <td>${p.Nation}</td>
-          <td>${p.Age}</td>
-          <td>${p.Rating}</td>
-          <td>${p.Playstyle}</td>
-          <td>${formatBTC(p.market_value)}</td>
-          <td>
-            ${
-              isListed
-                ? `<span class="listed-lock">🔒 LISTED</span>`
-                : `<input type="checkbox" class="listPlayer"
-                     data-id="${p.Konami_ID}"
-                     data-name="${p.Name}"
-                     data-mv="${p.market_value}"
-                   >`
-            }
-          </td>
-        </tr>
+          </tbody>
+        </table>
+
+        <h3 class="section-header">Your Listed Players</h3>
+
+        <table class="gpsl-table" id="listedTable">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Pos</th>
+              <th>Rating</th>
+              <th>Reserve</th>
+              <th>Time Remaining</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
       `;
-    });
 
-    html += `
-        </tbody>
-      </table>
+      listings.forEach(l => {
+        const player = players.find(p => String(p.Konami_ID) === String(l.player_id));
+        if (!player) return;
 
-      <h3 class="section-header">Your Listed Players</h3>
+        const timeLeft = timeRemaining(l.end_time);
 
-      <table class="gpsl-table" id="listedTable">
-        <thead>
+        html += `
           <tr>
-            <th>Name</th>
-            <th>Pos</th>
-            <th>Rating</th>
-            <th>Reserve</th>
-            <th>Time Remaining</th>
-            <th>Status</th>
+            <td>${player.Name}</td>
+            <td>${player.Position}</td>
+            <td>${player.Rating}</td>
+            <td>${formatBTC(l.reserve_price)}</td>
+            <td>${timeLeft}</td>
+            <td>Active</td>
           </tr>
-        </thead>
-        <tbody>
-    `;
-
-    listings.forEach(l => {
-      const player = players.find(p => String(p.Konami_ID) === String(l.player_id));
-      if (!player) return;
-
-      const timeLeft = timeRemaining(l.end_time);
+        `;
+      });
 
       html += `
-        <tr>
-          <td>${player.Name}</td>
-          <td>${player.Position}</td>
-          <td>${player.Rating}</td>
-          <td>${formatBTC(l.reserve_price)}</td>
-          <td>${timeLeft}</td>
-          <td>Active</td>
-        </tr>
+          </tbody>
+        </table>
       `;
-    });
 
-    html += `
-        </tbody>
-      </table>
-    `;
+      document.getElementById("clubArea").innerHTML = html;
 
-    document.getElementById("clubArea").innerHTML = html;
+      document.querySelectorAll(".listPlayer").forEach(cb => {
+        cb.addEventListener("change", async () => {
+          if (!cb.checked) return;
 
-    document.querySelectorAll(".listPlayer").forEach(cb => {
-      cb.addEventListener("change", async () => {
-        if (!cb.checked) return;
+          const name = cb.dataset.name;
+          const id = cb.dataset.id;
+          const mv = Number(cb.dataset.mv);
 
-        const name = cb.dataset.name;
-        const id = cb.dataset.id;
-        const mv = Number(cb.dataset.mv);
+          const reserve = Math.round(mv * 1.5);
 
-        const reserve = Math.round(mv * 1.5);
-
-        const confirmMsg = `
+          const confirmMsg = `
 You are about to list ${name} for transfer.
 
 This action is permanent. There are NO take-backs.
@@ -366,47 +376,34 @@ If any bid meets or exceeds this amount within 24 hours,
 the player WILL be sold automatically.
 
 Are you absolutely sure?
-        `;
+          `;
 
-        if (!confirm(confirmMsg)) {
-          cb.checked = false;
-          return;
-        }
+          if (!confirm(confirmMsg)) {
+            cb.checked = false;
+            return;
+          }
 
-        await window.supabaseClient
-          .from("Player_Transfer_Listings")
-          .insert({
-            player_id: String(id),
-            seller_club_id: fullName,
-            reserve_price: reserve,
-            listing_type: "standard",
-            hidden_bids: false,
-            special_rules: {},
-            start_time: new Date().toISOString(),
-            end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-            current_highest_bid: 0,
-            current_highest_bidder: null
-          });
+          await supabase
+            .from("Player_Transfer_Listings")
+            .insert({
+              player_id: String(id),
+              seller_club_id: fullName,
+              reserve_price: reserve,
+              listing_type: "standard",
+              hidden_bids: false,
+              special_rules: {},
+              start_time: new Date().toISOString(),
+              end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              current_highest_bid: 0,
+              current_highest_bidder: null
+            });
 
-        alert("Player listed successfully.");
-        loadClubDetails(shortName);
+          alert("Player listed successfully.");
+          loadClubDetails(shortName);
+        });
       });
-    });
-  }
-
-  function timeRemaining(expiry) {
-    const end = new Date(expiry).getTime();
-    const now = Date.now();
-    const diff = end - now;
-
-    if (diff <= 0) return "Expired";
-
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-    return `${hours}h ${mins}m`;
-  }
-</script>
+    }
+  </script>
 
 </body>
 </html>
