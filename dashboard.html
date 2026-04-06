@@ -222,7 +222,7 @@
 
       const listings = listingsData || [];
 
-      const listedSet = new Set(listings.map(l => l.player_id));
+      const listedSet = new Set(listings.map(l => Number(l.player_id)));
 
       const positionOrder = {
         "GK": 1, "LB": 2, "CB": 3, "RB": 4,
