@@ -146,6 +146,7 @@
     });
 
     async function loadMarket() {
+      // Load listings (now includes market_value + reserve_price)
       const { data: listings } = await supabase
         .from("Player_Transfer_Listings")
         .select("*");
@@ -163,7 +164,9 @@
       table.innerHTML = "";
 
       listings.forEach(listing => {
-        const player = players.find(p => String(p.Konami_ID) === String(listing.player_id));
+        const player = players.find(
+          p => String(p.Konami_ID) === String(listing.player_id)
+        );
         if (!player) return;
 
         const row = document.createElement("tr");
