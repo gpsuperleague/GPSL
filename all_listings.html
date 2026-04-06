@@ -22,6 +22,29 @@
       font-weight:bold;
     }
 
+    a.button, button.button {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #ff9900;
+      color: #111;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 6px;
+      margin: 5px;
+      transition: 0.2s;
+      cursor: pointer;
+    }
+
+    a.button:hover, button.button:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
+    }
+
+    #nav {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
     table.gpsl-table {
       width: 90%;
       max-width: 1100px;
@@ -52,6 +75,8 @@
 
   <h1>Global Transfer Market</h1>
 
+  <div id="nav"></div>
+
   <table class="gpsl-table" id="marketTable">
     <thead>
       <tr>
@@ -66,6 +91,11 @@
     </thead>
     <tbody></tbody>
   </table>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="firebase.js"></script>
 
   <!-- Supabase -->
   <script type="module">
@@ -94,15 +124,34 @@
       return `${hours}h ${mins}m`;
     }
 
+    function logout() {
+      auth.signOut().then(() => {
+        window.location = "login.html";
+      });
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        window.location = "login.html";
+        return;
+      }
+
+      document.getElementById("nav").innerHTML = `
+        <a href="index.html" class="button">Home</a>
+        <a href="GPDB.html" class="button">Player Database</a>
+        <a href="clubs.html" class="button">Clubs</a>
+        <a href="all_listings.html" class="button">Transfer Market</a>
+        <button onclick="logout()" class="button">Logout</button>
+      `;
+    });
+
     async function loadMarket() {
-      // Get all listings
       const { data: listings } = await supabase
         .from("Player_Transfer_Listings")
         .select("*");
 
       if (!listings) return;
 
-      // Get all players referenced
       const playerIds = [...new Set(listings.map(l => l.player_id))];
 
       const { data: players } = await supabase
