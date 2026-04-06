@@ -368,7 +368,7 @@ Are you absolutely sure?
           await window.supabaseClient
             .from("Player_Transfer_Listings")
             .insert({
-              player_id: id,
+              player_id: Number(id),
               seller_club_id: clubId,
               reserve_price: reserve,
               created_at: new Date().toISOString(),
