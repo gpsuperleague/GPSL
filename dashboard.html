@@ -1,347 +1,155 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>GPSL Dashboard</title>
+async function loadClubDetails(shortName) {
+  const badgePath = `images/club_badges/${shortName}.png`;
 
-  <style>
-    body {
-      background: #111;
-      color: #ddd;
-      font-family: Arial, sans-serif;
-    }
+  // Fetch club by ShortName
+  const { data: clubData } = await window.supabaseClient
+    .from("Clubs")
+    .select("Club")
+    .eq("ShortName", shortName)
+    .single();
 
-    a.button, button.button {
-      display: inline-block;
-      padding: 10px 20px;
-      background: #ff9900;
-      color: #111;
-      text-decoration: none;
-      font-weight: bold;
-      border-radius: 6px;
-      margin: 5px;
-      transition: 0.2s;
-      cursor: pointer;
-    }
+  const fullName = clubData.Club;
+  const clubId = fullName; // Club name is now the PK and FK
 
-    a.button:hover, button.button:hover {
-      background: #ffaa22;
-      transform: scale(1.05);
-    }
+  // Fetch players contracted to this club
+  const { data: players } = await window.supabaseClient
+    .from("Players")
+    .select("*")
+    .eq("Contracted_Team", fullName);
 
-    #clubArea {
-      width: 90%;
-      max-width: 1100px;
-      margin: auto;
-      padding: 20px;
-      background: #1a1a1a;
-      border-radius: 8px;
-      border: 1px solid #333;
-    }
+  // Fetch listings for this club
+  const { data: listingsData } =
+    await window.supabaseClient
+      .from("Player_Transfer_Listings")
+      .select("*")
+      .eq("seller_club_id", fullName);
 
-    #dashboardTitle {
-      background:#222;
-      color:#ff9900;
-      padding:10px 16px;
-      border-radius:6px;
-      display:flex;
-      align-items:center;
-      gap:10px;
-      margin:20px auto;
-      font-size:24px;
-      font-weight:bold;
-      width: fit-content;
-    }
+  const listings = listingsData || [];
+  const listedSet = new Set(listings.map(l => String(l.player_id)));
 
-    #dashboardTitle img {
-      width:32px;
-      height:32px;
-      border-radius:4px;
-    }
+  const positionOrder = {
+    "GK": 1, "LB": 2, "CB": 3, "RB": 4,
+    "DMF": 5, "LMF": 6, "CMF": 7, "RMF": 8,
+    "AMF": 9, "LWF": 10, "CF": 11, "SS": 12, "RWF": 13
+  };
 
-    #clubAreaHeader {
-      background:#222;
-      color:#ff9900;
-      padding:8px 14px;
-      border-radius:6px;
-      display:inline-block;
-      margin-bottom:10px;
-      font-size:20px;
-      font-weight:bold;
-    }
+  players.sort((a, b) =>
+    (positionOrder[a.Position] || 999) -
+    (positionOrder[b.Position] || 999)
+  );
 
-    table.gpsl-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-      font-size: 14px;
-    }
+  document.getElementById("dashboardTitle").innerHTML = `
+    <img src="${badgePath}">
+    ${fullName} Dashboard
+  `;
 
-    table.gpsl-table th {
-      background: #222;
-      color: #ff9900;
-      padding: 8px;
-      text-align: left;
-      position: sticky;
-      top: 0;
-      z-index: 2;
-    }
+  let html = `
+    <div style="text-align:center; margin-bottom:20px;">
+      <img src="${badgePath}" style="width:140px;">
+      <h2 style="margin:0; color:#fff;">${fullName}</h2>
+    </div>
 
-    table.gpsl-table td {
-      padding: 8px;
-      border-bottom: 1px solid #333;
-    }
+    <h3 class="section-header">Squad</h3>
 
-    table.gpsl-table tr:nth-child(even) {
-      background: #181818;
-    }
+    <table class="gpsl-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Pos</th>
+          <th>Nation</th>
+          <th>Age</th>
+          <th>Rating</th>
+          <th>Style</th>
+          <th>Value</th>
+          <th>List Player</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
 
-    .listed-lock {
-      background: #ff9900;
-      color: #111;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 12px;
-      display: inline-block;
-    }
+  players.forEach(p => {
+    const isListed = listedSet.has(String(p.Konami_ID));
 
-    .section-header {
-      margin-top: 40px;
-      background:#222;
-      color:#ff9900;
-      padding:8px 14px;
-      border-radius:6px;
-      font-size:20px;
-      font-weight:bold;
-      display:inline-block;
-    }
-  </style>
-</head>
+    html += `
+      <tr>
+        <td>${p.Name}</td>
+        <td>${p.Position}</td>
+        <td>${p.Nation}</td>
+        <td>${p.Age}</td>
+        <td>${p.Rating}</td>
+        <td>${p.Playstyle}</td>
+        <td>${formatBTC(p.market_value)}</td>
+        <td>
+          ${
+            isListed
+              ? `<span class="listed-lock">🔒 LISTED</span>`
+              : `<input type="checkbox" class="listPlayer"
+                   data-id="${p.Konami_ID}"
+                   data-name="${p.Name}"
+                   data-mv="${p.market_value}"
+                 >`
+          }
+        </td>
+      </tr>
+    `;
+  });
 
-<body>
+  html += `
+      </tbody>
+    </table>
 
-  <h1 id="dashboardTitle">GPSL Dashboard</h1>
+    <h3 class="section-header">Your Listed Players</h3>
 
-  <div id="welcome"></div>
-  <div id="nav"></div>
+    <table class="gpsl-table" id="listedTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Pos</th>
+          <th>Rating</th>
+          <th>Reserve</th>
+          <th>Time Remaining</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
 
-  <hr>
+  listings.forEach(l => {
+    const player = players.find(p => String(p.Konami_ID) === String(l.player_id));
+    if (!player) return;
 
-  <h2 id="clubAreaHeader">Your Club Area</h2>
-  <div id="clubArea"></div>
+    const timeLeft = timeRemaining(l.end_time);
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-  <script src="firebase.js"></script>
+    html += `
+      <tr>
+        <td>${player.Name}</td>
+        <td>${player.Position}</td>
+        <td>${player.Rating}</td>
+        <td>${formatBTC(l.reserve_price)}</td>
+        <td>${timeLeft}</td>
+        <td>Active</td>
+      </tr>
+    `;
+  });
 
-  <!-- Supabase -->
-  <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+  html += `
+      </tbody>
+    </table>
+  `;
 
-    window.supabaseClient = createClient(
-      "https://omyyogfumrjoaweuawjn.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
-    );
-  </script>
+  document.getElementById("clubArea").innerHTML = html;
 
-  <script>
-    function formatBTC(num) {
-      if (!num || isNaN(num)) return "₿ 0";
-      return "₿ " + Number(num).toLocaleString("en-GB");
-    }
+  document.querySelectorAll(".listPlayer").forEach(cb => {
+    cb.addEventListener("change", async () => {
+      if (!cb.checked) return;
 
-    auth.onAuthStateChanged(user => {
-      const nav = document.getElementById("nav");
+      const name = cb.dataset.name;
+      const id = cb.dataset.id;
+      const mv = Number(cb.dataset.mv);
 
-      if (!user) {
-        window.location = "login.html";
-        return;
-      }
+      const reserve = Math.round(mv * 1.5);
 
-      document.getElementById("welcome").innerHTML =
-        `<strong>User:</strong> ${user.email}`;
-
-      nav.innerHTML = `
-        <a href="index.html" class="button">Home</a>
-        <a href="GPDB.html" class="button">Player Database</a>
-        <a href="clubs.html" class="button">Clubs</a>
-        <button onclick="logout()" class="button">Logout</button>
-      `;
-
-      loadClubArea(user.uid);
-    });
-
-    function logout() {
-      auth.signOut().then(() => {
-        window.location = "login.html";
-      });
-    }
-
-    function loadClubArea(uid) {
-      db.collection("users").doc(uid).get().then(doc => {
-        if (!doc.exists) {
-          document.getElementById("clubArea").innerHTML =
-            "<p>No club assigned. Contact admin.</p>";
-          return;
-        }
-
-        const clubShort = doc.data().club;
-        loadClubDetails(clubShort);
-      });
-    }
-
-    async function loadClubDetails(shortName) {
-      const badgePath = `images/club_badges/${shortName}.png`;
-
-      const { data: clubData } = await window.supabaseClient
-        .from("Clubs")
-        .select("Club_ID, Club")
-        .eq("ShortName", shortName)
-        .single();
-
-      const clubId = clubData.Club_ID;
-      const fullName = clubData.Club;
-
-      const { data: players } = await window.supabaseClient
-        .from("Players")
-        .select("*")
-        .eq("Contracted_Team", fullName);
-
-      const { data: listingsData } =
-        await window.supabaseClient
-          .from("Player_Transfer_Listings")
-          .select("*")
-          .eq("seller_club_id", String(clubId));
-
-      const listings = listingsData || [];
-      const listedSet = new Set(listings.map(l => String(l.player_id)));
-
-      const positionOrder = {
-        "GK": 1, "LB": 2, "CB": 3, "RB": 4,
-        "DMF": 5, "LMF": 6, "CMF": 7, "RMF": 8,
-        "AMF": 9, "LWF": 10, "CF": 11, "SS": 12, "RWF": 13
-      };
-
-      players.sort((a, b) =>
-        (positionOrder[a.Position] || 999) -
-        (positionOrder[b.Position] || 999)
-      );
-
-      document.getElementById("dashboardTitle").innerHTML = `
-        <img src="${badgePath}">
-        ${fullName} Dashboard
-      `;
-
-      let html = `
-        <div style="text-align:center; margin-bottom:20px;">
-          <img src="${badgePath}" style="width:140px;">
-          <h2 style="margin:0; color:#fff;">${fullName}</h2>
-        </div>
-
-        <h3 class="section-header">Squad</h3>
-
-        <table class="gpsl-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Pos</th>
-              <th>Nation</th>
-              <th>Age</th>
-              <th>Rating</th>
-              <th>Style</th>
-              <th>Value</th>
-              <th>List Player</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
-
-      players.forEach(p => {
-        const isListed = listedSet.has(String(p.Konami_ID));
-
-        html += `
-          <tr>
-            <td>${p.Name}</td>
-            <td>${p.Position}</td>
-            <td>${p.Nation}</td>
-            <td>${p.Age}</td>
-            <td>${p.Rating}</td>
-            <td>${p.Playstyle}</td>
-            <td>${formatBTC(p.market_value)}</td>
-            <td>
-              ${
-                isListed
-                  ? `<span class="listed-lock">🔒 LISTED</span>`
-                  : `<input type="checkbox" class="listPlayer"
-                       data-id="${p.Konami_ID}"
-                       data-name="${p.Name}"
-                       data-mv="${p.market_value}"
-                     >`
-              }
-            </td>
-          </tr>
-        `;
-      });
-
-      html += `
-          </tbody>
-        </table>
-
-        <h3 class="section-header">Your Listed Players</h3>
-
-        <table class="gpsl-table" id="listedTable">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Pos</th>
-              <th>Rating</th>
-              <th>Reserve</th>
-              <th>Time Remaining</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-      `;
-
-      listings.forEach(l => {
-        const player = players.find(p => String(p.Konami_ID) === String(l.player_id));
-        if (!player) return;
-
-        const timeLeft = timeRemaining(l.end_time);
-
-        html += `
-          <tr>
-            <td>${player.Name}</td>
-            <td>${player.Position}</td>
-            <td>${player.Rating}</td>
-            <td>${formatBTC(l.reserve_price)}</td>
-            <td>${timeLeft}</td>
-            <td>Active</td>
-          </tr>
-        `;
-      });
-
-      html += `
-          </tbody>
-        </table>
-      `;
-
-      document.getElementById("clubArea").innerHTML = html;
-
-      document.querySelectorAll(".listPlayer").forEach(cb => {
-        cb.addEventListener("change", async () => {
-          if (!cb.checked) return;
-
-          const name = cb.dataset.name;
-          const id = cb.dataset.id;
-          const mv = Number(cb.dataset.mv);
-
-          const reserve = Math.round(mv * 1.5);
-
-          const confirmMsg = `
+      const confirmMsg = `
 You are about to list ${name} for transfer.
 
 This action is permanent. There are NO take-backs.
@@ -353,50 +161,30 @@ If any bid meets or exceeds this amount within 24 hours,
 the player WILL be sold automatically.
 
 Are you absolutely sure?
-          `;
+      `;
 
-          if (!confirm(confirmMsg)) {
-            cb.checked = false;
-            return;
-          }
+      if (!confirm(confirmMsg)) {
+        cb.checked = false;
+        return;
+      }
 
-          await window.supabaseClient
-            .from("Player_Transfer_Listings")
-            .insert({
-              player_id: String(id),
-              seller_club_id: String(clubId),
-              reserve_price: reserve,
-
-              listing_type: "standard",
-              hidden_bids: false,
-              special_rules: {},
-
-              start_time: new Date().toISOString(),
-              end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-
-              current_highest_bid: 0,
-              current_highest_bidder: null
-            });
-
-          alert("Player listed successfully.");
-          loadClubDetails(shortName);
+      await window.supabaseClient
+        .from("Player_Transfer_Listings")
+        .insert({
+          player_id: String(id),
+          seller_club_id: fullName,
+          reserve_price: reserve,
+          listing_type: "standard",
+          hidden_bids: false,
+          special_rules: {},
+          start_time: new Date().toISOString(),
+          end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          current_highest_bid: 0,
+          current_highest_bidder: null
         });
-      });
-    }
 
-    function timeRemaining(expiry) {
-      const end = new Date(expiry).getTime();
-      const now = Date.now();
-      const diff = end - now;
-
-      if (diff <= 0) return "Expired";
-
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-      return `${hours}h ${mins}m`;
-    }
-  </script>
-
-</body>
-</html>
+      alert("Player listed successfully.");
+      loadClubDetails(shortName);
+    });
+  });
+}
