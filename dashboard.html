@@ -1,32 +1,22 @@
 <!DOCTYPE html>
 <html>
-<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>GPSL Dashboard</title>
+  <meta charset="UTF-8">
+  <title>GPSL Dashboard</title>
 
-<style>
-body {
-background: #111;
+  <style>
+    body {
+      background: #111;
       color: #ddd;
-      color: #fff;
-font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-}
+      font-family: Arial, sans-serif;
+    }
 
     a.button, button.button {
       display: inline-block;
       padding: 10px 20px;
       background: #ff9900;
       color: #111;
-    .button {
-      background: #444;
-      color: #fff;
-      padding: 8px 14px;
-      margin-right: 10px;
-      border-radius: 4px;
-text-decoration: none;
+      text-decoration: none;
       font-weight: bold;
       border-radius: 6px;
       margin: 5px;
@@ -37,7 +27,7 @@ text-decoration: none;
     a.button:hover, button.button:hover {
       background: #ffaa22;
       transform: scale(1.05);
-}
+    }
 
     #clubArea {
       width: 90%;
@@ -45,19 +35,9 @@ text-decoration: none;
       margin: auto;
       padding: 20px;
       background: #1a1a1a;
-    /* ⭐ Floating Club Settings Panel */
-    #clubSettingsPanel {
-      position: absolute;
-      top: 80px;
-      right: 20px;
-      background: #222;
-      padding: 15px;
-border-radius: 8px;
+      border-radius: 8px;
       border: 1px solid #333;
-      width: 260px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.5);
-      border: 1px solid #444;
-}
+    }
 
     #dashboardTitle {
       background:#222;
@@ -88,24 +68,14 @@ border-radius: 8px;
       margin-bottom:10px;
       font-size:20px;
       font-weight:bold;
-    #clubSettingsPanel h3 {
-      margin-top: 0;
-      color: #ff9900;
-}
+    }
 
     table.gpsl-table {
-    #ownerInput {
-width: 100%;
+      width: 100%;
       border-collapse: collapse;
       margin-top: 15px;
       font-size: 14px;
-      padding: 6px;
-      margin-top: 5px;
-      background: #333;
-      color: #ccc;
-      border: 1px solid #555;
-      border-radius: 4px;
-}
+    }
 
     table.gpsl-table th {
       background: #222;
@@ -115,32 +85,19 @@ width: 100%;
       position: sticky;
       top: 0;
       z-index: 2;
-    #ownerInput[readonly] {
-      opacity: 0.6;
-}
+    }
 
     table.gpsl-table td {
       padding: 8px;
       border-bottom: 1px solid #333;
-    #editOwnerBtn, #saveOwnerBtn {
-      margin-top: 10px;
-      width: 100%;
-      padding: 6px;
-      border-radius: 4px;
-      cursor: pointer;
-      border: none;
-}
+    }
 
     table.gpsl-table tr:nth-child(even) {
       background: #181818;
-    #editOwnerBtn {
-      background: #555;
-      color: #fff;
-}
+    }
 
     .listed-lock {
-    #saveOwnerBtn {
-background: #ff9900;
+      background: #ff9900;
       color: #111;
       padding: 4px 8px;
       border-radius: 6px;
@@ -158,43 +115,39 @@ background: #ff9900;
       font-size:20px;
       font-weight:bold;
       display:inline-block;
-      color: #000;
-      display: none;
-}
-</style>
+    }
+  </style>
 </head>
-@@ -126,6 +83,17 @@ <h1 id="dashboardTitle">GPSL Dashboard</h1>
-<div id="welcome"></div>
-<div id="nav"></div>
 
-  <!-- ⭐ Floating Club Settings Panel -->
-  <div id="clubSettingsPanel">
-    <h3>Club Settings</h3>
+<body>
 
-    <label>Owner (Discord Name)</label>
-    <input id="ownerInput" type="text" readonly>
+  <h1 id="dashboardTitle">GPSL Dashboard</h1>
 
-    <button id="editOwnerBtn">Edit</button>
-    <button id="saveOwnerBtn">Save</button>
-  </div>
+  <div id="welcome"></div>
+  <div id="nav"></div>
 
-<hr>
+  <hr>
 
-<h2 id="clubAreaHeader">Your Club Area</h2>
-@@ -134,7 +102,6 @@ <h2 id="clubAreaHeader">Your Club Area</h2>
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <h2 id="clubAreaHeader">Your Club Area</h2>
+  <div id="clubArea"></div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-<script src="firebase.js"></script>
+  <script src="firebase.js"></script>
 
-<!-- Supabase -->
-@@ -146,272 +113,248 @@ <h2 id="clubAreaHeader">Your Club Area</h2>
-"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
-);
-</script>
+  <!-- Supabase -->
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-<script>
+    window.supabaseClient = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+    );
+  </script>
+
+  <script>
     function formatBTC(num) {
       if (!num || isNaN(num)) return "₿ 0";
       return "₿ " + Number(num).toLocaleString("en-GB");
@@ -218,91 +171,49 @@ background: #ff9900;
         <a href="all_listings.html" class="button">Transfer-List</a>
         <button onclick="logout()" class="button">Logout</button>
       `;
-  function formatBTC(num) {
-    if (!num || isNaN(num)) return "₿ 0";
-    return "₿ " + Number(num).toLocaleString("en-GB");
-  }
 
       loadClubArea(user.uid);
     });
-  auth.onAuthStateChanged(async user => {
-    const nav = document.getElementById("nav");
 
     function logout() {
       auth.signOut().then(() => {
         window.location = "login.html";
       });
-    if (!user) {
-      window.location = "login.html";
-      return;
-}
+    }
 
 const ownerInput = document.getElementById("ownerInput");
 const saveOwnerBtn = document.getElementById("saveOwnerBtn");
-    document.getElementById("welcome").innerHTML =
-      `<strong>User:</strong> ${user.email}`;
 
 auth.onAuthStateChanged(async user => {
   if (!user) return;
-    nav.innerHTML = `
-      <a href="index.html" class="button">Home</a>
-      <a href="GPDB.html" class="button">Player Database</a>
-      <a href="clubs.html" class="button">Clubs</a>
-      <a href="all_listings.html" class="button">Transfer-List</a>
-      <button onclick="logout()" class="button">Logout</button>
-    `;
 
   const { data: club } = await supabase
     .from("Clubs")
     .select("Club, Owner")
     .eq("Owner", user.uid)
     .single();
-    // ⭐ Ensure OwnerUID is set automatically
-    await window.supabaseClient
-      .from("Clubs")
-      .update({ OwnerUID: user.uid })
-      .eq("OwnerUID", null);
 
   if (club) {
     ownerInput.value = club.Owner || "";
   }
-    loadClubArea(user.uid);
-    loadOwnerSettings(user.uid);
-  });
 
   saveOwnerBtn.addEventListener("click", async () => {
     const newOwner = ownerInput.value.trim();
-  function logout() {
-    auth.signOut().then(() => {
-      window.location = "login.html";
-    });
-  }
 
     if (!newOwner) {
       alert("Owner cannot be empty");
       return;
     }
-  /* ⭐ OWNER SETTINGS LOGIC */
-  async function loadOwnerSettings(uid) {
-    const ownerInput = document.getElementById("ownerInput");
-    const editBtn = document.getElementById("editOwnerBtn");
-    const saveBtn = document.getElementById("saveOwnerBtn");
 
     const { error } = await supabase
-    const { data: club } = await window.supabaseClient
-.from("Clubs")
+      .from("Clubs")
       .update({ Owner: newOwner })
       .eq("Club", club.Club);
-      .select("Club, Owner")
-      .eq("OwnerUID", uid)
-      .single();
 
     if (error) {
       alert("Failed to update owner");
       return;
-    if (club) {
-      ownerInput.value = club.Owner || "";
-}
+    }
 
     alert("Owner updated successfully");
   });
@@ -321,57 +232,32 @@ auth.onAuthStateChanged(async user => {
         loadClubDetails(clubShort);
       });
     }
-    editBtn.onclick = () => {
-      ownerInput.removeAttribute("readonly");
-      editBtn.style.display = "none";
-      saveBtn.style.display = "block";
-    };
 
     async function loadClubDetails(shortName) {
       const badgePath = `images/club_badges/${shortName}.png`;
-    saveBtn.onclick = async () => {
-      const newOwner = ownerInput.value.trim();
 
       // Get club by ShortName, using Club as the identifier
       const { data: clubData, error: clubError } = await window.supabaseClient
-      await window.supabaseClient
-.from("Clubs")
+        .from("Clubs")
         .select("Club")
         .eq("ShortName", shortName)
         .single();
-        .update({ Owner: newOwner })
-        .eq("Club", club.Club);
 
       if (clubError || !clubData) {
         console.error("Error loading club:", clubError);
-      ownerInput.setAttribute("readonly", true);
-      saveBtn.style.display = "none";
-      editBtn.style.display = "block";
-    };
-  }
-      function loadClubArea(uid) {
-    db.collection("users").doc(uid).get().then(doc => {
-      if (!doc.exists) {
-document.getElementById("clubArea").innerHTML =
+        document.getElementById("clubArea").innerHTML =
           "<p>Unable to load club details.</p>";
-          "<p>No club assigned. Contact admin.</p>";
-return;
-}
+        return;
+      }
 
       const fullName = clubData.Club;
       const clubId = fullName; // we now use the club name as the identifier everywhere
-      const clubShort = doc.data().club;
-      loadClubDetails(clubShort);
-    });
-  }
 
       // Fetch players contracted to this club
       const { data: players, error: playersError } = await window.supabaseClient
         .from("Players")
         .select("*")
         .eq("Contracted_Team", fullName);
-  async function loadClubDetails(shortName) {
-    const badgePath = `images/club_badges/${shortName}.png`;
 
       if (playersError || !players) {
         console.error("Error loading players:", playersError);
@@ -379,11 +265,6 @@ return;
           "<p>Unable to load squad.</p>";
         return;
       }
-    const { data: clubData } = await window.supabaseClient
-      .from("Clubs")
-      .select("Club")
-      .eq("ShortName", shortName)
-      .single();
 
       // Fetch listings for this club (seller_club_id stores the club name)
       const { data: listingsData, error: listingsError } =
@@ -391,50 +272,29 @@ return;
           .from("Player_Transfer_Listings")
           .select("*")
           .eq("seller_club_id", fullName);
-    if (!clubData) {
-      document.getElementById("clubArea").innerHTML =
-        "<p>Unable to load club details.</p>";
-      return;
-    }
 
       if (listingsError) {
         console.error("Error loading listings:", listingsError);
       }
-    const fullName = clubData.Club;
 
       const listings = listingsData || [];
       const listedSet = new Set(listings.map(l => String(l.player_id)));
-    const { data: players } = await window.supabaseClient
-      .from("Players")
-      .select("*")
-      .eq("Contracted_Team", fullName);
 
       const positionOrder = {
         "GK": 1, "LB": 2, "CB": 3, "RB": 4,
         "DMF": 5, "LMF": 6, "CMF": 7, "RMF": 8,
         "AMF": 9, "LWF": 10, "CF": 11, "SS": 12, "RWF": 13
       };
-    const { data: listingsData } = await window.supabaseClient
-      .from("Player_Transfer_Listings")
-      .select("*")
-      .eq("seller_club_id", fullName);
 
       players.sort((a, b) =>
         (positionOrder[a.Position] || 999) -
         (positionOrder[b.Position] || 999)
       );
-    const listings = listingsData || [];
-    const listedSet = new Set(listings.map(l => String(l.player_id)));
 
       document.getElementById("dashboardTitle").innerHTML = `
         <img src="${badgePath}">
         ${fullName} Dashboard
       `;
-    const positionOrder = {
-      "GK": 1, "LB": 2, "CB": 3, "RB": 4,
-      "DMF": 5, "LMF": 6, "CMF": 7, "RMF": 8,
-      "AMF": 9, "LWF": 10, "CF": 11, "SS": 12, "RWF": 13
-    };
 
       let html = `
         <div style="text-align:center; margin-bottom:20px;">
@@ -468,30 +328,12 @@ return;
           </thead>
           <tbody>
       `;
-    players.sort((a, b) =>
-      (positionOrder[a.Position] || 999) -
-      (positionOrder[b.Position] || 999)
-    );
-
-    document.getElementById("dashboardTitle").innerHTML = `
-      <img src="${badgePath}">
-      ${fullName} Dashboard
-    `;
-
-    let html = `
-      <div style="text-align:center; margin-bottom:20px;">
-        <img src="${badgePath}" style="width:140px;">
-        <h2 style="margin:0; color:#fff;">${fullName}</h2>
-      </div>
 
       players.forEach(p => {
         const isListed = listedSet.has(String(p.Konami_ID));
-      <h3 class="section-header">Squad</h3>
 
         html += `
-      <table class="gpsl-table">
-        <thead>
-         <tr>
+          <tr>
             <td>${p.Name}</td>
             <td>${p.Position}</td>
             <td>${p.Nation}</td>
@@ -510,25 +352,11 @@ return;
                      >`
               }
             </td>
-            <th>Name</th>
-            <th>Pos</th>
-            <th>Nation</th>
-            <th>Age</th>
-            <th>Rating</th>
-            <th>Style</th>
-            <th>Value</th>
-            <th>List Player</th>
-         </tr>
+          </tr>
         `;
       });
-        </thead>
-        <tbody>
-    `;
 
-    players.forEach(p => {
-      const isListed = listedSet.has(String(p.Konami_ID));
-
-html += `
+      html += `
           </tbody>
         </table>
 
@@ -546,113 +374,52 @@ html += `
             </tr>
           </thead>
           <tbody>
-        <tr>
-          <td>${p.Name}</td>
-          <td>${p.Position}</td>
-          <td>${p.Nation}</td>
-          <td>${p.Age}</td>
-          <td>${p.Rating}</td>
-          <td>${p.Playstyle}</td>
-          <td>${formatBTC(p.market_value)}</td>
-          <td>
-            ${
-              isListed
-                ? `<span class="listed-lock">🔒 LISTED</span>`
-                : `<input type="checkbox" class="listPlayer"
-                     data-id="${p.Konami_ID}"
-                     data-name="${p.Name}"
-                     data-mv="${p.market_value}"
-                   >`
-            }
-          </td>
-        </tr>
-     `;
-    });
+      `;
 
       listings.forEach(l => {
         const player = players.find(p => String(p.Konami_ID) === String(l.player_id));
         if (!player) return;
-    html += `
-        </tbody>
-      </table>
 
         const timeLeft = timeRemaining(l.end_time);
-      <h3 class="section-header">Your Listed Players</h3>
 
         html += `
-      <table class="gpsl-table" id="listedTable">
-        <thead>
-         <tr>
+          <tr>
             <td>${player.Name}</td>
             <td>${player.Position}</td>
             <td>${player.Rating}</td>
             <td>${formatBTC(l.reserve_price)}</td>
             <td>${timeLeft}</td>
             <td>Active</td>
-            <th>Name</th>
-            <th>Pos</th>
-            <th>Rating</th>
-            <th>Reserve</th>
-            <th>Time Remaining</th>
-            <th>Status</th>
-         </tr>
+          </tr>
         `;
       });
-        </thead>
-        <tbody>
-    `;
 
-    listings.forEach(l => {
-      const player = players.find(p => String(p.Konami_ID) === String(l.player_id));
-      if (!player) return;
-
-      const timeLeft = timeRemaining(l.end_time);
-
-html += `
+      html += `
           </tbody>
         </table>
-        <tr>
-          <td>${player.Name}</td>
-          <td>${player.Position}</td>
-          <td>${player.Rating}</td>
-          <td>${formatBTC(l.reserve_price)}</td>
-          <td>${timeLeft}</td>
-          <td>Active</td>
-        </tr>
-     `;
-    });
-
-    html += `
-        </tbody>
-      </table>
-    `;
+      `;
 
       document.getElementById("clubArea").innerHTML = html;
-    document.getElementById("clubArea").innerHTML = html;
 
       document.querySelectorAll(".listPlayer").forEach(cb => {
         cb.addEventListener("change", async () => {
           if (!cb.checked) return;
-    document.querySelectorAll(".listPlayer").forEach(cb => {
-      cb.addEventListener("change", async () => {
-        if (!cb.checked) return;
 
           const name = cb.dataset.name;
           const id = cb.dataset.id;
           const mv = Number(cb.dataset.mv);
-        const name = cb.dataset.name;
-        const id = cb.dataset.id;
-        const mv = Number(cb.dataset.mv);
 
           const reserve = Math.round(mv * 1.5);
-        const reserve = Math.round(mv * 1.5);
 
           const confirmMsg = `
-        const confirmMsg = `
 You are about to list ${name} for transfer.
 
 This action is permanent. There are NO take-backs.
-@@ -423,47 +366,47 @@ <h3 class="section-header">Your Listed Players</h3>
+
+The reserve price will be automatically set to:
+${formatBTC(reserve)}
+
+If any bid meets or exceeds this amount within 24 hours,
 the player WILL be sold automatically.
 
 Are you absolutely sure?
@@ -681,58 +448,22 @@ Are you absolutely sure?
           alert("Player listed successfully.");
           loadClubDetails(shortName);
         });
-        `;
-
-        if (!confirm(confirmMsg)) {
-          cb.checked = false;
-          return;
-        }
-
-        await window.supabaseClient
-          .from("Player_Transfer_Listings")
-          .insert({
-            player_id: String(id),
-            seller_club_id: fullName,
-            reserve_price: reserve,
-            listing_type: "standard",
-            hidden_bids: false,
-            special_rules: {},
-            start_time: new Date().toISOString(),
-            end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-            current_highest_bid: 0,
-            current_highest_bidder: null
-          });
-
-        alert("Player listed successfully.");
-        loadClubDetails(shortName);
-});
+      });
     }
-    });
-  }
 
     function timeRemaining(expiry) {
       const end = new Date(expiry).getTime();
       const now = Date.now();
       const diff = end - now;
-  function timeRemaining(expiry) {
-    const end = new Date(expiry).getTime();
-    const now = Date.now();
-    const diff = end - now;
 
       if (diff <= 0) return "Expired";
-    if (diff <= 0) return "Expired";
 
       const hours = Math.floor(diff / (1000 * 60 * 60));
       const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
       return `${hours}h ${mins}m`;
     }
   </script>
-    return `${hours}h ${mins}m`;
-  }
-</script>
 
 </body>
 </html>
