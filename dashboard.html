@@ -143,7 +143,7 @@
 
     window.supabaseClient = createClient(
       "https://omyyogfumrjoaweuawjn.supabase.co",
-      "YOUR_PUBLIC_ANON_KEY"
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
     );
   </script>
 
@@ -196,25 +196,46 @@
     async function loadClubDetails(shortName) {
       const badgePath = `images/club_badges/${shortName}.png`;
 
-      const { data: clubData } = await window.supabaseClient
+      // Get club by ShortName, using Club as the identifier
+      const { data: clubData, error: clubError } = await window.supabaseClient
         .from("Clubs")
-        .select("Club_ID, Club")
+        .select("Club")
         .eq("ShortName", shortName)
         .single();
 
-      const clubId = clubData.Club_ID;
-      const fullName = clubData.Club;
+      if (clubError || !clubData) {
+        console.error("Error loading club:", clubError);
+        document.getElementById("clubArea").innerHTML =
+          "<p>Unable to load club details.</p>";
+        return;
+      }
 
-      const { data: players } = await window.supabaseClient
+      const fullName = clubData.Club;
+      const clubId = fullName; // we now use the club name as the identifier everywhere
+
+      // Fetch players contracted to this club
+      const { data: players, error: playersError } = await window.supabaseClient
         .from("Players")
         .select("*")
         .eq("Contracted_Team", fullName);
 
-      const { data: listingsData } =
+      if (playersError || !players) {
+        console.error("Error loading players:", playersError);
+        document.getElementById("clubArea").innerHTML =
+          "<p>Unable to load squad.</p>";
+        return;
+      }
+
+      // Fetch listings for this club (seller_club_id stores the club name)
+      const { data: listingsData, error: listingsError } =
         await window.supabaseClient
           .from("Player_Transfer_Listings")
           .select("*")
-          .eq("seller_club_id", String(clubId));
+          .eq("seller_club_id", fullName);
+
+      if (listingsError) {
+        console.error("Error loading listings:", listingsError);
+      }
 
       const listings = listingsData || [];
       const listedSet = new Set(listings.map(l => String(l.player_id)));
@@ -364,7 +385,7 @@ Are you absolutely sure?
             .from("Player_Transfer_Listings")
             .insert({
               player_id: String(id),
-              seller_club_id: String(clubId),
+              seller_club_id: fullName,
               reserve_price: reserve,
               listing_type: "standard",
               hidden_bids: false,
