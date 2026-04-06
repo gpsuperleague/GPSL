@@ -181,6 +181,45 @@
       });
     }
 
+const ownerInput = document.getElementById("ownerInput");
+const saveOwnerBtn = document.getElementById("saveOwnerBtn");
+
+auth.onAuthStateChanged(async user => {
+  if (!user) return;
+
+  const { data: club } = await supabase
+    .from("Clubs")
+    .select("Club, Owner")
+    .eq("Owner", user.uid)
+    .single();
+
+  if (club) {
+    ownerInput.value = club.Owner || "";
+  }
+
+  saveOwnerBtn.addEventListener("click", async () => {
+    const newOwner = ownerInput.value.trim();
+
+    if (!newOwner) {
+      alert("Owner cannot be empty");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("Clubs")
+      .update({ Owner: newOwner })
+      .eq("Club", club.Club);
+
+    if (error) {
+      alert("Failed to update owner");
+      return;
+    }
+
+    alert("Owner updated successfully");
+  });
+});
+
+    
     function loadClubArea(uid) {
       db.collection("users").doc(uid).get().then(doc => {
         if (!doc.exists) {
