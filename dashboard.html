@@ -214,8 +214,7 @@
         await window.supabaseClient
           .from("Player_Transfer_Listings")
           .select("*")
-          .eq("seller_club_id", clubId)
-          .eq("status", "active");
+          .eq("seller_club_id", clubId);
 
       if (listingsError) {
         console.error("Listings error:", listingsError);
@@ -372,7 +371,6 @@ Are you absolutely sure?
               player_id: id,
               seller_club_id: clubId,
               reserve_price: reserve,
-              status: "active",
               created_at: new Date().toISOString(),
               expires_at: new Date(Date.now() + 24*60*60*1000).toISOString()
             });
