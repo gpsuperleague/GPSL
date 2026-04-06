@@ -210,19 +210,14 @@
         .select("*")
         .eq("Contracted_Team", fullName);
 
-      const { data: listingsData, error: listingsError } =
+      const { data: listingsData } =
         await window.supabaseClient
           .from("Player_Transfer_Listings")
           .select("*")
-          .eq("seller_club_id", clubId);
-
-      if (listingsError) {
-        console.error("Listings error:", listingsError);
-      }
+          .eq("seller_club_id", String(clubId));
 
       const listings = listingsData || [];
-
-      const listedSet = new Set(listings.map(l => Number(l.player_id)));
+      const listedSet = new Set(listings.map(l => String(l.player_id)));
 
       const positionOrder = {
         "GK": 1, "LB": 2, "CB": 3, "RB": 4,
@@ -265,7 +260,7 @@
       `;
 
       players.forEach(p => {
-        const isListed = listedSet.has(p.Konami_ID);
+        const isListed = listedSet.has(String(p.Konami_ID));
 
         html += `
           <tr>
@@ -312,10 +307,10 @@
       `;
 
       listings.forEach(l => {
-        const player = players.find(p => p.Konami_ID === l.player_id);
+        const player = players.find(p => String(p.Konami_ID) === String(l.player_id));
         if (!player) return;
 
-        const timeLeft = timeRemaining(l.expires_at);
+        const timeLeft = timeRemaining(l.end_time);
 
         html += `
           <tr>
@@ -368,11 +363,19 @@ Are you absolutely sure?
           await window.supabaseClient
             .from("Player_Transfer_Listings")
             .insert({
-              player_id: Number(id),
-              seller_club_id: clubId,
+              player_id: String(id),
+              seller_club_id: String(clubId),
               reserve_price: reserve,
-              created_at: new Date().toISOString(),
-              expires_at: new Date(Date.now() + 24*60*60*1000).toISOString()
+
+              listing_type: "standard",
+              hidden_bids: false,
+              special_rules: {},
+
+              start_time: new Date().toISOString(),
+              end_time: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+
+              current_highest_bid: 0,
+              current_highest_bidder: null
             });
 
           alert("Player listed successfully.");
