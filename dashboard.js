@@ -1,16 +1,10 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-// --------------------------------------------------
-// SUPABASE CLIENT
-// --------------------------------------------------
 const supabase = createClient(
   "https://omyyogfumrjoaweuawjn.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
 );
 
-// --------------------------------------------------
-// HELPERS
-// --------------------------------------------------
 function formatBTC(num) {
   if (!num || isNaN(num)) return "₿ 0";
   return "₿ " + Number(num).toLocaleString("en-GB");
@@ -26,9 +20,6 @@ function unlockOwnerField() {
   saveOwnerBtn.style.display = "inline-block";
 }
 
-// --------------------------------------------------
-// AUTH
-// --------------------------------------------------
 auth.onAuthStateChanged(async user => {
   if (!user) {
     window.location = "login.html";
@@ -52,20 +43,14 @@ function logout() {
   auth.signOut().then(() => window.location = "login.html");
 }
 
-// --------------------------------------------------
-// LOAD CLUB
-// --------------------------------------------------
 async function loadClub(uid) {
   const userDoc = await db.collection("users").doc(uid).get();
   if (!userDoc.exists) return;
 
-  const shortName = userDoc.data().club; // "URD"
+  const shortName = userDoc.data().club;
   loadClubDetails(shortName);
 }
 
-// --------------------------------------------------
-// LOAD CLUB DETAILS
-// --------------------------------------------------
 async function loadClubDetails(shortName) {
 
   document.body.dataset.shortname = shortName;
@@ -140,9 +125,6 @@ async function loadClubDetails(shortName) {
   loadListings(fullName);
 }
 
-// --------------------------------------------------
-// SQUAD
-// --------------------------------------------------
 async function loadSquad(fullName) {
   const { data: players } = await supabase
     .from("Players")
@@ -181,9 +163,6 @@ async function loadSquad(fullName) {
   squadContainer.innerHTML = html;
 }
 
-// --------------------------------------------------
-// LISTINGS
-// --------------------------------------------------
 async function loadListings(fullName) {
   const { data: listings } = await supabase
     .from("Player_Transfer_Listings")
