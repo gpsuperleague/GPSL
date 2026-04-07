@@ -1,6 +1,4 @@
-/* ============================
-   HEADER LAYOUT
-   ============================ */
+/* HEADER LAYOUT */
 #headerContainer {
   display: flex;
   justify-content: space-between;
@@ -34,10 +32,7 @@
   margin-top: 4px;
 }
 
-
-/* ============================
-   CLUB DETAILS PANEL
-   ============================ */
+/* CLUB DETAILS PANEL */
 #headerRight {
   width: 320px;
   background: #222;
@@ -80,19 +75,48 @@
   margin-right: 10px;
 }
 
+/* OWNER FIELD STATES */
+.owner-locked {
+  background: #333;
+  color: #aaa;
+  border: 1px solid #444;
+  pointer-events: none;
+}
+
+.owner-editing {
+  background: #111;
+  color: #fff;
+  border: 1px solid #ff9900;
+}
+
 #ownerInput {
-  width: 150px;
   padding: 5px;
   border-radius: 4px;
   border: 1px solid #444;
   background: #111;
   color: #ddd;
+  transition: 0.2s;
 }
 
+#editOwnerBtn {
+  margin-left: 10px;
+  padding: 6px 12px;
+  background: #444;
+  color: #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+}
 
-/* ============================
-   MAIN CONTENT LAYOUT
-   ============================ */
+#editOwnerBtn:hover {
+  background: #666;
+}
+
+#saveOwnerBtn {
+  display: none;
+  margin-top: 10px;
+}
+
+/* MAIN CONTENT */
 #mainContent {
   display: flex;
   padding: 20px;
@@ -107,25 +131,7 @@
   flex: 1;
 }
 
-
-/* ============================
-   SECTION HEADERS
-   ============================ */
-.section-header {
-  margin-top: 30px;
-  background: #222;
-  color: #ff9900;
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-size: 20px;
-  font-weight: bold;
-  display: inline-block;
-}
-
-
-/* ============================
-   RESPONSIVE BEHAVIOUR
-   ============================ */
+/* RESPONSIVE */
 @media (max-width: 900px) {
   #headerContainer {
     flex-direction: column;
