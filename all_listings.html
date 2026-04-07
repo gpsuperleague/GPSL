@@ -1,68 +1,195 @@
+**ALL LISTINGS HTML**
+
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>All Listings</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>GPSL Transfer Market</title>
+
+  <style>
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+    }
+
+    h1 {
+      background:#222;
+      color:#ff9900;
+      padding:10px 16px;
+      border-radius:6px;
+      width: fit-content;
+      margin:20px auto;
+      font-size:26px;
+      font-weight:bold;
+    }
+
+    a.button, button.button {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #ff9900;
+      color: #111;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 6px;
+      margin: 5px;
+      transition: 0.2s;
+      cursor: pointer;
+    }
+
+    a.button:hover, button.button:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
+    }
+
+    #nav {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    table.gpsl-table {
+      width: 90%;
+      max-width: 1100px;
+      margin: 20px auto;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    table.gpsl-table th {
+      background: #222;
+      color: #ff9900;
+      padding: 8px;
+      text-align: left;
+    }
+
+    table.gpsl-table td {
+      padding: 8px;
+      border-bottom: 1px solid #333;
+    }
+
+    table.gpsl-table tr:nth-child(even) {
+      background: #181818;
+    }
+  </style>
 </head>
+
 <body>
-  <h1>All Transfer Listings</h1>
 
-  <div id="filters">
-    <label>
-      <input type="checkbox" id="filter-active">
-      Active
-    </label>
-    <label>
-      <input type="checkbox" id="filter-closed">
-      Closed
-    </label>
-  </div>
+  <h1>Global Transfer Market</h1>
 
-  <table id="listings-table">
+  <div id="nav"></div>
+
+  <table class="gpsl-table" id="marketTable">
     <thead>
       <tr>
-        <th>Player</th>
-        <th>Position</th>
-        <th>Playstyle</th>
-        <th>Rating</th>
         <th>Selling Club</th>
+        <th>Player</th>
+        <th>Pos</th>
+        <th>Rating</th>
+        <th>Value</th>
         <th>Reserve</th>
-        <th>Market Value</th>
+        <th>Time Remaining</th>
         <th>Status</th>
-        <th>Time Left</th>
-        <th>Highest Bid</th>
-        <th>Highest Bidding Club</th>
       </tr>
     </thead>
-    <tbody id="listings-body"></tbody>
+    <tbody></tbody>
   </table>
 
-  <!-- Bid Modal -->
-  <div id="bid-modal" class="modal" style="display:none;">
-    <div class="modal-content">
-      <span id="bid-modal-close">&times;</span>
-      <h2 id="bid-player-name"></h2>
-      <p><strong>Position:</strong> <span id="bid-player-position"></span></p>
-      <p><strong>Playstyle:</strong> <span id="bid-player-playstyle"></span></p>
-      <p><strong>Rating:</strong> <span id="bid-player-rating"></span></p>
-      <p><strong>Selling Club:</strong> <span id="bid-selling-club"></span></p>
-      <p><strong>Reserve Price:</strong> <span id="bid-reserve-price"></span></p>
-      <p><strong>Market Value:</strong> <span id="bid-market-value"></span></p>
-      <p><strong>Status:</strong> <span id="bid-status"></span></p>
-      <p><strong>Time Remaining:</strong> <span id="bid-time-remaining"></span></p>
-      <p><strong>Highest Bid:</strong> <span id="bid-highest-bid"></span></p>
-      <p><strong>Highest Bidding Club:</strong> <span id="bid-highest-club"></span></p>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="firebase.js"></script>
 
-      <div id="bid-input-section">
-        <label for="bid-amount">Your Bid (must be ≥ market value and > current highest):</label>
-        <input type="number" id="bid-amount" step="0.01" min="0">
-        <button id="place-bid-btn">Place Bid</button>
-        <p id="bid-error" style="color:red;"></p>
-      </div>
-    </div>
-  </div>
+  <!-- Supabase -->
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-  <script src="all_listings.js"></script>
+    const supabase = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+    );
+
+    function formatBTC(num) {
+      if (!num || isNaN(num)) return "₿ 0";
+      return "₿ " + Number(num).toLocaleString("en-GB");
+    }
+
+    function timeRemaining(expiry) {
+      const end = new Date(expiry).getTime();
+      const now = Date.now();
+      const diff = end - now;
+
+      if (diff <= 0) return "Expired";
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+      return `${hours}h ${mins}m`;
+    }
+
+    function logout() {
+      auth.signOut().then(() => {
+        window.location = "login.html";
+      });
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (!user) {
+        window.location = "login.html";
+        return;
+      }
+
+      document.getElementById("nav").innerHTML = `
+        <a href="index.html" class="button">Home</a>
+        <a href="GPDB.html" class="button">Player Database</a>
+        <a href="clubs.html" class="button">Clubs</a>
+        <a href="dashboard.html" class="button">Dashboard</a>
+        <button onclick="logout()" class="button">Logout</button>
+      `;
+    });
+
+    async function loadMarket() {
+      const { data: listings } = await supabase
+        .from("Player_Transfer_Listings")
+        .select("*");
+
+      if (!listings) return;
+
+      const playerIds = [...new Set(listings.map(l => l.player_id))];
+
+      const { data: players } = await supabase
+        .from("Players")
+        .select("*")
+        .in("Konami_ID", playerIds);
+
+      const table = document.querySelector("#marketTable tbody");
+      table.innerHTML = "";
+
+      listings.forEach(listing => {
+        const player = players.find(
+          p => String(p.Konami_ID) === String(listing.player_id)
+        );
+        if (!player) return;
+
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${listing.seller_club_id}</td>
+          <td>${player.Name}</td>
+          <td>${player.Position}</td>
+          <td>${player.Rating}</td>
+          <td>${formatBTC(player.market_value)}</td>
+          <td>${formatBTC(listing.reserve_price)}</td>
+          <td>${timeRemaining(listing.end_time)}</td>
+          <td>Active</td>
+        `;
+
+        table.appendChild(row);
+      });
+    }
+
+    loadMarket();
+  </script>
+
 </body>
 </html>
