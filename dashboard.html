@@ -59,16 +59,6 @@
       background: #181818;
     }
 
-    .listed-lock {
-      background: #ff9900;
-      color: #111;
-      padding: 4px 8px;
-      border-radius: 6px;
-      font-weight: bold;
-      font-size: 12px;
-      display: inline-block;
-    }
-
     .section-header {
       margin-top: 40px;
       background:#222;
@@ -239,12 +229,21 @@
       document.getElementById("clubNameField").textContent = fullName;
 
       ownerInput.value = club.owner || "";
-      lockOwnerField();
-
       ownerInput.style.width = (ownerInput.value.length + 2) + "ch";
+
+      if (ownerInput.value.trim() !== "") {
+        lockOwnerField();
+        document.getElementById("editOwnerBtn").style.display = "inline-block";
+        document.getElementById("saveOwnerBtn").style.display = "none";
+      } else {
+        unlockOwnerField();
+        document.getElementById("editOwnerBtn").style.display = "none";
+        document.getElementById("saveOwnerBtn").style.display = "inline-block";
+      }
 
       document.getElementById("editOwnerBtn").onclick = () => {
         unlockOwnerField();
+        document.getElementById("editOwnerBtn").style.display = "none";
       };
 
       document.getElementById("saveOwnerBtn").onclick = async () => {
@@ -257,6 +256,9 @@
           .eq("Club", fullName);
 
         lockOwnerField();
+        document.getElementById("editOwnerBtn").style.display = "inline-block";
+        document.getElementById("saveOwnerBtn").style.display = "none";
+
         alert("Owner updated");
       };
 
