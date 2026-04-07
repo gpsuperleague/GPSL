@@ -5,6 +5,26 @@ const supabase = createClient(
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
 );
 
+// --------------------------------------------------
+// POSITION ORDER
+// --------------------------------------------------
+const POSITION_ORDER = [
+  "GK", "LB", "CB", "RB",
+  "DMF", "LMF", "CMF", "RMF",
+  "AMF", "LWF", "CF", "RWF"
+];
+
+function sortPlayersByPosition(players) {
+  return players.sort((a, b) => {
+    const posA = POSITION_ORDER.indexOf(a.Position);
+    const posB = POSITION_ORDER.indexOf(b.Position);
+    return posA - posB;
+  });
+}
+
+// --------------------------------------------------
+// HELPERS
+// --------------------------------------------------
 function formatBTC(num) {
   if (!num || isNaN(num)) return "₿ 0";
   return "₿ " + Number(num).toLocaleString("en-GB");
@@ -20,6 +40,15 @@ function unlockOwnerField() {
   saveOwnerBtn.style.display = "inline-block";
 }
 
+function getListingStatus(endTime) {
+  const now = Date.now();
+  const end = new Date(endTime).getTime();
+  return end > now ? "Active" : "Expired";
+}
+
+// --------------------------------------------------
+// AUTH
+// --------------------------------------------------
 auth.onAuthStateChanged(async user => {
   if (!user) {
     window.location = "login.html";
@@ -43,6 +72,9 @@ function logout() {
   auth.signOut().then(() => window.location = "login.html");
 }
 
+// --------------------------------------------------
+// LOAD CLUB
+// --------------------------------------------------
 async function loadClub(uid) {
   const userDoc = await db.collection("users").doc(uid).get();
   if (!userDoc.exists) return;
@@ -51,6 +83,9 @@ async function loadClub(uid) {
   loadClubDetails(shortName);
 }
 
+// --------------------------------------------------
+// LOAD CLUB DETAILS
+// --------------------------------------------------
 async function loadClubDetails(shortName) {
 
   document.body.dataset.shortname = shortName;
@@ -125,6 +160,9 @@ async function loadClubDetails(shortName) {
   loadListings(fullName);
 }
 
+// --------------------------------------------------
+// SQUAD
+// --------------------------------------------------
 async function loadSquad(fullName) {
   const { data: players } = await supabase
     .from("Players")
@@ -144,7 +182,7 @@ async function loadSquad(fullName) {
       <tbody>
   `;
 
-  players.forEach(p => {
+  sortPlayersByPosition(players).forEach(p => {
     html += `
       <tr>
         <td>${p.Name}</td>
@@ -163,6 +201,11 @@ async function loadSquad(fullName) {
   squadContainer.innerHTML = html;
 }
 
+// --------------------------------------------------
+// LISTINGS
+// --------------------------------------------------
+let currentListings = [];
+
 async function loadListings(fullName) {
   const { data: listings } = await supabase
     .from("Player_Transfer_Listings")
@@ -170,6 +213,14 @@ async function loadListings(fullName) {
     .eq("seller_club_id", fullName);
 
   if (!listings) return;
+
+  currentListings = listings;
+  renderListings();
+}
+
+async function renderListings() {
+  const showActive = filterActive.checked;
+  const showExpired = filterExpired.checked;
 
   let html = `
     <table class="gpsl-table">
@@ -182,7 +233,7 @@ async function loadListings(fullName) {
       <tbody>
   `;
 
-  for (const l of listings) {
+  for (const l of currentListings) {
     const { data: player } = await supabase
       .from("Players")
       .select("Name, Position, Rating")
@@ -191,6 +242,13 @@ async function loadListings(fullName) {
 
     if (!player) continue;
 
+    const status = getListingStatus(l.end_time);
+
+    if ((status === "Active" && !showActive) ||
+        (status === "Expired" && !showExpired)) {
+      continue;
+    }
+
     html += `
       <tr>
         <td>${player.Name}</td>
@@ -198,7 +256,7 @@ async function loadListings(fullName) {
         <td>${player.Rating}</td>
         <td>${formatBTC(l.reserve_price)}</td>
         <td>${timeRemaining(l.end_time)}</td>
-        <td>Active</td>
+        <td>${status}</td>
       </tr>
     `;
   }
@@ -206,6 +264,9 @@ async function loadListings(fullName) {
   html += "</tbody></table>";
   listedContainer.innerHTML = html;
 }
+
+filterActive.addEventListener("change", renderListings);
+filterExpired.addEventListener("change", renderListings);
 
 function timeRemaining(expiry) {
   const end = new Date(expiry).getTime();
