@@ -155,14 +155,14 @@
       ownerInput.classList.remove("owner-editing");
       ownerInput.classList.add("owner-locked");
       ownerInput.setAttribute("readonly", true);
-      document.getElementById("saveOwnerBtn").style.display = "none";
+      saveOwnerBtn.style.display = "none";
     }
 
     function unlockOwnerField() {
       ownerInput.classList.remove("owner-locked");
       ownerInput.classList.add("owner-editing");
       ownerInput.removeAttribute("readonly");
-      document.getElementById("saveOwnerBtn").style.display = "inline-block";
+      saveOwnerBtn.style.display = "inline-block";
     }
 
     auth.onAuthStateChanged(async user => {
@@ -171,9 +171,9 @@
         return;
       }
 
-      document.getElementById("userEmail").textContent = `User: ${user.email}`;
+      userEmail.textContent = `User: ${user.email}`;
 
-      document.getElementById("nav").innerHTML = `
+      nav.innerHTML = `
         <a href="index.html" class="button">Home</a>
         <a href="GPDB.html" class="button">Player Database</a>
         <a href="clubs.html" class="button">Clubs</a>
@@ -209,10 +209,10 @@
 
       const fullName = club.Club;
 
-      document.getElementById("clubBadgeHeader").src = badgePath;
-      document.getElementById("dashboardTitle").textContent = `${fullName} Dashboard`;
+      clubBadgeHeader.src = badgePath;
+      dashboardTitle.textContent = `${fullName} Dashboard`;
 
-      document.getElementById("clubNameField").textContent = fullName;
+      clubNameField.textContent = fullName;
 
       ownerInput.value = club.owner || "";
       ownerInput.style.width = (ownerInput.value.length + 2) + "ch";
@@ -239,7 +239,7 @@
         await window.supabaseClient
           .from("Clubs")
           .update({ owner: newOwner })
-          .eq("ShortName", shortName)
+          .eq("ShortName", shortName);   // ⭐ FIXED
 
         lockOwnerField();
         editOwnerBtn.style.display = "inline-block";
