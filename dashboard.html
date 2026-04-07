@@ -107,7 +107,10 @@
         <div class="detailRow">
           <label>Owner:</label>
           <input id="ownerInput" type="text">
+          <button id="editOwnerBtn">Edit</button>
         </div>
+
+        <button id="saveOwnerBtn" class="button">Save Owner</button>
 
         <div class="detailRow">
           <label>Stadium:</label>
@@ -129,7 +132,6 @@
           <span id="mottoField">—</span>
         </div>
 
-        <button id="saveOwnerBtn" class="button">Save Owner</button>
       </div>
     </div>
   </div>
@@ -147,9 +149,7 @@
       <div id="listedContainer"></div>
     </div>
 
-    <div id="rightColumn">
-      <!-- Reserved for future panels -->
-    </div>
+    <div id="rightColumn"></div>
   </div>
 
   <!-- Firebase -->
@@ -167,11 +167,25 @@
     );
   </script>
 
-  <!-- NEW JS -->
+  <!-- JS -->
   <script>
     function formatBTC(num) {
       if (!num || isNaN(num)) return "₿ 0";
       return "₿ " + Number(num).toLocaleString("en-GB");
+    }
+
+    function lockOwnerField() {
+      ownerInput.classList.remove("owner-editing");
+      ownerInput.classList.add("owner-locked");
+      ownerInput.setAttribute("readonly", true);
+      document.getElementById("saveOwnerBtn").style.display = "none";
+    }
+
+    function unlockOwnerField() {
+      ownerInput.classList.remove("owner-locked");
+      ownerInput.classList.add("owner-editing");
+      ownerInput.removeAttribute("readonly");
+      document.getElementById("saveOwnerBtn").style.display = "inline-block";
     }
 
     auth.onAuthStateChanged(async user => {
@@ -214,23 +228,24 @@
         .eq("ShortName", shortName)
         .single();
 
-      if (!club) {
-        console.error("Club not found for ShortName:", shortName);
-        return;
-      }
+      if (!club) return;
 
       const fullName = club.Club;
 
-      // HEADER
       document.getElementById("clubBadgeHeader").src = badgePath;
       document.getElementById("dashboardTitle").textContent = `${fullName} Dashboard`;
 
-      // PANEL
       document.getElementById("clubBadgePanel").src = badgePath;
       document.getElementById("clubNameField").textContent = fullName;
-      document.getElementById("ownerInput").value = club.owner || "";
-      document.getElementById("stadiumField").textContent = club.Stadium || "—";
-      document.getElementById("capacityField").textContent = club.Capacity || "—";
+
+      ownerInput.value = club.owner || "";
+      lockOwnerField();
+
+      ownerInput.style.width = (ownerInput.value.length + 2) + "ch";
+
+      document.getElementById("editOwnerBtn").onclick = () => {
+        unlockOwnerField();
+      };
 
       document.getElementById("saveOwnerBtn").onclick = async () => {
         const newOwner = ownerInput.value.trim();
@@ -241,8 +256,16 @@
           .update({ owner: newOwner })
           .eq("Club", fullName);
 
+        lockOwnerField();
         alert("Owner updated");
       };
+
+      ownerInput.addEventListener("input", () => {
+        ownerInput.style.width = (ownerInput.value.length + 2) + "ch";
+      });
+
+      document.getElementById("stadiumField").textContent = club.Stadium || "—";
+      document.getElementById("capacityField").textContent = club.Capacity || "—";
 
       loadSquad(fullName);
       loadListings(fullName);
