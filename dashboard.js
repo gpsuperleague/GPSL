@@ -41,9 +41,24 @@ function unlockOwnerField() {
 }
 
 function getListingStatus(endTime) {
+  const end = Date.parse(endTime);
   const now = Date.now();
-  const end = new Date(endTime).getTime();
-  return end > now ? "Active" : "Expired";
+
+  if (isNaN(end)) return "Closed";
+  return end > now ? "Active" : "Closed";
+}
+
+function timeRemaining(endTime) {
+  const end = Date.parse(endTime);
+  const now = Date.now();
+
+  if (isNaN(end) || end <= now) return "Expired";
+
+  const diff = end - now;
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  return `${hours}h ${mins}m`;
 }
 
 // --------------------------------------------------
@@ -220,7 +235,7 @@ async function loadListings(fullName) {
 
 async function renderListings() {
   const showActive = filterActive.checked;
-  const showExpired = filterExpired.checked;
+  const showClosed = filterExpired.checked;
 
   let html = `
     <table class="gpsl-table">
@@ -245,7 +260,7 @@ async function renderListings() {
     const status = getListingStatus(l.end_time);
 
     if ((status === "Active" && !showActive) ||
-        (status === "Expired" && !showExpired)) {
+        (status === "Closed" && !showClosed)) {
       continue;
     }
 
@@ -267,16 +282,3 @@ async function renderListings() {
 
 filterActive.addEventListener("change", renderListings);
 filterExpired.addEventListener("change", renderListings);
-
-function timeRemaining(expiry) {
-  const end = new Date(expiry).getTime();
-  const now = Date.now();
-  const diff = end - now;
-
-  if (diff <= 0) return "Expired";
-
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-  return `${hours}h ${mins}m`;
-}
