@@ -23,6 +23,19 @@ function sortPlayersByPosition(players) {
 }
 
 // --------------------------------------------------
+// TIMESTAMP NORMALIZER
+// --------------------------------------------------
+function normalizeTimestamp(ts) {
+  if (!ts) return null;
+
+  // Already ISO
+  if (ts.includes("T")) return ts;
+
+  // Convert "YYYY-MM-DD HH:MM:SS" → "YYYY-MM-DDTHH:MM:SSZ"
+  return ts.replace(" ", "T") + "Z";
+}
+
+// --------------------------------------------------
 // HELPERS
 // --------------------------------------------------
 function formatBTC(num) {
@@ -41,18 +54,21 @@ function unlockOwnerField() {
 }
 
 function getListingStatus(endTime) {
-  const end = Date.parse(endTime);
+  const normalized = normalizeTimestamp(endTime);
+  const end = Date.parse(normalized);
   const now = Date.now();
 
-  if (isNaN(end)) return "Closed";
+  if (!normalized || isNaN(end)) return "Closed";
+
   return end > now ? "Active" : "Closed";
 }
 
 function timeRemaining(endTime) {
-  const end = Date.parse(endTime);
+  const normalized = normalizeTimestamp(endTime);
+  const end = Date.parse(normalized);
   const now = Date.now();
 
-  if (isNaN(end) || end <= now) return "Expired";
+  if (!normalized || isNaN(end) || end <= now) return "Expired";
 
   const diff = end - now;
   const hours = Math.floor(diff / (1000 * 60 * 60));
