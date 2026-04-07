@@ -2,15 +2,26 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>GPSL Dashboard</title>
-
-  <link rel="stylesheet" href="dashboard.css">
+  <title>GPSL Club Dashboard</title>
 
   <style>
     body {
       background: #111;
       color: #ddd;
       font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1 {
+      background:#222;
+      color:#ff9900;
+      padding:10px 16px;
+      border-radius:6px;
+      width: fit-content;
+      margin:20px auto;
+      font-size:26px;
+      font-weight:bold;
     }
 
     a.button, button.button {
@@ -31,11 +42,33 @@
       transform: scale(1.05);
     }
 
+    #nav {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .panel {
+      width: 90%;
+      max-width: 1100px;
+      margin: 20px auto;
+      background:#1a1a1a;
+      border:1px solid #333;
+      border-radius:8px;
+      padding:20px;
+    }
+
+    .panel h2 {
+      margin-top:0;
+      color:#ff9900;
+      border-bottom:1px solid #333;
+      padding-bottom:6px;
+    }
+
     table.gpsl-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 15px;
       font-size: 14px;
+      background:#1a1a1a;
     }
 
     table.gpsl-table th {
@@ -43,9 +76,6 @@
       color: #ff9900;
       padding: 8px;
       text-align: left;
-      position: sticky;
-      top: 0;
-      z-index: 2;
     }
 
     table.gpsl-table td {
@@ -57,109 +87,141 @@
       background: #181818;
     }
 
-    .section-header {
-      margin-top: 40px;
+    .decision-buttons {
+      display:flex;
+      gap:10px;
+      margin-top:10px;
+    }
+
+    .decision-buttons button {
+      flex:1;
+    }
+
+    .finance-box {
+      font-size:16px;
+      margin-top:10px;
+      padding:10px;
       background:#222;
-      color:#ff9900;
-      padding:8px 14px;
       border-radius:6px;
-      font-size:20px;
-      font-weight:bold;
-      display:inline-block;
-    }
-
-    .owner-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .owner-row input {
-      flex: 1;
-    }
-
-    .small-btn {
-      padding: 6px 10px;
-      font-size: 12px;
-      background: #ff9900;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    .small-btn:hover {
-      background: #ffaa22;
+      color:#ffaa22;
     }
   </style>
 </head>
 
 <body>
 
-  <div id="nav" style="padding: 15px; background:#1a1a1a; border-bottom:1px solid #333;"></div>
+  <h1>Club Dashboard</h1>
 
-  <div id="headerContainer">
-    <div id="headerLeft">
-      <img id="clubBadgeHeader" src="" alt="Club Badge">
-      <div>
-        <h1 id="dashboardTitle">GPSL Dashboard</h1>
-        <div id="userEmail"></div>
-      </div>
-    </div>
+  <div id="nav"></div>
 
-    <div id="headerRight">
-      <h2 class="panelTitle">Club Details</h2>
-      <div id="clubDetailsPanel">
-
-        <div class="detailRow">
-          <label>Club Name:</label>
-          <span id="clubNameField"></span>
-        </div>
-
-        <div class="detailRow owner-row">
-          <label>Owner:</label>
-          <input id="ownerInput" type="text">
-          <button id="editOwnerBtn" class="small-btn">Edit</button>
-          <button id="saveOwnerBtn" class="small-btn">Save</button>
-        </div>
-
-        <div class="detailRow">
-          <label>Stadium:</label>
-          <span id="stadiumField"></span>
-        </div>
-
-        <div class="detailRow">
-          <label>Capacity:</label>
-          <span id="capacityField"></span>
-        </div>
-
-      </div>
-    </div>
+  <!-- FINANCE PANEL -->
+  <div class="panel">
+    <h2>Club Finances</h2>
+    <div id="finance-balance" class="finance-box">Loading…</div>
   </div>
 
-  <div id="mainContent">
-    <div id="leftColumn">
-      <h2 class="section-header">Squad</h2>
-      <div id="squadContainer"></div>
-
-      <h2 class="section-header">Your Listed Players</h2>
-
-      <div id="listingFilters" style="margin: 10px 0; display: flex; gap: 15px; align-items: center;">
-        <label><input type="checkbox" id="filterActive" checked> Active</label>
-        <label><input type="checkbox" id="filterExpired" checked> Closed</label>
-      </div>
-
-      <div id="listedContainer"></div>
-    </div>
-
-    <div id="rightColumn"></div>
+  <!-- ACTIVE LISTINGS PANEL -->
+  <div class="panel">
+    <h2>Your Active Listings</h2>
+    <table class="gpsl-table">
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>Pos</th>
+          <th>Rating</th>
+          <th>Value</th>
+          <th>Reserve</th>
+          <th>Time Remaining</th>
+          <th>Highest Bid</th>
+          <th>Highest Club</th>
+        </tr>
+      </thead>
+      <tbody id="active-listings-body"></tbody>
+    </table>
   </div>
 
+  <!-- SELLER REVIEW PANEL -->
+  <div class="panel">
+    <h2>Seller Review</h2>
+    <table class="gpsl-table">
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>Pos</th>
+          <th>Rating</th>
+          <th>Highest Bid</th>
+          <th>Highest Club</th>
+          <th>Deadline</th>
+          <th>Decision</th>
+        </tr>
+      </thead>
+      <tbody id="seller-review-body"></tbody>
+    </table>
+  </div>
+
+  <!-- SOLD / CLOSED PANEL -->
+  <div class="panel">
+    <h2>Closed Listings</h2>
+    <table class="gpsl-table">
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>Pos</th>
+          <th>Rating</th>
+          <th>Final Bid</th>
+          <th>Winner</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="closed-listings-body"></tbody>
+    </table>
+  </div>
+
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
   <script src="firebase.js"></script>
 
-  <script type="module" src="dashboard.js"></script>
+  <!-- Supabase -->
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    const supabase = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+    );
+
+    window.supabase = supabase;
+  </script>
+
+  <!-- Dashboard Logic -->
+  <script src="dashboard.js"></script>
+
+  <script>
+    function logout() {
+      auth.signOut().then(() => {
+        window.location = "login.html";
+      });
+    }
+
+    auth.onAuthStateChanged(user => {
+      const nav = document.getElementById("nav");
+
+      if (!user) {
+        window.location = "login.html";
+        return;
+      }
+
+      nav.innerHTML = `
+        <a href="index.html" class="button">Home</a>
+        <a href="GPDB.html" class="button">Player Database</a>
+        <a href="clubs.html" class="button">Clubs</a>
+        <a href="all_listings.html" class="button">Transfer Market</a>
+        <button onclick="logout()" class="button">Logout</button>
+      `;
+    });
+  </script>
 
 </body>
 </html>
