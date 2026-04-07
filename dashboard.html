@@ -192,11 +192,15 @@
       const userDoc = await db.collection("users").doc(uid).get();
       if (!userDoc.exists) return;
 
-      const shortName = userDoc.data().club;
+      const shortName = userDoc.data().club; // "URD"
       loadClubDetails(shortName);
     }
 
     async function loadClubDetails(shortName) {
+
+      // ⭐ Store shortName globally so Save button can access it
+      document.body.dataset.shortname = shortName;
+
       const badgePath = `images/club_badges/${shortName}.png`;
 
       const { data: club } = await window.supabaseClient
@@ -233,13 +237,17 @@
       };
 
       saveOwnerBtn.onclick = async () => {
+        console.log("SAVE BUTTON CLICKED");
+
         const newOwner = ownerInput.value.trim();
         if (!newOwner) return alert("Owner cannot be empty");
+
+        const sn = document.body.dataset.shortname; // ⭐ ALWAYS defined
 
         await window.supabaseClient
           .from("Clubs")
           .update({ owner: newOwner })
-          .eq("ShortName", shortName);   // ⭐ FIXED
+          .eq("ShortName", sn);
 
         lockOwnerField();
         editOwnerBtn.style.display = "inline-block";
