@@ -1,5 +1,3 @@
-**ALL LISTINGS HTML**
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -47,12 +45,34 @@
       margin-bottom: 20px;
     }
 
+    .filters-bar {
+      width: 90%;
+      max-width: 1100px;
+      margin: 0 auto 10px auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .filters-left label {
+      margin-right: 10px;
+      cursor: pointer;
+    }
+
+    .filters-right {
+      color: #ff9900;
+      font-weight: bold;
+    }
+
     table.gpsl-table {
       width: 90%;
       max-width: 1100px;
-      margin: 20px auto;
+      margin: 10px auto 20px auto;
       border-collapse: collapse;
       font-size: 14px;
+      background:#1a1a1a;
     }
 
     table.gpsl-table th {
@@ -60,6 +80,9 @@
       color: #ff9900;
       padding: 8px;
       text-align: left;
+      position: sticky;
+      top: 0;
+      z-index: 2;
     }
 
     table.gpsl-table td {
@@ -70,6 +93,91 @@
     table.gpsl-table tr:nth-child(even) {
       background: #181818;
     }
+
+    table.gpsl-table tr:hover {
+      background:#262626;
+      cursor:pointer;
+    }
+
+    /* Modal */
+    #bid-modal {
+      display: none;
+      position: fixed;
+      z-index: 999;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.7);
+    }
+
+    #bid-modal-content {
+      background-color: #1a1a1a;
+      margin: 60px auto;
+      padding: 20px;
+      border: 1px solid #333;
+      width: 90%;
+      max-width: 600px;
+      border-radius: 8px;
+      color:#ddd;
+    }
+
+    #bid-modal-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:10px;
+    }
+
+    #bid-modal-header h2 {
+      margin:0;
+      color:#ff9900;
+    }
+
+    #bid-modal-close {
+      color:#ddd;
+      font-size:24px;
+      cursor:pointer;
+    }
+
+    #bid-modal-close:hover {
+      color:#ff9900;
+    }
+
+    .bid-row {
+      display:flex;
+      justify-content:space-between;
+      margin:4px 0;
+      font-size:14px;
+    }
+
+    .bid-row label {
+      color:#ff9900;
+      margin-right:6px;
+    }
+
+    #bid-input-section {
+      margin-top:15px;
+      padding-top:10px;
+      border-top:1px solid #333;
+    }
+
+    #bid-amount {
+      width:120px;
+      padding:4px;
+      border-radius:4px;
+      border:1px solid #444;
+      background:#111;
+      color:#ddd;
+    }
+
+    #bid-error {
+      color:#ff5555;
+      margin-top:8px;
+      min-height:18px;
+      font-size:13px;
+    }
   </style>
 </head>
 
@@ -79,28 +187,110 @@
 
   <div id="nav"></div>
 
-  <table class="gpsl-table" id="marketTable">
+  <div class="filters-bar">
+    <div class="filters-left">
+      <label>
+        <input type="checkbox" id="filter-active" checked>
+        Active
+      </label>
+      <label>
+        <input type="checkbox" id="filter-closed" checked>
+        Closed / Seller Review
+      </label>
+    </div>
+    <div class="filters-right">
+      Click a row to view & bid
+    </div>
+  </div>
+
+  <table class="gpsl-table">
     <thead>
       <tr>
         <th>Selling Club</th>
         <th>Player</th>
         <th>Pos</th>
+        <th>Style</th>
         <th>Rating</th>
         <th>Value</th>
         <th>Reserve</th>
-        <th>Time Remaining</th>
         <th>Status</th>
+        <th>Time Remaining</th>
+        <th>Highest Bid</th>
+        <th>Highest Club</th>
       </tr>
     </thead>
-    <tbody></tbody>
+    <tbody id="listings-body"></tbody>
   </table>
+
+  <!-- Bid Modal -->
+  <div id="bid-modal">
+    <div id="bid-modal-content">
+      <div id="bid-modal-header">
+        <h2 id="bid-player-name">Player</h2>
+        <span id="bid-modal-close">&times;</span>
+      </div>
+
+      <div class="bid-row">
+        <label>Position:</label>
+        <span id="bid-player-position"></span>
+      </div>
+      <div class="bid-row">
+        <label>Playstyle:</label>
+        <span id="bid-player-playstyle"></span>
+      </div>
+      <div class="bid-row">
+        <label>Rating:</label>
+        <span id="bid-player-rating"></span>
+      </div>
+      <div class="bid-row">
+        <label>Selling Club:</label>
+        <span id="bid-selling-club"></span>
+      </div>
+      <div class="bid-row">
+        <label>Market Value:</label>
+        <span id="bid-market-value"></span>
+      </div>
+      <div class="bid-row">
+        <label>Reserve Price:</label>
+        <span id="bid-reserve-price"></span>
+      </div>
+      <div class="bid-row">
+        <label>Status:</label>
+        <span id="bid-status"></span>
+      </div>
+      <div class="bid-row">
+        <label>Time Remaining:</label>
+        <span id="bid-time-remaining"></span>
+      </div>
+      <div class="bid-row">
+        <label>Highest Bid:</label>
+        <span id="bid-highest-bid"></span>
+      </div>
+      <div class="bid-row">
+        <label>Highest Club:</label>
+        <span id="bid-highest-club"></span>
+      </div>
+
+      <div id="bid-input-section">
+        <div class="bid-row">
+          <label>Your Bid (₿):</label>
+          <input type="number" id="bid-amount" step="0.01" min="0">
+        </div>
+        <div style="margin-top:10px;">
+          <button id="place-bid-btn" class="button">Place Bid</button>
+        </div>
+        <div id="bid-error"></div>
+      </div>
+    </div>
+  </div>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
   <script src="firebase.js"></script>
 
-  <!-- Supabase -->
+  <!-- Supabase + logic -->
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
@@ -109,24 +299,14 @@
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
     );
 
-    function formatBTC(num) {
-      if (!num || isNaN(num)) return "₿ 0";
-      return "₿ " + Number(num).toLocaleString("en-GB");
-    }
+    // expose supabase for all_listings.js
+    window.supabase = supabase;
+  </script>
 
-    function timeRemaining(expiry) {
-      const end = new Date(expiry).getTime();
-      const now = Date.now();
-      const diff = end - now;
+  <!-- All listings logic -->
+  <script src="all_listings.js"></script>
 
-      if (diff <= 0) return "Expired";
-
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-      return `${hours}h ${mins}m`;
-    }
-
+  <script>
     function logout() {
       auth.signOut().then(() => {
         window.location = "login.html";
@@ -134,12 +314,14 @@
     }
 
     auth.onAuthStateChanged(user => {
+      const nav = document.getElementById("nav");
+
       if (!user) {
         window.location = "login.html";
         return;
       }
 
-      document.getElementById("nav").innerHTML = `
+      nav.innerHTML = `
         <a href="index.html" class="button">Home</a>
         <a href="GPDB.html" class="button">Player Database</a>
         <a href="clubs.html" class="button">Clubs</a>
@@ -147,48 +329,6 @@
         <button onclick="logout()" class="button">Logout</button>
       `;
     });
-
-    async function loadMarket() {
-      const { data: listings } = await supabase
-        .from("Player_Transfer_Listings")
-        .select("*");
-
-      if (!listings) return;
-
-      const playerIds = [...new Set(listings.map(l => l.player_id))];
-
-      const { data: players } = await supabase
-        .from("Players")
-        .select("*")
-        .in("Konami_ID", playerIds);
-
-      const table = document.querySelector("#marketTable tbody");
-      table.innerHTML = "";
-
-      listings.forEach(listing => {
-        const player = players.find(
-          p => String(p.Konami_ID) === String(listing.player_id)
-        );
-        if (!player) return;
-
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-          <td>${listing.seller_club_id}</td>
-          <td>${player.Name}</td>
-          <td>${player.Position}</td>
-          <td>${player.Rating}</td>
-          <td>${formatBTC(player.market_value)}</td>
-          <td>${formatBTC(listing.reserve_price)}</td>
-          <td>${timeRemaining(listing.end_time)}</td>
-          <td>Active</td>
-        `;
-
-        table.appendChild(row);
-      });
-    }
-
-    loadMarket();
   </script>
 
 </body>
