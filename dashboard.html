@@ -67,6 +67,30 @@
       font-weight:bold;
       display:inline-block;
     }
+
+    /* NEW INLINE OWNER ROW */
+    .owner-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .owner-row input {
+      flex: 1;
+    }
+
+    .small-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+      background: #ff9900;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .small-btn:hover {
+      background: #ffaa22;
+    }
   </style>
 </head>
 
@@ -94,13 +118,13 @@
           <span id="clubNameField"></span>
         </div>
 
-        <div class="detailRow">
+        <!-- UPDATED OWNER ROW -->
+        <div class="detailRow owner-row">
           <label>Owner:</label>
           <input id="ownerInput" type="text">
-          <button id="editOwnerBtn">Edit</button>
+          <button id="editOwnerBtn" class="small-btn">Edit</button>
+          <button id="saveOwnerBtn" class="small-btn">Save</button>
         </div>
-
-        <button id="saveOwnerBtn" class="button">Save Owner</button>
 
         <div class="detailRow">
           <label>Stadium:</label>
