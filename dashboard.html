@@ -4,10 +4,8 @@
   <meta charset="UTF-8">
   <title>GPSL Dashboard</title>
 
-  <!-- External CSS -->
   <link rel="stylesheet" href="dashboard.css">
 
-  <!-- Keep your existing table + button styles -->
   <style>
     body {
       background: #111;
@@ -74,6 +72,9 @@
 
 <body>
 
+  <!-- TOP NAVIGATION -->
+  <div id="nav" style="padding: 15px; background:#1a1a1a; border-bottom:1px solid #333;"></div>
+
   <!-- HEADER -->
   <div id="headerContainer">
     <div id="headerLeft">
@@ -87,7 +88,6 @@
     <div id="headerRight">
       <h2 class="panelTitle">Club Details</h2>
       <div id="clubDetailsPanel">
-        <img id="clubBadgePanel" src="" alt="Club Badge" class="panelBadge">
 
         <div class="detailRow">
           <label>Club Name:</label>
@@ -112,22 +112,9 @@
           <span id="capacityField"></span>
         </div>
 
-        <div class="detailRow">
-          <label>Founded Season:</label>
-          <span id="foundedField">—</span>
-        </div>
-
-        <div class="detailRow">
-          <label>Motto:</label>
-          <span id="mottoField">—</span>
-        </div>
-
       </div>
     </div>
   </div>
-
-  <!-- NAVIGATION -->
-  <div id="nav"></div>
 
   <!-- MAIN CONTENT -->
   <div id="mainContent">
@@ -225,7 +212,6 @@
       document.getElementById("clubBadgeHeader").src = badgePath;
       document.getElementById("dashboardTitle").textContent = `${fullName} Dashboard`;
 
-      document.getElementById("clubBadgePanel").src = badgePath;
       document.getElementById("clubNameField").textContent = fullName;
 
       ownerInput.value = club.owner || "";
@@ -233,20 +219,20 @@
 
       if (ownerInput.value.trim() !== "") {
         lockOwnerField();
-        document.getElementById("editOwnerBtn").style.display = "inline-block";
-        document.getElementById("saveOwnerBtn").style.display = "none";
+        editOwnerBtn.style.display = "inline-block";
+        saveOwnerBtn.style.display = "none";
       } else {
         unlockOwnerField();
-        document.getElementById("editOwnerBtn").style.display = "none";
-        document.getElementById("saveOwnerBtn").style.display = "inline-block";
+        editOwnerBtn.style.display = "none";
+        saveOwnerBtn.style.display = "inline-block";
       }
 
-      document.getElementById("editOwnerBtn").onclick = () => {
+      editOwnerBtn.onclick = () => {
         unlockOwnerField();
-        document.getElementById("editOwnerBtn").style.display = "none";
+        editOwnerBtn.style.display = "none";
       };
 
-      document.getElementById("saveOwnerBtn").onclick = async () => {
+      saveOwnerBtn.onclick = async () => {
         const newOwner = ownerInput.value.trim();
         if (!newOwner) return alert("Owner cannot be empty");
 
@@ -256,8 +242,8 @@
           .eq("Club", fullName);
 
         lockOwnerField();
-        document.getElementById("editOwnerBtn").style.display = "inline-block";
-        document.getElementById("saveOwnerBtn").style.display = "none";
+        editOwnerBtn.style.display = "inline-block";
+        saveOwnerBtn.style.display = "none";
 
         alert("Owner updated");
       };
@@ -266,8 +252,8 @@
         ownerInput.style.width = (ownerInput.value.length + 2) + "ch";
       });
 
-      document.getElementById("stadiumField").textContent = club.Stadium || "—";
-      document.getElementById("capacityField").textContent = club.Capacity || "—";
+      stadiumField.textContent = club.Stadium || "—";
+      capacityField.textContent = club.Capacity || "—";
 
       loadSquad(fullName);
       loadListings(fullName);
@@ -308,7 +294,7 @@
       });
 
       html += "</tbody></table>";
-      document.getElementById("squadContainer").innerHTML = html;
+      squadContainer.innerHTML = html;
     }
 
     async function loadListings(fullName) {
@@ -352,7 +338,7 @@
       }
 
       html += "</tbody></table>";
-      document.getElementById("listedContainer").innerHTML = html;
+      listedContainer.innerHTML = html;
     }
 
     function timeRemaining(expiry) {
