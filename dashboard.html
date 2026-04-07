@@ -239,7 +239,7 @@
         await window.supabaseClient
           .from("Clubs")
           .update({ owner: newOwner })
-          .eq("Club", fullName);
+          .eq("ShortName", shortName)
 
         lockOwnerField();
         editOwnerBtn.style.display = "inline-block";
