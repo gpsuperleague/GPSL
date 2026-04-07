@@ -80,6 +80,7 @@
   <table class="gpsl-table" id="marketTable">
     <thead>
       <tr>
+        <th>Selling Club</th>
         <th>Player</th>
         <th>Pos</th>
         <th>Rating</th>
@@ -171,6 +172,7 @@
         const row = document.createElement("tr");
 
         row.innerHTML = `
+          <td>${listing.seller_club_id}</td>
           <td>${player.Name}</td>
           <td>${player.Position}</td>
           <td>${player.Rating}</td>
