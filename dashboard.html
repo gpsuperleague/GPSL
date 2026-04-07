@@ -210,11 +210,14 @@
 
       const { data: club } = await window.supabaseClient
         .from("Clubs")
-        .select("Club, Owner, Stadium, Capacity")
+        .select("Club, owner, Stadium, Capacity, ShortName")
         .eq("ShortName", shortName)
         .single();
 
-      if (!club) return;
+      if (!club) {
+        console.error("Club not found for ShortName:", shortName);
+        return;
+      }
 
       const fullName = club.Club;
 
@@ -225,7 +228,7 @@
       // PANEL
       document.getElementById("clubBadgePanel").src = badgePath;
       document.getElementById("clubNameField").textContent = fullName;
-      document.getElementById("ownerInput").value = club.Owner || "";
+      document.getElementById("ownerInput").value = club.owner || "";
       document.getElementById("stadiumField").textContent = club.Stadium || "—";
       document.getElementById("capacityField").textContent = club.Capacity || "—";
 
@@ -235,7 +238,7 @@
 
         await window.supabaseClient
           .from("Clubs")
-          .update({ Owner: newOwner })
+          .update({ owner: newOwner })
           .eq("Club", fullName);
 
         alert("Owner updated");
@@ -250,6 +253,8 @@
         .from("Players")
         .select("*")
         .eq("Contracted_Team", fullName);
+
+      if (!players) return;
 
       let html = `
         <table class="gpsl-table">
@@ -287,6 +292,8 @@
         .select("*")
         .eq("seller_club_id", fullName);
 
+      if (!listings) return;
+
       let html = `
         <table class="gpsl-table">
           <thead>
@@ -298,18 +305,26 @@
           <tbody>
       `;
 
-      listings.forEach(l => {
+      for (const l of listings) {
+        const { data: player } = await window.supabaseClient
+          .from("Players")
+          .select("Name, Position, Rating")
+          .eq("Konami_ID", l.player_id)
+          .single();
+
+        if (!player) continue;
+
         html += `
           <tr>
-            <td>${l.player_name}</td>
-            <td>${l.position}</td>
-            <td>${l.rating}</td>
+            <td>${player.Name}</td>
+            <td>${player.Position}</td>
+            <td>${player.Rating}</td>
             <td>${formatBTC(l.reserve_price)}</td>
             <td>${timeRemaining(l.end_time)}</td>
             <td>Active</td>
           </tr>
         `;
-      });
+      }
 
       html += "</tbody></table>";
       document.getElementById("listedContainer").innerHTML = html;
