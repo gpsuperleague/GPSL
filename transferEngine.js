@@ -1,78 +1,97 @@
-const transferEngine = {};
+// ===============================
+//  EVALUATE EXPIRED LISTING
+// ===============================
+transferEngine.evaluateExpiredListing = async function (listing) {
+  const now = new Date();
+  const end = new Date(listing.end_time);
 
-transferEngine.placeBid = async function (listingId, bidderClubId, bidAmount) {
-  console.log("Placing bid:", listingId, bidderClubId, bidAmount);
+  // If expired and no bids → close
+  if (!listing.current_highest_bid) {
+    await supabase
+      .from("Player_Transfer_Listings")
+      .update({
+        status: "Closed",
+        transfer_completed: false
+      })
+      .eq("id", listing.id);
 
+    return;
+  }
+
+  // If expired and reserve met → auto-complete sale
+  if (listing.current_highest_bid >= listing.reserve_price) {
+    await transferEngine.acceptSale(listing.id);
+    return;
+  }
+
+  // If expired and reserve NOT met → seller review
+  const reviewDeadline = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  await supabase
+    .from("Player_Transfer_Listings")
+    .update({
+      status: "Review",
+      review_deadline: reviewDeadline.toISOString()
+    })
+    .eq("id", listing.id);
+};
+
+
+
+// ===============================
+//  ACCEPT SALE
+// ===============================
+transferEngine.acceptSale = async function (listingId) {
   // Fetch listing
-  const { data: listingData, error: listingError } = await supabase
+  const { data: listing, error } = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
     .eq("id", listingId)
     .single();
 
-  if (listingError || !listingData) {
-    console.error("Listing not found", listingError);
-    return { success: false, message: "Listing not found" };
+  if (error || !listing) {
+    console.error("Listing not found for acceptSale");
+    return;
   }
 
-  const listing = listingData;
-  const now = new Date();
-  const end = new Date(listing.end_time);
+  const buyer = listing.current_highest_bidder;
+  const seller = listing.seller_club_id;
+  const amount = listing.current_highest_bid;
 
-  // Prevent bidding after expiry
-  if (now > end) {
-    return { success: false, message: "Listing has already expired" };
-  }
-
-  // Prevent low bids
-  if (bidAmount <= (listing.current_highest_bid || 0)) {
-    return { success: false, message: "Bid must be higher than current highest bid" };
-  }
-
-  // Insert bid record
-  await supabase.from("Transfer_Bids").insert({
-    listing_id: listingId,
-    bidder_club_id: bidderClubId,
-    bid_amount: bidAmount,
-    bid_time: now.toISOString()
+  // Move money: buyer → seller
+  await supabase.rpc("transfer_funds", {
+    from_club: buyer,
+    to_club: seller,
+    amount: amount
   });
 
-  // Update listing with new highest bid
+  // Transfer player to buyer
+  await supabase
+    .from("Players")
+    .update({ club_id: buyer })
+    .eq("id", listing.player_id);
+
+  // Mark listing as completed
   await supabase
     .from("Player_Transfer_Listings")
     .update({
-      current_highest_bid: bidAmount,
-      current_highest_bidder: bidderClubId
+      status: "Closed",
+      transfer_completed: true
     })
     .eq("id", listingId);
+};
 
-  // ============================
-  //  EXTENSION LOGIC
-  // ============================
 
-  const timeRemaining = end - now;
 
-  // If inside final 2 minutes → extend by 2 minutes
-  if (timeRemaining <= 2 * 60 * 1000) {
-    const newEnd = new Date(end.getTime() + 2 * 60 * 1000);
-    await supabase
-      .from("Player_Transfer_Listings")
-      .update({ end_time: newEnd.toISOString() })
-      .eq("id", listingId);
-
-    return { success: true, message: "Bid placed. Listing extended by 2 minutes." };
-  }
-
-  // If inside final hour → extend by 1 hour
-  if (timeRemaining <= 60 * 60 * 1000) {
-    const newEnd = new Date(end.getTime() + 60 * 60 * 1000);
-    await supabase
-      .from("Player_Transfer_Listings")
-      .update({ end_time: newEnd.toISOString() })
-      .eq("id", listingId);
-
-    return { success: true, message: "Bid placed. Listing extended by 1 hour." };
-  }
-
-  return { success: true, message: "Bid placed successfully." };
+// ===============================
+//  REJECT SALE
+// ===============================
+transferEngine.rejectSale = async function (listingId) {
+  await supabase
+    .from("Player_Transfer_Listings")
+    .update({
+      status: "Closed",
+      transfer_completed: false
+    })
+    .eq("id", listingId);
 };
