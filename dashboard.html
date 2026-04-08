@@ -190,43 +190,45 @@
   </div>
 
   <!-- LIST PLAYER MODAL -->
-  <div id="list-player-modal-backdrop">
-    <div id="list-player-modal">
-      <h3>List Player</h3>
-      <div id="modalPlayerName" style="font-weight:bold; margin-bottom:4px;"></div>
-      <div id="modalPlayerInfo"></div>
+<div id="list-player-modal-backdrop">
+  <div id="list-player-modal">
+    <h3>List Player</h3>
 
-      <div class="modal-row">
-        <label>Market Value</label>
-        <div id="modalMarketValue">₿ 0</div>
-      </div>
+    <div id="modalPlayerName" style="font-weight:bold; margin-bottom:4px;"></div>
+    <div id="modalPlayerInfo"></div>
 
-      <div class="modal-row">
-        <label>Max Allowed Reserve</label>
-        <div id="modalMaxReserve">₿ 0</div>
-      </div>
-
-      <div class="modal-row">
-        <label for="reserveInput">Reserve Price</label>
-        <input type="number" id="reserveInput" min="0" step="1">
-        <div id="reserveError"></div>
-       <button id="useMaxReserveBtn" class="button" style="margin-top: 6px;">
-          Use Max Allowed Reserve
-       </button>
-</div>
-        
-      </div>
-
-      <div id="modalWarning">
-        Listing a player is irreversible once confirmed. You cannot cancel or edit this listing.
-      </div>
-
-      <div class="modal-buttons">
-        <button class="button" id="cancelListBtn">Cancel</button>
-        <button class="button" id="confirmListBtn">Confirm Listing</button>
-      </div>
+    <div class="modal-row">
+      <label>Market Value</label>
+      <div id="modalMarketValue">₿ 0</div>
     </div>
+
+    <div class="modal-row">
+      <label>Max Allowed Reserve</label>
+      <div id="modalMaxReserve">₿ 0</div>
+    </div>
+
+    <div class="modal-row">
+      <label for="reserveInput">Reserve Price</label>
+      <input type="number" id="reserveInput" min="0" step="1">
+      <div id="reserveError"></div>
+
+      <button id="useMaxReserveBtn" class="button" style="margin-top: 6px;">
+        Use Max Allowed Reserve
+      </button>
+    </div>
+
+    <!-- ⭐ WARNING NOW INSIDE THE MODAL ⭐ -->
+    <div id="modalWarning" style="margin-top: 12px; margin-bottom: 12px; text-align:center; color:#ffcc00; font-weight:600;">
+      Listing a player is irreversible once confirmed. You cannot cancel or edit this listing.
+    </div>
+
+    <div class="modal-buttons">
+      <button class="button" id="cancelListBtn">Cancel</button>
+      <button class="button" id="confirmListBtn">Confirm Listing</button>
+    </div>
+
   </div>
+</div>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
