@@ -438,7 +438,6 @@ async function renderSellerReview(listings) {
   }
 }
 
-
 // ===============================
 //  CLOSED LISTINGS
 // ===============================
