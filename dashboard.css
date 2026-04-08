@@ -1,13 +1,17 @@
-/* HEADER LAYOUT */
+/* ============================
+   HEADER LAYOUT
+   ============================ */
+
 #headerContainer {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 12px;
   background: #1a1a1a;
   border: 1px solid #333;
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 20px;
+  gap: 20px;
 }
 
 #headerLeft {
@@ -35,7 +39,10 @@
   margin-top: 4px;
 }
 
-/* CLUB DETAILS PANEL */
+/* ============================
+   CLUB DETAILS PANEL
+   ============================ */
+
 #headerRight {
   width: 320px;
   background: #222;
@@ -57,13 +64,6 @@
   gap: 12px;
 }
 
-.panelBadge {
-  width: 100px;
-  height: 100px;
-  object-fit: contain;
-  margin: 0 auto 10px auto;
-}
-
 .detailRow {
   display: flex;
   justify-content: space-between;
@@ -79,7 +79,7 @@
 }
 
 /* ============================
-   OWNER FIELD STATES (UPDATED)
+   OWNER FIELD STATES
    ============================ */
 
 #ownerInput {
@@ -91,45 +91,40 @@
   transition: 0.2s;
 }
 
-/* Locked (disabled) */
 #ownerInput:disabled {
   background: #333;
   color: #aaa;
   border: 1px solid #444;
 }
 
-/* Edit button */
-#editOwnerBtn {
-  margin-left: 10px;
+.small-btn {
   padding: 6px 12px;
   background: #444;
   color: #ddd;
   border-radius: 4px;
   cursor: pointer;
   transition: 0.2s;
+  border: none;
 }
 
-#editOwnerBtn:hover {
+.small-btn:hover {
   background: #666;
 }
 
-/* Save button (hidden until editing) */
 #saveOwnerBtn {
   display: none;
-  margin-top: 10px;
-  padding: 6px 12px;
   background: #ff9900;
   color: #111;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: 0.2s;
 }
 
 #saveOwnerBtn:hover {
   background: #ffb84d;
 }
 
-/* MAIN CONTENT */
+/* ============================
+   MAIN CONTENT LAYOUT
+   ============================ */
+
 #mainContent {
   display: flex;
   padding: 20px;
@@ -144,20 +139,178 @@
   flex: 1;
 }
 
-/* RESPONSIVE */
-@media (max-width: 900px) {
-  #headerContainer {
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-  }
+/* ============================
+   SECTION HEADERS
+   ============================ */
 
-  #headerRight {
-    width: 100%;
-    margin-top: 20px;
-  }
-
-  #mainContent {
-    flex-direction: column;
-  }
+.section-header {
+  margin: 24px 0 8px 0;
+  background: #222;
+  color: #ff9900;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: bold;
+  display: inline-block;
 }
+
+/* ============================
+   PANELS
+   ============================ */
+
+.panel {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.panel h2 {
+  margin: 0 0 10px 0;
+  color: #ff9900;
+  font-size: 18px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 6px;
+}
+
+/* ============================
+   TABLES
+   ============================ */
+
+table.gpsl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  background: #1a1a1a;
+}
+
+table.gpsl-table th {
+  background: #222;
+  color: #ff9900;
+  padding: 8px;
+  text-align: left;
+}
+
+table.gpsl-table td {
+  padding: 8px;
+  border-bottom: 1px solid #333;
+}
+
+table.gpsl-table tr:nth-child(even) {
+  background: #181818;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+.status-listed {
+  background: #334422;
+  color: #aaff66;
+}
+
+.status-not-listed {
+  background: #442222;
+  color: #ff8888;
+}
+
+.decision-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.decision-buttons button {
+  flex: 1;
+}
+
+.finance-box {
+  font-size: 16px;
+  margin-top: 10px;
+  padding: 10px;
+  background: #222;
+  border-radius: 6px;
+  color: #ffaa22;
+}
+
+/* ============================
+   LISTING FILTERS
+   ============================ */
+
+#listingFilters {
+  margin: 10px 0;
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  font-size: 13px;
+}
+
+#listingFilters label {
+  cursor: pointer;
+}
+
+/* ============================
+   LIST PLAYER MODAL
+   ============================ */
+
+#list-player-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+#list-player-modal {
+  background: #1a1a1a;
+  border-radius: 8px;
+  border: 1px solid #444;
+  padding: 16px 18px;
+  width: 360px;
+  max-width: 90%;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.8);
+}
+
+#list-player-modal h3 {
+  margin: 0 0 10px 0;
+  color: #ff9900;
+  font-size: 18px;
+}
+
+#modalPlayerInfo {
+  font-size: 13px;
+  color: #ccc;
+  margin-bottom: 8px;
+}
+
+.modal-row {
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.modal-row label {
+  display: block;
+  margin-bottom: 3px;
+  color: #ccc;
+  font-weight: bold;
+}
+
+.modal-row input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background: #111;
+  color: #ddd;
+  font-size: 13px;
+}
+
+#modalWarning {
+  font-size: 12px;
+  color: #
