@@ -13,17 +13,6 @@
       padding: 0;
     }
 
-    h1 {
-      background:#222;
-      color:#ff9900;
-      padding:10px 16px;
-      border-radius:6px;
-      width: fit-content;
-      margin:20px auto;
-      font-size:26px;
-      font-weight:bold;
-    }
-
     a.button, button.button {
       display: inline-block;
       padding: 10px 20px;
@@ -35,6 +24,7 @@
       margin: 5px;
       transition: 0.2s;
       cursor: pointer;
+      border: none;
     }
 
     a.button:hover, button.button:hover {
@@ -43,32 +33,150 @@
     }
 
     #nav {
+      padding: 15px;
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
       text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 26px;
+      color: #ff9900;
+    }
+
+    .page-container {
+      width: 95%;
+      max-width: 1200px;
+      margin: 20px auto 40px auto;
+    }
+
+    /* Header */
+    #headerContainer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 16px;
       margin-bottom: 20px;
     }
 
+    #headerLeft {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #clubBadgeHeader {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      background: #222;
+      object-fit: contain;
+    }
+
+    #userEmail {
+      font-size: 13px;
+      color: #aaa;
+    }
+
+    #headerRight {
+      min-width: 260px;
+    }
+
+    .panelTitle {
+      margin: 0 0 8px 0;
+      color: #ff9900;
+      font-size: 18px;
+    }
+
+    /* Club details panel */
+    #clubDetailsPanel {
+      background: #181818;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+    }
+
+    .detailRow {
+      display: flex;
+      align-items: center;
+      margin-bottom: 6px;
+      gap: 8px;
+    }
+
+    .detailRow label {
+      width: 80px;
+      color: #ccc;
+      font-weight: bold;
+      font-size: 13px;
+    }
+
+    .detailRow span {
+      color: #eee;
+    }
+
+    .owner-row input {
+      flex: 1;
+      padding: 4px 6px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background: #111;
+      color: #ddd;
+      font-size: 13px;
+    }
+
+    .small-btn {
+      padding: 5px 8px;
+      font-size: 12px;
+      background: #ff9900;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .small-btn:hover {
+      background: #ffaa22;
+    }
+
+    /* Section headers */
+    .section-header {
+      margin: 24px 0 8px 0;
+      background: #222;
+      color: #ff9900;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 18px;
+      font-weight: bold;
+      display: inline-block;
+    }
+
+    /* Panels */
     .panel {
-      width: 90%;
-      max-width: 1100px;
-      margin: 20px auto;
-      background:#1a1a1a;
-      border:1px solid #333;
-      border-radius:8px;
-      padding:20px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
     }
 
     .panel h2 {
-      margin-top:0;
-      color:#ff9900;
-      border-bottom:1px solid #333;
-      padding-bottom:6px;
+      margin: 0 0 10px 0;
+      color: #ff9900;
+      font-size: 18px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 6px;
     }
 
+    /* Tables */
     table.gpsl-table {
       width: 100%;
       border-collapse: collapse;
       font-size: 14px;
-      background:#1a1a1a;
+      background: #1a1a1a;
     }
 
     table.gpsl-table th {
@@ -87,94 +195,319 @@
       background: #181818;
     }
 
+    .status-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 11px;
+    }
+
+    .status-listed {
+      background: #334422;
+      color: #aaff66;
+    }
+
+    .status-not-listed {
+      background: #442222;
+      color: #ff8888;
+    }
+
     .decision-buttons {
-      display:flex;
-      gap:10px;
-      margin-top:10px;
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
     }
 
     .decision-buttons button {
-      flex:1;
+      flex: 1;
     }
 
     .finance-box {
-      font-size:16px;
-      margin-top:10px;
-      padding:10px;
-      background:#222;
-      border-radius:6px;
-      color:#ffaa22;
+      font-size: 16px;
+      margin-top: 10px;
+      padding: 10px;
+      background: #222;
+      border-radius: 6px;
+      color: #ffaa22;
+    }
+
+    /* Listing filters */
+    #listingFilters {
+      margin: 10px 0;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    #listingFilters label {
+      cursor: pointer;
+    }
+
+    /* List Player Modal */
+    #list-player-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    #list-player-modal {
+      background: #1a1a1a;
+      border-radius: 8px;
+      border: 1px solid #444;
+      padding: 16px 18px;
+      width: 360px;
+      max-width: 90%;
+      box-shadow: 0 0 12px rgba(0, 0, 0, 0.8);
+    }
+
+    #list-player-modal h3 {
+      margin: 0 0 10px 0;
+      color: #ff9900;
+      font-size: 18px;
+    }
+
+    #modalPlayerInfo {
+      font-size: 13px;
+      color: #ccc;
+      margin-bottom: 8px;
+    }
+
+    .modal-row {
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .modal-row label {
+      display: block;
+      margin-bottom: 3px;
+      color: #ccc;
+      font-weight: bold;
+    }
+
+    .modal-row input {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background: #111;
+      color: #ddd;
+      font-size: 13px;
+    }
+
+    #modalWarning {
+      font-size: 12px;
+      color: #ff6666;
+      margin-top: 6px;
+    }
+
+    #reserveError {
+      font-size: 12px;
+      color: #ff6666;
+      min-height: 14px;
+      margin-top: 4px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .modal-buttons .button {
+      padding: 8px 14px;
+      font-size: 13px;
     }
   </style>
 </head>
 
 <body>
-
-  <h1>Club Dashboard</h1>
-
   <div id="nav"></div>
 
-  <!-- FINANCE PANEL -->
-  <div class="panel">
-    <h2>Club Finances</h2>
-    <div id="finance-balance" class="finance-box">Loading…</div>
+  <div class="page-container">
+    <!-- HEADER -->
+    <div id="headerContainer">
+      <div id="headerLeft">
+        <img id="clubBadgeHeader" src="" alt="Club Badge">
+        <div>
+          <h1 id="dashboardTitle">GPSL Club Dashboard</h1>
+          <div id="userEmail"></div>
+        </div>
+      </div>
+
+      <div id="headerRight">
+        <h2 class="panelTitle">Club Details</h2>
+        <div id="clubDetailsPanel">
+          <div class="detailRow">
+            <label>Club:</label>
+            <span id="clubNameField"></span>
+          </div>
+
+          <div class="detailRow owner-row">
+            <label>Owner:</label>
+            <input id="ownerInput" type="text">
+            <button id="editOwnerBtn" class="small-btn">Edit</button>
+            <button id="saveOwnerBtn" class="small-btn">Save</button>
+          </div>
+
+          <div class="detailRow">
+            <label>Stadium:</label>
+            <span id="stadiumField"></span>
+          </div>
+
+          <div class="detailRow">
+            <label>Capacity:</label>
+            <span id="capacityField"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SQUAD SECTION -->
+    <h2 class="section-header">Squad</h2>
+    <div class="panel">
+      <table class="gpsl-table">
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>Pos</th>
+            <th>Rating</th>
+            <th>Playstyle</th>
+            <th>Value</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="squad-body"></tbody>
+      </table>
+    </div>
+
+    <!-- YOUR LISTED PLAYERS -->
+    <h2 class="section-header">Your Listed Players</h2>
+    <div id="listingFilters">
+      <label><input type="checkbox" id="filterActive" checked> Active</label>
+      <label><input type="checkbox" id="filterExpired" checked> Closed</label>
+    </div>
+    <div class="panel">
+      <table class="gpsl-table">
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>Pos</th>
+            <th>Rating</th>
+            <th>Value</th>
+            <th>Reserve</th>
+            <th>Status</th>
+            <th>Highest Bid</th>
+            <th>Highest Club</th>
+          </tr>
+        </thead>
+        <tbody id="listed-players-body"></tbody>
+      </table>
+    </div>
+
+    <!-- CLUB FINANCES -->
+    <h2 class="section-header">Club Finances</h2>
+    <div class="panel">
+      <h2>Balance</h2>
+      <div id="finance-balance" class="finance-box">Loading…</div>
+    </div>
+
+    <!-- ACTIVE LISTINGS -->
+    <h2 class="section-header">Your Active Listings</h2>
+    <div class="panel">
+      <table class="gpsl-table">
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>Pos</th>
+            <th>Rating</th>
+            <th>Value</th>
+            <th>Reserve</th>
+            <th>Time Remaining</th>
+            <th>Highest Bid</th>
+            <th>Highest Club</th>
+          </tr>
+        </thead>
+        <tbody id="active-listings-body"></tbody>
+      </table>
+    </div>
+
+    <!-- SELLER REVIEW -->
+    <h2 class="section-header">Seller Review</h2>
+    <div class="panel">
+      <table class="gpsl-table">
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>Pos</th>
+            <th>Rating</th>
+            <th>Highest Bid</th>
+            <th>Highest Club</th>
+            <th>Deadline</th>
+            <th>Decision</th>
+          </tr>
+        </thead>
+        <tbody id="seller-review-body"></tbody>
+      </table>
+    </div>
+
+    <!-- CLOSED LISTINGS -->
+    <h2 class="section-header">Closed Listings</h2>
+    <div class="panel">
+      <table class="gpsl-table">
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>Pos</th>
+            <th>Rating</th>
+            <th>Final Bid</th>
+            <th>Winner</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="closed-listings-body"></tbody>
+      </table>
+    </div>
   </div>
 
-  <!-- ACTIVE LISTINGS PANEL -->
-  <div class="panel">
-    <h2>Your Active Listings</h2>
-    <table class="gpsl-table">
-      <thead>
-        <tr>
-          <th>Player</th>
-          <th>Pos</th>
-          <th>Rating</th>
-          <th>Value</th>
-          <th>Reserve</th>
-          <th>Time Remaining</th>
-          <th>Highest Bid</th>
-          <th>Highest Club</th>
-        </tr>
-      </thead>
-      <tbody id="active-listings-body"></tbody>
-    </table>
-  </div>
+  <!-- LIST PLAYER MODAL -->
+  <div id="list-player-modal-backdrop">
+    <div id="list-player-modal">
+      <h3>List Player</h3>
+      <div id="modalPlayerName" style="font-weight:bold; margin-bottom:4px;"></div>
+      <div id="modalPlayerInfo"></div>
 
-  <!-- SELLER REVIEW PANEL -->
-  <div class="panel">
-    <h2>Seller Review</h2>
-    <table class="gpsl-table">
-      <thead>
-        <tr>
-          <th>Player</th>
-          <th>Pos</th>
-          <th>Rating</th>
-          <th>Highest Bid</th>
-          <th>Highest Club</th>
-          <th>Deadline</th>
-          <th>Decision</th>
-        </tr>
-      </thead>
-      <tbody id="seller-review-body"></tbody>
-    </table>
-  </div>
+      <div class="modal-row">
+        <label>Market Value</label>
+        <div id="modalMarketValue">₿ 0</div>
+      </div>
 
-  <!-- SOLD / CLOSED PANEL -->
-  <div class="panel">
-    <h2>Closed Listings</h2>
-    <table class="gpsl-table">
-      <thead>
-        <tr>
-          <th>Player</th>
-          <th>Pos</th>
-          <th>Rating</th>
-          <th>Final Bid</th>
-          <th>Winner</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody id="closed-listings-body"></tbody>
-    </table>
+      <div class="modal-row">
+        <label>Max Allowed Reserve</label>
+        <div id="modalMaxReserve">₿ 0</div>
+      </div>
+
+      <div class="modal-row">
+        <label for="reserveInput">Reserve Price</label>
+        <input type="number" id="reserveInput" min="0" step="1">
+        <div id="reserveError"></div>
+      </div>
+
+      <div id="modalWarning">
+        Listing a player is irreversible once confirmed. You cannot cancel or edit this listing.
+      </div>
+
+      <div class="modal-buttons">
+        <button class="button" id="cancelListBtn">Cancel</button>
+        <button class="button" id="confirmListBtn">Confirm Listing</button>
+      </div>
+    </div>
   </div>
 
   <!-- Firebase -->
@@ -222,6 +555,5 @@
       `;
     });
   </script>
-
 </body>
 </html>
