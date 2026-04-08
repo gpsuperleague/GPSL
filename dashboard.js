@@ -285,7 +285,7 @@ async function validateAndCreateListing() {
 
   await loadActiveListingsCache();
   await loadSquad();
-  await loadListedPlayers();
+  await loadDashboard();
   await loadListings();
 }
 
