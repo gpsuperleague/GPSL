@@ -1,3 +1,5 @@
+console.log("LIVE DASHBOARD VERSION:", Math.random());
+
 // ===============================
 //  GLOBAL STATE
 // ===============================
