@@ -15,10 +15,11 @@
 }
 
 #clubBadgeHeader {
-  width: 60px;
-  height: 60px;
-  border-radius: 6px;
+  width: 48px;        /* smaller, clean size */
+  height: 48px;
   object-fit: contain;
+  border-radius: 6px;
+  background: #222;
 }
 
 #dashboardTitle {
