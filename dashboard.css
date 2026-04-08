@@ -238,22 +238,6 @@ table.gpsl-table tr:nth-child(even) {
 }
 
 /* ============================
-   LISTING FILTERS
-   ============================ */
-
-#listingFilters {
-  margin: 10px 0;
-  display: flex;
-  gap: 15px;
-  align-items: center;
-  font-size: 13px;
-}
-
-#listingFilters label {
-  cursor: pointer;
-}
-
-/* ============================
    LIST PLAYER MODAL
    ============================ */
 
@@ -325,7 +309,6 @@ table.gpsl-table tr:nth-child(even) {
   font-weight: bold;
 }
 
-/* Warning inside modal */
 #modalWarning {
   margin: 14px 0;
   padding: 8px 10px;
@@ -338,7 +321,6 @@ table.gpsl-table tr:nth-child(even) {
   border-radius: 4px;
 }
 
-/* Buttons at bottom */
 .modal-buttons {
   display: flex;
   justify-content: space-between;
@@ -369,4 +351,12 @@ table.gpsl-table tr:nth-child(even) {
 
 #confirmListBtn:hover {
   background: #ffb84d;
+}
+
+/* ============================
+   EXTRA SPACING FOR TRANSFER CENTRE
+   ============================ */
+
+#rightColumn .panel {
+  margin-bottom: 24px;
 }
