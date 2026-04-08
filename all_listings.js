@@ -230,7 +230,7 @@ async function placeBid() {
     .from("Player_Transfer_Bids")
     .insert({
       listing_id: selectedListing.id,
-      bidder_club: currentUserShort,
+      bidder_club_id: currentUserShort,
       bid_amount: bidAmount,
       bid_time: new Date().toISOString()
     });
