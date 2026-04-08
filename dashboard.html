@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>GPSL Club Dashboard</title>
 
+  <!-- Inline base styles -->
   <style>
     body {
       background: #111;
@@ -51,233 +52,18 @@
       margin: 20px auto 40px auto;
     }
   </style>
+
+  <!-- External CSS -->
+  <link rel="stylesheet" href="dashboard.css">
 </head>
 
 <body>
 
-<!-- HEADER GOES HERE -->
-<div id="headerContainer">
-  <div id="headerLeft">
-    <img id="clubBadgeHeader" src="" alt="Club Badge">
-    <div>
-      <h1 id="dashboardTitle"></h1>
-      <div id="userEmail"></div>
-    </div>
-  </div>
-</div>
-
-<!-- Club Details Panel stays EXACTLY as it was -->
-<div id="headerRight">
-  <h2 class="panelTitle">Club Details</h2>
-
-  <div id="clubDetailsPanel">
-    <div class="detailRow">
-      <label>Owner:</label>
-      <input id="ownerInput" type="text">
-      <button id="editOwnerBtn">Edit</button>
-      <button id="saveOwnerBtn">Save</button>
-    </div>
-
-    <div class="detailRow">
-      <label>Stadium:</label>
-      <span id="stadiumField"></span>
-    </div>
-
-    <div class="detailRow">
-      <label>Capacity:</label>
-      <span id="capacityField"></span>
-    </div>
-  </div>
-</div>
-
-    /* Section headers */
-    .section-header {
-      margin: 24px 0 8px 0;
-      background: #222;
-      color: #ff9900;
-      padding: 8px 14px;
-      border-radius: 6px;
-      font-size: 18px;
-      font-weight: bold;
-      display: inline-block;
-    }
-
-    /* Panels */
-    .panel {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 20px;
-    }
-
-    .panel h2 {
-      margin: 0 0 10px 0;
-      color: #ff9900;
-      font-size: 18px;
-      border-bottom: 1px solid #333;
-      padding-bottom: 6px;
-    }
-
-    /* Tables */
-    table.gpsl-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-      background: #1a1a1a;
-    }
-
-    table.gpsl-table th {
-      background: #222;
-      color: #ff9900;
-      padding: 8px;
-      text-align: left;
-    }
-
-    table.gpsl-table td {
-      padding: 8px;
-      border-bottom: 1px solid #333;
-    }
-
-    table.gpsl-table tr:nth-child(even) {
-      background: #181818;
-    }
-
-    .status-pill {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 11px;
-    }
-
-    .status-listed {
-      background: #334422;
-      color: #aaff66;
-    }
-
-    .status-not-listed {
-      background: #442222;
-      color: #ff8888;
-    }
-
-    .decision-buttons {
-      display: flex;
-      gap: 10px;
-      margin-top: 4px;
-    }
-
-    .decision-buttons button {
-      flex: 1;
-    }
-
-    .finance-box {
-      font-size: 16px;
-      margin-top: 10px;
-      padding: 10px;
-      background: #222;
-      border-radius: 6px;
-      color: #ffaa22;
-    }
-
-    /* Listing filters */
-    #listingFilters {
-      margin: 10px 0;
-      display: flex;
-      gap: 15px;
-      align-items: center;
-      font-size: 13px;
-    }
-
-    #listingFilters label {
-      cursor: pointer;
-    }
-
-    /* List Player Modal */
-    #list-player-modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.7);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    #list-player-modal {
-      background: #1a1a1a;
-      border-radius: 8px;
-      border: 1px solid #444;
-      padding: 16px 18px;
-      width: 360px;
-      max-width: 90%;
-      box-shadow: 0 0 12px rgba(0, 0, 0, 0.8);
-    }
-
-    #list-player-modal h3 {
-      margin: 0 0 10px 0;
-      color: #ff9900;
-      font-size: 18px;
-    }
-
-    #modalPlayerInfo {
-      font-size: 13px;
-      color: #ccc;
-      margin-bottom: 8px;
-    }
-
-    .modal-row {
-      margin-bottom: 8px;
-      font-size: 13px;
-    }
-
-    .modal-row label {
-      display: block;
-      margin-bottom: 3px;
-      color: #ccc;
-      font-weight: bold;
-    }
-
-    .modal-row input {
-      width: 100%;
-      padding: 6px 8px;
-      border-radius: 4px;
-      border: 1px solid #444;
-      background: #111;
-      color: #ddd;
-      font-size: 13px;
-    }
-
-    #modalWarning {
-      font-size: 12px;
-      color: #ff6666;
-      margin-top: 6px;
-    }
-
-    #reserveError {
-      font-size: 12px;
-      color: #ff6666;
-      min-height: 14px;
-      margin-top: 4px;
-    }
-
-    .modal-buttons {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .modal-buttons .button {
-      padding: 8px 14px;
-      font-size: 13px;
-    }
-  </style>
-</head>
-
-<body>
+  <!-- NAV -->
   <div id="nav"></div>
 
   <div class="page-container">
+
     <!-- HEADER -->
     <div id="headerContainer">
       <div id="headerLeft">
@@ -291,6 +77,7 @@
       <div id="headerRight">
         <h2 class="panelTitle">Club Details</h2>
         <div id="clubDetailsPanel">
+
           <div class="detailRow">
             <label>Club:</label>
             <span id="clubNameField"></span>
@@ -312,6 +99,7 @@
             <label>Capacity:</label>
             <span id="capacityField"></span>
           </div>
+
         </div>
       </div>
     </div>
@@ -335,7 +123,7 @@
       </table>
     </div>
 
-        <!-- CLUB FINANCES -->
+    <!-- CLUB FINANCES -->
     <h2 class="section-header">Club Finances</h2>
     <div class="panel">
       <h2>Balance</h2>
@@ -398,6 +186,7 @@
         <tbody id="closed-listings-body"></tbody>
       </table>
     </div>
+
   </div>
 
   <!-- LIST PLAYER MODAL -->
@@ -446,7 +235,7 @@
 
     const supabase = createClient(
       "https://omyyogfumrjoaweuawjn.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+      "YOUR_PUBLIC_ANON_KEY"
     );
 
     window.supabase = supabase;
@@ -479,5 +268,6 @@
       `;
     });
   </script>
+
 </body>
 </html>
