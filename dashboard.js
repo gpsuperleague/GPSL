@@ -104,26 +104,45 @@ async function loadClubDetails() {
     return;
   }
 
-  document.getElementById("ownerInput").value = data.owner || "";
+  const ownerInput = document.getElementById("ownerInput");
+  const saveBtn = document.getElementById("saveOwnerBtn");
+
+  // Always lock the field when loading
+  ownerInput.value = data.owner || "";
+  ownerInput.classList.add("owner-locked");
+  ownerInput.classList.remove("owner-editing");
+  saveBtn.style.display = "none";
+
+  // Stadium + capacity (unchanged)
   document.getElementById("stadiumField").textContent = data.Stadium || "Unknown";
   document.getElementById("capacityField").textContent = data.Capacity || "Unknown";
 
+  // EDIT BUTTON
   document.getElementById("editOwnerBtn").onclick = () => {
-    document.getElementById("ownerInput").disabled = false;
+    ownerInput.classList.remove("owner-locked");
+    ownerInput.classList.add("owner-editing");
+    saveBtn.style.display = "block";
+    ownerInput.focus();
   };
 
-  document.getElementById("saveOwnerBtn").onclick = async () => {
-    const newOwner = document.getElementById("ownerInput").value.trim();
+  // SAVE BUTTON
+  saveBtn.onclick = async () => {
+    const newOwner = ownerInput.value.trim();
 
     await supabase
       .from("Clubs")
       .update({ owner: newOwner })
       .eq("Club_ID", currentUserClubID);
 
-    document.getElementById("ownerInput").disabled = true;
+    // Lock again after saving
+    ownerInput.classList.add("owner-locked");
+    ownerInput.classList.remove("owner-editing");
+    saveBtn.style.display = "none";
+
+    // Reload UI to ensure consistency
+    await loadClubDetails();
   };
 }
-
 // ===============================
 //  SQUAD
 // ===============================
