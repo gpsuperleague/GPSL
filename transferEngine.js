@@ -1,3 +1,5 @@
+const transferEngine = {};
+
 transferEngine.placeBid = async function (listingId, bidderClubId, bidAmount) {
   console.log("Placing bid:", listingId, bidderClubId, bidAmount);
 
