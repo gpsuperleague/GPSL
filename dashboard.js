@@ -1,6 +1,5 @@
 // ======================================================
-//  GPSL CLUB DASHBOARD — FULL AUCTION + FINANCE ENGINE
-//  dashboard.js
+//  GPSL CLUB DASHBOARD — STABLE VERSION (NO JOINS)
 // ======================================================
 
 let currentUserClub = null;
@@ -53,26 +52,12 @@ async function loadFinance() {
 
 
 // ======================================================
-//  SUPABASE — LOAD LISTINGS (JOINED QUERY)
+//  LOAD LISTINGS — STABLE MODE (NO JOINS)
 // ======================================================
 async function loadListings() {
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
-    .select(`
-      *,
-      Players (
-        Name,
-        Position,
-        Rating,
-        Playstyle,
-        market_value
-      ),
-      Player_Transfer_Bids (
-        bid_amount,
-        bidder_club_id,
-        bid_time
-      )
-    `)
+    .select("*")
     .eq("seller_club_id", currentUserClub);
 
   if (error) {
@@ -80,28 +65,26 @@ async function loadListings() {
     return;
   }
 
-  listings = data.map(l => {
-    const bids = l.Player_Transfer_Bids || [];
-    const highest = bids.length
-      ? bids.reduce((a, b) => (a.bid_amount > b.bid_amount ? a : b))
-      : null;
+  // Map into the structure the dashboard expects
+  listings = data.map(l => ({
+    listing_id: l.Id,
+    selling_club: l.seller_club_id,
 
-    return {
-      listing_id: l.Id,
-      selling_club: l.seller_club_id,
-      player_name: l.Players?.Name,
-      position: l.Players?.Position,
-      playstyle: l.Players?.Playstyle,
-      rating: l.Players?.Rating,
-      market_value: l.Players?.market_value,
-      reserve_price: l.reserve_price,
-      end_time: l.end_time,
-      status: l.status,
-      highest_bid: highest ? highest.bid_amount : null,
-      highest_bidder_club: highest ? highest.bidder_club_id : null,
-      bids: bids
-    };
-  });
+    // TEMP placeholders until joins are restored
+    player_name: l.player_name ?? "(unknown)",
+    position: l.position ?? "-",
+    playstyle: l.playstyle ?? "-",
+    rating: l.rating ?? 0,
+    market_value: l.market_value ?? 0,
+
+    reserve_price: l.reserve_price,
+    end_time: l.end_time,
+    status: l.status,
+
+    highest_bid: null,
+    highest_bidder_club: null,
+    bids: []
+  }));
 
   renderDashboard();
 }
@@ -168,12 +151,10 @@ function renderDashboard() {
         </td>
       `;
 
-      // Accept
       tr.querySelector(".accept-btn").addEventListener("click", () => {
         acceptSale(listing);
       });
 
-      // Reject
       tr.querySelector(".reject-btn").addEventListener("click", () => {
         rejectSale(listing);
       });
@@ -256,14 +237,12 @@ async function acceptSale(listing) {
 //  REJECT SALE
 // ======================================================
 async function rejectSale(listing, auto = false) {
-  // Simply close the listing with no transfer
   await supabase
     .from("Player_Transfer_Listings")
     .update({ status: "Closed" })
     .eq("Id", listing.listing_id);
 
   listing.status = "Closed";
-
   renderDashboard();
 }
 
@@ -272,7 +251,6 @@ async function rejectSale(listing, auto = false) {
 //  FINANCE UPDATE HELPER
 // ======================================================
 async function adjustBalance(club, amount) {
-  // Fetch current balance
   const { data, error } = await supabase
     .from("Club_Finances")
     .select("*")
@@ -288,7 +266,6 @@ async function adjustBalance(club, amount) {
     .update({ balance: newBalance })
     .eq("club_id", club);
 
-  // Log transaction
   await supabase
     .from("Club_Finance_Transactions")
     .insert({
