@@ -52,54 +52,41 @@
     }
 
     /* Header */
-    /* NEW HEADER LAYOUT */
-#headerContainer {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 20px;
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
+   <div id="headerContainer">
 
-#headerLeft img {
-  width: 80px;
-  height: 80px;
-  border-radius: 6px;
-  object-fit: contain;
-  background: #222;
-}
+  <div id="headerLeft">
+    <img id="clubBadgeHeader" src="" alt="Club Badge">
+    <div>
+      <h1 id="dashboardTitle"></h1>
+      <div id="userEmail"></div>
+    </div>
+  </div>
 
-#headerInfo {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
+</div>
 
-#dashboardTitle {
-  margin: 0;
-  color: #ff9900;
-  font-size: 26px;
-}
+<!-- Club Details Panel stays EXACTLY as it was -->
+<div id="headerRight">
+  <h2 class="panelTitle">Club Details</h2>
 
-#userEmail {
-  color: #ccc;
-  font-size: 14px;
-}
+  <div id="clubDetailsPanel">
+    <div class="detailRow">
+      <label>Owner:</label>
+      <input id="ownerInput" type="text">
+      <button id="editOwnerBtn">Edit</button>
+      <button id="saveOwnerBtn">Save</button>
+    </div>
 
-.infoRow {
-  display: flex;
-  gap: 10px;
-  font-size: 14px;
-  color: #ddd;
-}
+    <div class="detailRow">
+      <label>Stadium:</label>
+      <span id="stadiumField"></span>
+    </div>
 
-.infoRow label {
-  color: #ff9900;
-  font-weight: bold;
-}
+    <div class="detailRow">
+      <label>Capacity:</label>
+      <span id="capacityField"></span>
+    </div>
+  </div>
+</div>
 
     /* Club details panel */
     #clubDetailsPanel {
