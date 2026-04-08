@@ -1,3 +1,4 @@
+console.log("DASHBOARD JS — NEW VERSION LOADED");
 // ======================================================
 //  GPSL CLUB DASHBOARD — STABLE VERSION (NO JOINS)
 // ======================================================
