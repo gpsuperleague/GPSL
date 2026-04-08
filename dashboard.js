@@ -13,6 +13,20 @@ let activeListingsCache = []; // used to determine "Listed" status
 
 
 // ===============================
+//  DASHBOARD REFRESH WRAPPER
+// ===============================
+async function loadDashboard() {
+  await loadShortNameFromFirestore();
+  await loadClubFromSupabase();
+  await loadActiveListingsCache();
+  await loadClubDetails();
+  await loadSquad();
+  await loadFinance();
+  await loadListings();
+}
+
+
+// ===============================
 //  AUTH + INITIAL LOAD
 // ===============================
 auth.onAuthStateChanged(async user => {
@@ -91,9 +105,6 @@ async function loadActiveListingsCache() {
 }
 
 
-// ===============================
-//  CLUB DETAILS PANEL
-// ===============================
 // ===============================
 //  CLUB DETAILS PANEL
 // ===============================
