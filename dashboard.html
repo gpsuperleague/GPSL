@@ -52,45 +52,54 @@
     }
 
     /* Header */
-    #headerContainer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 20px;
-    }
+    /* NEW HEADER LAYOUT */
+#headerContainer {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
 
-    #headerLeft {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
+#headerLeft img {
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  object-fit: contain;
+  background: #222;
+}
 
-    #clubBadgeHeader {
-      width: 64px;
-      height: 64px;
-      border-radius: 8px;
-      background: #222;
-      object-fit: contain;
-    }
+#headerInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
-    #userEmail {
-      font-size: 13px;
-      color: #aaa;
-    }
+#dashboardTitle {
+  margin: 0;
+  color: #ff9900;
+  font-size: 26px;
+}
 
-    #headerRight {
-      min-width: 260px;
-    }
+#userEmail {
+  color: #ccc;
+  font-size: 14px;
+}
 
-    .panelTitle {
-      margin: 0 0 8px 0;
-      color: #ff9900;
-      font-size: 18px;
-    }
+.infoRow {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+  color: #ddd;
+}
+
+.infoRow label {
+  color: #ff9900;
+  font-weight: bold;
+}
 
     /* Club details panel */
     #clubDetailsPanel {
