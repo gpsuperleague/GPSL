@@ -237,12 +237,18 @@ function openListPlayerModal(player) {
   document.getElementById("list-player-modal-backdrop").style.display = "flex";
 }
 
+// NEW: Use Max Allowed Reserve button
+document.getElementById("useMaxReserveBtn").onclick = () => {
+  const max = selectedPlayerForListing.Maximum_Reserve_Price;
+  document.getElementById("reserveInput").value = max;
+  document.getElementById("reserveError").textContent = "";
+};
+
 document.getElementById("cancelListBtn").onclick = () => {
   document.getElementById("list-player-modal-backdrop").style.display = "none";
 };
 
 document.getElementById("confirmListBtn").onclick = validateAndCreateListing;
-
 
 // ===============================
 //  CREATE LISTING
