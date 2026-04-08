@@ -27,7 +27,6 @@ auth.onAuthStateChanged(async user => {
   await loadActiveListingsCache();
   await loadClubDetails();
   await loadSquad();
-  await loadListedPlayers();
   await loadFinance();
   await loadListings();
 });
