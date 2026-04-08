@@ -298,7 +298,6 @@ async function validateAndCreateListing() {
 
 async function fetchPlayerByID(kid) {
   const { data } = await supabase
-  const { data } = await supabase
     .from("Players")
     .select("*")
     .eq("Konami_ID", kid)
