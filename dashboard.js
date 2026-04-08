@@ -104,7 +104,7 @@ async function loadClubDetails() {
     return;
   }
 
-  document.getElementById("ownerInput").value = data.Owner || "";
+  document.getElementById("ownerInput").value = data.owner || "";
   document.getElementById("stadiumField").textContent = data.Stadium || "Unknown";
   document.getElementById("capacityField").textContent = data.Capacity || "Unknown";
 
