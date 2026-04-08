@@ -341,24 +341,21 @@ async function loadListings() {
     return;
   }
 
-  // AUTO-UPDATE EXPIRED LISTINGS
+  // AUTO-UPDATE EXPIRED LISTINGS (transfer engine)
   for (const l of data) {
     const now = new Date();
     const end = new Date(l.end_time);
 
+    // Listing expired and still Active → evaluate with engine
     if (end < now && l.status === "Active") {
+      await transferEngine.evaluateExpiredListing(l);
+    }
 
-      if (l.current_highest_bid && l.current_highest_bidder) {
-        await supabase
-          .from("Player_Transfer_Listings")
-          .update({ status: "Review" })
-          .eq("id", l.id);
-
-      } else {
-        await supabase
-          .from("Player_Transfer_Listings")
-          .update({ status: "Closed" })
-          .eq("id", l.id);
+    // Seller review timeout (24h)
+    if (l.status === "Review" && l.review_deadline) {
+      const reviewEnd = new Date(l.review_deadline);
+      if (reviewEnd < now) {
+        await transferEngine.rejectSale(l.id);
       }
     }
   }
