@@ -1,281 +1,431 @@
-console.log("DASHBOARD JS — FULLY REWRITTEN & FIXED");
-
-// ======================================================
+// ===============================
 //  GLOBAL STATE
-// ======================================================
-let currentUserClub = null;        // FULL club name (e.g. "Urawa Reds")
-let currentUserShort = null;       // Short code (e.g. "URD")
-let listings = [];
-let financeBalance = 0;
+// ===============================
+let currentUserEmail = null;
+let currentUserClub = null;       // Full club name (e.g., "Urawa Reds")
+let currentUserShort = null;      // Short code (e.g., "URD")
+let currentUserClubID = null;     // Numeric club ID
 
-// DOM references
-const activeBody = document.getElementById("active-listings-body");
-const sellerReviewBody = document.getElementById("seller-review-body");
-const closedBody = document.getElementById("closed-listings-body");
-const financeBox = document.getElementById("finance-balance");
+let selectedPlayerForListing = null; // Player object for modal
 
 
-// ======================================================
-//  FIREBASE → RESOLVE FULL CLUB NAME → LOAD DASHBOARD
-// ======================================================
-firebase.auth().onAuthStateChanged(async user => {
-  if (!user) return;
-
-  const db = firebase.firestore();
-  const doc = await db.collection("users").doc(user.uid).get();
-
-  if (!doc.exists) return;
-
-  // Step 1: Get short code (URD)
-  currentUserShort = doc.data().club;
-
-  // Step 2: Resolve full club name from Clubs table
-  const { data: clubRow, error: clubErr } = await supabase
-    .from("Clubs")
-    .select("*")
-    .eq("ShortName", currentUserShort)
-    .single();
-
-  if (clubErr || !clubRow) {
-    console.error("Club lookup failed:", clubErr);
+// ===============================
+//  AUTH + INITIAL LOAD
+// ===============================
+auth.onAuthStateChanged(async user => {
+  if (!user) {
+    window.location = "login.html";
     return;
   }
 
-  // Step 3: Set full club name
-  currentUserClub = clubRow.Club;   // e.g. "Urawa Reds"
+  currentUserEmail = user.email;
+  document.getElementById("userEmail").textContent = currentUserEmail;
 
-  console.log("Resolved club:", currentUserShort, "→", currentUserClub);
-
-  // Step 4: Load dashboard sections
+  await resolveClubFromEmail();
+  await loadClubDetails();
+  await loadSquad();
+  await loadListedPlayers();
   await loadFinance();
   await loadListings();
 });
-  
 
-// ======================================================
-//  LOAD CLUB FINANCE
-// ======================================================
-async function loadFinance() {
+
+// ===============================
+//  RESOLVE CLUB FROM EMAIL
+// ===============================
+async function resolveClubFromEmail() {
   const { data, error } = await supabase
-    .from("Club_Finances")
-    .select("*")
-    .eq("club_name", currentUserClub)
+    .from("Users")
+    .select("Club, ShortName, Club_ID")
+    .eq("Email", currentUserEmail)
     .single();
 
   if (error || !data) {
-    console.error("Finance load error:", error);
-    financeBox.textContent = "Balance unavailable";
+    console.error("User lookup failed", error);
     return;
   }
 
-  financeBalance = data.balance;
-  financeBox.textContent = `Balance: ₿ ${Number(financeBalance).toLocaleString()}`;
+  currentUserClub = data.Club;
+  currentUserShort = data.ShortName;
+  currentUserClubID = data.Club_ID;
+
+  document.getElementById("clubNameField").textContent = currentUserClub;
+  document.getElementById("dashboardTitle").textContent = `${currentUserClub} Dashboard`;
+
+  // Load badge
+  document.getElementById("clubBadgeHeader").src =
+    `images/club_badges/${currentUserShort}.png`;
 }
 
 
-// ======================================================
-//  LOAD LISTINGS (NO JOINS MODE)
-// ======================================================
-async function loadListings() {
+// ===============================
+//  LOAD CLUB DETAILS
+// ===============================
+async function loadClubDetails() {
   const { data, error } = await supabase
-    .from("Player_Transfer_Listings")
+    .from("Clubs")
     .select("*")
-    .eq("seller_club_id", currentUserClub);
+    .eq("Club", currentUserClub)
+    .single();
+
+  if (error || !data) {
+    console.error("Club details error", error);
+    return;
+  }
+
+  document.getElementById("ownerInput").value = data.Owner || "";
+  document.getElementById("stadiumField").textContent = data.Stadium || "Unknown";
+  document.getElementById("capacityField").textContent = data.Capacity || "Unknown";
+
+  // Owner editing
+  document.getElementById("editOwnerBtn").onclick = () => {
+    document.getElementById("ownerInput").disabled = false;
+  };
+
+  document.getElementById("saveOwnerBtn").onclick = async () => {
+    const newOwner = document.getElementById("ownerInput").value.trim();
+
+    await supabase
+      .from("Clubs")
+      .update({ Owner: newOwner })
+      .eq("Club", currentUserClub);
+
+    document.getElementById("ownerInput").disabled = true;
+  };
+}
+
+
+// ===============================
+//  LOAD SQUAD
+// ===============================
+async function loadSquad() {
+  const { data, error } = await supabase
+    .from("Players")
+    .select("*")
+    .eq("Contracted_Team", currentUserClub);
 
   if (error) {
-    console.error("Error loading listings:", error);
+    console.error("Squad load error", error);
     return;
   }
 
-  listings = data.map(l => ({
-    listing_id: l.Id,
-    selling_club: l.seller_club_id,
-
-    // TEMP placeholders
-    player_name: l.player_name ?? "(unknown)",
-    position: l.position ?? "-",
-    playstyle: l.playstyle ?? "-",
-    rating: l.rating ?? 0,
-    market_value: l.market_value ?? 0,
-
-    reserve_price: l.reserve_price,
-    end_time: l.end_time,
-    status: l.status,
-
-    highest_bid: l.current_highest_bid ?? null,
-    highest_bidder_club: l.current_highest_bidder ?? null,
-    bids: []
-  }));
-
-  renderDashboard();
+  renderSquad(data);
 }
 
+function renderSquad(players) {
+  const tbody = document.getElementById("squad-body");
+  tbody.innerHTML = "";
 
-// ======================================================
-//  RENDER DASHBOARD
-// ======================================================
-function renderDashboard() {
-  activeBody.innerHTML = "";
-  sellerReviewBody.innerHTML = "";
-  closedBody.innerHTML = "";
+  players.forEach(p => {
+    const tr = document.createElement("tr");
 
-  listings.forEach(listing => {
-    const now = new Date();
-    const end = new Date(listing.end_time);
-    const diffMs = end - now;
-    const diffMin = Math.floor(diffMs / 60000);
-    const timeLeft = diffMs > 0 ? `${diffMin}m` : "Expired";
+    const status = p.Listed ? 
+      `<span class="status-pill status-listed">Listed</span>` :
+      `<span class="status-pill status-not-listed">Not Listed</span>`;
 
-    // ACTIVE
-    if (listing.status === "Active") {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${listing.player_name}</td>
-        <td>${listing.position}</td>
-        <td>${listing.rating}</td>
-        <td>₿ ${Number(listing.market_value).toLocaleString()}</td>
-        <td>₿ ${Number(listing.reserve_price).toLocaleString()}</td>
-        <td>${timeLeft}</td>
-        <td>${listing.highest_bid ? "₿ " + Number(listing.highest_bid).toLocaleString() : "—"}</td>
-        <td>${listing.highest_bidder_club ?? "—"}</td>
-      `;
-      activeBody.appendChild(tr);
+    const actionBtn = p.Listed
+      ? `<button class="button" disabled>Listed</button>`
+      : `<button class="button" onclick='openListPlayerModal(${JSON.stringify(p).replace(/"/g, '&quot;')})'>List</button>`;
 
-      if (diffMs <= 0) moveToSellerReview(listing);
-    }
+    tr.innerHTML = `
+      <td>${p.Player_Name}</td>
+      <td>${p.Position}</td>
+      <td>${p.Rating}</td>
+      <td>${p.Playstyle || "-"}</td>
+      <td>₿ ${p.Market_Value}</td>
+      <td>${status}</td>
+      <td>${actionBtn}</td>
+    `;
 
-    // SELLER REVIEW
-    if (listing.status === "Seller Review") {
-      const deadline = new Date(end.getTime() + 24 * 3600 * 1000);
-      const remaining = Math.max(0, Math.floor((deadline - now) / 60000));
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${listing.player_name}</td>
-        <td>${listing.position}</td>
-        <td>${listing.rating}</td>
-        <td>${listing.highest_bid ? "₿ " + Number(listing.highest_bid).toLocaleString() : "—"}</td>
-        <td>${listing.highest_bidder_club ?? "—"}</td>
-        <td>${remaining}m</td>
-        <td>
-          <div class="decision-buttons">
-            <button class="button accept-btn">Accept</button>
-            <button class="button reject-btn">Reject</button>
-          </div>
-        </td>
-      `;
-
-      tr.querySelector(".accept-btn").addEventListener("click", () => acceptSale(listing));
-      tr.querySelector(".reject-btn").addEventListener("click", () => rejectSale(listing));
-
-      sellerReviewBody.appendChild(tr);
-
-      if (remaining <= 0) rejectSale(listing, true);
-    }
-
-    // CLOSED
-    if (listing.status === "Closed") {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${listing.player_name}</td>
-        <td>${listing.position}</td>
-        <td>${listing.rating}</td>
-        <td>${listing.highest_bid ? "₿ " + Number(listing.highest_bid).toLocaleString() : "—"}</td>
-        <td>${listing.highest_bidder_club ?? "—"}</td>
-        <td>Closed</td>
-      `;
-      closedBody.appendChild(tr);
-    }
+    tbody.appendChild(tr);
   });
 }
 
 
-// ======================================================
-//  MOVE TO SELLER REVIEW
-// ======================================================
-async function moveToSellerReview(listing) {
-  if (listing.status !== "Active") return;
+// ===============================
+//  LIST PLAYER MODAL
+// ===============================
+function openListPlayerModal(player) {
+  selectedPlayerForListing = player;
 
-  await supabase
-    .from("Player_Transfer_Listings")
-    .update({ status: "Seller Review" })
-    .eq("Id", listing.listing_id);
+  document.getElementById("modalPlayerName").textContent = player.Player_Name;
+  document.getElementById("modalPlayerInfo").textContent =
+    `${player.Position} • Rating ${player.Rating}`;
 
-  listing.status = "Seller Review";
-  renderDashboard();
+  document.getElementById("modalMarketValue").textContent = `₿ ${player.Market_Value}`;
+  document.getElementById("modalMaxReserve").textContent = `₿ ${player.Reserve_Cap}`;
+
+  document.getElementById("reserveInput").value = "";
+  document.getElementById("reserveError").textContent = "";
+
+  document.getElementById("list-player-modal-backdrop").style.display = "flex";
 }
 
+document.getElementById("cancelListBtn").onclick = () => {
+  document.getElementById("list-player-modal-backdrop").style.display = "none";
+};
 
-// ======================================================
-//  ACCEPT SALE
-// ======================================================
-async function acceptSale(listing) {
-  if (!listing.highest_bid || !listing.highest_bidder_club) return;
+document.getElementById("confirmListBtn").onclick = validateAndCreateListing;
 
-  // Move player
+
+// ===============================
+//  VALIDATE + CREATE LISTING
+// ===============================
+async function validateAndCreateListing() {
+  const reserveInput = document.getElementById("reserveInput");
+  const reserve = Number(reserveInput.value);
+
+  const mv = selectedPlayerForListing.Market_Value;
+  const max = selectedPlayerForListing.Reserve_Cap;
+
+  if (reserve < mv) {
+    document.getElementById("reserveError").textContent =
+      `Reserve must be at least market value (₿ ${mv}).`;
+    return;
+  }
+
+  if (reserve > max) {
+    document.getElementById("reserveError").textContent =
+      `Reserve cannot exceed max allowed (₿ ${max}).`;
+    return;
+  }
+
+  // Create listing
+  const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  await supabase.from("Player_Transfer_Listings").insert({
+    Player_Name: selectedPlayerForListing.Player_Name,
+    Player_ID: selectedPlayerForListing.Player_ID,
+    seller_club_id: currentUserClubID,
+    seller_club_name: currentUserClub,
+    reserve_price: reserve,
+    market_value: mv,
+    status: "Active",
+    end_time: endTime
+  });
+
+  // Mark player as listed
   await supabase
     .from("Players")
-    .update({ Contracted_Team: listing.highest_bidder_club })
-    .eq("Name", listing.player_name);
+    .update({ Listed: true })
+    .eq("Player_ID", selectedPlayerForListing.Player_ID);
 
-  // Money movement
-  await adjustBalance(listing.highest_bidder_club, -listing.highest_bid);
-  await adjustBalance(listing.selling_club, listing.highest_bid);
+  document.getElementById("list-player-modal-backdrop").style.display = "none";
 
-  // Close listing
-  await supabase
-    .from("Player_Transfer_Listings")
-    .update({ status: "Closed" })
-    .eq("Id", listing.listing_id);
-
-  listing.status = "Closed";
-
-  await loadFinance();
-  renderDashboard();
+  await loadSquad();
+  await loadListedPlayers();
+  await loadListings();
 }
 
 
-// ======================================================
-//  REJECT SALE
-// ======================================================
-async function rejectSale(listing, auto = false) {
-  await supabase
+// ===============================
+//  LOAD LISTED PLAYERS
+// ===============================
+async function loadListedPlayers() {
+  const { data, error } = await supabase
     .from("Player_Transfer_Listings")
-    .update({ status: "Closed" })
-    .eq("Id", listing.listing_id);
-
-  listing.status = "Closed";
-  renderDashboard();
-}
-
-
-// ======================================================
-//  FINANCE UPDATE + LEDGER ENTRY
-// ======================================================
-async function adjustBalance(club, amount) {
-  const { data } = await supabase
-    .from("Club_Finances")
     .select("*")
-    .eq("club_name", club)
+    .eq("seller_club_id", currentUserClubID);
+
+  if (error) {
+    console.error("Listed players error", error);
+    return;
+  }
+
+  renderListedPlayers(data);
+}
+
+function renderListedPlayers(listings) {
+  const tbody = document.getElementById("listed-players-body");
+  tbody.innerHTML = "";
+
+  listings.forEach(l => {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${l.Player_Name}</td>
+      <td>${l.Position || "-"}</td>
+      <td>${l.Rating || "-"}</td>
+      <td>₿ ${l.market_value}</td>
+      <td>₿ ${l.reserve_price}</td>
+      <td>${l.status}</td>
+      <td>${l.highest_bid || "-"}</td>
+      <td>${l.highest_club || "-"}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+
+// ===============================
+//  LOAD FINANCE
+// ===============================
+async function loadFinance() {
+  const { data, error } = await supabase
+    .from("Clubs")
+    .select("Balance")
+    .eq("Club", currentUserClub)
     .single();
 
-  if (!data) return;
+  if (error || !data) {
+    console.error("Finance error", error);
+    return;
+  }
 
-  const newBalance = Number(data.balance) + Number(amount);
+  document.getElementById("finance-balance").textContent =
+    `₿ ${data.Balance.toLocaleString()}`;
+}
 
+
+// ===============================
+//  LOAD LISTINGS (ACTIVE + REVIEW + CLOSED)
+// ===============================
+async function loadListings() {
+  const { data, error } = await supabase
+    .from("Player_Transfer_Listings")
+    .select("*")
+    .eq("seller_club_id", currentUserClubID);
+
+  if (error) {
+    console.error("Listings error", error);
+    return;
+  }
+
+  const now = new Date();
+
+  const active = data.filter(l => l.status === "Active");
+  const review = data.filter(l => l.status === "Review");
+  const closed = data.filter(l => l.status === "Closed");
+
+  renderActiveListings(active);
+  renderSellerReview(review);
+  renderClosedListings(closed);
+}
+
+
+// ===============================
+//  ACTIVE LISTINGS
+// ===============================
+function renderActiveListings(listings) {
+  const tbody = document.getElementById("active-listings-body");
+  tbody.innerHTML = "";
+
+  listings.forEach(l => {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${l.Player_Name}</td>
+      <td>${l.Position || "-"}</td>
+      <td>${l.Rating || "-"}</td>
+      <td>₿ ${l.market_value}</td>
+      <td>₿ ${l.reserve_price}</td>
+      <td>${formatTimeRemaining(l.end_time)}</td>
+      <td>${l.highest_bid || "-"}</td>
+      <td>${l.highest_club || "-"}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+
+// ===============================
+//  SELLER REVIEW
+// ===============================
+function renderSellerReview(listings) {
+  const tbody = document.getElementById("seller-review-body");
+  tbody.innerHTML = "";
+
+  listings.forEach(l => {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${l.Player_Name}</td>
+      <td>${l.Position || "-"}</td>
+      <td>${l.Rating || "-"}</td>
+      <td>${l.highest_bid || "-"}</td>
+      <td>${l.highest_club || "-"}</td>
+      <td>${new Date(l.end_time).toLocaleString()}</td>
+      <td>
+        <div class="decision-buttons">
+          <button class="button" onclick="acceptSale(${l.id}, ${l.highest_bid})">Accept</button>
+          <button class="button" onclick="rejectSale(${l.id})">Reject</button>
+        </div>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+
+// ===============================
+//  CLOSED LISTINGS
+// ===============================
+function renderClosedListings(listings) {
+  const tbody = document.getElementById("closed-listings-body");
+  tbody.innerHTML = "";
+
+  listings.forEach(l => {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${l.Player_Name}</td>
+      <td>${l.Position || "-"}</td>
+      <td>${l.Rating || "-"}</td>
+      <td>${l.final_bid || "-"}</td>
+      <td>${l.winner || "-"}</td>
+      <td>${l.status}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+}
+
+
+// ===============================
+//  ACCEPT / REJECT SALE
+// ===============================
+async function acceptSale(listingID, amount) {
+  // Add money
   await supabase
-    .from("Club_Finances")
-    .update({ balance: newBalance })
-    .eq("club_name", club);
+    .from("Clubs")
+    .update({ Balance: supabase.rpc("increment_balance", { club_id: currentUserClubID, amount }) })
+    .eq("Club_ID", currentUserClubID);
 
+  // Mark listing closed
   await supabase
-    .from("Club_Finance_Transactions")
-    .insert({
-      club_name: club,
-      amount: amount,
-      type: amount > 0 ? "credit" : "debit",
-      reference_id: null,
-      timestamp: new Date().toISOString(),
-      notes: "Transfer Market Transaction"
-    });
+    .from("Player_Transfer_Listings")
+    .update({ status: "Closed", final_bid: amount })
+    .eq("id", listingID);
+
+  await loadFinance();
+  await loadListings();
+}
+
+async function rejectSale(listingID) {
+  await supabase
+    .from("Player_Transfer_Listings")
+    .update({ status: "Closed", final_bid: null })
+    .eq("id", listingID);
+
+  await loadListings();
+}
+
+
+// ===============================
+//  TIME REMAINING FORMATTER
+// ===============================
+function formatTimeRemaining(endTime) {
+  const end = new Date(endTime);
+  const now = new Date();
+  const diff = end - now;
+
+  if (diff <= 0) return "Expired";
+
+  const hours = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+
+  return `${hours}h ${mins}m`;
 }
