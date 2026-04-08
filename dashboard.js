@@ -92,6 +92,9 @@ async function loadActiveListingsCache() {
 // ===============================
 //  CLUB DETAILS PANEL
 // ===============================
+// ===============================
+//  CLUB DETAILS PANEL
+// ===============================
 async function loadClubDetails() {
   const { data, error } = await supabase
     .from("Clubs")
@@ -105,27 +108,27 @@ async function loadClubDetails() {
   }
 
   const ownerInput = document.getElementById("ownerInput");
+  const editBtn = document.getElementById("editOwnerBtn");
   const saveBtn = document.getElementById("saveOwnerBtn");
 
-  // Always lock the field when loading
+  // Populate + lock by default
   ownerInput.value = data.owner || "";
-  ownerInput.classList.add("owner-locked");
-  ownerInput.classList.remove("owner-editing");
+  ownerInput.disabled = true;
   saveBtn.style.display = "none";
+  editBtn.style.display = "inline-block";
 
-  // Stadium + capacity (unchanged)
   document.getElementById("stadiumField").textContent = data.Stadium || "Unknown";
   document.getElementById("capacityField").textContent = data.Capacity || "Unknown";
 
-  // EDIT BUTTON
-  document.getElementById("editOwnerBtn").onclick = () => {
-    ownerInput.classList.remove("owner-locked");
-    ownerInput.classList.add("owner-editing");
-    saveBtn.style.display = "block";
+  // EDIT
+  editBtn.onclick = () => {
+    ownerInput.disabled = false;
     ownerInput.focus();
+    saveBtn.style.display = "inline-block";
+    editBtn.style.display = "none";
   };
 
-  // SAVE BUTTON
+  // SAVE
   saveBtn.onclick = async () => {
     const newOwner = ownerInput.value.trim();
 
@@ -134,12 +137,10 @@ async function loadClubDetails() {
       .update({ owner: newOwner })
       .eq("Club_ID", currentUserClubID);
 
-    // Lock again after saving
-    ownerInput.classList.add("owner-locked");
-    ownerInput.classList.remove("owner-editing");
+    ownerInput.disabled = true;
     saveBtn.style.display = "none";
+    editBtn.style.display = "inline-block";
 
-    // Reload UI to ensure consistency
     await loadClubDetails();
   };
 }
