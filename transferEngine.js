@@ -1,3 +1,5 @@
+const transferEngine = {};
+
 // ===============================
 //  EVALUATE EXPIRED LISTING
 // ===============================
