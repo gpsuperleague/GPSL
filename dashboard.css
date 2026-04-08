@@ -1,21 +1,23 @@
 /* HEADER LAYOUT */
 #headerContainer {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 20px;
+  align-items: center;
+  gap: 12px;
   background: #1a1a1a;
-  border-bottom: 1px solid #333;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
 }
 
 #headerLeft {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 12px;
 }
 
 #clubBadgeHeader {
-  width: 48px;        /* smaller, clean size */
+  width: 48px;
   height: 48px;
   object-fit: contain;
   border-radius: 6px;
