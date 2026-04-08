@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>GPSL Club Dashboard</title>
 
-  <!-- Inline base styles -->
   <style>
     body {
       background: #111;
@@ -48,18 +47,16 @@
 
     .page-container {
       width: 95%;
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 20px auto 40px auto;
     }
   </style>
 
-  <!-- External CSS -->
   <link rel="stylesheet" href="dashboard.css">
 </head>
 
 <body>
 
-  <!-- NAV -->
   <div id="nav"></div>
 
   <div class="page-container">
@@ -104,131 +101,162 @@
       </div>
     </div>
 
-    <!-- SQUAD SECTION -->
-    <h2 class="section-header">Squad</h2>
-    <div class="panel">
-      <table class="gpsl-table">
-        <thead>
-          <tr>
-            <th>Player</th>
-            <th>Pos</th>
-            <th>Rating</th>
-            <th>Playstyle</th>
-            <th>Value</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="squad-body"></tbody>
-      </table>
-    </div>
+    <!-- MAIN CONTENT: TWO COLUMNS -->
+    <div id="mainContent">
 
-    <!-- CLUB FINANCES -->
-    <h2 class="section-header">Club Finances</h2>
-    <div class="panel">
-      <h2>Balance</h2>
-      <div id="finance-balance" class="finance-box">Loading…</div>
-    </div>
+      <!-- LEFT COLUMN -->
+      <div id="leftColumn">
 
-    <!-- ACTIVE LISTINGS -->
-    <h2 class="section-header">Your Active Listings</h2>
-    <div class="panel">
-      <table class="gpsl-table">
-        <thead>
-          <tr>
-            <th>Player</th>
-            <th>Pos</th>
-            <th>Rating</th>
-            <th>Value</th>
-            <th>Reserve</th>
-            <th>Time Remaining</th>
-            <th>Highest Bid</th>
-            <th>Highest Club</th>
-          </tr>
-        </thead>
-        <tbody id="active-listings-body"></tbody>
-      </table>
-    </div>
+        <!-- CLUB FINANCES (moved above Squad) -->
+        <h2 class="section-header">Club Finances</h2>
+        <div class="panel">
+          <h2>Balance</h2>
+          <div id="finance-balance" class="finance-box">Loading…</div>
+        </div>
 
-    <!-- SELLER REVIEW -->
-    <h2 class="section-header">Seller Review</h2>
-    <div class="panel">
-      <table class="gpsl-table">
-        <thead>
-          <tr>
-            <th>Player</th>
-            <th>Pos</th>
-            <th>Rating</th>
-            <th>Highest Bid</th>
-            <th>Highest Club</th>
-            <th>Deadline</th>
-            <th>Decision</th>
-          </tr>
-        </thead>
-        <tbody id="seller-review-body"></tbody>
-      </table>
-    </div>
+        <!-- SQUAD -->
+        <h2 class="section-header">Squad</h2>
+        <div class="panel">
+          <table class="gpsl-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Pos</th>
+                <th>Rating</th>
+                <th>Playstyle</th>
+                <th>Value</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="squad-body"></tbody>
+          </table>
+        </div>
 
-    <!-- CLOSED LISTINGS -->
-    <h2 class="section-header">Closed Listings</h2>
-    <div class="panel">
-      <table class="gpsl-table">
-        <thead>
-          <tr>
-            <th>Player</th>
-            <th>Pos</th>
-            <th>Rating</th>
-            <th>Final Bid</th>
-            <th>Winner</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody id="closed-listings-body"></tbody>
-      </table>
-    </div>
+      </div>
 
-  </div>
+      <!-- RIGHT COLUMN: TRANSFER CENTRE -->
+      <div id="rightColumn">
 
-  <!-- LIST PLAYER MODAL -->
-<div id="list-player-modal-backdrop">
-  <div id="list-player-modal">
-    <h3>List Player</h3>
+        <h2 class="section-header">Transfer Centre</h2>
 
-    <div id="modalPlayerName" style="font-weight:bold; margin-bottom:4px;"></div>
-    <div id="modalPlayerInfo"></div>
+        <!-- MY ACTIVE BIDS -->
+        <div class="panel">
+          <h2>My Active Bids</h2>
+          <table class="gpsl-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Pos</th>
+                <th>Your Bid</th>
+                <th>Highest Bid</th>
+                <th>Highest Club</th>
+                <th>Ends</th>
+              </tr>
+            </thead>
+            <tbody id="my-active-bids-body"></tbody>
+          </table>
+        </div>
 
-    <div class="modal-row">
-      <label>Market Value</label>
-      <div id="modalMarketValue">₿ 0</div>
-    </div>
+        <!-- ACTIVE LISTINGS -->
+        <div class="panel">
+          <h2>Your Active Listings</h2>
+          <table class="gpsl-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Pos</th>
+                <th>Rating</th>
+                <th>Value</th>
+                <th>Reserve</th>
+                <th>Time Remaining</th>
+                <th>Highest Bid</th>
+                <th>Highest Club</th>
+              </tr>
+            </thead>
+            <tbody id="active-listings-body"></tbody>
+          </table>
+        </div>
 
-    <div class="modal-row">
-      <label>Max Allowed Reserve</label>
-      <div id="modalMaxReserve">₿ 0</div>
-    </div>
+        <!-- SELLER REVIEW -->
+        <div class="panel">
+          <h2>Seller Review</h2>
+          <table class="gpsl-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Pos</th>
+                <th>Rating</th>
+                <th>Highest Bid</th>
+                <th>Highest Club</th>
+                <th>Deadline</th>
+                <th>Decision</th>
+              </tr>
+            </thead>
+            <tbody id="seller-review-body"></tbody>
+          </table>
+        </div>
 
-    <div class="modal-row">
-      <label for="reserveInput">Reserve Price</label>
-      <input type="number" id="reserveInput" min="0" step="1">
-      <div id="reserveError"></div>
+        <!-- CLOSED LISTINGS -->
+        <div class="panel">
+          <h2>Closed Listings</h2>
+          <table class="gpsl-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Pos</th>
+                <th>Rating</th>
+                <th>Final Bid</th>
+                <th>Winner</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="closed-listings-body"></tbody>
+          </table>
+        </div>
 
-      <button id="useMaxReserveBtn" class="button" style="margin-top: 6px;">
-        Use Max Allowed Reserve
-      </button>
-    </div>
+      </div>
 
-    <!-- ⭐ WARNING NOW INSIDE THE MODAL ⭐ -->
-    <div id="modalWarning" style="margin-top: 12px; margin-bottom: 12px; text-align:center; color:#ffcc00; font-weight:600;">
-      Listing a player is irreversible once confirmed. You cannot cancel or edit this listing.
-    </div>
-
-    <div class="modal-buttons">
-      <button class="button" id="cancelListBtn">Cancel</button>
-      <button class="button" id="confirmListBtn">Confirm Listing</button>
     </div>
 
   </div>
-</div>
+
+  <!-- MODAL (unchanged) -->
+  <div id="list-player-modal-backdrop">
+    <div id="list-player-modal">
+      <h3>List Player</h3>
+
+      <div id="modalPlayerName"></div>
+      <div id="modalPlayerInfo"></div>
+
+      <div class="modal-row">
+        <label>Market Value</label>
+        <div id="modalMarketValue">₿ 0</div>
+      </div>
+
+      <div class="modal-row">
+        <label>Max Allowed Reserve</label>
+        <div id="modalMaxReserve">₿ 0</div>
+      </div>
+
+      <div class="modal-row">
+        <label for="reserveInput">Reserve Price</label>
+        <input type="number" id="reserveInput">
+        <div id="reserveError"></div>
+        <button id="useMaxReserveBtn" class="button">Use Max Allowed Reserve</button>
+      </div>
+
+      <div id="modalWarning">
+        Listing a player is irreversible once confirmed.
+      </div>
+
+      <div class="modal-buttons">
+        <button class="button" id="cancelListBtn">Cancel</button>
+        <button class="button" id="confirmListBtn">Confirm Listing</button>
+      </div>
+
+    </div>
+  </div>
 
   <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -237,18 +265,17 @@
   <script src="firebase.js"></script>
 
   <!-- Supabase -->
-<script type="module">
-  import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-  const supabase = createClient(
-    "https://omyyogfumrjoaweuawjn.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
-  );
+    const supabase = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "YOUR_PUBLIC_ANON_KEY"
+    );
 
-  window.supabase = supabase;
-</script>
+    window.supabase = supabase;
+  </script>
 
-  <!-- Dashboard Logic -->
   <script src="dashboard.js"></script>
 
   <script>
