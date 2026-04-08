@@ -2,9 +2,9 @@
 //  GLOBAL STATE
 // ===============================
 let currentUserEmail = null;
-let currentUserClub = null;       // Full club name
-let currentUserShort = null;      // Short code
-let currentUserClubID = null;     // Numeric club ID
+let currentUserShort = null;
+let currentUserClub = null;
+let currentUserClubID = null;
 
 let selectedPlayerForListing = null;
 
@@ -21,7 +21,8 @@ auth.onAuthStateChanged(async user => {
   currentUserEmail = user.email;
   document.getElementById("userEmail").textContent = currentUserEmail;
 
-  await resolveClubFromFirebase();
+  await loadShortNameFromFirestore();
+  await loadClubFromSupabase();
   await loadClubDetails();
   await loadSquad();
   await loadListedPlayers();
@@ -31,39 +32,54 @@ auth.onAuthStateChanged(async user => {
 
 
 // ===============================
-//  RESOLVE CLUB FROM FIREBASE
+//  FIRESTORE → SHORTNAME ONLY
 // ===============================
-async function resolveClubFromFirebase() {
-  const userDoc = await db.collection("users").doc(currentUserEmail).get();
+async function loadShortNameFromFirestore() {
+  const doc = await db.collection("users").doc(currentUserEmail).get();
 
-  if (!userDoc.exists) {
-    console.error("Firebase user doc not found");
+  if (!doc.exists) {
+    console.error("Firestore user doc missing ShortName");
     return;
   }
 
-  const data = userDoc.data();
+  currentUserShort = doc.data().ShortName;
+}
+
+
+// ===============================
+//  SUPABASE → CLUB INFO (using ShortName)
+// ===============================
+async function loadClubFromSupabase() {
+  const { data, error } = await supabase
+    .from("Clubs")
+    .select("*")
+    .eq("ShortName", currentUserShort)
+    .single();
+
+  if (error || !data) {
+    console.error("Club lookup failed", error);
+    return;
+  }
 
   currentUserClub = data.Club;
-  currentUserShort = data.ShortName;
   currentUserClubID = data.Club_ID;
 
   document.getElementById("clubNameField").textContent = currentUserClub;
   document.getElementById("dashboardTitle").textContent = `${currentUserClub} Dashboard`;
 
-  // Badge
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${currentUserShort}.png`;
 }
 
 
 // ===============================
-//  LOAD CLUB DETAILS
+//  CLUB DETAILS PANEL
 // ===============================
 async function loadClubDetails() {
   const { data, error } = await supabase
     .from("Clubs")
     .select("*")
-    .eq("Club", currentUserClub)
+    .eq("Club_ID", currentUserClubID)
     .single();
 
   if (error || !data) {
@@ -75,7 +91,6 @@ async function loadClubDetails() {
   document.getElementById("stadiumField").textContent = data.Stadium || "Unknown";
   document.getElementById("capacityField").textContent = data.Capacity || "Unknown";
 
-  // Owner editing
   document.getElementById("editOwnerBtn").onclick = () => {
     document.getElementById("ownerInput").disabled = false;
   };
@@ -86,7 +101,7 @@ async function loadClubDetails() {
     await supabase
       .from("Clubs")
       .update({ Owner: newOwner })
-      .eq("Club", currentUserClub);
+      .eq("Club_ID", currentUserClubID);
 
     document.getElementById("ownerInput").disabled = true;
   };
@@ -94,7 +109,7 @@ async function loadClubDetails() {
 
 
 // ===============================
-//  LOAD SQUAD
+//  SQUAD
 // ===============================
 async function loadSquad() {
   const { data, error } = await supabase
@@ -117,9 +132,9 @@ function renderSquad(players) {
   players.forEach(p => {
     const tr = document.createElement("tr");
 
-    const status = p.Listed ?
-      `<span class="status-pill status-listed">Listed</span>` :
-      `<span class="status-pill status-not-listed">Not Listed</span>`;
+    const status = p.Listed
+      ? `<span class="status-pill status-listed">Listed</span>`
+      : `<span class="status-pill status-not-listed">Not Listed</span>`;
 
     const actionBtn = p.Listed
       ? `<button class="button" disabled>Listed</button>`
@@ -167,7 +182,7 @@ document.getElementById("confirmListBtn").onclick = validateAndCreateListing;
 
 
 // ===============================
-//  VALIDATE + CREATE LISTING
+//  CREATE LISTING
 // ===============================
 async function validateAndCreateListing() {
   const reserve = Number(document.getElementById("reserveInput").value);
@@ -273,7 +288,7 @@ async function loadFinance() {
 
 
 // ===============================
-//  LOAD LISTINGS (ACTIVE / REVIEW / CLOSED)
+//  LOAD LISTINGS
 // ===============================
 async function loadListings() {
   const { data, error } = await supabase
@@ -380,7 +395,6 @@ function renderClosedListings(listings) {
 //  ACCEPT / REJECT SALE
 // ===============================
 async function acceptSale(listingID, amount) {
-  // Get current balance
   const { data: finance } = await supabase
     .from("Club_Finances")
     .select("balance")
