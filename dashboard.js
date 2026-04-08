@@ -1,10 +1,10 @@
-console.log("DASHBOARD JS — NEW VERSION LOADED");
+console.log("DASHBOARD JS — FULLY REWRITTEN & FIXED");
 
 // ======================================================
-//  GPSL CLUB DASHBOARD — STABLE VERSION (NO JOINS)
+//  GLOBAL STATE
 // ======================================================
-
-let currentUserClub = null;
+let currentUserClub = null;        // FULL club name (e.g. "Urawa Reds")
+let currentUserShort = null;       // Short code (e.g. "URD")
 let listings = [];
 let financeBalance = 0;
 
@@ -16,7 +16,7 @@ const financeBox = document.getElementById("finance-balance");
 
 
 // ======================================================
-//  FIREBASE → FIRESTORE → CLUB NAME
+//  FIREBASE → RESOLVE FULL CLUB NAME → LOAD DASHBOARD
 // ======================================================
 firebase.auth().onAuthStateChanged(async user => {
   if (!user) return;
@@ -24,17 +24,36 @@ firebase.auth().onAuthStateChanged(async user => {
   const db = firebase.firestore();
   const doc = await db.collection("users").doc(user.uid).get();
 
-  if (doc.exists) {
-    currentUserClub = doc.data().club; // e.g. "URD"
+  if (!doc.exists) return;
+
+  // Step 1: Get short code (URD)
+  currentUserShort = doc.data().club;
+
+  // Step 2: Resolve full club name from Clubs table
+  const { data: clubRow, error: clubErr } = await supabase
+    .from("Clubs")
+    .select("*")
+    .eq("ShortName", currentUserShort)
+    .single();
+
+  if (clubErr || !clubRow) {
+    console.error("Club lookup failed:", clubErr);
+    return;
   }
 
+  // Step 3: Set full club name
+  currentUserClub = clubRow.Club;   // e.g. "Urawa Reds"
+
+  console.log("Resolved club:", currentUserShort, "→", currentUserClub);
+
+  // Step 4: Load dashboard sections
   await loadFinance();
   await loadListings();
 });
-
+  
 
 // ======================================================
-//  LOAD CLUB FINANCE (Correct Table + Correct Column)
+//  LOAD CLUB FINANCE
 // ======================================================
 async function loadFinance() {
   const { data, error } = await supabase
@@ -55,7 +74,7 @@ async function loadFinance() {
 
 
 // ======================================================
-//  LOAD LISTINGS — STABLE MODE (NO JOINS)
+//  LOAD LISTINGS (NO JOINS MODE)
 // ======================================================
 async function loadListings() {
   const { data, error } = await supabase
@@ -72,7 +91,7 @@ async function loadListings() {
     listing_id: l.Id,
     selling_club: l.seller_club_id,
 
-    // TEMP placeholders until joins are restored
+    // TEMP placeholders
     player_name: l.player_name ?? "(unknown)",
     position: l.position ?? "-",
     playstyle: l.playstyle ?? "-",
@@ -83,8 +102,8 @@ async function loadListings() {
     end_time: l.end_time,
     status: l.status,
 
-    highest_bid: null,
-    highest_bidder_club: null,
+    highest_bid: l.current_highest_bid ?? null,
+    highest_bidder_club: l.current_highest_bidder ?? null,
     bids: []
   }));
 
@@ -107,9 +126,7 @@ function renderDashboard() {
     const diffMin = Math.floor(diffMs / 60000);
     const timeLeft = diffMs > 0 ? `${diffMin}m` : "Expired";
 
-    // -----------------------------
-    // ACTIVE LISTINGS
-    // -----------------------------
+    // ACTIVE
     if (listing.status === "Active") {
       const tr = document.createElement("tr");
       tr.innerHTML = `
@@ -124,14 +141,10 @@ function renderDashboard() {
       `;
       activeBody.appendChild(tr);
 
-      if (diffMs <= 0) {
-        moveToSellerReview(listing);
-      }
+      if (diffMs <= 0) moveToSellerReview(listing);
     }
 
-    // -----------------------------
     // SELLER REVIEW
-    // -----------------------------
     if (listing.status === "Seller Review") {
       const deadline = new Date(end.getTime() + 24 * 3600 * 1000);
       const remaining = Math.max(0, Math.floor((deadline - now) / 60000));
@@ -152,24 +165,15 @@ function renderDashboard() {
         </td>
       `;
 
-      tr.querySelector(".accept-btn").addEventListener("click", () => {
-        acceptSale(listing);
-      });
-
-      tr.querySelector(".reject-btn").addEventListener("click", () => {
-        rejectSale(listing);
-      });
+      tr.querySelector(".accept-btn").addEventListener("click", () => acceptSale(listing));
+      tr.querySelector(".reject-btn").addEventListener("click", () => rejectSale(listing));
 
       sellerReviewBody.appendChild(tr);
 
-      if (remaining <= 0) {
-        rejectSale(listing, true);
-      }
+      if (remaining <= 0) rejectSale(listing, true);
     }
 
-    // -----------------------------
-    // CLOSED LISTINGS
-    // -----------------------------
+    // CLOSED
     if (listing.status === "Closed") {
       const tr = document.createElement("tr");
       tr.innerHTML = `
@@ -208,14 +212,17 @@ async function moveToSellerReview(listing) {
 async function acceptSale(listing) {
   if (!listing.highest_bid || !listing.highest_bidder_club) return;
 
+  // Move player
   await supabase
     .from("Players")
     .update({ Contracted_Team: listing.highest_bidder_club })
     .eq("Name", listing.player_name);
 
+  // Money movement
   await adjustBalance(listing.highest_bidder_club, -listing.highest_bid);
   await adjustBalance(listing.selling_club, listing.highest_bid);
 
+  // Close listing
   await supabase
     .from("Player_Transfer_Listings")
     .update({ status: "Closed" })
@@ -243,10 +250,10 @@ async function rejectSale(listing, auto = false) {
 
 
 // ======================================================
-//  FINANCE UPDATE HELPER (Correct Table + Correct Column)
+//  FINANCE UPDATE + LEDGER ENTRY
 // ======================================================
 async function adjustBalance(club, amount) {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("Club_Finances")
     .select("*")
     .eq("club_name", club)
@@ -266,7 +273,9 @@ async function adjustBalance(club, amount) {
     .insert({
       club_name: club,
       amount: amount,
-      description: "Transfer Market Transaction",
-      timestamp: new Date().toISOString()
+      type: amount > 0 ? "credit" : "debit",
+      reference_id: null,
+      timestamp: new Date().toISOString(),
+      notes: "Transfer Market Transaction"
     });
 }
