@@ -428,8 +428,8 @@ async function renderSellerReview(listings) {
       <td>${new Date(l.end_time).toLocaleString()}</td>
       <td>
         <div class="decision-buttons">
-          <button class="button" onclick="acceptSale(${l.id}, ${l.current_highest_bid})">Accept</button>
-          <button class="button" onclick="rejectSale(${l.id})">Reject</button>
+          <button class="button" onclick="transferEngine.acceptSale(${l.id})">Accept</button>
+          <button class="button" onclick="transferEngine.rejectSale(${l.id})">Reject</button>
         </div>
       </td>
     `;
