@@ -32,10 +32,12 @@ auth.onAuthStateChanged(async user => {
 
 
 // ===============================
-//  FIRESTORE → SHORTNAME ONLY
+//  FIRESTORE → SHORTNAME ONLY (UID-based)
 // ===============================
 async function loadShortNameFromFirestore() {
-  const doc = await db.collection("users").doc(currentUserEmail).get();
+  const uid = auth.currentUser.uid;
+
+  const doc = await db.collection("users").doc(uid).get();
 
   if (!doc.exists) {
     console.error("Firestore user doc missing ShortName");
