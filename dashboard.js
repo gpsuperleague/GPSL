@@ -2,11 +2,11 @@
 //  GLOBAL STATE
 // ===============================
 let currentUserEmail = null;
-let currentUserClub = null;       // Full club name (e.g., "Urawa Reds")
-let currentUserShort = null;      // Short code (e.g., "URD")
+let currentUserClub = null;       // Full club name
+let currentUserShort = null;      // Short code
 let currentUserClubID = null;     // Numeric club ID
 
-let selectedPlayerForListing = null; // Player object for modal
+let selectedPlayerForListing = null;
 
 
 // ===============================
@@ -21,7 +21,7 @@ auth.onAuthStateChanged(async user => {
   currentUserEmail = user.email;
   document.getElementById("userEmail").textContent = currentUserEmail;
 
-  await resolveClubFromEmail();
+  await resolveClubFromFirebase();
   await loadClubDetails();
   await loadSquad();
   await loadListedPlayers();
@@ -31,19 +31,17 @@ auth.onAuthStateChanged(async user => {
 
 
 // ===============================
-//  RESOLVE CLUB FROM EMAIL
+//  RESOLVE CLUB FROM FIREBASE
 // ===============================
-async function resolveClubFromEmail() {
-  const { data, error } = await supabase
-    .from("Users")
-    .select("Club, ShortName, Club_ID")
-    .eq("Email", currentUserEmail)
-    .single();
+async function resolveClubFromFirebase() {
+  const userDoc = await db.collection("users").doc(currentUserEmail).get();
 
-  if (error || !data) {
-    console.error("User lookup failed", error);
+  if (!userDoc.exists) {
+    console.error("Firebase user doc not found");
     return;
   }
+
+  const data = userDoc.data();
 
   currentUserClub = data.Club;
   currentUserShort = data.ShortName;
@@ -52,7 +50,7 @@ async function resolveClubFromEmail() {
   document.getElementById("clubNameField").textContent = currentUserClub;
   document.getElementById("dashboardTitle").textContent = `${currentUserClub} Dashboard`;
 
-  // Load badge
+  // Badge
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${currentUserShort}.png`;
 }
@@ -119,7 +117,7 @@ function renderSquad(players) {
   players.forEach(p => {
     const tr = document.createElement("tr");
 
-    const status = p.Listed ? 
+    const status = p.Listed ?
       `<span class="status-pill status-listed">Listed</span>` :
       `<span class="status-pill status-not-listed">Not Listed</span>`;
 
@@ -172,9 +170,7 @@ document.getElementById("confirmListBtn").onclick = validateAndCreateListing;
 //  VALIDATE + CREATE LISTING
 // ===============================
 async function validateAndCreateListing() {
-  const reserveInput = document.getElementById("reserveInput");
-  const reserve = Number(reserveInput.value);
-
+  const reserve = Number(document.getElementById("reserveInput").value);
   const mv = selectedPlayerForListing.Market_Value;
   const max = selectedPlayerForListing.Reserve_Cap;
 
@@ -190,7 +186,6 @@ async function validateAndCreateListing() {
     return;
   }
 
-  // Create listing
   const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
   await supabase.from("Player_Transfer_Listings").insert({
@@ -204,7 +199,6 @@ async function validateAndCreateListing() {
     end_time: endTime
   });
 
-  // Mark player as listed
   await supabase
     .from("Players")
     .update({ Listed: true })
@@ -219,7 +213,7 @@ async function validateAndCreateListing() {
 
 
 // ===============================
-//  LOAD LISTED PLAYERS
+//  LISTED PLAYERS
 // ===============================
 async function loadListedPlayers() {
   const { data, error } = await supabase
@@ -259,13 +253,13 @@ function renderListedPlayers(listings) {
 
 
 // ===============================
-//  LOAD FINANCE
+//  FINANCE (Club_Finances.balance)
 // ===============================
 async function loadFinance() {
   const { data, error } = await supabase
-    .from("Clubs")
-    .select("Balance")
-    .eq("Club", currentUserClub)
+    .from("Club_Finances")
+    .select("balance")
+    .eq("Club_ID", currentUserClubID)
     .single();
 
   if (error || !data) {
@@ -274,12 +268,12 @@ async function loadFinance() {
   }
 
   document.getElementById("finance-balance").textContent =
-    `₿ ${data.Balance.toLocaleString()}`;
+    `₿ ${data.balance.toLocaleString()}`;
 }
 
 
 // ===============================
-//  LOAD LISTINGS (ACTIVE + REVIEW + CLOSED)
+//  LOAD LISTINGS (ACTIVE / REVIEW / CLOSED)
 // ===============================
 async function loadListings() {
   const { data, error } = await supabase
@@ -291,8 +285,6 @@ async function loadListings() {
     console.error("Listings error", error);
     return;
   }
-
-  const now = new Date();
 
   const active = data.filter(l => l.status === "Active");
   const review = data.filter(l => l.status === "Review");
@@ -388,13 +380,20 @@ function renderClosedListings(listings) {
 //  ACCEPT / REJECT SALE
 // ===============================
 async function acceptSale(listingID, amount) {
-  // Add money
+  // Get current balance
+  const { data: finance } = await supabase
+    .from("Club_Finances")
+    .select("balance")
+    .eq("Club_ID", currentUserClubID)
+    .single();
+
+  const newBalance = finance.balance + amount;
+
   await supabase
-    .from("Clubs")
-    .update({ Balance: supabase.rpc("increment_balance", { club_id: currentUserClubID, amount }) })
+    .from("Club_Finances")
+    .update({ balance: newBalance })
     .eq("Club_ID", currentUserClubID);
 
-  // Mark listing closed
   await supabase
     .from("Player_Transfer_Listings")
     .update({ status: "Closed", final_bid: amount })
