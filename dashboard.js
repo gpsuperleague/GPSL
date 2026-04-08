@@ -7,6 +7,7 @@ let currentUserClub = null;
 let currentUserClubID = null;
 
 let selectedPlayerForListing = null;
+let activeListingsCache = []; // used to determine "Listed" status
 
 
 // ===============================
@@ -23,6 +24,7 @@ auth.onAuthStateChanged(async user => {
 
   await loadShortNameFromFirestore();
   await loadClubFromSupabase();
+  await loadActiveListingsCache();
   await loadClubDetails();
   await loadSquad();
   await loadListedPlayers();
@@ -71,6 +73,20 @@ async function loadClubFromSupabase() {
 
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${currentUserShort}.png`;
+}
+
+
+// ===============================
+//  LOAD ACTIVE LISTINGS CACHE
+// ===============================
+async function loadActiveListingsCache() {
+  const { data, error } = await supabase
+    .from("Player_Transfer_Listings")
+    .select("*")
+    .eq("seller_club_id", currentUserClub)
+    .eq("status", "Active");
+
+  activeListingsCache = data || [];
 }
 
 
@@ -132,43 +148,70 @@ function renderSquad(players) {
   tbody.innerHTML = "";
 
   players.forEach(p => {
-    const tr = document.createElement("tr");
+    const isListed = activeListingsCache.some(l => l.player_id === p.Konami_ID);
 
-    const status = p.Listed
+    const status = isListed
       ? `<span class="status-pill status-listed">Listed</span>`
       : `<span class="status-pill status-not-listed">Not Listed</span>`;
 
-    const actionBtn = p.Listed
-      ? `<button class="button" disabled>Listed</button>`
-      : `<button class="button" onclick='openListPlayerModal(${JSON.stringify(p).replace(/"/g, '&quot;')})'>List</button>`;
+    const actionDropdown = `
+      <select onchange="handlePlayerAction('${p.Konami_ID}', this.value)">
+        <option value="">Action</option>
+        <option value="list">Transfer List</option>
+      </select>
+    `;
+
+    const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td>${p.Player_Name}</td>
+      <td>${p.Name}</td>
       <td>${p.Position}</td>
       <td>${p.Rating}</td>
       <td>${p.Playstyle || "-"}</td>
-      <td>₿ ${p.Market_Value}</td>
+      <td>₿ ${p.market_value}</td>
       <td>${status}</td>
-      <td>${actionBtn}</td>
+      <td>${actionDropdown}</td>
     `;
 
     tbody.appendChild(tr);
   });
 }
 
+function handlePlayerAction(konamiID, action) {
+  if (action === "list") {
+    const player = { Konami_ID: konamiID };
+    openListPlayerModalByID(player);
+  }
+}
+
 
 // ===============================
-//  LIST PLAYER MODAL
+//  LIST PLAYER MODAL (lookup by Konami_ID)
 // ===============================
+async function openListPlayerModalByID(playerRef) {
+  const { data, error } = await supabase
+    .from("Players")
+    .select("*")
+    .eq("Konami_ID", playerRef.Konami_ID)
+    .single();
+
+  if (error || !data) {
+    console.error("Player lookup failed", error);
+    return;
+  }
+
+  openListPlayerModal(data);
+}
+
 function openListPlayerModal(player) {
   selectedPlayerForListing = player;
 
-  document.getElementById("modalPlayerName").textContent = player.Player_Name;
+  document.getElementById("modalPlayerName").textContent = player.Name;
   document.getElementById("modalPlayerInfo").textContent =
     `${player.Position} • Rating ${player.Rating}`;
 
-  document.getElementById("modalMarketValue").textContent = `₿ ${player.Market_Value}`;
-  document.getElementById("modalMaxReserve").textContent = `₿ ${player.Reserve_Cap}`;
+  document.getElementById("modalMarketValue").textContent = `₿ ${player.market_value}`;
+  document.getElementById("modalMaxReserve").textContent = `₿ ${player.Maximum_Reserve_Price}`;
 
   document.getElementById("reserveInput").value = "";
   document.getElementById("reserveError").textContent = "";
@@ -188,8 +231,8 @@ document.getElementById("confirmListBtn").onclick = validateAndCreateListing;
 // ===============================
 async function validateAndCreateListing() {
   const reserve = Number(document.getElementById("reserveInput").value);
-  const mv = selectedPlayerForListing.Market_Value;
-  const max = selectedPlayerForListing.Reserve_Cap;
+  const mv = selectedPlayerForListing.market_value;
+  const max = selectedPlayerForListing.Maximum_Reserve_Price;
 
   if (reserve < mv) {
     document.getElementById("reserveError").textContent =
@@ -206,23 +249,17 @@ async function validateAndCreateListing() {
   const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
   await supabase.from("Player_Transfer_Listings").insert({
-    Player_Name: selectedPlayerForListing.Player_Name,
-    Player_ID: selectedPlayerForListing.Player_ID,
-    seller_club_id: currentUserClubID,
-    seller_club_name: currentUserClub,
+    player_id: selectedPlayerForListing.Konami_ID,
+    seller_club_id: currentUserClub,
     reserve_price: reserve,
     market_value: mv,
     status: "Active",
     end_time: endTime
   });
 
-  await supabase
-    .from("Players")
-    .update({ Listed: true })
-    .eq("Player_ID", selectedPlayerForListing.Player_ID);
-
   document.getElementById("list-player-modal-backdrop").style.display = "none";
 
+  await loadActiveListingsCache();
   await loadSquad();
   await loadListedPlayers();
   await loadListings();
@@ -236,7 +273,7 @@ async function loadListedPlayers() {
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
-    .eq("seller_club_id", currentUserClubID);
+    .eq("seller_club_id", currentUserClub);
 
   if (error) {
     console.error("Listed players error", error);
@@ -246,26 +283,38 @@ async function loadListedPlayers() {
   renderListedPlayers(data);
 }
 
-function renderListedPlayers(listings) {
+async function renderListedPlayers(listings) {
   const tbody = document.getElementById("listed-players-body");
   tbody.innerHTML = "";
 
-  listings.forEach(l => {
+  for (const l of listings) {
+    const player = await fetchPlayerByID(l.player_id);
+
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td>${l.Player_Name}</td>
-      <td>${l.Position || "-"}</td>
-      <td>${l.Rating || "-"}</td>
+      <td>${player?.Name || "Unknown"}</td>
+      <td>${player?.Position || "-"}</td>
+      <td>${player?.Rating || "-"}</td>
       <td>₿ ${l.market_value}</td>
       <td>₿ ${l.reserve_price}</td>
       <td>${l.status}</td>
-      <td>${l.highest_bid || "-"}</td>
+      <td>${l.current_highest_bid || "-"}</td>
       <td>${l.highest_club || "-"}</td>
     `;
 
     tbody.appendChild(tr);
-  });
+  }
+}
+
+async function fetchPlayerByID(kid) {
+  const { data } = await supabase
+    .from("Players")
+    .select("*")
+    .eq("Konami_ID", kid)
+    .single();
+
+  return data;
 }
 
 
@@ -276,7 +325,7 @@ async function loadFinance() {
   const { data, error } = await supabase
     .from("Club_Finances")
     .select("balance")
-    .eq("Club_ID", currentUserClubID)
+    .eq("club_name", currentUserClub)
     .single();
 
   if (error || !data) {
@@ -296,7 +345,7 @@ async function loadListings() {
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
-    .eq("seller_club_id", currentUserClubID);
+    .eq("seller_club_id", currentUserClub);
 
   if (error) {
     console.error("Listings error", error);
@@ -316,80 +365,86 @@ async function loadListings() {
 // ===============================
 //  ACTIVE LISTINGS
 // ===============================
-function renderActiveListings(listings) {
+async function renderActiveListings(listings) {
   const tbody = document.getElementById("active-listings-body");
   tbody.innerHTML = "";
 
-  listings.forEach(l => {
+  for (const l of listings) {
+    const player = await fetchPlayerByID(l.player_id);
+
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td>${l.Player_Name}</td>
-      <td>${l.Position || "-"}</td>
-      <td>${l.Rating || "-"}</td>
+      <td>${player?.Name || "Unknown"}</td>
+      <td>${player?.Position || "-"}</td>
+      <td>${player?.Rating || "-"}</td>
       <td>₿ ${l.market_value}</td>
       <td>₿ ${l.reserve_price}</td>
       <td>${formatTimeRemaining(l.end_time)}</td>
-      <td>${l.highest_bid || "-"}</td>
+      <td>${l.current_highest_bid || "-"}</td>
       <td>${l.highest_club || "-"}</td>
     `;
 
     tbody.appendChild(tr);
-  });
+  }
 }
 
 
 // ===============================
 //  SELLER REVIEW
 // ===============================
-function renderSellerReview(listings) {
+async function renderSellerReview(listings) {
   const tbody = document.getElementById("seller-review-body");
   tbody.innerHTML = "";
 
-  listings.forEach(l => {
+  for (const l of listings) {
+    const player = await fetchPlayerByID(l.player_id);
+
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td>${l.Player_Name}</td>
-      <td>${l.Position || "-"}</td>
-      <td>${l.Rating || "-"}</td>
-      <td>${l.highest_bid || "-"}</td>
+      <td>${player?.Name || "Unknown"}</td>
+      <td>${player?.Position || "-"}</td>
+      <td>${player?.Rating || "-"}</td>
+      <td>${l.current_highest_bid || "-"}</td>
       <td>${l.highest_club || "-"}</td>
       <td>${new Date(l.end_time).toLocaleString()}</td>
       <td>
         <div class="decision-buttons">
-          <button class="button" onclick="acceptSale(${l.id}, ${l.highest_bid})">Accept</button>
+          <button class="button" onclick="acceptSale(${l.id}, ${l.current_highest_bid})">Accept</button>
           <button class="button" onclick="rejectSale(${l.id})">Reject</button>
         </div>
       </td>
     `;
 
     tbody.appendChild(tr);
-  });
+  }
 }
 
 
 // ===============================
 //  CLOSED LISTINGS
 // ===============================
-function renderClosedListings(listings) {
+async function renderClosedListings(listings) {
   const tbody = document.getElementById("closed-listings-body");
   tbody.innerHTML = "";
 
-  listings.forEach(l => {
+  for (const l of listings) {
+    const player = await fetchPlayerByID(l.player_id);
+
     const tr = document.createElement("tr");
 
     tr.innerHTML = `
-      <td>${l.Player_Name}</td>
-      <td>${l.Position || "-"}</td>
-      <td>${l.Rating || "-"}</td>
+      <td>${player?.Name || "Unknown"}</td>
+      <td>${player?.Position || "-"}</td>
+      <td>${player?.Rating || "-"}</td>
       <td>${l.final_bid || "-"}</td>
       <td>${l.winner || "-"}</td>
       <td>${l.status}</td>
     `;
 
     tbody.appendChild(tr);
-  });
+  }
 }
 
 
@@ -400,7 +455,7 @@ async function acceptSale(listingID, amount) {
   const { data: finance } = await supabase
     .from("Club_Finances")
     .select("balance")
-    .eq("Club_ID", currentUserClubID)
+    .eq("club_name", currentUserClub)
     .single();
 
   const newBalance = finance.balance + amount;
@@ -408,7 +463,7 @@ async function acceptSale(listingID, amount) {
   await supabase
     .from("Club_Finances")
     .update({ balance: newBalance })
-    .eq("Club_ID", currentUserClubID);
+    .eq("club_name", currentUserClub);
 
   await supabase
     .from("Player_Transfer_Listings")
