@@ -1,4 +1,5 @@
 console.log("DASHBOARD JS — NEW VERSION LOADED");
+
 // ======================================================
 //  GPSL CLUB DASHBOARD — STABLE VERSION (NO JOINS)
 // ======================================================
@@ -24,7 +25,7 @@ firebase.auth().onAuthStateChanged(async user => {
   const doc = await db.collection("users").doc(user.uid).get();
 
   if (doc.exists) {
-    currentUserClub = doc.data().club;
+    currentUserClub = doc.data().club; // e.g. "URD"
   }
 
   await loadFinance();
@@ -33,16 +34,17 @@ firebase.auth().onAuthStateChanged(async user => {
 
 
 // ======================================================
-//  LOAD CLUB FINANCE
+//  LOAD CLUB FINANCE (Correct Table + Correct Column)
 // ======================================================
 async function loadFinance() {
   const { data, error } = await supabase
     .from("Club_Finances")
     .select("*")
-    .eq("club_id", currentUserClub)
+    .eq("club_name", currentUserClub)
     .single();
 
   if (error || !data) {
+    console.error("Finance load error:", error);
     financeBox.textContent = "Balance unavailable";
     return;
   }
@@ -66,7 +68,6 @@ async function loadListings() {
     return;
   }
 
-  // Map into the structure the dashboard expects
   listings = data.map(l => ({
     listing_id: l.Id,
     selling_club: l.seller_club_id,
@@ -123,7 +124,6 @@ function renderDashboard() {
       `;
       activeBody.appendChild(tr);
 
-      // Auto‑move to Seller Review if expired
       if (diffMs <= 0) {
         moveToSellerReview(listing);
       }
@@ -162,7 +162,6 @@ function renderDashboard() {
 
       sellerReviewBody.appendChild(tr);
 
-      // Auto‑reject if deadline passed
       if (remaining <= 0) {
         rejectSale(listing, true);
       }
@@ -209,19 +208,14 @@ async function moveToSellerReview(listing) {
 async function acceptSale(listing) {
   if (!listing.highest_bid || !listing.highest_bidder_club) return;
 
-  // 1. Transfer player to winning club
   await supabase
     .from("Players")
     .update({ Contracted_Team: listing.highest_bidder_club })
     .eq("Name", listing.player_name);
 
-  // 2. Buyer pays
   await adjustBalance(listing.highest_bidder_club, -listing.highest_bid);
-
-  // 3. Seller receives
   await adjustBalance(listing.selling_club, listing.highest_bid);
 
-  // 4. Mark listing closed
   await supabase
     .from("Player_Transfer_Listings")
     .update({ status: "Closed" })
@@ -249,13 +243,13 @@ async function rejectSale(listing, auto = false) {
 
 
 // ======================================================
-//  FINANCE UPDATE HELPER
+//  FINANCE UPDATE HELPER (Correct Table + Correct Column)
 // ======================================================
 async function adjustBalance(club, amount) {
   const { data, error } = await supabase
     .from("Club_Finances")
     .select("*")
-    .eq("club_id", club)
+    .eq("club_name", club)
     .single();
 
   if (!data) return;
@@ -265,12 +259,12 @@ async function adjustBalance(club, amount) {
   await supabase
     .from("Club_Finances")
     .update({ balance: newBalance })
-    .eq("club_id", club);
+    .eq("club_name", club);
 
   await supabase
     .from("Club_Finance_Transactions")
     .insert({
-      club_id: club,
+      club_name: club,
       amount: amount,
       description: "Transfer Market Transaction",
       timestamp: new Date().toISOString()
