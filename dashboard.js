@@ -300,7 +300,7 @@ async function renderListedPlayers(listings) {
       <td>₿ ${l.reserve_price}</td>
       <td>${l.status}</td>
       <td>${l.current_highest_bid || "-"}</td>
-      <td>${l.highest_club || "-"}</td>
+      <td>${l.current_highest_bidder || "-"}</td>
     `;
 
     tbody.appendChild(tr);
@@ -339,7 +339,7 @@ async function loadFinance() {
 
 
 // ===============================
-//  LOAD LISTINGS
+//  LOAD LISTINGS (with auto-expiry)
 // ===============================
 async function loadListings() {
   const { data, error } = await supabase
@@ -352,13 +352,51 @@ async function loadListings() {
     return;
   }
 
-  const active = data.filter(l => l.status === "Active");
-  const review = data.filter(l => l.status === "Review");
-  const closed = data.filter(l => l.status === "Closed");
+  // ===============================
+  //  AUTO-UPDATE EXPIRED LISTINGS
+  // ===============================
+  for (const l of data) {
+    const now = new Date();
+    const end = new Date(l.end_time);
+
+    if (end < now && l.status === "Active") {
+
+      if (l.current_highest_bid && l.current_highest_bidder) {
+        // Move to REVIEW
+        await supabase
+          .from("Player_Transfer_Listings")
+          .update({ status: "Review" })
+          .eq("id", l.id);
+
+      } else {
+        // Move to CLOSED
+        await supabase
+          .from("Player_Transfer_Listings")
+          .update({ status: "Closed" })
+          .eq("id", l.id);
+      }
+    }
+  }
+
+  // Refresh after updates
+  const refreshed = await supabase
+    .from("Player_Transfer_Listings")
+    .select("*")
+    .eq("seller_club_id", currentUserClub);
+
+  const updatedListings = refreshed.data || [];
+
+  const active = updatedListings.filter(l => l.status === "Active");
+  const review = updatedListings.filter(l => l.status === "Review");
+  const closed = updatedListings.filter(l => l.status === "Closed");
 
   renderActiveListings(active);
   renderSellerReview(review);
   renderClosedListings(closed);
+
+  // Refresh squad listing status
+  await loadActiveListingsCache();
+  await loadSquad();
 }
 
 
@@ -382,7 +420,7 @@ async function renderActiveListings(listings) {
       <td>₿ ${l.reserve_price}</td>
       <td>${formatTimeRemaining(l.end_time)}</td>
       <td>${l.current_highest_bid || "-"}</td>
-      <td>${l.highest_club || "-"}</td>
+      <td>${l.current_highest_bidder || "-"}</td>
     `;
 
     tbody.appendChild(tr);
@@ -406,8 +444,8 @@ async function renderSellerReview(listings) {
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Rating || "-"}</td>
-      <td>${l.current_highest_bid || "-"}</td>
-      <td>${l.highest_club || "-"}</td>
+      <td>₿ ${l.current_highest_bid || "-"}</td>
+      <td>${l.current_highest_bidder || "-"}</td>
       <td>${new Date(l.end_time).toLocaleString()}</td>
       <td>
         <div class="decision-buttons">
