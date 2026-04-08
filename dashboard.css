@@ -75,19 +75,9 @@
   margin-right: 10px;
 }
 
-/* OWNER FIELD STATES */
-.owner-locked {
-  background: #333;
-  color: #aaa;
-  border: 1px solid #444;
-  pointer-events: none;
-}
-
-.owner-editing {
-  background: #111;
-  color: #fff;
-  border: 1px solid #ff9900;
-}
+/* ============================
+   OWNER FIELD STATES (UPDATED)
+   ============================ */
 
 #ownerInput {
   padding: 5px;
@@ -98,6 +88,22 @@
   transition: 0.2s;
 }
 
+/* Locked (default) */
+.owner-locked {
+  background: #333 !important;
+  color: #aaa !important;
+  border: 1px solid #444 !important;
+  pointer-events: none;
+}
+
+/* Editing */
+.owner-editing {
+  background: #111 !important;
+  color: #fff !important;
+  border: 1px solid #ff9900 !important;
+}
+
+/* Edit button */
 #editOwnerBtn {
   margin-left: 10px;
   padding: 6px 12px;
@@ -105,15 +111,27 @@
   color: #ddd;
   border-radius: 4px;
   cursor: pointer;
+  transition: 0.2s;
 }
 
 #editOwnerBtn:hover {
   background: #666;
 }
 
+/* Save button (hidden until editing) */
 #saveOwnerBtn {
   display: none;
   margin-top: 10px;
+  padding: 6px 12px;
+  background: #ff9900;
+  color: #111;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+#saveOwnerBtn:hover {
+  background: #ffb84d;
 }
 
 /* MAIN CONTENT */
