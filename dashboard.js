@@ -265,48 +265,6 @@ async function validateAndCreateListing() {
   await loadListings();
 }
 
-
-// ===============================
-//  LISTED PLAYERS
-// ===============================
-async function loadListedPlayers() {
-  const { data, error } = await supabase
-    .from("Player_Transfer_Listings")
-    .select("*")
-    .eq("seller_club_id", currentUserClub);
-
-  if (error) {
-    console.error("Listed players error", error);
-    return;
-  }
-
-  renderListedPlayers(data);
-}
-
-async function renderListedPlayers(listings) {
-  const tbody = document.getElementById("listed-players-body");
-  tbody.innerHTML = "";
-
-  for (const l of listings) {
-    const player = await fetchPlayerByID(l.player_id);
-
-    const tr = document.createElement("tr");
-
-    tr.innerHTML = `
-      <td>${player?.Name || "Unknown"}</td>
-      <td>${player?.Position || "-"}</td>
-      <td>${player?.Rating || "-"}</td>
-      <td>₿ ${l.market_value}</td>
-      <td>₿ ${l.reserve_price}</td>
-      <td>${l.status}</td>
-      <td>${l.current_highest_bid || "-"}</td>
-      <td>${l.current_highest_bidder || "-"}</td>
-    `;
-
-    tbody.appendChild(tr);
-  }
-}
-
 async function fetchPlayerByID(kid) {
   const { data } = await supabase
     .from("Players")
