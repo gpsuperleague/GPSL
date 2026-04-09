@@ -13,13 +13,17 @@
   <input id="password" type="password" placeholder="Password"><br><br>
 
   <button onclick="login()">Login</button>
+  <br><br>
 
-  <!-- 🔥 Firebase scripts go HERE, at the bottom -->
+  <!-- 🔥 Password reset link -->
+  <a href="#" onclick="resetPassword()">Forgot your password?</a>
+
+  <!-- Firebase scripts -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
-  <!-- Your Firebase config file -->
+  <!-- Your Firebase config -->
   <script src="firebase.js"></script>
 
   <script>
@@ -30,6 +34,24 @@
       auth.signInWithEmailAndPassword(email, pass)
         .then(() => window.location = 'dashboard.html')
         .catch(err => alert(err.message));
+    }
+
+    // ⭐ Send password reset email
+    function resetPassword() {
+      const email = document.getElementById('email').value;
+
+      if (!email) {
+        alert("Enter your email first so we know where to send the reset link.");
+        return;
+      }
+
+      auth.sendPasswordResetEmail(email)
+        .then(() => {
+          alert("Password reset email sent. Check your inbox.");
+        })
+        .catch(err => {
+          alert(err.message);
+        });
     }
   </script>
 
