@@ -1,0 +1,99 @@
+async function runTransferTest() {
+  console.log("🚀 Starting automated transfer test...");
+
+  // 1. Create test player
+  const { data: player, error: playerError } = await supabase
+    .from("Players")
+    .insert({
+      Name: "Test Player",
+      Position: "CF",
+      Nation: "ENG",
+      Age: 25,
+      Rating: 75,
+      Potential: 80,
+      Calc_Potential: 80,
+      Playstyle: "None",
+      Maximum_Reserve_Price: 1000000,
+      market_value: 1000000,
+      Contracted_Team: "TEST",
+      Season_Signed: "2026",
+      Konami_ID: 10999999
+    })
+    .select()
+    .single();
+
+  if (playerError) return console.error("❌ Player insert failed:", playerError);
+  console.log("🧍 Test player created:", player);
+
+  // 2. Create listing expiring in 10 seconds
+  const { data: listing, error: listingError } = await supabase
+    .from("Player_Transfer_Listings")
+    .insert({
+      player_id: 10999999,
+      seller_club_id: "TEST",
+      reserve_price: 1000000,
+      current_highest_bid: null,
+      current_highest_bidder: null,
+      end_time: new Date(Date.now() + 10000).toISOString(),
+      status: "Active",
+      transfer_completed: false
+    })
+    .select()
+    .single();
+
+  if (listingError) return console.error("❌ Listing insert failed:", listingError);
+  console.log("📄 Test listing created:", listing);
+
+  // 3. Place a bid
+  const { error: bidError } = await supabase
+    .from("Player_Transfer_Bids")
+    .insert({
+      player_id: 10999999,
+      bidder_club_id: "MUN",
+      bid_amount: 2000000,
+      listing_id: listing.id
+    });
+
+  if (bidError) return console.error("❌ Bid insert failed:", bidError);
+  console.log("💰 Bid placed");
+
+  // 4. Update listing with highest bid
+  const { error: updateError } = await supabase
+    .from("Player_Transfer_Listings")
+    .update({
+      current_highest_bid: 2000000,
+      current_highest_bidder: "MUN"
+    })
+    .eq("id", listing.id);
+
+  if (updateError) return console.error("❌ Listing update failed:", updateError);
+  console.log("📈 Listing updated with highest bid");
+
+  // 5. Wait 10 seconds for expiry
+  console.log("⏳ Waiting for expiry...");
+  await new Promise((resolve) => setTimeout(resolve, 11000));
+
+  // 6. Trigger expiry logic manually
+  console.log("🔍 Running expiry check...");
+  await transferEngine.evaluateExpiredListing(listing);
+
+  // 7. Check player result
+  const { data: updatedPlayer } = await supabase
+    .from("Players")
+    .select("Contracted_Team")
+    .eq("Konami_ID", 10999999)
+    .single();
+
+  console.log("🏁 Player after transfer:", updatedPlayer);
+
+  // 8. Check listing result
+  const { data: updatedListing } = await supabase
+    .from("Player_Transfer_Listings")
+    .select("status, transfer_completed")
+    .eq("id", listing.id)
+    .single();
+
+  console.log("📦 Listing after transfer:", updatedListing);
+
+  console.log("🎉 Test complete!");
+}
