@@ -38,8 +38,6 @@ transferEngine.evaluateExpiredListing = async function (listing) {
     .eq("id", listing.id);
 };
 
-
-
 // ===============================
 //  ACCEPT SALE
 // ===============================
@@ -67,11 +65,11 @@ transferEngine.acceptSale = async function (listingId) {
     amount: amount
   });
 
-  // Transfer player to buyer
+  // Transfer player to buyer (FIXED: correct column + correct identifier)
   await supabase
     .from("Players")
-    .update({ club_id: buyer })
-    .eq("id", listing.player_id);
+    .update({ Contracted_Team: buyer })
+    .eq("Konami_ID", listing.player_id);
 
   // Mark listing as completed
   await supabase
@@ -82,8 +80,6 @@ transferEngine.acceptSale = async function (listingId) {
     })
     .eq("id", listingId);
 };
-
-
 
 // ===============================
 //  REJECT SALE
