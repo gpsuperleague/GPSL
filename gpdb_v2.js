@@ -165,7 +165,7 @@ function renderTable(players) {
       const konamiId = row.getAttribute("data-konami-id")
       if (!konamiId) return
       window.open(
-        `https://www.pesdb.net/efootball/player/${konamiId}`,
+        `https://pesdb.net/efootball/?id=${konamiId}`,
         "_blank",
         "noopener"
       )
