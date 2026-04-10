@@ -16,13 +16,13 @@ const COLUMNS = [
   "market_value",
   "Contracted_Team",
   "Season_Signed",
-  "Konami_ID"   // ⭐ Added so PESDB links work
+  "Konami_ID" // needed for PESDB
 ]
 
 const FILTER_EXCLUDE = [
   "Maximum_Reserve_Price",
   "market_value",
-  "Konami_ID"   // ⭐ Hide from filters
+  "Konami_ID"
 ]
 
 const DROPDOWN_COLUMNS = [
@@ -62,13 +62,10 @@ async function loadPage(page = 1) {
     .from('Players')
     .select(COLUMNS.join(','), { count: 'exact' })
 
-  // Apply filters
   Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
     if (value.trim() === "") return;
 
     if (DROPDOWN_COLUMNS.includes(col)) {
-
-      // ⭐ FREE AGENT logic
       if (col === "Contracted_Team" && value === "FREE AGENT") {
         query = query.or(
           `${col}.is.null,` +
@@ -78,7 +75,6 @@ async function loadPage(page = 1) {
       } else {
         query = query.eq(col, value);
       }
-
     } else {
       query = query.ilike(col, `%${value}%`);
     }
@@ -117,7 +113,6 @@ function renderTable(players) {
     return
   }
 
-  // ⭐ Hide Konami_ID column from table header
   tableHead.innerHTML = `
     <tr>
       ${COLUMNS.filter(col => col !== "Konami_ID").map(col => {
@@ -132,30 +127,15 @@ function renderTable(players) {
 
   tableBody.innerHTML = players
     .map(player => `
-      <tr>
+      <tr data-konami-id="${player.Konami_ID || player.konami_id || ''}">
         ${COLUMNS.filter(col => col !== "Konami_ID").map(col => {
           let value = player[col]
 
-          // Format market value
           if (col === "market_value" && value !== null) {
             value = "₿ " + new Intl.NumberFormat("en-GB", {
               maximumFractionDigits: 0,
               minimumFractionDigits: 0
             }).format(value)
-          }
-
-          // ⭐ PESDB clickable name
-          if (col === "Name") {
-            return `
-              <td>
-                <a href="https://www.pesdb.net/efootball/player/${player.Konami_ID}"
-                   target="_blank"
-                   rel="noopener noreferrer"
-                   style="color:#ff9900; font-weight:bold;">
-                   ${player.Name}
-                </a>
-              </td>
-            `;
           }
 
           return `<td>${value}</td>`
@@ -164,6 +144,7 @@ function renderTable(players) {
     `)
     .join("")
 
+  // sorting
   Array.from(tableHead.querySelectorAll("th")).forEach(th => {
     const col = th.getAttribute("data-col")
     th.onclick = () => {
@@ -175,6 +156,20 @@ function renderTable(players) {
       }
       loadPage(1)
     }
+  })
+
+  // ⭐ make each row clickable → PESDB
+  Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
+    row.style.cursor = "pointer"
+    row.addEventListener("click", () => {
+      const konamiId = row.getAttribute("data-konami-id")
+      if (!konamiId) return
+      window.open(
+        `https://www.pesdb.net/efootball/player/${konamiId}`,
+        "_blank",
+        "noopener"
+      )
+    })
   })
 }
 
@@ -203,7 +198,6 @@ async function populateDropdowns() {
     let allValues = [];
     const batchSize = 1000;
 
-    // Step 1 — get total rows
     const { count } = await supabase
       .from("Players")
       .select("Konami_ID", { count: "exact" })
@@ -211,7 +205,6 @@ async function populateDropdowns() {
 
     if (!count) continue;
 
-    // Step 2 — fetch in batches
     for (let from = 0; from < count; from += batchSize) {
       const to = Math.min(from + batchSize - 1, count - 1);
 
@@ -225,7 +218,6 @@ async function populateDropdowns() {
           ...data.map(row => {
             const v = row[col];
 
-            // ⭐ Normalise FREE AGENT values
             if (col === "Contracted_Team") {
               if (
                 v === null ||
@@ -243,7 +235,6 @@ async function populateDropdowns() {
       }
     }
 
-    // Step 3 — clean + dedupe
     let uniqueValues;
 
     if (col === "Season_Signed") {
@@ -259,7 +250,6 @@ async function populateDropdowns() {
           .map(v => String(v).trim())
       )].sort((a, b) => String(a).localeCompare(String(b)));
 
-      // ⭐ Move FREE AGENT to top
       if (col === "Contracted_Team") {
         uniqueValues = [
           "FREE AGENT",
@@ -268,7 +258,6 @@ async function populateDropdowns() {
       }
     }
 
-    // Step 4 — populate dropdown
     uniqueValues.forEach(v => {
       const opt = document.createElement("option");
       opt.value = v;
