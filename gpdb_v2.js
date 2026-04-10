@@ -159,18 +159,18 @@ function renderTable(players) {
   })
 
   // ⭐ make each row clickable → PESDB
-  Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
-    row.style.cursor = "pointer"
-    row.addEventListener("click", () => {
-      const konamiId = row.getAttribute("data-konami-id")
-      if (!konamiId) return
-      window.open(
-        `https://pesdb.net/efootball/?id=${konamiId}`,
-        "_blank",
-        "noopener"
-      )
-    })
+Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
+  row.style.cursor = "pointer"
+  row.addEventListener("click", () => {
+    const konamiId = row.getAttribute("data-konami-id")
+    if (!konamiId) return
+    window.open(
+      `https://pesdb.net/efootball/?id=${konamiId}`,
+      "_blank",
+      "noopener"
+    )
   })
+})
 }
 
 function renderPagination() {
