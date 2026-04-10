@@ -23,7 +23,7 @@ async function loadDashboard() {
   await loadFinance();
   await loadSquad();
   await loadListings();
-  await loadMyActiveBids();   // NEW
+  await loadMyActiveBids();
 }
 
 
@@ -187,6 +187,7 @@ function renderSquad(players) {
     `;
 
     const tr = document.createElement("tr");
+    tr.dataset.konamiId = p.Konami_ID;
 
     tr.innerHTML = `
       <td>${p.Name}</td>
@@ -200,6 +201,8 @@ function renderSquad(players) {
 
     tbody.appendChild(tr);
   });
+
+  applyPESDBRowClicks("squad-body");
 }
 
 function handlePlayerAction(konamiID, action) {
@@ -308,7 +311,7 @@ async function fetchPlayerByID(kid) {
 
 
 // ===============================
-//  FINANCE (Club_Finances.balance)
+//  FINANCE
 // ===============================
 async function loadFinance() {
   const { data, error } = await supabase
@@ -341,17 +344,15 @@ async function loadListings() {
     return;
   }
 
-  // AUTO-UPDATE EXPIRED LISTINGS (transfer engine)
+  // AUTO-UPDATE EXPIRED LISTINGS
   for (const l of data) {
     const now = new Date();
     const end = new Date(l.end_time);
 
-    // Listing expired and still Active → evaluate with engine
     if (end < now && l.status === "Active") {
       await transferEngine.evaluateExpiredListing(l);
     }
 
-    // Seller review timeout (24h)
     if (l.status === "Review" && l.review_deadline) {
       const reviewEnd = new Date(l.review_deadline);
       if (reviewEnd < now) {
@@ -360,7 +361,6 @@ async function loadListings() {
     }
   }
 
-  // Refresh after updates
   const refreshed = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
@@ -379,6 +379,8 @@ async function loadListings() {
   await loadActiveListingsCache();
   await loadSquad();
 }
+
+
 // ===============================
 //  ACTIVE LISTINGS
 // ===============================
@@ -390,6 +392,7 @@ async function renderActiveListings(listings) {
     const player = await fetchPlayerByID(l.player_id);
 
     const tr = document.createElement("tr");
+    tr.dataset.konamiId = l.player_id;
 
     tr.innerHTML = `
       <td>${player?.Name || "Unknown"}</td>
@@ -404,6 +407,8 @@ async function renderActiveListings(listings) {
 
     tbody.appendChild(tr);
   }
+
+  applyPESDBRowClicks("active-listings-body");
 }
 
 
@@ -418,6 +423,7 @@ async function renderSellerReview(listings) {
     const player = await fetchPlayerByID(l.player_id);
 
     const tr = document.createElement("tr");
+    tr.dataset.konamiId = l.player_id;
 
     tr.innerHTML = `
       <td>${player?.Name || "Unknown"}</td>
@@ -436,7 +442,10 @@ async function renderSellerReview(listings) {
 
     tbody.appendChild(tr);
   }
+
+  applyPESDBRowClicks("seller-review-body");
 }
+
 
 // ===============================
 //  CLOSED LISTINGS
@@ -449,6 +458,7 @@ async function renderClosedListings(listings) {
     const player = await fetchPlayerByID(l.player_id);
 
     const tr = document.createElement("tr");
+    tr.dataset.konamiId = l.player_id;
 
     tr.innerHTML = `
       <td>${player?.Name || "Unknown"}</td>
@@ -461,63 +471,13 @@ async function renderClosedListings(listings) {
 
     tbody.appendChild(tr);
   }
-}
 
-// ===============================
-//  ACCEPT / REJECT SALE
-// ===============================
-async function acceptSale(listingID, amount) {
-  const { data: finance } = await supabase
-    .from("Club_Finances")
-    .select("balance")
-    .eq("club_name", currentUserClub)
-    .single();
-
-  const newBalance = finance.balance + amount;
-
-  await supabase
-    .from("Club_Finances")
-    .update({ balance: newBalance })
-    .eq("club_name", currentUserClub);
-
-  await supabase
-    .from("Player_Transfer_Listings")
-    .update({ status: "Closed", final_bid: amount })
-    .eq("id", listingID);
-
-  await loadFinance();
-  await loadListings();
-}
-
-async function rejectSale(listingID) {
-  await supabase
-    .from("Player_Transfer_Listings")
-    .update({ status: "Closed", final_bid: null })
-    .eq("id", listingID);
-
-  await loadListings();
+  applyPESDBRowClicks("closed-listings-body");
 }
 
 
 // ===============================
-//  TIME REMAINING FORMATTER
-// ===============================
-function formatTimeRemaining(endTime) {
-  const end = new Date(endTime);
-  const now = new Date();
-  const diff = end - now;
-
-  if (diff <= 0) return "Expired";
-
-  const hours = Math.floor(diff / 3600000);
-  const mins = Math.floor((diff % 3600000) / 60000);
-
-  return `${hours}h ${mins}m`;
-}
-
-
-// ===============================
-//  MY ACTIVE BIDS (NEW)
+//  MY ACTIVE BIDS
 // ===============================
 async function loadMyActiveBids() {
   const { data, error } = await supabase
@@ -555,6 +515,7 @@ async function renderMyActiveBids(bids) {
     const player = await fetchPlayerByID(l.player_id);
 
     const tr = document.createElement("tr");
+    tr.dataset.konamiId = l.player_id;
 
     tr.innerHTML = `
       <td>${player?.Name || "Unknown"}</td>
@@ -567,6 +528,60 @@ async function renderMyActiveBids(bids) {
 
     tbody.appendChild(tr);
   }
+
+  applyPESDBRowClicks("my-active-bids-body");
 }
+
+
+// ===============================
+//  UNIVERSAL PESDB ROW CLICK HANDLER
+// ===============================
+function applyPESDBRowClicks(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+
+  tbody.querySelectorAll("tr").forEach(row => {
+    row.style.cursor = "pointer";
+
+    row.addEventListener("click", e => {
+      // A1: protect dropdowns, buttons, decision areas
+      if (
+        e.target.closest("select") ||
+        e.target.closest("button") ||
+        e.target.closest(".decision-buttons")
+      ) {
+        return;
+      }
+
+      const id = row.dataset.konamiId;
+      if (id) {
+        window.open(
+          `https://pesdb.net/efootball/?id=${id}`,
+          "_blank",
+          "noopener"
+        );
+      }
+    });
+  });
+}
+
+
+// ===============================
+//  TIME REMAINING FORMATTER
+// ===============================
+function formatTimeRemaining(endTime) {
+  const end = new Date(endTime);
+  const now = new Date();
+  const diff = end - now;
+
+  if (diff <= 0) return "Expired";
+
+  const hours = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+
+  return `${hours}h ${mins}m`;
+}
+
+
 // END OF DASHBOARD.JS
 console.log("Dashboard JS loaded successfully.");
