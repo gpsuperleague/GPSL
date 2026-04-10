@@ -66,7 +66,7 @@ async function loadPage(page = 1) {
 
     if (DROPDOWN_COLUMNS.includes(col)) {
 
-      // ⭐ FREE AGENT logic (Option B)
+      // ⭐ FREE AGENT logic
       if (col === "Contracted_Team" && value === "FREE AGENT") {
         query = query.or(
           `${col}.is.null,` +
@@ -133,11 +133,26 @@ function renderTable(players) {
         ${COLUMNS.map(col => {
           let value = player[col]
 
+          // Format market value
           if (col === "market_value" && value !== null) {
             value = "₿ " + new Intl.NumberFormat("en-GB", {
               maximumFractionDigits: 0,
               minimumFractionDigits: 0
             }).format(value)
+          }
+
+          // ⭐ PESDB clickable name
+          if (col === "Name") {
+            return `
+              <td>
+                <a href="https://www.pesdb.net/efootball/player/${player.Konami_ID}"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   style="color:#ff9900; font-weight:bold;">
+                   ${player.Name}
+                </a>
+              </td>
+            `;
           }
 
           return `<td>${value}</td>`
