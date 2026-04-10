@@ -15,12 +15,14 @@ const COLUMNS = [
   "Maximum_Reserve_Price",
   "market_value",
   "Contracted_Team",
-  "Season_Signed"
+  "Season_Signed",
+  "Konami_ID"   // ⭐ Added so PESDB links work
 ]
 
 const FILTER_EXCLUDE = [
   "Maximum_Reserve_Price",
-  "market_value"
+  "market_value",
+  "Konami_ID"   // ⭐ Hide from filters
 ]
 
 const DROPDOWN_COLUMNS = [
@@ -115,9 +117,10 @@ function renderTable(players) {
     return
   }
 
+  // ⭐ Hide Konami_ID column from table header
   tableHead.innerHTML = `
     <tr>
-      ${COLUMNS.map(col => {
+      ${COLUMNS.filter(col => col !== "Konami_ID").map(col => {
         let cls = ""
         if (CURRENT_SORT_COLUMN === col) {
           cls = CURRENT_SORT_DIR === 'asc' ? 'sort-asc' : 'sort-desc'
@@ -130,7 +133,7 @@ function renderTable(players) {
   tableBody.innerHTML = players
     .map(player => `
       <tr>
-        ${COLUMNS.map(col => {
+        ${COLUMNS.filter(col => col !== "Konami_ID").map(col => {
           let value = player[col]
 
           // Format market value
