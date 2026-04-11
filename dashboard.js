@@ -247,7 +247,7 @@ async function loadClubDetails() {
     await supabase
       .from("Clubs")
       .update({ owner: newOwner })
-      .eq("Club_ID", currentUserClubID);
+      .eq("Club", currentUserClubID);
 
     ownerInput.disabled = true;
     saveBtn.style.display = "none";
