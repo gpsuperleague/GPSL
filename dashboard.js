@@ -5,9 +5,9 @@ console.log("LIVE DASHBOARD VERSION:", Math.random());
 // ===============================
 let currentUserEmail = null;
 let currentUserShort = null;
-let currentUserClub = null;
-let currentUserClubID = null;
-let clubId = null;
+let currentUserClub = null;   // club name (e.g. "Urawa Reds")
+let currentUserClubID = null; // numeric ID (Club_ID)
+let clubId = null;            // alias for numeric Club_ID
 
 let selectedPlayerForListing = null;
 let activeListingsCache = []; // used to determine "Listed" status
@@ -16,38 +16,68 @@ let activeListingsCache = []; // used to determine "Listed" status
 // STADIUM INFO LOADER - START
 // ===============================
 async function loadStadiumInfo(clubId) {
-  const { data: club } = await supabase
+  const { data: club, error: clubError } = await supabase
     .from("Clubs")
     .select("Capacity, club_tier, wage_percentage, last_stadium_upgrade_season")
-    .eq("Club", clubId)
+    .eq("Club_ID", clubId)
     .single();
 
-  const { data: season } = await supabase
+  if (clubError || !club) {
+    console.error("Stadium club load error", clubError);
+    return;
+  }
+
+  const { data: season, error: seasonError } = await supabase
     .from("seasons")
     .select("season_id")
     .eq("active", true)
     .single();
 
+  if (seasonError || !season) {
+    console.error("Season load error", seasonError);
+    return;
+  }
+
   const currentCapacity = club.Capacity;
 
-  const { data: nextCapData } = await supabase.rpc("upgrade_stadium_capacity", {
-    current_capacity: currentCapacity
-  });
+  const { data: nextCapData, error: nextCapError } = await supabase.rpc(
+    "upgrade_stadium_capacity",
+    {
+      current_capacity: currentCapacity
+    }
+  );
+
+  if (nextCapError || nextCapData == null) {
+    console.error("Next capacity RPC error", nextCapError);
+    return;
+  }
 
   const nextCapacity = nextCapData;
 
-  const { data: costData } = await supabase.rpc("calculate_stadium_upgrade_cost", {
-    current_capacity: currentCapacity,
-    new_capacity: nextCapacity
-  });
+  const { data: costData, error: costError } = await supabase.rpc(
+    "calculate_stadium_upgrade_cost",
+    {
+      current_capacity: currentCapacity,
+      new_capacity: nextCapacity
+    }
+  );
+
+  if (costError || costData == null) {
+    console.error("Upgrade cost RPC error", costError);
+    return;
+  }
 
   const upgradeCost = costData;
 
-  document.getElementById("current-capacity").textContent = currentCapacity.toLocaleString();
-  document.getElementById("next-capacity").textContent = nextCapacity.toLocaleString();
-  document.getElementById("upgrade-cost").textContent = "£" + upgradeCost.toLocaleString();
+  document.getElementById("current-capacity").textContent =
+    currentCapacity.toLocaleString();
+  document.getElementById("next-capacity").textContent =
+    nextCapacity.toLocaleString();
+  document.getElementById("upgrade-cost").textContent =
+    "£" + upgradeCost.toLocaleString();
   document.getElementById("club-tier").textContent = club.club_tier;
-  document.getElementById("wage-percentage").textContent = (club.wage_percentage * 100) + "%";
+  document.getElementById("wage-percentage").textContent =
+    club.wage_percentage * 100 + "%";
 
   const upgradeBtn = document.getElementById("upgrade-stadium-btn");
 
@@ -91,7 +121,7 @@ async function upgradeStadium(clubId) {
     case "SUCCESS":
       message.textContent = "✅ Stadium upgraded successfully!";
       loadStadiumInfo(clubId);
-      loadClubBalance(clubId);
+      loadClubBalance?.(clubId); // if you have this function elsewhere
       break;
 
     case "INSUFFICIENT_FUNDS":
@@ -126,12 +156,16 @@ async function loadDashboard() {
   await loadSquad();
   await loadListings();
   await loadMyActiveBids();
-   // ===============================
+
+  // ===============================
   // STADIUM UPGRADE LOADER CALL
   // ===============================
-  await loadStadiumInfo(clubId);
+  if (clubId != null) {
+    await loadStadiumInfo(clubId);
+  } else {
+    console.error("clubId is null, cannot load stadium info");
+  }
 }
-
 
 // ===============================
 //  AUTH + INITIAL LOAD
@@ -147,7 +181,6 @@ auth.onAuthStateChanged(async user => {
 
   await loadDashboard();
 });
-
 
 // ===============================
 //  FIRESTORE → SHORTNAME
@@ -180,14 +213,17 @@ async function loadClubFromSupabase() {
     return;
   }
 
-  // ⭐ REQUIRED — this sets the global clubId
-  clubId = data.Club;
+  // numeric ID
+  clubId = data.Club_ID;
+  currentUserClubID = data.Club_ID;
 
+  // club name
   currentUserClub = data.Club;
 
   // Update UI
   document.getElementById("clubNameField").textContent = currentUserClub;
-  document.getElementById("dashboardTitle").textContent = `${currentUserClub} Dashboard`;
+  document.getElementById("dashboardTitle").textContent =
+    `${currentUserClub} Dashboard`;
 
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${currentUserShort}.png`;
@@ -203,9 +239,12 @@ async function loadActiveListingsCache() {
     .eq("seller_club_id", currentUserClub)
     .eq("status", "Active");
 
+  if (error) {
+    console.error("Active listings cache error", error);
+  }
+
   activeListingsCache = data || [];
 }
-
 
 // ===============================
 //  CLUB DETAILS PANEL
@@ -214,7 +253,7 @@ async function loadClubDetails() {
   const { data, error } = await supabase
     .from("Clubs")
     .select("*")
-    .eq("Club", clubId)
+    .eq("Club_ID", clubId)
     .single();
 
   if (error || !data) {
@@ -231,8 +270,10 @@ async function loadClubDetails() {
   saveBtn.style.display = "none";
   editBtn.style.display = "inline-block";
 
-  document.getElementById("stadiumField").textContent = data.Stadium || "Unknown";
-  document.getElementById("capacityField").textContent = data.Capacity || "Unknown";
+  document.getElementById("stadiumField").textContent =
+    data.Stadium || "Unknown";
+  document.getElementById("capacityField").textContent =
+    data.Capacity || "Unknown";
 
   editBtn.onclick = () => {
     ownerInput.disabled = false;
@@ -247,7 +288,7 @@ async function loadClubDetails() {
     await supabase
       .from("Clubs")
       .update({ owner: newOwner })
-      .eq("Club", currentUserClubID);
+      .eq("Club_ID", clubId);
 
     ownerInput.disabled = true;
     saveBtn.style.display = "none";
@@ -256,7 +297,6 @@ async function loadClubDetails() {
     await loadClubDetails();
   };
 }
-
 
 // ===============================
 //  SQUAD
@@ -280,7 +320,9 @@ function renderSquad(players) {
   tbody.innerHTML = "";
 
   players.forEach(p => {
-    const isListed = activeListingsCache.some(l => l.player_id === p.Konami_ID);
+    const isListed = activeListingsCache.some(
+      l => l.player_id === p.Konami_ID
+    );
 
     const status = isListed
       ? `<span class="status-pill status-listed">Listed</span>`
@@ -319,7 +361,6 @@ function handlePlayerAction(konamiID, action) {
   }
 }
 
-
 // ===============================
 //  LIST PLAYER MODAL
 // ===============================
@@ -345,8 +386,10 @@ function openListPlayerModal(player) {
   document.getElementById("modalPlayerInfo").textContent =
     `${player.Position} • Rating ${player.Rating}`;
 
-  document.getElementById("modalMarketValue").textContent = `₿ ${player.market_value}`;
-  document.getElementById("modalMaxReserve").textContent = `₿ ${player.Maximum_Reserve_Price}`;
+  document.getElementById("modalMarketValue").textContent =
+    `₿ ${player.market_value}`;
+  document.getElementById("modalMaxReserve").textContent =
+    `₿ ${player.Maximum_Reserve_Price}`;
 
   document.getElementById("reserveInput").value = "";
   document.getElementById("reserveError").textContent = "";
@@ -365,7 +408,6 @@ document.getElementById("cancelListBtn").onclick = () => {
 };
 
 document.getElementById("confirmListBtn").onclick = validateAndCreateListing;
-
 
 // ===============================
 //  CREATE LISTING
@@ -416,7 +458,6 @@ async function fetchPlayerByID(kid) {
   return data;
 }
 
-
 // ===============================
 //  FINANCE
 // ===============================
@@ -435,7 +476,6 @@ async function loadFinance() {
   document.getElementById("finance-balance").textContent =
     `₿ ${data.balance.toLocaleString()}`;
 }
-
 
 // ===============================
 //  LOAD LISTINGS (with auto-expiry)
@@ -487,7 +527,6 @@ async function loadListings() {
   await loadSquad();
 }
 
-
 // ===============================
 //  ACTIVE LISTINGS
 // ===============================
@@ -517,7 +556,6 @@ async function renderActiveListings(listings) {
 
   applyPESDBRowClicks("active-listings-body");
 }
-
 
 // ===============================
 //  SELLER REVIEW
@@ -553,7 +591,6 @@ async function renderSellerReview(listings) {
   applyPESDBRowClicks("seller-review-body");
 }
 
-
 // ===============================
 //  CLOSED LISTINGS
 // ===============================
@@ -581,7 +618,6 @@ async function renderClosedListings(listings) {
 
   applyPESDBRowClicks("closed-listings-body");
 }
-
 
 // ===============================
 //  MY ACTIVE BIDS
@@ -639,7 +675,6 @@ async function renderMyActiveBids(bids) {
   applyPESDBRowClicks("my-active-bids-body");
 }
 
-
 // ===============================
 //  UNIVERSAL PESDB ROW CLICK HANDLER
 // ===============================
@@ -671,7 +706,6 @@ function applyPESDBRowClicks(tbodyId) {
     });
   });
 }
-
 
 // ===============================
 //  TIME REMAINING FORMATTER
