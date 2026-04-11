@@ -181,9 +181,11 @@ async function loadClubFromSupabase() {
     return;
   }
 
+  // Store globally for all dashboard functions
+  clubId = data.Club_ID;          // ⭐ REQUIRED for stadium upgrade
   currentUserClub = data.Club;
-  currentUserClubID = data.Club_ID;
 
+  // Update UI
   document.getElementById("clubNameField").textContent = currentUserClub;
   document.getElementById("dashboardTitle").textContent = `${currentUserClub} Dashboard`;
 
