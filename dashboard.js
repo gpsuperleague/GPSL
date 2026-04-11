@@ -214,7 +214,7 @@ async function loadClubDetails() {
   const { data, error } = await supabase
     .from("Clubs")
     .select("*")
-    .eq("Club_ID", clubId)
+    .eq("Club", clubId)
     .single();
 
   if (error || !data) {
