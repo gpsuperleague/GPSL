@@ -19,7 +19,7 @@ async function loadStadiumInfo(clubId) {
   const { data: club } = await supabase
     .from("Clubs")
     .select("Capacity, club_tier, wage_percentage, last_stadium_upgrade_season")
-    .eq("club_id", clubId)
+    .eq("Club_ID", clubId)
     .single();
 
   const { data: season } = await supabase
