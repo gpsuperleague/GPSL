@@ -24,6 +24,10 @@ async function loadDashboard() {
   await loadSquad();
   await loadListings();
   await loadMyActiveBids();
+   // ===============================
+  // STADIUM UPGRADE LOADER CALL
+  // ===============================
+  await loadStadiumInfo(clubId);
 }
 
 
