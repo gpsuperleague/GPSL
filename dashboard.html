@@ -295,13 +295,21 @@
         return;
       }
 
-      nav.innerHTML = `
-        <a href="index.html" class="button">Home</a>
-        <a href="GPDB.html" class="button">Player Database</a>
-        <a href="clubs.html" class="button">Clubs</a>
-        <a href="all_listings.html" class="button">Transfer Market</a>
-        <button onclick="logout()" class="button">Logout</button>
-      `;
+     nav.innerHTML = `
+  <a href="index.html" class="button">Home</a>
+  <a href="GPDB.html" class="button">Player Database</a>
+  <a href="clubs.html" class="button">Clubs</a>
+  <a href="all_listings.html" class="button">Transfer Market</a>
+  <button onclick="logout()" class="button">Logout</button>
+`;
+
+// Admin list
+const adminEmails = ["rotavator66@outlook.com"];
+
+// Show Admin Panel link only for admins
+if (adminEmails.includes(user.email)) {
+  nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
+}
     });
   </script>
 
