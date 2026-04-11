@@ -28,10 +28,10 @@ async function loadStadiumInfo(clubId) {
   }
 
   const { data: season, error: seasonError } = await supabase
-    .from("seasons")
-    .select("season_id")
-    .eq("active", true)
-    .single();
+  .from("seasons")
+  .select("season_id")
+  .eq("is_active", true)
+  .single();
 
   if (seasonError || !season) {
     console.error("Season load error", seasonError);
