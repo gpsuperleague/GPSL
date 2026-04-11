@@ -181,7 +181,7 @@ async function loadClubFromSupabase() {
   }
 
   // ⭐ REQUIRED — this sets the global clubId
-  clubId = data.Club_ID;
+  clubId = data.Club;
 
   currentUserClub = data.Club;
 
