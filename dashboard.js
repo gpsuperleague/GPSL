@@ -23,7 +23,7 @@ async function loadStadiumInfo(clubId) {
     .single();
 
   const { data: season } = await supabase
-    .from("Seasons")
+    .from("seasons")
     .select("season_id")
     .eq("active", true)
     .single();
