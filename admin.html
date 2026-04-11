@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL Admin</title>
+
+  <style>
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    a.button, button.button {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #ff9900;
+      color: #111;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 6px;
+      margin: 5px;
+      transition: 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    a.button:hover, button.button:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
+    }
+
+    #nav {
+      padding: 15px;
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      color: #ff9900;
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .page-container {
+      width: 95%;
+      max-width: 900px;
+      margin: 20px auto 40px auto;
+    }
+
+    .panel {
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      margin-bottom: 30px;
+    }
+
+    .section-header {
+      color: #ff9900;
+      font-size: 22px;
+      margin-bottom: 10px;
+    }
+
+    /* Modal */
+    #seasonRolloverModalBackdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+
+    #seasonRolloverModal {
+      background: #1a1a1a;
+      padding: 25px;
+      border-radius: 8px;
+      width: 350px;
+      color: #ddd;
+      border: 1px solid #333;
+    }
+
+    #seasonRolloverModal h3 {
+      margin-top: 0;
+      color: #ff9900;
+    }
+
+    #seasonRolloverModal ul {
+      margin-left: 20px;
+    }
+  </style>
+
+</head>
+
+<body>
+
+  <div id="nav"></div>
+
+  <h1>GPSL Admin Panel</h1>
+
+  <div class="page-container">
+
+    <!-- ADMIN PANEL CONTENT -->
+    <div id="adminPanel" style="display:none;">
+
+      <h2 class="section-header">Season Management</h2>
+
+      <div class="panel">
+        <button id="rolloverBtn" class="button" style="background:#cc3300;">
+          Start New Season
+        </button>
+
+        <div id="rolloverStatus" style="margin-top:10px; color:#ffcc00;"></div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- CONFIRMATION MODAL -->
+  <div id="seasonRolloverModalBackdrop">
+    <div id="seasonRolloverModal">
+      <h3>Start New Season</h3>
+
+      <p>This will:</p>
+      <ul>
+        <li>Close the current season</li>
+        <li>Create a new season</li>
+        <li>Reset player season stats</li>
+        <li>Snapshot club finances</li>
+      </ul>
+
+      <p style="color:#ffcc00; margin-top:10px;">
+        This action cannot be undone.
+      </p>
+
+      <div class="modal-buttons">
+        <button class="button" id="cancelRolloverBtn">Cancel</button>
+        <button class="button" id="confirmRolloverBtn" style="background:#cc3300;">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <script src="firebase.js"></script>
+
+  <!-- Supabase -->
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    const supabase = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+    );
+
+    window.supabase = supabase;
+  </script>
+
+  <script>
+    function logout() {
+      auth.signOut().then(() => {
+        window.location = "login.html";
+      });
+    }
+
+    // Admin access protection
+    auth.onAuthStateChanged(async user => {
+      const nav = document.getElementById("nav");
+
+      if (!user) {
+        window.location = "login.html";
+        return;
+      }
+
+      // Navigation
+      nav.innerHTML = `
+        <a href="index.html" class="button">Home</a>
+        <a href="dashboard.html" class="button">Dashboard</a>
+        <button onclick="logout()" class="button">Logout</button>
+      `;
+
+      // Admin list
+      const adminEmails = ["rotavator66@outlook.com"];
+
+      // If not admin → redirect away
+      if (!adminEmails.includes(user.email)) {
+        window.location = "dashboard.html";
+        return;
+      }
+
+      // Admin allowed → show panel
+      document.getElementById("adminPanel").style.display = "block";
+    });
+
+
+    // Modal + RPC logic
+    document.addEventListener("DOMContentLoaded", () => {
+      const openBtn = document.getElementById("rolloverBtn");
+      const modal = document.getElementById("seasonRolloverModalBackdrop");
+      const cancelBtn = document.getElementById("cancelRolloverBtn");
+      const confirmBtn = document.getElementById("confirmRolloverBtn");
+      const status = document.getElementById("rolloverStatus");
+
+      if (!openBtn) return;
+
+      openBtn.onclick = () => {
+        modal.style.display = "flex";
+      };
+
+      cancelBtn.onclick = () => {
+        modal.style.display = "none";
+      };
+
+      confirmBtn.onclick = async () => {
+        status.textContent = "Processing season rollover…";
+        modal.style.display = "none";
+
+        const { data, error } = await supabase.rpc("rollover_season");
+
+        if (error) {
+          console.error("Season rollover failed:", error);
+          status.textContent = "❌ Season rollover failed — check console.";
+          return;
+        }
+
+        status.textContent = "✅ New season created successfully!";
+      };
+    });
+  </script>
+
+</body>
+</html>
