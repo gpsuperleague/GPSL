@@ -79,7 +79,7 @@ async function upgradeStadium(clubId) {
   message.textContent = "Processing upgrade...";
 
   const { data, error } = await supabase.rpc("upgrade_stadium_for_club", {
-    p_club_id: clubId
+    p_Club: clubId
   });
 
   if (error) {
