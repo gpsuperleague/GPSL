@@ -18,7 +18,7 @@ let activeListingsCache = []; // used to determine "Listed" status
 async function loadStadiumInfo(clubId) {
   const { data: club, error: clubError } = await supabase
     .from("Clubs")
-    .select("Capacity, club_tier, wage_percentage, last_stadium_upgrade_season")
+    .select("Capacity, last_stadium_upgrade_season")
     .eq("Club_ID", clubId)
     .single();
 
@@ -42,9 +42,7 @@ async function loadStadiumInfo(clubId) {
 
   const { data: nextCapData, error: nextCapError } = await supabase.rpc(
     "upgrade_stadium_capacity",
-    {
-      current_capacity: currentCapacity
-    }
+    { current_capacity: currentCapacity }
   );
 
   if (nextCapError || nextCapData == null) {
@@ -69,15 +67,17 @@ async function loadStadiumInfo(clubId) {
 
   const upgradeCost = costData;
 
+  // Update UI
   document.getElementById("current-capacity").textContent =
     currentCapacity.toLocaleString();
   document.getElementById("next-capacity").textContent =
     nextCapacity.toLocaleString();
   document.getElementById("upgrade-cost").textContent =
     "£" + upgradeCost.toLocaleString();
-  document.getElementById("club-tier").textContent = club.club_tier;
-  document.getElementById("wage-percentage").textContent =
-    club.wage_percentage * 100 + "%";
+
+  // REMOVE THESE — they referenced non-existent columns
+  // document.getElementById("club-tier").textContent = club.club_tier;
+  // document.getElementById("wage-percentage").textContent = club.wage_percentage * 100 + "%";
 
   const upgradeBtn = document.getElementById("upgrade-stadium-btn");
 
@@ -121,7 +121,7 @@ async function upgradeStadium(clubId) {
     case "SUCCESS":
       message.textContent = "✅ Stadium upgraded successfully!";
       loadStadiumInfo(clubId);
-      loadClubBalance?.(clubId); // if you have this function elsewhere
+      loadClubBalance?.(clubId); // optional if you have this function
       break;
 
     case "INSUFFICIENT_FUNDS":
