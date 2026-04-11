@@ -165,7 +165,6 @@ async function loadShortNameFromFirestore() {
   currentUserShort = doc.data().ShortName;
 }
 
-
 // ===============================
 //  SUPABASE → CLUB INFO
 // ===============================
@@ -181,8 +180,9 @@ async function loadClubFromSupabase() {
     return;
   }
 
-  // Store globally for all dashboard functions
-  clubId = data.Club_ID;          // ⭐ REQUIRED for stadium upgrade
+  // ⭐ REQUIRED — this sets the global clubId
+  clubId = data.Club_ID;
+
   currentUserClub = data.Club;
 
   // Update UI
@@ -192,7 +192,6 @@ async function loadClubFromSupabase() {
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${currentUserShort}.png`;
 }
-
 
 // ===============================
 //  ACTIVE LISTINGS CACHE
