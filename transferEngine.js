@@ -51,8 +51,9 @@ transferEngine.evaluateExpiredListing = async function (listing) {
   else console.log("✅ Listing moved to review");
 };
 
+
 // ===============================
-//  ACCEPT SALE
+//  ACCEPT SALE (FULL FINANCIAL LOGIC)
 // ===============================
 transferEngine.acceptSale = async function (listingId) {
   console.log("🔍 acceptSale called for listing:", listingId);
@@ -75,7 +76,38 @@ transferEngine.acceptSale = async function (listingId) {
   const seller = listing.seller_club_id;
   const amount = listing.current_highest_bid;
 
-  // Move money: buyer → seller
+  // ===============================
+  // 1. VALIDATE BUYER CAN AFFORD IT
+  // ===============================
+  const { data: buyerFinance } = await supabase
+    .from("Club_Finances")
+    .select("balance")
+    .eq("club_name", buyer)
+    .single();
+
+  if (!buyerFinance) {
+    console.error("❌ Buyer finance lookup failed");
+    return;
+  }
+
+  if (buyerFinance.balance < amount) {
+    console.error("❌ Buyer cannot afford this transfer — rejecting sale automatically");
+
+    await supabase
+      .from("Player_Transfer_Listings")
+      .update({
+        status: "Closed",
+        transfer_completed: false,
+        final_bid: null
+      })
+      .eq("id", listingId);
+
+    return;
+  }
+
+  // ===============================
+  // 2. TRANSFER FUNDS (buyer → seller)
+  // ===============================
   console.log("💰 Transferring funds:", { buyer, seller, amount });
 
   const { error: fundsError } = await supabase.rpc("transfer_funds", {
@@ -84,10 +116,16 @@ transferEngine.acceptSale = async function (listingId) {
     amount: amount
   });
 
-  if (fundsError) console.error("❌ transfer_funds failed:", fundsError);
-  else console.log("✅ Funds transferred successfully");
+  if (fundsError) {
+    console.error("❌ transfer_funds failed:", fundsError);
+    return;
+  }
 
-  // Transfer player to buyer
+  console.log("✅ Funds transferred successfully");
+
+  // ===============================
+  // 3. MOVE PLAYER TO BUYER
+  // ===============================
   console.log("🧩 Updating player club:", {
     player_id: listing.player_id,
     new_club: buyer
@@ -101,21 +139,35 @@ transferEngine.acceptSale = async function (listingId) {
   if (playerError) {
     console.error("❌ Player update failed:", playerError);
   } else {
-    if (playerUpdate.length === 0) {
-      console.warn("⚠️ Player update matched ZERO rows — check Konami_ID");
-    } else {
-      console.log("✅ Player updated:", playerUpdate);
-    }
+    console.log("✅ Player updated:", playerUpdate);
   }
 
-  // Mark listing as completed
+  // ===============================
+  // 4. LOG TRANSFER HISTORY
+  // ===============================
+  await supabase.from("Transfer_History").insert({
+    player_id: listing.player_id,
+    seller_club_id: seller,
+    buyer_club_id: buyer,
+    fee: amount,
+    transfer_time: new Date().toISOString(),
+    listing_id: listing.id
+  });
+
+  console.log("📜 Transfer logged in history");
+
+  // ===============================
+  // 5. MARK LISTING AS COMPLETED
+  // ===============================
   console.log("🏁 Marking listing as completed:", listingId);
 
   const { error: listingUpdateError } = await supabase
     .from("Player_Transfer_Listings")
     .update({
       status: "Closed",
-      transfer_completed: true
+      transfer_completed: true,
+      final_bid: amount,
+      winner: buyer
     })
     .eq("id", listingId);
 
@@ -125,6 +177,7 @@ transferEngine.acceptSale = async function (listingId) {
     console.log("🎉 Listing successfully completed");
   }
 };
+
 
 // ===============================
 //  REJECT SALE
