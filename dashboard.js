@@ -11,6 +11,107 @@ let currentUserClubID = null;
 let selectedPlayerForListing = null;
 let activeListingsCache = []; // used to determine "Listed" status
 
+// ===============================
+// STADIUM INFO LOADER - START
+// ===============================
+async function loadStadiumInfo(clubId) {
+  const { data: club } = await supabase
+    .from("Clubs")
+    .select("Capacity, club_tier, wage_percentage, last_stadium_upgrade_season")
+    .eq("club_id", clubId)
+    .single();
+
+  const { data: season } = await supabase
+    .from("Seasons")
+    .select("season_id")
+    .eq("active", true)
+    .single();
+
+  const currentCapacity = club.Capacity;
+
+  const { data: nextCapData } = await supabase.rpc("upgrade_stadium_capacity", {
+    current_capacity: currentCapacity
+  });
+
+  const nextCapacity = nextCapData;
+
+  const { data: costData } = await supabase.rpc("calculate_stadium_upgrade_cost", {
+    current_capacity: currentCapacity,
+    new_capacity: nextCapacity
+  });
+
+  const upgradeCost = costData;
+
+  document.getElementById("current-capacity").textContent = currentCapacity.toLocaleString();
+  document.getElementById("next-capacity").textContent = nextCapacity.toLocaleString();
+  document.getElementById("upgrade-cost").textContent = "£" + upgradeCost.toLocaleString();
+  document.getElementById("club-tier").textContent = club.club_tier;
+  document.getElementById("wage-percentage").textContent = (club.wage_percentage * 100) + "%";
+
+  const upgradeBtn = document.getElementById("upgrade-stadium-btn");
+
+  if (nextCapacity === currentCapacity) {
+    upgradeBtn.disabled = true;
+    upgradeBtn.textContent = "Max Capacity Reached";
+    return;
+  }
+
+  if (club.last_stadium_upgrade_season === season.season_id) {
+    upgradeBtn.disabled = true;
+    upgradeBtn.textContent = "Already Upgraded This Season";
+    return;
+  }
+
+  upgradeBtn.disabled = false;
+  upgradeBtn.textContent = "Upgrade Stadium";
+  upgradeBtn.onclick = () => upgradeStadium(clubId);
+}
+// ===============================
+// STADIUM INFO LOADER - END
+// ===============================
+
+// ===============================
+// STADIUM UPGRADE HANDLER - START
+// ===============================
+async function upgradeStadium(clubId) {
+  const message = document.getElementById("upgrade-message");
+  message.textContent = "Processing upgrade...";
+
+  const { data, error } = await supabase.rpc("upgrade_stadium_for_club", {
+    p_club_id: clubId
+  });
+
+  if (error) {
+    message.textContent = "Error: " + error.message;
+    return;
+  }
+
+  switch (data) {
+    case "SUCCESS":
+      message.textContent = "✅ Stadium upgraded successfully!";
+      loadStadiumInfo(clubId);
+      loadClubBalance(clubId);
+      break;
+
+    case "INSUFFICIENT_FUNDS":
+      message.textContent = "❌ Not enough funds for upgrade.";
+      break;
+
+    case "ALREADY_UPGRADED_THIS_SEASON":
+      message.textContent = "❌ You have already upgraded this season.";
+      break;
+
+    case "NO_UPGRADE_AVAILABLE":
+      message.textContent = "❌ Stadium is already at maximum capacity.";
+      break;
+
+    default:
+      message.textContent = "❌ Unknown error.";
+  }
+}
+// ===============================
+// STADIUM UPGRADE HANDLER - END
+// ===============================
 
 // ===============================
 //  DASHBOARD REFRESH WRAPPER
@@ -585,111 +686,6 @@ function formatTimeRemaining(endTime) {
 
   return `${hours}h ${mins}m`;
 }
-
-
-// ===============================
-// STADIUM INFO LOADER - START
-// ===============================
-async function loadStadiumInfo(clubId) {
-  const { data: club } = await supabase
-    .from("Clubs")
-    .select("Capacity, club_tier, wage_percentage, last_stadium_upgrade_season")
-    .eq("club_id", clubId)
-    .single();
-
-  const { data: season } = await supabase
-    .from("Seasons")
-    .select("season_id")
-    .eq("active", true)
-    .single();
-
-  const currentCapacity = club.Capacity;
-
-  const { data: nextCapData } = await supabase.rpc("upgrade_stadium_capacity", {
-    current_capacity: currentCapacity
-  });
-
-  const nextCapacity = nextCapData;
-
-  const { data: costData } = await supabase.rpc("calculate_stadium_upgrade_cost", {
-    current_capacity: currentCapacity,
-    new_capacity: nextCapacity
-  });
-
-  const upgradeCost = costData;
-
-  document.getElementById("current-capacity").textContent = currentCapacity.toLocaleString();
-  document.getElementById("next-capacity").textContent = nextCapacity.toLocaleString();
-  document.getElementById("upgrade-cost").textContent = "£" + upgradeCost.toLocaleString();
-  document.getElementById("club-tier").textContent = club.club_tier;
-  document.getElementById("wage-percentage").textContent = (club.wage_percentage * 100) + "%";
-
-  const upgradeBtn = document.getElementById("upgrade-stadium-btn");
-
-  if (nextCapacity === currentCapacity) {
-    upgradeBtn.disabled = true;
-    upgradeBtn.textContent = "Max Capacity Reached";
-    return;
-  }
-
-  if (club.last_stadium_upgrade_season === season.season_id) {
-    upgradeBtn.disabled = true;
-    upgradeBtn.textContent = "Already Upgraded This Season";
-    return;
-  }
-
-  upgradeBtn.disabled = false;
-  upgradeBtn.textContent = "Upgrade Stadium";
-  upgradeBtn.onclick = () => upgradeStadium(clubId);
-}
-// ===============================
-// STADIUM INFO LOADER - END
-// ===============================
-
-
-// ===============================
-// STADIUM UPGRADE HANDLER - START
-// ===============================
-async function upgradeStadium(clubId) {
-  const message = document.getElementById("upgrade-message");
-  message.textContent = "Processing upgrade...";
-
-  const { data, error } = await supabase.rpc("upgrade_stadium_for_club", {
-    p_club_id: clubId
-  });
-
-  if (error) {
-    message.textContent = "Error: " + error.message;
-    return;
-  }
-
-  switch (data) {
-    case "SUCCESS":
-      message.textContent = "✅ Stadium upgraded successfully!";
-      loadStadiumInfo(clubId);
-      loadClubBalance(clubId);
-      break;
-
-    case "INSUFFICIENT_FUNDS":
-      message.textContent = "❌ Not enough funds for upgrade.";
-      break;
-
-    case "ALREADY_UPGRADED_THIS_SEASON":
-      message.textContent = "❌ You have already upgraded this season.";
-      break;
-
-    case "NO_UPGRADE_AVAILABLE":
-      message.textContent = "❌ Stadium is already at maximum capacity.";
-      break;
-
-    default:
-      message.textContent = "❌ Unknown error.";
-  }
-}
-// ===============================
-// STADIUM UPGRADE HANDLER - END
-// ===============================
-
 
 // END OF DASHBOARD.JS
 console.log("Dashboard JS loaded successfully.");
