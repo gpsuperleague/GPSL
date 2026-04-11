@@ -7,6 +7,7 @@ let currentUserEmail = null;
 let currentUserShort = null;
 let currentUserClub = null;
 let currentUserClubID = null;
+let clubId = null;
 
 let selectedPlayerForListing = null;
 let activeListingsCache = []; // used to determine "Listed" status
