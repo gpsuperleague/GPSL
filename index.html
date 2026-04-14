@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>GPSL – Home</title>
+
+  <!-- ============================================
+       PAGE STYLE (Landing Page Theme)
+       ============================================ -->
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -58,44 +62,55 @@
 </head>
 
 <body>
-  
-<img src="images/League/Logos/GPSL_logo.png"
-     alt="GPSL Logo"
-     style="width:350px; height:auto; margin-bottom:20px;">
-          
-  <p>
-    Welcome to the GP Super League.
-  </p>
 
-  <!-- Link to your existing database page -->
+  <!-- ============================================
+       GPSL LOGO
+       ============================================ -->
+  <img src="images/League/Logos/GPSL_logo.png"
+       alt="GPSL Logo"
+       style="width:350px; height:auto; margin-bottom:20px;">
+
+  <p>Welcome to the GP Super League.</p>
+
+  <!-- ============================================
+       AUTH BUTTONS (populated after auth)
+       ============================================ -->
   <div id="authButtons"></div>
 
   <footer>© GPSL</footer>
-  
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-<script src="firebase.js"></script>
+
+  <!-- ============================================
+       FIREBASE INITIALISATION
+       ============================================ -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="firebase.js"></script>
+
+  <!-- ============================================
+       AUTH + BUTTON LOGIC
+       ============================================ -->
   <script>
-auth.onAuthStateChanged(user => {
-  const container = document.getElementById("authButtons");
+    auth.onAuthStateChanged(user => {
+      const container = document.getElementById("authButtons");
 
-  if (user) {
-    // Logged in
-    container.innerHTML = `
-      <a href="dashboard.html" class="button">Dashboard</a>
-      <button onclick="logout()" class="button">Logout</button>
-    `;
-  } else {
-    // Logged out
-    container.innerHTML = `
-      <a href="login.html" class="button">Login</a>
-    `;
-  }
-});
+      if (user) {
+        // Logged in
+        container.innerHTML = `
+          <a href="dashboard.html" class="button">Dashboard</a>
+          <button onclick="logout()" class="button">Logout</button>
+        `;
+      } else {
+        // Logged out
+        container.innerHTML = `
+          <a href="login.html" class="button">Login</a>
+        `;
+      }
+    });
 
-function logout() {
-  auth.signOut().then(() => window.location = "index.html");
-}
-</script>
+    function logout() {
+      auth.signOut().then(() => window.location = "index.html");
+    }
+  </script>
+
 </body>
 </html>
