@@ -3,10 +3,56 @@
 <head>
   <meta charset="UTF-8">
   <title>GPSL Login</title>
+
+  <!-- ============================================
+       BASIC PAGE STYLE (minimal login layout)
+       ============================================ -->
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      text-align: center;
+      padding-top: 80px;
+    }
+
+    input {
+      padding: 10px;
+      width: 240px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background: #222;
+      color: #eee;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #ff9900;
+      color: #111;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
+    }
+
+    a {
+      color: #ff9900;
+      cursor: pointer;
+    }
+  </style>
 </head>
 
 <body>
 
+  <!-- ============================================
+       LOGIN FORM
+       ============================================ -->
   <h1>Login</h1>
 
   <input id="email" type="email" placeholder="Email"><br><br>
@@ -15,17 +61,21 @@
   <button onclick="login()">Login</button>
   <br><br>
 
-  <!-- 🔥 Password reset link -->
-  <a href="#" onclick="resetPassword()">Forgot your password?</a>
+  <!-- Password reset -->
+  <a onclick="resetPassword()">Forgot your password?</a>
 
-  <!-- Firebase scripts -->
+  <!-- ============================================
+       FIREBASE INITIALISATION
+       ============================================ -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
-  <!-- Your Firebase config -->
   <script src="firebase.js"></script>
 
+  <!-- ============================================
+       LOGIN + PASSWORD RESET LOGIC
+       ============================================ -->
   <script>
     function login() {
       const email = document.getElementById('email').value;
@@ -36,7 +86,6 @@
         .catch(err => alert(err.message));
     }
 
-    // ⭐ Send password reset email
     function resetPassword() {
       const email = document.getElementById('email').value;
 
@@ -46,12 +95,8 @@
       }
 
       auth.sendPasswordResetEmail(email)
-        .then(() => {
-          alert("Password reset email sent. Check your inbox.");
-        })
-        .catch(err => {
-          alert(err.message);
-        });
+        .then(() => alert("Password reset email sent. Check your inbox."))
+        .catch(err => alert(err.message));
     }
   </script>
 
