@@ -534,4 +534,186 @@ async function renderActiveListings(listings) {
       <td>₿ ${l.market_value}</td>
       <td>₿ ${l.reserve_price}</td>
       <td>${formatTimeRemaining(l.end_time)}</td>
-     
+           <td>${l.current_highest_bid || "-"}</td>
+      <td>${l.current_highest_bidder || "-"}</td>
+    `;
+
+    tbody.appendChild(tr);
+  }
+
+  applyPESDBRowClicks("active-listings-body");
+}
+
+
+/* ============================================================
+   MODULE J: SELLER REVIEW
+   ============================================================ */
+async function renderSellerReview(listings) {
+  const tbody = document.getElementById("seller-review-body");
+  tbody.innerHTML = "";
+
+  for (const l of listings) {
+    const player = await fetchPlayerByID(l.player_id);
+
+    const tr = document.createElement("tr");
+    tr.dataset.konamiId = l.player_id;
+
+    tr.innerHTML = `
+      <td>${player?.Name || "Unknown"}</td>
+      <td>${player?.Position || "-"}</td>
+      <td>${player?.Rating || "-"}</td>
+      <td>₿ ${l.current_highest_bid || "-"}</td>
+      <td>${l.current_highest_bidder || "-"}</td>
+      <td>${new Date(l.end_time).toLocaleString()}</td>
+      <td>
+        <div class="decision-buttons">
+          <button class="button" onclick="transferEngine.acceptSale(${l.id})">Accept</button>
+          <button class="button" onclick="transferEngine.rejectSale(${l.id})">Reject</button>
+        </div>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+  }
+
+  applyPESDBRowClicks("seller-review-body");
+}
+
+
+/* ============================================================
+   MODULE J: CLOSED LISTINGS
+   ============================================================ */
+async function renderClosedListings(listings) {
+  const tbody = document.getElementById("closed-listings-body");
+  tbody.innerHTML = "";
+
+  for (const l of listings) {
+    const player = await fetchPlayerByID(l.player_id);
+
+    const tr = document.createElement("tr");
+    tr.dataset.konamiId = l.player_id;
+
+    tr.innerHTML = `
+      <td>${player?.Name || "Unknown"}</td>
+      <td>${player?.Position || "-"}</td>
+      <td>${player?.Rating || "-"}</td>
+      <td>${l.final_bid || "-"}</td>
+      <td>${l.winner || "-"}</td>
+      <td>${l.status}</td>
+    `;
+
+    tbody.appendChild(tr);
+  }
+
+  applyPESDBRowClicks("closed-listings-body");
+}
+
+
+/* ============================================================
+   MODULE K: MY ACTIVE BIDS
+   ============================================================ */
+async function loadMyActiveBids() {
+  const { data, error } = await supabase
+    .from("Player_Transfer_Bids")
+    .select(`
+      listing_id,
+      bid_amount,
+      bid_time,
+      Player_Transfer_Listings (
+        id,
+        player_id,
+        reserve_price,
+        current_highest_bid,
+        current_highest_bidder,
+        end_time
+      )
+    `)
+    .eq("bidder_club_id", currentUserShort)
+    .order("bid_time", { ascending: false });
+
+  if (error) {
+    console.error("Active bids error:", error);
+    return;
+  }
+
+  renderMyActiveBids(data);
+}
+
+async function renderMyActiveBids(bids) {
+  const tbody = document.getElementById("my-active-bids-body");
+  tbody.innerHTML = "";
+
+  for (const b of bids) {
+    const l = b.Player_Transfer_Listings;
+    const player = await fetchPlayerByID(l.player_id);
+
+    const tr = document.createElement("tr");
+    tr.dataset.konamiId = l.player_id;
+
+    tr.innerHTML = `
+      <td>${player?.Name || "Unknown"}</td>
+      <td>${player?.Position || "-"}</td>
+      <td>₿ ${b.bid_amount}</td>
+      <td>₿ ${l.current_highest_bid || "-"}</td>
+      <td>${l.current_highest_bidder || "-"}</td>
+      <td>${new Date(l.end_time).toLocaleString()}</td>
+    `;
+
+    tbody.appendChild(tr);
+  }
+
+  applyPESDBRowClicks("my-active-bids-body");
+}
+
+
+/* ============================================================
+   MODULE L: UNIVERSAL PESDB ROW CLICK HANDLER
+   ============================================================ */
+function applyPESDBRowClicks(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+
+  tbody.querySelectorAll("tr").forEach(row => {
+    row.style.cursor = "pointer";
+
+    row.addEventListener("click", e => {
+      if (
+        e.target.closest("select") ||
+        e.target.closest("button") ||
+        e.target.closest(".decision-buttons")
+      ) {
+        return;
+      }
+
+      const id = row.dataset.konamiId;
+      if (id) {
+        window.open(
+          `https://pesdb.net/efootball/?id=${id}`,
+          "_blank",
+          "noopener"
+        );
+      }
+    });
+  });
+}
+
+
+/* ============================================================
+   MODULE M: TIME REMAINING FORMATTER
+   ============================================================ */
+function formatTimeRemaining(endTime) {
+  const end = new Date(endTime);
+  const now = new Date();
+  const diff = end - now;
+
+  if (diff <= 0) return "Expired";
+
+  const hours = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+
+  return `${hours}h ${mins}m`;
+}
+
+
+// END OF DASHBOARD.JS
+console.log("Dashboard JS loaded successfully.");
