@@ -1,14 +1,14 @@
-// ===============================
-//  GLOBAL STATE
-// ===============================
+// ======================================================
+// MODULE A: GLOBAL STATE
+// ======================================================
 let currentUserShort = null;
 let allListings = [];
 let selectedListing = null;
 
 
-// ===============================
-//  AUTH + INITIAL LOAD
-// ===============================
+// ======================================================
+// MODULE A: AUTH + INITIAL LOAD
+// ======================================================
 auth.onAuthStateChanged(async user => {
   if (!user) {
     window.location = "login.html";
@@ -17,15 +17,16 @@ auth.onAuthStateChanged(async user => {
 
   await loadShortNameFromFirestore();
   await loadListings();
+
   wireFilterCheckboxes();
   wireModalControls();
   wirePlaceBidButton();
 });
 
 
-// ===============================
-//  FIRESTORE → SHORTNAME
-// ===============================
+// ======================================================
+// MODULE A: FIRESTORE → SHORTNAME
+// ======================================================
 async function loadShortNameFromFirestore() {
   const uid = auth.currentUser.uid;
   const doc = await db.collection("users").doc(uid).get();
@@ -39,9 +40,9 @@ async function loadShortNameFromFirestore() {
 }
 
 
-// ===============================
-//  LOAD LISTINGS
-// ===============================
+// ======================================================
+// MODULE B: LOAD LISTINGS
+// ======================================================
 async function loadListings() {
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
@@ -57,18 +58,18 @@ async function loadListings() {
 }
 
 
-// ===============================
-//  FILTER CHECKBOXES
-// ===============================
+// ======================================================
+// MODULE C: FILTER CHECKBOXES
+// ======================================================
 function wireFilterCheckboxes() {
   document.getElementById("filter-active").addEventListener("change", renderListings);
   document.getElementById("filter-closed").addEventListener("change", renderListings);
 }
 
 
-// ===============================
-//  RENDER LISTINGS TABLE
-// ===============================
+// ======================================================
+// MODULE D: RENDER LISTINGS TABLE
+// ======================================================
 function renderListings() {
   const tbody = document.getElementById("listings-body");
   tbody.innerHTML = "";
@@ -106,9 +107,9 @@ function renderListings() {
 }
 
 
-// ===============================
-//  FETCH PLAYER
-// ===============================
+// ======================================================
+// MODULE B: FETCH PLAYER
+// ======================================================
 async function fetchPlayerByID(kid) {
   const { data, error } = await supabase
     .from("Players")
@@ -125,9 +126,9 @@ async function fetchPlayerByID(kid) {
 }
 
 
-// ===============================
-//  TIME REMAINING FORMATTER
-// ===============================
+// ======================================================
+// MODULE D: TIME REMAINING FORMATTER
+// ======================================================
 function formatTimeRemaining(endTime) {
   const end = new Date(endTime);
   const now = new Date();
@@ -142,9 +143,9 @@ function formatTimeRemaining(endTime) {
 }
 
 
-// ===============================
-//  OPEN BID MODAL
-// ===============================
+// ======================================================
+// MODULE E: OPEN BID MODAL
+// ======================================================
 function openBidModal(listing, player) {
   selectedListing = listing;
 
@@ -169,9 +170,9 @@ function openBidModal(listing, player) {
 }
 
 
-// ===============================
-//  MODAL CONTROLS
-// ===============================
+// ======================================================
+// MODULE E: MODAL CONTROLS
+// ======================================================
 function wireModalControls() {
   document.getElementById("bid-modal-close").onclick = () => {
     document.getElementById("bid-modal").style.display = "none";
@@ -186,17 +187,17 @@ function wireModalControls() {
 }
 
 
-// ===============================
-//  PLACE BID BUTTON
-// ===============================
+// ======================================================
+// MODULE F: PLACE BID BUTTON
+// ======================================================
 function wirePlaceBidButton() {
   document.getElementById("place-bid-btn").onclick = placeBid;
 }
 
 
-// ===============================
-//  PLACE BID
-// ===============================
+// ======================================================
+// MODULE F: PLACE BID
+// ======================================================
 async function placeBid() {
   const errorBox = document.getElementById("bid-error");
   errorBox.textContent = "";
