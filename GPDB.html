@@ -4,13 +4,16 @@
   <meta charset="UTF-8">
   <title>GPSL Player Database</title>
 
+  <!-- ============================================
+       PAGE STYLE (GPSL Theme)
+       ============================================ -->
   <style>
     body {
       font-family: Arial, sans-serif;
       padding: 20px;
     }
 
-    /* Button styling to match index/dashboard */
+    /* Buttons (matches dashboard/index theme) */
     a.button, button.button {
       display: inline-block;
       padding: 10px 20px;
@@ -29,7 +32,7 @@
       transform: scale(1.05);
     }
 
-    /* Styled page title */
+    /* Page Title */
     #pageTitle {
       background:#222;
       color:#ff9900;
@@ -41,7 +44,7 @@
       font-weight:bold;
     }
 
-    /* Filter group styling */
+    /* Filter Groups */
     .filter-group {
       background:#222;
       color:#ff9900;
@@ -61,7 +64,7 @@
       color:#ffaa22;
     }
 
-    /* GPSL-styled table */
+    /* GPSL Table */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -104,7 +107,7 @@
       border-right: none;
     }
 
-    /* Alternating row shading */
+    /* Alternating rows */
     tbody tr:nth-child(odd) {
       background: #1f1f1f;
     }
@@ -127,21 +130,27 @@
 
 <body>
 
-  <!-- Dynamic navigation -->
+  <!-- ============================================
+       NAVIGATION (populated after auth)
+       ============================================ -->
   <div id="nav" style="margin-bottom:20px;"></div>
 
-  <!-- Styled page title -->
+  <!-- ============================================
+       PAGE TITLE
+       ============================================ -->
   <h1 id="pageTitle">GPSL – Player Database</h1>
 
-  <!-- FILTER PANEL -->
+  <!-- ============================================
+       FILTER PANEL
+       ============================================ -->
   <div id="controls">
 
-    <!-- Group 1: Clear Filters -->
+    <!-- Clear Filters -->
     <div class="filter-group">
       <button id="clearFiltersBtn" class="button">Clear Filters</button>
     </div>
 
-    <!-- Group 2: Market Value -->
+    <!-- Market Value -->
     <div class="filter-group">
       <strong>Market Value</strong>
       <label>Min <input type="number" id="mv-min" style="width:80px;"></label>
@@ -151,19 +160,25 @@
 
   </div>
 
-  <!-- Dropdown filters (injected by JS) -->
+  <!-- ============================================
+       DROPDOWN FILTERS (injected by JS)
+       ============================================ -->
   <div class="filter-group" id="filters" style="margin-bottom:20px;">
     <strong>Filters</strong>
   </div>
 
+  <!-- ============================================
+       PLAYER TABLE
+       ============================================ -->
   <table id="playersTable">
     <thead id="tableHead"></thead>
     <tbody id="tableBody"></tbody>
   </table>
 
+  <!-- Pagination -->
   <div id="pagination" style="margin-top:20px;"></div>
 
-  <!-- Rows per page at bottom -->
+  <!-- Rows per page -->
   <div id="rowsPerPage" style="margin-top:20px;">
     <label>Rows per page:
       <select id="pageSizeSelect">
@@ -175,18 +190,24 @@
     </label>
   </div>
 
-  <!-- GPDB logic -->
+  <!-- ============================================
+       GPDB LOGIC (external module)
+       ============================================ -->
   <script type="module" src="gpdb_v2.js"></script>
 
-  <!-- Firebase scripts -->
- <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
- <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
- <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <!-- ============================================
+       FIREBASE INITIALISATION
+       ============================================ -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
- <script src="firebase.js"></script>
+  <script src="firebase.js"></script>
 
+  <!-- ============================================
+       AUTH + NAVIGATION LOGIC
+       ============================================ -->
   <script>
-    // Protect page + build navigation
     auth.onAuthStateChanged(user => {
       const nav = document.getElementById("nav");
 
