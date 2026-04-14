@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <title>GPSL Club Dashboard</title>
 
+  <!-- ============================================
+       GLOBAL PAGE STYLE (base layout + buttons)
+       ============================================ -->
   <style>
     body {
       background: #111;
@@ -52,17 +55,27 @@
     }
   </style>
 
+  <!-- ============================================
+       DASHBOARD-SPECIFIC STYLES
+       ============================================ -->
   <link rel="stylesheet" href="dashboard.css">
 </head>
 
 <body>
 
+  <!-- ============================================
+       NAVIGATION (populated after auth)
+       ============================================ -->
   <div id="nav"></div>
 
   <div class="page-container">
 
-    <!-- HEADER -->
+    <!-- ============================================
+         HEADER: Club Badge + User Email + Club Details
+         ============================================ -->
     <div id="headerContainer">
+
+      <!-- LEFT SIDE: Badge + Title -->
       <div id="headerLeft">
         <img id="clubBadgeHeader" src="" alt="Club Badge">
         <div>
@@ -71,8 +84,10 @@
         </div>
       </div>
 
+      <!-- RIGHT SIDE: Club Details Panel -->
       <div id="headerRight">
         <h2 class="panelTitle">Club Details</h2>
+
         <div id="clubDetailsPanel">
 
           <div class="detailRow">
@@ -101,29 +116,36 @@
       </div>
     </div>
 
-    <!-- STADIUM UPGRADE SECTION - START -->
-<div id="stadium-upgrade-section" class="card">
-  <h3>Stadium</h3>
+    <!-- ============================================
+         STADIUM UPGRADE SECTION
+         ============================================ -->
+    <div id="stadium-upgrade-section" class="card">
+      <h3>Stadium</h3>
 
-  <p><strong>Current Capacity:</strong> <span id="current-capacity">Loading...</span></p>
-  <p><strong>Next Upgrade:</strong> <span id="next-capacity">Loading...</span></p>
-  <p><strong>Upgrade Cost:</strong> <span id="upgrade-cost">Loading...</span></p>
-  <p><strong>Club Tier:</strong> <span id="club-tier">Loading...</span></p>
-  <p><strong>Wage Percentage:</strong> <span id="wage-percentage">Loading...</span></p>
+      <p><strong>Current Capacity:</strong> <span id="current-capacity">Loading...</span></p>
+      <p><strong>Next Upgrade:</strong> <span id="next-capacity">Loading...</span></p>
+      <p><strong>Upgrade Cost:</strong> <span id="upgrade-cost">Loading...</span></p>
 
-  <button id="upgrade-stadium-btn" class="button">Upgrade Stadium</button>
+      <!-- These two fields are legacy and will be removed -->
+      <p><strong>Club Tier:</strong> <span id="club-tier">Loading...</span></p>
+      <p><strong>Wage Percentage:</strong> <span id="wage-percentage">Loading...</span></p>
 
-  <p id="upgrade-message" style="margin-top:10px;"></p>
-</div>
-<!-- STADIUM UPGRADE SECTION - END -->
+      <button id="upgrade-stadium-btn" class="button">Upgrade Stadium</button>
 
-    <!-- MAIN CONTENT: TWO COLUMNS -->
+      <p id="upgrade-message" style="margin-top:10px;"></p>
+    </div>
+
+    <!-- ============================================
+         MAIN CONTENT (Two Columns)
+         ============================================ -->
     <div id="mainContent">
 
-      <!-- LEFT COLUMN -->
+      <!-- ============================================
+           LEFT COLUMN: Finances + Squad
+           ============================================ -->
       <div id="leftColumn">
 
-        <!-- CLUB FINANCES (moved above Squad) -->
+        <!-- CLUB FINANCES -->
         <h2 class="section-header">Club Finances</h2>
         <div class="panel">
           <h2>Balance</h2>
@@ -151,7 +173,9 @@
 
       </div>
 
-      <!-- RIGHT COLUMN: TRANSFER CENTRE -->
+      <!-- ============================================
+           RIGHT COLUMN: Transfer Centre
+           ============================================ -->
       <div id="rightColumn">
 
         <h2 class="section-header">Transfer Centre</h2>
@@ -237,7 +261,9 @@
 
   </div>
 
-  <!-- MODAL (unchanged) -->
+  <!-- ============================================
+       LIST PLAYER MODAL
+       ============================================ -->
   <div id="list-player-modal-backdrop">
     <div id="list-player-modal">
       <h3>List Player</h3>
@@ -274,13 +300,17 @@
     </div>
   </div>
 
-  <!-- Firebase -->
+  <!-- ============================================
+       FIREBASE INITIALISATION
+       ============================================ -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
   <script src="firebase.js"></script>
 
-  <!-- Supabase -->
+  <!-- ============================================
+       SUPABASE INITIALISATION
+       ============================================ -->
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
@@ -292,10 +322,15 @@
     window.supabase = supabase;
   </script>
 
+  <!-- ============================================
+       TRANSFER ENGINE + DASHBOARD LOGIC
+       ============================================ -->
   <script src="transferEngine.js"></script>
-
   <script src="dashboard.js"></script>
 
+  <!-- ============================================
+       AUTH + NAVIGATION LOGIC
+       ============================================ -->
   <script>
     function logout() {
       auth.signOut().then(() => {
@@ -311,21 +346,19 @@
         return;
       }
 
-     nav.innerHTML = `
-  <a href="index.html" class="button">Home</a>
-  <a href="GPDB.html" class="button">Player Database</a>
-  <a href="clubs.html" class="button">Clubs</a>
-  <a href="all_listings.html" class="button">Transfer Market</a>
-  <button onclick="logout()" class="button">Logout</button>
-`;
+      nav.innerHTML = `
+        <a href="index.html" class="button">Home</a>
+        <a href="GPDB.html" class="button">Player Database</a>
+        <a href="clubs.html" class="button">Clubs</a>
+        <a href="all_listings.html" class="button">Transfer Market</a>
+        <button onclick="logout()" class="button">Logout</button>
+      `;
 
-// Admin list
-const adminEmails = ["rotavator66@outlook.com"];
-
-// Show Admin Panel link only for admins
-if (adminEmails.includes(user.email)) {
-  nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
-}
+      // Admin link
+      const adminEmails = ["rotavator66@outlook.com"];
+      if (adminEmails.includes(user.email)) {
+        nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
+      }
     });
   </script>
 
