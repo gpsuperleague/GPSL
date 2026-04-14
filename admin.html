@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <title>GPSL Admin</title>
 
+  <!-- ============================================
+       STYLE: Admin Panel Theme
+       ============================================ -->
   <style>
     body {
       background: #111;
@@ -67,7 +70,9 @@
       margin-bottom: 10px;
     }
 
-    /* Modal */
+    /* ============================================
+       MODAL: Season Rollover Confirmation
+       ============================================ */
     #seasonRolloverModalBackdrop {
       position: fixed;
       top: 0;
@@ -104,13 +109,18 @@
 
 <body>
 
+  <!-- ============================================
+       NAVIGATION BAR
+       ============================================ -->
   <div id="nav"></div>
 
   <h1>GPSL Admin Panel</h1>
 
   <div class="page-container">
 
-    <!-- ADMIN PANEL CONTENT -->
+    <!-- ============================================
+         ADMIN PANEL CONTENT (Hidden until auth check)
+         ============================================ -->
     <div id="adminPanel" style="display:none;">
 
       <h2 class="section-header">Season Management</h2>
@@ -127,7 +137,9 @@
 
   </div>
 
-  <!-- CONFIRMATION MODAL -->
+  <!-- ============================================
+       MODAL: Season Rollover Confirmation
+       ============================================ -->
   <div id="seasonRolloverModalBackdrop">
     <div id="seasonRolloverModal">
       <h3>Start New Season</h3>
@@ -151,13 +163,17 @@
     </div>
   </div>
 
-  <!-- Firebase -->
+  <!-- ============================================
+       FIREBASE INITIALISATION
+       ============================================ -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
   <script src="firebase.js"></script>
 
-  <!-- Supabase -->
+  <!-- ============================================
+       SUPABASE INITIALISATION
+       ============================================ -->
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
@@ -169,14 +185,22 @@
     window.supabase = supabase;
   </script>
 
+  <!-- ============================================
+       ADMIN PANEL LOGIC (To be modularised later)
+       ============================================ -->
   <script>
+    /* ------------------------------
+       Logout Handler
+       ------------------------------ */
     function logout() {
       auth.signOut().then(() => {
         window.location = "login.html";
       });
     }
 
-    // Admin access protection
+    /* ------------------------------
+       Admin Access Protection
+       ------------------------------ */
     auth.onAuthStateChanged(async user => {
       const nav = document.getElementById("nav");
 
@@ -206,7 +230,9 @@
     });
 
 
-    // Modal + RPC logic
+    /* ------------------------------
+       Modal + RPC Logic
+       ------------------------------ */
     document.addEventListener("DOMContentLoaded", () => {
       const openBtn = document.getElementById("rolloverBtn");
       const modal = document.getElementById("seasonRolloverModalBackdrop");
