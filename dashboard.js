@@ -1,8 +1,8 @@
 console.log("LIVE DASHBOARD VERSION:", Math.random());
 
-// ===============================
-//  GLOBAL STATE
-// ===============================
+/* ============================================================
+   MODULE A: GLOBAL STATE
+   ============================================================ */
 let currentUserEmail = null;
 let currentUserShort = null;
 let currentUserClub = null;   // club name (e.g. "Urawa Reds")
@@ -12,9 +12,10 @@ let clubId = null;            // alias for numeric Club_ID
 let selectedPlayerForListing = null;
 let activeListingsCache = []; // used to determine "Listed" status
 
-// ===============================
-// STADIUM INFO LOADER - START
-// ===============================
+
+/* ============================================================
+   MODULE B: STADIUM INFO LOADER
+   ============================================================ */
 async function loadStadiumInfo(clubId) {
   const { data: club, error: clubError } = await supabase
     .from("Clubs")
@@ -28,10 +29,10 @@ async function loadStadiumInfo(clubId) {
   }
 
   const { data: season, error: seasonError } = await supabase
-  .from("seasons")
-  .select("season_id")
-  .eq("is_active", true)
-  .single();
+    .from("seasons")
+    .select("season_id")
+    .eq("is_active", true)
+    .single();
 
   if (seasonError || !season) {
     console.error("Season load error", seasonError);
@@ -75,10 +76,6 @@ async function loadStadiumInfo(clubId) {
   document.getElementById("upgrade-cost").textContent =
     "£" + upgradeCost.toLocaleString();
 
-  // REMOVE THESE — they referenced non-existent columns
-  // document.getElementById("club-tier").textContent = club.club_tier;
-  // document.getElementById("wage-percentage").textContent = club.wage_percentage * 100 + "%";
-
   const upgradeBtn = document.getElementById("upgrade-stadium-btn");
 
   if (nextCapacity === currentCapacity) {
@@ -97,13 +94,11 @@ async function loadStadiumInfo(clubId) {
   upgradeBtn.textContent = "Upgrade Stadium";
   upgradeBtn.onclick = () => upgradeStadium(clubId);
 }
-// ===============================
-// STADIUM INFO LOADER - END
-// ===============================
 
-// ===============================
-// STADIUM UPGRADE HANDLER - START
-// ===============================
+
+/* ============================================================
+   MODULE B: STADIUM UPGRADE HANDLER
+   ============================================================ */
 async function upgradeStadium(clubId) {
   const message = document.getElementById("upgrade-message");
   message.textContent = "Processing upgrade...";
@@ -121,7 +116,7 @@ async function upgradeStadium(clubId) {
     case "SUCCESS":
       message.textContent = "✅ Stadium upgraded successfully!";
       loadStadiumInfo(clubId);
-      loadClubBalance?.(clubId); // optional if you have this function
+      loadClubBalance?.(clubId);
       break;
 
     case "INSUFFICIENT_FUNDS":
@@ -140,13 +135,11 @@ async function upgradeStadium(clubId) {
       message.textContent = "❌ Unknown error.";
   }
 }
-// ===============================
-// STADIUM UPGRADE HANDLER - END
-// ===============================
 
-// ===============================
-//  DASHBOARD REFRESH WRAPPER
-// ===============================
+
+/* ============================================================
+   MODULE C: DASHBOARD REFRESH WRAPPER
+   ============================================================ */
 async function loadDashboard() {
   await loadShortNameFromFirestore();
   await loadClubFromSupabase();
@@ -157,9 +150,6 @@ async function loadDashboard() {
   await loadListings();
   await loadMyActiveBids();
 
-  // ===============================
-  // STADIUM UPGRADE LOADER CALL
-  // ===============================
   if (clubId != null) {
     await loadStadiumInfo(clubId);
   } else {
@@ -167,9 +157,10 @@ async function loadDashboard() {
   }
 }
 
-// ===============================
-//  AUTH + INITIAL LOAD
-// ===============================
+
+/* ============================================================
+   MODULE D: AUTH + INITIAL LOAD
+   ============================================================ */
 auth.onAuthStateChanged(async user => {
   if (!user) {
     window.location = "login.html";
@@ -182,9 +173,10 @@ auth.onAuthStateChanged(async user => {
   await loadDashboard();
 });
 
-// ===============================
-//  FIRESTORE → SHORTNAME
-// ===============================
+
+/* ============================================================
+   MODULE D: FIRESTORE → SHORTNAME
+   ============================================================ */
 async function loadShortNameFromFirestore() {
   const uid = auth.currentUser.uid;
 
@@ -198,9 +190,10 @@ async function loadShortNameFromFirestore() {
   currentUserShort = doc.data().ShortName;
 }
 
-// ===============================
-//  SUPABASE → CLUB INFO
-// ===============================
+
+/* ============================================================
+   MODULE E: SUPABASE → CLUB INFO
+   ============================================================ */
 async function loadClubFromSupabase() {
   const { data, error } = await supabase
     .from("Clubs")
@@ -213,14 +206,10 @@ async function loadClubFromSupabase() {
     return;
   }
 
-  // numeric ID
   clubId = data.Club_ID;
   currentUserClubID = data.Club_ID;
-
-  // club name
   currentUserClub = data.Club;
 
-  // Update UI
   document.getElementById("clubNameField").textContent = currentUserClub;
   document.getElementById("dashboardTitle").textContent =
     `${currentUserClub} Dashboard`;
@@ -229,9 +218,10 @@ async function loadClubFromSupabase() {
     `images/club_badges/${currentUserShort}.png`;
 }
 
-// ===============================
-//  ACTIVE LISTINGS CACHE
-// ===============================
+
+/* ============================================================
+   MODULE F: ACTIVE LISTINGS CACHE
+   ============================================================ */
 async function loadActiveListingsCache() {
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
@@ -246,9 +236,10 @@ async function loadActiveListingsCache() {
   activeListingsCache = data || [];
 }
 
-// ===============================
-//  CLUB DETAILS PANEL
-// ===============================
+
+/* ============================================================
+   MODULE F: CLUB DETAILS PANEL
+   ============================================================ */
 async function loadClubDetails() {
   const { data, error } = await supabase
     .from("Clubs")
@@ -298,9 +289,10 @@ async function loadClubDetails() {
   };
 }
 
-// ===============================
-//  SQUAD
-// ===============================
+
+/* ============================================================
+   MODULE G: SQUAD
+   ============================================================ */
 async function loadSquad() {
   const { data, error } = await supabase
     .from("Players")
@@ -361,9 +353,10 @@ function handlePlayerAction(konamiID, action) {
   }
 }
 
-// ===============================
-//  LIST PLAYER MODAL
-// ===============================
+
+/* ============================================================
+   MODULE H: LIST PLAYER MODAL
+   ============================================================ */
 async function openListPlayerModalByID(playerRef) {
   const { data, error } = await supabase
     .from("Players")
@@ -409,9 +402,10 @@ document.getElementById("cancelListBtn").onclick = () => {
 
 document.getElementById("confirmListBtn").onclick = validateAndCreateListing;
 
-// ===============================
-//  CREATE LISTING
-// ===============================
+
+/* ============================================================
+   MODULE H: CREATE LISTING
+   ============================================================ */
 async function validateAndCreateListing() {
   const reserve = Number(document.getElementById("reserveInput").value);
   const mv = selectedPlayerForListing.market_value;
@@ -448,19 +442,10 @@ async function validateAndCreateListing() {
   await loadListings();
 }
 
-async function fetchPlayerByID(kid) {
-  const { data } = await supabase
-    .from("Players")
-    .select("*")
-    .eq("Konami_ID", kid)
-    .single();
 
-  return data;
-}
-
-// ===============================
-//  FINANCE
-// ===============================
+/* ============================================================
+   MODULE I: FINANCE
+   ============================================================ */
 async function loadFinance() {
   const { data, error } = await supabase
     .from("Club_Finances")
@@ -477,9 +462,10 @@ async function loadFinance() {
     `₿ ${data.balance.toLocaleString()}`;
 }
 
-// ===============================
-//  LOAD LISTINGS (with auto-expiry)
-// ===============================
+
+/* ============================================================
+   MODULE J: LOAD LISTINGS (with auto-expiry)
+   ============================================================ */
 async function loadListings() {
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
@@ -527,9 +513,10 @@ async function loadListings() {
   await loadSquad();
 }
 
-// ===============================
-//  ACTIVE LISTINGS
-// ===============================
+
+/* ============================================================
+   MODULE J: ACTIVE LISTINGS
+   ============================================================ */
 async function renderActiveListings(listings) {
   const tbody = document.getElementById("active-listings-body");
   tbody.innerHTML = "";
@@ -547,181 +534,4 @@ async function renderActiveListings(listings) {
       <td>₿ ${l.market_value}</td>
       <td>₿ ${l.reserve_price}</td>
       <td>${formatTimeRemaining(l.end_time)}</td>
-      <td>${l.current_highest_bid || "-"}</td>
-      <td>${l.current_highest_bidder || "-"}</td>
-    `;
-
-    tbody.appendChild(tr);
-  }
-
-  applyPESDBRowClicks("active-listings-body");
-}
-
-// ===============================
-//  SELLER REVIEW
-// ===============================
-async function renderSellerReview(listings) {
-  const tbody = document.getElementById("seller-review-body");
-  tbody.innerHTML = "";
-
-  for (const l of listings) {
-    const player = await fetchPlayerByID(l.player_id);
-
-    const tr = document.createElement("tr");
-    tr.dataset.konamiId = l.player_id;
-
-    tr.innerHTML = `
-      <td>${player?.Name || "Unknown"}</td>
-      <td>${player?.Position || "-"}</td>
-      <td>${player?.Rating || "-"}</td>
-      <td>₿ ${l.current_highest_bid || "-"}</td>
-      <td>${l.current_highest_bidder || "-"}</td>
-      <td>${new Date(l.end_time).toLocaleString()}</td>
-      <td>
-        <div class="decision-buttons">
-          <button class="button" onclick="transferEngine.acceptSale(${l.id})">Accept</button>
-          <button class="button" onclick="transferEngine.rejectSale(${l.id})">Reject</button>
-        </div>
-      </td>
-    `;
-
-    tbody.appendChild(tr);
-  }
-
-  applyPESDBRowClicks("seller-review-body");
-}
-
-// ===============================
-//  CLOSED LISTINGS
-// ===============================
-async function renderClosedListings(listings) {
-  const tbody = document.getElementById("closed-listings-body");
-  tbody.innerHTML = "";
-
-  for (const l of listings) {
-    const player = await fetchPlayerByID(l.player_id);
-
-    const tr = document.createElement("tr");
-    tr.dataset.konamiId = l.player_id;
-
-    tr.innerHTML = `
-      <td>${player?.Name || "Unknown"}</td>
-      <td>${player?.Position || "-"}</td>
-      <td>${player?.Rating || "-"}</td>
-      <td>${l.final_bid || "-"}</td>
-      <td>${l.winner || "-"}</td>
-      <td>${l.status}</td>
-    `;
-
-    tbody.appendChild(tr);
-  }
-
-  applyPESDBRowClicks("closed-listings-body");
-}
-
-// ===============================
-//  MY ACTIVE BIDS
-// ===============================
-async function loadMyActiveBids() {
-  const { data, error } = await supabase
-    .from("Player_Transfer_Bids")
-    .select(`
-      listing_id,
-      bid_amount,
-      bid_time,
-      Player_Transfer_Listings (
-        id,
-        player_id,
-        reserve_price,
-        current_highest_bid,
-        current_highest_bidder,
-        end_time
-      )
-    `)
-    .eq("bidder_club_id", currentUserShort)
-    .order("bid_time", { ascending: false });
-
-  if (error) {
-    console.error("Active bids error:", error);
-    return;
-  }
-
-  renderMyActiveBids(data);
-}
-
-async function renderMyActiveBids(bids) {
-  const tbody = document.getElementById("my-active-bids-body");
-  tbody.innerHTML = "";
-
-  for (const b of bids) {
-    const l = b.Player_Transfer_Listings;
-    const player = await fetchPlayerByID(l.player_id);
-
-    const tr = document.createElement("tr");
-    tr.dataset.konamiId = l.player_id;
-
-    tr.innerHTML = `
-      <td>${player?.Name || "Unknown"}</td>
-      <td>${player?.Position || "-"}</td>
-      <td>₿ ${b.bid_amount}</td>
-      <td>₿ ${l.current_highest_bid || "-"}</td>
-      <td>${l.current_highest_bidder || "-"}</td>
-      <td>${new Date(l.end_time).toLocaleString()}</td>
-    `;
-
-    tbody.appendChild(tr);
-  }
-
-  applyPESDBRowClicks("my-active-bids-body");
-}
-
-// ===============================
-//  UNIVERSAL PESDB ROW CLICK HANDLER
-// ===============================
-function applyPESDBRowClicks(tbodyId) {
-  const tbody = document.getElementById(tbodyId);
-  if (!tbody) return;
-
-  tbody.querySelectorAll("tr").forEach(row => {
-    row.style.cursor = "pointer";
-
-    row.addEventListener("click", e => {
-      // A1: protect dropdowns, buttons, decision areas
-      if (
-        e.target.closest("select") ||
-        e.target.closest("button") ||
-        e.target.closest(".decision-buttons")
-      ) {
-        return;
-      }
-
-      const id = row.dataset.konamiId;
-      if (id) {
-        window.open(
-          `https://pesdb.net/efootball/?id=${id}`,
-          "_blank",
-          "noopener"
-        );
-      }
-    });
-  });
-}
-
-// ===============================
-//  TIME REMAINING FORMATTER
-// ===============================
-function formatTimeRemaining(endTime) {
-  const end = new Date(endTime);
-  const now = new Date();
-  const diff = end - now;
-
-  if (diff <= 0) return "Expired";
-
-  const hours = Math.floor(diff / 3600000);
-  const mins = Math.floor((diff % 3600000) / 60000);
-
-  return `${hours}h ${mins}m`;
-}
-
-// END OF DASHBOARD.JS
-console.log("Dashboard JS loaded successfully.");
+     
