@@ -1,15 +1,27 @@
+/* ============================================================
+   MODULE: Transfer Engine
+   Purpose:
+   - Evaluate expired listings
+   - Auto-complete sales
+   - Handle seller review
+   - Transfer funds
+   - Move players between clubs
+   - Log transfer history
+   ============================================================ */
+
 const transferEngine = {};
 
-// ===============================
-//  EVALUATE EXPIRED LISTING
-// ===============================
+
+/* ============================================================
+   MODULE A: Evaluate Expired Listing
+   ============================================================ */
 transferEngine.evaluateExpiredListing = async function (listing) {
   console.log("🔍 Checking expired listing:", listing.id);
 
   const now = new Date();
   const end = new Date(listing.end_time);
 
-  // If expired and no bids → close
+  // 1. No bids → close listing
   if (!listing.current_highest_bid) {
     console.log("⚠️ No bids — closing listing", listing.id);
 
@@ -27,14 +39,14 @@ transferEngine.evaluateExpiredListing = async function (listing) {
     return;
   }
 
-  // If expired and reserve met → auto-complete sale
+  // 2. Reserve met → auto-complete sale
   if (listing.current_highest_bid >= listing.reserve_price) {
     console.log("🏁 Reserve met — auto‑completing sale for listing", listing.id);
     await transferEngine.acceptSale(listing.id);
     return;
   }
 
-  // If expired and reserve NOT met → seller review
+  // 3. Reserve NOT met → seller review
   console.log("📝 Reserve NOT met — sending to review:", listing.id);
 
   const reviewDeadline = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -52,9 +64,9 @@ transferEngine.evaluateExpiredListing = async function (listing) {
 };
 
 
-// ===============================
-//  ACCEPT SALE (FULL FINANCIAL LOGIC)
-// ===============================
+/* ============================================================
+   MODULE B: Accept Sale (Full Financial Logic)
+   ============================================================ */
 transferEngine.acceptSale = async function (listingId) {
   console.log("🔍 acceptSale called for listing:", listingId);
 
@@ -76,9 +88,9 @@ transferEngine.acceptSale = async function (listingId) {
   const seller = listing.seller_club_id;
   const amount = listing.current_highest_bid;
 
-  // ===============================
-  // 1. VALIDATE BUYER CAN AFFORD IT
-  // ===============================
+  /* --------------------------------------------
+     1. Validate buyer can afford the transfer
+     -------------------------------------------- */
   const { data: buyerFinance } = await supabase
     .from("Club_Finances")
     .select("balance")
@@ -105,9 +117,9 @@ transferEngine.acceptSale = async function (listingId) {
     return;
   }
 
-  // ===============================
-  // 2. TRANSFER FUNDS (buyer → seller)
-  // ===============================
+  /* --------------------------------------------
+     2. Transfer funds (buyer → seller)
+     -------------------------------------------- */
   console.log("💰 Transferring funds:", { buyer, seller, amount });
 
   const { error: fundsError } = await supabase.rpc("transfer_funds", {
@@ -123,9 +135,9 @@ transferEngine.acceptSale = async function (listingId) {
 
   console.log("✅ Funds transferred successfully");
 
-  // ===============================
-  // 3. MOVE PLAYER TO BUYER
-  // ===============================
+  /* --------------------------------------------
+     3. Move player to buyer
+     -------------------------------------------- */
   console.log("🧩 Updating player club:", {
     player_id: listing.player_id,
     new_club: buyer
@@ -142,9 +154,9 @@ transferEngine.acceptSale = async function (listingId) {
     console.log("✅ Player updated:", playerUpdate);
   }
 
-  // ===============================
-  // 4. LOG TRANSFER HISTORY
-  // ===============================
+  /* --------------------------------------------
+     4. Log transfer history
+     -------------------------------------------- */
   await supabase.from("Transfer_History").insert({
     player_id: listing.player_id,
     seller_club_id: seller,
@@ -156,9 +168,9 @@ transferEngine.acceptSale = async function (listingId) {
 
   console.log("📜 Transfer logged in history");
 
-  // ===============================
-  // 5. MARK LISTING AS COMPLETED
-  // ===============================
+  /* --------------------------------------------
+     5. Mark listing as completed
+     -------------------------------------------- */
   console.log("🏁 Marking listing as completed:", listingId);
 
   const { error: listingUpdateError } = await supabase
@@ -179,9 +191,9 @@ transferEngine.acceptSale = async function (listingId) {
 };
 
 
-// ===============================
-//  REJECT SALE
-// ===============================
+/* ============================================================
+   MODULE C: Reject Sale
+   ============================================================ */
 transferEngine.rejectSale = async function (listingId) {
   console.log("🚫 rejectSale called for listing:", listingId);
 
