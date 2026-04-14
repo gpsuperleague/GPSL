@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <title>GPSL Transfer Market</title>
 
+  <!-- ============================================
+       STYLE: Global Transfer Market Theme
+       ============================================ -->
   <style>
     body {
       background: #111;
@@ -11,6 +14,9 @@
       font-family: Arial, sans-serif;
     }
 
+    /* ------------------------------
+       Page Title
+       ------------------------------ */
     h1 {
       background:#222;
       color:#ff9900;
@@ -22,6 +28,9 @@
       font-weight:bold;
     }
 
+    /* ------------------------------
+       Buttons
+       ------------------------------ */
     a.button, button.button {
       display: inline-block;
       padding: 10px 20px;
@@ -40,11 +49,17 @@
       transform: scale(1.05);
     }
 
+    /* ------------------------------
+       Navigation Bar
+       ------------------------------ */
     #nav {
       text-align: center;
       margin-bottom: 20px;
     }
 
+    /* ------------------------------
+       Filters Bar
+       ------------------------------ */
     .filters-bar {
       width: 90%;
       max-width: 1100px;
@@ -66,6 +81,9 @@
       font-weight: bold;
     }
 
+    /* ------------------------------
+       Listings Table
+       ------------------------------ */
     table.gpsl-table {
       width: 90%;
       max-width: 1100px;
@@ -99,7 +117,9 @@
       cursor:pointer;
     }
 
-    /* Modal */
+    /* ============================================
+       MODAL: Bid Window
+       ============================================ */
     #bid-modal {
       display: none;
       position: fixed;
@@ -183,10 +203,19 @@
 
 <body>
 
+  <!-- ============================================
+       PAGE TITLE
+       ============================================ -->
   <h1>Global Transfer Market</h1>
 
+  <!-- ============================================
+       NAVIGATION BAR (populated after auth)
+       ============================================ -->
   <div id="nav"></div>
 
+  <!-- ============================================
+       FILTERS BAR
+       ============================================ -->
   <div class="filters-bar">
     <div class="filters-left">
       <label>
@@ -203,6 +232,9 @@
     </div>
   </div>
 
+  <!-- ============================================
+       LISTINGS TABLE
+       ============================================ -->
   <table class="gpsl-table">
     <thead>
       <tr>
@@ -222,75 +254,57 @@
     <tbody id="listings-body"></tbody>
   </table>
 
-  <!-- Bid Modal -->
+  <!-- ============================================
+       BID MODAL
+       ============================================ -->
   <div id="bid-modal">
     <div id="bid-modal-content">
+
       <div id="bid-modal-header">
         <h2 id="bid-player-name">Player</h2>
         <span id="bid-modal-close">&times;</span>
       </div>
 
-      <div class="bid-row">
-        <label>Position:</label>
-        <span id="bid-player-position"></span>
-      </div>
-      <div class="bid-row">
-        <label>Playstyle:</label>
-        <span id="bid-player-playstyle"></span>
-      </div>
-      <div class="bid-row">
-        <label>Rating:</label>
-        <span id="bid-player-rating"></span>
-      </div>
-      <div class="bid-row">
-        <label>Selling Club:</label>
-        <span id="bid-selling-club"></span>
-      </div>
-      <div class="bid-row">
-        <label>Market Value:</label>
-        <span id="bid-market-value"></span>
-      </div>
-      <div class="bid-row">
-        <label>Reserve Price:</label>
-        <span id="bid-reserve-price"></span>
-      </div>
-      <div class="bid-row">
-        <label>Status:</label>
-        <span id="bid-status"></span>
-      </div>
-      <div class="bid-row">
-        <label>Time Remaining:</label>
-        <span id="bid-time-remaining"></span>
-      </div>
-      <div class="bid-row">
-        <label>Highest Bid:</label>
-        <span id="bid-highest-bid"></span>
-      </div>
-      <div class="bid-row">
-        <label>Highest Club:</label>
-        <span id="bid-highest-club"></span>
-      </div>
+      <!-- Player Info Rows -->
+      <div class="bid-row"><label>Position:</label><span id="bid-player-position"></span></div>
+      <div class="bid-row"><label>Playstyle:</label><span id="bid-player-playstyle"></span></div>
+      <div class="bid-row"><label>Rating:</label><span id="bid-player-rating"></span></div>
+      <div class="bid-row"><label>Selling Club:</label><span id="bid-selling-club"></span></div>
+      <div class="bid-row"><label>Market Value:</label><span id="bid-market-value"></span></div>
+      <div class="bid-row"><label>Reserve Price:</label><span id="bid-reserve-price"></span></div>
+      <div class="bid-row"><label>Status:</label><span id="bid-status"></span></div>
+      <div class="bid-row"><label>Time Remaining:</label><span id="bid-time-remaining"></span></div>
+      <div class="bid-row"><label>Highest Bid:</label><span id="bid-highest-bid"></span></div>
+      <div class="bid-row"><label>Highest Club:</label><span id="bid-highest-club"></span></div>
 
+      <!-- Bid Input -->
       <div id="bid-input-section">
         <div class="bid-row">
           <label>Your Bid (₿):</label>
           <input type="number" id="bid-amount" step="0.01" min="0">
         </div>
+
         <div style="margin-top:10px;">
           <button id="place-bid-btn" class="button">Place Bid</button>
         </div>
+
         <div id="bid-error"></div>
       </div>
+
     </div>
   </div>
 
-  <!-- Firebase -->
+  <!-- ============================================
+       FIREBASE INITIALISATION
+       ============================================ -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
   <script src="firebase.js"></script>
 
-  <!-- Supabase + logic -->
+  <!-- ============================================
+       SUPABASE INITIALISATION
+       ============================================ -->
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
@@ -299,13 +313,17 @@
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
     );
 
-    // expose supabase for all_listings.js
     window.supabase = supabase;
   </script>
 
-  <!-- All listings logic -->
+  <!-- ============================================
+       ALL LISTINGS LOGIC (external module)
+       ============================================ -->
   <script src="all_listings.js"></script>
 
+  <!-- ============================================
+       AUTH + NAVIGATION LOGIC
+       ============================================ -->
   <script>
     function logout() {
       auth.signOut().then(() => {
