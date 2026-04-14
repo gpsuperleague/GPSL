@@ -442,6 +442,18 @@ async function validateAndCreateListing() {
   await loadListings();
 }
 
+/* ============================================================
+   UTILITY: FETCH PLAYER BY KONAMI ID
+   ============================================================ */
+async function fetchPlayerByID(kid) {
+  const { data } = await supabase
+    .from("Players")
+    .select("*")
+    .eq("Konami_ID", kid)
+    .single();
+
+  return data;
+}
 
 /* ============================================================
    MODULE I: FINANCE
