@@ -4,8 +4,11 @@
   <meta charset="UTF-8">
   <title>Clubs</title>
 
+  <!-- ============================================
+       STYLE: Club Grid + Buttons
+       ============================================ -->
   <style>
-    /* Button styling to match index/dashboard */
+    /* Buttons (matches index/dashboard theme) */
     a.button, button.button {
       display: inline-block;
       padding: 10px 20px;
@@ -24,6 +27,7 @@
       transform: scale(1.05);
     }
 
+    /* Grid of club badges */
     .club-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -46,65 +50,80 @@
 
 <body>
 
-  <!-- Dynamic navigation goes here -->
+  <!-- ============================================
+       NAVIGATION (populated after auth)
+       ============================================ -->
   <div id="nav" style="margin-bottom:20px;"></div>
 
   <h1>Clubs</h1>
 
+  <!-- ============================================
+       CLUB GRID CONTAINER
+       ============================================ -->
   <div id="clubs" class="club-grid"></div>
 
-  <!-- Supabase club loading -->
+  <!-- ============================================
+       MODULE A: Supabase Club Loader
+       ============================================ -->
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
     const supabase = createClient(
       'https://omyyogfumrjoaweuawjn.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
-    )
+    );
 
+    /* --------------------------------------------
+       Load all clubs from Supabase
+       -------------------------------------------- */
     async function loadClubs() {
       const { data, error } = await supabase
         .from("Clubs")
         .select("*")
-        .order("Club", { ascending: true })
+        .order("Club", { ascending: true });
 
       if (error) {
-        console.error(error)
-        return
+        console.error(error);
+        return;
       }
 
-      const container = document.getElementById("clubs")
+      const container = document.getElementById("clubs");
       if (!container) {
-        console.error("Element #clubs not found")
-        return
+        console.error("Element #clubs not found");
+        return;
       }
 
       data.forEach(club => {
-        const div = document.createElement("div")
-        div.className = "club-card"
+        const div = document.createElement("div");
+        div.className = "club-card";
+
         div.onclick = () => {
-          window.location.href = `club.html?club=${encodeURIComponent(club.Club)}`
-        }
+          window.location.href = `club.html?club=${encodeURIComponent(club.Club)}`;
+        };
 
         div.innerHTML = `
           <img src="images/club_badges/${club.ShortName}.png" alt="${club.Club} badge">
           <div>${club.Club}</div>
-        `
+        `;
 
-        container.appendChild(div)
-      })
+        container.appendChild(div);
+      });
     }
 
-    loadClubs()
+    loadClubs();
   </script>
 
-  <!-- Firebase scripts -->
+  <!-- ============================================
+       MODULE B: Firebase Auth + Navigation
+       ============================================ -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="firebase.js"></script>
 
   <script>
-    // Protect page + build navigation
+    /* --------------------------------------------
+       Protect page + build navigation
+       -------------------------------------------- */
     auth.onAuthStateChanged(user => {
       const nav = document.getElementById("nav");
 
@@ -117,7 +136,7 @@
         <a href="index.html" class="button">Home</a>
         <a href="GPDB.html" class="button">Player Database</a>
         <a href="dashboard.html" class="button">Dashboard</a>
-         <a href="all_listings.html" class="button">Transfer-List</a>
+        <a href="all_listings.html" class="button">Transfer-List</a>
         <button onclick="logout()" class="button">Logout</button>
       `;
     });
