@@ -1,3 +1,12 @@
+/* ============================================================
+   MODULE: Dashboard Stylesheet
+   Purpose:
+   - Defines layout and visual identity for the Club Dashboard
+   - Covers: header, club details, panels, tables, modals, finance box
+   - Used exclusively by dashboard.html
+   ============================================================ */
+
+
 /* ============================
    HEADER LAYOUT
    ============================ */
@@ -39,6 +48,7 @@
   margin-top: 4px;
 }
 
+
 /* ============================
    CLUB DETAILS PANEL
    ============================ */
@@ -77,6 +87,7 @@
   font-weight: bold;
   margin-right: 10px;
 }
+
 
 /* ============================
    OWNER FIELD STATES
@@ -121,6 +132,7 @@
   background: #ffb84d;
 }
 
+
 /* ============================
    MAIN CONTENT LAYOUT
    ============================ */
@@ -139,6 +151,7 @@
   flex: 1;
 }
 
+
 /* ============================
    SECTION HEADERS
    ============================ */
@@ -153,6 +166,7 @@
   font-weight: bold;
   display: inline-block;
 }
+
 
 /* ============================
    PANELS
@@ -173,6 +187,7 @@
   border-bottom: 1px solid #333;
   padding-bottom: 6px;
 }
+
 
 /* ============================
    TABLES
@@ -236,6 +251,7 @@ table.gpsl-table tr:nth-child(even) {
   border-radius: 6px;
   color: #ffaa22;
 }
+
 
 /* ============================
    LIST PLAYER MODAL
@@ -352,6 +368,7 @@ table.gpsl-table tr:nth-child(even) {
 #confirmListBtn:hover {
   background: #ffb84d;
 }
+
 
 /* ============================
    EXTRA SPACING FOR TRANSFER CENTRE
