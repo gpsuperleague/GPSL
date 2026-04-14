@@ -2,6 +2,10 @@
 <html>
 <head>
   <title>Club Squad</title>
+
+  <!-- ============================================
+       STYLE: Club Page Layout
+       ============================================ -->
   <style>
     .club-header {
       display: flex;
@@ -29,96 +33,121 @@
 
 <body>
 
-<nav style="margin-bottom:20px;">
-  <a href="index.html">Home</a> |
-  <a href="GPDB.html">GPDB</a> |
-  <a href="clubs.html">Clubs</a> |
-  <a href="all_listings.html"Transfer-List"<a> |
-  <a href="dashboard.html">Club Dashboard</a>
-</nav>
+  <!-- ============================================
+       NAVIGATION BAR
+       ============================================ -->
+  <nav style="margin-bottom:20px;">
+    <a href="index.html">Home</a> |
+    <a href="GPDB.html">GPDB</a> |
+    <a href="clubs.html">Clubs</a> |
+    <a href="all_listings.html">Transfer List</a> |
+    <a href="dashboard.html">Club Dashboard</a>
+  </nav>
 
-<div id="clubHeader" class="club-header"></div>
+  <!-- ============================================
+       CLUB HEADER (Badge + Info)
+       ============================================ -->
+  <div id="clubHeader" class="club-header"></div>
 
-<h2>Squad List</h2>
+  <h2>Squad List</h2>
 
-<table>
-  <thead id="tableHead"></thead>
-  <tbody id="tableBody"></tbody>
-</table>
+  <!-- ============================================
+       SQUAD TABLE
+       ============================================ -->
+  <table>
+    <thead id="tableHead"></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
 
-<!-- SCRIPT AT THE BOTTOM -->
-<script type="module">
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+  <!-- ============================================
+       SCRIPT: Club Page Logic
+       ============================================ -->
+  <script type="module">
+    /* --------------------------------------------
+       MODULE A: Supabase Initialisation
+       -------------------------------------------- */
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-const supabase = createClient(
-  'https://omyyogfumrjoaweuawjn.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
-)
+    const supabase = createClient(
+      'https://omyyogfumrjoaweuawjn.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
+    );
 
-// Read ?club=Ajax
-const params = new URLSearchParams(window.location.search)
-const clubName = params.get("club")
+    /* --------------------------------------------
+       MODULE B: Read ?club=Ajax from URL
+       -------------------------------------------- */
+    const params = new URLSearchParams(window.location.search);
+    const clubName = params.get("club");
 
-async function loadClub() {
-  const { data: club, error } = await supabase
-    .from("Clubs")
-    .select("*")
-    .eq("Club", clubName)
-    .single()
+    /* --------------------------------------------
+       MODULE C: Load Club Info (badge, stadium, etc.)
+       -------------------------------------------- */
+    async function loadClub() {
+      const { data: club, error } = await supabase
+        .from("Clubs")
+        .select("*")
+        .eq("Club", clubName)
+        .single();
 
-  if (error) {
-    console.error(error)
-    return
-  }
+      if (error) {
+        console.error(error);
+        return;
+      }
 
-  const header = document.getElementById("clubHeader")
+      const header = document.getElementById("clubHeader");
 
-  header.innerHTML = `
-    <img src="images/club_badges/${club.ShortName}.png" alt="${club.Club} badge">
-    <div>
-      <h1>${club.Club}</h1>
-      <div><strong>Stadium:</strong> ${club.Stadium}</div>
-      <div><strong>Capacity:</strong> ${club.Capacity.toLocaleString()}</div>
-      <div><strong>Nation:</strong> ${club.Nation}</div>
-    </div>
-  `
-}
+      header.innerHTML = `
+        <img src="images/club_badges/${club.ShortName}.png" alt="${club.Club} badge">
+        <div>
+          <h1>${club.Club}</h1>
+          <div><strong>Stadium:</strong> ${club.Stadium}</div>
+          <div><strong>Capacity:</strong> ${club.Capacity.toLocaleString()}</div>
+          <div><strong>Nation:</strong> ${club.Nation}</div>
+        </div>
+      `;
+    }
 
-async function loadPlayers() {
-  const { data, error } = await supabase
-    .from("Players")
-    .select("*")
-    .eq("Contracted_Team", clubName)
+    /* --------------------------------------------
+       MODULE D: Load Squad Players
+       -------------------------------------------- */
+    async function loadPlayers() {
+      const { data, error } = await supabase
+        .from("Players")
+        .select("*")
+        .eq("Contracted_Team", clubName);
 
-  if (error) {
-    console.error(error)
-    return
-  }
+      if (error) {
+        console.error(error);
+        return;
+      }
 
-  const head = document.getElementById("tableHead")
-  const body = document.getElementById("tableBody")
+      const head = document.getElementById("tableHead");
+      const body = document.getElementById("tableBody");
 
-  if (!data.length) {
-    head.innerHTML = "<tr><th>No players found</th></tr>"
-    return
-  }
+      if (!data.length) {
+        head.innerHTML = "<tr><th>No players found</th></tr>";
+        return;
+      }
 
-  const cols = Object.keys(data[0])
+      const cols = Object.keys(data[0]);
 
-  head.innerHTML = `
-    <tr>${cols.map(c => `<th>${c.replace(/_/g, " ")}</th>`).join("")}</tr>
-  `
+      head.innerHTML = `
+        <tr>${cols.map(c => `<th>${c.replace(/_/g, " ")}</th>`).join("")}</tr>
+      `;
 
-  body.innerHTML = data.map(player => `
-    <tr>
-      ${cols.map(c => `<td>${player[c]}</td>`).join("")}
-    </tr>
-  `).join("")
-}
+      body.innerHTML = data.map(player => `
+        <tr>
+          ${cols.map(c => `<td>${player[c]}</td>`).join("")}
+        </tr>
+      `).join("");
+    }
 
-loadClub()
-loadPlayers()
-</script>
+    /* --------------------------------------------
+       MODULE E: Initialise Page
+       -------------------------------------------- */
+    loadClub();
+    loadPlayers();
+  </script>
 
 </body>
 </html>
