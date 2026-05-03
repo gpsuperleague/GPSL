@@ -297,7 +297,6 @@ async function loadClubDetails() {
   };
 }
 
-
 /* ============================================================
    MODULE G: SQUAD
    ============================================================ */
@@ -305,7 +304,7 @@ async function loadSquad() {
   const { data, error } = await supabase
     .from("Players")
     .select("*")
-    .eq("Contracted_Team", currentUserClub);
+    .eq("Contracted_Team", currentUserShort);   // ⭐ ShortName for DB lookup
 
   if (error) {
     console.error("Squad load error", error);
@@ -341,7 +340,7 @@ function renderSquad(players) {
     tr.innerHTML = `
       <td>${p.Name}</td>
       <td>${p.Position}</td>
-      <td>${p.Rating}</td>
+      <td>${p.Rating || p.OVR}</td>
       <td>${p.Playstyle || "-"}</td>
       <td>₿ ${p.market_value}</td>
       <td>${status}</td>
@@ -360,7 +359,6 @@ function handlePlayerAction(konamiID, action) {
     openListPlayerModalByID(player);
   }
 }
-
 
 /* ============================================================
    MODULE H: LIST PLAYER MODAL
