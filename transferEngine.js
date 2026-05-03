@@ -217,5 +217,3 @@ transferEngine.rejectSale = async function (listingId) {
   if (error) console.error("❌ Failed to reject sale:", error);
   else console.log("🛑 Listing rejected and closed");
 };
-
-export default transferEngine;
