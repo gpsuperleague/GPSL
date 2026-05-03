@@ -1,3 +1,4 @@
+import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 console.log("LIVE DASHBOARD VERSION:", Math.random());
 
 /* ============================================================
