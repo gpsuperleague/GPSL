@@ -84,21 +84,21 @@ transferEngine.acceptSale = async function (listingId) {
 
   console.log("📄 Listing data:", listing);
 
-  const buyer = listing.current_highest_bidder;
-  const seller = listing.seller_club_id;
+  const buyer = listing.current_highest_bidder;   // ShortName
+  const seller = listing.seller_club_id;          // ShortName
   const amount = listing.current_highest_bid;
 
   /* --------------------------------------------
      1. Validate buyer can afford the transfer
      -------------------------------------------- */
-  const { data: buyerFinance } = await supabase
+  const { data: buyerFinance, error: buyerFinanceError } = await supabase
     .from("Club_Finances")
     .select("balance")
-    .eq("club_name", buyer)
+    .eq("club_name", buyer) // ShortName now
     .single();
 
-  if (!buyerFinance) {
-    console.error("❌ Buyer finance lookup failed");
+  if (buyerFinanceError || !buyerFinance) {
+    console.error("❌ Buyer finance lookup failed:", buyerFinanceError);
     return;
   }
 
@@ -110,7 +110,8 @@ transferEngine.acceptSale = async function (listingId) {
       .update({
         status: "Closed",
         transfer_completed: false,
-        final_bid: null
+        winning_bid: null,
+        winning_club: null
       })
       .eq("id", listingId);
 
@@ -123,8 +124,8 @@ transferEngine.acceptSale = async function (listingId) {
   console.log("💰 Transferring funds:", { buyer, seller, amount });
 
   const { error: fundsError } = await supabase.rpc("transfer_funds", {
-    from_club: buyer,
-    to_club: seller,
+    from_club: buyer,   // ShortName
+    to_club: seller,    // ShortName
     amount: amount
   });
 
@@ -145,7 +146,7 @@ transferEngine.acceptSale = async function (listingId) {
 
   const { data: playerUpdate, error: playerError } = await supabase
     .from("Players")
-    .update({ Contracted_Team: buyer })
+    .update({ Contracted_Team: buyer }) // ShortName
     .eq("Konami_ID", listing.player_id);
 
   if (playerError) {
@@ -157,16 +158,22 @@ transferEngine.acceptSale = async function (listingId) {
   /* --------------------------------------------
      4. Log transfer history
      -------------------------------------------- */
-  await supabase.from("Transfer_History").insert({
-    player_id: listing.player_id,
-    seller_club_id: seller,
-    buyer_club_id: buyer,
-    fee: amount,
-    transfer_time: new Date().toISOString(),
-    listing_id: listing.id
-  });
+  const { error: historyError } = await supabase
+    .from("Transfer_History")
+    .insert({
+      player_id: listing.player_id,
+      seller_club_id: seller, // ShortName
+      buyer_club_id: buyer,   // ShortName
+      fee: amount,
+      transfer_time: new Date().toISOString(),
+      listing_id: listing.id
+    });
 
-  console.log("📜 Transfer logged in history");
+  if (historyError) {
+    console.error("❌ Failed to log transfer history:", historyError);
+  } else {
+    console.log("📜 Transfer logged in history");
+  }
 
   /* --------------------------------------------
      5. Mark listing as completed
@@ -178,8 +185,8 @@ transferEngine.acceptSale = async function (listingId) {
     .update({
       status: "Closed",
       transfer_completed: true,
-      final_bid: amount,
-      winner: buyer
+      winning_bid: amount,
+      winning_club: buyer
     })
     .eq("id", listingId);
 
@@ -201,10 +208,14 @@ transferEngine.rejectSale = async function (listingId) {
     .from("Player_Transfer_Listings")
     .update({
       status: "Closed",
-      transfer_completed: false
+      transfer_completed: false,
+      winning_bid: null,
+      winning_club: null
     })
     .eq("id", listingId);
 
   if (error) console.error("❌ Failed to reject sale:", error);
   else console.log("🛑 Listing rejected and closed");
 };
+
+export default transferEngine;
