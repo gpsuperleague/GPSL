@@ -474,7 +474,6 @@ async function loadFinance() {
     `₿ ${data.balance.toLocaleString()}`;
 }
 
-
 /* ============================================================
    MODULE J: LOAD LISTINGS (with auto-expiry + archived filter)
    ============================================================ */
@@ -482,11 +481,12 @@ async function loadListings() {
 
   console.log("🔄 loadListings() called — filtering archived listings");
 
+  // 1. Load non-archived listings
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
     .eq("seller_club_id", currentUserClub)
-    .eq("archived", false);   // <— REQUIRED FILTER
+    .eq("archived", false);
 
   if (error) {
     console.error("❌ Listings error:", error);
@@ -495,48 +495,46 @@ async function loadListings() {
 
   console.log("📦 Listings returned:", data.length);
 
-  // Continue with your existing logic:
-  // - separate active, review, closed
-  // - auto-expiry checks
-  // - render tables
-  // (your existing code continues below this point)
-}
+  // 2. AUTO-UPDATE EXPIRED LISTINGS
+  for (const l of data) {
+    const now = new Date();
+    const end = new Date(l.end_time);
 
- // AUTO-UPDATE EXPIRED LISTINGS
-for (const l of data) {
-  const now = new Date();
-  const end = new Date(l.end_time);
+    if (end < now && l.status === "Active") {
+      await transferEngine.evaluateExpiredListing(l);
+    }
 
-  if (end < now && l.status === "Active") {
-    await transferEngine.evaluateExpiredListing(l);
-  }
-
-  if (l.status === "Review" && l.review_deadline) {
-    const reviewEnd = new Date(l.review_deadline);
-    if (reviewEnd < now) {
-      await transferEngine.rejectSale(l.id);
+    if (l.status === "Review" && l.review_deadline) {
+      const reviewEnd = new Date(l.review_deadline);
+      if (reviewEnd < now) {
+        await transferEngine.rejectSale(l.id);
+      }
     }
   }
+
+  // 3. Reload listings after updates
+  const refreshed = await supabase
+    .from("Player_Transfer_Listings")
+    .select("*")
+    .eq("seller_club_id", currentUserClub)
+    .eq("archived", false);
+
+  const updatedListings = refreshed.data || [];
+
+  // 4. Split into categories
+  const active = updatedListings.filter(l => l.status === "Active");
+  const review = updatedListings.filter(l => l.status === "Review");
+  const closed = updatedListings.filter(l => l.status === "Closed");
+
+  // 5. Render UI
+  renderActiveListings(active);
+  renderSellerReview(review);
+  renderClosedListings(closed);
+
+  // 6. Refresh squad + cache
+  await loadActiveListingsCache();
+  await loadSquad();
 }
-
-const refreshed = await supabase
-  .from("Player_Transfer_Listings")
-  .select("*")
-  .eq("seller_club_id", currentUserClub)
-  .eq("archived", false);   // ⭐ REQUIRED FIX
-
-const updatedListings = refreshed.data || [];
-
-const active = updatedListings.filter(l => l.status === "Active");
-const review = updatedListings.filter(l => l.status === "Review");
-const closed = updatedListings.filter(l => l.status === "Closed");
-
-renderActiveListings(active);
-renderSellerReview(review);
-renderClosedListings(closed);
-
-await loadActiveListingsCache();
-await loadSquad();
 
 /* ============================================================
    MODULE J: ACTIVE LISTINGS
