@@ -194,7 +194,6 @@ async function loadShortNameFromFirestore() {
   currentUserShort = doc.data().ShortName;
 }
 
-
 /* ============================================================
    MODULE E: SUPABASE → CLUB INFO
    ============================================================ */
@@ -202,7 +201,7 @@ async function loadClubFromSupabase() {
   const { data, error } = await supabase
     .from("Clubs")
     .select("*")
-    .eq("ShortName", currentUserShort)
+    .eq("ShortName", currentUserShort)   // ShortName for DB lookup
     .single();
 
   if (error || !data) {
@@ -212,16 +211,21 @@ async function loadClubFromSupabase() {
 
   clubId = data.Club_ID;
   currentUserClubID = data.Club_ID;
+
+  // Store the full club name from DB
   currentUserClub = data.Club;
 
-  document.getElementById("clubNameField").textContent = currentUserClub;
-  document.getElementById("dashboardTitle").textContent =
-    `${currentUserClub} Dashboard`;
+  // ⭐ UI now uses fullClubName() for display
+  document.getElementById("clubNameField").textContent =
+    fullClubName(currentUserShort);
 
+  document.getElementById("dashboardTitle").textContent =
+    `${fullClubName(currentUserShort)} Dashboard`;
+
+  // Badge stays ShortName-based
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${currentUserShort}.png`;
 }
-
 
 /* ============================================================
    MODULE F: ACTIVE LISTINGS CACHE
