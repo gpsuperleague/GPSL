@@ -152,9 +152,9 @@ async function loadFinance() {
     return;
   }
 
-  // Display balance normally
-  document.getElementById("balance").textContent =
-    data.balance.toLocaleString();
+  // Display balance in the correct HTML element
+  document.getElementById("finance-balance").textContent =
+    `₿ ${data.balance.toLocaleString()}`;
 }
 
 /* ============================================================
