@@ -68,7 +68,7 @@ function wireFilterCheckboxes() {
 
 
 // ======================================================
-// MODULE D: RENDER LISTINGS TABLE
+// MODULE D: RENDER LISTINGS TABLE (with expiry filtering)
 // ======================================================
 function renderListings() {
   const tbody = document.getElementById("listings-body");
@@ -77,12 +77,34 @@ function renderListings() {
   const showActive = document.getElementById("filter-active").checked;
   const showClosed = document.getElementById("filter-closed").checked;
 
+  const now = new Date();
+
+  // Filter out expired listings older than 1 hour
   const filtered = allListings.filter(l => {
-    if (l.status === "Active") return showActive;
-    if (l.status === "Review" || l.status === "Closed") return showClosed;
+    const end = new Date(l.end_time);
+    const expiredForMs = now - end;
+
+    // 1. ACTIVE listings
+    if (l.status === "Active") {
+      // Still active (not expired)
+      if (end > now) return showActive;
+
+      // Expired but within 1 hour grace period
+      if (expiredForMs < 60 * 60 * 1000) return showActive;
+
+      // Expired more than 1 hour → hide from global market
+      return false;
+    }
+
+    // 2. REVIEW or CLOSED listings → controlled by "Closed" checkbox
+    if (l.status === "Review" || l.status === "Closed") {
+      return showClosed;
+    }
+
     return false;
   });
 
+  // Render filtered listings
   filtered.forEach(async listing => {
     const player = await fetchPlayerByID(listing.player_id);
 
@@ -105,7 +127,6 @@ function renderListings() {
     tbody.appendChild(tr);
   });
 }
-
 
 // ======================================================
 // MODULE B: FETCH PLAYER
