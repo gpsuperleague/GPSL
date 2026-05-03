@@ -137,6 +137,25 @@ async function upgradeStadium(clubId) {
   }
 }
 
+/* ============================================================
+   MODULE F: LOAD FINANCES
+   ============================================================ */
+async function loadFinance() {
+  const { data, error } = await supabase
+    .from("Club_Finances")
+    .select("*")
+    .eq("club_name", currentUserShort)   // ⭐ ShortName for DB lookup
+    .single();
+
+  if (error || !data) {
+    console.error("Finance lookup failed:", error);
+    return;
+  }
+
+  // Display balance normally
+  document.getElementById("balance").textContent =
+    data.balance.toLocaleString();
+}
 
 /* ============================================================
    MODULE C: DASHBOARD REFRESH WRAPPER
@@ -459,26 +478,6 @@ async function fetchPlayerByID(kid) {
     .single();
 
   return data;
-}
-
-/* ============================================================
-   MODULE F: LOAD FINANCES
-   ============================================================ */
-async function loadFinances() {
-  const { data, error } = await supabase
-    .from("Club_Finances")
-    .select("*")
-    .eq("club_name", currentUserShort)   // ⭐ ShortName for DB lookup
-    .single();
-
-  if (error || !data) {
-    console.error("Finance lookup failed:", error);
-    return;
-  }
-
-  // Display balance normally
-  document.getElementById("balance").textContent =
-    data.balance.toLocaleString();
 }
 
 /* ============================================================
