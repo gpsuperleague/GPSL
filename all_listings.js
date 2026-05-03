@@ -79,24 +79,30 @@ function renderListings() {
 
   const now = new Date();
 
-  // Filter out expired listings older than 1 hour
   const filtered = allListings.filter(l => {
     const end = new Date(l.end_time);
     const expiredForMs = now - end;
 
-    // 1. ACTIVE listings
+    // HARD OVERRIDE:
+    // Hide ANY listing expired more than 1 hour ago,
+    // regardless of status (Active, Review, Closed, broken, etc.)
+    if (expiredForMs > 60 * 60 * 1000) {
+      return false;
+    }
+
+    // ACTIVE listings
     if (l.status === "Active") {
-      // Still active (not expired)
+      // Not expired yet
       if (end > now) return showActive;
 
       // Expired but within 1 hour grace period
       if (expiredForMs < 60 * 60 * 1000) return showActive;
 
-      // Expired more than 1 hour → hide from global market
+      // Should not reach here, but safe fallback
       return false;
     }
 
-    // 2. REVIEW or CLOSED listings → controlled by "Closed" checkbox
+    // REVIEW or CLOSED listings → controlled by checkbox
     if (l.status === "Review" || l.status === "Closed") {
       return showClosed;
     }
