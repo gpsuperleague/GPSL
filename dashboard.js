@@ -502,43 +502,41 @@ async function loadListings() {
   // (your existing code continues below this point)
 }
 
-  // AUTO-UPDATE EXPIRED LISTINGS
-  for (const l of data) {
-    const now = new Date();
-    const end = new Date(l.end_time);
+ // AUTO-UPDATE EXPIRED LISTINGS
+for (const l of data) {
+  const now = new Date();
+  const end = new Date(l.end_time);
 
-    if (end < now && l.status === "Active") {
-      await transferEngine.evaluateExpiredListing(l);
-    }
+  if (end < now && l.status === "Active") {
+    await transferEngine.evaluateExpiredListing(l);
+  }
 
-    if (l.status === "Review" && l.review_deadline) {
-      const reviewEnd = new Date(l.review_deadline);
-      if (reviewEnd < now) {
-        await transferEngine.rejectSale(l.id);
-      }
+  if (l.status === "Review" && l.review_deadline) {
+    const reviewEnd = new Date(l.review_deadline);
+    if (reviewEnd < now) {
+      await transferEngine.rejectSale(l.id);
     }
   }
+}
 
 const refreshed = await supabase
   .from("Player_Transfer_Listings")
   .select("*")
   .eq("seller_club_id", currentUserClub)
-  .eq("archived", false);
+  .eq("archived", false);   // ⭐ REQUIRED FIX
 
-  const updatedListings = refreshed.data || [];
+const updatedListings = refreshed.data || [];
 
-  const active = updatedListings.filter(l => l.status === "Active");
-  const review = updatedListings.filter(l => l.status === "Review");
-  const closed = updatedListings.filter(l => l.status === "Closed");
+const active = updatedListings.filter(l => l.status === "Active");
+const review = updatedListings.filter(l => l.status === "Review");
+const closed = updatedListings.filter(l => l.status === "Closed");
 
-  renderActiveListings(active);
-  renderSellerReview(review);
-  renderClosedListings(closed);
+renderActiveListings(active);
+renderSellerReview(review);
+renderClosedListings(closed);
 
-  await loadActiveListingsCache();
-  await loadSquad();
-}
-
+await loadActiveListingsCache();
+await loadSquad();
 
 /* ============================================================
    MODULE J: ACTIVE LISTINGS
