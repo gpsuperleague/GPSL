@@ -476,19 +476,31 @@ async function loadFinance() {
 
 
 /* ============================================================
-   MODULE J: LOAD LISTINGS (with auto-expiry)
+   MODULE J: LOAD LISTINGS (with auto-expiry + archived filter)
    ============================================================ */
 async function loadListings() {
+
+  console.log("🔄 loadListings() called — filtering archived listings");
+
   const { data, error } = await supabase
-   .from("Player_Transfer_Listings")
-   .select("*")
-   .eq("seller_club_id", currentUserClub)
-   .eq("archived", false);
+    .from("Player_Transfer_Listings")
+    .select("*")
+    .eq("seller_club_id", currentUserClub)
+    .eq("archived", false);   // <— REQUIRED FILTER
 
   if (error) {
-    console.error("Listings error", error);
+    console.error("❌ Listings error:", error);
     return;
   }
+
+  console.log("📦 Listings returned:", data.length);
+
+  // Continue with your existing logic:
+  // - separate active, review, closed
+  // - auto-expiry checks
+  // - render tables
+  // (your existing code continues below this point)
+}
 
   // AUTO-UPDATE EXPIRED LISTINGS
   for (const l of data) {
