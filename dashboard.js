@@ -519,10 +519,11 @@ async function loadListings() {
     }
   }
 
-  const refreshed = await supabase
-    .from("Player_Transfer_Listings")
-    .select("*")
-    .eq("seller_club_id", currentUserClub);
+const refreshed = await supabase
+  .from("Player_Transfer_Listings")
+  .select("*")
+  .eq("seller_club_id", currentUserClub)
+  .eq("archived", false);
 
   const updatedListings = refreshed.data || [];
 
