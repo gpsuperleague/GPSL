@@ -634,6 +634,8 @@ async function dismissClosedListing(id) {
   loadListings(); // refresh UI
 }
 
+window.dismissClosedListing = dismissClosedListing;
+
 /* ============================================================
    MODULE K: MY ACTIVE BIDS
    ============================================================ */
