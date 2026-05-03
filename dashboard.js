@@ -158,7 +158,6 @@ async function loadDashboard() {
   }
 }
 
-
 /* ============================================================
    MODULE D: AUTH + INITIAL LOAD
    ============================================================ */
@@ -168,12 +167,16 @@ auth.onAuthStateChanged(async user => {
     return;
   }
 
+  // ⭐ Load the ShortName → FullName lookup map FIRST
+  await loadClubsMap();
+  console.log("Clubs map loaded");
+
   currentUserEmail = user.email;
   document.getElementById("userEmail").textContent = currentUserEmail;
 
+  // Now safe to load the dashboard
   await loadDashboard();
 });
-
 
 /* ============================================================
    MODULE D: FIRESTORE → SHORTNAME
