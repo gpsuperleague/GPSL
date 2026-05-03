@@ -1,23 +1,26 @@
-// Global lookup map: ShortName → Full Name
-let CLUBS_MAP = {};
-let CLUBS_LOADED = false;
+// clubs_lookup.js
 
+let clubsMap = new Map();
+
+// Load all clubs into memory
 export async function loadClubsMap() {
-  if (CLUBS_LOADED) return; // Prevent double-loading
-
   const { data, error } = await supabase
     .from("Clubs")
     .select("ShortName, Club");
 
   if (error) {
-    console.error("❌ Failed to load Clubs map:", error);
+    console.error("Failed to load clubs map:", error);
     return;
   }
 
   data.forEach(row => {
-    CLUBS_MAP[row.ShortName] = row.Club;
+    clubsMap.set(row.ShortName, row.Club);
   });
 
-  CLUBS_LOADED = true;
-  console.log("📌 Clubs map loaded:", CLUBS_MAP);
+  console.log("Clubs map loaded:", clubsMap);
+}
+
+// Return full club name from ShortName
+export function fullClubName(shortName) {
+  return clubsMap.get(shortName) || shortName;
 }
