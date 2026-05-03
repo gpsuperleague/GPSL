@@ -1,10 +1,14 @@
 // ======================================================
 // MODULE A: GLOBAL STATE
 // ======================================================
+import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+
 let currentUserShort = null;
 let allListings = [];
 let selectedListing = null;
 
+// Load club map immediately
+await loadClubsMap();
 
 // ======================================================
 // MODULE A: AUTH + INITIAL LOAD
@@ -23,7 +27,6 @@ auth.onAuthStateChanged(async user => {
   wirePlaceBidButton();
 });
 
-
 // ======================================================
 // MODULE A: FIRESTORE → SHORTNAME
 // ======================================================
@@ -38,7 +41,6 @@ async function loadShortNameFromFirestore() {
 
   currentUserShort = doc.data().ShortName;
 }
-
 
 // ======================================================
 // MODULE B: LOAD LISTINGS
@@ -57,7 +59,6 @@ async function loadListings() {
   renderListings();
 }
 
-
 // ======================================================
 // MODULE C: FILTER CHECKBOXES
 // ======================================================
@@ -65,7 +66,6 @@ function wireFilterCheckboxes() {
   document.getElementById("filter-active").addEventListener("change", renderListings);
   document.getElementById("filter-closed").addEventListener("change", renderListings);
 }
-
 
 // ======================================================
 // MODULE D: RENDER LISTINGS TABLE (with expiry filtering)
@@ -83,26 +83,14 @@ function renderListings() {
     const end = new Date(l.end_time);
     const expiredForMs = now - end;
 
-    // HARD OVERRIDE:
-    // Hide ANY listing expired more than 1 hour ago,
-    // regardless of status (Active, Review, Closed, broken, etc.)
-    if (expiredForMs > 60 * 60 * 1000) {
-      return false;
-    }
+    if (expiredForMs > 60 * 60 * 1000) return false;
 
-    // ACTIVE listings
     if (l.status === "Active") {
-      // Not expired yet
       if (end > now) return showActive;
-
-      // Expired but within 1 hour grace period
       if (expiredForMs < 60 * 60 * 1000) return showActive;
-
-      // Should not reach here, but safe fallback
       return false;
     }
 
-    // REVIEW or CLOSED listings → controlled by checkbox
     if (l.status === "Review" || l.status === "Closed") {
       return showClosed;
     }
@@ -110,13 +98,12 @@ function renderListings() {
     return false;
   });
 
-  // Render filtered listings
   filtered.forEach(async listing => {
     const player = await fetchPlayerByID(listing.player_id);
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${listing.seller_club_id}</td>
+      <td>${fullClubName(listing.seller_club_id)}</td>
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Playstyle || "-"}</td>
@@ -126,7 +113,7 @@ function renderListings() {
       <td>${listing.status}</td>
       <td>${formatTimeRemaining(listing.end_time)}</td>
       <td>${listing.current_highest_bid || "-"}</td>
-      <td>${listing.current_highest_bidder || "-"}</td>
+      <td>${fullClubName(listing.current_highest_bidder) || "-"}</td>
     `;
 
     tr.onclick = () => openBidModal(listing, player);
@@ -152,7 +139,6 @@ async function fetchPlayerByID(kid) {
   return data;
 }
 
-
 // ======================================================
 // MODULE D: TIME REMAINING FORMATTER
 // ======================================================
@@ -169,7 +155,6 @@ function formatTimeRemaining(endTime) {
   return `${hours}h ${mins}m`;
 }
 
-
 // ======================================================
 // MODULE E: OPEN BID MODAL
 // ======================================================
@@ -181,21 +166,21 @@ function openBidModal(listing, player) {
   document.getElementById("bid-player-playstyle").textContent = player?.Playstyle || "-";
   document.getElementById("bid-player-rating").textContent = player?.Rating || "-";
 
-  document.getElementById("bid-selling-club").textContent = listing.seller_club_id;
+  document.getElementById("bid-selling-club").textContent = fullClubName(listing.seller_club_id);
   document.getElementById("bid-market-value").textContent = `₿ ${listing.market_value}`;
   document.getElementById("bid-reserve-price").textContent = `₿ ${listing.reserve_price}`;
   document.getElementById("bid-status").textContent = listing.status;
   document.getElementById("bid-time-remaining").textContent = formatTimeRemaining(listing.end_time);
 
   document.getElementById("bid-highest-bid").textContent = listing.current_highest_bid || "-";
-  document.getElementById("bid-highest-club").textContent = listing.current_highest_bidder || "-";
+  document.getElementById("bid-highest-club").textContent =
+    fullClubName(listing.current_highest_bidder) || "-";
 
   document.getElementById("bid-amount").value = "";
   document.getElementById("bid-error").textContent = "";
 
   document.getElementById("bid-modal").style.display = "block";
 }
-
 
 // ======================================================
 // MODULE E: MODAL CONTROLS
@@ -213,14 +198,12 @@ function wireModalControls() {
   };
 }
 
-
 // ======================================================
 // MODULE F: PLACE BID BUTTON
 // ======================================================
 function wirePlaceBidButton() {
   document.getElementById("place-bid-btn").onclick = placeBid;
 }
-
 
 // ======================================================
 // MODULE F: PLACE BID
@@ -253,7 +236,6 @@ async function placeBid() {
     return;
   }
 
-  // Insert bid
   const { error: bidError } = await supabase
     .from("Player_Transfer_Bids")
     .insert({
@@ -269,7 +251,6 @@ async function placeBid() {
     return;
   }
 
-  // Update listing with new highest bid
   const { error: updateError } = await supabase
     .from("Player_Transfer_Listings")
     .update({
