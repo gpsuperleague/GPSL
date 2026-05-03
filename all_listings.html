@@ -14,9 +14,6 @@
       font-family: Arial, sans-serif;
     }
 
-    /* ------------------------------
-       Page Title
-       ------------------------------ */
     h1 {
       background:#222;
       color:#ff9900;
@@ -28,9 +25,6 @@
       font-weight:bold;
     }
 
-    /* ------------------------------
-       Buttons
-       ------------------------------ */
     a.button, button.button {
       display: inline-block;
       padding: 10px 20px;
@@ -49,17 +43,11 @@
       transform: scale(1.05);
     }
 
-    /* ------------------------------
-       Navigation Bar
-       ------------------------------ */
     #nav {
       text-align: center;
       margin-bottom: 20px;
     }
 
-    /* ------------------------------
-       Filters Bar
-       ------------------------------ */
     .filters-bar {
       width: 90%;
       max-width: 1100px;
@@ -81,9 +69,6 @@
       font-weight: bold;
     }
 
-    /* ------------------------------
-       Listings Table
-       ------------------------------ */
     table.gpsl-table {
       width: 90%;
       max-width: 1100px;
@@ -117,9 +102,6 @@
       cursor:pointer;
     }
 
-    /* ============================================
-       MODAL: Bid Window
-       ============================================ */
     #bid-modal {
       display: none;
       position: fixed;
@@ -203,19 +185,10 @@
 
 <body>
 
-  <!-- ============================================
-       PAGE TITLE
-       ============================================ -->
   <h1>Global Transfer Market</h1>
 
-  <!-- ============================================
-       NAVIGATION BAR (populated after auth)
-       ============================================ -->
   <div id="nav"></div>
 
-  <!-- ============================================
-       FILTERS BAR
-       ============================================ -->
   <div class="filters-bar">
     <div class="filters-left">
       <label>
@@ -232,9 +205,6 @@
     </div>
   </div>
 
-  <!-- ============================================
-       LISTINGS TABLE
-       ============================================ -->
   <table class="gpsl-table">
     <thead>
       <tr>
@@ -254,9 +224,6 @@
     <tbody id="listings-body"></tbody>
   </table>
 
-  <!-- ============================================
-       BID MODAL
-       ============================================ -->
   <div id="bid-modal">
     <div id="bid-modal-content">
 
@@ -265,7 +232,6 @@
         <span id="bid-modal-close">&times;</span>
       </div>
 
-      <!-- Player Info Rows -->
       <div class="bid-row"><label>Position:</label><span id="bid-player-position"></span></div>
       <div class="bid-row"><label>Playstyle:</label><span id="bid-player-playstyle"></span></div>
       <div class="bid-row"><label>Rating:</label><span id="bid-player-rating"></span></div>
@@ -277,7 +243,6 @@
       <div class="bid-row"><label>Highest Bid:</label><span id="bid-highest-bid"></span></div>
       <div class="bid-row"><label>Highest Club:</label><span id="bid-highest-club"></span></div>
 
-      <!-- Bid Input -->
       <div id="bid-input-section">
         <div class="bid-row">
           <label>Your Bid (₿):</label>
@@ -317,9 +282,14 @@
   </script>
 
   <!-- ============================================
-       ALL LISTINGS LOGIC (external module)
+       LOOKUP MODULE (ShortName → FullName)
        ============================================ -->
-  <script src="all_listings.js"></script>
+  <script type="module" src="clubs_lookup.js"></script>
+
+  <!-- ============================================
+       ALL LISTINGS LOGIC (must be a module)
+       ============================================ -->
+  <script type="module" src="all_listings.js"></script>
 
   <!-- ============================================
        AUTH + NAVIGATION LOGIC
