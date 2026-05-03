@@ -464,22 +464,23 @@ async function fetchPlayerByID(kid) {
 }
 
 /* ============================================================
-   MODULE I: FINANCE
+   MODULE F: LOAD FINANCES
    ============================================================ */
-async function loadFinance() {
+async function loadFinances() {
   const { data, error } = await supabase
     .from("Club_Finances")
-    .select("balance")
-    .eq("club_name", currentUserClub)
+    .select("*")
+    .eq("club_name", currentUserShort)   // ⭐ ShortName for DB lookup
     .single();
 
   if (error || !data) {
-    console.error("Finance error", error);
+    console.error("Finance lookup failed:", error);
     return;
   }
 
-  document.getElementById("finance-balance").textContent =
-    `₿ ${data.balance.toLocaleString()}`;
+  // Display balance normally
+  document.getElementById("balance").textContent =
+    data.balance.toLocaleString();
 }
 
 /* ============================================================
