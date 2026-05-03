@@ -605,14 +605,18 @@ async function renderClosedListings(listings) {
     const tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
 
-    tr.innerHTML = `
-      <td>${player?.Name || "Unknown"}</td>
-      <td>${player?.Position || "-"}</td>
-      <td>${player?.Rating || "-"}</td>
-      <td>${l.final_bid || "-"}</td>
-      <td>${l.winner || "-"}</td>
-      <td>${l.status}</td>
-    `;
+   tr.innerHTML = `
+  <td>${player?.Name || "Unknown"}</td>
+  <td>${player?.Position || "-"}</td>
+  <td>${player?.Rating || "-"}</td>
+  <td>${l.final_bid || "-"}</td>
+  <td>${l.winner || "-"}</td>
+  <td>${l.status}</td>
+  <td>
+    <button class="button" style="background:#aa2222; color:#fff;"
+            onclick="dismissClosedListing(${l.id})">❌</button>
+  </td>
+`;
 
     tbody.appendChild(tr);
   }
