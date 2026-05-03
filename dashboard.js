@@ -624,6 +624,14 @@ async function renderClosedListings(listings) {
   applyPESDBRowClicks("closed-listings-body");
 }
 
+async function dismissClosedListing(id) {
+  await supabase
+    .from("Player_Transfer_Listings")
+    .update({ archived: true })
+    .eq("id", id);
+
+  loadListings(); // refresh UI
+}
 
 /* ============================================================
    MODULE K: MY ACTIVE BIDS
