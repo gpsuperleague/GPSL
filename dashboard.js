@@ -480,9 +480,10 @@ async function loadFinance() {
    ============================================================ */
 async function loadListings() {
   const { data, error } = await supabase
-    .from("Player_Transfer_Listings")
-    .select("*")
-    .eq("seller_club_id", currentUserClub);
+   .from("Player_Transfer_Listings")
+   .select("*")
+   .eq("seller_club_id", currentUserClub)
+   .eq("archived", false);
 
   if (error) {
     console.error("Listings error", error);
