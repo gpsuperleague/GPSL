@@ -217,3 +217,42 @@ transferEngine.rejectSale = async function (listingId) {
   if (error) console.error("❌ Failed to reject sale:", error);
   else console.log("🛑 Listing rejected and closed");
 };
+
+
+/* ============================================================
+   MODULE D: RUN ENGINE (process expired listings)
+   ============================================================ */
+transferEngine.run = async function () {
+  console.log("🔄 Transfer Engine: Running expiry check…");
+
+  const now = new Date();
+
+  // Fetch all ACTIVE listings
+  const { data: listings, error } = await supabase
+    .from("Player_Transfer_Listings")
+    .select("*")
+    .eq("status", "Active");
+
+  if (error) {
+    console.error("❌ Failed to fetch listings:", error);
+    return;
+  }
+
+  if (!listings || listings.length === 0) {
+    console.log("📭 No active listings to evaluate");
+    return;
+  }
+
+  console.log(`📦 Active listings found: ${listings.length}`);
+
+  for (const listing of listings) {
+    const end = new Date(listing.end_time);
+
+    if (now >= end) {
+      console.log("⏳ Listing expired → evaluating:", listing.id);
+      await transferEngine.evaluateExpiredListing(listing);
+    }
+  }
+
+  console.log("✅ Transfer Engine cycle complete");
+};
