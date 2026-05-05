@@ -454,7 +454,7 @@ async function validateAndCreateListing() {
 
   await supabase.from("Player_Transfer_Listings").insert({
     player_id: selectedPlayerForListing.Konami_ID,
-    seller_club_id: currentUserClub,
+    seller_club_id: currentUserShort,
     reserve_price: reserve,
     market_value: mv,
     status: "Active",
