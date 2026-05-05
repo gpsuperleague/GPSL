@@ -161,13 +161,14 @@ transferEngine.acceptSale = async function (listingId) {
   const { error: historyError } = await supabase
     .from("Transfer_History")
     .insert({
-      player_id: listing.player_id,
-      seller_club_id: seller, // ShortName
-      buyer_club_id: buyer,   // ShortName
-      fee: amount,
-      transfer_time: new Date().toISOString(),
-      listing_id: listing.id
-    });
+    player_id: listing.player_id,
+    seller_club_id: seller,
+    buyer_club_id: buyer,
+    fee: amount,
+    agent_fee: 0, // required by your schema
+    transfer_time: new Date().toISOString(),
+    listing_id: listing.id
+});
 
   if (historyError) {
     console.error("❌ Failed to log transfer history:", historyError);
