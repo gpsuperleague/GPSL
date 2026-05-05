@@ -342,3 +342,20 @@ transferEngine.run = async function () {
 };
 
 window.transferEngine = transferEngine;
+
+async function updatePlayerTeam(testKonamiId, newTeam) {
+  console.log("🔧 TEST: Updating player manually…");
+
+  const { data, error } = await supabase
+    .from("Players")
+    .update({ Contracted_Team: newTeam })
+    .eq("Konami_ID", Number(testKonamiId))
+    .select();
+
+  if (error) {
+    console.error("❌ TEST update failed:", error);
+  } else {
+    console.log("✅ TEST update success:", data);
+  }
+}
+
