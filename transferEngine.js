@@ -1,16 +1,8 @@
 /* ============================================================
    MODULE: Transfer Engine
-   Purpose:
-   - Evaluate expired listings
-   - Auto-complete sales
-   - Handle seller review
-   - Transfer funds safely
-   - Move players between clubs
-   - Log transfer history
    ============================================================ */
 
 const transferEngine = {};
-
 
 /* ============================================================
    MODULE A: Evaluate Expired Listing
@@ -63,7 +55,6 @@ transferEngine.evaluateExpiredListing = async function (listing) {
   else console.log("✅ Listing moved to review");
 };
 
-
 /* ============================================================
    MODULE B: Accept Sale (SAFE, ATOMIC LOGIC)
    ============================================================ */
@@ -86,8 +77,8 @@ transferEngine.acceptSale = async function (listingId) {
 
   console.log("📄 Listing data:", listing);
 
-  const buyer = listing.current_highest_bidder;   // ShortName
-  const seller = listing.seller_club_id;          // ShortName
+  const buyer = listing.current_highest_bidder;
+  const seller = listing.seller_club_id;
   const amount = listing.current_highest_bid;
 
   /* --------------------------------------------
@@ -99,7 +90,7 @@ transferEngine.acceptSale = async function (listingId) {
   }
 
   /* --------------------------------------------
-     2. Load finances for buyer + seller
+     2. Load finances
      -------------------------------------------- */
   const { data: buyerFinance } = await supabase
     .from("Club_Finances")
@@ -122,7 +113,7 @@ transferEngine.acceptSale = async function (listingId) {
   const sellerBalance = sellerFinance.balance;
 
   /* --------------------------------------------
-     3. Affordability check (NO MONEY MOVES YET)
+     3. Affordability check
      -------------------------------------------- */
   if (buyerBalance < amount) {
     console.error("❌ Buyer cannot afford — auto‑rejecting");
@@ -146,7 +137,7 @@ transferEngine.acceptSale = async function (listingId) {
   const { data: player } = await supabase
     .from("Players")
     .select("*")
-    .eq("Konami_ID", Number(listing.player_id))   // FIXED
+    .eq("Konami_ID", listing.player_id)   // FIXED: TEXT MATCH
     .single();
 
   if (!player) {
@@ -160,7 +151,7 @@ transferEngine.acceptSale = async function (listingId) {
   }
 
   /* --------------------------------------------
-     5. ALL VALIDATIONS PASSED → Perform updates
+     5. Perform updates
      -------------------------------------------- */
 
   console.log("💰 Deducting funds from buyer…");
@@ -183,7 +174,6 @@ transferEngine.acceptSale = async function (listingId) {
   if (sellerUpdateError) {
     console.error("❌ Failed to credit seller:", sellerUpdateError);
 
-    // rollback buyer deduction
     await supabase
       .from("Club_Finances")
       .update({ balance: buyerBalance })
@@ -194,26 +184,14 @@ transferEngine.acceptSale = async function (listingId) {
 
   console.log("🧩 Updating player club…");
 
-  // DEBUG: show what ID the engine is using
-  console.log("DEBUG listing.player_id:", listing.player_id, typeof listing.player_id);
-
-  // DEBUG: show whether the DB can find that player
-  const debugLookup = await supabase
-    .from("Players")
-    .select("Konami_ID, Contracted_Team")
-    .eq("Konami_ID", Number(listing.player_id));
-
-  console.log("DEBUG player lookup:", debugLookup);
-
   const { error: playerError } = await supabase
     .from("Players")
     .update({ Contracted_Team: buyer })
-    .eq("Konami_ID", Number(listing.player_id));   // FIXED
+    .eq("Konami_ID", listing.player_id);   // FIXED: TEXT MATCH
 
   if (playerError) {
     console.error("❌ Player update failed:", playerError);
 
-    // rollback finances
     await supabase
       .from("Club_Finances")
       .update({ balance: buyerBalance })
@@ -243,7 +221,6 @@ transferEngine.acceptSale = async function (listingId) {
   if (historyError) {
     console.error("❌ Failed to log history:", historyError);
 
-    // rollback finances + player
     await supabase
       .from("Club_Finances")
       .update({ balance: buyerBalance })
@@ -257,7 +234,7 @@ transferEngine.acceptSale = async function (listingId) {
     await supabase
       .from("Players")
       .update({ Contracted_Team: seller })
-      .eq("Konami_ID", Number(listing.player_id));   // FIXED
+      .eq("Konami_ID", listing.player_id);   // FIXED
 
     return;
   }
@@ -281,7 +258,6 @@ transferEngine.acceptSale = async function (listingId) {
   console.log("🎉 Transfer completed successfully");
 };
 
-
 /* ============================================================
    MODULE C: Reject Sale
    ============================================================ */
@@ -302,16 +278,14 @@ transferEngine.rejectSale = async function (listingId) {
   else console.log("🛑 Listing rejected and closed");
 };
 
-
 /* ============================================================
-   MODULE D: RUN ENGINE (process expired listings)
+   MODULE D: RUN ENGINE
    ============================================================ */
 transferEngine.run = async function () {
   console.log("🔄 Transfer Engine: Running expiry check…");
 
   const now = new Date();
 
-  // Fetch all ACTIVE listings
   const { data: listings, error } = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
@@ -343,13 +317,16 @@ transferEngine.run = async function () {
 
 window.transferEngine = transferEngine;
 
+/* ============================================================
+   TEST FUNCTION — FIXED
+   ============================================================ */
 async function updatePlayerTeam(testKonamiId, newTeam) {
   console.log("🔧 TEST: Updating player manually…");
 
   const { data, error } = await supabase
     .from("Players")
     .update({ Contracted_Team: newTeam })
-    .eq("Konami_ID", Number(testKonamiId))
+    .eq("Konami_ID", testKonamiId)   // FIXED: TEXT MATCH
     .select();
 
   if (error) {
@@ -358,4 +335,3 @@ async function updatePlayerTeam(testKonamiId, newTeam) {
     console.log("✅ TEST update success:", data);
   }
 }
-
