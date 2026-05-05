@@ -4,7 +4,7 @@
    - Evaluate expired listings
    - Auto-complete sales
    - Handle seller review
-   - Transfer funds
+   - Transfer funds safely
    - Move players between clubs
    - Log transfer history
    ============================================================ */
@@ -65,12 +65,14 @@ transferEngine.evaluateExpiredListing = async function (listing) {
 
 
 /* ============================================================
-   MODULE B: Accept Sale (Full Financial Logic)
+   MODULE B: Accept Sale (SAFE, ATOMIC LOGIC)
    ============================================================ */
 transferEngine.acceptSale = async function (listingId) {
   console.log("🔍 acceptSale called for listing:", listingId);
 
-  // Fetch listing
+  /* --------------------------------------------
+     0. Fetch listing
+     -------------------------------------------- */
   const { data: listing, error: listingError } = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
@@ -89,21 +91,41 @@ transferEngine.acceptSale = async function (listingId) {
   const amount = listing.current_highest_bid;
 
   /* --------------------------------------------
-     1. Validate buyer can afford the transfer
+     1. Validate listing state
      -------------------------------------------- */
-  const { data: buyerFinance, error: buyerFinanceError } = await supabase
-    .from("Club_Finances")
-    .select("balance")
-    .eq("club_name", buyer) // ShortName now
-    .single();
-
-  if (buyerFinanceError || !buyerFinance) {
-    console.error("❌ Buyer finance lookup failed:", buyerFinanceError);
+  if (listing.status !== "Active" && listing.status !== "Review") {
+    console.error("❌ Listing already processed");
     return;
   }
 
-  if (buyerFinance.balance < amount) {
-    console.error("❌ Buyer cannot afford this transfer — rejecting sale automatically");
+  /* --------------------------------------------
+     2. Load finances for buyer + seller
+     -------------------------------------------- */
+  const { data: buyerFinance } = await supabase
+    .from("Club_Finances")
+    .select("balance")
+    .eq("club_name", buyer)
+    .single();
+
+  const { data: sellerFinance } = await supabase
+    .from("Club_Finances")
+    .select("balance")
+    .eq("club_name", seller)
+    .single();
+
+  if (!buyerFinance || !sellerFinance) {
+    console.error("❌ Finance lookup failed");
+    return;
+  }
+
+  const buyerBalance = buyerFinance.balance;
+  const sellerBalance = sellerFinance.balance;
+
+  /* --------------------------------------------
+     3. Affordability check (NO MONEY MOVES YET)
+     -------------------------------------------- */
+  if (buyerBalance < amount) {
+    console.error("❌ Buyer cannot afford — auto‑rejecting");
 
     await supabase
       .from("Player_Transfer_Listings")
@@ -119,68 +141,116 @@ transferEngine.acceptSale = async function (listingId) {
   }
 
   /* --------------------------------------------
-     2. Transfer funds (buyer → seller)
+     4. Load player + validate ownership
      -------------------------------------------- */
-  console.log("💰 Transferring funds:", { buyer, seller, amount });
+  const { data: player } = await supabase
+    .from("Players")
+    .select("*")
+    .eq("Konami_ID", listing.player_id)
+    .single();
 
-  const { error: fundsError } = await supabase.rpc("transfer_funds", {
-    from_club: buyer,   // ShortName
-    to_club: seller,    // ShortName
-    amount: amount
-  });
-
-  if (fundsError) {
-    console.error("❌ transfer_funds failed:", fundsError);
+  if (!player) {
+    console.error("❌ Player not found");
     return;
   }
 
-  console.log("✅ Funds transferred successfully");
+  if (player.Contracted_Team !== seller) {
+    console.error("❌ Player no longer at selling club");
+    return;
+  }
 
   /* --------------------------------------------
-     3. Move player to buyer
+     5. ALL VALIDATIONS PASSED → Perform updates
      -------------------------------------------- */
-  console.log("🧩 Updating player club:", {
-    player_id: listing.player_id,
-    new_club: buyer
-  });
 
-  const { data: playerUpdate, error: playerError } = await supabase
+  console.log("💰 Deducting funds from buyer…");
+  const { error: buyerUpdateError } = await supabase
+    .from("Club_Finances")
+    .update({ balance: buyerBalance - amount })
+    .eq("club_name", buyer);
+
+  if (buyerUpdateError) {
+    console.error("❌ Failed to deduct from buyer:", buyerUpdateError);
+    return;
+  }
+
+  console.log("💰 Crediting seller…");
+  const { error: sellerUpdateError } = await supabase
+    .from("Club_Finances")
+    .update({ balance: sellerBalance + amount })
+    .eq("club_name", seller);
+
+  if (sellerUpdateError) {
+    console.error("❌ Failed to credit seller:", sellerUpdateError);
+
+    // rollback buyer deduction
+    await supabase
+      .from("Club_Finances")
+      .update({ balance: buyerBalance })
+      .eq("club_name", buyer);
+
+    return;
+  }
+
+  console.log("🧩 Updating player club…");
+  const { error: playerError } = await supabase
     .from("Players")
-    .update({ Contracted_Team: buyer }) // ShortName
-    .eq('Konami_ID', listing.player_id);
+    .update({ Contracted_Team: buyer })
+    .eq("Konami_ID", listing.player_id);
 
   if (playerError) {
     console.error("❌ Player update failed:", playerError);
-  } else {
-    console.log("✅ Player updated:", playerUpdate);
+
+    // rollback finances
+    await supabase
+      .from("Club_Finances")
+      .update({ balance: buyerBalance })
+      .eq("club_name", buyer);
+
+    await supabase
+      .from("Club_Finances")
+      .update({ balance: sellerBalance })
+      .eq("club_name", seller);
+
+    return;
   }
 
-  /* --------------------------------------------
-     4. Log transfer history
-     -------------------------------------------- */
+  console.log("📜 Logging transfer history…");
   const { error: historyError } = await supabase
     .from("Transfer_History")
     .insert({
-    player_id: listing.player_id,
-    seller_club_id: seller,
-    buyer_club_id: buyer,
-    fee: amount,
-    agent_fee: 0, // required by your schema
-    transfer_time: new Date().toISOString(),
-    listing_id: listing.id
-});
+      player_id: listing.player_id,
+      seller_club_id: seller,
+      buyer_club_id: buyer,
+      fee: amount,
+      agent_fee: 0,
+      transfer_time: new Date().toISOString(),
+      listing_id: listing.id
+    });
 
   if (historyError) {
-    console.error("❌ Failed to log transfer history:", historyError);
-  } else {
-    console.log("📜 Transfer logged in history");
+    console.error("❌ Failed to log history:", historyError);
+
+    // rollback finances + player
+    await supabase
+      .from("Club_Finances")
+      .update({ balance: buyerBalance })
+      .eq("club_name", buyer);
+
+    await supabase
+      .from("Club_Finances")
+      .update({ balance: sellerBalance })
+      .eq("club_name", seller);
+
+    await supabase
+      .from("Players")
+      .update({ Contracted_Team: seller })
+      .eq("Konami_ID", listing.player_id);
+
+    return;
   }
 
-  /* --------------------------------------------
-     5. Mark listing as completed
-     -------------------------------------------- */
-  console.log("🏁 Marking listing as completed:", listingId);
-
+  console.log("🏁 Marking listing completed…");
   const { error: listingUpdateError } = await supabase
     .from("Player_Transfer_Listings")
     .update({
@@ -192,10 +262,11 @@ transferEngine.acceptSale = async function (listingId) {
     .eq("id", listingId);
 
   if (listingUpdateError) {
-    console.error("❌ Failed to mark listing completed:", listingUpdateError);
-  } else {
-    console.log("🎉 Listing successfully completed");
+    console.error("❌ Failed to close listing:", listingUpdateError);
+    return;
   }
+
+  console.log("🎉 Transfer completed successfully");
 };
 
 
