@@ -379,6 +379,8 @@ function handlePlayerAction(konamiID, action) {
   }
 }
 
+window.handlePlayerAction = handlePlayerAction;
+
 /* ============================================================
    MODULE H: LIST PLAYER MODAL
    ============================================================ */
