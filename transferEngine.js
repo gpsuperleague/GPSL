@@ -146,7 +146,7 @@ transferEngine.acceptSale = async function (listingId) {
   const { data: player } = await supabase
     .from("Players")
     .select("*")
-    .eq("Konami_ID", listing.player_id)
+    .eq("Konami_ID", Number(listing.player_id))   // FIXED
     .single();
 
   if (!player) {
@@ -194,21 +194,21 @@ transferEngine.acceptSale = async function (listingId) {
 
   console.log("🧩 Updating player club…");
 
-// DEBUG: show what ID the engine is using
-console.log("DEBUG listing.player_id:", listing.player_id, typeof listing.player_id);
+  // DEBUG: show what ID the engine is using
+  console.log("DEBUG listing.player_id:", listing.player_id, typeof listing.player_id);
 
-// DEBUG: show whether the DB can find that player
-const debugLookup = await supabase
-  .from("Players")
-  .select("Konami_ID, Contracted_Team")
-  .eq("Konami_ID", Number(listing.player_id));
+  // DEBUG: show whether the DB can find that player
+  const debugLookup = await supabase
+    .from("Players")
+    .select("Konami_ID, Contracted_Team")
+    .eq("Konami_ID", Number(listing.player_id));
 
-console.log("DEBUG player lookup:", debugLookup);
+  console.log("DEBUG player lookup:", debugLookup);
 
-const { error: playerError } = await supabase
-  .from("Players")
-  .update({ Contracted_Team: buyer })
-  .eq("Konami_ID", Number(listing.player_id));
+  const { error: playerError } = await supabase
+    .from("Players")
+    .update({ Contracted_Team: buyer })
+    .eq("Konami_ID", Number(listing.player_id));   // FIXED
 
   if (playerError) {
     console.error("❌ Player update failed:", playerError);
@@ -257,7 +257,7 @@ const { error: playerError } = await supabase
     await supabase
       .from("Players")
       .update({ Contracted_Team: seller })
-      .eq("Konami_ID", listing.player_id);
+      .eq("Konami_ID", Number(listing.player_id));   // FIXED
 
     return;
   }
