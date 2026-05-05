@@ -147,7 +147,7 @@ transferEngine.acceptSale = async function (listingId) {
   const { data: playerUpdate, error: playerError } = await supabase
     .from("Players")
     .update({ Contracted_Team: buyer }) // ShortName
-    .eq('"Konami_ID"', listing.player_id);
+    .eq('Konami_ID', listing.player_id);
 
   if (playerError) {
     console.error("❌ Player update failed:", playerError);
