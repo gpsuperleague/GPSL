@@ -256,3 +256,5 @@ transferEngine.run = async function () {
 
   console.log("✅ Transfer Engine cycle complete");
 };
+
+window.transferEngine = transferEngine;
