@@ -253,7 +253,7 @@ async function loadActiveListingsCache() {
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
-    .eq("seller_club_id", currentUserClub)
+    .eq("seller_club_id", currentUserShort)
     .eq("status", "Active");
 
   if (error) {
@@ -493,7 +493,7 @@ async function loadListings() {
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
-    .eq("seller_club_id", currentUserClub)
+    .eq("seller_club_id", currentUserShort)
     .eq("archived", false);
 
   if (error) {
@@ -524,7 +524,7 @@ async function loadListings() {
   const refreshed = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
-    .eq("seller_club_id", currentUserClub)
+    .eq("seller_club_id", currentUserShort)
     .eq("archived", false);
 
   const updatedListings = refreshed.data || [];
