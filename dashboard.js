@@ -343,7 +343,7 @@ function renderSquad(players) {
   const groups = {
     "Goalkeepers": ["GK"],
     "Defenders": ["LB", "CB", "RB"],
-    "Midfielders": ["DM", "LM", "CM", "RM"],
+    "Midfielders": ["DM", "LM", "CM", "RM", "AMF"],
     "Attackers": ["SS", "LW", "CF", "RW"]
   };
 
