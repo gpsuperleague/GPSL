@@ -16,6 +16,12 @@ function formatMoney(amount) {
   return "₿ " + Number(amount).toLocaleString("en-GB");
 }
 
+// ⭐ NEW — convert "1,234,567" → 1234567
+function parseMoneyInput(value) {
+  if (!value) return 0;
+  return Number(String(value).replace(/,/g, ""));
+}
+
 // ======================================================
 // MODULE A: AUTH + INITIAL LOAD
 // ======================================================
@@ -210,13 +216,20 @@ function openBidModal(listing, player) {
   document.getElementById("bid-modal").style.display = "block";
 }
 
-// ⭐ NEW — live validation
+// ======================================================
+// MODULE E: LIVE VALIDATION
+// ======================================================
 function validateBidInput() {
   const input = document.getElementById("bid-amount");
   const errorBox = document.getElementById("bid-error");
   const button = document.getElementById("place-bid-btn");
 
-  const bidAmount = Number(input.value);
+  const bidAmount = parseMoneyInput(input.value);
+
+  // ⭐ NEW — auto-format input as user types
+  if (input.value !== "") {
+    input.value = bidAmount.toLocaleString("en-GB");
+  }
 
   const minBid = Math.max(
     selectedListing.market_value,
@@ -233,6 +246,36 @@ function validateBidInput() {
   input.style.border = "2px solid #4CAF50";
   errorBox.textContent = "";
   button.disabled = false;
+}
+
+// ======================================================
+// MODULE E: MODAL CONTROLS (FIXED)
+// ======================================================
+function wireModalControls() {
+  const modal = document.getElementById("bid-modal");
+  const closeBtn = document.getElementById("bid-modal-close");
+
+  // Close when clicking X
+  closeBtn.onclick = () => {
+    modal.style.display = "none";
+    selectedListing = null;
+  };
+
+  // Close when clicking outside
+  window.onclick = function(event) {
+    if (event.target === modal) {
+      modal.style.display = "none";
+      selectedListing = null;
+    }
+  };
+
+  // Close on ESC
+  document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape") {
+      modal.style.display = "none";
+      selectedListing = null;
+    }
+  });
 }
 
 // ======================================================
@@ -259,7 +302,8 @@ async function placeBid() {
     return;
   }
 
-  const bidAmount = Number(document.getElementById("bid-amount").value);
+  const rawInput = document.getElementById("bid-amount").value;
+  const bidAmount = parseMoneyInput(rawInput);
   const currentHighest = selectedListing.current_highest_bid || 0;
 
   const minBid = Math.max(
