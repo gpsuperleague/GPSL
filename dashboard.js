@@ -263,7 +263,6 @@ async function loadActiveListingsCache() {
   activeListingsCache = data || [];
 }
 
-
 /* ============================================================
    MODULE F: CLUB DETAILS PANEL
    ============================================================ */
@@ -483,6 +482,21 @@ async function fetchPlayerByID(kid) {
 }
 
 /* ============================================================
+   DISMISS LOGIC: PER-USER VIEW DISMISSALS
+   ============================================================ */
+async function dismissListingForUser(listingId) {
+  const userId = auth.currentUser.uid;
+
+  await supabase
+    .from("User_Dismissed_Listings")
+    .insert({
+      user_id: userId,
+      listing_id: listingId,
+      dismissed_at: new Date().toISOString()
+    });
+}
+
+/* ============================================================
    MODULE J: LOAD LISTINGS (with auto-expiry + archived filter)
    ============================================================ */
 async function loadListings() {
@@ -529,13 +543,22 @@ async function loadListings() {
 
   const updatedListings = refreshed.data || [];
 
+  // 3b. Load per-user dismissed listing IDs
+  const { data: dismissedRows } = await supabase
+    .from("User_Dismissed_Listings")
+    .select("listing_id")
+    .eq("user_id", auth.currentUser.uid);
+
+  const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
+
   // 4. Split into categories
   const active = updatedListings.filter(l => l.status === "Active");
   const review = updatedListings.filter(l => l.status === "Review");
   const closed = updatedListings.filter(l => l.status === "Closed");
 
   // 5. Render UI
-  renderActiveListings(active);
+  const activeForView = active.filter(l => !dismissedIds.has(l.id));
+  renderActiveListings(activeForView);
   renderSellerReview(review);
   renderClosedListings(closed);
 
@@ -557,6 +580,8 @@ async function renderActiveListings(listings) {
     const tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
 
+    const showDismiss = l.status && l.status !== "Active";
+
     tr.innerHTML = `
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
@@ -564,12 +589,29 @@ async function renderActiveListings(listings) {
       <td>₿ ${l.market_value}</td>
       <td>₿ ${l.reserve_price}</td>
       <td>${formatTimeRemaining(l.end_time)}</td>
-           <td>${l.current_highest_bid || "-"}</td>
+      <td>${l.current_highest_bid || "-"}</td>
       <td>${l.current_highest_bidder || "-"}</td>
+      <td>
+        ${
+          showDismiss
+            ? `<button class="button dismiss-btn" data-listing-id="${l.id}">❌</button>`
+            : ""
+        }
+      </td>
     `;
 
     tbody.appendChild(tr);
   }
+
+  // Attach dismiss handlers
+  tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const listingId = e.currentTarget.dataset.listingId;
+      await dismissListingForUser(listingId);
+      e.currentTarget.closest("tr")?.remove();
+    });
+  });
 
   applyPESDBRowClicks("active-listings-body");
 }
@@ -623,18 +665,18 @@ async function renderClosedListings(listings) {
     const tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
 
-   tr.innerHTML = `
-  <td>${player?.Name || "Unknown"}</td>
-  <td>${player?.Position || "-"}</td>
-  <td>${player?.Rating || "-"}</td>
-  <td>${l.final_bid || "-"}</td>
-  <td>${l.winner || "-"}</td>
-  <td>${l.status}</td>
-  <td>
-    <button class="button" style="background:#aa2222; color:#fff;"
-            onclick="dismissClosedListing(${l.id})">❌</button>
-  </td>
-`;
+    tr.innerHTML = `
+      <td>${player?.Name || "Unknown"}</td>
+      <td>${player?.Position || "-"}</td>
+      <td>${player?.Rating || "-"}</td>
+      <td>${l.final_bid || "-"}</td>
+      <td>${l.winner || "-"}</td>
+      <td>${l.status}</td>
+      <td>
+        <button class="button" style="background:#aa2222; color:#fff;"
+                onclick="dismissClosedListing(${l.id})">❌</button>
+      </td>
+    `;
 
     tbody.appendChild(tr);
   }
@@ -669,7 +711,8 @@ async function loadMyActiveBids() {
         reserve_price,
         current_highest_bid,
         current_highest_bidder,
-        end_time
+        end_time,
+        status
       )
     `)
     .eq("bidder_club_id", currentUserShort)
@@ -680,7 +723,17 @@ async function loadMyActiveBids() {
     return;
   }
 
-  renderMyActiveBids(data);
+  // Load per-user dismissed listing IDs
+  const { data: dismissedRows } = await supabase
+    .from("User_Dismissed_Listings")
+    .select("listing_id")
+    .eq("user_id", auth.currentUser.uid);
+
+  const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
+
+  const filtered = (data || []).filter(b => !dismissedIds.has(b.listing_id));
+
+  renderMyActiveBids(filtered);
 }
 
 async function renderMyActiveBids(bids) {
@@ -694,6 +747,8 @@ async function renderMyActiveBids(bids) {
     const tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
 
+    const showDismiss = l.status && l.status !== "Active";
+
     tr.innerHTML = `
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
@@ -701,10 +756,27 @@ async function renderMyActiveBids(bids) {
       <td>₿ ${l.current_highest_bid || "-"}</td>
       <td>${l.current_highest_bidder || "-"}</td>
       <td>${new Date(l.end_time).toLocaleString()}</td>
+      <td>
+        ${
+          showDismiss
+            ? `<button class="button dismiss-bid-btn" data-listing-id="${l.id}">❌</button>`
+            : ""
+        }
+      </td>
     `;
 
     tbody.appendChild(tr);
   }
+
+  // Attach dismiss handlers
+  tbody.querySelectorAll(".dismiss-bid-btn").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const listingId = e.currentTarget.dataset.listingId;
+      await dismissListingForUser(listingId);
+      e.currentTarget.closest("tr")?.remove();
+    });
+  });
 
   applyPESDBRowClicks("my-active-bids-body");
 }
