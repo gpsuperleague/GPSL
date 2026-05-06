@@ -6,6 +6,47 @@
 
   <!-- Use the same stylesheet as Dashboard -->
   <link rel="stylesheet" href="dashboard.css">
+
+  <!-- OVERRIDES to restore full-width layout for GPDB -->
+  <style>
+    /* Make GPDB panels full width */
+    .panel {
+      width: 100% !important;
+      max-width: none !important;
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+    }
+
+    /* Ensure the page uses full width */
+    body {
+      padding: 20px !important;
+    }
+
+    /* Make table readable and full width */
+    table.gpsl-table {
+      width: 100% !important;
+      font-size: 13px;
+    }
+
+    table.gpsl-table th,
+    table.gpsl-table td {
+      text-align: center !important;
+    }
+
+    /* Filters should stretch properly */
+    #filters,
+    #controls {
+      width: 100% !important;
+    }
+
+    /* Prevent dashboard column layout from affecting GPDB */
+    #mainContent,
+    #leftColumn,
+    #rightColumn {
+      display: block !important;
+      width: 100% !important;
+    }
+  </style>
 </head>
 
 <body>
