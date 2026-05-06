@@ -410,3 +410,14 @@ table.gpsl-table tr:nth-child(even) {
   background: #cc3333;
   transform: scale(1.05);
 }
+.squad-section-row {
+  background: #222;
+}
+
+.squad-section-title {
+  font-weight: bold;
+  color: #ff9900;
+  padding: 8px;
+  font-size: 15px;
+  text-transform: uppercase;
+}
