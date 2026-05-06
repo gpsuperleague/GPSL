@@ -546,13 +546,29 @@ async function loadListings() {
 
   const updatedListings = refreshed.data || [];
 
-  // 3b. Load per-user dismissed listing IDs
-  const { data: dismissedRows } = await supabase
-    .from("User_Dismissed_Listings")
-    .select("listing_id")
-    .eq("user_id", auth.currentUser.uid);
+ // Load per-user dismissed listing IDs
+const { data: dismissedRows } = await supabase
+  .from("User_Dismissed_Listings")
+  .select("listing_id")
+  .eq("user_id", auth.currentUser.uid);
 
-  const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
+const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
+
+// ⭐ Collapse duplicates: keep only newest bid per listing
+const latestByListing = new Map();
+
+for (const b of data || []) {
+  if (!latestByListing.has(b.listing_id)) {
+    latestByListing.set(b.listing_id, b);
+  }
+}
+
+const uniqueBids = Array.from(latestByListing.values());
+
+// Remove dismissed ones
+const filtered = uniqueBids.filter(b => !dismissedIds.has(b.listing_id));
+
+renderMyActiveBids(filtered);
 
   // 4. Split into categories
   const active = updatedListings.filter(l => l.status === "Active");
