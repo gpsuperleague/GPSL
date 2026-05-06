@@ -4,6 +4,12 @@
 
 const transferEngine = {};
 
+// Extension config
+const MAIN_LATE_WINDOW_HOURS = 2;      // last 2h of main auction
+const MAIN_EXTENSION_HOURS   = 1;      // +1h extension
+const MICRO_WINDOW_MINUTES   = 5;      // last 5m of any extension
+const MICRO_EXTENSION_MINUTES = 5;     // +5m micro extension
+
 /* ============================================================
    MODULE A: Evaluate Expired Listing
    ============================================================ */
@@ -90,7 +96,7 @@ transferEngine.acceptSale = async function (listingId) {
   }
 
   /* --------------------------------------------
-     2. Load finances
+     2. Load finances (no affordability check anymore)
      -------------------------------------------- */
   const { data: buyerFinance } = await supabase
     .from("Club_Finances")
@@ -113,31 +119,12 @@ transferEngine.acceptSale = async function (listingId) {
   const sellerBalance = sellerFinance.balance;
 
   /* --------------------------------------------
-     3. Affordability check
-     -------------------------------------------- */
-  if (buyerBalance < amount) {
-    console.error("❌ Buyer cannot afford — auto‑rejecting");
-
-    await supabase
-      .from("Player_Transfer_Listings")
-      .update({
-        status: "Closed",
-        transfer_completed: false,
-        winning_bid: null,
-        winning_club: null
-      })
-      .eq("id", listingId);
-
-    return;
-  }
-
-  /* --------------------------------------------
-     4. Load player + validate ownership
+     3. Load player + validate ownership
      -------------------------------------------- */
   const { data: player } = await supabase
     .from("Players")
     .select("*")
-    .eq("Konami_ID", listing.player_id)   // FIXED: TEXT MATCH
+    .eq("Konami_ID", listing.player_id)
     .single();
 
   if (!player) {
@@ -151,7 +138,7 @@ transferEngine.acceptSale = async function (listingId) {
   }
 
   /* --------------------------------------------
-     5. Perform updates
+     4. Perform updates (balances can go negative)
      -------------------------------------------- */
 
   console.log("💰 Deducting funds from buyer…");
@@ -187,7 +174,7 @@ transferEngine.acceptSale = async function (listingId) {
   const { error: playerError } = await supabase
     .from("Players")
     .update({ Contracted_Team: buyer })
-    .eq("Konami_ID", listing.player_id);   // FIXED: TEXT MATCH
+    .eq("Konami_ID", listing.player_id);
 
   if (playerError) {
     console.error("❌ Player update failed:", playerError);
@@ -234,7 +221,7 @@ transferEngine.acceptSale = async function (listingId) {
     await supabase
       .from("Players")
       .update({ Contracted_Team: seller })
-      .eq("Konami_ID", listing.player_id);   // FIXED
+      .eq("Konami_ID", listing.player_id);
 
     return;
   }
@@ -279,7 +266,103 @@ transferEngine.rejectSale = async function (listingId) {
 };
 
 /* ============================================================
-   MODULE D: RUN ENGINE
+   MODULE D: Handle Expiry vs Extension
+   ============================================================ */
+transferEngine.handleExpiryOrExtension = async function (listing) {
+  const now = new Date();
+  const end = new Date(listing.end_time);
+
+  console.log("⏱ Handling expiry/extension for listing:", listing.id);
+
+  // Get latest bid for this listing
+  const { data: bids, error: bidsError } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("*")
+    .eq("listing_id", listing.id)
+    .order("bid_time", { ascending: false })
+    .limit(1);
+
+  if (bidsError) {
+    console.error("❌ Failed to fetch bids for extension:", bidsError);
+    // If we can't see bids, just evaluate as expired
+    await transferEngine.evaluateExpiredListing(listing);
+    return;
+  }
+
+  const latestBid = bids && bids.length > 0 ? bids[0] : null;
+
+  // No bids at all → normal expiry
+  if (!latestBid) {
+    await transferEngine.evaluateExpiredListing(listing);
+    return;
+  }
+
+  const bidTime = new Date(latestBid.bid_time);
+
+  // If listing has never been extended → check 2h late window for +1h extension
+  if (!listing.was_extended) {
+    const lateWindowStart = new Date(end.getTime() - MAIN_LATE_WINDOW_HOURS * 60 * 60 * 1000);
+
+    if (bidTime >= lateWindowStart && bidTime <= end) {
+      const newEnd = new Date(end.getTime() + MAIN_EXTENSION_HOURS * 60 * 60 * 1000);
+
+      console.log("⏫ Applying 1h extension for listing:", listing.id);
+
+      const { error: extError } = await supabase
+        .from("Player_Transfer_Listings")
+        .update({
+          end_time: newEnd.toISOString(),
+          was_extended: true,
+          extension_type: "1h",
+          extension_count: (listing.extension_count || 0) + 1
+        })
+        .eq("id", listing.id);
+
+      if (extError) {
+        console.error("❌ Failed to apply 1h extension:", extError);
+        await transferEngine.evaluateExpiredListing(listing);
+      }
+
+      return;
+    }
+
+    // No late bid in last 2h → normal expiry
+    await transferEngine.evaluateExpiredListing(listing);
+    return;
+  }
+
+  // Already extended → check micro‑extension (5m window)
+  const microWindowStart = new Date(end.getTime() - MICRO_WINDOW_MINUTES * 60 * 1000);
+
+  if (bidTime >= microWindowStart && bidTime <= end) {
+    const newEnd = new Date(end.getTime() + MICRO_EXTENSION_MINUTES * 60 * 1000);
+
+    console.log("⏫ Applying 5m micro‑extension for listing:", listing.id);
+
+    const { error: microError } = await supabase
+      .from("Player_Transfer_Listings")
+      .update({
+        end_time: newEnd.toISOString(),
+        was_extended: true,
+        extension_type: "5m",
+        extension_count: (listing.extension_count || 0) + 1
+      })
+      .eq("id", listing.id);
+
+    if (microError) {
+      console.error("❌ Failed to apply 5m extension:", microError);
+      await transferEngine.evaluateExpiredListing(listing);
+    }
+
+    return;
+  }
+
+  // No bid in last 5 minutes of extension → final expiry
+  await transferEngine.evaluateExpiredListing(listing);
+};
+
+/* ============================================================
+   MODULE E: RUN ENGINE
    ============================================================ */
 transferEngine.run = async function () {
   console.log("🔄 Transfer Engine: Running expiry check…");
@@ -307,8 +390,8 @@ transferEngine.run = async function () {
     const end = new Date(listing.end_time);
 
     if (now >= end) {
-      console.log("⏳ Listing expired → evaluating:", listing.id);
-      await transferEngine.evaluateExpiredListing(listing);
+      console.log("⏳ Listing reached end_time → handling:", listing.id);
+      await transferEngine.handleExpiryOrExtension(listing);
     }
   }
 
@@ -326,7 +409,7 @@ async function updatePlayerTeam(testKonamiId, newTeam) {
   const { data, error } = await supabase
     .from("Players")
     .update({ Contracted_Team: newTeam })
-    .eq("Konami_ID", testKonamiId)   // FIXED: TEXT MATCH
+    .eq("Konami_ID", testKonamiId)
     .select();
 
   if (error) {
