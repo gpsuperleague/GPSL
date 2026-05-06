@@ -83,11 +83,14 @@ function renderListings() {
     const end = new Date(l.end_time);
     const expiredForMs = now - end;
 
-    if (expiredForMs > 60 * 60 * 1000) return false;
+    // ⭐ CHANGED — remove 1‑hour post‑expiry visibility rule
+    // Hide immediately unless extended
+    if (l.status !== "Active" && !l.was_extended) {
+      return false;
+    }
 
     if (l.status === "Active") {
       if (end > now) return showActive;
-      if (expiredForMs < 60 * 60 * 1000) return showActive;
       return false;
     }
 
@@ -159,6 +162,13 @@ function formatTimeRemaining(endTime) {
 // MODULE E: OPEN BID MODAL
 // ======================================================
 function openBidModal(listing, player) {
+
+  // ⭐ ADDED — prevent bidding on your own players
+  if (listing.seller_club_id === currentUserShort) {
+    alert("You already own this player. You cannot bid on your own listing.");
+    return;
+  }
+
   selectedListing = listing;
 
   document.getElementById("bid-player-name").textContent = player?.Name || "Unknown";
