@@ -245,6 +245,12 @@ async function placeBid() {
 
   const currentHighest = selectedListing.current_highest_bid || 0;
 
+  // ⭐ NEW — block bids below market value
+  if (bidAmount < selectedListing.market_value) {
+    errorBox.textContent = `Your bid must be at least the market value (₿ ${selectedListing.market_value}).`;
+    return;
+  }
+
   if (bidAmount <= currentHighest) {
     errorBox.textContent = "Bid must exceed current highest bid.";
     return;
