@@ -150,7 +150,6 @@
         <div class="panel">
           <h2>Balance</h2>
 
-          <!-- ⭐ This is where the bank-balance effects apply -->
           <div id="finance-balance" class="finance-box">Loading…</div>
         </div>
 
@@ -194,6 +193,7 @@
                 <th>Highest Bid</th>
                 <th>Highest Club</th>
                 <th>Ends</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody id="my-active-bids-body"></tbody>
@@ -214,6 +214,7 @@
                 <th>Time Remaining</th>
                 <th>Highest Bid</th>
                 <th>Highest Club</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody id="active-listings-body"></tbody>
@@ -358,7 +359,6 @@
         <button onclick="logout()" class="button">Logout</button>
       `;
 
-      // Admin link
       const adminEmails = ["rotavator66@outlook.com"];
       if (adminEmails.includes(user.email)) {
         nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
