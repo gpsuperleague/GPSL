@@ -547,7 +547,7 @@ async function loadListings() {
   const { data: dismissedRows } = await supabase
     .from("User_Dismissed_Listings")
     .select("listing_id")
-    .eq("user_id", auth.currentUser.uid);
+    .eq("user_id", `"${auth.currentUser.uid}"`);
 
   const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
 
@@ -727,7 +727,7 @@ async function loadMyActiveBids() {
   const { data: dismissedRows } = await supabase
     .from("User_Dismissed_Listings")
     .select("listing_id")
-    .eq("user_id", auth.currentUser.uid);
+    .eq("user_id", `"${auth.currentUser.uid}"`);
 
   const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
 
