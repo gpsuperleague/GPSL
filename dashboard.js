@@ -339,49 +339,65 @@ function renderSquad(players) {
   const tbody = document.getElementById("squad-body");
   tbody.innerHTML = "";
 
-  players.forEach(p => {
-    const isListed = activeListingsCache.some(
-      l => l.player_id === p.Konami_ID
-    );
+  // ⭐ Define position groups
+  const groups = {
+    "Goalkeepers": ["GK"],
+    "Defenders": ["LB", "CB", "RB"],
+    "Midfielders": ["DM", "LM", "CM", "RM"],
+    "Attackers": ["SS", "LW", "CF", "RW"]
+  };
 
-    const status = isListed
-      ? `<span class="status-pill status-listed">Listed</span>`
-      : `<span class="status-pill status-not-listed">Not Listed</span>`;
+  // ⭐ Loop through each group in order
+  for (const [groupName, positions] of Object.entries(groups)) {
 
-    const actionDropdown = `
-      <select onchange="handlePlayerAction('${p.Konami_ID}', this.value)">
-        <option value="">Action</option>
-        <option value="list">Transfer List</option>
-      </select>
+    // Insert a section header row
+    const headerRow = document.createElement("tr");
+    headerRow.classList.add("squad-section-row");
+    headerRow.innerHTML = `
+      <td colspan="8" class="squad-section-title">${groupName}</td>
     `;
+    tbody.appendChild(headerRow);
 
-    const tr = document.createElement("tr");
-    tr.dataset.konamiId = p.Konami_ID;
+    // Filter players for this group
+    const groupPlayers = players.filter(p => positions.includes(p.Position));
 
-    tr.innerHTML = `
-      <td>${p.Name}</td>
-      <td>${p.Position}</td>
-      <td>${p.Rating || p.OVR}</td>
-      <td>${p.Playstyle || "-"}</td>
-      <td>₿ ${p.market_value}</td>
-      <td>${status}</td>
-      <td>${actionDropdown}</td>
-    `;
+    // Render each player
+    groupPlayers.forEach(p => {
+      const isListed = activeListingsCache.some(
+        l => l.player_id === p.Konami_ID
+      );
 
-    tbody.appendChild(tr);
-  });
+      const status = isListed
+        ? `<span class="status-pill status-listed">Listed</span>`
+        : `<span class="status-pill status-not-listed">Not Listed</span>`;
+
+      const actionDropdown = `
+        <select onchange="handlePlayerAction('${p.Konami_ID}', this.value)">
+          <option value="">Action</option>
+          <option value="list">Transfer List</option>
+        </select>
+      `;
+
+      const tr = document.createElement("tr");
+      tr.dataset.konamiId = p.Konami_ID;
+
+      tr.innerHTML = `
+        <td>${p.Name}</td>
+        <td>${p.Nationality || "-"}</td>
+        <td>${p.Position}</td>
+        <td>${p.Rating || p.OVR}</td>
+        <td>${p.Playstyle || "-"}</td>
+        <td>₿ ${p.market_value}</td>
+        <td>${status}</td>
+        <td>${actionDropdown}</td>
+      `;
+
+      tbody.appendChild(tr);
+    });
+  }
 
   applyPESDBRowClicks("squad-body");
 }
-
-function handlePlayerAction(konamiID, action) {
-  if (action === "list") {
-    const player = { Konami_ID: konamiID };
-    openListPlayerModalByID(player);
-  }
-}
-
-window.handlePlayerAction = handlePlayerAction;
 
 /* ============================================================
    MODULE H: LIST PLAYER MODAL
