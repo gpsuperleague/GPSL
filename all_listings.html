@@ -246,7 +246,10 @@
       <div id="bid-input-section">
         <div class="bid-row">
           <label>Your Bid (₿):</label>
-          <input type="number" id="bid-amount" step="0.01" min="0">
+
+          <!-- ⭐ FIXED: allow comma-formatted input -->
+          <input type="text" id="bid-amount" inputmode="numeric">
+
         </div>
 
         <div style="margin-top:10px;">
