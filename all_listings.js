@@ -10,6 +10,12 @@ let selectedListing = null;
 // Load club map immediately
 await loadClubsMap();
 
+// ⭐ NEW — format numbers as ₿ 1,234,567
+function formatMoney(amount) {
+  if (amount == null || isNaN(amount)) return "-";
+  return "₿ " + Number(amount).toLocaleString("en-GB");
+}
+
 // ======================================================
 // MODULE A: AUTH + INITIAL LOAD
 // ======================================================
@@ -68,7 +74,7 @@ function wireFilterCheckboxes() {
 }
 
 // ======================================================
-// MODULE D: RENDER LISTINGS TABLE (with expiry filtering)
+// MODULE D: RENDER LISTINGS TABLE
 // ======================================================
 function renderListings() {
   const tbody = document.getElementById("listings-body");
@@ -82,11 +88,7 @@ function renderListings() {
   const filtered = allListings.filter(l => {
     const end = new Date(l.end_time);
 
-    // ⭐ NEW RULE:
-    // Hide expired listings UNLESS they were extended
-    if (l.status !== "Active" && !l.was_extended) {
-      return false;
-    }
+    if (l.status !== "Active" && !l.was_extended) return false;
 
     if (l.status === "Active") {
       if (end > now) return showActive;
@@ -103,7 +105,6 @@ function renderListings() {
   filtered.forEach(async listing => {
     const player = await fetchPlayerByID(listing.player_id);
 
-    // ⭐ EXTENSION LABEL
     const extendedLabel = listing.was_extended
       ? ` <span style="color:#d9534f;font-weight:bold;">(Extended)</span>`
       : "";
@@ -115,11 +116,11 @@ function renderListings() {
       <td>${player?.Position || "-"}</td>
       <td>${player?.Playstyle || "-"}</td>
       <td>${player?.Rating || "-"}</td>
-      <td>₿ ${listing.market_value}</td>
-      <td>₿ ${listing.reserve_price}</td>
+      <td>${formatMoney(listing.market_value)}</td>
+      <td>${formatMoney(listing.reserve_price)}</td>
       <td>${listing.status} ${extendedLabel}</td>
       <td>${formatTimeRemaining(listing.end_time)}</td>
-      <td>${listing.current_highest_bid || "-"}</td>
+      <td>${formatMoney(listing.current_highest_bid)}</td>
       <td>${fullClubName(listing.current_highest_bidder) || "-"}</td>
     `;
 
@@ -167,7 +168,6 @@ function formatTimeRemaining(endTime) {
 // ======================================================
 function openBidModal(listing, player) {
 
-  // ⭐ BLOCK SELF‑BIDDING
   if (listing.seller_club_id === currentUserShort) {
     alert("You already own this player. You cannot bid on your own listing.");
     return;
@@ -181,35 +181,58 @@ function openBidModal(listing, player) {
   document.getElementById("bid-player-rating").textContent = player?.Rating || "-";
 
   document.getElementById("bid-selling-club").textContent = fullClubName(listing.seller_club_id);
-  document.getElementById("bid-market-value").textContent = `₿ ${listing.market_value}`;
-  document.getElementById("bid-reserve-price").textContent = `₿ ${listing.reserve_price}`;
+  document.getElementById("bid-market-value").textContent = formatMoney(listing.market_value);
+  document.getElementById("bid-reserve-price").textContent = formatMoney(listing.reserve_price);
   document.getElementById("bid-status").textContent = listing.status;
   document.getElementById("bid-time-remaining").textContent = formatTimeRemaining(listing.end_time);
 
-  document.getElementById("bid-highest-bid").textContent = listing.current_highest_bid || "-";
+  document.getElementById("bid-highest-bid").textContent = formatMoney(listing.current_highest_bid);
   document.getElementById("bid-highest-club").textContent =
     fullClubName(listing.current_highest_bidder) || "-";
 
   document.getElementById("bid-amount").value = "";
   document.getElementById("bid-error").textContent = "";
 
+  // ⭐ NEW — minimum bid = max(market value, highest bid + 500k)
+  const minBid = Math.max(
+    listing.market_value,
+    (listing.current_highest_bid || 0) + 500000
+  );
+
+  document.getElementById("bid-amount").placeholder = `Minimum bid: ${formatMoney(minBid)}`;
+
+  // ⭐ NEW — disable button initially
+  document.getElementById("place-bid-btn").disabled = true;
+
+  // ⭐ NEW — live validation
+  document.getElementById("bid-amount").oninput = validateBidInput;
+
   document.getElementById("bid-modal").style.display = "block";
 }
 
-// ======================================================
-// MODULE E: MODAL CONTROLS
-// ======================================================
-function wireModalControls() {
-  document.getElementById("bid-modal-close").onclick = () => {
-    document.getElementById("bid-modal").style.display = "none";
-  };
+// ⭐ NEW — live validation
+function validateBidInput() {
+  const input = document.getElementById("bid-amount");
+  const errorBox = document.getElementById("bid-error");
+  const button = document.getElementById("place-bid-btn");
 
-  window.onclick = function(event) {
-    const modal = document.getElementById("bid-modal");
-    if (event.target === modal) {
-      modal.style.display = "none";
-    }
-  };
+  const bidAmount = Number(input.value);
+
+  const minBid = Math.max(
+    selectedListing.market_value,
+    (selectedListing.current_highest_bid || 0) + 500000
+  );
+
+  if (!bidAmount || bidAmount < minBid) {
+    input.style.border = "2px solid red";
+    errorBox.textContent = `Minimum allowed bid is ${formatMoney(minBid)}`;
+    button.disabled = true;
+    return;
+  }
+
+  input.style.border = "2px solid #4CAF50";
+  errorBox.textContent = "";
+  button.disabled = false;
 }
 
 // ======================================================
@@ -237,26 +260,17 @@ async function placeBid() {
   }
 
   const bidAmount = Number(document.getElementById("bid-amount").value);
-
-  if (!bidAmount || bidAmount <= 0) {
-    errorBox.textContent = "Enter a valid bid amount.";
-    return;
-  }
-
   const currentHighest = selectedListing.current_highest_bid || 0;
 
-  // ⭐ NEW — block bids below market value
-  if (bidAmount < selectedListing.market_value) {
-    errorBox.textContent = `Your bid must be at least the market value (₿ ${selectedListing.market_value}).`;
+  const minBid = Math.max(
+    selectedListing.market_value,
+    currentHighest + 500000
+  );
+
+  if (bidAmount < minBid) {
+    errorBox.textContent = `Your bid must be at least ${formatMoney(minBid)}.`;
     return;
   }
-
-  if (bidAmount <= currentHighest) {
-    errorBox.textContent = "Bid must exceed current highest bid.";
-    return;
-  }
-
-  // ⭐ NO FINANCIAL CHECK — clubs can go into debt
 
   const { error: bidError } = await supabase
     .from("Player_Transfer_Bids")
