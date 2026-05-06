@@ -4,128 +4,8 @@
   <meta charset="UTF-8">
   <title>GPSL Player Database</title>
 
-  <!-- ============================================
-       PAGE STYLE (GPSL Theme)
-       ============================================ -->
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-
-    /* Buttons (matches dashboard/index theme) */
-    a.button, button.button {
-      display: inline-block;
-      padding: 10px 20px;
-      background: #ff9900;
-      color: #111;
-      text-decoration: none;
-      font-weight: bold;
-      border-radius: 6px;
-      margin: 5px;
-      transition: 0.2s;
-      cursor: pointer;
-    }
-
-    a.button:hover, button.button:hover {
-      background: #ffaa22;
-      transform: scale(1.05);
-    }
-
-    /* Page Title */
-    #pageTitle {
-      background:#222;
-      color:#ff9900;
-      padding:10px 16px;
-      border-radius:6px;
-      display:inline-block;
-      margin-bottom:20px;
-      font-size:24px;
-      font-weight:bold;
-    }
-
-    /* Filter Groups */
-    .filter-group {
-      background:#222;
-      color:#ff9900;
-      padding:10px 14px;
-      border-radius:6px;
-      margin-bottom:12px;
-      display:flex;
-      flex-wrap:wrap;
-      gap:12px;
-      align-items:center;
-    }
-
-    .filter-group strong {
-      width:100%;
-      font-size:14px;
-      margin-bottom:4px;
-      color:#ffaa22;
-    }
-
-    /* GPSL Table */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #1a1a1a;
-      color: #ddd;
-      border-radius: 6px;
-      overflow: hidden;
-    }
-
-    th {
-      background: #222;
-      color: #ff9900;
-      padding: 8px;
-      font-size: 13px;
-      border-bottom: 2px solid #444;
-      border-right: 1px solid #333;
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      cursor: pointer;
-      text-align: center;
-    }
-
-    th:last-child {
-      border-right: none;
-    }
-
-    th.sort-asc::after { content: " ▲"; font-size: 10px; }
-    th.sort-desc::after { content: " ▼"; font-size: 10px; }
-
-    td {
-      padding: 6px 8px;
-      border-bottom: 1px solid #333;
-      border-right: 1px solid #333;
-      font-size: 12px;
-      text-align: center;
-    }
-
-    td:last-child {
-      border-right: none;
-    }
-
-    /* Alternating rows */
-    tbody tr:nth-child(odd) {
-      background: #1f1f1f;
-    }
-
-    tbody tr:nth-child(even) {
-      background: #262626;
-    }
-
-    /* Hover highlight */
-    tbody tr:hover {
-      background: #333 !important;
-    }
-
-    #pagination {
-      color: #ff9900;
-      font-weight: bold;
-    }
-  </style>
+  <!-- Use the same stylesheet as Dashboard -->
+  <link rel="stylesheet" href="dashboard.css">
 </head>
 
 <body>
@@ -136,58 +16,67 @@
   <div id="nav" style="margin-bottom:20px;"></div>
 
   <!-- ============================================
-       PAGE TITLE
+       PAGE TITLE (Dashboard style)
        ============================================ -->
-  <h1 id="pageTitle">GPSL – Player Database</h1>
+  <h1 class="section-header">GPSL – Player Database</h1>
 
   <!-- ============================================
-       FILTER PANEL
+       FILTER PANEL (Dashboard-style panel)
        ============================================ -->
-  <div id="controls">
+  <div class="panel">
 
     <!-- Clear Filters -->
-    <div class="filter-group">
-      <button id="clearFiltersBtn" class="button">Clear Filters</button>
+    <div style="margin-bottom:16px;">
+      <button id="clearFiltersBtn" class="small-btn" style="background:#ff9900;color:#111;">Clear Filters</button>
     </div>
 
     <!-- Market Value -->
-    <div class="filter-group">
-      <strong>Market Value</strong>
-      <label>Min <input type="number" id="mv-min" style="width:80px;"></label>
-      <label>Max <input type="number" id="mv-max" style="width:80px;"></label>
-      <button id="applyMV" class="button">Apply</button>
+    <h2>Market Value</h2>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+      <label>Min 
+        <input type="number" id="mv-min" class="gpsl-input" style="width:100px;">
+      </label>
+
+      <label>Max 
+        <input type="number" id="mv-max" class="gpsl-input" style="width:100px;">
+      </label>
+
+      <button id="applyMV" class="small-btn" style="background:#ff9900;color:#111;">Apply</button>
     </div>
 
+    <!-- Dropdown Filters (injected by JS) -->
+    <h2 style="margin-top:20px;">Filters</h2>
+    <div id="filters"></div>
+
   </div>
 
   <!-- ============================================
-       DROPDOWN FILTERS (injected by JS)
+       PLAYER TABLE PANEL
        ============================================ -->
-  <div class="filter-group" id="filters" style="margin-bottom:20px;">
-    <strong>Filters</strong>
-  </div>
+  <div class="panel">
 
-  <!-- ============================================
-       PLAYER TABLE
-       ============================================ -->
-  <table id="playersTable">
-    <thead id="tableHead"></thead>
-    <tbody id="tableBody"></tbody>
-  </table>
+    <h2>Players</h2>
 
-  <!-- Pagination -->
-  <div id="pagination" style="margin-top:20px;"></div>
+    <table class="gpsl-table" id="playersTable">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
 
-  <!-- Rows per page -->
-  <div id="rowsPerPage" style="margin-top:20px;">
-    <label>Rows per page:
-      <select id="pageSizeSelect">
-        <option value="100">100</option>
-        <option value="250">250</option>
-        <option value="500">500</option>
-        <option value="1000" selected>1000</option>
-      </select>
-    </label>
+    <!-- Pagination -->
+    <div id="pagination" style="margin-top:20px;color:#ff9900;font-weight:bold;"></div>
+
+    <!-- Rows per page -->
+    <div id="rowsPerPage" style="margin-top:20px;">
+      <label>Rows per page:
+        <select id="pageSizeSelect" class="gpsl-select">
+          <option value="100">100</option>
+          <option value="250">250</option>
+          <option value="500">500</option>
+          <option value="1000" selected>1000</option>
+        </select>
+      </label>
+    </div>
+
   </div>
 
   <!-- ============================================
