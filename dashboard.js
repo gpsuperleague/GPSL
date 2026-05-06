@@ -186,6 +186,13 @@ auth.onAuthStateChanged(async user => {
     return;
   }
 
+  // ⭐ NEW: pass Firebase ID token to Supabase so RLS auth.uid() works
+  const token = await user.getIdToken();
+  await supabase.auth.setSession({
+    access_token: token,
+    refresh_token: token
+  });
+
   // ⭐ Load the ShortName → FullName lookup map FIRST
   await loadClubsMap();
   console.log("Clubs map loaded");
@@ -547,7 +554,7 @@ async function loadListings() {
   const { data: dismissedRows } = await supabase
     .from("User_Dismissed_Listings")
     .select("listing_id")
-    .eq("user_id", `"${auth.currentUser.uid}"`);
+    .eq("user_id", auth.currentUser.uid);
 
   const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
 
@@ -727,7 +734,7 @@ async function loadMyActiveBids() {
   const { data: dismissedRows } = await supabase
     .from("User_Dismissed_Listings")
     .select("listing_id")
-    .eq("user_id", `"${auth.currentUser.uid}"`);
+    .eq("user_id", auth.currentUser.uid);
 
   const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
 
