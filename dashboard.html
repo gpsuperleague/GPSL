@@ -126,7 +126,7 @@
       <p><strong>Next Upgrade:</strong> <span id="next-capacity">Loading...</span></p>
       <p><strong>Upgrade Cost:</strong> <span id="upgrade-cost">Loading...</span></p>
 
-      <!-- These two fields are legacy and will be removed -->
+      <!-- Legacy fields -->
       <p><strong>Club Tier:</strong> <span id="club-tier">Loading...</span></p>
       <p><strong>Wage Percentage:</strong> <span id="wage-percentage">Loading...</span></p>
 
@@ -149,6 +149,8 @@
         <h2 class="section-header">Club Finances</h2>
         <div class="panel">
           <h2>Balance</h2>
+
+          <!-- ⭐ This is where the bank-balance effects apply -->
           <div id="finance-balance" class="finance-box">Loading…</div>
         </div>
 
@@ -329,7 +331,6 @@
   <script src="transferEngine.js"></script>
   <script type="module" src="clubs_lookup.js"></script>
   <script type="module" src="dashboard.js?v=999"></script>
-
 
   <!-- ============================================
        AUTH + NAVIGATION LOGIC
