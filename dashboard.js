@@ -582,6 +582,7 @@ async function renderActiveListings(listings) {
 
     const tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
+    tr.dataset.listingId = l.id;   // ⭐ REQUIRED FIX
 
     const showDismiss = l.status && l.status !== "Active";
 
@@ -618,7 +619,6 @@ async function renderActiveListings(listings) {
 
   applyPESDBRowClicks("active-listings-body");
 }
-
 
 /* ============================================================
    MODULE J: SELLER REVIEW
