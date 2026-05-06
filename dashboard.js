@@ -359,7 +359,19 @@ function renderSquad(players) {
     tbody.appendChild(headerRow);
 
     // Filter players for this group
-    const groupPlayers = players.filter(p => positions.includes(p.Position));
+    // Filter + sort players for this group
+   const groupPlayers = players
+    .filter(p => positions.includes(p.Position))
+    .sort((a, b) => {
+    // 1️⃣ Sort by position order within the group
+    const posA = positions.indexOf(a.Position);
+    const posB = positions.indexOf(b.Position);
+    if (posA !== posB) return posA - posB;
+
+    // 2️⃣ Then sort by value (market_value) descending
+    return b.market_value - a.market_value;
+  });
+
 
     // Render each player
     groupPlayers.forEach(p => {
