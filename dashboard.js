@@ -187,11 +187,9 @@ auth.onAuthStateChanged(async user => {
   }
 
   // ⭐ NEW: pass Firebase ID token to Supabase so RLS auth.uid() works
-  const token = await user.getIdToken();
-  await supabase.auth.setSession({
-    access_token: token,
-    refresh_token: token
-  });
+   const token = await user.getIdToken();
+   supabase.auth.setAuth(token);
+
 
   // ⭐ Load the ShortName → FullName lookup map FIRST
   await loadClubsMap();
