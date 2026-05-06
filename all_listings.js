@@ -81,10 +81,9 @@ function renderListings() {
 
   const filtered = allListings.filter(l => {
     const end = new Date(l.end_time);
-    const expiredForMs = now - end;
 
-    // ⭐ CHANGED — remove 1‑hour post‑expiry visibility rule
-    // Hide immediately unless extended
+    // ⭐ NEW RULE:
+    // Hide expired listings UNLESS they were extended
     if (l.status !== "Active" && !l.was_extended) {
       return false;
     }
@@ -104,6 +103,11 @@ function renderListings() {
   filtered.forEach(async listing => {
     const player = await fetchPlayerByID(listing.player_id);
 
+    // ⭐ EXTENSION LABEL
+    const extendedLabel = listing.was_extended
+      ? ` <span style="color:#d9534f;font-weight:bold;">(Extended)</span>`
+      : "";
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${fullClubName(listing.seller_club_id)}</td>
@@ -113,7 +117,7 @@ function renderListings() {
       <td>${player?.Rating || "-"}</td>
       <td>₿ ${listing.market_value}</td>
       <td>₿ ${listing.reserve_price}</td>
-      <td>${listing.status}</td>
+      <td>${listing.status} ${extendedLabel}</td>
       <td>${formatTimeRemaining(listing.end_time)}</td>
       <td>${listing.current_highest_bid || "-"}</td>
       <td>${fullClubName(listing.current_highest_bidder) || "-"}</td>
@@ -163,7 +167,7 @@ function formatTimeRemaining(endTime) {
 // ======================================================
 function openBidModal(listing, player) {
 
-  // ⭐ ADDED — prevent bidding on your own players
+  // ⭐ BLOCK SELF‑BIDDING
   if (listing.seller_club_id === currentUserShort) {
     alert("You already own this player. You cannot bid on your own listing.");
     return;
@@ -245,6 +249,8 @@ async function placeBid() {
     errorBox.textContent = "Bid must exceed current highest bid.";
     return;
   }
+
+  // ⭐ NO FINANCIAL CHECK — clubs can go into debt
 
   const { error: bidError } = await supabase
     .from("Player_Transfer_Bids")
