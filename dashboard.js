@@ -742,17 +742,29 @@ async function loadMyActiveBids() {
     return;
   }
 
-  // Load per-user dismissed listing IDs
-  const { data: dismissedRows } = await supabase
-    .from("User_Dismissed_Listings")
-    .select("listing_id")
-    .eq("user_id", auth.currentUser.uid);
+// Load per-user dismissed listing IDs
+const { data: dismissedRows } = await supabase
+  .from("User_Dismissed_Listings")
+  .select("listing_id")
+  .eq("user_id", auth.currentUser.uid);
 
-  const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
+const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
 
-  const filtered = (data || []).filter(b => !dismissedIds.has(b.listing_id));
+// ⭐ Collapse duplicates: keep only newest bid per listing
+const latestByListing = new Map();
 
-  renderMyActiveBids(filtered);
+for (const b of data || []) {
+  if (!latestByListing.has(b.listing_id)) {
+    latestByListing.set(b.listing_id, b);
+  }
+}
+
+const uniqueBids = Array.from(latestByListing.values());
+
+// Remove dismissed ones
+const filtered = uniqueBids.filter(b => !dismissedIds.has(b.listing_id));
+
+renderMyActiveBids(filtered);
 }
 
 async function renderMyActiveBids(bids) {
@@ -760,11 +772,18 @@ async function renderMyActiveBids(bids) {
   tbody.innerHTML = "";
 
   for (const b of bids) {
+
+    // ⭐ Skip rows where the join failed
+    if (!b.Player_Transfer_Listings) continue;
+
     const l = b.Player_Transfer_Listings;
+    if (!l) continue;  // extra safety
+
     const player = await fetchPlayerByID(l.player_id);
 
     const tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
+    tr.dataset.listingId = l.id;   // ⭐ required for dismiss
 
     const showDismiss = l.status && l.status !== "Active";
 
@@ -799,7 +818,6 @@ async function renderMyActiveBids(bids) {
 
   applyPESDBRowClicks("my-active-bids-body");
 }
-
 
 /* ============================================================
    MODULE L: UNIVERSAL PESDB ROW CLICK HANDLER
