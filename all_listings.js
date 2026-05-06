@@ -37,6 +37,8 @@ auth.onAuthStateChanged(async user => {
   wireFilterCheckboxes();
   wireModalControls();
   wirePlaceBidButton();
+  wireIncrementButtons();     // ⭐ NEW
+  wireQuickBidButton();       // ⭐ NEW
 });
 
 // ======================================================
@@ -116,6 +118,24 @@ function renderListings() {
       : "";
 
     const tr = document.createElement("tr");
+
+    // ⭐ NEW — highlight if user is leading
+    if (listing.current_highest_bidder === currentUserShort) {
+      tr.classList.add("leading-row");
+    }
+
+    // ⭐ NEW — badge logic
+    let highestClubText = "- (No bids)";
+    if (listing.current_highest_bidder) {
+      highestClubText =
+        `${fullClubName(listing.current_highest_bidder)} ` +
+        `${
+          listing.current_highest_bidder === currentUserShort
+            ? "(You’re leading)"
+            : "(Outbid)"
+        }`;
+    }
+
     tr.innerHTML = `
       <td>${fullClubName(listing.seller_club_id)}</td>
       <td>${player?.Name || "Unknown"}</td>
@@ -127,7 +147,7 @@ function renderListings() {
       <td>${listing.status} ${extendedLabel}</td>
       <td>${formatTimeRemaining(listing.end_time)}</td>
       <td>${formatMoney(listing.current_highest_bid)}</td>
-      <td>${fullClubName(listing.current_highest_bidder) || "-"}</td>
+      <td>${highestClubText}</td>
     `;
 
     tr.onclick = () => openBidModal(listing, player);
@@ -196,7 +216,11 @@ function openBidModal(listing, player) {
   document.getElementById("bid-highest-club").textContent =
     fullClubName(listing.current_highest_bidder) || "-";
 
-  document.getElementById("bid-amount").value = "";
+  const input = document.getElementById("bid-amount");
+  input.value = "";
+  input.focus();     // ⭐ NEW
+  input.select();    // ⭐ NEW
+
   document.getElementById("bid-error").textContent = "";
 
   // ⭐ NEW — minimum bid = max(market value, highest bid + 500k)
@@ -205,13 +229,13 @@ function openBidModal(listing, player) {
     (listing.current_highest_bid || 0) + 500000
   );
 
-  document.getElementById("bid-amount").placeholder = `Minimum bid: ${formatMoney(minBid)}`;
+  input.placeholder = `Minimum bid: ${formatMoney(minBid)}`;
 
   // ⭐ NEW — disable button initially
   document.getElementById("place-bid-btn").disabled = true;
 
   // ⭐ NEW — live validation
-  document.getElementById("bid-amount").oninput = validateBidInput;
+  input.oninput = validateBidInput;
 
   document.getElementById("bid-modal").style.display = "block";
 }
@@ -276,6 +300,42 @@ function wireModalControls() {
       selectedListing = null;
     }
   });
+}
+
+// ======================================================
+// ⭐ NEW — INCREMENT BUTTONS
+// ======================================================
+function wireIncrementButtons() {
+  document.getElementById("inc-500k").onclick = () => addIncrement(500000);
+  document.getElementById("inc-1m").onclick = () => addIncrement(1000000);
+  document.getElementById("inc-5m").onclick = () => addIncrement(5000000);
+}
+
+function addIncrement(amount) {
+  const input = document.getElementById("bid-amount");
+  let current = parseMoneyInput(input.value);
+  current += amount;
+  input.value = current.toLocaleString("en-GB");
+  validateBidInput();
+}
+
+// ======================================================
+// ⭐ NEW — QUICK BID BUTTON
+// ======================================================
+function wireQuickBidButton() {
+  document.getElementById("quick-bid-btn").onclick = () => {
+    if (!selectedListing) return;
+
+    const minBid =
+      Math.max(
+        selectedListing.market_value,
+        (selectedListing.current_highest_bid || 0) + 500000
+      );
+
+    const input = document.getElementById("bid-amount");
+    input.value = minBid.toLocaleString("en-GB");
+    validateBidInput();
+  };
 }
 
 // ======================================================
