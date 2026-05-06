@@ -252,6 +252,15 @@ table.gpsl-table tr:nth-child(even) {
   color: #ffaa22;
 }
 
+/* ============================
+   NEGATIVE BALANCE (NEW)
+   ============================ */
+
+.negative-balance {
+  color: #ff4444;
+  font-weight: bold;
+}
+
 
 /* ============================
    LIST PLAYER MODAL
