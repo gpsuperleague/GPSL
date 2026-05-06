@@ -252,6 +252,7 @@ table.gpsl-table tr:nth-child(even) {
   color: #ffaa22;
 }
 
+
 /* ============================
    NEGATIVE BALANCE (NEW)
    ============================ */
@@ -385,4 +386,27 @@ table.gpsl-table tr:nth-child(even) {
 
 #rightColumn .panel {
   margin-bottom: 24px;
+}
+
+
+/* ============================
+   DISMISS BUTTONS (NEW)
+   ============================ */
+
+.dismiss-btn,
+.dismiss-bid-btn {
+  background: #aa2222;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: 0.15s ease-in-out;
+}
+
+.dismiss-btn:hover,
+.dismiss-bid-btn:hover {
+  background: #cc3333;
+  transform: scale(1.05);
 }
