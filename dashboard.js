@@ -383,7 +383,7 @@ function renderSquad(players) {
 
       tr.innerHTML = `
         <td>${p.Name}</td>
-        <td>${p.Nationality || "-"}</td>
+        <td>${p.Nation || "-"}</td>
         <td>${p.Position}</td>
         <td>${p.Rating || p.OVR}</td>
         <td>${p.Playstyle || "-"}</td>
