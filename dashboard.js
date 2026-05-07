@@ -166,14 +166,15 @@ async function loadDashboard() {
   await loadListings();
   await loadMyActiveBids();
 
-  /* ⭐ NEW: Load Season Signings */
-  await loadSeasonSignings();
-
+  // Stadium info loads near the end
   if (clubId != null) {
     await loadStadiumInfo(clubId);
   } else {
     console.error("clubId is null, cannot load stadium info");
   }
+
+  // ⭐ Run Season Signings LAST so fullClubName() is guaranteed to work
+  await loadSeasonSignings();
 }
 
 /* ============================================================
