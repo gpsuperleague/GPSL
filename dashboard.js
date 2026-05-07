@@ -152,7 +152,6 @@ async function loadFinance() {
     return;
   }
 
-  // Display balance in the correct HTML element
   document.getElementById("finance-balance").textContent =
     `₿ ${data.balance.toLocaleString()}`;
 }
@@ -186,17 +185,14 @@ auth.onAuthStateChanged(async user => {
     return;
   }
 
-  // ⭐ NEW: pass Firebase ID token to Supabase so RLS auth.uid() works
-   const token = await user.getIdToken();
+  const token = await user.getIdToken();
 
-  // ⭐ Load the ShortName → FullName lookup map FIRST
   await loadClubsMap();
   console.log("Clubs map loaded");
 
   currentUserEmail = user.email;
   document.getElementById("userEmail").textContent = currentUserEmail;
 
-  // Now safe to load the dashboard
   await loadDashboard();
 });
 
@@ -223,7 +219,7 @@ async function loadClubFromSupabase() {
   const { data, error } = await supabase
     .from("Clubs")
     .select("*")
-    .eq("ShortName", currentUserShort)   // ShortName for DB lookup
+    .eq("ShortName", currentUserShort)
     .single();
 
   if (error || !data) {
@@ -233,18 +229,14 @@ async function loadClubFromSupabase() {
 
   clubId = data.Club_ID;
   currentUserClubID = data.Club_ID;
-
-  // Store the full club name from DB
   currentUserClub = data.Club;
 
-  // ⭐ UI now uses fullClubName() for display
   document.getElementById("clubNameField").textContent =
     fullClubName(currentUserShort);
 
   document.getElementById("dashboardTitle").textContent =
     `${fullClubName(currentUserShort)} Dashboard`;
 
-  // Badge stays ShortName-based
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${currentUserShort}.png`;
 }
@@ -325,7 +317,7 @@ async function loadSquad() {
   const { data, error } = await supabase
     .from("Players")
     .select("*")
-    .eq("Contracted_Team", currentUserShort);   // ⭐ ShortName for DB lookup
+    .eq("Contracted_Team", currentUserShort);
 
   if (error) {
     console.error("Squad load error", error);
@@ -339,7 +331,6 @@ function renderSquad(players) {
   const tbody = document.getElementById("squad-body");
   tbody.innerHTML = "";
 
-  // ⭐ Define position groups
   const groups = {
     "Goalkeepers": ["GK"],
     "Defenders": ["LB", "CB", "RB"],
@@ -347,10 +338,7 @@ function renderSquad(players) {
     "Attackers": ["SS", "LW", "CF", "RW"]
   };
 
-  // ⭐ Loop through each group in order
   for (const [groupName, positions] of Object.entries(groups)) {
-
-    // Insert a section header row
     const headerRow = document.createElement("tr");
     headerRow.classList.add("squad-section-row");
     headerRow.innerHTML = `
@@ -358,22 +346,15 @@ function renderSquad(players) {
     `;
     tbody.appendChild(headerRow);
 
-    // Filter players for this group
-    // Filter + sort players for this group
-   const groupPlayers = players
-    .filter(p => positions.includes(p.Position))
-    .sort((a, b) => {
-    // 1️⃣ Sort by position order within the group
-    const posA = positions.indexOf(a.Position);
-    const posB = positions.indexOf(b.Position);
-    if (posA !== posB) return posA - posB;
+    const groupPlayers = players
+      .filter(p => positions.includes(p.Position))
+      .sort((a, b) => {
+        const posA = positions.indexOf(a.Position);
+        const posB = positions.indexOf(b.Position);
+        if (posA !== posB) return posA - posB;
+        return b.market_value - a.market_value;
+      });
 
-    // 2️⃣ Then sort by value (market_value) descending
-    return b.market_value - a.market_value;
-  });
-
-
-    // Render each player
     groupPlayers.forEach(p => {
       const isListed = activeListingsCache.some(
         l => l.player_id === p.Konami_ID
@@ -531,10 +512,8 @@ async function dismissListingForUser(listingId) {
    MODULE J: LOAD LISTINGS (with auto-expiry + archived filter)
    ============================================================ */
 async function loadListings() {
-
   console.log("🔄 loadListings() called — filtering archived listings");
 
-  // 1. Load non-archived listings
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
@@ -548,7 +527,6 @@ async function loadListings() {
 
   console.log("📦 Listings returned:", data.length);
 
-  // 2. AUTO-UPDATE EXPIRED LISTINGS
   for (const l of data) {
     const now = new Date();
     const end = new Date(l.end_time);
@@ -565,7 +543,6 @@ async function loadListings() {
     }
   }
 
-  // 3. Reload listings after updates
   const refreshed = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
@@ -574,42 +551,22 @@ async function loadListings() {
 
   const updatedListings = refreshed.data || [];
 
- // Load per-user dismissed listing IDs
-const { data: dismissedRows } = await supabase
-  .from("User_Dismissed_Listings")
-  .select("listing_id")
-  .eq("user_id", auth.currentUser.uid);
+  const { data: dismissedRows } = await supabase
+    .from("User_Dismissed_Listings")
+    .select("listing_id")
+    .eq("user_id", auth.currentUser.uid);
 
-const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
+  const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
 
-// ⭐ Collapse duplicates: keep only newest bid per listing
-const latestByListing = new Map();
-
-for (const b of data || []) {
-  if (!latestByListing.has(b.listing_id)) {
-    latestByListing.set(b.listing_id, b);
-  }
-}
-
-const uniqueBids = Array.from(latestByListing.values());
-
-// Remove dismissed ones
-const filtered = uniqueBids.filter(b => !dismissedIds.has(b.listing_id));
-
-renderMyActiveBids(filtered);
-
-  // 4. Split into categories
   const active = updatedListings.filter(l => l.status === "Active");
   const review = updatedListings.filter(l => l.status === "Review");
   const closed = updatedListings.filter(l => l.status === "Closed");
 
-  // 5. Render UI
   const activeForView = active.filter(l => !dismissedIds.has(l.id));
   renderActiveListings(activeForView);
   renderSellerReview(review);
   renderClosedListings(closed);
 
-  // 6. Refresh squad + cache
   await loadActiveListingsCache();
   await loadSquad();
 }
@@ -626,7 +583,7 @@ async function renderActiveListings(listings) {
 
     const tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
-    tr.dataset.listingId = l.id;   // ⭐ REQUIRED FIX
+    tr.dataset.listingId = l.id;
 
     const showDismiss = l.status && l.status !== "Active";
 
@@ -651,25 +608,23 @@ async function renderActiveListings(listings) {
     tbody.appendChild(tr);
   }
 
- // Attach dismiss handlers
-tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
-  btn.addEventListener("click", async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-    const listingId = e.currentTarget.dataset.listingId;
+      const listingId = e.currentTarget.dataset.listingId;
 
-    await dismissListingForUser(listingId);
+      await dismissListingForUser(listingId);
 
-    const row = e.currentTarget.closest("tr");
-    if (row) row.remove();
+      const row = e.currentTarget.closest("tr");
+      if (row) row.remove();
 
-    loadActiveListings();
+      await loadListings();
+    });
   });
-});
 
-
-applyPESDBRowClicks("active-listings-body");
+  applyPESDBRowClicks("active-listings-body");
 }
 
 /* ============================================================
@@ -729,7 +684,7 @@ async function renderClosedListings(listings) {
       <td>${l.status}</td>
       <td>
         <button class="button" style="background:#aa2222; color:#fff;"
-                onclick="dismissClosedListing(${l.id})">❌</button>
+                onclick="dismissClosedListing(event, ${l.id})">❌</button>
       </td>
     `;
 
@@ -739,13 +694,18 @@ async function renderClosedListings(listings) {
   applyPESDBRowClicks("closed-listings-body");
 }
 
-async function dismissClosedListing(id) {
+async function dismissClosedListing(e, id) {
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
   await supabase
     .from("Player_Transfer_Listings")
     .update({ archived: true })
     .eq("id", id);
 
-  loadListings(); // refresh UI
+  await loadListings();
 }
 
 window.dismissClosedListing = dismissClosedListing;
@@ -778,29 +738,25 @@ async function loadMyActiveBids() {
     return;
   }
 
-// Load per-user dismissed listing IDs
-const { data: dismissedRows } = await supabase
-  .from("User_Dismissed_Listings")
-  .select("listing_id")
-  .eq("user_id", auth.currentUser.uid);
+  const { data: dismissedRows } = await supabase
+    .from("User_Dismissed_Listings")
+    .select("listing_id")
+    .eq("user_id", auth.currentUser.uid);
 
-const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
+  const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
 
-// ⭐ Collapse duplicates: keep only newest bid per listing
-const latestByListing = new Map();
+  const latestByListing = new Map();
 
-for (const b of data || []) {
-  if (!latestByListing.has(b.listing_id)) {
-    latestByListing.set(b.listing_id, b);
+  for (const b of data || []) {
+    if (!latestByListing.has(b.listing_id)) {
+      latestByListing.set(b.listing_id, b);
+    }
   }
-}
 
-const uniqueBids = Array.from(latestByListing.values());
+  const uniqueBids = Array.from(latestByListing.values());
+  const filtered = uniqueBids.filter(b => !dismissedIds.has(b.listing_id));
 
-// Remove dismissed ones
-const filtered = uniqueBids.filter(b => !dismissedIds.has(b.listing_id));
-
-renderMyActiveBids(filtered);
+  renderMyActiveBids(filtered);
 }
 
 async function renderMyActiveBids(bids) {
@@ -808,18 +764,16 @@ async function renderMyActiveBids(bids) {
   tbody.innerHTML = "";
 
   for (const b of bids) {
-
-    // ⭐ Skip rows where the join failed
     if (!b.Player_Transfer_Listings) continue;
 
     const l = b.Player_Transfer_Listings;
-    if (!l) continue;  // extra safety
+    if (!l) continue;
 
     const player = await fetchPlayerByID(l.player_id);
 
     const tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
-    tr.dataset.listingId = l.id;   // ⭐ required for dismiss
+    tr.dataset.listingId = l.id;
 
     const showDismiss = l.status && l.status !== "Active";
 
@@ -842,25 +796,23 @@ async function renderMyActiveBids(bids) {
     tbody.appendChild(tr);
   }
 
- // Attach dismiss handlers
-tbody.querySelectorAll(".dismiss-bid-btn").forEach(btn => {
-  btn.addEventListener("click", async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+  tbody.querySelectorAll(".dismiss-bid-btn").forEach(btn => {
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
 
-    const listingId = e.currentTarget.dataset.listingId;
+      const listingId = e.currentTarget.dataset.listingId;
 
-    await dismissListingForUser(listingId);
+      await dismissListingForUser(listingId);
 
-    const row = e.currentTarget.closest("tr");
-    if (row) row.remove();
+      const row = e.currentTarget.closest("tr");
+      if (row) row.remove();
 
-    loadMyActiveBids();
+      await loadMyActiveBids();
+    });
   });
-});
 
-
-applyPESDBRowClicks("my-active-bids-body");
+  applyPESDBRowClicks("my-active-bids-body");
 }
 
 /* ============================================================
@@ -874,10 +826,15 @@ function applyPESDBRowClicks(tbodyId) {
     row.style.cursor = "pointer";
 
     row.addEventListener("click", e => {
+      const target = e.target;
+      if (!(target instanceof Element)) {
+        return;
+      }
+
       if (
-        e.target.closest("select") ||
-        e.target.closest("button") ||
-        e.target.closest(".decision-buttons")
+        target.closest("select") ||
+        target.closest("button") ||
+        target.closest(".decision-buttons")
       ) {
         return;
       }
@@ -893,7 +850,6 @@ function applyPESDBRowClicks(tbodyId) {
     });
   });
 }
-
 
 /* ============================================================
    MODULE M: TIME REMAINING FORMATTER
