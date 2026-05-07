@@ -410,6 +410,17 @@ function renderSquad(players) {
 
   applyPESDBRowClicks("squad-body");
 }
+/* ============================================================
+   MODULE G: SQUAD ACTION HANDLER (GLOBAL)
+   ============================================================ */
+function handlePlayerAction(playerId, action) {
+  if (action === "list") {
+    openListPlayerModalByID({ Konami_ID: playerId });
+  }
+}
+
+// Required because dashboard.js is an ES module
+window.handlePlayerAction = handlePlayerAction;
 
 /* ============================================================
    MODULE H: LIST PLAYER MODAL
