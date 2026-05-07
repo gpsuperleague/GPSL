@@ -657,7 +657,8 @@ async function renderActiveListings(listings) {
       e.stopPropagation();
       const listingId = e.currentTarget.dataset.listingId;
       await dismissListingForUser(listingId);
-      e.currentTarget.closest("tr")?.remove();
+      const row = e.currentTarget.closest("tr");
+      if (row) row.remove();
     });
   });
 
@@ -840,7 +841,8 @@ async function renderMyActiveBids(bids) {
       e.stopPropagation();
       const listingId = e.currentTarget.dataset.listingId;
       await dismissListingForUser(listingId);
-      e.currentTarget.closest("tr")?.remove();
+      const row = e.currentTarget.closest("tr");
+      if (row) row.remove();
     });
   });
 
