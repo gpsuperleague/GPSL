@@ -840,17 +840,20 @@ async function renderMyActiveBids(bids) {
 
   // Attach dismiss handlers
   tbody.querySelectorAll(".dismiss-bid-btn").forEach(btn => {
-    btn.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      const listingId = e.currentTarget.dataset.listingId;
-      await dismissListingForUser(listingId);
-      const row = e.currentTarget.closest("tr");
-      if (row) row.remove();
-    });
-  });
+  btn.addEventListener("click", async (e) => {
+    e.stopPropagation();
 
-  applyPESDBRowClicks("my-active-bids-body");
-}
+    const listingId = e.currentTarget.dataset.listingId;
+
+    await dismissListingForUser(listingId);
+
+    const row = e.currentTarget.closest("tr");
+    if (row) row.remove();
+
+    // ⭐ Refresh My Active Bids
+    loadMyActiveBids();
+  });
+});
 
 /* ============================================================
    MODULE L: UNIVERSAL PESDB ROW CLICK HANDLER
