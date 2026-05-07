@@ -1,0 +1,16 @@
+name: Transfer Engine Runner
+
+on:
+  schedule:
+    - cron: "*/1 * * * *"
+  workflow_dispatch:
+
+jobs:
+  run-engine:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Supabase Transfer Engine
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            https://omyyogfumrjoaweuawjn.supabase.co/functions/v1/transferengine_run
