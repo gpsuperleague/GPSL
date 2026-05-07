@@ -356,7 +356,7 @@ function renderSeasonSignings(rows) {
     tr.innerHTML = `
       <td>${r.Players?.Name || "Unknown"}</td>
       <td>${r.seller_club_id || "-"}</td>
-      <td>₿ ${r.final_fee?.toLocaleString() || "-"}</td>
+      <td>₿ ${r.fee?.toLocaleString() || "-"}</td>
     `;
 
     tbody.appendChild(tr);
