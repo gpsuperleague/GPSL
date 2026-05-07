@@ -318,12 +318,13 @@ async function loadSeasonSignings() {
     .from("Transfer_History")
     .select(`
       player_id,
-      final_fee,
+      fee,
       seller_club_id,
+      transfer_time,
       Players ( Name )
     `)
     .eq("buyer_club_id", currentUserShort)
-    .order("completed_at", { ascending: false });
+    .order("transfer_time", { ascending: false });
 
   if (error) {
     console.error("Season signings load error:", error);
