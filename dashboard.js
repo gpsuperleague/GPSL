@@ -654,6 +654,7 @@ async function renderActiveListings(listings) {
  // Attach dismiss handlers
 tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
   btn.addEventListener("click", async (e) => {
+    e.preventDefault();
     e.stopPropagation();
 
     const listingId = e.currentTarget.dataset.listingId;
@@ -663,10 +664,10 @@ tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
     const row = e.currentTarget.closest("tr");
     if (row) row.remove();
 
-    // Refresh Active Listings
     loadActiveListings();
   });
 });
+
 
 applyPESDBRowClicks("active-listings-body");
 }
@@ -844,6 +845,7 @@ async function renderMyActiveBids(bids) {
  // Attach dismiss handlers
 tbody.querySelectorAll(".dismiss-bid-btn").forEach(btn => {
   btn.addEventListener("click", async (e) => {
+    e.preventDefault();
     e.stopPropagation();
 
     const listingId = e.currentTarget.dataset.listingId;
@@ -853,10 +855,10 @@ tbody.querySelectorAll(".dismiss-bid-btn").forEach(btn => {
     const row = e.currentTarget.closest("tr");
     if (row) row.remove();
 
-    // Refresh My Active Bids
     loadMyActiveBids();
   });
 });
+
 
 applyPESDBRowClicks("my-active-bids-body");
 }
