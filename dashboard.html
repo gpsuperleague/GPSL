@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <title>GPSL Club Dashboard</title>
 
-  <!-- ============================================
-       GLOBAL PAGE STYLE (base layout + buttons)
-       ============================================ -->
   <style>
     body {
       background: #111;
@@ -55,27 +52,16 @@
     }
   </style>
 
-  <!-- ============================================
-       DASHBOARD-SPECIFIC STYLES
-       ============================================ -->
   <link rel="stylesheet" href="dashboard.css">
 </head>
 
 <body>
 
-  <!-- ============================================
-       NAVIGATION (populated after auth)
-       ============================================ -->
   <div id="nav"></div>
 
   <div class="page-container">
 
-    <!-- ============================================
-         HEADER: Club Badge + User Email + Club Details
-         ============================================ -->
     <div id="headerContainer">
-
-      <!-- LEFT SIDE: Badge + Title -->
       <div id="headerLeft">
         <img id="clubBadgeHeader" src="" alt="Club Badge">
         <div>
@@ -84,12 +70,10 @@
         </div>
       </div>
 
-      <!-- RIGHT SIDE: Club Details Panel -->
       <div id="headerRight">
         <h2 class="panelTitle">Club Details</h2>
 
         <div id="clubDetailsPanel">
-
           <div class="detailRow">
             <label>Club:</label>
             <span id="clubNameField"></span>
@@ -111,14 +95,10 @@
             <label>Capacity:</label>
             <span id="capacityField"></span>
           </div>
-
         </div>
       </div>
     </div>
 
-    <!-- ============================================
-         STADIUM UPGRADE SECTION
-         ============================================ -->
     <div id="stadium-upgrade-section" class="card">
       <h3>Stadium</h3>
 
@@ -126,7 +106,6 @@
       <p><strong>Next Upgrade:</strong> <span id="next-capacity">Loading...</span></p>
       <p><strong>Upgrade Cost:</strong> <span id="upgrade-cost">Loading...</span></p>
 
-      <!-- Legacy fields -->
       <p><strong>Club Tier:</strong> <span id="club-tier">Loading...</span></p>
       <p><strong>Wage Percentage:</strong> <span id="wage-percentage">Loading...</span></p>
 
@@ -135,25 +114,16 @@
       <p id="upgrade-message" style="margin-top:10px;"></p>
     </div>
 
-    <!-- ============================================
-         MAIN CONTENT (Two Columns)
-         ============================================ -->
     <div id="mainContent">
 
-      <!-- ============================================
-           LEFT COLUMN: Finances + Squad
-           ============================================ -->
       <div id="leftColumn">
 
-        <!-- CLUB FINANCES -->
         <h2 class="section-header">Club Finances</h2>
         <div class="panel">
           <h2>Balance</h2>
-
           <div id="finance-balance" class="finance-box">Loading…</div>
         </div>
 
-        <!-- SQUAD -->
         <h2 class="section-header">Squad</h2>
         <div class="panel">
           <table class="gpsl-table">
@@ -175,14 +145,10 @@
 
       </div>
 
-      <!-- ============================================
-           RIGHT COLUMN: Transfer Centre
-           ============================================ -->
       <div id="rightColumn">
 
         <h2 class="section-header">Transfer Centre</h2>
 
-        <!-- MY ACTIVE BIDS -->
         <div class="panel">
           <h2>(In) Active Player Bids</h2>
           <table class="gpsl-table">
@@ -201,7 +167,6 @@
           </table>
         </div>
 
-        <!-- ACTIVE LISTINGS -->
         <div class="panel">
           <h2>(Out) Active Player Listings</h2>
           <table class="gpsl-table">
@@ -222,7 +187,6 @@
           </table>
         </div>
 
-        <!-- SELLER REVIEW -->
         <div class="panel">
           <h2>Seller Review</h2>
           <table class="gpsl-table">
@@ -241,7 +205,6 @@
           </table>
         </div>
 
-        <!-- CLOSED LISTINGS -->
         <div class="panel">
           <h2>Closed Listings</h2>
           <table class="gpsl-table">
@@ -260,15 +223,27 @@
           </table>
         </div>
 
+        <!-- ⭐ NEW PANEL: SEASON SIGNINGS -->
+        <div class="panel">
+          <h2>Season Signings</h2>
+          <table class="gpsl-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Bought From</th>
+                <th>Fee Paid</th>
+              </tr>
+            </thead>
+            <tbody id="season-signings-body"></tbody>
+          </table>
+        </div>
+
       </div>
 
     </div>
 
   </div>
 
-  <!-- ============================================
-       LIST PLAYER MODAL
-       ============================================ -->
   <div id="list-player-modal-backdrop">
     <div id="list-player-modal">
       <h3>List Player</h3>
@@ -305,17 +280,11 @@
     </div>
   </div>
 
-  <!-- ============================================
-       FIREBASE INITIALISATION
-       ============================================ -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
   <script src="firebase.js"></script>
 
-  <!-- ============================================
-       SUPABASE INITIALISATION
-       ============================================ -->
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
@@ -327,16 +296,10 @@
     window.supabase = supabase;
   </script>
 
-  <!-- ============================================
-       TRANSFER ENGINE + DASHBOARD LOGIC
-       ============================================ -->
   <script src="transferEngine.js"></script>
   <script type="module" src="clubs_lookup.js"></script>
   <script type="module" src="dashboard.js?v=999"></script>
 
-  <!-- ============================================
-       AUTH + NAVIGATION LOGIC
-       ============================================ -->
   <script>
     function logout() {
       auth.signOut().then(() => {
