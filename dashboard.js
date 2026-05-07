@@ -353,9 +353,11 @@ function renderSeasonSignings(rows) {
     const tr = document.createElement("tr");
     tr.dataset.konamiId = r.player_id;
 
+    const sellerFull = fullClubName(r.seller_club_id) || r.seller_club_id;
+
     tr.innerHTML = `
       <td>${r.Players?.Name || "Unknown"}</td>
-      <td>${r.seller_club_id || "-"}</td>
+      <td>${sellerFull}</td>
       <td>₿ ${r.fee?.toLocaleString() || "-"}</td>
     `;
 
