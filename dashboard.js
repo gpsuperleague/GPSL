@@ -369,6 +369,64 @@ function renderSeasonSignings(rows) {
 }
 
 /* ============================================================
+   MODULE O: SEASON SALES
+   ============================================================ */
+async function loadSeasonSales() {
+  const { data, error } = await supabase
+    .from("Transfer_History")
+    .select(`
+      player_id,
+      fee,
+      buyer_club_id,
+      transfer_time,
+      Players ( Name )
+    `)
+    .eq("seller_club_id", currentUserShort)
+    .order("transfer_time", { ascending: false });
+
+  if (error) {
+    console.error("Season sales load error:", error);
+    return;
+  }
+
+  renderSeasonSales(data || []);
+}
+
+function renderSeasonSales(rows) {
+  const tbody = document.getElementById("season-sales-body");
+  tbody.innerHTML = "";
+
+  if (!rows.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="3" style="text-align:center; opacity:0.7;">
+          No sales this season.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  rows.forEach(r => {
+    const tr = document.createElement("tr");
+    tr.dataset.konamiId = r.player_id;
+
+    // Convert buyer shortname → full club name
+    const buyerFull = fullClubName(r.buyer_club_id) || r.buyer_club_id;
+
+    tr.innerHTML = `
+      <td>${r.Players?.Name || "Unknown"}</td>
+      <td>${buyerFull}</td>
+      <td>₿ ${r.fee?.toLocaleString() || "-"}</td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  applyPESDBRowClicks("season-sales-body");
+}
+
+/* ============================================================
    MODULE G: SQUAD
    ============================================================ */
 async function loadSquad() {
