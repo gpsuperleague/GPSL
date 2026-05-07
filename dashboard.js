@@ -651,18 +651,24 @@ async function renderActiveListings(listings) {
     tbody.appendChild(tr);
   }
 
-  // Attach dismiss handlers
-  tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
-    btn.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      const listingId = e.currentTarget.dataset.listingId;
-      await dismissListingForUser(listingId);
-      const row = e.currentTarget.closest("tr");
-      if (row) row.remove();
-    });
-  });
+ // Attach dismiss handlers
+tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
+  btn.addEventListener("click", async (e) => {
+    e.stopPropagation();
 
-  applyPESDBRowClicks("active-listings-body");
+    const listingId = e.currentTarget.dataset.listingId;
+
+    await dismissListingForUser(listingId);
+
+    const row = e.currentTarget.closest("tr");
+    if (row) row.remove();
+
+    // Refresh Active Listings
+    loadActiveListings();
+  });
+});
+
+applyPESDBRowClicks("active-listings-body");
 }
 
 /* ============================================================
