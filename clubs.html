@@ -4,11 +4,25 @@
   <meta charset="UTF-8">
   <title>Clubs</title>
 
-  <!-- ============================================
-       STYLE: Club Grid + Buttons
-       ============================================ -->
+  <!-- Use the same stylesheet as dashboard -->
+  <link rel="stylesheet" href="dashboard.css">
+
   <style>
-    /* Buttons (matches index/dashboard theme) */
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1 {
+      text-align: center;
+      color: #ff9900;
+      margin-top: 20px;
+    }
+
+    /* Buttons (matches dashboard theme) */
     a.button, button.button {
       display: inline-block;
       padding: 10px 20px;
@@ -20,6 +34,7 @@
       margin: 5px;
       transition: 0.2s;
       cursor: pointer;
+      border: none;
     }
 
     a.button:hover, button.button:hover {
@@ -38,44 +53,49 @@
     .club-card {
       text-align: center;
       cursor: pointer;
+      background: #1a1a1a;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      transition: 0.2s;
+    }
+
+    .club-card:hover {
+      transform: scale(1.05);
+      border-color: #ff9900;
     }
 
     .club-card img {
       width: 100px;
       height: 100px;
       object-fit: contain;
+      margin-bottom: 10px;
     }
   </style>
 </head>
 
 <body>
 
-  <!-- ============================================
-       NAVIGATION (populated after auth)
-       ============================================ -->
+  <!-- NAVIGATION -->
   <div id="nav" style="margin-bottom:20px;"></div>
 
   <h1>Clubs</h1>
 
-  <!-- ============================================
-       CLUB GRID CONTAINER
-       ============================================ -->
+  <!-- CLUB GRID -->
   <div id="clubs" class="club-grid"></div>
 
-  <!-- ============================================
-       MODULE A: Supabase Club Loader
-       ============================================ -->
+  <!-- LOAD CLUBS -->
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+    import { loadClubsMap, fullClubName, shortNameFromFull } from "./clubs_lookup.js";
 
     const supabase = createClient(
       'https://omyyogfumrjoaweuawjn.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
     );
 
-    /* --------------------------------------------
-       Load all clubs from Supabase
-       -------------------------------------------- */
+    await loadClubsMap(); // ensure lookup map is ready
+
     async function loadClubs() {
       const { data, error } = await supabase
         .from("Clubs")
@@ -88,16 +108,13 @@
       }
 
       const container = document.getElementById("clubs");
-      if (!container) {
-        console.error("Element #clubs not found");
-        return;
-      }
 
       data.forEach(club => {
         const div = document.createElement("div");
         div.className = "club-card";
 
         div.onclick = () => {
+          // Use full club name in URL (human readable)
           window.location.href = `club.html?club=${encodeURIComponent(club.Club)}`;
         };
 
@@ -113,17 +130,12 @@
     loadClubs();
   </script>
 
-  <!-- ============================================
-       MODULE B: Firebase Auth + Navigation
-       ============================================ -->
+  <!-- AUTH + NAV -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="firebase.js"></script>
 
   <script>
-    /* --------------------------------------------
-       Protect page + build navigation
-       -------------------------------------------- */
     auth.onAuthStateChanged(user => {
       const nav = document.getElementById("nav");
 
@@ -136,7 +148,7 @@
         <a href="index.html" class="button">Home</a>
         <a href="GPDB.html" class="button">Player Database</a>
         <a href="dashboard.html" class="button">Dashboard</a>
-        <a href="all_listings.html" class="button">Transfer-List</a>
+        <a href="all_listings.html" class="button">Transfer Market</a>
         <button onclick="logout()" class="button">Logout</button>
       `;
     });
