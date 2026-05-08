@@ -199,7 +199,7 @@
                     <td>${p.Nation}</td>
                     <td>${p.Position}</td>
                     <td>${p.Rating}</td>
-                    <td>₿ ${p.market_value.toLocaleString()}</td>
+                    <td>₿ ${Number(p.market_value).toLocaleString("en-GB")}</td>
                     <td>${p.Playstyle || "-"}</td>
                   </tr>
                 `).join("")}
