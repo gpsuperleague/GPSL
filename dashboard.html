@@ -106,7 +106,7 @@
       border: none;
     }
 
-    /* NEW FLEX ROW FOR CLUB DETAILS + STADIUM */
+    /* NEW FLEX ROW FOR CLUB DETAILS + STADIUM + FINANCES */
     .top-panels-row {
       display: flex;
       gap: 20px;
@@ -152,7 +152,7 @@
       </div>
     </div>
 
-    <!-- ⭐ NEW TWO‑COLUMN ROW: CLUB DETAILS + STADIUM -->
+    <!-- ⭐ NEW THREE‑COLUMN ROW: CLUB DETAILS + STADIUM + FINANCES -->
     <div class="top-panels-row">
 
       <!-- CLUB DETAILS PANEL -->
@@ -184,7 +184,7 @@
         </div>
       </div>
 
-      <!-- ⭐ STADIUM PANEL MOVED HERE -->
+      <!-- STADIUM PANEL -->
       <div class="panel">
         <h2 class="panelTitle">Stadium</h2>
 
@@ -200,6 +200,14 @@
         <p id="upgrade-message" style="margin-top:10px;"></p>
       </div>
 
+      <!-- ⭐ NEW: CLUB FINANCES PANEL -->
+      <div class="panel">
+        <h2 class="panelTitle">Club Finances</h2>
+
+        <p><strong>Balance:</strong></p>
+        <div id="finance-balance" class="finance-box">Loading…</div>
+      </div>
+
     </div>
 
     <!-- MAIN CONTENT -->
@@ -207,11 +215,7 @@
 
       <div id="leftColumn">
 
-        <h2 class="section-header">Club Finances</h2>
-        <div class="panel">
-          <h2>Balance</h2>
-          <div id="finance-balance" class="finance-box">Loading…</div>
-        </div>
+        <!-- REMOVED OLD FINANCES SECTION -->
 
         <h2 class="section-header">Squad</h2>
         <div class="panel">
