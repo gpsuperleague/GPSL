@@ -71,10 +71,14 @@
       border: 1px solid #333;
     }
 
+    /* ===============================
+       TABLE ALIGNMENT FIX
+       =============================== */
     table.gpsl-table {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 30px;
+      table-layout: fixed; /* forces identical column widths */
     }
 
     table.gpsl-table th,
@@ -82,12 +86,34 @@
       border: 1px solid #333;
       padding: 8px;
       text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     table.gpsl-table th {
       background: #222;
       color: #ff9900;
     }
+
+    /* Fixed column widths */
+    table.gpsl-table th:nth-child(1),
+    table.gpsl-table td:nth-child(1) { width: 28%; }
+
+    table.gpsl-table th:nth-child(2),
+    table.gpsl-table td:nth-child(2) { width: 10%; }
+
+    table.gpsl-table th:nth-child(3),
+    table.gpsl-table td:nth-child(3) { width: 12%; }
+
+    table.gpsl-table th:nth-child(4),
+    table.gpsl-table td:nth-child(4) { width: 10%; }
+
+    table.gpsl-table th:nth-child(5),
+    table.gpsl-table td:nth-child(5) { width: 20%; }
+
+    table.gpsl-table th:nth-child(6),
+    table.gpsl-table td:nth-child(6) { width: 20%; }
   </style>
 </head>
 
@@ -139,7 +165,7 @@
       `;
     }
 
-    /* POSITION GROUPS (same as dashboard) */
+    /* POSITION GROUPS */
     const POSITION_GROUPS = {
       "Goalkeepers": ["GK"],
       "Defenders": ["LB", "CB", "RB"],
@@ -164,7 +190,6 @@
       const container = document.getElementById("squadContainer");
       container.innerHTML = "";
 
-      /* GROUP + SORT */
       for (const [groupName, positions] of Object.entries(POSITION_GROUPS)) {
 
         const groupPlayers = data
