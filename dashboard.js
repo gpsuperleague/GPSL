@@ -788,7 +788,7 @@ async function renderSellerReview(listings) {
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Rating || "-"}</td>
-      <td>₿ ${l.current_highest_bid ? Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</td>
+      <td><span class="money">${l.current_highest_bid ? "₿ " + Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</span></td>
       <td>${l.current_highest_bidder || "-"}</td>
       <td>${new Date(l.end_time).toLocaleString()}</td>
       <td>
