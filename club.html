@@ -57,9 +57,10 @@
       object-fit: contain;
     }
 
-    h2 {
+    h2.section-title {
       margin-left: 20px;
       color: #ff9900;
+      margin-top: 40px;
     }
 
     .panel {
@@ -73,6 +74,7 @@
     table.gpsl-table {
       width: 100%;
       border-collapse: collapse;
+      margin-bottom: 30px;
     }
 
     table.gpsl-table th,
@@ -95,14 +97,7 @@
 
   <div id="clubHeader" class="club-header"></div>
 
-  <h2>Squad List</h2>
-
-  <div class="panel">
-    <table class="gpsl-table">
-      <thead id="tableHead"></thead>
-      <tbody id="tableBody"></tbody>
-    </table>
-  </div>
+  <div id="squadContainer"></div>
 
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
@@ -144,6 +139,14 @@
       `;
     }
 
+    /* POSITION GROUPS (same as dashboard) */
+    const POSITION_GROUPS = {
+      "Goalkeepers": ["GK"],
+      "Defenders": ["LB", "CB", "RB"],
+      "Midfielders": ["DMF", "LMF", "CMF", "RMF", "AMF"],
+      "Attackers": ["SS", "LW", "CF", "RW"]
+    };
+
     /* LOAD SQUAD */
     async function loadPlayers() {
       if (!clubShortName) return;
@@ -151,45 +154,60 @@
       const { data, error } = await supabase
         .from("Players")
         .select("Name, Nation, Position, Rating, market_value, Playstyle")
-        .eq("Contracted_Team", clubShortName)
-        .order("Rating", { ascending: false });
-
-      const head = document.getElementById("tableHead");
-      const body = document.getElementById("tableBody");
+        .eq("Contracted_Team", clubShortName);
 
       if (error) {
         console.error("Players load error:", error);
-        head.innerHTML = "<tr><th>Error loading players</th></tr>";
         return;
       }
 
-      if (!data.length) {
-        head.innerHTML = "<tr><th>No players found</th></tr>";
-        body.innerHTML = "";
-        return;
+      const container = document.getElementById("squadContainer");
+      container.innerHTML = "";
+
+      /* GROUP + SORT */
+      for (const [groupName, positions] of Object.entries(POSITION_GROUPS)) {
+
+        const groupPlayers = data
+          .filter(p => positions.includes(p.Position))
+          .sort((a, b) => {
+            const posA = positions.indexOf(a.Position);
+            const posB = positions.indexOf(b.Position);
+            if (posA !== posB) return posA - posB;
+            return b.market_value - a.market_value;
+          });
+
+        if (!groupPlayers.length) continue;
+
+        container.innerHTML += `
+          <h2 class="section-title">${groupName}</h2>
+          <div class="panel">
+            <table class="gpsl-table">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Nat</th>
+                  <th>Pos</th>
+                  <th>Rating</th>
+                  <th>Value</th>
+                  <th>Playstyle</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${groupPlayers.map(p => `
+                  <tr>
+                    <td>${p.Name}</td>
+                    <td>${p.Nation}</td>
+                    <td>${p.Position}</td>
+                    <td>${p.Rating}</td>
+                    <td>₿ ${p.market_value.toLocaleString()}</td>
+                    <td>${p.Playstyle || "-"}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
       }
-
-      head.innerHTML = `
-        <tr>
-          <th>Player</th>
-          <th>Nat</th>
-          <th>Pos</th>
-          <th>Rating</th>
-          <th>Value</th>
-          <th>Playstyle</th>
-        </tr>
-      `;
-
-      body.innerHTML = data.map(p => `
-        <tr>
-          <td>${p.Name}</td>
-          <td>${p.Nation}</td>
-          <td>${p.Position}</td>
-          <td>${p.Rating}</td>
-          <td>₿ ${p.market_value.toLocaleString()}</td>
-          <td>${p.Playstyle || "-"}</td>
-        </tr>
-      `).join("");
     }
 
     (async () => {
