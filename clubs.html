@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Clubs</title>
 
-  <!-- Use the same stylesheet as dashboard -->
   <link rel="stylesheet" href="dashboard.css">
 
   <style>
@@ -22,7 +21,6 @@
       margin-top: 20px;
     }
 
-    /* Buttons (matches dashboard theme) */
     a.button, button.button {
       display: inline-block;
       padding: 10px 20px;
@@ -42,7 +40,6 @@
       transform: scale(1.05);
     }
 
-    /* Grid of club badges */
     .club-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -76,25 +73,19 @@
 
 <body>
 
-  <!-- NAVIGATION -->
   <div id="nav" style="margin-bottom:20px;"></div>
 
   <h1>Clubs</h1>
 
-  <!-- CLUB GRID -->
   <div id="clubs" class="club-grid"></div>
 
-  <!-- LOAD CLUBS -->
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-    import { loadClubsMap, fullClubName, shortNameFromFull } from "./clubs_lookup.js";
 
     const supabase = createClient(
       'https://omyyogfumrjoaweuawjn.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
     );
-
-    await loadClubsMap(); // ensure lookup map is ready
 
     async function loadClubs() {
       const { data, error } = await supabase
@@ -114,7 +105,6 @@
         div.className = "club-card";
 
         div.onclick = () => {
-          // Use full club name in URL (human readable)
           window.location.href = `club.html?club=${encodeURIComponent(club.Club)}`;
         };
 
@@ -130,7 +120,6 @@
     loadClubs();
   </script>
 
-  <!-- AUTH + NAV -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="firebase.js"></script>
