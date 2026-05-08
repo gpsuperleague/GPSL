@@ -742,7 +742,7 @@ async function renderActiveListings(listings) {
       <td>${player?.Position || "-"}</td>
       <td>${player?.Rating || "-"}</td>
       <td><span class="money">₿ ${Number(l.market_value).toLocaleString("en-GB")}</span></td>
-      <td>₿ ${Number(l.reserve_price).toLocaleString("en-GB")}</td>
+      <td><span class="money">₿ ${Number(l.reserve_price).toLocaleString("en-GB")}</span></td>
       <td>${formatTimeRemaining(l.end_time)}</td>
       <td>₿ ${l.current_highest_bid ? Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</td>
       <td>${l.current_highest_bidder || "-"}</td>
