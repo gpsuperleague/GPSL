@@ -149,8 +149,8 @@ async function loadFinance() {
     return;
   }
 
-  document.getElementById("finance-balance").textContent =
-    `₿ ${Number(data.balance).toLocaleString("en-GB")}`;
+  document.getElementById("finance-balance").innerHTML =
+  `<span class="money">₿ ${Number(data.balance).toLocaleString("en-GB")}</span>`;
 }
 
 /* ============================================================
