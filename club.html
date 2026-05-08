@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Club Squad</title>
 
-  <!-- Use dashboard styling -->
   <link rel="stylesheet" href="dashboard.css">
 
   <style>
@@ -92,10 +91,8 @@
 
 <body>
 
-  <!-- NAV -->
   <div id="nav"></div>
 
-  <!-- CLUB HEADER -->
   <div id="clubHeader" class="club-header"></div>
 
   <h2>Squad List</h2>
@@ -107,34 +104,33 @@
     </table>
   </div>
 
-  <!-- SCRIPT -->
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-    import { loadClubsMap, shortNameFromFull } from "./clubs_lookup.js";
 
     const supabase = createClient(
       'https://omyyogfumrjoaweuawjn.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
     );
 
-    await loadClubsMap();
-
     const params = new URLSearchParams(window.location.search);
     const fullClubName = params.get("club");
-    const short = shortNameFromFull(fullClubName);
 
-    /* LOAD CLUB INFO */
+    let clubShortName = null;
+
     async function loadClub() {
       const { data: club, error } = await supabase
         .from("Clubs")
         .select("*")
-        .eq("ShortName", short)
+        .eq("Club", fullClubName)
         .single();
 
       if (error) {
-        console.error(error);
+        console.error("Club load error:", error);
+        document.getElementById("clubHeader").innerHTML = "<h1>Club not found</h1>";
         return;
       }
+
+      clubShortName = club.ShortName;
 
       document.getElementById("clubHeader").innerHTML = `
         <img src="images/club_badges/${club.ShortName}.png" alt="${club.Club} badge">
@@ -147,25 +143,29 @@
       `;
     }
 
-    /* LOAD SQUAD */
     async function loadPlayers() {
+      if (!clubShortName) {
+        return;
+      }
+
       const { data, error } = await supabase
         .from("Players")
         .select("Name, Nationality, Position, Rating, Value, Status")
-        .eq("Contracted_Team", short)
+        .eq("Contracted_Team", clubShortName)
         .order("Rating", { ascending: false });
 
       const head = document.getElementById("tableHead");
       const body = document.getElementById("tableBody");
 
       if (error) {
-        console.error(error);
+        console.error("Players load error:", error);
         head.innerHTML = "<tr><th>Error loading players</th></tr>";
         return;
       }
 
       if (!data.length) {
         head.innerHTML = "<tr><th>No players found</th></tr>";
+        body.innerHTML = "";
         return;
       }
 
@@ -192,11 +192,12 @@
       `).join("");
     }
 
-    loadClub();
-    loadPlayers();
+    (async () => {
+      await loadClub();
+      await loadPlayers();
+    })();
   </script>
 
-  <!-- AUTH -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
