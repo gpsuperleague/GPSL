@@ -152,7 +152,7 @@
       </div>
     </div>
 
-    <!-- ⭐ NEW THREE‑COLUMN ROW: CLUB DETAILS + STADIUM + FINANCES -->
+    <!-- ⭐ THREE‑COLUMN ROW: CLUB DETAILS + STADIUM + FINANCES -->
     <div class="top-panels-row">
 
       <!-- CLUB DETAILS PANEL -->
@@ -181,6 +181,12 @@
             <label>Capacity:</label>
             <span id="capacityField"></span>
           </div>
+
+          <!-- ⭐ MOVED HERE -->
+          <div class="detailRow">
+            <label>Club Tier:</label>
+            <span id="club-tier">Loading...</span>
+          </div>
         </div>
       </div>
 
@@ -192,20 +198,22 @@
         <p><strong>Next Upgrade:</strong> <span id="next-capacity">Loading...</span></p>
         <p><strong>Upgrade Cost:</strong> <span id="upgrade-cost">Loading...</span></p>
 
-        <p><strong>Club Tier:</strong> <span id="club-tier">Loading...</span></p>
-        <p><strong>Wage Percentage:</strong> <span id="wage-percentage">Loading...</span></p>
+        <!-- ⭐ REMOVED CLUB TIER + WAGE % FROM HERE -->
 
         <button id="upgrade-stadium-btn" class="button">Upgrade Stadium</button>
 
         <p id="upgrade-message" style="margin-top:10px;"></p>
       </div>
 
-      <!-- ⭐ NEW: CLUB FINANCES PANEL -->
+      <!-- CLUB FINANCES PANEL -->
       <div class="panel">
         <h2 class="panelTitle">Club Finances</h2>
 
         <p><strong>Balance:</strong></p>
         <div id="finance-balance" class="finance-box">Loading…</div>
+
+        <!-- ⭐ MOVED HERE -->
+        <p style="margin-top:15px;"><strong>Wage Percentage:</strong> <span id="wage-percentage">Loading...</span></p>
       </div>
 
     </div>
@@ -214,8 +222,6 @@
     <div id="mainContent">
 
       <div id="leftColumn">
-
-        <!-- REMOVED OLD FINANCES SECTION -->
 
         <h2 class="section-header">Squad</h2>
         <div class="panel">
