@@ -589,8 +589,6 @@ async function validateAndCreateListing() {
     return;
   }
 
-  const endTime = new Date(Date.now() + 24 * 60 * 60 * 
-
  const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
   await supabase.from("Player_Transfer_Listings").insert({
