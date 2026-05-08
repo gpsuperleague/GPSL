@@ -5,15 +5,18 @@
   <title>GPSL Player Database</title>
 
   <!-- ============================================
-       PAGE STYLE (GPSL Theme)
+       PAGE STYLE (GPSL Dark Theme)
        ============================================ -->
   <style>
     body {
+      background: #111;
+      color: #ddd;
       font-family: Arial, sans-serif;
       padding: 20px;
+      margin: 0;
     }
 
-    /* Buttons (matches dashboard/index theme) */
+    /* Buttons (GPSL orange theme) */
     a.button, button.button {
       display: inline-block;
       padding: 10px 20px;
@@ -25,6 +28,7 @@
       margin: 5px;
       transition: 0.2s;
       cursor: pointer;
+      border: none;
     }
 
     a.button:hover, button.button:hover {
@@ -46,7 +50,7 @@
 
     /* Filter Groups */
     .filter-group {
-      background:#222;
+      background:#1a1a1a;
       color:#ff9900;
       padding:10px 14px;
       border-radius:6px;
@@ -55,6 +59,7 @@
       flex-wrap:wrap;
       gap:12px;
       align-items:center;
+      border:1px solid #333;
     }
 
     .filter-group strong {
@@ -62,6 +67,15 @@
       font-size:14px;
       margin-bottom:4px;
       color:#ffaa22;
+    }
+
+    /* Inputs */
+    input, select {
+      background:#222;
+      color:#ddd;
+      border:1px solid #444;
+      padding:4px 6px;
+      border-radius:4px;
     }
 
     /* GPSL Table */
@@ -72,6 +86,7 @@
       color: #ddd;
       border-radius: 6px;
       overflow: hidden;
+      margin-top: 10px;
     }
 
     th {
@@ -124,6 +139,12 @@
     #pagination {
       color: #ff9900;
       font-weight: bold;
+      margin-top: 20px;
+    }
+
+    #rowsPerPage {
+      margin-top: 20px;
+      color: #ff9900;
     }
   </style>
 </head>
@@ -176,10 +197,10 @@
   </table>
 
   <!-- Pagination -->
-  <div id="pagination" style="margin-top:20px;"></div>
+  <div id="pagination"></div>
 
   <!-- Rows per page -->
-  <div id="rowsPerPage" style="margin-top:20px;">
+  <div id="rowsPerPage">
     <label>Rows per page:
       <select id="pageSizeSelect">
         <option value="100">100</option>
