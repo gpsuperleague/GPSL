@@ -822,7 +822,7 @@ async function renderClosedListings(listings) {
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Rating || "-"}</td>
-      <td>₿ ${l.final_bid ? Number(l.final_bid).toLocaleString("en-GB") : "-"}</td>
+      <td><span class="money">${l.final_bid ? "₿ " + Number(l.final_bid).toLocaleString("en-GB") : "-"}</span></td>
       <td>${l.winner || "-"}</td>
       <td>${l.status}</td>
       <td>
