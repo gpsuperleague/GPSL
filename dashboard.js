@@ -589,9 +589,9 @@ async function validateAndCreateListing() {
     return;
   }
 
-  const endTime = new Date(Date.now() + 24 * 60 * 60 *
+  const endTime = new Date(Date.now() + 24 * 60 * 60 * 
 
-      const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+ const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
   await supabase.from("Player_Transfer_Listings").insert({
     player_id: selectedPlayerForListing.Konami_ID,
@@ -997,4 +997,4 @@ function formatTimeRemaining(endTime) {
   return `${hours}h ${mins}m`;
 }
 
-console.log("Dashboard JS loaded successfully.");                       
+console.log("Dashboard JS loaded successfully.");
