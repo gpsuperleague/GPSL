@@ -150,7 +150,7 @@ async function loadFinance() {
   }
 
   document.getElementById("finance-balance").textContent =
-    `₿ ${data.balance.toLocaleString()}`;
+    `₿ ${Number(data.balance).toLocaleString("en-GB")}`;
 }
 
 /* ============================================================
@@ -359,7 +359,7 @@ function renderSeasonSignings(rows) {
     tr.innerHTML = `
       <td>${r.Players?.Name || "Unknown"}</td>
       <td>${sellerFull}</td>
-      <td>₿ ${r.fee?.toLocaleString() || "-"}</td>
+      <td>₿ ${Number(r.fee).toLocaleString("en-GB")}</td>
     `;
 
     tbody.appendChild(tr);
@@ -411,13 +411,12 @@ function renderSeasonSales(rows) {
     const tr = document.createElement("tr");
     tr.dataset.konamiId = r.player_id;
 
-    // Convert buyer shortname → full club name
     const buyerFull = fullClubName(r.buyer_club_id) || r.buyer_club_id;
 
     tr.innerHTML = `
       <td>${r.Players?.Name || "Unknown"}</td>
       <td>${buyerFull}</td>
-      <td>₿ ${r.fee?.toLocaleString() || "-"}</td>
+      <td>₿ ${Number(r.fee).toLocaleString("en-GB")}</td>
     `;
 
     tbody.appendChild(tr);
@@ -496,7 +495,7 @@ function renderSquad(players) {
         <td>${p.Position}</td>
         <td>${p.Rating || p.OVR}</td>
         <td>${p.Playstyle || "-"}</td>
-        <td>₿ ${p.market_value}</td>
+        <td>₿ ${Number(p.market_value).toLocaleString("en-GB")}</td>
         <td>${status}</td>
         <td>${actionDropdown}</td>
       `;
@@ -542,15 +541,21 @@ function openListPlayerModal(player) {
     `${player.Position} • Rating ${player.Rating}`;
 
   document.getElementById("modalMarketValue").textContent =
-    `₿ ${player.market_value}`;
+    `₿ ${Number(player.market_value).toLocaleString("en-GB")}`;
   document.getElementById("modalMaxReserve").textContent =
-    `₿ ${player.Maximum_Reserve_Price}`;
+    `₿ ${Number(player.Maximum_Reserve_Price).toLocaleString("en-GB")}`;
 
   document.getElementById("reserveInput").value = "";
   document.getElementById("reserveError").textContent = "";
 
   document.getElementById("list-player-modal-backdrop").style.display = "flex";
 }
+
+document.getElementById("useMarketValueBtn").onclick = () => {
+  const mv = selectedPlayerForListing.market_value;
+  document.getElementById("reserveInput").value = mv;
+  document.getElementById("reserveError").textContent = "";
+};
 
 document.getElementById("useMaxReserveBtn").onclick = () => {
   const max = selectedPlayerForListing.Maximum_Reserve_Price;
@@ -574,17 +579,19 @@ async function validateAndCreateListing() {
 
   if (reserve < mv) {
     document.getElementById("reserveError").textContent =
-      `Reserve must be at least market value (₿ ${mv}).`;
+      `Reserve must be at least market value (₿ ${mv.toLocaleString("en-GB")}).`;
     return;
   }
 
   if (reserve > max) {
     document.getElementById("reserveError").textContent =
-      `Reserve cannot exceed max allowed (₿ ${max}).`;
+      `Reserve cannot exceed max allowed (₿ ${max.toLocaleString("en-GB")}).`;
     return;
   }
 
-  const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const endTime = new Date(Date.now() + 24 * 60 * 60 *
+
+      const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
   await supabase.from("Player_Transfer_Listings").insert({
     player_id: selectedPlayerForListing.Konami_ID,
@@ -668,7 +675,7 @@ async function loadListings() {
   }
 
   // 3. Reload listings after updates
-   const refreshed = await supabase
+  const refreshed = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
     .eq("seller_club_id", currentUserShort)
@@ -736,10 +743,10 @@ async function renderActiveListings(listings) {
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Rating || "-"}</td>
-      <td>₿ ${l.market_value}</td>
-      <td>₿ ${l.reserve_price}</td>
+      <td>₿ ${Number(l.market_value).toLocaleString("en-GB")}</td>
+      <td>₿ ${Number(l.reserve_price).toLocaleString("en-GB")}</td>
       <td>${formatTimeRemaining(l.end_time)}</td>
-      <td>${l.current_highest_bid || "-"}</td>
+      <td>₿ ${l.current_highest_bid ? Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</td>
       <td>${l.current_highest_bidder || "-"}</td>
       <td>
         ${
@@ -783,7 +790,7 @@ async function renderSellerReview(listings) {
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Rating || "-"}</td>
-      <td>₿ ${l.current_highest_bid || "-"}</td>
+      <td>₿ ${l.current_highest_bid ? Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</td>
       <td>${l.current_highest_bidder || "-"}</td>
       <td>${new Date(l.end_time).toLocaleString()}</td>
       <td>
@@ -817,7 +824,7 @@ async function renderClosedListings(listings) {
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Rating || "-"}</td>
-      <td>${l.final_bid || "-"}</td>
+      <td>₿ ${l.final_bid ? Number(l.final_bid).toLocaleString("en-GB") : "-"}</td>
       <td>${l.winner || "-"}</td>
       <td>${l.status}</td>
       <td>
@@ -914,8 +921,8 @@ async function renderMyActiveBids(bids) {
     tr.innerHTML = `
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
-      <td>₿ ${b.bid_amount}</td>
-      <td>₿ ${l.current_highest_bid || "-"}</td>
+      <td>₿ ${Number(b.bid_amount).toLocaleString("en-GB")}</td>
+      <td>₿ ${l.current_highest_bid ? Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</td>
       <td>${l.current_highest_bidder || "-"}</td>
       <td>${new Date(l.end_time).toLocaleString()}</td>
       <td>
@@ -990,4 +997,4 @@ function formatTimeRemaining(endTime) {
   return `${hours}h ${mins}m`;
 }
 
-console.log("Dashboard JS loaded successfully.");
+console.log("Dashboard JS loaded successfully.");                       
