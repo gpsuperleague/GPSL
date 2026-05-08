@@ -421,3 +421,7 @@ table.gpsl-table tr:nth-child(even) {
   font-size: 15px;
   text-transform: uppercase;
 }
+
+.money {
+  white-space: nowrap;
+}
