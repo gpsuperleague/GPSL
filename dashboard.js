@@ -495,7 +495,7 @@ function renderSquad(players) {
         <td>${p.Position}</td>
         <td>${p.Rating || p.OVR}</td>
         <td>${p.Playstyle || "-"}</td>
-        <td>₿ ${Number(p.market_value).toLocaleString("en-GB")}</td>
+        <td><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
         <td>${status}</td>
         <td>${actionDropdown}</td>
       `;
