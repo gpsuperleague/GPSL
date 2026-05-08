@@ -117,6 +117,7 @@
 
     let clubShortName = null;
 
+    /* LOAD CLUB INFO */
     async function loadClub() {
       const { data: club, error } = await supabase
         .from("Clubs")
@@ -143,14 +144,13 @@
       `;
     }
 
+    /* LOAD SQUAD */
     async function loadPlayers() {
-      if (!clubShortName) {
-        return;
-      }
+      if (!clubShortName) return;
 
       const { data, error } = await supabase
         .from("Players")
-        .select("Name, Nationality, Position, Rating, Value, Status")
+        .select("Name, Nation, Position, Rating, market_value, Playstyle")
         .eq("Contracted_Team", clubShortName)
         .order("Rating", { ascending: false });
 
@@ -176,18 +176,18 @@
           <th>Pos</th>
           <th>Rating</th>
           <th>Value</th>
-          <th>Status</th>
+          <th>Playstyle</th>
         </tr>
       `;
 
       body.innerHTML = data.map(p => `
         <tr>
           <td>${p.Name}</td>
-          <td>${p.Nationality}</td>
+          <td>${p.Nation}</td>
           <td>${p.Position}</td>
           <td>${p.Rating}</td>
-          <td>₿ ${p.Value.toLocaleString()}</td>
-          <td>${p.Status || "-"}</td>
+          <td>₿ ${p.market_value.toLocaleString()}</td>
+          <td>${p.Playstyle || "-"}</td>
         </tr>
       `).join("");
     }
