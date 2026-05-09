@@ -591,14 +591,58 @@ async function validateAndCreateListing() {
 
  const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-  await supabase.from("Player_Transfer_Listings").insert({
-    player_id: selectedPlayerForListing.Konami_ID,
-    seller_club_id: currentUserShort,
-    reserve_price: reserve,
-    market_value: mv,
-    status: "Active",
-    end_time: endTime
-  });
+async function validateAndCreateListing() {
+  const reserve = Number(document.getElementById("reserveInput").value);
+  const mv = selectedPlayerForListing.market_value;
+  const max = selectedPlayerForListing.Maximum_Reserve_Price;
+
+  if (reserve < mv) {
+    document.getElementById("reserveError").textContent =
+      `Reserve must be at least market value (₿ ${mv.toLocaleString("en-GB")}).`;
+    return;
+  }
+
+  if (reserve > max) {
+    document.getElementById("reserveError").textContent =
+      `Reserve cannot exceed max allowed (₿ ${max.toLocaleString("en-GB")}).`;
+    return;
+  }
+
+  // ⭐ Original 24h end time
+  const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  // ⭐ Create listing with extension fields initialised
+  const { error } = await supabase
+    .from("Player_Transfer_Listings")
+    .insert({
+      player_id: selectedPlayerForListing.Konami_ID,
+      seller_club_id: currentUserShort,
+      reserve_price: reserve,
+      market_value: mv,
+      status: "Active",
+      end_time: endTime,
+
+      // ⭐ REQUIRED for anti‑sniping engine
+      initial_end_time: endTime,
+      extension_state: "none",
+      last_extension_time: null,
+      extension_count: 0
+    });
+
+  if (error) {
+    console.error("Create listing error", error);
+    document.getElementById("reserveError").textContent =
+      "Failed to create listing. Please try again.";
+    return;
+  }
+
+  document.getElementById("list-player-modal-backdrop").style.display = "none";
+
+  await loadActiveListingsCache();
+  await loadSquad();
+  await loadDashboard();
+  await loadListings();
+}
 
   document.getElementById("list-player-modal-backdrop").style.display = "none";
 
