@@ -51,7 +51,6 @@
       margin: 20px auto 40px auto;
     }
 
-    /* FLEX HEADER ROW */
     #headerContainer {
       display: flex;
       justify-content: space-between;
@@ -71,7 +70,6 @@
       object-fit: contain;
     }
 
-    /* PANEL STYLING */
     .panel, .card {
       background: #1a1a1a;
       border: 1px solid #333;
@@ -106,7 +104,6 @@
       border: none;
     }
 
-    /* NEW FLEX ROW FOR CLUB DETAILS + STADIUM + FINANCES */
     .top-panels-row {
       display: flex;
       gap: 20px;
@@ -117,7 +114,6 @@
       flex: 1;
     }
 
-    /* MAIN CONTENT COLUMNS */
     #mainContent {
       display: flex;
       gap: 20px;
@@ -141,7 +137,6 @@
 
   <div class="page-container">
 
-    <!-- HEADER -->
     <div id="headerContainer">
       <div id="headerLeft">
         <img id="clubBadgeHeader" src="" alt="Club Badge">
@@ -152,10 +147,8 @@
       </div>
     </div>
 
-    <!-- ⭐ THREE‑COLUMN ROW: CLUB DETAILS + STADIUM + FINANCES -->
     <div class="top-panels-row">
 
-      <!-- CLUB DETAILS PANEL -->
       <div class="panel">
         <h2 class="panelTitle">Club Details</h2>
 
@@ -182,7 +175,6 @@
             <span id="capacityField"></span>
           </div>
 
-          <!-- ⭐ MOVED HERE -->
           <div class="detailRow">
             <label>Club Tier:</label>
             <span id="club-tier">Loading...</span>
@@ -190,7 +182,6 @@
         </div>
       </div>
 
-      <!-- STADIUM PANEL -->
       <div class="panel">
         <h2 class="panelTitle">Stadium</h2>
 
@@ -198,27 +189,22 @@
         <p><strong>Next Upgrade:</strong> <span id="next-capacity">Loading...</span></p>
         <p><strong>Upgrade Cost:</strong> <span id="upgrade-cost">Loading...</span></p>
 
-        <!-- ⭐ REMOVED CLUB TIER + WAGE % FROM HERE -->
-
         <button id="upgrade-stadium-btn" class="button">Upgrade Stadium</button>
 
         <p id="upgrade-message" style="margin-top:10px;"></p>
       </div>
 
-      <!-- CLUB FINANCES PANEL -->
       <div class="panel">
         <h2 class="panelTitle">Club Finances</h2>
 
         <p><strong>Balance:</strong></p>
         <div id="finance-balance" class="finance-box">Loading…</div>
 
-        <!-- ⭐ MOVED HERE -->
         <p style="margin-top:15px;"><strong>Wage Percentage:</strong> <span id="wage-percentage">Loading...</span></p>
       </div>
 
     </div>
 
-    <!-- MAIN CONTENT -->
     <div id="mainContent">
 
       <div id="leftColumn">
@@ -399,20 +385,14 @@
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-  <script src="firebase.js"></script>
 
-  <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+  <!-- Unified Firebase + Supabase -->
+  <script type="module" src="firebase.js"></script>
 
-    const supabase = createClient(
-      "https://omyyogfumrjoaweuawjn.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
-    );
-
-    window.supabase = supabase;
-  </script>
-
+  <!-- Transfer Engine (uses window.supabase) -->
   <script src="transferEngine.js"></script>
+
+  <!-- Clubs Lookup + Dashboard Logic -->
   <script type="module" src="clubs_lookup.js"></script>
   <script type="module" src="dashboard.js?v=999"></script>
 
