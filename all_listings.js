@@ -3,6 +3,11 @@
 // ======================================================
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 
+// Use global authenticated clients
+const supabase = window.supabase;
+const auth = window.auth;
+const db = window.db;
+
 let currentUserShort = null;
 let allListings = [];
 let selectedListing = null;
@@ -10,13 +15,13 @@ let selectedListing = null;
 // Load club map immediately
 await loadClubsMap();
 
-// ⭐ NEW — format numbers as ₿ 1,234,567
+// ⭐ Format numbers as ₿ 1,234,567
 function formatMoney(amount) {
   if (amount == null || isNaN(amount)) return "-";
   return "₿ " + Number(amount).toLocaleString("en-GB");
 }
 
-// ⭐ NEW — convert "1,234,567" → 1234567
+// ⭐ Convert "1,234,567" → 1234567
 function parseMoneyInput(value) {
   if (!value) return 0;
   return Number(String(value).replace(/,/g, ""));
@@ -37,8 +42,8 @@ auth.onAuthStateChanged(async user => {
   wireFilterCheckboxes();
   wireModalControls();
   wirePlaceBidButton();
-  wireIncrementButtons();     // ⭐ NEW
-  wireQuickBidButton();       // ⭐ NEW
+  wireIncrementButtons();
+  wireQuickBidButton();
 });
 
 // ======================================================
@@ -119,12 +124,12 @@ function renderListings() {
 
     const tr = document.createElement("tr");
 
-    // ⭐ NEW — highlight if user is leading
+    // ⭐ Highlight if user is leading
     if (listing.current_highest_bidder === currentUserShort) {
       tr.classList.add("leading-row");
     }
 
-    // ⭐ NEW — badge logic
+    // ⭐ Badge logic
     let highestClubText = "- (No bids)";
     if (listing.current_highest_bidder) {
       highestClubText =
@@ -218,12 +223,11 @@ function openBidModal(listing, player) {
 
   const input = document.getElementById("bid-amount");
   input.value = "";
-  input.focus();     // ⭐ NEW
-  input.select();    // ⭐ NEW
+  input.focus();
+  input.select();
 
   document.getElementById("bid-error").textContent = "";
 
-  // ⭐ NEW — minimum bid = max(market value, highest bid + 500k)
   const minBid = Math.max(
     listing.market_value,
     (listing.current_highest_bid || 0) + 500000
@@ -231,10 +235,8 @@ function openBidModal(listing, player) {
 
   input.placeholder = `Minimum bid: ${formatMoney(minBid)}`;
 
-  // ⭐ NEW — disable button initially
   document.getElementById("place-bid-btn").disabled = true;
 
-  // ⭐ NEW — live validation
   input.oninput = validateBidInput;
 
   document.getElementById("bid-modal").style.display = "block";
@@ -250,7 +252,6 @@ function validateBidInput() {
 
   const bidAmount = parseMoneyInput(input.value);
 
-  // ⭐ NEW — auto-format input as user types
   if (input.value !== "") {
     input.value = bidAmount.toLocaleString("en-GB");
   }
@@ -273,19 +274,17 @@ function validateBidInput() {
 }
 
 // ======================================================
-// MODULE E: MODAL CONTROLS (FIXED)
+// MODULE E: MODAL CONTROLS
 // ======================================================
 function wireModalControls() {
   const modal = document.getElementById("bid-modal");
   const closeBtn = document.getElementById("bid-modal-close");
 
-  // Close when clicking X
   closeBtn.onclick = () => {
     modal.style.display = "none";
     selectedListing = null;
   };
 
-  // Close when clicking outside
   window.onclick = function(event) {
     if (event.target === modal) {
       modal.style.display = "none";
@@ -293,7 +292,6 @@ function wireModalControls() {
     }
   };
 
-  // Close on ESC
   document.addEventListener("keydown", function(event) {
     if (event.key === "Escape") {
       modal.style.display = "none";
@@ -326,11 +324,10 @@ function wireQuickBidButton() {
   document.getElementById("quick-bid-btn").onclick = () => {
     if (!selectedListing) return;
 
-    const minBid =
-      Math.max(
-        selectedListing.market_value,
-        (selectedListing.current_highest_bid || 0) + 500000
-      );
+    const minBid = Math.max(
+      selectedListing.market_value,
+      (selectedListing.current_highest_bid || 0) + 500000
+    );
 
     const input = document.getElementById("bid-amount");
     input.value = minBid.toLocaleString("en-GB");
@@ -376,6 +373,7 @@ async function placeBid() {
     return;
   }
 
+  // Insert bid
   const { error: bidError } = await supabase
     .from("Player_Transfer_Bids")
     .insert({
@@ -391,6 +389,7 @@ async function placeBid() {
     return;
   }
 
+  // Update listing with new highest bid
   const { error: updateError } = await supabase
     .from("Player_Transfer_Listings")
     .update({
@@ -405,6 +404,9 @@ async function placeBid() {
     return;
   }
 
+  // Close modal + refresh
   document.getElementById("bid-modal").style.display = "none";
   await loadListings();
 }
+
+console.log("all_listings.js loaded successfully");
