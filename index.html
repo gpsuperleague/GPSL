@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <title>GPSL – Home</title>
 
-  <!-- ============================================
-       PAGE STYLE (Landing Page Theme)
-       ============================================ -->
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -35,7 +32,7 @@
       opacity: 0.85;
     }
 
-    a.button {
+    a.button, button.button {
       display: inline-block;
       padding: 14px 28px;
       background: #ff9900;
@@ -45,9 +42,11 @@
       border-radius: 6px;
       font-weight: bold;
       transition: 0.2s;
+      cursor: pointer;
+      border: none;
     }
 
-    a.button:hover {
+    a.button:hover, button.button:hover {
       background: #ffaa22;
       transform: scale(1.05);
     }
@@ -63,53 +62,75 @@
 
 <body>
 
-  <!-- ============================================
-       GPSL LOGO
-       ============================================ -->
   <img src="images/League/Logos/GPSL_logo.png"
        alt="GPSL Logo"
        style="width:350px; height:auto; margin-bottom:20px;">
 
   <p>Welcome to the GP Super League.</p>
 
-  <!-- ============================================
-       AUTH BUTTONS (populated after auth)
-       ============================================ -->
   <div id="authButtons"></div>
 
   <footer>© GPSL</footer>
 
-  <!-- ============================================
-       FIREBASE INITIALISATION
-       ============================================ -->
+  <!-- Firebase (still present for now) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="firebase.js"></script>
 
-  <!-- ============================================
-       AUTH + BUTTON LOGIC
-       ============================================ -->
+  <!-- FIXED AUTH + BUTTON LOGIC -->
   <script>
-    auth.onAuthStateChanged(user => {
+  document.addEventListener("DOMContentLoaded", () => {
+
+    let currentUser = null;
+
+    function logout() {
+      try {
+        if (window.auth) {
+          auth.signOut().then(() => window.location = "index.html");
+        } else {
+          window.location = "index.html";
+        }
+      } catch (err) {
+        console.error("Logout failed:", err);
+        window.location = "index.html";
+      }
+    }
+
+    function buildButtons() {
       const container = document.getElementById("authButtons");
 
-      if (user) {
-        // Logged in
+      if (!container) return;
+
+      if (currentUser) {
         container.innerHTML = `
           <a href="dashboard.html" class="button">Dashboard</a>
           <button onclick="logout()" class="button">Logout</button>
         `;
       } else {
-        // Logged out
         container.innerHTML = `
           <a href="login.html" class="button">Login</a>
         `;
       }
-    });
-
-    function logout() {
-      auth.signOut().then(() => window.location = "index.html");
     }
+
+    try {
+      if (window.auth) {
+        window.auth.onAuthStateChanged(user => {
+          currentUser = user;
+          buildButtons();
+        });
+      } else {
+        console.warn("Firebase auth not found — continuing anonymously");
+        currentUser = null;
+        buildButtons();
+      }
+    } catch (err) {
+      console.error("Auth init failed:", err);
+      currentUser = null;
+      buildButtons();
+    }
+
+  });
   </script>
 
 </body>
