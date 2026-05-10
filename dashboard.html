@@ -381,25 +381,32 @@
     </div>
   </div>
 
- <!-- ============================================
-     FIREBASE INITIALISATION (MUST BE CLASSIC)
-     ============================================ -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-<script src="firebase.js"></script>
+  <!-- ============================================
+       FIREBASE CORE (classic)
+       ============================================ -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
-<!-- ============================================
-     TRANSFER ENGINE (classic script)
-     ============================================ -->
-<script src="transferEngine.js"></script>
+  <!-- ============================================
+       UNIFIED FIREBASE + SUPABASE WRAPPER (MODULE)
+       ============================================ -->
+  <script type="module" src="firebase.js"></script>
 
-<!-- ============================================
-     CLUB LOOKUP + DASHBOARD LOGIC (modules)
-     ============================================ -->
-<script type="module" src="clubs_lookup.js"></script>
-<script type="module" src="dashboard.js?v=999"></script>
+  <!-- ============================================
+       TRANSFER ENGINE (classic)
+       ============================================ -->
+  <script src="transferEngine.js"></script>
 
+  <!-- ============================================
+       CLUB LOOKUP + DASHBOARD LOGIC (modules)
+       ============================================ -->
+  <script type="module" src="clubs_lookup.js"></script>
+  <script type="module" src="dashboard.js?v=999"></script>
+
+  <!-- ============================================
+       NAVIGATION (uses global auth)
+       ============================================ -->
   <script>
     function logout() {
       auth.signOut().then(() => {
