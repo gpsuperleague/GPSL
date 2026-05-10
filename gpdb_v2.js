@@ -1,13 +1,9 @@
 /* ============================================================
-   MODULE A: Supabase Client
+   MODULE A: Supabase Client (Unified Authenticated Client)
    ============================================================ */
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
-const supabase = createClient(
-  'https://omyyogfumrjoaweuawjn.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
-);
-
+// Use the global authenticated Supabase client created in firebase.js
+const supabase = window.supabase;
 
 /* ============================================================
    MODULE B: Column Definitions
@@ -23,7 +19,7 @@ const COLUMNS = [
   "market_value",
   "Contracted_Team",
   "Season_Signed",
-  "Konami_ID" // needed for PESDB
+  "Konami_ID"
 ];
 
 const FILTER_EXCLUDE = [
@@ -42,7 +38,6 @@ const DROPDOWN_COLUMNS = [
   "Season_Signed"
 ];
 
-
 /* ============================================================
    MODULE C: Pagination + State
    ============================================================ */
@@ -52,19 +47,18 @@ let CURRENT_PAGE = 1;
 
 let CURRENT_FILTERS = {};
 let CURRENT_SORT_COLUMN = null;
-let CURRENT_SORT_DIR = 'asc';
+let CURRENT_SORT_DIR = "asc";
 
 let MV_MIN = null;
 let MV_MAX = null;
-
 
 /* ============================================================
    MODULE D: Data Loading
    ============================================================ */
 async function loadTotalCount() {
   const { count } = await supabase
-    .from('Players')
-    .select('*', { count: 'exact', head: true });
+    .from("Players")
+    .select("*", { count: "exact", head: true });
 
   TOTAL_ROWS = count;
 }
@@ -76,8 +70,8 @@ async function loadPage(page = 1) {
   const to = from + PAGE_SIZE - 1;
 
   let query = supabase
-    .from('Players')
-    .select(COLUMNS.join(','), { count: 'exact' });
+    .from("Players")
+    .select(COLUMNS.join(","), { count: "exact" });
 
   // Apply filters
   Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
@@ -85,9 +79,7 @@ async function loadPage(page = 1) {
 
     if (DROPDOWN_COLUMNS.includes(col)) {
       if (col === "Contracted_Team" && value === "FREE AGENT") {
-        query = query.or(
-          `${col}.is.null,${col}.eq.'',${col}.eq.' '`
-        );
+        query = query.or(`${col}.is.null,${col}.eq.'',${col}.eq.' '`);
       } else {
         query = query.eq(col, value);
       }
@@ -103,7 +95,7 @@ async function loadPage(page = 1) {
   // Sorting
   if (CURRENT_SORT_COLUMN) {
     query = query.order(CURRENT_SORT_COLUMN, {
-      ascending: CURRENT_SORT_DIR === 'asc'
+      ascending: CURRENT_SORT_DIR === "asc"
     });
   }
 
@@ -122,7 +114,6 @@ async function loadPage(page = 1) {
   renderPagination();
 }
 
-
 /* ============================================================
    MODULE E: Rendering
    ============================================================ */
@@ -139,34 +130,42 @@ function renderTable(players) {
   // Header
   tableHead.innerHTML = `
     <tr>
-      ${COLUMNS.filter(col => col !== "Konami_ID").map(col => {
-        let cls = "";
-        if (CURRENT_SORT_COLUMN === col) {
-          cls = CURRENT_SORT_DIR === 'asc' ? 'sort-asc' : 'sort-desc';
-        }
-        return `<th data-col="${col}" class="${cls}">${col.replace(/_/g, " ")}</th>`;
-      }).join("")}
+      ${COLUMNS.filter(col => col !== "Konami_ID")
+        .map(col => {
+          let cls = "";
+          if (CURRENT_SORT_COLUMN === col) {
+            cls = CURRENT_SORT_DIR === "asc" ? "sort-asc" : "sort-desc";
+          }
+          return `<th data-col="${col}" class="${cls}">${col.replace(/_/g, " ")}</th>`;
+        })
+        .join("")}
     </tr>
   `;
 
   // Rows
   tableBody.innerHTML = players
-    .map(player => `
-      <tr data-konami-id="${player.Konami_ID || player.konami_id || ''}">
-        ${COLUMNS.filter(col => col !== "Konami_ID").map(col => {
-          let value = player[col];
+    .map(
+      player => `
+      <tr data-konami-id="${player.Konami_ID || player.konami_id || ""}">
+        ${COLUMNS.filter(col => col !== "Konami_ID")
+          .map(col => {
+            let value = player[col];
 
-          if (col === "market_value" && value !== null) {
-            value = "₿ " + new Intl.NumberFormat("en-GB", {
-              maximumFractionDigits: 0,
-              minimumFractionDigits: 0
-            }).format(value);
-          }
+            if (col === "market_value" && value !== null) {
+              value =
+                "₿ " +
+                new Intl.NumberFormat("en-GB", {
+                  maximumFractionDigits: 0,
+                  minimumFractionDigits: 0
+                }).format(value);
+            }
 
-          return `<td>${value}</td>`;
-        }).join("")}
+            return `<td>${value}</td>`;
+          })
+          .join("")}
       </tr>
-    `)
+    `
+    )
     .join("");
 
   // Sorting
@@ -174,10 +173,10 @@ function renderTable(players) {
     const col = th.getAttribute("data-col");
     th.onclick = () => {
       if (CURRENT_SORT_COLUMN === col) {
-        CURRENT_SORT_DIR = CURRENT_SORT_DIR === 'asc' ? 'desc' : 'asc';
+        CURRENT_SORT_DIR = CURRENT_SORT_DIR === "asc" ? "desc" : "asc";
       } else {
         CURRENT_SORT_COLUMN = col;
-        CURRENT_SORT_DIR = 'asc';
+        CURRENT_SORT_DIR = "asc";
       }
       loadPage(1);
     };
@@ -215,7 +214,6 @@ function renderPagination() {
     container.appendChild(btn);
   }
 }
-
 
 /* ============================================================
    MODULE F: Filters
@@ -259,19 +257,16 @@ async function populateDropdowns() {
     let uniqueValues;
 
     if (col === "Season_Signed") {
-      uniqueValues = [...new Set(
-        allValues.filter(v => v).map(v => Number(v))
-      )].sort((a, b) => a - b);
+      uniqueValues = [...new Set(allValues.filter(v => v).map(v => Number(v)))].sort(
+        (a, b) => a - b
+      );
     } else {
-      uniqueValues = [...new Set(
-        allValues.filter(v => v).map(v => String(v).trim())
-      )].sort((a, b) => a.localeCompare(b));
+      uniqueValues = [
+        ...new Set(allValues.filter(v => v).map(v => String(v).trim()))
+      ].sort((a, b) => a.localeCompare(b));
 
       if (col === "Contracted_Team") {
-        uniqueValues = [
-          "FREE AGENT",
-          ...uniqueValues.filter(v => v !== "FREE AGENT")
-        ];
+        uniqueValues = ["FREE AGENT", ...uniqueValues.filter(v => v !== "FREE AGENT")];
       }
     }
 
@@ -287,8 +282,7 @@ async function populateDropdowns() {
 function setupFilters() {
   const filtersDiv = document.getElementById("filters");
 
-  filtersDiv.innerHTML = COLUMNS
-    .filter(col => !FILTER_EXCLUDE.includes(col))
+  filtersDiv.innerHTML = COLUMNS.filter(col => !FILTER_EXCLUDE.includes(col))
     .map(col => {
       if (DROPDOWN_COLUMNS.includes(col)) {
         return `
@@ -308,15 +302,13 @@ function setupFilters() {
     })
     .join(" ");
 
-  COLUMNS
-    .filter(col => !FILTER_EXCLUDE.includes(col))
-    .forEach(col => {
-      const el = document.getElementById(`filter-${col}`);
-      el.addEventListener("change", () => {
-        CURRENT_FILTERS[col] = el.value;
-        loadPage(1);
-      });
+  COLUMNS.filter(col => !FILTER_EXCLUDE.includes(col)).forEach(col => {
+    const el = document.getElementById(`filter-${col}`);
+    el.addEventListener("change", () => {
+      CURRENT_FILTERS[col] = el.value;
+      loadPage(1);
     });
+  });
 }
 
 function setupControls() {
@@ -341,16 +333,17 @@ function setupControls() {
     MV_MIN = null;
     MV_MAX = null;
     CURRENT_SORT_COLUMN = null;
-    CURRENT_SORT_DIR = 'asc';
+    CURRENT_SORT_DIR = "asc";
 
-    document.querySelectorAll('#filters input, #filters select').forEach(i => i.value = "");
+    document
+      .querySelectorAll("#filters input, #filters select")
+      .forEach(i => (i.value = ""));
     mvMinInput.value = "";
     mvMaxInput.value = "";
 
     loadPage(1);
   });
 }
-
 
 /* ============================================================
    MODULE G: Initialisation
