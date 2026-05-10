@@ -3,7 +3,7 @@
    Purpose:
    - Initialise Firebase (auth + Firestore)
    - Maintain a single, global Supabase client
-   - Attach Firebase ID token to Supabase requests
+   - Sync Firebase ID token into Supabase via setSession()
    - Expose: window.auth, window.db, window.supabase
    ============================================================ */
 
@@ -32,48 +32,38 @@ const auth = firebase.auth();
 const db   = firebase.firestore();
 
 /* --------------------------------------------
-   Supabase Client (JWT‑aware)
+   Supabase Client (single instance)
    -------------------------------------------- */
 const SUPABASE_URL = "https://omyyogfumrjoaweuawjn.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4";
 
-let supabase = null;
-
-function buildSupabaseClient(idToken = null) {
-  return createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: {
-      headers: idToken
-        ? { Authorization: `Bearer ${idToken}` }
-        : {}
-    }
-  });
-}
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* --------------------------------------------
-   Initial anonymous client (before login)
-   -------------------------------------------- */
-supabase = buildSupabaseClient(null);
-
-/* --------------------------------------------
-   Keep Supabase in sync with Firebase auth
+   Sync Firebase token → Supabase
    -------------------------------------------- */
 auth.onIdTokenChanged(async user => {
   if (!user) {
-    // Logged out → fall back to anonymous client
-    supabase = buildSupabaseClient(null);
+    // Logged out → clear Supabase session
+    await supabase.auth.setSession(null);
     window.supabase = supabase;
     return;
   }
 
   try {
-    const token = await user.getIdToken(/* forceRefresh */ true);
-    supabase = buildSupabaseClient(token);
+    const token = await user.getIdToken(true);
+
+    // Update Supabase session without creating a new client
+    await supabase.auth.setSession({
+      access_token: token,
+      refresh_token: token
+    });
+
     window.supabase = supabase;
+
   } catch (err) {
-    console.error("Failed to refresh Firebase ID token for Supabase:", err);
-    supabase = buildSupabaseClient(null);
-    window.supabase = supabase;
+    console.error("Failed to sync Firebase ID token to Supabase:", err);
   }
 });
 
