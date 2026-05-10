@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <title>GPSL Transfer Market</title>
 
-  <!-- ============================================
-       STYLE: Global Transfer Market Theme
-       ============================================ -->
   <style>
     body {
       background: #111;
@@ -103,11 +100,12 @@
     }
 
     .leading-row {
-      background: rgba(255, 153, 0, 0.10) !important;  /* ultra subtle orange wash */
-      color: #ffb84d !important;                       /* soft warm text */
+      background: rgba(255, 153, 0, 0.10) !important;
+      color: #ffb84d !important;
       font-weight: bold;
     }
 
+    /* MODAL */
     #bid-modal {
       display: none;
       position: fixed;
@@ -188,7 +186,6 @@
       font-size:13px;
     }
 
-    /* Increment buttons */
     .inc-btn {
       padding: 6px 10px;
       margin-right: 6px;
@@ -204,7 +201,6 @@
       background:#666;
     }
 
-    /* Warning note */
     #bid-warning {
       color:#ff9900;
       font-size:13px;
@@ -255,6 +251,7 @@
     <tbody id="listings-body"></tbody>
   </table>
 
+  <!-- BID MODAL -->
   <div id="bid-modal">
     <div id="bid-modal-content">
 
@@ -285,7 +282,6 @@
           <input type="text" id="bid-amount" inputmode="numeric">
         </div>
 
-        <!-- Increment buttons -->
         <div style="margin-top:10px; text-align:center;">
           <button class="inc-btn" id="inc-500k">+500k</button>
           <button class="inc-btn" id="inc-1m">+1m</button>
@@ -303,41 +299,19 @@
     </div>
   </div>
 
-  <!-- ============================================
-       FIREBASE INITIALISATION
-       ============================================ -->
+  <!-- FIREBASE -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-  <script src="firebase.js"></script>
+  <script type="module" src="firebase.js"></script>
 
-  <!-- ============================================
-       SUPABASE INITIALISATION
-       ============================================ -->
-  <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
-    const supabase = createClient(
-      "https://omyyogfumrjoaweuawjn.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
-    );
-
-    window.supabase = supabase;
-  </script>
-
-  <!-- ============================================
-       LOOKUP MODULE (ShortName → FullName)
-       ============================================ -->
+  <!-- LOOKUP MODULE -->
   <script type="module" src="clubs_lookup.js"></script>
 
-  <!-- ============================================
-       ALL LISTINGS LOGIC (must be a module)
-       ============================================ -->
+  <!-- ALL LISTINGS LOGIC -->
   <script type="module" src="all_listings.js"></script>
 
-  <!-- ============================================
-       AUTH + NAVIGATION LOGIC
-       ============================================ -->
+  <!-- AUTH + NAVIGATION -->
   <script>
     function logout() {
       auth.signOut().then(() => {
