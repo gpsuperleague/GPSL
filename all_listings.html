@@ -1,4 +1,6 @@
 <script>
+document.addEventListener("DOMContentLoaded", () => {
+
   // Temporary compatibility layer while Firebase is being removed
   let currentUser = null;
 
@@ -17,6 +19,10 @@
 
   function buildNav() {
     const nav = document.getElementById("nav");
+    if (!nav) {
+      console.error("NAV element missing");
+      return;
+    }
 
     nav.innerHTML = `
       <a href="index.html" class="button">Home</a>
@@ -36,7 +42,7 @@
   function safeInit() {
     console.log("Initialising all listings page...");
     buildNav();
-    // nothing else needed here — all_listings.js handles the rest
+    // all_listings.js handles the rest
   }
 
   try {
@@ -61,4 +67,6 @@
     console.error("Auth init failed:", err);
     safeInit();
   }
+
+});
 </script>
