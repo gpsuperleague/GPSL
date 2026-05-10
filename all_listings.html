@@ -1,341 +1,64 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>GPSL Transfer Market</title>
+<script>
+  // Temporary compatibility layer while Firebase is being removed
+  let currentUser = null;
 
-  <style>
-    body {
-      background: #111;
-      color: #ddd;
-      font-family: Arial, sans-serif;
-    }
-
-    h1 {
-      background:#222;
-      color:#ff9900;
-      padding:10px 16px;
-      border-radius:6px;
-      width: fit-content;
-      margin:20px auto;
-      font-size:26px;
-      font-weight:bold;
-    }
-
-    a.button, button.button {
-      display: inline-block;
-      padding: 10px 20px;
-      background: #ff9900;
-      color: #111;
-      text-decoration: none;
-      font-weight: bold;
-      border-radius: 6px;
-      margin: 5px;
-      transition: 0.2s;
-      cursor: pointer;
-    }
-
-    a.button:hover, button.button:hover {
-      background: #ffaa22;
-      transform: scale(1.05);
-    }
-
-    #nav {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    .filters-bar {
-      width: 90%;
-      max-width: 1100px;
-      margin: 0 auto 10px auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      font-size: 14px;
-    }
-
-    .filters-left label {
-      margin-right: 10px;
-      cursor: pointer;
-    }
-
-    .filters-right {
-      color: #ff9900;
-      font-weight: bold;
-    }
-
-    table.gpsl-table {
-      width: 90%;
-      max-width: 1100px;
-      margin: 10px auto 20px auto;
-      border-collapse: collapse;
-      font-size: 14px;
-      background:#1a1a1a;
-    }
-
-    table.gpsl-table th {
-      background: #222;
-      color: #ff9900;
-      padding: 8px;
-      text-align: left;
-      position: sticky;
-      top: 0;
-      z-index: 2;
-    }
-
-    table.gpsl-table td {
-      padding: 8px;
-      border-bottom: 1px solid #333;
-    }
-
-    table.gpsl-table tr:nth-child(even) {
-      background: #181818;
-    }
-
-    table.gpsl-table tr:hover {
-      background:#262626;
-      cursor:pointer;
-    }
-
-    .leading-row {
-      background: rgba(255, 153, 0, 0.10) !important;
-      color: #ffb84d !important;
-      font-weight: bold;
-    }
-
-    /* MODAL */
-    #bid-modal {
-      display: none;
-      position: fixed;
-      z-index: 999;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(0,0,0,0.7);
-    }
-
-    #bid-modal-content {
-      background-color: #1a1a1a;
-      margin: 60px auto;
-      padding: 20px;
-      border: 1px solid #333;
-      width: 90%;
-      max-width: 600px;
-      border-radius: 8px;
-      color:#ddd;
-    }
-
-    #bid-modal-header {
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      margin-bottom:10px;
-    }
-
-    #bid-modal-header h2 {
-      margin:0;
-      color:#ff9900;
-    }
-
-    #bid-modal-close {
-      color:#ddd;
-      font-size:24px;
-      cursor:pointer;
-    }
-
-    #bid-modal-close:hover {
-      color:#ff9900;
-    }
-
-    .bid-row {
-      display:flex;
-      justify-content:space-between;
-      margin:4px 0;
-      font-size:14px;
-    }
-
-    .bid-row label {
-      color:#ff9900;
-      margin-right:6px;
-    }
-
-    #bid-input-section {
-      margin-top:15px;
-      padding-top:10px;
-      border-top:1px solid #333;
-    }
-
-    #bid-amount {
-      width:140px;
-      padding:6px;
-      border-radius:4px;
-      border:1px solid #444;
-      background:#111;
-      color:#ddd;
-      font-size:15px;
-    }
-
-    #bid-error {
-      color:#ff5555;
-      margin-top:8px;
-      min-height:18px;
-      font-size:13px;
-    }
-
-    .inc-btn {
-      padding: 6px 10px;
-      margin-right: 6px;
-      background:#444;
-      color:#fff;
-      border-radius:4px;
-      cursor:pointer;
-      border:1px solid #666;
-      font-size:13px;
-    }
-
-    .inc-btn:hover {
-      background:#666;
-    }
-
-    #bid-warning {
-      color:#ff9900;
-      font-size:13px;
-      margin-bottom:10px;
-      text-align:center;
-    }
-  </style>
-</head>
-
-<body>
-
-  <h1>Global Transfer Market</h1>
-
-  <div id="nav"></div>
-
-  <div class="filters-bar">
-    <div class="filters-left">
-      <label>
-        <input type="checkbox" id="filter-active" checked>
-        Active
-      </label>
-      <label>
-        <input type="checkbox" id="filter-closed" checked>
-        Closed / Seller Review
-      </label>
-    </div>
-    <div class="filters-right">
-      Click a row to view & bid
-    </div>
-  </div>
-
-  <table class="gpsl-table">
-    <thead>
-      <tr>
-        <th>Selling Club</th>
-        <th>Player</th>
-        <th>Pos</th>
-        <th>Style</th>
-        <th>Rating</th>
-        <th>Value</th>
-        <th>Reserve</th>
-        <th>Status</th>
-        <th>Time Remaining</th>
-        <th>Highest Bid</th>
-        <th>Highest Club</th>
-      </tr>
-    </thead>
-    <tbody id="listings-body"></tbody>
-  </table>
-
-  <!-- BID MODAL -->
-  <div id="bid-modal">
-    <div id="bid-modal-content">
-
-      <div id="bid-modal-header">
-        <h2 id="bid-player-name">Player</h2>
-        <span id="bid-modal-close">&times;</span>
-      </div>
-
-      <div class="bid-row"><label>Position:</label><span id="bid-player-position"></span></div>
-      <div class="bid-row"><label>Playstyle:</label><span id="bid-player-playstyle"></span></div>
-      <div class="bid-row"><label>Rating:</label><span id="bid-player-rating"></span></div>
-      <div class="bid-row"><label>Selling Club:</label><span id="bid-selling-club"></span></div>
-      <div class="bid-row"><label>Market Value:</label><span id="bid-market-value"></span></div>
-      <div class="bid-row"><label>Reserve Price:</label><span id="bid-reserve-price"></span></div>
-      <div class="bid-row"><label>Status:</label><span id="bid-status"></span></div>
-      <div class="bid-row"><label>Time Remaining:</label><span id="bid-time-remaining"></span></div>
-      <div class="bid-row"><label>Highest Bid:</label><span id="bid-highest-bid"></span></div>
-      <div class="bid-row"><label>Highest Club:</label><span id="bid-highest-club"></span></div>
-
-      <div id="bid-input-section">
-
-        <div id="bid-warning">
-          ⚠️ Bids must be at least ₿500,000 higher than the current highest bid.
-        </div>
-
-        <div class="bid-row">
-          <label>Your Bid (₿):</label>
-          <input type="text" id="bid-amount" inputmode="numeric">
-        </div>
-
-        <div style="margin-top:10px; text-align:center;">
-          <button class="inc-btn" id="inc-500k">+500k</button>
-          <button class="inc-btn" id="inc-1m">+1m</button>
-          <button class="inc-btn" id="inc-5m">+5m</button>
-          <button class="button" id="quick-bid-btn">Quick Bid</button>
-        </div>
-
-        <div style="margin-top:10px;">
-          <button id="place-bid-btn" class="button">Place Bid</button>
-        </div>
-
-        <div id="bid-error"></div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- FIREBASE -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-  <script type="module" src="firebase.js"></script>
-
-  <!-- LOOKUP MODULE -->
-  <script type="module" src="clubs_lookup.js"></script>
-
-  <!-- ALL LISTINGS LOGIC -->
-  <script type="module" src="all_listings.js"></script>
-
-  <!-- AUTH + NAVIGATION -->
-  <script>
-    function logout() {
-      auth.signOut().then(() => {
+  function logout() {
+    try {
+      if (window.auth) {
+        auth.signOut().then(() => window.location = "login.html");
+      } else {
         window.location = "login.html";
-      });
-    }
-
-    auth.onAuthStateChanged(user => {
-      const nav = document.getElementById("nav");
-
-      if (!user) {
-        window.location = "login.html";
-        return;
       }
+    } catch (err) {
+      console.error("Logout failed:", err);
+      window.location = "login.html";
+    }
+  }
 
-      nav.innerHTML = `
-        <a href="index.html" class="button">Home</a>
-        <a href="GPDB.html" class="button">Player Database</a>
-        <a href="clubs.html" class="button">Clubs</a>
-        <a href="dashboard.html" class="button">Dashboard</a>
-        <button onclick="logout()" class="button">Logout</button>
-      `;
-    });
-  </script>
+  function buildNav() {
+    const nav = document.getElementById("nav");
 
-</body>
-</html>
+    nav.innerHTML = `
+      <a href="index.html" class="button">Home</a>
+      <a href="GPDB.html" class="button">Player Database</a>
+      <a href="clubs.html" class="button">Clubs</a>
+      <a href="dashboard.html" class="button">Dashboard</a>
+      <button onclick="logout()" class="button">Logout</button>
+    `;
+
+    // Admin button
+    const adminEmails = ["rotavator66@outlook.com"];
+    if (currentUser && adminEmails.includes(currentUser.email)) {
+      nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
+    }
+  }
+
+  function safeInit() {
+    console.log("Initialising all listings page...");
+    buildNav();
+    // nothing else needed here — all_listings.js handles the rest
+  }
+
+  try {
+    if (window.auth) {
+      // Firebase exists → use it
+      window.auth.onAuthStateChanged(user => {
+        currentUser = user;
+
+        if (!user) {
+          window.location = "login.html";
+          return;
+        }
+
+        safeInit();
+      });
+    } else {
+      // Firebase missing → fallback mode
+      console.warn("Firebase auth not found — continuing anonymously");
+      safeInit();
+    }
+  } catch (err) {
+    console.error("Auth init failed:", err);
+    safeInit();
+  }
+</script>
