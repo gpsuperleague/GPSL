@@ -1,8 +1,13 @@
 // clubs_lookup.js
 
+// Use the global authenticated Supabase client created in firebase.js
+const supabase = window.supabase;
+
 let clubsMap = new Map();
 
-// Load all clubs into memory
+/* ============================================================
+   Load all clubs into memory
+   ============================================================ */
 export async function loadClubsMap() {
   const { data, error } = await supabase
     .from("Clubs")
@@ -13,6 +18,8 @@ export async function loadClubsMap() {
     return;
   }
 
+  clubsMap.clear();
+
   data.forEach(row => {
     clubsMap.set(row.ShortName, row.Club);
   });
@@ -20,7 +27,9 @@ export async function loadClubsMap() {
   console.log("Clubs map loaded:", clubsMap);
 }
 
-// Return full club name from ShortName
+/* ============================================================
+   Convert ShortName → Full Club Name
+   ============================================================ */
 export function fullClubName(shortName) {
   return clubsMap.get(shortName) || shortName;
 }
