@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <title>GPSL Login</title>
 
-  <!-- ============================================
-       BASIC PAGE STYLE (minimal login layout)
-       ============================================ -->
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -50,9 +47,6 @@
 
 <body>
 
-  <!-- ============================================
-       LOGIN FORM
-       ============================================ -->
   <h1>Login</h1>
 
   <input id="email" type="email" placeholder="Email"><br><br>
@@ -61,25 +55,26 @@
   <button onclick="login()">Login</button>
   <br><br>
 
-  <!-- Password reset -->
   <a onclick="resetPassword()">Forgot your password?</a>
 
-  <!-- ============================================
-       FIREBASE INITIALISATION
-       ============================================ -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-
   <script src="firebase.js"></script>
 
-  <!-- ============================================
-       LOGIN + PASSWORD RESET LOGIC
-       ============================================ -->
+  <!-- FIXED LOGIN LOGIC -->
   <script>
+  document.addEventListener("DOMContentLoaded", () => {
+
     function login() {
       const email = document.getElementById('email').value;
       const pass = document.getElementById('password').value;
+
+      if (!window.auth) {
+        alert("Login system is temporarily unavailable.");
+        return;
+      }
 
       auth.signInWithEmailAndPassword(email, pass)
         .then(() => window.location = 'dashboard.html')
@@ -94,10 +89,21 @@
         return;
       }
 
+      if (!window.auth) {
+        alert("Password reset is temporarily unavailable.");
+        return;
+      }
+
       auth.sendPasswordResetEmail(email)
         .then(() => alert("Password reset email sent. Check your inbox."))
         .catch(err => alert(err.message));
     }
+
+    // expose functions globally
+    window.login = login;
+    window.resetPassword = resetPassword;
+
+  });
   </script>
 
 </body>
