@@ -1,6 +1,10 @@
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 console.log("LIVE DASHBOARD VERSION:", Math.random());
 
+const supabase = window.supabase;
+const auth = window.auth;
+const db = window.db;
+
 /* ============================================================
    MODULE A: GLOBAL STATE
    ============================================================ */
@@ -150,7 +154,7 @@ async function loadFinance() {
   }
 
   document.getElementById("finance-balance").innerHTML =
-  `<span class="money">₿ ${Number(data.balance).toLocaleString("en-GB")}</span>`;
+    `<span class="money">₿ ${Number(data.balance).toLocaleString("en-GB")}</span>`;
 }
 
 /* ============================================================
@@ -172,7 +176,6 @@ async function loadDashboard() {
     console.error("clubId is null, cannot load stadium info");
   }
 
-  // ⭐ Load transfer history panels LAST
   await loadSeasonSignings();
   await loadSeasonSales();
 }
@@ -185,8 +188,6 @@ auth.onAuthStateChanged(async user => {
     window.location = "login.html";
     return;
   }
-
-  const token = await user.getIdToken();
 
   await loadClubsMap();
   console.log("Clubs map loaded");
@@ -312,7 +313,7 @@ async function loadClubDetails() {
 }
 
 /* ============================================================
-   ⭐ MODULE N: SEASON SIGNINGS (NEW)
+   ⭐ MODULE N: SEASON SIGNINGS
    ============================================================ */
 async function loadSeasonSignings() {
   const { data, error } = await supabase
@@ -570,7 +571,7 @@ document.getElementById("cancelListBtn").onclick = () => {
 document.getElementById("confirmListBtn").onclick = validateAndCreateListing;
 
 /* ============================================================
-   MODULE H: CREATE LISTING
+   MODULE H: CREATE LISTING (CLEAN VERSION)
    ============================================================ */
 async function validateAndCreateListing() {
   const reserve = Number(document.getElementById("reserveInput").value);
@@ -589,29 +590,8 @@ async function validateAndCreateListing() {
     return;
   }
 
- const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-async function validateAndCreateListing() {
-  const reserve = Number(document.getElementById("reserveInput").value);
-  const mv = selectedPlayerForListing.market_value;
-  const max = selectedPlayerForListing.Maximum_Reserve_Price;
-
-  if (reserve < mv) {
-    document.getElementById("reserveError").textContent =
-      `Reserve must be at least market value (₿ ${mv.toLocaleString("en-GB")}).`;
-    return;
-  }
-
-  if (reserve > max) {
-    document.getElementById("reserveError").textContent =
-      `Reserve cannot exceed max allowed (₿ ${max.toLocaleString("en-GB")}).`;
-    return;
-  }
-
-  // ⭐ Original 24h end time
   const endTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-  // ⭐ Create listing with extension fields initialised
   const { error } = await supabase
     .from("Player_Transfer_Listings")
     .insert({
@@ -621,8 +601,6 @@ async function validateAndCreateListing() {
       market_value: mv,
       status: "Active",
       end_time: endTime,
-
-      // ⭐ REQUIRED for anti‑sniping engine
       initial_end_time: endTime,
       extension_state: "none",
       last_extension_time: null,
@@ -635,14 +613,6 @@ async function validateAndCreateListing() {
       "Failed to create listing. Please try again.";
     return;
   }
-
-  document.getElementById("list-player-modal-backdrop").style.display = "none";
-
-  await loadActiveListingsCache();
-  await loadSquad();
-  await loadDashboard();
-  await loadListings();
-}
 
   document.getElementById("list-player-modal-backdrop").style.display = "none";
 
@@ -684,7 +654,6 @@ async function dismissListingForUser(listingId) {
    MODULE J: LOAD LISTINGS
    ============================================================ */
 async function loadListings() {
-
   console.log("🔄 loadListings() called — filtering archived listings");
 
   const { data, error } = await supabase
@@ -716,7 +685,6 @@ async function loadListings() {
     }
   }
 
-  // 3. Reload listings after updates
   const refreshed = await supabase
     .from("Player_Transfer_Listings")
     .select("*")
@@ -725,7 +693,6 @@ async function loadListings() {
 
   const updatedListings = refreshed.data || [];
 
-  // Load per-user dismissed listing IDs
   const { data: dismissedRows } = await supabase
     .from("User_Dismissed_Listings")
     .select("listing_id")
@@ -733,7 +700,6 @@ async function loadListings() {
 
   const dismissedIds = new Set((dismissedRows || []).map(r => r.listing_id));
 
-  // ⭐ Collapse duplicates: keep only newest bid per listing
   const latestByListing = new Map();
 
   for (const b of data || []) {
@@ -743,24 +709,19 @@ async function loadListings() {
   }
 
   const uniqueBids = Array.from(latestByListing.values());
-
-  // Remove dismissed ones
   const filtered = uniqueBids.filter(b => !dismissedIds.has(b.listing_id));
 
   renderMyActiveBids(filtered);
 
-  // 4. Split into categories
   const active = updatedListings.filter(l => l.status === "Active");
   const review = updatedListings.filter(l => l.status === "Review");
   const closed = updatedListings.filter(l => l.status === "Closed");
 
-  // 5. Render UI
   const activeForView = active.filter(l => !dismissedIds.has(l.id));
   renderActiveListings(activeForView);
   renderSellerReview(review);
   renderClosedListings(closed);
 
-  // 6. Refresh squad + cache
   await loadActiveListingsCache();
   await loadSquad();
 }
@@ -936,7 +897,6 @@ async function loadMyActiveBids() {
   }
 
   const uniqueBids = Array.from(latestByListing.values());
-
   const filtered = uniqueBids.filter(b => !dismissedIds.has(b.listing_id));
 
   renderMyActiveBids(filtered);
