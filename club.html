@@ -71,14 +71,11 @@
       border: 1px solid #333;
     }
 
-    /* ===============================
-       TABLE ALIGNMENT FIX
-       =============================== */
     table.gpsl-table {
       width: 100%;
       border-collapse: collapse;
       margin-bottom: 30px;
-      table-layout: fixed; /* forces identical column widths */
+      table-layout: fixed;
     }
 
     table.gpsl-table th,
@@ -96,7 +93,6 @@
       color: #ff9900;
     }
 
-    /* Fixed column widths */
     table.gpsl-table th:nth-child(1),
     table.gpsl-table td:nth-child(1) { width: 28%; }
 
@@ -125,6 +121,7 @@
 
   <div id="squadContainer"></div>
 
+  <!-- SUPABASE MODULE -->
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
@@ -138,7 +135,6 @@
 
     let clubShortName = null;
 
-    /* LOAD CLUB INFO */
     async function loadClub() {
       const { data: club, error } = await supabase
         .from("Clubs")
@@ -165,7 +161,6 @@
       `;
     }
 
-    /* POSITION GROUPS */
     const POSITION_GROUPS = {
       "Goalkeepers": ["GK"],
       "Defenders": ["LB", "CB", "RB"],
@@ -173,7 +168,6 @@
       "Attackers": ["SS", "LW", "CF", "RW"]
     };
 
-    /* LOAD SQUAD */
     async function loadPlayers() {
       if (!clubShortName) return;
 
@@ -241,17 +235,35 @@
     })();
   </script>
 
+  <!-- FIREBASE (still present for now) -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
   <script src="firebase.js"></script>
 
+  <!-- FIXED NAV + AUTH -->
   <script>
-    auth.onAuthStateChanged(user => {
-      const nav = document.getElementById("nav");
+  document.addEventListener("DOMContentLoaded", () => {
 
-      if (!user) {
+    let currentUser = null;
+
+    function logout() {
+      try {
+        if (window.auth) {
+          auth.signOut().then(() => window.location = "login.html");
+        } else {
+          window.location = "login.html";
+        }
+      } catch (err) {
+        console.error("Logout failed:", err);
         window.location = "login.html";
+      }
+    }
+
+    function buildNav() {
+      const nav = document.getElementById("nav");
+      if (!nav) {
+        console.error("NAV element missing");
         return;
       }
 
@@ -263,11 +275,40 @@
         <a href="dashboard.html" class="button">Dashboard</a>
         <button onclick="logout()" class="button">Logout</button>
       `;
-    });
 
-    function logout() {
-      auth.signOut().then(() => window.location = "login.html");
+      const adminEmails = ["rotavator66@outlook.com"];
+      if (currentUser && adminEmails.includes(currentUser.email)) {
+        nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
+      }
     }
+
+    function safeInit() {
+      console.log("Initialising club page...");
+      buildNav();
+    }
+
+    try {
+      if (window.auth) {
+        window.auth.onAuthStateChanged(user => {
+          currentUser = user;
+
+          if (!user) {
+            window.location = "login.html";
+            return;
+          }
+
+          safeInit();
+        });
+      } else {
+        console.warn("Firebase auth not found — continuing anonymously");
+        safeInit();
+      }
+    } catch (err) {
+      console.error("Auth init failed:", err);
+      safeInit();
+    }
+
+  });
   </script>
 
 </body>
