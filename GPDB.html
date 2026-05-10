@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <title>GPSL Player Database</title>
 
-  <!-- ============================================
-       PAGE STYLE (GPSL Dark Theme)
-       ============================================ -->
   <style>
     body {
       background: #111;
@@ -16,7 +13,6 @@
       margin: 0;
     }
 
-    /* Buttons (GPSL orange theme) */
     a.button, button.button {
       display: inline-block;
       padding: 10px 20px;
@@ -36,7 +32,6 @@
       transform: scale(1.05);
     }
 
-    /* Page Title */
     #pageTitle {
       background:#222;
       color:#ff9900;
@@ -48,7 +43,6 @@
       font-weight:bold;
     }
 
-    /* Filter Groups */
     .filter-group {
       background:#1a1a1a;
       color:#ff9900;
@@ -69,7 +63,6 @@
       color:#ffaa22;
     }
 
-    /* Inputs */
     input, select {
       background:#222;
       color:#ddd;
@@ -78,7 +71,6 @@
       border-radius:4px;
     }
 
-    /* GPSL Table */
     table {
       width: 100%;
       border-collapse: collapse;
@@ -103,9 +95,7 @@
       text-align: center;
     }
 
-    th:last-child {
-      border-right: none;
-    }
+    th:last-child { border-right: none; }
 
     th.sort-asc::after { content: " ▲"; font-size: 10px; }
     th.sort-desc::after { content: " ▼"; font-size: 10px; }
@@ -118,23 +108,12 @@
       text-align: center;
     }
 
-    td:last-child {
-      border-right: none;
-    }
+    td:last-child { border-right: none; }
 
-    /* Alternating rows */
-    tbody tr:nth-child(odd) {
-      background: #1f1f1f;
-    }
+    tbody tr:nth-child(odd) { background: #1f1f1f; }
+    tbody tr:nth-child(even) { background: #262626; }
 
-    tbody tr:nth-child(even) {
-      background: #262626;
-    }
-
-    /* Hover highlight */
-    tbody tr:hover {
-      background: #333 !important;
-    }
+    tbody tr:hover { background: #333 !important; }
 
     #pagination {
       color: #ff9900;
@@ -151,55 +130,34 @@
 
 <body>
 
-  <!-- ============================================
-       NAVIGATION (populated after auth)
-       ============================================ -->
   <div id="nav" style="margin-bottom:20px;"></div>
 
-  <!-- ============================================
-       PAGE TITLE
-       ============================================ -->
   <h1 id="pageTitle">GPSL – Player Database</h1>
 
-  <!-- ============================================
-       FILTER PANEL
-       ============================================ -->
   <div id="controls">
-
-    <!-- Clear Filters -->
     <div class="filter-group">
       <button id="clearFiltersBtn" class="button">Clear Filters</button>
     </div>
 
-    <!-- Market Value -->
     <div class="filter-group">
       <strong>Market Value</strong>
       <label>Min <input type="number" id="mv-min" style="width:80px;"></label>
       <label>Max <input type="number" id="mv-max" style="width:80px;"></label>
       <button id="applyMV" class="button">Apply</button>
     </div>
-
   </div>
 
-  <!-- ============================================
-       DROPDOWN FILTERS (injected by JS)
-       ============================================ -->
   <div class="filter-group" id="filters" style="margin-bottom:20px;">
     <strong>Filters</strong>
   </div>
 
-  <!-- ============================================
-       PLAYER TABLE
-       ============================================ -->
   <table id="playersTable">
     <thead id="tableHead"></thead>
     <tbody id="tableBody"></tbody>
   </table>
 
-  <!-- Pagination -->
   <div id="pagination"></div>
 
-  <!-- Rows per page -->
   <div id="rowsPerPage">
     <label>Rows per page:
       <select id="pageSizeSelect">
@@ -211,29 +169,37 @@
     </label>
   </div>
 
-  <!-- ============================================
-       GPDB LOGIC (external module)
-       ============================================ -->
   <script type="module" src="gpdb_v2.js"></script>
 
-  <!-- ============================================
-       FIREBASE INITIALISATION
-       ============================================ -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
   <script src="firebase.js"></script>
 
-  <!-- ============================================
-       AUTH + NAVIGATION LOGIC
-       ============================================ -->
+  <!-- ⭐ FIXED NAV + AUTH (SAFE, DOM-READY, RACE-PROOF) -->
   <script>
-    auth.onAuthStateChanged(user => {
-      const nav = document.getElementById("nav");
+  document.addEventListener("DOMContentLoaded", () => {
 
-      if (!user) {
+    let currentUser = null;
+
+    function logout() {
+      try {
+        if (window.auth) {
+          auth.signOut().then(() => window.location = "login.html");
+        } else {
+          window.location = "login.html";
+        }
+      } catch (err) {
+        console.error("Logout failed:", err);
         window.location = "login.html";
+      }
+    }
+
+    function buildNav() {
+      const nav = document.getElementById("nav");
+      if (!nav) {
+        console.error("NAV element missing");
         return;
       }
 
@@ -244,11 +210,40 @@
         <a href="all_listings.html" class="button">Transfer List</a>
         <button onclick="logout()" class="button">Logout</button>
       `;
-    });
 
-    function logout() {
-      auth.signOut().then(() => window.location = "login.html");
+      const adminEmails = ["rotavator66@outlook.com"];
+      if (currentUser && adminEmails.includes(currentUser.email)) {
+        nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
+      }
     }
+
+    function safeInit() {
+      console.log("Initialising GPDB page...");
+      buildNav();
+    }
+
+    try {
+      if (window.auth) {
+        window.auth.onAuthStateChanged(user => {
+          currentUser = user;
+
+          if (!user) {
+            window.location = "login.html";
+            return;
+          }
+
+          safeInit();
+        });
+      } else {
+        console.warn("Firebase auth not found — continuing anonymously");
+        safeInit();
+      }
+    } catch (err) {
+      console.error("Auth init failed:", err);
+      safeInit();
+    }
+
+  });
   </script>
 
 </body>
