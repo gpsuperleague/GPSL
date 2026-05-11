@@ -833,9 +833,15 @@ function applyPESDBRowClicks(tbodyId) {
     row.style.cursor = "pointer";
 
     row.addEventListener("click", e => {
+
+      // FIX: detect button clicks reliably
+      const clickedButton =
+        e.target.closest("button") ||
+        e.currentTarget.querySelector("button:hover");
+
       if (
         e.target.closest("select") ||
-        e.target.closest("button") ||
+        clickedButton ||
         e.target.closest(".decision-buttons")
       ) {
         return;
