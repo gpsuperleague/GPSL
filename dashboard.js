@@ -374,24 +374,54 @@ async function validateAndCreateListing() {
     return;
   }
 
-  const endTime = new Date(Date.now() + 86400000).toISOString();
+  const now = new Date().toISOString();
+  const endTime = new Date(Date.now() + 86400000).toISOString(); // 24h
 
   const { error } = await supabase
     .from("Player_Transfer_Listings")
     .insert({
       player_id: selectedPlayerForListing.Konami_ID,
       seller_club_id: currentUserShort,
+
+      // Required core fields
       reserve_price: reserve,
       market_value: mv,
-      status: "Active",
+      start_time: now,
       end_time: endTime,
+      status: "Active",
+
+      // Listing behaviour defaults
+      listing_type: "standard",
+      hidden_bids: false,
+      random_end_time: null,
+      special_rules: {},
+
+      // Bidding state
+      current_highest_bid: null,
+      current_highest_bidder: null,
+
+      // Review deadlines
+      seller_review_deadline: endTime,
+      review_deadline: endTime,
+
+      // Completion state
+      winning_bid: null,
+      winning_club: null,
+      transfer_completed: false,
+      archived: false,
+
+      // Extension system
+      hour_extended: false,
+      was_extended: false,
+      extension_type: "none",
+      extension_count: 0,
       initial_end_time: endTime,
       extension_state: "none",
-      last_extension_time: null,
-      extension_count: 0
+      last_extension_time: null
     });
 
   if (error) {
+    console.error("LISTING INSERT ERROR:", error);
     document.getElementById("reserveError").textContent =
       "Failed to create listing. Please try again.";
     return;
