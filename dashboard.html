@@ -446,11 +446,11 @@
       /* Load badge */
       document.getElementById("clubBadgeHeader").src = `badges/${shortName}.png`;
 
-      /* Now load the rest of the dashboard logic */
-      import("./dashboard.js?v=999").then(module => {
-        module.initDashboard({ user, shortName });
-      });
+        /* Now load the rest of the dashboard logic */
+    import("./dashboard.js?v=1000").then(module => {
+      module.initDashboard({ user, shortName });
     });
+
   </script>
 
   <!-- TRANSFER ENGINE -->
