@@ -448,7 +448,7 @@
 
       /* Now load the rest of the dashboard logic */
       import("./dashboard.js?v=999").then(module => {
-        module.initDashboard(shortName);
+        module.initDashboard({ user, shortName });
       });
     });
   </script>
