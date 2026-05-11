@@ -525,14 +525,35 @@ async function renderActiveListings(listings) {
     tbody.appendChild(tr);
   }
 
-  tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
-    btn.addEventListener("click", async e => {
-      e.stopPropagation();
-      const listingId = e.currentTarget.dataset.listingId;
-      await dismissListingForUser(listingId);
-      e.currentTarget.closest("tr")?.remove();
-    });
+ tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
+  btn.addEventListener("click", async e => {
+    e.stopPropagation();
+
+    // FIX: reliably find the table row
+    const row =
+      e.target.closest("tr") ||
+      e.currentTarget.closest("tr") ||
+      e.currentTarget.parentElement.closest("tr");
+
+    if (!row) {
+      console.error("Dismiss failed: could not find table row");
+      return;
+    }
+
+    const listingId = row.dataset.listingId;
+
+    await dismissListingForUser(listingId);
+
+    // Remove row from UI
+    row.remove();
+
+    // Refresh UI so everything stays in sync
+    await loadActiveListings();
+    await loadActiveListingsCache();
+    await loadMyActiveBids();
+    await loadListings();
   });
+});
 
   applyPESDBRowClicks("active-listings-body");
 }
