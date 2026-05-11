@@ -547,11 +547,10 @@ tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
     // Remove row from UI
     row.remove();
 
-    // Refresh UI so everything stays in sync
-    await loadActiveListings();
+    // REFRESH — using functions that actually exist
     await loadActiveListingsCache();
-    await loadMyActiveBids();
     await loadListings();
+    await loadMyActiveBids();
   });
 });
 
