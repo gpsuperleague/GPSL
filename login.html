@@ -52,58 +52,63 @@
   <input id="email" type="email" placeholder="Email"><br><br>
   <input id="password" type="password" placeholder="Password"><br><br>
 
-  <button onclick="login()">Login</button>
+  <button id="loginBtn">Login</button>
   <br><br>
 
-  <a onclick="resetPassword()">Forgot your password?</a>
+  <a id="resetBtn">Forgot your password?</a>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-  <script src="firebase.js"></script>
+  <!-- SUPABASE CLIENT -->
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-  <!-- FIXED LOGIN LOGIC -->
-  <script>
-  document.addEventListener("DOMContentLoaded", () => {
+    const supabase = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+    );
 
-    function login() {
-      const email = document.getElementById('email').value;
-      const pass = document.getElementById('password').value;
+    window.supabase = supabase;
 
-      if (!window.auth) {
-        alert("Login system is temporarily unavailable.");
+    /* LOGIN */
+    document.getElementById("loginBtn").onclick = async () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!email || !password) {
+        alert("Enter email and password.");
         return;
       }
 
-      auth.signInWithEmailAndPassword(email, pass)
-        .then(() => window.location = 'dashboard.html')
-        .catch(err => alert(err.message));
-    }
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-    function resetPassword() {
-      const email = document.getElementById('email').value;
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      window.location = "dashboard.html";
+    };
+
+    /* PASSWORD RESET */
+    document.getElementById("resetBtn").onclick = async () => {
+      const email = document.getElementById("email").value.trim();
 
       if (!email) {
-        alert("Enter your email first so we know where to send the reset link.");
+        alert("Enter your email first.");
         return;
       }
 
-      if (!window.auth) {
-        alert("Password reset is temporarily unavailable.");
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+
+      if (error) {
+        alert(error.message);
         return;
       }
 
-      auth.sendPasswordResetEmail(email)
-        .then(() => alert("Password reset email sent. Check your inbox."))
-        .catch(err => alert(err.message));
-    }
-
-    // expose functions globally
-    window.login = login;
-    window.resetPassword = resetPassword;
-
-  });
+      alert("Password reset email sent.");
+    };
   </script>
 
 </body>
