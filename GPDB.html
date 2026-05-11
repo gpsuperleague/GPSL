@@ -169,81 +169,47 @@
     </label>
   </div>
 
+  <!-- MAIN LOGIC -->
   <script type="module" src="gpdb_v2.js"></script>
 
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <!-- SUPABASE AUTH + NAVIGATION -->
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-  <script src="firebase.js"></script>
+    const supabase = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+    );
 
-  <!-- ⭐ FIXED NAV + AUTH (SAFE, DOM-READY, RACE-PROOF) -->
-  <script>
-  document.addEventListener("DOMContentLoaded", () => {
+    window.supabase = supabase;
 
-    let currentUser = null;
+    document.addEventListener("DOMContentLoaded", async () => {
+      const { data: { user } } = await supabase.auth.getUser();
 
-    function logout() {
-      try {
-        if (window.auth) {
-          auth.signOut().then(() => window.location = "login.html");
-        } else {
-          window.location = "login.html";
-        }
-      } catch (err) {
-        console.error("Logout failed:", err);
+      if (!user) {
         window.location = "login.html";
-      }
-    }
-
-    function buildNav() {
-      const nav = document.getElementById("nav");
-      if (!nav) {
-        console.error("NAV element missing");
         return;
       }
 
+      /* NAVIGATION */
+      const nav = document.getElementById("nav");
       nav.innerHTML = `
         <a href="index.html" class="button">Home</a>
         <a href="clubs.html" class="button">Clubs</a>
         <a href="dashboard.html" class="button">Dashboard</a>
         <a href="all_listings.html" class="button">Transfer List</a>
-        <button onclick="logout()" class="button">Logout</button>
+        <button id="logoutBtn" class="button">Logout</button>
       `;
 
-      const adminEmails = ["rotavator66@outlook.com"];
-      if (currentUser && adminEmails.includes(currentUser.email)) {
+      if (user.email === "rotavator66@outlook.com") {
         nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
       }
-    }
 
-    function safeInit() {
-      console.log("Initialising GPDB page...");
-      buildNav();
-    }
-
-    try {
-      if (window.auth) {
-        window.auth.onAuthStateChanged(user => {
-          currentUser = user;
-
-          if (!user) {
-            window.location = "login.html";
-            return;
-          }
-
-          safeInit();
-        });
-      } else {
-        console.warn("Firebase auth not found — continuing anonymously");
-        safeInit();
-      }
-    } catch (err) {
-      console.error("Auth init failed:", err);
-      safeInit();
-    }
-
-  });
+      document.getElementById("logoutBtn").onclick = async () => {
+        await supabase.auth.signOut();
+        window.location = "login.html";
+      };
+    });
   </script>
 
 </body>
