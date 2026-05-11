@@ -443,18 +443,23 @@
       document.getElementById("capacityField").textContent = club.Capacity;
       document.getElementById("dashboardTitle").textContent = `${club.Club} Dashboard`;
 
-      /* Load badge */
-      document.getElementById("clubBadgeHeader").src = `badges/${shortName}.png`;
+  <script type="module">
+  supabase.auth.getUser().then(({ data: { user } }) => {
 
-        /* Now load the rest of the dashboard logic */
+    /* Load badge */
+    document.getElementById("clubBadgeHeader").src =
+      `images/club_badges/${shortName}.png`;
+
+    /* Now load the rest of the dashboard logic */
     import("./dashboard.js?v=1000").then(module => {
       module.initDashboard({ user, shortName });
     });
 
-  </script>
+  });
+</script>
 
-  <!-- TRANSFER ENGINE -->
-  <script src="transferEngine.js"></script>
+<!-- TRANSFER ENGINE -->
+<script src="transferEngine.js"></script>
 
   <!-- CLUB LOOKUP -->
   <script type="module" src="clubs_lookup.js"></script>
