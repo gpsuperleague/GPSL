@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <title>GPSL Admin</title>
 
-  <!-- ============================================
-       STYLE: Admin Panel Theme
-       ============================================ -->
   <style>
     body {
       background: #111;
@@ -70,9 +67,7 @@
       margin-bottom: 10px;
     }
 
-    /* ============================================
-       MODAL: Season Rollover Confirmation
-       ============================================ */
+    /* Modal */
     #seasonRolloverModalBackdrop {
       position: fixed;
       top: 0;
@@ -104,46 +99,46 @@
       margin-left: 20px;
     }
   </style>
-
 </head>
 
 <body>
 
-  <!-- ============================================
-       NAVIGATION BAR
-       ============================================ -->
   <div id="nav"></div>
 
   <h1>GPSL Admin Panel</h1>
 
   <div class="page-container">
 
-    <!-- ============================================
-         ADMIN PANEL CONTENT (Hidden until auth check)
-         ============================================ -->
     <div id="adminPanel" style="display:none;">
 
+      <!-- SEASON MANAGEMENT -->
       <h2 class="section-header">Season Management</h2>
-
       <div class="panel">
         <button id="rolloverBtn" class="button" style="background:#cc3300;">
           Start New Season
         </button>
-
         <div id="rolloverStatus" style="margin-top:10px; color:#ffcc00;"></div>
+      </div>
+
+      <!-- ADD NEW OWNER -->
+      <h2 class="section-header">Add New Owner</h2>
+      <div class="panel">
+        <input id="ownerEmail" placeholder="Owner Email" style="width:90%;padding:10px;"><br><br>
+        <input id="ownerPassword" placeholder="Password" type="password" style="width:90%;padding:10px;"><br><br>
+        <input id="ownerClub" placeholder="Club ShortName (e.g., ARS)" style="width:90%;padding:10px;"><br><br>
+
+        <button id="addOwnerBtn" class="button">Add Owner</button>
+        <div id="ownerStatus" style="margin-top:10px; color:#ffcc00;"></div>
       </div>
 
     </div>
 
   </div>
 
-  <!-- ============================================
-       MODAL: Season Rollover Confirmation
-       ============================================ -->
+  <!-- MODAL -->
   <div id="seasonRolloverModalBackdrop">
     <div id="seasonRolloverModal">
       <h3>Start New Season</h3>
-
       <p>This will:</p>
       <ul>
         <li>Close the current season</li>
@@ -151,10 +146,7 @@
         <li>Reset player season stats</li>
         <li>Snapshot club finances</li>
       </ul>
-
-      <p style="color:#ffcc00; margin-top:10px;">
-        This action cannot be undone.
-      </p>
+      <p style="color:#ffcc00; margin-top:10px;">This action cannot be undone.</p>
 
       <div class="modal-buttons">
         <button class="button" id="cancelRolloverBtn">Cancel</button>
@@ -163,17 +155,7 @@
     </div>
   </div>
 
-  <!-- ============================================
-       FIREBASE INITIALISATION
-       ============================================ -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
-  <script src="firebase.js"></script>
-
-  <!-- ============================================
-       SUPABASE INITIALISATION
-       ============================================ -->
+  <!-- SUPABASE CLIENT -->
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
@@ -183,86 +165,93 @@
     );
 
     window.supabase = supabase;
-  </script>
 
-  <!-- ============================================
-       ADMIN PANEL LOGIC (To be modularised later)
-       ============================================ -->
-  <script>
-    /* ------------------------------
-       Logout Handler
-       ------------------------------ */
-    function logout() {
-      auth.signOut().then(() => {
-        window.location = "login.html";
-      });
-    }
-
-    /* ------------------------------
-       Admin Access Protection
-       ------------------------------ */
-    auth.onAuthStateChanged(async user => {
-      const nav = document.getElementById("nav");
+    /* AUTH CHECK */
+    document.addEventListener("DOMContentLoaded", async () => {
+      const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
         window.location = "login.html";
         return;
       }
 
-      // Navigation
+      const nav = document.getElementById("nav");
       nav.innerHTML = `
         <a href="index.html" class="button">Home</a>
         <a href="dashboard.html" class="button">Dashboard</a>
-        <button onclick="logout()" class="button">Logout</button>
+        <button id="logoutBtn" class="button">Logout</button>
       `;
 
-      // Admin list
+      document.getElementById("logoutBtn").onclick = async () => {
+        await supabase.auth.signOut();
+        window.location = "login.html";
+      };
+
       const adminEmails = ["rotavator66@outlook.com"];
 
-      // If not admin → redirect away
       if (!adminEmails.includes(user.email)) {
         window.location = "dashboard.html";
         return;
       }
 
-      // Admin allowed → show panel
       document.getElementById("adminPanel").style.display = "block";
     });
 
-
-    /* ------------------------------
-       Modal + RPC Logic
-       ------------------------------ */
+    /* SEASON ROLLOVER */
     document.addEventListener("DOMContentLoaded", () => {
-      const openBtn = document.getElementById("rolloverBtn");
       const modal = document.getElementById("seasonRolloverModalBackdrop");
-      const cancelBtn = document.getElementById("cancelRolloverBtn");
-      const confirmBtn = document.getElementById("confirmRolloverBtn");
       const status = document.getElementById("rolloverStatus");
 
-      if (!openBtn) return;
-
-      openBtn.onclick = () => {
+      document.getElementById("rolloverBtn").onclick = () => {
         modal.style.display = "flex";
       };
 
-      cancelBtn.onclick = () => {
+      document.getElementById("cancelRolloverBtn").onclick = () => {
         modal.style.display = "none";
       };
 
-      confirmBtn.onclick = async () => {
-        status.textContent = "Processing season rollover…";
+      document.getElementById("confirmRolloverBtn").onclick = async () => {
         modal.style.display = "none";
+        status.textContent = "Processing season rollover…";
 
         const { data, error } = await supabase.rpc("rollover_season");
 
         if (error) {
-          console.error("Season rollover failed:", error);
-          status.textContent = "❌ Season rollover failed — check console.";
+          status.textContent = "❌ Season rollover failed.";
           return;
         }
 
         status.textContent = "✅ New season created successfully!";
+      };
+    });
+
+    /* ADD OWNER */
+    document.addEventListener("DOMContentLoaded", () => {
+      const btn = document.getElementById("addOwnerBtn");
+      const status = document.getElementById("ownerStatus");
+
+      btn.onclick = async () => {
+        const email = document.getElementById("ownerEmail").value.trim();
+        const password = document.getElementById("ownerPassword").value.trim();
+        const club = document.getElementById("ownerClub").value.trim();
+
+        if (!email || !password || !club) {
+          status.textContent = "Fill all fields.";
+          return;
+        }
+
+        status.textContent = "Creating owner…";
+
+        const { data, error } = await supabase.functions.invoke("create-owner", {
+          body: { email, password, clubShortName: club }
+        });
+
+        if (error) {
+          status.textContent = "❌ " + error.message;
+          return;
+        }
+
+        status.textContent = "✅ Owner created and assigned!";
       };
     });
   </script>
