@@ -72,65 +72,40 @@
 
   <footer>© GPSL</footer>
 
-  <!-- Firebase (still present for now) -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  <script src="firebase.js"></script>
+  <!-- SUPABASE CLIENT -->
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-  <!-- FIXED AUTH + BUTTON LOGIC -->
-  <script>
-  document.addEventListener("DOMContentLoaded", () => {
+    const supabase = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+    );
 
-    let currentUser = null;
+    window.supabase = supabase;
 
-    function logout() {
-      try {
-        if (window.auth) {
-          auth.signOut().then(() => window.location = "index.html");
-        } else {
-          window.location = "index.html";
-        }
-      } catch (err) {
-        console.error("Logout failed:", err);
-        window.location = "index.html";
-      }
-    }
-
-    function buildButtons() {
+    /* AUTH BUTTON LOGIC */
+    document.addEventListener("DOMContentLoaded", async () => {
       const container = document.getElementById("authButtons");
 
-      if (!container) return;
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (currentUser) {
+      if (user) {
         container.innerHTML = `
           <a href="dashboard.html" class="button">Dashboard</a>
-          <button onclick="logout()" class="button">Logout</button>
+          <button id="logoutBtn" class="button">Logout</button>
         `;
+
+        document.getElementById("logoutBtn").onclick = async () => {
+          await supabase.auth.signOut();
+          window.location = "index.html";
+        };
+
       } else {
         container.innerHTML = `
           <a href="login.html" class="button">Login</a>
         `;
       }
-    }
-
-    try {
-      if (window.auth) {
-        window.auth.onAuthStateChanged(user => {
-          currentUser = user;
-          buildButtons();
-        });
-      } else {
-        console.warn("Firebase auth not found — continuing anonymously");
-        currentUser = null;
-        buildButtons();
-      }
-    } catch (err) {
-      console.error("Auth init failed:", err);
-      currentUser = null;
-      buildButtons();
-    }
-
-  });
+    });
   </script>
 
 </body>
