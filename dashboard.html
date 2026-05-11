@@ -342,7 +342,7 @@
 
   </div>
 
-  <!-- MODAL -->
+  <!-- LIST PLAYER MODAL -->
   <div id="list-player-modal-backdrop">
     <div id="list-player-modal">
       <h3>List Player</h3>
@@ -381,71 +381,83 @@
     </div>
   </div>
 
-  <!-- ============================================
-       FIREBASE CORE (classic)
-       ============================================ -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <!-- SUPABASE CLIENT -->
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-  <!-- ============================================
-       UNIFIED FIREBASE + SUPABASE WRAPPER (MODULE)
-       ============================================ -->
-  <script type="module" src="firebase.js"></script>
+    const supabase = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+    );
 
-  <!-- ============================================
-       TRANSFER ENGINE (classic)
-       ============================================ -->
+    window.supabase = supabase;
+
+    /* AUTH + CLUB LOOKUP */
+    document.addEventListener("DOMContentLoaded", async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        window.location = "login.html";
+        return;
+      }
+
+      document.getElementById("userEmail").textContent = user.email;
+
+      /* NAVIGATION */
+      const nav = document.getElementById("nav");
+      nav.innerHTML = `
+        <a href="index.html" class="button">Home</a>
+        <a href="GPDB.html" class="button">Player Database</a>
+        <a href="clubs.html" class="button">Clubs</a>
+        <a href="all_listings.html" class="button">Transfer Market</a>
+        <button id="logoutBtn" class="button">Logout</button>
+      `;
+
+      if (user.email === "rotavator66@outlook.com") {
+        nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
+      }
+
+      document.getElementById("logoutBtn").onclick = async () => {
+        await supabase.auth.signOut();
+        window.location = "login.html";
+      };
+
+      /* LOOK UP CLUB BY OWNER ID */
+      const { data: club, error } = await supabase
+        .from("Clubs")
+        .select("*")
+        .eq("owner_id", user.id)
+        .single();
+
+      if (error || !club) {
+        alert("No club assigned to this account.");
+        return;
+      }
+
+      const shortName = club.ShortName;
+      window.GPSL_CLUB_SHORTNAME = shortName;
+
+      /* Populate header */
+      document.getElementById("clubNameField").textContent = club.Club;
+      document.getElementById("stadiumField").textContent = club.Stadium;
+      document.getElementById("capacityField").textContent = club.Capacity;
+      document.getElementById("dashboardTitle").textContent = `${club.Club} Dashboard`;
+
+      /* Load badge */
+      document.getElementById("clubBadgeHeader").src = `badges/${shortName}.png`;
+
+      /* Now load the rest of the dashboard logic */
+      import("./dashboard.js?v=999").then(module => {
+        module.initDashboard(shortName);
+      });
+    });
+  </script>
+
+  <!-- TRANSFER ENGINE -->
   <script src="transferEngine.js"></script>
 
-  <!-- ============================================
-       CLUB LOOKUP + DASHBOARD LOGIC (modules)
-       ============================================ -->
+  <!-- CLUB LOOKUP -->
   <script type="module" src="clubs_lookup.js"></script>
-  <script type="module" src="dashboard.js?v=999"></script>
-
-  <!-- ============================================
-       NAVIGATION (waits for window.auth)
-       ============================================ -->
-  <script>
-  document.addEventListener("DOMContentLoaded", () => {
-
-    function logout() {
-      window.auth.signOut().then(() => {
-        window.location = "login.html";
-      });
-    }
-
-    const waitForAuth = setInterval(() => {
-      if (window.auth && typeof window.auth.onAuthStateChanged === "function") {
-        clearInterval(waitForAuth);
-
-        window.auth.onAuthStateChanged(user => {
-          const nav = document.getElementById("nav");
-
-          if (!user) {
-            window.location = "login.html";
-            return;
-          }
-
-          nav.innerHTML = `
-            <a href="index.html" class="button">Home</a>
-            <a href="GPDB.html" class="button">Player Database</a>
-            <a href="clubs.html" class="button">Clubs</a>
-            <a href="all_listings.html" class="button">Transfer Market</a>
-            <button onclick="logout()" class="button">Logout</button>
-          `;
-
-          const adminEmails = ["rotavator66@outlook.com"];
-          if (adminEmails.includes(user.email)) {
-            nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
-          }
-        });
-      }
-    }, 50);
-
-  });
-  </script>
 
 </body>
 </html>
