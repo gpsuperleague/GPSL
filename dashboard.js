@@ -525,7 +525,7 @@ async function renderActiveListings(listings) {
     tbody.appendChild(tr);
   }
 
- tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
+tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
   btn.addEventListener("click", async e => {
     e.stopPropagation();
 
