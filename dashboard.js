@@ -529,7 +529,6 @@ tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
   btn.addEventListener("click", async e => {
     e.stopPropagation();
 
-    // FIX: reliably find the table row
     const row =
       e.target.closest("tr") ||
       e.currentTarget.closest("tr") ||
@@ -544,10 +543,9 @@ tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
 
     await dismissListingForUser(listingId);
 
-    // Remove row from UI
     row.remove();
 
-    // REFRESH — using functions that actually exist
+    // FINAL REFRESH BLOCK — ONLY THESE THREE
     await loadActiveListingsCache();
     await loadListings();
     await loadMyActiveBids();
