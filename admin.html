@@ -131,6 +131,25 @@
         <div id="ownerStatus" style="margin-top:10px; color:#ffcc00;"></div>
       </div>
 
+      <!-- UPDATE OWNER EMAIL -->
+      <h2 class="section-header">Update Owner Email</h2>
+      <div class="panel">
+        <input id="updateOwnerId" placeholder="Owner User ID" style="width:90%;padding:10px;"><br><br>
+        <input id="newOwnerEmail" placeholder="New Email" style="width:90%;padding:10px;"><br><br>
+
+        <button id="updateEmailBtn" class="button">Update Email</button>
+        <div id="updateEmailStatus" style="margin-top:10px; color:#ffcc00;"></div>
+      </div>
+
+      <!-- RESET OWNER PASSWORD -->
+      <h2 class="section-header">Reset Owner Password</h2>
+      <div class="panel">
+        <input id="resetOwnerEmail" placeholder="Owner Email" style="width:90%;padding:10px;"><br><br>
+
+        <button id="resetPasswordBtn" class="button">Send Reset Email</button>
+        <div id="resetPasswordStatus" style="margin-top:10px; color:#ffcc00;"></div>
+      </div>
+
     </div>
 
   </div>
@@ -254,6 +273,62 @@
         status.textContent = "✅ Owner created and assigned!";
       };
     });
+
+    /* UPDATE OWNER EMAIL */
+    document.addEventListener("DOMContentLoaded", () => {
+      const btn = document.getElementById("updateEmailBtn");
+      const status = document.getElementById("updateEmailStatus");
+
+      btn.onclick = async () => {
+        const userId = document.getElementById("updateOwnerId").value.trim();
+        const newEmail = document.getElementById("newOwnerEmail").value.trim();
+
+        if (!userId || !newEmail) {
+          status.textContent = "Enter both fields.";
+          return;
+        }
+
+        status.textContent = "Updating email…";
+
+        const { error } = await supabase.auth.admin.updateUserById(userId, {
+          email: newEmail
+        });
+
+        if (error) {
+          status.textContent = "❌ " + error.message;
+        } else {
+          status.textContent = "✅ Email updated!";
+        }
+      };
+    });
+
+    /* RESET OWNER PASSWORD */
+    document.addEventListener("DOMContentLoaded", () => {
+      const btn = document.getElementById("resetPasswordBtn");
+      const status = document.getElementById("resetPasswordStatus");
+
+      btn.onclick = async () => {
+        const email = document.getElementById("resetOwnerEmail").value.trim();
+
+        if (!email) {
+          status.textContent = "Enter email.";
+          return;
+        }
+
+        status.textContent = "Sending reset email…";
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html"
+        });
+
+        if (error) {
+          status.textContent = "❌ " + error.message;
+        } else {
+          status.textContent = "✅ Reset email sent!";
+        }
+      };
+    });
+
   </script>
 
 </body>
