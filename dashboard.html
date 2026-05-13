@@ -360,14 +360,22 @@
         <div id="modalMaxReserve">₿ 0</div>
       </div>
 
-      <div class="modal-row">
-        <label for="reserveInput">Reserve Price</label>
-        <input type="number" id="reserveInput">
-        <div id="reserveError"></div>
-      
-        <button id="useMarketValueBtn" class="button">Use Market Value</button>
-        <button id="useMaxReserveBtn" class="button">Use Max Allowed Reserve</button>
-      </div>
+ <div class="modal-row">
+  <label for="reserveInput">Reserve Price</label>
+  <input type="text" id="reserveInput" inputmode="numeric">
+  <div id="reserveError"></div>
+
+  <div style="margin-top:10px;">
+    <button class="inc-btn" id="inc-500k-list">+500k</button>
+    <button class="inc-btn" id="inc-1m-list">+1m</button>
+    <button class="inc-btn" id="inc-5m-list">+5m</button>
+  </div>
+
+  <div style="margin-top:10px;">
+    <button id="useMarketValueBtn" class="button">Use Market Value</button>
+    <button id="useMaxReserveBtn" class="button">Use Max Allowed Reserve</button>
+  </div>
+</div>
 
       <div id="modalWarning">
         Listing a player is irreversible once confirmed.
