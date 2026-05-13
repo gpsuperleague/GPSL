@@ -80,7 +80,6 @@ async function loadGlobalSettings() {
   };
 }
 
-
 /* ============================================================
    MODULE E: Data Loading
    ============================================================ */
@@ -447,7 +446,27 @@ function setupControls() {
 }
 
 /* ============================================================
-   MODULE I: Initialisation
+   MODULE I: Pagination Rendering
+   ============================================================ */
+function renderPagination() {
+  const totalPages = Math.ceil(TOTAL_ROWS / PAGE_SIZE);
+  const pagination = document.getElementById("pagination");
+
+  pagination.innerHTML = "";
+
+  for (let i = 1; i <= totalPages; i++) {
+    const btn = document.createElement("button");
+    btn.textContent = i;
+    btn.className = "page-btn";
+    if (i === CURRENT_PAGE) btn.classList.add("active");
+
+    btn.onclick = () => loadPage(i);
+    pagination.appendChild(btn);
+  }
+}
+
+/* ============================================================
+   MODULE J: Initialisation
    ============================================================ */
 async function init() {
   await loadUser();
