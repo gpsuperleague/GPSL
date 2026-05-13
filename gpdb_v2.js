@@ -1,5 +1,5 @@
 /* ============================================================
-   MODULE A: Supabase Client (Unified Authenticated Client)
+   MODULE A: Supabase Client
    ============================================================ */
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
@@ -57,7 +57,26 @@ let MV_MIN = null;
 let MV_MAX = null;
 
 /* ============================================================
-   MODULE D: Data Loading
+   MODULE D: Global Settings Loader
+   ============================================================ */
+async function loadGlobalSettings() {
+  const { data } = await supabase
+    .from("Global_Settings")
+    .select("key, value");
+
+  const settings = {};
+  (data || []).forEach(row => {
+    settings[row.key] = row.value;
+  });
+
+  return {
+    transferWindowOpen: !!settings.transfer_window?.open,
+    draftAuctionEnabled: !!settings.draft_auction?.enabled
+  };
+}
+
+/* ============================================================
+   MODULE E: Data Loading
    ============================================================ */
 async function loadTotalCount() {
   const { count } = await supabase
@@ -119,8 +138,16 @@ async function loadPage(page = 1) {
 }
 
 /* ============================================================
-   MODULE E: Rendering
+   MODULE F: Rendering (with Bid column)
    ============================================================ */
+let GLOBAL_SETTINGS = null;
+let CURRENT_USER = null;
+
+async function loadUser() {
+  const { data: { user } } = await supabase.auth.getUser();
+  CURRENT_USER = user;
+}
+
 function renderTable(players) {
   const tableHead = document.getElementById("tableHead");
   const tableBody = document.getElementById("tableBody");
@@ -131,7 +158,7 @@ function renderTable(players) {
     return;
   }
 
-  // Header
+  // Header (add Bid column)
   tableHead.innerHTML = `
     <tr>
       ${COLUMNS.filter(col => col !== "Konami_ID")
@@ -143,37 +170,55 @@ function renderTable(players) {
           return `<th data-col="${col}" class="${cls}">${col.replace(/_/g, " ")}</th>`;
         })
         .join("")}
+      <th>Bid</th>
     </tr>
   `;
 
   // Rows
   tableBody.innerHTML = players
-    .map(
-      player => `
-      <tr data-konami-id="${player.Konami_ID || player.konami_id || ""}">
-        ${COLUMNS.filter(col => col !== "Konami_ID")
-          .map(col => {
-            let value = player[col];
+    .map(player => {
+      const hasClub = !!player.Contracted_Team;
+      const isMyClub = player.Contracted_Team === CURRENT_USER?.user_metadata?.shortName;
 
-            if (col === "market_value" && value !== null) {
-              value =
-                "₿ " +
-                new Intl.NumberFormat("en-GB", {
-                  maximumFractionDigits: 0,
-                  minimumFractionDigits: 0
-                }).format(value);
-            }
+      let bidCell = `<span class="locked-msg">Loading…</span>`;
 
-            return `<td>${value}</td>`;
-          })
-          .join("")}
-      </tr>
-    `
-    )
+      if (GLOBAL_SETTINGS) {
+        if (hasClub) {
+          if (!isMyClub && GLOBAL_SETTINGS.transferWindowOpen) {
+            bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
+          } else if (!GLOBAL_SETTINGS.transferWindowOpen) {
+            bidCell = `<span class="locked-msg">Window Closed</span>`;
+          } else {
+            bidCell = `<span class="locked-msg">Your Player</span>`;
+          }
+        } else {
+          if (GLOBAL_SETTINGS.draftAuctionEnabled) {
+            bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
+          } else {
+            bidCell = `<span class="locked-msg">Draft Locked</span>`;
+          }
+        }
+      }
+
+      return `
+        <tr data-konami-id="${player.Konami_ID}">
+          ${COLUMNS.filter(col => col !== "Konami_ID")
+            .map(col => {
+              let value = player[col];
+              if (col === "market_value" && value !== null) {
+                value = "₿ " + Number(value).toLocaleString("en-GB");
+              }
+              return `<td>${value}</td>`;
+            })
+            .join("")}
+          <td>${bidCell}</td>
+        </tr>
+      `;
+    })
     .join("");
 
   // Sorting
-  Array.from(tableHead.querySelectorAll("th")).forEach(th => {
+  Array.from(tableHead.querySelectorAll("th[data-col]")).forEach(th => {
     const col = th.getAttribute("data-col");
     th.onclick = () => {
       if (CURRENT_SORT_COLUMN === col) {
@@ -189,7 +234,8 @@ function renderTable(players) {
   // PESDB row click
   Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
     row.style.cursor = "pointer";
-    row.addEventListener("click", () => {
+    row.addEventListener("click", e => {
+      if (e.target.closest(".make-offer-btn")) return;
       const konamiId = row.getAttribute("data-konami-id");
       if (!konamiId) return;
       window.open(
@@ -199,28 +245,75 @@ function renderTable(players) {
       );
     });
   });
-}
 
-function renderPagination() {
-  const pages = Math.ceil(TOTAL_ROWS / PAGE_SIZE);
-  const container = document.getElementById("pagination");
-
-  container.innerHTML = "";
-
-  if (pages <= 1) return;
-
-  for (let i = 1; i <= pages; i++) {
-    const btn = document.createElement("button");
-    btn.textContent = i;
-    btn.style.margin = "4px";
-    btn.disabled = i === CURRENT_PAGE;
-    btn.onclick = () => loadPage(i);
-    container.appendChild(btn);
-  }
+  // Attach Make Offer handlers
+  document.querySelectorAll(".make-offer-btn").forEach(btn => {
+    btn.addEventListener("click", () => openMakeOfferModal(btn.dataset.playerId));
+  });
 }
 
 /* ============================================================
-   MODULE F: Filters
+   MODULE G: Make Offer Modal
+   ============================================================ */
+let CURRENT_OFFER_PLAYER = null;
+
+async function openMakeOfferModal(playerId) {
+  const { data: player } = await supabase
+    .from("Players")
+    .select("*")
+    .eq("Konami_ID", playerId)
+    .single();
+
+  CURRENT_OFFER_PLAYER = player;
+
+  document.getElementById("offerPlayerName").textContent = player.Name;
+  document.getElementById("offerPlayerInfo").textContent =
+    `${player.Position} • Rating ${player.Rating}`;
+
+  document.getElementById("offerAmount").value = "";
+  document.getElementById("offerError").textContent = "";
+
+  document.getElementById("make-offer-modal-backdrop").style.display = "flex";
+}
+
+document.getElementById("cancelOfferBtn").onclick = () => {
+  document.getElementById("make-offer-modal-backdrop").style.display = "none";
+};
+
+document.getElementById("confirmOfferBtn").onclick = async () => {
+  const input = document.getElementById("offerAmount");
+  const errorBox = document.getElementById("offerError");
+
+  let raw = input.value.replace(/,/g, "").trim();
+  let offer = Number(raw);
+
+  if (!offer || offer <= 0) {
+    errorBox.textContent = "Enter a valid positive number.";
+    return;
+  }
+
+  // Insert direct bid
+  const { error } = await supabase.from("Player_Transfer_Bids").insert({
+    listing_id: null,
+    player_id: CURRENT_OFFER_PLAYER.Konami_ID,
+    bidder_club_id: CURRENT_USER.user_metadata.shortName,
+    seller_club_id: CURRENT_OFFER_PLAYER.Contracted_Team || null,
+    bid_amount: offer,
+    bid_time: new Date().toISOString(),
+    is_direct: true
+  });
+
+  if (error) {
+    errorBox.textContent = "Failed to submit offer.";
+    console.error(error);
+    return;
+  }
+
+  document.getElementById("make-offer-modal-backdrop").style.display = "none";
+};
+
+/* ============================================================
+   MODULE H: Filters + Controls
    ============================================================ */
 async function populateDropdowns() {
   for (const col of DROPDOWN_COLUMNS) {
@@ -247,11 +340,9 @@ async function populateDropdowns() {
         allValues.push(
           ...data.map(row => {
             const v = row[col];
-
             if (col === "Contracted_Team") {
               if (!v || v.trim() === "") return "FREE AGENT";
             }
-
             return v;
           })
         );
@@ -350,9 +441,12 @@ function setupControls() {
 }
 
 /* ============================================================
-   MODULE G: Initialisation
+   MODULE I: Initialisation
    ============================================================ */
 async function init() {
+  await loadUser();
+  GLOBAL_SETTINGS = await loadGlobalSettings();
+
   setupControls();
   setupFilters();
   await populateDropdowns();
