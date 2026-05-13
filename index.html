@@ -108,7 +108,7 @@
           if (!email) return;
 
           const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: "https://gpsuperleague.github.io/GPSL/"
+            redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html"
           });
 
           if (error) {
