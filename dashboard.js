@@ -407,6 +407,10 @@ function addReserveIncrement(amount) {
   validateReserveInput();
 }
 
+document.getElementById("dec-500k-list").onclick = () => addReserveIncrement(-500000);
+document.getElementById("dec-1m-list").onclick = () => addReserveIncrement(-1000000);
+document.getElementById("dec-5m-list").onclick = () => addReserveIncrement(-5000000);
+
 document.getElementById("inc-500k-list").onclick = () => addReserveIncrement(500000);
 document.getElementById("inc-1m-list").onclick = () => addReserveIncrement(1000000);
 document.getElementById("inc-5m-list").onclick = () => addReserveIncrement(5000000);
