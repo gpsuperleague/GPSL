@@ -3,10 +3,8 @@
 // ======================================================
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 
-// Use global authenticated clients
+// Use global Supabase client (created in all_listings.html)
 const supabase = window.supabase;
-const auth = window.auth;
-const db = window.db;
 
 let currentUserShort = null;
 let allListings = [];
@@ -28,15 +26,23 @@ function parseMoneyInput(value) {
 }
 
 // ======================================================
-// MODULE A: AUTH + INITIAL LOAD
+// MODULE A: AUTH + INITIAL LOAD (SUPABASE)
 // ======================================================
-auth.onAuthStateChanged(async user => {
+(async function init() {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+  if (userError) {
+    console.error("Supabase auth error:", userError);
+    window.location = "login.html";
+    return;
+  }
+
   if (!user) {
     window.location = "login.html";
     return;
   }
 
-  await loadShortNameFromFirestore();
+  await loadShortNameFromSupabase(user.id);
   await loadListings();
 
   wireFilterCheckboxes();
@@ -44,21 +50,32 @@ auth.onAuthStateChanged(async user => {
   wirePlaceBidButton();
   wireIncrementButtons();
   wireQuickBidButton();
-});
+
+  console.log("all_listings.js initialized successfully");
+})();
 
 // ======================================================
-// MODULE A: FIRESTORE → SHORTNAME
+// MODULE A: SUPABASE → SHORTNAME
 // ======================================================
-async function loadShortNameFromFirestore() {
-  const uid = auth.currentUser.uid;
-  const doc = await db.collection("users").doc(uid).get();
+async function loadShortNameFromSupabase(userId) {
+  // Assumes Clubs table has Owner_ID (UUID) and ShortName
+  const { data, error } = await supabase
+    .from("Clubs")
+    .select("ShortName")
+    .eq("Owner_ID", userId)
+    .maybeSingle();
 
-  if (!doc.exists) {
-    console.error("Firestore user doc missing ShortName");
+  if (error) {
+    console.error("Error loading club ShortName from Supabase:", error);
     return;
   }
 
-  currentUserShort = doc.data().ShortName;
+  if (!data) {
+    console.warn("No club found for this user; currentUserShort will be null");
+    return;
+  }
+
+  currentUserShort = data.ShortName;
 }
 
 // ======================================================
@@ -101,6 +118,7 @@ function renderListings() {
   const filtered = allListings.filter(l => {
     const end = new Date(l.end_time);
 
+    // Only show listings that were ever active/extended
     if (l.status !== "Active" && !l.was_extended) return false;
 
     if (l.status === "Active") {
@@ -408,5 +426,3 @@ async function placeBid() {
   document.getElementById("bid-modal").style.display = "none";
   await loadListings();
 }
-
-console.log("all_listings.js loaded successfully");
