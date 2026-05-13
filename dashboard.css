@@ -425,3 +425,19 @@ table.gpsl-table tr:nth-child(even) {
 .money {
   white-space: nowrap;
 }
+
+.inc-btn {
+  padding: 6px 10px;
+  margin-right: 6px;
+  background:#444;
+  color:#fff;
+  border-radius:4px;
+  cursor:pointer;
+  border:1px solid #666;
+  font-size:13px;
+}
+
+.inc-btn:hover {
+  background:#666;
+}
+
