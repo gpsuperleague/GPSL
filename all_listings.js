@@ -315,27 +315,6 @@ function wireModalControls() {
 }
 
 // ======================================================
-// ⭐ NEW — INCREMENT & DECREMENT BUTTONS
-// ======================================================
-function wireIncrementButtons() {
-  const btns = [
-    ["inc-500k",       500000],
-    ["inc-1m",        1000000],
-    ["inc-5m",        5000000],
-    ["dec-500k-bid",  -500000],
-    ["dec-1m-bid",   -1000000],
-    ["dec-5m-bid",   -5000000],
-  ];
-
-  btns.forEach(([id, amount]) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.onclick = () => adjustBid(amount);
-    }
-  });
-}
-
-// ======================================================
 // ⭐ NEW — UNIVERSAL BID ADJUSTMENT FUNCTION
 // ======================================================
 function adjustBid(amount) {
@@ -355,6 +334,27 @@ function adjustBid(amount) {
 
   input.value = current.toLocaleString("en-GB");
   validateBidInput();
+}
+
+// ======================================================
+// ⭐ NEW — INCREMENT & DECREMENT BUTTONS
+// ======================================================
+function wireIncrementButtons() {
+  const btns = [
+    ["inc-500k",       500000],
+    ["inc-1m",        1000000],
+    ["inc-5m",        5000000],
+    ["dec-500k-bid",  -500000],
+    ["dec-1m-bid",   -1000000],
+    ["dec-5m-bid",   -5000000],
+  ];
+
+  btns.forEach(([id, amount]) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.onclick = () => adjustBid(amount);
+    }
+  });
 }
 
 // ======================================================
