@@ -72,22 +72,18 @@
 
   <footer>© GPSL</footer>
 
-  <!-- SUPABASE CLIENT -->
+  <!-- UNIFIED SUPABASE CLIENT -->
+  <script type="module" src="supabase.js"></script>
+
+  <!-- PAGE LOGIC -->
   <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    const supabase = window.supabase;
 
-    const supabase = createClient(
-      "https://omyyogfumrjoaweuawjn.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
-    );
-
-    window.supabase = supabase;
-
-    /* AUTH BUTTON LOGIC */
     document.addEventListener("DOMContentLoaded", async () => {
       const container = document.getElementById("authButtons");
 
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error } = await supabase.auth.getUser();
+      const user = data?.user;
 
       if (user) {
         container.innerHTML = `
@@ -103,7 +99,24 @@
       } else {
         container.innerHTML = `
           <a href="login.html" class="button">Login</a>
+          <button id="resetBtn" class="button">Reset Password</button>
         `;
+
+        document.getElementById("resetBtn").onclick = async () => {
+          const email = prompt("Enter your email to reset your password");
+
+          if (!email) return;
+
+          const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: "https://gpsuperleague.github.io/GPSL/"
+          });
+
+          if (error) {
+            alert(error.message);
+          } else {
+            alert("Password reset email sent.");
+          }
+        };
       }
     });
   </script>
