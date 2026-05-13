@@ -565,7 +565,7 @@ async function dismissListingForUser(listingId) {
 }
 
 // ============================================================
-// LOAD LISTINGS
+// LOAD LISTINGS + DIRECT BIDS
 // ============================================================
 async function loadListings() {
   const { data, error } = await supabase
@@ -592,8 +592,30 @@ async function loadListings() {
   const review = updatedListings.filter(l => l.status === "Review");
   const closed = updatedListings.filter(l => l.status === "Closed");
 
+  // --- DIRECT BIDS FOR THIS CLUB (VIA GPDB) ---
+  const { data: directBids, error: directErr } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("*")
+    .eq("is_direct", true)
+    .eq("seller_club_id", currentUserShort);
+
+  if (directErr) {
+    console.error("Direct bids load error:", directErr);
+  }
+
+  const virtualDirectListings = (directBids || []).map(b => ({
+    id: `direct-${b.id}`,
+    is_direct: true,
+    direct_bid_id: b.id,
+    player_id: b.player_id,
+    current_highest_bid: b.bid_amount,
+    current_highest_bidder: b.bidder_club_id,
+    end_time: b.bid_time,
+    status: "DirectBid"
+  }));
+
   renderActiveListings(active.filter(l => !dismissedIds.has(l.id)));
-  renderSellerReview(review);
+  renderSellerReview([...review, ...virtualDirectListings]);
   renderClosedListings(closed);
 
   await loadActiveListingsCache();
@@ -623,6 +645,7 @@ async function renderActiveListings(listings) {
       <td>${formatTimeRemaining(l.end_time)}</td>
       <td><span class="money">${l.current_highest_bid ? "₿ " + Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</span></td>
       <td>${fullClubName(l.current_highest_bidder) || "-"}</td>
+
       <td>
         ${
           l.status !== "Active"
@@ -665,7 +688,7 @@ async function renderActiveListings(listings) {
 }
 
 // ============================================================
-// SELLER REVIEW RENDER
+// SELLER REVIEW RENDER (INCL. DIRECT BIDS)
 // ============================================================
 async function renderSellerReview(listings) {
   const tbody = document.getElementById("seller-review-body");
@@ -674,7 +697,20 @@ async function renderSellerReview(listings) {
   for (const l of listings) {
     const player = await fetchPlayerByID(l.player_id);
 
-    const tr = document.createElement("tr");
+    const isDirect = !!l.is_direct;
+    const endTimeDisplay = l.end_time
+      ? new Date(l.end_time).toLocaleString()
+      : "-";
+
+    const acceptBtn = isDirect
+      ? `<button class="button" onclick="handleDirectBidAccept('${l.direct_bid_id}')">Accept</button>`
+      : `<button class="button" onclick="transferEngine.acceptSale(${l.id})">Accept</button>`;
+
+    const rejectBtn = isDirect
+      ? `<button class="button" onclick="handleDirectBidReject('${l.direct_bid_id}')">Reject</button>`
+      : `<button class="button" onclick="transferEngine.rejectSale(${l.id})">Reject</button>`;
+
+    tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
 
     tr.innerHTML = `
@@ -683,11 +719,11 @@ async function renderSellerReview(listings) {
       <td>${player?.Rating || "-"}</td>
       <td><span class="money">${l.current_highest_bid ? "₿ " + Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</span></td>
       <td>${fullClubName(l.current_highest_bidder) || "-"}</td>
-      <td>${new Date(l.end_time).toLocaleString()}</td>
+      <td>${endTimeDisplay}</td>
       <td>
         <div class="decision-buttons">
-          <button class="button" onclick="transferEngine.acceptSale(${l.id})">Accept</button>
-          <button class="button" onclick="transferEngine.rejectSale(${l.id})">Reject</button>
+          ${acceptBtn}
+          ${rejectBtn}
         </div>
       </td>
     `;
@@ -697,6 +733,140 @@ async function renderSellerReview(listings) {
 
   applyPESDBRowClicks("seller-review-body");
 }
+
+// ============================================================
+// DIRECT BID ACCEPT / REJECT HANDLERS
+// ============================================================
+window.handleDirectBidAccept = async function(bidId) {
+  const { data: bid, error: bidErr } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("*")
+    .eq("id", bidId)
+    .single();
+
+  if (bidErr || !bid) {
+    console.error("Direct bid lookup failed:", bidErr);
+    return;
+  }
+
+  const { data: player, error: playerErr } = await supabase
+    .from("Players")
+    .select("*")
+    .eq("Konami_ID", bid.player_id)
+    .single();
+
+  if (playerErr || !player) {
+    console.error("Player lookup for direct bid failed:", playerErr);
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const endTime = new Date(Date.now() + 86400000).toISOString(); // 24h
+
+  const { data: listing, error: listErr } = await supabase
+    .from("Player_Transfer_Listings")
+    .insert({
+      player_id: bid.player_id,
+      seller_club_id: bid.seller_club_id || currentUserShort,
+
+      // Reserve is max full reserve
+      reserve_price: player.Maximum_Reserve_Price,
+      market_value: player.market_value,
+      start_time: now,
+      end_time: endTime,
+      status: "Active",
+
+      // Listing behaviour defaults
+      listing_type: "standard",
+      hidden_bids: false,
+      random_end_time: null,
+      special_rules: {},
+
+      // Bidding state – seed with the direct bid
+      current_highest_bid: bid.bid_amount,
+      current_highest_bidder: bid.bidder_club_id,
+
+      // Review deadlines
+      seller_review_deadline: endTime,
+      review_deadline: endTime,
+
+      // Completion state
+      winning_bid: null,
+      winning_club: null,
+      transfer_completed: false,
+      archived: false,
+
+      // Extension system
+      hour_extended: false,
+      was_extended: false,
+      extension_type: "none",
+      extension_count: 0,
+      initial_end_time: endTime,
+      extension_state: "none",
+      last_extension_time: null
+    })
+    .select()
+    .single();
+
+  if (listErr || !listing) {
+    console.error("Failed to create listing from direct bid:", listErr);
+    return;
+  }
+
+  // Attach bid to new listing and mark as non-direct
+  const { error: updErr } = await supabase
+    .from("Player_Transfer_Bids")
+    .update({
+      listing_id: listing.id,
+      is_direct: false
+    })
+    .eq("id", bidId);
+
+  if (updErr) {
+    console.error("Failed to update direct bid after listing creation:", updErr);
+  }
+
+  await loadListings();
+  await loadMyActiveBids();
+};
+
+window.handleDirectBidReject = async function(bidId) {
+  const { data: bid, error: bidErr } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("*")
+    .eq("id", bidId)
+    .single();
+
+  if (bidErr || !bid) {
+    console.error("Direct bid lookup failed (reject):", bidErr);
+    return;
+  }
+
+  const { error: delErr } = await supabase
+    .from("Player_Transfer_Bids")
+    .delete()
+    .eq("id", bidId);
+
+  if (delErr) {
+    console.error("Failed to delete direct bid on reject:", delErr);
+  }
+
+  // Optional: virtual inbox message for bidder (table can be created later)
+  try {
+    await supabase.from("User_Inbox").insert({
+      user_id: bid.bidder_club_id,
+      subject: "Bid Rejected",
+      body: `Your offer for player ${bid.player_id} was rejected.`,
+      created_at: new Date().toISOString(),
+      is_read: false
+    });
+  } catch (e) {
+    // Swallow if inbox table not yet present
+    console.warn("User_Inbox insert failed (likely table not created yet).");
+  }
+
+  await loadListings();
+};
 
 // ============================================================
 // CLOSED LISTINGS RENDER
