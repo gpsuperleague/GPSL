@@ -601,7 +601,7 @@ async function loadListings() {
 }
 
 // ============================================================
-// ACTIVE LISTINGS RENDER
+// ACTIVE LISTINGS RENDER  — FIXED (no dismiss for Active)
 // ============================================================
 async function renderActiveListings(listings) {
   const tbody = document.getElementById("active-listings-body");
@@ -614,7 +614,6 @@ async function renderActiveListings(listings) {
     tr.dataset.konamiId = l.player_id;
     tr.dataset.listingId = l.id;
 
-    // ❌ No dismiss button for active listings
     tr.innerHTML = `
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
@@ -624,10 +623,46 @@ async function renderActiveListings(listings) {
       <td>${formatTimeRemaining(l.end_time)}</td>
       <td><span class="money">${l.current_highest_bid ? "₿ " + Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</span></td>
       <td>${l.current_highest_bidder || "-"}</td>
+
+      <!-- Only show dismiss button if NOT Active -->
+      <td>
+        ${
+          l.status !== "Active"
+            ? `<button class="button dismiss-btn" data-listing-id="${l.id}">❌</button>`
+            : ""
+        }
+      </td>
     `;
 
     tbody.appendChild(tr);
   }
+
+  // Attach dismiss handlers ONLY to rows that actually have a dismiss button
+  tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
+    btn.addEventListener("click", async e => {
+      e.stopPropagation();
+
+      const row =
+        e.target.closest("tr") ||
+        e.currentTarget.closest("tr") ||
+        e.currentTarget.parentElement.closest("tr");
+
+      if (!row) {
+        console.error("Dismiss failed: could not find table row");
+        return;
+      }
+
+      const listingId = row.dataset.listingId;
+
+      await dismissListingForUser(listingId);
+
+      row.remove();
+
+      await loadActiveListingsCache();
+      await loadListings();
+      await loadMyActiveBids();
+    });
+  });
 
   applyPESDBRowClicks("active-listings-body");
 }
