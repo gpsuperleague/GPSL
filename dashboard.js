@@ -1,5 +1,5 @@
 // ============================================================
-// GPSL DASHBOARD — SUPABASE‑ONLY VERSION (PART 1/3)
+// GPSL DASHBOARD — SUPABASE‑ONLY VERSION
 // Accepts: initDashboard({ user, shortName })
 // ============================================================
 
@@ -218,9 +218,6 @@ async function loadActiveListingsCache() {
 
   activeListingsCache = data || [];
 }
-// ============================================================
-// GPSL DASHBOARD — SUPABASE‑ONLY VERSION (PART 2/3)
-// ============================================================
 
 // ============================================================
 // SQUAD
@@ -332,20 +329,105 @@ function openListPlayerModal(player) {
   document.getElementById("modalMaxReserve").textContent =
     `₿ ${Number(player.Maximum_Reserve_Price).toLocaleString("en-GB")}`;
 
-  document.getElementById("reserveInput").value = "";
-  document.getElementById("reserveError").textContent = "";
+  const reserveInput = document.getElementById("reserveInput");
+  const reserveError = document.getElementById("reserveError");
+
+  reserveInput.value = "";
+  reserveInput.style.border = "1px solid #444";
+  reserveError.textContent = "";
 
   document.getElementById("list-player-modal-backdrop").style.display = "flex";
 }
 
+// ============================================================
+// RESERVE PRICE INCREMENT + BUTTON HANDLERS + VALIDATION
+// ============================================================
+function parseNumericInput(value) {
+  return Number(String(value).replace(/,/g, "")) || 0;
+}
+
+function formatNumeric(value) {
+  return Number(value).toLocaleString("en-GB");
+}
+
+function validateReserveInput() {
+  const input = document.getElementById("reserveInput");
+  const errorBox = document.getElementById("reserveError");
+
+  if (!selectedPlayerForListing) {
+    errorBox.textContent = "No player selected.";
+    input.style.border = "2px solid red";
+    return false;
+  }
+
+  let raw = String(input.value).replace(/,/g, "").trim();
+  if (raw === "") {
+    errorBox.textContent = "";
+    input.style.border = "1px solid #444";
+    return false;
+  }
+
+  let value = Number(raw);
+  if (Number.isNaN(value) || value <= 0) {
+    errorBox.textContent = "Enter a valid positive number.";
+    input.style.border = "2px solid red";
+    return false;
+  }
+
+  // Reformat with commas
+  input.value = formatNumeric(value);
+
+  const mv = selectedPlayerForListing.market_value;
+  const max = selectedPlayerForListing.Maximum_Reserve_Price;
+
+  if (value < mv) {
+    errorBox.textContent =
+      `Reserve must be at least market value (₿ ${formatNumeric(mv)}).`;
+    input.style.border = "2px solid red";
+    return false;
+  }
+
+  if (value > max) {
+    errorBox.textContent =
+      `Reserve cannot exceed max allowed (₿ ${formatNumeric(max)}).`;
+    input.style.border = "2px solid red";
+    return false;
+  }
+
+  errorBox.textContent = "";
+  input.style.border = "2px solid #4CAF50";
+  return true;
+}
+
+function addReserveIncrement(amount) {
+  const input = document.getElementById("reserveInput");
+  let current = parseNumericInput(input.value);
+  current += amount;
+  input.value = formatNumeric(current);
+  validateReserveInput();
+}
+
+document.getElementById("inc-500k-list").onclick = () => addReserveIncrement(500000);
+document.getElementById("inc-1m-list").onclick = () => addReserveIncrement(1000000);
+document.getElementById("inc-5m-list").onclick = () => addReserveIncrement(5000000);
+
 document.getElementById("useMarketValueBtn").onclick = () => {
-  document.getElementById("reserveInput").value =
-    selectedPlayerForListing.market_value;
+  if (!selectedPlayerForListing) return;
+  const input = document.getElementById("reserveInput");
+  input.value = formatNumeric(selectedPlayerForListing.market_value);
+  validateReserveInput();
 };
 
 document.getElementById("useMaxReserveBtn").onclick = () => {
-  document.getElementById("reserveInput").value =
-    selectedPlayerForListing.Maximum_Reserve_Price;
+  if (!selectedPlayerForListing) return;
+  const input = document.getElementById("reserveInput");
+  input.value = formatNumeric(selectedPlayerForListing.Maximum_Reserve_Price);
+  validateReserveInput();
+};
+
+document.getElementById("reserveInput").oninput = () => {
+  // Let user type, then validate
+  validateReserveInput();
 };
 
 document.getElementById("cancelListBtn").onclick = () => {
@@ -358,9 +440,14 @@ document.getElementById("confirmListBtn").onclick = validateAndCreateListing;
 // CREATE LISTING
 // ============================================================
 async function validateAndCreateListing() {
-  const reserve = Number(document.getElementById("reserveInput").value);
+  const input = document.getElementById("reserveInput");
+  const reserve = parseNumericInput(input.value);
   const mv = selectedPlayerForListing.market_value;
   const max = selectedPlayerForListing.Maximum_Reserve_Price;
+
+  if (!validateReserveInput()) {
+    return;
+  }
 
   if (reserve < mv) {
     document.getElementById("reserveError").textContent =
@@ -525,32 +612,31 @@ async function renderActiveListings(listings) {
     tbody.appendChild(tr);
   }
 
-tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
-  btn.addEventListener("click", async e => {
-    e.stopPropagation();
+  tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
+    btn.addEventListener("click", async e => {
+      e.stopPropagation();
 
-    const row =
-      e.target.closest("tr") ||
-      e.currentTarget.closest("tr") ||
-      e.currentTarget.parentElement.closest("tr");
+      const row =
+        e.target.closest("tr") ||
+        e.currentTarget.closest("tr") ||
+        e.currentTarget.parentElement.closest("tr");
 
-    if (!row) {
-      console.error("Dismiss failed: could not find table row");
-      return;
-    }
+      if (!row) {
+        console.error("Dismiss failed: could not find table row");
+        return;
+      }
 
-    const listingId = row.dataset.listingId;
+      const listingId = row.dataset.listingId;
 
-    await dismissListingForUser(listingId);
+      await dismissListingForUser(listingId);
 
-    row.remove();
+      row.remove();
 
-    // FINAL REFRESH BLOCK — ONLY THESE THREE
-    await loadActiveListingsCache();
-    await loadListings();
-    await loadMyActiveBids();
+      await loadActiveListingsCache();
+      await loadListings();
+      await loadMyActiveBids();
+    });
   });
-});
 
   applyPESDBRowClicks("active-listings-body");
 }
@@ -626,9 +712,6 @@ window.dismissClosedListing = async function(id) {
 
   loadListings();
 };
-// ============================================================
-// GPSL DASHBOARD — SUPABASE‑ONLY VERSION (PART 3/3)
-// ============================================================
 
 /* ============================================================
    MODULE K: MY ACTIVE BIDS
@@ -714,34 +797,31 @@ async function renderMyActiveBids(bids) {
     tbody.appendChild(tr);
   }
 
-tbody.querySelectorAll(".dismiss-bid-btn").forEach(btn => {
-  btn.addEventListener("click", async e => {
-    e.stopPropagation();
+  tbody.querySelectorAll(".dismiss-bid-btn").forEach(btn => {
+    btn.addEventListener("click", async e => {
+      e.stopPropagation();
 
-    // FIX: reliably find the table row
-    const row =
-      e.target.closest("tr") ||
-      e.currentTarget.closest("tr") ||
-      e.currentTarget.parentElement.closest("tr");
+      const row =
+        e.target.closest("tr") ||
+        e.currentTarget.closest("tr") ||
+        e.currentTarget.parentElement.closest("tr");
 
-    if (!row) {
-      console.error("Dismiss failed: could not find table row");
-      return;
-    }
+      if (!row) {
+        console.error("Dismiss failed: could not find table row");
+        return;
+      }
 
-    const listingId = row.dataset.listingId;
+      const listingId = row.dataset.listingId;
 
-    await dismissListingForUser(listingId);
+      await dismissListingForUser(listingId);
 
-    // Remove row from UI
-    row.remove();
+      row.remove();
 
-    // Refresh UI so everything stays in sync
-    await loadMyActiveBids();
-    await loadActiveListingsCache();
-    await loadListings();
+      await loadMyActiveBids();
+      await loadActiveListingsCache();
+      await loadListings();
+    });
   });
-});
 
   applyPESDBRowClicks("my-active-bids-body");
 }
@@ -871,8 +951,6 @@ function applyPESDBRowClicks(tbodyId) {
     row.style.cursor = "pointer";
 
     row.addEventListener("click", e => {
-
-      // FIX: detect button clicks reliably
       const clickedButton =
         e.target.closest("button") ||
         e.currentTarget.querySelector("button:hover");
