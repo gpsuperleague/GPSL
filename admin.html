@@ -335,6 +335,45 @@
     });
 
   </script>
+<h2>Global Settings</h2>
+
+<div class="admin-section">
+  <label>
+    Transfer Window:
+    <select id="transferWindowSelect">
+      <option value="true">Open</option>
+      <option value="false">Closed</option>
+    </select>
+  </label>
+
+  <label>
+    Draft Auction:
+    <select id="draftAuctionSelect">
+      <option value="true">Enabled</option>
+      <option value="false">Disabled</option>
+    </select>
+  </label>
+
+  <button class="button" id="saveSettingsBtn">Save Settings</button>
+  <div id="settingsMessage"></div>
+</div>
+
+<h2>Update Owner Email</h2>
+
+<div class="admin-section">
+  <label>Owner User ID:
+    <input type="text" id="ownerUserId">
+  </label>
+
+  <label>New Email:
+    <input type="email" id="newOwnerEmail">
+  </label>
+
+  <button class="button" id="updateOwnerEmailBtn">Update Email</button>
+  <div id="emailUpdateMessage"></div>
+</div>
 
 </body>
 </html>
+
+
