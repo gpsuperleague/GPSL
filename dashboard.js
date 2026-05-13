@@ -624,7 +624,6 @@ async function renderActiveListings(listings) {
       <td><span class="money">${l.current_highest_bid ? "₿ " + Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</span></td>
       <td>${fullClubName(l.current_highest_bidder) || "-"}</td>
 
-      <!-- Only show dismiss button if NOT Active -->
       <td>
         ${
           l.status !== "Active"
@@ -637,7 +636,6 @@ async function renderActiveListings(listings) {
     tbody.appendChild(tr);
   }
 
-  // Attach dismiss handlers ONLY to rows that actually have a dismiss button
   tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
     btn.addEventListener("click", async e => {
       e.stopPropagation();
@@ -714,12 +712,14 @@ async function renderClosedListings(listings) {
     const tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
 
+    const winnerFull = fullClubName(l.winner) || l.winner || "-";
+
     tr.innerHTML = `
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Rating || "-"}</td>
       <td><span class="money">${l.final_bid ? "₿ " + Number(l.final_bid).toLocaleString("en-GB") : "-"}</span></td>
-      <td>${l.winner || "-"}</td>
+      <td>${winnerFull}</td>
       <td>${l.status}</td>
       <td><button class="button" style="background:#aa2222; color:#fff;" onclick="dismissClosedListing(${l.id})">❌</button></td>
     `;
