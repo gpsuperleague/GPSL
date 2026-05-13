@@ -809,7 +809,7 @@ async function renderMyActiveBids(bids) {
       <td>${player?.Position || "-"}</td>
       <td><span class="money">₿ ${Number(b.bid_amount).toLocaleString("en-GB")}</span></td>
       <td><span class="money">${l.current_highest_bid ? "₿ " + Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</span></td>
-      <td>${l.current_highest_bidder || "-"}</td>
+      <td>${fullClubName(l.current_highest_bidder) || "-"}</td>
       <td>${new Date(l.end_time).toLocaleString()}</td>
       <td>
         ${
