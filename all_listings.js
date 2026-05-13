@@ -322,6 +322,9 @@ function wireModalControls() {
 // ⭐ NEW — INCREMENT BUTTONS
 // ======================================================
 function wireIncrementButtons() {
+  document.getElementById("dec-500k-bid").onclick = () => adjustBid(-500000);
+  document.getElementById("dec-1m-bid").onclick = () => adjustBid(-1000000);
+  document.getElementById("dec-5m-bid").onclick = () => adjustBid(-5000000);
   document.getElementById("inc-500k").onclick = () => addIncrement(500000);
   document.getElementById("inc-1m").onclick = () => addIncrement(1000000);
   document.getElementById("inc-5m").onclick = () => addIncrement(5000000);
