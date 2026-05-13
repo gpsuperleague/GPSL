@@ -623,7 +623,6 @@ async function renderActiveListings(listings) {
       <td>${formatTimeRemaining(l.end_time)}</td>
       <td><span class="money">${l.current_highest_bid ? "₿ " + Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</span></td>
       <td>${fullClubName(l.current_highest_bidder) || "-"}</td>
-
       <td>
         ${
           l.status !== "Active"
