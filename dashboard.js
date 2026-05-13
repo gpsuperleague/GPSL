@@ -622,7 +622,7 @@ async function renderActiveListings(listings) {
       <td><span class="money">₿ ${Number(l.reserve_price).toLocaleString("en-GB")}</span></td>
       <td>${formatTimeRemaining(l.end_time)}</td>
       <td><span class="money">${l.current_highest_bid ? "₿ " + Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</span></td>
-      <td>${l.current_highest_bidder || "-"}</td>
+      <td>${fullClubName(l.current_highest_bidder) || "-"}</td>
 
       <!-- Only show dismiss button if NOT Active -->
       <td>
