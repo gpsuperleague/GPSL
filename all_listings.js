@@ -322,34 +322,21 @@ function wireModalControls() {
 // ⭐ NEW — INCREMENT BUTTONS
 // ======================================================
 function wireIncrementButtons() {
-  document.getElementById("dec-500k-bid").onclick = () => adjustBid(-500000);
-  document.getElementById("dec-1m-bid").onclick = () => adjustBid(-1000000);
-  document.getElementById("dec-5m-bid").onclick = () => adjustBid(-5000000);
-  document.getElementById("inc-500k").onclick = () => addIncrement(500000);
-  document.getElementById("inc-1m").onclick = () => addIncrement(1000000);
-  document.getElementById("inc-5m").onclick = () => addIncrement(5000000);
-}
+  const btns = [
+    ["inc-500k",   500000],
+    ["inc-1m",    1000000],
+    ["inc-5m",    5000000],
+    ["dec-500k-bid", -500000],
+    ["dec-1m-bid",  -1000000],
+    ["dec-5m-bid",  -5000000],
+  ];
 
-function addIncrement(amount) {
-  const input = document.getElementById("bid-amount");
-  let current = parseMoneyInput(input.value);
-
-  current += amount;
-
-  // Prevent below 0
-  if (current < 0) current = 0;
-
-  // Calculate minimum valid bid
-  const minBid = Math.max(
-    selectedListing.market_value,
-    (selectedListing.current_highest_bid || 0) + 500000
-  );
-
-  // Prevent below minimum valid bid
-  if (current < minBid) current = minBid;
-
-  input.value = current.toLocaleString("en-GB");
-  validateBidInput();
+  btns.forEach(([id, amount]) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.onclick = () => addIncrement(amount);
+    }
+  });
 }
 
 // ======================================================
