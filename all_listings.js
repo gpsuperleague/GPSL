@@ -58,7 +58,6 @@ function parseMoneyInput(value) {
 // MODULE A: SUPABASE → SHORTNAME
 // ======================================================
 async function loadShortNameFromSupabase(userId) {
-  // Assumes Clubs table has Owner_ID (UUID) and ShortName
   const { data, error } = await supabase
     .from("Clubs")
     .select("ShortName")
@@ -118,7 +117,6 @@ function renderListings() {
   const filtered = allListings.filter(l => {
     const end = new Date(l.end_time);
 
-    // Only show listings that were ever active/extended
     if (l.status !== "Active" && !l.was_extended) return false;
 
     if (l.status === "Active") {
@@ -142,12 +140,10 @@ function renderListings() {
 
     const tr = document.createElement("tr");
 
-    // ⭐ Highlight if user is leading
     if (listing.current_highest_bidder === currentUserShort) {
       tr.classList.add("leading-row");
     }
 
-    // ⭐ Badge logic
     let highestClubText = "- (No bids)";
     if (listing.current_highest_bidder) {
       highestClubText =
@@ -319,16 +315,16 @@ function wireModalControls() {
 }
 
 // ======================================================
-// ⭐ NEW — INCREMENT BUTTONS
+// ⭐ NEW — INCREMENT & DECREMENT BUTTONS
 // ======================================================
 function wireIncrementButtons() {
   const btns = [
-    ["inc-500k",   500000],
-    ["inc-1m",    1000000],
-    ["inc-5m",    5000000],
-    ["dec-500k-bid", -500000],
-    ["dec-1m-bid",  -1000000],
-    ["dec-5m-bid",  -5000000],
+    ["inc-500k",       500000],
+    ["inc-1m",        1000000],
+    ["inc-5m",        5000000],
+    ["dec-500k-bid",  -500000],
+    ["dec-1m-bid",   -1000000],
+    ["dec-5m-bid",   -5000000],
   ];
 
   btns.forEach(([id, amount]) => {
@@ -337,6 +333,28 @@ function wireIncrementButtons() {
       el.onclick = () => adjustBid(amount);
     }
   });
+}
+
+// ======================================================
+// ⭐ NEW — UNIVERSAL BID ADJUSTMENT FUNCTION
+// ======================================================
+function adjustBid(amount) {
+  const input = document.getElementById("bid-amount");
+  let current = parseMoneyInput(input.value);
+
+  current += amount;
+
+  if (current < 0) current = 0;
+
+  const minBid = Math.max(
+    selectedListing.market_value,
+    (selectedListing.current_highest_bid || 0) + 500000
+  );
+
+  if (current < minBid) current = minBid;
+
+  input.value = current.toLocaleString("en-GB");
+  validateBidInput();
 }
 
 // ======================================================
@@ -395,7 +413,6 @@ async function placeBid() {
     return;
   }
 
-  // Insert bid
   const { error: bidError } = await supabase
     .from("Player_Transfer_Bids")
     .insert({
@@ -411,7 +428,6 @@ async function placeBid() {
     return;
   }
 
-  // Update listing with new highest bid
   const { error: updateError } = await supabase
     .from("Player_Transfer_Listings")
     .update({
@@ -426,7 +442,6 @@ async function placeBid() {
     return;
   }
 
-  // Close modal + refresh
   document.getElementById("bid-modal").style.display = "none";
   await loadListings();
 }
