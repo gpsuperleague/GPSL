@@ -315,7 +315,7 @@ function wireModalControls() {
 }
 
 // ======================================================
-// ⭐ NEW — UNIVERSAL BID ADJUSTMENT FUNCTION
+// ⭐ UNIVERSAL BID ADJUSTMENT FUNCTION
 // ======================================================
 function adjustBid(amount) {
   const input = document.getElementById("bid-amount");
@@ -337,13 +337,13 @@ function adjustBid(amount) {
 }
 
 // ======================================================
-// ⭐ NEW — INCREMENT & DECREMENT BUTTONS
+// ⭐ INCREMENT & DECREMENT BUTTONS (FIXED IDS)
 // ======================================================
 function wireIncrementButtons() {
   const btns = [
-    ["inc-500k",       500000],
-    ["inc-1m",        1000000],
-    ["inc-5m",        5000000],
+    ["inc-500k-bid",   500000],
+    ["inc-1m-bid",    1000000],
+    ["inc-5m-bid",    5000000],
     ["dec-500k-bid",  -500000],
     ["dec-1m-bid",   -1000000],
     ["dec-5m-bid",   -5000000],
@@ -358,7 +358,7 @@ function wireIncrementButtons() {
 }
 
 // ======================================================
-// ⭐ NEW — QUICK BID BUTTON
+// ⭐ QUICK BID BUTTON
 // ======================================================
 function wireQuickBidButton() {
   document.getElementById("quick-bid-btn").onclick = () => {
