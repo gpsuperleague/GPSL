@@ -61,7 +61,7 @@ let MV_MAX = null;
    ============================================================ */
 async function loadGlobalSettings() {
   const { data, error } = await supabase
-    .from("Global_Settings")
+    .from("global_settings")
     .select("*")
     .eq("id", 1)
     .single();
