@@ -100,7 +100,10 @@
         return;
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://gpsuperleague.github.io/GPSL'
+    });
+
 
       if (error) {
         alert(error.message);
