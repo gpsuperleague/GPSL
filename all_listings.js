@@ -333,7 +333,21 @@ function wireIncrementButtons() {
 function addIncrement(amount) {
   const input = document.getElementById("bid-amount");
   let current = parseMoneyInput(input.value);
+
   current += amount;
+
+  // Prevent below 0
+  if (current < 0) current = 0;
+
+  // Calculate minimum valid bid
+  const minBid = Math.max(
+    selectedListing.market_value,
+    (selectedListing.current_highest_bid || 0) + 500000
+  );
+
+  // Prevent below minimum valid bid
+  if (current < minBid) current = minBid;
+
   input.value = current.toLocaleString("en-GB");
   validateBidInput();
 }
