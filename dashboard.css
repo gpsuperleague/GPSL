@@ -254,7 +254,7 @@ table.gpsl-table tr:nth-child(even) {
 
 
 /* ============================
-   NEGATIVE BALANCE (NEW)
+   NEGATIVE BALANCE
    ============================ */
 
 .negative-balance {
@@ -390,7 +390,7 @@ table.gpsl-table tr:nth-child(even) {
 
 
 /* ============================
-   DISMISS BUTTONS (NEW)
+   DISMISS BUTTONS
    ============================ */
 
 .dismiss-btn,
@@ -410,6 +410,12 @@ table.gpsl-table tr:nth-child(even) {
   background: #cc3333;
   transform: scale(1.05);
 }
+
+
+/* ============================
+   SQUAD SECTION HEADERS
+   ============================ */
+
 .squad-section-row {
   background: #222;
 }
@@ -422,22 +428,31 @@ table.gpsl-table tr:nth-child(even) {
   text-transform: uppercase;
 }
 
+
+/* ============================
+   MONEY FORMATTING
+   ============================ */
+
 .money {
   white-space: nowrap;
 }
 
+
+/* ============================
+   INCREMENT BUTTONS
+   ============================ */
+
 .inc-btn {
   padding: 6px 10px;
   margin-right: 6px;
-  background:#444;
-  color:#fff;
-  border-radius:4px;
-  cursor:pointer;
-  border:1px solid #666;
-  font-size:13px;
+  background: #444;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #666;
+  font-size: 13px;
 }
 
 .inc-btn:hover {
-  background:#666;
+  background: #666;
 }
-
