@@ -334,7 +334,7 @@ function wireIncrementButtons() {
   btns.forEach(([id, amount]) => {
     const el = document.getElementById(id);
     if (el) {
-      el.onclick = () => addIncrement(amount);
+      el.onclick = () => adjustBid(amount);
     }
   });
 }
