@@ -67,6 +67,21 @@
       margin-bottom: 10px;
     }
 
+    .admin-section label {
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .admin-section input, .admin-section select {
+      width: 90%;
+      padding: 10px;
+      margin-top: 5px;
+      background: #222;
+      border: 1px solid #444;
+      color: #ddd;
+      border-radius: 5px;
+    }
+
     /* Modal */
     #seasonRolloverModalBackdrop {
       position: fixed;
@@ -123,9 +138,9 @@
       <!-- ADD NEW OWNER -->
       <h2 class="section-header">Add New Owner</h2>
       <div class="panel">
-        <input id="ownerEmail" placeholder="Owner Email" style="width:90%;padding:10px;"><br><br>
-        <input id="ownerPassword" placeholder="Password" type="password" style="width:90%;padding:10px;"><br><br>
-        <input id="ownerClub" placeholder="Club ShortName (e.g., ARS)" style="width:90%;padding:10px;"><br><br>
+        <input id="ownerEmail" placeholder="Owner Email"><br><br>
+        <input id="ownerPassword" placeholder="Password" type="password"><br><br>
+        <input id="ownerClub" placeholder="Club ShortName (e.g., ARS)"><br><br>
 
         <button id="addOwnerBtn" class="button">Add Owner</button>
         <div id="ownerStatus" style="margin-top:10px; color:#ffcc00;"></div>
@@ -134,8 +149,8 @@
       <!-- UPDATE OWNER EMAIL -->
       <h2 class="section-header">Update Owner Email</h2>
       <div class="panel">
-        <input id="updateOwnerId" placeholder="Owner User ID" style="width:90%;padding:10px;"><br><br>
-        <input id="newOwnerEmail" placeholder="New Email" style="width:90%;padding:10px;"><br><br>
+        <input id="updateOwnerId" placeholder="Owner User ID"><br><br>
+        <input id="newOwnerEmail" placeholder="New Email"><br><br>
 
         <button id="updateEmailBtn" class="button">Update Email</button>
         <div id="updateEmailStatus" style="margin-top:10px; color:#ffcc00;"></div>
@@ -144,10 +159,33 @@
       <!-- RESET OWNER PASSWORD -->
       <h2 class="section-header">Reset Owner Password</h2>
       <div class="panel">
-        <input id="resetOwnerEmail" placeholder="Owner Email" style="width:90%;padding:10px;"><br><br>
+        <input id="resetOwnerEmail" placeholder="Owner Email"><br><br>
 
         <button id="resetPasswordBtn" class="button">Send Reset Email</button>
         <div id="resetPasswordStatus" style="margin-top:10px; color:#ffcc00;"></div>
+      </div>
+
+      <!-- GLOBAL SETTINGS -->
+      <h2 class="section-header">Global Settings</h2>
+      <div class="panel admin-section">
+        <label>
+          Transfer Window:
+          <select id="transferWindowSelect">
+            <option value="true">Open</option>
+            <option value="false">Closed</option>
+          </select>
+        </label>
+
+        <label>
+          Draft Auction:
+          <select id="draftAuctionSelect">
+            <option value="true">Enabled</option>
+            <option value="false">Disabled</option>
+          </select>
+        </label>
+
+        <button class="button" id="saveSettingsBtn">Save Settings</button>
+        <div id="settingsMessage" style="margin-top:10px; color:#ffcc00;"></div>
       </div>
 
     </div>
@@ -174,7 +212,7 @@
     </div>
   </div>
 
-  <!-- SUPABASE CLIENT -->
+  <!-- ALL ADMIN LOGIC -->
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
@@ -204,7 +242,6 @@
         <button id="logoutBtn" class="button">Logout</button>
         <a href="admin.html" class="button">GPSL Admin</a>
       `;
-
 
       document.getElementById("logoutBtn").onclick = async () => {
         await supabase.auth.signOut();
@@ -238,14 +275,11 @@
         modal.style.display = "none";
         status.textContent = "Processing season rollover…";
 
-        const { data, error } = await supabase.rpc("rollover_season");
+        const { error } = await supabase.rpc("rollover_season");
 
-        if (error) {
-          status.textContent = "❌ Season rollover failed.";
-          return;
-        }
-
-        status.textContent = "✅ New season created successfully!";
+        status.textContent = error
+          ? "❌ Season rollover failed."
+          : "✅ New season created successfully!";
       };
     });
 
@@ -266,16 +300,13 @@
 
         status.textContent = "Creating owner…";
 
-        const { data, error } = await supabase.functions.invoke("create-owner", {
+        const { error } = await supabase.functions.invoke("create-owner", {
           body: { email, password, clubShortName: club }
         });
 
-        if (error) {
-          status.textContent = "❌ " + error.message;
-          return;
-        }
-
-        status.textContent = "✅ Owner created and assigned!";
+        status.textContent = error
+          ? "❌ " + error.message
+          : "✅ Owner created and assigned!";
       };
     });
 
@@ -295,15 +326,13 @@
 
         status.textContent = "Updating email…";
 
-        const { error } = await supabase.auth.admin.updateUserById(userId, {
-          email: newEmail
+        const { error } = await supabase.functions.invoke("update-owner-email", {
+          body: { user_id: userId, new_email: newEmail }
         });
 
-        if (error) {
-          status.textContent = "❌ " + error.message;
-        } else {
-          status.textContent = "✅ Email updated!";
-        }
+        status.textContent = error
+          ? "❌ " + error.message
+          : "✅ Email updated!";
       };
     });
 
@@ -326,102 +355,55 @@
           redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html"
         });
 
-        if (error) {
-          status.textContent = "❌ " + error.message;
-        } else {
-          status.textContent = "✅ Reset email sent!";
-        }
+        status.textContent = error
+          ? "❌ " + error.message
+          : "✅ Reset email sent!";
       };
     });
 
+    /* GLOBAL SETTINGS */
+    document.addEventListener("DOMContentLoaded", () => {
+      async function loadSettings() {
+        const { data, error } = await supabase
+          .from("global_settings")
+          .select("*")
+          .eq("id", 1)
+          .single();
+
+        if (error) {
+          console.error(error);
+          return;
+        }
+
+        document.getElementById("transferWindowSelect").value =
+          data.transfer_window_open ? "true" : "false";
+
+        document.getElementById("draftAuctionSelect").value =
+          data.draft_auction_enabled ? "true" : "false";
+      }
+
+      document.getElementById("saveSettingsBtn").onclick = async () => {
+        const transfer_window_open =
+          document.getElementById("transferWindowSelect").value === "true";
+
+        const draft_auction_enabled =
+          document.getElementById("draftAuctionSelect").value === "true";
+
+        const { error } = await supabase.functions.invoke(
+          "update-global-settings",
+          {
+            body: { transfer_window_open, draft_auction_enabled }
+          }
+        );
+
+        document.getElementById("settingsMessage").textContent =
+          error ? "❌ " + error.message : "✅ Settings updated!";
+      };
+
+      loadSettings();
+    });
+
   </script>
-<h2>Global Settings</h2>
 
-<div class="admin-section">
-  <label>
-    Transfer Window:
-    <select id="transferWindowSelect">
-      <option value="true">Open</option>
-      <option value="false">Closed</option>
-    </select>
-  </label>
-
-  <label>
-    Draft Auction:
-    <select id="draftAuctionSelect">
-      <option value="true">Enabled</option>
-      <option value="false">Disabled</option>
-    </select>
-  </label>
-
-  <button class="button" id="saveSettingsBtn">Save Settings</button>
-  <div id="settingsMessage"></div>
-</div>
-
-<h2>Update Owner Email</h2>
-
-<div class="admin-section">
-  <label>Owner User ID:
-    <input type="text" id="ownerUserId">
-  </label>
-
-  <label>New Email:
-    <input type="email" id="newOwnerEmail">
-  </label>
-
-  <button class="button" id="updateOwnerEmailBtn">Update Email</button>
-  <div id="emailUpdateMessage"></div>
-</div>
-
-<script>
-const supabase = window.supabase;
-
-// Load current settings
-async function loadSettings() {
-  const { data } = await supabase
-    .from("Global_Settings")
-    .select("*")
-    .eq("id", 1)
-    .single();
-
-  document.getElementById("transferWindowSelect").value = data.transfer_window_open;
-  document.getElementById("draftAuctionSelect").value = data.draft_auction_enabled;
-}
-
-document.getElementById("saveSettingsBtn").onclick = async () => {
-  const transfer_window_open = document.getElementById("transferWindowSelect").value === "true";
-  const draft_auction_enabled = document.getElementById("draftAuctionSelect").value === "true";
-
-  const res = await fetch("/functions/v1/update-global-settings", {
-    method: "POST",
-    body: JSON.stringify({ transfer_window_open, draft_auction_enabled })
-  });
-
-  const json = await res.json();
-  document.getElementById("settingsMessage").textContent =
-    json.success ? "Settings updated!" : "Error: " + json.error;
-};
-
-// Update owner email
-document.getElementById("updateOwnerEmailBtn").onclick = async () => {
-  const user_id = document.getElementById("ownerUserId").value.trim();
-  const new_email = document.getElementById("newOwnerEmail").value.trim();
-
-  const res = await fetch("/functions/v1/update-owner-email", {
-    method: "POST",
-    body: JSON.stringify({ user_id, new_email })
-  });
-
-  const json = await res.json();
-  document.getElementById("emailUpdateMessage").textContent =
-    json.success ? "Email updated!" : "Error: " + json.error;
-};
-
-loadSettings();
-</script>
-
-  
 </body>
 </html>
-
-
