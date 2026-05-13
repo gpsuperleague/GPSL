@@ -402,7 +402,20 @@ function validateReserveInput() {
 function addReserveIncrement(amount) {
   const input = document.getElementById("reserveInput");
   let current = parseNumericInput(input.value);
+
   current += amount;
+
+  // Prevent going below 0
+  if (current < 0) current = 0;
+
+  // Prevent going below Market Value (strict rule)
+  const mv = selectedPlayerForListing.market_value;
+  if (current < mv) current = mv;
+
+  // Prevent going above Max Reserve
+  const max = selectedPlayerForListing.Maximum_Reserve_Price;
+  if (current > max) current = max;
+
   input.value = formatNumeric(current);
   validateReserveInput();
 }
