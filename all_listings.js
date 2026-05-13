@@ -62,7 +62,7 @@ async function loadShortNameFromSupabase(userId) {
   const { data, error } = await supabase
     .from("Clubs")
     .select("ShortName")
-    .eq("Owner_ID", userId)
+    .eq("owner_id", userId)
     .maybeSingle();
 
   if (error) {
