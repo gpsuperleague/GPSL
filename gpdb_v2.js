@@ -57,23 +57,29 @@ let MV_MIN = null;
 let MV_MAX = null;
 
 /* ============================================================
-   MODULE D: Global Settings Loader
+   MODULE D: Global Settings Loader (Correct Version)
    ============================================================ */
 async function loadGlobalSettings() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("Global_Settings")
-    .select("key, value");
+    .select("*")
+    .eq("id", 1)
+    .single();
 
-  const settings = {};
-  (data || []).forEach(row => {
-    settings[row.key] = row.value;
-  });
+  if (error || !data) {
+    console.error("Failed to load global settings:", error);
+    return {
+      transferWindowOpen: false,
+      draftAuctionEnabled: false
+    };
+  }
 
   return {
-    transferWindowOpen: !!settings.transfer_window?.open,
-    draftAuctionEnabled: !!settings.draft_auction?.enabled
+    transferWindowOpen: data.transfer_window_open,
+    draftAuctionEnabled: data.draft_auction_enabled
   };
 }
+
 
 /* ============================================================
    MODULE E: Data Loading
