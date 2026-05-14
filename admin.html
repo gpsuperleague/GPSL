@@ -53,7 +53,7 @@
       margin: 20px auto 40px auto;
     }
 
-    .panel {
+    .card {
       background: #1a1a1a;
       padding: 20px;
       border-radius: 8px;
@@ -61,25 +61,38 @@
       margin-bottom: 30px;
     }
 
-    .section-header {
+    .card h2 {
       color: #ff9900;
+      margin-top: 0;
+      margin-bottom: 15px;
       font-size: 22px;
-      margin-bottom: 10px;
     }
 
-    .admin-section label {
-      display: block;
-      margin-bottom: 10px;
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
     }
 
-    .admin-section input, .admin-section select {
-      width: 90%;
+    .row input, .row select {
       padding: 10px;
-      margin-top: 5px;
       background: #222;
       border: 1px solid #444;
       color: #ddd;
       border-radius: 5px;
+      width: 100%;
+    }
+
+    .row > div {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .note {
+      color: #888;
+      font-size: 14px;
+      margin-top: 10px;
     }
 
     /* Modal */
@@ -127,70 +140,100 @@
     <div id="adminPanel" style="display:none;">
 
       <!-- SEASON MANAGEMENT -->
-      <h2 class="section-header">Season Management</h2>
-      <div class="panel">
-        <button id="rolloverBtn" class="button" style="background:#cc3300;">
-          Start New Season
-        </button>
-        <div id="rolloverStatus" style="margin-top:10px; color:#ffcc00;"></div>
+      <div class="card">
+        <h2>Season Management</h2>
+
+        <div class="row">
+          <button id="rolloverBtn" class="button" style="background:#cc3300;">
+            Start New Season
+          </button>
+
+          <button class="button" style="background:#444;" disabled>
+            End Season (Coming Soon)
+          </button>
+        </div>
+
+        <div id="rolloverStatus" style="color:#ffcc00;"></div>
       </div>
 
-      <!-- ADD NEW OWNER -->
-      <h2 class="section-header">Add New Owner</h2>
-      <div class="panel">
-        <input id="ownerEmail" placeholder="Owner Email"><br><br>
-        <input id="ownerPassword" placeholder="Temporary Password" type="password"><br><br>
-        <input id="ownerClub" placeholder="Club ShortName (e.g., ARS)"><br><br>
+      <!-- TRANSFER MANAGEMENT -->
+      <div class="card">
+        <h2>Transfer Management</h2>
 
-        <button id="addOwnerBtn" class="button">Add Owner</button>
-        <div id="ownerStatus" style="margin-top:10px; color:#ffcc00;"></div>
+        <div class="row">
+          <div>
+            <label>Transfer Window</label>
+            <select id="transferWindowSelect">
+              <option value="true">Open</option>
+              <option value="false">Closed</option>
+            </select>
+          </div>
 
-        <p style="margin-top:10px; color:#888; font-size:14px;">
-          When you add an owner, they will automatically receive a password‑setup email.
-          The temporary password you enter here is only required by Supabase and is never used.
-        </p>
-      </div>
-
-      <!-- UPDATE OWNER EMAIL -->
-      <h2 class="section-header">Update Owner Email</h2>
-      <div class="panel">
-        <input id="updateOwnerId" placeholder="Owner User ID"><br><br>
-        <input id="newOwnerEmail" placeholder="New Email"><br><br>
-
-        <button id="updateEmailBtn" class="button">Update Email</button>
-        <div id="updateEmailStatus" style="margin-top:10px; color:#ffcc00;"></div>
-      </div>
-
-      <!-- RESET OWNER PASSWORD -->
-      <h2 class="section-header">Reset Owner Password</h2>
-      <div class="panel">
-        <input id="resetOwnerEmail" placeholder="Owner Email"><br><br>
-
-        <button id="resetPasswordBtn" class="button">Send Reset Email</button>
-        <div id="resetPasswordStatus" style="margin-top:10px; color:#ffcc00;"></div>
-      </div>
-
-      <!-- GLOBAL SETTINGS -->
-      <h2 class="section-header">Global Settings</h2>
-      <div class="panel admin-section">
-        <label>
-          Transfer Window:
-          <select id="transferWindowSelect">
-            <option value="true">Open</option>
-            <option value="false">Closed</option>
-          </select>
-        </label>
-
-        <label>
-          Draft Auction:
-          <select id="draftAuctionSelect">
-            <option value="true">Enabled</option>
-            <option value="false">Disabled</option>
-          </select>
-        </label>
+          <div>
+            <label>Draft Auction</label>
+            <select id="draftAuctionSelect">
+              <option value="true">Enabled</option>
+              <option value="false">Disabled</option>
+            </select>
+          </div>
+        </div>
 
         <button class="button" id="saveSettingsBtn">Save Settings</button>
-        <div id="settingsMessage" style="margin-top:10px; color:#ffcc00;"></div>
+        <div id="settingsMessage" style="color:#ffcc00; margin-top:10px;"></div>
+      </div>
+
+      <!-- OWNER ADMINISTRATION -->
+      <div class="card">
+        <h2>Owner Administration</h2>
+
+        <!-- ADD OWNER -->
+        <div class="row">
+          <div>
+            <input id="ownerEmail" placeholder="Owner Email">
+          </div>
+          <div>
+            <input id="ownerPassword" placeholder="Temporary Password" type="password">
+          </div>
+          <div>
+            <input id="ownerClub" placeholder="Club ShortName (e.g., ARS)">
+          </div>
+        </div>
+
+        <button id="addOwnerBtn" class="button">Add Owner</button>
+        <div id="ownerStatus" style="color:#ffcc00; margin-top:10px;"></div>
+
+        <p class="note">
+          When you add an owner, they automatically receive a password‑setup email.
+          The temporary password is only required by Supabase and is never used.
+        </p>
+
+        <hr style="border-color:#333; margin:20px 0;">
+
+        <!-- UPDATE EMAIL -->
+        <div class="row">
+          <div>
+            <input id="updateOwnerId" placeholder="Owner User ID">
+          </div>
+          <div>
+            <input id="newOwnerEmail" placeholder="New Email">
+          </div>
+        </div>
+
+        <button id="updateEmailBtn" class="button">Update Email</button>
+        <div id="updateEmailStatus" style="color:#ffcc00; margin-top:10px;"></div>
+
+        <hr style="border-color:#333; margin:20px 0;">
+
+        <!-- RESET PASSWORD -->
+        <div class="row">
+          <div>
+            <input id="resetOwnerEmail" placeholder="Owner Email">
+          </div>
+        </div>
+
+        <button id="resetPasswordBtn" class="button">Send Reset Email</button>
+        <div id="resetPasswordStatus" style="color:#ffcc00; margin-top:10px;"></div>
+
       </div>
 
     </div>
