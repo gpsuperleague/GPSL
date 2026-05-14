@@ -1,3 +1,5 @@
+document.addEventListener("DOMContentLoaded", () => {
+
 /* ============================================================
    MODULE A: Supabase Client
    ============================================================ */
@@ -249,7 +251,7 @@ function renderTable(players) {
 }
 
 /* ============================================================
-   MODULE G: Make Offer Modal (side-by-side layout)
+   MODULE G: Make Offer Modal (updated)
    ============================================================ */
 let CURRENT_OFFER_PLAYER = null;
 
@@ -278,7 +280,7 @@ async function openMakeOfferModal(playerId) {
 
   imgEl.src = `https://pesdb.net/efootball/img/players/${player.Konami_ID}.png`;
   imgEl.onerror = () => {
-    imgEl.src = "https://i.imgur.com/3s8XQ7Y.png"; // fallback silhouette
+    imgEl.src = "https://i.imgur.com/3s8XQ7Y.png";
   };
 
   nameEl.textContent = player.Name;
@@ -292,6 +294,10 @@ async function openMakeOfferModal(playerId) {
 
   document.getElementById("make-offer-modal-backdrop").style.display = "flex";
 }
+
+                          /* ============================================================
+   MODULE G (continued): Confirm Offer + Buttons
+   ============================================================ */
 
 document.getElementById("cancelOfferBtn").onclick = () => {
   document.getElementById("make-offer-modal-backdrop").style.display = "none";
@@ -353,7 +359,10 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
   document.getElementById("make-offer-modal-backdrop").style.display = "none";
 };
 
-/* Increment / Decrement buttons */
+/* ============================================================
+   Increment / Decrement Buttons
+   ============================================================ */
+
 document.querySelectorAll(".inc-btn, .dec-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     if (!CURRENT_OFFER_PLAYER) return;
@@ -373,14 +382,20 @@ document.querySelectorAll(".inc-btn, .dec-btn").forEach(btn => {
   });
 });
 
-/* Quick Bid = Market Value */
+/* ============================================================
+   Quick Bid Button
+   ============================================================ */
+
 document.getElementById("quickBidBtn").onclick = () => {
   if (!CURRENT_OFFER_PLAYER) return;
   const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
   document.getElementById("offerAmount").value = mv.toLocaleString("en-GB");
 };
 
-/* Intelligent input formatting */
+/* ============================================================
+   Intelligent Input Formatting
+   ============================================================ */
+
 document.getElementById("offerAmount").addEventListener("input", e => {
   if (!CURRENT_OFFER_PLAYER) return;
 
@@ -401,6 +416,7 @@ document.getElementById("offerAmount").addEventListener("input", e => {
 /* ============================================================
    MODULE H: Filters + Controls
    ============================================================ */
+
 async function populateDropdowns() {
   for (const col of DROPDOWN_COLUMNS) {
     const select = document.getElementById(`filter-${col}`);
@@ -526,4 +542,43 @@ function setupControls() {
   });
 }
 
-/*
+/* ============================================================
+   MODULE I: Pagination Rendering
+   ============================================================ */
+
+function renderPagination() {
+  const totalPages = Math.ceil(TOTAL_ROWS / PAGE_SIZE);
+  const pagination = document.getElementById("pagination");
+
+  pagination.innerHTML = "";
+
+  for (let i = 1; i <= totalPages; i++) {
+    const btn = document.createElement("button");
+    btn.textContent = i;
+    btn.className = "page-btn";
+    if (i === CURRENT_PAGE) btn.classList.add("active");
+
+    btn.onclick = () => loadPage(i);
+    pagination.appendChild(btn);
+  }
+}
+
+/* ============================================================
+   MODULE J: Initialisation
+   ============================================================ */
+
+async function init() {
+  await loadUser();
+  GLOBAL_SETTINGS = await loadGlobalSettings();
+
+  setupControls();
+  setupFilters();
+  await populateDropdowns();
+  await loadTotalCount();
+  loadPage(1);
+}
+
+init();
+
+/* END DOMContentLoaded WRAPPER */
+});
