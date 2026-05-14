@@ -332,13 +332,13 @@
       };
     });
 
-    /* LOAD OWNERS INTO DROPDOWN */
+    /* LOAD OWNERS INTO DROPDOWN (via Edge Function) */
     document.addEventListener("DOMContentLoaded", async () => {
       const dropdown = document.getElementById("updateOwnerSelect");
 
-      const { data, error } = await supabase.auth.admin.listUsers();
+      const { data, error } = await supabase.functions.invoke("list-owners");
 
-      if (error) {
+      if (error || !data || !data.users) {
         dropdown.innerHTML = `<option>Error loading owners</option>`;
         return;
       }
