@@ -288,18 +288,39 @@ async function openMakeOfferModal(playerId) {
   const amountInput = document.getElementById("offerAmount");
   const errorBox = document.getElementById("offerError");
 
-   // Primary: Official Konami CDN (global)
-   imgEl.src = `https://img.konami.com/efootball/img/players/${player.Konami_ID}.png`;
-   
-   // Fallback 1: PESMaster CDN (very reliable)
-   imgEl.onerror = () => {
-     imgEl.src = `https://cdn.pesmaster.com/efootball23/players/${player.Konami_ID}.png`;
-   
-     // Fallback 2: Your silhouette
-     imgEl.onerror = () => {
-       imgEl.src = "https://i.imgur.com/3s8XQ7Y.png";
-     };
-   };
+  /* ============================================================
+     IMAGE LOADING WITH REGION-BLOCK DETECTION + 3 FALLBACKS
+     ============================================================ */
+
+  // 1) Try official Konami CDN
+  imgEl.src = `https://img.konami.com/efootball/img/players/${player.Konami_ID}.png`;
+
+  // Detect Konami's region-block placeholder (usually 120x120)
+  imgEl.onload = () => {
+    if (imgEl.naturalWidth <= 120) {
+      // Force fallback to PESMaster
+      imgEl.src = `https://cdn.pesmaster.com/efootball23/players/${player.Konami_ID}.png`;
+    }
+  };
+
+  // 2) PESMaster fallback
+  imgEl.onerror = () => {
+    imgEl.src = `https://cdn.pesmaster.com/efootball23/players/${player.Konami_ID}.png`;
+
+    imgEl.onerror = () => {
+      // 3) Miniface fallback (very reliable, uses Konami ID)
+      imgEl.src = `https://miniface.efootballhub.net/players/${player.Konami_ID}.png`;
+
+      imgEl.onerror = () => {
+        // 4) Final silhouette fallback
+        imgEl.src = "https://i.imgur.com/3s8XQ7Y.png";
+      };
+    };
+  };
+
+  /* ============================================================
+     TEXT FIELDS
+     ============================================================ */
 
   nameEl.textContent = player.Name;
   posEl.textContent = `Position: ${player.Position}`;
@@ -312,6 +333,7 @@ async function openMakeOfferModal(playerId) {
 
   document.getElementById("make-offer-modal-backdrop").style.display = "flex";
 }
+
 /* ============================================================
    MODULE G (continued): Confirm Offer + Buttons
    ============================================================ */
