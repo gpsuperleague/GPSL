@@ -126,12 +126,7 @@
       color: #ff9900;
     }
 
-    /* NEW: Bid column + modal styling */
-    .locked-msg {
-      opacity: 0.5;
-      font-size: 11px;
-    }
-
+    /* MODAL */
     .modal-backdrop {
       display: none;
       position: fixed;
@@ -148,14 +143,8 @@
       border: 1px solid #333;
       padding: 20px;
       border-radius: 8px;
-      width: 380px;
-    }
-
-    .modal-row {
-      margin-top: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+      width: 480px;
+      color:#ddd;
     }
 
     #offerError {
@@ -171,80 +160,66 @@
       justify-content: space-between;
     }
 
-    /* Enhanced Make Offer modal */
-    .player-info-row {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      margin-bottom: 10px;
+    /* SIDE-BY-SIDE PLAYER HEADER */
+    .player-header {
+      display:flex;
+      gap:15px;
+      margin-bottom:15px;
     }
 
-    .player-img {
-      width: 70px;
-      height: 70px;
-      border-radius: 6px;
-      border: 1px solid #444;
-      object-fit: cover;
-      background: #000;
+    .player-header img {
+      width:100px;
+      height:100px;
+      border-radius:6px;
+      border:1px solid #444;
+      object-fit:cover;
+      background:#000;
     }
 
-    .player-meta {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: 13px;
+    .player-header-info {
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      font-size:14px;
     }
 
-    .mv-line {
-      font-size: 13px;
-      opacity: 0.8;
+    .bid-row {
+      display:flex;
+      justify-content:space-between;
+      margin:4px 0;
+      font-size:14px;
     }
 
-    .offer-input {
-      padding: 8px;
-      font-size: 16px;
-      width: 100%;
-      box-sizing: border-box;
+    .bid-row label {
+      color:#ff9900;
+      margin-right:6px;
     }
 
-    .inc-dec-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 10px;
-      justify-content: space-between;
-    }
-
+    /* Increment / Decrement buttons (copied EXACTLY from all_listings) */
     .inc-btn {
       padding: 6px 10px;
-      font-size: 12px;
-      background: #333;
-      color: #ddd;
-      border-radius: 4px;
-      border: 1px solid #555;
-      cursor: pointer;
+      margin-right: 6px;
+      background:#444;
+      color:#fff;
+      border-radius:4px;
+      cursor:pointer;
+      border:1px solid #666;
+      font-size:13px;
     }
+    .inc-btn:hover { background:#666; }
 
-    .inc-btn:hover {
-      background: #444;
+    .dec-btn {
+      padding: 6px 10px;
+      margin-right: 6px;
+      background:#552222;
+      color:#fff;
+      border-radius:4px;
+      cursor:pointer;
+      border:1px solid #884444;
+      font-size:13px;
     }
+    .dec-btn:hover { background:#773333; }
 
-    .quick-bid-btn {
-      margin-top: 10px;
-      width: 100%;
-      padding: 8px;
-      background: #ff8800;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      cursor: pointer;
-      color: #111;
-      font-weight: bold;
-    }
-
-    .quick-bid-btn:hover {
-      background: #ffaa33;
-    }
   </style>
 </head>
 
@@ -289,34 +264,37 @@
     </label>
   </div>
 
-  <!-- NEW: MAKE OFFER MODAL -->
+  <!-- MAKE OFFER MODAL -->
   <div id="make-offer-modal-backdrop" class="modal-backdrop">
     <div id="make-offer-modal" class="modal">
-      <h2 id="offerPlayerName"></h2>
 
-      <div class="player-info-row">
-        <img id="offerPlayerImg" class="player-img" alt="Player image">
-        <div class="player-meta">
-          <div id="offerPlayerInfo"></div>
-          <div id="offerPlayerMV" class="mv-line"></div>
+      <div class="player-header">
+        <img id="offerPlayerImg" alt="Player">
+        <div class="player-header-info">
+          <div id="offerPlayerName" style="font-size:18px; color:#ff9900; font-weight:bold;"></div>
+          <div id="offerPlayerPosition"></div>
+          <div id="offerPlayerPlaystyle"></div>
+          <div id="offerPlayerRating"></div>
+          <div id="offerPlayerMV"></div>
         </div>
       </div>
 
-      <div class="modal-row">
-        <label for="offerAmount">Your Offer (₿)</label>
-        <input type="text" id="offerAmount" class="offer-input" inputmode="numeric">
+      <div class="bid-row">
+        <label>Your Offer (₿):</label>
+        <input type="text" id="offerAmount" inputmode="numeric" style="width:140px; padding:6px; border-radius:4px; border:1px solid #444; background:#111; color:#ddd; font-size:15px;">
       </div>
 
-      <div class="inc-dec-row">
-        <button class="inc-btn" data-inc="-500000">-500k</button>
-        <button class="inc-btn" data-inc="-1000000">-1m</button>
-        <button class="inc-btn" data-inc="-5000000">-5m</button>
+      <div style="margin-top:10px; text-align:center;">
+        <button class="dec-btn" data-inc="-500000">-500k</button>
+        <button class="dec-btn" data-inc="-1000000">-1m</button>
+        <button class="dec-btn" data-inc="-5000000">-5m</button>
+
         <button class="inc-btn" data-inc="500000">+500k</button>
         <button class="inc-btn" data-inc="1000000">+1m</button>
         <button class="inc-btn" data-inc="5000000">+5m</button>
-      </div>
 
-      <button id="quickBidBtn" class="quick-bid-btn">Quick Bid (Market Value)</button>
+        <button class="button" id="quickBidBtn">Quick Bid</button>
+      </div>
 
       <div id="offerError"></div>
 
@@ -324,13 +302,13 @@
         <button class="button" id="cancelOfferBtn">Cancel</button>
         <button class="button" id="confirmOfferBtn">Submit Offer</button>
       </div>
+
     </div>
   </div>
 
-  <!-- MAIN LOGIC -->
   <script type="module" src="gpdb_v2.js"></script>
 
-  <!-- SUPABASE AUTH + NAVIGATION -->
+  <!-- NAVIGATION + AUTH -->
   <script type="module">
     import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
@@ -349,7 +327,6 @@
         return;
       }
 
-      /* NAVIGATION */
       const nav = document.getElementById("nav");
       nav.innerHTML = `
         <a href="index.html" class="button">Home</a>
