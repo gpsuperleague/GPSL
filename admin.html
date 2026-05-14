@@ -139,11 +139,16 @@
       <h2 class="section-header">Add New Owner</h2>
       <div class="panel">
         <input id="ownerEmail" placeholder="Owner Email"><br><br>
-        <input id="ownerPassword" placeholder="Password" type="password"><br><br>
+        <input id="ownerPassword" placeholder="Temporary Password" type="password"><br><br>
         <input id="ownerClub" placeholder="Club ShortName (e.g., ARS)"><br><br>
 
         <button id="addOwnerBtn" class="button">Add Owner</button>
         <div id="ownerStatus" style="margin-top:10px; color:#ffcc00;"></div>
+
+        <p style="margin-top:10px; color:#888; font-size:14px;">
+          When you add an owner, they will automatically receive a password‑setup email.
+          The temporary password you enter here is only required by Supabase and is never used.
+        </p>
       </div>
 
       <!-- UPDATE OWNER EMAIL -->
@@ -306,7 +311,7 @@
 
         status.textContent = error
           ? "❌ " + error.message
-          : "✅ Owner created and assigned!";
+          : "✅ Owner created and a password‑setup email has been sent!";
       };
     });
 
