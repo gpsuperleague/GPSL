@@ -57,7 +57,7 @@ let MV_MIN = null;
 let MV_MAX = null;
 
 /* ============================================================
-   MODULE D: Global Settings Loader (Correct Version)
+   MODULE D: Global Settings Loader
    ============================================================ */
 async function loadGlobalSettings() {
   const { data, error } = await supabase
@@ -101,7 +101,6 @@ async function loadPage(page = 1) {
     .from("Players")
     .select(COLUMNS.join(","), { count: "exact" });
 
-  // Apply filters
   Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
     if (value.trim() === "") return;
 
@@ -116,18 +115,15 @@ async function loadPage(page = 1) {
     }
   });
 
-  // Market value filters
   if (MV_MIN !== null) query = query.gte("market_value", MV_MIN);
   if (MV_MAX !== null) query = query.lte("market_value", MV_MAX);
 
-  // Sorting
   if (CURRENT_SORT_COLUMN) {
     query = query.order(CURRENT_SORT_COLUMN, {
       ascending: CURRENT_SORT_DIR === "asc"
     });
   }
 
-  // Pagination
   query = query.range(from, to);
 
   const { data, error, count } = await query;
@@ -163,7 +159,6 @@ function renderTable(players) {
     return;
   }
 
-  // Header (add Bid column)
   tableHead.innerHTML = `
     <tr>
       ${COLUMNS.filter(col => col !== "Konami_ID")
@@ -179,7 +174,6 @@ function renderTable(players) {
     </tr>
   `;
 
-  // Rows
   tableBody.innerHTML = players
     .map(player => {
       const hasClub = !!player.Contracted_Team;
@@ -222,7 +216,6 @@ function renderTable(players) {
     })
     .join("");
 
-  // Sorting
   Array.from(tableHead.querySelectorAll("th[data-col]")).forEach(th => {
     const col = th.getAttribute("data-col");
     th.onclick = () => {
@@ -236,7 +229,6 @@ function renderTable(players) {
     };
   });
 
-  // PESDB row click
   Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
     row.style.cursor = "pointer";
     row.addEventListener("click", e => {
@@ -251,32 +243,48 @@ function renderTable(players) {
     });
   });
 
-  // Attach Make Offer handlers
   document.querySelectorAll(".make-offer-btn").forEach(btn => {
     btn.addEventListener("click", () => openMakeOfferModal(btn.dataset.playerId));
   });
 }
 
 /* ============================================================
-   MODULE G: Make Offer Modal
+   MODULE G: Make Offer Modal (enhanced)
    ============================================================ */
 let CURRENT_OFFER_PLAYER = null;
 
 async function openMakeOfferModal(playerId) {
-  const { data: player } = await supabase
+  const { data: player, error } = await supabase
     .from("Players")
     .select("*")
     .eq("Konami_ID", playerId)
     .single();
 
+  if (error || !player) {
+    console.error("Failed to load player for offer", error);
+    return;
+  }
+
   CURRENT_OFFER_PLAYER = player;
 
-  document.getElementById("offerPlayerName").textContent = player.Name;
-  document.getElementById("offerPlayerInfo").textContent =
-    `${player.Position} • Rating ${player.Rating}`;
+  const nameEl = document.getElementById("offerPlayerName");
+  const infoEl = document.getElementById("offerPlayerInfo");
+  const mvEl = document.getElementById("offerPlayerMV");
+  const imgEl = document.getElementById("offerPlayerImg");
+  const amountInput = document.getElementById("offerAmount");
+  const errorBox = document.getElementById("offerError");
 
-  document.getElementById("offerAmount").value = "";
-  document.getElementById("offerError").textContent = "";
+  nameEl.textContent = player.Name;
+  infoEl.textContent = `${player.Position} • Rating ${player.Rating}`;
+  mvEl.textContent = `Market Value: ₿ ${Number(player.market_value).toLocaleString("en-GB")}`;
+
+  imgEl.src = `https://pesdb.net/efootball/img/players/${player.Konami_ID}.png`;
+  imgEl.onerror = () => {
+    imgEl.src = "";
+  };
+
+  amountInput.value = Number(player.market_value).toLocaleString("en-GB");
+  errorBox.textContent = "";
 
   document.getElementById("make-offer-modal-backdrop").style.display = "flex";
 }
@@ -297,34 +305,35 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
     return;
   }
 
-  // VALIDATION: Determine seller club (null = free agent)
+  const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
+  if (offer < mv) {
+    offer = mv;
+    input.value = offer.toLocaleString("en-GB");
+  }
+
   const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
   const myClub = CURRENT_USER.user_metadata.shortName;
 
-  // 1) Free agent but draft auction disabled
   if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
     errorBox.textContent = "Draft Auction is locked. You cannot bid on free agents.";
     return;
   }
 
-  // 2) Player belongs to the bidder
   if (sellerClub === myClub) {
     errorBox.textContent = "You cannot make an offer for your own player.";
     return;
   }
 
-  // 3) Contracted player but transfer window closed
   if (sellerClub && !GLOBAL_SETTINGS.transferWindowOpen) {
     errorBox.textContent = "Transfer window is closed for contracted players.";
     return;
   }
 
-  // Insert direct bid
   const { error } = await supabase.from("Player_Transfer_Bids").insert({
     listing_id: null,
     player_id: CURRENT_OFFER_PLAYER.Konami_ID,
     bidder_club_id: CURRENT_USER.user_metadata.shortName,
-    seller_club_id: sellerClub,
+    seller_club_id: sellerClub || null,
     bid_amount: offer,
     bid_time: new Date().toISOString(),
     is_direct: true,
@@ -339,6 +348,48 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
 
   document.getElementById("make-offer-modal-backdrop").style.display = "none";
 };
+
+document.querySelectorAll(".inc-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    if (!CURRENT_OFFER_PLAYER) return;
+
+    const inc = Number(btn.dataset.inc);
+    const input = document.getElementById("offerAmount");
+
+    let raw = input.value.replace(/,/g, "").trim();
+    let val = Number(raw) || 0;
+
+    val += inc;
+
+    const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
+    if (val < mv) val = mv;
+
+    input.value = val.toLocaleString("en-GB");
+  });
+});
+
+document.getElementById("quickBidBtn").onclick = () => {
+  if (!CURRENT_OFFER_PLAYER) return;
+  const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
+  document.getElementById("offerAmount").value = mv.toLocaleString("en-GB");
+};
+
+document.getElementById("offerAmount").addEventListener("input", e => {
+  if (!CURRENT_OFFER_PLAYER) return;
+
+  let raw = e.target.value.replace(/,/g, "").trim();
+  let val = Number(raw);
+
+  const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
+
+  if (isNaN(val) || val <= 0) {
+    val = mv;
+  }
+
+  if (val < mv) val = mv;
+
+  e.target.value = val.toLocaleString("en-GB");
+});
 
 /* ============================================================
    MODULE H: Filters + Controls
