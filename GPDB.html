@@ -148,7 +148,7 @@
       border: 1px solid #333;
       padding: 20px;
       border-radius: 8px;
-      width: 350px;
+      width: 380px;
     }
 
     .modal-row {
@@ -162,12 +162,88 @@
       color: #ff4444;
       font-size: 12px;
       min-height: 14px;
+      margin-top: 6px;
     }
 
     .modal-buttons {
       margin-top: 15px;
       display: flex;
       justify-content: space-between;
+    }
+
+    /* Enhanced Make Offer modal */
+    .player-info-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .player-img {
+      width: 70px;
+      height: 70px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      object-fit: cover;
+      background: #000;
+    }
+
+    .player-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 13px;
+    }
+
+    .mv-line {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+
+    .offer-input {
+      padding: 8px;
+      font-size: 16px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .inc-dec-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+      justify-content: space-between;
+    }
+
+    .inc-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+      background: #333;
+      color: #ddd;
+      border-radius: 4px;
+      border: 1px solid #555;
+      cursor: pointer;
+    }
+
+    .inc-btn:hover {
+      background: #444;
+    }
+
+    .quick-bid-btn {
+      margin-top: 10px;
+      width: 100%;
+      padding: 8px;
+      background: #ff8800;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      color: #111;
+      font-weight: bold;
+    }
+
+    .quick-bid-btn:hover {
+      background: #ffaa33;
     }
   </style>
 </head>
@@ -216,16 +292,33 @@
   <!-- NEW: MAKE OFFER MODAL -->
   <div id="make-offer-modal-backdrop" class="modal-backdrop">
     <div id="make-offer-modal" class="modal">
-      <h3>Make Offer</h3>
+      <h2 id="offerPlayerName"></h2>
 
-      <div id="offerPlayerName"></div>
-      <div id="offerPlayerInfo"></div>
+      <div class="player-info-row">
+        <img id="offerPlayerImg" class="player-img" alt="Player image">
+        <div class="player-meta">
+          <div id="offerPlayerInfo"></div>
+          <div id="offerPlayerMV" class="mv-line"></div>
+        </div>
+      </div>
 
       <div class="modal-row">
-        <label for="offerAmount">Your Offer</label>
-        <input type="text" id="offerAmount" inputmode="numeric">
-        <div id="offerError"></div>
+        <label for="offerAmount">Your Offer (₿)</label>
+        <input type="text" id="offerAmount" class="offer-input" inputmode="numeric">
       </div>
+
+      <div class="inc-dec-row">
+        <button class="inc-btn" data-inc="-500000">-500k</button>
+        <button class="inc-btn" data-inc="-1000000">-1m</button>
+        <button class="inc-btn" data-inc="-5000000">-5m</button>
+        <button class="inc-btn" data-inc="500000">+500k</button>
+        <button class="inc-btn" data-inc="1000000">+1m</button>
+        <button class="inc-btn" data-inc="5000000">+5m</button>
+      </div>
+
+      <button id="quickBidBtn" class="quick-bid-btn">Quick Bid (Market Value)</button>
+
+      <div id="offerError"></div>
 
       <div class="modal-buttons">
         <button class="button" id="cancelOfferBtn">Cancel</button>
