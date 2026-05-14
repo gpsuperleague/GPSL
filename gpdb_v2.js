@@ -292,24 +292,23 @@ async function openMakeOfferModal(playerId) {
      IMAGE LOADING WITH REGION-BLOCK DETECTION + 3 FALLBACKS
      ============================================================ */
 
-  // 1) Try official Konami CDN
+  // 1) Konami official CDN
   imgEl.src = `https://img.konami.com/efootball/img/players/${player.Konami_ID}.png`;
 
-  // Detect Konami's region-block placeholder (usually 120x120)
+  // Detect Konami region-block placeholder (120x120)
   imgEl.onload = () => {
     if (imgEl.naturalWidth <= 120) {
-      // Force fallback to PESMaster
       imgEl.src = `https://cdn.pesmaster.com/efootball23/players/${player.Konami_ID}.png`;
     }
   };
 
   // 2) PESMaster fallback
   imgEl.onerror = () => {
-    imgEl.src = `https://cdn.pesmaster.com/efootball23/players/${player.Konami_ID}.png`;
+    imgEl.src = `https://cdn.pesdb.app/images/players/${player.Konami_ID}.png`;
 
     imgEl.onerror = () => {
-      // 3) Miniface fallback (very reliable, uses Konami ID)
-      imgEl.src = `https://miniface.efootballhub.net/players/${player.Konami_ID}.png`;
+      // 3) New working miniface CDN
+      imgEl.src = `https://faces.efootballhub.net/players/${player.Konami_ID}.png`;
 
       imgEl.onerror = () => {
         // 4) Final silhouette fallback
