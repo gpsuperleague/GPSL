@@ -1,7 +1,5 @@
-document.addEventListener("DOMContentLoaded", () => {
-
 /* ============================================================
-   MODULE A: Supabase Client
+   MODULE A: Supabase Client (imports MUST be at top)
    ============================================================ */
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
@@ -12,8 +10,15 @@ const supabase = createClient(
 );
 
 /* ============================================================
+   EVERYTHING ELSE MUST BE INSIDE DOMContentLoaded
+   ============================================================ */
+
+document.addEventListener("DOMContentLoaded", () => {
+
+/* ============================================================
    MODULE B: Column Definitions
    ============================================================ */
+
 const COLUMNS = [
   "Name",
   "Position",
@@ -47,6 +52,7 @@ const DROPDOWN_COLUMNS = [
 /* ============================================================
    MODULE C: Pagination + State
    ============================================================ */
+
 let PAGE_SIZE = 1000;
 let TOTAL_ROWS = 0;
 let CURRENT_PAGE = 1;
@@ -61,6 +67,7 @@ let MV_MAX = null;
 /* ============================================================
    MODULE D: Global Settings Loader
    ============================================================ */
+
 async function loadGlobalSettings() {
   const { data, error } = await supabase
     .from("global_settings")
@@ -85,6 +92,7 @@ async function loadGlobalSettings() {
 /* ============================================================
    MODULE E: Data Loading
    ============================================================ */
+
 async function loadTotalCount() {
   const { count } = await supabase
     .from("Players")
@@ -143,6 +151,7 @@ async function loadPage(page = 1) {
 /* ============================================================
    MODULE F: Rendering (with Bid column)
    ============================================================ */
+
 let GLOBAL_SETTINGS = null;
 let CURRENT_USER = null;
 
@@ -253,6 +262,7 @@ function renderTable(players) {
 /* ============================================================
    MODULE G: Make Offer Modal (updated)
    ============================================================ */
+
 let CURRENT_OFFER_PLAYER = null;
 
 async function openMakeOfferModal(playerId) {
@@ -294,8 +304,7 @@ async function openMakeOfferModal(playerId) {
 
   document.getElementById("make-offer-modal-backdrop").style.display = "flex";
 }
-
-                          /* ============================================================
+/* ============================================================
    MODULE G (continued): Confirm Offer + Buttons
    ============================================================ */
 
