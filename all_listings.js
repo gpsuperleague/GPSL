@@ -413,14 +413,16 @@ async function placeBid() {
     return;
   }
 
-  const { error: bidError } = await supabase
-    .from("Player_Transfer_Bids")
-    .insert({
-      listing_id: selectedListing.id,
-      bidder_club_id: currentUserShort,
-      bid_amount: bidAmount,
-      bid_time: new Date().toISOString()
-    });
+ const { error: bidError } = await supabase
+  .from("Player_Transfer_Bids")
+  .insert({
+    listing_id: selectedListing.id,
+    bidder_club_id: currentUserShort,
+    seller_club_id: selectedListing.seller_club_id,   // ⭐ REQUIRED
+    bid_amount: bidAmount,
+    bid_time: new Date().toISOString(),
+    is_direct: false                                   // ⭐ also required
+  });
 
   if (bidError) {
     console.error("Bid insert error", bidError);
