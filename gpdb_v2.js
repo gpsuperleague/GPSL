@@ -297,25 +297,17 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
     return;
   }
 
-  // Insert direct bid
-  const { error } = await supabase.from("Player_Transfer_Bids").insert({
-    listing_id: null,
-    player_id: CURRENT_OFFER_PLAYER.Konami_ID,
-    bidder_club_id: CURRENT_USER.user_metadata.shortName,
-    seller_club_id: CURRENT_OFFER_PLAYER.Contracted_Team || null,
-    bid_amount: offer,
-    bid_time: new Date().toISOString(),
-    is_direct: true
-  });
-
-  if (error) {
-    errorBox.textContent = "Failed to submit offer.";
-    console.error(error);
-    return;
-  }
-
-  document.getElementById("make-offer-modal-backdrop").style.display = "none";
-};
+// Insert direct bid
+const { error } = await supabase.from("Player_Transfer_Bids").insert({
+  listing_id: null,                                      // direct bids have no listing yet
+  player_id: CURRENT_OFFER_PLAYER.Konami_ID,
+  bidder_club_id: CURRENT_USER.user_metadata.shortName,  // who is bidding
+  seller_club_id: CURRENT_OFFER_PLAYER.Contracted_Team,  // who owns the player (REQUIRED)
+  bid_amount: offer,
+  bid_time: new Date().toISOString(),
+  is_direct: true,                                       // mark as direct bid
+  direct_bid_id: null                                    // stays null until accepted
+});
 
 /* ============================================================
    MODULE H: Filters + Controls
