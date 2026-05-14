@@ -53,13 +53,13 @@ transferEngine.evaluateExpiredListing = async function (listing) {
 
   const reviewDeadline = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-  const { error } = await supabase
-    .from("Player_Transfer_Listings")
-    .update({
-      status: "Review",
-      review_deadline: reviewDeadline.toISOString()
-    })
-    .eq("id", listing.id);
+ const { error } = await supabase
+  .from("Player_Transfer_Listings")
+  .update({
+    status: "Review",
+    seller_review_deadline: reviewDeadline.toISOString()
+  })
+  .eq("id", listing.id);
 
   if (error) console.error("❌ Failed to set review status:", error);
   else console.log("✅ Listing moved to review");
