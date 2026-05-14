@@ -288,10 +288,18 @@ async function openMakeOfferModal(playerId) {
   const amountInput = document.getElementById("offerAmount");
   const errorBox = document.getElementById("offerError");
 
-  imgEl.src = `https://pesdb.net/efootball/img/players/${player.Konami_ID}.png`;
-  imgEl.onerror = () => {
-    imgEl.src = "https://i.imgur.com/3s8XQ7Y.png";
-  };
+   // Primary: Official Konami CDN (global)
+   imgEl.src = `https://img.konami.com/efootball/img/players/${player.Konami_ID}.png`;
+   
+   // Fallback 1: PESMaster CDN (very reliable)
+   imgEl.onerror = () => {
+     imgEl.src = `https://cdn.pesmaster.com/efootball23/players/${player.Konami_ID}.png`;
+   
+     // Fallback 2: Your silhouette
+     imgEl.onerror = () => {
+       imgEl.src = "https://i.imgur.com/3s8XQ7Y.png";
+     };
+   };
 
   nameEl.textContent = player.Name;
   posEl.textContent = `Position: ${player.Position}`;
