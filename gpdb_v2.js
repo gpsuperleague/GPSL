@@ -297,39 +297,48 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
     return;
   }
 
-// VALIDATION: Determine seller club (null = free agent)
-const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
-const myClub = CURRENT_USER.user_metadata.shortName;
+  // VALIDATION: Determine seller club (null = free agent)
+  const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
+  const myClub = CURRENT_USER.user_metadata.shortName;
 
-// 1) Free agent but draft auction disabled
-if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
-  errorBox.textContent = "Draft Auction is locked. You cannot bid on free agents.";
-  return;
-}
+  // 1) Free agent but draft auction disabled
+  if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
+    errorBox.textContent = "Draft Auction is locked. You cannot bid on free agents.";
+    return;
+  }
 
-// 2) Player belongs to the bidder
-if (sellerClub === myClub) {
-  errorBox.textContent = "You cannot make an offer for your own player.";
-  return;
-}
+  // 2) Player belongs to the bidder
+  if (sellerClub === myClub) {
+    errorBox.textContent = "You cannot make an offer for your own player.";
+    return;
+  }
 
-// 3) Contracted player but transfer window closed
-if (sellerClub && !GLOBAL_SETTINGS.transferWindowOpen) {
-  errorBox.textContent = "Transfer window is closed for contracted players.";
-  return;
-}
-  
-// Insert direct bid
-const { error } = await supabase.from("Player_Transfer_Bids").insert({
-  listing_id: null,                                      // direct bids have no listing yet
-  player_id: CURRENT_OFFER_PLAYER.Konami_ID,
-  bidder_club_id: CURRENT_USER.user_metadata.shortName,  // who is bidding
-  seller_club_id: CURRENT_OFFER_PLAYER.Contracted_Team,  // who owns the player (REQUIRED)
-  bid_amount: offer,
-  bid_time: new Date().toISOString(),
-  is_direct: true,                                       // mark as direct bid
-  direct_bid_id: null                                    // stays null until accepted
-});
+  // 3) Contracted player but transfer window closed
+  if (sellerClub && !GLOBAL_SETTINGS.transferWindowOpen) {
+    errorBox.textContent = "Transfer window is closed for contracted players.";
+    return;
+  }
+
+  // Insert direct bid
+  const { error } = await supabase.from("Player_Transfer_Bids").insert({
+    listing_id: null,
+    player_id: CURRENT_OFFER_PLAYER.Konami_ID,
+    bidder_club_id: CURRENT_USER.user_metadata.shortName,
+    seller_club_id: sellerClub,
+    bid_amount: offer,
+    bid_time: new Date().toISOString(),
+    is_direct: true,
+    direct_bid_id: null
+  });
+
+  if (error) {
+    errorBox.textContent = "Failed to submit offer.";
+    console.error(error);
+    return;
+  }
+
+  document.getElementById("make-offer-modal-backdrop").style.display = "none";
+};
 
 /* ============================================================
    MODULE H: Filters + Controls
