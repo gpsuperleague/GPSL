@@ -332,31 +332,46 @@
       };
     });
 
-    /* LOAD OWNERS INTO DROPDOWN (via Edge Function) */
-    document.addEventListener("DOMContentLoaded", async () => {
-      const dropdown = document.getElementById("updateOwnerSelect");
+   /* LOAD OWNERS INTO DROPDOWN (Auth + Clubs join) */
+document.addEventListener("DOMContentLoaded", async () => {
+  const dropdown = document.getElementById("updateOwnerSelect");
 
-      const { data, error } = await supabase.functions.invoke("list-owners");
+  // 1. Load all Auth users via Edge Function
+  const { data: ownerData, error: ownerError } = await supabase.functions.invoke("list-owners");
 
-      if (error || !data || !data.users) {
-        dropdown.innerHTML = `<option>Error loading owners</option>`;
-        return;
-      }
+  if (ownerError || !ownerData || !ownerData.users) {
+    dropdown.innerHTML = `<option>Error loading owners</option>`;
+    return;
+  }
 
-      dropdown.innerHTML = "";
+  // 2. Load all clubs
+  const { data: clubs, error: clubError } = await supabase
+    .from("Clubs")
+    .select("ShortName, owner_id");
 
-      data.users.forEach((u) => {
-        const club = u.user_metadata?.shortName || "NO CLUB";
-        const email = u.email;
-        const id = u.id;
+  if (clubError) {
+    dropdown.innerHTML = `<option>Error loading clubs</option>`;
+    return;
+  }
 
-        const option = document.createElement("option");
-        option.value = id;
-        option.textContent = `${club} — ${email}`;
+  dropdown.innerHTML = "";
 
-        dropdown.appendChild(option);
-      });
-    });
+  // 3. Build dropdown entries
+  ownerData.users.forEach((u) => {
+    const id = u.id;
+    const email = u.email;
+
+    // Find matching club by owner_id
+    const club = clubs.find(c => c.owner_id === id);
+    const shortName = club ? club.ShortName : "NO CLUB";
+
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = `${shortName} — ${email}`;
+
+    dropdown.appendChild(option);
+  });
+});
 
     /* ADD OWNER */
     document.addEventListener("DOMContentLoaded", () => {
