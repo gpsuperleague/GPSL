@@ -249,7 +249,7 @@ function renderTable(players) {
 }
 
 /* ============================================================
-   MODULE G: Make Offer Modal (enhanced)
+   MODULE G: Make Offer Modal (side-by-side layout)
    ============================================================ */
 let CURRENT_OFFER_PLAYER = null;
 
@@ -267,21 +267,25 @@ async function openMakeOfferModal(playerId) {
 
   CURRENT_OFFER_PLAYER = player;
 
-  const nameEl = document.getElementById("offerPlayerName");
-  const infoEl = document.getElementById("offerPlayerInfo");
-  const mvEl = document.getElementById("offerPlayerMV");
   const imgEl = document.getElementById("offerPlayerImg");
+  const nameEl = document.getElementById("offerPlayerName");
+  const posEl = document.getElementById("offerPlayerPosition");
+  const styleEl = document.getElementById("offerPlayerPlaystyle");
+  const ratingEl = document.getElementById("offerPlayerRating");
+  const mvEl = document.getElementById("offerPlayerMV");
   const amountInput = document.getElementById("offerAmount");
   const errorBox = document.getElementById("offerError");
 
-  nameEl.textContent = player.Name;
-  infoEl.textContent = `${player.Position} • Rating ${player.Rating}`;
-  mvEl.textContent = `Market Value: ₿ ${Number(player.market_value).toLocaleString("en-GB")}`;
-
   imgEl.src = `https://pesdb.net/efootball/img/players/${player.Konami_ID}.png`;
   imgEl.onerror = () => {
-    imgEl.src = "";
+    imgEl.src = "https://i.imgur.com/3s8XQ7Y.png"; // fallback silhouette
   };
+
+  nameEl.textContent = player.Name;
+  posEl.textContent = `Position: ${player.Position}`;
+  styleEl.textContent = `Playstyle: ${player.Playstyle}`;
+  ratingEl.textContent = `Rating: ${player.Rating}`;
+  mvEl.textContent = `Market Value: ₿ ${Number(player.market_value).toLocaleString("en-GB")}`;
 
   amountInput.value = Number(player.market_value).toLocaleString("en-GB");
   errorBox.textContent = "";
@@ -349,7 +353,8 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
   document.getElementById("make-offer-modal-backdrop").style.display = "none";
 };
 
-document.querySelectorAll(".inc-btn").forEach(btn => {
+/* Increment / Decrement buttons */
+document.querySelectorAll(".inc-btn, .dec-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     if (!CURRENT_OFFER_PLAYER) return;
 
@@ -368,12 +373,14 @@ document.querySelectorAll(".inc-btn").forEach(btn => {
   });
 });
 
+/* Quick Bid = Market Value */
 document.getElementById("quickBidBtn").onclick = () => {
   if (!CURRENT_OFFER_PLAYER) return;
   const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
   document.getElementById("offerAmount").value = mv.toLocaleString("en-GB");
 };
 
+/* Intelligent input formatting */
 document.getElementById("offerAmount").addEventListener("input", e => {
   if (!CURRENT_OFFER_PLAYER) return;
 
@@ -519,38 +526,4 @@ function setupControls() {
   });
 }
 
-/* ============================================================
-   MODULE I: Pagination Rendering
-   ============================================================ */
-function renderPagination() {
-  const totalPages = Math.ceil(TOTAL_ROWS / PAGE_SIZE);
-  const pagination = document.getElementById("pagination");
-
-  pagination.innerHTML = "";
-
-  for (let i = 1; i <= totalPages; i++) {
-    const btn = document.createElement("button");
-    btn.textContent = i;
-    btn.className = "page-btn";
-    if (i === CURRENT_PAGE) btn.classList.add("active");
-
-    btn.onclick = () => loadPage(i);
-    pagination.appendChild(btn);
-  }
-}
-
-/* ============================================================
-   MODULE J: Initialisation
-   ============================================================ */
-async function init() {
-  await loadUser();
-  GLOBAL_SETTINGS = await loadGlobalSettings();
-
-  setupControls();
-  setupFilters();
-  await populateDropdowns();
-  await loadTotalCount();
-  loadPage(1);
-}
-
-init();
+/*
