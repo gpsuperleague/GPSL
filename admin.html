@@ -212,7 +212,8 @@
         <!-- UPDATE EMAIL -->
         <div class="row">
           <div>
-            <input id="updateOwnerId" placeholder="Owner User ID">
+            <label>Owner</label>
+            <select id="updateOwnerSelect"></select>
           </div>
           <div>
             <input id="newOwnerEmail" placeholder="New Email">
@@ -331,6 +332,32 @@
       };
     });
 
+    /* LOAD OWNERS INTO DROPDOWN */
+    document.addEventListener("DOMContentLoaded", async () => {
+      const dropdown = document.getElementById("updateOwnerSelect");
+
+      const { data, error } = await supabase.auth.admin.listUsers();
+
+      if (error) {
+        dropdown.innerHTML = `<option>Error loading owners</option>`;
+        return;
+      }
+
+      dropdown.innerHTML = "";
+
+      data.users.forEach((u) => {
+        const club = u.user_metadata?.shortName || "NO CLUB";
+        const email = u.email;
+        const id = u.id;
+
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = `${club} — ${email}`;
+
+        dropdown.appendChild(option);
+      });
+    });
+
     /* ADD OWNER */
     document.addEventListener("DOMContentLoaded", () => {
       const btn = document.getElementById("addOwnerBtn");
@@ -364,7 +391,7 @@
       const status = document.getElementById("updateEmailStatus");
 
       btn.onclick = async () => {
-        const userId = document.getElementById("updateOwnerId").value.trim();
+        const userId = document.getElementById("updateOwnerSelect").value;
         const newEmail = document.getElementById("newOwnerEmail").value.trim();
 
         if (!userId || !newEmail) {
