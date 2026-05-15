@@ -472,9 +472,10 @@ table.gpsl-table tr:nth-child(even) {
   background: #773333;
 }
 .player-thumb {
-  height: 60px;
-  width: auto;
-  object-fit: contain;
+  width: 70px;              /* fix width instead of height */
+  height: auto;             /* let height grow naturally */
+  max-height: 90px;         /* safety cap so it doesn’t explode */
+  object-fit: contain;      /* no cropping */
   background: #000;
   border-radius: 6px;
   border: 1px solid #333;
