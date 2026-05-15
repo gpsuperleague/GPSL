@@ -349,3 +349,28 @@
 
 </body>
 </html>
+
+<style>
+/* ============================================================
+   PLAYER IMAGE — BIG PORTRAIT (NO CROPPING) FOR MAKE OFFER
+   ============================================================ */
+
+.player-thumb {
+  height: 130px;
+  width: auto;
+  object-fit: contain;
+  background: #000;
+  border-radius: 6px;
+  border: 1px solid #333;
+  padding: 2px;
+  display: block;
+  margin: 0 auto;
+}
+
+/* Allow tall images inside table rows */
+#make-offer-modal table tr,
+#make-offer-modal table td {
+  height: auto !important;
+  overflow: visible !important;
+}
+</style>
