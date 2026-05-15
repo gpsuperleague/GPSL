@@ -195,7 +195,7 @@
 
 table.gpsl-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;   /* IMPORTANT: allows row height to expand */
   font-size: 14px;
   background: #1a1a1a;
 }
@@ -210,6 +210,12 @@ table.gpsl-table th {
 table.gpsl-table td {
   padding: 8px;
   border-bottom: 1px solid #333;
+  overflow: visible !important;   /* FIX: prevents image clipping */
+}
+
+table.gpsl-table tr {
+  height: auto !important;        /* FIX: allow tall images */
+  overflow: visible !important;
 }
 
 table.gpsl-table tr:nth-child(even) {
@@ -471,15 +477,31 @@ table.gpsl-table tr:nth-child(even) {
 .dec-btn:hover {
   background: #773333;
 }
+
+
+/* ============================================================
+   PLAYER IMAGE — BIG PORTRAIT (NO CROPPING)
+   ============================================================ */
+
 .player-thumb {
-  width: 70px;              /* fix width instead of height */
-  height: auto;             /* let height grow naturally */
-  max-height: 90px;         /* safety cap so it doesn’t explode */
-  object-fit: contain;      /* no cropping */
+  height: 130px;        /* big portrait */
+  width: auto;
+  object-fit: contain;  /* never crop */
   background: #000;
   border-radius: 6px;
   border: 1px solid #333;
   padding: 2px;
   display: block;
   margin: 0 auto;
+}
+
+
+/* ============================================================
+   FIX: Allow tall images inside table rows
+   ============================================================ */
+
+table.gpsl-table tr,
+table.gpsl-table td {
+  height: auto !important;
+  overflow: visible !important;
 }
