@@ -172,6 +172,7 @@ function renderTable(players) {
 
   tableHead.innerHTML = `
     <tr>
+      <th></th>
       ${COLUMNS.filter(col => col !== "Konami_ID")
         .map(col => {
           let cls = "";
@@ -210,8 +211,15 @@ function renderTable(players) {
         }
       }
 
+      const imgURL = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
+
       return `
         <tr data-konami-id="${player.Konami_ID}">
+          <td>
+            <img src="${imgURL}"
+                 class="gpdb-thumb"
+                 onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'">
+          </td>
           ${COLUMNS.filter(col => col !== "Konami_ID")
             .map(col => {
               let value = player[col];
