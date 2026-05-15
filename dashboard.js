@@ -251,7 +251,7 @@ function renderSquad(players) {
     const headerRow = document.createElement("tr");
     headerRow.classList.add("squad-section-row");
     headerRow.innerHTML =
-      `<td colspan="8" class="squad-section-title">${groupName}</td>`;
+      `<td colspan="9" class="squad-section-title">${groupName}</td>`;
     tbody.appendChild(headerRow);
 
     const groupPlayers = players
@@ -270,7 +270,14 @@ function renderSquad(players) {
       const tr = document.createElement("tr");
       tr.dataset.konamiId = p.Konami_ID;
 
+      const imgURL = `https://pesdb.net/assets/img/card/b${p.Konami_ID}.png`;
+
       tr.innerHTML = `
+        <td>
+          <img src="${imgURL}"
+               onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"
+               style="width:45px; height:45px; border-radius:6px; object-fit:cover; border:1px solid #333;">
+        </td>
         <td>${p.Name}</td>
         <td>${p.Nation || "-"}</td>
         <td>${p.Position}</td>
@@ -710,7 +717,7 @@ async function renderSellerReview(listings) {
       ? `<button class="button" onclick="handleDirectBidReject('${l.direct_bid_id}')">Reject</button>`
       : `<button class="button" onclick="transferEngine.rejectSale(${l.id})">Reject</button>`;
 
-    tr = document.createElement("tr");
+    const tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
 
     tr.innerHTML = `
