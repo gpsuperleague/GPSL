@@ -260,7 +260,7 @@ function renderTable(players) {
 }
 
 /* ============================================================
-   MODULE G: Make Offer Modal (PESDB-only image source)
+   MODULE G: Make Offer Modal (PESDB Card Image Source)
    ============================================================ */
 
 let CURRENT_OFFER_PLAYER = null;
@@ -289,11 +289,11 @@ async function openMakeOfferModal(playerId) {
   const errorBox = document.getElementById("offerError");
 
   /* ============================================================
-     IMAGE LOADING — PESDB MINIFACE ONLY + SILHOUETTE FALLBACK
+     IMAGE LOADING — PESDB CARD IMAGE + SILHOUETTE FALLBACK
      ============================================================ */
 
-  // PESDB Miniface (works globally, no region block)
-  imgEl.src = `https://pesdb.net/pes2021/players/miniface/${player.Konami_ID}.png`;
+  // PESDB card image (works globally, no region block)
+  imgEl.src = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
 
   // If missing → silhouette
   imgEl.onerror = () => {
