@@ -20,24 +20,17 @@ let selectedPlayerForListing = null;
 // INIT ENTRY POINT
 // ============================================================
 export async function initDashboard({ user, shortName }) {
-  // Store user + club
   userObj = user;
   userId = user.id;
   userEmail = user.email;
   currentUserShort = shortName;
 
-  // Update header UI
   document.getElementById("userEmail").textContent = userEmail;
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${shortName}.png`;
 
-  // Load club name map
   await loadClubsMap();
-
-  // Load club info (gets clubId)
   await loadClubFromSupabase();
-
-  // Load everything else
   await loadDashboard();
 }
 
@@ -58,7 +51,6 @@ async function loadClubFromSupabase() {
 
   clubId = data.Club_ID;
 
-  // Update UI
   document.getElementById("dashboardTitle").textContent =
     `${fullClubName(currentUserShort)} Dashboard`;
 
@@ -145,7 +137,6 @@ async function loadStadiumInfo(clubId) {
 
   const upgradeCost = costData;
 
-  // Update UI
   document.getElementById("current-capacity").textContent =
     currentCapacity.toLocaleString();
   document.getElementById("next-capacity").textContent =
@@ -251,7 +242,7 @@ function renderSquad(players) {
     const headerRow = document.createElement("tr");
     headerRow.classList.add("squad-section-row");
     headerRow.innerHTML =
-      `<td colspan="9" class="squad-section-title">${groupName}</td>`;
+      `<td colspan="10" class="squad-section-title">${groupName}</td>`;
     tbody.appendChild(headerRow);
 
     const groupPlayers = players
@@ -273,11 +264,7 @@ function renderSquad(players) {
       const imgURL = `https://pesdb.net/assets/img/card/b${p.Konami_ID}.png`;
 
       tr.innerHTML = `
-        <td>
-          <img src="${imgURL}"
-               onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"
-               style="width:45px; height:45px; border-radius:6px; object-fit:cover; border:1px solid #333;">
-        </td>
+        <td><img src="${imgURL}" class="player-thumb" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
         <td>${p.Name}</td>
         <td>${p.Nation || "-"}</td>
         <td>${p.Position}</td>
@@ -305,7 +292,6 @@ window.handlePlayerAction = function(playerId, action) {
     openListPlayerModalByID({ Konami_ID: playerId });
   }
 };
-
 // ============================================================
 // LIST PLAYER MODAL
 // ============================================================
@@ -347,7 +333,7 @@ function openListPlayerModal(player) {
 }
 
 // ============================================================
-// RESERVE PRICE INCREMENT + BUTTON HANDLERS + VALIDATION
+// RESERVE PRICE INPUT + VALIDATION
 // ============================================================
 function parseNumericInput(value) {
   return Number(String(value).replace(/,/g, "")) || 0;
@@ -381,7 +367,6 @@ function validateReserveInput() {
     return false;
   }
 
-  // Reformat with commas
   input.value = formatNumeric(value);
 
   const mv = selectedPlayerForListing.market_value;
@@ -412,14 +397,11 @@ function addReserveIncrement(amount) {
 
   current += amount;
 
-  // Prevent going below 0
   if (current < 0) current = 0;
 
-  // Prevent going below Market Value (strict rule)
   const mv = selectedPlayerForListing.market_value;
   if (current < mv) current = mv;
 
-  // Prevent going above Max Reserve
   const max = selectedPlayerForListing.Maximum_Reserve_Price;
   if (current > max) current = max;
 
@@ -449,10 +431,7 @@ document.getElementById("useMaxReserveBtn").onclick = () => {
   validateReserveInput();
 };
 
-document.getElementById("reserveInput").oninput = () => {
-  // Let user type, then validate
-  validateReserveInput();
-};
+document.getElementById("reserveInput").oninput = () => validateReserveInput();
 
 document.getElementById("cancelListBtn").onclick = () => {
   document.getElementById("list-player-modal-backdrop").style.display = "none";
@@ -469,9 +448,7 @@ async function validateAndCreateListing() {
   const mv = selectedPlayerForListing.market_value;
   const max = selectedPlayerForListing.Maximum_Reserve_Price;
 
-  if (!validateReserveInput()) {
-    return;
-  }
+  if (!validateReserveInput()) return;
 
   if (reserve < mv) {
     document.getElementById("reserveError").textContent =
@@ -486,42 +463,30 @@ async function validateAndCreateListing() {
   }
 
   const now = new Date().toISOString();
-  const endTime = new Date(Date.now() + 86400000).toISOString(); // 24h
+  const endTime = new Date(Date.now() + 86400000).toISOString();
 
   const { error } = await supabase
     .from("Player_Transfer_Listings")
     .insert({
       player_id: selectedPlayerForListing.Konami_ID,
       seller_club_id: currentUserShort,
-
-      // Required core fields
       reserve_price: reserve,
       market_value: mv,
       start_time: now,
       end_time: endTime,
       status: "Active",
-
-      // Listing behaviour defaults
       listing_type: "standard",
       hidden_bids: false,
       random_end_time: null,
       special_rules: {},
-
-      // Bidding state
       current_highest_bid: null,
       current_highest_bidder: null,
-
-      // Review deadlines
       seller_review_deadline: endTime,
       review_deadline: endTime,
-
-      // Completion state
       winning_bid: null,
       winning_club: null,
       transfer_completed: false,
       archived: false,
-
-      // Extension system
       hour_extended: false,
       was_extended: false,
       extension_type: "none",
@@ -570,7 +535,6 @@ async function dismissListingForUser(listingId) {
       dismissed_at: new Date().toISOString()
     });
 }
-
 // ============================================================
 // LOAD LISTINGS + DIRECT BIDS
 // ============================================================
@@ -599,16 +563,14 @@ async function loadListings() {
   const review = updatedListings.filter(l => l.status === "Review");
   const closed = updatedListings.filter(l => l.status === "Closed");
 
-  // --- DIRECT BIDS FOR THIS CLUB (VIA GPDB) ---
+  // DIRECT BIDS
   const { data: directBids, error: directErr } = await supabase
     .from("Player_Transfer_Bids")
     .select("*")
     .eq("is_direct", true)
     .eq("seller_club_id", currentUserShort);
 
-  if (directErr) {
-    console.error("Direct bids load error:", directErr);
-  }
+  if (directErr) console.error("Direct bids load error:", directErr);
 
   const virtualDirectListings = (directBids || []).map(b => ({
     id: `direct-${b.id}`,
@@ -630,7 +592,7 @@ async function loadListings() {
 }
 
 // ============================================================
-// ACTIVE LISTINGS RENDER  — FIXED (no dismiss for Active)
+// ACTIVE LISTINGS RENDER — WITH IMAGE COLUMN
 // ============================================================
 async function renderActiveListings(listings) {
   const tbody = document.getElementById("active-listings-body");
@@ -638,12 +600,14 @@ async function renderActiveListings(listings) {
 
   for (const l of listings) {
     const player = await fetchPlayerByID(l.player_id);
+    const imgURL = `https://pesdb.net/assets/img/card/b${l.player_id}.png`;
 
     const tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
     tr.dataset.listingId = l.id;
 
     tr.innerHTML = `
+      <td><img src="${imgURL}" class="player-thumb" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Rating || "-"}</td>
@@ -652,50 +616,17 @@ async function renderActiveListings(listings) {
       <td>${formatTimeRemaining(l.end_time)}</td>
       <td><span class="money">${l.current_highest_bid ? "₿ " + Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</span></td>
       <td>${fullClubName(l.current_highest_bidder) || "-"}</td>
-
-      <td>
-        ${
-          l.status !== "Active"
-            ? `<button class="button dismiss-btn" data-listing-id="${l.id}">❌</button>`
-            : ""
-        }
-      </td>
+      <td></td>
     `;
 
     tbody.appendChild(tr);
   }
 
-  tbody.querySelectorAll(".dismiss-btn").forEach(btn => {
-    btn.addEventListener("click", async e => {
-      e.stopPropagation();
-
-      const row =
-        e.target.closest("tr") ||
-        e.currentTarget.closest("tr") ||
-        e.currentTarget.parentElement.closest("tr");
-
-      if (!row) {
-        console.error("Dismiss failed: could not find table row");
-        return;
-      }
-
-      const listingId = row.dataset.listingId;
-
-      await dismissListingForUser(listingId);
-
-      row.remove();
-
-      await loadActiveListingsCache();
-      await loadListings();
-      await loadMyActiveBids();
-    });
-  });
-
   applyPESDBRowClicks("active-listings-body");
 }
 
 // ============================================================
-// SELLER REVIEW RENDER (INCL. DIRECT BIDS)
+// SELLER REVIEW RENDER — WITH IMAGE COLUMN
 // ============================================================
 async function renderSellerReview(listings) {
   const tbody = document.getElementById("seller-review-body");
@@ -703,6 +634,7 @@ async function renderSellerReview(listings) {
 
   for (const l of listings) {
     const player = await fetchPlayerByID(l.player_id);
+    const imgURL = `https://pesdb.net/assets/img/card/b${l.player_id}.png`;
 
     const isDirect = !!l.is_direct;
     const endTimeDisplay = l.end_time
@@ -721,6 +653,7 @@ async function renderSellerReview(listings) {
     tr.dataset.konamiId = l.player_id;
 
     tr.innerHTML = `
+      <td><img src="${imgURL}" class="player-thumb" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Rating || "-"}</td>
@@ -742,7 +675,7 @@ async function renderSellerReview(listings) {
 }
 
 // ============================================================
-// DIRECT BID ACCEPT / REJECT HANDLERS
+// DIRECT BID ACCEPT / REJECT
 // ============================================================
 window.handleDirectBidAccept = async function(bidId) {
   const { data: bid, error: bidErr } = await supabase
@@ -768,42 +701,30 @@ window.handleDirectBidAccept = async function(bidId) {
   }
 
   const now = new Date().toISOString();
-  const endTime = new Date(Date.now() + 86400000).toISOString(); // 24h
+  const endTime = new Date(Date.now() + 86400000).toISOString();
 
   const { data: listing, error: listErr } = await supabase
     .from("Player_Transfer_Listings")
     .insert({
       player_id: bid.player_id,
       seller_club_id: bid.seller_club_id || currentUserShort,
-
-      // Reserve is max full reserve
       reserve_price: player.Maximum_Reserve_Price,
       market_value: player.market_value,
       start_time: now,
       end_time: endTime,
       status: "Active",
-
-      // Listing behaviour defaults
       listing_type: "standard",
       hidden_bids: false,
       random_end_time: null,
       special_rules: {},
-
-      // Bidding state – seed with the direct bid
       current_highest_bid: bid.bid_amount,
       current_highest_bidder: bid.bidder_club_id,
-
-      // Review deadlines
       seller_review_deadline: endTime,
       review_deadline: endTime,
-
-      // Completion state
       winning_bid: null,
       winning_club: null,
       transfer_completed: false,
       archived: false,
-
-      // Extension system
       hour_extended: false,
       was_extended: false,
       extension_type: "none",
@@ -820,7 +741,6 @@ window.handleDirectBidAccept = async function(bidId) {
     return;
   }
 
-  // Attach bid to new listing and mark as non-direct
   const { error: updErr } = await supabase
     .from("Player_Transfer_Bids")
     .update({
@@ -858,7 +778,6 @@ window.handleDirectBidReject = async function(bidId) {
     console.error("Failed to delete direct bid on reject:", delErr);
   }
 
-  // Optional: virtual inbox message for bidder (table can be created later)
   try {
     await supabase.from("User_Inbox").insert({
       user_id: bid.bidder_club_id,
@@ -868,15 +787,13 @@ window.handleDirectBidReject = async function(bidId) {
       is_read: false
     });
   } catch (e) {
-    // Swallow if inbox table not yet present
     console.warn("User_Inbox insert failed (likely table not created yet).");
   }
 
   await loadListings();
 };
-
 // ============================================================
-// CLOSED LISTINGS RENDER
+// CLOSED LISTINGS RENDER — WITH IMAGE COLUMN
 // ============================================================
 async function renderClosedListings(listings) {
   const tbody = document.getElementById("closed-listings-body");
@@ -884,6 +801,7 @@ async function renderClosedListings(listings) {
 
   for (const l of listings) {
     const player = await fetchPlayerByID(l.player_id);
+    const imgURL = `https://pesdb.net/assets/img/card/b${l.player_id}.png`;
 
     const tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
@@ -891,6 +809,7 @@ async function renderClosedListings(listings) {
     const winnerFull = fullClubName(l.winner) || l.winner || "-";
 
     tr.innerHTML = `
+      <td><img src="${imgURL}" class="player-thumb" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Rating || "-"}</td>
@@ -915,9 +834,9 @@ window.dismissClosedListing = async function(id) {
   loadListings();
 };
 
-/* ============================================================
-   MODULE K: MY ACTIVE BIDS
-   ============================================================ */
+// ============================================================
+// MY ACTIVE BIDS — WITH IMAGE COLUMN
+// ============================================================
 async function loadMyActiveBids() {
   const { data, error } = await supabase
     .from("Player_Transfer_Bids")
@@ -973,6 +892,7 @@ async function renderMyActiveBids(bids) {
     if (!l) continue;
 
     const player = await fetchPlayerByID(l.player_id);
+    const imgURL = `https://pesdb.net/assets/img/card/b${l.player_id}.png`;
 
     const tr = document.createElement("tr");
     tr.dataset.konamiId = l.player_id;
@@ -981,19 +901,14 @@ async function renderMyActiveBids(bids) {
     const showDismiss = l.status && l.status !== "Active";
 
     tr.innerHTML = `
+      <td><img src="${imgURL}" class="player-thumb" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
       <td><span class="money">₿ ${Number(b.bid_amount).toLocaleString("en-GB")}</span></td>
       <td><span class="money">${l.current_highest_bid ? "₿ " + Number(l.current_highest_bid).toLocaleString("en-GB") : "-"}</span></td>
       <td>${fullClubName(l.current_highest_bidder) || "-"}</td>
       <td>${new Date(l.end_time).toLocaleString()}</td>
-      <td>
-        ${
-          showDismiss
-            ? `<button class="button dismiss-bid-btn" data-listing-id="${l.id}">❌</button>`
-            : ""
-        }
-      </td>
+      <td>${showDismiss ? `<button class="button dismiss-bid-btn" data-listing-id="${l.id}">❌</button>` : ""}</td>
     `;
 
     tbody.appendChild(tr);
@@ -1028,9 +943,9 @@ async function renderMyActiveBids(bids) {
   applyPESDBRowClicks("my-active-bids-body");
 }
 
-/* ============================================================
-   MODULE N: SEASON SIGNINGS
-   ============================================================ */
+// ============================================================
+// SEASON SIGNINGS — WITH IMAGE COLUMN
+// ============================================================
 async function loadSeasonSignings() {
   const { data, error } = await supabase
     .from("Transfer_History")
@@ -1059,7 +974,7 @@ function renderSeasonSignings(rows) {
   if (!rows.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="3" style="text-align:center; opacity:0.7;">
+        <td colspan="4" style="text-align:center; opacity:0.7;">
           No signings this season.
         </td>
       </tr>
@@ -1068,12 +983,15 @@ function renderSeasonSignings(rows) {
   }
 
   rows.forEach(r => {
+    const imgURL = `https://pesdb.net/assets/img/card/b${r.player_id}.png`;
+
     const tr = document.createElement("tr");
     tr.dataset.konamiId = r.player_id;
 
     const sellerFull = fullClubName(r.seller_club_id) || r.seller_club_id;
 
     tr.innerHTML = `
+      <td><img src="${imgURL}" class="player-thumb" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
       <td>${r.Players?.Name || "Unknown"}</td>
       <td>${sellerFull}</td>
       <td><span class="money">₿ ${Number(r.fee).toLocaleString("en-GB")}</span></td>
@@ -1085,9 +1003,9 @@ function renderSeasonSignings(rows) {
   applyPESDBRowClicks("season-signings-body");
 }
 
-/* ============================================================
-   MODULE O: SEASON SALES
-   ============================================================ */
+// ============================================================
+// SEASON SALES — WITH IMAGE COLUMN
+// ============================================================
 async function loadSeasonSales() {
   const { data, error } = await supabase
     .from("Transfer_History")
@@ -1116,7 +1034,7 @@ function renderSeasonSales(rows) {
   if (!rows.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="3" style="text-align:center; opacity:0.7;">
+        <td colspan="4" style="text-align:center; opacity:0.7;">
           No sales this season.
         </td>
       </tr>
@@ -1125,12 +1043,15 @@ function renderSeasonSales(rows) {
   }
 
   rows.forEach(r => {
+    const imgURL = `https://pesdb.net/assets/img/card/b${r.player_id}.png`;
+
     const tr = document.createElement("tr");
     tr.dataset.konamiId = r.player_id;
 
     const buyerFull = fullClubName(r.buyer_club_id) || r.buyer_club_id;
 
     tr.innerHTML = `
+      <td><img src="${imgURL}" class="player-thumb" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
       <td>${r.Players?.Name || "Unknown"}</td>
       <td>${buyerFull}</td>
       <td>₿ ${Number(r.fee).toLocaleString("en-GB")}</td>
@@ -1141,10 +1062,9 @@ function renderSeasonSales(rows) {
 
   applyPESDBRowClicks("season-sales-body");
 }
-
-/* ============================================================
-   MODULE L: UNIVERSAL PESDB ROW CLICK HANDLER
-   ============================================================ */
+// ============================================================
+// UNIVERSAL PESDB ROW CLICK HANDLER
+// ============================================================
 function applyPESDBRowClicks(tbodyId) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
@@ -1177,9 +1097,9 @@ function applyPESDBRowClicks(tbodyId) {
   });
 }
 
-/* ============================================================
-   MODULE M: TIME REMAINING FORMATTER
-   ============================================================ */
+// ============================================================
+// TIME REMAINING FORMATTER
+// ============================================================
 function formatTimeRemaining(endTime) {
   const end = new Date(endTime);
   const now = new Date();
