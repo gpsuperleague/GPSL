@@ -201,7 +201,6 @@
       background:#666;
     }
 
-    /* ⭐ NEW: minus button styling */
     .dec-btn {
       padding: 6px 10px;
       margin-right: 6px;
@@ -222,6 +221,18 @@
       font-size:13px;
       margin-bottom:10px;
       text-align:center;
+    }
+
+    /* NEW: listing thumbnails */
+    .listing-thumb {
+      height: 70px;
+      width: auto;
+      object-fit: contain;
+      background:#000;
+      border-radius:4px;
+      border:1px solid #333;
+      padding:2px;
+      display:block;
     }
   </style>
 </head>
@@ -252,6 +263,7 @@
     <thead>
       <tr>
         <th>Selling Club</th>
+        <th></th> <!-- image column -->
         <th>Player</th>
         <th>Pos</th>
         <th>Style</th>
