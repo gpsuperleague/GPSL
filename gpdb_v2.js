@@ -260,7 +260,7 @@ function renderTable(players) {
 }
 
 /* ============================================================
-   MODULE G: Make Offer Modal (updated)
+   MODULE G: Make Offer Modal (PESDB-only image source)
    ============================================================ */
 
 let CURRENT_OFFER_PLAYER = null;
@@ -289,32 +289,15 @@ async function openMakeOfferModal(playerId) {
   const errorBox = document.getElementById("offerError");
 
   /* ============================================================
-     IMAGE LOADING WITH REGION-BLOCK DETECTION + 3 FALLBACKS
+     IMAGE LOADING — PESDB MINIFACE ONLY + SILHOUETTE FALLBACK
      ============================================================ */
 
-  // 1) Konami official CDN
-  imgEl.src = `https://img.konami.com/efootball/img/players/${player.Konami_ID}.png`;
+  // PESDB Miniface (works globally, no region block)
+  imgEl.src = `https://pesdb.net/pes2021/players/miniface/${player.Konami_ID}.png`;
 
-  // Detect Konami region-block placeholder (120x120)
-  imgEl.onload = () => {
-    if (imgEl.naturalWidth <= 120) {
-      imgEl.src = `https://cdn.pesmaster.com/efootball23/players/${player.Konami_ID}.png`;
-    }
-  };
-
-  // 2) PESMaster fallback
+  // If missing → silhouette
   imgEl.onerror = () => {
-    imgEl.src = `https://cdn.pesdb.app/images/players/${player.Konami_ID}.png`;
-
-    imgEl.onerror = () => {
-      // 3) New working miniface CDN
-      imgEl.src = `https://faces.efootballhub.net/players/${player.Konami_ID}.png`;
-
-      imgEl.onerror = () => {
-        // 4) Final silhouette fallback
-        imgEl.src = "https://i.imgur.com/3s8XQ7Y.png";
-      };
-    };
+    imgEl.src = "https://i.imgur.com/3s8XQ7Y.png";
   };
 
   /* ============================================================
