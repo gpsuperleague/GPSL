@@ -471,3 +471,14 @@ table.gpsl-table tr:nth-child(even) {
 .dec-btn:hover {
   background: #773333;
 }
+.player-thumb {
+  height: 60px;
+  width: auto;
+  object-fit: contain;
+  background: #000;
+  border-radius: 6px;
+  border: 1px solid #333;
+  padding: 2px;
+  display: block;
+  margin: 0 auto;
+}
