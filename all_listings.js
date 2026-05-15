@@ -155,8 +155,19 @@ function renderListings() {
         }`;
     }
 
+    // ⭐ NEW: PESDB image URL
+    const imgURL = `https://pesdb.net/assets/img/card/b${listing.player_id}.png`;
+
+    // ⭐ UPDATED ROW WITH IMAGE AFTER SELLING CLUB
     tr.innerHTML = `
       <td>${fullClubName(listing.seller_club_id)}</td>
+
+      <td>
+        <img src="${imgURL}"
+             class="listing-thumb"
+             onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'">
+      </td>
+
       <td>${player?.Name || "Unknown"}</td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Playstyle || "-"}</td>
@@ -413,16 +424,16 @@ async function placeBid() {
     return;
   }
 
- const { error: bidError } = await supabase
-  .from("Player_Transfer_Bids")
-  .insert({
-    listing_id: selectedListing.id,
-    bidder_club_id: currentUserShort,
-    seller_club_id: selectedListing.seller_club_id,   // ⭐ REQUIRED
-    bid_amount: bidAmount,
-    bid_time: new Date().toISOString(),
-    is_direct: false                                   // ⭐ also required
-  });
+  const { error: bidError } = await supabase
+    .from("Player_Transfer_Bids")
+    .insert({
+      listing_id: selectedListing.id,
+      bidder_club_id: currentUserShort,
+      seller_club_id: selectedListing.seller_club_id,
+      bid_amount: bidAmount,
+      bid_time: new Date().toISOString(),
+      is_direct: false
+    });
 
   if (bidError) {
     console.error("Bid insert error", bidError);
