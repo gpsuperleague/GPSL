@@ -96,7 +96,6 @@
       color: #ff9900;
     }
 
-    /* Player image column */
     .club-thumb {
       height: 70px;
       width: auto;
@@ -104,11 +103,12 @@
       object-fit: contain;
     }
 
+    /* Column widths (compact Offer column) */
     table.gpsl-table th:nth-child(1),
     table.gpsl-table td:nth-child(1) { width: 10%; }
 
     table.gpsl-table th:nth-child(2),
-    table.gpsl-table td:nth-child(2) { width: 23%; }
+    table.gpsl-table td:nth-child(2) { width: 22%; }
 
     table.gpsl-table th:nth-child(3),
     table.gpsl-table td:nth-child(3) { width: 8%; }
@@ -123,10 +123,10 @@
     table.gpsl-table td:nth-child(6) { width: 18%; }
 
     table.gpsl-table th:nth-child(7),
-    table.gpsl-table td:nth-child(7) { width: 13%; }
+    table.gpsl-table td:nth-child(7) { width: 12%; }
 
     table.gpsl-table th:nth-child(8),
-    table.gpsl-table td:nth-child(8) { width: 10%; }
+    table.gpsl-table td:nth-child(8) { width: 12%; text-align: center; }
 
     .player-link {
       color: #fff;
@@ -142,10 +142,10 @@
       background: #ff9900;
       color: #111;
       border: none;
-      padding: 6px 10px;
+      padding: 4px 8px;
       border-radius: 4px;
       cursor: pointer;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: bold;
     }
 
@@ -169,12 +169,14 @@
 
     .modal-content {
       background-color: #1a1a1a;
-      margin: 8% auto;
+      margin: 5% auto;
       padding: 20px;
       border: 1px solid #333;
-      width: 400px;
+      width: 650px;
       border-radius: 8px;
       color: #ddd;
+      display: flex;
+      gap: 20px;
     }
 
     .close {
@@ -187,6 +189,41 @@
 
     .close:hover {
       color: #fff;
+    }
+
+    .modal-left {
+      width: 40%;
+      text-align: center;
+    }
+
+    .modal-right {
+      width: 60%;
+    }
+
+    .modal-player-card {
+      background: #111;
+      border-radius: 8px;
+      padding: 10px;
+      border: 1px solid #333;
+    }
+
+    .modal-player-img {
+      width: 100%;
+      border-radius: 8px;
+      object-fit: contain;
+      margin-bottom: 10px;
+    }
+
+    .modal-player-name {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .modal-player-meta {
+      font-size: 13px;
+      color: #ccc;
+      margin-bottom: 2px;
     }
 
     .modal label {
@@ -204,13 +241,57 @@
       color: #ddd;
     }
 
-    .modal-footer {
-      margin-top: 15px;
-      text-align: right;
+    .increment-row {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
     }
 
-    .modal-footer .button {
-      margin-left: 10px;
+    .inc-btn {
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #222;
+      color: #ddd;
+      cursor: pointer;
+    }
+
+    .inc-btn:hover {
+      background: #333;
+    }
+
+    .modal-footer {
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .modal-footer-left {
+      flex: 1;
+    }
+
+    .modal-footer-right {
+      display: flex;
+      gap: 10px;
+    }
+
+    .quick-bid-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 1px solid #666;
+      background: #222;
+      color: #ddd;
+      cursor: pointer;
+    }
+
+    .quick-bid-btn:hover {
+      background: #333;
     }
 
     .window-closed-note {
@@ -234,15 +315,43 @@
   <!-- Offer Modal -->
   <div id="offerModal" class="modal">
     <div class="modal-content">
-      <span id="closeOfferModal" class="close">&times;</span>
-      <h2 id="offerPlayerName"></h2>
+      <div class="modal-left">
+        <div class="modal-player-card">
+          <span id="closeOfferModal" class="close">&times;</span>
+          <img id="offerPlayerImg" class="modal-player-img" src="" alt="Player card">
+          <div class="modal-player-name" id="offerPlayerName"></div>
+          <div class="modal-player-meta" id="offerPlayerPos"></div>
+          <div class="modal-player-meta" id="offerPlayerRating"></div>
+          <div class="modal-player-meta" id="offerPlayerAge"></div>
+          <div class="modal-player-meta" id="offerPlayerPlaystyle"></div>
+          <div class="modal-player-meta" id="offerPlayerValue"></div>
+        </div>
+      </div>
 
-      <label for="offerAmount">Bid Amount (₿):</label>
-      <input type="number" id="offerAmount" min="1" step="1">
+      <div class="modal-right">
+        <h3>Submit Direct Offer</h3>
 
-      <div class="modal-footer">
-        <button id="cancelOfferBtn" class="button">Cancel</button>
-        <button id="submitOfferBtn" class="button">Submit Offer</button>
+        <label for="offerAmount">Bid Amount (₿):</label>
+        <input type="number" id="offerAmount" min="1" step="1">
+
+        <div class="increment-row">
+          <button class="inc-btn" data-delta="-500000">-500k</button>
+          <button class="inc-btn" data-delta="-1000000">-1m</button>
+          <button class="inc-btn" data-delta="-5000000">-5m</button>
+          <button class="inc-btn" data-delta="500000">+500k</button>
+          <button class="inc-btn" data-delta="1000000">+1m</button>
+          <button class="inc-btn" data-delta="5000000">+5m</button>
+        </div>
+
+        <div class="modal-footer">
+          <div class="modal-footer-left">
+            <button id="quickBidBtn" class="quick-bid-btn">Quick Bid (Market Value)</button>
+          </div>
+          <div class="modal-footer-right">
+            <button id="cancelOfferBtn" class="button">Cancel</button>
+            <button id="submitOfferBtn" class="button">Submit Offer for Review</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -260,6 +369,7 @@
     let buyerShortName = null;
     let currentOfferKonamiId = null;
     let currentOfferSellerClub = null;
+    let currentPlayerMarketValue = null;
 
     /* AUTH + NAVIGATION */
     document.addEventListener("DOMContentLoaded", async () => {
@@ -297,25 +407,25 @@
     });
 
     async function loadTransferWindowStatus() {
-    const { data, error } = await supabase
-    .from("global_settings")
-    .select("transfer_window_open")
-    .eq("id", 1)
-    .single();
+      const { data, error } = await supabase
+        .from("global_settings")
+        .select("transfer_window_open")
+        .eq("id", 1)
+        .single();
 
-  if (!error && data) {
-    transferWindowOpen = data.transfer_window_open === true;
-  } else {
-    transferWindowOpen = false;
-  }
+      if (!error && data) {
+        transferWindowOpen = data.transfer_window_open === true;
+      } else {
+        transferWindowOpen = false;
+      }
 
-  const note = document.getElementById("windowNote");
-  if (!transferWindowOpen) {
-    note.textContent = "Transfer window is currently CLOSED. Direct offers are disabled.";
-  } else {
-    note.textContent = "";
-  }
-}
+      const note = document.getElementById("windowNote");
+      if (!transferWindowOpen) {
+        note.textContent = "Transfer window is currently CLOSED. Direct offers are disabled.";
+      } else {
+        note.textContent = "";
+      }
+    }
 
     async function loadBuyerClubShortName(authId) {
       const { data, error } = await supabase
@@ -376,7 +486,7 @@
 
       const { data, error } = await supabase
         .from("Players")
-        .select("Name, Nation, Position, Rating, market_value, Playstyle, Konami_ID, Contracted_Team")
+        .select("Name, Nation, Position, Rating, Age, market_value, Playstyle, Konami_ID, Contracted_Team")
         .eq("Contracted_Team", clubShortName);
 
       if (error) {
@@ -466,31 +576,27 @@
       const closeBtn = document.getElementById("closeOfferModal");
       const cancelBtn = document.getElementById("cancelOfferBtn");
       const amountInput = document.getElementById("offerAmount");
+      const quickBidBtn = document.getElementById("quickBidBtn");
+      const incButtons = document.querySelectorAll(".inc-btn");
 
-      closeBtn.onclick = () => {
+      const resetModalState = () => {
         modal.style.display = "none";
         amountInput.value = "";
         currentOfferKonamiId = null;
         currentOfferSellerClub = null;
+        currentPlayerMarketValue = null;
       };
 
-      cancelBtn.onclick = () => {
-        modal.style.display = "none";
-        amountInput.value = "";
-        currentOfferKonamiId = null;
-        currentOfferSellerClub = null;
-      };
+      closeBtn.onclick = resetModalState;
+      cancelBtn.onclick = resetModalState;
 
       window.onclick = (event) => {
         if (event.target === modal) {
-          modal.style.display = "none";
-          amountInput.value = "";
-          currentOfferKonamiId = null;
-          currentOfferSellerClub = null;
+          resetModalState();
         }
       };
 
-      document.addEventListener("click", (e) => {
+      document.addEventListener("click", async (e) => {
         if (e.target.classList && e.target.classList.contains("offer-btn")) {
           if (!transferWindowOpen) return;
           if (!buyerShortName) {
@@ -505,13 +611,66 @@
           currentOfferKonamiId = konamiId;
           currentOfferSellerClub = seller;
 
-          document.getElementById("offerPlayerName").textContent = `Make Offer: ${name}`;
-          document.getElementById("offerAmount").value = "";
+          await populateModalPlayerDetails(konamiId, name);
+
           modal.style.display = "block";
         }
       });
 
+      incButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          const delta = Number(btn.getAttribute("data-delta"));
+          let current = Number(amountInput.value || 0);
+          current = isNaN(current) ? 0 : current;
+          let next = current + delta;
+          if (next < 0) next = 0;
+          amountInput.value = next;
+        });
+      });
+
+      quickBidBtn.onclick = () => {
+        if (currentPlayerMarketValue != null) {
+          amountInput.value = currentPlayerMarketValue;
+        }
+      };
+
       document.getElementById("submitOfferBtn").onclick = submitOffer;
+    }
+
+    async function populateModalPlayerDetails(konamiId, fallbackName) {
+      const { data, error } = await supabase
+        .from("Players")
+        .select("Name, Position, Rating, Age, Playstyle, market_value, Konami_ID")
+        .eq("Konami_ID", konamiId)
+        .single();
+
+      const player = !error && data ? data : null;
+
+      const name = player ? player.Name : fallbackName;
+      const pos = player ? player.Position : "-";
+      const rating = player ? player.Rating : "-";
+      const age = player ? player.Age : "-";
+      const playstyle = player ? (player.Playstyle || "-") : "-";
+      const value = player ? Number(player.market_value || 0) : 0;
+      const imgId = player ? player.Konami_ID : konamiId;
+
+      currentPlayerMarketValue = value || 0;
+
+      document.getElementById("offerPlayerName").textContent = name;
+      document.getElementById("offerPlayerPos").textContent = `Position: ${pos}`;
+      document.getElementById("offerPlayerRating").textContent = `Rating: ${rating}`;
+      document.getElementById("offerPlayerAge").textContent = `Age: ${age}`;
+      document.getElementById("offerPlayerPlaystyle").textContent = `Playstyle: ${playstyle}`;
+      document.getElementById("offerPlayerValue").textContent = `Market Value: ₿ ${Number(value).toLocaleString("en-GB")}`;
+
+      document.getElementById("offerPlayerImg").src =
+        `https://pesdb.net/assets/img/card/b${imgId}.png`;
+      document.getElementById("offerPlayerImg").onerror = function () {
+        this.src = 'images/silhouette.png';
+      };
+
+      const amountInput = document.getElementById("offerAmount");
+      amountInput.value = value || "";
     }
 
     async function submitOffer() {
@@ -560,6 +719,7 @@
       document.getElementById("offerAmount").value = "";
       currentOfferKonamiId = null;
       currentOfferSellerClub = null;
+      currentPlayerMarketValue = null;
     }
   </script>
 
