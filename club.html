@@ -240,13 +240,16 @@
       margin-bottom: 4px;
     }
 
-    .modal input[type="number"] {
+    /* NOTE: This will be replaced with <input type="text"> in Part B */
+    .modal input[type="number"],
+    .modal input[type="text"] {
       width: 100%;
       padding: 6px;
       border-radius: 4px;
       border: 1px solid #444;
       background: #111;
       color: #ddd;
+      font-size: 14px;
     }
 
     .formatted-amount {
@@ -364,7 +367,10 @@
         <h3>Submit Direct Offer</h3>
 
         <label for="offerAmount">Bid Amount (₿):</label>
-        <input type="number" id="offerAmount" min="1" step="1">
+
+        <!-- UPDATED: type="text" to allow comma formatting -->
+        <input type="text" id="offerAmount">
+
         <div id="offerAmountFormatted" class="formatted-amount"></div>
 
         <div class="increment-row">
@@ -385,6 +391,7 @@
             <button id="submitOfferBtn" class="button submit-btn">Submit Offer for Review</button>
           </div>
         </div>
+
       </div>
     </div>
   </div>
@@ -602,6 +609,9 @@
       }
     }
 
+    /* ---------------------------------------------------------
+       MODAL HANDLERS + FORMATTING LOGIC
+    --------------------------------------------------------- */
     function setupModalHandlers() {
       const modal = document.getElementById("offerModal");
       const closeBtn = document.getElementById("closeOfferModal");
@@ -611,14 +621,16 @@
       const quickBidBtn = document.getElementById("quickBidBtn");
       const incButtons = document.querySelectorAll(".inc-btn");
 
-      const updateFormattedAmount = () => {
-        const v = Number(amountInput.value || 0);
-        if (!v || v <= 0) {
-          amountFormatted.textContent = "";
-        } else {
-          amountFormatted.textContent = "Formatted: ₿ " + v.toLocaleString("en-GB");
-        }
-      };
+      /* -------------------------------
+         LIVE FORMATTING WHILE TYPING
+      ------------------------------- */
+      amountInput.addEventListener("input", () => {
+        let raw = amountInput.value.replace(/,/g, "");
+        raw = raw.replace(/\D/g, "");
+        let num = Number(raw);
+        amountInput.value = num ? num.toLocaleString("en-GB") : "";
+        amountFormatted.textContent = num ? "Formatted: ₿ " + num.toLocaleString("en-GB") : "";
+      });
 
       const resetModalState = () => {
         modal.style.display = "none";
@@ -638,8 +650,9 @@
         }
       };
 
-      amountInput.addEventListener("input", updateFormattedAmount);
-
+      /* -------------------------------
+         OPEN MODAL
+      ------------------------------- */
       document.addEventListener("click", async (e) => {
         if (e.target.classList && e.target.classList.contains("offer-btn")) {
           if (!transferWindowOpen) return;
@@ -658,32 +671,41 @@
           await populateModalPlayerDetails(konamiId, name);
 
           modal.style.display = "block";
-          updateFormattedAmount();
         }
       });
 
+      /* -------------------------------
+         INCREMENT BUTTONS
+      ------------------------------- */
       incButtons.forEach(btn => {
         btn.addEventListener("click", () => {
-          const delta = Number(btn.getAttribute("data-delta"));
-          let current = Number(amountInput.value || 0);
-          current = isNaN(current) ? 0 : current;
+          let raw = amountInput.value.replace(/,/g, "");
+          let current = Number(raw || 0);
+          let delta = Number(btn.getAttribute("data-delta"));
           let next = current + delta;
           if (next < 0) next = 0;
-          amountInput.value = next;
-          updateFormattedAmount();
+
+          amountInput.value = next.toLocaleString("en-GB");
+          amountFormatted.textContent = next ? "Formatted: ₿ " + next.toLocaleString("en-GB") : "";
         });
       });
 
+      /* -------------------------------
+         QUICK BID
+      ------------------------------- */
       quickBidBtn.onclick = () => {
         if (currentPlayerMarketValue != null) {
-          amountInput.value = currentPlayerMarketValue;
-          updateFormattedAmount();
+          amountInput.value = currentPlayerMarketValue.toLocaleString("en-GB");
+          amountFormatted.textContent = "Formatted: ₿ " + currentPlayerMarketValue.toLocaleString("en-GB");
         }
       };
 
       document.getElementById("submitOfferBtn").onclick = submitOffer;
     }
 
+    /* ---------------------------------------------------------
+       POPULATE MODAL WITH PLAYER DETAILS
+    --------------------------------------------------------- */
     async function populateModalPlayerDetails(konamiId, fallbackName) {
       const { data, error } = await supabase
         .from("Players")
@@ -717,9 +739,14 @@
       };
 
       const amountInput = document.getElementById("offerAmount");
-      amountInput.value = value || "";
+      amountInput.value = value.toLocaleString("en-GB");
+      document.getElementById("offerAmountFormatted").textContent =
+        "Formatted: ₿ " + value.toLocaleString("en-GB");
     }
 
+    /* ---------------------------------------------------------
+       SUBMIT OFFER
+    --------------------------------------------------------- */
     async function submitOffer() {
       if (!currentOfferKonamiId || !currentOfferSellerClub) {
         alert("No player selected for offer.");
@@ -737,7 +764,7 @@
       }
 
       const amountRaw = document.getElementById("offerAmount").value;
-      const amount = Number(amountRaw);
+      const amount = Number(amountRaw.replace(/,/g, ""));
 
       if (!amount || amount <= 0) {
         alert("Enter a valid bid amount.");
