@@ -297,24 +297,25 @@
     });
 
     async function loadTransferWindowStatus() {
-      const { data, error } = await supabase
-        .from("global_settings")
-        .select("transfer_window_open")
-        .single();
+    const { data, error } = await supabase
+    .from("global_settings")
+    .select("transfer_window_open")
+    .eq("id", 1)
+    .single();
 
-      if (!error && data) {
-        transferWindowOpen = data.transfer_window === true;
-      } else {
-        transferWindowOpen = false;
-      }
+  if (!error && data) {
+    transferWindowOpen = data.transfer_window_open === true;
+  } else {
+    transferWindowOpen = false;
+  }
 
-      const note = document.getElementById("windowNote");
-      if (!transferWindowOpen) {
-        note.textContent = "Transfer window is currently CLOSED. Direct offers are disabled.";
-      } else {
-        note.textContent = "";
-      }
-    }
+  const note = document.getElementById("windowNote");
+  if (!transferWindowOpen) {
+    note.textContent = "Transfer window is currently CLOSED. Direct offers are disabled.";
+  } else {
+    note.textContent = "";
+  }
+}
 
     async function loadBuyerClubShortName(authId) {
       const { data, error } = await supabase
