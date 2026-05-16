@@ -93,23 +93,34 @@
       color: #ff9900;
     }
 
+    /* NEW: Player image column */
+    .club-thumb {
+      height: 70px;
+      width: auto;
+      border-radius: 6px;
+      object-fit: contain;
+    }
+
     table.gpsl-table th:nth-child(1),
-    table.gpsl-table td:nth-child(1) { width: 28%; }
+    table.gpsl-table td:nth-child(1) { width: 10%; }
 
     table.gpsl-table th:nth-child(2),
-    table.gpsl-table td:nth-child(2) { width: 10%; }
+    table.gpsl-table td:nth-child(2) { width: 25%; }
 
     table.gpsl-table th:nth-child(3),
-    table.gpsl-table td:nth-child(3) { width: 12%; }
+    table.gpsl-table td:nth-child(3) { width: 10%; }
 
     table.gpsl-table th:nth-child(4),
     table.gpsl-table td:nth-child(4) { width: 10%; }
 
     table.gpsl-table th:nth-child(5),
-    table.gpsl-table td:nth-child(5) { width: 20%; }
+    table.gpsl-table td:nth-child(5) { width: 10%; }
 
     table.gpsl-table th:nth-child(6),
     table.gpsl-table td:nth-child(6) { width: 20%; }
+
+    table.gpsl-table th:nth-child(7),
+    table.gpsl-table td:nth-child(7) { width: 15%; }
   </style>
 </head>
 
@@ -205,7 +216,7 @@
 
       const { data, error } = await supabase
         .from("Players")
-        .select("Name, Nation, Position, Rating, market_value, Playstyle")
+        .select("Name, Nation, Position, Rating, market_value, Playstyle, Konami_ID")
         .eq("Contracted_Team", clubShortName);
 
       if (error) {
@@ -235,6 +246,7 @@
             <table class="gpsl-table">
               <thead>
                 <tr>
+                  <th>Img</th>
                   <th>Player</th>
                   <th>Nat</th>
                   <th>Pos</th>
@@ -246,6 +258,13 @@
               <tbody>
                 ${groupPlayers.map(p => `
                   <tr>
+                    <td>
+                      <img 
+                        class="club-thumb"
+                        src="https://pesdb.net/assets/img/card/b${p.Konami_ID}.png"
+                        onerror="this.src='images/silhouette.png'"
+                      >
+                    </td>
                     <td>${p.Name}</td>
                     <td>${p.Nation}</td>
                     <td>${p.Position}</td>
