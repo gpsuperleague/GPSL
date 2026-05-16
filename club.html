@@ -298,8 +298,8 @@
 
     async function loadTransferWindowStatus() {
       const { data, error } = await supabase
-        .from("Admin_Settings")
-        .select("transfer_window")
+        .from("global_settings")
+        .select("transfer_window_open")
         .single();
 
       if (!error && data) {
