@@ -89,6 +89,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      font-size: 13px;
     }
 
     table.gpsl-table th {
@@ -103,9 +104,9 @@
       object-fit: contain;
     }
 
-    /* Column widths (compact Offer column) */
+    /* Column widths tuned so Offer has room */
     table.gpsl-table th:nth-child(1),
-    table.gpsl-table td:nth-child(1) { width: 10%; }
+    table.gpsl-table td:nth-child(1) { width: 9%; }
 
     table.gpsl-table th:nth-child(2),
     table.gpsl-table td:nth-child(2) { width: 22%; }
@@ -117,16 +118,22 @@
     table.gpsl-table td:nth-child(4) { width: 8%; }
 
     table.gpsl-table th:nth-child(5),
-    table.gpsl-table td:nth-child(5) { width: 10%; }
+    table.gpsl-table td:nth-child(5) { width: 9%; }
 
     table.gpsl-table th:nth-child(6),
-    table.gpsl-table td:nth-child(6) { width: 18%; }
+    table.gpsl-table td:nth-child(6) { width: 17%; }
 
     table.gpsl-table th:nth-child(7),
-    table.gpsl-table td:nth-child(7) { width: 12%; }
+    table.gpsl-table td:nth-child(7) { width: 15%; }
 
     table.gpsl-table th:nth-child(8),
     table.gpsl-table td:nth-child(8) { width: 12%; text-align: center; }
+
+    /* Let playstyle wrap slightly instead of bleeding */
+    table.gpsl-table td:nth-child(7) {
+      white-space: nowrap;
+      font-size: 12px;
+    }
 
     .player-link {
       color: #fff;
@@ -205,6 +212,7 @@
       border-radius: 8px;
       padding: 10px;
       border: 1px solid #333;
+      position: relative;
     }
 
     .modal-player-img {
@@ -239,6 +247,12 @@
       border: 1px solid #444;
       background: #111;
       color: #ddd;
+    }
+
+    .formatted-amount {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #ccc;
     }
 
     .increment-row {
@@ -284,14 +298,32 @@
       padding: 6px 10px;
       font-size: 12px;
       border-radius: 4px;
-      border: 1px solid #666;
-      background: #222;
-      color: #ddd;
+      border: 1px solid #2f7a2f;
+      background: #2f7a2f;
+      color: #fff;
       cursor: pointer;
     }
 
     .quick-bid-btn:hover {
-      background: #333;
+      background: #369a36;
+    }
+
+    .cancel-btn {
+      background: #555;
+      color: #eee;
+    }
+
+    .cancel-btn:hover {
+      background: #666;
+    }
+
+    .submit-btn {
+      background: #ff9900;
+      color: #111;
+    }
+
+    .submit-btn:hover {
+      background: #ffaa22;
     }
 
     .window-closed-note {
@@ -333,6 +365,7 @@
 
         <label for="offerAmount">Bid Amount (₿):</label>
         <input type="number" id="offerAmount" min="1" step="1">
+        <div id="offerAmountFormatted" class="formatted-amount"></div>
 
         <div class="increment-row">
           <button class="inc-btn" data-delta="-500000">-500k</button>
@@ -348,8 +381,8 @@
             <button id="quickBidBtn" class="quick-bid-btn">Quick Bid (Market Value)</button>
           </div>
           <div class="modal-footer-right">
-            <button id="cancelOfferBtn" class="button">Cancel</button>
-            <button id="submitOfferBtn" class="button">Submit Offer for Review</button>
+            <button id="cancelOfferBtn" class="button cancel-btn">Cancel</button>
+            <button id="submitOfferBtn" class="button submit-btn">Submit Offer for Review</button>
           </div>
         </div>
       </div>
@@ -371,7 +404,6 @@
     let currentOfferSellerClub = null;
     let currentPlayerMarketValue = null;
 
-    /* AUTH + NAVIGATION */
     document.addEventListener("DOMContentLoaded", async () => {
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -443,7 +475,6 @@
       buyerShortName = data.ShortName;
     }
 
-    /* CLUB + SQUAD LOADING */
     const params = new URLSearchParams(window.location.search);
     const fullClubName = params.get("club");
 
@@ -516,7 +547,7 @@
             <table class="gpsl-table">
               <thead>
                 <tr>
-                  <th>Img</th>
+                  <th></th>
                   <th>Player</th>
                   <th>Nat</th>
                   <th>Pos</th>
@@ -576,12 +607,23 @@
       const closeBtn = document.getElementById("closeOfferModal");
       const cancelBtn = document.getElementById("cancelOfferBtn");
       const amountInput = document.getElementById("offerAmount");
+      const amountFormatted = document.getElementById("offerAmountFormatted");
       const quickBidBtn = document.getElementById("quickBidBtn");
       const incButtons = document.querySelectorAll(".inc-btn");
+
+      const updateFormattedAmount = () => {
+        const v = Number(amountInput.value || 0);
+        if (!v || v <= 0) {
+          amountFormatted.textContent = "";
+        } else {
+          amountFormatted.textContent = "Formatted: ₿ " + v.toLocaleString("en-GB");
+        }
+      };
 
       const resetModalState = () => {
         modal.style.display = "none";
         amountInput.value = "";
+        amountFormatted.textContent = "";
         currentOfferKonamiId = null;
         currentOfferSellerClub = null;
         currentPlayerMarketValue = null;
@@ -595,6 +637,8 @@
           resetModalState();
         }
       };
+
+      amountInput.addEventListener("input", updateFormattedAmount);
 
       document.addEventListener("click", async (e) => {
         if (e.target.classList && e.target.classList.contains("offer-btn")) {
@@ -614,6 +658,7 @@
           await populateModalPlayerDetails(konamiId, name);
 
           modal.style.display = "block";
+          updateFormattedAmount();
         }
       });
 
@@ -625,12 +670,14 @@
           let next = current + delta;
           if (next < 0) next = 0;
           amountInput.value = next;
+          updateFormattedAmount();
         });
       });
 
       quickBidBtn.onclick = () => {
         if (currentPlayerMarketValue != null) {
           amountInput.value = currentPlayerMarketValue;
+          updateFormattedAmount();
         }
       };
 
@@ -697,6 +744,11 @@
         return;
       }
 
+      if (currentPlayerMarketValue != null && amount < currentPlayerMarketValue) {
+        alert("Minimum bid is the player's market value: ₿ " + currentPlayerMarketValue.toLocaleString("en-GB"));
+        return;
+      }
+
       const { error } = await supabase
         .from("Player_Transfer_Bids")
         .insert({
@@ -717,6 +769,7 @@
       alert("Offer submitted to the club's review panel.");
       document.getElementById("offerModal").style.display = "none";
       document.getElementById("offerAmount").value = "";
+      document.getElementById("offerAmountFormatted").textContent = "";
       currentOfferKonamiId = null;
       currentOfferSellerClub = null;
       currentPlayerMarketValue = null;
