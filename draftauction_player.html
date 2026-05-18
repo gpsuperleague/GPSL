@@ -224,7 +224,6 @@
         .lt("bid_time", sevenPmToday.toISOString())
         .order("bid_time", { ascending: true });
 
-
       if (bErr || !bids || !bids.length) {
         document.getElementById("historyBody").innerHTML =
           `<tr><td colspan="5">No bids in this window.</td></tr>`;
@@ -304,8 +303,8 @@
         .select("direct_bid_id")
         .eq("bidder_club_id", clubShortName)
         .eq("is_first_draft_bid", true)
-        .gte("created_at", windowStart.toISOString())
-        .lt("created_at", sixPmToday.toISOString());
+        .gte("bid_time", windowStart.toISOString())
+        .lt("bid_time", sixPmToday.toISOString());
 
       const { data: joins } = await supabase
         .from("Player_Transfer_Bids")
@@ -313,8 +312,8 @@
         .eq("bidder_club_id", clubShortName)
         .eq("is_draft_join", true)
         .eq("draft_join_consumed", true)
-        .gte("created_at", windowStart.toISOString())
-        .lt("created_at", sixPmToday.toISOString());
+        .gte("bid_time", windowStart.toISOString())
+        .lt("bid_time", sixPmToday.toISOString());
 
       const firstCount = firsts ? firsts.length : 0;
       const uniqueJoins = joins
@@ -333,11 +332,11 @@
       if (nowLocal >= sixPmToday) {
         const { data: pre6Bids } = await supabase
           .from("Player_Transfer_Bids")
-          .select("id")
+          .select("bid_id")
           .eq("bidder_club_id", clubShortName)
           .eq("is_direct", true)
-          .gte("created_at", sevenPmYesterday.toISOString())
-          .lt("created_at", sixPmToday.toISOString());
+          .gte("bid_time", sevenPmYesterday.toISOString())
+          .lt("bid_time", sixPmToday.toISOString());
 
         if (!pre6Bids || !pre6Bids.length) {
           document.getElementById("bidStatus").textContent =
@@ -351,7 +350,7 @@
         .select("bidder_club_id")
         .eq("direct_bid_id", konamiId)
         .eq("is_direct", true)
-        .order("created_at", { ascending: true });
+        .order("bid_time", { ascending: true });
 
       if (!existingBids || !existingBids.length) return false;
 
@@ -362,7 +361,7 @@
 
       const { data: priorJoins } = await supabase
         .from("Player_Transfer_Bids")
-        .select("id")
+        .select("bid_id")
         .eq("direct_bid_id", konamiId)
         .eq("bidder_club_id", clubShortName)
         .eq("is_draft_join", true);
@@ -395,10 +394,9 @@
       quickBtn.onclick = () => {
         let base = currentHighestBid || 0;
         if (!base) {
-          // fallback to market value if needed
           base = currentHighestBid;
         }
-        const next = base + 1000000; // default +1m quick step
+        const next = base + 1000000;
         document.getElementById("bidAmount").value =
           next.toLocaleString("en-GB");
       };
@@ -454,7 +452,7 @@
         .select("bidder_club_id")
         .eq("direct_bid_id", playerId)
         .eq("is_direct", true)
-        .order("created_at", { ascending: true });
+        .order("bid_time", { ascending: true });
 
       if (!existingBids || !existingBids.length) {
         document.getElementById("bidStatus").textContent =
@@ -476,7 +474,7 @@
 
         const { data: priorJoins } = await supabase
           .from("Player_Transfer_Bids")
-          .select("id")
+          .select("bid_id")
           .eq("direct_bid_id", playerId)
           .eq("bidder_club_id", buyerShortName)
           .eq("is_draft_join", true);
