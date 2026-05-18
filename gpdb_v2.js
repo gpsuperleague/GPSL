@@ -296,13 +296,11 @@ async function openMakeOfferModal(playerId) {
   const amountInput = document.getElementById("offerAmount");
   const errorBox = document.getElementById("offerError");
 
-  // IMAGE LOADING — PESDB CARD IMAGE + SILHOUETTE FALLBACK
   imgEl.src = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
   imgEl.onerror = () => {
     imgEl.src = "https://i.imgur.com/3s8XQ7Y.png";
   };
 
-  // TEXT FIELDS
   nameEl.textContent = player.Name;
   posEl.textContent = `Position: ${player.Position}`;
   styleEl.textContent = `Playstyle: ${player.Playstyle}`;
@@ -348,7 +346,6 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
   const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
   const myClub = CURRENT_USER.user_metadata.shortName;
 
-  // Free agent but draft auction disabled
   if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
     errorBox.textContent = "Draft Auction is locked. You cannot bid on free agents.";
     return;
@@ -378,16 +375,15 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
     return;
   }
 
-  // CONTRACTED PLAYER → NORMAL TRANSFER BID (existing behaviour)
+  // CONTRACTED PLAYER → NORMAL TRANSFER BID (no player_id)
   const { error } = await supabase.from("Player_Transfer_Bids").insert({
     listing_id: null,
-    player_id: CURRENT_OFFER_PLAYER.Konami_ID,
+    direct_bid_id: CURRENT_OFFER_PLAYER.Konami_ID,
     bidder_club_id: myClub,
     seller_club_id: sellerClub || null,
     bid_amount: offer,
     bid_time: new Date().toISOString(),
-    is_direct: true,
-    direct_bid_id: null
+    is_direct: false
   });
 
   if (error) {
@@ -471,7 +467,6 @@ async function insertDraftBid(player, amount, club, isFirst, isJoin, consumeJoin
 }
 
 async function submitDraftBid(player, offerAmount, buyerShortName) {
-  // 1) Check existing direct bids for this player
   const { data: existing, error: existingErr } = await supabase
     .from("Player_Transfer_Bids")
     .select("bidder_club_id")
@@ -487,7 +482,6 @@ async function submitDraftBid(player, offerAmount, buyerShortName) {
   const isFirstBid = !existing || existing.length === 0;
   const isJoining = !isFirstBid;
 
-  // 2) If joining, check if this club already joined
   if (isJoining) {
     const { data: priorJoin } = await supabase
       .from("Player_Transfer_Bids")
@@ -497,21 +491,17 @@ async function submitDraftBid(player, offerAmount, buyerShortName) {
       .eq("is_draft_join", true);
 
     if (priorJoin && priorJoin.length > 0) {
-      // Already joined → no credit consumed
       return await insertDraftBid(player, offerAmount, buyerShortName, false, true);
     }
 
-    // 3) If joining for the first time → check credits
     const credits = await getDraftCreditsForGPDB(buyerShortName);
     if (credits <= 0) {
       return { ok: false, msg: "You do not have enough draft credits to join this auction." };
     }
 
-    // Joining for the first time → consume 1 credit
     return await insertDraftBid(player, offerAmount, buyerShortName, false, true, true);
   }
 
-  // 4) First bid → no credit consumed
   return await insertDraftBid(player, offerAmount, buyerShortName, true, false);
 }
 
