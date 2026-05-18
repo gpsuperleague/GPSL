@@ -266,12 +266,13 @@
 
       const { sevenPmYesterday, sevenPmToday } = getDraftWindowTimes();
 
-      const { data: bids, error: bidsErr } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("direct_bid_id, bidder_club_id, bid_amount, bid_time")
-        .eq("is_direct", true)
-        .gte("bid_time", sevenPmYesterday.toISOString())
-        .lt("bid_time", sevenPmToday.toISOString());
+     const { data: bids, error: bidsErr } = await supabase
+      .from("Player_Transfer_Bids")
+      .select("direct_bid_id, bidder_club_id, bid_amount, bid_time, is_first_draft_bid, is_draft_join")
+      .eq("is_direct", true)
+      .or("is_first_draft_bid.eq.true,is_draft_join.eq.true")
+      .gte("bid_time", sevenPmYesterday.toISOString())
+      .lt("bid_time", sevenPmToday.toISOString());
 
       if (bidsErr || !bids || !bids.length) {
         tbody.innerHTML = `<tr><td colspan="8">No active draft auctions.</td></tr>`;
