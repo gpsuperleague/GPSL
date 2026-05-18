@@ -219,9 +219,11 @@
         .select("*")
         .eq("direct_bid_id", player.Konami_ID)
         .eq("is_direct", true)
-        .gte("created_at", sevenPmYesterday.toISOString())
-        .lt("created_at", sevenPmToday.toISOString())
-        .order("created_at", { ascending: true });
+        .or("is_first_draft_bid.eq.true,is_draft_join.eq.true")
+        .gte("bid_time", sevenPmYesterday.toISOString())
+        .lt("bid_time", sevenPmToday.toISOString())
+        .order("bid_time", { ascending: true });
+
 
       if (bErr || !bids || !bids.length) {
         document.getElementById("historyBody").innerHTML =
@@ -264,7 +266,7 @@
       tbody.innerHTML = "";
 
       for (const bid of bids) {
-        const created = new Date(bid.created_at);
+        const created = new Date(bid.bid_time);
         const isFirst = bid.is_first_draft_bid;
         const isJoin = bid.is_draft_join;
         const consumed = bid.draft_join_consumed;
