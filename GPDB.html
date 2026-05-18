@@ -346,6 +346,11 @@
         nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
       }
 
+      if (draftEnabled) {
+        nav.innerHTML += `<a href="draftauction.html" class="button">Draft Auction</a>`;
+      }
+
+
       document.getElementById("logoutBtn").onclick = async () => {
         await supabase.auth.signOut();
         window.location = "login.html";
