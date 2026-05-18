@@ -296,22 +296,13 @@ async function openMakeOfferModal(playerId) {
   const amountInput = document.getElementById("offerAmount");
   const errorBox = document.getElementById("offerError");
 
-  /* ============================================================
-     IMAGE LOADING — PESDB CARD IMAGE + SILHOUETTE FALLBACK
-     ============================================================ */
-
-  // PESDB card image (works globally, no region block)
+  // IMAGE LOADING — PESDB CARD IMAGE + SILHOUETTE FALLBACK
   imgEl.src = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
-
-  // If missing → silhouette
   imgEl.onerror = () => {
     imgEl.src = "https://i.imgur.com/3s8XQ7Y.png";
   };
 
-  /* ============================================================
-     TEXT FIELDS
-     ============================================================ */
-
+  // TEXT FIELDS
   nameEl.textContent = player.Name;
   posEl.textContent = `Position: ${player.Position}`;
   styleEl.textContent = `Playstyle: ${player.Playstyle}`;
@@ -324,12 +315,16 @@ async function openMakeOfferModal(playerId) {
   document.getElementById("make-offer-modal-backdrop").style.display = "flex";
 }
 
+function closeMakeOfferModal() {
+  document.getElementById("make-offer-modal-backdrop").style.display = "none";
+}
+
 /* ============================================================
    MODULE G (continued): Confirm Offer + Buttons
    ============================================================ */
 
 document.getElementById("cancelOfferBtn").onclick = () => {
-  document.getElementById("make-offer-modal-backdrop").style.display = "none";
+  closeMakeOfferModal();
 };
 
 document.getElementById("confirmOfferBtn").onclick = async () => {
@@ -353,6 +348,7 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
   const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
   const myClub = CURRENT_USER.user_metadata.shortName;
 
+  // Free agent but draft auction disabled
   if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
     errorBox.textContent = "Draft Auction is locked. You cannot bid on free agents.";
     return;
@@ -368,10 +364,25 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
     return;
   }
 
+  // FREE AGENT → DRAFT AUCTION
+  if (!sellerClub) {
+    const result = await submitDraftBid(CURRENT_OFFER_PLAYER, offer, myClub);
+
+    if (!result.ok) {
+      errorBox.textContent = result.msg;
+      return;
+    }
+
+    closeMakeOfferModal();
+    alert("Draft bid submitted!");
+    return;
+  }
+
+  // CONTRACTED PLAYER → NORMAL TRANSFER BID (existing behaviour)
   const { error } = await supabase.from("Player_Transfer_Bids").insert({
     listing_id: null,
     player_id: CURRENT_OFFER_PLAYER.Konami_ID,
-    bidder_club_id: CURRENT_USER.user_metadata.shortName,
+    bidder_club_id: myClub,
     seller_club_id: sellerClub || null,
     bid_amount: offer,
     bid_time: new Date().toISOString(),
@@ -385,8 +396,124 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
     return;
   }
 
-  document.getElementById("make-offer-modal-backdrop").style.display = "none";
+  closeMakeOfferModal();
 };
+
+/* ============================================================
+   DRAFT AUCTION HELPERS FOR GPDB
+   ============================================================ */
+
+function getDraftWindowTimes() {
+  const nowLocal = new Date();
+  const today = new Date(
+    nowLocal.getFullYear(),
+    nowLocal.getMonth(),
+    nowLocal.getDate()
+  );
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+
+  const sevenPmYesterday = new Date(yesterday);
+  sevenPmYesterday.setHours(19, 0, 0, 0);
+
+  const sixPmToday = new Date(today);
+  sixPmToday.setHours(18, 0, 0, 0);
+
+  const sevenPmToday = new Date(today);
+  sevenPmToday.setHours(19, 0, 0, 0);
+
+  return { sevenPmYesterday, sixPmToday, sevenPmToday };
+}
+
+async function getDraftCreditsForGPDB(clubShortName) {
+  const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+
+  const { data: firsts } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("direct_bid_id")
+    .eq("bidder_club_id", clubShortName)
+    .eq("is_first_draft_bid", true)
+    .gte("bid_time", sevenPmYesterday.toISOString())
+    .lt("bid_time", sixPmToday.toISOString());
+
+  const { data: joins } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("direct_bid_id")
+    .eq("bidder_club_id", clubShortName)
+    .eq("is_draft_join", true)
+    .eq("draft_join_consumed", true)
+    .gte("bid_time", sevenPmYesterday.toISOString())
+    .lt("bid_time", sixPmToday.toISOString());
+
+  const firstCount = firsts ? firsts.length : 0;
+  const joinCount = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
+
+  return (firstCount * 2) - joinCount;
+}
+
+async function insertDraftBid(player, amount, club, isFirst, isJoin, consumeJoin = false) {
+  const { error } = await supabase.from("Player_Transfer_Bids").insert({
+    direct_bid_id: player.Konami_ID,
+    bidder_club_id: club,
+    bid_amount: amount,
+    is_direct: true,
+    is_first_draft_bid: isFirst,
+    is_draft_join: isJoin,
+    draft_join_consumed: consumeJoin,
+    bid_time: new Date().toISOString()
+  });
+
+  if (error) {
+    console.error(error);
+    return { ok: false, msg: "Error submitting draft bid." };
+  }
+
+  return { ok: true };
+}
+
+async function submitDraftBid(player, offerAmount, buyerShortName) {
+  // 1) Check existing direct bids for this player
+  const { data: existing, error: existingErr } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("bidder_club_id")
+    .eq("direct_bid_id", player.Konami_ID)
+    .eq("is_direct", true)
+    .order("bid_time", { ascending: true });
+
+  if (existingErr) {
+    console.error(existingErr);
+    return { ok: false, msg: "Error checking existing draft bids." };
+  }
+
+  const isFirstBid = !existing || existing.length === 0;
+  const isJoining = !isFirstBid;
+
+  // 2) If joining, check if this club already joined
+  if (isJoining) {
+    const { data: priorJoin } = await supabase
+      .from("Player_Transfer_Bids")
+      .select("bid_id")
+      .eq("direct_bid_id", player.Konami_ID)
+      .eq("bidder_club_id", buyerShortName)
+      .eq("is_draft_join", true);
+
+    if (priorJoin && priorJoin.length > 0) {
+      // Already joined → no credit consumed
+      return await insertDraftBid(player, offerAmount, buyerShortName, false, true);
+    }
+
+    // 3) If joining for the first time → check credits
+    const credits = await getDraftCreditsForGPDB(buyerShortName);
+    if (credits <= 0) {
+      return { ok: false, msg: "You do not have enough draft credits to join this auction." };
+    }
+
+    // Joining for the first time → consume 1 credit
+    return await insertDraftBid(player, offerAmount, buyerShortName, false, true, true);
+  }
+
+  // 4) First bid → no credit consumed
+  return await insertDraftBid(player, offerAmount, buyerShortName, true, false);
+}
 
 /* ============================================================
    Increment / Decrement Buttons
