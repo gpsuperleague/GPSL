@@ -344,7 +344,18 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
   }
 
   const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
-  const myClub = CURRENT_USER.user_metadata.shortName;
+  const { data: clubRow, error: clubErr } = await supabase
+  .from("Clubs")
+  .select("ShortName")
+  .eq("owner_id", CURRENT_USER.id)
+  .single();
+
+if (clubErr || !clubRow) {
+  errorBox.textContent = "Your club could not be found.";
+  return;
+}
+
+const myClub = clubRow.ShortName;
 
   // Free agent but draft auction disabled
   if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
