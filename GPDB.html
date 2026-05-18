@@ -167,7 +167,6 @@
       margin-bottom:15px;
     }
 
-       /* PLAYER IMAGE — BIG PORTRAIT (NO CROPPING) */
     .player-header img {
       width: auto;
       height: 130px;
@@ -187,21 +186,19 @@
       font-size:14px;
     }
 
-     .bid-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;        /* small clean spacing */
-    margin: 4px 0;
-    font-size: 14px;
-  }
-
+    .bid-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 4px 0;
+      font-size: 14px;
+    }
 
     .bid-row label {
       color:#ff9900;
       margin-right:6px;
     }
 
-    /* Increment / Decrement buttons (copied EXACTLY from all_listings) */
     .inc-btn {
       padding: 6px 10px;
       margin-right: 6px;
@@ -325,6 +322,20 @@
 
     window.supabase = supabase;
 
+    /* ⭐ NEW: required variable */
+    let draftEnabled = false;
+
+    /* ⭐ NEW: load global settings BEFORE building nav */
+    async function loadGlobalSettings() {
+      const { data, error } = await supabase
+        .from("global_settings")
+        .select("draft_auction_enabled")
+        .eq("id", 1)
+        .single();
+
+      draftEnabled = data?.draft_auction_enabled === true;
+    }
+
     document.addEventListener("DOMContentLoaded", async () => {
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -332,6 +343,9 @@
         window.location = "login.html";
         return;
       }
+
+      /* ⭐ MUST load settings BEFORE building nav */
+      await loadGlobalSettings();
 
       const nav = document.getElementById("nav");
       nav.innerHTML = `
@@ -346,10 +360,10 @@
         nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
       }
 
+      /* ⭐ NEW: Draft Auction button */
       if (draftEnabled) {
         nav.innerHTML += `<a href="draftauction.html" class="button">Draft Auction</a>`;
       }
-
 
       document.getElementById("logoutBtn").onclick = async () => {
         await supabase.auth.signOut();
@@ -362,10 +376,6 @@
 </html>
 
 <style>
-/* ============================================================
-   PLAYER IMAGE — BIG PORTRAIT (NO CROPPING) FOR MAKE OFFER
-   ============================================================ */
-
 .player-thumb {
   height: 130px;
   width: auto;
@@ -378,15 +388,11 @@
   margin: 0 auto;
 }
 
-/* Allow tall images inside table rows */
 #make-offer-modal table tr,
 #make-offer-modal table td {
   height: auto !important;
   overflow: visible !important;
 }
-/* ============================================================
-   PLAYER THUMBNAILS IN GPDB TABLE
-   ============================================================ */
 
 .gpdb-thumb {
   height: 70px;
@@ -400,5 +406,3 @@
   margin: 0 auto;
 }
 </style>
-
-
