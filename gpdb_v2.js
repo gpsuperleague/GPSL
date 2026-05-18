@@ -346,6 +346,7 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
   const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
   const myClub = CURRENT_USER.user_metadata.shortName;
 
+  // Free agent but draft auction disabled
   if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
     errorBox.textContent = "Draft Auction is locked. You cannot bid on free agents.";
     return;
@@ -375,7 +376,7 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
     return;
   }
 
-  // CONTRACTED PLAYER → NORMAL TRANSFER BID (no player_id)
+  // CONTRACTED PLAYER → DIRECT BID TO SELLER REVIEW (not draft)
   const { error } = await supabase.from("Player_Transfer_Bids").insert({
     listing_id: null,
     direct_bid_id: CURRENT_OFFER_PLAYER.Konami_ID,
@@ -383,7 +384,8 @@ document.getElementById("confirmOfferBtn").onclick = async () => {
     seller_club_id: sellerClub || null,
     bid_amount: offer,
     bid_time: new Date().toISOString(),
-    is_direct: false
+    is_direct: true
+    // no draft flags here – this is NOT a draft auction bid
   });
 
   if (error) {
