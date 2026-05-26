@@ -152,7 +152,7 @@
     let buyerShortName = null;
     let draftEnabled = false;
     let randomFinishTime = null;
-    let draftAuctionStartTime = null; // official start time (UTC parsed safely)
+    let draftAuctionStartTime = null;
 
     /* ============================================================
        SAFE UTC PARSER + UK TIME HELPERS
@@ -196,7 +196,7 @@
     }
 
     async function getDraftCreditsForGPDB(clubShortName) {
-      const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+      const { sevenPmYesterday, sixPmToday, sevenPmToday } = getDraftWindowTimes();
 
       const { data: firsts } = await supabase
         .from("Player_Transfer_Bids")
@@ -213,7 +213,7 @@
         .eq("is_draft_join", true)
         .eq("draft_join_consumed", true)
         .gte("bid_time", sevenPmYesterday.toISOString())
-        .lt("bid_time", sixPmToday.toISOString());
+        .lt("bid_time", sevenPmToday.toISOString());
 
       const firstCount = firsts ? firsts.length : 0;
       const joinCount = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
@@ -246,7 +246,7 @@
           return;
         }
 
-        const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+        const { sevenPmYesterday, sixPmToday, sevenPmToday } = getDraftWindowTimes();
 
         const credits = await getDraftCreditsForGPDB(buyerShortName);
 
@@ -265,7 +265,7 @@
           .eq("is_draft_join", true)
           .eq("draft_join_consumed", true)
           .gte("bid_time", sevenPmYesterday.toISOString())
-          .lt("bid_time", sixPmToday.toISOString());
+          .lt("bid_time", sevenPmToday.toISOString());
 
         const earned = firsts ? firsts.length * 2 : 0;
         const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
@@ -424,7 +424,6 @@
 
       const playerMap = new Map(players.map(p => [String(p.Konami_ID), p]));
 
-      // ⭐ NEW: get bids by player (direct_bid_id) in the SAME window as player page
       const { sevenPmYesterday, sixPmToday, sevenPmToday } = getDraftWindowTimes();
 
       const { data: bids, error: bidsErr } = await supabase
@@ -593,11 +592,11 @@
         return true;
       }
 
-      const credits = await getDraftCredits(clubShortName, sevenPmYesterday, sixPm);
+      const credits = await getDraftCredits(clubShortName, sevenPmYesterday, sixPm, sevenPmToday);
       return credits > 0;
     }
 
-    async function getDraftCredits(clubShortName, windowStart, sixPmToday) {
+    async function getDraftCredits(clubShortName, windowStart, sixPmToday, sevenPmToday) {
       const { data: firsts } = await supabase
         .from("Player_Transfer_Bids")
         .select("direct_bid_id")
@@ -613,7 +612,7 @@
         .eq("is_draft_join", true)
         .eq("draft_join_consumed", true)
         .gte("bid_time", windowStart.toISOString())
-        .lt("bid_time", sixPmToday.toISOString());
+        .lt("bid_time", sevenPmToday.toISOString());
 
       const firstCount = firsts ? firsts.length : 0;
       const uniqueJoins = joins
