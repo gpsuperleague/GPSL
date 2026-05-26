@@ -50,6 +50,26 @@
     #headerContainer {
       justify-content: flex-start !important;
     }
+
+    /* ⭐ Center table headers + theme colour */
+    .gpsl-table th {
+      text-align: center !important;
+      color: #ff9900;
+      font-weight: bold;
+    }
+
+    /* ⭐ Section headers (Goalkeepers, Defenders, etc.) */
+    .squad-section-title {
+      background: #1a1a1a;
+      color: #ff9900;
+      font-weight: bold;
+      padding: 10px;
+      font-size: 18px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 1px solid #333;
+      text-align: left;
+    }
   </style>
 </head>
 
@@ -76,13 +96,13 @@
       <table class="gpsl-table">
         <thead>
           <tr>
-            <th>Img</th>
+            <th></th>
             <th>Player</th>
-            <th>Nat</th>
-            <th>Pos</th>
+            <th>Nation</th>
+            <th>Position</th>
             <th>Rating</th>
             <th>Playstyle</th>
-            <th>Value</th>
+            <th>Market Value</th>
             <th>Status</th>
             <th>Action</th>
           </tr>
