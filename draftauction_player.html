@@ -215,7 +215,6 @@
     }
 
     function getDraftWindowTimes() {
-      const now = new Date();
       const sixPmToday = new Date();
       sixPmToday.setHours(18, 0, 0, 0);
 
@@ -382,8 +381,9 @@
 
       if (nowLocal >= randomFinishTime) return false;
 
-      const { sevenPmYesterday } = getDraftWindowTimes();
+      const { sevenPmYesterday, sevenPmToday } = getDraftWindowTimes();
 
+      // Conclusion hour rule: after 18:00, you must have any pre‑18:00 bid
       if (nowLocal >= sixPmToday) {
         const { data: pre6Bids } = await supabase
           .from("Player_Transfer_Bids")
@@ -400,11 +400,14 @@
         }
       }
 
+      // Existing bids for this player in the current window
       const { data: existingBids } = await supabase
         .from("Player_Transfer_Bids")
         .select("bidder_club_id")
         .eq("direct_bid_id", konamiId)
         .eq("is_direct", true)
+        .gte("bid_time", sevenPmYesterday.toISOString())
+        .lt("bid_time", sevenPmToday.toISOString())
         .order("bid_time", { ascending: true });
 
       if (!existingBids || !existingBids.length) return false;
@@ -513,13 +516,16 @@
         return;
       }
 
-      const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+      const { sevenPmYesterday, sixPmToday, sevenPmToday } = getDraftWindowTimes();
 
+      // Ensure there is an existing draft auction thread for this player in this window
       const { data: existingBids } = await supabase
         .from("Player_Transfer_Bids")
         .select("bidder_club_id")
         .eq("direct_bid_id", playerId)
         .eq("is_direct", true)
+        .gte("bid_time", sevenPmYesterday.toISOString())
+        .lt("bid_time", sevenPmToday.toISOString())
         .order("bid_time", { ascending: true });
 
       if (!existingBids || !existingBids.length) {
@@ -536,9 +542,8 @@
       let draftJoinConsumed = false;
 
       if (isFirstBidder) {
-        if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-          isFirstDraftBid = false;
-        } else {
+        // First bidder can earn credits only if bid is before 18:00
+        if (!draftAuctionStartTime || nowLocal >= draftAuctionStartTime) {
           isFirstDraftBid = true;
         }
       } else {
@@ -573,7 +578,8 @@
           direct_bid_id: playerId,
           is_first_draft_bid: isFirstDraftBid,
           is_draft_join: isDraftJoin,
-          draft_join_consumed: draftJoinConsumed
+          draft_join_consumed: draftJoinConsumed,
+          bid_time: new Date().toISOString()
         });
 
       if (error) {
