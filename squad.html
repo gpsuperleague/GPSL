@@ -8,94 +8,81 @@
   <meta charset="UTF-8">
   <title>Squad</title>
 
-  <!-- GLOBAL DASHBOARD STYLES -->
   <link rel="stylesheet" href="dashboard.css">
-
-  <!-- SQUAD PAGE DARK THEME -->
   <link rel="stylesheet" href="squad.css">
 
   <style>
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
     h1 {
+      text-align: left;
+      color: #ff9900;
       margin: 0;
       font-size: 26px;
-      color: #ff9900;
     }
-    .section-header {
-      color: #ff9900;
-      margin-bottom: 10px;
-      font-size: 24px;
+
+    a.button, button.button {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #ff9900;
+      color: #111;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 6px;
+      margin: 5px;
+      transition: 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    a.button:hover, button.button:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
     }
   </style>
 </head>
 
-<body class="squad-page">
+<body>
 
-  <!-- NAV -->
-  <div id="nav"></div>
+  <div id="nav" style="margin-bottom:20px;"></div>
 
-  <!-- INIT NAV -->
-  <script type="module">
-    import { supabase } from "./supabase_client.js";
-    import { buildNav } from "./global_ui.js";
-    import { loadGlobalSettings } from "./global.js";
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      await loadGlobalSettings();
-      buildNav(user);
-    });
-  </script>
-
-  <!-- PAGE CONTAINER -->
-  <div class="page-container">
-
-    <!-- HEADER -->
-    <div id="headerContainer">
-      <div id="headerLeft">
-        <img id="clubBadgeHeader" src="" alt="Club Badge">
-        <div>
-          <h1 id="dashboardTitle">SQUAD</h1>
-          <div id="userEmail"></div>
-        </div>
-      </div>
-
-      <div id="headerRight">
-        <div id="draftCountdown"></div>
-      </div>
+  <!-- HEADER -->
+  <div id="headerContainer" style="padding-left:20px; display:flex; align-items:center; gap:20px;">
+    <img id="clubBadgeHeader" src="" alt="Club Badge" style="width:80px; height:80px; object-fit:contain;">
+    <div>
+      <h1 id="dashboardTitle">Squad</h1>
+      <div id="userEmail"></div>
     </div>
+  </div>
 
-    <!-- MAIN CONTENT -->
-    <div id="mainContent">
+  <!-- MAIN CONTENT -->
+  <div style="padding:20px;">
 
-      <!-- LEFT COLUMN -->
-      <div id="leftColumn">
+    <div class="panel">
+      <h2 class="section-header">Squad</h2>
 
-        <div class="panel">
-          <h2 class="section-header">Squad</h2>
-
-          <table class="gpsl-table">
-            <thead>
-              <tr>
-                <th>Img</th>
-                <th>Player</th>
-                <th>Nat</th>
-                <th>Pos</th>
-                <th>Rating</th>
-                <th>Playstyle</th>
-                <th>Value</th>
-                <th>Status</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody id="squad-body"></tbody>
-          </table>
-        </div>
-
-      </div>
-
-      <!-- RIGHT COLUMN -->
-      <div id="rightColumn"></div>
-
+      <table class="gpsl-table">
+        <thead>
+          <tr>
+            <th>Img</th>
+            <th>Player</th>
+            <th>Nat</th>
+            <th>Pos</th>
+            <th>Rating</th>
+            <th>Playstyle</th>
+            <th>Value</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="squad-body"></tbody>
+      </table>
     </div>
 
   </div>
@@ -151,12 +138,82 @@
     </div>
   </div>
 
-  <!-- GLOBAL SCRIPTS -->
-  <script type="module" src="supabase_client.js"></script>
-  <script type="module" src="global.js"></script>
-  <script type="module" src="global_ui.js"></script>
-  <script type="module" src="clubs_lookup.js"></script>
-  <script type="module" src="squad.js"></script>
+  <!-- SUPABASE CLIENT + NAV -->
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const supabase = createClient(
+      'https://omyyogfumrjoaweuawjn.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
+    );
+
+    window.supabase = supabase;
+
+    let draftEnabled = false;
+
+    async function loadGlobalSettings() {
+      const { data } = await supabase
+        .from("global_settings")
+        .select("draft_auction_enabled")
+        .eq("id", 1)
+        .single();
+
+      draftEnabled = data?.draft_auction_enabled === true;
+    }
+
+    async function buildNav(user) {
+      const nav = document.getElementById("nav");
+
+      const buttons = [
+        { page: "index", label: "Home", href: "index.html" },
+        { page: "gpdb", label: "Player Database", href: "GPDB.html" },
+        { page: "clubs", label: "Clubs", href: "clubs.html" },
+        { page: "listings", label: "Transfer Market", href: "all_listings.html" },
+        { page: "dashboard", label: "Dashboard", href: "dashboard.html" }
+      ];
+
+      let html = "";
+
+      for (const btn of buttons) {
+        if (btn.page !== CURRENT_PAGE) {
+          html += `<a href="${btn.href}" class="button">${btn.label}</a>`;
+        }
+      }
+
+      if (user.email === "rotavator66@outlook.com" && CURRENT_PAGE !== "admin") {
+        html += `<a href="admin.html" class="button">GPSL Admin</a>`;
+      }
+
+      if (draftEnabled && CURRENT_PAGE !== "draftauction") {
+        html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
+      }
+
+      html += `<button id="logoutBtn" class="button">Logout</button>`;
+
+      nav.innerHTML = html;
+
+      document.getElementById("logoutBtn").onclick = async () => {
+        await supabase.auth.signOut();
+        window.location = "login.html";
+      };
+    }
+
+    /* AUTH + NAVIGATION */
+    document.addEventListener("DOMContentLoaded", async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        window.location = "login.html";
+        return;
+      }
+
+      await loadGlobalSettings();
+      await buildNav(user);
+
+      // Load squad after nav
+      import("./squad.js");
+    });
+  </script>
 
 </body>
 </html>
