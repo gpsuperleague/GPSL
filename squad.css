@@ -4,12 +4,18 @@
 
 body.squad-page {
   color: #ddd;
-  background: #000; /* ensures no white gaps */
+  background: linear-gradient(180deg, #0a0f1a 0%, #111827 100%);
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
 }
 
-/* Remove white background from dashboard panels */
+/* Remove white/black backgrounds from containers */
 body.squad-page .page-container,
-body.squad-page .panel {
+body.squad-page .panel,
+body.squad-page #mainContent,
+body.squad-page #leftColumn,
+body.squad-page #rightColumn {
   background: transparent !important;
 }
 
@@ -27,26 +33,27 @@ body.squad-page .section-header {
 body.squad-page .gpsl-table {
   width: 100%;
   border-collapse: collapse;
-  background: #1a1a1a;
+  background: rgba(255, 255, 255, 0.05);
   color: #ddd;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 body.squad-page .gpsl-table th {
-  background: #222;
+  background: rgba(255, 255, 255, 0.08);
   color: #ff9900;
   padding: 10px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   text-align: left;
 }
 
 body.squad-page .gpsl-table td {
   padding: 10px;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   color: #ddd;
 }
 
 body.squad-page .gpsl-table tr:hover {
-  background: #222;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* ==========================================================
@@ -54,7 +61,7 @@ body.squad-page .gpsl-table tr:hover {
    ========================================================== */
 
 body.squad-page .squad-section-row {
-  background: #111;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 body.squad-page .squad-section-title {
