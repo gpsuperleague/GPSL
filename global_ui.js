@@ -66,3 +66,61 @@ export function formatCountdown(ms) {
 
   return `${hours}h ${mins}m ${secs}s`;
 }
+// ===============================
+// NAV BUILDER
+// ===============================
+export function buildNav(user) {
+  const nav = document.getElementById("nav");
+  if (!nav) return;
+
+  const email = user?.email || "";
+
+  // Determine which buttons to show
+  const isAdmin = email === "gpsuperleague@gmail.com"; // adjust if needed
+
+  const buttons = [
+    { id: "dashboard", label: "Dashboard", href: "dashboard.html" },
+    { id: "clubs", label: "Clubs", href: "clubs.html" },
+    { id: "squad", label: "Squad", href: "squad.html" },
+    { id: "listings", label: "Listings", href: "listings.html" },
+  ];
+
+  // Draft Auction button (only if enabled globally)
+  if (window.GLOBAL_SETTINGS?.draftAuctionEnabled) {
+    buttons.push({
+      id: "draftauction",
+      label: "Draft Auction",
+      href: "draftauction.html"
+    });
+  }
+
+  // Admin button
+  if (isAdmin) {
+    buttons.push({
+      id: "admin",
+      label: "Admin",
+      href: "admin.html"
+    });
+  }
+
+  // Logout button (always last)
+  buttons.push({
+    id: "logout",
+    label: "Logout",
+    href: "#",
+    onclick: "logoutUser()"
+  });
+
+  // Build HTML
+  nav.innerHTML = `
+    <div class="nav-container">
+      ${buttons
+        .map(btn => {
+          const active = (btn.id === window.CURRENT_PAGE) ? "active-nav" : "";
+          const click = btn.onclick ? `onclick="${btn.onclick}"` : "";
+          return `<a class="nav-btn ${active}" href="${btn.href}" ${click}>${btn.label}</a>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
