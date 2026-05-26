@@ -122,19 +122,19 @@
 
   <div class="panel">
     <table class="gpsl-table">
-     <thead>
-      <tr>
-        <th></th>
-        <th>Player</th>
-        <th>Pos</th>
-        <th>Rating</th>
-        <th>Market Value</th>
-        <th>Highest Bid</th>
-        <th>Leading Club</th>
-        <th>Time</th>
-        <th>Bid</th>
-      </tr>
-     </thead>
+      <thead>
+        <tr>
+          <th></th>
+          <th>Player</th>
+          <th>Pos</th>
+          <th>Rating</th>
+          <th>Market Value</th>
+          <th>Highest Bid</th>
+          <th>Leading Club</th>
+          <th>Time</th>
+          <th>Bid</th>
+        </tr>
+      </thead>
       <tbody id="draftTableBody"></tbody>
     </table>
   </div>
@@ -171,7 +171,6 @@
     }
 
     function nowInUK() {
-      // same trick as admin.html: compare in UTC-safe space
       return parseUTC(new Date().toISOString());
     }
 
@@ -297,7 +296,6 @@
       await buildNav(user);
       await loadBuyerClubShortName(user.id);
 
-      // unified credit panel
       await loadDraftCreditsForOwner();
 
       await loadDraftAuctions();
@@ -323,7 +321,6 @@
 
       draftEnabled = data.draft_auction_enabled === true;
 
-      // parse official times as UTC-safe
       draftAuctionStartTime = data.draft_auction_start_time
         ? parseUTC(data.draft_auction_start_time)
         : null;
@@ -427,18 +424,29 @@
 
       const playerMap = new Map(players.map(p => [String(p.Konami_ID), p]));
 
-      const listingIds = listings.map(l => l.id);
+      // ⭐ NEW: get bids by player (direct_bid_id) in the SAME window as player page
+      const { sevenPmYesterday, sixPmToday, sevenPmToday } = getDraftWindowTimes();
+
       const { data: bids, error: bidsErr } = await supabase
         .from("Player_Transfer_Bids")
-        .select("listing_id, direct_bid_id, bidder_club_id, bid_amount, bid_time")
-        .in("listing_id", listingIds);
+        .select("direct_bid_id, bidder_club_id, bid_amount")
+        .in("direct_bid_id", playerIds)
+        .eq("is_direct", true)
+        .gte("bid_time", sevenPmYesterday.toISOString())
+        .lt("bid_time", sevenPmToday.toISOString());
 
-      if (bidsErr || !bids || !bids.length) {
-        tbody.innerHTML = `<tr><td colspan="9">No bids found for draft auctions.</td></tr>`;
-        return;
+      const bidsByPlayer = new Map();
+      if (!bidsErr && bids && bids.length) {
+        for (const b of bids) {
+          const key = String(b.direct_bid_id);
+          if (!bidsByPlayer.has(key)) bidsByPlayer.set(key, []);
+          bidsByPlayer.get(key).push(b);
+        }
       }
 
-      const clubShortNames = [...new Set(bids.map(b => b.bidder_club_id))];
+      const clubShortNames = bids
+        ? [...new Set(bids.map(b => b.bidder_club_id))]
+        : [];
 
       const { data: clubs, error: clubsErr } = await supabase
         .from("Clubs")
@@ -450,23 +458,28 @@
       );
 
       const nowUK = nowInUK();
-      const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
       for (const listing of listings) {
         const player = playerMap.get(String(listing.player_id));
         if (!player) continue;
 
-        const listingBids = bids.filter(b => b.listing_id === listing.id);
-        if (!listingBids.length) continue;
+        const playerBids = bidsByPlayer.get(String(player.Konami_ID)) || [];
 
-        const highest = listingBids.reduce(
-          (max, b) => (b.bid_amount > max.bid_amount ? b : max),
-          listingBids[0]
-        );
+        let highestAmount = null;
+        let leadingClubShort = null;
 
-        const leadingClubShort = highest.bidder_club_id;
-        const leadingClubFull = clubMap.get(leadingClubShort) || leadingClubShort;
-        const highestAmount = highest.bid_amount;
+        if (playerBids.length) {
+          const highest = playerBids.reduce(
+            (max, b) => (b.bid_amount > max.bid_amount ? b : max),
+            playerBids[0]
+          );
+          highestAmount = highest.bid_amount;
+          leadingClubShort = highest.bidder_club_id;
+        }
+
+        const leadingClubFull = leadingClubShort
+          ? (clubMap.get(leadingClubShort) || leadingClubShort)
+          : "None";
 
         const canBid = await canClubBidOnPlayer(
           buyerShortName,
@@ -498,7 +511,7 @@
           <td>${player.Position}</td>
           <td>${player.Rating}</td>
           <td>₿ ${Number(player.market_value).toLocaleString("en-GB")}</td>
-          <td>₿ ${Number(highestAmount).toLocaleString("en-GB")}</td>
+          <td>${highestAmount !== null ? `₿ ${Number(highestAmount).toLocaleString("en-GB")}` : "None"}</td>
           <td>${leadingClubFull}</td>
           <td class="time-cell">
             ${formatTimeRemaining(nowUK)}
@@ -536,14 +549,12 @@
     async function canClubBidOnPlayer(clubShortName, konamiId, nowUK, sixPmToday) {
       if (!draftEnabled || !clubShortName || !randomFinishTime) return false;
 
-      // block all bids before official start time
       if (draftAuctionStartTime && nowUK < draftAuctionStartTime) return false;
 
       if (nowUK >= randomFinishTime) return false;
 
-      const { sevenPmYesterday, sixPmToday: sixPm } = getDraftWindowTimes();
+      const { sevenPmYesterday, sixPmToday: sixPm, sevenPmToday } = getDraftWindowTimes();
 
-      // must have at least one draft bid before 6pm to bid after 6pm
       if (nowUK >= sixPmToday) {
         const { data: pre6Bids } = await supabase
           .from("Player_Transfer_Bids")
@@ -562,7 +573,7 @@
         .eq("direct_bid_id", konamiId)
         .eq("is_direct", true)
         .gte("bid_time", sevenPmYesterday.toISOString())
-        .lt("bid_time", getDraftWindowTimes().sevenPmToday.toISOString());
+        .lt("bid_time", sevenPmToday.toISOString());
 
       if (!existingBids || !existingBids.length) return false;
 
@@ -571,7 +582,6 @@
 
       if (isFirstBidder) return true;
 
-      // joining auction: check if they already joined this player
       const { data: priorJoins } = await supabase
         .from("Player_Transfer_Bids")
         .select("bid_id")
@@ -580,7 +590,7 @@
         .eq("is_draft_join", true);
 
       if (priorJoins && priorJoins.length) {
-        return true; // already paid credit for this thread
+        return true;
       }
 
       const credits = await getDraftCredits(clubShortName, sevenPmYesterday, sixPm);
