@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
@@ -13,58 +13,58 @@
       transition:0.2s; cursor:pointer; border:none;
     }
     a.button:hover, button.button:hover { background:#ffaa22; transform:scale(1.05); }
+
     .container { margin:20px; }
     .player-header { display:flex; gap:20px; margin-bottom:20px; }
     .player-card { background:#1a1a1a; padding:15px; border-radius:8px; border:1px solid #333; flex:1; }
     .player-img { width:160px; height:160px; object-fit:contain; border-radius:8px; background:#000; }
     .meta { font-size:13px; color:#ccc; margin-top:4px; }
+
     .bid-panel { background:#1a1a1a; padding:15px; border-radius:8px; border:1px solid #333; margin-bottom:20px; }
     .bid-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     .bid-row input { padding:6px; border-radius:4px; border:1px solid #444; background:#111; color:#ddd; width:160px; }
+
     .quick-btn, .inc-btn {
       padding:6px 10px; font-size:12px; border-radius:4px; border:1px solid #555;
       background:#222; color:#ddd; cursor:pointer;
     }
     .quick-btn:hover, .inc-btn:hover { background:#333; }
+
     .submit-btn {
       padding:6px 12px; font-size:13px; border-radius:4px; border:none;
       background:#2f7a2f; color:#fff; cursor:pointer;
     }
     .submit-btn:hover { background:#369a36; }
     .submit-btn.disabled { background:#444; color:#999; cursor:not-allowed; }
+
     .status-note { font-size:12px; color:#ccc; margin-top:8px; }
+
     table.history { width:100%; border-collapse:collapse; margin-top:10px; }
     table.history th, table.history td {
       border:1px solid #333; padding:6px; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     table.history th { background:#222; color:#ff9900; }
 
-.inc-btn {
-  background:#2f7a2f;
-  color:#fff;
-  border:1px solid #1f5a1f;
-}
-.inc-btn:hover {
-  background:#369a36;
-}
+    .inc-btn {
+      background:#2f7a2f;
+      color:#fff;
+      border:1px solid #1f5a1f;
+    }
+    .inc-btn:hover { background:#369a36; }
 
-.dec-btn {
-  background:#7a2f2f;
-  color:#fff;
-  border:1px solid #5a1f1f;
-}
-.dec-btn:hover {
-  background:#9a3636;
-}
+    .dec-btn {
+      background:#7a2f2f;
+      color:#fff;
+      border:1px solid #5a1f1f;
+    }
+    .dec-btn:hover { background:#9a3636; }
 
-.quick-btn {
-  background:#444;
-  color:#fff;
-  border:1px solid #666;
-}
-.quick-btn:hover {
-  background:#555;
-}
+    .quick-btn {
+      background:#444;
+      color:#fff;
+      border:1px solid #666;
+    }
+    .quick-btn:hover { background:#555; }
   </style>
 </head>
 <body>
@@ -88,7 +88,7 @@
 
     <div class="bid-panel">
       <h3>Place Bid</h3>
-     <div class="bid-row">
+      <div class="bid-row">
         <span style="font-size:18px; color:#ff9900; font-weight:bold;">₿</span>
         <input type="text" id="bidAmount" placeholder="amount">
         <button id="quickBidBtn" class="quick-btn">Quick Bid</button>
@@ -98,7 +98,6 @@
         <button class="dec-btn" data-delta="-500000">–500k</button>
         <button class="dec-btn" data-delta="-1000000">–1m</button>
         <button class="dec-btn" data-delta="-5000000">–5m</button>
-
         <button id="submitBidBtn" class="submit-btn">Submit Bid</button>
       </div>
       <div class="status-note" id="bidStatus"></div>
@@ -123,6 +122,7 @@
 
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    import { fullClubName } from './clubs_lookup.js';
 
     const supabase = createClient(
       'https://omyyogfumrjoaweuawjn.supabase.co',
@@ -132,7 +132,7 @@
     let buyerShortName = null;
     let draftEnabled = false;
     let randomFinishTime = null;
-    let draftAuctionStartTime = null;   // ⭐ NEW
+    let draftAuctionStartTime = null;
     let playerId = null;
     let currentHighestBid = 0;
     let currentLeadingClub = null;
@@ -197,10 +197,48 @@
 
       draftAuctionStartTime = data.draft_auction_start_time
         ? new Date(data.draft_auction_start_time)
-        : null;   // ⭐ NEW
+        : null;
     }
+
+    async function loadBuyerClubShortName(userId) {
+      const { data, error } = await supabase
+        .from("Clubs")
+        .select("ShortName")
+        .eq("owner_id", userId)
+        .single();
+
+      if (error || !data) {
+        buyerShortName = null;
+        return;
+      }
+      buyerShortName = data.ShortName;
+    }
+
+    function getDraftWindowTimes() {
+      const now = new Date();
+      const sixPmToday = new Date();
+      sixPmToday.setHours(18, 0, 0, 0);
+
+      const sevenPmYesterday = new Date(sixPmToday);
+      sevenPmYesterday.setDate(sixPmToday.getDate() - 1);
+      sevenPmYesterday.setHours(19, 0, 0, 0);
+
+      const sevenPmToday = new Date(sixPmToday);
+      sevenPmToday.setHours(19, 0, 0, 0);
+
+      return { sevenPmYesterday, sevenPmToday, sixPmToday };
+    }
+
+    async function loadPlayerAndBids() {
+      const { data: player, error: pErr } = await supabase
+        .from("Players")
+        .select("*")
+        .eq("Konami_ID", playerId)
+        .single();
+
       if (pErr || !player || player.Contracted_Team !== null) {
-        document.getElementById("playerName").textContent = "Player not eligible for draft auction.";
+        document.getElementById("playerName").textContent =
+          "Player not eligible for draft auction.";
         return;
       }
 
@@ -229,31 +267,36 @@
       if (bErr || !bids || !bids.length) {
         document.getElementById("historyBody").innerHTML =
           `<tr><td colspan="5">No bids in this window.</td></tr>`;
-        return;
+        document.getElementById("currentHighest").textContent =
+          "Current Highest Bid: None";
+        document.getElementById("leadingClub").textContent =
+          "Leading Club: None";
+      } else {
+        const highest = bids.reduce((max, b) =>
+          b.bid_amount > max.bid_amount ? b : max, bids[0]);
+
+        currentHighestBid = highest.bid_amount;
+        currentLeadingClub = highest.bidder_club_id;
+
+        document.getElementById("currentHighest").textContent =
+          `Current Highest Bid: ₿ ${Number(currentHighestBid).toLocaleString("en-GB")}`;
+
+        const leadingFull = await fullClubName(currentLeadingClub);
+        document.getElementById("leadingClub").textContent =
+          `Leading Club: ${leadingFull}`;
+
+        renderHistory(bids, sixPmToday);
       }
 
-      const highest = bids.reduce((max, b) =>
-        b.bid_amount > max.bid_amount ? b : max, bids[0]);
-
-      currentHighestBid = highest.bid_amount;
-      currentLeadingClub = highest.bidder_club_id;
-
-      document.getElementById("currentHighest").textContent =
-        `Current Highest Bid: ₿ ${Number(currentHighestBid).toLocaleString("en-GB")}`;
-
-      const leadingFull = await fullClubName(currentLeadingClub);
-      document.getElementById("leadingClub").textContent =
-        `Leading Club: ${leadingFull}`;
-
       document.getElementById("timeRemaining").textContent =
-        randomFinishTime ? `Ends around: ${randomFinishTime.toLocaleTimeString("en-GB")}` : "End time not set";
+        randomFinishTime
+          ? `Ends around: ${randomFinishTime.toLocaleTimeString("en-GB")}`
+          : "End time not set";
 
       const { sevenPmYesterday: winStart, sixPmToday: winSix } = getDraftWindowTimes();
       credits = await getDraftCredits(buyerShortName, winStart, winSix);
       document.getElementById("creditsInfo").textContent =
         `Draft Credits: ${credits}`;
-
-      renderHistory(bids, sixPmToday);
 
       const nowLocal = new Date();
       canBid = await canClubBidOnPlayer(
@@ -331,7 +374,6 @@
     async function canClubBidOnPlayer(clubShortName, konamiId, nowLocal, sixPmToday) {
       if (!draftEnabled || !clubShortName || !randomFinishTime) return false;
 
-      // ⭐ NEW: block bidding before official start time
       if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
         document.getElementById("bidStatus").textContent =
           "Draft auction has not started yet.";
@@ -391,38 +433,39 @@
 
       return true;
     }
+
     function setupBidControls() {
-      const minBid = currentHighestBid + 500000;
       const amountInput = document.getElementById("bidAmount");
       const quickBtn = document.getElementById("quickBidBtn");
-      const incBtns = document.querySelectorAll(".inc-btn");
       const submitBtn = document.getElementById("submitBidBtn");
 
+      function getMinBid() {
+        return currentHighestBid + 500000;
+      }
+
       amountInput.addEventListener("input", () => {
+        const minBid = getMinBid();
         let raw = amountInput.value.replace(/,/g, "");
         raw = raw.replace(/\D/g, "");
         let num = Number(raw || 0);
-
         if (num < minBid) num = minBid;
-
         amountInput.value = num.toLocaleString("en-GB");
       });
 
       quickBtn.onclick = () => {
-        const next = minBid;
+        const next = getMinBid();
         amountInput.value = next.toLocaleString("en-GB");
       };
 
       document.querySelectorAll(".inc-btn, .dec-btn").forEach(btn => {
         btn.addEventListener("click", () => {
+          const minBid = getMinBid();
           let raw = amountInput.value.replace(/,/g, "");
           let current = Number(raw || 0);
-
           if (!current) current = minBid;
 
           const delta = Number(btn.getAttribute("data-delta"));
           let next = current + delta;
-
           if (next < minBid) next = minBid;
 
           amountInput.value = next.toLocaleString("en-GB");
@@ -456,7 +499,6 @@
 
       const nowLocal = new Date();
 
-      // ⭐ NEW: block bids before official start time
       if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
         document.getElementById("bidStatus").textContent =
           "Draft auction has not started yet.";
@@ -493,19 +535,14 @@
       let isDraftJoin = false;
       let draftJoinConsumed = false;
 
-     if (isFirstBidder) {
-
-  // ⭐ Prevent early credit earning
-  if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-    isFirstDraftBid = false;   // treat as normal bid, no credits earned
-  } else {
-    isFirstDraftBid = true;    // valid first draft bid
-  }
-
-} else {
-  isDraftJoin = true;
-  // (keep the rest of your join logic exactly as-is)
-
+      if (isFirstBidder) {
+        if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
+          isFirstDraftBid = false;
+        } else {
+          isFirstDraftBid = true;
+        }
+      } else {
+        isDraftJoin = true;
 
         const { data: priorJoins } = await supabase
           .from("Player_Transfer_Bids")
@@ -545,13 +582,9 @@
         return;
       }
 
-      document.getElementById("bidStatus").textContent =
-        "Bid submitted.";
+      document.getElementById("bidStatus").textContent = "Bid submitted.";
       await loadPlayerAndBids();
     }
   </script>
-</body>
-</html>
-
 </body>
 </html>
