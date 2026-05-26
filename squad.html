@@ -34,6 +34,19 @@
   <!-- NAV -->
   <div id="nav"></div>
 
+  <!-- INIT NAV -->
+  <script type="module">
+    import { supabase } from "./supabase_client.js";
+    import { buildNav } from "./global_ui.js";
+    import { loadGlobalSettings } from "./global.js";
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      await loadGlobalSettings();
+      buildNav(user);
+    });
+  </script>
+
   <!-- PAGE CONTAINER -->
   <div class="page-container">
 
