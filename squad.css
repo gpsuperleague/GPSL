@@ -77,7 +77,7 @@ body.squad-page .squad-section-title {
 
 body.squad-page .player-thumb {
   width: 50px !important;
-  height: 50px !important;
+  height: 70px !important;
   object-fit: contain !important;
   border-radius: 4px;
 }
