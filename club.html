@@ -1,0 +1,847 @@
+<script>
+  const CURRENT_PAGE = "club";
+</script>
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Club Squad</title>
+
+  <link rel="stylesheet" href="dashboard.css">
+
+  <style>
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    #nav {
+      padding: 15px;
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    /* Ensure all nav buttons, including Logout, look identical */
+    a.button,
+    button.button,
+    #logoutBtn {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #ff9900;
+      color: #111;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 6px;
+      margin: 5px;
+      transition: 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    a.button:hover,
+    button.button:hover,
+    #logoutBtn:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
+    }
+
+    .club-header {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin: 20px;
+      padding: 20px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+    }
+
+    .club-header img {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+    }
+
+    h2.section-title {
+      margin-left: 20px;
+      color: #ff9900;
+      margin-top: 40px;
+    }
+
+    .panel {
+      background: #1a1a1a;
+      padding: 20px;
+      margin: 20px;
+      border-radius: 8px;
+      border: 1px solid #333;
+    }
+
+    table.gpsl-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+      table-layout: fixed;
+    }
+
+    table.gpsl-table th,
+    table.gpsl-table td {
+      border: 1px solid #333;
+      padding: 8px;
+      text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    table.gpsl-table th {
+      background: #222;
+      color: #ff9900;
+    }
+
+    .club-thumb {
+      height: 70px;
+      width: auto;
+      border-radius: 6px;
+      object-fit: contain;
+    }
+
+    /* Column widths tuned so Offer has room */
+    table.gpsl-table th:nth-child(1),
+    table.gpsl-table td:nth-child(1) { width: 9%; }
+
+    table.gpsl-table th:nth-child(2),
+    table.gpsl-table td:nth-child(2) { width: 22%; }
+
+    table.gpsl-table th:nth-child(3),
+    table.gpsl-table td:nth-child(3) { width: 8%; }
+
+    table.gpsl-table th:nth-child(4),
+    table.gpsl-table td:nth-child(4) { width: 8%; }
+
+    table.gpsl-table th:nth-child(5),
+    table.gpsl-table td:nth-child(5) { width: 9%; }
+
+    table.gpsl-table th:nth-child(6),
+    table.gpsl-table td:nth-child(6) { width: 17%; }
+
+    table.gpsl-table th:nth-child(7),
+    table.gpsl-table td:nth-child(7) { width: 15%; }
+
+    table.gpsl-table th:nth-child(8),
+    table.gpsl-table td:nth-child(8) { width: 12%; text-align: center; }
+
+    /* Let playstyle wrap slightly instead of bleeding */
+    table.gpsl-table td:nth-child(7) {
+      white-space: nowrap;
+      font-size: 12px;
+    }
+
+    .player-link {
+      color: #fff;
+      text-decoration: none;
+    }
+
+    .player-link:hover {
+      text-decoration: underline;
+      color: #ffcc66;
+    }
+
+    .offer-btn {
+      background: #ff9900;
+      color: #111;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .offer-btn:hover {
+      background: #ffaa22;
+      transform: scale(1.03);
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.7);
+    }
+
+    .modal-content {
+      background-color: #1a1a1a;
+      margin: 5% auto;
+      padding: 20px;
+      border: 1px solid #333;
+      width: 650px;
+      border-radius: 8px;
+      color: #ddd;
+      display: flex;
+      gap: 20px;
+    }
+
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .close:hover {
+      color: #fff;
+    }
+
+    .modal-left {
+      width: 40%;
+      text-align: center;
+    }
+
+    .modal-right {
+      width: 60%;
+    }
+
+    .modal-player-card {
+      background: #111;
+      border-radius: 8px;
+      padding: 10px;
+      border: 1px solid #333;
+      position: relative;
+    }
+
+    .modal-player-img {
+      width: 100%;
+      border-radius: 8px;
+      object-fit: contain;
+      margin-bottom: 10px;
+    }
+
+    .modal-player-name {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .modal-player-meta {
+      font-size: 13px;
+      color: #ccc;
+      margin-bottom: 2px;
+    }
+
+    .modal label {
+      display: block;
+      margin-top: 10px;
+      margin-bottom: 4px;
+    }
+
+    .modal input[type="text"] {
+      width: 100%;
+      padding: 6px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background: #111;
+      color: #ddd;
+      font-size: 14px;
+    }
+
+    .formatted-amount {
+      margin-top: 4px;
+      font-size: 12px;
+      color: #ccc;
+    }
+
+    .increment-row {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .inc-btn {
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #222;
+      color: #ddd;
+      cursor: pointer;
+    }
+
+    .inc-btn:hover {
+      background: #333;
+    }
+
+    .modal-footer {
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .modal-footer-left {
+      flex: 1;
+    }
+
+    .modal-footer-right {
+      display: flex;
+      gap: 10px;
+    }
+
+    .quick-bid-btn {
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 4px;
+      border: 1px solid #2f7a2f;
+      background: #2f7a2f;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    .quick-bid-btn:hover {
+      background: #369a36;
+    }
+
+    .cancel-btn {
+      background: #555;
+      color: #eee;
+    }
+
+    .cancel-btn:hover {
+      background: #666;
+    }
+
+    .submit-btn {
+      background: #ff9900;
+      color: #111;
+    }
+
+    .submit-btn:hover {
+      background: #ffaa22;
+    }
+
+    .window-closed-note {
+      margin: 0 20px 20px 20px;
+      color: #ff6666;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="nav"></div>
+
+  <div id="clubHeader" class="club-header"></div>
+
+  <div id="windowNote" class="window-closed-note"></div>
+
+  <div id="squadContainer"></div>
+
+  <!-- Offer Modal -->
+  <div id="offerModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-left">
+        <div class="modal-player-card">
+          <span id="closeOfferModal" class="close">&times;</span>
+          <img id="offerPlayerImg" class="modal-player-img" src="" alt="Player card">
+          <div class="modal-player-name" id="offerPlayerName"></div>
+          <div class="modal-player-meta" id="offerPlayerPos"></div>
+          <div class="modal-player-meta" id="offerPlayerRating"></div>
+          <div class="modal-player-meta" id="offerPlayerAge"></div>
+          <div class="modal-player-meta" id="offerPlayerPlaystyle"></div>
+          <div class="modal-player-meta" id="offerPlayerValue"></div>
+        </div>
+      </div>
+
+      <div class="modal-right">
+        <h3>Submit Direct Offer</h3>
+
+        <label for="offerAmount">Bid Amount (₿):</label>
+        <input type="text" id="offerAmount">
+        <div id="offerAmountFormatted" class="formatted-amount"></div>
+
+        <div class="increment-row">
+          <button class="inc-btn" data-delta="-500000">-500k</button>
+          <button class="inc-btn" data-delta="-1000000">-1m</button>
+          <button class="inc-btn" data-delta="-5000000">-5m</button>
+          <button class="inc-btn" data-delta="500000">+500k</button>
+          <button class="inc-btn" data-delta="1000000">+1m</button>
+          <button class="inc-btn" data-delta="5000000">+5m</button>
+        </div>
+
+        <div class="modal-footer">
+          <div class="modal-footer-left">
+            <button id="quickBidBtn" class="quick-bid-btn">Quick Bid (Market Value)</button>
+          </div>
+          <div class="modal-footer-right">
+            <button id="cancelOfferBtn" class="button cancel-btn">Cancel</button>
+            <button id="submitOfferBtn" class="button submit-btn">Submit Offer for Review</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- SUPABASE MODULE -->
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const supabase = createClient(
+      'https://omyyogfumrjoaweuawjn.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
+    );
+
+    window.supabase = supabase;
+
+    let transferWindowOpen = false;
+    let buyerShortName = null;
+    let currentOfferKonamiId = null;
+    let currentOfferSellerClub = null;
+    let currentPlayerMarketValue = null;
+    let draftEnabled = false;
+
+    async function loadGlobalSettings() {
+      const { data, error } = await supabase
+        .from("global_settings")
+        .select("draft_auction_enabled")
+        .eq("id", 1)
+        .single();
+
+      draftEnabled = data?.draft_auction_enabled === true;
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        window.location = "login.html";
+        return;
+      }
+
+      await loadGlobalSettings();
+
+      const nav = document.getElementById("nav");
+      nav.innerHTML = `
+        <a href="index.html" class="button">Home</a>
+        <a href="GPDB.html" class="button">Player Database</a>
+        <a href="clubs.html" class="button">Clubs</a>
+        <a href="dashboard.html" class="button">Dashboard</a>
+        <a href="all_listings.html" class="button">Transfer List</a>
+        <button id="logoutBtn" class="button">Logout</button>
+      `;
+
+      if (user.email === "rotavator66@outlook.com") {
+        nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
+      }
+
+      if (draftEnabled) {
+        nav.innerHTML += `<a href="draftauction.html" class="button">Draft Auction</a>`;
+      }
+
+      document.getElementById("logoutBtn").onclick = async () => {
+        await supabase.auth.signOut();
+        window.location = "login.html";
+      };
+
+      await loadTransferWindowStatus();
+      await loadBuyerClubShortName(user.id);
+      await loadClub();
+      await loadPlayers();
+      setupModalHandlers();
+    });
+
+    async function loadTransferWindowStatus() {
+      const { data, error } = await supabase
+        .from("global_settings")
+        .select("transfer_window_open")
+        .eq("id", 1)
+        .single();
+
+      if (!error && data) {
+        transferWindowOpen = data.transfer_window_open === true;
+      } else {
+        transferWindowOpen = false;
+      }
+
+      const note = document.getElementById("windowNote");
+      if (!transferWindowOpen) {
+        note.textContent = "Transfer window is currently CLOSED. Direct offers are disabled.";
+      } else {
+        note.textContent = "";
+      }
+    }
+
+    async function loadBuyerClubShortName(authId) {
+      const { data, error } = await supabase
+        .from("Clubs")
+        .select("ShortName")
+        .eq("owner_id", authId)
+        .single();
+
+      if (error || !data) {
+        console.error("Could not resolve buyer club from owner_id", error);
+        buyerShortName = null;
+        return;
+      }
+
+      buyerShortName = data.ShortName;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const fullClubName = params.get("club");
+
+    let clubShortName = null;
+
+    async function loadClub() {
+      const { data: club, error } = await supabase
+        .from("Clubs")
+        .select("*")
+        .eq("Club", fullClubName)
+        .single();
+
+      if (error || !club) {
+        document.getElementById("clubHeader").innerHTML = "<h1>Club not found</h1>";
+        return;
+      }
+
+      clubShortName = club.ShortName;
+
+      document.getElementById("clubHeader").innerHTML = `
+        <img src="images/club_badges/${club.ShortName}.png" alt="${club.Club} badge">
+        <div>
+          <h1>${club.Club}</h1>
+          <div><strong>Stadium:</strong> ${club.Stadium}</div>
+          <div><strong>Capacity:</strong> ${club.Capacity.toLocaleString()}</div>
+          <div><strong>Nation:</strong> ${club.Nation}</div>
+        </div>
+      `;
+    }
+
+    const POSITION_GROUPS = {
+      "Goalkeepers": ["GK"],
+      "Defenders": ["LB", "CB", "RB"],
+      "Midfielders": ["DMF", "LMF", "CMF", "RMF", "AMF"],
+      "Attackers": ["SS", "LW", "CF", "RW"]
+    };
+
+    async function loadPlayers() {
+      if (!clubShortName) return;
+
+      const { data, error } = await supabase
+        .from("Players")
+        .select("Name, Nation, Position, Rating, Age, market_value, Playstyle, Konami_ID, Contracted_Team")
+        .eq("Contracted_Team", clubShortName);
+
+      if (error) {
+        console.error("Players load error:", error);
+        return;
+      }
+
+      const container = document.getElementById("squadContainer");
+      container.innerHTML = "";
+
+      for (const [groupName, positions] of Object.entries(POSITION_GROUPS)) {
+
+        const groupPlayers = data
+          .filter(p => positions.includes(p.Position))
+          .sort((a, b) => {
+            const posA = positions.indexOf(a.Position);
+            const posB = positions.indexOf(b.Position);
+            if (posA !== posB) return posA - posB;
+            return b.market_value - a.market_value;
+          });
+
+        if (!groupPlayers.length) continue;
+
+        container.innerHTML += `
+          <h2 class="section-title">${groupName}</h2>
+          <div class="panel">
+            <table class="gpsl-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th>Player</th>
+                  <th>Nat</th>
+                  <th>Pos</th>
+                  <th>Rating</th>
+                  <th>Value</th>
+                  <th>Playstyle</th>
+                  <th>Offer</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${groupPlayers.map(p => `
+                  <tr>
+                    <td>
+                      <img 
+                        class="club-thumb"
+                        src="https://pesdb.net/assets/img/card/b${p.Konami_ID}.png"
+                        onerror="this.src='images/silhouette.png'"
+                      >
+                    </td>
+                    <td>
+                      <a 
+                        href="https://pesdb.net/pes2021/?id=${p.Konami_ID}" 
+                        target="_blank" 
+                        class="player-link"
+                      >
+                        ${p.Name}
+                      </a>
+                    </td>
+                    <td>${p.Nation}</td>
+                    <td>${p.Position}</td>
+                    <td>${p.Rating}</td>
+                    <td>₿ ${Number(p.market_value).toLocaleString("en-GB")}</td>
+                    <td>${p.Playstyle || "-"}</td>
+                    <td>
+                      ${transferWindowOpen && buyerShortName && buyerShortName !== p.Contracted_Team ? `
+                        <button 
+                          class="offer-btn" 
+                          data-konami-id="${p.Konami_ID}" 
+                          data-name="${p.Name}"
+                          data-seller="${p.Contracted_Team}"
+                        >
+                          Make Offer
+                        </button>
+                      ` : ``}
+                    </td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+    }
+
+    /* ---------------------------------------------------------
+       MODAL HANDLERS + FORMATTING LOGIC
+    --------------------------------------------------------- */
+    function setupModalHandlers() {
+      const modal = document.getElementById("offerModal");
+      const closeBtn = document.getElementById("closeOfferModal");
+      const cancelBtn = document.getElementById("cancelOfferBtn");
+      const amountInput = document.getElementById("offerAmount");
+      const amountFormatted = document.getElementById("offerAmountFormatted");
+      const quickBidBtn = document.getElementById("quickBidBtn");
+      const incButtons = document.querySelectorAll(".inc-btn");
+
+      /* -------------------------------
+         LIVE FORMATTING + MINIMUM ENFORCEMENT WHILE TYPING
+      ------------------------------- */
+      amountInput.addEventListener("input", () => {
+        let raw = amountInput.value.replace(/,/g, "");
+        raw = raw.replace(/\D/g, "");
+        let num = Number(raw);
+
+        // ENFORCE MINIMUM BID WHILE TYPING
+        if (currentPlayerMarketValue && num < currentPlayerMarketValue) {
+          num = currentPlayerMarketValue;
+        }
+
+        amountInput.value = num ? num.toLocaleString("en-GB") : "";
+        amountFormatted.textContent = num
+          ? "Formatted: ₿ " + num.toLocaleString("en-GB")
+          : "";
+      });
+
+      const resetModalState = () => {
+        modal.style.display = "none";
+        amountInput.value = "";
+        amountFormatted.textContent = "";
+        currentOfferKonamiId = null;
+        currentOfferSellerClub = null;
+        currentPlayerMarketValue = null;
+      };
+
+      closeBtn.onclick = resetModalState;
+      cancelBtn.onclick = resetModalState;
+
+      window.onclick = (event) => {
+        if (event.target === modal) {
+          resetModalState();
+        }
+      };
+
+      /* -------------------------------
+         OPEN MODAL
+      ------------------------------- */
+      document.addEventListener("click", async (e) => {
+        if (e.target.classList && e.target.classList.contains("offer-btn")) {
+          if (!transferWindowOpen) return;
+          if (!buyerShortName) {
+            alert("Your club could not be resolved. Contact admin.");
+            return;
+          }
+
+          const name = e.target.getAttribute("data-name");
+          const konamiId = e.target.getAttribute("data-konami-id");
+          const seller = e.target.getAttribute("data-seller");
+
+          currentOfferKonamiId = konamiId;
+          currentOfferSellerClub = seller;
+
+          await populateModalPlayerDetails(konamiId, name);
+
+          modal.style.display = "block";
+        }
+      });
+
+      /* -------------------------------
+         INCREMENT BUTTONS (MINIMUM ENFORCED)
+      ------------------------------- */
+      incButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          let raw = amountInput.value.replace(/,/g, "");
+          let current = Number(raw || 0);
+          let delta = Number(btn.getAttribute("data-delta"));
+          let next = current + delta;
+
+          // ENFORCE MINIMUM
+          if (currentPlayerMarketValue && next < currentPlayerMarketValue) {
+            next = currentPlayerMarketValue;
+          }
+
+          amountInput.value = next.toLocaleString("en-GB");
+          amountFormatted.textContent =
+            "Formatted: ₿ " + next.toLocaleString("en-GB");
+        });
+      });
+
+      /* -------------------------------
+         QUICK BID (ALWAYS MARKET VALUE)
+      ------------------------------- */
+      quickBidBtn.onclick = () => {
+        if (currentPlayerMarketValue != null) {
+          amountInput.value = currentPlayerMarketValue.toLocaleString("en-GB");
+          amountFormatted.textContent =
+            "Formatted: ₿ " + currentPlayerMarketValue.toLocaleString("en-GB");
+        }
+      };
+
+      document.getElementById("submitOfferBtn").onclick = submitOffer;
+    }
+
+    /* ---------------------------------------------------------
+       POPULATE MODAL WITH PLAYER DETAILS
+    --------------------------------------------------------- */
+    async function populateModalPlayerDetails(konamiId, fallbackName) {
+      const { data, error } = await supabase
+        .from("Players")
+        .select("Name, Position, Rating, Age, Playstyle, market_value, Konami_ID")
+        .eq("Konami_ID", konamiId)
+        .single();
+
+      const player = !error && data ? data : null;
+
+      const name = player ? player.Name : fallbackName;
+      const pos = player ? player.Position : "-";
+      const rating = player ? player.Rating : "-";
+      const age = player ? player.Age : "-";
+      const playstyle = player ? (player.Playstyle || "-") : "-";
+      const value = player ? Number(player.market_value || 0) : 0;
+      const imgId = player ? player.Konami_ID : konamiId;
+
+      currentPlayerMarketValue = value || 0;
+
+      document.getElementById("offerPlayerName").textContent = name;
+      document.getElementById("offerPlayerPos").textContent = `Position: ${pos}`;
+      document.getElementById("offerPlayerRating").textContent = `Rating: ${rating}`;
+      document.getElementById("offerPlayerAge").textContent = `Age: ${age}`;
+      document.getElementById("offerPlayerPlaystyle").textContent = `Playstyle: ${playstyle}`;
+      document.getElementById("offerPlayerValue").textContent =
+        `Market Value: ₿ ${Number(value).toLocaleString("en-GB")}`;
+
+      document.getElementById("offerPlayerImg").src =
+        `https://pesdb.net/assets/img/card/b${imgId}.png`;
+      document.getElementById("offerPlayerImg").onerror = function () {
+        this.src = 'images/silhouette.png';
+      };
+
+      const amountInput = document.getElementById("offerAmount");
+      amountInput.value = value.toLocaleString("en-GB");
+      document.getElementById("offerAmountFormatted").textContent =
+        "Formatted: ₿ " + value.toLocaleString("en-GB");
+    }
+
+    /* ---------------------------------------------------------
+       SUBMIT OFFER
+    --------------------------------------------------------- */
+    async function submitOffer() {
+      if (!currentOfferKonamiId || !currentOfferSellerClub) {
+        alert("No player selected for offer.");
+        return;
+      }
+
+      if (!buyerShortName) {
+        alert("Your club could not be resolved. Contact admin.");
+        return;
+      }
+
+      if (!transferWindowOpen) {
+        alert("Transfer window is closed. Offers are disabled.");
+        return;
+      }
+
+      const amountRaw = document.getElementById("offerAmount").value;
+      const amount = Number(amountRaw.replace(/,/g, ""));
+
+      if (!amount || amount <= 0) {
+        alert("Enter a valid bid amount.");
+        return;
+      }
+
+      if (currentPlayerMarketValue != null && amount < currentPlayerMarketValue) {
+        alert(
+          "Minimum bid is the player's market value: ₿ " +
+          currentPlayerMarketValue.toLocaleString("en-GB")
+        );
+        return;
+      }
+
+      const { error } = await supabase
+        .from("Player_Transfer_Bids")
+        .insert({
+          listing_id: null,
+          bidder_club_id: buyerShortName,
+          seller_club_id: currentOfferSellerClub,
+          bid_amount: amount,
+          is_direct: true,
+          direct_bid_id: null
+        });
+
+      if (error) {
+        console.error("Error submitting offer:", error);
+        alert("Error submitting offer. Please try again.");
+        return;
+      }
+
+      alert("Offer submitted to the club's review panel.");
+      document.getElementById("offerModal").style.display = "none";
+      document.getElementById("offerAmount").value = "";
+      document.getElementById("offerAmountFormatted").textContent = "";
+      currentOfferKonamiId = null;
+      currentOfferSellerClub = null;
+      currentPlayerMarketValue = null;
+    }
+  </script>
+
+</body>
+</html>

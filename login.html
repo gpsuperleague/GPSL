@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL Login</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      text-align: center;
+      padding-top: 80px;
+    }
+
+    input {
+      padding: 10px;
+      width: 240px;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background: #222;
+      color: #eee;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #ff9900;
+      color: #111;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
+    }
+
+    a {
+      color: #ff9900;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Login</h1>
+
+  <input id="email" type="email" placeholder="Email"><br><br>
+  <input id="password" type="password" placeholder="Password"><br><br>
+
+  <button id="loginBtn">Login</button>
+  <br><br>
+
+  <a id="resetBtn">Forgot your password?</a>
+
+  <!-- SUPABASE CLIENT -->
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    const supabase = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+    );
+
+    window.supabase = supabase;
+
+    /* LOGIN */
+    document.getElementById("loginBtn").onclick = async () => {
+      const email = document.getElementById("email").value.trim();
+      const password = document.getElementById("password").value.trim();
+
+      if (!email || !password) {
+        alert("Enter email and password.");
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      window.location = "dashboard.html";
+    };
+
+    /* PASSWORD RESET */
+    document.getElementById("resetBtn").onclick = async () => {
+      const email = document.getElementById("email").value.trim();
+
+      if (!email) {
+        alert("Enter your email first.");
+        return;
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html"
+
+    });
+
+
+      if (error) {
+        alert(error.message);
+        return;
+      }
+
+      alert("Password reset email sent.");
+    };
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+  <script>
+    window.CURRENT_PAGE = "club_details";
+  </script>
+
+  <meta charset="UTF-8">
+  <title>Club Details</title>
+
+  <link rel="stylesheet" href="dashboard.css">
+
+  <style>
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    .page-container {
+      width: 95%;
+      max-width: 1400px;
+      margin: 20px auto 40px auto;
+    }
+
+    h1 {
+      color: #ff9900;
+      margin-bottom: 20px;
+    }
+  </style>
+
+</head>
+
+<body>
+
+  <div id="nav"></div>
+
+  <div class="page-container">
+
+    <h1>Club Details</h1>
+
+    <!-- CLUB DETAILS PANEL WITH WATERMARK -->
+    <div class="panel panel-bg panel-club" id="clubDetailsPanel">
+
+      <div class="detailRow">
+        <label>Club Name:</label>
+        <span id="clubName"></span>
+      </div>
+
+      <div class="detailRow">
+        <label>Short Name:</label>
+        <span id="shortName"></span>
+      </div>
+
+      <div class="detailRow">
+        <label>Owner:</label>
+        <span id="ownerName"></span>
+      </div>
+
+      <div class="detailRow">
+        <label>Stadium:</label>
+        <span id="stadiumName"></span>
+      </div>
+
+      <div class="detailRow">
+        <label>Capacity:</label>
+        <span id="stadiumCapacity"></span>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- GLOBAL JS -->
+  <script type="module" src="supabase_client.js"></script>
+  <script type="module" src="global.js"></script>
+  <script type="module" src="global_ui.js"></script>
+  <script type="module" src="clubs_lookup.js"></script>
+
+  <!-- PAGE LOGIC -->
+  <script type="module">
+    import { supabase } from "./supabase_client.js";
+    import { initGlobal } from "./global.js";
+    import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+
+    document.addEventListener("DOMContentLoaded", async () => {
+
+      await initGlobal();
+      await loadClubsMap();
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        window.location = "login.html";
+        return;
+      }
+
+      const { data: club } = await supabase
+        .from("Clubs")
+        .select("*")
+        .eq("owner_id", user.id)
+        .single();
+
+      if (!club) return;
+
+      document.getElementById("clubName").textContent = fullClubName(club.ShortName);
+      document.getElementById("shortName").textContent = club.ShortName;
+      document.getElementById("ownerName").textContent = user.email;
+      document.getElementById("stadiumName").textContent = club.Stadium;
+      document.getElementById("stadiumCapacity").textContent = club.Capacity;
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,395 @@
+<script>
+  const CURRENT_PAGE = "gpdb";
+</script>
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL Player Database</title>
+
+  <style>
+    /* (UNCHANGED CSS — all your styles remain exactly as you sent them) */
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+    }
+    a.button, button.button {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #ff9900;
+      color: #111;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 6px;
+      margin: 5px;
+      transition: 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+    a.button:hover, button.button:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
+    }
+    #pageTitle {
+      background:#222;
+      color:#ff9900;
+      padding:10px 16px;
+      border-radius:6px;
+      display:inline-block;
+      margin-bottom:20px;
+      font-size:24px;
+      font-weight:bold;
+    }
+    .filter-group {
+      background:#1a1a1a;
+      color:#ff9900;
+      padding:10px 14px;
+      border-radius:6px;
+      margin-bottom:12px;
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px;
+      align-items:center;
+      border:1px solid #333;
+    }
+    .filter-group strong {
+      width:100%;
+      font-size:14px;
+      margin-bottom:4px;
+      color:#ffaa22;
+    }
+    input, select {
+      background:#222;
+      color:#ddd;
+      border:1px solid #444;
+      padding:4px 6px;
+      border-radius:4px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1a1a1a;
+      color: #ddd;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    th {
+      background: #222;
+      color: #ff9900;
+      padding: 8px;
+      font-size: 13px;
+      border-bottom: 2px solid #444;
+      border-right: 1px solid #333;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      cursor: pointer;
+      text-align: center;
+    }
+    th:last-child { border-right: none; }
+    th.sort-asc::after { content: " ▲"; font-size: 10px; }
+    th.sort-desc::after { content: " ▼"; font-size: 10px; }
+    td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #333;
+      border-right: 1px solid #333;
+      font-size: 12px;
+      text-align: center;
+    }
+    td:last-child { border-right: none; }
+    tbody tr:nth-child(odd) { background: #1f1f1f; }
+    tbody tr:nth-child(even) { background: #262626; }
+    tbody tr:hover { background: #333 !important; }
+    #pagination {
+      color: #ff9900;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+    #rowsPerPage {
+      margin-top: 20px;
+      color: #ff9900;
+    }
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.7);
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .modal {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      padding: 20px;
+      border-radius: 8px;
+      width: 480px;
+      color:#ddd;
+    }
+    #offerError {
+      color: #ff4444;
+      font-size: 12px;
+      min-height: 14px;
+      margin-top: 6px;
+    }
+    .modal-buttons {
+      margin-top: 15px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .player-header {
+      display:flex;
+      gap:15px;
+      margin-bottom:15px;
+    }
+    .player-header img {
+      width: auto;
+      height: 130px;
+      object-fit: contain;
+      background: #000;
+      border-radius: 6px;
+      border: 1px solid #444;
+      padding: 2px;
+      display: block;
+      margin: 0;
+    }
+    .player-header-info {
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      font-size:14px;
+    }
+    .bid-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 4px 0;
+      font-size: 14px;
+    }
+    .bid-row label {
+      color:#ff9900;
+      margin-right:6px;
+    }
+    .inc-btn {
+      padding: 6px 10px;
+      margin-right: 6px;
+      background:#444;
+      color:#fff;
+      border-radius:4px;
+      cursor:pointer;
+      border:1px solid #666;
+      font-size:13px;
+    }
+    .inc-btn:hover { background:#666; }
+    .dec-btn {
+      padding: 6px 10px;
+      margin-right: 6px;
+      background:#552222;
+      color:#fff;
+      border-radius:4px;
+      cursor:pointer;
+      border:1px solid #884444;
+      font-size:13px;
+    }
+    .dec-btn:hover { background:#773333; }
+  </style>
+</head>
+
+<body>
+
+  <div id="nav" style="margin-bottom:20px;"></div>
+
+  <h1 id="pageTitle">GPSL – Player Database</h1>
+  <p id="draftCreditsPanel" class="status-note"></p>
+
+  <!-- (UNCHANGED HTML CONTENT BELOW) -->
+  <div id="controls">
+    <div class="filter-group">
+      <button id="clearFiltersBtn" class="button">Clear Filters</button>
+    </div>
+
+    <div class="filter-group">
+      <strong>Market Value</strong>
+      <label>Min <input type="number" id="mv-min" style="width:80px;"></label>
+      <label>Max <input type="number" id="mv-max" style="width:80px;"></label>
+      <button id="applyMV" class="button">Apply</button>
+    </div>
+  </div>
+
+  <div class="filter-group" id="filters" style="margin-bottom:20px;">
+    <strong>Filters</strong>
+  </div>
+
+  <table id="playersTable">
+    <thead id="tableHead"></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <div id="pagination"></div>
+
+  <div id="rowsPerPage">
+    <label>Rows per page:
+      <select id="pageSizeSelect">
+        <option value="100">100</option>
+        <option value="250">250</option>
+        <option value="500">500</option>
+        <option value="1000" selected>1000</option>
+      </select>
+    </label>
+  </div>
+
+  <!-- MAKE OFFER MODAL -->
+  <div id="make-offer-modal-backdrop" class="modal-backdrop">
+    <div id="make-offer-modal" class="modal">
+
+      <div class="player-header">
+        <img id="offerPlayerImg" class="player-thumb" alt="Player">
+        <div class="player-header-info">
+          <div id="offerPlayerName" style="font-size:18px; color:#ff9900; font-weight:bold;"></div>
+          <div id="offerPlayerPosition"></div>
+          <div id="offerPlayerPlaystyle"></div>
+          <div id="offerPlayerRating"></div>
+          <div id="offerPlayerMV"></div>
+        </div>
+      </div>
+
+      <div class="bid-row">
+        <label>Your Offer (₿):</label>
+        <input type="text" id="offerAmount" inputmode="numeric" style="width:140px; padding:6px; border-radius:4px; border:1px solid #444; background:#111; color:#ddd; font-size:15px;">
+      </div>
+
+      <div style="margin-top:10px; text-align:center;">
+        <button class="dec-btn" data-inc="-500000">-500k</button>
+        <button class="dec-btn" data-inc="-1000000">-1m</button>
+        <button class="dec-btn" data-inc="-5000000">-5m</button>
+
+        <button class="inc-btn" data-inc="500000">+500k</button>
+        <button class="inc-btn" data-inc="1000000">+1m</button>
+        <button class="inc-btn" data-inc="5000000">+5m</button>
+
+        <button class="button" id="quickBidBtn">Quick Bid</button>
+      </div>
+
+      <div id="offerError"></div>
+
+      <div class="modal-buttons">
+        <button class="button" id="cancelOfferBtn">Cancel</button>
+        <button class="button" id="confirmOfferBtn">Submit Offer for Review</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module" src="gpdb_v2.js"></script>
+
+  <!-- ⭐ UPDATED NAVIGATION + AUTH -->
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    const supabase = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+    );
+
+    window.supabase = supabase;
+
+    let draftEnabled = false;
+
+    async function loadGlobalSettings() {
+      const { data } = await supabase
+        .from("global_settings")
+        .select("draft_auction_enabled")
+        .eq("id", 1)
+        .single();
+
+      draftEnabled = data?.draft_auction_enabled === true;
+    }
+
+    async function buildNav(user) {
+      const nav = document.getElementById("nav");
+
+      const buttons = [
+        { page: "index", label: "Home", href: "index.html" },
+        { page: "gpdb", label: "Player Database", href: "GPDB.html" },
+        { page: "clubs", label: "Clubs", href: "clubs.html" },
+        { page: "listings", label: "Transfer Market", href: "all_listings.html" },
+        { page: "dashboard", label: "Dashboard", href: "dashboard.html" }
+      ];
+
+      let html = "";
+
+      for (const btn of buttons) {
+        if (btn.page !== CURRENT_PAGE) {
+          html += `<a href="${btn.href}" class="button">${btn.label}</a>`;
+        }
+      }
+
+      if (user.email === "rotavator66@outlook.com" && CURRENT_PAGE !== "admin") {
+        html += `<a href="admin.html" class="button">GPSL Admin</a>`;
+      }
+
+      if (draftEnabled && CURRENT_PAGE !== "draftauction") {
+        html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
+      }
+
+      html += `<button id="logoutBtn" class="button">Logout</button>`;
+
+      nav.innerHTML = html;
+
+      document.getElementById("logoutBtn").onclick = async () => {
+        await supabase.auth.signOut();
+        window.location = "login.html";
+      };
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        window.location = "login.html";
+        return;
+      }
+
+      await loadGlobalSettings();
+      await buildNav(user);
+    });
+  </script>
+
+</body>
+</html>
+
+<style>
+.player-thumb {
+  height: 130px;
+  width: auto;
+  object-fit: contain;
+  background: #000;
+  border-radius: 6px;
+  border: 1px solid #333;
+  padding: 2px;
+  display: block;
+  margin: 0 auto;
+}
+#make-offer-modal table tr,
+#make-offer-modal table td {
+  height: auto !important;
+  overflow: visible !important;
+}
+.gpdb-thumb {
+  height: 70px;
+  width: auto;
+  object-fit: contain;
+  background: #000;
+  border-radius: 3px;
+  border: 1px solid #333;
+  padding: 1px;
+  display: block;
+  margin: 0 auto;
+}
+</style>

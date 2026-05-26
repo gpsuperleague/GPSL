@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL – Home</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 48px;
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+    }
+
+    p {
+      font-size: 18px;
+      max-width: 600px;
+      margin-bottom: 40px;
+      opacity: 0.85;
+    }
+
+    a.button, button.button {
+      display: inline-block;
+      padding: 14px 28px;
+      background: #ff9900;
+      color: #111;
+      text-decoration: none;
+      font-size: 20px;
+      border-radius: 6px;
+      font-weight: bold;
+      transition: 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    a.button:hover, button.button:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
+    }
+
+    footer {
+      position: absolute;
+      bottom: 20px;
+      font-size: 14px;
+      opacity: 0.5;
+    }
+  </style>
+</head>
+
+<body>
+
+  <img src="images/League/Logos/GPSL_logo.png"
+       alt="GPSL Logo"
+       style="width:350px; height:auto; margin-bottom:20px;">
+
+  <p>Welcome to the GP Super League.</p>
+
+  <div id="authButtons"></div>
+
+  <footer>© GPSL</footer>
+
+  <!-- UNIFIED SUPABASE CLIENT -->
+  <script type="module" src="supabase.js"></script>
+
+  <!-- PAGE LOGIC -->
+  <script type="module">
+    const supabase = window.supabase;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const container = document.getElementById("authButtons");
+
+      const { data, error } = await supabase.auth.getUser();
+      const user = data?.user;
+
+      if (user) {
+        container.innerHTML = `
+          <a href="dashboard.html" class="button">Dashboard</a>
+          <button id="logoutBtn" class="button">Logout</button>
+        `;
+
+        document.getElementById("logoutBtn").onclick = async () => {
+          await supabase.auth.signOut();
+          window.location = "index.html";
+        };
+
+      } else {
+        container.innerHTML = `
+          <a href="login.html" class="button">Login</a>
+          <button id="resetBtn" class="button">Reset Password</button>
+        `;
+
+        document.getElementById("resetBtn").onclick = async () => {
+          const email = prompt("Enter your email to reset your password");
+
+          if (!email) return;
+
+          const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html"
+          });
+
+          if (error) {
+            alert(error.message);
+          } else {
+            alert("Password reset email sent.");
+          }
+        };
+      }
+    });
+  </script>
+
+</body>
+</html>

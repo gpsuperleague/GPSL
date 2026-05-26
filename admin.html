@@ -1,0 +1,725 @@
+<script>
+  const CURRENT_PAGE = "admin";
+</script>
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL Admin</title>
+
+  <style>
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    a.button, button.button {
+      display: inline-block;
+      padding: 10px 20px;
+      background: #ff9900;
+      color: #111;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 6px;
+      margin: 5px;
+      transition: 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    a.button:hover, button.button:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
+    }
+
+    #nav {
+      padding: 15px;
+      background: #1a1a1a;
+      border-bottom: 1px solid #333;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      color: #ff9900;
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .page-container {
+      width: 95%;
+      max-width: 900px;
+      margin: 20px auto 40px auto;
+    }
+
+    .card {
+      background: #1a1a1a;
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      margin-bottom: 30px;
+    }
+
+    .card h2 {
+      color: #ff9900;
+      margin-top: 0;
+      margin-bottom: 15px;
+      font-size: 22px;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    .row input, .row select {
+      padding: 10px;
+      background: #222;
+      border: 1px solid #444;
+      color: #ddd;
+      border-radius: 5px;
+      width: 100%;
+    }
+
+    .row > div {
+      flex: 1;
+      min-width: 250px;
+    }
+
+    .note {
+      color: #888;
+      font-size: 14px;
+      margin-top: 10px;
+    }
+
+    #seasonRolloverModalBackdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+
+    #seasonRolloverModal {
+      background: #1a1a1a;
+      padding: 25px;
+      border-radius: 8px;
+      width: 350px;
+      color: #ddd;
+      border: 1px solid #333;
+    }
+
+    #seasonRolloverModal h3 {
+      margin-top: 0;
+      color: #ff9900;
+    }
+
+    #seasonRolloverModal ul {
+      margin-left: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="nav"></div>
+
+  <h1>GPSL Admin Panel</h1>
+
+  <div class="page-container">
+
+    <div id="adminPanel" style="display:none;">
+
+      <!-- SEASON MANAGEMENT -->
+      <div class="card">
+        <h2>Season Management</h2>
+
+        <div class="row">
+          <button id="rolloverBtn" class="button" style="background:#cc3300;">
+            Start New Season
+          </button>
+
+          <button class="button" style="background:#444;" disabled>
+            End Season (Coming Soon)
+          </button>
+        </div>
+
+        <div id="rolloverStatus" style="color:#ffcc00;"></div>
+      </div>
+
+      <!-- TRANSFER MANAGEMENT -->
+      <div class="card">
+        <h2>Transfer Management</h2>
+
+        <div class="row">
+          <div>
+            <label>Transfer Window</label>
+            <select id="transferWindowSelect">
+              <option value="true">Open</option>
+              <option value="false">Closed</option>
+            </select>
+          </div>
+
+          <div>
+            <label>Draft Auction</label>
+            <select id="draftAuctionSelect">
+              <option value="true">Enabled</option>
+              <option value="false">Disabled</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="resetDraftBtn" class="button" style="background:#990000; margin-top:10px;">
+          Reset Draft Auction
+        </button>
+        <div id="resetDraftStatus" style="margin-top:10px; color:#ffcc00;"></div>
+
+        <button class="button" id="saveSettingsBtn">Save Settings</button>
+        <div id="settingsMessage" style="color:#ffcc00; margin-top:10px;"></div>
+
+        <p id="draftStartTime" class="status-note" style="margin-top:10px;"></p>
+
+      </div>
+
+      <!-- OWNER ADMINISTRATION -->
+      <div class="card">
+        <h2>Owner Administration</h2>
+
+        <div class="row">
+          <div>
+            <input id="ownerEmail" placeholder="Owner Email">
+          </div>
+          <div>
+            <input id="ownerPassword" placeholder="Temporary Password" type="password">
+          </div>
+          <div>
+            <input id="ownerClub" placeholder="Club ShortName (e.g., ARS)">
+          </div>
+        </div>
+
+        <button id="addOwnerBtn" class="button">Add Owner</button>
+        <div id="ownerStatus" style="color:#ffcc00; margin-top:10px;"></div>
+
+        <p class="note">
+          When you add an owner, they automatically receive a password‑setup email.
+          The temporary password is only required by Supabase and is never used.
+        </p>
+
+        <hr style="border-color:#333; margin:20px 0;">
+
+        <div class="row">
+          <div>
+            <label>Owner</label>
+            <select id="updateOwnerSelect"></select>
+          </div>
+          <div>
+            <input id="newOwnerEmail" placeholder="New Email">
+          </div>
+        </div>
+
+        <button id="updateEmailBtn" class="button">Update Email</button>
+        <div id="updateEmailStatus" style="color:#ffcc00; margin-top:10px;"></div>
+
+        <hr style="border-color:#333; margin:20px 0;">
+
+        <div class="row">
+          <div>
+            <input id="resetOwnerEmail" placeholder="Owner Email">
+          </div>
+        </div>
+
+        <button id="resetPasswordBtn" class="button">Send Reset Email</button>
+        <div id="resetPasswordStatus" style="color:#ffcc00; margin-top:10px;"></div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <div id="seasonRolloverModalBackdrop">
+    <div id="seasonRolloverModal">
+      <h3>Start New Season</h3>
+      <p>This will:</p>
+      <ul>
+        <li>Close the current season</li>
+        <li>Create a new season</li>
+        <li>Reset player season stats</li>
+        <li>Snapshot club finances</li>
+      </ul>
+      <p style="color:#ffcc00; margin-top:10px;">This action cannot be undone.</p>
+
+      <div class="modal-buttons">
+        <button class="button" id="cancelRolloverBtn">Cancel</button>
+        <button class="button" id="confirmRolloverBtn" style="background:#cc3300;">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN LOGIC + UPDATED NAV -->
+  <script type="module">
+    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+    const supabase = createClient(
+      "https://omyyogfumrjoaweuawjn.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+    );
+
+    window.supabase = supabase;
+
+    /* ============================================================
+       SAFE UTC PARSER + UK TIME HELPERS
+       ============================================================ */
+
+    function parseUTC(iso) {
+      const d = new Date(iso);
+      return new Date(
+        d.getUTCFullYear(),
+        d.getUTCMonth(),
+        d.getUTCDate(),
+        d.getUTCHours(),
+        d.getUTCMinutes(),
+        d.getUTCSeconds()
+      );
+    }
+
+    function nowInUK() {
+      return parseUTC(new Date().toISOString());
+    }
+
+   /* ============================================================
+   LOAD GLOBAL SETTINGS + DISPLAY START TIME
+   ============================================================ */
+
+let draftEnabled = false;
+
+async function loadGlobalSettings() {
+  const { data } = await supabase
+    .from("global_settings")
+    .select("draft_auction_enabled")
+    .eq("id", 1)
+    .single();
+
+  draftEnabled = data?.draft_auction_enabled === true;
+
+  const startEl = document.getElementById("draftStartTime");
+
+  const { data: fullSettings } = await supabase
+    .from("global_settings")
+    .select("draft_auction_start_time")
+    .eq("id", 1)
+    .single();
+
+  // ⭐ Diagnostic: see EXACT string Supabase returns
+  console.log("ADMIN RAW VALUE:", fullSettings?.draft_auction_start_time);
+
+  if (draftEnabled && fullSettings?.draft_auction_start_time) {
+
+    // ⭐ DO NOT parse manually — let JS handle BST correctly
+    const start = new Date(fullSettings.draft_auction_start_time);
+
+    const nowUK = nowInUK();
+
+    // ⭐ This now correctly shows 19:00 in BST
+    const displayTime = start.toLocaleString("en-GB");
+
+    if (nowUK < start) {
+      startEl.textContent = `Draft auction begins at: ${displayTime}`;
+    } else {
+      startEl.textContent = `Draft auction started at: ${displayTime}`;
+    }
+
+  } else {
+    startEl.textContent = "";
+  }
+}
+
+    /* ============================================================
+       NAVIGATION
+       ============================================================ */
+
+    async function buildNav(user) {
+      const nav = document.getElementById("nav");
+
+      const buttons = [
+        { page: "index", label: "Home", href: "index.html" },
+        { page: "gpdb", label: "Player Database", href: "GPDB.html" },
+        { page: "clubs", label: "Clubs", href: "clubs.html" },
+        { page: "listings", label: "Transfer Market", href: "all_listings.html" },
+        { page: "dashboard", label: "Dashboard", href: "dashboard.html" }
+      ];
+
+      let html = "";
+
+      for (const btn of buttons) {
+        if (btn.page !== CURRENT_PAGE) {
+          html += `<a href="${btn.href}" class="button">${btn.label}</a>`;
+        }
+      }
+
+      if (user.email === "rotavator66@outlook.com" && CURRENT_PAGE !== "admin") {
+        html += `<a href="admin.html" class="button">GPSL Admin</a>`;
+      }
+
+      if (draftEnabled && CURRENT_PAGE !== "draftauction") {
+        html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
+      }
+
+      html += `<button id="logoutBtn" class="button">Logout</button>`;
+
+      nav.innerHTML = html;
+
+      document.getElementById("logoutBtn").onclick = async () => {
+        await supabase.auth.signOut();
+        window.location = "login.html";
+      };
+    }
+
+    /* ============================================================
+       AUTH + PAGE INIT
+       ============================================================ */
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        window.location = "login.html";
+        return;
+      }
+
+      await loadGlobalSettings();
+      await buildNav(user);
+
+      const adminEmails = ["rotavator66@outlook.com"];
+
+      if (!adminEmails.includes(user.email)) {
+        window.location = "dashboard.html";
+        return;
+      }
+
+      document.getElementById("adminPanel").style.display = "block";
+    });
+
+    /* ============================================================
+       SEASON ROLLOVER
+       ============================================================ */
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const modal = document.getElementById("seasonRolloverModalBackdrop");
+      const status = document.getElementById("rolloverStatus");
+
+      document.getElementById("rolloverBtn").onclick = () => {
+        modal.style.display = "flex";
+      };
+
+      document.getElementById("cancelRolloverBtn").onclick = () => {
+        modal.style.display = "none";
+      };
+
+      document.getElementById("confirmRolloverBtn").onclick = async () => {
+        modal.style.display = "none";
+        status.textContent = "Processing season rollover…";
+
+        const { error } = await supabase.rpc("rollover_season");
+
+        status.textContent = error
+          ? "❌ Season rollover failed."
+          : "✅ New season created successfully!";
+      };
+    });
+
+    /* ============================================================
+       OWNER LIST LOADING
+       ============================================================ */
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const dropdown = document.getElementById("updateOwnerSelect");
+
+      const { data: ownerData, error: ownerError } =
+        await supabase.functions.invoke("list-owners");
+
+      if (ownerError || !ownerData || !ownerData.users) {
+        dropdown.innerHTML = `<option>Error loading owners</option>`;
+        return;
+      }
+
+      const { data: clubs, error: clubError } = await supabase
+        .from("Clubs")
+        .select("ShortName, owner_id");
+
+      if (clubError) {
+        dropdown.innerHTML = `<option>Error loading clubs</option>`;
+        return;
+      }
+
+      dropdown.innerHTML = "";
+
+      ownerData.users.forEach((u) => {
+        const id = u.id;
+        const email = u.email;
+
+        const club = clubs.find(c => c.owner_id === id);
+        const shortName = club ? club.ShortName : "NO CLUB";
+
+        const option = document.createElement("option");
+        option.value = id;
+        option.textContent = `${shortName} — ${email}`;
+
+        dropdown.appendChild(option);
+      });
+    });
+
+    /* ============================================================
+       ADD OWNER
+       ============================================================ */
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const btn = document.getElementById("addOwnerBtn");
+      const status = document.getElementById("ownerStatus");
+
+      btn.onclick = async () => {
+        const email = document.getElementById("ownerEmail").value.trim();
+        const password = document.getElementById("ownerPassword").value.trim();
+        const club = document.getElementById("ownerClub").value.trim();
+
+        if (!email || !password || !club) {
+          status.textContent = "Fill all fields.";
+          return;
+        }
+
+        status.textContent = "Creating owner…";
+
+        const { error } = await supabase.functions.invoke("create-owner", {
+          body: { email, password, clubShortName: club }
+        });
+
+        status.textContent = error
+          ? "❌ " + error.message
+          : "✅ Owner created and a password‑setup email has been sent!";
+      };
+    });
+
+    /* ============================================================
+       UPDATE OWNER EMAIL
+       ============================================================ */
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const btn = document.getElementById("updateEmailBtn");
+      const status = document.getElementById("updateEmailStatus");
+
+      btn.onclick = async () => {
+        const userId = document.getElementById("updateOwnerSelect").value;
+        const newEmail = document.getElementById("newOwnerEmail").value.trim();
+
+        if (!userId || !newEmail) {
+          status.textContent = "Enter both fields.";
+          return;
+        }
+
+        status.textContent = "Updating email…";
+
+        const { error } = await supabase.functions.invoke("update-owner-email", {
+          body: { user_id: userId, new_email: newEmail }
+        });
+
+        status.textContent = error
+          ? "❌ " + error.message
+          : "✅ Email updated!";
+      };
+    });
+
+    /* ============================================================
+       RESET OWNER PASSWORD
+       ============================================================ */
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const btn = document.getElementById("resetPasswordBtn");
+      const status = document.getElementById("resetPasswordStatus");
+
+      btn.onclick = async () => {
+        const email = document.getElementById("resetOwnerEmail").value.trim();
+
+        if (!email) {
+          status.textContent = "Enter email.";
+          return;
+        }
+
+        status.textContent = "Sending reset email…";
+
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html"
+        });
+
+        status.textContent = error
+          ? "❌ " + error.message
+          : "✅ Reset email sent!";
+      };
+    });
+    /* ============================================================
+       DRAFT AUCTION SETTINGS
+       ============================================================ */
+
+    function generateRandomDraftEndTime() {
+      const now = new Date();
+
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+      const baseEnd = new Date(tomorrow);
+      baseEnd.setHours(18, 50, 0, 0);
+
+      const extraSeconds = Math.floor(Math.random() * 600);
+
+      return new Date(baseEnd.getTime() + extraSeconds * 1000);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+
+      async function loadSettings() {
+        const { data, error } = await supabase
+          .from("global_settings")
+          .select("*")
+          .eq("id", 1)
+          .single();
+
+        if (error) {
+          console.error(error);
+          return;
+        }
+
+        document.getElementById("transferWindowSelect").value =
+          data.transfer_window_open ? "true" : "false";
+
+        document.getElementById("draftAuctionSelect").value =
+          data.draft_auction_enabled ? "true" : "false";
+      }
+
+      /* ============================================================
+         SAVE SETTINGS — FINAL UK‑SAFE VERSION
+         ============================================================ */
+
+      document.getElementById("saveSettingsBtn").onclick = async () => {
+        const transfer_window_open =
+          document.getElementById("transferWindowSelect").value === "true";
+
+        const draft_auction_enabled =
+          document.getElementById("draftAuctionSelect").value === "true";
+
+        let draft_random_finish_time = null;
+        let draft_auction_start_time = null;
+
+        if (draft_auction_enabled) {
+
+          // Get current UK date/time components
+          const now = new Date();
+          const ukFormatter = new Intl.DateTimeFormat("en-GB", {
+            timeZone: "Europe/London",
+            year: "numeric",
+            month: "numeric",
+            day: "numeric",
+            hour: "numeric",
+            minute: "numeric",
+            second: "numeric",
+            hour12: false
+          });
+
+          const parts = ukFormatter.formatToParts(now);
+          const get = (type) => parts.find(p => p.type === type).value;
+
+          const ukYear = parseInt(get("year"));
+          const ukMonth = parseInt(get("month")) - 1;
+          const ukDay = parseInt(get("day"));
+          const ukHour = parseInt(get("hour"));
+
+          // If it's already past 19:00 UK time, schedule for tomorrow
+          const targetDay = ukHour >= 19 ? ukDay + 1 : ukDay;
+
+          // 19:00 UK time = 18:00 UTC
+          const ukStart = new Date(Date.UTC(ukYear, ukMonth, targetDay, 18, 0, 0, 0));
+
+          draft_auction_start_time = ukStart.toISOString();
+
+          // Random finish time (still based on local date, but stored as UTC)
+          const randomEnd = generateRandomDraftEndTime();
+          draft_random_finish_time = randomEnd.toISOString();
+        }
+
+        const { error } = await supabase.functions.invoke(
+          "update-global-settings",
+          {
+            body: {
+              transfer_window_open,
+              draft_auction_enabled,
+              draft_random_finish_time,
+              draft_auction_start_time
+            }
+          }
+        );
+
+        document.getElementById("settingsMessage").textContent =
+          error ? "❌ " + error.message : "✅ Settings updated!";
+      };
+
+      loadSettings();
+    });
+
+    /* ============================================================
+       RESET DRAFT AUCTION
+       ============================================================ */
+
+    document.getElementById("resetDraftBtn").onclick = async () => {
+      const status = document.getElementById("resetDraftStatus");
+
+      if (!confirm("Are you absolutely sure? This will delete ALL draft listings, ALL draft bids, and reset the draft state.")) {
+        return;
+      }
+
+      status.textContent = "Resetting draft auction…";
+      status.style.color = "#ffcc00";
+
+      try {
+        await supabase
+          .from("Player_Transfer_Listings")
+          .delete()
+          .eq("listing_type", "draft");
+
+        await supabase
+          .from("Player_Transfer_Bids")
+          .delete()
+          .or("is_direct.eq.true,is_first_draft_bid.eq.true,is_draft_join.eq.true");
+
+        await supabase
+          .from("global_settings")
+          .update({
+            draft_auction_enabled: false,
+            draft_random_finish_time: null,
+            draft_auction_start_time: null
+          })
+          .eq("id", 1);
+
+        status.textContent = "Draft auction has been fully reset.";
+        status.style.color = "lime";
+
+      } catch (err) {
+        console.error(err);
+        status.textContent = "Error resetting draft auction.";
+        status.style.color = "red";
+      }
+    };
+
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,177 @@
+/* ==========================================================
+   SQUAD PAGE DARK THEME
+   ========================================================== */
+
+body.squad-page {
+  color: #ddd;
+  background: #000; /* ensures no white gaps */
+}
+
+/* Remove white background from dashboard panels */
+body.squad-page .page-container,
+body.squad-page .panel {
+  background: transparent !important;
+}
+
+/* Section headers */
+body.squad-page .section-header {
+  color: #ff9900;
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+/* ==========================================================
+   TABLE STYLING
+   ========================================================== */
+
+body.squad-page .gpsl-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #1a1a1a;
+  color: #ddd;
+}
+
+body.squad-page .gpsl-table th {
+  background: #222;
+  color: #ff9900;
+  padding: 10px;
+  border-bottom: 1px solid #333;
+  text-align: left;
+}
+
+body.squad-page .gpsl-table td {
+  padding: 10px;
+  border-bottom: 1px solid #333;
+  color: #ddd;
+}
+
+body.squad-page .gpsl-table tr:hover {
+  background: #222;
+}
+
+/* ==========================================================
+   POSITION GROUP HEADERS
+   ========================================================== */
+
+body.squad-page .squad-section-row {
+  background: #111;
+}
+
+body.squad-page .squad-section-title {
+  color: #ff9900;
+  font-weight: bold;
+  padding: 8px;
+  font-size: 18px;
+}
+
+/* ==========================================================
+   PLAYER IMAGE
+   ========================================================== */
+
+body.squad-page .player-thumb {
+  width: 50px !important;
+  height: 50px !important;
+  object-fit: contain !important;
+  border-radius: 4px;
+}
+
+/* ==========================================================
+   STATUS PILLS
+   ========================================================== */
+
+body.squad-page .status-pill {
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #111;
+}
+
+body.squad-page .status-listed {
+  background: #ff9900;
+}
+
+body.squad-page .status-not-listed {
+  background: #555;
+  color: #ddd;
+}
+
+/* ==========================================================
+   ACTION DROPDOWN
+   ========================================================== */
+
+body.squad-page select {
+  background: #111 !important;
+  color: #ddd !important;
+  border: 1px solid #444 !important;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+/* ==========================================================
+   LIST PLAYER MODAL
+   ========================================================== */
+
+body.squad-page #list-player-modal-backdrop {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+body.squad-page #list-player-modal {
+  background: #1a1a1a;
+  padding: 20px;
+  border-radius: 10px;
+  width: 400px;
+  color: #ddd;
+  border: 1px solid #333;
+}
+
+body.squad-page #list-player-modal h3 {
+  color: #ff9900;
+  margin-top: 0;
+}
+
+body.squad-page #list-player-modal input {
+  background: #111;
+  color: #ddd;
+  border: 1px solid #444;
+  padding: 6px;
+  width: 100%;
+}
+
+body.squad-page .modal-row {
+  margin-top: 10px;
+}
+
+body.squad-page #reserveError {
+  color: #ff4444;
+  margin-top: 5px;
+}
+
+/* Buttons inside modal */
+body.squad-page .dec-btn,
+body.squad-page .inc-btn {
+  background: #333;
+  color: #ddd;
+  border: 1px solid #444;
+  padding: 5px 10px;
+  margin: 2px;
+  cursor: pointer;
+}
+
+body.squad-page .dec-btn:hover,
+body.squad-page .inc-btn:hover {
+  background: #444;
+}
+
+body.squad-page .modal-buttons {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+}

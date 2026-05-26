@@ -1,0 +1,685 @@
+/* ============================================================
+   MODULE: Dashboard Stylesheet
+   Purpose:
+   - Defines layout and visual identity for the Club Dashboard
+   - Covers: header, club details, panels, tables, modals, finance box
+   - Used exclusively by dashboard.html
+   ============================================================ */
+
+
+/* ============================
+   HEADER LAYOUT
+   ============================ */
+
+#headerContainer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  gap: 20px;
+}
+
+#headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#clubBadgeHeader {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: #222;
+}
+
+#dashboardTitle {
+  margin: 0;
+  color: #ff9900;
+}
+
+#userEmail {
+  color: #ccc;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+
+/* ============================
+   CLUB DETAILS PANEL
+   ============================ */
+
+#headerRight {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: auto;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+.panelTitle {
+  color: #ff9900;
+  margin-bottom: 10px;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+#clubDetailsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #ddd;
+  font-size: 14px;
+}
+
+.detailRow label {
+  color: #ff9900;
+  font-weight: bold;
+  margin-right: 10px;
+}
+
+
+/* ============================
+   OWNER FIELD STATES
+   ============================ */
+
+#ownerInput {
+  padding: 5px;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background: #111;
+  color: #ddd;
+  transition: 0.2s;
+}
+
+#ownerInput:disabled {
+  background: #333;
+  color: #aaa;
+  border: 1px solid #444;
+}
+
+.small-btn {
+  padding: 6px 12px;
+  background: #444;
+  color: #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.2s;
+  border: none;
+}
+
+.small-btn:hover {
+  background: #666;
+}
+
+#saveOwnerBtn {
+  display: none;
+  background: #ff9900;
+  color: #111;
+}
+
+#saveOwnerBtn:hover {
+  background: #ffb84d;
+}
+
+
+/* ============================
+   MAIN CONTENT LAYOUT
+   ============================ */
+
+#mainContent {
+  display: flex;
+  padding: 20px;
+  gap: 20px;
+}
+
+#leftColumn {
+  flex: 3;
+}
+
+#rightColumn {
+  flex: 1;
+}
+
+
+/* ============================
+   SECTION HEADERS
+   ============================ */
+
+.section-header {
+  margin: 24px 0 8px 0;
+  background: #222;
+  color: #ff9900;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 18px;
+  font-weight: bold;
+  display: inline-block;
+}
+
+
+/* ============================
+   PANELS
+   ============================ */
+
+.panel {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.panel h2 {
+  margin: 0 0 10px 0;
+  color: #ff9900;
+  font-size: 18px;
+  border-bottom: 1px solid #333;
+  padding-bottom: 6px;
+}
+
+
+/* ============================
+   TABLES
+   ============================ */
+
+table.gpsl-table {
+  width: 100%;
+  border-collapse: separate;
+  font-size: 14px;
+  background: #1a1a1a;
+}
+
+table.gpsl-table th {
+  background: #222;
+  color: #ff9900;
+  padding: 8px;
+  text-align: left;
+}
+
+table.gpsl-table td {
+  padding: 8px;
+  border-bottom: 1px solid #333;
+  overflow: visible !important;
+}
+
+table.gpsl-table tr {
+  height: auto !important;
+  overflow: visible !important;
+}
+
+table.gpsl-table tr:nth-child(even) {
+  background: #181818;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+
+.status-listed {
+  background: #334422;
+  color: #aaff66;
+}
+
+.status-not-listed {
+  background: #442222;
+  color: #ff8888;
+}
+
+.decision-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.decision-buttons button {
+  flex: 1;
+}
+
+.finance-box {
+  font-size: 16px;
+  margin-top: 10px;
+  padding: 10px;
+  background: #222;
+  border-radius: 6px;
+  color: #ffaa22;
+}
+
+
+/* ============================
+   NEGATIVE BALANCE
+   ============================ */
+
+.negative-balance {
+  color: #ff4444;
+  font-weight: bold;
+}
+
+
+/* ============================
+   LIST PLAYER MODAL
+   ============================ */
+
+#list-player-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+#list-player-modal {
+  background: #1a1a1a;
+  border-radius: 8px;
+  border: 1px solid #444;
+  padding: 18px 20px;
+  width: 360px;
+  max-width: 90%;
+  box-shadow: 0 0 14px rgba(0, 0, 0, 0.85);
+}
+
+#list-player-modal h3 {
+  margin: 0 0 12px 0;
+  color: #ff9900;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+#modalPlayerName {
+  font-size: 16px;
+  color: #eee;
+  margin-bottom: 4px;
+}
+
+#modalPlayerInfo {
+  font-size: 13px;
+  color: #ccc;
+  margin-bottom: 10px;
+}
+
+.modal-row {
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.modal-row label {
+  display: block;
+  margin-bottom: 4px;
+  color: #ff9900;
+  font-weight: bold;
+}
+
+.modal-row input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background: #111;
+  color: #ddd;
+  font-size: 13px;
+}
+
+#reserveError {
+  margin-top: 4px;
+  color: #ff6666;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+#modalWarning {
+  margin: 14px 0;
+  padding: 8px 10px;
+  background: #332200;
+  border-left: 3px solid #ff9900;
+  color: #ffcc66;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  border-radius: 4px;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.modal-buttons .button {
+  flex: 1;
+  padding: 8px 12px;
+  margin: 0 4px;
+  background: #333;
+  color: #ddd;
+  border: 1px solid #444;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.modal-buttons .button:hover {
+  background: #555;
+}
+
+#confirmListBtn {
+  background: #ff9900;
+  color: #111;
+  border: none;
+}
+
+#confirmListBtn:hover {
+  background: #ffb84d;
+}
+
+
+/* ============================
+   EXTRA SPACING FOR TRANSFER CENTRE
+   ============================ */
+
+#rightColumn .panel {
+  margin-bottom: 24px;
+}
+
+
+/* ============================
+   DISMISS BUTTONS
+   ============================ */
+
+.dismiss-btn,
+.dismiss-bid-btn {
+  background: #aa2222;
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: 0.15s ease-in-out;
+}
+
+.dismiss-btn:hover,
+.dismiss-bid-btn:hover {
+  background: #cc3333;
+  transform: scale(1.05);
+}
+
+
+/* ============================
+   SQUAD SECTION HEADERS
+   ============================ */
+
+.squad-section-row {
+  background: #222;
+}
+
+.squad-section-title {
+  font-weight: bold;
+  color: #ff9900;
+  padding: 8px;
+  font-size: 15px;
+  text-transform: uppercase;
+}
+
+
+/* ============================
+   MONEY FORMATTING
+   ============================ */
+
+.money {
+  white-space: nowrap;
+}
+
+
+/* ============================
+   INCREMENT BUTTONS
+   ============================ */
+
+.inc-btn {
+  padding: 6px 10px;
+  margin-right: 6px;
+  background: #444;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #666;
+  font-size: 13px;
+}
+
+.inc-btn:hover {
+  background: #666;
+}
+
+.dec-btn {
+  padding: 6px 10px;
+  margin-right: 6px;
+  background: #552222;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid #884444;
+  font-size: 13px;
+}
+
+.dec-btn:hover {
+  background: #773333;
+}
+
+
+/* ============================================================
+   PLAYER IMAGE — BIG PORTRAIT (NO CROPPING)
+   ============================================================ */
+
+.player-thumb {
+  height: 130px;
+  width: auto;
+  object-fit: contain;
+  background: #000;
+  border-radius: 6px;
+  border: 1px solid #333;
+  padding: 2px;
+  display: block;
+  margin: 0 auto;
+}
+
+
+/* ============================================================
+   FIX: Allow tall images inside table rows
+   ============================================================ */
+
+table.gpsl-table tr,
+table.gpsl-table td {
+  height: auto !important;
+  overflow: visible !important;
+}
+
+
+/* ============================================================
+   NEW NAVIGATION BAR (MODERN STYLE)
+   ============================================================ */
+
+#nav {
+  padding: 15px;
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+  text-align: center;
+}
+
+/* Modern nav buttons */
+#nav .button {
+  display: inline-block;
+  padding: 10px 18px;
+  margin: 0 6px;
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 6px;
+  color: #ff9900;
+  text-decoration: none;
+  font-weight: bold;
+  transition: 0.2s;
+}
+
+/* Hover effect */
+#nav .button:hover {
+  background: #333;
+  border-color: #ff9900;
+  transform: scale(1.05);
+}
+
+/* Active page highlight */
+#nav .button.active {
+  background: #ff9900;
+  color: #111;
+  border-color: #ff9900;
+}
+
+/* Logout button override */
+#nav #logoutBtn {
+  background: #aa2222;
+  border-color: #cc3333;
+  color: #fff;
+}
+
+#nav #logoutBtn:hover {
+  background: #cc3333;
+  border-color: #ff4444;
+}
+
+/* ============================================================
+   PANEL BACKGROUND WATERMARKS
+   ============================================================ */
+
+.panel-bg {
+  position: relative;
+  overflow: hidden;
+}
+
+.panel-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.12;        /* watermark strength */
+  pointer-events: none;
+  z-index: 0;
+  filter: grayscale(100%) contrast(80%);
+}
+
+.panel-bg > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Specific panel images */
+.panel-club::after {
+  background-image: url("images/panel_bg/Club_Details.png");
+}
+
+.panel-stadium::after {
+  background-image: url("images/panel_bg/stadium.png");
+}
+
+.panel-finances::after {
+  background-image: url("images/panel_bg/finances.png");
+}
+
+.panel-squad::after {
+  background-image: url("images/panel_bg/squad.png");
+}
+
+.panel-transfer::after {
+  background-image: url("images/panel_bg/transfer.png");
+}
+
+.panel-fixtures::after {
+  background-image: url("images/panel_bg/fixtures.png");
+}
+
+/* ==========================================
+   WATERMARK FOR CLUB DETAILS TILE ONLY
+   ========================================== */
+
+.tile {
+  position: relative;
+  overflow: hidden;
+}
+
+.tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-size: contain; /* SCALE WITHOUT CROPPING */
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.12;
+  filter: grayscale(100%) contrast(80%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.tile > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Club Details watermark */
+.tile-club::after {
+  background-image: url("images/panel_bg/Club_Details.png");
+}
+
+/* Stadium watermark */
+.tile-stadium::after {
+  background-image: url("images/panel_bg/stadium.png");
+}
+
+/* Finances watermark */
+.tile-finances::after {
+  background-image: url("images/panel_bg/Finances.png");
+}
+
+/* Squad watermark */
+.tile-squad::after {
+  background-image: url("images/panel_bg/Squad.png");
+}
+
+/* Transfer Centre watermark */
+.tile-transfer::after {
+  background-image: url("images/panel_bg/Transfer.png");
+}
+
+/* Match Day watermark */
+.tile-matchday::after {
+  background-image: url("images/panel_bg/MatchDay.png");
+}
+/* Fixtures watermark */
+.tile-fixtures::after {
+  background-image: url("images/panel_bg/Fixtures.png");
+}
+
+/* Club History watermark */
+.tile-history::after {
+  background-image: url("images/panel_bg/History.png");
+  background-size: contain;
+}
+
+/* Competition Progress watermark */
+.tile-progress::after {
+  background-image: url("images/panel_bg/Progress.png");
+  background-size: contain;
+}
