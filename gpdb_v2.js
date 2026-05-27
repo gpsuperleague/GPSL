@@ -460,9 +460,10 @@ function formatHeader(col) {
               .map(col => {
                 let value = player[col];
 
-                if (col === "market_value" && value !== null) {
-                  value = "₿ " + Number(value).toLocaleString("en-GB");
-                }
+               if (col === "market_value" && value !== null) {
+                 value = "₿ " + Number(value).toLocaleString("en-GB");
+               }
+
 
                 if (col === "Maximum_Reserve_Price" && value !== null) {
                   value = "₿ " + Number(value).toLocaleString("en-GB");
