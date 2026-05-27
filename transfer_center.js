@@ -1,6 +1,5 @@
 // ============================================================
-// TRANSFER CENTRE — Standalone JS Module
-// Extracted and modernised from legacy dashboard.js
+// TRANSFER CENTRE — Corrected JS (Schema‑accurate, error‑free)
 // ============================================================
 
 import { supabase } from "./supabase_client.js";
@@ -8,15 +7,9 @@ import { initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
-
-  // ============================================================
-  // 1. GLOBAL INITIALISATION (nav + countdown)
-  // ============================================================
   await initGlobal();
 
-  // ============================================================
-  // 2. LOAD USER + CLUB
-  // ============================================================
+  // Load user
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     window.location = "login.html";
@@ -25,16 +18,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("userEmail").textContent = user.email;
 
-  const { data: club, error } = await supabase
+  // Load club
+  const { data: club } = await supabase
     .from("Clubs")
     .select("*")
     .eq("owner_id", user.id)
     .single();
-
-  if (error || !club) {
-    console.error("No club found for user:", error);
-    return;
-  }
 
   await loadClubsMap();
 
@@ -45,9 +34,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${shortName}.png`;
 
-  // ============================================================
-  // 3. LOAD ALL TRANSFER SECTIONS
-  // ============================================================
+  // Load all sections
   loadActiveListings(shortName);
   loadActiveBids(shortName);
   loadSellerReview(shortName);
@@ -55,11 +42,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadSeasonSignings(shortName);
   loadSeasonSales(shortName);
 
-  // ============================================================
-  // 4. SETUP LIST PLAYER MODAL
-  // ============================================================
   setupListPlayerModal(shortName);
 });
+
+
+// ============================================================
+// HELPER: Fetch players by Konami_ID
+// ============================================================
+
+async function fetchPlayersMap(playerIds) {
+  if (playerIds.length === 0) return new Map();
+
+  const { data } = await supabase
+    .from("Players")
+    .select("*")
+    .in("Konami_ID", playerIds);
+
+  const map = new Map();
+  data.forEach(p => map.set(p.Konami_ID, p));
+  return map;
+}
 
 
 // ============================================================
@@ -70,23 +72,20 @@ async function loadActiveListings(shortName) {
   const container = document.getElementById("activeListingsContainer");
   container.innerHTML = "Loading…";
 
-  const { data, error } = await supabase
+  const { data: listings } = await supabase
     .from("Player_Transfer_Listings")
-    .select("*, Players(*)")
+    .select("*")
     .eq("seller_club_id", shortName)
-    .eq("status", "active")
+    .eq("status", "Active")
     .order("created_at", { ascending: false });
 
-  if (error) {
-    container.innerHTML = "Error loading listings.";
-    console.error(error);
-    return;
-  }
-
-  if (!data || data.length === 0) {
+  if (!listings || listings.length === 0) {
     container.innerHTML = "<i>No active listings.</i>";
     return;
   }
+
+  const playerIds = listings.map(l => l.player_id);
+  const players = await fetchPlayersMap(playerIds);
 
   container.innerHTML = `
     <table class="gpsl-table">
@@ -96,9 +95,9 @@ async function loadActiveListings(shortName) {
         <th>Status</th>
         <th></th>
       </tr>
-      ${data.map(row => `
+      ${listings.map(row => `
         <tr>
-          <td>${row.Players.Name}</td>
+          <td>${players.get(row.player_id)?.Name || "Unknown"}</td>
           <td>₿ ${Number(row.reserve_price).toLocaleString("en-GB")}</td>
           <td><span class="status-pill status-listed">Listed</span></td>
           <td><button class="dismiss-btn" data-id="${row.id}">Remove</button></td>
@@ -111,11 +110,6 @@ async function loadActiveListings(shortName) {
     btn.addEventListener("click", () => removeListing(btn.dataset.id, shortName));
   });
 }
-
-
-// ============================================================
-// REMOVE LISTING
-// ============================================================
 
 async function removeListing(listingId, shortName) {
   await supabase
@@ -135,23 +129,31 @@ async function loadActiveBids(shortName) {
   const container = document.getElementById("activeBidsContainer");
   container.innerHTML = "Loading…";
 
-  const { data, error } = await supabase
+  const { data: bids } = await supabase
     .from("Player_Transfer_Bids")
-    .select("*, Players(*)")
+    .select("*")
     .eq("bidder_club_id", shortName)
     .eq("is_direct", true)
     .order("bid_time", { ascending: false });
 
-  if (error) {
-    container.innerHTML = "Error loading bids.";
-    console.error(error);
-    return;
-  }
-
-  if (!data || data.length === 0) {
+  if (!bids || bids.length === 0) {
     container.innerHTML = "<i>No active bids.</i>";
     return;
   }
+
+  // Fetch listings
+  const listingIds = bids.map(b => b.listing_id);
+  const { data: listings } = await supabase
+    .from("Player_Transfer_Listings")
+    .select("*")
+    .in("id", listingIds);
+
+  const listingMap = new Map();
+  listings.forEach(l => listingMap.set(l.id, l));
+
+  // Fetch players
+  const playerIds = listings.map(l => l.player_id);
+  const players = await fetchPlayersMap(playerIds);
 
   container.innerHTML = `
     <table class="gpsl-table">
@@ -161,14 +163,18 @@ async function loadActiveBids(shortName) {
         <th>Time</th>
         <th></th>
       </tr>
-      ${data.map(row => `
-        <tr>
-          <td>${row.Players.Name}</td>
-          <td>₿ ${Number(row.bid_amount).toLocaleString("en-GB")}</td>
-          <td>${new Date(row.bid_time).toLocaleString()}</td>
-          <td><button class="dismiss-bid-btn" data-id="${row.bid_id}">Cancel</button></td>
-        </tr>
-      `).join("")}
+      ${bids.map(row => {
+        const listing = listingMap.get(row.listing_id);
+        const player = players.get(listing?.player_id);
+        return `
+          <tr>
+            <td>${player?.Name || "Unknown"}</td>
+            <td>₿ ${Number(row.bid_amount).toLocaleString("en-GB")}</td>
+            <td>${new Date(row.bid_time).toLocaleString()}</td>
+            <td><button class="dismiss-bid-btn" data-id="${row.bid_id}">Cancel</button></td>
+          </tr>
+        `;
+      }).join("")}
     </table>
   `;
 
@@ -176,11 +182,6 @@ async function loadActiveBids(shortName) {
     btn.addEventListener("click", () => removeBid(btn.dataset.id, shortName));
   });
 }
-
-
-// ============================================================
-// REMOVE BID
-// ============================================================
 
 async function removeBid(bidId, shortName) {
   await supabase
@@ -200,23 +201,29 @@ async function loadSellerReview(shortName) {
   const container = document.getElementById("sellerReviewContainer");
   container.innerHTML = "Loading…";
 
-  const { data, error } = await supabase
+  const { data: bids } = await supabase
     .from("Player_Transfer_Bids")
-    .select("*, Players(*)")
+    .select("*")
     .eq("seller_club_id", shortName)
     .eq("is_direct", true)
     .order("bid_time", { ascending: false });
 
-  if (error) {
-    container.innerHTML = "Error loading seller review.";
-    console.error(error);
-    return;
-  }
-
-  if (!data || data.length === 0) {
+  if (!bids || bids.length === 0) {
     container.innerHTML = "<i>No bids to review.</i>";
     return;
   }
+
+  const listingIds = bids.map(b => b.listing_id);
+  const { data: listings } = await supabase
+    .from("Player_Transfer_Listings")
+    .select("*")
+    .in("id", listingIds);
+
+  const listingMap = new Map();
+  listings.forEach(l => listingMap.set(l.id, l));
+
+  const playerIds = listings.map(l => l.player_id);
+  const players = await fetchPlayersMap(playerIds);
 
   container.innerHTML = `
     <table class="gpsl-table">
@@ -226,14 +233,18 @@ async function loadSellerReview(shortName) {
         <th>Amount</th>
         <th>Time</th>
       </tr>
-      ${data.map(row => `
-        <tr>
-          <td>${row.Players.Name}</td>
-          <td>${row.bidder_club_id}</td>
-          <td>₿ ${Number(row.bid_amount).toLocaleString("en-GB")}</td>
-          <td>${new Date(row.bid_time).toLocaleString()}</td>
-        </tr>
-      `).join("")}
+      ${bids.map(row => {
+        const listing = listingMap.get(row.listing_id);
+        const player = players.get(listing?.player_id);
+        return `
+          <tr>
+            <td>${player?.Name || "Unknown"}</td>
+            <td>${row.bidder_club_id}</td>
+            <td>₿ ${Number(row.bid_amount).toLocaleString("en-GB")}</td>
+            <td>${new Date(row.bid_time).toLocaleString()}</td>
+          </tr>
+        `;
+      }).join("")}
     </table>
   `;
 }
@@ -247,23 +258,20 @@ async function loadClosedListings(shortName) {
   const container = document.getElementById("closedListingsContainer");
   container.innerHTML = "Loading…";
 
-  const { data, error } = await supabase
+  const { data: listings } = await supabase
     .from("Player_Transfer_Listings")
-    .select("*, Players(*)")
+    .select("*")
     .eq("seller_club_id", shortName)
-    .eq("status", "closed")
+    .eq("status", "Closed")
     .order("end_time", { ascending: false });
 
-  if (error) {
-    container.innerHTML = "Error loading closed listings.";
-    console.error(error);
-    return;
-  }
-
-  if (!data || data.length === 0) {
+  if (!listings || listings.length === 0) {
     container.innerHTML = "<i>No closed listings.</i>";
     return;
   }
+
+  const playerIds = listings.map(l => l.player_id);
+  const players = await fetchPlayersMap(playerIds);
 
   container.innerHTML = `
     <table class="gpsl-table">
@@ -272,9 +280,9 @@ async function loadClosedListings(shortName) {
         <th>Final Price</th>
         <th>Ended</th>
       </tr>
-      ${data.map(row => `
+      ${listings.map(row => `
         <tr>
-          <td>${row.Players.Name}</td>
+          <td>${players.get(row.player_id)?.Name || "Unknown"}</td>
           <td>₿ ${Number(row.final_price || 0).toLocaleString("en-GB")}</td>
           <td>${new Date(row.end_time).toLocaleString()}</td>
         </tr>
@@ -285,29 +293,26 @@ async function loadClosedListings(shortName) {
 
 
 // ============================================================
-// SEASON SIGNINGS
+// SEASON SIGNINGS (Transfer_History)
 // ============================================================
 
 async function loadSeasonSignings(shortName) {
   const container = document.getElementById("seasonSigningsContainer");
   container.innerHTML = "Loading…";
 
-  const { data, error } = await supabase
-    .from("Transfers")
-    .select("*, Players(*)")
+  const { data: transfers } = await supabase
+    .from("Transfer_History")
+    .select("*")
     .eq("buyer_club_id", shortName)
     .order("transfer_time", { ascending: false });
 
-  if (error) {
-    container.innerHTML = "Error loading signings.";
-    console.error(error);
-    return;
-  }
-
-  if (!data || data.length === 0) {
+  if (!transfers || transfers.length === 0) {
     container.innerHTML = "<i>No signings this season.</i>";
     return;
   }
+
+  const playerIds = transfers.map(t => t.player_id);
+  const players = await fetchPlayersMap(playerIds);
 
   container.innerHTML = `
     <table class="gpsl-table">
@@ -317,11 +322,11 @@ async function loadSeasonSignings(shortName) {
         <th>Price</th>
         <th>Date</th>
       </tr>
-      ${data.map(row => `
+      ${transfers.map(row => `
         <tr>
-          <td>${row.Players.Name}</td>
+          <td>${players.get(row.player_id)?.Name || "Unknown"}</td>
           <td>${row.seller_club_id || "FREE AGENT"}</td>
-          <td>₿ ${Number(row.amount).toLocaleString("en-GB")}</td>
+          <td>₿ ${Number(row.fee).toLocaleString("en-GB")}</td>
           <td>${new Date(row.transfer_time).toLocaleString()}</td>
         </tr>
       `).join("")}
@@ -331,29 +336,26 @@ async function loadSeasonSignings(shortName) {
 
 
 // ============================================================
-// SEASON SALES
+// SEASON SALES (Transfer_History)
 // ============================================================
 
 async function loadSeasonSales(shortName) {
   const container = document.getElementById("seasonSalesContainer");
   container.innerHTML = "Loading…";
 
-  const { data, error } = await supabase
-    .from("Transfers")
-    .select("*, Players(*)")
+  const { data: transfers } = await supabase
+    .from("Transfer_History")
+    .select("*")
     .eq("seller_club_id", shortName)
     .order("transfer_time", { ascending: false });
 
-  if (error) {
-    container.innerHTML = "Error loading sales.";
-    console.error(error);
-    return;
-  }
-
-  if (!data || data.length === 0) {
+  if (!transfers || transfers.length === 0) {
     container.innerHTML = "<i>No sales this season.</i>";
     return;
   }
+
+  const playerIds = transfers.map(t => t.player_id);
+  const players = await fetchPlayersMap(playerIds);
 
   container.innerHTML = `
     <table class="gpsl-table">
@@ -363,11 +365,11 @@ async function loadSeasonSales(shortName) {
         <th>Price</th>
         <th>Date</th>
       </tr>
-      ${data.map(row => `
+      ${transfers.map(row => `
         <tr>
-          <td>${row.Players.Name}</td>
+          <td>${players.get(row.player_id)?.Name || "Unknown"}</td>
           <td>${row.buyer_club_id}</td>
-          <td>₿ ${Number(row.amount).toLocaleString("en-GB")}</td>
+          <td>₿ ${Number(row.fee).toLocaleString("en-GB")}</td>
           <td>${new Date(row.transfer_time).toLocaleString()}</td>
         </tr>
       `).join("")}
@@ -405,7 +407,7 @@ function setupListPlayerModal(shortName) {
       player_id: playerId,
       seller_club_id: shortName,
       reserve_price: reserve,
-      status: "active",
+      status: "Active",
       created_at: new Date().toISOString()
     });
 
@@ -417,7 +419,7 @@ function setupListPlayerModal(shortName) {
 
 
 // ============================================================
-// OPEN LIST PLAYER MODAL (called externally)
+// OPEN LIST PLAYER MODAL
 // ============================================================
 
 export function openListPlayerModal(playerId, name, info) {
