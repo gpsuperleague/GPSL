@@ -576,15 +576,6 @@ function formatHeader(col) {
 
   document.getElementById("confirmOfferBtn").onclick = async () => {
     const nowLocal = new Date();
-
-  // Only block if this is a FREE AGENT (draft auction) bid
-if (!sellerClub) {
-  if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-    document.getElementById("offerError").textContent =
-      "Draft auction has not started yet.";
-    return;
-  }
-}
     const input = document.getElementById("offerAmount");
     const errorBox = document.getElementById("offerError");
 
