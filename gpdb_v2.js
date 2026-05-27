@@ -1,6 +1,6 @@
-   /* ============================================================
-   MODULE A: Supabase Client (imports MUST be at top)
-   ============================================================ */
+/* ============================================================
+ MODULE A: Supabase Client (imports MUST be at top)
+ ============================================================ */
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
@@ -183,8 +183,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let CURRENT_PAGE = 1;
 
   let CURRENT_FILTERS = {};
-  let CURRENT_SORT_COLUMN = null;
-  let CURRENT_SORT_DIR = "asc";
+
+  // ⭐ Default sort: Rating DESC, then market_value DESC
+  let CURRENT_SORT_COLUMN = "Rating";
+  let CURRENT_SORT_DIR = "desc";
 
   let MV_MIN = null;
   let MV_MAX = null;
@@ -249,6 +251,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .from("Players")
       .select(COLUMNS.join(","), { count: "exact" });
 
+    // Apply filters (including dropdowns) to the FULL dataset
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
       if (value.trim() === "") return;
 
@@ -263,15 +266,34 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
+    // Min/Max Market Value across entire player base
     if (MV_MIN !== null) query = query.gte("market_value", MV_MIN);
     if (MV_MAX !== null) query = query.lte("market_value", MV_MAX);
 
+    // Sorting
     if (CURRENT_SORT_COLUMN) {
-      query = query.order(CURRENT_SORT_COLUMN, {
-        ascending: CURRENT_SORT_DIR === "asc"
-      });
+      if (CURRENT_SORT_COLUMN === "Rating") {
+        // ⭐ Default: Rating DESC, then market_value DESC
+        query = query
+          .order("Rating", { ascending: false })
+          .order("market_value", { ascending: false });
+      } else if (CURRENT_SORT_COLUMN === "market_value") {
+        query = query
+          .order("market_value", { ascending: CURRENT_SORT_DIR === "asc" })
+          .order("Rating", { ascending: false });
+      } else {
+        query = query.order(CURRENT_SORT_COLUMN, {
+          ascending: CURRENT_SORT_DIR === "asc"
+        });
+      }
+    } else {
+      // Fallback default sort
+      query = query
+        .order("Rating", { ascending: false })
+        .order("market_value", { ascending: false });
     }
 
+    // Pagination AFTER filters + sort
     query = query.range(from, to);
 
     const { data, error, count } = await query;
@@ -383,6 +405,7 @@ document.addEventListener("DOMContentLoaded", () => {
       })
       .join("");
 
+    // Column sorting
     Array.from(tableHead.querySelectorAll("th[data-col]")).forEach(th => {
       const col = th.getAttribute("data-col");
       th.onclick = () => {
@@ -396,6 +419,7 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     });
 
+    // Row click → PESDB
     Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
       row.style.cursor = "pointer";
       row.addEventListener("click", e => {
@@ -410,6 +434,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
+    // Make Offer buttons
     document.querySelectorAll(".make-offer-btn").forEach(btn => {
       btn.addEventListener("click", () => openMakeOfferModal(btn.dataset.playerId));
     });
@@ -845,50 +870,39 @@ document.addEventListener("DOMContentLoaded", () => {
      MODULE H: Filters + Controls
      ============================================================ */
 
+  // ⭐ Optimised dropdown population using DISTINCT (no more 1000-row batching)
   async function populateDropdowns() {
     for (const col of DROPDOWN_COLUMNS) {
       const select = document.getElementById(`filter-${col}`);
-      let allValues = [];
-      const batchSize = 1000;
+      if (!select) continue;
 
-      const { count } = await supabase
+      let { data, error } = await supabase
         .from("Players")
-        .select("Konami_ID", { count: "exact" })
-        .limit(1);
+        .select(col, { distinct: true });
 
-      if (!count) continue;
+      if (error || !data) {
+        console.error(`Error loading distinct values for ${col}:`, error);
+        continue;
+      }
 
-      for (let from = 0; from < count; from += batchSize) {
-        const to = Math.min(from + batchSize - 1, count - 1);
+      let values = data
+        .map(row => row[col])
+        .filter(v => v !== null && v !== undefined);
 
-        const { data } = await supabase
-          .from("Players")
-          .select(`Konami_ID, ${col}`)
-          .range(from, to);
-
-        if (data) {
-          allValues.push(
-            ...data.map(row => {
-              const v = row[col];
-              if (col === "Contracted_Team") {
-                if (!v || v.trim() === "") return "FREE AGENT";
-              }
-              return v;
-            })
-          );
-        }
+      if (col === "Contracted_Team") {
+        values = values.map(v => (v && String(v).trim() !== "" ? String(v).trim() : "FREE AGENT"));
       }
 
       let uniqueValues;
 
       if (col === "Season_Signed") {
-        uniqueValues = [...new Set(allValues.filter(v => v).map(v => Number(v)))].sort(
-          (a, b) => a - b
-        );
+        uniqueValues = [...new Set(values.map(v => Number(v)))]
+          .filter(v => !isNaN(v))
+          .sort((a, b) => a - b);
       } else {
-        uniqueValues = [
-          ...new Set(allValues.filter(v => v).map(v => String(v).trim()))
-        ].sort((a, b) => a.localeCompare(b));
+        uniqueValues = [...new Set(values.map(v => String(v).trim()))]
+          .filter(v => v !== "")
+          .sort((a, b) => a.localeCompare(b));
 
         if (col === "Contracted_Team") {
           uniqueValues = ["FREE AGENT", ...uniqueValues.filter(v => v !== "FREE AGENT")];
@@ -947,9 +961,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const mvMaxInput = document.getElementById("mv-max");
     const applyMV = document.getElementById("applyMV");
 
+    const parseMV = (val) => {
+      const raw = val.replace(/,/g, "").trim();
+      if (raw === "") return null;
+      const num = Number(raw);
+      return isNaN(num) ? null : num;
+    };
+
     applyMV.addEventListener("click", () => {
-      MV_MIN = mvMinInput.value.trim() === "" ? null : Number(mvMinInput.value);
-      MV_MAX = mvMaxInput.value.trim() === "" ? null : Number(mvMaxInput.value);
+      MV_MIN = parseMV(mvMinInput.value);
+      MV_MAX = parseMV(mvMaxInput.value);
       loadPage(1);
     });
 
@@ -957,8 +978,8 @@ document.addEventListener("DOMContentLoaded", () => {
       CURRENT_FILTERS = {};
       MV_MIN = null;
       MV_MAX = null;
-      CURRENT_SORT_COLUMN = null;
-      CURRENT_SORT_DIR = "asc";
+      CURRENT_SORT_COLUMN = "Rating";
+      CURRENT_SORT_DIR = "desc";
 
       document
         .querySelectorAll("#filters input, #filters select")
@@ -1014,4 +1035,3 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* END DOMContentLoaded WRAPPER */
 });
-
