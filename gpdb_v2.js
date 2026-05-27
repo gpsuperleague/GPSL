@@ -9,12 +9,16 @@ const supabase = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
 );
 
-let draftAuctionStartTime = null;
-let draftRandomFinishTime = null;
+let draftAuctionStartTime = null;     // official start of draft window
+let draftRandomFinishTime = null;     // random end between 18:50–18:59:59
 
 function getDraftWindowTimes() {
   const nowLocal = new Date();
-  const today = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate());
+  const today = new Date(
+    nowLocal.getFullYear(),
+    nowLocal.getMonth(),
+    nowLocal.getDate()
+  );
   const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
 
   const sevenPmYesterday = new Date(yesterday);
@@ -30,7 +34,7 @@ function getDraftWindowTimes() {
 }
 
 /* ============================================================
-   DRAFT CREDITS PANEL
+   DRAFT CREDITS PANEL (GPDB VIEW)
    ============================================================ */
 
 async function loadDraftCreditsForOwner() {
@@ -73,6 +77,7 @@ async function loadDraftCreditsForOwner() {
     const firstCount = firsts ? firsts.length : 0;
     const earned = firstCount * 2;
 
+    // joins can consume credits all the way until the random finish time
     const joinWindowEnd = draftRandomFinishTime || sixPmToday;
 
     const { data: joins } = await supabase
@@ -82,12 +87,14 @@ async function loadDraftCreditsForOwner() {
       .eq("is_draft_join", true)
       .eq("draft_join_consumed", true)
       .gte("bid_time", sevenPmYesterday.toISOString())
-      .lt(joinWindowEnd.toISOString());
+      .lt("bid_time", joinWindowEnd.toISOString());
 
     const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
 
+    const remaining = credits;
+
     document.getElementById("draftCreditsPanel").innerHTML = `
-      <b>Draft Credits:</b> ${credits}<br>
+      <b>Draft Credits:</b> ${remaining}<br>
       <span style="font-size:11px;color:#aaa;">
         Earned: ${earned} | Used: ${used}
       </span>
@@ -100,6 +107,7 @@ async function loadDraftCreditsForOwner() {
 async function getDraftCreditsForGPDB(clubShortName) {
   const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
+  // Earn credits only from first bids up to 18:00
   const { data: firsts } = await supabase
     .from("Player_Transfer_Bids")
     .select("direct_bid_id")
@@ -108,6 +116,7 @@ async function getDraftCreditsForGPDB(clubShortName) {
     .gte("bid_time", sevenPmYesterday.toISOString())
     .lt("bid_time", sixPmToday.toISOString());
 
+  // Spend credits (joins) all the way until the random finish time
   const joinWindowEnd = draftRandomFinishTime || sixPmToday;
 
   const { data: joins } = await supabase
@@ -117,7 +126,7 @@ async function getDraftCreditsForGPDB(clubShortName) {
     .eq("is_draft_join", true)
     .eq("draft_join_consumed", true)
     .gte("bid_time", sevenPmYesterday.toISOString())
-    .lt(joinWindowEnd.toISOString());
+    .lt("bid_time", joinWindowEnd.toISOString());
 
   const firstCount = firsts ? firsts.length : 0;
   const joinCount = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
@@ -126,23 +135,49 @@ async function getDraftCreditsForGPDB(clubShortName) {
 }
 
 /* ============================================================
-   DOMContentLoaded
+   EVERYTHING ELSE MUST BE INSIDE DOMContentLoaded
    ============================================================ */
 
 document.addEventListener("DOMContentLoaded", () => {
 
+  /* ============================================================
+     MODULE B: Column Definitions
+     ============================================================ */
+
   const COLUMNS = [
-    "Name", "Position", "Nation", "Age", "Rating", "Playstyle",
-    "Maximum_Reserve_Price", "market_value", "Contracted_Team",
-    "Season_Signed", "Konami_ID"
+    "Name",
+    "Position",
+    "Nation",
+    "Age",
+    "Rating",
+    "Playstyle",
+    "Maximum_Reserve_Price",
+    "market_value",
+    "Contracted_Team",
+    "Season_Signed",
+    "Konami_ID"
   ];
 
-  const FILTER_EXCLUDE = ["Maximum_Reserve_Price", "market_value", "Konami_ID"];
+  const FILTER_EXCLUDE = [
+    "Maximum_Reserve_Price",
+    "market_value",
+    "Konami_ID"
+  ];
 
   const DROPDOWN_COLUMNS = [
-    "Nation", "Position", "Age", "Rating", "Playstyle",
-    "Contracted_Team", "Season_Signed"
+    "Nation",
+    "Position",
+    "Nation",
+    "Age",
+    "Rating",
+    "Playstyle",
+    "Contracted_Team",
+    "Season_Signed"
   ];
+
+  /* ============================================================
+     MODULE C: Pagination + State
+     ============================================================ */
 
   let PAGE_SIZE = 1000;
   let TOTAL_ROWS = 0;
@@ -150,11 +185,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let CURRENT_FILTERS = {};
 
+  // ⭐ Default sort: Rating DESC, then market_value DESC
   let CURRENT_SORT_COLUMN = "Rating";
   let CURRENT_SORT_DIR = "desc";
 
   let MV_MIN = null;
   let MV_MAX = null;
+
+  /* ============================================================
+     MODULE D: Global Settings Loader
+     ============================================================ */
 
   let GLOBAL_SETTINGS = null;
   let CURRENT_USER = null;
@@ -166,11 +206,21 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadGlobalSettings() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("global_settings")
       .select("*")
       .eq("id", 1)
       .single();
+
+    if (error || !data) {
+      console.error("Failed to load global settings:", error);
+      return {
+        transferWindowOpen: false,
+        draftAuctionEnabled: false,
+        draftAuctionStartTime: null,
+        draftRandomFinishTime: null
+      };
+    }
 
     return {
       transferWindowOpen: data.transfer_window_open,
@@ -179,6 +229,10 @@ document.addEventListener("DOMContentLoaded", () => {
       draftRandomFinishTime: data.draft_random_finish_time ? new Date(data.draft_random_finish_time) : null
     };
   }
+
+  /* ============================================================
+     MODULE E: Data Loading
+     ============================================================ */
 
   async function loadTotalCount() {
     const { count } = await supabase
@@ -198,6 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .from("Players")
       .select(COLUMNS.join(","), { count: "exact" });
 
+    // Apply filters (including dropdowns) to the FULL dataset
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
       if (value.trim() === "") return;
 
@@ -212,26 +267,42 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
+    // Min/Max Market Value across entire player base
     if (MV_MIN !== null) query = query.gte("market_value", MV_MIN);
     if (MV_MAX !== null) query = query.lte("market_value", MV_MAX);
 
-    if (CURRENT_SORT_COLUMN === "Rating") {
+    // Sorting
+    if (CURRENT_SORT_COLUMN) {
+      if (CURRENT_SORT_COLUMN === "Rating") {
+        // ⭐ Default: Rating DESC, then market_value DESC
+        query = query
+          .order("Rating", { ascending: false })
+          .order("market_value", { ascending: false });
+      } else if (CURRENT_SORT_COLUMN === "market_value") {
+        query = query
+          .order("market_value", { ascending: CURRENT_SORT_DIR === "asc" })
+          .order("Rating", { ascending: false });
+      } else {
+        query = query.order(CURRENT_SORT_COLUMN, {
+          ascending: CURRENT_SORT_DIR === "asc"
+        });
+      }
+    } else {
+      // Fallback default sort
       query = query
         .order("Rating", { ascending: false })
         .order("market_value", { ascending: false });
-    } else if (CURRENT_SORT_COLUMN === "market_value") {
-      query = query
-        .order("market_value", { ascending: CURRENT_SORT_DIR === "asc" })
-        .order("Rating", { ascending: false });
-    } else {
-      query = query.order(CURRENT_SORT_COLUMN, {
-        ascending: CURRENT_SORT_DIR === "asc"
-      });
     }
 
+    // Pagination AFTER filters + sort
     query = query.range(from, to);
 
-    const { data, count } = await query;
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error(error);
+      return;
+    }
 
     TOTAL_ROWS = count;
     renderTable(data);
@@ -239,7 +310,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   /* ============================================================
-     RENDER TABLE
+     MODULE F: Rendering (with Bid column)
      ============================================================ */
 
   function renderTable(players) {
@@ -257,9 +328,10 @@ document.addEventListener("DOMContentLoaded", () => {
         <th></th>
         ${COLUMNS.filter(col => col !== "Konami_ID")
           .map(col => {
-            let cls = CURRENT_SORT_COLUMN === col
-              ? (CURRENT_SORT_DIR === "asc" ? "sort-asc" : "sort-desc")
-              : "";
+            let cls = "";
+            if (CURRENT_SORT_COLUMN === col) {
+              cls = CURRENT_SORT_DIR === "asc" ? "sort-asc" : "sort-desc";
+            }
             return `<th data-col="${col}" class="${cls}">${col.replace(/_/g, " ")}</th>`;
           })
           .join("")}
@@ -267,66 +339,75 @@ document.addEventListener("DOMContentLoaded", () => {
       </tr>
     `;
 
-    tableBody.innerHTML = players.map(player => {
-      const hasClub = !!player.Contracted_Team;
-      const isMyClub = player.Contracted_Team === CURRENT_USER?.user_metadata?.shortName;
+    tableBody.innerHTML = players
+      .map(player => {
+        const hasClub = !!player.Contracted_Team;
+        const isMyClub = player.Contracted_Team === CURRENT_USER?.user_metadata?.shortName;
 
-      let bidCell = `<span class="locked-msg">Loading…</span>`;
+        let bidCell = `<span class="locked-msg">Loading…</span>`;
 
-      if (GLOBAL_SETTINGS) {
-        if (hasClub) {
-          if (!isMyClub && GLOBAL_SETTINGS.transferWindowOpen) {
-            bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
-          } else if (!GLOBAL_SETTINGS.transferWindowOpen) {
-            bidCell = `<span class="locked-msg">Window Closed</span>`;
-          } else {
-            bidCell = `<span class="locked-msg">Your Player</span>`;
-          }
-        } else {
-          const inDraft = ACTIVE_DRAFT_PLAYERS.has(String(player.Konami_ID).trim());
-
-          if (inDraft) {
-            bidCell = `<span class="locked-msg">In Draft Auction</span>`;
-          } else if (GLOBAL_SETTINGS.draftAuctionEnabled) {
-            const nowLocal = new Date();
-            const { sixPmToday } = getDraftWindowTimes();
-
-            if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-              bidCell = `<span class="locked-msg">Draft Closed</span>`;
-            } else if (nowLocal >= sixPmToday) {
-              bidCell = `<span class="locked-msg">Draft Locked</span>`;
-            } else {
+        if (GLOBAL_SETTINGS) {
+          if (hasClub) {
+            if (!isMyClub && GLOBAL_SETTINGS.transferWindowOpen) {
               bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
+            } else if (!GLOBAL_SETTINGS.transferWindowOpen) {
+              bidCell = `<span class="locked-msg">Window Closed</span>`;
+            } else {
+              bidCell = `<span class="locked-msg">Your Player</span>`;
             }
           } else {
-            bidCell = `<span class="locked-msg">Draft Closed</span>`;
+            const inDraft = ACTIVE_DRAFT_PLAYERS.has(String(player.Konami_ID).trim());
+
+            if (inDraft) {
+              bidCell = `<span class="locked-msg">In Draft Auction</span>`;
+            } else if (GLOBAL_SETTINGS.draftAuctionEnabled) {
+              const nowLocal = new Date();
+              const { sixPmToday } = getDraftWindowTimes();
+
+              // Before draft start: fully closed
+              if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
+                bidCell = `<span class="locked-msg">Draft Closed</span>`;
+              }
+              // After 18:00: free agents with no bids are locked until next window
+              else if (nowLocal >= sixPmToday) {
+                bidCell = `<span class="locked-msg">Draft Locked</span>`;
+              }
+              // Normal case: can start a new draft auction
+              else {
+                bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
+              }
+            } else {
+              bidCell = `<span class="locked-msg">Draft Closed</span>`;
+            }
           }
         }
-      }
 
-      const imgURL = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
+        const imgURL = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
 
-      return `
-        <tr data-konami-id="${player.Konami_ID}">
-          <td>
-            <img src="${imgURL}" class="gpdb-thumb"
-                 onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'">
-          </td>
-          ${COLUMNS.filter(col => col !== "Konami_ID")
-            .map(col => {
-              let value = player[col];
-              if (col === "market_value" && value !== null) {
-                value = "₿ " + Number(value).toLocaleString("en-GB");
-              }
-              return `<td>${value}</td>`;
-            })
-            .join("")}
-          <td>${bidCell}</td>
-        </tr>
-      `;
-    }).join("");
+        return `
+          <tr data-konami-id="${player.Konami_ID}">
+            <td>
+              <img src="${imgURL}"
+                   class="gpdb-thumb"
+                   onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'">
+            </td>
+            ${COLUMNS.filter(col => col !== "Konami_ID")
+              .map(col => {
+                let value = player[col];
+                if (col === "market_value" && value !== null) {
+                  value = "₿ " + Number(value).toLocaleString("en-GB");
+                }
+                return `<td>${value}</td>`;
+              })
+              .join("")}
+            <td>${bidCell}</td>
+          </tr>
+        `;
+      })
+      .join("");
 
-    document.querySelectorAll("th[data-col]").forEach(th => {
+    // Column sorting
+    Array.from(tableHead.querySelectorAll("th[data-col]")).forEach(th => {
       const col = th.getAttribute("data-col");
       th.onclick = () => {
         if (CURRENT_SORT_COLUMN === col) {
@@ -339,13 +420,29 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     });
 
+    // Row click → PESDB
+    Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
+      row.style.cursor = "pointer";
+      row.addEventListener("click", e => {
+        if (e.target.closest(".make-offer-btn")) return;
+        const konamiId = row.getAttribute("data-konami-id");
+        if (!konamiId) return;
+        window.open(
+          `https://pesdb.net/efootball/?id=${konamiId}`,
+          "_blank",
+          "noopener"
+        );
+      });
+    });
+
+    // Make Offer buttons
     document.querySelectorAll(".make-offer-btn").forEach(btn => {
       btn.addEventListener("click", () => openMakeOfferModal(btn.dataset.playerId));
     });
   }
 
   /* ============================================================
-     MAKE OFFER MODAL
+     MODULE G: Make Offer Modal
      ============================================================ */
 
   let CURRENT_OFFER_PLAYER = null;
@@ -358,28 +455,42 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const { data: player } = await supabase
+    const { data: player, error } = await supabase
       .from("Players")
       .select("*")
       .eq("Konami_ID", playerId)
       .single();
 
+    if (error || !player) {
+      console.error("Failed to load player for offer", error);
+      return;
+    }
+
     CURRENT_OFFER_PLAYER = player;
 
-    document.getElementById("offerPlayerImg").src =
-      `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
+    const imgEl = document.getElementById("offerPlayerImg");
+    const nameEl = document.getElementById("offerPlayerName");
+    const posEl = document.getElementById("offerPlayerPosition");
+    const styleEl = document.getElementById("offerPlayerPlaystyle");
+    const ratingEl = document.getElementById("offerPlayerRating");
+    const mvEl = document.getElementById("offerPlayerMV");
+    const amountInput = document.getElementById("offerAmount");
+    const errorBox = document.getElementById("offerError");
 
-    document.getElementById("offerPlayerName").textContent = player.Name;
-    document.getElementById("offerPlayerPosition").textContent = `Position: ${player.Position}`;
-    document.getElementById("offerPlayerPlaystyle").textContent = `Playstyle: ${player.Playstyle}`;
-    document.getElementById("offerPlayerRating").textContent = `Rating: ${player.Rating}`;
-    document.getElementById("offerPlayerMV").textContent =
-      `Market Value: ₿ ${Number(player.market_value).toLocaleString("en-GB")}`;
+    imgEl.src = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
+    imgEl.onerror = () => {
+      imgEl.src = "https://i.imgur.com/3s8XQ7Y.png";
+    };
 
-    document.getElementById("offerAmount").value =
-      Number(player.market_value).toLocaleString("en-GB");
+    nameEl.textContent = player.Name;
+    posEl.textContent = `Position: ${player.Position}`;
+    styleEl.textContent = `Playstyle: ${player.Playstyle}`;
+    ratingEl.textContent = `Rating: ${player.Rating}`;
+    mvEl.textContent = `Market Value: ₿ ${Number(player.market_value).toLocaleString("en-GB")}`;
 
-    document.getElementById("offerError").textContent = "";
+    amountInput.value = Number(player.market_value).toLocaleString("en-GB");
+    errorBox.textContent = "";
+
     document.getElementById("make-offer-modal-backdrop").style.display = "flex";
   }
 
@@ -387,7 +498,13 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("make-offer-modal-backdrop").style.display = "none";
   }
 
-  document.getElementById("cancelOfferBtn").onclick = closeMakeOfferModal;
+  /* ============================================================
+     MODULE G (continued): Confirm Offer + Buttons
+     ============================================================ */
+
+  document.getElementById("cancelOfferBtn").onclick = () => {
+    closeMakeOfferModal();
+  };
 
   document.getElementById("confirmOfferBtn").onclick = async () => {
     const nowLocal = new Date();
@@ -416,30 +533,35 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
-
-    const { data: clubRow } = await supabase
+    const { data: clubRow, error: clubErr } = await supabase
       .from("Clubs")
       .select("ShortName")
       .eq("owner_id", CURRENT_USER.id)
       .single();
 
+    if (clubErr || !clubRow) {
+      errorBox.textContent = "Your club could not be found.";
+      return;
+    }
+
     const myClub = clubRow.ShortName;
 
     if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
-      errorBox.textContent = "Draft Auction is locked.";
+      errorBox.textContent = "Draft Auction is locked. You cannot bid on free agents.";
       return;
     }
 
     if (sellerClub === myClub) {
-      errorBox.textContent = "You cannot bid on your own player.";
+      errorBox.textContent = "You cannot make an offer for your own player.";
       return;
     }
 
     if (sellerClub && !GLOBAL_SETTINGS.transferWindowOpen) {
-      errorBox.textContent = "Transfer window is closed.";
+      errorBox.textContent = "Transfer window is closed for contracted players.";
       return;
     }
 
+    // FREE AGENT → DRAFT AUCTION
     if (!sellerClub) {
       const result = await submitDraftBid(CURRENT_OFFER_PLAYER, offer, myClub);
 
@@ -455,7 +577,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    await supabase.from("Player_Transfer_Bids").insert({
+    // CONTRACTED PLAYER → DIRECT BID TO SELLER REVIEW (not draft)
+    const { error } = await supabase.from("Player_Transfer_Bids").insert({
       listing_id: null,
       direct_bid_id: CURRENT_OFFER_PLAYER.Konami_ID,
       bidder_club_id: myClub,
@@ -465,442 +588,480 @@ document.addEventListener("DOMContentLoaded", () => {
       is_direct: true
     });
 
+    if (error) {
+      errorBox.textContent = "Failed to submit offer.";
+      console.error(error);
+      return;
+    }
+
     closeMakeOfferModal();
   };
 
   /* ============================================================
-     DRAFT AUCTION HELPERS
+     DRAFT AUCTION HELPERS FOR GPDB
      ============================================================ */
 
+  // randomised daily draft auction times: start 19:00 today, end random 18:50–18:59:59 tomorrow
   function getDraftAuctionTimesForNewListing() {
     const now = new Date();
 
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-     const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
 
-  const sevenPmToday = new Date(today);
-  sevenPmToday.setHours(19, 0, 0, 0);
+    const sevenPmToday = new Date(today);
+    sevenPmToday.setHours(19, 0, 0, 0);
 
-  const baseEnd = new Date(tomorrow);
-  baseEnd.setHours(18, 50, 0, 0);
+    const baseEnd = new Date(tomorrow);
+    baseEnd.setHours(18, 50, 0, 0);
 
-  const extraSeconds = Math.floor(Math.random() * 600); // 0–599
-  const end = new Date(baseEnd.getTime() + extraSeconds * 1000);
+    const extraSeconds = Math.floor(Math.random() * 600); // 0–599
+    const end = new Date(baseEnd.getTime() + extraSeconds * 1000);
 
-  const start = sevenPmToday;
+    const start = sevenPmToday;
 
-  return { start, end };
-}
-
-/* ensure a Player_Transfer_Listings row exists for this player */
-async function ensureDraftListingForPlayer(player) {
-  const konamiStr = String(player.Konami_ID).trim();
-
-  const { data: existing, error: existingErr } = await supabase
-    .from("Player_Transfer_Listings")
-    .select("id, player_id")
-    .eq("player_id", konamiStr)
-    .eq("listing_type", "draft")
-    .eq("status", "active")
-    .maybeSingle();
-
-  if (existing && !existingErr) {
-    return { ok: true, listingId: existing.id };
+    return { start, end };
   }
 
-  const { start, end } = getDraftAuctionTimesForNewListing();
+  /* ensure a Player_Transfer_Listings row exists for this player */
+  async function ensureDraftListingForPlayer(player) {
+    const konamiStr = String(player.Konami_ID).trim();
 
-  const { data: listing, error: listingErr } = await supabase
-    .from("Player_Transfer_Listings")
-    .insert({
-      player_id: konamiStr,
-      seller_club_id: null,
-      reserve_price: player.market_value || 0,
-      listing_type: "draft",
-      market_value: player.market_value || 0,
-      status: "active",
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-      created_at: new Date().toISOString()
-    })
-    .select("*")
-    .single();
-
-  if (listingErr || !listing) {
-    console.error("Error creating draft listing:", listingErr);
-
-    const { data: fallback, error: fallbackErr } = await supabase
+    const { data: existing, error: existingErr } = await supabase
       .from("Player_Transfer_Listings")
       .select("id, player_id")
       .eq("player_id", konamiStr)
       .eq("listing_type", "draft")
-      .order("created_at", { ascending: false })
-      .limit(1)
+      .eq("status", "active")
       .maybeSingle();
 
-    if (fallback && !fallbackErr) {
-      return { ok: true, listingId: fallback.id };
+    if (existing && !existingErr) {
+      return { ok: true, listingId: existing.id };
     }
 
-    return { ok: false, msg: "Error creating draft listing." };
-  }
+    const { start, end } = getDraftAuctionTimesForNewListing();
 
-  return { ok: true, listingId: listing.id };
-}
+    const { data: listing, error: listingErr } = await supabase
+      .from("Player_Transfer_Listings")
+      .insert({
+        player_id: konamiStr,
+        seller_club_id: null,
+        reserve_price: player.market_value || 0,
+        listing_type: "draft",
+        market_value: player.market_value || 0,
+        status: "active",
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        created_at: new Date().toISOString()
+      })
+      .select("*")
+      .single();
 
-/* return inserted bid so we can link it (listing_id set at insert) */
-async function insertDraftBid(player, amount, club, isFirst, isJoin, consumeJoin, listingId) {
-  const { data, error } = await supabase
-    .from("Player_Transfer_Bids")
-    .insert({
-      listing_id: listingId,
-      direct_bid_id: player.Konami_ID,
-      bidder_club_id: club,
-      bid_amount: amount,
-      is_direct: true,
-      is_first_draft_bid: isFirst,
-      is_draft_join: isJoin,
-      draft_join_consumed: consumeJoin,
-      bid_time: new Date().toISOString()
-    })
-    .select("*")
-    .single();
+    if (listingErr || !listing) {
+      console.error("Error creating draft listing:", listingErr);
 
-  if (error || !data) {
-    console.error("Error inserting draft bid:", error);
-    return { ok: false, msg: "Error submitting draft bid." };
-  }
+      const { data: fallback, error: fallbackErr } = await supabase
+        .from("Player_Transfer_Listings")
+        .select("id, player_id")
+        .eq("player_id", konamiStr)
+        .eq("listing_type", "draft")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-  return { ok: true, bid: data };
-}
-
-/* create listing + link bid via listing_id */
-async function submitDraftBid(player, offerAmount, buyerShortName) {
-  const nowLocal = new Date();
-  const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
-
-  if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-    return { ok: false, msg: "Draft auction has not started yet." };
-  }
-
-  const { data: existing, error: existingErr } = await supabase
-    .from("Player_Transfer_Bids")
-    .select("bidder_club_id")
-    .eq("direct_bid_id", player.Konami_ID)
-    .eq("is_direct", true)
-    .order("bid_time", { ascending: true });
-
-  if (existingErr) {
-    console.error(existingErr);
-    return { ok: false, msg: "Error checking existing draft bids." };
-  }
-
-  const isFirstBid = !existing || existing.length === 0;
-  const isJoining = !isFirstBid;
-
-  if (isFirstBid && nowLocal >= sixPmToday) {
-    return {
-      ok: false,
-      msg: "New draft auctions are locked until the next draft window."
-    };
-  }
-
-  const listingResult = await ensureDraftListingForPlayer(player);
-  if (!listingResult.ok) return listingResult;
-
-  const listingId = listingResult.listingId;
-
-  let bidResult;
-
-  if (isJoining) {
-    const { data: priorJoin } = await supabase
-      .from("Player_Transfer_Bids")
-      .select("bid_id")
-      .eq("direct_bid_id", player.Konami_ID)
-      .eq("bidder_club_id", buyerShortName)
-      .eq("is_draft_join", true);
-
-    if (priorJoin && priorJoin.length > 0) {
-      bidResult = await insertDraftBid(
-        player, offerAmount, buyerShortName,
-        false, true, false, listingId
-      );
-    } else {
-      const credits = await getDraftCreditsForGPDB(buyerShortName);
-      if (credits <= 0) {
-        return { ok: false, msg: "You do not have enough draft credits to join this auction." };
+      if (fallback && !fallbackErr) {
+        return { ok: true, listingId: fallback.id };
       }
+
+      return { ok: false, msg: "Error creating draft listing." };
+    }
+
+    return { ok: true, listingId: listing.id };
+  }
+
+  /* return inserted bid so we can link it (listing_id set at insert) */
+  async function insertDraftBid(player, amount, club, isFirst, isJoin, consumeJoin, listingId) {
+    const { data, error } = await supabase
+      .from("Player_Transfer_Bids")
+      .insert({
+        listing_id: listingId,
+        direct_bid_id: player.Konami_ID,
+        bidder_club_id: club,
+        bid_amount: amount,
+        is_direct: true,
+        is_first_draft_bid: isFirst,
+        is_draft_join: isJoin,
+        draft_join_consumed: consumeJoin,
+        bid_time: new Date().toISOString()
+      })
+      .select("*")
+      .single();
+
+    if (error || !data) {
+      console.error("Error inserting draft bid:", error);
+      return { ok: false, msg: "Error submitting draft bid." };
+    }
+
+    return { ok: true, bid: data };
+  }
+
+  /* create listing + link bid via listing_id */
+  async function submitDraftBid(player, offerAmount, buyerShortName) {
+    const nowLocal = new Date();
+    const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+
+    if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
+      return { ok: false, msg: "Draft auction has not started yet." };
+    }
+
+    const { data: existing, error: existingErr } = await supabase
+      .from("Player_Transfer_Bids")
+      .select("bidder_club_id")
+      .eq("direct_bid_id", player.Konami_ID)
+      .eq("is_direct", true)
+      .order("bid_time", { ascending: true });
+
+    if (existingErr) {
+      console.error(existingErr);
+      return { ok: false, msg: "Error checking existing draft bids." };
+    }
+
+    const isFirstBid = !existing || existing.length === 0;
+    const isJoining = !isFirstBid;
+
+    // After 18:00, you cannot start NEW draft auctions on free agents with no bids
+    if (isFirstBid && nowLocal >= sixPmToday) {
+      return {
+        ok: false,
+        msg: "New draft auctions are locked until the next draft window."
+      };
+    }
+
+    const listingResult = await ensureDraftListingForPlayer(player);
+    if (!listingResult.ok) {
+      return listingResult;
+    }
+    const listingId = listingResult.listingId;
+
+    let bidResult;
+
+    if (isJoining) {
+      const { data: priorJoin } = await supabase
+        .from("Player_Transfer_Bids")
+        .select("bid_id")
+        .eq("direct_bid_id", player.Konami_ID)
+        .eq("bidder_club_id", buyerShortName)
+        .eq("is_draft_join", true);
+
+      if (priorJoin && priorJoin.length > 0) {
+        bidResult = await insertDraftBid(
+          player,
+          offerAmount,
+          buyerShortName,
+          false,
+          true,
+          false,
+          listingId
+        );
+      } else {
+        const credits = await getDraftCreditsForGPDB(buyerShortName);
+        if (credits <= 0) {
+          return { ok: false, msg: "You do not have enough draft credits to join this auction." };
+        }
+        bidResult = await insertDraftBid(
+          player,
+          offerAmount,
+          buyerShortName,
+          false,
+          true,
+          true,
+          listingId
+        );
+      }
+    } else {
       bidResult = await insertDraftBid(
-        player, offerAmount, buyerShortName,
-        false, true, true, listingId
+        player,
+        offerAmount,
+        buyerShortName,
+        true,
+        false,
+        false,
+        listingId
       );
     }
-  } else {
-    bidResult = await insertDraftBid(
-      player, offerAmount, buyerShortName,
-      true, false, false, listingId
+
+    if (!bidResult.ok) return bidResult;
+
+    return { ok: true };
+  }
+
+  /* load active draft listings so GPDB can show "In Draft Auction" */
+  async function loadActiveDraftListings() {
+    const { data, error } = await supabase
+      .from("Player_Transfer_Listings")
+      .select("player_id")
+      .eq("listing_type", "draft")
+      .eq("status", "active");
+
+    if (error) {
+      console.error("Failed to load active draft listings", error);
+      ACTIVE_DRAFT_PLAYERS = new Set();
+      return;
+    }
+
+    ACTIVE_DRAFT_PLAYERS = new Set(
+      (data || []).map(row => String(row.player_id).trim())
     );
   }
 
-  if (!bidResult.ok) return bidResult;
+  /* ============================================================
+     Increment / Decrement Buttons
+     ============================================================ */
 
-  return { ok: true };
-}
+  document.querySelectorAll(".inc-btn, .dec-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      if (!CURRENT_OFFER_PLAYER) return;
 
-/* load active draft listings so GPDB can show "In Draft Auction" */
-async function loadActiveDraftListings() {
-  const { data, error } = await supabase
-    .from("Player_Transfer_Listings")
-    .select("player_id")
-    .eq("listing_type", "draft")
-    .eq("status", "active");
+      const inc = Number(btn.dataset.inc);
+      const input = document.getElementById("offerAmount");
 
-  if (error) {
-    console.error("Failed to load active draft listings", error);
-    ACTIVE_DRAFT_PLAYERS = new Set();
-    return;
-  }
+      let raw = input.value.replace(/,/g, "").trim();
+      let val = Number(raw) || 0;
 
-  ACTIVE_DRAFT_PLAYERS = new Set(
-    (data || []).map(row => String(row.player_id).trim())
-  );
-}
+      val += inc;
 
-/* ============================================================
-   Increment / Decrement Buttons
-   ============================================================ */
+      const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
+      if (val < mv) val = mv;
 
-document.querySelectorAll(".inc-btn, .dec-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
+      input.value = val.toLocaleString("en-GB");
+    });
+  });
+
+  /* ============================================================
+     Quick Bid Button
+     ============================================================ */
+
+  document.getElementById("quickBidBtn").onclick = () => {
+    if (!CURRENT_OFFER_PLAYER) return;
+    const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
+    document.getElementById("offerAmount").value = mv.toLocaleString("en-GB");
+  };
+
+  /* ============================================================
+     Intelligent Input Formatting
+     ============================================================ */
+
+  document.getElementById("offerAmount").addEventListener("input", e => {
     if (!CURRENT_OFFER_PLAYER) return;
 
-    const inc = Number(btn.dataset.inc);
-    const input = document.getElementById("offerAmount");
-
-    let raw = input.value.replace(/,/g, "").trim();
-    let val = Number(raw) || 0;
-
-    val += inc;
+    let raw = e.target.value.replace(/,/g, "").trim();
+    let val = Number(raw);
 
     const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
+
+    if (isNaN(val) || val <= 0) {
+      val = mv;
+    }
+
     if (val < mv) val = mv;
 
-    input.value = val.toLocaleString("en-GB");
+    e.target.value = val.toLocaleString("en-GB");
   });
-});
 
-/* ============================================================
-   Quick Bid Button
-   ============================================================ */
+  /* ============================================================
+     MODULE H: Filters + Controls
+     ============================================================ */
 
-document.getElementById("quickBidBtn").onclick = () => {
-  if (!CURRENT_OFFER_PLAYER) return;
-  const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
-  document.getElementById("offerAmount").value = mv.toLocaleString("en-GB");
-};
+  // ⭐ Optimised dropdown population using DISTINCT (no more 1000-row batching)
+  async function populateDropdowns() {
+    for (const col of DROPDOWN_COLUMNS) {
+      const select = document.getElementById(`filter-${col}`);
+      if (!select) continue;
 
-/* ============================================================
-   Intelligent Input Formatting
-   ============================================================ */
+      let { data, error } = await supabase
+        .from("Players")
+        .select(col, { distinct: true });
 
-document.getElementById("offerAmount").addEventListener("input", e => {
-  if (!CURRENT_OFFER_PLAYER) return;
+      if (error || !data) {
+        console.error(`Error loading distinct values for ${col}:`, error);
+        continue;
+      }
 
-  let raw = e.target.value.replace(/,/g, "").trim();
-  let val = Number(raw);
-
-  const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
-
-  if (isNaN(val) || val <= 0) val = mv;
-  if (val < mv) val = mv;
-
-  e.target.value = val.toLocaleString("en-GB");
-});
-
-/* ============================================================
-   MODULE H: Filters + Controls
-   ============================================================ */
-
-async function populateDropdowns() {
-  for (const col of DROPDOWN_COLUMNS) {
-    const select = document.getElementById(`filter-${col}`);
-    if (!select) continue;
-
-    let { data, error } = await supabase
-      .from("Players")
-      .select(col, { distinct: true });
-
-    if (error || !data) continue;
-
-    let values = data
-      .map(row => row[col])
-      .filter(v => v !== null && v !== undefined);
-
-    if (col === "Contracted_Team") {
-      values = values.map(v =>
-        v && String(v).trim() !== "" ? String(v).trim() : "FREE AGENT"
-      );
-    }
-
-    let uniqueValues;
-
-    if (col === "Season_Signed") {
-      uniqueValues = [...new Set(values.map(v => Number(v)))]
-        .filter(v => !isNaN(v))
-        .sort((a, b) => a - b);
-    } else {
-      uniqueValues = [...new Set(values.map(v => String(v).trim()))]
-        .filter(v => v !== "")
-        .sort((a, b) => a.localeCompare(b));
+      let values = data
+        .map(row => row[col])
+        .filter(v => v !== null && v !== undefined);
 
       if (col === "Contracted_Team") {
-        uniqueValues = ["FREE AGENT", ...uniqueValues.filter(v => v !== "FREE AGENT")];
+        values = values.map(v => (v && String(v).trim() !== "" ? String(v).trim() : "FREE AGENT"));
       }
-    }
 
-    uniqueValues.forEach(v => {
-      const opt = document.createElement("option");
-      opt.value = v;
-      opt.textContent = v;
-      select.appendChild(opt);
+      let uniqueValues;
+
+      if (col === "Season_Signed") {
+        uniqueValues = [...new Set(values.map(v => Number(v)))]
+          .filter(v => !isNaN(v))
+          .sort((a, b) => a - b);
+      } else {
+        uniqueValues = [...new Set(values.map(v => String(v).trim()))]
+          .filter(v => v !== "")
+          .sort((a, b) => a.localeCompare(b));
+
+        if (col === "Contracted_Team") {
+          uniqueValues = ["FREE AGENT", ...uniqueValues.filter(v => v !== "FREE AGENT")];
+        }
+      }
+
+      uniqueValues.forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = v;
+        select.appendChild(opt);
+      });
+    }
+  }
+
+  function setupFilters() {
+    const filtersDiv = document.getElementById("filters");
+
+    filtersDiv.innerHTML = COLUMNS.filter(col => !FILTER_EXCLUDE.includes(col))
+      .map(col => {
+        if (DROPDOWN_COLUMNS.includes(col)) {
+          return `
+            <label>${col.replace(/_/g, " ")}:
+              <select id="filter-${col}">
+                <option value="">All</option>
+              </select>
+            </label>
+          `;
+        } else {
+          return `
+            <label>${col.replace(/_/g, " ")}:
+              <input type="text" id="filter-${col}" placeholder="Filter ${col}">
+            </label>
+          `;
+        }
+      })
+      .join(" ");
+
+    COLUMNS.filter(col => !FILTER_EXCLUDE.includes(col)).forEach(col => {
+      const el = document.getElementById(`filter-${col}`);
+      el.addEventListener("change", () => {
+        CURRENT_FILTERS[col] = el.value;
+        loadPage(1);
+      });
     });
   }
-}
 
-function setupFilters() {
-  const filtersDiv = document.getElementById("filters");
-
-  filtersDiv.innerHTML = COLUMNS.filter(col => !FILTER_EXCLUDE.includes(col))
-    .map(col => {
-      if (DROPDOWN_COLUMNS.includes(col)) {
-        return `
-          <label>${col.replace(/_/g, " ")}:
-            <select id="filter-${col}">
-              <option value="">All</option>
-            </select>
-          </label>
-        `;
-      } else {
-        return `
-          <label>${col.replace(/_/g, " ")}:
-            <input type="text" id="filter-${col}" placeholder="Filter ${col}">
-          </label>
-        `;
-      }
-    })
-    .join(" ");
-
-  COLUMNS.filter(col => !FILTER_EXCLUDE.includes(col)).forEach(col => {
-    const el = document.getElementById(`filter-${col}`);
-    el.addEventListener("change", () => {
-      CURRENT_FILTERS[col] = el.value;
+  function setupControls() {
+    const pageSizeSelect = document.getElementById("pageSizeSelect");
+    pageSizeSelect.addEventListener("change", () => {
+      PAGE_SIZE = Number(pageSizeSelect.value);
       loadPage(1);
     });
-  });
-}
 
-function setupControls() {
-  const pageSizeSelect = document.getElementById("pageSizeSelect");
-  pageSizeSelect.addEventListener("change", () => {
-    PAGE_SIZE = Number(pageSizeSelect.value);
-    loadPage(1);
-  });
+    const mvMinInput = document.getElementById("mv-min");
+    const mvMaxInput = document.getElementById("mv-max");
+    const applyMV = document.getElementById("applyMV");
 
-  const mvMinInput = document.getElementById("mv-min");
-  const mvMaxInput = document.getElementById("mv-max");
-  const applyMV = document.getElementById("applyMV");
-
-  // widen + right-align
-  mvMinInput.style.width = "140px";
-  mvMinInput.style.textAlign = "right";
-  mvMaxInput.style.width = "140px";
-  mvMaxInput.style.textAlign = "right";
-
-  const parseMV = (val) => {
-    const raw = val.replace(/[^\d]/g, "").trim();
-    if (raw === "") return null;
-    const num = Number(raw);
-    return isNaN(num) ? null : num;
-  };
-
-  const formatMVInput = (inputEl) => {
-    const raw = inputEl.value.replace(/[^\d]/g, "").trim();
-    if (raw === "") {
-      inputEl.value = "";
-      return;
+    // widen + right-align for large values like 44,500,000
+    if (mvMinInput) {
+      mvMinInput.style.width = "140px";
+      mvMinInput.style.textAlign = "right";
     }
-    const num = Number(raw);
-    if (!isNaN(num)) {
-      inputEl.value = num.toLocaleString("en-GB");
+    if (mvMaxInput) {
+      mvMaxInput.style.width = "140px";
+      mvMaxInput.style.textAlign = "right";
     }
-  };
 
-  mvMinInput.addEventListener("input", () => formatMVInput(mvMinInput));
-  mvMaxInput.addEventListener("input", () => formatMVInput(mvMaxInput));
+    const parseMV = (val) => {
+      const raw = val.replace(/[^\d]/g, "").trim();
+      if (raw === "") return null;
+      const num = Number(raw);
+      return isNaN(num) ? null : num;
+    };
 
-  applyMV.addEventListener("click", () => {
-    MV_MIN = parseMV(mvMinInput.value);
-    MV_MAX = parseMV(mvMaxInput.value);
-    loadPage(1);
-  });
+    const formatMVInput = (inputEl) => {
+      const raw = inputEl.value.replace(/[^\d]/g, "").trim();
+      if (raw === "") {
+        inputEl.value = "";
+        return;
+      }
+      const num = Number(raw);
+      if (!isNaN(num)) {
+        inputEl.value = num.toLocaleString("en-GB");
+      }
+    };
 
-  document.getElementById("clearFiltersBtn").addEventListener("click", () => {
-    CURRENT_FILTERS = {};
-    MV_MIN = null;
-    MV_MAX = null;
-    CURRENT_SORT_COLUMN = "Rating";
-    CURRENT_SORT_DIR = "desc";
+    if (mvMinInput) {
+      mvMinInput.addEventListener("input", () => formatMVInput(mvMinInput));
+    }
+    if (mvMaxInput) {
+      mvMaxInput.addEventListener("input", () => formatMVInput(mvMaxInput));
+    }
 
-    document.querySelectorAll("#filters input, #filters select")
-      .forEach(i => (i.value = ""));
-    mvMinInput.value = "";
-    mvMaxInput.value = "";
+    applyMV.addEventListener("click", () => {
+      MV_MIN = parseMV(mvMinInput.value);
+      MV_MAX = parseMV(mvMaxInput.value);
+      loadPage(1);
+    });
 
-    loadPage(1);
-  });
-}
+    document.getElementById("clearFiltersBtn").addEventListener("click", () => {
+      CURRENT_FILTERS = {};
+      MV_MIN = null;
+      MV_MAX = null;
+      CURRENT_SORT_COLUMN = "Rating";
+      CURRENT_SORT_DIR = "desc";
 
-/* ============================================================
-   Pagination
-   ============================================================ */
+      document
+        .querySelectorAll("#filters input, #filters select")
+        .forEach(i => (i.value = ""));
+      mvMinInput.value = "";
+      mvMaxInput.value = "";
 
-function renderPagination() {
-  const totalPages = Math.ceil(TOTAL_ROWS / PAGE_SIZE);
-  const pagination = document.getElementById("pagination");
-
-  pagination.innerHTML = "";
-
-  for (let i = 1; i <= totalPages; i++) {
-    const btn = document.createElement("button");
-    btn.textContent = i;
-    btn.className = "page-btn";
-    if (i === CURRENT_PAGE) btn.classList.add("active");
-
-    btn.onclick = () => loadPage(i);
-    pagination.appendChild(btn);
+      loadPage(1);
+    });
   }
-}
 
-/* ============================================================
-   INIT
-   ============================================================ */
+  /* ============================================================
+     MODULE I: Pagination Rendering
+     ============================================================ */
 
-async function init() {
-  await loadUser();
-  GLOBAL_SETTINGS = await loadGlobalSettings();
-  draftAuctionStartTime = GLOBAL_SETTINGS.draftAuctionStartTime || null;
-  draftRandomFinishTime = GLOBAL_SETTINGS.draftRandomFinishTime || null;
+  function renderPagination() {
+    const totalPages = Math.ceil(TOTAL_ROWS / PAGE_SIZE);
+    const pagination = document.getElementById("pagination");
 
-  setupControls();
-  setupFilters();
-  await populateDropdowns();
-  await loadTotalCount();
-  await loadActiveDraftListings();
-  await loadDraftCreditsForOwner();
-  loadPage(1);
-}
+    pagination.innerHTML = "";
 
-init();
+    for (let i = 1; i <= totalPages; i++) {
+      const btn = document.createElement("button");
+      btn.textContent = i;
+      btn.className = "page-btn";
+      if (i === CURRENT_PAGE) btn.classList.add("active");
 
-/* END DOMContentLoaded WRAPPER */
+      btn.onclick = () => loadPage(i);
+      pagination.appendChild(btn);
+    }
+  }
+
+  /* ============================================================
+     MODULE J: Initialisation
+     ============================================================ */
+
+  async function init() {
+    await loadUser();
+    GLOBAL_SETTINGS = await loadGlobalSettings();
+    draftAuctionStartTime = GLOBAL_SETTINGS.draftAuctionStartTime || null;
+    draftRandomFinishTime = GLOBAL_SETTINGS.draftRandomFinishTime || null;
+
+    setupControls();
+    setupFilters();
+    await populateDropdowns();
+    await loadTotalCount();
+    await loadActiveDraftListings();
+    await loadDraftCreditsForOwner();
+    loadPage(1);
+  }
+
+  init();
+
+  /* END DOMContentLoaded WRAPPER */
 });
