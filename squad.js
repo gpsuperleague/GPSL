@@ -1,4 +1,4 @@
-// squad.js — modular version of legacy dashboard squad logic
+// squad.js — CLEAN, FIXED, MODERN VERSION
 
 import { fullClubName } from "./clubs_lookup.js";
 
@@ -8,7 +8,6 @@ const supabase = window.supabase;
 let userObj = null;
 let userId = null;
 let currentUserShort = null;
-let activeListingsCache = [];
 let selectedPlayerForListing = null;
 
 // ENTRY POINT
@@ -25,7 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("userEmail").textContent = user.email;
 
-  // Load club for this user
+  // Load club
   const { data: club, error } = await supabase
     .from("Clubs")
     .select("*")
@@ -44,70 +43,34 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${currentUserShort}.png`;
 
-  await loadActiveListingsCache();
-  await loadSquad();
+  await loadSquad(); // now loads fresh listing state internally
 
-  // ============================
-  // SAFE BUTTON WIRING
-  // ============================
-  const dec500 = document.getElementById("dec-500k-list");
-  const dec1m = document.getElementById("dec-1m-list");
-  const dec5m = document.getElementById("dec-5m-list");
+  wireButtons();
 
-  const inc500 = document.getElementById("inc-500k-list");
-  const inc1m = document.getElementById("inc-1m-list");
-  const inc5m = document.getElementById("inc-5m-list");
-
-  const useMV = document.getElementById("useMarketValueBtn");
-  const useMax = document.getElementById("useMaxReserveBtn");
-
-  const reserveInput = document.getElementById("reserveInput");
-  const cancelBtn = document.getElementById("cancelListBtn");
-  const confirmBtn = document.getElementById("confirmListBtn");
-
-  if (dec500) dec500.onclick = () => addReserveIncrement(-500000);
-  if (dec1m) dec1m.onclick = () => addReserveIncrement(-1000000);
-  if (dec5m) dec5m.onclick = () => addReserveIncrement(-5000000);
-
-  if (inc500) inc500.onclick = () => addReserveIncrement(500000);
-  if (inc1m) inc1m.onclick = () => addReserveIncrement(1000000);
-  if (inc5m) inc5m.onclick = () => addReserveIncrement(5000000);
-
-  if (useMV) useMV.onclick = () => {
-    if (!selectedPlayerForListing) return;
-    reserveInput.value = formatNumeric(selectedPlayerForListing.market_value);
-    validateReserveInput();
-  };
-
-  if (useMax) useMax.onclick = () => {
-    if (!selectedPlayerForListing) return;
-    reserveInput.value = formatNumeric(selectedPlayerForListing.Maximum_Reserve_Price);
-    validateReserveInput();
-  };
-
-  if (reserveInput) reserveInput.oninput = () => validateReserveInput();
-
-  if (cancelBtn) cancelBtn.onclick = () => {
-    document.getElementById("list-player-modal-backdrop").style.display = "none";
-  };
-
-  if (confirmBtn) confirmBtn.onclick = validateAndCreateListing;
+  // OPTIONAL: auto-refresh listing status every 30 seconds
+  setInterval(async () => {
+    await loadSquad();
+  }, 30000);
 });
 
-// ACTIVE LISTINGS CACHE
-async function loadActiveListingsCache() {
-  const { data } = await supabase
+// ⭐ NEW: Always fetch ACTIVE listings live from Supabase
+async function getActiveListings() {
+  const { data, error } = await supabase
     .from("Player_Transfer_Listings")
-    .select("*")
-    .eq("seller_club_id", currentUserShort)
+    .select("player_id")
     .eq("status", "Active");
 
-  activeListingsCache = data || [];
+  if (error) {
+    console.error("Error loading active listings:", error);
+    return [];
+  }
+
+  return data.map(x => x.player_id);
 }
 
-// SQUAD
+// LOAD SQUAD (now includes fresh listing state)
 async function loadSquad() {
-  const { data, error } = await supabase
+  const { data: players, error } = await supabase
     .from("Players")
     .select("*")
     .eq("Contracted_Team", currentUserShort);
@@ -117,10 +80,12 @@ async function loadSquad() {
     return;
   }
 
-  renderSquad(data);
+  const activeListings = await getActiveListings();
+  renderSquad(players, activeListings);
 }
 
-function renderSquad(players) {
+// RENDER SQUAD
+function renderSquad(players, activeListings) {
   const tbody = document.getElementById("squad-body");
   if (!tbody) return;
 
@@ -145,9 +110,7 @@ function renderSquad(players) {
       .sort((a, b) => b.market_value - a.market_value);
 
     groupPlayers.forEach(p => {
-      const isListed = activeListingsCache.some(
-        l => l.player_id === p.Konami_ID
-      );
+      const isListed = activeListings.includes(p.Konami_ID);
 
       const status = isListed
         ? `<span class="status-pill status-listed">Listed</span>`
@@ -302,7 +265,7 @@ function addReserveIncrement(amount) {
   validateReserveInput();
 }
 
-// CREATE LISTING
+// CREATE LISTING (now refreshes live listing state)
 async function validateAndCreateListing() {
   const input = document.getElementById("reserveInput");
   const reserve = parseNumericInput(input.value);
@@ -310,18 +273,6 @@ async function validateAndCreateListing() {
   const max = selectedPlayerForListing.Maximum_Reserve_Price;
 
   if (!validateReserveInput()) return;
-
-  if (reserve < mv) {
-    document.getElementById("reserveError").textContent =
-      `Reserve must be at least market value (₿ ${mv.toLocaleString("en-GB")}).`;
-    return;
-  }
-
-  if (reserve > max) {
-    document.getElementById("reserveError").textContent =
-      `Reserve cannot exceed max allowed (₿ ${max.toLocaleString("en-GB")}).`;
-    return;
-  }
 
   const now = new Date().toISOString();
   const endTime = new Date(Date.now() + 86400000).toISOString();
@@ -366,7 +317,7 @@ async function validateAndCreateListing() {
 
   document.getElementById("list-player-modal-backdrop").style.display = "none";
 
-  await loadActiveListingsCache();
+  // ⭐ FIX: Reload fresh listing state from DB
   await loadSquad();
 }
 
@@ -403,4 +354,50 @@ function applyPESDBRowClicks(tbodyId) {
   });
 }
 
-console.log("Squad JS loaded successfully.");
+function wireButtons() {
+  const dec500 = document.getElementById("dec-500k-list");
+  const dec1m = document.getElementById("dec-1m-list");
+  const dec5m = document.getElementById("dec-5m-list");
+
+  const inc500 = document.getElementById("inc-500k-list");
+  const inc1m = document.getElementById("inc-1m-list");
+  const inc5m = document.getElementById("inc-5m-list");
+
+  const useMV = document.getElementById("useMarketValueBtn");
+  const useMax = document.getElementById("useMaxReserveBtn");
+
+  const reserveInput = document.getElementById("reserveInput");
+  const cancelBtn = document.getElementById("cancelListBtn");
+  const confirmBtn = document.getElementById("confirmListBtn");
+
+  if (dec500) dec500.onclick = () => addReserveIncrement(-500000);
+  if (dec1m) dec1m.onclick = () => addReserveIncrement(-1000000);
+  if (dec5m) dec5m.onclick = () => addReserveIncrement(-5000000);
+
+  if (inc500) inc500.onclick = () => addReserveIncrement(500000);
+  if (inc1m) inc1m.onclick = () => addReserveIncrement(1000000);
+  if (inc5m) inc5m.onclick = () => addReserveIncrement(5000000);
+
+  if (useMV) useMV.onclick = () => {
+    if (!selectedPlayerForListing) return;
+    reserveInput.value = formatNumeric(selectedPlayerForListing.market_value);
+    validateReserveInput();
+  };
+
+  if (useMax) useMax.onclick = () => {
+    if (!selectedPlayerForListing) return;
+    reserveInput.value = formatNumeric(selectedPlayerForListing.Maximum_Reserve_Price);
+    validateReserveInput();
+  };
+
+  if (reserveInput) reserveInput.oninput = () => validateReserveInput();
+
+  if (cancelBtn) cancelBtn.onclick = () => {
+    document.getElementById("list-player-modal-backdrop").style.display = "none";
+  };
+
+  if (confirmBtn) confirmBtn.onclick = validateAndCreateListing;
+}
+
+console.log("Squad JS loaded successfully (fixed version).");
+
