@@ -594,6 +594,14 @@ function formatHeader(col) {
     }
 
     const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
+   // Only enforce draft auction timing for FREE AGENTS
+   if (!sellerClub) {
+     if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
+       errorBox.textContent = "Draft auction has not started yet.";
+       return;
+     }
+   }
+
     const { data: clubRow, error: clubErr } = await supabase
       .from("Clubs")
       .select("ShortName")
