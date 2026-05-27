@@ -9,7 +9,6 @@
   <title>GPSL Player Database</title>
 
   <style>
-    /* (UNCHANGED CSS — all your styles remain exactly as you sent them) */
     body {
       background: #111;
       color: #ddd;
@@ -53,7 +52,7 @@
       display:flex;
       flex-wrap:wrap;
       gap:12px;
-      align-items:center;
+      align-items:flex-start;
       border:1px solid #333;
     }
     .filter-group strong {
@@ -62,7 +61,7 @@
       margin-bottom:4px;
       color:#ffaa22;
     }
-    input, select {
+    input {
       background:#222;
       color:#ddd;
       border:1px solid #444;
@@ -198,6 +197,77 @@
       font-size:13px;
     }
     .dec-btn:hover { background:#773333; }
+
+    /* Custom multi-select dropdowns */
+
+    .multi-filter {
+      position: relative;
+      min-width: 180px;
+    }
+    .multi-filter-label {
+      font-size: 12px;
+      color: #ffaa22;
+      margin-bottom: 2px;
+    }
+    .multi-filter-control {
+      background:#222;
+      color:#ddd;
+      border:1px solid #444;
+      padding:4px 8px;
+      border-radius:4px;
+      font-size:12px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      min-height:24px;
+    }
+    .multi-filter-control::after {
+      content:"▾";
+      font-size:10px;
+      color:#888;
+      margin-left:6px;
+    }
+    .multi-filter-panel {
+      position:absolute;
+      top:100%;
+      left:0;
+      background:#111;
+      border:1px solid #444;
+      border-radius:4px;
+      margin-top:2px;
+      max-height:220px;
+      overflow:auto;
+      min-width:100%;
+      z-index:50;
+      display:none;
+    }
+    .multi-filter.open .multi-filter-panel {
+      display:block;
+    }
+    .multi-filter-option {
+      display:flex;
+      align-items:center;
+      padding:4px 6px;
+      font-size:12px;
+      cursor:pointer;
+    }
+    .multi-filter-option:hover {
+      background:#222;
+    }
+    .multi-filter-option input {
+      margin-right:6px;
+    }
+    .text-filter {
+      display:flex;
+      flex-direction:column;
+      font-size:12px;
+      color:#ffaa22;
+    }
+    .text-filter input {
+      margin-top:2px;
+      font-size:12px;
+    }
   </style>
 </head>
 
@@ -208,179 +278,178 @@
   <h1 id="pageTitle">GPSL – Player Database</h1>
   <p id="draftCreditsPanel" class="status-note"></p>
 
-  <!-- (UNCHANGED HTML CONTENT BELOW) -->
   <div id="controls">
     <div class="filter-group">
       <button id="clearFiltersBtn" class="button">Clear Filters</button>
     </div>
 
     <div class="filter-group">
-  <strong>Market Value</strong>
+      <strong>Market Value</strong>
 
-  <label>
-    Min
-    <input
-      type="text"
-      id="mv-min"
-      style="width:140px; text-align:right;"
-      inputmode="numeric"
-      autocomplete="off"
-    >
-  </label>
+      <label>
+        Min
+        <input
+          type="text"
+          id="mv-min"
+          style="width:140px; text-align:right;"
+          inputmode="numeric"
+          autocomplete="off"
+        >
+      </label>
 
-  <label>
-    Max
-    <input
-      type="text"
-      id="mv-max"
-      style="width:140px; text-align:right;"
-      inputmode="numeric"
-      autocomplete="off"
-    >
-  </label>
+      <label>
+        Max
+        <input
+          type="text"
+          id="mv-max"
+          style="width:140px; text-align:right;"
+          inputmode="numeric"
+          autocomplete="off"
+        >
+      </label>
 
-  <button id="applyMV" class="button">Apply</button>
-</div>
-
-
-  <div class="filter-group" id="filters" style="margin-bottom:20px;">
-    <strong>Filters</strong>
-  </div>
-
-  <table id="playersTable">
-    <thead id="tableHead"></thead>
-    <tbody id="tableBody"></tbody>
-  </table>
-
-  <div id="pagination"></div>
-
-  <div id="rowsPerPage">
-    <label>Rows per page:
-      <select id="pageSizeSelect">
-        <option value="100">100</option>
-        <option value="250">250</option>
-        <option value="500">500</option>
-        <option value="1000" selected>1000</option>
-      </select>
-    </label>
-  </div>
-
-  <!-- MAKE OFFER MODAL -->
-  <div id="make-offer-modal-backdrop" class="modal-backdrop">
-    <div id="make-offer-modal" class="modal">
-
-      <div class="player-header">
-        <img id="offerPlayerImg" class="player-thumb" alt="Player">
-        <div class="player-header-info">
-          <div id="offerPlayerName" style="font-size:18px; color:#ff9900; font-weight:bold;"></div>
-          <div id="offerPlayerPosition"></div>
-          <div id="offerPlayerPlaystyle"></div>
-          <div id="offerPlayerRating"></div>
-          <div id="offerPlayerMV"></div>
-        </div>
-      </div>
-
-      <div class="bid-row">
-        <label>Your Offer (₿):</label>
-        <input type="text" id="offerAmount" inputmode="numeric" style="width:140px; padding:6px; border-radius:4px; border:1px solid #444; background:#111; color:#ddd; font-size:15px;">
-      </div>
-
-      <div style="margin-top:10px; text-align:center;">
-        <button class="dec-btn" data-inc="-500000">-500k</button>
-        <button class="dec-btn" data-inc="-1000000">-1m</button>
-        <button class="dec-btn" data-inc="-5000000">-5m</button>
-
-        <button class="inc-btn" data-inc="500000">+500k</button>
-        <button class="inc-btn" data-inc="1000000">+1m</button>
-        <button class="inc-btn" data-inc="5000000">+5m</button>
-
-        <button class="button" id="quickBidBtn">Quick Bid</button>
-      </div>
-
-      <div id="offerError"></div>
-
-      <div class="modal-buttons">
-        <button class="button" id="cancelOfferBtn">Cancel</button>
-        <button class="button" id="confirmOfferBtn">Submit Offer for Review</button>
-      </div>
-
+      <button id="applyMV" class="button">Apply</button>
     </div>
-  </div>
 
-  <script type="module" src="gpdb_v2.js"></script>
+    <div class="filter-group" id="filters" style="margin-bottom:20px;">
+      <strong>Filters</strong>
+      <!-- JS builds all custom dropdowns + text filters here -->
+    </div>
 
-  <!-- ⭐ UPDATED NAVIGATION + AUTH -->
-  <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    <table id="playersTable">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
 
-    const supabase = createClient(
-      "https://omyyogfumrjoaweuawjn.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
-    );
+    <div id="pagination"></div>
 
-    window.supabase = supabase;
+    <div id="rowsPerPage">
+      <label>Rows per page:
+        <select id="pageSizeSelect">
+          <option value="100">100</option>
+          <option value="250">250</option>
+          <option value="500">500</option>
+          <option value="1000" selected>1000</option>
+        </select>
+      </label>
+    </div>
 
-    let draftEnabled = false;
+    <!-- MAKE OFFER MODAL -->
+    <div id="make-offer-modal-backdrop" class="modal-backdrop">
+      <div id="make-offer-modal" class="modal">
 
-    async function loadGlobalSettings() {
-      const { data } = await supabase
-        .from("global_settings")
-        .select("draft_auction_enabled")
-        .eq("id", 1)
-        .single();
+        <div class="player-header">
+          <img id="offerPlayerImg" class="player-thumb" alt="Player">
+          <div class="player-header-info">
+            <div id="offerPlayerName" style="font-size:18px; color:#ff9900; font-weight:bold;"></div>
+            <div id="offerPlayerPosition"></div>
+            <div id="offerPlayerPlaystyle"></div>
+            <div id="offerPlayerRating"></div>
+            <div id="offerPlayerMV"></div>
+          </div>
+        </div>
 
-      draftEnabled = data?.draft_auction_enabled === true;
-    }
+        <div class="bid-row">
+          <label>Your Offer (₿):</label>
+          <input type="text" id="offerAmount" inputmode="numeric" style="width:140px; padding:6px; border-radius:4px; border:1px solid #444; background:#111; color:#ddd; font-size:15px;">
+        </div>
 
-    async function buildNav(user) {
-      const nav = document.getElementById("nav");
+        <div style="margin-top:10px; text-align:center;">
+          <button class="dec-btn" data-inc="-500000">-500k</button>
+          <button class="dec-btn" data-inc="-1000000">-1m</button>
+          <button class="dec-btn" data-inc="-5000000">-5m</button>
 
-      const buttons = [
-        { page: "index", label: "Home", href: "index.html" },
-        { page: "gpdb", label: "Player Database", href: "GPDB.html" },
-        { page: "clubs", label: "Clubs", href: "clubs.html" },
-        { page: "listings", label: "Transfer Market", href: "all_listings.html" },
-        { page: "dashboard", label: "Dashboard", href: "dashboard.html" }
-      ];
+          <button class="inc-btn" data-inc="500000">+500k</button>
+          <button class="inc-btn" data-inc="1000000">+1m</button>
+          <button class="inc-btn" data-inc="5000000">+5m</button>
 
-      let html = "";
+          <button class="button" id="quickBidBtn">Quick Bid</button>
+        </div>
 
-      for (const btn of buttons) {
-        if (btn.page !== CURRENT_PAGE) {
-          html += `<a href="${btn.href}" class="button">${btn.label}</a>`;
+        <div id="offerError"></div>
+
+        <div class="modal-buttons">
+          <button class="button" id="cancelOfferBtn">Cancel</button>
+          <button class="button" id="confirmOfferBtn">Submit Offer for Review</button>
+        </div>
+
+      </div>
+    </div>
+
+    <script type="module" src="gpdb_v2.js"></script>
+
+    <!-- NAV + AUTH -->
+    <script type="module">
+      import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+      const supabase = createClient(
+        "https://omyyogfumrjoaweuawjn.supabase.co",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+      );
+
+      window.supabase = supabase;
+
+      let draftEnabled = false;
+
+      async function loadGlobalSettings() {
+        const { data } = await supabase
+          .from("global_settings")
+          .select("draft_auction_enabled")
+          .eq("id", 1)
+          .single();
+
+        draftEnabled = data?.draft_auction_enabled === true;
+      }
+
+      async function buildNav(user) {
+        const nav = document.getElementById("nav");
+
+        const buttons = [
+          { page: "index", label: "Home", href: "index.html" },
+          { page: "gpdb", label: "Player Database", href: "GPDB.html" },
+          { page: "clubs", label: "Clubs", href: "clubs.html" },
+          { page: "listings", label: "Transfer Market", href: "all_listings.html" },
+          { page: "dashboard", label: "Dashboard", href: "dashboard.html" }
+        ];
+
+        let html = "";
+
+        for (const btn of buttons) {
+          if (btn.page !== CURRENT_PAGE) {
+            html += `<a href="${btn.href}" class="button">${btn.label}</a>`;
+          }
         }
+
+        if (user.email === "rotavator66@outlook.com" && CURRENT_PAGE !== "admin") {
+          html += `<a href="admin.html" class="button">GPSL Admin</a>`;
+        }
+
+        if (draftEnabled && CURRENT_PAGE !== "draftauction") {
+          html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
+        }
+
+        html += `<button id="logoutBtn" class="button">Logout</button>`;
+
+        nav.innerHTML = html;
+
+        document.getElementById("logoutBtn").onclick = async () => {
+          await supabase.auth.signOut();
+          window.location = "login.html";
+        };
       }
 
-      if (user.email === "rotavator66@outlook.com" && CURRENT_PAGE !== "admin") {
-        html += `<a href="admin.html" class="button">GPSL Admin</a>`;
-      }
+      document.addEventListener("DOMContentLoaded", async () => {
+        const { data: { user } } = await supabase.auth.getUser();
 
-      if (draftEnabled && CURRENT_PAGE !== "draftauction") {
-        html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
-      }
+        if (!user) {
+          window.location = "login.html";
+          return;
+        }
 
-      html += `<button id="logoutBtn" class="button">Logout</button>`;
-
-      nav.innerHTML = html;
-
-      document.getElementById("logoutBtn").onclick = async () => {
-        await supabase.auth.signOut();
-        window.location = "login.html";
-      };
-    }
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (!user) {
-        window.location = "login.html";
-        return;
-      }
-
-      await loadGlobalSettings();
-      await buildNav(user);
-    });
-  </script>
+        await loadGlobalSettings();
+        await buildNav(user);
+      });
+    </script>
 
 </body>
 </html>
@@ -414,3 +483,4 @@
   margin: 0 auto;
 }
 </style>
+
