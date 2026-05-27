@@ -12,12 +12,14 @@ const supabase = createClient(
 let draftAuctionStartTime = null;
 let draftRandomFinishTime = null;
 
+// Always work in UK local time (BST when applicable)
 function getUKTime() {
   const now = new Date();
   const ukOffset = now.getTimezoneOffset() + 60; // UK is UTC+1 during BST
   return new Date(now.getTime() - ukOffset * 60 * 1000);
 }
 
+// Draft window helper: 19:00 yesterday → 18:00 today
 function getDraftWindowTimes() {
   const nowLocal = getUKTime();
   const today = new Date(
@@ -378,12 +380,12 @@ document.addEventListener("DOMContentLoaded", () => {
     renderPagination();
   }
 
-function formatHeader(col) {
-  if (col === "market_value") return "Market Value";
-  if (col === "Maximum_Reserve_Price") return "Maximum Reserve Price";
-  return col.replace(/_/g, " ");
-}
- 
+  function formatHeader(col) {
+    if (col === "market_value") return "Market Value";
+    if (col === "Maximum_Reserve_Price") return "Maximum Reserve Price";
+    return col.replace(/_/g, " ");
+  }
+
   /* ============================================================
      MODULE F: Rendering (with Bid column)
      ============================================================ */
@@ -423,6 +425,7 @@ function formatHeader(col) {
 
         if (GLOBAL_SETTINGS) {
           if (hasClub) {
+            // CONTRACTED PLAYERS: normal transfer window logic
             if (!isMyClub && GLOBAL_SETTINGS.transferWindowOpen) {
               bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
             } else if (!GLOBAL_SETTINGS.transferWindowOpen) {
@@ -431,31 +434,36 @@ function formatHeader(col) {
               bidCell = `<span class="locked-msg">Your Player</span>`;
             }
           } else {
+            // FREE AGENTS
             const inDraft = ACTIVE_DRAFT_PLAYERS.has(String(player.Konami_ID).trim());
 
+            // If player is already in an active draft listing, always show "In Draft Auction"
+            // regardless of time (they stay in until random finish / listing closes).
             if (inDraft) {
               bidCell = `<span class="locked-msg">In Draft Auction</span>`;
             } else if (GLOBAL_SETTINGS.draftAuctionEnabled) {
+              // Draft auction is enabled for free agents
 
               const nowLocal = getUKTime();
               const { sixPmToday } = getDraftWindowTimes();
 
+              // Before the configured draftAuctionStartTime → no bidding yet
               if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
                 bidCell = `<span class="locked-msg">Draft Closed</span>`;
-              } else if (nowLocal >= sixPmToday) {
-
-            // After 18:00 UK, only free agents with NO bids should lock
-            const hasBid = ACTIVE_DRAFT_PLAYERS.has(String(player.Konami_ID).trim());
-        
-            if (hasBid) {
-                bidCell = `<span class="locked-msg">In Draft Auction</span>`;
-            } else {
+              }
+              // After 18:00 UK → new free-agent auctions are locked until next window
+              // (players with no bids become unavailable)
+              else if (nowLocal >= sixPmToday) {
                 bidCell = `<span class="locked-msg">Draft Locked</span>`;
+              }
+              // Between draft start and 18:00 → free agents are open for bidding
+              else {
+                bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
+              }
+            } else {
+              // Draft auction globally disabled
+              bidCell = `<span class="locked-msg">Draft Closed</span>`;
             }
-        
-        } else {
-            bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
-        }
           }
         }
 
@@ -472,21 +480,21 @@ function formatHeader(col) {
               .map(col => {
                 let value = player[col];
 
-               if (col === "market_value" && value !== null) {
-                 value = `<span class="money">₿ ${Number(value).toLocaleString("en-GB")}</span>`;
-               }
+                if (col === "market_value" && value !== null) {
+                  value = `<span class="money">₿ ${Number(value).toLocaleString("en-GB")}</span>`;
+                }
 
                 if (col === "Maximum_Reserve_Price" && value !== null) {
                   value = "₿ " + Number(value).toLocaleString("en-GB");
                 }
 
-               if (col === "Contracted_Team") {
-                if (!value || String(value).trim() === "") {
-                  value = "";
-                } else {
-                  value = CLUB_NAME_MAP[value] || value;
+                if (col === "Contracted_Team") {
+                  if (!value || String(value).trim() === "") {
+                    value = "";
+                  } else {
+                    value = CLUB_NAME_MAP[value] || value;
+                  }
                 }
-              }
 
                 return `<td>${value}</td>`;
               })
@@ -528,7 +536,7 @@ function formatHeader(col) {
     });
   }
 
-/* ============================================================
+  /* ============================================================
      MODULE G: Offer Modal + Draft Helpers
      ============================================================ */
 
@@ -585,7 +593,7 @@ function formatHeader(col) {
 
   document.getElementById("confirmOfferBtn").onclick = async () => {
 
-    const nowLocal = getUKTime();   // ⭐ UK TIME FIX
+    const nowLocal = getUKTime();   // UK TIME
 
     const input = document.getElementById("offerAmount");
     const errorBox = document.getElementById("offerError");
@@ -680,9 +688,10 @@ function formatHeader(col) {
      DRAFT AUCTION HELPERS
      ============================================================ */
 
+  // For a new draft listing: start at 19:00 today, end at random 18:50–18:59:59 tomorrow
   function getDraftAuctionTimesForNewListing() {
 
-    const now = getUKTime();   // ⭐ UK TIME FIX
+    const now = getUKTime();   // UK TIME
 
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
@@ -767,10 +776,11 @@ function formatHeader(col) {
 
   async function submitDraftBid(player, offerAmount, buyerShortName) {
 
-    const nowLocal = getUKTime();   // ⭐ UK TIME FIX
+    const nowLocal = getUKTime();   // UK TIME
 
     const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
+    // Global draft start gate (from settings)
     if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
       return { ok: false, msg: "Draft auction has not started yet." };
     }
@@ -785,6 +795,7 @@ function formatHeader(col) {
     const isFirstBid = !existing || existing.length === 0;
     const isJoining = !isFirstBid;
 
+    // First bids (new auctions) are blocked after 18:00 UK
     if (isFirstBid && nowLocal >= sixPmToday) {
       return {
         ok: false,
@@ -808,6 +819,7 @@ function formatHeader(col) {
         .eq("is_draft_join", true);
 
       if (priorJoin && priorJoin.length > 0) {
+        // Already paid join cost earlier in this auction
         bidResult = await insertDraftBid(
           player,
           offerAmount,
@@ -818,6 +830,7 @@ function formatHeader(col) {
           listingId
         );
       } else {
+        // Need credits to join this auction
         const credits = await getDraftCreditsForGPDB(buyerShortName);
         if (credits <= 0) {
           return { ok: false, msg: "You do not have enough draft credits to join this auction." };
@@ -834,6 +847,7 @@ function formatHeader(col) {
         );
       }
     } else {
+      // First bid in this draft auction
       bidResult = await insertDraftBid(
         player,
         offerAmount,
@@ -1214,4 +1228,3 @@ function formatHeader(col) {
   init();
 
 });
-
