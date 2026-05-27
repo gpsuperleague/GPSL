@@ -402,7 +402,7 @@ function formatHeader(col) {
             if (CURRENT_SORT_COLUMN === col) {
               cls = CURRENT_SORT_DIR === "asc" ? "sort-asc" : "sort-desc";
             }
-            return `<th data-col="${col}" class="${cls}">${col.replace(/_/g, " ")}</th>`;
+            return `<th data-col="${col}" class="${cls}">${formatHeader(col)}</th>`;
           })
           .join("")}
         <th>Bid</th>
