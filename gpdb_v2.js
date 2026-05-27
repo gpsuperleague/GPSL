@@ -443,8 +443,16 @@ function formatHeader(col) {
               if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
                 bidCell = `<span class="locked-msg">Draft Closed</span>`;
               } else if (nowLocal >= sixPmToday) {
-                bidCell = `<span class="locked-msg">Draft Locked</span>`;
+    // After 18:00 UK, only free agents with NO bids should lock
+    const hasBid = ACTIVE_DRAFT_PLAYERS.has(String(player.Konami_ID).trim());
+
+              if (hasBid) {
+                  bidCell = `<span class="locked-msg">In Draft Auction</span>`;
               } else {
+                  bidCell = `<span class="locked-msg">Draft Locked</span>`;
+              }
+          }
+             else {
                 bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
               }
             } else {
