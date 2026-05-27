@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL Transfer Centre</title>
+
+  <!-- CURRENT PAGE IDENTIFIER -->
+  <script>
+    window.CURRENT_PAGE = "transfer_center";
+  </script>
+
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    /* Page-specific tweaks */
+    .panel-transfer::after {
+      background-image: url("images/panel_bg/transfer.png");
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- NAV BAR -->
+  <div id="nav"></div>
+
+  <div class="page-container">
+
+    <!-- HEADER (matches squad.html layout) -->
+    <div id="headerContainer">
+      <div id="headerLeft">
+        <img id="clubBadgeHeader" src="" alt="Club Badge">
+        <div>
+          <h1 id="pageTitle">Transfer Centre</h1>
+          <div id="userEmail"></div>
+        </div>
+      </div>
+
+      <div id="headerRight">
+        <div id="draftCountdown"></div>
+      </div>
+    </div>
+
+    <!-- ================================
+         TRANSFER CENTRE PANELS
+         ================================ -->
+
+    <!-- ACTIVE LISTINGS -->
+    <div class="panel panel-bg panel-transfer">
+      <h2>Active Listings</h2>
+      <div id="activeListingsContainer">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- ACTIVE BIDS -->
+    <div class="panel panel-bg panel-transfer">
+      <h2>Active Bids</h2>
+      <div id="activeBidsContainer">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- SELLER REVIEW -->
+    <div class="panel panel-bg panel-transfer">
+      <h2>Seller Review</h2>
+      <div id="sellerReviewContainer">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- CLOSED LISTINGS -->
+    <div class="panel panel-bg panel-transfer">
+      <h2>Closed Listings</h2>
+      <div id="closedListingsContainer">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- SEASON SIGNINGS -->
+    <div class="panel panel-bg panel-transfer">
+      <h2>Season Signings</h2>
+      <div id="seasonSigningsContainer">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+    <!-- SEASON SALES -->
+    <div class="panel panel-bg panel-transfer">
+      <h2>Season Sales</h2>
+      <div id="seasonSalesContainer">
+        <!-- Populated by JS -->
+      </div>
+    </div>
+
+  </div> <!-- end page-container -->
+
+
+  <!-- ================================
+       LIST PLAYER MODAL (unchanged)
+       ================================ -->
+
+  <div id="list-player-modal-backdrop">
+    <div id="list-player-modal">
+      <h3>List Player</h3>
+
+      <div id="modalPlayerName"></div>
+      <div id="modalPlayerInfo"></div>
+
+      <div class="modal-row">
+        <label for="reserveInput">Reserve Price (₿)</label>
+        <input type="text" id="reserveInput">
+        <div id="reserveError"></div>
+      </div>
+
+      <div id="modalWarning">
+        Once listed, this player will enter the transfer market.
+      </div>
+
+      <div class="modal-buttons">
+        <button class="button" id="cancelListBtn">Cancel</button>
+        <button class="button" id="confirmListBtn">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================================
+       GLOBAL JS
+       ================================ -->
+  <script type="module" src="supabase_client.js"></script>
+  <script type="module" src="global.js"></script>
+  <script type="module" src="global_ui.js"></script>
+  <script type="module" src="clubs_lookup.js"></script>
+
+  <!-- ================================
+       TRANSFER CENTRE JS (new file)
+       ================================ -->
+  <script type="module" src="transfer_center.js"></script>
+
+</body>
+</html>
