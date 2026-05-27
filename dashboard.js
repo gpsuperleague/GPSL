@@ -3,11 +3,12 @@
 // ===============================
 
 import { supabase } from "./supabase_client.js";
-import { initGlobal, startDraftCountdown } from "./global.js";
+import { initGlobal } from "./global.js";   // ⬅ FIXED: removed startDraftCountdown
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   // Load global nav + countdown container
+  // ⬅ This now ALSO starts the draft countdown automatically
   await initGlobal();
 
   // Get user
@@ -43,6 +44,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${shortName}.png`;
 
-  // ⭐ Start live draft countdown (updates every second)
-  startDraftCountdown();
+  // ⭐ No need to call startDraftCountdown()
+  // initGlobal() already handles the countdown
 });
