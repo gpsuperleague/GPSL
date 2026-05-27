@@ -185,7 +185,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let TOTAL_ROWS = 0;
   let CURRENT_PAGE = 1;
 
-  // For dropdowns: arrays of selected values; for text: string
   let CURRENT_FILTERS = {};
 
   let CURRENT_SORT_COLUMN = "Rating";
@@ -464,20 +463,17 @@ function formatHeader(col) {
                  value = `<span class="money">₿ ${Number(value).toLocaleString("en-GB")}</span>`;
                }
 
-
-
                 if (col === "Maximum_Reserve_Price" && value !== null) {
                   value = "₿ " + Number(value).toLocaleString("en-GB");
                 }
 
                if (col === "Contracted_Team") {
                 if (!value || String(value).trim() === "") {
-                  value = "";  // show blank instead of null
+                  value = "";
                 } else {
                   value = CLUB_NAME_MAP[value] || value;
                 }
               }
-
 
                 return `<td>${value}</td>`;
               })
@@ -506,7 +502,6 @@ function formatHeader(col) {
       row.addEventListener("click", e => {
         if (e.target.closest(".make-offer-btn")) return;
         const konamiId = row.getAttribute("data-konami-id");
-        if (!konamiId) return;
         window.open(
           `https://pesdb.net/efootball/?id=${konamiId}`,
           "_blank",
@@ -547,7 +542,8 @@ function formatHeader(col) {
       Position: position,
       Playstyle: playstyle,
       Rating: rating,
-      market_value: mv
+      market_value: mv,
+      Contracted_Team: row.querySelectorAll("td")[8].textContent.trim() || null
     };
 
     document.getElementById("offerPlayerImg").src = img.src;
@@ -594,13 +590,14 @@ function formatHeader(col) {
     }
 
     const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
-   // Only enforce draft auction timing for FREE AGENTS
-   if (!sellerClub) {
-     if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-       errorBox.textContent = "Draft auction has not started yet.";
-       return;
-     }
-   }
+
+    // Only enforce draft auction timing for FREE AGENTS
+    if (!sellerClub) {
+      if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
+        errorBox.textContent = "Draft auction has not started yet.";
+        return;
+      }
+    }
 
     const { data: clubRow, error: clubErr } = await supabase
       .from("Clubs")
@@ -1057,7 +1054,7 @@ function formatHeader(col) {
       const panel = document.getElementById(`filter-${col}-panel`);
       if (!wrapper || !control || !panel) return;
 
-      control.addEventListener("click", e => {
+           control.addEventListener("click", e => {
         e.stopPropagation();
         const isOpen = wrapper.classList.contains("open");
         closeAllMultiFilters();
@@ -1199,4 +1196,3 @@ function formatHeader(col) {
   init();
 
 });
-
