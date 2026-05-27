@@ -51,6 +51,9 @@ function parseMoneyInput(value) {
   wireIncrementButtons();
   wireQuickBidButton();
 
+  // ⭐ Auto-refresh listings every 30 seconds so status/time stay live
+  setInterval(loadListings, 30000);
+
   console.log("all_listings.js initialized successfully");
 })();
 
@@ -83,7 +86,8 @@ async function loadShortNameFromSupabase(userId) {
 async function loadListings() {
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
-    .select("*");
+    .select("*")
+    .order("end_time", { ascending: true });
 
   if (error) {
     console.error("Listings error", error);
@@ -117,17 +121,25 @@ function renderListings() {
   const filtered = allListings.filter(l => {
     const end = new Date(l.end_time);
 
-    if (l.status !== "Active" && !l.was_extended) return false;
-
+    // ACTIVE listings (time-based)
     if (l.status === "Active") {
-      if (end > now) return showActive;
-      return false;
-    }
-
-    if (l.status === "Review" || l.status === "Closed") {
+      if (end > now) {
+        return showActive;
+      }
+      // If time has passed but status not yet flipped, treat as closed bucket
       return showClosed;
     }
 
+    // CLOSED / REVIEW / SELLER REVIEW listings
+    if (
+      l.status === "Closed" ||
+      l.status === "Review" ||
+      l.status === "Seller Review"
+    ) {
+      return showClosed;
+    }
+
+    // Anything else hidden
     return false;
   });
 
@@ -155,10 +167,8 @@ function renderListings() {
         }`;
     }
 
-    // ⭐ NEW: PESDB image URL
     const imgURL = `https://pesdb.net/assets/img/card/b${listing.player_id}.png`;
 
-    // ⭐ UPDATED ROW WITH IMAGE AFTER SELLING CLUB
     tr.innerHTML = `
       <td>${fullClubName(listing.seller_club_id)}</td>
 
@@ -223,7 +233,6 @@ function formatTimeRemaining(endTime) {
 // MODULE E: OPEN BID MODAL
 // ======================================================
 function openBidModal(listing, player) {
-
   if (listing.seller_club_id === currentUserShort) {
     alert("You already own this player. You cannot bid on your own listing.");
     return;
