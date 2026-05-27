@@ -470,9 +470,14 @@ function formatHeader(col) {
                   value = "₿ " + Number(value).toLocaleString("en-GB");
                 }
 
-                if (col === "Contracted_Team" && value) {
+               if (col === "Contracted_Team") {
+                if (!value || String(value).trim() === "") {
+                  value = "";  // show blank instead of null
+                } else {
                   value = CLUB_NAME_MAP[value] || value;
                 }
+              }
+
 
                 return `<td>${value}</td>`;
               })
