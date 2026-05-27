@@ -164,7 +164,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const DROPDOWN_COLUMNS = [
     "Nation",
     "Position",
-    "Nation",
     "Age",
     "Rating",
     "Playstyle",
@@ -172,7 +171,6 @@ document.addEventListener("DOMContentLoaded", () => {
     "Season_Signed"
   ];
 
-  // Custom position order
   const POSITION_ORDER = [
     "GK", "LB", "CB", "RB",
     "DMF", "LMF", "CMF", "RMF",
@@ -187,6 +185,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let TOTAL_ROWS = 0;
   let CURRENT_PAGE = 1;
 
+  // For dropdowns: arrays of selected values; for text: string
   let CURRENT_FILTERS = {};
 
   let CURRENT_SORT_COLUMN = "Rating";
@@ -203,7 +202,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let CURRENT_USER = null;
   let ACTIVE_DRAFT_PLAYERS = new Set();
 
-  // Club name map
   let CLUB_NAME_MAP = {};
 
   async function loadUser() {
@@ -267,6 +265,24 @@ document.addEventListener("DOMContentLoaded", () => {
     TOTAL_ROWS = count;
   }
 
+  function buildContractedTeamOrClause(values) {
+    const hasFA = values.includes("FREE AGENT");
+    const clubs = values.filter(v => v !== "FREE AGENT");
+
+    const parts = [];
+
+    if (clubs.length > 0) {
+      const inList = clubs.join(",");
+      parts.push(`Contracted_Team.in.(${inList})`);
+    }
+
+    if (hasFA) {
+      parts.push("Contracted_Team.is.null", "Contracted_Team.eq.''", "Contracted_Team.eq.' '");
+    }
+
+    return parts.length ? parts.join(",") : null;
+  }
+
   async function loadPage(page = 1) {
     CURRENT_PAGE = page;
 
@@ -278,15 +294,20 @@ document.addEventListener("DOMContentLoaded", () => {
       .select(COLUMNS.join(","), { count: "exact" });
 
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
-      if (value.trim() === "") return;
-
       if (DROPDOWN_COLUMNS.includes(col)) {
-        if (col === "Contracted_Team" && value === "FREE AGENT") {
-          query = query.or(`${col}.is.null,${col}.eq.'',${col}.eq.' '`);
+        const values = Array.isArray(value) ? value : (value ? [value] : []);
+        if (!values.length) return;
+
+        if (col === "Contracted_Team") {
+          const orClause = buildContractedTeamOrClause(values);
+          if (orClause) {
+            query = query.or(orClause);
+          }
         } else {
-          query = query.eq(col, value);
+          query = query.in(col, values);
         }
       } else {
+        if (!value || value.trim() === "") return;
         query = query.ilike(col, `%${value}%`);
       }
     });
@@ -303,6 +324,8 @@ document.addEventListener("DOMContentLoaded", () => {
         query = query
           .order("market_value", { ascending: CURRENT_SORT_DIR === "asc" })
           .order("Rating", { ascending: false });
+      } else if (CURRENT_SORT_COLUMN === "Position") {
+        // No server-side order for Position; we'll sort client-side
       } else {
         query = query.order(CURRENT_SORT_COLUMN, {
           ascending: CURRENT_SORT_DIR === "asc"
@@ -483,10 +506,56 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.addEventListener("click", () => openMakeOfferModal(btn.dataset.playerId));
     });
   }
- 
+
   /* ============================================================
-     MODULE G (continued): Confirm Offer + Buttons
+     MODULE G: Offer Modal + Draft Helpers
      ============================================================ */
+
+  let CURRENT_OFFER_PLAYER = null;
+
+  function openMakeOfferModal(konamiId) {
+    const row = document.querySelector(`tr[data-konami-id="${konamiId}"]`);
+    if (!row) return;
+
+    const cells = row.querySelectorAll("td");
+    const img = cells[0].querySelector("img");
+
+    const name = cells[1].textContent;
+    const position = cells[2].textContent;
+    const playstyle = cells[5].textContent;
+    const rating = cells[4].textContent;
+    const mvText = cells[7].textContent;
+
+    const mv = Number(String(mvText).replace(/[^\d]/g, "")) || 0;
+
+    CURRENT_OFFER_PLAYER = {
+      Konami_ID: konamiId,
+      Name: name,
+      Position: position,
+      Playstyle: playstyle,
+      Rating: rating,
+      market_value: mv
+    };
+
+    document.getElementById("offerPlayerImg").src = img.src;
+    document.getElementById("offerPlayerName").textContent = name;
+    document.getElementById("offerPlayerPosition").textContent = `Position: ${position}`;
+    document.getElementById("offerPlayerPlaystyle").textContent = `Playstyle: ${playstyle}`;
+    document.getElementById("offerPlayerRating").textContent = `Rating: ${rating}`;
+    document.getElementById("offerPlayerMV").textContent = `Market Value: ₿ ${mv.toLocaleString("en-GB")}`;
+
+    document.getElementById("offerAmount").value = mv.toLocaleString("en-GB");
+    document.getElementById("offerError").textContent = "";
+
+    const backdrop = document.getElementById("make-offer-modal-backdrop");
+    backdrop.style.display = "flex";
+  }
+
+  function closeMakeOfferModal() {
+    const backdrop = document.getElementById("make-offer-modal-backdrop");
+    backdrop.style.display = "none";
+    CURRENT_OFFER_PLAYER = null;
+  }
 
   document.getElementById("cancelOfferBtn").onclick = () => {
     closeMakeOfferModal();
@@ -547,7 +616,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // FREE AGENT → DRAFT AUCTION
     if (!sellerClub) {
       const result = await submitDraftBid(CURRENT_OFFER_PLAYER, offer, myClub);
 
@@ -563,7 +631,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // CONTRACTED PLAYER → DIRECT BID
     const { error } = await supabase.from("Player_Transfer_Bids").insert({
       listing_id: null,
       direct_bid_id: CURRENT_OFFER_PLAYER.Konami_ID,
@@ -772,10 +839,6 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   }
 
-  /* ============================================================
-     Increment / Decrement Buttons
-     ============================================================ */
-
   document.querySelectorAll(".inc-btn, .dec-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       if (!CURRENT_OFFER_PLAYER) return;
@@ -795,19 +858,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  /* ============================================================
-     Quick Bid Button
-     ============================================================ */
-
   document.getElementById("quickBidBtn").onclick = () => {
     if (!CURRENT_OFFER_PLAYER) return;
     const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
     document.getElementById("offerAmount").value = mv.toLocaleString("en-GB");
   };
-
-  /* ============================================================
-     Intelligent Input Formatting
-     ============================================================ */
 
   document.getElementById("offerAmount").addEventListener("input", e => {
     if (!CURRENT_OFFER_PLAYER) return;
@@ -827,13 +882,48 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   /* ============================================================
-     MODULE H: Filters + Controls
+     MODULE H: Filters + Controls (Custom Multi-Select)
      ============================================================ */
+
+  function closeAllMultiFilters() {
+    document.querySelectorAll(".multi-filter.open").forEach(el => {
+      el.classList.remove("open");
+    });
+  }
+
+  function updateMultiFilterDisplay(col) {
+    const panel = document.getElementById(`filter-${col}-panel`);
+    const display = document.getElementById(`filter-${col}-display`);
+    if (!panel || !display) return;
+
+    const checkboxes = panel.querySelectorAll("input[type='checkbox']");
+    const selected = [];
+    const labels = [];
+
+    checkboxes.forEach(cb => {
+      if (cb.checked) {
+        selected.push(cb.value);
+        labels.push(cb.getAttribute("data-label") || cb.value);
+      }
+    });
+
+    CURRENT_FILTERS[col] = selected;
+
+    if (selected.length === 0) {
+      display.textContent = "All";
+    } else if (selected.length === 1) {
+      display.textContent = labels[0];
+    } else {
+      display.textContent = `${labels[0]} +${selected.length - 1}`;
+    }
+
+    loadPage(1);
+  }
 
   async function populateDropdowns() {
     for (const col of DROPDOWN_COLUMNS) {
-      const select = document.getElementById(`filter-${col}`);
-      if (!select) continue;
+      const panel = document.getElementById(`filter-${col}-panel`);
+      if (!panel) continue;
 
       let { data, error } = await supabase
         .from("Players")
@@ -858,21 +948,65 @@ document.addEventListener("DOMContentLoaded", () => {
         uniqueValues = [...new Set(values.map(v => Number(v)))]
           .filter(v => !isNaN(v))
           .sort((a, b) => a - b);
+      } else if (col === "Age" || col === "Rating") {
+        uniqueValues = [...new Set(values.map(v => Number(v)))]
+          .filter(v => !isNaN(v))
+          .sort((a, b) => a - b);
+      } else if (col === "Position") {
+        uniqueValues = [...new Set(values.map(v => String(v).trim()))]
+          .filter(v => v !== "")
+          .sort((a, b) => {
+            const ai = POSITION_ORDER.indexOf(a);
+            const bi = POSITION_ORDER.indexOf(b);
+            const aIdx = ai === -1 ? 999 : ai;
+            const bIdx = bi === -1 ? 999 : bi;
+            return aIdx - bIdx;
+          });
       } else {
         uniqueValues = [...new Set(values.map(v => String(v).trim()))]
           .filter(v => v !== "")
           .sort((a, b) => a.localeCompare(b));
-
-        if (col === "Contracted_Team") {
-          uniqueValues = ["FREE AGENT", ...uniqueValues.filter(v => v !== "FREE AGENT")];
-        }
       }
 
+      if (col === "Contracted_Team") {
+        uniqueValues = ["FREE AGENT", ...uniqueValues.filter(v => v !== "FREE AGENT")];
+      }
+
+      panel.innerHTML = "";
+
       uniqueValues.forEach(v => {
-        const opt = document.createElement("option");
-        opt.value = v;
-        opt.textContent = v;
-        select.appendChild(opt);
+        const optionDiv = document.createElement("div");
+        optionDiv.className = "multi-filter-option";
+
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+
+        let value = v;
+        let label = v;
+
+        if (col === "Contracted_Team") {
+          if (v === "FREE AGENT") {
+            value = "FREE AGENT";
+            label = "FREE AGENT";
+          } else {
+            value = v;
+            label = CLUB_NAME_MAP[v] || v;
+          }
+        }
+
+        cb.value = value;
+        cb.setAttribute("data-label", label);
+
+        cb.addEventListener("change", () => {
+          updateMultiFilterDisplay(col);
+        });
+
+        const span = document.createElement("span");
+        span.textContent = label;
+
+        optionDiv.appendChild(cb);
+        optionDiv.appendChild(span);
+        panel.appendChild(optionDiv);
       });
     }
   }
@@ -880,33 +1014,59 @@ document.addEventListener("DOMContentLoaded", () => {
   function setupFilters() {
     const filtersDiv = document.getElementById("filters");
 
-    filtersDiv.innerHTML = COLUMNS.filter(col => !FILTER_EXCLUDE.includes(col))
+    filtersDiv.innerHTML = COLUMNS
+      .filter(col => !FILTER_EXCLUDE.includes(col))
       .map(col => {
+        const label = col.replace(/_/g, " ");
         if (DROPDOWN_COLUMNS.includes(col)) {
           return `
-            <label>${col.replace(/_/g, " ")}:
-              <select id="filter-${col}">
-                <option value="">All</option>
-              </select>
-            </label>
+            <div class="multi-filter" data-col="${col}">
+              <div class="multi-filter-label">${label}</div>
+              <div class="multi-filter-control" id="filter-${col}-display">All</div>
+              <div class="multi-filter-panel" id="filter-${col}-panel"></div>
+            </div>
           `;
         } else {
           return `
-            <label>${col.replace(/_/g, " ")}:
-              <input type="text" id="filter-${col}" placeholder="Filter ${col}">
+            <label class="text-filter">
+              ${label}
+              <input type="text" id="filter-${col}" placeholder="Filter ${label}">
             </label>
           `;
         }
       })
-      .join(" ");
+      .join("");
 
-    COLUMNS.filter(col => !FILTER_EXCLUDE.includes(col)).forEach(col => {
-      const el = document.getElementById(`filter-${col}`);
-      el.addEventListener("change", () => {
-        CURRENT_FILTERS[col] = el.value;
-        loadPage(1);
+    DROPDOWN_COLUMNS.forEach(col => {
+      const wrapper = document.querySelector(`.multi-filter[data-col="${col}"]`);
+      const control = document.getElementById(`filter-${col}-display`);
+      const panel = document.getElementById(`filter-${col}-panel`);
+      if (!wrapper || !control || !panel) return;
+
+      control.addEventListener("click", e => {
+        e.stopPropagation();
+        const isOpen = wrapper.classList.contains("open");
+        closeAllMultiFilters();
+        if (!isOpen) {
+          wrapper.classList.add("open");
+        }
       });
     });
+
+    document.addEventListener("click", () => {
+      closeAllMultiFilters();
+    });
+
+    COLUMNS
+      .filter(col => !FILTER_EXCLUDE.includes(col) && !DROPDOWN_COLUMNS.includes(col))
+      .forEach(col => {
+        const el = document.getElementById(`filter-${col}`);
+        if (!el) return;
+        el.addEventListener("input", () => {
+          CURRENT_FILTERS[col] = el.value;
+          loadPage(1);
+        });
+      });
   }
 
   function setupControls() {
@@ -961,8 +1121,18 @@ document.addEventListener("DOMContentLoaded", () => {
       CURRENT_SORT_DIR = "desc";
 
       document
-        .querySelectorAll("#filters input, #filters select")
+        .querySelectorAll("#filters input[type='text']")
         .forEach(i => (i.value = ""));
+
+      document
+        .querySelectorAll("#filters .multi-filter-panel input[type='checkbox']")
+        .forEach(cb => (cb.checked = false));
+
+      DROPDOWN_COLUMNS.forEach(col => {
+        const display = document.getElementById(`filter-${col}-display`);
+        if (display) display.textContent = "All";
+      });
+
       mvMinInput.value = "";
       mvMaxInput.value = "";
 
@@ -1001,12 +1171,13 @@ document.addEventListener("DOMContentLoaded", () => {
     draftAuctionStartTime = GLOBAL_SETTINGS.draftAuctionStartTime || null;
     draftRandomFinishTime = GLOBAL_SETTINGS.draftRandomFinishTime || null;
 
+    await loadClubNames();   // load club names first for dropdown labels
+
     setupControls();
     setupFilters();
     await populateDropdowns();
     await loadTotalCount();
     await loadActiveDraftListings();
-    await loadClubNames();   // ⭐ Load human club names
     await loadDraftCreditsForOwner();
     loadPage(1);
   }
@@ -1014,3 +1185,4 @@ document.addEventListener("DOMContentLoaded", () => {
   init();
 
 });
+
