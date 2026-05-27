@@ -23,11 +23,9 @@
       padding: 15px;
       background: #1a1a1a;
       border-bottom: 1px solid #333;
-      text-align: center;
       margin-bottom: 20px;
     }
 
-    /* Ensure all nav buttons, including Logout, look identical */
     a.button,
     button.button,
     #logoutBtn {
@@ -112,7 +110,6 @@
       object-fit: contain;
     }
 
-    /* Column widths tuned so Offer has room */
     table.gpsl-table th:nth-child(1),
     table.gpsl-table td:nth-child(1) { width: 9%; }
 
@@ -137,7 +134,6 @@
     table.gpsl-table th:nth-child(8),
     table.gpsl-table td:nth-child(8) { width: 12%; text-align: center; }
 
-    /* Let playstyle wrap slightly instead of bleeding */
     table.gpsl-table td:nth-child(7) {
       white-space: nowrap;
       font-size: 12px;
@@ -169,7 +165,6 @@
       transform: scale(1.03);
     }
 
-    /* Modal */
     .modal {
       display: none;
       position: fixed;
@@ -183,7 +178,7 @@
     }
 
     .modal-content {
-      background-color: #1a1a1a;
+      background: #1a1a1a;
       margin: 5% auto;
       padding: 20px;
       border: 1px solid #333;
@@ -438,22 +433,33 @@
       await loadGlobalSettings();
 
       const nav = document.getElementById("nav");
-      nav.innerHTML = `
-        <a href="index.html" class="button">Home</a>
-        <a href="GPDB.html" class="button">Player Database</a>
-        <a href="clubs.html" class="button">Clubs</a>
-        <a href="dashboard.html" class="button">Dashboard</a>
-        <a href="all_listings.html" class="button">Transfer List</a>
-        <button id="logoutBtn" class="button">Logout</button>
+
+      /* ⭐ UPDATED NAV WITH LOGOUT ON FAR RIGHT */
+      let html = `
+        <div style="display:flex; align-items:center; gap:10px; width:100%;">
+          <div id="leftNav" style="display:flex; align-items:center; gap:10px;">
+            <a href="index.html" class="button">Home</a>
+            <a href="GPDB.html" class="button">Player Database</a>
+            <a href="clubs.html" class="button">Clubs</a>
+            <a href="dashboard.html" class="button">Dashboard</a>
+            <a href="all_listings.html" class="button">Transfer List</a>
       `;
 
       if (user.email === "rotavator66@outlook.com") {
-        nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
+        html += `<a href="admin.html" class="button">GPSL Admin</a>`;
       }
 
       if (draftEnabled) {
-        nav.innerHTML += `<a href="draftauction.html" class="button">Draft Auction</a>`;
+        html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
       }
+
+      html += `
+          </div>
+          <button id="logoutBtn" class="button" style="margin-left:auto;">Logout</button>
+        </div>
+      `;
+
+      nav.innerHTML = html;
 
       document.getElementById("logoutBtn").onclick = async () => {
         await supabase.auth.signOut();
@@ -570,7 +576,7 @@
 
         if (!groupPlayers.length) continue;
 
-        container.innerHTML += `
+               container.innerHTML += `
           <h2 class="section-title">${groupName}</h2>
           <div class="panel">
             <table class="gpsl-table">
@@ -643,15 +649,11 @@
       const quickBidBtn = document.getElementById("quickBidBtn");
       const incButtons = document.querySelectorAll(".inc-btn");
 
-      /* -------------------------------
-         LIVE FORMATTING + MINIMUM ENFORCEMENT WHILE TYPING
-      ------------------------------- */
       amountInput.addEventListener("input", () => {
         let raw = amountInput.value.replace(/,/g, "");
         raw = raw.replace(/\D/g, "");
         let num = Number(raw);
 
-        // ENFORCE MINIMUM BID WHILE TYPING
         if (currentPlayerMarketValue && num < currentPlayerMarketValue) {
           num = currentPlayerMarketValue;
         }
@@ -680,9 +682,6 @@
         }
       };
 
-      /* -------------------------------
-         OPEN MODAL
-      ------------------------------- */
       document.addEventListener("click", async (e) => {
         if (e.target.classList && e.target.classList.contains("offer-btn")) {
           if (!transferWindowOpen) return;
@@ -704,9 +703,6 @@
         }
       });
 
-      /* -------------------------------
-         INCREMENT BUTTONS (MINIMUM ENFORCED)
-      ------------------------------- */
       incButtons.forEach(btn => {
         btn.addEventListener("click", () => {
           let raw = amountInput.value.replace(/,/g, "");
@@ -714,7 +710,6 @@
           let delta = Number(btn.getAttribute("data-delta"));
           let next = current + delta;
 
-          // ENFORCE MINIMUM
           if (currentPlayerMarketValue && next < currentPlayerMarketValue) {
             next = currentPlayerMarketValue;
           }
@@ -725,9 +720,6 @@
         });
       });
 
-      /* -------------------------------
-         QUICK BID (ALWAYS MARKET VALUE)
-      ------------------------------- */
       quickBidBtn.onclick = () => {
         if (currentPlayerMarketValue != null) {
           amountInput.value = currentPlayerMarketValue.toLocaleString("en-GB");
