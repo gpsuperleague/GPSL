@@ -215,12 +215,33 @@
     </div>
 
     <div class="filter-group">
-      <strong>Market Value</strong>
-      <label>Min <input type="number" id="mv-min" style="width:80px;"></label>
-      <label>Max <input type="number" id="mv-max" style="width:80px;"></label>
-      <button id="applyMV" class="button">Apply</button>
-    </div>
-  </div>
+  <strong>Market Value</strong>
+
+  <label>
+    Min
+    <input
+      type="text"
+      id="mv-min"
+      style="width:140px; text-align:right;"
+      inputmode="numeric"
+      autocomplete="off"
+    >
+  </label>
+
+  <label>
+    Max
+    <input
+      type="text"
+      id="mv-max"
+      style="width:140px; text-align:right;"
+      inputmode="numeric"
+      autocomplete="off"
+    >
+  </label>
+
+  <button id="applyMV" class="button">Apply</button>
+</div>
+
 
   <div class="filter-group" id="filters" style="margin-bottom:20px;">
     <strong>Filters</strong>
