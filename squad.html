@@ -46,19 +46,16 @@
       transform: scale(1.05);
     }
 
-    /* ⭐ FIX: Force header content to stay left-aligned */
     #headerContainer {
       justify-content: flex-start !important;
     }
 
-    /* ⭐ Center table headers + theme colour */
     .gpsl-table th {
       text-align: center !important;
       color: #ff9900;
       font-weight: bold;
     }
 
-    /* ⭐ Section headers (Goalkeepers, Defenders, etc.) */
     .squad-section-title {
       background: #1a1a1a;
       color: #ff9900;
@@ -89,6 +86,12 @@
 
   <!-- MAIN CONTENT -->
   <div style="padding:20px;">
+
+    <!-- ⭐ TRANSFER WINDOW CLOSED MESSAGE -->
+    <div id="windowClosedMessage"
+         style="display:none; background:#330000; color:#ff6666; padding:10px; margin-bottom:15px; border:1px solid #660000; border-radius:6px;">
+      Transfer window is currently CLOSED. Direct listings are disabled.
+    </div>
 
     <div class="panel">
       <h2 class="section-header">Squad</h2>
