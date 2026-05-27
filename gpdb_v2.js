@@ -461,8 +461,9 @@ function formatHeader(col) {
                 let value = player[col];
 
                if (col === "market_value" && value !== null) {
-                 value = "₿ " + Number(value).toLocaleString("en-GB");
+                 value = `<span class="money">₿ ${Number(value).toLocaleString("en-GB")}</span>`;
                }
+
 
 
                 if (col === "Maximum_Reserve_Price" && value !== null) {
