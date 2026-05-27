@@ -1,13 +1,13 @@
 // ===============================
-// DASHBOARD.JS — Hub Page Only
+// DASHBOARD.JS — Live, Modern Version
 // ===============================
 
 import { supabase } from "./supabase_client.js";
-import { initGlobal } from "./global.js";
+import { initGlobal, startDraftCountdown } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // Global nav + countdown
+  // Load global nav + countdown container
   await initGlobal();
 
   // Get user
@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("userEmail").textContent = user.email;
 
-  // Get club for this user
+  // Load club info
   const { data: club, error } = await supabase
     .from("Clubs")
     .select("*")
@@ -32,12 +32,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  // Load club map for full names
   await loadClubsMap();
 
   const shortName = club.ShortName;
   const fullName = fullClubName(shortName) || club.Club || shortName;
 
+  // Update header
   document.getElementById("dashboardTitle").textContent = `${fullName} Dashboard`;
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${shortName}.png`;
+
+  // ⭐ Start live draft countdown (updates every second)
+  startDraftCountdown();
 });
