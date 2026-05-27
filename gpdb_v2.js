@@ -373,6 +373,12 @@ document.addEventListener("DOMContentLoaded", () => {
     renderPagination();
   }
 
+function formatHeader(col) {
+  if (col === "market_value") return "Market Value";
+  if (col === "Maximum_Reserve_Price") return "Maximum Reserve Price";
+  return col.replace(/_/g, " ");
+}
+ 
   /* ============================================================
      MODULE F: Rendering (with Bid column)
      ============================================================ */
