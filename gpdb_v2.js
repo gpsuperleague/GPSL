@@ -12,8 +12,13 @@ const supabase = createClient(
 let draftAuctionStartTime = null;
 let draftRandomFinishTime = null;
 
+function getUKTime() {
+  const ukString = new Date().toLocaleString("en-GB", { timeZone: "Europe/London" });
+  return new Date(ukString);
+}
+
 function getDraftWindowTimes() {
-  const nowLocal = new Date();
+  const nowLocal = getUKTime();
   const today = new Date(
     nowLocal.getFullYear(),
     nowLocal.getMonth(),
@@ -430,7 +435,8 @@ function formatHeader(col) {
             if (inDraft) {
               bidCell = `<span class="locked-msg">In Draft Auction</span>`;
             } else if (GLOBAL_SETTINGS.draftAuctionEnabled) {
-              const nowLocal = new Date();
+
+              const nowLocal = getUKTime();
               const { sixPmToday } = getDraftWindowTimes();
 
               if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
@@ -515,7 +521,7 @@ function formatHeader(col) {
     });
   }
 
-  /* ============================================================
+/* ============================================================
      MODULE G: Offer Modal + Draft Helpers
      ============================================================ */
 
@@ -571,7 +577,9 @@ function formatHeader(col) {
   };
 
   document.getElementById("confirmOfferBtn").onclick = async () => {
-    const nowLocal = new Date();
+
+    const nowLocal = getUKTime();   // ⭐ UK TIME FIX
+
     const input = document.getElementById("offerAmount");
     const errorBox = document.getElementById("offerError");
 
@@ -666,7 +674,8 @@ function formatHeader(col) {
      ============================================================ */
 
   function getDraftAuctionTimesForNewListing() {
-    const now = new Date();
+
+    const now = getUKTime();   // ⭐ UK TIME FIX
 
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
@@ -750,7 +759,9 @@ function formatHeader(col) {
   }
 
   async function submitDraftBid(player, offerAmount, buyerShortName) {
-    const nowLocal = new Date();
+
+    const nowLocal = getUKTime();   // ⭐ UK TIME FIX
+
     const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
     if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
@@ -1054,7 +1065,7 @@ function formatHeader(col) {
       const panel = document.getElementById(`filter-${col}-panel`);
       if (!wrapper || !control || !panel) return;
 
-           control.addEventListener("click", e => {
+      control.addEventListener("click", e => {
         e.stopPropagation();
         const isOpen = wrapper.classList.contains("open");
         closeAllMultiFilters();
@@ -1196,3 +1207,4 @@ function formatHeader(col) {
   init();
 
 });
+
