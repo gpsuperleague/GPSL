@@ -299,14 +299,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const { data, error, count } = await query;
 
-    if (error) {
-      console.error(error);
-      return;
-    }
+if (error) {
+  console.error(error);
+  return;
+}
 
-    TOTAL_ROWS = count;
-    renderTable(data);
-    renderPagination();
+// ⭐ Client-side MV filtering (because market_value is TEXT)
+let filtered = data;
+if (MV_MIN !== null || MV_MAX !== null) {
+  filtered = data.filter(row => {
+    const mv = Number(String(row.market_value).replace(/,/g, "").trim()) || 0;
+
+    if (MV_MIN !== null && mv < MV_MIN) return false;
+    if (MV_MAX !== null && mv > MV_MAX) return false;
+
+    return true;
+  });
+}
+
+TOTAL_ROWS = count; // keep original count for pagination
+renderTable(filtered);
+renderPagination();
   }
 
   /* ============================================================
