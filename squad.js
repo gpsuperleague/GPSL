@@ -1,4 +1,4 @@
-// squad.js — CLEAN, FIXED, MODERN VERSION
+// squad.js — CLEAN, FIXED, MODERN VERSION WITH TRANSFER WINDOW LOGIC
 
 import { fullClubName } from "./clubs_lookup.js";
 
@@ -9,6 +9,9 @@ let userObj = null;
 let userId = null;
 let currentUserShort = null;
 let selectedPlayerForListing = null;
+
+// ⭐ NEW: Transfer window state
+let transferWindowOpen = true;
 
 // ENTRY POINT
 document.addEventListener("DOMContentLoaded", async () => {
@@ -43,17 +46,68 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${currentUserShort}.png`;
 
+  // ⭐ Load transfer window status BEFORE loading squad
+  await loadTransferWindowStatus();
+
   await loadSquad(); // now loads fresh listing state internally
 
   wireButtons();
 
   // OPTIONAL: auto-refresh listing status every 30 seconds
   setInterval(async () => {
+    await loadTransferWindowStatus();
     await loadSquad();
   }, 30000);
 });
 
-// ⭐ NEW: Always fetch ACTIVE listings live from Supabase
+// ⭐ NEW: Load transfer window status
+async function loadTransferWindowStatus() {
+  const { data, error } = await supabase
+    .from("global_settings")
+    .select("transfer_window_open")
+    .eq("id", 1)
+    .single();
+
+  if (error) {
+    console.error("Failed to load transfer window status:", error);
+    transferWindowOpen = true; // fail-safe
+    return;
+  }
+
+  transferWindowOpen = data?.transfer_window_open === true;
+}
+
+// ⭐ NEW: Apply UI rules when window is closed
+function applyTransferWindowRules() {
+  const msg = document.getElementById("windowClosedMessage");
+  const selects = document.querySelectorAll("select");
+
+  if (!transferWindowOpen) {
+    // Show warning message
+    if (msg) msg.style.display = "block";
+
+    // Update dropdowns
+    selects.forEach(sel => {
+      const opt = sel.querySelector('option[value="list"]');
+      if (opt) {
+        opt.textContent = "Transfer Window Shut";
+        opt.disabled = true;
+      }
+    });
+  } else {
+    if (msg) msg.style.display = "none";
+
+    selects.forEach(sel => {
+      const opt = sel.querySelector('option[value="list"]');
+      if (opt) {
+        opt.textContent = "Transfer List";
+        opt.disabled = false;
+      }
+    });
+  }
+}
+
+// ⭐ Always fetch ACTIVE listings live from Supabase
 async function getActiveListings() {
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
@@ -143,11 +197,17 @@ function renderSquad(players, activeListings) {
   }
 
   applyPESDBRowClicks("squad-body");
+
+  // ⭐ Apply transfer window rules AFTER rendering
+  applyTransferWindowRules();
 }
 
-// ACTION HANDLER
+// ⭐ UPDATED ACTION HANDLER — blocks listing when window is closed
 window.handlePlayerAction = function(playerId, action) {
   if (action === "list") {
+    if (!transferWindowOpen) {
+      return; // block listing when window is closed
+    }
     openListPlayerModalByID({ Konami_ID: playerId });
   }
 };
@@ -317,7 +377,7 @@ async function validateAndCreateListing() {
 
   document.getElementById("list-player-modal-backdrop").style.display = "none";
 
-  // ⭐ FIX: Reload fresh listing state from DB
+  // ⭐ Reload fresh listing state from DB
   await loadSquad();
 }
 
@@ -399,5 +459,4 @@ function wireButtons() {
   if (confirmBtn) confirmBtn.onclick = validateAndCreateListing;
 }
 
-console.log("Squad JS loaded successfully (fixed version).");
-
+console.log("Squad JS loaded successfully (with transfer window logic).");
