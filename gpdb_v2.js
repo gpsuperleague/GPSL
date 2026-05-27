@@ -9,8 +9,8 @@ const supabase = createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
 );
 
-let draftAuctionStartTime = null;     // official start of draft window
-let draftRandomFinishTime = null;     // random end between 18:50–18:59:59
+let draftAuctionStartTime = null;
+let draftRandomFinishTime = null;
 
 function getDraftWindowTimes() {
   const nowLocal = new Date();
@@ -77,7 +77,6 @@ async function loadDraftCreditsForOwner() {
     const firstCount = firsts ? firsts.length : 0;
     const earned = firstCount * 2;
 
-    // joins can consume credits all the way until the random finish time
     const joinWindowEnd = draftRandomFinishTime || sixPmToday;
 
     const { data: joins } = await supabase
@@ -107,7 +106,6 @@ async function loadDraftCreditsForOwner() {
 async function getDraftCreditsForGPDB(clubShortName) {
   const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
-  // Earn credits only from first bids up to 18:00
   const { data: firsts } = await supabase
     .from("Player_Transfer_Bids")
     .select("direct_bid_id")
@@ -116,7 +114,6 @@ async function getDraftCreditsForGPDB(clubShortName) {
     .gte("bid_time", sevenPmYesterday.toISOString())
     .lt("bid_time", sixPmToday.toISOString());
 
-  // Spend credits (joins) all the way until the random finish time
   const joinWindowEnd = draftRandomFinishTime || sixPmToday;
 
   const { data: joins } = await supabase
@@ -175,6 +172,13 @@ document.addEventListener("DOMContentLoaded", () => {
     "Season_Signed"
   ];
 
+  // Custom position order
+  const POSITION_ORDER = [
+    "GK", "LB", "CB", "RB",
+    "DMF", "LMF", "CMF", "RMF",
+    "AMF", "LWF", "SS", "RWF", "CF"
+  ];
+
   /* ============================================================
      MODULE C: Pagination + State
      ============================================================ */
@@ -185,7 +189,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let CURRENT_FILTERS = {};
 
-  // ⭐ Default sort: Rating DESC, then market_value DESC
   let CURRENT_SORT_COLUMN = "Rating";
   let CURRENT_SORT_DIR = "desc";
 
@@ -199,6 +202,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let GLOBAL_SETTINGS = null;
   let CURRENT_USER = null;
   let ACTIVE_DRAFT_PLAYERS = new Set();
+
+  // Club name map
+  let CLUB_NAME_MAP = {};
 
   async function loadUser() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -230,6 +236,25 @@ document.addEventListener("DOMContentLoaded", () => {
     };
   }
 
+  async function loadClubNames() {
+    const { data, error } = await supabase
+      .from("Clubs")
+      .select("ShortName, Club");
+
+    if (error || !data) {
+      console.error("Failed to load club names:", error);
+      CLUB_NAME_MAP = {};
+      return;
+    }
+
+    CLUB_NAME_MAP = {};
+    data.forEach(c => {
+      if (c.ShortName) {
+        CLUB_NAME_MAP[c.ShortName] = c.Club || c.ShortName;
+      }
+    });
+  }
+
   /* ============================================================
      MODULE E: Data Loading
      ============================================================ */
@@ -252,7 +277,6 @@ document.addEventListener("DOMContentLoaded", () => {
       .from("Players")
       .select(COLUMNS.join(","), { count: "exact" });
 
-    // Apply filters (including dropdowns) to the FULL dataset
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
       if (value.trim() === "") return;
 
@@ -267,14 +291,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    // Min/Max Market Value across entire player base
     if (MV_MIN !== null) query = query.gte("market_value", MV_MIN);
     if (MV_MAX !== null) query = query.lte("market_value", MV_MAX);
 
-    // Sorting
     if (CURRENT_SORT_COLUMN) {
       if (CURRENT_SORT_COLUMN === "Rating") {
-        // ⭐ Default: Rating DESC, then market_value DESC
         query = query
           .order("Rating", { ascending: false })
           .order("market_value", { ascending: false });
@@ -288,38 +309,45 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
     } else {
-      // Fallback default sort
       query = query
         .order("Rating", { ascending: false })
         .order("market_value", { ascending: false });
     }
 
-    // Pagination AFTER filters + sort
     query = query.range(from, to);
 
     const { data, error, count } = await query;
 
-if (error) {
-  console.error(error);
-  return;
-}
+    if (error) {
+      console.error(error);
+      return;
+    }
 
-// ⭐ Client-side MV filtering (because market_value is TEXT)
-let filtered = data;
-if (MV_MIN !== null || MV_MAX !== null) {
-  filtered = data.filter(row => {
-    const mv = Number(String(row.market_value).replace(/,/g, "").trim()) || 0;
+    let filtered = data;
+    if (MV_MIN !== null || MV_MAX !== null) {
+      filtered = data.filter(row => {
+        const mv = Number(String(row.market_value).replace(/,/g, "").trim()) || 0;
 
-    if (MV_MIN !== null && mv < MV_MIN) return false;
-    if (MV_MAX !== null && mv > MV_MAX) return false;
+        if (MV_MIN !== null && mv < MV_MIN) return false;
+        if (MV_MAX !== null && mv > MV_MAX) return false;
 
-    return true;
-  });
-}
+        return true;
+      });
+    }
 
-TOTAL_ROWS = count; // keep original count for pagination
-renderTable(filtered);
-renderPagination();
+    if (CURRENT_SORT_COLUMN === "Position") {
+      filtered.sort((a, b) => {
+        const ai = POSITION_ORDER.indexOf(a.Position);
+        const bi = POSITION_ORDER.indexOf(b.Position);
+        const aIdx = ai === -1 ? 999 : ai;
+        const bIdx = bi === -1 ? 999 : bi;
+        return CURRENT_SORT_DIR === "asc" ? aIdx - bIdx : bIdx - aIdx;
+      });
+    }
+
+    TOTAL_ROWS = count;
+    renderTable(filtered);
+    renderPagination();
   }
 
   /* ============================================================
@@ -377,16 +405,11 @@ renderPagination();
               const nowLocal = new Date();
               const { sixPmToday } = getDraftWindowTimes();
 
-              // Before draft start: fully closed
               if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
                 bidCell = `<span class="locked-msg">Draft Closed</span>`;
-              }
-              // After 18:00: free agents with no bids are locked until next window
-              else if (nowLocal >= sixPmToday) {
+              } else if (nowLocal >= sixPmToday) {
                 bidCell = `<span class="locked-msg">Draft Locked</span>`;
-              }
-              // Normal case: can start a new draft auction
-              else {
+              } else {
                 bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
               }
             } else {
@@ -407,9 +430,19 @@ renderPagination();
             ${COLUMNS.filter(col => col !== "Konami_ID")
               .map(col => {
                 let value = player[col];
+
                 if (col === "market_value" && value !== null) {
                   value = "₿ " + Number(value).toLocaleString("en-GB");
                 }
+
+                if (col === "Maximum_Reserve_Price" && value !== null) {
+                  value = "₿ " + Number(value).toLocaleString("en-GB");
+                }
+
+                if (col === "Contracted_Team" && value) {
+                  value = CLUB_NAME_MAP[value] || value;
+                }
+
                 return `<td>${value}</td>`;
               })
               .join("")}
@@ -419,7 +452,6 @@ renderPagination();
       })
       .join("");
 
-    // Column sorting
     Array.from(tableHead.querySelectorAll("th[data-col]")).forEach(th => {
       const col = th.getAttribute("data-col");
       th.onclick = () => {
@@ -433,7 +465,6 @@ renderPagination();
       };
     });
 
-    // Row click → PESDB
     Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
       row.style.cursor = "pointer";
       row.addEventListener("click", e => {
@@ -448,69 +479,11 @@ renderPagination();
       });
     });
 
-    // Make Offer buttons
     document.querySelectorAll(".make-offer-btn").forEach(btn => {
       btn.addEventListener("click", () => openMakeOfferModal(btn.dataset.playerId));
     });
   }
-
-  /* ============================================================
-     MODULE G: Make Offer Modal
-     ============================================================ */
-
-  let CURRENT_OFFER_PLAYER = null;
-
-  async function openMakeOfferModal(playerId) {
-    const nowLocal = new Date();
-
-    if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-      alert("Draft auction has not started yet.");
-      return;
-    }
-
-    const { data: player, error } = await supabase
-      .from("Players")
-      .select("*")
-      .eq("Konami_ID", playerId)
-      .single();
-
-    if (error || !player) {
-      console.error("Failed to load player for offer", error);
-      return;
-    }
-
-    CURRENT_OFFER_PLAYER = player;
-
-    const imgEl = document.getElementById("offerPlayerImg");
-    const nameEl = document.getElementById("offerPlayerName");
-    const posEl = document.getElementById("offerPlayerPosition");
-    const styleEl = document.getElementById("offerPlayerPlaystyle");
-    const ratingEl = document.getElementById("offerPlayerRating");
-    const mvEl = document.getElementById("offerPlayerMV");
-    const amountInput = document.getElementById("offerAmount");
-    const errorBox = document.getElementById("offerError");
-
-    imgEl.src = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
-    imgEl.onerror = () => {
-      imgEl.src = "https://i.imgur.com/3s8XQ7Y.png";
-    };
-
-    nameEl.textContent = player.Name;
-    posEl.textContent = `Position: ${player.Position}`;
-    styleEl.textContent = `Playstyle: ${player.Playstyle}`;
-    ratingEl.textContent = `Rating: ${player.Rating}`;
-    mvEl.textContent = `Market Value: ₿ ${Number(player.market_value).toLocaleString("en-GB")}`;
-
-    amountInput.value = Number(player.market_value).toLocaleString("en-GB");
-    errorBox.textContent = "";
-
-    document.getElementById("make-offer-modal-backdrop").style.display = "flex";
-  }
-
-  function closeMakeOfferModal() {
-    document.getElementById("make-offer-modal-backdrop").style.display = "none";
-  }
-
+ 
   /* ============================================================
      MODULE G (continued): Confirm Offer + Buttons
      ============================================================ */
@@ -590,7 +563,7 @@ renderPagination();
       return;
     }
 
-    // CONTRACTED PLAYER → DIRECT BID TO SELLER REVIEW (not draft)
+    // CONTRACTED PLAYER → DIRECT BID
     const { error } = await supabase.from("Player_Transfer_Bids").insert({
       listing_id: null,
       direct_bid_id: CURRENT_OFFER_PLAYER.Konami_ID,
@@ -611,10 +584,9 @@ renderPagination();
   };
 
   /* ============================================================
-     DRAFT AUCTION HELPERS FOR GPDB
+     DRAFT AUCTION HELPERS
      ============================================================ */
 
-  // randomised daily draft auction times: start 19:00 today, end random 18:50–18:59:59 tomorrow
   function getDraftAuctionTimesForNewListing() {
     const now = new Date();
 
@@ -627,33 +599,30 @@ renderPagination();
     const baseEnd = new Date(tomorrow);
     baseEnd.setHours(18, 50, 0, 0);
 
-    const extraSeconds = Math.floor(Math.random() * 600); // 0–599
+    const extraSeconds = Math.floor(Math.random() * 600);
     const end = new Date(baseEnd.getTime() + extraSeconds * 1000);
 
-    const start = sevenPmToday;
-
-    return { start, end };
+    return { start: sevenPmToday, end };
   }
 
-  /* ensure a Player_Transfer_Listings row exists for this player */
   async function ensureDraftListingForPlayer(player) {
     const konamiStr = String(player.Konami_ID).trim();
 
-    const { data: existing, error: existingErr } = await supabase
+    const { data: existing } = await supabase
       .from("Player_Transfer_Listings")
-      .select("id, player_id")
+      .select("id")
       .eq("player_id", konamiStr)
       .eq("listing_type", "draft")
       .eq("status", "active")
       .maybeSingle();
 
-    if (existing && !existingErr) {
+    if (existing) {
       return { ok: true, listingId: existing.id };
     }
 
     const { start, end } = getDraftAuctionTimesForNewListing();
 
-    const { data: listing, error: listingErr } = await supabase
+    const { data: listing, error } = await supabase
       .from("Player_Transfer_Listings")
       .insert({
         player_id: konamiStr,
@@ -669,29 +638,14 @@ renderPagination();
       .select("*")
       .single();
 
-    if (listingErr || !listing) {
-      console.error("Error creating draft listing:", listingErr);
-
-      const { data: fallback, error: fallbackErr } = await supabase
-        .from("Player_Transfer_Listings")
-        .select("id, player_id")
-        .eq("player_id", konamiStr)
-        .eq("listing_type", "draft")
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (fallback && !fallbackErr) {
-        return { ok: true, listingId: fallback.id };
-      }
-
+    if (error || !listing) {
+      console.error("Error creating draft listing:", error);
       return { ok: false, msg: "Error creating draft listing." };
     }
 
     return { ok: true, listingId: listing.id };
   }
 
-  /* return inserted bid so we can link it (listing_id set at insert) */
   async function insertDraftBid(player, amount, club, isFirst, isJoin, consumeJoin, listingId) {
     const { data, error } = await supabase
       .from("Player_Transfer_Bids")
@@ -717,7 +671,6 @@ renderPagination();
     return { ok: true, bid: data };
   }
 
-  /* create listing + link bid via listing_id */
   async function submitDraftBid(player, offerAmount, buyerShortName) {
     const nowLocal = new Date();
     const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
@@ -726,22 +679,16 @@ renderPagination();
       return { ok: false, msg: "Draft auction has not started yet." };
     }
 
-    const { data: existing, error: existingErr } = await supabase
+    const { data: existing } = await supabase
       .from("Player_Transfer_Bids")
       .select("bidder_club_id")
       .eq("direct_bid_id", player.Konami_ID)
       .eq("is_direct", true)
       .order("bid_time", { ascending: true });
 
-    if (existingErr) {
-      console.error(existingErr);
-      return { ok: false, msg: "Error checking existing draft bids." };
-    }
-
     const isFirstBid = !existing || existing.length === 0;
     const isJoining = !isFirstBid;
 
-    // After 18:00, you cannot start NEW draft auctions on free agents with no bids
     if (isFirstBid && nowLocal >= sixPmToday) {
       return {
         ok: false,
@@ -750,9 +697,8 @@ renderPagination();
     }
 
     const listingResult = await ensureDraftListingForPlayer(player);
-    if (!listingResult.ok) {
-      return listingResult;
-    }
+    if (!listingResult.ok) return listingResult;
+
     const listingId = listingResult.listingId;
 
     let bidResult;
@@ -780,6 +726,7 @@ renderPagination();
         if (credits <= 0) {
           return { ok: false, msg: "You do not have enough draft credits to join this auction." };
         }
+
         bidResult = await insertDraftBid(
           player,
           offerAmount,
@@ -807,7 +754,6 @@ renderPagination();
     return { ok: true };
   }
 
-  /* load active draft listings so GPDB can show "In Draft Auction" */
   async function loadActiveDraftListings() {
     const { data, error } = await supabase
       .from("Player_Transfer_Listings")
@@ -884,7 +830,6 @@ renderPagination();
      MODULE H: Filters + Controls
      ============================================================ */
 
-  // ⭐ Optimised dropdown population using DISTINCT (no more 1000-row batching)
   async function populateDropdowns() {
     for (const col of DROPDOWN_COLUMNS) {
       const select = document.getElementById(`filter-${col}`);
@@ -975,15 +920,10 @@ renderPagination();
     const mvMaxInput = document.getElementById("mv-max");
     const applyMV = document.getElementById("applyMV");
 
-    // widen + right-align for large values like 44,500,000
-    if (mvMinInput) {
-      mvMinInput.style.width = "140px";
-      mvMinInput.style.textAlign = "right";
-    }
-    if (mvMaxInput) {
-      mvMaxInput.style.width = "140px";
-      mvMaxInput.style.textAlign = "right";
-    }
+    mvMinInput.style.width = "140px";
+    mvMinInput.style.textAlign = "right";
+    mvMaxInput.style.width = "140px";
+    mvMaxInput.style.textAlign = "right";
 
     const parseMV = (val) => {
       const raw = val.replace(/[^\d]/g, "").trim();
@@ -1004,12 +944,8 @@ renderPagination();
       }
     };
 
-    if (mvMinInput) {
-      mvMinInput.addEventListener("input", () => formatMVInput(mvMinInput));
-    }
-    if (mvMaxInput) {
-      mvMaxInput.addEventListener("input", () => formatMVInput(mvMaxInput));
-    }
+    mvMinInput.addEventListener("input", () => formatMVInput(mvMinInput));
+    mvMaxInput.addEventListener("input", () => formatMVInput(mvMaxInput));
 
     applyMV.addEventListener("click", () => {
       MV_MIN = parseMV(mvMinInput.value);
@@ -1070,11 +1006,11 @@ renderPagination();
     await populateDropdowns();
     await loadTotalCount();
     await loadActiveDraftListings();
+    await loadClubNames();   // ⭐ Load human club names
     await loadDraftCreditsForOwner();
     loadPage(1);
   }
 
   init();
 
-  /* END DOMContentLoaded WRAPPER */
 });
