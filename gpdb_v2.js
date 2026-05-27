@@ -13,8 +13,9 @@ let draftAuctionStartTime = null;
 let draftRandomFinishTime = null;
 
 function getUKTime() {
-  const ukString = new Date().toLocaleString("en-GB", { timeZone: "Europe/London" });
-  return new Date(ukString);
+  const now = new Date();
+  const ukOffset = now.getTimezoneOffset() + 60; // UK is UTC+1 during BST
+  return new Date(now.getTime() - ukOffset * 60 * 1000);
 }
 
 function getDraftWindowTimes() {
