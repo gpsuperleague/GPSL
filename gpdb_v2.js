@@ -36,7 +36,7 @@ function makeUKDate(year, month, day, hour = 0, minute = 0, second = 0) {
 }
 
 function getDraftWindowTimes() {
-  const nowUK = getUKTime(); // your existing UK time getter
+  const nowUK = getUKNow(); // your existing UK time getter
 
   const y = nowUK.getFullYear();
   const m = nowUK.getMonth();
