@@ -52,6 +52,7 @@ function getDraftWindowTimes() {
    ============================================================ */
 
 async function loadDraftCreditsForOwner() {
+ console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
