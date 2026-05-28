@@ -16,11 +16,40 @@ let draftRandomFinishTime = null;
    TIME HELPERS – REAL UK TIME, INDEPENDENT OF USER TIMEZONE
    ============================================================ */
 
-// Current time in UK (Europe/London), regardless of where the user is
+// Current time in UK (Europe/London), built from numeric parts (robust)
 function getUKNow() {
   const now = new Date();
-  const ukString = now.toLocaleString("en-GB", { timeZone: "Europe/London" });
-  return new Date(ukString);
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    hour12: false
+  });
+
+  const parts = fmt.formatToParts(now);
+  const map = {};
+  parts.forEach(p => {
+    if (p.type && p.value) map[p.type] = p.value;
+  });
+
+  const y = Number(map.year);
+  const m = Number(map.month) - 1; // formatToParts month is 1-12; makeUKDate expects 0-11
+  const d = Number(map.day);
+  const hh = Number(map.hour);
+  const mm = Number(map.minute);
+  const ss = Number(map.second);
+
+  // Fallback guard: if any part is invalid, return local Date() as last resort
+  if ([y, m, d, hh, mm, ss].some(v => !isFinite(v))) {
+    console.warn("getUKNow: failed to parse parts, falling back to local Date()");
+    return new Date();
+  }
+
+  return makeUKDate(y, m, d, hh, mm, ss);
 }
 
 // Build a stable Date for the intended UK wall-clock time
@@ -60,6 +89,7 @@ function getDraftWindowTimes() {
 
   return { sevenPmYesterday, sixPmToday, sevenPmToday };
 }
+
 
 /* ============================================================
    DRAFT CREDITS PANEL (GPDB VIEW)
