@@ -160,7 +160,8 @@
     • Earn credits by being the first to bid on a free agent in GPDB<br>
     • Joining an existing draft auction costs <b>1 credit</b><br>
     • No bids by 6pm → no bids after 6pm<br>
-    • No free agent bids after 6pm
+    • No free agent bids after 6pm<br>
+    • All rules are based on <b>UK time</b>, but times you see are in <b>your local time</b>
   </div>
 
   <div class="panel">
@@ -193,30 +194,33 @@
 
     let buyerShortName = null;
     let draftEnabled = false;
-    let draftAuctionStartTime = null;
-    let randomFinishTime = null;
+
+    // UK‑logic times
+    let draftAuctionStartTimeUK = null;
+    let randomFinishTimeUK = null;
+
+    // Display (local) times
+    let draftAuctionStartTimeDisplay = null;
+    let randomFinishTimeDisplay = null;
 
     /* ============================================================
-       UK TIME HELPERS
+       TIME HELPERS – UK LOGIC, LOCAL DISPLAY
        ============================================================ */
 
-    function parseUTC(iso) {
-      const d = new Date(iso);
-      return new Date(
-        d.getUTCFullYear(),
-        d.getUTCMonth(),
-        d.getUTCDate(),
-        d.getUTCHours(),
-        d.getUTCMinutes(),
-        d.getUTCSeconds()
-      );
+    function getUKNow() {
+      const now = new Date();
+      const ukString = now.toLocaleString("en-GB", { timeZone: "Europe/London" });
+      return new Date(ukString);
     }
 
-    function nowInUK() {
-      return parseUTC(new Date().toISOString());
+    function parseUK(iso) {
+      const d = new Date(iso);
+      const ukString = d.toLocaleString("en-GB", { timeZone: "Europe/London" });
+      return new Date(ukString);
     }
+
     /* ============================================================
-       LOAD GLOBAL SETTINGS (NEW SYSTEM)
+       LOAD GLOBAL SETTINGS
        ============================================================ */
 
     async function loadGlobalSettings() {
@@ -230,33 +234,43 @@
 
       if (error || !data) {
         draftEnabled = false;
-        draftAuctionStartTime = null;
-        randomFinishTime = null;
+        draftAuctionStartTimeUK = null;
+        randomFinishTimeUK = null;
+        draftAuctionStartTimeDisplay = null;
+        randomFinishTimeDisplay = null;
         statusEl.textContent = "Draft auction is currently disabled.";
         return;
       }
 
       draftEnabled = data.draft_auction_enabled === true;
 
-      draftAuctionStartTime = data.draft_auction_start_time
-        ? parseUTC(data.draft_auction_start_time)
-        : null;
+      if (data.draft_auction_start_time) {
+        draftAuctionStartTimeDisplay = new Date(data.draft_auction_start_time);
+        draftAuctionStartTimeUK = parseUK(data.draft_auction_start_time);
+      } else {
+        draftAuctionStartTimeDisplay = null;
+        draftAuctionStartTimeUK = null;
+      }
 
-      randomFinishTime = data.draft_random_finish_time
-        ? parseUTC(data.draft_random_finish_time)
-        : null;
+      if (data.draft_random_finish_time) {
+        randomFinishTimeDisplay = new Date(data.draft_random_finish_time);
+        randomFinishTimeUK = parseUK(data.draft_random_finish_time);
+      } else {
+        randomFinishTimeDisplay = null;
+        randomFinishTimeUK = null;
+      }
 
-      const nowUK = nowInUK();
+      const nowUK = getUKNow();
 
       if (!draftEnabled) {
         statusEl.textContent = "Draft auction is currently disabled.";
-      } else if (draftAuctionStartTime && nowUK < draftAuctionStartTime) {
+      } else if (draftAuctionStartTimeUK && nowUK < draftAuctionStartTimeUK) {
         statusEl.textContent = "Draft auction has not started yet.";
-      } else if (randomFinishTime && nowUK >= randomFinishTime) {
+      } else if (randomFinishTimeUK && nowUK >= randomFinishTimeUK) {
         statusEl.textContent = "Draft auction has ended. Results are final.";
       } else {
         statusEl.textContent =
-          "Draft auction is active. It will end at a random time between 18:50 and 19:00 UK.";
+          "Draft auction is active. It will end at a random time between 18:50 and 19:00 UK (shown in your local time on player pages).";
       }
     }
 
@@ -307,7 +321,7 @@
     }
 
     /* ============================================================
-       LOAD DRAFT CREDITS (NEW SYSTEM)
+       LOAD DRAFT CREDITS (UNCHANGED LOGIC)
        ============================================================ */
 
     async function loadDraftCreditsForOwner() {
@@ -336,14 +350,12 @@
           return;
         }
 
-        // Count first bids (earn credits)
         const { data: firsts } = await supabase
           .from("Player_Transfer_Bids")
           .select("direct_bid_id")
           .eq("bidder_club_id", short)
           .eq("is_first_draft_bid", true);
 
-        // Count consumed joins (cost credits)
         const { data: joins } = await supabase
           .from("Player_Transfer_Bids")
           .select("direct_bid_id")
@@ -385,21 +397,21 @@
     });
 
     /* ============================================================
-       LOAD DRAFT LISTINGS (NEW SYSTEM)
+       LOAD DRAFT LISTINGS
        ============================================================ */
 
     async function loadDraftListings() {
       const tbody = document.getElementById("draftTableBody");
       tbody.innerHTML = "";
 
-      const nowUK = nowInUK();
+      const nowUK = getUKNow();
 
-      if (!draftEnabled || !draftAuctionStartTime || !randomFinishTime) {
+      if (!draftEnabled || !draftAuctionStartTimeUK || !randomFinishTimeUK) {
         tbody.innerHTML = `<tr><td colspan="8">Draft auction is not active.</td></tr>`;
         return;
       }
 
-      if (nowUK < draftAuctionStartTime) {
+      if (nowUK < draftAuctionStartTimeUK) {
         tbody.innerHTML = `<tr><td colspan="8">Draft auction has not started yet.</td></tr>`;
         return;
       }
@@ -454,9 +466,6 @@
         .in("ShortName", clubShortNames);
 
       const clubMap = new Map((clubs || []).map(c => [c.ShortName, c.Club]));
-      /* ============================================================
-         BUILD TABLE ROWS
-         ============================================================ */
 
       for (const listing of listings) {
         const player = playerMap.get(String(listing.player_id));
@@ -482,7 +491,7 @@
 
         const canBid = await canClubBidOnPlayer(player.Konami_ID);
 
-        const auctionEnded = nowUK >= randomFinishTime;
+        const auctionEnded = randomFinishTimeUK && nowUK >= randomFinishTimeUK;
 
         const btnClass = (!auctionEnded && canBid) ? "enabled" : "disabled";
         const btnLabel = auctionEnded ? "Ended" : (canBid ? "Bid" : "Locked");
@@ -539,23 +548,19 @@
     }
 
     /* ============================================================
-       BIDDING ELIGIBILITY (NEW SYSTEM)
+       BIDDING ELIGIBILITY
        ============================================================ */
 
     async function canClubBidOnPlayer(konamiId) {
-      const nowUK = nowInUK();
+      const nowUK = getUKNow();
 
       if (!draftEnabled) return false;
       if (!buyerShortName) return false;
-      if (!draftAuctionStartTime || !randomFinishTime) return false;
+      if (!draftAuctionStartTimeUK || !randomFinishTimeUK) return false;
 
-      // Draft not started yet
-      if (nowUK < draftAuctionStartTime) return false;
+      if (nowUK < draftAuctionStartTimeUK) return false;
+      if (nowUK >= randomFinishTimeUK) return false;
 
-      // Draft ended
-      if (nowUK >= randomFinishTime) return false;
-
-      // Check if this club has already bid on this player
       const { data: existing } = await supabase
         .from("Player_Transfer_Bids")
         .select("bidder_club_id, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time")
@@ -563,10 +568,8 @@
         .eq("bidder_club_id", buyerShortName)
         .eq("is_direct", true);
 
-      // If already bid → always allowed to continue bidding until random finish
       if (existing && existing.length) return true;
 
-      // If no existing bids → this club would be the FIRST bidder
       const { data: allBids } = await supabase
         .from("Player_Transfer_Bids")
         .select("bidder_club_id")
@@ -576,18 +579,12 @@
       const isFirstBid = !allBids || allBids.length === 0;
 
       if (isFirstBid) {
-        // First bidder always allowed (earns credits)
         return true;
       }
 
-      // Otherwise → joining an existing auction costs 1 credit
       const credits = await getCredits(buyerShortName);
       return credits > 0;
     }
-
-    /* ============================================================
-       GET CREDITS (NEW SYSTEM)
-       ============================================================ */
 
     async function getCredits(short) {
       const { data: firsts } = await supabase
