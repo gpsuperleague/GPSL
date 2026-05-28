@@ -134,6 +134,8 @@ export async function loadGlobalSettings() {
     .eq("id", 1)
     .single();
 
+  console.log("RAW GLOBAL SETTINGS FROM SUPABASE:", data);
+
   draftEnabled = data?.draft_auction_enabled === true;
 
   function parseSafeDate(v) {
