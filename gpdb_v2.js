@@ -121,6 +121,7 @@ async function loadDraftCreditsForOwner() {
 }
 
 async function getDraftCreditsForGPDB(clubShortName) {
+ console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
   const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
   const { data: firsts } = await supabase
