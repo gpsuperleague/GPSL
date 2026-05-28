@@ -1252,53 +1252,66 @@ document.addEventListener("DOMContentLoaded", () => {
      MODULE J: Initialisation
      ============================================================ */
 
-  async function init() {
-    await loadUser();
+ async function init() {
+  await loadUser();
 
-    // Sync and load shared global settings from global.js
-    GLOBAL_SETTINGS = await loadGlobalSettingsGlobal();
-    draftAuctionStartTime = GLOBAL_SETTINGS.draftAuctionStartTime || GLOBAL_SETTINGS.draftStart || null;
-    draftRandomFinishTime = GLOBAL_SETTINGS.draftRandomFinishTime || GLOBAL_SETTINGS.draftFinish || null;
+  // Load global settings from global.js
+  GLOBAL_SETTINGS = await loadGlobalSettingsGlobal();
 
+  // Map BOTH naming schemes (old + new) so GPDB always works
+  draftAuctionStartTime =
+    GLOBAL_SETTINGS.draftAuctionStartTime ||
+    GLOBAL_SETTINGS.draftStart ||
+    null;
 
-    console.log("DEBUG loaded GLOBAL_SETTINGS:", GLOBAL_SETTINGS);
-    console.log("DEBUG draftAuctionStartTime =", draftAuctionStartTime);
-    console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
+  draftRandomFinishTime =
+    GLOBAL_SETTINGS.draftRandomFinishTime ||
+    GLOBAL_SETTINGS.draftFinish ||
+    null;
 
-    await loadClubNames();
+  console.log("DEBUG loaded GLOBAL_SETTINGS:", GLOBAL_SETTINGS);
+  console.log("DEBUG draftAuctionStartTime =", draftAuctionStartTime);
+  console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
 
-    // Start shared countdown for GPDB page (uses global.js helpers)
-    if (GLOBAL_SETTINGS?.draftAuctionEnabled && isValidDate(draftAuctionStartTime)) {
-      // ensure any previous timer is stopped by the helper
-      startDraftCountdown(
-        // onTickDisplay: keep default text
-        ({ phase, ms, text }) => ({ show: true, text }),
-        // onEnd: refresh GPDB-specific data so UI updates when draft starts
-        () => {
-          loadGlobalSettingsGlobal().then(gs => {
-            GLOBAL_SETTINGS = gs || GLOBAL_SETTINGS;
-            draftAuctionStartTime = GLOBAL_SETTINGS?.draftAuctionStartTime || null;
-            draftRandomFinishTime = GLOBAL_SETTINGS?.draftRandomFinishTime || null;
-          }).catch(e => console.error(e));
+  await loadClubNames();
 
-          loadActiveDraftListings().catch(e => console.error(e));
-          loadDraftCreditsForOwner().catch(e => console.error(e));
-          loadPage(CURRENT_PAGE || 1);
-        }
-      );
-    } else {
-      const c = document.getElementById("draftCountdownContainer");
-      if (c) c.style.display = "none";
-    }
+  // Start countdown if draft is enabled
+  if (GLOBAL_SETTINGS?.draftAuctionEnabled && isValidDate(draftAuctionStartTime)) {
+    startDraftCountdown(
+      ({ phase, ms, text }) => ({ show: true, text }),
+      () => {
+        loadGlobalSettingsGlobal().then(gs => {
+          GLOBAL_SETTINGS = gs || GLOBAL_SETTINGS;
 
-    setupControls();
-    setupFilters();
-    await populateDropdowns();
-    await loadTotalCount();
-    await loadActiveDraftListings();
-    await loadDraftCreditsForOwner();
-    loadPage(1);
+          draftAuctionStartTime =
+            GLOBAL_SETTINGS.draftAuctionStartTime ||
+            GLOBAL_SETTINGS.draftStart ||
+            null;
+
+          draftRandomFinishTime =
+            GLOBAL_SETTINGS.draftRandomFinishTime ||
+            GLOBAL_SETTINGS.draftFinish ||
+            null;
+        });
+
+        loadActiveDraftListings();
+        loadDraftCreditsForOwner();
+        loadPage(CURRENT_PAGE || 1);
+      }
+    );
+  } else {
+    const c = document.getElementById("draftCountdownContainer");
+    if (c) c.style.display = "none";
   }
+
+  setupControls();
+  setupFilters();
+  await populateDropdowns();
+  await loadTotalCount();
+  await loadActiveDraftListings();
+  await loadDraftCreditsForOwner();
+  loadPage(1);
+}
 
   init();
 
