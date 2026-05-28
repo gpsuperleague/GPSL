@@ -69,6 +69,14 @@ function isValidDate(d) {
   return d instanceof Date && !isNaN(d.getTime());
 }
 
+function formatLocalTime(dateObj) {
+  if (!isValidDate(dateObj)) return "";
+  return dateObj.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 /* Safe draft window times that avoid invalid Date at month boundaries */
 function getDraftWindowTimes() {
   const nowUK = getUKNow();
