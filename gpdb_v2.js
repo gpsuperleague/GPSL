@@ -120,8 +120,9 @@ function formatMs(ms) {
 function updateDraftCountdown() {
   const container = document.getElementById("draftCountdownContainer");
   const el = document.getElementById("draftCountdown");
+  const localStartEl = document.getElementById("draftLocalStart");
 
-  if (!container || !el) return;
+  if (!container || !el || !localStartEl) return;
 
   if (
     !draftAuctionStartTime ||
@@ -135,23 +136,34 @@ function updateDraftCountdown() {
 
   const now = getUKNow();
 
-  // Before draft start → countdown to start
+  // Convert UK start time → local browser time
+  const localStart = new Date(draftAuctionStartTime);
+
+  // BEFORE START
   if (now < draftAuctionStartTime) {
     const diff = draftAuctionStartTime.getTime() - now.getTime();
     el.textContent = formatMs(diff);
+
+    localStartEl.textContent =
+      `Local start time: ${formatLocalTime(localStart)}`;
+
     container.style.display = "flex";
     return;
   }
 
-  // After random finish → hide
+  // AFTER FINISH
   if (now >= draftRandomFinishTime) {
     container.style.display = "none";
     return;
   }
 
-  // Draft active → countdown to random finish
+  // DURING ACTIVE DRAFT
   const diff = draftRandomFinishTime.getTime() - now.getTime();
   el.textContent = formatMs(diff);
+
+  // Hide local start time once draft is active
+  localStartEl.textContent = "";
+
   container.style.display = "flex";
 }
 
