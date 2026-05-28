@@ -192,8 +192,7 @@
         <p id="draftStartTime" class="status-note" style="margin-top:10px;"></p>
 
       </div>
-
-      <!-- OWNER ADMINISTRATION -->
+        <!-- OWNER ADMINISTRATION -->
       <div class="card">
         <h2>Owner Administration</h2>
 
@@ -308,7 +307,7 @@
     async function loadGlobalSettings() {
       const { data } = await supabase
         .from("global_settings")
-        .select("draft_auction_enabled")
+        .select("draft_auction_enabled, draft_auction_start_time")
         .eq("id", 1)
         .single();
 
@@ -316,25 +315,11 @@
 
       const startEl = document.getElementById("draftStartTime");
 
-      const { data: fullSettings } = await supabase
-        .from("global_settings")
-        .select("draft_auction_start_time")
-        .eq("id", 1)
-        .single();
-
-      console.log("ADMIN RAW VALUE:", fullSettings?.draft_auction_start_time);
-
-      if (draftEnabled && fullSettings?.draft_auction_start_time) {
-        const start = new Date(fullSettings.draft_auction_start_time);
-        const nowUK = nowInUK();
+      if (draftEnabled && data?.draft_auction_start_time) {
+        const start = new Date(data.draft_auction_start_time);
         const displayTime = start.toLocaleString("en-GB");
 
-        if (nowUK < start) {
-          startEl.textContent = `Draft auction begins at: ${displayTime}`;
-        } else {
-          startEl.textContent = `Draft auction started at: ${displayTime}`;
-        }
-
+        startEl.textContent = `Next draft window: ${displayTime}`;
       } else {
         startEl.textContent = "";
       }
@@ -474,7 +459,6 @@
         dropdown.appendChild(option);
       });
     });
-
     /* ============================================================
        ADD OWNER
        ============================================================ */
@@ -563,166 +547,168 @@
     });
 
     /* ============================================================
-   DRAFT AUCTION SETTINGS — REWRITTEN CORRECTLY
-   ============================================================ */
+       DRAFT AUCTION SETTINGS — FINAL VERSION
+       ============================================================ */
 
-function computeNextDraftTimes() {
-  // Current UK time
-  const now = new Date();
-  const uk = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    second: "numeric",
-    hour12: false
-  });
+    function computeNextDraftTimes() {
+      // Current UK time
+      const now = new Date();
+      const uk = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Europe/London",
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        second: "numeric",
+        hour12: false
+      });
 
-  const parts = uk.formatToParts(now);
-  const get = (t) => parts.find(p => p.type === t).value;
+      const parts = uk.formatToParts(now);
+      const get = (t) => parts.find(p => p.type === t).value;
 
-  const year = parseInt(get("year"));
-  const month = parseInt(get("month")) - 1;
-  const day = parseInt(get("day"));
-  const hour = parseInt(get("hour"));
+      const year = parseInt(get("year"));
+      const month = parseInt(get("month")) - 1;
+      const day = parseInt(get("day"));
+      const hour = parseInt(get("hour"));
 
-  // Determine the correct start day
-  const startDay = hour >= 19 ? day + 1 : day;
+      // Determine the correct start day
+      const startDay = hour >= 19 ? day + 1 : day;
 
-  // Draft starts at 19:00 UK → 18:00 UTC
-  const draftStart = new Date(Date.UTC(year, month, startDay, 18, 0, 0, 0));
+      // Draft starts at 19:00 UK → 18:00 UTC
+      const draftStart = new Date(Date.UTC(year, month, startDay, 18, 0, 0, 0));
 
-  // Cutoff is next day at 18:00 UK → 17:00 UTC
-  const cutoffDate = new Date(draftStart.getTime() + 24 * 60 * 60 * 1000);
-  const sixPmCutoff = new Date(Date.UTC(
-    cutoffDate.getUTCFullYear(),
-    cutoffDate.getUTCMonth(),
-    cutoffDate.getUTCDate(),
-    17, 0, 0, 0
-  ));
+      // Cutoff is next day at 18:00 UK → 17:00 UTC
+      const cutoffDate = new Date(draftStart.getTime() + 24 * 60 * 60 * 1000);
 
-  // Random finish between 18:50–18:59:59 UK → 17:50–17:59:59 UTC
-  const randomMinute = Math.floor(Math.random() * 10) + 50;
-  const randomSecond = Math.floor(Math.random() * 60);
+      // Random finish between 18:50–18:59:59 UK → 17:50–17:59:59 UTC
+      const randomMinute = Math.floor(Math.random() * 10) + 50;
+      const randomSecond = Math.floor(Math.random() * 60);
 
-  const randomFinish = new Date(Date.UTC(
-    cutoffDate.getUTCFullYear(),
-    cutoffDate.getUTCMonth(),
-    cutoffDate.getUTCDate(),
-    17,
-    randomMinute,
-    randomSecond,
-    0
-  ));
+      const randomFinish = new Date(Date.UTC(
+        cutoffDate.getUTCFullYear(),
+        cutoffDate.getUTCMonth(),
+        cutoffDate.getUTCDate(),
+        17,
+        randomMinute,
+        randomSecond,
+        0
+      ));
 
-  return {
-    draftStartISO: draftStart.toISOString(),
-    randomFinishISO: randomFinish.toISOString()
-  };
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-
-  async function loadSettings() {
-    const { data, error } = await supabase
-      .from("global_settings")
-      .select("*")
-      .eq("id", 1)
-      .single();
-
-    if (error) {
-      console.error(error);
-      return;
+      return {
+        draftStartISO: draftStart.toISOString(),
+        randomFinishISO: randomFinish.toISOString()
+      };
     }
 
-    document.getElementById("transferWindowSelect").value =
-      data.transfer_window_open ? "true" : "false";
+    document.addEventListener("DOMContentLoaded", () => {
 
-    document.getElementById("draftAuctionSelect").value =
-      data.draft_auction_enabled ? "true" : "false";
-  }
+      async function loadSettings() {
+        const { data, error } = await supabase
+          .from("global_settings")
+          .select("*")
+          .eq("id", 1)
+          .single();
 
-  /* ============================================================
-     SAVE SETTINGS — FINAL UK‑SAFE VERSION
-     ============================================================ */
-
-  document.getElementById("saveSettingsBtn").onclick = async () => {
-    const transfer_window_open =
-      document.getElementById("transferWindowSelect").value === "true";
-
-    const draft_auction_enabled =
-      document.getElementById("draftAuctionSelect").value === "true";
-
-    let draft_random_finish_time = null;
-    let draft_auction_start_time = null;
-
-    if (draft_auction_enabled) {
-      const times = computeNextDraftTimes();
-      draft_auction_start_time = times.draftStartISO;
-      draft_random_finish_time = times.randomFinishISO;
-    }
-
-    const { error } = await supabase.functions.invoke(
-      "update-global-settings",
-      {
-        body: {
-          transfer_window_open,
-          draft_auction_enabled,
-          draft_random_finish_time,
-          draft_auction_start_time
+        if (error) {
+          console.error(error);
+          return;
         }
+
+        document.getElementById("transferWindowSelect").value =
+          data.transfer_window_open ? "true" : "false";
+
+        document.getElementById("draftAuctionSelect").value =
+          data.draft_auction_enabled ? "true" : "false";
       }
-    );
 
-    document.getElementById("settingsMessage").textContent =
-      error ? "❌ " + error.message : "✅ Settings updated!";
-  };
+      /* ============================================================
+         SAVE SETTINGS — UK‑SAFE + SECRET FINISH TIME
+         ============================================================ */
 
-  loadSettings();
-});
+      document.getElementById("saveSettingsBtn").onclick = async () => {
+        const transfer_window_open =
+          document.getElementById("transferWindowSelect").value === "true";
 
-/* ============================================================
-   RESET DRAFT AUCTION
-   ============================================================ */
+        const draft_auction_enabled =
+          document.getElementById("draftAuctionSelect").value === "true";
 
-document.getElementById("resetDraftBtn").onclick = async () => {
-  const status = document.getElementById("resetDraftStatus");
+        let draft_random_finish_time = null;
+        let draft_auction_start_time = null;
 
-  if (!confirm("Are you absolutely sure? This will delete ALL draft listings, ALL draft bids, and reset the draft state.")) {
-    return;
-  }
+        if (draft_auction_enabled) {
+          const times = computeNextDraftTimes();
+          draft_auction_start_time = times.draftStartISO;
+          draft_random_finish_time = times.randomFinishISO;
+        }
 
-  status.textContent = "Resetting draft auction…";
-  status.style.color = "#ffcc00";
+        const { error } = await supabase.functions.invoke(
+          "update-global-settings",
+          {
+            body: {
+              transfer_window_open,
+              draft_auction_enabled,
+              draft_random_finish_time,
+              draft_auction_start_time
+            }
+          }
+        );
 
-  try {
-    await supabase
-      .from("Player_Transfer_Listings")
-      .delete()
-      .eq("listing_type", "draft");
+        document.getElementById("settingsMessage").textContent =
+          error ? "❌ " + error.message : "✅ Settings updated!";
 
-    await supabase
-      .from("Player_Transfer_Bids")
-      .delete()
-      .or("is_direct.eq.true,is_first_draft_bid.eq.true,is_draft_join.eq.true");
+        // Reload visible start time
+        loadGlobalSettings();
+      };
 
-    await supabase
-      .from("global_settings")
-      .update({
-        draft_auction_enabled: false,
-        draft_random_finish_time: null,
-        draft_auction_start_time: null
-      })
-      .eq("id", 1);
+      loadSettings();
+    });
 
-    status.textContent = "Draft auction has been fully reset.";
-    status.style.color = "lime";
+    /* ============================================================
+       RESET DRAFT AUCTION
+       ============================================================ */
 
-  } catch (err) {
-    console.error(err);
-    status.textContent = "Error resetting draft auction.";
-    status.style.color = "red";
-  }
-};
+    document.getElementById("resetDraftBtn").onclick = async () => {
+      const status = document.getElementById("resetDraftStatus");
+
+      if (!confirm("Are you absolutely sure? This will delete ALL draft listings, ALL draft bids, and reset the draft state.")) {
+        return;
+      }
+
+      status.textContent = "Resetting draft auction…";
+      status.style.color = "#ffcc00";
+
+      try {
+        await supabase
+          .from("Player_Transfer_Listings")
+          .delete()
+          .eq("listing_type", "draft");
+
+        await supabase
+          .from("Player_Transfer_Bids")
+          .delete()
+          .or("is_direct.eq.true,is_first_draft_bid.eq.true,is_draft_join.eq.true");
+
+        await supabase
+          .from("global_settings")
+          .update({
+            draft_auction_enabled: false,
+            draft_random_finish_time: null,
+            draft_auction_start_time: null
+          })
+          .eq("id", 1);
+
+        status.textContent = "Draft auction has been fully reset.";
+        status.style.color = "lime";
+
+      } catch (err) {
+        console.error(err);
+        status.textContent = "Error resetting draft auction.";
+        status.style.color = "red";
+      }
+    };
+
+  </script>
+
+</body>
+</html>
