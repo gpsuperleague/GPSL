@@ -1250,7 +1250,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await loadClubNames();
 
     // Start shared countdown for GPDB page (uses global.js helpers)
-    if (GLOBAL_SETTINGS?.draftAuctionEnabled && isValidDateGlobal(GLOBAL_SETTINGS.draftAuctionStartTime)) {
+    if (GLOBAL_SETTINGS?.draftAuctionEnabled && isValidDate(GLOBAL_SETTINGS.draftAuctionStartTime)) {
       // ensure any previous timer is stopped by the helper
       startDraftCountdown(
         // onTickDisplay: keep default text
