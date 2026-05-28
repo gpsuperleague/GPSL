@@ -23,24 +23,28 @@ function getUKNow() {
   return new Date(ukString);
 }
 
-// Draft window helper: 19:00 yesterday → 18:00 today (UK time)
+// Build a real UK‑timezone Date safely
+function makeUKDate(year, month, day, hour = 0, minute = 0, second = 0) {
+  // Create a UTC date for the given components
+  const utc = new Date(Date.UTC(year, month, day, hour, minute, second));
+
+  // Convert that UTC instant into a UK-local timestamp string
+  const ukString = utc.toLocaleString("en-GB", { timeZone: "Europe/London" });
+
+  // Parse that string back into a Date object (now representing UK local time)
+  return new Date(ukString);
+}
+
 function getDraftWindowTimes() {
-  const nowLocal = getUKNow();
-  const today = new Date(
-    nowLocal.getFullYear(),
-    nowLocal.getMonth(),
-    nowLocal.getDate()
-  );
-  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+  const nowUK = getUKTime(); // your existing UK time getter
 
-  const sevenPmYesterday = new Date(yesterday);
-  sevenPmYesterday.setHours(19, 0, 0, 0);
+  const y = nowUK.getFullYear();
+  const m = nowUK.getMonth();
+  const d = nowUK.getDate();
 
-  const sixPmToday = new Date(today);
-  sixPmToday.setHours(18, 0, 0, 0);
-
-  const sevenPmToday = new Date(today);
-  sevenPmToday.setHours(19, 0, 0, 0);
+  const sevenPmYesterday = makeUKDate(y, m, d - 1, 19, 0, 0);
+  const sixPmToday       = makeUKDate(y, m, d,     18, 0, 0);
+  const sevenPmToday     = makeUKDate(y, m, d,     19, 0, 0);
 
   return { sevenPmYesterday, sixPmToday, sevenPmToday };
 }
