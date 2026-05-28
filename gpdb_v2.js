@@ -1287,5 +1287,3 @@ document.addEventListener("DOMContentLoaded", () => {
   init();
 
 });
-
----------------------------------------------
