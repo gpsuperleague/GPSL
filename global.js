@@ -130,14 +130,17 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
 export async function loadGlobalSettings() {
   const { data } = await supabase
     .from("global_settings")
-    .select("draft_auction_enabled, draft_auction_start_time, draft_random_finish_time")
+    .select("transfer_window_open, draft_auction_enabled, draft_auction_start_time, draft_random_finish_time")
     .eq("id", 1)
     .single();
 
   console.log("RAW GLOBAL SETTINGS FROM SUPABASE:", data);
 
-  draftEnabled = data?.draft_auction_enabled === true;
+  // Parse booleans
+  const transferWindowOpen = data?.transfer_window_open === true;
+  const draftAuctionEnabled = data?.draft_auction_enabled === true;
 
+  // Safe date parser
   function parseSafeDate(v) {
     if (!v) return null;
     try {
@@ -148,12 +151,19 @@ export async function loadGlobalSettings() {
     }
   }
 
-  draftStart = parseSafeDate(data?.draft_auction_start_time);
-  draftFinish = parseSafeDate(data?.draft_random_finish_time);
+  const draftAuctionStartTime = parseSafeDate(data?.draft_auction_start_time);
+  const draftRandomFinishTime = parseSafeDate(data?.draft_random_finish_time);
 
+  // Update internal state
+  draftEnabled = draftAuctionEnabled;
+  draftStart = draftAuctionStartTime;
+  draftFinish = draftRandomFinishTime;
+
+  // Reset countdown
   stopDraftCountdown();
 
-  if (draftEnabled && isValidDate(draftStart) && isValidDate(draftFinish)) {
+  // Start countdown if valid
+  if (draftAuctionEnabled && isValidDate(draftAuctionStartTime) && isValidDate(draftRandomFinishTime)) {
     startDraftCountdown(
       ({ text }) => ({ show: true, text }),
       () => {
@@ -170,7 +180,13 @@ export async function loadGlobalSettings() {
     }
   }
 
-  return { draftEnabled, draftStart, draftFinish };
+  // RETURN EXACTLY WHAT gpdb_v2.js EXPECTS
+  return {
+    transferWindowOpen,
+    draftAuctionEnabled,
+    draftAuctionStartTime,
+    draftRandomFinishTime
+  };
 }
 
 /* ===============================
