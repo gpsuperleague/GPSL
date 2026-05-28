@@ -1257,8 +1257,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Sync and load shared global settings from global.js
     GLOBAL_SETTINGS = await loadGlobalSettingsGlobal();
-    draftAuctionStartTime = GLOBAL_SETTINGS.draftAuctionStartTime || null;
-    draftRandomFinishTime = GLOBAL_SETTINGS.draftRandomFinishTime || null;
+    draftAuctionStartTime = GLOBAL_SETTINGS.draftAuctionStartTime || GLOBAL_SETTINGS.draftStart || null;
+    draftRandomFinishTime = GLOBAL_SETTINGS.draftRandomFinishTime || GLOBAL_SETTINGS.draftFinish || null;
+
 
     console.log("DEBUG loaded GLOBAL_SETTINGS:", GLOBAL_SETTINGS);
     console.log("DEBUG draftAuctionStartTime =", draftAuctionStartTime);
