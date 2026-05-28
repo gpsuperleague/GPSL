@@ -8,6 +8,7 @@
   <meta charset="UTF-8">
   <title>Draft Auction</title>
   <link rel="stylesheet" href="dashboard.css">
+
   <style>
     body {
       background:#111;
@@ -15,12 +16,14 @@
       font-family:Arial,sans-serif;
       margin:0;
     }
+
     #nav {
       padding:15px;
       background:#1a1a1a;
       border-bottom:1px solid #333;
       text-align:center;
     }
+
     a.button, button.button {
       display:inline-block;
       padding:10px 20px;
@@ -34,19 +37,38 @@
       cursor:pointer;
       border:none;
     }
+
     a.button:hover, button.button:hover {
       background:#ffaa22;
       transform:scale(1.05);
     }
+
     h1 {
       margin:20px;
       color:#ff9900;
     }
+
     .status-note {
-      font-size:12px;
+      font-size:13px;
       color:#ccc;
       margin:0 20px 10px 20px;
     }
+
+    .info-box {
+      background:#1a1a1a;
+      border:1px solid #333;
+      padding:15px;
+      margin:20px;
+      border-radius:8px;
+      font-size:13px;
+      line-height:1.5;
+    }
+
+    .info-box b {
+      color:#ff9900;
+      font-size:14px;
+    }
+
     .panel {
       background:#1a1a1a;
       margin:20px;
@@ -54,11 +76,13 @@
       border-radius:8px;
       border:1px solid #333;
     }
+
     table.gpsl-table {
       width:100%;
       border-collapse:collapse;
       table-layout:fixed;
     }
+
     table.gpsl-table th,
     table.gpsl-table td {
       border:1px solid #333;
@@ -69,18 +93,22 @@
       text-overflow:ellipsis;
       text-align:center;
     }
+
     table.gpsl-table th {
       background:#222;
       color:#ff9900;
     }
+
     .player-link {
       color:#fff;
       text-decoration:none;
     }
+
     .player-link:hover {
       text-decoration:underline;
       color:#ffcc66;
     }
+
     .bid-btn {
       padding:4px 8px;
       font-size:11px;
@@ -88,18 +116,22 @@
       border:none;
       cursor:pointer;
     }
+
     .bid-btn.enabled {
       background:#2f7a2f;
       color:#fff;
     }
+
     .bid-btn.enabled:hover {
       background:#369a36;
     }
+
     .bid-btn.disabled {
       background:#444;
       color:#999;
       cursor:not-allowed;
     }
+
     .draft-thumb {
       height:50px;
       width:auto;
@@ -113,12 +145,23 @@
     }
   </style>
 </head>
+
 <body>
+
   <div id="nav"></div>
 
   <h1>Draft Auction</h1>
+
   <p id="draftStatus" class="status-note"></p>
   <p id="creditPanel" class="status-note"></p>
+
+  <div class="info-box">
+    <b>Draft Rules</b><br>
+    • Earn credits by being the first to bid on a free agent in GPDB<br>
+    • Joining an existing draft auction costs <b>1 credit</b><br>
+    • No bids by 6pm → no bids after 6pm<br>
+    • No free agent bids after 6pm
+  </div>
 
   <div class="panel">
     <table class="gpsl-table">
@@ -131,7 +174,6 @@
           <th>Market Value</th>
           <th>Highest Bid</th>
           <th>Leading Club</th>
-          <th>Time</th>
           <th>Bid</th>
         </tr>
       </thead>
@@ -151,11 +193,11 @@
 
     let buyerShortName = null;
     let draftEnabled = false;
-    let randomFinishTime = null;
     let draftAuctionStartTime = null;
+    let randomFinishTime = null;
 
     /* ============================================================
-       SAFE UTC PARSER + UK TIME HELPERS
+       UK TIME HELPERS
        ============================================================ */
 
     function parseUTC(iso) {
@@ -173,139 +215,14 @@
     function nowInUK() {
       return parseUTC(new Date().toISOString());
     }
-
     /* ============================================================
-       SHARED CREDIT FUNCTIONS (GPDB VERSION)
+       LOAD GLOBAL SETTINGS (NEW SYSTEM)
        ============================================================ */
-
-    function getDraftWindowTimes() {
-      const nowLocal = new Date();
-      const today = new Date(nowLocal.getFullYear(), nowLocal.getMonth(), nowLocal.getDate());
-      const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
-
-      const sevenPmYesterday = new Date(yesterday);
-      sevenPmYesterday.setHours(19, 0, 0, 0);
-
-      const sixPmToday = new Date(today);
-      sixPmToday.setHours(18, 0, 0, 0);
-
-      const sevenPmToday = new Date(today);
-      sevenPmToday.setHours(19, 0, 0, 0);
-
-      return { sevenPmYesterday, sixPmToday, sevenPmToday };
-    }
-
-    async function getDraftCreditsForGPDB(clubShortName) {
-      const { sevenPmYesterday, sixPmToday, sevenPmToday } = getDraftWindowTimes();
-
-      const { data: firsts } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("direct_bid_id")
-        .eq("bidder_club_id", clubShortName)
-        .eq("is_first_draft_bid", true)
-        .gte("bid_time", sevenPmYesterday.toISOString())
-        .lt("bid_time", sixPmToday.toISOString());
-
-      const { data: joins } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("direct_bid_id")
-        .eq("bidder_club_id", clubShortName)
-        .eq("is_draft_join", true)
-        .eq("draft_join_consumed", true)
-        .gte("bid_time", sevenPmYesterday.toISOString())
-        .lt("bid_time", sevenPmToday.toISOString());
-
-      const firstCount = firsts ? firsts.length : 0;
-      const joinCount = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
-
-      return (firstCount * 2) - joinCount;
-    }
-
-    async function loadDraftCreditsForOwner() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data: club } = await supabase
-          .from("Clubs")
-          .select("ShortName")
-          .eq("owner_id", user.id)
-          .single();
-        if (!club) return;
-
-        const buyerShortName = club.ShortName;
-
-        const { data: settings } = await supabase
-          .from("global_settings")
-          .select("draft_auction_enabled")
-          .eq("id", 1)
-          .single();
-
-        if (!settings?.draft_auction_enabled) {
-          document.getElementById("creditPanel").textContent = "";
-          return;
-        }
-
-        const { sevenPmYesterday, sixPmToday, sevenPmToday } = getDraftWindowTimes();
-
-        const credits = await getDraftCreditsForGPDB(buyerShortName);
-
-        const { data: firsts } = await supabase
-          .from("Player_Transfer_Bids")
-          .select("direct_bid_id")
-          .eq("bidder_club_id", buyerShortName)
-          .eq("is_first_draft_bid", true)
-          .gte("bid_time", sevenPmYesterday.toISOString())
-          .lt("bid_time", sixPmToday.toISOString());
-
-        const { data: joins } = await supabase
-          .from("Player_Transfer_Bids")
-          .select("direct_bid_id")
-          .eq("bidder_club_id", buyerShortName)
-          .eq("is_draft_join", true)
-          .eq("draft_join_consumed", true)
-          .gte("bid_time", sevenPmYesterday.toISOString())
-          .lt("bid_time", sevenPmToday.toISOString());
-
-        const earned = firsts ? firsts.length * 2 : 0;
-        const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
-
-        document.getElementById("creditPanel").innerHTML = `
-          <b>Draft Credits:</b> ${credits}<br>
-          <span style="font-size:11px;color:#aaa;">
-            Earned: ${earned} | Used: ${used}
-          </span>
-        `;
-      } catch (err) {
-        console.error("Error loading draft credits:", err);
-      }
-    }
-
-    /* ============================================================
-       MAIN PAGE LOGIC
-       ============================================================ */
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        window.location = "login.html";
-        return;
-      }
-
-      await loadGlobalSettings();
-      await buildNav(user);
-      await loadBuyerClubShortName(user.id);
-
-      await loadDraftCreditsForOwner();
-
-      await loadDraftAuctions();
-      setInterval(updateCountdowns, 10000);
-    });
 
     async function loadGlobalSettings() {
       const { data, error } = await supabase
         .from("global_settings")
-        .select("draft_auction_enabled, draft_random_finish_time, draft_auction_start_time")
+        .select("draft_auction_enabled, draft_auction_start_time, draft_random_finish_time")
         .eq("id", 1)
         .single();
 
@@ -339,13 +256,18 @@
         statusEl.textContent = "Draft auction has ended. Results are final.";
       } else {
         statusEl.textContent =
-          "Draft auction is active. Auctions end at a random time between 18:50 and 19:00.";
+          "Draft auction is active. It will end at a random time between 18:50 and 19:00 UK.";
       }
     }
 
+    /* ============================================================
+       NAVIGATION
+       ============================================================ */
+
     async function buildNav(user) {
       const nav = document.getElementById("nav");
-      nav.innerHTML = `
+
+      let html = `
         <a href="index.html" class="button">Home</a>
         <a href="GPDB.html" class="button">Player Database</a>
         <a href="clubs.html" class="button">Clubs</a>
@@ -355,18 +277,24 @@
       `;
 
       if (user.email === "rotavator66@outlook.com") {
-        nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
+        html += `<a href="admin.html" class="button">GPSL Admin</a>`;
       }
 
       if (draftEnabled) {
-        nav.innerHTML += `<a href="draftauction.html" class="button">Draft Auction</a>`;
+        html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
       }
+
+      nav.innerHTML = html;
 
       document.getElementById("logoutBtn").onclick = async () => {
         await supabase.auth.signOut();
         window.location = "login.html";
       };
     }
+
+    /* ============================================================
+       LOAD OWNER CLUB SHORTNAME
+       ============================================================ */
 
     async function loadBuyerClubShortName(authId) {
       const { data, error } = await supabase
@@ -375,23 +303,104 @@
         .eq("owner_id", authId)
         .single();
 
-      if (error || !data) {
-        buyerShortName = null;
-        return;
-      }
-      buyerShortName = data.ShortName;
+      buyerShortName = error || !data ? null : data.ShortName;
     }
 
     /* ============================================================
-       EXISTING AUCTION LOGIC (BST-SAFE START/END CHECKS)
+       LOAD DRAFT CREDITS (NEW SYSTEM)
        ============================================================ */
 
-    async function loadDraftAuctions() {
+    async function loadDraftCreditsForOwner() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: club } = await supabase
+          .from("Clubs")
+          .select("ShortName")
+          .eq("owner_id", user.id)
+          .single();
+
+        if (!club) return;
+
+        const short = club.ShortName;
+
+        const { data: settings } = await supabase
+          .from("global_settings")
+          .select("draft_auction_enabled")
+          .eq("id", 1)
+          .single();
+
+        if (!settings?.draft_auction_enabled) {
+          document.getElementById("creditPanel").textContent = "";
+          return;
+        }
+
+        // Count first bids (earn credits)
+        const { data: firsts } = await supabase
+          .from("Player_Transfer_Bids")
+          .select("direct_bid_id")
+          .eq("bidder_club_id", short)
+          .eq("is_first_draft_bid", true);
+
+        // Count consumed joins (cost credits)
+        const { data: joins } = await supabase
+          .from("Player_Transfer_Bids")
+          .select("direct_bid_id")
+          .eq("bidder_club_id", short)
+          .eq("is_draft_join", true)
+          .eq("draft_join_consumed", true);
+
+        const earned = firsts ? firsts.length * 2 : 0;
+        const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
+        const credits = earned - used;
+
+        document.getElementById("creditPanel").innerHTML = `
+          <b>Draft Credits:</b> ${credits}<br>
+          <span style="font-size:11px;color:#aaa;">
+            Earned: ${earned} | Used: ${used}
+          </span>
+        `;
+      } catch (err) {
+        console.error("Error loading draft credits:", err);
+      }
+    }
+
+    /* ============================================================
+       MAIN PAGE INIT
+       ============================================================ */
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        window.location = "login.html";
+        return;
+      }
+
+      await loadGlobalSettings();
+      await buildNav(user);
+      await loadBuyerClubShortName(user.id);
+      await loadDraftCreditsForOwner();
+      await loadDraftListings();
+    });
+
+    /* ============================================================
+       LOAD DRAFT LISTINGS (NEW SYSTEM)
+       ============================================================ */
+
+    async function loadDraftListings() {
       const tbody = document.getElementById("draftTableBody");
       tbody.innerHTML = "";
 
-      if (!draftEnabled || !randomFinishTime) {
-        tbody.innerHTML = `<tr><td colspan="9">Draft auction is not active.</td></tr>`;
+      const nowUK = nowInUK();
+
+      if (!draftEnabled || !draftAuctionStartTime || !randomFinishTime) {
+        tbody.innerHTML = `<tr><td colspan="8">Draft auction is not active.</td></tr>`;
+        return;
+      }
+
+      if (nowUK < draftAuctionStartTime) {
+        tbody.innerHTML = `<tr><td colspan="8">Draft auction has not started yet.</td></tr>`;
         return;
       }
 
@@ -402,14 +411,12 @@
         .eq("status", "active");
 
       if (listingsErr || !listings || !listings.length) {
-        tbody.innerHTML = `<tr><td colspan="9">No active draft auctions.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8">No active draft auctions.</td></tr>`;
         return;
       }
 
       const playerIds = [...new Set(
-        listings
-          .map(l => Number(String(l.player_id).trim()))
-          .filter(v => !Number.isNaN(v))
+        listings.map(l => Number(l.player_id)).filter(v => !Number.isNaN(v))
       )];
 
       const { data: players, error: playersErr } = await supabase
@@ -418,24 +425,20 @@
         .in("Konami_ID", playerIds);
 
       if (playersErr || !players || !players.length) {
-        tbody.innerHTML = `<tr><td colspan="9">Error loading players for draft auctions.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8">Error loading players.</td></tr>`;
         return;
       }
 
       const playerMap = new Map(players.map(p => [String(p.Konami_ID), p]));
 
-      const { sevenPmYesterday, sixPmToday, sevenPmToday } = getDraftWindowTimes();
-
-      const { data: bids, error: bidsErr } = await supabase
+      const { data: bids } = await supabase
         .from("Player_Transfer_Bids")
         .select("direct_bid_id, bidder_club_id, bid_amount")
         .in("direct_bid_id", playerIds)
-        .eq("is_direct", true)
-        .gte("bid_time", sevenPmYesterday.toISOString())
-        .lt("bid_time", sevenPmToday.toISOString());
+        .eq("is_direct", true);
 
       const bidsByPlayer = new Map();
-      if (!bidsErr && bids && bids.length) {
+      if (bids) {
         for (const b of bids) {
           const key = String(b.direct_bid_id);
           if (!bidsByPlayer.has(key)) bidsByPlayer.set(key, []);
@@ -443,20 +446,17 @@
         }
       }
 
-      const clubShortNames = bids
-        ? [...new Set(bids.map(b => b.bidder_club_id))]
-        : [];
+      const clubShortNames = bids ? [...new Set(bids.map(b => b.bidder_club_id))] : [];
 
-      const { data: clubs, error: clubsErr } = await supabase
+      const { data: clubs } = await supabase
         .from("Clubs")
         .select("ShortName, Club")
         .in("ShortName", clubShortNames);
 
-      const clubMap = new Map(
-        (clubs || []).map(c => [c.ShortName, c.Club])
-      );
-
-      const nowUK = nowInUK();
+      const clubMap = new Map((clubs || []).map(c => [c.ShortName, c.Club]));
+      /* ============================================================
+         BUILD TABLE ROWS
+         ============================================================ */
 
       for (const listing of listings) {
         const player = playerMap.get(String(listing.player_id));
@@ -480,17 +480,12 @@
           ? (clubMap.get(leadingClubShort) || leadingClubShort)
           : "None";
 
-        const canBid = await canClubBidOnPlayer(
-          buyerShortName,
-          player.Konami_ID,
-          nowUK,
-          sixPmToday
-        );
+        const canBid = await canClubBidOnPlayer(player.Konami_ID);
 
-        const auctionEnded = randomFinishTime && nowUK >= randomFinishTime;
+        const auctionEnded = nowUK >= randomFinishTime;
 
-        const bidBtnClass = !auctionEnded && canBid ? "enabled" : "disabled";
-        const bidBtnLabel = auctionEnded ? "Ended" : (canBid ? "Bid" : "Locked");
+        const btnClass = (!auctionEnded && canBid) ? "enabled" : "disabled";
+        const btnLabel = auctionEnded ? "Ended" : (canBid ? "Bid" : "Locked");
 
         const row = document.createElement("tr");
         row.innerHTML = `
@@ -512,24 +507,22 @@
           <td>₿ ${Number(player.market_value).toLocaleString("en-GB")}</td>
           <td>${highestAmount !== null ? `₿ ${Number(highestAmount).toLocaleString("en-GB")}` : "None"}</td>
           <td>${leadingClubFull}</td>
-          <td class="time-cell">
-            ${formatTimeRemaining(nowUK)}
-          </td>
           <td>
             <button
-              class="bid-btn ${bidBtnClass}"
+              class="bid-btn ${btnClass}"
               data-konami-id="${player.Konami_ID}"
-              ${!auctionEnded && canBid ? "" : "disabled"}
+              ${(!auctionEnded && canBid) ? "" : "disabled"}
             >
-              ${bidBtnLabel}
+              ${btnLabel}
             </button>
           </td>
         `;
+
         tbody.appendChild(row);
       }
 
       if (!tbody.children.length) {
-        tbody.innerHTML = `<tr><td colspan="9">No active draft auctions.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8">No active draft auctions.</td></tr>`;
       }
 
       document.addEventListener("click", (e) => {
@@ -545,116 +538,78 @@
       });
     }
 
-    async function canClubBidOnPlayer(clubShortName, konamiId, nowUK, sixPmToday) {
-      if (!draftEnabled || !clubShortName || !randomFinishTime) return false;
+    /* ============================================================
+       BIDDING ELIGIBILITY (NEW SYSTEM)
+       ============================================================ */
 
-      if (draftAuctionStartTime && nowUK < draftAuctionStartTime) return false;
+    async function canClubBidOnPlayer(konamiId) {
+      const nowUK = nowInUK();
 
+      if (!draftEnabled) return false;
+      if (!buyerShortName) return false;
+      if (!draftAuctionStartTime || !randomFinishTime) return false;
+
+      // Draft not started yet
+      if (nowUK < draftAuctionStartTime) return false;
+
+      // Draft ended
       if (nowUK >= randomFinishTime) return false;
 
-      const { sevenPmYesterday, sixPmToday: sixPm, sevenPmToday } = getDraftWindowTimes();
-
-      if (nowUK >= sixPmToday) {
-        const { data: pre6Bids } = await supabase
-          .from("Player_Transfer_Bids")
-          .select("bid_id")
-          .eq("bidder_club_id", clubShortName)
-          .eq("is_direct", true)
-          .gte("bid_time", sevenPmYesterday.toISOString())
-          .lt("bid_time", sixPmToday.toISOString());
-
-        if (!pre6Bids || !pre6Bids.length) return false;
-      }
-
-      const { data: existingBids } = await supabase
+      // Check if this club has already bid on this player
+      const { data: existing } = await supabase
         .from("Player_Transfer_Bids")
-        .select("bidder_club_id, bid_time")
+        .select("bidder_club_id, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time")
         .eq("direct_bid_id", konamiId)
-        .eq("is_direct", true)
-        .gte("bid_time", sevenPmYesterday.toISOString())
-        .lt("bid_time", sevenPmToday.toISOString());
+        .eq("bidder_club_id", buyerShortName)
+        .eq("is_direct", true);
 
-      if (!existingBids || !existingBids.length) return false;
+      // If already bid → always allowed to continue bidding until random finish
+      if (existing && existing.length) return true;
 
-      const firstBidder = existingBids[0].bidder_club_id;
-      const isFirstBidder = firstBidder === clubShortName;
-
-      if (isFirstBidder) return true;
-
-      const { data: priorJoins } = await supabase
+      // If no existing bids → this club would be the FIRST bidder
+      const { data: allBids } = await supabase
         .from("Player_Transfer_Bids")
-        .select("bid_id")
+        .select("bidder_club_id")
         .eq("direct_bid_id", konamiId)
-        .eq("bidder_club_id", clubShortName)
-        .eq("is_draft_join", true);
+        .eq("is_direct", true);
 
-      if (priorJoins && priorJoins.length) {
+      const isFirstBid = !allBids || allBids.length === 0;
+
+      if (isFirstBid) {
+        // First bidder always allowed (earns credits)
         return true;
       }
 
-      const credits = await getDraftCredits(clubShortName, sevenPmYesterday, sixPm, sevenPmToday);
+      // Otherwise → joining an existing auction costs 1 credit
+      const credits = await getCredits(buyerShortName);
       return credits > 0;
     }
 
-    async function getDraftCredits(clubShortName, windowStart, sixPmToday, sevenPmToday) {
+    /* ============================================================
+       GET CREDITS (NEW SYSTEM)
+       ============================================================ */
+
+    async function getCredits(short) {
       const { data: firsts } = await supabase
         .from("Player_Transfer_Bids")
         .select("direct_bid_id")
-        .eq("bidder_club_id", clubShortName)
-        .eq("is_first_draft_bid", true)
-        .gte("bid_time", windowStart.toISOString())
-        .lt("bid_time", sixPmToday.toISOString());
+        .eq("bidder_club_id", short)
+        .eq("is_first_draft_bid", true);
 
       const { data: joins } = await supabase
         .from("Player_Transfer_Bids")
-        .select("direct_bid_id, draft_join_consumed")
-        .eq("bidder_club_id", clubShortName)
+        .select("direct_bid_id")
+        .eq("bidder_club_id", short)
         .eq("is_draft_join", true)
-        .eq("draft_join_consumed", true)
-        .gte("bid_time", windowStart.toISOString())
-        .lt("bid_time", sevenPmToday.toISOString());
+        .eq("draft_join_consumed", true);
 
-      const firstCount = firsts ? firsts.length : 0;
-      const uniqueJoins = joins
-        ? new Set(joins.map(j => j.direct_bid_id)).size
-        : 0;
+      const earned = firsts ? firsts.length * 2 : 0;
+      const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
 
-      return (firstCount * 2) - uniqueJoins;
+      return earned - used;
     }
 
-    function formatTimeRemaining(nowUK) {
-      if (!randomFinishTime) return "-";
-      const diffMs = randomFinishTime - nowUK;
-      if (diffMs <= 0) return "Ended";
-
-      const totalSecs = Math.floor(diffMs / 1000);
-      const hours = Math.floor(totalSecs / 3600);
-      const mins = Math.floor((totalSecs % 3600) / 60);
-      const secs = totalSecs % 60;
-
-      return `${hours}h ${mins}m ${secs}s`;
-    }
-
-    function updateCountdowns() {
-      if (!randomFinishTime) return;
-      const nowUK = nowInUK();
-      const cells = document.querySelectorAll(".time-cell");
-      cells.forEach(cell => {
-        cell.textContent = formatTimeRemaining(nowUK);
-      });
-
-      if (nowUK >= randomFinishTime) {
-        const statusEl = document.getElementById("draftStatus");
-        statusEl.textContent = "Draft auction has ended. Results are final.";
-
-        document.querySelectorAll(".bid-btn.enabled").forEach(btn => {
-          btn.classList.remove("enabled");
-          btn.classList.add("disabled");
-          btn.textContent = "Ended";
-          btn.disabled = true;
-        });
-      }
-    }
   </script>
+
 </body>
 </html>
