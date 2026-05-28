@@ -12,16 +12,20 @@ const supabase = createClient(
 let draftAuctionStartTime = null;
 let draftRandomFinishTime = null;
 
-// Always work in UK local time (BST when applicable)
-function getUKTime() {
+/* ============================================================
+   TIME HELPERS – REAL UK TIME, INDEPENDENT OF USER TIMEZONE
+   ============================================================ */
+
+// Current time in UK (Europe/London), regardless of where the user is
+function getUKNow() {
   const now = new Date();
-  const ukOffset = now.getTimezoneOffset() + 60; // UK is UTC+1 during BST
-  return new Date(now.getTime() - ukOffset * 60 * 1000);
+  const ukString = now.toLocaleString("en-GB", { timeZone: "Europe/London" });
+  return new Date(ukString);
 }
 
-// Draft window helper: 19:00 yesterday → 18:00 today
+// Draft window helper: 19:00 yesterday → 18:00 today (UK time)
 function getDraftWindowTimes() {
-  const nowLocal = getUKTime();
+  const nowLocal = getUKNow();
   const today = new Date(
     nowLocal.getFullYear(),
     nowLocal.getMonth(),
@@ -42,7 +46,7 @@ function getDraftWindowTimes() {
 }
 
 /* ============================================================
-   DRAFT CREDITS PANEL (GPDB VIEW) – NEW GLOBAL LOGIC
+   DRAFT CREDITS PANEL (GPDB VIEW)
    ============================================================ */
 
 async function loadDraftCreditsForOwner() {
@@ -71,23 +75,34 @@ async function loadDraftCreditsForOwner() {
       return;
     }
 
-    // Global, window‑free credit calculation (matches draftauction.html)
+    const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+    const credits = await getDraftCreditsForGPDB(buyerShortName);
+
     const { data: firsts } = await supabase
       .from("Player_Transfer_Bids")
       .select("direct_bid_id")
       .eq("bidder_club_id", buyerShortName)
-      .eq("is_first_draft_bid", true);
+      .eq("is_first_draft_bid", true)
+      .gte("bid_time", sevenPmYesterday.toISOString())
+      .lt("bid_time", sixPmToday.toISOString());
+
+    const firstCount = firsts ? firsts.length : 0;
+    const earned = firstCount * 2;
+
+    const joinWindowEnd = draftRandomFinishTime || sixPmToday;
 
     const { data: joins } = await supabase
       .from("Player_Transfer_Bids")
       .select("direct_bid_id")
       .eq("bidder_club_id", buyerShortName)
       .eq("is_draft_join", true)
-      .eq("draft_join_consumed", true);
+      .eq("draft_join_consumed", true)
+      .gte("bid_time", sevenPmYesterday.toISOString())
+      .lt("bid_time", joinWindowEnd.toISOString());
 
-    const earned = firsts ? firsts.length * 2 : 0;
     const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
-    const remaining = earned - used;
+
+    const remaining = credits;
 
     document.getElementById("draftCreditsPanel").innerHTML = `
       <b>Draft Credits:</b> ${remaining}<br>
@@ -101,23 +116,31 @@ async function loadDraftCreditsForOwner() {
 }
 
 async function getDraftCreditsForGPDB(clubShortName) {
+  const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+
   const { data: firsts } = await supabase
     .from("Player_Transfer_Bids")
     .select("direct_bid_id")
     .eq("bidder_club_id", clubShortName)
-    .eq("is_first_draft_bid", true);
+    .eq("is_first_draft_bid", true)
+    .gte("bid_time", sevenPmYesterday.toISOString())
+    .lt("bid_time", sixPmToday.toISOString());
+
+  const joinWindowEnd = draftRandomFinishTime || sixPmToday;
 
   const { data: joins } = await supabase
     .from("Player_Transfer_Bids")
     .select("direct_bid_id")
     .eq("bidder_club_id", clubShortName)
     .eq("is_draft_join", true)
-    .eq("draft_join_consumed", true);
+    .eq("draft_join_consumed", true)
+    .gte("bid_time", sevenPmYesterday.toISOString())
+    .lt("bid_time", joinWindowEnd.toISOString());
 
-  const earned = firsts ? firsts.length * 2 : 0;
-  const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
+  const firstCount = firsts ? firsts.length : 0;
+  const joinCount = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
 
-  return earned - used;
+  return (firstCount * 2) - joinCount;
 }
 
 /* ============================================================
@@ -418,29 +441,20 @@ document.addEventListener("DOMContentLoaded", () => {
             // FREE AGENTS
             const inDraft = ACTIVE_DRAFT_PLAYERS.has(String(player.Konami_ID).trim());
 
-            // If player is already in an active draft listing, always show "In Draft Auction"
             if (inDraft) {
               bidCell = `<span class="locked-msg">In Draft Auction</span>`;
             } else if (GLOBAL_SETTINGS.draftAuctionEnabled) {
-              // Draft auction is enabled for free agents
-
-              const nowLocal = getUKTime();
+              const nowLocal = getUKNow();
               const { sixPmToday } = getDraftWindowTimes();
 
-              // Before the configured draftAuctionStartTime → no bidding yet
               if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
                 bidCell = `<span class="locked-msg">Draft Closed</span>`;
-              }
-              // After 18:00 UK → new free-agent auctions are locked until next window
-              else if (nowLocal >= sixPmToday) {
+              } else if (nowLocal >= sixPmToday) {
                 bidCell = `<span class="locked-msg">Draft Locked</span>`;
-              }
-              // Between draft start and 18:00 → free agents are open for bidding
-              else {
+              } else {
                 bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
               }
             } else {
-              // Draft auction globally disabled
               bidCell = `<span class="locked-msg">Draft Closed</span>`;
             }
           }
@@ -572,7 +586,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("confirmOfferBtn").onclick = async () => {
 
-    const nowLocal = getUKTime();   // UK TIME
+    const nowLocal = getUKNow();   // UK TIME
 
     const input = document.getElementById("offerAmount");
     const errorBox = document.getElementById("offerError");
@@ -667,10 +681,10 @@ document.addEventListener("DOMContentLoaded", () => {
      DRAFT AUCTION HELPERS
      ============================================================ */
 
-  // For a new draft listing: start at 19:00 today, end at random 18:50–18:59:59 tomorrow
+  // For a new draft listing: start at 19:00 today, end at random 18:50–18:59:59 tomorrow (UK time)
   function getDraftAuctionTimesForNewListing() {
 
-    const now = getUKTime();   // UK TIME
+    const now = getUKNow();   // UK TIME
 
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
@@ -755,7 +769,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function submitDraftBid(player, offerAmount, buyerShortName) {
 
-    const nowLocal = getUKTime();   // UK TIME
+    const nowLocal = getUKNow();   // UK TIME
 
     const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
