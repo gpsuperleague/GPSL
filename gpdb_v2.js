@@ -23,20 +23,13 @@ function getUKNow() {
   return new Date(ukString);
 }
 
-// Build a real UK‑timezone Date safely
+// Build a stable Date for the intended UK wall-clock time
 function makeUKDate(year, month, day, hour = 0, minute = 0, second = 0) {
-  // Create a UTC date for the given components
-  const utc = new Date(Date.UTC(year, month, day, hour, minute, second));
-
-  // Convert that UTC instant into a UK-local timestamp string
-  const ukString = utc.toLocaleString("en-GB", { timeZone: "Europe/London" });
-
-  // Parse that string back into a Date object (now representing UK local time)
-  return new Date(ukString);
+  return new Date(Date.UTC(year, month, day, hour, minute, second));
 }
 
 function getDraftWindowTimes() {
-  const nowUK = getUKNow(); // your existing UK time getter
+  const nowUK = getUKNow();
 
   const y = nowUK.getFullYear();
   const m = nowUK.getMonth();
@@ -208,7 +201,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let MV_MIN = null;
   let MV_MAX = null;
-
   /* ============================================================
      MODULE D: Global Settings Loader
      ============================================================ */
@@ -390,7 +382,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function formatHeader(col) {
     if (col === "market_value") return "Market Value";
-    if (col === "Maximum_Reserve_Price") return "Maximum Reserve Price";
+    if (col === "Maximum_Reserve_PPrice") return "Maximum Reserve Price";
     return col.replace(/_/g, " ");
   }
 
@@ -433,7 +425,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (GLOBAL_SETTINGS) {
           if (hasClub) {
-            // CONTRACTED PLAYERS: normal transfer window logic
             if (!isMyClub && GLOBAL_SETTINGS.transferWindowOpen) {
               bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
             } else if (!GLOBAL_SETTINGS.transferWindowOpen) {
@@ -442,7 +433,6 @@ document.addEventListener("DOMContentLoaded", () => {
               bidCell = `<span class="locked-msg">Your Player</span>`;
             }
           } else {
-            // FREE AGENTS
             const inDraft = ACTIVE_DRAFT_PLAYERS.has(String(player.Konami_ID).trim());
 
             if (inDraft) {
@@ -501,7 +491,6 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
       })
       .join("");
-
     Array.from(tableHead.querySelectorAll("th[data-col]")).forEach(th => {
       const col = th.getAttribute("data-col");
       th.onclick = () => {
@@ -590,7 +579,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("confirmOfferBtn").onclick = async () => {
 
-    const nowLocal = getUKNow();   // UK TIME
+    const nowLocal = getUKNow();
 
     const input = document.getElementById("offerAmount");
     const errorBox = document.getElementById("offerError");
@@ -611,7 +600,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
 
-    // Only enforce draft auction timing for FREE AGENTS
     if (!sellerClub) {
       if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
         errorBox.textContent = "Draft auction has not started yet.";
@@ -685,10 +673,9 @@ document.addEventListener("DOMContentLoaded", () => {
      DRAFT AUCTION HELPERS
      ============================================================ */
 
-  // For a new draft listing: start at 19:00 today, end at random 18:50–18:59:59 tomorrow (UK time)
   function getDraftAuctionTimesForNewListing() {
 
-    const now = getUKNow();   // UK TIME
+    const now = getUKNow();
 
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
@@ -773,11 +760,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function submitDraftBid(player, offerAmount, buyerShortName) {
 
-    const nowLocal = getUKNow();   // UK TIME
+    const nowLocal = getUKNow();
 
     const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
-
-    // Global draft start gate (from settings)
+    // Global draft start gate
     if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
       return { ok: false, msg: "Draft auction has not started yet." };
     }
@@ -792,7 +778,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const isFirstBid = !existing || existing.length === 0;
     const isJoining = !isFirstBid;
 
-    // First bids (new auctions) are blocked after 18:00 UK
     if (isFirstBid && nowLocal >= sixPmToday) {
       return {
         ok: false,
@@ -816,7 +801,6 @@ document.addEventListener("DOMContentLoaded", () => {
         .eq("is_draft_join", true);
 
       if (priorJoin && priorJoin.length > 0) {
-        // Already paid join cost earlier in this auction
         bidResult = await insertDraftBid(
           player,
           offerAmount,
@@ -827,7 +811,6 @@ document.addEventListener("DOMContentLoaded", () => {
           listingId
         );
       } else {
-        // Need credits to join this auction
         const credits = await getDraftCreditsForGPDB(buyerShortName);
         if (credits <= 0) {
           return { ok: false, msg: "You do not have enough draft credits to join this auction." };
@@ -844,7 +827,6 @@ document.addEventListener("DOMContentLoaded", () => {
         );
       }
     } else {
-      // First bid in this draft auction
       bidResult = await insertDraftBid(
         player,
         offerAmount,
@@ -922,7 +904,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   /* ============================================================
-     MODULE H: Filters + Controls (Custom Multi-Select)
+     MODULE H: Filters + Controls
      ============================================================ */
 
   function closeAllMultiFilters() {
@@ -1211,7 +1193,7 @@ document.addEventListener("DOMContentLoaded", () => {
     draftAuctionStartTime = GLOBAL_SETTINGS.draftAuctionStartTime || null;
     draftRandomFinishTime = GLOBAL_SETTINGS.draftRandomFinishTime || null;
 
-    await loadClubNames();   // load club names first for dropdown labels
+    await loadClubNames();
 
     setupControls();
     setupFilters();
