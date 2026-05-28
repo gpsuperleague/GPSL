@@ -271,6 +271,25 @@
       margin-top:2px;
       font-size:12px;
     }
+
+    /* Draft countdown container */
+    #draftCountdownContainer {
+      display: none;
+      margin-top: 10px;
+      align-items: center;
+      gap: 8px;
+    }
+    #draftCountdownContainer .label {
+      font-weight: 600;
+      color: #ffaa22;
+    }
+    #draftCountdown {
+      background:#111;
+      color:#fff;
+      padding:4px 8px;
+      border-radius:4px;
+      font-family:monospace;
+    }
   </style>
 </head>
 
@@ -279,7 +298,14 @@
   <div id="nav" style="margin-bottom:20px;"></div>
 
   <h1 id="pageTitle">GPSL – Player Database</h1>
+
+  <!-- Draft credits panel and shared countdown container -->
   <p id="draftCreditsPanel" class="status-note"></p>
+
+  <div id="draftCountdownContainer">
+    <span class="label">Draft</span>
+    <span id="draftCountdown">00:00:00</span>
+  </div>
 
   <div id="controls">
     <div class="filter-group">
@@ -381,7 +407,7 @@
 
     <script type="module" src="gpdb_v2.js"></script>
 
-    <!-- NAV + AUTH -->
+    <!-- NAV + AUTH (keeps existing nav logic) -->
     <script type="module">
       import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
@@ -486,4 +512,3 @@
   margin: 0 auto;
 }
 </style>
-
