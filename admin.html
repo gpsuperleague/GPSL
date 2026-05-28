@@ -299,52 +299,46 @@
       return parseUTC(new Date().toISOString());
     }
 
-   /* ============================================================
-   LOAD GLOBAL SETTINGS + DISPLAY START TIME
-   ============================================================ */
+    /* ============================================================
+       LOAD GLOBAL SETTINGS + DISPLAY START TIME
+       ============================================================ */
 
-let draftEnabled = false;
+    let draftEnabled = false;
 
-async function loadGlobalSettings() {
-  const { data } = await supabase
-    .from("global_settings")
-    .select("draft_auction_enabled")
-    .eq("id", 1)
-    .single();
+    async function loadGlobalSettings() {
+      const { data } = await supabase
+        .from("global_settings")
+        .select("draft_auction_enabled")
+        .eq("id", 1)
+        .single();
 
-  draftEnabled = data?.draft_auction_enabled === true;
+      draftEnabled = data?.draft_auction_enabled === true;
 
-  const startEl = document.getElementById("draftStartTime");
+      const startEl = document.getElementById("draftStartTime");
 
-  const { data: fullSettings } = await supabase
-    .from("global_settings")
-    .select("draft_auction_start_time")
-    .eq("id", 1)
-    .single();
+      const { data: fullSettings } = await supabase
+        .from("global_settings")
+        .select("draft_auction_start_time")
+        .eq("id", 1)
+        .single();
 
-  // ⭐ Diagnostic: see EXACT string Supabase returns
-  console.log("ADMIN RAW VALUE:", fullSettings?.draft_auction_start_time);
+      console.log("ADMIN RAW VALUE:", fullSettings?.draft_auction_start_time);
 
-  if (draftEnabled && fullSettings?.draft_auction_start_time) {
+      if (draftEnabled && fullSettings?.draft_auction_start_time) {
+        const start = new Date(fullSettings.draft_auction_start_time);
+        const nowUK = nowInUK();
+        const displayTime = start.toLocaleString("en-GB");
 
-    // ⭐ DO NOT parse manually — let JS handle BST correctly
-    const start = new Date(fullSettings.draft_auction_start_time);
+        if (nowUK < start) {
+          startEl.textContent = `Draft auction begins at: ${displayTime}`;
+        } else {
+          startEl.textContent = `Draft auction started at: ${displayTime}`;
+        }
 
-    const nowUK = nowInUK();
-
-    // ⭐ This now correctly shows 19:00 in BST
-    const displayTime = start.toLocaleString("en-GB");
-
-    if (nowUK < start) {
-      startEl.textContent = `Draft auction begins at: ${displayTime}`;
-    } else {
-      startEl.textContent = `Draft auction started at: ${displayTime}`;
+      } else {
+        startEl.textContent = "";
+      }
     }
-
-  } else {
-    startEl.textContent = "";
-  }
-}
 
     /* ============================================================
        NAVIGATION
@@ -567,159 +561,168 @@ async function loadGlobalSettings() {
           : "✅ Reset email sent!";
       };
     });
+
     /* ============================================================
-       DRAFT AUCTION SETTINGS
-       ============================================================ */
+   DRAFT AUCTION SETTINGS — REWRITTEN CORRECTLY
+   ============================================================ */
 
-    function generateRandomDraftEndTime() {
-      const now = new Date();
+function computeNextDraftTimes() {
+  // Current UK time
+  const now = new Date();
+  const uk = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    hour12: false
+  });
 
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+  const parts = uk.formatToParts(now);
+  const get = (t) => parts.find(p => p.type === t).value;
 
-      const baseEnd = new Date(tomorrow);
-      baseEnd.setHours(18, 50, 0, 0);
+  const year = parseInt(get("year"));
+  const month = parseInt(get("month")) - 1;
+  const day = parseInt(get("day"));
+  const hour = parseInt(get("hour"));
 
-      const extraSeconds = Math.floor(Math.random() * 600);
+  // Determine the correct start day
+  const startDay = hour >= 19 ? day + 1 : day;
 
-      return new Date(baseEnd.getTime() + extraSeconds * 1000);
+  // Draft starts at 19:00 UK → 18:00 UTC
+  const draftStart = new Date(Date.UTC(year, month, startDay, 18, 0, 0, 0));
+
+  // Cutoff is next day at 18:00 UK → 17:00 UTC
+  const cutoffDate = new Date(draftStart.getTime() + 24 * 60 * 60 * 1000);
+  const sixPmCutoff = new Date(Date.UTC(
+    cutoffDate.getUTCFullYear(),
+    cutoffDate.getUTCMonth(),
+    cutoffDate.getUTCDate(),
+    17, 0, 0, 0
+  ));
+
+  // Random finish between 18:50–18:59:59 UK → 17:50–17:59:59 UTC
+  const randomMinute = Math.floor(Math.random() * 10) + 50;
+  const randomSecond = Math.floor(Math.random() * 60);
+
+  const randomFinish = new Date(Date.UTC(
+    cutoffDate.getUTCFullYear(),
+    cutoffDate.getUTCMonth(),
+    cutoffDate.getUTCDate(),
+    17,
+    randomMinute,
+    randomSecond,
+    0
+  ));
+
+  return {
+    draftStartISO: draftStart.toISOString(),
+    randomFinishISO: randomFinish.toISOString()
+  };
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  async function loadSettings() {
+    const { data, error } = await supabase
+      .from("global_settings")
+      .select("*")
+      .eq("id", 1)
+      .single();
+
+    if (error) {
+      console.error(error);
+      return;
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("transferWindowSelect").value =
+      data.transfer_window_open ? "true" : "false";
 
-      async function loadSettings() {
-        const { data, error } = await supabase
-          .from("global_settings")
-          .select("*")
-          .eq("id", 1)
-          .single();
+    document.getElementById("draftAuctionSelect").value =
+      data.draft_auction_enabled ? "true" : "false";
+  }
 
-        if (error) {
-          console.error(error);
-          return;
+  /* ============================================================
+     SAVE SETTINGS — FINAL UK‑SAFE VERSION
+     ============================================================ */
+
+  document.getElementById("saveSettingsBtn").onclick = async () => {
+    const transfer_window_open =
+      document.getElementById("transferWindowSelect").value === "true";
+
+    const draft_auction_enabled =
+      document.getElementById("draftAuctionSelect").value === "true";
+
+    let draft_random_finish_time = null;
+    let draft_auction_start_time = null;
+
+    if (draft_auction_enabled) {
+      const times = computeNextDraftTimes();
+      draft_auction_start_time = times.draftStartISO;
+      draft_random_finish_time = times.randomFinishISO;
+    }
+
+    const { error } = await supabase.functions.invoke(
+      "update-global-settings",
+      {
+        body: {
+          transfer_window_open,
+          draft_auction_enabled,
+          draft_random_finish_time,
+          draft_auction_start_time
         }
-
-        document.getElementById("transferWindowSelect").value =
-          data.transfer_window_open ? "true" : "false";
-
-        document.getElementById("draftAuctionSelect").value =
-          data.draft_auction_enabled ? "true" : "false";
       }
+    );
 
-      /* ============================================================
-         SAVE SETTINGS — FINAL UK‑SAFE VERSION
-         ============================================================ */
+    document.getElementById("settingsMessage").textContent =
+      error ? "❌ " + error.message : "✅ Settings updated!";
+  };
 
-      document.getElementById("saveSettingsBtn").onclick = async () => {
-        const transfer_window_open =
-          document.getElementById("transferWindowSelect").value === "true";
+  loadSettings();
+});
 
-        const draft_auction_enabled =
-          document.getElementById("draftAuctionSelect").value === "true";
+/* ============================================================
+   RESET DRAFT AUCTION
+   ============================================================ */
 
-        let draft_random_finish_time = null;
-        let draft_auction_start_time = null;
+document.getElementById("resetDraftBtn").onclick = async () => {
+  const status = document.getElementById("resetDraftStatus");
 
-        if (draft_auction_enabled) {
+  if (!confirm("Are you absolutely sure? This will delete ALL draft listings, ALL draft bids, and reset the draft state.")) {
+    return;
+  }
 
-          // Get current UK date/time components
-          const now = new Date();
-          const ukFormatter = new Intl.DateTimeFormat("en-GB", {
-            timeZone: "Europe/London",
-            year: "numeric",
-            month: "numeric",
-            day: "numeric",
-            hour: "numeric",
-            minute: "numeric",
-            second: "numeric",
-            hour12: false
-          });
+  status.textContent = "Resetting draft auction…";
+  status.style.color = "#ffcc00";
 
-          const parts = ukFormatter.formatToParts(now);
-          const get = (type) => parts.find(p => p.type === type).value;
+  try {
+    await supabase
+      .from("Player_Transfer_Listings")
+      .delete()
+      .eq("listing_type", "draft");
 
-          const ukYear = parseInt(get("year"));
-          const ukMonth = parseInt(get("month")) - 1;
-          const ukDay = parseInt(get("day"));
-          const ukHour = parseInt(get("hour"));
+    await supabase
+      .from("Player_Transfer_Bids")
+      .delete()
+      .or("is_direct.eq.true,is_first_draft_bid.eq.true,is_draft_join.eq.true");
 
-          // If it's already past 19:00 UK time, schedule for tomorrow
-          const targetDay = ukHour >= 19 ? ukDay + 1 : ukDay;
+    await supabase
+      .from("global_settings")
+      .update({
+        draft_auction_enabled: false,
+        draft_random_finish_time: null,
+        draft_auction_start_time: null
+      })
+      .eq("id", 1);
 
-          // 19:00 UK time = 18:00 UTC
-          const ukStart = new Date(Date.UTC(ukYear, ukMonth, targetDay, 18, 0, 0, 0));
+    status.textContent = "Draft auction has been fully reset.";
+    status.style.color = "lime";
 
-          draft_auction_start_time = ukStart.toISOString();
-
-          // Random finish time (still based on local date, but stored as UTC)
-          const randomEnd = generateRandomDraftEndTime();
-          draft_random_finish_time = randomEnd.toISOString();
-        }
-
-        const { error } = await supabase.functions.invoke(
-          "update-global-settings",
-          {
-            body: {
-              transfer_window_open,
-              draft_auction_enabled,
-              draft_random_finish_time,
-              draft_auction_start_time
-            }
-          }
-        );
-
-        document.getElementById("settingsMessage").textContent =
-          error ? "❌ " + error.message : "✅ Settings updated!";
-      };
-
-      loadSettings();
-    });
-
-    /* ============================================================
-       RESET DRAFT AUCTION
-       ============================================================ */
-
-    document.getElementById("resetDraftBtn").onclick = async () => {
-      const status = document.getElementById("resetDraftStatus");
-
-      if (!confirm("Are you absolutely sure? This will delete ALL draft listings, ALL draft bids, and reset the draft state.")) {
-        return;
-      }
-
-      status.textContent = "Resetting draft auction…";
-      status.style.color = "#ffcc00";
-
-      try {
-        await supabase
-          .from("Player_Transfer_Listings")
-          .delete()
-          .eq("listing_type", "draft");
-
-        await supabase
-          .from("Player_Transfer_Bids")
-          .delete()
-          .or("is_direct.eq.true,is_first_draft_bid.eq.true,is_draft_join.eq.true");
-
-        await supabase
-          .from("global_settings")
-          .update({
-            draft_auction_enabled: false,
-            draft_random_finish_time: null,
-            draft_auction_start_time: null
-          })
-          .eq("id", 1);
-
-        status.textContent = "Draft auction has been fully reset.";
-        status.style.color = "lime";
-
-      } catch (err) {
-        console.error(err);
-        status.textContent = "Error resetting draft auction.";
-        status.style.color = "red";
-      }
-    };
-
-  </script>
-
-</body>
-</html>
+  } catch (err) {
+    console.error(err);
+    status.textContent = "Error resetting draft auction.";
+    status.style.color = "red";
+  }
+};
