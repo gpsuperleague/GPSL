@@ -8,8 +8,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {
   loadGlobalSettings as loadGlobalSettingsGlobal,
   startDraftCountdown,
-  stopDraftCountdown,
-  isValidDate as isValidDateGlobal
+  stopDraftCountdown
 } from "./global.js";
 
 const supabase = createClient(
