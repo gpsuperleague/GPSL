@@ -42,7 +42,7 @@ function getDraftWindowTimes() {
 }
 
 /* ============================================================
-   DRAFT CREDITS PANEL (GPDB VIEW)
+   DRAFT CREDITS PANEL (GPDB VIEW) – NEW GLOBAL LOGIC
    ============================================================ */
 
 async function loadDraftCreditsForOwner() {
@@ -71,34 +71,23 @@ async function loadDraftCreditsForOwner() {
       return;
     }
 
-    const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
-    const credits = await getDraftCreditsForGPDB(buyerShortName);
-
+    // Global, window‑free credit calculation (matches draftauction.html)
     const { data: firsts } = await supabase
       .from("Player_Transfer_Bids")
       .select("direct_bid_id")
       .eq("bidder_club_id", buyerShortName)
-      .eq("is_first_draft_bid", true)
-      .gte("bid_time", sevenPmYesterday.toISOString())
-      .lt("bid_time", sixPmToday.toISOString());
-
-    const firstCount = firsts ? firsts.length : 0;
-    const earned = firstCount * 2;
-
-    const joinWindowEnd = draftRandomFinishTime || sixPmToday;
+      .eq("is_first_draft_bid", true);
 
     const { data: joins } = await supabase
       .from("Player_Transfer_Bids")
       .select("direct_bid_id")
       .eq("bidder_club_id", buyerShortName)
       .eq("is_draft_join", true)
-      .eq("draft_join_consumed", true)
-      .gte("bid_time", sevenPmYesterday.toISOString())
-      .lt("bid_time", joinWindowEnd.toISOString());
+      .eq("draft_join_consumed", true);
 
+    const earned = firsts ? firsts.length * 2 : 0;
     const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
-
-    const remaining = credits;
+    const remaining = earned - used;
 
     document.getElementById("draftCreditsPanel").innerHTML = `
       <b>Draft Credits:</b> ${remaining}<br>
@@ -112,31 +101,23 @@ async function loadDraftCreditsForOwner() {
 }
 
 async function getDraftCreditsForGPDB(clubShortName) {
-  const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
-
   const { data: firsts } = await supabase
     .from("Player_Transfer_Bids")
     .select("direct_bid_id")
     .eq("bidder_club_id", clubShortName)
-    .eq("is_first_draft_bid", true)
-    .gte("bid_time", sevenPmYesterday.toISOString())
-    .lt("bid_time", sixPmToday.toISOString());
-
-  const joinWindowEnd = draftRandomFinishTime || sixPmToday;
+    .eq("is_first_draft_bid", true);
 
   const { data: joins } = await supabase
     .from("Player_Transfer_Bids")
     .select("direct_bid_id")
     .eq("bidder_club_id", clubShortName)
     .eq("is_draft_join", true)
-    .eq("draft_join_consumed", true)
-    .gte("bid_time", sevenPmYesterday.toISOString())
-    .lt("bid_time", joinWindowEnd.toISOString());
+    .eq("draft_join_consumed", true);
 
-  const firstCount = firsts ? firsts.length : 0;
-  const joinCount = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
+  const earned = firsts ? firsts.length * 2 : 0;
+  const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
 
-  return (firstCount * 2) - joinCount;
+  return earned - used;
 }
 
 /* ============================================================
@@ -438,7 +419,6 @@ document.addEventListener("DOMContentLoaded", () => {
             const inDraft = ACTIVE_DRAFT_PLAYERS.has(String(player.Konami_ID).trim());
 
             // If player is already in an active draft listing, always show "In Draft Auction"
-            // regardless of time (they stay in until random finish / listing closes).
             if (inDraft) {
               bidCell = `<span class="locked-msg">In Draft Auction</span>`;
             } else if (GLOBAL_SETTINGS.draftAuctionEnabled) {
@@ -452,7 +432,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 bidCell = `<span class="locked-msg">Draft Closed</span>`;
               }
               // After 18:00 UK → new free-agent auctions are locked until next window
-              // (players with no bids become unavailable)
               else if (nowLocal >= sixPmToday) {
                 bidCell = `<span class="locked-msg">Draft Locked</span>`;
               }
