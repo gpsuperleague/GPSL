@@ -673,24 +673,25 @@ document.addEventListener("DOMContentLoaded", () => {
      DRAFT AUCTION HELPERS
      ============================================================ */
 
-  function getDraftAuctionTimesForNewListing() {
+ function getDraftAuctionTimesForNewListing() {
+  const nowUK = getUKNow();
 
-    const now = getUKNow();
+  const y = nowUK.getFullYear();
+  const m = nowUK.getMonth();
+  const d = nowUK.getDate();
 
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+  // Start today at 19:00 UK
+  const sevenPmToday = makeUKDate(y, m, d, 19, 0, 0);
 
-    const sevenPmToday = new Date(today);
-    sevenPmToday.setHours(19, 0, 0, 0);
+  // Tomorrow at 18:50 UK
+  const baseEnd = makeUKDate(y, m, d + 1, 18, 50, 0);
 
-    const baseEnd = new Date(tomorrow);
-    baseEnd.setHours(18, 50, 0, 0);
+  // Add 0–599 random seconds
+  const extraSeconds = Math.floor(Math.random() * 600);
+  const end = new Date(baseEnd.getTime() + extraSeconds * 1000);
 
-    const extraSeconds = Math.floor(Math.random() * 600);
-    const end = new Date(baseEnd.getTime() + extraSeconds * 1000);
-
-    return { start: sevenPmToday, end };
-  }
+  return { start: sevenPmToday, end };
+}
 
   async function ensureDraftListingForPlayer(player) {
     const konamiStr = String(player.Konami_ID).trim();
