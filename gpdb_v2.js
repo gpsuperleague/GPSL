@@ -33,6 +33,7 @@ function isValidDate(d) {
   return d instanceof Date && !isNaN(d.getTime());
 }
 
+/* Safe draft window times that avoid invalid Date at month boundaries */
 function getDraftWindowTimes() {
   const nowUK = getUKNow();
 
@@ -65,7 +66,7 @@ function getDraftWindowTimes() {
    ============================================================ */
 
 async function loadDraftCreditsForOwner() {
- console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
+  console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -134,8 +135,19 @@ async function loadDraftCreditsForOwner() {
 }
 
 async function getDraftCreditsForGPDB(clubShortName) {
- console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
+  console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
+
   const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+
+  // Extra debug to pinpoint invalid dates
+  console.log("DEBUG sevenPmYesterday =", sevenPmYesterday);
+  console.log("DEBUG sixPmToday =", sixPmToday);
+
+  // Guard draftRandomFinishTime to avoid invalid Date
+  const rawJoinEnd = draftRandomFinishTime;
+  const joinWindowEnd = isValidDate(rawJoinEnd) ? rawJoinEnd : sixPmToday;
+
+  console.log("DEBUG joinWindowEnd =", joinWindowEnd);
 
   const { data: firsts } = await supabase
     .from("Player_Transfer_Bids")
@@ -145,9 +157,7 @@ async function getDraftCreditsForGPDB(clubShortName) {
     .gte("bid_time", sevenPmYesterday.toISOString())
     .lt("bid_time", sixPmToday.toISOString());
 
-  // Guard draftRandomFinishTime to avoid invalid Date
-  const rawJoinEnd = draftRandomFinishTime;
-  const joinWindowEnd = isValidDate(rawJoinEnd) ? rawJoinEnd : sixPmToday;
+  const joinWindowEndIso = isValidDate(joinWindowEnd) ? joinWindowEnd.toISOString() : sixPmToday.toISOString();
 
   const { data: joins } = await supabase
     .from("Player_Transfer_Bids")
@@ -156,7 +166,7 @@ async function getDraftCreditsForGPDB(clubShortName) {
     .eq("is_draft_join", true)
     .eq("draft_join_consumed", true)
     .gte("bid_time", sevenPmYesterday.toISOString())
-    .lt("bid_time", joinWindowEnd.toISOString());
+    .lt("bid_time", joinWindowEndIso);
 
   const firstCount = firsts ? firsts.length : 0;
   const joinCount = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
@@ -258,32 +268,21 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // Parse and validate date fields
-    let parsedStart = null;
-    let parsedRandomFinish = null;
-
-    try {
-      if (data.draft_auction_start_time) {
-        const tmp = new Date(data.draft_auction_start_time);
-        parsedStart = isValidDate(tmp) ? tmp : null;
+    function parseSafe(dateValue) {
+      if (!dateValue) return null;
+      try {
+        const d = new Date(dateValue);
+        return isValidDate(d) ? d : null;
+      } catch (e) {
+        return null;
       }
-    } catch (e) {
-      parsedStart = null;
-    }
-
-    try {
-      if (data.draft_random_finish_time) {
-        const tmp = new Date(data.draft_random_finish_time);
-        parsedRandomFinish = isValidDate(tmp) ? tmp : null;
-      }
-    } catch (e) {
-      parsedRandomFinish = null;
     }
 
     return {
       transferWindowOpen: data.transfer_window_open,
       draftAuctionEnabled: data.draft_auction_enabled,
-      draftAuctionStartTime: parsedStart,
-      draftRandomFinishTime: parsedRandomFinish
+      draftAuctionStartTime: parseSafe(data.draft_auction_start_time),
+      draftRandomFinishTime: parseSafe(data.draft_random_finish_time)
     };
   }
 
@@ -306,7 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-                          /* ============================================================
+  /* ============================================================
      MODULE E: Data Loading
      ============================================================ */
 
@@ -431,7 +430,6 @@ document.addEventListener("DOMContentLoaded", () => {
     if (col === "Maximum_Reserve_PPrice") return "Maximum Reserve Price";
     return col.replace(/_/g, " ");
   }
-
   /* ============================================================
      MODULE F: Rendering (with Bid column)
      ============================================================ */
@@ -568,7 +566,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-      /* ============================================================
+  /* ============================================================
      MODULE G: Offer Modal + Draft Helpers
      ============================================================ */
 
@@ -1209,6 +1207,10 @@ document.addEventListener("DOMContentLoaded", () => {
     draftAuctionStartTime = GLOBAL_SETTINGS.draftAuctionStartTime || null;
     draftRandomFinishTime = GLOBAL_SETTINGS.draftRandomFinishTime || null;
 
+    console.log("DEBUG loaded GLOBAL_SETTINGS:", GLOBAL_SETTINGS);
+    console.log("DEBUG draftAuctionStartTime =", draftAuctionStartTime);
+    console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
+
     await loadClubNames();
 
     setupControls();
@@ -1223,4 +1225,3 @@ document.addEventListener("DOMContentLoaded", () => {
   init();
 
 });
-                      
