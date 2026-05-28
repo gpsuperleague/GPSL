@@ -50,7 +50,6 @@ function getUKNow() {
   const ss = Number(map.second);
 
   if ([y, m, d, hh, mm, ss].some(v => !isFinite(v))) {
-    // fallback to local Date if something unexpected happens
     return new Date();
   }
 
@@ -78,7 +77,6 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
   const el = document.getElementById("draftCountdown");
   if (!el) return;
 
-  // onTickDisplay must return an object { show: boolean, text: string }
   function tick() {
     if (!draftEnabled || !isValidDate(draftStart) || !isValidDate(draftFinish)) {
       el.textContent = "";
@@ -93,7 +91,7 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
       const ms = draftStart.getTime() - nowUK.getTime();
       const text = "Draft starts in: " + formatCountdown(ms);
       const out = onTickDisplay ? onTickDisplay({ phase: "before", ms, text }) : { show: true, text };
-      if (out && out.show) {
+      if (out.show) {
         el.style.display = "block";
         el.textContent = out.text;
       } else {
@@ -103,14 +101,13 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
       const ms = draftFinish.getTime() - nowUK.getTime();
       const text = "Draft ends in: " + formatCountdown(ms);
       const out = onTickDisplay ? onTickDisplay({ phase: "during", ms, text }) : { show: true, text };
-      if (out && out.show) {
+      if (out.show) {
         el.style.display = "block";
         el.textContent = out.text;
       } else {
         el.style.display = "none";
       }
     } else {
-      // finished
       el.textContent = "Draft auction has ended";
       el.style.display = "block";
       stopDraftCountdown();
@@ -120,11 +117,9 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
     }
   }
 
-  // initial tick and then every second
   tick();
   __draftCountdownInterval = setInterval(tick, 1000);
 
-  // cleanup on unload
   window.addEventListener("beforeunload", stopDraftCountdown);
 }
 
@@ -141,13 +136,12 @@ export async function loadGlobalSettings() {
 
   draftEnabled = data?.draft_auction_enabled === true;
 
-  // Defensive parsing: accept nulls and invalid strings
   function parseSafeDate(v) {
     if (!v) return null;
     try {
       const d = new Date(v);
       return isValidDate(d) ? d : null;
-    } catch (e) {
+    } catch {
       return null;
     }
   }
@@ -155,25 +149,18 @@ export async function loadGlobalSettings() {
   draftStart = parseSafeDate(data?.draft_auction_start_time);
   draftFinish = parseSafeDate(data?.draft_random_finish_time);
 
-  // Stop any existing countdown before starting a new one
   stopDraftCountdown();
 
   if (draftEnabled && isValidDate(draftStart) && isValidDate(draftFinish)) {
-    // start countdown; pass a simple onTickDisplay and onEnd callback
     startDraftCountdown(
-      // onTickDisplay: you can customize display logic here
-      ({ phase, ms, text }) => {
-        // always show the timer in the header
-        return { show: true, text };
-      },
-      // onEndCallback: refresh global settings and UI when countdown finishes
+      ({ text }) => ({ show: true, text }),
       () => {
-        // reload settings and rebuild nav; callers can also refresh page-specific UI
-        loadGlobalSettings().catch(e => console.error("reload after countdown end failed", e));
+        loadGlobalSettings().catch(e =>
+          console.error("reload after countdown end failed", e)
+        );
       }
     );
   } else {
-    // hide countdown if not enabled or invalid times
     const el = document.getElementById("draftCountdown");
     if (el) {
       el.textContent = "";
@@ -187,6 +174,7 @@ export async function loadGlobalSettings() {
 /* ===============================
    NAVIGATION BUILDER
    =============================== */
+
 export async function buildNav() {
   const nav = document.getElementById("nav");
 
@@ -232,7 +220,19 @@ export async function buildNav() {
 /* ===============================
    PAGE INITIALISATION
    =============================== */
+
 export async function initGlobal() {
   await loadGlobalSettings();
   await buildNav();
-}   
+}
+
+/* ===============================
+   EXPORTED HELPERS (for gpdb_v2.js)
+   =============================== */
+
+export {
+  startDraftCountdown,
+  stopDraftCountdown,
+  getUKNow,
+  isValidDate
+};
