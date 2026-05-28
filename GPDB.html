@@ -272,24 +272,34 @@
       font-size:12px;
     }
 
-    /* Draft countdown container */
-    #draftCountdownContainer {
-      display: none;
-      margin-top: 10px;
-      align-items: center;
-      gap: 8px;
-    }
-    #draftCountdownContainer .label {
-      font-weight: 600;
-      color: #ffaa22;
-    }
-    #draftCountdown {
-      background:#111;
-      color:#fff;
-      padding:4px 8px;
-      border-radius:4px;
-      font-family:monospace;
-    }
+  /* Draft countdown container */
+#draftCountdownContainer {
+  display: none;
+  margin-top: 10px;
+  align-items: flex-start;   /* so the two lines stack neatly */
+  flex-direction: column;    /* countdown on top, local time below */
+  gap: 4px;
+}
+
+#draftCountdownContainer .label {
+  font-weight: 600;
+  color: #ffaa22;
+}
+
+#draftCountdown {
+  background:#111;
+  color:#fff;
+  padding:4px 8px;
+  border-radius:4px;
+  font-family:monospace;
+}
+
+/* NEW: Local start time line */
+#draftLocalStart {
+  font-size: 12px;
+  color: #ccc;
+  margin-left: 2px;
+}
   </style>
 </head>
 
