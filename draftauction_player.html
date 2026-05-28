@@ -131,13 +131,54 @@
 
     let buyerShortName = null;
     let draftEnabled = false;
-    let randomFinishTime = null;
-    let draftAuctionStartTime = null;
+
+    // UK‑logic times
+    let randomFinishTimeUK = null;
+    let draftAuctionStartTimeUK = null;
+
+    // Display (local) times
+    let randomFinishTimeDisplay = null;
+
     let playerId = null;
     let currentHighestBid = 0;
     let currentLeadingClub = null;
     let canBid = false;
     let credits = 0;
+
+    /* ============================================================
+       TIME HELPERS – UK LOGIC, LOCAL DISPLAY
+       ============================================================ */
+
+    function getUKNow() {
+      const now = new Date();
+      const ukString = now.toLocaleString("en-GB", { timeZone: "Europe/London" });
+      return new Date(ukString);
+    }
+
+    function getDraftWindowTimes() {
+      const nowUK = getUKNow();
+      const today = new Date(
+        nowUK.getFullYear(),
+        nowUK.getMonth(),
+        nowUK.getDate()
+      );
+
+      const sixPmToday = new Date(today);
+      sixPmToday.setHours(18, 0, 0, 0);
+
+      const sevenPmYesterday = new Date(today);
+      sevenPmYesterday.setDate(today.getDate() - 1);
+      sevenPmYesterday.setHours(19, 0, 0, 0);
+
+      const sevenPmToday = new Date(today);
+      sevenPmToday.setHours(19, 0, 0, 0);
+
+      return { sevenPmYesterday, sevenPmToday, sixPmToday };
+    }
+
+    /* ============================================================
+       INIT
+       ============================================================ */
 
     document.addEventListener("DOMContentLoaded", async () => {
       const params = new URLSearchParams(window.location.search);
@@ -191,13 +232,23 @@
 
       draftEnabled = data.draft_auction_enabled === true;
 
-      randomFinishTime = data.draft_random_finish_time
-        ? new Date(data.draft_random_finish_time)
-        : null;
+      if (data.draft_random_finish_time) {
+        const raw = new Date(data.draft_random_finish_time);
+        randomFinishTimeDisplay = raw;
+        const ukString = raw.toLocaleString("en-GB", { timeZone: "Europe/London" });
+        randomFinishTimeUK = new Date(ukString);
+      } else {
+        randomFinishTimeDisplay = null;
+        randomFinishTimeUK = null;
+      }
 
-      draftAuctionStartTime = data.draft_auction_start_time
-        ? new Date(data.draft_auction_start_time)
-        : null;
+      if (data.draft_auction_start_time) {
+        const raw = new Date(data.draft_auction_start_time);
+        const ukString = raw.toLocaleString("en-GB", { timeZone: "Europe/London" });
+        draftAuctionStartTimeUK = new Date(ukString);
+      } else {
+        draftAuctionStartTimeUK = null;
+      }
     }
 
     async function loadBuyerClubShortName(userId) {
@@ -212,20 +263,6 @@
         return;
       }
       buyerShortName = data.ShortName;
-    }
-
-    function getDraftWindowTimes() {
-      const sixPmToday = new Date();
-      sixPmToday.setHours(18, 0, 0, 0);
-
-      const sevenPmYesterday = new Date(sixPmToday);
-      sevenPmYesterday.setDate(sixPmToday.getDate() - 1);
-      sevenPmYesterday.setHours(19, 0, 0, 0);
-
-      const sevenPmToday = new Date(sixPmToday);
-      sevenPmToday.setHours(19, 0, 0, 0);
-
-      return { sevenPmYesterday, sevenPmToday, sixPmToday };
     }
 
     async function loadPlayerAndBids() {
@@ -288,8 +325,8 @@
       }
 
       document.getElementById("timeRemaining").textContent =
-        randomFinishTime
-          ? `Ends around: ${randomFinishTime.toLocaleTimeString("en-GB")}`
+        randomFinishTimeDisplay
+          ? `Ends around: ${randomFinishTimeDisplay.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })} (your local time)`
           : "End time not set";
 
       const { sevenPmYesterday: winStart, sixPmToday: winSix } = getDraftWindowTimes();
@@ -297,11 +334,11 @@
       document.getElementById("creditsInfo").textContent =
         `Draft Credits: ${credits}`;
 
-      const nowLocal = new Date();
+      const nowUK = getUKNow();
       canBid = await canClubBidOnPlayer(
         buyerShortName,
         player.Konami_ID,
-        nowLocal,
+        nowUK,
         sixPmToday
       );
       updateBidControlsState();
@@ -332,7 +369,7 @@
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${created.toLocaleTimeString("en-GB")}</td>
+          <td>${created.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</td>
           <td>${bid.bidder_club_id}</td>
           <td>₿ ${Number(bid.bid_amount).toLocaleString("en-GB")}</td>
           <td>${type}</td>
@@ -370,21 +407,20 @@
       return (firstCount * 2) - uniqueJoins;
     }
 
-    async function canClubBidOnPlayer(clubShortName, konamiId, nowLocal, sixPmToday) {
-      if (!draftEnabled || !clubShortName || !randomFinishTime) return false;
+    async function canClubBidOnPlayer(clubShortName, konamiId, nowUK, sixPmToday) {
+      if (!draftEnabled || !clubShortName || !randomFinishTimeUK) return false;
 
-      if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
+      if (draftAuctionStartTimeUK && nowUK < draftAuctionStartTimeUK) {
         document.getElementById("bidStatus").textContent =
           "Draft auction has not started yet.";
         return false;
       }
 
-      if (nowLocal >= randomFinishTime) return false;
+      if (nowUK >= randomFinishTimeUK) return false;
 
       const { sevenPmYesterday, sevenPmToday } = getDraftWindowTimes();
 
-      // Conclusion hour rule: after 18:00, you must have any pre‑18:00 bid
-      if (nowLocal >= sixPmToday) {
+      if (nowUK >= sixPmToday) {
         const { data: pre6Bids } = await supabase
           .from("Player_Transfer_Bids")
           .select("bid_id")
@@ -395,12 +431,11 @@
 
         if (!pre6Bids || !pre6Bids.length) {
           document.getElementById("bidStatus").textContent =
-            "You did not bid before 18:00, so you cannot bid in the conclusion hour.";
+            "You did not bid before 18:00 UK, so you cannot bid in the conclusion hour.";
           return false;
         }
       }
 
-      // Existing bids for this player in the current window
       const { data: existingBids } = await supabase
         .from("Player_Transfer_Bids")
         .select("bidder_club_id")
@@ -500,16 +535,16 @@
         return;
       }
 
-      const nowLocal = new Date();
+      const nowUK = getUKNow();
 
-      if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
+      if (draftAuctionStartTimeUK && nowUK < draftAuctionStartTimeUK) {
         document.getElementById("bidStatus").textContent =
           "Draft auction has not started yet.";
         updateBidControlsState();
         return;
       }
 
-      if (randomFinishTime && nowLocal >= randomFinishTime) {
+      if (randomFinishTimeUK && nowUK >= randomFinishTimeUK) {
         document.getElementById("bidStatus").textContent =
           "Auction has already ended.";
         updateBidControlsState();
@@ -518,7 +553,6 @@
 
       const { sevenPmYesterday, sixPmToday, sevenPmToday } = getDraftWindowTimes();
 
-      // Ensure there is an existing draft auction thread for this player in this window
       const { data: existingBids } = await supabase
         .from("Player_Transfer_Bids")
         .select("bidder_club_id")
@@ -542,8 +576,7 @@
       let draftJoinConsumed = false;
 
       if (isFirstBidder) {
-        // First bidder can earn credits only if bid is before 18:00
-        if (!draftAuctionStartTime || nowLocal >= draftAuctionStartTime) {
+        if (!draftAuctionStartTimeUK || nowUK >= draftAuctionStartTimeUK) {
           isFirstDraftBid = true;
         }
       } else {
