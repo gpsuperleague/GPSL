@@ -1329,33 +1329,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await loadClubNames();
 
     // Start countdown if draft is enabled (existing global.js-based logic)
-    if (GLOBAL_SETTINGS?.draftAuctionEnabled && isValidDate(draftAuctionStartTime)) {
-      startDraftCountdown(
-        ({ phase, ms, text }) => ({ show: true, text }),
-        () => {
-          loadGlobalSettingsGlobal().then(gs => {
-            GLOBAL_SETTINGS = gs || GLOBAL_SETTINGS;
-
-            draftAuctionStartTime =
-              GLOBAL_SETTINGS.draftAuctionStartTime ||
-              GLOBAL_SETTINGS.draftStart ||
-              null;
-
-            draftRandomFinishTime =
-              GLOBAL_SETTINGS.draftRandomFinishTime ||
-              GLOBAL_SETTINGS.draftFinish ||
-              null;
-          });
-
-          loadActiveDraftListings();
-          loadDraftCreditsForOwner();
-          loadPage(CURRENT_PAGE || 1);
-        }
-      );
-    } else {
-      const c = document.getElementById("draftCountdownContainer");
-      if (c) c.style.display = "none";
-    }
+  // GPDB uses its own countdown now — no global.js countdown
 
     setupControls();
     setupFilters();
