@@ -28,6 +28,11 @@ function makeUKDate(year, month, day, hour = 0, minute = 0, second = 0) {
   return new Date(Date.UTC(year, month, day, hour, minute, second));
 }
 
+// Small helper to validate Date objects
+function isValidDate(d) {
+  return d instanceof Date && !isNaN(d.getTime());
+}
+
 function getDraftWindowTimes() {
   const nowUK = getUKNow();
 
@@ -86,7 +91,9 @@ async function loadDraftCreditsForOwner() {
     const firstCount = firsts ? firsts.length : 0;
     const earned = firstCount * 2;
 
-    const joinWindowEnd = draftRandomFinishTime || sixPmToday;
+    // Guard draftRandomFinishTime to avoid invalid Date
+    const rawJoinEnd = draftRandomFinishTime;
+    const joinWindowEnd = isValidDate(rawJoinEnd) ? rawJoinEnd : sixPmToday;
 
     const { data: joins } = await supabase
       .from("Player_Transfer_Bids")
@@ -123,7 +130,9 @@ async function getDraftCreditsForGPDB(clubShortName) {
     .gte("bid_time", sevenPmYesterday.toISOString())
     .lt("bid_time", sixPmToday.toISOString());
 
-  const joinWindowEnd = draftRandomFinishTime || sixPmToday;
+  // Guard draftRandomFinishTime to avoid invalid Date
+  const rawJoinEnd = draftRandomFinishTime;
+  const joinWindowEnd = isValidDate(rawJoinEnd) ? rawJoinEnd : sixPmToday;
 
   const { data: joins } = await supabase
     .from("Player_Transfer_Bids")
@@ -233,11 +242,33 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     }
 
+    // Parse and validate date fields
+    let parsedStart = null;
+    let parsedRandomFinish = null;
+
+    try {
+      if (data.draft_auction_start_time) {
+        const tmp = new Date(data.draft_auction_start_time);
+        parsedStart = isValidDate(tmp) ? tmp : null;
+      }
+    } catch (e) {
+      parsedStart = null;
+    }
+
+    try {
+      if (data.draft_random_finish_time) {
+        const tmp = new Date(data.draft_random_finish_time);
+        parsedRandomFinish = isValidDate(tmp) ? tmp : null;
+      }
+    } catch (e) {
+      parsedRandomFinish = null;
+    }
+
     return {
       transferWindowOpen: data.transfer_window_open,
       draftAuctionEnabled: data.draft_auction_enabled,
-      draftAuctionStartTime: data.draft_auction_start_time ? new Date(data.draft_auction_start_time) : null,
-      draftRandomFinishTime: data.draft_random_finish_time ? new Date(data.draft_random_finish_time) : null
+      draftAuctionStartTime: parsedStart,
+      draftRandomFinishTime: parsedRandomFinish
     };
   }
 
@@ -260,7 +291,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* ============================================================
+                          /* ============================================================
      MODULE E: Data Loading
      ============================================================ */
 
@@ -522,7 +553,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* ============================================================
+      /* ============================================================
      MODULE G: Offer Modal + Draft Helpers
      ============================================================ */
 
@@ -1059,37 +1090,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       })
       .join("");
-
-    DROPDOWN_COLUMNS.forEach(col => {
-      const wrapper = document.querySelector(`.multi-filter[data-col="${col}"]`);
-      const control = document.getElementById(`filter-${col}-display`);
-      const panel = document.getElementById(`filter-${col}-panel`);
-      if (!wrapper || !control || !panel) return;
-
-      control.addEventListener("click", e => {
-        e.stopPropagation();
-        const isOpen = wrapper.classList.contains("open");
-        closeAllMultiFilters();
-        if (!isOpen) {
-          wrapper.classList.add("open");
-        }
-      });
-    });
-
-    document.addEventListener("click", () => {
-      closeAllMultiFilters();
-    });
-
-    COLUMNS
-      .filter(col => !FILTER_EXCLUDE.includes(col) && !DROPDOWN_COLUMNS.includes(col))
-      .forEach(col => {
-        const el = document.getElementById(`filter-${col}`);
-        if (!el) return;
-        el.addEventListener("input", () => {
-          CURRENT_FILTERS[col] = el.value;
-          loadPage(1);
-        });
-      });
   }
 
   function setupControls() {
@@ -1208,3 +1208,4 @@ document.addEventListener("DOMContentLoaded", () => {
   init();
 
 });
+                      
