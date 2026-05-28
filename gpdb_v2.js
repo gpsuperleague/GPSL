@@ -40,9 +40,22 @@ function getDraftWindowTimes() {
   const m = nowUK.getMonth();
   const d = nowUK.getDate();
 
-  const sevenPmYesterday = makeUKDate(y, m, d - 1, 19, 0, 0);
-  const sixPmToday       = makeUKDate(y, m, d,     18, 0, 0);
-  const sevenPmToday     = makeUKDate(y, m, d,     19, 0, 0);
+  // Build a safe "today" at midnight UK
+  const todayMidnight = makeUKDate(y, m, d, 0, 0, 0);
+
+  // Subtract 24 hours to get yesterday safely
+  const yesterdayMidnight = new Date(todayMidnight.getTime() - 24 * 60 * 60 * 1000);
+
+  // Build 19:00 yesterday using the safe date
+  const sevenPmYesterday = makeUKDate(
+    yesterdayMidnight.getUTCFullYear(),
+    yesterdayMidnight.getUTCMonth(),
+    yesterdayMidnight.getUTCDate(),
+    19, 0, 0
+  );
+
+  const sixPmToday = makeUKDate(y, m, d, 18, 0, 0);
+  const sevenPmToday = makeUKDate(y, m, d, 19, 0, 0);
 
   return { sevenPmYesterday, sixPmToday, sevenPmToday };
 }
