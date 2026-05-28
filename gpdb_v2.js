@@ -253,6 +253,23 @@ document.addEventListener("DOMContentLoaded", () => {
   ];
 
   /* ============================================================
+     RESTORE MULTI-FILTER CLICK HANDLERS
+     ============================================================ */
+
+  // Clicking a filter opens it (and closes others)
+  document.addEventListener("click", () => {
+    closeAllMultiFilters();
+  });
+
+  document.addEventListener("click", e => {
+    const wrapper = e.target.closest(".multi-filter");
+    if (!wrapper) return;
+    e.stopPropagation();
+    closeAllMultiFilters();
+    wrapper.classList.toggle("open");
+  });
+
+  /* ============================================================
      MODULE C: Pagination + State
      ============================================================ */
 
