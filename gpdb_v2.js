@@ -104,7 +104,6 @@ function getDraftWindowTimes() {
    ============================================================ */
 
 async function loadDraftCreditsForOwner() {
-  console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -126,7 +125,8 @@ async function loadDraftCreditsForOwner() {
       .single();
 
     if (!settings?.draft_auction_enabled) {
-      document.getElementById("draftCreditsPanel").textContent = "";
+      const panel = document.getElementById("draftCreditsPanel");
+      if (panel) panel.textContent = "";
       return;
     }
 
@@ -161,31 +161,26 @@ async function loadDraftCreditsForOwner() {
 
     const remaining = credits;
 
-    document.getElementById("draftCreditsPanel").innerHTML = `
-      <b>Draft Credits:</b> ${remaining}<br>
-      <span style="font-size:11px;color:#aaa;">
-        Earned: ${earned} | Used: ${used}
-      </span>
-    `;
+    const panel = document.getElementById("draftCreditsPanel");
+    if (panel) {
+      panel.innerHTML = `
+        <b>Draft Credits:</b> ${remaining}<br>
+        <span style="font-size:11px;color:#aaa;">
+          Earned: ${earned} | Used: ${used}
+        </span>
+      `;
+    }
   } catch (err) {
     console.error("Error loading draft credits:", err);
   }
 }
 
 async function getDraftCreditsForGPDB(clubShortName) {
-  console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
-
   const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
-
-  // Extra debug to pinpoint invalid dates
-  console.log("DEBUG sevenPmYesterday =", sevenPmYesterday);
-  console.log("DEBUG sixPmToday =", sixPmToday);
 
   // Guard draftRandomFinishTime to avoid invalid Date
   const rawJoinEnd = draftRandomFinishTime;
   const joinWindowEnd = isValidDate(rawJoinEnd) ? rawJoinEnd : sixPmToday;
-
-  console.log("DEBUG joinWindowEnd =", joinWindowEnd);
 
   const { data: firsts } = await supabase
     .from("Player_Transfer_Bids")
@@ -211,6 +206,7 @@ async function getDraftCreditsForGPDB(clubShortName) {
 
   return (firstCount * 2) - joinCount;
 }
+
 /* ============================================================
    EVERYTHING ELSE MUST BE INSIDE DOMContentLoaded
    ============================================================ */
@@ -461,11 +457,13 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTable(filtered);
     renderPagination();
   }
+
   function formatHeader(col) {
     if (col === "market_value") return "Market Value";
     if (col === "Maximum_Reserve_PPrice") return "Maximum Reserve Price";
     return col.replace(/_/g, " ");
   }
+
   /* ============================================================
      MODULE F: Rendering (with Bid column)
      ============================================================ */
@@ -571,6 +569,7 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
       })
       .join("");
+
     Array.from(tableHead.querySelectorAll("th[data-col]")).forEach(th => {
       const col = th.getAttribute("data-col");
       th.onclick = () => {
@@ -753,25 +752,25 @@ document.addEventListener("DOMContentLoaded", () => {
      DRAFT AUCTION HELPERS
      ============================================================ */
 
- function getDraftAuctionTimesForNewListing() {
-  const nowUK = getUKNow();
+  function getDraftAuctionTimesForNewListing() {
+    const nowUK = getUKNow();
 
-  const y = nowUK.getFullYear();
-  const m = nowUK.getMonth();
-  const d = nowUK.getDate();
+    const y = nowUK.getFullYear();
+    const m = nowUK.getMonth();
+    const d = nowUK.getDate();
 
-  // Start today at 19:00 UK
-  const sevenPmToday = makeUKDate(y, m, d, 19, 0, 0);
+    // Start today at 19:00 UK
+    const sevenPmToday = makeUKDate(y, m, d, 19, 0, 0);
 
-  // Tomorrow at 18:50 UK
-  const baseEnd = makeUKDate(y, m, d + 1, 18, 50, 0);
+    // Tomorrow at 18:50 UK
+    const baseEnd = makeUKDate(y, m, d + 1, 18, 50, 0);
 
-  // Add 0–599 random seconds
-  const extraSeconds = Math.floor(Math.random() * 600);
-  const end = new Date(baseEnd.getTime() + extraSeconds * 1000);
+    // Add 0–599 random seconds
+    const extraSeconds = Math.floor(Math.random() * 600);
+    const end = new Date(baseEnd.getTime() + extraSeconds * 1000);
 
-  return { start: sevenPmToday, end };
-}
+    return { start: sevenPmToday, end };
+  }
 
   async function ensureDraftListingForPlayer(player) {
     const konamiStr = String(player.Konami_ID).trim();
@@ -781,7 +780,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .select("id")
       .eq("player_id", konamiStr)
       .eq("listing_type", "draft")
-            .eq("status", "active")
+      .eq("status", "active")
       .maybeSingle();
 
     if (existing) {
@@ -1286,4 +1285,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
   init();
 
-});
+}); // end DOMContentLoaded
