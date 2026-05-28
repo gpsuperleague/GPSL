@@ -235,4 +235,4 @@ export async function buildNav() {
 export async function initGlobal() {
   await loadGlobalSettings();
   await buildNav();
-}
+}   
