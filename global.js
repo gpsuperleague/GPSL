@@ -22,9 +22,10 @@ function makeUKDate(year, month, day, hour = 0, minute = 0, second = 0) {
   return new Date(Date.UTC(year, month, day, hour, minute, second));
 }
 
-// Robust current time in UK (Europe/London) using formatToParts
-function getUKNow() {
-  const now = new Date();
+// NEW: Convert any Date to a UK wall-clock Date
+function toUKWallClock(d) {
+  if (!isValidDate(d)) return null;
+
   const fmt = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
     year: "numeric",
@@ -36,7 +37,7 @@ function getUKNow() {
     hour12: false
   });
 
-  const parts = fmt.formatToParts(now);
+  const parts = fmt.formatToParts(d);
   const map = {};
   parts.forEach(p => {
     if (p.type && p.value) map[p.type] = p.value;
@@ -44,16 +45,18 @@ function getUKNow() {
 
   const y = Number(map.year);
   const m = Number(map.month) - 1;
-  const d = Number(map.day);
+  const day = Number(map.day);
   const hh = Number(map.hour);
   const mm = Number(map.minute);
   const ss = Number(map.second);
 
-  if ([y, m, d, hh, mm, ss].some(v => !isFinite(v))) {
-    return new Date();
-  }
+  return makeUKDate(y, m, day, hh, mm, ss);
+}
 
-  return makeUKDate(y, m, d, hh, mm, ss);
+// Robust current time in UK (Europe/London) using formatToParts
+function getUKNow() {
+  const now = new Date();
+  return toUKWallClock(now); // CHANGED: use UK wall-clock conversion
 }
 
 function isValidDate(d) {
@@ -204,16 +207,16 @@ export async function loadGlobalSettings() {
   const draftAuctionStartTime = parseSafeDate(data?.draft_auction_start_time);
   const draftRandomFinishTime = parseSafeDate(data?.draft_random_finish_time);
 
-  // Update internal state
+  // Update internal state (CHANGED: convert to UK wall-clock)
   draftEnabled = draftAuctionEnabled;
-  draftStart = draftAuctionStartTime;
-  draftFinish = draftRandomFinishTime;
+  draftStart = toUKWallClock(draftAuctionStartTime);
+  draftFinish = toUKWallClock(draftRandomFinishTime);
 
   // Reset countdown
   stopDraftCountdown();
 
   // Start countdown if valid
-  if (draftAuctionEnabled && isValidDate(draftAuctionStartTime) && isValidDate(draftRandomFinishTime)) {
+  if (draftAuctionEnabled && isValidDate(draftStart) && isValidDate(draftFinish)) {
     startDraftCountdown(
       ({ text }) => ({ show: true, text }),
       () => {
