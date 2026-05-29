@@ -300,35 +300,20 @@
 
   <h1 id="pageTitle">GPSL – Player Database</h1>
 
-  <!-- Draft credits panel + dashboard-style countdown -->
+ <!-- Draft credits panel + dashboard-style countdown -->
 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
 
     <!-- Draft Credits -->
     <p id="draftCreditsPanel" class="status-note" style="margin:0;"></p>
 
     <!-- Dashboard-style Countdown -->
-   <div id="draftCountdownContainer" 
-     style="
-        background:#000;
-        border:1px solid #555;        /* thin grey border */
-        padding:6px 10px;             /* inner padding to create the inset look */
-        border-radius:6px;
-        display:flex;
-        align-items:center;
-     ">
-    <span id="draftCountdown" 
-          style="
-            color:#ff9900;
-            font-weight:bold;
-            font-family:monospace;
-            font-size:16px;
-          ">
-    </span>
-</div>
+    <div id="draftCountdownContainer" class="draft-timer">
+        <span id="draftCountdown"></span>
+    </div>
 
 </div>
 
- <div id="controls">
+  <div id="controls">
     <div class="filter-group">
       <button id="clearFiltersBtn" class="button">Clear Filters</button>
     </div>
