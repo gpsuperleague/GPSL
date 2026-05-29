@@ -293,36 +293,40 @@
     }
 
     /* ============================================================
-       NAVIGATION
-       ============================================================ */
+   NAVIGATION
+   ============================================================ */
 
-    async function buildNav(user) {
-      const nav = document.getElementById("nav");
+async function buildNav(user) {
+  const nav = document.getElementById("nav");
 
-      let html = `
-        <a href="index.html" class="button">Home</a>
-        <a href="GPDB.html" class="button">Player Database</a>
-        <a href="clubs.html" class="button">Clubs</a>
-        <a href="all_listings.html" class="button">Transfer Market</a>
-        <a href="dashboard.html" class="button">Dashboard</a>
-        <button id="logoutBtn" class="button">Logout</button>
-      `;
+  let html = `
+    <a href="index.html" class="button">Home</a>
+    <a href="GPDB.html" class="button">Player Database</a>
+    <a href="clubs.html" class="button">Clubs</a>
+    <a href="all_listings.html" class="button">Transfer Market</a>
+    <a href="dashboard.html" class="button">Dashboard</a>
+  `;
 
-      if (user.email === "rotavator66@outlook.com") {
-        html += `<a href="admin.html" class="button">GPSL Admin</a>`;
-      }
+  // Admin button (only for you)
+  if (user.email === "rotavator66@outlook.com") {
+    html += `<a href="admin.html" class="button">GPSL Admin</a>`;
+  }
 
-      if (draftEnabled) {
-        html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
-      }
+  // Draft Auction button
+  if (draftEnabled) {
+    html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
+  }
 
-      nav.innerHTML = html;
+  // ALWAYS LAST: Logout
+  html += `<button id="logoutBtn" class="button">Logout</button>`;
 
-      document.getElementById("logoutBtn").onclick = async () => {
-        await supabase.auth.signOut();
-        window.location = "login.html";
-      };
-    }
+  nav.innerHTML = html;
+
+  document.getElementById("logoutBtn").onclick = async () => {
+    await supabase.auth.signOut();
+    window.location = "login.html";
+  };
+}
 
     /* ============================================================
        LOAD OWNER CLUB SHORTNAME
