@@ -1,6 +1,6 @@
 /* ============================================================
- MODULE A: Supabase Client (imports MUST be at top)
- ============================================================ */
+   MODULE A: Supabase Client (imports MUST be at top)
+   ============================================================ */
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
@@ -389,11 +389,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let CLUB_NAME_MAP = {};
 
+  /* --- START: loadUser --- */
   async function loadUser() {
     const { data: { user } } = await supabase.auth.getUser();
     CURRENT_USER = user;
   }
+  /* --- END: loadUser --- */
 
+  /* --- START: loadGlobalSettings --- */
   async function loadGlobalSettings() {
     const { data, error } = await supabase
       .from("global_settings")
@@ -429,7 +432,9 @@ document.addEventListener("DOMContentLoaded", () => {
       draftRandomFinishTime: parseSafe(data.draft_random_finish_time)
     };
   }
+  /* --- END: loadGlobalSettings --- */
 
+  /* --- START: loadClubNames --- */
   async function loadClubNames() {
     const { data, error } = await supabase
       .from("Clubs")
@@ -448,18 +453,21 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+  /* --- END: loadClubNames --- */
 
   /* ============================================================
      MODULE E: Data Loading
      ============================================================ */
 
+  /* --- START: loadTotalCount --- */
   async function loadTotalCount() {
     const { count } = await supabase
       .from("Players")
       .select("*", { count: "exact", head: true });
 
-       TOTAL_ROWS = count;
+    TOTAL_ROWS = count;
   }
+  /* --- END: loadTotalCount --- */
 
   function buildContractedTeamOrClause(values) {
     const hasFA = values.includes("FREE AGENT");
@@ -479,6 +487,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return parts.length ? parts.join(",") : null;
   }
 
+  /* --- START: loadPage --- */
   async function loadPage(page = 1) {
     CURRENT_PAGE = page;
 
@@ -568,6 +577,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTable(filtered);
     renderPagination();
   }
+  /* --- END: loadPage --- */
 
   function formatHeader(col) {
     if (col === "market_value") return "Market Value";
@@ -579,6 +589,7 @@ document.addEventListener("DOMContentLoaded", () => {
      MODULE F: Rendering (with Bid column)
      ============================================================ */
 
+  /* --- START: renderTable --- */
   function renderTable(players) {
     const tableHead = document.getElementById("tableHead");
     const tableBody = document.getElementById("tableBody");
@@ -711,6 +722,7 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.addEventListener("click", () => openMakeOfferModal(btn.dataset.playerId));
     });
   }
+  /* --- END: renderTable --- */
 
   /* ============================================================
      MODULE G: Offer Modal + Draft Helpers
@@ -718,6 +730,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let CURRENT_OFFER_PLAYER = null;
 
+  /* --- START: openMakeOfferModal --- */
   function openMakeOfferModal(konamiId) {
     const row = document.querySelector(`tr[data-konami-id="${konamiId}"]`);
     if (!row) return;
@@ -756,6 +769,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const backdrop = document.getElementById("make-offer-modal-backdrop");
     backdrop.style.display = "flex";
   }
+  /* --- END: openMakeOfferModal --- */
 
   function closeMakeOfferModal() {
     const backdrop = document.getElementById("make-offer-modal-backdrop");
@@ -863,6 +877,7 @@ document.addEventListener("DOMContentLoaded", () => {
      DRAFT AUCTION HELPERS
      ============================================================ */
 
+  /* --- START: getDraftAuctionTimesForNewListing --- */
   function getDraftAuctionTimesForNewListing() {
     const nowUK = getUKNow();
 
@@ -882,7 +897,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return { start: sevenPmToday, end };
   }
+  /* --- END: getDraftAuctionTimesForNewListing --- */
 
+  /* --- START: ensureDraftListingForPlayer --- */
   async function ensureDraftListingForPlayer(player) {
     const konamiStr = String(player.Konami_ID).trim();
 
@@ -923,7 +940,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return { ok: true, listingId: listing.id };
   }
+  /* --- END: ensureDraftListingForPlayer --- */
 
+  /* --- START: insertDraftBid --- */
   async function insertDraftBid(player, amount, club, isFirst, isJoin, consumeJoin, listingId) {
     const { data, error } = await supabase
       .from("Player_Transfer_Bids")
@@ -948,36 +967,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return { ok: true, bid: data };
   }
+  /* --- END: insertDraftBid --- */
 
+  /* --- START: submitDraftBid --- */
   async function submitDraftBid(player, offerAmount, buyerShortName) {
 
-  const nowLocal = getUKNow();
-  const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+    const nowLocal = getUKNow();
+    const cutoff = getDraftCutoff();   // Day‑2 18:00 cutoff
+    const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
-  // Global draft start gate
-  if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-    return { ok: false, msg: "Draft auction has not started yet." };
-  }
+    // 1. Draft must have started
+    if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
+      return { ok: false, msg: "Draft auction has not started yet." };
+    }
 
-  // Load existing bids (needed before checking first/joins)
-  const { data: existing } = await supabase
-    .from("Player_Transfer_Bids")
-    .select("bidder_club_id")
-    .eq("direct_bid_id", player.Konami_ID)
-    .eq("is_direct", true)
-    .order("bid_time", { ascending: true });
-
-  const isFirstBid = !existing || existing.length === 0;
-
-  // NEW AUCTION LOCK — Day 2 at 18:00
-  if (isFirstBid && nowLocal >= cutoff) {
-    return {
-      ok: false,
-      msg: "New draft auctions are locked until the next draft window."
-    };
-  }
-
-    // Determine if this is a join
+    // 2. Load existing bids ONCE
     const { data: existing } = await supabase
       .from("Player_Transfer_Bids")
       .select("bidder_club_id")
@@ -985,8 +989,18 @@ document.addEventListener("DOMContentLoaded", () => {
       .eq("is_direct", true)
       .order("bid_time", { ascending: true });
 
-    const isJoining = existing && existing.length > 0;
+    const isFirstBid = !existing || existing.length === 0;
+    const isJoining = !isFirstBid;
 
+    // 3. NEW AUCTIONS LOCK at Day‑2 18:00
+    if (isFirstBid && nowLocal >= cutoff) {
+      return {
+        ok: false,
+        msg: "New draft auctions are locked until the next draft window."
+      };
+    }
+
+    // 4. Ensure listing exists
     const listingResult = await ensureDraftListingForPlayer(player);
     if (!listingResult.ok) return listingResult;
 
@@ -994,8 +1008,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let bidResult;
 
+    // 5. JOINING an existing auction
     if (isJoining) {
-      // Check if this club already joined
+
+      // Check if this club already paid the join fee
       const { data: priorJoin } = await supabase
         .from("Player_Transfer_Bids")
         .select("bid_id")
@@ -1009,13 +1025,13 @@ document.addEventListener("DOMContentLoaded", () => {
           player,
           offerAmount,
           buyerShortName,
-          false,
-          true,
-          false,
+          false,   // isFirst
+          true,    // isJoin
+          false,   // consumeJoin
           listingId
         );
       } else {
-        // First join → check credits
+        // First join → must have credits
         const credits = await getDraftCreditsForGPDB(buyerShortName);
         if (credits <= 0) {
           return { ok: false, msg: "You do not have enough draft credits to join this auction." };
@@ -1025,21 +1041,22 @@ document.addEventListener("DOMContentLoaded", () => {
           player,
           offerAmount,
           buyerShortName,
-          false,
-          true,
-          true,
+          false,   // isFirst
+          true,    // isJoin
+          true,    // consumeJoin
           listingId
         );
       }
+
     } else {
-      // FIRST BID
+      // 6. FIRST BID (creates the auction)
       bidResult = await insertDraftBid(
         player,
         offerAmount,
         buyerShortName,
-        true,
-        false,
-        false,
+        true,    // isFirst
+        false,   // isJoin
+        false,   // consumeJoin
         listingId
       );
     }
@@ -1048,7 +1065,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return { ok: true };
   }
+  /* --- END: submitDraftBid --- */
 
+  /* --- START: loadActiveDraftListings --- */
   async function loadActiveDraftListings() {
     const { data, error } = await supabase
       .from("Player_Transfer_Listings")
@@ -1066,6 +1085,7 @@ document.addEventListener("DOMContentLoaded", () => {
       (data || []).map(row => String(row.player_id).trim())
     );
   }
+  /* --- END: loadActiveDraftListings --- */
 
   document.querySelectorAll(".inc-btn, .dec-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -1401,6 +1421,4 @@ document.addEventListener("DOMContentLoaded", () => {
   init();
 
 }); // end DOMContentLoaded
-
-
 
