@@ -951,26 +951,33 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function submitDraftBid(player, offerAmount, buyerShortName) {
 
-    const nowLocal = getUKNow();
-    const cutoff = getDraftCutoff();
+  const nowLocal = getUKNow();
+  const cutoff = getDraftCutoff();   // ← ONLY HERE
 
-    const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+  const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
-        // Global draft start gate
-    if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-      return { ok: false, msg: "Draft auction has not started yet." };
-    }
+  // Global draft start gate
+  if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
+    return { ok: false, msg: "Draft auction has not started yet." };
+  }
 
-    // NEW AUCTION LOCK — Day 2 at 18:00
-    const cutoff = getDraftCutoff();
-    const isFirstBid = !existing || existing.length === 0;
+  // Load existing bids (needed before checking first/joins)
+  const { data: existing } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("bidder_club_id")
+    .eq("direct_bid_id", player.Konami_ID)
+    .eq("is_direct", true)
+    .order("bid_time", { ascending: true });
 
-    if (isFirstBid && nowLocal >= cutoff) {
-      return {
-        ok: false,
-        msg: "New draft auctions are locked until the next draft window."
-      };
-    }
+  const isFirstBid = !existing || existing.length === 0;
+
+  // NEW AUCTION LOCK — Day 2 at 18:00
+  if (isFirstBid && nowLocal >= cutoff) {
+    return {
+      ok: false,
+      msg: "New draft auctions are locked until the next draft window."
+    };
+  }
 
     // Determine if this is a join
     const { data: existing } = await supabase
