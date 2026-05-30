@@ -742,7 +742,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const position = cells[2].textContent;
     const playstyle = cells[5].textContent;
     const rating = cells[4].textContent;
-    const mvText = cells[7].textContent;
+    const mvText = cells[8].textContent;
 
        const mv = Number(String(mvText).replace(/[^\d]/g, "")) || 0;
 
