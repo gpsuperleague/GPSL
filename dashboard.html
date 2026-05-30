@@ -66,7 +66,8 @@
       flex: 1;
     }
 
-    #draftCountdown {
+    /* NEW — unified countdown box */
+    #draftCountdownContainer {
       background: #1a1a1a;
       border: 1px solid #333;
       border-radius: 8px;
@@ -76,7 +77,16 @@
       color: #ff9900;
       font-weight: bold;
       font-size: 15px;
-      margin-right: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-left: auto;
+    }
+
+    #draftLocalStart {
+      font-size: 12px;
+      color: #ccc;
+      margin-top: 4px;
     }
 
     /* TILE GRID */
@@ -130,9 +140,15 @@
         </div>
       </div>
 
+      <!-- UPDATED COUNTDOWN BLOCK -->
       <div id="headerRight">
-        <div id="draftCountdown"></div>
+        <div id="draftCountdownContainer">
+          <span id="draftCountdown"></span>
+          <div id="draftLocalStart"></div>
+        </div>
       </div>
+      <!-- END UPDATED BLOCK -->
+
     </div>
 
     <!-- TILE GRID -->
