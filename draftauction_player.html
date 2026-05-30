@@ -132,11 +132,9 @@
     let buyerShortName = null;
     let draftEnabled = false;
 
-    // UK‑logic times
     let randomFinishTimeUK = null;
     let draftAuctionStartTimeUK = null;
 
-    // Display (local) times
     let randomFinishTimeDisplay = null;
 
     let playerId = null;
@@ -144,10 +142,6 @@
     let currentLeadingClub = null;
     let canBid = false;
     let credits = 0;
-
-    /* ============================================================
-       TIME HELPERS – UK LOGIC, LOCAL DISPLAY
-       ============================================================ */
 
     function getUKNow() {
       const now = new Date();
@@ -175,10 +169,6 @@
 
       return { sevenPmYesterday, sevenPmToday, sixPmToday };
     }
-
-    /* ============================================================
-       INIT
-       ============================================================ */
 
     document.addEventListener("DOMContentLoaded", async () => {
       const params = new URLSearchParams(window.location.search);
@@ -271,7 +261,6 @@
         .select("*")
         .eq("Konami_ID", playerId)
         .single();
-
       if (pErr || !player || player.Contracted_Team !== null) {
         document.getElementById("playerName").textContent =
           "Player not eligible for draft auction.";
@@ -344,56 +333,58 @@
       updateBidControlsState();
     }
 
+    /* ============================================================
+       FIXED: SAFE HISTORY RENDERING
+       ============================================================ */
     function renderHistory(bids, sixPmToday) {
-  const tbody = document.getElementById("historyBody");
-  tbody.innerHTML = "";
+      const tbody = document.getElementById("historyBody");
+      tbody.innerHTML = "";
 
-  for (const bid of bids) {
-    // >>> PATCH START: safe date parsing
-    let created = null;
-    if (bid.bid_time) {
-      const d = new Date(bid.bid_time);
-      if (!isNaN(d.getTime())) {
-        created = d;
+      for (const bid of bids) {
+
+        // >>> SAFE DATE PARSING
+        let created = null;
+        if (bid.bid_time) {
+          const d = new Date(bid.bid_time);
+          if (!isNaN(d.getTime())) created = d;
+        }
+        const timeText = created
+          ? created.toLocaleTimeString(undefined, {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit"
+            })
+          : "—";
+        // >>> END SAFE DATE PARSING
+
+        const isFirst = bid.is_first_draft_bid;
+        const isJoin = bid.is_draft_join;
+        const consumed = bid.draft_join_consumed;
+
+        let type = "-";
+        let notes = "";
+
+        if (isFirst) {
+          type = "First Bid";
+          if (created && created < sixPmToday) notes = "Earned 2 credits";
+        } else if (isJoin) {
+          type = "Join Bid";
+          if (consumed) notes = "Consumed 1 credit";
+        } else {
+          type = "Bid";
+        }
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${timeText}</td>
+          <td>${bid.bidder_club_id}</td>
+          <td>₿ ${Number(bid.bid_amount).toLocaleString("en-GB")}</td>
+          <td>${type}</td>
+          <td>${notes}</td>
+        `;
+        tbody.appendChild(tr);
       }
     }
-    const timeText = created
-      ? created.toLocaleTimeString(undefined, {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit"
-        })
-      : "—";
-    // >>> PATCH END
-
-    const isFirst = bid.is_first_draft_bid;
-    const isJoin = bid.is_draft_join;
-    const consumed = bid.draft_join_consumed;
-
-    let type = "-";
-    let notes = "";
-
-    if (isFirst) {
-      type = "First Bid";
-      if (created && created < sixPmToday) notes = "Earned 2 credits";
-    } else if (isJoin) {
-      type = "Join Bid";
-      if (consumed) notes = "Consumed 1 credit";
-    } else {
-      type = "Bid";
-    }
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${timeText}</td>
-      <td>${bid.bidder_club_id}</td>
-      <td>₿ ${Number(bid.bid_amount).toLocaleString("en-GB")}</td>
-      <td>${type}</td>
-      <td>${notes}</td>
-    `;
-    tbody.appendChild(tr);
-  }
-}
 
     async function getDraftCredits(clubShortName, windowStart, sixPmToday) {
       if (!clubShortName) return 0;
@@ -413,10 +404,7 @@
         .eq("is_draft_join", true)
         .eq("draft_join_consumed", true)
         .gte("bid_time", windowStart.toISOString())
-        .lt("bid_time", sixPmToday.toISOString());
-
-      const firstCount = firsts ? firsts.length : 0;
-      const uniqueJoins = joins
+        .      const uniqueJoins = joins
         ? new Set(joins.map(j => j.direct_bid_id)).size
         : 0;
 
@@ -643,3 +631,5 @@
   </script>
 </body>
 </html>
+
+    
