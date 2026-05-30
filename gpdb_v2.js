@@ -856,7 +856,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    if (!sellerClub) {
+        if (!sellerClub) {
       // >>> PATCH START: trace draft bid result
       console.log("FREE AGENT DRAFT PATH: calling submitDraftBid with", {
         player: CURRENT_OFFER_PLAYER,
