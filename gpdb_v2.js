@@ -839,10 +839,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const myClub = clubRow.ShortName;
     console.log("CONFIRM: myClub =", myClub);
 
-    if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
+       if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
+      console.log("CONFIRM: draft disabled, free agent blocked");
       errorBox.textContent = "Draft Auction is locked. You cannot bid on free agents.";
       return;
     }
+
 
     if (sellerClub === myClub) {
       errorBox.textContent = "You cannot make an offer for your own player.";
