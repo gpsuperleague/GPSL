@@ -646,7 +646,8 @@ document.addEventListener("DOMContentLoaded", () => {
               } else if (nowLocal >= cutoff) {
                 bidCell = `<span class="locked-msg">Draft Locked</span>`;
               } else {
-                bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
+                // >>> PATCH: free agent button wording
+                bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Draft Offer</button>`;
               }
             } else {
               bidCell = `<span class="locked-msg">Draft Closed</span>`;
@@ -742,25 +743,33 @@ document.addEventListener("DOMContentLoaded", () => {
     const position = cells[2].textContent;
     const playstyle = cells[5].textContent;
     const rating = cells[4].textContent;
-    const mvText = cells[8].textContent;
 
-       const mv = Number(String(mvText).replace(/[^\d]/g, "")) || 0;
+    // Correct: market_value column (index 8)
+    const mvText = cells[8].textContent;
+    const mv = Number(String(mvText).replace(/[^\d]/g, "")) || 0;
 
     // Work out seller club from the table cell
     const rawClubText = row.querySelectorAll("td")[9].textContent.trim();
-const sellerClub =
-  !rawClubText || rawClubText === "FREE AGENT" ? null : rawClubText;
+    const sellerClub =
+      !rawClubText || rawClubText === "FREE AGENT" ? null : rawClubText;
 
-CURRENT_OFFER_PLAYER = {
-  Konami_ID: konamiId,
-  Name: name,
-  Position: position,
-  Playstyle: playstyle,
-  Rating: rating,
-  market_value: mv,
-  Contracted_Team: sellerClub
-};
+    CURRENT_OFFER_PLAYER = {
+      Konami_ID: konamiId,
+      Name: name,
+      Position: position,
+      Playstyle: playstyle,
+      Rating: rating,
+      market_value: mv,
+      Contracted_Team: sellerClub
+    };
 
+    // >>> PATCH: modal wording for draft vs normal
+    const confirmBtn = document.getElementById("confirmOfferBtn");
+    if (!sellerClub) {
+      confirmBtn.textContent = "Submit opening draft bid";
+    } else {
+      confirmBtn.textContent = "Submit Offer for Review";
+    }
 
     document.getElementById("offerPlayerImg").src = img.src;
     document.getElementById("offerPlayerName").textContent = name;
@@ -776,7 +785,6 @@ CURRENT_OFFER_PLAYER = {
     backdrop.style.display = "flex";
   }
   /* --- END: openMakeOfferModal --- */
-
   function closeMakeOfferModal() {
     const backdrop = document.getElementById("make-offer-modal-backdrop");
     backdrop.style.display = "none";
@@ -805,7 +813,7 @@ CURRENT_OFFER_PLAYER = {
       return;
     }
 
-       const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
+    const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
     if (offer < mv) {
       offer = mv;
       input.value = offer.toLocaleString("en-GB");
@@ -821,7 +829,7 @@ CURRENT_OFFER_PLAYER = {
       }
     }
 
-     console.log("CONFIRM: CURRENT_USER =", CURRENT_USER);
+    console.log("CONFIRM: CURRENT_USER =", CURRENT_USER);
 
     const { data: clubRow, error: clubErr } = await supabase
       .from("Clubs")
@@ -840,12 +848,11 @@ CURRENT_OFFER_PLAYER = {
     const myClub = clubRow.ShortName;
     console.log("CONFIRM: myClub =", myClub);
 
-       if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
+    if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
       console.log("CONFIRM: draft disabled, free agent blocked");
       errorBox.textContent = "Draft Auction is locked. You cannot bid on free agents.";
       return;
     }
-
 
     if (sellerClub === myClub) {
       errorBox.textContent = "You cannot make an offer for your own player.";
@@ -857,7 +864,7 @@ CURRENT_OFFER_PLAYER = {
       return;
     }
 
-        if (!sellerClub) {
+    if (!sellerClub) {
       // >>> PATCH START: trace draft bid result
       console.log("FREE AGENT DRAFT PATH: calling submitDraftBid with", {
         player: CURRENT_OFFER_PLAYER,
@@ -1486,3 +1493,4 @@ CURRENT_OFFER_PLAYER = {
   init();
 
 }); // end DOMContentLoaded
+
