@@ -782,94 +782,77 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   document.getElementById("confirmOfferBtn").onclick = async () => {
-  console.log("=== CONFIRM OFFER CLICKED ===");
 
-  const nowLocal = getUKNow();
+    const nowLocal = getUKNow();
 
-  const input = document.getElementById("offerAmount");
-  const errorBox = document.getElementById("offerError");
+    const input = document.getElementById("offerAmount");
+    const errorBox = document.getElementById("offerError");
 
-  let raw = input.value.replace(/,/g, "").trim();
-  let offer = Number(raw);
+    let raw = input.value.replace(/,/g, "").trim();
+    let offer = Number(raw);
 
-  console.log("[CONFIRM] offer raw =", raw, "parsed =", offer);
-
-  if (!offer || offer <= 0) {
-    errorBox.textContent = "Enter a valid positive number.";
-    console.log("[CONFIRM] invalid offer");
-    return;
-  }
-
-  const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
-  if (offer < mv) {
-    offer = mv;
-    input.value = offer.toLocaleString("en-GB");
-  }
-
-  const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
-  console.log("[CONFIRM] sellerClub =", sellerClub);
-
-  if (!sellerClub) {
-    if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-      errorBox.textContent = "Draft auction has not started yet.";
-      console.log("[CONFIRM] blocked: draft not started");
-      return;
-    }
-  }
-
-  const { data: clubRow, error: clubErr } = await supabase
-    .from("Clubs")
-    .select("ShortName")
-    .eq("owner_id", CURRENT_USER.id)
-    .single();
-
-  console.log("[CONFIRM] clubRow =", clubRow, "clubErr =", clubErr);
-
-  if (clubErr || !clubRow) {
-    errorBox.textContent = "Your club could not be found.";
-    return;
-  }
-
-  const myClub = clubRow.ShortName;
-  console.log("[CONFIRM] myClub =", myClub);
-
-  if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
-    errorBox.textContent = "Draft Auction is locked.";
-    console.log("[CONFIRM] blocked: draft disabled");
-    return;
-  }
-
-  if (sellerClub === myClub) {
-    errorBox.textContent = "You cannot make an offer for your own player.";
-    console.log("[CONFIRM] blocked: own player");
-    return;
-  }
-
-  if (sellerClub && !GLOBAL_SETTINGS.transferWindowOpen) {
-    errorBox.textContent = "Transfer window is closed.";
-    console.log("[CONFIRM] blocked: window closed");
-    return;
-  }
-
-  if (!sellerClub) {
-    console.log("[CONFIRM] calling submitDraftBid...");
-    const result = await submitDraftBid(CURRENT_OFFER_PLAYER, offer, myClub);
-    console.log("[CONFIRM] submitDraftBid result =", result);
-
-    if (!result.ok) {
-      errorBox.textContent = result.msg;
+    if (!offer || offer <= 0) {
+      errorBox.textContent = "Enter a valid positive number.";
       return;
     }
 
-    ACTIVE_DRAFT_PLAYERS.add(String(CURRENT_OFFER_PLAYER.Konami_ID).trim());
-    closeMakeOfferModal();
-    alert("Draft bid submitted!");
-    loadPage(CURRENT_PAGE);
-    return;
-  }
+    const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
+    if (offer < mv) {
+      offer = mv;
+      input.value = offer.toLocaleString("en-GB");
+    }
 
-  // Contracted player path unchanged
-};
+    const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
+
+    if (!sellerClub) {
+      if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
+        errorBox.textContent = "Draft auction has not started yet.";
+        return;
+      }
+    }
+
+    const { data: clubRow, error: clubErr } = await supabase
+      .from("Clubs")
+      .select("ShortName")
+      .eq("owner_id", CURRENT_USER.id)
+      .single();
+
+    if (clubErr || !clubRow) {
+      errorBox.textContent = "Your club could not be found.";
+      return;
+    }
+
+    const myClub = clubRow.ShortName;
+
+    if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
+      errorBox.textContent = "Draft Auction is locked. You cannot bid on free agents.";
+      return;
+    }
+
+    if (sellerClub === myClub) {
+      errorBox.textContent = "You cannot make an offer for your own player.";
+      return;
+    }
+
+    if (sellerClub && !GLOBAL_SETTINGS.transferWindowOpen) {
+      errorBox.textContent = "Transfer window is closed for contracted players.";
+      return;
+    }
+
+    if (!sellerClub) {
+      const result = await submitDraftBid(CURRENT_OFFER_PLAYER, offer, myClub);
+
+      if (!result.ok) {
+        errorBox.textContent = result.msg;
+        return;
+      }
+
+      ACTIVE_DRAFT_PLAYERS.add(String(CURRENT_OFFER_PLAYER.Konami_ID).trim());
+      closeMakeOfferModal();
+      alert("Draft bid submitted!");
+      loadPage(CURRENT_PAGE);
+      return;
+    }
 
     const { error } = await supabase.from("Player_Transfer_Bids").insert({
       listing_id: null,
@@ -918,53 +901,45 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* --- START: ensureDraftListingForPlayer --- */
   async function ensureDraftListingForPlayer(player) {
-  const konamiId = Number(player.Konami_ID);
-  console.log("=== ensureDraftListingForPlayer START ===", konamiId);
+    const konamiStr = String(player.Konami_ID).trim();
 
-  const { data: existing, error: existingErr } = await supabase
-    .from("Player_Transfer_Listings")
-    .select("id, player_id, listing_type, status")
-    .eq("player_id", konamiId)
-    .eq("listing_type", "draft")
-    .eq("status", "active")
-    .maybeSingle();
+    const { data: existing } = await supabase
+      .from("Player_Transfer_Listings")
+      .select("id")
+      .eq("player_id", konamiStr)
+      .eq("listing_type", "draft")
+      .eq("status", "active")
+      .maybeSingle();
 
-  console.log("[ensureDraftListing] existing =", existing, "error =", existingErr);
+    if (existing) {
+      return { ok: true, listingId: existing.id };
+    }
 
-  if (existing) {
-    console.log("[ensureDraftListing] FOUND existing listing", existing.id);
-    return { ok: true, listingId: existing.id };
+    const { start, end } = getDraftAuctionTimesForNewListing();
+
+    const { data: listing, error } = await supabase
+      .from("Player_Transfer_Listings")
+      .insert({
+        player_id: konamiStr,
+        seller_club_id: null,
+        reserve_price: player.market_value || 0,
+        listing_type: "draft",
+        market_value: player.market_value || 0,
+        status: "active",
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        created_at: new Date().toISOString()
+      })
+      .select("*")
+      .single();
+
+    if (error || !listing) {
+      console.error("Error creating draft listing:", error);
+      return { ok: false, msg: "Error creating draft listing." };
+    }
+
+    return { ok: true, listingId: listing.id };
   }
-
-  const { start, end } = getDraftAuctionTimesForNewListing();
-  console.log("[ensureDraftListing] creating new listing", { start, end });
-
-  const { data: listing, error } = await supabase
-    .from("Player_Transfer_Listings")
-    .insert({
-      player_id: konamiId,
-      seller_club_id: null,
-      reserve_price: player.market_value || 0,
-      listing_type: "draft",
-      market_value: player.market_value || 0,
-      status: "active",
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-      created_at: new Date().toISOString()
-    })
-    .select("*")
-    .single();
-
-  console.log("[ensureDraftListing] insert result =", listing, "error =", error);
-
-  if (error || !listing) {
-    console.log("[ensureDraftListing] FAILED to create listing");
-    return { ok: false, msg: "Error creating draft listing." };
-  }
-
-  console.log("=== ensureDraftListing END OK ===", listing.id);
-  return { ok: true, listingId: listing.id };
-}
   /* --- END: ensureDraftListingForPlayer --- */
 
   /* --- START: insertDraftBid --- */
@@ -996,82 +971,100 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* --- START: submitDraftBid --- */
   async function submitDraftBid(player, offerAmount, buyerShortName) {
-  console.log("=== submitDraftBid START ===", { player, offerAmount, buyerShortName });
 
-  const nowLocal = getUKNow();
-  const cutoff = getDraftCutoff();
+    const nowLocal = getUKNow();
+    const cutoff = getDraftCutoff();   // Day‑2 18:00 cutoff
+    const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
-  console.log("[submitDraftBid] nowLocal =", nowLocal, "cutoff =", cutoff);
+    // 1. Draft must have started
+    if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
+      return { ok: false, msg: "Draft auction has not started yet." };
+    }
 
-  if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-    console.log("[submitDraftBid] blocked: draft not started");
-    return { ok: false, msg: "Draft auction has not started yet." };
-  }
-
-  const { data: existing } = await supabase
-    .from("Player_Transfer_Bids")
-    .select("bidder_club_id")
-    .eq("direct_bid_id", player.Konami_ID)
-    .eq("is_direct", true);
-
-  console.log("[submitDraftBid] existing bids =", existing);
-
-  const isFirstBid = !existing || existing.length === 0;
-  console.log("[submitDraftBid] isFirstBid =", isFirstBid);
-
-  if (isFirstBid && nowLocal >= cutoff) {
-    console.log("[submitDraftBid] blocked: new auctions locked");
-    return { ok: false, msg: "New draft auctions are locked." };
-  }
-
-  const listingResult = await ensureDraftListingForPlayer(player);
-  console.log("[submitDraftBid] listingResult =", listingResult);
-
-  if (!listingResult.ok) return listingResult;
-
-  const listingId = listingResult.listingId;
-  console.log("[submitDraftBid] listingId =", listingId);
-
-  let bidResult;
-
-  if (!isFirstBid) {
-    console.log("[submitDraftBid] JOINING auction");
-
-    const { data: priorJoin } = await supabase
+    // 2. Load existing bids ONCE
+    const { data: existing } = await supabase
       .from("Player_Transfer_Bids")
-      .select("bid_id")
+      .select("bidder_club_id")
       .eq("direct_bid_id", player.Konami_ID)
-      .eq("bidder_club_id", buyerShortName)
-      .eq("is_draft_join", true);
+      .eq("is_direct", true)
+      .order("bid_time", { ascending: true });
 
-    console.log("[submitDraftBid] priorJoin =", priorJoin);
+    const isFirstBid = !existing || existing.length === 0;
+    const isJoining = !isFirstBid;
 
-    if (priorJoin && priorJoin.length > 0) {
-      bidResult = await insertDraftBid(player, offerAmount, buyerShortName, false, true, false, listingId);
-    } else {
-      const credits = await getDraftCreditsForGPDB(buyerShortName);
-      console.log("[submitDraftBid] credits =", credits);
+    // 3. NEW AUCTIONS LOCK at Day‑2 18:00
+    if (isFirstBid && nowLocal >= cutoff) {
+      return {
+        ok: false,
+        msg: "New draft auctions are locked until the next draft window."
+      };
+    }
 
-      if (credits <= 0) {
-        console.log("[submitDraftBid] blocked: no credits");
-        return { ok: false, msg: "Not enough credits to join." };
+    // 4. Ensure listing exists
+    const listingResult = await ensureDraftListingForPlayer(player);
+    if (!listingResult.ok) return listingResult;
+
+    const listingId = listingResult.listingId;
+
+    let bidResult;
+
+    // 5. JOINING an existing auction
+    if (isJoining) {
+
+      // Check if this club already paid the join fee
+      const { data: priorJoin } = await supabase
+        .from("Player_Transfer_Bids")
+        .select("bid_id")
+        .eq("direct_bid_id", player.Konami_ID)
+        .eq("bidder_club_id", buyerShortName)
+        .eq("is_draft_join", true);
+
+      if (priorJoin && priorJoin.length > 0) {
+        // Already joined → no credit consumed
+        bidResult = await insertDraftBid(
+          player,
+          offerAmount,
+          buyerShortName,
+          false,   // isFirst
+          true,    // isJoin
+          false,   // consumeJoin
+          listingId
+        );
+      } else {
+        // First join → must have credits
+        const credits = await getDraftCreditsForGPDB(buyerShortName);
+        if (credits <= 0) {
+          return { ok: false, msg: "You do not have enough draft credits to join this auction." };
+        }
+
+        bidResult = await insertDraftBid(
+          player,
+          offerAmount,
+          buyerShortName,
+          false,   // isFirst
+          true,    // isJoin
+          true,    // consumeJoin
+          listingId
+        );
       }
 
-      bidResult = await insertDraftBid(player, offerAmount, buyerShortName, false, true, true, listingId);
+    } else {
+      // 6. FIRST BID (creates the auction)
+      bidResult = await insertDraftBid(
+        player,
+        offerAmount,
+        buyerShortName,
+        true,    // isFirst
+        false,   // isJoin
+        false,   // consumeJoin
+        listingId
+      );
     }
-  } else {
-    console.log("[submitDraftBid] FIRST BID");
-    bidResult = await insertDraftBid(player, offerAmount, buyerShortName, true, false, false, listingId);
+
+    if (!bidResult.ok) return bidResult;
+
+    return { ok: true };
   }
-
-  console.log("[submitDraftBid] bidResult =", bidResult);
-
-  if (!bidResult.ok) return bidResult;
-
-  console.log("=== submitDraftBid END OK ===");
-  return { ok: true };
-}
-
   /* --- END: submitDraftBid --- */
 
   /* --- START: loadActiveDraftListings --- */
@@ -1428,4 +1421,3 @@ document.addEventListener("DOMContentLoaded", () => {
   init();
 
 }); // end DOMContentLoaded
-
