@@ -386,30 +386,34 @@
       }
     }
 
-    async function getDraftCredits(clubShortName, windowStart, sixPmToday) {
-      if (!clubShortName) return 0;
+   async function getDraftCredits(clubShortName, windowStart, sixPmToday) {
+  if (!clubShortName) return 0;
 
-      const { data: firsts } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("direct_bid_id")
-        .eq("bidder_club_id", clubShortName)
-        .eq("is_first_draft_bid", true)
-        .gte("bid_time", windowStart.toISOString())
-        .lt("bid_time", sixPmToday.toISOString());
+  const { data: firsts } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("direct_bid_id")
+    .eq("bidder_club_id", clubShortName)
+    .eq("is_first_draft_bid", true)
+    .gte("bid_time", windowStart.toISOString())
+    .lt("bid_time", sixPmToday.toISOString());
 
-      const { data: joins } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("direct_bid_id, draft_join_consumed")
-        .eq("bidder_club_id", clubShortName)
-        .eq("is_draft_join", true)
-        .eq("draft_join_consumed", true)
-        .gte("bid_time", windowStart.toISOString())
-        .      const uniqueJoins = joins
-        ? new Set(joins.map(j => j.direct_bid_id)).size
-        : 0;
+  const { data: joins } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("direct_bid_id, draft_join_consumed")
+    .eq("bidder_club_id", clubShortName)
+    .eq("is_draft_join", true)
+    .eq("draft_join_consumed", true)
+    .gte("bid_time", windowStart.toISOString())
+    .lt("bid_time", sixPmToday.toISOString());
 
-      return (firstCount * 2) - uniqueJoins;
-    }
+  const firstCount = firsts ? firsts.length : 0;
+
+  const uniqueJoins = joins
+    ? new Set(joins.map(j => j.direct_bid_id)).size
+    : 0;
+
+  return (firstCount * 2) - uniqueJoins;
+}
 
     async function canClubBidOnPlayer(clubShortName, konamiId, nowUK, sixPmToday) {
       if (!draftEnabled || !clubShortName || !randomFinishTimeUK) return false;
