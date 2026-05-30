@@ -144,10 +144,29 @@
     let credits = 0;
 
     function getUKNow() {
-      const now = new Date();
-      const ukString = now.toLocaleString("en-GB", { timeZone: "Europe/London" });
-      return new Date(ukString);
-    }
+  const now = new Date();
+  const tz = "Europe/London";
+
+  // Format as DD/MM/YYYY, HH:mm:ss (24h)
+  const formatted = now.toLocaleString("en-GB", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+
+  // Convert DD/MM/YYYY → YYYY-MM-DD for safe parsing
+  const isoSafe = formatted.replace(
+    /(\d{2})\/(\d{2})\/(\d{4}),/,
+    "$3-$2-$1"
+  );
+
+  return new Date(isoSafe);
+}
 
     function getDraftWindowTimes() {
       const nowUK = getUKNow();
