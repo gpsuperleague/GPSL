@@ -918,45 +918,53 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* --- START: ensureDraftListingForPlayer --- */
   async function ensureDraftListingForPlayer(player) {
-    const konamiStr = String(player.Konami_ID).trim();
+  const konamiId = Number(player.Konami_ID);
+  console.log("=== ensureDraftListingForPlayer START ===", konamiId);
 
-    const { data: existing } = await supabase
-      .from("Player_Transfer_Listings")
-      .select("id")
-      .eq("player_id", konamiStr)
-      .eq("listing_type", "draft")
-      .eq("status", "active")
-      .maybeSingle();
+  const { data: existing, error: existingErr } = await supabase
+    .from("Player_Transfer_Listings")
+    .select("id, player_id, listing_type, status")
+    .eq("player_id", konamiId)
+    .eq("listing_type", "draft")
+    .eq("status", "active")
+    .maybeSingle();
 
-    if (existing) {
-      return { ok: true, listingId: existing.id };
-    }
+  console.log("[ensureDraftListing] existing =", existing, "error =", existingErr);
 
-    const { start, end } = getDraftAuctionTimesForNewListing();
-
-    const { data: listing, error } = await supabase
-      .from("Player_Transfer_Listings")
-      .insert({
-        player_id: konamiStr,
-        seller_club_id: null,
-        reserve_price: player.market_value || 0,
-        listing_type: "draft",
-        market_value: player.market_value || 0,
-        status: "active",
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        created_at: new Date().toISOString()
-      })
-      .select("*")
-      .single();
-
-    if (error || !listing) {
-      console.error("Error creating draft listing:", error);
-      return { ok: false, msg: "Error creating draft listing." };
-    }
-
-    return { ok: true, listingId: listing.id };
+  if (existing) {
+    console.log("[ensureDraftListing] FOUND existing listing", existing.id);
+    return { ok: true, listingId: existing.id };
   }
+
+  const { start, end } = getDraftAuctionTimesForNewListing();
+  console.log("[ensureDraftListing] creating new listing", { start, end });
+
+  const { data: listing, error } = await supabase
+    .from("Player_Transfer_Listings")
+    .insert({
+      player_id: konamiId,
+      seller_club_id: null,
+      reserve_price: player.market_value || 0,
+      listing_type: "draft",
+      market_value: player.market_value || 0,
+      status: "active",
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+      created_at: new Date().toISOString()
+    })
+    .select("*")
+    .single();
+
+  console.log("[ensureDraftListing] insert result =", listing, "error =", error);
+
+  if (error || !listing) {
+    console.log("[ensureDraftListing] FAILED to create listing");
+    return { ok: false, msg: "Error creating draft listing." };
+  }
+
+  console.log("=== ensureDraftListing END OK ===", listing.id);
+  return { ok: true, listingId: listing.id };
+}
   /* --- END: ensureDraftListingForPlayer --- */
 
   /* --- START: insertDraftBid --- */
