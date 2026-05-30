@@ -129,7 +129,7 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
       // STAGE 1 — Waiting for draft to start
       ms = draftStart.getTime() - nowUK.getTime();
       phase = "before_start";
-      text = "Time until draft starts: " + formatCountdown(ms);
+      text = "Draft Auction Starts in: " + formatCountdown(ms);
 
     } else if (nowUK >= draftStart && nowUK < cutoff) {
       // STAGE 2 — Draft live, countdown to 6pm cutoff
