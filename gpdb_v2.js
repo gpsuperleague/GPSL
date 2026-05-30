@@ -122,16 +122,38 @@ function updateDraftCountdown() {
   const el = document.getElementById("draftCountdown");
   const localStartEl = document.getElementById("draftLocalStart");
 
+  const row = container.parentElement; // the flex row
+  const credits = document.getElementById("draftCreditsPanel");
+
   if (!container || !el || !localStartEl) return;
 
-  if (!draftAuctionStartTime || !draftRandomFinishTime) {
+  // Helper to hide + collapse
+  function hideCountdown() {
     container.style.display = "none";
+    container.style.height = "0px";
+    container.style.padding = "0px";
+
+    // If credits panel is empty, collapse the whole row
+    if (!credits.textContent.trim()) {
+      row.style.display = "none";
+    }
+  }
+
+  // Helper to show + restore
+  function showCountdown() {
+    row.style.display = "flex";
+    container.style.display = "flex";
+    container.style.height = "auto";
+    container.style.padding = "6px 10px";
+  }
+
+  // If no times exist → hide
+  if (!draftAuctionStartTime || !draftRandomFinishTime) {
+    hideCountdown();
     return;
   }
 
   const now = getUKNow();
-
-  // Convert UK start time → local browser time
   const localStart = new Date(draftAuctionStartTime);
 
   // BEFORE START
@@ -142,13 +164,13 @@ function updateDraftCountdown() {
     localStartEl.textContent =
       `Start time: 19:00 UK  |  Local: ${formatLocalTime(localStart)}`;
 
-    container.style.display = "flex";
+    showCountdown();
     return;
   }
 
   // AFTER FINISH
   if (now >= draftRandomFinishTime) {
-    container.style.display = "none";
+    hideCountdown();
     return;
   }
 
@@ -156,9 +178,9 @@ function updateDraftCountdown() {
   const diff = draftRandomFinishTime.getTime() - now.getTime();
   el.textContent = `${formatMs(diff)} remaining`;
 
-  localStartEl.textContent = ""; // hide once draft is active
+  localStartEl.textContent = ""; // hide local time during draft
 
-  container.style.display = "flex";
+  showCountdown();
 }
 
 /* ============================================================
