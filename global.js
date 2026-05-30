@@ -17,12 +17,10 @@ let __draftCountdownInterval = null;
    Time helpers (robust UK now)
    =============================== */
 
-// Build a stable Date for the intended UK wall-clock time
 function makeUKDate(year, month, day, hour = 0, minute = 0, second = 0) {
   return new Date(Date.UTC(year, month, day, hour, minute, second));
 }
 
-// Convert any Date to a UK wall-clock Date
 function toUKWallClock(d) {
   if (!isValidDate(d)) return null;
 
@@ -53,7 +51,6 @@ function toUKWallClock(d) {
   return makeUKDate(y, m, day, hh, mm, ss);
 }
 
-// Robust current time in UK (Europe/London)
 function getUKNow() {
   const now = new Date();
   return toUKWallClock(now);
@@ -74,9 +71,10 @@ function stopDraftCountdown() {
   }
 }
 
-/**
- * Unified 6‑stage countdown with GPDB‑style 2‑line output
- */
+/* ===============================
+   Unified 6‑stage countdown
+   =============================== */
+
 function startDraftCountdown(onTickDisplay, onEndCallback) {
   stopDraftCountdown();
 
@@ -103,32 +101,28 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
 
     const nowUK = getUKNow();
 
-    // Stage boundaries
-    const cutoff = new Date(draftStart.getTime() + 23 * 60 * 60 * 1000); // 6pm cutoff (Day 2)
-    const randomStart = new Date(cutoff.getTime() + 50 * 60 * 1000);     // 6:50pm random window start
-    const randomFinish = draftFinish;                                    // secret random end
+    const cutoff = new Date(draftStart.getTime() + 23 * 60 * 60 * 1000); // 18:00 UK Day 2
+    const randomStart = new Date(cutoff.getTime() + 50 * 60 * 1000);     // 18:50 UK Day 2
+    const randomFinish = draftFinish;
 
     let ms = null;
     let phase = "";
     let line1 = "";
     let line2 = "";
 
-    // ===============================
-    // STAGE 1 — BEFORE START
-    // ===============================
+    /* ===============================
+       STAGE 1 — BEFORE START
+       =============================== */
     if (nowUK < draftStart) {
       ms = draftStart.getTime() - nowUK.getTime();
       phase = "before_start";
 
-      // A2 wording
       line1 = "Draft Auction Starts in: " + formatCountdown(ms);
 
-      // Correct UK/local time handling
       const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
       let localTimeStr;
 
       if (userTZ === "Europe/London") {
-        // UK users should see 19:00 | 19:00
         localTimeStr = "19:00";
       } else {
         const localStart = new Date(draftStart);
@@ -143,47 +137,76 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
       showAll();
     }
 
-    // ===============================
-    // STAGE 2 — LIVE UNTIL CUTOFF
-    // ===============================
+    /* ===============================
+       STAGE 2 — LIVE UNTIL 18:00
+       =============================== */
     else if (nowUK >= draftStart && nowUK < cutoff) {
       ms = cutoff.getTime() - nowUK.getTime();
       phase = "live_until_cutoff";
 
-      line1 = "Draft is live — Time until 6pm cutoff: " + formatCountdown(ms);
-      line2 = "";
+      line1 = "Auction cutoff in: " + formatCountdown(ms);
+
+      const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      let localTimeStr;
+
+      if (userTZ === "Europe/London") {
+        localTimeStr = "18:00";
+      } else {
+        const localCut = new Date(cutoff);
+        localTimeStr = localCut.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+
+      line2 = `Cutoff time: 18:00 UK | Local: ${localTimeStr}`;
 
       showAll();
     }
 
-    // ===============================
-    // STAGE 3 — CUTOFF → RANDOM WINDOW
-    // ===============================
+    /* ===============================
+       STAGE 3 — 18:00 → 18:50
+       =============================== */
     else if (nowUK >= cutoff && nowUK < randomStart) {
       ms = randomStart.getTime() - nowUK.getTime();
       phase = "cutoff_to_random";
 
-      line1 = "6pm cutoff reached — Time until random timer kicks in: " + formatCountdown(ms);
-      line2 = "";
+      line1 = "Random timer begins in: " + formatCountdown(ms);
+
+      const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      let localTimeStr;
+
+      if (userTZ === "Europe/London") {
+        localTimeStr = "18:50";
+      } else {
+        const localRS = new Date(randomStart);
+        localTimeStr = localRS.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+
+      line2 = `Start time: 18:50 UK | Local: ${localTimeStr}`;
 
       showAll();
     }
 
-    // ===============================
-    // STAGE 4 — RANDOM WINDOW ACTIVE
-    // ===============================
+    /* ===============================
+       STAGE 4 — RANDOM WINDOW ACTIVE
+       =============================== */
     else if (nowUK >= randomStart && nowUK < randomFinish) {
       phase = "random_window";
 
+      const elapsed = nowUK.getTime() - randomStart.getTime();
       line1 = "Random finish window active — draft may end at any moment";
-      line2 = "";
+      line2 = "Running for: " + formatCountdown(elapsed);
 
       showAll();
     }
 
-    // ===============================
-    // STAGE 5 — DRAFT ENDED
-    // ===============================
+    /* ===============================
+       STAGE 5 — DRAFT ENDED
+       =============================== */
     else {
       line1 = "Draft auction has ended";
       line2 = "";
@@ -199,7 +222,6 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
       return;
     }
 
-    // Apply output
     const payload = { phase, ms, text: line1 };
     const out = onTickDisplay ? onTickDisplay(payload) : { show: true, text: line1 };
 
@@ -230,11 +252,9 @@ export async function loadGlobalSettings() {
 
   console.log("RAW GLOBAL SETTINGS FROM SUPABASE:", data);
 
-  // Parse booleans
   const transferWindowOpen = data?.transfer_window_open === true;
   const draftAuctionEnabled = data?.draft_auction_enabled === true;
 
-  // Safe date parser
   function parseSafeDate(v) {
     if (!v) return null;
     try {
@@ -248,15 +268,12 @@ export async function loadGlobalSettings() {
   const draftAuctionStartTime = parseSafeDate(data?.draft_auction_start_time);
   const draftRandomFinishTime = parseSafeDate(data?.draft_random_finish_time);
 
-  // Convert to UK wall-clock
   draftEnabled = draftAuctionEnabled;
   draftStart = toUKWallClock(draftAuctionStartTime);
   draftFinish = toUKWallClock(draftRandomFinishTime);
 
-  // Reset countdown
   stopDraftCountdown();
 
-  // Start countdown if valid
   if (draftAuctionEnabled && isValidDate(draftStart) && isValidDate(draftFinish)) {
     startDraftCountdown(
       ({ text }) => ({ show: true, text }),
