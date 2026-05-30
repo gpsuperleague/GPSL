@@ -748,18 +748,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Work out seller club from the table cell
     const rawClubText = row.querySelectorAll("td")[9].textContent.trim();
-    const sellerClub =
-      !rawClubText || rawClubText === "FREE AGENT" ? null : rawClubText;
+const sellerClub =
+  !rawClubText || rawClubText === "FREE AGENT" ? null : rawClubText;
 
-    CURRENT_OFFER_PLAYER = {
-      Konami_ID: konamiId,
-      Name: name,
-      Position: position,
-      Playstyle: playstyle,
-      Rating: rating,
-      market_value: mv,
-      Contracted_Team: sellerClub
-    };
+CURRENT_OFFER_PLAYER = {
+  Konami_ID: konamiId,
+  Name: name,
+  Position: position,
+  Playstyle: playstyle,
+  Rating: rating,
+  market_value: mv,
+  Contracted_Team: sellerClub
+};
+
 
     document.getElementById("offerPlayerImg").src = img.src;
     document.getElementById("offerPlayerName").textContent = name;
