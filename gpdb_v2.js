@@ -747,7 +747,7 @@ document.addEventListener("DOMContentLoaded", () => {
        const mv = Number(String(mvText).replace(/[^\d]/g, "")) || 0;
 
     // Work out seller club from the table cell
-    const rawClubText = row.querySelectorAll("td")[8].textContent.trim();
+    const rawClubText = row.querySelectorAll("td")[9].textContent.trim();
     const sellerClub =
       !rawClubText || rawClubText === "FREE AGENT" ? null : rawClubText;
 
