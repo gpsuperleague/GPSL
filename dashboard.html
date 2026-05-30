@@ -63,11 +63,12 @@
       display: flex;
       align-items: center;
       justify-content: flex-end;
+      gap: 20px;
       flex: 1;
     }
 
-    /* NEW — unified countdown box */
-    #draftCountdownContainer {
+    /* SHARED PANEL STYLE (Countdown + Inbox) */
+    .header-panel {
       background: #1a1a1a;
       border: 1px solid #333;
       border-radius: 8px;
@@ -80,13 +81,50 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      margin-left: auto;
+      cursor: pointer;
+    }
+
+    /* COUNTDOWN BOX */
+    #draftCountdownContainer {
+      composes: header-panel;
     }
 
     #draftLocalStart {
       font-size: 12px;
       color: #ccc;
       margin-top: 4px;
+    }
+
+    /* INBOX PANEL */
+    #inboxPanel {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 10px 16px;
+      min-width: 150px;
+      text-align: center;
+      color: #ff9900;
+      font-weight: bold;
+      font-size: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    #inboxPanel .inbox-icon {
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+
+    #inboxPanel .inbox-count {
+      font-size: 12px;
+      color: #ccc;
+      margin-top: 4px;
+    }
+
+    #inboxPanel.has-unread {
+      box-shadow: 0 0 8px rgba(255, 153, 0, 0.7);
     }
 
     /* TILE GRID */
@@ -105,7 +143,7 @@
       text-align: center;
       cursor: pointer;
       transition: 0.2s;
-      height: 160px; /* equal height */
+      height: 160px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -132,6 +170,7 @@
 
     <!-- HEADER -->
     <div id="headerContainer">
+
       <div id="headerLeft">
         <img id="clubBadgeHeader" src="" alt="Club Badge">
         <div>
@@ -140,58 +179,63 @@
         </div>
       </div>
 
-      <!-- UPDATED COUNTDOWN BLOCK -->
+      <!-- NEW INBOX PANEL -->
+      <div id="inboxPanel">
+        <div class="inbox-icon">📥</div>
+        <div>Inbox</div>
+        <div class="inbox-count">
+          <span id="inboxUnreadCount">0</span> unread
+        </div>
+      </div>
+
+      <!-- COUNTDOWN -->
       <div id="headerRight">
         <div id="draftCountdownContainer">
           <span id="draftCountdown"></span>
           <div id="draftLocalStart"></div>
         </div>
       </div>
-      <!-- END UPDATED BLOCK -->
 
     </div>
 
     <!-- TILE GRID -->
     <div class="tile-grid">
 
-     <div class="tile tile-club" onclick="location.href='club_details.html'">
+      <div class="tile tile-club" onclick="location.href='club_details.html'">
         Club Details
-    </div>
+      </div>
 
-
-     <div class="tile tile-stadium" onclick="location.href='stadium.html'">
+      <div class="tile tile-stadium" onclick="location.href='stadium.html'">
         Stadium
-    </div>
-
+      </div>
 
       <div class="tile tile-finances" onclick="location.href='finances.html'">
-  Club Finances
-</div>
-
+        Club Finances
+      </div>
 
       <div class="tile tile-squad" onclick="location.href='squad.html'">
-  Squad
-</div>
+        Squad
+      </div>
 
       <div class="tile tile-transfer" onclick="location.href='transfer_center.html'">
-  Transfer Centre
-</div>
+        Transfer Centre
+      </div>
 
       <div class="tile tile-matchday" onclick="location.href='matchday.html'">
-  Match Day
-</div>
+        Match Day
+      </div>
 
-    <div class="tile tile-fixtures" onclick="location.href='fixtures.html'">
-  Fixtures
-</div>
+      <div class="tile tile-fixtures" onclick="location.href='fixtures.html'">
+        Fixtures
+      </div>
 
       <div class="tile tile-history" onclick="location.href='history.html'">
-  Club History
-</div>
+        Club History
+      </div>
 
-<div class="tile tile-progress" onclick="location.href='progress.html'">
-  Competition Progress
-</div>
+      <div class="tile tile-progress" onclick="location.href='progress.html'">
+        Competition Progress
+      </div>
 
     </div>
 
