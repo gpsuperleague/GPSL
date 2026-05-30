@@ -804,13 +804,14 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
+       const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
     if (offer < mv) {
       offer = mv;
       input.value = offer.toLocaleString("en-GB");
     }
 
     const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
+    console.log("CONFIRM: sellerClub =", sellerClub);
 
     if (!sellerClub) {
       if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
