@@ -62,13 +62,11 @@
     #headerRight {
       display: flex;
       align-items: center;
-      justify-content: flex-end;
       gap: 20px;
-      flex: 1;
     }
 
-    /* SHARED PANEL STYLE (Countdown + Inbox) */
-    .header-panel {
+    /* COUNTDOWN BOX (restored original styling) */
+    #draftCountdownContainer {
       background: #1a1a1a;
       border: 1px solid #333;
       border-radius: 8px;
@@ -81,12 +79,6 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      cursor: pointer;
-    }
-
-    /* COUNTDOWN BOX */
-    #draftCountdownContainer {
-      composes: header-panel;
     }
 
     #draftLocalStart {
@@ -95,7 +87,7 @@
       margin-top: 4px;
     }
 
-    /* INBOX PANEL */
+    /* INBOX PANEL (matching countdown style) */
     #inboxPanel {
       background: #1a1a1a;
       border: 1px solid #333;
@@ -179,7 +171,7 @@
         </div>
       </div>
 
-      <!-- NEW INBOX PANEL -->
+      <!-- INBOX PANEL -->
       <div id="inboxPanel">
         <div class="inbox-icon">📥</div>
         <div>Inbox</div>
