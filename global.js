@@ -22,7 +22,7 @@ function makeUKDate(year, month, day, hour = 0, minute = 0, second = 0) {
   return new Date(Date.UTC(year, month, day, hour, minute, second));
 }
 
-// NEW: Convert any Date to a UK wall-clock Date
+// Convert any Date to a UK wall-clock Date
 function toUKWallClock(d) {
   if (!isValidDate(d)) return null;
 
@@ -53,10 +53,10 @@ function toUKWallClock(d) {
   return makeUKDate(y, m, day, hh, mm, ss);
 }
 
-// Robust current time in UK (Europe/London) using formatToParts
+// Robust current time in UK (Europe/London)
 function getUKNow() {
   const now = new Date();
-  return toUKWallClock(now); // CHANGED: use UK wall-clock conversion
+  return toUKWallClock(now);
 }
 
 function isValidDate(d) {
@@ -78,7 +78,7 @@ function stopDraftCountdown() {
  * 6-stage draft countdown:
  *
  * Stage 1: Before draftStart
- *   - Message: "Time until draft starts"
+ *   - Message: "Draft Auction Starts in: X"
  *   - Countdown target: draftStart (19:00 UK Day 1)
  *
  * Stage 2: draftStart → cutoff (18:00 UK Day 2)
@@ -100,13 +100,23 @@ function stopDraftCountdown() {
 function startDraftCountdown(onTickDisplay, onEndCallback) {
   stopDraftCountdown();
 
+  const container = document.getElementById("draftCountdownContainer");
   const el = document.getElementById("draftCountdown");
-  if (!el) return;
+  const localEl = document.getElementById("draftLocalStart");
+
+  if (!container || !el || !localEl) return;
+
+  function hideAll() {
+    container.style.display = "none";
+  }
+
+  function showAll() {
+    container.style.display = "flex";
+  }
 
   function tick() {
     if (!draftEnabled || !isValidDate(draftStart) || !isValidDate(draftFinish)) {
-      el.textContent = "";
-      el.style.display = "none";
+      hideAll();
       stopDraftCountdown();
       return;
     }
@@ -114,44 +124,72 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
     const nowUK = getUKNow();
 
     // Derive stage boundaries from draftStart
-    // draftStart = Day 1, 19:00 UK
-    // Stage 2 ends at Day 2, 18:00 UK  (23 hours after start)
-    // Stage 3 ends at Day 2, 18:50 UK (50 minutes after cutoff)
-    const cutoff = new Date(draftStart.getTime() + 23 * 60 * 60 * 1000);     // 6pm cutoff
-    const randomStart = new Date(cutoff.getTime() + 50 * 60 * 1000);         // 6:50pm random window start
-    const randomFinish = draftFinish;                                        // secret random end
+    const cutoff = new Date(draftStart.getTime() + 23 * 60 * 60 * 1000); // 6pm cutoff (Day 2)
+    const randomStart = new Date(cutoff.getTime() + 50 * 60 * 1000);     // 6:50pm random window start
+    const randomFinish = draftFinish;                                    // secret random end
 
-    let text = "";
-    let phase = "";
     let ms = null;
+    let phase = "";
+    let line1 = "";
+    let line2 = "";
 
+    // STAGE 1 — Waiting for draft to start
     if (nowUK < draftStart) {
-      // STAGE 1 — Waiting for draft to start
       ms = draftStart.getTime() - nowUK.getTime();
       phase = "before_start";
-      text = "Draft Auction Starts in: " + formatCountdown(ms);
 
-    } else if (nowUK >= draftStart && nowUK < cutoff) {
-      // STAGE 2 — Draft live, countdown to 6pm cutoff
+      line1 = "Draft Auction Starts in: " + formatCountdown(ms);
+
+      const localStart = new Date(draftStart);
+      line2 = `Start time: 19:00 UK | Local: ${localStart.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit"
+      })}`;
+
+      showAll();
+    }
+
+    // STAGE 2 — Draft live, countdown to 6pm cutoff
+    else if (nowUK >= draftStart && nowUK < cutoff) {
       ms = cutoff.getTime() - nowUK.getTime();
       phase = "live_until_cutoff";
-      text = "Draft is live — Time until 6pm cutoff: " + formatCountdown(ms);
 
-    } else if (nowUK >= cutoff && nowUK < randomStart) {
-      // STAGE 3 — 6pm cutoff reached, countdown to random timer start
+      line1 = "Draft is live — Time until 6pm cutoff: " + formatCountdown(ms);
+      line2 = "";
+
+      showAll();
+    }
+
+    // STAGE 3 — 6pm cutoff reached, countdown to random timer start
+    else if (nowUK >= cutoff && nowUK < randomStart) {
       ms = randomStart.getTime() - nowUK.getTime();
       phase = "cutoff_to_random";
-      text = "6pm cutoff reached — Time until random timer kicks in: " + formatCountdown(ms);
 
-    } else if (nowUK >= randomStart && nowUK < randomFinish) {
-      // STAGE 4 — Random window active, NO countdown
+      line1 = "6pm cutoff reached — Time until random timer kicks in: " + formatCountdown(ms);
+      line2 = "";
+
+      showAll();
+    }
+
+    // STAGE 4 — Random window active, NO countdown
+    else if (nowUK >= randomStart && nowUK < randomFinish) {
       phase = "random_window";
-      text = "Random finish window active — draft may end at any moment";
 
-    } else {
-      // STAGE 5+ — Draft ended
-      el.textContent = "Draft auction has ended";
-      el.style.display = "block";
+      line1 = "Random finish window active — draft may end at any moment";
+      line2 = "";
+
+      showAll();
+    }
+
+    // STAGE 5+ — Draft ended
+    else {
+      line1 = "Draft auction has ended";
+      line2 = "";
+
+      el.textContent = line1;
+      localEl.textContent = "";
+      showAll();
+
       stopDraftCountdown();
       if (typeof onEndCallback === "function") {
         try { onEndCallback(); } catch (e) { console.error("onEndCallback error", e); }
@@ -159,20 +197,20 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
       return;
     }
 
-    const payload = { phase, ms, text };
-    const out = onTickDisplay ? onTickDisplay(payload) : { show: true, text };
+    const payload = { phase, ms, text: line1 };
+    const out = onTickDisplay ? onTickDisplay(payload) : { show: true, text: line1 };
 
     if (out.show) {
-      el.style.display = "block";
+      showAll();
       el.textContent = out.text;
+      localEl.textContent = line2;
     } else {
-      el.style.display = "none";
+      hideAll();
     }
   }
 
   tick();
   __draftCountdownInterval = setInterval(tick, 1000);
-
   window.addEventListener("beforeunload", stopDraftCountdown);
 }
 
@@ -207,7 +245,7 @@ export async function loadGlobalSettings() {
   const draftAuctionStartTime = parseSafeDate(data?.draft_auction_start_time);
   const draftRandomFinishTime = parseSafeDate(data?.draft_random_finish_time);
 
-  // Update internal state (CHANGED: convert to UK wall-clock)
+  // Update internal state (convert to UK wall-clock)
   draftEnabled = draftAuctionEnabled;
   draftStart = toUKWallClock(draftAuctionStartTime);
   draftFinish = toUKWallClock(draftRandomFinishTime);
@@ -226,11 +264,13 @@ export async function loadGlobalSettings() {
       }
     );
   } else {
+    const container = document.getElementById("draftCountdownContainer");
     const el = document.getElementById("draftCountdown");
-    if (el) {
-      el.textContent = "";
-      el.style.display = "none";
-    }
+    const localEl = document.getElementById("draftLocalStart");
+
+    if (container) container.style.display = "none";
+    if (el) el.textContent = "";
+    if (localEl) localEl.textContent = "";
   }
 
   // RETURN EXACTLY WHAT gpdb_v2.js EXPECTS
