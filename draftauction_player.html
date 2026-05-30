@@ -345,39 +345,55 @@
     }
 
     function renderHistory(bids, sixPmToday) {
-      const tbody = document.getElementById("historyBody");
-      tbody.innerHTML = "";
+  const tbody = document.getElementById("historyBody");
+  tbody.innerHTML = "";
 
-      for (const bid of bids) {
-        const created = new Date(bid.bid_time);
-        const isFirst = bid.is_first_draft_bid;
-        const isJoin = bid.is_draft_join;
-        const consumed = bid.draft_join_consumed;
-
-        let type = "-";
-        let notes = "";
-
-        if (isFirst) {
-          type = "First Bid";
-          if (created < sixPmToday) notes = "Earned 2 credits";
-        } else if (isJoin) {
-          type = "Join Bid";
-          if (consumed) notes = "Consumed 1 credit";
-        } else {
-          type = "Bid";
-        }
-
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${created.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</td>
-          <td>${bid.bidder_club_id}</td>
-          <td>₿ ${Number(bid.bid_amount).toLocaleString("en-GB")}</td>
-          <td>${type}</td>
-          <td>${notes}</td>
-        `;
-        tbody.appendChild(tr);
+  for (const bid of bids) {
+    // >>> PATCH START: safe date parsing
+    let created = null;
+    if (bid.bid_time) {
+      const d = new Date(bid.bid_time);
+      if (!isNaN(d.getTime())) {
+        created = d;
       }
     }
+    const timeText = created
+      ? created.toLocaleTimeString(undefined, {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        })
+      : "—";
+    // >>> PATCH END
+
+    const isFirst = bid.is_first_draft_bid;
+    const isJoin = bid.is_draft_join;
+    const consumed = bid.draft_join_consumed;
+
+    let type = "-";
+    let notes = "";
+
+    if (isFirst) {
+      type = "First Bid";
+      if (created && created < sixPmToday) notes = "Earned 2 credits";
+    } else if (isJoin) {
+      type = "Join Bid";
+      if (consumed) notes = "Consumed 1 credit";
+    } else {
+      type = "Bid";
+    }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${timeText}</td>
+      <td>${bid.bidder_club_id}</td>
+      <td>₿ ${Number(bid.bid_amount).toLocaleString("en-GB")}</td>
+      <td>${type}</td>
+      <td>${notes}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
 
     async function getDraftCredits(clubShortName, windowStart, sixPmToday) {
       if (!clubShortName) return 0;
