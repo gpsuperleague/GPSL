@@ -952,8 +952,6 @@ document.addEventListener("DOMContentLoaded", () => {
   async function submitDraftBid(player, offerAmount, buyerShortName) {
 
   const nowLocal = getUKNow();
-  const cutoff = getDraftCutoff();   // ← ONLY HERE
-
   const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
   // Global draft start gate
