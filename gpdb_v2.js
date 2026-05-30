@@ -744,7 +744,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const rating = cells[4].textContent;
     const mvText = cells[7].textContent;
 
-    const mv = Number(String(mvText).replace(/[^\d]/g, "")) || 0;
+       const mv = Number(String(mvText).replace(/[^\d]/g, "")) || 0;
+
+    // Work out seller club from the table cell
+    const rawClubText = row.querySelectorAll("td")[8].textContent.trim();
+    const sellerClub =
+      !rawClubText || rawClubText === "FREE AGENT" ? null : rawClubText;
 
     CURRENT_OFFER_PLAYER = {
       Konami_ID: konamiId,
@@ -753,7 +758,7 @@ document.addEventListener("DOMContentLoaded", () => {
       Playstyle: playstyle,
       Rating: rating,
       market_value: mv,
-      Contracted_Team: row.querySelectorAll("td")[8].textContent.trim() || null
+      Contracted_Team: sellerClub
     };
 
     document.getElementById("offerPlayerImg").src = img.src;
