@@ -782,77 +782,94 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   document.getElementById("confirmOfferBtn").onclick = async () => {
+  console.log("=== CONFIRM OFFER CLICKED ===");
 
-    const nowLocal = getUKNow();
+  const nowLocal = getUKNow();
 
-    const input = document.getElementById("offerAmount");
-    const errorBox = document.getElementById("offerError");
+  const input = document.getElementById("offerAmount");
+  const errorBox = document.getElementById("offerError");
 
-    let raw = input.value.replace(/,/g, "").trim();
-    let offer = Number(raw);
+  let raw = input.value.replace(/,/g, "").trim();
+  let offer = Number(raw);
 
-    if (!offer || offer <= 0) {
-      errorBox.textContent = "Enter a valid positive number.";
+  console.log("[CONFIRM] offer raw =", raw, "parsed =", offer);
+
+  if (!offer || offer <= 0) {
+    errorBox.textContent = "Enter a valid positive number.";
+    console.log("[CONFIRM] invalid offer");
+    return;
+  }
+
+  const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
+  if (offer < mv) {
+    offer = mv;
+    input.value = offer.toLocaleString("en-GB");
+  }
+
+  const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
+  console.log("[CONFIRM] sellerClub =", sellerClub);
+
+  if (!sellerClub) {
+    if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
+      errorBox.textContent = "Draft auction has not started yet.";
+      console.log("[CONFIRM] blocked: draft not started");
+      return;
+    }
+  }
+
+  const { data: clubRow, error: clubErr } = await supabase
+    .from("Clubs")
+    .select("ShortName")
+    .eq("owner_id", CURRENT_USER.id)
+    .single();
+
+  console.log("[CONFIRM] clubRow =", clubRow, "clubErr =", clubErr);
+
+  if (clubErr || !clubRow) {
+    errorBox.textContent = "Your club could not be found.";
+    return;
+  }
+
+  const myClub = clubRow.ShortName;
+  console.log("[CONFIRM] myClub =", myClub);
+
+  if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
+    errorBox.textContent = "Draft Auction is locked.";
+    console.log("[CONFIRM] blocked: draft disabled");
+    return;
+  }
+
+  if (sellerClub === myClub) {
+    errorBox.textContent = "You cannot make an offer for your own player.";
+    console.log("[CONFIRM] blocked: own player");
+    return;
+  }
+
+  if (sellerClub && !GLOBAL_SETTINGS.transferWindowOpen) {
+    errorBox.textContent = "Transfer window is closed.";
+    console.log("[CONFIRM] blocked: window closed");
+    return;
+  }
+
+  if (!sellerClub) {
+    console.log("[CONFIRM] calling submitDraftBid...");
+    const result = await submitDraftBid(CURRENT_OFFER_PLAYER, offer, myClub);
+    console.log("[CONFIRM] submitDraftBid result =", result);
+
+    if (!result.ok) {
+      errorBox.textContent = result.msg;
       return;
     }
 
-    const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
-    if (offer < mv) {
-      offer = mv;
-      input.value = offer.toLocaleString("en-GB");
-    }
+    ACTIVE_DRAFT_PLAYERS.add(String(CURRENT_OFFER_PLAYER.Konami_ID).trim());
+    closeMakeOfferModal();
+    alert("Draft bid submitted!");
+    loadPage(CURRENT_PAGE);
+    return;
+  }
 
-    const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
-
-    if (!sellerClub) {
-      if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-        errorBox.textContent = "Draft auction has not started yet.";
-        return;
-      }
-    }
-
-    const { data: clubRow, error: clubErr } = await supabase
-      .from("Clubs")
-      .select("ShortName")
-      .eq("owner_id", CURRENT_USER.id)
-      .single();
-
-    if (clubErr || !clubRow) {
-      errorBox.textContent = "Your club could not be found.";
-      return;
-    }
-
-    const myClub = clubRow.ShortName;
-
-    if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
-      errorBox.textContent = "Draft Auction is locked. You cannot bid on free agents.";
-      return;
-    }
-
-    if (sellerClub === myClub) {
-      errorBox.textContent = "You cannot make an offer for your own player.";
-      return;
-    }
-
-    if (sellerClub && !GLOBAL_SETTINGS.transferWindowOpen) {
-      errorBox.textContent = "Transfer window is closed for contracted players.";
-      return;
-    }
-
-    if (!sellerClub) {
-      const result = await submitDraftBid(CURRENT_OFFER_PLAYER, offer, myClub);
-
-      if (!result.ok) {
-        errorBox.textContent = result.msg;
-        return;
-      }
-
-      ACTIVE_DRAFT_PLAYERS.add(String(CURRENT_OFFER_PLAYER.Konami_ID).trim());
-      closeMakeOfferModal();
-      alert("Draft bid submitted!");
-      loadPage(CURRENT_PAGE);
-      return;
-    }
+  // Contracted player path unchanged
+};
 
     const { error } = await supabase.from("Player_Transfer_Bids").insert({
       listing_id: null,
