@@ -124,12 +124,7 @@ function updateDraftCountdown() {
 
   if (!container || !el || !localStartEl) return;
 
-  if (
-    !draftAuctionStartTime ||
-    !draftRandomFinishTime ||
-    !isValidDate(draftAuctionStartTime) ||
-    !isValidDate(draftRandomFinishTime)
-  ) {
+  if (!draftAuctionStartTime || !draftRandomFinishTime) {
     container.style.display = "none";
     return;
   }
@@ -142,10 +137,10 @@ function updateDraftCountdown() {
   // BEFORE START
   if (now < draftAuctionStartTime) {
     const diff = draftAuctionStartTime.getTime() - now.getTime();
-    el.textContent = formatMs(diff);
+    el.textContent = `${formatMs(diff)} until auction start`;
 
     localStartEl.textContent =
-      `Local start time: ${formatLocalTime(localStart)}`;
+      `Start time: 19:00 UK  |  Local: ${formatLocalTime(localStart)}`;
 
     container.style.display = "flex";
     return;
@@ -159,10 +154,9 @@ function updateDraftCountdown() {
 
   // DURING ACTIVE DRAFT
   const diff = draftRandomFinishTime.getTime() - now.getTime();
-  el.textContent = formatMs(diff);
+  el.textContent = `${formatMs(diff)} remaining`;
 
-  // Hide local start time once draft is active
-  localStartEl.textContent = "";
+  localStartEl.textContent = ""; // hide once draft is active
 
   container.style.display = "flex";
 }
