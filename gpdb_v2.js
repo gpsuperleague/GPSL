@@ -820,18 +820,24 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
+     console.log("CONFIRM: CURRENT_USER =", CURRENT_USER);
+
     const { data: clubRow, error: clubErr } = await supabase
       .from("Clubs")
       .select("ShortName")
       .eq("owner_id", CURRENT_USER.id)
       .single();
 
+    console.log("CONFIRM: club lookup result =", { clubErr, clubRow });
+
     if (clubErr || !clubRow) {
+      console.log("CONFIRM: aborting – club not found");
       errorBox.textContent = "Your club could not be found.";
       return;
     }
 
     const myClub = clubRow.ShortName;
+    console.log("CONFIRM: myClub =", myClub);
 
     if (!sellerClub && !GLOBAL_SETTINGS.draftAuctionEnabled) {
       errorBox.textContent = "Draft Auction is locked. You cannot bid on free agents.";
