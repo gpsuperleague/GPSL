@@ -988,100 +988,82 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* --- START: submitDraftBid --- */
   async function submitDraftBid(player, offerAmount, buyerShortName) {
+  console.log("=== submitDraftBid START ===", { player, offerAmount, buyerShortName });
 
-    const nowLocal = getUKNow();
-    const cutoff = getDraftCutoff();   // Day‑2 18:00 cutoff
-    const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+  const nowLocal = getUKNow();
+  const cutoff = getDraftCutoff();
 
-    // 1. Draft must have started
-    if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-      return { ok: false, msg: "Draft auction has not started yet." };
-    }
+  console.log("[submitDraftBid] nowLocal =", nowLocal, "cutoff =", cutoff);
 
-    // 2. Load existing bids ONCE
-    const { data: existing } = await supabase
+  if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
+    console.log("[submitDraftBid] blocked: draft not started");
+    return { ok: false, msg: "Draft auction has not started yet." };
+  }
+
+  const { data: existing } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("bidder_club_id")
+    .eq("direct_bid_id", player.Konami_ID)
+    .eq("is_direct", true);
+
+  console.log("[submitDraftBid] existing bids =", existing);
+
+  const isFirstBid = !existing || existing.length === 0;
+  console.log("[submitDraftBid] isFirstBid =", isFirstBid);
+
+  if (isFirstBid && nowLocal >= cutoff) {
+    console.log("[submitDraftBid] blocked: new auctions locked");
+    return { ok: false, msg: "New draft auctions are locked." };
+  }
+
+  const listingResult = await ensureDraftListingForPlayer(player);
+  console.log("[submitDraftBid] listingResult =", listingResult);
+
+  if (!listingResult.ok) return listingResult;
+
+  const listingId = listingResult.listingId;
+  console.log("[submitDraftBid] listingId =", listingId);
+
+  let bidResult;
+
+  if (!isFirstBid) {
+    console.log("[submitDraftBid] JOINING auction");
+
+    const { data: priorJoin } = await supabase
       .from("Player_Transfer_Bids")
-      .select("bidder_club_id")
+      .select("bid_id")
       .eq("direct_bid_id", player.Konami_ID)
-      .eq("is_direct", true)
-      .order("bid_time", { ascending: true });
+      .eq("bidder_club_id", buyerShortName)
+      .eq("is_draft_join", true);
 
-    const isFirstBid = !existing || existing.length === 0;
-    const isJoining = !isFirstBid;
+    console.log("[submitDraftBid] priorJoin =", priorJoin);
 
-    // 3. NEW AUCTIONS LOCK at Day‑2 18:00
-    if (isFirstBid && nowLocal >= cutoff) {
-      return {
-        ok: false,
-        msg: "New draft auctions are locked until the next draft window."
-      };
-    }
+    if (priorJoin && priorJoin.length > 0) {
+      bidResult = await insertDraftBid(player, offerAmount, buyerShortName, false, true, false, listingId);
+    } else {
+      const credits = await getDraftCreditsForGPDB(buyerShortName);
+      console.log("[submitDraftBid] credits =", credits);
 
-    // 4. Ensure listing exists
-    const listingResult = await ensureDraftListingForPlayer(player);
-    if (!listingResult.ok) return listingResult;
-
-    const listingId = listingResult.listingId;
-
-    let bidResult;
-
-    // 5. JOINING an existing auction
-    if (isJoining) {
-
-      // Check if this club already paid the join fee
-      const { data: priorJoin } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("bid_id")
-        .eq("direct_bid_id", player.Konami_ID)
-        .eq("bidder_club_id", buyerShortName)
-        .eq("is_draft_join", true);
-
-      if (priorJoin && priorJoin.length > 0) {
-        // Already joined → no credit consumed
-        bidResult = await insertDraftBid(
-          player,
-          offerAmount,
-          buyerShortName,
-          false,   // isFirst
-          true,    // isJoin
-          false,   // consumeJoin
-          listingId
-        );
-      } else {
-        // First join → must have credits
-        const credits = await getDraftCreditsForGPDB(buyerShortName);
-        if (credits <= 0) {
-          return { ok: false, msg: "You do not have enough draft credits to join this auction." };
-        }
-
-        bidResult = await insertDraftBid(
-          player,
-          offerAmount,
-          buyerShortName,
-          false,   // isFirst
-          true,    // isJoin
-          true,    // consumeJoin
-          listingId
-        );
+      if (credits <= 0) {
+        console.log("[submitDraftBid] blocked: no credits");
+        return { ok: false, msg: "Not enough credits to join." };
       }
 
-    } else {
-      // 6. FIRST BID (creates the auction)
-      bidResult = await insertDraftBid(
-        player,
-        offerAmount,
-        buyerShortName,
-        true,    // isFirst
-        false,   // isJoin
-        false,   // consumeJoin
-        listingId
-      );
+      bidResult = await insertDraftBid(player, offerAmount, buyerShortName, false, true, true, listingId);
     }
-
-    if (!bidResult.ok) return bidResult;
-
-    return { ok: true };
+  } else {
+    console.log("[submitDraftBid] FIRST BID");
+    bidResult = await insertDraftBid(player, offerAmount, buyerShortName, true, false, false, listingId);
   }
+
+  console.log("[submitDraftBid] bidResult =", bidResult);
+
+  if (!bidResult.ok) return bidResult;
+
+  console.log("=== submitDraftBid END OK ===");
+  return { ok: true };
+}
+
   /* --- END: submitDraftBid --- */
 
   /* --- START: loadActiveDraftListings --- */
