@@ -105,6 +105,15 @@ function getDraftWindowTimes() {
   return { sevenPmYesterday, sixPmToday, sevenPmToday };
 }
 
+/* Day‑2 cutoff: tomorrow 18:00 UK (for locking NEW auctions on Day 2) */
+function getDraftCutoff() {
+  const nowUK = getUKNow();
+  const y = nowUK.getFullYear();
+  const m = nowUK.getMonth();
+  const d = nowUK.getDate();
+  return makeUKDate(y, m, d + 1, 18, 0, 0);
+}
+
 /* ============================================================
    LOCAL DRAFT COUNTDOWN ENGINE (GPDB VIEW)
    ============================================================ */
@@ -369,6 +378,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let MV_MIN = null;
   let MV_MAX = null;
+
   /* ============================================================
      MODULE D: Global Settings Loader
      ============================================================ */
@@ -448,7 +458,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .from("Players")
       .select("*", { count: "exact", head: true });
 
-    TOTAL_ROWS = count;
+       TOTAL_ROWS = count;
   }
 
   function buildContractedTeamOrClause(values) {
@@ -561,7 +571,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function formatHeader(col) {
     if (col === "market_value") return "Market Value";
-    if (col === "Maximum_Reserve_PPrice") return "Maximum Reserve Price";
+    if (col === "Maximum_Reserve_Price") return "Maximum Reserve Price";
     return col.replace(/_/g, " ");
   }
 
@@ -618,11 +628,11 @@ document.addEventListener("DOMContentLoaded", () => {
               bidCell = `<span class="locked-msg">In Draft Auction</span>`;
             } else if (GLOBAL_SETTINGS.draftAuctionEnabled) {
               const nowLocal = getUKNow();
-              const { sixPmToday } = getDraftWindowTimes();
+              const cutoff = getDraftCutoff();
 
               if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
                 bidCell = `<span class="locked-msg">Draft Closed</span>`;
-              } else if (nowLocal >= sixPmToday) {
+              } else if (nowLocal >= cutoff) {
                 bidCell = `<span class="locked-msg">Draft Locked</span>`;
               } else {
                 bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
@@ -942,13 +952,27 @@ document.addEventListener("DOMContentLoaded", () => {
   async function submitDraftBid(player, offerAmount, buyerShortName) {
 
     const nowLocal = getUKNow();
+    const cutoff = getDraftCutoff();
 
     const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
-    // Global draft start gate
+
+        // Global draft start gate
     if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
       return { ok: false, msg: "Draft auction has not started yet." };
     }
 
+    // NEW AUCTION LOCK — Day 2 at 18:00
+    const cutoff = getDraftCutoff();
+    const isFirstBid = !existing || existing.length === 0;
+
+    if (isFirstBid && nowLocal >= cutoff) {
+      return {
+        ok: false,
+        msg: "New draft auctions are locked until the next draft window."
+      };
+    }
+
+    // Determine if this is a join
     const { data: existing } = await supabase
       .from("Player_Transfer_Bids")
       .select("bidder_club_id")
@@ -956,15 +980,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .eq("is_direct", true)
       .order("bid_time", { ascending: true });
 
-    const isFirstBid = !existing || existing.length === 0;
-    const isJoining = !isFirstBid;
-
-    if (isFirstBid && nowLocal >= sixPmToday) {
-      return {
-        ok: false,
-        msg: "New draft auctions are locked until the next draft window."
-      };
-    }
+    const isJoining = existing && existing.length > 0;
 
     const listingResult = await ensureDraftListingForPlayer(player);
     if (!listingResult.ok) return listingResult;
@@ -974,6 +990,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let bidResult;
 
     if (isJoining) {
+      // Check if this club already joined
       const { data: priorJoin } = await supabase
         .from("Player_Transfer_Bids")
         .select("bid_id")
@@ -982,6 +999,7 @@ document.addEventListener("DOMContentLoaded", () => {
         .eq("is_draft_join", true);
 
       if (priorJoin && priorJoin.length > 0) {
+        // Already joined → no credit consumed
         bidResult = await insertDraftBid(
           player,
           offerAmount,
@@ -992,6 +1010,7 @@ document.addEventListener("DOMContentLoaded", () => {
           listingId
         );
       } else {
+        // First join → check credits
         const credits = await getDraftCreditsForGPDB(buyerShortName);
         if (credits <= 0) {
           return { ok: false, msg: "You do not have enough draft credits to join this auction." };
@@ -1008,6 +1027,7 @@ document.addEventListener("DOMContentLoaded", () => {
         );
       }
     } else {
+      // FIRST BID
       bidResult = await insertDraftBid(
         player,
         offerAmount,
@@ -1364,9 +1384,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     await loadClubNames();
 
-    // Start countdown if draft is enabled (existing global.js-based logic)
-  // GPDB uses its own countdown now — no global.js countdown
-
     setupControls();
     setupFilters();
     await populateDropdowns();
@@ -1379,3 +1396,6 @@ document.addEventListener("DOMContentLoaded", () => {
   init();
 
 }); // end DOMContentLoaded
+
+
+
