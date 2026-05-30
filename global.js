@@ -75,27 +75,7 @@ function stopDraftCountdown() {
 }
 
 /**
- * 6-stage draft countdown:
- *
- * Stage 1: Before draftStart
- *   - Message: "Draft Auction Starts in: X"
- *   - Countdown target: draftStart (19:00 UK Day 1)
- *
- * Stage 2: draftStart → cutoff (18:00 UK Day 2)
- *   - Message: "Draft is live — Time until 6pm cutoff"
- *   - Countdown target: cutoff
- *
- * Stage 3: cutoff → randomStart (18:50 UK Day 2)
- *   - Message: "6pm cutoff reached — Time until random timer kicks in"
- *   - Countdown target: randomStart
- *
- * Stage 4: randomStart → draftFinish (secret random time)
- *   - Message: "Random finish window active — draft may end at any moment"
- *   - NO countdown (secret time)
- *
- * Stage 5+: now >= draftFinish
- *   - Message: "Draft auction has ended"
- *   - NO countdown
+ * Unified 6‑stage countdown with GPDB‑style 2‑line output
  */
 function startDraftCountdown(onTickDisplay, onEndCallback) {
   stopDraftCountdown();
@@ -123,7 +103,7 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
 
     const nowUK = getUKNow();
 
-    // Derive stage boundaries from draftStart
+    // Stage boundaries
     const cutoff = new Date(draftStart.getTime() + 23 * 60 * 60 * 1000); // 6pm cutoff (Day 2)
     const randomStart = new Date(cutoff.getTime() + 50 * 60 * 1000);     // 6:50pm random window start
     const randomFinish = draftFinish;                                    // secret random end
@@ -133,23 +113,39 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
     let line1 = "";
     let line2 = "";
 
-    // STAGE 1 — Waiting for draft to start
+    // ===============================
+    // STAGE 1 — BEFORE START
+    // ===============================
     if (nowUK < draftStart) {
       ms = draftStart.getTime() - nowUK.getTime();
       phase = "before_start";
 
+      // A2 wording
       line1 = "Draft Auction Starts in: " + formatCountdown(ms);
 
-      const localStart = new Date(draftStart);
-      line2 = `Start time: 19:00 UK | Local: ${localStart.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit"
-      })}`;
+      // Correct UK/local time handling
+      const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      let localTimeStr;
+
+      if (userTZ === "Europe/London") {
+        // UK users should see 19:00 | 19:00
+        localTimeStr = "19:00";
+      } else {
+        const localStart = new Date(draftStart);
+        localTimeStr = localStart.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      }
+
+      line2 = `Start time: 19:00 UK | Local: ${localTimeStr}`;
 
       showAll();
     }
 
-    // STAGE 2 — Draft live, countdown to 6pm cutoff
+    // ===============================
+    // STAGE 2 — LIVE UNTIL CUTOFF
+    // ===============================
     else if (nowUK >= draftStart && nowUK < cutoff) {
       ms = cutoff.getTime() - nowUK.getTime();
       phase = "live_until_cutoff";
@@ -160,7 +156,9 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
       showAll();
     }
 
-    // STAGE 3 — 6pm cutoff reached, countdown to random timer start
+    // ===============================
+    // STAGE 3 — CUTOFF → RANDOM WINDOW
+    // ===============================
     else if (nowUK >= cutoff && nowUK < randomStart) {
       ms = randomStart.getTime() - nowUK.getTime();
       phase = "cutoff_to_random";
@@ -171,7 +169,9 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
       showAll();
     }
 
-    // STAGE 4 — Random window active, NO countdown
+    // ===============================
+    // STAGE 4 — RANDOM WINDOW ACTIVE
+    // ===============================
     else if (nowUK >= randomStart && nowUK < randomFinish) {
       phase = "random_window";
 
@@ -181,7 +181,9 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
       showAll();
     }
 
-    // STAGE 5+ — Draft ended
+    // ===============================
+    // STAGE 5 — DRAFT ENDED
+    // ===============================
     else {
       line1 = "Draft auction has ended";
       line2 = "";
@@ -192,11 +194,12 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
 
       stopDraftCountdown();
       if (typeof onEndCallback === "function") {
-        try { onEndCallback(); } catch (e) { console.error("onEndCallback error", e); }
+        try { onEndCallback(); } catch (e) { console.error(e); }
       }
       return;
     }
 
+    // Apply output
     const payload = { phase, ms, text: line1 };
     const out = onTickDisplay ? onTickDisplay(payload) : { show: true, text: line1 };
 
@@ -245,7 +248,7 @@ export async function loadGlobalSettings() {
   const draftAuctionStartTime = parseSafeDate(data?.draft_auction_start_time);
   const draftRandomFinishTime = parseSafeDate(data?.draft_random_finish_time);
 
-  // Update internal state (convert to UK wall-clock)
+  // Convert to UK wall-clock
   draftEnabled = draftAuctionEnabled;
   draftStart = toUKWallClock(draftAuctionStartTime);
   draftFinish = toUKWallClock(draftRandomFinishTime);
@@ -273,7 +276,6 @@ export async function loadGlobalSettings() {
     if (localEl) localEl.textContent = "";
   }
 
-  // RETURN EXACTLY WHAT gpdb_v2.js EXPECTS
   return {
     transferWindowOpen,
     draftAuctionEnabled,
@@ -338,7 +340,7 @@ export async function initGlobal() {
 }
 
 /* ===============================
-   EXPORTED HELPERS (for gpdb_v2.js)
+   EXPORTED HELPERS
    =============================== */
 
 export {
