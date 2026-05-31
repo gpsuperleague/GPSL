@@ -130,53 +130,114 @@ function formatMs(ms) {
 function updateDraftCountdown() {
   const container = document.getElementById("draftCountdownContainer");
   const el = document.getElementById("draftCountdown");
-  const localStartEl = document.getElementById("draftLocalStart");
+  const localEl = document.getElementById("draftLocalStart");
 
-  const row = container.parentElement; // the flex row
-  const credits = document.getElementById("draftCreditsPanel");
+  if (!container || !el || !localEl) return;
 
-  if (!container || !el || !localStartEl) return;
-
-  // Helper to hide + collapse
-  function hideCountdown() {
+  // Hide/show helpers
+  function hideAll() {
     container.style.display = "none";
-    container.style.height = "0px";
-    container.style.padding = "0px";
-
-    // If credits panel is empty, collapse the whole row
-    if (!credits.textContent.trim()) {
-      row.style.display = "none";
-    }
   }
-
-  // Helper to show + restore
-  function showCountdown() {
-    row.style.display = "flex";
+  function showAll() {
     container.style.display = "flex";
-    container.style.height = "auto";
-    container.style.padding = "6px 10px";
   }
 
-  // If no times exist → hide
+  // Must have valid times
   if (!draftAuctionStartTime || !draftRandomFinishTime) {
-    hideCountdown();
+    hideAll();
     return;
   }
 
-  const now = getUKNow();
-  const localStart = new Date(draftAuctionStartTime);
+  const nowUK = getUKNow();
+  const start = new Date(draftAuctionStartTime);       // Day 1, 19:00
+  const randomFinish = new Date(draftRandomFinishTime); // Secret random finish
 
-  // BEFORE START
-  if (now < draftAuctionStartTime) {
-    const diff = draftAuctionStartTime.getTime() - now.getTime();
-    el.textContent = `${formatMs(diff)} until auction start`;
+  // Stage boundaries (same as Dashboard)
+  const cutoff = new Date(start.getTime() + 23 * 60 * 60 * 1000);      // 18:00 Day 2
+  const randomStart = new Date(cutoff.getTime() + 50 * 60 * 1000);     // 18:50 Day 2
 
-    localStartEl.textContent =
-      `Start time: 19:00 UK  |  Local: ${formatLocalTime(localStart)}`;
+  let line1 = "";
+  let line2 = "";
 
-    showCountdown();
+  /* ===============================
+     STAGE 1 — BEFORE START (→19:00)
+     =============================== */
+  if (nowUK < start) {
+    const ms = start.getTime() - nowUK.getTime();
+    line1 = "Draft Auction Starts in: " + formatMs(ms);
+
+    const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const localTime = (userTZ === "Europe/London")
+      ? "19:00"
+      : start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+
+    line2 = `Start time: 19:00 UK | Local: ${localTime}`;
+    el.textContent = line1;
+    localEl.textContent = line2;
+    showAll();
     return;
   }
+
+  /* ===============================
+     STAGE 2 — LIVE UNTIL 18:00
+     =============================== */
+  if (nowUK >= start && nowUK < cutoff) {
+    const ms = cutoff.getTime() - nowUK.getTime();
+    line1 = "Auction cutoff in: " + formatMs(ms);
+
+    const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const localTime = (userTZ === "Europe/London")
+      ? "18:00"
+      : cutoff.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+
+    line2 = `Cutoff time: 18:00 UK | Local: ${localTime}`;
+    el.textContent = line1;
+    localEl.textContent = line2;
+    showAll();
+    return;
+  }
+
+  /* ===============================
+     STAGE 3 — 18:00 → 18:50
+     =============================== */
+  if (nowUK >= cutoff && nowUK < randomStart) {
+    const ms = randomStart.getTime() - nowUK.getTime();
+    line1 = "Random timer begins in: " + formatMs(ms);
+
+    const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const localTime = (userTZ === "Europe/London")
+      ? "18:50"
+      : randomStart.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+
+    line2 = `Start time: 18:50 UK | Local: ${localTime}`;
+    el.textContent = line1;
+    localEl.textContent = line2;
+    showAll();
+    return;
+  }
+
+  /* ===============================
+     STAGE 4 — RANDOM WINDOW ACTIVE
+     =============================== */
+  if (nowUK >= randomStart && nowUK < randomFinish) {
+    const elapsed = nowUK.getTime() - randomStart.getTime();
+    line1 = "Random finish window active — draft may end at any moment";
+    line2 = "Running for: " + formatMs(elapsed);
+
+    el.textContent = line1;
+    localEl.textContent = line2;
+    showAll();
+    return;
+  }
+
+  /* ===============================
+     STAGE 5 — DRAFT ENDED
+     =============================== */
+  line1 = "Draft auction has ended";
+  el.textContent = line1;
+  localEl.textContent = "";
+  showAll();
+}
 
   // AFTER FINISH
   if (now >= draftRandomFinishTime) {
