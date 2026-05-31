@@ -302,8 +302,7 @@
         .from("Player_Transfer_Bids")
         .select("*")
         .eq("direct_bid_id", player.Konami_ID)
-        .eq("is_direct", true)
-        .or("is_first_draft_bid.eq.true,is_draft_join.eq.true")
+        .or("is_first_draft_bid.eq.true,is_draft_join.eq.true,is_direct.eq.true")
         .gte("bid_time", sevenPmYesterday.toISOString())
         .lt("bid_time", sevenPmToday.toISOString())
         .order("bid_time", { ascending: true });
