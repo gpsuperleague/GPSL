@@ -87,10 +87,11 @@ async function loadShortNameFromSupabase(userId) {
 // MODULE B: LOAD LISTINGS
 // ======================================================
 async function loadListings() {
-  const { data, error } = await supabase
-    .from("Player_Transfer_Listings")
-    .select("*")
-    .order("end_time", { ascending: true });
+const { data, error } = await supabase
+  .from("Player_Transfer_Listings")
+  .select("*")
+  .neq("listing_type", "draft")   // ⭐ EXCLUDE DRAFT AUCTIONS
+  .order("end_time", { ascending: true });
 
   if (error) {
     console.error("Listings error", error);
