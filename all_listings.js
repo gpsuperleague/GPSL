@@ -29,7 +29,10 @@ function parseMoneyInput(value) {
 // MODULE A: AUTH + INITIAL LOAD (SUPABASE)
 // ======================================================
 (async function init() {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
   if (userError) {
     console.error("Supabase auth error:", userError);
@@ -102,8 +105,12 @@ async function loadListings() {
 // MODULE C: FILTER CHECKBOXES
 // ======================================================
 function wireFilterCheckboxes() {
-  document.getElementById("filter-active").addEventListener("change", renderListings);
-  document.getElementById("filter-closed").addEventListener("change", renderListings);
+  document
+    .getElementById("filter-active")
+    .addEventListener("change", renderListings);
+  document
+    .getElementById("filter-closed")
+    .addEventListener("change", renderListings);
 }
 
 // ======================================================
@@ -118,32 +125,29 @@ function renderListings() {
 
   const now = new Date();
 
-  const filtered = allListings.filter(l => {
+  const filtered = allListings.filter((l) => {
     const end = new Date(l.end_time);
+    const isActiveStatus = l.status === "Active";
+    const isActiveTime = end > now;
+    const isActive = isActiveStatus && isActiveTime;
 
-    // ACTIVE listings (time-based)
-    if (l.status === "Active") {
-      if (end > now) {
-        return showActive;
-      }
-      // If time has passed but status not yet flipped, treat as closed bucket
-      return showClosed;
+    if (isActive) {
+      return showActive;
     }
 
-    // CLOSED / REVIEW / SELLER REVIEW listings
     if (
       l.status === "Closed" ||
       l.status === "Review" ||
-      l.status === "Seller Review"
+      l.status === "Seller Review" ||
+      !isActiveStatus // Active status but time passed → treat as closed bucket
     ) {
       return showClosed;
     }
 
-    // Anything else hidden
     return false;
   });
 
-  filtered.forEach(async listing => {
+  filtered.forEach(async (listing) => {
     const player = await fetchPlayerByID(listing.player_id);
 
     const extendedLabel = listing.was_extended
@@ -169,6 +173,13 @@ function renderListings() {
 
     const imgURL = `https://pesdb.net/assets/img/card/b${listing.player_id}.png`;
 
+    const end = new Date(listing.end_time);
+    const isActiveStatus = listing.status === "Active";
+    const isActiveTime = end > now;
+    const isActive = isActiveStatus && isActiveTime;
+    const canBid =
+      isActive && listing.seller_club_id !== currentUserShort && !!currentUserShort;
+
     tr.innerHTML = `
       <td>${fullClubName(listing.seller_club_id)}</td>
 
@@ -188,10 +199,61 @@ function renderListings() {
       <td>${formatTimeRemaining(listing.end_time)}</td>
       <td>${formatMoney(listing.current_highest_bid)}</td>
       <td>${highestClubText}</td>
+      <td>
+        ${
+          canBid
+            ? `<button class="make-offer-btn" data-id="${listing.id}">Make Offer</button>`
+            : "-"
+        }
+      </td>
     `;
 
-    tr.onclick = () => openBidModal(listing, player);
+    // Row click: only open modal if listing is truly open for bidding
+    tr.onclick = async () => {
+      const nowClick = new Date();
+      const endClick = new Date(listing.end_time);
+
+      if (listing.seller_club_id === currentUserShort) {
+        alert("You already own this player. You cannot bid on your own listing.");
+        return;
+      }
+
+      if (listing.status !== "Active" || endClick <= nowClick) {
+        alert("This listing is no longer open for bidding.");
+        return;
+      }
+
+      const p = player || (await fetchPlayerByID(listing.player_id));
+      openBidModal(listing, p);
+    };
+
     tbody.appendChild(tr);
+  });
+
+  // Wire Make Offer buttons
+  tbody.querySelectorAll(".make-offer-btn").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const listing = allListings.find((l) => String(l.id) === String(id));
+      if (!listing) return;
+
+      const nowClick = new Date();
+      const endClick = new Date(listing.end_time);
+
+      if (listing.seller_club_id === currentUserShort) {
+        alert("You already own this player. You cannot bid on your own listing.");
+        return;
+      }
+
+      if (listing.status !== "Active" || endClick <= nowClick) {
+        alert("This listing is no longer open for bidding.");
+        return;
+      }
+
+      const player = await fetchPlayerByID(listing.player_id);
+      openBidModal(listing, player);
+    });
   });
 }
 
@@ -238,20 +300,40 @@ function openBidModal(listing, player) {
     return;
   }
 
+  const now = new Date();
+  const end = new Date(listing.end_time);
+  if (end <= now || listing.status !== "Active") {
+    alert("This listing has expired or is no longer open for bidding.");
+    return;
+  }
+
   selectedListing = listing;
 
-  document.getElementById("bid-player-name").textContent = player?.Name || "Unknown";
-  document.getElementById("bid-player-position").textContent = player?.Position || "-";
-  document.getElementById("bid-player-playstyle").textContent = player?.Playstyle || "-";
-  document.getElementById("bid-player-rating").textContent = player?.Rating || "-";
+  document.getElementById("bid-player-name").textContent =
+    player?.Name || "Unknown";
+  document.getElementById("bid-player-position").textContent =
+    player?.Position || "-";
+  document.getElementById("bid-player-playstyle").textContent =
+    player?.Playstyle || "-";
+  document.getElementById("bid-player-rating").textContent =
+    player?.Rating || "-";
 
-  document.getElementById("bid-selling-club").textContent = fullClubName(listing.seller_club_id);
-  document.getElementById("bid-market-value").textContent = formatMoney(listing.market_value);
-  document.getElementById("bid-reserve-price").textContent = formatMoney(listing.reserve_price);
+  document.getElementById("bid-selling-club").textContent = fullClubName(
+    listing.seller_club_id
+  );
+  document.getElementById("bid-market-value").textContent = formatMoney(
+    listing.market_value
+  );
+  document.getElementById("bid-reserve-price").textContent = formatMoney(
+    listing.reserve_price
+  );
   document.getElementById("bid-status").textContent = listing.status;
-  document.getElementById("bid-time-remaining").textContent = formatTimeRemaining(listing.end_time);
+  document.getElementById("bid-time-remaining").textContent =
+    formatTimeRemaining(listing.end_time);
 
-  document.getElementById("bid-highest-bid").textContent = formatMoney(listing.current_highest_bid);
+  document.getElementById("bid-highest-bid").textContent = formatMoney(
+    listing.current_highest_bid
+  );
   document.getElementById("bid-highest-club").textContent =
     fullClubName(listing.current_highest_bidder) || "-";
 
@@ -319,14 +401,14 @@ function wireModalControls() {
     selectedListing = null;
   };
 
-  window.onclick = function(event) {
+  window.onclick = function (event) {
     if (event.target === modal) {
       modal.style.display = "none";
       selectedListing = null;
     }
   };
 
-  document.addEventListener("keydown", function(event) {
+  document.addEventListener("keydown", function (event) {
     if (event.key === "Escape") {
       modal.style.display = "none";
       selectedListing = null;
@@ -361,12 +443,12 @@ function adjustBid(amount) {
 // ======================================================
 function wireIncrementButtons() {
   const btns = [
-    ["inc-500k-bid",   500000],
-    ["inc-1m-bid",    1000000],
-    ["inc-5m-bid",    5000000],
-    ["dec-500k-bid",  -500000],
-    ["dec-1m-bid",   -1000000],
-    ["dec-5m-bid",   -5000000],
+    ["inc-500k-bid", 500000],
+    ["inc-1m-bid", 1000000],
+    ["inc-5m-bid", 5000000],
+    ["dec-500k-bid", -500000],
+    ["dec-1m-bid", -1000000],
+    ["dec-5m-bid", -5000000],
   ];
 
   btns.forEach(([id, amount]) => {
@@ -441,7 +523,7 @@ async function placeBid() {
       seller_club_id: selectedListing.seller_club_id,
       bid_amount: bidAmount,
       bid_time: new Date().toISOString(),
-      is_direct: false
+      is_direct: false,
     });
 
   if (bidError) {
@@ -454,7 +536,7 @@ async function placeBid() {
     .from("Player_Transfer_Listings")
     .update({
       current_highest_bid: bidAmount,
-      current_highest_bidder: currentUserShort
+      current_highest_bidder: currentUserShort,
     })
     .eq("id", selectedListing.id);
 
