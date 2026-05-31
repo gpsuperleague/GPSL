@@ -601,12 +601,22 @@
       let isFirstDraftBid = false;
       let isDraftJoin = false;
       let draftJoinConsumed = false;
+if (isFirstBidder) {
+  // Check if this club already has a first bid recorded
+  const { data: firstAlready } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("bid_id")
+    .eq("direct_bid_id", playerId)
+    .eq("bidder_club_id", buyerShortName)
+    .eq("is_first_draft_bid", true);
 
-      if (isFirstBidder) {
-        if (!draftAuctionStartTimeUK || nowUK >= draftAuctionStartTimeUK) {
-          isFirstDraftBid = true;
-        }
-      } else {
+  // Only the VERY FIRST bid gets marked as first
+  if (!firstAlready || !firstAlready.length) {
+    isFirstDraftBid = true;
+  }
+}
+
+       else {
         isDraftJoin = true;
 
         const { data: priorJoins } = await supabase
