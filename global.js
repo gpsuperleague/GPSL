@@ -156,7 +156,8 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
         const localCut = new Date(cutoff);
         localTimeStr = localCut.toLocaleTimeString([], {
           hour: "2-digit",
-          minute: "2-digit"
+          minute: "2-digit",
+          hour12: false
         });
       }
 
