@@ -239,32 +239,6 @@ function updateDraftCountdown() {
   showAll();
 }
 
-  // AFTER FINISH
-  if (now >= draftRandomFinishTime) {
-    hideCountdown();
-    return;
-  }
-
- // DURING ACTIVE DRAFT
-const diff = draftRandomFinishTime.getTime() - now.getTime();
-el.textContent = `${formatMs(diff)} remaining`;
-
-// UK cutoff time in 24h format
-const ukCutoff = draftRandomFinishTime.toLocaleTimeString("en-GB", {
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false
-});
-
-// Local cutoff time (also 24h because formatLocalTime forces it)
-const localCutoff = formatLocalTime(draftRandomFinishTime);
-
-localStartEl.textContent =
-  `Cutoff time: ${ukCutoff} UK | Local: ${localCutoff}`;
-
-showCountdown();
-}   // <-- THIS closes updateDraftCountdown()
-
 /* ============================================================
    DRAFT CREDITS PANEL (GPDB VIEW)
    ============================================================ */
