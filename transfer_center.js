@@ -1,7 +1,9 @@
 // ============================================================
 // TRANSFER CENTRE — Updated JS
-// Normal listings: 24h + next 19:00 UK, Extend/Remove
-// Direct bids: Accept -> listing + opening bid
+// - Normal listings: 24h + next 19:00 UK, Extend/Remove after cutoff if no bids
+// - Direct bids: Accept -> listing + opening bid, Reject -> mark rejected
+// - Seller Review: direct bids only
+// - Active Bids: read-only (no cancel)
 // ============================================================
 
 import { supabase } from "./supabase_client.js";
@@ -156,12 +158,11 @@ async function loadActiveListings(shortName) {
           const endTime = row.end_time ? new Date(row.end_time) : null;
           const bidsCount = bidsCountMap.get(row.id) || 0;
 
-          let actionsHtml = `
-            <button class="view-listing-btn" data-id="${row.id}">View Listing</button>
-          `;
+          let actionsHtml = "";
 
+          // Only after cutoff AND no bids: show Extend / Remove
           if (endTime && now > endTime && bidsCount === 0) {
-            actionsHtml += `
+            actionsHtml = `
               <button class="extend-listing-btn" data-id="${row.id}">Extend</button>
               <button class="expire-listing-btn" data-id="${row.id}" data-player-id="${row.player_id}">Remove</button>
             `;
@@ -179,15 +180,6 @@ async function loadActiveListings(shortName) {
         .join("")}
     </table>
   `;
-
-  container.querySelectorAll(".view-listing-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.id;
-      if (id) {
-        window.location.href = `listing.html?id=${id}`;
-      }
-    });
-  });
 
   container.querySelectorAll(".extend-listing-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -222,7 +214,7 @@ async function expireListing(listingId, playerId, shortName) {
     .update({ status: "expired" })
     .eq("id", listingId);
 
-  // If you have a "listed" flag on Players, update it here.
+  // If you track a "listed" flag on Players, update it here, e.g.:
   // await supabase
   //   .from("Players")
   //   .update({ listed: false })
@@ -232,7 +224,7 @@ async function expireListing(listingId, playerId, shortName) {
 }
 
 // ============================================================
-// ACTIVE BIDS (your bids as buyer)
+// ACTIVE BIDS (your bids as buyer) — READ ONLY
 // ============================================================
 
 async function loadActiveBids(shortName) {
@@ -286,7 +278,6 @@ async function loadActiveBids(shortName) {
         <th>Bid</th>
         <th>Type</th>
         <th>Time</th>
-        <th></th>
       </tr>
       ${bids
         .map((row) => {
@@ -309,26 +300,12 @@ async function loadActiveBids(shortName) {
             <td>₿ ${Number(row.bid_amount).toLocaleString("en-GB")}</td>
             <td>${typeLabel}</td>
             <td>${new Date(row.bid_time).toLocaleString()}</td>
-            <td><button class="dismiss-bid-btn" data-id="${row.bid_id}">Cancel</button></td>
           </tr>
         `;
         })
         .join("")}
     </table>
   `;
-
-  container.querySelectorAll(".dismiss-bid-btn").forEach((btn) => {
-    btn.addEventListener("click", () => removeBid(btn.dataset.id, shortName));
-  });
-}
-
-async function removeBid(bidId, shortName) {
-  await supabase
-    .from("Player_Transfer_Bids")
-    .update({ status: "cancelled" })
-    .eq("bid_id", bidId);
-
-  loadActiveBids(shortName);
 }
 
 // ============================================================
