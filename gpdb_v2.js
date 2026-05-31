@@ -202,6 +202,7 @@ localStartEl.textContent =
   `Cutoff time: ${ukCutoff} UK | Local: ${localCutoff}`;
 
 showCountdown();
+}   // <-- THIS closes updateDraftCountdown()
 
 /* ============================================================
    DRAFT CREDITS PANEL (GPDB VIEW)
