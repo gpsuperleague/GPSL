@@ -73,7 +73,8 @@ function formatLocalTime(dateObj) {
   if (!isValidDate(dateObj)) return "";
   return dateObj.toLocaleTimeString([], {
     hour: "2-digit",
-    minute: "2-digit"
+    minute: "2-digit",
+    hour12: false
   });
 }
 
