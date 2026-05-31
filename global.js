@@ -184,7 +184,8 @@ function startDraftCountdown(onTickDisplay, onEndCallback) {
         const localRS = new Date(randomStart);
         localTimeStr = localRS.toLocaleTimeString([], {
           hour: "2-digit",
-          minute: "2-digit"
+          minute: "2-digit",
+          hour12: false
         });
       }
 
