@@ -238,8 +238,8 @@ export async function loadGlobalSettings() {
   const rawStart = new Date(data?.draft_auction_start_time);
   const rawFinish = new Date(data?.draft_random_finish_time);
 
-  draftStart = isValidDate(rawStart) ? getUKNow() && new Date(rawStart) : null;
-  draftFinish = isValidDate(rawFinish) ? new Date(rawFinish) : null;
+  draftStart = isValidDate(rawStart) ? new Date(rawStart) : null;
+draftFinish = isValidDate(rawFinish) ? new Date(rawFinish) : null;
 
   if (draftEnabled && draftStart && draftFinish) {
     // Compute derived times
