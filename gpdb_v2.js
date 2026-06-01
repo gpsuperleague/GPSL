@@ -1,10 +1,9 @@
 /* ============================================================
-   MODULE A: Supabase Client (imports MUST be at top)
+   MODULE A: Imports
    ============================================================ */
 
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+import { supabase } from "./global.js";
 
-// Import shared draft engine helpers from draft_engine.js
 import {
   loadGlobalSettings as loadGlobalSettingsEngine,
   getUKNow,
@@ -14,124 +13,8 @@ import {
   getDraftCutoff
 } from "./draft_engine.js";
 
-const supabase = createClient(
-  'https://omyyogfumrjoaweuawjn.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
-);
-
 let draftAuctionStartTime = null;
 let draftRandomFinishTime = null;
-
-/* ============================================================
-   LOCAL DRAFT COUNTDOWN ENGINE (GPDB VIEW)
-   ============================================================ */
-
-function formatMs(ms) {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  return `${h}h ${m}m ${s}s`;
-}
-
-function updateDraftCountdown() {
-  const container = document.getElementById("draftCountdownContainer");
-  const el = document.getElementById("draftCountdown");
-  const localEl = document.getElementById("draftLocalStart");
-
-  if (!container || !el || !localEl) return;
-
-  function hideAll() {
-    container.style.display = "none";
-  }
-  function showAll() {
-    container.style.display = "flex";
-  }
-
-  if (!draftAuctionStartTime || !draftRandomFinishTime) {
-    hideAll();
-    return;
-  }
-
-  const nowUK = getUKNow();
-  const start = new Date(draftAuctionStartTime);        // Day 1, 19:00
-  const randomFinish = new Date(draftRandomFinishTime); // Secret random finish
-
-  const cutoff = new Date(start.getTime() + 23 * 60 * 60 * 1000);   // 18:00 Day 2
-  const randomStart = new Date(cutoff.getTime() + 50 * 60 * 1000);  // 18:50 Day 2
-
-  let line1 = "";
-  let line2 = "";
-
-  // STAGE 1 — BEFORE START
-  if (nowUK < start) {
-    const ms = start.getTime() - nowUK.getTime();
-    line1 = "Draft Auction Starts in: " + formatMs(ms);
-
-    const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const localTime = (userTZ === "Europe/London")
-      ? "19:00"
-      : start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-
-    line2 = `Start time: 19:00 UK | Local: ${localTime}`;
-    el.textContent = line1;
-    localEl.textContent = line2;
-    showAll();
-    return;
-  }
-
-  // STAGE 2 — LIVE UNTIL 18:00
-  if (nowUK >= start && nowUK < cutoff) {
-    const ms = cutoff.getTime() - nowUK.getTime();
-    line1 = "Auction cutoff in: " + formatMs(ms);
-
-    const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const localTime = (userTZ === "Europe/London")
-      ? "18:00"
-      : cutoff.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-
-    line2 = `Cutoff time: 18:00 UK | Local: ${localTime}`;
-    el.textContent = line1;
-    localEl.textContent = line2;
-    showAll();
-    return;
-  }
-
-  // STAGE 3 — 18:00 → 18:50
-  if (nowUK >= cutoff && nowUK < randomStart) {
-    const ms = randomStart.getTime() - nowUK.getTime();
-    line1 = "Random timer begins in: " + formatMs(ms);
-
-    const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const localTime = (userTZ === "Europe/London")
-      ? "18:50"
-      : randomStart.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
-
-    line2 = `Start time: 18:50 UK | Local: ${localTime}`;
-    el.textContent = line1;
-    localEl.textContent = line2;
-    showAll();
-    return;
-  }
-
-  // STAGE 4 — RANDOM WINDOW ACTIVE
-  if (nowUK >= randomStart && nowUK < randomFinish) {
-    const elapsed = nowUK.getTime() - randomStart.getTime();
-    line1 = "Random finish window active — draft may end at any moment";
-    line2 = "Running for: " + formatMs(elapsed);
-
-    el.textContent = line1;
-    localEl.textContent = line2;
-    showAll();
-    return;
-  }
-
-  // STAGE 5 — DRAFT ENDED
-  line1 = "Draft auction has ended";
-  el.textContent = line1;
-  localEl.textContent = "";
-  showAll();
-}
 
 /* ============================================================
    DRAFT CREDITS PANEL (GPDB VIEW)
@@ -1328,9 +1211,6 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("DEBUG loaded GLOBAL_SETTINGS:", GLOBAL_SETTINGS);
     console.log("DEBUG draftAuctionStartTime =", draftAuctionStartTime);
     console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
-
-    setInterval(updateDraftCountdown, 1000);
-    updateDraftCountdown();
 
     await loadClubNames();
 
