@@ -1,7 +1,3 @@
-<script>
-  const CURRENT_PAGE = "admin";
-</script>
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -17,25 +13,24 @@
       padding: 0;
     }
 
-    /* Modern nav button style */
-a.button, button.button {
-  display: inline-block;
-  padding: 8px 16px;
-  background: #1a1a1a;          /* dark grey background */
-  color: #ff9900;               /* orange text */
-  border: 1px solid #666;       /* thin grey border */
-  border-radius: 6px;
-  text-decoration: none;
-  font-weight: bold;
-  margin: 5px;
-  cursor: pointer;
-  transition: 0.2s;
-}
+    a.button, button.button {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #1a1a1a;
+      color: #ff9900;
+      border: 1px solid #666;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      margin: 5px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
 
-a.button:hover, button.button:hover {
-  background: #222;
-  transform: scale(1.05);
-}
+    a.button:hover, button.button:hover {
+      background: #222;
+      transform: scale(1.05);
+    }
 
     #nav {
       padding: 15px;
@@ -131,17 +126,15 @@ a.button:hover, button.button:hover {
       margin-left: 20px;
     }
 
-    /* Red logout button */
-#logoutBtn {
-  background: #cc0000 !important;
-  color: #fff !important;
-  border: 1px solid #990000 !important;
-}
+    #logoutBtn {
+      background: #cc0000 !important;
+      color: #fff !important;
+      border: 1px solid #990000 !important;
+    }
 
-#logoutBtn:hover {
-  background: #e60000 !important;
-}
-
+    #logoutBtn:hover {
+      background: #e60000 !important;
+    }
   </style>
 </head>
 
@@ -152,7 +145,6 @@ a.button:hover, button.button:hover {
   <h1>GPSL Admin Panel</h1>
 
   <div class="page-container">
-
     <div id="adminPanel" style="display:none;">
 
       <!-- SEASON MANAGEMENT -->
@@ -203,22 +195,16 @@ a.button:hover, button.button:hover {
         <div id="settingsMessage" style="color:#ffcc00; margin-top:10px;"></div>
 
         <p id="draftStartTime" class="status-note" style="margin-top:10px;"></p>
-
       </div>
-        <!-- OWNER ADMINISTRATION -->
+
+      <!-- OWNER ADMINISTRATION -->
       <div class="card">
         <h2>Owner Administration</h2>
 
         <div class="row">
-          <div>
-            <input id="ownerEmail" placeholder="Owner Email">
-          </div>
-          <div>
-            <input id="ownerPassword" placeholder="Temporary Password" type="password">
-          </div>
-          <div>
-            <input id="ownerClub" placeholder="Club ShortName (e.g., ARS)">
-          </div>
+          <div><input id="ownerEmail" placeholder="Owner Email"></div>
+          <div><input id="ownerPassword" placeholder="Temporary Password" type="password"></div>
+          <div><input id="ownerClub" placeholder="Club ShortName (e.g., ARS)"></div>
         </div>
 
         <button id="addOwnerBtn" class="button">Add Owner</button>
@@ -247,9 +233,7 @@ a.button:hover, button.button:hover {
         <hr style="border-color:#333; margin:20px 0;">
 
         <div class="row">
-          <div>
-            <input id="resetOwnerEmail" placeholder="Owner Email">
-          </div>
+          <div><input id="resetOwnerEmail" placeholder="Owner Email"></div>
         </div>
 
         <button id="resetPasswordBtn" class="button">Send Reset Email</button>
@@ -258,9 +242,9 @@ a.button:hover, button.button:hover {
       </div>
 
     </div>
-
   </div>
 
+  <!-- MODAL -->
   <div id="seasonRolloverModalBackdrop">
     <div id="seasonRolloverModal">
       <h3>Start New Season</h3>
@@ -280,109 +264,18 @@ a.button:hover, button.button:hover {
     </div>
   </div>
 
-  <!-- ADMIN LOGIC + UPDATED NAV -->
+  <!-- ADMIN LOGIC -->
   <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
-    const supabase = createClient(
-      "https://omyyogfumrjoaweuawjn.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
-    );
-
-    window.supabase = supabase;
+    import {
+      supabase,
+      buildNav,
+      loadGlobalSettings,
+      getUKNow
+    } from "./global.js";
 
     /* ============================================================
-       SAFE UTC PARSER + UK TIME HELPERS
+       PAGE INIT
        ============================================================ */
-
-    function parseUTC(iso) {
-      const d = new Date(iso);
-      return new Date(
-        d.getUTCFullYear(),
-        d.getUTCMonth(),
-        d.getUTCDate(),
-        d.getUTCHours(),
-        d.getUTCMinutes(),
-        d.getUTCSeconds()
-      );
-    }
-
-    function nowInUK() {
-      return parseUTC(new Date().toISOString());
-    }
-
-    /* ============================================================
-       LOAD GLOBAL SETTINGS + DISPLAY START TIME
-       ============================================================ */
-
-    let draftEnabled = false;
-
-    async function loadGlobalSettings() {
-      const { data } = await supabase
-        .from("global_settings")
-        .select("draft_auction_enabled, draft_auction_start_time")
-        .eq("id", 1)
-        .single();
-
-      draftEnabled = data?.draft_auction_enabled === true;
-
-      const startEl = document.getElementById("draftStartTime");
-
-      if (draftEnabled && data?.draft_auction_start_time) {
-        const start = new Date(data.draft_auction_start_time);
-        const displayTime = start.toLocaleString("en-GB");
-
-        startEl.textContent = `Next draft window: ${displayTime}`;
-      } else {
-        startEl.textContent = "";
-      }
-    }
-
-    /* ============================================================
-       NAVIGATION
-       ============================================================ */
-
-    async function buildNav(user) {
-      const nav = document.getElementById("nav");
-
-      const buttons = [
-        { page: "index", label: "Home", href: "index.html" },
-        { page: "gpdb", label: "Player Database", href: "GPDB.html" },
-        { page: "clubs", label: "Clubs", href: "clubs.html" },
-        { page: "listings", label: "Transfer Market", href: "all_listings.html" },
-        { page: "dashboard", label: "Dashboard", href: "dashboard.html" }
-      ];
-
-      let html = "";
-
-      for (const btn of buttons) {
-        if (btn.page !== CURRENT_PAGE) {
-          html += `<a href="${btn.href}" class="button">${btn.label}</a>`;
-        }
-      }
-
-      if (user.email === "rotavator66@outlook.com" && CURRENT_PAGE !== "admin") {
-        html += `<a href="admin.html" class="button">GPSL Admin</a>`;
-      }
-
-      if (draftEnabled && CURRENT_PAGE !== "draftauction") {
-        html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
-      }
-
-      html += `<button id="logoutBtn" class="button">Logout</button>`;
-
-      nav.innerHTML = html;
-
-      document.getElementById("logoutBtn").onclick = async () => {
-        await supabase.auth.signOut();
-        window.location = "login.html";
-      };
-    }
-
-    /* ============================================================
-       AUTH + PAGE INIT
-       ============================================================ */
-
     document.addEventListener("DOMContentLoaded", async () => {
       const { data: { user } } = await supabase.auth.getUser();
 
@@ -392,220 +285,70 @@ a.button:hover, button.button:hover {
       }
 
       await loadGlobalSettings();
-      await buildNav(user);
+      await buildNav();
 
-      const adminEmails = ["rotavator66@outlook.com"];
-
-      if (!adminEmails.includes(user.email)) {
+      if (user.email !== "rotavator66@outlook.com") {
         window.location = "dashboard.html";
         return;
       }
 
       document.getElementById("adminPanel").style.display = "block";
+
+      await loadSettings();
+      await loadOwnerList();
     });
 
     /* ============================================================
-       SEASON ROLLOVER
+       LOAD SETTINGS
        ============================================================ */
+    async function loadSettings() {
+      const { data } = await supabase
+        .from("global_settings")
+        .select("*")
+        .eq("id", 1)
+        .single();
 
-    document.addEventListener("DOMContentLoaded", () => {
-      const modal = document.getElementById("seasonRolloverModalBackdrop");
-      const status = document.getElementById("rolloverStatus");
+      document.getElementById("transferWindowSelect").value =
+        data.transfer_window_open ? "true" : "false";
 
-      document.getElementById("rolloverBtn").onclick = () => {
-        modal.style.display = "flex";
-      };
+      document.getElementById("draftAuctionSelect").value =
+        data.draft_auction_enabled ? "true" : "false";
 
-      document.getElementById("cancelRolloverBtn").onclick = () => {
-        modal.style.display = "none";
-      };
-
-      document.getElementById("confirmRolloverBtn").onclick = async () => {
-        modal.style.display = "none";
-        status.textContent = "Processing season rollover…";
-
-        const { error } = await supabase.rpc("rollover_season");
-
-        status.textContent = error
-          ? "❌ Season rollover failed."
-          : "✅ New season created successfully!";
-      };
-    });
-
-    /* ============================================================
-       OWNER LIST LOADING
-       ============================================================ */
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      const dropdown = document.getElementById("updateOwnerSelect");
-
-      const { data: ownerData, error: ownerError } =
-        await supabase.functions.invoke("list-owners");
-
-      if (ownerError || !ownerData || !ownerData.users) {
-        dropdown.innerHTML = `<option>Error loading owners</option>`;
-        return;
+      if (data.draft_auction_enabled && data.draft_auction_start_time) {
+        const start = new Date(data.draft_auction_start_time);
+        document.getElementById("draftStartTime").textContent =
+          `Next draft window: ${start.toLocaleString("en-GB")}`;
+      } else {
+        document.getElementById("draftStartTime").textContent = "";
       }
-
-      const { data: clubs, error: clubError } = await supabase
-        .from("Clubs")
-        .select("ShortName, owner_id");
-
-      if (clubError) {
-        dropdown.innerHTML = `<option>Error loading clubs</option>`;
-        return;
-      }
-
-      dropdown.innerHTML = "";
-
-      ownerData.users.forEach((u) => {
-        const id = u.id;
-        const email = u.email;
-
-        const club = clubs.find(c => c.owner_id === id);
-        const shortName = club ? club.ShortName : "NO CLUB";
-
-        const option = document.createElement("option");
-        option.value = id;
-        option.textContent = `${shortName} — ${email}`;
-
-        dropdown.appendChild(option);
-      });
-    });
-    /* ============================================================
-       ADD OWNER
-       ============================================================ */
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const btn = document.getElementById("addOwnerBtn");
-      const status = document.getElementById("ownerStatus");
-
-      btn.onclick = async () => {
-        const email = document.getElementById("ownerEmail").value.trim();
-        const password = document.getElementById("ownerPassword").value.trim();
-        const club = document.getElementById("ownerClub").value.trim();
-
-        if (!email || !password || !club) {
-          status.textContent = "Fill all fields.";
-          return;
-        }
-
-        status.textContent = "Creating owner…";
-
-        const { error } = await supabase.functions.invoke("create-owner", {
-          body: { email, password, clubShortName: club }
-        });
-
-        status.textContent = error
-          ? "❌ " + error.message
-          : "✅ Owner created and a password‑setup email has been sent!";
-      };
-    });
+    }
 
     /* ============================================================
-       UPDATE OWNER EMAIL
+       COMPUTE NEXT DRAFT TIMES
        ============================================================ */
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const btn = document.getElementById("updateEmailBtn");
-      const status = document.getElementById("updateEmailStatus");
-
-      btn.onclick = async () => {
-        const userId = document.getElementById("updateOwnerSelect").value;
-        const newEmail = document.getElementById("newOwnerEmail").value.trim();
-
-        if (!userId || !newEmail) {
-          status.textContent = "Enter both fields.";
-          return;
-        }
-
-        status.textContent = "Updating email…";
-
-        const { error } = await supabase.functions.invoke("update-owner-email", {
-          body: { user_id: userId, new_email: newEmail }
-        });
-
-        status.textContent = error
-          ? "❌ " + error.message
-          : "✅ Email updated!";
-      };
-    });
-
-    /* ============================================================
-       RESET OWNER PASSWORD
-       ============================================================ */
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const btn = document.getElementById("resetPasswordBtn");
-      const status = document.getElementById("resetPasswordStatus");
-
-      btn.onclick = async () => {
-        const email = document.getElementById("resetOwnerEmail").value.trim();
-
-        if (!email) {
-          status.textContent = "Enter email.";
-          return;
-        }
-
-        status.textContent = "Sending reset email…";
-
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html"
-        });
-
-        status.textContent = error
-          ? "❌ " + error.message
-          : "✅ Reset email sent!";
-      };
-    });
-
-    /* ============================================================
-       DRAFT AUCTION SETTINGS — FINAL VERSION
-       ============================================================ */
-
     function computeNextDraftTimes() {
-      // Current UK time
-      const now = new Date();
-      const uk = new Intl.DateTimeFormat("en-GB", {
-        timeZone: "Europe/London",
-        year: "numeric",
-        month: "numeric",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        second: "numeric",
-        hour12: false
-      });
+      const now = getUKNow();
 
-      const parts = uk.formatToParts(now);
-      const get = (t) => parts.find(p => p.type === t).value;
+      const y = now.getUTCFullYear();
+      const m = now.getUTCMonth();
+      const d = now.getUTCDate();
+      const hh = now.getUTCHours();
 
-      const year = parseInt(get("year"));
-      const month = parseInt(get("month")) - 1;
-      const day = parseInt(get("day"));
-      const hour = parseInt(get("hour"));
+      const startDay = hh >= 18 ? d + 1 : d;
 
-      // Determine the correct start day
-      const startDay = hour >= 19 ? day + 1 : day;
+      const draftStart = new Date(Date.UTC(y, m, startDay, 18, 0, 0));
+      const cutoff = new Date(draftStart.getTime() + 24 * 3600 * 1000);
 
-      // Draft starts at 19:00 UK → 18:00 UTC
-      const draftStart = new Date(Date.UTC(year, month, startDay, 18, 0, 0, 0));
-
-      // Cutoff is next day at 18:00 UK → 17:00 UTC
-      const cutoffDate = new Date(draftStart.getTime() + 24 * 60 * 60 * 1000);
-
-      // Random finish between 18:50–18:59:59 UK → 17:50–17:59:59 UTC
       const randomMinute = Math.floor(Math.random() * 10) + 50;
       const randomSecond = Math.floor(Math.random() * 60);
 
       const randomFinish = new Date(Date.UTC(
-        cutoffDate.getUTCFullYear(),
-        cutoffDate.getUTCMonth(),
-        cutoffDate.getUTCDate(),
+        cutoff.getUTCFullYear(),
+        cutoff.getUTCMonth(),
+        cutoff.getUTCDate(),
         17,
         randomMinute,
-        randomSecond,
-        0
+        randomSecond
       ));
 
       return {
@@ -614,73 +357,47 @@ a.button:hover, button.button:hover {
       };
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
+    /* ============================================================
+       SAVE SETTINGS
+       ============================================================ */
+    document.getElementById("saveSettingsBtn").onclick = async () => {
+      const transfer_window_open =
+        document.getElementById("transferWindowSelect").value === "true";
 
-      async function loadSettings() {
-        const { data, error } = await supabase
-          .from("global_settings")
-          .select("*")
-          .eq("id", 1)
-          .single();
+      const draft_auction_enabled =
+        document.getElementById("draftAuctionSelect").value === "true";
 
-        if (error) {
-          console.error(error);
-          return;
-        }
+      let draft_random_finish_time = null;
+      let draft_auction_start_time = null;
 
-        document.getElementById("transferWindowSelect").value =
-          data.transfer_window_open ? "true" : "false";
-
-        document.getElementById("draftAuctionSelect").value =
-          data.draft_auction_enabled ? "true" : "false";
+      if (draft_auction_enabled) {
+        const times = computeNextDraftTimes();
+        draft_auction_start_time = times.draftStartISO;
+        draft_random_finish_time = times.randomFinishISO;
       }
 
-      /* ============================================================
-         SAVE SETTINGS — UK‑SAFE + SECRET FINISH TIME
-         ============================================================ */
-
-      document.getElementById("saveSettingsBtn").onclick = async () => {
-        const transfer_window_open =
-          document.getElementById("transferWindowSelect").value === "true";
-
-        const draft_auction_enabled =
-          document.getElementById("draftAuctionSelect").value === "true";
-
-        let draft_random_finish_time = null;
-        let draft_auction_start_time = null;
-
-        if (draft_auction_enabled) {
-          const times = computeNextDraftTimes();
-          draft_auction_start_time = times.draftStartISO;
-          draft_random_finish_time = times.randomFinishISO;
-        }
-
-        const { error } = await supabase.functions.invoke(
-          "update-global-settings",
-          {
-            body: {
-              transfer_window_open,
-              draft_auction_enabled,
-              draft_random_finish_time,
-              draft_auction_start_time
-            }
+      const { error } = await supabase.functions.invoke(
+        "update-global-settings",
+        {
+          body: {
+            transfer_window_open,
+            draft_auction_enabled,
+            draft_random_finish_time,
+            draft_auction_start_time
           }
-        );
+        }
+      );
 
-        document.getElementById("settingsMessage").textContent =
-          error ? "❌ " + error.message : "✅ Settings updated!";
+      document.getElementById("settingsMessage").textContent =
+        error ? "❌ " + error.message : "✅ Settings updated!";
 
-        // Reload visible start time
-        loadGlobalSettings();
-      };
-
-      loadSettings();
-    });
+      await loadGlobalSettings();
+      await loadSettings();
+    };
 
     /* ============================================================
        RESET DRAFT AUCTION
        ============================================================ */
-
     document.getElementById("resetDraftBtn").onclick = async () => {
       const status = document.getElementById("resetDraftStatus");
 
@@ -721,6 +438,136 @@ a.button:hover, button.button:hover {
       }
     };
 
+    /* ============================================================
+       SEASON ROLLOVER
+       ============================================================ */
+    document.getElementById("rolloverBtn").onclick = () => {
+      document.getElementById("seasonRolloverModalBackdrop").style.display = "flex";
+    };
+
+    document.getElementById("cancelRolloverBtn").onclick = () => {
+      document.getElementById("seasonRolloverModalBackdrop").style.display = "none";
+    };
+
+    document.getElementById("confirmRolloverBtn").onclick = async () => {
+      const modal = document.getElementById("seasonRolloverModalBackdrop");
+      const status = document.getElementById("rolloverStatus");
+
+      modal.style.display = "none";
+      status.textContent = "Processing season rollover…";
+
+      const { error } = await supabase.rpc("rollover_season");
+
+      status.textContent = error
+        ? "❌ Season rollover failed."
+        : "✅ New season created successfully!";
+    };
+
+    /* ============================================================
+       LOAD OWNER LIST
+       ============================================================ */
+    async function loadOwnerList() {
+      const dropdown = document.getElementById("updateOwnerSelect");
+
+      const { data: ownerData, error: ownerError } =
+        await supabase.functions.invoke("list-owners");
+
+      if (ownerError || !ownerData || !ownerData.users) {
+        dropdown.innerHTML = `<option>Error loading owners</option>`;
+        return;
+      }
+
+      const { data: clubs } = await supabase
+        .from("Clubs")
+        .select("ShortName, owner_id");
+
+      dropdown.innerHTML = "";
+
+      ownerData.users.forEach((u) => {
+        const club = clubs.find(c => c.owner_id === u.id);
+        const shortName = club ? club.ShortName : "NO CLUB";
+
+        const option = document.createElement("option");
+        option.value = u.id;
+        option.textContent = `${shortName} — ${u.email}`;
+
+        dropdown.appendChild(option);
+      });
+    }
+
+    /* ============================================================
+       ADD OWNER
+       ============================================================ */
+    document.getElementById("addOwnerBtn").onclick = async () => {
+      const email = document.getElementById("ownerEmail").value.trim();
+      const password = document.getElementById("ownerPassword").value.trim();
+      const club = document.getElementById("ownerClub").value.trim();
+
+      const status = document.getElementById("ownerStatus");
+
+      if (!email || !password || !club) {
+        status.textContent = "Fill all fields.";
+        return;
+      }
+
+      status.textContent = "Creating owner…";
+
+      const { error } = await supabase.functions.invoke("create-owner", {
+        body: { email, password, clubShortName: club }
+      });
+
+      status.textContent = error
+        ? "❌ " + error.message
+        : "✅ Owner created and a password‑setup email has been sent!";
+    };
+
+    /* ============================================================
+       UPDATE OWNER EMAIL
+       ============================================================ */
+    document.getElementById("updateEmailBtn").onclick = async () => {
+      const userId = document.getElementById("updateOwnerSelect").value;
+      const newEmail = document.getElementById("newOwnerEmail").value.trim();
+
+      const status = document.getElementById("updateEmailStatus");
+
+      if (!userId || !newEmail) {
+        status.textContent = "Enter both fields.";
+        return;
+      }
+
+      status.textContent = "Updating email…";
+
+      const { error } = await supabase.functions.invoke("update-owner-email", {
+        body: { user_id: userId, new_email: newEmail }
+      });
+
+      status.textContent = error
+        ? "❌ " + error.message
+        : "✅ Email updated!";
+    };
+
+    /* ============================================================
+       RESET OWNER PASSWORD
+       ============================================================ */
+    document.getElementById("resetPasswordBtn").onclick = async () => {
+      const email = document.getElementById("resetOwnerEmail").value.trim();
+      const status = document.getElementById("resetPasswordStatus");
+
+      if (!email) {
+        status.textContent = "Enter email.";
+        return;
+      }
+
+      status.textContent = "Sending reset email…";
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html"
+      });
+
+      status.textContent = error
+        ? "❌ " + error.message
+        : "✅ Reset email sent!";
+    };
   </script>
 
 </body>
