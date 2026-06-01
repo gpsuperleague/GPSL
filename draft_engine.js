@@ -1,16 +1,30 @@
 // draft_engine.js
 
-// Build a stable Date for the intended UK wall-clock time
+/* ============================================================
+   MODULE A: Supabase Client
+   ============================================================ */
+
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+
+const supabase = createClient(
+  "https://omyyogfumrjoaweuawjn.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
+);
+
+export { supabase };
+
+/* ============================================================
+   MODULE B: Time + Date Helpers
+   ============================================================ */
+
 export function makeUKDate(year, month, day, hour = 0, minute = 0, second = 0) {
   return new Date(Date.UTC(year, month, day, hour, minute, second));
 }
 
-// Small helper to validate Date objects
 export function isValidDate(d) {
   return d instanceof Date && !isNaN(d.getTime());
 }
 
-// Current time in UK (Europe/London), built from numeric parts (robust)
 export function getUKNow() {
   const now = new Date();
   const fmt = new Intl.DateTimeFormat("en-GB", {
@@ -45,7 +59,6 @@ export function getUKNow() {
   return makeUKDate(y, m, d, hh, mm, ss);
 }
 
-/* Safe draft window times that avoid invalid Date at month boundaries */
 export function getDraftWindowTimes() {
   const nowUK = getUKNow();
 
@@ -69,7 +82,6 @@ export function getDraftWindowTimes() {
   return { sevenPmYesterday, sixPmToday, sevenPmToday };
 }
 
-/* Day‑2 cutoff: tomorrow 18:00 UK (for locking NEW auctions on Day 2) */
 export function getDraftCutoff() {
   const nowUK = getUKNow();
   const y = nowUK.getFullYear();
@@ -78,7 +90,6 @@ export function getDraftCutoff() {
   return makeUKDate(y, m, d + 1, 18, 0, 0);
 }
 
-// Simple formatter you already use in countdowns
 export function formatMs(ms) {
   const total = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(total / 3600);
@@ -87,24 +98,139 @@ export function formatMs(ms) {
   return `${h}h ${m}m ${s}s`;
 }
 
-/**
- * Optional helper: classify current draft phase.
- * Returns one of:
- * "before_start", "live_until_cutoff", "pre_random",
- * "random_active", "ended"
- */
+/* ============================================================
+   MODULE C: Global Settings
+   ============================================================ */
+
+export async function loadGlobalSettings() {
+  const { data, error } = await supabase
+    .from("global_settings")
+    .select("draft_auction_enabled, draft_auction_start_time, draft_random_finish_time")
+    .eq("id", 1)
+    .single();
+
+  if (error || !data) {
+    return {
+      draftAuctionEnabled: false,
+      draftAuctionStartTime: null,
+      draftRandomFinishTime: null
+    };
+  }
+
+  return {
+    draftAuctionEnabled: data.draft_auction_enabled === true,
+    draftAuctionStartTime: data.draft_auction_start_time
+      ? new Date(data.draft_auction_start_time)
+      : null,
+    draftRandomFinishTime: data.draft_random_finish_time
+      ? new Date(data.draft_random_finish_time)
+      : null
+  };
+}
+
+/* ============================================================
+   MODULE D: Draft Phase Logic
+   ============================================================ */
+
 export function getDraftPhase(nowUK, draftAuctionStartTime, draftRandomFinishTime) {
   if (!draftAuctionStartTime || !draftRandomFinishTime) return "ended";
 
   const start = new Date(draftAuctionStartTime);
   const randomFinish = new Date(draftRandomFinishTime);
 
-  const cutoff = new Date(start.getTime() + 23 * 60 * 60 * 1000);   // Day 2, 18:00
-  const randomStart = new Date(cutoff.getTime() + 50 * 60 * 1000);  // Day 2, 18:50
+  const cutoff = new Date(start.getTime() + 23 * 60 * 60 * 1000);
+  const randomStart = new Date(cutoff.getTime() + 50 * 60 * 1000);
 
   if (nowUK < start) return "before_start";
   if (nowUK >= start && nowUK < cutoff) return "live_until_cutoff";
   if (nowUK >= cutoff && nowUK < randomStart) return "pre_random";
   if (nowUK >= randomStart && nowUK < randomFinish) return "random_active";
   return "ended";
+}
+
+/* ============================================================
+   MODULE E: Credits Logic
+   ============================================================ */
+
+export async function getDraftCredits(clubShortName, draftRandomFinishTime) {
+  const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+
+  const { data: firsts } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("direct_bid_id")
+    .eq("bidder_club_id", clubShortName)
+    .eq("is_first_draft_bid", true)
+    .gte("bid_time", sevenPmYesterday.toISOString())
+    .lt("bid_time", sixPmToday.toISOString());
+
+  const rawJoinEnd = draftRandomFinishTime;
+  const joinWindowEnd = isValidDate(rawJoinEnd) ? rawJoinEnd : sixPmToday;
+  const joinWindowEndIso = joinWindowEnd.toISOString();
+
+  const { data: joins } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("direct_bid_id")
+    .eq("bidder_club_id", clubShortName)
+    .eq("is_draft_join", true)
+    .eq("draft_join_consumed", true)
+    .gte("bid_time", sevenPmYesterday.toISOString())
+    .lt("bid_time", joinWindowEndIso);
+
+  const earned = firsts ? firsts.length * 2 : 0;
+  const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
+
+  return { earned, used, credits: earned - used };
+}
+
+export async function getDraftCreditsCount(clubShortName, draftRandomFinishTime) {
+  const { credits } = await getDraftCredits(clubShortName, draftRandomFinishTime);
+  return credits;
+}
+
+/* ============================================================
+   MODULE F: Bidding Eligibility
+   ============================================================ */
+
+export async function canClubBidOnPlayerDraft({
+  konamiId,
+  buyerShortName,
+  draftAuctionEnabled,
+  draftAuctionStartTime,
+  draftRandomFinishTime
+}) {
+  const nowUK = getUKNow();
+
+  if (!draftAuctionEnabled) return false;
+  if (!buyerShortName) return false;
+  if (!draftAuctionStartTime || !draftRandomFinishTime) return false;
+
+  if (nowUK < draftAuctionStartTime) return false;
+  if (nowUK >= draftRandomFinishTime) return false;
+
+  const cutoff = getDraftCutoff();
+
+  const { data: existing } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("bidder_club_id")
+    .eq("direct_bid_id", konamiId)
+    .eq("bidder_club_id", buyerShortName)
+    .eq("is_direct", true);
+
+  if (existing && existing.length) return true;
+
+  const { data: allBids } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("bidder_club_id")
+    .eq("direct_bid_id", konamiId)
+    .eq("is_direct", true);
+
+  const isFirstBid = !allBids || allBids.length === 0;
+
+  if (isFirstBid) {
+    if (nowUK >= cutoff) return false;
+    return true;
+  }
+
+  const credits = await getDraftCreditsCount(buyerShortName, draftRandomFinishTime);
+  return credits > 0;
 }
