@@ -556,25 +556,29 @@
         : "✅ Email updated!";
     };
 
-/* ============================================================
-   RESET OWNER PASSWORD
-   ============================================================ */
-document.getElementById("resetPasswordBtn").onclick = async () => {
-  const email = document.getElementById("resetOwnerEmail").value.trim();
-  const status = document.getElementById("resetPasswordStatus");
+    /* ============================================================
+       RESET OWNER PASSWORD
+       ============================================================ */
+    document.getElementById("resetPasswordBtn").onclick = async () => {
+      const email = document.getElementById("resetOwnerEmail").value.trim();
+      const status = document.getElementById("resetPasswordStatus");
 
-  if (!email) {
-    status.textContent = "Enter email.";
-    return;
-  }
+      if (!email) {
+        status.textContent = "Enter email.";
+        return;
+      }
 
-  status.textContent = "Sending reset email…";
+      status.textContent = "Sending reset email…";
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html"
-  });
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html"
+      });
 
-  status.textContent = error
-    ? "❌ " + error.message
-    : "✅ Reset email sent!";
-};
+      status.textContent = error
+        ? "❌ " + error.message
+        : "✅ Reset email sent!";
+    };
+  </script>
+
+</body>
+</html>
