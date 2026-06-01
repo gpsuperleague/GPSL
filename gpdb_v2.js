@@ -4,12 +4,15 @@
 
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
-// Import shared countdown helpers and global settings loader from global.js
+// Import shared draft engine helpers from draft_engine.js
 import {
-  loadGlobalSettings as loadGlobalSettingsGlobal,
-  startDraftCountdown,
-  stopDraftCountdown
-} from "./global.js";
+  loadGlobalSettings as loadGlobalSettingsEngine,
+  getUKNow,
+  makeUKDate,
+  isValidDate,
+  getDraftWindowTimes,
+  getDraftCutoff
+} from "./draft_engine.js";
 
 const supabase = createClient(
   'https://omyyogfumrjoaweuawjn.supabase.co',
@@ -18,102 +21,6 @@ const supabase = createClient(
 
 let draftAuctionStartTime = null;
 let draftRandomFinishTime = null;
-
-/* ============================================================
-   TIME HELPERS – REAL UK TIME, INDEPENDENT OF USER TIMEZONE
-   ============================================================ */
-
-// Current time in UK (Europe/London), built from numeric parts (robust)
-function getUKNow() {
-  const now = new Date();
-  const fmt = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    second: "numeric",
-    hour12: false
-  });
-
-  const parts = fmt.formatToParts(now);
-  const map = {};
-  parts.forEach(p => {
-    if (p.type && p.value) map[p.type] = p.value;
-  });
-
-  const y = Number(map.year);
-  const m = Number(map.month) - 1; // formatToParts month is 1-12; makeUKDate expects 0-11
-  const d = Number(map.day);
-  const hh = Number(map.hour);
-  const mm = Number(map.minute);
-  const ss = Number(map.second);
-
-  // Fallback guard: if any part is invalid, return local Date() as last resort
-  if ([y, m, d, hh, mm, ss].some(v => !isFinite(v))) {
-    console.warn("getUKNow: failed to parse parts, falling back to local Date()");
-    return new Date();
-  }
-
-  return makeUKDate(y, m, d, hh, mm, ss);
-}
-
-// Build a stable Date for the intended UK wall-clock time
-function makeUKDate(year, month, day, hour = 0, minute = 0, second = 0) {
-  return new Date(Date.UTC(year, month, day, hour, minute, second));
-}
-
-// Small helper to validate Date objects
-function isValidDate(d) {
-  return d instanceof Date && !isNaN(d.getTime());
-}
-
-function formatLocalTime(dateObj) {
-  if (!isValidDate(dateObj)) return "";
-  return dateObj.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false
-  });
-}
-
-/* Safe draft window times that avoid invalid Date at month boundaries */
-function getDraftWindowTimes() {
-  const nowUK = getUKNow();
-
-  const y = nowUK.getFullYear();
-  const m = nowUK.getMonth();
-  const d = nowUK.getDate();
-
-  // Build a safe "today" at midnight UK
-  const todayMidnight = makeUKDate(y, m, d, 0, 0, 0);
-
-  // Subtract 24 hours to get yesterday safely
-  const yesterdayMidnight = new Date(todayMidnight.getTime() - 24 * 60 * 60 * 1000);
-
-  // Build 19:00 yesterday using the safe date
-  const sevenPmYesterday = makeUKDate(
-    yesterdayMidnight.getUTCFullYear(),
-    yesterdayMidnight.getUTCMonth(),
-    yesterdayMidnight.getUTCDate(),
-    19, 0, 0
-  );
-
-  const sixPmToday = makeUKDate(y, m, d, 18, 0, 0);
-  const sevenPmToday = makeUKDate(y, m, d, 19, 0, 0);
-
-  return { sevenPmYesterday, sixPmToday, sevenPmToday };
-}
-
-/* Day‑2 cutoff: tomorrow 18:00 UK (for locking NEW auctions on Day 2) */
-function getDraftCutoff() {
-  const nowUK = getUKNow();
-  const y = nowUK.getFullYear();
-  const m = nowUK.getMonth();
-  const d = nowUK.getDate();
-  return makeUKDate(y, m, d + 1, 18, 0, 0);
-}
 
 /* ============================================================
    LOCAL DRAFT COUNTDOWN ENGINE (GPDB VIEW)
@@ -134,7 +41,6 @@ function updateDraftCountdown() {
 
   if (!container || !el || !localEl) return;
 
-  // Hide/show helpers
   function hideAll() {
     container.style.display = "none";
   }
@@ -142,26 +48,22 @@ function updateDraftCountdown() {
     container.style.display = "flex";
   }
 
-  // Must have valid times
   if (!draftAuctionStartTime || !draftRandomFinishTime) {
     hideAll();
     return;
   }
 
   const nowUK = getUKNow();
-  const start = new Date(draftAuctionStartTime);       // Day 1, 19:00
+  const start = new Date(draftAuctionStartTime);        // Day 1, 19:00
   const randomFinish = new Date(draftRandomFinishTime); // Secret random finish
 
-  // Stage boundaries (same as Dashboard)
-  const cutoff = new Date(start.getTime() + 23 * 60 * 60 * 1000);      // 18:00 Day 2
-  const randomStart = new Date(cutoff.getTime() + 50 * 60 * 1000);     // 18:50 Day 2
+  const cutoff = new Date(start.getTime() + 23 * 60 * 60 * 1000);   // 18:00 Day 2
+  const randomStart = new Date(cutoff.getTime() + 50 * 60 * 1000);  // 18:50 Day 2
 
   let line1 = "";
   let line2 = "";
 
-  /* ===============================
-     STAGE 1 — BEFORE START (→19:00)
-     =============================== */
+  // STAGE 1 — BEFORE START
   if (nowUK < start) {
     const ms = start.getTime() - nowUK.getTime();
     line1 = "Draft Auction Starts in: " + formatMs(ms);
@@ -178,9 +80,7 @@ function updateDraftCountdown() {
     return;
   }
 
-  /* ===============================
-     STAGE 2 — LIVE UNTIL 18:00
-     =============================== */
+  // STAGE 2 — LIVE UNTIL 18:00
   if (nowUK >= start && nowUK < cutoff) {
     const ms = cutoff.getTime() - nowUK.getTime();
     line1 = "Auction cutoff in: " + formatMs(ms);
@@ -197,9 +97,7 @@ function updateDraftCountdown() {
     return;
   }
 
-  /* ===============================
-     STAGE 3 — 18:00 → 18:50
-     =============================== */
+  // STAGE 3 — 18:00 → 18:50
   if (nowUK >= cutoff && nowUK < randomStart) {
     const ms = randomStart.getTime() - nowUK.getTime();
     line1 = "Random timer begins in: " + formatMs(ms);
@@ -216,9 +114,7 @@ function updateDraftCountdown() {
     return;
   }
 
-  /* ===============================
-     STAGE 4 — RANDOM WINDOW ACTIVE
-     =============================== */
+  // STAGE 4 — RANDOM WINDOW ACTIVE
   if (nowUK >= randomStart && nowUK < randomFinish) {
     const elapsed = nowUK.getTime() - randomStart.getTime();
     line1 = "Random finish window active — draft may end at any moment";
@@ -230,9 +126,7 @@ function updateDraftCountdown() {
     return;
   }
 
-  /* ===============================
-     STAGE 5 — DRAFT ENDED
-     =============================== */
+  // STAGE 5 — DRAFT ENDED
   line1 = "Draft auction has ended";
   el.textContent = line1;
   localEl.textContent = "";
@@ -284,7 +178,6 @@ async function loadDraftCreditsForOwner() {
     const firstCount = firsts ? firsts.length : 0;
     const earned = firstCount * 2;
 
-    // Guard draftRandomFinishTime to avoid invalid Date
     const rawJoinEnd = draftRandomFinishTime;
     const joinWindowEnd = isValidDate(rawJoinEnd) ? rawJoinEnd : sixPmToday;
 
@@ -298,7 +191,6 @@ async function loadDraftCreditsForOwner() {
       .lt("bid_time", joinWindowEnd.toISOString());
 
     const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
-
     const remaining = credits;
 
     const panel = document.getElementById("draftCreditsPanel");
@@ -318,7 +210,6 @@ async function loadDraftCreditsForOwner() {
 async function getDraftCreditsForGPDB(clubShortName) {
   const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
-  // Guard draftRandomFinishTime to avoid invalid Date
   const rawJoinEnd = draftRandomFinishTime;
   const joinWindowEnd = isValidDate(rawJoinEnd) ? rawJoinEnd : sixPmToday;
 
@@ -330,7 +221,9 @@ async function getDraftCreditsForGPDB(clubShortName) {
     .gte("bid_time", sevenPmYesterday.toISOString())
     .lt("bid_time", sixPmToday.toISOString());
 
-  const joinWindowEndIso = isValidDate(joinWindowEnd) ? joinWindowEnd.toISOString() : sixPmToday.toISOString();
+  const joinWindowEndIso = isValidDate(joinWindowEnd)
+    ? joinWindowEnd.toISOString()
+    : sixPmToday.toISOString();
 
   const { data: joins } = await supabase
     .from("Player_Transfer_Bids")
@@ -397,7 +290,6 @@ document.addEventListener("DOMContentLoaded", () => {
      RESTORE MULTI-FILTER CLICK HANDLERS
      ============================================================ */
 
-  // Clicking a filter opens it (and closes others)
   document.addEventListener("click", () => {
     closeAllMultiFilters();
   });
@@ -436,52 +328,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let CLUB_NAME_MAP = {};
 
-  /* --- START: loadUser --- */
   async function loadUser() {
     const { data: { user } } = await supabase.auth.getUser();
     CURRENT_USER = user;
   }
-  /* --- END: loadUser --- */
 
-  /* --- START: loadGlobalSettings --- */
-  async function loadGlobalSettings() {
-    const { data, error } = await supabase
-      .from("global_settings")
-      .select("*")
-      .eq("id", 1)
-      .single();
-
-    if (error || !data) {
-      console.error("Failed to load global settings:", error);
-      return {
-        transferWindowOpen: false,
-        draftAuctionEnabled: false,
-        draftAuctionStartTime: null,
-        draftRandomFinishTime: null
-      };
-    }
-
-    // Parse and validate date fields
-    function parseSafe(dateValue) {
-      if (!dateValue) return null;
-      try {
-        const d = new Date(dateValue);
-        return isValidDate(d) ? d : null;
-      } catch (e) {
-        return null;
-      }
-    }
-
-    return {
-      transferWindowOpen: data.transfer_window_open,
-      draftAuctionEnabled: data.draft_auction_enabled,
-      draftAuctionStartTime: parseSafe(data.draft_auction_start_time),
-      draftRandomFinishTime: parseSafe(data.draft_random_finish_time)
-    };
-  }
-  /* --- END: loadGlobalSettings --- */
-
-  /* --- START: loadClubNames --- */
   async function loadClubNames() {
     const { data, error } = await supabase
       .from("Clubs")
@@ -500,13 +351,11 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
-  /* --- END: loadClubNames --- */
 
   /* ============================================================
      MODULE E: Data Loading
      ============================================================ */
 
-  /* --- START: loadTotalCount --- */
   async function loadTotalCount() {
     const { count } = await supabase
       .from("Players")
@@ -514,7 +363,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     TOTAL_ROWS = count;
   }
-  /* --- END: loadTotalCount --- */
 
   function buildContractedTeamOrClause(values) {
     const hasFA = values.includes("FREE AGENT");
@@ -534,7 +382,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return parts.length ? parts.join(",") : null;
   }
 
-  /* --- START: loadPage --- */
   async function loadPage(page = 1) {
     CURRENT_PAGE = page;
 
@@ -577,7 +424,7 @@ document.addEventListener("DOMContentLoaded", () => {
           .order("market_value", { ascending: CURRENT_SORT_DIR === "asc" })
           .order("Rating", { ascending: false });
       } else if (CURRENT_SORT_COLUMN === "Position") {
-        // No server-side order for Position; we'll sort client-side
+        // client-side sort
       } else {
         query = query.order(CURRENT_SORT_COLUMN, {
           ascending: CURRENT_SORT_DIR === "asc"
@@ -624,7 +471,6 @@ document.addEventListener("DOMContentLoaded", () => {
     renderTable(filtered);
     renderPagination();
   }
-  /* --- END: loadPage --- */
 
   function formatHeader(col) {
     if (col === "market_value") return "Market Value";
@@ -636,7 +482,6 @@ document.addEventListener("DOMContentLoaded", () => {
      MODULE F: Rendering (with Bid column)
      ============================================================ */
 
-  /* --- START: renderTable --- */
   function renderTable(players) {
     const tableHead = document.getElementById("tableHead");
     const tableBody = document.getElementById("tableBody");
@@ -650,7 +495,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tableHead.innerHTML = `
       <tr>
         <th></th>
-   ${COLUMNS.filter(col => col !== "Konami_ID")
+        ${COLUMNS.filter(col => col !== "Konami_ID")
           .map(col => {
             let cls = "";
             if (CURRENT_SORT_COLUMN === col) {
@@ -693,7 +538,6 @@ document.addEventListener("DOMContentLoaded", () => {
               } else if (nowLocal >= cutoff) {
                 bidCell = `<span class="locked-msg">Draft Locked</span>`;
               } else {
-                // >>> PATCH: free agent button wording
                 bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Draft Offer</button>`;
               }
             } else {
@@ -770,7 +614,6 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.addEventListener("click", () => openMakeOfferModal(btn.dataset.playerId));
     });
   }
-  /* --- END: renderTable --- */
 
   /* ============================================================
      MODULE G: Offer Modal + Draft Helpers
@@ -778,7 +621,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let CURRENT_OFFER_PLAYER = null;
 
-  /* --- START: openMakeOfferModal --- */
   function openMakeOfferModal(konamiId) {
     const row = document.querySelector(`tr[data-konami-id="${konamiId}"]`);
     if (!row) return;
@@ -791,11 +633,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const playstyle = cells[5].textContent;
     const rating = cells[4].textContent;
 
-    // Correct: market_value column (index 8)
     const mvText = cells[8].textContent;
     const mv = Number(String(mvText).replace(/[^\d]/g, "")) || 0;
 
-    // Work out seller club from the table cell
     const rawClubText = row.querySelectorAll("td")[9].textContent.trim();
     const sellerClub =
       !rawClubText || rawClubText === "FREE AGENT" ? null : rawClubText;
@@ -810,7 +650,6 @@ document.addEventListener("DOMContentLoaded", () => {
       Contracted_Team: sellerClub
     };
 
-    // >>> PATCH: modal wording for draft vs normal
     const confirmBtn = document.getElementById("confirmOfferBtn");
     if (!sellerClub) {
       confirmBtn.textContent = "Submit opening draft bid";
@@ -831,7 +670,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const backdrop = document.getElementById("make-offer-modal-backdrop");
     backdrop.style.display = "flex";
   }
-  /* --- END: openMakeOfferModal --- */
+
   function closeMakeOfferModal() {
     const backdrop = document.getElementById("make-offer-modal-backdrop");
     backdrop.style.display = "none";
@@ -843,9 +682,7 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   document.getElementById("confirmOfferBtn").onclick = async () => {
-    // >>> PATCH START: trace confirm handler and draft path
     console.log("CONFIRM OFFER CLICKED", CURRENT_OFFER_PLAYER);
-    // >>> PATCH END
 
     const nowLocal = getUKNow();
 
@@ -912,7 +749,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (!sellerClub) {
-      // >>> PATCH START: trace draft bid result
       console.log("FREE AGENT DRAFT PATH: calling submitDraftBid with", {
         player: CURRENT_OFFER_PLAYER,
         offer,
@@ -920,7 +756,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       const result = await submitDraftBid(CURRENT_OFFER_PLAYER, offer, myClub);
       console.log("submitDraftBid RESULT:", result);
-      // >>> PATCH END
 
       if (!result.ok) {
         errorBox.textContent = result.msg;
@@ -957,7 +792,6 @@ document.addEventListener("DOMContentLoaded", () => {
      DRAFT AUCTION HELPERS
      ============================================================ */
 
-  /* --- START: getDraftAuctionTimesForNewListing --- */
   function getDraftAuctionTimesForNewListing() {
     const nowUK = getUKNow();
 
@@ -965,23 +799,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const m = nowUK.getMonth();
     const d = nowUK.getDate();
 
-    // Start today at 19:00 UK
     const sevenPmToday = makeUKDate(y, m, d, 19, 0, 0);
-
-    // Tomorrow at 18:50 UK
     const baseEnd = makeUKDate(y, m, d + 1, 18, 50, 0);
 
-    // Add 0–599 random seconds
     const extraSeconds = Math.floor(Math.random() * 600);
     const end = new Date(baseEnd.getTime() + extraSeconds * 1000);
 
     return { start: sevenPmToday, end };
   }
-  /* --- END: getDraftAuctionTimesForNewListing --- */
 
-  /* --- START: ensureDraftListingForPlayer --- */
   async function ensureDraftListingForPlayer(player) {
-    // >>> PATCH START: trace + use numeric player_id
     const konamiId = Number(player.Konami_ID);
     console.log("ensureDraftListingForPlayer START for", konamiId);
 
@@ -1031,11 +858,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     console.log("ensureDraftListingForPlayer END OK listingId =", listing.id);
     return { ok: true, listingId: listing.id };
-    // >>> PATCH END
   }
-  /* --- END: ensureDraftListingForPlayer --- */
 
-  /* --- START: insertDraftBid --- */
   async function insertDraftBid(player, amount, club, isFirst, isJoin, consumeJoin, listingId) {
     const { data, error } = await supabase
       .from("Player_Transfer_Bids")
@@ -1060,15 +884,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return { ok: true, bid: data };
   }
-  /* --- END: insertDraftBid --- */
 
-  /* --- START: submitDraftBid --- */
   async function submitDraftBid(player, offerAmount, buyerShortName) {
-    // >>> PATCH START: trace submitDraftBid flow
     console.log("submitDraftBid START", { player, offerAmount, buyerShortName });
 
     const nowLocal = getUKNow();
-    const cutoff = getDraftCutoff();   // Day‑2 18:00 cutoff
+    const cutoff = getDraftCutoff();
     const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
     console.log("submitDraftBid nowLocal =", nowLocal, "cutoff =", cutoff, {
@@ -1076,13 +897,11 @@ document.addEventListener("DOMContentLoaded", () => {
       sixPmToday
     });
 
-    // 1. Draft must have started
     if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
       console.log("submitDraftBid blocked: draft not started");
       return { ok: false, msg: "Draft auction has not started yet." };
     }
 
-    // 2. Load existing bids ONCE
     const { data: existing, error: existingErr } = await supabase
       .from("Player_Transfer_Bids")
       .select("bidder_club_id")
@@ -1097,7 +916,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     console.log("submitDraftBid isFirstBid =", isFirstBid, "isJoining =", isJoining);
 
-    // 3. NEW AUCTIONS LOCK at Day‑2 18:00
     if (isFirstBid && nowLocal >= cutoff) {
       console.log("submitDraftBid blocked: new auctions locked");
       return {
@@ -1106,7 +924,6 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     }
 
-    // 4. Ensure listing exists
     const listingResult = await ensureDraftListingForPlayer(player);
     console.log("submitDraftBid listingResult =", listingResult);
     if (!listingResult.ok) return listingResult;
@@ -1116,11 +933,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let bidResult;
 
-    // 5. JOINING an existing auction
     if (isJoining) {
       console.log("submitDraftBid: JOINING existing auction");
 
-      // Check if this club already paid the join fee
       const { data: priorJoin, error: priorJoinErr } = await supabase
         .from("Player_Transfer_Bids")
         .select("bid_id")
@@ -1131,18 +946,16 @@ document.addEventListener("DOMContentLoaded", () => {
       console.log("submitDraftBid priorJoin =", priorJoin, "error =", priorJoinErr);
 
       if (priorJoin && priorJoin.length > 0) {
-        // Already joined → no credit consumed
         bidResult = await insertDraftBid(
           player,
           offerAmount,
           buyerShortName,
-          false,   // isFirst
-          true,    // isJoin
-          false,   // consumeJoin
+          false,
+          true,
+          false,
           listingId
         );
       } else {
-        // First join → must have credits
         const credits = await getDraftCreditsForGPDB(buyerShortName);
         console.log("submitDraftBid credits =", credits);
 
@@ -1155,23 +968,22 @@ document.addEventListener("DOMContentLoaded", () => {
           player,
           offerAmount,
           buyerShortName,
-          false,   // isFirst
-          true,    // isJoin
-          true,    // consumeJoin
+          false,
+          true,
+          true,
           listingId
         );
       }
 
     } else {
-      // 6. FIRST BID (creates the auction)
       console.log("submitDraftBid: FIRST BID path");
       bidResult = await insertDraftBid(
         player,
         offerAmount,
         buyerShortName,
-        true,    // isFirst
-        false,   // isJoin
-        false,   // consumeJoin
+        true,
+        false,
+        false,
         listingId
       );
     }
@@ -1182,11 +994,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     console.log("submitDraftBid END OK");
     return { ok: true };
-    // >>> PATCH END
   }
-  /* --- END: submitDraftBid --- */
 
-  /* --- START: loadActiveDraftListings --- */
   async function loadActiveDraftListings() {
     const { data, error } = await supabase
       .from("Player_Transfer_Listings")
@@ -1204,7 +1013,6 @@ document.addEventListener("DOMContentLoaded", () => {
       (data || []).map(row => String(row.player_id).trim())
     );
   }
-  /* --- END: loadActiveDraftListings --- */
 
   document.querySelectorAll(".inc-btn, .dec-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -1504,10 +1312,9 @@ document.addEventListener("DOMContentLoaded", () => {
   async function init() {
     await loadUser();
 
-    // Load global settings from global.js
-    GLOBAL_SETTINGS = await loadGlobalSettingsGlobal();
+    // Load global settings from draft_engine.js
+    GLOBAL_SETTINGS = await loadGlobalSettingsEngine();
 
-    // Map BOTH naming schemes (old + new) so GPDB always works
     draftAuctionStartTime =
       GLOBAL_SETTINGS.draftAuctionStartTime ||
       GLOBAL_SETTINGS.draftStart ||
@@ -1522,7 +1329,6 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("DEBUG draftAuctionStartTime =", draftAuctionStartTime);
     console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
 
-    // Start local live countdown (independent of global.js)
     setInterval(updateDraftCountdown, 1000);
     updateDraftCountdown();
 
@@ -1540,4 +1346,3 @@ document.addEventListener("DOMContentLoaded", () => {
   init();
 
 }); // end DOMContentLoaded
-
