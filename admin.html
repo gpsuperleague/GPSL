@@ -324,41 +324,40 @@
     }
 
     /* ============================================================
-       COMPUTE NEXT DRAFT TIMES
+       COMPUTE NEXT DRAFT TIMES (CORRECT 19:00 UK LOGIC)
        ============================================================ */
     function computeNextDraftTimes() {
-      const now = getUKNow();
+      const now = getUKNow(); // UK-local time
 
-      const y = now.getUTCFullYear();
-      const m = now.getUTCMonth();
-      const d = now.getUTCDate();
-      const hh = now.getUTCHours();
+      const y = now.getFullYear();
+      const m = now.getMonth();
+      const d = now.getDate();
+      const hh = now.getHours();
 
-      const startDay = hh >= 18 ? d + 1 : d;
+      const startDay = hh >= 19 ? d + 1 : d;
 
-      const draftStart = new Date(Date.UTC(y, m, startDay, 18, 0, 0));
-      const cutoff = new Date(draftStart.getTime() + 24 * 3600 * 1000);
+      const draftStartLocal = new Date(y, m, startDay, 19, 0, 0);
 
-      const randomMinute = Math.floor(Math.random() * 10) + 50;
+      const randomMinute = 50 + Math.floor(Math.random() * 10);
       const randomSecond = Math.floor(Math.random() * 60);
 
-      const randomFinish = new Date(Date.UTC(
-        cutoff.getUTCFullYear(),
-        cutoff.getUTCMonth(),
-        cutoff.getUTCDate(),
-        17,
+      const randomFinishLocal = new Date(
+        y,
+        m,
+        startDay + 1,
+        18,
         randomMinute,
         randomSecond
-      ));
+      );
 
       return {
-        draftStartISO: draftStart.toISOString(),
-        randomFinishISO: randomFinish.toISOString()
+        draftStartISO: draftStartLocal.toISOString(),
+        randomFinishISO: randomFinishLocal.toISOString()
       };
     }
 
     /* ============================================================
-       SAVE SETTINGS
+       SAVE SETTINGS (ONLY GENERATE TIMES WHEN ENABLING)
        ============================================================ */
     document.getElementById("saveSettingsBtn").onclick = async () => {
       const transfer_window_open =
@@ -367,13 +366,24 @@
       const draft_auction_enabled =
         document.getElementById("draftAuctionSelect").value === "true";
 
-      let draft_random_finish_time = null;
-      let draft_auction_start_time = null;
+      const { data: current } = await supabase
+        .from("global_settings")
+        .select("draft_auction_enabled, draft_auction_start_time, draft_random_finish_time")
+        .eq("id", 1)
+        .single();
 
-      if (draft_auction_enabled) {
+      let draft_auction_start_time = current?.draft_auction_start_time || null;
+      let draft_random_finish_time = current?.draft_random_finish_time || null;
+
+      if (draft_auction_enabled && !current?.draft_auction_enabled) {
         const times = computeNextDraftTimes();
         draft_auction_start_time = times.draftStartISO;
         draft_random_finish_time = times.randomFinishISO;
+      }
+
+      if (!draft_auction_enabled) {
+        draft_auction_start_time = null;
+        draft_random_finish_time = null;
       }
 
       const { error } = await supabase.functions.invoke(
@@ -389,7 +399,7 @@
       );
 
       document.getElementById("settingsMessage").textContent =
-        error ? "❌ " + error.message : "✅ Settings updated!";
+        error ? "❌ " + (error.message || "Error updating settings") : "✅ Settings updated!";
 
       await loadGlobalSettings();
       await loadSettings();
@@ -546,29 +556,25 @@
         : "✅ Email updated!";
     };
 
-    /* ============================================================
-       RESET OWNER PASSWORD
-       ============================================================ */
-    document.getElementById("resetPasswordBtn").onclick = async () => {
-      const email = document.getElementById("resetOwnerEmail").value.trim();
-      const status = document.getElementById("resetPasswordStatus");
+/* ============================================================
+   RESET OWNER PASSWORD
+   ============================================================ */
+document.getElementById("resetPasswordBtn").onclick = async () => {
+  const email = document.getElementById("resetOwnerEmail").value.trim();
+  const status = document.getElementById("resetPasswordStatus");
 
-      if (!email) {
-        status.textContent = "Enter email.";
-        return;
-      }
+  if (!email) {
+    status.textContent = "Enter email.";
+    return;
+  }
 
-      status.textContent = "Sending reset email…";
+  status.textContent = "Sending reset email…";
 
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html"
-      });
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: "https://gpsuperleague.github.io/GPSL/reset_password.html"
+  });
 
-      status.textContent = error
-        ? "❌ " + error.message
-        : "✅ Reset email sent!";
-    };
-  </script>
-
-</body>
-</html>
+  status.textContent = error
+    ? "❌ " + error.message
+    : "✅ Reset email sent!";
+};
