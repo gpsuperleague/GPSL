@@ -184,163 +184,31 @@
 
   <script type="module">
     /* ============================================================
-       MODULE A: Supabase + Global State
+       IMPORT SHARED ENGINE
        ============================================================ */
 
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+    import {
+      supabase,
+      getUKNow,
+      loadGlobalSettings,
+      getDraftPhase,
+      getDraftCredits,
+      getDraftCreditsCount,
+      canClubBidOnPlayerDraft
+    } from "./draft_engine.js";
 
-    const supabase = createClient(
-      "https://omyyogfumrjoaweuawjn.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
-    );
-
-    window.supabase = supabase;
+    /* ============================================================
+       MODULE A: Global State
+       ============================================================ */
 
     let buyerShortName = null;
-    let draftEnabled = false;
 
+    let draftEnabled = false;
     let draftAuctionStartTimeUK = null;
     let randomFinishTimeUK = null;
 
-    let draftAuctionStartTimeDisplay = null;
-    let randomFinishTimeDisplay = null;
-
     /* ============================================================
-       MODULE B: Time Helpers (match GPDB)
-       ============================================================ */
-
-    // Current time in UK (Europe/London), robust
-    function getUKNow() {
-      const now = new Date();
-      const fmt = new Intl.DateTimeFormat("en-GB", {
-        timeZone: "Europe/London",
-        year: "numeric",
-        month: "numeric",
-        day: "numeric",
-        hour: "numeric",
-        minute: "numeric",
-        second: "numeric",
-        hour12: false
-      });
-
-      const parts = fmt.formatToParts(now);
-      const map = {};
-      parts.forEach(p => {
-        if (p.type && p.value) map[p.type] = p.value;
-      });
-
-      const y = Number(map.year);
-      const m = Number(map.month) - 1;
-      const d = Number(map.day);
-      const hh = Number(map.hour);
-      const mm = Number(map.minute);
-      const ss = Number(map.second);
-
-      if ([y, m, d, hh, mm, ss].some(v => !isFinite(v))) {
-        console.warn("getUKNow: fallback to local Date()");
-        return new Date();
-      }
-
-      return makeUKDate(y, m, d, hh, mm, ss);
-    }
-
-    function makeUKDate(year, month, day, hour = 0, minute = 0, second = 0) {
-      return new Date(Date.UTC(year, month, day, hour, minute, second));
-    }
-
-    function isValidDate(d) {
-      return d instanceof Date && !isNaN(d.getTime());
-    }
-
-    function getDraftWindowTimes() {
-      const nowUK = getUKNow();
-
-      const y = nowUK.getFullYear();
-      const m = nowUK.getMonth();
-      const d = nowUK.getDate();
-
-      const todayMidnight = makeUKDate(y, m, d, 0, 0, 0);
-      const yesterdayMidnight = new Date(todayMidnight.getTime() - 24 * 60 * 60 * 1000);
-
-      const sevenPmYesterday = makeUKDate(
-        yesterdayMidnight.getUTCFullYear(),
-        yesterdayMidnight.getUTCMonth(),
-        yesterdayMidnight.getUTCDate(),
-        19, 0, 0
-      );
-
-      const sixPmToday = makeUKDate(y, m, d, 18, 0, 0);
-      const sevenPmToday = makeUKDate(y, m, d, 19, 0, 0);
-
-      return { sevenPmYesterday, sixPmToday, sevenPmToday };
-    }
-
-    // Day‑2 cutoff: tomorrow 18:00 UK (for locking NEW auctions)
-    function getDraftCutoff() {
-      const nowUK = getUKNow();
-      const y = nowUK.getFullYear();
-      const m = nowUK.getMonth();
-      const d = nowUK.getDate();
-      return makeUKDate(y, m, d + 1, 18, 0, 0);
-    }
-
-    /* ============================================================
-       MODULE C: Global Settings Loader
-       ============================================================ */
-
-    async function loadGlobalSettings() {
-      const { data, error } = await supabase
-        .from("global_settings")
-        .select("draft_auction_enabled, draft_auction_start_time, draft_random_finish_time")
-        .eq("id", 1)
-        .single();
-
-      const statusEl = document.getElementById("draftStatus");
-
-      if (error || !data) {
-        draftEnabled = false;
-        draftAuctionStartTimeUK = null;
-        randomFinishTimeUK = null;
-        draftAuctionStartTimeDisplay = null;
-        randomFinishTimeDisplay = null;
-        statusEl.textContent = "Draft auction is currently disabled.";
-        return;
-      }
-
-      draftEnabled = data.draft_auction_enabled === true;
-
-      if (data.draft_auction_start_time) {
-        draftAuctionStartTimeDisplay = new Date(data.draft_auction_start_time);
-        draftAuctionStartTimeUK = new Date(data.draft_auction_start_time);
-      } else {
-        draftAuctionStartTimeDisplay = null;
-        draftAuctionStartTimeUK = null;
-      }
-
-      if (data.draft_random_finish_time) {
-        randomFinishTimeDisplay = new Date(data.draft_random_finish_time);
-        randomFinishTimeUK = new Date(data.draft_random_finish_time);
-      } else {
-        randomFinishTimeDisplay = null;
-        randomFinishTimeUK = null;
-      }
-
-      const nowUK = getUKNow();
-
-      if (!draftEnabled) {
-        statusEl.textContent = "Draft auction is currently disabled.";
-      } else if (draftAuctionStartTimeUK && nowUK < draftAuctionStartTimeUK) {
-        statusEl.textContent = "Draft auction has not started yet.";
-      } else if (randomFinishTimeUK && nowUK >= randomFinishTimeUK) {
-        statusEl.textContent = "Draft auction has ended. Results are final.";
-      } else {
-        statusEl.textContent =
-          "Draft auction is active. It will end at a random time between 18:50 and 19:00 UK (shown in your local time on player pages).";
-      }
-    }
-
-    /* ============================================================
-       MODULE D: Navigation
+       MODULE B: Navigation
        ============================================================ */
 
     async function buildNav(user) {
@@ -373,7 +241,7 @@
     }
 
     /* ============================================================
-       MODULE E: Owner Club ShortName
+       MODULE C: Owner Club ShortName
        ============================================================ */
 
     async function loadBuyerClubShortName(authId) {
@@ -387,109 +255,30 @@
     }
 
     /* ============================================================
-       MODULE F: Draft Credits (match GPDB window logic)
+       MODULE D: Draft Credits Panel
        ============================================================ */
 
-    async function loadDraftCreditsForOwner() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        const { data: club } = await supabase
-          .from("Clubs")
-          .select("ShortName")
-          .eq("owner_id", user.id)
-          .single();
-
-        if (!club) return;
-
-        const short = club.ShortName;
-
-        const { data: settings } = await supabase
-          .from("global_settings")
-          .select("draft_auction_enabled")
-          .eq("id", 1)
-          .single();
-
-        if (!settings?.draft_auction_enabled) {
-          document.getElementById("creditPanel").textContent = "";
-          return;
-        }
-
-        const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
-
-        const { data: firsts } = await supabase
-          .from("Player_Transfer_Bids")
-          .select("direct_bid_id")
-          .eq("bidder_club_id", short)
-          .eq("is_first_draft_bid", true)
-          .gte("bid_time", sevenPmYesterday.toISOString())
-          .lt("bid_time", sixPmToday.toISOString());
-
-        const rawJoinEnd = randomFinishTimeUK;
-        const joinWindowEnd = isValidDate(rawJoinEnd) ? rawJoinEnd : sixPmToday;
-        const joinWindowEndIso = isValidDate(joinWindowEnd)
-          ? joinWindowEnd.toISOString()
-          : sixPmToday.toISOString();
-
-        const { data: joins } = await supabase
-          .from("Player_Transfer_Bids")
-          .select("direct_bid_id")
-          .eq("bidder_club_id", short)
-          .eq("is_draft_join", true)
-          .eq("draft_join_consumed", true)
-          .gte("bid_time", sevenPmYesterday.toISOString())
-          .lt("bid_time", joinWindowEndIso);
-
-        const earned = firsts ? firsts.length * 2 : 0;
-        const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
-        const credits = earned - used;
-
-        document.getElementById("creditPanel").innerHTML = `
-          <b>Draft Credits:</b> ${credits}<br>
-          <span style="font-size:11px;color:#aaa;">
-            Earned: ${earned} | Used: ${used}
-          </span>
-        `;
-      } catch (err) {
-        console.error("Error loading draft credits:", err);
+    async function updateCreditPanel() {
+      if (!buyerShortName || !draftEnabled) {
+        document.getElementById("creditPanel").textContent = "";
+        return;
       }
-    }
 
-    async function getCredits(short) {
-      const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+      const { earned, used, credits } = await getDraftCredits(
+        buyerShortName,
+        randomFinishTimeUK
+      );
 
-      const { data: firsts } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("direct_bid_id")
-        .eq("bidder_club_id", short)
-        .eq("is_first_draft_bid", true)
-        .gte("bid_time", sevenPmYesterday.toISOString())
-        .lt("bid_time", sixPmToday.toISOString());
-
-      const rawJoinEnd = randomFinishTimeUK;
-      const joinWindowEnd = isValidDate(rawJoinEnd) ? rawJoinEnd : sixPmToday;
-      const joinWindowEndIso = isValidDate(joinWindowEnd)
-        ? joinWindowEnd.toISOString()
-        : sixPmToday.toISOString();
-
-      const { data: joins } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("direct_bid_id")
-        .eq("bidder_club_id", short)
-        .eq("is_draft_join", true)
-        .eq("draft_join_consumed", true)
-        .gte("bid_time", sevenPmYesterday.toISOString())
-        .lt("bid_time", joinWindowEndIso);
-
-      const earned = firsts ? firsts.length * 2 : 0;
-      const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
-
-      return earned - used;
+      document.getElementById("creditPanel").innerHTML = `
+        <b>Draft Credits:</b> ${credits}<br>
+        <span style="font-size:11px;color:#aaa;">
+          Earned: ${earned} | Used: ${used}
+        </span>
+      `;
     }
 
     /* ============================================================
-       MODULE G: Main Page Init
+       MODULE E: Main Page Init
        ============================================================ */
 
     document.addEventListener("DOMContentLoaded", async () => {
@@ -499,15 +288,19 @@
         return;
       }
 
-      await loadGlobalSettings();
+      const settings = await loadGlobalSettings();
+      draftEnabled = settings.draftAuctionEnabled;
+      draftAuctionStartTimeUK = settings.draftAuctionStartTime;
+      randomFinishTimeUK = settings.draftRandomFinishTime;
+
       await buildNav(user);
       await loadBuyerClubShortName(user.id);
-      await loadDraftCreditsForOwner();
+      await updateCreditPanel();
       await loadDraftListings();
     });
 
     /* ============================================================
-       MODULE H: Load Draft Listings (match GPDB types)
+       MODULE F: Load Draft Listings
        ============================================================ */
 
     async function loadDraftListings() {
@@ -526,13 +319,13 @@
         return;
       }
 
-      const { data: listings, error: listingsErr } = await supabase
+      const { data: listings } = await supabase
         .from("Player_Transfer_Listings")
         .select("id, player_id, reserve_price, status")
         .eq("listing_type", "draft")
         .eq("status", "active");
 
-      if (listingsErr || !listings || !listings.length) {
+      if (!listings || !listings.length) {
         tbody.innerHTML = `<tr><td colspan="8">No active draft auctions.</td></tr>`;
         return;
       }
@@ -543,24 +336,12 @@
           .filter(v => !Number.isNaN(v))
       )];
 
-      if (!playerIds.length) {
-        tbody.innerHTML = `<tr><td colspan="8">No active draft auctions.</td></tr>`;
-        return;
-      }
-
-      const { data: players, error: playersErr } = await supabase
+      const { data: players } = await supabase
         .from("Players")
         .select("Konami_ID, Name, Position, Rating, market_value")
         .in("Konami_ID", playerIds);
 
-      if (playersErr || !players || !players.length) {
-        tbody.innerHTML = `<tr><td colspan="8">Error loading players.</td></tr>`;
-        return;
-      }
-
-      const playerMap = new Map(
-        players.map(p => [Number(p.Konami_ID), p])
-      );
+      const playerMap = new Map(players.map(p => [Number(p.Konami_ID), p]));
 
       const { data: bids } = await supabase
         .from("Player_Transfer_Bids")
@@ -586,7 +367,7 @@
 
       const clubMap = new Map((clubs || []).map(c => [c.ShortName, c.Club]));
 
-      const auctionEnded = randomFinishTimeUK && nowUK >= randomFinishTimeUK;
+      const auctionEnded = nowUK >= randomFinishTimeUK;
 
       for (const listing of listings) {
         const playerIdNum = Number(listing.player_id);
@@ -611,7 +392,13 @@
           ? (clubMap.get(leadingClubShort) || leadingClubShort)
           : "None";
 
-        const canBid = await canClubBidOnPlayer(player.Konami_ID);
+        const canBid = await canClubBidOnPlayerDraft({
+          konamiId: player.Konami_ID,
+          buyerShortName,
+          draftAuctionEnabled: draftEnabled,
+          draftAuctionStartTime: draftAuctionStartTimeUK,
+          draftRandomFinishTime: randomFinishTimeUK
+        });
 
         const btnClass = (!auctionEnded && canBid) ? "enabled" : "disabled";
         const btnLabel = auctionEnded ? "Ended" : (canBid ? "Bid" : "Locked");
@@ -665,56 +452,7 @@
         }
       });
     }
-
-    /* ============================================================
-       MODULE I: Bidding Eligibility (mirror GPDB rules)
-       ============================================================ */
-
-    async function canClubBidOnPlayer(konamiId) {
-      const nowUK = getUKNow();
-
-      if (!draftEnabled) return false;
-      if (!buyerShortName) return false;
-      if (!draftAuctionStartTimeUK || !randomFinishTimeUK) return false;
-
-      if (nowUK < draftAuctionStartTimeUK) return false;
-      if (nowUK >= randomFinishTimeUK) return false;
-
-      const cutoff = getDraftCutoff();
-
-      const { data: existing } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("bidder_club_id, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time")
-        .eq("direct_bid_id", konamiId)
-        .eq("bidder_club_id", buyerShortName)
-        .eq("is_direct", true);
-
-      if (existing && existing.length) {
-        return true;
-      }
-
-      const { data: allBids } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("bidder_club_id")
-        .eq("direct_bid_id", konamiId)
-        .eq("is_direct", true);
-
-      const isFirstBid = !allBids || allBids.length === 0;
-
-      if (isFirstBid) {
-        if (nowUK >= cutoff) {
-          return false;
-        }
-        return true;
-      }
-
-      const credits = await getCredits(buyerShortName);
-      return credits > 0;
-    }
-
   </script>
 
 </body>
 </html>
-
-                                              
