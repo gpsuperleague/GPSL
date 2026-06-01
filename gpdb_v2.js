@@ -2,7 +2,7 @@
    MODULE A: Imports
    ============================================================ */
 
-import { supabase } from "./global.js";
+import { supabase, initGlobal } from "./global.js";
 
 import {
   loadGlobalSettings as loadGlobalSettingsEngine,
@@ -1193,6 +1193,9 @@ document.addEventListener("DOMContentLoaded", () => {
      ============================================================ */
 
   async function init() {
+    // Initialize global settings and build navigation
+    await initGlobal();
+
     await loadUser();
 
     // Load global settings from draft_engine.js
