@@ -44,29 +44,9 @@
       border:1px solid #333; padding:6px; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     table.history th { background:#222; color:#ff9900; }
-
-    .inc-btn {
-      background:#2f7a2f;
-      color:#fff;
-      border:1px solid #1f5a1f;
-    }
-    .inc-btn:hover { background:#369a36; }
-
-    .dec-btn {
-      background:#7a2f2f;
-      color:#fff;
-      border:1px solid #5a1f1f;
-    }
-    .dec-btn:hover { background:#9a3636; }
-
-    .quick-btn {
-      background:#444;
-      color:#fff;
-      border:1px solid #666;
-    }
-    .quick-btn:hover { background:#555; }
   </style>
 </head>
+
 <body>
   <div id="nav"></div>
 
@@ -121,199 +101,153 @@
   </div>
 
   <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-    import { fullClubName } from './clubs_lookup.js';
+    /* ============================================================
+       IMPORT UNIFIED ENGINE + CLUB LOOKUP
+       ============================================================ */
+    import {
+      supabase,
+      getUKNow,
+      loadGlobalSettings,
+      getDraftPhase,
+      getDraftCredits,
+      getDraftCreditsCount,
+      canClubBidOnPlayerDraft
+    } from "./draft_engine.js";
 
-    const supabase = createClient(
-      'https://omyyogfumrjoaweuawjn.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
-    );
+    import { fullClubName } from "./clubs_lookup.js";
 
+    /* ============================================================
+       STATE
+       ============================================================ */
     let buyerShortName = null;
     let draftEnabled = false;
-
-    let randomFinishTimeUK = null;
     let draftAuctionStartTimeUK = null;
-
-    let randomFinishTimeDisplay = null;
+    let randomFinishTimeUK = null;
 
     let playerId = null;
     let currentHighestBid = 0;
     let currentLeadingClub = null;
     let canBid = false;
-    let credits = 0;
 
-    function getUKNow() {
-  const now = new Date();
-  const tz = "Europe/London";
-
-  // Format as DD/MM/YYYY, HH:mm:ss (24h)
-  const formatted = now.toLocaleString("en-GB", {
-    timeZone: tz,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false
-  });
-
-  // Convert DD/MM/YYYY → YYYY-MM-DD for safe parsing
-  const isoSafe = formatted.replace(
-    /(\d{2})\/(\d{2})\/(\d{4}),/,
-    "$3-$2-$1"
-  );
-
-  return new Date(isoSafe);
-}
-
-    function getDraftWindowTimes() {
-      const nowUK = getUKNow();
-      const today = new Date(
-        nowUK.getFullYear(),
-        nowUK.getMonth(),
-        nowUK.getDate()
-      );
-
-      const sixPmToday = new Date(today);
-      sixPmToday.setHours(18, 0, 0, 0);
-
-      const sevenPmYesterday = new Date(today);
-      sevenPmYesterday.setDate(today.getDate() - 1);
-      sevenPmYesterday.setHours(19, 0, 0, 0);
-
-      const sevenPmToday = new Date(today);
-      sevenPmToday.setHours(19, 0, 0, 0);
-
-      return { sevenPmYesterday, sevenPmToday, sixPmToday };
-    }
-
+    /* ============================================================
+       INIT
+       ============================================================ */
     document.addEventListener("DOMContentLoaded", async () => {
       const params = new URLSearchParams(window.location.search);
       playerId = params.get("player");
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session || !session.user) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
         window.location = "login.html";
         return;
       }
-      const user = session.user;
 
-      await loadGlobalSettings();
+      await loadSettings();
       await buildNav(user);
       await loadBuyerClubShortName(user.id);
       await loadPlayerAndBids();
       setupBidControls();
     });
 
+    /* ============================================================
+       LOAD GLOBAL SETTINGS (UNIFIED)
+       ============================================================ */
+    async function loadSettings() {
+      const settings = await loadGlobalSettings();
+      draftEnabled = settings.draftAuctionEnabled;
+      draftAuctionStartTimeUK = settings.draftAuctionStartTime;
+      randomFinishTimeUK = settings.draftRandomFinishTime;
+    }
+
+    /* ============================================================
+       NAV
+       ============================================================ */
     async function buildNav(user) {
       const nav = document.getElementById("nav");
-      nav.innerHTML = `
+
+      let html = `
         <a href="index.html" class="button">Home</a>
         <a href="GPDB.html" class="button">Player Database</a>
         <a href="clubs.html" class="button">Clubs</a>
         <a href="all_listings.html" class="button">Transfer Market</a>
         <a href="dashboard.html" class="button">Dashboard</a>
         <a href="draftauction.html" class="button">Draft Auction</a>
-        <button id="logoutBtn" class="button">Logout</button>
       `;
+
       if (user.email === "rotavator66@outlook.com") {
-        nav.innerHTML += `<a href="admin.html" class="button">GPSL Admin</a>`;
+        html += `<a href="admin.html" class="button">GPSL Admin</a>`;
       }
+
+      html += `<button id="logoutBtn" class="button">Logout</button>`;
+      nav.innerHTML = html;
+
       document.getElementById("logoutBtn").onclick = async () => {
         await supabase.auth.signOut();
         window.location = "login.html";
       };
     }
 
-    async function loadGlobalSettings() {
-      const { data, error } = await supabase
-        .from("global_settings")
-        .select("draft_auction_enabled, draft_random_finish_time, draft_auction_start_time")
-        .eq("id", 1)
-        .single();
-
-      if (error || !data) {
-        draftEnabled = false;
-        return;
-      }
-
-      draftEnabled = data.draft_auction_enabled === true;
-
-      if (data.draft_random_finish_time) {
-        const raw = new Date(data.draft_random_finish_time);
-        randomFinishTimeDisplay = raw;
-        const ukString = raw.toLocaleString("en-GB", { timeZone: "Europe/London" });
-        randomFinishTimeUK = new Date(ukString);
-      } else {
-        randomFinishTimeDisplay = null;
-        randomFinishTimeUK = null;
-      }
-
-      if (data.draft_auction_start_time) {
-        const raw = new Date(data.draft_auction_start_time);
-        const ukString = raw.toLocaleString("en-GB", { timeZone: "Europe/London" });
-        draftAuctionStartTimeUK = new Date(ukString);
-      } else {
-        draftAuctionStartTimeUK = null;
-      }
-    }
-
+    /* ============================================================
+       LOAD OWNER CLUB SHORTNAME
+       ============================================================ */
     async function loadBuyerClubShortName(userId) {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("Clubs")
         .select("ShortName")
         .eq("owner_id", userId)
         .single();
 
-      if (error || !data) {
-        buyerShortName = null;
-        return;
-      }
-      buyerShortName = data.ShortName;
+      buyerShortName = data ? data.ShortName : null;
     }
 
+    /* ============================================================
+       LOAD PLAYER + BIDS
+       ============================================================ */
     async function loadPlayerAndBids() {
-      const { data: player, error: pErr } = await supabase
+      const { data: player } = await supabase
         .from("Players")
         .select("*")
         .eq("Konami_ID", playerId)
         .single();
-      if (pErr || !player || player.Contracted_Team !== null) {
+
+      if (!player || player.Contracted_Team !== null) {
         document.getElementById("playerName").textContent =
           "Player not eligible for draft auction.";
         return;
       }
 
+      /* --- Player Info --- */
       document.getElementById("playerName").textContent = player.Name;
       document.getElementById("playerMeta").textContent =
-        `Pos: ${player.Position} | Rating: ${player.Rating} | Age: ${player.Age} | Playstyle: ${player.Playstyle || "-"}`;
+        `Pos: ${player.Position} | Rating: ${player.Rating} | Age: ${player.Age}`;
       document.getElementById("playerValue").textContent =
         `Market Value: ₿ ${Number(player.market_value).toLocaleString("en-GB")}`;
 
       const img = document.getElementById("playerImg");
       img.src = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
-      img.onerror = function () { this.src = 'images/silhouette.png'; };
+      img.onerror = () => img.src = "images/silhouette.png";
 
-      const { sevenPmYesterday, sevenPmToday, sixPmToday } = getDraftWindowTimes();
+      /* --- Bids (current window) --- */
+      const nowUK = getUKNow();
+      const phase = getDraftPhase(nowUK, draftAuctionStartTimeUK, randomFinishTimeUK);
 
-      const { data: bids, error: bErr } = await supabase
+      const windowStart = new Date(nowUK.getTime() - 24 * 60 * 60 * 1000);
+      const windowEnd = nowUK;
+
+      const { data: bids } = await supabase
         .from("Player_Transfer_Bids")
         .select("*")
         .eq("direct_bid_id", player.Konami_ID)
-        .or("is_first_draft_bid.eq.true,is_draft_join.eq.true,is_direct.eq.true")
-        .gte("bid_time", sevenPmYesterday.toISOString())
-        .lt("bid_time", sevenPmToday.toISOString())
+        .eq("is_direct", true)
+        .gte("bid_time", windowStart.toISOString())
+        .lt("bid_time", windowEnd.toISOString())
         .order("bid_time", { ascending: true });
 
-      if (bErr || !bids || !bids.length) {
+      if (!bids || !bids.length) {
         document.getElementById("historyBody").innerHTML =
           `<tr><td colspan="5">No bids in this window.</td></tr>`;
-        document.getElementById("currentHighest").textContent =
-          "Current Highest Bid: None";
-        document.getElementById("leadingClub").textContent =
-          "Leading Club: None";
+        document.getElementById("currentHighest").textContent = "Current Highest Bid: None";
+        document.getElementById("leadingClub").textContent = "Leading Club: None";
       } else {
         const highest = bids.reduce((max, b) =>
           b.bid_amount > max.bid_amount ? b : max, bids[0]);
@@ -328,66 +262,54 @@
         document.getElementById("leadingClub").textContent =
           `Leading Club: ${leadingFull}`;
 
-        renderHistory(bids, sixPmToday);
+        renderHistory(bids);
       }
 
+      /* --- Time Remaining --- */
       document.getElementById("timeRemaining").textContent =
-        randomFinishTimeDisplay
-          ? `Ends around: ${randomFinishTimeDisplay.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })} (your local time)`
+        randomFinishTimeUK
+          ? `Ends around: ${randomFinishTimeUK.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
           : "End time not set";
 
-      const { sevenPmYesterday: winStart, sixPmToday: winSix } = getDraftWindowTimes();
-      credits = await getDraftCredits(buyerShortName, winStart, winSix);
+      /* --- Credits --- */
+      const { credits } = await getDraftCredits(buyerShortName, randomFinishTimeUK);
       document.getElementById("creditsInfo").textContent =
         `Draft Credits: ${credits}`;
 
-      const nowUK = getUKNow();
-      canBid = await canClubBidOnPlayer(
+      /* --- Eligibility (Unified) --- */
+      canBid = await canClubBidOnPlayerDraft({
+        konamiId: player.Konami_ID,
         buyerShortName,
-        player.Konami_ID,
-        nowUK,
-        sixPmToday
-      );
+        draftAuctionEnabled: draftEnabled,
+        draftAuctionStartTime: draftAuctionStartTimeUK,
+        draftRandomFinishTime: randomFinishTimeUK
+      });
+
       updateBidControlsState();
     }
 
     /* ============================================================
-       FIXED: SAFE HISTORY RENDERING
+       RENDER HISTORY
        ============================================================ */
-    function renderHistory(bids, sixPmToday) {
+    function renderHistory(bids) {
       const tbody = document.getElementById("historyBody");
       tbody.innerHTML = "";
 
       for (const bid of bids) {
-
-        // >>> SAFE DATE PARSING
-        let created = null;
-        if (bid.bid_time) {
-          const d = new Date(bid.bid_time);
-          if (!isNaN(d.getTime())) created = d;
-        }
-        const timeText = created
-          ? created.toLocaleTimeString(undefined, {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit"
-            })
-          : "—";
-        // >>> END SAFE DATE PARSING
-
-        const isFirst = bid.is_first_draft_bid;
-        const isJoin = bid.is_draft_join;
-        const consumed = bid.draft_join_consumed;
+        const d = new Date(bid.bid_time);
+        const timeText = isNaN(d.getTime())
+          ? "—"
+          : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
         let type = "-";
         let notes = "";
 
-        if (isFirst) {
+        if (bid.is_first_draft_bid) {
           type = "First Bid";
-          if (created && created < sixPmToday) notes = "Earned 2 credits";
-        } else if (isJoin) {
+          notes = "Earned 2 credits";
+        } else if (bid.is_draft_join) {
           type = "Join Bid";
-          if (consumed) notes = "Consumed 1 credit";
+          if (bid.draft_join_consumed) notes = "Consumed 1 credit";
         } else {
           type = "Bid";
         }
@@ -404,136 +326,41 @@
       }
     }
 
-   async function getDraftCredits(clubShortName, windowStart, sixPmToday) {
-  if (!clubShortName) return 0;
-
-  const { data: firsts } = await supabase
-    .from("Player_Transfer_Bids")
-    .select("direct_bid_id")
-    .eq("bidder_club_id", clubShortName)
-    .eq("is_first_draft_bid", true)
-    .gte("bid_time", windowStart.toISOString())
-    .lt("bid_time", sixPmToday.toISOString());
-
-  const { data: joins } = await supabase
-    .from("Player_Transfer_Bids")
-    .select("direct_bid_id, draft_join_consumed")
-    .eq("bidder_club_id", clubShortName)
-    .eq("is_draft_join", true)
-    .eq("draft_join_consumed", true)
-    .gte("bid_time", windowStart.toISOString())
-    .lt("bid_time", sixPmToday.toISOString());
-
-  const firstCount = firsts ? firsts.length : 0;
-
-  const uniqueJoins = joins
-    ? new Set(joins.map(j => j.direct_bid_id)).size
-    : 0;
-
-  return (firstCount * 2) - uniqueJoins;
-}
-
-    async function canClubBidOnPlayer(clubShortName, konamiId, nowUK, sixPmToday) {
-      if (!draftEnabled || !clubShortName || !randomFinishTimeUK) return false;
-
-      if (draftAuctionStartTimeUK && nowUK < draftAuctionStartTimeUK) {
-        document.getElementById("bidStatus").textContent =
-          "Draft auction has not started yet.";
-        return false;
-      }
-
-      if (nowUK >= randomFinishTimeUK) return false;
-
-      const { sevenPmYesterday, sevenPmToday } = getDraftWindowTimes();
-
-      if (nowUK >= sixPmToday) {
-        const { data: pre6Bids } = await supabase
-          .from("Player_Transfer_Bids")
-          .select("bid_id")
-          .eq("bidder_club_id", clubShortName)
-          .eq("is_direct", true)
-          .gte("bid_time", sevenPmYesterday.toISOString())
-          .lt("bid_time", sixPmToday.toISOString());
-
-        if (!pre6Bids || !pre6Bids.length) {
-          document.getElementById("bidStatus").textContent =
-            "You did not bid before 18:00 UK, so you cannot bid in the conclusion hour.";
-          return false;
-        }
-      }
-
-      const { data: existingBids } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("bidder_club_id")
-        .eq("direct_bid_id", konamiId)
-        .eq("is_direct", true)
-        .gte("bid_time", sevenPmYesterday.toISOString())
-        .lt("bid_time", sevenPmToday.toISOString())
-        .order("bid_time", { ascending: true });
-
-      if (!existingBids || !existingBids.length) return false;
-
-      const firstBidder = existingBids[0].bidder_club_id;
-      const isFirstBidder = firstBidder === clubShortName;
-
-      if (isFirstBidder) return true;
-
-      const { data: priorJoins } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("bid_id")
-        .eq("direct_bid_id", konamiId)
-        .eq("bidder_club_id", clubShortName)
-        .eq("is_draft_join", true);
-
-      if (priorJoins && priorJoins.length) return true;
-
-      const { sevenPmYesterday: winStart, sixPmToday: winSix } = getDraftWindowTimes();
-      const creditsNow = await getDraftCredits(clubShortName, winStart, winSix);
-      if (creditsNow <= 0) {
-        document.getElementById("bidStatus").textContent =
-          "You need more draft credits to join this auction.";
-        return false;
-      }
-
-      return true;
-    }
-
+    /* ============================================================
+       BID CONTROLS
+       ============================================================ */
     function setupBidControls() {
       const amountInput = document.getElementById("bidAmount");
       const quickBtn = document.getElementById("quickBidBtn");
       const submitBtn = document.getElementById("submitBidBtn");
 
-      function getMinBid() {
+      function minBid() {
         return currentHighestBid + 500000;
       }
 
       amountInput.addEventListener("input", () => {
-        const minBid = getMinBid();
-        let raw = amountInput.value.replace(/,/g, "");
-        raw = raw.replace(/\D/g, "");
+        let raw = amountInput.value.replace(/,/g, "").replace(/\D/g, "");
         let num = Number(raw || 0);
-        if (num < minBid) num = minBid;
+        if (num < minBid()) num = minBid();
         amountInput.value = num.toLocaleString("en-GB");
       });
 
       quickBtn.onclick = () => {
-        const next = getMinBid();
-        amountInput.value = next.toLocaleString("en-GB");
+        amountInput.value = minBid().toLocaleString("en-GB");
       };
 
       document.querySelectorAll(".inc-btn, .dec-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          const minBid = getMinBid();
+        btn.onclick = () => {
           let raw = amountInput.value.replace(/,/g, "");
           let current = Number(raw || 0);
-          if (!current) current = minBid;
+          if (!current) current = minBid();
 
-          const delta = Number(btn.getAttribute("data-delta"));
+          const delta = Number(btn.dataset.delta);
           let next = current + delta;
-          if (next < minBid) next = minBid;
+          if (next < minBid()) next = minBid();
 
           amountInput.value = next.toLocaleString("en-GB");
-        });
+        };
       });
 
       submitBtn.onclick = submitBid;
@@ -541,15 +368,13 @@
 
     function updateBidControlsState() {
       const submitBtn = document.getElementById("submitBidBtn");
-      if (!canBid) {
-        submitBtn.classList.add("disabled");
-        submitBtn.disabled = true;
-      } else {
-        submitBtn.classList.remove("disabled");
-        submitBtn.disabled = false;
-      }
+      submitBtn.disabled = !canBid;
+      submitBtn.classList.toggle("disabled", !canBid);
     }
 
+    /* ============================================================
+       SUBMIT BID (LOCAL INSERT LOGIC)
+       ============================================================ */
     async function submitBid() {
       if (!canBid || !buyerShortName || !playerId) return;
 
@@ -561,62 +386,37 @@
         return;
       }
 
+      /* --- Determine flags using unified helpers --- */
       const nowUK = getUKNow();
 
-      if (draftAuctionStartTimeUK && nowUK < draftAuctionStartTimeUK) {
-        document.getElementById("bidStatus").textContent =
-          "Draft auction has not started yet.";
-        updateBidControlsState();
-        return;
-      }
-
-      if (randomFinishTimeUK && nowUK >= randomFinishTimeUK) {
-        document.getElementById("bidStatus").textContent =
-          "Auction has already ended.";
-        updateBidControlsState();
-        return;
-      }
-
-      const { sevenPmYesterday, sixPmToday, sevenPmToday } = getDraftWindowTimes();
-
-      const { data: existingBids } = await supabase
+      const { data: existing } = await supabase
         .from("Player_Transfer_Bids")
         .select("bidder_club_id")
         .eq("direct_bid_id", playerId)
         .eq("is_direct", true)
-        .gte("bid_time", sevenPmYesterday.toISOString())
-        .lt("bid_time", sevenPmToday.toISOString())
         .order("bid_time", { ascending: true });
 
-      if (!existingBids || !existingBids.length) {
-        document.getElementById("bidStatus").textContent =
-          "No existing draft auction found for this player.";
-        return;
-      }
+      const isFirstBidder = existing && existing.length
+        ? existing[0].bidder_club_id === buyerShortName
+        : false;
 
-      const firstBidder = existingBids[0].bidder_club_id;
-      const isFirstBidder = firstBidder === buyerShortName;
+      let is_first_draft_bid = false;
+      let is_draft_join = false;
+      let draft_join_consumed = false;
 
-      let isFirstDraftBid = false;
-      let isDraftJoin = false;
-      let draftJoinConsumed = false;
-if (isFirstBidder) {
-  // Check if this club already has a first bid recorded
-  const { data: firstAlready } = await supabase
-    .from("Player_Transfer_Bids")
-    .select("bid_id")
-    .eq("direct_bid_id", playerId)
-    .eq("bidder_club_id", buyerShortName)
-    .eq("is_first_draft_bid", true);
+      if (isFirstBidder) {
+        const { data: firstAlready } = await supabase
+          .from("Player_Transfer_Bids")
+          .select("bid_id")
+          .eq("direct_bid_id", playerId)
+          .eq("bidder_club_id", buyerShortName)
+          .eq("is_first_draft_bid", true);
 
-  // Only the VERY FIRST bid gets marked as first
-  if (!firstAlready || !firstAlready.length) {
-    isFirstDraftBid = true;
-  }
-}
-
-       else {
-        isDraftJoin = true;
+        if (!firstAlready || !firstAlready.length) {
+          is_first_draft_bid = true;
+        }
+      } else {
+        is_draft_join = true;
 
         const { data: priorJoins } = await supabase
           .from("Player_Transfer_Bids")
@@ -626,28 +426,28 @@ if (isFirstBidder) {
           .eq("is_draft_join", true);
 
         if (!priorJoins || !priorJoins.length) {
-          const creditsNow = await getDraftCredits(buyerShortName, sevenPmYesterday, sixPmToday);
-          if (creditsNow <= 0) {
+          const { credits } = await getDraftCredits(buyerShortName, randomFinishTimeUK);
+          if (credits <= 0) {
             document.getElementById("bidStatus").textContent =
               "You do not have enough draft credits to join this auction.";
             return;
           }
-          draftJoinConsumed = true;
+          draft_join_consumed = true;
         }
       }
 
+      /* --- Insert Bid --- */
       const { error } = await supabase
         .from("Player_Transfer_Bids")
-        .insert({
-          listing_id: null,
+        .insert({          listing_id: null,
           bidder_club_id: buyerShortName,
           seller_club_id: null,
           bid_amount: amount,
           is_direct: true,
           direct_bid_id: playerId,
-          is_first_draft_bid: isFirstDraftBid,
-          is_draft_join: isDraftJoin,
-          draft_join_consumed: draftJoinConsumed,
+          is_first_draft_bid,
+          is_draft_join,
+          draft_join_consumed,
           bid_time: new Date().toISOString()
         });
 
@@ -664,4 +464,3 @@ if (isFirstBidder) {
 </body>
 </html>
 
-    
