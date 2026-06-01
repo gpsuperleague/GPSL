@@ -257,7 +257,7 @@ export async function loadGlobalSettings() {
 }
 
 // ------------------------------------------------------------
-// NAV BUILDER (UNCHANGED)
+// NAV BUILDER (UPDATED WITH GPDB HIGHLIGHT SUPPORT)
 // ------------------------------------------------------------
 export async function buildNav() {
   const nav = document.getElementById("nav");
@@ -268,25 +268,38 @@ export async function buildNav() {
     return;
   }
 
+  // Build nav HTML
   let html = `
-    <a href="index.html" class="button">Home</a>
-    <a href="GPDB.html" class="button">Player Database</a>
-    <a href="clubs.html" class="button">Clubs</a>
-    <a href="all_listings.html" class="button">Transfer Market</a>
-    <a href="dashboard.html" class="button">Dashboard</a>
+    <a id="nav-home" href="index.html" class="button">Home</a>
+    <a id="nav-gpdb" href="gpdb.html" class="button">Player Database</a>
+    <a id="nav-clubs" href="clubs.html" class="button">Clubs</a>
+    <a id="nav-market" href="all_listings.html" class="button">Transfer Market</a>
+    <a id="nav-dashboard" href="dashboard.html" class="button">Dashboard</a>
   `;
 
   if (user.email === "rotavator66@outlook.com") {
-    html += `<a href="admin.html" class="button">GPSL Admin</a>`;
+    html += `<a id="nav-admin" href="admin.html" class="button">GPSL Admin</a>`;
   }
 
   if (draftEnabled) {
-    html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
+    html += `<a id="nav-draft" href="draftauction.html" class="button">Draft Auction</a>`;
   }
 
   html += `<button id="logoutBtn" class="button">Logout</button>`;
   nav.innerHTML = html;
 
+  // Highlight active page
+  const path = window.location.pathname.toLowerCase();
+
+  if (path.includes("index")) document.getElementById("nav-home").style.background = "#333";
+  if (path.includes("gpdb")) document.getElementById("nav-gpdb").style.background = "#333";
+  if (path.includes("clubs")) document.getElementById("nav-clubs").style.background = "#333";
+  if (path.includes("all_listings")) document.getElementById("nav-market").style.background = "#333";
+  if (path.includes("dashboard")) document.getElementById("nav-dashboard").style.background = "#333";
+  if (path.includes("admin")) document.getElementById("nav-admin")?.style.background = "#333";
+  if (path.includes("draftauction")) document.getElementById("nav-draft")?.style.background = "#333";
+
+  // Logout
   document.getElementById("logoutBtn").onclick = async () => {
     await supabase.auth.signOut();
     window.location = "login.html";
