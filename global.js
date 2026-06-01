@@ -257,7 +257,7 @@ draftFinish = isValidDate(rawFinish) ? new Date(rawFinish) : null;
 }
 
 // ------------------------------------------------------------
-// NAV BUILDER (UPDATED WITH GPDB HIGHLIGHT SUPPORT)
+// NAV BUILDER (SKIP CURRENT PAGE BUTTON)
 // ------------------------------------------------------------
 export async function buildNav() {
   const nav = document.getElementById("nav");
@@ -268,40 +268,51 @@ export async function buildNav() {
     return;
   }
 
-  // Build nav HTML
-  let html = `
-    <a id="nav-home" href="index.html" class="button">Home</a>
-    <a id="nav-gpdb" href="GPDB.html" class="button">Player Database</a>
-    <a id="nav-clubs" href="clubs.html" class="button">Clubs</a>
-    <a id="nav-market" href="all_listings.html" class="button">Transfer Market</a>
-    <a id="nav-dashboard" href="dashboard.html" class="button">Dashboard</a>
-  `;
+  // Get current page filename
+  const path = window.location.pathname.toLowerCase();
+  
+  // Check which page we're on
+  const isHome = path.includes("index");
+  const isGPDB = path.includes("gpdb");
+  const isClubs = path.includes("clubs") && !path.includes("all_listings");
+  const isMarket = path.includes("all_listings");
+  const isDashboard = path.includes("dashboard");
+  const isAdmin = path.includes("admin");
+  const isDraft = path.includes("draftauction") && !path.includes("draftauction_player");
 
-  if (user.email === "rotavator66@outlook.com") {
+  // Build nav HTML - only include buttons for pages NOT currently viewing
+  let html = "";
+  
+  if (!isHome) {
+    html += `<a id="nav-home" href="index.html" class="button">Home</a>`;
+  }
+  
+  if (!isGPDB) {
+    html += `<a id="nav-gpdb" href="GPDB.html" class="button">Player Database</a>`;
+  }
+  
+  if (!isClubs) {
+    html += `<a id="nav-clubs" href="clubs.html" class="button">Clubs</a>`;
+  }
+  
+  if (!isMarket) {
+    html += `<a id="nav-market" href="all_listings.html" class="button">Transfer Market</a>`;
+  }
+  
+  if (!isDashboard) {
+    html += `<a id="nav-dashboard" href="dashboard.html" class="button">Dashboard</a>`;
+  }
+
+  if (user.email === "rotavator66@outlook.com" && !isAdmin) {
     html += `<a id="nav-admin" href="admin.html" class="button">GPSL Admin</a>`;
   }
 
-  if (draftEnabled) {
+  if (draftEnabled && !isDraft) {
     html += `<a id="nav-draft" href="draftauction.html" class="button">Draft Auction</a>`;
   }
 
   html += `<button id="logoutBtn" class="button">Logout</button>`;
   nav.innerHTML = html;
-
-  // Highlight active page
-  const path = window.location.pathname.toLowerCase();
-
-  if (path.includes("index")) document.getElementById("nav-home").style.background = "#333";
-  if (path.includes("gpdb")) document.getElementById("nav-gpdb").style.background = "#333";
-  if (path.includes("clubs")) document.getElementById("nav-clubs").style.background = "#333";
-  if (path.includes("all_listings")) document.getElementById("nav-market").style.background = "#333";
-  if (path.includes("dashboard")) document.getElementById("nav-dashboard").style.background = "#333";
-  
-  const adminNav = document.getElementById("nav-admin");
-  if (adminNav && path.includes("admin")) adminNav.style.background = "#333";
-  
-  const draftNav = document.getElementById("nav-draft");
-  if (draftNav && path.includes("draftauction")) draftNav.style.background = "#333";
 
   // Logout
   document.getElementById("logoutBtn").onclick = async () => {
