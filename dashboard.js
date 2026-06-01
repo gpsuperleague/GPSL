@@ -1,14 +1,13 @@
 // ===============================
-// DASHBOARD.JS — Live, Modern Version
+// DASHBOARD.JS — Unified Version
 // ===============================
 
-import { supabase } from "./supabase_client.js";
-import { initGlobal } from "./global.js";   // ⬅ This starts the countdown automatically
+import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
 
-  // Load global nav + countdown container + countdown updater
+  // Load global nav + global settings + countdown
   await initGlobal();
 
   // Get user
