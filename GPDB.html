@@ -1,5 +1,6 @@
 <script>
-  const CURRENT_PAGE = "gpdb";
+  // CURRENT PAGE MUST BE GLOBAL FOR NAV
+  window.CURRENT_PAGE = "gpdb";
 </script>
 
 <!DOCTYPE html>
@@ -16,25 +17,26 @@
       padding: 20px;
       margin: 0;
     }
-  /* Modern nav button style */
-a.button, button.button {
-  display: inline-block;
-  padding: 8px 16px;
-  background: #1a1a1a;          /* dark grey background */
-  color: #ff9900;               /* orange text */
-  border: 1px solid #666;       /* thin grey border */
-  border-radius: 6px;
-  text-decoration: none;
-  font-weight: bold;
-  margin: 5px;
-  cursor: pointer;
-  transition: 0.2s;
-}
 
-a.button:hover, button.button:hover {
-  background: #222;
-  transform: scale(1.05);
-}
+    /* Modern nav button style */
+    a.button, button.button {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #1a1a1a;
+      color: #ff9900;
+      border: 1px solid #666;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      margin: 5px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    a.button:hover, button.button:hover {
+      background: #222;
+      transform: scale(1.05);
+    }
 
     #pageTitle {
       background:#222;
@@ -46,9 +48,11 @@ a.button:hover, button.button:hover {
       font-size:24px;
       font-weight:bold;
     }
+
     .money {
       white-space: nowrap;
     }
+
     .filter-group {
       background:#1a1a1a;
       color:#ff9900;
@@ -61,12 +65,14 @@ a.button:hover, button.button:hover {
       align-items:flex-start;
       border:1px solid #333;
     }
+
     .filter-group strong {
       width:100%;
       font-size:14px;
       margin-bottom:4px;
       color:#ffaa22;
     }
+
     input {
       background:#222;
       color:#ddd;
@@ -74,6 +80,7 @@ a.button:hover, button.button:hover {
       padding:4px 6px;
       border-radius:4px;
     }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -83,6 +90,7 @@ a.button:hover, button.button:hover {
       overflow: hidden;
       margin-top: 10px;
     }
+
     th {
       background: #222;
       color: #ff9900;
@@ -96,9 +104,12 @@ a.button:hover, button.button:hover {
       cursor: pointer;
       text-align: center;
     }
+
     th:last-child { border-right: none; }
+
     th.sort-asc::after { content: " ▲"; font-size: 10px; }
     th.sort-desc::after { content: " ▼"; font-size: 10px; }
+
     td {
       padding: 6px 8px;
       border-bottom: 1px solid #333;
@@ -106,19 +117,24 @@ a.button:hover, button.button:hover {
       font-size: 12px;
       text-align: center;
     }
+
     td:last-child { border-right: none; }
+
     tbody tr:nth-child(odd) { background: #1f1f1f; }
     tbody tr:nth-child(even) { background: #262626; }
     tbody tr:hover { background: #333 !important; }
+
     #pagination {
       color: #ff9900;
       font-weight: bold;
       margin-top: 20px;
     }
+
     #rowsPerPage {
       margin-top: 20px;
       color: #ff9900;
     }
+
     .modal-backdrop {
       display: none;
       position: fixed;
@@ -129,6 +145,7 @@ a.button:hover, button.button:hover {
       align-items: center;
       z-index: 9999;
     }
+
     .modal {
       background: #1a1a1a;
       border: 1px solid #333;
@@ -137,22 +154,26 @@ a.button:hover, button.button:hover {
       width: 480px;
       color:#ddd;
     }
+
     #offerError {
       color: #ff4444;
       font-size: 12px;
       min-height: 14px;
       margin-top: 6px;
     }
+
     .modal-buttons {
       margin-top: 15px;
       display: flex;
       justify-content: space-between;
     }
+
     .player-header {
       display:flex;
       gap:15px;
       margin-bottom:15px;
     }
+
     .player-header img {
       width: auto;
       height: 130px;
@@ -164,12 +185,14 @@ a.button:hover, button.button:hover {
       display: block;
       margin: 0;
     }
+
     .player-header-info {
       display:flex;
       flex-direction:column;
       gap:6px;
       font-size:14px;
     }
+
     .bid-row {
       display: flex;
       align-items: center;
@@ -177,10 +200,12 @@ a.button:hover, button.button:hover {
       margin: 4px 0;
       font-size: 14px;
     }
+
     .bid-row label {
       color:#ff9900;
       margin-right:6px;
     }
+
     .inc-btn {
       padding: 6px 10px;
       margin-right: 6px;
@@ -191,7 +216,9 @@ a.button:hover, button.button:hover {
       border:1px solid #666;
       font-size:13px;
     }
+
     .inc-btn:hover { background:#666; }
+
     .dec-btn {
       padding: 6px 10px;
       margin-right: 6px;
@@ -202,6 +229,7 @@ a.button:hover, button.button:hover {
       border:1px solid #884444;
       font-size:13px;
     }
+
     .dec-btn:hover { background:#773333; }
 
     /* Custom multi-select dropdowns */
@@ -210,11 +238,13 @@ a.button:hover, button.button:hover {
       position: relative;
       min-width: 180px;
     }
+
     .multi-filter-label {
       font-size: 12px;
       color: #ffaa22;
       margin-bottom: 2px;
     }
+
     .multi-filter-control {
       background:#222;
       color:#ddd;
@@ -228,12 +258,14 @@ a.button:hover, button.button:hover {
       justify-content:space-between;
       min-height:24px;
     }
+
     .multi-filter-control::after {
       content:"▾";
       font-size:10px;
       color:#888;
       margin-left:6px;
     }
+
     .multi-filter-panel {
       position:absolute;
       top:100%;
@@ -248,9 +280,11 @@ a.button:hover, button.button:hover {
       z-index:50;
       display:none;
     }
+
     .multi-filter.open .multi-filter-panel {
       display:block;
     }
+
     .multi-filter-option {
       display:flex;
       align-items:center;
@@ -258,58 +292,92 @@ a.button:hover, button.button:hover {
       font-size:12px;
       cursor:pointer;
     }
+
     .multi-filter-option:hover {
       background:#222;
     }
+
     .multi-filter-option input {
       margin-right:6px;
     }
+
     .text-filter {
       display:flex;
       flex-direction:column;
       font-size:12px;
       color:#ffaa22;
     }
+
     .text-filter input {
       margin-top:2px;
       font-size:12px;
     }
 
-/* NEW: Local start time line */
-#draftLocalStart {
-  font-size: 12px;
-  color: #ccc;
-  margin-left: 2px;
-}
+    /* Local start time line (same ids as dashboard) */
+    #draftLocalStart {
+      font-size: 12px;
+      color: #ccc;
+      margin-left: 2px;
+    }
 
-   .draft-timer {
-  background:#1a1a1a;        /* match GPDB panel background */
-  border:1px solid #666;     /* thin grey border */
-  padding:6px 10px;
-  border-radius:6px;
-  display:flex;
-  align-items:center;
-}
+    .draft-timer {
+      background:#1a1a1a;
+      border:1px solid #666;
+      padding:6px 10px;
+      border-radius:6px;
+      display:flex;
+      align-items:center;
+    }
 
-#draftCountdown {
-  color:#ff9900;
-  font-weight:bold;
-  font-family:monospace;
-  font-size:16px;
-}
+    #draftCountdown {
+      color:#ff9900;
+      font-weight:bold;
+      font-family:monospace;
+      font-size:16px;
+    }
 
     /* Match Dashboard Logout button */
-#logoutBtn {
-  background: #cc0000 !important;   /* red */
-  color: #fff !important;           /* white text */
-  border: none !important;
-}
+    #logoutBtn {
+      background: #cc0000 !important;
+      color: #fff !important;
+      border: none !important;
+    }
 
-#logoutBtn:hover {
-  background: #e60000 !important;   /* brighter red on hover */
-  transform: scale(1.05);
-}
+    #logoutBtn:hover {
+      background: #e60000 !important;
+      transform: scale(1.05);
+    }
 
+    /* Thumbnails */
+    .player-thumb {
+      height: 130px;
+      width: auto;
+      object-fit: contain;
+      background: #000;
+      border-radius: 6px;
+      border: 1px solid #333;
+      padding: 2px;
+      display: block;
+      margin: 0 auto;
+    }
+
+    #make-offer-modal table tr,
+    #make-offer-modal table td {
+      height: auto !important;
+      overflow: visible !important;
+    }
+
+    .gpdb-thumb {
+      height: 70px;
+      width: auto;
+      object-fit: contain;
+      background: #000;
+      border-radius: 3px;
+      border: 1px solid #333;
+      padding: 1px;
+      display: block;
+      margin: 0 auto;
+    }
   </style>
 </head>
 
@@ -319,17 +387,17 @@ a.button:hover, button.button:hover {
 
   <h1 id="pageTitle">GPSL – Player Database</h1>
 
- <!-- Draft credits panel + dashboard-style countdown -->
-<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+  <!-- Draft credits panel + dashboard-style countdown -->
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
 
     <!-- Draft Credits -->
     <p id="draftCreditsPanel" class="status-note" style="margin:0;"></p>
 
-    <!-- Dashboard-style Countdown -->
+    <!-- Dashboard-style Countdown (same ids as dashboard) -->
     <div id="draftCountdownContainer" class="draft-timer" style="flex-direction:column; align-items:flex-start;">
-    <span id="draftCountdown"></span>
-    <div id="draftLocalStart" style="font-size:12px; color:#ccc; margin-top:2px;"></div>
-</div>
+      <span id="draftCountdown"></span>
+      <div id="draftLocalStart" style="font-size:12px; color:#ccc; margin-top:2px;"></div>
+    </div>
 
   </div>
 
@@ -389,7 +457,7 @@ a.button:hover, button.button:hover {
       </label>
     </div>
 
-     <!-- MAKE OFFER MODAL -->
+    <!-- MAKE OFFER MODAL -->
     <div id="make-offer-modal-backdrop" class="modal-backdrop">
       <div id="make-offer-modal" class="modal">
 
@@ -431,110 +499,11 @@ a.button:hover, button.button:hover {
       </div>
     </div>
 
-    <script type="module" src="gpdb_v2.js"></script>
+  </div>
 
-    <!-- NAV + AUTH (keeps existing nav logic) -->
-    <script type="module">
-      import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
-      const supabase = createClient(
-        "https://omyyogfumrjoaweuawjn.supabase.co",
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
-      );
-
-      window.supabase = supabase;
-
-      let draftEnabled = false;
-
-      async function loadGlobalSettings() {
-        const { data } = await supabase
-          .from("global_settings")
-          .select("draft_auction_enabled")
-          .eq("id", 1)
-          .single();
-
-        draftEnabled = data?.draft_auction_enabled === true;
-      }
-
-      async function buildNav(user) {
-        const nav = document.getElementById("nav");
-
-        const buttons = [
-          { page: "index", label: "Home", href: "index.html" },
-          { page: "gpdb", label: "Player Database", href: "GPDB.html" },
-          { page: "clubs", label: "Clubs", href: "clubs.html" },
-          { page: "listings", label: "Transfer Market", href: "all_listings.html" },
-          { page: "dashboard", label: "Dashboard", href: "dashboard.html" }
-        ];
-
-        let html = "";
-
-        for (const btn of buttons) {
-          if (btn.page !== CURRENT_PAGE) {
-            html += `<a href="${btn.href}" class="button">${btn.label}</a>`;
-          }
-        }
-
-        if (user.email === "rotavator66@outlook.com" && CURRENT_PAGE !== "admin") {
-          html += `<a href="admin.html" class="button">GPSL Admin</a>`;
-        }
-
-        if (draftEnabled && CURRENT_PAGE !== "draftauction") {
-          html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
-        }
-
-        html += `<button id="logoutBtn" class="button">Logout</button>`;
-
-        nav.innerHTML = html;
-
-        document.getElementById("logoutBtn").onclick = async () => {
-          await supabase.auth.signOut();
-          window.location = "login.html";
-        };
-      }
-
-      document.addEventListener("DOMContentLoaded", async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user) {
-          window.location = "login.html";
-          return;
-        }
-
-        await loadGlobalSettings();
-        await buildNav(user);
-      });
-    </script>
+  <!-- MODULES: global first, then page logic -->
+  <script type="module" src="global.js"></script>
+  <script type="module" src="gpdb_v2.js"></script>
 
 </body>
 </html>
-
-<style>
-.player-thumb {
-  height: 130px;
-  width: auto;
-  object-fit: contain;
-  background: #000;
-  border-radius: 6px;
-  border: 1px solid #333;
-  padding: 2px;
-  display: block;
-  margin: 0 auto;
-}
-#make-offer-modal table tr,
-#make-offer-modal table td {
-  height: auto !important;
-  overflow: visible !important;
-}
-.gpdb-thumb {
-  height: 70px;
-  width: auto;
-  object-fit: contain;
-  background: #000;
-  border-radius: 3px;
-  border: 1px solid #333;
-  padding: 1px;
-  display: block;
-  margin: 0 auto;
-}
-</style>
