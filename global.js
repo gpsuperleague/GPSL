@@ -271,7 +271,7 @@ export async function buildNav() {
   // Build nav HTML
   let html = `
     <a id="nav-home" href="index.html" class="button">Home</a>
-    <a id="nav-gpdb" href="gpdb.html" class="button">Player Database</a>
+    <a id="nav-gpdb" href="GPDB.html" class="button">Player Database</a>
     <a id="nav-clubs" href="clubs.html" class="button">Clubs</a>
     <a id="nav-market" href="all_listings.html" class="button">Transfer Market</a>
     <a id="nav-dashboard" href="dashboard.html" class="button">Dashboard</a>
