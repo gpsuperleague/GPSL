@@ -296,8 +296,12 @@ export async function buildNav() {
   if (path.includes("clubs")) document.getElementById("nav-clubs").style.background = "#333";
   if (path.includes("all_listings")) document.getElementById("nav-market").style.background = "#333";
   if (path.includes("dashboard")) document.getElementById("nav-dashboard").style.background = "#333";
-  if (path.includes("admin")) document.getElementById("nav-admin")?.style.background = "#333";
-  if (path.includes("draftauction")) document.getElementById("nav-draft")?.style.background = "#333";
+  
+  const adminNav = document.getElementById("nav-admin");
+  if (adminNav && path.includes("admin")) adminNav.style.background = "#333";
+  
+  const draftNav = document.getElementById("nav-draft");
+  if (draftNav && path.includes("draftauction")) draftNav.style.background = "#333";
 
   // Logout
   document.getElementById("logoutBtn").onclick = async () => {
