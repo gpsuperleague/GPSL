@@ -187,8 +187,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const wrapper = e.target.closest(".multi-filter");
     if (!wrapper) return;
     e.stopPropagation();
+    const wasOpen = wrapper.classList.contains("open");
     closeAllMultiFilters();
-    wrapper.classList.toggle("open");
+    if (!wasOpen) {
+      wrapper.classList.add("open");
+      const search = wrapper.querySelector(".multi-filter-search");
+      if (search) {
+        search.focus();
+        search.select();
+      }
+    }
   });
 
   /* ============================================================
@@ -200,6 +208,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let CURRENT_PAGE = 1;
 
   let CURRENT_FILTERS = {};
+  const FILTER_OPTION_CACHE = {};
+  const MAX_ROWS_FOR_NAME_SEARCH = 15000;
 
   let CURRENT_SORT_COLUMN = "Rating";
   let CURRENT_SORT_DIR = "desc";
@@ -267,6 +277,49 @@ document.addEventListener("DOMContentLoaded", () => {
     TOTAL_ROWS = count;
   }
 
+  /** Fold accents & strip symbols for forgiving search (José → jose). */
+  function normalizeSearchText(value) {
+    return String(value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function textMatchesSearch(displayText, rawQuery) {
+    const query = normalizeSearchText(rawQuery);
+    if (!query) return true;
+    const haystack = normalizeSearchText(displayText);
+    return haystack.includes(query);
+  }
+
+  function sortPlayersClient(rows, column, dir) {
+    const asc = dir === "asc";
+    const copy = [...rows];
+    copy.sort((a, b) => {
+      if (column === "Position") {
+        const ai = POSITION_ORDER.indexOf(a.Position);
+        const bi = POSITION_ORDER.indexOf(b.Position);
+        const aIdx = ai === -1 ? 999 : ai;
+        const bIdx = bi === -1 ? 999 : bi;
+        return asc ? aIdx - bIdx : bIdx - aIdx;
+      }
+      const av = a[column];
+      const bv = b[column];
+      if (column === "Rating" || column === "Age" || column === "market_value") {
+        const an = Number(av) || 0;
+        const bn = Number(bv) || 0;
+        return asc ? an - bn : bn - an;
+      }
+      const as = String(av ?? "");
+      const bs = String(bv ?? "");
+      return asc ? as.localeCompare(bs) : bs.localeCompare(as);
+    });
+    return copy;
+  }
+
   function buildContractedTeamOrClause(values) {
     const hasFA = values.includes("FREE AGENT");
     const clubs = values.filter(v => v !== "FREE AGENT");
@@ -292,12 +345,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const from = (page - 1) * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
+    const nameSearch = String(CURRENT_FILTERS.Name || "").trim();
+    const useClientNameSearch = nameSearch.length > 0;
 
     let query = supabase
       .from("Players")
       .select(COLUMNS.join(","), { count: "exact" });
 
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
+      if (col === "Name") return;
+
       if (DROPDOWN_COLUMNS.includes(col)) {
         const values = Array.isArray(value) ? value : (value ? [value] : []);
         if (!values.length) return;
@@ -341,7 +398,11 @@ document.addEventListener("DOMContentLoaded", () => {
         .order("market_value", { ascending: false });
     }
 
-    query = query.range(from, to);
+    if (useClientNameSearch) {
+      query = query.limit(MAX_ROWS_FOR_NAME_SEARCH);
+    } else {
+      query = query.range(from, to);
+    }
 
     const { data, error, count } = await query;
 
@@ -350,9 +411,16 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    let filtered = data;
+    let filtered = data || [];
+
+    if (useClientNameSearch) {
+      filtered = filtered.filter((row) =>
+        textMatchesSearch(row.Name, nameSearch)
+      );
+    }
+
     if (MV_MIN !== null || MV_MAX !== null) {
-      filtered = data.filter(row => {
+      filtered = filtered.filter(row => {
         const mv = Number(String(row.market_value).replace(/,/g, "").trim()) || 0;
 
         if (MV_MIN !== null && mv < MV_MIN) return false;
@@ -362,7 +430,15 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    if (CURRENT_SORT_COLUMN === "Position") {
+    if (useClientNameSearch) {
+      filtered = sortPlayersClient(
+        filtered,
+        CURRENT_SORT_COLUMN,
+        CURRENT_SORT_DIR
+      );
+      TOTAL_ROWS = filtered.length;
+      filtered = filtered.slice(from, to + 1);
+    } else if (CURRENT_SORT_COLUMN === "Position") {
       filtered.sort((a, b) => {
         const ai = POSITION_ORDER.indexOf(a.Position);
         const bi = POSITION_ORDER.indexOf(b.Position);
@@ -370,9 +446,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const bIdx = bi === -1 ? 999 : bi;
         return CURRENT_SORT_DIR === "asc" ? aIdx - bIdx : bIdx - aIdx;
       });
+      TOTAL_ROWS = count;
+    } else {
+      TOTAL_ROWS = count;
     }
 
-    TOTAL_ROWS = count;
     renderTable(filtered);
     renderPagination();
   }
@@ -1026,12 +1104,57 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  function renderMultiFilterOptions(col, searchQuery = "") {
+    const panel = document.getElementById(`filter-${col}-panel`);
+    const container = panel?.querySelector(".multi-filter-options");
+    if (!container) return;
+
+    const options = FILTER_OPTION_CACHE[col] || [];
+    const checkedBefore = new Set();
+    container.querySelectorAll("input[type='checkbox']:checked").forEach((cb) => {
+      checkedBefore.add(cb.value);
+    });
+
+    container.innerHTML = "";
+    let matchCount = 0;
+
+    options.forEach((opt) => {
+      if (!textMatchesSearch(opt.label, searchQuery)) return;
+      matchCount += 1;
+
+      const optionDiv = document.createElement("div");
+      optionDiv.className = "multi-filter-option";
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.value = opt.value;
+      cb.setAttribute("data-label", opt.label);
+      cb.checked = checkedBefore.has(opt.value);
+
+      cb.addEventListener("change", () => updateMultiFilterDisplay(col));
+
+      const span = document.createElement("span");
+      span.textContent = opt.label;
+
+      optionDiv.appendChild(cb);
+      optionDiv.appendChild(span);
+      container.appendChild(optionDiv);
+    });
+
+    if (matchCount === 0) {
+      container.innerHTML =
+        '<div class="multi-filter-empty">No matches — try fewer letters</div>';
+    }
+  }
+
   function updateMultiFilterDisplay(col) {
     const panel = document.getElementById(`filter-${col}-panel`);
     const display = document.getElementById(`filter-${col}-display`);
     if (!panel || !display) return;
 
-    const checkboxes = panel.querySelectorAll("input[type='checkbox']");
+    const checkboxes = panel.querySelectorAll(
+      ".multi-filter-options input[type='checkbox']"
+    );
     const selected = [];
     const labels = [];
 
@@ -1107,18 +1230,9 @@ document.addEventListener("DOMContentLoaded", () => {
         uniqueValues = ["FREE AGENT", ...uniqueValues.filter(v => v !== "FREE AGENT")];
       }
 
-      panel.innerHTML = "";
-
-      uniqueValues.forEach(v => {
-        const optionDiv = document.createElement("div");
-        optionDiv.className = "multi-filter-option";
-
-        const cb = document.createElement("input");
-        cb.type = "checkbox";
-
+      FILTER_OPTION_CACHE[col] = uniqueValues.map((v) => {
         let value = v;
         let label = v;
-
         if (col === "Contracted_Team") {
           if (v === "FREE AGENT") {
             value = "FREE AGENT";
@@ -1128,21 +1242,27 @@ document.addEventListener("DOMContentLoaded", () => {
             label = CLUB_NAME_MAP[v] || v;
           }
         }
-
-        cb.value = value;
-        cb.setAttribute("data-label", label);
-
-        cb.addEventListener("change", () => {
-          updateMultiFilterDisplay(col);
-        });
-
-        const span = document.createElement("span");
-        span.textContent = label;
-
-        optionDiv.appendChild(cb);
-        optionDiv.appendChild(span);
-        panel.appendChild(optionDiv);
+        return { value, label };
       });
+
+      const searchInput = panel.querySelector(".multi-filter-search");
+      if (searchInput && !searchInput.dataset.wired) {
+        searchInput.dataset.wired = "1";
+        searchInput.placeholder = "Type to narrow…";
+        let searchDebounce = null;
+        searchInput.addEventListener("input", () => {
+          clearTimeout(searchDebounce);
+          searchDebounce = setTimeout(() => {
+            renderMultiFilterOptions(col, searchInput.value);
+          }, 120);
+        });
+        searchInput.addEventListener("click", (e) => e.stopPropagation());
+        searchInput.addEventListener("keydown", (e) => e.stopPropagation());
+      }
+
+      panel.addEventListener("click", (e) => e.stopPropagation());
+
+      renderMultiFilterOptions(col, searchInput?.value || "");
     }
   }
 
@@ -1158,19 +1278,58 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="multi-filter" data-col="${col}">
               <div class="multi-filter-label">${label}</div>
               <div class="multi-filter-control" id="filter-${col}-display">All</div>
-              <div class="multi-filter-panel" id="filter-${col}-panel"></div>
+              <div class="multi-filter-panel" id="filter-${col}-panel">
+                <input type="text" class="multi-filter-search" autocomplete="off" aria-label="Search ${label}">
+                <div class="multi-filter-options"></div>
+              </div>
             </div>
           `;
         } else {
           return `
             <label class="text-filter">
               ${label}
-              <input type="text" id="filter-${col}" placeholder="Filter ${label}">
+              <input type="text" id="filter-${col}" placeholder="Filter ${label} (ignores accents)">
             </label>
           `;
         }
       })
       .join("");
+  }
+
+  function setupTextFilters() {
+    const textCols = COLUMNS.filter(
+      (col) =>
+        !FILTER_EXCLUDE.includes(col) && !DROPDOWN_COLUMNS.includes(col)
+    );
+
+    let debounceTimer = null;
+
+    textCols.forEach((col) => {
+      const input = document.getElementById(`filter-${col}`);
+      if (!input) return;
+
+      const apply = () => {
+        const val = input.value.trim();
+        if (val === "") {
+          delete CURRENT_FILTERS[col];
+        } else {
+          CURRENT_FILTERS[col] = val;
+        }
+        loadPage(1);
+      };
+
+      input.addEventListener("input", () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(apply, 300);
+      });
+
+      input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          clearTimeout(debounceTimer);
+          apply();
+        }
+      });
+    });
   }
 
   function setupControls() {
@@ -1229,8 +1388,16 @@ document.addEventListener("DOMContentLoaded", () => {
         .forEach(i => (i.value = ""));
 
       document
-        .querySelectorAll("#filters .multi-filter-panel input[type='checkbox']")
+        .querySelectorAll("#filters .multi-filter-options input[type='checkbox']")
         .forEach(cb => (cb.checked = false));
+
+      document
+        .querySelectorAll("#filters .multi-filter-search")
+        .forEach((input) => {
+          input.value = "";
+          const col = input.closest(".multi-filter")?.dataset?.col;
+          if (col) renderMultiFilterOptions(col, "");
+        });
 
       DROPDOWN_COLUMNS.forEach(col => {
         const display = document.getElementById(`filter-${col}-display`);
@@ -1292,6 +1459,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setupControls();
     setupFilters();
+    setupTextFilters();
     await populateDropdowns();
     await loadTotalCount();
     await loadActiveDraftListings();
