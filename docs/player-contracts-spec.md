@@ -16,8 +16,9 @@ Authoritative design from league owner (2026). Align with legacy spreadsheet whe
 | **Final year (1 left)** | Player **automatically** on expiring-contract / FA list — no transfer list |
 | **Owner choices (final year, standard)** | Renew (≥ wage) · Expire (MV) · hidden wage bids — **no sell** |
 | **Renew wage (standard)** | New offer must be **≥ current contract wage** |
-| **Home-grown** | `Players.Nation` = `Clubs.Nation` — min **8** in **28** squad |
-| **Under-21** | Age **≤ 21** — min **5** in squad |
+| **Home-grown** | `Players.Nation` = `Clubs.Nation` — **at least 8** (no maximum) |
+| **Under-21** | Age **≤ 21** — **at least 5** (no maximum) |
+| **Squad size** | **Max 28** players |
 | **Home-grown ≤23** | Same sell rules; **uncontested renewal** (current wage or MV) |
 | **Expiry auction** | **Standard players only** — one hidden bid per club; highest wins |
 | **Winner wage** | Winning bid becomes player’s **contract wage** at new club (or stay) |
@@ -125,9 +126,9 @@ HG contract protection (≤23): `is_homegrown AND age <= 23` at renewal rollover
 
 | Rule | Minimum |
 |------|---------|
-| **Home-grown** | **8** (Nation matches `Clubs.Nation`) |
-| **Under-21** | **5** (player `Age` **≤ 21**) |
-| **Squad size** | **28** players (maximum registered squad) |
+| **Home-grown** | **Minimum 8** (Nation matches `Clubs.Nation`; no maximum) |
+| **Under-21** | **Minimum 5** (player `Age` **≤ 21**; no maximum) |
+| **Squad size** | **Maximum 28** registered players |
 
 - Compliance check: `check_club_squad_composition(club_short)` (SQL) / `analyseSquadComposition()` (JS).
 - UI: **Squad** page shows counts and warnings (informational until registration enforced in transfers).

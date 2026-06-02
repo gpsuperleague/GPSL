@@ -113,8 +113,9 @@ Run once:
 
 [`squad_composition_rules.sql`](./squad_composition_rules.sql)
 
-- **Home-grown** = `Players.Nation` matches `Clubs.Nation` (min **8** in **28** squad)
-- **Under-21** = age **≤ 21** (min **5**)
+- **Home-grown** = `Players.Nation` matches `Clubs.Nation` — **at least 8** (no cap; more allowed)
+- **Under-21** = age **≤ 21** — **at least 5** (no cap)
+- **Squad** — **max 28** players
 - JS: `squad_rules.js` · Squad page compliance banner
 
 ## Player contracts (not implemented)

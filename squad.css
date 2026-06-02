@@ -19,6 +19,132 @@ body.squad-page #rightColumn {
   background: transparent !important;
 }
 
+/* Squad registration requirements panel */
+body.squad-page .squad-compliance-wrap {
+  margin-bottom: 18px;
+}
+
+body.squad-page .squad-rules-panel {
+  border-radius: 8px;
+  padding: 14px 16px 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+body.squad-page .squad-rules-panel--ok {
+  border-color: #2d5a2d;
+  background: rgba(30, 60, 30, 0.35);
+}
+
+body.squad-page .squad-rules-panel--warn {
+  border-color: #633;
+  background: rgba(60, 25, 25, 0.45);
+}
+
+body.squad-page .squad-rules-title {
+  margin: 0 0 6px;
+  font-size: 17px;
+  color: #ff9900;
+  font-weight: 600;
+}
+
+body.squad-page .squad-rules-intro {
+  margin: 0 0 12px;
+  color: #bbb;
+  font-size: 13px;
+  max-width: 52rem;
+}
+
+body.squad-page .squad-rules-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+body.squad-page .squad-rules-table th,
+body.squad-page .squad-rules-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  vertical-align: top;
+}
+
+body.squad-page .squad-rules-table thead th {
+  color: #ff9900;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+body.squad-page .squad-rules-table tbody th[scope="row"] {
+  color: #eee;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+body.squad-page .squad-rules-who {
+  color: #aaa;
+  max-width: 14rem;
+}
+
+body.squad-page .squad-rules-req {
+  color: #ccc;
+}
+
+body.squad-page .squad-rules-note {
+  display: block;
+  font-size: 11px;
+  color: #888;
+  margin-top: 2px;
+}
+
+body.squad-page .squad-rules-count {
+  text-align: center;
+  font-size: 15px;
+  color: #fff;
+}
+
+body.squad-page .squad-rules-status {
+  white-space: nowrap;
+}
+
+body.squad-page .squad-rules-row--ok .squad-rules-status {
+  color: #9fdf9f;
+}
+
+body.squad-page .squad-rules-row--fail .squad-rules-status {
+  color: #fbb;
+}
+
+body.squad-page .squad-rules-overall {
+  margin: 8px 0 0;
+  font-size: 13px;
+}
+
+body.squad-page .squad-rules-overall--ok {
+  color: #9fdf9f;
+}
+
+body.squad-page .squad-rules-overall--warn {
+  color: #fbb;
+  margin-bottom: 4px;
+}
+
+body.squad-page .squad-rules-issues {
+  margin: 4px 0 0;
+  padding-left: 1.25rem;
+  color: #fcc;
+}
+
+body.squad-page .squad-rules-issues li {
+  margin: 4px 0;
+}
+
 /* Section headers */
 body.squad-page .section-header {
   color: #ff9900;

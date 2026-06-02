@@ -67,12 +67,12 @@ BEGIN
   IF v_hg < 8 THEN
     v_issues := array_append(
       v_issues,
-      format('Home-grown %s/8 (player Nation must match club Nation %s)', v_hg, coalesce(v_club_nation, '?'))
+      format('Home-grown %s — minimum 8 required (Nation must match club %s; more allowed)', v_hg, coalesce(v_club_nation, '?'))
     );
   END IF;
 
   IF v_u21 < 5 THEN
-    v_issues := array_append(v_issues, format('Under-21 %s/5 (age 21 or younger)', v_u21));
+    v_issues := array_append(v_issues, format('Under-21 %s — minimum 5 required (age 21 or younger; more allowed)', v_u21));
   END IF;
 
   RETURN jsonb_build_object(

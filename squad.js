@@ -6,9 +6,7 @@ import { loadPlayerSeasonStats, statsMapByPlayerId } from "./competition.js";
 import {
   analyseSquadComposition,
   isHomeGrownPlayer,
-  MIN_HOME_GROWN,
-  MIN_UNDER_21,
-  SQUAD_SIZE,
+  squadComplianceRuleRows,
 } from "./squad_rules.js";
 
 const supabase = window.supabase;
@@ -165,24 +163,53 @@ function renderSquadCompliance(players) {
   if (!el) return;
 
   const c = analyseSquadComposition(players, clubNation);
-  const okStyle = c.compliant
-    ? "background:#1a2e1a;border:1px solid #2d5a2d;color:#9fdf9f;"
-    : "background:#331a1a;border:1px solid #633;color:#fbb;";
+  const rows = squadComplianceRuleRows(c, clubNation);
+  const panelClass = c.compliant
+    ? "squad-rules-panel squad-rules-panel--ok"
+    : "squad-rules-panel squad-rules-panel--warn";
 
-  const issuesHtml = c.issues.length
-    ? `<ul style="margin:8px 0 0;padding-left:20px;">${c.issues.map((i) => `<li>${i}</li>`).join("")}</ul>`
-    : "";
+  const tableRows = rows
+    .map(
+      (r) => `
+    <tr class="${r.ok ? "squad-rules-row--ok" : "squad-rules-row--fail"}">
+      <th scope="row">${r.rule}</th>
+      <td class="squad-rules-who">${r.whoCounts}</td>
+      <td class="squad-rules-req">${r.requirement}<span class="squad-rules-note">${r.note}</span></td>
+      <td class="squad-rules-count"><strong>${r.count}</strong></td>
+      <td class="squad-rules-status">${r.ok ? "✓" : "✗"} ${r.status}</td>
+    </tr>`
+    )
+    .join("");
+
+  const overall = c.compliant
+    ? '<p class="squad-rules-overall squad-rules-overall--ok">Your squad meets all registration requirements.</p>'
+    : `<p class="squad-rules-overall squad-rules-overall--warn">Your squad does not yet meet all requirements:</p>
+       <ul class="squad-rules-issues">${c.issues.map((i) => `<li>${i}</li>`).join("")}</ul>`;
 
   el.innerHTML = `
-    <div style="${okStyle}padding:12px 14px;border-radius:8px;font-size:14px;">
-      <b>Squad rules</b> (${SQUAD_SIZE}-man registered squad)<br>
-      Home-grown: <b>${c.homeGrown}</b> / ${MIN_HOME_GROWN}
-      (player Nation = club Nation${clubNation ? `: ${clubNation}` : ""}) ·
-      Under-21: <b>${c.under21}</b> / ${MIN_UNDER_21} ·
-      Total: <b>${c.total}</b> / ${SQUAD_SIZE}
-      ${c.compliant ? " · <span style='color:#6f6;'>Compliant</span>" : ""}
-      ${issuesHtml}
-    </div>
+    <section class="${panelClass}" aria-label="Squad registration requirements">
+      <header class="squad-rules-header">
+        <h2 class="squad-rules-title">Squad registration requirements</h2>
+        <p class="squad-rules-intro">
+          Counts are based on your contracted players in the table below.
+          <strong>Home-grown</strong> and <strong>under-21</strong> are <em>minimums</em> — you may have more than required.
+          Only <strong>squad size</strong> has a maximum.
+        </p>
+      </header>
+      <table class="squad-rules-table">
+        <thead>
+          <tr>
+            <th scope="col">Rule</th>
+            <th scope="col">Who counts</th>
+            <th scope="col">League requirement</th>
+            <th scope="col">Your squad</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      ${overall}
+    </section>
   `;
 }
 
@@ -235,7 +262,7 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
 
       const hg = isHomeGrownPlayer(p, clubNation);
       const hgTag = hg
-        ? ` <span title="Home-grown (Nation matches club)" style="color:#6cf;font-size:11px;">HG</span>`
+        ? ` <span title="Home-grown: player Nation matches your club Nation" style="color:#6cf;font-size:11px;">HG</span>`
         : "";
 
       tr.innerHTML = `
