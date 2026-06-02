@@ -1,5 +1,9 @@
 # Supabase SQL (manual apply)
 
+## Competition system (planned)
+
+Full rules: [`docs/competition-spec.md`](../docs/competition-spec.md) — pyramid (20+20+20), playoffs, Prestige cups, 38-match calendar, matchday, gate receipts. SQL not started yet; apply transfer/special-auction scripts first.
+
 ## Two separate systems
 
 | Players | How they move | Engine |

@@ -300,7 +300,8 @@
       if (phase === "live") {
         els.timer.textContent = `Time left: ${timeRemainingLabel(auction.end_time)}`;
       } else if (phase === "before_start") {
-        els.timer.textContent = `Starts: ${new Date(auction.start_time).toLocaleString()}`;
+        const starts = new Date(auction.start_time);
+        els.timer.textContent = `Bidding opens in: ${timeRemainingLabel(auction.start_time)} (${starts.toLocaleString()} your time)`;
       } else {
         els.timer.textContent = `Ended: ${new Date(auction.end_time).toLocaleString()}`;
       }
@@ -314,7 +315,13 @@
       const bids = await fetchAuctionBids(supabase, auction.id);
       const mine = bids.find((b) => b.club_id === clubShort);
 
-      if (mine && (isLub || auction.status !== "active")) {
+      if (!clubShort) {
+        els.myBidLine.textContent =
+          "No club is linked to your account — you cannot bid.";
+      } else if (phase === "before_start") {
+        els.myBidLine.textContent =
+          "Place bid will appear here when the window opens (see timer above).";
+      } else if (mine && (isLub || auction.status !== "active")) {
         els.myBidLine.textContent = `Your club's bid: ${formatMoney(mine.bid_amount)}`;
       } else if (mine && !isLub) {
         els.myBidLine.textContent = `Your club's current bid: ${formatMoney(mine.bid_amount)} (you may raise it)`;

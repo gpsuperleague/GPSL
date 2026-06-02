@@ -88,7 +88,7 @@ export function auctionPhase(auction) {
 
 export function timeRemainingLabel(endIso) {
   const ms = new Date(endIso).getTime() - Date.now();
-  if (ms <= 0) return "Ended";
+  if (ms <= 0) return "0s";
   const s = Math.floor(ms / 1000);
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
