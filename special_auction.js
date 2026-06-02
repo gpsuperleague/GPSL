@@ -1,5 +1,10 @@
 // Shared special auction helpers (owners + admin)
 
+import {
+  formatDurationMs,
+  formatTargetTimesSubline,
+} from "./countdown_display.js";
+
 export function formatMoney(n) {
   return `₿ ${Number(n || 0).toLocaleString("en-GB")}`;
 }
@@ -89,13 +94,17 @@ export function auctionPhase(auction) {
 export function timeRemainingLabel(endIso) {
   const ms = new Date(endIso).getTime() - Date.now();
   if (ms <= 0) return "0s";
-  const s = Math.floor(ms / 1000);
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  if (h > 0) return `${h}h ${m}m ${sec}s`;
-  if (m > 0) return `${m}m ${sec}s`;
-  return `${sec}s`;
+  return formatDurationMs(ms);
+}
+
+/** Duration line + UK/local target subline for auction timers. */
+export function formatAuctionTimerText(label, endIso) {
+  const target = new Date(endIso);
+  const ms = target.getTime() - Date.now();
+  const duration =
+    ms > 0 ? `${label}: ${formatDurationMs(ms)}` : `${label}: ended`;
+  const subline = formatTargetTimesSubline(target);
+  return subline ? { duration, subline } : { duration, subline: "" };
 }
 
 export function prizeDescription(auction) {

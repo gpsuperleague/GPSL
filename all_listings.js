@@ -2,6 +2,7 @@
 // MODULE A: GLOBAL STATE
 // ======================================================
 import { loadClubsMap, fullClubName, clubPageHref } from "./clubs_lookup.js";
+import { formatTimeRemainingHtml } from "./countdown_display.js";
 
 function pesdbPlayerUrl(konamiId) {
   return `https://pesdb.net/efootball/?id=${encodeURIComponent(konamiId)}`;
@@ -265,7 +266,7 @@ async function renderListings() {
       <td>${formatMoney(listing.market_value)}</td>
       <td>${formatMoney(listing.reserve_price)}</td>
       <td>${listing.status} ${extendedLabel}</td>
-      <td>${formatTimeRemaining(listing.end_time)}</td>
+      <td class="countdown-cell">${formatTimeRemainingHtml(listing.end_time)}</td>
       <td>${formatMoney(listing.current_highest_bid)}</td>
       <td>${highestClubText}</td>
       <td>
@@ -357,22 +358,6 @@ async function fetchPlayerByID(kid) {
 }
 
 // ======================================================
-// MODULE D: TIME REMAINING FORMATTER
-// ======================================================
-function formatTimeRemaining(endTime) {
-  const end = new Date(endTime);
-  const now = new Date();
-  const diff = end - now;
-
-  if (diff <= 0) return "Expired";
-
-  const hours = Math.floor(diff / 3600000);
-  const mins = Math.floor((diff % 3600000) / 60000);
-
-  return `${hours}h ${mins}m`;
-}
-
-// ======================================================
 // MODULE E: OPEN BID MODAL
 // ======================================================
 function openBidModal(listing, player) {
@@ -423,8 +408,8 @@ function openBidModal(listing, player) {
     listing.reserve_price
   );
   document.getElementById("bid-status").textContent = listing.status;
-  document.getElementById("bid-time-remaining").textContent =
-    formatTimeRemaining(listing.end_time);
+  document.getElementById("bid-time-remaining").innerHTML =
+    formatTimeRemainingHtml(listing.end_time);
 
   document.getElementById("bid-highest-bid").textContent = formatMoney(
     listing.current_highest_bid

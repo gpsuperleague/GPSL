@@ -7,6 +7,11 @@ import {
   getDraftTimelineFromStart,
   getDraftPhaseFromStart,
 } from "./draft_timeline.js";
+import {
+  formatDurationMs,
+  formatLiveCountdownLines,
+  formatTargetTimesSubline,
+} from "./countdown_display.js";
 export { supabase };
 
 // ------------------------------------------------------------
@@ -221,11 +226,7 @@ export async function getCredits(clubShort) {
 // COUNTDOWN ENGINE (USED BY ALL PAGES)
 // ------------------------------------------------------------
 function formatMs(ms) {
-  const total = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  return `${h}h ${m}m ${s}s`;
+  return formatDurationMs(ms);
 }
 
 function msUntil(target) {
@@ -242,21 +243,26 @@ export function startDraftCountdown(onTick) {
 
     let ms = 0;
     let label = "";
+    let target = null;
 
     switch (phase) {
       case "before_start":
+        target = timeline?.start ?? null;
         ms = timeline ? msUntil(timeline.start) : 0;
         label = "Draft starts in";
         break;
       case "live_until_cutoff":
+        target = timeline?.cutoff ?? null;
         ms = timeline ? msUntil(timeline.cutoff) : 0;
         label = "Auction cutoff in";
         break;
       case "random_active":
+        target = timeline?.publicEnd ?? null;
         ms = timeline ? msUntil(timeline.publicEnd) : 0;
         label = "Random window (end time hidden)";
         break;
       case "pre_random":
+        target = timeline?.randomStart ?? null;
         ms = timeline ? msUntil(timeline.randomStart) : 0;
         label = "Random window begins in";
         break;
@@ -267,19 +273,33 @@ export function startDraftCountdown(onTick) {
         label = "Draft disabled";
     }
 
-    if (onTick) onTick({ phase, ms, label });
+    if (onTick) onTick({ phase, ms, label, target });
   };
 
   tick();
   __draftCountdownInterval = setInterval(tick, 1000);
 }
 
+function ensureDraftLocalStartEl(countdownEl) {
+  let localEl = document.getElementById("draftLocalStart");
+  if (localEl || !countdownEl?.parentElement) return localEl;
+
+  localEl = document.createElement("div");
+  localEl.id = "draftLocalStart";
+  localEl.style.fontSize = "12px";
+  localEl.style.color = "#ccc";
+  localEl.style.marginTop = "4px";
+  countdownEl.parentElement.appendChild(localEl);
+  return localEl;
+}
+
 /** Updates #draftCountdown / #draftLocalStart when present (dashboard, GPDB, draft auction). */
 export function wireDraftCountdownUI() {
   const el = document.getElementById("draftCountdown");
   const container = document.getElementById("draftCountdownContainer");
-  const localEl = document.getElementById("draftLocalStart");
   if (!el) return;
+
+  const localEl = ensureDraftLocalStartEl(el);
 
   if (!draftEnabled || !isValidDate(draftStart)) {
     if (container) container.style.display = "none";
@@ -289,31 +309,17 @@ export function wireDraftCountdownUI() {
 
   if (container) container.style.display = "";
 
-  startDraftCountdown(({ phase, ms, label }) => {
+  startDraftCountdown(({ phase, ms, label, target }) => {
     if (phase === "ended") {
       el.textContent = label;
       if (localEl) localEl.textContent = "";
       return;
     }
 
-    if (ms > 0) {
-      el.textContent = `${label}: ${formatMs(ms)}`;
-    } else {
-      el.textContent = label;
-    }
-
+    const { duration, subline } = formatLiveCountdownLines(label, ms, target);
+    el.textContent = duration;
     if (localEl) {
-      if (phase === "before_start") {
-        localEl.textContent = `Opens ${draftStart.toLocaleString(undefined, {
-          weekday: "short",
-          day: "numeric",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit",
-        })} (your time)`;
-      } else {
-        localEl.textContent = "";
-      }
+      localEl.textContent = subline || (target ? formatTargetTimesSubline(target) : "");
     }
   });
 }

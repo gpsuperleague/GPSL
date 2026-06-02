@@ -37,34 +37,26 @@ export function applyPESDBRowClicks(tbodyId) {
   });
 }
 
+import {
+  formatDurationMs,
+  formatTimeRemainingPlain,
+  formatTimeRemainingHtml,
+} from "./countdown_display.js";
+
 // ===============================
 // TIME REMAINING FORMATTER
 // ===============================
 export function formatTimeRemaining(endTime) {
-  const end = new Date(endTime);
-  const now = new Date();
-  const diff = end - now;
-
-  if (diff <= 0) return "Expired";
-
-  const hours = Math.floor(diff / 3600000);
-  const mins = Math.floor((diff % 3600000) / 60000);
-
-  return `${hours}h ${mins}m`;
+  return formatTimeRemainingPlain(endTime);
 }
+
+export { formatTimeRemainingHtml };
 
 // ===============================
 // COUNTDOWN FORMATTER
 // ===============================
 export function formatCountdown(ms) {
-  if (ms <= 0) return "0h 0m 0s";
-
-  const totalSecs = Math.floor(ms / 1000);
-  const hours = Math.floor(totalSecs / 3600);
-  const mins = Math.floor((totalSecs % 3600) / 60);
-  const secs = totalSecs % 60;
-
-  return `${hours}h ${mins}m ${secs}s`;
+  return formatDurationMs(ms);
 }
 // ===============================
 // NAV BUILDER
