@@ -1,0 +1,57 @@
+<script>
+  window.CURRENT_PAGE = "progress";
+</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Competition Progress — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background: #111; color: #ddd; font-family: Arial, sans-serif; margin: 0; }
+    .page-container { width: 95%; max-width: 1400px; margin: 20px auto 40px; }
+    h1 { color: #ff9900; margin-bottom: 8px; }
+    .season-meta { color: #aaa; margin-bottom: 24px; }
+    .tables-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+    .division-panel {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .division-panel h2 {
+      color: #ff9900;
+      margin: 0 0 6px;
+      font-size: 20px;
+    }
+    .zone-note { color: #888; font-size: 12px; margin-bottom: 12px; }
+    table.gpsl-table { width: 100%; border-collapse: collapse; }
+    table.gpsl-table th, table.gpsl-table td {
+      border: 1px solid #333;
+      padding: 8px;
+      text-align: left;
+      font-size: 13px;
+    }
+    table.gpsl-table th { background: #222; color: #ff9900; }
+    .pos-col { width: 36px; text-align: center !important; color: #888; }
+    .my-club { background: #2a2200; font-weight: bold; }
+    .empty-msg { color: #888; padding: 20px; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <h1>Competition Progress</h1>
+    <p id="seasonMeta" class="season-meta">Loading…</p>
+    <div id="tablesGrid" class="tables-grid"></div>
+    <p id="phaseNote" class="zone-note" style="margin-top:20px;">
+      Standings, form, and zone highlighting arrive in Phase 2. Fixtures in Phase 1.
+    </p>
+  </div>
+  <script type="module" src="progress.js"></script>
+</body>
+</html>

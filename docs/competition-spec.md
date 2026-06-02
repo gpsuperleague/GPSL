@@ -259,6 +259,7 @@ Formula inputs (to detail in finance spec):
 ## Related repo state (today)
 
 - Transfer market, draft, special auctions: **live**.
-- Competition pages on dashboard: **not built** (404).
-- `rollover_season` RPC: exists in Supabase, **not** in repo SQL.
+- **Phase 0 competition:** `competition_phase0.sql` + `progress.html` + admin season UI.
+- Fixtures, matchday, standings, gates, cups: **later phases** (stub pages on dashboard).
+- `rollover_season` RPC: exists in Supabase for **player/transfer** rollover; separate from competition season activate.
 - `Clubs.Stadium`, `Clubs.Capacity`: exist; gate logic **not** implemented.

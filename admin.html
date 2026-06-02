@@ -164,6 +164,54 @@
         <div id="rolloverStatus" style="color:#ffcc00;"></div>
       </div>
 
+      <!-- COMPETITION SEASON (Phase 0) -->
+      <div class="card">
+        <h2>Competition Season</h2>
+        <p class="note">Create a season, assign 20 SuperLeague + 40 Championship pool clubs, draw A/B, then activate. Run <code>competition_phase0.sql</code> in Supabase first.</p>
+
+        <div id="compActiveSummary" style="margin-bottom:12px;color:#ccc;"></div>
+
+        <div class="row">
+          <div>
+            <label>New season label</label>
+            <input id="compSeasonLabel" placeholder="e.g. 2025/26">
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button id="compCreateSeasonBtn" class="button">Create season (60 clubs)</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Setup season</label>
+            <select id="compSetupSeasonSelect"></select>
+          </div>
+        </div>
+
+        <div id="compSetupCounts" style="color:#ffcc00;margin:10px 0;"></div>
+
+        <div style="max-height:420px;overflow:auto;border:1px solid #333;border-radius:6px;margin-bottom:12px;">
+          <table class="gpsl-table" style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="padding:8px;background:#222;color:#ff9900;text-align:left;">Club</th>
+                <th style="padding:8px;background:#222;color:#ff9900;text-align:left;">Division</th>
+              </tr>
+            </thead>
+            <tbody id="compAssignBody"></tbody>
+          </table>
+        </div>
+
+        <div class="row">
+          <button id="compSaveAssignBtn" class="button">Save assignments</button>
+          <button id="compDrawBtn" class="button" style="background:#336699;">Draw Championship A / B</button>
+          <button id="compResetDrawBtn" class="button" style="background:#555;">Reset A/B draw</button>
+          <button id="compActivateBtn" class="button" style="background:#228822;">Activate season</button>
+        </div>
+
+        <div id="compSeasonStatus" style="color:#ffcc00;margin-top:10px;"></div>
+      </div>
+
       <!-- TRANSFER MANAGEMENT -->
       <div class="card">
         <h2>Transfer Management</h2>
@@ -370,6 +418,16 @@
       loadGlobalSettings,
       getUKNow
     } from "./global.js";
+    import {
+      SETUP_DIVISION_OPTIONS,
+      loadSetupSeasons,
+      loadSeasonRegistrations,
+      countSetupDivisions,
+      canDrawChampionshipAb,
+      canActivateSeason,
+      loadCurrentSeason,
+      DIVISION_LABELS,
+    } from "./competition.js";
 
     /* ============================================================
        PAGE INIT
@@ -395,6 +453,7 @@
       await loadSettings();
       await loadOwnerList();
       await initSpecialAuctionsAdmin();
+      await initCompetitionAdmin();
     });
 
     function toIsoFromLocalInput(val) {
@@ -795,6 +854,239 @@
         ? "❌ " + error.message
         : "✅ Reset email sent!";
     };
+
+    /* ============================================================
+       COMPETITION SEASON (Phase 0)
+       ============================================================ */
+    let compRegistrations = [];
+    let compSelectedSeasonId = null;
+
+    async function initCompetitionAdmin() {
+      document.getElementById("compCreateSeasonBtn").onclick = createCompetitionSeason;
+      document.getElementById("compSetupSeasonSelect").onchange = onCompSeasonSelected;
+      document.getElementById("compSaveAssignBtn").onclick = saveCompetitionAssignments;
+      document.getElementById("compDrawBtn").onclick = drawCompetitionAb;
+      document.getElementById("compResetDrawBtn").onclick = resetCompetitionDraw;
+      document.getElementById("compActivateBtn").onclick = activateCompetitionSeason;
+
+      await refreshCompetitionAdmin();
+    }
+
+    async function refreshCompetitionAdmin() {
+      const active = await loadCurrentSeason(supabase);
+      const summary = document.getElementById("compActiveSummary");
+      summary.textContent = active
+        ? `Current season: ${active.label} (${active.status})`
+        : "No current active season.";
+
+      const setupSeasons = await loadSetupSeasons(supabase);
+      const select = document.getElementById("compSetupSeasonSelect");
+      select.innerHTML = "";
+
+      if (!setupSeasons.length) {
+        select.innerHTML = `<option value="">No setup seasons</option>`;
+        compSelectedSeasonId = null;
+        compRegistrations = [];
+        renderCompAssignTable();
+        updateCompSetupCounts();
+        return;
+      }
+
+      for (const s of setupSeasons) {
+        const opt = document.createElement("option");
+        opt.value = s.id;
+        opt.textContent = `${s.label} (id ${s.id})`;
+        select.appendChild(opt);
+      }
+
+      compSelectedSeasonId = setupSeasons[0].id;
+      select.value = String(compSelectedSeasonId);
+      await loadCompSeasonData(compSelectedSeasonId);
+    }
+
+    async function onCompSeasonSelected() {
+      const val = document.getElementById("compSetupSeasonSelect").value;
+      compSelectedSeasonId = val ? Number(val) : null;
+      if (compSelectedSeasonId) await loadCompSeasonData(compSelectedSeasonId);
+    }
+
+    async function loadCompSeasonData(seasonId) {
+      compRegistrations = await loadSeasonRegistrations(supabase, seasonId);
+      renderCompAssignTable();
+      updateCompSetupCounts();
+    }
+
+    function renderCompAssignTable() {
+      const tbody = document.getElementById("compAssignBody");
+      tbody.innerHTML = "";
+
+      for (const row of compRegistrations) {
+        const tr = document.createElement("tr");
+        const drawn =
+          row.division === "championship_a" || row.division === "championship_b";
+
+        let divisionCell;
+        if (drawn) {
+          divisionCell = `<td style="padding:8px;border:1px solid #333;">${
+            DIVISION_LABELS[row.division] || row.division
+          }</td>`;
+        } else {
+          const options = SETUP_DIVISION_OPTIONS.map(
+            (o) =>
+              `<option value="${o.value}"${
+                o.value === row.division ? " selected" : ""
+              }>${o.label}</option>`
+          ).join("");
+          divisionCell = `<td style="padding:8px;border:1px solid #333;">
+            <select data-club="${row.club_short_name}" class="comp-div-select" style="width:100%;padding:6px;background:#222;border:1px solid #444;color:#ddd;">
+              ${options}
+            </select>
+          </td>`;
+        }
+
+        tr.innerHTML = `
+          <td style="padding:8px;border:1px solid #333;">${row.club_name}</td>
+          ${divisionCell}
+        `;
+        tbody.appendChild(tr);
+      }
+    }
+
+    function updateCompSetupCounts() {
+      const counts = countSetupDivisions(compRegistrations);
+      const el = document.getElementById("compSetupCounts");
+      el.textContent =
+        `SL ${counts.superleague}/20 · Pool ${counts.championship_pool}/40 · ` +
+        `CH A ${counts.championship_a}/20 · CH B ${counts.championship_b}/20 · ` +
+        `Unassigned ${counts.unassigned}`;
+
+      document.getElementById("compDrawBtn").disabled = !canDrawChampionshipAb(counts);
+      document.getElementById("compActivateBtn").disabled = !canActivateSeason(counts);
+      document.getElementById("compResetDrawBtn").disabled =
+        counts.championship_a === 0 && counts.championship_b === 0;
+    }
+
+    function setCompStatus(msg, ok = true) {
+      const el = document.getElementById("compSeasonStatus");
+      el.textContent = msg;
+      el.style.color = ok ? "#ffcc00" : "red";
+    }
+
+    async function createCompetitionSeason() {
+      const label = document.getElementById("compSeasonLabel").value.trim();
+      if (!label) {
+        setCompStatus("Enter a season label.", false);
+        return;
+      }
+
+      setCompStatus("Creating season…");
+      const { data, error } = await supabase.rpc("competition_create_season", {
+        p_label: label,
+      });
+
+      if (error) {
+        setCompStatus("❌ " + error.message, false);
+        return;
+      }
+
+      document.getElementById("compSeasonLabel").value = "";
+      setCompStatus(`✅ Season created (id ${data}). Assign divisions below.`);
+      await refreshCompetitionAdmin();
+      if (data) {
+        document.getElementById("compSetupSeasonSelect").value = String(data);
+        compSelectedSeasonId = data;
+        await loadCompSeasonData(data);
+      }
+    }
+
+    async function saveCompetitionAssignments() {
+      if (!compSelectedSeasonId) {
+        setCompStatus("Select a setup season.", false);
+        return;
+      }
+
+      const selects = document.querySelectorAll(".comp-div-select");
+      const assignments = [...selects].map((sel) => ({
+        club: sel.dataset.club,
+        division: sel.value,
+      }));
+
+      setCompStatus("Saving…");
+      const { error } = await supabase.rpc("competition_bulk_set_divisions", {
+        p_season_id: compSelectedSeasonId,
+        p_assignments: assignments,
+      });
+
+      if (error) {
+        setCompStatus("❌ " + error.message, false);
+        return;
+      }
+
+      setCompStatus("✅ Assignments saved.");
+      await loadCompSeasonData(compSelectedSeasonId);
+    }
+
+    async function drawCompetitionAb() {
+      if (!compSelectedSeasonId) return;
+      if (!confirm("Randomly split 40 pool clubs into Championship A and B?")) return;
+
+      setCompStatus("Drawing…");
+      const { data, error } = await supabase.rpc("competition_draw_championship_ab", {
+        p_season_id: compSelectedSeasonId,
+      });
+
+      if (error) {
+        setCompStatus("❌ " + error.message, false);
+        return;
+      }
+
+      setCompStatus(
+        `✅ Draw complete — A: ${data.championship_a}, B: ${data.championship_b}.`
+      );
+      await loadCompSeasonData(compSelectedSeasonId);
+    }
+
+    async function resetCompetitionDraw() {
+      if (!compSelectedSeasonId) return;
+      if (!confirm("Move A/B clubs back to the championship pool?")) return;
+
+      setCompStatus("Resetting draw…");
+      const { error } = await supabase.rpc("competition_reset_championship_draw", {
+        p_season_id: compSelectedSeasonId,
+      });
+
+      if (error) {
+        setCompStatus("❌ " + error.message, false);
+        return;
+      }
+
+      setCompStatus("✅ Draw reset — clubs returned to pool.");
+      await loadCompSeasonData(compSelectedSeasonId);
+    }
+
+    async function activateCompetitionSeason() {
+      if (!compSelectedSeasonId) return;
+      if (
+        !confirm(
+          "Activate this season? It becomes the current season for all owners."
+        )
+      ) {
+        return;
+      }
+
+      setCompStatus("Activating…");
+      const { error } = await supabase.rpc("competition_activate_season", {
+        p_season_id: compSelectedSeasonId,
+      });
+
+      if (error) {
+        setCompStatus("❌ " + error.message, false);
+        return;
+      }
+
+      setCompStatus("✅ Season is now active.");
+      await refreshCompetitionAdmin();
+    }
   </script>
 
 </body>

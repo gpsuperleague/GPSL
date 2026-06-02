@@ -1,8 +1,25 @@
 # Supabase SQL (manual apply)
 
-## Competition system (planned)
+## Competition system (Phase 0+)
 
-Full rules: [`docs/competition-spec.md`](../docs/competition-spec.md) — pyramid (20+20+20), playoffs, Prestige cups, 38-match calendar, matchday, gate receipts. SQL not started yet; apply transfer/special-auction scripts first.
+Full rules: [`docs/competition-spec.md`](../docs/competition-spec.md).
+
+### Phase 0 — seasons & divisions (apply first)
+
+Run once in SQL Editor:
+
+[`competition_phase0.sql`](./competition_phase0.sql)
+
+Creates `competition_seasons`, `competition_club_seasons`, public views, and admin RPCs:
+
+- `competition_create_season(label)` — seeds all **60** clubs as unassigned
+- Assign **20 SuperLeague** + **40 championship pool** in **GPSL Admin → Competition Season**
+- `competition_draw_championship_ab` — random A/B split
+- `competition_activate_season` — sets current active season
+
+Owners see divisions on **Competition Progress** (`progress.html`) and **Club Details**.
+
+Next: Phase 1 fixtures (`competition_fixtures` — not yet in repo).
 
 ## Two separate systems
 

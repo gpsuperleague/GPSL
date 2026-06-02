@@ -70,6 +70,11 @@
         <span id="stadiumCapacity"></span>
       </div>
 
+      <div class="detailRow">
+        <label>Division (current season):</label>
+        <span id="compDivision">—</span>
+      </div>
+
     </div>
 
   </div>
@@ -85,6 +90,11 @@
     import { supabase } from "./supabase_client.js";
     import { initGlobal } from "./global.js";
     import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+    import {
+      loadCurrentSeason,
+      loadActiveSeasonRegistrations,
+      divisionForClub,
+    } from "./competition.js";
 
     document.addEventListener("DOMContentLoaded", async () => {
 
@@ -110,6 +120,16 @@
       document.getElementById("ownerName").textContent = user.email;
       document.getElementById("stadiumName").textContent = club.Stadium;
       document.getElementById("stadiumCapacity").textContent = club.Capacity;
+
+      const season = await loadCurrentSeason(supabase);
+      if (season) {
+        const regs = await loadActiveSeasonRegistrations(supabase);
+        const div = divisionForClub(regs, club.ShortName);
+        document.getElementById("compDivision").textContent =
+          div || "Not registered";
+      } else {
+        document.getElementById("compDivision").textContent = "No active season";
+      }
     });
   </script>
 
