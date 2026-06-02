@@ -43,6 +43,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${shortName}.png`;
 
-  // ⭐ No need to call startDraftCountdown()
-  // initGlobal() already handles the countdown + local time line
 });
