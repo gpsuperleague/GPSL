@@ -52,16 +52,22 @@
     <h1>Match Day</h1>
     <p id="pageMeta" class="meta">Loading…</p>
 
-    <div class="panel">
+    <div class="panel" id="submitPanel">
       <h2>Submit result</h2>
-      <p class="meta" style="margin-top:0;">Choose a scheduled fixture and enter the score. Your opponent must confirm in their inbox.</p>
+      <p class="meta" style="margin-top:0;">
+        Pick a fixture and enter the score. You can also use
+        <a href="fixtures.html" style="color:#ff9900;">Fixtures</a>
+        — highlighted rows have <b>Enter result</b>.
+      </p>
 
-      <label for="fixtureSelect">Upcoming fixture</label>
+      <div id="noFixturesHelp" class="fixture-preview" style="display:none;color:#f99;border:1px solid #633;"></div>
+
+      <label for="fixtureSelect">Your fixtures (scheduled or awaiting confirm)</label>
       <select id="fixtureSelect"></select>
 
       <div id="fixturePreview" class="fixture-preview">Select a fixture.</div>
 
-      <div class="score-row">
+      <div class="score-row" id="scoreEntryRow">
         <div>
           <label id="homeLabel">Home</label>
           <input type="number" id="homeGoals" min="0" max="99" value="0">

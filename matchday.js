@@ -1,9 +1,16 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadLeagueFixtures, GPSL_MONTH_LABELS, fixtureInvolvesClub } from "./competition.js";
 import { loadInboxMessages } from "./competition_inbox.js";
+import {
+  submitFixtureResult,
+  confirmFixtureResult,
+  rejectFixtureResult,
+  canSubmitResult,
+} from "./competition_matchday.js";
 
 let myClubShort = null;
 let upcomingFixtures = [];
+let allLeagueFixtures = [];
 
 function setStatus(elId, msg, isError = false) {
   const el = document.getElementById(elId);
@@ -18,14 +25,57 @@ function selectedFixture() {
   return upcomingFixtures.find((f) => String(f.id) === id) || null;
 }
 
+function setScoreInputsEnabled(enabled) {
+  document.getElementById("homeGoals").disabled = !enabled;
+  document.getElementById("awayGoals").disabled = !enabled;
+  document.getElementById("submitResultBtn").disabled = !enabled;
+}
+
+function showNoFixturesHelp() {
+  const el = document.getElementById("noFixturesHelp");
+  if (!el) return;
+
+  const mine = allLeagueFixtures.filter((f) => fixtureInvolvesClub(f, myClubShort));
+  const scheduled = mine.filter((f) => f.status === "scheduled");
+
+  if (upcomingFixtures.length > 0) {
+    el.style.display = "none";
+    return;
+  }
+
+  el.style.display = "block";
+  if (!allLeagueFixtures.length) {
+    el.innerHTML = `
+      <b>No fixtures in the database.</b> Admin must activate the season and generate fixtures
+      (GPSL Admin → League Fixtures) for each division.
+    `;
+  } else if (!mine.length) {
+    el.innerHTML = `
+      <b>Your club has no fixtures on the current season.</b>
+      Check you are on an active season with your club in a division.
+    `;
+  } else if (!scheduled.length) {
+    el.innerHTML = `
+      <b>All your fixtures are already played or cancelled.</b>
+      (${mine.length} total for your club.)
+    `;
+  } else {
+    el.innerHTML = `
+      <b>No fixtures ready to submit.</b> Open
+      <a href="fixtures.html" style="color:#ff9900;">Fixtures</a> for your highlighted games.
+    `;
+  }
+
+  setScoreInputsEnabled(false);
+}
+
 function updateFixturePreview() {
   const f = selectedFixture();
   const preview = document.getElementById("fixturePreview");
-  const submitBtn = document.getElementById("submitResultBtn");
 
   if (!f) {
-    preview.textContent = "Select a fixture.";
-    submitBtn.disabled = true;
+    preview.textContent = "Select a fixture from the list above.";
+    setScoreInputsEnabled(false);
     return;
   }
 
@@ -39,7 +89,7 @@ function updateFixturePreview() {
           : f.home_club_name;
       extra = ` · Awaiting confirmation from ${opp}`;
     } else {
-      extra = ` · They submitted ${f.proposed_home_goals}–${f.proposed_away_goals} — use Inbox`;
+      extra = ` · They submitted ${f.proposed_home_goals}–${f.proposed_away_goals} — scroll to Inbox`;
     }
   }
 
@@ -51,18 +101,17 @@ function updateFixturePreview() {
   document.getElementById("homeLabel").textContent = f.home_club_name;
   document.getElementById("awayLabel").textContent = f.away_club_name;
 
-  const canSubmit =
-    f.status === "scheduled" &&
-    !f.submission_id &&
-    fixtureInvolvesClub(f, myClubShort);
+  const canSubmit = canSubmitResult(f, myClubShort);
+  setScoreInputsEnabled(canSubmit);
 
-  submitBtn.disabled = !canSubmit;
   if (f.submission_id && f.submitted_by_club === myClubShort) {
     setStatus("submitStatus", "Result submitted — waiting for opponent.");
   } else if (f.submission_id) {
-    setStatus("submitStatus", "Opponent submitted a result — use Inbox to confirm or reject.");
+    setStatus("submitStatus", "Opponent submitted — confirm or reject in Inbox below.");
+  } else if (canSubmit) {
+    setStatus("submitStatus", "Enter home and away goals, then submit.");
   } else {
-    setStatus("submitStatus", "");
+    setStatus("submitStatus", "This fixture cannot accept a new result.");
   }
 }
 
@@ -71,10 +120,13 @@ function populateFixtureSelect() {
   sel.innerHTML = "";
 
   if (!upcomingFixtures.length) {
-    sel.innerHTML = '<option value="">No scheduled fixtures</option>';
+    sel.innerHTML = '<option value="">— no fixtures to submit —</option>';
+    showNoFixturesHelp();
     updateFixturePreview();
     return;
   }
+
+  document.getElementById("noFixturesHelp").style.display = "none";
 
   for (const f of upcomingFixtures) {
     const opt = document.createElement("option");
@@ -90,8 +142,8 @@ function populateFixtureSelect() {
 }
 
 async function loadUpcomingFixtures() {
-  const all = await loadLeagueFixtures(supabase);
-  upcomingFixtures = all
+  allLeagueFixtures = await loadLeagueFixtures(supabase);
+  upcomingFixtures = allLeagueFixtures
     .filter(
       (f) =>
         fixtureInvolvesClub(f, myClubShort) &&
@@ -102,7 +154,10 @@ async function loadUpcomingFixtures() {
 
 async function submitResult() {
   const f = selectedFixture();
-  if (!f) return;
+  if (!f || !canSubmitResult(f, myClubShort)) {
+    setStatus("submitStatus", "Select a fixture you can submit.", true);
+    return;
+  }
 
   const homeGoals = Number(document.getElementById("homeGoals").value);
   const awayGoals = Number(document.getElementById("awayGoals").value);
@@ -113,18 +168,14 @@ async function submitResult() {
   }
 
   setStatus("submitStatus", "Submitting…");
-  const { data, error } = await supabase.rpc("competition_submit_result", {
-    p_fixture_id: f.id,
-    p_home_goals: homeGoals,
-    p_away_goals: awayGoals,
-  });
+  const { error } = await submitFixtureResult(supabase, f.id, homeGoals, awayGoals);
 
   if (error) {
     setStatus("submitStatus", "❌ " + error.message, true);
     return;
   }
 
-  setStatus("submitStatus", `✅ Submitted (id ${data}). Opponent notified.`);
+  setStatus("submitStatus", "✅ Submitted. Opponent notified — they confirm in Inbox.");
   await loadUpcomingFixtures();
   populateFixtureSelect();
   await renderInbox();
@@ -132,9 +183,7 @@ async function submitResult() {
 
 async function confirmSubmission(submissionId) {
   setStatus("inboxStatus", "Confirming…");
-  const { error } = await supabase.rpc("competition_confirm_result", {
-    p_submission_id: submissionId,
-  });
+  const { error } = await confirmFixtureResult(supabase, submissionId);
 
   if (error) {
     setStatus("inboxStatus", "❌ " + error.message, true);
@@ -150,10 +199,7 @@ async function confirmSubmission(submissionId) {
 async function rejectSubmission(submissionId) {
   const reason = prompt("Reason for rejection (optional):") || null;
   setStatus("inboxStatus", "Rejecting…");
-  const { error } = await supabase.rpc("competition_reject_result", {
-    p_submission_id: submissionId,
-    p_reason: reason,
-  });
+  const { error } = await rejectFixtureResult(supabase, submissionId, reason);
 
   if (error) {
     setStatus("inboxStatus", "❌ " + error.message, true);
@@ -175,7 +221,8 @@ async function renderInbox() {
   const messages = await loadInboxMessages(supabase);
 
   if (!messages.length) {
-    list.innerHTML = '<p class="empty">No messages.</p>';
+    list.innerHTML =
+      '<p class="empty">No messages. When an opponent submits a score, it appears here to confirm or reject.</p>';
     return;
   }
 
@@ -196,7 +243,7 @@ async function renderInbox() {
     if (msg.message_type === "result_to_confirm" && !msg.read_at) {
       const confirmBtn = document.createElement("button");
       confirmBtn.className = "button";
-      confirmBtn.textContent = "Confirm";
+      confirmBtn.textContent = "Confirm result";
       confirmBtn.onclick = () => confirmSubmission(msg.submission_id);
 
       const rejectBtn = document.createElement("button");
@@ -222,6 +269,18 @@ async function renderInbox() {
   }
 }
 
+function preselectFixtureFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get("fixture");
+  if (!id) return;
+
+  const sel = document.getElementById("fixtureSelect");
+  if ([...sel.options].some((o) => o.value === id)) {
+    sel.value = id;
+    updateFixturePreview();
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
 
@@ -239,16 +298,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (!club?.ShortName) {
     document.getElementById("pageMeta").textContent = "No club assigned to this account.";
+    document.getElementById("submitPanel").style.display = "none";
     return;
   }
 
   myClubShort = club.ShortName;
-  document.getElementById("pageMeta").textContent = `${club.Club} · submit scores and respond in your inbox`;
+  document.getElementById("pageMeta").textContent =
+    `${club.Club} — enter scores below or on Fixtures (highlighted rows)`;
 
   document.getElementById("submitResultBtn").onclick = submitResult;
 
   await loadUpcomingFixtures();
   populateFixtureSelect();
+  preselectFixtureFromUrl();
   await renderInbox();
 
   if (window.location.hash === "#inbox") {
