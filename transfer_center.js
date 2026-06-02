@@ -570,7 +570,7 @@ async function loadSeasonSales(shortName) {
           (row) => `
         <tr>
           <td>${playerFromMap(players, row.player_id)?.Name || "Unknown"}</td>
-          <td>${row.buyer_club_id}</td>
+          <td>${row.buyer_club_id === "FOREIGN" ? "Foreign club" : row.buyer_club_id}</td>
           <td>₿ ${Number(row.fee).toLocaleString("en-GB")}</td>
           <td>${new Date(row.transfer_time).toLocaleString()}</td>
         </tr>

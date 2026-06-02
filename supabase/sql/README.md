@@ -107,6 +107,15 @@ Run once:
 - **GPSL Admin → Transfer Management → Save wage %**
 - Functions: `calculate_standard_player_wage`, `calculate_player_wage_for_club`
 
+## Sell to foreign club (Squad)
+
+Run once:
+
+[`sell_to_foreign_club.sql`](./sell_to_foreign_club.sql)
+
+- Squad → **Sell to foreign club**: confirms release at **market value**, player → free agent, seller credited, `Transfer_History` buyer = `FOREIGN`
+- Requires `my_club_shortname()` (`special_auctions.sql`)
+
 ## Squad composition (home-grown / under-21)
 
 Run once:

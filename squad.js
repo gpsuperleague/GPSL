@@ -276,9 +276,10 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
         <td><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
         <td>${status}</td>
         <td>
-          <select onchange="handlePlayerAction('${p.Konami_ID}', this.value)">
+          <select onchange="handlePlayerAction('${p.Konami_ID}', this.value, this)">
             <option value="">Action</option>
             <option value="list">Transfer List</option>
+            <option value="foreign">Sell to foreign club</option>
           </select>
         </td>
       `;
@@ -293,15 +294,81 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
   applyTransferWindowRules();
 }
 
+function resetActionSelect(selectEl) {
+  if (selectEl) selectEl.value = "";
+}
+
+function formatMoney(amount) {
+  return `₿ ${Number(amount || 0).toLocaleString("en-GB")}`;
+}
+
 // ⭐ UPDATED ACTION HANDLER — blocks listing when window is closed
-window.handlePlayerAction = function(playerId, action) {
+window.handlePlayerAction = async function(playerId, action, selectEl) {
+  if (!action) {
+    resetActionSelect(selectEl);
+    return;
+  }
+
   if (action === "list") {
     if (!transferWindowOpen) {
-      return; // block listing when window is closed
+      resetActionSelect(selectEl);
+      return;
     }
+    resetActionSelect(selectEl);
     openListPlayerModalByID({ Konami_ID: playerId });
+    return;
+  }
+
+  if (action === "foreign") {
+    resetActionSelect(selectEl);
+    await sellPlayerToForeignClub(playerId);
   }
 };
+
+async function sellPlayerToForeignClub(playerId) {
+  const { data: player, error: loadErr } = await supabase
+    .from("Players")
+    .select("Konami_ID, Name, market_value, Contracted_Team")
+    .eq("Konami_ID", playerId)
+    .single();
+
+  if (loadErr || !player) {
+    alert("Could not load player.");
+    return;
+  }
+
+  if (player.Contracted_Team !== currentUserShort) {
+    alert("This player is not at your club.");
+    return;
+  }
+
+  const mv = Number(player.market_value) || 0;
+  const confirmed = window.confirm(
+    `Sell ${player.Name} to a foreign club?\n\n` +
+      `The player will be released as a free agent.\n` +
+      `Your club will receive ${formatMoney(mv)} (market value).`
+  );
+
+  if (!confirmed) return;
+
+  const { data, error } = await supabase.rpc("sell_player_to_foreign_club", {
+    p_player_id: String(playerId),
+  });
+
+  if (error) {
+    console.error("sell_player_to_foreign_club:", error);
+    alert(error.message || "Sale to foreign club failed.");
+    return;
+  }
+
+  const fee = data?.fee ?? mv;
+  alert(
+    `${data?.player_name || player.Name} sold to a foreign club.\n` +
+      `${formatMoney(fee)} credited to your club balance.`
+  );
+
+  await loadSquad();
+}
 
 // LIST PLAYER MODAL
 async function openListPlayerModalByID(playerRef) {
