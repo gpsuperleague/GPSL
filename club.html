@@ -165,6 +165,12 @@
       transform: scale(1.03);
     }
 
+    .offer-review-msg {
+      color: #ff9900;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
     .modal {
       display: none;
       position: fixed;
@@ -397,6 +403,10 @@
   <!-- SUPABASE MODULE -->
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    import {
+      loadPendingDirectOfferPlayerIds,
+      playerHasPendingDirectOffer,
+    } from './direct_offers.js';
 
     const supabase = createClient(
       'https://omyyogfumrjoaweuawjn.supabase.co',
@@ -411,6 +421,7 @@
     let currentOfferSellerClub = null;
     let currentPlayerMarketValue = null;
     let draftEnabled = false;
+    let pendingDirectOfferPlayers = new Set();
 
     async function loadGlobalSettings() {
       const { data, error } = await supabase
@@ -469,6 +480,7 @@
       await loadTransferWindowStatus();
       await loadBuyerClubShortName(user.id);
       await loadClub();
+      await loadPendingDirectOffers();
       await loadPlayers();
       setupModalHandlers();
     });
@@ -547,6 +559,11 @@
       "Attackers": ["SS", "LW", "CF", "RW"]
     };
 
+    async function loadPendingDirectOffers() {
+      pendingDirectOfferPlayers =
+        await loadPendingDirectOfferPlayerIds(supabase);
+    }
+
     async function loadPlayers() {
       if (!clubShortName) return;
 
@@ -617,16 +634,25 @@
                     <td>₿ ${Number(p.market_value).toLocaleString("en-GB")}</td>
                     <td>${p.Playstyle || "-"}</td>
                     <td>
-                      ${transferWindowOpen && buyerShortName && buyerShortName !== p.Contracted_Team ? `
-                        <button 
+                      ${
+                        playerHasPendingDirectOffer(
+                          pendingDirectOfferPlayers,
+                          p.Konami_ID
+                        )
+                          ? `<span class="offer-review-msg">Offer under review</span>`
+                          : transferWindowOpen &&
+                            buyerShortName &&
+                            buyerShortName !== p.Contracted_Team
+                          ? `<button 
                           class="offer-btn" 
                           data-konami-id="${p.Konami_ID}" 
                           data-name="${p.Name}"
                           data-seller="${p.Contracted_Team}"
                         >
                           Make Offer
-                        </button>
-                      ` : ``}
+                        </button>`
+                          : ``
+                      }
                     </td>
                   </tr>
                 `).join("")}
@@ -808,6 +834,16 @@
         return;
       }
 
+      if (
+        playerHasPendingDirectOffer(
+          pendingDirectOfferPlayers,
+          currentOfferKonamiId
+        )
+      ) {
+        alert("An offer is already under review for this player.");
+        return;
+      }
+
       const { error } = await supabase
         .from("Player_Transfer_Bids")
         .insert({
@@ -815,16 +851,24 @@
           bidder_club_id: buyerShortName,
           seller_club_id: currentOfferSellerClub,
           bid_amount: amount,
+          bid_time: new Date().toISOString(),
           is_direct: true,
-          direct_bid_id: null
+          direct_bid_id: String(currentOfferKonamiId),
+          status: "active",
         });
 
       if (error) {
         console.error("Error submitting offer:", error);
-        alert("Error submitting offer. Please try again.");
+        const msg = String(error.message || "");
+        alert(
+          msg.includes("already under review")
+            ? "An offer is already under review for this player."
+            : "Error submitting offer. Please try again."
+        );
         return;
       }
 
+      pendingDirectOfferPlayers.add(String(currentOfferKonamiId).trim());
       alert("Offer submitted to the club's review panel.");
       document.getElementById("offerModal").style.display = "none";
       document.getElementById("offerAmount").value = "";
@@ -832,6 +876,7 @@
       currentOfferKonamiId = null;
       currentOfferSellerClub = null;
       currentPlayerMarketValue = null;
+      await loadPlayers();
     }
   </script>
 

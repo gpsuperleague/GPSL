@@ -14,6 +14,10 @@ import {
   getDraftTimelineFromStart,
   syncDraftListingHighBid,
 } from "./draft_engine.js";
+import {
+  loadPendingDirectOfferPlayerIds,
+  playerHasPendingDirectOffer,
+} from "./direct_offers.js";
 
 let draftAuctionStartTime = null;
 let draftJoinWindowEnd = null;
@@ -208,6 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let GLOBAL_SETTINGS = null;
   let CURRENT_USER = null;
   let ACTIVE_DRAFT_PLAYERS = new Set();
+  let PENDING_DIRECT_OFFER_PLAYERS = new Set();
 
   let CLUB_NAME_MAP = {};
 
@@ -267,6 +272,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function loadPage(page = 1) {
     CURRENT_PAGE = page;
+    await loadPendingDirectOfferPlayers();
 
     const from = (page - 1) * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
@@ -400,7 +406,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (GLOBAL_SETTINGS) {
           if (hasClub) {
-            if (!isMyClub && GLOBAL_SETTINGS.transferWindowOpen) {
+            if (
+              playerHasPendingDirectOffer(
+                PENDING_DIRECT_OFFER_PLAYERS,
+                player.Konami_ID
+              )
+            ) {
+              bidCell = `<span class="locked-msg">Offer under review</span>`;
+            } else if (!isMyClub && GLOBAL_SETTINGS.transferWindowOpen) {
               bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
             } else if (!GLOBAL_SETTINGS.transferWindowOpen) {
               bidCell = `<span class="locked-msg">Window Closed</span>`;
@@ -594,6 +607,18 @@ document.addEventListener("DOMContentLoaded", () => {
       errorBox.textContent = `Minimum direct offer is market value (₿ ${mv.toLocaleString("en-GB")}).`;
       return;
     }
+
+    if (
+      sellerClub &&
+      playerHasPendingDirectOffer(
+        PENDING_DIRECT_OFFER_PLAYERS,
+        CURRENT_OFFER_PLAYER.Konami_ID
+      )
+    ) {
+      errorBox.textContent =
+        "An offer is already under review for this player.";
+      return;
+    }
     console.log("CONFIRM: sellerClub =", sellerClub);
 
     if (!sellerClub) {
@@ -666,16 +691,24 @@ document.addEventListener("DOMContentLoaded", () => {
       seller_club_id: sellerClub || null,
       bid_amount: offer,
       bid_time: new Date().toISOString(),
-      is_direct: true
+      is_direct: true,
+      status: "active",
     });
 
     if (error) {
-      errorBox.textContent = "Failed to submit offer.";
+      const msg = String(error.message || "");
+      errorBox.textContent = msg.includes("already under review")
+        ? "An offer is already under review for this player."
+        : "Failed to submit offer.";
       console.error(error);
       return;
     }
 
+    PENDING_DIRECT_OFFER_PLAYERS.add(
+      String(CURRENT_OFFER_PLAYER.Konami_ID).trim()
+    );
     closeMakeOfferModal();
+    loadPage(CURRENT_PAGE);
   };
 
   /* ============================================================
@@ -887,6 +920,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     console.log("submitDraftBid END OK");
     return { ok: true };
+  }
+
+  async function loadPendingDirectOfferPlayers() {
+    PENDING_DIRECT_OFFER_PLAYERS =
+      await loadPendingDirectOfferPlayerIds(supabase);
   }
 
   async function loadActiveDraftListings() {
@@ -1228,6 +1266,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await populateDropdowns();
     await loadTotalCount();
     await loadActiveDraftListings();
+    await loadPendingDirectOfferPlayers();
     await loadDraftCreditsForOwner();
     loadPage(1);
   }

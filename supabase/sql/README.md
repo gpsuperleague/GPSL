@@ -34,6 +34,14 @@ SELECT transferengine_run();
 
 Check **Logs** on Edge Function or `raise notice` output if enabled.
 
+## One direct offer per player (pending review)
+
+Run once to block duplicate direct offers in the database:
+
+[`direct_offer_guard.sql`](./direct_offer_guard.sql)
+
+GPDB and `club.html` show **Offer under review** while `Player_Transfer_Bids` has `is_direct`, `listing_id` null, `status = active`, and a `direct_bid_id`.
+
 ## Hide secret random finish from club owners
 
 Run once in SQL Editor:
