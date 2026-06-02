@@ -61,6 +61,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadSquad(); // now loads fresh listing state internally
 
   wireButtons();
+  wireSquadActionMenu();
 
   // OPTIONAL: auto-refresh listing status every 30 seconds
   setInterval(async () => {
@@ -89,7 +90,7 @@ async function loadTransferWindowStatus() {
 // ⭐ NEW: Apply UI rules when window is closed
 function applyTransferWindowRules() {
   const msg = document.getElementById("windowClosedMessage");
-  const selects = document.querySelectorAll("select");
+  const selects = document.querySelectorAll("select.squad-action-select");
 
   if (!transferWindowOpen) {
     // Show warning message
@@ -276,7 +277,7 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
         <td><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
         <td>${status}</td>
         <td>
-          <select onchange="handlePlayerAction('${p.Konami_ID}', this.value, this)">
+          <select class="squad-action-select" data-player-id="${p.Konami_ID}">
             <option value="">Action</option>
             <option value="list">Transfer List</option>
             <option value="foreign">Sell to foreign club</option>
@@ -302,28 +303,55 @@ function formatMoney(amount) {
   return `₿ ${Number(amount || 0).toLocaleString("en-GB")}`;
 }
 
-// ⭐ UPDATED ACTION HANDLER — blocks listing when window is closed
-window.handlePlayerAction = async function(playerId, action, selectEl) {
+function wireSquadActionMenu() {
+  const tbody = document.getElementById("squad-body");
+  if (!tbody || tbody.dataset.actionMenuWired === "1") return;
+  tbody.dataset.actionMenuWired = "1";
+
+  tbody.addEventListener("click", (e) => {
+    if (e.target.closest("select.squad-action-select")) {
+      e.stopPropagation();
+    }
+  });
+
+  tbody.addEventListener("change", (e) => {
+    const sel = e.target.closest("select.squad-action-select");
+    if (!sel) return;
+    e.stopPropagation();
+    const playerId = sel.dataset.playerId;
+    const action = sel.value;
+    void handlePlayerAction(playerId, action, sel);
+  });
+}
+
+// Blocks listing when transfer window is closed
+async function handlePlayerAction(playerId, action, selectEl) {
   if (!action) {
     resetActionSelect(selectEl);
     return;
   }
 
-  if (action === "list") {
-    if (!transferWindowOpen) {
+  try {
+    if (action === "list") {
+      if (!transferWindowOpen) {
+        resetActionSelect(selectEl);
+        return;
+      }
       resetActionSelect(selectEl);
+      await openListPlayerModalByID({ Konami_ID: playerId });
       return;
     }
-    resetActionSelect(selectEl);
-    openListPlayerModalByID({ Konami_ID: playerId });
-    return;
-  }
 
-  if (action === "foreign") {
+    if (action === "foreign") {
+      resetActionSelect(selectEl);
+      await sellPlayerToForeignClub(playerId);
+    }
+  } catch (err) {
+    console.error("Squad action failed:", err);
+    alert("Action failed. Please try again.");
     resetActionSelect(selectEl);
-    await sellPlayerToForeignClub(playerId);
   }
-};
+}
 
 async function sellPlayerToForeignClub(playerId) {
   const { data: player, error: loadErr } = await supabase
@@ -566,6 +594,7 @@ function applyPESDBRowClicks(tbodyId) {
 
       if (
         e.target.closest("select") ||
+        e.target.closest("select.squad-action-select") ||
         clickedButton ||
         e.target.closest(".decision-buttons")
       ) {

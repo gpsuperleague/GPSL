@@ -201,6 +201,12 @@ body.squad-page .squad-section-title {
    PLAYER IMAGE
    ========================================================== */
 
+body.squad-page select.squad-action-select {
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+}
+
 body.squad-page .squad-qual-badge {
   color: #6cf;
   font-size: 11px;
