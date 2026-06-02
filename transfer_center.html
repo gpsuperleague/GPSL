@@ -15,6 +15,20 @@
     .panel-transfer::after {
       background-image: url("images/panel_bg/Transfer.png");
     }
+
+    .fav-btn, .draft-fav-remove {
+      background: transparent;
+      border: none;
+      color: #666;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+
+    .fav-btn.fav-on, .draft-fav-remove.fav-on {
+      color: #ff9900;
+    }
   </style>
 
   <style>
@@ -64,6 +78,17 @@
     <!-- ================================
          TRANSFER CENTRE PANELS
          ================================ -->
+
+    <!-- SAVED DRAFT AUCTIONS -->
+    <div class="panel panel-bg panel-transfer">
+      <h2>Saved Draft Auctions</h2>
+      <p style="font-size:13px;color:#aaa;margin:0 0 10px 0;">
+        Threads you starred on the Draft Auction page. Active auctions link straight to bidding.
+      </p>
+      <div id="draftFavouritesContainer">
+        <i>Loading…</i>
+      </div>
+    </div>
 
     <!-- ACTIVE LISTINGS -->
     <div class="panel panel-bg panel-transfer">

@@ -211,6 +211,14 @@ After changing listing duration in the app, run once to update **existing** acti
 
 Uses each listing’s `start_time` (same anchor as new listings). Never shortens `end_time`; listings already extended by the engine keep their `initial_end_time`.
 
+## Draft auction favourites (saved threads)
+
+Run once (requires `my_club_shortname()` from `special_auctions.sql`):
+
+[`draft_auction_favourites.sql`](./draft_auction_favourites.sql)
+
+Owners star players on **Draft Auction** (pinned to top of the list) and manage them under **Transfer Centre → Saved Draft Auctions**.
+
 ## Admin: Reset Draft Auction button
 
 If **Reset Draft Auction** in `admin.html` fails (RLS / permission errors), run once:

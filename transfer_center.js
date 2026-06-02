@@ -7,9 +7,16 @@
 // ============================================================
 
 import { supabase } from "./supabase_client.js";
-import { initGlobal, computeStandardListingEndTime } from "./global.js";
+import { initGlobal, computeStandardListingEndTime, loadGlobalSettings } from "./global.js";
+import { getUKNow, isDraftAuctionEnded } from "./draft_engine.js";
 import { loadClubsMap, fullClubName, buyerClubLabel } from "./clubs_lookup.js";
 import { getBidPlayerId } from "./direct_offers.js";
+import {
+  loadDraftFavouriteIds,
+  toggleDraftFavourite,
+  favouriteStarChar,
+  favouriteButtonLabel,
+} from "./draft_favourites.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
@@ -39,6 +46,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${shortName}.png`;
 
+  loadDraftFavouritesSection(shortName);
   loadActiveListings(shortName);
   loadActiveBids(shortName);
   loadSellerReview(shortName);
@@ -87,6 +95,148 @@ async function fetchPlayersMap(playerIds) {
 function playerFromMap(map, id) {
   if (id == null || String(id).trim() === "") return null;
   return map.get(String(id)) ?? null;
+}
+
+// ============================================================
+// SAVED DRAFT AUCTIONS (favourites)
+// ============================================================
+
+async function loadDraftFavouritesSection(shortName) {
+  const container = document.getElementById("draftFavouritesContainer");
+  if (!container) return;
+
+  container.innerHTML = "Loading…";
+
+  const favouriteIds = await loadDraftFavouriteIds(supabase, shortName);
+  if (favouriteIds.size === 0) {
+    container.innerHTML =
+      "<i>No saved draft auctions. Open <a href=\"draftauction.html\" class=\"gpsl-link\">Draft Auction</a> and click ☆ on a player.</i>";
+    return;
+  }
+
+  const playerIdList = [...favouriteIds];
+  const players = await fetchPlayersMap(playerIdList);
+  const numericIds = playerIdList
+    .map((id) => Number(id))
+    .filter((n) => Number.isFinite(n));
+
+  const settings = await loadGlobalSettings();
+  const draftStart = settings.draftStart;
+  const draftEnabled = settings.draftEnabled;
+  const nowUK = getUKNow();
+  const auctionEnded =
+    !draftEnabled || !draftStart || isDraftAuctionEnded(nowUK, draftStart);
+
+  const listingByPlayer = new Map();
+  if (numericIds.length > 0) {
+    const { data: listings } = await supabase
+      .from("Player_Transfer_Listings")
+      .select("id, player_id, status")
+      .eq("listing_type", "draft")
+      .eq("status", "Active")
+      .in("player_id", numericIds);
+
+    for (const row of listings || []) {
+      listingByPlayer.set(String(row.player_id), row);
+    }
+  }
+
+  const bidsByPlayer = new Map();
+  if (numericIds.length > 0) {
+    const { data: bids } = await supabase
+      .from("Player_Transfer_Bids")
+      .select("direct_bid_id, bidder_club_id, bid_amount")
+      .in("direct_bid_id", numericIds)
+      .eq("is_direct", true);
+
+    for (const b of bids || []) {
+      const key = String(b.direct_bid_id);
+      if (!bidsByPlayer.has(key)) bidsByPlayer.set(key, []);
+      bidsByPlayer.get(key).push(b);
+    }
+  }
+
+  const leadingClubShorts = new Set();
+  for (const bids of bidsByPlayer.values()) {
+    for (const b of bids) leadingClubShorts.add(b.bidder_club_id);
+  }
+
+  let clubNameMap = new Map();
+  if (leadingClubShorts.size > 0) {
+    const { data: clubs } = await supabase
+      .from("Clubs")
+      .select("ShortName, Club")
+      .in("ShortName", [...leadingClubShorts]);
+    clubNameMap = new Map((clubs || []).map((c) => [c.ShortName, c.Club]));
+  }
+
+  const rowsHtml = playerIdList
+    .map((pid) => {
+      const player = playerFromMap(players, pid);
+      const name = player?.Name || `Player ${pid}`;
+      const listing = listingByPlayer.get(pid);
+      const playerBids = bidsByPlayer.get(pid) || [];
+
+      let highestText = "None";
+      if (playerBids.length) {
+        const highest = playerBids.reduce(
+          (max, b) => (b.bid_amount > max.bid_amount ? b : max),
+          playerBids[0]
+        );
+        const clubLabel =
+          clubNameMap.get(highest.bidder_club_id) || highest.bidder_club_id;
+        highestText = `₿ ${Number(highest.bid_amount).toLocaleString("en-GB")} (${clubLabel})`;
+      }
+
+      let statusText = "Not in active draft auction";
+      let actionHtml = `<a href="draftauction_player.html?player=${encodeURIComponent(pid)}" class="gpsl-link">View</a>`;
+      if (listing) {
+        statusText = auctionEnded ? "Auction ended" : "Active";
+        if (!auctionEnded) {
+          actionHtml = `<a href="draftauction_player.html?player=${encodeURIComponent(pid)}" class="gpsl-link">Bid</a>`;
+        }
+      } else if (!draftEnabled) {
+        statusText = "Draft window closed";
+      }
+
+      return `
+        <tr data-player-id="${pid}">
+          <td>
+            <button type="button" class="draft-fav-remove fav-on" data-player-id="${pid}" title="${favouriteButtonLabel(true)}" aria-label="${favouriteButtonLabel(true)}">${favouriteStarChar(true)}</button>
+          </td>
+          <td>${name}</td>
+          <td>${highestText}</td>
+          <td>${statusText}</td>
+          <td>${actionHtml}</td>
+        </tr>
+      `;
+    })
+    .join("");
+
+  container.innerHTML = `
+    <table class="gpsl-table">
+      <tr>
+        <th>★</th>
+        <th>Player</th>
+        <th>Highest bid</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+      ${rowsHtml}
+    </table>
+  `;
+
+  container.querySelectorAll(".draft-fav-remove").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      try {
+        await toggleDraftFavourite(supabase, shortName, btn.dataset.playerId);
+        await loadDraftFavouritesSection(shortName);
+      } catch (err) {
+        console.error(err);
+        alert(err.message || "Could not remove saved draft auction.");
+      }
+    });
+  });
 }
 
 // ============================================================

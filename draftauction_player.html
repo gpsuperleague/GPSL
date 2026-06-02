@@ -44,6 +44,20 @@
       border:1px solid #333; padding:6px; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     table.history th { background:#222; color:#ff9900; }
+
+    .fav-btn {
+      background:transparent;
+      border:1px solid #555;
+      color:#666;
+      font-size:16px;
+      cursor:pointer;
+      padding:4px 10px;
+      border-radius:4px;
+      margin-left:8px;
+      vertical-align:middle;
+    }
+    .fav-btn.fav-on { color:#ff9900; border-color:#ff9900; }
+    .fav-btn:hover { color:#ffcc66; }
   </style>
 </head>
 
@@ -56,7 +70,10 @@
         <img id="playerImg" class="player-img" src="" alt="Player">
       </div>
       <div class="player-card">
-        <h2 id="playerName"></h2>
+        <h2 style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
+          <span id="playerName"></span>
+          <button type="button" id="draftFavBtn" class="fav-btn" title="Save draft auction" aria-label="Save draft auction">☆</button>
+        </h2>
         <div class="meta" id="playerMeta"></div>
         <div class="meta" id="playerValue"></div>
         <div class="meta" id="currentHighest"></div>
@@ -124,6 +141,12 @@
       formatLiveCountdownLines,
       formatTargetTimesSubline,
     } from "./countdown_display.js";
+    import {
+      loadDraftFavouriteIds,
+      toggleDraftFavourite,
+      favouriteStarChar,
+      favouriteButtonLabel,
+    } from "./draft_favourites.js";
 
     /* ============================================================
        STATE
@@ -154,9 +177,46 @@
       await loadSettings();
       await buildNav();
       await loadBuyerClubShortName(user.id);
+      wireDraftFavouriteButton();
       await loadPlayerAndBids();
       setupBidControls();
     });
+
+    function wireDraftFavouriteButton() {
+      const btn = document.getElementById("draftFavBtn");
+      if (!btn) return;
+
+      btn.addEventListener("click", async () => {
+        if (!buyerShortName) {
+          alert("Link a club to your account to save draft auctions.");
+          return;
+        }
+        if (!playerId) return;
+        try {
+          await toggleDraftFavourite(supabase, buyerShortName, playerId);
+          await refreshDraftFavouriteButton();
+        } catch (err) {
+          console.error(err);
+          alert(err.message || "Could not update saved draft auction.");
+        }
+      });
+    }
+
+    async function refreshDraftFavouriteButton() {
+      const btn = document.getElementById("draftFavBtn");
+      if (!btn || !buyerShortName || !playerId) {
+        if (btn) btn.style.display = "none";
+        return;
+      }
+
+      const favs = await loadDraftFavouriteIds(supabase, buyerShortName);
+      const isFav = favs.has(String(playerId));
+      btn.textContent = favouriteStarChar(isFav);
+      btn.classList.toggle("fav-on", isFav);
+      btn.title = favouriteButtonLabel(isFav);
+      btn.setAttribute("aria-label", favouriteButtonLabel(isFav));
+      btn.style.display = "";
+    }
 
     /* ============================================================
        LOAD GLOBAL SETTINGS (UNIFIED)
@@ -306,6 +366,7 @@
         renderHistory(bids);
       }
 
+      await refreshDraftFavouriteButton();
       startDraftPlayerCountdown();
 
       /* --- Credits --- */

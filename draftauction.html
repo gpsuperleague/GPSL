@@ -132,6 +132,28 @@
       cursor:not-allowed;
     }
 
+    .fav-btn {
+      background:transparent;
+      border:none;
+      color:#666;
+      font-size:20px;
+      cursor:pointer;
+      padding:0 4px;
+      line-height:1;
+    }
+
+    .fav-btn.fav-on {
+      color:#ff9900;
+    }
+
+    .fav-btn:hover {
+      color:#ffcc66;
+    }
+
+    tr.draft-fav-row td {
+      background:#1f1a12;
+    }
+
     .draft-thumb {
       height:50px;
       width:auto;
@@ -202,13 +224,15 @@
     • Joining an existing draft auction costs <b>1 credit</b><br>
     • No bids by 6pm → no bids after 6pm<br>
     • No free agent bids after 6pm<br>
-    • All rules are based on <b>UK time</b>, but times you see are in <b>your local time</b>
+    • All rules are based on <b>UK time</b>, but times you see are in <b>your local time</b><br>
+    • Click <b>☆</b> on a row to save a thread — saved auctions appear at the top here and in <b>Transfer Centre → Saved Draft Auctions</b>
   </div>
 
   <div class="panel">
     <table class="gpsl-table">
       <thead>
         <tr>
+          <th title="Save thread">★</th>
           <th></th>
           <th>Player</th>
           <th>Pos</th>
@@ -236,6 +260,13 @@
       getDraftCredits,
       canClubBidOnPlayerDraft,
     } from "./draft_engine.js";
+    import {
+      loadDraftFavouriteIds,
+      toggleDraftFavourite,
+      sortDraftListingsByFavourite,
+      favouriteStarChar,
+      favouriteButtonLabel,
+    } from "./draft_favourites.js";
 
     /* ============================================================
        MODULE A: Global State
@@ -245,6 +276,8 @@
 
     let draftEnabled = false;
     let draftAuctionStartTimeUK = null;
+    let favouriteIds = new Set();
+    let draftTableWired = false;
 
     /* ============================================================
        MODULE B: Navigation
@@ -306,9 +339,45 @@
 
       await buildNav();
       await loadBuyerClubShortName(user.id);
+      favouriteIds = await loadDraftFavouriteIds(supabase, buyerShortName);
+      wireDraftTableActions();
       await updateCreditPanel();
       await loadDraftListings();
     });
+
+    function wireDraftTableActions() {
+      if (draftTableWired) return;
+      draftTableWired = true;
+
+      const tbody = document.getElementById("draftTableBody");
+      tbody.addEventListener("click", async (e) => {
+        const favBtn = e.target.closest(".fav-btn");
+        if (favBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!buyerShortName) {
+            alert("Link a club to your account to save draft auctions.");
+            return;
+          }
+          const konamiId = favBtn.getAttribute("data-konami-id");
+          try {
+            await toggleDraftFavourite(supabase, buyerShortName, konamiId);
+            favouriteIds = await loadDraftFavouriteIds(supabase, buyerShortName);
+            await loadDraftListings();
+          } catch (err) {
+            console.error(err);
+            alert(err.message || "Could not update saved draft auction.");
+          }
+          return;
+        }
+
+        const bidBtn = e.target.closest(".bid-btn.enabled");
+        if (bidBtn) {
+          const konamiId = bidBtn.getAttribute("data-konami-id");
+          window.location = `draftauction_player.html?player=${konamiId}`;
+        }
+      });
+    }
 
     /* ============================================================
        MODULE F: Load Draft Listings
@@ -321,12 +390,12 @@
       const nowUK = getUKNow();
 
       if (!draftEnabled || !draftAuctionStartTimeUK) {
-        tbody.innerHTML = `<tr><td colspan="8">Draft auction is not active.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9">Draft auction is not active.</td></tr>`;
         return;
       }
 
       if (nowUK < draftAuctionStartTimeUK) {
-        tbody.innerHTML = `<tr><td colspan="8">Draft auction has not started yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9">Draft auction has not started yet.</td></tr>`;
         return;
       }
 
@@ -337,9 +406,11 @@
         .eq("status", "Active");
 
       if (!listings || !listings.length) {
-        tbody.innerHTML = `<tr><td colspan="8">No active draft auctions.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9">No active draft auctions.</td></tr>`;
         return;
       }
+
+      const sortedListings = sortDraftListingsByFavourite(listings, favouriteIds);
 
       const playerIds = [...new Set(
         listings
@@ -380,7 +451,7 @@
 
       const auctionEnded = isDraftAuctionEnded(nowUK, draftAuctionStartTimeUK);
 
-      for (const listing of listings) {
+      for (const listing of sortedListings) {
         const playerIdNum = Number(listing.player_id);
         const player = playerMap.get(playerIdNum);
         if (!player) continue;
@@ -412,9 +483,20 @@
 
         const btnClass = (!auctionEnded && canBid) ? "enabled" : "disabled";
         const btnLabel = auctionEnded ? "Ended" : (canBid ? "Bid" : "Locked");
+        const isFav = favouriteIds.has(String(player.Konami_ID));
 
         const row = document.createElement("tr");
+        if (isFav) row.classList.add("draft-fav-row");
         row.innerHTML = `
+          <td>
+            <button
+              type="button"
+              class="fav-btn${isFav ? " fav-on" : ""}"
+              data-konami-id="${player.Konami_ID}"
+              aria-label="${favouriteButtonLabel(isFav)}"
+              title="${favouriteButtonLabel(isFav)}"
+            >${favouriteStarChar(isFav)}</button>
+          </td>
           <td>
             <img
               class="draft-thumb"
@@ -447,20 +529,8 @@
       }
 
       if (!tbody.children.length) {
-        tbody.innerHTML = `<tr><td colspan="8">No active draft auctions.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9">No active draft auctions.</td></tr>`;
       }
-
-      document.addEventListener("click", (e) => {
-        const target = e.target;
-        if (
-          target.classList &&
-          target.classList.contains("bid-btn") &&
-          target.classList.contains("enabled")
-        ) {
-          const konamiId = target.getAttribute("data-konami-id");
-          window.location = `draftauction_player.html?player=${konamiId}`;
-        }
-      });
     }
   </script>
 
