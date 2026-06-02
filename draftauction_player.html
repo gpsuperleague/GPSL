@@ -122,11 +122,11 @@
     /* ============================================================
        IMPORT UNIFIED ENGINE + CLUB LOOKUP
        ============================================================ */
+    import { buildNav } from "./global.js";
     import {
       supabase,
       getUKNow,
       loadGlobalSettings,
-      buildNav,
       getDraftPhaseFromStart,
       getDraftTimelineFromStart,
       draftPhaseLabel,
@@ -136,7 +136,7 @@
       syncDraftListingHighBid,
     } from "./draft_engine.js";
 
-    import { fullClubName } from "./clubs_lookup.js";
+    import { fullClubName, loadClubsMap } from "./clubs_lookup.js";
     import {
       formatLiveCountdownLines,
       formatTargetTimesSubline,
@@ -176,6 +176,7 @@
 
       await loadSettings();
       await buildNav();
+      await loadClubsMap();
       await loadBuyerClubShortName(user.id);
       wireDraftFavouriteButton();
       await loadPlayerAndBids();
@@ -305,11 +306,24 @@
        LOAD PLAYER + BIDS
        ============================================================ */
     async function loadPlayerAndBids() {
-      const { data: player } = await supabase
+      if (!playerId) {
+        document.getElementById("playerName").textContent = "No player selected.";
+        return;
+      }
+
+      const konamiKey = Number(playerId);
+      const { data: player, error: playerError } = await supabase
         .from("Players")
         .select("*")
-        .eq("Konami_ID", playerId)
-        .single();
+        .eq("Konami_ID", Number.isFinite(konamiKey) ? konamiKey : playerId)
+        .maybeSingle();
+
+      if (playerError) {
+        console.error("loadPlayerAndBids:", playerError);
+        document.getElementById("playerName").textContent =
+          "Could not load player.";
+        return;
+      }
 
       if (!player || player.Contracted_Team !== null) {
         document.getElementById("playerName").textContent =
@@ -328,12 +342,11 @@
       img.src = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
       img.onerror = () => img.src = "images/silhouette.png";
 
-      /* --- Bids (current window) --- */
+      /* --- Bids (current draft window from auction start) --- */
       const nowUK = getUKNow();
-      const phase = getDraftPhaseFromStart(nowUK, draftAuctionStartTimeUK);
-
-      const windowStart = new Date(nowUK.getTime() - 24 * 60 * 60 * 1000);
-      const windowEnd = nowUK;
+      const timeline = getDraftTimelineFromStart(draftAuctionStartTimeUK);
+      const windowStart =
+        timeline?.start ?? new Date(nowUK.getTime() - 24 * 60 * 60 * 1000);
 
       const { data: bids } = await supabase
         .from("Player_Transfer_Bids")
@@ -341,7 +354,7 @@
         .eq("direct_bid_id", player.Konami_ID)
         .eq("is_direct", true)
         .gte("bid_time", windowStart.toISOString())
-        .lt("bid_time", windowEnd.toISOString())
+        .lte("bid_time", nowUK.toISOString())
         .order("bid_time", { ascending: true });
 
       if (!bids || !bids.length) {
@@ -363,7 +376,7 @@
         document.getElementById("leadingClub").textContent =
           `Leading Club: ${leadingFull}`;
 
-        renderHistory(bids);
+        await renderHistory(bids);
       }
 
       await refreshDraftFavouriteButton();
@@ -388,7 +401,7 @@
     /* ============================================================
        RENDER HISTORY
        ============================================================ */
-    function renderHistory(bids) {
+    async function renderHistory(bids) {
       const tbody = document.getElementById("historyBody");
       tbody.innerHTML = "";
 
@@ -396,7 +409,12 @@
         const d = new Date(bid.bid_time);
         const timeText = isNaN(d.getTime())
           ? "—"
-          : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          : d.toLocaleString([], {
+              month: "short",
+              day: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
 
         let type = "-";
         let notes = "";
@@ -411,10 +429,13 @@
           type = "Bid";
         }
 
+        const clubLabel =
+          (await fullClubName(bid.bidder_club_id)) || bid.bidder_club_id;
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${timeText}</td>
-          <td>${bid.bidder_club_id}</td>
+          <td>${clubLabel}</td>
           <td>₿ ${Number(bid.bid_amount).toLocaleString("en-GB")}</td>
           <td>${type}</td>
           <td>${notes}</td>
