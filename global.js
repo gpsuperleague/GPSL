@@ -373,6 +373,19 @@ export async function buildNav() {
   const isDashboard = path.includes("dashboard");
   const isAdmin = path.includes("admin");
   const isDraft = path.includes("draftauction") && !path.includes("draftauction_player");
+  const isSpecialAuction = path.includes("special_auction");
+
+  let hasActiveSpecialAuction = false;
+  try {
+    const { data: sa } = await supabase
+      .from("special_auctions")
+      .select("id")
+      .eq("status", "active")
+      .maybeSingle();
+    hasActiveSpecialAuction = !!sa;
+  } catch (_) {
+    hasActiveSpecialAuction = false;
+  }
 
   // Build nav HTML - only include buttons for pages NOT currently viewing
   let html = "";
@@ -403,6 +416,10 @@ export async function buildNav() {
 
   if (draftEnabled && !isDraft) {
     html += `<a id="nav-draft" href="draftauction.html" class="button">Draft Auction</a>`;
+  }
+
+  if (hasActiveSpecialAuction && !isSpecialAuction) {
+    html += `<a id="nav-special-auction" href="special_auction.html" class="button">Special Auction</a>`;
   }
 
   html += `<button id="logoutBtn" class="button">Logout</button>`;

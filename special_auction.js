@@ -1,0 +1,108 @@
+// Shared special auction helpers (owners + admin)
+
+export function formatMoney(n) {
+  return `₿ ${Number(n || 0).toLocaleString("en-GB")}`;
+}
+
+export function roundToMillion(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return 0;
+  return Math.round(x / 1000000) * 1000000;
+}
+
+export async function fetchActiveSpecialAuction(supabase) {
+  const { data, error } = await supabase
+    .from("special_auctions")
+    .select("*")
+    .eq("status", "active")
+    .maybeSingle();
+
+  if (error) {
+    console.error("fetchActiveSpecialAuction:", error);
+    return null;
+  }
+  return data;
+}
+
+export async function fetchAuctionById(supabase, id) {
+  const { data, error } = await supabase
+    .from("special_auctions")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) return null;
+  return data;
+}
+
+export async function loadOwnerClub(supabase) {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { user: null, clubShort: null };
+
+  const { data: club } = await supabase
+    .from("Clubs")
+    .select("ShortName")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  return { user, clubShort: club?.ShortName ?? null };
+}
+
+export async function fetchAuctionBids(supabase, auctionId) {
+  const { data, error } = await supabase
+    .from("special_auction_bids")
+    .select("*")
+    .eq("auction_id", auctionId)
+    .order("bid_amount", { ascending: true });
+
+  if (error) {
+    console.error("fetchAuctionBids:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function submitSpecialBid(supabase, auctionId, amount) {
+  return supabase.rpc("special_auction_submit_bid", {
+    p_auction_id: auctionId,
+    p_amount: amount,
+  });
+}
+
+export function auctionPhase(auction) {
+  if (!auction) return "none";
+  const now = Date.now();
+  const start = new Date(auction.start_time).getTime();
+  const end = new Date(auction.end_time).getTime();
+  if (auction.status !== "active") return auction.status;
+  if (now < start) return "before_start";
+  if (now >= end) return "ended_pending";
+  return "live";
+}
+
+export function timeRemainingLabel(endIso) {
+  const ms = new Date(endIso).getTime() - Date.now();
+  if (ms <= 0) return "Ended";
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${m}m ${sec}s`;
+  if (m > 0) return `${m}m ${sec}s`;
+  return `${sec}s`;
+}
+
+export function prizeDescription(auction) {
+  if (!auction) return "";
+  if (auction.prize_type === "player" && auction.prize_player_id) {
+    return `Player prize (ID ${auction.prize_player_id})`;
+  }
+  if (auction.prize_type === "cash" && auction.prize_cash_amount) {
+    return `Cash prize ${formatMoney(auction.prize_cash_amount)}`;
+  }
+  if (auction.prize_type === "discount") {
+    return auction.prize_discount_label || "Discount prize";
+  }
+  return "Prize TBC";
+}

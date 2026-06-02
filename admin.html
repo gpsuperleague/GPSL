@@ -197,6 +197,99 @@
         <p id="draftStartTime" class="status-note" style="margin-top:10px;"></p>
       </div>
 
+      <!-- SPECIAL AUCTIONS -->
+      <div class="card">
+        <h2>Special Auctions</h2>
+        <p class="note">Create a lowest-unique or snap auction, then set it as the active special auction owners see on the dashboard.</p>
+
+        <div class="row">
+          <div>
+            <label>Type</label>
+            <select id="saType">
+              <option value="lowest_unique">Lowest unique bid</option>
+              <option value="snap">Snap auction (1 hour)</option>
+            </select>
+          </div>
+          <div>
+            <label>Title</label>
+            <input id="saTitle" placeholder="e.g. March Mystery Snap">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Start (local)</label>
+            <input id="saStart" type="datetime-local">
+          </div>
+          <div>
+            <label>End (local)</label>
+            <input id="saEnd" type="datetime-local">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Prize type</label>
+            <select id="saPrizeType">
+              <option value="player">Player</option>
+              <option value="cash">Cash</option>
+              <option value="discount">Discount</option>
+            </select>
+          </div>
+          <div>
+            <label>Prize player Konami ID</label>
+            <input id="saPrizePlayerId" placeholder="If prize is player">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Cash prize amount</label>
+            <input id="saPrizeCash" placeholder="e.g. 5000000">
+          </div>
+          <div>
+            <label>Discount label</label>
+            <input id="saPrizeDiscount" placeholder="e.g. 10% off next signing">
+          </div>
+        </div>
+
+        <div class="row" id="saSnapPlayerRow">
+          <div>
+            <label>Player display (snap)</label>
+            <select id="saPlayerMode">
+              <option value="known">Known player</option>
+              <option value="mystery">Mystery (clue only)</option>
+            </select>
+          </div>
+          <div>
+            <label>Known player Konami ID</label>
+            <input id="saKnownPlayerId" placeholder="Snap / optional">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>Mystery clue</label>
+            <input id="saMysteryClue" placeholder="e.g. World Cup winner, left foot…">
+          </div>
+        </div>
+
+        <button id="saCreateBtn" class="button">Create auction (draft)</button>
+        <div id="saCreateStatus" style="color:#ffcc00; margin-top:8px;"></div>
+
+        <hr style="border-color:#333; margin:20px 0;">
+
+        <label>Active / recent auctions</label>
+        <select id="saSelect" style="margin-bottom:10px;"></select>
+
+        <div class="row">
+          <button id="saActivateBtn" class="button">Set as active</button>
+          <button id="saRevealBtn" class="button" style="background:#4466aa;">Reveal (LUB)</button>
+          <button id="saSettleBtn" class="button" style="background:#2f7a2f;">Settle &amp; charge fees</button>
+        </div>
+        <div id="saManageStatus" style="color:#ffcc00; margin-top:8px;"></div>
+      </div>
+
       <!-- OWNER ADMINISTRATION -->
       <div class="card">
         <h2>Owner Administration</h2>
@@ -296,7 +389,111 @@
 
       await loadSettings();
       await loadOwnerList();
+      await initSpecialAuctionsAdmin();
     });
+
+    function toIsoFromLocalInput(val) {
+      if (!val) return null;
+      return new Date(val).toISOString();
+    }
+
+    function snapEndOneHourAfterStart(startIso) {
+      const t = new Date(startIso);
+      t.setHours(t.getHours() + 1);
+      return t.toISOString();
+    }
+
+    async function initSpecialAuctionsAdmin() {
+      const typeEl = document.getElementById("saType");
+      const endEl = document.getElementById("saEnd");
+
+      typeEl.onchange = () => {
+        if (typeEl.value === "snap") {
+          const start = document.getElementById("saStart").value;
+          if (start) endEl.value = new Date(snapEndOneHourAfterStart(toIsoFromLocalInput(start))).toISOString().slice(0, 16);
+        }
+      };
+      document.getElementById("saStart").onchange = () => {
+        if (typeEl.value === "snap" && document.getElementById("saStart").value) {
+          endEl.value = new Date(snapEndOneHourAfterStart(toIsoFromLocalInput(document.getElementById("saStart").value))).toISOString().slice(0, 16);
+        }
+      };
+
+      await refreshSpecialAuctionSelect();
+
+      document.getElementById("saCreateBtn").onclick = async () => {
+        const status = document.getElementById("saCreateStatus");
+        const type = typeEl.value;
+        const start = toIsoFromLocalInput(document.getElementById("saStart").value);
+        let end = toIsoFromLocalInput(document.getElementById("saEnd").value);
+        if (type === "snap" && start) end = snapEndOneHourAfterStart(start);
+
+        const row = {
+          auction_type: type,
+          title: document.getElementById("saTitle").value.trim() || "Special auction",
+          status: "draft",
+          start_time: start,
+          end_time: end,
+          prize_type: document.getElementById("saPrizeType").value,
+          prize_player_id: document.getElementById("saPrizePlayerId").value.trim() || null,
+          prize_cash_amount: Number(document.getElementById("saPrizeCash").value.replace(/[^\d]/g, "")) || null,
+          prize_discount_label: document.getElementById("saPrizeDiscount").value.trim() || null,
+          player_mode: document.getElementById("saPlayerMode").value,
+          mystery_clue: document.getElementById("saMysteryClue").value.trim() || null,
+          known_player_id: document.getElementById("saKnownPlayerId").value.trim() || null,
+        };
+
+        if (!start || !end) {
+          status.textContent = "❌ Set start and end times.";
+          return;
+        }
+
+        const { error } = await supabase.from("special_auctions").insert(row);
+        status.textContent = error ? "❌ " + error.message : "✅ Auction created (draft).";
+        if (!error) await refreshSpecialAuctionSelect();
+      };
+
+      document.getElementById("saActivateBtn").onclick = async () => {
+        const id = Number(document.getElementById("saSelect").value);
+        const st = document.getElementById("saManageStatus");
+        if (!id) { st.textContent = "Select an auction."; return; }
+        const { error } = await supabase.rpc("special_auction_activate", { p_auction_id: id });
+        st.textContent = error ? "❌ " + error.message : "✅ Active — owners see it on Special Auction page.";
+        await refreshSpecialAuctionSelect();
+      };
+
+      document.getElementById("saRevealBtn").onclick = async () => {
+        const id = Number(document.getElementById("saSelect").value);
+        const st = document.getElementById("saManageStatus");
+        const { error } = await supabase.rpc("special_auction_reveal_lowest_unique", { p_auction_id: id });
+        st.textContent = error ? "❌ " + error.message : "✅ Bids revealed; lowest unique highlighted.";
+        await refreshSpecialAuctionSelect();
+      };
+
+      document.getElementById("saSettleBtn").onclick = async () => {
+        const id = Number(document.getElementById("saSelect").value);
+        const st = document.getElementById("saManageStatus");
+        const { error } = await supabase.rpc("special_auction_settle", { p_auction_id: id });
+        st.textContent = error ? "❌ " + error.message : "✅ Settled — fees charged and prize applied.";
+        await refreshSpecialAuctionSelect();
+      };
+    }
+
+    async function refreshSpecialAuctionSelect() {
+      const sel = document.getElementById("saSelect");
+      const { data } = await supabase
+        .from("special_auctions")
+        .select("id, title, status, auction_type, start_time")
+        .order("id", { ascending: false })
+        .limit(30);
+
+      sel.innerHTML = (data || [])
+        .map(
+          (a) =>
+            `<option value="${a.id}">#${a.id} ${a.title} [${a.status}] ${a.auction_type}</option>`
+        )
+        .join("");
+    }
 
     /* ============================================================
        LOAD SETTINGS

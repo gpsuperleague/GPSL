@@ -1,0 +1,356 @@
+<script>
+  const CURRENT_PAGE = "special_auction";
+</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Special Auction — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background: #111; color: #ddd; font-family: Arial, sans-serif; margin: 0; }
+    #nav { padding: 15px; background: #1a1a1a; border-bottom: 1px solid #333; text-align: center; }
+    h1 { color: #ff9900; margin: 20px; }
+    .panel {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      margin: 20px;
+      padding: 20px;
+      max-width: 900px;
+    }
+    .panel h2 { color: #ff9900; margin-top: 0; }
+    .timer { font-family: monospace; font-size: 18px; color: #ff9900; }
+    .clue-box {
+      background: #222;
+      border-left: 4px solid #ff9900;
+      padding: 12px;
+      margin: 12px 0;
+    }
+    table.gpsl-table { width: 100%; border-collapse: collapse; }
+    table.gpsl-table th, table.gpsl-table td {
+      border: 1px solid #333;
+      padding: 8px;
+      text-align: center;
+      font-size: 13px;
+    }
+    table.gpsl-table th { background: #222; color: #ff9900; }
+    tr.winner-row { background: linear-gradient(90deg, #3d3200, #1a1a1a); }
+    tr.winner-row td { color: #ffd700; font-weight: bold; }
+    .bid-modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .bid-modal-backdrop.open { display: flex; }
+    .bid-modal {
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 24px;
+      width: 90%;
+      max-width: 420px;
+    }
+    .bid-modal input {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      background: #222;
+      border: 1px solid #444;
+      color: #eee;
+      box-sizing: border-box;
+      margin: 10px 0;
+    }
+    .secret-note { color: #888; font-size: 13px; }
+    .button { padding: 10px 18px; background: #ff9900; color: #111; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 4px; }
+    .button.secondary { background: #444; color: #ddd; }
+    .button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #bidError { color: #ff6666; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <h1 id="pageTitle">Special Auction</h1>
+
+  <div id="mainPanel" class="panel">
+    <p id="emptyMsg">Loading…</p>
+    <div id="auctionContent" style="display:none;">
+      <h2 id="auctionTitle"></h2>
+      <p id="auctionType"></p>
+      <p class="timer" id="auctionTimer"></p>
+      <p id="prizeLine"></p>
+      <div id="playerReveal"></div>
+      <p id="rulesLine" class="secret-note"></p>
+      <p id="myBidLine"></p>
+      <button id="openBidBtn" class="button" style="display:none;">Place bid</button>
+      <div id="resultsBlock" style="display:none; margin-top:20px;">
+        <h3 id="resultsHeading">Results</h3>
+        <table class="gpsl-table">
+          <thead>
+            <tr><th>Club</th><th>Bid</th><th>Fee</th><th></th></tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="bidModalBackdrop" class="bid-modal-backdrop">
+    <div class="bid-modal">
+      <h3 id="bidModalTitle">Submit bid</h3>
+      <p id="bidModalHint" class="secret-note"></p>
+      <input type="text" id="bidAmountInput" inputmode="numeric" placeholder="Amount">
+      <p id="roundedPreview" class="secret-note"></p>
+      <p id="bidError"></p>
+      <button id="confirmBidBtn" class="button">Submit</button>
+      <button id="cancelBidBtn" class="button secondary">Cancel</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { supabase, initGlobal } from "./global.js";
+    import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+    import {
+      formatMoney,
+      roundToMillion,
+      fetchActiveSpecialAuction,
+      fetchAuctionById,
+      loadOwnerClub,
+      fetchAuctionBids,
+      submitSpecialBid,
+      auctionPhase,
+      timeRemainingLabel,
+      prizeDescription,
+    } from "./special_auction.js";
+
+    let auction = null;
+    let clubShort = null;
+    let timerInterval = null;
+
+    const els = {
+      emptyMsg: document.getElementById("emptyMsg"),
+      content: document.getElementById("auctionContent"),
+      title: document.getElementById("auctionTitle"),
+      type: document.getElementById("auctionType"),
+      timer: document.getElementById("auctionTimer"),
+      prize: document.getElementById("prizeLine"),
+      playerReveal: document.getElementById("playerReveal"),
+      rules: document.getElementById("rulesLine"),
+      myBid: document.getElementById("myBidLine"),
+      openBid: document.getElementById("openBidBtn"),
+      resultsBlock: document.getElementById("resultsBlock"),
+      resultsBody: document.getElementById("resultsBody"),
+      resultsHeading: document.getElementById("resultsHeading"),
+    };
+
+    function parseMoneyInput(raw) {
+      return Number(String(raw).replace(/[^\d]/g, ""));
+    }
+
+    function openBidModal() {
+      const isLub = auction.auction_type === "lowest_unique";
+      document.getElementById("bidModalTitle").textContent = isLub
+        ? "Secret bid (one only)"
+        : "Snap auction bid";
+      document.getElementById("bidModalHint").textContent = isLub
+        ? "Only you will see your bid until the window ends. Amount is rounded to the nearest ₿1,000,000."
+        : "Highest bid wins. You can update your club's bid until time expires. Winner pays bid + ₿500,000; others who bid pay ₿250,000.";
+      document.getElementById("bidAmountInput").value = "";
+      document.getElementById("roundedPreview").textContent = "";
+      document.getElementById("bidError").textContent = "";
+      document.getElementById("bidModalBackdrop").classList.add("open");
+    }
+
+    function closeBidModal() {
+      document.getElementById("bidModalBackdrop").classList.remove("open");
+    }
+
+    document.getElementById("bidAmountInput").addEventListener("input", (e) => {
+      const n = parseMoneyInput(e.target.value);
+      if (auction?.auction_type === "lowest_unique" && n > 0) {
+        document.getElementById("roundedPreview").textContent =
+          `Rounded bid: ${formatMoney(roundToMillion(n))}`;
+      } else {
+        document.getElementById("roundedPreview").textContent = "";
+      }
+    });
+
+    document.getElementById("cancelBidBtn").onclick = closeBidModal;
+    document.getElementById("openBidBtn").onclick = openBidModal;
+
+    document.getElementById("confirmBidBtn").onclick = async () => {
+      const amount = parseMoneyInput(document.getElementById("bidAmountInput").value);
+      if (!amount || amount < 1000000) {
+        document.getElementById("bidError").textContent =
+          "Enter at least ₿1,000,000.";
+        return;
+      }
+      const { error } = await submitSpecialBid(supabase, auction.id, amount);
+      if (error) {
+        document.getElementById("bidError").textContent = error.message;
+        return;
+      }
+      closeBidModal();
+      await render();
+    };
+
+    async function renderPlayerBlock() {
+      els.playerReveal.innerHTML = "";
+      const mode = auction.player_mode || "known";
+      const pid = auction.known_player_id || auction.prize_player_id;
+
+      if (mode === "mystery" && auction.mystery_clue) {
+        els.playerReveal.innerHTML = `<div class="clue-box"><b>Mystery player clue</b><br>${auction.mystery_clue}</div>`;
+        return;
+      }
+      if (pid) {
+        const { data: p } = await supabase
+          .from("Players")
+          .select("Name, Position, Rating, Konami_ID")
+          .eq("Konami_ID", pid)
+          .maybeSingle();
+        if (p) {
+          els.playerReveal.innerHTML = `
+            <div class="clue-box">
+              <img src="https://pesdb.net/assets/img/card/b${p.Konami_ID}.png" height="80" alt="">
+              <b>${p.Name}</b> — ${p.Position} · ${p.Rating}
+            </div>`;
+        }
+      }
+    }
+
+    async function renderResults(bids) {
+      const show =
+        auction.status === "revealed" ||
+        auction.status === "settled" ||
+        (auction.auction_type === "snap" && auctionPhase(auction) !== "live");
+
+      if (!show && auction.auction_type === "lowest_unique") {
+        els.resultsBlock.style.display = "none";
+        return;
+      }
+
+      if (auction.auction_type === "snap" && auction.status === "active" && auctionPhase(auction) === "live") {
+        const top = [...bids].sort((a, b) => b.bid_amount - a.bid_amount)[0];
+        els.resultsBlock.style.display = "block";
+        els.resultsHeading.textContent = "Current highest bid";
+        els.resultsBody.innerHTML = top
+          ? `<tr><td>${fullClubName(top.club_id) || top.club_id}</td><td>${formatMoney(top.bid_amount)}</td><td>—</td><td></td></tr>`
+          : `<tr><td colspan="4">No bids yet</td></tr>`;
+        return;
+      }
+
+      els.resultsBlock.style.display = "block";
+      els.resultsHeading.textContent =
+        auction.auction_type === "lowest_unique" ? "All bids (lowest unique wins)" : "Final bids";
+
+      const sorted =
+        auction.auction_type === "lowest_unique"
+          ? [...bids].sort((a, b) => a.bid_amount - b.bid_amount)
+          : [...bids].sort((a, b) => b.bid_amount - a.bid_amount);
+
+      const counts = {};
+      bids.forEach((b) => {
+        counts[b.bid_amount] = (counts[b.bid_amount] || 0) + 1;
+      });
+
+      els.resultsBody.innerHTML = sorted
+        .map((b) => {
+          const unique = counts[b.bid_amount] === 1;
+          const isWin = b.is_winner || (auction.winning_club_id === b.club_id && auction.winning_amount === b.bid_amount);
+          const badge =
+            isWin && auction.auction_type === "lowest_unique"
+              ? "🏆 Lowest unique"
+              : isWin
+              ? "🏆 Winner"
+              : auction.auction_type === "lowest_unique" && !unique
+              ? "Duplicate"
+              : "";
+          return `<tr class="${isWin ? "winner-row" : ""}">
+            <td>${fullClubName(b.club_id) || b.club_id}</td>
+            <td>${formatMoney(b.bid_amount)}</td>
+            <td>${b.fee_charged != null ? formatMoney(b.fee_charged) : "—"}</td>
+            <td>${badge}</td>
+          </tr>`;
+        })
+        .join("") || `<tr><td colspan="4">No bids</td></tr>`;
+    }
+
+    async function render() {
+      if (!auction) {
+        els.emptyMsg.textContent = "No special auction is active right now.";
+        els.emptyMsg.style.display = "block";
+        els.content.style.display = "none";
+        return;
+      }
+
+      els.emptyMsg.style.display = "none";
+      els.content.style.display = "block";
+
+      const isLub = auction.auction_type === "lowest_unique";
+      els.title.textContent = auction.title;
+      els.type.textContent = isLub ? "Lowest unique bid" : "Snap auction";
+      els.prize.textContent = prizeDescription(auction);
+
+      const phase = auctionPhase(auction);
+      if (phase === "live") {
+        els.timer.textContent = `Time left: ${timeRemainingLabel(auction.end_time)}`;
+      } else if (phase === "before_start") {
+        els.timer.textContent = `Starts: ${new Date(auction.start_time).toLocaleString()}`;
+      } else {
+        els.timer.textContent = `Ended: ${new Date(auction.end_time).toLocaleString()}`;
+      }
+
+      els.rules.textContent = isLub
+        ? "Submit one secret bid (nearest ₿1m). When the window ends, all bids are revealed; the lowest amount that only one club chose wins and pays that amount."
+        : "Bid for 1 hour. Highest bid wins and pays winning bid + ₿500,000 fee. Every other club that bid pays ₿250,000.";
+
+      await renderPlayerBlock();
+
+      const bids = await fetchAuctionBids(supabase, auction.id);
+      const mine = bids.find((b) => b.club_id === clubShort);
+
+      if (mine && (isLub || auction.status !== "active")) {
+        els.myBidLine.textContent = `Your club's bid: ${formatMoney(mine.bid_amount)}`;
+      } else if (mine && !isLub) {
+        els.myBidLine.textContent = `Your club's current bid: ${formatMoney(mine.bid_amount)} (you may raise it)`;
+      } else if (isLub && phase === "live") {
+        els.myBidLine.textContent = "You have not submitted a secret bid yet.";
+      } else {
+        els.myBidLine.textContent = "";
+      }
+
+      const canBid = phase === "live" && clubShort && (!mine || !isLub);
+      els.openBid.style.display = canBid ? "inline-block" : "none";
+      els.openBid.textContent = mine && !isLub ? "Update bid" : "Place bid";
+
+      await renderResults(bids);
+    }
+
+    async function init() {
+      await initGlobal();
+      await loadClubsMap();
+      const { clubShort: cs } = await loadOwnerClub(supabase);
+      clubShort = cs;
+
+      auction = await fetchActiveSpecialAuction(supabase);
+      if (!auction) {
+        const params = new URLSearchParams(location.search);
+        const id = params.get("id");
+        if (id) auction = await fetchAuctionById(supabase, id);
+      }
+
+      await render();
+
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(render, 1000);
+    }
+
+    init();
+  </script>
+</body>
+</html>
