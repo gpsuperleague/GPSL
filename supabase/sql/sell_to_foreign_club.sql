@@ -51,22 +51,22 @@ BEGIN
   END IF;
 
   -- Close open domestic listings for this player
-  UPDATE public."Player_Transfer_Listings"
+  UPDATE public."Player_Transfer_Listings" l
   SET status = 'Closed',
       transfer_completed = false,
       winning_bid = null,
       winning_club = null
-  WHERE btrim(player_id::text) = btrim(p_player_id)
-    AND seller_club_id = v_club
-    AND status IN ('Active', 'Review');
+  WHERE btrim(coalesce(l.player_id::text, '')) = btrim(p_player_id)
+    AND l.seller_club_id = v_club
+    AND l.status IN ('Active', 'Review');
 
   -- Reject pending direct offers
-  UPDATE public."Player_Transfer_Bids"
+  UPDATE public."Player_Transfer_Bids" b
   SET status = 'rejected'
-  WHERE btrim(coalesce(player_id, direct_bid_id::text, '')) = btrim(p_player_id)
-    AND is_direct = true
-    AND listing_id IS NULL
-    AND lower(coalesce(status, '')) = 'active';
+  WHERE btrim(coalesce(b.player_id::text, b.direct_bid_id::text, '')) = btrim(p_player_id)
+    AND b.is_direct = true
+    AND b.listing_id IS NULL
+    AND lower(coalesce(b.status, '')) = 'active';
 
   UPDATE public."Players"
   SET "Contracted_Team" = NULL
