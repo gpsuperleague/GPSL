@@ -5,7 +5,7 @@ import { computeStandardListingEndTime } from "./global.js";
 import { loadPlayerSeasonStats, statsMapByPlayerId } from "./competition.js";
 import {
   analyseSquadComposition,
-  isHomeGrownPlayer,
+  playerSquadQualificationBadges,
   squadComplianceRuleRows,
 } from "./squad_rules.js";
 
@@ -260,14 +260,11 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
 
       const imgURL = `https://pesdb.net/assets/img/card/b${p.Konami_ID}.png`;
 
-      const hg = isHomeGrownPlayer(p, clubNation);
-      const hgTag = hg
-        ? ` <span title="Home-grown: player Nation matches your club Nation" style="color:#6cf;font-size:11px;">HG</span>`
-        : "";
+      const qualBadges = playerSquadQualificationBadges(p, clubNation);
 
       tr.innerHTML = `
         <td><img src="${imgURL}" class="player-thumb" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
-        <td>${p.Name}${hgTag}</td>
+        <td>${p.Name}${qualBadges}</td>
         <td>${p.Nation || "-"}</td>
         <td>${p.Position}</td>
         <td>${p.Rating || p.OVR}</td>

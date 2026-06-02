@@ -201,6 +201,14 @@ body.squad-page .squad-section-title {
    PLAYER IMAGE
    ========================================================== */
 
+body.squad-page .squad-qual-badge {
+  color: #6cf;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
 body.squad-page .player-thumb {
   width: 70px !important;
   height: 90px !important;

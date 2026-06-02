@@ -29,6 +29,29 @@ export function isUnder21(player) {
   return Number.isFinite(age) && age <= 21;
 }
 
+/** Inline badges beside player name on Squad (HG, U21, or HG & U21). */
+export function playerSquadQualificationBadges(player, clubNation) {
+  const hg = isHomeGrownPlayer(player, clubNation);
+  const u21 = isUnder21(player);
+  if (!hg && !u21) return "";
+
+  const parts = [];
+  const titleParts = [];
+  if (hg) {
+    parts.push("HG");
+    titleParts.push("Home-grown (player Nation matches club Nation)");
+  }
+  if (u21) {
+    parts.push("U21");
+    titleParts.push("Under-21 (age 21 or younger)");
+  }
+
+  const label = parts.join(" & ");
+  const title = titleParts.join(" · ");
+
+  return ` <span class="squad-qual-badge" title="${title}">${label}</span>`;
+}
+
 export function isHgContractProtected(player, clubNation) {
   const age = Number(player?.Age);
   return (
