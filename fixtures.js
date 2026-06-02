@@ -13,7 +13,7 @@ import {
   needsInboxConfirm,
 } from "./competition.js";
 
-let myClubShort = null;
+let myClub = { short: null, name: null };
 let currentDivision = "superleague";
 let allFixtures = [];
 let modalFixture = null;
@@ -37,19 +37,23 @@ function closeResultModal() {
 }
 
 function actionCell(fixture) {
-  if (!myClubShort || !fixtureInvolvesClub(fixture, myClubShort)) {
+  if (!myClub.short || !fixtureInvolvesClub(fixture, myClub)) {
     return "";
   }
 
-  if (canSubmitResult(fixture, myClubShort)) {
+  if (canSubmitResult(fixture, myClub)) {
     return `<button type="button" class="btn-result" data-action="enter" data-id="${fixture.id}">Enter result</button>`;
   }
 
-  if (needsInboxConfirm(fixture, myClubShort)) {
+  if (needsInboxConfirm(fixture, myClub)) {
     return `<a href="matchday.html#inbox" class="btn-result secondary" style="text-decoration:none;display:inline-block;">Confirm in inbox</a>`;
   }
 
-  if (fixture.submission_status === "pending" && fixture.submitted_by_club === myClubShort) {
+  if (
+    fixture.submission_status === "pending" &&
+    fixture.submitted_by_club &&
+    fixture.submitted_by_club.toUpperCase() === (myClub.short || "").toUpperCase()
+  ) {
     return `<span style="color:#888;font-size:12px;">Awaiting confirm</span>`;
   }
 
@@ -118,7 +122,7 @@ function renderFixtures() {
     const tbody = block.querySelector("tbody");
     for (const f of rows) {
       const tr = document.createElement("tr");
-      if (fixtureInvolvesClub(f, myClubShort)) tr.className = "my-fixture";
+      if (fixtureInvolvesClub(f, myClub)) tr.className = "my-fixture";
       tr.innerHTML = `
         <td>${f.home_club_name}</td>
         <td class="score">${formatFixtureScore(f)}</td>
@@ -198,7 +202,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     .select("ShortName")
     .eq("owner_id", user.id)
     .maybeSingle();
-  myClubShort = club?.ShortName || null;
+  myClub = { short: club?.ShortName || null, name: club?.Club || null };
 
   const season = await loadCurrentSeason(supabase);
   const meta = document.getElementById("seasonMeta");
@@ -212,22 +216,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  meta.textContent = `${season.label} · league fixtures (38 matchdays per division)`;
-
-  if (myClubShort) {
-    const { data: reg } = await supabase
+  if (myClub.short) {
+    const { data: regs } = await supabase
       .from("competition_club_season_public")
-      .select("division")
-      .eq("club_short_name", myClubShort)
-      .maybeSingle();
-    if (reg?.division && LEAGUE_DIVISIONS.includes(reg.division)) {
-      currentDivision = reg.division;
+      .select("club_short_name, club_name, division");
+
+    const key = (myClub.short || "").trim().toUpperCase();
+    const reg = (regs || []).find(
+      (r) => (r.club_short_name || "").trim().toUpperCase() === key
+    );
+
+    if (reg) {
+      myClub.short = reg.club_short_name;
+      myClub.name = reg.club_name || myClub.name;
+      if (LEAGUE_DIVISIONS.includes(reg.division)) {
+        currentDivision = reg.division;
+      }
     }
   } else if (hint) {
     hint.textContent = "Log in with a club owner account to enter results.";
   }
 
-  allFixtures = await loadLeagueFixtures(supabase);
+  meta.textContent = `${season.label} · ${DIVISION_LABELS[currentDivision]} · your games highlighted in gold`;
+
+  allFixtures = await loadLeagueFixtures(supabase, currentDivision);
   if (!allFixtures.length && season) {
     const root = document.getElementById("fixturesRoot");
     root.innerHTML =
@@ -238,9 +250,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const params = new URLSearchParams(window.location.search);
   const fixtureId = params.get("fixture");
-  if (fixtureId && myClubShort) {
+  if (fixtureId && myClub.short) {
     const fix = allFixtures.find((f) => String(f.id) === fixtureId);
-    if (fix && canSubmitResult(fix, myClubShort)) {
+    if (fix && canSubmitResult(fix, myClub)) {
       currentDivision = fix.division;
       renderDivisionToolbar();
       renderFixtures();

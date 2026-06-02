@@ -169,25 +169,48 @@ export function divisionForClub(registrations, clubShortName) {
   return row ? DIVISION_LABELS[row.division] || row.division : null;
 }
 
+/** Trim + uppercase for reliable ShortName comparisons. */
+export function normalizeClubKey(value) {
+  if (value == null || value === "") return "";
+  return String(value).trim().toUpperCase();
+}
+
+/**
+ * Load all league fixtures (paginated — Supabase default cap is 1000 rows).
+ * Pass division to load one league only (380 rows).
+ */
 export async function loadLeagueFixtures(supabase, division = null) {
-  let query = supabase
-    .from("competition_fixtures_public")
-    .select("*")
-    .order("matchday", { ascending: true });
+  const pageSize = 1000;
+  const all = [];
+  let from = 0;
 
-  if (division) query = query.eq("division", division);
+  while (true) {
+    let query = supabase
+      .from("competition_fixtures_public")
+      .select("*")
+      .order("matchday", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
 
-  const { data, error } = await query;
-  if (error) {
-    console.error("loadLeagueFixtures:", error);
-    return [];
+    if (division) query = query.eq("division", division);
+
+    const { data, error } = await query;
+    if (error) {
+      console.error("loadLeagueFixtures:", error);
+      break;
+    }
+
+    const batch = data || [];
+    all.push(...batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
   }
-  const rows = data || [];
-  rows.sort((a, b) => {
+
+  all.sort((a, b) => {
     if (a.matchday !== b.matchday) return a.matchday - b.matchday;
     return (a.home_club_name || "").localeCompare(b.home_club_name || "");
   });
-  return rows;
+  return all;
 }
 
 export async function loadFixtureCountsForSeason(supabase, seasonId) {
@@ -260,12 +283,39 @@ export function formatFixtureScore(f) {
   return "vs";
 }
 
-export function fixtureInvolvesClub(f, clubShort) {
-  if (!clubShort) return false;
-  return (
-    f.home_club_short_name === clubShort ||
-    f.away_club_short_name === clubShort
-  );
+/**
+ * @param {object|string} clubIdentity — ShortName string or { short, name }
+ */
+export function fixtureInvolvesClub(f, clubIdentity) {
+  if (!clubIdentity || !f) return false;
+
+  const short =
+    typeof clubIdentity === "string"
+      ? normalizeClubKey(clubIdentity)
+      : normalizeClubKey(clubIdentity.short);
+  const fullName =
+    typeof clubIdentity === "string"
+      ? ""
+      : (clubIdentity.name || "").trim();
+
+  const homeS = normalizeClubKey(f.home_club_short_name);
+  const awayS = normalizeClubKey(f.away_club_short_name);
+  if (short && (homeS === short || awayS === short)) return true;
+
+  if (fullName) {
+    const homeN = (f.home_club_name || "").trim();
+    const awayN = (f.away_club_name || "").trim();
+    if (homeN === fullName || awayN === fullName) return true;
+    const key = fullName.toLowerCase();
+    if (
+      homeN.toLowerCase() === key ||
+      awayN.toLowerCase() === key
+    ) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export async function submitFixtureResult(supabase, fixtureId, homeGoals, awayGoals) {
@@ -289,24 +339,25 @@ export async function rejectFixtureResult(supabase, submissionId, reason = null)
   });
 }
 
-export function canSubmitResult(fixture, clubShort) {
-  if (!fixture || !clubShort) return false;
-  const involved =
-    fixture.home_club_short_name === clubShort ||
-    fixture.away_club_short_name === clubShort;
+export function canSubmitResult(fixture, clubIdentity) {
+  if (!fixture || !clubIdentity) return false;
   return (
-    involved &&
+    fixtureInvolvesClub(fixture, clubIdentity) &&
     fixture.status === "scheduled" &&
     !fixture.submission_id
   );
 }
 
-export function needsInboxConfirm(fixture, clubShort) {
-  if (!fixture || !clubShort) return false;
+export function needsInboxConfirm(fixture, clubIdentity) {
+  if (!fixture || !clubIdentity) return false;
+  const me =
+    typeof clubIdentity === "string"
+      ? normalizeClubKey(clubIdentity)
+      : normalizeClubKey(clubIdentity.short);
   return (
     fixture.submission_status === "pending" &&
     fixture.submitted_by_club &&
-    fixture.submitted_by_club !== clubShort
+    normalizeClubKey(fixture.submitted_by_club) !== me
   );
 }
 

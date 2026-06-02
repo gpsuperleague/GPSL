@@ -8,6 +8,7 @@ import {
   zonesForPosition,
   primaryZoneKey,
   formatFormHtml,
+  normalizeClubKey,
 } from "./competition.js";
 
 const DIVISION_TITLES = {
@@ -38,7 +39,7 @@ function gdDisplay(gd) {
   return String(gd);
 }
 
-function renderStandingsTable(division, rows, myClubShort) {
+function renderStandingsTable(division, rows, myClub) {
   const panel = document.createElement("div");
   panel.className = "division-panel";
 
@@ -56,7 +57,10 @@ function renderStandingsTable(division, rows, myClubShort) {
       const zoneKey = primaryZoneKey(division, pos);
       const zoneLabels = zonesForPosition(division, pos).join(" · ");
       const mine =
-        myClubShort && row.club_short_name === myClubShort ? " my-club" : "";
+        myClub?.short &&
+        normalizeClubKey(row.club_short_name) === normalizeClubKey(myClub.short)
+          ? " my-club"
+          : "";
 
       return `
         <tr class="zone-${zoneKey}${mine}">
@@ -113,13 +117,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  let myClubShort = null;
+  let myClub = { short: null, name: null };
   const { data: club } = await supabase
     .from("Clubs")
-    .select("ShortName")
+    .select("ShortName, Club")
     .eq("owner_id", user.id)
     .maybeSingle();
-  myClubShort = club?.ShortName || null;
+  myClub = { short: club?.ShortName || null, name: club?.Club || null };
 
   const season = await loadCurrentSeason(supabase);
   const meta = document.getElementById("seasonMeta");
@@ -144,7 +148,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   root.innerHTML = "";
   for (const div of LEAGUE_DIVISIONS) {
     root.appendChild(
-      renderStandingsTable(div, groups[div] || [], myClubShort)
+      renderStandingsTable(div, groups[div] || [], myClub)
     );
   }
 });

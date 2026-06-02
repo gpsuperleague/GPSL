@@ -7,10 +7,12 @@ import {
   confirmFixtureResult,
   rejectFixtureResult,
   canSubmitResult,
+  LEAGUE_DIVISIONS,
 } from "./competition.js";
 import { loadInboxMessages } from "./competition_inbox.js";
 
-let myClubShort = null;
+let myClub = { short: null, name: null };
+let myDivision = null;
 let upcomingFixtures = [];
 let allLeagueFixtures = [];
 
@@ -37,7 +39,7 @@ function showNoFixturesHelp() {
   const el = document.getElementById("noFixturesHelp");
   if (!el) return;
 
-  const mine = allLeagueFixtures.filter((f) => fixtureInvolvesClub(f, myClubShort));
+  const mine = allLeagueFixtures.filter((f) => fixtureInvolvesClub(f, myClub));
   const scheduled = mine.filter((f) => f.status === "scheduled");
 
   if (upcomingFixtures.length > 0) {
@@ -84,12 +86,15 @@ function updateFixturePreview() {
   const month = GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month;
   let extra = "";
   if (f.submission_status === "pending") {
-    if (f.submitted_by_club === myClubShort) {
-      const opp =
-        f.home_club_short_name === myClubShort
+    if (
+      f.submitted_by_club &&
+      f.submitted_by_club.toUpperCase() === (myClub.short || "").toUpperCase()
+    ) {
+      const oppName =
+        (f.home_club_short_name || "").toUpperCase() === (myClub.short || "").toUpperCase()
           ? f.away_club_name
           : f.home_club_name;
-      extra = ` · Awaiting confirmation from ${opp}`;
+      extra = ` · Awaiting confirmation from ${oppName}`;
     } else {
       extra = ` · They submitted ${f.proposed_home_goals}–${f.proposed_away_goals} — scroll to Inbox`;
     }
@@ -103,10 +108,14 @@ function updateFixturePreview() {
   document.getElementById("homeLabel").textContent = f.home_club_name;
   document.getElementById("awayLabel").textContent = f.away_club_name;
 
-  const canSubmit = canSubmitResult(f, myClubShort);
+  const canSubmit = canSubmitResult(f, myClub);
   setScoreInputsEnabled(canSubmit);
 
-  if (f.submission_id && f.submitted_by_club === myClubShort) {
+  if (
+    f.submission_id &&
+    f.submitted_by_club &&
+    f.submitted_by_club.toUpperCase() === (myClub.short || "").toUpperCase()
+  ) {
     setStatus("submitStatus", "Result submitted — waiting for opponent.");
   } else if (f.submission_id) {
     setStatus("submitStatus", "Opponent submitted — confirm or reject in Inbox below.");
@@ -144,11 +153,11 @@ function populateFixtureSelect() {
 }
 
 async function loadUpcomingFixtures() {
-  allLeagueFixtures = await loadLeagueFixtures(supabase);
+  allLeagueFixtures = await loadLeagueFixtures(supabase, myDivision);
   upcomingFixtures = allLeagueFixtures
     .filter(
       (f) =>
-        fixtureInvolvesClub(f, myClubShort) &&
+        fixtureInvolvesClub(f, myClub) &&
         (f.status === "scheduled" || f.submission_status === "pending")
     )
     .sort((a, b) => a.matchday - b.matchday);
@@ -156,7 +165,7 @@ async function loadUpcomingFixtures() {
 
 async function submitResult() {
   const f = selectedFixture();
-  if (!f || !canSubmitResult(f, myClubShort)) {
+  if (!f || !canSubmitResult(f, myClub)) {
     setStatus("submitStatus", "Select a fixture you can submit.", true);
     return;
   }
@@ -304,7 +313,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  myClubShort = club.ShortName;
+  myClub = { short: club.ShortName, name: club.Club };
+
+  const { data: regs } = await supabase
+    .from("competition_club_season_public")
+    .select("club_short_name, club_name, division");
+
+  const key = (myClub.short || "").trim().toUpperCase();
+  const reg = (regs || []).find(
+    (r) => (r.club_short_name || "").trim().toUpperCase() === key
+  );
+  if (reg) {
+    myClub.short = reg.club_short_name;
+    myClub.name = reg.club_name || myClub.name;
+    if (LEAGUE_DIVISIONS.includes(reg.division)) {
+      myDivision = reg.division;
+    }
+  }
+
   document.getElementById("pageMeta").textContent =
     `${club.Club} — enter scores below or on Fixtures (highlighted rows)`;
 
