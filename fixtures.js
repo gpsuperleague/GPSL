@@ -8,12 +8,10 @@ import {
   DIVISION_LABELS,
   LEAGUE_DIVISIONS,
   GPSL_MONTH_LABELS,
-} from "./competition.js";
-import {
   submitFixtureResult,
   canSubmitResult,
   needsInboxConfirm,
-} from "./competition_matchday.js";
+} from "./competition.js";
 
 let myClubShort = null;
 let currentDivision = "superleague";
@@ -174,13 +172,20 @@ async function onModalSubmit() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const root = document.getElementById("fixturesRoot");
+  try {
   await initGlobal();
 
-  document.getElementById("modalSubmitBtn").onclick = onModalSubmit;
-  document.getElementById("modalCancelBtn").onclick = closeResultModal;
-  document.getElementById("resultModal").onclick = (e) => {
-    if (e.target.id === "resultModal") closeResultModal();
-  };
+  const modalSubmit = document.getElementById("modalSubmitBtn");
+  if (modalSubmit) modalSubmit.onclick = onModalSubmit;
+  const modalCancel = document.getElementById("modalCancelBtn");
+  if (modalCancel) modalCancel.onclick = closeResultModal;
+  const resultModal = document.getElementById("resultModal");
+  if (resultModal) {
+    resultModal.onclick = (e) => {
+      if (e.target.id === "resultModal") closeResultModal();
+    };
+  }
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -223,6 +228,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   allFixtures = await loadLeagueFixtures(supabase);
+  if (!allFixtures.length && season) {
+    const root = document.getElementById("fixturesRoot");
+    root.innerHTML =
+      '<p class="empty">No fixtures loaded. Check an active season and that admin generated fixtures (GPSL Admin → League Fixtures). If the browser console shows a database error, run <code>competition_phase3_matchday.sql</code> after phase 1.</p>';
+  }
   renderDivisionToolbar();
   renderFixtures();
 
@@ -236,5 +246,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       renderFixtures();
       openResultModal(fix);
     }
+  }
+  } catch (err) {
+    console.error("fixtures init:", err);
+    if (root) {
+      root.innerHTML = `<p class="empty" style="color:#f88;">Fixtures failed to load: ${err.message}</p>`;
+    }
+    const meta = document.getElementById("seasonMeta");
+    if (meta) meta.textContent = "Error loading fixtures";
   }
 });

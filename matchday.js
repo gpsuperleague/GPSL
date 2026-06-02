@@ -1,12 +1,14 @@
 import { supabase, initGlobal } from "./global.js";
-import { loadLeagueFixtures, GPSL_MONTH_LABELS, fixtureInvolvesClub } from "./competition.js";
-import { loadInboxMessages } from "./competition_inbox.js";
 import {
+  loadLeagueFixtures,
+  GPSL_MONTH_LABELS,
+  fixtureInvolvesClub,
   submitFixtureResult,
   confirmFixtureResult,
   rejectFixtureResult,
   canSubmitResult,
-} from "./competition_matchday.js";
+} from "./competition.js";
+import { loadInboxMessages } from "./competition_inbox.js";
 
 let myClubShort = null;
 let upcomingFixtures = [];

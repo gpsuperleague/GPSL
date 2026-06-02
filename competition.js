@@ -173,8 +173,7 @@ export async function loadLeagueFixtures(supabase, division = null) {
   let query = supabase
     .from("competition_fixtures_public")
     .select("*")
-    .order("matchday", { ascending: true })
-    .order("home_club_name", { ascending: true });
+    .order("matchday", { ascending: true });
 
   if (division) query = query.eq("division", division);
 
@@ -183,7 +182,12 @@ export async function loadLeagueFixtures(supabase, division = null) {
     console.error("loadLeagueFixtures:", error);
     return [];
   }
-  return data || [];
+  const rows = data || [];
+  rows.sort((a, b) => {
+    if (a.matchday !== b.matchday) return a.matchday - b.matchday;
+    return (a.home_club_name || "").localeCompare(b.home_club_name || "");
+  });
+  return rows;
 }
 
 export async function loadFixtureCountsForSeason(supabase, seasonId) {
@@ -261,6 +265,48 @@ export function fixtureInvolvesClub(f, clubShort) {
   return (
     f.home_club_short_name === clubShort ||
     f.away_club_short_name === clubShort
+  );
+}
+
+export async function submitFixtureResult(supabase, fixtureId, homeGoals, awayGoals) {
+  return supabase.rpc("competition_submit_result", {
+    p_fixture_id: fixtureId,
+    p_home_goals: homeGoals,
+    p_away_goals: awayGoals,
+  });
+}
+
+export async function confirmFixtureResult(supabase, submissionId) {
+  return supabase.rpc("competition_confirm_result", {
+    p_submission_id: submissionId,
+  });
+}
+
+export async function rejectFixtureResult(supabase, submissionId, reason = null) {
+  return supabase.rpc("competition_reject_result", {
+    p_submission_id: submissionId,
+    p_reason: reason,
+  });
+}
+
+export function canSubmitResult(fixture, clubShort) {
+  if (!fixture || !clubShort) return false;
+  const involved =
+    fixture.home_club_short_name === clubShort ||
+    fixture.away_club_short_name === clubShort;
+  return (
+    involved &&
+    fixture.status === "scheduled" &&
+    !fixture.submission_id
+  );
+}
+
+export function needsInboxConfirm(fixture, clubShort) {
+  if (!fixture || !clubShort) return false;
+  return (
+    fixture.submission_status === "pending" &&
+    fixture.submitted_by_club &&
+    fixture.submitted_by_club !== clubShort
   );
 }
 
