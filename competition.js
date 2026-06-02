@@ -425,6 +425,28 @@ export async function loadPlayerSeasonStats(supabase, division = null) {
   return data || [];
 }
 
+/** Squad page: only stats for these Konami IDs at one club (fast). */
+export async function loadPlayerSeasonStatsForSquad(
+  supabase,
+  playerIds,
+  clubShortName
+) {
+  const ids = (playerIds || []).map((id) => String(id)).filter(Boolean);
+  if (!ids.length || !clubShortName) return [];
+
+  const { data, error } = await supabase
+    .from("competition_player_season_stats_public")
+    .select("*")
+    .eq("club_short_name", clubShortName)
+    .in("player_id", ids);
+
+  if (error) {
+    console.error("loadPlayerSeasonStatsForSquad:", error);
+    return [];
+  }
+  return data || [];
+}
+
 export function statsMapByPlayerId(rows) {
   const map = new Map();
   for (const row of rows || []) {

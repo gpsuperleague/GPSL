@@ -12,6 +12,7 @@ AS $function$
 DECLARE
   v_club           text;
   v_player         public."Players"%rowtype;
+  v_pid            text;
   v_fee            numeric;
   v_seller_balance numeric;
 BEGIN
@@ -24,10 +25,12 @@ BEGIN
     RAISE EXCEPTION 'No club linked to this account';
   END IF;
 
+  v_pid := btrim(p_player_id);
+
   SELECT *
   INTO v_player
   FROM public."Players"
-  WHERE "Konami_ID"::text = btrim(p_player_id)
+  WHERE "Konami_ID"::text = v_pid
   FOR UPDATE;
 
   IF NOT FOUND THEN
@@ -38,7 +41,7 @@ BEGIN
     RAISE EXCEPTION 'Player is not at your club';
   END IF;
 
-  v_fee := greatest(coalesce(v_player.market_value, 0), 0);
+  v_fee := greatest(coalesce(v_player.market_value::numeric, 0::numeric), 0::numeric);
 
   SELECT balance
   INTO v_seller_balance
@@ -56,21 +59,24 @@ BEGIN
       transfer_completed = false,
       winning_bid = null,
       winning_club = null
-  WHERE btrim(coalesce(l.player_id::text, '')) = btrim(p_player_id)
+  WHERE l.player_id::text = v_pid
     AND l.seller_club_id = v_club
     AND l.status IN ('Active', 'Review');
 
-  -- Reject pending direct offers
+  -- Reject pending direct offers (avoid mixed-type COALESCE on legacy columns)
   UPDATE public."Player_Transfer_Bids" b
   SET status = 'rejected'
-  WHERE btrim(coalesce(b.player_id::text, b.direct_bid_id::text, '')) = btrim(p_player_id)
-    AND b.is_direct = true
+  WHERE b.is_direct = true
     AND b.listing_id IS NULL
-    AND lower(coalesce(b.status, '')) = 'active';
+    AND lower(coalesce(b.status::text, '')) = 'active'
+    AND (
+      (b.player_id IS NOT NULL AND btrim(b.player_id::text) = v_pid)
+      OR (b.direct_bid_id IS NOT NULL AND btrim(b.direct_bid_id::text) = v_pid)
+    );
 
   UPDATE public."Players"
   SET "Contracted_Team" = NULL
-  WHERE "Konami_ID"::text = btrim(p_player_id);
+  WHERE "Konami_ID"::text = v_pid;
 
   UPDATE public."Club_Finances"
   SET balance = v_seller_balance + v_fee
@@ -86,7 +92,7 @@ BEGIN
     listing_id
   )
   VALUES (
-    btrim(p_player_id),
+    v_player."Konami_ID",
     v_club,
     'FOREIGN',
     v_fee,
@@ -97,7 +103,7 @@ BEGIN
 
   RETURN jsonb_build_object(
     'ok', true,
-    'player_id', btrim(p_player_id),
+    'player_id', v_player."Konami_ID",
     'player_name', v_player."Name",
     'seller_club_id', v_club,
     'fee', v_fee,

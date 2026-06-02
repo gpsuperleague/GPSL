@@ -2,7 +2,10 @@
 
 import { fullClubName } from "./clubs_lookup.js";
 import { computeStandardListingEndTime } from "./global.js";
-import { loadPlayerSeasonStats, statsMapByPlayerId } from "./competition.js";
+import {
+  loadPlayerSeasonStatsForSquad,
+  statsMapByPlayerId,
+} from "./competition.js";
 import {
   analyseSquadComposition,
   playerSquadQualificationBadges,
@@ -55,13 +58,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${currentUserShort}.png`;
 
-  // ⭐ Load transfer window status BEFORE loading squad
-  await loadTransferWindowStatus();
-
-  await loadSquad(); // now loads fresh listing state internally
-
   wireButtons();
   wireSquadActionMenu();
+
+  await loadTransferWindowStatus();
+  await loadSquad();
 
   // OPTIONAL: auto-refresh listing status every 30 seconds
   setInterval(async () => {
@@ -134,8 +135,14 @@ async function getActiveListings() {
   return data.map((x) => String(x.player_id));
 }
 
-// LOAD SQUAD (now includes fresh listing state)
+// LOAD SQUAD — render table first, then enrich stats/listings (keeps actions responsive)
 async function loadSquad() {
+  const tbody = document.getElementById("squad-body");
+  if (tbody && !tbody.querySelector("tr[data-squad-loading]")) {
+    tbody.innerHTML =
+      '<tr data-squad-loading><td colspan="13" style="color:#888;padding:16px;">Loading squad…</td></tr>';
+  }
+
   const { data: players, error } = await supabase
     .from("Players")
     .select("*")
@@ -143,20 +150,27 @@ async function loadSquad() {
 
   if (error) {
     console.error("Squad load error", error);
+    if (tbody) {
+      tbody.innerHTML =
+        '<tr><td colspan="13" style="color:#f88;">Failed to load squad.</td></tr>';
+    }
     return;
   }
 
-  const activeListings = await getActiveListings();
-  const seasonStats = await loadPlayerSeasonStats(supabase);
-  const statsByPlayer = statsMapByPlayerId(
-    seasonStats.filter(
-      (r) =>
-        (r.club_short_name || "").toUpperCase() ===
-        (currentUserShort || "").toUpperCase()
-    )
-  );
-  renderSquadCompliance(players);
-  renderSquad(players, activeListings, statsByPlayer);
+  const list = players || [];
+  const playerIds = list.map((p) => String(p.Konami_ID));
+
+  renderSquadCompliance(list);
+  renderSquad(list, [], new Map());
+
+  const [activeListings, seasonStats] = await Promise.all([
+    getActiveListings(),
+    loadPlayerSeasonStatsForSquad(supabase, playerIds, currentUserShort),
+  ]);
+
+  const statsByPlayer = statsMapByPlayerId(seasonStats);
+  renderSquadCompliance(list);
+  renderSquad(list, activeListings, statsByPlayer);
 }
 
 function renderSquadCompliance(players) {
@@ -277,7 +291,7 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
         <td><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
         <td>${status}</td>
         <td>
-          <select class="squad-action-select" data-player-id="${p.Konami_ID}">
+          <select class="squad-action-select" data-player-id="${String(p.Konami_ID)}">
             <option value="">Action</option>
             <option value="list">Transfer List</option>
             <option value="foreign">Sell to foreign club</option>
