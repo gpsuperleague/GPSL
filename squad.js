@@ -317,6 +317,13 @@ function formatMoney(amount) {
   return `₿ ${Number(amount || 0).toLocaleString("en-GB")}`;
 }
 
+/** Matches DB/GPDB: NULL or blank = free agent. */
+function playerContractClubKey(contractedTeam) {
+  if (contractedTeam == null) return null;
+  const t = String(contractedTeam).trim();
+  return t === "" ? null : t;
+}
+
 function wireSquadActionMenu() {
   const tbody = document.getElementById("squad-body");
   if (!tbody || tbody.dataset.actionMenuWired === "1") return;
@@ -379,7 +386,8 @@ async function sellPlayerToForeignClub(playerId) {
     return;
   }
 
-  if (player.Contracted_Team !== currentUserShort) {
+  const contracted = playerContractClubKey(player.Contracted_Team);
+  if (contracted !== currentUserShort) {
     alert("This player is not at your club.");
     return;
   }

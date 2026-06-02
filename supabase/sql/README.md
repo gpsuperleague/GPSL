@@ -113,7 +113,7 @@ Run once:
 
 [`sell_to_foreign_club.sql`](./sell_to_foreign_club.sql)
 
-- Squad → **Sell to foreign club**: release at **market value**, free agent, seller credited; creates sentinel club `FOREIGN` in `Clubs` for history FK (`buyer_club_id = 'FOREIGN'`)
+- Squad → **Sell to foreign club**: `Players.Contracted_Team` → **NULL** (free agent); `Transfer_History.buyer_club_id` → **`FOREIGN`** (sentinel `Clubs` row only — history FK, not on the player)
 - Requires `my_club_shortname()` (`special_auctions.sql`)
 
 ## Squad composition (home-grown / under-21)

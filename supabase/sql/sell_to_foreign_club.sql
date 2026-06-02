@@ -1,9 +1,25 @@
 -- =============================================================================
 -- Sell player to foreign club (Squad action)
 -- Run once in Supabase SQL Editor (after special_auctions.sql for my_club_shortname).
+--
+-- Players table: free agent = Contracted_Team IS NULL (not 'FOREIGN').
+-- Transfer_History: buyer_club_id = 'FOREIGN' (sentinel Clubs row; column NOT NULL + FK).
 -- =============================================================================
 
--- Sentinel row: Transfer_History.buyer_club_id is NOT NULL + FK → Clubs.ShortName
+-- NULL or blank → free agent; otherwise trimmed ShortName
+CREATE OR REPLACE FUNCTION public.player_contracted_club_key(p_value text)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT CASE
+    WHEN p_value IS NULL THEN NULL
+    WHEN btrim(p_value) = '' THEN NULL
+    ELSE btrim(p_value)
+  END;
+$$;
+
+-- Sentinel row for transfer history only (not a playable club)
 CREATE OR REPLACE FUNCTION public.ensure_foreign_buyer_club()
 RETURNS text
 LANGUAGE plpgsql
@@ -58,7 +74,7 @@ BEGIN
     RAISE EXCEPTION 'Player not found';
   END IF;
 
-  IF v_player."Contracted_Team" IS DISTINCT FROM v_club THEN
+  IF public.player_contracted_club_key(v_player."Contracted_Team") IS DISTINCT FROM v_club THEN
     RAISE EXCEPTION 'Player is not at your club';
   END IF;
 
@@ -93,6 +109,7 @@ BEGIN
       OR (b.direct_bid_id IS NOT NULL AND btrim(b.direct_bid_id::text) = v_pid)
     );
 
+  -- Free agent in GPSL = NULL (GPDB / draft use Contracted_Team.is.null)
   UPDATE public."Players"
   SET "Contracted_Team" = NULL
   WHERE "Konami_ID"::text = v_pid;
@@ -126,12 +143,14 @@ BEGIN
     'player_name', v_player."Name",
     'seller_club_id', v_club,
     'buyer_club_id', v_foreign,
+    'contracted_team', null,
     'fee', v_fee,
     'new_balance', v_seller_balance + v_fee
   );
 END;
 $function$;
 
+GRANT EXECUTE ON FUNCTION public.player_contracted_club_key(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.ensure_foreign_buyer_club() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.sell_player_to_foreign_club(text) TO authenticated;
 
