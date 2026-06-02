@@ -260,3 +260,72 @@ export function fixtureInvolvesClub(f, clubShort) {
     f.away_club_short_name === clubShort
   );
 }
+
+export async function loadStandings(supabase, division = null) {
+  let query = supabase
+    .from("competition_standings_public")
+    .select("*")
+    .order("table_position", { ascending: true });
+
+  if (division) query = query.eq("division", division);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("loadStandings:", error);
+    return [];
+  }
+  return data || [];
+}
+
+/** Zone labels for table position (may overlap, e.g. CH 3–4 = Plate + Playoffs). */
+export function zonesForPosition(division, position) {
+  if (division === "superleague") {
+    const tags = [];
+    if (position <= 8) tags.push("Super8");
+    if (position >= 9 && position <= 16) tags.push("Plate");
+    if (position >= 16 && position <= 17) tags.push("SL playoff");
+    if (position >= 18) tags.push("Relegation");
+    return tags;
+  }
+
+  const tags = [];
+  if (position <= 2) tags.push("Promotion");
+  if (position >= 3 && position <= 6) tags.push("Playoffs");
+  if (position <= 4) tags.push("Plate");
+  if (position >= 5 && position <= 15) tags.push("Shield");
+  if (position >= 16 && position <= 17) tags.push("Shield/Spoon PO");
+  if (position >= 18) tags.push("Spoon");
+  return tags;
+}
+
+/** Primary row accent for progress table styling. */
+export function primaryZoneKey(division, position) {
+  if (division === "superleague") {
+    if (position >= 18) return "relegation";
+    if (position >= 16) return "playoff";
+    if (position >= 9) return "plate";
+    return "super8";
+  }
+  if (position >= 18) return "spoon";
+  if (position >= 16) return "playoff";
+  if (position >= 5) return "shield";
+  if (position >= 3) return "playoffs";
+  if (position <= 2) return "promotion";
+  return "plate";
+}
+
+export function formatFormHtml(formStr) {
+  if (!formStr) return "—";
+  return [...formStr]
+    .map((ch) => `<span class="form-${ch.toLowerCase()}">${ch}</span>`)
+    .join("");
+}
+
+export function groupStandingsByDivision(rows) {
+  const groups = {};
+  for (const div of LEAGUE_DIVISIONS) groups[div] = [];
+  for (const row of rows) {
+    if (groups[row.division]) groups[row.division].push(row);
+  }
+  return groups;
+}

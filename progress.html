@@ -11,34 +11,56 @@
     body { background: #111; color: #ddd; font-family: Arial, sans-serif; margin: 0; }
     .page-container { width: 95%; max-width: 1400px; margin: 20px auto 40px; }
     h1 { color: #ff9900; margin-bottom: 8px; }
-    .season-meta { color: #aaa; margin-bottom: 24px; }
-    .tables-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 20px;
+    .season-meta { color: #aaa; margin-bottom: 16px; }
+    .legend {
+      display: flex; flex-wrap: wrap; gap: 10px 16px;
+      margin-bottom: 24px; font-size: 12px; color: #aaa;
+    }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .legend i {
+      display: inline-block; width: 12px; height: 12px; border-radius: 2px;
     }
     .division-panel {
       background: #1a1a1a;
       border: 1px solid #333;
       border-radius: 8px;
       padding: 16px;
+      margin-bottom: 24px;
+      overflow-x: auto;
     }
     .division-panel h2 {
       color: #ff9900;
-      margin: 0 0 6px;
+      margin: 0 0 12px;
       font-size: 20px;
     }
-    .zone-note { color: #888; font-size: 12px; margin-bottom: 12px; }
-    table.gpsl-table { width: 100%; border-collapse: collapse; }
-    table.gpsl-table th, table.gpsl-table td {
+    table.standings-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+    table.standings-table th, table.standings-table td {
       border: 1px solid #333;
-      padding: 8px;
-      text-align: left;
+      padding: 7px 8px;
       font-size: 13px;
+      white-space: nowrap;
     }
-    table.gpsl-table th { background: #222; color: #ff9900; }
-    .pos-col { width: 36px; text-align: center !important; color: #888; }
-    .my-club { background: #2a2200; font-weight: bold; }
+    table.standings-table th { background: #222; color: #ff9900; text-align: center; }
+    table.standings-table th.club-col, table.standings-table td.club-col { text-align: left; }
+    table.standings-table th.zone-col, table.standings-table td.zone-col {
+      text-align: left; font-size: 11px; color: #bbb; max-width: 140px;
+      white-space: normal;
+    }
+    table.standings-table td.num { text-align: center; }
+    tr.my-club { outline: 1px solid #ff9900; }
+    tr.zone-super8 td:first-child { box-shadow: inset 3px 0 0 #2ecc71; }
+    tr.zone-plate td:first-child { box-shadow: inset 3px 0 0 #3498db; }
+    tr.zone-playoff td:first-child { box-shadow: inset 3px 0 0 #e67e22; }
+    tr.zone-relegation td:first-child { box-shadow: inset 3px 0 0 #e74c3c; }
+    tr.zone-promotion td:first-child { box-shadow: inset 3px 0 0 #2ecc71; }
+    tr.zone-playoffs td:first-child { box-shadow: inset 3px 0 0 #9b59b6; }
+    tr.zone-shield td:first-child { box-shadow: inset 3px 0 0 #3498db; }
+    tr.zone-spoon td:first-child { box-shadow: inset 3px 0 0 #c0392b; }
+    .form-cell { letter-spacing: 2px; font-weight: bold; text-align: center; }
+    .form-w { color: #6f6; }
+    .form-d { color: #aaa; }
+    .form-l { color: #f66; }
+    .footer-note { color: #888; font-size: 12px; margin-top: 8px; }
     .empty-msg { color: #888; padding: 20px; }
   </style>
 </head>
@@ -47,9 +69,12 @@
   <div class="page-container">
     <h1>Competition Progress</h1>
     <p id="seasonMeta" class="season-meta">Loading…</p>
-    <div id="tablesGrid" class="tables-grid"></div>
-    <p id="phaseNote" class="zone-note" style="margin-top:20px;">
-      Standings, form, and zone highlighting arrive in Phase 2. View league fixtures on <a href="fixtures.html" style="color:#ff9900;">Fixtures</a>.
+    <div id="zoneLegend" class="legend"></div>
+    <div id="tablesRoot"></div>
+    <p class="footer-note">
+      Form shows last 10 results in <b>matchday order</b> (oldest → newest, left → right).
+      Results update when fixtures are marked played (Match Day in Phase 3).
+      <a href="fixtures.html" style="color:#ff9900;">Fixtures</a>
     </p>
   </div>
   <script type="module" src="progress.js"></script>

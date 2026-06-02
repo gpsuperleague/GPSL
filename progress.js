@@ -1,62 +1,99 @@
 import { supabase, initGlobal } from "./global.js";
 import {
   loadCurrentSeason,
-  loadActiveSeasonRegistrations,
+  loadStandings,
+  groupStandingsByDivision,
   DIVISION_LABELS,
-  groupByDivision,
+  LEAGUE_DIVISIONS,
+  zonesForPosition,
+  primaryZoneKey,
+  formatFormHtml,
 } from "./competition.js";
 
-const DIVISION_META = [
-  {
-    key: "superleague",
-    title: "SuperLeague",
-    zones: "Zones (Phase 2): Super8 · Plate · 16v17 playoff · Relegation",
-  },
-  {
-    key: "championship_a",
-    title: "Championship A",
-    zones: "Promotion · Playoffs · Plate · Shield · Spoon",
-  },
-  {
-    key: "championship_b",
-    title: "Championship B",
-    zones: "Promotion · Playoffs · Plate · Shield · Spoon",
-  },
-];
+const DIVISION_TITLES = {
+  superleague: "SuperLeague",
+  championship_a: "Championship A",
+  championship_b: "Championship B",
+};
 
-function renderDivisionTable(title, zones, rows, myClubShort) {
+function renderLegend() {
+  const el = document.getElementById("zoneLegend");
+  const items = [
+    { color: "#2ecc71", label: "Super8 / Promotion" },
+    { color: "#3498db", label: "Plate / Shield" },
+    { color: "#9b59b6", label: "CH Playoffs (3–6)" },
+    { color: "#e67e22", label: "16v17 playoff" },
+    { color: "#c0392b", label: "Relegation / Spoon" },
+  ];
+  el.innerHTML = items
+    .map(
+      (i) =>
+        `<span><i style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${i.color};"></i> ${i.label}</span>`
+    )
+    .join("");
+}
+
+function gdDisplay(gd) {
+  if (gd > 0) return `+${gd}`;
+  return String(gd);
+}
+
+function renderStandingsTable(division, rows, myClubShort) {
   const panel = document.createElement("div");
   panel.className = "division-panel";
 
-  panel.innerHTML = `
-    <h2>${title}</h2>
-    <div class="zone-note">${zones}</div>
-  `;
-
   if (!rows.length) {
-    panel.innerHTML += `<p class="empty-msg">No clubs registered.</p>`;
+    panel.innerHTML = `
+      <h2>${DIVISION_TITLES[division]}</h2>
+      <p class="empty-msg">No standings for this division.</p>
+    `;
     return panel;
   }
 
   const tbody = rows
-    .map((row, idx) => {
+    .map((row) => {
+      const pos = row.table_position;
+      const zoneKey = primaryZoneKey(division, pos);
+      const zoneLabels = zonesForPosition(division, pos).join(" · ");
       const mine =
         myClubShort && row.club_short_name === myClubShort ? " my-club" : "";
+
       return `
-        <tr class="${mine.trim()}">
-          <td class="pos-col">${idx + 1}</td>
-          <td>${row.club_name || row.club_short_name}</td>
+        <tr class="zone-${zoneKey}${mine}">
+          <td class="num">${pos}</td>
+          <td class="club-col">${row.club_name}</td>
+          <td class="zone-col">${zoneLabels}</td>
+          <td class="num">${row.mp}</td>
+          <td class="num">${row.w}</td>
+          <td class="num">${row.d}</td>
+          <td class="num">${row.l}</td>
+          <td class="num">${row.gf}</td>
+          <td class="num">${row.ga}</td>
+          <td class="num">${gdDisplay(row.gd)}</td>
+          <td class="num"><b>${row.pts}</b></td>
+          <td class="form-cell">${formatFormHtml(row.form_last10)}</td>
         </tr>
       `;
     })
     .join("");
 
-  panel.innerHTML += `
-    <table class="gpsl-table">
+  panel.innerHTML = `
+    <h2>${DIVISION_TITLES[division]}</h2>
+    <table class="standings-table">
       <thead>
         <tr>
-          <th class="pos-col">#</th>
-          <th>Club</th>
+          <th>#</th>
+          <th class="club-col">Club</th>
+          <th class="zone-col">Zone</th>
+          <th>MP</th>
+          <th>W</th>
+          <th>D</th>
+          <th>L</th>
+          <th>GF</th>
+          <th>GA</th>
+          <th>GD</th>
+          <th>Pts</th>
+          <th>Form</th>
         </tr>
       </thead>
       <tbody>${tbody}</tbody>
@@ -68,6 +105,7 @@ function renderDivisionTable(title, zones, rows, myClubShort) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
+  renderLegend();
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -85,11 +123,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const season = await loadCurrentSeason(supabase);
   const meta = document.getElementById("seasonMeta");
-  const grid = document.getElementById("tablesGrid");
+  const root = document.getElementById("tablesRoot");
 
   if (!season) {
     meta.textContent = "No active competition season yet.";
-    grid.innerHTML =
+    root.innerHTML =
       '<p class="empty-msg">The league admin will set up the season from GPSL Admin.</p>';
     return;
   }
@@ -98,21 +136,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     season.started_at
       ? ` · started ${new Date(season.started_at).toLocaleDateString()}`
       : ""
-  }`;
+  } · 3 pts win · 1 pt draw`;
 
-  const registrations = await loadActiveSeasonRegistrations(supabase);
-  const groups = groupByDivision(registrations);
+  const standings = await loadStandings(supabase);
+  const groups = groupStandingsByDivision(standings);
 
-  grid.innerHTML = "";
-
-  for (const div of DIVISION_META) {
-    grid.appendChild(
-      renderDivisionTable(
-        div.title,
-        div.zones,
-        groups[div.key] || [],
-        myClubShort
-      )
+  root.innerHTML = "";
+  for (const div of LEAGUE_DIVISIONS) {
+    root.appendChild(
+      renderStandingsTable(div, groups[div] || [], myClubShort)
     );
   }
 });

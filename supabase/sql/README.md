@@ -33,6 +33,16 @@ Creates `competition_fixtures`, calendar helpers, and admin RPCs:
 
 Owners view **`fixtures.html`** by division and matchday.
 
+### Phase 2 — standings & form (after Phase 1)
+
+Run once:
+
+[`competition_phase2_standings.sql`](./competition_phase2_standings.sql)
+
+Creates view **`competition_standings_public`** (MP, W, D, L, GF, GA, GD, Pts, form last 10 by **matchday order**) and admin helper `competition_admin_record_result` until Match Day (Phase 3).
+
+Owners see full tables with **zones** on **`progress.html`**.
+
 ## Two separate systems
 
 | Players | How they move | Engine |
