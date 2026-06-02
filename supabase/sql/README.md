@@ -19,7 +19,19 @@ Creates `competition_seasons`, `competition_club_seasons`, public views, and adm
 
 Owners see divisions on **Competition Progress** (`progress.html`) and **Club Details**.
 
-Next: Phase 1 fixtures (`competition_fixtures` — not yet in repo).
+### Phase 1 — league fixtures (after Phase 0 + active season)
+
+Run once:
+
+[`competition_phase1_fixtures.sql`](./competition_phase1_fixtures.sql)
+
+Creates `competition_fixtures`, calendar helpers, and admin RPCs:
+
+- **GPSL Admin → League Fixtures** — table slots 1–20 per division (dropdown), shuffle, save
+- `competition_generate_league_fixtures` — double round-robin, **380 fixtures** per division (38 matchdays × 10)
+- Calendar: August **3**, Sep–Apr **4** each, May **3**; weather tag per GPSL month
+
+Owners view **`fixtures.html`** by division and matchday.
 
 ## Two separate systems
 

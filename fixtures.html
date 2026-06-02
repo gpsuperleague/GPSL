@@ -7,20 +7,41 @@
   <link rel="stylesheet" href="dashboard.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
-    .page-container { width:95%; max-width:900px; margin:40px auto; }
-    h1 { color:#ff9900; }
-    .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:24px; color:#aaa; }
+    .page-container { width:95%; max-width:1200px; margin:20px auto 40px; }
+    h1 { color:#ff9900; margin-bottom:8px; }
+    .meta { color:#aaa; margin-bottom:16px; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; align-items:center; }
+    .toolbar select, .toolbar button {
+      padding:8px 12px; background:#222; border:1px solid #444; color:#ddd; border-radius:6px;
+    }
+    .toolbar button.active { border-color:#ff9900; color:#ff9900; }
+    .matchday-block {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      margin-bottom:16px; overflow:hidden;
+    }
+    .matchday-head {
+      background:#222; padding:10px 14px; color:#ff9900; font-weight:bold;
+      display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px;
+    }
+    table.gpsl-table { width:100%; border-collapse:collapse; }
+    table.gpsl-table th, table.gpsl-table td {
+      border-top:1px solid #333; padding:8px 10px; font-size:13px;
+    }
+    table.gpsl-table th { color:#ff9900; text-align:left; background:#1a1a1a; }
+    tr.my-fixture { background:#2a2200; }
+    .score { font-weight:bold; color:#fff; text-align:center; min-width:48px; }
+    .weather { color:#888; font-size:12px; text-transform:capitalize; }
+    .empty { color:#888; padding:24px; }
   </style>
 </head>
 <body>
   <div id="nav"></div>
   <div class="page-container">
     <h1>Fixtures</h1>
-    <div class="panel">League and cup fixtures arrive in <b>Phase 1</b> (38-match calendar + admin generator).</div>
+    <p id="seasonMeta" class="meta">Loading…</p>
+    <div class="toolbar" id="divisionToolbar"></div>
+    <div id="fixturesRoot"></div>
   </div>
-  <script type="module">
-    import { initGlobal } from "./global.js";
-    document.addEventListener("DOMContentLoaded", () => initGlobal());
-  </script>
+  <script type="module" src="fixtures.js"></script>
 </body>
 </html>

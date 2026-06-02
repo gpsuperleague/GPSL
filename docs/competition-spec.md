@@ -260,6 +260,7 @@ Formula inputs (to detail in finance spec):
 
 - Transfer market, draft, special auctions: **live**.
 - **Phase 0 competition:** `competition_phase0.sql` + `progress.html` + admin season UI.
-- Fixtures, matchday, standings, gates, cups: **later phases** (stub pages on dashboard).
+- **Phase 1 fixtures:** `competition_phase1_fixtures.sql` + `fixtures.html` + admin generator.
+- Matchday, standings, gates, cups: **later phases** (stub pages on dashboard).
 - `rollover_season` RPC: exists in Supabase for **player/transfer** rollover; separate from competition season activate.
 - `Clubs.Stadium`, `Clubs.Capacity`: exist; gate logic **not** implemented.
