@@ -64,23 +64,25 @@ WHERE "ShortName" = 'URD'
   ) = 0;
 
 -- 4) Optional — backdate the latest URD → FOREIGN transfer (edit the timestamp)
+--    (Transfer_History has no "id" column — use ctid to pick the latest row)
 UPDATE public."Transfer_History" h
 SET transfer_time = timestamptz '2026-05-01 12:00:00+00'
-WHERE h.id = (
-  SELECT h2.id
+FROM (
+  SELECT h2.ctid AS row_ctid
   FROM public."Transfer_History" h2
   WHERE h2.seller_club_id = 'URD'
     AND h2.buyer_club_id = 'FOREIGN'
-  ORDER BY h2.transfer_time DESC NULLS LAST, h2.id DESC
+  ORDER BY h2.transfer_time DESC NULLS LAST
   LIMIT 1
-);
+) latest
+WHERE h.ctid = latest.row_ctid;
 
 -- 5) Verify
 SELECT
   c."ShortName",
   c.foreign_interest_remaining,
-  h.id AS history_id,
   h.player_id,
+  h.buyer_club_id,
   h.fee,
   h.transfer_time
 FROM public."Clubs" c
@@ -88,4 +90,4 @@ LEFT JOIN public."Transfer_History" h
   ON h.seller_club_id = c."ShortName"
  AND h.buyer_club_id = 'FOREIGN'
 WHERE c."ShortName" = 'URD'
-ORDER BY h.transfer_time DESC NULLS LAST, h.id DESC;
+ORDER BY h.transfer_time DESC NULLS LAST;
