@@ -85,3 +85,6 @@ $function$;
 
 REVOKE ALL ON FUNCTION public.draft_auction_toggle_favourite(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.draft_auction_toggle_favourite(text) TO authenticated;
+
+-- Refresh PostgREST schema cache (fixes REST 404 / PGRST205 right after create)
+NOTIFY pgrst, 'reload schema';

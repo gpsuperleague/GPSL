@@ -16,6 +16,8 @@ import {
   toggleDraftFavourite,
   favouriteStarChar,
   favouriteButtonLabel,
+  isDraftFavouritesAvailable,
+  draftFavouritesSetupHint,
 } from "./draft_favourites.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -108,6 +110,12 @@ async function loadDraftFavouritesSection(shortName) {
   container.innerHTML = "Loading…";
 
   const favouriteIds = await loadDraftFavouriteIds(supabase, shortName);
+
+  if (!isDraftFavouritesAvailable()) {
+    container.innerHTML = `<i style="color:#c96;">${draftFavouritesSetupHint()}</i>`;
+    return;
+  }
+
   if (favouriteIds.size === 0) {
     container.innerHTML =
       "<i>No saved draft auctions. Open <a href=\"draftauction.html\" class=\"gpsl-link\">Draft Auction</a> and click ☆ on a player.</i>";
