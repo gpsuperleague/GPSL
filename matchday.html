@@ -44,6 +44,24 @@
     .inbox-item p { margin:0 0 10px; color:#ccc; font-size:13px; }
     .inbox-actions { display:flex; gap:8px; flex-wrap:wrap; }
     .empty { color:#888; }
+    .stats-panel { margin-top:16px; border-top:1px solid #333; padding-top:14px; }
+    .stats-panel h3 { color:#ff9900; font-size:15px; margin:0 0 8px; }
+    .stats-hint { font-size:12px; color:#888; margin-bottom:10px; }
+    .stats-wrap { max-height:320px; overflow:auto; border:1px solid #333; border-radius:6px; }
+    table.stats-table { width:100%; border-collapse:collapse; font-size:12px; }
+    table.stats-table th, table.stats-table td {
+      border-bottom:1px solid #333; padding:6px 8px; text-align:center;
+    }
+    table.stats-table th { background:#222; color:#ff9900; position:sticky; top:0; }
+    table.stats-table td.name { text-align:left; color:#ddd; }
+    table.stats-table input[type="number"] {
+      width:48px; margin:0; padding:4px; text-align:center;
+    }
+    table.stats-table input[type="checkbox"] { transform:scale(1.1); }
+    table.stats-table select.stat-rating {
+      width:56px; padding:4px; margin:0; background:#222; border:1px solid #444;
+      color:#ddd; border-radius:4px;
+    }
   </style>
 </head>
 <body>
@@ -55,9 +73,10 @@
     <div class="panel" id="submitPanel">
       <h2>Submit result</h2>
       <p class="meta" style="margin-top:0;">
-        Pick a fixture and enter the score. You can also use
+        Pick a fixture and enter the score (and optional squad stats below). You can also use
         <a href="fixtures.html" style="color:#ff9900;">Fixtures</a>
-        — highlighted rows have <b>Enter result</b>.
+        for score-only entry, or
+        <a href="league_stats.html" style="color:#ff9900;">League stats</a> for leaderboards.
       </p>
 
       <div id="noFixturesHelp" class="fixture-preview" style="display:none;color:#f99;border:1px solid #633;"></div>
@@ -76,6 +95,29 @@
         <div>
           <label id="awayLabel">Away</label>
           <input type="number" id="awayGoals" min="0" max="99" value="0">
+        </div>
+      </div>
+
+      <div id="playerStatsPanel" class="stats-panel" style="display:none;">
+        <h3>Your squad — match stats (optional)</h3>
+        <p class="stats-hint">
+          Tick <b>Played</b> for appearances. If you enter any player goals, their total must match
+          <b>your</b> team score. One Player of the Match max. Stats apply when the result is confirmed.
+        </p>
+        <div class="stats-wrap">
+          <table class="stats-table">
+            <thead>
+              <tr>
+                <th class="name">Player</th>
+                <th>Played</th>
+                <th>G</th>
+                <th>A</th>
+                <th>Rating</th>
+                <th>POTM</th>
+              </tr>
+            </thead>
+            <tbody id="playerStatsBody"></tbody>
+          </table>
         </div>
       </div>
 

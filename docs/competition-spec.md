@@ -263,6 +263,7 @@ Formula inputs (to detail in finance spec):
 - **Phase 1 fixtures:** `competition_phase1_fixtures.sql` + `fixtures.html` + admin generator.
 - **Phase 2 standings:** `competition_phase2_standings.sql` + `progress.html` (zones, form).
 - **Phase 3 matchday:** `competition_phase3_matchday.sql` + `matchday.html` (submit / confirm / reject).
+- **Phase 4 player stats:** `competition_phase4_player_stats.sql` + `matchday.html` (squad G/A/rating/POTM on submit) + `league_stats.html` + squad season columns.
 - Gates, cups: **later phases**.
 - `rollover_season` RPC: exists in Supabase for **player/transfer** rollover; separate from competition season activate.
 - `Clubs.Stadium`, `Clubs.Capacity`: exist; gate logic **not** implemented.

@@ -15,6 +15,7 @@ let myClub = { short: null, name: null };
 let myDivision = null;
 let upcomingFixtures = [];
 let allLeagueFixtures = [];
+let squadPlayers = [];
 
 function setStatus(elId, msg, isError = false) {
   const el = document.getElementById(elId);
@@ -33,6 +34,123 @@ function setScoreInputsEnabled(enabled) {
   document.getElementById("homeGoals").disabled = !enabled;
   document.getElementById("awayGoals").disabled = !enabled;
   document.getElementById("submitResultBtn").disabled = !enabled;
+  const statsPanel = document.getElementById("playerStatsPanel");
+  if (statsPanel) statsPanel.style.display = enabled ? "block" : "none";
+}
+
+function myTeamGoalsForFixture(fixture, homeGoals, awayGoals) {
+  if (!fixture || !myClub.short) return 0;
+  const home =
+    (fixture.home_club_short_name || "").toUpperCase() ===
+    (myClub.short || "").toUpperCase();
+  return home ? homeGoals : awayGoals;
+}
+
+function ratingOptionsHtml(selected) {
+  let html = '<option value="">—</option>';
+  for (let i = 1; i <= 10; i += 0.5) {
+    const v = i % 1 === 0 ? String(i) : i.toFixed(1);
+    const sel = selected != null && Number(selected) === i ? " selected" : "";
+    html += `<option value="${v}"${sel}>${v}</option>`;
+  }
+  return html;
+}
+
+async function loadSquadPlayers() {
+  if (!myClub.short) {
+    squadPlayers = [];
+    return;
+  }
+  const { data, error } = await supabase
+    .from("Players")
+    .select("Konami_ID, Name, Position, Rating")
+    .eq("Contracted_Team", myClub.short)
+    .order("Name");
+
+  if (error) {
+    console.error("loadSquadPlayers:", error);
+    squadPlayers = [];
+    return;
+  }
+  squadPlayers = data || [];
+}
+
+function renderPlayerStatsTable() {
+  const tbody = document.getElementById("playerStatsBody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+  if (!squadPlayers.length) {
+    tbody.innerHTML =
+      '<tr><td colspan="6" style="color:#888;">No squad players found.</td></tr>';
+    return;
+  }
+
+  for (const p of squadPlayers) {
+    const id = String(p.Konami_ID);
+    const tr = document.createElement("tr");
+    tr.dataset.statPlayer = id;
+    tr.innerHTML = `
+      <td class="name">${p.Name} <span style="color:#666;">${p.Position || ""}</span></td>
+      <td><input type="checkbox" class="stat-played"></td>
+      <td><input type="number" class="stat-goals" min="0" max="20" value="0"></td>
+      <td><input type="number" class="stat-assists" min="0" max="20" value="0"></td>
+      <td><select class="stat-rating">${ratingOptionsHtml(null)}</select></td>
+      <td><input type="radio" name="potm" class="stat-potm" value="${id}"></td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function collectPlayerStats() {
+  const rows = document.querySelectorAll("#playerStatsBody tr[data-stat-player]");
+  const out = [];
+  for (const tr of rows) {
+    const player_id = tr.dataset.statPlayer;
+    const appeared = tr.querySelector(".stat-played")?.checked ?? false;
+    const goals = Number(tr.querySelector(".stat-goals")?.value) || 0;
+    const assists = Number(tr.querySelector(".stat-assists")?.value) || 0;
+    const ratingRaw = tr.querySelector(".stat-rating")?.value;
+    const rating = ratingRaw ? Number(ratingRaw) : null;
+    const potm = tr.querySelector(".stat-potm")?.checked ?? false;
+
+    if (!appeared && goals === 0 && assists === 0 && rating == null && !potm) {
+      continue;
+    }
+
+    out.push({
+      player_id,
+      appeared,
+      goals,
+      assists,
+      rating: rating != null && !Number.isNaN(rating) ? rating : null,
+      potm,
+    });
+  }
+  return out;
+}
+
+function validatePlayerStats(fixture, homeGoals, awayGoals, playerStats) {
+  const expected = myTeamGoalsForFixture(fixture, homeGoals, awayGoals);
+  let teamGoals = 0;
+  let potmCount = 0;
+
+  for (const row of playerStats) {
+    teamGoals += row.goals || 0;
+    if (row.potm) potmCount += 1;
+    if (row.rating != null && (row.rating < 1 || row.rating > 10)) {
+      return "Ratings must be between 1 and 10.";
+    }
+    if (!row.appeared && (row.goals > 0 || row.assists > 0)) {
+      return "Players with goals or assists must be marked as played.";
+    }
+  }
+
+  if (potmCount > 1) return "Only one Player of the Match allowed.";
+  if (teamGoals > 0 && teamGoals !== expected) {
+    return `Player goals (${teamGoals}) must match your team score (${expected}).`;
+  }
+  return null;
 }
 
 function showNoFixturesHelp() {
@@ -178,8 +296,21 @@ async function submitResult() {
     return;
   }
 
+  const playerStats = collectPlayerStats();
+  const statsErr = validatePlayerStats(f, homeGoals, awayGoals, playerStats);
+  if (statsErr) {
+    setStatus("submitStatus", statsErr, true);
+    return;
+  }
+
   setStatus("submitStatus", "Submitting…");
-  const { error } = await submitFixtureResult(supabase, f.id, homeGoals, awayGoals);
+  const { error } = await submitFixtureResult(
+    supabase,
+    f.id,
+    homeGoals,
+    awayGoals,
+    playerStats
+  );
 
   if (error) {
     setStatus("submitStatus", "❌ " + error.message, true);
@@ -335,6 +466,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     `${club.Club} — enter scores below or on Fixtures (highlighted rows)`;
 
   document.getElementById("submitResultBtn").onclick = submitResult;
+
+  await loadSquadPlayers();
+  renderPlayerStatsTable();
 
   await loadUpcomingFixtures();
   populateFixtureSelect();

@@ -1,0 +1,82 @@
+<script>window.CURRENT_PAGE = "league_stats";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>League Stats — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1200px; margin:20px auto 40px; }
+    h1 { color:#ff9900; margin-bottom:8px; }
+    .meta { color:#aaa; margin-bottom:16px; }
+    .toolbar { margin-bottom:20px; }
+    .toolbar label { display:inline; margin-right:8px; }
+    .toolbar select {
+      padding:8px 12px; background:#222; border:1px solid #444;
+      color:#ddd; border-radius:6px;
+    }
+    .stats-grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap:20px;
+    }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:16px; overflow-x:auto;
+    }
+    .panel h2 { color:#ff9900; font-size:17px; margin:0 0 12px; }
+    table.lb { width:100%; border-collapse:collapse; font-size:13px; }
+    table.lb th, table.lb td { border:1px solid #333; padding:6px 8px; }
+    table.lb th { background:#222; color:#ff9900; text-align:left; }
+    table.lb td.num { text-align:center; }
+    tr.highlight { outline:1px solid #ff9900; }
+    .empty { color:#888; font-size:13px; }
+    .footer-note { color:#888; font-size:12px; margin-top:16px; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <h1>League player stats</h1>
+    <p id="pageMeta" class="meta">Loading…</p>
+
+    <div class="toolbar">
+      <label for="divisionFilter">Division</label>
+      <select id="divisionFilter">
+        <option value="">All divisions</option>
+        <option value="superleague">SuperLeague</option>
+        <option value="championship_a">Championship A</option>
+        <option value="championship_b">Championship B</option>
+      </select>
+    </div>
+
+    <div class="stats-grid">
+      <div class="panel">
+        <h2>Top scorers</h2>
+        <div id="scorersTable"></div>
+      </div>
+      <div class="panel">
+        <h2>Top assists</h2>
+        <div id="assistsTable"></div>
+      </div>
+      <div class="panel">
+        <h2>Average rating</h2>
+        <p class="meta" style="margin:0 0 8px;font-size:12px;">Min. 3 appearances with a rated game.</p>
+        <div id="ratingsTable"></div>
+      </div>
+      <div class="panel">
+        <h2>Player of the Match</h2>
+        <div id="potmTable"></div>
+      </div>
+    </div>
+
+    <p class="footer-note">
+      Stats are recorded when you submit a result on
+      <a href="matchday.html" style="color:#ff9900;">Match Day</a> and your opponent confirms.
+      Run <code>competition_phase4_player_stats.sql</code> in Supabase if tables are empty after confirmed games.
+    </p>
+  </div>
+  <script type="module" src="league_stats.js"></script>
+</body>
+</html>

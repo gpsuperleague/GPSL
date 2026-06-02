@@ -318,12 +318,44 @@ export function fixtureInvolvesClub(f, clubIdentity) {
   return false;
 }
 
-export async function submitFixtureResult(supabase, fixtureId, homeGoals, awayGoals) {
+export async function submitFixtureResult(
+  supabase,
+  fixtureId,
+  homeGoals,
+  awayGoals,
+  playerStats = []
+) {
   return supabase.rpc("competition_submit_result", {
     p_fixture_id: fixtureId,
     p_home_goals: homeGoals,
     p_away_goals: awayGoals,
+    p_player_stats: playerStats,
   });
+}
+
+export async function loadPlayerSeasonStats(supabase, division = null) {
+  let query = supabase
+    .from("competition_player_season_stats_public")
+    .select("*")
+    .order("goals", { ascending: false })
+    .order("assists", { ascending: false });
+
+  if (division) query = query.eq("division", division);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("loadPlayerSeasonStats:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export function statsMapByPlayerId(rows) {
+  const map = new Map();
+  for (const row of rows || []) {
+    map.set(String(row.player_id), row);
+  }
+  return map;
 }
 
 export async function confirmFixtureResult(supabase, submissionId) {

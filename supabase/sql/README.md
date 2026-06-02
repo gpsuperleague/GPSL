@@ -53,6 +53,17 @@ Run once:
 - Opponent **Confirm** (updates table) or **Reject** (submitter can resubmit)
 - Dashboard **Inbox** count links to matchday inbox
 
+### Phase 4 — player stats (after Phase 3)
+
+Run once:
+
+[`competition_phase4_player_stats.sql`](./competition_phase4_player_stats.sql)
+
+- **`competition_match_player_stats`** — goals, assists, rating, POTM per fixture (applied on confirm)
+- Submit optional squad lines on **`matchday.html`** (`p_player_stats` on `competition_submit_result`)
+- Leaderboards on **`league_stats.html`** (`competition_player_season_stats_public`)
+- Season **Apps / G / A / Avg** on **`squad.html`**
+
 ## Two separate systems
 
 | Players | How they move | Engine |

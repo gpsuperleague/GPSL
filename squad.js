@@ -2,6 +2,7 @@
 
 import { fullClubName } from "./clubs_lookup.js";
 import { computeStandardListingEndTime } from "./global.js";
+import { loadPlayerSeasonStats, statsMapByPlayerId } from "./competition.js";
 
 const supabase = window.supabase;
 
@@ -138,11 +139,26 @@ async function loadSquad() {
   }
 
   const activeListings = await getActiveListings();
-  renderSquad(players, activeListings);
+  const seasonStats = await loadPlayerSeasonStats(supabase);
+  const statsByPlayer = statsMapByPlayerId(
+    seasonStats.filter(
+      (r) =>
+        (r.club_short_name || "").toUpperCase() ===
+        (currentUserShort || "").toUpperCase()
+    )
+  );
+  renderSquad(players, activeListings, statsByPlayer);
 }
 
 // RENDER SQUAD
-function renderSquad(players, activeListings) {
+function formatSeasonStat(row, key, fallback = "—") {
+  if (!row) return fallback;
+  const v = row[key];
+  if (v == null || v === "") return fallback;
+  return v;
+}
+
+function renderSquad(players, activeListings, statsByPlayer = new Map()) {
   const tbody = document.getElementById("squad-body");
   if (!tbody) return;
 
@@ -159,7 +175,7 @@ function renderSquad(players, activeListings) {
     const headerRow = document.createElement("tr");
     headerRow.classList.add("squad-section-row");
     headerRow.innerHTML =
-      `<td colspan="10" class="squad-section-title">${groupName}</td>`;
+      `<td colspan="13" class="squad-section-title">${groupName}</td>`;
     tbody.appendChild(headerRow);
 
     const groupPlayers = players
@@ -175,6 +191,9 @@ function renderSquad(players, activeListings) {
 
       const tr = document.createElement("tr");
       tr.dataset.konamiId = p.Konami_ID;
+      const st = statsByPlayer.get(String(p.Konami_ID));
+      const avg =
+        st?.avg_rating != null ? Number(st.avg_rating).toFixed(2) : "—";
 
       const imgURL = `https://pesdb.net/assets/img/card/b${p.Konami_ID}.png`;
 
@@ -184,6 +203,10 @@ function renderSquad(players, activeListings) {
         <td>${p.Nation || "-"}</td>
         <td>${p.Position}</td>
         <td>${p.Rating || p.OVR}</td>
+        <td class="num">${formatSeasonStat(st, "appearances", "0")}</td>
+        <td class="num">${formatSeasonStat(st, "goals", "0")}</td>
+        <td class="num">${formatSeasonStat(st, "assists", "0")}</td>
+        <td class="num">${avg}</td>
         <td>${p.Playstyle || "-"}</td>
         <td><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
         <td>${status}</td>
