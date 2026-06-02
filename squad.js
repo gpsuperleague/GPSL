@@ -1,7 +1,7 @@
 // squad.js — CLEAN, FIXED, MODERN VERSION WITH TRANSFER WINDOW LOGIC
 
 import { fullClubName } from "./clubs_lookup.js";
-import { computeStandardListingEndTime } from "./global.js";
+import { computeStandardListingEndTime, initGlobal, supabase } from "./global.js";
 import {
   loadPlayerSeasonStatsForSquad,
   statsMapByPlayerId,
@@ -12,7 +12,7 @@ import {
   squadComplianceRuleRows,
 } from "./squad_rules.js";
 
-const supabase = window.supabase;
+window.supabase = supabase;
 
 /** Columns needed for squad table + list modal (avoid select *). */
 const SQUAD_PLAYER_COLUMNS =
@@ -33,6 +33,8 @@ let foreignInterestRemaining = MAX_FOREIGN_INTEREST;
 
 // ENTRY POINT
 document.addEventListener("DOMContentLoaded", async () => {
+  await initGlobal();
+
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {

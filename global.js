@@ -356,6 +356,38 @@ export async function loadGlobalSettings() {
 }
 
 // ------------------------------------------------------------
+// NAV — Special Auction link (shared by buildNav + legacy inline navs)
+// ------------------------------------------------------------
+export async function specialAuctionNavLinkHtml() {
+  const path = window.location.pathname.toLowerCase();
+  if (path.includes("special_auction")) return "";
+
+  try {
+    const nowIso = new Date().toISOString();
+    const { data: sa } = await supabase
+      .from("special_auctions")
+      .select("id, title, start_time")
+      .in("status", ["scheduled", "active"])
+      .gt("end_time", nowIso)
+      .order("start_time", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!sa) return "";
+
+    const starts = new Date(sa.start_time);
+    const beforeStart = Date.now() < starts.getTime();
+    const label = beforeStart
+      ? `Special Auction (${starts.toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" })})`
+      : "Special Auction";
+
+    return `<a id="nav-special-auction" href="special_auction.html" class="button">${label}</a>`;
+  } catch (_) {
+    return "";
+  }
+}
+
+// ------------------------------------------------------------
 // NAV BUILDER (SKIP CURRENT PAGE BUTTON)
 // ------------------------------------------------------------
 export async function buildNav() {
@@ -367,54 +399,35 @@ export async function buildNav() {
     return;
   }
 
-  // Get current page filename
   const path = window.location.pathname.toLowerCase();
-  
-  // Check which page we're on
+
   const isHome = path.includes("index");
   const isGPDB = path.includes("gpdb");
   const isClubs = path.includes("clubs") && !path.includes("all_listings");
   const isMarket = path.includes("all_listings");
   const isDashboard = path.includes("dashboard");
   const isAdmin = path.includes("admin");
-  const isDraft = path.includes("draftauction") && !path.includes("draftauction_player");
-  const isSpecialAuction = path.includes("special_auction");
+  const isDraft =
+    path.includes("draftauction") && !path.includes("draftauction_player");
 
-  let visibleSpecialAuction = null;
-  try {
-    const nowIso = new Date().toISOString();
-    const { data: sa } = await supabase
-      .from("special_auctions")
-      .select("id, title, start_time")
-      .in("status", ["scheduled", "active"])
-      .gt("end_time", nowIso)
-      .order("start_time", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    visibleSpecialAuction = sa;
-  } catch (_) {
-    visibleSpecialAuction = null;
-  }
-
-  // Build nav HTML - only include buttons for pages NOT currently viewing
   let html = "";
-  
+
   if (!isHome) {
     html += `<a id="nav-home" href="index.html" class="button">Home</a>`;
   }
-  
+
   if (!isGPDB) {
     html += `<a id="nav-gpdb" href="GPDB.html" class="button">Player Database</a>`;
   }
-  
+
   if (!isClubs) {
     html += `<a id="nav-clubs" href="clubs.html" class="button">Clubs</a>`;
   }
-  
+
   if (!isMarket) {
     html += `<a id="nav-market" href="all_listings.html" class="button">Transfer Market</a>`;
   }
-  
+
   if (!isDashboard) {
     html += `<a id="nav-dashboard" href="dashboard.html" class="button">Dashboard</a>`;
   }
@@ -427,19 +440,11 @@ export async function buildNav() {
     html += `<a id="nav-draft" href="draftauction.html" class="button">Draft Auction</a>`;
   }
 
-  if (visibleSpecialAuction && !isSpecialAuction) {
-    const starts = new Date(visibleSpecialAuction.start_time);
-    const beforeStart = Date.now() < starts.getTime();
-    const label = beforeStart
-      ? `Special Auction (${starts.toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" })})`
-      : "Special Auction";
-    html += `<a id="nav-special-auction" href="special_auction.html" class="button">${label}</a>`;
-  }
+  html += await specialAuctionNavLinkHtml();
 
   html += `<button id="logoutBtn" class="button">Logout</button>`;
   nav.innerHTML = html;
 
-  // Logout
   document.getElementById("logoutBtn").onclick = async () => {
     await supabase.auth.signOut();
     window.location = "login.html";
@@ -450,6 +455,7 @@ export async function buildNav() {
 // INITIALISATION
 // ------------------------------------------------------------
 export async function initGlobal() {
+  window.supabase = supabase;
   await loadGlobalSettings();
   wireDraftCountdownUI();
   await buildNav();

@@ -408,6 +408,7 @@
       playerHasPendingDirectOffer,
       playerHasActiveListing,
     } from './direct_offers.js';
+    import { specialAuctionNavLinkHtml } from './global.js';
 
     const supabase = createClient(
       'https://omyyogfumrjoaweuawjn.supabase.co',
@@ -465,6 +466,8 @@
       if (draftEnabled) {
         html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
       }
+
+      html += await specialAuctionNavLinkHtml();
 
       html += `
           </div>
