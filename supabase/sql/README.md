@@ -115,6 +115,7 @@ Run the **entire** script once (STEP 1 seed + STEP 2 functions):
 
 - Confirm final `SELECT` returns `FOREIGN`. Adds `Clubs.foreign_interest_remaining` (default **3**, −1 per foreign sale).
 - Squad header badge + **Sell to foreign club** blocked at 0.
+- Already sold before the counter existed? Run [`repair_foreign_interest_urd.sql`](./repair_foreign_interest_urd.sql) (syncs from `Transfer_History`; sets **URD** to **2** if no FOREIGN row yet). Edit the backdate timestamp in step 4 if needed.
 - Requires `my_club_shortname()` (`special_auctions.sql`)
 
 ## Squad composition (home-grown / under-21)
