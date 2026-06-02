@@ -97,6 +97,30 @@ Then in **GPSL Admin → Owner Administration → Link existing login to club**,
 
 **Add Owner** (edge function `create-owner`) still creates a **new** auth user and links the club in one step.
 
+## Wage % of market value (admin)
+
+Run once:
+
+[`player_wage_settings.sql`](./player_wage_settings.sql)
+
+- **SuperLeague** and **Championship** wage as **% of `market_value`** on `global_settings`
+- **GPSL Admin → Transfer Management → Save wage %**
+- Functions: `calculate_standard_player_wage`, `calculate_player_wage_for_club`
+
+## Squad composition (home-grown / under-21)
+
+Run once:
+
+[`squad_composition_rules.sql`](./squad_composition_rules.sql)
+
+- **Home-grown** = `Players.Nation` matches `Clubs.Nation` (min **8** in **28** squad)
+- **Under-21** = age **≤ 21** (min **5**)
+- JS: `squad_rules.js` · Squad page compliance banner
+
+## Player contracts (not implemented)
+
+Design: [`docs/player-contracts-spec.md`](../docs/player-contracts-spec.md) — 3-season deals, final-year renew/expire/sell, hidden expiry wage bids. Align with legacy spreadsheet before SQL.
+
 ## Two separate systems
 
 | Players | How they move | Engine |

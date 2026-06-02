@@ -71,6 +71,11 @@
       </div>
 
       <div class="detailRow">
+        <label>Club nation:</label>
+        <span id="clubNation">—</span>
+      </div>
+
+      <div class="detailRow">
         <label>Division (current season):</label>
         <span id="compDivision">—</span>
       </div>
@@ -120,6 +125,7 @@
       document.getElementById("ownerName").textContent = user.email;
       document.getElementById("stadiumName").textContent = club.Stadium;
       document.getElementById("stadiumCapacity").textContent = club.Capacity;
+      document.getElementById("clubNation").textContent = club.Nation || "—";
 
       const season = await loadCurrentSeason(supabase);
       if (season) {

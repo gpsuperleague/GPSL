@@ -3,6 +3,13 @@
 import { fullClubName } from "./clubs_lookup.js";
 import { computeStandardListingEndTime } from "./global.js";
 import { loadPlayerSeasonStats, statsMapByPlayerId } from "./competition.js";
+import {
+  analyseSquadComposition,
+  isHomeGrownPlayer,
+  MIN_HOME_GROWN,
+  MIN_UNDER_21,
+  SQUAD_SIZE,
+} from "./squad_rules.js";
 
 const supabase = window.supabase;
 
@@ -10,6 +17,7 @@ const supabase = window.supabase;
 let userObj = null;
 let userId = null;
 let currentUserShort = null;
+let clubNation = null;
 let selectedPlayerForListing = null;
 
 // ⭐ NEW: Transfer window state
@@ -42,6 +50,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   currentUserShort = club.ShortName;
+  clubNation = club.Nation ?? null;
   window.GPSL_CLUB_SHORTNAME = currentUserShort;
 
   document.getElementById("dashboardTitle").textContent = `${club.Club} Squad`;
@@ -147,7 +156,34 @@ async function loadSquad() {
         (currentUserShort || "").toUpperCase()
     )
   );
+  renderSquadCompliance(players);
   renderSquad(players, activeListings, statsByPlayer);
+}
+
+function renderSquadCompliance(players) {
+  const el = document.getElementById("squadCompliancePanel");
+  if (!el) return;
+
+  const c = analyseSquadComposition(players, clubNation);
+  const okStyle = c.compliant
+    ? "background:#1a2e1a;border:1px solid #2d5a2d;color:#9fdf9f;"
+    : "background:#331a1a;border:1px solid #633;color:#fbb;";
+
+  const issuesHtml = c.issues.length
+    ? `<ul style="margin:8px 0 0;padding-left:20px;">${c.issues.map((i) => `<li>${i}</li>`).join("")}</ul>`
+    : "";
+
+  el.innerHTML = `
+    <div style="${okStyle}padding:12px 14px;border-radius:8px;font-size:14px;">
+      <b>Squad rules</b> (${SQUAD_SIZE}-man registered squad)<br>
+      Home-grown: <b>${c.homeGrown}</b> / ${MIN_HOME_GROWN}
+      (player Nation = club Nation${clubNation ? `: ${clubNation}` : ""}) ·
+      Under-21: <b>${c.under21}</b> / ${MIN_UNDER_21} ·
+      Total: <b>${c.total}</b> / ${SQUAD_SIZE}
+      ${c.compliant ? " · <span style='color:#6f6;'>Compliant</span>" : ""}
+      ${issuesHtml}
+    </div>
+  `;
 }
 
 // RENDER SQUAD
@@ -197,9 +233,14 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
 
       const imgURL = `https://pesdb.net/assets/img/card/b${p.Konami_ID}.png`;
 
+      const hg = isHomeGrownPlayer(p, clubNation);
+      const hgTag = hg
+        ? ` <span title="Home-grown (Nation matches club)" style="color:#6cf;font-size:11px;">HG</span>`
+        : "";
+
       tr.innerHTML = `
         <td><img src="${imgURL}" class="player-thumb" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
-        <td>${p.Name}</td>
+        <td>${p.Name}${hgTag}</td>
         <td>${p.Nation || "-"}</td>
         <td>${p.Position}</td>
         <td>${p.Rating || p.OVR}</td>

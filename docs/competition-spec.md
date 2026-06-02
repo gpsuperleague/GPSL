@@ -269,5 +269,6 @@ Formula inputs (to detail in finance spec):
 - **Phase 4 player stats:** `competition_phase4_player_stats.sql` + `matchday.html` (squad G/A/rating/POTM on submit) + `league_stats.html` + squad season columns.
 - **Phase 5 finances:** `competition_phase5_finances.sql` + `finances.html` + `stadium.html` (gates on confirm; cup split ready).
 - **Phase 6 cups:** `competition_phase6_cups.sql` + `cups.html` + admin draws/prizes; league + prestige knockouts.
-- `rollover_season` RPC: exists in Supabase for **player/transfer** rollover; separate from competition season activate.
+- **Player contracts:** not implemented — see [`player-contracts-spec.md`](./player-contracts-spec.md).
+- `rollover_season` RPC: exists in Supabase for **player/transfer** rollover; separate from competition season activate; should drive contract season tick when built.
 - `Clubs.Stadium`, `Clubs.Capacity`: used in gate formula.

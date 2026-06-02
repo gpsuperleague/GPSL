@@ -355,6 +355,27 @@
         <div id="settingsMessage" style="color:#ffcc00; margin-top:10px;"></div>
 
         <p id="draftStartTime" class="status-note" style="margin-top:10px;"></p>
+
+        <hr style="border-color:#333; margin:20px 0;">
+
+        <h3 style="color:#ff9900; margin:0 0 10px; font-size:16px;">Wage % of market value</h3>
+        <p class="note" style="margin-top:0;">
+          Standard calculated wage = <code>market_value × %</code> by the club&apos;s
+          <b>current competition division</b> (SuperLeague vs Championship A/B).
+          Run <code>player_wage_settings.sql</code> once. Used for contracts / free agents when built.
+        </p>
+        <div class="row">
+          <div>
+            <label>SuperLeague %</label>
+            <input type="number" id="wagePctSL" min="0" max="100" step="0.1" value="5" style="width:100px;">
+          </div>
+          <div>
+            <label>Championship %</label>
+            <input type="number" id="wagePctCH" min="0" max="100" step="0.1" value="4" style="width:100px;">
+          </div>
+        </div>
+        <button type="button" id="saveWagePctBtn" class="button">Save wage %</button>
+        <div id="wagePctStatus" style="color:#ffcc00; margin-top:10px;"></div>
       </div>
 
       <!-- SPECIAL AUCTIONS -->
@@ -732,6 +753,15 @@
       document.getElementById("draftAuctionSelect").value =
         data.draft_auction_enabled ? "true" : "false";
 
+      if (document.getElementById("wagePctSL")) {
+        document.getElementById("wagePctSL").value =
+          data.wage_pct_superleague ?? 5;
+      }
+      if (document.getElementById("wagePctCH")) {
+        document.getElementById("wagePctCH").value =
+          data.wage_pct_championship ?? 4;
+      }
+
       if (data.draft_auction_enabled && data.draft_auction_start_time) {
         const start = new Date(data.draft_auction_start_time);
         document.getElementById("draftStartTime").textContent =
@@ -820,6 +850,34 @@
         error ? "❌ " + (error.message || "Error updating settings") : "✅ Settings updated!";
 
       await loadGlobalSettings();
+      await loadSettings();
+    };
+
+    document.getElementById("saveWagePctBtn").onclick = async () => {
+      const status = document.getElementById("wagePctStatus");
+      const sl = Number(document.getElementById("wagePctSL").value);
+      const ch = Number(document.getElementById("wagePctCH").value);
+
+      if (!Number.isFinite(sl) || sl < 0 || sl > 100) {
+        status.textContent = "SuperLeague % must be 0–100.";
+        return;
+      }
+      if (!Number.isFinite(ch) || ch < 0 || ch > 100) {
+        status.textContent = "Championship % must be 0–100.";
+        return;
+      }
+
+      status.textContent = "Saving…";
+
+      const { error } = await supabase.rpc("admin_update_wage_settings", {
+        p_wage_pct_superleague: sl,
+        p_wage_pct_championship: ch,
+      });
+
+      status.textContent = error
+        ? "❌ " + error.message
+        : `✅ Wage % saved — SL ${sl}%, Championship ${ch}% of market value.`;
+
       await loadSettings();
     };
 
