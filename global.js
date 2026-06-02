@@ -269,7 +269,7 @@ export function startDraftCountdown(onTick) {
   __draftCountdownInterval = setInterval(tick, 1000);
 }
 
-/** Updates #draftCountdown / #draftLocalStart when present (dashboard, GPDB). */
+/** Updates #draftCountdown / #draftLocalStart when present (dashboard, GPDB, draft auction). */
 export function wireDraftCountdownUI() {
   const el = document.getElementById("draftCountdown");
   const container = document.getElementById("draftCountdownContainer");
