@@ -8,7 +8,7 @@
 
 import { supabase } from "./supabase_client.js";
 import { initGlobal, computeStandardListingEndTime } from "./global.js";
-import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import { loadClubsMap, fullClubName, buyerClubLabel } from "./clubs_lookup.js";
 import { getBidPlayerId } from "./direct_offers.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -570,7 +570,7 @@ async function loadSeasonSales(shortName) {
           (row) => `
         <tr>
           <td>${playerFromMap(players, row.player_id)?.Name || "Unknown"}</td>
-          <td>${row.buyer_club_id || "Foreign club"}</td>
+          <td>${buyerClubLabel(row.buyer_club_id)}</td>
           <td>₿ ${Number(row.fee).toLocaleString("en-GB")}</td>
           <td>${new Date(row.transfer_time).toLocaleString()}</td>
         </tr>

@@ -163,6 +163,7 @@
       const { data, error } = await supabase
         .from("Clubs")
         .select("*")
+        .neq("ShortName", "FOREIGN")
         .order("Club", { ascending: true });
 
       if (error) {
