@@ -28,6 +28,9 @@ let selectedPlayerForListing = null;
 // ⭐ NEW: Transfer window state
 let transferWindowOpen = true;
 
+const MAX_FOREIGN_INTEREST = 3;
+let foreignInterestRemaining = MAX_FOREIGN_INTEREST;
+
 // ENTRY POINT
 document.addEventListener("DOMContentLoaded", async () => {
   const { data: { user } } = await supabase.auth.getUser();
@@ -43,13 +46,29 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("userEmail").textContent = user.email;
 
   // Load club
-  const { data: club, error } = await supabase
+  let club = null;
+  let clubErr = null;
+
+  const clubRes = await supabase
     .from("Clubs")
-    .select("*")
+    .select("ShortName, Club, Nation, foreign_interest_remaining")
     .eq("owner_id", user.id)
     .single();
 
-  if (error || !club) {
+  club = clubRes.data;
+  clubErr = clubRes.error;
+
+  if (clubErr?.code === "42703") {
+    const fallback = await supabase
+      .from("Clubs")
+      .select("ShortName, Club, Nation")
+      .eq("owner_id", user.id)
+      .single();
+    club = fallback.data;
+    clubErr = fallback.error;
+  }
+
+  if (clubErr || !club) {
     alert("No club assigned to this account.");
     return;
   }
@@ -61,6 +80,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("dashboardTitle").textContent = `${club.Club} Squad`;
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${currentUserShort}.png`;
+
+  foreignInterestRemaining = normalizeForeignInterest(
+    club.foreign_interest_remaining
+  );
+  renderForeignInterestBadge();
+  applyForeignSaleOptionState();
 
   wireButtons();
   wireSquadTable();
@@ -90,6 +115,40 @@ async function loadTransferWindowStatus() {
 }
 
 // ⭐ NEW: Apply UI rules when window is closed
+function normalizeForeignInterest(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return MAX_FOREIGN_INTEREST;
+  return Math.max(0, Math.min(MAX_FOREIGN_INTEREST, Math.trunc(n)));
+}
+
+function renderForeignInterestBadge() {
+  const el = document.getElementById("foreignInterestBadge");
+  if (!el) return;
+
+  const n = foreignInterestRemaining;
+  el.classList.toggle("foreign-interest-badge--empty", n <= 0);
+
+  if (n <= 0) {
+    el.textContent = "No foreign clubs interested in your players";
+    return;
+  }
+
+  const clubWord = n === 1 ? "club" : "clubs";
+  el.textContent = `${n} foreign ${clubWord} interested in your players`;
+}
+
+function applyForeignSaleOptionState() {
+  const allow = foreignInterestRemaining > 0;
+  document.querySelectorAll("select.squad-action-select").forEach((sel) => {
+    const opt = sel.querySelector('option[value="foreign"]');
+    if (!opt) return;
+    opt.disabled = !allow;
+    opt.textContent = allow
+      ? "Sell to foreign club"
+      : "No foreign interest left";
+  });
+}
+
 function applyTransferWindowRules() {
   const msg = document.getElementById("windowClosedMessage");
   const selects = document.querySelectorAll("select.squad-action-select");
@@ -308,6 +367,7 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
   }
 
   applyTransferWindowRules();
+  applyForeignSaleOptionState();
 }
 
 function listingStatusHtml(isListed) {
@@ -423,6 +483,10 @@ async function handlePlayerAction(playerId, action, selectEl) {
 
     if (action === "foreign") {
       resetActionSelect(selectEl);
+      if (foreignInterestRemaining <= 0) {
+        alert("No foreign clubs are interested in your players (limit reached).");
+        return;
+      }
       await sellPlayerToForeignClub(playerId);
     }
   } catch (err) {
@@ -470,6 +534,16 @@ async function sellPlayerToForeignClub(playerId) {
   }
 
   const fee = data?.fee ?? mv;
+  if (data?.foreign_interest_remaining != null) {
+    foreignInterestRemaining = normalizeForeignInterest(
+      data.foreign_interest_remaining
+    );
+  } else {
+    foreignInterestRemaining = Math.max(0, foreignInterestRemaining - 1);
+  }
+  renderForeignInterestBadge();
+  applyForeignSaleOptionState();
+
   alert(
     `${data?.player_name || player.Name} sold to a foreign club.\n` +
       `${formatMoney(fee)} credited to your club balance.`

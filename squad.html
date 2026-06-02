@@ -46,7 +46,7 @@
       transform: scale(1.05);
     }
 
-    #headerContainer {
+    #headerContainer.squad-header {
       justify-content: flex-start !important;
     }
 
@@ -76,12 +76,13 @@
   <div id="nav" style="margin-bottom:20px;"></div>
 
   <!-- HEADER -->
-  <div id="headerContainer" style="padding-left:20px; display:flex; align-items:center; gap:20px;">
-    <img id="clubBadgeHeader" src="" alt="Club Badge" style="width:80px; height:80px; object-fit:contain;">
-    <div>
+  <div id="headerContainer" class="squad-header">
+    <img id="clubBadgeHeader" src="" alt="Club Badge" class="squad-header-badge">
+    <div class="squad-header-titles">
       <h1 id="dashboardTitle">Squad</h1>
       <div id="userEmail"></div>
     </div>
+    <p id="foreignInterestBadge" class="foreign-interest-badge" aria-live="polite"></p>
   </div>
 
   <!-- MAIN CONTENT -->

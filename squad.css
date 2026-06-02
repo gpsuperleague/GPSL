@@ -20,6 +20,47 @@ body.squad-page #rightColumn {
 }
 
 /* Squad registration requirements panel */
+body.squad-page .squad-header {
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+body.squad-page .squad-header-badge {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+}
+
+body.squad-page .squad-header-titles {
+  flex: 0 1 auto;
+}
+
+body.squad-page .foreign-interest-badge {
+  margin-left: auto;
+  margin-right: 12px;
+  padding: 10px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #e8f4ff;
+  text-align: center;
+  border: 2px solid #6cf;
+  border-radius: 8px;
+  background: rgba(30, 60, 90, 0.45);
+  box-shadow: 0 0 12px rgba(102, 204, 255, 0.15);
+  max-width: 320px;
+  line-height: 1.35;
+}
+
+body.squad-page .foreign-interest-badge--empty {
+  color: #aaa;
+  border-color: #666;
+  background: rgba(40, 40, 40, 0.5);
+  box-shadow: none;
+}
+
 body.squad-page .squad-compliance-wrap {
   margin-bottom: 18px;
 }

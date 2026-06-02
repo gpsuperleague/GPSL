@@ -113,8 +113,8 @@ Run the **entire** script once (STEP 1 seed + STEP 2 functions):
 
 [`sell_to_foreign_club.sql`](./sell_to_foreign_club.sql)
 
-- Confirm STEP 3 returns `FOREIGN`. If STEP 1 fails, insert the `FOREIGN` club row manually, then re-run from STEP 2.
-- Squad → **Sell to foreign club**: `Players.Contracted_Team` → **NULL**; `Transfer_History.buyer_club_id` → **`FOREIGN`**
+- Confirm final `SELECT` returns `FOREIGN`. Adds `Clubs.foreign_interest_remaining` (default **3**, −1 per foreign sale).
+- Squad header badge + **Sell to foreign club** blocked at 0.
 - Requires `my_club_shortname()` (`special_auctions.sql`)
 
 ## Squad composition (home-grown / under-21)
