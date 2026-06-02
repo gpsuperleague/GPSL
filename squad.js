@@ -14,6 +14,10 @@ import {
 
 const supabase = window.supabase;
 
+/** Columns needed for squad table + list modal (avoid select *). */
+const SQUAD_PLAYER_COLUMNS =
+  "Konami_ID, Name, Nation, Position, Rating, OVR, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team";
+
 // STATE
 let userObj = null;
 let userId = null;
@@ -59,15 +63,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     `images/club_badges/${currentUserShort}.png`;
 
   wireButtons();
-  wireSquadActionMenu();
+  wireSquadTable();
 
-  await loadTransferWindowStatus();
-  await loadSquad();
+  await Promise.all([loadTransferWindowStatus(), loadSquad()]);
 
-  // OPTIONAL: auto-refresh listing status every 30 seconds
   setInterval(async () => {
-    await loadTransferWindowStatus();
-    await loadSquad();
+    await Promise.all([loadTransferWindowStatus(), loadSquad()]);
   }, 30000);
 });
 
@@ -135,17 +136,19 @@ async function getActiveListings() {
   return data.map((x) => String(x.player_id));
 }
 
-// LOAD SQUAD — render table first, then enrich stats/listings (keeps actions responsive)
+// LOAD SQUAD — render actions ASAP; patch stats/listings without rebuilding dropdowns
 async function loadSquad() {
   const tbody = document.getElementById("squad-body");
-  if (tbody && !tbody.querySelector("tr[data-squad-loading]")) {
+  const hadSquad = !!tbody?.querySelector("tr[data-konami-id]");
+
+  if (tbody && !hadSquad) {
     tbody.innerHTML =
       '<tr data-squad-loading><td colspan="13" style="color:#888;padding:16px;">Loading squad…</td></tr>';
   }
 
   const { data: players, error } = await supabase
     .from("Players")
-    .select("*")
+    .select(SQUAD_PLAYER_COLUMNS)
     .eq("Contracted_Team", currentUserShort);
 
   if (error) {
@@ -159,18 +162,21 @@ async function loadSquad() {
 
   const list = players || [];
   const playerIds = list.map((p) => String(p.Konami_ID));
+  const idsKey = playerIds.slice().sort().join(",");
 
   renderSquadCompliance(list);
-  renderSquad(list, [], new Map());
+
+  if (!hadSquad || tbody?.dataset.squadIds !== idsKey) {
+    renderSquad(list, [], new Map());
+    if (tbody) tbody.dataset.squadIds = idsKey;
+  }
 
   const [activeListings, seasonStats] = await Promise.all([
     getActiveListings(),
     loadPlayerSeasonStatsForSquad(supabase, playerIds, currentUserShort),
   ]);
 
-  const statsByPlayer = statsMapByPlayerId(seasonStats);
-  renderSquadCompliance(list);
-  renderSquad(list, activeListings, statsByPlayer);
+  patchSquadEnrichment(activeListings, statsMapByPlayerId(seasonStats));
 }
 
 function renderSquadCompliance(players) {
@@ -262,13 +268,11 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
 
     groupPlayers.forEach(p => {
       const isListed = activeListings.includes(String(p.Konami_ID));
-
-      const status = isListed
-        ? `<span class="status-pill status-listed">Listed</span>`
-        : `<span class="status-pill status-not-listed">Not Listed</span>`;
+      const status = listingStatusHtml(isListed);
 
       const tr = document.createElement("tr");
       tr.dataset.konamiId = p.Konami_ID;
+      tr.style.cursor = "pointer";
       const st = statsByPlayer.get(String(p.Konami_ID));
       const avg =
         st?.avg_rating != null ? Number(st.avg_rating).toFixed(2) : "—";
@@ -283,14 +287,14 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
         <td>${p.Nation || "-"}</td>
         <td>${p.Position}</td>
         <td>${p.Rating || p.OVR}</td>
-        <td class="num">${formatSeasonStat(st, "appearances", "0")}</td>
-        <td class="num">${formatSeasonStat(st, "goals", "0")}</td>
-        <td class="num">${formatSeasonStat(st, "assists", "0")}</td>
-        <td class="num">${avg}</td>
+        <td class="num squad-col-apps">${formatSeasonStat(st, "appearances", "0")}</td>
+        <td class="num squad-col-goals">${formatSeasonStat(st, "goals", "0")}</td>
+        <td class="num squad-col-assists">${formatSeasonStat(st, "assists", "0")}</td>
+        <td class="num squad-col-avg">${avg}</td>
         <td>${p.Playstyle || "-"}</td>
         <td><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
-        <td>${status}</td>
-        <td>
+        <td class="squad-col-status">${status}</td>
+        <td class="squad-col-action">
           <select class="squad-action-select" data-player-id="${String(p.Konami_ID)}">
             <option value="">Action</option>
             <option value="list">Transfer List</option>
@@ -303,10 +307,42 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
     });
   }
 
-  applyPESDBRowClicks("squad-body");
-
-  // ⭐ Apply transfer window rules AFTER rendering
   applyTransferWindowRules();
+}
+
+function listingStatusHtml(isListed) {
+  return isListed
+    ? `<span class="status-pill status-listed">Listed</span>`
+    : `<span class="status-pill status-not-listed">Not Listed</span>`;
+}
+
+/** Update stats + listing pills only — keeps action dropdowns mounted and clickable. */
+function patchSquadEnrichment(activeListings, statsByPlayer) {
+  const tbody = document.getElementById("squad-body");
+  if (!tbody) return;
+
+  const listedSet = new Set((activeListings || []).map(String));
+
+  tbody.querySelectorAll("tr[data-konami-id]").forEach((row) => {
+    const id = String(row.dataset.konamiId);
+    const st = statsByPlayer.get(id);
+    const apps = row.querySelector(".squad-col-apps");
+    const goals = row.querySelector(".squad-col-goals");
+    const assists = row.querySelector(".squad-col-assists");
+    const avg = row.querySelector(".squad-col-avg");
+    const status = row.querySelector(".squad-col-status");
+
+    if (apps) apps.textContent = formatSeasonStat(st, "appearances", "0");
+    if (goals) goals.textContent = formatSeasonStat(st, "goals", "0");
+    if (assists) assists.textContent = formatSeasonStat(st, "assists", "0");
+    if (avg) {
+      avg.textContent =
+        st?.avg_rating != null ? Number(st.avg_rating).toFixed(2) : "—";
+    }
+    if (status) {
+      status.innerHTML = listingStatusHtml(listedSet.has(id));
+    }
+  });
 }
 
 function resetActionSelect(selectEl) {
@@ -324,24 +360,46 @@ function playerContractClubKey(contractedTeam) {
   return t === "" ? null : t;
 }
 
-function wireSquadActionMenu() {
+function wireSquadTable() {
   const tbody = document.getElementById("squad-body");
-  if (!tbody || tbody.dataset.actionMenuWired === "1") return;
-  tbody.dataset.actionMenuWired = "1";
+  if (!tbody || tbody.dataset.squadTableWired === "1") return;
+  tbody.dataset.squadTableWired = "1";
 
-  tbody.addEventListener("click", (e) => {
+  tbody.addEventListener("mousedown", (e) => {
     if (e.target.closest("select.squad-action-select")) {
       e.stopPropagation();
     }
+  });
+
+  tbody.addEventListener("click", (e) => {
+    const sel = e.target.closest("select.squad-action-select");
+    if (sel) {
+      e.stopPropagation();
+      return;
+    }
+
+    if (
+      e.target.closest("button") ||
+      e.target.closest(".decision-buttons")
+    ) {
+      return;
+    }
+
+    const row = e.target.closest("tr[data-konami-id]");
+    if (!row?.dataset.konamiId) return;
+
+    window.open(
+      `https://pesdb.net/efootball/?id=${row.dataset.konamiId}`,
+      "_blank",
+      "noopener"
+    );
   });
 
   tbody.addEventListener("change", (e) => {
     const sel = e.target.closest("select.squad-action-select");
     if (!sel) return;
     e.stopPropagation();
-    const playerId = sel.dataset.playerId;
-    const action = sel.value;
-    void handlePlayerAction(playerId, action, sel);
+    void handlePlayerAction(sel.dataset.playerId, sel.value, sel);
   });
 }
 
@@ -599,40 +657,6 @@ async function validateAndCreateListing() {
 
   // ⭐ Reload fresh listing state from DB
   await loadSquad();
-}
-
-// PESDB CLICK HANDLER
-function applyPESDBRowClicks(tbodyId) {
-  const tbody = document.getElementById(tbodyId);
-  if (!tbody) return;
-
-  tbody.querySelectorAll("tr").forEach(row => {
-    row.style.cursor = "pointer";
-
-    row.addEventListener("click", e => {
-      const clickedButton =
-        e.target.closest("button") ||
-        e.currentTarget.querySelector("button:hover");
-
-      if (
-        e.target.closest("select") ||
-        e.target.closest("select.squad-action-select") ||
-        clickedButton ||
-        e.target.closest(".decision-buttons")
-      ) {
-        return;
-      }
-
-      const id = row.dataset.konamiId;
-      if (id) {
-        window.open(
-          `https://pesdb.net/efootball/?id=${id}`,
-          "_blank",
-          "noopener"
-        );
-      }
-    });
-  });
 }
 
 function wireButtons() {

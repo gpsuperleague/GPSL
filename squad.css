@@ -205,6 +205,12 @@ body.squad-page select.squad-action-select {
   cursor: pointer;
   position: relative;
   z-index: 2;
+  pointer-events: auto;
+}
+
+body.squad-page .squad-col-action {
+  position: relative;
+  z-index: 2;
 }
 
 body.squad-page .squad-qual-badge {

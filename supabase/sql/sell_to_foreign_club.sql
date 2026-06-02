@@ -1,12 +1,21 @@
 -- =============================================================================
 -- Sell player to foreign club (Squad action)
--- Run once in Supabase SQL Editor (after special_auctions.sql for my_club_shortname).
+-- Run this ENTIRE file in Supabase SQL Editor (after special_auctions.sql).
 --
--- Players table: free agent = Contracted_Team IS NULL (not 'FOREIGN').
--- Transfer_History: buyer_club_id = 'FOREIGN' (sentinel Clubs row; column NOT NULL + FK).
+-- Players: free agent = Contracted_Team NULL
+-- Transfer_History: buyer_club_id = 'FOREIGN' (sentinel Clubs row; NOT NULL + FK)
 -- =============================================================================
 
--- NULL or blank → free agent; otherwise trimmed ShortName
+-- STEP 1 — Run once. If this fails, add any missing NOT NULL columns your Clubs table needs.
+INSERT INTO public."Clubs" ("ShortName", "Club", "Stadium", "Capacity", "Nation")
+SELECT 'FOREIGN', 'Foreign club', '—', 0, '—'
+WHERE NOT EXISTS (
+  SELECT 1 FROM public."Clubs" c WHERE c."ShortName" = 'FOREIGN'
+);
+
+-- STEP 2 — Functions (DROP so PostgREST cannot keep an old body)
+DROP FUNCTION IF EXISTS public.sell_player_to_foreign_club(text);
+
 CREATE OR REPLACE FUNCTION public.player_contracted_club_key(p_value text)
 RETURNS text
 LANGUAGE sql
@@ -19,7 +28,6 @@ AS $$
   END;
 $$;
 
--- Sentinel row for transfer history only (not a playable club)
 CREATE OR REPLACE FUNCTION public.ensure_foreign_buyer_club()
 RETURNS text
 LANGUAGE plpgsql
@@ -30,10 +38,9 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM public."Clubs" c WHERE c."ShortName" = 'FOREIGN'
   ) THEN
-    INSERT INTO public."Clubs" ("ShortName", "Club", "Stadium", "Capacity", "Nation")
-    VALUES ('FOREIGN', 'Foreign club', '—', 0, '—');
+    RAISE EXCEPTION
+      'Clubs row FOREIGN is missing. Run STEP 1 in sell_to_foreign_club.sql (or insert FOREIGN manually).';
   END IF;
-
   RETURN 'FOREIGN';
 END;
 $function$;
@@ -50,18 +57,19 @@ DECLARE
   v_pid            text;
   v_fee            numeric;
   v_seller_balance numeric;
-  v_foreign        text;
+  v_buyer          text := 'FOREIGN';
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
+
+  PERFORM public.ensure_foreign_buyer_club();
 
   v_club := public.my_club_shortname();
   IF v_club IS NULL OR btrim(v_club) = '' THEN
     RAISE EXCEPTION 'No club linked to this account';
   END IF;
 
-  v_foreign := public.ensure_foreign_buyer_club();
   v_pid := btrim(p_player_id);
 
   SELECT *
@@ -109,7 +117,6 @@ BEGIN
       OR (b.direct_bid_id IS NOT NULL AND btrim(b.direct_bid_id::text) = v_pid)
     );
 
-  -- Free agent in GPSL = NULL (GPDB / draft use Contracted_Team.is.null)
   UPDATE public."Players"
   SET "Contracted_Team" = NULL
   WHERE "Konami_ID"::text = v_pid;
@@ -130,7 +137,7 @@ BEGIN
   VALUES (
     v_player."Konami_ID",
     v_club,
-    v_foreign,
+    v_buyer,
     v_fee,
     0,
     now(),
@@ -142,8 +149,7 @@ BEGIN
     'player_id', v_player."Konami_ID",
     'player_name', v_player."Name",
     'seller_club_id', v_club,
-    'buyer_club_id', v_foreign,
-    'contracted_team', null,
+    'buyer_club_id', v_buyer,
     'fee', v_fee,
     'new_balance', v_seller_balance + v_fee
   );
@@ -153,4 +159,7 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.player_contracted_club_key(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.ensure_foreign_buyer_club() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.sell_player_to_foreign_club(text) TO authenticated;
+
+-- STEP 3 — Sanity check (should return FOREIGN)
+SELECT public.ensure_foreign_buyer_club() AS foreign_buyer_ready;
 

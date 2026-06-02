@@ -109,11 +109,12 @@ Run once:
 
 ## Sell to foreign club (Squad)
 
-Run once:
+Run the **entire** script once (STEP 1 seed + STEP 2 functions):
 
 [`sell_to_foreign_club.sql`](./sell_to_foreign_club.sql)
 
-- Squad → **Sell to foreign club**: `Players.Contracted_Team` → **NULL** (free agent); `Transfer_History.buyer_club_id` → **`FOREIGN`** (sentinel `Clubs` row only — history FK, not on the player)
+- Confirm STEP 3 returns `FOREIGN`. If STEP 1 fails, insert the `FOREIGN` club row manually, then re-run from STEP 2.
+- Squad → **Sell to foreign club**: `Players.Contracted_Team` → **NULL**; `Transfer_History.buyer_club_id` → **`FOREIGN`**
 - Requires `my_club_shortname()` (`special_auctions.sql`)
 
 ## Squad composition (home-grown / under-21)
