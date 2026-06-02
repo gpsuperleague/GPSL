@@ -67,6 +67,33 @@ a.button:hover, button.button:hover {
       cursor: pointer;
     }
 
+    .info-box {
+      width: 90%;
+      max-width: 1100px;
+      margin: 0 auto 16px auto;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      padding: 15px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.55;
+      color: #ccc;
+    }
+
+    .info-box b {
+      color: #ff9900;
+      font-size: 14px;
+    }
+
+    .info-box ul {
+      margin: 8px 0 0 0;
+      padding-left: 20px;
+    }
+
+    .info-box li {
+      margin-bottom: 6px;
+    }
+
     table.gpsl-table {
       width: 90%;
       max-width: 1100px;
@@ -360,6 +387,18 @@ a.button:hover, button.button:hover {
         Seller review (reserve not met)
       </label>
     </div>
+  </div>
+
+  <div class="info-box">
+    <b>Transfer market rules</b>
+    <ul>
+      <li>Each bid must be at least <b>₿500,000</b> above the current highest bid (and at least the reserve on your first bid).</li>
+      <li><b>Reserve met</b> when the timer ends → the highest bidder wins automatically: player moves, buyer pays, seller receives the fee.</li>
+      <li><b>Reserve not met</b> but there are bids → the seller has <b>24 hours</b> in Transfer Centre to accept or reject the best offer (listed under “Seller review” here if you tick that filter).</li>
+      <li><b>No bids</b> when time runs out → the listing closes; the player stays with the seller.</li>
+      <li><b>Extra time (anti-sniping):</b> if someone bids in the <b>final 2 hours</b> before the listed end time, the auction is extended by <b>1 hour</b> (once per listing). After that, any bid in the <b>final 5 minutes</b> adds <b>5 more minutes</b> — and that 5-minute extension can happen again if another late bid comes in.</li>
+      <li>Countdowns on each row are in <b>your local time</b>. Settlement runs shortly after the clock hits zero (usually within a few minutes).</li>
+    </ul>
   </div>
 
   <table class="gpsl-table">
