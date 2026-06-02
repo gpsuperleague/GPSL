@@ -16,7 +16,9 @@ import {
 } from "./draft_engine.js";
 import {
   loadPendingDirectOfferPlayerIds,
+  loadActiveListedPlayerIds,
   playerHasPendingDirectOffer,
+  playerHasActiveListing,
 } from "./direct_offers.js";
 
 let draftAuctionStartTime = null;
@@ -213,12 +215,25 @@ document.addEventListener("DOMContentLoaded", () => {
   let CURRENT_USER = null;
   let ACTIVE_DRAFT_PLAYERS = new Set();
   let PENDING_DIRECT_OFFER_PLAYERS = new Set();
+  let ACTIVE_LISTED_PLAYERS = new Set();
+  let CURRENT_USER_CLUB_SHORT = null;
 
   let CLUB_NAME_MAP = {};
 
   async function loadUser() {
     const { data: { user } } = await supabase.auth.getUser();
     CURRENT_USER = user;
+    CURRENT_USER_CLUB_SHORT = null;
+
+    if (user) {
+      const { data: club } = await supabase
+        .from("Clubs")
+        .select("ShortName")
+        .eq("owner_id", user.id)
+        .maybeSingle();
+
+      CURRENT_USER_CLUB_SHORT = club?.ShortName ?? null;
+    }
   }
 
   async function loadClubNames() {
@@ -273,6 +288,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadPage(page = 1) {
     CURRENT_PAGE = page;
     await loadPendingDirectOfferPlayers();
+    await loadActiveListedPlayers();
 
     const from = (page - 1) * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
@@ -400,13 +416,19 @@ document.addEventListener("DOMContentLoaded", () => {
     tableBody.innerHTML = players
       .map(player => {
         const hasClub = !!player.Contracted_Team;
-        const isMyClub = player.Contracted_Team === CURRENT_USER?.user_metadata?.shortName;
+        const isMyClub =
+          !!CURRENT_USER_CLUB_SHORT &&
+          player.Contracted_Team === CURRENT_USER_CLUB_SHORT;
 
         let bidCell = `<span class="locked-msg">Loading…</span>`;
 
         if (GLOBAL_SETTINGS) {
           if (hasClub) {
             if (
+              playerHasActiveListing(ACTIVE_LISTED_PLAYERS, player.Konami_ID)
+            ) {
+              bidCell = `<span class="locked-msg">Listed on market</span>`;
+            } else if (
               playerHasPendingDirectOffer(
                 PENDING_DIRECT_OFFER_PLAYERS,
                 player.Konami_ID
@@ -927,6 +949,10 @@ document.addEventListener("DOMContentLoaded", () => {
       await loadPendingDirectOfferPlayerIds(supabase);
   }
 
+  async function loadActiveListedPlayers() {
+    ACTIVE_LISTED_PLAYERS = await loadActiveListedPlayerIds(supabase);
+  }
+
   async function loadActiveDraftListings() {
     const { data, error } = await supabase
       .from("Player_Transfer_Listings")
@@ -1267,6 +1293,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await loadTotalCount();
     await loadActiveDraftListings();
     await loadPendingDirectOfferPlayers();
+    await loadActiveListedPlayers();
     await loadDraftCreditsForOwner();
     loadPage(1);
   }

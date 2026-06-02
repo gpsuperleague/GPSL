@@ -406,6 +406,7 @@
     import {
       loadPendingDirectOfferPlayerIds,
       playerHasPendingDirectOffer,
+      playerHasActiveListing,
     } from './direct_offers.js';
 
     const supabase = createClient(
@@ -422,6 +423,7 @@
     let currentPlayerMarketValue = null;
     let draftEnabled = false;
     let pendingDirectOfferPlayers = new Set();
+    let activeListedPlayerIds = new Set();
 
     async function loadGlobalSettings() {
       const { data, error } = await supabase
@@ -481,6 +483,7 @@
       await loadBuyerClubShortName(user.id);
       await loadClub();
       await loadPendingDirectOffers();
+      await loadActiveListedForClub();
       await loadPlayers();
       setupModalHandlers();
     });
@@ -564,6 +567,27 @@
         await loadPendingDirectOfferPlayerIds(supabase);
     }
 
+    async function loadActiveListedForClub() {
+      const { data, error } = await supabase
+        .from("Player_Transfer_Listings")
+        .select("player_id, listing_type, status")
+        .eq("seller_club_id", clubShortName)
+        .eq("status", "Active");
+
+      activeListedPlayerIds = new Set();
+      if (error) {
+        console.error("Failed to load club listings:", error);
+        return;
+      }
+      for (const row of data || []) {
+        const lt = String(row.listing_type || "").toLowerCase();
+        if (lt === "draft") continue;
+        if (row.player_id != null) {
+          activeListedPlayerIds.add(String(row.player_id).trim());
+        }
+      }
+    }
+
     async function loadPlayers() {
       if (!clubShortName) return;
 
@@ -635,10 +659,12 @@
                     <td>${p.Playstyle || "-"}</td>
                     <td>
                       ${
-                        playerHasPendingDirectOffer(
-                          pendingDirectOfferPlayers,
-                          p.Konami_ID
-                        )
+                        playerHasActiveListing(activeListedPlayerIds, p.Konami_ID)
+                          ? `<span class="offer-review-msg">Listed on market</span>`
+                          : playerHasPendingDirectOffer(
+                              pendingDirectOfferPlayers,
+                              p.Konami_ID
+                            )
                           ? `<span class="offer-review-msg">Offer under review</span>`
                           : transferWindowOpen &&
                             buyerShortName &&
@@ -876,6 +902,7 @@
       currentOfferKonamiId = null;
       currentOfferSellerClub = null;
       currentPlayerMarketValue = null;
+      await loadPendingDirectOffers();
       await loadPlayers();
     }
   </script>
