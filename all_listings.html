@@ -67,11 +67,6 @@ a.button:hover, button.button:hover {
       cursor: pointer;
     }
 
-    .filters-right {
-      color: #ff9900;
-      font-weight: bold;
-    }
-
     table.gpsl-table {
       width: 90%;
       max-width: 1100px;
@@ -102,7 +97,40 @@ a.button:hover, button.button:hover {
 
     table.gpsl-table tr:hover {
       background:#262626;
-      cursor:pointer;
+    }
+
+    a.gpsl-link {
+      color: #ff9900;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    a.gpsl-link:hover {
+      color: #ffaa22;
+      text-decoration: underline;
+    }
+
+    .listing-thumb-link {
+      display: inline-block;
+      line-height: 0;
+    }
+
+    button.make-offer-btn {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #ff9900;
+      color: #111;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 13px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button.make-offer-btn:hover {
+      background: #ffaa22;
+      transform: scale(1.05);
     }
 
     .leading-row {
@@ -137,14 +165,52 @@ a.button:hover, button.button:hover {
 
     #bid-modal-header {
       display:flex;
-      justify-content:space-between;
+      justify-content:flex-end;
       align-items:center;
       margin-bottom:10px;
     }
 
-    #bid-modal-header h2 {
-      margin:0;
-      color:#ff9900;
+    .player-header {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 15px;
+      align-items: flex-start;
+    }
+
+    .player-header img {
+      width: auto;
+      height: 130px;
+      object-fit: contain;
+      background: #000;
+      border-radius: 6px;
+      border: 1px solid #444;
+      padding: 2px;
+      display: block;
+    }
+
+    .player-header-info h2 {
+      margin: 0 0 6px 0;
+      color: #ff9900;
+      font-size: 18px;
+    }
+
+    .player-header-info .meta-line {
+      font-size: 14px;
+      margin: 2px 0;
+    }
+
+    .bid-input-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 10px 0;
+    }
+
+    .bid-input-row label {
+      color: #ff9900;
+      font-weight: bold;
+      white-space: nowrap;
+      margin: 0;
     }
 
     #bid-modal-close {
@@ -160,6 +226,7 @@ a.button:hover, button.button:hover {
     .bid-row {
       display:flex;
       justify-content:space-between;
+      gap: 10px;
       margin:4px 0;
       font-size:14px;
     }
@@ -167,6 +234,7 @@ a.button:hover, button.button:hover {
     .bid-row label {
       color:#ff9900;
       margin-right:6px;
+      flex-shrink: 0;
     }
 
     #bid-input-section {
@@ -176,13 +244,33 @@ a.button:hover, button.button:hover {
     }
 
     #bid-amount {
-      width:140px;
-      padding:6px;
-      border-radius:4px;
-      border:1px solid #444;
-      background:#111;
-      color:#ddd;
-      font-size:15px;
+      width: 180px;
+      min-width: 180px;
+      max-width: 220px;
+      padding: 8px 10px;
+      border-radius: 4px;
+      border: 1px solid #444;
+      background: #111;
+      color: #ddd;
+      font-size: 15px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    #place-bid-btn {
+      background: #ff9900 !important;
+      color: #111 !important;
+      border: none !important;
+    }
+
+    #place-bid-btn:hover:not(:disabled) {
+      background: #ffaa22 !important;
+    }
+
+    #place-bid-btn:disabled {
+      background: #444 !important;
+      color: #888 !important;
+      cursor: not-allowed;
     }
 
     #bid-error {
@@ -272,9 +360,6 @@ a.button:hover, button.button:hover {
         Seller review (reserve not met)
       </label>
     </div>
-    <div class="filters-right">
-      Click a row to view & bid
-    </div>
   </div>
 
   <table class="gpsl-table">
@@ -302,14 +387,22 @@ a.button:hover, button.button:hover {
     <div id="bid-modal-content">
 
       <div id="bid-modal-header">
-        <h2 id="bid-player-name">Player</h2>
         <span id="bid-modal-close">&times;</span>
       </div>
 
-      <div class="bid-row"><label>Position:</label><span id="bid-player-position"></span></div>
-      <div class="bid-row"><label>Playstyle:</label><span id="bid-player-playstyle"></span></div>
-      <div class="bid-row"><label>Rating:</label><span id="bid-player-rating"></span></div>
-      <div class="bid-row"><label>Selling Club:</label><span id="bid-selling-club"></span></div>
+      <div class="player-header">
+        <a id="bid-player-pesdb-link" href="#" target="_blank" rel="noopener" class="gpsl-link listing-thumb-link">
+          <img id="bid-modal-player-img" src="" alt="Player">
+        </a>
+        <div class="player-header-info">
+          <h2 id="bid-player-name">Player</h2>
+          <div class="meta-line"><label>Position:</label> <span id="bid-player-position"></span></div>
+          <div class="meta-line"><label>Playstyle:</label> <span id="bid-player-playstyle"></span></div>
+          <div class="meta-line"><label>Rating:</label> <span id="bid-player-rating"></span></div>
+        </div>
+      </div>
+
+      <div class="bid-row"><label>Selling Club:</label><a id="bid-selling-club-link" href="#" class="gpsl-link"><span id="bid-selling-club"></span></a></div>
       <div class="bid-row"><label>Market Value:</label><span id="bid-market-value"></span></div>
       <div class="bid-row"><label>Reserve Price:</label><span id="bid-reserve-price"></span></div>
       <div class="bid-row"><label>Status:</label><span id="bid-status"></span></div>
@@ -323,9 +416,9 @@ a.button:hover, button.button:hover {
           ⚠️ Bids must be at least ₿500,000 higher than the current highest bid.
         </div>
 
-        <div class="bid-row">
-          <label>Your Bid (₿):</label>
-          <input type="text" id="bid-amount" inputmode="numeric">
+        <div class="bid-input-row">
+          <label for="bid-amount">Your Bid (₿):</label>
+          <input type="text" id="bid-amount" inputmode="numeric" autocomplete="off">
         </div>
 
         <div style="margin-top:10px; text-align:center;">
@@ -337,11 +430,11 @@ a.button:hover, button.button:hover {
           <button class="inc-btn" id="inc-1m-bid">+1m</button>
           <button class="inc-btn" id="inc-5m-bid">+5m</button>
 
-          <button class="button" id="quick-bid-btn">Quick Bid</button>
+          <button type="button" class="button" id="quick-bid-btn">Quick Bid</button>
         </div>
 
-        <div style="margin-top:10px;">
-          <button id="place-bid-btn" class="button">Place Bid</button>
+        <div style="margin-top:10px; text-align:center;">
+          <button type="button" id="place-bid-btn" class="button">Place Bid</button>
         </div>
 
         <div id="bid-error"></div>
@@ -427,7 +520,7 @@ a.button:hover, button.button:hover {
   <script type="module" src="clubs_lookup.js"></script>
 
   <!-- ALL LISTINGS LOGIC -->
-  <script type="module" src="all_listings.js?v=3"></script>
+  <script type="module" src="all_listings.js?v=4"></script>
 
 </body>
 </html>

@@ -33,3 +33,9 @@ export async function loadClubsMap() {
 export function fullClubName(shortName) {
   return clubsMap.get(shortName) || shortName;
 }
+
+/** Link to club squad page (same as clubs.html grid). */
+export function clubPageHref(shortName) {
+  const club = fullClubName(shortName);
+  return `club.html?club=${encodeURIComponent(club)}`;
+}

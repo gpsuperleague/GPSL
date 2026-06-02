@@ -1,7 +1,11 @@
 // ======================================================
 // MODULE A: GLOBAL STATE
 // ======================================================
-import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import { loadClubsMap, fullClubName, clubPageHref } from "./clubs_lookup.js";
+
+function pesdbPlayerUrl(konamiId) {
+  return `https://pesdb.net/efootball/?id=${encodeURIComponent(konamiId)}`;
+}
 
 // Use global Supabase client (created in all_listings.html)
 const supabase = window.supabase;
@@ -209,6 +213,10 @@ async function renderListings() {
     }
 
     const imgURL = `https://pesdb.net/assets/img/card/b${listing.player_id}.png`;
+    const pesdbUrl = pesdbPlayerUrl(listing.player_id);
+    const clubUrl = clubPageHref(listing.seller_club_id);
+    const clubLabel = fullClubName(listing.seller_club_id);
+    const playerName = player?.Name || "Unknown";
 
     const end = new Date(listing.end_time);
     const isOpen = listing.status === "Active" && end > now;
@@ -216,15 +224,22 @@ async function renderListings() {
       isOpen && listing.seller_club_id !== currentUserShort && !!currentUserShort;
 
     tr.innerHTML = `
-      <td>${fullClubName(listing.seller_club_id)}</td>
-
       <td>
-        <img src="${imgURL}"
-             class="listing-thumb"
-             onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'">
+        <a href="${clubUrl}" class="gpsl-link club-link">${clubLabel}</a>
       </td>
 
-      <td>${player?.Name || "Unknown"}</td>
+      <td>
+        <a href="${pesdbUrl}" target="_blank" rel="noopener" class="gpsl-link listing-thumb-link pesdb-link">
+          <img src="${imgURL}"
+               class="listing-thumb"
+               alt="${playerName}"
+               onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'">
+        </a>
+      </td>
+
+      <td>
+        <a href="${pesdbUrl}" target="_blank" rel="noopener" class="gpsl-link pesdb-link">${playerName}</a>
+      </td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Playstyle || "-"}</td>
       <td>${player?.Rating || "-"}</td>
@@ -237,30 +252,15 @@ async function renderListings() {
       <td>
         ${
           canBid
-            ? `<button class="make-offer-btn" data-id="${listing.id}">Make Offer</button>`
+            ? `<button type="button" class="make-offer-btn" data-id="${listing.id}">Make Offer</button>`
             : "-"
         }
       </td>
     `;
 
-    // Row click: only open modal if listing is truly open for bidding
-    tr.onclick = async () => {
-      const nowClick = new Date();
-      const endClick = new Date(listing.end_time);
-
-      if (listing.seller_club_id === currentUserShort) {
-        alert("You already own this player. You cannot bid on your own listing.");
-        return;
-      }
-
-      if (listing.status !== "Active" || endClick <= nowClick) {
-        alert("This listing is no longer open for bidding.");
-        return;
-      }
-
-      const p = player || playerMap.get(String(listing.player_id));
-      openBidModal(listing, p);
-    };
+    tr.querySelectorAll(".pesdb-link, .club-link").forEach((link) => {
+      link.addEventListener("click", (e) => e.stopPropagation());
+    });
 
     tbody.appendChild(tr);
   }
@@ -371,6 +371,17 @@ function openBidModal(listing, player) {
 
   selectedListing = listing;
 
+  const konamiId = String(listing.player_id);
+  const pesdbUrl = pesdbPlayerUrl(konamiId);
+  const imgEl = document.getElementById("bid-modal-player-img");
+  const pesdbLink = document.getElementById("bid-player-pesdb-link");
+
+  imgEl.src = `https://pesdb.net/assets/img/card/b${konamiId}.png`;
+  imgEl.onerror = () => {
+    imgEl.src = "https://i.imgur.com/3s8XQ7Y.png";
+  };
+  pesdbLink.href = pesdbUrl;
+
   document.getElementById("bid-player-name").textContent =
     player?.Name || "Unknown";
   document.getElementById("bid-player-position").textContent =
@@ -380,6 +391,9 @@ function openBidModal(listing, player) {
   document.getElementById("bid-player-rating").textContent =
     player?.Rating || "-";
 
+  const clubUrl = clubPageHref(listing.seller_club_id);
+  const clubLink = document.getElementById("bid-selling-club-link");
+  clubLink.href = clubUrl;
   document.getElementById("bid-selling-club").textContent = fullClubName(
     listing.seller_club_id
   );
