@@ -3,7 +3,12 @@
 -- Run once in Supabase SQL Editor after transfer engine scripts.
 -- =============================================================================
 
-CREATE OR REPLACE VIEW public.global_settings_public AS
+-- security_invoker = false: read as view owner (bypasses RLS on global_settings).
+-- Without this, only the admin RLS policy matches and club owners get zero rows
+-- (transfer window always appears closed in GPDB / club pages).
+CREATE OR REPLACE VIEW public.global_settings_public
+WITH (security_invoker = false)
+AS
 SELECT
   id,
   transfer_window_open,

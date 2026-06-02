@@ -50,7 +50,11 @@ Run once in SQL Editor:
 
 This creates view `global_settings_public` (no `draft_random_finish_time`), restricts direct `SELECT` on `global_settings` to the admin email, and adds a trigger so draft bids are rejected after the secret finish server-side.
 
+The view uses `security_invoker = false` so owners can read window/draft flags without seeing `draft_random_finish_time` on the base table.
+
 After applying, owners must use the view in the app (already wired in `draft_engine.js`, `global.js`, GPDB, draft pages). **Admin** (`admin.html`) still reads/writes the full `global_settings` row via RLS + Edge Function.
+
+If admin shows the transfer window **open** but GPDB/club pages show **Window Closed** for everyone, re-run this script in the SQL Editor (view was missing `security_invoker = false`).
 
 ## Admin: Reset Draft Auction button
 
