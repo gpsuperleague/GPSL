@@ -4,22 +4,28 @@ function isActiveBidStatus(status) {
   return String(status || "").toLowerCase() === "active";
 }
 
+/** Konami ID on a bid row (player_id column, legacy direct_bid_id fallback). */
+export function getBidPlayerId(row) {
+  if (!row) return null;
+  const raw = row.player_id ?? row.direct_bid_id;
+  if (raw == null || String(raw).trim() === "") return null;
+  return String(raw).trim();
+}
+
 /** True pending direct offer = contracted, no listing yet, still awaiting seller review */
 function isPendingContractedDirectOffer(row) {
   if (row.is_direct !== true) return false;
   if (row.listing_id != null && row.listing_id !== "") return false;
   if (!row.seller_club_id || String(row.seller_club_id).trim() === "") return false;
   if (!isActiveBidStatus(row.status)) return false;
-  if (row.direct_bid_id == null || String(row.direct_bid_id).trim() === "") {
-    return false;
-  }
+  if (!getBidPlayerId(row)) return false;
   return true;
 }
 
 export async function loadPendingDirectOfferPlayerIds(supabase) {
   const { data, error } = await supabase
     .from("Player_Transfer_Bids")
-    .select("direct_bid_id, listing_id, seller_club_id, status, is_direct");
+    .select("player_id, direct_bid_id, listing_id, seller_club_id, status, is_direct");
 
   if (error) {
     console.error("Failed to load pending direct offers:", error);
@@ -29,7 +35,7 @@ export async function loadPendingDirectOfferPlayerIds(supabase) {
   const ids = new Set();
   for (const row of data || []) {
     if (!isPendingContractedDirectOffer(row)) continue;
-    ids.add(String(row.direct_bid_id).trim());
+    ids.add(getBidPlayerId(row));
   }
   return ids;
 }

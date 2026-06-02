@@ -34,13 +34,17 @@ SELECT transferengine_run();
 
 Check **Logs** on Edge Function or `raise notice` output if enabled.
 
-## One direct offer per player (pending review)
+## `player_id` on bids + direct-offer guard
 
-Run once to block duplicate direct offers in the database:
+Run once (includes backfill, auto-fill trigger, and updated duplicate-offer guard):
 
-[`direct_offer_guard.sql`](./direct_offer_guard.sql)
+[`player_transfer_bids_player_id.sql`](./player_transfer_bids_player_id.sql)
 
-GPDB and `club.html` show **Offer under review** while `Player_Transfer_Bids` has `is_direct`, `listing_id` null, `status = active`, and a `direct_bid_id`.
+Adds `Player_Transfer_Bids.player_id` (Konami ID). Seller Review and pending-offer UI use this column; legacy rows are filled from `direct_bid_id` or the listing’s `player_id`.
+
+GPDB and `club.html` show **Offer under review** while `Player_Transfer_Bids` has `is_direct`, `listing_id` null, `status = active`, and a `player_id`.
+
+Older installs: [`direct_offer_guard.sql`](./direct_offer_guard.sql) is superseded by the script above.
 
 ## Hide secret random finish from club owners
 

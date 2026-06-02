@@ -47,7 +47,7 @@ BEGIN
   WHERE b.is_direct = true
     AND (
       b.listing_id = v_listing.id
-      OR b.direct_bid_id::text = v_listing.player_id
+      OR btrim(coalesce(b.player_id, b.direct_bid_id::text, '')) = btrim(v_listing.player_id)
     )
   ORDER BY b.bid_amount DESC, b.bid_time ASC
   LIMIT 1;

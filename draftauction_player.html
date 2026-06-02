@@ -452,6 +452,7 @@
         .from("Player_Transfer_Bids")
         .insert({
           listing_id: listingId,
+          player_id: String(playerId).trim(),
           bidder_club_id: buyerShortName,
           seller_club_id: null,
           bid_amount: amount,

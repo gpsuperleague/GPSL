@@ -870,16 +870,18 @@
         return;
       }
 
+      const playerId = String(currentOfferKonamiId).trim();
       const { error } = await supabase
         .from("Player_Transfer_Bids")
         .insert({
           listing_id: null,
+          player_id: playerId,
           bidder_club_id: buyerShortName,
           seller_club_id: currentOfferSellerClub,
           bid_amount: amount,
           bid_time: new Date().toISOString(),
           is_direct: true,
-          direct_bid_id: String(currentOfferKonamiId),
+          direct_bid_id: playerId,
           status: "active",
         });
 

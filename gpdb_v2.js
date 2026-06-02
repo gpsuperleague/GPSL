@@ -706,9 +706,11 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const konamiId = String(CURRENT_OFFER_PLAYER.Konami_ID).trim();
     const { error } = await supabase.from("Player_Transfer_Bids").insert({
       listing_id: null,
-      direct_bid_id: CURRENT_OFFER_PLAYER.Konami_ID,
+      player_id: konamiId,
+      direct_bid_id: konamiId,
       bidder_club_id: myClub,
       seller_club_id: sellerClub || null,
       bid_amount: offer,
@@ -811,6 +813,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .from("Player_Transfer_Bids")
       .insert({
         listing_id: listingId,
+        player_id: String(player.Konami_ID).trim(),
         direct_bid_id: player.Konami_ID,
         bidder_club_id: club,
         bid_amount: amount,

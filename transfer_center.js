@@ -9,6 +9,7 @@
 import { supabase } from "./supabase_client.js";
 import { initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import { getBidPlayerId } from "./direct_offers.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
@@ -290,7 +291,7 @@ async function loadActiveBids(shortName) {
 
   let directPlayers = new Map();
   if (directBids.length > 0) {
-    const directIds = directBids.map((b) => b.direct_bid_id);
+    const directIds = directBids.map((b) => getBidPlayerId(b)).filter(Boolean);
     directPlayers = await fetchPlayersMap(directIds);
   }
 
@@ -314,8 +315,8 @@ async function loadActiveBids(shortName) {
               listing?.player_id
             );
             playerName = player?.Name || "Unknown";
-          } else if (row.is_direct && row.direct_bid_id) {
-            const player = playerFromMap(directPlayers, row.direct_bid_id);
+          } else if (row.is_direct && getBidPlayerId(row)) {
+            const player = playerFromMap(directPlayers, getBidPlayerId(row));
             playerName = player?.Name || "Unknown";
             typeLabel = "Direct Bid";
           }
@@ -339,13 +340,20 @@ async function loadActiveBids(shortName) {
 // ============================================================
 
 async function acceptDirectBid(bid, shortName) {
+  const playerId = getBidPlayerId(bid);
+  if (!playerId) {
+    console.error("Cannot accept direct bid without player_id", bid);
+    alert("This offer is missing a player id. Reject it and ask the buyer to submit again.");
+    return;
+  }
+
   const now = new Date();
   const endTime = computeListingEndTime();
 
   const { data: listingInsert, error: listingError } = await supabase
     .from("Player_Transfer_Listings")
     .insert({
-      player_id: bid.direct_bid_id,
+      player_id: playerId,
       seller_club_id: shortName,
       reserve_price: bid.bid_amount,
       status: "Active",
@@ -366,6 +374,7 @@ async function acceptDirectBid(bid, shortName) {
 
   await supabase.from("Player_Transfer_Bids").insert({
     listing_id: newListingId,
+    player_id: playerId,
     direct_bid_id: null,
     bidder_club_id: bid.bidder_club_id,
     seller_club_id: shortName,
@@ -410,6 +419,7 @@ async function loadSellerReview(shortName) {
     .eq("seller_club_id", shortName)
     .eq("status", "active")
     .eq("is_direct", true)
+    .is("listing_id", null)
     .order("bid_time", { ascending: false });
 
   if (!bids || bids.length === 0) {
@@ -417,9 +427,7 @@ async function loadSellerReview(shortName) {
     return;
   }
 
-  const directIds = bids
-    .map((b) => b.direct_bid_id)
-    .filter((id) => id != null && String(id).trim() !== "");
+  const directIds = bids.map((b) => getBidPlayerId(b)).filter(Boolean);
   const directPlayers = await fetchPlayersMap(directIds);
 
   container.innerHTML = `
@@ -433,11 +441,10 @@ async function loadSellerReview(shortName) {
       </tr>
       ${bids
         .map((row) => {
-          const player = playerFromMap(directPlayers, row.direct_bid_id);
+          const pid = getBidPlayerId(row);
+          const player = playerFromMap(directPlayers, pid);
           const name = player?.Name
-            || (row.direct_bid_id
-              ? "Unknown"
-              : "Unknown (missing player id on bid)");
+            || (pid ? "Unknown" : "Unknown (missing player id on bid)");
 
           return `
           <tr>

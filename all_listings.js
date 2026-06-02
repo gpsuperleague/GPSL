@@ -597,6 +597,7 @@ async function placeBid() {
     .from("Player_Transfer_Bids")
     .insert({
       listing_id: selectedListing.id,
+      player_id: String(selectedListing.player_id).trim(),
       bidder_club_id: currentUserShort,
       seller_club_id: selectedListing.seller_club_id,
       bid_amount: bidAmount,
