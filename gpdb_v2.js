@@ -2,14 +2,17 @@
    MODULE A: Imports
    ============================================================ */
 
-import { supabase, initGlobal } from "./global.js";
-
 import {
-  loadGlobalSettings as loadGlobalSettingsEngine,
+  supabase,
+  initGlobal,
   getUKNow,
   getUKWallClockParts,
   ukLocalToInstant,
   isValidDate,
+} from "./global.js";
+
+import {
+  loadGlobalSettings as loadGlobalSettingsEngine,
   getDraftWindowTimes,
   getDraftCutoff,
   getDraftTimelineFromStart,
