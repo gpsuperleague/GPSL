@@ -91,10 +91,11 @@ BEGIN
     transfer_time,
     listing_id
   )
+  -- buyer_club_id NULL = sold outside GPSL (FK requires a real Clubs.ShortName)
   VALUES (
     v_player."Konami_ID",
     v_club,
-    'FOREIGN',
+    NULL,
     v_fee,
     0,
     now(),
