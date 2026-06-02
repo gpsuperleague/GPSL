@@ -24,8 +24,13 @@ let __draftCountdownInterval = null;
 // ------------------------------------------------------------
 // UK TIME HELPERS (THE ONLY VERSION USED ANYWHERE)
 // ------------------------------------------------------------
+/** True current instant — use for countdowns and comparisons with ISO timestamps from Supabase. */
 export function getUKNow() {
-  const now = new Date();
+  return new Date();
+}
+
+/** UK wall-clock parts for calendar rules (credits window, etc.). */
+export function getUKWallClockParts(at = new Date()) {
   const fmt = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
     year: "numeric",
@@ -34,21 +39,33 @@ export function getUKNow() {
     hour: "numeric",
     minute: "numeric",
     second: "numeric",
-    hour12: false
+    hour12: false,
   });
 
-  const parts = fmt.formatToParts(now);
+  const parts = fmt.formatToParts(at);
   const map = {};
-  parts.forEach(p => { if (p.type && p.value) map[p.type] = p.value; });
+  parts.forEach((p) => {
+    if (p.type && p.value) map[p.type] = p.value;
+  });
 
-  const y = Number(map.year);
-  const m = Number(map.month) - 1;
-  const d = Number(map.day);
-  const hh = Number(map.hour);
-  const mm = Number(map.minute);
-  const ss = Number(map.second);
+  return {
+    year: Number(map.year),
+    month: Number(map.month) - 1,
+    day: Number(map.day),
+    hour: Number(map.hour),
+    minute: Number(map.minute),
+    second: Number(map.second),
+  };
+}
 
-  return new Date(Date.UTC(y, m, d, hh, mm, ss));
+/** Build a real instant for a UK local date/time (DST-safe). */
+export function ukLocalToInstant(year, monthIndex, day, hour = 0, minute = 0, second = 0) {
+  const guess = new Date(Date.UTC(year, monthIndex, day, hour, minute, second));
+  const p = getUKWallClockParts(guess);
+  const delta =
+    Date.UTC(year, monthIndex, day, hour, minute, second) -
+    Date.UTC(p.year, p.month, p.day, p.hour, p.minute, p.second);
+  return new Date(guess.getTime() + delta);
 }
 
 export function makeUKDate(y, m, d, hh = 0, mm = 0, ss = 0) {
@@ -91,7 +108,7 @@ export function computeStandardListingEndTime(fromInstant = new Date()) {
     endDay += 1;
   }
 
-  const next19Uk = makeUKDate(map.year, map.month - 1, endDay, 19, 0, 0);
+  const next19Uk = ukLocalToInstant(map.year, map.month - 1, endDay, 19, 0, 0);
 
   return minEndInstant.getTime() > next19Uk.getTime() ? minEndInstant : next19Uk;
 }
@@ -104,7 +121,7 @@ export function getDraftPhase() {
     return "disabled";
   }
 
-  return getDraftPhaseFromStart(getUKNow(), draftStart);
+  return getDraftPhaseFromStart(new Date(), draftStart);
 }
 
 // ------------------------------------------------------------
@@ -167,24 +184,12 @@ export async function canClubBid(clubShort, playerId) {
 // CENTRAL CREDITS ENGINE
 // ------------------------------------------------------------
 export async function getCredits(clubShort) {
-  const now = getUKNow();
+  const uk = getUKWallClockParts();
+  const noon = ukLocalToInstant(uk.year, uk.month, uk.day, 12, 0, 0);
+  const yest = getUKWallClockParts(new Date(noon.getTime() - 24 * 60 * 60 * 1000));
+  const winStart = ukLocalToInstant(yest.year, yest.month, yest.day, 19, 0, 0);
 
-  // Window: 19:00 yesterday → 18:00 today
-  const y = now.getFullYear();
-  const m = now.getMonth();
-  const d = now.getDate();
-
-  const todayMid = makeUKDate(y, m, d, 0, 0, 0);
-  const yesterdayMid = new Date(todayMid.getTime() - 24 * 3600 * 1000);
-
-  const winStart = makeUKDate(
-    yesterdayMid.getUTCFullYear(),
-    yesterdayMid.getUTCMonth(),
-    yesterdayMid.getUTCDate(),
-    19, 0, 0
-  );
-
-  const winEnd = draftCutoff; // 18:00 today
+  const winEnd = draftCutoff; // 18:00 UK day 2 from draft timeline
 
   // First bids
   const { data: firsts } = await supabase
@@ -225,7 +230,7 @@ function formatMs(ms) {
 
 function msUntil(target) {
   if (!isValidDate(target)) return 0;
-  return target.getTime() - getUKNow().getTime();
+  return target.getTime() - Date.now();
 }
 
 export function startDraftCountdown(onTick) {
