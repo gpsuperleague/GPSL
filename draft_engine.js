@@ -115,11 +115,17 @@ export function getDraftPhase(nowUK, draftAuctionStartTime) {
    ============================================================ */
 
 export async function getDraftCredits(clubShortName, draftAuctionStartTime) {
-  const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
   const timeline = getDraftTimelineFromStart(
     draftAuctionStartTime ? new Date(draftAuctionStartTime) : null
   );
+  const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+
+  // Earn first-bid credits during the live draft window (start → 6pm cutoff), not calendar midnight bounds
+  const earnStart = timeline?.start ?? sevenPmYesterday;
+  const earnEnd = timeline?.cutoff ?? sixPmToday;
   const joinWindowEnd = timeline?.publicEnd ?? sixPmToday;
+  const earnStartIso = earnStart.toISOString();
+  const earnEndIso = earnEnd.toISOString();
   const joinWindowEndIso = joinWindowEnd.toISOString();
 
   const { data: firsts } = await supabase
@@ -127,8 +133,8 @@ export async function getDraftCredits(clubShortName, draftAuctionStartTime) {
     .select("direct_bid_id")
     .eq("bidder_club_id", clubShortName)
     .eq("is_first_draft_bid", true)
-    .gte("bid_time", sevenPmYesterday.toISOString())
-    .lt("bid_time", sixPmToday.toISOString());
+    .gte("bid_time", earnStartIso)
+    .lt("bid_time", earnEndIso);
 
   const { data: joins } = await supabase
     .from("Player_Transfer_Bids")
@@ -136,7 +142,7 @@ export async function getDraftCredits(clubShortName, draftAuctionStartTime) {
     .eq("bidder_club_id", clubShortName)
     .eq("is_draft_join", true)
     .eq("draft_join_consumed", true)
-    .gte("bid_time", sevenPmYesterday.toISOString())
+    .gte("bid_time", earnStartIso)
     .lt("bid_time", joinWindowEndIso);
 
   const earned = firsts ? firsts.length * 2 : 0;

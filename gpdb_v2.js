@@ -13,9 +13,9 @@ import {
 
 import {
   loadGlobalSettings as loadGlobalSettingsEngine,
-  getDraftWindowTimes,
   getDraftCutoff,
   getDraftTimelineFromStart,
+  getDraftCredits,
   syncDraftListingHighBid,
 } from "./draft_engine.js";
 import {
@@ -59,32 +59,10 @@ async function loadDraftCreditsForOwner() {
       return;
     }
 
-    const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
-    const credits = await getDraftCreditsForGPDB(buyerShortName);
-
-    const { data: firsts } = await supabase
-      .from("Player_Transfer_Bids")
-      .select("direct_bid_id")
-      .eq("bidder_club_id", buyerShortName)
-      .eq("is_first_draft_bid", true)
-      .gte("bid_time", sevenPmYesterday.toISOString())
-      .lt("bid_time", sixPmToday.toISOString());
-
-    const firstCount = firsts ? firsts.length : 0;
-    const earned = firstCount * 2;
-
-    const joinWindowEnd = draftJoinWindowEnd || sixPmToday;
-
-    const { data: joins } = await supabase
-      .from("Player_Transfer_Bids")
-      .select("direct_bid_id")
-      .eq("bidder_club_id", buyerShortName)
-      .eq("is_draft_join", true)
-      .eq("draft_join_consumed", true)
-      .gte("bid_time", sevenPmYesterday.toISOString())
-      .lt("bid_time", joinWindowEnd.toISOString());
-
-    const used = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
+    const { earned, used, credits } = await getDraftCredits(
+      buyerShortName,
+      draftAuctionStartTime
+    );
     const remaining = credits;
 
     const panel = document.getElementById("draftCreditsPanel");
@@ -102,35 +80,8 @@ async function loadDraftCreditsForOwner() {
 }
 
 async function getDraftCreditsForGPDB(clubShortName) {
-  const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
-
-  const joinWindowEnd = draftJoinWindowEnd || sixPmToday;
-
-  const { data: firsts } = await supabase
-    .from("Player_Transfer_Bids")
-    .select("direct_bid_id")
-    .eq("bidder_club_id", clubShortName)
-    .eq("is_first_draft_bid", true)
-    .gte("bid_time", sevenPmYesterday.toISOString())
-    .lt("bid_time", sixPmToday.toISOString());
-
-  const joinWindowEndIso = isValidDate(joinWindowEnd)
-    ? joinWindowEnd.toISOString()
-    : sixPmToday.toISOString();
-
-  const { data: joins } = await supabase
-    .from("Player_Transfer_Bids")
-    .select("direct_bid_id")
-    .eq("bidder_club_id", clubShortName)
-    .eq("is_draft_join", true)
-    .eq("draft_join_consumed", true)
-    .gte("bid_time", sevenPmYesterday.toISOString())
-    .lt("bid_time", joinWindowEndIso);
-
-  const firstCount = firsts ? firsts.length : 0;
-  const joinCount = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
-
-  return (firstCount * 2) - joinCount;
+  const { credits } = await getDraftCredits(clubShortName, draftAuctionStartTime);
+  return credits;
 }
 
 /* ============================================================
@@ -783,6 +734,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       ACTIVE_DRAFT_PLAYERS.add(String(CURRENT_OFFER_PLAYER.Konami_ID).trim());
       closeMakeOfferModal();
+      await loadDraftCreditsForOwner();
       alert("Draft bid submitted!");
       loadPage(CURRENT_PAGE);
       return;
