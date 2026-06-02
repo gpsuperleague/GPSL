@@ -16,7 +16,7 @@ const supabase = window.supabase;
 
 /** Columns needed for squad table + list modal (avoid select *). */
 const SQUAD_PLAYER_COLUMNS =
-  "Konami_ID, Name, Nation, Position, Rating, OVR, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team";
+  "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team";
 
 // STATE
 let userObj = null;
@@ -345,7 +345,7 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
         <td>${p.Name}${qualBadges}</td>
         <td>${p.Nation || "-"}</td>
         <td>${p.Position}</td>
-        <td>${p.Rating || p.OVR}</td>
+        <td>${p.Rating ?? "—"}</td>
         <td class="num squad-col-apps">${formatSeasonStat(st, "appearances", "0")}</td>
         <td class="num squad-col-goals">${formatSeasonStat(st, "goals", "0")}</td>
         <td class="num squad-col-assists">${formatSeasonStat(st, "assists", "0")}</td>
