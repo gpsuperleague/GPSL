@@ -63,7 +63,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 // ⭐ NEW: Load transfer window status
 async function loadTransferWindowStatus() {
   const { data, error } = await supabase
-    .from("global_settings")
+    .from("global_settings_public")
     .select("transfer_window_open")
     .eq("id", 1)
     .single();

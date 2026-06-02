@@ -26,6 +26,12 @@ BEGIN
   DELETE FROM "Player_Transfer_Bids"
   WHERE is_first_draft_bid = true OR is_draft_join = true;
 
+  -- Transfer_History.listing_id FK blocks listing deletes
+  DELETE FROM "Transfer_History"
+  WHERE listing_id IN (
+    SELECT id FROM "Player_Transfer_Listings" WHERE listing_type = 'draft'
+  );
+
   DELETE FROM "Player_Transfer_Listings"
   WHERE listing_type = 'draft';
 

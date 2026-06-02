@@ -182,7 +182,7 @@
 
     async function loadGlobalSettings() {
       const { data } = await supabase
-        .from("global_settings")
+        .from("global_settings_public")
         .select("draft_auction_enabled")
         .eq("id", 1)
         .single();

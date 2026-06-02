@@ -191,10 +191,9 @@
       supabase,
       getUKNow,
       loadGlobalSettings,
-      getDraftPhase,
+      isDraftAuctionEnded,
       getDraftCredits,
-      getDraftCreditsCount,
-      canClubBidOnPlayerDraft
+      canClubBidOnPlayerDraft,
     } from "./draft_engine.js";
 
     /* ============================================================
@@ -205,7 +204,6 @@
 
     let draftEnabled = false;
     let draftAuctionStartTimeUK = null;
-    let randomFinishTimeUK = null;
 
     /* ============================================================
        MODULE B: Navigation
@@ -266,7 +264,7 @@
 
       const { earned, used, credits } = await getDraftCredits(
         buyerShortName,
-        randomFinishTimeUK
+        draftAuctionStartTimeUK
       );
 
       document.getElementById("creditPanel").innerHTML = `
@@ -291,7 +289,6 @@
       const settings = await loadGlobalSettings();
       draftEnabled = settings.draftAuctionEnabled;
       draftAuctionStartTimeUK = settings.draftAuctionStartTime;
-      randomFinishTimeUK = settings.draftRandomFinishTime;
 
       await buildNav(user);
       await loadBuyerClubShortName(user.id);
@@ -309,7 +306,7 @@
 
       const nowUK = getUKNow();
 
-      if (!draftEnabled || !draftAuctionStartTimeUK || !randomFinishTimeUK) {
+      if (!draftEnabled || !draftAuctionStartTimeUK) {
         tbody.innerHTML = `<tr><td colspan="8">Draft auction is not active.</td></tr>`;
         return;
       }
@@ -367,7 +364,7 @@
 
       const clubMap = new Map((clubs || []).map(c => [c.ShortName, c.Club]));
 
-      const auctionEnded = nowUK >= randomFinishTimeUK;
+      const auctionEnded = isDraftAuctionEnded(nowUK, draftAuctionStartTimeUK);
 
       for (const listing of listings) {
         const playerIdNum = Number(listing.player_id);
@@ -397,7 +394,6 @@
           buyerShortName,
           draftAuctionEnabled: draftEnabled,
           draftAuctionStartTime: draftAuctionStartTimeUK,
-          draftRandomFinishTime: randomFinishTimeUK
         });
 
         const btnClass = (!auctionEnded && canBid) ? "enabled" : "disabled";

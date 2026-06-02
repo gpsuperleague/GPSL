@@ -3,6 +3,10 @@
 // ============================================================
 
 import { supabase } from "./supabase_client.js";
+import {
+  getDraftTimelineFromStart,
+  getDraftPhaseFromStart,
+} from "./draft_timeline.js";
 export { supabase };
 
 // ------------------------------------------------------------
@@ -12,7 +16,7 @@ let draftEnabled = false;
 let draftStart = null;        // Day 1 @ 19:00 UK
 let draftCutoff = null;       // Day 2 @ 18:00 UK
 let draftRandomStart = null;  // Day 2 @ 18:50 UK
-let draftFinish = null;       // Secret random finish (18:50–18:59:59 UK)
+let draftPublicEnd = null;    // Latest possible end (18:59:59 day 2) — not secret finish
 
 // Countdown interval
 let __draftCountdownInterval = null;
@@ -59,17 +63,11 @@ export function isValidDate(d) {
 // PHASE ENGINE — THE HEART OF THE SYSTEM
 // ------------------------------------------------------------
 export function getDraftPhase() {
-  if (!draftEnabled || !isValidDate(draftStart) || !isValidDate(draftFinish)) {
+  if (!draftEnabled || !isValidDate(draftStart)) {
     return "disabled";
   }
 
-  const now = getUKNow();
-
-  if (now < draftStart) return "before_start";
-  if (now < draftCutoff) return "live_until_cutoff";
-  if (now < draftRandomStart) return "cutoff_to_random";
-  if (now < draftFinish) return "random_window";
-  return "ended";
+  return getDraftPhaseFromStart(getUKNow(), draftStart);
 }
 
 // ------------------------------------------------------------
@@ -99,28 +97,30 @@ export async function canClubBid(clubShort, playerId) {
     return { ok: false, reason: "New auctions locked after cutoff" };
   }
 
-  // FIRST BIDDER ALWAYS ALLOWED (until random finish)
+  if (phase === "ended") {
+    return { ok: false, reason: "Draft ended" };
+  }
+
+  // FIRST BIDDER ALWAYS ALLOWED during active phases
   if (clubShort === firstBidder) {
-    return { ok: now < draftFinish, reason: "First bidder" };
+    return { ok: true, reason: "First bidder" };
   }
 
   // JOINERS
   if (hasBids) {
-    // Already joined?
     const priorJoin = bids.some(
       b => b.bidder_club_id === clubShort && b.is_draft_join
     );
     if (priorJoin) {
-      return { ok: now < draftFinish, reason: "Already joined" };
+      return { ok: true, reason: "Already joined" };
     }
 
-    // Need credits
     const credits = await getCredits(clubShort);
     if (credits <= 0) {
       return { ok: false, reason: "No credits" };
     }
 
-    return { ok: now < draftFinish, reason: "Has credits" };
+    return { ok: true, reason: "Has credits" };
   }
 
   return { ok: false, reason: "Unknown state" };
@@ -168,7 +168,7 @@ export async function getCredits(clubShort) {
     .eq("is_draft_join", true)
     .eq("draft_join_consumed", true)
     .gte("bid_time", winStart.toISOString())
-    .lt("bid_time", draftFinish.toISOString());
+    .lt("bid_time", (draftPublicEnd || draftCutoff || winEnd).toISOString());
 
   const joinCount = joins ? new Set(joins.map(j => j.direct_bid_id)).size : 0;
 
@@ -197,13 +197,13 @@ export function startDraftCountdown(onTick) {
         ms = draftCutoff - now;
         label = "Auction cutoff in";
         break;
-      case "cutoff_to_random":
+      case "random_active":
+        ms = draftPublicEnd - now;
+        label = "Random window (end time hidden)";
+        break;
+      case "pre_random":
         ms = draftRandomStart - now;
         label = "Random window begins in";
-        break;
-      case "random_window":
-        ms = now - draftRandomStart;
-        label = "Random window active";
         break;
       case "ended":
         label = "Draft has ended";
@@ -228,31 +228,28 @@ export function stopDraftCountdown() {
 // ------------------------------------------------------------
 export async function loadGlobalSettings() {
   const { data } = await supabase
-    .from("global_settings")
-    .select("*")
+    .from("global_settings_public")
+    .select("transfer_window_open, draft_auction_enabled, draft_auction_start_time")
     .eq("id", 1)
     .single();
 
   draftEnabled = data?.draft_auction_enabled === true;
 
   const rawStart = new Date(data?.draft_auction_start_time);
-  const rawFinish = new Date(data?.draft_random_finish_time);
-
   draftStart = isValidDate(rawStart) ? new Date(rawStart) : null;
-draftFinish = isValidDate(rawFinish) ? new Date(rawFinish) : null;
 
-  if (draftEnabled && draftStart && draftFinish) {
-    // Compute derived times
-    draftCutoff = new Date(draftStart.getTime() + 23 * 3600 * 1000);      // +23h
-    draftRandomStart = new Date(draftCutoff.getTime() + 50 * 60 * 1000); // +50m
-  }
+  const timeline = getDraftTimelineFromStart(draftStart);
+  draftCutoff = timeline?.cutoff ?? null;
+  draftRandomStart = timeline?.randomStart ?? null;
+  draftPublicEnd = timeline?.publicEnd ?? null;
 
   return {
     draftEnabled,
     draftStart,
     draftCutoff,
     draftRandomStart,
-    draftFinish
+    draftPublicEnd,
+    transferWindowOpen: data?.transfer_window_open === true,
   };
 }
 

@@ -108,9 +108,11 @@
       supabase,
       getUKNow,
       loadGlobalSettings,
-      getDraftPhase,
+      getDraftPhaseFromStart,
+      getDraftTimelineFromStart,
+      draftPhaseLabel,
+      formatMs,
       getDraftCredits,
-      getDraftCreditsCount,
       canClubBidOnPlayerDraft,
       getActiveDraftListingId,
       syncDraftListingHighBid,
@@ -124,7 +126,6 @@
     let buyerShortName = null;
     let draftEnabled = false;
     let draftAuctionStartTimeUK = null;
-    let randomFinishTimeUK = null;
 
     let playerId = null;
     let currentHighestBid = 0;
@@ -158,7 +159,17 @@
       const settings = await loadGlobalSettings();
       draftEnabled = settings.draftAuctionEnabled;
       draftAuctionStartTimeUK = settings.draftAuctionStartTime;
-      randomFinishTimeUK = settings.draftRandomFinishTime;
+    }
+
+    function draftStatusText(nowUK) {
+      const phase = getDraftPhaseFromStart(nowUK, draftAuctionStartTimeUK);
+      const timeline = getDraftTimelineFromStart(draftAuctionStartTimeUK);
+      let extra = "";
+      if (timeline && phase === "random_active") {
+        const ms = timeline.publicEnd - nowUK;
+        extra = ` — latest possible end ${formatMs(ms)}`;
+      }
+      return draftPhaseLabel(phase) + extra;
     }
 
     /* ============================================================
@@ -231,7 +242,7 @@
 
       /* --- Bids (current window) --- */
       const nowUK = getUKNow();
-      const phase = getDraftPhase(nowUK, draftAuctionStartTimeUK, randomFinishTimeUK);
+      const phase = getDraftPhaseFromStart(nowUK, draftAuctionStartTimeUK);
 
       const windowStart = new Date(nowUK.getTime() - 24 * 60 * 60 * 1000);
       const windowEnd = nowUK;
@@ -268,13 +279,10 @@
       }
 
       /* --- Time Remaining --- */
-      document.getElementById("timeRemaining").textContent =
-        randomFinishTimeUK
-          ? `Ends around: ${randomFinishTimeUK.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-          : "End time not set";
+      document.getElementById("timeRemaining").textContent = draftStatusText(nowUK);
 
       /* --- Credits --- */
-      const { credits } = await getDraftCredits(buyerShortName, randomFinishTimeUK);
+      const { credits } = await getDraftCredits(buyerShortName, draftAuctionStartTimeUK);
       document.getElementById("creditsInfo").textContent =
         `Draft Credits: ${credits}`;
 
@@ -284,7 +292,6 @@
         buyerShortName,
         draftAuctionEnabled: draftEnabled,
         draftAuctionStartTime: draftAuctionStartTimeUK,
-        draftRandomFinishTime: randomFinishTimeUK
       });
 
       updateBidControlsState();
@@ -428,7 +435,7 @@
           .eq("is_draft_join", true);
 
         if (!priorJoins || !priorJoins.length) {
-          const { credits } = await getDraftCredits(buyerShortName, randomFinishTimeUK);
+          const { credits } = await getDraftCredits(buyerShortName, draftAuctionStartTimeUK);
           if (credits <= 0) {
             document.getElementById("bidStatus").textContent =
               "You do not have enough draft credits to join this auction.";

@@ -11,11 +11,12 @@ import {
   isValidDate,
   getDraftWindowTimes,
   getDraftCutoff,
+  getDraftTimelineFromStart,
   syncDraftListingHighBid,
 } from "./draft_engine.js";
 
 let draftAuctionStartTime = null;
-let draftRandomFinishTime = null;
+let draftJoinWindowEnd = null;
 
 /* ============================================================
    DRAFT CREDITS PANEL (GPDB VIEW)
@@ -37,7 +38,7 @@ async function loadDraftCreditsForOwner() {
     const buyerShortName = club.ShortName;
 
     const { data: settings } = await supabase
-      .from("global_settings")
+      .from("global_settings_public")
       .select("draft_auction_enabled")
       .eq("id", 1)
       .single();
@@ -62,8 +63,7 @@ async function loadDraftCreditsForOwner() {
     const firstCount = firsts ? firsts.length : 0;
     const earned = firstCount * 2;
 
-    const rawJoinEnd = draftRandomFinishTime;
-    const joinWindowEnd = isValidDate(rawJoinEnd) ? rawJoinEnd : sixPmToday;
+    const joinWindowEnd = draftJoinWindowEnd || sixPmToday;
 
     const { data: joins } = await supabase
       .from("Player_Transfer_Bids")
@@ -94,8 +94,7 @@ async function loadDraftCreditsForOwner() {
 async function getDraftCreditsForGPDB(clubShortName) {
   const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
 
-  const rawJoinEnd = draftRandomFinishTime;
-  const joinWindowEnd = isValidDate(rawJoinEnd) ? rawJoinEnd : sixPmToday;
+  const joinWindowEnd = draftJoinWindowEnd || sixPmToday;
 
   const { data: firsts } = await supabase
     .from("Player_Transfer_Bids")
@@ -1210,14 +1209,10 @@ document.addEventListener("DOMContentLoaded", () => {
       GLOBAL_SETTINGS.draftStart ||
       null;
 
-    draftRandomFinishTime =
-      GLOBAL_SETTINGS.draftRandomFinishTime ||
-      GLOBAL_SETTINGS.draftFinish ||
-      null;
-
-    console.log("DEBUG loaded GLOBAL_SETTINGS:", GLOBAL_SETTINGS);
-    console.log("DEBUG draftAuctionStartTime =", draftAuctionStartTime);
-    console.log("DEBUG draftRandomFinishTime =", draftRandomFinishTime);
+    const timeline = getDraftTimelineFromStart(
+      draftAuctionStartTime ? new Date(draftAuctionStartTime) : null
+    );
+    draftJoinWindowEnd = timeline?.publicEnd ?? null;
 
     await loadClubNames();
 

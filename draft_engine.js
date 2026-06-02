@@ -5,6 +5,18 @@
    ============================================================ */
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import {
+  getDraftTimelineFromStart,
+  getDraftPhaseFromStart,
+  isDraftAuctionEnded,
+} from "./draft_timeline.js";
+
+export {
+  getDraftTimelineFromStart,
+  getDraftPhaseFromStart,
+  isDraftAuctionEnded,
+  draftPhaseLabel,
+} from "./draft_timeline.js";
 
 const supabase = createClient(
   "https://omyyogfumrjoaweuawjn.supabase.co",
@@ -82,7 +94,12 @@ export function getDraftWindowTimes() {
   return { sevenPmYesterday, sixPmToday, sevenPmToday };
 }
 
-export function getDraftCutoff() {
+export function getDraftCutoff(draftAuctionStartTime) {
+  const t = getDraftTimelineFromStart(
+    draftAuctionStartTime ? new Date(draftAuctionStartTime) : null
+  );
+  if (t) return t.cutoff;
+
   const nowUK = getUKNow();
   const y = nowUK.getFullYear();
   const m = nowUK.getMonth();
@@ -104,8 +121,8 @@ export function formatMs(ms) {
 
 export async function loadGlobalSettings() {
   const { data, error } = await supabase
-    .from("global_settings")
-    .select("draft_auction_enabled, draft_auction_start_time, draft_random_finish_time")
+    .from("global_settings_public")
+    .select("draft_auction_enabled, draft_auction_start_time")
     .eq("id", 1)
     .single();
 
@@ -113,47 +130,36 @@ export async function loadGlobalSettings() {
     return {
       draftAuctionEnabled: false,
       draftAuctionStartTime: null,
-      draftRandomFinishTime: null
     };
   }
 
+  const draftAuctionStartTime = data.draft_auction_start_time
+    ? new Date(data.draft_auction_start_time)
+    : null;
+
   return {
     draftAuctionEnabled: data.draft_auction_enabled === true,
-    draftAuctionStartTime: data.draft_auction_start_time
-      ? new Date(data.draft_auction_start_time)
-      : null,
-    draftRandomFinishTime: data.draft_random_finish_time
-      ? new Date(data.draft_random_finish_time)
-      : null
+    draftAuctionStartTime,
+    draftTimeline: getDraftTimelineFromStart(draftAuctionStartTime),
   };
 }
 
-/* ============================================================
-   MODULE D: Draft Phase Logic
-   ============================================================ */
-
-export function getDraftPhase(nowUK, draftAuctionStartTime, draftRandomFinishTime) {
-  if (!draftAuctionStartTime || !draftRandomFinishTime) return "ended";
-
-  const start = new Date(draftAuctionStartTime);
-  const randomFinish = new Date(draftRandomFinishTime);
-
-  const cutoff = new Date(start.getTime() + 23 * 60 * 60 * 1000);
-  const randomStart = new Date(cutoff.getTime() + 50 * 60 * 1000);
-
-  if (nowUK < start) return "before_start";
-  if (nowUK >= start && nowUK < cutoff) return "live_until_cutoff";
-  if (nowUK >= cutoff && nowUK < randomStart) return "pre_random";
-  if (nowUK >= randomStart && nowUK < randomFinish) return "random_active";
-  return "ended";
+/** @deprecated Use getDraftPhaseFromStart — finish time is never exposed to clients */
+export function getDraftPhase(nowUK, draftAuctionStartTime) {
+  return getDraftPhaseFromStart(nowUK, draftAuctionStartTime);
 }
 
 /* ============================================================
    MODULE E: Credits Logic
    ============================================================ */
 
-export async function getDraftCredits(clubShortName, draftRandomFinishTime) {
+export async function getDraftCredits(clubShortName, draftAuctionStartTime) {
   const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+  const timeline = getDraftTimelineFromStart(
+    draftAuctionStartTime ? new Date(draftAuctionStartTime) : null
+  );
+  const joinWindowEnd = timeline?.publicEnd ?? sixPmToday;
+  const joinWindowEndIso = joinWindowEnd.toISOString();
 
   const { data: firsts } = await supabase
     .from("Player_Transfer_Bids")
@@ -162,10 +168,6 @@ export async function getDraftCredits(clubShortName, draftRandomFinishTime) {
     .eq("is_first_draft_bid", true)
     .gte("bid_time", sevenPmYesterday.toISOString())
     .lt("bid_time", sixPmToday.toISOString());
-
-  const rawJoinEnd = draftRandomFinishTime;
-  const joinWindowEnd = isValidDate(rawJoinEnd) ? rawJoinEnd : sixPmToday;
-  const joinWindowEndIso = joinWindowEnd.toISOString();
 
   const { data: joins } = await supabase
     .from("Player_Transfer_Bids")
@@ -182,8 +184,8 @@ export async function getDraftCredits(clubShortName, draftRandomFinishTime) {
   return { earned, used, credits: earned - used };
 }
 
-export async function getDraftCreditsCount(clubShortName, draftRandomFinishTime) {
-  const { credits } = await getDraftCredits(clubShortName, draftRandomFinishTime);
+export async function getDraftCreditsCount(clubShortName, draftAuctionStartTime) {
+  const { credits } = await getDraftCredits(clubShortName, draftAuctionStartTime);
   return credits;
 }
 
@@ -196,18 +198,19 @@ export async function canClubBidOnPlayerDraft({
   buyerShortName,
   draftAuctionEnabled,
   draftAuctionStartTime,
-  draftRandomFinishTime
 }) {
   const nowUK = getUKNow();
+  const start = draftAuctionStartTime ? new Date(draftAuctionStartTime) : null;
+  const timeline = getDraftTimelineFromStart(start);
 
   if (!draftAuctionEnabled) return false;
   if (!buyerShortName) return false;
-  if (!draftAuctionStartTime || !draftRandomFinishTime) return false;
+  if (!timeline) return false;
 
-  if (nowUK < draftAuctionStartTime) return false;
-  if (nowUK >= draftRandomFinishTime) return false;
+  const phase = getDraftPhaseFromStart(nowUK, start);
+  if (phase === "before_start" || phase === "ended") return false;
 
-  const cutoff = getDraftCutoff();
+  const cutoff = timeline.cutoff;
 
   const { data: existing } = await supabase
     .from("Player_Transfer_Bids")
@@ -231,7 +234,7 @@ export async function canClubBidOnPlayerDraft({
     return true;
   }
 
-  const credits = await getDraftCreditsCount(buyerShortName, draftRandomFinishTime);
+  const credits = await getDraftCreditsCount(buyerShortName, start);
   return credits > 0;
 }
 
