@@ -25,6 +25,25 @@ function formatMoney(amount) {
   return "₿ " + Number(amount).toLocaleString("en-GB");
 }
 
+const BID_INCREMENT = 500000;
+
+function listingMinimumBid(listing) {
+  const mv = Number(listing.market_value) || 0;
+  const high = Number(listing.current_highest_bid) || 0;
+  if (!high) return mv;
+  return Math.max(mv, high + BID_INCREMENT);
+}
+
+function listingBidWarningText(listing) {
+  const mv = Number(listing.market_value) || 0;
+  const high = Number(listing.current_highest_bid) || 0;
+  const min = listingMinimumBid(listing);
+  if (!high) {
+    return `Minimum bid is market value (${formatMoney(mv)}).`;
+  }
+  return `Minimum bid is ${formatMoney(min)} (at least market value and ₿500,000 above the current highest).`;
+}
+
 // ⭐ Convert "1,234,567" → 1234567
 function parseMoneyInput(value) {
   if (!value) return 0;
@@ -420,10 +439,9 @@ function openBidModal(listing, player) {
 
   document.getElementById("bid-error").textContent = "";
 
-  const minBid = Math.max(
-    listing.market_value,
-    (listing.current_highest_bid || 0) + 500000
-  );
+  const minBid = listingMinimumBid(listing);
+  document.getElementById("bid-warning").textContent =
+    `⚠️ ${listingBidWarningText(listing)}`;
 
   input.placeholder = `Minimum bid: ${formatMoney(minBid)}`;
 
@@ -448,10 +466,7 @@ function validateBidInput() {
     input.value = bidAmount.toLocaleString("en-GB");
   }
 
-  const minBid = Math.max(
-    selectedListing.market_value,
-    (selectedListing.current_highest_bid || 0) + 500000
-  );
+  const minBid = listingMinimumBid(selectedListing);
 
   if (!bidAmount || bidAmount < minBid) {
     input.style.border = "2px solid red";
@@ -503,10 +518,7 @@ function adjustBid(amount) {
 
   if (current < 0) current = 0;
 
-  const minBid = Math.max(
-    selectedListing.market_value,
-    (selectedListing.current_highest_bid || 0) + 500000
-  );
+  const minBid = listingMinimumBid(selectedListing);
 
   if (current < minBid) current = minBid;
 
@@ -542,13 +554,8 @@ function wireQuickBidButton() {
   document.getElementById("quick-bid-btn").onclick = () => {
     if (!selectedListing) return;
 
-    const minBid = Math.max(
-      selectedListing.market_value,
-      (selectedListing.current_highest_bid || 0) + 500000
-    );
-
     const input = document.getElementById("bid-amount");
-    input.value = minBid.toLocaleString("en-GB");
+    input.value = listingMinimumBid(selectedListing).toLocaleString("en-GB");
     validateBidInput();
   };
 }
@@ -579,12 +586,7 @@ async function placeBid() {
 
   const rawInput = document.getElementById("bid-amount").value;
   const bidAmount = parseMoneyInput(rawInput);
-  const currentHighest = selectedListing.current_highest_bid || 0;
-
-  const minBid = Math.max(
-    selectedListing.market_value,
-    currentHighest + 500000
-  );
+  const minBid = listingMinimumBid(selectedListing);
 
   if (bidAmount < minBid) {
     errorBox.textContent = `Your bid must be at least ${formatMoney(minBid)}.`;

@@ -547,6 +547,13 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("offerPlayerRating").textContent = `Rating: ${rating}`;
     document.getElementById("offerPlayerMV").textContent = `Market Value: ₿ ${mv.toLocaleString("en-GB")}`;
 
+    const offerMinNote = document.getElementById("offerMinNote");
+    if (offerMinNote) {
+      offerMinNote.textContent = sellerClub
+        ? `Minimum offer for contracted players: market value (₿ ${mv.toLocaleString("en-GB")}).`
+        : "";
+    }
+
     document.getElementById("offerAmount").value = mv.toLocaleString("en-GB");
     document.getElementById("offerError").textContent = "";
 
@@ -581,12 +588,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
-    if (offer < mv) {
-      offer = mv;
-      input.value = offer.toLocaleString("en-GB");
-    }
-
     const sellerClub = CURRENT_OFFER_PLAYER.Contracted_Team;
+
+    if (sellerClub && offer < mv) {
+      errorBox.textContent = `Minimum direct offer is market value (₿ ${mv.toLocaleString("en-GB")}).`;
+      return;
+    }
     console.log("CONFIRM: sellerClub =", sellerClub);
 
     if (!sellerClub) {

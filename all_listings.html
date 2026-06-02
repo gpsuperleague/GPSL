@@ -392,7 +392,9 @@ a.button:hover, button.button:hover {
   <div class="info-box">
     <b>Transfer market rules</b>
     <ul>
-      <li>Each bid must be at least <b>₿500,000</b> above the current highest bid (and at least the reserve on your first bid).</li>
+      <li><b>Minimum bid = market value</b> for all listed contracted players. Your first bid cannot be below the player’s market value (see the Value column).</li>
+      <li>If there is already a highest bid, you must bid at least <b>₿500,000</b> more than that amount (and still at least market value).</li>
+      <li><b>Direct offers</b> to a contracted player (GPDB → Make Offer) must also be at least <b>market value</b>; the seller reviews the offer in Transfer Centre.</li>
       <li><b>Reserve met</b> when the timer ends → the highest bidder wins automatically: player moves, buyer pays, seller receives the fee.</li>
       <li><b>Reserve not met</b> but there are bids → the seller has <b>24 hours</b> in Transfer Centre to accept or reject the best offer (listed under “Seller review” here if you tick that filter).</li>
       <li><b>No bids</b> when time runs out → the listing closes; the player stays with the seller.</li>
@@ -451,9 +453,7 @@ a.button:hover, button.button:hover {
 
       <div id="bid-input-section">
 
-        <div id="bid-warning">
-          ⚠️ Bids must be at least ₿500,000 higher than the current highest bid.
-        </div>
+        <div id="bid-warning"></div>
 
         <div class="bid-input-row">
           <label for="bid-amount">Your Bid (₿):</label>
@@ -559,7 +559,7 @@ a.button:hover, button.button:hover {
   <script type="module" src="clubs_lookup.js"></script>
 
   <!-- ALL LISTINGS LOGIC -->
-  <script type="module" src="all_listings.js?v=4"></script>
+  <script type="module" src="all_listings.js?v=5"></script>
 
 </body>
 </html>
