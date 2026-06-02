@@ -375,16 +375,20 @@ export async function buildNav() {
   const isDraft = path.includes("draftauction") && !path.includes("draftauction_player");
   const isSpecialAuction = path.includes("special_auction");
 
-  let hasActiveSpecialAuction = false;
+  let visibleSpecialAuction = null;
   try {
+    const nowIso = new Date().toISOString();
     const { data: sa } = await supabase
       .from("special_auctions")
-      .select("id")
-      .eq("status", "active")
+      .select("id, title, start_time")
+      .in("status", ["scheduled", "active"])
+      .gt("end_time", nowIso)
+      .order("start_time", { ascending: true })
+      .limit(1)
       .maybeSingle();
-    hasActiveSpecialAuction = !!sa;
+    visibleSpecialAuction = sa;
   } catch (_) {
-    hasActiveSpecialAuction = false;
+    visibleSpecialAuction = null;
   }
 
   // Build nav HTML - only include buttons for pages NOT currently viewing
@@ -418,8 +422,13 @@ export async function buildNav() {
     html += `<a id="nav-draft" href="draftauction.html" class="button">Draft Auction</a>`;
   }
 
-  if (hasActiveSpecialAuction && !isSpecialAuction) {
-    html += `<a id="nav-special-auction" href="special_auction.html" class="button">Special Auction</a>`;
+  if (visibleSpecialAuction && !isSpecialAuction) {
+    const starts = new Date(visibleSpecialAuction.start_time);
+    const beforeStart = Date.now() < starts.getTime();
+    const label = beforeStart
+      ? `Special Auction (${starts.toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" })})`
+      : "Special Auction";
+    html += `<a id="nav-special-auction" href="special_auction.html" class="button">${label}</a>`;
   }
 
   html += `<button id="logoutBtn" class="button">Logout</button>`;

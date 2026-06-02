@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS public.special_auctions (
   auction_type text NOT NULL CHECK (auction_type IN ('lowest_unique', 'snap')),
   title text NOT NULL,
   status text NOT NULL DEFAULT 'draft' CHECK (
-    status IN ('draft', 'active', 'revealed', 'settled', 'cancelled')
+    status IN ('draft', 'scheduled', 'active', 'revealed', 'settled', 'cancelled')
   ),
   start_time timestamptz NOT NULL,
   end_time timestamptz NOT NULL,
@@ -42,9 +42,9 @@ CREATE TABLE IF NOT EXISTS public.special_auction_bids (
 CREATE INDEX IF NOT EXISTS special_auction_bids_auction_id_idx
   ON public.special_auction_bids (auction_id);
 
-CREATE UNIQUE INDEX IF NOT EXISTS special_auctions_one_active_idx
+CREATE UNIQUE INDEX IF NOT EXISTS special_auctions_one_live_idx
   ON public.special_auctions ((true))
-  WHERE status = 'active';
+  WHERE status IN ('scheduled', 'active');
 
 -- ---------------------------------------------------------------------------
 -- Helpers
@@ -98,7 +98,7 @@ AS $$
       AND (
         public.is_gpsl_admin()
         OR a.status IN ('revealed', 'settled')
-        OR (a.auction_type = 'snap' AND a.status = 'active')
+        OR (a.auction_type = 'snap' AND a.status IN ('scheduled', 'active'))
         OR (
           p_club_id IS NOT NULL
           AND p_club_id = public.my_club_shortname()
@@ -141,7 +141,7 @@ CREATE POLICY special_auction_bids_insert_own ON public.special_auction_bids
     AND EXISTS (
       SELECT 1 FROM public.special_auctions a
       WHERE a.id = auction_id
-        AND a.status = 'active'
+        AND a.status IN ('scheduled', 'active')
         AND now() >= a.start_time
         AND now() < a.end_time
     )
@@ -190,8 +190,8 @@ BEGIN
     RAISE EXCEPTION 'Auction not found';
   END IF;
 
-  IF v_auction.status <> 'active' THEN
-    RAISE EXCEPTION 'Auction is not active';
+  IF v_auction.status NOT IN ('scheduled', 'active') THEN
+    RAISE EXCEPTION 'Auction is not open for owners';
   END IF;
 
   IF now() < v_auction.start_time OR now() >= v_auction.end_time THEN
@@ -267,7 +267,9 @@ BEGIN
 
   SELECT * INTO v_auction FROM public.special_auctions WHERE id = p_auction_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Auction not found'; END IF;
-  IF v_auction.status <> 'active' THEN RAISE EXCEPTION 'Auction is not active'; END IF;
+  IF v_auction.status NOT IN ('scheduled', 'active') THEN
+    RAISE EXCEPTION 'Auction is not open for owners';
+  END IF;
   IF now() < v_auction.start_time OR now() >= v_auction.end_time THEN
     RAISE EXCEPTION 'Auction is not open for bidding';
   END IF;
@@ -505,13 +507,21 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $function$
+DECLARE
+  v_start timestamptz;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN RAISE EXCEPTION 'Admin only'; END IF;
 
-  UPDATE public.special_auctions SET status = 'draft', updated_at = now() WHERE status = 'active';
+  SELECT start_time INTO v_start FROM public.special_auctions WHERE id = p_auction_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Auction not found'; END IF;
 
   UPDATE public.special_auctions
-  SET status = 'active', updated_at = now()
+  SET status = 'draft', updated_at = now()
+  WHERE status IN ('scheduled', 'active');
+
+  UPDATE public.special_auctions
+  SET status = CASE WHEN now() < v_start THEN 'scheduled' ELSE 'active' END,
+      updated_at = now()
   WHERE id = p_auction_id;
 END;
 $function$;

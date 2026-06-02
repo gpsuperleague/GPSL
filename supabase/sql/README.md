@@ -66,7 +66,9 @@ Run once:
 
 [`special_auctions.sql`](./special_auctions.sql)
 
-Then use **GPSL Admin → Special Auctions** to create, **Set as active**, and after the window **Reveal** (lowest unique) / **Settle**. Owners use **Special Auction** on the dashboard or nav.
+Then use **GPSL Admin → Special Auctions** to create (tick **Show to owners immediately**), or **Set as active / scheduled**. Status `scheduled` = visible in nav before start time (e.g. 7pm tonight). After the window **Reveal** (lowest unique) / **Settle**.
+
+If you already ran the first script, also run [`special_auctions_scheduled_status.sql`](./special_auctions_scheduled_status.sql).
 
 ## Fix active listing end times (24h + 7pm UK)
 

@@ -10,11 +10,16 @@ export function roundToMillion(n) {
   return Math.round(x / 1000000) * 1000000;
 }
 
+/** Owner-visible auction: scheduled (before start) or active, not yet ended. */
 export async function fetchActiveSpecialAuction(supabase) {
+  const nowIso = new Date().toISOString();
   const { data, error } = await supabase
     .from("special_auctions")
     .select("*")
-    .eq("status", "active")
+    .in("status", ["scheduled", "active"])
+    .gt("end_time", nowIso)
+    .order("start_time", { ascending: true })
+    .limit(1)
     .maybeSingle();
 
   if (error) {
@@ -75,7 +80,7 @@ export function auctionPhase(auction) {
   const now = Date.now();
   const start = new Date(auction.start_time).getTime();
   const end = new Date(auction.end_time).getTime();
-  if (auction.status !== "active") return auction.status;
+  if (!["scheduled", "active"].includes(auction.status)) return auction.status;
   if (now < start) return "before_start";
   if (now >= end) return "ended_pending";
   return "live";

@@ -274,8 +274,13 @@
           </div>
         </div>
 
-        <button id="saCreateBtn" class="button">Create auction (draft)</button>
+        <label style="display:block; margin:10px 0; font-size:14px;">
+          <input type="checkbox" id="saPublishOnCreate" checked>
+          Show to owners immediately (scheduled if start is in the future)
+        </label>
+        <button id="saCreateBtn" class="button">Create auction</button>
         <div id="saCreateStatus" style="color:#ffcc00; margin-top:8px;"></div>
+        <p class="note">Draft auctions are hidden until you select one and click <b>Set as active / scheduled</b>.</p>
 
         <hr style="border-color:#333; margin:20px 0;">
 
@@ -283,7 +288,7 @@
         <select id="saSelect" style="margin-bottom:10px;"></select>
 
         <div class="row">
-          <button id="saActivateBtn" class="button">Set as active</button>
+          <button id="saActivateBtn" class="button">Set as active / scheduled</button>
           <button id="saRevealBtn" class="button" style="background:#4466aa;">Reveal (LUB)</button>
           <button id="saSettleBtn" class="button" style="background:#2f7a2f;">Settle &amp; charge fees</button>
         </div>
@@ -448,9 +453,33 @@
           return;
         }
 
-        const { error } = await supabase.from("special_auctions").insert(row);
-        status.textContent = error ? "❌ " + error.message : "✅ Auction created (draft).";
-        if (!error) await refreshSpecialAuctionSelect();
+        const { data: created, error } = await supabase
+          .from("special_auctions")
+          .insert(row)
+          .select("id")
+          .single();
+
+        if (error) {
+          status.textContent = "❌ " + error.message;
+          return;
+        }
+
+        if (document.getElementById("saPublishOnCreate").checked && created?.id) {
+          const { error: actErr } = await supabase.rpc("special_auction_activate", {
+            p_auction_id: created.id,
+          });
+          if (actErr) {
+            status.textContent =
+              "✅ Created as draft but could not publish: " + actErr.message;
+          } else {
+            const pub =
+              new Date(start) > new Date() ? "scheduled (nav visible)" : "active";
+            status.textContent = `✅ Created & ${pub} — owners see Special Auction in nav.`;
+          }
+        } else {
+          status.textContent = "✅ Created as draft (hidden from owners).";
+        }
+        await refreshSpecialAuctionSelect();
       };
 
       document.getElementById("saActivateBtn").onclick = async () => {
@@ -458,7 +487,9 @@
         const st = document.getElementById("saManageStatus");
         if (!id) { st.textContent = "Select an auction."; return; }
         const { error } = await supabase.rpc("special_auction_activate", { p_auction_id: id });
-        st.textContent = error ? "❌ " + error.message : "✅ Active — owners see it on Special Auction page.";
+        st.textContent = error
+          ? "❌ " + error.message
+          : "✅ Published — owners see Special Auction in nav (scheduled until start time).";
         await refreshSpecialAuctionSelect();
       };
 
