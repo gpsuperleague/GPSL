@@ -1,0 +1,60 @@
+<script>window.CURRENT_PAGE = "cups";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cups — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1100px; margin:20px auto 40px; }
+    h1 { color:#ff9900; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+    .toolbar button {
+      padding:8px 14px; background:#222; border:1px solid #444; color:#ddd;
+      border-radius:6px; cursor:pointer;
+    }
+    .toolbar button.active { background:#ff9900; color:#111; border-color:#ff9900; font-weight:bold; }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:16px; margin-bottom:20px;
+    }
+    .panel h2 { color:#ff9900; font-size:17px; margin:0 0 12px; }
+    .round-block { margin-bottom:16px; }
+    .round-title { color:#ffcc00; font-size:14px; margin-bottom:8px; }
+    table.bracket { width:100%; border-collapse:collapse; font-size:13px; }
+    table.bracket th, table.bracket td { border:1px solid #333; padding:8px; }
+    table.bracket th { background:#222; color:#ff9900; }
+    tr.my-club { outline:1px solid #ff9900; }
+    .qual-list { color:#aaa; font-size:13px; line-height:1.6; }
+    .empty { color:#888; }
+    .meta { color:#aaa; margin-bottom:12px; }
+    a { color:#ff9900; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <h1>Cup competitions</h1>
+    <p id="pageMeta" class="meta">Loading…</p>
+
+    <div class="toolbar" id="cupToolbar"></div>
+
+    <div class="panel">
+      <h2>Qualified clubs</h2>
+      <div id="qualifiedList" class="qual-list">—</div>
+    </div>
+
+    <div class="panel">
+      <h2>Bracket</h2>
+      <div id="bracketRoot"></div>
+    </div>
+
+    <p class="meta">
+      Results via <a href="matchday.html">Match Day</a> (cup ties listed with league).
+      Admin draws in <a href="admin.html">GPSL Admin → Cups</a>.
+    </p>
+  </div>
+  <script type="module" src="cups.js"></script>
+</body>
+</html>

@@ -257,6 +257,65 @@
         <div id="compFixtureStatus" style="color:#ffcc00;margin-top:10px;"></div>
       </div>
 
+      <!-- CUP COMPETITIONS (Phase 6) -->
+      <div class="card">
+        <h2>Cup competitions</h2>
+        <p class="note">Run <code>competition_phase6_cups.sql</code>. Draw after league standings exist (prestige). League cup: 60 clubs → 4 byes auto-calculated.</p>
+
+        <div class="row">
+          <div>
+            <label>Cup</label>
+            <select id="compCupSelect">
+              <option value="league_cup">League Cup</option>
+              <option value="super8">Super8</option>
+              <option value="plate">Plate</option>
+              <option value="shield">Shield</option>
+              <option value="spoon">Spoon</option>
+            </select>
+          </div>
+          <div>
+            <label>League cup byes</label>
+            <input type="number" id="compLeagueCupByes" value="4" min="0" max="32" style="width:80px;">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button id="compDrawCupBtn" class="button">Draw / regenerate cup</button>
+          <button id="compDeleteCupBtn" class="button" style="background:#990000;">Delete cup bracket</button>
+        </div>
+
+        <p class="note" style="margin-top:12px;">CH Shield/Spoon playoffs (optional):</p>
+        <div class="row">
+          <select id="compPlayoffDiv">
+            <option value="championship_a">Championship A</option>
+            <option value="championship_b">Championship B</option>
+          </select>
+          <input id="compPlayoffClub" placeholder="Club ShortName" style="max-width:100px;">
+          <select id="compPlayoffRole">
+            <option value="shield_playoff_winner">Shield playoff winner</option>
+            <option value="spoon_playoff_loser">Spoon playoff loser</option>
+          </select>
+          <button id="compSavePlayoffBtn" class="button">Save</button>
+        </div>
+
+        <p class="note" style="margin-top:12px;">Prize money (instant on confirm):</p>
+        <div class="row">
+          <select id="compPrizeStage">
+            <option value="appearance">appearance</option>
+            <option value="r1">r1</option>
+            <option value="r2">r2</option>
+            <option value="qf">qf</option>
+            <option value="sf">sf</option>
+            <option value="final">final</option>
+            <option value="winner">winner</option>
+          </select>
+          <input type="number" id="compPrizeAmount" placeholder="Amount" style="max-width:120px;">
+          <button id="compSavePrizeBtn" class="button">Save prize</button>
+        </div>
+
+        <div id="compCupStatus" style="color:#ffcc00;margin-top:10px;"></div>
+      </div>
+
       <!-- GATE RECEIPTS (Phase 5) -->
       <div class="card">
         <h2>Gate receipts</h2>
@@ -972,8 +1031,109 @@
       document.getElementById("compResetDrawBtn").onclick = resetCompetitionDraw;
       document.getElementById("compActivateBtn").onclick = activateCompetitionSeason;
       document.getElementById("compBackfillGatesBtn").onclick = backfillCompetitionGates;
+      document.getElementById("compDrawCupBtn").onclick = drawCompetitionCup;
+      document.getElementById("compDeleteCupBtn").onclick = deleteCompetitionCup;
+      document.getElementById("compSavePlayoffBtn").onclick = saveCompetitionPlayoffQualifier;
+      document.getElementById("compSavePrizeBtn").onclick = saveCompetitionCupPrize;
 
       await refreshCompetitionAdmin();
+    }
+
+    async function drawCompetitionCup() {
+      const status = document.getElementById("compCupStatus");
+      const cup = document.getElementById("compCupSelect").value;
+      const seasonId = compSelectedSeasonId || (await getActiveCompSeasonId());
+
+      if (!seasonId) {
+        status.textContent = "No active season.";
+        return;
+      }
+
+      if (!confirm(`Draw ${cup}? This replaces any existing bracket for that cup.`)) return;
+
+      status.textContent = "Drawing…";
+
+      let result;
+      if (cup === "league_cup") {
+        const byes = Number(document.getElementById("compLeagueCupByes").value) || 4;
+        result = await supabase.rpc("competition_draw_league_cup", {
+          p_season_id: seasonId,
+          p_byes: byes,
+        });
+      } else {
+        result = await supabase.rpc("competition_draw_prestige_cup", {
+          p_season_id: seasonId,
+          p_cup_code: cup,
+        });
+      }
+
+      if (result.error) {
+        status.textContent = "❌ " + result.error.message;
+        return;
+      }
+
+      const d = result.data;
+      status.textContent = `✅ ${cup}: ${d.clubs} clubs, ${d.byes} byes, ${d.rounds} rounds, ${d.r1_fixtures} R1 fixtures.`;
+    }
+
+    async function deleteCompetitionCup() {
+      const status = document.getElementById("compCupStatus");
+      const cup = document.getElementById("compCupSelect").value;
+      const seasonId = compSelectedSeasonId || (await getActiveCompSeasonId());
+      if (!seasonId) return;
+
+      if (!confirm(`Delete all ${cup} fixtures and bracket?`)) return;
+
+      const { error } = await supabase.rpc("competition_delete_cup_bracket", {
+        p_season_id: seasonId,
+        p_cup_code: cup,
+      });
+
+      status.textContent = error ? "❌ " + error.message : `✅ Deleted ${cup} bracket.`;
+    }
+
+    async function saveCompetitionPlayoffQualifier() {
+      const status = document.getElementById("compCupStatus");
+      const seasonId = compSelectedSeasonId || (await getActiveCompSeasonId());
+      const cup =
+        document.getElementById("compPlayoffRole").value === "shield_playoff_winner"
+          ? "shield"
+          : "spoon";
+
+      const { error } = await supabase.rpc("competition_admin_set_playoff_qualifier", {
+        p_season_id: seasonId,
+        p_cup_code: cup,
+        p_division: document.getElementById("compPlayoffDiv").value,
+        p_club_short_name: document.getElementById("compPlayoffClub").value.trim(),
+        p_role: document.getElementById("compPlayoffRole").value,
+      });
+
+      status.textContent = error ? "❌ " + error.message : "✅ Playoff qualifier saved.";
+    }
+
+    async function saveCompetitionCupPrize() {
+      const status = document.getElementById("compCupStatus");
+      const seasonId = compSelectedSeasonId || (await getActiveCompSeasonId());
+      const cup = document.getElementById("compCupSelect").value;
+
+      const { error } = await supabase.rpc("competition_admin_set_cup_prize", {
+        p_season_id: seasonId,
+        p_cup_code: cup,
+        p_stage: document.getElementById("compPrizeStage").value,
+        p_amount: Number(document.getElementById("compPrizeAmount").value) || 0,
+      });
+
+      status.textContent = error ? "❌ " + error.message : "✅ Prize saved.";
+    }
+
+    async function getActiveCompSeasonId() {
+      const { data } = await supabase
+        .from("competition_seasons")
+        .select("id")
+        .eq("is_current", true)
+        .eq("status", "active")
+        .maybeSingle();
+      return data?.id ?? null;
     }
 
     async function backfillCompetitionGates() {

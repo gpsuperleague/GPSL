@@ -22,6 +22,22 @@ export const ACTIVE_DIVISIONS = [
 
 export const LEAGUE_DIVISIONS = ACTIVE_DIVISIONS;
 
+export const CUP_CODES = [
+  "super8",
+  "plate",
+  "shield",
+  "spoon",
+  "league_cup",
+];
+
+export const CUP_LABELS = {
+  super8: "Super8",
+  plate: "Plate",
+  shield: "Shield",
+  spoon: "Spoon",
+  league_cup: "League Cup",
+};
+
 export const GPSL_MONTH_LABELS = {
   august: "August",
   september: "September",
@@ -211,6 +227,65 @@ export async function loadLeagueFixtures(supabase, division = null) {
     return (a.home_club_name || "").localeCompare(b.home_club_name || "");
   });
   return all;
+}
+
+/** All cup fixtures for current season (optional cup_code filter). */
+export async function loadCupFixtures(supabase, cupCode = null) {
+  let query = supabase
+    .from("competition_fixtures_public")
+    .select("*")
+    .eq("competition_type", "cup")
+    .order("cup_code", { ascending: true })
+    .order("cup_round", { ascending: true })
+    .order("cup_match", { ascending: true });
+
+  if (cupCode) query = query.eq("cup_code", cupCode);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("loadCupFixtures:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function loadCupBracket(supabase, cupCode) {
+  const { data, error } = await supabase
+    .from("competition_cup_bracket_public")
+    .select("*")
+    .eq("cup_code", cupCode)
+    .order("round_no", { ascending: true })
+    .order("match_no", { ascending: true });
+
+  if (error) {
+    console.error("loadCupBracket:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function loadCupQualified(supabase, cupCode) {
+  const { data, error } = await supabase
+    .from("competition_cup_qualified_public")
+    .select("club_short_name")
+    .eq("cup_code", cupCode);
+
+  if (error) {
+    console.error("loadCupQualified:", error);
+    return [];
+  }
+  return (data || []).map((r) => r.club_short_name);
+}
+
+export function groupCupBracketByRound(nodes) {
+  const map = new Map();
+  for (const n of nodes || []) {
+    if (!map.has(n.round_no)) map.set(n.round_no, []);
+    map.get(n.round_no).push(n);
+  }
+  return [...map.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([round_no, matches]) => ({ round_no, matches }));
 }
 
 export async function loadFixtureCountsForSeason(supabase, seasonId) {

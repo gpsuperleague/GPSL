@@ -2,7 +2,10 @@ import { supabase, initGlobal } from "./global.js";
 import {
   loadCurrentSeason,
   loadLeagueFixtures,
+  loadCupFixtures,
   groupFixturesByMatchday,
+  CUP_CODES,
+  CUP_LABELS,
   formatFixtureScore,
   fixtureInvolvesClub,
   DIVISION_LABELS,
@@ -15,6 +18,8 @@ import {
 
 let myClub = { short: null, name: null };
 let currentDivision = "superleague";
+let fixtureView = "league";
+let currentCup = "league_cup";
 let allFixtures = [];
 let modalFixture = null;
 
@@ -68,6 +73,45 @@ function renderDivisionToolbar() {
   const bar = document.getElementById("divisionToolbar");
   bar.innerHTML = "";
 
+  const leagueBtn = document.createElement("button");
+  leagueBtn.type = "button";
+  leagueBtn.textContent = "League";
+  leagueBtn.className = fixtureView === "league" ? "active" : "";
+  leagueBtn.onclick = () => {
+    fixtureView = "league";
+    renderDivisionToolbar();
+    renderFixtures();
+  };
+  bar.appendChild(leagueBtn);
+
+  const cupBtn = document.createElement("button");
+  cupBtn.type = "button";
+  cupBtn.textContent = "Cups";
+  cupBtn.className = fixtureView === "cups" ? "active" : "";
+  cupBtn.onclick = () => {
+    fixtureView = "cups";
+    renderDivisionToolbar();
+    renderFixtures();
+  };
+  bar.appendChild(cupBtn);
+
+  if (fixtureView === "cups") {
+    const sel = document.createElement("select");
+    for (const code of CUP_CODES) {
+      const opt = document.createElement("option");
+      opt.value = code;
+      opt.textContent = CUP_LABELS[code] || code;
+      if (code === currentCup) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.onchange = () => {
+      currentCup = sel.value;
+      renderFixtures();
+    };
+    bar.appendChild(sel);
+    return;
+  }
+
   for (const div of LEAGUE_DIVISIONS) {
     const btn = document.createElement("button");
     btn.type = "button";
@@ -82,8 +126,75 @@ function renderDivisionToolbar() {
   }
 }
 
+function renderCupFixtures() {
+  const root = document.getElementById("fixturesRoot");
+  const fixtures = allFixtures.filter(
+    (f) => f.competition_type === "cup" && f.cup_code === currentCup
+  );
+
+  if (!fixtures.length) {
+    root.innerHTML =
+      `<p class="empty">No ${CUP_LABELS[currentCup] || currentCup} fixtures. Draw in <b>GPSL Admin → Cup competitions</b> or see <a href="cups.html" style="color:#ff9900;">Cups</a> bracket.</p>`;
+    return;
+  }
+
+  const byRound = new Map();
+  for (const f of fixtures) {
+    const r = f.cup_round || 0;
+    if (!byRound.has(r)) byRound.set(r, []);
+    byRound.get(r).push(f);
+  }
+
+  root.innerHTML = "";
+  for (const round of [...byRound.keys()].sort((a, b) => a - b)) {
+    const rows = byRound.get(round);
+    const block = document.createElement("div");
+    block.className = "matchday-block";
+    block.innerHTML = `
+      <div class="matchday-head"><span>Round ${round}</span></div>
+      <table class="gpsl-table">
+        <thead>
+          <tr>
+            <th>Match</th><th>Home</th><th></th><th>Away</th><th>Status</th><th class="my-actions">Your action</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    `;
+    const tbody = block.querySelector("tbody");
+    for (const f of rows) {
+      const tr = document.createElement("tr");
+      if (fixtureInvolvesClub(f, myClub)) tr.classList.add("my-fixture");
+      tr.innerHTML = `
+        <td>M${f.cup_match}</td>
+        <td>${f.home_club_name}</td>
+        <td class="score">${formatFixtureScore(f)}</td>
+        <td>${f.away_club_name}</td>
+        <td>${f.status}</td>
+        <td class="my-actions">${actionCell(f)}</td>
+      `;
+      tbody.appendChild(tr);
+    }
+    root.appendChild(block);
+  }
+
+  root.querySelectorAll('[data-action="enter"]').forEach((btn) => {
+    btn.onclick = () => {
+      const id = btn.getAttribute("data-id");
+      const fix = fixtures.find((x) => String(x.id) === id);
+      if (fix) openResultModal(fix);
+    };
+  });
+}
+
 function renderFixtures() {
   const root = document.getElementById("fixturesRoot");
+
+  if (fixtureView === "cups") {
+    renderCupFixtures();
+    return;
+  }
+
   const fixtures = allFixtures.filter((f) => f.division === currentDivision);
 
   if (!fixtures.length) {
@@ -149,6 +260,11 @@ async function onModalSubmit() {
 
   const homeGoals = Number(document.getElementById("modalHomeGoals").value);
   const awayGoals = Number(document.getElementById("modalAwayGoals").value);
+
+  if (modalFixture.competition_type === "cup" && homeGoals === awayGoals) {
+    document.getElementById("modalStatus").textContent = "Cup matches need a winner.";
+    return;
+  }
   const statusEl = document.getElementById("modalStatus");
 
   if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals) || homeGoals < 0 || awayGoals < 0) {
@@ -239,7 +355,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   meta.textContent = `${season.label} · ${DIVISION_LABELS[currentDivision]} · your games highlighted in gold`;
 
-  allFixtures = await loadLeagueFixtures(supabase, currentDivision);
+  const league = await loadLeagueFixtures(supabase, currentDivision);
+  const cups = await loadCupFixtures(supabase);
+  allFixtures = [...league, ...cups];
   if (!allFixtures.length && season) {
     const root = document.getElementById("fixturesRoot");
     root.innerHTML =

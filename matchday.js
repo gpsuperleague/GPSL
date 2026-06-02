@@ -1,6 +1,7 @@
 import { supabase, initGlobal } from "./global.js";
 import {
   loadLeagueFixtures,
+  loadCupFixtures,
   GPSL_MONTH_LABELS,
   fixtureInvolvesClub,
   submitFixtureResult,
@@ -262,7 +263,11 @@ function populateFixtureSelect() {
     opt.value = f.id;
     const pending =
       f.submission_status === "pending" ? " · pending" : "";
-    opt.textContent = `MD${f.matchday}: ${f.home_club_name} vs ${f.away_club_name}${pending}`;
+    const label =
+      f.competition_type === "cup"
+        ? `${(f.cup_code || "cup").toUpperCase()} R${f.cup_round}M${f.cup_match}`
+        : `MD${f.matchday}`;
+    opt.textContent = `${label}: ${f.home_club_name} vs ${f.away_club_name}${pending}`;
     sel.appendChild(opt);
   }
 
@@ -271,14 +276,28 @@ function populateFixtureSelect() {
 }
 
 async function loadUpcomingFixtures() {
-  allLeagueFixtures = await loadLeagueFixtures(supabase, myDivision);
+  const league = await loadLeagueFixtures(supabase, myDivision);
+  const cups = await loadCupFixtures(supabase);
+  allLeagueFixtures = [...league, ...cups];
   upcomingFixtures = allLeagueFixtures
     .filter(
       (f) =>
         fixtureInvolvesClub(f, myClub) &&
         (f.status === "scheduled" || f.submission_status === "pending")
     )
-    .sort((a, b) => a.matchday - b.matchday);
+    .sort((a, b) => {
+      if (a.competition_type !== b.competition_type) {
+        return a.competition_type === "cup" ? -1 : 1;
+      }
+      if (a.competition_type === "cup") {
+        return (
+          (a.cup_code || "").localeCompare(b.cup_code || "") ||
+          (a.cup_round || 0) - (b.cup_round || 0) ||
+          (a.cup_match || 0) - (b.cup_match || 0)
+        );
+      }
+      return a.matchday - b.matchday;
+    });
 }
 
 async function submitResult() {
@@ -293,6 +312,11 @@ async function submitResult() {
 
   if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals) || homeGoals < 0 || awayGoals < 0) {
     setStatus("submitStatus", "Enter valid scores.", true);
+    return;
+  }
+
+  if (f.competition_type === "cup" && homeGoals === awayGoals) {
+    setStatus("submitStatus", "Cup matches need a winner — no draws.", true);
     return;
   }
 

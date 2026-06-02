@@ -76,6 +76,17 @@ Run once:
 - Owners: **`finances.html`** (balance + ledger), **`stadium.html`** (estimate + upcoming home games)
 - Admin: **Backfill gate receipts**; RPC `competition_admin_archive_club_season` for history rows
 
+### Phase 6 — cups & brackets (after Phase 5)
+
+Run once:
+
+[`competition_phase6_cups.sql`](./competition_phase6_cups.sql)
+
+- **Prestige:** Super8, Plate, Shield, Spoon — qualify from standings (+ manual CH 16v17 playoff slots)
+- **League cup:** 60 clubs, random draw, **4 byes** (configurable)
+- Knockout brackets, **Match Day** submit/confirm (no draws), **50/50** gates, **instant prizes** (admin config)
+- **`cups.html`** brackets · **GPSL Admin → Cup competitions**
+
 ### Club owner linking (admin)
 
 Run once:
