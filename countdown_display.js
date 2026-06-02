@@ -13,7 +13,7 @@ const ukDateTimeFmt = new Intl.DateTimeFormat("en-GB", {
   month: "short",
   hour: "2-digit",
   minute: "2-digit",
-  hour12: true,
+  hour12: false,
 });
 
 const localDateTimeFmt = new Intl.DateTimeFormat(undefined, {
@@ -44,7 +44,7 @@ export function formatInstantLocal(instant) {
   return `${localDateTimeFmt.format(instant)} (your time)`;
 }
 
-/** e.g. "Tue 3 Jun, 6:00 pm UK · Tue 3 Jun, 1:00 pm (your time)" */
+/** e.g. "Tue 3 Jun, 18:00 UK · Tue 3 Jun, 13:00 (your time)" */
 export function formatTargetTimesSubline(targetInstant) {
   if (!isValidInstant(targetInstant)) return "";
   return `${formatInstantUK(targetInstant)} · ${formatInstantLocal(targetInstant)}`;

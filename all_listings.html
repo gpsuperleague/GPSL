@@ -113,6 +113,22 @@ a.button:hover, button.button:hover {
       z-index: 2;
     }
 
+    .countdown-cell .countdown-duration {
+      display: block;
+      font-weight: bold;
+      color: #ff9900;
+    }
+
+    .countdown-cell .countdown-times,
+    #bid-time-remaining .countdown-times {
+      display: block;
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 3px;
+      line-height: 1.35;
+      font-weight: normal;
+    }
+
     table.gpsl-table td {
       padding: 8px;
       border-bottom: 1px solid #333;
@@ -400,7 +416,7 @@ a.button:hover, button.button:hover {
       <li><b>Reserve not met</b> but there are bids → the seller has <b>24 hours</b> in Transfer Centre to accept or reject the best offer (listed under “Seller review” here if you tick that filter).</li>
       <li><b>No bids</b> when time runs out → the listing closes; the player stays with the seller.</li>
       <li><b>Extra time (anti-sniping):</b> if someone bids in the <b>final 2 hours</b> before the listed end time, the auction is extended by <b>1 hour</b> (once per listing). After that, any bid in the <b>final 5 minutes</b> adds <b>5 more minutes</b> — and that 5-minute extension can happen again if another late bid comes in.</li>
-      <li>Countdowns on each row are in <b>your local time</b>. Settlement runs shortly after the clock hits zero (usually within a few minutes).</li>
+      <li>Countdowns show time left plus the <b>UK end time</b> and the same moment in <b>your local time</b>. Settlement runs shortly after the clock hits zero (usually within a few minutes).</li>
     </ul>
   </div>
 

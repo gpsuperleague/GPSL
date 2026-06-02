@@ -62,6 +62,7 @@
         <div class="meta" id="currentHighest"></div>
         <div class="meta" id="leadingClub"></div>
         <div class="meta" id="timeRemaining"></div>
+        <div class="meta" id="timeRemainingSub" style="font-size:12px;color:#aaa;"></div>
         <div class="meta" id="creditsInfo"></div>
       </div>
     </div>
@@ -112,7 +113,6 @@
       getDraftPhaseFromStart,
       getDraftTimelineFromStart,
       draftPhaseLabel,
-      formatMs,
       getDraftCredits,
       canClubBidOnPlayerDraft,
       getActiveDraftListingId,
@@ -120,6 +120,10 @@
     } from "./draft_engine.js";
 
     import { fullClubName } from "./clubs_lookup.js";
+    import {
+      formatLiveCountdownLines,
+      formatTargetTimesSubline,
+    } from "./countdown_display.js";
 
     /* ============================================================
        STATE
@@ -132,6 +136,7 @@
     let currentHighestBid = 0;
     let currentLeadingClub = null;
     let canBid = false;
+    let draftCountdownInterval = null;
 
     /* ============================================================
        INIT
@@ -162,15 +167,65 @@
       draftAuctionStartTimeUK = settings.draftAuctionStartTime;
     }
 
-    function draftStatusText(nowUK) {
+    function draftCountdownTarget(phase, timeline) {
+      if (!timeline) return null;
+      switch (phase) {
+        case "before_start":
+          return timeline.start;
+        case "live_until_cutoff":
+          return timeline.cutoff;
+        case "pre_random":
+          return timeline.randomStart;
+        case "random_active":
+          return timeline.publicEnd;
+        default:
+          return null;
+      }
+    }
+
+    function draftCountdownLabel(phase) {
+      switch (phase) {
+        case "before_start":
+          return "Draft starts in";
+        case "live_until_cutoff":
+          return "Auction cutoff in";
+        case "pre_random":
+          return "Random window begins in";
+        case "random_active":
+          return "Latest possible end in";
+        default:
+          return draftPhaseLabel(phase);
+      }
+    }
+
+    function updateDraftCountdownUI() {
+      const nowUK = getUKNow();
       const phase = getDraftPhaseFromStart(nowUK, draftAuctionStartTimeUK);
       const timeline = getDraftTimelineFromStart(draftAuctionStartTimeUK);
-      let extra = "";
-      if (timeline && phase === "random_active") {
-        const ms = timeline.publicEnd - nowUK;
-        extra = ` — latest possible end ${formatMs(ms)}`;
+      const el = document.getElementById("timeRemaining");
+      const sub = document.getElementById("timeRemainingSub");
+
+      if (phase === "ended") {
+        el.textContent = draftPhaseLabel(phase);
+        if (sub) sub.textContent = "";
+        return;
       }
-      return draftPhaseLabel(phase) + extra;
+
+      const target = draftCountdownTarget(phase, timeline);
+      const ms = target ? target.getTime() - nowUK.getTime() : 0;
+      const label = draftCountdownLabel(phase);
+      const { duration, subline } = formatLiveCountdownLines(label, ms, target);
+      el.textContent = duration;
+      if (sub) {
+        sub.textContent =
+          subline || (target ? formatTargetTimesSubline(target) : "");
+      }
+    }
+
+    function startDraftPlayerCountdown() {
+      if (draftCountdownInterval) clearInterval(draftCountdownInterval);
+      updateDraftCountdownUI();
+      draftCountdownInterval = setInterval(updateDraftCountdownUI, 1000);
     }
 
     /* ============================================================
@@ -251,8 +306,7 @@
         renderHistory(bids);
       }
 
-      /* --- Time Remaining --- */
-      document.getElementById("timeRemaining").textContent = draftStatusText(nowUK);
+      startDraftPlayerCountdown();
 
       /* --- Credits --- */
       const { credits } = await getDraftCredits(buyerShortName, draftAuctionStartTimeUK);
