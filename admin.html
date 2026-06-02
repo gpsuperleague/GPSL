@@ -418,34 +418,23 @@
       status.textContent = "Resetting draft auction…";
       status.style.color = "#ffcc00";
 
-      try {
-        await supabase
-          .from("Player_Transfer_Listings")
-          .delete()
-          .eq("listing_type", "draft");
+      const { error } = await supabase.rpc("admin_reset_draft_auction");
 
-        await supabase
-          .from("Player_Transfer_Bids")
-          .delete()
-          .or("is_direct.eq.true,is_first_draft_bid.eq.true,is_draft_join.eq.true");
-
-        await supabase
-          .from("global_settings")
-          .update({
-            draft_auction_enabled: false,
-            draft_random_finish_time: null,
-            draft_auction_start_time: null
-          })
-          .eq("id", 1);
-
-        status.textContent = "Draft auction has been fully reset.";
-        status.style.color = "lime";
-
-      } catch (err) {
-        console.error(err);
-        status.textContent = "Error resetting draft auction.";
+      if (error) {
+        console.error("Reset draft error:", error);
+        status.textContent =
+          "❌ Reset failed: " +
+          (error.message || "Unknown error") +
+          ". If this mentions the function, run supabase/sql/admin_reset_draft_auction.sql in Supabase SQL Editor.";
         status.style.color = "red";
+        return;
       }
+
+      status.textContent = "✅ Draft auction has been fully reset.";
+      status.style.color = "lime";
+
+      await loadGlobalSettings();
+      await loadSettings();
     };
 
     /* ============================================================

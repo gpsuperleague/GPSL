@@ -10,7 +10,8 @@ import {
   makeUKDate,
   isValidDate,
   getDraftWindowTimes,
-  getDraftCutoff
+  getDraftCutoff,
+  syncDraftListingHighBid,
 } from "./draft_engine.js";
 
 let draftAuctionStartTime = null;
@@ -698,9 +699,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const { data: existing, error: existingErr } = await supabase
       .from("Player_Transfer_Listings")
       .select("id, player_id, listing_type, status")
-      .eq("player_id", konamiId)
+      .eq("player_id", String(konamiId))
       .eq("listing_type", "draft")
-      .eq("status", "active")
+      .eq("status", "Active")
       .maybeSingle();
 
     console.log("ensureDraftListingForPlayer existing =", existing, "error =", existingErr);
@@ -719,15 +720,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const { data: listing, error } = await supabase
       .from("Player_Transfer_Listings")
       .insert({
-        player_id: konamiId,
+        player_id: String(konamiId),
         seller_club_id: null,
         reserve_price: player.market_value || 0,
         listing_type: "draft",
         market_value: player.market_value || 0,
-        status: "active",
+        status: "Active",
         start_time: start.toISOString(),
         end_time: end.toISOString(),
-        created_at: new Date().toISOString()
+        initial_end_time: end.toISOString(),
+        created_at: new Date().toISOString(),
       })
       .select("*")
       .single();
@@ -875,6 +877,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!bidResult.ok) return bidResult;
 
+    await syncDraftListingHighBid(supabase, listingId, player.Konami_ID);
+
     console.log("submitDraftBid END OK");
     return { ok: true };
   }
@@ -884,7 +888,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .from("Player_Transfer_Listings")
       .select("player_id")
       .eq("listing_type", "draft")
-      .eq("status", "active");
+      .eq("status", "Active");
 
     if (error) {
       console.error("Failed to load active draft listings", error);

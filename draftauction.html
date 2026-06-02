@@ -323,7 +323,7 @@
         .from("Player_Transfer_Listings")
         .select("id, player_id, reserve_price, status")
         .eq("listing_type", "draft")
-        .eq("status", "active");
+        .eq("status", "Active");
 
       if (!listings || !listings.length) {
         tbody.innerHTML = `<tr><td colspan="8">No active draft auctions.</td></tr>`;

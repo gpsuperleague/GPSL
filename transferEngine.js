@@ -1,5 +1,8 @@
 /* ============================================================
-   MODULE: Transfer Engine
+   MODULE: Transfer Engine (CONTRACTED PLAYERS ONLY)
+   - Listed auctions + direct offers that become listings
+   - Free agents use draft auction (listing_type draft), not this file
+   Production logic lives in Supabase SQL: transferengine_run()
    ============================================================ */
 
 const transferEngine = {};

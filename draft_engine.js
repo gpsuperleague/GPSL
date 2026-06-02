@@ -234,3 +234,45 @@ export async function canClubBidOnPlayerDraft({
   const credits = await getDraftCreditsCount(buyerShortName, draftRandomFinishTime);
   return credits > 0;
 }
+
+/* ============================================================
+   MODULE G: Listing sync (for SQL transfer engine)
+   ============================================================ */
+
+/** Active draft listing id for a free agent, if any */
+export async function getActiveDraftListingId(supabase, konamiId) {
+  const id = String(konamiId);
+  const { data } = await supabase
+    .from("Player_Transfer_Listings")
+    .select("id")
+    .eq("listing_type", "draft")
+    .eq("status", "Active")
+    .eq("player_id", id)
+    .maybeSingle();
+
+  return data?.id ?? null;
+}
+
+/** Mirror highest direct draft bid onto the listing row for transferengine_* SQL */
+export async function syncDraftListingHighBid(supabase, listingId, konamiId) {
+  if (!listingId) return;
+
+  const { data: top, error } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("bid_amount, bidder_club_id")
+    .eq("direct_bid_id", konamiId)
+    .eq("is_direct", true)
+    .order("bid_amount", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !top) return;
+
+  await supabase
+    .from("Player_Transfer_Listings")
+    .update({
+      current_highest_bid: top.bid_amount,
+      current_highest_bidder: top.bidder_club_id,
+    })
+    .eq("id", listingId);
+}
