@@ -211,7 +211,7 @@ async function extendListing(listingId, shortName) {
 async function expireListing(listingId, playerId, shortName) {
   await supabase
     .from("Player_Transfer_Listings")
-    .update({ status: "expired" })
+    .update({ status: "Closed", transfer_completed: false })
     .eq("id", listingId);
 
   // If you track a "listed" flag on Players, update it here, e.g.:

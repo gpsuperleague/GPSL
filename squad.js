@@ -109,17 +109,19 @@ function applyTransferWindowRules() {
 
 // ⭐ Always fetch ACTIVE listings live from Supabase
 async function getActiveListings() {
+  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
     .select("player_id")
-    .eq("status", "Active");
+    .eq("status", "Active")
+    .gt("end_time", now);
 
   if (error) {
     console.error("Error loading active listings:", error);
     return [];
   }
 
-  return data.map(x => x.player_id);
+  return data.map((x) => String(x.player_id));
 }
 
 // LOAD SQUAD (now includes fresh listing state)
@@ -164,7 +166,7 @@ function renderSquad(players, activeListings) {
       .sort((a, b) => b.market_value - a.market_value);
 
     groupPlayers.forEach(p => {
-      const isListed = activeListings.includes(p.Konami_ID);
+      const isListed = activeListings.includes(String(p.Konami_ID));
 
       const status = isListed
         ? `<span class="status-pill status-listed">Listed</span>`
@@ -334,13 +336,25 @@ async function validateAndCreateListing() {
 
   if (!validateReserveInput()) return;
 
+  const playerId = String(selectedPlayerForListing.Konami_ID);
   const now = new Date().toISOString();
   const endTime = new Date(Date.now() + 86400000).toISOString();
+
+  // Close any stale listings for this player (expired engine not run yet, re-list, etc.)
+  await supabase
+    .from("Player_Transfer_Listings")
+    .update({
+      status: "Closed",
+      transfer_completed: false,
+    })
+    .eq("player_id", playerId)
+    .eq("seller_club_id", currentUserShort)
+    .in("status", ["Active", "expired"]);
 
   const { error } = await supabase
     .from("Player_Transfer_Listings")
     .insert({
-      player_id: selectedPlayerForListing.Konami_ID,
+      player_id: playerId,
       seller_club_id: currentUserShort,
       reserve_price: reserve,
       market_value: mv,

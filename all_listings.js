@@ -7,8 +7,10 @@ import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 const supabase = window.supabase;
 
 let currentUserShort = null;
-let allListings = [];
+let openListings = [];
+let reviewListings = [];
 let selectedListing = null;
+let renderGeneration = 0;
 
 // Load club map immediately
 await loadClubsMap();
@@ -87,19 +89,54 @@ async function loadShortNameFromSupabase(userId) {
 // MODULE B: LOAD LISTINGS
 // ======================================================
 async function loadListings() {
-const { data, error } = await supabase
-  .from("Player_Transfer_Listings")
-  .select("*")
-  .neq("listing_type", "draft")   // ⭐ EXCLUDE DRAFT AUCTIONS
-  .order("end_time", { ascending: true });
+  const nowIso = new Date().toISOString();
 
-  if (error) {
-    console.error("Listings error", error);
+  const [openRes, reviewRes] = await Promise.all([
+    supabase
+      .from("Player_Transfer_Listings")
+      .select("*")
+      .neq("listing_type", "draft")
+      .eq("status", "Active")
+      .gt("end_time", nowIso)
+      .order("end_time", { ascending: true }),
+    supabase
+      .from("Player_Transfer_Listings")
+      .select("*")
+      .neq("listing_type", "draft")
+      .in("status", ["Review", "Seller Review"])
+      .order("end_time", { ascending: true }),
+  ]);
+
+  if (openRes.error) {
+    console.error("Open listings error", openRes.error);
+    return;
+  }
+  if (reviewRes.error) {
+    console.error("Review listings error", reviewRes.error);
     return;
   }
 
-  allListings = data || [];
-  renderListings();
+  openListings = dedupeOpenListingsByPlayer(openRes.data || []);
+  reviewListings = reviewRes.data || [];
+  await renderListings();
+}
+
+function dedupeOpenListingsByPlayer(listings) {
+  const byPlayer = new Map();
+  for (const row of listings) {
+    const key = String(row.player_id);
+    const existing = byPlayer.get(key);
+    if (!existing || new Date(row.end_time) > new Date(existing.end_time)) {
+      byPlayer.set(key, row);
+    }
+  }
+  return [...byPlayer.values()].sort(
+    (a, b) => new Date(a.end_time) - new Date(b.end_time)
+  );
+}
+
+function allLoadedListings() {
+  return [...openListings, ...reviewListings];
 }
 
 // ======================================================
@@ -108,48 +145,47 @@ const { data, error } = await supabase
 function wireFilterCheckboxes() {
   document
     .getElementById("filter-active")
-    .addEventListener("change", renderListings);
+    .addEventListener("change", () => {
+      void renderListings();
+    });
   document
     .getElementById("filter-closed")
-    .addEventListener("change", renderListings);
+    .addEventListener("change", () => {
+      void renderListings();
+    });
 }
 
 // ======================================================
 // MODULE D: RENDER LISTINGS TABLE
 // ======================================================
-function renderListings() {
+async function renderListings() {
+  const gen = ++renderGeneration;
   const tbody = document.getElementById("listings-body");
   tbody.innerHTML = "";
 
   const showActive = document.getElementById("filter-active").checked;
   const showClosed = document.getElementById("filter-closed").checked;
 
+  const rows = [];
+  if (showActive) rows.push(...openListings);
+  if (showClosed) rows.push(...reviewListings);
+
+  if (rows.length === 0) {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td colspan="12" style="text-align:center;color:#888;">No listings to show.</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
+  const playerIds = [...new Set(rows.map((l) => String(l.player_id)))];
+  const playerMap = await fetchPlayersMap(playerIds);
+  if (gen !== renderGeneration) return;
+
   const now = new Date();
 
-  const filtered = allListings.filter((l) => {
-    const end = new Date(l.end_time);
-    const isActiveStatus = l.status === "Active";
-    const isActiveTime = end > now;
-    const isActive = isActiveStatus && isActiveTime;
-
-    if (isActive) {
-      return showActive;
-    }
-
-    if (
-      l.status === "Closed" ||
-      l.status === "Review" ||
-      l.status === "Seller Review" ||
-      !isActiveStatus // Active status but time passed → treat as closed bucket
-    ) {
-      return showClosed;
-    }
-
-    return false;
-  });
-
-  filtered.forEach(async (listing) => {
-    const player = await fetchPlayerByID(listing.player_id);
+  for (const listing of rows) {
+    const player = playerMap.get(String(listing.player_id));
 
     const extendedLabel = listing.was_extended
       ? ` <span style="color:#d9534f;font-weight:bold;">(Extended)</span>`
@@ -175,11 +211,9 @@ function renderListings() {
     const imgURL = `https://pesdb.net/assets/img/card/b${listing.player_id}.png`;
 
     const end = new Date(listing.end_time);
-    const isActiveStatus = listing.status === "Active";
-    const isActiveTime = end > now;
-    const isActive = isActiveStatus && isActiveTime;
+    const isOpen = listing.status === "Active" && end > now;
     const canBid =
-      isActive && listing.seller_club_id !== currentUserShort && !!currentUserShort;
+      isOpen && listing.seller_club_id !== currentUserShort && !!currentUserShort;
 
     tr.innerHTML = `
       <td>${fullClubName(listing.seller_club_id)}</td>
@@ -224,19 +258,22 @@ function renderListings() {
         return;
       }
 
-      const p = player || (await fetchPlayerByID(listing.player_id));
+      const p = player || playerMap.get(String(listing.player_id));
       openBidModal(listing, p);
     };
 
     tbody.appendChild(tr);
-  });
+  }
 
-  // Wire Make Offer buttons
+  if (gen !== renderGeneration) return;
+
   tbody.querySelectorAll(".make-offer-btn").forEach((btn) => {
     btn.addEventListener("click", async (e) => {
       e.stopPropagation();
       const id = btn.dataset.id;
-      const listing = allListings.find((l) => String(l.id) === String(id));
+      const listing = allLoadedListings().find(
+        (l) => String(l.id) === String(id)
+      );
       if (!listing) return;
 
       const nowClick = new Date();
@@ -261,6 +298,30 @@ function renderListings() {
 // ======================================================
 // MODULE B: FETCH PLAYER
 // ======================================================
+async function fetchPlayersMap(playerIds) {
+  const map = new Map();
+  if (!playerIds.length) return map;
+
+  const numericIds = playerIds
+    .map((id) => Number(id))
+    .filter((n) => Number.isFinite(n));
+
+  const { data, error } = await supabase
+    .from("Players")
+    .select("*")
+    .in("Konami_ID", numericIds);
+
+  if (error) {
+    console.error("Player batch lookup failed", error);
+    return map;
+  }
+
+  for (const p of data || []) {
+    map.set(String(p.Konami_ID), p);
+  }
+  return map;
+}
+
 async function fetchPlayerByID(kid) {
   const { data, error } = await supabase
     .from("Players")
