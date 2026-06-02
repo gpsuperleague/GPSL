@@ -122,7 +122,9 @@ export function formatMs(ms) {
 export async function loadGlobalSettings() {
   const { data, error } = await supabase
     .from("global_settings_public")
-    .select("draft_auction_enabled, draft_auction_start_time")
+    .select(
+      "draft_auction_enabled, draft_auction_start_time, transfer_window_open"
+    )
     .eq("id", 1)
     .single();
 
@@ -130,6 +132,7 @@ export async function loadGlobalSettings() {
     return {
       draftAuctionEnabled: false,
       draftAuctionStartTime: null,
+      transferWindowOpen: false,
     };
   }
 
@@ -140,6 +143,7 @@ export async function loadGlobalSettings() {
   return {
     draftAuctionEnabled: data.draft_auction_enabled === true,
     draftAuctionStartTime,
+    transferWindowOpen: data.transfer_window_open === true,
     draftTimeline: getDraftTimelineFromStart(draftAuctionStartTime),
   };
 }
