@@ -43,6 +43,16 @@ Creates view **`competition_standings_public`** (MP, W, D, L, GF, GA, GD, Pts, f
 
 Owners see full tables with **zones** on **`progress.html`**.
 
+### Phase 3 — matchday & inbox (after Phase 2)
+
+Run once:
+
+[`competition_phase3_matchday.sql`](./competition_phase3_matchday.sql)
+
+- Owner submits score on **`matchday.html`** → opponent gets inbox message
+- Opponent **Confirm** (updates table) or **Reject** (submitter can resubmit)
+- Dashboard **Inbox** count links to matchday inbox
+
 ## Two separate systems
 
 | Players | How they move | Engine |

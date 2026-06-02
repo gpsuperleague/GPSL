@@ -7,20 +7,82 @@
   <link rel="stylesheet" href="dashboard.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
-    .page-container { width:95%; max-width:900px; margin:40px auto; }
-    h1 { color:#ff9900; }
-    .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:24px; color:#aaa; }
+    .page-container { width:95%; max-width:900px; margin:20px auto 40px; }
+    h1 { color:#ff9900; margin-bottom:8px; }
+    h2 { color:#ff9900; font-size:18px; margin:0 0 12px; }
+    .meta { color:#aaa; margin-bottom:20px; }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:20px; margin-bottom:24px;
+    }
+    label { display:block; color:#ccc; margin-bottom:6px; font-size:13px; }
+    select, input[type="number"] {
+      width:100%; padding:10px; background:#222; border:1px solid #444;
+      color:#ddd; border-radius:6px; box-sizing:border-box; margin-bottom:12px;
+    }
+    .score-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+    .score-row > div { flex:1; min-width:100px; }
+    .vs { color:#ff9900; font-weight:bold; padding-bottom:12px; }
+    .button {
+      padding:10px 18px; background:#ff9900; color:#111; border:none;
+      border-radius:6px; font-weight:bold; cursor:pointer; margin-right:8px;
+    }
+    .button.secondary { background:#444; color:#ddd; }
+    .button.danger { background:#992222; color:#fff; }
+    .button:disabled { opacity:0.5; cursor:not-allowed; }
+    #submitStatus, #inboxStatus { min-height:1.2em; color:#ffcc00; margin-top:8px; }
+    .fixture-preview {
+      background:#222; padding:12px; border-radius:6px; margin-bottom:12px;
+      font-size:14px; color:#ccc;
+    }
+    .inbox-item {
+      border:1px solid #333; border-radius:6px; padding:14px; margin-bottom:12px;
+      background:#222;
+    }
+    .inbox-item.unread { border-color:#ff9900; }
+    .inbox-item h3 { margin:0 0 6px; color:#ff9900; font-size:15px; }
+    .inbox-item p { margin:0 0 10px; color:#ccc; font-size:13px; }
+    .inbox-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .empty { color:#888; }
   </style>
 </head>
 <body>
   <div id="nav"></div>
   <div class="page-container">
     <h1>Match Day</h1>
-    <div class="panel">Result entry and inbox confirmations arrive in <b>Phase 3</b>. Formation / pitch UI in Phase 8.</div>
+    <p id="pageMeta" class="meta">Loading…</p>
+
+    <div class="panel">
+      <h2>Submit result</h2>
+      <p class="meta" style="margin-top:0;">Choose a scheduled fixture and enter the score. Your opponent must confirm in their inbox.</p>
+
+      <label for="fixtureSelect">Upcoming fixture</label>
+      <select id="fixtureSelect"></select>
+
+      <div id="fixturePreview" class="fixture-preview">Select a fixture.</div>
+
+      <div class="score-row">
+        <div>
+          <label id="homeLabel">Home</label>
+          <input type="number" id="homeGoals" min="0" max="99" value="0">
+        </div>
+        <div class="vs">–</div>
+        <div>
+          <label id="awayLabel">Away</label>
+          <input type="number" id="awayGoals" min="0" max="99" value="0">
+        </div>
+      </div>
+
+      <button type="button" id="submitResultBtn" class="button">Submit for confirmation</button>
+      <div id="submitStatus"></div>
+    </div>
+
+    <div class="panel" id="inbox">
+      <h2>Inbox</h2>
+      <div id="inboxList"></div>
+      <div id="inboxStatus"></div>
+    </div>
   </div>
-  <script type="module">
-    import { initGlobal } from "./global.js";
-    document.addEventListener("DOMContentLoaded", () => initGlobal());
-  </script>
+  <script type="module" src="matchday.js"></script>
 </body>
 </html>

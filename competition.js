@@ -250,6 +250,9 @@ export function formatFixtureScore(f) {
   if (f.status === "played" && f.home_goals != null && f.away_goals != null) {
     return `${f.home_goals} – ${f.away_goals}`;
   }
+  if (f.submission_status === "pending" && f.proposed_home_goals != null) {
+    return `${f.proposed_home_goals} – ${f.proposed_away_goals}?`;
+  }
   return "vs";
 }
 
