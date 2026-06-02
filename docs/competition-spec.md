@@ -191,7 +191,10 @@ Formula inputs (to detail in finance spec):
 - Stadium **capacity** (`Clubs.Capacity`)
 - **Current league position**
 - **Last 5 seasons** history
-- (Exact formula TBD in SQL — see Phase 4)
+- **Implemented (Phase 5):** `total_gate = capacity × attendance_rate × £250`, `attendance_rate` capped at 95%:
+  - Base 55% + position boost (1st ≈ 90% fill, 20th ≈ 55%)
+  - +5% boost from avg of last **5** archived final positions (`competition_club_season_archive`)
+  - Neutral history (avg 10) when no archive rows
 
 ---
 
@@ -264,6 +267,7 @@ Formula inputs (to detail in finance spec):
 - **Phase 2 standings:** `competition_phase2_standings.sql` + `progress.html` (zones, form).
 - **Phase 3 matchday:** `competition_phase3_matchday.sql` + `matchday.html` (submit / confirm / reject).
 - **Phase 4 player stats:** `competition_phase4_player_stats.sql` + `matchday.html` (squad G/A/rating/POTM on submit) + `league_stats.html` + squad season columns.
-- Gates, cups: **later phases**.
+- **Phase 5 finances:** `competition_phase5_finances.sql` + `finances.html` + `stadium.html` (gates on confirm; cup split ready).
+- Cups (brackets): **Phase 6**.
 - `rollover_season` RPC: exists in Supabase for **player/transfer** rollover; separate from competition season activate.
-- `Clubs.Stadium`, `Clubs.Capacity`: exist; gate logic **not** implemented.
+- `Clubs.Stadium`, `Clubs.Capacity`: used in gate formula.

@@ -257,6 +257,14 @@
         <div id="compFixtureStatus" style="color:#ffcc00;margin-top:10px;"></div>
       </div>
 
+      <!-- GATE RECEIPTS (Phase 5) -->
+      <div class="card">
+        <h2>Gate receipts</h2>
+        <p class="note">Run <code>competition_phase5_finances.sql</code>. Settles gates for played fixtures missing ledger rows (current season). New confirms do this automatically.</p>
+        <button id="compBackfillGatesBtn" class="button">Backfill gate receipts</button>
+        <div id="compGateStatus" style="color:#ffcc00;margin-top:10px;"></div>
+      </div>
+
       <!-- TRANSFER MANAGEMENT -->
       <div class="card">
         <h2>Transfer Management</h2>
@@ -405,6 +413,20 @@
           When you add an owner, they automatically receive a password‑setup email.
           The temporary password is only required by Supabase and is never used.
         </p>
+
+        <hr style="border-color:#333; margin:20px 0;">
+
+        <h3 style="color:#ff9900; margin:0 0 10px; font-size:16px;">Link existing login to club</h3>
+        <p class="note" style="margin-top:0;">
+          For test accounts or users who already signed up: looks up their user id by email and sets
+          <code>Clubs.owner_id</code>. Run <code>admin_assign_club_owner.sql</code> once in Supabase first.
+        </p>
+        <div class="row">
+          <div><input id="linkOwnerEmail" placeholder="Existing owner email"></div>
+          <div><input id="linkOwnerClub" placeholder="Club ShortName (e.g. HUR)"></div>
+        </div>
+        <button id="linkOwnerBtn" class="button">Link club to account</button>
+        <div id="linkOwnerStatus" style="color:#ffcc00; margin-top:10px;"></div>
 
         <hr style="border-color:#333; margin:20px 0;">
 
@@ -858,6 +880,37 @@
     };
 
     /* ============================================================
+       LINK EXISTING USER TO CLUB (by email + ShortName)
+       ============================================================ */
+    document.getElementById("linkOwnerBtn").onclick = async () => {
+      const email = document.getElementById("linkOwnerEmail").value.trim();
+      const club = document.getElementById("linkOwnerClub").value.trim();
+      const status = document.getElementById("linkOwnerStatus");
+
+      if (!email || !club) {
+        status.textContent = "Enter email and club ShortName.";
+        return;
+      }
+
+      status.textContent = "Linking…";
+
+      const { data, error } = await supabase.rpc("admin_assign_club_owner", {
+        p_owner_email: email,
+        p_club_short_name: club,
+      });
+
+      if (error) {
+        status.textContent = "❌ " + error.message;
+        return;
+      }
+
+      const uid = data?.user_id ? ` · id ${data.user_id}` : "";
+      status.textContent =
+        `✅ ${data?.club_name || club} (${data?.club_short_name || club}) → ${data?.email || email}${uid}`;
+      await loadOwnerList();
+    };
+
+    /* ============================================================
        UPDATE OWNER EMAIL
        ============================================================ */
     document.getElementById("updateEmailBtn").onclick = async () => {
@@ -918,8 +971,20 @@
       document.getElementById("compDrawBtn").onclick = drawCompetitionAb;
       document.getElementById("compResetDrawBtn").onclick = resetCompetitionDraw;
       document.getElementById("compActivateBtn").onclick = activateCompetitionSeason;
+      document.getElementById("compBackfillGatesBtn").onclick = backfillCompetitionGates;
 
       await refreshCompetitionAdmin();
+    }
+
+    async function backfillCompetitionGates() {
+      const status = document.getElementById("compGateStatus");
+      status.textContent = "Backfilling…";
+
+      const { data, error } = await supabase.rpc("competition_admin_backfill_gates");
+
+      status.textContent = error
+        ? "❌ " + error.message
+        : `✅ Processed ${data ?? 0} played fixture(s) (skips already settled).`;
     }
 
     async function refreshCompetitionAdmin() {

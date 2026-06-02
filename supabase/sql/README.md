@@ -64,6 +64,28 @@ Run once:
 - Leaderboards on **`league_stats.html`** (`competition_player_season_stats_public`)
 - Season **Apps / G / A / Avg** on **`squad.html`**
 
+### Phase 5 — gate receipts & ledger (after Phase 4)
+
+Run once:
+
+[`competition_phase5_finances.sql`](./competition_phase5_finances.sql)
+
+- **League home** gates → **100%** home club; **cup** (when added) → **50% / 50%**
+- Formula: `capacity × fill_rate × £250/seat` — fill from **table position** + **5-season archive** (`competition_club_season_archive`)
+- Credits **`Club_Finances`** + **`competition_finance_ledger`** on result **confirm** (and admin record/backfill)
+- Owners: **`finances.html`** (balance + ledger), **`stadium.html`** (estimate + upcoming home games)
+- Admin: **Backfill gate receipts**; RPC `competition_admin_archive_club_season` for history rows
+
+### Club owner linking (admin)
+
+Run once:
+
+[`admin_assign_club_owner.sql`](./admin_assign_club_owner.sql)
+
+Then in **GPSL Admin → Owner Administration → Link existing login to club**, enter the user’s **email** and club **ShortName** (e.g. `HUR`). The RPC resolves `auth.users.id` and sets `Clubs.owner_id` (no manual UUID).
+
+**Add Owner** (edge function `create-owner`) still creates a **new** auth user and links the club in one step.
+
 ## Two separate systems
 
 | Players | How they move | Engine |

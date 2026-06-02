@@ -7,20 +7,52 @@
   <link rel="stylesheet" href="dashboard.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
-    .page-container { width:95%; max-width:900px; margin:40px auto; }
+    .page-container { width:95%; max-width:900px; margin:20px auto 40px; }
     h1 { color:#ff9900; }
-    .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:24px; color:#aaa; }
+    h2 { color:#ff9900; font-size:18px; margin:0 0 12px; }
+    .meta { color:#aaa; }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:20px; margin-bottom:24px;
+    }
+    dl.breakdown { display:grid; grid-template-columns: 180px 1fr; gap:8px 12px; margin:0; }
+    dl.breakdown dt { color:#aaa; }
+    dl.breakdown dd { margin:0; }
+    dl.breakdown dd.highlight { color:#ff9900; font-weight:bold; font-size:18px; }
+    .note { color:#888; font-size:13px; margin-top:12px; }
+    .fixture-ul { margin:0; padding-left:20px; color:#ccc; }
+    .empty { color:#888; }
+    a { color:#ff9900; }
   </style>
 </head>
 <body>
   <div id="nav"></div>
   <div class="page-container">
-    <h1>Stadium</h1>
-    <div class="panel">Stadium name and capacity are on <a href="club_details.html" style="color:#ff9900;">Club Details</a>. Gate receipts and income context arrive in <b>Phase 5</b>.</div>
+    <h1 id="pageTitle">Stadium</h1>
+    <p id="pageMeta" class="meta"></p>
+
+    <div class="panel">
+      <h2>Venue</h2>
+      <p><b>Name:</b> <span id="stadiumName">—</span></p>
+      <p><b>Capacity:</b> <span id="stadiumCapacity">—</span></p>
+      <p><b>League position:</b> <span id="leaguePos">—</span></p>
+      <p id="historyNote" class="note"></p>
+      <p class="note">Also on <a href="club_details.html">Club Details</a>.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Estimated gate (next home league match)</h2>
+      <div id="gateBreakdown"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Upcoming home fixtures</h2>
+      <div id="homeFixturesList"></div>
+      <p class="note" style="margin-top:12px;">
+        Actual receipts appear on <a href="finances.html">Club Finances</a> after results are confirmed.
+      </p>
+    </div>
   </div>
-  <script type="module">
-    import { initGlobal } from "./global.js";
-    document.addEventListener("DOMContentLoaded", () => initGlobal());
-  </script>
+  <script type="module" src="stadium.js"></script>
 </body>
 </html>

@@ -432,14 +432,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  const { data: club } = await supabase
+  const { data: club, error: clubErr } = await supabase
     .from("Clubs")
     .select("ShortName, Club")
     .eq("owner_id", user.id)
     .maybeSingle();
 
+  if (clubErr) {
+    console.error("Club lookup:", clubErr);
+  }
+
   if (!club?.ShortName) {
-    document.getElementById("pageMeta").textContent = "No club assigned to this account.";
+    document.getElementById("pageMeta").innerHTML =
+      "No club linked to this account. In Supabase → <b>Clubs</b>, set <b>owner_id</b> " +
+      "to this user&apos;s id for the club you are playing as — required to confirm results in Inbox.";
     document.getElementById("submitPanel").style.display = "none";
     return;
   }

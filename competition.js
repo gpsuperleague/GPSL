@@ -461,3 +461,75 @@ export function groupStandingsByDivision(rows) {
   }
   return groups;
 }
+
+export function formatMoney(amount) {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return "₿ —";
+  return `₿ ${n.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`;
+}
+
+export const GATE_ENTRY_LABELS = {
+  gate_league_home: "League gate (home)",
+  gate_cup_share: "Cup gate (50% share)",
+  prize: "Prize money",
+  adjustment: "Adjustment",
+};
+
+export async function loadClubBalance(supabase, clubShortName) {
+  const { data, error } = await supabase
+    .from("Club_Finances")
+    .select("balance, club_name")
+    .eq("club_name", clubShortName)
+    .maybeSingle();
+
+  if (error) {
+    console.error("loadClubBalance:", error);
+    return null;
+  }
+  return data;
+}
+
+export async function loadFinanceLedger(supabase, clubShortName, limit = 50) {
+  let query = supabase
+    .from("competition_finance_ledger_public")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (clubShortName) query = query.eq("club_short_name", clubShortName);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("loadFinanceLedger:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function loadClubSeasonArchive(supabase, clubShortName) {
+  const { data, error } = await supabase
+    .from("competition_club_season_archive_public")
+    .select("*")
+    .eq("club_short_name", clubShortName)
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  if (error) {
+    console.error("loadClubSeasonArchive:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function estimateGateForClub(supabase, clubShortName) {
+  const { data, error } = await supabase.rpc("competition_estimate_gate_for_club", {
+    p_club_short_name: clubShortName,
+  });
+
+  if (error) {
+    console.error("estimateGateForClub:", error);
+    return null;
+  }
+  if (data?.error) return null;
+  return data;
+}
