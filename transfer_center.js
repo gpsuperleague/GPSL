@@ -55,14 +55,37 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function fetchPlayersMap(playerIds) {
   if (!playerIds || playerIds.length === 0) return new Map();
 
-  const { data } = await supabase
+  const numericIds = [
+    ...new Set(
+      playerIds
+        .filter((id) => id != null && String(id).trim() !== "")
+        .map((id) => Number(id))
+        .filter((n) => Number.isFinite(n))
+    ),
+  ];
+
+  if (numericIds.length === 0) return new Map();
+
+  const { data, error } = await supabase
     .from("Players")
     .select("*")
-    .in("Konami_ID", playerIds);
+    .in("Konami_ID", numericIds);
+
+  if (error) {
+    console.error("fetchPlayersMap error:", error);
+    return new Map();
+  }
 
   const map = new Map();
-  data?.forEach((p) => map.set(p.Konami_ID, p));
+  for (const p of data || []) {
+    map.set(String(p.Konami_ID), p);
+  }
   return map;
+}
+
+function playerFromMap(map, id) {
+  if (id == null || String(id).trim() === "") return null;
+  return map.get(String(id)) ?? null;
 }
 
 // Compute end time = max(now+24h, next 19:00 UK)
@@ -152,7 +175,7 @@ async function loadActiveListings(shortName) {
       </tr>
       ${listings
         .map((row) => {
-          const player = players.get(row.player_id);
+          const player = playerFromMap(players, row.player_id);
           const name = player?.Name || "Unknown";
           const reserve = Number(row.reserve_price).toLocaleString("en-GB");
           const endTime = row.end_time ? new Date(row.end_time) : null;
@@ -286,10 +309,13 @@ async function loadActiveBids(shortName) {
 
           if (row.listing_id !== null) {
             const listing = listingMap.get(row.listing_id);
-            const player = playersFromListings.get(listing?.player_id);
+            const player = playerFromMap(
+              playersFromListings,
+              listing?.player_id
+            );
             playerName = player?.Name || "Unknown";
           } else if (row.is_direct && row.direct_bid_id) {
-            const player = directPlayers.get(row.direct_bid_id);
+            const player = playerFromMap(directPlayers, row.direct_bid_id);
             playerName = player?.Name || "Unknown";
             typeLabel = "Direct Bid";
           }
@@ -391,7 +417,9 @@ async function loadSellerReview(shortName) {
     return;
   }
 
-  const directIds = bids.map((b) => b.direct_bid_id);
+  const directIds = bids
+    .map((b) => b.direct_bid_id)
+    .filter((id) => id != null && String(id).trim() !== "");
   const directPlayers = await fetchPlayersMap(directIds);
 
   container.innerHTML = `
@@ -405,8 +433,11 @@ async function loadSellerReview(shortName) {
       </tr>
       ${bids
         .map((row) => {
-          const player = directPlayers.get(row.direct_bid_id);
-          const name = player?.Name || "Unknown";
+          const player = playerFromMap(directPlayers, row.direct_bid_id);
+          const name = player?.Name
+            || (row.direct_bid_id
+              ? "Unknown"
+              : "Unknown (missing player id on bid)");
 
           return `
           <tr>
@@ -475,7 +506,7 @@ async function loadClosedListings(shortName) {
         .map(
           (row) => `
         <tr>
-          <td>${players.get(row.player_id)?.Name || "Unknown"}</td>
+          <td>${playerFromMap(players, row.player_id)?.Name || "Unknown"}</td>
           <td>₿ ${Number(row.final_price || 0).toLocaleString("en-GB")}</td>
           <td>${new Date(row.end_time).toLocaleString()}</td>
         </tr>
@@ -520,7 +551,7 @@ async function loadSeasonSignings(shortName) {
         .map(
           (row) => `
         <tr>
-          <td>${players.get(row.player_id)?.Name || "Unknown"}</td>
+          <td>${playerFromMap(players, row.player_id)?.Name || "Unknown"}</td>
           <td>${row.seller_club_id || "FREE AGENT"}</td>
           <td>₿ ${Number(row.fee).toLocaleString("en-GB")}</td>
           <td>${new Date(row.transfer_time).toLocaleString()}</td>
@@ -566,7 +597,7 @@ async function loadSeasonSales(shortName) {
         .map(
           (row) => `
         <tr>
-          <td>${players.get(row.player_id)?.Name || "Unknown"}</td>
+          <td>${playerFromMap(players, row.player_id)?.Name || "Unknown"}</td>
           <td>${row.buyer_club_id}</td>
           <td>₿ ${Number(row.fee).toLocaleString("en-GB")}</td>
           <td>${new Date(row.transfer_time).toLocaleString()}</td>
