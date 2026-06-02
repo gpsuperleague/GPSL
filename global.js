@@ -59,6 +59,43 @@ export function isValidDate(d) {
   return d instanceof Date && !isNaN(d.getTime());
 }
 
+/**
+ * Standard transfer list end: at least 24h from start, or next 19:00 UK — whichever is later.
+ * Used for squad listings, Transfer Centre list/extend, and accepted direct offers.
+ */
+export function computeStandardListingEndTime(fromInstant = new Date()) {
+  const minEndInstant = new Date(fromInstant.getTime() + 24 * 60 * 60 * 1000);
+
+  const fmt = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+    hour12: false,
+  });
+
+  const parts = fmt.formatToParts(minEndInstant);
+  const map = {};
+  parts.forEach((p) => {
+    if (p.type !== "literal") map[p.type] = Number(p.value);
+  });
+
+  let endDay = map.day;
+  if (
+    map.hour > 19 ||
+    (map.hour === 19 && (map.minute > 0 || map.second > 0))
+  ) {
+    endDay += 1;
+  }
+
+  const next19Uk = makeUKDate(map.year, map.month - 1, endDay, 19, 0, 0);
+
+  return minEndInstant.getTime() > next19Uk.getTime() ? minEndInstant : next19Uk;
+}
+
 // ------------------------------------------------------------
 // PHASE ENGINE — THE HEART OF THE SYSTEM
 // ------------------------------------------------------------

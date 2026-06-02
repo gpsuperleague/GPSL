@@ -7,7 +7,7 @@
 // ============================================================
 
 import { supabase } from "./supabase_client.js";
-import { initGlobal } from "./global.js";
+import { initGlobal, computeStandardListingEndTime } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { getBidPlayerId } from "./direct_offers.js";
 
@@ -87,42 +87,6 @@ async function fetchPlayersMap(playerIds) {
 function playerFromMap(map, id) {
   if (id == null || String(id).trim() === "") return null;
   return map.get(String(id)) ?? null;
-}
-
-// Compute end time = max(now+24h, next 19:00 UK)
-function computeListingEndTime() {
-  const now = new Date();
-  const minEnd = new Date(now.getTime() + 24 * 60 * 60 * 1000); // now + 24h
-
-  const ukString = minEnd.toLocaleString("en-GB", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  });
-
-  const parts = ukString.replace(",", "").split(/[/ :]/);
-  const [day, month, year, hour, minute, second] = parts.map((p) =>
-    parseInt(p, 10)
-  );
-
-  const ukLocal = new Date(year, month - 1, day, hour, minute, second, 0);
-
-  let next19 = new Date(ukLocal);
-  next19.setHours(19, 0, 0, 0);
-  if (ukLocal.getTime() > next19.getTime()) {
-    next19.setDate(next19.getDate() + 1);
-  }
-
-  const next19UTC = new Date(
-    next19.getTime() - next19.getTimezoneOffset() * 60000
-  );
-
-  return minEnd > next19UTC ? minEnd : next19UTC;
 }
 
 // ============================================================
@@ -219,7 +183,7 @@ async function loadActiveListings(shortName) {
 }
 
 async function extendListing(listingId, shortName) {
-  const newEnd = computeListingEndTime();
+  const newEnd = computeStandardListingEndTime();
 
   await supabase
     .from("Player_Transfer_Listings")
@@ -348,7 +312,7 @@ async function acceptDirectBid(bid, shortName) {
   }
 
   const now = new Date();
-  const endTime = computeListingEndTime();
+  const endTime = computeStandardListingEndTime();
 
   const { data: listingInsert, error: listingError } = await supabase
     .from("Player_Transfer_Listings")
@@ -361,6 +325,7 @@ async function acceptDirectBid(bid, shortName) {
       created_at: now.toISOString(),
       start_time: now.toISOString(),
       end_time: endTime.toISOString(),
+      initial_end_time: endTime.toISOString(),
     })
     .select()
     .single();
@@ -641,16 +606,18 @@ function setupListPlayerModal(shortName) {
 
     const playerId = backdrop.dataset.playerId;
     const now = new Date();
-    const endTime = computeListingEndTime();
+    const endTime = computeStandardListingEndTime();
 
     await supabase.from("Player_Transfer_Listings").insert({
       player_id: playerId,
       seller_club_id: shortName,
       reserve_price: reserve,
       status: "Active",
+      listing_type: "standard",
       created_at: now.toISOString(),
       start_time: now.toISOString(),
       end_time: endTime.toISOString(),
+      initial_end_time: endTime.toISOString(),
     });
 
     backdrop.style.display = "none";

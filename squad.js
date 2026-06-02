@@ -1,6 +1,7 @@
 // squad.js — CLEAN, FIXED, MODERN VERSION WITH TRANSFER WINDOW LOGIC
 
 import { fullClubName } from "./clubs_lookup.js";
+import { computeStandardListingEndTime } from "./global.js";
 
 const supabase = window.supabase;
 
@@ -338,7 +339,7 @@ async function validateAndCreateListing() {
 
   const playerId = String(selectedPlayerForListing.Konami_ID);
   const now = new Date().toISOString();
-  const endTime = new Date(Date.now() + 86400000).toISOString();
+  const endTime = computeStandardListingEndTime().toISOString();
 
   // Close any stale listings for this player (expired engine not run yet, re-list, etc.)
   await supabase

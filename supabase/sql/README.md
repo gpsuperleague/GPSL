@@ -60,6 +60,14 @@ After applying, owners must use the view in the app (already wired in `draft_eng
 
 If admin shows the transfer window **open** but GPDB/club pages show **Window Closed** for everyone, re-run this script in the SQL Editor (view was missing `security_invoker = false`).
 
+## Fix active listing end times (24h + 7pm UK)
+
+After changing listing duration in the app, run once to update **existing** active standard/direct rows (e.g. an accepted direct offer still on a flat 24h timer):
+
+[`recalc_standard_listing_end_times.sql`](./recalc_standard_listing_end_times.sql)
+
+Uses each listing’s `start_time` (same anchor as new listings). Never shortens `end_time`; listings already extended by the engine keep their `initial_end_time`.
+
 ## Admin: Reset Draft Auction button
 
 If **Reset Draft Auction** in `admin.html` fails (RLS / permission errors), run once:
