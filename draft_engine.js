@@ -10,6 +10,7 @@ import {
   getDraftPhaseFromStart,
   isDraftAuctionEnded,
 } from "./draft_timeline.js";
+import { getUKWallClockParts, ukLocalToInstant } from "./global.js";
 
 export {
   getDraftTimelineFromStart,
@@ -38,58 +39,17 @@ export function isValidDate(d) {
 }
 
 export function getUKNow() {
-  const now = new Date();
-  const fmt = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-    hour: "numeric",
-    minute: "numeric",
-    second: "numeric",
-    hour12: false
-  });
-
-  const parts = fmt.formatToParts(now);
-  const map = {};
-  parts.forEach(p => {
-    if (p.type && p.value) map[p.type] = p.value;
-  });
-
-  const y = Number(map.year);
-  const m = Number(map.month) - 1;
-  const d = Number(map.day);
-  const hh = Number(map.hour);
-  const mm = Number(map.minute);
-  const ss = Number(map.second);
-
-  if ([y, m, d, hh, mm, ss].some(v => !isFinite(v))) {
-    console.warn("getUKNow: failed to parse parts, falling back to local Date()");
-    return new Date();
-  }
-
-  return makeUKDate(y, m, d, hh, mm, ss);
+  return new Date();
 }
 
 export function getDraftWindowTimes() {
-  const nowUK = getUKNow();
+  const uk = getUKWallClockParts();
+  const noon = ukLocalToInstant(uk.year, uk.month, uk.day, 12, 0, 0);
+  const yest = getUKWallClockParts(new Date(noon.getTime() - 24 * 60 * 60 * 1000));
 
-  const y = nowUK.getFullYear();
-  const m = nowUK.getMonth();
-  const d = nowUK.getDate();
-
-  const todayMidnight = makeUKDate(y, m, d, 0, 0, 0);
-  const yesterdayMidnight = new Date(todayMidnight.getTime() - 24 * 60 * 60 * 1000);
-
-  const sevenPmYesterday = makeUKDate(
-    yesterdayMidnight.getUTCFullYear(),
-    yesterdayMidnight.getUTCMonth(),
-    yesterdayMidnight.getUTCDate(),
-    19, 0, 0
-  );
-
-  const sixPmToday = makeUKDate(y, m, d, 18, 0, 0);
-  const sevenPmToday = makeUKDate(y, m, d, 19, 0, 0);
+  const sevenPmYesterday = ukLocalToInstant(yest.year, yest.month, yest.day, 19, 0, 0);
+  const sixPmToday = ukLocalToInstant(uk.year, uk.month, uk.day, 18, 0, 0);
+  const sevenPmToday = ukLocalToInstant(uk.year, uk.month, uk.day, 19, 0, 0);
 
   return { sevenPmYesterday, sixPmToday, sevenPmToday };
 }
@@ -100,11 +60,8 @@ export function getDraftCutoff(draftAuctionStartTime) {
   );
   if (t) return t.cutoff;
 
-  const nowUK = getUKNow();
-  const y = nowUK.getFullYear();
-  const m = nowUK.getMonth();
-  const d = nowUK.getDate();
-  return makeUKDate(y, m, d + 1, 18, 0, 0);
+  const uk = getUKWallClockParts();
+  return ukLocalToInstant(uk.year, uk.month, uk.day + 1, 18, 0, 0);
 }
 
 export function formatMs(ms) {

@@ -7,7 +7,8 @@ import { supabase, initGlobal } from "./global.js";
 import {
   loadGlobalSettings as loadGlobalSettingsEngine,
   getUKNow,
-  makeUKDate,
+  getUKWallClockParts,
+  ukLocalToInstant,
   isValidDate,
   getDraftWindowTimes,
   getDraftCutoff,
@@ -818,14 +819,10 @@ document.addEventListener("DOMContentLoaded", () => {
      ============================================================ */
 
   function getDraftAuctionTimesForNewListing() {
-    const nowUK = getUKNow();
+    const uk = getUKWallClockParts();
 
-    const y = nowUK.getFullYear();
-    const m = nowUK.getMonth();
-    const d = nowUK.getDate();
-
-    const sevenPmToday = makeUKDate(y, m, d, 19, 0, 0);
-    const baseEnd = makeUKDate(y, m, d + 1, 18, 50, 0);
+    const sevenPmToday = ukLocalToInstant(uk.year, uk.month, uk.day, 19, 0, 0);
+    const baseEnd = ukLocalToInstant(uk.year, uk.month, uk.day + 1, 18, 50, 0);
 
     const extraSeconds = Math.floor(Math.random() * 600);
     const end = new Date(baseEnd.getTime() + extraSeconds * 1000);
