@@ -482,7 +482,20 @@ document.addEventListener("DOMContentLoaded", () => {
     if (col === "market_value") return "Market Value";
     if (col === "Maximum_Reserve_Price") return "Maximum Reserve Price";
     if (col === "Potential") return "Pot.";
+    if (col === "Contracted_Team") return "Contracted Team";
     return col.replace(/_/g, " ");
+  }
+
+  /** Filter panel labels (Contracted Team highlights draft free agents). */
+  function formatFilterLabel(col) {
+    if (col === "Contracted_Team") {
+      return 'Contracted Team <span class="gpdb-draft-filter-tag">(DRAFT)</span>';
+    }
+    return formatHeader(col);
+  }
+
+  function contractedTeamFilterHintHtml() {
+    return `<div class="multi-filter-draft-hint">Select <b>FREE AGENT</b> to open draft bids here</div>`;
   }
 
   function formatCellValue(col, player) {
@@ -1314,23 +1327,31 @@ document.addEventListener("DOMContentLoaded", () => {
     filtersDiv.innerHTML = COLUMNS
       .filter(col => !FILTER_EXCLUDE.includes(col))
       .map(col => {
-        const label = col.replace(/_/g, " ");
+        const labelPlain =
+          col === "Contracted_Team"
+            ? "Contracted Team (DRAFT)"
+            : formatHeader(col);
+        const labelHtml = formatFilterLabel(col);
         if (DROPDOWN_COLUMNS.includes(col)) {
+          const draftHint =
+            col === "Contracted_Team" ? contractedTeamFilterHintHtml() : "";
           return `
             <div class="multi-filter" data-col="${col}">
-              <div class="multi-filter-label">${label}</div>
+              <div class="multi-filter-label">${labelHtml}</div>
+              ${draftHint}
               <div class="multi-filter-control" id="filter-${col}-display">All</div>
               <div class="multi-filter-panel" id="filter-${col}-panel">
-                <input type="text" class="multi-filter-search" autocomplete="off" aria-label="Search ${label}">
+                <input type="text" class="multi-filter-search" autocomplete="off" aria-label="Search ${labelPlain}">
                 <div class="multi-filter-options"></div>
               </div>
             </div>
           `;
         } else {
+          const textLabel = formatHeader(col);
           return `
             <label class="text-filter">
-              ${label}
-              <input type="text" id="filter-${col}" placeholder="Filter ${label} (ignores accents)">
+              ${textLabel}
+              <input type="text" id="filter-${col}" placeholder="Filter ${textLabel} (ignores accents)">
             </label>
           `;
         }
