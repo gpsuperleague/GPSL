@@ -252,7 +252,7 @@ BEGIN
 END;
 $function$;
 
--- Resolve all expiry bids for current season label (before contract year decrement)
+-- Resolve all expiry bids for current season label (admin rollover only — not before)
 CREATE OR REPLACE FUNCTION public.contract_resolve_all_expiry_bids()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -386,7 +386,8 @@ BEGIN
 END;
 $function$;
 
--- Rollover tick: resolve expiry bids → decrement years → release 0-year players
+-- Rollover tick: tick multi-year deals → resolve final-year bids → end unclaimed contracts
+-- Order matters: expiry winners get a fresh 3-season deal and must NOT be decremented same tick.
 CREATE OR REPLACE FUNCTION public.contract_tick_season_rollover()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -396,6 +397,7 @@ AS $function$
 DECLARE
   v_resolve jsonb;
   v_updated int;
+  v_ended   int;
   v_final   int;
   v_released int;
 BEGIN
@@ -403,15 +405,27 @@ BEGIN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
-  v_resolve := public.contract_resolve_all_expiry_bids();
-
+  -- 3→2, 2→1 (not final-year players — they stay at 1 until bid resolution below)
   UPDATE public."Players" p
   SET contract_seasons_remaining = contract_seasons_remaining - 1
   WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
     AND p.contract_seasons_remaining IS NOT NULL
-    AND p.contract_seasons_remaining > 0;
+    AND p.contract_seasons_remaining >= 2;
 
   GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+  -- Final year (1 left): highest hidden wage bid wins → new 3-season contract at bid wage.
+  -- Player stayed at holding club all season; move/renew only applies now (admin rollover).
+  v_resolve := public.contract_resolve_all_expiry_bids();
+
+  -- Standard final-year players with no winning bid → contract ended (0) → release + MV
+  UPDATE public."Players" p
+  SET contract_seasons_remaining = 0
+  WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
+    AND p.contract_seasons_remaining = 1
+    AND public.player_expiry_auction_applies(p."Konami_ID"::text);
+
+  GET DIAGNOSTICS v_ended = ROW_COUNT;
 
   v_released := public.contract_release_zero_year_players();
 
@@ -425,6 +439,7 @@ BEGIN
     'ok', true,
     'expiry_resolved', v_resolve,
     'players_decremented', v_updated,
+    'players_contract_ended_no_bid', v_ended,
     'players_released_zero_years', v_released,
     'players_final_year', v_final
   );

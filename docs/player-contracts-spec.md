@@ -187,7 +187,9 @@ At **1 season left**, **standard** players are **automatically** on the **expiri
 
 If **current owner** wins: player **stays**, wage updates to winning (their) bid, contract **renews** (3 seasons).
 
-If **other owner** wins: player moves at expiry (or immediately? **→ confirm**) with bid wage.
+If **other owner** wins: player moves at **season rollover** (admin **Start New Season**) with bid wage and **3 seasons** — not before.
+
+If **current owner** wins: player **stays** at the same club; new **3-season** contract at winning bid wage from rollover onward.
 
 ---
 
@@ -223,7 +225,7 @@ Contract wage on the player record can differ after renewal / expiry bids; calcu
 | System | Interaction |
 |--------|-------------|
 | **Draft / FA signings** | On assign to club → create **3-season contract**, set initial wage (calculated standard or draft rule?) |
-| **Transfer purchase** | On `transferengine_accept_sale` → new contract for buyer? **→ confirm** remaining years vs fresh 3 |
+| **Transfer purchase** | On assign to club (transfer, draft, expiry win) → **always fresh 3 seasons** |
 | **`rollover_season`** | Decrement `seasons_remaining`; trigger decision window + FA listing; resolve bids at season boundary |
 | **`competition_seasons`** | Display only; contract clock should follow **transfer season** unless spreadsheet says otherwise |
 | **Transfer window** | Listings allowed only if **seasons_remaining ≥ 2**; at **1**, block list/sale and auto-add to expiry market |
@@ -313,12 +315,13 @@ Every signed player (including HG) gets a **3-year deal**. Year 3 is the **last 
 ## Open questions (spreadsheet)
 
 1. Exact **season counter**: `Season_Signed` + rollover count vs `competition_seasons.label`?
-2. **Transfer mid-contract**: new 3-year deal for buyer or inherit years left?
-3. **Tie** on highest wage — current club preference?
+2. ~~Transfer mid-contract~~ — **confirmed:** always **3 seasons** on signing.
+3. **Tie** on highest wage — **implemented:** current holding club wins (then earliest bid).
 4. **When** are bids revealed — never, or after resolution?
-5. **MV refund** — ledger line / tax?
-6. Enforce squad mins on **signing** only, or block **matchday** too?
-7. Expiring list: separate tab vs mixed with FAs?
+5. **Expiry timing** — **confirmed:** player stays at current club during final year; bids resolve at **rollover** only; winner gets **3 seasons** then.
+6. **MV refund** — ledger line / tax?
+7. Enforce squad mins on **signing** only, or block **matchday** too?
+8. Expiring list: separate tab vs mixed with FAs?
 
 ---
 
