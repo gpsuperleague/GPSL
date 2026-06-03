@@ -65,6 +65,10 @@
   <div id="nav"></div>
 
   <div class="container">
+    <p style="margin:0 0 16px;">
+      <a href="draftauction.html" class="button">← Back to Draft Auction</a>
+    </p>
+
     <div class="player-header">
       <div>
         <img id="playerImg" class="player-img" src="" alt="Player">
@@ -583,7 +587,8 @@
         await syncDraftListingHighBid(supabase, listingId, playerId);
       }
 
-      document.getElementById("bidStatus").textContent = "Bid submitted.";
+      document.getElementById("bidStatus").innerHTML =
+        'Bid submitted. <a href="draftauction.html" style="color:#ff9900;font-weight:bold;">Return to Draft Auction</a>';
       await loadPlayerAndBids();
     }
   </script>
