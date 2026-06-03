@@ -256,6 +256,8 @@ function ensureDraftLocalStartEl(countdownEl) {
   localEl.style.fontSize = "12px";
   localEl.style.color = "#ccc";
   localEl.style.marginTop = "4px";
+  localEl.style.whiteSpace = "pre-line";
+  localEl.style.lineHeight = "1.4";
   countdownEl.parentElement.appendChild(localEl);
   return localEl;
 }

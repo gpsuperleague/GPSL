@@ -50,6 +50,12 @@ export function formatTargetTimesSubline(targetInstant) {
   return `${formatInstantUK(targetInstant)}\n${formatInstantLocal(targetInstant)}`;
 }
 
+/** Random window / count-up: when the phase started (UK + viewer local). */
+export function formatStartedTimesSubline(startInstant) {
+  if (!isValidInstant(startInstant)) return "";
+  return `Started ${formatInstantUK(startInstant)}\n${formatInstantLocal(startInstant)}`;
+}
+
 /** HTML: UK and local each on their own line inside .countdown-times */
 export function formatTargetTimesHtml(targetInstant) {
   if (!isValidInstant(targetInstant)) return "";
@@ -121,10 +127,8 @@ export function formatLiveCountdownLines(label, ms, targetInstant, options = {})
   let subline = "";
   if (isValidInstant(targetInstant)) {
     subline = countUp
-      ? `Started ${formatInstantUK(targetInstant)}`
-      : ms > 0
-        ? formatTargetTimesSubline(targetInstant)
-        : formatTargetTimesSubline(targetInstant);
+      ? formatStartedTimesSubline(targetInstant)
+      : formatTargetTimesSubline(targetInstant);
   }
   return { duration, subline };
 }
