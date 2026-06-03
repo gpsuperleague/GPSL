@@ -296,6 +296,48 @@ function allLoadedListings() {
   return [...openListings, ...reviewListings];
 }
 
+/** Listing IDs where the current club has placed at least one bid. */
+async function loadListingIdsWhereUserBid(listingIds, clubShort) {
+  const ids = [...new Set(listingIds.map((id) => String(id)).filter(Boolean))];
+  if (!clubShort || !ids.length) return new Set();
+
+  const { data, error } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("listing_id")
+    .eq("bidder_club_id", clubShort)
+    .in("listing_id", ids);
+
+  if (error) {
+    console.error("loadListingIdsWhereUserBid:", error);
+    return new Set();
+  }
+
+  const out = new Set();
+  for (const row of data || []) {
+    if (row.listing_id != null) out.add(String(row.listing_id));
+  }
+  return out;
+}
+
+function highestClubLabel(listing, userBidListingIds) {
+  if (!listing.current_highest_bidder) {
+    return "- (No bids)";
+  }
+
+  const clubName = fullClubName(listing.current_highest_bidder);
+  if (!currentUserShort) return clubName;
+
+  if (listing.current_highest_bidder === currentUserShort) {
+    return `${clubName} (You're leading)`;
+  }
+
+  if (userBidListingIds.has(String(listing.id))) {
+    return `${clubName} (Outbid)`;
+  }
+
+  return clubName;
+}
+
 // ======================================================
 // MODULE C: FILTER CHECKBOXES
 // ======================================================
@@ -344,7 +386,12 @@ async function renderListings() {
   );
 
   const playerIds = [...new Set(sortedRows.map((l) => String(l.player_id)))];
-  const playerMap = await fetchPlayersMap(playerIds);
+  const listingIds = sortedRows.map((l) => l.id).filter((id) => id != null);
+
+  const [playerMap, userBidListingIds] = await Promise.all([
+    fetchPlayersMap(playerIds),
+    loadListingIdsWhereUserBid(listingIds, currentUserShort),
+  ]);
   if (gen !== renderGeneration) return;
 
   const now = new Date();
@@ -362,16 +409,7 @@ async function renderListings() {
       tr.classList.add("leading-row");
     }
 
-    let highestClubText = "- (No bids)";
-    if (listing.current_highest_bidder) {
-      highestClubText =
-        `${fullClubName(listing.current_highest_bidder)} ` +
-        `${
-          listing.current_highest_bidder === currentUserShort
-            ? "(You’re leading)"
-            : "(Outbid)"
-        }`;
-    }
+    const highestClubText = highestClubLabel(listing, userBidListingIds);
 
     const imgURL = `https://pesdb.net/assets/img/card/b${listing.player_id}.png`;
     const pesdbUrl = pesdbPlayerUrl(listing.player_id);
