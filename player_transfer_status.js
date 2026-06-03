@@ -4,7 +4,6 @@
 
 import {
   loadPendingDirectOfferState,
-  sellerPendingPlayerIds,
   playerHasPendingDirectOffer,
   playerHasActiveListing,
 } from "./direct_offers.js";
@@ -40,11 +39,60 @@ const PILL_CLASS = {
   [TRANSFER_STATUS.NOT_LISTED]: "status-not-listed",
 };
 
+export function buildClubShortLookup(clubsRows) {
+  const map = new Map();
+  for (const c of clubsRows || []) {
+    const short = String(c.ShortName || "").trim();
+    const full = String(c.Club || "").trim();
+    if (!short) continue;
+    map.set(short, short);
+    if (full) map.set(full, short);
+  }
+  return map;
+}
+
+export function normalizeClubShort(raw, state) {
+  const t = String(raw || "").trim();
+  if (!t) return "";
+  return state?.clubShortByKey?.get(t) || t;
+}
+
+function rebuildPendingBySeller(bySeller, clubShortByKey) {
+  const out = new Map();
+  for (const [key, ids] of bySeller || []) {
+    const norm = normalizeClubShort(key, { clubShortByKey });
+    if (!norm) continue;
+    if (!out.has(norm)) out.set(norm, new Set());
+    for (const id of ids) out.get(norm).add(id);
+  }
+  return out;
+}
+
+function playerHasPendingOfferForSeller(state, konamiId, sellerRaw) {
+  const pid = String(konamiId ?? "").trim();
+  if (!pid || !state) return false;
+
+  const sellerNorm = normalizeClubShort(sellerRaw, state);
+  if (sellerNorm) {
+    const pending = state.pendingDirectBySeller?.get(sellerNorm);
+    if (pending?.has(pid)) return true;
+  }
+
+  for (const [key, ids] of state.pendingDirectBySeller || []) {
+    if (normalizeClubShort(key, state) === sellerNorm && ids.has(pid)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 export async function loadTransferStatusState(supabase) {
   const nowIso = new Date().toISOString();
 
-  const [pendingState, activeRes, reviewRes] = await Promise.all([
+  const [pendingState, clubsRes, activeRes, reviewRes] = await Promise.all([
     loadPendingDirectOfferState(supabase),
+    supabase.from("Clubs").select("ShortName, Club"),
     supabase
       .from("Player_Transfer_Listings")
       .select("player_id, listing_type, status, end_time")
@@ -80,16 +128,19 @@ export async function loadTransferStatusState(supabase) {
     console.error("loadTransferStatusState seller review:", reviewRes.error);
   }
 
+  const clubShortByKey = buildClubShortLookup(clubsRes.data);
+  const pendingDirectBySeller = rebuildPendingBySeller(
+    pendingState.bySeller,
+    clubShortByKey
+  );
+
   return {
+    clubShortByKey,
     pendingDirectAll: pendingState.allPlayerIds,
-    pendingDirectBySeller: pendingState.bySeller,
+    pendingDirectBySeller,
     activeListedPlayerIds,
     sellerReviewPlayerIds,
   };
-}
-
-function pendingForSeller(state, sellerShort) {
-  return sellerPendingPlayerIds(state, sellerShort);
 }
 
 /**
@@ -109,11 +160,11 @@ export function resolvePlayerTransferStatus({
   pageClubShort = null,
 }) {
   const pid = String(konamiId ?? "").trim();
-  const sellerShort = String(contractedTeam || "").trim();
-  const viewer = String(viewerClubShort || "").trim();
-  const pageClub = String(pageClubShort || sellerShort || "").trim();
-  const isViewerSeller = viewer && sellerShort && viewer === sellerShort;
-  const isPageClubSquad = pageClub && sellerShort && pageClub === sellerShort;
+  const sellerNorm = normalizeClubShort(contractedTeam, state);
+  const viewerNorm = normalizeClubShort(viewerClubShort, state);
+  const pageClubNorm = normalizeClubShort(pageClubShort || contractedTeam, state);
+  const isViewerSeller =
+    !!viewerNorm && !!sellerNorm && viewerNorm === sellerNorm;
 
   if (playerHasActiveListing(state.activeListedPlayerIds, pid)) {
     return {
@@ -131,8 +182,13 @@ export function resolvePlayerTransferStatus({
     };
   }
 
-  const sellerPending = pendingForSeller(state, sellerShort);
-  if (sellerPending.has(pid)) {
+  const hasPendingForSeller = playerHasPendingOfferForSeller(
+    state,
+    pid,
+    sellerNorm || contractedTeam
+  );
+
+  if (hasPendingForSeller) {
     const label = isViewerSeller
       ? TRANSFER_STATUS_LABELS[TRANSFER_STATUS.DIRECT_OFFER_SELLER]
       : TRANSFER_STATUS_LABELS[TRANSFER_STATUS.OFFER_PENDING];
@@ -144,6 +200,17 @@ export function resolvePlayerTransferStatus({
       pillClass: isViewerSeller
         ? PILL_CLASS[TRANSFER_STATUS.DIRECT_OFFER_SELLER]
         : PILL_CLASS[TRANSFER_STATUS.OFFER_PENDING],
+    };
+  }
+
+  if (
+    isViewerSeller &&
+    playerHasPendingDirectOffer(state.pendingDirectAll, pid)
+  ) {
+    return {
+      code: TRANSFER_STATUS.DIRECT_OFFER_SELLER,
+      label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.DIRECT_OFFER_SELLER],
+      pillClass: PILL_CLASS[TRANSFER_STATUS.DIRECT_OFFER_SELLER],
     };
   }
 
@@ -187,7 +254,10 @@ export function buildGpdbContractedBidCellHtml({
 }) {
   const konamiId = player.Konami_ID;
   const sellerClub = player.Contracted_Team;
-  const isMyClub = viewerClubShort && sellerClub === viewerClubShort;
+  const isMyClub =
+    !!normalizeClubShort(viewerClubShort, state) &&
+    normalizeClubShort(viewerClubShort, state) ===
+      normalizeClubShort(sellerClub, state);
 
   const status = resolvePlayerTransferStatus({
     konamiId,

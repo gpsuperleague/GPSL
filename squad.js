@@ -199,11 +199,8 @@ function applyTransferWindowRules() {
   }
 }
 
-async function ensureTransferStatusState() {
-  if (!transferStatusState) {
-    transferStatusState = await loadTransferStatusState(supabase);
-  }
-  return transferStatusState;
+async function loadFreshTransferStatusState() {
+  return loadTransferStatusState(supabase);
 }
 
 // LOAD SQUAD — render actions ASAP; patch stats/listings without rebuilding dropdowns
@@ -249,7 +246,7 @@ async function loadSquad() {
   }
 
   const [state, seasonStats] = await Promise.all([
-    ensureTransferStatusState(),
+    loadFreshTransferStatusState(),
     loadPlayerSeasonStatsForSquad(supabase, playerIds, currentUserShort),
   ]);
   transferStatusState = state;
@@ -348,7 +345,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
       const statusRow = transferState
         ? resolvePlayerTransferStatus({
             konamiId: p.Konami_ID,
-            contractedTeam: currentUserShort,
+            contractedTeam: p.Contracted_Team || currentUserShort,
             viewerClubShort: currentUserShort,
             state: transferState,
           })
@@ -360,6 +357,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
 
       const tr = document.createElement("tr");
       tr.dataset.konamiId = p.Konami_ID;
+      tr.dataset.contractedTeam = p.Contracted_Team || currentUserShort;
       tr.style.cursor = "pointer";
       const st = statsByPlayer.get(String(p.Konami_ID));
       const avg =
@@ -423,7 +421,8 @@ function patchSquadEnrichment(transferState, statsByPlayer) {
     if (status && transferState) {
       const statusRow = resolvePlayerTransferStatus({
         konamiId: id,
-        contractedTeam: currentUserShort,
+        contractedTeam:
+          row.dataset.contractedTeam || currentUserShort,
         viewerClubShort: currentUserShort,
         state: transferState,
       });
