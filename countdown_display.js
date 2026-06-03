@@ -44,10 +44,19 @@ export function formatInstantLocal(instant) {
   return `${localDateTimeFmt.format(instant)} (your time)`;
 }
 
-/** e.g. "Tue 3 Jun, 18:00 UK · Tue 3 Jun, 13:00 (your time)" */
+/** Plain text: UK line, then local line (for textContent / two-line labels). */
 export function formatTargetTimesSubline(targetInstant) {
   if (!isValidInstant(targetInstant)) return "";
-  return `${formatInstantUK(targetInstant)} · ${formatInstantLocal(targetInstant)}`;
+  return `${formatInstantUK(targetInstant)}\n${formatInstantLocal(targetInstant)}`;
+}
+
+/** HTML: UK and local each on their own line inside .countdown-times */
+export function formatTargetTimesHtml(targetInstant) {
+  if (!isValidInstant(targetInstant)) return "";
+  return (
+    `<span class="countdown-uk">${escapeHtml(formatInstantUK(targetInstant))}</span>` +
+    `<span class="countdown-local">${escapeHtml(formatInstantLocal(targetInstant))}</span>`
+  );
 }
 
 export function getCountdownParts(targetInstant) {
@@ -88,15 +97,20 @@ function escapeHtml(text) {
 }
 
 export function formatTimeRemainingHtml(endTime) {
-  const { duration, subline, expired } = getCountdownParts(new Date(endTime));
+  const end = new Date(endTime);
+  const { duration, expired } = getCountdownParts(end);
   if (!duration) return "";
-  if (expired) {
-    return `<span class="countdown-duration">${escapeHtml(duration)}</span>`;
-  }
-  const times = subline
-    ? `<br><span class="countdown-times">${escapeHtml(subline)}</span>`
+
+  const timesHtml = isValidInstant(end) ? formatTargetTimesHtml(end) : "";
+  const timesBlock = timesHtml
+    ? `<br><span class="countdown-times">${timesHtml}</span>`
     : "";
-  return `<span class="countdown-duration">${escapeHtml(duration)}</span>${times}`;
+
+  if (expired) {
+    return `<span class="countdown-duration">${escapeHtml(duration)}</span>${timesBlock}`;
+  }
+
+  return `<span class="countdown-duration">${escapeHtml(duration)}</span>${timesBlock}`;
 }
 
 /** Two-line timer text for a single DOM node (duration + UK/local). */
