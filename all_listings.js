@@ -178,43 +178,108 @@ function dedupeOpenListingsByPlayer(listings) {
   );
 }
 
+function applyHighBidToListing(listing, bid) {
+  if (!bid) return listing;
+  return {
+    ...listing,
+    current_highest_bid: bid.bid_amount,
+    current_highest_bidder: bid.bidder_club_id,
+  };
+}
+
 /** When listing columns are null (RLS / legacy accept), derive high bid from bid rows. */
 async function hydrateListingHighBids(listings) {
-  const listingIds = listings
-    .filter(
-      (l) =>
-        l.id != null &&
-        (l.current_highest_bid == null || !l.current_highest_bidder)
-    )
-    .map((l) => l.id);
+  let result = listings.map((l) => ({ ...l }));
 
-  if (!listingIds.length) return listings;
+  const needsHydration = result.filter(
+    (l) => l.current_highest_bid == null || !l.current_highest_bidder
+  );
+  if (!needsHydration.length) return result;
 
-  const { data: bids, error } = await supabase
-    .from("Player_Transfer_Bids")
-    .select("listing_id, bid_amount, bidder_club_id")
-    .in("listing_id", listingIds);
+  const listingIds = [
+    ...new Set(
+      needsHydration
+        .filter((l) => l.id != null)
+        .map((l) => String(l.id))
+    ),
+  ];
 
-  if (error || !bids?.length) return listings;
+  if (listingIds.length) {
+    const { data: bids, error } = await supabase
+      .from("Player_Transfer_Bids")
+      .select(
+        "listing_id, player_id, bid_amount, bidder_club_id, status, is_direct"
+      )
+      .in("listing_id", listingIds);
 
-  const bestByListing = new Map();
-  for (const b of bids) {
-    const lid = b.listing_id;
-    const prev = bestByListing.get(lid);
-    if (!prev || Number(b.bid_amount) > Number(prev.bid_amount)) {
-      bestByListing.set(lid, b);
+    if (!error && bids?.length) {
+      const bestByListing = new Map();
+      for (const b of bids) {
+        const lid = String(b.listing_id);
+        const prev = bestByListing.get(lid);
+        if (!prev || Number(b.bid_amount) > Number(prev.bid_amount)) {
+          bestByListing.set(lid, b);
+        }
+      }
+
+      result = result.map((l) => {
+        if (l.current_highest_bid != null && l.current_highest_bidder) return l;
+        return applyHighBidToListing(l, bestByListing.get(String(l.id)));
+      });
     }
   }
 
-  return listings.map((l) => {
+  const stillMissing = result.filter(
+    (l) =>
+      (l.current_highest_bid == null || !l.current_highest_bidder) &&
+      l.player_id != null &&
+      String(l.listing_type || "").toLowerCase() === "direct"
+  );
+
+  if (!stillMissing.length) return result;
+
+  const playerIds = [
+    ...new Set(stillMissing.map((l) => String(l.player_id))),
+  ];
+
+  const { data: playerBids, error: playerBidsErr } = await supabase
+    .from("Player_Transfer_Bids")
+    .select(
+      "listing_id, player_id, bid_amount, bidder_club_id, status, is_direct"
+    )
+    .in("player_id", playerIds);
+
+  if (playerBidsErr || !playerBids?.length) return result;
+
+  const byPlayer = new Map();
+  for (const b of playerBids) {
+    const pid = String(b.player_id);
+    if (!byPlayer.has(pid)) byPlayer.set(pid, []);
+    byPlayer.get(pid).push(b);
+  }
+
+  return result.map((l) => {
     if (l.current_highest_bid != null && l.current_highest_bidder) return l;
-    const best = bestByListing.get(l.id);
-    if (!best) return l;
-    return {
-      ...l,
-      current_highest_bid: best.bid_amount,
-      current_highest_bidder: best.bidder_club_id,
-    };
+    if (String(l.listing_type || "").toLowerCase() !== "direct") return l;
+
+    const pid = String(l.player_id);
+    const lid = String(l.id);
+    const reserve = Number(l.reserve_price) || 0;
+    const candidates = (byPlayer.get(pid) || []).filter((b) => {
+      if (String(b.listing_id) === lid) return true;
+      if (b.listing_id != null) return false;
+      if (!b.is_direct) return false;
+      const st = String(b.status || "").toLowerCase();
+      if (st !== "accepted" && st !== "active") return false;
+      return reserve <= 0 || Number(b.bid_amount) === reserve;
+    });
+
+    const best = candidates.reduce((max, b) => {
+      if (!max || Number(b.bid_amount) > Number(max.bid_amount)) return b;
+      return max;
+    }, null);
+
+    return applyHighBidToListing(l, best);
   });
 }
 

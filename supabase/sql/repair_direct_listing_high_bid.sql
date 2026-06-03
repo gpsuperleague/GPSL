@@ -39,4 +39,19 @@ FROM (
 WHERE l.id = x.listing_id
   AND (l.current_highest_bid IS NULL OR l.current_highest_bidder IS NULL);
 
+-- Direct listings with no listing bids: use accepted direct offer on same player
+UPDATE public."Player_Transfer_Listings" l
+SET
+  current_highest_bid = b.bid_amount,
+  current_highest_bidder = b.bidder_club_id
+FROM public."Player_Transfer_Bids" b
+WHERE l.listing_type = 'direct'
+  AND l.status = 'Active'
+  AND (l.current_highest_bid IS NULL OR l.current_highest_bidder IS NULL)
+  AND b.is_direct = true
+  AND lower(coalesce(b.status::text, '')) IN ('accepted', 'active')
+  AND btrim(coalesce(b.player_id, b.direct_bid_id::text, '')) = btrim(l.player_id::text)
+  AND (b.listing_id IS NULL OR b.listing_id = l.id)
+  AND (l.reserve_price IS NULL OR b.bid_amount = l.reserve_price);
+
 NOTIFY pgrst, 'reload schema';

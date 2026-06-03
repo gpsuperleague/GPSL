@@ -1,5 +1,5 @@
--- Keep Player_Transfer_Listings.current_highest_* in sync when bids are inserted
--- (direct-offer accept, transfer market bids). SECURITY DEFINER bypasses RLS.
+-- Keep Player_Transfer_Listings.current_highest_* in sync when bids are inserted.
+-- SECURITY DEFINER bypasses RLS. Re-run if you already applied an older version.
 -- Run once in Supabase SQL Editor.
 
 CREATE OR REPLACE FUNCTION public.trg_sync_listing_high_from_bid()
@@ -27,8 +27,7 @@ BEGIN
       OR NEW.bid_amount > l.current_highest_bid
       OR (
         NEW.bid_amount = l.current_highest_bid
-        AND (l.current_highest_bidder IS NULL OR l.current_highest_bidder IS DISTINCT FROM NEW.bidder_club_id)
-        AND NEW.bid_time >= coalesce(l.updated_at, l.created_at, NEW.bid_time)
+        AND l.current_highest_bidder IS DISTINCT FROM NEW.bidder_club_id
       )
     );
 
@@ -43,7 +42,6 @@ CREATE TRIGGER player_transfer_bids_sync_listing_high
   FOR EACH ROW
   EXECUTE FUNCTION public.trg_sync_listing_high_from_bid();
 
--- Optional column used by app (safe if already exists)
 ALTER TABLE public."Player_Transfer_Bids"
   ADD COLUMN IF NOT EXISTS is_opening_bid boolean DEFAULT false;
 

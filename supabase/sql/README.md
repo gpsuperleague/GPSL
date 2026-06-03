@@ -191,9 +191,10 @@ GPDB and `club.html` show **Offer under review** while `Player_Transfer_Bids` ha
 
 After accepting a direct offer, the transfer listing must have **`current_highest_bid`** / **`current_highest_bidder`** set to the accepted offer (Transfer Market reads those columns).
 
-1. Run [`sync_listing_high_from_bid.sql`](./sync_listing_high_from_bid.sql) once — DB trigger keeps listing high bid in sync when bids are inserted (fixes RLS / failed opening-bid inserts).
-2. If older listings still show no bids, run [`repair_direct_listing_high_bid.sql`](./repair_direct_listing_high_bid.sql) once.
-3. Deploy latest `transfer_center.js` and `all_listings.js` (accept flow + market hydration fallback).
+1. Run [`sync_listing_high_from_bid.sql`](./sync_listing_high_from_bid.sql) once (re-run if you applied an older version that referenced `updated_at` — that broke bid inserts).
+2. Run [`accept_direct_offer.sql`](./accept_direct_offer.sql) once — seller **Accept** uses this RPC (sets high bid server-side).
+3. If older listings still show no bids, run [`repair_direct_listing_high_bid.sql`](./repair_direct_listing_high_bid.sql) once.
+4. Deploy latest `transfer_center.js` and `all_listings.js` (`?v=7` on the market page).
 
 Older installs: [`direct_offer_guard.sql`](./direct_offer_guard.sql) is superseded by the script above.
 

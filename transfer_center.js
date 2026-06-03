@@ -469,78 +469,38 @@ async function acceptDirectBid(bid, shortName) {
     return;
   }
 
-  const players = await fetchPlayersMap([playerId]);
-  const player = playerFromMap(players, playerId);
-  const marketValue = Number(player?.market_value) || Number(bid.bid_amount) || 0;
-  const bidAmount = Number(bid.bid_amount);
-  const bidderShort = String(bid.bidder_club_id || "").trim();
-
-  const now = new Date();
   const endTime = computeStandardListingEndTime();
 
-  const { data: listingInsert, error: listingError } = await supabase
-    .from("Player_Transfer_Listings")
-    .insert({
-      player_id: playerId,
-      seller_club_id: shortName,
-      reserve_price: bidAmount,
-      market_value: marketValue,
-      status: "Active",
-      listing_type: "direct",
-      created_at: now.toISOString(),
-      start_time: now.toISOString(),
-      end_time: endTime.toISOString(),
-      initial_end_time: endTime.toISOString(),
-      current_highest_bid: bidAmount,
-      current_highest_bidder: bidderShort,
-    })
-    .select()
-    .single();
+  const { data: rpcData, error: rpcError } = await supabase.rpc(
+    "accept_direct_offer",
+    {
+      p_bid_id: bid.bid_id,
+      p_end_time: endTime.toISOString(),
+    }
+  );
 
-  if (listingError) {
-    console.error("Error creating listing from direct bid:", listingError);
-    alert("Could not create transfer listing. Check the console for details.");
+  if (rpcError) {
+    const msg = String(rpcError.message || "");
+    console.error("accept_direct_offer RPC failed:", rpcError);
+
+    if (
+      msg.includes("accept_direct_offer") &&
+      (msg.includes("Could not find") || msg.includes("schema cache"))
+    ) {
+      alert(
+        "Server function missing. In Supabase SQL Editor, run in order:\n" +
+          "1) supabase/sql/sync_listing_high_from_bid.sql\n" +
+          "2) supabase/sql/accept_direct_offer.sql\n" +
+          "Then try Accept again."
+      );
+      return;
+    }
+
+    alert(msg || "Could not accept direct offer.");
     return;
   }
 
-  const newListingId = listingInsert.id;
-
-  const { error: openingBidError } = await supabase
-    .from("Player_Transfer_Bids")
-    .insert({
-      listing_id: newListingId,
-      player_id: playerId,
-      direct_bid_id: null,
-      bidder_club_id: bidderShort,
-      seller_club_id: shortName,
-      bid_amount: bidAmount,
-      bid_time: now.toISOString(),
-      is_direct: false,
-      status: "active",
-    });
-
-  const { error: syncHighError } = await supabase
-    .from("Player_Transfer_Listings")
-    .update({
-      current_highest_bid: bidAmount,
-      current_highest_bidder: bidderShort,
-    })
-    .eq("id", newListingId);
-
-  if (openingBidError) {
-    console.error("Error recording opening bid on listing:", openingBidError);
-    alert(
-      "Listing created but the opening bid could not be saved. " +
-        "Apply supabase/sql/sync_listing_high_from_bid.sql in Supabase, then refresh."
-    );
-  } else if (syncHighError) {
-    console.error("Error syncing highest bid on listing:", syncHighError);
-  }
-
-  await supabase
-    .from("Player_Transfer_Bids")
-    .update({ status: "accepted" })
-    .eq("bid_id", bid.bid_id);
+  console.log("accept_direct_offer OK", rpcData);
 
   loadSellerReview(shortName);
   loadActiveListings(shortName);
