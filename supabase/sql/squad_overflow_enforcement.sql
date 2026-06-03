@@ -26,6 +26,17 @@ AS $$
   SELECT 28;
 $$;
 
+CREATE OR REPLACE FUNCTION public.player_rating_as_numeric(p_rating text)
+RETURNS numeric
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT CASE
+    WHEN p_rating IS NULL OR btrim(p_rating::text) = '' THEN 0::numeric
+    ELSE btrim(p_rating::text)::numeric
+  END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.club_squad_player_count(p_club_short_name text)
 RETURNS int
 LANGUAGE sql
@@ -60,7 +71,7 @@ BEGIN
   WHERE p."Contracted_Team" = v_club
     AND (v_exclude IS NULL OR p."Konami_ID"::text IS DISTINCT FROM v_exclude)
     AND NOT public.player_signed_this_season(p."Season_Signed")
-  ORDER BY coalesce(p."Rating", 0) DESC, p."Name"
+  ORDER BY public.player_rating_as_numeric(p."Rating"::text) DESC, p."Name"
   LIMIT 1;
 
   IF v_pid IS NOT NULL THEN
@@ -73,7 +84,7 @@ BEGIN
   FROM public."Players" p
   WHERE p."Contracted_Team" = v_club
     AND (v_exclude IS NULL OR p."Konami_ID"::text IS DISTINCT FROM v_exclude)
-  ORDER BY coalesce(p."Rating", 0) DESC, p."Name"
+  ORDER BY public.player_rating_as_numeric(p."Rating"::text) DESC, p."Name"
   LIMIT 1;
 
   RETURN v_pid;

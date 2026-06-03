@@ -39,7 +39,7 @@ SELECT
   p.market_value
 FROM public."Players" p
 WHERE p."Contracted_Team" = 'URD'
-ORDER BY coalesce(p."Rating", 0) DESC NULLS LAST, p."Name";
+ORDER BY nullif(btrim(p."Rating"::text), '')::numeric DESC NULLS LAST, p."Name";
 
 -- Inline “who would be released” (not signed this GPSL season) — no RPC required
 WITH cur AS (
@@ -67,7 +67,7 @@ WHERE p."Contracted_Team" = 'URD'
     btrim(coalesce(p."Season_Signed", '')) <> ''
     AND btrim(p."Season_Signed") = cur.season_label
   )
-ORDER BY coalesce(p."Rating", 0) DESC NULLS LAST, p."Name"
+ORDER BY nullif(btrim(p."Rating"::text), '')::numeric DESC NULLS LAST, p."Name"
 LIMIT 1;
 
 -- ── 2) After squad_overflow_enforcement.sql (includes is_gpsl_admin SQL Editor fix) ─
@@ -85,7 +85,7 @@ SELECT public.preview_squad_overflow_release('URD', NULL) AS preview_now;
 SELECT "Konami_ID", "Name", "Rating", market_value
 FROM public."Players"
 WHERE "Contracted_Team" IS NULL OR btrim("Contracted_Team"::text) = ''
-ORDER BY coalesce("Rating", 0) DESC NULLS LAST
+ORDER BY nullif(btrim("Rating"::text), '')::numeric DESC NULLS LAST
 LIMIT 10;
 */
 
