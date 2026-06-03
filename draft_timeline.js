@@ -74,10 +74,10 @@ export function getDraftCountdownTick(nowUK, draftAuctionStartTime) {
     case "random_active":
       return {
         phase,
-        ms: Math.max(0, nowUK.getTime() - timeline.randomStart.getTime()),
-        label: "Random window elapsed",
-        target: timeline.randomStart,
-        countUp: true,
+        ms: Math.max(0, timeline.publicEnd.getTime() - nowUK.getTime()),
+        label: "Random window ends in",
+        target: timeline.publicEnd,
+        countUp: false,
       };
     case "ended":
       return { phase, ms: 0, label: "Draft has ended", target: null, countUp: false };
@@ -117,7 +117,7 @@ export function draftPhaseLabel(phase) {
     case "pre_random":
       return "Cutoff passed — random window opens at 6:50pm UK";
     case "random_active":
-      return "Random window active — timer counts up from 6:50pm UK";
+      return "Random window active (6:50–6:59pm UK; ends by 6:59:59)";
     case "ended":
       return "Draft auction ended";
     default:
