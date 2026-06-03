@@ -33,6 +33,59 @@ export function isDraftAuctionEnded(nowUK, draftAuctionStartTime) {
   return getDraftPhaseFromStart(nowUK, draftAuctionStartTime) === "ended";
 }
 
+/** Shared countdown tick for dashboard / GPDB / draft auction pages. */
+export function getDraftCountdownTick(nowUK, draftAuctionStartTime) {
+  const timeline = getDraftTimelineFromStart(
+    isValidDate(draftAuctionStartTime)
+      ? new Date(draftAuctionStartTime)
+      : null
+  );
+  const phase = getDraftPhaseFromStart(nowUK, draftAuctionStartTime);
+
+  if (!timeline) {
+    return { phase, ms: 0, label: "Draft disabled", target: null, countUp: false };
+  }
+
+  switch (phase) {
+    case "before_start":
+      return {
+        phase,
+        ms: Math.max(0, timeline.start.getTime() - nowUK.getTime()),
+        label: "Draft starts in",
+        target: timeline.start,
+        countUp: false,
+      };
+    case "live_until_cutoff":
+      return {
+        phase,
+        ms: Math.max(0, timeline.cutoff.getTime() - nowUK.getTime()),
+        label: "Auction cutoff in",
+        target: timeline.cutoff,
+        countUp: false,
+      };
+    case "pre_random":
+      return {
+        phase,
+        ms: Math.max(0, timeline.randomStart.getTime() - nowUK.getTime()),
+        label: "Random window begins in",
+        target: timeline.randomStart,
+        countUp: false,
+      };
+    case "random_active":
+      return {
+        phase,
+        ms: Math.max(0, nowUK.getTime() - timeline.randomStart.getTime()),
+        label: "Random window elapsed",
+        target: timeline.randomStart,
+        countUp: true,
+      };
+    case "ended":
+      return { phase, ms: 0, label: "Draft has ended", target: null, countUp: false };
+    default:
+      return { phase, ms: 0, label: "Draft disabled", target: null, countUp: false };
+  }
+}
+
 /** GPDB “Draft Offer” only during Day-1 7pm → Day-2 6pm UK live window. */
 export function isGpdbFreeAgentOfferAllowed(nowUK, draftAuctionStartTime) {
   return (
@@ -64,7 +117,7 @@ export function draftPhaseLabel(phase) {
     case "pre_random":
       return "Cutoff passed — random window opens at 6:50pm UK";
     case "random_active":
-      return "Random window active — exact end time is hidden";
+      return "Random window active — timer counts up from 6:50pm UK";
     case "ended":
       return "Draft auction ended";
     default:

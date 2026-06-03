@@ -114,14 +114,17 @@ export function formatTimeRemainingHtml(endTime) {
 }
 
 /** Two-line timer text for a single DOM node (duration + UK/local). */
-export function formatLiveCountdownLines(label, ms, targetInstant) {
+export function formatLiveCountdownLines(label, ms, targetInstant, options = {}) {
+  const countUp = options.countUp === true;
   const duration =
-    ms > 0 ? `${label}: ${formatDurationMs(ms)}` : label;
-  const subline =
-    ms > 0 && isValidInstant(targetInstant)
-      ? formatTargetTimesSubline(targetInstant)
-      : isValidInstant(targetInstant)
+    countUp || ms > 0 ? `${label}: ${formatDurationMs(ms)}` : label;
+  let subline = "";
+  if (isValidInstant(targetInstant)) {
+    subline = countUp
+      ? `Started ${formatInstantUK(targetInstant)}`
+      : ms > 0
         ? formatTargetTimesSubline(targetInstant)
-        : "";
+        : formatTargetTimesSubline(targetInstant);
+  }
   return { duration, subline };
 }

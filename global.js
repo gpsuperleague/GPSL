@@ -6,6 +6,7 @@ import { supabase } from "./supabase_client.js";
 import {
   getDraftTimelineFromStart,
   getDraftPhaseFromStart,
+  getDraftCountdownTick,
 } from "./draft_timeline.js";
 import {
   formatDurationMs,
@@ -238,42 +239,8 @@ export function startDraftCountdown(onTick) {
   stopDraftCountdown();
 
   const tick = () => {
-    const phase = getDraftPhase();
-    const timeline = getDraftTimelineFromStart(draftStart);
-
-    let ms = 0;
-    let label = "";
-    let target = null;
-
-    switch (phase) {
-      case "before_start":
-        target = timeline?.start ?? null;
-        ms = timeline ? msUntil(timeline.start) : 0;
-        label = "Draft starts in";
-        break;
-      case "live_until_cutoff":
-        target = timeline?.cutoff ?? null;
-        ms = timeline ? msUntil(timeline.cutoff) : 0;
-        label = "Auction cutoff in";
-        break;
-      case "random_active":
-        target = timeline?.publicEnd ?? null;
-        ms = timeline ? msUntil(timeline.publicEnd) : 0;
-        label = "Random window (end time hidden)";
-        break;
-      case "pre_random":
-        target = timeline?.randomStart ?? null;
-        ms = timeline ? msUntil(timeline.randomStart) : 0;
-        label = "Random window begins in";
-        break;
-      case "ended":
-        label = "Draft has ended";
-        break;
-      default:
-        label = "Draft disabled";
-    }
-
-    if (onTick) onTick({ phase, ms, label, target });
+    const tickData = getDraftCountdownTick(getUKNow(), draftStart);
+    if (onTick) onTick(tickData);
   };
 
   tick();
@@ -309,14 +276,16 @@ export function wireDraftCountdownUI() {
 
   if (container) container.style.display = "";
 
-  startDraftCountdown(({ phase, ms, label, target }) => {
+  startDraftCountdown(({ phase, ms, label, target, countUp }) => {
     if (phase === "ended") {
       el.textContent = label;
       if (localEl) localEl.textContent = "";
       return;
     }
 
-    const { duration, subline } = formatLiveCountdownLines(label, ms, target);
+    const { duration, subline } = formatLiveCountdownLines(label, ms, target, {
+      countUp,
+    });
     el.textContent = duration;
     if (localEl) {
       localEl.textContent = subline || (target ? formatTargetTimesSubline(target) : "");

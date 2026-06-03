@@ -153,6 +153,7 @@
       formatLiveCountdownLines,
       formatTargetTimesSubline,
     } from "./countdown_display.js";
+    import { getDraftCountdownTick } from "./draft_timeline.js";
     import {
       loadDraftFavouriteIds,
       toggleDraftFavourite,
@@ -246,58 +247,28 @@
       draftAuctionStartTimeUK = settings.draftAuctionStartTime;
     }
 
-    function draftCountdownTarget(phase, timeline) {
-      if (!timeline) return null;
-      switch (phase) {
-        case "before_start":
-          return timeline.start;
-        case "live_until_cutoff":
-          return timeline.cutoff;
-        case "pre_random":
-          return timeline.randomStart;
-        case "random_active":
-          return timeline.publicEnd;
-        default:
-          return null;
-      }
-    }
-
-    function draftCountdownLabel(phase) {
-      switch (phase) {
-        case "before_start":
-          return "Draft starts in";
-        case "live_until_cutoff":
-          return "Auction cutoff in";
-        case "pre_random":
-          return "Random window begins in";
-        case "random_active":
-          return "Latest possible end in";
-        default:
-          return draftPhaseLabel(phase);
-      }
-    }
-
     function updateDraftCountdownUI() {
       const nowUK = getUKNow();
-      const phase = getDraftPhaseFromStart(nowUK, draftAuctionStartTimeUK);
-      const timeline = getDraftTimelineFromStart(draftAuctionStartTimeUK);
       const el = document.getElementById("timeRemaining");
       const sub = document.getElementById("timeRemainingSub");
+      const tick = getDraftCountdownTick(nowUK, draftAuctionStartTimeUK);
 
-      if (phase === "ended") {
-        el.textContent = draftPhaseLabel(phase);
+      if (tick.phase === "ended") {
+        el.textContent = draftPhaseLabel(tick.phase);
         if (sub) sub.textContent = "";
         return;
       }
 
-      const target = draftCountdownTarget(phase, timeline);
-      const ms = target ? target.getTime() - nowUK.getTime() : 0;
-      const label = draftCountdownLabel(phase);
-      const { duration, subline } = formatLiveCountdownLines(label, ms, target);
+      const { duration, subline } = formatLiveCountdownLines(
+        tick.label,
+        tick.ms,
+        tick.target,
+        { countUp: tick.countUp }
+      );
       el.textContent = duration;
       if (sub) {
         sub.textContent =
-          subline || (target ? formatTargetTimesSubline(target) : "");
+          subline || (tick.target ? formatTargetTimesSubline(tick.target) : "");
       }
     }
 
