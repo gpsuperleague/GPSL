@@ -11,12 +11,24 @@ import {
   playerSquadQualificationBadges,
   squadComplianceRuleRows,
 } from "./squad_rules.js";
+import {
+  loadPlayerValueTables,
+  formatRatingWithPotential,
+} from "./player_economics.js";
 
 window.supabase = supabase;
 
 /** Columns needed for squad table + list modal (avoid select *). */
 const SQUAD_PLAYER_COLUMNS =
+  "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team";
+
+const SQUAD_PLAYER_COLUMNS_LEGACY =
   "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team";
+
+function isMissingEconomicsColumnError(error) {
+  const msg = String(error?.message || "").toLowerCase();
+  return msg.includes("potential") || msg.includes("calc_potential");
+}
 
 // STATE
 let userObj = null;
@@ -34,6 +46,7 @@ let foreignInterestRemaining = MAX_FOREIGN_INTEREST;
 // ENTRY POINT
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
+  await loadPlayerValueTables();
 
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -207,10 +220,17 @@ async function loadSquad() {
       '<tr data-squad-loading><td colspan="13" style="color:#888;padding:16px;">Loading squad…</td></tr>';
   }
 
-  const { data: players, error } = await supabase
+  let { data: players, error } = await supabase
     .from("Players")
     .select(SQUAD_PLAYER_COLUMNS)
     .eq("Contracted_Team", currentUserShort);
+
+  if (error && isMissingEconomicsColumnError(error)) {
+    ({ data: players, error } = await supabase
+      .from("Players")
+      .select(SQUAD_PLAYER_COLUMNS_LEGACY)
+      .eq("Contracted_Team", currentUserShort));
+  }
 
   if (error) {
     console.error("Squad load error", error);
@@ -347,7 +367,7 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
         <td>${p.Name}${qualBadges}</td>
         <td>${p.Nation || "-"}</td>
         <td>${p.Position}</td>
-        <td>${p.Rating ?? "—"}</td>
+        <td>${formatRatingWithPotential(p)}</td>
         <td class="num squad-col-apps">${formatSeasonStat(st, "appearances", "0")}</td>
         <td class="num squad-col-goals">${formatSeasonStat(st, "goals", "0")}</td>
         <td class="num squad-col-assists">${formatSeasonStat(st, "assists", "0")}</td>

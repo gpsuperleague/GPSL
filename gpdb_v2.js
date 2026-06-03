@@ -25,6 +25,10 @@ import {
   playerHasPendingDirectOffer,
   playerHasActiveListing,
 } from "./direct_offers.js";
+import {
+  loadPlayerValueTables,
+  calcPotentialForPlayer,
+} from "./player_economics.js";
 
 let draftAuctionStartTime = null;
 let draftJoinWindowEnd = null;
@@ -101,6 +105,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "Nation",
     "Age",
     "Rating",
+    "Potential",
+    "Calc_Potential",
     "Playstyle",
     "Maximum_Reserve_Price",
     "market_value",
@@ -109,11 +115,40 @@ document.addEventListener("DOMContentLoaded", () => {
     "Konami_ID"
   ];
 
+  /** Shown in table (Calc_Potential is used for compute but displayed as Pot.) */
+  const TABLE_DISPLAY_COLUMNS = [
+    "Name",
+    "Position",
+    "Nation",
+    "Age",
+    "Rating",
+    "Potential",
+    "Playstyle",
+    "Maximum_Reserve_Price",
+    "market_value",
+    "Contracted_Team",
+    "Season_Signed",
+  ];
+
   const FILTER_EXCLUDE = [
     "Maximum_Reserve_Price",
     "market_value",
-    "Konami_ID"
+    "Konami_ID",
+    "Calc_Potential",
   ];
+
+  const ECONOMICS_DB_COLS = ["Potential", "Calc_Potential"];
+  let useEconomicsDbColumns = true;
+
+  function playerSelectList() {
+    if (useEconomicsDbColumns) return COLUMNS.join(",");
+    return COLUMNS.filter((c) => !ECONOMICS_DB_COLS.includes(c)).join(",");
+  }
+
+  function isMissingEconomicsColumnError(error) {
+    const msg = String(error?.message || "").toLowerCase();
+    return msg.includes("potential") || msg.includes("calc_potential");
+  }
 
   const DROPDOWN_COLUMNS = [
     "Nation",
@@ -306,7 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let query = supabase
       .from("Players")
-      .select(COLUMNS.join(","), { count: "exact" });
+      .select(playerSelectList(), { count: "exact" });
 
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
       if (col === "Name") return;
@@ -360,7 +395,12 @@ document.addEventListener("DOMContentLoaded", () => {
       query = query.range(from, to);
     }
 
-    const { data, error, count } = await query;
+    let { data, error, count } = await query;
+
+    if (error && isMissingEconomicsColumnError(error) && useEconomicsDbColumns) {
+      useEconomicsDbColumns = false;
+      return loadPage(page);
+    }
 
     if (error) {
       console.error(error);
@@ -414,7 +454,36 @@ document.addEventListener("DOMContentLoaded", () => {
   function formatHeader(col) {
     if (col === "market_value") return "Market Value";
     if (col === "Maximum_Reserve_Price") return "Maximum Reserve Price";
+    if (col === "Potential") return "Pot.";
     return col.replace(/_/g, " ");
+  }
+
+  function formatCellValue(col, player) {
+    let value = player[col];
+
+    if (col === "Rating") {
+      return player.Rating ?? "—";
+    }
+
+    if (col === "Potential") {
+      const pot = calcPotentialForPlayer(player);
+      return pot != null ? pot : "—";
+    }
+
+    if (col === "market_value" && value != null) {
+      return `<span class="money">₿ ${Number(value).toLocaleString("en-GB")}</span>`;
+    }
+
+    if (col === "Maximum_Reserve_Price" && value != null) {
+      return "₿ " + Number(value).toLocaleString("en-GB");
+    }
+
+    if (col === "Contracted_Team") {
+      if (!value || String(value).trim() === "") return "";
+      return CLUB_NAME_MAP[value] || value;
+    }
+
+    return value ?? "";
   }
 
   /* ============================================================
@@ -434,8 +503,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tableHead.innerHTML = `
       <tr>
         <th></th>
-        ${COLUMNS.filter(col => col !== "Konami_ID")
-          .map(col => {
+        ${TABLE_DISPLAY_COLUMNS.map((col) => {
             let cls = "";
             if (CURRENT_SORT_COLUMN === col) {
               cls = CURRENT_SORT_DIR === "asc" ? "sort-asc" : "sort-desc";
@@ -507,29 +575,9 @@ document.addEventListener("DOMContentLoaded", () => {
                    class="gpdb-thumb"
                    onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'">
             </td>
-            ${COLUMNS.filter(col => col !== "Konami_ID")
-              .map(col => {
-                let value = player[col];
-
-                if (col === "market_value" && value !== null) {
-                  value = `<span class="money">₿ ${Number(value).toLocaleString("en-GB")}</span>`;
-                }
-
-                if (col === "Maximum_Reserve_Price" && value !== null) {
-                  value = "₿ " + Number(value).toLocaleString("en-GB");
-                }
-
-                if (col === "Contracted_Team") {
-                  if (!value || String(value).trim() === "") {
-                    value = "";
-                  } else {
-                    value = CLUB_NAME_MAP[value] || value;
-                  }
-                }
-
-                return `<td>${value}</td>`;
-              })
-              .join("")}
+            ${TABLE_DISPLAY_COLUMNS.map(
+              (col) => `<td>${formatCellValue(col, player)}</td>`
+            ).join("")}
             <td>${bidCell}</td>
           </tr>
         `;
@@ -1409,6 +1457,7 @@ document.addEventListener("DOMContentLoaded", () => {
     draftJoinWindowEnd = timeline?.publicEnd ?? null;
 
     await loadClubNames();
+    await loadPlayerValueTables();
 
     setupControls();
     setupFilters();

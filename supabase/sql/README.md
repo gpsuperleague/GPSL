@@ -118,6 +118,18 @@ Run the **entire** script once (STEP 1 seed + STEP 2 functions):
 - Already sold before the counter existed? Run [`repair_foreign_interest_urd.sql`](./repair_foreign_interest_urd.sql) (syncs from `Transfer_History`; sets **URD** to **2** if no FOREIGN row yet). Edit the backdate timestamp in step 4 if needed.
 - Requires `my_club_shortname()` (`special_auctions.sql`)
 
+## Player economics columns (Potential / Calc_Potential)
+
+Run once (no data import; formulas in `player_value_calcs.js`):
+
+[`players_economics_columns.sql`](./players_economics_columns.sql)
+
+- Adds nullable `Potential`, `Calc_Potential` on `Players`
+- GPDB shows **Pot.** (calc potential); squad shows **Rating (Pot.)** e.g. `85 (95)`
+- Stored `market_value` is unchanged until you run a future bulk update
+
+See [`docs/pesdb-player-values.md`](../../docs/pesdb-player-values.md).
+
 ## Squad composition (home-grown / under-21)
 
 Run once:
