@@ -273,6 +273,8 @@ Design memory for `finances.html` overhaul, ledger line types, and **GPSL Centra
 
 **Phase 1 SQL (run once):** [`central_bank_phase1.sql`](./central_bank_phase1.sql) — `gpsl_bank_account`, `post_club_ledger`, transfer settlement writes ledger lines, admin `backfill_transfer_finance_ledger()` for past deals (ledger only, no balance change).
 
+**Loans (run after phase 1):** [`central_bank_loans.sql`](./central_bank_loans.sql) — `club_loans`, `club_take_loan` / `club_repay_loan`, extended `gpsl_bank_public` (limits + `loans_enabled`). Owners borrow on `finances.html`. EOS interest posting still TBD.
+
 ## Fix active listing end times (24h + 7pm UK)
 
 After changing listing duration in the app, run once to update **existing** active standard/direct rows (e.g. an accepted direct offer still on a flat 24h timer):

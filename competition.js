@@ -689,6 +689,47 @@ export async function loadClubSeasonArchive(supabase, clubShortName) {
   return data || [];
 }
 
+export async function loadClubLoans(supabase) {
+  const { data, error } = await supabase
+    .from("club_loans_public")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("loadClubLoans:", error);
+    return [];
+  }
+  return data || [];
+}
+
+/** @returns {{ loanId: number } | { error: string }} */
+export async function takeClubLoan(supabase, amount) {
+  const { data, error } = await supabase.rpc("club_take_loan", {
+    p_amount: amount,
+  });
+
+  if (error) return { error: error.message || "Loan failed" };
+  return { loanId: data };
+}
+
+/** @returns {{ repaid: number } | { error: string }} */
+export async function repayClubLoan(supabase, amount, loanId = null) {
+  const params = { p_amount: amount };
+  if (loanId != null) params.p_loan_id = loanId;
+
+  const { data, error } = await supabase.rpc("club_repay_loan", params);
+
+  if (error) return { error: error.message || "Repayment failed" };
+  return { repaid: Number(data) };
+}
+
+export function clubLoanHeadroom(bank, outstanding) {
+  if (!bank?.loans_enabled) return 0;
+  const max = Number(bank.loan_max_outstanding_per_club || 0);
+  const out = Number(outstanding || 0);
+  return Math.max(0, max - out);
+}
+
 export async function estimateGateForClub(supabase, clubShortName) {
   const { data, error } = await supabase.rpc("competition_estimate_gate_for_club", {
     p_club_short_name: clubShortName,

@@ -181,10 +181,12 @@ With: `post_club_ledger(p_club, p_entry_type, p_amount, p_description, p_metadat
 - **End of season:** `eos_debt_interest` — charge on **outstanding principal × rate** (and/or unpaid accrued).
 - Posting runs in **season rollover** job (same window as contract tick / wage bill).
 
-### 3.4 UI (later)
+### 3.4 UI (live)
 
-- `finances.html`: **Loans** panel — outstanding principal, rate, next payment, history.
-- Admin: approve loan, set rate, write off, restructure.
+- `finances.html` — **Take a loan** / **Repay** (RPC `club_take_loan`, `club_repay_loan`); active loans table; headroom from `gpsl_bank_public`.
+- Defaults: min ₿1M draw, max ₿50M per draw, ₿100M outstanding per club, rate from `policy_interest_rate_pct`.
+- **EOS interest** on outstanding principal — not automated yet.
+- Admin: set `loans_enabled`, limits, and rate on `gpsl_bank_account` (SQL for now).
 
 ---
 
@@ -219,7 +221,7 @@ Implemented in `finances.html` + `finance_ui.js`:
 | Transfers | Balance only | `transfer_sale` / `transfer_purchase` rows |
 | Wages | Calculated on squad, not billed | `wage_squad` season charge |
 | Infra / tax / subsidies | — | Bank-posted types |
-| Loans | — | `club_loans` + interest types |
+| Loans | `club_take_loan` / `club_repay_loan` | EOS interest job |
 | Owner UI | `finances.html` minimal | Full P&L + loans |
 
 ---
