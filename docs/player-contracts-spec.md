@@ -133,7 +133,9 @@ HG contract protection (≤23): `is_homegrown AND age <= 23` at renewal rollover
 - Compliance check: `check_club_squad_composition(club_short)` (SQL) / `analyseSquadComposition()` (JS).
 - UI: **Squad** page shows counts and warnings (informational until registration enforced in transfers).
 
-**Not yet enforced:** transfer/draft signing may still allow non-compliant squads until hooks added.
+**Squad size (28):** signing is **not blocked** at 28; a **29th** signing is allowed and triggers auto-release of the **highest-rated** player who was **not signed this season** (foreign sale slot if available, else MV + free agent). UI confirms when already at 28.
+
+**Not yet enforced on signing:** minimum **8** home-grown and **5** under-21 (warnings on Squad only).
 
 ---
 

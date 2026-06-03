@@ -171,10 +171,28 @@ transferEngine.acceptSale = async function (listingId) {
 
   console.log("🧩 Updating player club…");
 
-  const { error: playerError } = await supabase.rpc("player_assign_to_club", {
-    p_player_id: String(listing.player_id),
-    p_club_short_name: buyer,
-  });
+  const { confirmSquadOverflowBeforeSigning, alertOverflowReleaseFromAssign } =
+    await import("./squad_rules.js");
+
+  if (!(await confirmSquadOverflowBeforeSigning(supabase, buyer))) {
+    await supabase
+      .from("Club_Finances")
+      .update({ balance: buyerBalance })
+      .eq("club_name", buyer);
+    await supabase
+      .from("Club_Finances")
+      .update({ balance: sellerBalance })
+      .eq("club_name", seller);
+    return;
+  }
+
+  const { data: assignData, error: playerError } = await supabase.rpc(
+    "player_assign_to_club",
+    {
+      p_player_id: String(listing.player_id),
+      p_club_short_name: buyer,
+    }
+  );
 
   if (playerError) {
     console.error("❌ Player update failed:", playerError);
@@ -192,6 +210,8 @@ transferEngine.acceptSale = async function (listingId) {
 
     return;
   }
+
+  alertOverflowReleaseFromAssign(assignData);
 
   console.log("📜 Logging transfer history…");
   const { error: historyError } = await supabase

@@ -35,6 +35,7 @@ import {
   FINAL_YEAR_TRANSFER_MESSAGE,
 } from "./player_season_transfer.js";
 import { isContractFinalYear } from "./player_contracts.js";
+import { confirmSquadOverflowBeforeSigning } from "./squad_rules.js";
 import {
   loadPlayerValueTables,
   calcPotentialForPlayer,
@@ -823,6 +824,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (!sellerClub) {
+      if (!(await confirmSquadOverflowBeforeSigning(supabase, myClub))) {
+        return;
+      }
+
       console.log("FREE AGENT DRAFT PATH: calling submitDraftBid with", {
         player: CURRENT_OFFER_PLAYER,
         offer,
@@ -841,6 +846,10 @@ document.addEventListener("DOMContentLoaded", () => {
       await loadDraftCreditsForOwner();
       alert("Draft bid submitted!");
       loadPage(CURRENT_PAGE);
+      return;
+    }
+
+    if (!(await confirmSquadOverflowBeforeSigning(supabase, myClub))) {
       return;
     }
 

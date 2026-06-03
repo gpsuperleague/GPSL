@@ -3,39 +3,7 @@
 -- Run AFTER player_contracts_phase2.sql
 -- =============================================================================
 
--- Optional wage on assign (expiry auction winners)
-CREATE OR REPLACE FUNCTION public.player_assign_to_club(
-  p_player_id text,
-  p_club_short_name text,
-  p_wage numeric DEFAULT NULL
-)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_pid text := btrim(p_player_id);
-  v_club text := btrim(p_club_short_name);
-  v_season text;
-  v_wage numeric;
-BEGIN
-  IF v_pid = '' OR v_club = '' THEN
-    RAISE EXCEPTION 'player_assign_to_club: player_id and club are required';
-  END IF;
-
-  v_season := public.current_gpsl_season_label();
-  v_wage := coalesce(p_wage, public.calculate_player_wage_for_club(v_pid, v_club));
-
-  UPDATE public."Players"
-  SET
-    "Contracted_Team" = v_club,
-    "Season_Signed" = v_season,
-    contract_seasons_remaining = 3,
-    contract_wage = round(coalesce(v_wage, 0), 0)
-  WHERE "Konami_ID"::text = v_pid;
-END;
-$function$;
+-- player_assign_to_club (3-season sign + squad overflow) lives in squad_overflow_enforcement.sql
 
 -- Standard players in final year (not home-grown ≤23) → contested expiry market
 CREATE OR REPLACE FUNCTION public.player_expiry_auction_applies(p_player_id text)
@@ -446,7 +414,6 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.player_assign_to_club(text, text, numeric) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.player_expiry_auction_applies(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.contract_submit_expiry_wage_bid(text, numeric) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.list_expiring_contract_market() TO authenticated;

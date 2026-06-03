@@ -144,6 +144,14 @@ Run once:
 
 [`squad_composition_rules.sql`](./squad_composition_rules.sql)
 
+**Squad overflow (29th player)** — run after phase 3 + foreign interest:
+
+[`squad_overflow_enforcement.sql`](./squad_overflow_enforcement.sql)
+
+- `player_assign_to_club` returns jsonb; if squad &gt; 28 after sign, releases highest rated (excluding same-season signings).
+- Uses a **foreign club** tracking slot when `foreign_interest_remaining` &gt; 0; otherwise **MV** release.
+- GPDB / transfer engine show a confirm dialog when already at **28** players.
+
 - **Home-grown** = `Players.Nation` matches `Clubs.Nation` — **at least 8** (no cap; more allowed)
 - **Under-21** = age **≤ 21** — **at least 5** (no cap)
 - **Squad** — **max 28** players

@@ -3,6 +3,60 @@
 /** Registered squad size (league rule). */
 export const SQUAD_SIZE = 28;
 
+export const SQUAD_OVERFLOW_CONFIRM_MESSAGE =
+  "You are at max squad size (28 players).\n\n" +
+  "Are you sure?\n\n" +
+  "Going over the 28-player limit will automatically release your highest-rated " +
+  "player who was not signed this season. If you have foreign club interest remaining, " +
+  "that sale will be used; otherwise the player is released for market value.";
+
+/**
+ * Call before any action that will sign a player to this club.
+ * @returns {Promise<boolean>} false if user cancelled
+ */
+export async function confirmSquadOverflowBeforeSigning(supabase, clubShort) {
+  if (!clubShort || !supabase) return true;
+
+  const { data, error } = await supabase.rpc("check_club_squad_composition", {
+    p_club_short_name: clubShort,
+  });
+
+  if (error) {
+    console.warn("check_club_squad_composition:", error);
+    return true;
+  }
+
+  const total = Number(data?.total ?? 0);
+  if (total >= SQUAD_SIZE) {
+    return window.confirm(SQUAD_OVERFLOW_CONFIRM_MESSAGE);
+  }
+  return true;
+}
+
+/** Alert after assign if server auto-released a player (overflow). */
+export function alertOverflowReleaseFromAssign(assignResult) {
+  const rel = assignResult?.overflow_release;
+  if (!rel?.released) return;
+
+  const name = rel.player_name || rel.player_id || "A player";
+  const rating = rel.rating != null ? ` (rating ${rel.rating})` : "";
+  const fee = Number(rel.fee) || 0;
+  const feeStr = `₿ ${fee.toLocaleString("en-GB")}`;
+
+  if (rel.method === "foreign" && rel.foreign_buyer_name) {
+    window.alert(
+      `Squad was over 28 players.\n\n` +
+        `${name}${rating} was sold to ${rel.foreign_buyer_name} (${feeStr}, market value).`
+    );
+    return;
+  }
+
+  window.alert(
+    `Squad was over 28 players.\n\n` +
+      `${name}${rating} was released as a free agent. Your club received ${feeStr} (market value).`
+  );
+}
+
 export const MIN_HOME_GROWN = 8;
 
 /** Players aged 21 or younger. */
@@ -147,12 +201,14 @@ export function squadComplianceRuleRows(c, clubNation) {
       rule: "Squad size",
       whoCounts: "All players on your contract list below",
       requirement: `No more than ${SQUAD_SIZE}`,
-      note: "This is the only maximum",
+      note: "Signing a 29th auto-releases highest rated (not signed this season)",
       count: c.total,
       ok: c.squadSizeOk,
       status: c.squadSizeOk
         ? "Within limit"
-        : `${c.squadOver} over limit — release or sell`,
+        : c.total === SQUAD_SIZE
+          ? "At max — next signing triggers overflow release"
+          : `${c.squadOver} over limit — overflow may apply on next signing`,
     },
   ];
 }

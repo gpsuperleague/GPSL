@@ -67,7 +67,7 @@ BEGIN
 END;
 $function$;
 
--- Assign player to club: current season, fresh 3-year contract, standard wage
+-- Assign player to club (superseded by squad_overflow_enforcement.sql after phase 3)
 CREATE OR REPLACE FUNCTION public.player_assign_to_club(
   p_player_id text,
   p_club_short_name text
