@@ -15,7 +15,7 @@ export function contractYearsLabel(seasonsRemaining) {
   if (!Number.isFinite(n) || seasonsRemaining == null) return "—";
   if (n <= 0) return "Expired";
   if (n === 1) return "Final year";
-  return `${n} yrs`;
+  return `${n} Seasons`;
 }
 
 export function isContractFinalYear(player) {
@@ -57,6 +57,6 @@ export function squadContractActionOptionsHtml(player, clubNation) {
 
   const hg = isHgContractProtected(player, clubNation);
   return `
-            <option value="renew">${hg ? "Renew (same wage, 3 yrs)" : "Renew contract (3 yrs)"}</option>
+            <option value="renew">${hg ? "Renew (same wage, 3 Seasons)" : "Renew contract (3 Seasons)"}</option>
             <option value="expire">Expire — release for MV</option>`;
 }
