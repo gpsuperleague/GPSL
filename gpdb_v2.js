@@ -22,10 +22,12 @@ import {
 import {
   loadPendingDirectOfferState,
   sellerPendingPlayerIds,
-  loadActiveListedPlayerIds,
   playerHasPendingDirectOffer,
-  playerHasActiveListing,
 } from "./direct_offers.js";
+import {
+  loadTransferStatusState,
+  buildGpdbContractedBidCellHtml,
+} from "./player_transfer_status.js";
 import {
   loadPlayerValueTables,
   calcPotentialForPlayer,
@@ -218,7 +220,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let ACTIVE_DRAFT_PLAYERS = new Set();
   let PENDING_DIRECT_OFFER_PLAYERS = new Set();
   let PENDING_DIRECT_OFFERS_FOR_MY_CLUB = new Set();
-  let ACTIVE_LISTED_PLAYERS = new Set();
+  let TRANSFER_STATUS_STATE = null;
   let CURRENT_USER_CLUB_SHORT = null;
 
   let CLUB_NAME_MAP = {};
@@ -349,7 +351,6 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadPage(page = 1) {
     CURRENT_PAGE = page;
     await loadPendingDirectOfferPlayers();
-    await loadActiveListedPlayers();
 
     const from = (page - 1) * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
@@ -535,41 +536,19 @@ document.addEventListener("DOMContentLoaded", () => {
     tableBody.innerHTML = players
       .map(player => {
         const hasClub = !!player.Contracted_Team;
-        const isMyClub =
-          !!CURRENT_USER_CLUB_SHORT &&
-          player.Contracted_Team === CURRENT_USER_CLUB_SHORT;
 
         let bidCell = `<span class="locked-msg">Loading…</span>`;
 
         if (GLOBAL_SETTINGS) {
           if (hasClub) {
-            if (
-              playerHasActiveListing(ACTIVE_LISTED_PLAYERS, player.Konami_ID)
-            ) {
-              bidCell = `<span class="locked-msg">Listed on market</span>`;
-            } else if (
-              isMyClub &&
-              playerHasPendingDirectOffer(
-                PENDING_DIRECT_OFFERS_FOR_MY_CLUB,
-                player.Konami_ID
-              )
-            ) {
-              bidCell = `<span class="locked-msg">Direct offer — review in Transfer Centre</span>`;
-            } else if (
-              !isMyClub &&
-              playerHasPendingDirectOffer(
-                PENDING_DIRECT_OFFER_PLAYERS,
-                player.Konami_ID
-              )
-            ) {
-              bidCell = `<span class="locked-msg">Offer pending</span>`;
-            } else if (!isMyClub && GLOBAL_SETTINGS.transferWindowOpen) {
-              bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
-            } else if (!GLOBAL_SETTINGS.transferWindowOpen) {
-              bidCell = `<span class="locked-msg">Window Closed</span>`;
-            } else {
-              bidCell = `<span class="locked-msg">Your Player</span>`;
-            }
+            bidCell = TRANSFER_STATUS_STATE
+              ? buildGpdbContractedBidCellHtml({
+                  player,
+                  viewerClubShort: CURRENT_USER_CLUB_SHORT,
+                  state: TRANSFER_STATUS_STATE,
+                  transferWindowOpen: GLOBAL_SETTINGS.transferWindowOpen,
+                })
+              : `<span class="locked-msg">Loading…</span>`;
           } else {
             const inDraft = ACTIVE_DRAFT_PLAYERS.has(String(player.Konami_ID).trim());
 
@@ -1060,16 +1039,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadPendingDirectOfferPlayers() {
-    const state = await loadPendingDirectOfferState(supabase);
-    PENDING_DIRECT_OFFER_PLAYERS = state.allPlayerIds;
+    TRANSFER_STATUS_STATE = await loadTransferStatusState(supabase);
+    PENDING_DIRECT_OFFER_PLAYERS = TRANSFER_STATUS_STATE.pendingDirectAll;
     PENDING_DIRECT_OFFERS_FOR_MY_CLUB = sellerPendingPlayerIds(
-      state,
+      TRANSFER_STATUS_STATE,
       CURRENT_USER_CLUB_SHORT
     );
-  }
-
-  async function loadActiveListedPlayers() {
-    ACTIVE_LISTED_PLAYERS = await loadActiveListedPlayerIds(supabase);
   }
 
   async function loadActiveDraftListings() {
@@ -1503,7 +1478,6 @@ document.addEventListener("DOMContentLoaded", () => {
     await loadTotalCount();
     await loadActiveDraftListings();
     await loadPendingDirectOfferPlayers();
-    await loadActiveListedPlayers();
     await loadDraftCreditsForOwner();
     loadPage(1);
   }

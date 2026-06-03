@@ -15,6 +15,11 @@ import {
   loadPlayerValueTables,
   formatRatingWithPotential,
 } from "./player_economics.js";
+import {
+  loadTransferStatusState,
+  resolvePlayerTransferStatus,
+  formatSquadStatusHtml,
+} from "./player_transfer_status.js";
 
 window.supabase = supabase;
 
@@ -39,6 +44,7 @@ let selectedPlayerForListing = null;
 
 // ⭐ NEW: Transfer window state
 let transferWindowOpen = true;
+let transferStatusState = null;
 
 const MAX_FOREIGN_INTEREST = 3;
 let foreignInterestRemaining = MAX_FOREIGN_INTEREST;
@@ -193,21 +199,11 @@ function applyTransferWindowRules() {
   }
 }
 
-// ⭐ Always fetch ACTIVE listings live from Supabase
-async function getActiveListings() {
-  const now = new Date().toISOString();
-  const { data, error } = await supabase
-    .from("Player_Transfer_Listings")
-    .select("player_id")
-    .eq("status", "Active")
-    .gt("end_time", now);
-
-  if (error) {
-    console.error("Error loading active listings:", error);
-    return [];
+async function ensureTransferStatusState() {
+  if (!transferStatusState) {
+    transferStatusState = await loadTransferStatusState(supabase);
   }
-
-  return data.map((x) => String(x.player_id));
+  return transferStatusState;
 }
 
 // LOAD SQUAD — render actions ASAP; patch stats/listings without rebuilding dropdowns
@@ -248,16 +244,17 @@ async function loadSquad() {
   renderSquadCompliance(list);
 
   if (!hadSquad || tbody?.dataset.squadIds !== idsKey) {
-    renderSquad(list, [], new Map());
+    renderSquad(list, null, new Map());
     if (tbody) tbody.dataset.squadIds = idsKey;
   }
 
-  const [activeListings, seasonStats] = await Promise.all([
-    getActiveListings(),
+  const [state, seasonStats] = await Promise.all([
+    ensureTransferStatusState(),
     loadPlayerSeasonStatsForSquad(supabase, playerIds, currentUserShort),
   ]);
+  transferStatusState = state;
 
-  patchSquadEnrichment(activeListings, statsMapByPlayerId(seasonStats));
+  patchSquadEnrichment(transferStatusState, statsMapByPlayerId(seasonStats));
 }
 
 function renderSquadCompliance(players) {
@@ -323,7 +320,7 @@ function formatSeasonStat(row, key, fallback = "—") {
   return v;
 }
 
-function renderSquad(players, activeListings, statsByPlayer = new Map()) {
+function renderSquad(players, transferState, statsByPlayer = new Map()) {
   const tbody = document.getElementById("squad-body");
   if (!tbody) return;
 
@@ -348,8 +345,18 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
       .sort((a, b) => b.market_value - a.market_value);
 
     groupPlayers.forEach(p => {
-      const isListed = activeListings.includes(String(p.Konami_ID));
-      const status = listingStatusHtml(isListed);
+      const statusRow = transferState
+        ? resolvePlayerTransferStatus({
+            konamiId: p.Konami_ID,
+            contractedTeam: currentUserShort,
+            viewerClubShort: currentUserShort,
+            state: transferState,
+          })
+        : {
+            label: "Not listed",
+            pillClass: "status-not-listed",
+          };
+      const status = formatSquadStatusHtml(statusRow);
 
       const tr = document.createElement("tr");
       tr.dataset.konamiId = p.Konami_ID;
@@ -392,18 +399,10 @@ function renderSquad(players, activeListings, statsByPlayer = new Map()) {
   applyForeignSaleOptionState();
 }
 
-function listingStatusHtml(isListed) {
-  return isListed
-    ? `<span class="status-pill status-listed">Listed</span>`
-    : `<span class="status-pill status-not-listed">Not Listed</span>`;
-}
-
 /** Update stats + listing pills only — keeps action dropdowns mounted and clickable. */
-function patchSquadEnrichment(activeListings, statsByPlayer) {
+function patchSquadEnrichment(transferState, statsByPlayer) {
   const tbody = document.getElementById("squad-body");
   if (!tbody) return;
-
-  const listedSet = new Set((activeListings || []).map(String));
 
   tbody.querySelectorAll("tr[data-konami-id]").forEach((row) => {
     const id = String(row.dataset.konamiId);
@@ -421,8 +420,14 @@ function patchSquadEnrichment(activeListings, statsByPlayer) {
       avg.textContent =
         st?.avg_rating != null ? Number(st.avg_rating).toFixed(2) : "—";
     }
-    if (status) {
-      status.innerHTML = listingStatusHtml(listedSet.has(id));
+    if (status && transferState) {
+      const statusRow = resolvePlayerTransferStatus({
+        konamiId: id,
+        contractedTeam: currentUserShort,
+        viewerClubShort: currentUserShort,
+        state: transferState,
+      });
+      status.innerHTML = formatSquadStatusHtml(statusRow);
     }
   });
 }

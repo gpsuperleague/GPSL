@@ -404,10 +404,11 @@
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
     import {
-      loadPendingDirectOfferPlayerIds,
-      playerHasPendingDirectOffer,
-      playerHasActiveListing,
-    } from './direct_offers.js';
+      loadTransferStatusState,
+      resolvePlayerTransferStatus,
+      formatTransferStatusMessageHtml,
+      TRANSFER_STATUS,
+    } from './player_transfer_status.js';
     import { specialAuctionNavLinkHtml } from './global.js';
 
     const supabase = createClient(
@@ -423,8 +424,7 @@
     let currentOfferSellerClub = null;
     let currentPlayerMarketValue = null;
     let draftEnabled = false;
-    let pendingDirectOfferPlayers = new Set();
-    let activeListedPlayerIds = new Set();
+    let transferStatusState = null;
 
     async function loadGlobalSettings() {
       const { data, error } = await supabase
@@ -485,8 +485,7 @@
       await loadTransferWindowStatus();
       await loadBuyerClubShortName(user.id);
       await loadClub();
-      await loadPendingDirectOffers();
-      await loadActiveListedForClub();
+      transferStatusState = await loadTransferStatusState(supabase);
       await loadPlayers();
       setupModalHandlers();
     });
@@ -565,30 +564,40 @@
       "Attackers": ["SS", "LW", "CF", "RW"]
     };
 
-    async function loadPendingDirectOffers() {
-      pendingDirectOfferPlayers =
-        await loadPendingDirectOfferPlayerIds(supabase);
-    }
+    function clubOfferCellHtml(p) {
+      const status = resolvePlayerTransferStatus({
+        konamiId: p.Konami_ID,
+        contractedTeam: p.Contracted_Team,
+        viewerClubShort: buyerShortName,
+        pageClubShort: clubShortName,
+        state: transferStatusState,
+      });
 
-    async function loadActiveListedForClub() {
-      const { data, error } = await supabase
-        .from("Player_Transfer_Listings")
-        .select("player_id, listing_type, status")
-        .eq("seller_club_id", clubShortName)
-        .eq("status", "Active");
+      if (
+        status.code === TRANSFER_STATUS.LISTED ||
+        status.code === TRANSFER_STATUS.DIRECT_OFFER_SELLER ||
+        status.code === TRANSFER_STATUS.OFFER_PENDING ||
+        status.code === TRANSFER_STATUS.SELLER_REVIEW
+      ) {
+        return formatTransferStatusMessageHtml(status, "offer-review-msg");
+      }
 
-      activeListedPlayerIds = new Set();
-      if (error) {
-        console.error("Failed to load club listings:", error);
-        return;
+      if (
+        transferWindowOpen &&
+        buyerShortName &&
+        buyerShortName !== p.Contracted_Team
+      ) {
+        return `<button 
+                          class="offer-btn" 
+                          data-konami-id="${p.Konami_ID}" 
+                          data-name="${p.Name}"
+                          data-seller="${p.Contracted_Team}"
+                        >
+                          Make Offer
+                        </button>`;
       }
-      for (const row of data || []) {
-        const lt = String(row.listing_type || "").toLowerCase();
-        if (lt === "draft") continue;
-        if (row.player_id != null) {
-          activeListedPlayerIds.add(String(row.player_id).trim());
-        }
-      }
+
+      return "";
     }
 
     async function loadPlayers() {
@@ -660,29 +669,7 @@
                     <td>${p.Rating}</td>
                     <td>₿ ${Number(p.market_value).toLocaleString("en-GB")}</td>
                     <td>${p.Playstyle || "-"}</td>
-                    <td>
-                      ${
-                        playerHasActiveListing(activeListedPlayerIds, p.Konami_ID)
-                          ? `<span class="offer-review-msg">Listed on market</span>`
-                          : playerHasPendingDirectOffer(
-                              pendingDirectOfferPlayers,
-                              p.Konami_ID
-                            )
-                          ? `<span class="offer-review-msg">Offer under review</span>`
-                          : transferWindowOpen &&
-                            buyerShortName &&
-                            buyerShortName !== p.Contracted_Team
-                          ? `<button 
-                          class="offer-btn" 
-                          data-konami-id="${p.Konami_ID}" 
-                          data-name="${p.Name}"
-                          data-seller="${p.Contracted_Team}"
-                        >
-                          Make Offer
-                        </button>`
-                          : ``
-                      }
-                    </td>
+                    <td>${clubOfferCellHtml(p)}</td>
                   </tr>
                 `).join("")}
               </tbody>
@@ -863,11 +850,16 @@
         return;
       }
 
+      const offerStatus = resolvePlayerTransferStatus({
+        konamiId: currentOfferKonamiId,
+        contractedTeam: currentOfferSellerClub,
+        viewerClubShort: buyerShortName,
+        pageClubShort: currentOfferSellerClub,
+        state: transferStatusState,
+      });
       if (
-        playerHasPendingDirectOffer(
-          pendingDirectOfferPlayers,
-          currentOfferKonamiId
-        )
+        offerStatus.code === TRANSFER_STATUS.OFFER_PENDING ||
+        offerStatus.code === TRANSFER_STATUS.DIRECT_OFFER_SELLER
       ) {
         alert("An offer is already under review for this player.");
         return;
@@ -899,7 +891,6 @@
         return;
       }
 
-      pendingDirectOfferPlayers.add(String(currentOfferKonamiId).trim());
       alert("Offer submitted to the club's review panel.");
       document.getElementById("offerModal").style.display = "none";
       document.getElementById("offerAmount").value = "";
@@ -907,7 +898,7 @@
       currentOfferKonamiId = null;
       currentOfferSellerClub = null;
       currentPlayerMarketValue = null;
-      await loadPendingDirectOffers();
+      transferStatusState = await loadTransferStatusState(supabase);
       await loadPlayers();
     }
   </script>

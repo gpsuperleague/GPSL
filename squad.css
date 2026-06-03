@@ -290,6 +290,21 @@ body.squad-page .status-not-listed {
   color: #ddd;
 }
 
+body.squad-page .status-seller-review {
+  background: #9b59b6;
+  color: #fff;
+}
+
+body.squad-page .status-direct-offer {
+  background: #3498db;
+  color: #fff;
+}
+
+body.squad-page .status-offer-pending {
+  background: #555;
+  color: #ddd;
+}
+
 /* ==========================================================
    ACTION DROPDOWN
    ========================================================== */

@@ -61,12 +61,14 @@ export async function loadPendingDirectOfferPlayerIds(supabase) {
   return state.allPlayerIds;
 }
 
-/** Players with an active standard (transfer list) listing */
+/** Players with an active standard (transfer list) listing still open */
 export async function loadActiveListedPlayerIds(supabase) {
+  const nowIso = new Date().toISOString();
   const { data, error } = await supabase
     .from("Player_Transfer_Listings")
-    .select("player_id, listing_type, status")
-    .eq("status", "Active");
+    .select("player_id, listing_type, status, end_time")
+    .eq("status", "Active")
+    .gt("end_time", nowIso);
 
   if (error) {
     console.error("Failed to load active listings:", error);
