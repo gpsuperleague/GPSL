@@ -9,7 +9,7 @@
 import { supabase } from "./supabase_client.js";
 import { initGlobal, computeStandardListingEndTime, loadGlobalSettings } from "./global.js";
 import { getUKNow, isDraftAuctionEnded } from "./draft_engine.js";
-import { loadClubsMap, fullClubName, buyerClubLabel } from "./clubs_lookup.js";
+import { loadClubsMap, fullClubName, displayClubName } from "./clubs_lookup.js";
 import { getBidPlayerId, isPendingContractedDirectOffer } from "./direct_offers.js";
 import {
   loadDraftFavouriteIds,
@@ -579,7 +579,7 @@ async function loadSellerReview(shortName) {
           return `
           <tr>
             <td>${name}</td>
-            <td>${row.bidder_club_id}</td>
+            <td>${displayClubName(row.bidder_club_id)}</td>
             <td>₿ ${Number(row.bid_amount).toLocaleString("en-GB")}</td>
             <td>${new Date(row.bid_time).toLocaleString()}</td>
             <td>
@@ -689,7 +689,7 @@ async function loadSeasonSignings(shortName) {
           (row) => `
         <tr>
           <td>${playerFromMap(players, row.player_id)?.Name || "Unknown"}</td>
-          <td>${row.seller_club_id || "FREE AGENT"}</td>
+          <td>${displayClubName(row.seller_club_id)}</td>
           <td>₿ ${Number(row.fee).toLocaleString("en-GB")}</td>
           <td>${new Date(row.transfer_time).toLocaleString()}</td>
         </tr>
@@ -735,7 +735,7 @@ async function loadSeasonSales(shortName) {
           (row) => `
         <tr>
           <td>${playerFromMap(players, row.player_id)?.Name || "Unknown"}</td>
-          <td>${buyerClubLabel(row.buyer_club_id)}</td>
+          <td>${displayClubName(row.buyer_club_id)}</td>
           <td>₿ ${Number(row.fee).toLocaleString("en-GB")}</td>
           <td>${new Date(row.transfer_time).toLocaleString()}</td>
         </tr>

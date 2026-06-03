@@ -37,6 +37,19 @@ export function fullClubName(shortName) {
   return clubsMap.get(shortName) || shortName;
 }
 
+/** UI label: ShortName or legacy full name → Clubs.Club (DB still uses short codes). */
+export function displayClubName(shortOrFull) {
+  const key = String(shortOrFull || "").trim();
+  if (!key) return "Free agent";
+  if (isForeignBuyerClub(key)) return "Foreign club";
+  const fromShort = clubsMap.get(key);
+  if (fromShort) return fromShort;
+  for (const [short, full] of clubsMap.entries()) {
+    if (full === key) return full;
+  }
+  return key;
+}
+
 export function isForeignBuyerClub(shortName) {
   return shortName === FOREIGN_BUYER_SHORT;
 }
