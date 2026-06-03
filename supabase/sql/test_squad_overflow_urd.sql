@@ -70,8 +70,8 @@ WHERE p."Contracted_Team" = 'URD'
 ORDER BY coalesce(p."Rating", 0) DESC NULLS LAST, p."Name"
 LIMIT 1;
 
--- ── 2) After squad_overflow_enforcement.sql is deployed (admin) ───────────
--- SELECT public.preview_squad_overflow_release('URD', NULL) AS preview_now;
+-- ── 2) After squad_overflow_enforcement.sql (includes is_gpsl_admin SQL Editor fix) ─
+SELECT public.preview_squad_overflow_release('URD', NULL) AS preview_now;
 
 -- Fix 29 → 28 without signing anyone new (UNCOMMENT after reviewing preview):
 -- SELECT public.admin_enforce_squad_overflow('URD') AS fix_29_to_28;

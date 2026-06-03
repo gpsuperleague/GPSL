@@ -4,6 +4,20 @@
 -- foreign_interest_teams.sql, player_contracts_phase3_expiry.sql
 -- =============================================================================
 
+-- Supabase SQL Editor runs as postgres (no JWT) — allow admin RPCs there too
+CREATE OR REPLACE FUNCTION public.is_gpsl_admin()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    lower(coalesce(auth.jwt() ->> 'email', '')) = 'rotavator66@outlook.com'
+    OR current_user IN ('postgres', 'supabase_admin')
+    OR coalesce(auth.jwt() ->> 'role', '') = 'service_role';
+$$;
+
 CREATE OR REPLACE FUNCTION public.squad_max_size()
 RETURNS int
 LANGUAGE sql
@@ -375,6 +389,10 @@ END;
 $function$;
 
 -- Signing hook: always 3 seasons; auto-release if squad exceeds 28
+-- (void → jsonb return type requires drop first if phase 1/3 version exists)
+DROP FUNCTION IF EXISTS public.player_assign_to_club(text, text);
+DROP FUNCTION IF EXISTS public.player_assign_to_club(text, text, numeric);
+
 CREATE OR REPLACE FUNCTION public.player_assign_to_club(
   p_player_id text,
   p_club_short_name text,
