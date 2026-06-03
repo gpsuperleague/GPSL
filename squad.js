@@ -34,6 +34,12 @@ import {
 } from "./player_contracts.js";
 import { isHgContractProtected } from "./squad_rules.js";
 import { formatWage } from "./wages.js";
+import {
+  escapeHtml,
+  formatForeignTrackingMessage,
+  foreignSaleOptionsHtml,
+  parseForeignSaleAction,
+} from "./foreign_interest.js";
 
 window.supabase = supabase;
 
@@ -63,6 +69,8 @@ let currentGpslSeasonLabel = "";
 
 const MAX_FOREIGN_INTEREST = 3;
 let foreignInterestRemaining = MAX_FOREIGN_INTEREST;
+/** Fictional clubs currently tracking (same length as interest slots). */
+let foreignTrackingTeams = [];
 
 // ENTRY POINT
 document.addEventListener("DOMContentLoaded", async () => {
@@ -120,6 +128,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   foreignInterestRemaining = normalizeForeignInterest(
     club.foreign_interest_remaining
   );
+  await loadForeignInterestState();
   renderForeignInterestBadge();
   applyForeignSaleOptionState();
 
@@ -157,11 +166,40 @@ function normalizeForeignInterest(value) {
   return Math.max(0, Math.min(MAX_FOREIGN_INTEREST, Math.trunc(n)));
 }
 
+async function loadForeignInterestState() {
+  const { data, error } = await supabase.rpc("club_foreign_interest_state");
+
+  if (error) {
+    const msg = String(error.message || "").toLowerCase();
+    if (
+      msg.includes("club_foreign_interest_state") ||
+      msg.includes("foreign_tracking") ||
+      error.code === "42883"
+    ) {
+      foreignTrackingTeams = [];
+      return;
+    }
+    console.warn("club_foreign_interest_state:", error);
+    foreignTrackingTeams = [];
+    return;
+  }
+
+  if (data?.foreign_interest_remaining != null) {
+    foreignInterestRemaining = normalizeForeignInterest(
+      data.foreign_interest_remaining
+    );
+  }
+  foreignTrackingTeams = Array.isArray(data?.tracking_teams)
+    ? data.tracking_teams.map((t) => String(t))
+    : [];
+}
+
 function renderForeignInterestBadge() {
   const el = document.getElementById("foreignInterestBadge");
   if (!el) return;
 
-  const n = foreignInterestRemaining;
+  const teams = foreignTrackingTeams.filter(Boolean);
+  const n = teams.length || foreignInterestRemaining;
   el.classList.toggle("foreign-interest-badge--empty", n <= 0);
 
   if (n <= 0) {
@@ -169,8 +207,14 @@ function renderForeignInterestBadge() {
     return;
   }
 
-  const clubWord = n === 1 ? "club" : "clubs";
-  el.textContent = `${n} foreign ${clubWord} interested in your players`;
+  const main =
+    teams.length > 0
+      ? formatForeignTrackingMessage(teams)
+      : `${n} foreign ${n === 1 ? "club" : "clubs"} interested in your players`;
+
+  el.innerHTML = `
+    <span class="foreign-interest-main">${escapeHtml(main)}</span>
+    <span class="foreign-interest-hint">Use action to sell to one of these clubs at market value</span>`;
 }
 
 function squadActionOptionsHtml(player) {
@@ -183,9 +227,14 @@ function squadActionOptionsHtml(player) {
     }
     return `<option value="" disabled>Signed this season</option>`;
   }
+  const foreignOpts =
+    foreignTrackingTeams.length > 0
+      ? foreignSaleOptionsHtml(foreignTrackingTeams)
+      : `<option value="foreign">Sell to foreign club</option>`;
+
   return `
             <option value="list">Transfer List</option>
-            <option value="foreign">Sell to foreign club</option>`;
+            ${foreignOpts}`;
 }
 
 function playerCanListOrSellLocal(player) {
@@ -193,7 +242,8 @@ function playerCanListOrSellLocal(player) {
 }
 
 function applyForeignSaleOptionState() {
-  const allowForeign = foreignInterestRemaining > 0;
+  const allowForeign =
+    foreignInterestRemaining > 0 && foreignTrackingTeams.length > 0;
   document.querySelectorAll("select.squad-action-select").forEach((sel) => {
     const pid = sel.dataset.playerId;
     const row = sel.closest("tr[data-konami-id]");
@@ -203,14 +253,18 @@ function applyForeignSaleOptionState() {
     });
 
     const listOpt = sel.querySelector('option[value="list"]');
-    const foreignOpt = sel.querySelector('option[value="foreign"]');
+    const foreignOpts = sel.querySelectorAll(
+      'option[value="foreign"], option[value^="foreign:"]'
+    );
 
     if (blocked) {
       if (listOpt) listOpt.disabled = true;
-      if (foreignOpt) {
-        foreignOpt.disabled = true;
-        foreignOpt.textContent = "Signed this season";
-      }
+      foreignOpts.forEach((opt) => {
+        opt.disabled = true;
+        if (opt.value === "foreign") {
+          opt.textContent = "Signed this season";
+        }
+      });
       return;
     }
 
@@ -220,11 +274,16 @@ function applyForeignSaleOptionState() {
         ? "Transfer List"
         : "Transfer Window Shut";
     }
-    if (foreignOpt) {
-      const finalYear =
-        row?.dataset.contractSeasons === "1";
-      foreignOpt.disabled = !allowForeign || finalYear;
-      foreignOpt.textContent = finalYear
+
+    const finalYear = row?.dataset.contractSeasons === "1";
+    foreignOpts.forEach((opt) => {
+      opt.disabled = !allowForeign || finalYear;
+    });
+
+    const legacyForeign = sel.querySelector('option[value="foreign"]');
+    if (legacyForeign && foreignTrackingTeams.length === 0) {
+      legacyForeign.disabled = !allowForeign || finalYear;
+      legacyForeign.textContent = finalYear
         ? "Final contract year"
         : allowForeign
           ? "Sell to foreign club"
@@ -571,13 +630,23 @@ async function handlePlayerAction(playerId, action, selectEl) {
       return;
     }
 
-    if (action === "foreign") {
+    const foreignIdx = parseForeignSaleAction(action);
+    if (action === "foreign" || foreignIdx != null) {
       resetActionSelect(selectEl);
-      if (foreignInterestRemaining <= 0) {
+      if (foreignInterestRemaining <= 0 || foreignTrackingTeams.length === 0) {
         alert("No foreign clubs are interested in your players (limit reached).");
         return;
       }
-      await sellPlayerToForeignClub(playerId);
+      const teamName =
+        foreignIdx != null ? foreignTrackingTeams[foreignIdx] : null;
+      if (foreignIdx != null && !teamName) {
+        alert("That club is no longer tracking your players.");
+        await loadForeignInterestState();
+        renderForeignInterestBadge();
+        applyForeignSaleOptionState();
+        return;
+      }
+      await sellPlayerToForeignClub(playerId, teamName);
       return;
     }
 
@@ -698,7 +767,7 @@ async function expirePlayerContract(playerId) {
   await loadSquad();
 }
 
-async function sellPlayerToForeignClub(playerId) {
+async function sellPlayerToForeignClub(playerId, foreignTeamName) {
   const { data: player, error: loadErr } = await supabase
     .from("Players")
     .select(
@@ -728,17 +797,26 @@ async function sellPlayerToForeignClub(playerId) {
   }
 
   const mv = Number(player.market_value) || 0;
+  const buyerLabel = foreignTeamName
+    ? String(foreignTeamName).trim()
+    : "a foreign club";
   const confirmed = window.confirm(
-    `Sell ${player.Name} to a foreign club?\n\n` +
+    `Sell ${player.Name} to ${buyerLabel}?\n\n` +
       `The player will be released as a free agent.\n` +
       `Your club will receive ${formatMoney(mv)} (market value).`
   );
 
   if (!confirmed) return;
 
-  const { data, error } = await supabase.rpc("sell_player_to_foreign_club", {
-    p_player_id: String(playerId),
-  });
+  const rpcArgs = { p_player_id: String(playerId) };
+  if (foreignTeamName) {
+    rpcArgs.p_foreign_team_name = String(foreignTeamName).trim();
+  }
+
+  const { data, error } = await supabase.rpc(
+    "sell_player_to_foreign_club",
+    rpcArgs
+  );
 
   if (error) {
     console.error("sell_player_to_foreign_club:", error);
@@ -754,11 +832,20 @@ async function sellPlayerToForeignClub(playerId) {
   } else {
     foreignInterestRemaining = Math.max(0, foreignInterestRemaining - 1);
   }
+  if (Array.isArray(data?.tracking_teams)) {
+    foreignTrackingTeams = data.tracking_teams.map((t) => String(t));
+  } else if (foreignTeamName) {
+    foreignTrackingTeams = foreignTrackingTeams.filter(
+      (t) => t !== foreignTeamName
+    );
+  }
   renderForeignInterestBadge();
   applyForeignSaleOptionState();
 
+  const soldTo =
+    data?.foreign_buyer_name || foreignTeamName || "a foreign club";
   alert(
-    `${data?.player_name || player.Name} sold to a foreign club.\n` +
+    `${data?.player_name || player.Name} sold to ${soldTo}.\n` +
       `${formatMoney(fee)} credited to your club balance.`
   );
 

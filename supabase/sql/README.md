@@ -118,6 +118,14 @@ Run the **entire** script once (STEP 1 seed + STEP 2 functions):
 - Already sold before the counter existed? Run [`repair_foreign_interest_urd.sql`](./repair_foreign_interest_urd.sql) (syncs from `Transfer_History`; sets **URD** to **2** if no FOREIGN row yet). Edit the backdate timestamp in step 4 if needed.
 - Requires `my_club_shortname()` (`special_auctions.sql`)
 
+Then run [`foreign_interest_teams.sql`](./foreign_interest_teams.sql):
+
+- Seeds **Foreign_Interest_Teams** pool (**25** real-world clubs, not GPSL `Clubs` rows — Bayern, Napoli, Sevilla, etc.).
+- Already ran an older pool? Run [`foreign_interest_teams_reseed.sql`](./foreign_interest_teams_reseed.sql) to replace the list and refresh trackers.
+- Per club: `foreign_tracking_teams` (up to 3 names) shown in the squad header — e.g. *"Club A, Club B and Club C are tracking your players"* with hint to use **Action**.
+- Squad **Action** menu: **Sell to {each tracking club}**; chosen club drops off the list and badge.
+- `Transfer_History.foreign_buyer_name` stores the fictional buyer name (FK buyer stays `FOREIGN`).
+
 ## Player economics columns (Potential / Calc_Potential)
 
 Run once (no data import; formulas in `player_value_calcs.js`):

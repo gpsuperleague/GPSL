@@ -38,10 +38,13 @@ export function fullClubName(shortName) {
 }
 
 /** UI label: ShortName or legacy full name → Clubs.Club (DB still uses short codes). */
-export function displayClubName(shortOrFull) {
+export function displayClubName(shortOrFull, foreignBuyerName) {
   const key = String(shortOrFull || "").trim();
   if (!key) return "Free agent";
-  if (isForeignBuyerClub(key)) return "Foreign club";
+  if (isForeignBuyerClub(key)) {
+    const name = String(foreignBuyerName || "").trim();
+    return name || "Foreign club";
+  }
   const fromShort = clubsMap.get(key);
   if (fromShort) return fromShort;
   for (const [short, full] of clubsMap.entries()) {
@@ -55,10 +58,19 @@ export function isForeignBuyerClub(shortName) {
 }
 
 /** Transfer Centre / history: human label for buyer (incl. foreign sales). */
-export function buyerClubLabel(shortName) {
+export function buyerClubLabel(shortName, foreignBuyerName) {
   if (!shortName) return "—";
-  if (isForeignBuyerClub(shortName)) return "Foreign club";
+  if (isForeignBuyerClub(shortName)) {
+    const name = String(foreignBuyerName || "").trim();
+    return name || "Foreign club";
+  }
   return fullClubName(shortName) || shortName;
+}
+
+/** Transfer row → buyer display (uses foreign_buyer_name when present). */
+export function displayTransferBuyer(row) {
+  if (!row) return "—";
+  return buyerClubLabel(row.buyer_club_id, row.foreign_buyer_name);
 }
 
 /** Link to club squad page (same as clubs.html grid). */

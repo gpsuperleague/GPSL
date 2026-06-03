@@ -9,7 +9,12 @@
 import { supabase } from "./supabase_client.js";
 import { initGlobal, computeStandardListingEndTime, loadGlobalSettings } from "./global.js";
 import { getUKNow, isDraftAuctionEnded } from "./draft_engine.js";
-import { loadClubsMap, fullClubName, displayClubName } from "./clubs_lookup.js";
+import {
+  loadClubsMap,
+  fullClubName,
+  displayClubName,
+  displayTransferBuyer,
+} from "./clubs_lookup.js";
 import { getBidPlayerId, isPendingContractedDirectOffer } from "./direct_offers.js";
 import {
   loadCurrentGpslSeasonLabel,
@@ -738,7 +743,7 @@ async function loadSeasonSales(shortName) {
           (row) => `
         <tr>
           <td>${playerFromMap(players, row.player_id)?.Name || "Unknown"}</td>
-          <td>${displayClubName(row.buyer_club_id)}</td>
+          <td>${displayTransferBuyer(row)}</td>
           <td>₿ ${Number(row.fee).toLocaleString("en-GB")}</td>
           <td>${new Date(row.transfer_time).toLocaleString()}</td>
         </tr>
