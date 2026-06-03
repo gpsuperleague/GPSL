@@ -9,6 +9,11 @@ import {
   financeEntryLabel,
   isFinanceIncomeEntry,
 } from "./competition.js";
+import {
+  aggregateLedgerByLine,
+  renderFinanceSections,
+  summariseLedgerTotals,
+} from "./finance_ui.js";
 
 function renderLedger(rows) {
   const el = document.getElementById("ledgerTable");
@@ -16,7 +21,7 @@ function renderLedger(rows) {
 
   if (!rows.length) {
     el.innerHTML =
-      '<p class="empty">No ledger lines yet. Gates post on confirmed home results; transfers post when deals complete (after central bank SQL is applied).</p>';
+      '<p class="empty">No ledger lines yet for this club. Gates post on confirmed results; transfers post when deals complete.</p>';
     return;
   }
 
@@ -59,53 +64,6 @@ function renderLedger(rows) {
       <tbody>${body}</tbody>
     </table>
   `;
-}
-
-function renderBreakdown(containerId, buckets, emptyText) {
-  const el = document.getElementById(containerId);
-  if (!el) return;
-
-  const keys = Object.keys(buckets).sort(
-    (a, b) => Math.abs(buckets[b]) - Math.abs(buckets[a])
-  );
-
-  if (!keys.length) {
-    el.innerHTML = `<p class="empty">${emptyText}</p>`;
-    return;
-  }
-
-  el.innerHTML = keys
-    .map((k) => {
-      const amt = buckets[k];
-      return `
-        <div class="summary-line">
-          <span>${financeEntryLabel(k)}</span>
-          <span class="amt">${formatMoney(amt)}</span>
-        </div>
-      `;
-    })
-    .join("");
-}
-
-function summariseLedger(rows) {
-  const income = {};
-  const costs = {};
-  let incomeTotal = 0;
-  let costTotal = 0;
-
-  for (const r of rows) {
-    const amt = Number(r.amount || 0);
-    const type = r.entry_type || "other";
-    if (isFinanceIncomeEntry(type, amt)) {
-      income[type] = (income[type] || 0) + amt;
-      incomeTotal += amt;
-    } else {
-      costs[type] = (costs[type] || 0) + Math.abs(amt);
-      costTotal += Math.abs(amt);
-    }
-  }
-
-  return { income, costs, incomeTotal, costTotal, net: incomeTotal - costTotal };
 }
 
 function renderBankPanel(bank) {
@@ -182,12 +140,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     `images/club_badges/${shortName}.png`;
 
   const balanceRow = await loadClubBalance(supabase, shortName);
-  document.getElementById("balanceAmount").textContent = formatMoney(
-    balanceRow?.balance ?? 0
-  );
+  const balance = balanceRow?.balance ?? 0;
+  document.getElementById("balanceAmount").textContent = formatMoney(balance);
 
-  const ledger = await loadFinanceLedger(supabase, shortName, 200);
-  const { income, costs, incomeTotal, costTotal, net } = summariseLedger(ledger);
+  document.getElementById("openingBalance").textContent = "Soon";
+  document.getElementById("openingBalance").title =
+    "Season opening balance will be stored when season rollover is wired.";
+  document.getElementById("predictedBalance").textContent = "Soon";
+  document.getElementById("predictedBalance").title =
+    "Forecast of all remaining income and costs through season end.";
+
+  const ledger = await loadFinanceLedger(supabase, shortName, 300);
+  const { incomeTotal, costTotal, net } = summariseLedgerTotals(ledger);
 
   document.getElementById("incomeSeasonTotal").textContent =
     formatMoney(incomeTotal);
@@ -196,8 +160,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   netEl.textContent = formatMoney(net);
   netEl.className = `value ${net >= 0 ? "positive" : "negative"}`;
 
-  renderBreakdown("incomeBreakdown", income, "No income logged yet.");
-  renderBreakdown("costBreakdown", costs, "No costs logged yet.");
+  const sectionsEl = document.getElementById("financeSections");
+  if (sectionsEl) {
+    sectionsEl.innerHTML = renderFinanceSections(aggregateLedgerByLine(ledger));
+  }
+
   renderLedger(ledger);
   renderBankPanel(await loadGpslBankPublic(supabase));
   renderArchive(await loadClubSeasonArchive(supabase, shortName));

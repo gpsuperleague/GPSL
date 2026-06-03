@@ -1,6 +1,6 @@
 # GPSL finances — line items & central bank (design memory)
 
-**Status:** Phase 1 in progress — `supabase/sql/central_bank_phase1.sql`, expanded `finances.html`. Loans & full Excel rows still planned.
+**Status:** Phase 1 SQL + `finances.html` season accounts UI (Excel structure). Most lines are **planned** — only gates, generic prizes, and transfers post today. Loans & formulas TBD when rules are supplied.
 
 **Currency:** ₿ everywhere in the app (Excel mixed £/$ — do not replicate).
 
@@ -24,80 +24,82 @@ Grouped like the spreadsheet. Each row should eventually map to a **ledger `entr
 
 ### 1.2 Player transfers
 
-| Code | Description | Direction | Notes |
-|------|-------------|-----------|--------|
-| `transfer_sale` | Player sale (fee received) | Credit club | From `Transfer_History` as seller |
-| `transfer_purchase` | Player purchase (fee paid) | Debit club | From `Transfer_History` as buyer |
-| `transfer_agent_fee` | Agent fee on transfer | Debit club | `Transfer_History.agent_fee` |
-| `transfer_future_fee` | Future fee (installment / obligation) | Debit club (or accrual) | Excel “Future Fees”; may be scheduled |
-| `transfer_overflow_release` | Squad overflow release (MV credit) | Credit club | Foreign sale or MV free-agent release |
-| `transfer_foreign_sale` | Foreign club sale (overflow slot) | Credit club | `transfer_sale_note = squad_overflow` |
-
-### 1.3 Prize money & revenue
+**UI:** `finances.html` → **Sales** and **Purchases** totals only. **No future / delayed fees** (exploitable; not used).
 
 | Code | Description | Direction | Notes |
 |------|-------------|-----------|--------|
-| `gate_league_home` | Gate receipts — league home fixture | Credit club | **Live** in `competition_finance_ledger` |
-| `gate_cup_share` | Gate receipts — cup 50% share | Credit club | **Live** in ledger |
-| `prize_league` | League prize money | Credit club | Ledger `prize` or split by competition |
-| `prize_cup` | Cup prize money | Credit club | |
-| `prize_challenge` | Challenge prize money | Credit club | |
-| `tv_revenue` | TV revenue | Credit club | Season / fixture rules TBD |
-| `prize` | Prize money (generic) | Credit club | **Live** today (undifferentiated) |
+| `transfer_sale` | **Sales** — player sale | Credit | Transfer list, direct offer sold, etc. |
+| `transfer_foreign_sale` | **Sales** — foreign sale | Credit | Overflow foreign slot |
+| `transfer_overflow_release` | **Sales** — squad release (MV) | Credit | Overflow / release credit |
+| `transfer_purchase` | **Purchases** — player bought | Debit | Draft auction, market, special auctions |
+| `transfer_agent_fee` | **Purchases** — agent fee | Debit | Rolled into purchase total in UI |
+
+~~`transfer_future_fee`~~ — **not used**.
+
+### 1.3 Prize money & TV
+
+| Code | Description | Direction | Notes |
+|------|-------------|-----------|--------|
+| `prize_league` | League prize money | Credit | Admin + league table by position; **paid after all 38 league matches** |
+| `prize_cup` | Cup prize money | Credit | **Per tie** after result; per-round amounts in admin |
+| `prize_challenge` | Challenge prize money | Credit | Start / mid / end targets; maybe ₿1M per task + first-to-complete bonus |
+| `tv_revenue` | TV revenue | Credit | Random big matches; top weighted > mid > bottom (~₿1M/match historically) |
+| `prize` | Prize (generic, interim) | Credit | **Live** until split into types above |
+| `gate_league_home` | Gate — league home | Credit | See §1.4 (also infrastructure UI) |
+| `gate_cup_share` | Gate — cup 50% | Credit | See §1.4 |
 
 ### 1.4 Infrastructure (stadium & facilities)
 
 | Code | Description | Direction | Notes |
 |------|-------------|-----------|--------|
-| `infra_maintenance` | Stadium / infrastructure maintenance | Debit club | Recurring? Tie to `Clubs` / stadium level |
-| `infra_expansion` | Stadium expansion | Debit club | One-off build costs |
-| `infra_upgrade` | Facility upgrade | Debit club | |
-| `infra_training` | Training facility cost | Debit club | |
+| `gate_league_home` / `gate_cup_share` | **Gate receipts** | Credit | League: home 100%, away 0%. Cup: 50/50. Per match **capacity × ₿20**; cumulative as results confirm |
+| `infra_maintenance` | **Stadium maintenance** | Debit | **12.5%** of stadium value; value = **capacity × ₿1,500** |
+| `infra_purchase` | **Infrastructure purchases** | Debit | Starting-budget premium for clubs with larger starting stadiums |
+| `infra_expansion` | **Expansions** | Debit | Capacity upgrade cost — formula TBD |
+| `gov_fine_compensation` | **Fines & compensation** | Debit/credit | DOGSO, time wasting, etc. — tariff list TBD |
 
 ### 1.5 Government / league (subsidies & tax)
 
 | Code | Description | Direction | Notes |
 |------|-------------|-----------|--------|
-| `gov_fine_compensation` | Fines & compensation | Debit or credit | Discipline / settlements |
-| `gov_min_subsidy` | Minimum subsidy | Credit club | League floor funding |
-| `gov_youth_subsidy` | Youth subsidy | Credit club | |
-| `gov_bmr_subsidy` | “BMR” subsidy (not bought) | Credit club | Excel label; define rule in spec |
-| `gov_emergency_tax` | Emergency tax | Debit club | One-off |
-| `gov_income_tax` | Income tax | Debit club | Season % of profit or flat |
+| `gov_hg_subsidy` | **HG subsidy** | Credit | Tiered homegrown levels (e.g. flying the flag) — rules TBD |
+| `gov_youth_subsidy` | **Youth subsidy** | Credit | Scales with youth players in squad |
+| `gov_bnb_subsidy` | **Built not bought** | Credit | ~₿10M for weaker squads — formula TBD |
+| `gov_emergency_tax` | **Emergency tax** | Debit | **Admin** — knock down excess cash |
+| `gov_income_tax` | **Income tax** | Debit | **% of player spend** — rate in admin |
 
 ### 1.6 Player upkeep (wages & contract costs)
 
 | Code | Description | Direction | Notes |
 |------|-------------|-----------|--------|
-| `wage_squad` | Squad wages (season / period total) | Debit club | Sum `contract_wage` or `calculate_player_wage_for_club` |
-| `wage_renewal_34plus` | 34+ contract renewal cost | Debit club | Final-year / age rule |
-| `wage_star_tax` | Star tax | Debit club | High-rated player surcharge (rules TBD) |
+| `wage_squad` | **Wages** | Debit | Admin **% of squad value**; per-player wage from calculated value or negotiated (free-agent path) |
+| `wage_renewal_34plus` | **34+ renewals** | Debit | Per player 34+ each season |
+| `wage_star_tax` | **Star tax** | Debit | Players **70+** — formula TBD |
 
 ### 1.7 Staff & contracts (non-wage)
 
 | Code | Description | Direction | Notes |
 |------|-------------|-----------|--------|
-| `staff_manager_salary` | Manager salary | Debit club | Per season |
-| `contract_signing_offer` | Contract offers (signing) | Debit club | New signings / bid wins |
-| `contract_release_comp` | Contract release (compensation paid) | Debit club | |
-| `contract_release_comp_received` | Contract release (compensation received) | Credit club | Excel green column |
-| `contract_termination` | Contract terminations | Debit or credit | |
+| `staff_manager_salary` | **Manager salary** | Debit | Rating → value → % salary |
+| `contract_signing_offer` | **Contract offers** | Debit | Manager renewal fee every **2 seasons** |
+| `contract_release_comp` / `_received` | **Contract releases** | Debit/credit | Failed objectives / resign / sack; fee may return; manager cannot rejoin same club |
+| `contract_termination` | **Contract termination** | Debit/credit | Mid-season or EOS firing |
 
 ### 1.8 End of season
 
 | Code | Description | Direction | Notes |
 |------|-------------|-----------|--------|
-| `eos_debt_interest` | End of season debt interest | Debit club | **Loans** — see §3 |
-| `eos_ffp_charge` | End of season FFP charge | Debit club | Financial fair play |
-| `eos_injection` | End of season injection | Credit club | League / bank bailout |
+| `eos_debt_interest` | **Debt interest** | Debit | On **negative** balances at EOS (and loans when live) |
+| `eos_ffp_charge` | **FFP charges** | Debit | Fine if debt **> ₿99M** at any point in season |
+| `eos_injection` | **End of season injection** | Credit | Individual or mass; same family as emergency tax — **admin** |
 
 ### 1.9 Balance summary (UI only, not ledger types)
 
 | Field | Description |
 |-------|-------------|
-| `balance_current` | Current balance (`Club_Finances.balance`) |
-| `balance_predicted_eos` | Predicted end-of-season balance (model) |
-| `balance_predicted_next` | Predicted next season opening (model) |
+| `balance_opening` | Season opening balance (stored at rollover — UI placeholder “Soon”) |
+| `balance_current` | **Current balance** — opening + all posted income/costs (`Club_Finances.balance`) |
+| `balance_predicted_eos` | **Predicted EOS balance** — forecast gates, prizes, wages, subsidies, tax, etc. (UI placeholder “Soon”) |
 
 ---
 
@@ -186,13 +188,15 @@ With: `post_club_ledger(p_club, p_entry_type, p_amount, p_description, p_metadat
 
 ---
 
-## 4. `finances.html` overhaul (after bank foundation)
+## 4. `finances.html` (live layout)
 
-1. **Summary** — current balance, loan outstanding, net season flow.
-2. **Income / costs** — collapsible sections using §1 codes (green/red like Excel).
-3. **Ledger** — filter by category; export CSV.
-4. **Loans** — if `club_loans` row exists.
-5. **Projections** — predicted EOS / next season (read-only formulas).
+Implemented in `finances.html` + `finance_ui.js`:
+
+1. **Balance** — opening (Soon), current, predicted EOS (Soon), posted income/cost/net.
+2. **Season accounts** — sections §1.2–1.8 with owner-facing notes; amounts from ledger where posted.
+3. **Central bank** — read-only panel.
+4. **Activity ledger** — chronological lines.
+5. **Later** — predicted EOS engine, opening balance at rollover, CSV export, loan panel.
 
 ---
 
