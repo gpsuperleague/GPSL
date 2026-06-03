@@ -41,7 +41,10 @@ export function formatSquadContractCell(player) {
   const years = contractYearsLabel(player?.contract_seasons_remaining);
   const wage = formatWage(player?.contract_wage);
   if (years === "—" && wage === "—") return "—";
-  return `${years} · ${wage}`;
+  return `<div class="squad-contract-stack">
+    <span class="squad-contract-years">${years}</span>
+    <span class="squad-contract-wage">${wage}</span>
+  </div>`;
 }
 
 /** Standard final-year players on hidden wage bid market (not HG ≤23). */

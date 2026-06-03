@@ -254,6 +254,30 @@ body.squad-page .squad-col-action {
   z-index: 2;
 }
 
+body.squad-page .squad-col-contract {
+  white-space: normal;
+  line-height: 1.35;
+  min-width: 72px;
+}
+
+body.squad-page .squad-contract-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+body.squad-page .squad-contract-years {
+  font-size: 12px;
+  color: #ddd;
+}
+
+body.squad-page .squad-contract-wage {
+  font-size: 11px;
+  color: #ffcc66;
+  white-space: nowrap;
+}
+
 body.squad-page .squad-qual-badge {
   color: #6cf;
   font-size: 11px;
