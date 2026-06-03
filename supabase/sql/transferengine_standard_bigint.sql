@@ -253,26 +253,14 @@ DROP FUNCTION IF EXISTS public.transferengine_accept_sale(integer);
 DROP FUNCTION IF EXISTS public.transferengine_reject_sale(integer);
 
 
+-- Defined in transferengine_draft.sql (process standard → settle draft when clear)
 CREATE OR REPLACE FUNCTION public.transferengine_run()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $function$
-DECLARE
-  v_listing "Player_Transfer_Listings"%rowtype;
-  v_now     timestamptz := now();
 BEGIN
+  PERFORM transferengine_process_standard_listings(now());
   PERFORM transferengine_settle_draft_auctions();
-
-  FOR v_listing IN
-    SELECT *
-    FROM "Player_Transfer_Listings"
-    WHERE status = 'Active'
-      AND listing_type IS DISTINCT FROM 'draft'
-  LOOP
-    IF v_now >= v_listing.end_time THEN
-      PERFORM transferengine_handle_expiry_or_extension(v_listing.id);
-    END IF;
-  END LOOP;
 END;
 $function$;

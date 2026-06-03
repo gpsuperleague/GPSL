@@ -3,6 +3,7 @@
    - Listed auctions + direct offers that become listings
    - Free agents use draft auction (listing_type draft), not this file
    Production logic lives in Supabase SQL: transferengine_run()
+   (transfer list / extensions first; draft after random finish when today's list is clear)
    ============================================================ */
 
 const transferEngine = {};

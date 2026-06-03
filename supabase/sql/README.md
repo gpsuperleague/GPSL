@@ -192,6 +192,8 @@ Free agents must **not** use the standard listed-player transfer path. Contracte
 
 The site triggers SQL every minute via Edge Function `transferengine_run` → `public.transferengine_run()`.
 
+**Processing order (each tick):** transfer list auctions first (standard listings whose `end_time` has passed, including **extensions** past 7pm). Draft settlement runs only when **both** are true: `now() >= draft_random_finish_time` (e.g. 6:57:53pm), and **no** `Active` transfer-**list** auction remains that was **scheduled for 7pm UK on the same evening** as `draft_random_finish_time` (extensions to 9pm still block; seller review / direct offers / next day’s listings do **not** block).
+
 ## Apply draft + run updates
 
 1. Open [Supabase Dashboard](https://supabase.com/dashboard) → project **omyyogfumrjoaweuawjn**.
@@ -204,8 +206,9 @@ The site triggers SQL every minute via Edge Function `transferengine_run` → `p
 This adds:
 
 - `transferengine_accept_draft_sale` — free-agent winner, debit buyer, assign club
-- `transferengine_settle_draft_auctions` — runs when `now() >= draft_random_finish_time`
-- Updates `transferengine_run` — settles draft first, then standard auctions (excludes `listing_type = 'draft'` from extension/expiry loop)
+- `transferengine_settle_draft_auctions` — after random finish, only if `transferengine_standard_listings_block_draft_settlement()` is false
+- `transferengine_process_standard_listings` — 7pm / extension expiry loop for standard listings
+- Updates `transferengine_run` — process standard, then settle draft when the evening transfer list is clear
 
 ## Verify
 

@@ -128,7 +128,77 @@ END;
 $function$;
 
 
--- When draft_random_finish_time is reached, settle all active draft listings
+-- UK calendar date for transfer-list scheduling (7pm / extensions)
+CREATE OR REPLACE FUNCTION public.gpsl_timestamptz_uk_date(p_ts timestamptz)
+RETURNS date
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT (p_ts AT TIME ZONE 'Europe/London')::date;
+$$;
+
+
+-- Block draft settlement while a transfer-LIST auction (Active only) from the same UK
+-- evening as draft_random_finish_time is still running — incl. anti-snipe extensions past 7pm.
+-- Does NOT look at seller review, direct offers, or listings scheduled on a later UK day.
+CREATE OR REPLACE FUNCTION public.transferengine_standard_listings_block_draft_settlement(
+  p_now timestamptz,
+  p_draft_finish timestamptz
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT
+    p_draft_finish IS NOT NULL
+    AND EXISTS (
+      SELECT 1
+      FROM "Player_Transfer_Listings" l
+      WHERE l.status = 'Active'
+        AND l.listing_type IS DISTINCT FROM 'draft'
+        AND l.end_time > p_now
+        AND public.gpsl_timestamptz_uk_date(
+              COALESCE(l.initial_end_time, l.end_time)
+            ) = public.gpsl_timestamptz_uk_date(p_draft_finish)
+        AND (
+          COALESCE(l.was_extended, false)
+          OR EXTRACT(
+                HOUR FROM (
+                  COALESCE(l.initial_end_time, l.end_time)
+                    AT TIME ZONE 'Europe/London'
+                )
+              )::int = 19
+        )
+    );
+$$;
+
+
+-- Process due standard transfer-list listings (7pm batch + extensions)
+CREATE OR REPLACE FUNCTION public.transferengine_process_standard_listings(
+  p_now timestamptz DEFAULT now()
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $function$
+DECLARE
+  v_listing "Player_Transfer_Listings"%rowtype;
+BEGIN
+  FOR v_listing IN
+    SELECT *
+    FROM "Player_Transfer_Listings"
+    WHERE status = 'Active'
+      AND listing_type IS DISTINCT FROM 'draft'
+  LOOP
+    IF p_now >= v_listing.end_time THEN
+      PERFORM transferengine_handle_expiry_or_extension(v_listing.id);
+    END IF;
+  END LOOP;
+END;
+$function$;
+
+
+-- After random finish AND today's transfer-list evening is clear
 CREATE OR REPLACE FUNCTION public.transferengine_settle_draft_auctions()
 RETURNS void
 LANGUAGE plpgsql
@@ -137,6 +207,7 @@ AS $function$
 DECLARE
   v_settings record;
   v_listing  "Player_Transfer_Listings"%rowtype;
+  v_now      timestamptz := now();
 BEGIN
   SELECT
     draft_auction_enabled,
@@ -153,7 +224,16 @@ BEGIN
     RETURN;
   END IF;
 
-  IF now() < v_settings.draft_random_finish_time THEN
+  IF v_now < v_settings.draft_random_finish_time THEN
+    RETURN;
+  END IF;
+
+  PERFORM public.transferengine_process_standard_listings(v_now);
+
+  IF public.transferengine_standard_listings_block_draft_settlement(
+    v_now,
+    v_settings.draft_random_finish_time
+  ) THEN
     RETURN;
   END IF;
 
@@ -169,27 +249,16 @@ END;
 $function$;
 
 
--- Standard listings only; draft uses random finish settlement above
+-- Each cron tick: transfer list first; draft only after random finish (e.g. 6:57pm)
+-- AND no Active transfer-list auction still running that was scheduled for 7pm UK
+-- on the draft-finish evening (incl. extensions to 9pm). Later days' listings ignored.
 CREATE OR REPLACE FUNCTION public.transferengine_run()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 AS $function$
-DECLARE
-  v_listing "Player_Transfer_Listings"%rowtype;
-  v_now     timestamptz := now();
 BEGIN
+  PERFORM transferengine_process_standard_listings(now());
   PERFORM transferengine_settle_draft_auctions();
-
-  FOR v_listing IN
-    SELECT *
-    FROM "Player_Transfer_Listings"
-    WHERE status = 'Active'
-      AND listing_type IS DISTINCT FROM 'draft'
-  LOOP
-    IF v_now >= v_listing.end_time THEN
-      PERFORM transferengine_handle_expiry_or_extension(v_listing.id);
-    END IF;
-  END LOOP;
 END;
 $function$;
