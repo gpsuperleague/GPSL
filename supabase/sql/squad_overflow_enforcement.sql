@@ -419,10 +419,95 @@ BEGIN
 END;
 $function$;
 
+-- Preview who would be released (admin / SQL editor only — not granted to app users)
+CREATE OR REPLACE FUNCTION public.preview_squad_overflow_release(
+  p_club_short_name text,
+  p_exclude_player_id text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club   text := btrim(p_club_short_name);
+  v_total  int;
+  v_pid    text;
+  v_player public."Players"%rowtype;
+  v_interest int;
+  v_teams  text[];
+BEGIN
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  v_total := public.club_squad_player_count(v_club);
+  v_pid := public.pick_squad_overflow_release_player(v_club, p_exclude_player_id);
+
+  IF v_pid IS NULL THEN
+    RETURN jsonb_build_object(
+      'club_short_name', v_club,
+      'squad_total', v_total,
+      'would_release', false,
+      'reason', 'no_eligible_player'
+    );
+  END IF;
+
+  SELECT * INTO v_player FROM public."Players" p WHERE p."Konami_ID"::text = v_pid;
+
+  SELECT coalesce(c.foreign_interest_remaining, 0)
+  INTO v_interest
+  FROM public."Clubs" c
+  WHERE c."ShortName" = v_club;
+
+  v_teams := public.sync_club_foreign_tracking(v_club);
+
+  RETURN jsonb_build_object(
+    'club_short_name', v_club,
+    'squad_total', v_total,
+    'would_release', true,
+    'player_id', v_pid,
+    'player_name', v_player."Name",
+    'rating', v_player."Rating",
+    'season_signed', v_player."Season_Signed",
+    'signed_this_season', public.player_signed_this_season(v_player."Season_Signed"),
+    'market_value', v_player.market_value,
+    'release_method',
+      CASE
+        WHEN coalesce(v_interest, 0) > 0 AND v_teams[1] IS NOT NULL
+          THEN 'foreign'
+        ELSE 'market_value'
+      END,
+    'foreign_buyer_name', CASE WHEN coalesce(v_interest, 0) > 0 THEN v_teams[1] ELSE NULL END,
+    'foreign_interest_remaining', v_interest
+  );
+END;
+$function$;
+
+-- Admin: fix squad already over 28 without adding a player (retrospective cleanup / test)
+CREATE OR REPLACE FUNCTION public.admin_enforce_squad_overflow(p_club_short_name text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+BEGIN
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  RETURN public.enforce_squad_overflow_after_signing(btrim(p_club_short_name), NULL);
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.enforce_squad_overflow_after_signing(text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.club_release_player_mv_overflow(text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.club_release_player_foreign_overflow(text, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.pick_squad_overflow_release_player(text, text) FROM PUBLIC;
+
 GRANT EXECUTE ON FUNCTION public.squad_max_size() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_squad_player_count(text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.pick_squad_overflow_release_player(text, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.enforce_squad_overflow_after_signing(text, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.club_release_player_mv_overflow(text, text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.club_release_player_foreign_overflow(text, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.player_assign_to_club(text, text, numeric) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.preview_squad_overflow_release(text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_enforce_squad_overflow(text) TO authenticated;

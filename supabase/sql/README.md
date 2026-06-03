@@ -151,6 +151,7 @@ Run once:
 - `player_assign_to_club` returns jsonb; if squad &gt; 28 after sign, releases highest rated (excluding same-season signings).
 - Uses a **foreign club** tracking slot when `foreign_interest_remaining` &gt; 0; otherwise **MV** release.
 - GPDB / transfer engine show a confirm dialog when already at **28** players.
+- Retrospective / URD test: [`test_squad_overflow_urd.sql`](./test_squad_overflow_urd.sql) — preview release, `admin_enforce_squad_overflow('URD')` to fix 29→28 without a new signing.
 
 - **Home-grown** = `Players.Nation` matches `Clubs.Nation` — **at least 8** (no cap; more allowed)
 - **Under-21** = age **≤ 21** — **at least 5** (no cap)
