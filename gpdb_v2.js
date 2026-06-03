@@ -13,9 +13,10 @@ import {
 
 import {
   loadGlobalSettings as loadGlobalSettingsEngine,
-  getDraftWindowTimes,
-  getDraftCutoff,
   getDraftTimelineFromStart,
+  getDraftPhaseFromStart,
+  isGpdbFreeAgentOfferAllowed,
+  gpdbFreeAgentLockMessage,
   getDraftCredits,
   syncDraftListingHighBid,
 } from "./draft_engine.js";
@@ -590,14 +591,16 @@ document.addEventListener("DOMContentLoaded", () => {
               bidCell = `<span class="locked-msg">In Draft Auction</span>`;
             } else if (GLOBAL_SETTINGS.draftAuctionEnabled) {
               const nowLocal = getUKNow();
-              const cutoff = getDraftCutoff();
+              const draftStart = draftAuctionStartTime
+                ? new Date(draftAuctionStartTime)
+                : null;
+              const phase = getDraftPhaseFromStart(nowLocal, draftStart);
 
-              if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-                bidCell = `<span class="locked-msg">Draft Closed</span>`;
-              } else if (nowLocal >= cutoff) {
-                bidCell = `<span class="locked-msg">Draft Locked</span>`;
-              } else {
+              if (isGpdbFreeAgentOfferAllowed(nowLocal, draftStart)) {
                 bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Draft Offer</button>`;
+              } else {
+                const lockMsg = gpdbFreeAgentLockMessage(phase) || "Draft Closed";
+                bidCell = `<span class="locked-msg">${lockMsg}</span>`;
               }
             } else {
               bidCell = `<span class="locked-msg">Draft Closed</span>`;
@@ -811,8 +814,15 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("CONFIRM: sellerClub =", sellerClub);
 
     if (!sellerClub) {
-      if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-        errorBox.textContent = "Draft auction has not started yet.";
+      const draftStart = draftAuctionStartTime
+        ? new Date(draftAuctionStartTime)
+        : null;
+      if (!isGpdbFreeAgentOfferAllowed(nowLocal, draftStart)) {
+        const phase = getDraftPhaseFromStart(nowLocal, draftStart);
+        errorBox.textContent =
+          phase === "before_start"
+            ? "Draft auction has not started yet."
+            : "GPDB draft offers closed at 6pm UK. Use Draft Auction to bid on open threads until the random window ends.";
         return;
       }
     }
@@ -1037,17 +1047,20 @@ document.addEventListener("DOMContentLoaded", () => {
     console.log("submitDraftBid START", { player, offerAmount, buyerShortName });
 
     const nowLocal = getUKNow();
-    const cutoff = getDraftCutoff();
-    const { sevenPmYesterday, sixPmToday } = getDraftWindowTimes();
+    const draftStart = draftAuctionStartTime
+      ? new Date(draftAuctionStartTime)
+      : null;
 
-    console.log("submitDraftBid nowLocal =", nowLocal, "cutoff =", cutoff, {
-      sevenPmYesterday,
-      sixPmToday
-    });
-
-    if (draftAuctionStartTime && nowLocal < draftAuctionStartTime) {
-      console.log("submitDraftBid blocked: draft not started");
-      return { ok: false, msg: "Draft auction has not started yet." };
+    if (!isGpdbFreeAgentOfferAllowed(nowLocal, draftStart)) {
+      const phase = getDraftPhaseFromStart(nowLocal, draftStart);
+      console.log("submitDraftBid blocked: phase =", phase);
+      return {
+        ok: false,
+        msg:
+          phase === "before_start"
+            ? "Draft auction has not started yet."
+            : "GPDB draft offers closed at 6pm UK. Use Draft Auction to bid on open threads.",
+      };
     }
 
     const { data: existing, error: existingErr } = await supabase
@@ -1063,14 +1076,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const isJoining = !isFirstBid;
 
     console.log("submitDraftBid isFirstBid =", isFirstBid, "isJoining =", isJoining);
-
-    if (isFirstBid && nowLocal >= cutoff) {
-      console.log("submitDraftBid blocked: new auctions locked");
-      return {
-        ok: false,
-        msg: "New draft auctions are locked until the next draft window."
-      };
-    }
 
     const listingResult = await ensureDraftListingForPlayer(player);
     console.log("submitDraftBid listingResult =", listingResult);

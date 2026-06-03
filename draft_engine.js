@@ -16,6 +16,8 @@ export {
   getDraftTimelineFromStart,
   getDraftPhaseFromStart,
   isDraftAuctionEnded,
+  isGpdbFreeAgentOfferAllowed,
+  gpdbFreeAgentLockMessage,
   draftPhaseLabel,
 } from "./draft_timeline.js";
 

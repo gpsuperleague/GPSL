@@ -33,6 +33,28 @@ export function isDraftAuctionEnded(nowUK, draftAuctionStartTime) {
   return getDraftPhaseFromStart(nowUK, draftAuctionStartTime) === "ended";
 }
 
+/** GPDB “Draft Offer” only during Day-1 7pm → Day-2 6pm UK live window. */
+export function isGpdbFreeAgentOfferAllowed(nowUK, draftAuctionStartTime) {
+  return (
+    getDraftPhaseFromStart(nowUK, draftAuctionStartTime) === "live_until_cutoff"
+  );
+}
+
+export function gpdbFreeAgentLockMessage(phase) {
+  switch (phase) {
+    case "before_start":
+      return "Draft Closed";
+    case "live_until_cutoff":
+      return "";
+    case "pre_random":
+    case "random_active":
+    case "ended":
+      return "Draft Locked (6pm cutoff)";
+    default:
+      return "Draft Closed";
+  }
+}
+
 export function draftPhaseLabel(phase) {
   switch (phase) {
     case "before_start":

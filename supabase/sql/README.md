@@ -261,6 +261,12 @@ Then use **GPSL Admin → Special Auctions** to create (tick **Show to owners im
 
 If you already ran the first script, also run [`special_auctions_scheduled_status.sql`](./special_auctions_scheduled_status.sql).
 
+## Finances & central bank (planning)
+
+Design memory for `finances.html` overhaul, ledger line types, and **GPSL Central Bank** (club ↔ bank flows, loans + interest):
+
+[`docs/finances-central-bank-spec.md`](../../docs/finances-central-bank-spec.md)
+
 ## Fix active listing end times (24h + 7pm UK)
 
 After changing listing duration in the app, run once to update **existing** active standard/direct rows (e.g. an accepted direct offer still on a flat 24h timer):
