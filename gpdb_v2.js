@@ -233,6 +233,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let CURRENT_USER_CLUB_SHORT = null;
 
   let CLUB_NAME_MAP = {};
+  let CLUB_NATION_MAP = {};
   /** Full Clubs.Club name → ShortName (for direct-offer seller_club_id). */
   let CLUB_SHORT_BY_FULL_NAME = {};
 
@@ -255,20 +256,23 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadClubNames() {
     const { data, error } = await supabase
       .from("Clubs")
-      .select("ShortName, Club");
+      .select("ShortName, Club, Nation");
 
     if (error || !data) {
       console.error("Failed to load club names:", error);
       CLUB_NAME_MAP = {};
+      CLUB_NATION_MAP = {};
       CLUB_SHORT_BY_FULL_NAME = {};
       return;
     }
 
     CLUB_NAME_MAP = {};
+    CLUB_NATION_MAP = {};
     CLUB_SHORT_BY_FULL_NAME = {};
     data.forEach(c => {
       if (c.ShortName) {
         CLUB_NAME_MAP[c.ShortName] = c.Club || c.ShortName;
+        CLUB_NATION_MAP[c.ShortName] = c.Nation || "";
         if (c.Club) {
           CLUB_SHORT_BY_FULL_NAME[c.Club] = c.ShortName;
         }
@@ -563,12 +567,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (GLOBAL_SETTINGS) {
           if (hasClub) {
+            const holderShort = resolveContractedClubShort(
+              player.Contracted_Team
+            );
             bidCell = TRANSFER_STATUS_STATE
               ? buildGpdbContractedBidCellHtml({
                   player,
                   viewerClubShort: CURRENT_USER_CLUB_SHORT,
                   state: TRANSFER_STATUS_STATE,
                   transferWindowOpen: GLOBAL_SETTINGS.transferWindowOpen,
+                  holdingClubNation: CLUB_NATION_MAP[holderShort] || "",
                 })
               : `<span class="locked-msg">Loading…</span>`;
           } else {

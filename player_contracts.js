@@ -44,6 +44,11 @@ export function formatSquadContractCell(player) {
   return `${years} · ${wage}`;
 }
 
+/** Standard final-year players on hidden wage bid market (not HG ≤23). */
+export function isOnExpiryWageMarket(player, clubNation) {
+  return isContractFinalYear(player) && !isHgContractProtected(player, clubNation);
+}
+
 export function squadContractActionOptionsHtml(player, clubNation) {
   if (!isContractFinalYear(player)) return null;
 

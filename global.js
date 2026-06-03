@@ -415,6 +415,7 @@ export async function buildNav() {
   const isAdmin = path.includes("admin");
   const isDraft =
     path.includes("draftauction") && !path.includes("draftauction_player");
+  const isExpiring = path.includes("expiring_contracts");
 
   let html = "";
 
@@ -444,6 +445,10 @@ export async function buildNav() {
 
   if (draftEnabled && !isDraft) {
     html += `<a id="nav-draft" href="draftauction.html" class="button">Draft Auction</a>`;
+  }
+
+  if (!isExpiring) {
+    html += `<a id="nav-expiring" href="expiring_contracts.html" class="button">Expiring Contracts</a>`;
   }
 
   html += await specialAuctionNavLinkHtml();

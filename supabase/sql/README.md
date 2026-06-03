@@ -158,7 +158,11 @@ Run once (after `player_wage_settings.sql` and an active `competition_seasons` r
 - Final year (`contract_seasons_remaining = 1`): cannot list/sell; Squad **Renew** / **Expire** (HG ≤23 renew at same wage; standard renew wage ≥ current).
 - Admin **Start New Season** also runs `contract_tick_season_rollover` (decrements years for all contracted players).
 
-**Not yet:** expiring-contract market + hidden wage bids (C4–C5) — see [`docs/player-contracts-spec.md`](../docs/player-contracts-spec.md).
+**Phase 3 (C4–C5)** — run [`player_contracts_phase3_expiry.sql`](./player_contracts_phase3_expiry.sql):
+
+- **Expiring Contracts** page (`expiring_contracts.html`) — hidden wage bids (one per club per player).
+- GPDB **Wage bid** link for final-year standard players.
+- **Start New Season** resolves highest bids (tie → current club), then decrements years, then releases players at 0 years (MV credit).
 
 ## Two separate systems
 

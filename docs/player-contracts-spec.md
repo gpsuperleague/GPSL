@@ -2,7 +2,7 @@
 
 Authoritative design from league owner (2026). Align with legacy spreadsheet when reviewing.
 
-**Status:** **Phase 1–2 (C1 + C2/C3 partial)** — signing hooks, same-season lock, final-year sell block, admin contract tick on rollover, Squad renew/expire. **Not implemented:** expiring-contract market + hidden wage bids (C4–C5). Uses **`competition_seasons.label`** for `Season_Signed`.
+**Status:** **Phases 1–3 (C1–C5 core)** — signing, same-season lock, final-year rules, Squad renew/expire, hidden wage bids + resolution on rollover. Uses **`competition_seasons.label`** for `Season_Signed`. SQL: `player_contract_hooks.sql`, `player_contracts_phase2.sql`, `player_contracts_phase3_expiry.sql`.
 
 ---
 

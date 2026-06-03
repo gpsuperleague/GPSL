@@ -1,0 +1,79 @@
+<script>
+  window.CURRENT_PAGE = "expiring_contracts";
+</script>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Expiring Contracts</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    #nav { padding:15px; background:#1a1a1a; border-bottom:1px solid #333; text-align:center; }
+    h1 { margin:20px; color:#ff9900; }
+    .info-box {
+      background:#1a1a1a; border:1px solid #333; padding:15px; margin:20px;
+      border-radius:8px; font-size:13px; line-height:1.55; max-width:900px;
+    }
+    .panel { margin:20px; padding:20px; background:#1a1a1a; border:1px solid #333; border-radius:8px; }
+    table.gpsl-table { width:100%; border-collapse:collapse; }
+    table.gpsl-table th, table.gpsl-table td {
+      border:1px solid #333; padding:8px; font-size:13px; text-align:center;
+    }
+    table.gpsl-table th { background:#222; color:#ff9900; }
+    .bid-btn { padding:4px 10px; font-size:12px; background:#2f5a2f; color:#fff; border:none; border-radius:4px; cursor:pointer; }
+    .bid-btn:hover { background:#3a7a3a; }
+    .my-bid { color:#9cf; font-size:12px; }
+    #bidModal {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7);
+      align-items:center; justify-content:center; z-index:100;
+    }
+    #bidModal .modal-inner {
+      background:#1a1a1a; border:1px solid #444; padding:20px; border-radius:8px; width:320px;
+    }
+    #bidModal input { width:100%; padding:8px; margin:10px 0; background:#111; color:#ddd; border:1px solid #444; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <h1>Expiring Contracts</h1>
+
+  <div class="info-box">
+    <b>Hidden wage bids</b> — players in their <b>final contract year</b> (standard players only; home-grown ≤23 use Squad renew/expire).
+    Submit one wage bid per player per club. Other clubs cannot see your amount.
+    Highest bid wins at <b>season rollover</b> (admin Start New Season); equal bids favour the current club.
+  </div>
+
+  <div class="panel">
+    <div id="marketStatus" style="color:#aaa;margin-bottom:12px;">Loading…</div>
+    <table class="gpsl-table">
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>Pos</th>
+          <th>Rating</th>
+          <th>Holding club</th>
+          <th>Current wage</th>
+          <th>Your bid</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="marketBody"></tbody>
+    </table>
+  </div>
+
+  <div id="bidModal">
+    <div class="modal-inner">
+      <h3 id="bidModalTitle" style="color:#ff9900;margin-top:0;">Wage bid</h3>
+      <p id="bidModalHint" style="font-size:12px;color:#aaa;"></p>
+      <label>Wage offer (₿)</label>
+      <input type="text" id="bidWageInput" inputmode="numeric">
+      <p id="bidModalError" style="color:#f66;font-size:12px;"></p>
+      <button type="button" id="bidSubmitBtn" class="button">Submit bid</button>
+      <button type="button" id="bidCancelBtn" class="button" style="background:#444;margin-left:8px;">Cancel</button>
+    </div>
+  </div>
+
+  <script type="module" src="expiring_contracts.js"></script>
+</body>
+</html>

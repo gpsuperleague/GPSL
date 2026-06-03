@@ -13,8 +13,10 @@ import {
 } from "./player_season_transfer.js";
 import {
   isContractFinalYear,
+  isOnExpiryWageMarket,
   playerBlockedFromTransferMarket,
 } from "./player_contracts.js";
+import { playerSignedCurrentSeason } from "./player_season_transfer.js";
 
 export const TRANSFER_STATUS = {
   LISTED: "listed",
@@ -27,6 +29,7 @@ export const TRANSFER_STATUS = {
   MAKE_OFFER: "make_offer",
   SIGNED_THIS_SEASON: "signed_this_season",
   CONTRACT_FINAL_YEAR: "contract_final_year",
+  EXPIRY_WAGE_BID: "expiry_wage_bid",
 };
 
 /** Canonical user-facing copy (keep in sync across pages). */
@@ -43,6 +46,7 @@ export const TRANSFER_STATUS_LABELS = {
     "Signed this season — not transferable until next season",
   [TRANSFER_STATUS.CONTRACT_FINAL_YEAR]:
     "Final contract year — renew or expire in Squad",
+  [TRANSFER_STATUS.EXPIRY_WAGE_BID]: "Expiring contract — wage bid",
 };
 
 const PILL_CLASS = {
@@ -297,6 +301,7 @@ export function buildGpdbContractedBidCellHtml({
   viewerClubShort,
   state,
   transferWindowOpen,
+  holdingClubNation = "",
 }) {
   const konamiId = player.Konami_ID;
   const sellerClub = player.Contracted_Team;
@@ -305,13 +310,22 @@ export function buildGpdbContractedBidCellHtml({
     normalizeClubShort(viewerClubShort, state) ===
       normalizeClubShort(sellerClub, state);
 
-  if (playerBlockedFromTransferMarket(player, state?.currentSeasonLabel)) {
-    const code = isContractFinalYear(player)
-      ? TRANSFER_STATUS.CONTRACT_FINAL_YEAR
-      : TRANSFER_STATUS.SIGNED_THIS_SEASON;
+  if (playerSignedCurrentSeason(player, state?.currentSeasonLabel)) {
     return formatTransferStatusMessageHtml({
-      code,
-      label: TRANSFER_STATUS_LABELS[code],
+      code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
+      label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
+    });
+  }
+
+  if (isOnExpiryWageMarket(player, holdingClubNation)) {
+    const href = `expiring_contracts.html?player=${encodeURIComponent(konamiId)}`;
+    return `<a href="${href}" class="button" style="font-size:11px;padding:4px 8px;">Wage bid</a>`;
+  }
+
+  if (isContractFinalYear(player)) {
+    return formatTransferStatusMessageHtml({
+      code: TRANSFER_STATUS.CONTRACT_FINAL_YEAR,
+      label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.CONTRACT_FINAL_YEAR],
     });
   }
 

@@ -991,9 +991,12 @@
 
       const dec = tickData?.players_decremented ?? 0;
       const fin = tickData?.players_final_year ?? 0;
+      const resolved = tickData?.expiry_resolved?.players_resolved ?? 0;
+      const released = tickData?.players_released_zero_years ?? 0;
       status.textContent =
-        `✅ New season created. Contract years updated for ${dec} player(s); ` +
-        `${fin} now in final contract year (renew/expire on Squad).`;
+        `✅ New season created. Expiry bids resolved: ${resolved ?? 0}. ` +
+        `Contract years ticked: ${dec}. Released after 0 years: ${released}. ` +
+        `${fin} now in final year (Squad renew/expire or Expiring Contracts wage bids).`;
     };
 
     /* ============================================================
