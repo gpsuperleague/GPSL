@@ -167,6 +167,8 @@ BEGIN
     RAISE EXCEPTION 'Club finances not found for %', v_club;
   END IF;
 
+  PERFORM public.ensure_foreign_buyer_club();
+
   PERFORM public.player_release_from_club(v_pid);
 
   UPDATE public."Club_Finances"
@@ -187,7 +189,7 @@ BEGIN
   VALUES (
     v_player."Konami_ID",
     v_club,
-    NULL,
+    'FOREIGN',
     v_fee,
     0,
     now(),

@@ -192,6 +192,8 @@ Free agents must **not** use the standard listed-player transfer path. Contracte
 
 The site triggers SQL every minute via Edge Function `transferengine_run` → `public.transferengine_run()`.
 
+**Listings vanished from Transfer Market but no deals?** The market only shows `Active` rows with `end_time > now()`. After 7pm the row is hidden but still `Active` until the engine runs. Check GitHub Actions workflow `Transfer Engine Runner` (needs repo secret `SUPABASE_SERVICE_ROLE_KEY`), or run [`repair_stuck_evening_transfers.sql`](./repair_stuck_evening_transfers.sql) then `SELECT transferengine_run();` or Admin → **Run Transfer Engine Now** (after [`admin_transferengine_run.sql`](./admin_transferengine_run.sql)). Re-apply [`transferengine_standard_bigint.sql`](./transferengine_standard_bigint.sql) so expired listings sync high bids from `Player_Transfer_Bids` before closing.
+
 **Processing order (each tick):** transfer list auctions first (standard listings whose `end_time` has passed, including **extensions** past 7pm). Draft settlement runs only when **both** are true: `now() >= draft_random_finish_time` (e.g. 6:57:53pm), and **no** `Active` transfer-**list** auction remains that was **scheduled for 7pm UK on the same evening** as `draft_random_finish_time` (extensions to 9pm still block; seller review / direct offers / next day’s listings do **not** block).
 
 ## Apply draft + run updates

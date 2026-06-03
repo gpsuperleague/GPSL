@@ -354,6 +354,11 @@
         <button class="button" id="saveSettingsBtn">Save Settings</button>
         <div id="settingsMessage" style="color:#ffcc00; margin-top:10px;"></div>
 
+        <button class="button" id="runTransferEngineBtn" style="margin-top:10px; background:#226622;">
+          Run Transfer Engine Now
+        </button>
+        <div id="transferEngineStatus" class="status-note" style="margin-top:8px;"></div>
+
         <p id="draftStartTime" class="status-note" style="margin-top:10px;"></p>
 
         <hr style="border-color:#333; margin:20px 0;">
@@ -798,6 +803,26 @@
     /* ============================================================
        SAVE SETTINGS (ONLY GENERATE TIMES WHEN ENABLING)
        ============================================================ */
+    document.getElementById("runTransferEngineBtn").onclick = async () => {
+      const el = document.getElementById("transferEngineStatus");
+      el.textContent = "Running transfer engine…";
+      try {
+        const { data, error } = await supabase.rpc("admin_transferengine_run");
+        if (error) throw error;
+        el.textContent =
+          `✅ Engine ran at ${new Date(data?.ran_at || Date.now()).toLocaleString("en-GB")}. ` +
+          `Stuck standard listings before run: ${data?.stuck_standard_before ?? "?"}. ` +
+          `Active draft threads before: ${data?.active_draft_before ?? "?"}. ` +
+          `If this RPC fails, run supabase/sql/admin_transferengine_run.sql once, then retry.`;
+      } catch (err) {
+        console.error(err);
+        el.textContent =
+          "❌ " +
+          (err.message || "Failed") +
+          " — run admin_transferengine_run.sql in Supabase, or SELECT transferengine_run(); in SQL Editor.";
+      }
+    };
+
     document.getElementById("saveSettingsBtn").onclick = async () => {
       const transfer_window_open =
         document.getElementById("transferWindowSelect").value === "true";

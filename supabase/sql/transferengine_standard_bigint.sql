@@ -110,6 +110,61 @@ END;
 $function$;
 
 
+-- Copy highest bid row onto listing (Transfer Market UI may show bids while columns are null).
+CREATE OR REPLACE FUNCTION public.transferengine_sync_listing_high_bid(p_listing_id bigint)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_listing "Player_Transfer_Listings"%rowtype;
+  v_amount  numeric;
+  v_buyer   text;
+BEGIN
+  SELECT *
+  INTO v_listing
+  FROM "Player_Transfer_Listings"
+  WHERE id = p_listing_id;
+
+  IF NOT FOUND THEN
+    RETURN;
+  END IF;
+
+  SELECT b.bid_amount, b.bidder_club_id::text
+  INTO v_amount, v_buyer
+  FROM "Player_Transfer_Bids" b
+  WHERE b.listing_id = p_listing_id
+  ORDER BY b.bid_amount DESC, b.bid_time ASC
+  LIMIT 1;
+
+  IF v_buyer IS NULL THEN
+    SELECT b.bid_amount, b.bidder_club_id::text
+    INTO v_amount, v_buyer
+    FROM "Player_Transfer_Bids" b
+    WHERE btrim(coalesce(b.player_id, b.direct_bid_id::text, '')) = btrim(v_listing.player_id::text)
+      AND lower(coalesce(b.status::text, '')) NOT IN ('rejected', 'cancelled')
+    ORDER BY b.bid_amount DESC, b.bid_time ASC
+    LIMIT 1;
+  END IF;
+
+  IF v_buyer IS NULL OR v_amount IS NULL THEN
+    RETURN;
+  END IF;
+
+  UPDATE "Player_Transfer_Listings"
+  SET current_highest_bid = v_amount,
+      current_highest_bidder = v_buyer
+  WHERE id = p_listing_id
+    AND (
+      current_highest_bid IS NULL
+      OR v_amount > current_highest_bid
+      OR (v_amount = current_highest_bid AND current_highest_bidder IS DISTINCT FROM v_buyer)
+    );
+END;
+$function$;
+
+
 CREATE OR REPLACE FUNCTION public.transferengine_evaluate_expired_listing(p_listing_id bigint)
 RETURNS void
 LANGUAGE plpgsql
@@ -129,6 +184,13 @@ BEGIN
     RAISE NOTICE 'Listing % not found in evaluate_expired_listing', p_listing_id;
     RETURN;
   END IF;
+
+  PERFORM public.transferengine_sync_listing_high_bid(p_listing_id);
+
+  SELECT *
+  INTO v_listing
+  FROM "Player_Transfer_Listings"
+  WHERE id = p_listing_id;
 
   IF v_listing.current_highest_bid IS NULL THEN
     UPDATE "Player_Transfer_Listings"
@@ -177,6 +239,13 @@ BEGIN
     RAISE NOTICE 'Listing % not found in handle_expiry_or_extension', p_listing_id;
     RETURN;
   END IF;
+
+  PERFORM public.transferengine_sync_listing_high_bid(p_listing_id);
+
+  SELECT *
+  INTO v_listing
+  FROM "Player_Transfer_Listings"
+  WHERE id = p_listing_id;
 
   SELECT *
   INTO v_latest_bid
