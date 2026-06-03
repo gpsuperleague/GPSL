@@ -469,6 +469,12 @@ async function acceptDirectBid(bid, shortName) {
     return;
   }
 
+  const players = await fetchPlayersMap([playerId]);
+  const player = playerFromMap(players, playerId);
+  const marketValue = Number(player?.market_value) || Number(bid.bid_amount) || 0;
+  const bidAmount = Number(bid.bid_amount);
+  const bidderShort = String(bid.bidder_club_id || "").trim();
+
   const now = new Date();
   const endTime = computeStandardListingEndTime();
 
@@ -477,36 +483,46 @@ async function acceptDirectBid(bid, shortName) {
     .insert({
       player_id: playerId,
       seller_club_id: shortName,
-      reserve_price: bid.bid_amount,
+      reserve_price: bidAmount,
+      market_value: marketValue,
       status: "Active",
       listing_type: "direct",
       created_at: now.toISOString(),
       start_time: now.toISOString(),
       end_time: endTime.toISOString(),
       initial_end_time: endTime.toISOString(),
+      current_highest_bid: bidAmount,
+      current_highest_bidder: bidderShort,
     })
     .select()
     .single();
 
   if (listingError) {
     console.error("Error creating listing from direct bid:", listingError);
+    alert("Could not create transfer listing. Check the console for details.");
     return;
   }
 
   const newListingId = listingInsert.id;
 
-  await supabase.from("Player_Transfer_Bids").insert({
-    listing_id: newListingId,
-    player_id: playerId,
-    direct_bid_id: null,
-    bidder_club_id: bid.bidder_club_id,
-    seller_club_id: shortName,
-    bid_amount: bid.bid_amount,
-    bid_time: now.toISOString(),
-    is_direct: false,
-    is_opening_bid: true,
-    status: "opening",
-  });
+  const { error: openingBidError } = await supabase
+    .from("Player_Transfer_Bids")
+    .insert({
+      listing_id: newListingId,
+      player_id: playerId,
+      direct_bid_id: null,
+      bidder_club_id: bidderShort,
+      seller_club_id: shortName,
+      bid_amount: bidAmount,
+      bid_time: now.toISOString(),
+      is_direct: false,
+      is_opening_bid: true,
+      status: "active",
+    });
+
+  if (openingBidError) {
+    console.error("Error recording opening bid on listing:", openingBidError);
+  }
 
   await supabase
     .from("Player_Transfer_Bids")
