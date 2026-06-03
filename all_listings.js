@@ -3,6 +3,13 @@
 // ======================================================
 import { loadClubsMap, fullClubName, clubPageHref } from "./clubs_lookup.js";
 import { formatTimeRemainingHtml } from "./countdown_display.js";
+import {
+  loadListingFavouriteIds,
+  toggleListingFavourite,
+  sortListingsFavouritesFirst,
+  favouriteStarChar,
+  favouriteButtonLabel,
+} from "./listing_favourites.js";
 
 function pesdbPlayerUrl(konamiId) {
   return `https://pesdb.net/efootball/?id=${encodeURIComponent(konamiId)}`;
@@ -16,14 +23,15 @@ let openListings = [];
 let reviewListings = [];
 let selectedListing = null;
 let renderGeneration = 0;
+let favouriteListingIds = new Set();
 
 // Load club map immediately
 await loadClubsMap();
 
-// ⭐ Format numbers as ₿ 1,234,567
+// ₿ and amount on one line (non-breaking space after symbol)
 function formatMoney(amount) {
   if (amount == null || isNaN(amount)) return "-";
-  return "₿ " + Number(amount).toLocaleString("en-GB");
+  return `₿\u00a0${Number(amount).toLocaleString("en-GB")}`;
 }
 
 const BID_INCREMENT = 500000;
@@ -107,6 +115,7 @@ async function loadShortNameFromSupabase(userId) {
   }
 
   currentUserShort = data.ShortName;
+  favouriteListingIds = loadListingFavouriteIds(currentUserShort);
 }
 
 // ======================================================
@@ -321,7 +330,7 @@ async function renderListings() {
   if (rows.length === 0) {
     const tr = document.createElement("tr");
     tr.innerHTML =
-      `<td colspan="12" style="text-align:center;color:#888;">No listings to show.</td>`;
+      `<td colspan="13" style="text-align:center;color:#888;">No listings to show.</td>`;
     tbody.appendChild(tr);
     return;
   }
@@ -329,13 +338,18 @@ async function renderListings() {
   const hydratedRows = await hydrateListingHighBids(rows);
   if (gen !== renderGeneration) return;
 
-  const playerIds = [...new Set(hydratedRows.map((l) => String(l.player_id)))];
+  const sortedRows = sortListingsFavouritesFirst(
+    hydratedRows,
+    favouriteListingIds
+  );
+
+  const playerIds = [...new Set(sortedRows.map((l) => String(l.player_id)))];
   const playerMap = await fetchPlayersMap(playerIds);
   if (gen !== renderGeneration) return;
 
   const now = new Date();
 
-  for (const listing of hydratedRows) {
+  for (const listing of sortedRows) {
     const player = playerMap.get(String(listing.player_id));
 
     const extendedLabel = listing.was_extended
@@ -370,7 +384,16 @@ async function renderListings() {
     const canBid =
       isOpen && listing.seller_club_id !== currentUserShort && !!currentUserShort;
 
+    const isFav = favouriteListingIds.has(String(listing.id));
+
     tr.innerHTML = `
+      <td class="fav-cell">
+        <button type="button"
+                class="listing-fav-btn${isFav ? " fav-on" : ""}"
+                data-listing-id="${listing.id}"
+                title="${favouriteButtonLabel(isFav)}"
+                aria-label="${favouriteButtonLabel(isFav)}">${favouriteStarChar(isFav)}</button>
+      </td>
       <td>
         <a href="${clubUrl}" class="gpsl-link club-link">${clubLabel}</a>
       </td>
@@ -390,11 +413,11 @@ async function renderListings() {
       <td>${player?.Position || "-"}</td>
       <td>${player?.Playstyle || "-"}</td>
       <td>${player?.Rating || "-"}</td>
-      <td>${formatMoney(listing.market_value)}</td>
-      <td>${formatMoney(listing.reserve_price)}</td>
+      <td class="money-cell">${formatMoney(listing.market_value)}</td>
+      <td class="money-cell">${formatMoney(listing.reserve_price)}</td>
       <td>${listing.status} ${extendedLabel}</td>
       <td class="countdown-cell">${formatTimeRemainingHtml(listing.end_time)}</td>
-      <td>${formatMoney(listing.current_highest_bid)}</td>
+      <td class="money-cell">${formatMoney(listing.current_highest_bid)}</td>
       <td>${highestClubText}</td>
       <td>
         ${
@@ -408,6 +431,17 @@ async function renderListings() {
     tr.querySelectorAll(".pesdb-link, .club-link").forEach((link) => {
       link.addEventListener("click", (e) => e.stopPropagation());
     });
+
+    const favBtn = tr.querySelector(".listing-fav-btn");
+    if (favBtn) {
+      favBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!currentUserShort) return;
+        toggleListingFavourite(currentUserShort, favBtn.dataset.listingId);
+        favouriteListingIds = loadListingFavouriteIds(currentUserShort);
+        void renderListings();
+      });
+    }
 
     tbody.appendChild(tr);
   }

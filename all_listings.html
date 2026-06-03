@@ -134,6 +134,33 @@ a.button:hover, button.button:hover {
       border-bottom: 1px solid #333;
     }
 
+    table.gpsl-table td.money-cell {
+      white-space: nowrap;
+    }
+
+    .fav-cell {
+      width: 36px;
+      text-align: center;
+    }
+
+    .listing-fav-btn {
+      background: transparent;
+      border: none;
+      color: #888;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 2px 4px;
+      line-height: 1;
+    }
+
+    .listing-fav-btn:hover {
+      color: #ff9900;
+    }
+
+    .listing-fav-btn.fav-on {
+      color: #ffd700;
+    }
+
     table.gpsl-table tr:nth-child(even) {
       background: #181818;
     }
@@ -423,6 +450,7 @@ a.button:hover, button.button:hover {
   <table class="gpsl-table">
     <thead>
       <tr>
+        <th title="Favourite — pinned to top">★</th>
         <th>Selling Club</th>
         <th></th>
         <th>Player</th>
@@ -508,7 +536,7 @@ a.button:hover, button.button:hover {
   <script type="module" src="clubs_lookup.js"></script>
 
   <!-- ALL LISTINGS LOGIC -->
-  <script type="module" src="all_listings.js?v=7"></script>
+  <script type="module" src="all_listings.js?v=8"></script>
 
 </body>
 </html>
