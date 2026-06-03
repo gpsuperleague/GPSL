@@ -18,6 +18,21 @@ AS $$
     OR coalesce(auth.jwt() ->> 'role', '') = 'service_role';
 $$;
 
+-- Label overflow / special sales in Transfer Centre (Season Sales)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Transfer_History'
+      AND column_name = 'transfer_sale_note'
+  ) THEN
+    ALTER TABLE public."Transfer_History"
+      ADD COLUMN transfer_sale_note text;
+  END IF;
+END $$;
+
 CREATE OR REPLACE FUNCTION public.squad_max_size()
 RETURNS int
 LANGUAGE sql
@@ -166,7 +181,8 @@ BEGIN
     agent_fee,
     transfer_time,
     listing_id,
-    foreign_buyer_name
+    foreign_buyer_name,
+    transfer_sale_note
   )
   VALUES (
     v_player."Konami_ID",
@@ -176,7 +192,8 @@ BEGIN
     0,
     now(),
     NULL,
-    NULL
+    'Market value (squad over 28)',
+    'squad_overflow'
   );
 
   RETURN jsonb_build_object(
@@ -300,7 +317,8 @@ BEGIN
     agent_fee,
     transfer_time,
     listing_id,
-    foreign_buyer_name
+    foreign_buyer_name,
+    transfer_sale_note
   )
   VALUES (
     v_player."Konami_ID",
@@ -310,7 +328,8 @@ BEGIN
     0,
     now(),
     NULL,
-    v_team
+    v_team,
+    'squad_overflow'
   );
 
   RETURN jsonb_build_object(

@@ -13,7 +13,8 @@ import {
   loadClubsMap,
   fullClubName,
   displayClubName,
-  displayTransferBuyer,
+  formatSeasonSaleDestination,
+  formatSeasonSaleType,
 } from "./clubs_lookup.js";
 import { getBidPlayerId, isPendingContractedDirectOffer } from "./direct_offers.js";
 import {
@@ -734,7 +735,8 @@ async function loadSeasonSales(shortName) {
     <table class="gpsl-table">
       <tr>
         <th>Player</th>
-        <th>To</th>
+        <th>Type</th>
+        <th>To / reason</th>
         <th>Price</th>
         <th>Date</th>
       </tr>
@@ -743,7 +745,8 @@ async function loadSeasonSales(shortName) {
           (row) => `
         <tr>
           <td>${playerFromMap(players, row.player_id)?.Name || "Unknown"}</td>
-          <td>${displayTransferBuyer(row)}</td>
+          <td>${formatSeasonSaleType(row)}</td>
+          <td>${formatSeasonSaleDestination(row)}</td>
           <td>₿ ${Number(row.fee).toLocaleString("en-GB")}</td>
           <td>${new Date(row.transfer_time).toLocaleString()}</td>
         </tr>

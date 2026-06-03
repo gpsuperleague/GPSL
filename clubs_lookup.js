@@ -73,6 +73,36 @@ export function displayTransferBuyer(row) {
   return buyerClubLabel(row.buyer_club_id, row.foreign_buyer_name);
 }
 
+/** Season Sales / signings — includes squad overflow and MV releases. */
+export function formatSeasonSaleDestination(row) {
+  if (!row) return "—";
+
+  const note = String(row.transfer_sale_note || "").trim();
+  const foreignName = String(row.foreign_buyer_name || "").trim();
+
+  if (note === "squad_overflow") {
+    if (isForeignBuyerClub(row.buyer_club_id) && foreignName) {
+      return `${foreignName} (squad over 28)`;
+    }
+    if (foreignName) return foreignName;
+    return "Free agent — squad over 28 (market value)";
+  }
+
+  if (!row.buyer_club_id && foreignName) {
+    return foreignName;
+  }
+
+  return displayTransferBuyer(row);
+}
+
+export function formatSeasonSaleType(row) {
+  const note = String(row?.transfer_sale_note || "").trim();
+  if (note === "squad_overflow") return "Squad over 28";
+  if (isForeignBuyerClub(row?.buyer_club_id)) return "Foreign sale";
+  if (!row?.buyer_club_id) return "Released";
+  return "Transfer";
+}
+
 /** Link to club squad page (same as clubs.html grid). */
 export function clubPageHref(shortName) {
   if (isForeignBuyerClub(shortName)) return null;
