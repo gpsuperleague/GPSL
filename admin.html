@@ -362,7 +362,8 @@
         <p class="note" style="margin-top:0;">
           Standard calculated wage = <code>market_value × %</code> by the club&apos;s
           <b>current competition division</b> (SuperLeague vs Championship A/B).
-          Run <code>player_wage_settings.sql</code> once. Used for contracts / free agents when built.
+          <b>Required once in Supabase:</b> run <code>supabase/sql/player_wage_settings.sql</code>
+          (creates <code>admin_update_wage_settings</code> + wage columns). If save fails, run that file then retry.
         </p>
         <div class="row">
           <div>
@@ -869,10 +870,48 @@
 
       status.textContent = "Saving…";
 
-      const { error } = await supabase.rpc("admin_update_wage_settings", {
+      const wagePayload = {
+        wage_pct_superleague: sl,
+        wage_pct_championship: ch,
+        updated_at: new Date().toISOString(),
+      };
+
+      let error = null;
+      const { error: rpcError } = await supabase.rpc("admin_update_wage_settings", {
         p_wage_pct_superleague: sl,
         p_wage_pct_championship: ch,
       });
+
+      if (rpcError) {
+        const msg = String(rpcError.message || "");
+        const rpcMissing =
+          msg.includes("admin_update_wage_settings") &&
+          (msg.includes("Could not find") || msg.includes("schema cache"));
+
+        if (rpcMissing) {
+          const { error: updError } = await supabase
+            .from("global_settings")
+            .update(wagePayload)
+            .eq("id", 1);
+
+          if (updError) {
+            const colMissing =
+              String(updError.message || "").includes("wage_pct");
+            error = colMissing
+              ? new Error(
+                  "Wage columns missing. In Supabase SQL Editor, run the full file: supabase/sql/player_wage_settings.sql"
+                )
+              : updError;
+          } else {
+            status.textContent =
+              "✅ Wage % saved (direct update). Run player_wage_settings.sql in Supabase so contract signing uses the wage RPCs.";
+            await loadSettings();
+            return;
+          }
+        } else {
+          error = rpcError;
+        }
+      }
 
       status.textContent = error
         ? "❌ " + error.message
