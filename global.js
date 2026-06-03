@@ -449,7 +449,8 @@ export async function buildNav() {
   const isHome = path.includes("index");
   const isGPDB = path.includes("gpdb");
   const isClubs = path.includes("clubs") && !path.includes("all_listings");
-  const isMarket = path.includes("all_listings");
+  const isMarket =
+    path.includes("all_listings") || path.includes("season_transfers");
   const isDashboard = path.includes("dashboard");
   const isAdmin = path.includes("admin");
   const isDraft =

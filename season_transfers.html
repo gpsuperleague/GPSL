@@ -1,0 +1,181 @@
+<script>
+  window.CURRENT_PAGE = "season_transfers";
+</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Season transfers — GPSL</title>
+  <style>
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+      margin: 0;
+    }
+
+    h1 {
+      background: #222;
+      color: #ff9900;
+      padding: 10px 16px;
+      border-radius: 6px;
+      width: fit-content;
+      margin: 20px auto 12px;
+      font-size: 26px;
+    }
+
+    #nav {
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    a.button, button.button {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #1a1a1a;
+      color: #ff9900;
+      border: 1px solid #666;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      margin: 5px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    a.button:hover, button.button:hover {
+      background: #222;
+      transform: scale(1.05);
+    }
+
+    .page-wrap {
+      width: 92%;
+      max-width: 1220px;
+      margin: 0 auto 40px;
+    }
+
+    .meta {
+      color: #aaa;
+      font-size: 14px;
+      margin: 0 0 16px;
+      line-height: 1.5;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .filter-btn {
+      padding: 6px 14px;
+      background: #222;
+      color: #ccc;
+      border: 1px solid #555;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .filter-btn.active {
+      background: #ff9900;
+      color: #111;
+      border-color: #ff9900;
+      font-weight: bold;
+    }
+
+    table.gpsl-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      background: #1a1a1a;
+    }
+
+    table.gpsl-table th {
+      background: #222;
+      color: #ff9900;
+      padding: 8px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    table.gpsl-table td {
+      border: 1px solid #333;
+      padding: 8px;
+      vertical-align: middle;
+    }
+
+    table.gpsl-table tr:nth-child(even) {
+      background: #161616;
+    }
+
+    .gpsl-link {
+      color: #6cf;
+      text-decoration: none;
+    }
+
+    .gpsl-link:hover {
+      text-decoration: underline;
+    }
+
+    .type-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      background: #333;
+      color: #ccc;
+    }
+
+    .type-pill.transfer { background: #2a3d2a; color: #9fdf9f; }
+    .type-pill.draft { background: #3d3520; color: #ffcc66; }
+    .type-pill.foreign { background: #2a2a3d; color: #aabfff; }
+    .type-pill.release { background: #3d2a2a; color: #ffaaaa; }
+
+    .empty {
+      color: #888;
+      font-style: italic;
+      padding: 24px 0;
+    }
+
+    #logoutBtn {
+      background: #cc0000 !important;
+      color: #fff !important;
+      border: 1px solid #990000 !important;
+    }
+  </style>
+</head>
+<body>
+  <h1>Season transfers</h1>
+  <div id="nav"></div>
+
+  <div class="page-wrap">
+    <p class="meta">
+      <a href="all_listings.html" class="button">← Transfer Market</a>
+      <span id="seasonLabel"></span>
+    </p>
+
+    <div class="toolbar" id="filterBar">
+      <button type="button" class="filter-btn active" data-filter="all">All</button>
+      <button type="button" class="filter-btn" data-filter="transfer">Club transfers</button>
+      <button type="button" class="filter-btn" data-filter="draft">Draft signings</button>
+      <button type="button" class="filter-btn" data-filter="foreign">Foreign / releases</button>
+    </div>
+
+    <div id="tableHost">
+      <p class="empty">Loading…</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initGlobal } from "./global.js";
+    await initGlobal();
+  </script>
+  <script type="module" src="season_transfers.js"></script>
+</body>
+</html>
