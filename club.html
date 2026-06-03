@@ -409,6 +409,7 @@
       formatTransferStatusMessageHtml,
       TRANSFER_STATUS,
     } from './player_transfer_status.js';
+    import { SAME_SEASON_TRANSFER_MESSAGE } from './player_season_transfer.js';
     import { specialAuctionNavLinkHtml } from './global.js';
 
     const supabase = createClient(
@@ -571,13 +572,15 @@
         viewerClubShort: buyerShortName,
         pageClubShort: clubShortName,
         state: transferStatusState,
+        seasonSigned: p.Season_Signed,
       });
 
       if (
         status.code === TRANSFER_STATUS.LISTED ||
         status.code === TRANSFER_STATUS.DIRECT_OFFER_SELLER ||
         status.code === TRANSFER_STATUS.OFFER_PENDING ||
-        status.code === TRANSFER_STATUS.SELLER_REVIEW
+        status.code === TRANSFER_STATUS.SELLER_REVIEW ||
+        status.code === TRANSFER_STATUS.SIGNED_THIS_SEASON
       ) {
         return formatTransferStatusMessageHtml(status, "offer-review-msg");
       }
@@ -605,7 +608,7 @@
 
       const { data, error } = await supabase
         .from("Players")
-        .select("Name, Nation, Position, Rating, Age, market_value, Playstyle, Konami_ID, Contracted_Team")
+        .select("Name, Nation, Position, Rating, Age, market_value, Playstyle, Konami_ID, Contracted_Team, Season_Signed")
         .eq("Contracted_Team", clubShortName);
 
       if (error) {
@@ -850,13 +853,25 @@
         return;
       }
 
+      const { data: offerPlayer } = await supabase
+        .from("Players")
+        .select("Season_Signed")
+        .eq("Konami_ID", currentOfferKonamiId)
+        .maybeSingle();
+
       const offerStatus = resolvePlayerTransferStatus({
         konamiId: currentOfferKonamiId,
         contractedTeam: currentOfferSellerClub,
         viewerClubShort: buyerShortName,
         pageClubShort: currentOfferSellerClub,
         state: transferStatusState,
+        seasonSigned: offerPlayer?.Season_Signed,
       });
+
+      if (offerStatus.code === TRANSFER_STATUS.SIGNED_THIS_SEASON) {
+        alert(SAME_SEASON_TRANSFER_MESSAGE);
+        return;
+      }
       if (
         offerStatus.code === TRANSFER_STATUS.OFFER_PENDING ||
         offerStatus.code === TRANSFER_STATUS.DIRECT_OFFER_SELLER
@@ -884,9 +899,11 @@
         console.error("Error submitting offer:", error);
         const msg = String(error.message || "");
         alert(
-          msg.includes("already under review")
-            ? "An offer is already under review for this player."
-            : "Error submitting offer. Please try again."
+          msg.includes("current season")
+            ? SAME_SEASON_TRANSFER_MESSAGE
+            : msg.includes("already under review")
+              ? "An offer is already under review for this player."
+              : "Error submitting offer. Please try again."
         );
         return;
       }

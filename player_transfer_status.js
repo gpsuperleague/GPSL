@@ -7,6 +7,10 @@ import {
   playerHasPendingDirectOffer,
   playerHasActiveListing,
 } from "./direct_offers.js";
+import {
+  loadCurrentGpslSeasonLabel,
+  playerBlockedSameSeasonTransfer,
+} from "./player_season_transfer.js";
 
 export const TRANSFER_STATUS = {
   LISTED: "listed",
@@ -17,6 +21,7 @@ export const TRANSFER_STATUS = {
   YOUR_PLAYER: "your_player",
   WINDOW_CLOSED: "window_closed",
   MAKE_OFFER: "make_offer",
+  SIGNED_THIS_SEASON: "signed_this_season",
 };
 
 /** Canonical user-facing copy (keep in sync across pages). */
@@ -29,6 +34,8 @@ export const TRANSFER_STATUS_LABELS = {
   [TRANSFER_STATUS.NOT_LISTED]: "Not listed",
   [TRANSFER_STATUS.YOUR_PLAYER]: "Your Player",
   [TRANSFER_STATUS.WINDOW_CLOSED]: "Window Closed",
+  [TRANSFER_STATUS.SIGNED_THIS_SEASON]:
+    "Signed this season — not transferable until next season",
 };
 
 const PILL_CLASS = {
@@ -37,6 +44,7 @@ const PILL_CLASS = {
   [TRANSFER_STATUS.DIRECT_OFFER_SELLER]: "status-direct-offer",
   [TRANSFER_STATUS.OFFER_PENDING]: "status-offer-pending",
   [TRANSFER_STATUS.NOT_LISTED]: "status-not-listed",
+  [TRANSFER_STATUS.SIGNED_THIS_SEASON]: "status-signed-season",
 };
 
 export function buildClubShortLookup(clubsRows) {
@@ -134,12 +142,15 @@ export async function loadTransferStatusState(supabase) {
     clubShortByKey
   );
 
+  const currentSeasonLabel = await loadCurrentGpslSeasonLabel(supabase);
+
   return {
     clubShortByKey,
     pendingDirectAll: pendingState.allPlayerIds,
     pendingDirectBySeller,
     activeListedPlayerIds,
     sellerReviewPlayerIds,
+    currentSeasonLabel,
   };
 }
 
@@ -158,6 +169,7 @@ export function resolvePlayerTransferStatus({
   viewerClubShort,
   state,
   pageClubShort = null,
+  seasonSigned = null,
 }) {
   const pid = String(konamiId ?? "").trim();
   const sellerNorm = normalizeClubShort(contractedTeam, state);
@@ -165,6 +177,20 @@ export function resolvePlayerTransferStatus({
   const pageClubNorm = normalizeClubShort(pageClubShort || contractedTeam, state);
   const isViewerSeller =
     !!viewerNorm && !!sellerNorm && viewerNorm === sellerNorm;
+
+  if (
+    seasonSigned != null &&
+    playerBlockedSameSeasonTransfer(
+      { Season_Signed: seasonSigned },
+      state?.currentSeasonLabel
+    )
+  ) {
+    return {
+      code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
+      label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
+      pillClass: PILL_CLASS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
+    };
+  }
 
   if (playerHasActiveListing(state.activeListedPlayerIds, pid)) {
     return {
@@ -259,11 +285,21 @@ export function buildGpdbContractedBidCellHtml({
     normalizeClubShort(viewerClubShort, state) ===
       normalizeClubShort(sellerClub, state);
 
+  if (
+    playerBlockedSameSeasonTransfer(player, state?.currentSeasonLabel)
+  ) {
+    return formatTransferStatusMessageHtml({
+      code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
+      label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
+    });
+  }
+
   const status = resolvePlayerTransferStatus({
     konamiId,
     contractedTeam: sellerClub,
     viewerClubShort,
     state,
+    seasonSigned: player?.Season_Signed,
   });
 
   if (status.code === TRANSFER_STATUS.LISTED) {
@@ -282,7 +318,11 @@ export function buildGpdbContractedBidCellHtml({
     return formatTransferStatusMessageHtml(status);
   }
 
-  if (!isMyClub && transferWindowOpen) {
+  if (
+    !isMyClub &&
+    transferWindowOpen &&
+    status.code !== TRANSFER_STATUS.SIGNED_THIS_SEASON
+  ) {
     return `<button class="button make-offer-btn" data-player-id="${konamiId}">Make Offer</button>`;
   }
 

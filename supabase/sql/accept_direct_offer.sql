@@ -1,6 +1,6 @@
 -- Accept a pending direct offer → active transfer listing with opening high bid.
 -- Bypasses client RLS. Requires my_club_shortname() (special_auctions.sql).
--- Run once in Supabase SQL Editor AFTER sync_listing_high_from_bid.sql.
+-- Run once in Supabase SQL Editor AFTER sync_listing_high_from_bid.sql and player_contract_hooks.sql.
 
 CREATE OR REPLACE FUNCTION public.resolve_club_shortname(p_club text)
 RETURNS text
@@ -71,6 +71,8 @@ BEGIN
   IF v_player_id = '' THEN
     RAISE EXCEPTION 'Direct offer missing player id';
   END IF;
+
+  PERFORM public.assert_player_transferable(v_player_id);
 
   v_end := coalesce(p_end_time, v_now + interval '24 hours');
 

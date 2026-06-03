@@ -2,7 +2,7 @@
 
 Authoritative design from league owner (2026). Align with legacy spreadsheet when reviewing.
 
-**Status:** Not implemented in app/DB yet. Separate from **competition seasons** (`competition_seasons`) but must advance on **transfer/GPSL season rollover** (`rollover_season` in Supabase).
+**Status:** **Phase 1 (C1 partial)** — `player_contract_hooks.sql`: `Season_Signed` + `contract_seasons_remaining` + `contract_wage` on signing; cleared on release. Rollover, expiry market, renew/expire UI **not implemented**. Separate from **competition seasons** (`competition_seasons`) but uses **`competition_seasons.label`** for `Season_Signed` on new signings.
 
 ---
 
@@ -324,8 +324,9 @@ Every signed player (including HG) gets a **3-year deal**. Year 3 is the **last 
 
 ## Related repo state (today)
 
-- `Players`: `Contracted_Team`, `market_value`, `Season_Signed` — **no contract length, no wage**.
-- Transfers: `transferengine_*`, draft settlement — assign club only.
+- `Players`: `Contracted_Team`, `market_value`, `Season_Signed`, `contract_seasons_remaining`, `contract_wage` — set on sign via `player_assign_to_club`; cleared via `player_release_from_club`.
+- Transfers: `transferengine_*`, draft settlement — call `player_assign_to_club` (fresh 3-year contract each signing).
+- **Same-season resale block** — players with `Season_Signed` = current `competition_seasons.label` cannot be listed, sold to foreign clubs, or receive direct/listing bids until the next season (`player_contract_hooks.sql` triggers).
 - Admin **Season rollover** button calls `rollover_season` (not in repo SQL).
 - Competition phases 0–6: **no** player contracts.
 

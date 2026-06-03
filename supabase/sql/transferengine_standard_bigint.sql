@@ -63,6 +63,11 @@ BEGIN
     RETURN;
   END IF;
 
+  IF public.player_signed_this_season(v_player."Season_Signed") THEN
+    RAISE NOTICE 'Player signed this season — sale blocked for listing %', p_listing_id;
+    RETURN;
+  END IF;
+
   UPDATE "Club_Finances"
   SET balance = v_buyer_balance - v_listing.current_highest_bid
   WHERE club_name = v_listing.current_highest_bidder;
@@ -71,9 +76,10 @@ BEGIN
   SET balance = v_seller_balance + v_listing.current_highest_bid
   WHERE club_name = v_listing.seller_club_id;
 
-  UPDATE "Players"
-  SET "Contracted_Team" = v_listing.current_highest_bidder
-  WHERE "Konami_ID"::text = v_listing.player_id::text;
+  PERFORM public.player_assign_to_club(
+    v_listing.player_id::text,
+    v_listing.current_highest_bidder
+  );
 
   INSERT INTO "Transfer_History" (
     player_id,

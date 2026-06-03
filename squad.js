@@ -20,15 +20,20 @@ import {
   resolvePlayerTransferStatus,
   formatSquadStatusHtml,
 } from "./player_transfer_status.js";
+import {
+  loadCurrentGpslSeasonLabel,
+  playerBlockedSameSeasonTransfer,
+  SAME_SEASON_TRANSFER_MESSAGE,
+} from "./player_season_transfer.js";
 
 window.supabase = supabase;
 
 /** Columns needed for squad table + list modal (avoid select *). */
 const SQUAD_PLAYER_COLUMNS =
-  "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team";
+  "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team, Season_Signed";
 
 const SQUAD_PLAYER_COLUMNS_LEGACY =
-  "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team";
+  "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team, Season_Signed";
 
 function isMissingEconomicsColumnError(error) {
   const msg = String(error?.message || "").toLowerCase();
@@ -45,6 +50,7 @@ let selectedPlayerForListing = null;
 // ⭐ NEW: Transfer window state
 let transferWindowOpen = true;
 let transferStatusState = null;
+let currentGpslSeasonLabel = "";
 
 const MAX_FOREIGN_INTEREST = 3;
 let foreignInterestRemaining = MAX_FOREIGN_INTEREST;
@@ -158,45 +164,63 @@ function renderForeignInterestBadge() {
   el.textContent = `${n} foreign ${clubWord} interested in your players`;
 }
 
+function squadActionOptionsHtml(player) {
+  const blocked = playerBlockedSameSeasonTransfer(
+    player,
+    currentGpslSeasonLabel
+  );
+  if (blocked) {
+    return `<option value="" disabled>Signed this season</option>`;
+  }
+  return `
+            <option value="list">Transfer List</option>
+            <option value="foreign">Sell to foreign club</option>`;
+}
+
 function applyForeignSaleOptionState() {
-  const allow = foreignInterestRemaining > 0;
+  const allowForeign = foreignInterestRemaining > 0;
   document.querySelectorAll("select.squad-action-select").forEach((sel) => {
-    const opt = sel.querySelector('option[value="foreign"]');
-    if (!opt) return;
-    opt.disabled = !allow;
-    opt.textContent = allow
-      ? "Sell to foreign club"
-      : "No foreign interest left";
+    const pid = sel.dataset.playerId;
+    const row = sel.closest("tr[data-konami-id]");
+    const blocked =
+      row?.dataset.sameSeasonLocked === "1" ||
+      (pid &&
+        playerBlockedSameSeasonTransfer(
+          { Season_Signed: row?.dataset.seasonSigned },
+          currentGpslSeasonLabel
+        ));
+
+    const listOpt = sel.querySelector('option[value="list"]');
+    const foreignOpt = sel.querySelector('option[value="foreign"]');
+
+    if (blocked) {
+      if (listOpt) listOpt.disabled = true;
+      if (foreignOpt) {
+        foreignOpt.disabled = true;
+        foreignOpt.textContent = "Signed this season";
+      }
+      return;
+    }
+
+    if (listOpt) {
+      listOpt.disabled = !transferWindowOpen;
+      listOpt.textContent = transferWindowOpen
+        ? "Transfer List"
+        : "Transfer Window Shut";
+    }
+    if (foreignOpt) {
+      foreignOpt.disabled = !allowForeign;
+      foreignOpt.textContent = allowForeign
+        ? "Sell to foreign club"
+        : "No foreign interest left";
+    }
   });
 }
 
 function applyTransferWindowRules() {
   const msg = document.getElementById("windowClosedMessage");
-  const selects = document.querySelectorAll("select.squad-action-select");
-
-  if (!transferWindowOpen) {
-    // Show warning message
-    if (msg) msg.style.display = "block";
-
-    // Update dropdowns
-    selects.forEach(sel => {
-      const opt = sel.querySelector('option[value="list"]');
-      if (opt) {
-        opt.textContent = "Transfer Window Shut";
-        opt.disabled = true;
-      }
-    });
-  } else {
-    if (msg) msg.style.display = "none";
-
-    selects.forEach(sel => {
-      const opt = sel.querySelector('option[value="list"]');
-      if (opt) {
-        opt.textContent = "Transfer List";
-        opt.disabled = false;
-      }
-    });
-  }
+  if (msg) msg.style.display = transferWindowOpen ? "none" : "block";
+  applyForeignSaleOptionState();
 }
 
 async function loadFreshTransferStatusState() {
@@ -224,6 +248,8 @@ async function loadSquad() {
       .select(SQUAD_PLAYER_COLUMNS_LEGACY)
       .eq("Contracted_Team", currentUserShort));
   }
+
+  currentGpslSeasonLabel = await loadCurrentGpslSeasonLabel(supabase);
 
   if (error) {
     console.error("Squad load error", error);
@@ -342,12 +368,17 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
       .sort((a, b) => b.market_value - a.market_value);
 
     groupPlayers.forEach(p => {
+      const sameSeasonLocked = playerBlockedSameSeasonTransfer(
+        p,
+        currentGpslSeasonLabel
+      );
       const statusRow = transferState
         ? resolvePlayerTransferStatus({
             konamiId: p.Konami_ID,
             contractedTeam: p.Contracted_Team || currentUserShort,
             viewerClubShort: currentUserShort,
             state: transferState,
+            seasonSigned: p.Season_Signed,
           })
         : {
             label: "Not listed",
@@ -358,6 +389,8 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
       const tr = document.createElement("tr");
       tr.dataset.konamiId = p.Konami_ID;
       tr.dataset.contractedTeam = p.Contracted_Team || currentUserShort;
+      tr.dataset.seasonSigned = p.Season_Signed ?? "";
+      tr.dataset.sameSeasonLocked = sameSeasonLocked ? "1" : "0";
       tr.style.cursor = "pointer";
       const st = statsByPlayer.get(String(p.Konami_ID));
       const avg =
@@ -383,8 +416,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
         <td class="squad-col-action">
           <select class="squad-action-select" data-player-id="${String(p.Konami_ID)}">
             <option value="">Action</option>
-            <option value="list">Transfer List</option>
-            <option value="foreign">Sell to foreign club</option>
+            ${squadActionOptionsHtml(p)}
           </select>
         </td>
       `;
@@ -425,6 +457,7 @@ function patchSquadEnrichment(transferState, statsByPlayer) {
           row.dataset.contractedTeam || currentUserShort,
         viewerClubShort: currentUserShort,
         state: transferState,
+        seasonSigned: row.dataset.seasonSigned || null,
       });
       status.innerHTML = formatSquadStatusHtml(statusRow);
     }
@@ -503,7 +536,16 @@ async function handlePlayerAction(playerId, action, selectEl) {
         return;
       }
       resetActionSelect(selectEl);
-      await openListPlayerModalByID({ Konami_ID: playerId });
+      const { data: pRow } = await supabase
+        .from("Players")
+        .select("Konami_ID, Name, market_value, Maximum_Reserve_Price, Season_Signed")
+        .eq("Konami_ID", playerId)
+        .maybeSingle();
+      if (playerBlockedSameSeasonTransfer(pRow, currentGpslSeasonLabel)) {
+        alert(SAME_SEASON_TRANSFER_MESSAGE);
+        return;
+      }
+      await openListPlayerModalByID(pRow || { Konami_ID: playerId });
       return;
     }
 
@@ -525,7 +567,7 @@ async function handlePlayerAction(playerId, action, selectEl) {
 async function sellPlayerToForeignClub(playerId) {
   const { data: player, error: loadErr } = await supabase
     .from("Players")
-    .select("Konami_ID, Name, market_value, Contracted_Team")
+    .select("Konami_ID, Name, market_value, Contracted_Team, Season_Signed")
     .eq("Konami_ID", playerId)
     .single();
 
@@ -537,6 +579,11 @@ async function sellPlayerToForeignClub(playerId) {
   const contracted = playerContractClubKey(player.Contracted_Team);
   if (contracted !== currentUserShort) {
     alert("This player is not at your club.");
+    return;
+  }
+
+  if (playerBlockedSameSeasonTransfer(player, currentGpslSeasonLabel)) {
+    alert(SAME_SEASON_TRANSFER_MESSAGE);
     return;
   }
 
@@ -700,6 +747,17 @@ async function validateAndCreateListing() {
 
   if (!validateReserveInput()) return;
 
+  if (
+    playerBlockedSameSeasonTransfer(
+      selectedPlayerForListing,
+      currentGpslSeasonLabel
+    )
+  ) {
+    document.getElementById("reserveError").textContent =
+      SAME_SEASON_TRANSFER_MESSAGE;
+    return;
+  }
+
   const playerId = String(selectedPlayerForListing.Konami_ID);
   const now = new Date().toISOString();
   const endTime = computeStandardListingEndTime().toISOString();
@@ -748,8 +806,12 @@ async function validateAndCreateListing() {
 
   if (error) {
     console.error("LISTING INSERT ERROR:", error);
-    document.getElementById("reserveError").textContent =
-      "Failed to create listing. Please try again.";
+    const msg = String(error.message || "");
+    document.getElementById("reserveError").textContent = msg.includes(
+      "current season"
+    )
+      ? SAME_SEASON_TRANSFER_MESSAGE
+      : "Failed to create listing. Please try again.";
     return;
   }
 

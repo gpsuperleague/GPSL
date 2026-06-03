@@ -12,6 +12,11 @@ import { getUKNow, isDraftAuctionEnded } from "./draft_engine.js";
 import { loadClubsMap, fullClubName, displayClubName } from "./clubs_lookup.js";
 import { getBidPlayerId, isPendingContractedDirectOffer } from "./direct_offers.js";
 import {
+  loadCurrentGpslSeasonLabel,
+  playerBlockedSameSeasonTransfer,
+  SAME_SEASON_TRANSFER_MESSAGE,
+} from "./player_season_transfer.js";
+import {
   loadDraftFavouriteIds,
   toggleDraftFavourite,
   favouriteStarChar,
@@ -57,6 +62,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadSeasonSales(shortName);
 
   setupListPlayerModal(shortName);
+
+  window.__gpslCurrentSeasonLabel = await loadCurrentGpslSeasonLabel(supabase);
 });
 
 // ============================================================
@@ -565,16 +572,23 @@ async function loadSellerReview(shortName) {
           const name = player?.Name
             || (pid ? "Unknown" : "Unknown (missing player id on bid)");
 
+          const locked = playerBlockedSameSeasonTransfer(
+            player,
+            window.__gpslCurrentSeasonLabel
+          );
+          const actions = locked
+            ? `<span class="locked-msg" title="${SAME_SEASON_TRANSFER_MESSAGE}">Signed this season</span>
+               <button class="reject-direct-btn" data-id="${row.bid_id}">Reject</button>`
+            : `<button class="accept-direct-btn" data-id="${row.bid_id}">Accept</button>
+               <button class="reject-direct-btn" data-id="${row.bid_id}">Reject</button>`;
+
           return `
           <tr>
             <td>${name}</td>
             <td>${displayClubName(row.bidder_club_id)}</td>
             <td>₿ ${Number(row.bid_amount).toLocaleString("en-GB")}</td>
             <td>${new Date(row.bid_time).toLocaleString()}</td>
-            <td>
-              <button class="accept-direct-btn" data-id="${row.bid_id}">Accept</button>
-              <button class="reject-direct-btn" data-id="${row.bid_id}">Reject</button>
-            </td>
+            <td>${actions}</td>
           </tr>
         `;
         })
@@ -759,10 +773,27 @@ function setupListPlayerModal(shortName) {
     }
 
     const playerId = backdrop.dataset.playerId;
+    const { data: playerRow } = await supabase
+      .from("Players")
+      .select("Season_Signed")
+      .eq("Konami_ID", playerId)
+      .maybeSingle();
+
+    if (
+      playerBlockedSameSeasonTransfer(
+        playerRow,
+        window.__gpslCurrentSeasonLabel
+      )
+    ) {
+      document.getElementById("reserveError").textContent =
+        SAME_SEASON_TRANSFER_MESSAGE;
+      return;
+    }
+
     const now = new Date();
     const endTime = computeStandardListingEndTime();
 
-    await supabase.from("Player_Transfer_Listings").insert({
+    const { error: listErr } = await supabase.from("Player_Transfer_Listings").insert({
       player_id: playerId,
       seller_club_id: shortName,
       reserve_price: reserve,
@@ -773,6 +804,16 @@ function setupListPlayerModal(shortName) {
       end_time: endTime.toISOString(),
       initial_end_time: endTime.toISOString(),
     });
+
+    if (listErr) {
+      const msg = String(listErr.message || "");
+      document.getElementById("reserveError").textContent = msg.includes(
+        "current season"
+      )
+        ? SAME_SEASON_TRANSFER_MESSAGE
+        : msg || "Could not create listing.";
+      return;
+    }
 
     backdrop.style.display = "none";
 

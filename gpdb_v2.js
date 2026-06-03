@@ -29,6 +29,10 @@ import {
   buildGpdbContractedBidCellHtml,
 } from "./player_transfer_status.js";
 import {
+  playerBlockedSameSeasonTransfer,
+  SAME_SEASON_TRANSFER_MESSAGE,
+} from "./player_season_transfer.js";
+import {
   loadPlayerValueTables,
   calcPotentialForPlayer,
 } from "./player_economics.js";
@@ -115,7 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "market_value",
     "Contracted_Team",
     "Season_Signed",
-    "Konami_ID"
+    "Konami_ID",
   ];
 
   /** Shown in table (Calc_Potential is used for compute but displayed as Pot.) */
@@ -578,7 +582,8 @@ document.addEventListener("DOMContentLoaded", () => {
               data-rating="${player.Rating ?? ""}"
               data-playstyle="${player.Playstyle ?? ""}"
               data-market-value="${player.market_value ?? ""}"
-              data-contracted-team="${player.Contracted_Team ?? ""}">
+              data-contracted-team="${player.Contracted_Team ?? ""}"
+              data-season-signed="${player.Season_Signed ?? ""}">
             <td>
               <img src="${imgURL}"
                    class="gpdb-thumb"
@@ -658,7 +663,8 @@ document.addEventListener("DOMContentLoaded", () => {
       Playstyle: playstyle,
       Rating: rating,
       market_value: mv,
-      Contracted_Team: sellerClub
+      Contracted_Team: sellerClub,
+      Season_Signed: row.dataset.seasonSigned || "",
     };
 
     const confirmBtn = document.getElementById("confirmOfferBtn");
@@ -778,6 +784,17 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    if (
+      sellerClub &&
+      playerBlockedSameSeasonTransfer(
+        CURRENT_OFFER_PLAYER,
+        TRANSFER_STATUS_STATE?.currentSeasonLabel
+      )
+    ) {
+      errorBox.textContent = SAME_SEASON_TRANSFER_MESSAGE;
+      return;
+    }
+
     if (!sellerClub) {
       console.log("FREE AGENT DRAFT PATH: calling submitDraftBid with", {
         player: CURRENT_OFFER_PLAYER,
@@ -816,9 +833,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (error) {
       const msg = String(error.message || "");
-      errorBox.textContent = msg.includes("already under review")
-        ? "An offer is already under review for this player."
-        : "Failed to submit offer.";
+      errorBox.textContent = msg.includes("current season")
+        ? SAME_SEASON_TRANSFER_MESSAGE
+        : msg.includes("already under review")
+          ? "An offer is already under review for this player."
+          : "Failed to submit offer.";
       console.error(error);
       return;
     }
@@ -1216,9 +1235,13 @@ document.addEventListener("DOMContentLoaded", () => {
       let uniqueValues;
 
       if (col === "Season_Signed") {
-        uniqueValues = [...new Set(values.map(v => Number(v)))]
-          .filter(v => !isNaN(v))
-          .sort((a, b) => a - b);
+        const nums = values.map((v) => Number(v)).filter((v) => !isNaN(v));
+        const allNumeric = nums.length === values.length && values.length > 0;
+        uniqueValues = allNumeric
+          ? [...new Set(nums)].sort((a, b) => a - b)
+          : [...new Set(values.map((v) => String(v).trim()))]
+              .filter((v) => v !== "")
+              .sort((a, b) => a.localeCompare(b));
       } else if (col === "Age" || col === "Rating") {
         uniqueValues = [...new Set(values.map(v => Number(v)))]
           .filter(v => !isNaN(v))

@@ -392,9 +392,10 @@ BEGIN
     FOR UPDATE;
 
     IF FOUND THEN
-      UPDATE public."Players"
-      SET "Contracted_Team" = p_winner_club
-      WHERE "Konami_ID"::text = p_auction.prize_player_id;
+      PERFORM public.player_assign_to_club(
+        p_auction.prize_player_id,
+        p_winner_club
+      );
     END IF;
   ELSIF p_auction.prize_type = 'cash' AND coalesce(p_auction.prize_cash_amount, 0) > 0 THEN
     UPDATE public."Club_Finances"

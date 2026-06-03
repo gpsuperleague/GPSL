@@ -97,9 +97,7 @@ BEGIN
   SET balance = v_buyer_balance - v_amount
   WHERE club_name = v_buyer;
 
-  UPDATE "Players"
-  SET "Contracted_Team" = v_buyer
-  WHERE "Konami_ID"::text = v_listing.player_id;
+  PERFORM public.player_assign_to_club(v_listing.player_id, v_buyer);
 
   INSERT INTO "Transfer_History" (
     player_id,

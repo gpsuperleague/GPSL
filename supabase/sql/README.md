@@ -141,9 +141,19 @@ Run once:
 - **Squad** — **max 28** players
 - JS: `squad_rules.js` · Squad page compliance banner
 
-## Player contracts (not implemented)
+## Player contracts (phase 1 — signing hooks)
 
-Design: [`docs/player-contracts-spec.md`](../docs/player-contracts-spec.md) — 3-season deals, final-year renew/expire/sell, hidden expiry wage bids. Align with legacy spreadsheet before SQL.
+Run once (after `player_wage_settings.sql` and an active `competition_seasons` row):
+
+[`player_contract_hooks.sql`](./player_contract_hooks.sql)
+
+- **`Season_Signed`** → current season `competition_seasons.label` on every club assignment (transfer accept, draft win, special-auction player prize).
+- **Cleared** on foreign sale / `player_release_from_club`.
+- **Same-season lock** — if `Season_Signed` equals the current season, the player cannot be transfer-listed, sold abroad, or receive market bids until the next season (DB triggers + `assert_player_transferable`).
+- **`contract_seasons_remaining`** = 3 and **`contract_wage`** = standard wage (`calculate_player_wage_for_club`) on signing.
+- Re-run [`transferengine_standard_bigint.sql`](./transferengine_standard_bigint.sql), [`transferengine_draft.sql`](./transferengine_draft.sql), [`sell_to_foreign_club.sql`](./sell_to_foreign_club.sql), [`special_auctions.sql`](./special_auctions.sql) if those RPCs were deployed before hooks (they call `player_assign_to_club` / `player_release_from_club`).
+
+**Not yet:** rollover decrement, final-year expiry market, renew/expire UI — see [`docs/player-contracts-spec.md`](../docs/player-contracts-spec.md).
 
 ## Two separate systems
 

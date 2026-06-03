@@ -171,10 +171,10 @@ transferEngine.acceptSale = async function (listingId) {
 
   console.log("🧩 Updating player club…");
 
-  const { error: playerError } = await supabase
-    .from("Players")
-    .update({ Contracted_Team: buyer })
-    .eq("Konami_ID", listing.player_id);
+  const { error: playerError } = await supabase.rpc("player_assign_to_club", {
+    p_player_id: String(listing.player_id),
+    p_club_short_name: buyer,
+  });
 
   if (playerError) {
     console.error("❌ Player update failed:", playerError);
@@ -220,10 +220,10 @@ transferEngine.acceptSale = async function (listingId) {
       .update({ balance: sellerBalance })
       .eq("club_name", seller);
 
-    await supabase
-      .from("Players")
-      .update({ Contracted_Team: seller })
-      .eq("Konami_ID", listing.player_id);
+    await supabase.rpc("player_assign_to_club", {
+      p_player_id: String(listing.player_id),
+      p_club_short_name: seller,
+    });
 
     return;
   }
