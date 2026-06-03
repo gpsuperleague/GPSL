@@ -14,8 +14,8 @@ export const SQUAD_OVERFLOW_CONFIRM_MESSAGE =
  * Call before any action that will sign a player to this club.
  * @returns {Promise<boolean>} false if user cancelled
  */
-export async function confirmSquadOverflowBeforeSigning(supabase, clubShort) {
-  if (!clubShort || !supabase) return true;
+export async function fetchClubSquadTotal(supabase, clubShort) {
+  if (!clubShort || !supabase) return null;
 
   const { data, error } = await supabase.rpc("check_club_squad_composition", {
     p_club_short_name: clubShort,
@@ -23,14 +23,46 @@ export async function confirmSquadOverflowBeforeSigning(supabase, clubShort) {
 
   if (error) {
     console.warn("check_club_squad_composition:", error);
-    return true;
+    return null;
   }
 
-  const total = Number(data?.total ?? 0);
-  if (total >= SQUAD_SIZE) {
-    return window.confirm(SQUAD_OVERFLOW_CONFIRM_MESSAGE);
+  return Number(data?.total ?? 0);
+}
+
+/** Short warning for bid modals (all listings, GPDB, etc.). */
+export function squadOverflowBidWarningText(squadTotal) {
+  const n = Number(squadTotal);
+  if (!Number.isFinite(n) || n < SQUAD_SIZE) return "";
+
+  if (n === SQUAD_SIZE) {
+    return (
+      "You are at max squad size (28). If you win this player, going over 28 will " +
+      "automatically release your highest-rated player (not signed this season) — " +
+      "foreign sale if available, otherwise market value."
+    );
   }
-  return true;
+
+  return (
+    `You have ${n} players (max ${SQUAD_SIZE}). If you win this player, overflow release ` +
+    "will apply again (highest rated not signed this season)."
+  );
+}
+
+export async function confirmSquadOverflowBeforeSigning(supabase, clubShort) {
+  const total = await fetchClubSquadTotal(supabase, clubShort);
+  if (total == null || total < SQUAD_SIZE) return true;
+
+  let msg = SQUAD_OVERFLOW_CONFIRM_MESSAGE;
+  if (total > SQUAD_SIZE) {
+    msg =
+      `You have ${total} players (max ${SQUAD_SIZE}).\n\n` +
+      "Are you sure?\n\n" +
+      "Adding another player will automatically release your highest-rated player " +
+      "who was not signed this season. If you have foreign club interest remaining, " +
+      "that sale will be used; otherwise the player is released for market value.";
+  }
+
+  return window.confirm(msg);
 }
 
 /** Alert after assign if server auto-released a player (overflow). */

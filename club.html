@@ -411,6 +411,7 @@
     } from './player_transfer_status.js';
     import { SAME_SEASON_TRANSFER_MESSAGE } from './player_season_transfer.js';
     import { specialAuctionNavLinkHtml } from './global.js';
+    import { confirmSquadOverflowBeforeSigning } from './squad_rules.js';
 
     const supabase = createClient(
       'https://omyyogfumrjoaweuawjn.supabase.co',
@@ -877,6 +878,10 @@
         offerStatus.code === TRANSFER_STATUS.DIRECT_OFFER_SELLER
       ) {
         alert("An offer is already under review for this player.");
+        return;
+      }
+
+      if (!(await confirmSquadOverflowBeforeSigning(supabase, buyerShortName))) {
         return;
       }
 

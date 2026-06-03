@@ -10,6 +10,11 @@ import {
   favouriteStarChar,
   favouriteButtonLabel,
 } from "./listing_favourites.js";
+import {
+  confirmSquadOverflowBeforeSigning,
+  fetchClubSquadTotal,
+  squadOverflowBidWarningText,
+} from "./squad_rules.js";
 
 function pesdbPlayerUrl(konamiId) {
   return `https://pesdb.net/efootball/?id=${encodeURIComponent(konamiId)}`;
@@ -559,7 +564,7 @@ async function fetchPlayerByID(kid) {
 // ======================================================
 // MODULE E: OPEN BID MODAL
 // ======================================================
-function openBidModal(listing, player) {
+async function openBidModal(listing, player) {
   if (listing.seller_club_id === currentUserShort) {
     alert("You already own this player. You cannot bid on your own listing.");
     return;
@@ -624,8 +629,13 @@ function openBidModal(listing, player) {
   document.getElementById("bid-error").textContent = "";
 
   const minBid = listingMinimumBid(listing);
-  document.getElementById("bid-warning").textContent =
-    `⚠️ ${listingBidWarningText(listing)}`;
+  let warningText = `⚠️ ${listingBidWarningText(listing)}`;
+  const squadTotal = await fetchClubSquadTotal(supabase, currentUserShort);
+  const squadWarn = squadOverflowBidWarningText(squadTotal);
+  if (squadWarn) {
+    warningText += `\n\n⚠️ ${squadWarn}`;
+  }
+  document.getElementById("bid-warning").textContent = warningText;
 
   input.placeholder = `Minimum bid: ${formatMoney(minBid)}`;
 
@@ -774,6 +784,10 @@ async function placeBid() {
 
   if (bidAmount < minBid) {
     errorBox.textContent = `Your bid must be at least ${formatMoney(minBid)}.`;
+    return;
+  }
+
+  if (!(await confirmSquadOverflowBeforeSigning(supabase, currentUserShort))) {
     return;
   }
 
