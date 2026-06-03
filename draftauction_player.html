@@ -36,6 +36,17 @@
     }
     .submit-btn:hover { background:#369a36; }
     .submit-btn.disabled { background:#444; color:#999; cursor:not-allowed; }
+    .bid-panel.view-only { opacity:0.92; }
+    .bid-panel.view-only input,
+    .bid-panel.view-only .quick-btn,
+    .bid-panel.view-only .inc-btn,
+    .bid-panel.view-only .dec-btn { pointer-events:none; opacity:0.55; }
+    .bid-ended-banner {
+      color:#ff9900;
+      font-size:13px;
+      margin:0 0 10px;
+      font-weight:bold;
+    }
     #bidSquadWarning {
       color: #e6c200;
       font-size: 13px;
@@ -134,11 +145,16 @@
     /* ============================================================
        IMPORT UNIFIED ENGINE + CLUB LOOKUP
        ============================================================ */
-    import { buildNav } from "./global.js";
+    import {
+      buildNav,
+      loadGlobalSettings,
+      refreshDraftBiddingOpen,
+      getDraftBiddingOpen,
+    } from "./global.js";
     import {
       supabase,
       getUKNow,
-      loadGlobalSettings,
+      isDraftAuctionEnded,
       getDraftPhaseFromStart,
       getDraftTimelineFromStart,
       draftPhaseLabel,
@@ -178,6 +194,7 @@
     let currentHighestBid = 0;
     let currentLeadingClub = null;
     let canBid = false;
+    let auctionEnded = false;
     let draftCountdownInterval = null;
 
     /* ============================================================
@@ -243,15 +260,51 @@
        ============================================================ */
     async function loadSettings() {
       const settings = await loadGlobalSettings();
-      draftEnabled = settings.draftAuctionEnabled;
-      draftAuctionStartTimeUK = settings.draftAuctionStartTime;
+      draftEnabled = settings.draftEnabled;
+      draftAuctionStartTimeUK = settings.draftStart;
     }
 
-    function updateDraftCountdownUI() {
+    function applyViewOnlyMode() {
+      const panel = document.querySelector(".bid-panel");
+      const h3 = panel?.querySelector("h3");
+      if (!panel) return;
+
+      let banner = document.getElementById("draftEndedBanner");
+      if (auctionEnded) {
+        panel.classList.add("view-only");
+        if (h3) h3.textContent = "Bidding (view only)";
+        if (!banner) {
+          banner = document.createElement("p");
+          banner.id = "draftEndedBanner";
+          banner.className = "bid-ended-banner";
+          panel.insertBefore(banner, panel.firstChild);
+        }
+        banner.textContent =
+          "Draft auction ended — you can review bids below but cannot place new ones.";
+      } else {
+        panel.classList.remove("view-only");
+        if (h3) h3.textContent = "Place Bid";
+        if (banner) banner.remove();
+      }
+    }
+
+    async function updateDraftCountdownUI() {
+      if (draftEnabled && draftAuctionStartTimeUK) {
+        await refreshDraftBiddingOpen();
+      }
       const nowUK = getUKNow();
       const el = document.getElementById("timeRemaining");
       const sub = document.getElementById("timeRemainingSub");
-      const tick = getDraftCountdownTick(nowUK, draftAuctionStartTimeUK);
+      const open = getDraftBiddingOpen();
+      const tick = getDraftCountdownTick(
+        nowUK,
+        draftAuctionStartTimeUK,
+        open === null ? {} : { biddingOpen: open }
+      );
+
+      auctionEnded = isDraftAuctionEnded(nowUK, draftAuctionStartTimeUK);
+      applyViewOnlyMode();
+      updateBidControlsState();
 
       if (tick.phase === "ended") {
         el.textContent = draftPhaseLabel(tick.phase);
@@ -399,13 +452,19 @@
         `Draft Credits: ${credits}`;
 
       /* --- Eligibility (Unified) --- */
-      canBid = await canClubBidOnPlayerDraft({
-        konamiId: player.Konami_ID,
-        buyerShortName,
-        draftAuctionEnabled: draftEnabled,
-        draftAuctionStartTime: draftAuctionStartTimeUK,
-      });
+      const nowUK = getUKNow();
+      auctionEnded = isDraftAuctionEnded(nowUK, draftAuctionStartTimeUK);
 
+      canBid =
+        !auctionEnded &&
+        (await canClubBidOnPlayerDraft({
+          konamiId: player.Konami_ID,
+          buyerShortName,
+          draftAuctionEnabled: draftEnabled,
+          draftAuctionStartTime: draftAuctionStartTimeUK,
+        }));
+
+      applyViewOnlyMode();
       updateBidControlsState();
       await refreshSquadBidWarnings();
     }
@@ -498,8 +557,11 @@
 
     function updateBidControlsState() {
       const submitBtn = document.getElementById("submitBidBtn");
-      submitBtn.disabled = !canBid;
-      submitBtn.classList.toggle("disabled", !canBid);
+      const readOnly = auctionEnded || !canBid;
+      submitBtn.disabled = readOnly;
+      submitBtn.classList.toggle("disabled", readOnly);
+      submitBtn.textContent = auctionEnded ? "Auction ended" : "Submit Bid";
+      document.getElementById("bidAmount")?.toggleAttribute("readonly", auctionEnded);
     }
 
     /* ============================================================

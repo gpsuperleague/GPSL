@@ -6,7 +6,12 @@
 -- security_invoker = false: read as view owner (bypasses RLS on global_settings).
 -- Without this, only the admin RLS policy matches and club owners get zero rows
 -- (transfer window always appears closed in GPDB / club pages).
-CREATE OR REPLACE VIEW public.global_settings_public
+--
+-- DROP + CREATE (not CREATE OR REPLACE): Postgres cannot replace a view when columns
+-- change; OR REPLACE only allows appending columns at the end.
+DROP VIEW IF EXISTS public.global_settings_public;
+
+CREATE VIEW public.global_settings_public
 WITH (security_invoker = false)
 AS
 SELECT
@@ -14,7 +19,15 @@ SELECT
   transfer_window_open,
   draft_auction_enabled,
   draft_auction_start_time,
-  updated_at
+  updated_at,
+  -- True while draft bids are accepted (uses secret draft_random_finish_time server-side).
+  (
+    COALESCE(draft_auction_enabled, false)
+    AND draft_auction_start_time IS NOT NULL
+    AND draft_random_finish_time IS NOT NULL
+    AND now() >= draft_auction_start_time
+    AND now() < draft_random_finish_time
+  ) AS draft_bidding_open
 FROM global_settings;
 
 GRANT SELECT ON public.global_settings_public TO authenticated;
@@ -80,6 +93,10 @@ BEGIN
 
   IF v_start IS NOT NULL AND now() < v_start THEN
     RAISE EXCEPTION 'Draft auction has not started yet';
+  END IF;
+
+  IF v_start IS NOT NULL AND v_finish IS NULL THEN
+    v_finish := v_start + interval '23 hours 59 minutes 59 seconds';
   END IF;
 
   IF v_finish IS NOT NULL AND now() >= v_finish THEN

@@ -564,7 +564,7 @@
       supabase,
       buildNav,
       loadGlobalSettings,
-      getUKNow
+      computeNextDraftTimesFromNow,
     } from "./global.js";
     import {
       SETUP_DIVISION_OPTIONS,
@@ -765,44 +765,34 @@
 
       if (data.draft_auction_enabled && data.draft_auction_start_time) {
         const start = new Date(data.draft_auction_start_time);
-        document.getElementById("draftStartTime").textContent =
-          `Next draft window: ${start.toLocaleString("en-GB")}`;
+        const finish = data.draft_random_finish_time
+          ? new Date(data.draft_random_finish_time)
+          : null;
+        const ukFmt = new Intl.DateTimeFormat("en-GB", {
+          timeZone: "Europe/London",
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        });
+        let msg = `Draft start: ${ukFmt.format(start)} UK`;
+        if (finish) {
+          msg += ` · Secret finish: ${ukFmt.format(finish)} UK`;
+        } else {
+          msg += " · ⚠ No secret finish set (bidding will not anti-snipe)";
+        }
+        document.getElementById("draftStartTime").textContent = msg;
       } else {
         document.getElementById("draftStartTime").textContent = "";
       }
     }
 
-    /* ============================================================
-       COMPUTE NEXT DRAFT TIMES (CORRECT 19:00 UK LOGIC)
-       ============================================================ */
+    /* Uses UK wall clock + DST-safe instants (see global.js computeNextDraftTimesFromNow). */
     function computeNextDraftTimes() {
-      const now = getUKNow(); // UK-local time
-
-      const y = now.getFullYear();
-      const m = now.getMonth();
-      const d = now.getDate();
-      const hh = now.getHours();
-
-      const startDay = hh >= 19 ? d + 1 : d;
-
-      const draftStartLocal = new Date(y, m, startDay, 19, 0, 0);
-
-      const randomMinute = 50 + Math.floor(Math.random() * 10);
-      const randomSecond = Math.floor(Math.random() * 60);
-
-      const randomFinishLocal = new Date(
-        y,
-        m,
-        startDay + 1,
-        18,
-        randomMinute,
-        randomSecond
-      );
-
-      return {
-        draftStartISO: draftStartLocal.toISOString(),
-        randomFinishISO: randomFinishLocal.toISOString()
-      };
+      return computeNextDraftTimesFromNow();
     }
 
     /* ============================================================

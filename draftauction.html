@@ -236,6 +236,13 @@
       white-space:pre-line;
       line-height:1.4;
     }
+
+    .bid-btn.view-only {
+      background:#444;
+      color:#ddd;
+      cursor:pointer;
+    }
+    .bid-btn.view-only:hover { background:#555; }
   </style>
 </head>
 
@@ -306,6 +313,9 @@
       isDraftAuctionEnded,
       getDraftCredits,
       canClubBidOnPlayerDraft,
+      getEffectiveDraftPhase,
+      draftPhaseLabel,
+      getDraftBiddingOpen,
     } from "./draft_engine.js";
     import {
       loadDraftFavouriteIds,
@@ -325,6 +335,7 @@
     let draftAuctionStartTimeUK = null;
     let favouriteIds = new Set();
     let draftTableWired = false;
+    let draftListingsPoll = null;
 
     /* ============================================================
        MODULE B: Navigation
@@ -418,7 +429,7 @@
           return;
         }
 
-        const bidBtn = e.target.closest(".bid-btn.enabled");
+        const bidBtn = e.target.closest(".bid-btn.enabled, .bid-btn.view-only");
         if (bidBtn) {
           const konamiId = bidBtn.getAttribute("data-konami-id");
           window.location = `draftauction_player.html?player=${konamiId}`;
@@ -435,10 +446,22 @@
       tbody.innerHTML = "";
 
       const nowUK = getUKNow();
+      const statusEl = document.getElementById("draftStatus");
 
       if (!draftEnabled || !draftAuctionStartTimeUK) {
+        if (statusEl) statusEl.textContent = "";
         tbody.innerHTML = `<tr><td colspan="9">Draft auction is not active.</td></tr>`;
         return;
+      }
+
+      const open = getDraftBiddingOpen();
+      const phase = getEffectiveDraftPhase(
+        nowUK,
+        draftAuctionStartTimeUK,
+        open === null ? {} : { biddingOpen: open }
+      );
+      if (statusEl) {
+        statusEl.textContent = draftPhaseLabel(phase);
       }
 
       if (nowUK < draftAuctionStartTimeUK) {
@@ -498,6 +521,18 @@
 
       const auctionEnded = isDraftAuctionEnded(nowUK, draftAuctionStartTimeUK);
 
+      if (statusEl && auctionEnded && listings.length) {
+        statusEl.textContent =
+          "Bidding closed (random finish reached). Results settle after 7pm transfer auctions finish — listings may still show Active briefly.";
+      }
+
+      if (auctionEnded && !draftListingsPoll) {
+        draftListingsPoll = setInterval(() => loadDraftListings(), 15000);
+      } else if (!auctionEnded && draftListingsPoll) {
+        clearInterval(draftListingsPoll);
+        draftListingsPoll = null;
+      }
+
       for (const listing of sortedListings) {
         const playerIdNum = Number(listing.player_id);
         const player = playerMap.get(playerIdNum);
@@ -528,8 +563,12 @@
           draftAuctionStartTime: draftAuctionStartTimeUK,
         });
 
-        const btnClass = (!auctionEnded && canBid) ? "enabled" : "disabled";
-        const btnLabel = auctionEnded ? "Ended" : (canBid ? "Bid" : "Locked");
+        const btnClass = auctionEnded
+          ? "enabled view-only"
+          : canBid
+            ? "enabled"
+            : "disabled";
+        const btnLabel = auctionEnded ? "View" : canBid ? "Bid" : "Locked";
         const isFav = favouriteIds.has(String(player.Konami_ID));
 
         const row = document.createElement("tr");
@@ -566,7 +605,7 @@
             <button
               class="bid-btn ${btnClass}"
               data-konami-id="${player.Konami_ID}"
-              ${(!auctionEnded && canBid) ? "" : "disabled"}
+              ${auctionEnded || canBid ? "" : "disabled"}
             >
               ${btnLabel}
             </button>

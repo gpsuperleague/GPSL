@@ -8,18 +8,25 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import {
   getDraftTimelineFromStart,
   getDraftPhaseFromStart,
-  isDraftAuctionEnded,
+  getEffectiveDraftPhase,
 } from "./draft_timeline.js";
-import { getUKWallClockParts, ukLocalToInstant } from "./global.js";
+import {
+  getUKWallClockParts,
+  ukLocalToInstant,
+  getDraftBiddingOpen,
+  isDraftAuctionEnded,
+} from "./global.js";
 
 export {
   getDraftTimelineFromStart,
   getDraftPhaseFromStart,
-  isDraftAuctionEnded,
+  getEffectiveDraftPhase,
   isGpdbFreeAgentOfferAllowed,
   gpdbFreeAgentLockMessage,
   draftPhaseLabel,
 } from "./draft_timeline.js";
+
+export { isDraftAuctionEnded, getDraftBiddingOpen } from "./global.js";
 
 const supabase = createClient(
   "https://omyyogfumrjoaweuawjn.supabase.co",
@@ -176,7 +183,12 @@ export async function canClubBidOnPlayerDraft({
   if (!buyerShortName) return false;
   if (!timeline) return false;
 
-  const phase = getDraftPhaseFromStart(nowUK, start);
+  const open = getDraftBiddingOpen();
+  const phase = getEffectiveDraftPhase(
+    nowUK,
+    start,
+    open === null ? {} : { biddingOpen: open }
+  );
   if (phase === "before_start" || phase === "ended") return false;
 
   const cutoff = timeline.cutoff;

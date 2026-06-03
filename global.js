@@ -7,6 +7,7 @@ import {
   getDraftTimelineFromStart,
   getDraftPhaseFromStart,
   getDraftCountdownTick,
+  isDraftAuctionEnded as isDraftAuctionEndedWithOptions,
 } from "./draft_timeline.js";
 import {
   formatDurationMs,
@@ -23,9 +24,26 @@ let draftStart = null;        // Day 1 @ 19:00 UK
 let draftCutoff = null;       // Day 2 @ 18:00 UK
 let draftRandomStart = null;  // Day 2 @ 18:50 UK
 let draftPublicEnd = null;    // Latest possible end (18:59:59 day 2) — not secret finish
+let draftBiddingOpen = null;  // from global_settings_public.draft_bidding_open (secret finish)
 
 // Countdown interval
 let __draftCountdownInterval = null;
+
+export function getDraftBiddingOpen() {
+  return draftBiddingOpen;
+}
+
+function draftCountdownOptions() {
+  return draftBiddingOpen === null ? {} : { biddingOpen: draftBiddingOpen };
+}
+
+export function isDraftAuctionEnded(nowUK, draftAuctionStartTime) {
+  return isDraftAuctionEndedWithOptions(
+    nowUK,
+    draftAuctionStartTime,
+    draftCountdownOptions()
+  );
+}
 
 // ------------------------------------------------------------
 // UK TIME HELPERS (THE ONLY VERSION USED ANYWHERE)
@@ -80,6 +98,26 @@ export function makeUKDate(y, m, d, hh = 0, mm = 0, ss = 0) {
 
 export function isValidDate(d) {
   return d instanceof Date && !isNaN(d.getTime());
+}
+
+/** Day-2 draft start (7pm UK) and secret random finish (6:50:00–6:59:58 UK). */
+export function computeNextDraftTimesFromNow() {
+  const uk = getUKWallClockParts(getUKNow());
+  const startDay = uk.hour >= 19 ? uk.day + 1 : uk.day;
+  const start = ukLocalToInstant(uk.year, uk.month, startDay, 19, 0, 0);
+  const timeline = getDraftTimelineFromStart(start);
+  if (!timeline) {
+    return { draftStartISO: null, randomFinishISO: null };
+  }
+
+  const maxOffsetSec = 9 * 60 + 58;
+  const offsetSec = Math.floor(Math.random() * (maxOffsetSec + 1));
+  const finish = new Date(timeline.randomStart.getTime() + offsetSec * 1000);
+
+  return {
+    draftStartISO: start.toISOString(),
+    randomFinishISO: finish.toISOString(),
+  };
 }
 
 /**
@@ -235,11 +273,34 @@ function msUntil(target) {
   return target.getTime() - Date.now();
 }
 
+export async function refreshDraftBiddingOpen() {
+  if (!draftEnabled) {
+    draftBiddingOpen = false;
+    return;
+  }
+  const { data } = await supabase
+    .from("global_settings_public")
+    .select("draft_bidding_open")
+    .eq("id", 1)
+    .single();
+  draftBiddingOpen =
+    data && "draft_bidding_open" in data
+      ? data.draft_bidding_open === true
+      : null;
+}
+
 export function startDraftCountdown(onTick) {
   stopDraftCountdown();
 
-  const tick = () => {
-    const tickData = getDraftCountdownTick(getUKNow(), draftStart);
+  const tick = async () => {
+    if (draftEnabled && draftStart) {
+      await refreshDraftBiddingOpen();
+    }
+    const tickData = getDraftCountdownTick(
+      getUKNow(),
+      draftStart,
+      draftCountdownOptions()
+    );
     if (onTick) onTick(tickData);
   };
 
@@ -308,11 +369,17 @@ export function stopDraftCountdown() {
 export async function loadGlobalSettings() {
   const { data } = await supabase
     .from("global_settings_public")
-    .select("transfer_window_open, draft_auction_enabled, draft_auction_start_time")
+    .select(
+      "transfer_window_open, draft_auction_enabled, draft_auction_start_time, draft_bidding_open"
+    )
     .eq("id", 1)
     .single();
 
   draftEnabled = data?.draft_auction_enabled === true;
+  draftBiddingOpen =
+    data && "draft_bidding_open" in data
+      ? data.draft_bidding_open === true
+      : null;
 
   const rawStart = new Date(data?.draft_auction_start_time);
   draftStart = isValidDate(rawStart) ? new Date(rawStart) : null;
@@ -328,6 +395,7 @@ export async function loadGlobalSettings() {
     draftCutoff,
     draftRandomStart,
     draftPublicEnd,
+    draftBiddingOpen,
     transferWindowOpen: data?.transfer_window_open === true,
   };
 }

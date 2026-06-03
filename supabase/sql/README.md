@@ -243,7 +243,9 @@ Run once in SQL Editor:
 
 [`global_settings_public.sql`](./global_settings_public.sql)
 
-This creates view `global_settings_public` (no `draft_random_finish_time`), restricts direct `SELECT` on `global_settings` to the admin email, and adds a trigger so draft bids are rejected after the secret finish server-side.
+This creates view `global_settings_public` (no `draft_random_finish_time`, but includes computed `draft_bidding_open` so the UI ends when the secret random finish passes — not at a fixed 6:59:59 countdown). Restricts direct `SELECT` on `global_settings` to the admin email, and adds a trigger so draft bids are rejected after the secret finish server-side.
+
+If a draft ran without `draft_random_finish_time` set, run [`repair_draft_random_finish.sql`](./repair_draft_random_finish.sql) once, then re-deploy admin `computeNextDraftTimesFromNow` for future enables.
 
 The view uses `security_invoker = false` so owners can read window/draft flags without seeing `draft_random_finish_time` on the base table.
 
