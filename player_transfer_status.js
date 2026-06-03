@@ -11,6 +11,10 @@ import {
   loadCurrentGpslSeasonLabel,
   playerBlockedSameSeasonTransfer,
 } from "./player_season_transfer.js";
+import {
+  isContractFinalYear,
+  playerBlockedFromTransferMarket,
+} from "./player_contracts.js";
 
 export const TRANSFER_STATUS = {
   LISTED: "listed",
@@ -22,6 +26,7 @@ export const TRANSFER_STATUS = {
   WINDOW_CLOSED: "window_closed",
   MAKE_OFFER: "make_offer",
   SIGNED_THIS_SEASON: "signed_this_season",
+  CONTRACT_FINAL_YEAR: "contract_final_year",
 };
 
 /** Canonical user-facing copy (keep in sync across pages). */
@@ -36,6 +41,8 @@ export const TRANSFER_STATUS_LABELS = {
   [TRANSFER_STATUS.WINDOW_CLOSED]: "Window Closed",
   [TRANSFER_STATUS.SIGNED_THIS_SEASON]:
     "Signed this season — not transferable until next season",
+  [TRANSFER_STATUS.CONTRACT_FINAL_YEAR]:
+    "Final contract year — renew or expire in Squad",
 };
 
 const PILL_CLASS = {
@@ -45,6 +52,7 @@ const PILL_CLASS = {
   [TRANSFER_STATUS.OFFER_PENDING]: "status-offer-pending",
   [TRANSFER_STATUS.NOT_LISTED]: "status-not-listed",
   [TRANSFER_STATUS.SIGNED_THIS_SEASON]: "status-signed-season",
+  [TRANSFER_STATUS.CONTRACT_FINAL_YEAR]: "status-contract-final",
 };
 
 export function buildClubShortLookup(clubsRows) {
@@ -170,6 +178,7 @@ export function resolvePlayerTransferStatus({
   state,
   pageClubShort = null,
   seasonSigned = null,
+  contractSeasonsRemaining = null,
 }) {
   const pid = String(konamiId ?? "").trim();
   const sellerNorm = normalizeClubShort(contractedTeam, state);
@@ -177,6 +186,17 @@ export function resolvePlayerTransferStatus({
   const pageClubNorm = normalizeClubShort(pageClubShort || contractedTeam, state);
   const isViewerSeller =
     !!viewerNorm && !!sellerNorm && viewerNorm === sellerNorm;
+
+  if (
+    isViewerSeller &&
+    isContractFinalYear({ contract_seasons_remaining: contractSeasonsRemaining })
+  ) {
+    return {
+      code: TRANSFER_STATUS.CONTRACT_FINAL_YEAR,
+      label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.CONTRACT_FINAL_YEAR],
+      pillClass: PILL_CLASS[TRANSFER_STATUS.CONTRACT_FINAL_YEAR],
+    };
+  }
 
   if (
     seasonSigned != null &&
@@ -285,12 +305,13 @@ export function buildGpdbContractedBidCellHtml({
     normalizeClubShort(viewerClubShort, state) ===
       normalizeClubShort(sellerClub, state);
 
-  if (
-    playerBlockedSameSeasonTransfer(player, state?.currentSeasonLabel)
-  ) {
+  if (playerBlockedFromTransferMarket(player, state?.currentSeasonLabel)) {
+    const code = isContractFinalYear(player)
+      ? TRANSFER_STATUS.CONTRACT_FINAL_YEAR
+      : TRANSFER_STATUS.SIGNED_THIS_SEASON;
     return formatTransferStatusMessageHtml({
-      code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
-      label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
+      code,
+      label: TRANSFER_STATUS_LABELS[code],
     });
   }
 
@@ -300,6 +321,7 @@ export function buildGpdbContractedBidCellHtml({
     viewerClubShort,
     state,
     seasonSigned: player?.Season_Signed,
+    contractSeasonsRemaining: player?.contract_seasons_remaining,
   });
 
   if (status.code === TRANSFER_STATUS.LISTED) {

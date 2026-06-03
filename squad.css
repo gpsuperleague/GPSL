@@ -285,6 +285,12 @@ body.squad-page .status-listed {
   background: #ff9900;
 }
 
+body.squad-page .status-contract-final {
+  background: #3a1a4a;
+  color: #d8a8ff;
+  border: 1px solid #6a3080;
+}
+
 body.squad-page .status-signed-season {
   background: #4a3a10;
   color: #f0d878;

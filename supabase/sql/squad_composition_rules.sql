@@ -54,7 +54,9 @@ BEGIN
         AND public.normalize_nation_key(p."Nation") <> ''
     )::int,
     count(*) FILTER (
-      WHERE p."Age" IS NOT NULL AND p."Age" <= 21
+      WHERE p."Age" IS NOT NULL
+        AND btrim(p."Age"::text) <> ''
+        AND btrim(p."Age"::text)::numeric <= 21
     )::int
   INTO v_total, v_hg, v_u21
   FROM public."Players" p

@@ -153,7 +153,12 @@ Run once (after `player_wage_settings.sql` and an active `competition_seasons` r
 - **`contract_seasons_remaining`** = 3 and **`contract_wage`** = standard wage (`calculate_player_wage_for_club`) on signing.
 - Re-run [`transferengine_standard_bigint.sql`](./transferengine_standard_bigint.sql), [`transferengine_draft.sql`](./transferengine_draft.sql), [`sell_to_foreign_club.sql`](./sell_to_foreign_club.sql), [`special_auctions.sql`](./special_auctions.sql) if those RPCs were deployed before hooks (they call `player_assign_to_club` / `player_release_from_club`).
 
-**Not yet:** rollover decrement, final-year expiry market, renew/expire UI — see [`docs/player-contracts-spec.md`](../docs/player-contracts-spec.md).
+**Phase 2** — run [`player_contracts_phase2.sql`](./player_contracts_phase2.sql) after phase 1:
+
+- Final year (`contract_seasons_remaining = 1`): cannot list/sell; Squad **Renew** / **Expire** (HG ≤23 renew at same wage; standard renew wage ≥ current).
+- Admin **Start New Season** also runs `contract_tick_season_rollover` (decrements years for all contracted players).
+
+**Not yet:** expiring-contract market + hidden wage bids (C4–C5) — see [`docs/player-contracts-spec.md`](../docs/player-contracts-spec.md).
 
 ## Two separate systems
 

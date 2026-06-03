@@ -23,6 +23,12 @@ export function playerBlockedSameSeasonTransfer(player, currentSeasonLabel) {
   return playerSignedCurrentSeason(player, currentSeasonLabel);
 }
 
+/** @param {object} player — may include contract_seasons_remaining */
+export {
+  playerBlockedFromTransferMarket,
+  FINAL_YEAR_TRANSFER_MESSAGE,
+} from "./player_contracts.js";
+
 export async function loadCurrentGpslSeasonLabel(supabase) {
   const { data: rpcLabel, error: rpcErr } = await supabase.rpc(
     "current_gpsl_season_label"

@@ -972,9 +972,28 @@
 
       const { error } = await supabase.rpc("rollover_season");
 
-      status.textContent = error
-        ? "❌ Season rollover failed."
-        : "✅ New season created successfully!";
+      if (error) {
+        status.textContent = "❌ Season rollover failed.";
+        return;
+      }
+
+      const { data: tickData, error: tickErr } = await supabase.rpc(
+        "contract_tick_season_rollover"
+      );
+
+      if (tickErr) {
+        const msg = String(tickErr.message || "");
+        status.textContent = msg.includes("contract_tick_season_rollover")
+          ? "✅ Season created. Run supabase/sql/player_contracts_phase2.sql, then press Start New Season again to tick contract years."
+          : "✅ Season created, but contract tick failed: " + msg;
+        return;
+      }
+
+      const dec = tickData?.players_decremented ?? 0;
+      const fin = tickData?.players_final_year ?? 0;
+      status.textContent =
+        `✅ New season created. Contract years updated for ${dec} player(s); ` +
+        `${fin} now in final contract year (renew/expire on Squad).`;
     };
 
     /* ============================================================

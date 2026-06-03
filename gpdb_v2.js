@@ -30,8 +30,11 @@ import {
 } from "./player_transfer_status.js";
 import {
   playerBlockedSameSeasonTransfer,
+  playerBlockedFromTransferMarket,
   SAME_SEASON_TRANSFER_MESSAGE,
+  FINAL_YEAR_TRANSFER_MESSAGE,
 } from "./player_season_transfer.js";
+import { isContractFinalYear } from "./player_contracts.js";
 import {
   loadPlayerValueTables,
   calcPotentialForPlayer,
@@ -119,6 +122,8 @@ document.addEventListener("DOMContentLoaded", () => {
     "market_value",
     "Contracted_Team",
     "Season_Signed",
+    "contract_seasons_remaining",
+    "contract_wage",
     "Konami_ID",
   ];
 
@@ -583,7 +588,8 @@ document.addEventListener("DOMContentLoaded", () => {
               data-playstyle="${player.Playstyle ?? ""}"
               data-market-value="${player.market_value ?? ""}"
               data-contracted-team="${player.Contracted_Team ?? ""}"
-              data-season-signed="${player.Season_Signed ?? ""}">
+              data-season-signed="${player.Season_Signed ?? ""}"
+              data-contract-seasons="${player.contract_seasons_remaining ?? ""}">
             <td>
               <img src="${imgURL}"
                    class="gpdb-thumb"
@@ -665,6 +671,7 @@ document.addEventListener("DOMContentLoaded", () => {
       market_value: mv,
       Contracted_Team: sellerClub,
       Season_Signed: row.dataset.seasonSigned || "",
+      contract_seasons_remaining: row.dataset.contractSeasons || null,
     };
 
     const confirmBtn = document.getElementById("confirmOfferBtn");
@@ -784,14 +791,13 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    if (
-      sellerClub &&
-      playerBlockedSameSeasonTransfer(
-        CURRENT_OFFER_PLAYER,
-        TRANSFER_STATUS_STATE?.currentSeasonLabel
-      )
-    ) {
-      errorBox.textContent = SAME_SEASON_TRANSFER_MESSAGE;
+    if (sellerClub && playerBlockedFromTransferMarket(
+      CURRENT_OFFER_PLAYER,
+      TRANSFER_STATUS_STATE?.currentSeasonLabel
+    )) {
+      errorBox.textContent = isContractFinalYear(CURRENT_OFFER_PLAYER)
+        ? FINAL_YEAR_TRANSFER_MESSAGE
+        : SAME_SEASON_TRANSFER_MESSAGE;
       return;
     }
 

@@ -23,17 +23,26 @@ import {
 import {
   loadCurrentGpslSeasonLabel,
   playerBlockedSameSeasonTransfer,
+  playerBlockedFromTransferMarket,
   SAME_SEASON_TRANSFER_MESSAGE,
+  FINAL_YEAR_TRANSFER_MESSAGE,
 } from "./player_season_transfer.js";
+import {
+  formatSquadContractCell,
+  squadContractActionOptionsHtml,
+  isContractFinalYear,
+} from "./player_contracts.js";
+import { isHgContractProtected } from "./squad_rules.js";
+import { formatWage } from "./wages.js";
 
 window.supabase = supabase;
 
 /** Columns needed for squad table + list modal (avoid select *). */
 const SQUAD_PLAYER_COLUMNS =
-  "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team, Season_Signed";
+  "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team, Season_Signed, contract_seasons_remaining, contract_wage";
 
 const SQUAD_PLAYER_COLUMNS_LEGACY =
-  "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team, Season_Signed";
+  "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team, Season_Signed, contract_seasons_remaining, contract_wage";
 
 function isMissingEconomicsColumnError(error) {
   const msg = String(error?.message || "").toLowerCase();
@@ -165,11 +174,13 @@ function renderForeignInterestBadge() {
 }
 
 function squadActionOptionsHtml(player) {
-  const blocked = playerBlockedSameSeasonTransfer(
-    player,
-    currentGpslSeasonLabel
-  );
-  if (blocked) {
+  const contractOpts = squadContractActionOptionsHtml(player, clubNation);
+  if (contractOpts) return contractOpts;
+
+  if (!playerCanListOrSellLocal(player)) {
+    if (isContractFinalYear(player)) {
+      return `<option value="" disabled>Final contract year</option>`;
+    }
     return `<option value="" disabled>Signed this season</option>`;
   }
   return `
@@ -177,18 +188,19 @@ function squadActionOptionsHtml(player) {
             <option value="foreign">Sell to foreign club</option>`;
 }
 
+function playerCanListOrSellLocal(player) {
+  return playerBlockedFromTransferMarket(player, currentGpslSeasonLabel) === false;
+}
+
 function applyForeignSaleOptionState() {
   const allowForeign = foreignInterestRemaining > 0;
   document.querySelectorAll("select.squad-action-select").forEach((sel) => {
     const pid = sel.dataset.playerId;
     const row = sel.closest("tr[data-konami-id]");
-    const blocked =
-      row?.dataset.sameSeasonLocked === "1" ||
-      (pid &&
-        playerBlockedSameSeasonTransfer(
-          { Season_Signed: row?.dataset.seasonSigned },
-          currentGpslSeasonLabel
-        ));
+    const blocked = pid && !playerCanListOrSellLocal({
+      Season_Signed: row?.dataset.seasonSigned,
+      contract_seasons_remaining: row?.dataset.contractSeasons,
+    });
 
     const listOpt = sel.querySelector('option[value="list"]');
     const foreignOpt = sel.querySelector('option[value="foreign"]');
@@ -209,10 +221,14 @@ function applyForeignSaleOptionState() {
         : "Transfer Window Shut";
     }
     if (foreignOpt) {
-      foreignOpt.disabled = !allowForeign;
-      foreignOpt.textContent = allowForeign
-        ? "Sell to foreign club"
-        : "No foreign interest left";
+      const finalYear =
+        row?.dataset.contractSeasons === "1";
+      foreignOpt.disabled = !allowForeign || finalYear;
+      foreignOpt.textContent = finalYear
+        ? "Final contract year"
+        : allowForeign
+          ? "Sell to foreign club"
+          : "No foreign interest left";
     }
   });
 }
@@ -234,7 +250,7 @@ async function loadSquad() {
 
   if (tbody && !hadSquad) {
     tbody.innerHTML =
-      '<tr data-squad-loading><td colspan="13" style="color:#888;padding:16px;">Loading squad…</td></tr>';
+      '<tr data-squad-loading><td colspan="14" style="color:#888;padding:16px;">Loading squad…</td></tr>';
   }
 
   let { data: players, error } = await supabase
@@ -255,7 +271,7 @@ async function loadSquad() {
     console.error("Squad load error", error);
     if (tbody) {
       tbody.innerHTML =
-        '<tr><td colspan="13" style="color:#f88;">Failed to load squad.</td></tr>';
+        '<tr><td colspan="14" style="color:#f88;">Failed to load squad.</td></tr>';
     }
     return;
   }
@@ -360,7 +376,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
     const headerRow = document.createElement("tr");
     headerRow.classList.add("squad-section-row");
     headerRow.innerHTML =
-      `<td colspan="13" class="squad-section-title">${groupName}</td>`;
+      `<td colspan="14" class="squad-section-title">${groupName}</td>`;
     tbody.appendChild(headerRow);
 
     const groupPlayers = players
@@ -368,10 +384,6 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
       .sort((a, b) => b.market_value - a.market_value);
 
     groupPlayers.forEach(p => {
-      const sameSeasonLocked = playerBlockedSameSeasonTransfer(
-        p,
-        currentGpslSeasonLabel
-      );
       const statusRow = transferState
         ? resolvePlayerTransferStatus({
             konamiId: p.Konami_ID,
@@ -379,6 +391,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
             viewerClubShort: currentUserShort,
             state: transferState,
             seasonSigned: p.Season_Signed,
+            contractSeasonsRemaining: p.contract_seasons_remaining,
           })
         : {
             label: "Not listed",
@@ -390,7 +403,10 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
       tr.dataset.konamiId = p.Konami_ID;
       tr.dataset.contractedTeam = p.Contracted_Team || currentUserShort;
       tr.dataset.seasonSigned = p.Season_Signed ?? "";
-      tr.dataset.sameSeasonLocked = sameSeasonLocked ? "1" : "0";
+      tr.dataset.contractSeasons =
+        p.contract_seasons_remaining != null
+          ? String(p.contract_seasons_remaining)
+          : "";
       tr.style.cursor = "pointer";
       const st = statsByPlayer.get(String(p.Konami_ID));
       const avg =
@@ -412,6 +428,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
         <td class="num squad-col-avg">${avg}</td>
         <td>${p.Playstyle || "-"}</td>
         <td><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
+        <td class="squad-col-contract">${formatSquadContractCell(p)}</td>
         <td class="squad-col-status">${status}</td>
         <td class="squad-col-action">
           <select class="squad-action-select" data-player-id="${String(p.Konami_ID)}">
@@ -458,6 +475,7 @@ function patchSquadEnrichment(transferState, statsByPlayer) {
         viewerClubShort: currentUserShort,
         state: transferState,
         seasonSigned: row.dataset.seasonSigned || null,
+        contractSeasonsRemaining: row.dataset.contractSeasons || null,
       });
       status.innerHTML = formatSquadStatusHtml(statusRow);
     }
@@ -541,8 +559,12 @@ async function handlePlayerAction(playerId, action, selectEl) {
         .select("Konami_ID, Name, market_value, Maximum_Reserve_Price, Season_Signed")
         .eq("Konami_ID", playerId)
         .maybeSingle();
-      if (playerBlockedSameSeasonTransfer(pRow, currentGpslSeasonLabel)) {
-        alert(SAME_SEASON_TRANSFER_MESSAGE);
+      if (!playerCanListOrSellLocal(pRow)) {
+        alert(
+          isContractFinalYear(pRow)
+            ? FINAL_YEAR_TRANSFER_MESSAGE
+            : SAME_SEASON_TRANSFER_MESSAGE
+        );
         return;
       }
       await openListPlayerModalByID(pRow || { Konami_ID: playerId });
@@ -556,6 +578,18 @@ async function handlePlayerAction(playerId, action, selectEl) {
         return;
       }
       await sellPlayerToForeignClub(playerId);
+      return;
+    }
+
+    if (action === "renew") {
+      resetActionSelect(selectEl);
+      await renewPlayerContract(playerId);
+      return;
+    }
+
+    if (action === "expire") {
+      resetActionSelect(selectEl);
+      await expirePlayerContract(playerId);
     }
   } catch (err) {
     console.error("Squad action failed:", err);
@@ -564,10 +598,112 @@ async function handlePlayerAction(playerId, action, selectEl) {
   }
 }
 
+async function renewPlayerContract(playerId) {
+  const { data: player, error: loadErr } = await supabase
+    .from("Players")
+    .select(
+      "Konami_ID, Name, contract_wage, contract_seasons_remaining, Age, Nation"
+    )
+    .eq("Konami_ID", playerId)
+    .single();
+
+  if (loadErr || !player) {
+    alert("Could not load player.");
+    return;
+  }
+
+  if (!isContractFinalYear(player)) {
+    alert("Renewal is only available in the final contract year.");
+    return;
+  }
+
+  const hg = isHgContractProtected(player, clubNation);
+  let wage = Number(player.contract_wage) || 0;
+
+  if (!hg) {
+    const raw = window.prompt(
+      `Renew ${player.Name} for 3 seasons.\nMinimum wage: ${formatWage(wage)}\nEnter wage (₿):`,
+      String(wage)
+    );
+    if (raw == null) return;
+    wage = Number(String(raw).replace(/[^\d.]/g, ""));
+    if (!Number.isFinite(wage) || wage < Number(player.contract_wage)) {
+      alert(`Wage must be at least ${formatWage(player.contract_wage)}.`);
+      return;
+    }
+  } else if (
+    !window.confirm(
+      `Renew ${player.Name} for 3 seasons at the same wage (${formatWage(wage)})?`
+    )
+  ) {
+    return;
+  }
+
+  const { data, error } = await supabase.rpc("player_contract_renew", {
+    p_player_id: String(playerId),
+    p_wage: wage,
+  });
+
+  if (error) {
+    alert(error.message || "Renewal failed.");
+    return;
+  }
+
+  alert(
+    `${player.Name} renewed — 3 seasons at ${formatWage(data?.contract_wage ?? wage)}.`
+  );
+  await loadSquad();
+}
+
+async function expirePlayerContract(playerId) {
+  const { data: player, error: loadErr } = await supabase
+    .from("Players")
+    .select("Konami_ID, Name, market_value, contract_seasons_remaining")
+    .eq("Konami_ID", playerId)
+    .single();
+
+  if (loadErr || !player) {
+    alert("Could not load player.");
+    return;
+  }
+
+  if (!isContractFinalYear(player)) {
+    alert("Expiry is only available in the final contract year.");
+    return;
+  }
+
+  const mv = Number(player.market_value) || 0;
+  if (
+    !window.confirm(
+      `Allow ${player.Name}'s contract to expire?\n\n` +
+        `They become a free agent. Your club receives ${formatMoney(mv)} (market value).`
+    )
+  ) {
+    return;
+  }
+
+  const { data, error } = await supabase.rpc("player_contract_expire", {
+    p_player_id: String(playerId),
+  });
+
+  if (error) {
+    alert(error.message || "Could not expire contract.");
+    return;
+  }
+
+  alert(
+    `${data?.player_name || player.Name} released. ` +
+      `Fee received: ${formatMoney(data?.fee ?? mv)}.`
+  );
+  await loadSquad();
+}
+
 async function sellPlayerToForeignClub(playerId) {
   const { data: player, error: loadErr } = await supabase
     .from("Players")
-    .select("Konami_ID, Name, market_value, Contracted_Team, Season_Signed")
+    .select(
+      "Konami_ID, Name, market_value, Contracted_Team, Season_Signed, contract_seasons_remaining"
+    )
     .eq("Konami_ID", playerId)
     .single();
 
@@ -582,8 +718,12 @@ async function sellPlayerToForeignClub(playerId) {
     return;
   }
 
-  if (playerBlockedSameSeasonTransfer(player, currentGpslSeasonLabel)) {
-    alert(SAME_SEASON_TRANSFER_MESSAGE);
+  if (!playerCanListOrSellLocal(player)) {
+    alert(
+      isContractFinalYear(player)
+        ? FINAL_YEAR_TRANSFER_MESSAGE
+        : SAME_SEASON_TRANSFER_MESSAGE
+    );
     return;
   }
 
@@ -747,14 +887,11 @@ async function validateAndCreateListing() {
 
   if (!validateReserveInput()) return;
 
-  if (
-    playerBlockedSameSeasonTransfer(
-      selectedPlayerForListing,
-      currentGpslSeasonLabel
-    )
-  ) {
+  if (!playerCanListOrSellLocal(selectedPlayerForListing)) {
     document.getElementById("reserveError").textContent =
-      SAME_SEASON_TRANSFER_MESSAGE;
+      isContractFinalYear(selectedPlayerForListing)
+        ? FINAL_YEAR_TRANSFER_MESSAGE
+        : SAME_SEASON_TRANSFER_MESSAGE;
     return;
   }
 
@@ -808,10 +945,12 @@ async function validateAndCreateListing() {
     console.error("LISTING INSERT ERROR:", error);
     const msg = String(error.message || "");
     document.getElementById("reserveError").textContent = msg.includes(
-      "current season"
+      "final year"
     )
-      ? SAME_SEASON_TRANSFER_MESSAGE
-      : "Failed to create listing. Please try again.";
+      ? FINAL_YEAR_TRANSFER_MESSAGE
+      : msg.includes("current season")
+        ? SAME_SEASON_TRANSFER_MESSAGE
+        : "Failed to create listing. Please try again.";
     return;
   }
 
