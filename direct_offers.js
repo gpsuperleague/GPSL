@@ -13,7 +13,7 @@ export function getBidPlayerId(row) {
 }
 
 /** True pending direct offer = contracted, no listing yet, still awaiting seller review */
-function isPendingContractedDirectOffer(row) {
+export function isPendingContractedDirectOffer(row) {
   if (row.is_direct !== true) return false;
   if (row.listing_id != null && row.listing_id !== "") return false;
   if (!row.seller_club_id || String(row.seller_club_id).trim() === "") return false;
@@ -22,22 +22,43 @@ function isPendingContractedDirectOffer(row) {
   return true;
 }
 
-export async function loadPendingDirectOfferPlayerIds(supabase) {
+/** All players with a pending direct offer (any seller). */
+export async function loadPendingDirectOfferState(supabase) {
   const { data, error } = await supabase
     .from("Player_Transfer_Bids")
     .select("player_id, direct_bid_id, listing_id, seller_club_id, status, is_direct");
 
   if (error) {
     console.error("Failed to load pending direct offers:", error);
-    return new Set();
+    return { allPlayerIds: new Set(), bySeller: new Map() };
   }
 
-  const ids = new Set();
+  const allPlayerIds = new Set();
+  const bySeller = new Map();
+
   for (const row of data || []) {
     if (!isPendingContractedDirectOffer(row)) continue;
-    ids.add(getBidPlayerId(row));
+    const pid = getBidPlayerId(row);
+    if (!pid) continue;
+    allPlayerIds.add(pid);
+    const seller = String(row.seller_club_id).trim();
+    if (!seller) continue;
+    if (!bySeller.has(seller)) bySeller.set(seller, new Set());
+    bySeller.get(seller).add(pid);
   }
-  return ids;
+
+  return { allPlayerIds, bySeller };
+}
+
+export function sellerPendingPlayerIds(state, sellerShort) {
+  const key = String(sellerShort || "").trim();
+  if (!key || !state?.bySeller) return new Set();
+  return state.bySeller.get(key) || new Set();
+}
+
+export async function loadPendingDirectOfferPlayerIds(supabase) {
+  const state = await loadPendingDirectOfferState(supabase);
+  return state.allPlayerIds;
 }
 
 /** Players with an active standard (transfer list) listing */

@@ -20,7 +20,8 @@ import {
   syncDraftListingHighBid,
 } from "./draft_engine.js";
 import {
-  loadPendingDirectOfferPlayerIds,
+  loadPendingDirectOfferState,
+  sellerPendingPlayerIds,
   loadActiveListedPlayerIds,
   playerHasPendingDirectOffer,
   playerHasActiveListing,
@@ -216,10 +217,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let CURRENT_USER = null;
   let ACTIVE_DRAFT_PLAYERS = new Set();
   let PENDING_DIRECT_OFFER_PLAYERS = new Set();
+  let PENDING_DIRECT_OFFERS_FOR_MY_CLUB = new Set();
   let ACTIVE_LISTED_PLAYERS = new Set();
   let CURRENT_USER_CLUB_SHORT = null;
 
   let CLUB_NAME_MAP = {};
+  /** Full Clubs.Club name → ShortName (for direct-offer seller_club_id). */
+  let CLUB_SHORT_BY_FULL_NAME = {};
 
   async function loadUser() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -245,15 +249,28 @@ document.addEventListener("DOMContentLoaded", () => {
     if (error || !data) {
       console.error("Failed to load club names:", error);
       CLUB_NAME_MAP = {};
+      CLUB_SHORT_BY_FULL_NAME = {};
       return;
     }
 
     CLUB_NAME_MAP = {};
+    CLUB_SHORT_BY_FULL_NAME = {};
     data.forEach(c => {
       if (c.ShortName) {
         CLUB_NAME_MAP[c.ShortName] = c.Club || c.ShortName;
+        if (c.Club) {
+          CLUB_SHORT_BY_FULL_NAME[c.Club] = c.ShortName;
+        }
       }
     });
+  }
+
+  /** Always store seller as Clubs.ShortName (GPDB table shows full club name). */
+  function resolveContractedClubShort(contractedTeam) {
+    const raw = String(contractedTeam || "").trim();
+    if (!raw) return null;
+    if (CLUB_NAME_MAP[raw]) return raw;
+    return CLUB_SHORT_BY_FULL_NAME[raw] || raw;
   }
 
   /* ============================================================
@@ -531,12 +548,21 @@ document.addEventListener("DOMContentLoaded", () => {
             ) {
               bidCell = `<span class="locked-msg">Listed on market</span>`;
             } else if (
+              isMyClub &&
+              playerHasPendingDirectOffer(
+                PENDING_DIRECT_OFFERS_FOR_MY_CLUB,
+                player.Konami_ID
+              )
+            ) {
+              bidCell = `<span class="locked-msg">Direct offer — review in Transfer Centre</span>`;
+            } else if (
+              !isMyClub &&
               playerHasPendingDirectOffer(
                 PENDING_DIRECT_OFFER_PLAYERS,
                 player.Konami_ID
               )
             ) {
-              bidCell = `<span class="locked-msg">Offer under review</span>`;
+              bidCell = `<span class="locked-msg">Offer pending</span>`;
             } else if (!isMyClub && GLOBAL_SETTINGS.transferWindowOpen) {
               bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Make Offer</button>`;
             } else if (!GLOBAL_SETTINGS.transferWindowOpen) {
@@ -569,7 +595,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const imgURL = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
 
         return `
-          <tr data-konami-id="${player.Konami_ID}">
+          <tr data-konami-id="${player.Konami_ID}"
+              data-rating="${player.Rating ?? ""}"
+              data-playstyle="${player.Playstyle ?? ""}"
+              data-market-value="${player.market_value ?? ""}"
+              data-contracted-team="${player.Contracted_Team ?? ""}">
             <td>
               <img src="${imgURL}"
                    class="gpdb-thumb"
@@ -628,17 +658,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const cells = row.querySelectorAll("td");
     const img = cells[0].querySelector("img");
 
-    const name = cells[1].textContent;
-    const position = cells[2].textContent;
-    const playstyle = cells[5].textContent;
-    const rating = cells[4].textContent;
+    const name = cells[1].textContent.trim();
+    const position = cells[2].textContent.trim();
+    const playstyle = row.dataset.playstyle || cells[7]?.textContent?.trim() || "";
+    const rating = row.dataset.rating || cells[5]?.textContent?.trim() || "";
 
-    const mvText = cells[8].textContent;
-    const mv = Number(String(mvText).replace(/[^\d]/g, "")) || 0;
+    const mv =
+      Number(row.dataset.marketValue) ||
+      Number(String(cells[9]?.textContent || "").replace(/[^\d]/g, "")) ||
+      0;
 
-    const rawClubText = row.querySelectorAll("td")[9].textContent.trim();
+    const sellerRaw = row.dataset.contractedTeam || "";
     const sellerClub =
-      !rawClubText || rawClubText === "FREE AGENT" ? null : rawClubText;
+      !sellerRaw || sellerRaw === "FREE AGENT" ? null : sellerRaw.trim();
 
     CURRENT_OFFER_PLAYER = {
       Konami_ID: konamiId,
@@ -790,12 +822,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const konamiId = String(CURRENT_OFFER_PLAYER.Konami_ID).trim();
+    const sellerShort = resolveContractedClubShort(sellerClub);
     const { error } = await supabase.from("Player_Transfer_Bids").insert({
       listing_id: null,
       player_id: konamiId,
       direct_bid_id: konamiId,
       bidder_club_id: myClub,
-      seller_club_id: sellerClub || null,
+      seller_club_id: sellerShort,
       bid_amount: offer,
       bid_time: new Date().toISOString(),
       is_direct: true,
@@ -1027,8 +1060,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadPendingDirectOfferPlayers() {
-    PENDING_DIRECT_OFFER_PLAYERS =
-      await loadPendingDirectOfferPlayerIds(supabase);
+    const state = await loadPendingDirectOfferState(supabase);
+    PENDING_DIRECT_OFFER_PLAYERS = state.allPlayerIds;
+    PENDING_DIRECT_OFFERS_FOR_MY_CLUB = sellerPendingPlayerIds(
+      state,
+      CURRENT_USER_CLUB_SHORT
+    );
   }
 
   async function loadActiveListedPlayers() {

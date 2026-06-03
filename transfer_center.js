@@ -10,7 +10,7 @@ import { supabase } from "./supabase_client.js";
 import { initGlobal, computeStandardListingEndTime, loadGlobalSettings } from "./global.js";
 import { getUKNow, isDraftAuctionEnded } from "./draft_engine.js";
 import { loadClubsMap, fullClubName, buyerClubLabel } from "./clubs_lookup.js";
-import { getBidPlayerId } from "./direct_offers.js";
+import { getBidPlayerId, isPendingContractedDirectOffer } from "./direct_offers.js";
 import {
   loadDraftFavouriteIds,
   toggleDraftFavourite,
@@ -536,16 +536,23 @@ async function loadSellerReview(shortName) {
   const container = document.getElementById("sellerReviewContainer");
   container.innerHTML = "Loading…";
 
-  const { data: bids } = await supabase
+  const { data: bidsRaw, error } = await supabase
     .from("Player_Transfer_Bids")
     .select("*")
     .eq("seller_club_id", shortName)
-    .eq("status", "active")
     .eq("is_direct", true)
     .is("listing_id", null)
     .order("bid_time", { ascending: false });
 
-  if (!bids || bids.length === 0) {
+  if (error) {
+    console.error("Seller review load error:", error);
+    container.innerHTML = "<i>Could not load direct bids.</i>";
+    return;
+  }
+
+  const bids = (bidsRaw || []).filter(isPendingContractedDirectOffer);
+
+  if (!bids.length) {
     container.innerHTML = "<i>No direct bids to review.</i>";
     return;
   }

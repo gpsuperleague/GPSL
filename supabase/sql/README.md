@@ -187,7 +187,7 @@ Run once (includes backfill, auto-fill trigger, and updated duplicate-offer guar
 
 Adds `Player_Transfer_Bids.player_id` (Konami ID). Seller Review and pending-offer UI use this column; legacy rows are filled from `direct_bid_id` or the listing’s `player_id`.
 
-GPDB and `club.html` show **Offer under review** while `Player_Transfer_Bids` has `is_direct`, `listing_id` null, `status = active`, and a `player_id`.
+GPDB and `club.html` show **Offer under review** while `Player_Transfer_Bids` has `is_direct`, `listing_id` null, `status = active`, and a `player_id`. **`seller_club_id` must be `Clubs.ShortName`** (not full name like `Urawa Reds`) or Transfer Centre Seller Review will be empty — run [`repair_direct_offer_seller_club_id.sql`](./repair_direct_offer_seller_club_id.sql) once if needed.
 
 Older installs: [`direct_offer_guard.sql`](./direct_offer_guard.sql) is superseded by the script above.
 
