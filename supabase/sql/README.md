@@ -189,7 +189,11 @@ Adds `Player_Transfer_Bids.player_id` (Konami ID). Seller Review and pending-off
 
 GPDB and `club.html` show **Offer under review** while `Player_Transfer_Bids` has `is_direct`, `listing_id` null, `status = active`, and a `player_id`. **`seller_club_id` must be `Clubs.ShortName`** (not full name like `Urawa Reds`) or Transfer Centre Seller Review will be empty — run [`repair_direct_offer_seller_club_id.sql`](./repair_direct_offer_seller_club_id.sql) once if needed.
 
-After accepting a direct offer, the transfer listing must have **`current_highest_bid`** / **`current_highest_bidder`** set to the accepted offer (Transfer Market reads those columns). If an older accept shows no bids, run [`repair_direct_listing_high_bid.sql`](./repair_direct_listing_high_bid.sql) once.
+After accepting a direct offer, the transfer listing must have **`current_highest_bid`** / **`current_highest_bidder`** set to the accepted offer (Transfer Market reads those columns).
+
+1. Run [`sync_listing_high_from_bid.sql`](./sync_listing_high_from_bid.sql) once — DB trigger keeps listing high bid in sync when bids are inserted (fixes RLS / failed opening-bid inserts).
+2. If older listings still show no bids, run [`repair_direct_listing_high_bid.sql`](./repair_direct_listing_high_bid.sql) once.
+3. Deploy latest `transfer_center.js` and `all_listings.js` (accept flow + market hydration fallback).
 
 Older installs: [`direct_offer_guard.sql`](./direct_offer_guard.sql) is superseded by the script above.
 

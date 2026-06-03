@@ -145,18 +145,77 @@ async function loadListings() {
   await renderListings();
 }
 
+function listingHighBidScore(listing) {
+  let score = 0;
+  if (listing.current_highest_bid != null && listing.current_highest_bid !== "") {
+    score += 100;
+  }
+  if (listing.current_highest_bidder) score += 50;
+  return score;
+}
+
 function dedupeOpenListingsByPlayer(listings) {
   const byPlayer = new Map();
   for (const row of listings) {
     const key = String(row.player_id);
     const existing = byPlayer.get(key);
-    if (!existing || new Date(row.end_time) > new Date(existing.end_time)) {
+    if (!existing) {
+      byPlayer.set(key, row);
+      continue;
+    }
+    const rowScore = listingHighBidScore(row);
+    const existingScore = listingHighBidScore(existing);
+    if (
+      rowScore > existingScore ||
+      (rowScore === existingScore &&
+        new Date(row.end_time) > new Date(existing.end_time))
+    ) {
       byPlayer.set(key, row);
     }
   }
   return [...byPlayer.values()].sort(
     (a, b) => new Date(a.end_time) - new Date(b.end_time)
   );
+}
+
+/** When listing columns are null (RLS / legacy accept), derive high bid from bid rows. */
+async function hydrateListingHighBids(listings) {
+  const listingIds = listings
+    .filter(
+      (l) =>
+        l.id != null &&
+        (l.current_highest_bid == null || !l.current_highest_bidder)
+    )
+    .map((l) => l.id);
+
+  if (!listingIds.length) return listings;
+
+  const { data: bids, error } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("listing_id, bid_amount, bidder_club_id")
+    .in("listing_id", listingIds);
+
+  if (error || !bids?.length) return listings;
+
+  const bestByListing = new Map();
+  for (const b of bids) {
+    const lid = b.listing_id;
+    const prev = bestByListing.get(lid);
+    if (!prev || Number(b.bid_amount) > Number(prev.bid_amount)) {
+      bestByListing.set(lid, b);
+    }
+  }
+
+  return listings.map((l) => {
+    if (l.current_highest_bid != null && l.current_highest_bidder) return l;
+    const best = bestByListing.get(l.id);
+    if (!best) return l;
+    return {
+      ...l,
+      current_highest_bid: best.bid_amount,
+      current_highest_bidder: best.bidder_club_id,
+    };
+  });
 }
 
 function allLoadedListings() {
@@ -202,13 +261,16 @@ async function renderListings() {
     return;
   }
 
-  const playerIds = [...new Set(rows.map((l) => String(l.player_id)))];
+  const hydratedRows = await hydrateListingHighBids(rows);
+  if (gen !== renderGeneration) return;
+
+  const playerIds = [...new Set(hydratedRows.map((l) => String(l.player_id)))];
   const playerMap = await fetchPlayersMap(playerIds);
   if (gen !== renderGeneration) return;
 
   const now = new Date();
 
-  for (const listing of rows) {
+  for (const listing of hydratedRows) {
     const player = playerMap.get(String(listing.player_id));
 
     const extendedLabel = listing.was_extended

@@ -516,12 +516,25 @@ async function acceptDirectBid(bid, shortName) {
       bid_amount: bidAmount,
       bid_time: now.toISOString(),
       is_direct: false,
-      is_opening_bid: true,
       status: "active",
     });
 
+  const { error: syncHighError } = await supabase
+    .from("Player_Transfer_Listings")
+    .update({
+      current_highest_bid: bidAmount,
+      current_highest_bidder: bidderShort,
+    })
+    .eq("id", newListingId);
+
   if (openingBidError) {
     console.error("Error recording opening bid on listing:", openingBidError);
+    alert(
+      "Listing created but the opening bid could not be saved. " +
+        "Apply supabase/sql/sync_listing_high_from_bid.sql in Supabase, then refresh."
+    );
+  } else if (syncHighError) {
+    console.error("Error syncing highest bid on listing:", syncHighError);
   }
 
   await supabase
