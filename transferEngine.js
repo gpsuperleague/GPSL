@@ -171,10 +171,23 @@ transferEngine.acceptSale = async function (listingId) {
 
   console.log("🧩 Updating player club…");
 
-  const { confirmSquadOverflowBeforeSigning, alertOverflowReleaseFromAssign } =
+  const { data: buyerClub } = await supabase
+    .from("Clubs")
+    .select("Nation")
+    .eq("ShortName", buyer)
+    .maybeSingle();
+
+  const { confirmSquadRulesBeforeBid, alertOverflowReleaseFromAssign } =
     await import("./squad_rules.js");
 
-  if (!(await confirmSquadOverflowBeforeSigning(supabase, buyer))) {
+  if (
+    !(await confirmSquadRulesBeforeBid(
+      supabase,
+      buyer,
+      buyerClub?.Nation ?? null,
+      player
+    ))
+  ) {
     await supabase
       .from("Club_Finances")
       .update({ balance: buyerBalance })

@@ -11,9 +11,8 @@ import {
   favouriteButtonLabel,
 } from "./listing_favourites.js";
 import {
-  confirmSquadOverflowBeforeSigning,
-  fetchClubSquadTotal,
-  squadOverflowBidWarningText,
+  confirmSquadRulesBeforeBid,
+  squadRulesBidWarningLines,
 } from "./squad_rules.js";
 
 function pesdbPlayerUrl(konamiId) {
@@ -24,6 +23,8 @@ function pesdbPlayerUrl(konamiId) {
 const supabase = window.supabase;
 
 let currentUserShort = null;
+let currentUserNation = null;
+let selectedBidPlayer = null;
 let openListings = [];
 let reviewListings = [];
 let selectedListing = null;
@@ -105,7 +106,7 @@ function parseMoneyInput(value) {
 async function loadShortNameFromSupabase(userId) {
   const { data, error } = await supabase
     .from("Clubs")
-    .select("ShortName")
+    .select("ShortName, Nation")
     .eq("owner_id", userId)
     .maybeSingle();
 
@@ -120,6 +121,7 @@ async function loadShortNameFromSupabase(userId) {
   }
 
   currentUserShort = data.ShortName;
+  currentUserNation = data.Nation ?? null;
   favouriteListingIds = loadListingFavouriteIds(currentUserShort);
 }
 
@@ -578,6 +580,7 @@ async function openBidModal(listing, player) {
   }
 
   selectedListing = listing;
+  selectedBidPlayer = player ?? null;
 
   const konamiId = String(listing.player_id);
   const pesdbUrl = pesdbPlayerUrl(konamiId);
@@ -630,10 +633,14 @@ async function openBidModal(listing, player) {
 
   const minBid = listingMinimumBid(listing);
   let warningText = `⚠️ ${listingBidWarningText(listing)}`;
-  const squadTotal = await fetchClubSquadTotal(supabase, currentUserShort);
-  const squadWarn = squadOverflowBidWarningText(squadTotal);
-  if (squadWarn) {
-    warningText += `\n\n⚠️ ${squadWarn}`;
+  const squadLines = await squadRulesBidWarningLines(
+    supabase,
+    currentUserShort,
+    currentUserNation,
+    player
+  );
+  if (squadLines.length) {
+    warningText += `\n\n⚠️ ${squadLines.join("\n\n⚠️ ")}`;
   }
   document.getElementById("bid-warning").textContent = warningText;
 
@@ -787,7 +794,14 @@ async function placeBid() {
     return;
   }
 
-  if (!(await confirmSquadOverflowBeforeSigning(supabase, currentUserShort))) {
+  if (
+    !(await confirmSquadRulesBeforeBid(
+      supabase,
+      currentUserShort,
+      currentUserNation,
+      selectedBidPlayer
+    ))
+  ) {
     return;
   }
 

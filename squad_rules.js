@@ -48,21 +48,169 @@ export function squadOverflowBidWarningText(squadTotal) {
   );
 }
 
-export async function confirmSquadOverflowBeforeSigning(supabase, clubShort) {
-  const total = await fetchClubSquadTotal(supabase, clubShort);
-  if (total == null || total < SQUAD_SIZE) return true;
+export async function fetchClubSquadComposition(supabase, clubShort) {
+  if (!clubShort || !supabase) return null;
 
-  let msg = SQUAD_OVERFLOW_CONFIRM_MESSAGE;
-  if (total > SQUAD_SIZE) {
-    msg =
-      `You have ${total} players (max ${SQUAD_SIZE}).\n\n` +
-      "Are you sure?\n\n" +
-      "Adding another player will automatically release your highest-rated player " +
-      "who was not signed this season. If you have foreign club interest remaining, " +
-      "that sale will be used; otherwise the player is released for market value.";
+  const { data, error } = await supabase.rpc("check_club_squad_composition", {
+    p_club_short_name: clubShort,
+  });
+
+  if (error) {
+    console.warn("check_club_squad_composition:", error);
+    return null;
   }
 
-  return window.confirm(msg);
+  return {
+    total: Number(data?.total ?? 0),
+    homeGrown: Number(data?.home_grown ?? 0),
+    under21: Number(data?.under_21 ?? 0),
+    clubNation: data?.club_nation ?? null,
+  };
+}
+
+/** Counts if this player is added to the squad (e.g. winning a bid). */
+export function projectedSquadCompositionAfterSigning(
+  composition,
+  player,
+  clubNation
+) {
+  const nation = clubNation ?? composition?.clubNation ?? null;
+  let homeGrown = composition?.homeGrown ?? 0;
+  let under21 = composition?.under21 ?? 0;
+  let total = composition?.total ?? 0;
+
+  if (player) {
+    total += 1;
+    if (isHomeGrownPlayer(player, nation)) homeGrown += 1;
+    if (isUnder21(player)) under21 += 1;
+  }
+
+  return {
+    total,
+    homeGrown,
+    under21,
+    homeGrownOk: homeGrown >= MIN_HOME_GROWN,
+    under21Ok: under21 >= MIN_UNDER_21,
+  };
+}
+
+/** Lines for bid modal / confirm when HG or U21 minimums would still fail after winning. */
+export function squadCompositionBidWarningLines(composition, player, clubNation) {
+  if (!composition) return [];
+
+  const proj = projectedSquadCompositionAfterSigning(
+    composition,
+    player,
+    clubNation
+  );
+  const lines = [];
+
+  if (!proj.homeGrownOk) {
+    const helps = player && isHomeGrownPlayer(player, clubNation ?? composition.clubNation);
+    const need = MIN_HOME_GROWN - proj.homeGrown;
+    lines.push(
+      helps
+        ? `Home-grown: you have ${composition.homeGrown} (need ${MIN_HOME_GROWN}). If you win, this player counts as home-grown → ${proj.homeGrown} total (still need ${need} more).`
+        : `Home-grown: you have ${composition.homeGrown} (need ${MIN_HOME_GROWN}). If you win, you would have ${proj.homeGrown} — still ${need} short.`
+    );
+  }
+
+  if (!proj.under21Ok) {
+    const helps = player && isUnder21(player);
+    const need = MIN_UNDER_21 - proj.under21;
+    const ageLabel =
+      player?.Age != null && String(player.Age).trim() !== ""
+        ? ` (age ${player.Age})`
+        : "";
+    lines.push(
+      helps
+        ? `Under-21: you have ${composition.under21} (need ${MIN_UNDER_21}). If you win, this player counts${ageLabel} → ${proj.under21} total (still need ${need} more).`
+        : `Under-21: you have ${composition.under21} (need ${MIN_UNDER_21}). If you win, you would have ${proj.under21} — still ${need} short.`
+    );
+  }
+
+  return lines;
+}
+
+/** Modal warning block (overflow + HG/U21). */
+export async function squadRulesBidWarningLines(
+  supabase,
+  clubShort,
+  clubNation,
+  player
+) {
+  const composition = await fetchClubSquadComposition(supabase, clubShort);
+  const lines = [];
+
+  const overflow = squadOverflowBidWarningText(composition?.total);
+  if (overflow) lines.push(overflow);
+
+  lines.push(
+    ...squadCompositionBidWarningLines(composition, player, clubNation)
+  );
+
+  return lines.filter(Boolean);
+}
+
+/**
+ * Confirm before bid / signing (overflow + HG/U21 warnings — not a hard block).
+ * @returns {Promise<boolean>} false if user cancelled
+ */
+export async function confirmSquadRulesBeforeBid(
+  supabase,
+  clubShort,
+  clubNation,
+  player
+) {
+  const composition = await fetchClubSquadComposition(supabase, clubShort);
+  if (!composition) return true;
+
+  const sections = [];
+
+  const total = composition.total;
+  if (total >= SQUAD_SIZE) {
+    let msg = SQUAD_OVERFLOW_CONFIRM_MESSAGE;
+    if (total > SQUAD_SIZE) {
+      msg =
+        `You have ${total} players (max ${SQUAD_SIZE}).\n\n` +
+        "Are you sure?\n\n" +
+        "Adding another player will automatically release your highest-rated player " +
+        "who was not signed this season. If you have foreign club interest remaining, " +
+        "that sale will be used; otherwise the player is released for market value.";
+    }
+    sections.push(msg);
+  }
+
+  const compLines = squadCompositionBidWarningLines(
+    composition,
+    player,
+    clubNation
+  );
+  if (compLines.length) {
+    sections.push(
+      "Squad composition (minimum rules):\n\n" +
+        compLines.map((l) => `• ${l}`).join("\n\n") +
+        "\n\nYou can still place your bid, but your squad must meet home-grown and under-21 minimums."
+    );
+  }
+
+  if (!sections.length) return true;
+
+  return window.confirm(
+    sections.length === 1
+      ? sections[0]
+      : sections.join("\n\n────────────\n\n")
+  );
+}
+
+/** @deprecated use confirmSquadRulesBeforeBid */
+export async function confirmSquadOverflowBeforeSigning(
+  supabase,
+  clubShort,
+  player = null,
+  clubNation = null
+) {
+  return confirmSquadRulesBeforeBid(supabase, clubShort, clubNation, player);
 }
 
 /** Alert after assign if server auto-released a player (overflow). */

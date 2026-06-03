@@ -259,6 +259,14 @@
       font-size: 14px;
     }
 
+    #offerSquadWarning {
+      color: #e6c200;
+      font-size: 13px;
+      margin: 10px 0;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+
     .formatted-amount {
       margin-top: 4px;
       font-size: 12px;
@@ -376,6 +384,7 @@
         <label for="offerAmount">Bid Amount (₿):</label>
         <input type="text" id="offerAmount">
         <div id="offerAmountFormatted" class="formatted-amount"></div>
+        <div id="offerSquadWarning" role="status" aria-live="polite"></div>
 
         <div class="increment-row">
           <button class="inc-btn" data-delta="-500000">-500k</button>
@@ -411,7 +420,10 @@
     } from './player_transfer_status.js';
     import { SAME_SEASON_TRANSFER_MESSAGE } from './player_season_transfer.js';
     import { specialAuctionNavLinkHtml } from './global.js';
-    import { confirmSquadOverflowBeforeSigning } from './squad_rules.js';
+    import {
+      confirmSquadRulesBeforeBid,
+      squadRulesBidWarningLines,
+    } from './squad_rules.js';
 
     const supabase = createClient(
       'https://omyyogfumrjoaweuawjn.supabase.co',
@@ -422,6 +434,8 @@
 
     let transferWindowOpen = false;
     let buyerShortName = null;
+    let buyerClubNation = null;
+    let currentOfferPlayer = null;
     let currentOfferKonamiId = null;
     let currentOfferSellerClub = null;
     let currentPlayerMarketValue = null;
@@ -516,17 +530,19 @@
     async function loadBuyerClubShortName(authId) {
       const { data, error } = await supabase
         .from("Clubs")
-        .select("ShortName")
+        .select("ShortName, Nation")
         .eq("owner_id", authId)
         .single();
 
       if (error || !data) {
         console.error("Could not resolve buyer club from owner_id", error);
         buyerShortName = null;
+        buyerClubNation = null;
         return;
       }
 
       buyerShortName = data.ShortName;
+      buyerClubNation = data.Nation ?? null;
     }
 
     const params = new URLSearchParams(window.location.search);
@@ -717,6 +733,9 @@
         currentOfferKonamiId = null;
         currentOfferSellerClub = null;
         currentPlayerMarketValue = null;
+        currentOfferPlayer = null;
+        const squadWarn = document.getElementById("offerSquadWarning");
+        if (squadWarn) squadWarn.textContent = "";
       };
 
       closeBtn.onclick = resetModalState;
@@ -783,11 +802,12 @@
     async function populateModalPlayerDetails(konamiId, fallbackName) {
       const { data, error } = await supabase
         .from("Players")
-        .select("Name, Position, Rating, Age, Playstyle, market_value, Konami_ID")
+        .select("Name, Nation, Position, Rating, Age, Playstyle, market_value, Konami_ID")
         .eq("Konami_ID", konamiId)
         .single();
 
       const player = !error && data ? data : null;
+      currentOfferPlayer = player;
 
       const name = player ? player.Name : fallbackName;
       const pos = player ? player.Position : "-";
@@ -817,6 +837,20 @@
       amountInput.value = value.toLocaleString("en-GB");
       document.getElementById("offerAmountFormatted").textContent =
         "Formatted: ₿ " + value.toLocaleString("en-GB");
+
+      const squadWarnEl = document.getElementById("offerSquadWarning");
+      if (squadWarnEl) squadWarnEl.textContent = "";
+      if (buyerShortName && player) {
+        const lines = await squadRulesBidWarningLines(
+          supabase,
+          buyerShortName,
+          buyerClubNation,
+          player
+        );
+        if (squadWarnEl && lines.length) {
+          squadWarnEl.textContent = lines.map((l) => `⚠ ${l}`).join("\n\n");
+        }
+      }
     }
 
     /* ---------------------------------------------------------
@@ -856,7 +890,7 @@
 
       const { data: offerPlayer } = await supabase
         .from("Players")
-        .select("Season_Signed")
+        .select("Season_Signed, Nation, Age")
         .eq("Konami_ID", currentOfferKonamiId)
         .maybeSingle();
 
@@ -881,7 +915,23 @@
         return;
       }
 
-      if (!(await confirmSquadOverflowBeforeSigning(supabase, buyerShortName))) {
+      const bidPlayer =
+        currentOfferPlayer ||
+        (offerPlayer
+          ? {
+              Nation: offerPlayer.Nation,
+              Age: offerPlayer.Age,
+            }
+          : null);
+
+      if (
+        !(await confirmSquadRulesBeforeBid(
+          supabase,
+          buyerShortName,
+          buyerClubNation,
+          bidPlayer
+        ))
+      ) {
         return;
       }
 

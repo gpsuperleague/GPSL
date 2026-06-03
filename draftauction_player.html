@@ -36,6 +36,13 @@
     }
     .submit-btn:hover { background:#369a36; }
     .submit-btn.disabled { background:#444; color:#999; cursor:not-allowed; }
+    #bidSquadWarning {
+      color: #e6c200;
+      font-size: 13px;
+      margin: 10px 0 6px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
 
     .status-note { font-size:12px; color:#ccc; margin-top:8px; }
 
@@ -102,6 +109,7 @@
         <button class="dec-btn" data-delta="-5000000">–5m</button>
         <button id="submitBidBtn" class="submit-btn">Submit Bid</button>
       </div>
+      <div id="bidSquadWarning" role="status" aria-live="polite"></div>
       <div class="status-note" id="bidStatus"></div>
     </div>
 
@@ -151,11 +159,17 @@
       favouriteStarChar,
       favouriteButtonLabel,
     } from "./draft_favourites.js";
+    import {
+      confirmSquadRulesBeforeBid,
+      squadRulesBidWarningLines,
+    } from "./squad_rules.js";
 
     /* ============================================================
        STATE
        ============================================================ */
     let buyerShortName = null;
+    let buyerClubNation = null;
+    let draftBidPlayer = null;
     let draftEnabled = false;
     let draftAuctionStartTimeUK = null;
 
@@ -299,11 +313,30 @@
     async function loadBuyerClubShortName(userId) {
       const { data } = await supabase
         .from("Clubs")
-        .select("ShortName")
+        .select("ShortName, Nation")
         .eq("owner_id", userId)
         .single();
 
       buyerShortName = data ? data.ShortName : null;
+      buyerClubNation = data?.Nation ?? null;
+    }
+
+    async function refreshSquadBidWarnings() {
+      const el = document.getElementById("bidSquadWarning");
+      if (!el) return;
+      el.textContent = "";
+
+      if (!buyerShortName || !draftBidPlayer) return;
+
+      const lines = await squadRulesBidWarningLines(
+        supabase,
+        buyerShortName,
+        buyerClubNation,
+        draftBidPlayer
+      );
+      if (lines.length) {
+        el.textContent = lines.map((l) => `⚠ ${l}`).join("\n\n");
+      }
     }
 
     /* ============================================================
@@ -330,10 +363,13 @@
       }
 
       if (!player || player.Contracted_Team !== null) {
+        draftBidPlayer = null;
         document.getElementById("playerName").textContent =
           "Player not eligible for draft auction.";
         return;
       }
+
+      draftBidPlayer = player;
 
       /* --- Player Info --- */
       document.getElementById("playerName").textContent = player.Name;
@@ -400,6 +436,7 @@
       });
 
       updateBidControlsState();
+      await refreshSquadBidWarnings();
     }
 
     /* ============================================================
@@ -505,6 +542,17 @@
       if (!amount || amount <= currentHighestBid) {
         document.getElementById("bidStatus").textContent =
           "Bid must be higher than current highest.";
+        return;
+      }
+
+      if (
+        !(await confirmSquadRulesBeforeBid(
+          supabase,
+          buyerShortName,
+          buyerClubNation,
+          draftBidPlayer
+        ))
+      ) {
         return;
       }
 

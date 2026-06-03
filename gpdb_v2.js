@@ -35,7 +35,10 @@ import {
   FINAL_YEAR_TRANSFER_MESSAGE,
 } from "./player_season_transfer.js";
 import { isContractFinalYear } from "./player_contracts.js";
-import { confirmSquadOverflowBeforeSigning } from "./squad_rules.js";
+import {
+  confirmSquadRulesBeforeBid,
+  squadRulesBidWarningLines,
+} from "./squad_rules.js";
 import {
   loadPlayerValueTables,
   calcPotentialForPlayer,
@@ -611,7 +614,9 @@ document.addEventListener("DOMContentLoaded", () => {
               data-market-value="${player.market_value ?? ""}"
               data-contracted-team="${player.Contracted_Team ?? ""}"
               data-season-signed="${player.Season_Signed ?? ""}"
-              data-contract-seasons="${player.contract_seasons_remaining ?? ""}">
+              data-contract-seasons="${player.contract_seasons_remaining ?? ""}"
+              data-nation="${player.Nation ?? ""}"
+              data-age="${player.Age ?? ""}">
             <td>
               <img src="${imgURL}"
                    class="gpdb-thumb"
@@ -663,7 +668,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let CURRENT_OFFER_PLAYER = null;
 
-  function openMakeOfferModal(konamiId) {
+  async function openMakeOfferModal(konamiId) {
     const row = document.querySelector(`tr[data-konami-id="${konamiId}"]`);
     if (!row) return;
 
@@ -690,6 +695,8 @@ document.addEventListener("DOMContentLoaded", () => {
       Position: position,
       Playstyle: playstyle,
       Rating: rating,
+      Nation: row.dataset.nation || "",
+      Age: row.dataset.age || "",
       market_value: mv,
       Contracted_Team: sellerClub,
       Season_Signed: row.dataset.seasonSigned || "",
@@ -719,6 +726,38 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("offerAmount").value = mv.toLocaleString("en-GB");
     document.getElementById("offerError").textContent = "";
+
+    let squadWarnEl = document.getElementById("offerSquadWarning");
+    if (!squadWarnEl) {
+      squadWarnEl = document.createElement("div");
+      squadWarnEl.id = "offerSquadWarning";
+      squadWarnEl.style.cssText =
+        "color:#e6c200;font-size:12px;margin:8px 0;line-height:1.4;";
+      const note = document.getElementById("offerMinNote");
+      if (note?.parentNode) {
+        note.parentNode.insertBefore(squadWarnEl, note.nextSibling);
+      }
+    }
+    squadWarnEl.textContent = "";
+
+    const { data: clubRow } = await supabase
+      .from("Clubs")
+      .select("ShortName")
+      .eq("owner_id", CURRENT_USER?.id)
+      .maybeSingle();
+
+    if (clubRow?.ShortName) {
+      const clubNation = CLUB_NATION_MAP[clubRow.ShortName] || "";
+      const lines = await squadRulesBidWarningLines(
+        supabase,
+        clubRow.ShortName,
+        clubNation,
+        CURRENT_OFFER_PLAYER
+      );
+      if (lines.length) {
+        squadWarnEl.textContent = lines.map((l) => `⚠ ${l}`).join("\n\n");
+      }
+    }
 
     const backdrop = document.getElementById("make-offer-modal-backdrop");
     backdrop.style.display = "flex";
@@ -782,7 +821,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const { data: clubRow, error: clubErr } = await supabase
       .from("Clubs")
-      .select("ShortName")
+      .select("ShortName, Nation")
       .eq("owner_id", CURRENT_USER.id)
       .single();
 
@@ -824,7 +863,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (!sellerClub) {
-      if (!(await confirmSquadOverflowBeforeSigning(supabase, myClub))) {
+      if (
+        !(await confirmSquadRulesBeforeBid(
+          supabase,
+          myClub,
+          clubRow.Nation,
+          CURRENT_OFFER_PLAYER
+        ))
+      ) {
         return;
       }
 
@@ -849,7 +895,14 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    if (!(await confirmSquadOverflowBeforeSigning(supabase, myClub))) {
+    if (
+      !(await confirmSquadRulesBeforeBid(
+        supabase,
+        myClub,
+        clubRow.Nation,
+        CURRENT_OFFER_PLAYER
+      ))
+    ) {
       return;
     }
 
