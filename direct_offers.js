@@ -12,6 +12,55 @@ export function getBidPlayerId(row) {
   return String(raw).trim();
 }
 
+/**
+ * Buyer bid still live in Transfer Centre “Active Bids”.
+ * Bid rows often stay status=active after listing closes or user is outbid.
+ */
+export function isBuyerBidStillLive(bid, listing, buyerClubShort, options = {}) {
+  if (!bid || !isActiveBidStatus(bid.status)) return false;
+
+  const now = options.now instanceof Date ? options.now : new Date();
+  const draftEnded = options.draftAuctionEnded === true;
+  const club = String(buyerClubShort || "").trim();
+
+  if (bid.is_first_draft_bid || bid.is_draft_join) {
+    if (draftEnded) return false;
+    if (!listing || String(listing.listing_type || "").toLowerCase() !== "draft") {
+      return false;
+    }
+    return String(listing.status || "") === "Active";
+  }
+
+  if (isPendingContractedDirectOffer(bid)) return true;
+
+  if (bid.listing_id == null || !listing) return false;
+
+  const st = String(listing.status || "");
+  if (st === "Closed") return false;
+
+  const lt = String(listing.listing_type || "").toLowerCase();
+  if (lt === "draft") {
+    if (draftEnded) return false;
+    return st === "Active";
+  }
+
+  const leading =
+    listing.current_highest_bidder &&
+    String(listing.current_highest_bidder) === club;
+
+  if (st === "Active") {
+    const end = listing.end_time ? new Date(listing.end_time) : null;
+    if (!end || end <= now) return false;
+    return leading;
+  }
+
+  if (st === "Review" || st === "Seller Review") {
+    return leading;
+  }
+
+  return false;
+}
+
 /** True pending direct offer = contracted, no listing yet, still awaiting seller review */
 export function isPendingContractedDirectOffer(row) {
   if (row.is_direct !== true) return false;

@@ -16,7 +16,11 @@ import {
   formatSeasonSaleDestination,
   formatSeasonSaleType,
 } from "./clubs_lookup.js";
-import { getBidPlayerId, isPendingContractedDirectOffer } from "./direct_offers.js";
+import {
+  getBidPlayerId,
+  isPendingContractedDirectOffer,
+  isBuyerBidStillLive,
+} from "./direct_offers.js";
 import {
   loadCurrentGpslSeasonLabel,
   playerBlockedSameSeasonTransfer,
@@ -392,28 +396,26 @@ async function loadActiveBids(shortName) {
   const container = document.getElementById("activeBidsContainer");
   container.innerHTML = "Loading…";
 
-  const { data: bids } = await supabase
+  const { data: bidsRaw } = await supabase
     .from("Player_Transfer_Bids")
     .select("*")
     .eq("bidder_club_id", shortName)
     .eq("status", "active")
     .order("bid_time", { ascending: false });
 
-  if (!bids || bids.length === 0) {
-    container.innerHTML = "<i>No active bids.</i>";
-    return;
-  }
+  const now = getUKNow();
+  const settings = await loadGlobalSettings();
+  const draftEnded = isDraftAuctionEnded(now, settings.draftStart);
 
-  const listingBids = bids.filter((b) => b.listing_id !== null);
-  const directBids = bids.filter((b) => b.listing_id === null && b.is_direct);
+  const listingIds = [
+    ...new Set(
+      (bidsRaw || [])
+        .map((b) => b.listing_id)
+        .filter((id) => id != null)
+    ),
+  ];
 
-  let listingMap = new Map();
-  let playersFromListings = new Map();
-
-  const listingIds = listingBids
-    .map((b) => b.listing_id)
-    .filter((id) => id !== null);
-
+  const listingMap = new Map();
   if (listingIds.length > 0) {
     const { data: listings } = await supabase
       .from("Player_Transfer_Listings")
@@ -421,8 +423,28 @@ async function loadActiveBids(shortName) {
       .in("id", listingIds);
 
     listings?.forEach((l) => listingMap.set(l.id, l));
+  }
 
-    const playerIds = listings.map((l) => l.player_id);
+  const bids = (bidsRaw || []).filter((row) =>
+    isBuyerBidStillLive(row, listingMap.get(row.listing_id), shortName, {
+      now,
+      draftAuctionEnded: draftEnded,
+    })
+  );
+
+  if (!bids.length) {
+    container.innerHTML = "<i>No active bids.</i>";
+    return;
+  }
+
+  const listingBids = bids.filter((b) => b.listing_id !== null);
+  const directBids = bids.filter((b) => b.listing_id === null && b.is_direct);
+
+  let playersFromListings = new Map();
+  if (listingBids.length > 0) {
+    const playerIds = listingBids
+      .map((b) => listingMap.get(b.listing_id)?.player_id)
+      .filter((id) => id != null);
     playersFromListings = await fetchPlayersMap(playerIds);
   }
 
@@ -443,7 +465,7 @@ async function loadActiveBids(shortName) {
       ${bids
         .map((row) => {
           let playerName = "Unknown";
-          let typeLabel = "Listing Bid";
+          let typeLabel = "Listing bid";
 
           if (row.listing_id !== null) {
             const listing = listingMap.get(row.listing_id);
@@ -452,10 +474,18 @@ async function loadActiveBids(shortName) {
               listing?.player_id
             );
             playerName = player?.Name || "Unknown";
+            const st = String(listing?.status || "");
+            if (st === "Review" || st === "Seller Review") {
+              typeLabel = "Leading — seller review";
+            } else if (String(listing?.listing_type || "").toLowerCase() === "draft") {
+              typeLabel = "Draft auction";
+            } else {
+              typeLabel = "Leading — auction live";
+            }
           } else if (row.is_direct && getBidPlayerId(row)) {
             const player = playerFromMap(directPlayers, getBidPlayerId(row));
             playerName = player?.Name || "Unknown";
-            typeLabel = "Direct Bid";
+            typeLabel = "Direct offer — awaiting seller";
           }
 
           return `
