@@ -61,17 +61,20 @@ $function$;
 
 UPDATE public."Player_Transfer_Listings" l
 SET
-  end_time = GREATEST(
-    l.end_time,
-    public.compute_standard_listing_end_time(COALESCE(l.start_time, l.created_at))
-  ),
+  end_time = CASE
+    WHEN COALESCE(l.was_extended, false)
+      OR COALESCE(l.hour_extended, false)
+    THEN GREATEST(
+      l.end_time,
+      public.compute_standard_listing_end_time(COALESCE(l.start_time, l.created_at))
+    )
+    ELSE public.compute_standard_listing_end_time(COALESCE(l.start_time, l.created_at))
+  END,
   initial_end_time = CASE
     WHEN COALESCE(l.was_extended, false)
       OR COALESCE(l.hour_extended, false)
     THEN l.initial_end_time
-    ELSE public.compute_standard_listing_end_time(
-      COALESCE(l.start_time, l.created_at)
-    )
+    ELSE public.compute_standard_listing_end_time(COALESCE(l.start_time, l.created_at))
   END
 WHERE l.status = 'Active'
   AND l.listing_type IS DISTINCT FROM 'draft'

@@ -267,7 +267,11 @@ After changing listing duration in the app, run once to update **existing** acti
 
 [`recalc_standard_listing_end_times.sql`](./recalc_standard_listing_end_times.sql)
 
-Uses each listing’s `start_time` (same anchor as new listings). Never shortens `end_time`; listings already extended by the engine keep their `initial_end_time`.
+Uses each listing’s `start_time` (same anchor as new listings). Non-extended rows set **`end_time` = `initial_end_time`** from the same compute (avoids GMT/BST 1h drift). Engine-extended rows still use `GREATEST` on `end_time` and preserve `initial_end_time`.
+
+**One-off repair** if `end_time` is exactly 1h after `initial_end_time` with no extension flags (e.g. listing 170):
+
+[`repair_listing_end_time_gmt_drift.sql`](./repair_listing_end_time_gmt_drift.sql)
 
 ## Draft auction favourites (saved threads)
 

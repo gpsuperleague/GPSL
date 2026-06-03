@@ -356,11 +356,13 @@ async function loadActiveListings(shortName) {
 async function extendListing(listingId, shortName) {
   const newEnd = computeStandardListingEndTime();
 
+  const newEndIso = newEnd.toISOString();
   await supabase
     .from("Player_Transfer_Listings")
     .update({
       start_time: new Date().toISOString(),
-      end_time: newEnd.toISOString(),
+      end_time: newEndIso,
+      initial_end_time: newEndIso,
     })
     .eq("id", listingId);
 
