@@ -1,6 +1,6 @@
 # GPSL finances — line items & central bank (design memory)
 
-**Status:** Planning only (not implemented). Use this when rebuilding `finances.html` and adding SQL.
+**Status:** Phase 1 in progress — `supabase/sql/central_bank_phase1.sql`, expanded `finances.html`. Loans & full Excel rows still planned.
 
 **Currency:** ₿ everywhere in the app (Excel mixed £/$ — do not replicate).
 

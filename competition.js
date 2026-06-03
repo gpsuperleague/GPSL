@@ -570,7 +570,54 @@ export const GATE_ENTRY_LABELS = {
   gate_cup_share: "Cup gate (50% share)",
   prize: "Prize money",
   adjustment: "Adjustment",
+  admin_one_off_injection: "Central bank injection",
+  admin_purchase_payment: "Admin adjustment",
+  transfer_sale: "Player sale",
+  transfer_purchase: "Player purchase",
+  transfer_agent_fee: "Agent fee",
+  transfer_foreign_sale: "Foreign sale",
+  transfer_overflow_release: "Squad release (MV)",
+  loan_drawdown: "Loan drawdown",
+  loan_repayment_principal: "Loan repayment",
+  loan_interest_payment: "Loan interest",
 };
+
+/** @deprecated use FINANCE_ENTRY_LABELS */
+export const FINANCE_ENTRY_LABELS = GATE_ENTRY_LABELS;
+
+const INCOME_TYPES = new Set([
+  "gate_league_home",
+  "gate_cup_share",
+  "prize",
+  "adjustment",
+  "admin_one_off_injection",
+  "transfer_sale",
+  "transfer_foreign_sale",
+  "transfer_overflow_release",
+  "loan_drawdown",
+]);
+
+export function financeEntryLabel(type) {
+  return FINANCE_ENTRY_LABELS[type] || type;
+}
+
+export function isFinanceIncomeEntry(type, amount) {
+  if (INCOME_TYPES.has(type)) return true;
+  return Number(amount) > 0;
+}
+
+export async function loadGpslBankPublic(supabase) {
+  const { data, error } = await supabase
+    .from("gpsl_bank_public")
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    console.error("loadGpslBankPublic:", error);
+    return null;
+  }
+  return data;
+}
 
 export async function loadClubBalance(supabase, clubShortName) {
   const { data, error } = await supabase

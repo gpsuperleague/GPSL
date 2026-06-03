@@ -7,10 +7,11 @@
   <link rel="stylesheet" href="dashboard.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
-    .page-container { width:95%; max-width:1000px; margin:20px auto 40px; }
+    .page-container { width:95%; max-width:1100px; margin:20px auto 40px; }
     h1 { color:#ff9900; margin:0; }
     h2 { color:#ff9900; font-size:18px; margin:0 0 12px; }
-    .meta { color:#aaa; margin-bottom:20px; }
+    h3 { color:#ccc; font-size:14px; margin:16px 0 8px; }
+    .meta { color:#aaa; margin-bottom:12px; }
     .header-row {
       display:flex; align-items:center; gap:20px; margin-bottom:24px; flex-wrap:wrap;
     }
@@ -20,24 +21,47 @@
       padding:20px; margin-bottom:24px;
     }
     .balance-grid {
-      display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap:16px; margin-bottom:8px;
     }
     .stat-box {
       background:#222; border-radius:6px; padding:14px; text-align:center;
     }
     .stat-box .label { color:#aaa; font-size:12px; margin-bottom:6px; }
-    .stat-box .value { color:#ff9900; font-size:22px; font-weight:bold; }
+    .stat-box .value { font-size:20px; font-weight:bold; }
+    .stat-box .value.positive { color:#6f6; }
+    .stat-box .value.negative { color:#f88; }
+    .stat-box .value.neutral { color:#ff9900; }
+    .summary-grid {
+      display:grid; grid-template-columns: 1fr 1fr; gap:16px;
+    }
+    @media (max-width: 700px) {
+      .summary-grid { grid-template-columns: 1fr; }
+    }
+    .summary-col h3 { margin-top:0; }
+    .summary-line {
+      display:flex; justify-content:space-between; padding:4px 0;
+      border-bottom:1px solid #2a2a2a; font-size:13px;
+    }
+    .summary-line .amt { white-space:nowrap; margin-left:12px; }
     table.fin-table { width:100%; border-collapse:collapse; font-size:13px; }
     table.fin-table th, table.fin-table td {
       border:1px solid #333; padding:8px; text-align:left;
     }
     table.fin-table th { background:#222; color:#ff9900; }
     table.fin-table td.money { text-align:right; white-space:nowrap; }
+    table.fin-table tr.income td.money { color:#8d8; }
+    table.fin-table tr.cost td.money { color:#e99; }
     .empty { color:#888; font-size:13px; }
     .archive-ul { margin:0; padding-left:20px; color:#ccc; }
-    .footer-note { color:#888; font-size:12px; }
+    .footer-note { color:#888; font-size:12px; line-height:1.5; }
+    .bank-note {
+      background:#222; border:1px solid #444; border-radius:6px;
+      padding:12px; font-size:13px; color:#bbb;
+    }
     a { color:#ff9900; }
+    .toolbar { margin-bottom:12px; }
+    .toolbar a.button { font-size:13px; }
   </style>
 </head>
 <body>
@@ -53,27 +77,63 @@
     </div>
 
     <div class="panel">
-      <h2>Balance</h2>
+      <h2>Balance & season flow</h2>
       <div class="balance-grid">
         <div class="stat-box">
           <div class="label">Current balance</div>
-          <div class="value" id="balanceAmount">—</div>
+          <div class="value neutral" id="balanceAmount">—</div>
         </div>
         <div class="stat-box">
-          <div class="label">Gate income (this season)</div>
-          <div class="value" id="gateSeasonTotal">—</div>
+          <div class="label">Income (ledger, season)</div>
+          <div class="value positive" id="incomeSeasonTotal">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Costs (ledger, season)</div>
+          <div class="value negative" id="costSeasonTotal">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Net (ledger, season)</div>
+          <div class="value" id="netSeasonTotal">—</div>
         </div>
       </div>
       <p class="footer-note">
-        Transfers use the same balance via
-        <a href="transfer_center.html">Transfer Centre</a>.
-        Gate receipts credit on confirmed home league results.
-        <a href="stadium.html">Stadium</a> shows the estimate formula.
+        Spendable balance is used by
+        <a href="transfer_center.html">Transfer Centre</a> and the transfer market.
+        Ledger lines post for gates, prizes, and completed transfers (after
+        <code>central_bank_phase1.sql</code>). Run admin
+        <code>backfill_transfer_finance_ledger()</code> once for past deals.
       </p>
     </div>
 
     <div class="panel">
-      <h2>Gate & competition ledger</h2>
+      <h2>GPSL Central Bank</h2>
+      <div class="bank-note" id="bankPanel">Loading…</div>
+      <p class="footer-note" style="margin-top:10px;">
+        Model A: club-to-club transfers move money between clubs; the bank holds league
+        reserves and will handle subsidies, tax, and loans (phase 2).
+      </p>
+    </div>
+
+    <div class="panel">
+      <h2>Season summary</h2>
+      <div class="summary-grid">
+        <div class="summary-col">
+          <h3>Income</h3>
+          <div id="incomeBreakdown"></div>
+        </div>
+        <div class="summary-col">
+          <h3>Costs</h3>
+          <div id="costBreakdown"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Activity ledger</h2>
+      <div class="toolbar">
+        <a href="season_transfers.html" class="button">All league transfers</a>
+        <a href="stadium.html" class="button">Stadium & gate estimate</a>
+      </div>
       <div id="ledgerTable"></div>
     </div>
 
