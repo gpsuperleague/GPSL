@@ -1,5 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
-import { confirmFixtureResult, rejectFixtureResult } from "./competition.js";
+import { rejectFixtureResult } from "./competition.js";
 import { loadInboxMessages } from "./competition_inbox.js";
 
 let myClub = { short: null, name: null };
@@ -13,19 +13,6 @@ function setStatus(msg, isError = false) {
 
 async function markRead(inboxId) {
   await supabase.rpc("competition_inbox_mark_read", { p_inbox_id: inboxId });
-}
-
-async function confirmSubmission(submissionId) {
-  setStatus("Confirming…");
-  const { error } = await confirmFixtureResult(supabase, submissionId);
-
-  if (error) {
-    setStatus("❌ " + error.message, true);
-    return;
-  }
-
-  setStatus("✅ Result confirmed — table updated.");
-  await renderInbox();
 }
 
 async function rejectSubmission(submissionId) {
@@ -95,8 +82,13 @@ async function renderInbox() {
     ) {
       const confirmBtn = document.createElement("button");
       confirmBtn.className = "button";
-      confirmBtn.textContent = "Confirm result";
-      confirmBtn.onclick = () => confirmSubmission(msg.submission_id);
+      confirmBtn.textContent = "Enter your stats & confirm";
+      confirmBtn.onclick = () => {
+        const q = new URLSearchParams();
+        if (msg.fixture_id) q.set("fixture", String(msg.fixture_id));
+        if (msg.submission_id) q.set("confirm", String(msg.submission_id));
+        window.location = `matchday.html?${q.toString()}`;
+      };
 
       const rejectBtn = document.createElement("button");
       rejectBtn.className = "button danger";

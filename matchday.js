@@ -655,7 +655,7 @@ function updateFixturePreview() {
           : f.home_club_name;
       extra = ` · Awaiting confirmation from ${oppName}`;
     } else {
-      extra = ` · They submitted ${f.proposed_home_goals}–${f.proposed_away_goals} — <a href="inbox.html" style="color:#ff9900;">confirm in Inbox</a>`;
+      extra = ` · They submitted ${f.proposed_home_goals}–${f.proposed_away_goals} — select here or <a href="inbox.html" style="color:#ff9900;">Inbox</a> to enter your stats and confirm`;
     }
   }
 
@@ -750,7 +750,65 @@ async function loadUpcomingFixtures() {
     });
 }
 
+async function confirmPendingResult() {
+  const f = confirmMode?.fixture || selectedFixture();
+  if (!f || !confirmMode) {
+    setStatus("submitStatus", "Nothing to confirm.", true);
+    return;
+  }
+
+  const playerStats = collectPlayerStats();
+  const statsErr = validatePlayerStats(f, 0, 0, playerStats);
+  if (statsErr) {
+    setStatus("submitStatus", statsErr, true);
+    return;
+  }
+
+  setStatus("submitStatus", "Confirming…");
+  const { error } = await confirmFixtureResult(
+    supabase,
+    confirmMode.submissionId,
+    playerStats
+  );
+
+  if (error) {
+    setStatus("submitStatus", "❌ " + error.message, true);
+    return;
+  }
+
+  setStatus("submitStatus", "✅ Result confirmed.");
+  confirmMode = null;
+  applyConfirmModeUI();
+  await loadUpcomingFixtures();
+  populateFixtureSelect();
+}
+
+async function rejectPendingResult() {
+  if (!confirmMode?.submissionId) return;
+  const reason = prompt("Reason for rejection (optional):") || null;
+  setStatus("submitStatus", "Rejecting…");
+  const { error } = await rejectFixtureResult(
+    supabase,
+    confirmMode.submissionId,
+    reason
+  );
+  if (error) {
+    setStatus("submitStatus", "❌ " + error.message, true);
+    return;
+  }
+  setStatus("submitStatus", "Result rejected.");
+  confirmMode = null;
+  applyConfirmModeUI();
+  await loadUpcomingFixtures();
+  populateFixtureSelect();
+}
+
 async function submitResult() {
+  if (confirmMode) {
+    await confirmPendingResult();
+    return;
+  }
+
   const f = selectedFixture();
   if (!f || !canSubmitResult(f, myClub)) {
     setStatus("submitStatus", "Select a fixture you can submit.", true);
@@ -868,6 +926,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     `${club.Club} — enter scores below or on Fixtures (highlighted rows)`;
 
   document.getElementById("submitResultBtn").onclick = submitResult;
+  document.getElementById("rejectResultBtn").onclick = rejectPendingResult;
 
   for (const id of ["homeGoals", "awayGoals", "etHomeGoals", "etAwayGoals"]) {
     document.getElementById(id)?.addEventListener("input", updateCupScoreSections);
