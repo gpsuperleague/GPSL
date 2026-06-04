@@ -5,8 +5,13 @@ import {
   CUP_LABELS,
   loadCupBracket,
   loadCupQualified,
+  loadCupMatchExtras,
   groupCupBracketByRound,
-  formatFixtureScore,
+  cupRoundLabel,
+  formatCupScoreLines,
+  formatCupMatchFinance,
+  formatMoney,
+  normalizeClubKey,
 } from "./competition.js";
 
 function cupFromUrl() {
@@ -29,7 +34,7 @@ function renderToolbar() {
     btn.onclick = () => {
       currentCup = code;
       renderToolbar();
-      renderCup();
+      void renderCup();
     };
     bar.appendChild(btn);
   }
@@ -42,12 +47,78 @@ function renderQualified(clubs) {
       '<span class="empty">No qualifiers — need standings (prestige) or season clubs (league cup).</span>';
     return;
   }
-  el.textContent = clubs
-    .map((s) => fullClubName(s) || s)
-    .join(" · ");
+  el.textContent = clubs.map((s) => fullClubName(s) || s).join(" · ");
 }
 
-function renderBracket(nodes) {
+function isMyMatch(m) {
+  if (!myClubShort) return false;
+  const me = normalizeClubKey(myClubShort);
+  return (
+    normalizeClubKey(m.home_club_short_name) === me ||
+    normalizeClubKey(m.away_club_short_name) === me
+  );
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function renderScoreLinesHtml(lines) {
+  if (!lines?.length) return "";
+  return `<div class="score-lines">${lines
+    .map(
+      (ln) =>
+        `<div><span class="lbl">${escapeHtml(ln.label)}</span> ${escapeHtml(ln.text)}</div>`
+    )
+    .join("")}</div>`;
+}
+
+function renderFinanceHtml(financeRows) {
+  if (!financeRows?.length) return "";
+  const rows = financeRows
+    .map((c) => {
+      const parts = [];
+      if (c.gate > 0) parts.push(`<span class="fin-gate">Gate ${formatMoney(c.gate)}</span>`);
+      if (c.prize > 0) parts.push(`<span class="fin-prize">Prize ${formatMoney(c.prize)}</span>`);
+      return `<div class="club-fin"><b>${escapeHtml(c.club)}</b> — ${parts.join(" · ")}</div>`;
+    })
+    .join("");
+  return `<div class="match-finance">${rows}</div>`;
+}
+
+function renderMatchCard(m, extras) {
+  const home = m.home_club_name || m.home_club_short_name || "TBD";
+  const away = m.away_club_name || m.away_club_short_name || "TBD";
+  const played = m.fixture_status === "played";
+  const scheduled = !!m.fixture_id && !played;
+  const scoreLines = played ? formatCupScoreLines(m, extras) : null;
+  const finance = played ? formatCupMatchFinance(m, extras) : [];
+
+  let status = "Awaiting draw / teams";
+  if (played) status = "Played";
+  else if (scheduled) status = "Scheduled";
+  else if (m.winner_club_name && !m.fixture_id) status = "Bye / advanced";
+
+  let winnerHtml = "";
+  if (m.winner_club_name && !scoreLines?.some((l) => l.label === "Pens")) {
+    winnerHtml = `<div class="match-winner">→ ${escapeHtml(m.winner_club_name)}</div>`;
+  }
+
+  return `
+    <div class="bracket-match ${isMyMatch(m) ? "my-club" : ""} ${played ? "played" : ""}">
+      <div class="match-status">M${m.match_no} · ${escapeHtml(status)}</div>
+      <div class="match-teams">${escapeHtml(home)}<span class="vs">vs</span>${escapeHtml(away)}</div>
+      ${renderScoreLinesHtml(scoreLines)}
+      ${winnerHtml}
+      ${renderFinanceHtml(finance)}
+    </div>
+  `;
+}
+
+function renderBracket(nodes, extras) {
   const root = document.getElementById("bracketRoot");
   if (!nodes.length) {
     root.innerHTML =
@@ -56,52 +127,35 @@ function renderBracket(nodes) {
   }
 
   const rounds = groupCupBracketByRound(nodes);
-  root.innerHTML = rounds
-    .map(({ round_no, matches }) => {
-      const rows = matches
-        .map((m) => {
-          const home = m.home_club_name || m.home_club_short_name || "TBD";
-          const away = m.away_club_name || m.away_club_short_name || "TBD";
-          const score =
-            m.fixture_status === "played"
-              ? formatFixtureScore(m)
-              : m.fixture_id
-                ? "vs"
-                : "—";
-          const mine =
-            myClubShort &&
-            [m.home_club_short_name, m.away_club_short_name].some(
-              (c) => (c || "").toUpperCase() === myClubShort.toUpperCase()
-            );
-          const win =
-            m.winner_club_name &&
-            `<div style="color:#6f6;font-size:12px;">Winner: ${m.winner_club_name}</div>`;
+  const maxRound = Math.max(...nodes.map((n) => n.round_no || 0));
+
+  root.innerHTML = `
+    <div class="bracket-flow">
+      ${rounds
+        .map(({ round_no, matches }) => {
+          const title = cupRoundLabel(matches.length, round_no, maxRound);
+          const cards = matches.map((m) => renderMatchCard(m, extras)).join("");
           return `
-            <tr class="${mine ? "my-club" : ""}">
-              <td>M${m.match_no}</td>
-              <td>${home} ${score} ${away}${win || ""}</td>
-            </tr>
+            <div class="bracket-round" data-round="${round_no}">
+              <div class="round-title">${escapeHtml(title)}</div>
+              ${cards}
+            </div>
           `;
         })
-        .join("");
-
-      return `
-        <div class="round-block">
-          <div class="round-title">Round ${round_no}</div>
-          <table class="bracket">
-            <thead><tr><th>#</th><th>Match</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
-      `;
-    })
-    .join("");
+        .join("")}
+    </div>
+    <p class="bracket-arrow-hint">← Early rounds · Final →</p>
+  `;
 }
 
 async function renderCup() {
   const qualified = await loadCupQualified(supabase, currentCup);
   renderQualified(qualified);
-  renderBracket(await loadCupBracket(supabase, currentCup));
+
+  const nodes = await loadCupBracket(supabase, currentCup);
+  const fixtureIds = nodes.map((n) => n.fixture_id).filter(Boolean);
+  const extras = await loadCupMatchExtras(supabase, fixtureIds);
+  renderBracket(nodes, extras);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

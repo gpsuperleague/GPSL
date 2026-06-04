@@ -285,7 +285,142 @@ export function groupCupBracketByRound(nodes) {
   }
   return [...map.entries()]
     .sort((a, b) => a[0] - b[0])
-    .map(([round_no, matches]) => ({ round_no, matches }));
+    .map(([round_no, matches]) => ({
+      round_no,
+      matches: matches.sort((a, b) => (a.match_no || 0) - (b.match_no || 0)),
+    }));
+}
+
+/** Human-readable knockout round from number of ties in that round. */
+export function cupRoundLabel(matchCount, roundNo = null, maxRound = null) {
+  if (matchCount === 1 || (maxRound != null && roundNo === maxRound)) {
+    return "Final";
+  }
+  if (matchCount === 2) return "Semi-final";
+  if (matchCount === 4) return "Quarter-final";
+  const teams = matchCount * 2;
+  if (teams >= 64) return "Round of 64";
+  if (teams >= 32) return "Last 32";
+  if (teams >= 16) return "Round of 16";
+  if (teams >= 8) return "Round of 8";
+  return roundNo != null ? `Round ${roundNo}` : "Round";
+}
+
+/** Confirmed scores + gate/prize lines for cup bracket cards. */
+export async function loadCupMatchExtras(supabase, fixtureIds) {
+  const ids = [...new Set((fixtureIds || []).map((id) => Number(id)).filter(Boolean))];
+  const empty = {
+    submissionsByFixture: new Map(),
+    financeByFixture: new Map(),
+    fixturesById: new Map(),
+  };
+  if (!ids.length) return empty;
+
+  const [subsRes, ledgerRes, fixRes] = await Promise.all([
+    supabase
+      .from("competition_result_submissions")
+      .select(
+        "fixture_id, home_goals, away_goals, et_home_goals, et_away_goals, pen_winner_club_short_name"
+      )
+      .in("fixture_id", ids)
+      .eq("status", "confirmed"),
+    supabase
+      .from("competition_finance_ledger_public")
+      .select("fixture_id, club_short_name, club_name, entry_type, amount, description")
+      .in("fixture_id", ids)
+      .in("entry_type", ["gate_cup_share", "prize"]),
+    supabase
+      .from("competition_fixtures")
+      .select("id, cup_pen_winner_club_short_name, home_goals, away_goals, home_club_short_name, away_club_short_name")
+      .in("id", ids),
+  ]);
+
+  if (subsRes.error) console.error("loadCupMatchExtras submissions:", subsRes.error);
+  if (ledgerRes.error) console.error("loadCupMatchExtras ledger:", ledgerRes.error);
+  if (fixRes.error) console.error("loadCupMatchExtras fixtures:", fixRes.error);
+
+  const submissionsByFixture = new Map();
+  for (const row of subsRes.data || []) {
+    submissionsByFixture.set(Number(row.fixture_id), row);
+  }
+
+  const financeByFixture = new Map();
+  for (const row of ledgerRes.data || []) {
+    const fid = Number(row.fixture_id);
+    if (!financeByFixture.has(fid)) financeByFixture.set(fid, []);
+    financeByFixture.get(fid).push(row);
+  }
+
+  const fixturesById = new Map();
+  for (const row of fixRes.data || []) {
+    fixturesById.set(Number(row.id), row);
+  }
+
+  return { submissionsByFixture, financeByFixture, fixturesById };
+}
+
+export function formatCupScoreLines(match, extras) {
+  const fid = Number(match.fixture_id);
+  if (!fid || match.fixture_status !== "played") return null;
+
+  const sub = extras?.submissionsByFixture?.get(fid);
+  const fix = extras?.fixturesById?.get(fid);
+  const penClub =
+    sub?.pen_winner_club_short_name || fix?.cup_pen_winner_club_short_name || null;
+
+  const home90 = sub?.home_goals ?? match.home_goals;
+  const away90 = sub?.away_goals ?? match.away_goals;
+  const hasEt = sub?.et_home_goals != null && sub?.et_away_goals != null;
+
+  const lines = [];
+  if (home90 != null && away90 != null) {
+    lines.push({ label: "90 min", text: `${home90}–${away90}` });
+  }
+  if (hasEt) {
+    lines.push({
+      label: "After ET",
+      text: `${sub.et_home_goals}–${sub.et_away_goals}`,
+    });
+  }
+  if (penClub) {
+    let penName = penClub;
+    if (normalizeClubKey(penClub) === normalizeClubKey(match.home_club_short_name)) {
+      penName = match.home_club_name || penClub;
+    } else if (normalizeClubKey(penClub) === normalizeClubKey(match.away_club_short_name)) {
+      penName = match.away_club_name || penClub;
+    }
+    lines.push({ label: "Pens", text: `${penName} won` });
+  } else if (match.winner_club_name && !hasEt) {
+    lines.push({ label: "Winner", text: match.winner_club_name });
+  } else if (match.winner_club_name && hasEt) {
+    const etH = Number(sub.et_home_goals);
+    const etA = Number(sub.et_away_goals);
+    if (etH !== etA) {
+      lines.push({ label: "Winner", text: match.winner_club_name });
+    }
+  }
+
+  return lines.length ? lines : null;
+}
+
+export function formatCupMatchFinance(match, extras) {
+  const fid = Number(match.fixture_id);
+  const rows = extras?.financeByFixture?.get(fid) || [];
+  if (!rows.length) return [];
+
+  const byClub = new Map();
+  for (const row of rows) {
+    const key = row.club_short_name;
+    if (!byClub.has(key)) {
+      byClub.set(key, { club: row.club_name || key, gate: 0, prize: 0 });
+    }
+    const bucket = byClub.get(key);
+    const amt = Number(row.amount) || 0;
+    if (row.entry_type === "gate_cup_share") bucket.gate += amt;
+    else if (row.entry_type === "prize") bucket.prize += amt;
+  }
+
+  return [...byClub.values()].filter((c) => c.gate > 0 || c.prize > 0);
 }
 
 export async function loadFixtureCountsForSeason(supabase, seasonId) {

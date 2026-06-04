@@ -1,5 +1,10 @@
 -- Opponent must submit squad stats when confirming a pending result.
--- Run after competition_cup_extra_time.sql and competition_match_stats_started_sub.sql.
+-- Run after competition_cup_extra_time.sql (safe to re-run).
+
+-- Required for Match Day lineup (started / subbed on). Harmless if already applied.
+ALTER TABLE public.competition_match_player_stats
+  ADD COLUMN IF NOT EXISTS started boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS subbed_on boolean NOT NULL DEFAULT false;
 
 CREATE OR REPLACE FUNCTION public.competition_expected_goals_for_club(
   p_fixture public.competition_fixtures,
