@@ -127,13 +127,11 @@ function renderBracket(nodes, extras) {
   }
 
   const rounds = groupCupBracketByRound(nodes);
-  const maxRound = Math.max(...nodes.map((n) => n.round_no || 0));
-
   root.innerHTML = `
     <div class="bracket-flow">
       ${rounds
         .map(({ round_no, matches }) => {
-          const title = cupRoundLabel(matches.length, round_no, maxRound);
+          const title = cupRoundLabel(matches.length);
           const cards = matches.map((m) => renderMatchCard(m, extras)).join("");
           return `
             <div class="bracket-round" data-round="${round_no}">

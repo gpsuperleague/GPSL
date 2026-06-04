@@ -291,19 +291,17 @@ export function groupCupBracketByRound(nodes) {
     }));
 }
 
-/** Human-readable knockout round from number of ties in that round. */
-export function cupRoundLabel(matchCount, roundNo = null, maxRound = null) {
-  if (matchCount === 1 || (maxRound != null && roundNo === maxRound)) {
-    return "Final";
-  }
-  if (matchCount === 2) return "Semi-final";
-  if (matchCount === 4) return "Quarter-final";
-  const teams = matchCount * 2;
-  if (teams >= 64) return "Round of 64";
-  if (teams >= 32) return "Last 32";
-  if (teams >= 16) return "Round of 16";
-  if (teams >= 8) return "Round of 8";
-  return roundNo != null ? `Round ${roundNo}` : "Round";
+/** Knockout round name from teams still in the competition (2 × ties in that round). */
+export function cupRoundLabel(matchCount) {
+  const teams = (Number(matchCount) || 0) * 2;
+  if (teams === 2) return "Final";
+  if (teams === 4) return "Semi-final";
+  if (teams === 8) return "Quarter-final";
+  if (teams === 16) return "Last 16";
+  if (teams === 32) return "Round of 32";
+  if (teams === 64) return "Round of 64";
+  if (teams > 0) return `Round of ${teams}`;
+  return "Round";
 }
 
 /** Confirmed scores + gate/prize lines for cup bracket cards. */
