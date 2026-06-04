@@ -90,13 +90,13 @@ const SLUG_OVERRIDES = {
   AVL: "eng/villa_park",
   FEY: "ned/de_kuip",
   PSV: "ned/philips_stadion",
-  AJX: "ned/johan_cruijff_arena",
+  AJX: "ned/arena",
   BAR: "esp/camp_nou",
   RMA: "esp/estadio_santiago_bernabeu",
   ATM: "esp/estadio_metropolitano",
   VAL: "esp/mestalla",
   SEV: "esp/ramon_sanchez_pizjuan",
-  JUV: "ita/allianz_stadium",
+  JUV: "ita/juventus_stadium",
   INT: "ita/stadio_giuseppe_meazza",
   MIL: "ita/giuseppe_meazza",
   LAZ: "ita/stadio_olimpico",
@@ -106,15 +106,15 @@ const SLUG_OVERRIDES = {
   LEV: "ger/bayarena",
   BMU: "ger/allianz_arena",
   PSG: "fra/parc_des_princes",
-  LYO: "fra/groupama_stadium",
+  LYO: "fra/parc_ol",
   MAR: "fra/stade_velodrome",
-  LIL: "fra/stade_pierre_mauroy",
+  LIL: "fra/stadium_lille_metropole",
   MON: "fra/stade_louis_ii",
   POR: "por/estadio_do_dragao",
   BEN: "por/estadio_da_luz",
   SPO: "por/estadio_jose_alvalade",
-  BRU: "bel/stade_royal_lotto_park",
-  AND: "bel/stade_royal_lotto_park",
+  BRU: "bel/jan_breydel",
+  AND: "bel/constant_vanden_stock",
   CEL: "sco/celtic_park",
   RAN: "sco/ibrox_stadium",
   FLA: "bra/maracana",
@@ -124,17 +124,14 @@ const SLUG_OVERRIDES = {
   BOC: "arg/la_bombonera",
   RIV: "arg/el_monumental",
   IND: "arg/estadio_libertadores_de_america",
+  NAC: "col/estadio_atanasio_girardot",
   WOL: "eng/molineux_stadium",
   BET: "esp/estadio_benito_villamarin",
   VIL: "esp/estadio_de_la_ceramica",
   FIO: "ita/stadio_artemio_franchi",
-  LAZ: "ita/stadio_olimpico",
-  LYO: "fra/groupama_stadium",
-  LIL: "fra/decathlon_arena",
-  AJX: "ned/johan_cruijff_arena",
   COP: "den/parken",
-  BES: "tur/tupras_stadium",
-  KAS: "tur/recep_tayyip_erdogan_stadium",
+  BES: "tur/vodafone_arena",
+  KAS: "tur/recep_tayyip_erdogan_stadi",
   WHU: "eng/london_stadium",
   NEW: "eng/st_james_park",
   BRE: "eng/gtech_community_stadium",
@@ -145,6 +142,24 @@ const SLUG_OVERRIDES = {
   BOU: "eng/vitality_stadium",
   CRY: "eng/selhurst_park",
   BHA: "eng/american_express_community_stadium",
+};
+
+/** Direct image URL when page HTML has no parseable picture (ShortName → jpg URL) */
+const IMAGE_URL_OVERRIDES = {
+  AJX: "https://stadiumdb.com/pictures/stadiums/ned/arena/arena41.jpg",
+  AND: "https://stadiumdb.com/pictures/stadiums/bel/constant_vanden_stock/constant_vanden_stock24.jpg",
+  BES: "https://stadiumdb.com/pictures/stadiums/tur/vodafone_arena/vodafone_arena03.jpg",
+  BET: "https://stadiumdb.com/pic-buildings/esp/estadio_benito_villamarin/estadio_benito_villamarin102.jpg",
+  BRU: "https://stadiumdb.com/pic-projects/club_brugge_stadion/club_brugge_stadion28.jpg",
+  COP: "https://www.fck.dk/sites/default/files/styles/article_full/public/2020-04/200419_teliaparken_luftfoto-2.jpg?itok=UuTpSNfJ",
+  FIO: "https://stadiumdb.com/img/news/2025/09/33Fra01.jpg",
+  INT: "https://stadiumdb.com/img/news/2024/10/93San01.jpg",
+  JUV: "https://stadiumdb.com/pictures/stadiums/ita/juventus_stadium/juventus_stadium13.jpg",
+  KAS: "https://stadiumdb.com/pictures/stadiums/tur/recep_tayyip_erdogan_stadi/recep_tayyip_erdogan_stadi21.jpg",
+  LAZ: "https://stadiumdb.com/img/news/2026/05/24Fla03.jpg",
+  LIL: "https://stadiumdb.com/pictures/stadiums/fra/stadium_lille_metropole/stadium_lille_metropole10.jpg",
+  LYO: "https://stadiumdb.com/pictures/stadiums/fra/parc_ol/parc_ol11.jpg",
+  NAC: "https://stadiumdb.com/pic-projects/estadio_atanasio_girardot/estadio_atanasio_girardot05.jpg",
 };
 
 function slugify(text) {
@@ -313,21 +328,30 @@ async function main() {
       continue;
     }
 
-    const pageUrl = await resolvePageUrl(club, cache);
-    if (!pageUrl) {
-      console.warn(
-        `✗ ${club.ShortName} (${club.Stadium}, ${club.Nation}): no StadiumDB page`
-      );
+    const forcedImage = IMAGE_URL_OVERRIDES[club.ShortName];
+    let pageUrl = await resolvePageUrl(club, cache);
+    let imageUrl = forcedImage || null;
+
+    if (!imageUrl) {
+      if (!pageUrl) {
+        console.warn(
+          `✗ ${club.ShortName} (${club.Stadium}, ${club.Nation}): no StadiumDB page`
+        );
+        fail++;
+        continue;
+      }
+      const html = await fetchPageHtml(pageUrl);
+      imageUrl = html ? extractImageUrl(html) : null;
+    }
+
+    if (!imageUrl) {
+      console.warn(`✗ ${club.ShortName}: no picture on ${pageUrl || "(no page)"}`);
       fail++;
       continue;
     }
 
-    const html = await fetchPageHtml(pageUrl);
-    const imageUrl = html ? extractImageUrl(html) : null;
-    if (!imageUrl) {
-      console.warn(`✗ ${club.ShortName}: no picture on ${pageUrl}`);
-      fail++;
-      continue;
+    if (!pageUrl && SLUG_OVERRIDES[club.ShortName]) {
+      pageUrl = `https://stadiumdb.com/stadiums/${SLUG_OVERRIDES[club.ShortName]}`;
     }
 
     cache[club.ShortName] = {

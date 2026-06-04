@@ -1,4 +1,95 @@
 {
+  "AJX": {
+    "stadium": "Johan Cruijff ArenA",
+    "nation": "Netherlands",
+    "pageUrl": "https://stadiumdb.com/stadiums/ned/arena",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/ned/arena/arena41.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
+  "AND": {
+    "stadium": "Lotto Park",
+    "nation": "Belgium",
+    "pageUrl": "https://stadiumdb.com/stadiums/bel/constant_vanden_stock",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/bel/constant_vanden_stock/constant_vanden_stock24.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
+  "BES": {
+    "stadium": "Vodafone Park",
+    "nation": "Turkey",
+    "pageUrl": "https://stadiumdb.com/stadiums/tur/vodafone_arena",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/tur/vodafone_arena/vodafone_arena03.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
+  "BET": {
+    "stadium": "Estadio Benito Villamarín",
+    "nation": "Spain",
+    "pageUrl": "https://stadiumdb.com/stadiums/esp/estadio_benito_villamarin",
+    "imageUrl": "https://stadiumdb.com/pic-buildings/esp/estadio_benito_villamarin/estadio_benito_villamarin102.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
+  "BRU": {
+    "stadium": "Club Brugge Stadion",
+    "nation": "Belgium",
+    "pageUrl": "https://stadiumdb.com/stadiums/bel/jan_breydel",
+    "imageUrl": "https://stadiumdb.com/pic-projects/club_brugge_stadion/club_brugge_stadion28.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
+  "COP": {
+    "stadium": "Parken",
+    "nation": "Denmark",
+    "pageUrl": "https://stadiumdb.com/stadiums/den/parken",
+    "imageUrl": "https://www.fck.dk/sites/default/files/styles/article_full/public/2020-04/200419_teliaparken_luftfoto-2.jpg?itok=UuTpSNfJ",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
+  "FIO": {
+    "stadium": "Stadio Artemio Franchi",
+    "nation": "Italy",
+    "pageUrl": "https://stadiumdb.com/stadiums/ita/stadio_artemio_franchi",
+    "imageUrl": "https://stadiumdb.com/img/news/2025/09/33Fra01.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
+  "INT": {
+    "stadium": "San Siro",
+    "nation": "Italy",
+    "pageUrl": "https://stadiumdb.com/stadiums/ita/stadio_giuseppe_meazza",
+    "imageUrl": "https://stadiumdb.com/img/news/2024/10/93San01.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
+  "JUV": {
+    "stadium": "Allianz Stadium",
+    "nation": "Italy",
+    "pageUrl": "https://stadiumdb.com/stadiums/ita/juventus_stadium",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/ita/juventus_stadium/juventus_stadium13.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
+  "KAS": {
+    "stadium": "Recep Tayyip Erdoğan Stadium",
+    "nation": "Turkey",
+    "pageUrl": "https://stadiumdb.com/stadiums/tur/recep_tayyip_erdogan_stadi",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/tur/recep_tayyip_erdogan_stadi/recep_tayyip_erdogan_stadi21.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
+  "LAZ": {
+    "stadium": "Stadio Flaminio",
+    "nation": "Italy",
+    "pageUrl": "https://stadiumdb.com/stadiums/ita/stadio_olimpico",
+    "imageUrl": "https://stadiumdb.com/img/news/2026/05/24Fla03.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
+  "LIL": {
+    "stadium": "Stadium Lille Métropole",
+    "nation": "France",
+    "pageUrl": "https://stadiumdb.com/stadiums/fra/stadium_lille_metropole",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/fra/stadium_lille_metropole/stadium_lille_metropole10.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
+  "LYO": {
+    "stadium": "Parc Olympique Lyonnais",
+    "nation": "France",
+    "pageUrl": "https://stadiumdb.com/stadiums/fra/parc_ol",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/fra/parc_ol/parc_ol11.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
   "ARS": {
     "stadium": "Emirates Stadium",
     "nation": "England",

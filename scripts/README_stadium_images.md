@@ -35,4 +35,10 @@ Photos are © their credited photographers on [StadiumDB](https://stadiumdb.com/
    LIV: "eng/anfield_road",
    ```
 
-3. Re-run with `--only LIV`.
+3. If the page has pictures but the scraper misses them, add a direct image to `IMAGE_URL_OVERRIDES`:
+
+   ```js
+   AJX: "https://stadiumdb.com/pictures/stadiums/ned/arena/arena41.jpg",
+   ```
+
+4. Re-run with `--only LIV`.
