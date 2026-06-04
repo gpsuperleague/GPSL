@@ -92,7 +92,7 @@ const SLUG_OVERRIDES = {
   PSV: "ned/philips_stadion",
   AJX: "ned/arena",
   BAR: "esp/camp_nou",
-  RMA: "esp/estadio_santiago_bernabeu",
+  RMA: "esp/nuevo_santiago_bernabeu",
   ATM: "esp/estadio_metropolitano",
   VAL: "esp/mestalla",
   SEV: "esp/ramon_sanchez_pizjuan",
@@ -162,6 +162,8 @@ const IMAGE_URL_OVERRIDES = {
   LYO: "https://stadiumdb.com/pictures/stadiums/fra/parc_ol/parc_ol11.jpg",
   NAC: "https://stadiumdb.com/pic-projects/estadio_atanasio_girardot/estadio_atanasio_girardot05.jpg",
   NMU: "https://upload.wikimedia.org/wikipedia/commons/7/76/New_Mexico_United%27s_Chris_Wehan_send_in_a_corner_kick_vs._Portland_Timbers_2_on_April_26th%2C_2019.jpg",
+  RMA: "https://stadiumdb.com/pictures/stadiums/esp/nuevo_santiago_bernabeu/nuevo_santiago_bernabeu24.jpg",
+  SAN: "https://stadiumdb.com/img/news/2025/08/58Cal02.jpg",
 };
 
 function slugify(text) {

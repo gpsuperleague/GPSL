@@ -104,6 +104,20 @@
     "imageUrl": "https://upload.wikimedia.org/wikipedia/commons/7/76/New_Mexico_United%27s_Chris_Wehan_send_in_a_corner_kick_vs._Portland_Timbers_2_on_April_26th%2C_2019.jpg",
     "fetchedAt": "2026-06-04T12:00:00.000Z"
   },
+  "RMA": {
+    "stadium": "Santiago Bernabéu",
+    "nation": "Spain",
+    "pageUrl": "https://stadiumdb.com/stadiums/esp/nuevo_santiago_bernabeu",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/esp/nuevo_santiago_bernabeu/nuevo_santiago_bernabeu24.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
+  "SAN": {
+    "stadium": "Estádio Santos FC",
+    "nation": "Brazil",
+    "pageUrl": "https://stadiumdb.com/stadiums/bra/vila_belmiro",
+    "imageUrl": "https://stadiumdb.com/img/news/2025/08/58Cal02.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
   "ARS": {
     "stadium": "Emirates Stadium",
     "nation": "England",
