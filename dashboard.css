@@ -688,18 +688,6 @@ table.gpsl-table td {
 .tile-bank::after {
   background-image: url("images/panel_bg/Central_Bank.png");
   background-size: contain;
-  opacity: 0.18;
-  filter: grayscale(40%) contrast(90%);
-}
-
-.tile-bank {
-  color: #e8c86a;
-  border-color: #4a4030;
-}
-
-.tile-bank:hover {
-  border-color: #d4af37;
-  box-shadow: 0 0 16px rgba(212, 175, 55, 0.2);
 }
 
 /* ===============================

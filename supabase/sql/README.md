@@ -297,13 +297,11 @@ Run once (requires `my_club_shortname()` from `special_auctions.sql`):
 
 Owners star players on **Draft Auction** (pinned to top of the list) and manage them under **Transfer Centre → Saved Draft Auctions**.
 
-## Admin: Reset Draft Auction button
+## Admin: Reset draft schedule
 
-If **Reset Draft Auction** in `admin.html` fails (RLS / permission errors), run once:
+[`admin_reset_draft_auction.sql`](./admin_reset_draft_auction.sql) — `admin_reset_draft_auction()` clears **times only** (does not delete history). Emergency full wipe: `admin_purge_draft_auction_data()`.
 
-[`admin_reset_draft_auction.sql`](./admin_reset_draft_auction.sql)
-
-Then deploy updated `admin.html` (calls `admin_reset_draft_auction()` RPC).
+If draft **Transfer_History** was lost by an old reset, run once: [`repair_draft_transfer_history.sql`](./repair_draft_transfer_history.sql) then `SELECT repair_draft_transfer_history_from_ledger();` (needs ledger `transfer_purchase` rows from central bank phase).
 
 ## One-time fix for old draft rows
 

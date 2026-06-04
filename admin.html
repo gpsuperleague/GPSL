@@ -346,9 +346,13 @@
           </div>
         </div>
 
-        <button id="resetDraftBtn" class="button" style="background:#990000; margin-top:10px;">
-          Reset Draft Auction
+        <button id="resetDraftBtn" class="button" style="background:#664400; margin-top:10px;">
+          Reset draft schedule
         </button>
+        <p class="note" style="margin:6px 0 0;">
+          Clears draft start/finish times and disables the auction. Does <b>not</b> delete bids,
+          listings, transfer history, or change squads.
+        </p>
         <div id="resetDraftStatus" style="margin-top:10px; color:#ffcc00;"></div>
 
         <button class="button" id="saveSettingsBtn">Save Settings</button>
@@ -941,11 +945,15 @@
     document.getElementById("resetDraftBtn").onclick = async () => {
       const status = document.getElementById("resetDraftStatus");
 
-      if (!confirm("Are you absolutely sure? This will delete ALL draft listings, ALL draft bids, and reset the draft state.")) {
+      if (
+        !confirm(
+          "Reset draft schedule?\n\nThis clears draft start/finish times and turns the auction off. Completed transfers, history, bids and listings are kept."
+        )
+      ) {
         return;
       }
 
-      status.textContent = "Resetting draft auction…";
+      status.textContent = "Resetting draft schedule…";
       status.style.color = "#ffcc00";
 
       const { error } = await supabase.rpc("admin_reset_draft_auction");
@@ -960,7 +968,7 @@
         return;
       }
 
-      status.textContent = "✅ Draft auction has been fully reset.";
+      status.textContent = "✅ Draft schedule reset (times cleared, auction disabled).";
       status.style.color = "lime";
 
       await loadGlobalSettings();
