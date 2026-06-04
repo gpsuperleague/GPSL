@@ -40,7 +40,6 @@ export const NAV_SECTIONS = [
     label: "Cups",
     items: [
       { href: "cups.html?cup=league_cup", label: "League Cup", page: "cups", cup: "league_cup" },
-      { heading: true, label: "Prestige cups" },
       { href: "cups.html?cup=super8", label: "Super8", page: "cups", cup: "super8" },
       { href: "cups.html?cup=plate", label: "Plate", page: "cups", cup: "plate", indent: true },
       { href: "cups.html?cup=shield", label: "Shield", page: "cups", cup: "shield", indent: true },
