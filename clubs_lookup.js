@@ -1,9 +1,10 @@
 // clubs_lookup.js
 
-// Use the global authenticated Supabase client created in firebase.js
-const supabase = window.supabase;
-
 let clubsMap = new Map();
+
+function getSupabase() {
+  return window.supabase;
+}
 
 /** Sentinel Clubs.ShortName for sell-to-foreign transfer history (not playable). */
 export const FOREIGN_BUYER_SHORT = "FOREIGN";
@@ -12,6 +13,12 @@ export const FOREIGN_BUYER_SHORT = "FOREIGN";
    Load all clubs into memory
    ============================================================ */
 export async function loadClubsMap() {
+  const supabase = getSupabase();
+  if (!supabase?.from) {
+    console.warn("loadClubsMap: supabase not ready yet");
+    return;
+  }
+
   const { data, error } = await supabase
     .from("Clubs")
     .select("ShortName, Club");

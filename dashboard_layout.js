@@ -14,12 +14,38 @@ export async function loadOwnerDashboardLayout(supabase, ownerId) {
 
   if (error) throw error;
 
-  const raw = data?.panel_ids;
-  if (!Array.isArray(raw) || raw.length === 0) {
+  const raw = normalizePanelIdsFromDb(data?.panel_ids);
+  if (!raw.length) {
     return [...DEFAULT_DASHBOARD_PANEL_IDS];
   }
 
-  return sanitizePanelIds(raw);
+  const ids = sanitizePanelIds(raw);
+  return ids.length ? ids : [...DEFAULT_DASHBOARD_PANEL_IDS];
+}
+
+/** Postgres text[] sometimes arrives as a string — normalize for JS. */
+function normalizePanelIdsFromDb(raw) {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) return raw;
+
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    if (s.startsWith("[") && s.endsWith("]")) {
+      try {
+        const parsed = JSON.parse(s);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (_) {
+        /* fall through */
+      }
+    }
+    if (s.startsWith("{") && s.endsWith("}")) {
+      const inner = s.slice(1, -1).trim();
+      if (!inner) return [];
+      return inner.split(",").map((id) => id.trim().replace(/^"|"$/g, ""));
+    }
+  }
+
+  return [];
 }
 
 export async function saveOwnerDashboardLayout(supabase, ownerId, panelIds) {

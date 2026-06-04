@@ -935,6 +935,11 @@ table.gpsl-table td {
   margin-top: 12px;
 }
 
+.dashboard-tile-label {
+  position: relative;
+  z-index: 1;
+}
+
 .tile,
 .dashboard-tile {
   position: relative;

@@ -61,22 +61,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (error) console.error("Club lookup failed:", error);
 
-  if (!club) {
-    document.getElementById("dashboardTitle").textContent = "GPSL Dashboard";
-    showNoClubBanner(user.email);
-    await initDashboardGrid(user.id, { draftEnabled: false, specialAuction: null });
-    wireDashboardToolbar();
-    return;
-  }
-
-  await loadClubsMap();
-  const shortName = club.ShortName;
-  const fullName = fullClubName(shortName) || club.Club || shortName;
-
-  document.getElementById("dashboardTitle").textContent = `${fullName} Dashboard`;
-  document.getElementById("clubBadgeHeader").src =
-    `images/club_badges/${shortName}.png`;
-
   const { data: settings } = await supabase
     .from("global_settings_public")
     .select("draft_auction_enabled")
@@ -86,8 +70,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   const draftEnabled = settings?.draft_auction_enabled === true;
   const specialAuction = await fetchActiveSpecialAuction(supabase);
 
+  // Render tiles before optional club-name lookup (avoids blank grid if loadClubsMap fails)
   await initDashboardGrid(user.id, { draftEnabled, specialAuction });
   wireDashboardToolbar();
+
+  if (!club) {
+    document.getElementById("dashboardTitle").textContent = "GPSL Dashboard";
+    showNoClubBanner(user.email);
+    return;
+  }
+
+  try {
+    await loadClubsMap();
+  } catch (err) {
+    console.warn("loadClubsMap failed:", err);
+  }
+
+  const shortName = club.ShortName;
+  const fullName = fullClubName(shortName) || club.Club || shortName;
+
+  document.getElementById("dashboardTitle").textContent = `${fullName} Dashboard`;
+  document.getElementById("clubBadgeHeader").src =
+    `images/club_badges/${shortName}.png`;
 });
 
 async function initDashboardGrid(uid, { draftEnabled, specialAuction }) {
@@ -142,11 +146,13 @@ function renderDashboardTiles(ctx) {
     tile.dataset.panelId = id;
     tile.draggable = editMode;
 
-    if (panel.when === "special_auction" && ctx.specialAuction?.title) {
-      tile.textContent = `Special Auction: ${ctx.specialAuction.title}`;
-    } else {
-      tile.textContent = panel.label;
-    }
+    const label = document.createElement("span");
+    label.className = "dashboard-tile-label";
+    label.textContent =
+      panel.when === "special_auction" && ctx.specialAuction?.title
+        ? `Special Auction: ${ctx.specialAuction.title}`
+        : panel.label;
+    tile.appendChild(label);
 
     if (!editMode) {
       tile.addEventListener("click", () => {
