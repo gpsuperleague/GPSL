@@ -125,6 +125,7 @@ const SLUG_OVERRIDES = {
   RIV: "arg/el_monumental",
   IND: "arg/estadio_libertadores_de_america",
   NAC: "col/estadio_atanasio_girardot",
+  NMU: "usa/isotopes_park",
   WOL: "eng/molineux_stadium",
   BET: "esp/estadio_benito_villamarin",
   VIL: "esp/estadio_de_la_ceramica",
@@ -160,6 +161,7 @@ const IMAGE_URL_OVERRIDES = {
   LIL: "https://stadiumdb.com/pictures/stadiums/fra/stadium_lille_metropole/stadium_lille_metropole10.jpg",
   LYO: "https://stadiumdb.com/pictures/stadiums/fra/parc_ol/parc_ol11.jpg",
   NAC: "https://stadiumdb.com/pic-projects/estadio_atanasio_girardot/estadio_atanasio_girardot05.jpg",
+  NMU: "https://upload.wikimedia.org/wikipedia/commons/7/76/New_Mexico_United%27s_Chris_Wehan_send_in_a_corner_kick_vs._Portland_Timbers_2_on_April_26th%2C_2019.jpg",
 };
 
 function slugify(text) {
