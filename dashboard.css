@@ -802,6 +802,21 @@ button.nav-admin-trigger {
   pointer-events: auto;
 }
 
+.nav-dropdown-heading {
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  padding: 10px 16px 4px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.nav-dropdown-heading:first-child {
+  padding-top: 6px;
+}
+
 .nav-link {
   display: block;
   padding: 10px 16px;

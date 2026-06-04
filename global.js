@@ -513,16 +513,13 @@ function wireNavGroups(nav) {
     groups.forEach((group) => {
       group.classList.remove("open");
       const btn = group.querySelector(".nav-group-summary");
-      const panel = group.querySelector(".nav-dropdown");
       btn?.setAttribute("aria-expanded", "false");
-      panel?.setAttribute("hidden", "");
     });
   };
 
   groups.forEach((group) => {
     const btn = group.querySelector(".nav-group-summary");
-    const panel = group.querySelector(".nav-dropdown");
-    if (!btn || !panel) return;
+    if (!btn) return;
 
     btn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -532,7 +529,6 @@ function wireNavGroups(nav) {
       if (willOpen) {
         group.classList.add("open");
         btn.setAttribute("aria-expanded", "true");
-        panel.removeAttribute("hidden");
       }
     });
   });
@@ -722,14 +718,20 @@ export async function buildNav() {
     html += `<button type="button" class="nav-group-summary" aria-expanded="${
       open ? "true" : "false"
     }">${section.label}</button>`;
-    html += `<div class="nav-dropdown" role="menu"${open ? "" : " hidden"}>`;
+    html += `<div class="nav-dropdown" role="menu">`;
 
     for (const item of items) {
+      if (item.heading) {
+        html += `<div class="nav-dropdown-heading">${escapeNavHtml(item.label)}</div>`;
+        continue;
+      }
+      if (!item.href) continue;
+
       const active = isNavItemActive(item, pathname, search);
       const indent = item.indent ? " nav-link-sub" : "";
       html += `<a href="${item.href}" class="nav-link${indent}${
         active ? " active" : ""
-      }">${item.label}</a>`;
+      }">${escapeNavHtml(item.label)}</a>`;
     }
 
     html += `</div></div>`;

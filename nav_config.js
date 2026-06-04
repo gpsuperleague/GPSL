@@ -78,6 +78,7 @@ export function normalizeNavPath(pathname) {
 }
 
 export function isNavItemActive(item, pathname, search = "") {
+  if (!item?.href) return false;
   const file = normalizeNavPath(pathname);
   const itemFile = item.href.split("?")[0].split("#")[0].toLowerCase();
 
