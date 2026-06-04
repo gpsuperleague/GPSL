@@ -1,8 +1,10 @@
-import { initAdminPage, setStatus, supabase } from "./admin_common.js";
+import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import { loadGlobalSettings } from "./global.js";
 
+primeAdminPageChrome();
+
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage("draft", "Draft auction"))) return;
+  if (!(await initAdminPage())) return;
   document.getElementById("resetDraftBtn").onclick = resetDraft;
 });
 

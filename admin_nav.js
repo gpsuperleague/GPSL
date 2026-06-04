@@ -1,5 +1,5 @@
 /**
- * GPSL Admin — sidebar navigation (admins only).
+ * GPSL Admin — top-bar flyout menu (admins only).
  */
 
 export const ADMIN_NAV = [
@@ -56,40 +56,21 @@ function normalizePageId(pageId) {
   return String(pageId || "").replace(/_/g, "-");
 }
 
-export function renderAdminSidebar(activePageId) {
-  const active = normalizePageId(activePageId);
-  const parts = [];
-
-  parts.push(
-    `<a href="admin.html" class="admin-nav-link${active === "hub" ? " active" : ""}"><b>GPSL Admin home</b></a>`
-  );
-
-  for (const group of ADMIN_NAV) {
-    parts.push(`<div class="admin-nav-group">`);
-    parts.push(`<div class="admin-nav-group-title">${group.label}</div>`);
-    for (const item of group.items) {
-      const id = normalizePageId(item.id);
-      const cls =
-        id === active ? "admin-nav-link sub active" : "admin-nav-link sub";
-      parts.push(`<a href="${item.href}" class="${cls}">${item.label}</a>`);
-    }
-    parts.push(`</div>`);
-  }
-
-  return `<nav class="admin-sidebar" aria-label="GPSL Admin">${parts.join("")}</nav>`;
-}
-
 export function renderAdminFlyoutGrouped() {
+  const path = (window.location.pathname || "").split("/").pop() || "";
+  const activeHref = path || "admin.html";
+  const homeActive = activeHref === "admin.html" ? " gpsl-admin-flyout-link-active" : "";
   const parts = [
-    `<a href="admin.html" class="gpsl-admin-flyout-link gpsl-admin-flyout-home"><b>Admin home</b></a>`,
+    `<a href="admin.html" class="gpsl-admin-flyout-link gpsl-admin-flyout-home${homeActive}"><b>Admin home</b></a>`,
   ];
   for (const group of ADMIN_NAV) {
     parts.push(
       `<div class="gpsl-admin-flyout-group"><div class="gpsl-admin-flyout-title">${group.label}</div>`
     );
     for (const item of group.items) {
+      const active = item.href === activeHref ? " gpsl-admin-flyout-link-active" : "";
       parts.push(
-        `<a href="${item.href}" class="gpsl-admin-flyout-link">${item.label}</a>`
+        `<a href="${item.href}" class="gpsl-admin-flyout-link${active}">${item.label}</a>`
       );
     }
     parts.push(`</div>`);

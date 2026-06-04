@@ -1,8 +1,10 @@
-import { initAdminPage, setStatus, supabase } from "./admin_common.js";
+import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import { loadGlobalSettings, computeNextDraftTimesFromNow } from "./global.js";
 
+primeAdminPageChrome();
+
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage("transfers", "Transfer management"))) return;
+  if (!(await initAdminPage())) return;
   await loadSettings();
   document.getElementById("saveSettingsBtn").onclick = saveSettings;
   document.getElementById("runTransferEngineBtn").onclick = runTransferEngine;

@@ -1,7 +1,9 @@
-import { initAdminPage, setStatus, supabase } from "./admin_common.js";
+import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+
+primeAdminPageChrome();
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage("money", "Money management"))) return;
+  if (!(await initAdminPage())) return;
 
   await loadWageSettings();
   document.getElementById("saveWagePctBtn").onclick = saveWagePct;

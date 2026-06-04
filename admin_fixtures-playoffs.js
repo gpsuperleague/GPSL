@@ -1,8 +1,10 @@
-import { initAdminPage, setStatus, supabase } from "./admin_common.js";
+import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+
+primeAdminPageChrome();
 import { loadCurrentSeason } from "./competition.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage("fixtures-playoffs", "Playoff fixtures"))) return;
+  if (!(await initAdminPage())) return;
   document.getElementById("compSavePlayoffBtn").onclick = saveCompetitionPlayoffQualifier;
 });
 

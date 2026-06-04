@@ -1,17 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="admin-root">
 <head>
   <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
   <title>GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="admin.css">
 </head>
-<body>
+<body class="admin-page">
   <div id="nav"></div>
   <h1 class="admin-title">GPSL Admin</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
-      <p class="note">Use the sidebar or the <b>GPSL Admin</b> menu in the top bar to open each area.</p>
+      <p class="note">Use the <b>GPSL Admin</b> menu in the top bar to open each area.</p>
       <div class="hub-grid">
         <div class="hub-card">
           <h3>Season management</h3>
@@ -51,8 +52,9 @@
     </div>
   </div>
   <script type="module">
-    import { initAdminPage } from "./admin_common.js";
-    document.addEventListener("DOMContentLoaded", () => initAdminPage("hub", "GPSL Admin"));
+    import { initAdminPage, primeAdminPageChrome } from "./admin_common.js";
+    primeAdminPageChrome();
+    document.addEventListener("DOMContentLoaded", () => initAdminPage());
   </script>
 </body>
 </html>

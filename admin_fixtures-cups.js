@@ -1,10 +1,12 @@
-import { initAdminPage, setStatus, supabase } from "./admin_common.js";
+import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+
+primeAdminPageChrome();
 import { loadCurrentSeason } from "./competition.js";
 
 let compSelectedSeasonId = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage("fixtures-cups", "Cup fixtures"))) return;
+  if (!(await initAdminPage())) return;
 
   document.getElementById("compCupSelect").onchange = toggleLeagueCupByes;
   document.getElementById("compDrawCupBtn").onclick = drawCompetitionCup;

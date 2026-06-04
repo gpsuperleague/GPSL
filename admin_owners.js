@@ -1,7 +1,9 @@
-import { initAdminPage, setStatus, supabase } from "./admin_common.js";
+import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+
+primeAdminPageChrome();
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage("owners", "Owner administration"))) return;
+  if (!(await initAdminPage())) return;
   await loadOwnerList();
 
   document.getElementById("addOwnerBtn").onclick = addOwner;

@@ -1,4 +1,6 @@
-import { initAdminPage, setStatus, supabase } from "./admin_common.js";
+import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+
+primeAdminPageChrome();
 import {
   SETUP_DIVISION_OPTIONS,
   loadSetupSeasons,
@@ -18,7 +20,7 @@ let compRegistrations = [];
 let compSelectedSeasonId = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage("season", "Season management"))) return;
+  if (!(await initAdminPage())) return;
 
   document.getElementById("compCreateNextBtn").onclick = createNextSeason;
   document.getElementById("compEndSeasonBtn").onclick = endCurrentSeason;

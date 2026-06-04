@@ -1,6 +1,7 @@
-/* GPSL Admin — shared layout (all admin/*.html pages) */
+/* GPSL Admin — shared layout (navigation: top bar GPSL Admin flyout only) */
 
-body.admin-page {
+html.admin-root,
+html.admin-root body.admin-page {
   background: #111;
   color: #ddd;
   font-family: Arial, sans-serif;
@@ -36,67 +37,14 @@ body.admin-page {
 }
 
 .admin-layout {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0;
-  max-width: 1200px;
+  width: 95%;
+  max-width: 900px;
   margin: 0 auto 40px;
-}
-
-.admin-sidebar {
-  flex: 0 0 220px;
-  background: #1a1a1a;
-  border: 1px solid #333;
-  border-radius: 8px;
-  margin: 16px;
-  padding: 12px 0;
-  position: sticky;
-  top: 12px;
-}
-
-.admin-sidebar .admin-nav-group {
-  margin-bottom: 8px;
-}
-
-.admin-sidebar .admin-nav-group-title {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #888;
-  padding: 8px 16px 4px;
-  font-weight: bold;
-}
-
-.admin-sidebar a.admin-nav-link {
-  display: block;
-  padding: 8px 16px;
-  color: #ccc;
-  text-decoration: none;
-  font-size: 14px;
-  border-left: 3px solid transparent;
-}
-
-.admin-sidebar a.admin-nav-link:hover {
-  background: #222;
-  color: #ff9900;
-}
-
-.admin-sidebar a.admin-nav-link.active {
-  color: #ff9900;
-  border-left-color: #ff9900;
-  background: #252520;
-}
-
-.admin-sidebar a.admin-nav-link.sub {
-  padding-left: 28px;
-  font-size: 13px;
+  padding: 0 16px 24px;
 }
 
 .admin-main {
-  flex: 1 1 480px;
   min-width: 0;
-  margin: 16px 16px 16px 0;
 }
 
 .admin-page .card {
@@ -195,16 +143,3 @@ body.admin-page {
   color: #ff9900;
 }
 
-@media (max-width: 800px) {
-  .admin-layout {
-    flex-direction: column;
-  }
-  .admin-sidebar {
-    flex: 1 1 auto;
-    width: calc(100% - 32px);
-    position: static;
-  }
-  .admin-main {
-    margin: 0 16px 16px;
-  }
-}

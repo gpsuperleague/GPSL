@@ -1,4 +1,6 @@
-import { initAdminPage, setStatus, supabase } from "./admin_common.js";
+import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+
+primeAdminPageChrome();
 
 function toIsoFromLocalInput(val) {
   if (!val) return null;
@@ -12,7 +14,7 @@ function snapEndOneHourAfterStart(startIso) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage("special", "Special auction"))) return;
+  if (!(await initAdminPage())) return;
 
   const typeEl = document.getElementById("saType");
   const endEl = document.getElementById("saEnd");

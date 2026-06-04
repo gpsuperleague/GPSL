@@ -644,6 +644,12 @@ table.gpsl-table td {
   color: #ff9900;
 }
 
+.gpsl-admin-flyout-link-active {
+  color: #ff9900;
+  background: #252520;
+  font-weight: bold;
+}
+
 .gpsl-admin-flyout-home {
   border-bottom: 1px solid #333;
   margin-bottom: 4px;

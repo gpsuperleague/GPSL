@@ -1,4 +1,6 @@
-import { initAdminPage, setStatus, supabase } from "./admin_common.js";
+import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+
+primeAdminPageChrome();
 import {
   loadCurrentSeason,
   loadSeasonRegistrations,
@@ -13,7 +15,7 @@ let compFixtureSeasonId = null;
 let compFixtureRegs = [];
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage("fixtures-league", "League fixtures"))) return;
+  if (!(await initAdminPage())) return;
 
   document.getElementById("compFixtureDivision").onchange = renderCompSlotTable;
   document.getElementById("compShuffleSlotsBtn").onclick = shuffleCompSlots;
