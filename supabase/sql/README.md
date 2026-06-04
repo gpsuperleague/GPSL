@@ -51,7 +51,7 @@ Run once:
 
 - Owner submits score on **`matchday.html`** → opponent gets inbox message
 - Opponent **Confirm** (updates table) or **Reject** (submitter can resubmit)
-- **`inbox.html`** in top nav — club notifications (match confirm/reject and future types)
+- Top nav: grouped menus + **Inbox** icon with unread badge + **Dashboard** shortcut (`inbox.html`, `nav_config.js`)
 
 If owners see **other clubs’ inbox messages** or **pending scores** on fixtures they are not in, run once:
 

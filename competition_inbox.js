@@ -48,16 +48,3 @@ export async function countUnreadInbox(supabase, clubShortName) {
   return count || 0;
 }
 
-export async function refreshDashboardInbox(supabase, clubShortName) {
-  const panel = document.getElementById("inboxPanel");
-  const countEl = document.getElementById("inboxUnreadCount");
-  if (!panel || !countEl) return;
-
-  const unread = clubShortName ? await countUnreadInbox(supabase, clubShortName) : 0;
-  countEl.textContent = String(unread);
-  panel.classList.toggle("has-unread", unread > 0);
-
-  panel.onclick = () => {
-    window.location.href = "inbox.html";
-  };
-}

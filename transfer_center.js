@@ -76,6 +76,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupListPlayerModal(shortName);
 
   window.__gpslCurrentSeasonLabel = await loadCurrentGpslSeasonLabel(supabase);
+
+  if (window.location.hash === "#scouting-targets") {
+    document.getElementById("scouting-targets")?.scrollIntoView({ behavior: "smooth" });
+  }
 });
 
 // ============================================================

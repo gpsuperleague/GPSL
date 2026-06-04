@@ -9,6 +9,12 @@ import {
   formatFixtureScore,
 } from "./competition.js";
 
+function cupFromUrl() {
+  const raw = new URLSearchParams(window.location.search).get("cup");
+  if (raw && CUP_CODES.includes(raw)) return raw;
+  return null;
+}
+
 let myClubShort = null;
 let currentCup = "league_cup";
 
@@ -117,6 +123,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     .maybeSingle();
 
   myClubShort = club?.ShortName ?? null;
+
+  const urlCup = cupFromUrl();
+  if (urlCup) currentCup = urlCup;
+
   document.getElementById("pageMeta").textContent =
     "Prestige cups (table places) and League Cup (60-club knockout)";
 

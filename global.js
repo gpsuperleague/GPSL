@@ -14,6 +14,13 @@ import {
   formatLiveCountdownLines,
   formatTargetTimesSubline,
 } from "./countdown_display.js";
+import { countUnreadInbox } from "./competition_inbox.js";
+import {
+  NAV_SECTIONS,
+  isNavItemActive,
+  sectionHasActiveItem,
+  normalizeNavPath,
+} from "./nav_config.js";
 export { supabase };
 
 // ------------------------------------------------------------
@@ -433,78 +440,162 @@ export async function specialAuctionNavLinkHtml() {
 }
 
 // ------------------------------------------------------------
-// NAV BUILDER (SKIP CURRENT PAGE BUTTON)
+// NAV — owner club (inbox badge)
+// ------------------------------------------------------------
+async function getOwnerClubShort() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const { data: club } = await supabase
+    .from("Clubs")
+    .select("ShortName")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+  return club?.ShortName?.trim() || null;
+}
+
+async function fetchActiveSpecialAuctionNavItem() {
+  try {
+    const nowIso = new Date().toISOString();
+    const { data: sa } = await supabase
+      .from("special_auctions")
+      .select("id, title, start_time")
+      .in("status", ["scheduled", "active"])
+      .gt("end_time", nowIso)
+      .order("start_time", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (!sa) return null;
+
+    const starts = new Date(sa.start_time);
+    const beforeStart = Date.now() < starts.getTime();
+    const label = beforeStart
+      ? `Special Auction (${starts.toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" })})`
+      : "Special Auction";
+
+    return {
+      href: "special_auction.html",
+      label,
+      page: "special_auction",
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
+/** @deprecated Use grouped nav; kept for any legacy inline callers */
+export async function specialAuctionNavLinkHtml() {
+  const item = await fetchActiveSpecialAuctionNavItem();
+  if (!item) return "";
+  return `<a href="${item.href}" class="nav-link">${item.label}</a>`;
+}
+
+// ------------------------------------------------------------
+// NAV BUILDER — grouped, collapsible categories
 // ------------------------------------------------------------
 export async function buildNav() {
   const nav = document.getElementById("nav");
-  const { data: { user } } = await supabase.auth.getUser();
+  if (!nav) return;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     window.location = "login.html";
     return;
   }
 
-  const path = window.location.pathname.toLowerCase();
+  const pathname = window.location.pathname;
+  const search = window.location.search || "";
+  const pathNorm = normalizeNavPath(pathname);
+  const clubShort = await getOwnerClubShort();
+  const unread = clubShort ? await countUnreadInbox(supabase, clubShort) : 0;
+  const specialAuction = await fetchActiveSpecialAuctionNavItem();
 
-  const isHome = path.includes("index");
-  const isGPDB = path.includes("gpdb");
-  const isClubs = path.includes("clubs") && !path.includes("all_listings");
-  const isMarket =
-    path.includes("all_listings") || path.includes("season_transfers");
-  const isDashboard = path.includes("dashboard");
-  const isInbox = path.includes("inbox.html");
-  const isAdmin = path.includes("admin");
-  const isDraft =
-    path.includes("draftauction") && !path.includes("draftauction_player");
-  const isExpiring = path.includes("expiring_contracts");
+  const dashActive = pathNorm === "dashboard.html";
+  const inboxActive = pathNorm === "inbox.html";
+  const adminActive = pathNorm === "admin.html";
 
-  let html = "";
+  let html = `<div class="gpsl-nav-bar">`;
+  html += `<div class="gpsl-nav-shortcuts">`;
+  html += `<a href="dashboard.html" class="nav-shortcut nav-dashboard${
+    dashActive ? " active" : ""
+  }" title="Dashboard">Dashboard</a>`;
+  html += `<a href="inbox.html" class="nav-shortcut nav-inbox${
+    inboxActive ? " active" : ""
+  }${unread > 0 ? " has-unread" : ""}" title="Inbox" aria-label="Inbox${
+    unread > 0 ? `, ${unread} unread` : ""
+  }">`;
+  html += `<span class="nav-inbox-icon" aria-hidden="true">📥</span>`;
+  if (unread > 0) {
+    html += `<span class="nav-inbox-badge">${unread > 99 ? "99+" : unread}</span>`;
+  }
+  html += `</a>`;
+  html += `</div>`;
 
-  if (!isHome) {
-    html += `<a id="nav-home" href="index.html" class="button">Home</a>`;
+  html += `<div class="gpsl-nav-groups">`;
+
+  for (const section of NAV_SECTIONS) {
+    const items = section.items.filter((item) => {
+      if (item.requiresDraft && !draftEnabled) return false;
+      return true;
+    });
+
+    if (section.id === "transfers" && specialAuction) {
+      items.push(specialAuction);
+    }
+
+    if (!items.length) continue;
+
+    const hasActive = sectionHasActiveItem({ items }, pathname, search);
+    const open = hasActive;
+
+    html += `<details class="nav-group${hasActive ? " nav-group-active" : ""}"${
+      open ? " open" : ""
+    }>`;
+    html += `<summary class="nav-group-summary">${section.label}</summary>`;
+    html += `<div class="nav-dropdown">`;
+
+    for (const item of items) {
+      const active = isNavItemActive(item, pathname, search);
+      const indent = item.indent ? " nav-link-sub" : "";
+      html += `<a href="${item.href}" class="nav-link${indent}${
+        active ? " active" : ""
+      }">${item.label}</a>`;
+    }
+
+    html += `</div></details>`;
   }
 
-  if (!isGPDB) {
-    html += `<a id="nav-gpdb" href="GPDB.html" class="button">Player Database</a>`;
+  html += `</div>`;
+
+  html += `<div class="gpsl-nav-actions">`;
+  if (user.email === "rotavator66@outlook.com") {
+    html += `<a href="admin.html" class="nav-link nav-admin${
+      adminActive ? " active" : ""
+    }">Admin</a>`;
   }
+  html += `<button type="button" id="logoutBtn" class="nav-logout">Logout</button>`;
+  html += `</div></div>`;
 
-  if (!isClubs) {
-    html += `<a id="nav-clubs" href="clubs.html" class="button">Clubs</a>`;
-  }
-
-  if (!isMarket) {
-    html += `<a id="nav-market" href="all_listings.html" class="button">Transfer Market</a>`;
-  }
-
-  if (!isDashboard) {
-    html += `<a id="nav-dashboard" href="dashboard.html" class="button">Dashboard</a>`;
-  }
-
-  if (!isInbox) {
-    html += `<a id="nav-inbox" href="inbox.html" class="button">Inbox</a>`;
-  }
-
-  if (user.email === "rotavator66@outlook.com" && !isAdmin) {
-    html += `<a id="nav-admin" href="admin.html" class="button">GPSL Admin</a>`;
-  }
-
-  if (draftEnabled && !isDraft) {
-    html += `<a id="nav-draft" href="draftauction.html" class="button">Draft Auction</a>`;
-  }
-
-  if (!isExpiring) {
-    html += `<a id="nav-expiring" href="expiring_contracts.html" class="button">Expiring Contracts</a>`;
-  }
-
-  html += await specialAuctionNavLinkHtml();
-
-  html += `<button id="logoutBtn" class="button">Logout</button>`;
   nav.innerHTML = html;
 
   document.getElementById("logoutBtn").onclick = async () => {
     await supabase.auth.signOut();
     window.location = "login.html";
   };
+
+  nav.querySelectorAll(".nav-group").forEach((group) => {
+    group.addEventListener("toggle", () => {
+      if (!group.open) return;
+      nav.querySelectorAll(".nav-group").forEach((other) => {
+        if (other !== group) other.open = false;
+      });
+    });
+  });
 }
 
 // ------------------------------------------------------------
