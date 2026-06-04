@@ -485,7 +485,9 @@ BEGIN
 END;
 $function$;
 
--- Replace older RPC signature (pen goal params) if present.
+-- Single RPC signature (drop legacy overloads that confuse PostgREST).
+DROP FUNCTION IF EXISTS public.competition_submit_result(bigint, smallint, smallint);
+DROP FUNCTION IF EXISTS public.competition_submit_result(bigint, smallint, smallint, jsonb);
 DROP FUNCTION IF EXISTS public.competition_submit_result(
   bigint, smallint, smallint, jsonb, smallint, smallint, smallint, smallint
 );

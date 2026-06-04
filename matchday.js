@@ -482,9 +482,35 @@ function normalizeRatingInput(raw) {
   return clamped.toFixed(1);
 }
 
+/** Click/focus selects all text so a new value can be typed immediately. */
+function wireSelectAllOnFocus(input) {
+  if (!input || input.dataset.gpslSelectAll === "1") return;
+  input.dataset.gpslSelectAll = "1";
+
+  const selectAll = () => {
+    requestAnimationFrame(() => {
+      const len = (input.value ?? "").length;
+      try {
+        input.setSelectionRange(0, len);
+      } catch {
+        try {
+          input.select();
+        } catch {
+          /* ignore */
+        }
+      }
+    });
+  };
+
+  input.addEventListener("focus", selectAll);
+  input.addEventListener("mouseup", (e) => {
+    if (document.activeElement === input) e.preventDefault();
+  });
+}
+
 function wireStatCountInput(input) {
   if (!input) return;
-  input.addEventListener("focus", () => input.select());
+  wireSelectAllOnFocus(input);
   input.addEventListener("blur", () => {
     input.value = String(normalizeStatCountInput(input.value));
   });
@@ -497,8 +523,8 @@ function wireRatingInput(input) {
   if (!input) return;
   input.addEventListener("focus", () => {
     if (!String(input.value).trim()) input.value = DEFAULT_MATCH_RATING;
-    input.select();
   });
+  wireSelectAllOnFocus(input);
   input.addEventListener("blur", () => {
     const norm = normalizeRatingInput(input.value);
     input.value = norm || "";
@@ -506,6 +532,17 @@ function wireRatingInput(input) {
   input.addEventListener("paste", () => {
     requestAnimationFrame(() => input.dispatchEvent(new Event("blur")));
   });
+}
+
+function wireAllMatchdaySelectOnFocus() {
+  for (const id of [
+    "homeGoals",
+    "awayGoals",
+    "etHomeGoals",
+    "etAwayGoals",
+  ]) {
+    wireSelectAllOnFocus(document.getElementById(id));
+  }
 }
 
 function countLineupFromDom() {
@@ -1045,6 +1082,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("submitResultBtn").onclick = submitResult;
   document.getElementById("rejectResultBtn").onclick = rejectPendingResult;
+
+  wireAllMatchdaySelectOnFocus();
 
   for (const id of ["homeGoals", "awayGoals", "etHomeGoals", "etAwayGoals"]) {
     document.getElementById(id)?.addEventListener("input", updateCupScoreSections);
