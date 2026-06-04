@@ -444,27 +444,68 @@ function myTeamGoalsForFixture(fixture, homeGoals, awayGoals) {
 }
 
 const DEFAULT_MATCH_RATING = "6.0";
+const STAT_COUNT_MAX = 20;
 
-function ratingOptionsHtml(selected) {
-  let html = '<option value="">—</option>';
-  for (let i = 1; i <= 100; i++) {
-    const v = (i / 10).toFixed(1);
-    const sel =
-      selected != null && Math.abs(Number(selected) - Number(v)) < 0.001
-        ? " selected"
-        : "";
-    html += `<option value="${v}"${sel}>${v}</option>`;
+let statDatalistsReady = false;
+
+function ensureStatDatalists() {
+  if (statDatalistsReady) return;
+  const goalsList = document.getElementById("statGoalsList");
+  const assistsList = document.getElementById("statAssistsList");
+  const ratingList = document.getElementById("statRatingList");
+  if (!goalsList || !assistsList || !ratingList) return;
+
+  for (let i = 0; i <= STAT_COUNT_MAX; i++) {
+    goalsList.appendChild(new Option(String(i), String(i)));
+    assistsList.appendChild(new Option(String(i), String(i)));
   }
-  return html;
+  for (let i = 1; i <= 100; i++) {
+    ratingList.appendChild(new Option((i / 10).toFixed(1), (i / 10).toFixed(1)));
+  }
+  statDatalistsReady = true;
 }
 
-function wireRatingSelect(select) {
-  if (!select) return;
-  const applyDefault = () => {
-    if (!select.value) select.value = DEFAULT_MATCH_RATING;
-  };
-  select.addEventListener("mousedown", applyDefault);
-  select.addEventListener("focus", applyDefault);
+function normalizeStatCountInput(raw, max = STAT_COUNT_MAX) {
+  const digits = String(raw ?? "").trim();
+  if (digits === "") return 0;
+  const n = parseInt(digits, 10);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(max, n);
+}
+
+function normalizeRatingInput(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return null;
+  const n = Number(s);
+  if (!Number.isFinite(n)) return null;
+  const clamped = Math.min(10, Math.max(0.1, Math.round(n * 10) / 10));
+  return clamped.toFixed(1);
+}
+
+function wireStatCountInput(input) {
+  if (!input) return;
+  input.addEventListener("focus", () => input.select());
+  input.addEventListener("blur", () => {
+    input.value = String(normalizeStatCountInput(input.value));
+  });
+  input.addEventListener("paste", () => {
+    requestAnimationFrame(() => input.dispatchEvent(new Event("blur")));
+  });
+}
+
+function wireRatingInput(input) {
+  if (!input) return;
+  input.addEventListener("focus", () => {
+    if (!String(input.value).trim()) input.value = DEFAULT_MATCH_RATING;
+    input.select();
+  });
+  input.addEventListener("blur", () => {
+    const norm = normalizeRatingInput(input.value);
+    input.value = norm || "";
+  });
+  input.addEventListener("paste", () => {
+    requestAnimationFrame(() => input.dispatchEvent(new Event("blur")));
+  });
 }
 
 function countLineupFromDom() {
@@ -521,6 +562,7 @@ function renderPlayerStatsTable() {
   const tbody = document.getElementById("playerStatsBody");
   if (!tbody) return;
 
+  ensureStatDatalists();
   tbody.innerHTML = "";
   if (!squadPlayers.length) {
     tbody.innerHTML =
@@ -536,13 +578,15 @@ function renderPlayerStatsTable() {
       <td class="name">${p.Name} <span style="color:#666;">${p.Position || ""}</span></td>
       <td><input type="checkbox" class="stat-started" aria-label="Started"></td>
       <td><input type="checkbox" class="stat-subbed" aria-label="Subbed on"></td>
-      <td><input type="number" class="stat-goals" min="0" max="20" value="0"></td>
-      <td><input type="number" class="stat-assists" min="0" max="20" value="0"></td>
-      <td><select class="stat-rating">${ratingOptionsHtml(null)}</select></td>
+      <td><input type="text" class="stat-goals stat-combo" list="statGoalsList" inputmode="numeric" autocomplete="off" value="0" aria-label="Goals"></td>
+      <td><input type="text" class="stat-assists stat-combo" list="statAssistsList" inputmode="numeric" autocomplete="off" value="0" aria-label="Assists"></td>
+      <td><input type="text" class="stat-rating stat-combo stat-rating-combo" list="statRatingList" inputmode="decimal" autocomplete="off" value="" placeholder="6.0" aria-label="Rating"></td>
       <td><input type="radio" name="potm" class="stat-potm" value="${id}"></td>
     `;
     wirePlayedCheckboxes(tr);
-    wireRatingSelect(tr.querySelector(".stat-rating"));
+    wireStatCountInput(tr.querySelector(".stat-goals"));
+    wireStatCountInput(tr.querySelector(".stat-assists"));
+    wireRatingInput(tr.querySelector(".stat-rating"));
     tbody.appendChild(tr);
   }
   updateLineupCounter();
@@ -579,10 +623,11 @@ function collectPlayerStats() {
     const started = tr.querySelector(".stat-started")?.checked ?? false;
     const subbed_on = tr.querySelector(".stat-subbed")?.checked ?? false;
     const appeared = started || subbed_on;
-    const goals = Number(tr.querySelector(".stat-goals")?.value) || 0;
-    const assists = Number(tr.querySelector(".stat-assists")?.value) || 0;
+    const goals = normalizeStatCountInput(tr.querySelector(".stat-goals")?.value);
+    const assists = normalizeStatCountInput(tr.querySelector(".stat-assists")?.value);
     const ratingRaw = tr.querySelector(".stat-rating")?.value;
-    const rating = ratingRaw ? Number(ratingRaw) : null;
+    const ratingNorm = normalizeRatingInput(ratingRaw);
+    const rating = ratingNorm ? Number(ratingNorm) : null;
     const potm = tr.querySelector(".stat-potm")?.checked ?? false;
 
     if (!appeared && goals === 0 && assists === 0 && rating == null && !potm) {
