@@ -20,6 +20,7 @@ import {
   getDraftCredits,
   syncDraftListingHighBid,
   fetchCurrentDraftAuctionBids,
+  draftMinimumBidAmount,
 } from "./draft_engine.js";
 import {
   loadPendingDirectOfferState,
@@ -671,6 +672,7 @@ document.addEventListener("DOMContentLoaded", () => {
      ============================================================ */
 
   let CURRENT_OFFER_PLAYER = null;
+  let CURRENT_OFFER_MIN_BID = 0;
 
   async function openMakeOfferModal(konamiId) {
     const row = document.querySelector(`tr[data-konami-id="${konamiId}"]`);
@@ -721,14 +723,28 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("offerPlayerRating").textContent = `Rating: ${rating}`;
     document.getElementById("offerPlayerMV").textContent = `Market Value: ₿ ${mv.toLocaleString("en-GB")}`;
 
+    let draftWindowBids = [];
+    if (!sellerClub) {
+      draftWindowBids = await fetchCurrentDraftAuctionBids(
+        konamiId,
+        draftAuctionStartTime ? new Date(draftAuctionStartTime) : null
+      );
+    }
+    CURRENT_OFFER_MIN_BID = sellerClub
+      ? mv
+      : draftMinimumBidAmount(mv, draftWindowBids);
+
     const offerMinNote = document.getElementById("offerMinNote");
     if (offerMinNote) {
       offerMinNote.textContent = sellerClub
         ? `Minimum offer for contracted players: market value (₿ ${mv.toLocaleString("en-GB")}).`
-        : "";
+        : draftWindowBids.length
+          ? `Minimum draft bid: current high + ₿500k (₿ ${CURRENT_OFFER_MIN_BID.toLocaleString("en-GB")}).`
+          : `Opening draft bid: at least market value (₿ ${CURRENT_OFFER_MIN_BID.toLocaleString("en-GB")}).`;
     }
 
-    document.getElementById("offerAmount").value = mv.toLocaleString("en-GB");
+    document.getElementById("offerAmount").value =
+      CURRENT_OFFER_MIN_BID.toLocaleString("en-GB");
     document.getElementById("offerError").textContent = "";
 
     let squadWarnEl = document.getElementById("offerSquadWarning");
@@ -771,6 +787,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const backdrop = document.getElementById("make-offer-modal-backdrop");
     backdrop.style.display = "none";
     CURRENT_OFFER_PLAYER = null;
+    CURRENT_OFFER_MIN_BID = 0;
   }
 
   document.getElementById("cancelOfferBtn").onclick = () => {
@@ -798,6 +815,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (sellerClub && offer < mv) {
       errorBox.textContent = `Minimum direct offer is market value (₿ ${mv.toLocaleString("en-GB")}).`;
+      return;
+    }
+
+    if (!sellerClub && offer < CURRENT_OFFER_MIN_BID) {
+      errorBox.textContent = `Minimum draft bid is ₿ ${CURRENT_OFFER_MIN_BID.toLocaleString("en-GB")}.`;
       return;
     }
 
@@ -1193,8 +1215,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       val += inc;
 
-      const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
-      if (val < mv) val = mv;
+      const minBid = CURRENT_OFFER_PLAYER.Contracted_Team
+        ? Number(CURRENT_OFFER_PLAYER.market_value) || 0
+        : CURRENT_OFFER_MIN_BID;
+      if (val < minBid) val = minBid;
 
       input.value = val.toLocaleString("en-GB");
     });
@@ -1202,8 +1226,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("quickBidBtn").onclick = () => {
     if (!CURRENT_OFFER_PLAYER) return;
-    const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
-    document.getElementById("offerAmount").value = mv.toLocaleString("en-GB");
+    const minBid = CURRENT_OFFER_PLAYER.Contracted_Team
+      ? Number(CURRENT_OFFER_PLAYER.market_value) || 0
+      : CURRENT_OFFER_MIN_BID;
+    document.getElementById("offerAmount").value = minBid.toLocaleString("en-GB");
   };
 
   document.getElementById("offerAmount").addEventListener("input", e => {
@@ -1212,13 +1238,15 @@ document.addEventListener("DOMContentLoaded", () => {
     let raw = e.target.value.replace(/,/g, "").trim();
     let val = Number(raw);
 
-    const mv = Number(CURRENT_OFFER_PLAYER.market_value) || 0;
+    const minBid = CURRENT_OFFER_PLAYER.Contracted_Team
+      ? Number(CURRENT_OFFER_PLAYER.market_value) || 0
+      : CURRENT_OFFER_MIN_BID;
 
     if (isNaN(val) || val <= 0) {
-      val = mv;
+      val = minBid;
     }
 
-    if (val < mv) val = mv;
+    if (val < minBid) val = minBid;
 
     e.target.value = val.toLocaleString("en-GB");
   });

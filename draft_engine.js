@@ -81,6 +81,23 @@ export function formatMs(ms) {
   return `${h}h ${m}m ${s}s`;
 }
 
+/** Minimum raise on an existing draft auction thread. */
+export const DRAFT_BID_INCREMENT = 500_000;
+
+/**
+ * Lowest valid next bid: market value if opening; else highest bid in window + increment.
+ */
+export function draftMinimumBidAmount(marketValue, windowBids) {
+  const mv = Number(marketValue) || 0;
+  const bids = windowBids || [];
+  if (!bids.length) return mv;
+  const high = bids.reduce(
+    (max, b) => Math.max(max, Number(b.bid_amount) || 0),
+    0
+  );
+  return high + DRAFT_BID_INCREMENT;
+}
+
 /** Consistent Konami id for bid rows (DB may store number or text). */
 export function normalizeKonamiId(id) {
   if (id == null || String(id).trim() === "") return "";

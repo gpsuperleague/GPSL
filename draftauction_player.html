@@ -163,6 +163,7 @@
       getActiveDraftListingId,
       syncDraftListingHighBid,
       fetchCurrentDraftAuctionBids,
+      draftMinimumBidAmount,
     } from "./draft_engine.js";
 
     import { fullClubName, loadClubsMap } from "./clubs_lookup.js";
@@ -413,17 +414,48 @@
         draftAuctionStartTimeUK
       );
 
+      currentHighestBid = 0;
+      currentLeadingClub = null;
+
+      const listingId = await getActiveDraftListingId(supabase, player.Konami_ID);
+      if (listingId) {
+        const { data: listing } = await supabase
+          .from("Player_Transfer_Listings")
+          .select("current_highest_bid, current_highest_bidder")
+          .eq("id", listingId)
+          .maybeSingle();
+        if (listing?.current_highest_bid != null) {
+          currentHighestBid = Math.max(
+            currentHighestBid,
+            Number(listing.current_highest_bid) || 0
+          );
+          currentLeadingClub = listing.current_highest_bidder || null;
+        }
+      }
+
       if (!bids || !bids.length) {
         document.getElementById("historyBody").innerHTML =
           `<tr><td colspan="5">No bids in this window.</td></tr>`;
-        document.getElementById("currentHighest").textContent = "Current Highest Bid: None";
-        document.getElementById("leadingClub").textContent = "Leading Club: None";
+        if (currentHighestBid > 0) {
+          document.getElementById("currentHighest").textContent =
+            `Current Highest Bid: ₿ ${Number(currentHighestBid).toLocaleString("en-GB")}`;
+          const leadingFull = await fullClubName(currentLeadingClub);
+          document.getElementById("leadingClub").textContent =
+            `Leading Club: ${leadingFull || currentLeadingClub || "—"}`;
+        } else {
+          document.getElementById("currentHighest").textContent =
+            "Current Highest Bid: None";
+          document.getElementById("leadingClub").textContent = "Leading Club: None";
+        }
       } else {
         const highest = bids.reduce((max, b) =>
           b.bid_amount > max.bid_amount ? b : max, bids[0]);
 
-        currentHighestBid = highest.bid_amount;
-        currentLeadingClub = highest.bidder_club_id;
+        currentHighestBid = Math.max(
+          currentHighestBid,
+          Number(highest.bid_amount) || 0
+        );
+        currentLeadingClub = highest.bidder_club_id || currentLeadingClub;
 
         document.getElementById("currentHighest").textContent =
           `Current Highest Bid: ₿ ${Number(currentHighestBid).toLocaleString("en-GB")}`;
@@ -516,7 +548,12 @@
       const submitBtn = document.getElementById("submitBidBtn");
 
       function minBid() {
-        return currentHighestBid + 500000;
+        return draftMinimumBidAmount(
+          draftBidPlayer?.market_value,
+          currentHighestBid > 0
+            ? [{ bid_amount: currentHighestBid }]
+            : []
+        );
       }
 
       amountInput.addEventListener("input", () => {
@@ -564,9 +601,18 @@
 
       const amountRaw = document.getElementById("bidAmount").value;
       const amount = Number(amountRaw.replace(/,/g, ""));
-      if (!amount || amount <= currentHighestBid) {
+      const minimum = draftMinimumBidAmount(
+        draftBidPlayer?.market_value,
+        currentHighestBid > 0
+          ? [{ bid_amount: currentHighestBid }]
+          : []
+      );
+
+      if (!amount || amount < minimum) {
         document.getElementById("bidStatus").textContent =
-          "Bid must be higher than current highest.";
+          currentHighestBid > 0
+            ? `Bid must be at least current high + ₿500k (₿ ${minimum.toLocaleString("en-GB")}).`
+            : `Bid must be at least market value (₿ ${minimum.toLocaleString("en-GB")}).`;
         return;
       }
 
