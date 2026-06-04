@@ -1,0 +1,289 @@
+{
+  "ARS": {
+    "stadium": "Emirates Stadium",
+    "nation": "England",
+    "pageUrl": "https://stadiumdb.com/stadiums/eng/emirates_stadium",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/eng/emirates_stadium/emirates_stadium03.jpg",
+    "fetchedAt": "2026-06-04T08:06:40.358Z"
+  },
+  "BAR": {
+    "stadium": "Camp Nou Stadium",
+    "nation": "Spain",
+    "pageUrl": "https://stadiumdb.com/stadiums/esp/camp_nou",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/esp/camp_nou/camp_nou47.jpg",
+    "fetchedAt": "2026-06-04T08:06:44.460Z"
+  },
+  "FEY": {
+    "stadium": "Stadion Feijenoord",
+    "nation": "Netherlands",
+    "pageUrl": "https://stadiumdb.com/stadiums/ned/de_kuip",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/ned/de_kuip/de_kuip17.jpg",
+    "fetchedAt": "2026-06-04T08:06:56.795Z"
+  },
+  "URD": {
+    "stadium": "Saitama Stadium",
+    "nation": "Japan",
+    "pageUrl": "https://stadiumdb.com/stadiums/jpn/saitama_stadium",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/jpn/saitama/saitama72.jpg",
+    "fetchedAt": "2026-06-04T08:07:24.840Z"
+  },
+  "ATA": {
+    "stadium": "Gewiss Stadium",
+    "nation": "Italy",
+    "pageUrl": "https://stadiumdb.com/stadiums/ita/gewiss_stadium",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/ita/gewiss_stadium/gewiss_stadium01.jpg",
+    "fetchedAt": "2026-06-04T08:06:41.353Z"
+  },
+  "AVL": {
+    "stadium": "Villa Park",
+    "nation": "England",
+    "pageUrl": "https://stadiumdb.com/stadiums/eng/villa_park",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/eng/villa_park/villa_park01.jpg",
+    "fetchedAt": "2026-06-04T08:06:43.437Z"
+  },
+  "BOC": {
+    "stadium": "Alberto J.Armando",
+    "nation": "Argentina",
+    "pageUrl": "https://stadiumdb.com/stadiums/arg/la_bombonera",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/arg/la_bombonera/la_bombonera52.jpg",
+    "fetchedAt": "2026-06-04T08:06:46.805Z"
+  },
+  "CEL": {
+    "stadium": "Celtic Park",
+    "nation": "Scotland",
+    "pageUrl": "https://stadiumdb.com/stadiums/sco/celtic_park",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/sco/celtic_park/celtic_park32.jpg",
+    "fetchedAt": "2026-06-04T08:06:47.933Z"
+  },
+  "CHE": {
+    "stadium": "Stamford Bridge",
+    "nation": "England",
+    "pageUrl": "https://stadiumdb.com/stadiums/eng/stamford_bridge",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/eng/stamford_bridge/stamford_bridge01.jpg",
+    "fetchedAt": "2026-06-04T08:06:48.966Z"
+  },
+  "COR": {
+    "stadium": "NeoQuímica Arena",
+    "nation": "Brazil",
+    "pageUrl": "https://stadiumdb.com/stadiums/bra/arena_corinthians",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/bra/arena_corinthians/arena_corinthians51.jpg",
+    "fetchedAt": "2026-06-04T08:06:50.073Z"
+  },
+  "FLA": {
+    "stadium": "Estádio Jornalista MárioFilho",
+    "nation": "Brazil",
+    "pageUrl": "https://stadiumdb.com/stadiums/bra/maracana",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/bra/maracana/maracana29.jpg",
+    "fetchedAt": "2026-06-04T08:06:57.972Z"
+  },
+  "GCZ": {
+    "stadium": "Letzigrund Stadium",
+    "nation": "Switzerland",
+    "pageUrl": "https://stadiumdb.com/stadiums/sui/letzigrund",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/sui/letzigrund/letzigrund01.jpg",
+    "fetchedAt": "2026-06-04T08:06:58.994Z"
+  },
+  "HUR": {
+    "stadium": "Estadio Tomás Adolfo Ducó",
+    "nation": "Argentina",
+    "pageUrl": "https://stadiumdb.com/stadiums/arg/estadio_tomas_adolfo_duco",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/arg/estadio_tomas_adolfo_duco/estadio_tomas_adolfo_duco03.jpg",
+    "fetchedAt": "2026-06-04T08:07:00.022Z"
+  },
+  "IND": {
+    "stadium": "Estadio Libertadoresde América",
+    "nation": "Argentina",
+    "pageUrl": "https://stadiumdb.com/stadiums/arg/estadio_libertadores_de_america",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/arg/estadio_libertadores_de_america/estadio_libertadores_de_america17.jpg",
+    "fetchedAt": "2026-06-04T08:07:01.029Z"
+  },
+  "LEV": {
+    "stadium": "Bay Arena",
+    "nation": "Germany",
+    "pageUrl": "https://stadiumdb.com/stadiums/ger/bayarena",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/ger/bayarena/bayarena33.jpg",
+    "fetchedAt": "2026-06-04T08:07:02.468Z"
+  },
+  "LIV": {
+    "stadium": "Anfield",
+    "nation": "England",
+    "pageUrl": "https://stadiumdb.com/stadiums/eng/anfield_road",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/eng/anfield/anfield50.jpg",
+    "fetchedAt": "2026-06-04T08:07:03.608Z"
+  },
+  "MAR": {
+    "stadium": "Orange Vélodrome",
+    "nation": "France",
+    "pageUrl": "https://stadiumdb.com/stadiums/fra/stade_velodrome",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/fra/stade_velodrome/stade_velodrome19.jpg",
+    "fetchedAt": "2026-06-04T08:07:04.704Z"
+  },
+  "MON": {
+    "stadium": "Stade Louis II",
+    "nation": "France",
+    "pageUrl": "https://stadiumdb.com/stadiums/fra/stade_louis_ii",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/fra/stade_louis_ii/stade_louis_ii01.jpg",
+    "fetchedAt": "2026-06-04T08:07:06.840Z"
+  },
+  "MUN": {
+    "stadium": "Old Trafford",
+    "nation": "England",
+    "pageUrl": "https://stadiumdb.com/stadiums/eng/old_trafford",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/eng/old_trafford/old_trafford56.jpg",
+    "fetchedAt": "2026-06-04T08:07:07.897Z"
+  },
+  "PAL": {
+    "stadium": "Allianz Parque",
+    "nation": "Brazil",
+    "pageUrl": "https://stadiumdb.com/stadiums/bra/allianz_parque",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/bra/allianz_parque/allianz_parque14.jpg",
+    "fetchedAt": "2026-06-04T08:07:10.502Z"
+  },
+  "PSG": {
+    "stadium": "Parc des Princes",
+    "nation": "France",
+    "pageUrl": "https://stadiumdb.com/stadiums/fra/parc_des_princes",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/fra/parc_des_princes/parc_des_princes23.jpg",
+    "fetchedAt": "2026-06-04T08:07:12.614Z"
+  },
+  "PSV": {
+    "stadium": "Philips Stadion",
+    "nation": "Netherlands",
+    "pageUrl": "https://stadiumdb.com/stadiums/ned/philips_stadion",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/ned/philips_stadion/philips_stadion01.jpg",
+    "fetchedAt": "2026-06-04T08:07:13.648Z"
+  },
+  "RAN": {
+    "stadium": "Ibrox Stadium",
+    "nation": "Scotland",
+    "pageUrl": "https://stadiumdb.com/stadiums/sco/ibrox_stadium",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/sco/ibrox_park/ibrox_park01.jpg",
+    "fetchedAt": "2026-06-04T08:07:15.891Z"
+  },
+  "RIV": {
+    "stadium": "Estádio Monumental",
+    "nation": "Argentina",
+    "pageUrl": "https://stadiumdb.com/stadiums/arg/el_monumental",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/arg/el_monumental/el_monumental57.jpg",
+    "fetchedAt": "2026-06-04T08:07:16.932Z"
+  },
+  "STE": {
+    "stadium": "Stade Geoffroy‑Guichard",
+    "nation": "France",
+    "pageUrl": "https://stadiumdb.com/stadiums/fra/stade_geoffroy_guichard",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/fra/stade_geoffroy_guichard/stade_geoffroy_guichard15.jpg",
+    "fetchedAt": "2026-06-04T08:07:22.765Z"
+  },
+  "TOT": {
+    "stadium": "Tottenham Hotspur Stadium",
+    "nation": "England",
+    "pageUrl": "https://stadiumdb.com/stadiums/eng/tottenham_hotspur_stadium",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/eng/tottenham_hotspur_stadium/tottenham_hotspur_stadium41.jpg",
+    "fetchedAt": "2026-06-04T08:07:23.784Z"
+  },
+  "ATM": {
+    "stadium": "Metroploitano Stadium",
+    "nation": "Spain",
+    "pageUrl": "https://stadiumdb.com/stadiums/esp/estadio_metropolitano",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/esp/estadio_metropolitano/estadio_metropolitano01.jpg",
+    "fetchedAt": "2026-06-04T08:06:42.409Z"
+  },
+  "BEN": {
+    "stadium": "Estadio da Luz",
+    "nation": "Portugal",
+    "pageUrl": "https://stadiumdb.com/stadiums/por/estadio_da_luz",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/por/estadio_da_luz/estadio_da_luz52.jpg",
+    "fetchedAt": "2026-06-04T08:06:45.587Z"
+  },
+  "CRU": {
+    "stadium": "Estádio Governador Magalhães Pinto(Mineirão)",
+    "nation": "Brazil",
+    "pageUrl": "https://stadiumdb.com/stadiums/bra/estadio_mineirao",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/bra/mineirao/mineirao21.jpg",
+    "fetchedAt": "2026-06-04T08:06:51.281Z"
+  },
+  "CVI": {
+    "stadium": "Estadio Municipal de Balaidos",
+    "nation": "Spain",
+    "pageUrl": "https://stadiumdb.com/stadiums/esp/estadio_reino_de_leon",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/esp/estadio_reino_de_leon/estadio_reino_de_leon01.jpg",
+    "fetchedAt": "2026-06-04T08:06:52.428Z"
+  },
+  "DOR": {
+    "stadium": "Signal Iduna Park",
+    "nation": "Germany",
+    "pageUrl": "https://stadiumdb.com/stadiums/ger/westfalenstadion",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/ger/westfalenstadion/westfalenstadion61.jpg",
+    "fetchedAt": "2026-06-04T08:06:53.447Z"
+  },
+  "ESP": {
+    "stadium": "Estadi Cornella-ElPrat",
+    "nation": "Spain",
+    "pageUrl": "https://stadiumdb.com/stadiums/esp/nuevo_campo_municipal_ue_cornella",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/esp/nuevo_campo_municipal_ue_cornella/nuevo_campo_municipal_ue_cornella01.jpg",
+    "fetchedAt": "2026-06-04T08:06:54.583Z"
+  },
+  "EST": {
+    "stadium": "Estadio Jorge Luis Hirsch",
+    "nation": "Argentina",
+    "pageUrl": "https://stadiumdb.com/stadiums/arg/estadio_jorge_luis_hirschi",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/arg/estadio_jorge_luis_hirschi/estadio_jorge_luis_hirschi01.jpg",
+    "fetchedAt": "2026-06-04T08:06:55.765Z"
+  },
+  "MCI": {
+    "stadium": "Etihad Stadium",
+    "nation": "England",
+    "pageUrl": "https://stadiumdb.com/stadiums/eng/city_of_manchester_stadium",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/eng/city_of_manchester_stadium/city_of_manchester_stadium41.jpg",
+    "fetchedAt": "2026-06-04T08:07:05.818Z"
+  },
+  "POR": {
+    "stadium": "Estádiodo Dragão",
+    "nation": "Portugal",
+    "pageUrl": "https://stadiumdb.com/stadiums/por/estadio_do_dragao",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/por/estadio_do_dragao/estadio_do_dragao01.jpg",
+    "fetchedAt": "2026-06-04T08:07:11.598Z"
+  },
+  "RAC": {
+    "stadium": "Estadio Juan Domingo Perón",
+    "nation": "Argentina",
+    "pageUrl": "https://stadiumdb.com/stadiums/arg/estadio_presidente_peron",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/arg/el_cilindro/el_cilindro31.jpg",
+    "fetchedAt": "2026-06-04T08:07:14.810Z"
+  },
+  "ROS": {
+    "stadium": "Estadio Gigantede Arroyito",
+    "nation": "Argentina",
+    "pageUrl": "https://stadiumdb.com/stadiums/arg/el_gigante_de_arroyito",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/arg/el_gigante/el_gigante09.jpg",
+    "fetchedAt": "2026-06-04T08:07:18.353Z"
+  },
+  "SAP": {
+    "stadium": "MorumBIS",
+    "nation": "Brazil",
+    "pageUrl": "https://stadiumdb.com/stadiums/bra/estadio_do_morumbi",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/bra/morumbi/morumbi10.jpg",
+    "fetchedAt": "2026-06-04T08:07:19.625Z"
+  },
+  "SCI": {
+    "stadium": "Estádio Beira-Rio",
+    "nation": "Brazil",
+    "pageUrl": "https://stadiumdb.com/stadiums/bra/estadio_beira_rio",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/bra/beira_rio/beira_rio22.jpg",
+    "fetchedAt": "2026-06-04T08:07:20.718Z"
+  },
+  "SPO": {
+    "stadium": "Estadio Jose Alvalade",
+    "nation": "Portugal",
+    "pageUrl": "https://stadiumdb.com/stadiums/por/estadio_jose_alvalade",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/por/estadio_jose_alvalade/estadio_jose_alvalade23.jpg",
+    "fetchedAt": "2026-06-04T08:07:21.744Z"
+  },
+  "WOL": {
+    "stadium": "Molineux Stadium",
+    "nation": "England",
+    "pageUrl": "https://stadiumdb.com/stadiums/eng/molineux_stadium",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/eng/molineux_stadium/molineux_stadium20.jpg",
+    "fetchedAt": "2026-06-04T08:07:26.086Z"
+  }
+}

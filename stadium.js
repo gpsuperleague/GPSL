@@ -1,5 +1,6 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import { stadiumImageUrl } from "./stadium_images.js";
 import {
   formatMoney,
   loadLeagueFixtures,
@@ -8,6 +9,30 @@ import {
   loadStandings,
   DIVISION_LABELS,
 } from "./competition.js";
+
+function renderStadiumPhoto(shortName, stadiumName) {
+  const slot = document.getElementById("stadiumPhotoSlot");
+  if (!slot) return;
+
+  const src = stadiumImageUrl(shortName);
+  const img = new Image();
+  img.onload = () => {
+    slot.innerHTML = `
+      <div class="stadium-photo-wrap">
+        <img class="stadium-photo" src="${src}" alt="${stadiumName || "Stadium"}">
+        <span class="stadium-photo-credit">StadiumDB</span>
+      </div>
+    `;
+  };
+  img.onerror = () => {
+    slot.innerHTML = `
+      <p class="stadium-photo-missing">
+        No stadium photo yet. Run <code>node scripts/fetch_stadium_images.mjs</code> locally.
+      </p>
+    `;
+  };
+  img.src = src;
+}
 
 function renderGateBreakdown(data) {
   const el = document.getElementById("gateBreakdown");
@@ -91,6 +116,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("stadiumCapacity").textContent = Number(
     club.Capacity || 0
   ).toLocaleString("en-GB");
+
+  renderStadiumPhoto(shortName, club.Stadium);
 
   const estimate = await estimateGateForClub(supabase, shortName);
   renderGateBreakdown(estimate);
