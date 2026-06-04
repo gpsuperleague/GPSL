@@ -76,6 +76,12 @@ If owners see **other clubs’ inbox messages** or **pending scores** on fixture
 
 [`competition_inbox_owner_scope.sql`](./competition_inbox_owner_scope.sql)
 
+**Transfer deal notifications** (buyer + seller inbox when a deal completes):
+
+[`transfer_inbox_notifications.sql`](./transfer_inbox_notifications.sql)
+
+Covers transfer list, direct offer, draft auction, foreign sale, squad overflow release, and special auction player wins. Requires `competition_inbox` from phase 3.
+
 ### Phase 4 — player stats (after Phase 3)
 
 Run once:

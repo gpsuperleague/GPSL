@@ -55,7 +55,7 @@ async function renderInbox() {
 
   if (!messages.length) {
     list.innerHTML =
-      '<p class="empty">No notifications yet. Opponent score confirmations, rejections, and other league updates will appear here.</p>';
+      '<p class="empty">No notifications yet. Transfer deals, opponent score confirmations, and other league updates will appear here.</p>';
     return;
   }
 
