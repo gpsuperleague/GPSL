@@ -50,7 +50,10 @@ SELECT
   sub.submission_status,
   sub.submitted_by_club,
   sub.proposed_home_goals,
-  sub.proposed_away_goals
+  sub.proposed_away_goals,
+  sub.proposed_et_home_goals,
+  sub.proposed_et_away_goals,
+  sub.proposed_pen_winner_club
 FROM public.competition_fixtures f
 JOIN public.competition_seasons s ON s.id = f.season_id
 JOIN public."Clubs" hc ON hc."ShortName" = f.home_club_short_name
@@ -61,7 +64,10 @@ LEFT JOIN LATERAL (
     rs.status AS submission_status,
     rs.submitted_by_club,
     rs.home_goals AS proposed_home_goals,
-    rs.away_goals AS proposed_away_goals
+    rs.away_goals AS proposed_away_goals,
+    rs.et_home_goals AS proposed_et_home_goals,
+    rs.et_away_goals AS proposed_et_away_goals,
+    rs.pen_winner_club_short_name AS proposed_pen_winner_club
   FROM public.competition_result_submissions rs
   WHERE rs.fixture_id = f.id
     AND rs.status = 'pending'
