@@ -90,6 +90,13 @@
     "imageUrl": "https://stadiumdb.com/pictures/stadiums/fra/parc_ol/parc_ol11.jpg",
     "fetchedAt": "2026-06-04T12:00:00.000Z"
   },
+  "NAC": {
+    "stadium": "Estadio Atanasio Girardot",
+    "nation": "Colombia",
+    "pageUrl": "https://stadiumdb.com/stadiums/col/estadio_atanasio_girardot",
+    "imageUrl": "https://stadiumdb.com/pic-projects/estadio_atanasio_girardot/estadio_atanasio_girardot05.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
   "ARS": {
     "stadium": "Emirates Stadium",
     "nation": "England",
