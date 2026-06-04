@@ -113,7 +113,7 @@ function renderPlayerStatsTable() {
   tbody.innerHTML = "";
   if (!squadPlayers.length) {
     tbody.innerHTML =
-      '<tr><td colspan="6" style="color:#888;">No squad players found.</td></tr>';
+      '<tr><td colspan="7" style="color:#888;">No squad players found.</td></tr>';
     return;
   }
 
@@ -123,14 +123,29 @@ function renderPlayerStatsTable() {
     tr.dataset.statPlayer = id;
     tr.innerHTML = `
       <td class="name">${p.Name} <span style="color:#666;">${p.Position || ""}</span></td>
-      <td><input type="checkbox" class="stat-played"></td>
+      <td><input type="checkbox" class="stat-started" aria-label="Started"></td>
+      <td><input type="checkbox" class="stat-subbed" aria-label="Subbed on"></td>
       <td><input type="number" class="stat-goals" min="0" max="20" value="0"></td>
       <td><input type="number" class="stat-assists" min="0" max="20" value="0"></td>
       <td><select class="stat-rating">${ratingOptionsHtml(null)}</select></td>
       <td><input type="radio" name="potm" class="stat-potm" value="${id}"></td>
     `;
+    wirePlayedCheckboxes(tr);
     tbody.appendChild(tr);
   }
+}
+
+function wirePlayedCheckboxes(tr) {
+  const started = tr.querySelector(".stat-started");
+  const subbed = tr.querySelector(".stat-subbed");
+  if (!started || !subbed) return;
+
+  started.addEventListener("change", () => {
+    if (started.checked) subbed.checked = false;
+  });
+  subbed.addEventListener("change", () => {
+    if (subbed.checked) started.checked = false;
+  });
 }
 
 function collectPlayerStats() {
@@ -138,7 +153,9 @@ function collectPlayerStats() {
   const out = [];
   for (const tr of rows) {
     const player_id = tr.dataset.statPlayer;
-    const appeared = tr.querySelector(".stat-played")?.checked ?? false;
+    const started = tr.querySelector(".stat-started")?.checked ?? false;
+    const subbed_on = tr.querySelector(".stat-subbed")?.checked ?? false;
+    const appeared = started || subbed_on;
     const goals = Number(tr.querySelector(".stat-goals")?.value) || 0;
     const assists = Number(tr.querySelector(".stat-assists")?.value) || 0;
     const ratingRaw = tr.querySelector(".stat-rating")?.value;
@@ -151,6 +168,8 @@ function collectPlayerStats() {
 
     out.push({
       player_id,
+      started,
+      subbed_on,
       appeared,
       goals,
       assists,
@@ -172,8 +191,14 @@ function validatePlayerStats(fixture, homeGoals, awayGoals, playerStats) {
     if (row.rating != null && (row.rating < 1 || row.rating > 10)) {
       return "Ratings must be between 1 and 10.";
     }
+    if (row.started && row.subbed_on) {
+      return "A player cannot be both started and subbed on.";
+    }
     if (!row.appeared && (row.goals > 0 || row.assists > 0)) {
-      return "Players with goals or assists must be marked as played.";
+      return "Players with goals or assists must be started or subbed on.";
+    }
+    if (!row.appeared && row.potm) {
+      return "Player of the Match must be started or subbed on.";
     }
   }
 

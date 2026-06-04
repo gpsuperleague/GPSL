@@ -75,6 +75,7 @@ Run once:
 - Submit optional squad lines on **`matchday.html`** (`p_player_stats` on `competition_submit_result`)
 - Leaderboards on **`league_stats.html`** (`competition_player_season_stats_public`)
 - Season **Apps / G / A / Avg** on **`squad.html`**
+- **Started / Subbed on** on Match Day: run [`competition_match_stats_started_sub.sql`](./competition_match_stats_started_sub.sql) once (adds columns + updates stats apply)
 
 ### Phase 5 — gate receipts & ledger (after Phase 4)
 
