@@ -245,9 +245,35 @@ export const MIN_UNDER_21 = 5;
 /** Home-grown contract protection: HG + this age or younger. */
 export const HG_CONTRACT_MAX_AGE = 23;
 
+/**
+ * Compare key for home-grown (Nation match). Handles "United States" vs "UnitedStates".
+ */
 export function normalizeNation(value) {
   if (value == null) return "";
-  return String(value).trim().toUpperCase();
+  return String(value)
+    .trim()
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+/** Human-readable nation label for UI (e.g. UnitedStates → United States). */
+export function formatNationLabel(value) {
+  if (value == null || !String(value).trim()) return "";
+  const spaced = String(value)
+    .trim()
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return spaced
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
 }
 
 /** Home-grown = player Nation matches club Nation (Clubs.Nation / Players.Nation). */
@@ -350,8 +376,9 @@ export function analyseSquadComposition(players, clubNation) {
 /** Display rows for the Squad page rules panel. */
 export function squadComplianceRuleRows(c, clubNation) {
   const nation = clubNation?.trim() || null;
-  const nationHint = nation
-    ? `Player Nation = club Nation (${nation})`
+  const nationLabel = nation ? formatNationLabel(nation) : null;
+  const nationHint = nationLabel
+    ? `Player Nation = club Nation (${nationLabel})`
     : "Player Nation must match club Nation (set on Club Details)";
 
   return [

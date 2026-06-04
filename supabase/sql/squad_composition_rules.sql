@@ -8,7 +8,15 @@ RETURNS text
 LANGUAGE sql
 IMMUTABLE
 AS $$
-  SELECT upper(trim(coalesce(p_value, '')));
+  SELECT upper(
+    regexp_replace(
+      regexp_replace(
+        regexp_replace(trim(coalesce(p_value, '')), '([a-z])([A-Z])', '\1 \2', 'g'),
+        '[_-]+', ' ', 'g'
+      ),
+      '\s+', ' ', 'g'
+    )
+  );
 $$;
 
 CREATE OR REPLACE FUNCTION public.is_player_homegrown(
