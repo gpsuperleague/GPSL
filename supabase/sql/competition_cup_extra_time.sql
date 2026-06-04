@@ -1,4 +1,4 @@
--- Cup knockouts: 90 min score + optional extra time (ET-period goals only) + pen shootout winner.
+-- Cup knockouts: 90 min score + optional score after ET (cumulative, 90 min carries over) + pen winner.
 -- Run once after competition_phase6_cups.sql (safe to re-run).
 -- League matches unchanged (home_goals / away_goals only).
 
@@ -13,16 +13,16 @@ ALTER TABLE public.competition_fixtures
 COMMENT ON COLUMN public.competition_result_submissions.home_goals IS
   'League: final score. Cup: goals after 90 minutes only.';
 COMMENT ON COLUMN public.competition_result_submissions.et_home_goals IS
-  'Cup only: goals scored during extra time (not including 90 min).';
+  'Cup only: total score after extra time (includes 90 min goals; not added again).';
 COMMENT ON COLUMN public.competition_result_submissions.pen_winner_club_short_name IS
   'Cup only: club short name that won the penalty shootout (no pen scoreline stored).';
 
 COMMENT ON COLUMN public.competition_fixtures.home_goals IS
-  'League: final. Cup: open-play total (90 min + extra time goals).';
+  'League: final. Cup: open-play total after ET if played, else 90 min score.';
 COMMENT ON COLUMN public.competition_fixtures.cup_pen_winner_club_short_name IS
   'Cup only: set when match decided on penalties after level open play.';
 
--- Open-play totals (90 + ET-period goals) used for winner and fixture scoreline.
+-- Open-play totals for cup: after-ET score if ET entered, otherwise 90 min only.
 CREATE OR REPLACE FUNCTION public.competition_cup_open_play_totals(
   p_home_90 smallint,
   p_away_90 smallint,
@@ -34,8 +34,8 @@ LANGUAGE sql
 IMMUTABLE
 AS $$
   SELECT
-    (coalesce(p_home_90, 0) + coalesce(p_et_home, 0))::smallint,
-    (coalesce(p_away_90, 0) + coalesce(p_et_away, 0))::smallint;
+    (CASE WHEN p_et_home IS NOT NULL THEN p_et_home ELSE coalesce(p_home_90, 0) END)::smallint,
+    (CASE WHEN p_et_away IS NOT NULL THEN p_et_away ELSE coalesce(p_away_90, 0) END)::smallint;
 $$;
 
 CREATE OR REPLACE FUNCTION public.competition_cup_winner_from_submission(
@@ -65,8 +65,12 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  v_home := coalesce(p_home_90, 0) + coalesce(p_et_home, 0);
-  v_away := coalesce(p_away_90, 0) + coalesce(p_et_away, 0);
+  IF p_et_home < p_home_90 OR p_et_away < p_away_90 THEN
+    RETURN NULL;
+  END IF;
+
+  v_home := p_et_home;
+  v_away := p_et_away;
 
   IF v_home > v_away THEN
     RETURN p_home_club;
@@ -213,11 +217,15 @@ BEGIN
       END IF;
     ELSE
       IF p_et_home_goals IS NULL OR p_et_away_goals IS NULL THEN
-        RAISE EXCEPTION 'Cup draw after 90 minutes — enter extra time goals (scored in ET only)';
+        RAISE EXCEPTION 'Cup draw after 90 minutes — enter total score after extra time';
       END IF;
 
-      v_home_total := p_home_goals + coalesce(p_et_home_goals, 0);
-      v_away_total := p_away_goals + coalesce(p_et_away_goals, 0);
+      IF p_et_home_goals < p_home_goals OR p_et_away_goals < p_away_goals THEN
+        RAISE EXCEPTION 'Score after extra time cannot be less than the 90 minute score';
+      END IF;
+
+      v_home_total := p_et_home_goals;
+      v_away_total := p_et_away_goals;
 
       IF v_home_total = v_away_total THEN
         IF v_pen_winner IS NULL THEN
@@ -273,7 +281,7 @@ BEGIN
   );
 
   IF p_et_home_goals IS NOT NULL THEN
-    v_body := v_body || format(' ET (period only) %s–%s.', p_et_home_goals, p_et_away_goals);
+    v_body := v_body || format(' After ET %s–%s.', p_et_home_goals, p_et_away_goals);
   END IF;
   IF v_pen_winner IS NOT NULL THEN
     SELECT "Club" INTO v_pen_winner_name FROM public."Clubs" WHERE "ShortName" = v_pen_winner;
@@ -328,8 +336,11 @@ BEGIN
   END IF;
 
   IF v_fixture.competition_type = 'cup' THEN
-    v_home_total := (v_sub.home_goals + coalesce(v_sub.et_home_goals, 0))::smallint;
-    v_away_total := (v_sub.away_goals + coalesce(v_sub.et_away_goals, 0))::smallint;
+    SELECT t.home_total, t.away_total
+    INTO v_home_total, v_away_total
+    FROM public.competition_cup_open_play_totals(
+      v_sub.home_goals, v_sub.away_goals, v_sub.et_home_goals, v_sub.et_away_goals
+    ) t;
 
     IF public.competition_cup_winner_from_submission(
       v_sub.home_goals, v_sub.away_goals, v_sub.et_home_goals, v_sub.et_away_goals,
@@ -384,12 +395,17 @@ BEGIN
     ELSE format('Matchday %s', v_fixture.matchday)
   END;
 
-  v_body := format(
-    '%s — %s–%s confirmed (90 min %s–%s).',
-    v_label, v_home_total, v_away_total, v_sub.home_goals, v_sub.away_goals
-  );
   IF v_sub.et_home_goals IS NOT NULL THEN
-    v_body := v_body || format(' ET (period only) %s–%s.', v_sub.et_home_goals, v_sub.et_away_goals);
+    v_body := format(
+      '%s — %s–%s confirmed (90 min %s–%s, after ET %s–%s).',
+      v_label, v_home_total, v_away_total,
+      v_sub.home_goals, v_sub.away_goals, v_sub.et_home_goals, v_sub.et_away_goals
+    );
+  ELSE
+    v_body := format(
+      '%s — %s–%s confirmed (90 min %s–%s).',
+      v_label, v_home_total, v_away_total, v_sub.home_goals, v_sub.away_goals
+    );
   END IF;
   IF v_sub.pen_winner_club_short_name IS NOT NULL THEN
     SELECT "Club" INTO v_pen_winner_name FROM public."Clubs" WHERE "ShortName" = v_sub.pen_winner_club_short_name;
@@ -434,8 +450,11 @@ BEGIN
   SELECT * INTO v_fixture FROM public.competition_fixtures WHERE id = v_sub.fixture_id;
 
   IF v_fixture.competition_type = 'cup' THEN
-    v_home_total := (v_sub.home_goals + coalesce(v_sub.et_home_goals, 0))::smallint;
-    v_away_total := (v_sub.away_goals + coalesce(v_sub.et_away_goals, 0))::smallint;
+    SELECT t.home_total, t.away_total
+    INTO v_home_total, v_away_total
+    FROM public.competition_cup_open_play_totals(
+      v_sub.home_goals, v_sub.away_goals, v_sub.et_home_goals, v_sub.et_away_goals
+    ) t;
 
     UPDATE public.competition_fixtures
     SET home_goals = v_home_total,

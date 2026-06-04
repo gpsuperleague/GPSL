@@ -175,7 +175,7 @@ function updateCupScoreSections() {
   });
 
   if (preview) {
-    preview.textContent = `Open-play total: ${homeTotal}–${awayTotal} (90 min ${home90}–${away90} + ET ${etHome}–${etAway})`;
+    preview.textContent = `After extra time: ${homeTotal}–${awayTotal} (90 min was ${home90}–${away90})`;
   }
 
   const levelAfterOpenPlay = homeTotal === awayTotal;
@@ -204,12 +204,19 @@ function readPenWinnerClub(fixture) {
 }
 
 function openPlayTotals(home90, away90, cupExtra) {
-  const etHome = cupExtra?.etHome ?? 0;
-  const etAway = cupExtra?.etAway ?? 0;
-  return {
-    home: home90 + etHome,
-    away: away90 + etAway,
-  };
+  const etHome = cupExtra?.etHome;
+  const etAway = cupExtra?.etAway;
+  if (Number.isFinite(etHome) && Number.isFinite(etAway)) {
+    return { home: etHome, away: etAway };
+  }
+  return { home: home90, away: away90 };
+}
+
+function validateEtNotBelow90(home90, away90, etHome, etAway) {
+  if (etHome < home90 || etAway < away90) {
+    return "Score after extra time cannot be less than the 90 minute score.";
+  }
+  return null;
 }
 
 function validateCupScores(home90, away90, cupExtra) {
@@ -225,8 +232,11 @@ function validateCupScores(home90, away90, cupExtra) {
   }
 
   if (cupExtra?.etHome == null || cupExtra?.etAway == null) {
-    return "Cup draw after 90 minutes — enter extra time goals (ET period only).";
+    return "Cup draw after 90 minutes — enter total score after extra time.";
   }
+
+  const etErr = validateEtNotBelow90(home90, away90, cupExtra.etHome, cupExtra.etAway);
+  if (etErr) return etErr;
 
   const { home, away } = openPlayTotals(home90, away90, cupExtra);
   if (home === away && !cupExtra.penWinner) {
@@ -244,8 +254,11 @@ function buildCupExtraForSubmit(fixture, home90, away90) {
   const etHome = readScoreInput("etHomeGoals");
   const etAway = readScoreInput("etAwayGoals");
   if (!Number.isFinite(etHome) || !Number.isFinite(etAway)) {
-    return { error: "Enter valid extra time goals (scored in ET only)." };
+    return { error: "Enter valid total score after extra time." };
   }
+
+  const etErr = validateEtNotBelow90(home90, away90, etHome, etAway);
+  if (etErr) return { error: etErr };
 
   const cupExtra = { etHome, etAway };
   const { home, away } = openPlayTotals(home90, away90, cupExtra);
