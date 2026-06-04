@@ -580,12 +580,14 @@ export async function buildNav() {
 
   try {
   let NAV_SECTIONS;
+  let ADMIN_NAV_SECTION;
   let isNavItemActive;
   let sectionHasActiveItem;
   let normalizeNavPath;
   try {
     const navMod = await import("./nav_config.js");
     NAV_SECTIONS = navMod.NAV_SECTIONS;
+    ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;
     sectionHasActiveItem = navMod.sectionHasActiveItem;
     normalizeNavPath = navMod.normalizeNavPath;
@@ -639,14 +641,15 @@ export async function buildNav() {
   const dashActive = pathNorm === "dashboard.html";
   const inboxActive = pathNorm === "inbox.html";
 
-  let navSections = NAV_SECTIONS;
-  if (isGpslAdminUser(user)) {
-    try {
-      const { ADMIN_NAV_SECTION } = await import("./admin_nav.js");
-      navSections = [...NAV_SECTIONS, ADMIN_NAV_SECTION];
-    } catch (adminNavErr) {
-      console.warn("Admin nav section skipped:", adminNavErr);
-    }
+  let navSections = Array.isArray(NAV_SECTIONS) ? [...NAV_SECTIONS] : [];
+  if (!navSections.length) {
+    console.error("buildNav: NAV_SECTIONS missing from nav_config.js");
+    await renderFallbackNav();
+    return;
+  }
+
+  if (isGpslAdminUser(user) && ADMIN_NAV_SECTION?.items?.length) {
+    navSections.push(ADMIN_NAV_SECTION);
   }
 
   let html = `<div class="gpsl-nav-bar">`;
@@ -696,6 +699,8 @@ export async function buildNav() {
   html += `<div class="gpsl-nav-groups">`;
 
   for (const section of navSections) {
+    if (!section?.items?.length) continue;
+
     const items = section.items
       .filter((item) => {
         if (item.requiresDraft && !draftEnabled) return false;
