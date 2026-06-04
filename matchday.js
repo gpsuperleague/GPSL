@@ -5,13 +5,9 @@ import {
   GPSL_MONTH_LABELS,
   fixtureInvolvesClub,
   submitFixtureResult,
-  confirmFixtureResult,
-  rejectFixtureResult,
   canSubmitResult,
   LEAGUE_DIVISIONS,
 } from "./competition.js";
-import { loadInboxMessages } from "./competition_inbox.js";
-
 let myClub = { short: null, name: null };
 let myDivision = null;
 let upcomingFixtures = [];
@@ -215,7 +211,7 @@ function updateFixturePreview() {
           : f.home_club_name;
       extra = ` · Awaiting confirmation from ${oppName}`;
     } else {
-      extra = ` · They submitted ${f.proposed_home_goals}–${f.proposed_away_goals} — scroll to Inbox`;
+      extra = ` · They submitted ${f.proposed_home_goals}–${f.proposed_away_goals} — <a href="inbox.html" style="color:#ff9900;">confirm in Inbox</a>`;
     }
   }
 
@@ -237,7 +233,7 @@ function updateFixturePreview() {
   ) {
     setStatus("submitStatus", "Result submitted — waiting for opponent.");
   } else if (f.submission_id) {
-    setStatus("submitStatus", "Opponent submitted — confirm or reject in Inbox below.");
+    setStatus("submitStatus", "Opponent submitted — confirm or reject in Inbox.");
   } else if (canSubmit) {
     setStatus("submitStatus", "Enter home and away goals, then submit.");
   } else {
@@ -341,111 +337,9 @@ async function submitResult() {
     return;
   }
 
-  setStatus("submitStatus", "✅ Submitted. Opponent notified — they confirm in Inbox.");
+  setStatus("submitStatus", "✅ Submitted. Opponent notified via Inbox.");
   await loadUpcomingFixtures();
   populateFixtureSelect();
-  await renderInbox();
-}
-
-async function confirmSubmission(submissionId) {
-  setStatus("inboxStatus", "Confirming…");
-  const { error } = await confirmFixtureResult(supabase, submissionId);
-
-  if (error) {
-    setStatus("inboxStatus", "❌ " + error.message, true);
-    return;
-  }
-
-  setStatus("inboxStatus", "✅ Result confirmed — table updated.");
-  await loadUpcomingFixtures();
-  populateFixtureSelect();
-  await renderInbox();
-}
-
-async function rejectSubmission(submissionId) {
-  const reason = prompt("Reason for rejection (optional):") || null;
-  setStatus("inboxStatus", "Rejecting…");
-  const { error } = await rejectFixtureResult(supabase, submissionId, reason);
-
-  if (error) {
-    setStatus("inboxStatus", "❌ " + error.message, true);
-    return;
-  }
-
-  setStatus("inboxStatus", "Result rejected. Submitter notified.");
-  await loadUpcomingFixtures();
-  populateFixtureSelect();
-  await renderInbox();
-}
-
-async function markRead(inboxId) {
-  await supabase.rpc("competition_inbox_mark_read", { p_inbox_id: inboxId });
-}
-
-async function renderInbox() {
-  const list = document.getElementById("inboxList");
-  if (!myClub.short) {
-    list.innerHTML =
-      '<p class="empty">Link your club to this account to see inbox messages.</p>';
-    return;
-  }
-
-  const messages = await loadInboxMessages(supabase, {
-    clubShortName: myClub.short,
-  });
-
-  if (!messages.length) {
-    list.innerHTML =
-      '<p class="empty">No messages. When an opponent submits a score, it appears here to confirm or reject.</p>';
-    return;
-  }
-
-  list.innerHTML = "";
-
-  for (const msg of messages) {
-    const div = document.createElement("div");
-    div.className = "inbox-item" + (msg.read_at ? "" : " unread");
-
-    div.innerHTML = `
-      <h3>${msg.title}</h3>
-      <p>${msg.body}</p>
-      <div class="inbox-actions"></div>
-    `;
-
-    const actions = div.querySelector(".inbox-actions");
-
-    if (
-      msg.message_type === "result_to_confirm" &&
-      !msg.read_at &&
-      (msg.recipient_club_short_name || "").toUpperCase() ===
-        (myClub.short || "").toUpperCase()
-    ) {
-      const confirmBtn = document.createElement("button");
-      confirmBtn.className = "button";
-      confirmBtn.textContent = "Confirm result";
-      confirmBtn.onclick = () => confirmSubmission(msg.submission_id);
-
-      const rejectBtn = document.createElement("button");
-      rejectBtn.className = "button danger";
-      rejectBtn.textContent = "Reject";
-      rejectBtn.onclick = () => rejectSubmission(msg.submission_id);
-
-      actions.appendChild(confirmBtn);
-      actions.appendChild(rejectBtn);
-    } else {
-      const readBtn = document.createElement("button");
-      readBtn.className = "button secondary";
-      readBtn.textContent = msg.read_at ? "Read" : "Mark read";
-      readBtn.disabled = !!msg.read_at;
-      readBtn.onclick = async () => {
-        await markRead(msg.id);
-        await renderInbox();
-      };
-      actions.appendChild(readBtn);
-    }
-
-    list.appendChild(div);
-  }
 }
 
 function preselectFixtureFromUrl() {
@@ -482,7 +376,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!club?.ShortName) {
     document.getElementById("pageMeta").innerHTML =
       "No club linked to this account. In Supabase → <b>Clubs</b>, set <b>owner_id</b> " +
-      "to this user&apos;s id for the club you are playing as — required to confirm results in Inbox.";
+      "to this user&apos;s id for the club you are playing as.";
     document.getElementById("submitPanel").style.display = "none";
     return;
   }
@@ -516,9 +410,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadUpcomingFixtures();
   populateFixtureSelect();
   preselectFixtureFromUrl();
-  await renderInbox();
-
-  if (window.location.hash === "#inbox") {
-    document.getElementById("inbox").scrollIntoView({ behavior: "smooth" });
-  }
 });

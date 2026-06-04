@@ -51,7 +51,7 @@ function actionCell(fixture) {
   }
 
   if (needsInboxConfirm(fixture, myClub)) {
-    return `<a href="matchday.html#inbox" class="btn-result secondary" style="text-decoration:none;display:inline-block;">Confirm in inbox</a>`;
+    return `<a href="inbox.html" class="btn-result secondary" style="text-decoration:none;display:inline-block;">Confirm in inbox</a>`;
   }
 
   if (

@@ -452,6 +452,7 @@ export async function buildNav() {
   const isMarket =
     path.includes("all_listings") || path.includes("season_transfers");
   const isDashboard = path.includes("dashboard");
+  const isInbox = path.includes("inbox.html");
   const isAdmin = path.includes("admin");
   const isDraft =
     path.includes("draftauction") && !path.includes("draftauction_player");
@@ -477,6 +478,10 @@ export async function buildNav() {
 
   if (!isDashboard) {
     html += `<a id="nav-dashboard" href="dashboard.html" class="button">Dashboard</a>`;
+  }
+
+  if (!isInbox) {
+    html += `<a id="nav-inbox" href="inbox.html" class="button">Inbox</a>`;
   }
 
   if (user.email === "rotavator66@outlook.com" && !isAdmin) {

@@ -58,6 +58,6 @@ export async function refreshDashboardInbox(supabase, clubShortName) {
   panel.classList.toggle("has-unread", unread > 0);
 
   panel.onclick = () => {
-    window.location.href = "matchday.html#inbox";
+    window.location.href = "inbox.html";
   };
 }

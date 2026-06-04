@@ -51,7 +51,7 @@ Run once:
 
 - Owner submits score on **`matchday.html`** → opponent gets inbox message
 - Opponent **Confirm** (updates table) or **Reject** (submitter can resubmit)
-- Dashboard **Inbox** count links to matchday inbox
+- Dashboard **Inbox** count links to **`inbox.html`** (club notifications; match confirm/reject and future types)
 
 If owners see **other clubs’ inbox messages** or **pending scores** on fixtures they are not in, run once:
 

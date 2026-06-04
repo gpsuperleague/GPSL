@@ -30,20 +30,11 @@
     .button.secondary { background:#444; color:#ddd; }
     .button.danger { background:#992222; color:#fff; }
     .button:disabled { opacity:0.5; cursor:not-allowed; }
-    #submitStatus, #inboxStatus { min-height:1.2em; color:#ffcc00; margin-top:8px; }
+    #submitStatus { min-height:1.2em; color:#ffcc00; margin-top:8px; }
     .fixture-preview {
       background:#222; padding:12px; border-radius:6px; margin-bottom:12px;
       font-size:14px; color:#ccc;
     }
-    .inbox-item {
-      border:1px solid #333; border-radius:6px; padding:14px; margin-bottom:12px;
-      background:#222;
-    }
-    .inbox-item.unread { border-color:#ff9900; }
-    .inbox-item h3 { margin:0 0 6px; color:#ff9900; font-size:15px; }
-    .inbox-item p { margin:0 0 10px; color:#ccc; font-size:13px; }
-    .inbox-actions { display:flex; gap:8px; flex-wrap:wrap; }
-    .empty { color:#888; }
     .stats-panel { margin-top:16px; border-top:1px solid #333; padding-top:14px; }
     .stats-panel h3 { color:#ff9900; font-size:15px; margin:0 0 8px; }
     .stats-hint { font-size:12px; color:#888; margin-bottom:10px; }
@@ -75,7 +66,8 @@
       <p class="meta" style="margin-top:0;">
         Pick a fixture and enter the score (and optional squad stats below). You can also use
         <a href="fixtures.html" style="color:#ff9900;">Fixtures</a>
-        for score-only entry, or
+        for score-only entry,
+        <a href="inbox.html" style="color:#ff9900;">Inbox</a> to confirm opponent scores, or
         <a href="league_stats.html" style="color:#ff9900;">League stats</a> for leaderboards.
       </p>
 
@@ -123,12 +115,6 @@
 
       <button type="button" id="submitResultBtn" class="button">Submit for confirmation</button>
       <div id="submitStatus"></div>
-    </div>
-
-    <div class="panel" id="inbox">
-      <h2>Inbox</h2>
-      <div id="inboxList"></div>
-      <div id="inboxStatus"></div>
     </div>
   </div>
   <script type="module" src="matchday.js"></script>
