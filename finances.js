@@ -14,6 +14,13 @@ import {
   summariseLedgerTotals,
 } from "./finance_ui.js";
 import { buildFinanceProjections } from "./finance_projections.js";
+import {
+  aggregateClubTransfersFromHistory,
+  loadClubTransferHistoryForSeason,
+  loadCurrentSeasonStart,
+  mergeTransferHistoryIntoByLine,
+  transferHistoryBalanceGap,
+} from "./finance_transfers.js";
 
 function renderLedger(rows) {
   const el = document.getElementById("ledgerTable");
@@ -129,10 +136,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const ledger = await loadFinanceLedger(supabase, shortName, 300);
   const { incomeTotal, costTotal, net } = summariseLedgerTotals(ledger);
   const balanceNow = Number(balanceRow?.balance ?? 0);
-  const inferredOpening = balanceNow - net;
-
-  document.getElementById("openingBalance").textContent =
-    formatMoney(inferredOpening);
 
   document.getElementById("incomeSeasonTotal").textContent =
     formatMoney(incomeTotal);
@@ -142,6 +145,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   netEl.className = `value ${net >= 0 ? "positive" : "negative"}`;
 
   const byLine = aggregateLedgerByLine(ledger);
+
+  const seasonStart = await loadCurrentSeasonStart(supabase);
+  const transferRows = await loadClubTransferHistoryForSeason(
+    supabase,
+    seasonStart
+  );
+  const transferAgg = aggregateClubTransfersFromHistory(
+    transferRows,
+    shortName
+  );
+  const transferGap = transferHistoryBalanceGap(transferAgg, byLine);
+  mergeTransferHistoryIntoByLine(byLine, transferAgg);
+
+  const inferredOpeningAdjusted = balanceNow - net - transferGap;
+
+  document.getElementById("openingBalance").textContent = formatMoney(
+    inferredOpeningAdjusted
+  );
+
   const { pendingByLine, totalPending } = await buildFinanceProjections(
     supabase,
     shortName,
@@ -157,7 +179,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (sectionsEl) {
     sectionsEl.innerHTML = renderFinanceSections(byLine, {
       pendingByLine,
-      runningStart: inferredOpening,
+      runningStart: inferredOpeningAdjusted,
       currentBalance: balanceNow,
     });
   }

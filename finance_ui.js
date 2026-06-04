@@ -462,6 +462,11 @@ export function renderFinanceSections(byLine, options = {}) {
               <span class="fin-col-pending">${formatPendingAmount(pending)}</span>
             </div>
             ${line.note ? `<p class="fin-line-note">${line.note}</p>` : ""}
+            ${
+              bucket?.fromHistory
+                ? `<p class="fin-line-note">Season total from completed transfers (transfer history).</p>`
+                : ""
+            }
             ${pendingNote}
             ${detail ? `<div class="fin-line-detail">${detail}</div>` : ""}
           </div>
