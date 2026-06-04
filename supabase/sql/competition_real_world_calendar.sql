@@ -349,16 +349,26 @@ SELECT
   nxt.gpsl_month AS next_gpsl_month,
   nxt.unlock_at AS next_unlock_at,
   CASE
+    WHEN active.gpsl_month IS NOT NULL THEN 'in_month'
     WHEN NOT EXISTS (
       SELECT 1 FROM public.competition_season_calendar_config c WHERE c.season_id = s.id
-    ) THEN 'not_configured'
-    WHEN active.gpsl_month IS NOT NULL THEN 'in_month'
-    WHEN now() < cfg.anchor_unlock_at THEN 'before_season'
+    ) THEN 'pre_season'
+    WHEN cfg.anchor_unlock_at IS NOT NULL AND now() < cfg.anchor_unlock_at THEN 'pre_season'
     WHEN now() >= (
       SELECT max(c2.lock_at) FROM public.competition_season_calendar c2 WHERE c2.season_id = s.id
     ) THEN 'after_season'
     ELSE 'between_months'
-  END AS calendar_phase
+  END AS calendar_phase,
+  CASE
+    WHEN active.gpsl_month IS NOT NULL THEN
+      public.competition_gpsl_month_label(active.gpsl_month)
+    WHEN now() >= (
+      SELECT max(c2.lock_at) FROM public.competition_season_calendar c2 WHERE c2.season_id = s.id
+    ) THEN 'Post-season'
+    WHEN nxt.gpsl_month IS NOT NULL THEN
+      public.competition_gpsl_month_label(nxt.gpsl_month)
+    ELSE 'Pre-Season'
+  END AS nav_month_label
 FROM public.competition_seasons s
 LEFT JOIN public.competition_season_calendar_config cfg ON cfg.season_id = s.id
 LEFT JOIN LATERAL (

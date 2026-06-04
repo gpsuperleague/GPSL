@@ -494,6 +494,17 @@ function ensureNavStyles() {
   document.head.appendChild(link);
 }
 
+function escapeNavHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function escapeNavAttr(s) {
+  return escapeNavHtml(s).replace(/"/g, "&quot;");
+}
+
 function wireNavLogout() {
   const btn = document.getElementById("logoutBtn");
   if (!btn || btn.dataset.wired === "1") return;
@@ -629,6 +640,19 @@ export async function buildNav() {
 
   const specialAuction = await fetchActiveSpecialAuctionNavItem();
 
+  let calendarStatus = null;
+  let navMonthLabel = null;
+  let navMonthTitle = "";
+  let calMod = null;
+  try {
+    calMod = await import("./competition_calendar.js");
+    calendarStatus = await calMod.loadCalendarStatus(supabase);
+    navMonthLabel = calMod.navGpslMonthDisplay(calendarStatus);
+    navMonthTitle = calMod.navGpslMonthTitle(calendarStatus);
+  } catch (calErr) {
+    console.warn("Nav calendar badge skipped:", calErr);
+  }
+
   const dashActive = pathNorm === "dashboard.html";
   const inboxActive = pathNorm === "inbox.html";
   const adminActive = pathNorm === "admin.html";
@@ -649,6 +673,14 @@ export async function buildNav() {
   }
   html += `</a>`;
   html += `</div>`;
+
+  if (navMonthLabel) {
+    const isPre = calMod?.isPreSeasonPhase?.(calendarStatus) ?? false;
+    html += `<div class="gpsl-nav-month${isPre ? " gpsl-nav-month-pre" : ""}" title="${escapeNavAttr(navMonthTitle)}">`;
+    html += `<span class="gpsl-nav-month-kicker">GPSL</span>`;
+    html += `<span class="gpsl-nav-month-value">${escapeNavHtml(navMonthLabel)}</span>`;
+    html += `</div>`;
+  }
 
   html += adminNavZoneHtml(user, adminActive);
 

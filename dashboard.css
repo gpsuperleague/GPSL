@@ -538,6 +538,45 @@ table.gpsl-table td {
   border-right: 1px solid #333;
 }
 
+/* Live GPSL month / Pre-Season (active competition season) */
+.gpsl-nav-month {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 16px;
+  border-right: 1px solid #333;
+  background: linear-gradient(180deg, #1e2a1e 0%, #1a1a1a 100%);
+  flex-shrink: 0;
+  min-width: 5.5rem;
+}
+
+.gpsl-nav-month-pre {
+  background: linear-gradient(180deg, #2a2618 0%, #1a1a1a 100%);
+}
+
+.gpsl-nav-month-kicker {
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #888;
+  line-height: 1;
+}
+
+.gpsl-nav-month-value {
+  font-size: 15px;
+  font-weight: bold;
+  color: #9cdc9c;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.gpsl-nav-month-pre .gpsl-nav-month-value {
+  color: #e8c070;
+}
+
 /* Admin-only top bar zone (beside Dashboard / Inbox) */
 .gpsl-nav-admin-zone {
   display: flex;

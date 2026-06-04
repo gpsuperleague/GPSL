@@ -64,9 +64,83 @@ export function isFixtureCalendarPlayable(fixture, status) {
   return isGpslMonthCurrentlyPlayable(fixture.gpsl_month, status);
 }
 
+export function isPreSeasonPhase(status) {
+  if (!status) return false;
+  const phase = status.calendar_phase;
+  return (
+    phase === "pre_season" ||
+    phase === "before_season" ||
+    phase === "not_configured" ||
+    (!status.calendar_configured && !!status.season_id)
+  );
+}
+
+/** Label for top navigation (null = hide badge). */
+export function navGpslMonthDisplay(status) {
+  if (!status?.season_id) return null;
+
+  if (status.calendar_phase === "in_month") {
+    return (
+      status.active_gpsl_month_label ||
+      GPSL_MONTH_LABELS[status.active_gpsl_month] ||
+      status.active_gpsl_month ||
+      "—"
+    );
+  }
+
+  if (isPreSeasonPhase(status)) {
+    return "Pre-Season";
+  }
+
+  if (status.calendar_phase === "between_months") {
+    return (
+      GPSL_MONTH_LABELS[status.next_gpsl_month] ||
+      status.next_gpsl_month ||
+      "—"
+    );
+  }
+
+  if (status.calendar_phase === "after_season") {
+    return "Post-season";
+  }
+
+  return "Pre-Season";
+}
+
+export function navGpslMonthTitle(status) {
+  const label = navGpslMonthDisplay(status);
+  if (!label) return "";
+
+  if (status?.calendar_phase === "in_month") {
+    return `GPSL ${label} — match month live until ${formatUkDateTime(status.active_lock_at)} UK`;
+  }
+  if (isPreSeasonPhase(status)) {
+    if (!status.calendar_configured) {
+      return "Competition season is active — set the real-world calendar in GPSL Admin to open August";
+    }
+    return `Pre-Season — GPSL August unlocks ${formatUkDateTime(status.anchor_unlock_at)} UK`;
+  }
+  if (status?.calendar_phase === "between_months") {
+    const next =
+      GPSL_MONTH_LABELS[status.next_gpsl_month] || status.next_gpsl_month;
+    return `Between GPSL months — ${next} unlocks ${formatUkDateTime(status.next_unlock_at)} UK`;
+  }
+  if (status?.calendar_phase === "after_season") {
+    return "GPSL season calendar complete (May locked)";
+  }
+  return label;
+}
+
 export function calendarStatusBanner(status) {
-  if (!status?.calendar_configured) {
-    return "Season calendar not set — all fixtures are open until admin sets the first Friday 7pm UK anchor.";
+  if (!status?.season_id) {
+    return "No active competition season.";
+  }
+
+  if (isPreSeasonPhase(status)) {
+    if (!status.calendar_configured) {
+      return "Pre-Season — competition season is active. Admin: set the first Friday 7pm UK anchor to open GPSL August.";
+    }
+    return `Pre-Season — GPSL August unlocks ${formatUkDateTime(status.anchor_unlock_at)} UK.`;
   }
 
   const phase = status.calendar_phase;
@@ -77,9 +151,6 @@ export function calendarStatusBanner(status) {
 
   if (phase === "in_month") {
     return `GPSL ${activeLabel} is live — league & cup fixtures for ${activeLabel} can be played until ${formatUkDateTime(status.active_lock_at)} UK.`;
-  }
-  if (phase === "before_season") {
-    return `Season starts ${formatUkDateTime(status.anchor_unlock_at)} UK (GPSL August unlocks).`;
   }
   if (phase === "after_season") {
     return "GPSL season calendar has ended (May locked).";
