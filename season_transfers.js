@@ -1,4 +1,4 @@
-import { supabase } from "./global.js";
+import { supabase, initGlobal } from "./global.js";
 import { loadCurrentGpslSeasonLabel } from "./player_season_transfer.js";
 import {
   loadClubsMap,
@@ -246,6 +246,8 @@ function wireFilters() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  await initGlobal();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

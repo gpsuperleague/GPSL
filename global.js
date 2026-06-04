@@ -457,6 +457,20 @@ export async function specialAuctionNavLinkHtml() {
   return `<a id="nav-special-auction" href="${item.href}" class="button">${item.label}</a>`;
 }
 
+/** Load nav layout CSS on every page (many HTML files never linked dashboard.css). */
+function ensureNavStyles() {
+  if (document.getElementById("gpsl-nav-styles")) return;
+  const link = document.createElement("link");
+  link.id = "gpsl-nav-styles";
+  link.rel = "stylesheet";
+  try {
+    link.href = new URL("dashboard.css", import.meta.url).href;
+  } catch {
+    link.href = "dashboard.css";
+  }
+  document.head.appendChild(link);
+}
+
 function wireNavLogout() {
   const btn = document.getElementById("logoutBtn");
   if (!btn || btn.dataset.wired === "1") return;
@@ -465,6 +479,50 @@ function wireNavLogout() {
     await supabase.auth.signOut();
     window.location = "login.html";
   };
+}
+
+function wireNavGroups(nav) {
+  const groups = nav.querySelectorAll("[data-nav-group]");
+
+  const closeAll = () => {
+    groups.forEach((group) => {
+      group.classList.remove("open");
+      const btn = group.querySelector(".nav-group-summary");
+      const panel = group.querySelector(".nav-dropdown");
+      btn?.setAttribute("aria-expanded", "false");
+      panel?.setAttribute("hidden", "");
+    });
+  };
+
+  groups.forEach((group) => {
+    const btn = group.querySelector(".nav-group-summary");
+    const panel = group.querySelector(".nav-dropdown");
+    if (!btn || !panel) return;
+
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const willOpen = !group.classList.contains("open");
+      closeAll();
+      if (willOpen) {
+        group.classList.add("open");
+        btn.setAttribute("aria-expanded", "true");
+        panel.removeAttribute("hidden");
+      }
+    });
+  });
+
+  nav.querySelectorAll(".nav-dropdown .nav-link").forEach((link) => {
+    link.addEventListener("click", () => closeAll());
+  });
+
+  if (!nav.dataset.outsideClose) {
+    nav.dataset.outsideClose = "1";
+    document.addEventListener("click", (e) => {
+      if (e.target.closest("[data-nav-group]")) return;
+      closeAll();
+    });
+  }
 }
 
 /** Minimal nav if grouped menu fails (keeps site usable). */
@@ -578,11 +636,13 @@ export async function buildNav() {
     const hasActive = sectionHasActiveItem({ items }, pathname, search);
     const open = hasActive;
 
-    html += `<details class="nav-group${hasActive ? " nav-group-active" : ""}"${
+    html += `<div class="nav-group${hasActive ? " nav-group-active" : ""}${
       open ? " open" : ""
-    }>`;
-    html += `<summary class="nav-group-summary">${section.label}</summary>`;
-    html += `<div class="nav-dropdown">`;
+    }" data-nav-group>`;
+    html += `<button type="button" class="nav-group-summary" aria-expanded="${
+      open ? "true" : "false"
+    }">${section.label}</button>`;
+    html += `<div class="nav-dropdown" role="menu"${open ? "" : " hidden"}>`;
 
     for (const item of items) {
       const active = isNavItemActive(item, pathname, search);
@@ -592,7 +652,7 @@ export async function buildNav() {
       }">${item.label}</a>`;
     }
 
-    html += `</div></details>`;
+    html += `</div></div>`;
   }
 
   html += `</div>`;
@@ -608,15 +668,7 @@ export async function buildNav() {
 
   nav.innerHTML = html;
   wireNavLogout();
-
-  nav.querySelectorAll(".nav-group").forEach((group) => {
-    group.addEventListener("toggle", () => {
-      if (!group.open) return;
-      nav.querySelectorAll(".nav-group").forEach((other) => {
-        if (other !== group) other.open = false;
-      });
-    });
-  });
+  wireNavGroups(nav);
   } catch (err) {
     console.error("buildNav failed:", err);
     renderFallbackNav();
@@ -628,6 +680,7 @@ export async function buildNav() {
 // ------------------------------------------------------------
 export async function initGlobal() {
   window.supabase = supabase;
+  ensureNavStyles();
   await loadGlobalSettings();
   wireDraftCountdownUI();
   try {

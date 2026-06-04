@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
 
   <style>
     body {
@@ -571,7 +572,7 @@
   <script type="module">
     import {
       supabase,
-      buildNav,
+      initGlobal,
       loadGlobalSettings,
       computeNextDraftTimesFromNow,
     } from "./global.js";
@@ -601,8 +602,7 @@
         return;
       }
 
-      await loadGlobalSettings();
-      await buildNav();
+      await initGlobal();
 
       if (user.email !== "rotavator66@outlook.com") {
         window.location = "dashboard.html";
