@@ -466,6 +466,26 @@ export function statsMapByPlayerId(rows) {
   return map;
 }
 
+/** Pending result row for opponent confirm UI (full ET / pen fields). */
+export async function loadPendingSubmission(supabase, submissionId) {
+  if (!submissionId) return null;
+
+  const { data, error } = await supabase
+    .from("competition_result_submissions")
+    .select(
+      "id, fixture_id, home_goals, away_goals, et_home_goals, et_away_goals, pen_winner_club_short_name, submitted_by_club, status"
+    )
+    .eq("id", submissionId)
+    .eq("status", "pending")
+    .maybeSingle();
+
+  if (error) {
+    console.error("loadPendingSubmission:", error);
+    return null;
+  }
+  return data;
+}
+
 export async function confirmFixtureResult(
   supabase,
   submissionId,

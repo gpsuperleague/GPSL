@@ -7,8 +7,10 @@ import {
   submitFixtureResult,
   confirmFixtureResult,
   rejectFixtureResult,
+  loadPendingSubmission,
   canSubmitResult,
   needsInboxConfirm,
+  normalizeClubKey,
   LEAGUE_DIVISIONS,
 } from "./competition.js";
 let myClub = { short: null, name: null };
@@ -87,39 +89,84 @@ function setScoreInputsEnabled(enabled) {
   if (statsPanel) statsPanel.style.display = showStats ? "block" : "none";
 }
 
-function formatProposedScoreHtml(f) {
-  if (!f || f.proposed_home_goals == null) return "";
-  let html = `<b>Proposed score</b> (from opponent): ${f.home_club_name} <b>${f.proposed_home_goals}–${f.proposed_away_goals}</b> ${f.away_club_name} <span style="color:#888;">(90 min)</span>`;
-  if (f.proposed_et_home_goals != null && f.proposed_et_away_goals != null) {
-    html += `<br>After extra time: <b>${f.proposed_et_home_goals}–${f.proposed_et_away_goals}</b>`;
+function getPendingScoreContext(fixture, submission) {
+  const home90 = Number(submission?.home_goals ?? fixture?.proposed_home_goals ?? 0);
+  const away90 = Number(submission?.away_goals ?? fixture?.proposed_away_goals ?? 0);
+  const etRawHome = submission?.et_home_goals ?? fixture?.proposed_et_home_goals;
+  const etRawAway = submission?.et_away_goals ?? fixture?.proposed_et_away_goals;
+  const hasEt = etRawHome != null && etRawAway != null;
+  const etHome = hasEt ? Number(etRawHome) : null;
+  const etAway = hasEt ? Number(etRawAway) : null;
+  const penWinner =
+    submission?.pen_winner_club_short_name ?? fixture?.proposed_pen_winner_club ?? null;
+  const openPlay = hasEt
+    ? { home: etHome, away: etAway }
+    : { home: home90, away: away90 };
+
+  return { home90, away90, etHome, etAway, hasEt, penWinner, openPlay };
+}
+
+function penWinnerDisplayName(fixture, penWinnerClub) {
+  if (!penWinnerClub || !fixture) return penWinnerClub || "";
+  const penKey = normalizeClubKey(penWinnerClub);
+  if (penKey === normalizeClubKey(fixture.home_club_short_name)) {
+    return fixture.home_club_name;
   }
-  if (f.proposed_pen_winner_club) {
-    const penName =
-      f.proposed_pen_winner_club === f.home_club_short_name
-        ? f.home_club_name
-        : f.proposed_pen_winner_club === f.away_club_short_name
-          ? f.away_club_name
-          : f.proposed_pen_winner_club;
-    html += `<br>Penalties: <b>${penName}</b> won`;
+  if (penKey === normalizeClubKey(fixture.away_club_short_name)) {
+    return fixture.away_club_name;
   }
+  return penWinnerClub;
+}
+
+function formatProposedScoreHtml(fixture, submission) {
+  if (!fixture) return "";
+  const ctx = getPendingScoreContext(fixture, submission);
+  if (!Number.isFinite(ctx.home90) || !Number.isFinite(ctx.away90)) return "";
+
+  let html = `<b>Proposed result</b> (from opponent)<br>`;
+  html += `90 minutes: ${fixture.home_club_name} <b>${ctx.home90}–${ctx.away90}</b> ${fixture.away_club_name}`;
+
+  if (ctx.hasEt) {
+    html += `<br>After extra time (total goals): <b>${ctx.openPlay.home}–${ctx.openPlay.away}</b>`;
+  }
+
+  if (ctx.penWinner) {
+    html += `<br><b>Penalty shootout winner:</b> ${penWinnerDisplayName(fixture, ctx.penWinner)}`;
+  }
+
   return html;
 }
 
-function myTeamGoalsFromSubmission(fixture) {
-  if (!fixture || !myClub.short) return 0;
-  const home90 = fixture.proposed_home_goals;
-  const away90 = fixture.proposed_away_goals;
-  const cupExtra =
-    fixture.proposed_et_home_goals != null
-      ? {
-          etHome: fixture.proposed_et_home_goals,
-          etAway: fixture.proposed_et_away_goals,
-        }
-      : null;
-  const totals = cupExtra
-    ? openPlayTotals(home90, away90, cupExtra)
-    : { home: home90, away: away90 };
-  return myTeamGoalsForFixture(fixture, totals.home, totals.away);
+function myTeamGoalsForConfirm() {
+  if (!confirmMode?.fixture || !myClub.short) return 0;
+  const ctx = getPendingScoreContext(confirmMode.fixture, confirmMode.submission);
+  return myTeamGoalsForFixture(
+    confirmMode.fixture,
+    ctx.openPlay.home,
+    ctx.openPlay.away
+  );
+}
+
+function updateConfirmStatsHint() {
+  const el = document.getElementById("confirmStatsHint");
+  if (!el) return;
+
+  if (!confirmMode?.fixture) {
+    el.style.display = "none";
+    return;
+  }
+
+  const ctx = getPendingScoreContext(confirmMode.fixture, confirmMode.submission);
+  const expected = myTeamGoalsForConfirm();
+  let text = `Your player goals must total <b>${expected}</b>`;
+  text += ctx.hasEt
+    ? " (use the <b>after extra time</b> total for your club, not 90 min only)."
+    : " (90 minute score for your club).";
+  if (ctx.penWinner) {
+    text += ` Match decided on penalties — winner: <b>${penWinnerDisplayName(confirmMode.fixture, ctx.penWinner)}</b> (pen goals are not counted in player stats).`;
+  }
+  el.innerHTML = text;
+  el.style.display = "block";
 }
 
 function applyConfirmModeUI() {
@@ -148,8 +195,16 @@ function applyConfirmModeUI() {
   if (banner) {
     banner.style.display = on ? "block" : "none";
     if (on && confirmMode?.fixture) {
-      banner.innerHTML = formatProposedScoreHtml(confirmMode.fixture);
+      banner.innerHTML = formatProposedScoreHtml(
+        confirmMode.fixture,
+        confirmMode.submission
+      );
     }
+  }
+  if (on) updateConfirmStatsHint();
+  else {
+    const hintEl = document.getElementById("confirmStatsHint");
+    if (hintEl) hintEl.style.display = "none";
   }
   if (confirmActions) confirmActions.style.display = on ? "block" : "none";
   if (submitBtn) {
@@ -162,15 +217,19 @@ function applyConfirmModeUI() {
   }
 }
 
-function enterConfirmMode(fixture) {
+async function enterConfirmMode(fixture) {
   if (!fixture || !needsInboxConfirm(fixture, myClub)) {
     confirmMode = null;
     applyConfirmModeUI();
     return;
   }
+
+  const submission = await loadPendingSubmission(supabase, fixture.submission_id);
+
   confirmMode = {
     submissionId: fixture.submission_id,
     fixture,
+    submission,
   };
   applyConfirmModeUI();
   setScoreInputsEnabled(false);
@@ -179,7 +238,7 @@ function enterConfirmMode(fixture) {
   document.getElementById("submitResultBtn").disabled = false;
   setStatus(
     "submitStatus",
-    "Check the score below, enter your 11 starters and stats, then confirm."
+    "Check the proposed score below, enter your 11 starters and stats, then confirm."
   );
 }
 
@@ -557,7 +616,7 @@ function validateLineupRequired() {
 
 function validatePlayerStats(fixture, homeGoals, awayGoals, playerStats, cupExtra = null) {
   const expected = confirmMode
-    ? myTeamGoalsFromSubmission(fixture)
+    ? myTeamGoalsForConfirm()
     : (() => {
         const totals = cupExtra
           ? openPlayTotals(homeGoals, awayGoals, cupExtra)
@@ -632,13 +691,15 @@ function showNoFixturesHelp() {
   setScoreInputsEnabled(false);
 }
 
-function updateFixturePreview() {
+async function updateFixturePreview() {
   const f = selectedFixture();
   const preview = document.getElementById("fixturePreview");
 
   if (!f) {
     preview.textContent = "Select a fixture from the list above.";
     setScoreInputsEnabled(false);
+    confirmMode = null;
+    applyConfirmModeUI();
     return;
   }
 
@@ -668,7 +729,7 @@ function updateFixturePreview() {
   document.getElementById("awayLabel").textContent = f.away_club_name;
 
   if (needsInboxConfirm(f, myClub)) {
-    enterConfirmMode(f);
+    await enterConfirmMode(f);
     return;
   }
 
@@ -702,7 +763,7 @@ function populateFixtureSelect() {
   if (!upcomingFixtures.length) {
     sel.innerHTML = '<option value="">— no fixtures to submit —</option>';
     showNoFixturesHelp();
-    updateFixturePreview();
+    void updateFixturePreview();
     return;
   }
 
@@ -721,8 +782,10 @@ function populateFixtureSelect() {
     sel.appendChild(opt);
   }
 
-  sel.onchange = updateFixturePreview;
-  updateFixturePreview();
+  sel.onchange = () => {
+    void updateFixturePreview();
+  };
+  void updateFixturePreview();
 }
 
 async function loadUpcomingFixtures() {
@@ -865,15 +928,25 @@ async function submitResult() {
   populateFixtureSelect();
 }
 
-function preselectFixtureFromUrl() {
+async function preselectFixtureFromUrl() {
   const params = new URLSearchParams(window.location.search);
   const id = params.get("fixture");
-  if (!id) return;
+  const confirmId = params.get("confirm");
+  if (!id && !confirmId) return;
 
   const sel = document.getElementById("fixtureSelect");
-  if ([...sel.options].some((o) => o.value === id)) {
+  if (id && [...sel.options].some((o) => o.value === id)) {
     sel.value = id;
-    updateFixturePreview();
+    await updateFixturePreview();
+    return;
+  }
+
+  if (confirmId) {
+    const sub = await loadPendingSubmission(supabase, Number(confirmId));
+    if (sub?.fixture_id && [...sel.options].some((o) => o.value === String(sub.fixture_id))) {
+      sel.value = String(sub.fixture_id);
+      await updateFixturePreview();
+    }
   }
 }
 
@@ -940,5 +1013,5 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadUpcomingFixtures();
   populateFixtureSelect();
-  preselectFixtureFromUrl();
+  await preselectFixtureFromUrl();
 });
