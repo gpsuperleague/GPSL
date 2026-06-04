@@ -1,7 +1,3 @@
-<script>
-  const CURRENT_PAGE = "club";
-</script>
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -19,16 +15,9 @@
       padding: 0;
     }
 
-    #nav {
-      padding: 15px;
-      background: #1a1a1a;
-      border-bottom: 1px solid #333;
-      margin-bottom: 20px;
-    }
-
-    a.button,
-    button.button,
-    #logoutBtn {
+    .modal-footer .button,
+    .modal-footer .cancel-btn,
+    .modal-footer .submit-btn {
       display: inline-block;
       padding: 10px 20px;
       background: #ff9900;
@@ -42,9 +31,9 @@
       border: none;
     }
 
-    a.button:hover,
-    button.button:hover,
-    #logoutBtn:hover {
+    .modal-footer .button:hover,
+    .modal-footer .cancel-btn:hover,
+    .modal-footer .submit-btn:hover {
       background: #ffaa22;
       transform: scale(1.05);
     }
@@ -411,26 +400,18 @@
 
   <!-- SUPABASE MODULE -->
   <script type="module">
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    import { initGlobal, supabase } from "./global.js";
     import {
       loadTransferStatusState,
       resolvePlayerTransferStatus,
       formatTransferStatusMessageHtml,
       TRANSFER_STATUS,
-    } from './player_transfer_status.js';
-    import { SAME_SEASON_TRANSFER_MESSAGE } from './player_season_transfer.js';
-    import { specialAuctionNavLinkHtml } from './global.js';
+    } from "./player_transfer_status.js";
+    import { SAME_SEASON_TRANSFER_MESSAGE } from "./player_season_transfer.js";
     import {
       confirmSquadRulesBeforeBid,
       squadRulesBidWarningLines,
-    } from './squad_rules.js';
-
-    const supabase = createClient(
-      'https://omyyogfumrjoaweuawjn.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4'
-    );
-
-    window.supabase = supabase;
+    } from "./squad_rules.js";
 
     let transferWindowOpen = false;
     let buyerShortName = null;
@@ -439,18 +420,7 @@
     let currentOfferKonamiId = null;
     let currentOfferSellerClub = null;
     let currentPlayerMarketValue = null;
-    let draftEnabled = false;
     let transferStatusState = null;
-
-    async function loadGlobalSettings() {
-      const { data, error } = await supabase
-        .from("global_settings_public")
-        .select("draft_auction_enabled")
-        .eq("id", 1)
-        .single();
-
-      draftEnabled = data?.draft_auction_enabled === true;
-    }
 
     document.addEventListener("DOMContentLoaded", async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -460,43 +430,7 @@
         return;
       }
 
-      await loadGlobalSettings();
-
-      const nav = document.getElementById("nav");
-
-      /* ⭐ UPDATED NAV WITH LOGOUT ON FAR RIGHT */
-      let html = `
-        <div style="display:flex; align-items:center; gap:10px; width:100%;">
-          <div id="leftNav" style="display:flex; align-items:center; gap:10px;">
-            <a href="index.html" class="button">Home</a>
-            <a href="GPDB.html" class="button">Player Database</a>
-            <a href="clubs.html" class="button">Clubs</a>
-            <a href="dashboard.html" class="button">Dashboard</a>
-            <a href="all_listings.html" class="button">Transfer List</a>
-      `;
-
-      if (user.email === "rotavator66@outlook.com") {
-        html += `<a href="admin.html" class="button">GPSL Admin</a>`;
-      }
-
-      if (draftEnabled) {
-        html += `<a href="draftauction.html" class="button">Draft Auction</a>`;
-      }
-
-      html += await specialAuctionNavLinkHtml();
-
-      html += `
-          </div>
-         <button id="logoutBtn" class="button" style="margin-left:20px;">Logout</button>
-        </div>
-      `;
-
-      nav.innerHTML = html;
-
-      document.getElementById("logoutBtn").onclick = async () => {
-        await supabase.auth.signOut();
-        window.location = "login.html";
-      };
+      await initGlobal();
 
       await loadTransferWindowStatus();
       await loadBuyerClubShortName(user.id);
