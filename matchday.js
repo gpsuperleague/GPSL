@@ -14,6 +14,41 @@ let upcomingFixtures = [];
 let allLeagueFixtures = [];
 let squadPlayers = [];
 
+/** Squad picker order on Match Day (GK → CF). */
+const MATCHDAY_POSITION_ORDER = [
+  "GK",
+  "LB",
+  "CB",
+  "RB",
+  "DMF",
+  "LMF",
+  "CMF",
+  "RMF",
+  "AMF",
+  "LWF",
+  "LW",
+  "SS",
+  "RWF",
+  "RW",
+  "CF",
+];
+
+function positionSortIndex(position) {
+  const p = String(position || "").trim().toUpperCase();
+  const i = MATCHDAY_POSITION_ORDER.indexOf(p);
+  return i >= 0 ? i : 999;
+}
+
+function sortPlayersByPosition(players) {
+  return [...players].sort((a, b) => {
+    const pos = positionSortIndex(a.Position) - positionSortIndex(b.Position);
+    if (pos !== 0) return pos;
+    return String(a.Name || "").localeCompare(String(b.Name || ""), "en", {
+      sensitivity: "base",
+    });
+  });
+}
+
 function setStatus(elId, msg, isError = false) {
   const el = document.getElementById(elId);
   if (!el) return;
@@ -61,15 +96,14 @@ async function loadSquadPlayers() {
   const { data, error } = await supabase
     .from("Players")
     .select("Konami_ID, Name, Position, Rating")
-    .eq("Contracted_Team", myClub.short)
-    .order("Name");
+    .eq("Contracted_Team", myClub.short);
 
   if (error) {
     console.error("loadSquadPlayers:", error);
     squadPlayers = [];
     return;
   }
-  squadPlayers = data || [];
+  squadPlayers = sortPlayersByPosition(data || []);
 }
 
 function renderPlayerStatsTable() {
