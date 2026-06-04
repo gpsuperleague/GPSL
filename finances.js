@@ -13,6 +13,7 @@ import {
   renderFinanceSections,
   summariseLedgerTotals,
 } from "./finance_ui.js";
+import { buildFinanceProjections } from "./finance_projections.js";
 
 function renderLedger(rows) {
   const el = document.getElementById("ledgerTable");
@@ -125,11 +126,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     balanceRow?.balance ?? 0
   );
 
-  document.getElementById("openingBalance").textContent = "Soon";
-  document.getElementById("predictedBalance").textContent = "Soon";
-
   const ledger = await loadFinanceLedger(supabase, shortName, 300);
   const { incomeTotal, costTotal, net } = summariseLedgerTotals(ledger);
+  const balanceNow = Number(balanceRow?.balance ?? 0);
+  const inferredOpening = balanceNow - net;
+
+  document.getElementById("openingBalance").textContent =
+    formatMoney(inferredOpening);
 
   document.getElementById("incomeSeasonTotal").textContent =
     formatMoney(incomeTotal);
@@ -138,9 +141,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   netEl.textContent = formatMoney(net);
   netEl.className = `value ${net >= 0 ? "positive" : "negative"}`;
 
+  const byLine = aggregateLedgerByLine(ledger);
+  const { pendingByLine, totalPending } = await buildFinanceProjections(
+    supabase,
+    shortName,
+    { byLine }
+  );
+  const projectedBalance = balanceNow + totalPending;
+
+  const predictedEl = document.getElementById("predictedBalance");
+  predictedEl.textContent = formatMoney(projectedBalance);
+  predictedEl.className = `value ${projectedBalance >= 0 ? "positive" : "negative"}`;
+
   const sectionsEl = document.getElementById("financeSections");
   if (sectionsEl) {
-    sectionsEl.innerHTML = renderFinanceSections(aggregateLedgerByLine(ledger));
+    sectionsEl.innerHTML = renderFinanceSections(byLine, {
+      pendingByLine,
+      runningStart: inferredOpening,
+      currentBalance: balanceNow,
+    });
   }
 
   renderLedger(ledger);

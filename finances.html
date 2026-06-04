@@ -54,10 +54,51 @@
     }
     .fin-line { margin-bottom:10px; }
     .fin-line:last-of-type { margin-bottom:0; }
+    .fin-line-cols {
+      display:grid;
+      grid-template-columns: 1fr 88px 100px 88px;
+      gap:8px 12px;
+      align-items:baseline;
+      font-size:14px;
+      font-weight:bold;
+    }
+    .fin-columns-head {
+      display:grid;
+      grid-template-columns: 1fr 88px 100px 88px;
+      gap:8px 12px;
+      font-size:11px;
+      color:#888;
+      text-transform:uppercase;
+      letter-spacing:0.04em;
+      padding:0 16px 4px;
+      margin-bottom:4px;
+    }
+    .fin-columns-head .fin-col-posted,
+    .fin-columns-head .fin-col-running,
+    .fin-columns-head .fin-col-pending { text-align:right; }
     .fin-line-head {
       display:flex; justify-content:space-between; align-items:baseline;
       font-size:14px; font-weight:bold;
     }
+    .fin-line-head.fin-line-cols .fin-col-posted,
+    .fin-line-head.fin-line-cols .fin-col-running,
+    .fin-line-head.fin-line-cols .fin-col-pending { text-align:right; font-weight:bold; }
+    .fin-section-total.fin-line-cols { font-size:12px; color:#aaa; font-weight:normal; }
+    .fin-section-total.fin-line-cols .fin-col-posted,
+    .fin-section-total.fin-line-cols .fin-col-running,
+    .fin-section-total.fin-line-cols .fin-col-pending { text-align:right; }
+    .fin-pending-note { color:#6a8; font-style:italic; }
+    .pending-amt { opacity:0.95; }
+    .fin-projected-footer {
+      margin-top:16px; padding:14px 16px;
+      background:#1a2a1a; border:1px solid #3a5a3a; border-radius:6px;
+      font-size:14px;
+    }
+    .fin-projected-main {
+      display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+    }
+    .fin-projected-value { font-size:22px; font-weight:bold; }
+    .fin-projected-sub { font-size:11px; color:#888; font-weight:normal; margin:8px 0 0; line-height:1.4; }
     .fin-line-label { color:#eee; }
     .fin-line-note {
       margin:4px 0 0; font-size:11px; color:#777; line-height:1.35; font-weight:normal;
@@ -147,19 +188,24 @@
         <a href="transfer_center.html">Transfer Centre</a> and the market.
       </p>
       <p class="footer-note">
-        <b>Predicted end-of-season balance</b> will forecast remaining gate receipts, prize money,
-        wages, subsidies, tax, and other lines — coming once those jobs post to the ledger.
+        <b>Predicted end-of-season balance</b> uses your current balance plus <b>pending</b> forecasts
+        in Season accounts (upcoming home gates, stadium maintenance, squad wages where calculable).
+        More lines will be added as those systems post to the ledger.
       </p>
     </div>
 
     <div class="panel">
       <h2>Season accounts</h2>
       <p class="footer-note" style="margin-top:0;">
-        Same structure as the classic Excel workbook. Amounts show <b>posted</b> ledger lines;
-        lines marked — are not automated yet. Future / delayed transfer fees are not used.
+        Same structure as the classic Excel workbook.
+        <b>Posted</b> = ledger this season; <b>Running total</b> = season opening + posted lines so far;
+        <b>Pending</b> = estimated future income/costs not yet posted. Footer shows <b>projected balance</b>.
       </p>
       <div id="financeSections"></div>
-      <p class="legend">— = not posted yet &nbsp;|&nbsp; ₿ 0 = no lines this season &nbsp;|&nbsp; green/red = signed ledger amounts</p>
+      <p class="legend">
+        Posted — = not automated yet &nbsp;|&nbsp; Pending — = no forecast for that line yet &nbsp;|&nbsp;
+        green/red = income / cost
+      </p>
     </div>
 
     <div class="panel">
