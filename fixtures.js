@@ -262,7 +262,8 @@ async function onModalSubmit() {
   const awayGoals = Number(document.getElementById("modalAwayGoals").value);
 
   if (modalFixture.competition_type === "cup" && homeGoals === awayGoals) {
-    document.getElementById("modalStatus").textContent = "Cup matches need a winner.";
+    document.getElementById("modalStatus").textContent =
+      "Cup draw after 90 min — use Match Day for extra time and penalties.";
     return;
   }
   const statusEl = document.getElementById("modalStatus");

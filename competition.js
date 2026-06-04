@@ -402,14 +402,22 @@ export async function submitFixtureResult(
   fixtureId,
   homeGoals,
   awayGoals,
-  playerStats = []
+  playerStats = [],
+  cupExtra = null
 ) {
-  return supabase.rpc("competition_submit_result", {
+  const params = {
     p_fixture_id: fixtureId,
     p_home_goals: homeGoals,
     p_away_goals: awayGoals,
     p_player_stats: playerStats,
-  });
+  };
+  if (cupExtra) {
+    if (cupExtra.etHome != null) params.p_et_home_goals = cupExtra.etHome;
+    if (cupExtra.etAway != null) params.p_et_away_goals = cupExtra.etAway;
+    if (cupExtra.penHome != null) params.p_pen_home_goals = cupExtra.penHome;
+    if (cupExtra.penAway != null) params.p_pen_away_goals = cupExtra.penAway;
+  }
+  return supabase.rpc("competition_submit_result", params);
 }
 
 export async function loadPlayerSeasonStats(supabase, division = null) {

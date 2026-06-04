@@ -69,8 +69,145 @@ function setScoreInputsEnabled(enabled) {
   document.getElementById("homeGoals").disabled = !enabled;
   document.getElementById("awayGoals").disabled = !enabled;
   document.getElementById("submitResultBtn").disabled = !enabled;
+  for (const id of ["etHomeGoals", "etAwayGoals", "penHomeGoals", "penAwayGoals"]) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !enabled;
+  }
   const statsPanel = document.getElementById("playerStatsPanel");
   if (statsPanel) statsPanel.style.display = enabled ? "block" : "none";
+}
+
+function isCupFixture(fixture) {
+  return fixture?.competition_type === "cup";
+}
+
+function readScoreInput(id) {
+  const el = document.getElementById(id);
+  if (!el || el.disabled) return 0;
+  const n = Number(el.value);
+  return Number.isFinite(n) && n >= 0 ? n : NaN;
+}
+
+function resetCupExtraScores() {
+  for (const id of ["etHomeGoals", "etAwayGoals", "penHomeGoals", "penAwayGoals"]) {
+    const el = document.getElementById(id);
+    if (el) el.value = "0";
+  }
+}
+
+function updateCupScoreSections() {
+  const f = selectedFixture();
+  const isCup = isCupFixture(f);
+  const hint = document.getElementById("scorePeriodHint");
+  const etRow = document.getElementById("cupEtRow");
+  const penRow = document.getElementById("cupPenRow");
+
+  if (hint) hint.style.display = isCup ? "block" : "none";
+
+  if (!isCup || !etRow || !penRow) {
+    if (etRow) etRow.style.display = "none";
+    if (penRow) penRow.style.display = "none";
+    return;
+  }
+
+  const home90 = readScoreInput("homeGoals");
+  const away90 = readScoreInput("awayGoals");
+  const level90 =
+    Number.isFinite(home90) && Number.isFinite(away90) && home90 === away90;
+
+  if (!level90) {
+    etRow.style.display = "none";
+    penRow.style.display = "none";
+    resetCupExtraScores();
+    return;
+  }
+
+  etRow.style.display = "block";
+  document.getElementById("etHomeLabel").textContent =
+    document.getElementById("homeLabel").textContent + " ET";
+  document.getElementById("etAwayLabel").textContent =
+    document.getElementById("awayLabel").textContent + " ET";
+
+  const etHome = readScoreInput("etHomeGoals");
+  const etAway = readScoreInput("etAwayGoals");
+  const homeTotal = home90 + (Number.isFinite(etHome) ? etHome : 0);
+  const awayTotal = away90 + (Number.isFinite(etAway) ? etAway : 0);
+  const levelAfterEt = homeTotal === awayTotal;
+
+  if (levelAfterEt) {
+    penRow.style.display = "block";
+    document.getElementById("penHomeLabel").textContent =
+      document.getElementById("homeLabel").textContent + " pens";
+    document.getElementById("penAwayLabel").textContent =
+      document.getElementById("awayLabel").textContent + " pens";
+  } else {
+    penRow.style.display = "none";
+    document.getElementById("penHomeGoals").value = "0";
+    document.getElementById("penAwayGoals").value = "0";
+  }
+}
+
+function openPlayTotals(home90, away90, cupExtra) {
+  const etHome = cupExtra?.etHome ?? 0;
+  const etAway = cupExtra?.etAway ?? 0;
+  return {
+    home: home90 + etHome,
+    away: away90 + etAway,
+  };
+}
+
+function validateCupScores(home90, away90, cupExtra) {
+  if (home90 !== away90) {
+    if (
+      cupExtra.etHome != null ||
+      cupExtra.etAway != null ||
+      cupExtra.penHome != null ||
+      cupExtra.penAway != null
+    ) {
+      return "Extra time and penalties only when level after 90 minutes.";
+    }
+    return null;
+  }
+
+  if (cupExtra.etHome == null || cupExtra.etAway == null) {
+    return "Cup draw after 90 minutes — enter extra time scores.";
+  }
+
+  const { home, away } = openPlayTotals(home90, away90, cupExtra);
+  if (home === away) {
+    if (cupExtra.penHome == null || cupExtra.penAway == null) {
+      return "Still level after extra time — enter penalty shootout score.";
+    }
+    if (cupExtra.penHome === cupExtra.penAway) {
+      return "Penalty shootout must have a winner.";
+    }
+  }
+  return null;
+}
+
+function buildCupExtraForSubmit(home90, away90) {
+  if (home90 !== away90) return { cupExtra: null };
+
+  const etHome = readScoreInput("etHomeGoals");
+  const etAway = readScoreInput("etAwayGoals");
+  if (!Number.isFinite(etHome) || !Number.isFinite(etAway)) {
+    return { error: "Enter valid extra time scores." };
+  }
+
+  const cupExtra = { etHome, etAway };
+  const { home, away } = openPlayTotals(home90, away90, cupExtra);
+
+  if (home === away) {
+    const penHome = readScoreInput("penHomeGoals");
+    const penAway = readScoreInput("penAwayGoals");
+    if (!Number.isFinite(penHome) || !Number.isFinite(penAway)) {
+      return { error: "Enter valid penalty shootout scores." };
+    }
+    cupExtra.penHome = penHome;
+    cupExtra.penAway = penAway;
+  }
+
+  return { cupExtra };
 }
 
 function myTeamGoalsForFixture(fixture, homeGoals, awayGoals) {
@@ -241,26 +378,27 @@ function collectPlayerStats() {
   return out;
 }
 
-function lineupSelectionUsed(playerStats) {
+function validateLineupRequired() {
   const { started, subbed } = countLineupFromDom();
-  if (started > 0 || subbed > 0) return true;
-  return playerStats.length > 0;
+  if (started !== MAX_STARTERS) {
+    return `You must tick exactly ${MAX_STARTERS} players as Started (currently ${started}).`;
+  }
+  if (subbed > MAX_SUBS) {
+    return `Maximum ${MAX_SUBS} players can be Subbed on (currently ${subbed}).`;
+  }
+  return null;
 }
 
-function validatePlayerStats(fixture, homeGoals, awayGoals, playerStats) {
-  const expected = myTeamGoalsForFixture(fixture, homeGoals, awayGoals);
+function validatePlayerStats(fixture, homeGoals, awayGoals, playerStats, cupExtra = null) {
+  const totals = cupExtra
+    ? openPlayTotals(homeGoals, awayGoals, cupExtra)
+    : { home: homeGoals, away: awayGoals };
+  const expected = myTeamGoalsForFixture(fixture, totals.home, totals.away);
   let teamGoals = 0;
   let potmCount = 0;
-  const { started, subbed } = countLineupFromDom();
 
-  if (lineupSelectionUsed(playerStats)) {
-    if (started !== MAX_STARTERS) {
-      return `You must tick exactly ${MAX_STARTERS} players as Started (currently ${started}).`;
-    }
-    if (subbed > MAX_SUBS) {
-      return `Maximum ${MAX_SUBS} players can be Subbed on (currently ${subbed}).`;
-    }
-  }
+  const lineupErr = validateLineupRequired();
+  if (lineupErr) return lineupErr;
 
   for (const row of playerStats) {
     teamGoals += row.goals || 0;
@@ -361,6 +499,7 @@ function updateFixturePreview() {
 
   const canSubmit = canSubmitResult(f, myClub);
   setScoreInputsEnabled(canSubmit);
+  updateCupScoreSections();
 
   if (
     f.submission_id &&
@@ -447,13 +586,23 @@ async function submitResult() {
     return;
   }
 
-  if (f.competition_type === "cup" && homeGoals === awayGoals) {
-    setStatus("submitStatus", "Cup matches need a winner — no draws.", true);
-    return;
+  let cupExtra = null;
+  if (isCupFixture(f)) {
+    const built = buildCupExtraForSubmit(homeGoals, awayGoals);
+    if (built?.error) {
+      setStatus("submitStatus", built.error, true);
+      return;
+    }
+    cupExtra = built?.cupExtra ?? null;
+    const cupErr = validateCupScores(homeGoals, awayGoals, cupExtra || {});
+    if (cupErr) {
+      setStatus("submitStatus", cupErr, true);
+      return;
+    }
   }
 
   const playerStats = collectPlayerStats();
-  const statsErr = validatePlayerStats(f, homeGoals, awayGoals, playerStats);
+  const statsErr = validatePlayerStats(f, homeGoals, awayGoals, playerStats, cupExtra);
   if (statsErr) {
     setStatus("submitStatus", statsErr, true);
     return;
@@ -465,7 +614,8 @@ async function submitResult() {
     f.id,
     homeGoals,
     awayGoals,
-    playerStats
+    playerStats,
+    cupExtra
   );
 
   if (error) {
@@ -539,6 +689,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     `${club.Club} — enter scores below or on Fixtures (highlighted rows)`;
 
   document.getElementById("submitResultBtn").onclick = submitResult;
+
+  for (const id of [
+    "homeGoals",
+    "awayGoals",
+    "etHomeGoals",
+    "etAwayGoals",
+    "penHomeGoals",
+    "penAwayGoals",
+  ]) {
+    document.getElementById(id)?.addEventListener("input", updateCupScoreSections);
+  }
 
   await loadSquadPlayers();
   renderPlayerStatsTable();

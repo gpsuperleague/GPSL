@@ -109,6 +109,9 @@
 
       <div id="fixturePreview" class="fixture-preview">Select a fixture.</div>
 
+      <p id="scorePeriodHint" class="stats-hint" style="display:none;margin-bottom:8px;">
+        Cup match — enter the score after <b>90 minutes</b> first.
+      </p>
       <div class="score-entry" id="scoreEntryRow">
         <div class="score-inputs">
           <div class="score-field">
@@ -123,12 +126,42 @@
         </div>
       </div>
 
+      <div id="cupEtRow" class="score-entry" style="display:none;">
+        <p class="stats-hint" style="margin:0 0 8px;">Level after 90 min — <b>extra time</b> goals (added to 90 min score)</p>
+        <div class="score-inputs">
+          <div class="score-field">
+            <label id="etHomeLabel">Home ET</label>
+            <input type="number" id="etHomeGoals" class="score-input" min="0" max="99" value="0">
+          </div>
+          <span class="score-vs" aria-hidden="true">–</span>
+          <div class="score-field">
+            <label id="etAwayLabel">Away ET</label>
+            <input type="number" id="etAwayGoals" class="score-input" min="0" max="99" value="0">
+          </div>
+        </div>
+      </div>
+
+      <div id="cupPenRow" class="score-entry" style="display:none;">
+        <p class="stats-hint" style="margin:0 0 8px;">Still level after extra time — <b>penalty shootout</b></p>
+        <div class="score-inputs">
+          <div class="score-field">
+            <label id="penHomeLabel">Home pens</label>
+            <input type="number" id="penHomeGoals" class="score-input" min="0" max="99" value="0">
+          </div>
+          <span class="score-vs" aria-hidden="true">–</span>
+          <div class="score-field">
+            <label id="penAwayLabel">Away pens</label>
+            <input type="number" id="penAwayGoals" class="score-input" min="0" max="99" value="0">
+          </div>
+        </div>
+      </div>
+
       <div id="playerStatsPanel" class="stats-panel" style="display:none;">
-        <h3>Your squad — match stats (optional)</h3>
+        <h3>Your squad — match stats</h3>
         <p id="lineupCounter" class="stats-hint">Starters: 0/11 · Subs: 0/5</p>
         <p class="stats-hint">
-          Tick exactly <b>11 Started</b> and up to <b>5 Subbed on</b> (not both for one player). Ratings 0.1–10.
-          Player goals must match <b>your</b> team score. One POTM max.
+          You must tick exactly <b>11 Started</b> (subs optional: 0–5 <b>Subbed on</b>). Ratings 0.1–10.
+          Player goals must match <b>your</b> open-play score (90 min + extra time if used). One POTM max.
         </p>
         <div class="stats-wrap">
           <table class="stats-table">
