@@ -384,7 +384,15 @@ async function markRead(inboxId) {
 
 async function renderInbox() {
   const list = document.getElementById("inboxList");
-  const messages = await loadInboxMessages(supabase);
+  if (!myClub.short) {
+    list.innerHTML =
+      '<p class="empty">Link your club to this account to see inbox messages.</p>';
+    return;
+  }
+
+  const messages = await loadInboxMessages(supabase, {
+    clubShortName: myClub.short,
+  });
 
   if (!messages.length) {
     list.innerHTML =
@@ -406,7 +414,12 @@ async function renderInbox() {
 
     const actions = div.querySelector(".inbox-actions");
 
-    if (msg.message_type === "result_to_confirm" && !msg.read_at) {
+    if (
+      msg.message_type === "result_to_confirm" &&
+      !msg.read_at &&
+      (msg.recipient_club_short_name || "").toUpperCase() ===
+        (myClub.short || "").toUpperCase()
+    ) {
       const confirmBtn = document.createElement("button");
       confirmBtn.className = "button";
       confirmBtn.textContent = "Confirm result";

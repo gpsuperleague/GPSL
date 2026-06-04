@@ -348,11 +348,15 @@ export function groupFixturesByMatchday(fixtures) {
     .map(([matchday, rows]) => ({ matchday, fixtures: rows }));
 }
 
-export function formatFixtureScore(f) {
+export function formatFixtureScore(f, clubIdentity = null) {
   if (f.status === "played" && f.home_goals != null && f.away_goals != null) {
     return `${f.home_goals} – ${f.away_goals}`;
   }
-  if (f.submission_status === "pending" && f.proposed_home_goals != null) {
+  if (
+    f.submission_status === "pending" &&
+    f.proposed_home_goals != null &&
+    (!clubIdentity || fixtureInvolvesClub(f, clubIdentity))
+  ) {
     return `${f.proposed_home_goals} – ${f.proposed_away_goals}?`;
   }
   return "vs";
@@ -479,6 +483,7 @@ export function canSubmitResult(fixture, clubIdentity) {
 
 export function needsInboxConfirm(fixture, clubIdentity) {
   if (!fixture || !clubIdentity) return false;
+  if (!fixtureInvolvesClub(fixture, clubIdentity)) return false;
   const me =
     typeof clubIdentity === "string"
       ? normalizeClubKey(clubIdentity)

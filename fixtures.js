@@ -168,7 +168,7 @@ function renderCupFixtures() {
       tr.innerHTML = `
         <td>M${f.cup_match}</td>
         <td>${f.home_club_name}</td>
-        <td class="score">${formatFixtureScore(f)}</td>
+        <td class="score">${formatFixtureScore(f, myClub)}</td>
         <td>${f.away_club_name}</td>
         <td>${f.status}</td>
         <td class="my-actions">${actionCell(f)}</td>
@@ -236,7 +236,7 @@ function renderFixtures() {
       if (fixtureInvolvesClub(f, myClub)) tr.className = "my-fixture";
       tr.innerHTML = `
         <td>${f.home_club_name}</td>
-        <td class="score">${formatFixtureScore(f)}</td>
+        <td class="score">${formatFixtureScore(f, myClub)}</td>
         <td>${f.away_club_name}</td>
         <td class="my-actions">${actionCell(f)}</td>
       `;

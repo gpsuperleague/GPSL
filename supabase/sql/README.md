@@ -53,6 +53,10 @@ Run once:
 - Opponent **Confirm** (updates table) or **Reject** (submitter can resubmit)
 - Dashboard **Inbox** count links to matchday inbox
 
+If owners see **other clubs’ inbox messages** or **pending scores** on fixtures they are not in, run once:
+
+[`competition_inbox_owner_scope.sql`](./competition_inbox_owner_scope.sql)
+
 ### Phase 4 — player stats (after Phase 3)
 
 Run once:

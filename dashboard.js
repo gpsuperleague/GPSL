@@ -56,7 +56,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     saTile.textContent = `Special Auction: ${activeSa.title}`;
   }
 
-  await refreshDashboardInbox(supabase);
+  await refreshDashboardInbox(supabase, shortName);
 });
 
 function showNoClubBanner(email) {
