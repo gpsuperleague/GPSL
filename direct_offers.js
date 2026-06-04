@@ -12,11 +12,16 @@ export function getBidPlayerId(row) {
   return String(raw).trim();
 }
 
-/**
- * Buyer bid still live in Transfer Centre “Active Bids”.
- * Bid rows often stay status=active after listing closes or user is outbid.
- */
-export function isBuyerBidStillLive(bid, listing, buyerClubShort, options = {}) {
+function isBuyerLeadingOnListing(listing, buyerClubShort) {
+  const club = String(buyerClubShort || "").trim();
+  return (
+    !!listing?.current_highest_bidder &&
+    String(listing.current_highest_bidder) === club
+  );
+}
+
+/** Open auction on the transfer list — matches market “Active” rows where you lead. */
+export function isBuyerBidOnLiveAuction(bid, listing, buyerClubShort, options = {}) {
   if (!bid || !isActiveBidStatus(bid.status)) return false;
 
   const now = options.now instanceof Date ? options.now : new Date();
@@ -31,34 +36,54 @@ export function isBuyerBidStillLive(bid, listing, buyerClubShort, options = {}) 
     return String(listing.status || "") === "Active";
   }
 
-  if (isPendingContractedDirectOffer(bid)) return true;
+  if (isPendingContractedDirectOffer(bid)) return false;
 
   if (bid.listing_id == null || !listing) return false;
 
   const st = String(listing.status || "");
-  if (st === "Closed") return false;
+  if (st !== "Active") return false;
 
   const lt = String(listing.listing_type || "").toLowerCase();
   if (lt === "draft") {
     if (draftEnded) return false;
-    return st === "Active";
+    return true;
   }
 
-  const leading =
-    listing.current_highest_bidder &&
-    String(listing.current_highest_bidder) === club;
+  const end = listing.end_time ? new Date(listing.end_time) : null;
+  if (!end || end <= now) return false;
 
-  if (st === "Active") {
-    const end = listing.end_time ? new Date(listing.end_time) : null;
-    if (!end || end <= now) return false;
-    return leading;
-  }
+  return isBuyerLeadingOnListing(listing, club);
+}
 
-  if (st === "Review" || st === "Seller Review") {
-    return leading;
-  }
+/** Reserve not met — auction ended, seller must accept/reject (not on open market list). */
+export function isBuyerBidAwaitingSellerReview(bid, listing, buyerClubShort, options = {}) {
+  if (!bid || !isActiveBidStatus(bid.status)) return false;
+  if (isPendingContractedDirectOffer(bid)) return false;
+  if (bid.listing_id == null || !listing) return false;
 
-  return false;
+  const st = String(listing.status || "");
+  if (st !== "Review" && st !== "Seller Review") return false;
+  if (!isBuyerLeadingOnListing(listing, buyerClubShort)) return false;
+
+  const now = options.now instanceof Date ? options.now : new Date();
+  const deadline = listing.seller_review_deadline
+    ? new Date(listing.seller_review_deadline)
+    : null;
+  if (deadline && deadline <= now) return false;
+
+  return true;
+}
+
+/**
+ * Any buyer row still “in play” (live auction, awaiting seller, or pending direct).
+ * @deprecated prefer isBuyerBidOnLiveAuction / isBuyerBidAwaitingSellerReview
+ */
+export function isBuyerBidStillLive(bid, listing, buyerClubShort, options = {}) {
+  return (
+    isBuyerBidOnLiveAuction(bid, listing, buyerClubShort, options) ||
+    isBuyerBidAwaitingSellerReview(bid, listing, buyerClubShort, options) ||
+    isPendingContractedDirectOffer(bid)
+  );
 }
 
 /** True pending direct offer = contracted, no listing yet, still awaiting seller review */

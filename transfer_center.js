@@ -3,7 +3,7 @@
 // - Normal listings: 24h + next 19:00 UK, Extend/Remove after cutoff if no bids
 // - Direct bids: Accept -> listing + opening bid, Reject -> mark rejected
 // - Seller Review: direct bids only
-// - Active Bids: read-only (no cancel)
+// - Active Bids: live auctions only; Awaiting seller: review + direct offers
 // ============================================================
 
 import { supabase } from "./supabase_client.js";
@@ -19,7 +19,8 @@ import {
 import {
   getBidPlayerId,
   isPendingContractedDirectOffer,
-  isBuyerBidStillLive,
+  isBuyerBidOnLiveAuction,
+  isBuyerBidAwaitingSellerReview,
 } from "./direct_offers.js";
 import {
   loadCurrentGpslSeasonLabel,
@@ -66,6 +67,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadDraftFavouritesSection(shortName);
   loadActiveListings(shortName);
   loadActiveBids(shortName);
+  loadAwaitingSellerBids(shortName);
   loadSellerReview(shortName);
   loadClosedListings(shortName);
   loadSeasonSignings(shortName);
@@ -392,10 +394,7 @@ async function expireListing(listingId, playerId, shortName) {
 // ACTIVE BIDS (your bids as buyer) — READ ONLY
 // ============================================================
 
-async function loadActiveBids(shortName) {
-  const container = document.getElementById("activeBidsContainer");
-  container.innerHTML = "Loading…";
-
+async function loadBuyerBidSections(shortName) {
   const { data: bidsRaw } = await supabase
     .from("Player_Transfer_Bids")
     .select("*")
@@ -406,6 +405,7 @@ async function loadActiveBids(shortName) {
   const now = getUKNow();
   const settings = await loadGlobalSettings();
   const draftEnded = isDraftAuctionEnded(now, settings.draftStart);
+  const filterOpts = { now, draftAuctionEnded: draftEnded };
 
   const listingIds = [
     ...new Set(
@@ -425,36 +425,43 @@ async function loadActiveBids(shortName) {
     listings?.forEach((l) => listingMap.set(l.id, l));
   }
 
-  const bids = (bidsRaw || []).filter((row) =>
-    isBuyerBidStillLive(row, listingMap.get(row.listing_id), shortName, {
-      now,
-      draftAuctionEnded: draftEnded,
-    })
+  const liveBids = [];
+  const awaitingBids = [];
+
+  for (const row of bidsRaw || []) {
+    const listing = listingMap.get(row.listing_id);
+    if (isBuyerBidOnLiveAuction(row, listing, shortName, filterOpts)) {
+      liveBids.push(row);
+    } else if (
+      isBuyerBidAwaitingSellerReview(row, listing, shortName, filterOpts) ||
+      isPendingContractedDirectOffer(row)
+    ) {
+      awaitingBids.push(row);
+    }
+  }
+
+  return { liveBids, awaitingBids, listingMap };
+}
+
+async function renderBuyerBidTable(bids, listingMap, emptyText) {
+  if (!bids.length) {
+    return `<i>${emptyText}</i>`;
+  }
+
+  const listingBids = bids.filter((b) => b.listing_id != null);
+  const directBids = bids.filter(
+    (b) => b.listing_id == null && isPendingContractedDirectOffer(b)
   );
 
-  if (!bids.length) {
-    container.innerHTML = "<i>No active bids.</i>";
-    return;
-  }
+  const playerIds = listingBids
+    .map((b) => listingMap.get(b.listing_id)?.player_id)
+    .filter((id) => id != null);
+  const directIds = directBids.map((b) => getBidPlayerId(b)).filter(Boolean);
 
-  const listingBids = bids.filter((b) => b.listing_id !== null);
-  const directBids = bids.filter((b) => b.listing_id === null && b.is_direct);
+  const playersFromListings = await fetchPlayersMap(playerIds);
+  const directPlayers = await fetchPlayersMap(directIds);
 
-  let playersFromListings = new Map();
-  if (listingBids.length > 0) {
-    const playerIds = listingBids
-      .map((b) => listingMap.get(b.listing_id)?.player_id)
-      .filter((id) => id != null);
-    playersFromListings = await fetchPlayersMap(playerIds);
-  }
-
-  let directPlayers = new Map();
-  if (directBids.length > 0) {
-    const directIds = directBids.map((b) => getBidPlayerId(b)).filter(Boolean);
-    directPlayers = await fetchPlayersMap(directIds);
-  }
-
-  container.innerHTML = `
+  return `
     <table class="gpsl-table">
       <tr>
         <th>Player</th>
@@ -467,7 +474,7 @@ async function loadActiveBids(shortName) {
           let playerName = "Unknown";
           let typeLabel = "Listing bid";
 
-          if (row.listing_id !== null) {
+          if (row.listing_id != null) {
             const listing = listingMap.get(row.listing_id);
             const player = playerFromMap(
               playersFromListings,
@@ -477,12 +484,14 @@ async function loadActiveBids(shortName) {
             const st = String(listing?.status || "");
             if (st === "Review" || st === "Seller Review") {
               typeLabel = "Leading — seller review";
-            } else if (String(listing?.listing_type || "").toLowerCase() === "draft") {
+            } else if (
+              String(listing?.listing_type || "").toLowerCase() === "draft"
+            ) {
               typeLabel = "Draft auction";
             } else {
               typeLabel = "Leading — auction live";
             }
-          } else if (row.is_direct && getBidPlayerId(row)) {
+          } else if (isPendingContractedDirectOffer(row)) {
             const player = playerFromMap(directPlayers, getBidPlayerId(row));
             playerName = player?.Name || "Unknown";
             typeLabel = "Direct offer — awaiting seller";
@@ -500,6 +509,32 @@ async function loadActiveBids(shortName) {
         .join("")}
     </table>
   `;
+}
+
+async function loadActiveBids(shortName) {
+  const container = document.getElementById("activeBidsContainer");
+  container.innerHTML = "Loading…";
+
+  const { liveBids, listingMap } = await loadBuyerBidSections(shortName);
+  container.innerHTML = await renderBuyerBidTable(
+    liveBids,
+    listingMap,
+    "No live auction bids — only open listings where you are the high bidder appear here (same as the transfer market Active filter)."
+  );
+}
+
+async function loadAwaitingSellerBids(shortName) {
+  const container = document.getElementById("awaitingSellerBidsContainer");
+  if (!container) return;
+
+  container.innerHTML = "Loading…";
+
+  const { awaitingBids, listingMap } = await loadBuyerBidSections(shortName);
+  container.innerHTML = await renderBuyerBidTable(
+    awaitingBids,
+    listingMap,
+    "Nothing awaiting the seller."
+  );
 }
 
 // ============================================================
