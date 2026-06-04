@@ -194,13 +194,28 @@ export async function canClubBid(clubShort, playerId) {
 
   const now = getUKNow();
 
-  // Load all bids for this player in this window
-  const { data: bids } = await supabase
+  const winStart = draftStart ? draftStart.toISOString() : null;
+  const winEnd = (draftPublicEnd || draftCutoff)?.toISOString?.() ?? null;
+
+  let query = supabase
     .from("Player_Transfer_Bids")
     .select("bidder_club_id, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time")
-    .eq("direct_bid_id", playerId)
     .eq("is_direct", true)
+    .is("seller_club_id", null)
     .order("bid_time", { ascending: true });
+
+  if (winStart) query = query.gte("bid_time", winStart);
+  if (winEnd) query = query.lt("bid_time", winEnd);
+
+  const key = String(playerId ?? "").trim();
+  const num = Number(key);
+  if (Number.isFinite(num)) {
+    query = query.or(`direct_bid_id.eq.${key},direct_bid_id.eq.${num}`);
+  } else {
+    query = query.eq("direct_bid_id", key);
+  }
+
+  const { data: bids } = await query;
 
   const hasBids = bids && bids.length > 0;
   const firstBidder = hasBids ? bids[0].bidder_club_id : null;

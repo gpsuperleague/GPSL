@@ -29,44 +29,40 @@ There is **no official Konami export**. This workflow uses your **local PC insta
 
 ---
 
-## Path A — Recommended: PESDatabase (fewest manual steps)
+## Downloads — what actually works (read this first)
 
-Best when you only need to **browse/search/export** the current eFootball DB without unpacking CPK yourself.
+### Kazemario “PESDatabase” → Ko-fi only
 
-### A1. Install eFootball on PC (Steam)
+The [Kazemario release post](https://www.kazemario.com/2026/03/release-pesdatabase-v010.html) is a **blog mirror**, not the host. The big download button often sends you to **Ko-fi** (tip/support) or an ad layer, **not** a ZIP. That is normal for those sites — it is not your mistake.
 
-You need a full install so the tool can read the same files the game uses.
+**Do not rely on Kazemario as your only download.** Use one of the paths below.
 
-### A2. Download PESDatabase
+| Tool | Download page (usually real file) | Coach / ~732 CSV? |
+|------|-----------------------------------|-------------------|
+| **PES 2020 Editor (ejogc327)** | [Author blog V0.12](https://ejogc327.blogspot.com/2022/10/pes-2020-editor-v0-12.html) · [TAUVIC99 mirror](https://www.tauvic99.com/2023/02/pes-2020-editor-v012-ejogc327.html) | **Coach → CSV** if bins decode |
+| **eFootball Player Data Editor** | [PESNewupdate](https://pesnewupdate.com/efootball-player-data-editor/) (“DOWNLOAD HERE OR HERE”) · [EvoWeb #88692](https://evoweb.uk/threads/88692/) | Players mature; **check thread for coaches** |
+| **PESDatabase (Kisni Lucky)** | Kazemario only — hunt creator file | Yes if you ever get the ZIP |
+| **eFHUB web** | [Coaches search](https://www.efootballhub.net/efootball23/search/coaches) | Browse/filter, **no bulk CSV** |
 
-- Release post: [PESDatabase v0.1.0](https://www.kazemario.com/2026/03/release-pesdatabase-v010.html) (or newer if linked from pesnewupdate / EvoWeb).
-- Extract the ZIP to a folder outside the game directory (e.g. `D:\Tools\PESDatabase\`).
-
-### A3. Point the tool at your game folder
-
-1. Run PESDatabase.
-2. Set the **game path** to your `eFootball` folder (the one that contains `dt200_console_all.cpk`).
-3. Let it load / index the database (first run can take a while).
-
-### A4. Export coaches
-
-1. Open the **coaches / managers** section (exact menu label depends on tool version).
-2. Confirm the count is in the **~700+** range (not ~58 from small community JSON dumps).
-3. If the tool offers **export** (CSV, Excel, copy table):
-   - Export all coaches.
-   - Save as: `data/managers_efootball_YYYY-MM-DD.csv` (keep outside public web if you prefer; GPSL can use a trimmed GP-tier file only).
-
-### A5. If export is not available
-
-Use PESDatabase to **verify names and IDs**, then use **Path B** for a bulk CSV from `Coach.bin`, or cross-check with eFHUB filters and build your GPSL list manually for GP-tier only.
+**Recommended for GPSL:** **Path A** (unpack + ejogc327) or **Path C** (eFHUB) if you only need GP-tier names, not all 732 rows in a file.
 
 ---
 
-## Path B — Full control: unpack CPK → `Coach.bin` → CSV
+## Path A — Recommended: unpack `Coach.bin` → CSV (ejogc327)
 
-Use when PESDatabase does not export, or you need the raw bin for another editor.
+Works without Ko-fi. You unpack the game database once, then export coaches to CSV.
 
-### B1. Locate the database archive
+**Note:** ejogc327 was built for PES 2020/2021 `Dt*.cpk` layouts. Modern eFootball uses `dt200_console_all.cpk` — you still extract **`Coach.bin`** from there; if the editor errors, check [EvoWeb #88692](https://evoweb.uk/threads/88692/) for a newer eFootball-specific tool.
+
+### A1. Download the editor (not Kazemario)
+
+1. Open **[ejogc327 — PES 2020 Editor V0.12](https://ejogc327.blogspot.com/2022/10/pes-2020-editor-v0-12.html)** (official).
+2. If the page has no visible link, use **[TAUVIC99 mirror](https://www.tauvic99.com/2023/02/pes-2020-editor-v012-ejogc327.html)** → **Link 1 = Download**.
+3. Some versions ask for a **donation** on the author blog for full features; **Coach CSV export** has historically worked without that — if blocked, try an older **V0.11** post on the same blog (MEGA links on older posts).
+4. Extract the ZIP to e.g. `D:\Tools\PES2020Editor\`.
+5. Windows may flag mod tools — only download if you trust the source; scan the ZIP if unsure.
+
+### A2. Locate the database archive
 
 In your eFootball folder, find:
 
@@ -82,7 +78,7 @@ pc7000_console_win.ucas
 pc7000_console_win.utoc
 ```
 
-### B2. Unpack the CPK
+### A3. Unpack the CPK
 
 **Option 1 — CRI tools (common)**
 
@@ -97,7 +93,7 @@ pc7000_console_win.utoc
 
 Write down the full path to `Coach.bin` (path inside CPK changes between updates).
 
-### B3. Copy bins to a safe working folder
+### A4. Copy bins to a safe working folder
 
 Example:
 
@@ -110,25 +106,21 @@ D:\efootball-export\work\
 
 Copy from unpack output—do not work directly in `Program Files\...\eFootball\` unless you accept restore-from-backup risk.
 
-### B4. Open with a database editor
+### A5. Export coaches with ejogc327
 
-Pick **one** editor that supports your game version:
+The editor needs **all** of these in the same folder (copy from unpack if missing):
 
-| Tool | Link | Coach CSV |
-|------|------|-----------|
-| PES 2020 Editor (ejogc327) | [tauvic99 — PES 2020 Editor](https://www.tauvic99.com/2023/02/pes-2020-editor-v012-ejogc327.html) | Documented Coach import/export when bins are extracted |
-| eFootball Player Data Editor | [pesnewupdate](https://pesnewupdate.com/efootball-player-data-editor/) | [EvoWeb thread 88692](https://evoweb.uk/threads/88692/) — confirm coach support for your patch |
-| PESDatabase | See Path A | May avoid manual unpack |
+`Player.bin`, `Coach.bin`, `PlayerAssignment.bin`, `Team.bin`, `Competition.bin`, `CompetitionEntry.bin`, `CompetitionRegulation.bin`, `Stadium.bin`, `Tactics.bin`, `TacticsFormation.bin`, `Ball.bin`, `Boots.bin`, `Gloves.bin`, and `PlayerAppearance.bin` (under `common\character0\model\character\appearance\` in the CPK).
 
-**ejogc327-style steps (typical):**
+Steps:
 
-1. Install/run the editor.
-2. **File → Open** (or “Load database”) and select your **working folder** containing `Coach.bin`.
-3. Open the **Coach** / **Manager** table.
-4. **Export → CSV** (all rows).
-5. Save as `managers_raw_YYYY-MM-DD.csv`.
+1. Run the editor.
+2. **Open** your working folder (folder that contains `Coach.bin`, not the single file).
+3. Open the **Coach** table.
+4. **Export → CSV** (all coaches).
+5. Save as `data/managers_raw_YYYY-MM-DD.csv`.
 
-### B5. Verify the export
+### A6. Verify the export
 
 Open the CSV and check:
 
@@ -138,7 +130,35 @@ Open the CSV and check:
 
 ---
 
-## Path C — No game files: community JSON (small sample only)
+## Path B — Optional: PESDatabase via Kazemario
+
+Only try this if you obtain a real **ZIP** (8 MB, “PESDatabase v0.1.0”), not a Ko-fi page.
+
+1. [Kazemario post](https://www.kazemario.com/2026/03/release-pesdatabase-v010.html) — scroll the whole article; some posts hide a second **MediaFire / MEGA** button below ads.
+2. Search **EvoWeb** or mod Discord for **“PESDatabase Kisni Lucky”** — creator may post a direct host.
+3. If the only button is **Ko-fi**, stop and use **Path A** or **Path C**.
+
+If you do get the ZIP:
+
+1. Extract to `D:\Tools\PESDatabase\`.
+2. Point it at your `eFootball` Steam folder.
+3. Open coaches → export if the UI allows.
+
+---
+
+## Path C — No unpack: eFHUB browse (GP-tier, no full CSV)
+
+When downloads are blocked or you only need **filterable** manager stats:
+
+1. Open [eFootballHub coaches](https://www.efootballhub.net/efootball23/search/coaches) (use `/efootball26/…` when that path exists for your season).
+2. Use filters / Smart Search: set **max 87** on each playstyle (GPSL GP-tier rule).
+3. Manually build a spreadsheet, or use the site to verify names from a partial game export.
+
+There is **no official “export all 732”** button on eFHUB.
+
+---
+
+## Path D — No game files: community JSON (small sample only)
 
 **Not** for the full 732 list.
 
@@ -198,9 +218,11 @@ Copy this block into your notes each time:
 ```
 [ ] Record game version: _______________
 [ ] Backup eFootball folder
-[ ] Path A: PESDatabase load + coach export
+[ ] Download editor: ejogc327 (tauvic99 mirror if author page has no link)
+    — Skip Kazemario unless you have a real ZIP, not Ko-fi
+[ ] Unpack dt200_console_all.cpk → find Coach.bin → copy full bin set → ejogc327 CSV
     OR
-[ ] Path B: Unpack dt200_console_all.cpk → find Coach.bin → ejogc327 CSV
+[ ] Path C only: eFHUB filters → manual spreadsheet for GP-tier
 [ ] Row count ~700+? Actual: _______
 [ ] Save: data/managers_efootball_YYYY-MM-DD.csv
 [ ] Filter playstyle ≤87 → managers_gp_tier.csv
@@ -214,6 +236,7 @@ Copy this block into your notes each time:
 
 | Problem | What to try |
 |---------|-------------|
+| Kazemario download → Ko-fi only | Expected; use **Path A** (ejogc327) or **Path C** (eFHUB) |
 | Editor crashes or empty Coach table | Game updated; get newer editor build from EvoWeb/pesnewupdate |
 | Cannot find `Coach.bin` | Re-unpack latest `dt200_console_all.cpk`; search entire unpack tree |
 | CSV has ~200 rows | Wrong bin or old PES EDIT workflow — not full live DB |
@@ -237,7 +260,8 @@ Copy this block into your notes each time:
 
 ```
 <Game>\dt200_console_all.cpk     → unpack → Coach.bin
-<Game>\                           → path for PESDatabase
+<Game>\                           → path for PESDatabase (if you have the ZIP)
+D:\Tools\PES2020Editor\           → ejogc327 install
 D:\efootball-export\work\         → recommended copy workspace
 GPSL\data\managers_*.csv          → versioned exports for league
 ```

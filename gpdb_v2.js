@@ -19,6 +19,7 @@ import {
   gpdbFreeAgentLockMessage,
   getDraftCredits,
   syncDraftListingHighBid,
+  fetchCurrentDraftAuctionBids,
 } from "./draft_engine.js";
 import {
   loadPendingDirectOfferState,
@@ -1018,12 +1019,13 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function insertDraftBid(player, amount, club, isFirst, isJoin, consumeJoin, listingId) {
+    const konamiKey = String(player.Konami_ID).trim();
     const { data, error } = await supabase
       .from("Player_Transfer_Bids")
       .insert({
         listing_id: listingId,
-        player_id: String(player.Konami_ID).trim(),
-        direct_bid_id: player.Konami_ID,
+        player_id: konamiKey,
+        direct_bid_id: konamiKey,
         bidder_club_id: club,
         bid_amount: amount,
         is_direct: true,
@@ -1063,16 +1065,14 @@ document.addEventListener("DOMContentLoaded", () => {
       };
     }
 
-    const { data: existing, error: existingErr } = await supabase
-      .from("Player_Transfer_Bids")
-      .select("bidder_club_id")
-      .eq("direct_bid_id", player.Konami_ID)
-      .eq("is_direct", true)
-      .order("bid_time", { ascending: true });
+    const existing = await fetchCurrentDraftAuctionBids(
+      player.Konami_ID,
+      draftStart
+    );
 
-    console.log("submitDraftBid existing bids =", existing, "error =", existingErr);
+    console.log("submitDraftBid existing draft bids (window) =", existing);
 
-    const isFirstBid = !existing || existing.length === 0;
+    const isFirstBid = existing.length === 0;
     const isJoining = !isFirstBid;
 
     console.log("submitDraftBid isFirstBid =", isFirstBid, "isJoining =", isJoining);
@@ -1089,16 +1089,15 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isJoining) {
       console.log("submitDraftBid: JOINING existing auction");
 
-      const { data: priorJoin, error: priorJoinErr } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("bid_id")
-        .eq("direct_bid_id", player.Konami_ID)
-        .eq("bidder_club_id", buyerShortName)
-        .eq("is_draft_join", true);
+      const priorJoin = existing.filter(
+        (b) =>
+          b.bidder_club_id === buyerShortName &&
+          b.is_draft_join === true
+      );
 
-      console.log("submitDraftBid priorJoin =", priorJoin, "error =", priorJoinErr);
+      console.log("submitDraftBid priorJoin =", priorJoin);
 
-      if (priorJoin && priorJoin.length > 0) {
+      if (priorJoin.length > 0) {
         bidResult = await insertDraftBid(
           player,
           offerAmount,
@@ -1114,7 +1113,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (credits <= 0) {
           console.log("submitDraftBid blocked: no credits");
-          return { ok: false, msg: "You do not have enough draft credits to join this auction." };
+          return {
+            ok: false,
+            msg:
+              "You do not have enough draft credits to join this auction. Be the first club to bid on a free agent in GPDB to earn credits.",
+          };
         }
 
         bidResult = await insertDraftBid(

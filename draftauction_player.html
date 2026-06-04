@@ -162,6 +162,7 @@
       canClubBidOnPlayerDraft,
       getActiveDraftListingId,
       syncDraftListingHighBid,
+      fetchCurrentDraftAuctionBids,
     } from "./draft_engine.js";
 
     import { fullClubName, loadClubsMap } from "./clubs_lookup.js";
@@ -406,20 +407,11 @@
       img.src = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
       img.onerror = () => img.src = "images/silhouette.png";
 
-      /* --- Bids (current draft window from auction start) --- */
-      const nowUK = getUKNow();
-      const timeline = getDraftTimelineFromStart(draftAuctionStartTimeUK);
-      const windowStart =
-        timeline?.start ?? new Date(nowUK.getTime() - 24 * 60 * 60 * 1000);
-
-      const { data: bids } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("*")
-        .eq("direct_bid_id", player.Konami_ID)
-        .eq("is_direct", true)
-        .gte("bid_time", windowStart.toISOString())
-        .lte("bid_time", nowUK.toISOString())
-        .order("bid_time", { ascending: true });
+      /* --- Bids (current draft window, draft-only rows) --- */
+      const bids = await fetchCurrentDraftAuctionBids(
+        player.Konami_ID,
+        draftAuctionStartTimeUK
+      );
 
       if (!bids || !bids.length) {
         document.getElementById("historyBody").innerHTML =
@@ -592,47 +584,40 @@
       /* --- Determine flags using unified helpers --- */
       const nowUK = getUKNow();
 
-      const { data: existing } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("bidder_club_id")
-        .eq("direct_bid_id", playerId)
-        .eq("is_direct", true)
-        .order("bid_time", { ascending: true });
-
-      const isFirstBidder = existing && existing.length
-        ? existing[0].bidder_club_id === buyerShortName
-        : false;
+      const windowBids = await fetchCurrentDraftAuctionBids(
+        playerId,
+        draftAuctionStartTimeUK
+      );
+      const hasBids = windowBids.length > 0;
+      const openerClub = hasBids ? windowBids[0].bidder_club_id : null;
 
       let is_first_draft_bid = false;
       let is_draft_join = false;
       let draft_join_consumed = false;
 
-      if (isFirstBidder) {
-        const { data: firstAlready } = await supabase
-          .from("Player_Transfer_Bids")
-          .select("bid_id")
-          .eq("direct_bid_id", playerId)
-          .eq("bidder_club_id", buyerShortName)
-          .eq("is_first_draft_bid", true);
-
-        if (!firstAlready || !firstAlready.length) {
-          is_first_draft_bid = true;
-        }
+      if (!hasBids) {
+        // First bid on this player in the live draft window (earns 2 credits).
+        is_first_draft_bid = true;
+      } else if (openerClub === buyerShortName) {
+        // Opening club raising their bid — no join credit.
+        is_first_draft_bid = false;
+        is_draft_join = false;
       } else {
         is_draft_join = true;
 
-        const { data: priorJoins } = await supabase
-          .from("Player_Transfer_Bids")
-          .select("bid_id")
-          .eq("direct_bid_id", playerId)
-          .eq("bidder_club_id", buyerShortName)
-          .eq("is_draft_join", true);
+        const priorJoins = windowBids.filter(
+          (b) =>
+            b.bidder_club_id === buyerShortName && b.is_draft_join === true
+        );
 
-        if (!priorJoins || !priorJoins.length) {
-          const { credits } = await getDraftCredits(buyerShortName, draftAuctionStartTimeUK);
+        if (!priorJoins.length) {
+          const { credits } = await getDraftCredits(
+            buyerShortName,
+            draftAuctionStartTimeUK
+          );
           if (credits <= 0) {
             document.getElementById("bidStatus").textContent =
-              "You do not have enough draft credits to join this auction.";
+              "You do not have enough draft credits to join this auction. Open a new free agent in GPDB first to earn credits.";
             return;
           }
           draft_join_consumed = true;

@@ -81,6 +81,60 @@ export function formatMs(ms) {
   return `${h}h ${m}m ${s}s`;
 }
 
+/** Consistent Konami id for bid rows (DB may store number or text). */
+export function normalizeKonamiId(id) {
+  if (id == null || String(id).trim() === "") return "";
+  return String(id).trim();
+}
+
+/** Current draft auction bid window (admin start → public end). */
+export function getDraftBidWindowBounds(draftAuctionStartTime) {
+  const timeline = getDraftTimelineFromStart(
+    draftAuctionStartTime ? new Date(draftAuctionStartTime) : null
+  );
+  if (!timeline) return null;
+  return {
+    startIso: timeline.start.toISOString(),
+    endIso: timeline.publicEnd.toISOString(),
+  };
+}
+
+/**
+ * Draft auction bids only: current window, free-agent (no seller), not contracted direct offers.
+ */
+export async function fetchCurrentDraftAuctionBids(konamiId, draftAuctionStartTime) {
+  const bounds = getDraftBidWindowBounds(draftAuctionStartTime);
+  if (!bounds) return [];
+
+  const key = normalizeKonamiId(konamiId);
+  if (!key) return [];
+
+  let query = supabase
+    .from("Player_Transfer_Bids")
+    .select(
+      "bidder_club_id, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time, bid_amount, bid_id"
+    )
+    .eq("is_direct", true)
+    .is("seller_club_id", null)
+    .gte("bid_time", bounds.startIso)
+    .lt("bid_time", bounds.endIso)
+    .order("bid_time", { ascending: true });
+
+  const num = Number(key);
+  if (Number.isFinite(num)) {
+    query = query.or(`direct_bid_id.eq.${key},direct_bid_id.eq.${num}`);
+  } else {
+    query = query.eq("direct_bid_id", key);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("fetchCurrentDraftAuctionBids:", error);
+    return [];
+  }
+  return data || [];
+}
+
 /* ============================================================
    MODULE C: Global Settings
    ============================================================ */
@@ -193,22 +247,11 @@ export async function canClubBidOnPlayerDraft({
 
   const cutoff = timeline.cutoff;
 
-  const { data: existing } = await supabase
-    .from("Player_Transfer_Bids")
-    .select("bidder_club_id")
-    .eq("direct_bid_id", konamiId)
-    .eq("bidder_club_id", buyerShortName)
-    .eq("is_direct", true);
+  const windowBids = await fetchCurrentDraftAuctionBids(konamiId, start);
 
-  if (existing && existing.length) return true;
+  if (windowBids.some((b) => b.bidder_club_id === buyerShortName)) return true;
 
-  const { data: allBids } = await supabase
-    .from("Player_Transfer_Bids")
-    .select("bidder_club_id")
-    .eq("direct_bid_id", konamiId)
-    .eq("is_direct", true);
-
-  const isFirstBid = !allBids || allBids.length === 0;
+  const isFirstBid = windowBids.length === 0;
 
   if (isFirstBid) {
     if (nowUK >= cutoff) return false;
