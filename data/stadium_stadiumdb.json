@@ -125,6 +125,13 @@
     "imageUrl": "https://stadiumdb.com/pictures/stadiums/esp/ciutat_de_valencia/ciutat_de_valencia28.jpg",
     "fetchedAt": "2026-06-04T12:00:00.000Z"
   },
+  "VIL": {
+    "stadium": "Estadio de la Cerámica",
+    "nation": "Spain",
+    "pageUrl": "https://stadiumdb.com/stadiums/esp/el_madrigal",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/esp/el_madrigal/el_madrigal29.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
   "ARS": {
     "stadium": "Emirates Stadium",
     "nation": "England",

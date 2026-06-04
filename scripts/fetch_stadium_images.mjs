@@ -128,7 +128,7 @@ const SLUG_OVERRIDES = {
   NMU: "usa/isotopes_park",
   WOL: "eng/molineux_stadium",
   BET: "esp/estadio_benito_villamarin",
-  VIL: "esp/estadio_de_la_ceramica",
+  VIL: "esp/el_madrigal",
   FIO: "ita/stadio_artemio_franchi",
   COP: "den/parken",
   BES: "tur/vodafone_arena",
@@ -165,6 +165,7 @@ const IMAGE_URL_OVERRIDES = {
   RMA: "https://stadiumdb.com/pictures/stadiums/esp/nuevo_santiago_bernabeu/nuevo_santiago_bernabeu24.jpg",
   SAN: "https://stadiumdb.com/img/news/2025/08/58Cal02.jpg",
   VAL: "https://stadiumdb.com/pictures/stadiums/esp/ciutat_de_valencia/ciutat_de_valencia28.jpg",
+  VIL: "https://stadiumdb.com/pictures/stadiums/esp/el_madrigal/el_madrigal29.jpg",
 };
 
 function slugify(text) {
