@@ -402,38 +402,6 @@ export async function loadGlobalSettings() {
 }
 
 // ------------------------------------------------------------
-// NAV — Special Auction link (shared by buildNav + legacy inline navs)
-// ------------------------------------------------------------
-export async function specialAuctionNavLinkHtml() {
-  const path = window.location.pathname.toLowerCase();
-  if (path.includes("special_auction")) return "";
-
-  try {
-    const nowIso = new Date().toISOString();
-    const { data: sa } = await supabase
-      .from("special_auctions")
-      .select("id, title, start_time")
-      .in("status", ["scheduled", "active"])
-      .gt("end_time", nowIso)
-      .order("start_time", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (!sa) return "";
-
-    const starts = new Date(sa.start_time);
-    const beforeStart = Date.now() < starts.getTime();
-    const label = beforeStart
-      ? `Special Auction (${starts.toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" })})`
-      : "Special Auction";
-
-    return `<a id="nav-special-auction" href="special_auction.html" class="button">${label}</a>`;
-  } catch (_) {
-    return "";
-  }
-}
-
-// ------------------------------------------------------------
 // NAV — owner club (inbox badge)
 // ------------------------------------------------------------
 async function getOwnerClubShort() {
@@ -479,11 +447,14 @@ async function fetchActiveSpecialAuctionNavItem() {
   }
 }
 
-/** @deprecated Use grouped nav; kept for any legacy inline callers */
+/** Legacy inline navs (draftauction.html, etc.) */
 export async function specialAuctionNavLinkHtml() {
+  const path = window.location.pathname.toLowerCase();
+  if (path.includes("special_auction")) return "";
+
   const item = await fetchActiveSpecialAuctionNavItem();
   if (!item) return "";
-  return `<a href="${item.href}" class="nav-link">${item.label}</a>`;
+  return `<a id="nav-special-auction" href="${item.href}" class="button">${item.label}</a>`;
 }
 
 function wireNavLogout() {
