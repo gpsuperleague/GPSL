@@ -14,6 +14,9 @@ let upcomingFixtures = [];
 let allLeagueFixtures = [];
 let squadPlayers = [];
 
+const MAX_STARTERS = 11;
+const MAX_SUBS = 5;
+
 /** Squad picker order on Match Day (GK → CF). */
 const MATCHDAY_POSITION_ORDER = [
   "GK",
@@ -80,12 +83,47 @@ function myTeamGoalsForFixture(fixture, homeGoals, awayGoals) {
 
 function ratingOptionsHtml(selected) {
   let html = '<option value="">—</option>';
-  for (let i = 1; i <= 10; i += 0.5) {
-    const v = i % 1 === 0 ? String(i) : i.toFixed(1);
-    const sel = selected != null && Number(selected) === i ? " selected" : "";
+  for (let i = 1; i <= 100; i++) {
+    const v = (i / 10).toFixed(1);
+    const sel =
+      selected != null && Math.abs(Number(selected) - Number(v)) < 0.001
+        ? " selected"
+        : "";
     html += `<option value="${v}"${sel}>${v}</option>`;
   }
   return html;
+}
+
+function countLineupFromDom() {
+  let started = 0;
+  let subbed = 0;
+  document.querySelectorAll("#playerStatsBody tr[data-stat-player]").forEach((tr) => {
+    if (tr.querySelector(".stat-started")?.checked) started++;
+    if (tr.querySelector(".stat-subbed")?.checked) subbed++;
+  });
+  return { started, subbed };
+}
+
+function updateLineupCounter() {
+  const el = document.getElementById("lineupCounter");
+  if (!el) return;
+
+  const { started, subbed } = countLineupFromDom();
+  el.textContent = `Starters: ${started}/${MAX_STARTERS} · Subs: ${subbed}/${MAX_SUBS}`;
+  el.classList.remove("lineup-warn", "lineup-ok");
+
+  if (started === MAX_STARTERS && subbed <= MAX_SUBS) {
+    el.classList.add("lineup-ok");
+  } else if (started > 0 || subbed > 0) {
+    el.classList.add("lineup-warn");
+  }
+
+  document.querySelectorAll("#playerStatsBody tr[data-stat-player]").forEach((tr) => {
+    const startCb = tr.querySelector(".stat-started");
+    const subCb = tr.querySelector(".stat-subbed");
+    if (startCb) startCb.disabled = !startCb.checked && started >= MAX_STARTERS;
+    if (subCb) subCb.disabled = !subCb.checked && subbed >= MAX_SUBS;
+  });
 }
 
 async function loadSquadPlayers() {
@@ -133,6 +171,7 @@ function renderPlayerStatsTable() {
     wirePlayedCheckboxes(tr);
     tbody.appendChild(tr);
   }
+  updateLineupCounter();
 }
 
 function wirePlayedCheckboxes(tr) {
@@ -141,10 +180,20 @@ function wirePlayedCheckboxes(tr) {
   if (!started || !subbed) return;
 
   started.addEventListener("change", () => {
-    if (started.checked) subbed.checked = false;
+    if (started.checked) {
+      subbed.checked = false;
+      const { started: n } = countLineupFromDom();
+      if (n > MAX_STARTERS) started.checked = false;
+    }
+    updateLineupCounter();
   });
   subbed.addEventListener("change", () => {
-    if (subbed.checked) started.checked = false;
+    if (subbed.checked) {
+      started.checked = false;
+      const { subbed: n } = countLineupFromDom();
+      if (n > MAX_SUBS) subbed.checked = false;
+    }
+    updateLineupCounter();
   });
 }
 
@@ -180,16 +229,32 @@ function collectPlayerStats() {
   return out;
 }
 
+function lineupSelectionUsed(playerStats) {
+  const { started, subbed } = countLineupFromDom();
+  if (started > 0 || subbed > 0) return true;
+  return playerStats.length > 0;
+}
+
 function validatePlayerStats(fixture, homeGoals, awayGoals, playerStats) {
   const expected = myTeamGoalsForFixture(fixture, homeGoals, awayGoals);
   let teamGoals = 0;
   let potmCount = 0;
+  const { started, subbed } = countLineupFromDom();
+
+  if (lineupSelectionUsed(playerStats)) {
+    if (started !== MAX_STARTERS) {
+      return `You must tick exactly ${MAX_STARTERS} players as Started (currently ${started}).`;
+    }
+    if (subbed > MAX_SUBS) {
+      return `Maximum ${MAX_SUBS} players can be Subbed on (currently ${subbed}).`;
+    }
+  }
 
   for (const row of playerStats) {
     teamGoals += row.goals || 0;
     if (row.potm) potmCount += 1;
-    if (row.rating != null && (row.rating < 1 || row.rating > 10)) {
-      return "Ratings must be between 1 and 10.";
+    if (row.rating != null && (row.rating < 0.1 || row.rating > 10)) {
+      return "Ratings must be between 0.1 and 10.";
     }
     if (row.started && row.subbed_on) {
       return "A player cannot be both started and subbed on.";

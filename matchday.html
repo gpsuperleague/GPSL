@@ -16,13 +16,35 @@
       padding:20px; margin-bottom:24px;
     }
     label { display:block; color:#ccc; margin-bottom:6px; font-size:13px; }
-    select, input[type="number"] {
+    select {
       width:100%; padding:10px; background:#222; border:1px solid #444;
       color:#ddd; border-radius:6px; box-sizing:border-box; margin-bottom:12px;
     }
-    .score-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
-    .score-row > div { flex:1; min-width:100px; }
-    .vs { color:#ff9900; font-weight:bold; padding-bottom:12px; }
+    .score-entry { margin-bottom:14px; width:fit-content; max-width:100%; }
+    .score-inputs {
+      display:flex; align-items:center; gap:10px;
+    }
+    .score-field { display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .score-field label {
+      font-size:11px; color:#aaa; margin:0; max-width:100px;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      text-align:center;
+    }
+    .score-input {
+      width:52px; padding:6px 4px; margin:0;
+      background:#222; border:1px solid #444; color:#ddd;
+      border-radius:6px; font-size:18px; font-weight:bold;
+      text-align:center; box-sizing:border-box;
+    }
+    .score-vs {
+      color:#ff9900; font-weight:bold; font-size:20px;
+      line-height:1; flex-shrink:0; user-select:none;
+    }
+    #lineupCounter {
+      font-size:12px; color:#8c8; margin:0 0 8px;
+    }
+    #lineupCounter.lineup-warn { color:#f88; }
+    #lineupCounter.lineup-ok { color:#8d8; }
     .button {
       padding:10px 18px; background:#ff9900; color:#111; border:none;
       border-radius:6px; font-weight:bold; cursor:pointer; margin-right:8px;
@@ -59,8 +81,8 @@
     }
     table.stats-table input[type="checkbox"] { transform:scale(1.1); }
     table.stats-table select.stat-rating {
-      width:56px; padding:4px; margin:0; background:#222; border:1px solid #444;
-      color:#ddd; border-radius:4px;
+      width:52px; padding:4px; margin:0; background:#222; border:1px solid #444;
+      color:#ddd; border-radius:4px; font-size:11px;
     }
   </style>
 </head>
@@ -87,23 +109,26 @@
 
       <div id="fixturePreview" class="fixture-preview">Select a fixture.</div>
 
-      <div class="score-row" id="scoreEntryRow">
-        <div>
-          <label id="homeLabel">Home</label>
-          <input type="number" id="homeGoals" min="0" max="99" value="0">
-        </div>
-        <div class="vs">–</div>
-        <div>
-          <label id="awayLabel">Away</label>
-          <input type="number" id="awayGoals" min="0" max="99" value="0">
+      <div class="score-entry" id="scoreEntryRow">
+        <div class="score-inputs">
+          <div class="score-field">
+            <label id="homeLabel">Home</label>
+            <input type="number" id="homeGoals" class="score-input" min="0" max="99" value="0">
+          </div>
+          <span class="score-vs" aria-hidden="true">–</span>
+          <div class="score-field">
+            <label id="awayLabel">Away</label>
+            <input type="number" id="awayGoals" class="score-input" min="0" max="99" value="0">
+          </div>
         </div>
       </div>
 
       <div id="playerStatsPanel" class="stats-panel" style="display:none;">
         <h3>Your squad — match stats (optional)</h3>
+        <p id="lineupCounter" class="stats-hint">Starters: 0/11 · Subs: 0/5</p>
         <p class="stats-hint">
-          Under <b>Played</b>, tick <b>Started</b> or <b>Subbed on</b> (not both). If you enter player goals,
-          their total must match <b>your</b> team score. One Player of the Match max. Stats apply on confirm.
+          Tick exactly <b>11 Started</b> and up to <b>5 Subbed on</b> (not both for one player). Ratings 0.1–10.
+          Player goals must match <b>your</b> team score. One POTM max.
         </p>
         <div class="stats-wrap">
           <table class="stats-table">

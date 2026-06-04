@@ -76,6 +76,7 @@ Run once:
 - Leaderboards on **`league_stats.html`** (`competition_player_season_stats_public`)
 - Season **Apps / G / A / Avg** on **`squad.html`**
 - **Started / Subbed on** on Match Day: run [`competition_match_stats_started_sub.sql`](./competition_match_stats_started_sub.sql) once (adds columns + updates stats apply)
+- **Ratings 0.1–10:** run [`competition_rating_min_0_1.sql`](./competition_rating_min_0_1.sql) once (DB was minimum 1.0)
 
 ### Phase 5 — gate receipts & ledger (after Phase 4)
 
