@@ -28,6 +28,8 @@ DECLARE
   v_team_goals int := 0;
   v_expected int;
   v_potm_count int := 0;
+  v_home_open int;
+  v_away_open int;
 BEGIN
   SELECT * INTO v_sub
   FROM public.competition_result_submissions
@@ -50,10 +52,26 @@ BEGIN
     RETURN;
   END IF;
 
-  v_expected := CASE
-    WHEN v_sub.submitted_by_club = v_fixture.home_club_short_name THEN v_sub.home_goals
-    ELSE v_sub.away_goals
-  END;
+  IF v_fixture.competition_type = 'cup' THEN
+    SELECT ot.home_total, ot.away_total
+    INTO v_home_open, v_away_open
+    FROM public.competition_cup_open_play_totals(
+      v_sub.home_goals,
+      v_sub.away_goals,
+      v_sub.et_home_goals,
+      v_sub.et_away_goals
+    ) ot;
+
+    v_expected := CASE
+      WHEN v_sub.submitted_by_club = v_fixture.home_club_short_name THEN v_home_open
+      ELSE v_away_open
+    END;
+  ELSE
+    v_expected := CASE
+      WHEN v_sub.submitted_by_club = v_fixture.home_club_short_name THEN v_sub.home_goals
+      ELSE v_sub.away_goals
+    END;
+  END IF;
 
   FOR v_item IN SELECT value FROM jsonb_array_elements(v_sub.player_stats)
   LOOP
