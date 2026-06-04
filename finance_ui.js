@@ -411,12 +411,13 @@ export function renderFinanceSections(byLine, options = {}) {
   }
 
   const parts = [
-    `<div class="fin-columns-head" aria-hidden="true">
-      <span class="fin-col-label">Line</span>
-      <span class="fin-col-posted">Posted</span>
-      <span class="fin-col-running">Running total</span>
-      <span class="fin-col-pending">Pending</span>
-    </div>`,
+    `<div class="fin-sheet">
+      <div class="fin-columns-head">
+        <span class="fin-col-label">Line</span>
+        <span class="fin-col-posted">Posted</span>
+        <span class="fin-col-running">Running total</span>
+        <span class="fin-col-pending">Pending</span>
+      </div>`,
   ];
 
   for (const section of FINANCE_UI_SECTIONS) {
@@ -493,9 +494,11 @@ export function renderFinanceSections(byLine, options = {}) {
       <section class="fin-section" id="fin-unmapped">
         <h3>Unmapped ledger</h3>
         <div class="fin-line">
-          <div class="fin-line-head">
+          <div class="fin-line-head fin-line-cols">
             <span class="fin-line-label">Other posted types</span>
-            <span class="amt">${formatMoney(unmapped.amount)}</span>
+            <span class="fin-col-posted amt">${formatMoney(unmapped.amount)}</span>
+            <span class="fin-col-running"></span>
+            <span class="fin-col-pending"></span>
           </div>
         </div>
       </section>
@@ -510,15 +513,16 @@ export function renderFinanceSections(byLine, options = {}) {
 
   const pendingSign = totalPending >= 0 ? "+" : "−";
   parts.push(`
-    <div class="fin-projected-footer">
-      <div class="fin-projected-main">
-        <span><b>Projected balance</b></span>
-        <span class="fin-projected-value amt ${projected >= 0 ? "income-amt" : "cost-amt"}">${formatMoney(projected)}</span>
+      <div class="fin-projected-footer">
+        <div class="fin-projected-main">
+          <span><b>Projected balance</b></span>
+          <span class="fin-projected-value amt ${projected >= 0 ? "income-amt" : "cost-amt"}">${formatMoney(projected)}</span>
+        </div>
+        <p class="fin-projected-sub">
+          Current ${formatMoney(currentBalance)} ${pendingSign} pending ${formatMoney(Math.abs(totalPending))}
+          · Running total (posted only) ${formatMoney(running)}
+        </p>
       </div>
-      <p class="fin-projected-sub">
-        Current ${formatMoney(currentBalance)} ${pendingSign} pending ${formatMoney(Math.abs(totalPending))}
-        · Running total (posted only) ${formatMoney(running)}
-      </p>
     </div>
   `);
 
