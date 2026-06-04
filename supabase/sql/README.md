@@ -1,5 +1,13 @@
 # Supabase SQL (manual apply)
 
+## Owner dashboard layout
+
+Run once (after auth is in use):
+
+[`owner_dashboard_layout.sql`](./owner_dashboard_layout.sql)
+
+Stores each owner’s chosen dashboard shortcuts (`panel_ids` matching `dashboard_registry.js`). Without this table, the app falls back to the default tile set and “Add to Dashboard” is disabled.
+
 ## Competition system (Phase 0+)
 
 Full rules: [`docs/competition-spec.md`](../docs/competition-spec.md).

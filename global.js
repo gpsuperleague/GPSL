@@ -15,6 +15,7 @@ import {
   formatTargetTimesSubline,
 } from "./countdown_display.js";
 import { countUnreadInbox } from "./competition_inbox.js";
+import { initDashboardPinUi } from "./dashboard_pin.js";
 export { supabase };
 
 // ------------------------------------------------------------
@@ -688,5 +689,11 @@ export async function initGlobal() {
   } catch (err) {
     console.error("initGlobal buildNav:", err);
     renderFallbackNav();
+  }
+
+  if (document.getElementById("nav")) {
+    initDashboardPinUi(supabase).catch((err) => {
+      console.warn("Dashboard pin UI skipped:", err);
+    });
   }
 }
