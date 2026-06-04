@@ -414,8 +414,7 @@ export async function submitFixtureResult(
   if (cupExtra) {
     if (cupExtra.etHome != null) params.p_et_home_goals = cupExtra.etHome;
     if (cupExtra.etAway != null) params.p_et_away_goals = cupExtra.etAway;
-    if (cupExtra.penHome != null) params.p_pen_home_goals = cupExtra.penHome;
-    if (cupExtra.penAway != null) params.p_pen_away_goals = cupExtra.penAway;
+    if (cupExtra.penWinner) params.p_pen_winner_club = cupExtra.penWinner;
   }
   return supabase.rpc("competition_submit_result", params);
 }

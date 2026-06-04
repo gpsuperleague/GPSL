@@ -69,7 +69,11 @@ function setScoreInputsEnabled(enabled) {
   document.getElementById("homeGoals").disabled = !enabled;
   document.getElementById("awayGoals").disabled = !enabled;
   document.getElementById("submitResultBtn").disabled = !enabled;
-  for (const id of ["etHomeGoals", "etAwayGoals", "penHomeGoals", "penAwayGoals"]) {
+  for (const id of ["etHomeGoals", "etAwayGoals"]) {
+    const el = document.getElementById(id);
+    if (el) el.disabled = !enabled;
+  }
+  for (const id of ["penWinnerHome", "penWinnerAway"]) {
     const el = document.getElementById(id);
     if (el) el.disabled = !enabled;
   }
@@ -89,10 +93,13 @@ function readScoreInput(id) {
 }
 
 function resetCupExtraScores() {
-  for (const id of ["etHomeGoals", "etAwayGoals", "penHomeGoals", "penAwayGoals"]) {
+  for (const id of ["etHomeGoals", "etAwayGoals"]) {
     const el = document.getElementById(id);
     if (el) el.value = "0";
   }
+  document.querySelectorAll('input[name="penWinner"]').forEach((el) => {
+    el.checked = false;
+  });
 }
 
 function updateCupScoreSections() {
@@ -130,21 +137,42 @@ function updateCupScoreSections() {
 
   const etHome = readScoreInput("etHomeGoals");
   const etAway = readScoreInput("etAwayGoals");
-  const homeTotal = home90 + (Number.isFinite(etHome) ? etHome : 0);
-  const awayTotal = away90 + (Number.isFinite(etAway) ? etAway : 0);
-  const levelAfterEt = homeTotal === awayTotal;
+  const { home: homeTotal, away: awayTotal } = openPlayTotals(home90, away90, {
+    etHome: Number.isFinite(etHome) ? etHome : 0,
+    etAway: Number.isFinite(etAway) ? etAway : 0,
+  });
 
-  if (levelAfterEt) {
+  const preview = document.getElementById("cupOpenPlayPreview");
+  if (preview) {
+    preview.textContent =
+      Number.isFinite(etHome) && Number.isFinite(etAway)
+        ? `Open-play total: ${homeTotal}–${awayTotal} (90 min ${home90}–${away90} + ET ${etHome}–${etAway})`
+        : "";
+  }
+
+  const levelAfterOpenPlay = homeTotal === awayTotal;
+
+  if (levelAfterOpenPlay) {
     penRow.style.display = "block";
-    document.getElementById("penHomeLabel").textContent =
-      document.getElementById("homeLabel").textContent + " pens";
-    document.getElementById("penAwayLabel").textContent =
-      document.getElementById("awayLabel").textContent + " pens";
+    const homeName = document.getElementById("homeLabel").textContent;
+    const awayName = document.getElementById("awayLabel").textContent;
+    document.getElementById("penWinnerHomeLabel").textContent = homeName;
+    document.getElementById("penWinnerAwayLabel").textContent = awayName;
   } else {
     penRow.style.display = "none";
-    document.getElementById("penHomeGoals").value = "0";
-    document.getElementById("penAwayGoals").value = "0";
+    document.querySelectorAll('input[name="penWinner"]').forEach((el) => {
+      el.checked = false;
+    });
   }
+}
+
+function readPenWinnerClub(fixture) {
+  const homeRb = document.getElementById("penWinnerHome");
+  const awayRb = document.getElementById("penWinnerAway");
+  if (!fixture || !homeRb?.checked && !awayRb?.checked) return null;
+  if (homeRb?.checked) return fixture.home_club_short_name;
+  if (awayRb?.checked) return fixture.away_club_short_name;
+  return null;
 }
 
 function openPlayTotals(home90, away90, cupExtra) {
@@ -159,52 +187,47 @@ function openPlayTotals(home90, away90, cupExtra) {
 function validateCupScores(home90, away90, cupExtra) {
   if (home90 !== away90) {
     if (
-      cupExtra.etHome != null ||
-      cupExtra.etAway != null ||
-      cupExtra.penHome != null ||
-      cupExtra.penAway != null
+      cupExtra?.etHome != null ||
+      cupExtra?.etAway != null ||
+      cupExtra?.penWinner
     ) {
       return "Extra time and penalties only when level after 90 minutes.";
     }
     return null;
   }
 
-  if (cupExtra.etHome == null || cupExtra.etAway == null) {
-    return "Cup draw after 90 minutes — enter extra time scores.";
+  if (cupExtra?.etHome == null || cupExtra?.etAway == null) {
+    return "Cup draw after 90 minutes — enter extra time goals (ET period only).";
   }
 
   const { home, away } = openPlayTotals(home90, away90, cupExtra);
-  if (home === away) {
-    if (cupExtra.penHome == null || cupExtra.penAway == null) {
-      return "Still level after extra time — enter penalty shootout score.";
-    }
-    if (cupExtra.penHome === cupExtra.penAway) {
-      return "Penalty shootout must have a winner.";
-    }
+  if (home === away && !cupExtra.penWinner) {
+    return "Still level after extra time — select who won the penalty shootout.";
+  }
+  if (home !== away && cupExtra.penWinner) {
+    return "Penalty shootout only when still level after extra time.";
   }
   return null;
 }
 
-function buildCupExtraForSubmit(home90, away90) {
+function buildCupExtraForSubmit(fixture, home90, away90) {
   if (home90 !== away90) return { cupExtra: null };
 
   const etHome = readScoreInput("etHomeGoals");
   const etAway = readScoreInput("etAwayGoals");
   if (!Number.isFinite(etHome) || !Number.isFinite(etAway)) {
-    return { error: "Enter valid extra time scores." };
+    return { error: "Enter valid extra time goals (scored in ET only)." };
   }
 
   const cupExtra = { etHome, etAway };
   const { home, away } = openPlayTotals(home90, away90, cupExtra);
 
   if (home === away) {
-    const penHome = readScoreInput("penHomeGoals");
-    const penAway = readScoreInput("penAwayGoals");
-    if (!Number.isFinite(penHome) || !Number.isFinite(penAway)) {
-      return { error: "Enter valid penalty shootout scores." };
+    const penWinner = readPenWinnerClub(fixture);
+    if (!penWinner) {
+      return { error: "Select who won the penalty shootout." };
     }
-    cupExtra.penHome = penHome;
-    cupExtra.penAway = penAway;
+    cupExtra.penWinner = penWinner;
   }
 
   return { cupExtra };
@@ -588,7 +611,7 @@ async function submitResult() {
 
   let cupExtra = null;
   if (isCupFixture(f)) {
-    const built = buildCupExtraForSubmit(homeGoals, awayGoals);
+    const built = buildCupExtraForSubmit(f, homeGoals, awayGoals);
     if (built?.error) {
       setStatus("submitStatus", built.error, true);
       return;
@@ -690,16 +713,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("submitResultBtn").onclick = submitResult;
 
-  for (const id of [
-    "homeGoals",
-    "awayGoals",
-    "etHomeGoals",
-    "etAwayGoals",
-    "penHomeGoals",
-    "penAwayGoals",
-  ]) {
+  for (const id of ["homeGoals", "awayGoals", "etHomeGoals", "etAwayGoals"]) {
     document.getElementById(id)?.addEventListener("input", updateCupScoreSections);
   }
+  document.querySelectorAll('input[name="penWinner"]').forEach((el) => {
+    el.addEventListener("change", updateCupScoreSections);
+  });
 
   await loadSquadPlayers();
   renderPlayerStatsTable();

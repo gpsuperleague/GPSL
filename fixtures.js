@@ -263,7 +263,7 @@ async function onModalSubmit() {
 
   if (modalFixture.competition_type === "cup" && homeGoals === awayGoals) {
     document.getElementById("modalStatus").textContent =
-      "Cup draw after 90 min — use Match Day for extra time and penalties.";
+      "Cup draw after 90 min — use Match Day for extra time (ET goals only) and penalty winner.";
     return;
   }
   const statusEl = document.getElementById("modalStatus");

@@ -127,7 +127,10 @@
       </div>
 
       <div id="cupEtRow" class="score-entry" style="display:none;">
-        <p class="stats-hint" style="margin:0 0 8px;">Level after 90 min — <b>extra time</b> goals (added to 90 min score)</p>
+        <p class="stats-hint" style="margin:0 0 8px;">
+          Level after 90 min — goals scored in <b>extra time only</b>
+          (e.g. 3–3 then <b>1–0</b> here if one ET goal; not the full 4–3 match score).
+        </p>
         <div class="score-inputs">
           <div class="score-field">
             <label id="etHomeLabel">Home ET</label>
@@ -139,20 +142,20 @@
             <input type="number" id="etAwayGoals" class="score-input" min="0" max="99" value="0">
           </div>
         </div>
+        <p id="cupOpenPlayPreview" class="stats-hint" style="margin:8px 0 0;"></p>
       </div>
 
       <div id="cupPenRow" class="score-entry" style="display:none;">
-        <p class="stats-hint" style="margin:0 0 8px;">Still level after extra time — <b>penalty shootout</b></p>
-        <div class="score-inputs">
-          <div class="score-field">
-            <label id="penHomeLabel">Home pens</label>
-            <input type="number" id="penHomeGoals" class="score-input" min="0" max="99" value="0">
-          </div>
-          <span class="score-vs" aria-hidden="true">–</span>
-          <div class="score-field">
-            <label id="penAwayLabel">Away pens</label>
-            <input type="number" id="penAwayGoals" class="score-input" min="0" max="99" value="0">
-          </div>
+        <p class="stats-hint" style="margin:0 0 10px;">Still level on open play — who won the <b>penalty shootout</b>?</p>
+        <div class="pen-winner-pick" style="display:flex;flex-wrap:wrap;gap:16px;">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#ddd;">
+            <input type="radio" name="penWinner" id="penWinnerHome" value="home">
+            <span id="penWinnerHomeLabel">Home</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:#ddd;">
+            <input type="radio" name="penWinner" id="penWinnerAway" value="away">
+            <span id="penWinnerAwayLabel">Away</span>
+          </label>
         </div>
       </div>
 
@@ -161,7 +164,7 @@
         <p id="lineupCounter" class="stats-hint">Starters: 0/11 · Subs: 0/5</p>
         <p class="stats-hint">
           You must tick exactly <b>11 Started</b> (subs optional: 0–5 <b>Subbed on</b>). Ratings 0.1–10.
-          Player goals must match <b>your</b> open-play score (90 min + extra time if used). One POTM max.
+          Player goals must match <b>your</b> total from 90 min plus ET-period goals (not penalties). One POTM max.
         </p>
         <div class="stats-wrap">
           <table class="stats-table">
