@@ -5,10 +5,14 @@ import {
   GPSL_MONTH_LABELS,
   fixtureInvolvesClub,
   submitFixtureResult,
+  confirmFixtureResult,
+  rejectFixtureResult,
   canSubmitResult,
+  needsInboxConfirm,
   LEAGUE_DIVISIONS,
 } from "./competition.js";
 let myClub = { short: null, name: null };
+let confirmMode = null;
 let myDivision = null;
 let upcomingFixtures = [];
 let allLeagueFixtures = [];
@@ -66,19 +70,117 @@ function selectedFixture() {
 }
 
 function setScoreInputsEnabled(enabled) {
-  document.getElementById("homeGoals").disabled = !enabled;
-  document.getElementById("awayGoals").disabled = !enabled;
-  document.getElementById("submitResultBtn").disabled = !enabled;
+  const confirming = !!confirmMode;
+  const showStats = enabled || confirming;
+  document.getElementById("homeGoals").disabled = !enabled || confirming;
+  document.getElementById("awayGoals").disabled = !enabled || confirming;
+  document.getElementById("submitResultBtn").disabled = !showStats;
   for (const id of ["etHomeGoals", "etAwayGoals"]) {
     const el = document.getElementById(id);
-    if (el) el.disabled = !enabled;
+    if (el) el.disabled = !enabled || confirming;
   }
   for (const id of ["penWinnerHome", "penWinnerAway"]) {
     const el = document.getElementById(id);
-    if (el) el.disabled = !enabled;
+    if (el) el.disabled = !enabled || confirming;
   }
   const statsPanel = document.getElementById("playerStatsPanel");
-  if (statsPanel) statsPanel.style.display = enabled ? "block" : "none";
+  if (statsPanel) statsPanel.style.display = showStats ? "block" : "none";
+}
+
+function formatProposedScoreHtml(f) {
+  if (!f || f.proposed_home_goals == null) return "";
+  let html = `<b>Proposed score</b> (from opponent): ${f.home_club_name} <b>${f.proposed_home_goals}–${f.proposed_away_goals}</b> ${f.away_club_name} <span style="color:#888;">(90 min)</span>`;
+  if (f.proposed_et_home_goals != null && f.proposed_et_away_goals != null) {
+    html += `<br>After extra time: <b>${f.proposed_et_home_goals}–${f.proposed_et_away_goals}</b>`;
+  }
+  if (f.proposed_pen_winner_club) {
+    const penName =
+      f.proposed_pen_winner_club === f.home_club_short_name
+        ? f.home_club_name
+        : f.proposed_pen_winner_club === f.away_club_short_name
+          ? f.away_club_name
+          : f.proposed_pen_winner_club;
+    html += `<br>Penalties: <b>${penName}</b> won`;
+  }
+  return html;
+}
+
+function myTeamGoalsFromSubmission(fixture) {
+  if (!fixture || !myClub.short) return 0;
+  const home90 = fixture.proposed_home_goals;
+  const away90 = fixture.proposed_away_goals;
+  const cupExtra =
+    fixture.proposed_et_home_goals != null
+      ? {
+          etHome: fixture.proposed_et_home_goals,
+          etAway: fixture.proposed_et_away_goals,
+        }
+      : null;
+  const totals = cupExtra
+    ? openPlayTotals(home90, away90, cupExtra)
+    : { home: home90, away: away90 };
+  return myTeamGoalsForFixture(fixture, totals.home, totals.away);
+}
+
+function applyConfirmModeUI() {
+  const on = !!confirmMode;
+  const panelTitle = document.querySelector("#submitPanel h2");
+  const panelIntro = document.querySelector("#submitPanel > p.meta");
+  const scoreRow = document.getElementById("scoreEntryRow");
+  const etRow = document.getElementById("cupEtRow");
+  const penRow = document.getElementById("cupPenRow");
+  const hint = document.getElementById("scorePeriodHint");
+  const banner = document.getElementById("proposedScoreBanner");
+  const confirmActions = document.getElementById("confirmActions");
+  const submitBtn = document.getElementById("submitResultBtn");
+  const statsHeading = document.querySelector("#playerStatsPanel h3");
+
+  if (panelTitle) {
+    panelTitle.textContent = on ? "Confirm result — your squad stats" : "Submit result";
+  }
+  if (panelIntro) {
+    panelIntro.style.display = on ? "none" : "";
+  }
+  if (scoreRow) scoreRow.style.display = on ? "none" : "";
+  if (hint) hint.style.display = on ? "none" : hint.style.display;
+  if (etRow && on) etRow.style.display = "none";
+  if (penRow && on) penRow.style.display = "none";
+  if (banner) {
+    banner.style.display = on ? "block" : "none";
+    if (on && confirmMode?.fixture) {
+      banner.innerHTML = formatProposedScoreHtml(confirmMode.fixture);
+    }
+  }
+  if (confirmActions) confirmActions.style.display = on ? "block" : "none";
+  if (submitBtn) {
+    submitBtn.textContent = on ? "Confirm result" : "Submit for confirmation";
+  }
+  if (statsHeading) {
+    statsHeading.textContent = on
+      ? "Your squad — enter match stats to confirm"
+      : "Your squad — match stats";
+  }
+}
+
+function enterConfirmMode(fixture) {
+  if (!fixture || !needsInboxConfirm(fixture, myClub)) {
+    confirmMode = null;
+    applyConfirmModeUI();
+    return;
+  }
+  confirmMode = {
+    submissionId: fixture.submission_id,
+    fixture,
+  };
+  applyConfirmModeUI();
+  setScoreInputsEnabled(false);
+  const statsPanel = document.getElementById("playerStatsPanel");
+  if (statsPanel) statsPanel.style.display = "block";
+  document.getElementById("submitResultBtn").disabled = false;
+  setStatus(
+    "submitStatus",
+    "Check the score below, enter your 11 starters and stats, then confirm."
+  );
 }
 
 function isCupFixture(fixture) {
@@ -454,10 +556,14 @@ function validateLineupRequired() {
 }
 
 function validatePlayerStats(fixture, homeGoals, awayGoals, playerStats, cupExtra = null) {
-  const totals = cupExtra
-    ? openPlayTotals(homeGoals, awayGoals, cupExtra)
-    : { home: homeGoals, away: awayGoals };
-  const expected = myTeamGoalsForFixture(fixture, totals.home, totals.away);
+  const expected = confirmMode
+    ? myTeamGoalsFromSubmission(fixture)
+    : (() => {
+        const totals = cupExtra
+          ? openPlayTotals(homeGoals, awayGoals, cupExtra)
+          : { home: homeGoals, away: awayGoals };
+        return myTeamGoalsForFixture(fixture, totals.home, totals.away);
+      })();
   let teamGoals = 0;
   let potmCount = 0;
 
@@ -560,6 +666,14 @@ function updateFixturePreview() {
 
   document.getElementById("homeLabel").textContent = f.home_club_name;
   document.getElementById("awayLabel").textContent = f.away_club_name;
+
+  if (needsInboxConfirm(f, myClub)) {
+    enterConfirmMode(f);
+    return;
+  }
+
+  confirmMode = null;
+  applyConfirmModeUI();
 
   const canSubmit = canSubmitResult(f, myClub);
   clearScoreFields();
