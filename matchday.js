@@ -81,6 +81,8 @@ function myTeamGoalsForFixture(fixture, homeGoals, awayGoals) {
   return home ? homeGoals : awayGoals;
 }
 
+const DEFAULT_MATCH_RATING = "6.0";
+
 function ratingOptionsHtml(selected) {
   let html = '<option value="">—</option>';
   for (let i = 1; i <= 100; i++) {
@@ -92,6 +94,15 @@ function ratingOptionsHtml(selected) {
     html += `<option value="${v}"${sel}>${v}</option>`;
   }
   return html;
+}
+
+function wireRatingSelect(select) {
+  if (!select) return;
+  const applyDefault = () => {
+    if (!select.value) select.value = DEFAULT_MATCH_RATING;
+  };
+  select.addEventListener("mousedown", applyDefault);
+  select.addEventListener("focus", applyDefault);
 }
 
 function countLineupFromDom() {
@@ -169,6 +180,7 @@ function renderPlayerStatsTable() {
       <td><input type="radio" name="potm" class="stat-potm" value="${id}"></td>
     `;
     wirePlayedCheckboxes(tr);
+    wireRatingSelect(tr.querySelector(".stat-rating"));
     tbody.appendChild(tr);
   }
   updateLineupCounter();
