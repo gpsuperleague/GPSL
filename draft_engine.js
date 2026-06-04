@@ -116,20 +116,31 @@ export function getDraftBidWindowBounds(draftAuctionStartTime) {
   };
 }
 
+/** Konami id from a bid row (player_id preferred; matches string or numeric legacy ids). */
+export function bidRowKonamiId(row) {
+  return normalizeKonamiId(row?.player_id ?? row?.direct_bid_id);
+}
+
 /**
- * Draft auction bids only: current window, free-agent (no seller), not contracted direct offers.
+ * All draft bids in the current window, grouped by Konami id.
+ * One query keeps the main list and player page in sync.
  */
-export async function fetchCurrentDraftAuctionBids(konamiId, draftAuctionStartTime) {
+export async function fetchDraftBidsGroupedForPlayers(
+  playerIds,
+  draftAuctionStartTime
+) {
   const bounds = getDraftBidWindowBounds(draftAuctionStartTime);
-  if (!bounds) return [];
+  const normalized = [
+    ...new Set((playerIds || []).map(normalizeKonamiId).filter(Boolean)),
+  ];
+  const map = new Map();
+  for (const id of normalized) map.set(id, []);
+  if (!bounds || !normalized.length) return map;
 
-  const key = normalizeKonamiId(konamiId);
-  if (!key) return [];
-
-  let query = supabase
+  const { data, error } = await supabase
     .from("Player_Transfer_Bids")
     .select(
-      "bidder_club_id, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time, bid_amount, bid_id"
+      "bidder_club_id, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time, bid_amount, bid_id, direct_bid_id, player_id"
     )
     .eq("is_direct", true)
     .is("seller_club_id", null)
@@ -137,19 +148,34 @@ export async function fetchCurrentDraftAuctionBids(konamiId, draftAuctionStartTi
     .lt("bid_time", bounds.endIso)
     .order("bid_time", { ascending: true });
 
-  const num = Number(key);
-  if (Number.isFinite(num)) {
-    query = query.or(`direct_bid_id.eq.${key},direct_bid_id.eq.${num}`);
-  } else {
-    query = query.eq("direct_bid_id", key);
+  if (error) {
+    console.error("fetchDraftBidsGroupedForPlayers:", error);
+    return map;
   }
 
-  const { data, error } = await query;
-  if (error) {
-    console.error("fetchCurrentDraftAuctionBids:", error);
-    return [];
+  for (const row of data || []) {
+    const pid = bidRowKonamiId(row);
+    if (!map.has(pid)) continue;
+    map.get(pid).push(row);
   }
-  return data || [];
+  return map;
+}
+
+/**
+ * Draft auction bids for one player (current window, free-agent rows only).
+ */
+export async function fetchCurrentDraftAuctionBids(konamiId, draftAuctionStartTime) {
+  const key = normalizeKonamiId(konamiId);
+  if (!key) return [];
+  const map = await fetchDraftBidsGroupedForPlayers([key], draftAuctionStartTime);
+  return map.get(key) || [];
+}
+
+export function highestDraftBid(bids) {
+  if (!bids?.length) return null;
+  return bids.reduce((max, b) =>
+    Number(b.bid_amount) > Number(max.bid_amount) ? b : max
+  );
 }
 
 /* ============================================================
@@ -297,22 +323,23 @@ export async function getActiveDraftListingId(supabase, konamiId) {
   return data?.id ?? null;
 }
 
-/** Mirror highest direct draft bid onto the listing row for transferengine_* SQL */
-export async function syncDraftListingHighBid(supabase, listingId, konamiId) {
+/** Mirror highest in-window draft bid onto the listing (same rules as bid history UI). */
+export async function syncDraftListingHighBid(
+  supabaseClient,
+  listingId,
+  konamiId,
+  draftAuctionStartTime = null
+) {
   if (!listingId) return;
 
-  const { data: top, error } = await supabase
-    .from("Player_Transfer_Bids")
-    .select("bid_amount, bidder_club_id")
-    .eq("direct_bid_id", konamiId)
-    .eq("is_direct", true)
-    .order("bid_amount", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const bids = await fetchCurrentDraftAuctionBids(
+    konamiId,
+    draftAuctionStartTime
+  );
+  const top = highestDraftBid(bids);
+  if (!top) return;
 
-  if (error || !top) return;
-
-  await supabase
+  await supabaseClient
     .from("Player_Transfer_Listings")
     .update({
       current_highest_bid: top.bid_amount,

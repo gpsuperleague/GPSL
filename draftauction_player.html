@@ -164,6 +164,8 @@
       syncDraftListingHighBid,
       fetchCurrentDraftAuctionBids,
       draftMinimumBidAmount,
+      highestDraftBid,
+      normalizeKonamiId,
     } from "./draft_engine.js";
 
     import { fullClubName, loadClubsMap } from "./clubs_lookup.js";
@@ -448,8 +450,7 @@
           document.getElementById("leadingClub").textContent = "Leading Club: None";
         }
       } else {
-        const highest = bids.reduce((max, b) =>
-          b.bid_amount > max.bid_amount ? b : max, bids[0]);
+        const highest = highestDraftBid(bids);
 
         currentHighestBid = Math.max(
           currentHighestBid,
@@ -671,18 +672,21 @@
       }
 
       const listingId = await getActiveDraftListingId(supabase, playerId);
+      const konamiKey = normalizeKonamiId(
+        draftBidPlayer?.Konami_ID ?? playerId
+      );
 
       /* --- Insert Bid --- */
       const { error } = await supabase
         .from("Player_Transfer_Bids")
         .insert({
           listing_id: listingId,
-          player_id: String(playerId).trim(),
+          player_id: konamiKey,
           bidder_club_id: buyerShortName,
           seller_club_id: null,
           bid_amount: amount,
           is_direct: true,
-          direct_bid_id: playerId,
+          direct_bid_id: konamiKey,
           is_first_draft_bid,
           is_draft_join,
           draft_join_consumed,
@@ -696,7 +700,12 @@
       }
 
       if (listingId) {
-        await syncDraftListingHighBid(supabase, listingId, playerId);
+        await syncDraftListingHighBid(
+          supabase,
+          listingId,
+          konamiKey,
+          draftAuctionStartTimeUK
+        );
       }
 
       document.getElementById("bidStatus").innerHTML =

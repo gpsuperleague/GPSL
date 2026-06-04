@@ -1170,7 +1170,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (!bidResult.ok) return bidResult;
 
-    await syncDraftListingHighBid(supabase, listingId, player.Konami_ID);
+    await syncDraftListingHighBid(
+      supabase,
+      listingId,
+      player.Konami_ID,
+      draftStart
+    );
 
     console.log("submitDraftBid END OK");
     return { ok: true };

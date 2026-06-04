@@ -316,6 +316,9 @@
       getEffectiveDraftPhase,
       draftPhaseLabel,
       getDraftBiddingOpen,
+      fetchDraftBidsGroupedForPlayers,
+      highestDraftBid,
+      normalizeKonamiId,
     } from "./draft_engine.js";
     import {
       loadDraftFavouriteIds,
@@ -471,7 +474,7 @@
 
       const { data: listings } = await supabase
         .from("Player_Transfer_Listings")
-        .select("id, player_id, reserve_price, status")
+        .select("id, player_id, reserve_price, status, current_highest_bid, current_highest_bidder")
         .eq("listing_type", "draft")
         .eq("status", "Active");
 
@@ -495,22 +498,15 @@
 
       const playerMap = new Map(players.map(p => [Number(p.Konami_ID), p]));
 
-      const { data: bids } = await supabase
-        .from("Player_Transfer_Bids")
-        .select("direct_bid_id, bidder_club_id, bid_amount")
-        .in("direct_bid_id", playerIds)
-        .eq("is_direct", true);
+      const bidsByPlayer = await fetchDraftBidsGroupedForPlayers(
+        playerIds.map((id) => normalizeKonamiId(id)),
+        draftAuctionStartTimeUK
+      );
 
-      const bidsByPlayer = new Map();
-      if (bids) {
-        for (const b of bids) {
-          const key = Number(b.direct_bid_id);
-          if (!bidsByPlayer.has(key)) bidsByPlayer.set(key, []);
-          bidsByPlayer.get(key).push(b);
-        }
+      const clubShortNames = [];
+      for (const bids of bidsByPlayer.values()) {
+        for (const b of bids) clubShortNames.push(b.bidder_club_id);
       }
-
-      const clubShortNames = bids ? [...new Set(bids.map(b => b.bidder_club_id))] : [];
 
       const { data: clubs } = await supabase
         .from("Clubs")
@@ -538,18 +534,21 @@
         const player = playerMap.get(playerIdNum);
         if (!player) continue;
 
-        const playerBids = bidsByPlayer.get(playerIdNum) || [];
+        const playerKey = normalizeKonamiId(listing.player_id);
+        const playerBids = bidsByPlayer.get(playerKey) || [];
 
         let highestAmount = null;
         let leadingClubShort = null;
 
-        if (playerBids.length) {
-          const highest = playerBids.reduce(
-            (max, b) => (b.bid_amount > max.bid_amount ? b : max),
-            playerBids[0]
-          );
-          highestAmount = highest.bid_amount;
-          leadingClubShort = highest.bidder_club_id;
+        const top = highestDraftBid(playerBids);
+        if (top) {
+          highestAmount = top.bid_amount;
+          leadingClubShort = top.bidder_club_id;
+        }
+
+        if (highestAmount == null && listing.current_highest_bid != null) {
+          highestAmount = Number(listing.current_highest_bid);
+          leadingClubShort = listing.current_highest_bidder || null;
         }
 
         const leadingClubFull = leadingClubShort
