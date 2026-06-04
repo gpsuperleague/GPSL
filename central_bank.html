@@ -1,0 +1,137 @@
+<script>window.CURRENT_PAGE = "central_bank";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL Central Bank</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="central_bank.css">
+</head>
+<body class="bank-page">
+  <div id="nav"></div>
+
+  <header class="bank-hero">
+    <div class="bank-hero-graphic" aria-hidden="true">
+      <svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg" class="bank-svg">
+        <defs>
+          <linearGradient id="marble" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#2a2a32"/>
+            <stop offset="50%" style="stop-color:#1a1a22"/>
+            <stop offset="100%" style="stop-color:#252530"/>
+          </linearGradient>
+          <linearGradient id="gold" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#f0d080"/>
+            <stop offset="100%" style="stop-color:#b8860b"/>
+          </linearGradient>
+        </defs>
+        <rect x="0" y="180" width="400" height="40" fill="#111"/>
+        <rect x="30" y="70" width="340" height="110" fill="url(#marble)" stroke="#c9a227" stroke-width="2"/>
+        <rect x="50" y="88" width="300" height="28" rx="2" fill="#0d0d12" stroke="url(#gold)" stroke-width="1.5"/>
+        <text x="200" y="108" text-anchor="middle" fill="url(#gold)" font-family="Georgia,serif" font-size="14" font-weight="bold">GPSL CENTRAL BANK</text>
+        <rect x="70" y="125" width="22" height="55" fill="#1e1e28" stroke="#8a7340" stroke-width="1"/>
+        <rect x="110" y="125" width="22" height="55" fill="#1e1e28" stroke="#8a7340" stroke-width="1"/>
+        <rect x="150" y="125" width="22" height="55" fill="#1e1e28" stroke="#8a7340" stroke-width="1"/>
+        <rect x="190" y="125" width="20" height="55" fill="#0a0a0f"/>
+        <rect x="228" y="125" width="22" height="55" fill="#1e1e28" stroke="#8a7340" stroke-width="1"/>
+        <rect x="268" y="125" width="22" height="55" fill="#1e1e28" stroke="#8a7340" stroke-width="1"/>
+        <rect x="308" y="125" width="22" height="55" fill="#1e1e28" stroke="#8a7340" stroke-width="1"/>
+        <polygon points="200,25 370,75 30,75" fill="#1a1a24" stroke="#c9a227" stroke-width="2"/>
+        <circle cx="200" cy="52" r="14" fill="none" stroke="url(#gold)" stroke-width="2"/>
+        <text x="200" y="57" text-anchor="middle" fill="url(#gold)" font-family="Georgia,serif" font-size="16" font-weight="bold">₿</text>
+        <ellipse cx="200" cy="200" rx="120" ry="8" fill="#000" opacity="0.4"/>
+      </svg>
+    </div>
+    <div class="bank-hero-text">
+      <p class="bank-welcome">Welcome to the</p>
+      <h1 id="bankTitle">GPSL Central Bank</h1>
+      <p class="bank-tagline" id="bankTagline">League treasury · Loans · Settlement</p>
+      <div class="bank-hero-stats" id="heroStats"></div>
+      <a href="#counter" class="bank-cta">Visit the service counter →</a>
+    </div>
+  </header>
+
+  <main class="bank-main page-container">
+    <nav class="bank-section-nav" aria-label="Bank sections">
+      <a href="#treasury" class="active">Treasury</a>
+      <a href="#loans">League loans</a>
+      <a href="#counter">Service counter</a>
+      <a href="finances.html">Your club finances</a>
+    </nav>
+
+    <section id="treasury" class="bank-panel">
+      <h2>Treasury</h2>
+      <p class="bank-intro">Bank reserves and money flows through the central ledger (loan drawdowns, repayments, and future subsidies).</p>
+      <div class="treasury-grid" id="treasurySummary"></div>
+      <div class="treasury-split">
+        <div class="treasury-box income">
+          <h3>Income</h3>
+          <div id="bankIncomeTotal" class="treasury-total">—</div>
+          <p class="bank-hint">Funds received by the bank (e.g. loan repayments)</p>
+        </div>
+        <div class="treasury-box expenditure">
+          <h3>Expenditure</h3>
+          <div id="bankCostTotal" class="treasury-total">—</div>
+          <p class="bank-hint">Funds paid out (e.g. loan drawdowns to clubs)</p>
+        </div>
+      </div>
+      <h3>Bank ledger</h3>
+      <div id="bankLedgerTable"></div>
+    </section>
+
+    <section id="loans" class="bank-panel">
+      <h2>League loan book</h2>
+      <p class="bank-intro">All club loans with the GPSL Central Bank — active and recently closed.</p>
+      <div id="leagueLoansTable"></div>
+    </section>
+
+    <section id="counter" class="bank-panel counter-panel">
+      <h2>Service counter</h2>
+      <p class="bank-intro" id="counterClubLine">Present your club account to apply for credit or make a repayment.</p>
+
+      <div class="counter-layout">
+        <div class="counter-window">
+          <div class="counter-glass"></div>
+          <div class="counter-clerk" aria-hidden="true">🏦</div>
+          <p class="counter-label">Clerk on duty</p>
+        </div>
+
+        <div class="counter-desk" id="counterDesk">
+          <div class="counter-your-account">
+            <h3>Your account</h3>
+            <p>Available to borrow: <strong id="counterHeadroom">—</strong></p>
+            <div id="counterLoanList"></div>
+          </div>
+
+          <div class="counter-forms">
+            <form class="counter-form" id="loanTakeForm">
+              <h3>Take a loan</h3>
+              <label for="loanAmount">Amount (₿)</label>
+              <input type="number" id="loanAmount" step="1000000" required>
+              <p class="bank-hint" id="loanLimits"></p>
+              <button type="submit" id="loanTakeBtn" class="counter-btn">Request loan</button>
+              <div class="counter-msg" id="loanTakeMsg"></div>
+            </form>
+
+            <form class="counter-form" id="loanRepayForm">
+              <h3>Repay loan</h3>
+              <label for="repayAmount">Amount (₿)</label>
+              <input type="number" id="repayAmount" step="1000000" required>
+              <label for="repayLoanId">Loan</label>
+              <select id="repayLoanId"></select>
+              <button type="submit" id="loanRepayBtn" class="counter-btn secondary">Make repayment</button>
+              <button type="button" id="loanRepayAllBtn" class="counter-btn ghost">Repay all outstanding</button>
+              <div class="counter-msg" id="loanRepayMsg"></div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <p class="bank-empty" id="counterDisabled" hidden>
+        The counter is closed — bank loans are disabled. Contact league admin.
+      </p>
+    </section>
+  </main>
+
+  <script type="module" src="central_bank.js"></script>
+</body>
+</html>

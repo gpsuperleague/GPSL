@@ -190,15 +190,17 @@ With: `post_club_ledger(p_club, p_entry_type, p_amount, p_description, p_metadat
 
 ---
 
-## 4. `finances.html` (live layout)
+## 4. UI split
 
-Implemented in `finances.html` + `finance_ui.js`:
+**Club finances** — `finances.html` + `finance_ui.js`: balance, season accounts (Excel structure), club activity ledger. Link to bank only.
 
-1. **Balance** — opening (Soon), current, predicted EOS (Soon), posted income/cost/net.
-2. **Season accounts** — sections §1.2–1.8 with owner-facing notes; amounts from ledger where posted.
-3. **Central bank** — read-only panel.
-4. **Activity ledger** — chronological lines.
-5. **Later** — predicted EOS engine, opening balance at rollover, CSV export, loan panel.
+**GPSL Central Bank** — `central_bank.html` + `central_bank.css` + `central_bank.js` + `bank_counter.js`:
+
+1. **Hero** — SVG branch building, treasury stats.
+2. **Treasury** — reserves, bank income/expenditure from `bank_ledger_public`, full bank ledger.
+3. **League loans** — all clubs via `club_loans_league_public`.
+4. **Service counter** — take loan / repay (`club_take_loan`, `club_repay_loan`).
+5. Dashboard tile + nav **Central Bank**.
 
 ---
 

@@ -702,6 +702,33 @@ export async function loadClubLoans(supabase) {
   return data || [];
 }
 
+export async function loadLeagueLoans(supabase) {
+  const { data, error } = await supabase
+    .from("club_loans_league_public")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("loadLeagueLoans:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function loadBankLedger(supabase, limit = 100) {
+  const { data, error } = await supabase
+    .from("bank_ledger_public")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("loadBankLedger:", error);
+    return [];
+  }
+  return data || [];
+}
+
 /** @returns {{ loanId: number } | { error: string }} */
 export async function takeClubLoan(supabase, amount) {
   const { data, error } = await supabase.rpc("club_take_loan", {

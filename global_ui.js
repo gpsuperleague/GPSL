@@ -72,6 +72,7 @@ export function buildNav(user) {
 
   const buttons = [
     { id: "dashboard", label: "Dashboard", href: "dashboard.html" },
+    { id: "central_bank", label: "Central Bank", href: "central_bank.html" },
     { id: "clubs", label: "Clubs", href: "clubs.html" },
     { id: "squad", label: "Squad", href: "squad.html" },
     { id: "listings", label: "Listings", href: "listings.html" },

@@ -1,0 +1,271 @@
+/* GPSL Central Bank — branch visit theme */
+body.bank-page {
+  background: linear-gradient(180deg, #0c0c10 0%, #14141c 35%, #111 100%);
+  color: #ddd;
+  margin: 0;
+  min-height: 100vh;
+}
+
+.bank-hero {
+  display: grid;
+  grid-template-columns: minmax(200px, 380px) 1fr;
+  gap: 24px;
+  align-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 20px 20px;
+  border-bottom: 2px solid #3d3520;
+  background: radial-gradient(ellipse at 50% 0%, rgba(201, 162, 39, 0.12) 0%, transparent 55%);
+}
+
+@media (max-width: 720px) {
+  .bank-hero { grid-template-columns: 1fr; text-align: center; }
+  .bank-svg { max-width: 280px; margin: 0 auto; display: block; }
+}
+
+.bank-svg { width: 100%; height: auto; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.6)); }
+
+.bank-welcome {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #9a8a5a;
+}
+
+.bank-hero h1 {
+  margin: 4px 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(26px, 4vw, 36px);
+  color: #e8c86a;
+  font-weight: normal;
+}
+
+.bank-tagline { margin: 0 0 16px; color: #999; font-size: 14px; }
+
+.bank-hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.bank-stat {
+  background: rgba(0,0,0,0.35);
+  border: 1px solid #4a4030;
+  border-radius: 6px;
+  padding: 10px 14px;
+  min-width: 120px;
+}
+
+.bank-stat .label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+.bank-stat .value { font-size: 18px; color: #e8c86a; font-weight: bold; margin-top: 4px; }
+
+.bank-cta {
+  display: inline-block;
+  background: linear-gradient(180deg, #d4af37 0%, #8b6914 100%);
+  color: #111;
+  padding: 10px 20px;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: bold;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.bank-cta:hover { filter: brightness(1.1); }
+
+.bank-main { padding-bottom: 48px; }
+
+.bank-section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #333;
+}
+
+.bank-section-nav a {
+  color: #c9a227;
+  text-decoration: none;
+  padding: 8px 14px;
+  border-radius: 4px;
+  font-size: 14px;
+  border: 1px solid transparent;
+}
+
+.bank-section-nav a:hover,
+.bank-section-nav a.active {
+  background: #1f1f28;
+  border-color: #4a4030;
+}
+
+.bank-panel {
+  background: #1a1a22;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 22px;
+  margin-bottom: 28px;
+  scroll-margin-top: 80px;
+}
+
+.bank-panel h2 {
+  margin: 0 0 8px;
+  font-family: Georgia, serif;
+  color: #e8c86a;
+  font-size: 22px;
+  font-weight: normal;
+}
+
+.bank-panel h3 { color: #ccc; font-size: 15px; margin: 16px 0 8px; }
+
+.bank-intro { color: #999; font-size: 13px; margin: 0 0 16px; line-height: 1.45; }
+
+.bank-hint { font-size: 12px; color: #777; margin: 4px 0 0; }
+
+.treasury-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.treasury-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 600px) { .treasury-split { grid-template-columns: 1fr; } }
+
+.treasury-box {
+  padding: 14px;
+  border-radius: 8px;
+  border: 1px solid #333;
+}
+
+.treasury-box.income { background: rgba(40, 80, 50, 0.15); border-color: #2a4a32; }
+.treasury-box.expenditure { background: rgba(80, 40, 40, 0.15); border-color: #4a2a2a; }
+
+.treasury-total { font-size: 22px; font-weight: bold; }
+.treasury-box.income .treasury-total { color: #8d8; }
+.treasury-box.expenditure .treasury-total { color: #e99; }
+
+.bank-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.bank-table th, .bank-table td {
+  border: 1px solid #333;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.bank-table th {
+  background: #121218;
+  color: #c9a227;
+  font-weight: normal;
+}
+
+.bank-table tr.row-mine { background: rgba(201, 162, 39, 0.08); }
+.bank-table td.money-in { color: #8d8; text-align: right; white-space: nowrap; }
+.bank-table td.money-out { color: #e99; text-align: right; white-space: nowrap; }
+.bank-table td.owing { color: #e8c86a; font-weight: bold; }
+
+.bank-empty { color: #888; font-size: 13px; }
+
+.counter-panel { border-color: #4a4030; }
+
+.counter-layout {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 700px) { .counter-layout { grid-template-columns: 1fr; } }
+
+.counter-window {
+  background: linear-gradient(180deg, #2a2838 0%, #1a1828 100%);
+  border: 3px solid #5a4a28;
+  border-radius: 8px 8px 4px 4px;
+  padding: 16px 12px;
+  text-align: center;
+  position: relative;
+  min-height: 160px;
+}
+
+.counter-glass {
+  position: absolute;
+  inset: 8px;
+  border: 1px solid rgba(200, 180, 120, 0.25);
+  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.counter-clerk { font-size: 48px; margin-top: 24px; position: relative; z-index: 1; }
+.counter-label { font-size: 11px; color: #888; margin: 8px 0 0; position: relative; z-index: 1; }
+
+.counter-desk {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  background: #222228;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 18px;
+}
+
+@media (max-width: 900px) { .counter-desk { grid-template-columns: 1fr; } }
+
+.counter-form label {
+  display: block;
+  font-size: 12px;
+  color: #aaa;
+  margin: 8px 0 4px;
+}
+
+.counter-form input,
+.counter-form select {
+  width: 100%;
+  max-width: 240px;
+  padding: 8px;
+  background: #111;
+  border: 1px solid #555;
+  color: #eee;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.counter-btn {
+  margin-top: 12px;
+  background: linear-gradient(180deg, #d4af37, #8b6914);
+  color: #111;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  display: block;
+}
+
+.counter-btn.secondary { background: #444; color: #eee; }
+.counter-btn.ghost {
+  background: transparent;
+  color: #c9a227;
+  border: 1px solid #5a4a28;
+  margin-top: 8px;
+}
+
+.counter-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.counter-msg { font-size: 12px; margin-top: 8px; min-height: 1.2em; }
+.counter-msg.ok { color: #8d8; }
+.counter-msg.err { color: #f88; }
+
+.status-active { color: #8d8; }
+.status-paid { color: #888; }
