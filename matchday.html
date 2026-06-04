@@ -115,6 +115,8 @@
 
       <div id="fixturePreview" class="fixture-preview">Select a fixture.</div>
 
+      <div id="proposedScoreBanner" class="fixture-preview" style="display:none;border-color:#663;"></div>
+
       <p id="scorePeriodHint" class="stats-hint" style="display:none;margin-bottom:8px;">
         Cup match — enter the score after <b>90 minutes</b> first.
       </p>
@@ -193,6 +195,9 @@
         </div>
       </div>
 
+      <div id="confirmActions" style="display:none;margin-top:12px;">
+        <button type="button" id="rejectResultBtn" class="button danger">Reject result</button>
+      </div>
       <button type="button" id="submitResultBtn" class="button">Submit for confirmation</button>
       <div id="submitStatus"></div>
     </div>

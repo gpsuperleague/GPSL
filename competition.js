@@ -466,9 +466,14 @@ export function statsMapByPlayerId(rows) {
   return map;
 }
 
-export async function confirmFixtureResult(supabase, submissionId) {
+export async function confirmFixtureResult(
+  supabase,
+  submissionId,
+  playerStats = []
+) {
   return supabase.rpc("competition_confirm_result", {
     p_submission_id: submissionId,
+    p_confirmer_player_stats: playerStats,
   });
 }
 
