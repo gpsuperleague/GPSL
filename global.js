@@ -15,12 +15,6 @@ import {
   formatTargetTimesSubline,
 } from "./countdown_display.js";
 import { countUnreadInbox } from "./competition_inbox.js";
-import {
-  NAV_SECTIONS,
-  isNavItemActive,
-  sectionHasActiveItem,
-  normalizeNavPath,
-} from "./nav_config.js";
 export { supabase };
 
 // ------------------------------------------------------------
@@ -492,12 +486,58 @@ export async function specialAuctionNavLinkHtml() {
   return `<a href="${item.href}" class="nav-link">${item.label}</a>`;
 }
 
+function wireNavLogout() {
+  const btn = document.getElementById("logoutBtn");
+  if (!btn || btn.dataset.wired === "1") return;
+  btn.dataset.wired = "1";
+  btn.onclick = async () => {
+    await supabase.auth.signOut();
+    window.location = "login.html";
+  };
+}
+
+/** Minimal nav if grouped menu fails (keeps site usable). */
+export function renderFallbackNav() {
+  const nav = document.getElementById("nav");
+  if (!nav) return;
+
+  nav.innerHTML = `
+    <div class="gpsl-nav-bar gpsl-nav-fallback">
+      <a href="dashboard.html" class="nav-shortcut nav-dashboard">Dashboard</a>
+      <a href="inbox.html" class="nav-shortcut nav-inbox">📥 Inbox</a>
+      <a href="GPDB.html" class="nav-link">Player Database</a>
+      <a href="all_listings.html" class="nav-link">Transfer Market</a>
+      <a href="fixtures.html" class="nav-link">Fixtures</a>
+      <a href="squad.html" class="nav-link">Squad</a>
+      <button type="button" id="logoutBtn" class="nav-logout">Logout</button>
+    </div>
+  `;
+  wireNavLogout();
+}
+
 // ------------------------------------------------------------
 // NAV BUILDER — grouped, collapsible categories
 // ------------------------------------------------------------
 export async function buildNav() {
   const nav = document.getElementById("nav");
   if (!nav) return;
+
+  try {
+  let NAV_SECTIONS;
+  let isNavItemActive;
+  let sectionHasActiveItem;
+  let normalizeNavPath;
+  try {
+    const navMod = await import("./nav_config.js");
+    NAV_SECTIONS = navMod.NAV_SECTIONS;
+    isNavItemActive = navMod.isNavItemActive;
+    sectionHasActiveItem = navMod.sectionHasActiveItem;
+    normalizeNavPath = navMod.normalizeNavPath;
+  } catch (importErr) {
+    console.error("nav_config.js failed to load:", importErr);
+    renderFallbackNav();
+    return;
+  }
 
   const {
     data: { user },
@@ -512,7 +552,19 @@ export async function buildNav() {
   const search = window.location.search || "";
   const pathNorm = normalizeNavPath(pathname);
   const clubShort = await getOwnerClubShort();
-  const unread = clubShort ? await countUnreadInbox(supabase, clubShort) : 0;
+
+  let unread = 0;
+  try {
+    unread = clubShort
+      ? await Promise.race([
+          countUnreadInbox(supabase, clubShort),
+          new Promise((resolve) => setTimeout(() => resolve(0), 4000)),
+        ])
+      : 0;
+  } catch (err) {
+    console.warn("Inbox count skipped:", err);
+  }
+
   const specialAuction = await fetchActiveSpecialAuctionNavItem();
 
   const dashActive = pathNorm === "dashboard.html";
@@ -539,13 +591,15 @@ export async function buildNav() {
   html += `<div class="gpsl-nav-groups">`;
 
   for (const section of NAV_SECTIONS) {
-    const items = section.items.filter((item) => {
-      if (item.requiresDraft && !draftEnabled) return false;
-      return true;
-    });
+    const items = section.items
+      .filter((item) => {
+        if (item.requiresDraft && !draftEnabled) return false;
+        return true;
+      })
+      .map((item) => ({ ...item }));
 
     if (section.id === "transfers" && specialAuction) {
-      items.push(specialAuction);
+      items.push({ ...specialAuction });
     }
 
     if (!items.length) continue;
@@ -582,11 +636,7 @@ export async function buildNav() {
   html += `</div></div>`;
 
   nav.innerHTML = html;
-
-  document.getElementById("logoutBtn").onclick = async () => {
-    await supabase.auth.signOut();
-    window.location = "login.html";
-  };
+  wireNavLogout();
 
   nav.querySelectorAll(".nav-group").forEach((group) => {
     group.addEventListener("toggle", () => {
@@ -596,6 +646,10 @@ export async function buildNav() {
       });
     });
   });
+  } catch (err) {
+    console.error("buildNav failed:", err);
+    renderFallbackNav();
+  }
 }
 
 // ------------------------------------------------------------
@@ -605,5 +659,10 @@ export async function initGlobal() {
   window.supabase = supabase;
   await loadGlobalSettings();
   wireDraftCountdownUI();
-  await buildNav();
+  try {
+    await buildNav();
+  } catch (err) {
+    console.error("initGlobal buildNav:", err);
+    renderFallbackNav();
+  }
 }

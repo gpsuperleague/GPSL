@@ -2,14 +2,18 @@
 // DASHBOARD.JS — Unified Version
 // ===============================
 
-import { supabase, initGlobal } from "./global.js";
+import { supabase, initGlobal, wireDraftCountdownUI } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { fetchActiveSpecialAuction } from "./special_auction.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
 
-  // Load global nav + global settings + countdown
-  await initGlobal();
+  try {
+    await initGlobal();
+  } catch (err) {
+    console.error("initGlobal failed:", err);
+    wireDraftCountdownUI();
+  }
 
   // Get user
   const { data: { user } } = await supabase.auth.getUser();
