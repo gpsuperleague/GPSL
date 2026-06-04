@@ -2,7 +2,7 @@
 // DASHBOARD.JS — Customizable owner tiles
 // ===============================
 
-import { supabase, initGlobal, wireDraftCountdownUI } from "./global.js";
+import { supabase, initGlobal, isGpslAdminUser, wireDraftCountdownUI } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { fetchActiveSpecialAuction } from "./special_auction.js";
 import { getDashboardPanel } from "./dashboard_registry.js";
@@ -13,6 +13,7 @@ import {
 import { refreshAllDashboardPins } from "./dashboard_pin.js";
 
 let ownerId = null;
+let isAdmin = false;
 let panelIds = [];
 let editMode = false;
 let dragPanelId = null;
@@ -51,6 +52,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   ownerId = user.id;
+  isAdmin = isGpslAdminUser(user);
   document.getElementById("userEmail").textContent = user.email;
 
   const { data: club, error } = await supabase
@@ -116,6 +118,7 @@ function filterVisiblePanelIds(ids, { draftEnabled, specialAuction }) {
   return ids.filter((id) => {
     const panel = getDashboardPanel(id);
     if (!panel) return false;
+    if (panel.adminOnly && !isAdmin) return false;
     if (panel.requiresDraft && !draftEnabled) return false;
     if (panel.when === "special_auction" && !specialAuction) return false;
     return true;

@@ -538,6 +538,30 @@ table.gpsl-table td {
   border-right: 1px solid #333;
 }
 
+/* Admin-only top bar zone (beside Dashboard / Inbox) */
+.gpsl-nav-admin-zone {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-right: 1px solid #443322;
+  background: linear-gradient(180deg, #221a12 0%, #1a1a1a 100%);
+  flex-shrink: 0;
+}
+
+.gpsl-nav-zone-label {
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #b8860b;
+  white-space: nowrap;
+}
+
+.gpsl-nav-fallback .gpsl-nav-shortcuts {
+  border-right: none;
+}
+
 .nav-shortcut {
   display: inline-flex;
   align-items: center;
@@ -703,9 +727,21 @@ table.gpsl-table td {
   margin-left: auto;
 }
 
-.nav-admin {
-  border: 1px solid #444;
-  border-radius: 6px;
+.nav-shortcut.nav-admin {
+  border: 1px solid #886622;
+  background: #2a2218;
+  color: #ffcc66;
+}
+
+.nav-shortcut.nav-admin:hover {
+  border-color: #ff9900;
+  color: #ff9900;
+}
+
+.nav-shortcut.nav-admin.active {
+  background: #ff9900;
+  color: #111;
+  border-color: #ff9900;
 }
 
 .nav-logout,
@@ -770,6 +806,7 @@ table.gpsl-table td {
   }
 
   .gpsl-nav-shortcuts,
+  .gpsl-nav-admin-zone,
   .gpsl-nav-actions {
     border-right: none;
     border-bottom: 1px solid #333;

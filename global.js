@@ -18,6 +18,28 @@ import { countUnreadInbox } from "./competition_inbox.js";
 import { initDashboardPinUi } from "./dashboard_pin.js";
 export { supabase };
 
+/** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
+export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
+
+export function isGpslAdminUser(user) {
+  const email = (user?.email || "").trim().toLowerCase();
+  return GPSL_ADMIN_EMAILS.some((a) => a.toLowerCase() === email);
+}
+
+/** Top-bar Admin zone (Dashboard / Inbox / Admin) — empty string for non-admins. */
+export function adminNavZoneHtml(user, adminActive = false) {
+  if (!isGpslAdminUser(user)) return "";
+
+  return `
+    <div class="gpsl-nav-admin-zone" aria-label="Admin navigation">
+      <span class="gpsl-nav-zone-label">Admin</span>
+      <a href="admin.html" class="nav-shortcut nav-admin${
+        adminActive ? " active" : ""
+      }" title="GPSL Admin Panel">GPSL Admin</a>
+    </div>
+  `;
+}
+
 // ------------------------------------------------------------
 // GLOBAL STATE
 // ------------------------------------------------------------
@@ -527,14 +549,24 @@ function wireNavGroups(nav) {
 }
 
 /** Minimal nav if grouped menu fails (keeps site usable). */
-export function renderFallbackNav() {
+export async function renderFallbackNav() {
   const nav = document.getElementById("nav");
   if (!nav) return;
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathNorm = (window.location.pathname || "").split("/").pop() || "";
+  const adminZone = adminNavZoneHtml(user, pathNorm.toLowerCase() === "admin.html");
+
   nav.innerHTML = `
     <div class="gpsl-nav-bar gpsl-nav-fallback">
+      <div class="gpsl-nav-shortcuts">
       <a href="dashboard.html" class="nav-shortcut nav-dashboard">Dashboard</a>
       <a href="inbox.html" class="nav-shortcut nav-inbox">📥 Inbox</a>
+      </div>
+      ${adminZone}
       <a href="GPDB.html" class="nav-link">Player Database</a>
       <a href="all_listings.html" class="nav-link">Transfer Market</a>
       <a href="fixtures.html" class="nav-link">Fixtures</a>
@@ -565,7 +597,7 @@ export async function buildNav() {
     normalizeNavPath = navMod.normalizeNavPath;
   } catch (importErr) {
     console.error("nav_config.js failed to load:", importErr);
-    renderFallbackNav();
+    await renderFallbackNav();
     return;
   }
 
@@ -618,6 +650,8 @@ export async function buildNav() {
   html += `</a>`;
   html += `</div>`;
 
+  html += adminNavZoneHtml(user, adminActive);
+
   html += `<div class="gpsl-nav-groups">`;
 
   for (const section of NAV_SECTIONS) {
@@ -659,11 +693,6 @@ export async function buildNav() {
   html += `</div>`;
 
   html += `<div class="gpsl-nav-actions">`;
-  if (user.email === "rotavator66@outlook.com") {
-    html += `<a href="admin.html" class="nav-link nav-admin${
-      adminActive ? " active" : ""
-    }">Admin</a>`;
-  }
   html += `<button type="button" id="logoutBtn" class="nav-logout">Logout</button>`;
   html += `</div></div>`;
 
@@ -672,7 +701,7 @@ export async function buildNav() {
   wireNavGroups(nav);
   } catch (err) {
     console.error("buildNav failed:", err);
-    renderFallbackNav();
+    await renderFallbackNav();
   }
 }
 
@@ -688,7 +717,7 @@ export async function initGlobal() {
     await buildNav();
   } catch (err) {
     console.error("initGlobal buildNav:", err);
-    renderFallbackNav();
+    await renderFallbackNav();
   }
 
   if (document.getElementById("nav")) {

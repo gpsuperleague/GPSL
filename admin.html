@@ -573,6 +573,7 @@
     import {
       supabase,
       initGlobal,
+      isGpslAdminUser,
       loadGlobalSettings,
       computeNextDraftTimesFromNow,
     } from "./global.js";
@@ -604,7 +605,7 @@
 
       await initGlobal();
 
-      if (user.email !== "rotavator66@outlook.com") {
+      if (!isGpslAdminUser(user)) {
         window.location = "dashboard.html";
         return;
       }
