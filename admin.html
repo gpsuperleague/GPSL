@@ -258,6 +258,46 @@
         <div id="compFixtureStatus" style="color:#ffcc00;margin-top:10px;"></div>
       </div>
 
+      <!-- REAL-WORLD CALENDAR -->
+      <div class="card">
+        <h2>GPSL season calendar (real-world weeks)</h2>
+        <p class="note">
+          One UK week = one GPSL month (<b>Fri 19:00 → Fri 19:00</b>, Europe/London).
+          Set the first Friday 7pm when <b>GPSL August</b> unlocks; September–May follow automatically.
+          Run <code>competition_real_world_calendar.sql</code> in Supabase first.
+        </p>
+        <div id="compCalendarActiveNote" style="color:#ccc;margin-bottom:12px;"></div>
+        <div class="row">
+          <div>
+            <label>Season (active)</label>
+            <select id="compCalendarSeason"></select>
+          </div>
+          <div>
+            <label>First unlock — Friday 19:00 UK (= GPSL August)</label>
+            <input type="datetime-local" id="compCalendarAnchor" step="60">
+          </div>
+        </div>
+        <div class="row">
+          <button id="compCalendarSetBtn" class="button" style="background:#336699;">Set / replace calendar</button>
+          <button id="compCalendarBreakBtn" class="button" style="background:#555;">Insert 1-week break</button>
+          <button id="compCalendarClearBtn" class="button" style="background:#990000;">Clear calendar</button>
+        </div>
+        <div style="max-height:280px;overflow:auto;border:1px solid #333;border-radius:6px;margin-top:12px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr>
+                <th style="padding:8px;background:#222;color:#ff9900;text-align:left;">GPSL month</th>
+                <th style="padding:8px;background:#222;color:#ff9900;text-align:left;">Unlock (UK)</th>
+                <th style="padding:8px;background:#222;color:#ff9900;text-align:left;">Lock (UK)</th>
+                <th style="padding:8px;background:#222;color:#ff9900;text-align:left;">Status</th>
+              </tr>
+            </thead>
+            <tbody id="compCalendarBody"></tbody>
+          </table>
+        </div>
+        <div id="compCalendarStatus" style="color:#ffcc00;margin-top:10px;"></div>
+      </div>
+
       <!-- CUP COMPETITIONS (Phase 6) -->
       <div class="card">
         <h2>Cup competitions</h2>
@@ -591,6 +631,10 @@
       slotsFromRegistrations,
       loadFixtureCountsForSeason,
     } from "./competition.js";
+    import {
+      loadSeasonCalendarMonths,
+      formatUkDateTime,
+    } from "./competition_calendar.js";
 
     /* ============================================================
        PAGE INIT
@@ -617,6 +661,7 @@
       await initSpecialAuctionsAdmin();
       await initCompetitionAdmin();
       await initCompetitionFixturesAdmin();
+      await initCompCalendarAdmin();
     });
 
     function toIsoFromLocalInput(val) {
@@ -1681,6 +1726,143 @@
       compFixtureRegs = await loadSeasonRegistrations(supabase, compFixtureSeasonId);
       renderCompSlotTable();
       await refreshCompetitionFixturesAdmin();
+    }
+
+    /* ============================================================
+       REAL-WORLD CALENDAR
+       ============================================================ */
+    function anchorLocalForRpc(datetimeLocalValue) {
+      if (!datetimeLocalValue) return null;
+      const v = datetimeLocalValue.length === 16 ? `${datetimeLocalValue}:00` : datetimeLocalValue;
+      return v.replace("T", " ");
+    }
+
+    function setCompCalendarStatus(msg, ok = true) {
+      const el = document.getElementById("compCalendarStatus");
+      el.textContent = msg;
+      el.style.color = ok ? "#ffcc00" : "#f66";
+    }
+
+    async function refreshCompCalendarAdmin() {
+      const active = await loadCurrentSeason(supabase);
+      const sel = document.getElementById("compCalendarSeason");
+      const note = document.getElementById("compCalendarActiveNote");
+      const tbody = document.getElementById("compCalendarBody");
+
+      sel.innerHTML = "";
+      if (!active) {
+        note.textContent = "Activate a competition season first.";
+        tbody.innerHTML = `<tr><td colspan="4" style="padding:8px;color:#888;">—</td></tr>`;
+        return;
+      }
+
+      const opt = document.createElement("option");
+      opt.value = String(active.id);
+      opt.textContent = `${active.label} (id ${active.id})`;
+      sel.appendChild(opt);
+
+      const months = await loadSeasonCalendarMonths(supabase);
+      if (!months.length) {
+        note.textContent =
+          "No calendar yet — pick the first Friday 19:00 UK when GPSL August should unlock.";
+        tbody.innerHTML = `<tr><td colspan="4" style="padding:8px;color:#888;">Not configured</td></tr>`;
+        return;
+      }
+
+      const activeRow = months.find((m) => m.is_active);
+      note.textContent = activeRow
+        ? `Live now: GPSL ${activeRow.gpsl_month_label} (until ${formatUkDateTime(activeRow.lock_at)} UK).`
+        : "No GPSL month is live right now (between weeks or before/after season).";
+
+      tbody.innerHTML = months
+        .map((m) => {
+          let st = "upcoming";
+          if (m.is_active) st = "LIVE";
+          else if (m.is_locked) st = "locked";
+          return `<tr>
+            <td style="padding:8px;border:1px solid #333;">${m.gpsl_month_label}</td>
+            <td style="padding:8px;border:1px solid #333;">${formatUkDateTime(m.unlock_at)}</td>
+            <td style="padding:8px;border:1px solid #333;">${formatUkDateTime(m.lock_at)}</td>
+            <td style="padding:8px;border:1px solid #333;">${st}</td>
+          </tr>`;
+        })
+        .join("");
+    }
+
+    async function setCompCalendar() {
+      const seasonId = Number(document.getElementById("compCalendarSeason").value);
+      const anchor = anchorLocalForRpc(document.getElementById("compCalendarAnchor").value);
+      if (!seasonId || !anchor) {
+        setCompCalendarStatus("Pick season and anchor date/time (Friday 19:00 UK).", false);
+        return;
+      }
+      if (
+        !confirm(
+          `Set season calendar?\nFirst unlock (UK): ${anchor}\n= GPSL August. Later months add 7 days each.`
+        )
+      ) {
+        return;
+      }
+      setCompCalendarStatus("Saving…");
+      const { data, error } = await supabase.rpc("competition_admin_set_season_calendar", {
+        p_season_id: seasonId,
+        p_anchor_local: anchor,
+      });
+      if (error) {
+        setCompCalendarStatus("❌ " + error.message, false);
+        return;
+      }
+      setCompCalendarStatus(
+        `✅ Calendar set. Anchor UK ${data.anchor_uk}; season ends UK ${data.season_ends_uk}.`
+      );
+      await refreshCompCalendarAdmin();
+    }
+
+    async function insertCompCalendarBreak() {
+      const seasonId = Number(document.getElementById("compCalendarSeason").value);
+      if (!seasonId) return;
+      if (
+        !confirm(
+          "Add a 1-week break? All future unlock/lock times move forward by 7 days; the current GPSL month stays open longer."
+        )
+      ) {
+        return;
+      }
+      setCompCalendarStatus("Inserting break…");
+      const { data, error } = await supabase.rpc("competition_admin_insert_calendar_break", {
+        p_season_id: seasonId,
+        p_weeks: 1,
+      });
+      if (error) {
+        setCompCalendarStatus("❌ " + error.message, false);
+        return;
+      }
+      setCompCalendarStatus(`✅ Break applied — ${data ?? 0} month row(s) shifted forward.`);
+      await refreshCompCalendarAdmin();
+    }
+
+    async function clearCompCalendar() {
+      const seasonId = Number(document.getElementById("compCalendarSeason").value);
+      if (!seasonId) return;
+      if (!confirm("Clear calendar? Fixtures will have no real-world lock until set again.")) {
+        return;
+      }
+      const { error } = await supabase.rpc("competition_admin_clear_season_calendar", {
+        p_season_id: seasonId,
+      });
+      if (error) {
+        setCompCalendarStatus("❌ " + error.message, false);
+        return;
+      }
+      setCompCalendarStatus("✅ Calendar cleared.");
+      await refreshCompCalendarAdmin();
+    }
+
+    async function initCompCalendarAdmin() {
+      document.getElementById("compCalendarSetBtn").onclick = setCompCalendar;
+      document.getElementById("compCalendarBreakBtn").onclick = insertCompCalendarBreak;
+      document.getElementById("compCalendarClearBtn").onclick = clearCompCalendar;
+      await refreshCompCalendarAdmin();
     }
 
     async function deleteCompFixtures() {

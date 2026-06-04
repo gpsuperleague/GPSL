@@ -637,8 +637,23 @@ export async function rejectFixtureResult(supabase, submissionId, reason = null)
   });
 }
 
-export function canSubmitResult(fixture, clubIdentity) {
+/**
+ * @param {object} fixture
+ * @param {string|{ short?: string }} clubIdentity
+ * @param {{ calendar_configured?: boolean, active_gpsl_month?: string|null }|null} [calendarStatus]
+ */
+export function canSubmitResult(fixture, clubIdentity, calendarStatus = null) {
   if (!fixture || !clubIdentity) return false;
+  if (calendarStatus?.calendar_configured) {
+    const active = calendarStatus.active_gpsl_month;
+    if (
+      !active ||
+      String(fixture.gpsl_month || "").toLowerCase() !==
+        String(active).toLowerCase()
+    ) {
+      return false;
+    }
+  }
   return (
     fixtureInvolvesClub(fixture, clubIdentity) &&
     fixture.status === "scheduled" &&

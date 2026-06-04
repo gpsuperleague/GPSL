@@ -15,6 +15,12 @@ import {
   canSubmitResult,
   needsInboxConfirm,
 } from "./competition.js";
+import {
+  loadCalendarStatus,
+  calendarStatusBanner,
+} from "./competition_calendar.js";
+
+let calendarStatus = null;
 
 let myClub = { short: null, name: null };
 let currentDivision = "superleague";
@@ -46,7 +52,7 @@ function actionCell(fixture) {
     return "";
   }
 
-  if (canSubmitResult(fixture, myClub)) {
+  if (canSubmitResult(fixture, myClub, calendarStatus)) {
     return `<button type="button" class="btn-result" data-action="enter" data-id="${fixture.id}">Enter result</button>`;
   }
 
@@ -209,13 +215,16 @@ function renderFixtures() {
   for (const { matchday, fixtures: rows } of groups) {
     const sample = rows[0];
     const monthLabel = GPSL_MONTH_LABELS[sample.gpsl_month] || sample.gpsl_month;
+    const monthLive =
+      !calendarStatus?.calendar_configured ||
+      calendarStatus.active_gpsl_month === sample.gpsl_month;
     const block = document.createElement("div");
     block.className = "matchday-block";
 
     block.innerHTML = `
       <div class="matchday-head">
         <span>Matchday ${matchday}</span>
-        <span>${monthLabel} · week ${sample.week_in_month} · <span class="weather">${sample.weather || "—"}</span></span>
+        <span>${monthLabel} · week ${sample.week_in_month} · <span class="weather">${sample.weather || "—"}</span>${monthLive ? "" : " · <span style=\"color:#888\">locked</span>"}</span>
       </div>
       <table class="gpsl-table">
         <thead>
@@ -354,6 +363,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     hint.textContent = "Log in with a club owner account to enter results.";
   }
 
+  calendarStatus = await loadCalendarStatus(supabase);
+  const calEl = document.getElementById("calendarBanner");
+  if (calEl && calendarStatus?.calendar_configured) {
+    calEl.style.display = "block";
+    calEl.textContent = calendarStatusBanner(calendarStatus);
+  }
+
   meta.textContent = `${season.label} · ${DIVISION_LABELS[currentDivision]} · your games highlighted in gold`;
 
   const league = await loadLeagueFixtures(supabase, currentDivision);
@@ -371,7 +387,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const fixtureId = params.get("fixture");
   if (fixtureId && myClub.short) {
     const fix = allFixtures.find((f) => String(f.id) === fixtureId);
-    if (fix && canSubmitResult(fix, myClub)) {
+    if (fix && canSubmitResult(fix, myClub, calendarStatus)) {
       currentDivision = fix.division;
       renderDivisionToolbar();
       renderFixtures();

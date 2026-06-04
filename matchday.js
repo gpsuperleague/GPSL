@@ -13,7 +13,13 @@ import {
   normalizeClubKey,
   LEAGUE_DIVISIONS,
 } from "./competition.js";
+import {
+  loadCalendarStatus,
+  calendarStatusBanner,
+} from "./competition_calendar.js";
+
 let myClub = { short: null, name: null };
+let calendarStatus = null;
 let confirmMode = null;
 let myDivision = null;
 let upcomingFixtures = [];
@@ -763,6 +769,11 @@ function showNoFixturesHelp() {
       <b>All your fixtures are already played or cancelled.</b>
       (${mine.length} total for your club.)
     `;
+  } else if (calendarStatus?.calendar_configured && !calendarStatus.active_gpsl_month) {
+    el.innerHTML = `
+      <b>No fixtures open this GPSL month.</b> ${calendarStatusBanner(calendarStatus)}
+      See <a href="fixtures.html" style="color:#ff9900;">Fixtures</a> for the full schedule.
+    `;
   } else {
     el.innerHTML = `
       <b>No fixtures ready to submit.</b> Open
@@ -818,7 +829,7 @@ async function updateFixturePreview() {
   confirmMode = null;
   applyConfirmModeUI();
 
-  const canSubmit = canSubmitResult(f, myClub);
+  const canSubmit = canSubmitResult(f, myClub, calendarStatus);
   clearScoreFields();
   setScoreInputsEnabled(canSubmit);
   updateCupScoreSections();
@@ -875,11 +886,12 @@ async function loadUpcomingFixtures() {
   const cups = await loadCupFixtures(supabase);
   allLeagueFixtures = [...league, ...cups];
   upcomingFixtures = allLeagueFixtures
-    .filter(
-      (f) =>
-        fixtureInvolvesClub(f, myClub) &&
-        (f.status === "scheduled" || f.submission_status === "pending")
-    )
+    .filter((f) => {
+      if (!fixtureInvolvesClub(f, myClub)) return false;
+      if (f.submission_status === "pending") return true;
+      if (f.status !== "scheduled") return false;
+      return canSubmitResult(f, myClub, calendarStatus);
+    })
     .sort((a, b) => {
       if (a.competition_type !== b.competition_type) {
         return a.competition_type === "cup" ? -1 : 1;
@@ -955,7 +967,7 @@ async function submitResult() {
   }
 
   const f = selectedFixture();
-  if (!f || !canSubmitResult(f, myClub)) {
+  if (!f || !canSubmitResult(f, myClub, calendarStatus)) {
     setStatus("submitStatus", "Select a fixture you can submit.", true);
     return;
   }
@@ -1094,6 +1106,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadSquadPlayers();
   renderPlayerStatsTable();
+
+  calendarStatus = await loadCalendarStatus(supabase);
+  const calBanner = document.getElementById("calendarBanner");
+  if (calBanner && calendarStatus) {
+    calBanner.style.display = "block";
+    calBanner.textContent = calendarStatusBanner(calendarStatus);
+  }
 
   await loadUpcomingFixtures();
   populateFixtureSelect();

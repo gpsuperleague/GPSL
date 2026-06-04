@@ -41,6 +41,17 @@ Creates `competition_fixtures`, calendar helpers, and admin RPCs:
 
 Owners view **`fixtures.html`** by division and matchday.
 
+### Real-world calendar (GPSL month = UK week)
+
+Run once (after phase 1, before owners play on schedule):
+
+[`competition_real_world_calendar.sql`](./competition_real_world_calendar.sql)
+
+- **GPSL Admin → GPSL season calendar** — set first **Friday 19:00 UK** = **GPSL August** unlock; Sep–May auto-advance every 7 days (lock at next Friday 7pm).
+- Only fixtures whose **`gpsl_month`** matches the live month accept **new** result submissions (DB trigger + UI). Pending inbox confirms still work after lock.
+- **Insert 1-week break** — shifts all future unlock/lock times forward; current month stays open.
+- If calendar is **not configured**, behaviour is unchanged (all scheduled fixtures open).
+
 ### Phase 2 — standings & form (after Phase 1)
 
 Run once:
