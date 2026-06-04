@@ -87,19 +87,39 @@ function isCupFixture(fixture) {
 
 function readScoreInput(id) {
   const el = document.getElementById(id);
-  if (!el || el.disabled) return 0;
-  const n = Number(el.value);
+  if (!el || el.disabled) return NaN;
+  const raw = String(el.value).trim();
+  if (raw === "") return NaN;
+  const n = Number(raw);
   return Number.isFinite(n) && n >= 0 ? n : NaN;
+}
+
+function clearScoreFields() {
+  for (const id of ["homeGoals", "awayGoals", "etHomeGoals", "etAwayGoals"]) {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  }
+  document.querySelectorAll('input[name="penWinner"]').forEach((el) => {
+    el.checked = false;
+  });
+  const preview = document.getElementById("cupOpenPlayPreview");
+  if (preview) preview.textContent = "";
+  const etRow = document.getElementById("cupEtRow");
+  const penRow = document.getElementById("cupPenRow");
+  if (etRow) etRow.style.display = "none";
+  if (penRow) penRow.style.display = "none";
 }
 
 function resetCupExtraScores() {
   for (const id of ["etHomeGoals", "etAwayGoals"]) {
     const el = document.getElementById(id);
-    if (el) el.value = "0";
+    if (el) el.value = "";
   }
   document.querySelectorAll('input[name="penWinner"]').forEach((el) => {
     el.checked = false;
   });
+  const preview = document.getElementById("cupOpenPlayPreview");
+  if (preview) preview.textContent = "";
 }
 
 function updateCupScoreSections() {
@@ -137,17 +157,25 @@ function updateCupScoreSections() {
 
   const etHome = readScoreInput("etHomeGoals");
   const etAway = readScoreInput("etAwayGoals");
+  const etEntered = Number.isFinite(etHome) && Number.isFinite(etAway);
+  const preview = document.getElementById("cupOpenPlayPreview");
+
+  if (!etEntered) {
+    penRow.style.display = "none";
+    document.querySelectorAll('input[name="penWinner"]').forEach((el) => {
+      el.checked = false;
+    });
+    if (preview) preview.textContent = "";
+    return;
+  }
+
   const { home: homeTotal, away: awayTotal } = openPlayTotals(home90, away90, {
-    etHome: Number.isFinite(etHome) ? etHome : 0,
-    etAway: Number.isFinite(etAway) ? etAway : 0,
+    etHome,
+    etAway,
   });
 
-  const preview = document.getElementById("cupOpenPlayPreview");
   if (preview) {
-    preview.textContent =
-      Number.isFinite(etHome) && Number.isFinite(etAway)
-        ? `Open-play total: ${homeTotal}–${awayTotal} (90 min ${home90}–${away90} + ET ${etHome}–${etAway})`
-        : "";
+    preview.textContent = `Open-play total: ${homeTotal}–${awayTotal} (90 min ${home90}–${away90} + ET ${etHome}–${etAway})`;
   }
 
   const levelAfterOpenPlay = homeTotal === awayTotal;
@@ -521,6 +549,7 @@ function updateFixturePreview() {
   document.getElementById("awayLabel").textContent = f.away_club_name;
 
   const canSubmit = canSubmitResult(f, myClub);
+  clearScoreFields();
   setScoreInputsEnabled(canSubmit);
   updateCupScoreSections();
 
@@ -601,11 +630,11 @@ async function submitResult() {
     return;
   }
 
-  const homeGoals = Number(document.getElementById("homeGoals").value);
-  const awayGoals = Number(document.getElementById("awayGoals").value);
+  const homeGoals = readScoreInput("homeGoals");
+  const awayGoals = readScoreInput("awayGoals");
 
-  if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals) || homeGoals < 0 || awayGoals < 0) {
-    setStatus("submitStatus", "Enter valid scores.", true);
+  if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) {
+    setStatus("submitStatus", "Enter both scores after 90 minutes.", true);
     return;
   }
 
