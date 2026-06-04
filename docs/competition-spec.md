@@ -191,7 +191,7 @@ Formula inputs (to detail in finance spec):
 - Stadium **capacity** (`Clubs.Capacity`)
 - **Current league position**
 - **Last 5 seasons** history
-- **Implemented (Phase 5):** `total_gate = capacity × attendance_rate × £250`, `attendance_rate` capped at 95%:
+- **Implemented (Phase 5):** `total_gate = capacity × attendance_rate × ₿20`, `attendance_rate` capped at 95%:
   - Base 55% + position boost (1st ≈ 90% fill, 20th ≈ 55%)
   - +5% boost from avg of last **5** archived final positions (`competition_club_season_archive`)
   - Neutral history (avg 10) when no archive rows

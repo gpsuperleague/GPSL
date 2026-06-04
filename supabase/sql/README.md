@@ -83,10 +83,16 @@ Run once:
 [`competition_phase5_finances.sql`](./competition_phase5_finances.sql)
 
 - **League home** gates → **100%** home club; **cup** (when added) → **50% / 50%**
-- Formula: `capacity × fill_rate × £250/seat` — fill from **table position** + **5-season archive** (`competition_club_season_archive`)
+- Formula: `capacity × fill_rate × ₿20/seat` — fill from **table position** + **5-season archive** (`competition_club_season_archive`)
 - Credits **`Club_Finances`** + **`competition_finance_ledger`** on result **confirm** (and admin record/backfill)
 - Owners: **`finances.html`** (balance + ledger), **`stadium.html`** (estimate + upcoming home games)
 - Admin: **Backfill gate receipts**; RPC `competition_admin_archive_club_season` for history rows
+
+If gates were calculated at the old **₿250/seat** rate, run once:
+
+[`competition_gate_seat_price_20.sql`](./competition_gate_seat_price_20.sql)
+
+That updates `competition_compute_gate_total` only — **already posted** ledger rows are unchanged; new confirms and backfills use **₿20/seat**.
 
 ### Phase 6 — cups & brackets (after Phase 5)
 

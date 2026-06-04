@@ -119,7 +119,7 @@ DECLARE
   v_position_boost numeric;
   v_history_boost numeric;
   v_fill numeric;
-  v_price_per_seat numeric := 250;
+  v_price_per_seat numeric := 20;
   v_total numeric;
 BEGIN
   v_position_boost := 0.35 * ((21 - v_pos)::numeric / 20.0);
