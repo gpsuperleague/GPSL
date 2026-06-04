@@ -118,6 +118,13 @@
     "imageUrl": "https://stadiumdb.com/img/news/2025/08/58Cal02.jpg",
     "fetchedAt": "2026-06-04T12:00:00.000Z"
   },
+  "VAL": {
+    "stadium": "Estadi Ciutat de València",
+    "nation": "Spain",
+    "pageUrl": "https://stadiumdb.com/stadiums/esp/ciutat_de_valencia",
+    "imageUrl": "https://stadiumdb.com/pictures/stadiums/esp/ciutat_de_valencia/ciutat_de_valencia28.jpg",
+    "fetchedAt": "2026-06-04T12:00:00.000Z"
+  },
   "ARS": {
     "stadium": "Emirates Stadium",
     "nation": "England",

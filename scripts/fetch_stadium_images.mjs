@@ -94,7 +94,7 @@ const SLUG_OVERRIDES = {
   BAR: "esp/camp_nou",
   RMA: "esp/nuevo_santiago_bernabeu",
   ATM: "esp/estadio_metropolitano",
-  VAL: "esp/mestalla",
+  VAL: "esp/ciutat_de_valencia",
   SEV: "esp/ramon_sanchez_pizjuan",
   JUV: "ita/juventus_stadium",
   INT: "ita/stadio_giuseppe_meazza",
@@ -164,6 +164,7 @@ const IMAGE_URL_OVERRIDES = {
   NMU: "https://upload.wikimedia.org/wikipedia/commons/7/76/New_Mexico_United%27s_Chris_Wehan_send_in_a_corner_kick_vs._Portland_Timbers_2_on_April_26th%2C_2019.jpg",
   RMA: "https://stadiumdb.com/pictures/stadiums/esp/nuevo_santiago_bernabeu/nuevo_santiago_bernabeu24.jpg",
   SAN: "https://stadiumdb.com/img/news/2025/08/58Cal02.jpg",
+  VAL: "https://stadiumdb.com/pictures/stadiums/esp/ciutat_de_valencia/ciutat_de_valencia28.jpg",
 };
 
 function slugify(text) {
