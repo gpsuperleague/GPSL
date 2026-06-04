@@ -87,38 +87,6 @@
       margin-top: 4px;
     }
 
-    /* INBOX PANEL */
-    #inboxPanel {
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 8px;
-      padding: 10px 16px;
-      min-width: 150px;
-      text-align: center;
-      color: #ff9900;
-      font-weight: bold;
-      font-size: 15px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      cursor: pointer;
-    }
-
-    #inboxPanel .inbox-icon {
-      font-size: 22px;
-      margin-bottom: 4px;
-    }
-
-    #inboxPanel .inbox-count {
-      font-size: 12px;
-      color: #ccc;
-      margin-top: 4px;
-    }
-
-    #inboxPanel.has-unread {
-      box-shadow: 0 0 8px rgba(255, 153, 0, 0.7);
-    }
-
     /* TILE GRID */
     .tile-grid {
       display: grid;
@@ -172,15 +140,6 @@
         </div>
       </div>
 
-      <!-- INBOX PANEL -->
-      <div id="inboxPanel">
-        <div class="inbox-icon">📥</div>
-        <div>Inbox</div>
-        <div class="inbox-count">
-          <span id="inboxUnreadCount">0</span> unread
-        </div>
-      </div>
-
       <!-- COUNTDOWN -->
       <div id="headerRight">
         <div id="draftCountdownContainer">
@@ -220,10 +179,6 @@
 
       <div class="tile tile-matchday" onclick="location.href='matchday.html'">
         Match Day
-      </div>
-
-      <div class="tile tile-inbox" onclick="location.href='inbox.html'">
-        Inbox
       </div>
 
       <div class="tile tile-fixtures" onclick="location.href='fixtures.html'">

@@ -5,7 +5,6 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { fetchActiveSpecialAuction } from "./special_auction.js";
-import { refreshDashboardInbox } from "./competition_inbox.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
 
@@ -56,7 +55,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     saTile.textContent = `Special Auction: ${activeSa.title}`;
   }
 
-  await refreshDashboardInbox(supabase, shortName);
 });
 
 function showNoClubBanner(email) {
