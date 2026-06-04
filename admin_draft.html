@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Draft auction — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <h1 class="admin-title">Draft auction</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="note">Clears draft start/finish times and disables the auction. History, bids and completed transfers are kept. Enable draft on <a href="admin_transfers.html">Transfer window</a>.</p>
+        <button id="resetDraftBtn" class="button" style="background:#664400;">Reset draft schedule</button>
+        <div id="resetDraftStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_draft.js"></script>
+</body>
+</html>

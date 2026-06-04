@@ -26,16 +26,22 @@ export function isGpslAdminUser(user) {
   return GPSL_ADMIN_EMAILS.some((a) => a.toLowerCase() === email);
 }
 
+export function isAdminPagePath(pathNorm) {
+  const p = (pathNorm || "").toLowerCase();
+  return p === "admin.html" || /^admin[_-]/.test(p);
+}
+
 /** Top-bar Admin zone (Dashboard / Inbox / Admin) — empty string for non-admins. */
 export function adminNavZoneHtml(user, adminActive = false) {
   if (!isGpslAdminUser(user)) return "";
 
   return `
-    <div class="gpsl-nav-admin-zone" aria-label="Admin navigation">
+    <div class="gpsl-nav-admin-zone" data-nav-group="admin" aria-label="Admin navigation">
       <span class="gpsl-nav-zone-label">Admin</span>
-      <a href="admin.html" class="nav-shortcut nav-admin${
+      <button type="button" class="nav-shortcut nav-admin nav-admin-trigger${
         adminActive ? " active" : ""
-      }" title="GPSL Admin Panel">GPSL Admin</a>
+      }" aria-expanded="false" aria-haspopup="true" title="GPSL Admin Panel">GPSL Admin</button>
+      <div class="gpsl-nav-flyout gpsl-nav-admin-flyout" hidden></div>
     </div>
   `;
 }
@@ -515,6 +521,48 @@ function wireNavLogout() {
   };
 }
 
+function wireAdminNavZone(nav) {
+  const zone = nav.querySelector(".gpsl-nav-admin-zone");
+  if (!zone || zone.dataset.wired === "1") return;
+  zone.dataset.wired = "1";
+
+  const trigger = zone.querySelector(".nav-admin-trigger");
+  const flyout = zone.querySelector(".gpsl-nav-admin-flyout");
+  if (!trigger || !flyout) return;
+
+  import("./admin_nav.js")
+    .then((mod) => {
+      flyout.innerHTML = mod.renderAdminFlyoutGrouped();
+      flyout.querySelectorAll("a").forEach((a) => {
+        a.addEventListener("click", () => {
+          zone.classList.remove("open");
+          flyout.setAttribute("hidden", "");
+          trigger.setAttribute("aria-expanded", "false");
+        });
+      });
+    })
+    .catch((err) => console.warn("Admin flyout:", err));
+
+  trigger.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const open = zone.classList.toggle("open");
+    trigger.setAttribute("aria-expanded", open ? "true" : "false");
+    if (open) flyout.removeAttribute("hidden");
+    else flyout.setAttribute("hidden", "");
+  });
+
+  if (!nav.dataset.adminOutsideClose) {
+    nav.dataset.adminOutsideClose = "1";
+    document.addEventListener("click", (e) => {
+      if (e.target.closest(".gpsl-nav-admin-zone")) return;
+      zone.classList.remove("open");
+      flyout.setAttribute("hidden", "");
+      trigger.setAttribute("aria-expanded", "false");
+    });
+  }
+}
+
 function wireNavGroups(nav) {
   const groups = nav.querySelectorAll("[data-nav-group]");
 
@@ -569,7 +617,7 @@ export async function renderFallbackNav() {
   } = await supabase.auth.getUser();
 
   const pathNorm = (window.location.pathname || "").split("/").pop() || "";
-  const adminZone = adminNavZoneHtml(user, pathNorm.toLowerCase() === "admin.html");
+  const adminZone = adminNavZoneHtml(user, isAdminPagePath(pathNorm));
 
   nav.innerHTML = `
     <div class="gpsl-nav-bar gpsl-nav-fallback">
@@ -655,7 +703,7 @@ export async function buildNav() {
 
   const dashActive = pathNorm === "dashboard.html";
   const inboxActive = pathNorm === "inbox.html";
-  const adminActive = pathNorm === "admin.html";
+  const adminActive = isAdminPagePath(pathNorm);
 
   let html = `<div class="gpsl-nav-bar">`;
   html += `<div class="gpsl-nav-shortcuts">`;
@@ -674,9 +722,28 @@ export async function buildNav() {
   html += `</a>`;
   html += `</div>`;
 
+  if (!navMonthLabel) {
+    try {
+      const { data: gs } = await supabase
+        .from("global_settings_public")
+        .select("league_phase")
+        .eq("id", 1)
+        .maybeSingle();
+      if (gs?.league_phase === "summer_break") {
+        navMonthLabel = "Summer Break";
+        navMonthTitle = "GPSL is in summer break — no active competition month";
+      }
+    } catch (_) {
+      /* optional column until admin_season_lifecycle.sql is run */
+    }
+  }
+
   if (navMonthLabel) {
     const isPre = calMod?.isPreSeasonPhase?.(calendarStatus) ?? false;
-    html += `<div class="gpsl-nav-month${isPre ? " gpsl-nav-month-pre" : ""}" title="${escapeNavAttr(navMonthTitle)}">`;
+    const isSummer = navMonthLabel === "Summer Break";
+    html += `<div class="gpsl-nav-month${isPre ? " gpsl-nav-month-pre" : ""}${
+      isSummer ? " gpsl-nav-month-summer" : ""
+    }" title="${escapeNavAttr(navMonthTitle)}">`;
     html += `<span class="gpsl-nav-month-kicker">GPSL</span>`;
     html += `<span class="gpsl-nav-month-value">${escapeNavHtml(navMonthLabel)}</span>`;
     html += `</div>`;
@@ -731,6 +798,7 @@ export async function buildNav() {
   nav.innerHTML = html;
   wireNavLogout();
   wireNavGroups(nav);
+  wireAdminNavZone(nav);
   } catch (err) {
     console.error("buildNav failed:", err);
     await renderFallbackNav();

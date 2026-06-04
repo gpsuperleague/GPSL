@@ -115,7 +115,7 @@ export async function loadSetupSeasons(supabase) {
   const { data, error } = await supabase
     .from("competition_seasons")
     .select("*")
-    .eq("status", "setup")
+    .in("status", ["setup", "preseason"])
     .order("created_at", { ascending: false });
 
   if (error) {

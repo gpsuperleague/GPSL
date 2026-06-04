@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Money management — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <h1 class="admin-title">Money management</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>League prize money</h2>
+        <p class="note">League prizes are paid from the central bank after all 38 league matches in a division. Position amounts are configured in competition finance SQL / future admin UI — check <code>competition_phase5_finances.sql</code>.</p>
+      </div>
+      <div class="card">
+        <h2>Cup prize money</h2>
+        <p class="note">Set per-cup stage prizes on <a href="admin_fixtures-cups.html">Cup fixtures</a>.</p>
+      </div>
+      <div class="card">
+        <h2>Wage %</h2>
+        <p class="note">Annual squad wage = market value × division % (run <code>player_wage_settings.sql</code>).</p>
+        <div class="row">
+          <div>
+            <label>SuperLeague %</label>
+            <input type="number" id="wagePctSL" min="0" max="100" step="0.1" value="5" style="width:100px;">
+          </div>
+          <div>
+            <label>Championship %</label>
+            <input type="number" id="wagePctCH" min="0" max="100" step="0.1" value="4" style="width:100px;">
+          </div>
+        </div>
+        <button type="button" id="saveWagePctBtn" class="button">Save wage %</button>
+        <div id="wagePctStatus" class="status-line"></div>
+      </div>
+      <div class="card">
+        <h2>Tax %</h2>
+        <p class="note">League tax on transfers / income is handled via central bank ledger rules (<code>central_bank_phase1.sql</code>). A dedicated tax % admin control is not wired yet — set rates in SQL when introduced.</p>
+      </div>
+      <div class="card">
+        <h2>Backfill gate receipts</h2>
+        <p class="note">Run <code>competition_phase5_finances.sql</code>. Settles gates for played fixtures missing ledger rows.</p>
+        <button id="compBackfillGatesBtn" class="button">Backfill gate receipts</button>
+        <div id="compGateStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_money.js"></script>
+</body>
+</html>

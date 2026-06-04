@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Special auction — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <h1 class="admin-title">Special auction</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Create</h2>
+        <div class="row">
+          <div>
+            <label>Type</label>
+            <select id="saType">
+              <option value="lub">Lowest unique bid</option>
+              <option value="snap">Snap (1 hour)</option>
+            </select>
+          </div>
+          <div>
+            <label>Title</label>
+            <input id="saTitle" placeholder="e.g. March Mystery Snap">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Start</label>
+            <input id="saStart" type="datetime-local">
+          </div>
+          <div>
+            <label>End</label>
+            <input id="saEnd" type="datetime-local">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Prize type</label>
+            <select id="saPrizeType">
+              <option value="cash">Cash</option>
+              <option value="player">Player</option>
+              <option value="discount">Discount</option>
+            </select>
+          </div>
+          <div>
+            <label>Player id (if prize is player)</label>
+            <input id="saPrizePlayerId" placeholder="Player ID">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Cash amount</label>
+            <input id="saPrizeCash" placeholder="e.g. 5000000">
+          </div>
+          <div>
+            <label>Discount label</label>
+            <input id="saPrizeDiscount" placeholder="e.g. 10% off next signing">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Player mode</label>
+            <select id="saPlayerMode">
+              <option value="known">Known player</option>
+              <option value="mystery">Mystery</option>
+            </select>
+          </div>
+          <div>
+            <label>Known player id</label>
+            <input id="saKnownPlayerId" placeholder="Snap / optional">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Mystery clue</label>
+            <input id="saMysteryClue" placeholder="e.g. World Cup winner…">
+          </div>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;color:#aaa;margin-bottom:12px;">
+          <input type="checkbox" id="saPublishOnCreate" checked>
+          Publish on create (owners see in nav)
+        </label>
+        <button id="saCreateBtn" class="button">Create auction</button>
+        <div id="saCreateStatus" class="status-line"></div>
+      </div>
+      <div class="card">
+        <h2>Manage</h2>
+        <select id="saSelect" style="width:100%;max-width:480px;margin-bottom:10px;"></select>
+        <div class="row">
+          <button id="saActivateBtn" class="button">Set as active / scheduled</button>
+          <button id="saRevealBtn" class="button" style="background:#4466aa;">Reveal (LUB)</button>
+          <button id="saSettleBtn" class="button" style="background:#2f7a2f;">Settle &amp; charge fees</button>
+        </div>
+        <div id="saManageStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_special-auctions.js"></script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Owner administration — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <h1 class="admin-title">Owner administration</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Add owner</h2>
+        <div class="row">
+          <div><input id="ownerEmail" placeholder="Owner email"></div>
+          <div><input id="ownerPassword" placeholder="Temporary password" type="password"></div>
+          <div><input id="ownerClub" placeholder="Club ShortName (e.g. ARS)"></div>
+        </div>
+        <button id="addOwnerBtn" class="button">Add owner</button>
+        <div id="ownerStatus" class="status-line"></div>
+      </div>
+      <div class="card">
+        <h2>Link existing login to club</h2>
+        <div class="row">
+          <div><input id="linkOwnerEmail" placeholder="Existing owner email"></div>
+          <div><input id="linkOwnerClub" placeholder="Club ShortName"></div>
+        </div>
+        <button id="linkOwnerBtn" class="button">Link club to account</button>
+        <div id="linkOwnerStatus" class="status-line"></div>
+      </div>
+      <div class="card">
+        <h2>Update email</h2>
+        <div class="row">
+          <div>
+            <label>Owner</label>
+            <select id="updateOwnerSelect"></select>
+          </div>
+          <div>
+            <label>New email</label>
+            <input id="newOwnerEmail" placeholder="New email">
+          </div>
+        </div>
+        <button id="updateEmailBtn" class="button">Update email</button>
+        <div id="updateEmailStatus" class="status-line"></div>
+      </div>
+      <div class="card">
+        <h2>Send reset email</h2>
+        <div class="row">
+          <div><input id="resetOwnerEmail" placeholder="Owner email"></div>
+        </div>
+        <button id="resetPasswordBtn" class="button">Send reset email</button>
+        <div id="resetPasswordStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_owners.js"></script>
+</body>
+</html>

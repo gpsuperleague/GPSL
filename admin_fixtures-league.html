@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>League fixtures — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <h1 class="admin-title">League fixtures</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="note">Active season only. Assign table slots 1–20 per division, then generate 380 fixtures. Run <code>competition_phase1_fixtures.sql</code> first.</p>
+        <div id="compFixtureSeasonNote" class="note"></div>
+        <div id="compFixtureCounts" style="color:#ffcc00;margin-bottom:12px;"></div>
+        <div class="row">
+          <div>
+            <label>Division</label>
+            <select id="compFixtureDivision">
+              <option value="superleague">SuperLeague</option>
+              <option value="championship_a">Championship A</option>
+              <option value="championship_b">Championship B</option>
+            </select>
+          </div>
+        </div>
+        <div style="max-height:360px;overflow:auto;border:1px solid #333;border-radius:6px;margin-bottom:12px;">
+          <table class="gpsl-table" style="width:100%;border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="padding:8px;background:#222;color:#ff9900;">Slot</th>
+                <th style="padding:8px;background:#222;color:#ff9900;">Club</th>
+              </tr>
+            </thead>
+            <tbody id="compSlotBody"></tbody>
+          </table>
+        </div>
+        <div class="row">
+          <button id="compShuffleSlotsBtn" class="button">Shuffle slots</button>
+          <button id="compSaveSlotsBtn" class="button">Save slots</button>
+          <label style="display:flex;align-items:center;gap:6px;color:#aaa;">
+            <input type="checkbox" id="compShuffleOnGenerate"> Shuffle before generate
+          </label>
+          <button id="compGenerateFixturesBtn" class="button" style="background:#336699;">Generate fixtures</button>
+          <button id="compDeleteFixturesBtn" class="button" style="background:#990000;">Delete division fixtures</button>
+        </div>
+        <div id="compFixtureStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_fixtures-league.js"></script>
+</body>
+</html>

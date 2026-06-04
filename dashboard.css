@@ -577,6 +577,10 @@ table.gpsl-table td {
   color: #e8c070;
 }
 
+.gpsl-nav-month-summer .gpsl-nav-month-value {
+  color: #7ec8e3;
+}
+
 /* Admin-only top bar zone (beside Dashboard / Inbox) */
 .gpsl-nav-admin-zone {
   display: flex;
@@ -586,6 +590,68 @@ table.gpsl-table td {
   border-right: 1px solid #443322;
   background: linear-gradient(180deg, #221a12 0%, #1a1a1a 100%);
   flex-shrink: 0;
+  position: relative;
+}
+
+.gpsl-nav-admin-zone.open .gpsl-nav-admin-flyout {
+  display: block;
+}
+
+.gpsl-nav-admin-flyout {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 200;
+  min-width: 240px;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: #1a1a1a;
+  border: 1px solid #554433;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  padding: 8px 0;
+}
+
+.gpsl-admin-flyout-group {
+  padding: 4px 0 8px;
+  border-bottom: 1px solid #333;
+}
+
+.gpsl-admin-flyout-group:last-child {
+  border-bottom: none;
+}
+
+.gpsl-admin-flyout-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  padding: 6px 14px 4px;
+  font-weight: bold;
+}
+
+.gpsl-admin-flyout-link {
+  display: block;
+  padding: 7px 14px;
+  color: #ccc;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.gpsl-admin-flyout-link:hover {
+  background: #252520;
+  color: #ff9900;
+}
+
+.gpsl-admin-flyout-home {
+  border-bottom: 1px solid #333;
+  margin-bottom: 4px;
+}
+
+button.nav-admin-trigger {
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .gpsl-nav-zone-label {

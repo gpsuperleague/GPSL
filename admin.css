@@ -1,0 +1,210 @@
+/* GPSL Admin — shared layout (all admin/*.html pages) */
+
+body.admin-page {
+  background: #111;
+  color: #ddd;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+.admin-page a.button,
+.admin-page button.button {
+  display: inline-block;
+  padding: 8px 16px;
+  background: #1a1a1a;
+  color: #ff9900;
+  border: 1px solid #666;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: bold;
+  margin: 5px 5px 5px 0;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.admin-page a.button:hover,
+.admin-page button.button:hover {
+  background: #222;
+}
+
+.admin-page h1.admin-title {
+  margin: 0;
+  font-size: 26px;
+  color: #ff9900;
+  padding: 16px 20px 0;
+}
+
+.admin-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0;
+  max-width: 1200px;
+  margin: 0 auto 40px;
+}
+
+.admin-sidebar {
+  flex: 0 0 220px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  margin: 16px;
+  padding: 12px 0;
+  position: sticky;
+  top: 12px;
+}
+
+.admin-sidebar .admin-nav-group {
+  margin-bottom: 8px;
+}
+
+.admin-sidebar .admin-nav-group-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #888;
+  padding: 8px 16px 4px;
+  font-weight: bold;
+}
+
+.admin-sidebar a.admin-nav-link {
+  display: block;
+  padding: 8px 16px;
+  color: #ccc;
+  text-decoration: none;
+  font-size: 14px;
+  border-left: 3px solid transparent;
+}
+
+.admin-sidebar a.admin-nav-link:hover {
+  background: #222;
+  color: #ff9900;
+}
+
+.admin-sidebar a.admin-nav-link.active {
+  color: #ff9900;
+  border-left-color: #ff9900;
+  background: #252520;
+}
+
+.admin-sidebar a.admin-nav-link.sub {
+  padding-left: 28px;
+  font-size: 13px;
+}
+
+.admin-main {
+  flex: 1 1 480px;
+  min-width: 0;
+  margin: 16px 16px 16px 0;
+}
+
+.admin-page .card {
+  background: #1a1a1a;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  margin-bottom: 24px;
+}
+
+.admin-page .card h2 {
+  color: #ff9900;
+  margin: 0 0 12px;
+  font-size: 20px;
+}
+
+.admin-page .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.admin-page .row > div {
+  flex: 1;
+  min-width: 200px;
+}
+
+.admin-page .row input,
+.admin-page .row select,
+.admin-page .row textarea {
+  padding: 10px;
+  background: #222;
+  border: 1px solid #444;
+  color: #ddd;
+  border-radius: 5px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-page label {
+  display: block;
+  color: #aaa;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.admin-page .note {
+  color: #888;
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0 0 12px;
+}
+
+.admin-page .status-line {
+  color: #ffcc00;
+  margin-top: 10px;
+  min-height: 1.2em;
+}
+
+.admin-page .status-line.error {
+  color: #f66;
+}
+
+.admin-page .hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.admin-page .hub-card {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.admin-page .hub-card h3 {
+  color: #ff9900;
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.admin-page .hub-card ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #aaa;
+  font-size: 13px;
+}
+
+.admin-page .hub-card li {
+  margin: 4px 0;
+}
+
+.admin-page .hub-card a {
+  color: #ff9900;
+}
+
+@media (max-width: 800px) {
+  .admin-layout {
+    flex-direction: column;
+  }
+  .admin-sidebar {
+    flex: 1 1 auto;
+    width: calc(100% - 32px);
+    position: static;
+  }
+  .admin-main {
+    margin: 0 16px 16px;
+  }
+}

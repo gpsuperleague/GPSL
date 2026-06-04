@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Transfer management — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <h1 class="admin-title">Transfer window &amp; engine</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Transfer window</h2>
+        <div class="row">
+          <div>
+            <label>Window open</label>
+            <select id="transferWindowSelect">
+              <option value="true">Open</option>
+              <option value="false">Closed</option>
+            </select>
+          </div>
+          <div>
+            <label>Draft auction enabled</label>
+            <select id="draftAuctionSelect">
+              <option value="false">Off</option>
+              <option value="true">On</option>
+            </select>
+          </div>
+        </div>
+        <button class="button" id="saveSettingsBtn">Save transfer settings</button>
+        <div id="settingsMessage" class="status-line"></div>
+        <p id="draftStartTime" class="note" style="margin-top:10px;"></p>
+        <p class="note">Draft schedule reset lives on <a href="admin_draft.html">Draft auction</a>.</p>
+      </div>
+      <div class="card">
+        <h2>Run transfer engine</h2>
+        <p class="note">Processes stuck listings and draft threads. Run <code>admin_transferengine_run.sql</code> once if the RPC is missing.</p>
+        <button class="button" id="runTransferEngineBtn" style="background:#226622;">Run transfer engine</button>
+        <div id="transferEngineStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_transfers.js"></script>
+</body>
+</html>

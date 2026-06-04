@@ -298,7 +298,19 @@ Run once:
 
 [`special_auctions.sql`](./special_auctions.sql)
 
-Then use **GPSL Admin → Special Auctions** to create (tick **Show to owners immediately**), or **Set as active / scheduled**. Status `scheduled` = visible in nav before start time (e.g. 7pm tonight). After the window **Reveal** (lowest unique) / **Settle**.
+Then use **GPSL Admin → Special auction** (`admin_special-auctions.html`) to create (tick **Show to owners immediately**), or **Set as active / scheduled**. Status `scheduled` = visible in nav before start time (e.g. 7pm tonight). After the window **Reveal** (lowest unique) / **Settle**.
+
+## Modular admin UI + season lifecycle
+
+Run once (after `competition_phase0.sql` and `competition_real_world_calendar.sql`):
+
+[`admin_season_lifecycle.sql`](./admin_season_lifecycle.sql)
+
+- New seasons use status **`preseason`** (legacy `setup` rows are migrated).
+- **`competition_end_season()`** — ends the live year and sets nav **Summer Break** via `global_settings.league_phase`.
+- **`competition_activate_season`** — requires a real-world calendar before going live.
+
+Front-end: `admin.html` is the hub; sub-pages (`admin_season.html`, `admin_fixtures-*.html`, `admin_money.html`, etc.) share `admin.css`, `admin_nav.js`, and `admin_common.js`. Top bar **GPSL Admin** opens a flyout to all sections (admins only).
 
 If you already ran the first script, also run [`special_auctions_scheduled_status.sql`](./special_auctions_scheduled_status.sql).
 

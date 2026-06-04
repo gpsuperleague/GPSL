@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cup fixtures — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <h1 class="admin-title">Cup fixtures</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="note">Run <code>competition_phase6_cups.sql</code>. Draw after league standings exist (prestige cups). League cup: 60 clubs with byes auto-calculated.</p>
+        <div class="row">
+          <div>
+            <label>Cup</label>
+            <select id="compCupSelect">
+              <option value="super8">Super8</option>
+              <option value="plate">Plate</option>
+              <option value="shield">Shield</option>
+              <option value="spoon">Spoon</option>
+              <option value="league_cup">League Cup</option>
+            </select>
+          </div>
+          <div id="compLeagueCupByesRow">
+            <label>League cup byes</label>
+            <input type="number" id="compLeagueCupByes" value="4" min="0" max="32" style="width:80px;">
+          </div>
+        </div>
+        <div class="row">
+          <button id="compDrawCupBtn" class="button">Draw / regenerate cup</button>
+          <button id="compDeleteCupBtn" class="button" style="background:#990000;">Delete cup bracket</button>
+        </div>
+        <div id="compCupStatus" class="status-line"></div>
+      </div>
+      <div class="card">
+        <h2>Cup prize money</h2>
+        <p class="note">Prize amounts per cup stage (same season as cup draw).</p>
+        <div class="row">
+          <select id="compPrizeStage">
+            <option value="winner">Winner</option>
+            <option value="runner_up">Runner-up</option>
+            <option value="semi">Semi-finalist</option>
+            <option value="quarter">Quarter-finalist</option>
+            <option value="r16">Round of 16</option>
+            <option value="r32">Round of 32</option>
+          </select>
+          <input type="number" id="compPrizeAmount" placeholder="Amount" style="max-width:140px;">
+          <button id="compSavePrizeBtn" class="button">Save prize</button>
+        </div>
+        <div id="compPrizeStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_fixtures-cups.js"></script>
+</body>
+</html>

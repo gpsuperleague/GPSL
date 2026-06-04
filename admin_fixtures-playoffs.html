@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Playoff fixtures — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <h1 class="admin-title">Playoff fixtures</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="note">Set Shield / Spoon playoff qualifiers for the active season (after league table is known).</p>
+        <div class="row">
+          <select id="compPlayoffDiv">
+            <option value="superleague">SuperLeague</option>
+            <option value="championship_a">Championship A</option>
+            <option value="championship_b">Championship B</option>
+          </select>
+          <input id="compPlayoffClub" placeholder="Club ShortName" style="max-width:100px;">
+          <select id="compPlayoffRole">
+            <option value="shield_playoff_winner">Shield playoff winner</option>
+            <option value="spoon_playoff_winner">Spoon playoff winner</option>
+          </select>
+          <button id="compSavePlayoffBtn" class="button">Save qualifier</button>
+        </div>
+        <div id="compPlayoffStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_fixtures-playoffs.js"></script>
+</body>
+</html>
