@@ -310,7 +310,7 @@ Run once (after `competition_phase0.sql` and `competition_real_world_calendar.sq
 - **`competition_end_season()`** — ends the live year and sets nav **Summer Break** via `global_settings.league_phase`.
 - **`competition_activate_season`** — requires a real-world calendar before going live.
 
-Front-end: `admin.html` is the hub; sub-pages (`admin_season.html`, `admin_fixtures-*.html`, `admin_money.html`, etc.) share `admin.css`, `admin_nav.js`, and `admin_common.js`. Top bar **GPSL Admin** opens a flyout to all sections (admins only).
+Front-end: sub-pages (`admin_season.html`, `admin_fixtures-*.html`, `admin_money.html`, etc.) share `admin.css`, `admin_nav.js`, and `admin_common.js`. Top bar **Admin** is a normal nav group (like Transfers / League) for admins only; optional hub at `admin.html`.
 
 If you already ran the first script, also run [`special_auctions_scheduled_status.sql`](./special_auctions_scheduled_status.sql).
 

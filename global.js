@@ -31,21 +31,6 @@ export function isAdminPagePath(pathNorm) {
   return p === "admin.html" || /^admin[_-]/.test(p);
 }
 
-/** Top-bar Admin zone (Dashboard / Inbox / Admin) — empty string for non-admins. */
-export function adminNavZoneHtml(user, adminActive = false) {
-  if (!isGpslAdminUser(user)) return "";
-
-  return `
-    <div class="gpsl-nav-admin-zone" data-nav-group="admin" aria-label="Admin navigation">
-      <span class="gpsl-nav-zone-label">Admin</span>
-      <button type="button" class="nav-shortcut nav-admin nav-admin-trigger${
-        adminActive ? " active" : ""
-      }" aria-expanded="false" aria-haspopup="true" title="GPSL Admin Panel">GPSL Admin</button>
-      <div class="gpsl-nav-flyout gpsl-nav-admin-flyout" hidden></div>
-    </div>
-  `;
-}
-
 // ------------------------------------------------------------
 // GLOBAL STATE
 // ------------------------------------------------------------
@@ -521,48 +506,6 @@ function wireNavLogout() {
   };
 }
 
-function wireAdminNavZone(nav) {
-  const zone = nav.querySelector(".gpsl-nav-admin-zone");
-  if (!zone || zone.dataset.wired === "1") return;
-  zone.dataset.wired = "1";
-
-  const trigger = zone.querySelector(".nav-admin-trigger");
-  const flyout = zone.querySelector(".gpsl-nav-admin-flyout");
-  if (!trigger || !flyout) return;
-
-  import("./admin_nav.js")
-    .then((mod) => {
-      flyout.innerHTML = mod.renderAdminFlyoutGrouped();
-      flyout.querySelectorAll("a").forEach((a) => {
-        a.addEventListener("click", () => {
-          zone.classList.remove("open");
-          flyout.setAttribute("hidden", "");
-          trigger.setAttribute("aria-expanded", "false");
-        });
-      });
-    })
-    .catch((err) => console.warn("Admin flyout:", err));
-
-  trigger.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const open = zone.classList.toggle("open");
-    trigger.setAttribute("aria-expanded", open ? "true" : "false");
-    if (open) flyout.removeAttribute("hidden");
-    else flyout.setAttribute("hidden", "");
-  });
-
-  if (!nav.dataset.adminOutsideClose) {
-    nav.dataset.adminOutsideClose = "1";
-    document.addEventListener("click", (e) => {
-      if (e.target.closest(".gpsl-nav-admin-zone")) return;
-      zone.classList.remove("open");
-      flyout.setAttribute("hidden", "");
-      trigger.setAttribute("aria-expanded", "false");
-    });
-  }
-}
-
 function wireNavGroups(nav) {
   const groups = nav.querySelectorAll("[data-nav-group]");
 
@@ -616,16 +559,12 @@ export async function renderFallbackNav() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const pathNorm = (window.location.pathname || "").split("/").pop() || "";
-  const adminZone = adminNavZoneHtml(user, isAdminPagePath(pathNorm));
-
   nav.innerHTML = `
     <div class="gpsl-nav-bar gpsl-nav-fallback">
       <div class="gpsl-nav-shortcuts">
       <a href="dashboard.html" class="nav-shortcut nav-dashboard">Dashboard</a>
       <a href="inbox.html" class="nav-shortcut nav-inbox">📥 Inbox</a>
       </div>
-      ${adminZone}
       <a href="GPDB.html" class="nav-link">Player Database</a>
       <a href="all_listings.html" class="nav-link">Transfer Market</a>
       <a href="fixtures.html" class="nav-link">Fixtures</a>
@@ -703,7 +642,16 @@ export async function buildNav() {
 
   const dashActive = pathNorm === "dashboard.html";
   const inboxActive = pathNorm === "inbox.html";
-  const adminActive = isAdminPagePath(pathNorm);
+
+  let navSections = NAV_SECTIONS;
+  if (isGpslAdminUser(user)) {
+    try {
+      const { ADMIN_NAV_SECTION } = await import("./admin_nav.js");
+      navSections = [...NAV_SECTIONS, ADMIN_NAV_SECTION];
+    } catch (adminNavErr) {
+      console.warn("Admin nav section skipped:", adminNavErr);
+    }
+  }
 
   let html = `<div class="gpsl-nav-bar">`;
   html += `<div class="gpsl-nav-shortcuts">`;
@@ -749,11 +697,9 @@ export async function buildNav() {
     html += `</div>`;
   }
 
-  html += adminNavZoneHtml(user, adminActive);
-
   html += `<div class="gpsl-nav-groups">`;
 
-  for (const section of NAV_SECTIONS) {
+  for (const section of navSections) {
     const items = section.items
       .filter((item) => {
         if (item.requiresDraft && !draftEnabled) return false;
@@ -798,7 +744,6 @@ export async function buildNav() {
   nav.innerHTML = html;
   wireNavLogout();
   wireNavGroups(nav);
-  wireAdminNavZone(nav);
   } catch (err) {
     console.error("buildNav failed:", err);
     await renderFallbackNav();
