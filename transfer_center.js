@@ -2,11 +2,12 @@
 // TRANSFER CENTRE — Updated JS
 // - Normal listings: 24h + next 19:00 UK, Extend/Remove after cutoff if no bids
 // - Direct bids: Accept -> listing + opening bid, Reject -> mark rejected
-// - Seller Review: direct bids only
+// - Seller Review: below-reserve auctions + direct bids
 // - Active Bids: live auctions only; Awaiting seller: review + direct offers
 // ============================================================
 
 import { supabase } from "./supabase_client.js";
+import { formatMoney } from "./competition.js";
 import { initGlobal, computeStandardListingEndTime, loadGlobalSettings } from "./global.js";
 import { getUKNow, isDraftAuctionEnded } from "./draft_engine.js";
 import {
@@ -601,77 +602,277 @@ async function rejectDirectBid(bidId, shortName) {
   loadActiveBids(shortName);
 }
 
+async function hydrateListingHighBids(listings) {
+  const rows = (listings || []).map((l) => ({ ...l }));
+  const needs = rows.filter(
+    (l) => l.current_highest_bid == null || !l.current_highest_bidder
+  );
+  if (!needs.length) return rows;
+
+  const ids = needs.map((l) => l.id).filter((id) => id != null);
+  const { data: bids } = await supabase
+    .from("Player_Transfer_Bids")
+    .select("listing_id, bid_amount, bidder_club_id, status")
+    .in("listing_id", ids);
+
+  const bestByListing = new Map();
+  for (const b of bids || []) {
+    if (String(b.status || "").toLowerCase() !== "active") continue;
+    const lid = String(b.listing_id);
+    const prev = bestByListing.get(lid);
+    if (!prev || Number(b.bid_amount) > Number(prev.bid_amount)) {
+      bestByListing.set(lid, b);
+    }
+  }
+
+  return rows.map((l) => {
+    if (l.current_highest_bid != null && l.current_highest_bidder) return l;
+    const best = bestByListing.get(String(l.id));
+    if (!best) return l;
+    return {
+      ...l,
+      current_highest_bid: best.bid_amount,
+      current_highest_bidder: best.bidder_club_id,
+    };
+  });
+}
+
+function sellerReviewDeadlineLabel(listing) {
+  if (!listing?.seller_review_deadline) return "24h from auction end";
+  const deadline = new Date(listing.seller_review_deadline);
+  const now = new Date();
+  if (deadline <= now) {
+    return `<span style="color:#d9534f;">Expired ${deadline.toLocaleString()}</span>`;
+  }
+  const hrs = Math.max(0, Math.ceil((deadline - now) / (60 * 60 * 1000)));
+  return `${hrs}h left — until ${deadline.toLocaleString()}`;
+}
+
+function isSellerReviewExpired(listing) {
+  if (!listing?.seller_review_deadline) return false;
+  return new Date(listing.seller_review_deadline) <= new Date();
+}
+
+async function acceptBelowReserve(listingId, shortName) {
+  const { data, error } = await supabase.rpc("club_accept_below_reserve_sale", {
+    p_listing_id: Number(listingId),
+  });
+
+  if (error) {
+    const msg = String(error.message || "");
+    console.error("club_accept_below_reserve_sale:", error);
+    if (
+      msg.includes("club_accept_below_reserve_sale") &&
+      (msg.includes("Could not find") || msg.includes("schema cache"))
+    ) {
+      alert(
+        "Server function missing. Run supabase/sql/transfer_ledger_polish.sql in Supabase, then try again."
+      );
+      return;
+    }
+    alert(msg || "Could not accept sale.");
+    return;
+  }
+
+  console.log("Below-reserve sale accepted", data);
+  loadSellerReview(shortName);
+  loadClosedListings(shortName);
+  loadSeasonSales(shortName);
+  loadActiveListings(shortName);
+}
+
+async function rejectBelowReserve(listingId, shortName) {
+  const { error } = await supabase.rpc("club_reject_below_reserve_sale", {
+    p_listing_id: Number(listingId),
+  });
+
+  if (error) {
+    const msg = String(error.message || "");
+    console.error("club_reject_below_reserve_sale:", error);
+    if (
+      msg.includes("club_reject_below_reserve_sale") &&
+      (msg.includes("Could not find") || msg.includes("schema cache"))
+    ) {
+      alert(
+        "Server function missing. Run supabase/sql/transfer_ledger_polish.sql in Supabase, then try again."
+      );
+      return;
+    }
+    alert(msg || "Could not reject sale.");
+    return;
+  }
+
+  loadSellerReview(shortName);
+  loadClosedListings(shortName);
+  loadActiveListings(shortName);
+}
+
 // ============================================================
-// SELLER REVIEW (DIRECT BIDS ONLY)
+// SELLER REVIEW (BELOW-RESERVE + DIRECT BIDS)
 // ============================================================
 
 async function loadSellerReview(shortName) {
   const container = document.getElementById("sellerReviewContainer");
   container.innerHTML = "Loading…";
 
-  const { data: bidsRaw, error } = await supabase
-    .from("Player_Transfer_Bids")
-    .select("*")
-    .eq("seller_club_id", shortName)
-    .eq("is_direct", true)
-    .is("listing_id", null)
-    .order("bid_time", { ascending: false });
+  const [listingsRes, bidsRes] = await Promise.all([
+    supabase
+      .from("Player_Transfer_Listings")
+      .select("*")
+      .eq("seller_club_id", shortName)
+      .in("status", ["Review", "Seller Review"])
+      .order("end_time", { ascending: false }),
+    supabase
+      .from("Player_Transfer_Bids")
+      .select("*")
+      .eq("seller_club_id", shortName)
+      .eq("is_direct", true)
+      .is("listing_id", null)
+      .order("bid_time", { ascending: false }),
+  ]);
 
-  if (error) {
-    console.error("Seller review load error:", error);
-    container.innerHTML = "<i>Could not load direct bids.</i>";
+  if (listingsRes.error) {
+    console.error("Below-reserve listings error:", listingsRes.error);
+  }
+  if (bidsRes.error) {
+    console.error("Seller review load error:", bidsRes.error);
+    container.innerHTML = "<i>Could not load seller review items.</i>";
     return;
   }
 
-  const bids = (bidsRaw || []).filter(isPendingContractedDirectOffer);
+  const reviewListings = await hydrateListingHighBids(listingsRes.data || []);
+  const bids = (bidsRes.data || []).filter(isPendingContractedDirectOffer);
 
-  if (!bids.length) {
-    container.innerHTML = "<i>No direct bids to review.</i>";
+  if (!reviewListings.length && !bids.length) {
+    container.innerHTML =
+      "<i>Nothing to review — no below-reserve auctions or direct offers.</i>";
     return;
   }
 
-  const directIds = bids.map((b) => getBidPlayerId(b)).filter(Boolean);
-  const directPlayers = await fetchPlayersMap(directIds);
+  const playerIds = [
+    ...reviewListings.map((l) => l.player_id),
+    ...bids.map((b) => getBidPlayerId(b)),
+  ].filter(Boolean);
+  const players = await fetchPlayersMap(playerIds);
 
-  container.innerHTML = `
-    <table class="gpsl-table">
-      <tr>
-        <th>Player</th>
-        <th>Bidder</th>
-        <th>Amount</th>
-        <th>Time</th>
-        <th>Actions</th>
-      </tr>
-      ${bids
-        .map((row) => {
-          const pid = getBidPlayerId(row);
-          const player = playerFromMap(directPlayers, pid);
-          const name = player?.Name
-            || (pid ? "Unknown" : "Unknown (missing player id on bid)");
+  let html = "";
 
-          const locked = playerBlockedSameSeasonTransfer(
-            player,
-            window.__gpslCurrentSeasonLabel
-          );
-          const actions = locked
-            ? `<span class="locked-msg" title="${SAME_SEASON_TRANSFER_MESSAGE}">Signed this season</span>
-               <button class="reject-direct-btn" data-id="${row.bid_id}">Reject</button>`
-            : `<button class="accept-direct-btn" data-id="${row.bid_id}">Accept</button>
-               <button class="reject-direct-btn" data-id="${row.bid_id}">Reject</button>`;
+  if (reviewListings.length) {
+    html += `<h3 style="margin:0 0 8px 0;font-size:15px;">Below reserve (${reviewListings.length})</h3>
+      <table class="gpsl-table">
+        <tr>
+          <th>Player</th>
+          <th>Reserve</th>
+          <th>Best bid</th>
+          <th>Shortfall</th>
+          <th>Bidder</th>
+          <th>Review by</th>
+          <th>Actions</th>
+        </tr>
+        ${reviewListings
+          .map((row) => {
+            const player = playerFromMap(players, row.player_id);
+            const name = player?.Name || "Unknown";
+            const reserve = Number(row.reserve_price) || 0;
+            const bid = Number(row.current_highest_bid) || 0;
+            const shortfall = Math.max(reserve - bid, 0);
+            const expired = isSellerReviewExpired(row);
+            const locked = playerBlockedSameSeasonTransfer(
+              player,
+              window.__gpslCurrentSeasonLabel
+            );
 
-          return `
-          <tr>
-            <td>${name}</td>
-            <td>${displayClubName(row.bidder_club_id)}</td>
-            <td>₿ ${Number(row.bid_amount).toLocaleString("en-GB")}</td>
-            <td>${new Date(row.bid_time).toLocaleString()}</td>
-            <td>${actions}</td>
-          </tr>
-        `;
-        })
-        .join("")}
-    </table>
-  `;
+            let actions;
+            if (!row.current_highest_bidder || bid <= 0) {
+              actions = `<button class="reject-below-btn" data-id="${row.id}">Close listing</button>`;
+            } else if (locked) {
+              actions = `<span class="locked-msg" title="${SAME_SEASON_TRANSFER_MESSAGE}">Signed this season</span>
+                 <button class="reject-below-btn" data-id="${row.id}">Reject</button>`;
+            } else if (expired) {
+              actions = `<span style="color:#aaa;">Review window ended</span>
+                 <button class="reject-below-btn" data-id="${row.id}">Reject</button>`;
+            } else {
+              actions = `<button class="accept-below-btn" data-id="${row.id}">Accept ₿${bid.toLocaleString("en-GB")}</button>
+                 <button class="reject-below-btn" data-id="${row.id}">Reject</button>`;
+            }
+
+            return `
+            <tr>
+              <td>${name}</td>
+              <td>${formatMoney(reserve)}</td>
+              <td>${bid > 0 ? formatMoney(bid) : "—"}</td>
+              <td>${shortfall > 0 ? formatMoney(shortfall) : "—"}</td>
+              <td>${displayClubName(row.current_highest_bidder) || "—"}</td>
+              <td>${sellerReviewDeadlineLabel(row)}</td>
+              <td>${actions}</td>
+            </tr>`;
+          })
+          .join("")}
+      </table>`;
+  }
+
+  if (bids.length) {
+    html += `<h3 style="margin:${reviewListings.length ? "18px" : "0"} 0 8px 0;font-size:15px;">Direct offers (${bids.length})</h3>
+      <table class="gpsl-table">
+        <tr>
+          <th>Player</th>
+          <th>Bidder</th>
+          <th>Amount</th>
+          <th>Time</th>
+          <th>Actions</th>
+        </tr>
+        ${bids
+          .map((row) => {
+            const pid = getBidPlayerId(row);
+            const player = playerFromMap(players, pid);
+            const name =
+              player?.Name ||
+              (pid ? "Unknown" : "Unknown (missing player id on bid)");
+
+            const locked = playerBlockedSameSeasonTransfer(
+              player,
+              window.__gpslCurrentSeasonLabel
+            );
+            const actions = locked
+              ? `<span class="locked-msg" title="${SAME_SEASON_TRANSFER_MESSAGE}">Signed this season</span>
+                 <button class="reject-direct-btn" data-id="${row.bid_id}">Reject</button>`
+              : `<button class="accept-direct-btn" data-id="${row.bid_id}">Accept</button>
+                 <button class="reject-direct-btn" data-id="${row.bid_id}">Reject</button>`;
+
+            return `
+            <tr>
+              <td>${name}</td>
+              <td>${displayClubName(row.bidder_club_id)}</td>
+              <td>${formatMoney(row.bid_amount)}</td>
+              <td>${new Date(row.bid_time).toLocaleString()}</td>
+              <td>${actions}</td>
+            </tr>`;
+          })
+          .join("")}
+      </table>`;
+  }
+
+  container.innerHTML = html;
+
+  container.querySelectorAll(".accept-below-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const listingId = btn.dataset.id;
+      if (
+        !confirm(
+          "Accept this below-reserve bid? The player will transfer and funds will settle immediately."
+        )
+      ) {
+        return;
+      }
+      acceptBelowReserve(listingId, shortName);
+    });
+  });
+
+  container.querySelectorAll(".reject-below-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      rejectBelowReserve(btn.dataset.id, shortName);
+    });
+  });
 
   container.querySelectorAll(".accept-direct-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -683,8 +884,7 @@ async function loadSellerReview(shortName) {
 
   container.querySelectorAll(".reject-direct-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const bidId = btn.dataset.id;
-      rejectDirectBid(bidId, shortName);
+      rejectDirectBid(btn.dataset.id, shortName);
     });
   });
 }

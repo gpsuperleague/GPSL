@@ -835,6 +835,8 @@ export const GATE_ENTRY_LABELS = {
   transfer_agent_fee: "Agent fee",
   transfer_foreign_sale: "Foreign sale",
   transfer_overflow_release: "Squad release (MV)",
+  special_auction_fee: "Special auction fee",
+  special_auction_prize: "Special auction prize",
   infra_maintenance: "Stadium maintenance",
   infra_purchase: "Infrastructure purchase",
   infra_expansion: "Stadium expansion",

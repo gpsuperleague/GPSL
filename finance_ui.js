@@ -13,6 +13,8 @@ export const LEDGER_TYPE_TO_LINE = {
   transfer_sale: "transfer_sales",
   transfer_foreign_sale: "transfer_sales",
   transfer_overflow_release: "transfer_sales",
+  special_auction_fee: "transfer_purchases",
+  special_auction_prize: "prize_other",
   transfer_purchase: "transfer_purchases",
   transfer_agent_fee: "transfer_purchases",
   gate_league_home: "infra_gates",
@@ -68,9 +70,9 @@ export const FINANCE_UI_SECTIONS = [
       {
         id: "transfer_purchases",
         label: "Purchases",
-        types: ["transfer_purchase", "transfer_agent_fee"],
+        types: ["transfer_purchase", "transfer_agent_fee", "special_auction_fee"],
         note:
-          "All players bought: draft auction wins, transfer market, special auctions. Agent fees included.",
+          "All players bought: draft auction wins, transfer market, special auction fees. Agent fees included.",
       },
     ],
   },
@@ -107,8 +109,8 @@ export const FINANCE_UI_SECTIONS = [
       {
         id: "prize_other",
         label: "Prize money (posted)",
-        types: ["prize"],
-        note: "Generic prize lines until split into league / cup / challenge / TV.",
+        types: ["prize", "special_auction_prize"],
+        note: "Generic prize lines, special auction cash prizes, etc.",
       },
     ],
   },

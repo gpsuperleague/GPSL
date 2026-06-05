@@ -460,7 +460,12 @@ async function renderListings() {
       <td>${player?.Rating || "-"}</td>
       <td class="money-cell">${formatMoney(listing.market_value)}</td>
       <td class="money-cell">${formatMoney(listing.reserve_price)}</td>
-      <td>${listing.status} ${extendedLabel}</td>
+      <td>${
+        (listing.status === "Review" || listing.status === "Seller Review") &&
+        listing.seller_club_id === currentUserShort
+          ? `<a href="transfer_center.html#seller-review" class="gpsl-link">Below reserve — decide in Transfer Centre</a>${extendedLabel}`
+          : `${listing.status} ${extendedLabel}`
+      }</td>
       <td class="countdown-cell">${formatTimeRemainingHtml(listing.end_time)}</td>
       <td class="money-cell">${formatMoney(listing.current_highest_bid)}</td>
       <td>${highestClubText}</td>
