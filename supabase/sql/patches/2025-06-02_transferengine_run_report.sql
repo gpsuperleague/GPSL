@@ -1,6 +1,6 @@
--- Run transfer engine once (standard 7pm listings + draft settlement when due).
--- SQL Editor: SELECT transferengine_run_report();
--- Site admin UI: admin_transferengine_run() (authenticated admins only).
+-- PATCH — run only if you already deployed admin_transferengine_run.sql before 2 Jun 2025.
+-- Optional: visible JSON when running the transfer engine from SQL Editor.
+-- After run: SELECT public.transferengine_run_report();
 
 CREATE OR REPLACE FUNCTION public.transferengine_run_report()
 RETURNS jsonb
@@ -77,7 +77,6 @@ BEGIN
   );
 END;
 $function$;
-
 
 CREATE OR REPLACE FUNCTION public.admin_transferengine_run()
 RETURNS jsonb

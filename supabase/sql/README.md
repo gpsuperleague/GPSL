@@ -212,6 +212,8 @@ Run once:
 
 Then confirm **Admin → Transfer window & engine** still has **Draft auction enabled** (re-enable if needed).
 
+To inspect the secret finish time in SQL Editor: [`check_draft_random_finish.sql`](./check_draft_random_finish.sql)
+
 ### Club history, player career & Ballon d'Or
 
 Run once after cup/match-stats SQL:

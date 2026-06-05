@@ -477,7 +477,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
 
       tr.innerHTML = `
         <td><img src="${imgURL}" class="player-thumb" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
-        <td><a href="player_career.html?id=${encodeURIComponent(String(p.Konami_ID))}" class="gpsl-link squad-player-link">${p.Name}</a>${qualBadges}</td>
+        <td><a href="player_career.html?id=${encodeURIComponent(String(p.Konami_ID))}" class="squad-player-link">${p.Name}</a>${qualBadges}</td>
         <td>${p.Nation || "-"}</td>
         <td>${p.Position}</td>
         <td>${formatRatingWithPotential(p)}</td>

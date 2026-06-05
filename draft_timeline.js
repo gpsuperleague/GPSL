@@ -34,15 +34,15 @@ export function getEffectiveDraftPhase(nowUK, draftAuctionStartTime, options = {
   const phase = getDraftPhaseFromStart(nowUK, draftAuctionStartTime);
   if (options.biddingOpen === false) {
     if (phase === "before_start" || phase === "live_until_cutoff") return phase;
+    if (phase === "pre_random" || phase === "random_active") return "random_locked";
     return "ended";
   }
   return phase;
 }
 
 export function isDraftAuctionEnded(nowUK, draftAuctionStartTime, options = {}) {
-  return (
-    getEffectiveDraftPhase(nowUK, draftAuctionStartTime, options) === "ended"
-  );
+  const phase = getEffectiveDraftPhase(nowUK, draftAuctionStartTime, options);
+  return phase === "ended" || phase === "random_locked";
 }
 
 /** Shared countdown tick for dashboard / GPDB / draft auction pages. */
@@ -95,6 +95,20 @@ export function getDraftCountdownTick(nowUK, draftAuctionStartTime, options = {}
         target: timeline.randomStart,
         countUp: true,
       };
+    case "random_locked": {
+      const elapsed =
+        options.frozenMs != null
+          ? options.frozenMs
+          : Math.max(0, nowUK.getTime() - timeline.randomStart.getTime());
+      return {
+        phase,
+        ms: elapsed,
+        label: "Bidding locked — draft settles after 7pm auctions",
+        target: timeline.randomStart,
+        countUp: true,
+        frozen: true,
+      };
+    }
     case "ended":
       return { phase, ms: 0, label: "Draft has ended", target: null, countUp: false };
     default:
@@ -134,6 +148,8 @@ export function draftPhaseLabel(phase) {
       return "Cutoff passed — random window opens at 6:50pm UK";
     case "random_active":
       return "Random window — bidding closes at a random second between 6:50 and 6:59pm UK";
+    case "random_locked":
+      return "Bidding locked — players & money settle after tonight's 7pm transfer auctions";
     case "ended":
       return "Draft auction ended";
     default:

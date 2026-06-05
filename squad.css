@@ -236,6 +236,17 @@ body.squad-page .gpsl-table td {
   color: #ddd;
 }
 
+body.squad-page a.squad-player-link {
+  color: #ddd;
+  text-decoration: none;
+}
+
+body.squad-page a.squad-player-link:hover,
+body.squad-page a.squad-player-link:focus {
+  color: #fff;
+  text-decoration: none;
+}
+
 body.squad-page .gpsl-table tr:hover {
   background: rgba(255, 255, 255, 0.08);
 }

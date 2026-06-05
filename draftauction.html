@@ -451,6 +451,11 @@
       const nowUK = getUKNow();
       const statusEl = document.getElementById("draftStatus");
 
+      if (draftEnabled && draftAuctionStartTimeUK) {
+        const { refreshDraftBiddingOpen } = await import("./global.js");
+        await refreshDraftBiddingOpen();
+      }
+
       if (!draftEnabled || !draftAuctionStartTimeUK) {
         if (statusEl) statusEl.textContent = "";
         tbody.innerHTML = `<tr><td colspan="9">Draft auction is not active.</td></tr>`;
@@ -523,10 +528,11 @@
       }
 
       if (auctionEnded && !draftListingsPoll) {
-        draftListingsPoll = setInterval(() => loadDraftListings(), 15000);
-      } else if (!auctionEnded && draftListingsPoll) {
-        clearInterval(draftListingsPoll);
-        draftListingsPoll = null;
+        draftListingsPoll = setInterval(() => loadDraftListings(), 10000);
+      } else if (!auctionEnded && !draftListingsPoll) {
+        draftListingsPoll = setInterval(() => loadDraftListings(), 5000);
+      } else if (!auctionEnded && phase === "random_active" && draftListingsPoll) {
+        /* keep polling during random window */
       }
 
       for (const listing of sortedListings) {

@@ -286,7 +286,13 @@ export async function canClubBidOnPlayerDraft({
     start,
     open === null ? {} : { biddingOpen: open }
   );
-  if (phase === "before_start" || phase === "ended") return false;
+  if (
+    phase === "before_start" ||
+    phase === "ended" ||
+    phase === "random_locked"
+  ) {
+    return false;
+  }
 
   const cutoff = timeline.cutoff;
 

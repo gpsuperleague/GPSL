@@ -4,6 +4,7 @@
 -- =============================================================================
 
 ALTER TABLE public.global_settings
+  ADD COLUMN IF NOT EXISTS league_phase text,
   ADD COLUMN IF NOT EXISTS wage_34plus_min_rating smallint NOT NULL DEFAULT 34,
   ADD COLUMN IF NOT EXISTS wage_34plus_per_player numeric(14, 2) NOT NULL DEFAULT 500000,
   ADD COLUMN IF NOT EXISTS star_tax_min_rating smallint NOT NULL DEFAULT 70,

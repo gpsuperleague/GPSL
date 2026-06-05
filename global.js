@@ -40,6 +40,7 @@ let draftCutoff = null;       // Day 2 @ 18:00 UK
 let draftRandomStart = null;  // Day 2 @ 18:50 UK
 let draftPublicEnd = null;    // Latest possible end (18:59:59 day 2) — not secret finish
 let draftBiddingOpen = null;  // from global_settings_public.draft_bidding_open (secret finish)
+let draftRandomLockedMs = null; // frozen count-up offset when secret finish fires
 
 // Countdown interval
 let __draftCountdownInterval = null;
@@ -49,7 +50,12 @@ export function getDraftBiddingOpen() {
 }
 
 function draftCountdownOptions() {
-  return draftBiddingOpen === null ? {} : { biddingOpen: draftBiddingOpen };
+  const opts =
+    draftBiddingOpen === null ? {} : { biddingOpen: draftBiddingOpen };
+  if (draftRandomLockedMs != null) {
+    opts.frozenMs = draftRandomLockedMs;
+  }
+  return opts;
 }
 
 export function isDraftAuctionEnded(nowUK, draftAuctionStartTime) {
@@ -306,17 +312,43 @@ function msUntil(target) {
 export async function refreshDraftBiddingOpen() {
   if (!draftEnabled) {
     draftBiddingOpen = false;
+    draftRandomLockedMs = null;
     return;
   }
-  const { data } = await supabase
+  const wasOpen = draftBiddingOpen === true;
+  const { data, error } = await supabase
     .from("global_settings_public")
     .select("draft_bidding_open")
     .eq("id", 1)
     .single();
-  draftBiddingOpen =
+
+  if (error) {
+    console.warn(
+      "refreshDraftBiddingOpen failed — run repair_global_settings_public.sql",
+      error
+    );
+    return;
+  }
+
+  const nowOpen =
     data && "draft_bidding_open" in data
       ? data.draft_bidding_open === true
       : null;
+
+  if (wasOpen && nowOpen === false && isValidDate(draftStart)) {
+    const timeline = getDraftTimelineFromStart(draftStart);
+    if (timeline && getUKNow() >= timeline.randomStart) {
+      draftRandomLockedMs = Math.max(
+        0,
+        getUKNow().getTime() - timeline.randomStart.getTime()
+      );
+    }
+  }
+  if (nowOpen === true) {
+    draftRandomLockedMs = null;
+  }
+
+  draftBiddingOpen = nowOpen;
 }
 
 export function startDraftCountdown(onTick) {
@@ -369,7 +401,7 @@ export function wireDraftCountdownUI() {
 
   if (container) container.style.display = "";
 
-  startDraftCountdown(({ phase, ms, label, target, countUp }) => {
+  startDraftCountdown(({ phase, ms, label, target, countUp, frozen }) => {
     if (phase === "ended") {
       el.textContent = label;
       if (localEl) localEl.textContent = "";
@@ -378,6 +410,7 @@ export function wireDraftCountdownUI() {
 
     const { duration, subline } = formatLiveCountdownLines(label, ms, target, {
       countUp,
+      frozen,
     });
     el.textContent = duration;
     if (localEl) {
@@ -441,6 +474,20 @@ export async function loadGlobalSettings() {
   draftCutoff = timeline?.cutoff ?? null;
   draftRandomStart = timeline?.randomStart ?? null;
   draftPublicEnd = timeline?.publicEnd ?? null;
+
+  if (draftEnabled && draftBiddingOpen === false && isValidDate(draftStart)) {
+    const phase = getDraftPhaseFromStart(getUKNow(), draftStart);
+    if (
+      timeline &&
+      (phase === "random_active" || phase === "pre_random") &&
+      draftRandomLockedMs == null
+    ) {
+      draftRandomLockedMs = Math.max(
+        0,
+        getUKNow().getTime() - timeline.randomStart.getTime()
+      );
+    }
+  }
 
   return {
     draftEnabled,
