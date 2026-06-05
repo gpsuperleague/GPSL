@@ -1,0 +1,56 @@
+<script>window.CURRENT_PAGE = "player_career";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Player career — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:900px; margin:30px auto 50px; }
+    h1 { color:#ff9900; margin-bottom:4px; }
+    .sub { color:#999; margin:0 0 18px; }
+    .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:20px; margin-bottom:18px; }
+    .panel h2 { color:#ffcc66; margin:0 0 12px; font-size:17px; }
+    .head-row { display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap; }
+    .player-thumb { width:96px; border-radius:6px; }
+    .totals { display:flex; flex-wrap:wrap; gap:14px; margin-top:10px; }
+    .totals span { background:#222; border:1px solid #444; border-radius:6px; padding:8px 12px; font-size:14px; }
+    .totals b { color:#ff9900; }
+    .gpsl-table { width:100%; border-collapse:collapse; font-size:14px; }
+    .gpsl-table th { text-align:left; padding:8px; background:#222; color:#ff9900; }
+    .gpsl-table td { padding:8px; border-bottom:1px solid #2a2a2a; }
+    .num { text-align:right; font-variant-numeric:tabular-nums; }
+    .empty { color:#777; font-style:italic; }
+    .gpsl-link { color:#6cf; text-decoration:none; }
+    .award-pill { display:inline-block; background:#332200; border:1px solid #664400; color:#ffcc66; border-radius:4px; padding:4px 8px; margin:4px 6px 0 0; font-size:13px; }
+    #careerError { color:#f88; display:none; margin-bottom:12px; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <p><a href="javascript:history.back()" class="gpsl-link">← Back</a></p>
+    <div id="careerError"></div>
+    <div class="head-row">
+      <img id="playerImg" class="player-thumb" src="https://i.imgur.com/3s8XQ7Y.png" alt="">
+      <div>
+        <h1 id="playerTitle">Player</h1>
+        <p class="sub" id="playerMeta"></p>
+        <div class="totals" id="totalsRow"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>GPSL clubs &amp; seasons</h2>
+      <div id="stintsPanel"><span class="empty">Loading…</span></div>
+    </div>
+
+    <div class="panel">
+      <h2>Awards</h2>
+      <div id="awardsPanel"><span class="empty">Loading…</span></div>
+    </div>
+  </div>
+  <script type="module" src="player_career.js"></script>
+</body>
+</html>

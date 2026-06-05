@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("compCreateNextBtn").onclick = createNextSeason;
   document.getElementById("compEndSeasonBtn").onclick = endCurrentSeason;
+  document.getElementById("compArchiveSeasonBtn").onclick = archiveSeasonStats;
   document.getElementById("compSetupSeasonSelect").onchange = onCompSeasonSelected;
   document.getElementById("compSaveAssignBtn").onclick = saveCompetitionAssignments;
   document.getElementById("compDrawBtn").onclick = drawCompetitionAb;
@@ -97,6 +98,38 @@ async function createNextSeason() {
     await loadCompSeasonData(data);
     await refreshCompCalendarForSeason(data);
   }
+}
+
+async function archiveSeasonStats() {
+  if (
+    !confirm(
+      "Archive current season stats?\n\nWrites league positions, cup winners, player season stats, Ballon d'Or & club records. Safe to re-run."
+    )
+  ) {
+    return;
+  }
+
+  setStatus("compArchiveStatus", "Archiving…");
+  const { data, error } = await supabase.rpc("competition_admin_archive_season", {
+    p_season_id: null,
+  });
+
+  if (error) {
+    setStatus(
+      "compArchiveStatus",
+      error.message.includes("competition_admin_archive_season")
+        ? "❌ Run supabase/sql/competition_history.sql in Supabase, then retry."
+        : "❌ " + error.message,
+      false
+    );
+    return;
+  }
+
+  setStatus(
+    "compArchiveStatus",
+    `✅ Archived ${data?.season_label || "season"} — ${data?.clubs_archived ?? 0} clubs, ${data?.players_archived ?? 0} players, ${data?.cups_archived ?? 0} cups.`,
+    true
+  );
 }
 
 async function endCurrentSeason() {

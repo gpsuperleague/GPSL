@@ -1,0 +1,153 @@
+import { supabase, initGlobal } from "./global.js";
+import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import { DIVISION_LABELS } from "./competition.js";
+
+const AWARD_LABELS = {
+  ballon_dor: "Ballon d'Or",
+  golden_boot: "Golden Boot",
+  golden_playmaker: "Golden Playmaker",
+  golden_glove: "Golden Glove",
+  season_potm: "Most POTM",
+};
+
+function divisionLabel(div) {
+  return DIVISION_LABELS[div] || div || "—";
+}
+
+function clubLink(shortName, name) {
+  if (!shortName) return name || "—";
+  return `<a class="gpsl-link" href="club.html?club=${encodeURIComponent(shortName)}">${name || shortName}</a>`;
+}
+
+function showError(msg) {
+  const el = document.getElementById("careerError");
+  if (!el) return;
+  if (!msg) {
+    el.style.display = "none";
+    return;
+  }
+  el.style.display = "block";
+  el.textContent = msg;
+}
+
+function renderTotals(totals) {
+  const t = totals || {};
+  document.getElementById("totalsRow").innerHTML = `
+    <span><b>Apps</b> ${t.appearances ?? 0}</span>
+    <span><b>Goals</b> ${t.goals ?? 0}</span>
+    <span><b>Assists</b> ${t.assists ?? 0}</span>
+    <span><b>POTM</b> ${t.potm_awards ?? 0}</span>
+    <span><b>Clean sheets</b> ${t.clean_sheets ?? 0}</span>
+    <span><b>Avg rating</b> ${t.avg_rating != null ? Number(t.avg_rating).toFixed(2) : "—"}</span>
+  `;
+}
+
+function renderStints(stints) {
+  const el = document.getElementById("stintsPanel");
+  if (!stints?.length) {
+    el.innerHTML =
+      '<p class="empty">No GPSL match stats yet — stats appear after confirmed league &amp; cup games.</p>';
+    return;
+  }
+
+  el.innerHTML = `
+    <table class="gpsl-table">
+      <thead>
+        <tr>
+          <th>Season</th>
+          <th>Club</th>
+          <th>Div</th>
+          <th class="num">Apps</th>
+          <th class="num">G</th>
+          <th class="num">A</th>
+          <th class="num">POTM</th>
+          <th class="num">CS</th>
+          <th class="num">Avg</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${stints
+          .map(
+            (s) => `
+          <tr>
+            <td>${s.season_label}${s.is_live ? " <small>(live)</small>" : ""}</td>
+            <td>${clubLink(s.club_short_name, s.club_name)}</td>
+            <td>${divisionLabel(s.division)}</td>
+            <td class="num">${s.appearances ?? 0}</td>
+            <td class="num">${s.goals ?? 0}</td>
+            <td class="num">${s.assists ?? 0}</td>
+            <td class="num">${s.potm_awards ?? 0}</td>
+            <td class="num">${s.clean_sheets ?? 0}</td>
+            <td class="num">${s.avg_rating != null ? Number(s.avg_rating).toFixed(2) : "—"}</td>
+          </tr>`
+          )
+          .join("")}
+      </tbody>
+    </table>`;
+}
+
+function renderAwards(awards) {
+  const el = document.getElementById("awardsPanel");
+  if (!awards?.length) {
+    el.innerHTML = '<p class="empty">No season awards yet.</p>';
+    return;
+  }
+  el.innerHTML = awards
+    .map(
+      (a) =>
+        `<span class="award-pill">${AWARD_LABELS[a.award_type] || a.award_type} · ${a.season_label} · ${fullClubName(a.club_short_name) || a.club_name}</span>`
+    )
+    .join("");
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await initGlobal();
+  await loadClubsMap();
+
+  const params = new URLSearchParams(window.location.search);
+  const playerId = params.get("id")?.trim();
+  if (!playerId) {
+    showError("Missing player id.");
+    return;
+  }
+
+  const { data, error } = await supabase.rpc("competition_player_career_bundle", {
+    p_player_id: playerId,
+  });
+
+  if (error) {
+    console.error("competition_player_career_bundle:", error);
+    showError(
+      error.message.includes("competition_player_career_bundle")
+        ? "Run supabase/sql/competition_history.sql in Supabase first."
+        : error.message
+    );
+    return;
+  }
+
+  const bundle = data || {};
+  const player = bundle.player || {};
+
+  document.getElementById("playerTitle").textContent =
+    player.player_name || `Player ${playerId}`;
+  document.getElementById("playerMeta").textContent = [
+    player.position,
+    player.nation,
+    player.rating != null ? `Rating ${player.rating}` : null,
+    player.current_club
+      ? `Current club: ${fullClubName(player.current_club) || player.current_club}`
+      : "Free agent",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const img = document.getElementById("playerImg");
+  img.src = `https://pesdb.net/assets/img/card/b${playerId}.png`;
+  img.onerror = () => {
+    img.src = "https://i.imgur.com/3s8XQ7Y.png";
+  };
+
+  renderTotals(bundle.totals);
+  renderStints(bundle.stints || []);
+  renderAwards(bundle.awards || []);
+});

@@ -202,6 +202,17 @@ Run once:
 - **Apply to club** posts instant `gov_fine_compensation` (fine = debit, compensation = credit)
 - SACK MGR / RLS MGR use **manual** amount at apply time
 
+### Club history, player career & Ballon d'Or
+
+Run once after cup/match-stats SQL:
+
+[`competition_history.sql`](./competition_history.sql)
+
+- **Admin → Season management → Archive season stats** — snapshots league tables, cup winners, player season rows & awards
+- **`history.html`** — honours, positions by season, club records, Ballon winners at your club
+- **`player_career.html?id=…`** — GPSL stint history (linked from squad player names)
+- Ballon points: role-weighted (GK/DEF clean sheets, goals, assists, POTM, avg rating)
+
 ### Transfer polish (below-reserve UI + ledger for all deal types)
 
 Run once after `central_bank_phase1.sql`:
