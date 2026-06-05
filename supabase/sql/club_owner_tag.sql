@@ -3,6 +3,9 @@
 -- Run once in Supabase SQL Editor.
 -- =============================================================================
 
+ALTER TABLE public."Clubs"
+  ADD COLUMN IF NOT EXISTS "Owner" text;
+
 CREATE OR REPLACE FUNCTION public.club_owner_set_tag(p_tag text)
 RETURNS void
 LANGUAGE plpgsql

@@ -1,8 +1,33 @@
-// Club Details page — owner Discord tag (Clubs.Owner)
+// Club Details page
 
-import { formatNationLabel } from "./squad_rules.js";
+import { supabase, initGlobal } from "./global.js";
+import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import {
+  loadCurrentSeason,
+  loadActiveSeasonRegistrations,
+  divisionForClub,
+} from "./competition.js";
 
 const MAX_OWNER_TAG_LEN = 64;
+
+const CLUB_SELECT_BASE =
+  "ShortName, Club, Stadium, Capacity, Nation";
+const CLUB_SELECT_WITH_OWNER = `${CLUB_SELECT_BASE}, Owner`;
+
+function formatNationLabel(value) {
+  if (value == null || !String(value).trim()) return "";
+  const spaced = String(value)
+    .trim()
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return spaced
+    .split(" ")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
 
 export function normalizeOwnerTagInput(raw) {
   return String(raw ?? "")
@@ -11,14 +36,9 @@ export function normalizeOwnerTagInput(raw) {
     .slice(0, MAX_OWNER_TAG_LEN);
 }
 
-/**
- * @param {object} els — { input, editBtn, saveBtn, hint }
- * @param {string|null} storedTag — Clubs.Owner
- */
-export function initOwnerTagField(els, storedTag) {
-  const locked = Boolean(storedTag && String(storedTag).trim());
-  els.input.value = locked ? String(storedTag).trim() : "";
-  setOwnerTagMode(els, locked ? "locked" : "empty");
+function setBtnVisible(btn, visible) {
+  if (!btn) return;
+  btn.classList.toggle("is-hidden", !visible);
 }
 
 export function setOwnerTagMode(els, mode) {
@@ -27,30 +47,39 @@ export function setOwnerTagMode(els, mode) {
   if (mode === "empty") {
     input.disabled = false;
     input.placeholder = "Discord username";
-    editBtn.style.display = "none";
-    saveBtn.style.display = "inline-block";
+    setBtnVisible(editBtn, false);
+    setBtnVisible(saveBtn, true);
     hint.textContent =
       "Matches your Discord name. Save to lock it in — use Edit later to change.";
+    hint.classList.remove("owner-tag-hint--error");
     return;
   }
 
   if (mode === "locked") {
     input.disabled = true;
-    editBtn.style.display = "inline-block";
-    saveBtn.style.display = "none";
+    setBtnVisible(editBtn, true);
+    setBtnVisible(saveBtn, false);
     hint.textContent = "Locked in. Click Edit to change, then Save.";
+    hint.classList.remove("owner-tag-hint--error");
     return;
   }
 
   if (mode === "editing") {
     input.disabled = false;
-    editBtn.style.display = "none";
-    saveBtn.style.display = "inline-block";
+    setBtnVisible(editBtn, false);
+    setBtnVisible(saveBtn, true);
     hint.textContent = "Save to confirm your updated Discord tag.";
+    hint.classList.remove("owner-tag-hint--error");
   }
 }
 
-export async function saveOwnerTag(supabase, tag) {
+export function initOwnerTagField(els, storedTag) {
+  const locked = Boolean(storedTag && String(storedTag).trim());
+  els.input.value = locked ? String(storedTag).trim() : "";
+  setOwnerTagMode(els, locked ? "locked" : "empty");
+}
+
+export async function saveOwnerTag(tag) {
   const value = normalizeOwnerTagInput(tag);
   if (!value) {
     return { ok: false, msg: "Enter your Discord tag before saving." };
@@ -71,7 +100,7 @@ export async function saveOwnerTag(supabase, tag) {
   return { ok: true, tag: value };
 }
 
-export function wireOwnerTagField(supabase, els, getStoredTag, onSaved) {
+function wireOwnerTagField(els, onSaved) {
   els.editBtn.addEventListener("click", () => {
     setOwnerTagMode(els, "editing");
     els.input.focus();
@@ -80,7 +109,7 @@ export function wireOwnerTagField(supabase, els, getStoredTag, onSaved) {
 
   els.saveBtn.addEventListener("click", async () => {
     els.saveBtn.disabled = true;
-    const result = await saveOwnerTag(supabase, els.input.value);
+    const result = await saveOwnerTag(els.input.value);
     els.saveBtn.disabled = false;
 
     if (!result.ok) {
@@ -89,14 +118,120 @@ export function wireOwnerTagField(supabase, els, getStoredTag, onSaved) {
       return;
     }
 
-    els.hint.classList.remove("owner-tag-hint--error");
     els.input.value = result.tag;
     setOwnerTagMode(els, "locked");
     onSaved?.(result.tag);
   });
 }
 
-export function formatClubNationDisplay(nation) {
-  if (!nation || !String(nation).trim()) return "—";
-  return formatNationLabel(nation);
+async function loadOwnerClub(userId) {
+  let result = await supabase
+    .from("Clubs")
+    .select(CLUB_SELECT_WITH_OWNER)
+    .eq("owner_id", userId)
+    .maybeSingle();
+
+  if (result.error && /owner/i.test(String(result.error.message))) {
+    result = await supabase
+      .from("Clubs")
+      .select(CLUB_SELECT_BASE)
+      .eq("owner_id", userId)
+      .maybeSingle();
+  }
+
+  return result;
 }
+
+function showLoadError(message) {
+  const el = document.getElementById("clubDetailsError");
+  if (el) {
+    el.textContent = message;
+    el.hidden = false;
+  }
+}
+
+async function initClubDetailsPage() {
+  await initGlobal();
+  await loadClubsMap();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    window.location = "login.html";
+    return;
+  }
+
+  const emailEl = document.getElementById("accountEmail");
+  if (emailEl) emailEl.textContent = user.email || "—";
+
+  const ownerEls = {
+    input: document.getElementById("ownerInput"),
+    editBtn: document.getElementById("editOwnerTagBtn"),
+    saveBtn: document.getElementById("saveOwnerBtn"),
+    hint: document.getElementById("ownerTagHint"),
+  };
+
+  let storedTag = null;
+  initOwnerTagField(ownerEls, null);
+  wireOwnerTagField(ownerEls, (tag) => {
+    storedTag = tag;
+  });
+
+  const { data: club, error } = await loadOwnerClub(user.id);
+
+  if (error) {
+    console.error("Club Details club load:", error);
+    showLoadError(
+      `Could not load club details (${error.message}). Check Supabase Clubs access.`
+    );
+    return;
+  }
+
+  if (!club?.ShortName) {
+    showLoadError(
+      "No club is linked to your account. Ask an admin to link your club under Owner administration."
+    );
+    return;
+  }
+
+  document.getElementById("clubName").textContent =
+    fullClubName(club.ShortName) || club.Club || club.ShortName;
+  document.getElementById("shortName").textContent = club.ShortName;
+  document.getElementById("stadiumName").textContent = club.Stadium || "—";
+  document.getElementById("stadiumCapacity").textContent =
+    club.Capacity != null && club.Capacity !== ""
+      ? String(club.Capacity)
+      : "—";
+  document.getElementById("clubNation").textContent = club.Nation
+    ? formatNationLabel(club.Nation)
+    : "—";
+
+  storedTag = club.Owner?.trim() || null;
+  initOwnerTagField(ownerEls, storedTag);
+
+  const divEl = document.getElementById("compDivision");
+  try {
+    const season = await loadCurrentSeason(supabase);
+    if (season) {
+      const regs = await loadActiveSeasonRegistrations(supabase);
+      const div = divisionForClub(regs, club.ShortName);
+      divEl.textContent = div ? `${div} (current season)` : "Not registered";
+    } else {
+      divEl.textContent = "No active season";
+    }
+  } catch (err) {
+    console.warn("Club Details division:", err);
+    divEl.textContent = "—";
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  initClubDetailsPage().catch((err) => {
+    console.error("Club Details init failed:", err);
+    showLoadError(
+      err?.message ||
+        "Club Details failed to load. Try a hard refresh (Ctrl+F5)."
+    );
+  });
+});

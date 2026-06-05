@@ -133,8 +133,9 @@
   color: #e88;
 }
 
-#editOwnerTagBtn {
-  display: none;
+.small-btn.is-hidden,
+#editOwnerTagBtn.is-hidden {
+  display: none !important;
 }
 
 
@@ -172,9 +173,12 @@
 }
 
 #saveOwnerBtn {
-  display: none;
   background: #ff9900;
   color: #111;
+}
+
+#saveOwnerBtn.is-hidden {
+  display: none !important;
 }
 
 #saveOwnerBtn:hover {
