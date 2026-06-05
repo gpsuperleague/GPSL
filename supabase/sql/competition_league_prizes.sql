@@ -23,6 +23,7 @@ ALTER TABLE public.competition_finance_ledger
       'gate_cup_share',
       'prize',
       'prize_league',
+      'prize_cup',
       'adjustment',
       'admin_one_off_injection',
       'admin_purchase_payment',

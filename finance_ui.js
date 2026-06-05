@@ -90,8 +90,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "prize_cup",
         label: "Cup prize money",
         types: ["prize_cup"],
-        planned: true,
-        note: "Paid after each cup tie, using per-round amounts from admin.",
+        note: "Paid to both clubs after each confirmed cup tie (same round fee). Admin override for walkovers.",
       },
       {
         id: "prize_challenge",

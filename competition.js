@@ -326,7 +326,7 @@ export async function loadCupMatchExtras(supabase, fixtureIds) {
       .from("competition_finance_ledger_public")
       .select("fixture_id, club_short_name, club_name, entry_type, amount, description")
       .in("fixture_id", ids)
-      .in("entry_type", ["gate_cup_share", "prize"]),
+      .in("entry_type", ["gate_cup_share", "prize", "prize_cup"]),
     supabase
       .from("competition_fixtures")
       .select("id, cup_pen_winner_club_short_name, home_goals, away_goals, home_club_short_name, away_club_short_name")
@@ -415,7 +415,7 @@ export function formatCupMatchFinance(match, extras) {
     const bucket = byClub.get(key);
     const amt = Number(row.amount) || 0;
     if (row.entry_type === "gate_cup_share") bucket.gate += amt;
-    else if (row.entry_type === "prize") bucket.prize += amt;
+    else if (row.entry_type === "prize" || row.entry_type === "prize_cup") bucket.prize += amt;
   }
 
   return [...byClub.values()].filter((c) => c.gate > 0 || c.prize > 0);
@@ -870,6 +870,7 @@ const INCOME_TYPES = new Set([
   "gate_cup_share",
   "prize",
   "prize_league",
+  "prize_cup",
   "adjustment",
   "admin_one_off_injection",
   "transfer_sale",

@@ -124,6 +124,17 @@ Run once:
 - Knockout brackets, **Match Day** submit/confirm (no draws), **50/50** gates, **instant prizes** (admin config)
 - **`cups.html`** brackets · **GPSL Admin → Cup competitions**
 
+### Cup prize fix (after Phase 6)
+
+Run once:
+
+[`competition_cup_prizes_fix.sql`](./competition_cup_prizes_fix.sql)
+
+- Round fee paid to **both** clubs on confirm (not winner-only)
+- Ledger type **`prize_cup`** (reclassifies old generic `prize` cup lines)
+- Admin stages: `appearance`, `r1`, `r2`, `qf`, `sf`, `final` on **Cup fixtures**
+- **Award round prize** override for walkover / no-show (fixture ID + club)
+
 ### League prize money (after Phase 5)
 
 Run once:
