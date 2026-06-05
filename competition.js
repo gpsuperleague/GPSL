@@ -743,6 +743,23 @@ export async function loadStandings(supabase, division = null) {
   return data || [];
 }
 
+/** Standings with league_prize_amount + league_prize_paid (requires competition_league_prizes.sql). */
+export async function loadStandingsWithPrizes(supabase, division = null) {
+  let query = supabase
+    .from("competition_standings_prizes_public")
+    .select("*")
+    .order("table_position", { ascending: true });
+
+  if (division) query = query.eq("division", division);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("loadStandingsWithPrizes:", error);
+    return loadStandings(supabase, division);
+  }
+  return data || [];
+}
+
 /** Zone labels for table position (may overlap, e.g. CH 3–4 = Plate + Playoffs). */
 export function zonesForPosition(division, position) {
   if (division === "superleague") {
@@ -852,6 +869,7 @@ const INCOME_TYPES = new Set([
   "gate_league_home",
   "gate_cup_share",
   "prize",
+  "prize_league",
   "adjustment",
   "admin_one_off_injection",
   "transfer_sale",

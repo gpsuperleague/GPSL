@@ -99,6 +99,20 @@ html.admin-root body.admin-page {
   margin: 0 0 12px;
 }
 
+.admin-page .league-prize-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px 14px;
+  margin-top: 12px;
+}
+
+.admin-page .league-prize-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+
 .admin-page .status-line {
   color: #ffcc00;
   margin-top: 10px;

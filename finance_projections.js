@@ -7,6 +7,7 @@ import {
   formatMoney,
   loadCupFixtures,
   loadLeagueFixtures,
+  loadStandingsWithPrizes,
   normalizeClubKey,
 } from "./competition.js";
 
@@ -91,6 +92,21 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
       pendingByLine.set("upkeep_wages", {
         amount: -remaining,
         note: `Squad contract wages est. ${formatMoney(squadWage)}/season`,
+      });
+    }
+  }
+
+  const postedLeaguePrize = byLine.get("prize_league")?.amount || 0;
+  if (postedLeaguePrize < 0.5) {
+    const standings = await loadStandingsWithPrizes(supabase);
+    const row = standings.find(
+      (s) => normalizeClubKey(s.club_short_name) === clubKey
+    );
+    const prizeAmt = Number(row?.league_prize_amount || 0);
+    if (prizeAmt > 0 && !row?.league_prize_paid) {
+      pendingByLine.set("prize_league", {
+        amount: prizeAmt,
+        note: `Position ${row.table_position} prize (if table held at season end)`,
       });
     }
   }

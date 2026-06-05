@@ -124,6 +124,17 @@ Run once:
 - Knockout brackets, **Match Day** submit/confirm (no draws), **50/50** gates, **instant prizes** (admin config)
 - **`cups.html`** brackets · **GPSL Admin → Cup competitions**
 
+### League prize money (after Phase 5)
+
+Run once:
+
+[`competition_league_prizes.sql`](./competition_league_prizes.sql)
+
+- Admin sets **₿ per table position (1–20)** per division on **GPSL Admin → Money management**
+- **`progress.html`** league tables show a **Prize** column from config
+- **`finances.html`** pending column projects prize for **current table position** until paid
+- **Auto-pay** when all **38** league matches in a division are played (on result confirm), or admin **Pay league prizes**
+
 ### Club owner linking (admin)
 
 Run once:

@@ -2,13 +2,14 @@ import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
 import {
   loadCurrentSeason,
-  loadStandings,
+  loadStandingsWithPrizes,
   groupStandingsByDivision,
   DIVISION_LABELS,
   LEAGUE_DIVISIONS,
   zonesForPosition,
   primaryZoneKey,
   formatFormHtml,
+  formatMoney,
   normalizeClubKey,
 } from "./competition.js";
 
@@ -63,6 +64,13 @@ function renderStandingsTable(division, rows, myClub) {
           ? " my-club"
           : "";
 
+      const prizeAmt = Number(row.league_prize_amount || 0);
+      const prizeTitle = row.league_prize_paid ? "Paid at end of league season" : "Projected if season ended now";
+      const prizeCell =
+        prizeAmt > 0
+          ? `<td class="num prize-col" title="${prizeTitle}">${formatMoney(prizeAmt)}</td>`
+          : `<td class="num prize-col">—</td>`;
+
       return `
         <tr class="zone-${zoneKey}${mine}">
           <td class="num">${pos}</td>
@@ -76,6 +84,7 @@ function renderStandingsTable(division, rows, myClub) {
           <td class="num">${row.ga}</td>
           <td class="num">${gdDisplay(row.gd)}</td>
           <td class="num"><b>${row.pts}</b></td>
+          ${prizeCell}
           <td class="form-cell">${formatFormHtml(row.form_last10)}</td>
         </tr>
       `;
@@ -98,6 +107,7 @@ function renderStandingsTable(division, rows, myClub) {
           <th>GA</th>
           <th>GD</th>
           <th>Pts</th>
+          <th>Prize</th>
           <th>Form</th>
         </tr>
       </thead>
@@ -144,7 +154,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       : ""
   } · 3 pts win · 1 pt draw`;
 
-  const standings = await loadStandings(supabase);
+  const standings = await loadStandingsWithPrizes(supabase);
   const groups = groupStandingsByDivision(standings);
 
   root.innerHTML = "";

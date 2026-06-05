@@ -14,7 +14,24 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <h2>League prize money</h2>
-        <p class="note">League prizes are paid from the central bank after all 38 league matches in a division. Position amounts are configured in competition finance SQL / future admin UI — check <code>competition_phase5_finances.sql</code>.</p>
+        <p class="note">Paid automatically when all <b>38</b> league matches in a division are played (or use <b>Pay league prizes</b> manually). Run <code>competition_league_prizes.sql</code> once.</p>
+        <div class="row">
+          <div>
+            <label>Division</label>
+            <select id="leaguePrizeDivision">
+              <option value="superleague">SuperLeague</option>
+              <option value="championship_a">Championship A</option>
+              <option value="championship_b">Championship B</option>
+            </select>
+          </div>
+        </div>
+        <div id="leaguePrizeGrid" class="league-prize-grid"></div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" id="saveLeaguePrizesBtn" class="button">Save prizes</button>
+          <button type="button" id="seedLeaguePrizesBtn" class="button">Load default amounts</button>
+          <button type="button" id="payLeaguePrizesBtn" class="button">Pay league prizes</button>
+        </div>
+        <div id="leaguePrizeStatus" class="status-line"></div>
       </div>
       <div class="card">
         <h2>Cup prize money</h2>
