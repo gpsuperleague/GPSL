@@ -17,9 +17,14 @@ import {
   loadCalendarStatus,
   calendarStatusBanner,
 } from "./competition_calendar.js";
+import {
+  loadHolidayPlayContext,
+  isFixtureHolidayPlayable,
+} from "./owner_holidays.js";
 
 let myClub = { short: null, name: null };
 let calendarStatus = null;
+let holidayContext = null;
 let confirmMode = null;
 let myDivision = null;
 let upcomingFixtures = [];
@@ -829,7 +834,7 @@ async function updateFixturePreview() {
   confirmMode = null;
   applyConfirmModeUI();
 
-  const canSubmit = canSubmitResult(f, myClub, calendarStatus);
+  const canSubmit = canSubmitResult(f, myClub, calendarStatus, holidayContext);
   clearScoreFields();
   setScoreInputsEnabled(canSubmit);
   updateCupScoreSections();
@@ -843,7 +848,15 @@ async function updateFixturePreview() {
   } else if (f.submission_id) {
     setStatus("submitStatus", "Opponent submitted — confirm or reject in Inbox.");
   } else if (canSubmit) {
-    setStatus("submitStatus", "Enter home and away goals, then submit.");
+    const holidayEarly =
+      holidayContext &&
+      isFixtureHolidayPlayable(f, myClub, holidayContext);
+    setStatus(
+      "submitStatus",
+      holidayEarly
+        ? "Holiday unlock — pre-play this match before its GPSL month opens."
+        : "Enter home and away goals, then submit."
+    );
   } else {
     setStatus("submitStatus", "This fixture cannot accept a new result.");
   }
@@ -890,7 +903,7 @@ async function loadUpcomingFixtures() {
       if (!fixtureInvolvesClub(f, myClub)) return false;
       if (f.submission_status === "pending") return true;
       if (f.status !== "scheduled") return false;
-      return canSubmitResult(f, myClub, calendarStatus);
+      return canSubmitResult(f, myClub, calendarStatus, holidayContext);
     })
     .sort((a, b) => {
       if (a.competition_type !== b.competition_type) {
@@ -967,7 +980,7 @@ async function submitResult() {
   }
 
   const f = selectedFixture();
-  if (!f || !canSubmitResult(f, myClub, calendarStatus)) {
+  if (!f || !canSubmitResult(f, myClub, calendarStatus, holidayContext)) {
     setStatus("submitStatus", "Select a fixture you can submit.", true);
     return;
   }
@@ -1108,6 +1121,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderPlayerStatsTable();
 
   calendarStatus = await loadCalendarStatus(supabase);
+  holidayContext = await loadHolidayPlayContext();
   const calBanner = document.getElementById("calendarBanner");
   if (calBanner && calendarStatus) {
     calBanner.style.display = "block";

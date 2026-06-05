@@ -45,6 +45,112 @@
     #clubDetailsError[hidden] {
       display: none;
     }
+
+    .holiday-panel {
+      margin-top: 20px;
+      padding: 16px 18px;
+    }
+
+    .holiday-title {
+      color: #ff9900;
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .holiday-intro {
+      color: #aaa;
+      font-size: 13px;
+      line-height: 1.45;
+      margin: 0 0 12px;
+    }
+
+    .holiday-quota {
+      font-size: 14px;
+      margin: 0 0 8px;
+    }
+
+    .holiday-list {
+      margin: 12px 0 16px;
+    }
+
+    .holiday-item {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+      padding: 8px 10px;
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .holiday-item-dates {
+      flex: 1 1 180px;
+    }
+
+    .holiday-item-meta {
+      color: #888;
+      font-size: 12px;
+    }
+
+    .holiday-status {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #333;
+      color: #bbb;
+    }
+
+    .holiday-status--active {
+      background: #3d3200;
+      color: #ffcc66;
+    }
+
+    .holiday-book-form {
+      border-top: 1px solid #333;
+      padding-top: 14px;
+    }
+
+    .holiday-date-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .holiday-date-row label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    .holiday-date-row input[type="date"] {
+      padding: 8px 10px;
+      background: #222;
+      border: 1px solid #444;
+      color: #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .holiday-day-preview {
+      font-size: 12px;
+      color: #888;
+      padding-bottom: 8px;
+    }
+
+    .holiday-empty {
+      color: #666;
+      font-size: 13px;
+      margin: 0;
+    }
   </style>
 
 </head>
@@ -112,6 +218,35 @@
         <span id="compDivision">—</span>
       </div>
 
+    </div>
+
+    <div class="panel panel-bg holiday-panel" id="holidayPanel">
+      <h2 class="holiday-title">Holiday booking</h2>
+      <p class="holiday-intro">
+        Going away? Book real-world dates (up to <b>14 days per season</b>, in any chunks).
+        GPSL months that overlap your holiday unlock early on
+        <a href="matchday.html" style="color:#ff9900;">Match Day</a> so you can pre-play before the normal Friday unlock.
+      </p>
+
+      <p id="holidayQuota" class="holiday-quota">Loading allowance…</p>
+      <p id="holidayHint" class="owner-tag-hint" role="status"></p>
+
+      <div id="holidayList" class="holiday-list"></div>
+
+      <div class="holiday-book-form">
+        <div class="holiday-date-row">
+          <label>
+            From
+            <input type="date" id="holidayStartDate">
+          </label>
+          <label>
+            To
+            <input type="date" id="holidayEndDate">
+          </label>
+          <span id="holidayDayPreview" class="holiday-day-preview"></span>
+        </div>
+        <button type="button" id="bookHolidayBtn" class="small-btn">Book holiday</button>
+      </div>
     </div>
 
   </div>

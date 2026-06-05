@@ -7,6 +7,15 @@ import {
   loadActiveSeasonRegistrations,
   divisionForClub,
 } from "./competition.js";
+import {
+  HOLIDAY_DAYS_PER_SEASON,
+  loadOwnerHolidays,
+  bookOwnerHoliday,
+  cancelOwnerHoliday,
+  formatUkDateRange,
+  holidayStatusLabel,
+  inclusiveDayCountFromDates,
+} from "./owner_holidays.js";
 
 const MAX_OWNER_TAG_LEN = 64;
 
@@ -140,6 +149,140 @@ function showLoadError(message) {
   }
 }
 
+function setHolidayHint(message, isError = false) {
+  const el = document.getElementById("holidayHint");
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.toggle("owner-tag-hint--error", isError);
+}
+
+function renderHolidayList(holidays) {
+  const list = document.getElementById("holidayList");
+  if (!list) return;
+
+  if (!holidays.length) {
+    list.innerHTML =
+      '<p class="holiday-empty">No holidays booked this season.</p>';
+    return;
+  }
+
+  list.innerHTML = holidays
+    .map((h) => {
+      const status = holidayStatusLabel(h);
+      const statusClass =
+        status === "Active" ? "holiday-status holiday-status--active" : "holiday-status";
+      const cancelBtn = h.is_upcoming
+        ? `<button type="button" class="small-btn holiday-cancel-btn" data-id="${h.id}">Cancel</button>`
+        : "";
+      return `
+        <div class="holiday-item">
+          <div class="holiday-item-dates">
+            <b>${formatUkDateRange(h.starts_at, h.ends_at)}</b>
+            <span class="holiday-item-meta"> · ${h.day_count} day${h.day_count === 1 ? "" : "s"}</span>
+          </div>
+          <span class="${statusClass}">${status}</span>
+          ${cancelBtn}
+        </div>
+      `;
+    })
+    .join("");
+
+  list.querySelectorAll(".holiday-cancel-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const id = Number(btn.dataset.id);
+      btn.disabled = true;
+      const result = await cancelOwnerHoliday(id);
+      btn.disabled = false;
+      if (!result.ok) {
+        setHolidayHint(result.msg, true);
+        return;
+      }
+      setHolidayHint("Holiday cancelled.");
+      await refreshHolidaySection();
+    });
+  });
+}
+
+function updateHolidayDayPreview() {
+  const start = document.getElementById("holidayStartDate")?.value;
+  const end = document.getElementById("holidayEndDate")?.value;
+  const preview = document.getElementById("holidayDayPreview");
+  if (!preview) return;
+
+  if (!start || !end) {
+    preview.textContent = "";
+    return;
+  }
+
+  const days = inclusiveDayCountFromDates(start, end);
+  if (days <= 0) {
+    preview.textContent = "End date must be on or after start.";
+    return;
+  }
+
+  preview.textContent = `${days} day${days === 1 ? "" : "s"} in this booking`;
+}
+
+async function refreshHolidaySection() {
+  const quotaEl = document.getElementById("holidayQuota");
+  const season = await loadCurrentSeason(supabase);
+
+  if (!season) {
+    if (quotaEl) quotaEl.textContent = "No active season — holidays unavailable.";
+    renderHolidayList([]);
+    return;
+  }
+
+  const { holidays, daysUsed, daysRemaining } = await loadOwnerHolidays();
+  if (quotaEl) {
+    quotaEl.textContent = `${daysUsed} of ${HOLIDAY_DAYS_PER_SEASON} days used this season · ${daysRemaining} remaining`;
+  }
+  renderHolidayList(holidays);
+}
+
+function wireHolidayBooking() {
+  const startInput = document.getElementById("holidayStartDate");
+  const endInput = document.getElementById("holidayEndDate");
+  const bookBtn = document.getElementById("bookHolidayBtn");
+
+  const onDateChange = () => updateHolidayDayPreview();
+  startInput?.addEventListener("change", onDateChange);
+  endInput?.addEventListener("change", onDateChange);
+
+  bookBtn?.addEventListener("click", async () => {
+    const start = startInput?.value;
+    const end = endInput?.value;
+
+    if (!start || !end) {
+      setHolidayHint("Choose start and end dates.", true);
+      return;
+    }
+
+    bookBtn.disabled = true;
+    const result = await bookOwnerHoliday(start, end);
+    bookBtn.disabled = false;
+
+    if (!result.ok) {
+      const msg = result.msg || "";
+      if (msg.includes("club_holiday_book") || msg.includes("function")) {
+        setHolidayHint(
+          "Holiday booking unavailable. Run supabase/sql/club_owner_holidays.sql in Supabase.",
+          true
+        );
+      } else {
+        setHolidayHint(msg, true);
+      }
+      return;
+    }
+
+    if (startInput) startInput.value = "";
+    if (endInput) endInput.value = "";
+    updateHolidayDayPreview();
+    setHolidayHint("Holiday booked — overlapping match months unlock for early play.");
+    await refreshHolidaySection();
+  });
+}
+
 async function initClubDetailsPage() {
   await initGlobal();
   await loadClubsMap();
@@ -214,6 +357,9 @@ async function initClubDetailsPage() {
     console.warn("Club Details division:", err);
     divEl.textContent = "—";
   }
+
+  wireHolidayBooking();
+  await refreshHolidaySection();
 }
 
 document.addEventListener("DOMContentLoaded", () => {

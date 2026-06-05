@@ -20,8 +20,10 @@ import {
   calendarStatusBanner,
 } from "./competition_calendar.js";
 import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
+import { loadHolidayPlayContext } from "./owner_holidays.js";
 
 let calendarStatus = null;
+let holidayContext = null;
 
 let myClub = { short: null, name: null };
 let currentDivision = "superleague";
@@ -53,7 +55,7 @@ function actionCell(fixture) {
     return "";
   }
 
-  if (canSubmitResult(fixture, myClub, calendarStatus)) {
+  if (canSubmitResult(fixture, myClub, calendarStatus, holidayContext)) {
     return `<button type="button" class="btn-result" data-action="enter" data-id="${fixture.id}">Enter result</button>`;
   }
 
@@ -366,6 +368,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   calendarStatus = await loadCalendarStatus(supabase);
+  holidayContext = await loadHolidayPlayContext();
   const calEl = document.getElementById("calendarBanner");
   if (calEl && calendarStatus?.calendar_configured) {
     calEl.style.display = "block";
@@ -389,7 +392,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const fixtureId = params.get("fixture");
   if (fixtureId && myClub.short) {
     const fix = allFixtures.find((f) => String(f.id) === fixtureId);
-    if (fix && canSubmitResult(fix, myClub, calendarStatus)) {
+    if (fix && canSubmitResult(fix, myClub, calendarStatus, holidayContext)) {
       currentDivision = fix.division;
       renderDivisionToolbar();
       renderFixtures();

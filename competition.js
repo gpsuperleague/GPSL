@@ -641,24 +641,76 @@ export async function rejectFixtureResult(supabase, submissionId, reason = null)
  * @param {object} fixture
  * @param {string|{ short?: string }} clubIdentity
  * @param {{ calendar_configured?: boolean, active_gpsl_month?: string|null }|null} [calendarStatus]
+ * @param {{ holidays?: object[], calendarMonths?: object[] }|null} [holidayContext]
  */
-export function canSubmitResult(fixture, clubIdentity, calendarStatus = null) {
+export function canSubmitResult(
+  fixture,
+  clubIdentity,
+  calendarStatus = null,
+  holidayContext = null
+) {
   if (!fixture || !clubIdentity) return false;
+  if (!fixtureInvolvesClub(fixture, clubIdentity)) return false;
+  if (fixture.status !== "scheduled" || fixture.submission_id) return false;
+
   if (calendarStatus?.calendar_configured) {
     const active = calendarStatus.active_gpsl_month;
+    const inActiveMonth =
+      active &&
+      String(fixture.gpsl_month || "").toLowerCase() ===
+        String(active).toLowerCase();
+
     if (
-      !active ||
-      String(fixture.gpsl_month || "").toLowerCase() !==
-        String(active).toLowerCase()
+      !inActiveMonth &&
+      !isFixtureHolidayPlayable(fixture, clubIdentity, holidayContext)
     ) {
       return false;
     }
   }
-  return (
-    fixtureInvolvesClub(fixture, clubIdentity) &&
-    fixture.status === "scheduled" &&
-    !fixture.submission_id
+
+  return true;
+}
+
+function rangesOverlap(aStart, aEnd, bStart, bEnd) {
+  return aStart < bEnd && bStart < aEnd;
+}
+
+export function isFixtureHolidayPlayable(fixture, clubIdentity, ctx) {
+  if (!ctx?.holidays?.length || !ctx?.calendarMonths?.length) return false;
+
+  const monthRow = ctx.calendarMonths.find(
+    (m) =>
+      String(m.gpsl_month || "").toLowerCase() ===
+      String(fixture.gpsl_month || "").toLowerCase()
   );
+  if (!monthRow?.unlock_at || !monthRow?.lock_at) return false;
+
+  const now = Date.now();
+  const unlock = new Date(monthRow.unlock_at).getTime();
+  const lock = new Date(monthRow.lock_at).getTime();
+
+  if (now >= lock) return false;
+  if (now >= unlock && now < lock) return false;
+
+  const me =
+    typeof clubIdentity === "string"
+      ? normalizeClubKey(clubIdentity)
+      : normalizeClubKey(clubIdentity.short);
+
+  for (const h of ctx.holidays) {
+    if (normalizeClubKey(h.club_short_name) !== me) continue;
+
+    const hStart = new Date(h.starts_at).getTime();
+    const hEnd = new Date(h.ends_at).getTime();
+    const bookStart = new Date(h.created_at).getTime();
+
+    if (now < bookStart || now >= hEnd) continue;
+    if (!rangesOverlap(hStart, hEnd, unlock, lock)) continue;
+
+    return true;
+  }
+
+  return false;
 }
 
 export function needsInboxConfirm(fixture, clubIdentity) {
