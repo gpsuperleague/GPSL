@@ -134,6 +134,42 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
     { p_club_short_name: clubShortName }
   );
 
+  const postedTv = byLine.get("prize_tv")?.amount || 0;
+  if (season?.id) {
+    const { data: tvUpcoming, error: tvErr } = await supabase
+      .from("competition_tv_fixtures_public")
+      .select("fixture_id, amount_per_club, matchday, gpsl_month_label")
+      .eq("season_id", season.id)
+      .eq("status", "scheduled")
+      .or(
+        `home_club_short_name.eq.${clubShortName},away_club_short_name.eq.${clubShortName}`
+      );
+
+    if (!tvErr && tvUpcoming?.length) {
+      const tvPending = tvUpcoming.reduce(
+        (s, r) => s + (Number(r.amount_per_club) || 0),
+        0
+      );
+      if (tvPending > 0.5) {
+        pendingByLine.set("prize_tv", {
+          amount: tvPending,
+          note: `${tvUpcoming.length} selected TV match${tvUpcoming.length === 1 ? "" : "es"} remaining`,
+        });
+      }
+    } else if (postedTv < 0.5) {
+      const { data: tvPreview, error: tvPreviewErr } = await supabase.rpc(
+        "competition_tv_club_preview",
+        { p_club_short_name: clubShortName }
+      );
+      if (!tvPreviewErr && Number(tvPreview?.pending_amount) > 0.5) {
+        pendingByLine.set("prize_tv", {
+          amount: Number(tvPreview.pending_amount),
+          note: `${tvPreview.pending_count ?? 0} TV match${tvPreview.pending_count === 1 ? "" : "es"} selected`,
+        });
+      }
+    }
+  }
+
   if (!govPreviewErr && govPreview) {
     for (const { lineId, type, key, label } of govLines) {
       if ((byLine.get(lineId)?.amount || 0) > 0.5 || paidGovTypes.has(type)) {

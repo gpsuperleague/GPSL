@@ -158,6 +158,17 @@ Run once:
 - **EOS payout** when all **3** league divisions are **38/38** (idempotent per club/type); also via admin **Pay government subsidies**
 - **`finances.html`** pending column projects subsidies until paid
 
+### TV revenue (after government subsidies)
+
+Run once:
+
+[`competition_tv_revenue.sql`](./competition_tv_revenue.sql)
+
+- Admin sets **₿ per match**, **matches per month/division**, **club min/max** on **GPSL Admin → Money management**
+- **Select TV for month** or **Select TV for season** — scores fixtures (top-8 clashes, promotion/relegation, dry spell, etc.)
+- Both clubs paid **`tv_revenue`** on result confirm; **Backfill TV payouts** for played fixtures
+- **`finances.html`** pending column shows selected TV matches not yet played
+
 ### Club owner linking (admin)
 
 Run once:
