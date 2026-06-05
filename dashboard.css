@@ -133,6 +133,26 @@
   color: #e88;
 }
 
+.club-owner-tag {
+  font-size: 11px;
+  color: #888;
+  font-weight: normal;
+}
+
+.fixture-club {
+  display: inline-block;
+  line-height: 1.25;
+}
+
+.fixture-club .club-owner-tag {
+  display: block;
+  margin-top: 2px;
+}
+
+.standings-club .club-owner-tag {
+  margin-left: 6px;
+}
+
 .small-btn.is-hidden,
 #editOwnerTagBtn.is-hidden {
   display: none !important;

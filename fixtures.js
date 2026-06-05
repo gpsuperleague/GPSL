@@ -19,6 +19,7 @@ import {
   loadCalendarStatus,
   calendarStatusBanner,
 } from "./competition_calendar.js";
+import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
 
 let calendarStatus = null;
 
@@ -173,9 +174,9 @@ function renderCupFixtures() {
       if (fixtureInvolvesClub(f, myClub)) tr.classList.add("my-fixture");
       tr.innerHTML = `
         <td>M${f.cup_match}</td>
-        <td>${f.home_club_name}</td>
+        <td>${clubWithOwnerHtml(f.home_club_name, f.home_club_short_name, "block")}</td>
         <td class="score">${formatFixtureScore(f, myClub)}</td>
-        <td>${f.away_club_name}</td>
+        <td>${clubWithOwnerHtml(f.away_club_name, f.away_club_short_name, "block")}</td>
         <td>${f.status}</td>
         <td class="my-actions">${actionCell(f)}</td>
       `;
@@ -244,9 +245,9 @@ function renderFixtures() {
       const tr = document.createElement("tr");
       if (fixtureInvolvesClub(f, myClub)) tr.className = "my-fixture";
       tr.innerHTML = `
-        <td>${f.home_club_name}</td>
+        <td>${clubWithOwnerHtml(f.home_club_name, f.home_club_short_name, "block")}</td>
         <td class="score">${formatFixtureScore(f, myClub)}</td>
-        <td>${f.away_club_name}</td>
+        <td>${clubWithOwnerHtml(f.away_club_name, f.away_club_short_name, "block")}</td>
         <td class="my-actions">${actionCell(f)}</td>
       `;
       tbody.appendChild(tr);
@@ -305,6 +306,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const root = document.getElementById("fixturesRoot");
   try {
   await initGlobal();
+  await loadClubsMap();
 
   const modalSubmit = document.getElementById("modalSubmitBtn");
   if (modalSubmit) modalSubmit.onclick = onModalSubmit;

@@ -1,4 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
+import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
 import {
   loadCurrentSeason,
   loadStandings,
@@ -65,7 +66,7 @@ function renderStandingsTable(division, rows, myClub) {
       return `
         <tr class="zone-${zoneKey}${mine}">
           <td class="num">${pos}</td>
-          <td class="club-col">${row.club_name}</td>
+          <td class="club-col">${clubWithOwnerHtml(row.club_name, row.club_short_name)}</td>
           <td class="zone-col">${zoneLabels}</td>
           <td class="num">${row.mp}</td>
           <td class="num">${row.w}</td>
@@ -109,6 +110,7 @@ function renderStandingsTable(division, rows, myClub) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
+  await loadClubsMap();
   renderLegend();
 
   const { data: { user } } = await supabase.auth.getUser();

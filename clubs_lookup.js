@@ -1,6 +1,7 @@
 // clubs_lookup.js
 
 let clubsMap = new Map();
+let ownerTagsMap = new Map();
 
 function getSupabase() {
   return window.supabase;
@@ -21,7 +22,7 @@ export async function loadClubsMap() {
 
   const { data, error } = await supabase
     .from("Clubs")
-    .select("ShortName, Club");
+    .select("ShortName, Club, owner");
 
   if (error) {
     console.error("Failed to load clubs map:", error);
@@ -29,9 +30,12 @@ export async function loadClubsMap() {
   }
 
   clubsMap.clear();
+  ownerTagsMap.clear();
 
   data.forEach(row => {
     clubsMap.set(row.ShortName, row.Club);
+    const tag = row.owner?.trim();
+    if (tag) ownerTagsMap.set(row.ShortName, tag);
   });
 
   console.log("Clubs map loaded:", clubsMap);
@@ -42,6 +46,35 @@ export async function loadClubsMap() {
    ============================================================ */
 export function fullClubName(shortName) {
   return clubsMap.get(shortName) || shortName;
+}
+
+export function ownerTagForClub(shortName) {
+  const key = String(shortName || "").trim();
+  if (!key) return null;
+  return ownerTagsMap.get(key) || null;
+}
+
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Club name plus optional Discord owner tag (layout: block = fixtures, inline = tables). */
+export function clubWithOwnerHtml(clubName, shortName, layout = "inline") {
+  const name = escapeHtml(clubName || shortName || "—");
+  const tag = ownerTagForClub(shortName);
+  const tagHtml = tag
+    ? `<span class="club-owner-tag">${escapeHtml(tag)}</span>`
+    : "";
+
+  if (layout === "block") {
+    return `<span class="fixture-club"><span class="fixture-club-name">${name}</span>${tagHtml}</span>`;
+  }
+
+  return `<span class="standings-club">${name}${tagHtml}</span>`;
 }
 
 /** ShortName from Clubs.ShortName, or match legacy full club name in history rows. */
