@@ -283,6 +283,63 @@ function renderSubsidyGrid(preview, loadError) {
   `;
 }
 
+function renderChallengeGrid(progress, loadError) {
+  const grid = document.getElementById("challengeGrid");
+  if (!grid) return;
+
+  if (loadError) {
+    grid.innerHTML = `<p class="subsidy-meta">${loadError}</p>`;
+    return;
+  }
+
+  const items = progress?.challenges || [];
+  if (!items.length) {
+    grid.innerHTML = "<p class=\"subsidy-meta\">No active challenges this season.</p>";
+    return;
+  }
+
+  grid.innerHTML = items
+    .map((c) => {
+      const done = c.awarded || Number(c.current_value) >= Number(c.target_value);
+      const status = c.awarded
+        ? "Awarded"
+        : c.expired
+          ? "Expired"
+          : done
+            ? "Complete"
+            : `${c.current_value ?? 0} / ${c.target_value}`;
+      return `
+        <div class="subsidy-card">
+          <h3>${c.title}</h3>
+          <p class="subsidy-status">${status}</p>
+          <p class="subsidy-meta">${c.window_phase} window · ${formatMoney(Number(c.prize_amount || 0))}</p>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+async function loadChallengeProgress(clubShortName) {
+  const { data, error } = await supabase.rpc("competition_challenge_club_progress", {
+    p_club_short_name: clubShortName,
+  });
+
+  if (error) {
+    const msg = String(error.message || "");
+    if (msg.includes("competition_challenge_club_progress") || msg.includes("function")) {
+      renderChallengeGrid(
+        null,
+        "Run supabase/sql/competition_challenges.sql to enable challenge tracking."
+      );
+      return;
+    }
+    renderChallengeGrid(null, msg || "Could not load challenges.");
+    return;
+  }
+
+  renderChallengeGrid(data, null);
+}
+
 async function loadSubsidyStatus(clubShortName) {
   const { data, error } = await supabase.rpc("gov_subsidy_club_preview", {
     p_club_short_name: clubShortName,
@@ -422,6 +479,7 @@ async function initClubDetailsPage() {
     divEl.textContent = "—";
   }
 
+  await loadChallengeProgress(club.ShortName);
   await loadSubsidyStatus(club.ShortName);
 
   wireHolidayBooking();

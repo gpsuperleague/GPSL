@@ -130,6 +130,37 @@ html.admin-root body.admin-page {
   color: #aaa;
 }
 
+.admin-page .challenge-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-page .challenge-admin-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.admin-page .challenge-admin-meta {
+  display: block;
+  color: #888;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.admin-page .challenge-admin-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .admin-page .status-line {
   color: #ffcc00;
   margin-top: 10px;

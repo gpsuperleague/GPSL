@@ -169,6 +169,17 @@ Run once:
 - Both clubs paid **`tv_revenue`** on result confirm; **Backfill TV payouts** for played fixtures
 - **`finances.html`** pending column shows selected TV matches not yet played
 
+### Season challenges (after TV revenue)
+
+Run once:
+
+[`competition_challenges.sql`](./competition_challenges.sql)
+
+- Admin sets **stat targets** (goals, wins, clean sheets, POTM, etc.) on **GPSL Admin → Season challenges**
+- **Start window** Aug–Dec, **mid window** Jan–May; default ₿1M per challenge, ₿5M period bonus
+- **Instant `prize_challenge`** credit when a club hits the target (on result confirm)
+- **Recheck all clubs** for retroactive awards after seeding mid-season
+
 ### Club owner linking (admin)
 
 Run once:

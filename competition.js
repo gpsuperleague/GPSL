@@ -871,6 +871,7 @@ const INCOME_TYPES = new Set([
   "prize",
   "prize_league",
   "prize_cup",
+  "prize_challenge",
   "tv_revenue",
   "gov_hg_subsidy",
   "gov_youth_subsidy",

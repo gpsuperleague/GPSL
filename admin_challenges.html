@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Season challenges — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Season challenges</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Defaults</h2>
+        <p class="note">Each club earns the configured prize when a target is met (instant ledger credit). First club to complete <b>all</b> targets in a window earns the period bonus. Run <code>competition_challenges.sql</code> once.</p>
+        <div class="row gov-subsidy-row">
+          <div>
+            <label>Default prize per challenge</label>
+            <input type="number" id="challengeDefaultPrize" min="0" step="50000" style="width:120px;">
+          </div>
+          <div>
+            <label>Period bonus (all complete)</label>
+            <input type="number" id="challengePeriodBonus" min="0" step="50000" style="width:120px;">
+          </div>
+        </div>
+        <button type="button" id="saveChallengeDefaultsBtn" class="button">Save defaults</button>
+        <div id="challengeDefaultsStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Targets</h2>
+        <div class="row" style="margin-bottom:12px;">
+          <button type="button" id="seedChallengesBtn" class="button">Seed default targets (10)</button>
+          <button type="button" id="recheckChallengesBtn" class="button">Recheck all clubs</button>
+        </div>
+        <div id="challengeList" class="challenge-admin-list"></div>
+        <div id="challengeListStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Add / edit challenge</h2>
+        <input type="hidden" id="challengeEditId" value="">
+        <div class="row gov-subsidy-row">
+          <div>
+            <label>Title</label>
+            <input type="text" id="challengeTitle" style="width:220px;">
+          </div>
+          <div>
+            <label>Window</label>
+            <select id="challengeWindow">
+              <option value="start">Start (Aug–Dec)</option>
+              <option value="mid">Mid (Jan–May)</option>
+            </select>
+          </div>
+          <div>
+            <label>Stat</label>
+            <select id="challengeStatType">
+              <option value="player_max_goals">Player max goals</option>
+              <option value="player_max_assists">Player max assists</option>
+              <option value="club_wins">Club wins</option>
+              <option value="club_goals_for">Club goals scored</option>
+              <option value="club_clean_sheets">Club clean sheets</option>
+              <option value="club_potm_awards">Club POTM awards</option>
+            </select>
+          </div>
+          <div>
+            <label>Target</label>
+            <input type="number" id="challengeTarget" min="1" step="1" style="width:80px;">
+          </div>
+          <div>
+            <label>Prize ₿</label>
+            <input type="number" id="challengePrize" min="0" step="50000" style="width:120px;">
+          </div>
+        </div>
+        <div class="row gov-subsidy-row" style="margin-top:8px;">
+          <div>
+            <label>From month</label>
+            <select id="challengeMonthFrom">
+              <option value="august">August</option>
+              <option value="september">September</option>
+              <option value="october">October</option>
+              <option value="november">November</option>
+              <option value="december">December</option>
+              <option value="january">January</option>
+              <option value="february">February</option>
+              <option value="march">March</option>
+              <option value="april">April</option>
+              <option value="may">May</option>
+            </select>
+          </div>
+          <div>
+            <label>To month</label>
+            <select id="challengeMonthTo">
+              <option value="august">August</option>
+              <option value="september">September</option>
+              <option value="october">October</option>
+              <option value="november">November</option>
+              <option value="december" selected>December</option>
+              <option value="january">January</option>
+              <option value="february">February</option>
+              <option value="march">March</option>
+              <option value="april">April</option>
+              <option value="may" selected>May</option>
+            </select>
+          </div>
+          <div>
+            <label><input type="checkbox" id="challengeIncludeLeague" checked> League</label>
+          </div>
+          <div>
+            <label><input type="checkbox" id="challengeIncludeCup"> Cup</label>
+          </div>
+          <div>
+            <label><input type="checkbox" id="challengeActive" checked> Active</label>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" id="saveChallengeBtn" class="button">Save challenge</button>
+          <button type="button" id="clearChallengeFormBtn" class="button">Clear form</button>
+        </div>
+        <div id="challengeFormStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Awards this season</h2>
+        <div id="challengeAwardsList" class="challenge-admin-list"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_challenges.js"></script>
+</body>
+</html>

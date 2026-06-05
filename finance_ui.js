@@ -96,8 +96,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "prize_challenge",
         label: "Challenge prize money",
         types: ["prize_challenge"],
-        planned: true,
-        note: "Season targets (start / mid / end). May return — e.g. ₿1M per task, bonus for first to complete all five.",
+        note: "Instant award when your club hits an admin target; bonus for first to complete all in a window.",
       },
       {
         id: "prize_tv",
