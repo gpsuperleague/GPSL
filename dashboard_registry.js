@@ -4,6 +4,7 @@ export const DASHBOARD_PANELS = [
   { id: "club_details", label: "Club Details", href: "club_details.html", page: "club_details.html", default: true },
   { id: "stadium", label: "Stadium", href: "stadium.html", page: "stadium.html", default: true },
   { id: "finances", label: "Club Finances", href: "finances.html", page: "finances.html", default: true },
+  { id: "challenges", label: "Season Challenges", href: "challenges.html", page: "challenges.html", default: false },
   { id: "central_bank", label: "Central Bank", href: "central_bank.html", page: "central_bank.html", default: true },
   { id: "squad", label: "Squad", href: "squad.html", page: "squad.html", default: true },
   { id: "transfer_center", label: "Transfer Centre", href: "transfer_center.html", page: "transfer_center.html", default: true },

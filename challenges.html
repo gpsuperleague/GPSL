@@ -1,0 +1,72 @@
+<script>window.CURRENT_PAGE = "challenges";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Season challenges — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1100px; margin:20px auto 40px; }
+    h1 { color:#ff9900; margin:0 0 8px; }
+    .meta { color:#aaa; font-size:13px; margin-bottom:16px; line-height:1.45; }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:18px 20px; margin-bottom:20px;
+    }
+    .challenge-grid {
+      display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px;
+    }
+    .challenge-card {
+      background:#222; border:1px solid #333; border-radius:6px; padding:14px;
+    }
+    .challenge-card h3 { margin:0 0 8px; font-size:15px; color:#ffcc66; }
+    .challenge-progress {
+      font-size:22px; font-weight:700; color:#eee; margin:0 0 6px;
+    }
+    .challenge-meta { font-size:12px; color:#888; line-height:1.4; }
+    .challenge-status-awarded { color:#8d8; }
+    .challenge-status-expired { color:#a88; }
+    .awards-list { margin:0; padding:0; list-style:none; }
+    .awards-list li {
+      padding:8px 10px; background:#222; border:1px solid #333;
+      border-radius:6px; margin-bottom:8px; font-size:13px;
+    }
+    .window-tag {
+      display:inline-block; font-size:10px; text-transform:uppercase;
+      letter-spacing:0.05em; padding:2px 6px; border-radius:4px;
+      background:#333; color:#bbb; margin-right:6px;
+    }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <h1>Season challenges</h1>
+    <p class="meta">
+      Admin targets for the current season. Prizes post to your club balance instantly when you hit a target
+      (after the match is confirmed). First club to complete <b>all</b> targets in a window earns the period bonus.
+    </p>
+
+    <div class="panel">
+      <h2 style="color:#ff9900;font-size:16px;margin:0 0 12px;">Your progress</h2>
+      <div id="challengeProgressGrid" class="challenge-grid">
+        <p class="meta">Loading…</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 style="color:#ff9900;font-size:16px;margin:0 0 12px;">All season targets</h2>
+      <div id="challengeCatalogGrid" class="challenge-grid">
+        <p class="meta">Loading…</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 style="color:#ff9900;font-size:16px;margin:0 0 12px;">Awards this season</h2>
+      <ul id="challengeAwardsList" class="awards-list"></ul>
+    </div>
+  </div>
+  <script type="module" src="challenges.js"></script>
+</body>
+</html>

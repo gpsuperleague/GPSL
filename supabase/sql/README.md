@@ -179,6 +179,18 @@ Run once:
 - **Start window** Aug–Dec, **mid window** Jan–May; default ₿1M per challenge, ₿5M period bonus
 - **Instant `prize_challenge`** credit when a club hits the target (on result confirm)
 - **Recheck all clubs** for retroactive awards after seeding mid-season
+- Owners: **League → Challenges** or **Finances → Season challenges**
+
+### Wage bill & taxes (after challenges)
+
+Run once:
+
+[`competition_wages_taxes.sql`](./competition_wages_taxes.sql)
+
+- **Post season wage bills** — `wage_squad` + 34+ fee + star tax (idempotent per club/season)
+- Admin: 34+ min rating & fee, star tax min rating & fee, emergency TAC % & threshold
+- **Apply emergency TAC** — `gov_emergency_tax` on balance above threshold
+- **`finances.html`** pending column forecasts unposted upkeep charges
 
 ### Club owner linking (admin)
 

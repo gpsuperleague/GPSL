@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadStadiumCostSettings();
   await loadGovSubsidySettings();
   await loadTvSettings();
+  await loadUpkeepTaxSettings();
 
   document.getElementById("saveWagePctBtn").onclick = saveWagePct;
   document.getElementById("saveStadiumCostBtn").onclick = saveStadiumCosts;
@@ -31,6 +32,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("selectTvMonthBtn").onclick = selectTvMonth;
   document.getElementById("selectTvSeasonBtn").onclick = selectTvSeason;
   document.getElementById("backfillTvBtn").onclick = backfillTvRevenue;
+  document.getElementById("saveUpkeepTaxBtn").onclick = saveUpkeepTaxSettings;
+  document.getElementById("postWageBillsBtn").onclick = postSeasonWageBills;
+  document.getElementById("applyEmergencyTacBtn").onclick = applyEmergencyTac;
 });
 
 async function loadCurrentSeasonId() {
@@ -352,6 +356,72 @@ async function saveGovSubsidySettings() {
   }
 
   setStatus("govSubsidyStatus", "✅ Government subsidy settings saved.", true);
+}
+
+async function loadUpkeepTaxSettings() {
+  const { data, error } = await supabase.from("global_settings").select("*").eq("id", 1).single();
+  if (error) {
+    setStatus("upkeepTaxStatus", "❌ " + error.message + " — run competition_wages_taxes.sql", false);
+    return;
+  }
+  if (!data) return;
+  setGovInput("tax34MinRating", data.wage_34plus_min_rating ?? 34);
+  setGovInput("tax34PerPlayer", data.wage_34plus_per_player ?? 500000);
+  setGovInput("starTaxMinRating", data.star_tax_min_rating ?? 70);
+  setGovInput("starTaxPerPlayer", data.star_tax_per_player ?? 1000000);
+  setGovInput("emergencyTacPct", data.emergency_tac_pct ?? 10);
+  setGovInput("emergencyTacThreshold", data.emergency_tac_threshold ?? 100000000);
+}
+
+async function saveUpkeepTaxSettings() {
+  setStatus("upkeepTaxStatus", "Saving…");
+  const { error } = await supabase.rpc("admin_update_upkeep_tax_settings", {
+    p_settings: {
+      wage_34plus_min_rating: Number(document.getElementById("tax34MinRating")?.value),
+      wage_34plus_per_player: Number(document.getElementById("tax34PerPlayer")?.value),
+      star_tax_min_rating: Number(document.getElementById("starTaxMinRating")?.value),
+      star_tax_per_player: Number(document.getElementById("starTaxPerPlayer")?.value),
+      emergency_tac_pct: Number(document.getElementById("emergencyTacPct")?.value),
+      emergency_tac_threshold: Number(document.getElementById("emergencyTacThreshold")?.value),
+    },
+  });
+  if (error) {
+    setStatus("upkeepTaxStatus", "❌ " + error.message, false);
+    return;
+  }
+  setStatus("upkeepTaxStatus", "✅ Wage/tax settings saved.", true);
+}
+
+async function postSeasonWageBills() {
+  setStatus("upkeepTaxStatus", "Posting…");
+  const { data, error } = await supabase.rpc("competition_admin_post_season_wage_bills", {
+    p_season_id: currentSeasonId,
+  });
+  if (error) {
+    setStatus("upkeepTaxStatus", "❌ " + error.message, false);
+    return;
+  }
+  setStatus(
+    "upkeepTaxStatus",
+    `✅ Posted ${data?.charge_lines ?? 0} charge line(s) for ${data?.clubs_charged ?? 0} club(s). Skips already posted.`,
+    true
+  );
+}
+
+async function applyEmergencyTac() {
+  setStatus("upkeepTaxStatus", "Applying TAC…");
+  const { data, error } = await supabase.rpc("competition_admin_apply_emergency_tac", {
+    p_season_id: currentSeasonId,
+  });
+  if (error) {
+    setStatus("upkeepTaxStatus", "❌ " + error.message, false);
+    return;
+  }
+  setStatus(
+    "upkeepTaxStatus",
+    `✅ Emergency TAC applied to ${data?.clubs_taxed ?? 0} club(s) above threshold. Once per club per season.`,
+    true
+  );
 }
 
 async function loadTvSettings() {

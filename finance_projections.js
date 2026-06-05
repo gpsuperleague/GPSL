@@ -77,23 +77,66 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
     });
   }
 
-  const { data: players, error: playersErr } = await supabase
-    .from("Players")
-    .select("contract_wage")
-    .eq("Contracted_Team", clubShortName);
+  const { data: upkeepPreview, error: upkeepErr } = await supabase.rpc(
+    "competition_club_upkeep_preview",
+    { p_club_short_name: clubShortName }
+  );
 
-  if (!playersErr && players?.length) {
-    const squadWage = players.reduce(
-      (s, p) => s + (Number(p.contract_wage) || 0),
-      0
-    );
+  if (!upkeepErr && upkeepPreview) {
     const postedWages = Math.abs(byLine.get("upkeep_wages")?.amount || 0);
-    const remaining = squadWage - postedWages;
-    if (remaining > 0.5) {
+    const wageBill = Number(upkeepPreview.wage_bill || 0);
+    if (wageBill > postedWages + 0.5) {
       pendingByLine.set("upkeep_wages", {
-        amount: -remaining,
-        note: `Squad contract wages est. ${formatMoney(squadWage)}/season`,
+        amount: -(wageBill - postedWages),
+        note: `Season wage bill est. ${formatMoney(wageBill)}`,
       });
+    }
+
+    const posted34 = Math.abs(byLine.get("upkeep_34plus")?.amount || 0);
+    const amt34 = Number(upkeepPreview.amount_34plus || 0);
+    if (amt34 > posted34 + 0.5) {
+      pendingByLine.set("upkeep_34plus", {
+        amount: -(amt34 - posted34),
+        note: `${upkeepPreview.players_34plus ?? 0} player(s) rated ${upkeepPreview.settings?.wage_34plus_min_rating ?? 34}+`,
+      });
+    }
+
+    const postedStar = Math.abs(byLine.get("upkeep_star_tax")?.amount || 0);
+    const amtStar = Number(upkeepPreview.amount_star_tax || 0);
+    if (amtStar > postedStar + 0.5) {
+      pendingByLine.set("upkeep_star_tax", {
+        amount: -(amtStar - postedStar),
+        note: `${upkeepPreview.players_star_tax ?? 0} player(s) rated ${upkeepPreview.settings?.star_tax_min_rating ?? 70}+`,
+      });
+    }
+
+    const postedTac = Math.abs(byLine.get("gov_emergency_tax")?.amount || 0);
+    const tacAmt = Number(upkeepPreview.emergency_tac_amount || 0);
+    if (tacAmt > postedTac + 0.5) {
+      pendingByLine.set("gov_emergency_tax", {
+        amount: -tacAmt,
+        note: `If admin applies TAC (${upkeepPreview.settings?.emergency_tac_pct ?? 0}% above ${formatMoney(upkeepPreview.settings?.emergency_tac_threshold ?? 0)})`,
+      });
+    }
+  } else {
+    const { data: players, error: playersErr } = await supabase
+      .from("Players")
+      .select("contract_wage")
+      .eq("Contracted_Team", clubShortName);
+
+    if (!playersErr && players?.length) {
+      const squadWage = players.reduce(
+        (s, p) => s + (Number(p.contract_wage) || 0),
+        0
+      );
+      const postedWages = Math.abs(byLine.get("upkeep_wages")?.amount || 0);
+      const remaining = squadWage - postedWages;
+      if (remaining > 0.5) {
+        pendingByLine.set("upkeep_wages", {
+          amount: -remaining,
+          note: `Squad contract wages est. ${formatMoney(squadWage)}/season`,
+        });
+      }
     }
   }
 
