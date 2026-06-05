@@ -146,9 +146,9 @@ export const FINANCE_UI_SECTIONS = [
       {
         id: "infra_expansion",
         label: "Expansions",
-        types: ["infra_expansion"],
+        types: ["infra_expansion", "infra_expansion_refund", "infra_expansion_penalty"],
         planned: true,
-        note: "Capacity upgrade costs — formula to be restored.",
+        note: "Capacity upgrade — tiered cost per seat (Stadium page).",
       },
       {
         id: "infra_fines",

@@ -50,6 +50,27 @@
     .fixture-ul { margin:0; padding-left:20px; color:#ccc; }
     .empty { color:#888; }
     a { color:#ff9900; }
+    .expansion-form { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-bottom:12px; }
+    .expansion-form label { display:flex; flex-direction:column; gap:4px; font-size:12px; color:#aaa; }
+    .expansion-form input, .expansion-form select {
+      padding:8px 10px; background:#222; border:1px solid #444; color:#ddd; border-radius:6px; min-width:140px;
+    }
+    .expansion-hint { font-size:12px; color:#888; margin:8px 0 0; line-height:1.45; }
+    .expansion-hint--error { color:#e88; }
+    .build-status { color:#ffcc66; margin:0 0 8px; font-size:14px; }
+    .build-note { color:#888; font-size:12px; margin:0 0 10px; line-height:1.45; }
+    .expansion-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    .btn-secondary {
+      padding:6px 12px; background:#444; color:#eee; border:none; border-radius:4px; cursor:pointer; font-size:13px;
+    }
+    .btn-secondary:hover { background:#555; }
+    .btn-danger { background:#633; }
+    .btn-danger:hover { background:#744; }
+    .btn-result {
+      padding:8px 14px; font-size:13px; background:#ff9900; color:#111;
+      border:none; border-radius:4px; font-weight:bold; cursor:pointer;
+    }
+    .btn-result:disabled { opacity:0.5; cursor:not-allowed; }
   </style>
 </head>
 <body>
@@ -63,11 +84,38 @@
       <div id="stadiumPhotoSlot"></div>
       <div class="venue-content">
         <p><b>Name:</b> <span id="stadiumName">—</span></p>
-        <p><b>Capacity:</b> <span id="stadiumCapacity">—</span></p>
+        <p><b>Capacity:</b> <span id="stadiumCapacity">—</span>
+          <span id="stadiumCapMeta" class="note" style="display:inline;margin-left:8px;"></span></p>
         <p><b>League position:</b> <span id="leaguePos">—</span></p>
         <p id="historyNote" class="note"></p>
         <p class="note">Photo via <a href="https://stadiumdb.com/" target="_blank" rel="noopener">StadiumDB</a>. Also on <a href="club_details.html">Club Details</a>.</p>
       </div>
+    </div>
+
+    <div class="panel" id="expansionPanel">
+      <h2>Stadium expansion</h2>
+      <div id="expansionBlocked"></div>
+      <div id="expansionBuildStatus"></div>
+      <div id="expansionActiveForm">
+        <p id="expansionQuota" class="meta"></p>
+        <div class="expansion-form">
+          <label>
+            Seats to add
+            <input type="number" id="expansionSeats" min="1" step="1" placeholder="e.g. 2000">
+          </label>
+          <button type="button" id="expansionQuoteBtn" class="btn-result">Get quote</button>
+        </div>
+        <p id="expansionHint" class="expansion-hint" role="status"></p>
+        <div class="expansion-form" id="expansionOrderRow" style="display:none;">
+          <label style="flex:1;min-width:220px;">
+            Choose quote
+            <select id="expansionQuoteSelect"></select>
+          </label>
+          <button type="button" id="expansionOrderBtn" class="btn-result">Place order</button>
+        </div>
+        <div id="expansionOrderActions" class="expansion-actions"></div>
+      </div>
+      <p class="note">One expansion order per season. Cost tier rises with current capacity. Payment posts immediately to <a href="finances.html">Club Finances</a>.</p>
     </div>
 
     <div class="panel">

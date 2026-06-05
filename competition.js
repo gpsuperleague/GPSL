@@ -821,6 +821,8 @@ export const GATE_ENTRY_LABELS = {
   infra_maintenance: "Stadium maintenance",
   infra_purchase: "Infrastructure purchase",
   infra_expansion: "Stadium expansion",
+  infra_expansion_refund: "Stadium expansion refund",
+  infra_expansion_penalty: "Rapid Build cancellation fee",
   gov_fine_compensation: "Fines & compensation",
   gov_hg_subsidy: "Homegrown subsidy",
   gov_youth_subsidy: "Youth subsidy",
