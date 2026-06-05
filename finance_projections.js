@@ -6,6 +6,7 @@ import {
   estimateGateForClub,
   formatMoney,
   loadCupFixtures,
+  loadCurrentSeason,
   loadLeagueFixtures,
   loadStandingsWithPrizes,
   normalizeClubKey,
@@ -108,6 +109,47 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
         amount: prizeAmt,
         note: `Position ${row.table_position} prize (if table held at season end)`,
       });
+    }
+  }
+
+  const govLines = [
+    { lineId: "gov_hg", type: "gov_hg_subsidy", key: "homegrown", label: "HG" },
+    { lineId: "gov_youth", type: "gov_youth_subsidy", key: "youth", label: "Youth" },
+    { lineId: "gov_bnb", type: "gov_bnb_subsidy", key: "bnb", label: "BnB" },
+  ];
+
+  const season = await loadCurrentSeason(supabase);
+  let paidGovTypes = new Set();
+  if (season?.id) {
+    const { data: paidRows } = await supabase
+      .from("competition_gov_subsidy_paid")
+      .select("subsidy_type")
+      .eq("season_id", season.id)
+      .eq("club_short_name", clubShortName);
+    paidGovTypes = new Set((paidRows || []).map((r) => r.subsidy_type));
+  }
+
+  const { data: govPreview, error: govPreviewErr } = await supabase.rpc(
+    "gov_subsidy_club_preview",
+    { p_club_short_name: clubShortName }
+  );
+
+  if (!govPreviewErr && govPreview) {
+    for (const { lineId, type, key, label } of govLines) {
+      if ((byLine.get(lineId)?.amount || 0) > 0.5 || paidGovTypes.has(type)) {
+        continue;
+      }
+      const block = govPreview[key];
+      const amt = Number(block?.amount || 0);
+      const status = block?.status;
+      if (amt > 0.5) {
+        pendingByLine.set(lineId, {
+          amount: amt,
+          note: status && status !== "—"
+            ? `${label} — ${status} (paid when all divisions 38/38)`
+            : `${label} subsidy (paid when all divisions 38/38)`,
+        });
+      }
     }
   }
 

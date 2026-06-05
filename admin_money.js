@@ -13,6 +13,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadCurrentSeasonId();
   buildLeaguePrizeGrid();
   await loadLeaguePrizeSettings();
+  await loadWageSettings();
+  await loadStadiumCostSettings();
+  await loadGovSubsidySettings();
 
   document.getElementById("saveWagePctBtn").onclick = saveWagePct;
   document.getElementById("saveStadiumCostBtn").onclick = saveStadiumCosts;
@@ -21,6 +24,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("seedLeaguePrizesBtn").onclick = seedLeaguePrizes;
   document.getElementById("payLeaguePrizesBtn").onclick = payLeaguePrizes;
   document.getElementById("leaguePrizeDivision").onchange = loadLeaguePrizeSettings;
+  document.getElementById("saveGovSubsidyBtn").onclick = saveGovSubsidySettings;
+  document.getElementById("payGovSubsidyBtn").onclick = payGovSubsidies;
 });
 
 async function loadCurrentSeasonId() {
@@ -269,5 +274,97 @@ async function backfillGates() {
     "compGateStatus",
     error ? "❌ " + error.message : `✅ Processed ${data ?? 0} fixture(s).`,
     !error
+  );
+}
+
+function setGovInput(id, val) {
+  const el = document.getElementById(id);
+  if (el && val != null) el.value = val;
+}
+
+async function loadGovSubsidySettings() {
+  const { data, error } = await supabase.from("global_settings").select("*").eq("id", 1).single();
+
+  if (error) {
+    setStatus(
+      "govSubsidyStatus",
+      "❌ " + error.message + " — run government_subsidies.sql",
+      false
+    );
+    return;
+  }
+
+  if (!data) return;
+
+  setGovInput("hgBand1Max", data.hg_sub_band1_max ?? 5);
+  setGovInput("hgBand1Rate", data.hg_sub_band1_per_player ?? 250000);
+  setGovInput("hgBand2Max", data.hg_sub_band2_max ?? 8);
+  setGovInput("hgBand2Rate", data.hg_sub_band2_per_player ?? 1500000);
+  setGovInput("hgBand3Rate", data.hg_sub_band3_per_player ?? 2000000);
+  setGovInput("youthBand1Max", data.youth_sub_band1_max ?? 3);
+  setGovInput("youthBand1Rate", data.youth_sub_band1_per_player ?? 200000);
+  setGovInput("youthBand2Max", data.youth_sub_band2_max ?? 5);
+  setGovInput("youthBand2Rate", data.youth_sub_band2_per_player ?? 750000);
+  setGovInput("youthBand3Max", data.youth_sub_band3_max ?? 7);
+  setGovInput("youthBand3Rate", data.youth_sub_band3_per_player ?? 1250000);
+  setGovInput("youthBand4Rate", data.youth_sub_band4_per_player ?? 2000000);
+  setGovInput("bnbMaxRating", data.bnb_max_rating ?? 70);
+  setGovInput("bnbMinPlayers", data.bnb_min_players ?? 8);
+  setGovInput("bnbPerPlayer", data.bnb_per_player ?? 1250000);
+
+  setStatus("govSubsidyStatus", "Subsidy settings loaded.", true);
+}
+
+function govSubsidySettingsPayload() {
+  return {
+    hg_sub_band1_max: Number(document.getElementById("hgBand1Max")?.value),
+    hg_sub_band1_per_player: Number(document.getElementById("hgBand1Rate")?.value),
+    hg_sub_band2_max: Number(document.getElementById("hgBand2Max")?.value),
+    hg_sub_band2_per_player: Number(document.getElementById("hgBand2Rate")?.value),
+    hg_sub_band3_per_player: Number(document.getElementById("hgBand3Rate")?.value),
+    youth_sub_band1_max: Number(document.getElementById("youthBand1Max")?.value),
+    youth_sub_band1_per_player: Number(document.getElementById("youthBand1Rate")?.value),
+    youth_sub_band2_max: Number(document.getElementById("youthBand2Max")?.value),
+    youth_sub_band2_per_player: Number(document.getElementById("youthBand2Rate")?.value),
+    youth_sub_band3_max: Number(document.getElementById("youthBand3Max")?.value),
+    youth_sub_band3_per_player: Number(document.getElementById("youthBand3Rate")?.value),
+    youth_sub_band4_per_player: Number(document.getElementById("youthBand4Rate")?.value),
+    bnb_max_rating: Number(document.getElementById("bnbMaxRating")?.value),
+    bnb_min_players: Number(document.getElementById("bnbMinPlayers")?.value),
+    bnb_per_player: Number(document.getElementById("bnbPerPlayer")?.value),
+  };
+}
+
+async function saveGovSubsidySettings() {
+  setStatus("govSubsidyStatus", "Saving…");
+  const { error } = await supabase.rpc("admin_update_gov_subsidy_settings", {
+    p_settings: govSubsidySettingsPayload(),
+  });
+
+  if (error) {
+    setStatus("govSubsidyStatus", "❌ " + error.message, false);
+    return;
+  }
+
+  setStatus("govSubsidyStatus", "✅ Government subsidy settings saved.", true);
+}
+
+async function payGovSubsidies() {
+  setStatus("govSubsidyStatus", "Paying…");
+  const { data, error } = await supabase.rpc("competition_admin_pay_government_subsidies", {
+    p_season_id: currentSeasonId,
+  });
+
+  if (error) {
+    setStatus("govSubsidyStatus", "❌ " + error.message, false);
+    return;
+  }
+
+  const paid = data?.subsidy_lines_paid ?? 0;
+  const complete = data?.season_league_complete ? "yes" : "no";
+  setStatus(
+    "govSubsidyStatus",
+    `✅ Paid ${paid} subsidy line(s). All divisions 38/38: ${complete}. (Skips clubs/types already paid.)`,
+    true
   );
 }

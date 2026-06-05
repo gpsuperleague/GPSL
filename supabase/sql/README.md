@@ -146,6 +146,18 @@ Run once:
 - **`finances.html`** pending column projects prize for **current table position** until paid
 - **Auto-pay** when all **38** league matches in a division are played (on result confirm), or admin **Pay league prizes**
 
+### Government subsidies (after league prizes)
+
+Run once:
+
+[`government_subsidies.sql`](./government_subsidies.sql)
+
+- **HG** — Quota (≤5) / Flying the flag (6–8) / National pride (9+); band rates on **GPSL Admin → Money management**; status on **Club Details**
+- **Youth** — Grassroots / Youth Development / Academy / Centre of excellence by under-21 count
+- **Built not bought** — qualifying players at or below admin max rating (minimum count)
+- **EOS payout** when all **3** league divisions are **38/38** (idempotent per club/type); also via admin **Pay government subsidies**
+- **`finances.html`** pending column projects subsidies until paid
+
 ### Club owner linking (admin)
 
 Run once:

@@ -38,6 +38,84 @@
         <p class="note">Round fee paid to <b>both</b> clubs on confirm. Set stages on <a href="admin_fixtures-cups.html">Cup fixtures</a> (run <code>competition_cup_prizes_fix.sql</code>).</p>
       </div>
       <div class="card">
+        <h2>Government subsidies</h2>
+        <p class="note">HG bands are <b>non-cumulative</b> for status (highest tier shown) but payout is per band: Quota ≤5, Flying 6–8, Pride 9+ only. Youth uses banded u21 counts. BnB: squad players at or below max rating. Paid at EOS when all <b>3</b> divisions have <b>38/38</b> league matches (run <code>government_subsidies.sql</code>).</p>
+        <h3 class="admin-subheading">Homegrown (HG)</h3>
+        <div class="row gov-subsidy-row">
+          <div>
+            <label>Quota max players (≤)</label>
+            <input type="number" id="hgBand1Max" min="0" max="28" step="1" style="width:80px;">
+          </div>
+          <div>
+            <label>₿ per player (quota)</label>
+            <input type="number" id="hgBand1Rate" min="0" step="50000" style="width:120px;">
+          </div>
+          <div>
+            <label>Flying max players (≤)</label>
+            <input type="number" id="hgBand2Max" min="0" max="28" step="1" style="width:80px;">
+          </div>
+          <div>
+            <label>₿ per player (flying)</label>
+            <input type="number" id="hgBand2Rate" min="0" step="50000" style="width:120px;">
+          </div>
+          <div>
+            <label>₿ per player (pride 9+)</label>
+            <input type="number" id="hgBand3Rate" min="0" step="50000" style="width:120px;">
+          </div>
+        </div>
+        <h3 class="admin-subheading">Youth (under-21)</h3>
+        <div class="row gov-subsidy-row">
+          <div>
+            <label>Grassroots max (≤)</label>
+            <input type="number" id="youthBand1Max" min="0" max="28" step="1" style="width:80px;">
+          </div>
+          <div>
+            <label>₿ per player</label>
+            <input type="number" id="youthBand1Rate" min="0" step="50000" style="width:120px;">
+          </div>
+          <div>
+            <label>Youth dev max (≤)</label>
+            <input type="number" id="youthBand2Max" min="0" max="28" step="1" style="width:80px;">
+          </div>
+          <div>
+            <label>₿ per player</label>
+            <input type="number" id="youthBand2Rate" min="0" step="50000" style="width:120px;">
+          </div>
+          <div>
+            <label>Academy max (≤)</label>
+            <input type="number" id="youthBand3Max" min="0" max="28" step="1" style="width:80px;">
+          </div>
+          <div>
+            <label>₿ per player</label>
+            <input type="number" id="youthBand3Rate" min="0" step="50000" style="width:120px;">
+          </div>
+          <div>
+            <label>Centre (8+) ₿ per player</label>
+            <input type="number" id="youthBand4Rate" min="0" step="50000" style="width:120px;">
+          </div>
+        </div>
+        <h3 class="admin-subheading">Built not bought</h3>
+        <div class="row gov-subsidy-row">
+          <div>
+            <label>Max base rating</label>
+            <input type="number" id="bnbMaxRating" min="1" max="99" step="1" style="width:80px;">
+          </div>
+          <div>
+            <label>Min qualifying players</label>
+            <input type="number" id="bnbMinPlayers" min="1" max="28" step="1" style="width:80px;">
+          </div>
+          <div>
+            <label>₿ per qualifying player</label>
+            <input type="number" id="bnbPerPlayer" min="0" step="50000" style="width:120px;">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" id="saveGovSubsidyBtn" class="button">Save subsidy settings</button>
+          <button type="button" id="payGovSubsidyBtn" class="button">Pay government subsidies</button>
+        </div>
+        <div id="govSubsidyStatus" class="status-line"></div>
+      </div>
+      <div class="card">
         <h2>Wage %</h2>
         <p class="note">Annual squad wage = market value × division % (run <code>player_wage_settings.sql</code>).</p>
         <div class="row">
