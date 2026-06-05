@@ -1029,4 +1029,41 @@ GRANT EXECUTE ON FUNCTION public.club_accept_below_reserve_sale(bigint) TO authe
 GRANT EXECUTE ON FUNCTION public.club_reject_below_reserve_sale(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.post_special_auction_ledger_line(text, text, numeric, text, bigint, boolean, jsonb) TO authenticated;
 
+-- Backfill: SQL Editor has no JWT — allow service-role / dashboard runs (auth.uid() IS NULL)
+CREATE OR REPLACE FUNCTION public.backfill_transfer_finance_ledger()
+RETURNS int
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_season_start timestamptz;
+  v_h record;
+  v_count int := 0;
+BEGIN
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  SELECT started_at INTO v_season_start
+  FROM public.competition_seasons
+  WHERE is_current = true AND status = 'active'
+  LIMIT 1;
+
+  FOR v_h IN
+    SELECT h.id
+    FROM public."Transfer_History" h
+    WHERE v_season_start IS NULL OR h.transfer_time >= v_season_start
+    ORDER BY h.transfer_time
+  LOOP
+    PERFORM public.post_transfer_ledger_for_history(v_h.id, false);
+    v_count := v_count + 1;
+  END LOOP;
+
+  RETURN v_count;
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.backfill_transfer_finance_ledger() TO authenticated;
+
 NOTIFY pgrst, 'reload schema';

@@ -501,7 +501,7 @@ DECLARE
   v_h record;
   v_count int := 0;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 

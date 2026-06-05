@@ -210,7 +210,7 @@ Run once after `central_bank_phase1.sql`:
 
 - **Transfer Centre → Seller Review:** accept/reject below-reserve auctions (`club_accept_below_reserve_sale` / `club_reject_below_reserve_sale`)
 - **Ledger** for foreign sales, contract expiry MV, squad overflow releases, and special auctions (`special_auction_fee` / `special_auction_prize`)
-- Re-run `SELECT backfill_transfer_finance_ledger();` (admin) to add missing ledger lines for past deals without double-counting balances
+- Backfill missing ledger lines (safe in SQL Editor — does not change balances): `SELECT backfill_transfer_finance_ledger();`
 
 ### Club owner linking (admin)
 
