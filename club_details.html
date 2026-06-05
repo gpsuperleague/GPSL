@@ -28,7 +28,7 @@
 
     h1 {
       color: #ff9900;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
   </style>
 
@@ -42,41 +42,56 @@
 
     <h1>Club Details</h1>
 
-    <!-- CLUB DETAILS PANEL WITH WATERMARK -->
-    <div class="panel panel-bg panel-club" id="clubDetailsPanel">
+    <div class="panel panel-bg panel-club club-details-panel" id="clubDetailsPanel">
 
       <div class="detailRow">
-        <label>Club Name:</label>
+        <label for="clubName">Club name</label>
         <span id="clubName"></span>
       </div>
 
       <div class="detailRow">
-        <label>Short Name:</label>
+        <label for="shortName">Short name</label>
         <span id="shortName"></span>
       </div>
 
-      <div class="detailRow">
-        <label>Owner:</label>
-        <span id="ownerName"></span>
+      <div class="detailRow detailRow--owner">
+        <label for="ownerInput">Owner tag</label>
+        <div class="owner-tag-field">
+          <input
+            type="text"
+            id="ownerInput"
+            maxlength="64"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button type="button" id="editOwnerTagBtn" class="small-btn">Edit</button>
+          <button type="button" id="saveOwnerBtn" class="small-btn">Save</button>
+          <span id="ownerTagHint" class="owner-tag-hint" role="status"></span>
+        </div>
       </div>
 
       <div class="detailRow">
-        <label>Stadium:</label>
+        <label>Login email</label>
+        <span id="accountEmail" class="detail-muted"></span>
+      </div>
+
+      <div class="detailRow">
+        <label>Stadium</label>
         <span id="stadiumName"></span>
       </div>
 
       <div class="detailRow">
-        <label>Capacity:</label>
+        <label>Capacity</label>
         <span id="stadiumCapacity"></span>
       </div>
 
       <div class="detailRow">
-        <label>Club nation:</label>
+        <label>Club nation</label>
         <span id="clubNation">—</span>
       </div>
 
       <div class="detailRow">
-        <label>Division (current season):</label>
+        <label>Division</label>
         <span id="compDivision">—</span>
       </div>
 
@@ -84,13 +99,11 @@
 
   </div>
 
-  <!-- GLOBAL JS -->
   <script type="module" src="supabase_client.js"></script>
   <script type="module" src="global.js"></script>
   <script type="module" src="global_ui.js"></script>
   <script type="module" src="clubs_lookup.js"></script>
 
-  <!-- PAGE LOGIC -->
   <script type="module">
     import { supabase } from "./supabase_client.js";
     import { initGlobal } from "./global.js";
@@ -100,9 +113,13 @@
       loadActiveSeasonRegistrations,
       divisionForClub,
     } from "./competition.js";
+    import {
+      initOwnerTagField,
+      wireOwnerTagField,
+      formatClubNationDisplay,
+    } from "./club_details.js";
 
     document.addEventListener("DOMContentLoaded", async () => {
-
       await initGlobal();
       await loadClubsMap();
 
@@ -112,29 +129,45 @@
         return;
       }
 
-      const { data: club } = await supabase
+      const { data: club, error } = await supabase
         .from("Clubs")
-        .select("*")
+        .select("ShortName, Club, Stadium, Capacity, Nation, Owner")
         .eq("owner_id", user.id)
         .single();
 
-      if (!club) return;
+      if (error || !club) return;
 
       document.getElementById("clubName").textContent = fullClubName(club.ShortName);
       document.getElementById("shortName").textContent = club.ShortName;
-      document.getElementById("ownerName").textContent = user.email;
-      document.getElementById("stadiumName").textContent = club.Stadium;
-      document.getElementById("stadiumCapacity").textContent = club.Capacity;
-      document.getElementById("clubNation").textContent = club.Nation || "—";
+      document.getElementById("accountEmail").textContent = user.email || "—";
+      document.getElementById("stadiumName").textContent = club.Stadium || "—";
+      document.getElementById("stadiumCapacity").textContent =
+        club.Capacity != null ? String(club.Capacity) : "—";
+      document.getElementById("clubNation").textContent = formatClubNationDisplay(
+        club.Nation
+      );
+
+      const ownerEls = {
+        input: document.getElementById("ownerInput"),
+        editBtn: document.getElementById("editOwnerTagBtn"),
+        saveBtn: document.getElementById("saveOwnerBtn"),
+        hint: document.getElementById("ownerTagHint"),
+      };
+
+      let storedTag = club.Owner?.trim() || null;
+      initOwnerTagField(ownerEls, storedTag);
+      wireOwnerTagField(supabase, ownerEls, () => storedTag, (tag) => {
+        storedTag = tag;
+      });
 
       const season = await loadCurrentSeason(supabase);
+      const divEl = document.getElementById("compDivision");
       if (season) {
         const regs = await loadActiveSeasonRegistrations(supabase);
         const div = divisionForClub(regs, club.ShortName);
-        document.getElementById("compDivision").textContent =
-          div || "Not registered";
+        divEl.textContent = div ? `${div} (current season)` : "Not registered";
       } else {
-        document.getElementById("compDivision").textContent = "No active season";
+        divEl.textContent = "No active season";
       }
     });
   </script>

@@ -70,24 +70,71 @@
   font-weight: bold;
 }
 
-#clubDetailsPanel {
+#clubDetailsPanel,
+.club-details-panel {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
+  max-width: 520px;
 }
 
 .detailRow {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 10.5rem 1fr;
+  column-gap: 12px;
   align-items: center;
   color: #ddd;
   font-size: 14px;
+  line-height: 1.35;
 }
 
 .detailRow label {
   color: #ff9900;
   font-weight: bold;
-  margin-right: 10px;
+  margin: 0;
+  text-align: right;
+}
+
+.detail-muted {
+  color: #aaa;
+  font-size: 13px;
+}
+
+.detailRow--owner {
+  align-items: start;
+}
+
+.detailRow--owner label {
+  padding-top: 6px;
+}
+
+.owner-tag-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.owner-tag-field #ownerInput {
+  flex: 1 1 180px;
+  min-width: 140px;
+  max-width: 280px;
+}
+
+.owner-tag-hint {
+  flex: 1 1 100%;
+  font-size: 12px;
+  color: #888;
+  line-height: 1.4;
+}
+
+.owner-tag-hint--error {
+  color: #e88;
+}
+
+#editOwnerTagBtn {
+  display: none;
 }
 
 
