@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Fines &amp; compensation — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Fines &amp; compensation</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Apply fine / compensation</h2>
+        <p class="note">Posts instantly to <code>gov_fine_compensation</code> ledger and club balance. Run <code>competition_fines.sql</code> once, then <b>Seed Excel tariffs</b>.</p>
+        <div class="row gov-subsidy-row">
+          <div>
+            <label>Club</label>
+            <select id="fineClubSelect" style="min-width:120px;"></select>
+          </div>
+          <div>
+            <label>Tariff</label>
+            <select id="fineTariffSelect" style="min-width:280px;"></select>
+          </div>
+          <div>
+            <label>Fixture ID (optional)</label>
+            <input type="number" id="fineFixtureId" min="1" step="1" style="width:100px;">
+          </div>
+        </div>
+        <div class="row gov-subsidy-row" style="margin-top:8px;">
+          <div>
+            <label>Override ₿ (manual tariffs)</label>
+            <input type="number" id="fineAmountOverride" min="0" step="50000" style="width:140px;">
+          </div>
+          <div style="flex:1;">
+            <label>Note</label>
+            <input type="text" id="fineNote" style="width:100%;max-width:400px;" placeholder="Optional admin note">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" id="applyFineBtn" class="button">Apply to club</button>
+        </div>
+        <div id="applyFineStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Tariff catalogue</h2>
+        <div class="row" style="margin-bottom:12px;">
+          <button type="button" id="seedFinesBtn" class="button">Seed Excel tariffs</button>
+          <button type="button" id="reloadFinesBtn" class="button">Reload</button>
+        </div>
+        <div id="fineTariffList" class="challenge-admin-list"></div>
+        <div id="fineTariffStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Edit tariff</h2>
+        <input type="hidden" id="fineEditCode" value="">
+        <div class="row gov-subsidy-row">
+          <div>
+            <label>Code</label>
+            <input type="text" id="fineEditCodeInput" style="width:180px;" placeholder="snake_case">
+          </div>
+          <div>
+            <label>Label</label>
+            <input type="text" id="fineEditLabel" style="width:280px;">
+          </div>
+          <div>
+            <label>Category</label>
+            <select id="fineEditCategory">
+              <option value="matchday">Matchday</option>
+              <option value="squad">Squad</option>
+              <option value="transfer">Transfer</option>
+              <option value="manager">Manager</option>
+              <option value="compensation">Compensation</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label>Direction</label>
+            <select id="fineEditDirection">
+              <option value="fine">Fine (debit)</option>
+              <option value="compensation">Compensation (credit)</option>
+            </select>
+          </div>
+          <div>
+            <label>Amount ₿</label>
+            <input type="number" id="fineEditAmount" min="0" step="50000" style="width:120px;">
+          </div>
+          <div>
+            <label>Mode</label>
+            <select id="fineEditMode">
+              <option value="fixed">Fixed</option>
+              <option value="manual">Manual at apply</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" id="saveFineTariffBtn" class="button">Save tariff</button>
+          <button type="button" id="clearFineFormBtn" class="button">Clear</button>
+        </div>
+        <div id="fineFormStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Recent applications</h2>
+        <div id="fineRecentList" class="challenge-admin-list"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_fines.js"></script>
+</body>
+</html>

@@ -192,6 +192,16 @@ Run once:
 - **Apply emergency TAC** — `gov_emergency_tax` on balance above threshold
 - **`finances.html`** pending column forecasts unposted upkeep charges
 
+### Fines & compensation (after wages/taxes)
+
+Run once:
+
+[`competition_fines.sql`](./competition_fines.sql)
+
+- Excel tariff list seeded via **Admin → Fines & compensation → Seed Excel tariffs**
+- **Apply to club** posts instant `gov_fine_compensation` (fine = debit, compensation = credit)
+- SACK MGR / RLS MGR use **manual** amount at apply time
+
 ### Club owner linking (admin)
 
 Run once:

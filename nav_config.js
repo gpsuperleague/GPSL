@@ -90,6 +90,7 @@ export const ADMIN_NAV_SECTION = {
     { heading: true, label: "Money management" },
     { href: "admin_money.html", label: "Prizes, wages & gates" },
     { href: "admin_challenges.html", label: "Season challenges" },
+    { href: "admin_fines.html", label: "Fines & compensation" },
 
     { heading: true, label: "Transfer management" },
     { href: "admin_transfers.html", label: "Transfer window & engine" },
