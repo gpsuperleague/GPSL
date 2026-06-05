@@ -397,13 +397,36 @@ export function stopDraftCountdown() {
 // LOAD GLOBAL SETTINGS (THE ONLY PLACE THAT DOES THIS)
 // ------------------------------------------------------------
 export async function loadGlobalSettings() {
-  const { data } = await supabase
+  let data = null;
+
+  const full = await supabase
     .from("global_settings_public")
     .select(
       "transfer_window_open, draft_auction_enabled, draft_auction_start_time, draft_bidding_open"
     )
     .eq("id", 1)
     .single();
+
+  if (!full.error) {
+    data = full.data;
+  } else {
+    console.warn(
+      "loadGlobalSettings: draft_bidding_open missing — run repair_global_settings_public.sql",
+      full.error
+    );
+    const minimal = await supabase
+      .from("global_settings_public")
+      .select(
+        "transfer_window_open, draft_auction_enabled, draft_auction_start_time"
+      )
+      .eq("id", 1)
+      .single();
+    if (minimal.error) {
+      console.error("loadGlobalSettings:", minimal.error);
+    } else {
+      data = minimal.data;
+    }
+  }
 
   draftEnabled = data?.draft_auction_enabled === true;
   draftBiddingOpen =

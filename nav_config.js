@@ -11,7 +11,6 @@ export const NAV_SECTIONS = [
         href: "draftauction.html",
         label: "Draft Auction",
         page: "draftauction",
-        requiresDraft: true,
       },
       { href: "expiring_contracts.html", label: "Expiring Contracts", page: "expiring_contracts" },
       { href: "season_transfers.html", label: "Season Transfers", page: "season_transfers" },

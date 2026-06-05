@@ -202,6 +202,16 @@ Run once:
 - **Apply to club** posts instant `gov_fine_compensation` (fine = debit, compensation = credit)
 - SACK MGR / RLS MGR use **manual** amount at apply time
 
+### Draft Auction vanished from nav?
+
+Finance SQL patches (`competition_wages_taxes.sql`, `government_subsidies.sql`, etc.) recreate `global_settings_public` **without** `draft_bidding_open`. That breaks `loadGlobalSettings()` and hides Draft Auction.
+
+Run once:
+
+[`repair_global_settings_public.sql`](./repair_global_settings_public.sql)
+
+Then confirm **Admin → Transfer window & engine** still has **Draft auction enabled** (re-enable if needed).
+
 ### Club history, player career & Ballon d'Or
 
 Run once after cup/match-stats SQL:

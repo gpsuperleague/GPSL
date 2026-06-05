@@ -67,6 +67,7 @@ SELECT
   draft_auction_enabled,
   draft_auction_start_time,
   updated_at,
+  league_phase,
   wage_pct_superleague,
   wage_pct_championship,
   stadium_cost_tier1,
@@ -109,7 +110,14 @@ SELECT
   star_tax_min_rating,
   star_tax_per_player,
   emergency_tac_pct,
-  emergency_tac_threshold
+  emergency_tac_threshold,
+  (
+    COALESCE(draft_auction_enabled, false)
+    AND draft_auction_start_time IS NOT NULL
+    AND draft_random_finish_time IS NOT NULL
+    AND now() >= draft_auction_start_time
+    AND now() < draft_random_finish_time
+  ) AS draft_bidding_open
 FROM public.global_settings;
 
 GRANT SELECT ON public.global_settings_public TO authenticated;
