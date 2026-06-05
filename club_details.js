@@ -12,7 +12,7 @@ const MAX_OWNER_TAG_LEN = 64;
 
 const CLUB_SELECT_BASE =
   "ShortName, Club, Stadium, Capacity, Nation";
-const CLUB_SELECT_WITH_OWNER = `${CLUB_SELECT_BASE}, Owner`;
+const CLUB_SELECT_WITH_OWNER = `${CLUB_SELECT_BASE}, owner`;
 
 function formatNationLabel(value) {
   if (value == null || !String(value).trim()) return "";
@@ -125,21 +125,11 @@ function wireOwnerTagField(els, onSaved) {
 }
 
 async function loadOwnerClub(userId) {
-  let result = await supabase
+  return supabase
     .from("Clubs")
     .select(CLUB_SELECT_WITH_OWNER)
     .eq("owner_id", userId)
     .maybeSingle();
-
-  if (result.error && /owner/i.test(String(result.error.message))) {
-    result = await supabase
-      .from("Clubs")
-      .select(CLUB_SELECT_BASE)
-      .eq("owner_id", userId)
-      .maybeSingle();
-  }
-
-  return result;
 }
 
 function showLoadError(message) {
@@ -207,7 +197,7 @@ async function initClubDetailsPage() {
     ? formatNationLabel(club.Nation)
     : "—";
 
-  storedTag = club.Owner?.trim() || null;
+  storedTag = club.owner?.trim() || null;
   initOwnerTagField(ownerEls, storedTag);
 
   const divEl = document.getElementById("compDivision");

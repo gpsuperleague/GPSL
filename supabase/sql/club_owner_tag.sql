@@ -1,10 +1,9 @@
 -- =============================================================================
--- Club owner Discord tag (Clubs.Owner) — owners set via Club Details page
+-- Club owner Discord tag (Clubs.owner — legacy column, lowercase)
 -- Run once in Supabase SQL Editor.
+-- Does NOT add a new column. Uses existing Clubs.owner.
+-- If you accidentally created duplicate "Owner", run repair_clubs_owner_column.sql first.
 -- =============================================================================
-
-ALTER TABLE public."Clubs"
-  ADD COLUMN IF NOT EXISTS "Owner" text;
 
 CREATE OR REPLACE FUNCTION public.club_owner_set_tag(p_tag text)
 RETURNS void
@@ -34,7 +33,7 @@ BEGIN
   END IF;
 
   UPDATE public."Clubs"
-  SET "Owner" = v_tag
+  SET owner = v_tag
   WHERE "ShortName" = v_short
     AND owner_id = auth.uid();
 END;
