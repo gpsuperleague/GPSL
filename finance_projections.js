@@ -26,27 +26,6 @@ function setPendingForecast(map, lineId, amount, note, byLine) {
 
 function filterPendingAgainstLedger(map, byLine) {
   const filtered = new Map();
-  const { data: loanInst, error: loanInstErr } = await supabase
-    .from("club_loan_installments_public")
-    .select("principal_due, due_gpsl_month_label, installment_no, status")
-    .eq("status", "pending");
-
-  if (!loanInstErr && loanInst?.length) {
-    const loanPending = loanInst.reduce(
-      (s, r) => s + (Number(r.principal_due) || 0),
-      0
-    );
-    if (loanPending > 0.5) {
-      setPendingForecast(
-        pendingByLine,
-        "other_loans",
-        -loanPending,
-        `${loanInst.length} scheduled loan installment${loanInst.length === 1 ? "" : "s"} (20 GPSL months)`,
-        byLine
-      );
-    }
-  }
-
   let totalPending = 0;
   for (const [lineId, pending] of map.entries()) {
     const posted = Number(byLine.get(lineId)?.amount || 0);
