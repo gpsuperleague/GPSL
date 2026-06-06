@@ -705,7 +705,7 @@ export async function buildNav() {
   let firstActiveNavSectionId;
   let normalizeNavPath;
   try {
-    const navMod = await import("./nav_config.js?v=20250604-nav-open");
+    const navMod = await import("./nav_config.js?v=20250604-nav-collapsed");
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;
@@ -848,15 +848,10 @@ export async function buildNav() {
 
     const sectionMatchesPage = sectionHasActiveItem({ items }, pathname, search);
     const isPrimarySection = section.id === openSectionId;
-    const open = isPrimarySection;
     const hasActive = sectionMatchesPage && isPrimarySection;
 
-    html += `<div class="nav-group${hasActive ? " nav-group-active" : ""}${
-      open ? " open" : ""
-    }" data-nav-group>`;
-    html += `<button type="button" class="nav-group-summary" aria-expanded="${
-      open ? "true" : "false"
-    }">${section.label}</button>`;
+    html += `<div class="nav-group${hasActive ? " nav-group-active" : ""}" data-nav-group>`;
+    html += `<button type="button" class="nav-group-summary" aria-expanded="false">${section.label}</button>`;
     html += `<div class="nav-dropdown" role="menu">`;
 
     for (const item of items) {
