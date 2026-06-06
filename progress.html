@@ -12,6 +12,27 @@
     .page-container { width: 95%; max-width: 1400px; margin: 20px auto 40px; }
     h1 { color: #ff9900; margin-bottom: 8px; }
     .season-meta { color: #aaa; margin-bottom: 16px; }
+    .division-filter {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+      margin-bottom: 16px; padding: 12px 14px;
+      background: #1a1a1a; border: 1px solid #333; border-radius: 8px;
+      font-size: 14px;
+    }
+    .division-filter .filter-label {
+      color: #888; font-size: 12px; text-transform: uppercase;
+      letter-spacing: 0.04em; margin-right: 4px;
+    }
+    .division-filter label {
+      display: inline-flex; align-items: center; gap: 8px;
+      cursor: pointer; color: #ddd; user-select: none;
+    }
+    .division-filter label.filter-all {
+      color: #ff9900; font-weight: bold;
+      padding-right: 12px; border-right: 1px solid #444;
+    }
+    .division-filter input[type="checkbox"] {
+      width: 16px; height: 16px; accent-color: #ff9900; cursor: pointer;
+    }
     .legend {
       display: flex; flex-wrap: wrap; gap: 10px 16px;
       margin-bottom: 24px; font-size: 12px; color: #aaa;
@@ -149,6 +170,21 @@
   <div class="page-container">
     <h1>Competition Progress</h1>
     <p id="seasonMeta" class="season-meta">Loading…</p>
+    <div class="division-filter" id="divisionFilter">
+      <span class="filter-label">Show tables</span>
+      <label class="filter-all">
+        <input type="checkbox" id="filterAll" checked> All
+      </label>
+      <label>
+        <input type="checkbox" class="filter-div" data-division="superleague" checked> SuperLeague
+      </label>
+      <label>
+        <input type="checkbox" class="filter-div" data-division="championship_a" checked> Championship A
+      </label>
+      <label>
+        <input type="checkbox" class="filter-div" data-division="championship_b" checked> Championship B
+      </label>
+    </div>
     <div id="zoneLegend" class="legend"></div>
     <div id="tablesRoot"></div>
     <p class="footer-note">

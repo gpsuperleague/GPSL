@@ -137,7 +137,67 @@ function renderStandingsTable(division, rows, myClub) {
     </table>
   `;
 
+  panel.dataset.division = division;
   return panel;
+}
+
+let standingsGroups = {};
+let myClubRef = { short: null, name: null };
+
+function divisionFilterState() {
+  const state = {};
+  for (const div of LEAGUE_DIVISIONS) {
+    const el = document.querySelector(`.filter-div[data-division="${div}"]`);
+    state[div] = el ? el.checked : true;
+  }
+  return state;
+}
+
+function syncFilterAllCheckbox() {
+  const allEl = document.getElementById("filterAll");
+  if (!allEl) return;
+  const boxes = [...document.querySelectorAll(".filter-div")];
+  const checkedCount = boxes.filter((b) => b.checked).length;
+  allEl.checked = checkedCount === boxes.length;
+  allEl.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+}
+
+function renderTables() {
+  const root = document.getElementById("tablesRoot");
+  const filter = divisionFilterState();
+  const visible = LEAGUE_DIVISIONS.filter((div) => filter[div]);
+
+  root.innerHTML = "";
+  if (!visible.length) {
+    root.innerHTML =
+      '<p class="empty-msg">No divisions selected — tick at least one table above.</p>';
+    return;
+  }
+
+  for (const div of visible) {
+    root.appendChild(
+      renderStandingsTable(div, standingsGroups[div] || [], myClubRef)
+    );
+  }
+}
+
+function wireDivisionFilter() {
+  const allEl = document.getElementById("filterAll");
+  const divBoxes = [...document.querySelectorAll(".filter-div")];
+
+  allEl?.addEventListener("change", () => {
+    const on = allEl.checked;
+    for (const box of divBoxes) box.checked = on;
+    allEl.indeterminate = false;
+    renderTables();
+  });
+
+  for (const box of divBoxes) {
+    box.addEventListener("change", () => {
+      syncFilterAllCheckbox();
+      renderTables();
+    });
+  }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -157,7 +217,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     .select("ShortName, Club")
     .eq("owner_id", user.id)
     .maybeSingle();
-  myClub = { short: club?.ShortName || null, name: club?.Club || null };
+  myClubRef = { short: club?.ShortName || null, name: club?.Club || null };
 
   const season = await loadCurrentSeason(supabase);
   const meta = document.getElementById("seasonMeta");
@@ -165,6 +225,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   if (!season) {
     meta.textContent = "No active competition season yet.";
+    document.getElementById("divisionFilter")?.remove();
     root.innerHTML =
       '<p class="empty-msg">The league admin will set up the season from GPSL Admin.</p>';
     return;
@@ -177,12 +238,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   } · 3 pts win · 1 pt draw`;
 
   const standings = await loadStandingsWithPrizes(supabase);
-  const groups = groupStandingsByDivision(standings);
+  standingsGroups = groupStandingsByDivision(standings);
 
-  root.innerHTML = "";
-  for (const div of LEAGUE_DIVISIONS) {
-    root.appendChild(
-      renderStandingsTable(div, groups[div] || [], myClub)
-    );
-  }
+  wireDivisionFilter();
+  renderTables();
 });
