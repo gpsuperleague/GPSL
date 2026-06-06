@@ -949,7 +949,8 @@ export function zonesForPosition(division, position) {
 /** Primary row accent for progress table styling. */
 export function primaryZoneKey(division, position) {
   if (division === "superleague") {
-    if (position >= 17) return "shield";
+    if (position >= 18) return "relegation";
+    if (position === 17) return "shield";
     if (position >= 9) return "plate";
     return "super8";
   }
