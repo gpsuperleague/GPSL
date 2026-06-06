@@ -47,7 +47,8 @@ function renderLegend() {
   const el = document.getElementById("zoneLegend");
   const prestige = [
     { color: PRESTIGE_CUP_BAR_COLORS.super8, label: "Bar · Super8" },
-    { color: PRESTIGE_CUP_BAR_COLORS.plate, label: "Bar · Plate / Shield" },
+    { color: PRESTIGE_CUP_BAR_COLORS.plate, label: "Bar · Plate" },
+    { color: PRESTIGE_CUP_BAR_COLORS.shield, label: "Bar · Shield" },
     { color: PRESTIGE_CUP_BAR_COLORS.spoon, label: "Bar · Spoon" },
   ];
   const league = [

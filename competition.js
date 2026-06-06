@@ -38,10 +38,11 @@ export const CUP_LABELS = {
   league_cup: "League Cup",
 };
 
-/** Pastel bar colours — matched to GPSL cup nav (Spoon gold · Plate/Shield green · Super8 navy). */
+/** Pastel bar colours — matched to GPSL cup nav (Spoon gold · Shield green · Plate orange · Super8 navy). */
 export const PRESTIGE_CUP_BAR_COLORS = {
   super8: "#5a7db5",
-  plate: "#6d9f7a",
+  plate: "#c98652",
+  shield: "#6d9f7a",
   spoon: "#c9a84c",
 };
 
@@ -975,13 +976,10 @@ export function zonesForPosition(division, position) {
   return statusForPosition(division, position);
 }
 
-/** Left bar colour: prestige cup (Super8 / Plate / Shield / Spoon). Plate & Shield share one bar. */
+/** Left bar colour: prestige cup (Super8 / Plate / Shield / Spoon). */
 export function prestigeBarKey(division, position) {
   const cup = prestigeCupForPosition(division, position);
-  if (!cup) return "none";
-  const key = cup.toLowerCase();
-  if (key === "shield") return "plate";
-  return key;
+  return cup ? cup.toLowerCase() : "none";
 }
 
 /** Row background tint: league outcome (champion, promotion, relegation, etc.). */
