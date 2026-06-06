@@ -30,9 +30,27 @@
       color: #ff9900; font-weight: bold;
       padding-right: 12px; border-right: 1px solid #444;
     }
-    .division-filter input[type="checkbox"] {
+    .division-filter input[type="checkbox"],
+    .division-filter input[type="radio"] {
       width: 16px; height: 16px; accent-color: #ff9900; cursor: pointer;
     }
+    .home-away-section {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid #333;
+    }
+    .home-away-section h2 {
+      color: #ff9900;
+      margin: 0 0 8px;
+      font-size: 22px;
+    }
+    .home-away-note {
+      color: #888;
+      font-size: 12px;
+      margin: 0 0 16px;
+      line-height: 1.5;
+    }
+    .muted-col { color: #666; }
     .legend {
       display: flex; flex-wrap: wrap; gap: 10px 16px;
       margin-bottom: 24px; font-size: 12px; color: #aaa;
@@ -229,8 +247,29 @@
         <input type="checkbox" class="filter-div" data-division="championship_b" checked> Championship B
       </label>
     </div>
+    <div class="division-filter" id="venueFilter">
+      <span class="filter-label">Home / Away view</span>
+      <label>
+        <input type="radio" name="venueView" value="" checked> Off
+      </label>
+      <label>
+        <input type="radio" name="venueView" value="home"> Home records
+      </label>
+      <label>
+        <input type="radio" name="venueView" value="away"> Away records
+      </label>
+    </div>
     <div id="zoneLegend" class="legend"></div>
     <div id="tablesRoot"></div>
+    <section id="homeAwaySection" class="home-away-section" hidden>
+      <h2 id="homeAwayTitle">Home records</h2>
+      <p class="home-away-note">
+        Ranked by home or away points only (best → worst). Form shows last 10
+        <b>home</b> or <b>away</b> results. Status column still reflects the overall league table.
+        Does not change the main standings above.
+      </p>
+      <div id="homeAwayRoot"></div>
+    </section>
     <p class="footer-note">
       Form shows last 10 results in <b>matchday order</b> (oldest → newest, left → right).
       Results update when fixtures are marked played via <a href="matchday.html" style="color:#ff9900;">Match Day</a>.

@@ -969,6 +969,101 @@ export function formatFormHtml(formStr) {
     .join("");
 }
 
+/** Sort standings rows best → worst (pts, GD, GF, name). */
+export function compareStandingsRows(a, b) {
+  return (
+    (b.pts ?? 0) - (a.pts ?? 0) ||
+    (b.gd ?? 0) - (a.gd ?? 0) ||
+    (b.gf ?? 0) - (a.gf ?? 0) ||
+    String(a.club_name || "").localeCompare(String(b.club_name || ""))
+  );
+}
+
+/**
+ * Build home or away-only records from played league fixtures.
+ * Keeps overall table_position for Status column; stats/form are venue-only.
+ */
+export function buildVenueStandings(baseRows, fixtures, venue) {
+  const byKey = new Map();
+  for (const row of baseRows || []) {
+    byKey.set(`${row.division}:${row.club_short_name}`, {
+      season_id: row.season_id,
+      division: row.division,
+      club_short_name: row.club_short_name,
+      club_name: row.club_name,
+      table_position: row.table_position,
+      league_prize_amount: row.league_prize_amount,
+      league_prize_paid: row.league_prize_paid,
+      mp: 0,
+      w: 0,
+      d: 0,
+      l: 0,
+      gf: 0,
+      ga: 0,
+      gd: 0,
+      pts: 0,
+      formEntries: [],
+    });
+  }
+
+  const homeVenue = venue === "home";
+  for (const f of fixtures || []) {
+    if (f.competition_type !== "league" || f.status !== "played") continue;
+    if (f.home_goals == null || f.away_goals == null) continue;
+
+    const club = homeVenue ? f.home_club_short_name : f.away_club_short_name;
+    const key = `${f.division}:${club}`;
+    const entry = byKey.get(key);
+    if (!entry) continue;
+
+    const gf = Number(homeVenue ? f.home_goals : f.away_goals);
+    const ga = Number(homeVenue ? f.away_goals : f.home_goals);
+    let r = "L";
+    if (gf > ga) r = "W";
+    else if (gf === ga) r = "D";
+
+    entry.mp += 1;
+    if (r === "W") {
+      entry.w += 1;
+      entry.pts += 3;
+    } else if (r === "D") {
+      entry.d += 1;
+      entry.pts += 1;
+    } else {
+      entry.l += 1;
+    }
+    entry.gf += gf;
+    entry.ga += ga;
+    entry.formEntries.push({ matchday: f.matchday, r });
+  }
+
+  const rows = [];
+  for (const entry of byKey.values()) {
+    entry.gd = entry.gf - entry.ga;
+    entry.form_last10 = entry.formEntries
+      .sort((a, b) => a.matchday - b.matchday)
+      .slice(-10)
+      .map((x) => x.r)
+      .join("");
+    delete entry.formEntries;
+    rows.push(entry);
+  }
+  return rows;
+}
+
+/** Rank venue rows 1–20 per division (best home/away record first). */
+export function rankVenueStandings(rows) {
+  const groups = groupStandingsByDivision(rows);
+  const ranked = [];
+  for (const div of LEAGUE_DIVISIONS) {
+    const sorted = [...(groups[div] || [])].sort(compareStandingsRows);
+    sorted.forEach((row, idx) => {
+      ranked.push({ ...row, venue_rank: idx + 1 });
+    });
+  }
+  return ranked;
+}
+
 export function groupStandingsByDivision(rows) {
   const groups = {};
   for (const div of LEAGUE_DIVISIONS) groups[div] = [];

@@ -3,8 +3,10 @@ import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
 import {
   loadCurrentSeason,
   loadStandingsWithPrizes,
+  loadLeagueFixtures,
   groupStandingsByDivision,
-  DIVISION_LABELS,
+  buildVenueStandings,
+  rankVenueStandings,
   LEAGUE_DIVISIONS,
   statusForPosition,
   primaryZoneKey,
@@ -60,44 +62,66 @@ function gdDisplay(gd) {
   return String(gd);
 }
 
-function renderStandingsTable(division, rows, myClub) {
+function renderStandingsTable(division, rows, myClub, opts = {}) {
+  const {
+    rankField = "table_position",
+    showPrize = true,
+    zoneBoundaries = true,
+    panelTitle = DIVISION_TITLES[division],
+    rankHeader = "#",
+    tableClass = "standings-table",
+  } = opts;
+
   const panel = document.createElement("div");
   panel.className = "division-panel";
 
   if (!rows.length) {
     panel.innerHTML = `
-      <h2>${DIVISION_TITLES[division]}</h2>
+      <h2>${panelTitle}</h2>
       <p class="empty-msg">No standings for this division.</p>
     `;
     return panel;
   }
 
+  const sortedRows = [...rows].sort((a, b) => {
+    const ra = a[rankField] ?? 999;
+    const rb = b[rankField] ?? 999;
+    return ra - rb;
+  });
+
   let prevZoneKey = null;
-  const tbody = rows
+  const tbody = sortedRows
     .map((row) => {
-      const pos = row.table_position;
-      const zoneKey = primaryZoneKey(division, pos);
-      const zoneBoundary = prevZoneKey !== null && prevZoneKey !== zoneKey;
-      prevZoneKey = zoneKey;
-      const statusText = statusForPosition(division, pos).join(" · ");
+      const displayRank = row[rankField];
+      const leaguePos = row.table_position;
+      const zoneKey = primaryZoneKey(division, leaguePos);
+      const zoneBoundary =
+        zoneBoundaries && prevZoneKey !== null && prevZoneKey !== zoneKey;
+      prevZoneKey = zoneBoundaries ? zoneKey : prevZoneKey;
+      const statusText = statusForPosition(division, leaguePos).join(" · ");
       const mine =
         myClub?.short &&
         normalizeClubKey(row.club_short_name) === normalizeClubKey(myClub.short)
           ? " my-club"
           : "";
 
-      const prizeAmt = Number(row.league_prize_amount || 0);
-      const prizeTitle = row.league_prize_paid ? "Paid at end of league season" : "Projected if season ended now";
-      const prizeCell =
-        prizeAmt > 0
-          ? `<td class="num prize-col" title="${prizeTitle}">${formatMoney(prizeAmt)}</td>`
-          : `<td class="num prize-col">—</td>`;
+      const prizeCell = showPrize
+        ? (() => {
+            const prizeAmt = Number(row.league_prize_amount || 0);
+            const prizeTitle = row.league_prize_paid
+              ? "Paid at end of league season"
+              : "Projected if season ended now";
+            return prizeAmt > 0
+              ? `<td class="num prize-col" title="${prizeTitle}">${formatMoney(prizeAmt)}</td>`
+              : `<td class="num prize-col">—</td>`;
+          })()
+        : `<td class="num prize-col muted-col" title="Overall league only">—</td>`;
 
-      const leader = pos === 1 ? " row-leader" : "";
+      const leader = displayRank === 1 ? " row-leader" : "";
 
       return `
         <tr class="zone-${zoneKey}${zoneBoundary ? " zone-boundary" : ""}${leader}${mine}">
-          <td class="num">${pos}</td>
+          <td class="num">${displayRank}</td>
           <td class="club-col">${clubWithOwnerHtml(row.club_name, row.club_short_name)}</td>
           <td class="status-col">${statusText}</td>
           <td class="num">${row.mp}</td>
@@ -116,12 +140,12 @@ function renderStandingsTable(division, rows, myClub) {
     .join("");
 
   panel.innerHTML = `
-    <h2>${DIVISION_TITLES[division]}</h2>
-    <table class="standings-table">
+    <h2>${panelTitle}</h2>
+    <table class="${tableClass}">
       ${STANDINGS_COLGROUP}
       <thead>
         <tr>
-          <th>#</th>
+          <th>${rankHeader}</th>
           <th class="club-col">Club</th>
           <th class="status-col">Status</th>
           <th>MP</th>
@@ -145,6 +169,7 @@ function renderStandingsTable(division, rows, myClub) {
 }
 
 let standingsGroups = {};
+let venueStandingsGroups = { home: {}, away: {} };
 let myClubRef = { short: null, name: null };
 
 function divisionFilterState() {
@@ -154,6 +179,12 @@ function divisionFilterState() {
     state[div] = el ? el.checked : true;
   }
   return state;
+}
+
+function venueFilterValue() {
+  const checked = document.querySelector('input[name="venueView"]:checked');
+  const v = checked?.value || "";
+  return v === "home" || v === "away" ? v : "";
 }
 
 function syncFilterAllCheckbox() {
@@ -174,12 +205,56 @@ function renderTables() {
   if (!visible.length) {
     root.innerHTML =
       '<p class="empty-msg">No divisions selected — tick at least one table above.</p>';
+  } else {
+    for (const div of visible) {
+      root.appendChild(
+        renderStandingsTable(div, standingsGroups[div] || [], myClubRef)
+      );
+    }
+  }
+
+  renderVenueTables();
+}
+
+function renderVenueTables() {
+  const section = document.getElementById("homeAwaySection");
+  const root = document.getElementById("homeAwayRoot");
+  const title = document.getElementById("homeAwayTitle");
+  const venue = venueFilterValue();
+
+  if (!section || !root) return;
+
+  if (!venue) {
+    section.hidden = true;
+    root.innerHTML = "";
+    return;
+  }
+
+  const filter = divisionFilterState();
+  const visible = LEAGUE_DIVISIONS.filter((div) => filter[div]);
+  const venueLabel = venue === "home" ? "Home" : "Away";
+  const groups = venueStandingsGroups[venue] || {};
+
+  title.textContent = `${venueLabel} records`;
+  section.hidden = false;
+  root.innerHTML = "";
+
+  if (!visible.length) {
+    root.innerHTML =
+      '<p class="empty-msg">No divisions selected — tick at least one table above.</p>';
     return;
   }
 
   for (const div of visible) {
     root.appendChild(
-      renderStandingsTable(div, standingsGroups[div] || [], myClubRef)
+      renderStandingsTable(div, groups[div] || [], myClubRef, {
+        rankField: "venue_rank",
+        showPrize: false,
+        zoneBoundaries: false,
+        panelTitle: `${DIVISION_TITLES[div]} · ${venueLabel}`,
+        rankHeader: venue === "home" ? "H#" : "A#",
+        tableClass: "standings-table venue-standings-table",
+      })
     );
   }
 }
@@ -201,6 +276,19 @@ function wireDivisionFilter() {
       renderTables();
     });
   }
+
+  for (const radio of document.querySelectorAll('input[name="venueView"]')) {
+    radio.addEventListener("change", () => renderVenueTables());
+  }
+}
+
+function buildVenueGroups(allStandings, fixtures) {
+  for (const venue of ["home", "away"]) {
+    const ranked = rankVenueStandings(
+      buildVenueStandings(allStandings, fixtures, venue)
+    );
+    venueStandingsGroups[venue] = groupStandingsByDivision(ranked);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -208,13 +296,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadClubsMap();
   renderLegend();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     window.location = "login.html";
     return;
   }
 
-  let myClub = { short: null, name: null };
   const { data: club } = await supabase
     .from("Clubs")
     .select("ShortName, Club")
@@ -229,6 +318,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!season) {
     meta.textContent = "No active competition season yet.";
     document.getElementById("divisionFilter")?.remove();
+    document.getElementById("venueFilter")?.remove();
+    document.getElementById("homeAwaySection")?.remove();
     root.innerHTML =
       '<p class="empty-msg">The league admin will set up the season from GPSL Admin.</p>';
     return;
@@ -240,8 +331,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       : ""
   } · 3 pts win · 1 pt draw`;
 
-  const standings = await loadStandingsWithPrizes(supabase);
+  const [standings, fixtures] = await Promise.all([
+    loadStandingsWithPrizes(supabase),
+    loadLeagueFixtures(supabase),
+  ]);
   standingsGroups = groupStandingsByDivision(standings);
+  buildVenueGroups(standings, fixtures);
 
   wireDivisionFilter();
   renderTables();
