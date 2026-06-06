@@ -56,7 +56,7 @@ $$;
 CREATE OR REPLACE FUNCTION public.competition_resolve_gpsl_month_offset(
   p_base_season_id bigint,
   p_base_month text,
-  p_months_ahead smallint
+  p_months_ahead integer
 )
 RETURNS TABLE (due_season_id bigint, due_gpsl_month text)
 LANGUAGE plpgsql

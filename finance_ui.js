@@ -47,6 +47,9 @@ export const LEDGER_TYPE_TO_LINE = {
   admin_one_off_injection: "eos_injection",
   adjustment: "other_adjustment",
   admin_purchase_payment: "other_admin",
+  loan_drawdown: "other_loans",
+  loan_repayment_principal: "other_loans",
+  loan_interest_payment: "other_loans",
 };
 
 export const FINANCE_UI_SECTIONS = [
