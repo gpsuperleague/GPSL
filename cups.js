@@ -3,6 +3,7 @@ import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import {
   CUP_CODES,
   CUP_LABELS,
+  GPSL_MONTH_LABELS,
   loadCupBracket,
   loadCupQualified,
   loadCupMatchExtras,
@@ -131,7 +132,14 @@ function renderBracket(nodes, extras) {
     <div class="bracket-flow">
       ${rounds
         .map(({ round_no, matches }) => {
-          const title = cupRoundLabel(matches.length);
+          const sample = matches[0] || {};
+          const month =
+            GPSL_MONTH_LABELS[sample.round_gpsl_month || sample.fixture_gpsl_month] ||
+            sample.round_gpsl_month ||
+            "";
+          const title = sample.round_label
+            ? `${sample.round_label}${month ? ` · ${month}` : ""}`
+            : cupRoundLabel(matches.length);
           const cards = matches.map((m) => renderMatchCard(m, extras)).join("");
           return `
             <div class="bracket-round" data-round="${round_no}">

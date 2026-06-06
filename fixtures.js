@@ -144,7 +144,7 @@ function renderCupFixtures() {
     const block = document.createElement("div");
     block.className = "matchday-block";
     block.innerHTML = `
-      <div class="matchday-head"><span>Round ${round}</span></div>
+      <div class="matchday-head"><span>${CUP_LABELS[currentCup] || currentCup} · Round ${round}</span></div>
       <table class="gpsl-table">
         <thead>
           <tr>
