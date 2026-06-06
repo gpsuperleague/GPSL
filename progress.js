@@ -6,7 +6,7 @@ import {
   groupStandingsByDivision,
   DIVISION_LABELS,
   LEAGUE_DIVISIONS,
-  zonesForPosition,
+  statusForPosition,
   primaryZoneKey,
   formatFormHtml,
   formatMoney,
@@ -24,7 +24,7 @@ const STANDINGS_COLGROUP = `
   <colgroup>
     <col class="col-pos" />
     <col class="col-club" />
-    <col class="col-zone" />
+    <col class="col-status" />
     <col class="col-stat" />
     <col class="col-stat" />
     <col class="col-stat" />
@@ -44,6 +44,7 @@ function renderLegend() {
     { color: "#3498db", label: "Plate / Shield" },
     { color: "#9b59b6", label: "CH Playoffs (3–6)" },
     { color: "#e67e22", label: "16v17 playoff" },
+    { color: "#3498db", label: "Shield (SL 17–20)" },
     { color: "#c0392b", label: "Relegation / Spoon" },
   ];
   el.innerHTML = items
@@ -78,7 +79,7 @@ function renderStandingsTable(division, rows, myClub) {
       const zoneKey = primaryZoneKey(division, pos);
       const zoneBoundary = prevZoneKey !== null && prevZoneKey !== zoneKey;
       prevZoneKey = zoneKey;
-      const zoneLabels = zonesForPosition(division, pos).join(" · ");
+      const statusText = statusForPosition(division, pos).join(" · ");
       const mine =
         myClub?.short &&
         normalizeClubKey(row.club_short_name) === normalizeClubKey(myClub.short)
@@ -98,7 +99,7 @@ function renderStandingsTable(division, rows, myClub) {
         <tr class="zone-${zoneKey}${zoneBoundary ? " zone-boundary" : ""}${leader}${mine}">
           <td class="num">${pos}</td>
           <td class="club-col">${clubWithOwnerHtml(row.club_name, row.club_short_name)}</td>
-          <td class="zone-col">${zoneLabels}</td>
+          <td class="status-col">${statusText}</td>
           <td class="num">${row.mp}</td>
           <td class="num">${row.w}</td>
           <td class="num">${row.d}</td>
@@ -122,7 +123,7 @@ function renderStandingsTable(division, rows, myClub) {
         <tr>
           <th>#</th>
           <th class="club-col">Club</th>
-          <th class="zone-col">Zone</th>
+          <th class="status-col">Status</th>
           <th>MP</th>
           <th>W</th>
           <th>D</th>

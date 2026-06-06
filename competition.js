@@ -915,32 +915,41 @@ export async function loadStandingsWithPrizes(supabase, division = null) {
   return data || [];
 }
 
-/** Zone labels for table position (may overlap, e.g. CH 3–4 = Plate + Playoffs). */
-export function zonesForPosition(division, position) {
+/**
+ * Status column: Champion (1st) · prestige cups · league movement.
+ * SuperLeague places 17–20 qualify for Shield next season.
+ */
+export function statusForPosition(division, position) {
+  const tags = [];
+  if (position === 1) tags.push("Champion");
+
   if (division === "superleague") {
-    const tags = [];
     if (position <= 8) tags.push("Super8");
-    if (position >= 9 && position <= 16) tags.push("Plate");
+    else if (position <= 16) tags.push("Plate");
+    else if (position <= 20) tags.push("Shield");
     if (position >= 16 && position <= 17) tags.push("SL playoff");
     if (position >= 18) tags.push("Relegation");
     return tags;
   }
 
-  const tags = [];
-  if (position <= 2) tags.push("Promotion");
-  if (position >= 3 && position <= 6) tags.push("Playoffs");
   if (position <= 4) tags.push("Plate");
   if (position >= 5 && position <= 15) tags.push("Shield");
   if (position >= 16 && position <= 17) tags.push("Shield/Spoon PO");
   if (position >= 18) tags.push("Spoon");
+  if (position <= 2) tags.push("Promotion");
+  if (position >= 3 && position <= 6) tags.push("Playoffs");
   return tags;
+}
+
+/** @deprecated Use statusForPosition — kept for callers expecting the old name. */
+export function zonesForPosition(division, position) {
+  return statusForPosition(division, position);
 }
 
 /** Primary row accent for progress table styling. */
 export function primaryZoneKey(division, position) {
   if (division === "superleague") {
-    if (position >= 18) return "relegation";
-    if (position >= 16) return "playoff";
+    if (position >= 17) return "shield";
     if (position >= 9) return "plate";
     return "super8";
   }
