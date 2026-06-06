@@ -294,20 +294,22 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
 
   const { data: loanInst, error: loanInstErr } = await supabase
     .from("club_loan_installments_public")
-    .select("principal_due, status")
+    .select("principal_due, interest_due, total_due, status")
     .eq("status", "pending");
 
   if (!loanInstErr && loanInst?.length) {
-    const loanPending = loanInst.reduce(
-      (s, r) => s + (Number(r.principal_due) || 0),
-      0
-    );
+    const loanPending = loanInst.reduce((s, r) => {
+      const total =
+        Number(r.total_due) ||
+        Number(r.principal_due || 0) + Number(r.interest_due || 0);
+      return s + total;
+    }, 0);
     if (loanPending > 0.5) {
       setPendingForecast(
         pendingByLine,
         "other_loans",
         -loanPending,
-        `${loanInst.length} scheduled loan installment${loanInst.length === 1 ? "" : "s"} (20 GPSL months)`,
+        `${loanInst.length} scheduled loan installment${loanInst.length === 1 ? "" : "s"} (principal + interest)`,
         byLine
       );
     }

@@ -33,28 +33,42 @@ export async function renderMyLoansAtCounter(
       const scheduleRows = inst
         .map((i) => {
           const due = `${i.due_gpsl_month_label || i.due_gpsl_month} (${i.due_season_label || ""})`;
-          const amt = formatMoney(i.principal_due);
+          const principal = formatMoney(i.principal_due);
+          const interest = Number(i.interest_due || 0);
+          const total = formatMoney(
+            Number(i.total_due || i.principal_due) + (i.total_due ? 0 : interest)
+          );
           const st =
             i.status === "paid"
-              ? `<span class="status-paid">Paid ${formatMoney(i.paid_amount)}</span>`
-              : `<span class="status-pending">Due ${amt}</span>`;
-          return `<tr><td>${i.installment_no}/${l.repayment_months || 20}</td><td>${due}</td><td>${st}</td></tr>`;
+              ? `<span class="status-paid">Paid ${formatMoney(
+                  Number(i.paid_amount || 0) + Number(i.interest_paid || 0)
+                )}</span>`
+              : `<span class="status-pending">Due ${total}</span>`;
+          const parts =
+            interest > 0.005
+              ? `${principal} + ${formatMoney(interest)} int.`
+              : principal;
+          return `<tr><td>${i.installment_no}/${l.repayment_months || 20}</td><td>${due}</td><td>${parts}</td><td>${st}</td></tr>`;
         })
         .join("");
 
       return `
         <div class="loan-schedule-block">
           <p class="loan-schedule-head">
-            <b>Loan #${l.id}</b> — ${formatMoney(l.outstanding_principal)} owing
+            <b>Loan #${l.id}</b> — ${formatMoney(l.outstanding_principal)} principal
+            · ${Number(l.interest_rate_pct || 5).toFixed(1)}% p.a. per GPSL season
             · ${l.repayment_months || 20} GPSL months
             ${
               next
-                ? ` · Next: ${next.due_gpsl_month_label} ${formatMoney(next.principal_due)}`
+                ? ` · Next: ${next.due_gpsl_month_label} ${formatMoney(
+                    next.total_due ||
+                      Number(next.principal_due || 0) + Number(next.interest_due || 0)
+                  )}`
                 : ""
             }
           </p>
           <table class="bank-table loan-schedule-table">
-            <thead><tr><th>#</th><th>GPSL month</th><th>Principal</th></tr></thead>
+            <thead><tr><th>#</th><th>GPSL month</th><th>Breakdown</th><th>Due</th></tr></thead>
             <tbody>${scheduleRows}</tbody>
           </table>
         </div>`;
@@ -156,7 +170,7 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
   const limitsNote = document.getElementById("loanLimits");
   if (limitsNote && !limitsNote.dataset.monthsNote) {
     limitsNote.dataset.monthsNote = "1";
-    limitsNote.textContent += ` · Repaid over ${months} GPSL calendar months (equal principal)`;
+    limitsNote.textContent += ` · Repaid over ${months} GPSL months (equal principal + 5% season interest)`;
   }
 
   takeForm?.addEventListener("submit", async (e) => {
@@ -191,7 +205,7 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
     }
     showCounterMsg(
       "loanTakeMsg",
-      `Approved — loan #${res.loanId}, ${formatMoney(amt)} credited. Principal repays over ${months} GPSL months.`,
+      `Approved — loan #${res.loanId}, ${formatMoney(amt)} credited. Principal + bank interest over ${months} GPSL months.`,
       true
     );
     await onSuccess();
