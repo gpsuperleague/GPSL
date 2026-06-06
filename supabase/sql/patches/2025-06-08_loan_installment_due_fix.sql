@@ -44,6 +44,8 @@ AS $$
   END;
 $$;
 
+DROP FUNCTION IF EXISTS public.competition_resolve_gpsl_month_offset(bigint, text, integer);
+
 CREATE OR REPLACE FUNCTION public.competition_resolve_gpsl_month_offset(
   p_base_season_id bigint,
   p_base_month text,
