@@ -297,7 +297,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   meta.textContent = `${season.label} · ${DIVISION_LABELS[currentDivision]} · your games highlighted in gold`;
 
-  const league = await loadLeagueFixtures(supabase, currentDivision);
+  // Load every division so toolbar can switch Super League / Champ A / Champ B.
+  const league = await loadLeagueFixtures(supabase);
   const cups = await loadCupFixtures(supabase);
   allFixtures = [...league, ...cups];
   if (!allFixtures.length && season) {
