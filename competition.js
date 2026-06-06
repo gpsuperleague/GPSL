@@ -538,18 +538,17 @@ export async function submitFixtureResult(
   playerStats = [],
   cupExtra = null
 ) {
-  const params = {
+  // Always pass cup ET/pen args (null for league / score-only) so PostgREST picks the
+  // single 7-arg RPC, not the legacy 4-arg overload.
+  return supabase.rpc("competition_submit_result", {
     p_fixture_id: fixtureId,
     p_home_goals: homeGoals,
     p_away_goals: awayGoals,
-    p_player_stats: playerStats,
-  };
-  if (cupExtra) {
-    if (cupExtra.etHome != null) params.p_et_home_goals = cupExtra.etHome;
-    if (cupExtra.etAway != null) params.p_et_away_goals = cupExtra.etAway;
-    if (cupExtra.penWinner) params.p_pen_winner_club = cupExtra.penWinner;
-  }
-  return supabase.rpc("competition_submit_result", params);
+    p_player_stats: playerStats ?? [],
+    p_et_home_goals: cupExtra?.etHome ?? null,
+    p_et_away_goals: cupExtra?.etAway ?? null,
+    p_pen_winner_club: cupExtra?.penWinner ?? null,
+  });
 }
 
 export async function loadPlayerSeasonStats(supabase, division = null) {
