@@ -19,6 +19,24 @@ const DIVISION_TITLES = {
   championship_b: "Championship B",
 };
 
+/** Shared column widths so all three division tables line up. */
+const STANDINGS_COLGROUP = `
+  <colgroup>
+    <col class="col-pos" />
+    <col class="col-club" />
+    <col class="col-zone" />
+    <col class="col-stat" />
+    <col class="col-stat" />
+    <col class="col-stat" />
+    <col class="col-stat" />
+    <col class="col-stat" />
+    <col class="col-stat" />
+    <col class="col-stat" />
+    <col class="col-stat" />
+    <col class="col-prize" />
+    <col class="col-form" />
+  </colgroup>`;
+
 function renderLegend() {
   const el = document.getElementById("zoneLegend");
   const items = [
@@ -53,10 +71,13 @@ function renderStandingsTable(division, rows, myClub) {
     return panel;
   }
 
+  let prevZoneKey = null;
   const tbody = rows
     .map((row) => {
       const pos = row.table_position;
       const zoneKey = primaryZoneKey(division, pos);
+      const zoneBoundary = prevZoneKey !== null && prevZoneKey !== zoneKey;
+      prevZoneKey = zoneKey;
       const zoneLabels = zonesForPosition(division, pos).join(" · ");
       const mine =
         myClub?.short &&
@@ -72,7 +93,7 @@ function renderStandingsTable(division, rows, myClub) {
           : `<td class="num prize-col">—</td>`;
 
       return `
-        <tr class="zone-${zoneKey}${mine}">
+        <tr class="zone-${zoneKey}${zoneBoundary ? " zone-boundary" : ""}${mine}">
           <td class="num">${pos}</td>
           <td class="club-col">${clubWithOwnerHtml(row.club_name, row.club_short_name)}</td>
           <td class="zone-col">${zoneLabels}</td>
@@ -94,6 +115,7 @@ function renderStandingsTable(division, rows, myClub) {
   panel.innerHTML = `
     <h2>${DIVISION_TITLES[division]}</h2>
     <table class="standings-table">
+      ${STANDINGS_COLGROUP}
       <thead>
         <tr>
           <th>#</th>

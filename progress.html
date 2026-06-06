@@ -20,12 +20,16 @@
     .legend i {
       display: inline-block; width: 12px; height: 12px; border-radius: 2px;
     }
+    #tablesRoot {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
     .division-panel {
       background: #1a1a1a;
       border: 1px solid #333;
       border-radius: 8px;
       padding: 16px;
-      margin-bottom: 24px;
       overflow-x: auto;
     }
     .division-panel h2 {
@@ -33,30 +37,106 @@
       margin: 0 0 12px;
       font-size: 20px;
     }
-    table.standings-table { width: 100%; border-collapse: collapse; min-width: 720px; }
-    table.standings-table th, table.standings-table td {
+
+    table.standings-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      min-width: 960px;
+    }
+    table.standings-table col.col-pos { width: 40px; }
+    table.standings-table col.col-club { width: 24%; }
+    table.standings-table col.col-zone { width: 14%; }
+    table.standings-table col.col-stat { width: 44px; }
+    table.standings-table col.col-prize { width: 76px; }
+    table.standings-table col.col-form { width: 96px; }
+
+    table.standings-table th,
+    table.standings-table td {
       border: 1px solid #333;
       padding: 7px 8px;
       font-size: 13px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    table.standings-table th {
+      background: #222;
+      color: #ff9900;
+      text-align: center;
       white-space: nowrap;
     }
-    table.standings-table th { background: #222; color: #ff9900; text-align: center; }
-    table.standings-table th.club-col, table.standings-table td.club-col { text-align: left; }
-    table.standings-table th.zone-col, table.standings-table td.zone-col {
-      text-align: left; font-size: 11px; color: #bbb; max-width: 140px;
-      white-space: normal;
+    table.standings-table th.club-col,
+    table.standings-table td.club-col {
+      text-align: left;
+      white-space: nowrap;
     }
-    table.standings-table td.num { text-align: center; }
-    tr.my-club { outline: 1px solid #ff9900; }
-    tr.zone-super8 td:first-child { box-shadow: inset 3px 0 0 #2ecc71; }
-    tr.zone-plate td:first-child { box-shadow: inset 3px 0 0 #3498db; }
-    tr.zone-playoff td:first-child { box-shadow: inset 3px 0 0 #e67e22; }
-    tr.zone-relegation td:first-child { box-shadow: inset 3px 0 0 #e74c3c; }
-    tr.zone-promotion td:first-child { box-shadow: inset 3px 0 0 #2ecc71; }
-    tr.zone-playoffs td:first-child { box-shadow: inset 3px 0 0 #9b59b6; }
-    tr.zone-shield td:first-child { box-shadow: inset 3px 0 0 #3498db; }
-    tr.zone-spoon td:first-child { box-shadow: inset 3px 0 0 #c0392b; }
-    .form-cell { letter-spacing: 2px; font-weight: bold; text-align: center; }
+    table.standings-table th.zone-col,
+    table.standings-table td.zone-col {
+      text-align: left;
+      font-size: 11px;
+      color: #bbb;
+      white-space: normal;
+      line-height: 1.35;
+    }
+    table.standings-table td.num { text-align: center; white-space: nowrap; }
+
+    /* Zebra + zone tint (two shades per zone block) */
+    table.standings-table tbody tr:nth-child(odd) td { background: #1a1a1a; }
+    table.standings-table tbody tr:nth-child(even) td { background: #232323; }
+    table.standings-table tbody tr.zone-super8:nth-child(odd) td { background: #1a221c; }
+    table.standings-table tbody tr.zone-super8:nth-child(even) td { background: #242c26; }
+    table.standings-table tbody tr.zone-plate:nth-child(odd) td { background: #1a1f26; }
+    table.standings-table tbody tr.zone-plate:nth-child(even) td { background: #242a32; }
+    table.standings-table tbody tr.zone-playoff:nth-child(odd) td { background: #26201a; }
+    table.standings-table tbody tr.zone-playoff:nth-child(even) td { background: #302824; }
+    table.standings-table tbody tr.zone-relegation:nth-child(odd) td { background: #261a1a; }
+    table.standings-table tbody tr.zone-relegation:nth-child(even) td { background: #302424; }
+    table.standings-table tbody tr.zone-promotion:nth-child(odd) td { background: #1a221c; }
+    table.standings-table tbody tr.zone-promotion:nth-child(even) td { background: #242c26; }
+    table.standings-table tbody tr.zone-playoffs:nth-child(odd) td { background: #211a26; }
+    table.standings-table tbody tr.zone-playoffs:nth-child(even) td { background: #2b2430; }
+    table.standings-table tbody tr.zone-shield:nth-child(odd) td { background: #1a1f26; }
+    table.standings-table tbody tr.zone-shield:nth-child(even) td { background: #242a32; }
+    table.standings-table tbody tr.zone-spoon:nth-child(odd) td { background: #261a1a; }
+    table.standings-table tbody tr.zone-spoon:nth-child(even) td { background: #302424; }
+
+    /* Zone boundary separators */
+    table.standings-table tbody tr.zone-boundary td {
+      border-top-width: 2px;
+      border-top-style: solid;
+      border-top-color: #555;
+    }
+    table.standings-table tbody tr.zone-boundary.zone-super8 td,
+    table.standings-table tbody tr.zone-boundary.zone-promotion td { border-top-color: #2ecc71; }
+    table.standings-table tbody tr.zone-boundary.zone-plate td,
+    table.standings-table tbody tr.zone-boundary.zone-shield td { border-top-color: #3498db; }
+    table.standings-table tbody tr.zone-boundary.zone-playoffs td { border-top-color: #9b59b6; }
+    table.standings-table tbody tr.zone-boundary.zone-playoff td { border-top-color: #e67e22; }
+    table.standings-table tbody tr.zone-boundary.zone-relegation td,
+    table.standings-table tbody tr.zone-boundary.zone-spoon td { border-top-color: #c0392b; }
+
+    /* Left accent by zone */
+    table.standings-table tbody tr td:first-child {
+      box-shadow: inset 4px 0 0 transparent;
+    }
+    table.standings-table tbody tr.zone-super8 td:first-child,
+    table.standings-table tbody tr.zone-promotion td:first-child { box-shadow: inset 4px 0 0 #2ecc71; }
+    table.standings-table tbody tr.zone-plate td:first-child,
+    table.standings-table tbody tr.zone-shield td:first-child { box-shadow: inset 4px 0 0 #3498db; }
+    table.standings-table tbody tr.zone-playoffs td:first-child { box-shadow: inset 4px 0 0 #9b59b6; }
+    table.standings-table tbody tr.zone-playoff td:first-child { box-shadow: inset 4px 0 0 #e67e22; }
+    table.standings-table tbody tr.zone-relegation td:first-child,
+    table.standings-table tbody tr.zone-spoon td:first-child { box-shadow: inset 4px 0 0 #c0392b; }
+
+    table.standings-table tbody tr.my-club td {
+      background: #2a2418 !important;
+      box-shadow: inset 0 0 0 1px #ff990066;
+    }
+    table.standings-table tbody tr.my-club td:first-child {
+      box-shadow: inset 4px 0 0 #ff9900, inset 0 0 0 1px #ff990066;
+    }
+
+    .form-cell { letter-spacing: 2px; font-weight: bold; text-align: center; white-space: nowrap; }
     .form-w { color: #6f6; }
     .form-d { color: #aaa; }
     .form-l { color: #f66; }
