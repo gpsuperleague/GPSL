@@ -59,6 +59,14 @@
     .legend i {
       display: inline-block; width: 12px; height: 12px; border-radius: 2px;
     }
+    .legend-line {
+      width: 20px; height: 0; border-radius: 0;
+      border-top: 2px solid var(--line-color, #c98652);
+      background: transparent;
+    }
+    .legend-line-dashed {
+      border-top-style: dashed;
+    }
     #tablesRoot {
       display: flex;
       flex-direction: column;
@@ -124,6 +132,7 @@
       --cup-super8: #5a7db5;
       --cup-plate: #6d9f7a;
       --cup-spoon: #c9a84c;
+      --line-playoff: #c98652;
       --tint-champion: #2a2418;
       --tint-runner-up: #1e1e26;
       --tint-promotion-odd: #1a231c;
@@ -173,6 +182,11 @@
     table.standings-table tbody tr.zone-boundary.prestige-plate td { border-top-color: var(--cup-plate); }
     table.standings-table tbody tr.zone-boundary.prestige-spoon td {
       border-top-color: var(--cup-spoon);
+    }
+    table.standings-table tbody tr.zone-boundary-playoff td {
+      border-top-width: 2px;
+      border-top-style: dashed;
+      border-top-color: var(--line-playoff);
     }
     table.standings-table tbody tr.zone-boundary.zone-boundary-relegation td {
       border-top-color: #b86a6a;

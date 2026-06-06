@@ -58,11 +58,18 @@ function renderLegend() {
     { color: LEAGUE_TINT_LEGEND_COLORS.playoff, label: "Tint · 16v17 playoff" },
     { color: LEAGUE_TINT_LEGEND_COLORS.relegation, label: "Tint · Relegation / Spoon" },
   ];
+  const lines = [
+    { color: LEAGUE_TINT_LEGEND_COLORS.playoff, label: "Line · Playoff zone", dashed: true },
+    { color: LEAGUE_TINT_LEGEND_COLORS.relegation, label: "Line · Relegation / Spoon", dashed: false },
+  ];
   const chip = (i) =>
     `<span><i style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${i.color};"></i> ${i.label}</span>`;
+  const lineChip = (i) =>
+    `<span><i class="legend-line${i.dashed ? " legend-line-dashed" : ""}" style="--line-color:${i.color};"></i> ${i.label}</span>`;
   el.innerHTML = `
     <span class="legend-group"><b>Left bar</b> (prestige cup) ${prestige.map(chip).join(" ")}</span>
     <span class="legend-group"><b>Row tint</b> (league) ${league.map(chip).join(" ")}</span>
+    <span class="legend-group"><b>Zone lines</b> ${lines.map(lineChip).join(" ")}</span>
   `;
 }
 
@@ -111,6 +118,12 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
         zoneBoundaries &&
         prevPrestigeKey !== null &&
         prevPrestigeKey !== prestigeKey;
+      const playoffBoundary =
+        zoneBoundaries &&
+        (leagueKey === "playoff" || leagueKey === "playoffs") &&
+        prevLeagueKey !== null &&
+        prevLeagueKey !== "playoff" &&
+        prevLeagueKey !== "playoffs";
       const relegationBoundary =
         zoneBoundaries &&
         leagueKey === "relegation" &&
@@ -147,7 +160,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
       const leader = displayRank === 1 ? " row-leader" : "";
 
       return `
-        <tr class="prestige-${prestigeKey} league-${tintKey}${prestigeBoundary ? " zone-boundary" : ""}${relegationBoundary || spoonBoundary ? " zone-boundary zone-boundary-relegation" : ""}${leader}${mine}">
+        <tr class="prestige-${prestigeKey} league-${tintKey}${prestigeBoundary ? " zone-boundary" : ""}${playoffBoundary ? " zone-boundary-playoff" : ""}${relegationBoundary || spoonBoundary ? " zone-boundary zone-boundary-relegation" : ""}${leader}${mine}">
           <td class="num">${displayRank}</td>
           <td class="club-col">${clubWithOwnerHtml(row.club_name, row.club_short_name)}</td>
           <td class="status-col">${statusText}</td>
