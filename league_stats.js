@@ -83,6 +83,16 @@ function renderAll() {
   const byPotm = [...rows]
     .filter((r) => (r.potm_awards || 0) > 0)
     .sort((a, b) => b.potm_awards - a.potm_awards);
+  const byCleanSheets = [...rows]
+    .filter(
+      (r) => r.stat_role === "goalkeeper" && (r.clean_sheets || 0) > 0
+    )
+    .sort(
+      (a, b) =>
+        b.clean_sheets - a.clean_sheets ||
+        (b.starts || 0) - (a.starts || 0) ||
+        Number(b.avg_rating || 0) - Number(a.avg_rating || 0)
+    );
 
   renderLeaderboard("scorersTable", byGoals, "Goals", (r) => r.goals);
   renderLeaderboard("assistsTable", byAssists, "Assists", (r) => r.assists);
@@ -90,6 +100,7 @@ function renderAll() {
     Number(r.avg_rating).toFixed(2)
   );
   renderLeaderboard("potmTable", byPotm, "POTM", (r) => r.potm_awards);
+  renderLeaderboard("cleanSheetsTable", byCleanSheets, "CS", (r) => r.clean_sheets);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -115,7 +126,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     meta.textContent = "No active competition season.";
     return;
   }
-  meta.textContent = `${season.label || "Season"} — league goals, assists, ratings, and POTM`;
+  meta.textContent = `${season.label || "Season"} — league goals, assists, ratings, POTM, and GK clean sheets`;
 
   allRows = await loadPlayerSeasonStats(supabase);
   document.getElementById("divisionFilter").onchange = renderAll;
