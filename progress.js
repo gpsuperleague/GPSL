@@ -9,8 +9,11 @@ import {
   rankVenueStandings,
   LEAGUE_DIVISIONS,
   statusForPosition,
-  primaryZoneKey,
+  prestigeBarKey,
+  leagueTintKey,
   leagueBoundaryKey,
+  PRESTIGE_CUP_BAR_COLORS,
+  LEAGUE_TINT_LEGEND_COLORS,
   formatFormHtml,
   formatMoney,
   normalizeClubKey,
@@ -42,20 +45,25 @@ const STANDINGS_COLGROUP = `
 
 function renderLegend() {
   const el = document.getElementById("zoneLegend");
-  const items = [
-    { color: "#2ecc71", label: "Super8 (SL 1–8)" },
-    { color: "#3498db", label: "Plate (SL 9–16 · CH 1–4)" },
-    { color: "#3498db", label: "Shield (SL 17–20 · CH 5–15)" },
-    { color: "#9b59b6", label: "CH Playoffs (3–6)" },
-    { color: "#e67e22", label: "16v17 playoff" },
-    { color: "#c0392b", label: "Relegation (SL 18–20) / Spoon" },
+  const prestige = [
+    { color: PRESTIGE_CUP_BAR_COLORS.super8, label: "Bar · Super8" },
+    { color: PRESTIGE_CUP_BAR_COLORS.plate, label: "Bar · Plate / Shield" },
+    { color: PRESTIGE_CUP_BAR_COLORS.spoon, label: "Bar · Spoon" },
   ];
-  el.innerHTML = items
-    .map(
-      (i) =>
-        `<span><i style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${i.color};"></i> ${i.label}</span>`
-    )
-    .join("");
+  const league = [
+    { color: LEAGUE_TINT_LEGEND_COLORS.champion, label: "Tint · Champion" },
+    { color: LEAGUE_TINT_LEGEND_COLORS.runner_up, label: "Tint · Runner-up" },
+    { color: LEAGUE_TINT_LEGEND_COLORS.promotion, label: "Tint · Promotion" },
+    { color: LEAGUE_TINT_LEGEND_COLORS.playoffs, label: "Tint · Playoffs" },
+    { color: LEAGUE_TINT_LEGEND_COLORS.playoff, label: "Tint · 16v17 playoff" },
+    { color: LEAGUE_TINT_LEGEND_COLORS.relegation, label: "Tint · Relegation / Spoon" },
+  ];
+  const chip = (i) =>
+    `<span><i style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${i.color};"></i> ${i.label}</span>`;
+  el.innerHTML = `
+    <span class="legend-group"><b>Left bar</b> (prestige cup) ${prestige.map(chip).join(" ")}</span>
+    <span class="legend-group"><b>Row tint</b> (league) ${league.map(chip).join(" ")}</span>
+  `;
 }
 
 function gdDisplay(gd) {
@@ -90,16 +98,19 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
     return ra - rb;
   });
 
-  let prevZoneKey = null;
+  let prevPrestigeKey = null;
   let prevLeagueKey = null;
   const tbody = sortedRows
     .map((row) => {
       const displayRank = row[rankField];
       const leaguePos = row.table_position;
-      const zoneKey = primaryZoneKey(division, leaguePos);
+      const prestigeKey = prestigeBarKey(division, leaguePos);
+      const tintKey = leagueTintKey(division, leaguePos);
       const leagueKey = leagueBoundaryKey(division, leaguePos);
       const prestigeBoundary =
-        zoneBoundaries && prevZoneKey !== null && prevZoneKey !== zoneKey;
+        zoneBoundaries &&
+        prevPrestigeKey !== null &&
+        prevPrestigeKey !== prestigeKey;
       const relegationBoundary =
         zoneBoundaries &&
         leagueKey === "relegation" &&
@@ -111,7 +122,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
         prevLeagueKey !== null &&
         prevLeagueKey !== "spoon";
       if (zoneBoundaries) {
-        prevZoneKey = zoneKey;
+        prevPrestigeKey = prestigeKey;
         prevLeagueKey = leagueKey;
       }
       const statusText = statusForPosition(division, leaguePos).join(" · ");
@@ -136,7 +147,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
       const leader = displayRank === 1 ? " row-leader" : "";
 
       return `
-        <tr class="zone-${zoneKey}${prestigeBoundary ? " zone-boundary" : ""}${relegationBoundary || spoonBoundary ? " zone-boundary zone-boundary-relegation" : ""}${leader}${mine}">
+        <tr class="prestige-${prestigeKey} league-${tintKey}${prestigeBoundary ? " zone-boundary" : ""}${relegationBoundary || spoonBoundary ? " zone-boundary zone-boundary-relegation" : ""}${leader}${mine}">
           <td class="num">${displayRank}</td>
           <td class="club-col">${clubWithOwnerHtml(row.club_name, row.club_short_name)}</td>
           <td class="status-col">${statusText}</td>

@@ -38,6 +38,23 @@ export const CUP_LABELS = {
   league_cup: "League Cup",
 };
 
+/** Pastel bar colours — matched to GPSL cup nav (Spoon gold · Plate/Shield green · Super8 navy). */
+export const PRESTIGE_CUP_BAR_COLORS = {
+  super8: "#5a7db5",
+  plate: "#6d9f7a",
+  spoon: "#c9a84c",
+};
+
+/** Pastel legend chips for league outcome row tints. */
+export const LEAGUE_TINT_LEGEND_COLORS = {
+  champion: "#c9a84c",
+  runner_up: "#9ca3b8",
+  promotion: "#6d9f7a",
+  playoffs: "#9b87b8",
+  playoff: "#c98652",
+  relegation: "#b86a6a",
+};
+
 export const GPSL_MONTH_LABELS = {
   august: "August",
   september: "September",
@@ -936,6 +953,7 @@ export function prestigeCupForPosition(division, position) {
 export function statusForPosition(division, position) {
   const tags = [];
   if (position === 1) tags.push("Champion");
+  if (position === 2) tags.push("Runner-up");
 
   const cup = prestigeCupForPosition(division, position);
   if (cup) tags.push(cup);
@@ -957,22 +975,35 @@ export function zonesForPosition(division, position) {
   return statusForPosition(division, position);
 }
 
-/** Row accent from prestige cup (Super8 / Plate / Shield / Spoon). */
-export function primaryZoneKey(division, position) {
+/** Left bar colour: prestige cup (Super8 / Plate / Shield / Spoon). Plate & Shield share one bar. */
+export function prestigeBarKey(division, position) {
   const cup = prestigeCupForPosition(division, position);
-  if (cup) {
-    const key = cup.toLowerCase();
-    if (key === "super8") return "super8";
-    if (key === "plate") return "plate";
-    if (key === "shield") return "shield";
-    if (key === "spoon") return "spoon";
+  if (!cup) return "none";
+  const key = cup.toLowerCase();
+  if (key === "shield") return "plate";
+  return key;
+}
+
+/** Row background tint: league outcome (champion, promotion, relegation, etc.). */
+export function leagueTintKey(division, position) {
+  if (position === 1) return "champion";
+  if (position === 2) return "runner_up";
+  if (division === "superleague") {
+    if (position >= 18) return "relegation";
+    if (position >= 16) return "playoff";
+    return "safe";
   }
-  if (division !== "superleague") {
-    if (position >= 16 && position <= 17) return "playoff";
-    if (position >= 3 && position <= 6) return "playoffs";
-    if (position <= 2) return "promotion";
-  }
-  return division === "superleague" ? "super8" : "plate";
+  if (position >= 18) return "spoon";
+  if (position >= 16) return "playoff";
+  if (position >= 3 && position <= 6) return "playoffs";
+  if (position <= 2) return "promotion";
+  return "safe";
+}
+
+/** @deprecated Use prestigeBarKey — kept for any legacy callers. */
+export function primaryZoneKey(division, position) {
+  const key = prestigeBarKey(division, position);
+  return key === "none" ? "plate" : key;
 }
 
 /** League movement boundary (relegation / playoff lines). */

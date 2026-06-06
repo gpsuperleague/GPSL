@@ -50,9 +50,11 @@
     }
     .muted-col { color: #666; }
     .legend {
-      display: flex; flex-wrap: wrap; gap: 10px 16px;
+      display: flex; flex-direction: column; gap: 10px;
       margin-bottom: 24px; font-size: 12px; color: #aaa;
     }
+    .legend-group { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+    .legend-group b { color: #888; font-weight: normal; text-transform: uppercase; font-size: 10px; letter-spacing: 0.04em; }
     .legend span { display: inline-flex; align-items: center; gap: 6px; }
     .legend i {
       display: inline-block; width: 12px; height: 12px; border-radius: 2px;
@@ -117,25 +119,38 @@
     }
     table.standings-table td.num { text-align: center; white-space: nowrap; }
 
-    /* Zebra + zone tint (two shades per zone block) */
-    table.standings-table tbody tr:nth-child(odd) td { background: #1a1a1a; }
-    table.standings-table tbody tr:nth-child(even) td { background: #232323; }
-    table.standings-table tbody tr.zone-super8:nth-child(odd) td { background: #1a221c; }
-    table.standings-table tbody tr.zone-super8:nth-child(even) td { background: #242c26; }
-    table.standings-table tbody tr.zone-plate:nth-child(odd) td { background: #1a1f26; }
-    table.standings-table tbody tr.zone-plate:nth-child(even) td { background: #242a32; }
-    table.standings-table tbody tr.zone-playoff:nth-child(odd) td { background: #26201a; }
-    table.standings-table tbody tr.zone-playoff:nth-child(even) td { background: #302824; }
-    table.standings-table tbody tr.zone-relegation:nth-child(odd) td { background: #261a1a; }
-    table.standings-table tbody tr.zone-relegation:nth-child(even) td { background: #302424; }
-    table.standings-table tbody tr.zone-promotion:nth-child(odd) td { background: #1a221c; }
-    table.standings-table tbody tr.zone-promotion:nth-child(even) td { background: #242c26; }
-    table.standings-table tbody tr.zone-playoffs:nth-child(odd) td { background: #211a26; }
-    table.standings-table tbody tr.zone-playoffs:nth-child(even) td { background: #2b2430; }
-    table.standings-table tbody tr.zone-shield:nth-child(odd) td { background: #1a1f26; }
-    table.standings-table tbody tr.zone-shield:nth-child(even) td { background: #242a32; }
-    table.standings-table tbody tr.zone-spoon:nth-child(odd) td { background: #261a1a; }
-    table.standings-table tbody tr.zone-spoon:nth-child(even) td { background: #302424; }
+    /* GPSL cup nav pastels (Spoon gold · Plate/Shield green · Super8 navy) */
+    :root {
+      --cup-super8: #5a7db5;
+      --cup-plate: #6d9f7a;
+      --cup-spoon: #c9a84c;
+      --tint-champion: #2a2418;
+      --tint-runner-up: #1e1e26;
+      --tint-promotion-odd: #1a231c;
+      --tint-promotion-even: #222a24;
+      --tint-playoffs-odd: #211e28;
+      --tint-playoffs-even: #2b2832;
+      --tint-playoff-odd: #262118;
+      --tint-playoff-even: #302a20;
+      --tint-relegation-odd: #261c1c;
+      --tint-relegation-even: #302626;
+    }
+
+    /* Zebra base + league outcome row tints */
+    table.standings-table tbody tr.league-safe:nth-child(odd) td { background: #1a1a1a; }
+    table.standings-table tbody tr.league-safe:nth-child(even) td { background: #232323; }
+    table.standings-table tbody tr.league-champion td { background: var(--tint-champion); }
+    table.standings-table tbody tr.league-runner_up td { background: var(--tint-runner-up); }
+    table.standings-table tbody tr.league-promotion:nth-child(odd) td { background: var(--tint-promotion-odd); }
+    table.standings-table tbody tr.league-promotion:nth-child(even) td { background: var(--tint-promotion-even); }
+    table.standings-table tbody tr.league-playoffs:nth-child(odd) td { background: var(--tint-playoffs-odd); }
+    table.standings-table tbody tr.league-playoffs:nth-child(even) td { background: var(--tint-playoffs-even); }
+    table.standings-table tbody tr.league-playoff:nth-child(odd) td { background: var(--tint-playoff-odd); }
+    table.standings-table tbody tr.league-playoff:nth-child(even) td { background: var(--tint-playoff-even); }
+    table.standings-table tbody tr.league-relegation:nth-child(odd) td { background: var(--tint-relegation-odd); }
+    table.standings-table tbody tr.league-relegation:nth-child(even) td { background: var(--tint-relegation-even); }
+    table.standings-table tbody tr.league-spoon:nth-child(odd) td { background: var(--tint-relegation-odd); }
+    table.standings-table tbody tr.league-spoon:nth-child(even) td { background: var(--tint-relegation-even); }
 
     a.standings-club-link {
       color: inherit;
@@ -154,45 +169,44 @@
       border-top-style: solid;
       border-top-color: #555;
     }
-    table.standings-table tbody tr.zone-boundary.zone-super8 td,
-    table.standings-table tbody tr.zone-boundary.zone-promotion td { border-top-color: #2ecc71; }
-    table.standings-table tbody tr.zone-boundary.zone-plate td,
-    table.standings-table tbody tr.zone-boundary.zone-shield td { border-top-color: #3498db; }
-    table.standings-table tbody tr.zone-boundary.zone-playoffs td { border-top-color: #9b59b6; }
-    table.standings-table tbody tr.zone-boundary.zone-playoff td { border-top-color: #e67e22; }
-    table.standings-table tbody tr.zone-boundary.zone-relegation td,
-    table.standings-table tbody tr.zone-boundary.zone-spoon td,
+    table.standings-table tbody tr.zone-boundary.prestige-super8 td { border-top-color: var(--cup-super8); }
+    table.standings-table tbody tr.zone-boundary.prestige-plate td { border-top-color: var(--cup-plate); }
+    table.standings-table tbody tr.zone-boundary.prestige-spoon td {
+      border-top-color: var(--cup-spoon);
+    }
     table.standings-table tbody tr.zone-boundary.zone-boundary-relegation td {
-      border-top-color: #c0392b;
+      border-top-color: #b86a6a;
     }
 
-    /* Left accent by zone */
+    /* Left bar = prestige cup (position column only) */
     table.standings-table tbody tr td:first-child {
-      box-shadow: inset 4px 0 0 transparent;
+      box-shadow: inset 5px 0 0 transparent;
     }
-    table.standings-table tbody tr.zone-super8 td:first-child,
-    table.standings-table tbody tr.zone-promotion td:first-child { box-shadow: inset 4px 0 0 #2ecc71; }
-    table.standings-table tbody tr.zone-plate td:first-child,
-    table.standings-table tbody tr.zone-shield td:first-child { box-shadow: inset 4px 0 0 #3498db; }
-    table.standings-table tbody tr.zone-playoffs td:first-child { box-shadow: inset 4px 0 0 #9b59b6; }
-    table.standings-table tbody tr.zone-playoff td:first-child { box-shadow: inset 4px 0 0 #e67e22; }
-    table.standings-table tbody tr.zone-relegation td:first-child,
-    table.standings-table tbody tr.zone-spoon td:first-child { box-shadow: inset 4px 0 0 #c0392b; }
+    table.standings-table tbody tr.prestige-super8 td:first-child { box-shadow: inset 5px 0 0 var(--cup-super8); }
+    table.standings-table tbody tr.prestige-plate td:first-child { box-shadow: inset 5px 0 0 var(--cup-plate); }
+    table.standings-table tbody tr.prestige-spoon td:first-child { box-shadow: inset 5px 0 0 var(--cup-spoon); }
 
     table.standings-table tbody tr.my-club td {
       background: #2a2418 !important;
       box-shadow: inset 0 0 0 1px #ff990066;
     }
-    table.standings-table tbody tr.my-club td:first-child {
-      box-shadow: inset 4px 0 0 #ff9900, inset 0 0 0 1px #ff990066;
+    table.standings-table tbody tr.my-club.prestige-super8 td:first-child {
+      box-shadow: inset 5px 0 0 var(--cup-super8), inset 0 0 0 1px #ff990066 !important;
     }
-    /* Table leader (1st place) — after zone accents so gold row wins in every division */
-    table.standings-table tbody tr.row-leader td {
-      background: #2a2418 !important;
+    table.standings-table tbody tr.my-club.prestige-plate td:first-child {
+      box-shadow: inset 5px 0 0 var(--cup-plate), inset 0 0 0 1px #ff990066 !important;
+    }
+    table.standings-table tbody tr.my-club.prestige-spoon td:first-child {
+      box-shadow: inset 5px 0 0 var(--cup-spoon), inset 0 0 0 1px #ff990066 !important;
+    }
+    table.standings-table tbody tr.my-club.prestige-none td:first-child {
       box-shadow: inset 0 0 0 1px #ff990066;
     }
+    /* Table leader — bold rank; prestige bar + champion tint unchanged */
+    table.standings-table tbody tr.row-leader td {
+      box-shadow: inset 0 0 0 1px #ff990044;
+    }
     table.standings-table tbody tr.row-leader td:first-child {
-      box-shadow: inset 4px 0 0 #ff9900, inset 0 0 0 1px #ff990066 !important;
       color: #ffcc66 !important;
       font-weight: bold;
       font-size: 14px;
