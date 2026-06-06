@@ -7,6 +7,7 @@ import {
   loadBankLedger,
   loadLeagueLoans,
   financeEntryLabel,
+  processMyDueLoanInstallments,
 } from "./competition.js";
 import { initBankCounter } from "./bank_counter.js";
 
@@ -141,6 +142,7 @@ function renderLeagueLoans(rows, myShortName) {
           <th>Status</th>
           <th>Drawn</th>
           <th>Owing</th>
+          <th>Term</th>
           <th>Rate</th>
           <th>Since</th>
         </tr>
@@ -157,6 +159,7 @@ function renderLeagueLoans(rows, myShortName) {
             <td class="${statusCls}">${l.status}</td>
             <td>${formatMoney(l.principal_drawn)}</td>
             <td class="owing">${l.status === "active" ? formatMoney(l.outstanding_principal) : "—"}</td>
+            <td>${l.repayment_months || 20} mo</td>
             <td>${Number(l.interest_rate_pct).toFixed(1)}%</td>
             <td>${new Date(l.created_at).toLocaleDateString("en-GB")}</td>
           </tr>`;
@@ -168,6 +171,10 @@ function renderLeagueLoans(rows, myShortName) {
 }
 
 async function refreshPage(myShortName) {
+  if (myShortName) {
+    await processMyDueLoanInstallments(supabase);
+  }
+
   const [bank, myLoans, leagueLoans, ledger] = await Promise.all([
     loadGpslBankPublic(supabase),
     loadClubLoans(supabase),

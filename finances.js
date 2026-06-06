@@ -5,6 +5,7 @@ import {
   loadClubBalance,
   loadFinanceLedger,
   loadClubSeasonArchive,
+  processMyDueLoanInstallments,
   financeEntryLabel,
   isFinanceIncomeEntry,
 } from "./competition.js";
@@ -127,6 +128,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("pageTitle").textContent = `${fullName} — Finances`;
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${shortName}.png`;
+
+  await processMyDueLoanInstallments(supabase);
 
   const balanceRow = await loadClubBalance(supabase, shortName);
   document.getElementById("balanceAmount").textContent = formatMoney(

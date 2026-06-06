@@ -269,3 +269,14 @@ body.bank-page {
 
 .status-active { color: #8d8; }
 .status-paid { color: #888; }
+.status-pending { color: #e8c86a; }
+
+.loan-schedule-block {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #333;
+}
+.loan-schedule-block:last-child { border-bottom: none; margin-bottom: 0; }
+.loan-schedule-head { font-size: 12px; color: #bbb; margin: 0 0 8px; line-height: 1.45; }
+.loan-schedule-table { font-size: 11px; }
+.loan-schedule-table th, .loan-schedule-table td { padding: 4px 6px; }

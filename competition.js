@@ -1370,6 +1370,34 @@ export async function loadClubLoans(supabase) {
   return data || [];
 }
 
+export async function loadClubLoanInstallments(supabase, loanId = null) {
+  let query = supabase
+    .from("club_loan_installments_public")
+    .select("*")
+    .order("installment_no", { ascending: true });
+
+  if (loanId != null) query = query.eq("loan_id", loanId);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("loadClubLoanInstallments:", error);
+    return [];
+  }
+  return data || [];
+}
+
+/** Post due scheduled installments (current + overdue GPSL months). */
+export async function processMyDueLoanInstallments(supabase) {
+  const { data, error } = await supabase.rpc(
+    "club_loan_process_my_due_installments"
+  );
+  if (error) {
+    console.warn("processMyDueLoanInstallments:", error);
+    return null;
+  }
+  return data;
+}
+
 export async function loadLeagueLoans(supabase) {
   const { data, error } = await supabase
     .from("club_loans_league_public")

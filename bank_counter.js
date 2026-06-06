@@ -7,9 +7,14 @@ import {
   repayClubLoan,
   clubLoanHeadroom,
   loadClubLoans,
+  loadClubLoanInstallments,
 } from "./competition.js";
 
-export function renderMyLoansAtCounter(loans, containerId = "counterLoanList") {
+export async function renderMyLoansAtCounter(
+  supabase,
+  loans,
+  containerId = "counterLoanList"
+) {
   const el = document.getElementById(containerId);
   if (!el) return;
 
@@ -20,27 +25,43 @@ export function renderMyLoansAtCounter(loans, containerId = "counterLoanList") {
     return;
   }
 
-  el.innerHTML = `
-    <table class="bank-table">
-      <thead>
-        <tr><th>Loan</th><th>Drawn</th><th>Owing</th><th>Rate</th><th>Since</th></tr>
-      </thead>
-      <tbody>
-        ${active
-          .map(
-            (l) => `
-          <tr>
-            <td>#${l.id}</td>
-            <td>${formatMoney(l.principal_drawn)}</td>
-            <td class="owing">${formatMoney(l.outstanding_principal)}</td>
-            <td>${Number(l.interest_rate_pct).toFixed(1)}%</td>
-            <td>${new Date(l.created_at).toLocaleDateString("en-GB")}</td>
-          </tr>`
-          )
-          .join("")}
-      </tbody>
-    </table>
-  `;
+  const scheduleBlocks = await Promise.all(
+    active.map(async (l) => {
+      const inst = await loadClubLoanInstallments(supabase, l.id);
+      const pending = inst.filter((i) => i.status === "pending");
+      const next = pending[0];
+      const scheduleRows = inst
+        .map((i) => {
+          const due = `${i.due_gpsl_month_label || i.due_gpsl_month} (${i.due_season_label || ""})`;
+          const amt = formatMoney(i.principal_due);
+          const st =
+            i.status === "paid"
+              ? `<span class="status-paid">Paid ${formatMoney(i.paid_amount)}</span>`
+              : `<span class="status-pending">Due ${amt}</span>`;
+          return `<tr><td>${i.installment_no}/${l.repayment_months || 20}</td><td>${due}</td><td>${st}</td></tr>`;
+        })
+        .join("");
+
+      return `
+        <div class="loan-schedule-block">
+          <p class="loan-schedule-head">
+            <b>Loan #${l.id}</b> — ${formatMoney(l.outstanding_principal)} owing
+            · ${l.repayment_months || 20} GPSL months
+            ${
+              next
+                ? ` · Next: ${next.due_gpsl_month_label} ${formatMoney(next.principal_due)}`
+                : ""
+            }
+          </p>
+          <table class="bank-table loan-schedule-table">
+            <thead><tr><th>#</th><th>GPSL month</th><th>Principal</th></tr></thead>
+            <tbody>${scheduleRows}</tbody>
+          </table>
+        </div>`;
+    })
+  );
+
+  el.innerHTML = scheduleBlocks.join("");
 }
 
 function fillRepaySelect(loans, selectId = "repayLoanId") {
@@ -104,7 +125,7 @@ function refreshCounterState(bank, loans) {
   if (repayAllBtn) repayAllBtn.disabled = outstanding <= 0;
 
   fillRepaySelect(loans);
-  renderMyLoansAtCounter(loans);
+  void renderMyLoansAtCounter(supabase, loans);
 }
 
 export function initBankCounter(supabase, bank, loans, onSuccess) {
@@ -130,6 +151,13 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
 
   const min = Number(bank.loan_min_drawdown || 1000000);
   const maxDraw = Number(bank.loan_max_drawdown || 50000000);
+  const months = 20;
+
+  const limitsNote = document.getElementById("loanLimits");
+  if (limitsNote && !limitsNote.dataset.monthsNote) {
+    limitsNote.dataset.monthsNote = "1";
+    limitsNote.textContent += ` · Repaid over ${months} GPSL calendar months (equal principal)`;
+  }
 
   takeForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -163,7 +191,7 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
     }
     showCounterMsg(
       "loanTakeMsg",
-      `Approved — loan #${res.loanId}, ${formatMoney(amt)} credited to your club.`,
+      `Approved — loan #${res.loanId}, ${formatMoney(amt)} credited. Principal repays over ${months} GPSL months.`,
       true
     );
     await onSuccess();
