@@ -1,4 +1,4 @@
-import { supabase, initGlobal } from "./global.js";
+import { supabase, initGlobal, refreshInboxNavBadge } from "./global.js";
 import { rejectFixtureResult } from "./competition.js";
 import { loadInboxMessages } from "./competition_inbox.js";
 
@@ -12,7 +12,11 @@ function setStatus(msg, isError = false) {
 }
 
 async function markRead(inboxId) {
-  await supabase.rpc("competition_inbox_mark_read", { p_inbox_id: inboxId });
+  const { error } = await supabase.rpc("competition_inbox_mark_read", {
+    p_inbox_id: inboxId,
+  });
+  if (error) throw error;
+  await refreshInboxNavBadge();
 }
 
 async function rejectSubmission(submissionId) {
@@ -27,6 +31,7 @@ async function rejectSubmission(submissionId) {
 
   setStatus("Result rejected. Submitter notified.");
   await renderInbox();
+  await refreshInboxNavBadge();
 }
 
 function formatMessageTime(iso) {
@@ -103,8 +108,17 @@ async function renderInbox() {
       readBtn.textContent = msg.read_at ? "Read" : "Mark read";
       readBtn.disabled = !!msg.read_at;
       readBtn.onclick = async () => {
-        await markRead(msg.id);
-        await renderInbox();
+        try {
+          div.classList.remove("unread");
+          readBtn.disabled = true;
+          readBtn.textContent = "Read";
+          await markRead(msg.id);
+        } catch (err) {
+          div.classList.add("unread");
+          readBtn.disabled = false;
+          readBtn.textContent = "Mark read";
+          setStatus("❌ " + (err.message || "Could not mark read"), true);
+        }
       };
       actions.appendChild(readBtn);
     }

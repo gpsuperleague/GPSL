@@ -516,6 +516,40 @@ async function getOwnerClubShort() {
   return club?.ShortName?.trim() || null;
 }
 
+/** Update nav inbox badge after mark-read (no full nav rebuild). */
+export async function refreshInboxNavBadge() {
+  const link = document.querySelector("a.nav-inbox");
+  if (!link) return;
+
+  try {
+    const clubShort = await getOwnerClubShort();
+    const unread = clubShort ? await countUnreadInbox(supabase, clubShort) : 0;
+
+    link.classList.toggle("has-unread", unread > 0);
+    link.setAttribute(
+      "aria-label",
+      unread > 0 ? `Inbox, ${unread} unread` : "Inbox"
+    );
+
+    let badge = link.querySelector(".nav-inbox-badge");
+    if (unread > 0) {
+      const label = unread > 99 ? "99+" : String(unread);
+      if (badge) {
+        badge.textContent = label;
+      } else {
+        badge = document.createElement("span");
+        badge.className = "nav-inbox-badge";
+        badge.textContent = label;
+        link.appendChild(badge);
+      }
+    } else if (badge) {
+      badge.remove();
+    }
+  } catch (err) {
+    console.warn("refreshInboxNavBadge:", err);
+  }
+}
+
 async function fetchActiveSpecialAuctionNavItem() {
   try {
     const nowIso = new Date().toISOString();
