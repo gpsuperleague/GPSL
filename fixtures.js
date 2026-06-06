@@ -227,7 +227,7 @@ function renderFixtures() {
     block.innerHTML = `
       <div class="matchday-head">
         <span>Matchday ${matchday}</span>
-        <span>${monthLabel} · week ${sample.week_in_month} · <span class="weather">${sample.weather || "—"}</span>${monthLive ? "" : " · <span style=\"color:#888\">locked</span>"}</span>
+        <span>${monthLabel} · week ${matchday} · <span class="weather">${sample.weather || "—"}</span>${monthLive ? "" : " · <span style=\"color:#888\">locked</span>"}</span>
       </div>
       <table class="gpsl-table">
         <thead>
