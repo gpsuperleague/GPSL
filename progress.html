@@ -35,9 +35,7 @@
       width: 16px; height: 16px; accent-color: #ff9900; cursor: pointer;
     }
     .home-away-section {
-      margin-top: 32px;
-      padding-top: 24px;
-      border-top: 1px solid #333;
+      margin-top: 8px;
     }
     .home-away-section h2 {
       color: #ff9900;
@@ -259,14 +257,15 @@
         <input type="radio" name="venueView" value="away"> Away records
       </label>
     </div>
-    <div id="zoneLegend" class="legend"></div>
-    <div id="tablesRoot"></div>
+    <div id="overallSection">
+      <div id="zoneLegend" class="legend"></div>
+      <div id="tablesRoot"></div>
+    </div>
     <section id="homeAwaySection" class="home-away-section" hidden>
       <h2 id="homeAwayTitle">Home records</h2>
       <p class="home-away-note">
         Ranked by home or away points only (best → worst). Form shows last 10
         <b>home</b> or <b>away</b> results. Status column still reflects the overall league table.
-        Does not change the main standings above.
       </p>
       <div id="homeAwayRoot"></div>
     </section>

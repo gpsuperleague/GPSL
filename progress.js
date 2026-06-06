@@ -197,7 +197,18 @@ function syncFilterAllCheckbox() {
 }
 
 function renderTables() {
+  const venue = venueFilterValue();
+  const overallSection = document.getElementById("overallSection");
   const root = document.getElementById("tablesRoot");
+
+  if (venue) {
+    if (overallSection) overallSection.hidden = true;
+    renderVenueTables();
+    return;
+  }
+
+  if (overallSection) overallSection.hidden = false;
+
   const filter = divisionFilterState();
   const visible = LEAGUE_DIVISIONS.filter((div) => filter[div]);
 
@@ -278,7 +289,7 @@ function wireDivisionFilter() {
   }
 
   for (const radio of document.querySelectorAll('input[name="venueView"]')) {
-    radio.addEventListener("change", () => renderVenueTables());
+    radio.addEventListener("change", () => renderTables());
   }
 }
 
