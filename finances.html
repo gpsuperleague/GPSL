@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
-    .page-container { width:95%; max-width:1100px; margin:20px auto 40px; }
+    .page-container { width:95%; max-width:1280px; margin:20px auto 40px; }
     h1 { color:#ff9900; margin:0; }
     h2 { color:#ff9900; font-size:18px; margin:0 0 12px; }
     .meta { color:#aaa; margin-bottom:12px; }
@@ -42,17 +42,18 @@
     .toolbar a.button { font-size:13px; margin-right:8px; }
 
     #financeSections {
-      --fin-col-label: minmax(9rem, 1fr);
-      --fin-col-posted: 5.5rem;
-      --fin-col-breakdown: minmax(8rem, 11rem);
-      --fin-col-running: 6.5rem;
-      --fin-col-pending: 5.5rem;
-      --fin-col-gap: 10px;
+      --fin-col-label: minmax(7.5rem, 1.1fr);
+      --fin-col-posted: minmax(8.75rem, 9.25rem);
+      --fin-col-breakdown: minmax(12rem, 1.6fr);
+      --fin-col-running: minmax(8.75rem, 9.25rem);
+      --fin-col-pending: minmax(8.75rem, 9.25rem);
+      --fin-col-gap: 16px;
       display:flex; flex-direction:column; gap:20px;
     }
     .fin-sheet {
       background:#222; border:1px solid #333; border-radius:6px;
       padding:14px 16px 16px; overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
     }
     .fin-section {
       background:transparent; border:none; border-radius:0;
@@ -72,9 +73,9 @@
       display:grid;
       grid-template-columns: var(--fin-col-label) var(--fin-col-posted) var(--fin-col-breakdown) var(--fin-col-running) var(--fin-col-pending);
       column-gap: var(--fin-col-gap);
-      row-gap:4px;
-      align-items:baseline;
-      min-width:min(100%, 52rem);
+      row-gap:6px;
+      align-items:start;
+      min-width:62rem;
     }
     .fin-columns-head {
       display:grid;
@@ -87,32 +88,48 @@
       padding-bottom:10px;
       margin-bottom:4px;
       border-bottom:1px solid #333;
-      min-width:min(100%, 52rem);
+      min-width:62rem;
+    }
+    .fin-col-label,
+    .fin-line-label {
+      min-width:0;
+      padding-right:4px;
+      line-height:1.35;
     }
     .fin-col-posted,
-    .fin-col-breakdown,
     .fin-col-running,
     .fin-col-pending {
       text-align:right;
       white-space:nowrap;
       font-variant-numeric: tabular-nums;
+      min-width:0;
+      padding-left:4px;
     }
     .fin-col-breakdown {
       white-space:normal;
       text-align:left;
       font-size:11px;
-      line-height:1.35;
+      line-height:1.4;
+      min-width:0;
+      overflow:hidden;
     }
     .fin-col-breakdown .detail-line {
-      display:flex;
-      justify-content:space-between;
-      gap:8px;
-      padding:1px 0;
+      display:grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap:10px;
+      padding:2px 0;
       color:#aaa;
+      align-items:baseline;
+    }
+    .fin-col-breakdown .detail-line span:first-child {
+      min-width:0;
+      overflow-wrap:anywhere;
     }
     .fin-col-breakdown .detail-line span:last-child {
       color:#ccc;
       white-space:nowrap;
+      text-align:right;
+      font-variant-numeric: tabular-nums;
     }
     .fin-line-head.fin-line-cols {
       display:grid;
@@ -156,12 +173,38 @@
     .income-amt { color:#8d8; }
     .cost-amt { color:#e99; }
 
-    table.fin-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .ledger-scroll {
+      overflow-x:auto;
+      -webkit-overflow-scrolling:touch;
+      margin-top:4px;
+    }
+    table.fin-table {
+      width:100%;
+      min-width:720px;
+      border-collapse:collapse;
+      font-size:13px;
+      table-layout:fixed;
+    }
     table.fin-table th, table.fin-table td {
-      border:1px solid #333; padding:8px; text-align:left;
+      border:1px solid #333;
+      padding:8px 10px;
+      text-align:left;
+      vertical-align:top;
+      overflow-wrap:anywhere;
+      word-break:break-word;
     }
     table.fin-table th { background:#222; color:#ff9900; }
-    table.fin-table td.money { text-align:right; white-space:nowrap; }
+    table.fin-table .col-when { width:14%; white-space:nowrap; }
+    table.fin-table .col-type { width:13%; }
+    table.fin-table .col-md { width:5%; white-space:nowrap; }
+    table.fin-table .col-fixture { width:11%; }
+    table.fin-table .col-amount { width:12%; }
+    table.fin-table .col-detail { width:45%; }
+    table.fin-table td.money {
+      text-align:right;
+      white-space:nowrap;
+      font-variant-numeric: tabular-nums;
+    }
     table.fin-table tr.income td.money { color:#8d8; }
     table.fin-table tr.cost td.money { color:#e99; }
     .empty { color:#888; font-size:13px; }

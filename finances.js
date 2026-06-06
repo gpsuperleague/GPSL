@@ -46,31 +46,33 @@ function renderLedger(rows) {
 
       return `
         <tr class="${rowClass}">
-          <td>${new Date(r.created_at).toLocaleString("en-GB")}</td>
-          <td>${financeEntryLabel(r.entry_type)}</td>
-          <td>${md}</td>
-          <td>${fixture}</td>
-          <td class="money">${sign}${formatMoney(Math.abs(r.amount))}</td>
-          <td>${r.description || ""}</td>
+          <td class="col-when">${new Date(r.created_at).toLocaleString("en-GB")}</td>
+          <td class="col-type">${financeEntryLabel(r.entry_type)}</td>
+          <td class="col-md">${md}</td>
+          <td class="col-fixture">${fixture}</td>
+          <td class="col-amount money">${sign}${formatMoney(Math.abs(r.amount))}</td>
+          <td class="col-detail">${r.description || ""}</td>
         </tr>
       `;
     })
     .join("");
 
   el.innerHTML = `
-    <table class="fin-table">
-      <thead>
-        <tr>
-          <th>When</th>
-          <th>Type</th>
-          <th>MD</th>
-          <th>Fixture</th>
-          <th>Amount</th>
-          <th>Detail</th>
-        </tr>
-      </thead>
-      <tbody>${body}</tbody>
-    </table>
+    <div class="ledger-scroll">
+      <table class="fin-table">
+        <thead>
+          <tr>
+            <th class="col-when">When</th>
+            <th class="col-type">Type</th>
+            <th class="col-md">MD</th>
+            <th class="col-fixture">Fixture</th>
+            <th class="col-amount">Amount</th>
+            <th class="col-detail">Detail</th>
+          </tr>
+        </thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
   `;
 }
 
