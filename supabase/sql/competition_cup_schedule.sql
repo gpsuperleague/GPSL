@@ -60,16 +60,16 @@ TRUNCATE public.competition_cup_round_schedule;
 INSERT INTO public.competition_cup_round_schedule (
   cup_code, round_no, cup_leg, gpsl_month, stage, round_label, matches_in_round
 ) VALUES
-  -- Super8: QF two legs Sep/Oct, SF Nov, Final Dec
-  ('super8', 1, 1, 'september', 'qf', 'Quarter-final 1st leg', 4),
-  ('super8', 2, 2, 'october', 'qf', 'Quarter-final 2nd leg', 4),
-  ('super8', 3, 1, 'november', 'sf', 'Semi-final', 2),
-  ('super8', 4, 1, 'december', 'final', 'Final', 1),
+  -- Super8: one QF round (2 legs Sep/Oct), SF Nov, Final Dec
+  ('super8', 1, 1, 'september', 'qf', 'Quarter-final', 4),
+  ('super8', 1, 2, 'october', 'qf', 'Quarter-final', 4),
+  ('super8', 2, 1, 'november', 'sf', 'Semi-final', 2),
+  ('super8', 3, 1, 'december', 'final', 'Final', 1),
   -- Spoon: same calendar as Super8
-  ('spoon', 1, 1, 'september', 'qf', 'Quarter-final 1st leg', 4),
-  ('spoon', 2, 2, 'october', 'qf', 'Quarter-final 2nd leg', 4),
-  ('spoon', 3, 1, 'november', 'sf', 'Semi-final', 2),
-  ('spoon', 4, 1, 'december', 'final', 'Final', 1),
+  ('spoon', 1, 1, 'september', 'qf', 'Quarter-final', 4),
+  ('spoon', 1, 2, 'october', 'qf', 'Quarter-final', 4),
+  ('spoon', 2, 1, 'november', 'sf', 'Semi-final', 2),
+  ('spoon', 3, 1, 'december', 'final', 'Final', 1),
   -- Plate: R16 Sep, QF Oct, SF Nov, Final Dec
   ('plate', 1, 1, 'september', 'r2', 'Last 16', 8),
   ('plate', 2, 1, 'october', 'qf', 'Quarter-final', 4),

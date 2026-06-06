@@ -9,6 +9,7 @@ import {
   loadCupMatchExtras,
   groupCupBracketByRound,
   cupRoundLabel,
+  cupRoundTieCount,
   formatCupScoreLines,
   formatCupMatchFinance,
   formatMoney,
@@ -103,14 +104,29 @@ function renderMatchCard(m, extras) {
   else if (scheduled) status = "Scheduled";
   else if (m.winner_club_name && !m.fixture_id) status = "Bye / advanced";
 
+  const legMonth =
+    GPSL_MONTH_LABELS[m.round_gpsl_month || m.fixture_gpsl_month] ||
+    m.round_gpsl_month ||
+    "";
+  const twoLegQf =
+    (m.cup_code === "super8" || m.cup_code === "spoon") && m.round_no === 1;
+  let legHint = "";
+  if (twoLegQf && ((m.cup_leg || 1) === 2 || m.leg1_node_id)) {
+    legHint = `2nd leg${legMonth ? ` · ${legMonth}` : ""}`;
+  } else if (twoLegQf && (m.cup_leg || 1) === 1) {
+    legHint = `1st leg${legMonth ? ` · ${legMonth}` : ""}`;
+  }
+
   let winnerHtml = "";
   if (m.winner_club_name && !scoreLines?.some((l) => l.label === "Pens")) {
     winnerHtml = `<div class="match-winner">→ ${escapeHtml(m.winner_club_name)}</div>`;
   }
 
+  const statusLine = [legHint, status].filter(Boolean).join(" · ");
+
   return `
     <div class="bracket-match ${isMyMatch(m) ? "my-club" : ""} ${played ? "played" : ""}">
-      <div class="match-status">M${m.match_no} · ${escapeHtml(status)}</div>
+      <div class="match-status">M${m.match_no} · ${escapeHtml(statusLine)}</div>
       <div class="match-teams">${escapeHtml(home)}<span class="vs">vs</span>${escapeHtml(away)}</div>
       ${renderScoreLinesHtml(scoreLines)}
       ${winnerHtml}
@@ -130,28 +146,57 @@ function renderBracket(nodes, extras) {
   const rounds = groupCupBracketByRound(nodes);
   root.innerHTML = `
     <div class="bracket-flow">
-      ${rounds
-        .map(({ round_no, matches }) => {
-          const sample = matches[0] || {};
-          const month =
-            GPSL_MONTH_LABELS[sample.round_gpsl_month || sample.fixture_gpsl_month] ||
-            sample.round_gpsl_month ||
-            "";
-          const title = sample.round_label
-            ? `${sample.round_label}${month ? ` · ${month}` : ""}`
-            : cupRoundLabel(matches.length);
-          const cards = matches.map((m) => renderMatchCard(m, extras)).join("");
-          return `
-            <div class="bracket-round" data-round="${round_no}">
-              <div class="round-title">${escapeHtml(title)}</div>
-              ${cards}
-            </div>
-          `;
-        })
-        .join("")}
+      ${rounds.map(({ round_no, matches }) => renderBracketRoundColumn(round_no, matches, extras)).join("")}
     </div>
     <p class="bracket-arrow-hint">← Early rounds · Final →</p>
   `;
+}
+
+function renderBracketRoundColumn(round_no, matches, extras) {
+  const legs = [...new Set(matches.map((m) => m.cup_leg || 1))].sort((a, b) => a - b);
+  const hasTwoLegRound = legs.length > 1;
+  const sample = matches[0] || {};
+  const title =
+    sample.round_label || cupRoundLabel(cupRoundTieCount(matches));
+
+  if (hasTwoLegRound) {
+    const legSections = legs
+      .map((leg) => {
+        const legMatches = matches.filter((m) => (m.cup_leg || 1) === leg);
+        const legSample = legMatches[0] || {};
+        const month =
+          GPSL_MONTH_LABELS[
+            legSample.round_gpsl_month || legSample.fixture_gpsl_month
+          ] ||
+          legSample.round_gpsl_month ||
+          "";
+        const subtitle = `${leg === 2 ? "2nd leg" : "1st leg"}${month ? ` · ${month}` : ""}`;
+        const cards = legMatches.map((m) => renderMatchCard(m, extras)).join("");
+        return `
+          <div class="bracket-leg" data-leg="${leg}">
+            <div class="round-subtitle">${escapeHtml(subtitle)}</div>
+            ${cards}
+          </div>`;
+      })
+      .join("");
+    return `
+      <div class="bracket-round" data-round="${round_no}">
+        <div class="round-title">${escapeHtml(title)}</div>
+        ${legSections}
+      </div>`;
+  }
+
+  const month =
+    GPSL_MONTH_LABELS[sample.round_gpsl_month || sample.fixture_gpsl_month] ||
+    sample.round_gpsl_month ||
+    "";
+  const columnTitle = month ? `${title} · ${month}` : title;
+  const cards = matches.map((m) => renderMatchCard(m, extras)).join("");
+  return `
+    <div class="bracket-round" data-round="${round_no}">
+      <div class="round-title">${escapeHtml(columnTitle)}</div>
+      ${cards}
+    </div>`;
 }
 
 async function renderCup() {

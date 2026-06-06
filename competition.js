@@ -287,8 +287,18 @@ export function groupCupBracketByRound(nodes) {
     .sort((a, b) => a[0] - b[0])
     .map(([round_no, matches]) => ({
       round_no,
-      matches: matches.sort((a, b) => (a.match_no || 0) - (b.match_no || 0)),
+      matches: matches.sort((a, b) => {
+        const ma = a.match_no || 0;
+        const mb = b.match_no || 0;
+        if (ma !== mb) return ma - mb;
+        return (a.cup_leg || 1) - (b.cup_leg || 1);
+      }),
     }));
+}
+
+/** Ties in a bracket round (leg 1 + leg 2 share the same match_no). */
+export function cupRoundTieCount(matches) {
+  return new Set((matches || []).map((m) => m.match_no)).size;
 }
 
 /** Knockout round name from teams still in the competition (2 × ties in that round). */
