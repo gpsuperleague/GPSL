@@ -69,12 +69,19 @@ export function clubWithOwnerHtml(clubName, shortName, layout = "inline") {
   const tagHtml = tag
     ? `<span class="club-owner-tag">${escapeHtml(tag)}</span>`
     : "";
+  const href = clubPageHref(shortName);
+  const linkedName = href
+    ? `<a href="${escapeHtml(href)}" class="standings-club-link">${name}</a>`
+    : name;
 
   if (layout === "block") {
-    return `<span class="fixture-club"><span class="fixture-club-name">${name}</span>${tagHtml}</span>`;
+    const blockName = href
+      ? `<a href="${escapeHtml(href)}" class="fixture-club-link">${name}</a>`
+      : name;
+    return `<span class="fixture-club"><span class="fixture-club-name">${blockName}</span>${tagHtml}</span>`;
   }
 
-  return `<span class="standings-club">${name}${tagHtml}</span>`;
+  return `<span class="standings-club">${linkedName}${tagHtml}</span>`;
 }
 
 /** ShortName from Clubs.ShortName, or match legacy full club name in history rows. */

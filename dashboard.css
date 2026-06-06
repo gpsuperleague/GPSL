@@ -153,6 +153,25 @@
   margin-left: 6px;
 }
 
+a.standings-club-link,
+a.fixture-club-link {
+  color: inherit;
+  text-decoration: none;
+  font-weight: inherit;
+}
+
+a.standings-club-link:hover,
+a.standings-club-link:focus,
+a.fixture-club-link:hover,
+a.fixture-club-link:focus {
+  color: #fff;
+  text-decoration: none;
+}
+
+.fixture-club .fixture-club-name a.fixture-club-link {
+  font-weight: bold;
+}
+
 .small-btn.is-hidden,
 #editOwnerTagBtn.is-hidden {
   display: none !important;
