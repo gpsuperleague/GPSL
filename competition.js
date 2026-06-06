@@ -915,27 +915,38 @@ export async function loadStandingsWithPrizes(supabase, division = null) {
   return data || [];
 }
 
+/** Prestige cup qualification from final league position. */
+export function prestigeCupForPosition(division, position) {
+  if (division === "superleague") {
+    if (position <= 8) return "Super8";
+    if (position <= 16) return "Plate";
+    if (position <= 20) return "Shield";
+    return null;
+  }
+  if (position <= 4) return "Plate";
+  if (position >= 5 && position <= 15) return "Shield";
+  if (position >= 18) return "Spoon";
+  return null;
+}
+
 /**
- * Status column: Champion (1st) · prestige cups · league movement.
- * SuperLeague places 17–20 qualify for Shield next season.
+ * Status column: Champion (1st) · prestige cup · league movement.
+ * SuperLeague places 17–20 qualify for Shield.
  */
 export function statusForPosition(division, position) {
   const tags = [];
   if (position === 1) tags.push("Champion");
 
+  const cup = prestigeCupForPosition(division, position);
+  if (cup) tags.push(cup);
+
   if (division === "superleague") {
-    if (position <= 8) tags.push("Super8");
-    else if (position <= 16) tags.push("Plate");
-    else if (position <= 20) tags.push("Shield");
     if (position >= 16 && position <= 17) tags.push("SL playoff");
     if (position >= 18) tags.push("Relegation");
     return tags;
   }
 
-  if (position <= 4) tags.push("Plate");
-  if (position >= 5 && position <= 15) tags.push("Shield");
   if (position >= 16 && position <= 17) tags.push("Shield/Spoon PO");
-  if (position >= 18) tags.push("Spoon");
   if (position <= 2) tags.push("Promotion");
   if (position >= 3 && position <= 6) tags.push("Playoffs");
   return tags;
@@ -946,20 +957,36 @@ export function zonesForPosition(division, position) {
   return statusForPosition(division, position);
 }
 
-/** Primary row accent for progress table styling. */
+/** Row accent from prestige cup (Super8 / Plate / Shield / Spoon). */
 export function primaryZoneKey(division, position) {
+  const cup = prestigeCupForPosition(division, position);
+  if (cup) {
+    const key = cup.toLowerCase();
+    if (key === "super8") return "super8";
+    if (key === "plate") return "plate";
+    if (key === "shield") return "shield";
+    if (key === "spoon") return "spoon";
+  }
+  if (division !== "superleague") {
+    if (position >= 16 && position <= 17) return "playoff";
+    if (position >= 3 && position <= 6) return "playoffs";
+    if (position <= 2) return "promotion";
+  }
+  return division === "superleague" ? "super8" : "plate";
+}
+
+/** League movement boundary (relegation / playoff lines). */
+export function leagueBoundaryKey(division, position) {
   if (division === "superleague") {
     if (position >= 18) return "relegation";
-    if (position === 17) return "shield";
-    if (position >= 9) return "plate";
-    return "super8";
+    if (position >= 16) return "playoff";
+    return "safe";
   }
   if (position >= 18) return "spoon";
   if (position >= 16) return "playoff";
-  if (position >= 5) return "shield";
-  if (position >= 3) return "playoffs";
+  if (position >= 3 && position <= 6) return "playoffs";
   if (position <= 2) return "promotion";
-  return "plate";
+  return "mid";
 }
 
 export function formatFormHtml(formStr) {

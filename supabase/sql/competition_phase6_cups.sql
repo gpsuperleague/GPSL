@@ -202,6 +202,12 @@ BEGIN
       SELECT s.club_short_name AS club, s.table_position AS sort_key
       FROM public.competition_standings_public s
       WHERE s.season_id = p_season_id
+        AND s.division = 'superleague'
+        AND s.table_position BETWEEN 17 AND 20
+      UNION ALL
+      SELECT s.club_short_name, 100 + s.table_position
+      FROM public.competition_standings_public s
+      WHERE s.season_id = p_season_id
         AND s.division = 'championship_a'
         AND s.table_position BETWEEN 5 AND 15
       UNION ALL

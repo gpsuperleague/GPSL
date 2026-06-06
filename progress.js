@@ -10,6 +10,7 @@ import {
   LEAGUE_DIVISIONS,
   statusForPosition,
   primaryZoneKey,
+  leagueBoundaryKey,
   formatFormHtml,
   formatMoney,
   normalizeClubKey,
@@ -42,12 +43,12 @@ const STANDINGS_COLGROUP = `
 function renderLegend() {
   const el = document.getElementById("zoneLegend");
   const items = [
-    { color: "#2ecc71", label: "Super8 / Promotion" },
-    { color: "#3498db", label: "Plate / Shield" },
+    { color: "#2ecc71", label: "Super8 (SL 1–8)" },
+    { color: "#3498db", label: "Plate (SL 9–16 · CH 1–4)" },
+    { color: "#3498db", label: "Shield (SL 17–20 · CH 5–15)" },
     { color: "#9b59b6", label: "CH Playoffs (3–6)" },
     { color: "#e67e22", label: "16v17 playoff" },
-    { color: "#3498db", label: "Shield (SL 17–20)" },
-    { color: "#c0392b", label: "Relegation / Spoon" },
+    { color: "#c0392b", label: "Relegation (SL 18–20) / Spoon" },
   ];
   el.innerHTML = items
     .map(
@@ -90,14 +91,29 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
   });
 
   let prevZoneKey = null;
+  let prevLeagueKey = null;
   const tbody = sortedRows
     .map((row) => {
       const displayRank = row[rankField];
       const leaguePos = row.table_position;
       const zoneKey = primaryZoneKey(division, leaguePos);
-      const zoneBoundary =
+      const leagueKey = leagueBoundaryKey(division, leaguePos);
+      const prestigeBoundary =
         zoneBoundaries && prevZoneKey !== null && prevZoneKey !== zoneKey;
-      prevZoneKey = zoneBoundaries ? zoneKey : prevZoneKey;
+      const relegationBoundary =
+        zoneBoundaries &&
+        leagueKey === "relegation" &&
+        prevLeagueKey !== null &&
+        prevLeagueKey !== "relegation";
+      const spoonBoundary =
+        zoneBoundaries &&
+        leagueKey === "spoon" &&
+        prevLeagueKey !== null &&
+        prevLeagueKey !== "spoon";
+      if (zoneBoundaries) {
+        prevZoneKey = zoneKey;
+        prevLeagueKey = leagueKey;
+      }
       const statusText = statusForPosition(division, leaguePos).join(" · ");
       const mine =
         myClub?.short &&
@@ -120,7 +136,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
       const leader = displayRank === 1 ? " row-leader" : "";
 
       return `
-        <tr class="zone-${zoneKey}${zoneBoundary ? " zone-boundary" : ""}${leader}${mine}">
+        <tr class="zone-${zoneKey}${prestigeBoundary ? " zone-boundary" : ""}${relegationBoundary || spoonBoundary ? " zone-boundary zone-boundary-relegation" : ""}${leader}${mine}">
           <td class="num">${displayRank}</td>
           <td class="club-col">${clubWithOwnerHtml(row.club_name, row.club_short_name)}</td>
           <td class="status-col">${statusText}</td>
