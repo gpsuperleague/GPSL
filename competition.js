@@ -255,7 +255,8 @@ export async function loadCupBracket(supabase, cupCode) {
     .select("*")
     .eq("cup_code", cupCode)
     .order("round_no", { ascending: true })
-    .order("match_no", { ascending: true });
+    .order("match_no", { ascending: true })
+    .order("cup_leg", { ascending: true });
 
   if (error) {
     console.error("loadCupBracket:", error);
@@ -299,6 +300,151 @@ export function groupCupBracketByRound(nodes) {
 /** Ties in a bracket round (leg 1 + leg 2 share the same match_no). */
 export function cupRoundTieCount(matches) {
   return new Set((matches || []).map((m) => m.match_no)).size;
+}
+
+/** Super8 & Spoon QF: one round, two legs (Sep + Oct). */
+export function isTwoLegCupQuarterFinal(cupCode, roundNo) {
+  return (cupCode === "super8" || cupCode === "spoon") && roundNo === 1;
+}
+
+/** Placeholder leg-2 node when bracket data predates the two-leg schedule. */
+export function syntheticCupLeg2Node(leg1) {
+  if (!leg1) return null;
+  return {
+    ...leg1,
+    id: null,
+    cup_leg: 2,
+    leg1_node_id: leg1.id,
+    fixture_id: null,
+    fixture_status: null,
+    home_goals: null,
+    away_goals: null,
+    winner_club_short_name: null,
+    winner_club_name: null,
+    home_club_short_name: leg1.away_club_short_name,
+    home_club_name: leg1.away_club_name,
+    away_club_short_name: leg1.home_club_short_name,
+    away_club_name: leg1.home_club_name,
+    round_gpsl_month: "october",
+    fixture_gpsl_month: "october",
+  };
+}
+
+/** Pull mis-placed leg-2 QF nodes (old schedule used round_no 2) into round 1. */
+export function preprocessCupBracketRounds(nodes, cupCode) {
+  const rounds = groupCupBracketByRound(nodes);
+  if (cupCode !== "super8" && cupCode !== "spoon") return rounds;
+
+  const orphanLeg2 = [];
+  const out = [];
+
+  for (const round of rounds) {
+    const orphans = round.matches.filter(
+      (m) => round.round_no !== 1 && m.leg1_node_id
+    );
+    const keep = round.matches.filter((m) => !orphans.includes(m));
+    orphanLeg2.push(...orphans);
+    if (keep.length) out.push({ ...round, matches: keep });
+  }
+
+  if (!orphanLeg2.length) return out.length ? out : rounds;
+
+  let qf = out.find((r) => r.round_no === 1);
+  if (!qf) {
+    qf = { round_no: 1, matches: [] };
+    out.unshift(qf);
+  }
+  qf.matches = [...qf.matches, ...orphanLeg2];
+  return out.sort((a, b) => a.round_no - b.round_no);
+}
+
+/** Group bracket nodes into ties (leg1 + leg2) for two-legged QF. */
+export function groupCupBracketTies(matches, cupCode, roundNo) {
+  const rows = matches || [];
+  if (!isTwoLegCupQuarterFinal(cupCode, roundNo)) {
+    return rows.map((m) => ({
+      match_no: m.match_no,
+      leg1: m,
+      leg2: null,
+      twoLeg: false,
+    }));
+  }
+
+  const leg1Nodes = rows.filter(
+    (m) => !m.leg1_node_id && (m.cup_leg || 1) === 1
+  );
+  const leg2Nodes = rows.filter((m) => m.leg1_node_id || (m.cup_leg || 1) === 2);
+  const leg2ByLeg1Id = new Map(
+    leg2Nodes.filter((m) => m.leg1_node_id).map((m) => [m.leg1_node_id, m])
+  );
+  const leg2ByMatchNo = new Map(leg2Nodes.map((m) => [m.match_no, m]));
+
+  const matchNos = [...new Set(rows.map((m) => m.match_no))].sort(
+    (a, b) => a - b
+  );
+
+  return matchNos.map((matchNo) => {
+    const leg1 =
+      leg1Nodes.find((m) => m.match_no === matchNo) ||
+      rows.find((m) => m.match_no === matchNo && !m.leg1_node_id);
+    let leg2 = leg1
+      ? leg2ByLeg1Id.get(leg1.id) || leg2ByMatchNo.get(matchNo)
+      : null;
+    if (!leg2 && leg1) leg2 = syntheticCupLeg2Node(leg1);
+    return { match_no: matchNo, leg1, leg2, twoLeg: true };
+  });
+}
+
+function cupLegGoals(node, extras) {
+  if (!node || node.fixture_status !== "played") return null;
+  const fid = Number(node.fixture_id);
+  if (!fid) return null;
+  const sub = extras?.submissionsByFixture?.get(fid);
+  const fix = extras?.fixturesById?.get(fid);
+  const home = sub?.home_goals ?? node.home_goals ?? fix?.home_goals;
+  const away = sub?.away_goals ?? node.away_goals ?? fix?.away_goals;
+  if (home == null || away == null) return null;
+  return { home: Number(home), away: Number(away) };
+}
+
+/** Aggregate score for a two-legged tie (leg1 home club = tie "home"). */
+export function cupTwoLegAggregate(leg1, leg2, extras) {
+  if (!leg1) return null;
+  const g1 = cupLegGoals(leg1, extras);
+  const g2 = leg2 ? cupLegGoals(leg2, extras) : null;
+  if (!g1 && !g2) return null;
+
+  const homeAgg = (g1?.home ?? 0) + (g2?.away ?? 0);
+  const awayAgg = (g1?.away ?? 0) + (g2?.home ?? 0);
+  const tieHome = leg1.home_club_short_name;
+  const tieAway = leg1.away_club_short_name;
+
+  let winnerKey = null;
+  let winnerName = null;
+  if (g1 && g2) {
+    if (homeAgg > awayAgg) {
+      winnerKey = tieHome;
+      winnerName = leg1.home_club_name || tieHome;
+    } else if (awayAgg > homeAgg) {
+      winnerKey = tieAway;
+      winnerName = leg1.away_club_name || tieAway;
+    }
+  } else if (leg2?.winner_club_name) {
+    winnerName = leg2.winner_club_name;
+    winnerKey = leg2.winner_club_short_name;
+  }
+
+  return {
+    homeClub: leg1.home_club_name || tieHome || "TBD",
+    awayClub: leg1.away_club_name || tieAway || "TBD",
+    homeAgg,
+    awayAgg,
+    leg1Played: !!g1,
+    leg2Played: !!g2,
+    complete: !!g1 && !!g2,
+    winnerKey,
+    winnerName,
+  };
 }
 
 /** Knockout round name from teams still in the competition (2 × ties in that round). */

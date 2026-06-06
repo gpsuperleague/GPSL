@@ -7,14 +7,18 @@ import {
   loadCupBracket,
   loadCupQualified,
   loadCupMatchExtras,
-  groupCupBracketByRound,
+  preprocessCupBracketRounds,
+  groupCupBracketTies,
   cupRoundLabel,
   cupRoundTieCount,
+  cupTwoLegAggregate,
+  isTwoLegCupQuarterFinal,
   formatCupScoreLines,
   formatCupMatchFinance,
   formatMoney,
   normalizeClubKey,
 } from "./competition.js";
+import { loadCalendarStatus, isGpslMonthCurrentlyPlayable } from "./competition_calendar.js";
 
 function cupFromUrl() {
   const raw = new URLSearchParams(window.location.search).get("cup");
@@ -24,6 +28,7 @@ function cupFromUrl() {
 
 let myClubShort = null;
 let currentCup = "league_cup";
+let calendarStatus = null;
 
 function renderToolbar() {
   const bar = document.getElementById("cupToolbar");
@@ -53,7 +58,7 @@ function renderQualified(clubs) {
 }
 
 function isMyMatch(m) {
-  if (!myClubShort) return false;
+  if (!myClubShort || !m) return false;
   const me = normalizeClubKey(myClubShort);
   return (
     normalizeClubKey(m.home_club_short_name) === me ||
@@ -66,6 +71,10 @@ function escapeHtml(s) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function matchdayUrl(fixtureId) {
+  return `matchday.html?fixture=${encodeURIComponent(String(fixtureId))}`;
 }
 
 function renderScoreLinesHtml(lines) {
@@ -91,48 +100,129 @@ function renderFinanceHtml(financeRows) {
   return `<div class="match-finance">${rows}</div>`;
 }
 
+function legPlayable(leg, extras, { leg1Played = true } = {}) {
+  if (!leg?.fixture_id) return { playable: false, reason: "Awaiting draw / teams" };
+  if (leg.fixture_status === "played") return { playable: false, reason: "Played" };
+
+  const month = leg.fixture_gpsl_month || leg.round_gpsl_month;
+  const monthLabel = GPSL_MONTH_LABELS[month] || month || "later month";
+  const monthOpen = isGpslMonthCurrentlyPlayable(month, calendarStatus);
+
+  if (!monthOpen) {
+    return { playable: false, reason: `Opens ${monthLabel}` };
+  }
+  if (!leg1Played) {
+    return { playable: false, reason: "After 1st leg" };
+  }
+  if (myClubShort && isMyMatch(leg)) {
+    return { playable: true, reason: "Enter result" };
+  }
+  return { playable: false, reason: "Scheduled" };
+}
+
+function renderLegPane(leg, extras, opts) {
+  if (!leg) {
+    return `<div class="leg-pane leg-empty"><div class="leg-label">${escapeHtml(opts.legLabel)}</div><div class="leg-teams">TBD <span class="vs">vs</span> TBD</div></div>`;
+  }
+
+  const home = leg.home_club_name || leg.home_club_short_name || "TBD";
+  const away = leg.away_club_name || leg.away_club_short_name || "TBD";
+  const played = leg.fixture_status === "played";
+  const scoreLines = played ? formatCupScoreLines(leg, extras) : null;
+  const finance = played ? formatCupMatchFinance(leg, extras) : [];
+  const { playable, reason } = legPlayable(leg, extras, opts);
+
+  let actionHtml = "";
+  if (played) {
+    actionHtml = `<div class="leg-action played-tag">Played</div>`;
+  } else if (playable && leg.fixture_id) {
+    actionHtml = `<a class="leg-action leg-enter" href="${matchdayUrl(leg.fixture_id)}">Enter result</a>`;
+  } else {
+    actionHtml = `<div class="leg-action leg-locked">${escapeHtml(reason)}</div>`;
+  }
+
+  return `
+    <div class="leg-pane ${isMyMatch(leg) ? "my-club" : ""} ${played ? "played" : ""}">
+      <div class="leg-label">${escapeHtml(opts.legLabel)}</div>
+      <div class="leg-teams">${escapeHtml(home)}<span class="vs">vs</span>${escapeHtml(away)}</div>
+      ${renderScoreLinesHtml(scoreLines)}
+      ${actionHtml}
+      ${renderFinanceHtml(finance)}
+    </div>`;
+}
+
+function renderTwoLegTieCard(tie, extras) {
+  const { leg1, leg2, match_no: matchNo } = tie;
+  const agg = cupTwoLegAggregate(leg1, leg2, extras);
+  const leg1Played = !!agg?.leg1Played;
+
+  const leg1Month = GPSL_MONTH_LABELS.september;
+  const leg2Month = GPSL_MONTH_LABELS.october;
+
+  let aggHtml = "";
+  if (agg) {
+    const aggText = `${agg.homeClub} ${agg.homeAgg}–${agg.awayAgg} ${agg.awayClub}`;
+    if (agg.complete && agg.winnerName) {
+      aggHtml = `
+        <div class="tie-aggregate complete">
+          <span class="agg-lbl">Aggregate</span> ${escapeHtml(aggText)}
+          <span class="agg-winner">→ ${escapeHtml(agg.winnerName)}</span>
+        </div>`;
+    } else {
+      aggHtml = `
+        <div class="tie-aggregate partial">
+          <span class="agg-lbl">Aggregate</span> ${escapeHtml(aggText)}
+          ${!agg.leg2Played ? `<span class="agg-hint">2nd leg in ${leg2Month}</span>` : ""}
+        </div>`;
+    }
+  }
+
+  const myTie = isMyMatch(leg1) || isMyMatch(leg2);
+
+  return `
+    <div class="bracket-tie ${myTie ? "my-club" : ""}">
+      <div class="tie-head">Tie ${matchNo}</div>
+      <div class="tie-legs">
+        ${renderLegPane(leg1, extras, { legLabel: `1st leg · ${leg1Month}`, leg1Played: true })}
+        ${renderLegPane(leg2, extras, { legLabel: `2nd leg · ${leg2Month}`, leg1Played })}
+      </div>
+      ${aggHtml}
+    </div>`;
+}
+
 function renderMatchCard(m, extras) {
   const home = m.home_club_name || m.home_club_short_name || "TBD";
   const away = m.away_club_name || m.away_club_short_name || "TBD";
   const played = m.fixture_status === "played";
-  const scheduled = !!m.fixture_id && !played;
   const scoreLines = played ? formatCupScoreLines(m, extras) : null;
   const finance = played ? formatCupMatchFinance(m, extras) : [];
 
   let status = "Awaiting draw / teams";
   if (played) status = "Played";
-  else if (scheduled) status = "Scheduled";
+  else if (m.fixture_id) status = "Scheduled";
   else if (m.winner_club_name && !m.fixture_id) status = "Bye / advanced";
-
-  const legMonth =
-    GPSL_MONTH_LABELS[m.round_gpsl_month || m.fixture_gpsl_month] ||
-    m.round_gpsl_month ||
-    "";
-  const twoLegQf =
-    (m.cup_code === "super8" || m.cup_code === "spoon") && m.round_no === 1;
-  let legHint = "";
-  if (twoLegQf && ((m.cup_leg || 1) === 2 || m.leg1_node_id)) {
-    legHint = `2nd leg${legMonth ? ` · ${legMonth}` : ""}`;
-  } else if (twoLegQf && (m.cup_leg || 1) === 1) {
-    legHint = `1st leg${legMonth ? ` · ${legMonth}` : ""}`;
-  }
 
   let winnerHtml = "";
   if (m.winner_club_name && !scoreLines?.some((l) => l.label === "Pens")) {
     winnerHtml = `<div class="match-winner">→ ${escapeHtml(m.winner_club_name)}</div>`;
   }
 
-  const statusLine = [legHint, status].filter(Boolean).join(" · ");
+  let actionHtml = "";
+  const month = m.fixture_gpsl_month || m.round_gpsl_month;
+  const monthOpen = isGpslMonthCurrentlyPlayable(month, calendarStatus);
+  if (!played && m.fixture_id && monthOpen && isMyMatch(m)) {
+    actionHtml = `<a class="leg-action leg-enter" href="${matchdayUrl(m.fixture_id)}">Enter result</a>`;
+  }
 
   return `
     <div class="bracket-match ${isMyMatch(m) ? "my-club" : ""} ${played ? "played" : ""}">
-      <div class="match-status">M${m.match_no} · ${escapeHtml(statusLine)}</div>
+      <div class="match-status">M${m.match_no} · ${escapeHtml(status)}</div>
       <div class="match-teams">${escapeHtml(home)}<span class="vs">vs</span>${escapeHtml(away)}</div>
       ${renderScoreLinesHtml(scoreLines)}
+      ${actionHtml}
       ${winnerHtml}
       ${renderFinanceHtml(finance)}
-    </div>
-  `;
+    </div>`;
 }
 
 function renderBracket(nodes, extras) {
@@ -143,7 +233,7 @@ function renderBracket(nodes, extras) {
     return;
   }
 
-  const rounds = groupCupBracketByRound(nodes);
+  const rounds = preprocessCupBracketRounds(nodes, currentCup);
   root.innerHTML = `
     <div class="bracket-flow">
       ${rounds.map(({ round_no, matches }) => renderBracketRoundColumn(round_no, matches, extras)).join("")}
@@ -153,36 +243,18 @@ function renderBracket(nodes, extras) {
 }
 
 function renderBracketRoundColumn(round_no, matches, extras) {
-  const legs = [...new Set(matches.map((m) => m.cup_leg || 1))].sort((a, b) => a - b);
-  const hasTwoLegRound = legs.length > 1;
   const sample = matches[0] || {};
-  const title =
-    sample.round_label || cupRoundLabel(cupRoundTieCount(matches));
+  const title = sample.round_label || cupRoundLabel(cupRoundTieCount(matches));
+  const twoLegQf = isTwoLegCupQuarterFinal(currentCup, round_no);
 
-  if (hasTwoLegRound) {
-    const legSections = legs
-      .map((leg) => {
-        const legMatches = matches.filter((m) => (m.cup_leg || 1) === leg);
-        const legSample = legMatches[0] || {};
-        const month =
-          GPSL_MONTH_LABELS[
-            legSample.round_gpsl_month || legSample.fixture_gpsl_month
-          ] ||
-          legSample.round_gpsl_month ||
-          "";
-        const subtitle = `${leg === 2 ? "2nd leg" : "1st leg"}${month ? ` · ${month}` : ""}`;
-        const cards = legMatches.map((m) => renderMatchCard(m, extras)).join("");
-        return `
-          <div class="bracket-leg" data-leg="${leg}">
-            <div class="round-subtitle">${escapeHtml(subtitle)}</div>
-            ${cards}
-          </div>`;
-      })
-      .join("");
+  if (twoLegQf) {
+    const ties = groupCupBracketTies(matches, currentCup, round_no);
+    const columnTitle = `${title} · ${GPSL_MONTH_LABELS.september}/${GPSL_MONTH_LABELS.october}`;
+    const cards = ties.map((tie) => renderTwoLegTieCard(tie, extras)).join("");
     return `
-      <div class="bracket-round" data-round="${round_no}">
-        <div class="round-title">${escapeHtml(title)}</div>
-        ${legSections}
+      <div class="bracket-round bracket-round-two-leg" data-round="${round_no}">
+        <div class="round-title">${escapeHtml(columnTitle)}</div>
+        ${cards}
       </div>`;
   }
 
@@ -212,6 +284,7 @@ async function renderCup() {
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
   await loadClubsMap();
+  calendarStatus = await loadCalendarStatus(supabase);
 
   const {
     data: { user },
