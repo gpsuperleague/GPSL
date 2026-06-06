@@ -383,6 +383,30 @@ function formatPendingAmount(pending) {
   return `<span class="amt ${cls} pending-amt">${sign}${formatMoney(Math.abs(n))}</span>`;
 }
 
+/** Pending only when not already fully reflected on the ledger for that line. */
+function resolvePendingForLine(lineId, pending, byLine) {
+  if (!pending || Math.abs(pending.amount) < 0.001) return null;
+  const posted = Number(byLine.get(lineId)?.amount || 0);
+  const amt = Number(pending.amount);
+  if (amt > 0 && posted > 0.5 && posted >= amt - 0.5) return null;
+  if (amt < 0 && posted < -0.5 && Math.abs(posted) >= Math.abs(amt) - 0.5) {
+    return null;
+  }
+  return pending;
+}
+
+function formatBreakdownColumn(bucket) {
+  if (!bucket?.detail) return '<span class="amt zero">—</span>';
+  const rows = Object.entries(bucket.detail)
+    .filter(([, v]) => Math.abs(v) > 0.001)
+    .map(([t, v]) => {
+      const n = Number(v);
+      const sign = n >= 0 ? "+" : "−";
+      return `<div class="detail-line"><span>${financeEntryLabel(t)}</span><span>${sign}${formatMoney(Math.abs(n))}</span></div>`;
+    });
+  return rows.length ? rows.join("") : '<span class="amt zero">—</span>';
+}
+
 /**
  * @param {Map<string, { amount: number, detail: Record<string, number> }>} byLine
  * @param {{
@@ -395,8 +419,9 @@ export function renderFinanceSections(byLine, options = {}) {
   const pendingByLine = options.pendingByLine || new Map();
   let running = Number(options.runningStart) || 0;
   let totalPending = 0;
-  for (const { amount } of pendingByLine.values()) {
-    totalPending += Number(amount) || 0;
+  for (const [lineId, pending] of pendingByLine.entries()) {
+    const resolved = resolvePendingForLine(lineId, pending, byLine);
+    if (resolved) totalPending += Number(resolved.amount) || 0;
   }
 
   const parts = [
@@ -404,6 +429,7 @@ export function renderFinanceSections(byLine, options = {}) {
       <div class="fin-columns-head">
         <span class="fin-col-label">Line</span>
         <span class="fin-col-posted">Posted</span>
+        <span class="fin-col-breakdown">Breakdown</span>
         <span class="fin-col-running">Running total</span>
         <span class="fin-col-pending">Pending</span>
       </div>`,
@@ -421,21 +447,14 @@ export function renderFinanceSections(byLine, options = {}) {
         if (hasData) sectionNet += bucket.amount;
         running += postedAmt;
 
-        const pending = pendingByLine.get(line.id);
+        const pending = resolvePendingForLine(
+          line.id,
+          pendingByLine.get(line.id),
+          byLine
+        );
         if (pending && Math.abs(pending.amount) > 0.001) {
           sectionPending += pending.amount;
         }
-
-        const detail =
-          hasData && bucket.detail
-            ? Object.entries(bucket.detail)
-                .filter(([, v]) => Math.abs(v) > 0.001)
-                .map(
-                  ([t, v]) =>
-                    `<div class="detail-line"><span>${financeEntryLabel(t)}</span><span>${formatMoney(Math.abs(v))}</span></div>`
-                )
-                .join("")
-            : "";
 
         const pendingNote =
           pending?.note && Math.abs(pending.amount) > 0.001
@@ -447,6 +466,7 @@ export function renderFinanceSections(byLine, options = {}) {
             <div class="fin-line-head fin-line-cols">
               <span class="fin-line-label">${line.label}</span>
               <span class="fin-col-posted">${formatLineAmount(bucket?.amount ?? 0, hasData, line.planned)}</span>
+              <span class="fin-col-breakdown">${hasData ? formatBreakdownColumn(bucket) : '<span class="amt zero">—</span>'}</span>
               <span class="fin-col-running">${formatRunningAmount(running)}</span>
               <span class="fin-col-pending">${formatPendingAmount(pending)}</span>
             </div>
@@ -457,7 +477,6 @@ export function renderFinanceSections(byLine, options = {}) {
                 : ""
             }
             ${pendingNote}
-            ${detail ? `<div class="fin-line-detail">${detail}</div>` : ""}
           </div>
         `;
       })
@@ -475,6 +494,7 @@ export function renderFinanceSections(byLine, options = {}) {
         <div class="fin-section-total fin-line-cols">
           <span>Section net</span>
           <span class="fin-col-posted amt ${sectionNet >= 0 ? "income-amt" : "cost-amt"}">${sectionNet >= 0 ? "+" : "−"}${formatMoney(Math.abs(sectionNet))}</span>
+          <span class="fin-col-breakdown"></span>
           <span class="fin-col-running amt ${running >= 0 ? "income-amt" : "cost-amt"}">${formatMoney(running)}</span>
           <span class="fin-col-pending amt ${sectionPendingCls}">${Math.abs(sectionPending) < 0.001 ? "—" : `${sectionPendingSign}${formatMoney(Math.abs(sectionPending))}`}</span>
         </div>
@@ -491,6 +511,7 @@ export function renderFinanceSections(byLine, options = {}) {
           <div class="fin-line-head fin-line-cols">
             <span class="fin-line-label">Other posted types</span>
             <span class="fin-col-posted amt">${formatMoney(unmapped.amount)}</span>
+            <span class="fin-col-breakdown">${formatBreakdownColumn(unmapped)}</span>
             <span class="fin-col-running"></span>
             <span class="fin-col-pending"></span>
           </div>

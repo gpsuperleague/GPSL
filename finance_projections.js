@@ -15,6 +15,32 @@ import {
 const STADIUM_VALUE_PER_SEAT = 1500;
 const MAINTENANCE_RATE = 0.125;
 
+function setPendingForecast(map, lineId, amount, note, byLine) {
+  const n = Number(amount) || 0;
+  if (Math.abs(n) < 0.5) return;
+  const posted = Number(byLine.get(lineId)?.amount || 0);
+  if (n > 0 && posted > 0.5 && posted >= n - 0.5) return;
+  if (n < 0 && posted < -0.5 && Math.abs(posted) >= Math.abs(n) - 0.5) return;
+  map.set(lineId, { amount: n, note });
+}
+
+function filterPendingAgainstLedger(map, byLine) {
+  const filtered = new Map();
+  let totalPending = 0;
+  for (const [lineId, pending] of map.entries()) {
+    const posted = Number(byLine.get(lineId)?.amount || 0);
+    const amt = Number(pending.amount) || 0;
+    if (Math.abs(amt) < 0.5) continue;
+    if (amt > 0 && posted > 0.5 && posted >= amt - 0.5) continue;
+    if (amt < 0 && posted < -0.5 && Math.abs(posted) >= Math.abs(amt) - 0.5) {
+      continue;
+    }
+    filtered.set(lineId, pending);
+    totalPending += amt;
+  }
+  return { pendingByLine: filtered, totalPending };
+}
+
 /**
  * @param {import("@supabase/supabase-js").SupabaseClient} supabase
  * @param {string} clubShortName
@@ -60,10 +86,13 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
       const parts = [];
       if (leagueHome) parts.push(`${leagueHome} league home`);
       if (cupHome) parts.push(`${cupHome} cup home (50%)`);
-      pendingByLine.set("infra_gates", {
-        amount: gatePending,
-        note: `${parts.join(", ")} @ ${formatMoney(perMatch)}/match est.`,
-      });
+      setPendingForecast(
+        pendingByLine,
+        "infra_gates",
+        gatePending,
+        `${parts.join(", ")} @ ${formatMoney(perMatch)}/match est.`,
+        byLine
+      );
     }
   }
 
@@ -71,10 +100,13 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
   if (postedMaint < 0.5 && capacity > 0) {
     const stadiumValue = capacity * STADIUM_VALUE_PER_SEAT;
     const cost = -Math.round(stadiumValue * MAINTENANCE_RATE);
-    pendingByLine.set("infra_maintenance", {
-      amount: cost,
-      note: "12.5% × capacity × ₿1,500 (season charge, not posted yet)",
-    });
+    setPendingForecast(
+      pendingByLine,
+      "infra_maintenance",
+      cost,
+      "12.5% × capacity × ₿1,500 (season charge, not posted yet)",
+      byLine
+    );
   }
 
   const { data: upkeepPreview, error: upkeepErr } = await supabase.rpc(
@@ -86,37 +118,50 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
     const postedWages = Math.abs(byLine.get("upkeep_wages")?.amount || 0);
     const wageBill = Number(upkeepPreview.wage_bill || 0);
     if (wageBill > postedWages + 0.5) {
-      pendingByLine.set("upkeep_wages", {
-        amount: -(wageBill - postedWages),
-        note: `Season wage bill est. ${formatMoney(wageBill)}`,
-      });
+      setPendingForecast(
+        pendingByLine,
+        "upkeep_wages",
+        -(wageBill - postedWages),
+        `Remaining wage bill est. ${formatMoney(wageBill - postedWages)} (${formatMoney(postedWages)} already posted)`,
+        byLine
+      );
     }
 
     const posted34 = Math.abs(byLine.get("upkeep_34plus")?.amount || 0);
     const amt34 = Number(upkeepPreview.amount_34plus || 0);
     if (amt34 > posted34 + 0.5) {
-      pendingByLine.set("upkeep_34plus", {
-        amount: -(amt34 - posted34),
-        note: `${upkeepPreview.players_34plus ?? 0} player(s) rated ${upkeepPreview.settings?.wage_34plus_min_rating ?? 34}+`,
-      });
+      setPendingForecast(
+        pendingByLine,
+        "upkeep_34plus",
+        -(amt34 - posted34),
+        `${upkeepPreview.players_34plus ?? 0} player(s) rated ${upkeepPreview.settings?.wage_34plus_min_rating ?? 34}+`,
+        byLine
+      );
     }
 
     const postedStar = Math.abs(byLine.get("upkeep_star_tax")?.amount || 0);
     const amtStar = Number(upkeepPreview.amount_star_tax || 0);
     if (amtStar > postedStar + 0.5) {
-      pendingByLine.set("upkeep_star_tax", {
-        amount: -(amtStar - postedStar),
-        note: `${upkeepPreview.players_star_tax ?? 0} player(s) rated ${upkeepPreview.settings?.star_tax_min_rating ?? 70}+`,
-      });
+      setPendingForecast(
+        pendingByLine,
+        "upkeep_star_tax",
+        -(amtStar - postedStar),
+        `${upkeepPreview.players_star_tax ?? 0} player(s) rated ${upkeepPreview.settings?.star_tax_min_rating ?? 70}+`,
+        byLine
+      );
     }
 
     const postedTac = Math.abs(byLine.get("gov_emergency_tax")?.amount || 0);
     const tacAmt = Number(upkeepPreview.emergency_tac_amount || 0);
-    if (tacAmt > postedTac + 0.5) {
-      pendingByLine.set("gov_emergency_tax", {
-        amount: -tacAmt,
-        note: `If admin applies TAC (${upkeepPreview.settings?.emergency_tac_pct ?? 0}% above ${formatMoney(upkeepPreview.settings?.emergency_tac_threshold ?? 0)})`,
-      });
+    const tacRemain = Math.max(0, tacAmt - postedTac);
+    if (tacRemain > 0.5) {
+      setPendingForecast(
+        pendingByLine,
+        "gov_emergency_tax",
+        -tacRemain,
+        `If admin applies TAC (${upkeepPreview.settings?.emergency_tac_pct ?? 0}% above ${formatMoney(upkeepPreview.settings?.emergency_tac_threshold ?? 0)})`,
+        byLine
+      );
     }
   } else {
     const { data: players, error: playersErr } = await supabase
@@ -132,10 +177,13 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
       const postedWages = Math.abs(byLine.get("upkeep_wages")?.amount || 0);
       const remaining = squadWage - postedWages;
       if (remaining > 0.5) {
-        pendingByLine.set("upkeep_wages", {
-          amount: -remaining,
-          note: `Squad contract wages est. ${formatMoney(squadWage)}/season`,
-        });
+        setPendingForecast(
+          pendingByLine,
+          "upkeep_wages",
+          -remaining,
+          `Remaining squad wages est. ${formatMoney(remaining)} (${formatMoney(squadWage)} total)`,
+          byLine
+        );
       }
     }
   }
@@ -148,10 +196,13 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
     );
     const prizeAmt = Number(row?.league_prize_amount || 0);
     if (prizeAmt > 0 && !row?.league_prize_paid) {
-      pendingByLine.set("prize_league", {
-        amount: prizeAmt,
-        note: `Position ${row.table_position} prize (if table held at season end)`,
-      });
+      setPendingForecast(
+        pendingByLine,
+        "prize_league",
+        prizeAmt,
+        `Position ${row.table_position} prize (if table held at season end)`,
+        byLine
+      );
     }
   }
 
@@ -194,10 +245,13 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
         0
       );
       if (tvPending > 0.5) {
-        pendingByLine.set("prize_tv", {
-          amount: tvPending,
-          note: `${tvUpcoming.length} selected TV match${tvUpcoming.length === 1 ? "" : "es"} remaining`,
-        });
+        setPendingForecast(
+          pendingByLine,
+          "prize_tv",
+          tvPending,
+          `${tvUpcoming.length} selected TV match${tvUpcoming.length === 1 ? "" : "es"} remaining`,
+          byLine
+        );
       }
     } else if (postedTv < 0.5) {
       const { data: tvPreview, error: tvPreviewErr } = await supabase.rpc(
@@ -205,10 +259,13 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
         { p_club_short_name: clubShortName }
       );
       if (!tvPreviewErr && Number(tvPreview?.pending_amount) > 0.5) {
-        pendingByLine.set("prize_tv", {
-          amount: Number(tvPreview.pending_amount),
-          note: `${tvPreview.pending_count ?? 0} TV match${tvPreview.pending_count === 1 ? "" : "es"} selected`,
-        });
+        setPendingForecast(
+          pendingByLine,
+          "prize_tv",
+          Number(tvPreview.pending_amount),
+          `${tvPreview.pending_count ?? 0} TV match${tvPreview.pending_count === 1 ? "" : "es"} selected`,
+          byLine
+        );
       }
     }
   }
@@ -222,20 +279,18 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
       const amt = Number(block?.amount || 0);
       const status = block?.status;
       if (amt > 0.5) {
-        pendingByLine.set(lineId, {
-          amount: amt,
-          note: status && status !== "—"
+        setPendingForecast(
+          pendingByLine,
+          lineId,
+          amt,
+          status && status !== "—"
             ? `${label} — ${status} (paid when all divisions 38/38)`
             : `${label} subsidy (paid when all divisions 38/38)`,
-        });
+          byLine
+        );
       }
     }
   }
 
-  let totalPending = 0;
-  for (const { amount } of pendingByLine.values()) {
-    totalPending += Number(amount) || 0;
-  }
-
-  return { pendingByLine, totalPending };
+  return filterPendingAgainstLedger(pendingByLine, byLine);
 }
