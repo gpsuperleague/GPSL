@@ -142,3 +142,18 @@ export function sectionHasActiveItem(section, pathname, search) {
   if (!section?.items?.length) return false;
   return section.items.some((item) => isNavItemActive(item, pathname, search));
 }
+
+/**
+ * Which nav dropdown to auto-open on load.
+ * Shared pages (e.g. league_stats) appear under multiple sections — only open one.
+ */
+export function firstActiveNavSectionId(sections, pathname, search, resolveItems) {
+  for (const section of sections || []) {
+    const items = resolveItems ? resolveItems(section) : section.items;
+    if (!items?.length) continue;
+    if (sectionHasActiveItem({ items }, pathname, search)) {
+      return section.id;
+    }
+  }
+  return null;
+}

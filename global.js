@@ -702,13 +702,15 @@ export async function buildNav() {
   let ADMIN_NAV_SECTION;
   let isNavItemActive;
   let sectionHasActiveItem;
+  let firstActiveNavSectionId;
   let normalizeNavPath;
   try {
-    const navMod = await import("./nav_config.js?v=20250602-prestige-cups");
+    const navMod = await import("./nav_config.js?v=20250604-nav-open");
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;
     sectionHasActiveItem = navMod.sectionHasActiveItem;
+    firstActiveNavSectionId = navMod.firstActiveNavSectionId;
     normalizeNavPath = navMod.normalizeNavPath;
   } catch (importErr) {
     console.error("nav_config.js failed to load:", importErr);
@@ -817,24 +819,37 @@ export async function buildNav() {
 
   html += `<div class="gpsl-nav-groups">`;
 
-  for (const section of navSections) {
-    if (!section?.items?.length) continue;
-
-    const items = section.items
+  const navItemsForSection = (section) => {
+    const items = (section.items || [])
       .filter((item) => {
         if (item.requiresDraft && !draftEnabled) return false;
         return true;
       })
       .map((item) => ({ ...item }));
-
     if (section.id === "transfers" && specialAuction) {
       items.push({ ...specialAuction });
     }
+    return items;
+  };
+
+  const openSectionId = firstActiveNavSectionId(
+    navSections,
+    pathname,
+    search,
+    navItemsForSection
+  );
+
+  for (const section of navSections) {
+    if (!section?.items?.length) continue;
+
+    const items = navItemsForSection(section);
 
     if (!items.length) continue;
 
-    const hasActive = sectionHasActiveItem({ items }, pathname, search);
-    const open = hasActive;
+    const sectionMatchesPage = sectionHasActiveItem({ items }, pathname, search);
+    const isPrimarySection = section.id === openSectionId;
+    const open = isPrimarySection;
+    const hasActive = sectionMatchesPage && isPrimarySection;
 
     html += `<div class="nav-group${hasActive ? " nav-group-active" : ""}${
       open ? " open" : ""
