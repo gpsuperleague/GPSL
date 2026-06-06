@@ -121,6 +121,24 @@
     table.standings-table tbody tr.zone-spoon:nth-child(odd) td { background: #261a1a; }
     table.standings-table tbody tr.zone-spoon:nth-child(even) td { background: #302424; }
 
+    /* Table leader (1st place) — same emphasis in every division */
+    table.standings-table tbody tr.row-leader td {
+      background: #1e2a22 !important;
+    }
+    table.standings-table tbody tr.row-leader td:first-child {
+      box-shadow: inset 4px 0 0 #2ecc71;
+      color: #7dcea0;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    table.standings-table tbody tr.row-leader td.club-col {
+      font-weight: bold;
+      color: #f0f0f0;
+    }
+    table.standings-table tbody tr.row-leader td.num b {
+      color: #ffcc66;
+    }
+
     /* Zone boundary separators */
     table.standings-table tbody tr.zone-boundary td {
       border-top-width: 2px;
@@ -155,6 +173,10 @@
     }
     table.standings-table tbody tr.my-club td:first-child {
       box-shadow: inset 4px 0 0 #ff9900, inset 0 0 0 1px #ff990066;
+    }
+    table.standings-table tbody tr.my-club.row-leader td:first-child {
+      box-shadow: inset 4px 0 0 #ff9900, inset 0 0 0 1px #ff990066;
+      color: #ffcc66;
     }
 
     .form-cell { letter-spacing: 2px; font-weight: bold; text-align: center; white-space: nowrap; }

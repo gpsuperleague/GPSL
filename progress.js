@@ -92,8 +92,10 @@ function renderStandingsTable(division, rows, myClub) {
           ? `<td class="num prize-col" title="${prizeTitle}">${formatMoney(prizeAmt)}</td>`
           : `<td class="num prize-col">—</td>`;
 
+      const leader = pos === 1 ? " row-leader" : "";
+
       return `
-        <tr class="zone-${zoneKey}${zoneBoundary ? " zone-boundary" : ""}${mine}">
+        <tr class="zone-${zoneKey}${zoneBoundary ? " zone-boundary" : ""}${leader}${mine}">
           <td class="num">${pos}</td>
           <td class="club-col">${clubWithOwnerHtml(row.club_name, row.club_short_name)}</td>
           <td class="zone-col">${zoneLabels}</td>
