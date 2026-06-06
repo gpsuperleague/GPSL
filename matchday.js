@@ -566,6 +566,150 @@ function countLineupFromDom() {
   return { started, subbed };
 }
 
+function shuffleArray(items) {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function expectedTeamGoalsForStats() {
+  if (confirmMode?.fixture) {
+    return myTeamGoalsForConfirm();
+  }
+
+  const f = selectedFixture();
+  if (!f) return null;
+
+  const homeGoals = readScoreInput("homeGoals");
+  const awayGoals = readScoreInput("awayGoals");
+  if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals)) {
+    return null;
+  }
+
+  let cupExtra = null;
+  if (isCupFixture(f) && homeGoals === awayGoals) {
+    const etHome = readScoreInput("etHomeGoals");
+    const etAway = readScoreInput("etAwayGoals");
+    if (!Number.isFinite(etHome) || !Number.isFinite(etAway)) {
+      return null;
+    }
+    cupExtra = { etHome, etAway };
+  }
+
+  const totals = cupExtra
+    ? openPlayTotals(homeGoals, awayGoals, cupExtra)
+    : { home: homeGoals, away: awayGoals };
+  return myTeamGoalsForFixture(f, totals.home, totals.away);
+}
+
+function distributeCountAcross(total, keys) {
+  const map = new Map(keys.map((k) => [k, 0]));
+  if (total <= 0 || !keys.length) return map;
+
+  for (let i = 0; i < total; i++) {
+    const key = keys[Math.floor(Math.random() * keys.length)];
+    map.set(key, (map.get(key) || 0) + 1);
+  }
+  return map;
+}
+
+function resetPlayerStatsDom() {
+  document.querySelectorAll("#playerStatsBody tr[data-stat-player]").forEach((tr) => {
+    const started = tr.querySelector(".stat-started");
+    const subbed = tr.querySelector(".stat-subbed");
+    if (started) started.checked = false;
+    if (subbed) subbed.checked = false;
+    const goals = tr.querySelector(".stat-goals");
+    const assists = tr.querySelector(".stat-assists");
+    const rating = tr.querySelector(".stat-rating");
+    const potm = tr.querySelector(".stat-potm");
+    if (goals) goals.value = "0";
+    if (assists) assists.value = "0";
+    if (rating) rating.value = "";
+    if (potm) potm.checked = false;
+  });
+}
+
+function fillTestMatchStats() {
+  const rows = [...document.querySelectorAll("#playerStatsBody tr[data-stat-player]")];
+  if (!rows.length) {
+    setStatus("submitStatus", "No squad players to fill.", true);
+    return;
+  }
+
+  const expectedGoals = expectedTeamGoalsForStats();
+  if (expectedGoals === null) {
+    const msg = confirmMode
+      ? "Select a fixture awaiting your confirm."
+      : "Enter the match score first (and extra time if cup level after 90).";
+    setStatus("submitStatus", msg, true);
+    return;
+  }
+
+  if (rows.length < MAX_STARTERS) {
+    setStatus(
+      "submitStatus",
+      `Need at least ${MAX_STARTERS} squad players (have ${rows.length}).`,
+      true
+    );
+    return;
+  }
+
+  resetPlayerStatsDom();
+
+  const shuffled = shuffleArray(rows.map((tr) => tr.dataset.statPlayer));
+  const starterIds = new Set(shuffled.slice(0, MAX_STARTERS));
+  const subIds = new Set(
+    shuffled.slice(MAX_STARTERS, MAX_STARTERS + MAX_SUBS)
+  );
+  const appearedIds = [...starterIds, ...subIds];
+
+  for (const tr of rows) {
+    const id = tr.dataset.statPlayer;
+    const started = tr.querySelector(".stat-started");
+    const subbed = tr.querySelector(".stat-subbed");
+    const rating = tr.querySelector(".stat-rating");
+
+    if (starterIds.has(id)) {
+      if (started) started.checked = true;
+      if (rating) rating.value = DEFAULT_MATCH_RATING;
+    } else if (subIds.has(id)) {
+      if (subbed) subbed.checked = true;
+      if (rating) rating.value = DEFAULT_MATCH_RATING;
+    }
+  }
+
+  const goalMap = distributeCountAcross(expectedGoals, appearedIds);
+  const assistTotal =
+    expectedGoals > 0
+      ? Math.floor(Math.random() * (expectedGoals + 1))
+      : 0;
+  const assistMap = distributeCountAcross(assistTotal, appearedIds);
+
+  for (const tr of rows) {
+    const id = tr.dataset.statPlayer;
+    const goals = tr.querySelector(".stat-goals");
+    const assists = tr.querySelector(".stat-assists");
+    if (goals) goals.value = String(goalMap.get(id) || 0);
+    if (assists) assists.value = String(assistMap.get(id) || 0);
+  }
+
+  const potmId = [...starterIds][Math.floor(Math.random() * starterIds.size)];
+  for (const tr of rows) {
+    const potm = tr.querySelector(".stat-potm");
+    if (potm) potm.checked = tr.dataset.statPlayer === potmId;
+  }
+
+  updateLineupCounter();
+  setStatus(
+    "submitStatus",
+    `Test stats filled — 11 starters, ${subIds.size} subs, ${expectedGoals} goal(s), ratings 6.0. Review then submit/confirm.`
+  );
+}
+
 function updateLineupCounter() {
   const el = document.getElementById("lineupCounter");
   if (!el) return;
@@ -1107,6 +1251,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("submitResultBtn").onclick = submitResult;
   document.getElementById("rejectResultBtn").onclick = rejectPendingResult;
+  document.getElementById("fillTestStatsBtn")?.addEventListener("click", fillTestMatchStats);
 
   wireAllMatchdaySelectOnFocus();
 
