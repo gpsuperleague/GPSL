@@ -104,7 +104,7 @@ function legPlayable(leg, extras, { leg1Played = true } = {}) {
   if (!leg?.fixture_id) return { playable: false, reason: "Awaiting draw / teams" };
   if (leg.fixture_status === "played") return { playable: false, reason: "Played" };
 
-  const month = leg.fixture_gpsl_month || leg.round_gpsl_month;
+  const month = leg.round_gpsl_month || leg.fixture_gpsl_month;
   const monthLabel = GPSL_MONTH_LABELS[month] || month || "later month";
   const monthOpen = isGpslMonthCurrentlyPlayable(month, calendarStatus);
 
