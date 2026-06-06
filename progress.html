@@ -132,36 +132,6 @@
       text-decoration: none;
     }
 
-    /* Table leader (1st place) — gold row in every division */
-    table.standings-table tbody tr.row-leader td {
-      background: #2a2418 !important;
-      box-shadow: inset 0 0 0 1px #ff990044;
-    }
-    table.standings-table tbody tr.row-leader td:first-child {
-      box-shadow: inset 4px 0 0 #ff9900, inset 0 0 0 1px #ff990044;
-      color: #ffcc66;
-      font-weight: bold;
-      font-size: 14px;
-    }
-    table.standings-table tbody tr.row-leader td.club-col {
-      font-weight: bold;
-      color: #f0f0f0;
-    }
-    table.standings-table tbody tr.row-leader a.standings-club-link {
-      color: #f0f0f0;
-      font-weight: bold;
-    }
-    table.standings-table tbody tr.row-leader td.num {
-      color: #e8c070;
-      font-weight: 600;
-    }
-    table.standings-table tbody tr.row-leader td.num b {
-      color: #ffcc66;
-    }
-    table.standings-table tbody tr.row-leader td.prize-col {
-      color: #eee;
-    }
-
     /* Zone boundary separators */
     table.standings-table tbody tr.zone-boundary td {
       border-top-width: 2px;
@@ -197,12 +167,38 @@
     table.standings-table tbody tr.my-club td:first-child {
       box-shadow: inset 4px 0 0 #ff9900, inset 0 0 0 1px #ff990066;
     }
-    table.standings-table tbody tr.my-club.row-leader td {
+    /* Table leader (1st place) — after zone accents so gold row wins in every division */
+    table.standings-table tbody tr.row-leader td {
+      background: #2a2418 !important;
       box-shadow: inset 0 0 0 1px #ff990066;
     }
-    table.standings-table tbody tr.my-club.row-leader td:first-child {
-      box-shadow: inset 4px 0 0 #ff9900, inset 0 0 0 1px #ff990066;
+    table.standings-table tbody tr.row-leader td:first-child {
+      box-shadow: inset 4px 0 0 #ff9900, inset 0 0 0 1px #ff990066 !important;
+      color: #ffcc66 !important;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    table.standings-table tbody tr.row-leader td.club-col {
+      font-weight: bold;
+      color: #f0f0f0;
+    }
+    table.standings-table tbody tr.row-leader a.standings-club-link {
+      color: #f0f0f0;
+      font-weight: bold;
+    }
+    table.standings-table tbody tr.row-leader td.num {
+      color: #e8c070;
+      font-weight: 600;
+    }
+    table.standings-table tbody tr.row-leader td.num b {
       color: #ffcc66;
+    }
+    table.standings-table tbody tr.row-leader td.prize-col {
+      color: #eee;
+    }
+
+    table.standings-table tbody tr.my-club.row-leader td:first-child {
+      color: #ffcc66 !important;
     }
 
     .form-cell { letter-spacing: 2px; font-weight: bold; text-align: center; white-space: nowrap; }
