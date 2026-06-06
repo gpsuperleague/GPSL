@@ -120,10 +120,13 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
         prevPrestigeKey !== prestigeKey;
       const playoffBoundary =
         zoneBoundaries &&
-        (leagueKey === "playoff" || leagueKey === "playoffs") &&
         prevLeagueKey !== null &&
-        prevLeagueKey !== "playoff" &&
-        prevLeagueKey !== "playoffs";
+        (((leagueKey === "playoff" || leagueKey === "playoffs") &&
+          prevLeagueKey !== "playoff" &&
+          prevLeagueKey !== "playoffs") ||
+          (division !== "superleague" &&
+            leagueKey === "mid" &&
+            prevLeagueKey === "playoffs"));
       const relegationBoundary =
         zoneBoundaries &&
         leagueKey === "relegation" &&
