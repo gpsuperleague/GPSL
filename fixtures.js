@@ -11,7 +11,6 @@ import {
   DIVISION_LABELS,
   LEAGUE_DIVISIONS,
   GPSL_MONTH_LABELS,
-  submitFixtureResult,
   canSubmitResult,
   needsInboxConfirm,
 } from "./competition.js";
@@ -30,24 +29,9 @@ let currentDivision = "superleague";
 let fixtureView = "league";
 let currentCup = "league_cup";
 let allFixtures = [];
-let modalFixture = null;
 
-function openResultModal(fixture) {
-  modalFixture = fixture;
-  document.getElementById("modalTitle").textContent = "Enter result";
-  document.getElementById("modalFixtureLine").textContent =
-    `Matchday ${fixture.matchday}: ${fixture.home_club_name} vs ${fixture.away_club_name}`;
-  document.getElementById("modalHomeLabel").textContent = `${fixture.home_club_name} (home)`;
-  document.getElementById("modalAwayLabel").textContent = `${fixture.away_club_name} (away)`;
-  document.getElementById("modalHomeGoals").value = "0";
-  document.getElementById("modalAwayGoals").value = "0";
-  document.getElementById("modalStatus").textContent = "";
-  document.getElementById("resultModal").classList.add("open");
-}
-
-function closeResultModal() {
-  modalFixture = null;
-  document.getElementById("resultModal").classList.remove("open");
+function matchdayUrl(fixtureId) {
+  return `matchday.html?fixture=${encodeURIComponent(String(fixtureId))}`;
 }
 
 function actionCell(fixture) {
@@ -56,11 +40,11 @@ function actionCell(fixture) {
   }
 
   if (canSubmitResult(fixture, myClub, calendarStatus, holidayContext)) {
-    return `<button type="button" class="btn-result" data-action="enter" data-id="${fixture.id}">Enter result</button>`;
+    return `<a href="${matchdayUrl(fixture.id)}" class="btn-result" style="text-decoration:none;display:inline-block;">Enter result</a>`;
   }
 
   if (needsInboxConfirm(fixture, myClub)) {
-    return `<a href="inbox.html" class="btn-result secondary" style="text-decoration:none;display:inline-block;">Confirm in inbox</a>`;
+    return `<a href="${matchdayUrl(fixture.id)}" class="btn-result secondary" style="text-decoration:none;display:inline-block;">Confirm result</a>`;
   }
 
   if (
@@ -186,14 +170,6 @@ function renderCupFixtures() {
     }
     root.appendChild(block);
   }
-
-  root.querySelectorAll('[data-action="enter"]').forEach((btn) => {
-    btn.onclick = () => {
-      const id = btn.getAttribute("data-id");
-      const fix = fixtures.find((x) => String(x.id) === id);
-      if (fix) openResultModal(fix);
-    };
-  });
 }
 
 function renderFixtures() {
@@ -255,53 +231,8 @@ function renderFixtures() {
       tbody.appendChild(tr);
     }
 
-    tbody.querySelectorAll('[data-action="enter"]').forEach((btn) => {
-      btn.onclick = () => {
-        const id = Number(btn.dataset.id);
-        const fix = fixtures.find((x) => x.id === id);
-        if (fix) openResultModal(fix);
-      };
-    });
-
     root.appendChild(block);
   }
-}
-
-async function onModalSubmit() {
-  if (!modalFixture) return;
-
-  const homeGoals = Number(document.getElementById("modalHomeGoals").value);
-  const awayGoals = Number(document.getElementById("modalAwayGoals").value);
-
-  if (modalFixture.competition_type === "cup" && homeGoals === awayGoals) {
-    document.getElementById("modalStatus").textContent =
-      "Cup draw after 90 min — use Match Day for after-ET total score and penalty winner.";
-    return;
-  }
-  const statusEl = document.getElementById("modalStatus");
-
-  if (!Number.isFinite(homeGoals) || !Number.isFinite(awayGoals) || homeGoals < 0 || awayGoals < 0) {
-    statusEl.textContent = "Enter valid scores.";
-    return;
-  }
-
-  statusEl.textContent = "Submitting…";
-  const { data, error } = await submitFixtureResult(
-    supabase,
-    modalFixture.id,
-    homeGoals,
-    awayGoals
-  );
-
-  if (error) {
-    statusEl.textContent = error.message;
-    return;
-  }
-
-  statusEl.textContent = `Submitted — opponent must confirm in their inbox.`;
-  allFixtures = await loadLeagueFixtures(supabase);
-  renderFixtures();
-  setTimeout(closeResultModal, 1200);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -309,17 +240,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
   await initGlobal();
   await loadClubsMap();
-
-  const modalSubmit = document.getElementById("modalSubmitBtn");
-  if (modalSubmit) modalSubmit.onclick = onModalSubmit;
-  const modalCancel = document.getElementById("modalCancelBtn");
-  if (modalCancel) modalCancel.onclick = closeResultModal;
-  const resultModal = document.getElementById("resultModal");
-  if (resultModal) {
-    resultModal.onclick = (e) => {
-      if (e.target.id === "resultModal") closeResultModal();
-    };
-  }
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -392,11 +312,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   const fixtureId = params.get("fixture");
   if (fixtureId && myClub.short) {
     const fix = allFixtures.find((f) => String(f.id) === fixtureId);
-    if (fix && canSubmitResult(fix, myClub, calendarStatus, holidayContext)) {
-      currentDivision = fix.division;
-      renderDivisionToolbar();
-      renderFixtures();
-      openResultModal(fix);
+    if (
+      fix &&
+      (canSubmitResult(fix, myClub, calendarStatus, holidayContext) ||
+        needsInboxConfirm(fix, myClub))
+    ) {
+      window.location = matchdayUrl(fixtureId);
+      return;
     }
   }
   } catch (err) {

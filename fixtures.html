@@ -38,23 +38,6 @@
       border:none; border-radius:4px; font-weight:bold; cursor:pointer;
     }
     .btn-result.secondary { background:#555; color:#eee; }
-    .modal-backdrop {
-      display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8);
-      z-index:300; align-items:center; justify-content:center;
-    }
-    .modal-backdrop.open { display:flex; }
-    .modal-box {
-      background:#1a1a1a; border:1px solid #444; border-radius:8px;
-      padding:24px; width:90%; max-width:420px;
-    }
-    .modal-box h3 { color:#ff9900; margin:0 0 12px; }
-    .modal-box label { display:block; color:#ccc; margin-bottom:4px; font-size:13px; }
-    .modal-box input {
-      width:100%; padding:10px; background:#222; border:1px solid #444;
-      color:#ddd; border-radius:6px; box-sizing:border-box; margin-bottom:10px;
-    }
-    .modal-actions { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
-    #modalStatus { color:#ffcc00; min-height:1.2em; font-size:13px; margin-top:8px; }
     .my-actions { text-align:center; white-space:nowrap; }
   </style>
 </head>
@@ -65,27 +48,11 @@
     <p id="seasonMeta" class="meta">Loading…</p>
     <p id="calendarBanner" class="meta" style="display:none;margin-top:-8px;border:1px solid #444;background:#1a1a22;padding:10px 12px;border-radius:6px;"></p>
     <p id="fixturesHint" class="meta" style="margin-top:-8px;">
-      Your club’s games are highlighted — use <b>Enter result</b> or go to
-      <a href="matchday.html" style="color:#ff9900;">Match Day</a>.
+      Your club’s games are highlighted. <b>Enter result</b> opens
+      <a href="matchday.html" style="color:#ff9900;">Match Day</a> — score plus squad stats (11 starters, goals, ratings).
     </p>
     <div class="toolbar" id="divisionToolbar"></div>
     <div id="fixturesRoot"></div>
-  </div>
-
-  <div id="resultModal" class="modal-backdrop">
-    <div class="modal-box">
-      <h3 id="modalTitle">Enter result</h3>
-      <p id="modalFixtureLine" style="color:#ccc;font-size:14px;margin:0 0 12px;"></p>
-      <label id="modalHomeLabel">Home goals</label>
-      <input type="number" id="modalHomeGoals" min="0" max="99" value="0">
-      <label id="modalAwayLabel">Away goals</label>
-      <input type="number" id="modalAwayGoals" min="0" max="99" value="0">
-      <div class="modal-actions">
-        <button type="button" id="modalSubmitBtn" class="button" style="padding:10px 18px;background:#ff9900;color:#111;border:none;border-radius:6px;font-weight:bold;cursor:pointer;">Submit for confirmation</button>
-        <button type="button" id="modalCancelBtn" class="button secondary" style="padding:10px 18px;background:#444;color:#ddd;border:none;border-radius:6px;cursor:pointer;">Cancel</button>
-      </div>
-      <div id="modalStatus"></div>
-    </div>
   </div>
 
   <script type="module" src="fixtures.js"></script>
