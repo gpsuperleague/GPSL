@@ -4,12 +4,13 @@ import {
   loadCurrentSeason,
   loadStandingsWithPrizes,
   loadLeagueFixtures,
+  loadShieldSpoonPlayoffQualifiers,
   groupStandingsByDivision,
   buildVenueStandings,
   rankVenueStandings,
   LEAGUE_DIVISIONS,
-  statusForPosition,
-  prestigeBarKey,
+  statusForStanding,
+  prestigeBarKeyForStanding,
   leagueTintKey,
   leagueBoundaryKey,
   PRESTIGE_CUP_BAR_COLORS,
@@ -87,6 +88,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
     panelTitle = DIVISION_TITLES[division],
     rankHeader = "#",
     tableClass = "standings-table",
+    playoffQualifiers = shieldSpoonPlayoffQualifiers,
   } = opts;
 
   const panel = document.createElement("div");
@@ -112,7 +114,12 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
     .map((row) => {
       const displayRank = row[rankField];
       const leaguePos = row.table_position;
-      const prestigeKey = prestigeBarKey(division, leaguePos);
+      const prestigeKey = prestigeBarKeyForStanding(
+        division,
+        leaguePos,
+        row.club_short_name,
+        playoffQualifiers
+      );
       const tintKey = leagueTintKey(division, leaguePos);
       const leagueKey = leagueBoundaryKey(division, leaguePos);
       const prestigeBoundary =
@@ -142,7 +149,12 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
         prevPrestigeKey = prestigeKey;
         prevLeagueKey = leagueKey;
       }
-      const statusText = statusForPosition(division, leaguePos).join(" · ");
+      const statusText = statusForStanding(
+        division,
+        leaguePos,
+        row.club_short_name,
+        playoffQualifiers
+      ).join(" · ");
       const mine =
         myClub?.short &&
         normalizeClubKey(row.club_short_name) === normalizeClubKey(myClub.short)
@@ -215,6 +227,10 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
 let standingsGroups = {};
 let venueStandingsGroups = { home: {}, away: {} };
 let myClubRef = { short: null, name: null };
+let shieldSpoonPlayoffQualifiers = {
+  championship_a: {},
+  championship_b: {},
+};
 
 function divisionFilterState() {
   const state = {};
@@ -386,10 +402,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       : ""
   } · 3 pts win · 1 pt draw`;
 
-  const [standings, fixtures] = await Promise.all([
+  const [standings, fixtures, playoffQualifiers] = await Promise.all([
     loadStandingsWithPrizes(supabase),
     loadLeagueFixtures(supabase),
+    loadShieldSpoonPlayoffQualifiers(supabase, season.id),
   ]);
+  shieldSpoonPlayoffQualifiers = playoffQualifiers;
   standingsGroups = groupStandingsByDivision(standings);
   buildVenueGroups(standings, fixtures);
 

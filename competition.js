@@ -947,16 +947,89 @@ export function prestigeCupForPosition(division, position) {
   return null;
 }
 
+const CH_PLAYOFF_DIVISIONS = ["championship_a", "championship_b"];
+
+/** CH 16v17 Shield/Spoon playoff results saved in admin (per division). */
+export function parseShieldSpoonPlayoffQualifiers(rows) {
+  const map = {
+    championship_a: {},
+    championship_b: {},
+  };
+  for (const row of rows || []) {
+    if (!map[row.division]) continue;
+    if (row.cup_code === "shield") map[row.division].shield = row.club_short_name;
+    if (row.cup_code === "spoon") map[row.division].spoon = row.club_short_name;
+  }
+  return map;
+}
+
+export async function loadShieldSpoonPlayoffQualifiers(supabase, seasonId) {
+  const empty = parseShieldSpoonPlayoffQualifiers([]);
+  if (!seasonId) return empty;
+
+  const { data, error } = await supabase
+    .from("competition_cup_manual_qualifiers")
+    .select("division, cup_code, club_short_name")
+    .eq("season_id", seasonId)
+    .in("division", CH_PLAYOFF_DIVISIONS)
+    .in("cup_code", ["shield", "spoon"]);
+
+  if (error) {
+    console.error("loadShieldSpoonPlayoffQualifiers:", error);
+    return empty;
+  }
+  return parseShieldSpoonPlayoffQualifiers(data);
+}
+
+/** Prestige cup for one club — uses CH 16v17 playoff result when table position alone is ambiguous. */
+export function prestigeCupForStanding(
+  division,
+  position,
+  clubShortName,
+  playoffQualifiers = null
+) {
+  const fromTable = prestigeCupForPosition(division, position);
+  if (fromTable) return fromTable;
+
+  if (
+    !CH_PLAYOFF_DIVISIONS.includes(division) ||
+    (position !== 16 && position !== 17)
+  ) {
+    return null;
+  }
+
+  const divQ = playoffQualifiers?.[division];
+  if (!divQ) return null;
+
+  const me = normalizeClubKey(clubShortName);
+  if (divQ.shield && normalizeClubKey(divQ.shield) === me) return "Shield";
+  if (divQ.spoon && normalizeClubKey(divQ.spoon) === me) return "Spoon";
+  return null;
+}
+
 /**
  * Status column: Champion (1st) · prestige cup · league movement.
  * SuperLeague places 17–20 qualify for Shield.
  */
 export function statusForPosition(division, position) {
+  return statusForStanding(division, position, null, null);
+}
+
+export function statusForStanding(
+  division,
+  position,
+  clubShortName,
+  playoffQualifiers = null
+) {
   const tags = [];
   if (position === 1) tags.push("Champion");
   if (position === 2) tags.push("Runner-up");
 
-  const cup = prestigeCupForPosition(division, position);
+  const playoffCup =
+    clubShortName && playoffQualifiers
+      ? prestigeCupForStanding(division, position, clubShortName, playoffQualifiers)
+      : null;
+  const cup = playoffCup || prestigeCupForPosition(division, position);
   if (cup) tags.push(cup);
 
   if (division === "superleague") {
@@ -965,7 +1038,7 @@ export function statusForPosition(division, position) {
     return tags;
   }
 
-  if (position >= 16 && position <= 17) tags.push("Shield/Spoon PO");
+  if (position >= 16 && position <= 17 && !playoffCup) tags.push("Shield/Spoon PO");
   if (position <= 2) tags.push("Promotion");
   if (position >= 3 && position <= 6) tags.push("Playoffs");
   return tags;
@@ -978,7 +1051,21 @@ export function zonesForPosition(division, position) {
 
 /** Left bar colour: prestige cup (Super8 / Plate / Shield / Spoon). */
 export function prestigeBarKey(division, position) {
-  const cup = prestigeCupForPosition(division, position);
+  return prestigeBarKeyForStanding(division, position, null, null);
+}
+
+export function prestigeBarKeyForStanding(
+  division,
+  position,
+  clubShortName,
+  playoffQualifiers = null
+) {
+  const cup = prestigeCupForStanding(
+    division,
+    position,
+    clubShortName,
+    playoffQualifiers
+  );
   return cup ? cup.toLowerCase() : "none";
 }
 
