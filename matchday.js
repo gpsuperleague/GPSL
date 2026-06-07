@@ -21,6 +21,11 @@ import {
   loadHolidayPlayContext,
   isFixtureHolidayPlayable,
 } from "./owner_holidays.js";
+import {
+  initMatchdaySquadPanel,
+  getDefaultStarters,
+  getSquadPlayerIds,
+} from "./matchday_squad.js";
 
 let myClub = { short: null, name: null };
 let calendarStatus = null;
@@ -29,7 +34,10 @@ let confirmMode = null;
 let myDivision = null;
 let upcomingFixtures = [];
 let allLeagueFixtures = [];
+let allSquadPlayers = [];
 let squadPlayers = [];
+let matchdaySquadRows = [];
+let squadPanelApi = null;
 
 const MAX_STARTERS = 11;
 const MAX_SUBS = 5;
@@ -734,6 +742,7 @@ function updateLineupCounter() {
 
 async function loadSquadPlayers() {
   if (!myClub.short) {
+    allSquadPlayers = [];
     squadPlayers = [];
     return;
   }
@@ -744,10 +753,98 @@ async function loadSquadPlayers() {
 
   if (error) {
     console.error("loadSquadPlayers:", error);
+    allSquadPlayers = [];
     squadPlayers = [];
     return;
   }
-  squadPlayers = sortPlayersByPosition(data || []);
+  allSquadPlayers = sortPlayersByPosition(data || []);
+  applyMatchdaySquadFilter();
+}
+
+async function loadMatchdaySquad() {
+  matchdaySquadRows = [];
+  const { data, error } = await supabase
+    .from("club_matchday_squad_public")
+    .select("*");
+
+  if (error) {
+    if (error.code !== "PGRST205") {
+      console.error("loadMatchdaySquad:", error);
+    }
+    return;
+  }
+  matchdaySquadRows = data || [];
+}
+
+function applyMatchdaySquadFilter() {
+  const ids = getSquadPlayerIds(matchdaySquadRows);
+  if (!ids?.size) {
+    squadPlayers = [...allSquadPlayers];
+    return;
+  }
+  squadPlayers = allSquadPlayers.filter((p) =>
+    ids.has(String(p.Konami_ID))
+  );
+}
+
+function applyDefaultLineupFromSquad() {
+  const starters = getDefaultStarters(matchdaySquadRows);
+  if (!starters.length) return;
+
+  for (const tr of document.querySelectorAll("#playerStatsBody tr[data-stat-player]")) {
+    const id = tr.dataset.statPlayer;
+    const startCb = tr.querySelector(".stat-started");
+    const subCb = tr.querySelector(".stat-subbed");
+    if (!startCb) continue;
+    const isStarter = starters.includes(id);
+    startCb.checked = isStarter;
+    if (isStarter && subCb) subCb.checked = false;
+  }
+  updateLineupCounter();
+}
+
+async function saveMatchdaySquad(slots) {
+  const { data, error } = await supabase.rpc("club_save_matchday_squad", {
+    p_slots: slots,
+  });
+  if (error) throw new Error(error.message);
+  await loadMatchdaySquad();
+  applyMatchdaySquadFilter();
+  squadPanelApi?.setSavedRows(matchdaySquadRows);
+  renderPlayerStatsTable();
+  const squadStatus = document.getElementById("squadPanelStatus");
+  if (squadStatus) {
+    squadStatus.textContent =
+      `${matchdaySquadRows.length} players saved — stats table filtered to your 23; pitch XI auto-tick Started.`;
+  }
+  return data;
+}
+
+function initSquadPanel() {
+  const root = document.getElementById("matchdaySquadRoot");
+  if (!root) return;
+
+  squadPanelApi = initMatchdaySquadPanel({
+    root,
+    allPlayers: allSquadPlayers,
+    savedRows: matchdaySquadRows,
+    onSave: saveMatchdaySquad,
+    onChange: () => {},
+  });
+}
+
+function setMatchdayTab(tab) {
+  const squadPanel = document.getElementById("squadPanel");
+  const submitPanel = document.getElementById("submitPanel");
+  document.querySelectorAll(".matchday-tabs button").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tab === tab);
+  });
+  if (squadPanel) {
+    squadPanel.classList.toggle("active", tab === "squad");
+  }
+  if (submitPanel) {
+    submitPanel.classList.toggle("hidden", tab !== "submit");
+  }
 }
 
 function renderPlayerStatsTable() {
@@ -781,6 +878,7 @@ function renderPlayerStatsTable() {
     wireRatingInput(tr.querySelector(".stat-rating"));
     tbody.appendChild(tr);
   }
+  applyDefaultLineupFromSquad();
   updateLineupCounter();
 }
 
@@ -1263,7 +1361,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   await loadSquadPlayers();
+  await loadMatchdaySquad();
+  applyMatchdaySquadFilter();
+  initSquadPanel();
   renderPlayerStatsTable();
+
+  document.querySelectorAll(".matchday-tabs button").forEach((btn) => {
+    btn.addEventListener("click", () => setMatchdayTab(btn.dataset.tab));
+  });
+
+  const squadStatus = document.getElementById("squadPanelStatus");
+  if (squadStatus) {
+    if (matchdaySquadRows.length) {
+      squadStatus.textContent =
+        `${matchdaySquadRows.length} players in your default squad — stats table shows only these players; pitch XI auto-tick Started.`;
+    } else {
+      squadStatus.textContent =
+        "No saved squad yet. Set your 23 on the pitch, save, then submit results on the Submit result tab.";
+    }
+  }
 
   calendarStatus = await loadCalendarStatus(supabase);
   holidayContext = await loadHolidayPlayContext();

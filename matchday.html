@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <title>Match Day — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="matchday_squad.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:900px; margin:20px auto 40px; }
@@ -98,7 +99,18 @@
     <p id="pageMeta" class="meta">Loading…</p>
     <p id="calendarBanner" class="meta" style="display:none;border:1px solid #444;background:#1a1a22;padding:10px 12px;border-radius:6px;"></p>
 
-    <div class="panel" id="submitPanel">
+    <div class="matchday-tabs" role="tablist">
+      <button type="button" class="active" data-tab="squad" role="tab">Match squad</button>
+      <button type="button" data-tab="submit" role="tab">Submit result</button>
+    </div>
+
+    <div class="panel squad-panel-wrap active" id="squadPanel">
+      <h2>Default matchday squad</h2>
+      <div id="matchdaySquadRoot"></div>
+      <div id="squadPanelStatus" class="stats-hint" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="panel submit-panel-wrap hidden" id="submitPanel">
       <h2>Submit result</h2>
       <p class="meta" style="margin-top:0;">
         Pick a fixture and enter the score (and optional squad stats below). You can also use

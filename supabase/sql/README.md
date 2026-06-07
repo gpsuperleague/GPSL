@@ -95,6 +95,10 @@ Run once:
 - **Started / Subbed on** on Match Day: run [`competition_match_stats_started_sub.sql`](./competition_match_stats_started_sub.sql) once (adds columns + updates stats apply)
 - **Ratings 0.1–10:** run [`competition_rating_min_0_1.sql`](./competition_rating_min_0_1.sql) once (DB was minimum 1.0)
 
+**Default 23-man matchday squad** (pitch drag-and-drop, auto-starters on stats):
+
+[`club_matchday_squad.sql`](./club_matchday_squad.sql) — owners set 11 + 5 + 7 on **Match Day → Match squad** tab; saved squad filters the stats table and auto-ticks **Started** for the pitch XI.
+
 ### Phase 5 — gate receipts & ledger (after Phase 4)
 
 Run once:
