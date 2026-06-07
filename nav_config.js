@@ -73,7 +73,6 @@ export const NAV_SECTIONS = [
     label: "Owners",
     items: [
       { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings" },
-      { href: "world_cup.html", label: "World Cup", page: "world_cup" },
       { href: "nation_select.html", label: "Nation selection", page: "nation_select" },
       { href: "national_team.html", label: "National team", page: "national_team" },
     ],
