@@ -208,15 +208,33 @@ function clampPct(n) {
   return Math.min(96, Math.max(4, Number(n) || 0));
 }
 
+/** Parse pitch_layout from DB (jsonb object or JSON string). */
+export function normalizePitchLayout(raw) {
+  if (raw == null) return null;
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+  if (typeof raw !== "object" || Array.isArray(raw)) return null;
+  return raw;
+}
+
+export function pitchLayoutHasSlots(raw) {
+  const saved = normalizePitchLayout(raw);
+  if (!saved) return false;
+  return PITCH_SLOT_IDS.some((id) => saved[id] != null);
+}
+
 /** Merge saved layout over template defaults (saved wins for each slot). */
 export function resolvePitchLayout(saved, fallbackFormationId = DEFAULT_FORMATION_ID) {
-  const hasSaved =
-    saved &&
-    typeof saved === "object" &&
-    PITCH_SLOT_IDS.some((id) => saved[id] != null);
+  const layout = normalizePitchLayout(saved);
+  const hasSaved = layout && PITCH_SLOT_IDS.some((id) => layout[id] != null);
 
   const formationId =
-    saved?.formation_id ||
+    layout?.formation_id ||
     (hasSaved ? "custom" : fallbackFormationId);
 
   const base = formationLayout(
@@ -227,7 +245,7 @@ export function resolvePitchLayout(saved, fallbackFormationId = DEFAULT_FORMATIO
 
   if (hasSaved) {
     for (const slotId of PITCH_SLOT_IDS) {
-      const s = saved[slotId];
+      const s = layout[slotId];
       if (!s || typeof s !== "object") continue;
       if (s.x != null && s.y != null) {
         positions[slotId] = {

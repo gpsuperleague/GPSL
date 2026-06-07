@@ -9,6 +9,8 @@ import {
   formationLayout,
   resolvePitchLayout,
   buildPitchLayoutPayload,
+  normalizePitchLayout,
+  pitchLayoutHasSlots,
   PITCH_LABEL_PRESETS,
 } from "./matchday_formations.js";
 
@@ -566,6 +568,7 @@ export function initMatchdaySquadPanel({
   onChange,
   onSave,
   onSaveFormation,
+  onLoadFormation,
 }) {
   let editPositionsMode = false;
   const resolved = resolvePitchLayout(savedPitchLayout);
@@ -717,10 +720,15 @@ export function initMatchdaySquadPanel({
     }
   }
 
+  function replaceSlotMap(target, next) {
+    for (const key of Object.keys(target)) delete target[key];
+    Object.assign(target, next);
+  }
+
   function applyLayoutFromResolved(resolved) {
     currentFormationId = resolved.formationId;
-    slotPositions = { ...resolved.positions };
-    slotLabels = { ...resolved.labels };
+    replaceSlotMap(slotPositions, resolved.positions);
+    replaceSlotMap(slotLabels, resolved.labels);
     formationSelect.value = isTemplateFormationId(currentFormationId)
       ? currentFormationId
       : DEFAULT_FORMATION_ID;
@@ -731,8 +739,8 @@ export function initMatchdaySquadPanel({
   function applyFormation(formationId) {
     const base = formationLayout(formationId);
     currentFormationId = base.formationId;
-    slotPositions = { ...base.positions };
-    slotLabels = { ...base.labels };
+    replaceSlotMap(slotPositions, base.positions);
+    replaceSlotMap(slotLabels, base.labels);
     formationSelect.value = currentFormationId;
     buildPitchSlotElements();
     rerenderPlayerCards();
@@ -823,17 +831,35 @@ export function initMatchdaySquadPanel({
 
   savedFormationSelect.addEventListener("change", syncFormationNameFromSlot);
 
-  root.querySelector("#squadLoadFormationBtn").addEventListener("click", () => {
+  root.querySelector("#squadLoadFormationBtn").addEventListener("click", async () => {
     const slot = Number(savedFormationSelect.value) || 1;
-    const row = savedFormationBySlot(slot);
-    if (!row?.pitch_layout) {
-      alert(`Slot ${slot} is empty. Save a layout first.`);
-      return;
+    statusText.textContent = "Loading formation…";
+    try {
+      let row = savedFormationBySlot(slot);
+      if (onLoadFormation) {
+        row = await onLoadFormation(slot);
+      }
+      if (!row || !pitchLayoutHasSlots(row.pitch_layout)) {
+        alert(`Slot ${slot} is empty. Save a custom formation first.`);
+        statusText.textContent = "";
+        return;
+      }
+      const layout = normalizePitchLayout(row.pitch_layout);
+      applyLayoutFromResolved(resolvePitchLayout(layout));
+      formationNameInput.value = row.name || "";
+      formationSlotSelect.value = String(slot);
+      statusText.textContent = `Loaded “${row.name}”.`;
+
+      const idx = savedFormationRows.findIndex((r) => Number(r.slot_no) === slot);
+      const merged = { slot_no: slot, name: row.name, pitch_layout: layout };
+      if (idx >= 0) savedFormationRows[idx] = { ...savedFormationRows[idx], ...merged };
+      else savedFormationRows.push(merged);
+      renderSavedFormationOptions();
+      savedFormationSelect.value = String(slot);
+    } catch (err) {
+      statusText.textContent = err?.message || "Failed to load formation";
+      alert(err?.message || "Failed to load custom formation.");
     }
-    applyLayoutFromResolved(resolvePitchLayout(row.pitch_layout));
-    formationNameInput.value = row.name || "";
-    formationSlotSelect.value = String(slot);
-    statusText.textContent = `Loaded “${row.name}”.`;
   });
 
   root.querySelector("#squadSaveFormationBtn").addEventListener("click", async () => {
@@ -849,6 +875,12 @@ export function initMatchdaySquadPanel({
     statusText.textContent = "Saving formation…";
     try {
       await onSaveFormation(slot, name, layout);
+      const idx = savedFormationRows.findIndex((r) => Number(r.slot_no) === slot);
+      const row = { slot_no: slot, name, pitch_layout: layout };
+      if (idx >= 0) savedFormationRows[idx] = row;
+      else savedFormationRows.push(row);
+      renderSavedFormationOptions();
+      savedFormationSelect.value = String(slot);
       statusText.textContent = `Saved “${name}” to slot ${slot}.`;
       syncFormationNameFromSlot();
     } catch (err) {
