@@ -588,7 +588,7 @@ export function initMatchdaySquadPanel({
     <p class="squad-hint">
       Drag player cards onto the pitch (11 starters) and bench (12 subs) for your
       <b>default 23-man matchday squad</b>. <b>Click</b> a position label or player on the pitch (or <b>right-click</b> the slot) to change its role (DMF, CMF, etc.).
-      Use <b>Move positions</b> to drag markers. Save up to <b>5 named formations</b> under My formations.
+      Use <b>Move positions</b> to drag markers. Save up to <b>5 custom formations</b> (Custom 1–5).
       Formation presets only apply when you click <b>Apply formation</b>. Starters auto-tick <b>Started</b> on match stats.
     </p>
     <div class="squad-formations-bar">
@@ -599,19 +599,12 @@ export function initMatchdaySquadPanel({
       </div>
       <div class="formation-section-row">
         <span class="formation-section-label">My Formations</span>
-        <select id="squadSavedFormationSelect" class="formation-select" title="Your 5 saved pitch layouts"></select>
+        <select id="squadSavedFormationSelect" class="formation-select" title="Pick Custom 1–5 to load or save"></select>
         <div class="formation-action-group">
           <button type="button" class="button secondary" id="squadLoadFormationBtn">Load Custom Formation</button>
           <button type="button" class="button secondary" id="squadSaveFormationBtn">Save Custom Formation</button>
         </div>
         <input type="text" id="squadFormationName" class="formation-name-input" maxlength="40" placeholder="Formation name" />
-        <select id="squadFormationSlot" class="formation-slot-select" title="Save to slot 1–5">
-          <option value="1">Slot 1</option>
-          <option value="2">Slot 2</option>
-          <option value="3">Slot 3</option>
-          <option value="4">Slot 4</option>
-          <option value="5">Slot 5</option>
-        </select>
       </div>
     </div>
     <div class="squad-toolbar">
@@ -652,7 +645,6 @@ export function initMatchdaySquadPanel({
   const formationSelect = root.querySelector("#squadFormationSelect");
   const savedFormationSelect = root.querySelector("#squadSavedFormationSelect");
   const formationNameInput = root.querySelector("#squadFormationName");
-  const formationSlotSelect = root.querySelector("#squadFormationSlot");
 
   formationSelect.innerHTML = FORMATION_LIST.map(
     (f) => `<option value="${f.id}">${f.name}</option>`
@@ -673,7 +665,9 @@ export function initMatchdaySquadPanel({
       const row = savedFormationBySlot(slot);
       const opt = document.createElement("option");
       opt.value = String(slot);
-      opt.textContent = row ? `${slot}. ${row.name}` : `${slot}. (empty)`;
+      opt.textContent = row?.name
+        ? `Custom ${slot} — ${row.name}`
+        : `Custom ${slot} — (empty)`;
       savedFormationSelect.appendChild(opt);
     }
     syncFormationNameFromSlot();
@@ -681,7 +675,6 @@ export function initMatchdaySquadPanel({
 
   function syncFormationNameFromSlot() {
     const slot = Number(savedFormationSelect.value) || 1;
-    formationSlotSelect.value = String(slot);
     const row = savedFormationBySlot(slot);
     formationNameInput.value = row?.name || "";
   }
@@ -847,7 +840,6 @@ export function initMatchdaySquadPanel({
       const layout = normalizePitchLayout(row.pitch_layout);
       applyLayoutFromResolved(resolvePitchLayout(layout));
       formationNameInput.value = row.name || "";
-      formationSlotSelect.value = String(slot);
       statusText.textContent = `Loaded “${row.name}”.`;
 
       const idx = savedFormationRows.findIndex((r) => Number(r.slot_no) === slot);
@@ -864,7 +856,7 @@ export function initMatchdaySquadPanel({
 
   root.querySelector("#squadSaveFormationBtn").addEventListener("click", async () => {
     if (!onSaveFormation) return;
-    const slot = Number(formationSlotSelect.value) || 1;
+    const slot = Number(savedFormationSelect.value) || 1;
     const name = formationNameInput.value.trim();
     if (!name) {
       alert("Enter a name for this formation.");
