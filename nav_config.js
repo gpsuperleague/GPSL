@@ -46,10 +46,6 @@ export const NAV_SECTIONS = [
       { href: "cups.html?cup=plate", label: "Plate", page: "cups", cup: "plate", indent: true },
       { href: "cups.html?cup=shield", label: "Shield", page: "cups", cup: "shield", indent: true },
       { href: "cups.html?cup=spoon", label: "Spoon", page: "cups", cup: "spoon", indent: true },
-      { heading: true, label: "International" },
-      { href: "world_cup.html", label: "World Cup", page: "world_cup", indent: true },
-      { href: "nation_select.html", label: "Nation selection", page: "nation_select", indent: true },
-      { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings", indent: true },
     ],
   },
   {
@@ -62,9 +58,6 @@ export const NAV_SECTIONS = [
       { href: "stadium.html", label: "Stadium", page: "stadium" },
       { href: "matchday.html", label: "Match Day", page: "matchday" },
       { href: "league_stats.html", label: "Stats", page: "league_stats" },
-      { href: "world_cup.html", label: "World Cup", page: "world_cup" },
-      { href: "nation_select.html", label: "Nation selection", page: "nation_select" },
-      { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings" },
       { href: "transfer_center.html", label: "Transfer Centre", page: "transfer_center" },
       {
         href: "transfer_center.html#scouting-targets",
@@ -73,6 +66,16 @@ export const NAV_SECTIONS = [
         hash: "scouting-targets",
         indent: true,
       },
+    ],
+  },
+  {
+    id: "owners",
+    label: "Owners",
+    items: [
+      { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings" },
+      { href: "world_cup.html", label: "World Cup", page: "world_cup" },
+      { href: "nation_select.html", label: "Nation selection", page: "nation_select" },
+      { href: "national_team.html", label: "National team", page: "national_team" },
     ],
   },
 ];
