@@ -7,6 +7,7 @@ import {
   formatSeasonSaleType,
 } from "./clubs_lookup.js";
 import { DIVISION_LABELS } from "./competition.js";
+import { renderTrophyCabinet } from "./history_trophies.js";
 
 const AWARD_LABELS = {
   ballon_dor: "Ballon d'Or",
@@ -50,19 +51,8 @@ function showError(msg) {
 
 function renderHonours(honours) {
   const el = document.getElementById("honoursPanel");
-  if (!honours?.length) {
-    el.innerHTML = '<p class="empty">No honours archived yet.</p>';
-    return;
-  }
-  el.innerHTML = honours
-    .map(
-      (h) => `
-      <div class="honour-card">
-        <b>${h.honour_label || h.honour_type}</b>
-        <div>${h.season_label || "—"}</div>
-      </div>`
-    )
-    .join("");
+  if (!el) return;
+  el.innerHTML = renderTrophyCabinet(honours || []);
 }
 
 function renderSeasons(seasons) {
