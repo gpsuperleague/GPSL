@@ -57,7 +57,6 @@ export const NAV_SECTIONS = [
       { href: "history.html", label: "Club History", page: "history" },
       { href: "stadium.html", label: "Stadium", page: "stadium" },
       { href: "matchday.html", label: "Match Day", page: "matchday" },
-      { href: "league_stats.html", label: "Stats", page: "league_stats" },
       { href: "transfer_center.html", label: "Transfer Centre", page: "transfer_center" },
       {
         href: "transfer_center.html#scouting-targets",
