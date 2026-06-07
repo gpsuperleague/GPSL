@@ -795,6 +795,39 @@ FROM public.competition_club_season_archive a
 JOIN public."Clubs" c ON c."ShortName" = a.club_short_name;
 
 -- ---------------------------------------------------------------------------
+-- Transfer season label (for club history records)
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.transfer_history_season_label(p_transfer_time timestamptz)
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT coalesce(
+    (
+      SELECT s.label
+      FROM public.competition_seasons s
+      WHERE p_transfer_time IS NOT NULL
+        AND s.started_at IS NOT NULL
+        AND p_transfer_time >= s.started_at
+        AND (s.ended_at IS NULL OR p_transfer_time < s.ended_at)
+      ORDER BY s.started_at DESC
+      LIMIT 1
+    ),
+    (
+      SELECT s.label
+      FROM public.competition_seasons s
+      WHERE s.is_current
+      ORDER BY s.id DESC
+      LIMIT 1
+    ),
+    to_char(p_transfer_time AT TIME ZONE 'UTC', 'YYYY')
+  );
+$$;
+
+-- ---------------------------------------------------------------------------
 -- Club history bundle RPC
 -- ---------------------------------------------------------------------------
 
@@ -871,7 +904,56 @@ BEGIN
     'season_top_assists',
       (SELECT row_to_json(s) FROM season_totals s ORDER BY assists DESC, goals DESC LIMIT 1),
     'season_top_potm',
-      (SELECT row_to_json(s) FROM season_totals s ORDER BY potm_awards DESC, goals DESC LIMIT 1)
+      (SELECT row_to_json(s) FROM season_totals s ORDER BY potm_awards DESC, goals DESC LIMIT 1),
+    'record_signing',
+      (
+        SELECT row_to_json(x)
+        FROM (
+          SELECT
+            h.player_id::text AS player_id,
+            p."Name" AS player_name,
+            h.fee::numeric AS fee,
+            coalesce(h.agent_fee, 0)::numeric AS agent_fee,
+            (coalesce(h.fee, 0) + coalesce(h.agent_fee, 0))::numeric AS total_cost,
+            public.transfer_history_season_label(h.transfer_time) AS season_label,
+            h.seller_club_id,
+            h.buyer_club_id,
+            h.foreign_buyer_name,
+            h.transfer_sale_note,
+            h.transfer_time
+          FROM public."Transfer_History" h
+          LEFT JOIN public."Players" p ON p."Konami_ID"::text = h.player_id::text
+          WHERE upper(btrim(h.buyer_club_id)) = v_club
+            AND coalesce(h.fee, 0) > 0
+          ORDER BY
+            (coalesce(h.fee, 0) + coalesce(h.agent_fee, 0)) DESC,
+            h.fee DESC,
+            h.transfer_time DESC
+          LIMIT 1
+        ) x
+      ),
+    'record_sale',
+      (
+        SELECT row_to_json(x)
+        FROM (
+          SELECT
+            h.player_id::text AS player_id,
+            p."Name" AS player_name,
+            h.fee::numeric AS fee,
+            public.transfer_history_season_label(h.transfer_time) AS season_label,
+            h.seller_club_id,
+            h.buyer_club_id,
+            h.foreign_buyer_name,
+            h.transfer_sale_note,
+            h.transfer_time
+          FROM public."Transfer_History" h
+          LEFT JOIN public."Players" p ON p."Konami_ID"::text = h.player_id::text
+          WHERE upper(btrim(h.seller_club_id)) = v_club
+            AND coalesce(h.fee, 0) > 0
+          ORDER BY h.fee DESC, h.transfer_time DESC
+          LIMIT 1
+        ) x
+      )
   )
   INTO v_records;
 
@@ -997,6 +1079,8 @@ GRANT SELECT ON public.competition_club_season_history_public TO authenticated;
 GRANT SELECT ON public.competition_club_season_history_public TO anon;
 
 GRANT EXECUTE ON FUNCTION public.competition_admin_archive_season(bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.transfer_history_season_label(timestamptz) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.transfer_history_season_label(timestamptz) TO anon;
 GRANT EXECUTE ON FUNCTION public.competition_club_history_bundle(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_club_history_bundle(text) TO anon;
 GRANT EXECUTE ON FUNCTION public.competition_player_career_bundle(text) TO authenticated;

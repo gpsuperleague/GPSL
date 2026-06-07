@@ -225,7 +225,7 @@ Run once after cup/match-stats SQL:
 [`competition_history.sql`](./competition_history.sql)
 
 - **Admin → Season management → Archive season stats** — snapshots league tables, cup winners, player season rows & awards
-- **`history.html`** — honours, positions by season, club records, Ballon winners at your club
+- **`history.html`** — honours, positions by season, club records (incl. record signing & sale from `Transfer_History`), Ballon winners at your club
 - **`player_career.html?id=…`** — GPSL stint history (linked from squad player names)
 - Ballon points: role-weighted (GK/DEF clean sheets, goals, assists, POTM, avg rating)
 

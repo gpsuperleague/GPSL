@@ -1,5 +1,11 @@
 import { supabase, initGlobal } from "./global.js";
-import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import {
+  loadClubsMap,
+  fullClubName,
+  displayClubName,
+  formatSeasonSaleDestination,
+  formatSeasonSaleType,
+} from "./clubs_lookup.js";
 import { DIVISION_LABELS } from "./competition.js";
 
 const AWARD_LABELS = {
@@ -12,6 +18,16 @@ const AWARD_LABELS = {
 
 function divisionLabel(div) {
   return DIVISION_LABELS[div] || div || "—";
+}
+
+function formatMoney(amount) {
+  if (amount == null || Number.isNaN(Number(amount))) return "—";
+  return `₿ ${Number(amount).toLocaleString("en-GB")}`;
+}
+
+function signingSourceLabel(row) {
+  if (!row?.seller_club_id) return "Free agent / draft";
+  return displayClubName(row.seller_club_id);
 }
 
 function playerLink(id, name) {
@@ -152,6 +168,24 @@ function renderRecords(records) {
       r.season_top_potm,
       (x) => `${x.potm_awards ?? 0} awards (${x.season_label || "season"})`
     ),
+    recordCard(
+      "Record signing",
+      r.record_signing,
+      (x) => {
+        let line = `${formatMoney(x.fee)}`;
+        if (Number(x.agent_fee) > 0) {
+          line += ` (+ ${formatMoney(x.agent_fee)} agent)`;
+        }
+        line += ` · ${x.season_label || "—"} · from ${signingSourceLabel(x)}`;
+        return line;
+      }
+    ),
+    recordCard(
+      "Record sale",
+      r.record_sale,
+      (x) =>
+        `${formatMoney(x.fee)} · ${x.season_label || "—"} · ${formatSeasonSaleDestination(x)} (${formatSeasonSaleType(x)})`
+    ),
   ].join("");
 }
 
@@ -209,7 +243,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const title = fullClubName(shortName) || club.Club || shortName;
   document.getElementById("historyTitle").textContent = `${title} — History`;
   document.getElementById("historySubtitle").textContent =
-    "Honours, league positions, club records & Ballon d'Or winners.";
+    "Honours, league positions, records (incl. signings & sales) & Ballon d'Or winners.";
 
   const { data, error } = await supabase.rpc("competition_club_history_bundle", {
     p_club_short_name: shortName,
