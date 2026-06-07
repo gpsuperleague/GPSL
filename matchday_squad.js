@@ -586,12 +586,12 @@ export function initMatchdaySquadPanel({
       Drag player cards onto the pitch (11 starters) and bench (12 subs) for your
       <b>default 23-man matchday squad</b>. <b>Click</b> a position label or player on the pitch (or <b>right-click</b> the slot) to change its role (DMF, CMF, etc.).
       Use <b>Move positions</b> to drag markers. Save up to <b>5 named formations</b> under My formations.
-      Templates only apply when you click <b>Apply template</b>. Starters auto-tick <b>Started</b> on match stats.
+      Formation presets only apply when you click <b>Apply formation</b>. Starters auto-tick <b>Started</b> on match stats.
     </p>
     <div class="squad-formations-bar">
-      <span class="formation-section-label">Template</span>
+      <span class="formation-section-label">Formations</span>
       <select id="squadFormationSelect" class="formation-select" title="Starting layout only — use Apply to reset markers"></select>
-      <button type="button" class="button secondary" id="squadApplyTemplateBtn">Apply template</button>
+      <button type="button" class="button secondary" id="squadApplyTemplateBtn">Apply formation</button>
       <span class="formation-section-label">My formations</span>
       <select id="squadSavedFormationSelect" class="formation-select" title="Your 5 saved pitch layouts"></select>
       <button type="button" class="button secondary" id="squadLoadFormationBtn">Load</button>
@@ -807,7 +807,7 @@ export function initMatchdaySquadPanel({
     const name = FORMATION_LIST.find((f) => f.id === templateId)?.name || templateId;
     if (
       !confirm(
-        `Apply template “${name}”? This resets all pitch marker positions and role labels (players stay put).`
+        `Apply formation “${name}”? This resets all pitch marker positions and role labels (players stay put).`
       )
     ) {
       return;
