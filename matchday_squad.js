@@ -14,6 +14,7 @@ import {
   buildPitchLayoutPayload,
   normalizePitchLayout,
   pitchLayoutHasSlots,
+  validateFormationMirroring,
   PITCH_LABEL_PRESETS,
 } from "./matchday_formations.js";
 
@@ -601,7 +602,8 @@ export function initMatchdaySquadPanel({
       Drag player cards onto the pitch (11 starters) and bench (12 subs) for your
       <b>default 23-man matchday squad</b>. <b>Click</b> a position label or player on the pitch (or <b>right-click</b> the slot) to change its role (DMF, CMF, etc.).
       Use <b>Move positions</b> to drag markers. Save up to <b>5 custom formations</b> (Custom 1–5).
-      Formation presets only apply when you click <b>Apply formation</b>. Starters auto-tick <b>Started</b> on match stats.
+      Formation presets only apply when you click <b>Apply formation</b>. Custom layouts must follow <b>GPSL mirroring</b>
+      (LB↔RB, LMF↔RMF, LWF↔RWF; max 2 CF/SS combined). Starters auto-tick <b>Started</b> on match stats.
     </p>
     <div class="squad-formations-bar">
       <div class="formation-section-row">
@@ -736,6 +738,18 @@ export function initMatchdaySquadPanel({
         </div>`;
       pitchEl.appendChild(wrap);
     }
+  }
+
+  function guardMirroring() {
+    const result = validateFormationMirroring(slotLabels);
+    if (!result.ok) {
+      alert(
+        `Cannot save — this formation breaks GPSL mirroring rules:\n\n${result.errors.join("\n")}`
+      );
+      statusText.textContent = result.message;
+      return false;
+    }
+    return true;
   }
 
   function replaceSlotMap(target, next) {
@@ -888,6 +902,8 @@ export function initMatchdaySquadPanel({
       formationNameInput.focus();
       return;
     }
+    if (!guardMirroring()) return;
+
     const layout = buildPitchLayoutPayload(slotPositions, slotLabels, "custom");
     statusText.textContent = "Saving formation…";
     try {
@@ -939,6 +955,8 @@ export function initMatchdaySquadPanel({
         return;
       }
     }
+    if (!guardMirroring()) return;
+
     statusText.textContent = "Saving…";
     try {
       await onSave(

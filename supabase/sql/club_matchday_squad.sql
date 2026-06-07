@@ -35,6 +35,85 @@ CREATE INDEX IF NOT EXISTS club_matchday_squad_player_club_idx
   ON public.club_matchday_squad_player (club_short_name, slot_kind, sort_order);
 
 -- ---------------------------------------------------------------------------
+-- GPSL mirroring — pitch role labels must balance (LB↔RB, LMF↔RMF, LWF↔RWF;
+-- max 2 CF/SS combined).
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.validate_pitch_layout_mirroring(p_layout jsonb)
+RETURNS text
+LANGUAGE plpgsql
+IMMUTABLE
+AS $function$
+DECLARE
+  v_has_lb boolean := false;
+  v_has_rb boolean := false;
+  v_has_lmf boolean := false;
+  v_has_rmf boolean := false;
+  v_has_lwf boolean := false;
+  v_has_rwf boolean := false;
+  v_cf_ss_count int := 0;
+  v_key text;
+  v_label text;
+  v_val jsonb;
+BEGIN
+  IF p_layout IS NULL OR jsonb_typeof(p_layout) IS DISTINCT FROM 'object' THEN
+    RETURN NULL;
+  END IF;
+
+  FOR v_key, v_val IN SELECT key, value FROM jsonb_each(p_layout)
+  LOOP
+    IF v_key = 'formation_id' THEN
+      CONTINUE;
+    END IF;
+    IF jsonb_typeof(v_val) IS DISTINCT FROM 'object' THEN
+      CONTINUE;
+    END IF;
+
+    v_label := upper(btrim(v_val->>'label'));
+    IF v_label IS NULL OR v_label = '' THEN
+      CONTINUE;
+    END IF;
+
+    IF v_label = 'LB' THEN v_has_lb := true;
+    ELSIF v_label = 'RB' THEN v_has_rb := true;
+    ELSIF v_label = 'LMF' THEN v_has_lmf := true;
+    ELSIF v_label = 'RMF' THEN v_has_rmf := true;
+    ELSIF v_label = 'LWF' THEN v_has_lwf := true;
+    ELSIF v_label = 'RWF' THEN v_has_rwf := true;
+    ELSIF v_label IN ('CF', 'SS') THEN v_cf_ss_count := v_cf_ss_count + 1;
+    END IF;
+  END LOOP;
+
+  IF v_has_lb AND NOT v_has_rb THEN
+    RETURN 'Mirroring: LB requires RB';
+  END IF;
+  IF v_has_rb AND NOT v_has_lb THEN
+    RETURN 'Mirroring: RB requires LB';
+  END IF;
+  IF v_has_lmf AND NOT v_has_rmf THEN
+    RETURN 'Mirroring: LMF requires RMF';
+  END IF;
+  IF v_has_rmf AND NOT v_has_lmf THEN
+    RETURN 'Mirroring: RMF requires LMF';
+  END IF;
+  IF v_has_lwf AND NOT v_has_rwf THEN
+    RETURN 'Mirroring: LWF requires RWF';
+  END IF;
+  IF v_has_rwf AND NOT v_has_lwf THEN
+    RETURN 'Mirroring: RWF requires LWF';
+  END IF;
+  IF v_cf_ss_count > 2 THEN
+    RETURN format(
+      'Mirroring: only 2 CF/SS roles allowed combined (found %s)',
+      v_cf_ss_count
+    );
+  END IF;
+
+  RETURN NULL;
+END;
+$function$;
+
+-- ---------------------------------------------------------------------------
 -- Save squad (owner's club only)
 -- p_slots: [{ player_id, slot_kind, pitch_slot?, sort_order? }, ...]
 -- ---------------------------------------------------------------------------
@@ -62,6 +141,7 @@ DECLARE
   v_bench_count int := 0;
   v_reserve_count int := 0;
   v_layout jsonb;
+  v_mirror_err text;
 BEGIN
   IF v_club IS NULL OR v_club = '' THEN
     RAISE EXCEPTION 'No club linked to your account';
@@ -126,6 +206,11 @@ BEGIN
   v_layout := coalesce(p_pitch_layout, '{}'::jsonb);
   IF jsonb_typeof(v_layout) IS DISTINCT FROM 'object' THEN
     RAISE EXCEPTION 'p_pitch_layout must be a JSON object';
+  END IF;
+
+  v_mirror_err := public.validate_pitch_layout_mirroring(v_layout);
+  IF v_mirror_err IS NOT NULL THEN
+    RAISE EXCEPTION '%', v_mirror_err;
   END IF;
 
   INSERT INTO public.club_matchday_squad (club_short_name, pitch_layout, updated_at)
@@ -193,6 +278,7 @@ AS $function$
 DECLARE
   v_club text := public.my_club_shortname();
   v_name text := btrim(p_name);
+  v_mirror_err text;
 BEGIN
   IF v_club IS NULL OR v_club = '' THEN
     RAISE EXCEPTION 'No club linked to your account';
@@ -208,6 +294,11 @@ BEGIN
 
   IF p_pitch_layout IS NULL OR jsonb_typeof(p_pitch_layout) IS DISTINCT FROM 'object' THEN
     RAISE EXCEPTION 'p_pitch_layout must be a JSON object';
+  END IF;
+
+  v_mirror_err := public.validate_pitch_layout_mirroring(p_pitch_layout);
+  IF v_mirror_err IS NOT NULL THEN
+    RAISE EXCEPTION '%', v_mirror_err;
   END IF;
 
   INSERT INTO public.club_matchday_squad (club_short_name, updated_at)
@@ -335,6 +426,7 @@ GRANT SELECT ON public.club_matchday_saved_formation TO authenticated;
 GRANT SELECT ON public.club_matchday_squad_public TO authenticated;
 GRANT SELECT ON public.club_matchday_pitch_layout_public TO authenticated;
 GRANT SELECT ON public.club_matchday_saved_formation_public TO authenticated;
+GRANT EXECUTE ON FUNCTION public.validate_pitch_layout_mirroring(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_save_matchday_squad(jsonb, jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_save_matchday_formation(smallint, text, jsonb) TO authenticated;
 

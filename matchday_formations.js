@@ -315,6 +315,13 @@ export const PITCH_SLOT_IDS = [
 ];
 
 /** Singular positions only — tap a marker to pick from these. */
+/** GPSL mirroring — paired roles must appear together on the pitch. */
+export const MIRROR_LABEL_PAIRS = [
+  ["LB", "RB"],
+  ["LMF", "RMF"],
+  ["LWF", "RWF"],
+];
+
 export const PITCH_LABEL_PRESETS = [
   "GK",
   "LB",
@@ -349,6 +356,45 @@ export function formationDisplayName(formation) {
   return formation.description
     ? `${formation.name} — ${formation.description}`
     : formation.name;
+}
+
+export function countPitchLabels(slotLabels) {
+  const counts = {};
+  for (const slotId of PITCH_SLOT_IDS) {
+    const label = String(slotLabels[slotId] || "").trim().toUpperCase();
+    if (!label) continue;
+    counts[label] = (counts[label] || 0) + 1;
+  }
+  return counts;
+}
+
+/** Validate GPSL mirroring rules for a custom pitch layout. */
+export function validateFormationMirroring(slotLabels) {
+  const counts = countPitchLabels(slotLabels);
+  const has = (label) => (counts[label] || 0) > 0;
+  const errors = [];
+
+  for (const [left, right] of MIRROR_LABEL_PAIRS) {
+    if (has(left) && !has(right)) {
+      errors.push(`Mirroring: ${left} requires ${right}.`);
+    }
+    if (has(right) && !has(left)) {
+      errors.push(`Mirroring: ${right} requires ${left}.`);
+    }
+  }
+
+  const cfSsCount = (counts.CF || 0) + (counts.SS || 0);
+  if (cfSsCount > 2) {
+    errors.push(
+      `Mirroring: only 2 CF/SS roles allowed combined (you have ${cfSsCount}).`
+    );
+  }
+
+  return {
+    ok: errors.length === 0,
+    errors,
+    message: errors.join(" "),
+  };
 }
 
 export function getFormation(id) {
