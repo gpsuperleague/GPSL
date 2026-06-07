@@ -90,6 +90,29 @@
     }
     table.stats-table input.stat-rating-combo { width:52px; }
     table.stats-table input[type="checkbox"] { transform:scale(1.1); }
+    table.stats-table tr.squad-bench-stat {
+      background: rgba(70, 130, 200, 0.14);
+    }
+    table.stats-table tr.squad-bench-stat:hover {
+      background: rgba(70, 130, 200, 0.22);
+    }
+    table.stats-table tr.squad-bench-stat td.name {
+      border-left: 3px solid #5a9fd4;
+    }
+    table.stats-table .squad-bench-tag {
+      display: inline-block;
+      margin-left: 4px;
+      padding: 1px 5px;
+      font-size: 9px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #9cd4ff;
+      background: rgba(70, 130, 200, 0.35);
+      border: 1px solid rgba(90, 159, 212, 0.5);
+      border-radius: 3px;
+      vertical-align: middle;
+    }
   </style>
 </head>
 <body>
@@ -191,6 +214,7 @@
         <p class="stats-hint" id="statsPanelHint">
           You must tick exactly <b>11 Started</b> (subs optional: 0–5 <b>Subbed on</b>). Ratings 0.1–10.
           Player goals must match <b>your</b> total goals (90 min score, or after-ET total if extra time was played). Not penalties. One POTM max.
+          If you saved a default squad, <b>bench players are highlighted</b> (blue row + Sub tag) to help pick who subbed on.
         </p>
         <div class="stats-wrap">
           <table class="stats-table">

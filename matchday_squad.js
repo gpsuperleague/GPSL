@@ -184,6 +184,15 @@ export function getDefaultStarters(savedRows) {
     .map((r) => String(r.player_id));
 }
 
+export function getDefaultBenchIds(savedRows) {
+  if (!savedRows?.length) return new Set();
+  return new Set(
+    savedRows
+      .filter((r) => r.slot_kind === "bench")
+      .map((r) => String(r.player_id))
+  );
+}
+
 export function getSquadPlayerIds(savedRows) {
   if (!savedRows?.length) return null;
   return new Set(savedRows.map((r) => String(r.player_id)));

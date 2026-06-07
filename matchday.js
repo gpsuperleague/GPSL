@@ -24,6 +24,7 @@ import {
 import {
   initMatchdaySquadPanel,
   getDefaultStarters,
+  getDefaultBenchIds,
   getSquadPlayerIds,
 } from "./matchday_squad.js";
 
@@ -909,12 +910,18 @@ function renderPlayerStatsTable() {
     return;
   }
 
+  const benchIds = getDefaultBenchIds(matchdaySquadRows);
+
   for (const p of squadPlayers) {
     const id = String(p.Konami_ID);
     const tr = document.createElement("tr");
     tr.dataset.statPlayer = id;
+    if (benchIds.has(id)) tr.classList.add("squad-bench-stat");
+    const benchTag = benchIds.has(id)
+      ? ' <span class="squad-bench-tag">Sub</span>'
+      : "";
     tr.innerHTML = `
-      <td class="name">${p.Name} <span style="color:#666;">${p.Position || ""}</span></td>
+      <td class="name">${p.Name} <span style="color:#666;">${p.Position || ""}</span>${benchTag}</td>
       <td><input type="checkbox" class="stat-started" aria-label="Started"></td>
       <td><input type="checkbox" class="stat-subbed" aria-label="Subbed on"></td>
       <td><input type="text" class="stat-goals stat-combo" list="statGoalsList" inputmode="numeric" autocomplete="off" value="0" aria-label="Goals"></td>
