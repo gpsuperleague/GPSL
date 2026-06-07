@@ -369,7 +369,18 @@
   margin: 0;
 }
 
-.squad-formations-bar,
+.squad-formations-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.formation-section-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
 .squad-toolbar {
   display: flex;
   flex-wrap: wrap;

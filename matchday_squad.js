@@ -589,21 +589,25 @@ export function initMatchdaySquadPanel({
       Formation presets only apply when you click <b>Apply formation</b>. Starters auto-tick <b>Started</b> on match stats.
     </p>
     <div class="squad-formations-bar">
-      <span class="formation-section-label">Default formations</span>
-      <select id="squadFormationSelect" class="formation-select" title="Starting layout only — use Apply to reset markers"></select>
-      <button type="button" class="button secondary" id="squadApplyTemplateBtn">Apply formation</button>
-      <span class="formation-section-label">My formations</span>
-      <select id="squadSavedFormationSelect" class="formation-select" title="Your 5 saved pitch layouts"></select>
-      <button type="button" class="button secondary" id="squadLoadFormationBtn">Load Custom Formation</button>
-      <input type="text" id="squadFormationName" class="formation-name-input" maxlength="40" placeholder="Formation name" />
-      <select id="squadFormationSlot" class="formation-slot-select" title="Save to slot 1–5">
-        <option value="1">Slot 1</option>
-        <option value="2">Slot 2</option>
-        <option value="3">Slot 3</option>
-        <option value="4">Slot 4</option>
-        <option value="5">Slot 5</option>
-      </select>
-      <button type="button" class="button secondary" id="squadSaveFormationBtn">Save layout</button>
+      <div class="formation-section-row">
+        <span class="formation-section-label">Default formations</span>
+        <select id="squadFormationSelect" class="formation-select" title="Starting layout only — use Apply to reset markers"></select>
+        <button type="button" class="button secondary" id="squadApplyTemplateBtn">Apply formation</button>
+      </div>
+      <div class="formation-section-row">
+        <span class="formation-section-label">My Formations</span>
+        <select id="squadSavedFormationSelect" class="formation-select" title="Your 5 saved pitch layouts"></select>
+        <button type="button" class="button secondary" id="squadLoadFormationBtn">Load Custom Formation</button>
+        <input type="text" id="squadFormationName" class="formation-name-input" maxlength="40" placeholder="Formation name" />
+        <select id="squadFormationSlot" class="formation-slot-select" title="Save to slot 1–5">
+          <option value="1">Slot 1</option>
+          <option value="2">Slot 2</option>
+          <option value="3">Slot 3</option>
+          <option value="4">Slot 4</option>
+          <option value="5">Slot 5</option>
+        </select>
+        <button type="button" class="button secondary" id="squadSaveFormationBtn">Save layout</button>
+      </div>
     </div>
     <div class="squad-toolbar">
       <button type="button" class="button secondary" id="squadAutoFillBtn">Auto-fill XI</button>
