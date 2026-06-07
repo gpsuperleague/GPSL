@@ -183,15 +183,18 @@
   color: #ff9900;
 }
 .pitch-slot-label {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: bold;
-  color: rgba(255, 255, 255, 0.75);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 1px 5px;
+  border-radius: 3px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 .pitch-slot-drop {
   width: 58px;
   min-height: 58px;
-  border: 2px dashed rgba(255, 255, 255, 0.35);
+  border: 2px dashed rgba(255, 255, 255, 0.55);
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.2);
   display: flex;
@@ -306,6 +309,20 @@
   gap: 8px;
   align-items: center;
   margin-bottom: 12px;
+}
+.formation-pick {
+  font-size: 13px;
+  color: #bbb;
+  margin: 0;
+}
+.formation-select {
+  padding: 8px 10px;
+  background: #222;
+  border: 1px solid #444;
+  color: #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  min-width: 100px;
 }
 .squad-toolbar .squad-status {
   font-size: 12px;

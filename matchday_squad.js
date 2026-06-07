@@ -2,56 +2,46 @@
  * Matchday squad picker — 23-man squad with drag-and-drop on a virtual pitch.
  */
 
+import {
+  DEFAULT_FORMATION_ID,
+  FORMATION_LIST,
+  getFormation,
+  formationLayout,
+  resolvePitchLayout,
+  buildPitchLayoutPayload,
+} from "./matchday_formations.js";
+
+export { buildPitchLayoutPayload } from "./matchday_formations.js";
+
 export const MAX_SQUAD = 23;
 export const MAX_PITCH = 11;
 export const MAX_BENCH = 12;
 export const MAX_RESERVE = 0;
 
-export const DEFAULT_PITCH_SLOTS = [
-  { id: "GK", label: "GK", x: 50, y: 86 },
-  { id: "LB", label: "LB", x: 12, y: 68 },
-  { id: "CB1", label: "CB", x: 36, y: 72 },
-  { id: "CB2", label: "CB", x: 64, y: 72 },
-  { id: "RB", label: "RB", x: 88, y: 68 },
-  { id: "LMF", label: "LM", x: 16, y: 48 },
-  { id: "CMF", label: "CM", x: 50, y: 52 },
-  { id: "RMF", label: "RM", x: 84, y: 48 },
-  { id: "LWF", label: "LW", x: 22, y: 22 },
-  { id: "CF", label: "CF", x: 50, y: 12 },
-  { id: "RWF", label: "RW", x: 78, y: 22 },
+const SLOT_IDS = [
+  "GK",
+  "LB",
+  "CB1",
+  "CB2",
+  "RB",
+  "LMF",
+  "CMF",
+  "RMF",
+  "LWF",
+  "CF",
+  "RWF",
 ];
 
-/** @deprecated use DEFAULT_PITCH_SLOTS */
+export const DEFAULT_PITCH_SLOTS = getFormation(DEFAULT_FORMATION_ID).slots;
+/** @deprecated use formation presets */
 export const PITCH_SLOTS = DEFAULT_PITCH_SLOTS;
 
 function clampPct(n) {
   return Math.min(96, Math.max(4, Number(n) || 0));
 }
 
-export function normalizePitchLayout(saved) {
-  const out = {};
-  for (const slot of DEFAULT_PITCH_SLOTS) {
-    const s = saved?.[slot.id];
-    out[slot.id] = {
-      x: clampPct(s?.x ?? slot.x),
-      y: clampPct(s?.y ?? slot.y),
-    };
-  }
-  return out;
-}
-
-export function buildPitchLayoutPayload(slotPositions) {
-  const out = {};
-  for (const slot of DEFAULT_PITCH_SLOTS) {
-    const pos = slotPositions[slot.id];
-    if (pos) {
-      out[slot.id] = {
-        x: Math.round(pos.x * 10) / 10,
-        y: Math.round(pos.y * 10) / 10,
-      };
-    }
-  }
-  return out;
+function emptyPitchMap() {
+  return new Map(SLOT_IDS.map((id) => [id, null]));
 }
 
 const POSITION_TO_PITCH = {
@@ -161,14 +151,14 @@ function placePlayer(state, target, player) {
 
 export function buildSlotsPayload(state) {
   const out = [];
-  for (const slot of DEFAULT_PITCH_SLOTS) {
-    const p = state.pitch.get(slot.id);
+  for (const slotId of SLOT_IDS) {
+    const p = state.pitch.get(slotId);
     if (p) {
       out.push({
         player_id: playerKey(p),
         slot_kind: "pitch",
-        pitch_slot: slot.id,
-        sort_order: DEFAULT_PITCH_SLOTS.indexOf(slot),
+        pitch_slot: slotId,
+        sort_order: SLOT_IDS.indexOf(slotId),
       });
     }
   }
@@ -199,7 +189,7 @@ export function getSquadPlayerIds(savedRows) {
 function buildStateFromSaved(allPlayers, savedRows) {
   const byId = new Map(allPlayers.map((p) => [playerKey(p), p]));
   const state = {
-    pitch: new Map(DEFAULT_PITCH_SLOTS.map((s) => [s.id, null])),
+    pitch: emptyPitchMap(),
     bench: Array(MAX_BENCH).fill(null),
     pool: [],
   };
@@ -236,7 +226,7 @@ function buildStateFromSaved(allPlayers, savedRows) {
 
 function autoFillBestXi(allPlayers) {
   const state = {
-    pitch: new Map(DEFAULT_PITCH_SLOTS.map((s) => [s.id, null])),
+    pitch: emptyPitchMap(),
     bench: Array(MAX_BENCH).fill(null),
     pool: [],
   };
@@ -259,11 +249,11 @@ function autoFillBestXi(allPlayers) {
     if (slotFilled.size >= MAX_PITCH) break;
   }
 
-  for (const slot of DEFAULT_PITCH_SLOTS) {
-    if (state.pitch.get(slot.id)) continue;
+  for (const slotId of SLOT_IDS) {
+    if (state.pitch.get(slotId)) continue;
     const next = sorted.find((p) => !used.has(playerKey(p)));
     if (!next) break;
-    state.pitch.set(slot.id, clonePlayer(next));
+    state.pitch.set(slotId, clonePlayer(next));
     used.add(playerKey(next));
   }
 
@@ -424,12 +414,15 @@ export function initMatchdaySquadPanel({
   onSave,
 }) {
   let editPositionsMode = false;
-  let slotPositions = normalizePitchLayout(savedPitchLayout);
+  const resolved = resolvePitchLayout(savedPitchLayout);
+  let currentFormationId = resolved.formationId;
+  let slotPositions = { ...resolved.positions };
+  let slotLabels = { ...resolved.labels };
   let state =
     savedRows?.length > 0
       ? buildStateFromSaved(allPlayers, savedRows)
       : {
-          pitch: new Map(DEFAULT_PITCH_SLOTS.map((s) => [s.id, null])),
+          pitch: emptyPitchMap(),
           bench: Array(MAX_BENCH).fill(null),
           pool: allPlayers.map(clonePlayer),
         };
@@ -441,6 +434,8 @@ export function initMatchdaySquadPanel({
       Starters auto-tick <b>Started</b> when you submit match stats.
     </p>
     <div class="squad-toolbar">
+      <label class="formation-pick" for="squadFormationSelect">Formation</label>
+      <select id="squadFormationSelect" class="formation-select"></select>
       <button type="button" class="button secondary" id="squadAutoFillBtn">Auto-fill XI</button>
       <button type="button" class="button secondary" id="squadMovePosBtn">Move positions</button>
       <button type="button" class="button secondary" id="squadResetPosBtn" hidden>Reset layout</button>
@@ -475,32 +470,54 @@ export function initMatchdaySquadPanel({
   const editHint = root.querySelector("#squadEditHint");
   const movePosBtn = root.querySelector("#squadMovePosBtn");
   const resetPosBtn = root.querySelector("#squadResetPosBtn");
+  const formationSelect = root.querySelector("#squadFormationSelect");
+
+  formationSelect.innerHTML = FORMATION_LIST.map(
+    (f) => `<option value="${f.id}">${f.name}</option>`
+  ).join("");
+  formationSelect.value = currentFormationId;
 
   function applySlotPositionsToDom() {
-    for (const slot of DEFAULT_PITCH_SLOTS) {
-      const wrap = pitchEl.querySelector(`.pitch-slot[data-slot-id="${slot.id}"]`);
+    for (const slotId of SLOT_IDS) {
+      const wrap = pitchEl.querySelector(`.pitch-slot[data-slot-id="${slotId}"]`);
       if (!wrap) continue;
-      const pos = slotPositions[slot.id] || { x: slot.x, y: slot.y };
+      const pos = slotPositions[slotId];
+      if (!pos) continue;
       wrap.style.left = `${pos.x}%`;
       wrap.style.top = `${pos.y}%`;
+      const labelEl = wrap.querySelector(".pitch-slot-label");
+      if (labelEl) labelEl.textContent = slotLabels[slotId] || slotId;
     }
   }
 
   function buildPitchSlotElements() {
     pitchEl.querySelectorAll(".pitch-slot").forEach((el) => el.remove());
-    for (const slot of DEFAULT_PITCH_SLOTS) {
+    for (const slotId of SLOT_IDS) {
+      const pos = slotPositions[slotId] || { x: 50, y: 50 };
       const wrap = document.createElement("div");
       wrap.className = "pitch-slot";
-      wrap.dataset.slotId = slot.id;
-      const pos = slotPositions[slot.id] || { x: slot.x, y: slot.y };
+      wrap.dataset.slotId = slotId;
       wrap.style.left = `${pos.x}%`;
       wrap.style.top = `${pos.y}%`;
+      const label = slotLabels[slotId] || slotId;
       wrap.innerHTML = `
-        <button type="button" class="pitch-slot-grip" aria-label="Move ${slot.label} position" title="Move position">⋮⋮</button>
-        <span class="pitch-slot-label">${slot.label}</span>
-        <div class="pitch-slot-drop" data-slot-id="${slot.id}"></div>`;
+        <button type="button" class="pitch-slot-grip" aria-label="Move ${label} position" title="Move position">⋮⋮</button>
+        <span class="pitch-slot-label">${label}</span>
+        <div class="pitch-slot-drop" data-slot-id="${slotId}"></div>`;
       pitchEl.appendChild(wrap);
     }
+  }
+
+  function applyFormation(formationId, keepCustomPositions = false) {
+    const base = formationLayout(formationId);
+    currentFormationId = base.formationId;
+    if (!keepCustomPositions) {
+      slotPositions = { ...base.positions };
+    }
+    slotLabels = { ...base.labels };
+    formationSelect.value = currentFormationId;
+    buildPitchSlotElements();
+    rerenderPlayerCards();
   }
 
   buildPitchSlotElements();
@@ -539,11 +556,11 @@ export function initMatchdaySquadPanel({
       poolList.appendChild(renderPlayerCard(p));
     }
 
-    for (const slot of DEFAULT_PITCH_SLOTS) {
-      const drop = pitchEl.querySelector(`[data-slot-id="${slot.id}"]`);
+    for (const slotId of SLOT_IDS) {
+      const drop = pitchEl.querySelector(`.pitch-slot-drop[data-slot-id="${slotId}"]`);
       if (!drop) continue;
       drop.innerHTML = "";
-      const p = state.pitch.get(slot.id);
+      const p = state.pitch.get(slotId);
       if (p) {
         const card = renderPlayerCard(p, { compact: true });
         if (editPositionsMode) card.draggable = false;
@@ -570,10 +587,12 @@ export function initMatchdaySquadPanel({
 
   movePosBtn.addEventListener("click", () => setEditPositionsMode(!editPositionsMode));
 
+  formationSelect.addEventListener("change", () => {
+    applyFormation(formationSelect.value, false);
+  });
+
   resetPosBtn.addEventListener("click", () => {
-    slotPositions = normalizePitchLayout(null);
-    buildPitchSlotElements();
-    rerender();
+    applyFormation(currentFormationId, false);
   });
 
   root.querySelector("#squadAutoFillBtn").addEventListener("click", () => {
@@ -584,7 +603,7 @@ export function initMatchdaySquadPanel({
   root.querySelector("#squadClearBtn").addEventListener("click", () => {
     if (!confirm("Clear your saved matchday squad layout?")) return;
     state = {
-      pitch: new Map(DEFAULT_PITCH_SLOTS.map((s) => [s.id, null])),
+      pitch: emptyPitchMap(),
       bench: Array(MAX_BENCH).fill(null),
       pool: allPlayers.map(clonePlayer),
     };
@@ -605,7 +624,10 @@ export function initMatchdaySquadPanel({
     }
     statusText.textContent = "Saving…";
     try {
-      await onSave(payload, buildPitchLayoutPayload(slotPositions));
+      await onSave(
+        payload,
+        buildPitchLayoutPayload(slotPositions, slotLabels, currentFormationId)
+      );
       statusText.textContent = `Saved ${payload.length} players.`;
       setEditPositionsMode(false);
     } catch (err) {
@@ -619,7 +641,11 @@ export function initMatchdaySquadPanel({
     setSavedRows: (rows, layout) => {
       state = buildStateFromSaved(allPlayers, rows);
       if (layout != null) {
-        slotPositions = normalizePitchLayout(layout);
+        const r = resolvePitchLayout(layout);
+        currentFormationId = r.formationId;
+        slotPositions = { ...r.positions };
+        slotLabels = { ...r.labels };
+        formationSelect.value = currentFormationId;
         buildPitchSlotElements();
       }
       rerender();
