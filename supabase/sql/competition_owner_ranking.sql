@@ -517,6 +517,11 @@ JOIN public."Clubs" c ON c."ShortName" = r.club_short_name
 ORDER BY r.season_id DESC, r.season_total DESC;
 
 -- World Cup nation draft uses rolling 4-season points
+-- Return type changed vs competition_international.sql — drop dependents first.
+DROP VIEW IF EXISTS public.international_owner_rank_public;
+DROP VIEW IF EXISTS public.international_selection_public;
+DROP FUNCTION IF EXISTS public.international_owner_draft_order();
+
 CREATE OR REPLACE FUNCTION public.international_owner_draft_order()
 RETURNS TABLE (
   pick_order smallint,
@@ -561,11 +566,36 @@ AS $$
   ORDER BY pick_order, c."ShortName";
 $$;
 
-DROP VIEW IF EXISTS public.international_owner_rank_public;
 CREATE VIEW public.international_owner_rank_public
 WITH (security_invoker = false)
 AS
 SELECT * FROM public.international_owner_draft_order();
+
+CREATE VIEW public.international_selection_public
+WITH (security_invoker = false)
+AS
+SELECT
+  w.id,
+  w.phase,
+  w.is_open,
+  w.opens_at,
+  w.closes_at,
+  w.current_pick_rank,
+  (
+    SELECT d.club_short_name
+    FROM public.international_owner_draft_order() d
+    WHERE d.pick_order = w.current_pick_rank
+    LIMIT 1
+  ) AS current_pick_club,
+  (
+    SELECT count(*)::integer
+    FROM public.international_owner_nations ion
+    WHERE ion.is_active = true
+  ) AS nations_assigned
+FROM public.international_selection_windows w
+WHERE w.is_open = true
+ORDER BY w.id DESC
+LIMIT 1;
 
 ALTER TABLE public.competition_owner_season_ranking ENABLE ROW LEVEL SECURITY;
 
@@ -583,6 +613,8 @@ GRANT SELECT ON public.competition_owner_season_ranking TO authenticated;
 GRANT SELECT ON public.competition_owner_ranking_rolling4_public TO authenticated;
 GRANT SELECT ON public.competition_owner_ranking_alltime_public TO authenticated;
 GRANT SELECT ON public.competition_owner_season_ranking_public TO authenticated;
+GRANT SELECT ON public.international_owner_rank_public TO authenticated;
+GRANT SELECT ON public.international_selection_public TO authenticated;
 
 GRANT EXECUTE ON FUNCTION public.competition_owner_ranking_recompute_season(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_owner_ranking_recompute_all() TO authenticated;
