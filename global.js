@@ -705,7 +705,7 @@ export async function buildNav() {
   let firstActiveNavSectionId;
   let normalizeNavPath;
   try {
-    const navMod = await import("./nav_config.js?v=20250604-nav-collapsed");
+    const navMod = await import("./nav_config.js?v=20250608-international");
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;

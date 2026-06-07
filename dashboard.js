@@ -32,6 +32,7 @@ const TILE_WATERMARK_CLASS = {
   progress: "tile-progress",
   league_stats: "tile-progress",
   cups: "tile-fixtures",
+  world_cup: "tile-fixtures",
   special_auction: "tile-special-auction",
 };
 

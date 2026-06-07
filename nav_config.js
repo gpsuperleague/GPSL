@@ -63,6 +63,8 @@ export const NAV_SECTIONS = [
       { href: "progress.html", label: "Tables", page: "progress" },
       { href: "league_stats.html", label: "Stats", page: "league_stats", indent: true },
       { href: "cups.html", label: "Cups", page: "cups" },
+      { href: "world_cup.html", label: "World Cup", page: "world_cup", indent: true },
+      { href: "nation_select.html", label: "Nation selection", page: "nation_select", indent: true },
       { href: "transfer_center.html", label: "Transfer Centre", page: "transfer_center" },
       {
         href: "transfer_center.html#scouting-targets",
