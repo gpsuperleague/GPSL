@@ -70,14 +70,6 @@
   font-weight: bold;
 }
 
-#clubDetailsPanel,
-.club-details-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-width: 520px;
-}
-
 .detailRow {
   display: grid;
   grid-template-columns: 10.5rem 1fr;

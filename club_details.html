@@ -279,6 +279,60 @@
     .account-status.is-error {
       color: #f88;
     }
+
+    .club-info-panel {
+      margin-bottom: 20px;
+    }
+
+    .club-details-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 800px) {
+      .club-details-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 520px) {
+      .club-details-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .club-detail-cell {
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 12px 14px;
+      min-width: 0;
+    }
+
+    .club-detail-cell--owner {
+      grid-column: 1 / -1;
+    }
+
+    .club-detail-label {
+      display: block;
+      color: #ff9900;
+      font-weight: bold;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .club-detail-value {
+      color: #ddd;
+      font-size: 14px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .club-detail-value.detail-muted {
+      color: #aaa;
+      font-size: 13px;
+    }
   </style>
 
 </head>
@@ -293,59 +347,59 @@
 
     <p id="clubDetailsError" hidden role="alert"></p>
 
-    <div class="panel panel-bg panel-club club-details-panel" id="clubDetailsPanel">
+    <div class="panel club-info-panel" id="clubDetailsPanel">
+      <div class="club-details-grid">
+        <div class="club-detail-cell">
+          <span class="club-detail-label">Club name</span>
+          <span class="club-detail-value" id="clubName">—</span>
+        </div>
 
-      <div class="detailRow">
-        <label for="clubName">Club name</label>
-        <span id="clubName">—</span>
-      </div>
+        <div class="club-detail-cell">
+          <span class="club-detail-label">Short name</span>
+          <span class="club-detail-value" id="shortName">—</span>
+        </div>
 
-      <div class="detailRow">
-        <label for="shortName">Short name</label>
-        <span id="shortName">—</span>
-      </div>
+        <div class="club-detail-cell">
+          <span class="club-detail-label">Division</span>
+          <span class="club-detail-value" id="compDivision">—</span>
+        </div>
 
-      <div class="detailRow detailRow--owner">
-        <label for="ownerInput">Owner tag</label>
-        <div class="owner-tag-field">
-          <input
-            type="text"
-            id="ownerInput"
-            maxlength="64"
-            autocomplete="off"
-            spellcheck="false"
-          />
-          <button type="button" id="editOwnerTagBtn" class="small-btn is-hidden">Edit</button>
-          <button type="button" id="saveOwnerBtn" class="small-btn">Save</button>
-          <span id="ownerTagHint" class="owner-tag-hint" role="status"></span>
+        <div class="club-detail-cell">
+          <span class="club-detail-label">Stadium</span>
+          <span class="club-detail-value" id="stadiumName">—</span>
+        </div>
+
+        <div class="club-detail-cell">
+          <span class="club-detail-label">Capacity</span>
+          <span class="club-detail-value" id="stadiumCapacity">—</span>
+        </div>
+
+        <div class="club-detail-cell">
+          <span class="club-detail-label">Club nation</span>
+          <span class="club-detail-value" id="clubNation">—</span>
+        </div>
+
+        <div class="club-detail-cell">
+          <span class="club-detail-label">Login email</span>
+          <span class="club-detail-value detail-muted" id="accountEmail">—</span>
+        </div>
+
+        <div class="club-detail-cell club-detail-cell--owner">
+          <label class="club-detail-label" for="ownerInput">Owner tag</label>
+          <div class="owner-tag-field">
+            <input
+              type="text"
+              id="ownerInput"
+              maxlength="64"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button type="button" id="editOwnerTagBtn" class="small-btn is-hidden">Edit</button>
+            <button type="button" id="saveOwnerBtn" class="small-btn">Save</button>
+            <span id="ownerTagHint" class="owner-tag-hint" role="status"></span>
+          </div>
         </div>
       </div>
-
-      <div class="detailRow">
-        <label>Login email</label>
-        <span id="accountEmail" class="detail-muted">—</span>
-      </div>
-
-      <div class="detailRow">
-        <label>Stadium</label>
-        <span id="stadiumName">—</span>
-      </div>
-
-      <div class="detailRow">
-        <label>Capacity</label>
-        <span id="stadiumCapacity">—</span>
-      </div>
-
-      <div class="detailRow">
-        <label>Club nation</label>
-        <span id="clubNation">—</span>
-      </div>
-
-      <div class="detailRow">
-        <label>Division</label>
-        <span id="compDivision">—</span>
-      </div>
-
     </div>
 
     <div class="panel panel-bg account-panel" id="accountPanel">
