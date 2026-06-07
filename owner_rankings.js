@@ -2,6 +2,23 @@ import { supabase, initGlobal } from "./global.js";
 
 let myClub = null;
 let activeTab = "rolling";
+let schemaMissing = false;
+
+const DEPLOY_MSG = `
+  <p class="empty"><b>Owner ranking schema not deployed.</b></p>
+  <p class="meta" style="color:#ccc;">
+    In Supabase → SQL Editor, run the full file
+    <code>supabase/sql/competition_owner_ranking.sql</code>
+    (after <code>competition_history.sql</code> and <code>competition_international.sql</code>).
+    Then run <b>Recompute all seasons</b> under Admin → World Cup &amp; nations.
+  </p>`;
+
+function isSchemaMissingError(err) {
+  return (
+    err?.code === "PGRST205" ||
+    /could not find the table/i.test(err?.message || "")
+  );
+}
 
 function fmtPts(n) {
   const v = Number(n);
@@ -36,7 +53,10 @@ async function loadRolling() {
     .from("competition_owner_ranking_rolling4_public")
     .select("*")
     .order("rank_position", { ascending: true });
-  if (error) throw error;
+  if (error) {
+    if (isSchemaMissingError(error)) schemaMissing = true;
+    throw error;
+  }
   const rows = (data || []).map(
     (r) => `
     <tr class="${rowClass(r.club_short_name)}">
@@ -59,7 +79,10 @@ async function loadAllTime() {
     .from("competition_owner_ranking_alltime_public")
     .select("*")
     .order("rank_position", { ascending: true });
-  if (error) throw error;
+  if (error) {
+    if (isSchemaMissingError(error)) schemaMissing = true;
+    throw error;
+  }
   const rows = (data || []).map(
     (r) => `
     <tr>
@@ -81,7 +104,10 @@ async function loadSeasonList() {
     .from("competition_owner_season_ranking_public")
     .select("season_id, season_label")
     .order("season_id", { ascending: false });
-  if (error) throw error;
+  if (error) {
+    if (isSchemaMissingError(error)) schemaMissing = true;
+    throw error;
+  }
   const seen = new Set();
   return (data || []).filter((r) => {
     if (seen.has(r.season_id)) return false;
@@ -96,7 +122,10 @@ async function loadSeason(seasonId) {
     .select("*")
     .eq("season_id", seasonId)
     .order("season_total", { ascending: false });
-  if (error) throw error;
+  if (error) {
+    if (isSchemaMissingError(error)) schemaMissing = true;
+    throw error;
+  }
   const rows = (data || []).map(
     (r, i) => `
     <tr class="${rowClass(r.club_short_name)}">
@@ -149,7 +178,9 @@ async function refresh() {
     }
   } catch (err) {
     console.error(err);
-    el.innerHTML = `<p class="empty">Could not load rankings. Run competition_owner_ranking.sql in Supabase.</p>`;
+    el.innerHTML = schemaMissing
+      ? DEPLOY_MSG
+      : `<p class="empty">Could not load rankings: ${err?.message || "unknown error"}</p>`;
   }
 }
 
