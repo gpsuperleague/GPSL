@@ -52,18 +52,21 @@ function renderDraftBoard(draft, myClub, currentPick) {
       const nat = d.nation_code
         ? `${d.flag_emoji || ""} ${d.nation_name}`
         : '<span class="empty">—</span>';
+      const ownerLabel = d.owner_tag || d.owner_name || "—";
+      const clubLabel = d.club_name || d.club_short_name;
       return `
         <tr class="${cls}">
           <td>${d.pick_order}</td>
-          <td>${d.club_name || d.club_short_name}</td>
-          <td>${Number(d.rank_points).toLocaleString("en-GB")}</td>
+          <td>${ownerLabel}</td>
+          <td>${clubLabel}</td>
+          <td>${Number(d.rank_points).toLocaleString("en-GB", { maximumFractionDigits: 2 })}</td>
           <td>${nat}</td>
         </tr>`;
     })
     .join("");
   el.innerHTML = `
     <table class="draft-board">
-      <thead><tr><th>#</th><th>Owner club</th><th>Rank pts</th><th>Nation</th></tr></thead>
+      <thead><tr><th>#</th><th>Owner</th><th>Club</th><th>Rank pts</th><th>Nation</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }

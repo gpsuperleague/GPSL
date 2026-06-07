@@ -15,6 +15,7 @@ export const DASHBOARD_PANELS = [
   { id: "league_stats", label: "League Stats", href: "league_stats.html", page: "league_stats.html", default: true },
   { id: "cups", label: "Cups", href: "cups.html", page: "cups.html", default: true },
   { id: "world_cup", label: "World Cup", href: "world_cup.html", page: "world_cup.html", default: true },
+  { id: "owner_rankings", label: "Owner Rankings", href: "owner_rankings.html", page: "owner_rankings.html", default: false },
   {
     id: "special_auction",
     label: "Special Auction",

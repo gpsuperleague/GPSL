@@ -15,31 +15,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   });
 
-  document.getElementById("syncRanksBtn")?.addEventListener("click", async () => {
-    setStatus("setupStatus", "Syncing…");
-    const { data, error } = await supabase.rpc("international_sync_owner_ranks");
-    setStatus(
-      "setupStatus",
-      error ? `❌ ${error.message}` : `✅ Added ${data} owner rank rows`,
-      !error
-    );
-  });
-
-  document.getElementById("setRankBtn")?.addEventListener("click", async () => {
-    const club = document.getElementById("rankClub")?.value?.trim();
-    const pts = Number(document.getElementById("rankPoints")?.value);
-    if (!club) {
-      setStatus("rankStatus", "Enter club ShortName.", false);
+  document.getElementById("recomputeRanksBtn")?.addEventListener("click", async () => {
+    if (
+      !confirm(
+        "Recompute owner ranking points for all archived seasons?\n\nSafe to re-run after competition_owner_ranking.sql changes."
+      )
+    ) {
       return;
     }
-    setStatus("rankStatus", "Saving…");
-    const { error } = await supabase.rpc("international_admin_set_rank_points", {
-      p_club: club,
-      p_points: pts,
-    });
+    setStatus("rankStatus", "Recomputing…");
+    const { data, error } = await supabase.rpc("competition_owner_ranking_recompute_all");
     setStatus(
       "rankStatus",
-      error ? `❌ ${error.message}` : `✅ Rank points saved for ${club}`,
+      error
+        ? `❌ ${error.message}`
+        : `✅ Recomputed ${data ?? 0} club-season rows`,
       !error
     );
   });

@@ -29,23 +29,23 @@
 
     <div class="card">
       <h2>Setup</h2>
-      <p class="note">Run once after <code>competition_international.sql</code>. Seeds 60 nations and owner rank rows.</p>
+      <p class="note">Run once after <code>competition_international.sql</code>. Seeds 60 nations.</p>
       <div class="row">
         <button type="button" class="button" id="seedNationsBtn">Seed nations</button>
-        <button type="button" class="button" id="syncRanksBtn">Sync owner ranks</button>
       </div>
       <div id="setupStatus" class="status-line"></div>
     </div>
 
     <div class="card">
-      <h2>Owner rank points</h2>
-      <p class="note">Higher points = earlier pick in nation draft (1st → 60th).</p>
-      <label for="rankClub">Club ShortName</label>
-      <input id="rankClub" type="text" placeholder="URD">
-      <label for="rankPoints">Rank points</label>
-      <input id="rankPoints" type="number" step="1" value="0">
+      <h2>Owner rankings</h2>
+      <p class="note">
+        Nation draft order uses <b>rolling points from the last four seasons</b>, computed automatically
+        when a season is archived (Season &amp; calendar admin). Run
+        <code>competition_owner_ranking.sql</code> once, then use recompute for backfill.
+      </p>
       <div class="row">
-        <button type="button" class="button" id="setRankBtn">Save rank points</button>
+        <button type="button" class="button" id="recomputeRanksBtn">Recompute all seasons</button>
+        <a class="button" href="owner_rankings.html">View rankings</a>
       </div>
       <div id="rankStatus" class="status-line"></div>
     </div>

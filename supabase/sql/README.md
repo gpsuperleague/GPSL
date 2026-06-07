@@ -457,11 +457,19 @@ Run once after `competition_phase0.sql`:
 
 Creates 60 nations, owner nation draft, World Cup cycle/group tables, international squads, and lifetime player caps (`international_player_career`).
 
-**Admin:** GPSL Admin → **World Cup & nations** (`admin_international.html`) — seed nations, set owner rank points, open nation selection, assign teams.
+**Admin:** GPSL Admin → **World Cup & nations** (`admin_international.html`) — seed nations, open nation selection, assign teams.
 
 **Owners:** Cups → **World Cup** / **Nation selection**; national team page with flag and call-ups from club squad.
 
 Qualifying fixtures, finals draws, and matchday integration are **schema-ready** — detail in a later pass.
+
+Run after `competition_history.sql` and `competition_international.sql`:
+
+[`competition_owner_ranking.sql`](./competition_owner_ranking.sql)
+
+Season-by-season owner points (league + cups), **rolling last-4** leaderboard (World Cup nation draft order), and **all-time** hall of fame. Points recompute when admin archives a season; backfill via **Recompute all seasons** on World Cup & nations admin.
+
+**Owners:** Cups → **Owner rankings** (`owner_rankings.html`).
 
 ## Draft auction favourites (saved threads)
 

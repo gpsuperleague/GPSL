@@ -49,6 +49,7 @@ export const NAV_SECTIONS = [
       { heading: true, label: "International" },
       { href: "world_cup.html", label: "World Cup", page: "world_cup", indent: true },
       { href: "nation_select.html", label: "Nation selection", page: "nation_select", indent: true },
+      { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings", indent: true },
     ],
   },
   {
@@ -65,6 +66,7 @@ export const NAV_SECTIONS = [
       { href: "cups.html", label: "Cups", page: "cups" },
       { href: "world_cup.html", label: "World Cup", page: "world_cup", indent: true },
       { href: "nation_select.html", label: "Nation selection", page: "nation_select", indent: true },
+      { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings", indent: true },
       { href: "transfer_center.html", label: "Transfer Centre", page: "transfer_center" },
       {
         href: "transfer_center.html#scouting-targets",

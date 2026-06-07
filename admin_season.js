@@ -125,10 +125,22 @@ async function archiveSeasonStats() {
     return;
   }
 
+  const seasonId = data?.season_id;
+  let rankNote = "";
+  if (seasonId != null) {
+    const { error: rankErr } = await supabase.rpc(
+      "competition_owner_ranking_recompute_season",
+      { p_season_id: seasonId }
+    );
+    rankNote = rankErr
+      ? ` Owner ranking not updated (${rankErr.message}). Run competition_owner_ranking.sql.`
+      : " Owner ranking updated.";
+  }
+
   setStatus(
     "compArchiveStatus",
-    `✅ Archived ${data?.season_label || "season"} — ${data?.clubs_archived ?? 0} clubs, ${data?.players_archived ?? 0} players, ${data?.cups_archived ?? 0} cups.`,
-    true
+    `✅ Archived ${data?.season_label || "season"} — ${data?.clubs_archived ?? 0} clubs, ${data?.players_archived ?? 0} players, ${data?.cups_archived ?? 0} cups.${rankNote}`,
+    !rankNote.includes("not updated")
   );
 }
 

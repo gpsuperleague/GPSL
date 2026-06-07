@@ -1,0 +1,71 @@
+<script>window.CURRENT_PAGE = "owner_rankings";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Owner Rankings — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1200px; margin:20px auto 40px; }
+    h1 { color:#ff9900; margin-bottom:8px; }
+    .meta { color:#aaa; margin-bottom:16px; line-height:1.45; }
+    .tabs { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; }
+    .tabs button {
+      padding:8px 14px; background:#222; border:1px solid #444; color:#ddd;
+      border-radius:6px; cursor:pointer; font-size:13px;
+    }
+    .tabs button.active { background:#333; border-color:#ff9900; color:#ff9900; }
+    .toolbar { margin-bottom:16px; }
+    .toolbar label { margin-right:8px; }
+    .toolbar select {
+      padding:8px 12px; background:#222; border:1px solid #444;
+      color:#ddd; border-radius:6px;
+    }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:16px; overflow-x:auto;
+    }
+    table.lb { width:100%; border-collapse:collapse; font-size:13px; }
+    table.lb th, table.lb td { border:1px solid #333; padding:6px 8px; }
+    table.lb th { background:#222; color:#ff9900; text-align:left; }
+    table.lb td.num { text-align:right; }
+    tr.highlight { outline:1px solid #ff9900; }
+    tr.me { background:#2a2200; }
+    .empty { color:#888; font-size:13px; }
+    .breakdown { color:#999; font-size:12px; }
+    a { color:#ff9900; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <h1>Owner rankings</h1>
+    <p class="meta">
+      Points from SuperLeague finishes and cup runs each season.
+      <b>World Cup ranking</b> sums the last four seasons (nation draft order).
+      <b>All-time</b> is the hall of fame — records stay even if an owner leaves.
+    </p>
+
+    <div class="tabs" role="tablist">
+      <button type="button" class="active" data-tab="rolling" role="tab">World Cup (last 4 seasons)</button>
+      <button type="button" data-tab="alltime" role="tab">All-time</button>
+      <button type="button" data-tab="season" role="tab">By season</button>
+    </div>
+
+    <div id="seasonToolbar" class="toolbar" hidden>
+      <label for="seasonSelect">Season</label>
+      <select id="seasonSelect"></select>
+    </div>
+
+    <div class="panel">
+      <div id="rankTable">Loading…</div>
+    </div>
+
+    <p class="meta" style="margin-top:16px;">
+      <a href="nation_select.html">Nation selection</a> uses World Cup ranking for draft order.
+    </p>
+  </div>
+  <script type="module" src="owner_rankings.js"></script>
+</body>
+</html>
