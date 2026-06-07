@@ -57,9 +57,9 @@ export const NAV_SECTIONS = [
     label: "My Club",
     items: [
       { href: "club_details.html", label: "Club Details", page: "club_details" },
+      { href: "squad.html", label: "Squad", page: "squad" },
       { href: "history.html", label: "Club History", page: "history" },
       { href: "stadium.html", label: "Stadium", page: "stadium" },
-      { href: "squad.html", label: "Squad", page: "squad" },
       { href: "matchday.html", label: "Match Day", page: "matchday" },
       { href: "league_stats.html", label: "Stats", page: "league_stats" },
       { href: "world_cup.html", label: "World Cup", page: "world_cup" },
