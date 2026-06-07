@@ -46,6 +46,9 @@ export const NAV_SECTIONS = [
       { href: "cups.html?cup=plate", label: "Plate", page: "cups", cup: "plate", indent: true },
       { href: "cups.html?cup=shield", label: "Shield", page: "cups", cup: "shield", indent: true },
       { href: "cups.html?cup=spoon", label: "Spoon", page: "cups", cup: "spoon", indent: true },
+      { heading: true, label: "International" },
+      { href: "world_cup.html", label: "World Cup", page: "world_cup", indent: true },
+      { href: "nation_select.html", label: "Nation selection", page: "nation_select", indent: true },
     ],
   },
   {
@@ -98,6 +101,9 @@ export const ADMIN_NAV_SECTION = {
 
     { heading: true, label: "Owner administration" },
     { href: "admin_owners.html", label: "Owners & accounts" },
+
+    { heading: true, label: "International" },
+    { href: "admin_international.html", label: "World Cup & nations" },
   ],
 };
 

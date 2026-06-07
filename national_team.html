@@ -1,0 +1,54 @@
+<script>window.CURRENT_PAGE = "national_team";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>National Team — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="international.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1100px; margin:20px auto 40px; }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:20px; margin-bottom:24px;
+    }
+    h2 { color:#ff9900; font-size:18px; margin:0 0 12px; }
+    a { color:#ff9900; }
+    .empty { color:#888; }
+    .toolbar { margin-bottom:12px; }
+    .toolbar a.button { font-size:13px; margin-right:8px; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <div class="nat-hero" id="natHero">
+      <span id="natFlag" class="nat-flag nat-flag-lg">🏳️</span>
+      <div>
+        <h1 id="natTitle">National Team</h1>
+        <div id="natMeta" class="nat-meta"></div>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <a class="button" href="world_cup.html">World Cup</a>
+      <a class="button" href="nation_select.html">Nation selection</a>
+      <a class="button" href="squad.html" id="callUpLink" hidden>Call up from squad</a>
+    </div>
+
+    <div class="panel" id="callUpPanel" hidden>
+      <h2>Call up from your club</h2>
+      <p class="intl-note">Select players from your GPSL squad to add to the national team.</p>
+      <div id="clubPoolTable"></div>
+    </div>
+
+    <div class="panel">
+      <h2>International squad</h2>
+      <p class="intl-note">Players appear here when called up by the national team manager.</p>
+      <div id="squadTable"></div>
+    </div>
+  </div>
+  <script type="module" src="national_team.js"></script>
+</body>
+</html>

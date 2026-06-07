@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>International &amp; World Cup — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    body.admin-page { background:#111; color:#ddd; }
+    .admin-wrap { max-width:900px; margin:24px auto; padding:0 16px 40px; }
+    h1 { color:#ff9900; }
+    .card { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:20px; margin-bottom:20px; }
+    .card h2 { color:#ff9900; font-size:17px; margin:0 0 12px; }
+    .note { color:#999; font-size:13px; margin:0 0 12px; line-height:1.45; }
+    label { display:block; margin:8px 0 4px; font-size:13px; color:#bbb; }
+    input, select {
+      width:100%; max-width:320px; padding:8px; background:#222; border:1px solid #444;
+      color:#eee; border-radius:4px;
+    }
+    .row { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-top:8px; }
+    .status-line { margin-top:10px; font-size:13px; color:#ffcc00; }
+    .status-line.error { color:#f88; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <div class="admin-wrap">
+    <h1>International &amp; World Cup</h1>
+
+    <div class="card">
+      <h2>Setup</h2>
+      <p class="note">Run once after <code>competition_international.sql</code>. Seeds 60 nations and owner rank rows.</p>
+      <div class="row">
+        <button type="button" class="button" id="seedNationsBtn">Seed nations</button>
+        <button type="button" class="button" id="syncRanksBtn">Sync owner ranks</button>
+      </div>
+      <div id="setupStatus" class="status-line"></div>
+    </div>
+
+    <div class="card">
+      <h2>Owner rank points</h2>
+      <p class="note">Higher points = earlier pick in nation draft (1st → 60th).</p>
+      <label for="rankClub">Club ShortName</label>
+      <input id="rankClub" type="text" placeholder="URD">
+      <label for="rankPoints">Rank points</label>
+      <input id="rankPoints" type="number" step="1" value="0">
+      <div class="row">
+        <button type="button" class="button" id="setRankBtn">Save rank points</button>
+      </div>
+      <div id="rankStatus" class="status-line"></div>
+    </div>
+
+    <div class="card">
+      <h2>Assign national team (admin override)</h2>
+      <label for="assignClub">Club ShortName</label>
+      <input id="assignClub" type="text">
+      <label for="assignNation">Nation code</label>
+      <input id="assignNation" type="text" placeholder="BRA" maxlength="3" style="text-transform:uppercase;">
+      <div class="row">
+        <button type="button" class="button" id="assignBtn">Assign nation</button>
+      </div>
+      <div id="assignStatus" class="status-line"></div>
+    </div>
+
+    <div class="card">
+      <h2>Nation selection window</h2>
+      <p class="note">
+        <b>Initial</b> — after Season 1. <b>Post–World Cup</b> — clears all nations; owners re-pick in rank order.
+      </p>
+      <div class="row">
+        <button type="button" class="button" id="openInitialBtn">Open initial selection</button>
+        <button type="button" class="button" id="openPostWcBtn">Open post–WC selection</button>
+        <button type="button" class="button" id="closeSelectionBtn">Close selection</button>
+      </div>
+      <div id="selectionStatus" class="status-line"></div>
+    </div>
+
+    <div class="card">
+      <h2>Links</h2>
+      <p><a href="world_cup.html">World Cup page</a> · <a href="nation_select.html">Nation selection</a></p>
+    </div>
+  </div>
+  <script type="module" src="admin_international.js"></script>
+</body>
+</html>

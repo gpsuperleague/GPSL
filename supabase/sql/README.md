@@ -449,6 +449,20 @@ Uses each listing’s `start_time` (same anchor as new listings). Non-extended r
 
 [`repair_listing_end_time_gmt_drift.sql`](./repair_listing_end_time_gmt_drift.sql)
 
+## International football & World Cup (v1)
+
+Run once after `competition_phase0.sql`:
+
+[`competition_international.sql`](./competition_international.sql)
+
+Creates 60 nations, owner nation draft, World Cup cycle/group tables, international squads, and lifetime player caps (`international_player_career`).
+
+**Admin:** GPSL Admin → **World Cup & nations** (`admin_international.html`) — seed nations, set owner rank points, open nation selection, assign teams.
+
+**Owners:** Cups → **World Cup** / **Nation selection**; national team page with flag and call-ups from club squad.
+
+Qualifying fixtures, finals draws, and matchday integration are **schema-ready** — detail in a later pass.
+
 ## Draft auction favourites (saved threads)
 
 Run once (requires `my_club_shortname()` from `special_auctions.sql`):

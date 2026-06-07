@@ -1,0 +1,64 @@
+<script>window.CURRENT_PAGE = "world_cup";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>World Cup — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="international.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1280px; margin:20px auto 40px; }
+    h1 { color:#ff9900; }
+    h2 { color:#ff9900; font-size:18px; margin:0 0 12px; }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:20px; margin-bottom:24px;
+    }
+    .toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+    .toolbar a.button { font-size:13px; }
+    .empty { color:#888; }
+    a { color:#ff9900; }
+    .wc-phase { color:#aaa; font-size:14px; margin-bottom:16px; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <h1>🏆 GPSL World Cup</h1>
+    <p class="intl-note">
+      60 nations · 12 qualifying groups of 5 · top 2 plus 8 best third places (32 finalists) ·
+      8 groups of 4 in the finals · R16 → QF → SF → Final.
+      Finals held between seasons 4–5, 8–9, and every four seasons thereafter.
+    </p>
+
+    <div class="toolbar">
+      <a class="button" href="nation_select.html">Nation selection</a>
+      <a class="button" href="national_team.html" id="myNationLink" hidden>My national team</a>
+    </div>
+
+    <div class="panel">
+      <h2>Current cycle</h2>
+      <div id="cycleInfo" class="wc-phase">Loading…</div>
+    </div>
+
+    <div class="panel">
+      <h2>Qualifying — 12 × groups of 5</h2>
+      <p class="intl-note">Played over the two GPSL seasons before each finals window.</p>
+      <div id="qualGroups" class="intl-grid"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Finals — 8 × groups of 4</h2>
+      <p class="intl-note">Top two from each group advance to the last 16.</p>
+      <div id="finalsGroups" class="intl-grid"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Knockout stage</h2>
+      <p id="knockoutNote" class="empty">Knockout bracket will appear once finals groups are complete.</p>
+    </div>
+  </div>
+  <script type="module" src="world_cup.js"></script>
+</body>
+</html>

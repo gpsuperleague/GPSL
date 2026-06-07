@@ -1,0 +1,94 @@
+.nat-flag { line-height: 1; }
+.nat-flag-lg { font-size: 56px; }
+.nat-flag-sm { font-size: 18px; }
+
+.intl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.intl-table th,
+.intl-table td {
+  border: 1px solid #333;
+  padding: 6px 8px;
+  text-align: center;
+}
+.intl-table th {
+  background: #222;
+  color: #ff9900;
+}
+.intl-table td:nth-child(2) { text-align: left; }
+
+.intl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.intl-group-card {
+  background: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 12px;
+}
+.intl-group-card h4 {
+  margin: 0 0 8px;
+  color: #ff9900;
+  font-size: 14px;
+}
+
+.nat-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.nat-hero h1 { margin: 0; color: #ff9900; }
+.nat-meta { color: #aaa; font-size: 14px; }
+
+.nat-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.nat-pick-card {
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.nat-pick-card:hover:not(.taken):not(.disabled) {
+  border-color: #ff9900;
+  transform: translateY(-1px);
+}
+.nat-pick-card.taken { opacity: 0.45; cursor: not-allowed; }
+.nat-pick-card.disabled { opacity: 0.6; cursor: not-allowed; }
+.nat-pick-card.my-turn { box-shadow: 0 0 0 2px #ff9900; }
+.nat-pick-card .flag { font-size: 28px; display: block; margin-bottom: 4px; }
+.nat-pick-card .name { font-size: 12px; color: #ddd; }
+
+.draft-board {
+  font-size: 13px;
+  width: 100%;
+  border-collapse: collapse;
+}
+.draft-board th,
+.draft-board td {
+  border-bottom: 1px solid #333;
+  padding: 8px;
+  text-align: left;
+}
+.draft-board th { color: #ff9900; }
+.draft-board tr.current-pick { background: #2a2418; }
+.draft-board tr.me { background: #1a2a1a; }
+
+.intl-note {
+  color: #999;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}

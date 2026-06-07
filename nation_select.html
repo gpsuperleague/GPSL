@@ -1,0 +1,58 @@
+<script>window.CURRENT_PAGE = "nation_select";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nation Selection — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="international.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1280px; margin:20px auto 40px; }
+    h1 { color:#ff9900; }
+    h2 { color:#ff9900; font-size:18px; margin:0 0 12px; }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:20px; margin-bottom:24px;
+    }
+    #statusMsg { margin:12px 0; font-size:14px; }
+    #statusMsg.ok { color:#8d8; }
+    #statusMsg.err { color:#f88; }
+    a { color:#ff9900; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <h1>Nation selection</h1>
+    <p class="intl-note">
+      Owners pick a national team in <b>rank order</b> (highest rank points first).
+      Initial selection opens after Season 1; re-selection after each World Cup.
+      Your nation is locked until the next World Cup cycle.
+    </p>
+
+    <div class="toolbar" style="margin-bottom:16px;">
+      <a class="button" href="world_cup.html">World Cup</a>
+      <a class="button" href="national_team.html" id="myTeamBtn" hidden>My national team</a>
+    </div>
+
+    <div class="panel">
+      <h2>Selection window</h2>
+      <div id="windowInfo">Loading…</div>
+      <div id="statusMsg"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Draft order</h2>
+      <div id="draftBoard"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Choose a nation</h2>
+      <p id="pickHint" class="intl-note"></p>
+      <div id="nationGrid" class="nat-pick-grid"></div>
+    </div>
+  </div>
+  <script type="module" src="nation_select.js"></script>
+</body>
+</html>
