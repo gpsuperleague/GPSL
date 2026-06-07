@@ -203,8 +203,8 @@
   position: relative;
 }
 .pitch-label-menu {
-  position: absolute;
-  z-index: 20;
+  position: fixed;
+  z-index: 1000;
   width: 240px;
   max-height: 320px;
   overflow-y: auto;

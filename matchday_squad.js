@@ -431,15 +431,17 @@ function wirePositionDragging(pitchEl, slotPositions, getEditMode) {
   });
 }
 
-function wirePitchLabelPicker(pitchEl, root, slotLabels) {
-  let menu = root.querySelector("#pitchLabelMenu");
-  if (!menu) {
+function wirePitchLabelPicker(pitchEl, slotLabels) {
+  const pitchStage = pitchEl.closest(".pitch-stage") || pitchEl.parentElement;
+  let menu = pitchStage?.querySelector("#pitchLabelMenu");
+  if (!menu && pitchStage) {
     menu = document.createElement("div");
     menu.id = "pitchLabelMenu";
     menu.className = "pitch-label-menu";
     menu.hidden = true;
-    root.appendChild(menu);
+    pitchStage.appendChild(menu);
   }
+  if (!menu) return;
 
   function updateSlotLabelDom(slotId) {
     const wrap = pitchEl.querySelector(`.pitch-slot[data-slot-id="${slotId}"]`);
@@ -451,7 +453,7 @@ function wirePitchLabelPicker(pitchEl, root, slotLabels) {
     menu.hidden = true;
   }
 
-  function openMenu(slotId, clientX, clientY) {
+  function openMenu(slotId, anchorEl) {
     menu.innerHTML = "";
 
     const title = document.createElement("div");
@@ -493,11 +495,26 @@ function wirePitchLabelPicker(pitchEl, root, slotLabels) {
     menu.appendChild(customBtn);
 
     menu.hidden = false;
-    const host = root.querySelector(".pitch-stage") || root;
-    const rect = host.getBoundingClientRect();
-    const menuW = 240;
-    const left = Math.max(8, Math.min(clientX - rect.left, rect.width - menuW - 8));
-    const top = Math.max(8, clientY - rect.top);
+    positionMenuNearAnchor(anchorEl);
+  }
+
+  function positionMenuNearAnchor(anchorEl) {
+    const anchor = anchorEl.getBoundingClientRect();
+    const menuW = menu.offsetWidth || 240;
+    const menuH = menu.offsetHeight || 280;
+    const gap = 6;
+    const pad = 8;
+
+    let left = anchor.left + anchor.width / 2 - menuW / 2;
+    let top = anchor.bottom + gap;
+
+    if (top + menuH > window.innerHeight - pad) {
+      top = anchor.top - menuH - gap;
+    }
+    if (top < pad) top = pad;
+
+    left = Math.max(pad, Math.min(left, window.innerWidth - menuW - pad));
+
     menu.style.left = `${left}px`;
     menu.style.top = `${top}px`;
   }
@@ -506,7 +523,7 @@ function wirePitchLabelPicker(pitchEl, root, slotLabels) {
     const wrap = e.target.closest(".pitch-slot[data-slot-id]");
     if (!wrap) return;
     e.preventDefault();
-    openMenu(wrap.dataset.slotId, e.clientX, e.clientY);
+    openMenu(wrap.dataset.slotId, wrap);
   });
 
   pitchEl.addEventListener("click", (e) => {
@@ -515,8 +532,7 @@ function wirePitchLabelPicker(pitchEl, root, slotLabels) {
       e.stopPropagation();
       const wrap = labelEl.closest(".pitch-slot[data-slot-id]");
       if (!wrap) return;
-      const r = labelEl.getBoundingClientRect();
-      openMenu(wrap.dataset.slotId, r.left, r.bottom + 4);
+      openMenu(wrap.dataset.slotId, labelEl);
       return;
     }
 
@@ -525,8 +541,7 @@ function wirePitchLabelPicker(pitchEl, root, slotLabels) {
       e.stopPropagation();
       const wrap = card.closest(".pitch-slot[data-slot-id]");
       if (!wrap) return;
-      const r = card.getBoundingClientRect();
-      openMenu(wrap.dataset.slotId, r.left + r.width / 2, r.bottom + 4);
+      openMenu(wrap.dataset.slotId, card);
     }
   });
 
@@ -783,7 +798,7 @@ export function initMatchdaySquadPanel({
 
   wireDragDrop(root, state, rerender);
   wirePositionDragging(pitchEl, slotPositions, () => editPositionsMode);
-  wirePitchLabelPicker(pitchEl, root, slotLabels);
+  wirePitchLabelPicker(pitchEl, slotLabels);
 
   movePosBtn.addEventListener("click", () => setEditPositionsMode(!editPositionsMode));
 
