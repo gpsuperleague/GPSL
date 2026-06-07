@@ -208,6 +208,77 @@
       color: #9c9;
       margin-top: 8px;
     }
+
+    .account-panel {
+      margin-top: 20px;
+      padding: 16px 18px;
+    }
+
+    .account-title {
+      color: #ff9900;
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    .account-intro {
+      color: #aaa;
+      font-size: 13px;
+      line-height: 1.45;
+      margin: 0 0 16px;
+    }
+
+    .account-section {
+      border-top: 1px solid #333;
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+
+    .account-section:first-of-type {
+      border-top: none;
+      padding-top: 0;
+      margin-top: 0;
+    }
+
+    .account-section h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
+      color: #ffcc66;
+    }
+
+    .account-hint {
+      font-size: 12px;
+      color: #888;
+      margin: 0 0 10px;
+      line-height: 1.4;
+    }
+
+    .account-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 360px;
+    }
+
+    .account-fields input {
+      padding: 8px 10px;
+      background: #222;
+      border: 1px solid #444;
+      color: #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .account-status {
+      display: block;
+      font-size: 12px;
+      color: #8c8;
+      margin-top: 8px;
+      min-height: 1.2em;
+    }
+
+    .account-status.is-error {
+      color: #f88;
+    }
   </style>
 
 </head>
@@ -275,6 +346,65 @@
         <span id="compDivision">—</span>
       </div>
 
+    </div>
+
+    <div class="panel panel-bg account-panel" id="accountPanel">
+      <h2 class="account-title">Login &amp; password</h2>
+      <p class="account-intro">
+        Update the email and password for your GPSL account. You must enter your
+        <b>current password</b> to confirm any change.
+      </p>
+
+      <div class="account-section">
+        <h3>Change email</h3>
+        <p class="account-hint">
+          A confirmation link is sent to your <b>new</b> address. Your login email
+          updates only after you confirm.
+        </p>
+        <div class="account-fields">
+          <input
+            type="email"
+            id="newEmailInput"
+            autocomplete="email"
+            placeholder="New email address"
+          />
+          <input
+            type="password"
+            id="emailCurrentPassword"
+            autocomplete="current-password"
+            placeholder="Current password"
+          />
+          <button type="button" id="changeEmailBtn" class="small-btn">Update email</button>
+          <span id="emailChangeStatus" class="account-status" role="status"></span>
+        </div>
+      </div>
+
+      <div class="account-section">
+        <h3>Change password</h3>
+        <p class="account-hint">Choose a new password (minimum 6 characters).</p>
+        <div class="account-fields">
+          <input
+            type="password"
+            id="currentPasswordInput"
+            autocomplete="current-password"
+            placeholder="Current password"
+          />
+          <input
+            type="password"
+            id="newPasswordInput"
+            autocomplete="new-password"
+            placeholder="New password"
+          />
+          <input
+            type="password"
+            id="confirmPasswordInput"
+            autocomplete="new-password"
+            placeholder="Confirm new password"
+          />
+          <button type="button" id="changePasswordBtn" class="small-btn">Update password</button>
+          <span id="passwordChangeStatus" class="account-status" role="status"></span>
+        </div>
+      </div>
     </div>
 
     <div class="panel panel-bg subsidy-panel" id="challengePanel">

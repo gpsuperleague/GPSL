@@ -361,6 +361,139 @@ async function loadSubsidyStatus(clubShortName) {
   renderSubsidyGrid(data, null);
 }
 
+function setAccountStatus(el, message, isError = false) {
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.toggle("is-error", isError);
+}
+
+async function verifyCurrentPassword(email, password) {
+  if (!email || !password) {
+    return { ok: false, msg: "Enter your current password." };
+  }
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    return { ok: false, msg: "Current password is incorrect." };
+  }
+
+  return { ok: true };
+}
+
+function wireAccountSettings(user) {
+  const emailEl = document.getElementById("accountEmail");
+  const newEmailInput = document.getElementById("newEmailInput");
+  const emailCurrentPassword = document.getElementById("emailCurrentPassword");
+  const changeEmailBtn = document.getElementById("changeEmailBtn");
+  const emailChangeStatus = document.getElementById("emailChangeStatus");
+
+  const currentPasswordInput = document.getElementById("currentPasswordInput");
+  const newPasswordInput = document.getElementById("newPasswordInput");
+  const confirmPasswordInput = document.getElementById("confirmPasswordInput");
+  const changePasswordBtn = document.getElementById("changePasswordBtn");
+  const passwordChangeStatus = document.getElementById("passwordChangeStatus");
+
+  const loginEmail = user?.email || "";
+
+  changeEmailBtn?.addEventListener("click", async () => {
+    const newEmail = newEmailInput?.value.trim().toLowerCase() || "";
+    const currentPassword = emailCurrentPassword?.value || "";
+
+    setAccountStatus(emailChangeStatus, "");
+
+    if (!newEmail) {
+      setAccountStatus(emailChangeStatus, "Enter a new email address.", true);
+      return;
+    }
+
+    if (newEmail === loginEmail.toLowerCase()) {
+      setAccountStatus(emailChangeStatus, "That is already your login email.", true);
+      return;
+    }
+
+    const verified = await verifyCurrentPassword(loginEmail, currentPassword);
+    if (!verified.ok) {
+      setAccountStatus(emailChangeStatus, verified.msg, true);
+      return;
+    }
+
+    changeEmailBtn.disabled = true;
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    changeEmailBtn.disabled = false;
+
+    if (error) {
+      setAccountStatus(emailChangeStatus, error.message || "Could not update email.", true);
+      return;
+    }
+
+    if (newEmailInput) newEmailInput.value = "";
+    if (emailCurrentPassword) emailCurrentPassword.value = "";
+    setAccountStatus(
+      emailChangeStatus,
+      `Confirmation sent to ${newEmail}. Click the link in that email to finish the change.`
+    );
+  });
+
+  changePasswordBtn?.addEventListener("click", async () => {
+    const currentPassword = currentPasswordInput?.value || "";
+    const newPassword = newPasswordInput?.value || "";
+    const confirmPassword = confirmPasswordInput?.value || "";
+
+    setAccountStatus(passwordChangeStatus, "");
+
+    if (!newPassword || newPassword.length < 6) {
+      setAccountStatus(
+        passwordChangeStatus,
+        "New password must be at least 6 characters.",
+        true
+      );
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setAccountStatus(passwordChangeStatus, "New passwords do not match.", true);
+      return;
+    }
+
+    if (newPassword === currentPassword) {
+      setAccountStatus(
+        passwordChangeStatus,
+        "Choose a different password from your current one.",
+        true
+      );
+      return;
+    }
+
+    const verified = await verifyCurrentPassword(loginEmail, currentPassword);
+    if (!verified.ok) {
+      setAccountStatus(passwordChangeStatus, verified.msg, true);
+      return;
+    }
+
+    changePasswordBtn.disabled = true;
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    changePasswordBtn.disabled = false;
+
+    if (error) {
+      setAccountStatus(
+        passwordChangeStatus,
+        error.message || "Could not update password.",
+        true
+      );
+      return;
+    }
+
+    if (currentPasswordInput) currentPasswordInput.value = "";
+    if (newPasswordInput) newPasswordInput.value = "";
+    if (confirmPasswordInput) confirmPasswordInput.value = "";
+    setAccountStatus(passwordChangeStatus, "Password updated successfully.");
+  });
+}
+
 function wireHolidayBooking() {
   const startInput = document.getElementById("holidayStartDate");
   const endInput = document.getElementById("holidayEndDate");
@@ -418,6 +551,7 @@ async function initClubDetailsPage() {
 
   const emailEl = document.getElementById("accountEmail");
   if (emailEl) emailEl.textContent = user.email || "—";
+  wireAccountSettings(user);
 
   const ownerEls = {
     input: document.getElementById("ownerInput"),
