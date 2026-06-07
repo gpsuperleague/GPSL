@@ -849,6 +849,16 @@ async function loadMatchdayFormation(slotNo) {
   return data;
 }
 
+async function deleteMatchdayFormation(slotNo) {
+  const { data, error } = await supabase.rpc("club_delete_matchday_formation", {
+    p_slot_no: slotNo,
+  });
+  if (error) throw new Error(error.message);
+  await loadMatchdaySquad();
+  squadPanelApi?.refreshSavedFormations(matchdaySavedFormations);
+  return data;
+}
+
 async function saveMatchdaySquad(slots, pitchLayout = null) {
   const { data, error } = await supabase.rpc("club_save_matchday_squad", {
     p_slots: slots,
@@ -880,6 +890,7 @@ function initSquadPanel() {
     onSave: saveMatchdaySquad,
     onSaveFormation: saveMatchdayFormation,
     onLoadFormation: loadMatchdayFormation,
+    onDeleteFormation: deleteMatchdayFormation,
     onChange: () => {},
   });
 }

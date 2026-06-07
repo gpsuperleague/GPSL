@@ -583,6 +583,7 @@ export function initMatchdaySquadPanel({
   onSave,
   onSaveFormation,
   onLoadFormation,
+  onDeleteFormation,
 }) {
   let editPositionsMode = false;
   const resolved = resolvePitchLayout(savedPitchLayout);
@@ -618,6 +619,7 @@ export function initMatchdaySquadPanel({
         <div class="formation-action-group">
           <button type="button" class="button secondary" id="squadLoadFormationBtn">Load Custom Formation</button>
           <button type="button" class="button secondary" id="squadSaveFormationBtn">Save Custom Formation</button>
+          <button type="button" class="button danger" id="squadDeleteFormationBtn">Delete Custom Formation</button>
         </div>
         <input type="text" id="squadFormationName" class="formation-name-input" maxlength="40" placeholder="Formation name" />
       </div>
@@ -919,6 +921,33 @@ export function initMatchdaySquadPanel({
       syncFormationNameFromSlot();
     } catch (err) {
       statusText.textContent = err?.message || "Formation save failed";
+    }
+  });
+
+  root.querySelector("#squadDeleteFormationBtn").addEventListener("click", async () => {
+    if (!onDeleteFormation) return;
+    const slot = Number(savedFormationSelect.value) || 1;
+    const row = savedFormationBySlot(slot);
+    if (!row) {
+      alert(`Custom ${slot} is already empty.`);
+      return;
+    }
+    const label = row.name ? `Custom ${slot} — “${row.name}”` : `Custom ${slot}`;
+    if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+
+    statusText.textContent = "Deleting formation…";
+    try {
+      await onDeleteFormation(slot);
+      savedFormationRows = savedFormationRows.filter(
+        (r) => Number(r.slot_no) !== slot
+      );
+      renderSavedFormationOptions();
+      savedFormationSelect.value = String(slot);
+      formationNameInput.value = "";
+      statusText.textContent = `Deleted ${label}.`;
+    } catch (err) {
+      statusText.textContent = err?.message || "Formation delete failed";
+      alert(err?.message || "Failed to delete custom formation.");
     }
   });
 

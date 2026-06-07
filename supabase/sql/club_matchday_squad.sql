@@ -326,6 +326,42 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.club_delete_matchday_formation(p_slot_no smallint)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club text := public.my_club_shortname();
+  v_name text;
+BEGIN
+  IF v_club IS NULL OR v_club = '' THEN
+    RAISE EXCEPTION 'No club linked to your account';
+  END IF;
+
+  IF p_slot_no IS NULL OR p_slot_no < 1 OR p_slot_no > 5 THEN
+    RAISE EXCEPTION 'Formation slot must be 1–5';
+  END IF;
+
+  DELETE FROM public.club_matchday_saved_formation
+  WHERE club_short_name = v_club
+    AND slot_no = p_slot_no
+  RETURNING name INTO v_name;
+
+  IF v_name IS NULL THEN
+    RAISE EXCEPTION 'Custom formation slot % is already empty', p_slot_no;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'club_short_name', v_club,
+    'slot_no', p_slot_no,
+    'name', v_name,
+    'deleted', true
+  );
+END;
+$function$;
+
 -- ---------------------------------------------------------------------------
 -- Public view
 -- ---------------------------------------------------------------------------
@@ -429,5 +465,6 @@ GRANT SELECT ON public.club_matchday_saved_formation_public TO authenticated;
 GRANT EXECUTE ON FUNCTION public.validate_pitch_layout_mirroring(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_save_matchday_squad(jsonb, jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_save_matchday_formation(smallint, text, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.club_delete_matchday_formation(smallint) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
