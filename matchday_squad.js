@@ -597,7 +597,10 @@ export function initMatchdaySquadPanel({
       <div class="formation-section-row">
         <span class="formation-section-label">My Formations</span>
         <select id="squadSavedFormationSelect" class="formation-select" title="Your 5 saved pitch layouts"></select>
-        <button type="button" class="button secondary" id="squadLoadFormationBtn">Load Custom Formation</button>
+        <div class="formation-action-group">
+          <button type="button" class="button secondary" id="squadLoadFormationBtn">Load Custom Formation</button>
+          <button type="button" class="button secondary" id="squadSaveFormationBtn">Save Custom Formation</button>
+        </div>
         <input type="text" id="squadFormationName" class="formation-name-input" maxlength="40" placeholder="Formation name" />
         <select id="squadFormationSlot" class="formation-slot-select" title="Save to slot 1–5">
           <option value="1">Slot 1</option>
@@ -606,7 +609,6 @@ export function initMatchdaySquadPanel({
           <option value="4">Slot 4</option>
           <option value="5">Slot 5</option>
         </select>
-        <button type="button" class="button secondary" id="squadSaveFormationBtn">Save layout</button>
       </div>
     </div>
     <div class="squad-toolbar">

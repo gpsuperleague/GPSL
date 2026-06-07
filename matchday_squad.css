@@ -381,6 +381,12 @@
   gap: 8px;
   align-items: center;
 }
+.formation-action-group {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  align-items: center;
+}
 .squad-toolbar {
   display: flex;
   flex-wrap: wrap;
