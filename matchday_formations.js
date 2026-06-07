@@ -9,23 +9,6 @@ function L(id, label, x, y) {
 
 /** @type {Record<string, { id: string, name: string, slots: Array<{ id: string, label: string, x: number, y: number }> }>} */
 export const MATCHDAY_FORMATIONS = {
-  "gpsl-flex": {
-    id: "gpsl-flex",
-    name: "GPSL Flex",
-    slots: [
-      L("GK", "GK", 50, 90),
-      L("LB", "LB", 8, 72),
-      L("CB1", "CB", 28, 74),
-      L("CB2", "CB", 50, 76),
-      L("RB", "CB", 72, 74),
-      L("RMF", "RB", 92, 70),
-      L("LMF", "DMF", 22, 56),
-      L("CMF", "CMF", 50, 56),
-      L("RWF", "DMF", 78, 56),
-      L("LWF", "CF", 32, 11),
-      L("CF", "SS", 50, 24),
-    ],
-  },
   "4-3-3": {
     id: "4-3-3",
     name: "4-3-3",
@@ -164,7 +147,7 @@ export const MATCHDAY_FORMATIONS = {
   },
 };
 
-export const DEFAULT_FORMATION_ID = "gpsl-flex";
+export const DEFAULT_FORMATION_ID = "4-3-3";
 
 export const PITCH_SLOT_IDS = [
   "GK",
