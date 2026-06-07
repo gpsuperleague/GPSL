@@ -135,6 +135,14 @@ async function archiveSeasonStats() {
     rankNote = rankErr
       ? ` Owner ranking not updated (${rankErr.message}). Run competition_owner_ranking.sql.`
       : " Owner ranking updated.";
+
+    const { error: clubRankErr } = await supabase.rpc(
+      "competition_club_ranking_recompute_season",
+      { p_season_id: seasonId }
+    );
+    rankNote += clubRankErr
+      ? ` Club ranking not updated (${clubRankErr.message}). Run competition_club_stadium_attendance.sql.`
+      : " Club ranking updated.";
   }
 
   setStatus(

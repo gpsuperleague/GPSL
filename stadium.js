@@ -58,15 +58,41 @@ function renderGateBreakdown(data) {
   }
 
   const fillPct = ((Number(data.attendance_rate) || 0) * 100).toFixed(1);
+  const legacy = data.legacy_fallback;
+
+  if (legacy) {
+    el.innerHTML = `
+      <dl class="breakdown">
+        <dt>Stadium capacity</dt><dd>${Number(data.capacity || 0).toLocaleString("en-GB")}</dd>
+        <dt>League position</dt><dd>${data.table_position ?? "—"}</dd>
+        <dt>5-season avg finish</dt><dd>${data.history_avg_position ?? "10 (neutral)"}</dd>
+        <dt>Fill rate</dt><dd>${fillPct}%</dd>
+        <dt>Est. gate per home match</dt><dd class="highlight">${formatMoney(data.total_gate)}</dd>
+      </dl>
+      <p class="note">Legacy gate formula — run <code>competition_club_stadium_attendance.sql</code> for club prestige fill.</p>`;
+    return;
+  }
+
+  const tier = data.club_tier || "—";
+  const gap = Number(data.performance_gap);
+  const gapLabel =
+    Number.isFinite(gap) && gap !== 0
+      ? `${gap > 0 ? "+" : ""}${gap.toFixed(2)} (${gap < 0 ? "below expectation" : "above expectation"})`
+      : "On expectation";
+
   el.innerHTML = `
     <dl class="breakdown">
       <dt>Stadium capacity</dt><dd>${Number(data.capacity || 0).toLocaleString("en-GB")}</dd>
-      <dt>League position</dt><dd>${data.table_position ?? "—"}</dd>
-      <dt>5-season avg finish</dt><dd>${data.history_avg_position ?? "10 (neutral)"}</dd>
-      <dt>Fill rate</dt><dd>${fillPct}%</dd>
+      <dt>Club tier</dt><dd>${tier} · prestige rank ${data.prestige_rank ?? "—"}</dd>
+      <dt>Manager rating</dt><dd>${data.manager_rating ?? "—"}${tier !== "big" && data.manager_rating ? " (can lift expectation)" : ""}</dd>
+      <dt>Season expectation</dt><dd>League ${data.expected_position ?? "—"} · ${Number(data.expected_points || 0).toFixed(2)} pts</dd>
+      <dt>Current delivery</dt><dd>League ${data.actual_position ?? data.table_position ?? "—"} · ${Number(data.actual_points || 0).toFixed(2)} pts</dd>
+      <dt>Performance gap</dt><dd>${gapLabel}</dd>
+      <dt>Fill rate</dt><dd>${fillPct}% <span class="note">(floor ${data.min_fill_pct ?? 60}%)</span></dd>
       <dt>Est. gate per home match</dt><dd class="highlight">${formatMoney(data.total_gate)}</dd>
     </dl>
-    <p class="note">League home games: <b>100%</b> to home club. Cup games: <b>50% / 50%</b> (when cups are added).</p>
+    <p class="note">Based on <b>club</b> prestige (5-season rolling) vs this season's results. Big clubs stay held to high standards; top managers raise the bar at medium/low clubs only.</p>
+    <p class="note">League home games: <b>100%</b> to home club. Cup games: <b>50% / 50%</b>.</p>
   `;
 }
 
@@ -359,8 +385,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const archEl = document.getElementById("historyNote");
   if (archEl) {
     archEl.textContent = archive.length
-      ? `Using ${archive.length} archived season(s) for gate boost.`
-      : "No archive rows — using neutral history until seasons are archived.";
+      ? `Club prestige uses ${archive.length} archived season(s) in the rolling window (plus live season form).`
+      : "No archive rows yet — prestige and fill use live season data until seasons are archived.";
   }
 
   const standings = await loadStandings(supabase);

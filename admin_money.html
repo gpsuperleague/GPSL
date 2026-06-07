@@ -235,6 +235,69 @@
         <h2>Tax %</h2>
         <p class="note">League tax on transfers / income is handled via central bank ledger rules (<code>central_bank_phase1.sql</code>). A dedicated tax % admin control is not wired yet — set rates in SQL when introduced.</p>
       </div>
+      <div class="card" id="stadiumAttendanceCard">
+        <h2>Stadium attendance &amp; club prestige</h2>
+        <p class="note">
+          <b>Club rank</b> (not owner rank) from rolling league + cup points sets stature.
+          Fill % reacts to current-season delivery vs expectation.
+          Big clubs keep high expectations; only medium/low clubs get manager lift.
+          Run <code>competition_club_stadium_attendance.sql</code>, then <b>Recompute club rankings</b>.
+        </p>
+        <h3 class="admin-subheading">Fill limits</h3>
+        <div class="row gov-subsidy-row">
+          <div><label>Min fill %</label><input type="number" id="attMinFill" min="0" max="100" step="1" style="width:80px;"></div>
+          <div><label>Max fill %</label><input type="number" id="attMaxFill" min="0" max="100" step="1" style="width:80px;"></div>
+          <div><label>Neutral fill %</label><input type="number" id="attNeutralFill" min="0" max="100" step="1" style="width:80px;"></div>
+          <div><label>Rolling seasons</label><input type="number" id="attRollingSeasons" min="1" max="10" step="1" style="width:70px;"></div>
+        </div>
+        <h3 class="admin-subheading">Club tier cutoffs (prestige rank)</h3>
+        <div class="row gov-subsidy-row">
+          <div><label>Big club ≤ rank</label><input type="number" id="attBigMaxRank" min="1" max="60" step="1" style="width:70px;"></div>
+          <div><label>Medium club ≤ rank</label><input type="number" id="attMediumMaxRank" min="1" max="60" step="1" style="width:70px;"></div>
+          <div><label>Capacity weight</label><input type="number" id="attCapWeight" min="0" max="2" step="0.01" style="width:80px;"></div>
+          <div><label>Capacity ref seats</label><input type="number" id="attCapRef" min="1000" step="1000" style="width:100px;"></div>
+        </div>
+        <h3 class="admin-subheading">Sensitivity &amp; gap scale</h3>
+        <div class="row gov-subsidy-row">
+          <div><label>Big club sensitivity</label><input type="number" id="attBigSens" min="0" max="3" step="0.05" style="width:80px;"></div>
+          <div><label>Medium sensitivity</label><input type="number" id="attMedSens" min="0" max="3" step="0.05" style="width:80px;"></div>
+          <div><label>Low sensitivity</label><input type="number" id="attLowSens" min="0" max="3" step="0.05" style="width:80px;"></div>
+          <div><label>Overperform cap</label><input type="number" id="attOverCap" min="0" max="2" step="0.05" style="width:80px;"></div>
+          <div><label>Points gap scale</label><input type="number" id="attGapScale" min="0" max="10" step="0.1" style="width:80px;"></div>
+        </div>
+        <h3 class="admin-subheading">Expectation vs performance weights</h3>
+        <div class="row gov-subsidy-row">
+          <div><label>League expect wt</label><input type="number" id="attLeagueExpWt" min="0" max="1" step="0.05" style="width:80px;"></div>
+          <div><label>Cup expect wt</label><input type="number" id="attCupExpWt" min="0" max="1" step="0.05" style="width:80px;"></div>
+          <div><label>League perf wt</label><input type="number" id="attLeaguePerfWt" min="0" max="1" step="0.05" style="width:80px;"></div>
+          <div><label>Cup perf wt</label><input type="number" id="attCupPerfWt" min="0" max="1" step="0.05" style="width:80px;"></div>
+        </div>
+        <h3 class="admin-subheading">Manager lift (medium/low clubs only)</h3>
+        <div class="row gov-subsidy-row">
+          <div><label>Lift from rating</label><input type="number" id="attMgrThreshold" min="1" max="99" step="1" style="width:70px;"></div>
+          <div><label>Max rating ref</label><input type="number" id="attMgrMaxRating" min="1" max="99" step="1" style="width:70px;"></div>
+          <div><label>Max pos lift (med)</label><input type="number" id="attMgrLiftMed" min="0" max="19" step="0.5" style="width:80px;"></div>
+          <div><label>Max pos lift (low)</label><input type="number" id="attMgrLiftLow" min="0" max="19" step="0.5" style="width:80px;"></div>
+        </div>
+        <h3 class="admin-subheading">Expected cup points by zone</h3>
+        <div class="row gov-subsidy-row">
+          <div><label>Super8 zone</label><input type="number" id="attExpCupSuper8" min="0" max="20" step="0.25" style="width:80px;"></div>
+          <div><label>Plate zone</label><input type="number" id="attExpCupPlate" min="0" max="20" step="0.25" style="width:80px;"></div>
+          <div><label>Shield zone</label><input type="number" id="attExpCupShield" min="0" max="20" step="0.25" style="width:80px;"></div>
+          <div><label>Spoon zone</label><input type="number" id="attExpCupSpoon" min="0" max="20" step="0.25" style="width:80px;"></div>
+          <div><label>League cup default</label><input type="number" id="attExpCupLC" min="0" max="20" step="0.25" style="width:80px;"></div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" id="saveAttendanceSettingsBtn" class="button">Save attendance settings</button>
+          <button type="button" id="recomputeClubRankingsBtn" class="button">Recompute club rankings</button>
+        </div>
+        <div id="attendanceSettingsStatus" class="status-line"></div>
+        <h3 class="admin-subheading" style="margin-top:18px;">Club tiers &amp; managers (preview)</h3>
+        <p class="note">Override tier per club for testing. Manager rating inflates expectation on medium/low clubs only.</p>
+        <div id="clubTierTableWrap" style="overflow-x:auto;max-height:420px;margin-top:8px;"></div>
+        <button type="button" id="saveClubTiersBtn" class="button" style="margin-top:10px;">Save club tier overrides &amp; managers</button>
+        <div id="clubTierStatus" class="status-line"></div>
+      </div>
       <div class="card">
         <h2>Stadium costs</h2>
         <p class="note">Expansion cost per seat tiers (by <b>current</b> capacity). Owners: seats × tier rate. Day-7 cancel penalty goes to Rapid Build Co.</p>
