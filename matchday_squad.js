@@ -4,10 +4,10 @@
 
 export const MAX_SQUAD = 23;
 export const MAX_PITCH = 11;
-export const MAX_BENCH = 5;
-export const MAX_RESERVE = 7;
+export const MAX_BENCH = 12;
+export const MAX_RESERVE = 0;
 
-export const PITCH_SLOTS = [
+export const DEFAULT_PITCH_SLOTS = [
   { id: "GK", label: "GK", x: 50, y: 86 },
   { id: "LB", label: "LB", x: 12, y: 68 },
   { id: "CB1", label: "CB", x: 36, y: 72 },
@@ -20,6 +20,39 @@ export const PITCH_SLOTS = [
   { id: "CF", label: "CF", x: 50, y: 12 },
   { id: "RWF", label: "RW", x: 78, y: 22 },
 ];
+
+/** @deprecated use DEFAULT_PITCH_SLOTS */
+export const PITCH_SLOTS = DEFAULT_PITCH_SLOTS;
+
+function clampPct(n) {
+  return Math.min(96, Math.max(4, Number(n) || 0));
+}
+
+export function normalizePitchLayout(saved) {
+  const out = {};
+  for (const slot of DEFAULT_PITCH_SLOTS) {
+    const s = saved?.[slot.id];
+    out[slot.id] = {
+      x: clampPct(s?.x ?? slot.x),
+      y: clampPct(s?.y ?? slot.y),
+    };
+  }
+  return out;
+}
+
+export function buildPitchLayoutPayload(slotPositions) {
+  const out = {};
+  for (const slot of DEFAULT_PITCH_SLOTS) {
+    const pos = slotPositions[slot.id];
+    if (pos) {
+      out[slot.id] = {
+        x: Math.round(pos.x * 10) / 10,
+        y: Math.round(pos.y * 10) / 10,
+      };
+    }
+  }
+  return out;
+}
 
 const POSITION_TO_PITCH = {
   GK: ["GK"],
@@ -57,7 +90,6 @@ function squadCount(state) {
   let n = 0;
   for (const p of state.pitch.values()) if (p) n += 1;
   for (const p of state.bench) if (p) n += 1;
-  n += state.reserve.length;
   return n;
 }
 
@@ -70,8 +102,6 @@ function findPlayerLocation(state, id) {
       return { area: "bench", index: i };
     }
   }
-  const ri = state.reserve.findIndex((p) => playerKey(p) === id);
-  if (ri >= 0) return { area: "reserve", index: ri };
   const pi = state.pool.findIndex((p) => playerKey(p) === id);
   if (pi >= 0) return { area: "pool", index: pi };
   return null;
@@ -87,8 +117,6 @@ function removePlayerFromState(state, id) {
   } else if (loc.area === "bench") {
     player = state.bench[loc.index];
     state.bench[loc.index] = null;
-  } else if (loc.area === "reserve") {
-    player = state.reserve.splice(loc.index, 1)[0];
   } else if (loc.area === "pool") {
     player = state.pool.splice(loc.index, 1)[0];
   }
@@ -121,40 +149,26 @@ function placePlayer(state, target, player) {
   } else if (target.area === "bench") {
     displaced = state.bench[target.index] || null;
     state.bench[target.index] = clonePlayer(player);
-  } else if (target.area === "reserve") {
-    if (state.reserve.length >= MAX_RESERVE && target.index == null) {
-      return { error: `Maximum ${MAX_RESERVE} reserve players.` };
-    }
-    if (target.index != null) {
-      state.reserve.splice(target.index, 0, clonePlayer(player));
-    } else {
-      state.reserve.push(clonePlayer(player));
-    }
   } else if (target.area === "pool") {
     state.pool.push(clonePlayer(player));
   }
 
   if (displaced) {
-    const count = squadCount(state);
-    if (count < MAX_SQUAD) {
-      state.reserve.push(displaced);
-    } else {
-      state.pool.push(displaced);
-    }
+    state.pool.push(displaced);
   }
   return null;
 }
 
 export function buildSlotsPayload(state) {
   const out = [];
-  for (const slot of PITCH_SLOTS) {
+  for (const slot of DEFAULT_PITCH_SLOTS) {
     const p = state.pitch.get(slot.id);
     if (p) {
       out.push({
         player_id: playerKey(p),
         slot_kind: "pitch",
         pitch_slot: slot.id,
-        sort_order: PITCH_SLOTS.indexOf(slot),
+        sort_order: DEFAULT_PITCH_SLOTS.indexOf(slot),
       });
     }
   }
@@ -166,13 +180,6 @@ export function buildSlotsPayload(state) {
         sort_order: i,
       });
     }
-  });
-  state.reserve.forEach((p, i) => {
-    out.push({
-      player_id: playerKey(p),
-      slot_kind: "reserve",
-      sort_order: i,
-    });
   });
   return out;
 }
@@ -192,9 +199,8 @@ export function getSquadPlayerIds(savedRows) {
 function buildStateFromSaved(allPlayers, savedRows) {
   const byId = new Map(allPlayers.map((p) => [playerKey(p), p]));
   const state = {
-    pitch: new Map(PITCH_SLOTS.map((s) => [s.id, null])),
+    pitch: new Map(DEFAULT_PITCH_SLOTS.map((s) => [s.id, null])),
     bench: Array(MAX_BENCH).fill(null),
-    reserve: [],
     pool: [],
   };
 
@@ -202,14 +208,22 @@ function buildStateFromSaved(allPlayers, savedRows) {
   for (const row of savedRows || []) {
     const p = byId.get(String(row.player_id));
     if (!p) continue;
-    used.add(String(row.player_id));
+    const pid = String(row.player_id);
     if (row.slot_kind === "pitch" && row.pitch_slot) {
       state.pitch.set(row.pitch_slot, clonePlayer(p));
+      used.add(pid);
     } else if (row.slot_kind === "bench") {
       const idx = Math.min(Math.max(Number(row.sort_order) || 0, 0), MAX_BENCH - 1);
-      if (!state.bench[idx]) state.bench[idx] = clonePlayer(p);
+      if (!state.bench[idx]) {
+        state.bench[idx] = clonePlayer(p);
+        used.add(pid);
+      }
     } else if (row.slot_kind === "reserve") {
-      state.reserve.push(clonePlayer(p));
+      const emptyBench = state.bench.findIndex((x) => !x);
+      if (emptyBench >= 0) {
+        state.bench[emptyBench] = clonePlayer(p);
+        used.add(pid);
+      }
     }
   }
 
@@ -222,9 +236,8 @@ function buildStateFromSaved(allPlayers, savedRows) {
 
 function autoFillBestXi(allPlayers) {
   const state = {
-    pitch: new Map(PITCH_SLOTS.map((s) => [s.id, null])),
+    pitch: new Map(DEFAULT_PITCH_SLOTS.map((s) => [s.id, null])),
     bench: Array(MAX_BENCH).fill(null),
-    reserve: [],
     pool: [],
   };
   const sorted = [...allPlayers].sort(
@@ -246,7 +259,7 @@ function autoFillBestXi(allPlayers) {
     if (slotFilled.size >= MAX_PITCH) break;
   }
 
-  for (const slot of PITCH_SLOTS) {
+  for (const slot of DEFAULT_PITCH_SLOTS) {
     if (state.pitch.get(slot.id)) continue;
     const next = sorted.find((p) => !used.has(playerKey(p)));
     if (!next) break;
@@ -259,12 +272,6 @@ function autoFillBestXi(allPlayers) {
   for (const p of remaining) {
     if (benchIdx < MAX_BENCH) {
       state.bench[benchIdx++] = clonePlayer(p);
-      used.add(playerKey(p));
-    }
-  }
-  for (const p of remaining) {
-    if (!used.has(playerKey(p)) && state.reserve.length < MAX_RESERVE) {
-      state.reserve.push(clonePlayer(p));
       used.add(playerKey(p));
     }
   }
@@ -307,9 +314,6 @@ function resolveDropTarget(el) {
   if (benchDrop) {
     return { area: "bench", index: Number(benchDrop.dataset.benchIdx) };
   }
-  if (el.closest("#reserveGrid")) {
-    return { area: "reserve" };
-  }
   if (el.closest("#squadPoolList")) {
     return { area: "pool" };
   }
@@ -324,7 +328,6 @@ function wireDragDrop(root, state, rerender) {
     const dropEl =
       e.target.closest(".pitch-slot-drop") ||
       e.target.closest(".bench-slot-drop") ||
-      e.target.closest("#reserveGrid") ||
       e.target.closest("#squadPoolList");
     dropEl?.classList.add("drag-over");
   });
@@ -333,7 +336,6 @@ function wireDragDrop(root, state, rerender) {
     const dropEl =
       e.target.closest(".pitch-slot-drop") ||
       e.target.closest(".bench-slot-drop") ||
-      e.target.closest("#reserveGrid") ||
       e.target.closest("#squadPoolList");
     dropEl?.classList.remove("drag-over");
   });
@@ -351,7 +353,6 @@ function wireDragDrop(root, state, rerender) {
     let player = null;
     if (loc.area === "pitch") player = state.pitch.get(loc.slotId);
     else if (loc.area === "bench") player = state.bench[loc.index];
-    else if (loc.area === "reserve") player = state.reserve[loc.index];
     else if (loc.area === "pool") player = state.pool[loc.index];
     if (!player) return;
 
@@ -372,34 +373,84 @@ function wireDragDrop(root, state, rerender) {
  * @param {function} opts.onChange
  * @param {function} opts.onSave
  */
+function wirePositionDragging(pitchEl, slotPositions, getEditMode, onMoved) {
+  let activeSlotId = null;
+  let pointerId = null;
+
+  pitchEl.addEventListener("pointerdown", (e) => {
+    if (!getEditMode()) return;
+    const grip = e.target.closest(".pitch-slot-grip");
+    if (!grip) return;
+    const wrap = grip.closest(".pitch-slot[data-slot-id]");
+    if (!wrap) return;
+    e.preventDefault();
+    activeSlotId = wrap.dataset.slotId;
+    pointerId = e.pointerId;
+    grip.setPointerCapture(pointerId);
+    wrap.classList.add("dragging-position");
+  });
+
+  pitchEl.addEventListener("pointermove", (e) => {
+    if (!activeSlotId || e.pointerId !== pointerId) return;
+    const rect = pitchEl.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    slotPositions[activeSlotId] = {
+      x: clampPct(x),
+      y: clampPct(y),
+    };
+    onMoved();
+  });
+
+  const endDrag = (e) => {
+    if (!activeSlotId || (e.pointerId != null && e.pointerId !== pointerId)) return;
+    pitchEl
+      .querySelector(`.pitch-slot[data-slot-id="${activeSlotId}"]`)
+      ?.classList.remove("dragging-position");
+    activeSlotId = null;
+    pointerId = null;
+  };
+
+  pitchEl.addEventListener("pointerup", endDrag);
+  pitchEl.addEventListener("pointercancel", endDrag);
+}
+
 export function initMatchdaySquadPanel({
   root,
   allPlayers,
   savedRows = [],
+  savedPitchLayout = null,
   onChange,
   onSave,
 }) {
+  let editPositionsMode = false;
+  let slotPositions = normalizePitchLayout(savedPitchLayout);
   let state =
     savedRows?.length > 0
       ? buildStateFromSaved(allPlayers, savedRows)
       : {
-          pitch: new Map(PITCH_SLOTS.map((s) => [s.id, null])),
+          pitch: new Map(DEFAULT_PITCH_SLOTS.map((s) => [s.id, null])),
           bench: Array(MAX_BENCH).fill(null),
-          reserve: [],
           pool: allPlayers.map(clonePlayer),
         };
 
   root.innerHTML = `
     <p class="squad-hint">
-      Drag player cards onto the pitch (11 starters), bench (5), or reserves (7) to build your
-      <b>default 23-man matchday squad</b>. Starters auto-tick <b>Started</b> when you submit match stats.
+      Drag player cards onto the pitch (11 starters) and bench (12 subs) for your
+      <b>default 23-man matchday squad</b>. Use <b>Move positions</b> to drag formation markers on the pitch.
+      Starters auto-tick <b>Started</b> when you submit match stats.
     </p>
     <div class="squad-toolbar">
       <button type="button" class="button secondary" id="squadAutoFillBtn">Auto-fill XI</button>
+      <button type="button" class="button secondary" id="squadMovePosBtn">Move positions</button>
+      <button type="button" class="button secondary" id="squadResetPosBtn" hidden>Reset layout</button>
       <button type="button" class="button secondary" id="squadClearBtn">Clear squad</button>
       <button type="button" class="button" id="squadSaveBtn">Save default squad</button>
       <span class="squad-status" id="squadStatusText"></span>
     </div>
+    <p class="squad-hint" id="squadEditHint" style="display:none;color:#9c9;">
+      Drag the <b>⋮⋮</b> handles on each position to arrange your formation. Player cards stay in place.
+    </p>
     <div class="squad-layout">
       <div class="squad-pool">
         <h4>Squad pool</h4>
@@ -411,12 +462,8 @@ export function initMatchdaySquadPanel({
           <div class="pitch-center-circle" aria-hidden="true"></div>
         </div>
         <div class="squad-bench">
-          <h4>Bench (default subs pool)</h4>
-          <div class="bench-slots" id="benchSlots"></div>
-        </div>
-        <div class="squad-reserves">
-          <h4>Reserves</h4>
-          <div class="reserve-grid" id="reserveGrid"></div>
+          <h4>Bench (12 subs)</h4>
+          <div class="bench-slots bench-slots-12" id="benchSlots"></div>
         </div>
       </div>
     </div>`;
@@ -424,19 +471,39 @@ export function initMatchdaySquadPanel({
   const pitchEl = root.querySelector("#footballPitch");
   const poolList = root.querySelector("#squadPoolList");
   const benchSlots = root.querySelector("#benchSlots");
-  const reserveGrid = root.querySelector("#reserveGrid");
   const statusText = root.querySelector("#squadStatusText");
+  const editHint = root.querySelector("#squadEditHint");
+  const movePosBtn = root.querySelector("#squadMovePosBtn");
+  const resetPosBtn = root.querySelector("#squadResetPosBtn");
 
-  for (const slot of PITCH_SLOTS) {
-    const wrap = document.createElement("div");
-    wrap.className = "pitch-slot";
-    wrap.style.left = `${slot.x}%`;
-    wrap.style.top = `${slot.y}%`;
-    wrap.innerHTML = `
-      <span class="pitch-slot-label">${slot.label}</span>
-      <div class="pitch-slot-drop" data-slot-id="${slot.id}"></div>`;
-    pitchEl.appendChild(wrap);
+  function applySlotPositionsToDom() {
+    for (const slot of DEFAULT_PITCH_SLOTS) {
+      const wrap = pitchEl.querySelector(`.pitch-slot[data-slot-id="${slot.id}"]`);
+      if (!wrap) continue;
+      const pos = slotPositions[slot.id] || { x: slot.x, y: slot.y };
+      wrap.style.left = `${pos.x}%`;
+      wrap.style.top = `${pos.y}%`;
+    }
   }
+
+  function buildPitchSlotElements() {
+    pitchEl.querySelectorAll(".pitch-slot").forEach((el) => el.remove());
+    for (const slot of DEFAULT_PITCH_SLOTS) {
+      const wrap = document.createElement("div");
+      wrap.className = "pitch-slot";
+      wrap.dataset.slotId = slot.id;
+      const pos = slotPositions[slot.id] || { x: slot.x, y: slot.y };
+      wrap.style.left = `${pos.x}%`;
+      wrap.style.top = `${pos.y}%`;
+      wrap.innerHTML = `
+        <button type="button" class="pitch-slot-grip" aria-label="Move ${slot.label} position" title="Move position">⋮⋮</button>
+        <span class="pitch-slot-label">${slot.label}</span>
+        <div class="pitch-slot-drop" data-slot-id="${slot.id}"></div>`;
+      pitchEl.appendChild(wrap);
+    }
+  }
+
+  buildPitchSlotElements();
 
   for (let i = 0; i < MAX_BENCH; i++) {
     const wrap = document.createElement("div");
@@ -447,27 +514,41 @@ export function initMatchdaySquadPanel({
     benchSlots.appendChild(wrap);
   }
 
+  function setEditPositionsMode(on) {
+    editPositionsMode = on;
+    pitchEl.classList.toggle("positions-edit-mode", on);
+    movePosBtn.classList.toggle("active", on);
+    movePosBtn.textContent = on ? "Done moving" : "Move positions";
+    resetPosBtn.hidden = !on;
+    editHint.style.display = on ? "block" : "none";
+    rerenderPlayerCards();
+  }
+
   function updateStatus() {
     const pitchN = [...state.pitch.values()].filter(Boolean).length;
     const benchN = state.bench.filter(Boolean).length;
-    const resN = state.reserve.length;
     const total = squadCount(state);
-    statusText.textContent = `Squad: ${total}/${MAX_SQUAD} · Pitch ${pitchN}/${MAX_PITCH} · Bench ${benchN}/${MAX_BENCH} · Reserves ${resN}/${MAX_RESERVE}`;
+    statusText.textContent = `Squad: ${total}/${MAX_SQUAD} · Pitch ${pitchN}/${MAX_PITCH} · Bench ${benchN}/${MAX_BENCH}`;
     root.querySelector("#squadPoolCount").textContent = `${state.pool.length} players available`;
     onChange?.(buildSlotsPayload(state), state);
   }
 
-  function rerender() {
+  function rerenderPlayerCards() {
     poolList.innerHTML = "";
     for (const p of state.pool) {
       poolList.appendChild(renderPlayerCard(p));
     }
 
-    for (const slot of PITCH_SLOTS) {
+    for (const slot of DEFAULT_PITCH_SLOTS) {
       const drop = pitchEl.querySelector(`[data-slot-id="${slot.id}"]`);
+      if (!drop) continue;
       drop.innerHTML = "";
       const p = state.pitch.get(slot.id);
-      if (p) drop.appendChild(renderPlayerCard(p, { compact: true }));
+      if (p) {
+        const card = renderPlayerCard(p, { compact: true });
+        if (editPositionsMode) card.draggable = false;
+        drop.appendChild(card);
+      }
     }
 
     benchSlots.querySelectorAll(".bench-slot-drop").forEach((drop) => {
@@ -477,15 +558,23 @@ export function initMatchdaySquadPanel({
       if (p) drop.appendChild(renderPlayerCard(p, { compact: true }));
     });
 
-    reserveGrid.innerHTML = "";
-    state.reserve.forEach((p) => {
-      reserveGrid.appendChild(renderPlayerCard(p, { compact: true }));
-    });
-
     updateStatus();
   }
 
+  function rerender() {
+    rerenderPlayerCards();
+  }
+
   wireDragDrop(root, state, rerender);
+  wirePositionDragging(pitchEl, slotPositions, () => editPositionsMode, applySlotPositionsToDom);
+
+  movePosBtn.addEventListener("click", () => setEditPositionsMode(!editPositionsMode));
+
+  resetPosBtn.addEventListener("click", () => {
+    slotPositions = normalizePitchLayout(null);
+    buildPitchSlotElements();
+    rerender();
+  });
 
   root.querySelector("#squadAutoFillBtn").addEventListener("click", () => {
     state = autoFillBestXi(allPlayers);
@@ -495,9 +584,8 @@ export function initMatchdaySquadPanel({
   root.querySelector("#squadClearBtn").addEventListener("click", () => {
     if (!confirm("Clear your saved matchday squad layout?")) return;
     state = {
-      pitch: new Map(PITCH_SLOTS.map((s) => [s.id, null])),
+      pitch: new Map(DEFAULT_PITCH_SLOTS.map((s) => [s.id, null])),
       bench: Array(MAX_BENCH).fill(null),
-      reserve: [],
       pool: allPlayers.map(clonePlayer),
     };
     rerender();
@@ -517,8 +605,9 @@ export function initMatchdaySquadPanel({
     }
     statusText.textContent = "Saving…";
     try {
-      await onSave(payload);
+      await onSave(payload, buildPitchLayoutPayload(slotPositions));
       statusText.textContent = `Saved ${payload.length} players.`;
+      setEditPositionsMode(false);
     } catch (err) {
       statusText.textContent = err?.message || "Save failed";
     }
@@ -527,8 +616,12 @@ export function initMatchdaySquadPanel({
   rerender();
   return {
     getState: () => state,
-    setSavedRows: (rows) => {
+    setSavedRows: (rows, layout) => {
       state = buildStateFromSaved(allPlayers, rows);
+      if (layout != null) {
+        slotPositions = normalizePitchLayout(layout);
+        buildPitchSlotElements();
+      }
       rerender();
     },
   };

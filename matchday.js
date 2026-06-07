@@ -37,6 +37,7 @@ let allLeagueFixtures = [];
 let allSquadPlayers = [];
 let squadPlayers = [];
 let matchdaySquadRows = [];
+let matchdayPitchLayout = null;
 let squadPanelApi = null;
 
 const MAX_STARTERS = 11;
@@ -763,17 +764,28 @@ async function loadSquadPlayers() {
 
 async function loadMatchdaySquad() {
   matchdaySquadRows = [];
-  const { data, error } = await supabase
-    .from("club_matchday_squad_public")
-    .select("*");
+  matchdayPitchLayout = null;
 
-  if (error) {
-    if (error.code !== "PGRST205") {
-      console.error("loadMatchdaySquad:", error);
+  const [squadRes, layoutRes] = await Promise.all([
+    supabase.from("club_matchday_squad_public").select("*"),
+    supabase.from("club_matchday_pitch_layout_public").select("pitch_layout").maybeSingle(),
+  ]);
+
+  if (squadRes.error) {
+    if (squadRes.error.code !== "PGRST205") {
+      console.error("loadMatchdaySquad:", squadRes.error);
     }
-    return;
+  } else {
+    matchdaySquadRows = squadRes.data || [];
   }
-  matchdaySquadRows = data || [];
+
+  if (layoutRes.error) {
+    if (layoutRes.error.code !== "PGRST205") {
+      console.error("loadMatchdayPitchLayout:", layoutRes.error);
+    }
+  } else if (layoutRes.data?.pitch_layout) {
+    matchdayPitchLayout = layoutRes.data.pitch_layout;
+  }
 }
 
 function applyMatchdaySquadFilter() {
@@ -803,14 +815,15 @@ function applyDefaultLineupFromSquad() {
   updateLineupCounter();
 }
 
-async function saveMatchdaySquad(slots) {
+async function saveMatchdaySquad(slots, pitchLayout = null) {
   const { data, error } = await supabase.rpc("club_save_matchday_squad", {
     p_slots: slots,
+    p_pitch_layout: pitchLayout,
   });
   if (error) throw new Error(error.message);
   await loadMatchdaySquad();
   applyMatchdaySquadFilter();
-  squadPanelApi?.setSavedRows(matchdaySquadRows);
+  squadPanelApi?.setSavedRows(matchdaySquadRows, matchdayPitchLayout);
   renderPlayerStatsTable();
   const squadStatus = document.getElementById("squadPanelStatus");
   if (squadStatus) {
@@ -828,6 +841,7 @@ function initSquadPanel() {
     root,
     allPlayers: allSquadPlayers,
     savedRows: matchdaySquadRows,
+    savedPitchLayout: matchdayPitchLayout,
     onSave: saveMatchdaySquad,
     onChange: () => {},
   });

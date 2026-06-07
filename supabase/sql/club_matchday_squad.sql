@@ -6,8 +6,12 @@
 CREATE TABLE IF NOT EXISTS public.club_matchday_squad (
   club_short_name text NOT NULL PRIMARY KEY
     REFERENCES public."Clubs" ("ShortName") ON DELETE CASCADE,
+  pitch_layout jsonb NOT NULL DEFAULT '{}'::jsonb,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.club_matchday_squad
+  ADD COLUMN IF NOT EXISTS pitch_layout jsonb NOT NULL DEFAULT '{}'::jsonb;
 
 CREATE TABLE IF NOT EXISTS public.club_matchday_squad_player (
   club_short_name text NOT NULL
@@ -35,7 +39,12 @@ CREATE INDEX IF NOT EXISTS club_matchday_squad_player_club_idx
 -- p_slots: [{ player_id, slot_kind, pitch_slot?, sort_order? }, ...]
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION public.club_save_matchday_squad(p_slots jsonb)
+DROP FUNCTION IF EXISTS public.club_save_matchday_squad(jsonb);
+
+CREATE OR REPLACE FUNCTION public.club_save_matchday_squad(
+  p_slots jsonb,
+  p_pitch_layout jsonb DEFAULT NULL
+)
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -52,6 +61,7 @@ DECLARE
   v_pitch_count int := 0;
   v_bench_count int := 0;
   v_reserve_count int := 0;
+  v_layout jsonb;
 BEGIN
   IF v_club IS NULL OR v_club = '' THEN
     RAISE EXCEPTION 'No club linked to your account';
@@ -106,17 +116,23 @@ BEGIN
   IF v_pitch_count > 11 THEN
     RAISE EXCEPTION 'Maximum 11 players on the pitch (got %)', v_pitch_count;
   END IF;
-  IF v_bench_count > 5 THEN
-    RAISE EXCEPTION 'Maximum 5 bench players (got %)', v_bench_count;
+  IF v_bench_count > 12 THEN
+    RAISE EXCEPTION 'Maximum 12 bench players (got %)', v_bench_count;
   END IF;
-  IF v_reserve_count > 7 THEN
-    RAISE EXCEPTION 'Maximum 7 reserve players (got %)', v_reserve_count;
+  IF v_reserve_count > 0 THEN
+    RAISE EXCEPTION 'Reserves are no longer used — use bench slots (max 12)';
   END IF;
 
-  INSERT INTO public.club_matchday_squad (club_short_name, updated_at)
-  VALUES (v_club, now())
+  v_layout := coalesce(p_pitch_layout, '{}'::jsonb);
+  IF jsonb_typeof(v_layout) IS DISTINCT FROM 'object' THEN
+    RAISE EXCEPTION 'p_pitch_layout must be a JSON object';
+  END IF;
+
+  INSERT INTO public.club_matchday_squad (club_short_name, pitch_layout, updated_at)
+  VALUES (v_club, v_layout, now())
   ON CONFLICT (club_short_name) DO UPDATE
-  SET updated_at = now();
+  SET pitch_layout = EXCLUDED.pitch_layout,
+      updated_at = now();
 
   DELETE FROM public.club_matchday_squad_player
   WHERE club_short_name = v_club;
@@ -151,6 +167,17 @@ $function$;
 -- ---------------------------------------------------------------------------
 -- Public view
 -- ---------------------------------------------------------------------------
+
+DROP VIEW IF EXISTS public.club_matchday_pitch_layout_public;
+CREATE VIEW public.club_matchday_pitch_layout_public
+WITH (security_invoker = false)
+AS
+SELECT
+  s.club_short_name,
+  s.pitch_layout,
+  s.updated_at
+FROM public.club_matchday_squad s
+WHERE s.club_short_name = public.my_club_shortname();
 
 DROP VIEW IF EXISTS public.club_matchday_squad_public;
 CREATE VIEW public.club_matchday_squad_public
@@ -209,6 +236,7 @@ CREATE POLICY club_matchday_squad_player_owner ON public.club_matchday_squad_pla
 GRANT SELECT ON public.club_matchday_squad TO authenticated;
 GRANT SELECT ON public.club_matchday_squad_player TO authenticated;
 GRANT SELECT ON public.club_matchday_squad_public TO authenticated;
-GRANT EXECUTE ON FUNCTION public.club_save_matchday_squad(jsonb) TO authenticated;
+GRANT SELECT ON public.club_matchday_pitch_layout_public TO authenticated;
+GRANT EXECUTE ON FUNCTION public.club_save_matchday_squad(jsonb, jsonb) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
