@@ -9,6 +9,7 @@ import {
   formationLayout,
   resolvePitchLayout,
   buildPitchLayoutPayload,
+  PITCH_LABEL_PRESETS,
 } from "./matchday_formations.js";
 
 export { buildPitchLayoutPayload } from "./matchday_formations.js";
@@ -405,6 +406,7 @@ function wirePositionDragging(pitchEl, slotPositions, getEditMode) {
   pitchEl.addEventListener("pointerdown", (e) => {
     if (!getEditMode()) return;
     if (e.target.closest(".squad-player-card")) return;
+    if (e.target.closest(".pitch-slot-label")) return;
 
     const wrap = e.target.closest(".pitch-slot[data-slot-id]");
     if (!wrap) return;
@@ -426,6 +428,113 @@ function wirePositionDragging(pitchEl, slotPositions, getEditMode) {
     document.addEventListener("pointermove", onPointerMove);
     document.addEventListener("pointerup", endDrag);
     document.addEventListener("pointercancel", endDrag);
+  });
+}
+
+function wirePitchLabelPicker(pitchEl, root, slotLabels) {
+  let menu = root.querySelector("#pitchLabelMenu");
+  if (!menu) {
+    menu = document.createElement("div");
+    menu.id = "pitchLabelMenu";
+    menu.className = "pitch-label-menu";
+    menu.hidden = true;
+    root.appendChild(menu);
+  }
+
+  function updateSlotLabelDom(slotId) {
+    const wrap = pitchEl.querySelector(`.pitch-slot[data-slot-id="${slotId}"]`);
+    const labelEl = wrap?.querySelector(".pitch-slot-label");
+    if (labelEl) labelEl.textContent = slotLabels[slotId] || slotId;
+  }
+
+  function closeMenu() {
+    menu.hidden = true;
+  }
+
+  function openMenu(slotId, clientX, clientY) {
+    menu.innerHTML = "";
+
+    const title = document.createElement("div");
+    title.className = "pitch-label-menu-title";
+    title.textContent = `Change role — ${slotLabels[slotId] || slotId}`;
+    menu.appendChild(title);
+
+    const grid = document.createElement("div");
+    grid.className = "pitch-label-menu-grid";
+    for (const label of PITCH_LABEL_PRESETS) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "pitch-label-option" + (slotLabels[slotId] === label ? " selected" : "");
+      btn.textContent = label;
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        slotLabels[slotId] = label;
+        updateSlotLabelDom(slotId);
+        closeMenu();
+      });
+      grid.appendChild(btn);
+    }
+    menu.appendChild(grid);
+
+    const customBtn = document.createElement("button");
+    customBtn.type = "button";
+    customBtn.className = "pitch-label-custom";
+    customBtn.textContent = "Custom label…";
+    customBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const v = prompt("Position label", slotLabels[slotId] || "");
+      if (v != null && v.trim()) {
+        slotLabels[slotId] = v.trim();
+        updateSlotLabelDom(slotId);
+      }
+      closeMenu();
+    });
+    menu.appendChild(customBtn);
+
+    menu.hidden = false;
+    const host = root.querySelector(".pitch-stage") || root;
+    const rect = host.getBoundingClientRect();
+    const menuW = 240;
+    const left = Math.max(8, Math.min(clientX - rect.left, rect.width - menuW - 8));
+    const top = Math.max(8, clientY - rect.top);
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+  }
+
+  pitchEl.addEventListener("contextmenu", (e) => {
+    const wrap = e.target.closest(".pitch-slot[data-slot-id]");
+    if (!wrap) return;
+    e.preventDefault();
+    openMenu(wrap.dataset.slotId, e.clientX, e.clientY);
+  });
+
+  pitchEl.addEventListener("click", (e) => {
+    const labelEl = e.target.closest(".pitch-slot-label");
+    if (labelEl) {
+      e.stopPropagation();
+      const wrap = labelEl.closest(".pitch-slot[data-slot-id]");
+      if (!wrap) return;
+      const r = labelEl.getBoundingClientRect();
+      openMenu(wrap.dataset.slotId, r.left, r.bottom + 4);
+      return;
+    }
+
+    const card = e.target.closest(".pitch-slot .squad-player-card");
+    if (card) {
+      e.stopPropagation();
+      const wrap = card.closest(".pitch-slot[data-slot-id]");
+      if (!wrap) return;
+      const r = card.getBoundingClientRect();
+      openMenu(wrap.dataset.slotId, r.left + r.width / 2, r.bottom + 4);
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!menu.hidden && !menu.contains(e.target)) closeMenu();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMenu();
   });
 }
 
@@ -454,8 +563,8 @@ export function initMatchdaySquadPanel({
   root.innerHTML = `
     <p class="squad-hint">
       Drag player cards onto the pitch (11 starters) and bench (12 subs) for your
-      <b>default 23-man matchday squad</b>. Use <b>Move positions</b> to drag formation markers on the pitch.
-      Starters auto-tick <b>Started</b> when you submit match stats.
+      <b>default 23-man matchday squad</b>. <b>Click</b> a position label or player on the pitch (or <b>right-click</b> the slot) to change its role (DMF, CMF, etc.).
+      Use <b>Move positions</b> to drag markers. Starters auto-tick <b>Started</b> on match stats.
     </p>
     <div class="squad-toolbar">
       <label class="formation-pick" for="squadFormationSelect">Formation</label>
@@ -525,7 +634,7 @@ export function initMatchdaySquadPanel({
       wrap.style.top = `${pos.y}%`;
       const label = slotLabels[slotId] || slotId;
       wrap.innerHTML = `
-        <span class="pitch-slot-label" title="Drag to move position">${label}</span>
+        <button type="button" class="pitch-slot-label" title="Click to change role (or right-click slot)">${label}</button>
         <div class="pitch-slot-drop" data-slot-id="${slotId}">
           <span class="pitch-slot-placeholder" aria-hidden="true"></span>
         </div>`;
@@ -611,6 +720,7 @@ export function initMatchdaySquadPanel({
 
   wireDragDrop(root, state, rerender);
   wirePositionDragging(pitchEl, slotPositions, () => editPositionsMode);
+  wirePitchLabelPicker(pitchEl, root, slotLabels);
 
   movePosBtn.addEventListener("click", () => setEditPositionsMode(!editPositionsMode));
 

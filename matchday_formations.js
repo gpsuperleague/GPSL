@@ -166,6 +166,34 @@ export const MATCHDAY_FORMATIONS = {
 
 export const DEFAULT_FORMATION_ID = "gpsl-flex";
 
+/** Tap a pitch marker label (or right-click slot) to pick from these. */
+export const PITCH_LABEL_PRESETS = [
+  "GK",
+  "LB",
+  "CB",
+  "RB",
+  "LWB",
+  "RWB",
+  "DMF",
+  "CMF",
+  "AMF",
+  "LMF",
+  "RMF",
+  "LW",
+  "RW",
+  "LWF",
+  "RWF",
+  "SS",
+  "CF",
+  "DMF/CMF",
+  "CMF/AMF",
+  "CMF/LMF",
+  "CMF/RMF",
+  "CF/SS",
+  "LWF/SS",
+  "RWF/SS",
+];
+
 export const FORMATION_LIST = Object.values(MATCHDAY_FORMATIONS).map((f) => ({
   id: f.id,
   name: f.name,
