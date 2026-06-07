@@ -589,12 +589,12 @@ export function initMatchdaySquadPanel({
       Formation presets only apply when you click <b>Apply formation</b>. Starters auto-tick <b>Started</b> on match stats.
     </p>
     <div class="squad-formations-bar">
-      <span class="formation-section-label">Formations</span>
+      <span class="formation-section-label">Default formations</span>
       <select id="squadFormationSelect" class="formation-select" title="Starting layout only — use Apply to reset markers"></select>
       <button type="button" class="button secondary" id="squadApplyTemplateBtn">Apply formation</button>
       <span class="formation-section-label">My formations</span>
       <select id="squadSavedFormationSelect" class="formation-select" title="Your 5 saved pitch layouts"></select>
-      <button type="button" class="button secondary" id="squadLoadFormationBtn">Load</button>
+      <button type="button" class="button secondary" id="squadLoadFormationBtn">Load Custom Formation</button>
       <input type="text" id="squadFormationName" class="formation-name-input" maxlength="40" placeholder="Formation name" />
       <select id="squadFormationSlot" class="formation-slot-select" title="Save to slot 1–5">
         <option value="1">Slot 1</option>
