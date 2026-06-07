@@ -241,48 +241,6 @@ async function refreshHolidaySection() {
   renderHolidayList(holidays);
 }
 
-function renderSubsidyGrid(preview, loadError) {
-  const grid = document.getElementById("subsidyGrid");
-  if (!grid) return;
-
-  if (loadError) {
-    grid.innerHTML = `<p class="subsidy-meta">${loadError}</p>`;
-    return;
-  }
-
-  if (!preview) {
-    grid.innerHTML = '<p class="subsidy-meta">Subsidy preview unavailable.</p>';
-    return;
-  }
-
-  const hg = preview.homegrown || {};
-  const youth = preview.youth || {};
-  const bnb = preview.bnb || {};
-
-  const statusOrDash = (s) => (s && s !== "—" ? s : "No tier");
-
-  grid.innerHTML = `
-    <div class="subsidy-card">
-      <h3>Homegrown (HG)</h3>
-      <p class="subsidy-status">${statusOrDash(hg.status)}</p>
-      <p class="subsidy-meta">${hg.count ?? 0} homegrown player${hg.count === 1 ? "" : "s"} in squad</p>
-      <p class="subsidy-amount">Est. payout ${formatMoney(Number(hg.amount || 0))}</p>
-    </div>
-    <div class="subsidy-card">
-      <h3>Youth</h3>
-      <p class="subsidy-status">${statusOrDash(youth.status)}</p>
-      <p class="subsidy-meta">${youth.count ?? 0} under-21 player${youth.count === 1 ? "" : "s"} in squad</p>
-      <p class="subsidy-amount">Est. payout ${formatMoney(Number(youth.amount || 0))}</p>
-    </div>
-    <div class="subsidy-card">
-      <h3>Built not bought</h3>
-      <p class="subsidy-status">${statusOrDash(bnb.status)}</p>
-      <p class="subsidy-meta">${bnb.count ?? 0} at rating ≤${bnb.max_rating ?? "—"} (need ${bnb.min_required ?? "—"}+)</p>
-      <p class="subsidy-amount">Est. payout ${formatMoney(Number(bnb.amount || 0))}</p>
-    </div>
-  `;
-}
-
 function renderChallengeGrid(progress, loadError) {
   const grid = document.getElementById("challengeGrid");
   if (!grid) return;
@@ -338,27 +296,6 @@ async function loadChallengeProgress(clubShortName) {
   }
 
   renderChallengeGrid(data, null);
-}
-
-async function loadSubsidyStatus(clubShortName) {
-  const { data, error } = await supabase.rpc("gov_subsidy_club_preview", {
-    p_club_short_name: clubShortName,
-  });
-
-  if (error) {
-    const msg = String(error.message || "");
-    if (msg.includes("gov_subsidy_club_preview") || msg.includes("function")) {
-      renderSubsidyGrid(
-        null,
-        "Run supabase/sql/government_subsidies.sql in Supabase to enable subsidy status."
-      );
-      return;
-    }
-    renderSubsidyGrid(null, msg || "Could not load subsidy status.");
-    return;
-  }
-
-  renderSubsidyGrid(data, null);
 }
 
 function setAccountStatus(el, message, isError = false) {
@@ -614,7 +551,6 @@ async function initClubDetailsPage() {
   }
 
   await loadChallengeProgress(club.ShortName);
-  await loadSubsidyStatus(club.ShortName);
 
   wireHolidayBooking();
   await refreshHolidaySection();
