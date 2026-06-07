@@ -287,12 +287,13 @@ function autoFillBestXi(allPlayers) {
   return state;
 }
 
-function renderPlayerCard(player, { compact = false } = {}) {
+function renderPlayerCard(player, { compact = false, pitch = false } = {}) {
   const id = playerKey(player);
   const name = player.Name || player.player_name || id;
   const pos = player.Position || player.player_position || "";
   const card = document.createElement("div");
-  card.className = "squad-player-card";
+  card.className =
+    "squad-player-card" + (pitch ? " squad-player-card--pitch" : "");
   card.draggable = true;
   card.dataset.playerId = id;
   card.innerHTML = `
@@ -602,14 +603,14 @@ export function initMatchdaySquadPanel({
       Drag player cards onto the pitch (11 starters) and bench (12 subs) for your
       <b>default 23-man matchday squad</b>. <b>Click</b> a position label or player on the pitch (or <b>right-click</b> the slot) to change its role (DMF, CMF, etc.).
       Use <b>Move positions</b> to drag markers. Save up to <b>5 custom formations</b> (Custom 1–5).
-      Formation presets only apply when you click <b>Apply formation</b>. Custom layouts must follow <b>GPSL mirroring</b>
+      Formation presets only apply when you click <b>Apply Default Formation</b>. Custom layouts must follow <b>GPSL mirroring</b>
       (LB↔RB, LMF↔RMF, LWF↔RWF; max 2 CF/SS combined). Starters auto-tick <b>Started</b> on match stats.
     </p>
     <div class="squad-formations-bar">
       <div class="formation-section-row">
         <span class="formation-section-label">Default formations</span>
         <select id="squadFormationSelect" class="formation-select" title="Starting layout only — use Apply to reset markers"></select>
-        <button type="button" class="button secondary" id="squadApplyTemplateBtn">Apply formation</button>
+        <button type="button" class="button secondary" id="squadApplyTemplateBtn">Apply Default Formation</button>
       </div>
       <div class="formation-section-row">
         <span class="formation-section-label">My Formations</span>
@@ -820,7 +821,7 @@ export function initMatchdaySquadPanel({
       const p = state.pitch.get(slotId);
       drop.innerHTML = "";
       if (p) {
-        const card = renderPlayerCard(p, { compact: true });
+        const card = renderPlayerCard(p, { compact: true, pitch: true });
         card.draggable = !editPositionsMode;
         drop.appendChild(card);
       } else {
@@ -853,7 +854,7 @@ export function initMatchdaySquadPanel({
     const name = formationDisplayName(getFormation(templateId));
     if (
       !confirm(
-        `Apply formation “${name}”? This resets all pitch marker positions and role labels (players stay put).`
+        `Apply default formation “${name}”? This resets all pitch marker positions and role labels (players stay put).`
       )
     ) {
       return;
