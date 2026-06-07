@@ -363,25 +363,13 @@ function wireDragDrop(root, state, rerender) {
  * @param {function} opts.onChange
  * @param {function} opts.onSave
  */
-function wirePositionDragging(pitchEl, slotPositions, getEditMode, onMoved) {
+function wirePositionDragging(pitchEl, slotPositions, getEditMode) {
   let activeSlotId = null;
   let pointerId = null;
+  let activeWrap = null;
 
-  pitchEl.addEventListener("pointerdown", (e) => {
-    if (!getEditMode()) return;
-    const grip = e.target.closest(".pitch-slot-grip");
-    if (!grip) return;
-    const wrap = grip.closest(".pitch-slot[data-slot-id]");
-    if (!wrap) return;
-    e.preventDefault();
-    activeSlotId = wrap.dataset.slotId;
-    pointerId = e.pointerId;
-    grip.setPointerCapture(pointerId);
-    wrap.classList.add("dragging-position");
-  });
-
-  pitchEl.addEventListener("pointermove", (e) => {
-    if (!activeSlotId || e.pointerId !== pointerId) return;
+  const onPointerMove = (e) => {
+    if (!activeSlotId || e.pointerId !== pointerId || !activeWrap) return;
     const rect = pitchEl.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -389,20 +377,56 @@ function wirePositionDragging(pitchEl, slotPositions, getEditMode, onMoved) {
       x: clampPct(x),
       y: clampPct(y),
     };
-    onMoved();
-  });
-
-  const endDrag = (e) => {
-    if (!activeSlotId || (e.pointerId != null && e.pointerId !== pointerId)) return;
-    pitchEl
-      .querySelector(`.pitch-slot[data-slot-id="${activeSlotId}"]`)
-      ?.classList.remove("dragging-position");
-    activeSlotId = null;
-    pointerId = null;
+    activeWrap.style.left = `${slotPositions[activeSlotId].x}%`;
+    activeWrap.style.top = `${slotPositions[activeSlotId].y}%`;
   };
 
-  pitchEl.addEventListener("pointerup", endDrag);
-  pitchEl.addEventListener("pointercancel", endDrag);
+  const endDrag = (e) => {
+    if (!activeSlotId) return;
+    if (e.pointerId != null && pointerId != null && e.pointerId !== pointerId) return;
+
+    activeWrap?.classList.remove("dragging-position");
+    if (activeWrap?.hasPointerCapture?.(pointerId)) {
+      try {
+        activeWrap.releasePointerCapture(pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    activeSlotId = null;
+    pointerId = null;
+    activeWrap = null;
+    document.removeEventListener("pointermove", onPointerMove);
+    document.removeEventListener("pointerup", endDrag);
+    document.removeEventListener("pointercancel", endDrag);
+  };
+
+  pitchEl.addEventListener("pointerdown", (e) => {
+    if (!getEditMode()) return;
+    if (e.target.closest(".squad-player-card")) return;
+
+    const wrap = e.target.closest(".pitch-slot[data-slot-id]");
+    if (!wrap) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    activeSlotId = wrap.dataset.slotId;
+    pointerId = e.pointerId;
+    activeWrap = wrap;
+    wrap.classList.add("dragging-position");
+
+    try {
+      wrap.setPointerCapture(pointerId);
+    } catch {
+      /* touch / older browsers */
+    }
+
+    document.addEventListener("pointermove", onPointerMove);
+    document.addEventListener("pointerup", endDrag);
+    document.addEventListener("pointercancel", endDrag);
+  });
 }
 
 export function initMatchdaySquadPanel({
@@ -444,7 +468,7 @@ export function initMatchdaySquadPanel({
       <span class="squad-status" id="squadStatusText"></span>
     </div>
     <p class="squad-hint" id="squadEditHint" style="display:none;color:#9c9;">
-      Drag the <b>⋮⋮</b> handles on each position to arrange your formation. Player cards stay in place.
+      Drag any <b>position marker</b> (label or empty slot) on the pitch to arrange your layout.
     </p>
     <div class="squad-layout">
       <div class="squad-pool">
@@ -501,9 +525,10 @@ export function initMatchdaySquadPanel({
       wrap.style.top = `${pos.y}%`;
       const label = slotLabels[slotId] || slotId;
       wrap.innerHTML = `
-        <button type="button" class="pitch-slot-grip" aria-label="Move ${label} position" title="Move position">⋮⋮</button>
-        <span class="pitch-slot-label">${label}</span>
-        <div class="pitch-slot-drop" data-slot-id="${slotId}"></div>`;
+        <span class="pitch-slot-label" title="Drag to move position">${label}</span>
+        <div class="pitch-slot-drop" data-slot-id="${slotId}">
+          <span class="pitch-slot-placeholder" aria-hidden="true"></span>
+        </div>`;
       pitchEl.appendChild(wrap);
     }
   }
@@ -559,12 +584,14 @@ export function initMatchdaySquadPanel({
     for (const slotId of SLOT_IDS) {
       const drop = pitchEl.querySelector(`.pitch-slot-drop[data-slot-id="${slotId}"]`);
       if (!drop) continue;
-      drop.innerHTML = "";
       const p = state.pitch.get(slotId);
+      drop.innerHTML = "";
       if (p) {
         const card = renderPlayerCard(p, { compact: true });
-        if (editPositionsMode) card.draggable = false;
+        card.draggable = !editPositionsMode;
         drop.appendChild(card);
+      } else {
+        drop.innerHTML = '<span class="pitch-slot-placeholder"></span>';
       }
     }
 
@@ -583,7 +610,7 @@ export function initMatchdaySquadPanel({
   }
 
   wireDragDrop(root, state, rerender);
-  wirePositionDragging(pitchEl, slotPositions, () => editPositionsMode, applySlotPositionsToDom);
+  wirePositionDragging(pitchEl, slotPositions, () => editPositionsMode);
 
   movePosBtn.addEventListener("click", () => setEditPositionsMode(!editPositionsMode));
 
