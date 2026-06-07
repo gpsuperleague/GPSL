@@ -4,7 +4,10 @@
 
 import {
   DEFAULT_FORMATION_ID,
+  MATCHDAY_FORMATIONS,
   FORMATION_LIST,
+  FORMATION_GROUP_ORDER,
+  formationDisplayName,
   getFormation,
   formationLayout,
   resolvePitchLayout,
@@ -655,9 +658,22 @@ export function initMatchdaySquadPanel({
   const savedFormationSelect = root.querySelector("#squadSavedFormationSelect");
   const formationNameInput = root.querySelector("#squadFormationName");
 
-  formationSelect.innerHTML = FORMATION_LIST.map(
-    (f) => `<option value="${f.id}">${f.name}</option>`
-  ).join("");
+  formationSelect.innerHTML = "";
+  for (const groupLabel of FORMATION_GROUP_ORDER) {
+    const groupFormations = Object.values(MATCHDAY_FORMATIONS).filter(
+      (f) => f.group === groupLabel
+    );
+    if (!groupFormations.length) continue;
+    const og = document.createElement("optgroup");
+    og.label = groupLabel;
+    for (const f of groupFormations) {
+      const opt = document.createElement("option");
+      opt.value = f.id;
+      opt.textContent = formationDisplayName(f);
+      og.appendChild(opt);
+    }
+    formationSelect.appendChild(og);
+  }
   formationSelect.value = isTemplateFormationId(currentFormationId)
     ? currentFormationId
     : DEFAULT_FORMATION_ID;
@@ -820,7 +836,7 @@ export function initMatchdaySquadPanel({
 
   root.querySelector("#squadApplyTemplateBtn").addEventListener("click", () => {
     const templateId = formationSelect.value;
-    const name = FORMATION_LIST.find((f) => f.id === templateId)?.name || templateId;
+    const name = formationDisplayName(getFormation(templateId));
     if (
       !confirm(
         `Apply formation “${name}”? This resets all pitch marker positions and role labels (players stay put).`
