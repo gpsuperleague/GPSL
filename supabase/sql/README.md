@@ -97,7 +97,7 @@ Run once:
 
 **Default 23-man matchday squad** (pitch drag-and-drop, auto-starters on stats):
 
-[`club_matchday_squad.sql`](./club_matchday_squad.sql) — owners set 11 + 12 on **Match Day → Match squad** tab (draggable pitch layout); saved squad filters the stats table and auto-ticks **Started** for the pitch XI.
+[`club_matchday_squad.sql`](./club_matchday_squad.sql) — owners set 11 + 12 on **Match Day → Match squad** tab (draggable pitch layout, 5 named saved formations per club); saved squad filters the stats table and auto-ticks **Started** for the pitch XI.
 
 ### Phase 5 — gate receipts & ledger (after Phase 4)
 

@@ -38,6 +38,7 @@ let allSquadPlayers = [];
 let squadPlayers = [];
 let matchdaySquadRows = [];
 let matchdayPitchLayout = null;
+let matchdaySavedFormations = [];
 let squadPanelApi = null;
 
 const MAX_STARTERS = 11;
@@ -765,10 +766,12 @@ async function loadSquadPlayers() {
 async function loadMatchdaySquad() {
   matchdaySquadRows = [];
   matchdayPitchLayout = null;
+  matchdaySavedFormations = [];
 
-  const [squadRes, layoutRes] = await Promise.all([
+  const [squadRes, layoutRes, formationsRes] = await Promise.all([
     supabase.from("club_matchday_squad_public").select("*"),
     supabase.from("club_matchday_pitch_layout_public").select("pitch_layout").maybeSingle(),
+    supabase.from("club_matchday_saved_formation_public").select("*"),
   ]);
 
   if (squadRes.error) {
@@ -785,6 +788,14 @@ async function loadMatchdaySquad() {
     }
   } else if (layoutRes.data?.pitch_layout) {
     matchdayPitchLayout = layoutRes.data.pitch_layout;
+  }
+
+  if (formationsRes.error) {
+    if (formationsRes.error.code !== "PGRST205") {
+      console.error("loadMatchdaySavedFormations:", formationsRes.error);
+    }
+  } else {
+    matchdaySavedFormations = formationsRes.data || [];
   }
 }
 
@@ -815,6 +826,18 @@ function applyDefaultLineupFromSquad() {
   updateLineupCounter();
 }
 
+async function saveMatchdayFormation(slotNo, name, pitchLayout) {
+  const { data, error } = await supabase.rpc("club_save_matchday_formation", {
+    p_slot_no: slotNo,
+    p_name: name,
+    p_pitch_layout: pitchLayout,
+  });
+  if (error) throw new Error(error.message);
+  await loadMatchdaySquad();
+  squadPanelApi?.refreshSavedFormations(matchdaySavedFormations);
+  return data;
+}
+
 async function saveMatchdaySquad(slots, pitchLayout = null) {
   const { data, error } = await supabase.rpc("club_save_matchday_squad", {
     p_slots: slots,
@@ -842,7 +865,9 @@ function initSquadPanel() {
     allPlayers: allSquadPlayers,
     savedRows: matchdaySquadRows,
     savedPitchLayout: matchdayPitchLayout,
+    savedFormations: matchdaySavedFormations,
     onSave: saveMatchdaySquad,
+    onSaveFormation: saveMatchdayFormation,
     onChange: () => {},
   });
 }

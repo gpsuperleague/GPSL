@@ -538,13 +538,19 @@ function wirePitchLabelPicker(pitchEl, root, slotLabels) {
   });
 }
 
+function isTemplateFormationId(id) {
+  return FORMATION_LIST.some((f) => f.id === id);
+}
+
 export function initMatchdaySquadPanel({
   root,
   allPlayers,
   savedRows = [],
   savedPitchLayout = null,
+  savedFormations = [],
   onChange,
   onSave,
+  onSaveFormation,
 }) {
   let editPositionsMode = false;
   const resolved = resolvePitchLayout(savedPitchLayout);
@@ -564,11 +570,27 @@ export function initMatchdaySquadPanel({
     <p class="squad-hint">
       Drag player cards onto the pitch (11 starters) and bench (12 subs) for your
       <b>default 23-man matchday squad</b>. <b>Click</b> a position label or player on the pitch (or <b>right-click</b> the slot) to change its role (DMF, CMF, etc.).
-      Use <b>Move positions</b> to drag markers. Starters auto-tick <b>Started</b> on match stats.
+      Use <b>Move positions</b> to drag markers. Save up to <b>5 named formations</b> under My formations.
+      Templates only apply when you click <b>Apply template</b>. Starters auto-tick <b>Started</b> on match stats.
     </p>
+    <div class="squad-formations-bar">
+      <span class="formation-section-label">Template</span>
+      <select id="squadFormationSelect" class="formation-select" title="Starting layout only — use Apply to reset markers"></select>
+      <button type="button" class="button secondary" id="squadApplyTemplateBtn">Apply template</button>
+      <span class="formation-section-label">My formations</span>
+      <select id="squadSavedFormationSelect" class="formation-select" title="Your 5 saved pitch layouts"></select>
+      <button type="button" class="button secondary" id="squadLoadFormationBtn">Load</button>
+      <input type="text" id="squadFormationName" class="formation-name-input" maxlength="40" placeholder="Formation name" />
+      <select id="squadFormationSlot" class="formation-slot-select" title="Save to slot 1–5">
+        <option value="1">Slot 1</option>
+        <option value="2">Slot 2</option>
+        <option value="3">Slot 3</option>
+        <option value="4">Slot 4</option>
+        <option value="5">Slot 5</option>
+      </select>
+      <button type="button" class="button secondary" id="squadSaveFormationBtn">Save layout</button>
+    </div>
     <div class="squad-toolbar">
-      <label class="formation-pick" for="squadFormationSelect">Formation</label>
-      <select id="squadFormationSelect" class="formation-select"></select>
       <button type="button" class="button secondary" id="squadAutoFillBtn">Auto-fill XI</button>
       <button type="button" class="button secondary" id="squadMovePosBtn">Move positions</button>
       <button type="button" class="button secondary" id="squadResetPosBtn" hidden>Reset layout</button>
@@ -604,11 +626,43 @@ export function initMatchdaySquadPanel({
   const movePosBtn = root.querySelector("#squadMovePosBtn");
   const resetPosBtn = root.querySelector("#squadResetPosBtn");
   const formationSelect = root.querySelector("#squadFormationSelect");
+  const savedFormationSelect = root.querySelector("#squadSavedFormationSelect");
+  const formationNameInput = root.querySelector("#squadFormationName");
+  const formationSlotSelect = root.querySelector("#squadFormationSlot");
 
   formationSelect.innerHTML = FORMATION_LIST.map(
     (f) => `<option value="${f.id}">${f.name}</option>`
   ).join("");
-  formationSelect.value = currentFormationId;
+  formationSelect.value = isTemplateFormationId(currentFormationId)
+    ? currentFormationId
+    : DEFAULT_FORMATION_ID;
+
+  let savedFormationRows = [...savedFormations];
+
+  function savedFormationBySlot(slotNo) {
+    return savedFormationRows.find((r) => Number(r.slot_no) === slotNo) || null;
+  }
+
+  function renderSavedFormationOptions() {
+    savedFormationSelect.innerHTML = "";
+    for (let slot = 1; slot <= 5; slot += 1) {
+      const row = savedFormationBySlot(slot);
+      const opt = document.createElement("option");
+      opt.value = String(slot);
+      opt.textContent = row ? `${slot}. ${row.name}` : `${slot}. (empty)`;
+      savedFormationSelect.appendChild(opt);
+    }
+    syncFormationNameFromSlot();
+  }
+
+  function syncFormationNameFromSlot() {
+    const slot = Number(savedFormationSelect.value) || 1;
+    formationSlotSelect.value = String(slot);
+    const row = savedFormationBySlot(slot);
+    formationNameInput.value = row?.name || "";
+  }
+
+  renderSavedFormationOptions();
 
   function applySlotPositionsToDom() {
     for (const slotId of SLOT_IDS) {
@@ -642,12 +696,21 @@ export function initMatchdaySquadPanel({
     }
   }
 
-  function applyFormation(formationId, keepCustomPositions = false) {
+  function applyLayoutFromResolved(resolved) {
+    currentFormationId = resolved.formationId;
+    slotPositions = { ...resolved.positions };
+    slotLabels = { ...resolved.labels };
+    formationSelect.value = isTemplateFormationId(currentFormationId)
+      ? currentFormationId
+      : DEFAULT_FORMATION_ID;
+    buildPitchSlotElements();
+    rerenderPlayerCards();
+  }
+
+  function applyFormation(formationId) {
     const base = formationLayout(formationId);
     currentFormationId = base.formationId;
-    if (!keepCustomPositions) {
-      slotPositions = { ...base.positions };
-    }
+    slotPositions = { ...base.positions };
     slotLabels = { ...base.labels };
     formationSelect.value = currentFormationId;
     buildPitchSlotElements();
@@ -724,12 +787,59 @@ export function initMatchdaySquadPanel({
 
   movePosBtn.addEventListener("click", () => setEditPositionsMode(!editPositionsMode));
 
-  formationSelect.addEventListener("change", () => {
-    applyFormation(formationSelect.value, false);
+  root.querySelector("#squadApplyTemplateBtn").addEventListener("click", () => {
+    const templateId = formationSelect.value;
+    const name = FORMATION_LIST.find((f) => f.id === templateId)?.name || templateId;
+    if (
+      !confirm(
+        `Apply template “${name}”? This resets all pitch marker positions and role labels (players stay put).`
+      )
+    ) {
+      return;
+    }
+    applyFormation(templateId);
+  });
+
+  savedFormationSelect.addEventListener("change", syncFormationNameFromSlot);
+
+  root.querySelector("#squadLoadFormationBtn").addEventListener("click", () => {
+    const slot = Number(savedFormationSelect.value) || 1;
+    const row = savedFormationBySlot(slot);
+    if (!row?.pitch_layout) {
+      alert(`Slot ${slot} is empty. Save a layout first.`);
+      return;
+    }
+    applyLayoutFromResolved(resolvePitchLayout(row.pitch_layout));
+    formationNameInput.value = row.name || "";
+    formationSlotSelect.value = String(slot);
+    statusText.textContent = `Loaded “${row.name}”.`;
+  });
+
+  root.querySelector("#squadSaveFormationBtn").addEventListener("click", async () => {
+    if (!onSaveFormation) return;
+    const slot = Number(formationSlotSelect.value) || 1;
+    const name = formationNameInput.value.trim();
+    if (!name) {
+      alert("Enter a name for this formation.");
+      formationNameInput.focus();
+      return;
+    }
+    const layout = buildPitchLayoutPayload(slotPositions, slotLabels, "custom");
+    statusText.textContent = "Saving formation…";
+    try {
+      await onSaveFormation(slot, name, layout);
+      statusText.textContent = `Saved “${name}” to slot ${slot}.`;
+      syncFormationNameFromSlot();
+    } catch (err) {
+      statusText.textContent = err?.message || "Formation save failed";
+    }
   });
 
   resetPosBtn.addEventListener("click", () => {
-    applyFormation(currentFormationId, false);
+    const templateId = isTemplateFormationId(currentFormationId)
+      ? currentFormationId
+      : formationSelect.value;
+    applyFormation(templateId);
   });
 
   root.querySelector("#squadAutoFillBtn").addEventListener("click", () => {
@@ -778,14 +888,14 @@ export function initMatchdaySquadPanel({
     setSavedRows: (rows, layout) => {
       state = buildStateFromSaved(allPlayers, rows);
       if (layout != null) {
-        const r = resolvePitchLayout(layout);
-        currentFormationId = r.formationId;
-        slotPositions = { ...r.positions };
-        slotLabels = { ...r.labels };
-        formationSelect.value = currentFormationId;
-        buildPitchSlotElements();
+        applyLayoutFromResolved(resolvePitchLayout(layout));
+      } else {
+        rerender();
       }
-      rerender();
+    },
+    refreshSavedFormations: (rows) => {
+      savedFormationRows = [...(rows || [])];
+      renderSavedFormationOptions();
     },
   };
 }

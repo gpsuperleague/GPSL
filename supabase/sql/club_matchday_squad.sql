@@ -165,8 +165,93 @@ END;
 $function$;
 
 -- ---------------------------------------------------------------------------
+-- Saved custom formations (5 per club)
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.club_matchday_saved_formation (
+  club_short_name text NOT NULL
+    REFERENCES public."Clubs" ("ShortName") ON DELETE CASCADE,
+  slot_no smallint NOT NULL,
+  name text NOT NULL,
+  pitch_layout jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT club_matchday_saved_formation_slot_chk
+    CHECK (slot_no >= 1 AND slot_no <= 5),
+  PRIMARY KEY (club_short_name, slot_no)
+);
+
+CREATE OR REPLACE FUNCTION public.club_save_matchday_formation(
+  p_slot_no smallint,
+  p_name text,
+  p_pitch_layout jsonb
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club text := public.my_club_shortname();
+  v_name text := btrim(p_name);
+BEGIN
+  IF v_club IS NULL OR v_club = '' THEN
+    RAISE EXCEPTION 'No club linked to your account';
+  END IF;
+
+  IF p_slot_no IS NULL OR p_slot_no < 1 OR p_slot_no > 5 THEN
+    RAISE EXCEPTION 'Formation slot must be 1–5';
+  END IF;
+
+  IF v_name IS NULL OR v_name = '' THEN
+    RAISE EXCEPTION 'Formation name is required';
+  END IF;
+
+  IF p_pitch_layout IS NULL OR jsonb_typeof(p_pitch_layout) IS DISTINCT FROM 'object' THEN
+    RAISE EXCEPTION 'p_pitch_layout must be a JSON object';
+  END IF;
+
+  INSERT INTO public.club_matchday_squad (club_short_name, updated_at)
+  VALUES (v_club, now())
+  ON CONFLICT (club_short_name) DO NOTHING;
+
+  INSERT INTO public.club_matchday_saved_formation (
+    club_short_name,
+    slot_no,
+    name,
+    pitch_layout,
+    updated_at
+  )
+  VALUES (v_club, p_slot_no, v_name, p_pitch_layout, now())
+  ON CONFLICT (club_short_name, slot_no) DO UPDATE
+  SET name = EXCLUDED.name,
+      pitch_layout = EXCLUDED.pitch_layout,
+      updated_at = now();
+
+  RETURN jsonb_build_object(
+    'club_short_name', v_club,
+    'slot_no', p_slot_no,
+    'name', v_name
+  );
+END;
+$function$;
+
+-- ---------------------------------------------------------------------------
 -- Public view
 -- ---------------------------------------------------------------------------
+
+DROP VIEW IF EXISTS public.club_matchday_saved_formation_public;
+CREATE VIEW public.club_matchday_saved_formation_public
+WITH (security_invoker = false)
+AS
+SELECT
+  f.club_short_name,
+  f.slot_no,
+  f.name,
+  f.pitch_layout,
+  f.updated_at
+FROM public.club_matchday_saved_formation f
+WHERE f.club_short_name = public.my_club_shortname()
+ORDER BY f.slot_no;
 
 DROP VIEW IF EXISTS public.club_matchday_pitch_layout_public;
 CREATE VIEW public.club_matchday_pitch_layout_public
@@ -212,6 +297,7 @@ ORDER BY
 
 ALTER TABLE public.club_matchday_squad ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.club_matchday_squad_player ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.club_matchday_saved_formation ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS club_matchday_squad_read ON public.club_matchday_squad;
 CREATE POLICY club_matchday_squad_read ON public.club_matchday_squad
@@ -233,10 +319,23 @@ CREATE POLICY club_matchday_squad_player_owner ON public.club_matchday_squad_pla
   USING (club_short_name = public.my_club_shortname())
   WITH CHECK (club_short_name = public.my_club_shortname());
 
+DROP POLICY IF EXISTS club_matchday_saved_formation_read ON public.club_matchday_saved_formation;
+CREATE POLICY club_matchday_saved_formation_read ON public.club_matchday_saved_formation
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS club_matchday_saved_formation_owner ON public.club_matchday_saved_formation;
+CREATE POLICY club_matchday_saved_formation_owner ON public.club_matchday_saved_formation
+  FOR ALL TO authenticated
+  USING (club_short_name = public.my_club_shortname())
+  WITH CHECK (club_short_name = public.my_club_shortname());
+
 GRANT SELECT ON public.club_matchday_squad TO authenticated;
 GRANT SELECT ON public.club_matchday_squad_player TO authenticated;
+GRANT SELECT ON public.club_matchday_saved_formation TO authenticated;
 GRANT SELECT ON public.club_matchday_squad_public TO authenticated;
 GRANT SELECT ON public.club_matchday_pitch_layout_public TO authenticated;
+GRANT SELECT ON public.club_matchday_saved_formation_public TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_save_matchday_squad(jsonb, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.club_save_matchday_formation(smallint, text, jsonb) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

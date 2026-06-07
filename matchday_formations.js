@@ -19,10 +19,10 @@ export const MATCHDAY_FORMATIONS = {
       L("CB2", "CB", 50, 76),
       L("RB", "CB", 72, 74),
       L("RMF", "RB", 92, 70),
-      L("LMF", "DMF/CMF", 22, 56),
-      L("CMF", "DMF/CMF", 50, 56),
-      L("RWF", "DMF/CMF", 78, 56),
-      L("LWF", "CF/SS", 32, 11),
+      L("LMF", "DMF", 22, 56),
+      L("CMF", "CMF", 50, 56),
+      L("RWF", "DMF", 78, 56),
+      L("LWF", "CF", 32, 11),
       L("CF", "SS", 50, 24),
     ],
   },
@@ -166,7 +166,21 @@ export const MATCHDAY_FORMATIONS = {
 
 export const DEFAULT_FORMATION_ID = "gpsl-flex";
 
-/** Tap a pitch marker label (or right-click slot) to pick from these. */
+export const PITCH_SLOT_IDS = [
+  "GK",
+  "LB",
+  "CB1",
+  "CB2",
+  "RB",
+  "LMF",
+  "CMF",
+  "RMF",
+  "LWF",
+  "CF",
+  "RWF",
+];
+
+/** Singular positions only — tap a marker to pick from these. */
 export const PITCH_LABEL_PRESETS = [
   "GK",
   "LB",
@@ -185,13 +199,6 @@ export const PITCH_LABEL_PRESETS = [
   "RWF",
   "SS",
   "CF",
-  "DMF/CMF",
-  "CMF/AMF",
-  "CMF/LMF",
-  "CMF/RMF",
-  "CF/SS",
-  "LWF/SS",
-  "RWF/SS",
 ];
 
 export const FORMATION_LIST = Object.values(MATCHDAY_FORMATIONS).map((f) => ({
@@ -214,23 +221,38 @@ export function formationLayout(formationId) {
   return { positions: out, labels, formationId: f.id };
 }
 
-/** Merge saved custom positions over a formation default. */
+function clampPct(n) {
+  return Math.min(96, Math.max(4, Number(n) || 0));
+}
+
+/** Merge saved layout over template defaults (saved wins for each slot). */
 export function resolvePitchLayout(saved, fallbackFormationId = DEFAULT_FORMATION_ID) {
-  const formationId = saved?.formation_id || fallbackFormationId;
-  const base = formationLayout(formationId);
+  const hasSaved =
+    saved &&
+    typeof saved === "object" &&
+    PITCH_SLOT_IDS.some((id) => saved[id] != null);
+
+  const formationId =
+    saved?.formation_id ||
+    (hasSaved ? "custom" : fallbackFormationId);
+
+  const base = formationLayout(
+    formationId === "custom" ? fallbackFormationId : formationId
+  );
   const positions = { ...base.positions };
   const labels = { ...base.labels };
 
-  if (saved && typeof saved === "object") {
-    for (const slot of Object.keys(base.positions)) {
-      const s = saved[slot];
-      if (s && typeof s === "object" && s.x != null && s.y != null) {
-        positions[slot] = {
-          x: Math.min(96, Math.max(4, Number(s.x))),
-          y: Math.min(96, Math.max(4, Number(s.y))),
+  if (hasSaved) {
+    for (const slotId of PITCH_SLOT_IDS) {
+      const s = saved[slotId];
+      if (!s || typeof s !== "object") continue;
+      if (s.x != null && s.y != null) {
+        positions[slotId] = {
+          x: clampPct(s.x),
+          y: clampPct(s.y),
         };
       }
-      if (s?.label) labels[slot] = s.label;
+      if (s.label) labels[slotId] = String(s.label);
     }
   }
 
