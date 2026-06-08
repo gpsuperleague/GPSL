@@ -275,6 +275,9 @@ BEGIN
     false
   );
 
+  -- Transfer_History.buyer_club_id is NOT NULL — use FOREIGN sentinel (no sale fee).
+  PERFORM public.ensure_foreign_buyer_club();
+
   INSERT INTO public."Transfer_History" (
     player_id,
     seller_club_id,
@@ -289,12 +292,12 @@ BEGIN
   VALUES (
     v_player."Konami_ID",
     v_club,
-    NULL,
+    'FOREIGN',
     0,
     0,
     now(),
     NULL,
-    format('Voluntary release (₿ %s buy-out)', to_char(v_cost, 'FM999999999999')),
+    format('Voluntary contract release (₿ %s buy-out)', to_char(v_cost, 'FM999999999999')),
     'voluntary_contract_release'
   );
 
