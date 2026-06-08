@@ -349,6 +349,12 @@ body.squad-page .status-signed-season {
   border: 1px solid #8a7020;
 }
 
+body.squad-page .status-foreign-contract {
+  background: #1a2a3a;
+  color: #9ec8e8;
+  border: 1px solid #3a5a7a;
+}
+
 body.squad-page .status-not-listed {
   background: #555;
   color: #ddd;

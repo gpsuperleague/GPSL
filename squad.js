@@ -806,7 +806,7 @@ async function sellPlayerToForeignClub(playerId, foreignTeamName) {
     : "a foreign club";
   const confirmed = window.confirm(
     `Sell ${player.Name} to ${buyerLabel}?\n\n` +
-      `The player will be released as a free agent.\n` +
+      `They return to the player database as a free agent but stay unavailable to GPSL clubs until next season (contracted abroad).\n` +
       `Your club will receive ${formatMoney(mv)} (market value).`
   );
 
@@ -848,9 +848,12 @@ async function sellPlayerToForeignClub(playerId, foreignTeamName) {
 
   const soldTo =
     data?.foreign_buyer_name || foreignTeamName || "a foreign club";
+  const untilSeason = data?.unavailable_until_season
+    ? `\nUnavailable in GPSL until ${data.unavailable_until_season}.`
+    : "\nUnavailable in GPSL until next season.";
   alert(
     `${data?.player_name || player.Name} sold to ${soldTo}.\n` +
-      `${formatMoney(fee)} credited to your club balance.`
+      `${formatMoney(fee)} credited to your club balance.${untilSeason}`
   );
 
   await loadSquad();

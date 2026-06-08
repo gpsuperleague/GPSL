@@ -30,7 +30,12 @@ import {
 import {
   loadTransferStatusState,
   buildGpdbContractedBidCellHtml,
+  formatForeignContractGpdbHtml,
 } from "./player_transfer_status.js";
+import {
+  playerForeignContractLocked,
+  playerForeignContractStatusLabel,
+} from "./player_foreign_contract.js";
 import {
   playerBlockedSameSeasonTransfer,
   playerBlockedFromTransferMarket,
@@ -131,6 +136,9 @@ document.addEventListener("DOMContentLoaded", () => {
     "Season_Signed",
     "contract_seasons_remaining",
     "contract_wage",
+    "foreign_contract_club",
+    "foreign_contract_sold_season_id",
+    "foreign_contract_unlock_season_label",
     "Konami_ID",
   ];
 
@@ -587,6 +595,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 })
               : `<span class="locked-msg">Loading…</span>`;
           } else {
+            const foreignLockHtml = formatForeignContractGpdbHtml(
+              player,
+              TRANSFER_STATUS_STATE
+            );
+            if (foreignLockHtml) {
+              bidCell = foreignLockHtml;
+            } else {
             const inDraft = ACTIVE_DRAFT_PLAYERS.has(String(player.Konami_ID).trim());
 
             if (inDraft) {
@@ -606,6 +621,7 @@ document.addEventListener("DOMContentLoaded", () => {
               }
             } else {
               bidCell = `<span class="locked-msg">Draft Closed</span>`;
+            }
             }
           }
         }
@@ -835,6 +851,19 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     console.log("CONFIRM: sellerClub =", sellerClub);
+
+    if (
+      !sellerClub &&
+      playerForeignContractLocked(
+        CURRENT_OFFER_PLAYER,
+        TRANSFER_STATUS_STATE?.currentSeasonId
+      )
+    ) {
+      errorBox.textContent = playerForeignContractStatusLabel(
+        CURRENT_OFFER_PLAYER
+      );
+      return;
+    }
 
     if (!sellerClub) {
       const draftStart = draftAuctionStartTime

@@ -9,6 +9,7 @@ import {
 } from "./direct_offers.js";
 import {
   loadCurrentGpslSeasonLabel,
+  loadCurrentGpslSeasonId,
   playerBlockedSameSeasonTransfer,
 } from "./player_season_transfer.js";
 import {
@@ -17,6 +18,10 @@ import {
   playerBlockedFromTransferMarket,
 } from "./player_contracts.js";
 import { playerSignedCurrentSeason } from "./player_season_transfer.js";
+import {
+  playerForeignContractLocked,
+  playerForeignContractStatusLabel,
+} from "./player_foreign_contract.js";
 
 export const TRANSFER_STATUS = {
   LISTED: "listed",
@@ -30,6 +35,7 @@ export const TRANSFER_STATUS = {
   SIGNED_THIS_SEASON: "signed_this_season",
   CONTRACT_FINAL_YEAR: "contract_final_year",
   EXPIRY_WAGE_BID: "expiry_wage_bid",
+  FOREIGN_CONTRACT: "foreign_contract",
 };
 
 /** Canonical user-facing copy (keep in sync across pages). */
@@ -47,6 +53,8 @@ export const TRANSFER_STATUS_LABELS = {
   [TRANSFER_STATUS.CONTRACT_FINAL_YEAR]:
     "Final contract year — renew or expire in Squad",
   [TRANSFER_STATUS.EXPIRY_WAGE_BID]: "Expiring contract — wage bid",
+  [TRANSFER_STATUS.FOREIGN_CONTRACT]:
+    "Unavailable — sold to foreign club until next season",
 };
 
 const PILL_CLASS = {
@@ -57,6 +65,7 @@ const PILL_CLASS = {
   [TRANSFER_STATUS.NOT_LISTED]: "status-not-listed",
   [TRANSFER_STATUS.SIGNED_THIS_SEASON]: "status-signed-season",
   [TRANSFER_STATUS.CONTRACT_FINAL_YEAR]: "status-contract-final",
+  [TRANSFER_STATUS.FOREIGN_CONTRACT]: "status-foreign-contract",
 };
 
 export function buildClubShortLookup(clubsRows) {
@@ -154,7 +163,10 @@ export async function loadTransferStatusState(supabase) {
     clubShortByKey
   );
 
-  const currentSeasonLabel = await loadCurrentGpslSeasonLabel(supabase);
+  const [currentSeasonLabel, currentSeasonId] = await Promise.all([
+    loadCurrentGpslSeasonLabel(supabase),
+    loadCurrentGpslSeasonId(supabase),
+  ]);
 
   return {
     clubShortByKey,
@@ -163,7 +175,19 @@ export async function loadTransferStatusState(supabase) {
     activeListedPlayerIds,
     sellerReviewPlayerIds,
     currentSeasonLabel,
+    currentSeasonId,
   };
+}
+
+/** GPDB free-agent bid column when player is abroad-locked for the season. */
+export function formatForeignContractGpdbHtml(player, state) {
+  if (!playerForeignContractLocked(player, state?.currentSeasonId)) {
+    return null;
+  }
+  return formatTransferStatusMessageHtml({
+    code: TRANSFER_STATUS.FOREIGN_CONTRACT,
+    label: playerForeignContractStatusLabel(player),
+  });
 }
 
 /**

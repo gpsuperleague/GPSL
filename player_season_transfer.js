@@ -49,3 +49,24 @@ export async function loadCurrentGpslSeasonLabel(supabase) {
   }
   return normalizeSeasonLabel(row?.label);
 }
+
+export async function loadCurrentGpslSeasonId(supabase) {
+  const { data: rpcId, error: rpcErr } = await supabase.rpc(
+    "current_gpsl_season_id"
+  );
+  if (!rpcErr && rpcId != null && Number.isFinite(Number(rpcId))) {
+    return Number(rpcId);
+  }
+
+  const { data: row, error } = await supabase
+    .from("competition_season_public")
+    .select("id")
+    .eq("is_current", true)
+    .maybeSingle();
+
+  if (error) {
+    console.error("loadCurrentGpslSeasonId:", error);
+    return null;
+  }
+  return row?.id != null ? Number(row.id) : null;
+}
