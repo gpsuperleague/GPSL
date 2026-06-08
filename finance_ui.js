@@ -306,7 +306,7 @@ export const FINANCE_UI_SECTIONS = [
           "loan_repayment_principal",
           "loan_interest_payment",
         ],
-        note: "Drawdowns and repayments at the GPSL Central Bank (central_bank.html).",
+        note: "Drawdowns and repayments at the GPSL Central Bank loan counter (central_bank_counter.html).",
       },
     ],
   },

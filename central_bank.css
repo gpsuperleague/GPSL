@@ -18,6 +18,16 @@ body.bank-page {
   background: radial-gradient(ellipse at 50% 0%, rgba(201, 162, 39, 0.12) 0%, transparent 55%);
 }
 
+.bank-hero-compact {
+  grid-template-columns: 1fr;
+  padding: 20px;
+}
+
+.bank-hero-compact .bank-hero-text {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
 @media (max-width: 720px) {
   .bank-hero { grid-template-columns: 1fr; text-align: center; }
   .bank-svg { max-width: 280px; margin: 0 auto; display: block; }

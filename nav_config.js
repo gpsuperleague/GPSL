@@ -17,10 +17,12 @@ export const NAV_SECTIONS = [
     ],
   },
   {
-    id: "finances",
-    label: "Finances",
+    id: "central_bank",
+    label: "Central Bank",
     items: [
-      { href: "central_bank.html", label: "The Central Bank", page: "central_bank" },
+      { href: "central_bank.html", label: "Bank balance", page: "central_bank" },
+      { href: "central_bank_loans.html", label: "League loans", page: "central_bank_loans", indent: true },
+      { href: "central_bank_counter.html", label: "Take out & repay", page: "central_bank_counter", indent: true },
     ],
   },
   {

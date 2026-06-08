@@ -1,0 +1,34 @@
+<script>window.CURRENT_PAGE = "central_bank_loans";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>League loans — GPSL Central Bank</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="central_bank.css">
+</head>
+<body class="bank-page">
+  <div id="nav"></div>
+
+  <header class="bank-hero bank-hero-compact">
+    <div class="bank-hero-text">
+      <p class="bank-welcome">GPSL Central Bank</p>
+      <h1>League loan book</h1>
+      <p class="bank-tagline" id="bankTagline">All club loans with the central bank</p>
+      <div class="bank-hero-stats" id="heroStats"></div>
+    </div>
+  </header>
+
+  <main class="bank-main page-container">
+    <nav class="bank-section-nav" id="bankSubnav" aria-label="Bank sections"></nav>
+
+    <section class="bank-panel">
+      <h2>League loans</h2>
+      <p class="bank-intro">All club loans with the GPSL Central Bank. New drawdowns repay in <b>20 equal GPSL calendar months</b> (August–May, spanning two seasons if needed). To borrow or repay, use <a href="central_bank_counter.html">Take out &amp; repay</a>.</p>
+      <div id="leagueLoansTable"></div>
+    </section>
+  </main>
+
+  <script type="module" src="central_bank_loans.js"></script>
+</body>
+</html>

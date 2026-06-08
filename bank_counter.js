@@ -1,5 +1,5 @@
 /**
- * Loan counter UI — used on central_bank.html (service desk).
+ * Loan counter UI — used on central_bank_counter.html (service desk).
  */
 import {
   formatMoney,

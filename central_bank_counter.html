@@ -1,0 +1,75 @@
+<script>window.CURRENT_PAGE = "central_bank_counter";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Loan counter — GPSL Central Bank</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="central_bank.css">
+</head>
+<body class="bank-page">
+  <div id="nav"></div>
+
+  <header class="bank-hero bank-hero-compact">
+    <div class="bank-hero-text">
+      <p class="bank-welcome">GPSL Central Bank</p>
+      <h1>Loan counter</h1>
+      <p class="bank-tagline" id="bankTagline">Take out and repay loans</p>
+      <div class="bank-hero-stats" id="heroStats"></div>
+    </div>
+  </header>
+
+  <main class="bank-main page-container">
+    <nav class="bank-section-nav" id="bankSubnav" aria-label="Bank sections"></nav>
+
+    <section class="bank-panel counter-panel">
+      <h2>Take out &amp; repay loans</h2>
+      <p class="bank-intro" id="counterClubLine">Present your club account to apply for credit or make a repayment.</p>
+
+      <div class="counter-layout">
+        <div class="counter-window">
+          <div class="counter-glass"></div>
+          <div class="counter-clerk" aria-hidden="true">🏦</div>
+          <p class="counter-label">Clerk on duty</p>
+        </div>
+
+        <div class="counter-desk" id="counterDesk">
+          <div class="counter-your-account">
+            <h3>Your account</h3>
+            <p>Available to borrow: <strong id="counterHeadroom">—</strong></p>
+            <div id="counterLoanList"></div>
+          </div>
+
+          <div class="counter-forms">
+            <form class="counter-form" id="loanTakeForm">
+              <h3>Take a loan</h3>
+              <label for="loanAmount">Amount (₿)</label>
+              <input type="number" id="loanAmount" step="1000000" required>
+              <p class="bank-hint" id="loanLimits"></p>
+              <button type="submit" id="loanTakeBtn" class="counter-btn">Request loan</button>
+              <div class="counter-msg" id="loanTakeMsg"></div>
+            </form>
+
+            <form class="counter-form" id="loanRepayForm">
+              <h3>Repay loan</h3>
+              <label for="repayAmount">Amount (₿)</label>
+              <input type="number" id="repayAmount" step="1000000" required>
+              <label for="repayLoanId">Loan</label>
+              <select id="repayLoanId"></select>
+              <button type="submit" id="loanRepayBtn" class="counter-btn secondary">Make repayment</button>
+              <button type="button" id="loanRepayAllBtn" class="counter-btn ghost">Repay all outstanding</button>
+              <div class="counter-msg" id="loanRepayMsg"></div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <p class="bank-empty" id="counterDisabled" hidden>
+        The counter is closed — bank loans are disabled. Contact league admin.
+      </p>
+    </section>
+  </main>
+
+  <script type="module" src="central_bank_counter.js"></script>
+</body>
+</html>
