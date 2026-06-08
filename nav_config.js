@@ -20,7 +20,6 @@ export const NAV_SECTIONS = [
     id: "finances",
     label: "Finances",
     items: [
-      { href: "finances.html", label: "Club Finances", page: "finances" },
       { href: "challenges.html", label: "Season challenges", page: "challenges" },
       { href: "central_bank.html", label: "The Central Bank", page: "central_bank" },
     ],
@@ -53,6 +52,7 @@ export const NAV_SECTIONS = [
     label: "My Club",
     items: [
       { href: "club_details.html", label: "Club Details", page: "club_details" },
+      { href: "finances.html", label: "Finances", page: "finances" },
       { href: "squad.html", label: "Squad", page: "squad" },
       { href: "history.html", label: "Club History", page: "history" },
       { href: "stadium.html", label: "Stadium", page: "stadium" },
