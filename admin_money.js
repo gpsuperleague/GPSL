@@ -16,7 +16,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadWageSettings();
   await loadStadiumCostSettings();
   await loadAttendanceSettings();
-  await loadClubTierTable();
   await loadGovSubsidySettings();
   await loadTvSettings();
   await loadUpkeepTaxSettings();
@@ -26,7 +25,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("saveAttendanceSettingsBtn").onclick = saveAttendanceSettings;
   document.getElementById("recomputeClubRankingsBtn").onclick = recomputeClubRankings;
   document.getElementById("syncStadiumFillBtn").onclick = syncStadiumFill;
-  document.getElementById("saveClubTiersBtn").onclick = saveClubTierOverrides;
   document.getElementById("compBackfillGatesBtn").onclick = backfillGates;
   document.getElementById("saveLeaguePrizesBtn").onclick = saveLeaguePrizes;
   document.getElementById("seedLeaguePrizesBtn").onclick = seedLeaguePrizes;
@@ -644,7 +642,6 @@ async function saveAttendanceSettings() {
   }
 
   setStatus("attendanceSettingsStatus", "✅ Attendance settings saved.", true);
-  await loadClubTierTable();
 }
 
 async function recomputeClubRankings() {
@@ -686,156 +683,8 @@ async function syncStadiumFill(opts = {}) {
   if (!opts.quiet) {
     setStatus(
       "attendanceSettingsStatus",
-      `✅ Synced fill for ${data ?? 0} club(s).`,
+      `✅ Synced fill for ${data ?? 0} club(s). Open Club attendance & prestige for the ranked table.`,
       true
     );
   }
-  await loadClubTierTable();
-}
-
-function formatLastSeasons(json) {
-  if (!json || !Array.isArray(json) || !json.length) return "—";
-  return json
-    .slice(0, 5)
-    .map((s) => {
-      const pts = Number(s.season_total || 0).toFixed(1);
-      const pos = s.final_position != null ? `P${s.final_position}` : "—";
-      return `${s.season_label || "?"}:${pts}/${pos}`;
-    })
-    .join(" · ");
-}
-
-async function loadClubTierTable() {
-  const wrap = document.getElementById("clubTierTableWrap");
-  if (!wrap) return;
-
-  await supabase.rpc("competition_stadium_sync_all_clubs");
-
-  const { data, error } = await supabase
-    .from("competition_club_stadium_overview_public")
-    .select("*")
-    .order("prestige_rank", { ascending: true });
-
-  if (error) {
-    wrap.innerHTML = `<p class="note">❌ ${error.message} — run stadium_attendance_v2.sql and recompute rankings.</p>`;
-    return;
-  }
-
-  if (!data?.length) {
-    wrap.innerHTML =
-      '<p class="note">No clubs yet. Click <b>Recompute club rankings</b> after SQL is applied.</p>';
-    return;
-  }
-
-  const tierCounts = { big: 0, medium: 0, low: 0 };
-  for (const row of data) {
-    const t = row.effective_tier || "low";
-    if (tierCounts[t] != null) tierCounts[t] += 1;
-  }
-
-  wrap.innerHTML = `
-    <p class="note">Tiers: ${tierCounts.big} big · ${tierCounts.medium} medium · ${tierCounts.low} low</p>
-    <table class="admin-table" style="width:100%;font-size:12px;">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Club</th>
-          <th>5y pts</th>
-          <th>5y seasons</th>
-          <th>Cap</th>
-          <th>Tier</th>
-          <th>Override</th>
-          <th>Mgr</th>
-          <th>Exp pts</th>
-          <th>Act pts</th>
-          <th>Band</th>
-          <th>Start %</th>
-          <th>Display %</th>
-          <th>Gate %</th>
-          <th>Cushion</th>
-          <th>Target %</th>
-          <th>5y history</th>
-          <th>Projection</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${data
-          .map(
-            (row) => `
-          <tr data-club="${row.club_short_name}" title="${row.projection_note || ""}">
-            <td>${row.prestige_rank}</td>
-            <td>${row.club_name || row.club_short_name}</td>
-            <td>${Number(row.rolling_points || 0).toFixed(1)}</td>
-            <td>${row.rolling_seasons_count ?? "—"}</td>
-            <td>${Number(row.capacity || 0).toLocaleString("en-GB")}</td>
-            <td><b>${row.effective_tier}</b></td>
-            <td>
-              <select class="club-tier-override" data-club="${row.club_short_name}">
-                <option value="auto" ${!row.tier_override ? "selected" : ""}>Auto</option>
-                <option value="big" ${row.tier_override === "big" ? "selected" : ""}>Big</option>
-                <option value="medium" ${row.tier_override === "medium" ? "selected" : ""}>Medium</option>
-                <option value="low" ${row.tier_override === "low" ? "selected" : ""}>Low</option>
-              </select>
-            </td>
-            <td>
-              <input type="number" class="club-mgr-rating" data-club="${row.club_short_name}"
-                min="1" max="99" step="1" style="width:52px;"
-                value="${row.manager_rating ?? ""}" placeholder="—">
-            </td>
-            <td>${Number(row.expected_points || 0).toFixed(2)}</td>
-            <td>${Number(row.actual_points || 0).toFixed(2)}</td>
-            <td>${row.performance_band || "—"}</td>
-            <td>${row.stadium_season_start_fill_pct ?? row.season_start_fill_pct ?? "—"}</td>
-            <td>${row.stadium_display_fill_pct ?? row.display_fill_pct ?? "—"}</td>
-            <td><b>${row.gate_fill_pct ?? row.fill_pct ?? "—"}</b></td>
-            <td>${row.cushion_pct > 0 ? "+" + row.cushion_pct : "—"}</td>
-            <td>${row.stadium_fill_target_pct ?? row.season_target_fill_pct ?? "—"}</td>
-            <td style="max-width:140px;font-size:11px;">${formatLastSeasons(row.last_seasons_json)}</td>
-            <td style="max-width:200px;font-size:11px;">${row.projection_note || "—"}</td>
-          </tr>`
-          )
-          .join("")}
-      </tbody>
-    </table>`;
-}
-
-async function saveClubTierOverrides() {
-  const overrides = document.querySelectorAll(".club-tier-override");
-  const managers = document.querySelectorAll(".club-mgr-rating");
-
-  setStatus("clubTierStatus", "Saving…");
-
-  for (const sel of overrides) {
-    const club = sel.dataset.club;
-    const tier = sel.value || "auto";
-    const { error } = await supabase.rpc("admin_set_club_tier_override", {
-      p_club_short_name: club,
-      p_tier: tier,
-    });
-    if (error) {
-      setStatus("clubTierStatus", "❌ " + error.message, false);
-      return;
-    }
-  }
-
-  for (const inp of managers) {
-    const club = inp.dataset.club;
-    const raw = String(inp.value ?? "").trim();
-    const rating = raw === "" ? null : Number(raw);
-    if (raw !== "" && (!Number.isFinite(rating) || rating < 1 || rating > 99)) {
-      setStatus("clubTierStatus", `Invalid manager rating for ${club}.`, false);
-      return;
-    }
-    const { error } = await supabase.rpc("admin_set_club_manager_rating", {
-      p_club_short_name: club,
-      p_rating: rating,
-    });
-    if (error) {
-      setStatus("clubTierStatus", "❌ " + error.message, false);
-      return;
-    }
-  }
-
-  setStatus("clubTierStatus", "✅ Club tiers and manager ratings saved.", true);
-  await loadClubTierTable();
 }

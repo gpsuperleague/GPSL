@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Club attendance &amp; prestige — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .att-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; }
+    .att-summary { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:14px; font-size:13px; }
+    .att-summary span { padding:6px 10px; background:#1a1a1a; border-radius:4px; }
+    .att-table-wrap { overflow:auto; max-height:calc(100vh - 220px); border:1px solid #333; border-radius:6px; }
+    .att-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .att-table th, .att-table td { padding:6px 8px; border-bottom:1px solid #2a2a2a; text-align:left; vertical-align:top; }
+    .att-table th { position:sticky; top:0; background:#1e1e1e; z-index:1; white-space:nowrap; }
+    .att-table tbody tr:hover { background:#1a1a1a; }
+    .att-table .rank { font-weight:bold; color:#ff9900; text-align:center; width:36px; }
+    .att-table .club-name { font-weight:600; white-space:nowrap; }
+    .att-table .club-short { color:#888; font-size:11px; }
+    .band-pill {
+      display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px;
+      font-weight:bold; text-transform:lowercase; white-space:nowrap;
+    }
+    .band-on_target { background:#1a3d1a; color:#7ddf7d; }
+    .band-slight { background:#3d3a1a; color:#e8c547; }
+    .band-bad { background:#3d261a; color:#e8a047; }
+    .band-abysmal { background:#3d1a1a; color:#e85c5c; }
+    .tier-big { color:#ff9900; }
+    .tier-medium { color:#8ec8ff; }
+    .tier-low { color:#aaa; }
+    .fill-gate { font-weight:bold; color:#7ddf7d; }
+    .fill-cushion { color:#8ec8ff; font-size:11px; }
+    .att-filter { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; font-size:13px; }
+    .att-filter select { background:#222; color:#ddd; border:1px solid #444; padding:4px 8px; border-radius:4px; }
+    .hist-cell { font-size:10px; color:#999; max-width:160px; line-height:1.35; }
+    .proj-cell { font-size:11px; color:#bbb; max-width:220px; line-height:1.35; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Club attendance &amp; prestige</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="note">
+          All GPSL clubs ranked <b>1–60</b> by 5-year prestige. Gate revenue uses <b>gate fill</b> (capped at 100%);
+          display fill can exceed 100% as cushion. Status reflects current-season delivery vs expectation.
+          Settings live on <a href="admin_money.html">Prizes, wages &amp; gates</a>.
+        </p>
+        <div class="att-toolbar">
+          <button type="button" id="refreshTableBtn" class="button">Refresh</button>
+          <button type="button" id="syncFillBtn" class="button">Sync fill drift</button>
+          <button type="button" id="recomputeBtn" class="button">Recompute club rankings</button>
+          <button type="button" id="saveOverridesBtn" class="button">Save tier overrides &amp; managers</button>
+        </div>
+        <div id="pageStatus" class="status-line"></div>
+        <div id="summaryStrip" class="att-summary"></div>
+        <div class="att-filter">
+          <label>Filter tier <select id="filterTier"><option value="">All</option><option value="big">Big</option><option value="medium">Medium</option><option value="low">Low</option></select></label>
+          <label>Filter status <select id="filterBand"><option value="">All</option><option value="on_target">On target</option><option value="slight">Slight under</option><option value="bad">Bad</option><option value="abysmal">Abysmal</option></select></label>
+          <span id="rowCount" class="note"></span>
+        </div>
+        <div id="tableWrap" class="att-table-wrap"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_club_attendance.js"></script>
+</body>
+</html>
