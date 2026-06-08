@@ -880,10 +880,33 @@ button.nav-admin-trigger {
   flex-direction: column;
 }
 
+.nav-dropdown-scrollable {
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #555 #1e1e1e;
+}
+
+.nav-dropdown-scrollable::-webkit-scrollbar {
+  width: 8px;
+}
+
+.nav-dropdown-scrollable::-webkit-scrollbar-thumb {
+  background: #555;
+  border-radius: 4px;
+}
+
+.nav-dropdown-scrollable::-webkit-scrollbar-track {
+  background: #1e1e1e;
+}
+
 .nav-dropdown .nav-link {
   pointer-events: auto;
 }
 
+/* Legacy flat headings (unused when sub-groups render) */
 .nav-dropdown-heading {
   font-size: 12px;
   font-weight: bold;
@@ -899,6 +922,64 @@ button.nav-admin-trigger {
 
 .nav-dropdown-heading:first-child {
   padding-top: 6px;
+}
+
+/* Collapsible sub-sections (Admin headings, Cups prestige, etc.) */
+.nav-subgroup {
+  border-top: 1px solid #333;
+}
+
+.nav-subgroup:first-child {
+  border-top: none;
+}
+
+.nav-subgroup-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: none;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 10px 14px 8px;
+  color: #ccc;
+  font-weight: bold;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  user-select: none;
+  transition: background 0.12s, color 0.12s;
+}
+
+.nav-subgroup-summary::after {
+  content: "▸";
+  font-size: 11px;
+  opacity: 0.75;
+  transition: transform 0.15s;
+}
+
+.nav-subgroup.open .nav-subgroup-summary::after {
+  transform: rotate(90deg);
+}
+
+.nav-subgroup-summary:hover {
+  background: #2a2a2a;
+  color: #ffcc66;
+}
+
+.nav-subgroup-panel {
+  display: none;
+  flex-direction: column;
+  padding-bottom: 4px;
+}
+
+.nav-subgroup.open .nav-subgroup-panel {
+  display: flex;
+}
+
+.nav-subgroup-panel .nav-link:first-child {
+  padding-top: 4px;
 }
 
 .nav-link {
@@ -1037,6 +1118,11 @@ button.nav-admin-trigger {
     border: none;
     border-top: 1px solid #333;
     border-radius: 0;
+  }
+
+  .nav-dropdown-scrollable {
+    max-height: none;
+    overflow-y: visible;
   }
 }
 

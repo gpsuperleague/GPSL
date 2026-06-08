@@ -615,6 +615,59 @@ function escapeNavAttr(s) {
   return escapeNavHtml(s).replace(/"/g, "&quot;");
 }
 
+/** Flat links, or collapsible sub-groups when items use `{ heading: true }`. */
+function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
+  const hasHeadings = items.some((item) => item.heading);
+  if (!hasHeadings) {
+    let flat = "";
+    for (const item of items) {
+      if (!item.href) continue;
+      const active = isNavItemActive(item, pathname, search);
+      const indent = item.indent ? " nav-link-sub" : "";
+      flat += `<a href="${item.href}" class="nav-link${indent}${
+        active ? " active" : ""
+      }">${escapeNavHtml(item.label)}</a>`;
+    }
+    return flat;
+  }
+
+  let html = "";
+  let panelHtml = "";
+  let panelLabel = "";
+  let panelHasActive = false;
+
+  const flushPanel = () => {
+    if (!panelLabel) return;
+    html += `<div class="nav-subgroup${panelHasActive ? " open" : ""}" data-nav-subgroup>`;
+    html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
+      panelHasActive ? "true" : "false"
+    }">${escapeNavHtml(panelLabel)}</button>`;
+    html += `<div class="nav-subgroup-panel" role="group">${panelHtml}</div>`;
+    html += `</div>`;
+    panelHtml = "";
+    panelLabel = "";
+    panelHasActive = false;
+  };
+
+  for (const item of items) {
+    if (item.heading) {
+      flushPanel();
+      panelLabel = item.label;
+      continue;
+    }
+    if (!item.href) continue;
+
+    const active = isNavItemActive(item, pathname, search);
+    if (active) panelHasActive = true;
+    const indent = item.indent ? " nav-link-sub" : "";
+    panelHtml += `<a href="${item.href}" class="nav-link${indent}${
+      active ? " active" : ""
+    }">${escapeNavHtml(item.label)}</a>`;
+  }
+  flushPanel();
+  return html;
+}
+
 function wireNavLogout() {
   const btn = document.getElementById("logoutBtn");
   if (!btn || btn.dataset.wired === "1") return;
@@ -654,6 +707,19 @@ function wireNavGroups(nav) {
 
   nav.querySelectorAll(".nav-dropdown .nav-link").forEach((link) => {
     link.addEventListener("click", () => closeAll());
+  });
+
+  nav.querySelectorAll("[data-nav-subgroup]").forEach((subgroup) => {
+    const btn = subgroup.querySelector(".nav-subgroup-summary");
+    if (!btn || btn.dataset.wired === "1") return;
+    btn.dataset.wired = "1";
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const willOpen = !subgroup.classList.contains("open");
+      subgroup.classList.toggle("open", willOpen);
+      btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    });
   });
 
   if (!nav.dataset.outsideClose) {
@@ -852,22 +918,12 @@ export async function buildNav() {
 
     html += `<div class="nav-group${hasActive ? " nav-group-active" : ""}" data-nav-group>`;
     html += `<button type="button" class="nav-group-summary" aria-expanded="false">${section.label}</button>`;
-    html += `<div class="nav-dropdown" role="menu">`;
-
-    for (const item of items) {
-      if (item.heading) {
-        html += `<div class="nav-dropdown-heading">${escapeNavHtml(item.label)}</div>`;
-        continue;
-      }
-      if (!item.href) continue;
-
-      const active = isNavItemActive(item, pathname, search);
-      const indent = item.indent ? " nav-link-sub" : "";
-      html += `<a href="${item.href}" class="nav-link${indent}${
-        active ? " active" : ""
-      }">${escapeNavHtml(item.label)}</a>`;
-    }
-
+    const dropdownClass =
+      section.id === "admin"
+        ? "nav-dropdown nav-dropdown-scrollable"
+        : "nav-dropdown";
+    html += `<div class="${dropdownClass}" role="menu">`;
+    html += renderNavDropdownItems(items, pathname, search, isNavItemActive);
     html += `</div></div>`;
   }
 
