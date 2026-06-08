@@ -862,9 +862,19 @@ SELECT
   (fill.d ->> 'performance_gap')::numeric AS performance_gap,
   fill.d ->> 'performance_band' AS performance_band,
   (fill.d ->> 'prestige_base_fill_pct')::numeric AS prestige_base_fill_pct,
-  (fill.d ->> 'expected_position')::smallint AS expected_position,
-  (fill.d ->> 'actual_position')::smallint AS actual_position,
-  public.competition_club_rolling_season_stats(p.club_short_name) AS last_seasons_json,
+  CASE
+    WHEN fill.d ? 'error' THEN NULL::smallint
+    WHEN btrim(coalesce(fill.d ->> 'expected_position', '')) ~ '^-?\d+$'
+      THEN (fill.d ->> 'expected_position')::smallint
+    ELSE NULL::smallint
+  END AS expected_position,
+  CASE
+    WHEN fill.d ? 'error' THEN NULL::smallint
+    WHEN btrim(coalesce(fill.d ->> 'actual_position', '')) ~ '^-?\d+$'
+      THEN (fill.d ->> 'actual_position')::smallint
+    ELSE NULL::smallint
+  END AS actual_position,
+  coalesce(public.competition_club_rolling_season_stats(p.club_short_name), '[]'::jsonb) AS last_seasons_json,
   public.competition_stadium_projection_note(
     p.club_short_name,
     c.stadium_display_fill_pct,
@@ -872,14 +882,15 @@ SELECT
     public.competition_club_tier(p.club_short_name),
     fill.d ->> 'performance_band'
   ) AS projection_note,
-  p.capacity <= (SELECT stadium_new_build_max_capacity FROM public.global_settings WHERE id = 1) AS expansion_eligible
+  (p.capacity <= coalesce(gs.stadium_new_build_max_capacity, 55000)) AS expansion_eligible
 FROM public.competition_club_prestige_public p
 JOIN public."Clubs" c ON c."ShortName" = p.club_short_name
+CROSS JOIN (SELECT stadium_new_build_max_capacity FROM public.global_settings WHERE id = 1) gs
 LEFT JOIN public.competition_club_tier_override o ON o.club_short_name = p.club_short_name
 CROSS JOIN LATERAL (
   SELECT public.competition_compute_stadium_fill(p.club_short_name) AS d
 ) fill
-ORDER BY p.prestige_rank;
+WHERE NOT (fill.d ? 'error');
 
 -- Keep legacy admin view in sync (adds v2 columns)
 CREATE VIEW public.competition_club_attendance_admin_public
@@ -1373,8 +1384,37 @@ SET stadium_display_fill_pct = public.competition_stadium_prestige_base_fill(c."
     stadium_season_start_fill_pct = public.competition_stadium_prestige_base_fill(c."ShortName")
 WHERE c.stadium_display_fill_pct IS NULL;
 
+-- Admin list RPC (preferred for admin UI)
+CREATE OR REPLACE FUNCTION public.competition_club_stadium_overview_list()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_rows jsonb;
+BEGIN
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  SELECT coalesce(
+    jsonb_agg(to_jsonb(v) ORDER BY v.prestige_rank),
+    '[]'::jsonb
+  )
+  INTO v_rows
+  FROM public.competition_club_stadium_overview_public v;
+
+  RETURN v_rows;
+END;
+$function$;
+
 -- Grants
 GRANT SELECT ON public.competition_club_stadium_overview_public TO authenticated;
+GRANT SELECT ON public.competition_club_attendance_admin_public TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_club_stadium_overview_list() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_stadium_projection_note(text, numeric, smallint, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_stadium_sync_all_clubs(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_stadium_sync_fill_state(text, bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_stadium_season_metrics(text, bigint, text) TO authenticated;

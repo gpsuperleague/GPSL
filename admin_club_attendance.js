@@ -167,6 +167,31 @@ function renderTable() {
     </table>`;
 }
 
+function formatLoadError(error) {
+  if (!error) return "Unknown error";
+  const parts = [error.message, error.details, error.hint].filter(Boolean);
+  return parts.join(" — ");
+}
+
+async function fetchOverviewRows() {
+  const { data: rpcData, error: rpcError } = await supabase.rpc(
+    "competition_club_stadium_overview_list"
+  );
+
+  if (!rpcError && Array.isArray(rpcData)) {
+    return { data: rpcData, error: null };
+  }
+
+  const { data, error } = await supabase
+    .from("competition_club_stadium_overview_public")
+    .select(
+      "prestige_rank,club_short_name,club_name,capacity,rolling_points,rolling_seasons_count,composite_score,effective_tier,tier_override,manager_rating,stadium_season_start_fill_pct,stadium_display_fill_pct,stadium_fill_target_pct,gate_fill_pct,cushion_pct,expected_points,actual_points,performance_gap,performance_band,prestige_base_fill_pct,expected_position,actual_position,last_seasons_json,projection_note,expansion_eligible"
+    )
+    .order("prestige_rank", { ascending: true });
+
+  return { data, error: rpcError || error };
+}
+
 async function loadTable() {
   setStatus("pageStatus", "Loading…");
   const wrap = document.getElementById("tableWrap");
@@ -174,15 +199,14 @@ async function loadTable() {
 
   await supabase.rpc("competition_stadium_sync_all_clubs");
 
-  const { data, error } = await supabase
-    .from("competition_club_stadium_overview_public")
-    .select("*")
-    .order("prestige_rank", { ascending: true });
+  const { data, error } = await fetchOverviewRows();
 
   if (error) {
     setStatus(
       "pageStatus",
-      "❌ " + error.message + " — run stadium_attendance_v2.sql and recompute rankings.",
+      "❌ " +
+        formatLoadError(error) +
+        " — run stadium_attendance_v2_repair_overview.sql in Supabase.",
       false
     );
     if (wrap) wrap.innerHTML = "";
