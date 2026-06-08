@@ -142,6 +142,8 @@ HG contract protection (≤23): `is_homegrown AND age <= 23` at renewal rollover
 | **Foreign overflow** (tracking slot available) | MV credit + ledger `transfer_foreign_sale` | **None** | Unavailable until next season — same as a normal foreign sale |
 | **MV overflow** (no foreign slot) | MV credit + ledger `transfer_overflow_release` | **£10,000,000** per player (`gov_fine_compensation` / tariff `squad_overflow_mv_release`) | Contract paid up by releasing club — unavailable until next season (`foreign_contract_lock_kind = paid_up`) |
 
+**Voluntary contract release (squad action):** up to **3 per club per season** (resets on season activate). Owner pays **contract wage × seasons remaining** (ledger `contract_release_comp`); no MV. Player becomes a free agent with the same paid-up season lock and GPDB message as MV overflow.
+
 **Not yet enforced on signing:** minimum **8** home-grown and **5** under-21 (warnings on Squad only).
 
 ---

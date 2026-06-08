@@ -52,11 +52,18 @@ export function isOnExpiryWageMarket(player, clubNation) {
   return isContractFinalYear(player) && !isHgContractProtected(player, clubNation);
 }
 
-export function squadContractActionOptionsHtml(player, clubNation) {
+export function squadContractActionOptionsHtml(
+  player,
+  clubNation,
+  voluntaryRelease = null
+) {
   if (!isContractFinalYear(player)) return null;
 
   const hg = isHgContractProtected(player, clubNation);
+  const releaseOpt = voluntaryRelease?.optionHtml ?? "";
+
   return `
             <option value="renew">${hg ? "Renew (same wage, 3 Seasons)" : "Renew contract (3 Seasons)"}</option>
-            <option value="expire">Expire — release for MV</option>`;
+            <option value="expire">Expire — release for MV</option>
+            ${releaseOpt}`;
 }

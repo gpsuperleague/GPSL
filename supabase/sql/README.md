@@ -305,7 +305,9 @@ Run once:
 - GPDB / transfer engine show a confirm dialog when already at **28** players.
 - Retrospective / URD test: [`test_squad_overflow_urd.sql`](./test_squad_overflow_urd.sql) — preview release, `admin_enforce_squad_overflow('URD')` to fix 29→28 without a new signing.
 - **MV overflow fine + paid-up lock:** [`patches/squad_overflow_paid_up_fine.sql`](./patches/squad_overflow_paid_up_fine.sql) — £10m fine per forced MV release (ledger `gov_fine_compensation`); player unavailable until next season. Foreign overflow unchanged (no fine).
-- **Backfill historical MV fines:** [`patches/squad_overflow_mv_fines_backfill.sql`](./patches/squad_overflow_mv_fines_backfill.sql) — audit `SELECT * FROM squad_overflow_club_release_audit WHERE club_short_name = 'URD';` then `SELECT backfill_squad_overflow_mv_fines(true);` If fines posted but Finances empty: `SELECT repair_squad_overflow_mv_fines_visibility();` (ledger public view only shows **current** season).
+- **Backfill historical MV fines:** [`patches/squad_overflow_mv_fines_backfill.sql`](./patches/squad_overflow_mv_fines_backfill.sql) — `SELECT squad_overflow_mv_fines_club_status('URD');` then `SELECT backfill_squad_overflow_mv_fines(true);`
+- **Finances blank but fines in DB:** [`patches/fix_finance_ledger_public_current_season.sql`](./patches/fix_finance_ledger_public_current_season.sql) — public ledger view required `status = 'active'`; setup/preseason seasons hid all lines.
+- **Voluntary contract release:** [`patches/voluntary_contract_release.sql`](./patches/voluntary_contract_release.sql) — squad action, 3/season, buy-out = wage × seasons left, `contract_release_comp` ledger.
 
 - **Home-grown** = `Players.Nation` matches `Clubs.Nation` — **at least 8** (no cap; more allowed)
 - **Under-21** = age **≤ 21** — **at least 5** (no cap)

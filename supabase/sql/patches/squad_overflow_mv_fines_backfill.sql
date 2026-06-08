@@ -127,7 +127,6 @@ SELECT
       AND l.entry_type = 'gov_fine_compensation'
       AND l.metadata->>'tariff_code' = 'squad_overflow_mv_release'
       AND s.is_current = true
-      AND s.status = 'active'
   ) AS fine_visible_in_finances
 FROM public."Transfer_History" h
 LEFT JOIN public."Players" p ON p."Konami_ID" = h.player_id
@@ -168,7 +167,6 @@ SELECT
       AND l.entry_type = 'gov_fine_compensation'
       AND l.metadata->>'tariff_code' = 'squad_overflow_mv_release'
       AND s.is_current = true
-      AND s.status = 'active'
   ) AS fine_visible_in_finances,
   EXISTS (
     SELECT 1
@@ -475,4 +473,41 @@ GRANT EXECUTE ON FUNCTION public.transfer_history_is_mv_squad_overflow(text, tex
 GRANT EXECUTE ON FUNCTION public.repair_squad_overflow_mv_fines_visibility() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.backfill_squad_overflow_mv_fines(boolean) TO authenticated;
 
+-- Quick URD status (run after backfill)
+CREATE OR REPLACE FUNCTION public.squad_overflow_mv_fines_club_status(p_club_short_name text)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT jsonb_build_object(
+    'club', btrim(p_club_short_name),
+    'mv_fineable_releases', count(*) FILTER (WHERE a.is_mv_overflow_fineable),
+    'foreign_overflow_releases', count(*) FILTER (WHERE a.is_foreign_overflow),
+    'fines_in_ledger', count(*) FILTER (WHERE a.fine_ledger_exists),
+    'fines_visible_in_finances', count(*) FILTER (WHERE a.fine_visible_in_finances),
+    'still_need_fine', count(*) FILTER (
+      WHERE a.is_mv_overflow_fineable AND NOT a.fine_ledger_exists
+    ),
+    'expected_fine_total', (
+      count(*) FILTER (WHERE a.is_mv_overflow_fineable AND NOT a.fine_ledger_exists)
+      + count(*) FILTER (WHERE a.fine_ledger_exists)
+    ) * 10000000
+  )
+  FROM public.squad_overflow_club_release_audit a
+  WHERE a.club_short_name = btrim(p_club_short_name);
+$$;
+
+GRANT EXECUTE ON FUNCTION public.squad_overflow_mv_fines_club_status(text) TO authenticated;
+
 NOTIFY pgrst, 'reload schema';
+
+-- Verify URD (expect still_need_fine = 0 and fines_visible_in_finances = 6 after apply):
+--   SELECT squad_overflow_mv_fines_club_status('URD');
+-- Raw ledger (bypasses public view):
+--   SELECT id, season_id, amount, description, created_at, metadata
+--   FROM competition_finance_ledger
+--   WHERE club_short_name = 'URD'
+--     AND entry_type = 'gov_fine_compensation'
+--     AND metadata->>'tariff_code' = 'squad_overflow_mv_release';

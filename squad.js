@@ -40,6 +40,13 @@ import {
   foreignSaleOptionsHtml,
   parseForeignSaleAction,
 } from "./foreign_interest.js";
+import {
+  MAX_VOLUNTARY_CONTRACT_RELEASES,
+  VOLUNTARY_RELEASE_ACTION,
+  calculateVoluntaryReleaseCost,
+  normalizeVoluntaryReleasesRemaining,
+  voluntaryReleaseOptionLabel,
+} from "./voluntary_contract_release.js";
 
 window.supabase = supabase;
 
@@ -71,6 +78,7 @@ const MAX_FOREIGN_INTEREST = 3;
 let foreignInterestRemaining = MAX_FOREIGN_INTEREST;
 /** Fictional clubs currently tracking (same length as interest slots). */
 let foreignTrackingTeams = [];
+let voluntaryReleasesRemaining = MAX_VOLUNTARY_CONTRACT_RELEASES;
 
 // ENTRY POINT
 document.addEventListener("DOMContentLoaded", async () => {
@@ -95,7 +103,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const clubRes = await supabase
     .from("Clubs")
-    .select("ShortName, Club, Nation, foreign_interest_remaining")
+    .select(
+      "ShortName, Club, Nation, foreign_interest_remaining, voluntary_contract_releases_remaining"
+    )
     .eq("owner_id", user.id)
     .single();
 
@@ -105,7 +115,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (clubErr?.code === "42703") {
     const fallback = await supabase
       .from("Clubs")
-      .select("ShortName, Club, Nation")
+      .select("ShortName, Club, Nation, foreign_interest_remaining")
       .eq("owner_id", user.id)
       .single();
     club = fallback.data;
@@ -128,9 +138,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   foreignInterestRemaining = normalizeForeignInterest(
     club.foreign_interest_remaining
   );
-  await loadForeignInterestState();
+  voluntaryReleasesRemaining = normalizeVoluntaryReleasesRemaining(
+    club.voluntary_contract_releases_remaining
+  );
+  await Promise.all([loadForeignInterestState(), loadVoluntaryReleaseState()]);
   renderForeignInterestBadge();
+  renderVoluntaryReleaseBadge();
   applyForeignSaleOptionState();
+  applyVoluntaryReleaseOptionState();
 
   wireButtons();
   wireSquadTable();
@@ -217,15 +232,33 @@ function renderForeignInterestBadge() {
     <span class="foreign-interest-hint">Use action to sell to one of these clubs at market value</span>`;
 }
 
+function voluntaryReleaseOptionHtml(player) {
+  const cost = calculateVoluntaryReleaseCost(
+    player?.contract_wage,
+    player?.contract_seasons_remaining
+  );
+  if (voluntaryReleasesRemaining <= 0) {
+    return `<option value="" disabled>${voluntaryReleaseOptionLabel(0, cost)}</option>`;
+  }
+  return `<option value="${VOLUNTARY_RELEASE_ACTION}">${voluntaryReleaseOptionLabel(
+    voluntaryReleasesRemaining,
+    cost
+  )}</option>`;
+}
+
 function squadActionOptionsHtml(player) {
-  const contractOpts = squadContractActionOptionsHtml(player, clubNation);
+  const releaseOpt = voluntaryReleaseOptionHtml(player);
+  const contractOpts = squadContractActionOptionsHtml(player, clubNation, {
+    optionHtml: releaseOpt,
+  });
   if (contractOpts) return contractOpts;
 
   if (!playerCanListOrSellLocal(player)) {
     if (isContractFinalYear(player)) {
       return `<option value="" disabled>Final contract year</option>`;
     }
-    return `<option value="" disabled>Signed this season</option>`;
+    return `${releaseOpt}
+            <option value="" disabled>Signed this season</option>`;
   }
   const foreignOpts =
     foreignTrackingTeams.length > 0
@@ -234,11 +267,75 @@ function squadActionOptionsHtml(player) {
 
   return `
             <option value="list">Transfer List</option>
-            ${foreignOpts}`;
+            ${foreignOpts}
+            ${releaseOpt}`;
 }
 
 function playerCanListOrSellLocal(player) {
   return playerBlockedFromTransferMarket(player, currentGpslSeasonLabel) === false;
+}
+
+async function loadVoluntaryReleaseState() {
+  const { data, error } = await supabase.rpc(
+    "club_voluntary_contract_release_state"
+  );
+
+  if (error) {
+    const msg = String(error.message || "").toLowerCase();
+    if (
+      msg.includes("club_voluntary_contract_release_state") ||
+      msg.includes("voluntary_contract_releases") ||
+      error.code === "42883"
+    ) {
+      return;
+    }
+    console.warn("club_voluntary_contract_release_state:", error);
+    return;
+  }
+
+  if (data?.voluntary_contract_releases_remaining != null) {
+    voluntaryReleasesRemaining = normalizeVoluntaryReleasesRemaining(
+      data.voluntary_contract_releases_remaining
+    );
+  }
+}
+
+function renderVoluntaryReleaseBadge() {
+  const el = document.getElementById("voluntaryReleaseBadge");
+  if (!el) return;
+
+  const n = voluntaryReleasesRemaining;
+  el.classList.toggle("foreign-interest-badge--empty", n <= 0);
+  if (n <= 0) {
+    el.textContent =
+      "No voluntary contract releases left this season (0/3 used)";
+    return;
+  }
+
+  el.innerHTML = `
+    <span class="foreign-interest-main">${n} voluntary contract ${n === 1 ? "release" : "releases"} remaining (max 3/season)</span>
+    <span class="foreign-interest-hint">Pay remaining wages — player unavailable until next season</span>`;
+}
+
+function applyVoluntaryReleaseOptionState() {
+  const allow = voluntaryReleasesRemaining > 0;
+  document.querySelectorAll("select.squad-action-select").forEach((sel) => {
+    const releaseOpt = sel.querySelector(
+      `option[value="${VOLUNTARY_RELEASE_ACTION}"]`
+    );
+    const disabledRelease = sel.querySelector(
+      'option[value=""][disabled]'
+    );
+    if (releaseOpt) {
+      releaseOpt.disabled = !allow;
+    }
+    if (
+      disabledRelease &&
+      disabledRelease.textContent.includes("voluntary")
+    ) {
+      disabledRelease.disabled = true;
+    }
+  });
 }
 
 function applyForeignSaleOptionState() {
@@ -296,6 +393,7 @@ function applyTransferWindowRules() {
   const msg = document.getElementById("windowClosedMessage");
   if (msg) msg.style.display = transferWindowOpen ? "none" : "block";
   applyForeignSaleOptionState();
+  applyVoluntaryReleaseOptionState();
 }
 
 async function loadFreshTransferStatusState() {
@@ -503,6 +601,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
 
   applyTransferWindowRules();
   applyForeignSaleOptionState();
+  applyVoluntaryReleaseOptionState();
 }
 
 /** Update stats + listing pills only — keeps action dropdowns mounted and clickable. */
@@ -654,6 +753,12 @@ async function handlePlayerAction(playerId, action, selectEl) {
       return;
     }
 
+    if (action === VOLUNTARY_RELEASE_ACTION) {
+      resetActionSelect(selectEl);
+      await releasePlayerFromContract(playerId);
+      return;
+    }
+
     if (action === "renew") {
       resetActionSelect(selectEl);
       await renewPlayerContract(playerId);
@@ -767,6 +872,78 @@ async function expirePlayerContract(playerId) {
   alert(
     `${data?.player_name || player.Name} released. ` +
       `Fee received: ${formatMoney(data?.fee ?? mv)}.`
+  );
+  await loadSquad();
+}
+
+async function releasePlayerFromContract(playerId) {
+  const { data: player, error: loadErr } = await supabase
+    .from("Players")
+    .select(
+      "Konami_ID, Name, contract_wage, contract_seasons_remaining, Contracted_Team"
+    )
+    .eq("Konami_ID", playerId)
+    .single();
+
+  if (loadErr || !player) {
+    alert("Could not load player.");
+    return;
+  }
+
+  const contracted = playerContractClubKey(player.Contracted_Team);
+  if (contracted !== currentUserShort) {
+    alert("This player is not at your club.");
+    return;
+  }
+
+  if (voluntaryReleasesRemaining <= 0) {
+    alert("No voluntary contract releases remaining this season (maximum 3).");
+    await loadVoluntaryReleaseState();
+    renderVoluntaryReleaseBadge();
+    applyVoluntaryReleaseOptionState();
+    return;
+  }
+
+  const seasons = Number(player.contract_seasons_remaining) || 0;
+  const wage = Number(player.contract_wage) || 0;
+  const cost = calculateVoluntaryReleaseCost(wage, seasons);
+
+  if (cost <= 0) {
+    alert("Could not calculate contract buy-out for this player.");
+    return;
+  }
+
+  const unlockNote =
+    "They become a free agent in GPDB but cannot be signed until next season (contract paid up).";
+  const confirmed = window.confirm(
+    `Release ${player.Name} from their contract?\n\n` +
+      `No market value received.\n` +
+      `Buy-out cost: ${formatMoney(cost)} (${seasons} season${seasons === 1 ? "" : "s"} × ${formatWage(wage)}).\n\n` +
+      `${unlockNote}\n\n` +
+      `${voluntaryReleasesRemaining - 1} voluntary release(s) will remain this season.`
+  );
+
+  if (!confirmed) return;
+
+  const { data, error } = await supabase.rpc("player_voluntary_contract_release", {
+    p_player_id: String(playerId),
+  });
+
+  if (error) {
+    alert(error.message || "Could not release player from contract.");
+    return;
+  }
+
+  voluntaryReleasesRemaining = normalizeVoluntaryReleasesRemaining(
+    data?.voluntary_contract_releases_remaining
+  );
+  renderVoluntaryReleaseBadge();
+  applyVoluntaryReleaseOptionState();
+
+  alert(
+    `${data?.player_name || player.Name} released.\n\n` +
+      `Buy-out paid: ${formatMoney(data?.buyout_cost ?? cost)}.\n` +
+      `Unavailable until ${data?.unavailable_until_season || "next season"}.`
   );
   await loadSquad();
 }
