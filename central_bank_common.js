@@ -7,7 +7,7 @@ export { supabase, formatMoney };
 export const BANK_SUBNAV = [
   { href: "central_bank.html", label: "Bank balance", page: "central_bank" },
   { href: "central_bank_loans.html", label: "League loans", page: "central_bank_loans" },
-  { href: "central_bank_counter.html", label: "Take out & repay", page: "central_bank_counter" },
+  { href: "central_bank_counter.html", label: "Service counter", page: "central_bank_counter" },
 ];
 
 export function renderBankSubnav(activePage) {
