@@ -93,6 +93,7 @@ export const ADMIN_NAV_SECTION = {
 
     { heading: true, label: "Money management" },
     { href: "admin_money.html", label: "Prizes, wages & gates" },
+    { href: "admin_cup_prizes.html", label: "Cup prize money" },
     { href: "admin_club_attendance.html", label: "Club attendance & prestige" },
     { href: "admin_challenges.html", label: "Season challenges" },
     { href: "admin_fines.html", label: "Fines & compensation" },

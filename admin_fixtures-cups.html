@@ -35,55 +35,7 @@
           <button id="compDeleteCupBtn" class="button" style="background:#990000;">Delete cup bracket</button>
         </div>
         <div id="compCupStatus" class="status-line"></div>
-      </div>
-      <div class="card">
-        <h2>Cup prize money</h2>
-        <p class="note">Round fee is paid to <b>both</b> clubs when a tie is confirmed. Set amounts per cup + stage (run <code>competition_cup_prizes_fix.sql</code>).</p>
-        <div class="row">
-          <select id="compPrizeStage">
-            <option value="final">Final</option>
-            <option value="sf">Semi-final</option>
-            <option value="qf">Quarter-final</option>
-            <option value="r2">Round 2</option>
-            <option value="r1">Round 1</option>
-            <option value="appearance">Appearance (optional extra)</option>
-          </select>
-          <input type="number" id="compPrizeAmount" placeholder="Amount" style="max-width:140px;">
-          <button id="compSavePrizeBtn" class="button">Save prize</button>
-        </div>
-        <div id="compCupPrizeList" class="note" style="margin-top:10px;"></div>
-        <div id="compPrizeStatus" class="status-line"></div>
-      </div>
-      <div class="card">
-        <h2>Cup prize override</h2>
-        <p class="note">Award the <b>round</b> prize to one club (walkover / opponent unavailable). Uses configured amount for that fixture's round.</p>
-        <div class="row">
-          <div>
-            <label>Fixture ID</label>
-            <input type="number" id="compOverrideFixtureId" placeholder="e.g. 1204" style="width:120px;">
-          </div>
-          <div>
-            <label>Club ShortName</label>
-            <input type="text" id="compOverrideClub" placeholder="e.g. HUR" style="width:100px;">
-          </div>
-          <div>
-            <label>Stage (optional)</label>
-            <select id="compOverrideStage">
-              <option value="">Auto (from fixture round)</option>
-              <option value="final">Final</option>
-              <option value="sf">Semi-final</option>
-              <option value="qf">Quarter-final</option>
-              <option value="r2">Round 2</option>
-              <option value="r1">Round 1</option>
-              <option value="appearance">Appearance</option>
-            </select>
-          </div>
-        </div>
-        <div class="row" style="margin-top:8px;">
-          <input type="text" id="compOverrideNote" placeholder="Note (optional)" style="flex:1;max-width:320px;">
-          <button id="compAwardCupPrizeBtn" class="button">Award round prize</button>
-        </div>
-        <div id="compOverrideStatus" class="status-line"></div>
+        <p class="note" style="margin-top:12px;">Cup prize amounts and walkover overrides: <a href="admin_cup_prizes.html"><b>Cup prize money</b></a>.</p>
       </div>
     </div>
   </div>
