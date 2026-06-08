@@ -70,7 +70,8 @@ LEFT JOIN public.competition_club_tier_override o ON o.club_short_name = p.club_
 CROSS JOIN LATERAL (
   SELECT public.competition_compute_stadium_fill(p.club_short_name) AS d
 ) fill
-WHERE NOT (fill.d ? 'error');
+WHERE NOT (fill.d ? 'error')
+  AND p.club_short_name <> 'FOREIGN';
 
 CREATE VIEW public.competition_club_attendance_admin_public
 WITH (security_invoker = false)

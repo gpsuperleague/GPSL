@@ -206,14 +206,14 @@ async function loadTable() {
       "pageStatus",
       "❌ " +
         formatLoadError(error) +
-        " — run stadium_attendance_v2_repair_overview.sql in Supabase.",
+        " — run stadium_attendance_v2_fix_projection_note.sql (or stadium_attendance_v2_rest_access.sql) in Supabase.",
       false
     );
     if (wrap) wrap.innerHTML = "";
     return;
   }
 
-  allRows = data || [];
+  allRows = (data || []).filter((row) => row.club_short_name !== "FOREIGN");
 
   if (!allRows.length) {
     setStatus(
