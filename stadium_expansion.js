@@ -103,13 +103,17 @@ export function formatQuoteLabel(quote) {
   return `+${seats} seats · ${cost} (${cps}/seat) · ${when}`;
 }
 
-export function expansionBlockedReason(status) {
+export function expansionBlockedReason(status, opts = {}) {
   if (!status) return null;
   const headroom = Number(status.headroom || 0);
   const max = Number(status.max_capacity || 0);
   const base = Number(status.base_capacity || 0);
   const current = Number(status.current_capacity || 0);
+  const buildCap = Number(opts.newBuildMaxCapacity || 55000);
 
+  if (current > buildCap) {
+    return `Stadium expansion is only available for clubs at or below ${buildCap.toLocaleString("en-GB")} seats (current ${current.toLocaleString("en-GB")}).`;
+  }
   if (max <= base && current >= max) {
     return "This stadium cannot be expanded (original size above expansion tiers).";
   }

@@ -239,9 +239,10 @@
         <h2>Stadium attendance &amp; club prestige</h2>
         <p class="note">
           <b>Club rank</b> (not owner rank) from rolling league + cup points sets stature.
-          Fill % reacts to current-season delivery vs expectation.
-          Big clubs keep high expectations; only medium/low clubs get manager lift.
-          Run <code>competition_club_stadium_attendance.sql</code>, then <b>Recompute club rankings</b>.
+          Display fill drifts monthly toward the season target; <b>gate revenue is capped at 100%</b>
+          (display can exceed 100% as cushion). Floor 75%. Two on-target seasons ≈ full gate.
+          Run <code>competition_club_stadium_attendance.sql</code> then
+          <code>stadium_attendance_v2.sql</code>, then <b>Recompute club rankings</b>.
         </p>
         <h3 class="admin-subheading">Fill limits</h3>
         <div class="row gov-subsidy-row">
@@ -287,14 +288,34 @@
           <div><label>Spoon zone</label><input type="number" id="attExpCupSpoon" min="0" max="20" step="0.25" style="width:80px;"></div>
           <div><label>League cup default</label><input type="number" id="attExpCupLC" min="0" max="20" step="0.25" style="width:80px;"></div>
         </div>
+        <h3 class="admin-subheading">Drift, cushion &amp; performance bands (v2)</h3>
+        <div class="row gov-subsidy-row">
+          <div><label>Gate cap %</label><input type="number" id="attTargetFill" min="50" max="100" step="1" style="width:80px;"></div>
+          <div><label>Max display %</label><input type="number" id="attMaxDisplayFill" min="100" max="150" step="1" style="width:80px;"></div>
+          <div><label>Monthly drift %</label><input type="number" id="attMonthlyDrift" min="0.5" max="10" step="0.5" style="width:80px;"></div>
+          <div><label>Prestige step ±%</label><input type="number" id="attPrestigeStep" min="0" max="15" step="0.5" style="width:80px;"></div>
+          <div><label>Gain / on-target season %</label><input type="number" id="attSeasonGain" min="1" max="25" step="0.5" style="width:80px;"></div>
+        </div>
+        <div class="row gov-subsidy-row">
+          <div><label>Slight under −%</label><input type="number" id="attUnderSlight" min="0" max="30" step="1" style="width:80px;"></div>
+          <div><label>Bad under −%</label><input type="number" id="attUnderBad" min="0" max="40" step="1" style="width:80px;"></div>
+          <div><label>Abysmal under −%</label><input type="number" id="attUnderAbysmal" min="0" max="50" step="1" style="width:80px;"></div>
+          <div><label>Slight gap ratio</label><input type="number" id="attSlightGap" min="0.01" max="0.5" step="0.01" style="width:80px;"></div>
+          <div><label>Bad gap ratio</label><input type="number" id="attBadGap" min="0.05" max="0.75" step="0.01" style="width:80px;"></div>
+          <div><label>Expansion max cap</label><input type="number" id="attNewBuildCap" min="10000" step="1000" style="width:100px;"></div>
+        </div>
         <div class="row" style="margin-top:12px;">
           <button type="button" id="saveAttendanceSettingsBtn" class="button">Save attendance settings</button>
           <button type="button" id="recomputeClubRankingsBtn" class="button">Recompute club rankings</button>
+          <button type="button" id="syncStadiumFillBtn" class="button">Sync fill drift</button>
         </div>
         <div id="attendanceSettingsStatus" class="status-line"></div>
-        <h3 class="admin-subheading" style="margin-top:18px;">Club tiers &amp; managers (preview)</h3>
-        <p class="note">Override tier per club for testing. Manager rating inflates expectation on medium/low clubs only.</p>
-        <div id="clubTierTableWrap" style="overflow-x:auto;max-height:420px;margin-top:8px;"></div>
+        <h3 class="admin-subheading" style="margin-top:18px;">All clubs — attendance overview</h3>
+        <p class="note">
+          Season start fill, current display vs gate fill, 5-year rolling points, performance band, and projection.
+          Small clubs reach full gate in ~2 on-target seasons (+12.5%/season from floor). Cushion above 100% does not increase gate revenue.
+        </p>
+        <div id="clubTierTableWrap" style="overflow-x:auto;max-height:520px;margin-top:8px;"></div>
         <button type="button" id="saveClubTiersBtn" class="button" style="margin-top:10px;">Save club tier overrides &amp; managers</button>
         <div id="clubTierStatus" class="status-line"></div>
       </div>

@@ -22,6 +22,7 @@ import {
   renderBuildStatusHtml,
 } from "./stadium_expansion.js";
 let clubShortName = null;
+let expansionBuildCap = 55000;
 
 function renderStadiumPhoto(shortName, stadiumName) {
   const slot = document.getElementById("stadiumPhotoSlot");
@@ -57,7 +58,13 @@ function renderGateBreakdown(data) {
     return;
   }
 
-  const fillPct = ((Number(data.attendance_rate) || 0) * 100).toFixed(1);
+  const gatePct = (
+    Number(data.gate_fill_pct) ||
+    (Number(data.attendance_rate) || 0) * 100
+  ).toFixed(1);
+  const displayPct = Number(data.display_fill_pct);
+  const displayLabel = Number.isFinite(displayPct) ? `${displayPct.toFixed(1)}%` : gatePct + "%";
+  const cushion = Number(data.cushion_pct) || 0;
   const legacy = data.legacy_fallback;
 
   if (legacy) {
@@ -66,19 +73,26 @@ function renderGateBreakdown(data) {
         <dt>Stadium capacity</dt><dd>${Number(data.capacity || 0).toLocaleString("en-GB")}</dd>
         <dt>League position</dt><dd>${data.table_position ?? "—"}</dd>
         <dt>5-season avg finish</dt><dd>${data.history_avg_position ?? "10 (neutral)"}</dd>
-        <dt>Fill rate</dt><dd>${fillPct}%</dd>
+        <dt>Gate fill</dt><dd>${gatePct}%</dd>
         <dt>Est. gate per home match</dt><dd class="highlight">${formatMoney(data.total_gate)}</dd>
       </dl>
-      <p class="note">Legacy gate formula — run <code>competition_club_stadium_attendance.sql</code> for club prestige fill.</p>`;
+      <p class="note">Legacy gate formula — run <code>competition_club_stadium_attendance.sql</code> and <code>stadium_attendance_v2.sql</code>.</p>`;
     return;
   }
 
   const tier = data.club_tier || "—";
   const gap = Number(data.performance_gap);
+  const band = data.performance_band || "—";
   const gapLabel =
     Number.isFinite(gap) && gap !== 0
       ? `${gap > 0 ? "+" : ""}${gap.toFixed(2)} (${gap < 0 ? "below expectation" : "above expectation"})`
       : "On expectation";
+  const seasonStart = data.season_start_fill_pct;
+  const seasonTarget = data.season_target_fill_pct;
+  const cushionNote =
+    cushion > 0
+      ? `Cushion +${cushion.toFixed(1)}% — absorbs poor runs before gate revenue drops.`
+      : "";
 
   el.innerHTML = `
     <dl class="breakdown">
@@ -87,11 +101,15 @@ function renderGateBreakdown(data) {
       <dt>Manager rating</dt><dd>${data.manager_rating ?? "—"}${tier !== "big" && data.manager_rating ? " (can lift expectation)" : ""}</dd>
       <dt>Season expectation</dt><dd>League ${data.expected_position ?? "—"} · ${Number(data.expected_points || 0).toFixed(2)} pts</dd>
       <dt>Current delivery</dt><dd>League ${data.actual_position ?? data.table_position ?? "—"} · ${Number(data.actual_points || 0).toFixed(2)} pts</dd>
-      <dt>Performance gap</dt><dd>${gapLabel}</dd>
-      <dt>Fill rate</dt><dd>${fillPct}% <span class="note">(floor ${data.min_fill_pct ?? 60}%)</span></dd>
+      <dt>Performance</dt><dd>${gapLabel} · <b>${band}</b></dd>
+      <dt>Season start fill</dt><dd>${seasonStart != null ? seasonStart + "%" : "—"}</dd>
+      <dt>Display fill</dt><dd>${displayLabel} <span class="note">(drifts monthly toward target)</span></dd>
+      <dt>Gate fill (revenue)</dt><dd><b>${gatePct}%</b> <span class="note">(capped at 100%)</span></dd>
+      <dt>Season target</dt><dd>${seasonTarget != null ? seasonTarget + "%" : "—"}</dd>
       <dt>Est. gate per home match</dt><dd class="highlight">${formatMoney(data.total_gate)}</dd>
     </dl>
-    <p class="note">Based on <b>club</b> prestige (5-season rolling) vs this season's results. Big clubs stay held to high standards; top managers raise the bar at medium/low clubs only.</p>
+    <p class="note">5-year club prestige sets your base. Two on-target seasons can take a small club from the 75% floor to full gate. Underperformance drifts down gradually (slight −10%, bad −20%, abysmal −25%).</p>
+    ${cushionNote ? `<p class="note">${cushionNote}</p>` : ""}
     <p class="note">League home games: <b>100%</b> to home club. Cup games: <b>50% / 50%</b>.</p>
   `;
 }
@@ -252,7 +270,7 @@ async function refreshExpansionPanel() {
 
   if (buildEl) buildEl.innerHTML = renderBuildStatusHtml(status);
 
-  const blocked = expansionBlockedReason(status);
+  const blocked = expansionBlockedReason(status, { newBuildMaxCapacity: expansionBuildCap });
   const hasActive = Boolean(status.active_order_id);
 
   if (blocked && !hasActive) {
@@ -365,6 +383,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadClubsMap();
   clubShortName = club.ShortName;
+
+  const { data: gs } = await supabase
+    .from("global_settings_public")
+    .select("stadium_new_build_max_capacity")
+    .eq("id", 1)
+    .maybeSingle();
+  if (gs?.stadium_new_build_max_capacity != null) {
+    expansionBuildCap = Number(gs.stadium_new_build_max_capacity) || 55000;
+  }
 
   document.getElementById("pageTitle").textContent =
     `${fullClubName(clubShortName) || club.Club} — Stadium`;
