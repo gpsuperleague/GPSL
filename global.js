@@ -705,7 +705,7 @@ export async function buildNav() {
   let firstActiveNavSectionId;
   let normalizeNavPath;
   try {
-    const navMod = await import("./nav_config.js?v=20250602-cup-prizes-submenu");
+    const navMod = await import("./nav_config.js?v=20250602-challenges-owners");
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;

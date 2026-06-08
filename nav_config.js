@@ -20,7 +20,6 @@ export const NAV_SECTIONS = [
     id: "finances",
     label: "Finances",
     items: [
-      { href: "challenges.html", label: "Season challenges", page: "challenges" },
       { href: "central_bank.html", label: "The Central Bank", page: "central_bank" },
     ],
   },
@@ -72,6 +71,7 @@ export const NAV_SECTIONS = [
     label: "Owners",
     items: [
       { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings" },
+      { href: "challenges.html", label: "Season challenges", page: "challenges" },
       { href: "nation_select.html", label: "Nation selection", page: "nation_select" },
       { href: "national_team.html", label: "National team", page: "national_team" },
     ],
