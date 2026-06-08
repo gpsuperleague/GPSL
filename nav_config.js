@@ -20,7 +20,7 @@ export const NAV_SECTIONS = [
     id: "central_bank",
     label: "Central Bank",
     items: [
-      { href: "central_bank.html", label: "Bank balance", page: "central_bank" },
+      { href: "central_bank.html", label: "Bank balance", page: "central_bank", indent: true },
       { href: "central_bank_loans.html", label: "League loans", page: "central_bank_loans", indent: true },
       { href: "central_bank_counter.html", label: "Service counter", page: "central_bank_counter", indent: true },
     ],
