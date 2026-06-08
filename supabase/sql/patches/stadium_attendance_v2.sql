@@ -394,6 +394,7 @@ DECLARE
   v_display numeric;
   v_target numeric;
   v_prestige_base numeric;
+  v_active_month_name text;
   v_active_month smallint;
   v_last_month smallint;
   v_stored_season bigint;
@@ -424,7 +425,8 @@ BEGIN
 
   v_target := (v_metrics ->> 'season_target_fill_pct')::numeric;
   v_prestige_base := (v_metrics ->> 'prestige_base_fill_pct')::numeric;
-  v_active_month := public.competition_active_gpsl_month(v_season_id, now());
+  v_active_month_name := public.competition_active_gpsl_month(v_season_id, now());
+  v_active_month := public.competition_gpsl_month_sort(v_active_month_name);
   v_drift := v_cfg.stadium_monthly_drift_pct;
 
   SELECT
@@ -451,11 +453,14 @@ BEGIN
     v_stored_season := v_season_id;
   END IF;
 
-  IF v_last_month IS NULL THEN
+  IF v_last_month IS NULL AND v_active_month IS NOT NULL THEN
     v_last_month := v_active_month;
   END IF;
 
-  v_steps := greatest(v_active_month - v_last_month, 0);
+  v_steps := CASE
+    WHEN v_active_month IS NULL OR v_last_month IS NULL THEN 0
+    ELSE greatest(v_active_month - v_last_month, 0)
+  END;
 
   FOR v_i IN 1..v_steps LOOP
     IF v_display < v_target THEN
@@ -474,7 +479,7 @@ BEGIN
   SET
     stadium_display_fill_pct = v_display,
     stadium_fill_target_pct = round(v_target, 2),
-    stadium_fill_last_month = v_active_month,
+    stadium_fill_last_month = coalesce(v_active_month, stadium_fill_last_month),
     stadium_fill_season_id = v_season_id,
     stadium_fill_updated_at = now()
   WHERE "ShortName" = p_club_short_name;
@@ -830,6 +835,8 @@ $function$;
 -- Admin overview view (all clubs)
 -- ---------------------------------------------------------------------------
 
+-- Admin view depends on overview — drop dependent first
+DROP VIEW IF EXISTS public.competition_club_attendance_admin_public;
 DROP VIEW IF EXISTS public.competition_club_stadium_overview_public;
 CREATE VIEW public.competition_club_stadium_overview_public
 WITH (security_invoker = false)
@@ -875,7 +882,6 @@ CROSS JOIN LATERAL (
 ORDER BY p.prestige_rank;
 
 -- Keep legacy admin view in sync (adds v2 columns)
-DROP VIEW IF EXISTS public.competition_club_attendance_admin_public;
 CREATE VIEW public.competition_club_attendance_admin_public
 WITH (security_invoker = false)
 AS
