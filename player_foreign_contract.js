@@ -18,9 +18,22 @@ export function playerForeignContractLocked(player, currentSeasonId) {
   return soldId === curId;
 }
 
+/** `foreign` = sold abroad; `paid_up` = squad MV overflow release. */
+export function playerForeignContractLockKind(player) {
+  const kind = String(player?.foreign_contract_lock_kind ?? "foreign").trim();
+  return kind === "paid_up" ? "paid_up" : "foreign";
+}
+
 export function playerForeignContractStatusLabel(player) {
-  const club = String(player?.foreign_contract_club ?? "").trim() || "a foreign club";
+  const club = String(player?.foreign_contract_club ?? "").trim();
   const until =
     String(player?.foreign_contract_unlock_season_label ?? "").trim() || "next season";
-  return `Unavailable until ${until} — contracted to ${club}`;
+
+  if (playerForeignContractLockKind(player) === "paid_up") {
+    const prevClub = club || "their previous club";
+    return `Contract paid up by ${prevClub} — unavailable until ${until} (contractual small print)`;
+  }
+
+  const buyer = club || "a foreign club";
+  return `Unavailable until ${until} — contracted to ${buyer}`;
 }

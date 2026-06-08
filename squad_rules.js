@@ -3,12 +3,17 @@
 /** Registered squad size (league rule). */
 export const SQUAD_SIZE = 28;
 
+/** League fine per MV overflow forced release (not foreign overflow). */
+export const SQUAD_OVERFLOW_MV_FINE = 10_000_000;
+
 export const SQUAD_OVERFLOW_CONFIRM_MESSAGE =
   "You are at max squad size (28 players).\n\n" +
   "Are you sure?\n\n" +
   "Going over the 28-player limit will automatically release your highest-rated " +
   "player who was not signed this season. If you have foreign club interest remaining, " +
-  "that sale will be used; otherwise the player is released for market value.";
+  "that sale will be used (no fine). Otherwise the player is released for market value, " +
+  `your club is fined ₿ ${SQUAD_OVERFLOW_MV_FINE.toLocaleString("en-GB")}, and the player ` +
+  "cannot be signed until next season (contract paid up).";
 
 /**
  * Call before any action that will sign a player to this club.
@@ -38,7 +43,8 @@ export function squadOverflowBidWarningText(squadTotal) {
     return (
       "You are at max squad size (28). If you win this player, going over 28 will " +
       "automatically release your highest-rated player (not signed this season) — " +
-      "foreign sale if available, otherwise market value."
+      "foreign sale if available (no fine), otherwise market value plus a ₿ 10,000,000 fine " +
+      "and the player unavailable until next season."
     );
   }
 
@@ -224,16 +230,27 @@ export function alertOverflowReleaseFromAssign(assignResult) {
   const feeStr = `₿ ${fee.toLocaleString("en-GB")}`;
 
   if (rel.method === "foreign" && rel.foreign_buyer_name) {
+    const until = rel.unavailable_until_season
+      ? ` until ${rel.unavailable_until_season}`
+      : " until next season";
     window.alert(
       `Squad was over 28 players.\n\n` +
-        `${name}${rating} was sold to ${rel.foreign_buyer_name} (${feeStr}, market value).`
+        `${name}${rating} was sold to ${rel.foreign_buyer_name} (${feeStr}, market value).\n\n` +
+        `The player is unavailable${until} (foreign contract). No overflow fine applies.`
     );
     return;
   }
 
+  const fineStr = `₿ ${SQUAD_OVERFLOW_MV_FINE.toLocaleString("en-GB")}`;
+  const until = rel.unavailable_until_season
+    ? ` until ${rel.unavailable_until_season}`
+    : " until next season";
+
   window.alert(
     `Squad was over 28 players.\n\n` +
-      `${name}${rating} was released as a free agent. Your club received ${feeStr} (market value).`
+      `${name}${rating} was released (contract paid up). Your club received ${feeStr} ` +
+      `(market value) and was fined ${fineStr}.\n\n` +
+      `The player is unavailable${until} due to contractual small print.`
   );
 }
 

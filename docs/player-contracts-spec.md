@@ -135,6 +135,13 @@ HG contract protection (≤23): `is_homegrown AND age <= 23` at renewal rollover
 
 **Squad size (28):** signing is **not blocked** at 28; a **29th** signing is allowed and triggers auto-release of the **highest-rated** player who was **not signed this season** (foreign sale slot if available, else MV + free agent). UI confirms when already at 28.
 
+**Overflow release consequences:**
+
+| Method | Club receives | Fine | Released player |
+|--------|---------------|------|-----------------|
+| **Foreign overflow** (tracking slot available) | MV credit + ledger `transfer_foreign_sale` | **None** | Unavailable until next season — same as a normal foreign sale |
+| **MV overflow** (no foreign slot) | MV credit + ledger `transfer_overflow_release` | **£10,000,000** per player (`gov_fine_compensation` / tariff `squad_overflow_mv_release`) | Contract paid up by releasing club — unavailable until next season (`foreign_contract_lock_kind = paid_up`) |
+
 **Not yet enforced on signing:** minimum **8** home-grown and **5** under-21 (warnings on Squad only).
 
 ---

@@ -21,6 +21,7 @@ import { playerSignedCurrentSeason } from "./player_season_transfer.js";
 import {
   playerForeignContractLocked,
   playerForeignContractStatusLabel,
+  playerForeignContractLockKind,
 } from "./player_foreign_contract.js";
 
 export const TRANSFER_STATUS = {
@@ -36,6 +37,7 @@ export const TRANSFER_STATUS = {
   CONTRACT_FINAL_YEAR: "contract_final_year",
   EXPIRY_WAGE_BID: "expiry_wage_bid",
   FOREIGN_CONTRACT: "foreign_contract",
+  OVERFLOW_PAID_UP: "overflow_paid_up",
 };
 
 /** Canonical user-facing copy (keep in sync across pages). */
@@ -55,6 +57,8 @@ export const TRANSFER_STATUS_LABELS = {
   [TRANSFER_STATUS.EXPIRY_WAGE_BID]: "Expiring contract — wage bid",
   [TRANSFER_STATUS.FOREIGN_CONTRACT]:
     "Unavailable — sold to foreign club until next season",
+  [TRANSFER_STATUS.OVERFLOW_PAID_UP]:
+    "Unavailable — contract paid up (squad overflow) until next season",
 };
 
 const PILL_CLASS = {
@@ -66,6 +70,7 @@ const PILL_CLASS = {
   [TRANSFER_STATUS.SIGNED_THIS_SEASON]: "status-signed-season",
   [TRANSFER_STATUS.CONTRACT_FINAL_YEAR]: "status-contract-final",
   [TRANSFER_STATUS.FOREIGN_CONTRACT]: "status-foreign-contract",
+  [TRANSFER_STATUS.OVERFLOW_PAID_UP]: "status-foreign-contract",
 };
 
 export function buildClubShortLookup(clubsRows) {
@@ -184,8 +189,12 @@ export function formatForeignContractGpdbHtml(player, state) {
   if (!playerForeignContractLocked(player, state?.currentSeasonId)) {
     return null;
   }
+  const lockKind = playerForeignContractLockKind(player);
   return formatTransferStatusMessageHtml({
-    code: TRANSFER_STATUS.FOREIGN_CONTRACT,
+    code:
+      lockKind === "paid_up"
+        ? TRANSFER_STATUS.OVERFLOW_PAID_UP
+        : TRANSFER_STATUS.FOREIGN_CONTRACT,
     label: playerForeignContractStatusLabel(player),
   });
 }

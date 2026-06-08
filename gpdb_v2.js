@@ -139,6 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "foreign_contract_club",
     "foreign_contract_sold_season_id",
     "foreign_contract_unlock_season_label",
+    "foreign_contract_lock_kind",
     "Konami_ID",
   ];
 
