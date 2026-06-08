@@ -631,19 +631,27 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
     return flat;
   }
 
-  let html = "";
+  let topHtml = "";
+  let groupHtml = "";
   let panelHtml = "";
   let panelLabel = "";
   let panelHasActive = false;
 
+  const renderLink = (item, active) => {
+    const indent = item.indent ? " nav-link-sub" : "";
+    return `<a href="${item.href}" class="nav-link${indent}${
+      active ? " active" : ""
+    }">${escapeNavHtml(item.label)}</a>`;
+  };
+
   const flushPanel = () => {
     if (!panelLabel) return;
-    html += `<div class="nav-subgroup${panelHasActive ? " open" : ""}" data-nav-subgroup>`;
-    html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
+    groupHtml += `<div class="nav-subgroup${panelHasActive ? " open" : ""}" data-nav-subgroup>`;
+    groupHtml += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
       panelHasActive ? "true" : "false"
     }">${escapeNavHtml(panelLabel)}</button>`;
-    html += `<div class="nav-subgroup-panel" role="group">${panelHtml}</div>`;
-    html += `</div>`;
+    groupHtml += `<div class="nav-subgroup-panel" role="group">${panelHtml}</div>`;
+    groupHtml += `</div>`;
     panelHtml = "";
     panelLabel = "";
     panelHasActive = false;
@@ -658,14 +666,16 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
     if (!item.href) continue;
 
     const active = isNavItemActive(item, pathname, search);
+    if (!panelLabel) {
+      topHtml += renderLink(item, active);
+      continue;
+    }
+
     if (active) panelHasActive = true;
-    const indent = item.indent ? " nav-link-sub" : "";
-    panelHtml += `<a href="${item.href}" class="nav-link${indent}${
-      active ? " active" : ""
-    }">${escapeNavHtml(item.label)}</a>`;
+    panelHtml += renderLink(item, active);
   }
   flushPanel();
-  return html;
+  return topHtml + groupHtml;
 }
 
 function wireNavLogout() {
@@ -771,7 +781,7 @@ export async function buildNav() {
   let firstActiveNavSectionId;
   let normalizeNavPath;
   try {
-    const navMod = await import("./nav_config.js?v=20250602-bank-balance-submenu");
+    const navMod = await import("./nav_config.js?v=20250602-cups-nav");
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;

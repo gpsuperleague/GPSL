@@ -40,6 +40,7 @@ export const NAV_SECTIONS = [
     id: "cups",
     label: "Cups",
     items: [
+      // Top-level cup page (not under Prestige Cups)
       { href: "cups.html?cup=league_cup", label: "League Cup", page: "cups", cup: "league_cup" },
       { heading: true, label: "Prestige Cups" },
       { href: "cups.html?cup=super8", label: "Super8", page: "cups", cup: "super8", indent: true },
