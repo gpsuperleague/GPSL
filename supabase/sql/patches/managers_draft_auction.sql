@@ -20,6 +20,7 @@ DECLARE
   v_start   timestamptz;
   v_finish  timestamptz;
   v_is_draft boolean;
+  v_other_mid bigint;
 BEGIN
   v_is_draft := (
     COALESCE(NEW.is_first_draft_bid, false)
@@ -56,6 +57,19 @@ BEGIN
 
   IF v_finish IS NOT NULL AND now() >= v_finish THEN
     RAISE EXCEPTION 'Manager draft bidding has closed';
+  END IF;
+
+  -- One leading bid per club across active manager draft listings
+  SELECT l.manager_id INTO v_other_mid
+  FROM public."Manager_Transfer_Listings" l
+  WHERE l.listing_type = 'draft'
+    AND l.status = 'Active'
+    AND l.manager_id <> NEW.manager_id
+    AND l.current_highest_bidder = NEW.bidder_club_id
+  LIMIT 1;
+
+  IF v_other_mid IS NOT NULL THEN
+    RAISE EXCEPTION 'You may only hold the highest bid on one manager draft auction at a time';
   END IF;
 
   RETURN NEW;

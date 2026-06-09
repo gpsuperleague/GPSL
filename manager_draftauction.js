@@ -13,8 +13,8 @@ import {
   draftPhaseLabel,
   fetchManagerDraftBidsGrouped,
   highestManagerDraftBid,
-  canClubBidOnManagerDraft,
-  getManagerDraftCredits,
+  getManagerDraftBidEligibility,
+  getClubLeadingManagerDraftId,
 } from "./manager_draft_engine.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
@@ -33,19 +33,32 @@ async function loadBuyerClub(userId) {
   buyerShortName = data?.ShortName || null;
 }
 
-async function updateCreditPanel() {
-  const el = document.getElementById("creditPanel");
+async function updateLeadPanel() {
+  const el = document.getElementById("leadPanel");
   if (!el || !buyerShortName || !managerDraftEnabled || !draftAuctionStartTime) {
     if (el) el.textContent = "";
     return;
   }
-  const { earned, used, credits } = await getManagerDraftCredits(
+
+  const leadingId = await getClubLeadingManagerDraftId(
     buyerShortName,
     draftAuctionStartTime
   );
+  if (!leadingId) {
+    el.innerHTML =
+      '<span style="font-size:11px;color:#aaa;">You are not leading any manager draft auction.</span>';
+    return;
+  }
+
+  const { data: mgr } = await supabase
+    .from("Managers")
+    .select("name")
+    .eq("id", leadingId)
+    .maybeSingle();
+
   el.innerHTML = `
-    <b>Manager draft credits:</b> ${credits}<br>
-    <span style="font-size:11px;color:#aaa;">Earned: ${earned} | Used: ${used}</span>
+    <b>Your leading bid:</b> ${mgr?.name || `Manager #${leadingId}`}
+    <span style="font-size:11px;color:#aaa;"> — you may only lead one auction at a time</span>
   `;
 }
 
@@ -121,15 +134,17 @@ async function loadManagerDraftListings() {
     const top = highestManagerDraftBid(bids);
     const high = top?.bid_amount ?? listing.current_highest_bid;
     const leader = top?.bidder_club_id ?? listing.current_highest_bidder;
-    const canBid = await canClubBidOnManagerDraft({
+    const eligibility = await getManagerDraftBidEligibility({
       managerId: mgr.id,
       buyerShortName,
       managerDraftEnabled,
       draftAuctionStartTime,
     });
+    const canBid = eligibility.allowed;
 
     const btnClass = auctionEnded ? "view-only" : canBid ? "enabled" : "disabled";
     const btnLabel = auctionEnded ? "View" : canBid ? "Bid" : "Locked";
+    const lockTitle = !auctionEnded && !canBid ? eligibility.reason : "";
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -140,13 +155,15 @@ async function loadManagerDraftListings() {
       <td>${high != null ? formatMoney(high) : "—"}</td>
       <td>${leader ? fullClubName(leader) || leader : "—"}</td>
       <td>
-        <button class="bid-btn ${btnClass}" data-manager-id="${mgr.id}" ${auctionEnded || canBid ? "" : "disabled"}>
+        <button class="bid-btn ${btnClass}" data-manager-id="${mgr.id}" title="${lockTitle.replace(/"/g, "&quot;")}" ${auctionEnded || canBid ? "" : "disabled"}>
           ${btnLabel}
         </button>
       </td>
     `;
     tbody.appendChild(tr);
   }
+
+  await updateLeadPanel();
 
   if (!pollTimer) {
     pollTimer = setInterval(() => loadManagerDraftListings(), auctionEnded ? 10000 : 5000);
@@ -179,6 +196,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   await buildNav();
   await loadBuyerClub(user.id);
   wireTable();
-  await updateCreditPanel();
+  await updateLeadPanel();
   await loadManagerDraftListings();
 });

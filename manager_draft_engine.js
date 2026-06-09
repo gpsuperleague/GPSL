@@ -98,64 +98,51 @@ export function managerDraftMinimumBid(marketValue, windowBids) {
   return Math.max(mv, high + MANAGER_DRAFT_BID_INCREMENT);
 }
 
-function getManagerDraftWindowTimes() {
-  const uk = getUKWallClockParts();
-  const noon = ukLocalToInstant(uk.year, uk.month, uk.day, 12, 0, 0);
-  const yest = getUKWallClockParts(new Date(noon.getTime() - 24 * 60 * 60 * 1000));
-  return {
-    sevenPmYesterday: ukLocalToInstant(yest.year, yest.month, yest.day, 19, 0, 0),
-    sixPmToday: ukLocalToInstant(uk.year, uk.month, uk.day, 18, 0, 0),
-  };
-}
+/** Manager id where club holds the highest bid on an active draft listing, or null. */
+export async function getClubLeadingManagerDraftId(
+  clubShortName,
+  draftAuctionStartTime,
+  excludeManagerId = null
+) {
+  if (!clubShortName) return null;
 
-export async function getManagerDraftCredits(clubShortName, draftAuctionStartTime) {
-  const timeline = getDraftTimelineFromStart(
-    draftAuctionStartTime ? new Date(draftAuctionStartTime) : null
-  );
-  const { sevenPmYesterday, sixPmToday } = getManagerDraftWindowTimes();
-  const earnStart = timeline?.start ?? sevenPmYesterday;
-  const earnEnd = timeline?.cutoff ?? sixPmToday;
-  const joinWindowEnd = timeline?.publicEnd ?? sixPmToday;
+  const { data: listings, error } = await supabase
+    .from("Manager_Transfer_Listings")
+    .select("manager_id, current_highest_bidder")
+    .eq("listing_type", "draft")
+    .eq("status", "Active");
 
-  const { data: firsts, error: firstsErr } = await supabase
-    .from("Manager_Transfer_Bids")
-    .select("manager_id")
-    .eq("bidder_club_id", clubShortName)
-    .eq("is_first_draft_bid", true)
-    .gte("bid_time", earnStart.toISOString())
-    .lt("bid_time", earnEnd.toISOString());
-
-  if (firstsErr) {
-    console.error(
-      "getManagerDraftCredits: is_first_draft_bid query failed — run managers_draft_auction.sql",
-      firstsErr
-    );
-    return { earned: 0, used: 0, credits: 0 };
+  if (error) {
+    console.error("getClubLeadingManagerDraftId:", error);
+    return null;
   }
 
-  const { data: joins, error: joinsErr } = await supabase
-    .from("Manager_Transfer_Bids")
-    .select("manager_id")
-    .eq("bidder_club_id", clubShortName)
-    .eq("is_draft_join", true)
-    .eq("draft_join_consumed", true)
-    .gte("bid_time", earnStart.toISOString())
-    .lt("bid_time", joinWindowEnd.toISOString());
-
-  if (joinsErr) {
-    console.error(
-      "getManagerDraftCredits: is_draft_join query failed — run managers_draft_auction.sql",
-      joinsErr
+  const managerIds = (listings || [])
+    .map((l) => Number(l.manager_id))
+    .filter(
+      (id) =>
+        Number.isFinite(id) &&
+        (excludeManagerId == null || id !== Number(excludeManagerId))
     );
-    return { earned: 0, used: 0, credits: 0 };
+
+  const bidsByManager = managerIds.length
+    ? await fetchManagerDraftBidsGrouped(managerIds, draftAuctionStartTime)
+    : new Map();
+
+  for (const listing of listings || []) {
+    const mid = Number(listing.manager_id);
+    if (excludeManagerId != null && mid === Number(excludeManagerId)) continue;
+
+    const bids = bidsByManager.get(mid) || [];
+    const top = highestManagerDraftBid(bids);
+    const leader = top?.bidder_club_id ?? listing.current_highest_bidder;
+    if (leader === clubShortName) return mid;
   }
 
-  const earned = firsts ? firsts.length * 2 : 0;
-  const used = joins ? new Set(joins.map((j) => j.manager_id)).size : 0;
-  return { earned, used, credits: earned - used };
+  return null;
 }
 
-export async function canClubBidOnManagerDraft({
+export async function getManagerDraftBidEligibility({
   managerId,
   buyerShortName,
   managerDraftEnabled,
@@ -165,9 +152,15 @@ export async function canClubBidOnManagerDraft({
   const start = draftAuctionStartTime ? new Date(draftAuctionStartTime) : null;
   const timeline = getDraftTimelineFromStart(start);
 
-  if (!managerDraftEnabled) return false;
-  if (!buyerShortName) return false;
-  if (!timeline) return false;
+  if (!managerDraftEnabled) {
+    return { allowed: false, reason: "Manager draft auction is not enabled." };
+  }
+  if (!buyerShortName) {
+    return { allowed: false, reason: "No club linked to your account." };
+  }
+  if (!timeline) {
+    return { allowed: false, reason: "Draft schedule is not set." };
+  }
 
   const open = getDraftBiddingOpen();
   const phase = getEffectiveDraftPhase(
@@ -176,18 +169,46 @@ export async function canClubBidOnManagerDraft({
     open === null ? {} : { biddingOpen: open }
   );
   if (phase === "before_start" || phase === "ended" || phase === "random_locked") {
-    return false;
+    return { allowed: false, reason: "Bidding is not open right now." };
+  }
+
+  const leadingElsewhere = await getClubLeadingManagerDraftId(
+    buyerShortName,
+    start,
+    managerId
+  );
+  if (leadingElsewhere != null) {
+    return {
+      allowed: false,
+      reason:
+        "You already hold the highest bid on another manager draft auction. You may only lead one auction at a time.",
+    };
   }
 
   const windowBids = await fetchCurrentManagerDraftBids(managerId, start);
-  if (windowBids.some((b) => b.bidder_club_id === buyerShortName)) return true;
+  const hasBidHere = windowBids.some((b) => b.bidder_club_id === buyerShortName);
 
-  if (windowBids.length === 0) {
-    return nowUK < timeline.cutoff;
+  if (!windowBids.length) {
+    if (nowUK >= timeline.cutoff) {
+      return {
+        allowed: false,
+        reason:
+          "Opening bids on free agents close at 6pm UK. Join open threads on Manager Draft Auction.",
+      };
+    }
+    return { allowed: true, reason: "" };
   }
 
-  const { credits } = await getManagerDraftCredits(buyerShortName, start);
-  return credits > 0;
+  if (!hasBidHere && nowUK >= timeline.cutoff) {
+    return { allowed: false, reason: "No new join bids after 6pm UK." };
+  }
+
+  return { allowed: true, reason: "" };
+}
+
+export async function canClubBidOnManagerDraft(opts) {
+  const { allowed } = await getManagerDraftBidEligibility(opts);
+  return allowed;
 }
 
 export function getManagerDraftListingEndTime() {
@@ -278,27 +299,14 @@ export async function submitManagerDraftBid(manager, offerAmount, buyerShortName
     return { ok: false, msg: `Minimum bid is ₿${min.toLocaleString("en-GB")}.` };
   }
 
-  let isFirst = false;
-  let isJoin = false;
-  let consumeJoin = false;
-
-  if (isFirstBid) {
-    isFirst = true;
-  } else {
-    isJoin = true;
-    const priorJoin = existing.filter(
-      (b) => b.bidder_club_id === buyerShortName && b.is_draft_join
-    );
-    if (!priorJoin.length) {
-      const { credits } = await getManagerDraftCredits(buyerShortName, draftStart);
-      if (credits <= 0) {
-        return {
-          ok: false,
-          msg: "Not enough manager draft credits. Be first to bid on a free agent in MGDB to earn credits.",
-        };
-      }
-      consumeJoin = true;
-    }
+  const eligibility = await getManagerDraftBidEligibility({
+    managerId: manager.id,
+    buyerShortName,
+    managerDraftEnabled: getManagerDraftEnabled(),
+    draftAuctionStartTime: draftStart,
+  });
+  if (!eligibility.allowed) {
+    return { ok: false, msg: eligibility.reason };
   }
 
   const { error } = await supabase.from("Manager_Transfer_Bids").insert({
@@ -307,9 +315,9 @@ export async function submitManagerDraftBid(manager, offerAmount, buyerShortName
     bidder_club_id: buyerShortName,
     bid_amount: offerAmount,
     is_direct: true,
-    is_first_draft_bid: isFirst,
-    is_draft_join: isJoin,
-    draft_join_consumed: consumeJoin,
+    is_first_draft_bid: isFirstBid,
+    is_draft_join: false,
+    draft_join_consumed: false,
     bid_time: new Date().toISOString(),
   });
 

@@ -14,8 +14,8 @@ import {
   fetchCurrentManagerDraftBids,
   highestManagerDraftBid,
   managerDraftMinimumBid,
-  canClubBidOnManagerDraft,
-  getManagerDraftCredits,
+  getManagerDraftBidEligibility,
+  getClubLeadingManagerDraftId,
   submitManagerDraftBid,
 } from "./manager_draft_engine.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
@@ -110,7 +110,7 @@ async function loadManager() {
     `Market value: ${formatMoney(mgr.market_value)}`;
 
   await refreshBids();
-  await refreshCredits();
+  await refreshLeadPanel();
   updateBidControls();
 }
 
@@ -152,14 +152,30 @@ async function refreshBids() {
   if (input && !input.dataset.touched) input.value = String(min);
 }
 
-async function refreshCredits() {
-  const el = document.getElementById("creditsInfo");
+async function refreshLeadPanel() {
+  const el = document.getElementById("leadInfo");
   if (!el || !buyerShortName) return;
-  const { credits, earned, used } = await getManagerDraftCredits(
+
+  const leadingId = await getClubLeadingManagerDraftId(
     buyerShortName,
     draftAuctionStartTime
   );
-  el.textContent = `Credits: ${credits} (earned ${earned}, used ${used})`;
+  if (!leadingId) {
+    el.textContent = "You are not leading any manager draft auction.";
+    return;
+  }
+
+  const { data: mgr } = await supabase
+    .from("Managers")
+    .select("name")
+    .eq("id", leadingId)
+    .maybeSingle();
+
+  const here =
+    currentManager && Number(leadingId) === Number(currentManager.id);
+  el.textContent = here
+    ? `You hold the highest bid on this manager.`
+    : `You lead ${mgr?.name || `manager #${leadingId}`} — finish or get outbid there before leading another auction.`;
 }
 
 function updateBidControls() {
@@ -204,14 +220,14 @@ function wireBidControls() {
       return;
     }
     const amount = parseMoney(document.getElementById("bidAmount").value);
-    const canBid = await canClubBidOnManagerDraft({
+    const eligibility = await getManagerDraftBidEligibility({
       managerId: currentManager.id,
       buyerShortName,
       managerDraftEnabled,
       draftAuctionStartTime,
     });
-    if (!canBid && !auctionEnded) {
-      if (err) err.textContent = "You cannot bid on this manager right now.";
+    if (!eligibility.allowed && !auctionEnded) {
+      if (err) err.textContent = eligibility.reason;
       return;
     }
     if (auctionEnded) return;
@@ -229,7 +245,7 @@ function wireBidControls() {
     if (err) err.textContent = "";
     document.getElementById("bidAmount").dataset.touched = "";
     await refreshBids();
-    await refreshCredits();
+    await refreshLeadPanel();
   });
 }
 
