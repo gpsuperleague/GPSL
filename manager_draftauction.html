@@ -1,0 +1,88 @@
+<script>
+  window.CURRENT_PAGE = "manager_draftauction";
+</script>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Manager Draft Auction</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    h1 { margin:20px; color:#ff9900; }
+    .draft-header-row {
+      display:flex; justify-content:space-between; align-items:flex-start;
+      flex-wrap:wrap; gap:16px; margin:0 20px 16px;
+    }
+    .status-note { font-size:13px; color:#ccc; }
+    .important-notice {
+      background:#2a2208; border:1px solid #ff9900; border-left:4px solid #ff9900;
+      padding:14px 16px; margin:0 20px 16px; border-radius:8px; font-size:13px; line-height:1.55;
+    }
+    .important-notice a { color:#ffcc66; font-weight:bold; }
+    .info-box {
+      background:#1a1a1a; border:1px solid #333; padding:15px; margin:20px;
+      border-radius:8px; font-size:13px; line-height:1.5;
+    }
+    .bid-btn {
+      padding:6px 12px; border-radius:4px; border:none; font-weight:bold; cursor:pointer;
+    }
+    .bid-btn.enabled { background:#ff9900; color:#111; }
+    .bid-btn.disabled { background:#444; color:#999; cursor:not-allowed; }
+    .bid-btn.view-only { background:#444; color:#ddd; }
+    .player-link { color:#ff9900; font-weight:bold; text-decoration:none; }
+    #draftCountdown { color:#ff9900; font-weight:bold; font-family:monospace; font-size:16px; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <h1>Manager Draft Auction</h1>
+
+  <div class="draft-header-row">
+    <div>
+      <p id="draftStatus" class="status-note" style="margin:0 0 6px;"></p>
+      <p id="creditPanel" class="status-note" style="margin:0;"></p>
+    </div>
+    <div id="draftCountdownContainer" class="draft-timer" style="flex-direction:column; align-items:flex-end;">
+      <span id="draftCountdown"></span>
+      <div id="draftLocalStart" style="font-size:12px;color:#ccc;margin-top:2px;"></div>
+    </div>
+  </div>
+
+  <div class="important-notice">
+    <strong>Credits — open threads in MGDB first</strong><br>
+    Joining a manager auction here costs <b>1 manager draft credit</b>.
+    Earn credits by making the <b>first bid</b> on a <b>free agent</b> in
+    <a href="MGDB.html">MGDB</a> during the live window (Day 1 7pm → Day 2 6pm UK).
+    Same schedule as the <a href="draftauction.html">player draft auction</a>.
+  </div>
+
+  <div class="info-box">
+    <b>Rules</b> (UK time, shown locally on countdown)<br>
+    • First bid on a free agent in MGDB → 2 credits<br>
+    • Join an existing thread here → 1 credit<br>
+    • No opening bids after 6pm UK Day 2<br>
+    • Settles after evening transfer auctions, same as players
+  </div>
+
+  <div class="panel" style="margin:20px;">
+    <table class="gpsl-table">
+      <thead>
+        <tr>
+          <th>Manager</th>
+          <th>Nation</th>
+          <th>Rating</th>
+          <th>Market Value</th>
+          <th>Highest Bid</th>
+          <th>Leading Club</th>
+          <th>Bid</th>
+        </tr>
+      </thead>
+      <tbody id="draftTableBody"></tbody>
+    </table>
+  </div>
+
+  <script type="module" src="global.js"></script>
+  <script type="module" src="manager_draftauction.js?v=1"></script>
+</body>
+</html>

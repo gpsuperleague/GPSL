@@ -1,9 +1,11 @@
-import { supabase, initGlobal } from "./global.js";
+import { supabase, initGlobal, getManagerDraftEnabled, getUKNow } from "./global.js";
+import { isGpdbFreeAgentOfferAllowed } from "./draft_timeline.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 
 const TABLE_COLUMNS = [
   { key: "name", label: "Manager" },
+  { key: "draft_action", label: "Draft" },
   { key: "contracted_display", label: "Contracted Club" },
   { key: "nation", label: "Nation" },
   { key: "possession", label: "Possession" },
@@ -26,6 +28,8 @@ let MV_MIN = null;
 let MV_MAX = null;
 let CURRENT_FILTERS = {};
 let allRowsCache = [];
+let managerDraftOn = false;
+let draftStartTime = null;
 
 function parseMoneyInput(value) {
   if (!value) return null;
@@ -135,6 +139,21 @@ function renderPage() {
   body.innerHTML = pageRows
     .map((row) => {
       const cells = TABLE_COLUMNS.map((col) => {
+        if (col.key === "draft_action") {
+          const isFa =
+            !row.contracted_club || String(row.contracted_display) === "FREE AGENT";
+          const canOpen =
+            managerDraftOn &&
+            isFa &&
+            draftStartTime &&
+            isGpdbFreeAgentOfferAllowed(getUKNow(), draftStartTime);
+          if (!managerDraftOn) return `<td>—</td>`;
+          if (!isFa) return `<td>—</td>`;
+          if (canOpen) {
+            return `<td><a href="manager_draftauction_manager.html?manager=${row.id}" class="button" style="padding:4px 8px;font-size:11px;">Open</a></td>`;
+          }
+          return `<td><a href="manager_draftauction.html" style="color:#ff9900;font-size:11px;">Auction</a></td>`;
+        }
         let val = row[col.key];
         if (col.key === "contracted_display") val = displayClub(val);
         if (col.key === "market_value") {
@@ -249,17 +268,21 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadClubsMap();
 
   const status = document.getElementById("statusNote");
+  managerDraftOn = getManagerDraftEnabled();
   const { data: settings } = await supabase
     .from("global_settings_public")
-    .select("manager_draft_auction_enabled, transfer_window_open")
+    .select("manager_draft_auction_enabled, transfer_window_open, draft_auction_start_time")
     .eq("id", 1)
     .maybeSingle();
+  draftStartTime = settings?.draft_auction_start_time
+    ? new Date(settings.draft_auction_start_time)
+    : null;
 
   if (status) {
     const parts = [];
     if (settings?.manager_draft_auction_enabled) {
       parts.push(
-        "Manager draft auction is <b>enabled</b> (same 7pm UK window as player draft)."
+        'Manager draft is <b>on</b> — <a href="manager_draftauction.html" style="color:#ff9900;">Manager Draft Auction</a> · open free agents here (Day 1 7pm–Day 2 6pm UK).'
       );
     }
     if (settings?.transfer_window_open) {

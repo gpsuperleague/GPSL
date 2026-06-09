@@ -11,8 +11,13 @@ export const NAV_SECTIONS = [
       { href: "manager_listings.html", label: "Manager Market", page: "manager_listings" },
       {
         href: "draftauction.html",
-        label: "Draft Auction",
+        label: "Player Draft Auction",
         page: "draftauction",
+      },
+      {
+        href: "manager_draftauction.html",
+        label: "Manager Draft Auction",
+        page: "manager_draftauction",
       },
       { href: "expiring_contracts.html", label: "Expiring Contracts", page: "expiring_contracts" },
       { href: "season_transfers.html", label: "Season Transfers", page: "season_transfers" },
