@@ -19,6 +19,8 @@ import {
   getDraftBiddingOpen,
 } from "./global.js";
 
+export { supabase };
+
 export {
   getDraftTimelineFromStart,
   getDraftPhaseFromStart,
