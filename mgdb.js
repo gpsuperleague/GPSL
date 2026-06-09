@@ -258,7 +258,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (status) {
     const parts = [];
     if (settings?.manager_draft_auction_enabled) {
-      parts.push("Manager draft auction is <b>enabled</b> (same window as player draft).");
+      parts.push(
+        "Manager draft auction is <b>enabled</b> (same 7pm UK window as player draft)."
+      );
     }
     if (settings?.transfer_window_open) {
       parts.push("Transfer window open — use <a href=\"manager_listings.html\">Manager Transfer Market</a>.");

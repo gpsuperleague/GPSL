@@ -1,5 +1,9 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
-import { loadGlobalSettings, computeNextDraftTimesFromNow } from "./global.js";
+import {
+  loadGlobalSettings,
+  computeNextDraftTimesFromNow,
+  isDraftScheduleExpired,
+} from "./global.js";
 
 primeAdminPageChrome();
 
@@ -42,9 +46,13 @@ async function loadSettings() {
     const finish = data.draft_random_finish_time
       ? new Date(data.draft_random_finish_time)
       : null;
+    const expired = isDraftScheduleExpired(start);
     el.textContent =
       `Draft start: ${ukFmt.format(start)} UK` +
-      (finish ? ` · Secret finish: ${ukFmt.format(finish)} UK` : " · ⚠ No secret finish set");
+      (finish ? ` · Secret finish: ${ukFmt.format(finish)} UK` : " · ⚠ No secret finish set") +
+      (expired ? " · ⚠ Window ended — Save settings to schedule the next 7pm UK auction" : "");
+  } else if (anyDraft) {
+    el.textContent = "⚠ No draft start time — Save settings to schedule the next 7pm UK auction.";
   } else {
     el.textContent = "";
   }
@@ -73,7 +81,13 @@ async function saveSettings() {
   let draft_auction_start_time = current?.draft_auction_start_time || null;
   let draft_random_finish_time = current?.draft_random_finish_time || null;
 
-  if (isAnyDraft && !wasAnyDraft) {
+  const scheduleExpired =
+    isAnyDraft &&
+    isDraftScheduleExpired(
+      draft_auction_start_time ? new Date(draft_auction_start_time) : null
+    );
+
+  if (isAnyDraft && (!wasAnyDraft || scheduleExpired || !draft_auction_start_time)) {
     const times = computeNextDraftTimesFromNow();
     draft_auction_start_time = times.draftStartISO;
     draft_random_finish_time = times.randomFinishISO;

@@ -58,6 +58,12 @@ function isDraftCountdownActive() {
   return (draftEnabled || managerDraftEnabled) && isValidDate(draftStart);
 }
 
+/** True when draft_auction_start_time is missing or the Day-2 window has fully passed. */
+export function isDraftScheduleExpired(draftAuctionStartTime = draftStart) {
+  if (!isValidDate(draftAuctionStartTime)) return true;
+  return getDraftPhaseFromStart(getUKNow(), draftAuctionStartTime) === "ended";
+}
+
 function draftCountdownOptions() {
   const opts =
     draftBiddingOpen === null ? {} : { biddingOpen: draftBiddingOpen };
@@ -425,7 +431,10 @@ export function wireDraftCountdownUI() {
   startDraftCountdown(({ phase, ms, label, target, countUp, frozen }) => {
     if (phase === "ended") {
       el.textContent = label;
-      if (localEl) localEl.textContent = "";
+      if (localEl) {
+        localEl.textContent =
+          "Previous auction window finished. Admin → Transfer window → Save settings to schedule the next 7pm UK start.";
+      }
       return;
     }
 
