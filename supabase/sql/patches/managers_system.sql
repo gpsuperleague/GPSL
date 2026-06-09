@@ -141,6 +141,11 @@ CREATE TABLE IF NOT EXISTS public."Manager_Transfer_Bids" (
 
 CREATE INDEX IF NOT EXISTS manager_bids_listing_idx ON public."Manager_Transfer_Bids" (listing_id, bid_amount DESC);
 
+ALTER TABLE public."Manager_Transfer_Bids"
+  ADD COLUMN IF NOT EXISTS is_first_draft_bid boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS is_draft_join boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS draft_join_consumed boolean NOT NULL DEFAULT false;
+
 -- ---------------------------------------------------------------------------
 -- Global settings — manager draft toggle + wage %
 -- ---------------------------------------------------------------------------

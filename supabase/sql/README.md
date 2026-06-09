@@ -306,7 +306,7 @@ python scripts/generate_managers_seed.py
 
 Then re-run `managers_seed_data.sql`.
 
-**UI:** Transfers → **Manager Database** (`MGDB.html`), **Manager Market** (`manager_listings.html`), **Manager Draft Auction** (`manager_draftauction.html`). Admin → **Manager contract targets**, **Transfer window** (manager draft toggle). Manager draft uses the **same 7pm UK schedule** as player draft — run [`patches/managers_draft_schedule.sql`](./patches/managers_draft_schedule.sql), [`patches/managers_draft_auction.sql`](./patches/managers_draft_auction.sql), and re-save transfer settings if countdown is missing.
+**UI:** Transfers → **Manager Database** (`MGDB.html`), **Manager Market** (`manager_listings.html`), **Manager Draft Auction** (`manager_draftauction.html`). Admin → **Manager contract targets**, **Transfer window** (manager draft toggle). Manager draft uses the **same 7pm UK schedule** as player draft — run [`patches/managers_draft_schedule.sql`](./patches/managers_draft_schedule.sql), [`patches/managers_draft_auction.sql`](./patches/managers_draft_auction.sql) (bid columns, guard, settlement), and re-save transfer settings if countdown is missing. If the manager draft page 400s on `is_first_draft_bid`, run [`patches/managers_draft_bid_columns.sql`](./patches/managers_draft_bid_columns.sql) alone.
 
 **Season end:** After final league positions are set, run `SELECT manager_process_season_end();` (admin) to evaluate targets — hit → 2-year renewal; miss → release at market value.
 

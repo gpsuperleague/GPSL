@@ -117,7 +117,7 @@ export async function getManagerDraftCredits(clubShortName, draftAuctionStartTim
   const earnEnd = timeline?.cutoff ?? sixPmToday;
   const joinWindowEnd = timeline?.publicEnd ?? sixPmToday;
 
-  const { data: firsts } = await supabase
+  const { data: firsts, error: firstsErr } = await supabase
     .from("Manager_Transfer_Bids")
     .select("manager_id")
     .eq("bidder_club_id", clubShortName)
@@ -125,7 +125,15 @@ export async function getManagerDraftCredits(clubShortName, draftAuctionStartTim
     .gte("bid_time", earnStart.toISOString())
     .lt("bid_time", earnEnd.toISOString());
 
-  const { data: joins } = await supabase
+  if (firstsErr) {
+    console.error(
+      "getManagerDraftCredits: is_first_draft_bid query failed — run managers_draft_auction.sql",
+      firstsErr
+    );
+    return { earned: 0, used: 0, credits: 0 };
+  }
+
+  const { data: joins, error: joinsErr } = await supabase
     .from("Manager_Transfer_Bids")
     .select("manager_id")
     .eq("bidder_club_id", clubShortName)
@@ -133,6 +141,14 @@ export async function getManagerDraftCredits(clubShortName, draftAuctionStartTim
     .eq("draft_join_consumed", true)
     .gte("bid_time", earnStart.toISOString())
     .lt("bid_time", joinWindowEnd.toISOString());
+
+  if (joinsErr) {
+    console.error(
+      "getManagerDraftCredits: is_draft_join query failed — run managers_draft_auction.sql",
+      joinsErr
+    );
+    return { earned: 0, used: 0, credits: 0 };
+  }
 
   const earned = firsts ? firsts.length * 2 : 0;
   const used = joins ? new Set(joins.map((j) => j.manager_id)).size : 0;
