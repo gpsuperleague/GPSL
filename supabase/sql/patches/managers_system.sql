@@ -965,7 +965,9 @@ LEFT JOIN public.manager_rating_targets t
 
 GRANT SELECT ON public.manager_club_status_public TO authenticated;
 
--- Extend global_settings_public (preserve draft_bidding_open pattern from repair patch)
+-- Extend global_settings_public (minimal draft columns only).
+-- After this patch, run repair_global_settings_public.sql for the full view
+-- (wages/TV/subsidies + manager_draft_bidding_open) so player draft + admin pages work.
 DROP VIEW IF EXISTS public.global_settings_public;
 
 CREATE VIEW public.global_settings_public

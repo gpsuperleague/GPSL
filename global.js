@@ -331,18 +331,22 @@ export async function refreshDraftBiddingOpen() {
     return;
   }
   const wasOpen = draftBiddingOpen === true;
-  const { data, error } = await supabase
-    .from("global_settings_public")
-    .select("draft_bidding_open, manager_draft_bidding_open")
-    .eq("id", 1)
-    .single();
-
-  if (error) {
-    console.warn(
-      "refreshDraftBiddingOpen failed — run repair_global_settings_public.sql",
-      error
-    );
-    return;
+  let data = null;
+  const full = await queryGlobalSettingsPublic(
+    "draft_bidding_open, manager_draft_bidding_open"
+  );
+  if (!full.error) {
+    data = full.data;
+  } else {
+    const fallback = await queryGlobalSettingsPublic("draft_bidding_open");
+    if (fallback.error) {
+      console.warn(
+        "refreshDraftBiddingOpen failed — run repair_global_settings_public.sql",
+        fallback.error
+      );
+      return;
+    }
+    data = fallback.data;
   }
 
   let nowOpen = null;
@@ -459,38 +463,17 @@ export function stopDraftCountdown() {
 // ------------------------------------------------------------
 // LOAD GLOBAL SETTINGS (THE ONLY PLACE THAT DOES THIS)
 // ------------------------------------------------------------
-export async function loadGlobalSettings() {
-  let data = null;
-
-  const full = await supabase
+async function queryGlobalSettingsPublic(select) {
+  const { data, error } = await supabase
     .from("global_settings_public")
-    .select(
-      "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, draft_auction_start_time, draft_bidding_open, manager_draft_bidding_open"
-    )
+    .select(select)
     .eq("id", 1)
     .single();
+  if (error) return { data: null, error };
+  return { data, error: null };
+}
 
-  if (!full.error) {
-    data = full.data;
-  } else {
-    console.warn(
-      "loadGlobalSettings: draft/manager draft columns missing — run managers_system.sql / repair_global_settings_public.sql",
-      full.error
-    );
-    const minimal = await supabase
-      .from("global_settings_public")
-      .select(
-        "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, draft_auction_start_time, draft_bidding_open"
-      )
-      .eq("id", 1)
-      .single();
-    if (minimal.error) {
-      console.error("loadGlobalSettings:", minimal.error);
-    } else {
-      data = minimal.data;
-    }
-  }
-
+function applyDraftBiddingOpenFromSettings(data) {
   draftEnabled = data?.draft_auction_enabled === true;
   managerDraftEnabled = data?.manager_draft_auction_enabled === true;
   if (draftEnabled && managerDraftEnabled) {
@@ -510,6 +493,33 @@ export async function loadGlobalSettings() {
   } else {
     draftBiddingOpen = false;
   }
+}
+
+export async function loadGlobalSettings() {
+  let data = null;
+  const selects = [
+    "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, draft_auction_start_time, draft_bidding_open, manager_draft_bidding_open",
+    "transfer_window_open, draft_auction_enabled, draft_auction_start_time, draft_bidding_open",
+    "transfer_window_open, draft_auction_enabled, draft_auction_start_time",
+  ];
+
+  for (let i = 0; i < selects.length; i++) {
+    const { data: row, error } = await queryGlobalSettingsPublic(selects[i]);
+    if (!error) {
+      data = row;
+      break;
+    }
+    if (i === selects.length - 1) {
+      console.error("loadGlobalSettings:", error);
+    } else if (i === 0) {
+      console.warn(
+        "loadGlobalSettings: manager draft columns missing — run repair_global_settings_public.sql",
+        error
+      );
+    }
+  }
+
+  applyDraftBiddingOpenFromSettings(data);
 
   const rawStart = new Date(data?.draft_auction_start_time);
   draftStart = isValidDate(rawStart) ? new Date(rawStart) : null;

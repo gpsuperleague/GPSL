@@ -295,7 +295,8 @@ See [`docs/pesdb-player-values.md`](../../docs/pesdb-player-values.md).
 Run in order in SQL Editor:
 
 1. [`patches/managers_system.sql`](./patches/managers_system.sql) — `Managers` table, transfer listings, contract targets, club linkage, RPCs (`manager_sack`, `manager_place_bid`, `manager_process_season_end`, etc.)
-2. [`patches/managers_seed_data.sql`](./patches/managers_seed_data.sql) — 100 managers from `data/Managers.xlsx`
+2. [`repair_global_settings_public.sql`](./repair_global_settings_public.sql) — restores full `global_settings_public` (wages/TV + `draft_bidding_open` + manager draft columns). **Run after step 1** so player draft (`draftauction.html`) and admin finance settings keep working.
+3. [`patches/managers_seed_data.sql`](./patches/managers_seed_data.sql) — 100 managers from `data/Managers.xlsx`
 
 Re-seed after spreadsheet changes:
 
