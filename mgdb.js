@@ -1,5 +1,5 @@
 import { supabase, initGlobal, getManagerDraftEnabled, getUKNow } from "./global.js";
-import { isGpdbFreeAgentOfferAllowed } from "./draft_timeline.js";
+import { isManagerGpdbFreeAgentOfferAllowed } from "./draft_timeline.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 
@@ -146,7 +146,7 @@ function renderPage() {
             managerDraftOn &&
             isFa &&
             draftStartTime &&
-            isGpdbFreeAgentOfferAllowed(getUKNow(), draftStartTime);
+            isManagerGpdbFreeAgentOfferAllowed(getUKNow(), draftStartTime);
           if (!managerDraftOn) return `<td>—</td>`;
           if (!isFa) return `<td>—</td>`;
           if (canOpen) {
@@ -282,7 +282,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const parts = [];
     if (settings?.manager_draft_auction_enabled) {
       parts.push(
-        'Manager draft is <b>on</b> — <a href="manager_draftauction.html" style="color:#ff9900;">Manager Draft Auction</a> · open free agents here (Day 1 7pm–Day 2 6pm UK).'
+        'Manager draft is <b>on</b> — <a href="manager_draftauction.html" style="color:#ff9900;">Manager Draft Auction</a> · bidding from Day 1 7pm UK until the Day 2 6:50pm random window.'
       );
     }
     if (settings?.transfer_window_open) {

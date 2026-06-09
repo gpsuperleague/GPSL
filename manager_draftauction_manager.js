@@ -4,13 +4,12 @@ import {
   getUKNow,
   refreshDraftBiddingOpen,
   getDraftBiddingOpen,
-  isDraftAuctionEnded,
 } from "./global.js";
 import {
   supabase,
-  getEffectiveDraftPhase,
-  draftPhaseLabel,
-  getDraftCountdownTick,
+  getManagerDraftCountdownTick,
+  isManagerDraftAuctionEnded,
+  managerDraftPhaseLabel,
   fetchCurrentManagerDraftBids,
   highestManagerDraftBid,
   managerDraftMinimumBid,
@@ -50,17 +49,22 @@ async function updateCountdown() {
   }
   const nowUK = getUKNow();
   const open = getDraftBiddingOpen();
-  const tick = getDraftCountdownTick(
+  const phaseOpts = open === null ? {} : { biddingOpen: open };
+  const tick = getManagerDraftCountdownTick(
     nowUK,
     draftAuctionStartTime,
-    open === null ? {} : { biddingOpen: open }
+    phaseOpts
   );
-  auctionEnded = isDraftAuctionEnded(nowUK, draftAuctionStartTime);
+  auctionEnded = isManagerDraftAuctionEnded(
+    nowUK,
+    draftAuctionStartTime,
+    phaseOpts
+  );
 
   const el = document.getElementById("timeRemaining");
   const sub = document.getElementById("timeRemainingSub");
   if (tick.phase === "ended") {
-    if (el) el.textContent = draftPhaseLabel(tick.phase);
+    if (el) el.textContent = managerDraftPhaseLabel(tick.phase);
     if (sub) sub.textContent = "";
     return;
   }

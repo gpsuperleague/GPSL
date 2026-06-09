@@ -5,12 +5,12 @@ import {
   getUKNow,
   refreshDraftBiddingOpen,
   getDraftBiddingOpen,
-  isDraftAuctionEnded,
 } from "./global.js";
 import {
   supabase,
-  getEffectiveDraftPhase,
-  draftPhaseLabel,
+  getManagerDraftEffectivePhase,
+  managerDraftPhaseLabel,
+  isManagerDraftAuctionEnded,
   fetchManagerDraftBidsGrouped,
   highestManagerDraftBid,
   getManagerDraftBidEligibility,
@@ -80,12 +80,13 @@ async function loadManagerDraftListings() {
   }
 
   const open = getDraftBiddingOpen();
-  const phase = getEffectiveDraftPhase(
+  const phaseOpts = open === null ? {} : { biddingOpen: open };
+  const phase = getManagerDraftEffectivePhase(
     nowUK,
     draftAuctionStartTime,
-    open === null ? {} : { biddingOpen: open }
+    phaseOpts
   );
-  if (statusEl) statusEl.textContent = draftPhaseLabel(phase);
+  if (statusEl) statusEl.textContent = managerDraftPhaseLabel(phase);
 
   if (nowUK < draftAuctionStartTime) {
     tbody.innerHTML = `<tr><td colspan="8">Manager draft has not started yet.</td></tr>`;
@@ -117,7 +118,11 @@ async function loadManagerDraftListings() {
     for (const b of bids) clubShorts.push(b.bidder_club_id);
   }
   await loadClubsMap();
-  const auctionEnded = isDraftAuctionEnded(nowUK, draftAuctionStartTime);
+  const auctionEnded = isManagerDraftAuctionEnded(
+    nowUK,
+    draftAuctionStartTime,
+    phaseOpts
+  );
 
   if (statusEl && auctionEnded) {
     statusEl.textContent =

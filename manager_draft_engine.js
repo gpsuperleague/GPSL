@@ -5,17 +5,17 @@
 import { supabase } from "./global.js";
 import {
   getDraftTimelineFromStart,
-  getDraftPhaseFromStart,
-  getEffectiveDraftPhase,
-  isGpdbFreeAgentOfferAllowed,
-  draftPhaseLabel,
+  getManagerDraftEffectivePhase,
+  getManagerDraftCountdownTick,
+  isManagerDraftAuctionEnded,
+  isManagerGpdbFreeAgentOfferAllowed,
+  managerDraftPhaseLabel,
 } from "./draft_timeline.js";
 import {
   getUKNow,
   getUKWallClockParts,
   ukLocalToInstant,
   getManagerDraftEnabled,
-  isDraftAuctionEnded,
   getDraftBiddingOpen,
 } from "./global.js";
 
@@ -23,11 +23,11 @@ export { supabase };
 
 export {
   getDraftTimelineFromStart,
-  getDraftPhaseFromStart,
-  getEffectiveDraftPhase,
-  isGpdbFreeAgentOfferAllowed,
-  draftPhaseLabel,
-  isDraftAuctionEnded,
+  getManagerDraftEffectivePhase,
+  getManagerDraftCountdownTick,
+  isManagerDraftAuctionEnded,
+  isManagerGpdbFreeAgentOfferAllowed,
+  managerDraftPhaseLabel,
 };
 
 export const MANAGER_DRAFT_BID_INCREMENT = 500_000;
@@ -163,7 +163,7 @@ export async function getManagerDraftBidEligibility({
   }
 
   const open = getDraftBiddingOpen();
-  const phase = getEffectiveDraftPhase(
+  const phase = getManagerDraftEffectivePhase(
     nowUK,
     start,
     open === null ? {} : { biddingOpen: open }
@@ -183,24 +183,6 @@ export async function getManagerDraftBidEligibility({
       reason:
         "You already hold the highest bid on another manager draft auction. You may only lead one auction at a time.",
     };
-  }
-
-  const windowBids = await fetchCurrentManagerDraftBids(managerId, start);
-  const hasBidHere = windowBids.some((b) => b.bidder_club_id === buyerShortName);
-
-  if (!windowBids.length) {
-    if (nowUK >= timeline.cutoff) {
-      return {
-        allowed: false,
-        reason:
-          "Opening bids on free agents close at 6pm UK. Join open threads on Manager Draft Auction.",
-      };
-    }
-    return { allowed: true, reason: "" };
-  }
-
-  if (!hasBidHere && nowUK >= timeline.cutoff) {
-    return { allowed: false, reason: "No new join bids after 6pm UK." };
   }
 
   return { allowed: true, reason: "" };
@@ -264,7 +246,6 @@ export async function syncManagerDraftListingHighBid(listingId, managerId, draft
 }
 
 export async function submitManagerDraftBid(manager, offerAmount, buyerShortName, draftAuctionStartTime) {
-  const nowLocal = getUKNow();
   const draftStart = draftAuctionStartTime ? new Date(draftAuctionStartTime) : null;
 
   if (!getManagerDraftEnabled()) {
@@ -277,18 +258,6 @@ export async function submitManagerDraftBid(manager, offerAmount, buyerShortName
 
   const existing = await fetchCurrentManagerDraftBids(manager.id, draftStart);
   const isFirstBid = existing.length === 0;
-  const timeline = getDraftTimelineFromStart(draftStart);
-
-  if (isFirstBid) {
-    if (!isGpdbFreeAgentOfferAllowed(nowLocal, draftStart)) {
-      return {
-        ok: false,
-        msg: "Opening bids on free agents close at 6pm UK. Join open threads on Manager Draft Auction.",
-      };
-    }
-  } else if (nowLocal >= timeline.cutoff) {
-    return { ok: false, msg: "No new join bids after 6pm UK." };
-  }
 
   const listingResult = await ensureManagerDraftListing(manager);
   if (!listingResult.ok) return listingResult;

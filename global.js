@@ -7,6 +7,7 @@ import {
   getDraftTimelineFromStart,
   getDraftPhaseFromStart,
   getDraftCountdownTick,
+  getManagerDraftCountdownTick,
   isDraftAuctionEnded as isDraftAuctionEndedWithOptions,
 } from "./draft_timeline.js";
 import {
@@ -71,6 +72,24 @@ function draftCountdownOptions() {
     opts.frozenMs = draftRandomLockedMs;
   }
   return opts;
+}
+
+function shouldUseManagerDraftCountdown() {
+  const page = (typeof window !== "undefined" && window.CURRENT_PAGE) || "";
+  if (
+    page === "manager_draftauction" ||
+    page === "manager_draftauction_manager"
+  ) {
+    return true;
+  }
+  return managerDraftEnabled && !draftEnabled;
+}
+
+function getPageDraftCountdownTick(nowUK, start, options) {
+  if (shouldUseManagerDraftCountdown()) {
+    return getManagerDraftCountdownTick(nowUK, start, options);
+  }
+  return getDraftCountdownTick(nowUK, start, options);
 }
 
 export function isDraftAuctionEnded(nowUK, draftAuctionStartTime) {
@@ -389,7 +408,7 @@ export function startDraftCountdown(onTick) {
     if (isDraftCountdownActive()) {
       await refreshDraftBiddingOpen();
     }
-    const tickData = getDraftCountdownTick(
+    const tickData = getPageDraftCountdownTick(
       getUKNow(),
       draftStart,
       draftCountdownOptions()

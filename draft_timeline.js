@@ -156,3 +156,111 @@ export function draftPhaseLabel(phase) {
       return "";
   }
 }
+
+// ---------------------------------------------------------------------------
+// Manager draft — no 6pm cutoff; live bidding until 6:50pm random window
+// ---------------------------------------------------------------------------
+
+export function getManagerDraftPhaseFromStart(nowUK, draftAuctionStartTime) {
+  const t = getDraftTimelineFromStart(draftAuctionStartTime);
+  if (!t) return "ended";
+
+  if (nowUK < t.start) return "before_start";
+  if (nowUK < t.randomStart) return "live";
+  if (nowUK < t.publicEnd) return "random_active";
+  return "ended";
+}
+
+export function getManagerDraftEffectivePhase(nowUK, draftAuctionStartTime, options = {}) {
+  const phase = getManagerDraftPhaseFromStart(nowUK, draftAuctionStartTime);
+  if (options.biddingOpen === false) {
+    if (phase === "before_start" || phase === "live") return phase;
+    if (phase === "random_active") return "random_locked";
+    return "ended";
+  }
+  return phase;
+}
+
+export function isManagerDraftAuctionEnded(nowUK, draftAuctionStartTime, options = {}) {
+  const phase = getManagerDraftEffectivePhase(nowUK, draftAuctionStartTime, options);
+  return phase === "ended" || phase === "random_locked";
+}
+
+/** MGDB “Open” on free agents until the random window ends (no 6pm cutoff). */
+export function isManagerGpdbFreeAgentOfferAllowed(nowUK, draftAuctionStartTime) {
+  const phase = getManagerDraftPhaseFromStart(nowUK, draftAuctionStartTime);
+  return phase === "live" || phase === "random_active";
+}
+
+export function getManagerDraftCountdownTick(nowUK, draftAuctionStartTime, options = {}) {
+  const timeline = getDraftTimelineFromStart(
+    isValidDate(draftAuctionStartTime) ? new Date(draftAuctionStartTime) : null
+  );
+  const phase = getManagerDraftEffectivePhase(nowUK, draftAuctionStartTime, options);
+
+  if (!timeline) {
+    return { phase, ms: 0, label: "Manager draft disabled", target: null, countUp: false };
+  }
+
+  switch (phase) {
+    case "before_start":
+      return {
+        phase,
+        ms: Math.max(0, timeline.start.getTime() - nowUK.getTime()),
+        label: "Manager draft starts in",
+        target: timeline.start,
+        countUp: false,
+      };
+    case "live":
+      return {
+        phase,
+        ms: Math.max(0, timeline.randomStart.getTime() - nowUK.getTime()),
+        label: "Random window begins in",
+        target: timeline.randomStart,
+        countUp: false,
+      };
+    case "random_active":
+      return {
+        phase,
+        ms: Math.max(0, nowUK.getTime() - timeline.randomStart.getTime()),
+        label: "Random window (bidding open)",
+        target: timeline.randomStart,
+        countUp: true,
+      };
+    case "random_locked": {
+      const elapsed =
+        options.frozenMs != null
+          ? options.frozenMs
+          : Math.max(0, nowUK.getTime() - timeline.randomStart.getTime());
+      return {
+        phase,
+        ms: elapsed,
+        label: "Bidding locked — manager draft settles after 7pm auctions",
+        target: timeline.randomStart,
+        countUp: true,
+        frozen: true,
+      };
+    }
+    case "ended":
+      return { phase, ms: 0, label: "Manager draft has ended", target: null, countUp: false };
+    default:
+      return { phase, ms: 0, label: "Manager draft disabled", target: null, countUp: false };
+  }
+}
+
+export function managerDraftPhaseLabel(phase) {
+  switch (phase) {
+    case "before_start":
+      return "Manager draft opens at 7pm UK (Day 1)";
+    case "live":
+      return "Live bidding — random window at 6:50pm UK (Day 2)";
+    case "random_active":
+      return "Random window — bidding closes at a random second between 6:50 and 6:59pm UK";
+    case "random_locked":
+      return "Bidding locked — manager draft settles after tonight's 7pm transfer auctions";
+    case "ended":
+      return "Manager draft auction ended";
+    default:
+      return "";
+  }
+}
