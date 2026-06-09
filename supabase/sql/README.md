@@ -309,7 +309,7 @@ Then re-run `managers_seed_data.sql`.
 
 **Season end:** After final league positions are set, run `SELECT manager_process_season_end();` (admin) to evaluate targets — hit → 2-year renewal; miss → release at market value.
 
-**Rating / MV:** Rating = max playstyle proficiency; MV ≈ 20% of player base value at that rating (age discount for 55+).
+**Rating / MV:** Rating = max playstyle proficiency. MV = **sum** of tier value for each of the five playstyles (0–60 ₿0; 61–65 ₿1m; 66–70 ₿2m; 71–73 ₿5m; 74–76 ₿8m; 77–79 ₿16m; 80–83 ₿25m; 84–85 ₿40m; 86–90 ₿60m). Wages = **50% of MV per year** (weekly ÷52). After deploy or formula change, run [`patches/managers_playstyle_mv.sql`](./patches/managers_playstyle_mv.sql).
 
 Requires `post_club_ledger` ([`central_bank_phase1.sql`](./central_bank_phase1.sql)) and `my_club_shortname()`.
 

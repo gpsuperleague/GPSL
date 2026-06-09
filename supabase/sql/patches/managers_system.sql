@@ -33,7 +33,7 @@ CREATE INDEX IF NOT EXISTS managers_rating_idx ON public."Managers" (rating DESC
 CREATE INDEX IF NOT EXISTS managers_market_value_idx ON public."Managers" (market_value DESC);
 
 COMMENT ON TABLE public."Managers" IS
-  'GPSL manager catalog (MGDB). Rating = max playstyle proficiency; MV ~20% of player base at rating.';
+  'GPSL manager catalog (MGDB). Rating = max playstyle; MV = sum of per-playstyle tier values.';
 
 -- ---------------------------------------------------------------------------
 -- Clubs linkage + sack quota
@@ -147,11 +147,49 @@ CREATE INDEX IF NOT EXISTS manager_bids_listing_idx ON public."Manager_Transfer_
 
 ALTER TABLE public.global_settings
   ADD COLUMN IF NOT EXISTS manager_draft_auction_enabled boolean NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS manager_wage_pct numeric(6, 3) NOT NULL DEFAULT 3.000;
+  ADD COLUMN IF NOT EXISTS manager_wage_pct numeric(6, 3) NOT NULL DEFAULT 50.000;
 
 -- ---------------------------------------------------------------------------
--- Helpers
+-- Helpers — MV = sum of playstyle tier values (see managers_playstyle_mv.sql)
 -- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.manager_playstyle_tier_value(p_rating smallint)
+RETURNS bigint
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT CASE
+    WHEN coalesce(p_rating, 0) <= 60 THEN 0::bigint
+    WHEN p_rating <= 65 THEN 1000000::bigint
+    WHEN p_rating <= 70 THEN 2000000::bigint
+    WHEN p_rating <= 73 THEN 5000000::bigint
+    WHEN p_rating <= 76 THEN 8000000::bigint
+    WHEN p_rating <= 79 THEN 16000000::bigint
+    WHEN p_rating <= 83 THEN 25000000::bigint
+    WHEN p_rating <= 85 THEN 40000000::bigint
+    WHEN p_rating <= 90 THEN 60000000::bigint
+    ELSE 60000000::bigint
+  END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.manager_market_value_from_playstyles(
+  p_possession smallint,
+  p_quick_counter smallint,
+  p_long_ball_counter smallint,
+  p_out_wide smallint,
+  p_long_ball smallint
+)
+RETURNS bigint
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT
+    public.manager_playstyle_tier_value(p_possession)
+    + public.manager_playstyle_tier_value(p_quick_counter)
+    + public.manager_playstyle_tier_value(p_long_ball_counter)
+    + public.manager_playstyle_tier_value(p_out_wide)
+    + public.manager_playstyle_tier_value(p_long_ball);
+$$;
 
 CREATE OR REPLACE FUNCTION public.manager_weekly_wage_for(p_market_value bigint)
 RETURNS bigint
@@ -164,7 +202,7 @@ AS $$
       coalesce(p_market_value, 0)::numeric
       * coalesce(
           (SELECT manager_wage_pct FROM public.global_settings WHERE id = 1 LIMIT 1),
-          3.0
+          50.0
         )
       / 100.0
       / 52.0

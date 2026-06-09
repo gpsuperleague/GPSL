@@ -8,28 +8,22 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
 XLSX = ROOT / "data" / "Managers.xlsx"
-TABLES = ROOT / "data" / "player_value_tables.json"
+TABLES = ROOT / "data" / "manager_value_tables.json"
 OUT = ROOT / "supabase" / "sql" / "patches" / "managers_seed_data.sql"
 
 
-def base_mv(rating: int, bmap: dict) -> int:
+def playstyle_tier_value(rating: int, tiers: list) -> int:
     r = int(round(rating))
-    key = str(r)
-    if key in bmap:
-        return int(bmap[key])
-    keys = sorted(int(x) for x in bmap)
-    if r <= keys[0]:
-        return int(bmap[str(keys[0])])
-    if r >= keys[-1]:
-        return int(bmap[str(keys[-1])])
-    for i in range(len(keys) - 1):
-        lo, hi = keys[i], keys[i + 1]
-        if lo <= r <= hi:
-            v_lo = int(bmap[str(lo)])
-            v_hi = int(bmap[str(hi)])
-            t = (r - lo) / (hi - lo)
-            return int(v_lo + t * (v_hi - v_lo))
+    for tier in tiers:
+        if tier["min"] <= r <= tier["max"]:
+            return int(tier["value"])
+    if r > 90 and tiers:
+        return int(tiers[-1]["value"])
     return 0
+
+
+def manager_market_value(styles: list[int], tiers: list) -> int:
+    return sum(playstyle_tier_value(s, tiers) for s in styles)
 
 
 def slug(name: str) -> str:
@@ -44,7 +38,7 @@ def sql_quote(value: str) -> str:
 def main() -> None:
     df = pd.read_excel(XLSX)
     with TABLES.open(encoding="utf-8") as f:
-        bmap = json.load(f)["baseValueByRating"]
+        tiers = json.load(f)["playstyleTiers"]
 
     rows = []
     seen_slugs: dict[str, int] = {}
@@ -66,17 +60,7 @@ def main() -> None:
         ]
         rating = max(styles)
         age = int(r["Age"])
-        if age >= 70:
-            age_mult = 0.65
-        elif age >= 65:
-            age_mult = 0.75
-        elif age >= 60:
-            age_mult = 0.85
-        elif age >= 55:
-            age_mult = 0.95
-        else:
-            age_mult = 1.0
-        mv = max(250_000, int(base_mv(rating, bmap) * 0.20 * age_mult))
+        mv = manager_market_value(styles, tiers)
         rows.append(
             {
                 "slug": base_slug,
@@ -98,7 +82,7 @@ def main() -> None:
 
     lines = [
         "-- Auto-generated from data/Managers.xlsx — re-run: python scripts/generate_managers_seed.py",
-        f"-- {len(rows)} managers",
+        f"-- {len(rows)} managers (MV = sum of playstyle tier values)",
         "",
         'INSERT INTO public."Managers"',
         "  (slug, name, nation, possession, quick_counter, long_ball_counter, out_wide, long_ball, age, rating, market_value)",
