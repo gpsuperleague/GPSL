@@ -35,6 +35,7 @@ export function isAdminPagePath(pathNorm) {
 // GLOBAL STATE
 // ------------------------------------------------------------
 let draftEnabled = false;
+let managerDraftEnabled = false;
 let draftStart = null;        // Day 1 @ 19:00 UK
 let draftCutoff = null;       // Day 2 @ 18:00 UK
 let draftRandomStart = null;  // Day 2 @ 18:50 UK
@@ -47,6 +48,14 @@ let __draftCountdownInterval = null;
 
 export function getDraftBiddingOpen() {
   return draftBiddingOpen;
+}
+
+export function getManagerDraftEnabled() {
+  return managerDraftEnabled;
+}
+
+function isDraftCountdownActive() {
+  return (draftEnabled || managerDraftEnabled) && isValidDate(draftStart);
 }
 
 function draftCountdownOptions() {
@@ -310,7 +319,7 @@ function msUntil(target) {
 }
 
 export async function refreshDraftBiddingOpen() {
-  if (!draftEnabled) {
+  if (!draftEnabled && !managerDraftEnabled) {
     draftBiddingOpen = false;
     draftRandomLockedMs = null;
     return;
@@ -318,7 +327,7 @@ export async function refreshDraftBiddingOpen() {
   const wasOpen = draftBiddingOpen === true;
   const { data, error } = await supabase
     .from("global_settings_public")
-    .select("draft_bidding_open")
+    .select("draft_bidding_open, manager_draft_bidding_open")
     .eq("id", 1)
     .single();
 
@@ -330,10 +339,22 @@ export async function refreshDraftBiddingOpen() {
     return;
   }
 
-  const nowOpen =
-    data && "draft_bidding_open" in data
-      ? data.draft_bidding_open === true
-      : null;
+  let nowOpen = null;
+  if (draftEnabled && managerDraftEnabled) {
+    nowOpen =
+      data?.draft_bidding_open === true ||
+      data?.manager_draft_bidding_open === true;
+  } else if (draftEnabled) {
+    nowOpen =
+      data && "draft_bidding_open" in data
+        ? data.draft_bidding_open === true
+        : null;
+  } else {
+    nowOpen =
+      data && "manager_draft_bidding_open" in data
+        ? data.manager_draft_bidding_open === true
+        : data?.draft_bidding_open === true;
+  }
 
   if (wasOpen && nowOpen === false && isValidDate(draftStart)) {
     const timeline = getDraftTimelineFromStart(draftStart);
@@ -355,7 +376,7 @@ export function startDraftCountdown(onTick) {
   stopDraftCountdown();
 
   const tick = async () => {
-    if (draftEnabled && draftStart) {
+    if (isDraftCountdownActive()) {
       await refreshDraftBiddingOpen();
     }
     const tickData = getDraftCountdownTick(
@@ -393,7 +414,7 @@ export function wireDraftCountdownUI() {
 
   const localEl = ensureDraftLocalStartEl(el);
 
-  if (!draftEnabled || !isValidDate(draftStart)) {
+  if (!isDraftCountdownActive()) {
     if (container) container.style.display = "none";
     stopDraftCountdown();
     return;
@@ -435,7 +456,7 @@ export async function loadGlobalSettings() {
   const full = await supabase
     .from("global_settings_public")
     .select(
-      "transfer_window_open, draft_auction_enabled, draft_auction_start_time, draft_bidding_open"
+      "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, draft_auction_start_time, draft_bidding_open, manager_draft_bidding_open"
     )
     .eq("id", 1)
     .single();
@@ -444,13 +465,13 @@ export async function loadGlobalSettings() {
     data = full.data;
   } else {
     console.warn(
-      "loadGlobalSettings: draft_bidding_open missing — run repair_global_settings_public.sql",
+      "loadGlobalSettings: draft/manager draft columns missing — run managers_system.sql / repair_global_settings_public.sql",
       full.error
     );
     const minimal = await supabase
       .from("global_settings_public")
       .select(
-        "transfer_window_open, draft_auction_enabled, draft_auction_start_time"
+        "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, draft_auction_start_time, draft_bidding_open"
       )
       .eq("id", 1)
       .single();
@@ -462,10 +483,24 @@ export async function loadGlobalSettings() {
   }
 
   draftEnabled = data?.draft_auction_enabled === true;
-  draftBiddingOpen =
-    data && "draft_bidding_open" in data
-      ? data.draft_bidding_open === true
-      : null;
+  managerDraftEnabled = data?.manager_draft_auction_enabled === true;
+  if (draftEnabled && managerDraftEnabled) {
+    draftBiddingOpen =
+      data?.draft_bidding_open === true ||
+      data?.manager_draft_bidding_open === true;
+  } else if (draftEnabled) {
+    draftBiddingOpen =
+      data && "draft_bidding_open" in data
+        ? data.draft_bidding_open === true
+        : null;
+  } else if (managerDraftEnabled) {
+    draftBiddingOpen =
+      data && "manager_draft_bidding_open" in data
+        ? data.manager_draft_bidding_open === true
+        : data?.draft_bidding_open === true;
+  } else {
+    draftBiddingOpen = false;
+  }
 
   const rawStart = new Date(data?.draft_auction_start_time);
   draftStart = isValidDate(rawStart) ? new Date(rawStart) : null;
@@ -475,7 +510,7 @@ export async function loadGlobalSettings() {
   draftRandomStart = timeline?.randomStart ?? null;
   draftPublicEnd = timeline?.publicEnd ?? null;
 
-  if (draftEnabled && draftBiddingOpen === false && isValidDate(draftStart)) {
+  if (isDraftCountdownActive() && draftBiddingOpen === false && isValidDate(draftStart)) {
     const phase = getDraftPhaseFromStart(getUKNow(), draftStart);
     if (
       timeline &&
@@ -491,6 +526,7 @@ export async function loadGlobalSettings() {
 
   return {
     draftEnabled,
+    managerDraftEnabled,
     draftStart,
     draftCutoff,
     draftRandomStart,

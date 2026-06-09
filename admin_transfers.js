@@ -26,7 +26,9 @@ async function loadSettings() {
   }
 
   const el = document.getElementById("draftStartTime");
-  if (data.draft_auction_enabled && data.draft_auction_start_time) {
+  const anyDraft =
+    data.draft_auction_enabled || data.manager_draft_auction_enabled;
+  if (anyDraft && data.draft_auction_start_time) {
     const ukFmt = new Intl.DateTimeFormat("en-GB", {
       timeZone: "Europe/London",
       weekday: "short",
@@ -58,20 +60,24 @@ async function saveSettings() {
 
   const { data: current } = await supabase
     .from("global_settings")
-    .select("draft_auction_enabled, draft_auction_start_time, draft_random_finish_time")
+    .select(
+      "draft_auction_enabled, manager_draft_auction_enabled, draft_auction_start_time, draft_random_finish_time"
+    )
     .eq("id", 1)
     .single();
+
+  const wasAnyDraft =
+    current?.draft_auction_enabled || current?.manager_draft_auction_enabled;
+  const isAnyDraft = draft_auction_enabled || manager_draft_auction_enabled;
 
   let draft_auction_start_time = current?.draft_auction_start_time || null;
   let draft_random_finish_time = current?.draft_random_finish_time || null;
 
-  if (draft_auction_enabled && !current?.draft_auction_enabled) {
+  if (isAnyDraft && !wasAnyDraft) {
     const times = computeNextDraftTimesFromNow();
     draft_auction_start_time = times.draftStartISO;
     draft_random_finish_time = times.randomFinishISO;
-  }
-
-  if (!draft_auction_enabled) {
+  } else if (!isAnyDraft) {
     draft_auction_start_time = null;
     draft_random_finish_time = null;
   }
@@ -94,9 +100,25 @@ async function saveSettings() {
     if (mgrErr) {
       setStatus(
         "settingsMessage",
-        "✅ Player settings saved. Manager draft: apply managers_system.sql for admin_set_manager_draft_enabled.",
-        true
+        "❌ Manager draft flag: " +
+          (mgrErr.message || "failed") +
+          " — run managers_system.sql.",
+        false
       );
+    } else if (isAnyDraft && draft_auction_start_time) {
+      const { error: schedErr } = await supabase.rpc("admin_set_draft_auction_schedule", {
+        p_start: draft_auction_start_time,
+        p_finish: draft_random_finish_time,
+      });
+      if (schedErr) {
+        setStatus(
+          "settingsMessage",
+          "✅ Flags saved. Schedule RPC missing — run managers_draft_schedule.sql, then save again.",
+          true
+        );
+      } else {
+        setStatus("settingsMessage", "✅ Settings updated.", true);
+      }
     } else {
       setStatus("settingsMessage", "✅ Settings updated.", true);
     }
