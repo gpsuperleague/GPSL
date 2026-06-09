@@ -1,0 +1,166 @@
+<script>
+  window.CURRENT_PAGE = "mgdb";
+</script>
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL Manager Database</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+    }
+
+    a.button, button.button {
+      display: inline-block;
+      padding: 8px 16px;
+      background: #1a1a1a;
+      color: #ff9900;
+      border: 1px solid #666;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      margin: 5px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    a.button:hover, button.button:hover {
+      background: #222;
+      transform: scale(1.05);
+    }
+
+    #pageTitle {
+      background: #222;
+      color: #ff9900;
+      padding: 10px 16px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-bottom: 20px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .filter-group {
+      background: #1a1a1a;
+      color: #ff9900;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-start;
+      border: 1px solid #333;
+    }
+
+    .filter-group strong {
+      width: 100%;
+      font-size: 14px;
+      margin-bottom: 4px;
+      color: #ffaa22;
+    }
+
+    input, select {
+      background: #222;
+      color: #ddd;
+      border: 1px solid #444;
+      padding: 4px 6px;
+      border-radius: 4px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1a1a1a;
+      color: #ddd;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    th {
+      background: #222;
+      color: #ff9900;
+      padding: 8px;
+      font-size: 13px;
+      border-bottom: 2px solid #444;
+      border-right: 1px solid #333;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    th.sort-asc::after { content: " ▲"; font-size: 10px; }
+    th.sort-desc::after { content: " ▼"; font-size: 10px; }
+
+    td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #333;
+      border-right: 1px solid #333;
+      font-size: 12px;
+      text-align: center;
+    }
+
+    tbody tr:nth-child(odd) { background: #1f1f1f; }
+    tbody tr:nth-child(even) { background: #262626; }
+    tbody tr:hover { background: #333 !important; }
+
+    .money { white-space: nowrap; }
+    #statusNote { color: #aaa; font-size: 12px; margin-bottom: 12px; }
+    #mgdbError { color: #f88; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+  <div id="nav" style="margin-bottom:20px;"></div>
+
+  <h1 id="pageTitle">GPSL – Manager Database (MGDB)</h1>
+
+  <p id="statusNote"></p>
+  <p id="mgdbError" hidden></p>
+
+  <div id="controls">
+    <div class="filter-group">
+      <button id="clearFiltersBtn" class="button">Clear Filters</button>
+    </div>
+
+    <div class="filter-group">
+      <strong>Market Value</strong>
+      <label>Min <input type="text" id="mv-min" style="width:140px; text-align:right;" inputmode="numeric"></label>
+      <label>Max <input type="text" id="mv-max" style="width:140px; text-align:right;" inputmode="numeric"></label>
+      <button id="applyMV" class="button">Apply</button>
+    </div>
+
+    <div class="filter-group" id="filters"></div>
+
+    <table id="managersTable">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+
+    <div id="pagination" style="color:#ff9900;font-weight:bold;margin-top:20px;"></div>
+
+    <div id="rowsPerPage" style="margin-top:20px;color:#ff9900;">
+      <label>Rows per page:
+        <select id="pageSizeSelect">
+          <option value="50">50</option>
+          <option value="100" selected>100</option>
+          <option value="250">250</option>
+        </select>
+      </label>
+    </div>
+  </div>
+
+  <script type="module" src="global.js"></script>
+  <script type="module" src="mgdb.js?v=1"></script>
+</body>
+</html>

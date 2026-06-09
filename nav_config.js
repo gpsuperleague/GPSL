@@ -6,7 +6,9 @@ export const NAV_SECTIONS = [
     label: "Transfers",
     items: [
       { href: "GPDB.html", label: "Player Database", page: "gpdb" },
+      { href: "MGDB.html", label: "Manager Database", page: "mgdb" },
       { href: "all_listings.html", label: "Transfer Market", page: "all_listings" },
+      { href: "manager_listings.html", label: "Manager Market", page: "manager_listings" },
       {
         href: "draftauction.html",
         label: "Draft Auction",
@@ -104,6 +106,7 @@ export const ADMIN_NAV_SECTION = {
     { heading: true, label: "Transfer management" },
     { href: "admin_transfers.html", label: "Transfer window & engine" },
     { href: "admin_draft.html", label: "Draft auction" },
+    { href: "admin_manager_targets.html", label: "Manager contract targets" },
     { href: "admin_special-auctions.html", label: "Special auction" },
 
     { heading: true, label: "Owner administration" },

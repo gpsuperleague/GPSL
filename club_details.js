@@ -277,6 +277,86 @@ function renderChallengeGrid(progress, loadError) {
     .join("");
 }
 
+function formatDivisionLabel(division) {
+  if (!division) return "—";
+  if (division === "superleague") return "Super League";
+  if (division === "championship_a") return "Championship A";
+  if (division === "championship_b") return "Championship B";
+  return division;
+}
+
+function formatManagerTarget(row) {
+  if (!row?.target_label) return "—";
+  if (row.target_kind === "max_position" && row.target_value) {
+    return `${row.target_label} (finish ≤ ${row.target_value})`;
+  }
+  return row.target_label;
+}
+
+function formatTargetProgress(row) {
+  if (row.target_met === true) return "On course ✓";
+  if (row.target_met === false) return "Off course ✗";
+  if (row.season_position != null) return `Position ${row.season_position} (pending evaluation)`;
+  return "Season in progress";
+}
+
+async function loadManagerSection(clubShortName) {
+  const statusEl = document.getElementById("managerStatus");
+  const hintEl = document.getElementById("managerHint");
+  const listBtn = document.getElementById("listManagerBtn");
+  const sackBtn = document.getElementById("sackManagerBtn");
+
+  const { data, error } = await supabase
+    .from("manager_club_status_public")
+    .select("*")
+    .eq("club_short_name", clubShortName)
+    .maybeSingle();
+
+  if (error) {
+    const msg = String(error.message || "");
+    if (statusEl) {
+      statusEl.textContent = msg.includes("manager_club_status")
+        ? "Run supabase/sql/patches/managers_system.sql to enable managers."
+        : msg;
+    }
+    return;
+  }
+
+  if (!data?.manager_id) {
+    if (statusEl) {
+      statusEl.innerHTML =
+        'No manager signed. <a href="MGDB.html" style="color:#ff9900;">Browse MGDB</a> or the manager transfer market.';
+    }
+    setBtnVisible(listBtn, false);
+    setBtnVisible(sackBtn, false);
+    return;
+  }
+
+  if (statusEl) {
+    statusEl.innerHTML = `
+      <dl style="display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font-size:14px;">
+        <dt>Manager</dt><dd><b>${data.manager_name}</b> (rating ${data.manager_rating})</dd>
+        <dt>Market value</dt><dd>${formatMoney(Number(data.market_value || 0))}</dd>
+        <dt>Contract</dt><dd>${data.contract_seasons_remaining ?? 0} season(s) remaining</dd>
+        <dt>Weekly wage</dt><dd>${formatMoney(Number(data.weekly_wage || 0))}</dd>
+        <dt>Division</dt><dd>${formatDivisionLabel(data.division)}</dd>
+        <dt>Target</dt><dd>${formatManagerTarget(data)}</dd>
+        <dt>Progress</dt><dd>${formatTargetProgress(data)}</dd>
+        <dt>Sack allowance</dt><dd>${data.manager_sacks_remaining ? "Available this season" : "Used"}</dd>
+      </dl>
+    `;
+  }
+
+  setBtnVisible(listBtn, true);
+  setBtnVisible(sackBtn, Boolean(data.manager_sacks_remaining));
+
+  if (listBtn) listBtn.dataset.managerId = String(data.manager_id);
+  if (sackBtn) {
+    sackBtn.dataset.clubShort = clubShortName;
+    sackBtn.disabled = !data.manager_sacks_remaining;
+  }
+}
+
 async function loadChallengeProgress(clubShortName) {
   const { data, error } = await supabase.rpc("competition_challenge_club_progress", {
     p_club_short_name: clubShortName,
@@ -551,9 +631,54 @@ async function initClubDetailsPage() {
   }
 
   await loadChallengeProgress(club.ShortName);
+  await loadManagerSection(club.ShortName);
 
   wireHolidayBooking();
+  wireManagerActions();
   await refreshHolidaySection();
+}
+
+function wireManagerActions() {
+  const listBtn = document.getElementById("listManagerBtn");
+  const sackBtn = document.getElementById("sackManagerBtn");
+  const hintEl = document.getElementById("managerHint");
+
+  if (listBtn && !listBtn.dataset.wired) {
+    listBtn.dataset.wired = "1";
+    listBtn.addEventListener("click", async () => {
+      const managerId = Number(listBtn.dataset.managerId);
+      if (!managerId) return;
+      listBtn.disabled = true;
+      const { error } = await supabase.rpc("manager_list_for_transfer", {
+        p_manager_id: managerId,
+      });
+      listBtn.disabled = false;
+      if (error) {
+        if (hintEl) hintEl.textContent = error.message;
+        return;
+      }
+      if (hintEl) hintEl.textContent = "Manager listed — see Manager Transfer Market.";
+    });
+  }
+
+  if (sackBtn && !sackBtn.dataset.wired) {
+    sackBtn.dataset.wired = "1";
+    sackBtn.addEventListener("click", async () => {
+      if (!confirm("Sack manager? You receive half market value and cannot sack again this season.")) {
+        return;
+      }
+      const clubShort = sackBtn.dataset.clubShort;
+      sackBtn.disabled = true;
+      const { error } = await supabase.rpc("manager_sack");
+      sackBtn.disabled = false;
+      if (error) {
+        if (hintEl) hintEl.textContent = error.message;
+        return;
+      }
+      if (hintEl) hintEl.textContent = "Manager sacked.";
+      if (clubShort) await loadManagerSection(clubShort);
+    });
+  }
 }
 
 document.addEventListener("DOMContentLoaded", () => {

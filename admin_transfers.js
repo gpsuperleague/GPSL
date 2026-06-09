@@ -20,6 +20,10 @@ async function loadSettings() {
   document.getElementById("draftAuctionSelect").value = data.draft_auction_enabled
     ? "true"
     : "false";
+  const mgrDraftSel = document.getElementById("managerDraftAuctionSelect");
+  if (mgrDraftSel) {
+    mgrDraftSel.value = data.manager_draft_auction_enabled ? "true" : "false";
+  }
 
   const el = document.getElementById("draftStartTime");
   if (data.draft_auction_enabled && data.draft_auction_start_time) {
@@ -49,6 +53,8 @@ async function saveSettings() {
     document.getElementById("transferWindowSelect").value === "true";
   const draft_auction_enabled =
     document.getElementById("draftAuctionSelect").value === "true";
+  const manager_draft_auction_enabled =
+    document.getElementById("managerDraftAuctionSelect")?.value === "true";
 
   const { data: current } = await supabase
     .from("global_settings")
@@ -79,11 +85,22 @@ async function saveSettings() {
     },
   });
 
-  setStatus(
-    "settingsMessage",
-    error ? "❌ " + (error.message || "Error") : "✅ Settings updated.",
-    !error
-  );
+  if (error) {
+    setStatus("settingsMessage", "❌ " + (error.message || "Error"), false);
+  } else {
+    const { error: mgrErr } = await supabase.rpc("admin_set_manager_draft_enabled", {
+      p_enabled: manager_draft_auction_enabled,
+    });
+    if (mgrErr) {
+      setStatus(
+        "settingsMessage",
+        "✅ Player settings saved. Manager draft: apply managers_system.sql for admin_set_manager_draft_enabled.",
+        true
+      );
+    } else {
+      setStatus("settingsMessage", "✅ Settings updated.", true);
+    }
+  }
   await loadGlobalSettings();
   await loadSettings();
 }

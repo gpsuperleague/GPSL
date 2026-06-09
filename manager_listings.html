@@ -1,0 +1,71 @@
+<script>
+  const CURRENT_PAGE = "manager_listings";
+</script>
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL Manager Transfer Market</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background: #111; color: #ddd; font-family: Arial, sans-serif; }
+    h1 {
+      background: #222; color: #ff9900; padding: 10px 16px; border-radius: 6px;
+      width: fit-content; margin: 20px auto; font-size: 26px;
+    }
+    #nav { text-align: center; margin-bottom: 20px; }
+    table {
+      width: 95%; max-width: 1100px; margin: 0 auto 30px;
+      border-collapse: collapse; background: #1a1a1a;
+    }
+    th { background: #222; color: #ff9900; padding: 8px; font-size: 13px; }
+    td { padding: 8px; border-bottom: 1px solid #333; text-align: center; font-size: 13px; }
+    .button {
+      display: inline-block; padding: 8px 16px; background: #1a1a1a; color: #ff9900;
+      border: 1px solid #666; border-radius: 6px; font-weight: bold; cursor: pointer;
+    }
+    #bidModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 50; align-items: center; justify-content: center; }
+    #bidModal.open { display: flex; }
+    .modal-box { background: #1a1a1a; border: 1px solid #444; padding: 20px; border-radius: 8px; width: 420px; }
+    #bidError { color: #f88; font-size: 12px; min-height: 16px; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <h1>Manager Transfer Market</h1>
+  <p style="text-align:center;color:#aaa;font-size:13px;">
+    Listed managers only. Free agents appear in <a href="MGDB.html">MGDB</a> / manager draft when enabled.
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Manager</th>
+        <th>Rating</th>
+        <th>Seller</th>
+        <th>Market Value</th>
+        <th>Highest Bid</th>
+        <th>Ends</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="listingsBody"></tbody>
+  </table>
+
+  <div id="bidModal">
+    <div class="modal-box">
+      <h3 id="bidManagerName" style="color:#ff9900;margin-top:0;"></h3>
+      <p id="bidHint" style="font-size:12px;color:#aaa;"></p>
+      <label>Bid (₿) <input id="bidAmount" type="text" style="width:160px;margin-left:8px;"></label>
+      <p id="bidError"></p>
+      <div style="display:flex;justify-content:space-between;margin-top:14px;">
+        <button class="button" id="bidCancel">Cancel</button>
+        <button class="button" id="bidSubmit">Place Bid</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="global.js"></script>
+  <script type="module" src="manager_listings.js?v=1"></script>
+</body>
+</html>

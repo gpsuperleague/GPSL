@@ -290,6 +290,29 @@ Run once (no data import; formulas in `player_value_calcs.js`):
 
 See [`docs/pesdb-player-values.md`](../../docs/pesdb-player-values.md).
 
+## Managers (MGDB)
+
+Run in order in SQL Editor:
+
+1. [`patches/managers_system.sql`](./patches/managers_system.sql) — `Managers` table, transfer listings, contract targets, club linkage, RPCs (`manager_sack`, `manager_place_bid`, `manager_process_season_end`, etc.)
+2. [`patches/managers_seed_data.sql`](./patches/managers_seed_data.sql) — 100 managers from `data/Managers.xlsx`
+
+Re-seed after spreadsheet changes:
+
+```bash
+python scripts/generate_managers_seed.py
+```
+
+Then re-run `managers_seed_data.sql`.
+
+**UI:** Transfers → **Manager Database** (`MGDB.html`), **Manager Market** (`manager_listings.html`). Admin → **Manager contract targets**, **Transfer window** (manager draft toggle).
+
+**Season end:** After final league positions are set, run `SELECT manager_process_season_end();` (admin) to evaluate targets — hit → 2-year renewal; miss → release at market value.
+
+**Rating / MV:** Rating = max playstyle proficiency; MV ≈ 20% of player base value at that rating (age discount for 55+).
+
+Requires `post_club_ledger` ([`central_bank_phase1.sql`](./central_bank_phase1.sql)) and `my_club_shortname()`.
+
 ## Squad composition (home-grown / under-21)
 
 Run once:

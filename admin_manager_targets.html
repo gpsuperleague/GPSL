@@ -1,0 +1,46 @@
+<script>window.CURRENT_PAGE = "admin_manager_targets";</script>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Admin — Manager contract targets</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; padding:20px; }
+    h1 { color:#ff9900; }
+    table { width:100%; border-collapse:collapse; background:#1a1a1a; margin-top:16px; }
+    th, td { padding:8px; border-bottom:1px solid #333; text-align:left; font-size:13px; }
+    th { color:#ff9900; background:#222; }
+    input, select { background:#222; color:#ddd; border:1px solid #444; padding:4px 6px; border-radius:4px; }
+    .button { padding:8px 14px; background:#1a1a1a; color:#ff9900; border:1px solid #666; border-radius:6px; cursor:pointer; font-weight:bold; }
+    #adminError { color:#f88; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <h1>Manager contract targets (by rating)</h1>
+  <p style="color:#aaa;font-size:13px;">
+    Defines what each manager rating must achieve in their club's division.
+    Hit target → 2-year renewal. Miss → released for market value.
+  </p>
+  <p id="adminError"></p>
+  <button class="button" id="addRowBtn">Add rule</button>
+  <table>
+    <thead>
+      <tr>
+        <th>Min rating</th>
+        <th>Max rating</th>
+        <th>Division</th>
+        <th>Target kind</th>
+        <th>Position</th>
+        <th>Label</th>
+        <th>Order</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="targetsBody"></tbody>
+  </table>
+  <script type="module" src="global.js"></script>
+  <script type="module" src="admin_manager_targets.js?v=1"></script>
+</body>
+</html>

@@ -402,6 +402,19 @@
       </div>
     </div>
 
+    <div class="panel panel-bg" id="managerPanel">
+      <h2 class="subsidy-title">Manager</h2>
+      <p class="subsidy-intro">
+        Signed manager, contract target, and season progress. Sack once per season for half market value.
+      </p>
+      <div id="managerStatus" class="subsidy-meta">Loading…</div>
+      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button type="button" id="listManagerBtn" class="small-btn is-hidden">List for transfer</button>
+        <button type="button" id="sackManagerBtn" class="small-btn is-hidden">Sack manager</button>
+      </div>
+      <p id="managerHint" class="owner-tag-hint" role="status"></p>
+    </div>
+
     <div class="panel panel-bg account-panel" id="accountPanel">
       <h2 class="account-title">Login &amp; password</h2>
       <p class="account-intro">
