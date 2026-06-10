@@ -1,9 +1,48 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+import {
+  loadSelectionWindow,
+  loadOwnerDraftOrder,
+} from "./international.js";
 
 primeAdminPageChrome();
 
+async function refreshSelectionLive() {
+  const liveEl = document.getElementById("selectionLive");
+  const skipBtn = document.getElementById("skipCurrentPickBtn");
+  const skipHint = document.getElementById("skipPickHint");
+  if (!liveEl) return;
+
+  const windowState = await loadSelectionWindow(supabase);
+  if (!windowState?.is_open) {
+    liveEl.textContent = "Nation selection is closed.";
+    if (skipBtn) skipBtn.hidden = true;
+    if (skipHint) skipHint.hidden = true;
+    return;
+  }
+
+  const draft = await loadOwnerDraftOrder(supabase);
+  const current = draft.find((d) => d.pick_order === windowState.current_pick_rank);
+  const waiting = draft.filter((d) => !d.nation_code).length;
+  const phase =
+    windowState.phase === "post_world_cup"
+      ? "Post–World Cup re-selection"
+      : "Initial selection";
+
+  liveEl.innerHTML = `
+    <b>${phase}</b> is open ·
+    On the clock: <b>#${windowState.current_pick_rank}</b>
+    ${current ? `— ${current.owner_tag || current.owner_name || "Owner"} (${current.club_name || current.club_short_name})` : ""}
+    · ${windowState.nations_assigned || 0} assigned · ${waiting} still to pick
+  `;
+
+  if (skipBtn) skipBtn.hidden = waiting <= 1;
+  if (skipHint) skipHint.hidden = waiting <= 1;
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
+
+  await refreshSelectionLive();
 
   document.getElementById("seedNationsBtn")?.addEventListener("click", async () => {
     setStatus("setupStatus", "Seeding…");
@@ -60,6 +99,32 @@ document.addEventListener("DOMContentLoaded", async () => {
     openSelection("post_world_cup")
   );
   document.getElementById("closeSelectionBtn")?.addEventListener("click", closeSelection);
+
+  document.getElementById("skipCurrentPickBtn")?.addEventListener("click", async () => {
+    const liveEl = document.getElementById("selectionLive");
+    const onClock = liveEl?.textContent || "";
+    if (
+      !confirm(
+        `Skip the current nation picker?\n\n${onClock}\n\nThe next owner without a nation will be on the clock.`
+      )
+    ) {
+      return;
+    }
+    setStatus("selectionStatus", "Skipping…");
+    const { data, error } = await supabase.rpc("international_admin_skip_current_pick");
+    if (error) {
+      setStatus("selectionStatus", `❌ ${error.message}`, false);
+      return;
+    }
+    const skipped = data?.skipped_club_name || data?.skipped_club || "owner";
+    const next = data?.next_pick;
+    setStatus(
+      "selectionStatus",
+      `✅ Skipped ${skipped} (pick #${data?.skipped_pick}) → now on pick #${next}`,
+      true
+    );
+    await refreshSelectionLive();
+  });
 });
 
 async function openSelection(phase) {
@@ -72,10 +137,12 @@ async function openSelection(phase) {
     error ? `❌ ${error.message}` : `✅ Selection open (window #${data})`,
     !error
   );
+  if (!error) await refreshSelectionLive();
 }
 
 async function closeSelection() {
   setStatus("selectionStatus", "Closing…");
   const { error } = await supabase.rpc("international_admin_close_selection");
   setStatus("selectionStatus", error ? `❌ ${error.message}` : "✅ Selection closed", !error);
+  if (!error) await refreshSelectionLive();
 }

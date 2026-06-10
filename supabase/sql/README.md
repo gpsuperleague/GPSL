@@ -489,7 +489,7 @@ Run once after `competition_phase0.sql`:
 
 Creates 60 nations, owner nation draft, World Cup cycle/group tables, international squads, and lifetime player caps (`international_player_career`).
 
-**Admin:** GPSL Admin → **World Cup & nations** (`admin_international.html`) — seed nations, open nation selection, assign teams.
+**Admin:** GPSL Admin → **World Cup & nations** (`admin_international.html`) — seed nations, open nation selection, assign teams, **skip current pick** if an owner is slow (run [`patches/international_admin_skip_pick.sql`](./patches/international_admin_skip_pick.sql)).
 
 **Call-ups:** National team managers use **GPDB** → **My nation** filter → **Call up** on eligible players (matching `Players.Nation`, any club). Squad limit **23** (minimum **2 GKs** — cannot release a GK if that would drop below 2). Squad displays on `national_team.html` (squad-style layout). Run [`patches/international_callup_gpdb.sql`](./patches/international_callup_gpdb.sql) after `competition_international.sql`.
 
