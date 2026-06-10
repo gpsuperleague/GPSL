@@ -163,8 +163,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   const flagEl = document.getElementById("natFlag");
   if (flagEl) flagEl.innerHTML = renderNationFlag(nation, "lg");
   document.getElementById("natTitle").textContent = nation.name;
+  let ownerTag = nation.owner_tag?.trim() || "";
+  if (!ownerTag && nation.owner_club) {
+    const { data: clubRow } = await supabase
+      .from("Clubs")
+      .select("owner")
+      .eq("ShortName", nation.owner_club)
+      .maybeSingle();
+    ownerTag = clubRow?.owner?.trim() || nation.owner_club.trim();
+  }
   document.getElementById("natMeta").innerHTML = nation.owner_club
-    ? `Managed by <b>${nation.owner_club_name || nation.owner_club}</b> (${nation.owner_club})`
+    ? `Managed by <b>${ownerTag}</b>`
     : "Unassigned — available in nation selection";
 
   if (!code && nation.code) {

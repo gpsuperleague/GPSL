@@ -731,6 +731,7 @@ SELECT
   n.seed_rank,
   ion.club_short_name AS owner_club,
   c."Club" AS owner_club_name,
+  coalesce(nullif(btrim(c.owner), ''), c."ShortName") AS owner_tag,
   (ion.id IS NOT NULL) AS is_taken
 FROM public.international_nations n
 LEFT JOIN public.international_owner_nations ion
