@@ -855,7 +855,7 @@ export async function buildNav() {
   let firstActiveNavSectionId;
   let normalizeNavPath;
   try {
-    const navMod = await import("./nav_config.js?v=20250602-mynation");
+    const navMod = await import("./nav_config.js?v=20250602-wc-cups");
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;
@@ -979,9 +979,7 @@ export async function buildNav() {
 
   const navItemsForSection = (section) => {
     if (section.id === "mynation") {
-      const items = [
-        { href: "world_cup.html", label: "World Cup", page: "world_cup" },
-      ];
+      const items = [];
       if (myNation?.code) {
         const flagPrefix = myNation.flag_emoji ? `${myNation.flag_emoji} ` : "";
         items.unshift({
