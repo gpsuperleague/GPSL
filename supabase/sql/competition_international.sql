@@ -190,7 +190,6 @@ CREATE TABLE IF NOT EXISTS public.international_squad_callups (
   released_at timestamptz,
   is_active boolean NOT NULL DEFAULT true,
   CONSTRAINT international_squad_callups_unique UNIQUE (nation_code, player_id)
-    DEFERRABLE INITIALLY IMMEDIATE
 );
 
 CREATE INDEX IF NOT EXISTS international_squad_callups_nation_active_idx

@@ -6,6 +6,13 @@
 ALTER TABLE public.international_squad_callups
   ALTER COLUMN club_short_name DROP NOT NULL;
 
+-- ON CONFLICT cannot use deferrable unique constraints (original schema used DEFERRABLE)
+ALTER TABLE public.international_squad_callups
+  DROP CONSTRAINT IF EXISTS international_squad_callups_unique;
+
+ALTER TABLE public.international_squad_callups
+  ADD CONSTRAINT international_squad_callups_unique UNIQUE (nation_code, player_id);
+
 CREATE OR REPLACE FUNCTION public.international_normalize_nation_label(p_text text)
 RETURNS text
 LANGUAGE sql
@@ -126,26 +133,36 @@ BEGIN
     AND nation_code <> v_nation
     AND is_active = true;
 
-  INSERT INTO public.international_squad_callups (
-    nation_code,
-    player_id,
-    club_short_name,
-    cycle_id,
-    is_active
-  )
-  VALUES (
-    v_nation,
-    btrim(p_player_id),
-    v_player_club,
-    v_cycle_id,
-    true
-  )
-  ON CONFLICT (nation_code, player_id) DO UPDATE
-  SET is_active = true,
-      released_at = NULL,
-      called_at = now(),
-      club_short_name = EXCLUDED.club_short_name,
-      cycle_id = EXCLUDED.cycle_id;
+  IF EXISTS (
+    SELECT 1
+    FROM public.international_squad_callups sc
+    WHERE sc.nation_code = v_nation
+      AND sc.player_id = btrim(p_player_id)
+  ) THEN
+    UPDATE public.international_squad_callups
+    SET is_active = true,
+        released_at = NULL,
+        called_at = now(),
+        club_short_name = v_player_club,
+        cycle_id = v_cycle_id
+    WHERE nation_code = v_nation
+      AND player_id = btrim(p_player_id);
+  ELSE
+    INSERT INTO public.international_squad_callups (
+      nation_code,
+      player_id,
+      club_short_name,
+      cycle_id,
+      is_active
+    )
+    VALUES (
+      v_nation,
+      btrim(p_player_id),
+      v_player_club,
+      v_cycle_id,
+      true
+    );
+  END IF;
 END;
 $function$;
 
