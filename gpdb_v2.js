@@ -659,6 +659,8 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    const showCallUpCol = !!MY_NATION?.code;
+
     tableHead.innerHTML = `
       <tr>
         <th></th>
@@ -670,6 +672,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return `<th data-col="${col}" class="${cls}">${formatHeader(col)}</th>`;
           })
           .join("")}
+        ${showCallUpCol ? '<th class="gpdb-callup-col">Call up</th>' : ""}
         <th>Bid</th>
       </tr>
     `;
@@ -681,9 +684,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let bidCell = `<span class="locked-msg">Loading…</span>`;
         const callUpCell = buildGpdbCallUpCellHtml(player);
 
-        if (callUpCell) {
-          bidCell = callUpCell;
-        } else if (GLOBAL_SETTINGS) {
+        if (GLOBAL_SETTINGS) {
           if (hasClub) {
             const holderShort = resolveContractedClubShort(
               player.Contracted_Team
@@ -749,6 +750,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ${TABLE_DISPLAY_COLUMNS.map(
               (col) => `<td>${formatCellValue(col, player)}</td>`
             ).join("")}
+            ${showCallUpCol ? `<td class="gpdb-callup-col">${callUpCell || '<span class="locked-msg">—</span>'}</td>` : ""}
             <td>${bidCell}</td>
           </tr>
         `;
