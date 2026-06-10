@@ -96,10 +96,13 @@ export function getDraftCountdownTick(nowUK, draftAuctionStartTime, options = {}
         countUp: true,
       };
     case "random_locked": {
+      const finishMs = options.finishInstant?.getTime?.();
       const elapsed =
         options.frozenMs != null
           ? options.frozenMs
-          : Math.max(0, nowUK.getTime() - timeline.randomStart.getTime());
+          : finishMs != null && Number.isFinite(finishMs)
+            ? Math.max(0, finishMs - timeline.randomStart.getTime())
+            : Math.max(0, nowUK.getTime() - timeline.randomStart.getTime());
       return {
         phase,
         ms: elapsed,
@@ -107,6 +110,7 @@ export function getDraftCountdownTick(nowUK, draftAuctionStartTime, options = {}
         target: timeline.randomStart,
         countUp: true,
         frozen: true,
+        finishInstant: options.finishInstant || null,
       };
     }
     case "ended":
@@ -186,9 +190,17 @@ export function isManagerDraftAuctionEnded(nowUK, draftAuctionStartTime, options
   return phase === "ended" || phase === "random_locked";
 }
 
-/** MGDB “Open” on free agents until the random window ends (no 6pm cutoff). */
-export function isManagerGpdbFreeAgentOfferAllowed(nowUK, draftAuctionStartTime) {
-  const phase = getManagerDraftPhaseFromStart(nowUK, draftAuctionStartTime);
+/** MGDB “Open” on free agents while manager draft bidding is open (incl. secret random window). */
+export function isManagerGpdbFreeAgentOfferAllowed(
+  nowUK,
+  draftAuctionStartTime,
+  options = {}
+) {
+  const phase = getManagerDraftEffectivePhase(
+    nowUK,
+    draftAuctionStartTime,
+    options
+  );
   return phase === "live" || phase === "random_active";
 }
 
@@ -228,10 +240,13 @@ export function getManagerDraftCountdownTick(nowUK, draftAuctionStartTime, optio
         countUp: true,
       };
     case "random_locked": {
+      const finishMs = options.finishInstant?.getTime?.();
       const elapsed =
         options.frozenMs != null
           ? options.frozenMs
-          : Math.max(0, nowUK.getTime() - timeline.randomStart.getTime());
+          : finishMs != null && Number.isFinite(finishMs)
+            ? Math.max(0, finishMs - timeline.randomStart.getTime())
+            : Math.max(0, nowUK.getTime() - timeline.randomStart.getTime());
       return {
         phase,
         ms: elapsed,
@@ -239,6 +254,7 @@ export function getManagerDraftCountdownTick(nowUK, draftAuctionStartTime, optio
         target: timeline.randomStart,
         countUp: true,
         frozen: true,
+        finishInstant: options.finishInstant || null,
       };
     }
     case "ended":

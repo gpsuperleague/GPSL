@@ -4,7 +4,7 @@ import {
   buildNav,
   getUKNow,
   refreshDraftBiddingOpen,
-  getDraftBiddingOpen,
+  getDraftCountdownOptions,
 } from "./global.js";
 import {
   supabase,
@@ -79,8 +79,7 @@ async function loadManagerDraftListings() {
     return;
   }
 
-  const open = getDraftBiddingOpen();
-  const phaseOpts = open === null ? {} : { biddingOpen: open };
+  const phaseOpts = getDraftCountdownOptions();
   const phase = getManagerDraftEffectivePhase(
     nowUK,
     draftAuctionStartTime,

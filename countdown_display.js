@@ -56,6 +56,12 @@ export function formatStartedTimesSubline(startInstant) {
   return `Started ${formatInstantUK(startInstant)}\n${formatInstantLocal(startInstant)}`;
 }
 
+/** After secret random finish: when bidding closed (UK + viewer local). */
+export function formatClosedTimesSubline(closedInstant) {
+  if (!isValidInstant(closedInstant)) return "";
+  return `Bidding closed ${formatInstantUK(closedInstant)}\n${formatInstantLocal(closedInstant)}`;
+}
+
 /** HTML: UK and local each on their own line inside .countdown-times */
 export function formatTargetTimesHtml(targetInstant) {
   if (!isValidInstant(targetInstant)) return "";
@@ -122,10 +128,13 @@ export function formatTimeRemainingHtml(endTime) {
 /** Two-line timer text for a single DOM node (duration + UK/local). */
 export function formatLiveCountdownLines(label, ms, targetInstant, options = {}) {
   const countUp = options.countUp === true;
+  const frozen = options.frozen === true;
   const duration =
     countUp || ms > 0 ? `${label}: ${formatDurationMs(ms)}` : label;
   let subline = "";
-  if (isValidInstant(targetInstant)) {
+  if (frozen && isValidInstant(options.finishInstant)) {
+    subline = formatClosedTimesSubline(options.finishInstant);
+  } else if (isValidInstant(targetInstant)) {
     subline = countUp
       ? formatStartedTimesSubline(targetInstant)
       : formatTargetTimesSubline(targetInstant);

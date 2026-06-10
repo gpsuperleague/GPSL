@@ -437,7 +437,13 @@ If a draft ran without `draft_random_finish_time` set, run [`repair_draft_random
 
 The view uses `security_invoker = false` so owners can read window/draft flags without seeing `draft_random_finish_time` on the base table.
 
-After applying, owners must use the view in the app (already wired in `draft_engine.js`, `global.js`, GPDB, draft pages). **Admin** (`admin.html`) still reads/writes the full `global_settings` row via RLS + Edge Function.
+After bidding closes, the UI can show **when** the random window ended (without exposing the time beforehand). Run once:
+
+[`patches/draft_random_finish_revealed.sql`](./patches/draft_random_finish_revealed.sql)
+
+Adds `draft_random_finish_revealed` to `global_settings_public` (populated only when `now() >= draft_random_finish_time`). Re-run [`repair_global_settings_public.sql`](./repair_global_settings_public.sql) if finance patches recreated the view without this column.
+
+After applying, owners must use the view in the app (already wired in `draft_engine.js`, `global.js`, GPDB, MGDB, draft pages). **Admin** (`admin.html`) still reads/writes the full `global_settings` row via RLS + Edge Function.
 
 If admin shows the transfer window **open** but GPDB/club pages show **Window Closed** for everyone, re-run this script in the SQL Editor (view was missing `security_invoker = false`).
 

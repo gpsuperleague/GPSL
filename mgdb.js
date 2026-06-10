@@ -1,5 +1,15 @@
-import { supabase, initGlobal, getManagerDraftEnabled, getUKNow } from "./global.js";
-import { isManagerGpdbFreeAgentOfferAllowed } from "./draft_timeline.js";
+import {
+  supabase,
+  initGlobal,
+  getManagerDraftEnabled,
+  getUKNow,
+  refreshDraftBiddingOpen,
+  getDraftCountdownOptions,
+} from "./global.js";
+import {
+  isManagerGpdbFreeAgentOfferAllowed,
+  getManagerDraftEffectivePhase,
+} from "./draft_timeline.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 
@@ -142,15 +152,23 @@ function renderPage() {
         if (col.key === "draft_action") {
           const isFa =
             !row.contracted_club || String(row.contracted_display) === "FREE AGENT";
+          const phaseOpts = getDraftCountdownOptions();
+          const now = getUKNow();
+          const phase = draftStartTime
+            ? getManagerDraftEffectivePhase(now, draftStartTime, phaseOpts)
+            : "ended";
           const canOpen =
             managerDraftOn &&
             isFa &&
             draftStartTime &&
-            isManagerGpdbFreeAgentOfferAllowed(getUKNow(), draftStartTime);
+            isManagerGpdbFreeAgentOfferAllowed(now, draftStartTime, phaseOpts);
           if (!managerDraftOn) return `<td>—</td>`;
           if (!isFa) return `<td>—</td>`;
           if (canOpen) {
             return `<td><a href="manager_draftauction_manager.html?manager=${row.id}" class="button" style="padding:4px 8px;font-size:11px;">Open</a></td>`;
+          }
+          if (phase === "random_locked") {
+            return `<td style="color:#888;font-size:11px;">Locked</td>`;
           }
           return `<td><a href="manager_draftauction.html" style="color:#ff9900;font-size:11px;">Auction</a></td>`;
         }
@@ -319,4 +337,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   buildTableHead();
   await loadManagers();
+
+  if (managerDraftOn && draftStartTime) {
+    const pollDraftState = async () => {
+      await refreshDraftBiddingOpen();
+      renderPage();
+    };
+    setInterval(pollDraftState, 1500);
+  }
 });

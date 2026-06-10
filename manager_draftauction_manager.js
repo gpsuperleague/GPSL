@@ -3,7 +3,7 @@ import {
   buildNav,
   getUKNow,
   refreshDraftBiddingOpen,
-  getDraftBiddingOpen,
+  getDraftCountdownOptions,
 } from "./global.js";
 import {
   supabase,
@@ -48,8 +48,7 @@ async function updateCountdown() {
     await refreshDraftBiddingOpen();
   }
   const nowUK = getUKNow();
-  const open = getDraftBiddingOpen();
-  const phaseOpts = open === null ? {} : { biddingOpen: open };
+  const phaseOpts = getDraftCountdownOptions();
   const tick = getManagerDraftCountdownTick(
     nowUK,
     draftAuctionStartTime,
@@ -72,7 +71,11 @@ async function updateCountdown() {
     tick.label,
     tick.ms,
     tick.target,
-    { countUp: tick.countUp }
+    {
+      countUp: tick.countUp,
+      frozen: tick.frozen,
+      finishInstant: tick.finishInstant,
+    }
   );
   if (el) el.textContent = duration;
   if (sub) {

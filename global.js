@@ -44,12 +44,18 @@ let draftRandomStart = null;  // Day 2 @ 18:50 UK
 let draftPublicEnd = null;    // Latest possible end (18:59:59 day 2) — not secret finish
 let draftBiddingOpen = null;  // from global_settings_public.draft_bidding_open (secret finish)
 let draftRandomLockedMs = null; // frozen count-up offset when secret finish fires
+let draftRandomFinishRevealed = null; // exposed only after now() >= secret finish
 
 // Countdown interval
 let __draftCountdownInterval = null;
 
 export function getDraftBiddingOpen() {
   return draftBiddingOpen;
+}
+
+/** Countdown tick options (bidding open, frozen random-window ms, revealed finish). */
+export function getDraftCountdownOptions() {
+  return draftCountdownOptions();
 }
 
 export function getManagerDraftEnabled() {
@@ -66,11 +72,40 @@ export function isDraftScheduleExpired(draftAuctionStartTime = draftStart) {
   return getDraftPhaseFromStart(getUKNow(), draftAuctionStartTime) === "ended";
 }
 
+function syncDraftRandomLockFromRevealedFinish() {
+  if (!draftRandomFinishRevealed || !isValidDate(draftStart)) {
+    return;
+  }
+  const finish = new Date(draftRandomFinishRevealed);
+  if (!isValidDate(finish)) return;
+  const timeline = getDraftTimelineFromStart(draftStart);
+  if (!timeline) return;
+  draftRandomLockedMs = Math.max(0, finish.getTime() - timeline.randomStart.getTime());
+}
+
+function applyDraftRandomFinishRevealed(data) {
+  const raw = data?.draft_random_finish_revealed;
+  if (raw) {
+    draftRandomFinishRevealed = raw;
+    if (draftBiddingOpen === false) {
+      syncDraftRandomLockFromRevealedFinish();
+    }
+  } else if (draftBiddingOpen === true) {
+    draftRandomFinishRevealed = null;
+  }
+}
+
 function draftCountdownOptions() {
   const opts =
     draftBiddingOpen === null ? {} : { biddingOpen: draftBiddingOpen };
   if (draftRandomLockedMs != null) {
     opts.frozenMs = draftRandomLockedMs;
+  }
+  if (draftRandomFinishRevealed) {
+    const finish = new Date(draftRandomFinishRevealed);
+    if (isValidDate(finish)) {
+      opts.finishInstant = finish;
+    }
   }
   return opts;
 }
@@ -348,45 +383,45 @@ export async function refreshDraftBiddingOpen() {
   if (!draftEnabled && !managerDraftEnabled) {
     draftBiddingOpen = false;
     draftRandomLockedMs = null;
+    draftRandomFinishRevealed = null;
     return;
   }
   const wasOpen = draftBiddingOpen === true;
   let data = null;
   const full = await queryGlobalSettingsPublic(
-    "draft_bidding_open, manager_draft_bidding_open"
+    "draft_bidding_open, manager_draft_bidding_open, draft_random_finish_revealed"
   );
   if (!full.error) {
     data = full.data;
   } else {
-    const fallback = await queryGlobalSettingsPublic("draft_bidding_open");
+    const fallback = await queryGlobalSettingsPublic(
+      "draft_bidding_open, draft_random_finish_revealed"
+    );
     if (fallback.error) {
-      console.warn(
-        "refreshDraftBiddingOpen failed — run repair_global_settings_public.sql",
-        fallback.error
-      );
-      return;
+      const legacy = await queryGlobalSettingsPublic("draft_bidding_open");
+      if (legacy.error) {
+        console.warn(
+          "refreshDraftBiddingOpen failed — run repair_global_settings_public.sql",
+          legacy.error
+        );
+        return;
+      }
+      data = legacy.data;
+    } else {
+      data = fallback.data;
     }
-    data = fallback.data;
   }
 
-  let nowOpen = null;
-  if (draftEnabled && managerDraftEnabled) {
-    nowOpen =
-      data?.draft_bidding_open === true ||
-      data?.manager_draft_bidding_open === true;
-  } else if (draftEnabled) {
-    nowOpen =
-      data && "draft_bidding_open" in data
-        ? data.draft_bidding_open === true
-        : null;
-  } else {
-    nowOpen =
-      data && "manager_draft_bidding_open" in data
-        ? data.manager_draft_bidding_open === true
-        : data?.draft_bidding_open === true;
-  }
+  applyDraftBiddingOpenFromSettings(data);
+  applyDraftRandomFinishRevealed(data);
+  const nowOpen = draftBiddingOpen;
 
-  if (wasOpen && nowOpen === false && isValidDate(draftStart)) {
+  if (
+    draftRandomFinishRevealed == null &&
+    wasOpen &&
+    nowOpen === false &&
+    isValidDate(draftStart)
+  ) {
     const timeline = getDraftTimelineFromStart(draftStart);
     if (timeline && getUKNow() >= timeline.randomStart) {
       draftRandomLockedMs = Math.max(
@@ -397,9 +432,8 @@ export async function refreshDraftBiddingOpen() {
   }
   if (nowOpen === true) {
     draftRandomLockedMs = null;
+    draftRandomFinishRevealed = null;
   }
-
-  draftBiddingOpen = nowOpen;
 }
 
 export function startDraftCountdown(onTick) {
@@ -452,7 +486,8 @@ export function wireDraftCountdownUI() {
 
   if (container) container.style.display = "";
 
-  startDraftCountdown(({ phase, ms, label, target, countUp, frozen }) => {
+  startDraftCountdown((tick) => {
+    const { phase, ms, label, target, countUp, frozen, finishInstant } = tick;
     if (phase === "ended") {
       el.textContent = label;
       if (localEl) {
@@ -465,6 +500,7 @@ export function wireDraftCountdownUI() {
     const { duration, subline } = formatLiveCountdownLines(label, ms, target, {
       countUp,
       frozen,
+      finishInstant,
     });
     el.textContent = duration;
     if (localEl) {
@@ -518,6 +554,7 @@ function applyDraftBiddingOpenFromSettings(data) {
 export async function loadGlobalSettings() {
   let data = null;
   const selects = [
+    "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, draft_auction_start_time, draft_bidding_open, manager_draft_bidding_open, draft_random_finish_revealed",
     "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, draft_auction_start_time, draft_bidding_open, manager_draft_bidding_open",
     "transfer_window_open, draft_auction_enabled, draft_auction_start_time, draft_bidding_open",
     "transfer_window_open, draft_auction_enabled, draft_auction_start_time",
@@ -549,7 +586,14 @@ export async function loadGlobalSettings() {
   draftRandomStart = timeline?.randomStart ?? null;
   draftPublicEnd = timeline?.publicEnd ?? null;
 
-  if (isDraftCountdownActive() && draftBiddingOpen === false && isValidDate(draftStart)) {
+  applyDraftRandomFinishRevealed(data);
+
+  if (
+    draftRandomFinishRevealed == null &&
+    isDraftCountdownActive() &&
+    draftBiddingOpen === false &&
+    isValidDate(draftStart)
+  ) {
     const phase = getDraftPhaseFromStart(getUKNow(), draftStart);
     if (
       timeline &&
