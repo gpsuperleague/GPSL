@@ -253,6 +253,8 @@ Then in **GPSL Admin → Owner Administration → Link existing login to club**,
 
 **Change owner club**: [`patches/owner_change_club.sql`](./patches/owner_change_club.sql) (after detach patch) — move an active owner to another club; vacates old club + releases its nation.
 
+**All-time WC points** (national team performance): [`patches/owner_ranking_wc_points.sql`](./patches/owner_ranking_wc_points.sql) — adds World Cup tiers to `competition_owner_ranking_alltime_public` (not the rolling 4-season draft ranking).
+
 ## Wage % of market value (admin)
 
 Run once:

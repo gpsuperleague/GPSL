@@ -33,6 +33,15 @@ function renderBreakdown(rows) {
     .join(" · ");
 }
 
+function renderWcBreakdown(rows) {
+  if (!rows?.length) return '<span class="empty">—</span>';
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.length) return '<span class="empty">—</span>';
+  return list
+    .map((w) => `${w.cycle_label || "WC"} ${w.nation_code || ""}: ${fmtPts(w.points)}`)
+    .join(" · ");
+}
+
 function tableHtml(headers, bodyRows) {
   if (!bodyRows.length) {
     return '<p class="empty">No ranking data yet. Admin archives a season to compute points.</p>';
@@ -88,13 +97,16 @@ async function loadAllTime() {
     <tr>
       <td class="num">${r.rank_position}</td>
       <td>${r.owner_name}</td>
+      <td class="num">${fmtPts(r.club_points)}</td>
+      <td class="num">${fmtPts(r.wc_points)}</td>
       <td class="num"><b>${fmtPts(r.total_points)}</b></td>
       <td class="num">${r.seasons_count}</td>
+      <td class="breakdown">${renderWcBreakdown(r.wc_breakdown)}</td>
       <td>${r.first_season_label || "—"} – ${r.last_season_label || "—"}</td>
     </tr>`
   );
   return tableHtml(
-    ["#", "Owner", "Total points", "Seasons", "Active"],
+    ["#", "Owner", "Club", "World Cup", "Total", "Seasons", "WC results", "Active"],
     rows
   );
 }

@@ -472,6 +472,8 @@ LEFT JOIN totals t ON t.club_short_name = c."ShortName"
 WHERE c.owner_id IS NOT NULL
 ORDER BY rank_position;
 
+-- All-time includes club + WC points — deploy patches/owner_ranking_wc_points.sql after this file.
+
 DROP VIEW IF EXISTS public.competition_owner_ranking_alltime_public;
 CREATE VIEW public.competition_owner_ranking_alltime_public
 WITH (security_invoker = false)
@@ -482,10 +484,13 @@ SELECT
   )::integer AS rank_position,
   r.owner_id,
   public.competition_owner_display_name(r.owner_id) AS owner_name,
+  round(sum(r.season_total), 2) AS club_points,
+  0::numeric AS wc_points,
   round(sum(r.season_total), 2) AS total_points,
   count(DISTINCT r.season_id)::integer AS seasons_count,
   min(r.season_label) AS first_season_label,
-  max(r.season_label) AS last_season_label
+  max(r.season_label) AS last_season_label,
+  '[]'::jsonb AS wc_breakdown
 FROM public.competition_owner_season_ranking r
 WHERE r.owner_id IS NOT NULL
 GROUP BY r.owner_id
