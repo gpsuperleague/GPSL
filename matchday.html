@@ -83,10 +83,15 @@
     table.stats-table thead tr:first-child th { top:0; }
     table.stats-table thead tr:nth-child(2) th { top:26px; }
     table.stats-table td.name { text-align:left; color:#ddd; }
-    table.stats-table input.stat-combo {
+    table.stats-table input.stat-combo,
+    table.stats-table select.stat-count-select {
       width:48px; margin:0; padding:4px; text-align:center;
       background:#222; border:1px solid #444; color:#ddd;
       border-radius:4px; font-size:11px; box-sizing:border-box;
+    }
+    table.stats-table select.stat-count-select {
+      cursor:pointer;
+      appearance:auto;
     }
     table.stats-table input.stat-rating-combo { width:52px; }
     table.stats-table input[type="checkbox"] { transform:scale(1.1); }
@@ -235,8 +240,6 @@
             <tbody id="playerStatsBody"></tbody>
           </table>
         </div>
-        <datalist id="statGoalsList"></datalist>
-        <datalist id="statAssistsList"></datalist>
         <datalist id="statRatingList"></datalist>
       </div>
 

@@ -472,19 +472,26 @@ let statDatalistsReady = false;
 
 function ensureStatDatalists() {
   if (statDatalistsReady) return;
-  const goalsList = document.getElementById("statGoalsList");
-  const assistsList = document.getElementById("statAssistsList");
   const ratingList = document.getElementById("statRatingList");
-  if (!goalsList || !assistsList || !ratingList) return;
+  if (!ratingList) return;
 
-  for (let i = 0; i <= STAT_COUNT_MAX; i++) {
-    goalsList.appendChild(new Option(String(i), String(i)));
-    assistsList.appendChild(new Option(String(i), String(i)));
-  }
   for (let i = 1; i <= 100; i++) {
     ratingList.appendChild(new Option((i / 10).toFixed(1), (i / 10).toFixed(1)));
   }
   statDatalistsReady = true;
+}
+
+function statCountSelectHtml(className, ariaLabel, selected = 0) {
+  const sel = Math.min(
+    STAT_COUNT_MAX,
+    Math.max(0, Number(selected) || 0)
+  );
+  let html = `<select class="${className} stat-count-select" aria-label="${ariaLabel}">`;
+  for (let i = 0; i <= STAT_COUNT_MAX; i++) {
+    html += `<option value="${i}"${i === sel ? " selected" : ""}>${i}</option>`;
+  }
+  html += "</select>";
+  return html;
 }
 
 function normalizeStatCountInput(raw, max = STAT_COUNT_MAX) {
@@ -525,19 +532,9 @@ function wireSelectAllOnFocus(input) {
   };
 
   input.addEventListener("focus", selectAll);
+  input.addEventListener("click", selectAll);
   input.addEventListener("mouseup", (e) => {
     if (document.activeElement === input) e.preventDefault();
-  });
-}
-
-function wireStatCountInput(input) {
-  if (!input) return;
-  wireSelectAllOnFocus(input);
-  input.addEventListener("blur", () => {
-    input.value = String(normalizeStatCountInput(input.value));
-  });
-  input.addEventListener("paste", () => {
-    requestAnimationFrame(() => input.dispatchEvent(new Event("blur")));
   });
 }
 
@@ -935,14 +932,12 @@ function renderPlayerStatsTable() {
       <td class="name">${p.Name} <span style="color:#666;">${p.Position || ""}</span>${benchTag}</td>
       <td><input type="checkbox" class="stat-started" aria-label="Started"></td>
       <td><input type="checkbox" class="stat-subbed" aria-label="Subbed on"></td>
-      <td><input type="text" class="stat-goals stat-combo" list="statGoalsList" inputmode="numeric" autocomplete="off" value="0" aria-label="Goals"></td>
-      <td><input type="text" class="stat-assists stat-combo" list="statAssistsList" inputmode="numeric" autocomplete="off" value="0" aria-label="Assists"></td>
+      <td>${statCountSelectHtml("stat-goals", "Goals", 0)}</td>
+      <td>${statCountSelectHtml("stat-assists", "Assists", 0)}</td>
       <td><input type="text" class="stat-rating stat-combo stat-rating-combo" list="statRatingList" inputmode="decimal" autocomplete="off" value="" placeholder="6.0" aria-label="Rating"></td>
       <td><input type="radio" name="potm" class="stat-potm" value="${id}"></td>
     `;
     wirePlayedCheckboxes(tr);
-    wireStatCountInput(tr.querySelector(".stat-goals"));
-    wireStatCountInput(tr.querySelector(".stat-assists"));
     wireRatingInput(tr.querySelector(".stat-rating"));
     tbody.appendChild(tr);
   }
