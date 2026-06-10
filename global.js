@@ -855,7 +855,7 @@ export async function buildNav() {
   let firstActiveNavSectionId;
   let normalizeNavPath;
   try {
-    const navMod = await import("./nav_config.js?v=20250602-mgr-draft");
+    const navMod = await import("./nav_config.js?v=20250602-mynation");
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;
@@ -895,6 +895,14 @@ export async function buildNav() {
   }
 
   const specialAuction = await fetchActiveSpecialAuctionNavItem();
+
+  let myNation = null;
+  try {
+    const intl = await import("./international.js");
+    myNation = await intl.loadMyNation(supabase);
+  } catch (intlErr) {
+    console.warn("Nav my nation skipped:", intlErr);
+  }
 
   let calendarStatus = null;
   let navMonthLabel = null;
@@ -970,6 +978,32 @@ export async function buildNav() {
   html += `<div class="gpsl-nav-groups">`;
 
   const navItemsForSection = (section) => {
+    if (section.id === "mynation") {
+      const items = [
+        { href: "world_cup.html", label: "World Cup", page: "world_cup" },
+      ];
+      if (myNation?.code) {
+        const flagPrefix = myNation.flag_emoji ? `${myNation.flag_emoji} ` : "";
+        items.unshift({
+          href: `national_team.html?nation=${encodeURIComponent(myNation.code)}`,
+          label: `${flagPrefix}${myNation.name}`,
+          page: "national_team",
+        });
+        items.push({
+          href: "nation_select.html",
+          label: "Nation selection",
+          page: "nation_select",
+        });
+      } else {
+        items.unshift({
+          href: "nation_select.html",
+          label: "Choose your nation",
+          page: "nation_select",
+        });
+      }
+      return items;
+    }
+
     const items = (section.items || [])
       .filter((item) => {
         if (item.requiresDraft && !draftEnabled) return false;
