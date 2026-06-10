@@ -62,7 +62,21 @@
         <div id="unarchiveOwnerStatus" class="status-line"></div>
       </div>
       <div class="card">
+        <h2>Change owner club</h2>
+        <p class="note">
+          Move an owner who <b>already has a club</b> to a different one. Old club is vacated and its nation released.
+          The new club keeps its existing nation assignment. History is retained.
+        </p>
+        <div class="row">
+          <div><input id="changeOwnerEmail" placeholder="Owner email"></div>
+          <div><input id="changeOwnerClub" placeholder="New club ShortName"></div>
+        </div>
+        <button id="changeOwnerBtn" class="button">Change club</button>
+        <div id="changeOwnerStatus" class="status-line"></div>
+      </div>
+      <div class="card">
         <h2>Link existing login to club</h2>
+        <p class="note">For owners on break with no club, or first-time assignment to a vacant club.</p>
         <div class="row">
           <div><input id="linkOwnerEmail" placeholder="Existing owner email"></div>
           <div><input id="linkOwnerClub" placeholder="Club ShortName"></div>

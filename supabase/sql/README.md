@@ -251,6 +251,8 @@ Then in **GPSL Admin → Owner Administration → Link existing login to club**,
 
 **Remove / archive owner** (short break vs left GPSL): [`patches/owner_detach_archive.sql`](./patches/owner_detach_archive.sql) — **GPSL Admin → Owner administration**. Detaches club + nation; keeps `competition_owner_season_ranking` history. Archived owners must be **unarchived** before **Link existing login to club**.
 
+**Change owner club**: [`patches/owner_change_club.sql`](./patches/owner_change_club.sql) (after detach patch) — move an active owner to another club; vacates old club + releases its nation.
+
 ## Wage % of market value (admin)
 
 Run once:

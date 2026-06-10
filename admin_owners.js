@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadOwnerList();
 
   document.getElementById("addOwnerBtn").onclick = addOwner;
+  document.getElementById("changeOwnerBtn").onclick = changeOwnerClub;
   document.getElementById("linkOwnerBtn").onclick = linkOwner;
   document.getElementById("breakOwnerBtn").onclick = removeFromClub;
   document.getElementById("archiveOwnerBtn").onclick = archiveOwner;
@@ -152,6 +153,36 @@ async function unarchiveOwner() {
     `✅ ${data?.email || email} unarchived — link a club when ready`,
     true
   );
+  await loadOwnerList();
+}
+
+async function changeOwnerClub() {
+  const email = document.getElementById("changeOwnerEmail")?.value?.trim();
+  const club = document.getElementById("changeOwnerClub")?.value?.trim();
+  if (!email || !club) {
+    setStatus("changeOwnerStatus", "Enter email and new club ShortName.", false);
+    return;
+  }
+  if (
+    !confirm(
+      `Move ${email} to ${club.toUpperCase()}?\n\nTheir current club will be vacated (nation released). If ${club.toUpperCase()} has another owner, that owner goes on break.`
+    )
+  ) {
+    return;
+  }
+  setStatus("changeOwnerStatus", "Changing…");
+  const { data, error } = await supabase.rpc("admin_owner_change_club", {
+    p_owner_email: email,
+    p_new_club_short_name: club,
+  });
+  if (error) {
+    setStatus("changeOwnerStatus", "❌ " + error.message, false);
+    return;
+  }
+  let msg = `✅ ${data?.from_club_short_name || "?"} → ${data?.to_club_name || data?.to_club_short_name || club}`;
+  if (data?.released_nation) msg += ` · released ${data.released_nation} from old club`;
+  if (data?.displaced_owner_email) msg += ` · displaced ${data.displaced_owner_email} (on break)`;
+  setStatus("changeOwnerStatus", msg, true);
   await loadOwnerList();
 }
 
