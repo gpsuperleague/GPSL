@@ -198,25 +198,99 @@ END;
 $function$;
 
 
+-- Settle one manager draft listing (requires managers_system.sql)
+CREATE OR REPLACE FUNCTION public.transferengine_accept_manager_draft_sale(p_listing_id bigint)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_listing public."Manager_Transfer_Listings"%rowtype;
+  v_amount  numeric;
+  v_buyer   text;
+  v_mgr     public."Managers"%rowtype;
+BEGIN
+  SELECT * INTO v_listing
+  FROM public."Manager_Transfer_Listings"
+  WHERE id = p_listing_id
+  FOR UPDATE;
+
+  IF NOT FOUND OR v_listing.listing_type IS DISTINCT FROM 'draft' THEN
+    RETURN;
+  END IF;
+
+  IF v_listing.status NOT IN ('Active', 'Review') THEN
+    RETURN;
+  END IF;
+
+  SELECT b.bid_amount, b.bidder_club_id
+  INTO v_amount, v_buyer
+  FROM public."Manager_Transfer_Bids" b
+  WHERE b.listing_id = v_listing.id
+     OR b.manager_id = v_listing.manager_id
+  ORDER BY b.bid_amount DESC, b.bid_time ASC
+  LIMIT 1;
+
+  IF v_buyer IS NULL OR v_amount IS NULL THEN
+    UPDATE public."Manager_Transfer_Listings"
+    SET status = 'Closed', transfer_completed = false, updated_at = now()
+    WHERE id = v_listing.id;
+    RETURN;
+  END IF;
+
+  SELECT * INTO v_mgr FROM public."Managers" WHERE id = v_listing.manager_id FOR UPDATE;
+
+  IF NOT FOUND OR (v_mgr.contracted_club IS NOT NULL AND btrim(v_mgr.contracted_club) <> '') THEN
+    UPDATE public."Manager_Transfer_Listings"
+    SET status = 'Closed', transfer_completed = false, updated_at = now()
+    WHERE id = v_listing.id;
+    RETURN;
+  END IF;
+
+  UPDATE public."Manager_Transfer_Listings"
+  SET current_highest_bid = v_amount,
+      current_highest_bidder = v_buyer,
+      updated_at = now()
+  WHERE id = v_listing.id;
+
+  BEGIN
+    PERFORM public.manager_assign_to_club(v_listing.manager_id, v_buyer, 2, v_amount, true);
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Manager draft listing % assign failed: %', p_listing_id, SQLERRM;
+    RETURN;
+  END;
+
+  UPDATE public."Manager_Transfer_Listings"
+  SET status = 'Closed', transfer_completed = true, updated_at = now()
+  WHERE id = v_listing.id;
+END;
+$function$;
+
+
 -- After random finish AND today's transfer-list evening is clear
 CREATE OR REPLACE FUNCTION public.transferengine_settle_draft_auctions()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $function$
 DECLARE
   v_settings record;
-  v_listing  "Player_Transfer_Listings"%rowtype;
+  v_listing  public."Player_Transfer_Listings"%rowtype;
+  v_mgr_listing public."Manager_Transfer_Listings"%rowtype;
   v_now      timestamptz := now();
 BEGIN
   SELECT
     draft_auction_enabled,
+    manager_draft_auction_enabled,
     draft_random_finish_time
   INTO v_settings
-  FROM global_settings
+  FROM public.global_settings
   WHERE id = 1;
 
-  IF NOT COALESCE(v_settings.draft_auction_enabled, false) THEN
+  IF NOT COALESCE(v_settings.draft_auction_enabled, false)
+     AND NOT COALESCE(v_settings.manager_draft_auction_enabled, false) THEN
     RETURN;
   END IF;
 
@@ -237,16 +311,29 @@ BEGIN
     RETURN;
   END IF;
 
-  FOR v_listing IN
-    SELECT *
-    FROM "Player_Transfer_Listings"
-    WHERE listing_type = 'draft'
-      AND status = 'Active'
-  LOOP
-    PERFORM transferengine_accept_draft_sale(v_listing.id);
-  END LOOP;
+  IF COALESCE(v_settings.draft_auction_enabled, false) THEN
+    FOR v_listing IN
+      SELECT *
+      FROM public."Player_Transfer_Listings"
+      WHERE listing_type = 'draft' AND status = 'Active'
+    LOOP
+      PERFORM public.transferengine_accept_draft_sale(v_listing.id);
+    END LOOP;
+  END IF;
+
+  IF COALESCE(v_settings.manager_draft_auction_enabled, false) THEN
+    FOR v_mgr_listing IN
+      SELECT *
+      FROM public."Manager_Transfer_Listings"
+      WHERE listing_type = 'draft' AND status = 'Active'
+    LOOP
+      PERFORM public.transferengine_accept_manager_draft_sale(v_mgr_listing.id);
+    END LOOP;
+  END IF;
 END;
 $function$;
+
+GRANT EXECUTE ON FUNCTION public.transferengine_accept_manager_draft_sale(bigint) TO authenticated;
 
 
 -- Each cron tick: transfer list first; draft only after random finish (e.g. 6:57pm)

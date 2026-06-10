@@ -13,11 +13,14 @@ DECLARE
   v_stuck int;
   v_draft_before int;
   v_draft_after int;
+  v_mgr_draft_before int;
+  v_mgr_draft_after int;
   v_blocked boolean;
   v_finish_passed boolean;
 BEGIN
   SELECT
     draft_auction_enabled,
+    manager_draft_auction_enabled,
     draft_random_finish_time
   INTO v_settings
   FROM global_settings
@@ -45,6 +48,12 @@ BEGIN
   WHERE l.listing_type = 'draft'
     AND l.status = 'Active';
 
+  SELECT count(*)::int
+  INTO v_mgr_draft_before
+  FROM public."Manager_Transfer_Listings" l
+  WHERE l.listing_type = 'draft'
+    AND l.status = 'Active';
+
   PERFORM public.transferengine_run();
 
   SELECT count(*)::int
@@ -53,11 +62,18 @@ BEGIN
   WHERE l.listing_type = 'draft'
     AND l.status = 'Active';
 
+  SELECT count(*)::int
+  INTO v_mgr_draft_after
+  FROM public."Manager_Transfer_Listings" l
+  WHERE l.listing_type = 'draft'
+    AND l.status = 'Active';
+
   RETURN jsonb_build_object(
     'ok', true,
     'note', 'transferengine_run() returns void — blank in SQL Editor is normal',
     'ran_at', now(),
     'draft_auction_enabled', COALESCE(v_settings.draft_auction_enabled, false),
+    'manager_draft_auction_enabled', COALESCE(v_settings.manager_draft_auction_enabled, false),
     'draft_random_finish_time', v_settings.draft_random_finish_time,
     'secret_finish_passed', v_finish_passed,
     'blocked_by_7pm_transfer_list', v_blocked,
@@ -65,11 +81,23 @@ BEGIN
     'active_draft_before', v_draft_before,
     'active_draft_after', v_draft_after,
     'draft_settled_count', v_draft_before - v_draft_after,
+    'active_manager_draft_before', v_mgr_draft_before,
+    'active_manager_draft_after', v_mgr_draft_after,
+    'manager_draft_settled_count', v_mgr_draft_before - v_mgr_draft_after,
     'draft_by_status', (
       SELECT coalesce(jsonb_object_agg(status, cnt), '{}'::jsonb)
       FROM (
         SELECT l.status, count(*)::int AS cnt
         FROM "Player_Transfer_Listings" l
+        WHERE l.listing_type = 'draft'
+        GROUP BY l.status
+      ) s
+    ),
+    'manager_draft_by_status', (
+      SELECT coalesce(jsonb_object_agg(status, cnt), '{}'::jsonb)
+      FROM (
+        SELECT l.status, count(*)::int AS cnt
+        FROM public."Manager_Transfer_Listings" l
         WHERE l.listing_type = 'draft'
         GROUP BY l.status
       ) s

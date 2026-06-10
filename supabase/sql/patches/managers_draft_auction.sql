@@ -154,7 +154,12 @@ BEGIN
       updated_at = now()
   WHERE id = v_listing.id;
 
-  PERFORM public.manager_assign_to_club(v_listing.manager_id, v_buyer, 2, v_amount, true);
+  BEGIN
+    PERFORM public.manager_assign_to_club(v_listing.manager_id, v_buyer, 2, v_amount, true);
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'Manager draft listing % assign failed: %', p_listing_id, SQLERRM;
+    RETURN;
+  END;
 
   UPDATE public."Manager_Transfer_Listings"
   SET status = 'Closed', transfer_completed = true, updated_at = now()
@@ -162,69 +167,7 @@ BEGIN
 END;
 $function$;
 
--- Settle player + manager drafts when either auction type is enabled
-CREATE OR REPLACE FUNCTION public.transferengine_settle_draft_auctions()
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_settings record;
-  v_listing  public."Player_Transfer_Listings"%rowtype;
-  v_mgr_listing public."Manager_Transfer_Listings"%rowtype;
-  v_now      timestamptz := now();
-BEGIN
-  SELECT
-    draft_auction_enabled,
-    manager_draft_auction_enabled,
-    draft_random_finish_time
-  INTO v_settings
-  FROM public.global_settings
-  WHERE id = 1;
-
-  IF NOT COALESCE(v_settings.draft_auction_enabled, false)
-     AND NOT COALESCE(v_settings.manager_draft_auction_enabled, false) THEN
-    RETURN;
-  END IF;
-
-  IF v_settings.draft_random_finish_time IS NULL THEN
-    RETURN;
-  END IF;
-
-  IF v_now < v_settings.draft_random_finish_time THEN
-    RETURN;
-  END IF;
-
-  PERFORM public.transferengine_process_standard_listings(v_now);
-
-  IF public.transferengine_standard_listings_block_draft_settlement(
-    v_now,
-    v_settings.draft_random_finish_time
-  ) THEN
-    RETURN;
-  END IF;
-
-  IF COALESCE(v_settings.draft_auction_enabled, false) THEN
-    FOR v_listing IN
-      SELECT *
-      FROM public."Player_Transfer_Listings"
-      WHERE listing_type = 'draft' AND status = 'Active'
-    LOOP
-      PERFORM public.transferengine_accept_draft_sale(v_listing.id);
-    END LOOP;
-  END IF;
-
-  IF COALESCE(v_settings.manager_draft_auction_enabled, false) THEN
-    FOR v_mgr_listing IN
-      SELECT *
-      FROM public."Manager_Transfer_Listings"
-      WHERE listing_type = 'draft' AND status = 'Active'
-    LOOP
-      PERFORM public.transferengine_accept_manager_draft_sale(v_mgr_listing.id);
-    END LOOP;
-  END IF;
-END;
-$function$;
+-- Settlement: re-apply transferengine_draft.sql (includes player + manager loops).
+-- This patch only adds bid guard + accept_manager_draft_sale above if missing.
 
 GRANT EXECUTE ON FUNCTION public.transferengine_accept_manager_draft_sale(bigint) TO authenticated;
