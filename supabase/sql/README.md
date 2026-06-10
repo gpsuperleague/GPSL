@@ -249,6 +249,8 @@ Then in **GPSL Admin → Owner Administration → Link existing login to club**,
 
 **Add Owner** (edge function `create-owner`) still creates a **new** auth user and links the club in one step.
 
+**Remove / archive owner** (short break vs left GPSL): [`patches/owner_detach_archive.sql`](./patches/owner_detach_archive.sql) — **GPSL Admin → Owner administration**. Detaches club + nation; keeps `competition_owner_season_ranking` history. Archived owners must be **unarchived** before **Link existing login to club**.
+
 ## Wage % of market value (admin)
 
 Run once:
