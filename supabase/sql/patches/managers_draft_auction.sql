@@ -155,7 +155,14 @@ BEGIN
   WHERE id = v_listing.id;
 
   BEGIN
-    PERFORM public.manager_assign_to_club(v_listing.manager_id, v_buyer, 2, v_amount, true);
+    PERFORM public.manager_assign_to_club(
+      v_listing.manager_id,
+      v_buyer,
+      2,
+      v_amount,
+      true,
+      true
+    );
   EXCEPTION WHEN OTHERS THEN
     RAISE NOTICE 'Manager draft listing % assign failed: %', p_listing_id, SQLERRM;
     RETURN;

@@ -46,7 +46,9 @@
         <h2>Run transfer engine</h2>
         <p class="note">Processes stuck listings and draft threads. Run <code>admin_transferengine_run.sql</code> once if the RPC is missing.</p>
         <button class="button" id="runTransferEngineBtn" style="background:#226622;">Run transfer engine</button>
+        <button class="button" id="settleManagerDraftsBtn" style="background:#335588;margin-left:8px;">Settle manager drafts now</button>
         <div id="transferEngineStatus" class="status-line"></div>
+        <p class="note">If manager auctions are stuck after the random finish, run <code>patches/manager_draft_settlement_fix.sql</code> once, then <b>Settle manager drafts now</b>.</p>
       </div>
     </div>
   </div>

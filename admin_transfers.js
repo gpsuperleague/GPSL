@@ -12,6 +12,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadSettings();
   document.getElementById("saveSettingsBtn").onclick = saveSettings;
   document.getElementById("runTransferEngineBtn").onclick = runTransferEngine;
+  document.getElementById("settleManagerDraftsBtn").onclick = settleManagerDraftsNow;
 });
 
 async function loadSettings() {
@@ -141,15 +142,54 @@ async function saveSettings() {
   await loadSettings();
 }
 
+async function settleManagerDraftsNow() {
+  setStatus("transferEngineStatus", "Settling manager drafts…");
+  try {
+    const { data, error } = await supabase.rpc("admin_settle_manager_drafts_now");
+    if (error) throw error;
+    const settled = data?.manager_draft_settled_count ?? 0;
+    const left = data?.active_manager_draft_after ?? 0;
+    const still = data?.still_active || [];
+    let extra = "";
+    if (still.length) {
+      extra =
+        " Still active: " +
+        still
+          .map(
+            (r) =>
+              `${r.manager_name || r.manager_id} (${r.high_bidder || "no bidder"})`
+          )
+          .join("; ");
+    }
+    setStatus(
+      "transferEngineStatus",
+      `✅ Manager drafts settled: ${settled}. Still active: ${left}.${extra}`,
+      left === 0
+    );
+  } catch (err) {
+    setStatus(
+      "transferEngineStatus",
+      "❌ " +
+        (err.message || "Failed") +
+        " — run patches/manager_draft_settlement_fix.sql in Supabase.",
+      false
+    );
+  }
+}
+
 async function runTransferEngine() {
   setStatus("transferEngineStatus", "Running…");
   try {
     const { data, error } = await supabase.rpc("admin_transferengine_run");
     if (error) throw error;
+    const mgrSettled = data?.manager_draft_settled_count ?? 0;
+    const mgrLeft = data?.active_manager_draft_after ?? "?";
     setStatus(
       "transferEngineStatus",
       `✅ Ran at ${new Date(data?.ran_at || Date.now()).toLocaleString("en-GB")}. ` +
-        `Stuck standard: ${data?.stuck_standard_before ?? "?"}. Active drafts: ${data?.active_draft_before ?? "?"}.`,
+        `Stuck standard: ${data?.stuck_standard_before ?? "?"}. ` +
+        `Player drafts left: ${data?.active_draft_after ?? "?"}. ` +
+        `Manager drafts settled: ${mgrSettled}, still active: ${mgrLeft}.`,
       true
     );
   } catch (err) {

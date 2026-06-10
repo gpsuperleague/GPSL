@@ -28,8 +28,10 @@ SELECT
       g.draft_random_finish_time
     ) THEN 'waiting on 7pm player transfer list (or extension)'
     WHEN to_regprocedure('public.transferengine_accept_manager_draft_sale(bigint)') IS NULL
-      THEN 'run transferengine_draft.sql or patches/managers_draft_auction.sql'
-    ELSE 'ready — run transferengine_run() or Admin → Run Transfer Engine Now'
+      THEN 'run transferengine_draft.sql or patches/manager_draft_settlement_fix.sql'
+    WHEN to_regprocedure('public.admin_settle_manager_drafts_now()') IS NULL
+      THEN 'run patches/manager_draft_settlement_fix.sql'
+    ELSE 'ready — SELECT admin_settle_manager_drafts_now(); or Admin → Settle manager drafts now'
   END AS manager_settlement_status
 FROM public.global_settings g
 WHERE g.id = 1;
