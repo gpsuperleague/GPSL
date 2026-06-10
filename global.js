@@ -13,7 +13,9 @@ import {
 import {
   formatDurationMs,
   formatLiveCountdownLines,
+  formatDraftConclusionLines,
   formatTargetTimesSubline,
+  isValidInstant,
 } from "./countdown_display.js";
 import { countUnreadInbox } from "./competition_inbox.js";
 import { initDashboardPinUi } from "./dashboard_pin.js";
@@ -508,10 +510,19 @@ export function wireDraftCountdownUI() {
   startDraftCountdown((tick) => {
     const { phase, ms, label, target, countUp, frozen, finishInstant } = tick;
     if (phase === "ended") {
-      el.textContent = label;
-      if (localEl) {
-        localEl.textContent =
-          "Previous auction window finished. Admin → Transfer window → Save settings to schedule the next 7pm UK start.";
+      const finish =
+        finishInstant instanceof Date ? finishInstant : finishInstant ? new Date(finishInstant) : null;
+      if (isValidInstant(finish)) {
+        const kind = shouldUseManagerDraftCountdown() ? "manager" : "draft";
+        const { duration, subline } = formatDraftConclusionLines(finish, kind);
+        el.textContent = duration;
+        if (localEl) localEl.textContent = subline;
+      } else {
+        el.textContent = label;
+        if (localEl) {
+          localEl.textContent =
+            "Previous auction window finished. Admin → Transfer window → Save settings to schedule the next 7pm UK start.";
+        }
       }
       return;
     }

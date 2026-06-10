@@ -62,6 +62,18 @@ export function formatClosedTimesSubline(closedInstant) {
   return `Bidding closed ${formatInstantUK(closedInstant)}\n${formatInstantLocal(closedInstant)}`;
 }
 
+/** Conclusion banner once the draft window has fully ended. */
+export function formatDraftConclusionLines(finishInstant, kind = "draft") {
+  if (!isValidInstant(finishInstant)) {
+    return { duration: "", subline: "" };
+  }
+  const noun = kind === "manager" ? "Manager draft" : "Draft auction";
+  return {
+    duration: `${noun} concluded — random finish ${formatInstantUK(finishInstant)}`,
+    subline: formatClosedTimesSubline(finishInstant),
+  };
+}
+
 /** HTML: UK and local each on their own line inside .countdown-times */
 export function formatTargetTimesHtml(targetInstant) {
   if (!isValidInstant(targetInstant)) return "";

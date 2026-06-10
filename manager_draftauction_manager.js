@@ -21,7 +21,9 @@ import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 import {
   formatLiveCountdownLines,
+  formatDraftConclusionLines,
   formatTargetTimesSubline,
+  isValidInstant,
 } from "./countdown_display.js";
 
 let buyerShortName = null;
@@ -63,8 +65,15 @@ async function updateCountdown() {
   const el = document.getElementById("timeRemaining");
   const sub = document.getElementById("timeRemainingSub");
   if (tick.phase === "ended") {
-    if (el) el.textContent = managerDraftPhaseLabel(tick.phase);
-    if (sub) sub.textContent = "";
+    const finish = tick.finishInstant;
+    if (isValidInstant(finish)) {
+      const { duration, subline } = formatDraftConclusionLines(finish, "manager");
+      if (el) el.textContent = duration;
+      if (sub) sub.textContent = subline;
+    } else {
+      if (el) el.textContent = managerDraftPhaseLabel(tick.phase);
+      if (sub) sub.textContent = "";
+    }
     return;
   }
   const { duration, subline } = formatLiveCountdownLines(

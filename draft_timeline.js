@@ -4,6 +4,15 @@ export function isValidDate(d) {
   return d instanceof Date && !isNaN(d.getTime());
 }
 
+function parseFinishInstant(raw) {
+  if (raw instanceof Date) return isValidDate(raw) ? raw : null;
+  if (raw) {
+    const d = new Date(raw);
+    return isValidDate(d) ? d : null;
+  }
+  return null;
+}
+
 /** Day 1 19:00 → Day 2 18:00 cutoff → 18:50 random window → latest 18:59:59 */
 export function getDraftTimelineFromStart(draftAuctionStartTime) {
   if (!isValidDate(draftAuctionStartTime)) return null;
@@ -96,13 +105,8 @@ export function getDraftCountdownTick(nowUK, draftAuctionStartTime, options = {}
         countUp: true,
       };
     case "random_locked": {
-      const finishInstant =
-        options.finishInstant instanceof Date
-          ? options.finishInstant
-          : options.finishInstant
-            ? new Date(options.finishInstant)
-            : null;
-      const finishMs = isValidDate(finishInstant) ? finishInstant.getTime() : null;
+      const finishInstant = parseFinishInstant(options.finishInstant);
+      const finishMs = finishInstant ? finishInstant.getTime() : null;
       const elapsed =
         options.frozenMs != null
           ? options.frozenMs
@@ -116,11 +120,21 @@ export function getDraftCountdownTick(nowUK, draftAuctionStartTime, options = {}
         target: timeline.randomStart,
         countUp: true,
         frozen: true,
-        finishInstant: isValidDate(finishInstant) ? finishInstant : null,
+        finishInstant,
       };
     }
-    case "ended":
-      return { phase, ms: 0, label: "Draft has ended", target: null, countUp: false };
+    case "ended": {
+      const finishInstant = parseFinishInstant(options.finishInstant);
+      return {
+        phase,
+        ms: 0,
+        label: finishInstant ? "Draft auction concluded" : "Draft has ended",
+        target: null,
+        countUp: false,
+        concluded: Boolean(finishInstant),
+        finishInstant,
+      };
+    }
     default:
       return { phase, ms: 0, label: "Draft disabled", target: null, countUp: false };
   }
@@ -246,13 +260,8 @@ export function getManagerDraftCountdownTick(nowUK, draftAuctionStartTime, optio
         countUp: true,
       };
     case "random_locked": {
-      const finishInstant =
-        options.finishInstant instanceof Date
-          ? options.finishInstant
-          : options.finishInstant
-            ? new Date(options.finishInstant)
-            : null;
-      const finishMs = isValidDate(finishInstant) ? finishInstant.getTime() : null;
+      const finishInstant = parseFinishInstant(options.finishInstant);
+      const finishMs = finishInstant ? finishInstant.getTime() : null;
       const elapsed =
         options.frozenMs != null
           ? options.frozenMs
@@ -266,11 +275,21 @@ export function getManagerDraftCountdownTick(nowUK, draftAuctionStartTime, optio
         target: timeline.randomStart,
         countUp: true,
         frozen: true,
-        finishInstant: isValidDate(finishInstant) ? finishInstant : null,
+        finishInstant,
       };
     }
-    case "ended":
-      return { phase, ms: 0, label: "Manager draft has ended", target: null, countUp: false };
+    case "ended": {
+      const finishInstant = parseFinishInstant(options.finishInstant);
+      return {
+        phase,
+        ms: 0,
+        label: finishInstant ? "Manager draft concluded" : "Manager draft has ended",
+        target: null,
+        countUp: false,
+        concluded: Boolean(finishInstant),
+        finishInstant,
+      };
+    }
     default:
       return { phase, ms: 0, label: "Manager draft disabled", target: null, countUp: false };
   }
