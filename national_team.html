@@ -5,50 +5,104 @@
   <meta charset="UTF-8">
   <title>National Team — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="squad.css">
   <link rel="stylesheet" href="international.css">
   <style>
-    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
-    .page-container { width:95%; max-width:1100px; margin:20px auto 40px; }
-    .panel {
-      background:#1a1a1a; border:1px solid #333; border-radius:8px;
-      padding:20px; margin-bottom:24px;
+    body.squad-page { padding-bottom: 40px; }
+    .nat-hero {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 0 20px 16px;
+      flex-wrap: wrap;
     }
-    h2 { color:#ff9900; font-size:18px; margin:0 0 12px; }
-    a { color:#ff9900; }
-    .empty { color:#888; }
-    .toolbar { margin-bottom:12px; }
-    .toolbar a.button { font-size:13px; margin-right:8px; }
+    .nat-meta { color: #aaa; font-size: 14px; margin-top: 4px; }
+    .nat-squad-summary {
+      margin: 0 20px 16px;
+      padding: 12px 14px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .nat-squad-summary.warn { border-color: #884; color: #fcc; }
+    .nat-toolbar {
+      margin: 0 20px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .nat-toolbar a.button {
+      display: inline-block;
+      padding: 10px 16px;
+      background: #ff9900;
+      color: #111;
+      text-decoration: none;
+      font-weight: bold;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .nat-toolbar a.button:hover { background: #ffaa22; }
+    #squadWrap { margin: 0 20px; }
+    .squad-release-btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      background: #552222;
+      color: #fff;
+      border: 1px solid #773;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .squad-release-btn:hover { background: #773333; }
+    .empty-squad {
+      color: #888;
+      padding: 24px;
+      text-align: center;
+    }
   </style>
 </head>
-<body>
+<body class="squad-page">
   <div id="nav"></div>
-  <div class="page-container">
-    <div class="nat-hero" id="natHero">
-      <span id="natFlag" class="nat-flag nat-flag-lg">🏳️</span>
-      <div>
-        <h1 id="natTitle">National Team</h1>
-        <div id="natMeta" class="nat-meta"></div>
-      </div>
-    </div>
 
-    <div class="toolbar">
-      <a class="button" href="world_cup.html">World Cup</a>
-      <a class="button" href="nation_select.html">Nation selection</a>
-      <a class="button" href="squad.html" id="callUpLink" hidden>Call up from squad</a>
-    </div>
-
-    <div class="panel" id="callUpPanel" hidden>
-      <h2>Call up from your club</h2>
-      <p class="intl-note">Select players from your GPSL squad to add to the national team.</p>
-      <div id="clubPoolTable"></div>
-    </div>
-
-    <div class="panel">
-      <h2>International squad</h2>
-      <p class="intl-note">Players appear here when called up by the national team manager.</p>
-      <div id="squadTable"></div>
+  <div id="headerContainer" class="squad-header">
+    <span id="natFlag" class="nat-flag nat-flag-lg" aria-hidden="true">🏳️</span>
+    <div class="squad-header-titles">
+      <h1 id="natTitle">National Team</h1>
+      <div id="natMeta" class="nat-meta"></div>
     </div>
   </div>
+
+  <div id="squadSummary" class="nat-squad-summary"></div>
+
+  <div class="nat-toolbar">
+    <a class="button" href="GPDB.html" id="gpdbCallUpLink">Call up in GPDB</a>
+    <a class="button" href="world_cup.html">World Cup</a>
+    <a class="button" href="nation_select.html">Nation selection</a>
+  </div>
+
+  <div id="squadWrap" class="panel">
+    <table class="gpsl-table" id="nationalSquadTable">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Player</th>
+          <th>Club</th>
+          <th>Pos</th>
+          <th>Rating</th>
+          <th>Caps</th>
+          <th>G</th>
+          <th>A</th>
+          <th>POTM</th>
+          <th>Avg</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="squad-body"></tbody>
+    </table>
+    <p id="emptySquad" class="empty-squad" hidden>No players called up yet. Use GPDB → My nation filter → Call up.</p>
+  </div>
+
   <script type="module" src="national_team.js"></script>
 </body>
 </html>

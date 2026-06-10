@@ -39,6 +39,15 @@
       transform: scale(1.05);
     }
 
+    button.button.secondary {
+      background: #444;
+      color: #ddd;
+    }
+
+    button.button.secondary:hover {
+      background: #555;
+    }
+
     .locked-msg {
       color: #ff9900;
       font-size: 12px;
@@ -456,7 +465,10 @@
   <div id="controls">
     <div class="filter-group">
       <button id="clearFiltersBtn" class="button">Clear Filters</button>
+      <button id="myNationFilterBtn" class="button secondary" type="button" hidden>My nation</button>
     </div>
+
+    <p id="nationalSquadPanel" class="status-note" style="margin:0 0 12px;display:none;"></p>
 
     <div class="filter-group">
       <strong>Market Value</strong>

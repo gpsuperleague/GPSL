@@ -51,6 +51,15 @@ import {
   loadPlayerValueTables,
   calcPotentialForPlayer,
 } from "./player_economics.js";
+import {
+  loadMyNation,
+  loadNationalSquad,
+  callUpPlayer,
+  playerBelongsToNation,
+  summarizeNationalSquad,
+  gpdbNationFilterValues,
+  NATIONAL_SQUAD_MAX,
+} from "./international.js";
 
 let draftAuctionStartTime = null;
 let draftJoinWindowEnd = null;
@@ -252,6 +261,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let CLUB_NATION_MAP = {};
   /** Full Clubs.Club name → ShortName (for direct-offer seller_club_id). */
   let CLUB_SHORT_BY_FULL_NAME = {};
+
+  let MY_NATION = null;
+  let NATIONAL_CALLED_UP = new Set();
+  let NATIONAL_SQUAD_SUMMARY = null;
 
   async function loadUser() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -550,6 +563,92 @@ document.addEventListener("DOMContentLoaded", () => {
      MODULE F: Rendering (with Bid column)
      ============================================================ */
 
+  async function refreshNationalSquadState() {
+    MY_NATION = await loadMyNation(supabase);
+    NATIONAL_CALLED_UP = new Set();
+    NATIONAL_SQUAD_SUMMARY = null;
+
+    const panel = document.getElementById("nationalSquadPanel");
+    const myNationBtn = document.getElementById("myNationFilterBtn");
+
+    if (!MY_NATION?.code) {
+      if (panel) panel.style.display = "none";
+      if (myNationBtn) myNationBtn.hidden = true;
+      return;
+    }
+
+    const squad = await loadNationalSquad(MY_NATION.code, supabase);
+    NATIONAL_CALLED_UP = new Set(squad.map((s) => String(s.player_id)));
+    NATIONAL_SQUAD_SUMMARY = summarizeNationalSquad(squad);
+
+    if (myNationBtn) {
+      myNationBtn.hidden = false;
+      const flag = MY_NATION.flag_emoji ? `${MY_NATION.flag_emoji} ` : "";
+      myNationBtn.textContent = `My nation (${flag}${MY_NATION.name})`;
+    }
+
+    if (panel) {
+      const s = NATIONAL_SQUAD_SUMMARY;
+      const gkNote = s.gkOk
+        ? `${s.gkCount} GKs`
+        : `<span style="color:#f88;">${s.gkCount} GKs (need ${s.minGk})</span>`;
+      panel.style.display = "block";
+      panel.innerHTML = `
+        <b>National squad:</b> ${s.total}/${s.max} · ${gkNote}
+        · Call up eligible players below, or
+        <a href="national_team.html?nation=${encodeURIComponent(MY_NATION.code)}" style="color:#ff9900;">view squad</a>
+      `;
+    }
+  }
+
+  function buildGpdbCallUpCellHtml(player) {
+    if (!MY_NATION?.code) return "";
+    if (!playerBelongsToNation(player, MY_NATION)) return "";
+
+    const id = String(player.Konami_ID).trim();
+    if (NATIONAL_CALLED_UP.has(id)) {
+      return `<span class="locked-msg">In national squad</span>`;
+    }
+    if (NATIONAL_SQUAD_SUMMARY?.full) {
+      return `<span class="locked-msg">Squad full (${NATIONAL_SQUAD_MAX})</span>`;
+    }
+    return `<button type="button" class="button call-up-btn" data-player-id="${id}">Call up</button>`;
+  }
+
+  async function handleCallUpClick(konamiId) {
+    const res = await callUpPlayer(String(konamiId), supabase);
+    if (res.error) {
+      alert(res.error);
+      return;
+    }
+    await refreshNationalSquadState();
+    await loadPage(CURRENT_PAGE);
+  }
+
+  function applyMyNationFilter() {
+    if (!MY_NATION?.code) return;
+    const values = gpdbNationFilterValues(
+      MY_NATION,
+      FILTER_OPTION_CACHE.Nation || []
+    );
+    if (!values.length) {
+      alert(
+        `No GPDB nation values match ${MY_NATION.name}. Try filtering Nation manually.`
+      );
+      return;
+    }
+
+    CURRENT_FILTERS.Nation = values;
+    const panel = document.getElementById("filter-Nation-panel");
+    if (panel) {
+      panel.querySelectorAll(".multi-filter-options input[type='checkbox']").forEach((cb) => {
+        cb.checked = values.includes(cb.value);
+      });
+    }
+    updateMultiFilterDisplay("Nation");
+    loadPage(1);
+  }
+
   function renderTable(players) {
     const tableHead = document.getElementById("tableHead");
     const tableBody = document.getElementById("tableBody");
@@ -580,8 +679,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const hasClub = !!player.Contracted_Team;
 
         let bidCell = `<span class="locked-msg">Loading…</span>`;
+        const callUpCell = buildGpdbCallUpCellHtml(player);
 
-        if (GLOBAL_SETTINGS) {
+        if (callUpCell) {
+          bidCell = callUpCell;
+        } else if (GLOBAL_SETTINGS) {
           if (hasClub) {
             const holderShort = resolveContractedClubShort(
               player.Contracted_Team
@@ -669,7 +771,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
       row.style.cursor = "pointer";
       row.addEventListener("click", e => {
-        if (e.target.closest(".make-offer-btn")) return;
+        if (e.target.closest(".make-offer-btn, .call-up-btn")) return;
         const konamiId = row.getAttribute("data-konami-id");
         window.open(
           `https://pesdb.net/efootball/?id=${konamiId}`,
@@ -681,6 +783,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.querySelectorAll(".make-offer-btn").forEach(btn => {
       btn.addEventListener("click", () => openMakeOfferModal(btn.dataset.playerId));
+    });
+
+    document.querySelectorAll(".call-up-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        handleCallUpClick(btn.dataset.playerId);
+      });
     });
   }
 
@@ -1580,6 +1689,10 @@ document.addEventListener("DOMContentLoaded", () => {
       loadPage(1);
     });
 
+    document.getElementById("myNationFilterBtn")?.addEventListener("click", () => {
+      applyMyNationFilter();
+    });
+
     document.getElementById("clearFiltersBtn").addEventListener("click", () => {
       CURRENT_FILTERS = {};
       MV_MIN = null;
@@ -1670,6 +1783,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await loadActiveDraftListings();
     await loadPendingDirectOfferPlayers();
     await loadDraftCreditsForOwner();
+    await refreshNationalSquadState();
     loadPage(1);
   }
 

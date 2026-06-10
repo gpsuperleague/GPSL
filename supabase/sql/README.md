@@ -491,6 +491,8 @@ Creates 60 nations, owner nation draft, World Cup cycle/group tables, internatio
 
 **Admin:** GPSL Admin → **World Cup & nations** (`admin_international.html`) — seed nations, open nation selection, assign teams.
 
+**Call-ups:** National team managers use **GPDB** → **My nation** filter → **Call up** on eligible players (matching `Players.Nation`, any club). Squad limit **23** (minimum **2 GKs** — cannot release a GK if that would drop below 2). Squad displays on `national_team.html` (squad-style layout). Run [`patches/international_callup_gpdb.sql`](./patches/international_callup_gpdb.sql) after `competition_international.sql`.
+
 **Owners:** Cups → **World Cup** / **Nation selection**; national team page with flag and call-ups from club squad.
 
 Qualifying fixtures, finals draws, and matchday integration are **schema-ready** — detail in a later pass.

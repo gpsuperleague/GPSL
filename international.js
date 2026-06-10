@@ -2,6 +2,10 @@
  * GPSL International football — World Cup, nations, squads
  */
 import { supabase } from "./supabase_client.js";
+import { normalizeNation } from "./squad_rules.js";
+
+export const NATIONAL_SQUAD_MAX = 23;
+export const NATIONAL_SQUAD_MIN_GK = 2;
 
 export const WC_QUAL_GROUPS = 12;
 export const WC_QUAL_GROUP_SIZE = 5;
@@ -97,6 +101,41 @@ export async function loadFinalsStandings(cycleNo, client = supabase) {
     return [];
   }
   return data || [];
+}
+
+export function isGoalkeeper(position) {
+  return String(position ?? "").trim().toUpperCase() === "GK";
+}
+
+/** Player Players.Nation matches an international_nations row (name or code). */
+export function playerBelongsToNation(player, nation) {
+  if (!player || !nation) return false;
+  const pn = normalizeNation(player.Nation ?? player.nation ?? player.player_nation);
+  if (!pn) return false;
+  const nameNorm = normalizeNation(nation.name);
+  const codeNorm = normalizeNation(nation.code);
+  return pn === nameNorm || pn === codeNorm;
+}
+
+export function summarizeNationalSquad(rows) {
+  const squad = rows || [];
+  const gkCount = squad.filter((r) => isGoalkeeper(r.player_position)).length;
+  return {
+    total: squad.length,
+    gkCount,
+    max: NATIONAL_SQUAD_MAX,
+    minGk: NATIONAL_SQUAD_MIN_GK,
+    gkOk: gkCount >= NATIONAL_SQUAD_MIN_GK,
+    full: squad.length >= NATIONAL_SQUAD_MAX,
+  };
+}
+
+/** Nation filter values in GPDB that match the owner's international nation. */
+export function gpdbNationFilterValues(nation, nationFilterOptions = []) {
+  if (!nation) return [];
+  return (nationFilterOptions || [])
+    .filter((opt) => playerBelongsToNation({ Nation: opt.value }, nation))
+    .map((opt) => opt.value);
 }
 
 export async function loadNationalSquad(nationCode, client = supabase) {
