@@ -2,6 +2,34 @@
 .nat-flag-lg { font-size: 56px; }
 .nat-flag-sm { font-size: 18px; }
 
+.nat-flag-img {
+  display: inline-block;
+  object-fit: cover;
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+  vertical-align: middle;
+}
+.nat-flag-img.nat-flag-lg {
+  width: 72px;
+  height: 48px;
+}
+.nat-flag-img.nat-flag-sm {
+  width: 28px;
+  height: 19px;
+  margin-right: 6px;
+}
+.nat-flag-fallback-hidden { display: none !important; }
+.nat-pick-card .nat-flag-img {
+  width: 64px;
+  height: 42px;
+  display: block;
+  margin: 0 auto 6px;
+}
+.nat-hero .nat-flag-img.nat-flag-lg {
+  width: 96px;
+  height: 64px;
+}
+
 .intl-table {
   width: 100%;
   border-collapse: collapse;

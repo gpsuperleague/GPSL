@@ -58,6 +58,7 @@ import {
   playerBelongsToNation,
   summarizeNationalSquad,
   gpdbNationFilterValues,
+  renderNationFlag,
   NATIONAL_SQUAD_MAX,
 } from "./international.js";
 
@@ -583,8 +584,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (myNationBtn) {
       myNationBtn.hidden = false;
-      const flag = MY_NATION.flag_emoji ? `${MY_NATION.flag_emoji} ` : "";
-      myNationBtn.textContent = `My nation (${flag}${MY_NATION.name})`;
+      myNationBtn.innerHTML = `${renderNationFlag(MY_NATION, "sm")} My nation (${MY_NATION.name})`;
     }
 
     if (panel) {
@@ -594,7 +594,8 @@ document.addEventListener("DOMContentLoaded", () => {
         : `<span style="color:#f88;">${s.gkCount} GKs (need ${s.minGk})</span>`;
       panel.style.display = "block";
       panel.innerHTML = `
-        <b>National squad:</b> ${s.total}/${s.max} · ${gkNote}
+        ${renderNationFlag(MY_NATION, "sm")}
+        <b>${MY_NATION.name} squad:</b> ${s.total}/${s.max} · ${gkNote}
         · Call up eligible players below, or
         <a href="national_team.html?nation=${encodeURIComponent(MY_NATION.code)}" style="color:#ff9900;">view squad</a>
       `;

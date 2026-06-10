@@ -17,6 +17,7 @@ import {
 } from "./countdown_display.js";
 import { countUnreadInbox } from "./competition_inbox.js";
 import { initDashboardPinUi } from "./dashboard_pin.js";
+import { nationFlagSrc } from "./international_flags.js";
 export { supabase };
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
@@ -690,6 +691,12 @@ function escapeNavAttr(s) {
 }
 
 /** Flat links, or collapsible sub-groups when items use `{ heading: true }`. */
+function navLinkFlagHtml(item) {
+  const src = item.nationCode ? nationFlagSrc(item.nationCode) : null;
+  if (!src) return "";
+  return `<img class="nav-nat-flag" src="${escapeNavAttr(src)}" alt="" loading="lazy" /> `;
+}
+
 function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
   const hasHeadings = items.some((item) => item.heading);
   if (!hasHeadings) {
@@ -700,7 +707,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
       const indent = item.indent ? " nav-link-sub" : "";
       flat += `<a href="${item.href}" class="nav-link${indent}${
         active ? " active" : ""
-      }">${escapeNavHtml(item.label)}</a>`;
+      }">${navLinkFlagHtml(item)}${escapeNavHtml(item.label)}</a>`;
     }
     return flat;
   }
@@ -715,7 +722,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
     const indent = item.indent ? " nav-link-sub" : "";
     return `<a href="${item.href}" class="nav-link${indent}${
       active ? " active" : ""
-    }">${escapeNavHtml(item.label)}</a>`;
+    }">${navLinkFlagHtml(item)}${escapeNavHtml(item.label)}</a>`;
   };
 
   const flushPanel = () => {
@@ -981,11 +988,11 @@ export async function buildNav() {
     if (section.id === "mynation") {
       const items = [];
       if (myNation?.code) {
-        const flagPrefix = myNation.flag_emoji ? `${myNation.flag_emoji} ` : "";
         items.unshift({
           href: `national_team.html?nation=${encodeURIComponent(myNation.code)}`,
-          label: `${flagPrefix}${myNation.name}`,
+          label: myNation.name,
           page: "national_team",
+          nationCode: myNation.code,
         });
         items.push({
           href: "nation_select.html",

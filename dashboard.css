@@ -902,6 +902,28 @@ button.nav-admin-trigger {
   background: #1e1e1e;
 }
 
+.nat-flag-img {
+  display: inline-block;
+  object-fit: cover;
+  border-radius: 2px;
+  vertical-align: middle;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+.nat-flag-img.nat-flag-sm {
+  width: 22px;
+  height: 15px;
+  margin-right: 4px;
+}
+.nav-nat-flag {
+  width: 18px;
+  height: 12px;
+  object-fit: cover;
+  border-radius: 2px;
+  vertical-align: -2px;
+  margin-right: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
 .nav-dropdown .nav-link {
   pointer-events: auto;
 }

@@ -7,6 +7,7 @@ import {
   releaseCallup,
   summarizeNationalSquad,
   isGoalkeeper,
+  renderNationFlag,
   NATIONAL_SQUAD_MAX,
   NATIONAL_SQUAD_MIN_GK,
 } from "./international.js";
@@ -159,7 +160,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const myNation = await loadMyNation(supabase);
   const isMyNation = myNation?.code === nation.code;
 
-  document.getElementById("natFlag").textContent = nation.flag_emoji || "🏳️";
+  const flagEl = document.getElementById("natFlag");
+  if (flagEl) flagEl.innerHTML = renderNationFlag(nation, "lg");
   document.getElementById("natTitle").textContent = nation.name;
   document.getElementById("natMeta").innerHTML = nation.owner_club
     ? `Managed by <b>${nation.owner_club_name || nation.owner_club}</b> (${nation.owner_club})`

@@ -5,6 +5,7 @@ import {
   loadSelectionWindow,
   loadMyNation,
   claimNation,
+  renderNationFlag,
 } from "./international.js";
 
 function setStatus(msg, ok = true) {
@@ -50,7 +51,7 @@ function renderDraftBoard(draft, myClub, currentPick) {
         .filter(Boolean)
         .join(" ");
       const nat = d.nation_code
-        ? `${d.flag_emoji || ""} ${d.nation_name}`
+        ? `${renderNationFlag({ code: d.nation_code, flag_emoji: d.flag_emoji, name: d.nation_name }, "sm")} ${d.nation_name}`
         : '<span class="empty">—</span>';
       const ownerLabel = d.owner_tag || d.owner_name || "—";
       const clubLabel = d.club_name || d.club_short_name;
@@ -104,7 +105,7 @@ function renderNationGrid(nations, windowState, myPick, myClub, draft) {
         .join(" ");
       return `
         <div class="${cls}" data-code="${n.code}" title="${taken ? "Taken" : n.name}">
-          <span class="flag">${n.flag_emoji}</span>
+          <span class="flag">${renderNationFlag(n, "lg")}</span>
           <span class="name">${n.name}</span>
         </div>`;
     })

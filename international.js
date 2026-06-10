@@ -180,11 +180,7 @@ export function nationLink(code, label) {
   return `<a href="national_team.html?nation=${encodeURIComponent(code)}">${text}</a>`;
 }
 
-export function renderNationFlag(nation, size = "lg") {
-  const emoji = nation?.flag_emoji || "🏳️";
-  const cls = size === "sm" ? "nat-flag-sm" : "nat-flag-lg";
-  return `<span class="nat-flag ${cls}" aria-hidden="true">${emoji}</span>`;
-}
+export { nationFlagSrc, renderNationFlag } from "./international_flags.js";
 
 export function groupStandingsTable(rows, groupCode) {
   const groupRows = rows.filter((r) => r.group_code === groupCode);
