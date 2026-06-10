@@ -198,7 +198,9 @@ END;
 $function$;
 
 
--- Settle one manager draft listing (requires managers_system.sql + manager_draft_settlement_fix.sql)
+-- Manager free-agent draft win — mirrors transferengine_accept_draft_sale (players):
+--   highest direct bid → debit buyer balance → assign → close listing.
+-- Club Details reads Clubs.manager_id via manager_sync_club_rating (not contracted_club alone).
 CREATE OR REPLACE FUNCTION public.transferengine_accept_manager_draft_sale(p_listing_id bigint)
 RETURNS void
 LANGUAGE plpgsql
@@ -210,56 +212,52 @@ DECLARE
   v_amount  numeric;
   v_buyer   text;
   v_mgr     public."Managers"%rowtype;
-  v_start   timestamptz;
-  v_finish  timestamptz;
+  v_buyer_balance numeric;
+  v_season_id bigint;
+  v_wage bigint;
 BEGIN
   SELECT * INTO v_listing
   FROM public."Manager_Transfer_Listings"
   WHERE id = p_listing_id
   FOR UPDATE;
 
-  IF NOT FOUND OR v_listing.listing_type IS DISTINCT FROM 'draft' THEN
+  IF NOT FOUND THEN
+    RAISE NOTICE 'Manager draft listing % not found', p_listing_id;
+    RETURN;
+  END IF;
+
+  IF v_listing.listing_type IS DISTINCT FROM 'draft' THEN
+    RAISE NOTICE 'Manager listing % is not draft', p_listing_id;
     RETURN;
   END IF;
 
   IF v_listing.status NOT IN ('Active', 'Review') THEN
+    RAISE NOTICE 'Manager draft listing % already processed', p_listing_id;
     RETURN;
   END IF;
 
-  SELECT draft_auction_start_time, draft_random_finish_time
-  INTO v_start, v_finish
-  FROM public.global_settings
-  WHERE id = 1;
-
-  v_buyer := nullif(btrim(v_listing.current_highest_bidder), '');
-  v_amount := v_listing.current_highest_bid;
+  SELECT b.bid_amount, b.bidder_club_id
+  INTO v_amount, v_buyer
+  FROM public."Manager_Transfer_Bids" b
+  WHERE b.is_direct = true
+    AND (
+      b.listing_id = v_listing.id
+      OR b.manager_id = v_listing.manager_id
+    )
+  ORDER BY b.bid_amount DESC, b.bid_time ASC
+  LIMIT 1;
 
   IF v_buyer IS NULL OR v_amount IS NULL THEN
-    SELECT b.bid_amount, b.bidder_club_id
-    INTO v_amount, v_buyer
-    FROM public."Manager_Transfer_Bids" b
-    WHERE b.manager_id = v_listing.manager_id
-      AND (v_start IS NULL OR b.bid_time >= v_start)
-      AND (v_finish IS NULL OR b.bid_time < v_finish)
-    ORDER BY b.bid_amount DESC, b.bid_time ASC
-    LIMIT 1;
+    v_buyer := nullif(btrim(v_listing.current_highest_bidder), '');
+    v_amount := v_listing.current_highest_bid;
   END IF;
 
   IF v_buyer IS NULL OR v_amount IS NULL THEN
     UPDATE public."Manager_Transfer_Listings"
-    SET status = 'Closed', transfer_completed = false, updated_at = now()
+    SET status = 'Closed',
+        transfer_completed = false,
+        updated_at = now()
     WHERE id = v_listing.id;
-    RAISE NOTICE 'Manager draft listing % closed — no winning bid', p_listing_id;
-    RETURN;
-  END IF;
-
-  SELECT * INTO v_mgr FROM public."Managers" WHERE id = v_listing.manager_id FOR UPDATE;
-
-  IF NOT FOUND OR (v_mgr.contracted_club IS NOT NULL AND btrim(v_mgr.contracted_club) <> '') THEN
-    UPDATE public."Manager_Transfer_Listings"
-    SET status = 'Closed', transfer_completed = false, updated_at = now()
-    WHERE id = v_listing.id;
-    RAISE NOTICE 'Manager draft listing % closed — manager already contracted', p_listing_id;
     RETURN;
   END IF;
 
@@ -269,23 +267,75 @@ BEGIN
       updated_at = now()
   WHERE id = v_listing.id;
 
-  BEGIN
-    PERFORM public.manager_assign_to_club(
-      v_listing.manager_id,
-      v_buyer,
-      2,
-      v_amount,
-      true,
-      true
-    );
-  EXCEPTION WHEN OTHERS THEN
-    RAISE NOTICE 'Manager draft listing % (manager %, buyer %) assign failed: %',
-      p_listing_id, v_listing.manager_id, v_buyer, SQLERRM;
+  SELECT balance
+  INTO v_buyer_balance
+  FROM public."Club_Finances"
+  WHERE club_name = v_buyer
+  FOR UPDATE;
+
+  IF v_buyer_balance IS NULL THEN
+    RAISE NOTICE 'Buyer finance missing for manager draft listing %', p_listing_id;
     RETURN;
-  END;
+  END IF;
+
+  SELECT * INTO v_mgr
+  FROM public."Managers"
+  WHERE id = v_listing.manager_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE NOTICE 'Manager not found for draft listing %', p_listing_id;
+    RETURN;
+  END IF;
+
+  IF v_mgr.contracted_club IS NOT NULL AND btrim(v_mgr.contracted_club) <> '' THEN
+    RAISE NOTICE 'Manager already contracted for draft listing %', p_listing_id;
+    UPDATE public."Manager_Transfer_Listings"
+    SET status = 'Closed', transfer_completed = false, updated_at = now()
+    WHERE id = v_listing.id;
+    RETURN;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public."Managers" m
+    WHERE m.contracted_club = v_buyer
+  ) OR EXISTS (
+    SELECT 1 FROM public."Clubs" c
+    WHERE c."ShortName" = v_buyer AND c.manager_id IS NOT NULL
+  ) THEN
+    RAISE NOTICE 'Buyer % already has a manager — cannot settle draft listing %',
+      v_buyer, p_listing_id;
+    UPDATE public."Manager_Transfer_Listings"
+    SET status = 'Closed', transfer_completed = false, updated_at = now()
+    WHERE id = v_listing.id;
+    RETURN;
+  END IF;
+
+  UPDATE public."Club_Finances"
+  SET balance = v_buyer_balance - v_amount
+  WHERE club_name = v_buyer;
+
+  SELECT id INTO v_season_id
+  FROM public.competition_seasons
+  WHERE is_current = true
+  LIMIT 1;
+
+  v_wage := public.manager_weekly_wage_for(v_mgr.market_value);
+
+  UPDATE public."Managers"
+  SET contracted_club = v_buyer,
+      contract_seasons_remaining = 2,
+      weekly_wage = v_wage,
+      signed_season_id = v_season_id,
+      updated_at = now()
+  WHERE id = v_listing.manager_id;
+
+  PERFORM public.manager_sync_club_rating(v_buyer);
 
   UPDATE public."Manager_Transfer_Listings"
-  SET status = 'Closed', transfer_completed = true, updated_at = now()
+  SET status = 'Closed',
+      transfer_completed = true,
+      updated_at = now()
   WHERE id = v_listing.id;
 
   RAISE NOTICE 'Manager draft listing % settled — manager % to % for %',

@@ -172,6 +172,30 @@ export async function getManagerDraftBidEligibility({
     return { allowed: false, reason: "Bidding is not open right now." };
   }
 
+  const { data: clubRow } = await supabase
+    .from("Clubs")
+    .select("manager_id")
+    .eq("ShortName", buyerShortName)
+    .maybeSingle();
+  if (clubRow?.manager_id != null) {
+    return {
+      allowed: false,
+      reason: "Your club already has a manager — sack or wait until you have a vacancy.",
+    };
+  }
+
+  const { data: clubMgr } = await supabase
+    .from("Managers")
+    .select("id")
+    .eq("contracted_club", buyerShortName)
+    .maybeSingle();
+  if (clubMgr?.id != null) {
+    return {
+      allowed: false,
+      reason: "Your club already has a manager signed.",
+    };
+  }
+
   const leadingElsewhere = await getClubLeadingManagerDraftId(
     buyerShortName,
     start,

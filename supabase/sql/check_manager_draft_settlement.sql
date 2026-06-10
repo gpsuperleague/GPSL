@@ -45,9 +45,15 @@ SELECT
   l.current_highest_bid,
   l.current_highest_bidder,
   l.transfer_completed,
-  l.created_at
+  l.created_at,
+  c.manager_id AS winner_club_manager_id,
+  EXISTS (
+    SELECT 1 FROM public."Managers" mx
+    WHERE mx.contracted_club = l.current_highest_bidder
+  ) AS winner_already_has_manager
 FROM public."Manager_Transfer_Listings" l
 LEFT JOIN public."Managers" m ON m.id = l.manager_id
+LEFT JOIN public."Clubs" c ON c."ShortName" = l.current_highest_bidder
 WHERE l.listing_type = 'draft'
   AND l.status = 'Active'
 ORDER BY l.id;
