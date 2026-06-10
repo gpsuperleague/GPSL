@@ -129,12 +129,17 @@ export function formatTimeRemainingHtml(endTime) {
 export function formatLiveCountdownLines(label, ms, targetInstant, options = {}) {
   const countUp = options.countUp === true;
   const frozen = options.frozen === true;
+  const finishInstant = options.finishInstant;
+  let headline = label;
+  if (frozen && isValidInstant(finishInstant)) {
+    headline = `${label} — random finish ${formatInstantUK(finishInstant)}`;
+  }
   const duration =
-    countUp || ms > 0 ? `${label}: ${formatDurationMs(ms)}` : label;
+    countUp || ms > 0 ? `${headline}: ${formatDurationMs(ms)}` : headline;
   let subline = "";
-  if (frozen && isValidInstant(options.finishInstant)) {
-    subline = formatClosedTimesSubline(options.finishInstant);
-  } else if (isValidInstant(targetInstant)) {
+  if (frozen && isValidInstant(finishInstant)) {
+    subline = formatClosedTimesSubline(finishInstant);
+  } else if (!frozen && isValidInstant(targetInstant)) {
     subline = countUp
       ? formatStartedTimesSubline(targetInstant)
       : formatTargetTimesSubline(targetInstant);

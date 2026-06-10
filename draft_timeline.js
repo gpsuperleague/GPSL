@@ -96,13 +96,19 @@ export function getDraftCountdownTick(nowUK, draftAuctionStartTime, options = {}
         countUp: true,
       };
     case "random_locked": {
-      const finishMs = options.finishInstant?.getTime?.();
+      const finishInstant =
+        options.finishInstant instanceof Date
+          ? options.finishInstant
+          : options.finishInstant
+            ? new Date(options.finishInstant)
+            : null;
+      const finishMs = isValidDate(finishInstant) ? finishInstant.getTime() : null;
       const elapsed =
         options.frozenMs != null
           ? options.frozenMs
           : finishMs != null && Number.isFinite(finishMs)
             ? Math.max(0, finishMs - timeline.randomStart.getTime())
-            : Math.max(0, nowUK.getTime() - timeline.randomStart.getTime());
+            : 0;
       return {
         phase,
         ms: elapsed,
@@ -110,7 +116,7 @@ export function getDraftCountdownTick(nowUK, draftAuctionStartTime, options = {}
         target: timeline.randomStart,
         countUp: true,
         frozen: true,
-        finishInstant: options.finishInstant || null,
+        finishInstant: isValidDate(finishInstant) ? finishInstant : null,
       };
     }
     case "ended":
@@ -240,13 +246,19 @@ export function getManagerDraftCountdownTick(nowUK, draftAuctionStartTime, optio
         countUp: true,
       };
     case "random_locked": {
-      const finishMs = options.finishInstant?.getTime?.();
+      const finishInstant =
+        options.finishInstant instanceof Date
+          ? options.finishInstant
+          : options.finishInstant
+            ? new Date(options.finishInstant)
+            : null;
+      const finishMs = isValidDate(finishInstant) ? finishInstant.getTime() : null;
       const elapsed =
         options.frozenMs != null
           ? options.frozenMs
           : finishMs != null && Number.isFinite(finishMs)
             ? Math.max(0, finishMs - timeline.randomStart.getTime())
-            : Math.max(0, nowUK.getTime() - timeline.randomStart.getTime());
+            : 0;
       return {
         phase,
         ms: elapsed,
@@ -254,7 +266,7 @@ export function getManagerDraftCountdownTick(nowUK, draftAuctionStartTime, optio
         target: timeline.randomStart,
         countUp: true,
         frozen: true,
-        finishInstant: options.finishInstant || null,
+        finishInstant: isValidDate(finishInstant) ? finishInstant : null,
       };
     }
     case "ended":

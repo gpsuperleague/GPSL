@@ -80,7 +80,8 @@ async function updateCountdown() {
   if (el) el.textContent = duration;
   if (sub) {
     sub.textContent =
-      subline || (tick.target ? formatTargetTimesSubline(tick.target) : "");
+      subline ||
+      (!tick.frozen && tick.target ? formatTargetTimesSubline(tick.target) : "");
   }
 }
 

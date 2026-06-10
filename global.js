@@ -83,21 +83,54 @@ function syncDraftRandomLockFromRevealedFinish() {
   draftRandomLockedMs = Math.max(0, finish.getTime() - timeline.randomStart.getTime());
 }
 
+/** Freeze count-up and lock phase once secret finish has passed (or bidding just closed). */
+function ensureDraftRandomWindowFrozen() {
+  if (!isValidDate(draftStart)) return;
+
+  const timeline = getDraftTimelineFromStart(draftStart);
+  if (!timeline) return;
+
+  const now = getUKNow();
+  const inRandomWindow =
+    now >= timeline.randomStart && now < timeline.publicEnd;
+  const biddingClosed =
+    draftBiddingOpen === false || draftRandomFinishRevealed != null;
+
+  if (!inRandomWindow || !biddingClosed) return;
+
+  if (draftRandomFinishRevealed) {
+    syncDraftRandomLockFromRevealedFinish();
+    return;
+  }
+
+  if (draftRandomLockedMs == null) {
+    draftRandomLockedMs = Math.max(
+      0,
+      now.getTime() - timeline.randomStart.getTime()
+    );
+  }
+}
+
 function applyDraftRandomFinishRevealed(data) {
   const raw = data?.draft_random_finish_revealed;
   if (raw) {
     draftRandomFinishRevealed = raw;
-    if (draftBiddingOpen === false) {
-      syncDraftRandomLockFromRevealedFinish();
-    }
+    syncDraftRandomLockFromRevealedFinish();
   } else if (draftBiddingOpen === true) {
     draftRandomFinishRevealed = null;
   }
 }
 
 function draftCountdownOptions() {
-  const opts =
-    draftBiddingOpen === null ? {} : { biddingOpen: draftBiddingOpen };
+  ensureDraftRandomWindowFrozen();
+
+  const opts = {};
+  if (draftBiddingOpen !== null) {
+    opts.biddingOpen = draftBiddingOpen;
+  } else if (draftRandomFinishRevealed) {
+    opts.biddingOpen = false;
+  }
+
   if (draftRandomLockedMs != null) {
     opts.frozenMs = draftRandomLockedMs;
   }
@@ -388,27 +421,24 @@ export async function refreshDraftBiddingOpen() {
   }
   const wasOpen = draftBiddingOpen === true;
   let data = null;
-  const full = await queryGlobalSettingsPublic(
-    "draft_bidding_open, manager_draft_bidding_open, draft_random_finish_revealed"
-  );
-  if (!full.error) {
-    data = full.data;
-  } else {
-    const fallback = await queryGlobalSettingsPublic(
-      "draft_bidding_open, draft_random_finish_revealed"
-    );
-    if (fallback.error) {
-      const legacy = await queryGlobalSettingsPublic("draft_bidding_open");
-      if (legacy.error) {
-        console.warn(
-          "refreshDraftBiddingOpen failed — run repair_global_settings_public.sql",
-          legacy.error
-        );
-        return;
-      }
-      data = legacy.data;
-    } else {
-      data = fallback.data;
+  const selectAttempts = [
+    "draft_bidding_open, manager_draft_bidding_open, draft_random_finish_revealed",
+    "draft_bidding_open, manager_draft_bidding_open",
+    "draft_bidding_open, draft_random_finish_revealed",
+    "draft_bidding_open",
+  ];
+  for (const select of selectAttempts) {
+    const { data: row, error } = await queryGlobalSettingsPublic(select);
+    if (!error) {
+      data = row;
+      break;
+    }
+    if (select === selectAttempts[selectAttempts.length - 1]) {
+      console.warn(
+        "refreshDraftBiddingOpen failed — run repair_global_settings_public.sql",
+        error
+      );
+      return;
     }
   }
 
@@ -416,19 +446,8 @@ export async function refreshDraftBiddingOpen() {
   applyDraftRandomFinishRevealed(data);
   const nowOpen = draftBiddingOpen;
 
-  if (
-    draftRandomFinishRevealed == null &&
-    wasOpen &&
-    nowOpen === false &&
-    isValidDate(draftStart)
-  ) {
-    const timeline = getDraftTimelineFromStart(draftStart);
-    if (timeline && getUKNow() >= timeline.randomStart) {
-      draftRandomLockedMs = Math.max(
-        0,
-        getUKNow().getTime() - timeline.randomStart.getTime()
-      );
-    }
+  if (wasOpen && nowOpen === false) {
+    ensureDraftRandomWindowFrozen();
   }
   if (nowOpen === true) {
     draftRandomLockedMs = null;
@@ -504,7 +523,8 @@ export function wireDraftCountdownUI() {
     });
     el.textContent = duration;
     if (localEl) {
-      localEl.textContent = subline || (target ? formatTargetTimesSubline(target) : "");
+      localEl.textContent =
+        subline || (!frozen && target ? formatTargetTimesSubline(target) : "");
     }
   });
 }
@@ -587,25 +607,7 @@ export async function loadGlobalSettings() {
   draftPublicEnd = timeline?.publicEnd ?? null;
 
   applyDraftRandomFinishRevealed(data);
-
-  if (
-    draftRandomFinishRevealed == null &&
-    isDraftCountdownActive() &&
-    draftBiddingOpen === false &&
-    isValidDate(draftStart)
-  ) {
-    const phase = getDraftPhaseFromStart(getUKNow(), draftStart);
-    if (
-      timeline &&
-      (phase === "random_active" || phase === "pre_random") &&
-      draftRandomLockedMs == null
-    ) {
-      draftRandomLockedMs = Math.max(
-        0,
-        getUKNow().getTime() - timeline.randomStart.getTime()
-      );
-    }
-  }
+  ensureDraftRandomWindowFrozen();
 
   return {
     draftEnabled,
