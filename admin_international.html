@@ -71,12 +71,13 @@
     <div class="card">
       <h2>Nation selection window</h2>
       <p class="note">
-        <b>Initial</b> — after Season 1. <b>Post–World Cup</b> — clears all nations; owners re-pick in rank order.
+        <b>Open selection</b> — owners pick nations in rank order.
+        <b>Clear assignments</b> — wipes all club↔nation links and closes any open window (use before a full re-draft).
       </p>
       <div id="selectionLive" class="note" style="color:#ccc;margin-bottom:12px;"></div>
       <div class="row">
-        <button type="button" class="button" id="openInitialBtn">Open initial selection</button>
-        <button type="button" class="button" id="openPostWcBtn">Open post–WC selection</button>
+        <button type="button" class="button" id="openInitialBtn">Open selection</button>
+        <button type="button" class="button secondary" id="clearAssignmentsBtn">Clear all assignments</button>
         <button type="button" class="button" id="closeSelectionBtn">Close selection</button>
         <button type="button" class="button secondary" id="skipCurrentPickBtn" hidden>
           Skip current pick

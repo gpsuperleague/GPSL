@@ -23,13 +23,8 @@ async function refreshSelectionLive() {
   const draft = await loadOwnerDraftOrder(supabase);
   const current = draft.find((d) => d.pick_order === windowState.current_pick_rank);
   const waiting = draft.filter((d) => !d.nation_code).length;
-  const phase =
-    windowState.phase === "post_world_cup"
-      ? "Post–World Cup re-selection"
-      : "Initial selection";
-
   liveEl.innerHTML = `
-    <b>${phase}</b> is open ·
+    <b>Nation selection</b> is open ·
     On the clock: <b>#${windowState.current_pick_rank}</b>
     ${current ? `— ${current.owner_tag || current.owner_name || "Owner"} (${current.club_name || current.club_short_name})` : ""}
     · ${windowState.nations_assigned || 0} assigned · ${waiting} still to pick
@@ -95,9 +90,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("openInitialBtn")?.addEventListener("click", () =>
     openSelection("initial")
   );
-  document.getElementById("openPostWcBtn")?.addEventListener("click", () =>
-    openSelection("post_world_cup")
-  );
+  document.getElementById("clearAssignmentsBtn")?.addEventListener("click", clearAssignments);
   document.getElementById("closeSelectionBtn")?.addEventListener("click", closeSelection);
 
   document.getElementById("skipCurrentPickBtn")?.addEventListener("click", async () => {
@@ -144,5 +137,23 @@ async function closeSelection() {
   setStatus("selectionStatus", "Closing…");
   const { error } = await supabase.rpc("international_admin_close_selection");
   setStatus("selectionStatus", error ? `❌ ${error.message}` : "✅ Selection closed", !error);
+  if (!error) await refreshSelectionLive();
+}
+
+async function clearAssignments() {
+  if (
+    !confirm(
+      "Clear ALL nation assignments?\n\nEvery club loses their national team. Any open selection window will close.\n\nThen use Open selection to start a fresh draft."
+    )
+  ) {
+    return;
+  }
+  setStatus("selectionStatus", "Clearing…");
+  const { data, error } = await supabase.rpc("international_admin_clear_nation_assignments");
+  setStatus(
+    "selectionStatus",
+    error ? `❌ ${error.message}` : `✅ Cleared ${data ?? 0} nation assignment(s)`,
+    !error
+  );
   if (!error) await refreshSelectionLive();
 }

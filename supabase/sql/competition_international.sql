@@ -466,6 +466,34 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.international_admin_clear_nation_assignments()
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_count integer := 0;
+BEGIN
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  UPDATE public.international_selection_windows
+  SET is_open = false,
+      closes_at = coalesce(closes_at, now())
+  WHERE is_open = true;
+
+  UPDATE public.international_owner_nations
+  SET is_active = false,
+      released_at = now()
+  WHERE is_active = true;
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  RETURN v_count;
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.international_admin_open_selection(p_phase text)
 RETURNS bigint
 LANGUAGE plpgsql
@@ -474,28 +502,23 @@ SET search_path = public
 AS $function$
 DECLARE
   v_id bigint;
+  v_phase text := coalesce(nullif(btrim(p_phase), ''), 'initial');
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
-  IF p_phase NOT IN ('initial', 'post_world_cup') THEN
+  IF v_phase NOT IN ('initial', 'post_world_cup') THEN
     RAISE EXCEPTION 'Invalid phase';
   END IF;
 
   UPDATE public.international_selection_windows
-  SET is_open = false
+  SET is_open = false,
+      closes_at = coalesce(closes_at, now())
   WHERE is_open = true;
 
-  IF p_phase = 'post_world_cup' THEN
-    UPDATE public.international_owner_nations
-    SET is_active = false,
-        released_at = now()
-    WHERE is_active = true;
-  END IF;
-
   INSERT INTO public.international_selection_windows (phase, is_open, opens_at, current_pick_rank)
-  VALUES (p_phase, true, now(), 1)
+  VALUES (v_phase, true, now(), 1)
   RETURNING id INTO v_id;
 
   RETURN v_id;
@@ -1072,6 +1095,7 @@ GRANT EXECUTE ON FUNCTION public.international_seed_nations() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_sync_owner_ranks() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_admin_set_rank_points(text, numeric) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_admin_assign_nation(text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.international_admin_clear_nation_assignments() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_admin_open_selection(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_admin_close_selection() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_claim_nation(text) TO authenticated;

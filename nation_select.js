@@ -20,17 +20,15 @@ function renderWindow(windowState, myPick) {
   if (!el) return;
   if (!windowState?.is_open) {
     el.innerHTML =
-      '<span class="empty">Nation selection is closed. Admin opens the window after Season 1 (initial) or after each World Cup (re-select).</span>';
+      '<span class="empty">Nation selection is closed. Admin can open the window when ready.</span>';
     return;
   }
-  const phase =
-    windowState.phase === "post_world_cup" ? "Post–World Cup re-selection" : "Initial selection";
   const mine =
     myPick && windowState.current_pick_rank === myPick
       ? ' <b style="color:#ff9900;">— your pick!</b>'
       : "";
   el.innerHTML = `
-    <b>${phase}</b> is open · Pick #${windowState.current_pick_rank} of 60
+    <b>Nation selection</b> is open · Pick #${windowState.current_pick_rank} of 60
     (${windowState.nations_assigned || 0} nations assigned)${mine}
   `;
 }
