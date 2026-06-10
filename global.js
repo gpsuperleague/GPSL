@@ -578,17 +578,33 @@ export async function loadGlobalSettings() {
 // ------------------------------------------------------------
 // NAV — owner club (inbox badge)
 // ------------------------------------------------------------
-async function getOwnerClubShort() {
+function clubBadgeSrc(shortName) {
+  const code = String(shortName ?? "").trim();
+  if (!code) return null;
+  return `images/club_badges/${code}.png`;
+}
+
+async function getOwnerClub() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
   const { data: club } = await supabase
     .from("Clubs")
-    .select("ShortName")
+    .select("ShortName, Club")
     .eq("owner_id", user.id)
     .maybeSingle();
-  return club?.ShortName?.trim() || null;
+  if (!club?.ShortName) return null;
+  const short = club.ShortName.trim();
+  return {
+    short,
+    name: (club.Club || short).trim(),
+  };
+}
+
+async function getOwnerClubShort() {
+  const club = await getOwnerClub();
+  return club?.short || null;
 }
 
 /** Update nav inbox badge after mark-read (no full nav rebuild). */
@@ -691,10 +707,19 @@ function escapeNavAttr(s) {
 }
 
 /** Flat links, or collapsible sub-groups when items use `{ heading: true }`. */
-function navLinkFlagHtml(item) {
-  const src = item.nationCode ? nationFlagSrc(item.nationCode) : null;
-  if (!src) return "";
-  return `<img class="nav-nat-flag" src="${escapeNavAttr(src)}" alt="" loading="lazy" /> `;
+function navLinkIconHtml(item) {
+  const nationSrc = item.nationCode ? nationFlagSrc(item.nationCode) : null;
+  if (nationSrc) {
+    return `<img class="nav-nat-flag" src="${escapeNavAttr(nationSrc)}" alt="" loading="lazy" /> `;
+  }
+  const clubSrc = item.clubShort ? clubBadgeSrc(item.clubShort) : null;
+  if (clubSrc) {
+    return (
+      `<img class="nav-club-badge" src="${escapeNavAttr(clubSrc)}" alt="" loading="lazy" ` +
+      `onerror="this.style.display='none'" /> `
+    );
+  }
+  return "";
 }
 
 function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
@@ -707,7 +732,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
       const indent = item.indent ? " nav-link-sub" : "";
       flat += `<a href="${item.href}" class="nav-link${indent}${
         active ? " active" : ""
-      }">${navLinkFlagHtml(item)}${escapeNavHtml(item.label)}</a>`;
+      }">${navLinkIconHtml(item)}${escapeNavHtml(item.label)}</a>`;
     }
     return flat;
   }
@@ -722,7 +747,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
     const indent = item.indent ? " nav-link-sub" : "";
     return `<a href="${item.href}" class="nav-link${indent}${
       active ? " active" : ""
-    }">${navLinkFlagHtml(item)}${escapeNavHtml(item.label)}</a>`;
+    }">${navLinkIconHtml(item)}${escapeNavHtml(item.label)}</a>`;
   };
 
   const flushPanel = () => {
@@ -911,6 +936,13 @@ export async function buildNav() {
     console.warn("Nav my nation skipped:", intlErr);
   }
 
+  let ownerClub = null;
+  try {
+    ownerClub = await getOwnerClub();
+  } catch (clubErr) {
+    console.warn("Nav owner club skipped:", clubErr);
+  }
+
   let calendarStatus = null;
   let navMonthLabel = null;
   let navMonthTitle = "";
@@ -1004,6 +1036,32 @@ export async function buildNav() {
           href: "nation_select.html",
           label: "Choose your nation",
           page: "nation_select",
+        });
+      }
+      return items;
+    }
+
+    if (section.id === "myclub") {
+      const items = (section.items || [])
+        .filter((item) => {
+          if (item.requiresDraft && !draftEnabled) return false;
+          return true;
+        })
+        .map((item) => ({ ...item }))
+        .filter((item) => item.page !== "squad");
+
+      if (ownerClub?.short) {
+        items.unshift({
+          href: "squad.html",
+          label: ownerClub.name,
+          page: "squad",
+          clubShort: ownerClub.short,
+        });
+      } else {
+        items.unshift({
+          href: "squad.html",
+          label: "Squad",
+          page: "squad",
         });
       }
       return items;
