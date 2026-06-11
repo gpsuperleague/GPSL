@@ -37,6 +37,28 @@ function updateToolbarButtons() {
   }
 }
 
+/** Move favourited row up without re-rendering (preserves archive tick boxes). */
+function repositionInboxItem(div, isFav) {
+  const list = document.getElementById("inboxList");
+  if (!list || viewArchived || !div) return;
+
+  if (isFav) {
+    const firstNonFav = list.querySelector(".inbox-item:not(.favourite)");
+    if (firstNonFav && firstNonFav !== div) {
+      list.insertBefore(div, firstNonFav);
+    } else if (!list.querySelector(".inbox-item.favourite") || list.firstElementChild !== div) {
+      list.prepend(div);
+    }
+    return;
+  }
+
+  const favItems = list.querySelectorAll(".inbox-item.favourite");
+  const lastFav = favItems[favItems.length - 1];
+  if (lastFav && lastFav !== div) {
+    lastFav.after(div);
+  }
+}
+
 function setArchivedViewMode(on) {
   viewArchived = on;
   const archivedToolbar = document.getElementById("archivedToolbar");
@@ -266,8 +288,8 @@ async function renderInbox() {
         favBtn.classList.toggle("on", nowFav);
         favBtn.textContent = nowFav ? "★" : "☆";
         div.classList.toggle("favourite", nowFav);
+        repositionInboxItem(div, nowFav);
         setStatus(nowFav ? "Added to favourites." : "Removed from favourites.");
-        if (!viewArchived) await renderInbox();
       } catch (err) {
         setStatus("❌ " + err.message, true);
       }
