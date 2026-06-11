@@ -6,6 +6,35 @@
   <title>Cup fixtures — GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="admin.css">
+  <style>
+    .bye-summary { color: #ffcc00; font-size: 13px; margin: 0 0 12px; line-height: 1.5; }
+    .bye-club-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 6px 12px;
+      max-height: 320px;
+      overflow: auto;
+      padding: 10px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #141414;
+      margin-bottom: 12px;
+    }
+    .bye-club-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: #ccc;
+      cursor: pointer;
+    }
+    .bye-club-option input { accent-color: #ff9900; }
+    .bye-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .bye-count { font-size: 13px; color: #aaa; }
+    .bye-count.ready { color: #9cdc9c; }
+    .bye-count.warn { color: #f88; }
+    #compByePanel[hidden] { display: none !important; }
+  </style>
 </head>
 <body class="admin-page">
   <div id="nav"></div>
@@ -13,7 +42,7 @@
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <div class="card">
-        <p class="note">Run <code>competition_phase6_cups.sql</code>. Draw after league standings exist (prestige cups). League cup: 60 clubs with byes auto-calculated.</p>
+        <p class="note">Run <code>competition_phase6_cups.sql</code> and <code>patches/competition_cup_byes_admin.sql</code>. Draw after qualifiers exist. Assign first-round byes before drawing so round 1 has no empty fixtures.</p>
         <div class="row">
           <div>
             <label>Cup</label>
@@ -25,12 +54,20 @@
               <option value="league_cup">League Cup</option>
             </select>
           </div>
-          <div id="compLeagueCupByesRow">
-            <label>League cup byes</label>
-            <input type="number" id="compLeagueCupByes" value="4" min="0" max="32" style="width:80px;">
-          </div>
         </div>
-        <div class="row">
+
+        <div id="compByePanel">
+          <h2 class="admin-subheading" style="margin-top:16px;">First-round byes</h2>
+          <p id="compByeSummary" class="bye-summary"></p>
+          <div id="compByeClubGrid" class="bye-club-grid"></div>
+          <div class="bye-actions">
+            <button type="button" id="compSaveByesBtn" class="button">Save bye clubs</button>
+            <span id="compByeCount" class="bye-count"></span>
+          </div>
+          <div id="compByeStatus" class="status-line"></div>
+        </div>
+
+        <div class="row" style="margin-top:16px;">
           <button id="compDrawCupBtn" class="button">Draw / regenerate cup</button>
           <button id="compDeleteCupBtn" class="button" style="background:#990000;">Delete cup bracket</button>
         </div>
