@@ -205,114 +205,70 @@ html.admin-root body.admin-page {
   color: #ff9900;
 }
 
-/* Season management — spreadsheet-style workflow checklist */
+/* Season management — sidebar sub-menus (GPSL dark theme) */
 .admin-page.admin-season-page .admin-layout {
-  max-width: 1100px;
+  max-width: 1200px;
 }
 
-.admin-workflow {
-  margin-bottom: 28px;
-  border: 1px solid #555;
-  border-radius: 4px;
-  overflow: hidden;
-  background: #fff;
-  color: #111;
-}
-
-.admin-workflow-banner {
-  background: #ffc000;
-  color: #111;
-  font-weight: bold;
-  font-size: 15px;
-  padding: 8px 12px;
-  border-bottom: 1px solid #c9a000;
-}
-
-.admin-workflow-page-title {
-  background: #4472c4;
-  color: #fff;
-  font-weight: bold;
-  font-size: 18px;
-  padding: 10px 12px;
-}
-
-.admin-workflow-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.admin-workflow-table td {
-  padding: 8px 12px;
-  border: 1px solid #d0d0d0;
-  vertical-align: middle;
-}
-
-.admin-workflow-table tr.admin-wf-group td {
-  background: #bdd7ee;
-  color: #111;
-  font-weight: bold;
-}
-
-.admin-workflow-table tr.admin-wf-task td:first-child {
-  background: #fff;
-}
-
-.admin-workflow-table tr.admin-wf-task td:last-child {
-  width: 160px;
-  text-align: center;
-  background: #fff;
-}
-
-.admin-workflow-table a {
-  color: #1155cc;
-  text-decoration: underline;
-  font-weight: 500;
-}
-
-.admin-workflow-table a:hover {
-  color: #0a3d91;
-}
-
-.admin-wf-status {
-  display: inline-block;
-  padding: 4px 10px;
-  border-radius: 3px;
-  font-size: 12px;
-  font-weight: bold;
-  color: #fff;
-  white-space: nowrap;
-}
-
-.admin-wf-status-test {
-  background: #7030a0;
-}
-
-.admin-wf-status-missing {
-  background: #c00000;
-}
-
-.admin-wf-details {
-  display: flex;
-  flex-direction: column;
+.admin-season-shell {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
   gap: 20px;
+  align-items: start;
 }
 
-.admin-wf-panel {
-  scroll-margin-top: 80px;
-}
-
-.admin-wf-panel > .card {
+.admin-season-nav.card {
+  padding: 0;
+  overflow: hidden;
   margin-bottom: 0;
 }
 
-.admin-wf-panel-tag {
-  display: inline-block;
-  font-size: 11px;
+.admin-season-nav-title {
+  padding: 12px 14px;
+  font-size: 13px;
   font-weight: bold;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #888;
-  margin-bottom: 6px;
+  color: #ff9900;
+  border-bottom: 1px solid #333;
+  letter-spacing: 0.03em;
+}
+
+.admin-season-nav .nav-subgroup-summary {
+  font-size: 13px;
+  padding: 10px 14px;
+}
+
+.admin-season-nav .nav-link {
+  padding: 8px 14px 8px 22px;
+  font-size: 13px;
+  color: #bbb;
+  text-decoration: none;
+  border: none;
+  background: transparent;
+}
+
+.admin-season-nav .nav-link:hover {
+  background: #2a2a2a;
+  color: #ffcc66;
+}
+
+.admin-season-nav .nav-link.active {
+  background: #2a2208;
+  color: #ff9900;
+  border-left: 3px solid #ff9900;
+  padding-left: 19px;
+}
+
+.admin-season-content {
+  min-width: 0;
+}
+
+.admin-season-panel > .card {
+  margin-bottom: 0;
+}
+
+@media (max-width: 800px) {
+  .admin-season-shell {
+    grid-template-columns: 1fr;
+  }
 }
 

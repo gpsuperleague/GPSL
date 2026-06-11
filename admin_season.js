@@ -1,4 +1,9 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+import {
+  SEASON_ADMIN_NAV,
+  seasonAdminNavHref,
+  isSeasonAdminNavItemActive,
+} from "./admin_season_nav.js";
 
 primeAdminPageChrome();
 import {
@@ -19,8 +24,107 @@ import {
 let compRegistrations = [];
 let compSelectedSeasonId = null;
 
+const SEASON_PANEL_IDS = new Set([
+  "wf-overview",
+  "wf-calendar",
+  "wf-divisions",
+  "wf-kickoff",
+  "wf-close-season",
+]);
+
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderSeasonSidebar() {
+  const root = document.getElementById("adminSeasonNav");
+  if (!root) return;
+
+  const pathname = window.location.pathname;
+  const search = window.location.search || "";
+  let html = `<div class="admin-season-nav-title">Season management</div>`;
+
+  for (const group of SEASON_ADMIN_NAV) {
+    const groupActive = group.items.some((item) =>
+      isSeasonAdminNavItemActive(item, pathname, search)
+    );
+    html += `<div class="nav-subgroup${groupActive ? " open" : ""}" data-nav-subgroup>`;
+    html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
+      groupActive ? "true" : "false"
+    }">${escapeHtml(group.label)}</button>`;
+    html += `<div class="nav-subgroup-panel" role="group">`;
+    for (const item of group.items) {
+      const href = seasonAdminNavHref(item);
+      const active = isSeasonAdminNavItemActive(item, pathname, search);
+      const panel = item.hash || "";
+      html += `<a href="${escapeHtml(href)}" class="nav-link nav-link-sub${
+        active ? " active" : ""
+      }" data-season-link${panel ? ` data-panel="${escapeHtml(panel)}"` : ""}>${escapeHtml(
+        item.label
+      )}</a>`;
+    }
+    html += `</div></div>`;
+  }
+
+  root.innerHTML = html;
+}
+
+function showSeasonPanel(panelId) {
+  const id = SEASON_PANEL_IDS.has(panelId) ? panelId : "wf-overview";
+  document.querySelectorAll(".admin-season-panel").forEach((panel) => {
+    panel.hidden = panel.dataset.panel !== id;
+  });
+
+  document.querySelectorAll("#adminSeasonNav .nav-link[data-season-link]").forEach((link) => {
+    const panel = link.dataset.panel || "";
+    link.classList.toggle("active", Boolean(panel && panel === id));
+  });
+}
+
+function wireSeasonSidebar() {
+  const root = document.getElementById("adminSeasonNav");
+  if (!root) return;
+
+  root.querySelectorAll("[data-nav-subgroup]").forEach((subgroup) => {
+    const btn = subgroup.querySelector(".nav-subgroup-summary");
+    if (!btn) return;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const willOpen = !subgroup.classList.contains("open");
+      subgroup.classList.toggle("open", willOpen);
+      btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    });
+  });
+
+  root.querySelectorAll("a[data-season-link][data-panel]").forEach((link) => {
+    link.addEventListener("click", (e) => {
+      const panel = link.dataset.panel;
+      if (!panel || !SEASON_PANEL_IDS.has(panel)) return;
+      e.preventDefault();
+      const url = `${window.location.pathname}${window.location.search}#${panel}`;
+      history.pushState(null, "", url);
+      showSeasonPanel(panel);
+    });
+  });
+
+  const onHash = () => {
+    const hash = (window.location.hash || "").replace("#", "");
+    showSeasonPanel(hash || "wf-overview");
+  };
+  window.addEventListener("hashchange", onHash);
+  onHash();
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
+
+  renderSeasonSidebar();
+  wireSeasonSidebar();
 
   document.getElementById("compCreateNextBtn").onclick = createNextSeason;
   document.getElementById("compEndSeasonBtn").onclick = endCurrentSeason;

@@ -9,116 +9,15 @@
 </head>
 <body class="admin-page admin-season-page">
   <div id="nav"></div>
+  <h1 class="admin-title">Season management</h1>
 
   <div class="admin-layout" id="adminLayout">
-    <div class="admin-main" id="adminMain">
+    <div class="admin-season-shell">
+      <aside class="admin-season-nav card" id="adminSeasonNav" aria-label="Season management menu"></aside>
 
-      <div class="admin-workflow">
-        <div class="admin-workflow-banner">ADMIN</div>
-        <div class="admin-workflow-page-title">Season Management</div>
-        <table class="admin-workflow-table" aria-label="Season management workflow">
-          <tbody>
-            <tr class="admin-wf-group"><td colspan="2">Create New Season</td></tr>
-            <tr class="admin-wf-task">
-              <td><a href="#wf-calendar">Set season calendar</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
+      <div class="admin-season-content" id="adminSeasonContent">
 
-            <tr class="admin-wf-group"><td colspan="2">Assign Divisions</td></tr>
-            <tr class="admin-wf-task">
-              <td><a href="#wf-divisions">Setup superleague teams</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-            <tr class="admin-wf-task">
-              <td><a href="#wf-divisions">Setup championship teams</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-            <tr class="admin-wf-task">
-              <td><a href="#wf-divisions">Draw championship divisions</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-
-            <tr class="admin-wf-group"><td colspan="2">League Fixtures</td></tr>
-            <tr class="admin-wf-task">
-              <td><a href="admin_fixtures-league.html">Draw League Fixtures</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-
-            <tr class="admin-wf-group"><td colspan="2">Assign Cups</td></tr>
-            <tr class="admin-wf-task">
-              <td><a href="admin_fixtures-cups.html?cup=super8">Setup Super8</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-            <tr class="admin-wf-task">
-              <td><a href="admin_fixtures-cups.html?cup=plate">Setup Plate</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-            <tr class="admin-wf-task">
-              <td><a href="admin_fixtures-cups.html?cup=shield">Setup Shield</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-            <tr class="admin-wf-task">
-              <td><a href="admin_fixtures-cups.html?cup=spoon">Setup Spoon</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-            <tr class="admin-wf-task">
-              <td><a href="admin_fixtures-cups.html?cup=league_cup">Setup League Cup</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-
-            <tr class="admin-wf-group"><td colspan="2">Cup Fixtures</td></tr>
-            <tr class="admin-wf-task">
-              <td><a href="admin_fixtures-cups.html?cup=league_cup">Assign Byes</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-            <tr class="admin-wf-task">
-              <td><a href="admin_fixtures-cups.html">Draw cup fixtures</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-
-            <tr class="admin-wf-group"><td colspan="2">Kickoff</td></tr>
-            <tr class="admin-wf-task">
-              <td><a href="#wf-kickoff">Start New Season</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-
-            <tr class="admin-wf-group"><td colspan="2">Playoffs</td></tr>
-            <tr class="admin-wf-task">
-              <td><a href="admin_fixtures-playoffs.html">Assign Playoff positions</a></td>
-              <td><span class="admin-wf-status admin-wf-status-missing">Not Implemented</span></td>
-            </tr>
-
-            <tr class="admin-wf-group"><td colspan="2">Mid Season</td></tr>
-            <tr class="admin-wf-task">
-              <td><a href="admin_challenges.html">Challenge payouts</a></td>
-              <td><span class="admin-wf-status admin-wf-status-missing">Not Implemented</span></td>
-            </tr>
-            <tr class="admin-wf-task">
-              <td><a href="admin_transfers.html">Set transfer window open</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-            <tr class="admin-wf-task">
-              <td><a href="admin_transfers.html">Set transfer window closed</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-
-            <tr class="admin-wf-group"><td colspan="2">Close Season</td></tr>
-            <tr class="admin-wf-task">
-              <td><a href="#wf-close-season">Archive season stats &amp; awards</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-            <tr class="admin-wf-task">
-              <td><a href="#wf-close-season">End Current Season</a></td>
-              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div class="admin-wf-details">
-
-        <section id="wf-calendar" class="admin-wf-panel">
-          <span class="admin-wf-panel-tag">Create New Season</span>
+        <section id="wf-calendar" class="admin-season-panel" data-panel="wf-calendar" hidden>
           <div class="card">
             <h2>GPSL season calendar</h2>
             <p class="note">One UK week (Fri 19:00 → Fri 19:00) = one GPSL month. Set the anchor before <b>Start season</b>. Run <code>competition_real_world_calendar.sql</code> and <code>admin_season_lifecycle.sql</code> in Supabase first.</p>
@@ -153,8 +52,7 @@
           </div>
         </section>
 
-        <section id="wf-divisions" class="admin-wf-panel">
-          <span class="admin-wf-panel-tag">Assign Divisions</span>
+        <section id="wf-divisions" class="admin-season-panel" data-panel="wf-divisions" hidden>
           <div class="card">
             <h2>Divisions (pre-season)</h2>
             <p class="note">Assign 20 SuperLeague + 40 Championship pool, draw A/B, then start the season once the real-world calendar is set.</p>
@@ -185,8 +83,7 @@
           </div>
         </section>
 
-        <section id="wf-kickoff" class="admin-wf-panel">
-          <span class="admin-wf-panel-tag">Kickoff</span>
+        <section id="wf-kickoff" class="admin-season-panel" data-panel="wf-kickoff" hidden>
           <div class="card">
             <h2>Start new season</h2>
             <p class="note">Creates a pre-season competition year (60 clubs). If the legacy league year is still open, runs <code>rollover_season</code> and contract tick first.</p>
@@ -208,8 +105,7 @@
           </div>
         </section>
 
-        <section id="wf-close-season" class="admin-wf-panel">
-          <span class="admin-wf-panel-tag">Close Season</span>
+        <section id="wf-close-season" class="admin-season-panel" data-panel="wf-close-season" hidden>
           <div class="card">
             <h2>Close season</h2>
             <div class="row">
@@ -221,6 +117,13 @@
               <button id="compEndSeasonBtn" class="button" style="background:#990000;">End current season (Summer Break)</button>
             </div>
             <div id="compEndStatus" class="status-line"></div>
+          </div>
+        </section>
+
+        <section id="wf-overview" class="admin-season-panel" data-panel="wf-overview">
+          <div class="card">
+            <h2>Season workflow</h2>
+            <p class="note">Use the menu on the left to step through pre-season setup, fixtures, kickoff, mid-season, and close-out. Links to other admin pages open in place; in-page steps show here.</p>
           </div>
         </section>
 
