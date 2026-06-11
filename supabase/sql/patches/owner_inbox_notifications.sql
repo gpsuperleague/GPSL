@@ -977,14 +977,6 @@ BEGIN
       updated_at = now()
   WHERE id = p_manager_id;
 
-  v_result := jsonb_build_object(
-    'ok', true,
-    'manager_id', p_manager_id,
-    'club', p_club_short,
-    'fee', v_fee,
-    'seasons', greatest(coalesce(p_seasons, 2), 1)
-  );
-
   PERFORM public.manager_sync_club_rating(p_club_short);
   PERFORM public.owner_inbox_notify_season_expectations(p_club_short);
 
