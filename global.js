@@ -20,8 +20,6 @@ import {
 } from "./countdown_display.js";
 import { countUnreadInbox } from "./competition_inbox.js";
 import { initDashboardPinUi } from "./dashboard_pin.js";
-import { renderSeasonAdminNavHtml } from "./admin_season_nav.js";
-import { renderSeasonBreakNavHtml } from "./admin_season_break_nav.js";
 import { nationFlagSrc } from "./international_flags.js";
 export { supabase };
 
@@ -901,7 +899,7 @@ function navLinkIconHtml(item) {
   return "";
 }
 
-function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
+function renderNavDropdownItems(items, pathname, search, isNavItemActive, renderMegaNavHtml) {
   const hasHeadings = items.some(
     (item) => item.heading || item.seasonMega || item.seasonBreakMega
   );
@@ -945,14 +943,11 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
   };
 
   for (const item of items) {
-    if (item.seasonMega) {
-      flushPanel();
-      groupHtml += renderSeasonAdminNavHtml(pathname, search);
-      continue;
-    }
-    if (item.seasonBreakMega) {
-      flushPanel();
-      groupHtml += renderSeasonBreakNavHtml(pathname, search);
+    if (item.seasonMega || item.seasonBreakMega) {
+      if (renderMegaNavHtml) {
+        flushPanel();
+        groupHtml += renderMegaNavHtml(item, pathname, search);
+      }
       continue;
     }
     if (item.heading) {
@@ -1085,14 +1080,16 @@ export async function buildNav() {
   let sectionHasActiveItem;
   let firstActiveNavSectionId;
   let normalizeNavPath;
+  let renderAdminMegaNavHtml;
   try {
-    const navMod = await import("./nav_config.js?v=20250602-season-mega");
+    const navMod = await import("./nav_config.js?v=20260602-season-break");
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;
     sectionHasActiveItem = navMod.sectionHasActiveItem;
     firstActiveNavSectionId = navMod.firstActiveNavSectionId;
     normalizeNavPath = navMod.normalizeNavPath;
+    renderAdminMegaNavHtml = navMod.renderAdminMegaNavHtml;
   } catch (importErr) {
     console.error("nav_config.js failed to load:", importErr);
     await renderFallbackNav();
@@ -1305,7 +1302,13 @@ export async function buildNav() {
         ? "nav-dropdown nav-dropdown-scrollable"
         : "nav-dropdown";
     html += `<div class="${dropdownClass}" role="menu">`;
-    html += renderNavDropdownItems(items, pathname, search, isNavItemActive);
+    html += renderNavDropdownItems(
+      items,
+      pathname,
+      search,
+      isNavItemActive,
+      renderAdminMegaNavHtml
+    );
     html += `</div></div>`;
   }
 

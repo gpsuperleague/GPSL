@@ -1,7 +1,17 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
-import { seasonAdminNavHasActive } from "./admin_season_nav.js";
-import { seasonBreakNavHasActive } from "./admin_season_break_nav.js";
+import { seasonAdminNavHasActive, renderSeasonAdminNavHtml } from "./admin_season_nav.js";
+import { seasonBreakNavHasActive, renderSeasonBreakNavHtml } from "./admin_season_break_nav.js";
+
+/** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
+export const NAV_CONFIG_VERSION = "20260602-season-break";
+
+/** Render Season management / Season Break mega-menu blocks (admin dropdown). */
+export function renderAdminMegaNavHtml(item, pathname, search = "") {
+  if (item?.seasonMega) return renderSeasonAdminNavHtml(pathname, search);
+  if (item?.seasonBreakMega) return renderSeasonBreakNavHtml(pathname, search);
+  return "";
+}
 
 export const NAV_SECTIONS = [
   {

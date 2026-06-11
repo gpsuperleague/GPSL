@@ -207,6 +207,7 @@ export function seasonBreakNavHasActive(pathname, search = "") {
 
 /** Admin flyout: Season Break → category → task link (3 levels). */
 export function renderSeasonBreakNavHtml(pathname, search = "") {
+  const file = (pathname || "").toLowerCase().replace(/\\/g, "/").split("/").pop() || "";
   const linkActive = (item) => isSeasonBreakNavItemActive(item, pathname, search);
   const megaOpen = seasonBreakNavHasActive(pathname, search);
 
@@ -215,6 +216,10 @@ export function renderSeasonBreakNavHtml(pathname, search = "") {
     megaOpen ? "true" : "false"
   }">Season Break</button>`;
   html += `<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">`;
+  const hubActive = file === "admin_season_break.html";
+  html += `<a href="admin_season_break.html" class="nav-link nav-link-sub${
+    hubActive ? " active" : ""
+  }">Season Break hub</a>`;
 
   for (const group of SEASON_BREAK_NAV) {
     html += `<div class="nav-subgroup nav-subgroup-nested" data-nav-subgroup>`;
