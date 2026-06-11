@@ -1,27 +1,31 @@
-import { supabase, initGlobal, isGpslAdminUser } from "./global.js";
+import { initAdminPage, primeAdminPageChrome, supabase } from "./admin_common.js";
 
-const DIVISIONS = ["superleague", "championship_a", "championship_b"];
-const KINDS = ["max_position", "promotion", "avoid_relegation"];
+primeAdminPageChrome();
 
 let rows = [];
 
+function bandInputs(row, minKey, maxKey) {
+  const min = row[minKey];
+  const max = row[maxKey];
+  if (min == null && max == null) {
+    return `<td colspan="2" class="na">—</td>`;
+  }
+  return `<td><input type="number" class="${minKey}" value="${min ?? ""}" min="0" max="99"></td>
+    <td><input type="number" class="${maxKey}" value="${max ?? ""}" min="0" max="99"></td>`;
+}
+
 function render() {
-  const body = document.getElementById("targetsBody");
+  const body = document.getElementById("expectancyBody");
   if (!body) return;
+
   body.innerHTML = rows
     .map(
       (r, idx) => `<tr data-idx="${idx}">
-      <td><input type="number" class="min_rating" value="${r.min_rating}" min="1" max="99" style="width:60px"></td>
-      <td><input type="number" class="max_rating" value="${r.max_rating}" min="1" max="99" style="width:60px"></td>
-      <td><select class="division">${DIVISIONS.map((d) => `<option value="${d}" ${r.division === d ? "selected" : ""}>${d}</option>`).join("")}</select></td>
-      <td><select class="target_kind">${KINDS.map((k) => `<option value="${k}" ${r.target_kind === k ? "selected" : ""}>${k}</option>`).join("")}</select></td>
-      <td><input type="number" class="target_value" value="${r.target_value ?? ""}" style="width:60px" placeholder="—"></td>
-      <td><input type="text" class="label" value="${r.label ?? ""}" style="width:220px"></td>
-      <td><input type="number" class="sort_order" value="${r.sort_order ?? 0}" style="width:50px"></td>
-      <td>
-        <button class="button save-row">Save</button>
-        <button class="button delete-row">Delete</button>
-      </td>
+      <td><b>${r.proficiency}</b></td>
+      ${bandInputs(r, "boost1_min", "boost1_max")}
+      ${bandInputs(r, "boost2_min", "boost2_max")}
+      ${bandInputs(r, "boost3_min", "boost3_max")}
+      <td><button type="button" class="button save-row">Save</button></td>
     </tr>`
     )
     .join("");
@@ -30,87 +34,70 @@ function render() {
     btn.addEventListener("click", async () => {
       const tr = btn.closest("tr");
       const idx = Number(tr.dataset.idx);
-      const payload = readRow(tr);
-      payload.id = rows[idx].id;
-      const { error } = await supabase.rpc("admin_upsert_manager_rating_target", {
+      const payload = readRow(tr, rows[idx].proficiency);
+      const { error } = await supabase.rpc("admin_upsert_manager_proficiency_expectancy", {
         p_payload: payload,
       });
+      const errEl = document.getElementById("adminError");
       if (error) {
-        document.getElementById("adminError").textContent = error.message;
+        if (errEl) errEl.textContent = error.message;
         return;
       }
-      await loadRows();
-    });
-  });
-
-  body.querySelectorAll(".delete-row").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const tr = btn.closest("tr");
-      const idx = Number(tr.dataset.idx);
-      const id = rows[idx].id;
-      if (!id) {
-        rows.splice(idx, 1);
-        render();
-        return;
-      }
-      const { error } = await supabase.rpc("admin_delete_manager_rating_target", { p_id: id });
-      if (error) {
-        document.getElementById("adminError").textContent = error.message;
-        return;
-      }
+      if (errEl) errEl.textContent = "";
       await loadRows();
     });
   });
 }
 
-function readRow(tr) {
+function readRow(tr, proficiency) {
+  const num = (sel) => {
+    const v = tr.querySelector(sel)?.value;
+    return v === "" || v == null ? null : Number(v);
+  };
   return {
-    min_rating: Number(tr.querySelector(".min_rating").value),
-    max_rating: Number(tr.querySelector(".max_rating").value),
-    division: tr.querySelector(".division").value,
-    target_kind: tr.querySelector(".target_kind").value,
-    target_value: tr.querySelector(".target_value").value || null,
-    label: tr.querySelector(".label").value,
-    sort_order: Number(tr.querySelector(".sort_order").value) || 0,
+    proficiency,
+    boost1_min: num(".boost1_min"),
+    boost1_max: num(".boost1_max"),
+    boost2_min: num(".boost2_min"),
+    boost2_max: num(".boost2_max"),
+    boost3_min: num(".boost3_min"),
+    boost3_max: num(".boost3_max"),
+  };
+}
+
+function normalizeRow(row) {
+  return {
+    proficiency: row.proficiency,
+    boost1_min: row.boost1_min ?? row.tier1_min,
+    boost1_max: row.boost1_max ?? row.tier1_max,
+    boost2_min: row.boost2_min ?? row.tier2_min,
+    boost2_max: row.boost2_max ?? row.tier2_max,
+    boost3_min: row.boost3_min ?? row.tier3_min,
+    boost3_max: row.boost3_max ?? row.tier3_max,
   };
 }
 
 async function loadRows() {
   const { data, error } = await supabase
-    .from("manager_rating_targets")
+    .from("manager_proficiency_expectancy")
     .select("*")
-    .order("sort_order")
-    .order("min_rating", { ascending: false });
+    .order("proficiency");
 
+  const errEl = document.getElementById("adminError");
   if (error) {
-    document.getElementById("adminError").textContent = error.message;
+    if (errEl) {
+      errEl.textContent = error.message.includes("manager_proficiency_expectancy")
+        ? "Run supabase/sql/patches/manager_squad_boost_impact.sql first."
+        : error.message;
+    }
     return;
   }
-  rows = data || [];
-  document.getElementById("adminError").textContent = "";
+  rows = (data || []).map(normalizeRow);
+  if (errEl) errEl.textContent = "";
   render();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  await initGlobal();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!isGpslAdminUser(user)) {
-    document.getElementById("adminError").textContent = "Admin only.";
-    return;
-  }
-
-  document.getElementById("addRowBtn")?.addEventListener("click", () => {
-    rows.push({
-      min_rating: 80,
-      max_rating: 84,
-      division: "superleague",
-      target_kind: "max_position",
-      target_value: 6,
-      label: "",
-      sort_order: 0,
-    });
-    render();
-  });
-
+  await initAdminPage();
   await loadRows();
 });

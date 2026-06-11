@@ -98,7 +98,7 @@ function renderGateBreakdown(data) {
     <dl class="breakdown">
       <dt>Stadium capacity</dt><dd>${Number(data.capacity || 0).toLocaleString("en-GB")}</dd>
       <dt>Club tier</dt><dd>${tier} · prestige rank ${data.prestige_rank ?? "—"}</dd>
-      <dt>Manager rating</dt><dd>${data.manager_rating ?? "—"}${tier !== "big" && data.manager_rating ? " (can lift expectation)" : ""}</dd>
+      <dt>Manager rating</dt><dd>${data.manager_rating ?? "—"}${tier !== "big" && data.manager_rating ? " (chart scaling lifts expectation)" : ""}</dd>
       <dt>Season expectation</dt><dd>League ${data.expected_position ?? "—"} · ${Number(data.expected_points || 0).toFixed(2)} pts</dd>
       <dt>Current delivery</dt><dd>League ${data.actual_position ?? data.table_position ?? "—"} · ${Number(data.actual_points || 0).toFixed(2)} pts</dd>
       <dt>Performance</dt><dd>${gapLabel} · <b>${band}</b></dd>

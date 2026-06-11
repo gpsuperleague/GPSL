@@ -1,0 +1,2 @@
+-- DEPRECATED — wrong interpretation (league points).
+-- Run manager_squad_boost_impact.sql instead.

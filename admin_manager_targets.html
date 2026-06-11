@@ -1,46 +1,56 @@
 <script>window.CURRENT_PAGE = "admin_manager_targets";</script>
 <!DOCTYPE html>
-<html>
+<html lang="en" class="admin-root">
 <head>
   <meta charset="UTF-8">
-  <title>Admin — Manager contract targets</title>
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Manager expectancy chart — GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
   <style>
-    body { background:#111; color:#ddd; font-family:Arial,sans-serif; padding:20px; }
-    h1 { color:#ff9900; }
-    table { width:100%; border-collapse:collapse; background:#1a1a1a; margin-top:16px; }
-    th, td { padding:8px; border-bottom:1px solid #333; text-align:left; font-size:13px; }
-    th { color:#ff9900; background:#222; }
-    input, select { background:#222; color:#ddd; border:1px solid #444; padding:4px 6px; border-radius:4px; }
-    .button { padding:8px 14px; background:#1a1a1a; color:#ff9900; border:1px solid #666; border-radius:6px; cursor:pointer; font-weight:bold; }
-    #adminError { color:#f88; }
+    .expectancy-note { color:#999; font-size:13px; line-height:1.5; max-width:920px; }
+    .expectancy-table { width:100%; border-collapse:collapse; margin-top:16px; font-size:13px; }
+    .expectancy-table th, .expectancy-table td { padding:8px; border-bottom:1px solid #333; text-align:left; }
+    .expectancy-table th { color:#ff9900; background:#222; }
+    .expectancy-table input { width:52px; background:#222; color:#ddd; border:1px solid #444; padding:4px; border-radius:4px; }
+    .expectancy-table .na { color:#666; font-style:italic; }
+    .tier-head { font-size:12px; color:#bbb; }
   </style>
 </head>
-<body>
+<body class="admin-page">
   <div id="nav"></div>
-  <h1>Manager contract targets (by rating)</h1>
-  <p style="color:#aaa;font-size:13px;">
-    Defines what each manager rating must achieve in their club's division.
-    Hit target → 2-year renewal. Miss → released for market value.
-  </p>
-  <p id="adminError"></p>
-  <button class="button" id="addRowBtn">Add rule</button>
-  <table>
-    <thead>
-      <tr>
-        <th>Min rating</th>
-        <th>Max rating</th>
-        <th>Division</th>
-        <th>Target kind</th>
-        <th>Position</th>
-        <th>Label</th>
-        <th>Order</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody id="targetsBody"></tbody>
-  </table>
-  <script type="module" src="global.js"></script>
-  <script type="module" src="admin_manager_targets.js?v=1"></script>
+  <h1 class="admin-title">Manager expectancy chart</h1>
+  <div class="admin-layout" id="adminLayout">
+    <div class="admin-main">
+      <p class="expectancy-note">
+        <b>Reference chart only</b> — GPSL does <b>not</b> change player stats in GPDB.
+        This mirrors eFootball manager impact tiers: for each proficiency (77–89), the
+        <b>+1 / +2 / +3</b> columns show which <b>player rating bands</b> that manager
+        would lift in the base game (e.g. 84 → +2 for players rated 62–92).
+        We use that to <b>scale season expectations</b> from your top-18 squad and grade
+        contract renewal (+1 met, +2/+3 beat expectation).
+        Run <code>manager_squad_boost_impact.sql</code> once.
+      </p>
+      <p id="adminError" class="status-line error"></p>
+      <table class="expectancy-table card">
+        <thead>
+          <tr>
+            <th rowspan="2">Proficiency</th>
+            <th colspan="2" class="tier-head">+1 impact band — player ratings</th>
+            <th colspan="2" class="tier-head">+2 impact band — player ratings</th>
+            <th colspan="2" class="tier-head">+3 impact band — player ratings</th>
+            <th rowspan="2"></th>
+          </tr>
+          <tr>
+            <th>Min</th><th>Max</th>
+            <th>Min</th><th>Max</th>
+            <th>Min</th><th>Max</th>
+          </tr>
+        </thead>
+        <tbody id="expectancyBody"></tbody>
+      </table>
+    </div>
+  </div>
+  <script type="module" src="admin_manager_targets.js?v=3"></script>
 </body>
 </html>
