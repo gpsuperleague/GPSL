@@ -5,6 +5,7 @@ import { inboxActionForMessage } from "./competition_inbox_actions.js";
 
 let myClub = { short: null, name: null };
 let myOwnerId = null;
+let showArchived = false;
 
 function setStatus(msg, isError = false) {
   const el = document.getElementById("inboxStatus");
@@ -13,11 +14,58 @@ function setStatus(msg, isError = false) {
   el.style.color = isError ? "#f66" : "#ffcc00";
 }
 
+function updateArchiveButtonState() {
+  const btn = document.getElementById("archiveSelectedBtn");
+  if (!btn) return;
+  const checked = document.querySelectorAll(".inbox-item-check:checked").length;
+  btn.disabled = checked === 0;
+  btn.textContent =
+    checked > 0 ? `Archive selected (${checked})` : "Archive selected";
+}
+
 async function markRead(inboxId) {
   const { error } = await supabase.rpc("competition_inbox_mark_read", {
     p_inbox_id: inboxId,
   });
   if (error) throw error;
+  await refreshInboxNavBadge();
+}
+
+async function markAllRead() {
+  setStatus("Marking all as read…");
+  const { data, error } = await supabase.rpc("competition_inbox_mark_all_read");
+  if (error) {
+    setStatus("❌ " + error.message, true);
+    return;
+  }
+  setStatus(`Marked ${data ?? 0} message(s) as read.`);
+  await renderInbox();
+  await refreshInboxNavBadge();
+}
+
+async function archiveSelected() {
+  const ids = Array.from(document.querySelectorAll(".inbox-item-check:checked"))
+    .map((cb) => Number(cb.dataset.id))
+    .filter((id) => Number.isFinite(id));
+
+  if (!ids.length) return;
+  if (!confirm(`Archive ${ids.length} selected message(s)?`)) return;
+
+  setStatus("Archiving…");
+  const { data, error } = await supabase.rpc("competition_inbox_archive_messages", {
+    p_inbox_ids: ids,
+  });
+
+  if (error) {
+    const hint = error.message?.includes("competition_inbox_archive_messages")
+      ? " — run patches/owner_inbox_archive.sql in Supabase"
+      : "";
+    setStatus("❌ " + error.message + hint, true);
+    return;
+  }
+
+  setStatus(`Archived ${data ?? 0} message(s).`);
+  await renderInbox();
   await refreshInboxNavBadge();
 }
 
@@ -48,7 +96,15 @@ function formatMessageTime(iso) {
   }
 }
 
-function appendMarkReadButton(actions, div, msg, readBtnState) {
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function appendMarkReadButton(actions, div, msg) {
   const readBtn = document.createElement("button");
   readBtn.className = "button secondary";
   readBtn.textContent = msg.read_at ? "Read" : "Mark read";
@@ -71,20 +127,28 @@ function appendMarkReadButton(actions, div, msg, readBtnState) {
 
 async function renderInbox() {
   const list = document.getElementById("inboxList");
+  const toolbar = document.getElementById("inboxToolbar");
+
   if (!myClub.short && !myOwnerId) {
+    toolbar.hidden = true;
     list.innerHTML =
       '<p class="empty">Link your club to this account in Supabase (<b>Clubs.owner_id</b>) to receive club notifications, or register as an owner awaiting club auction.</p>';
     return;
   }
 
+  toolbar.hidden = false;
+
   const messages = await loadInboxMessages(supabase, {
     clubShortName: myClub.short,
     ownerId: myOwnerId,
+    includeArchived: showArchived,
   });
 
   if (!messages.length) {
-    list.innerHTML =
-      '<p class="empty">No notifications yet. Results, transfers, fines, nation picks, monthly match previews, and season updates will appear here.</p>';
+    list.innerHTML = showArchived
+      ? '<p class="empty">No messages (including archived).</p>'
+      : '<p class="empty">No notifications. Archived messages are hidden — tick <b>Show archived</b> to view them.</p>';
+    updateArchiveButtonState();
     return;
   }
 
@@ -92,19 +156,39 @@ async function renderInbox() {
 
   for (const msg of messages) {
     const div = document.createElement("div");
-    div.className = "inbox-item" + (msg.read_at ? "" : " unread");
+    const isArchived = !!msg.archived_at;
+    div.className =
+      "inbox-item" +
+      (msg.read_at || isArchived ? "" : " unread") +
+      (isArchived ? " archived" : "");
 
-    div.innerHTML = `
-      <h3>${msg.title}</h3>
-      <p>${msg.body}</p>
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.className = "inbox-item-check";
+    checkbox.dataset.id = String(msg.id);
+    checkbox.disabled = isArchived;
+    checkbox.title = isArchived ? "Already archived" : "Select to archive";
+    checkbox.addEventListener("change", updateArchiveButtonState);
+
+    const body = document.createElement("div");
+    body.className = "inbox-item-body";
+    body.innerHTML = `
+      <h3>${escapeHtml(msg.title)}${
+        isArchived ? '<span class="inbox-archived-tag">(archived)</span>' : ""
+      }</h3>
+      <p>${escapeHtml(msg.body)}</p>
       <time>${formatMessageTime(msg.created_at)}</time>
       <div class="inbox-actions"></div>
     `;
 
-    const actions = div.querySelector(".inbox-actions");
+    div.appendChild(checkbox);
+    div.appendChild(body);
+
+    const actions = body.querySelector(".inbox-actions");
     const action = inboxActionForMessage(msg);
 
     if (
+      !isArchived &&
       msg.message_type === "result_to_confirm" &&
       !msg.read_at &&
       myClub.short &&
@@ -125,7 +209,7 @@ async function renderInbox() {
 
       actions.appendChild(confirmBtn);
       actions.appendChild(rejectBtn);
-    } else {
+    } else if (!isArchived) {
       if (action?.href) {
         const openBtn = document.createElement("button");
         openBtn.className = "button";
@@ -140,10 +224,19 @@ async function renderInbox() {
 
     list.appendChild(div);
   }
+
+  updateArchiveButtonState();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
+
+  document.getElementById("markAllReadBtn").onclick = markAllRead;
+  document.getElementById("archiveSelectedBtn").onclick = archiveSelected;
+  document.getElementById("showArchivedCb").onchange = async (e) => {
+    showArchived = e.target.checked;
+    await renderInbox();
+  };
 
   const {
     data: { user },

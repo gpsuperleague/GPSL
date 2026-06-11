@@ -28,7 +28,7 @@ function buildInboxOrFilter(clubShortName, ownerId) {
 
 export async function loadInboxMessages(
   supabase,
-  { clubShortName, ownerId, unreadOnly = false } = {}
+  { clubShortName, ownerId, unreadOnly = false, includeArchived = false } = {}
 ) {
   const orFilter = buildInboxOrFilter(clubShortName, ownerId);
   if (!orFilter) return [];
@@ -39,6 +39,9 @@ export async function loadInboxMessages(
     .or(orFilter)
     .order("created_at", { ascending: false });
 
+  if (!includeArchived) {
+    query = query.is("archived_at", null);
+  }
   if (unreadOnly) query = query.is("read_at", null);
 
   const { data, error } = await query;
@@ -64,7 +67,8 @@ export async function countUnreadInbox(
     .from("competition_inbox")
     .select("id", { count: "exact", head: true })
     .or(orFilter)
-    .is("read_at", null);
+    .is("read_at", null)
+    .is("archived_at", null);
 
   if (error) {
     console.error("countUnreadInbox:", error);
