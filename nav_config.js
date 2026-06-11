@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260604-no-fixture-submenu";
+export const NAV_CONFIG_VERSION = "20260604-admin-other";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -124,24 +124,11 @@ export const ADMIN_NAV_SECTION = {
     { seasonMega: true, label: "Season management" },
     { seasonBreakMega: true, label: "Season Break" },
 
-    { heading: true, label: "Money management" },
-    { href: "admin_money.html", label: "Prizes, wages & gates" },
-    { href: "admin_cup_prizes.html", label: "Cup prize money", indent: true },
+    /* Not in Season management / Season Break — review and relocate later */
+    { heading: true, label: "Other" },
     { href: "admin_club_attendance.html", label: "Club attendance & prestige" },
-    { href: "admin_challenges.html", label: "Season challenges" },
-    { href: "admin_fines.html", label: "Fines & compensation" },
-
-    { heading: true, label: "Transfer management" },
-    { href: "admin_transfers.html", label: "Transfer window & engine" },
-    { href: "admin_draft.html", label: "Draft auction" },
     { href: "admin_manager_targets.html", label: "Manager contract targets" },
-    { href: "admin_special-auctions.html", label: "Special auction" },
-
-    { heading: true, label: "Owner administration" },
     { href: "admin_owners.html", label: "Owners & accounts" },
-
-    { heading: true, label: "International" },
-    { href: "admin_international.html", label: "World Cup & nations" },
   ],
 };
 
