@@ -1487,6 +1487,17 @@ document.addEventListener("DOMContentLoaded", () => {
       const panel = document.getElementById(`filter-${col}-panel`);
       if (!panel) continue;
 
+      let uniqueValues;
+
+      if (col === "Contracted_Team") {
+        // All league clubs — not only teams that currently have a player row.
+        uniqueValues = Object.keys(CLUB_NAME_MAP)
+          .filter((short) => short && short !== "FOREIGN")
+          .sort((a, b) =>
+            (CLUB_NAME_MAP[a] || a).localeCompare(CLUB_NAME_MAP[b] || b)
+          );
+        uniqueValues = ["FREE AGENT", ...uniqueValues];
+      } else {
       let { data, error } = await supabase
         .from("Players")
         .select(col, { distinct: true });
@@ -1499,12 +1510,6 @@ document.addEventListener("DOMContentLoaded", () => {
       let values = data
         .map(row => row[col])
         .filter(v => v !== null && v !== undefined);
-
-      if (col === "Contracted_Team") {
-        values = values.map(v => (v && String(v).trim() !== "" ? String(v).trim() : "FREE AGENT"));
-      }
-
-      let uniqueValues;
 
       if (col === "Season_Signed") {
         const nums = values.map((v) => Number(v)).filter((v) => !isNaN(v));
@@ -1533,9 +1538,6 @@ document.addEventListener("DOMContentLoaded", () => {
           .filter(v => v !== "")
           .sort((a, b) => a.localeCompare(b));
       }
-
-      if (col === "Contracted_Team") {
-        uniqueValues = ["FREE AGENT", ...uniqueValues.filter(v => v !== "FREE AGENT")];
       }
 
       FILTER_OPTION_CACHE[col] = uniqueValues.map((v) => {
