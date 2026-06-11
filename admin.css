@@ -271,7 +271,8 @@ html.admin-root body.admin-page {
 }
 
 /* Season Break deep links — clear fixed nav when scrolling to section */
-.admin-page [id^="sb-"] {
+.admin-page [id^="sb-"],
+.admin-page [id^="ow-"] {
   scroll-margin-top: 72px;
 }
 

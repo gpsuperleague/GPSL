@@ -901,7 +901,7 @@ function navLinkIconHtml(item) {
 
 function renderNavDropdownItems(items, pathname, search, isNavItemActive, renderMegaNavHtml) {
   const hasHeadings = items.some(
-    (item) => item.heading || item.seasonMega || item.seasonBreakMega
+    (item) => item.heading || item.seasonMega || item.seasonBreakMega || item.ownersMega
   );
   if (!hasHeadings) {
     let flat = "";
@@ -943,7 +943,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
   };
 
   for (const item of items) {
-    if (item.seasonMega || item.seasonBreakMega) {
+    if (item.seasonMega || item.seasonBreakMega || item.ownersMega) {
       if (renderMegaNavHtml) {
         flushPanel();
         groupHtml += renderMegaNavHtml(item, pathname, search);
@@ -1082,7 +1082,7 @@ export async function buildNav() {
   let normalizeNavPath;
   let renderAdminMegaNavHtml;
   try {
-    const navMod = await import("./nav_config.js?v=20260604-admin-other");
+    const navMod = await import("./nav_config.js?v=20260604-owners-mega");
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;

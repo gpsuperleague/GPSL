@@ -17,7 +17,7 @@
   <h1 class="admin-title">Owner administration</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
-      <div class="card">
+      <div class="card" id="ow-add-owner">
         <h2>Add owner</h2>
         <div class="row">
           <div><input id="ownerEmail" placeholder="Owner email"></div>
@@ -27,7 +27,7 @@
         <button id="addOwnerBtn" class="button">Add owner</button>
         <div id="ownerStatus" class="status-line"></div>
       </div>
-      <div class="card">
+      <div class="card" id="ow-break">
         <h2>Remove owner from club (short break)</h2>
         <p class="note">
           Detaches the owner from their club and national team. Season history, rankings, and archives are kept.
@@ -39,7 +39,7 @@
         <button id="breakOwnerBtn" class="button secondary">Remove from club</button>
         <div id="breakOwnerStatus" class="status-line"></div>
       </div>
-      <div class="card">
+      <div class="card" id="ow-archive">
         <h2>Archive owner (left GPSL)</h2>
         <p class="note">
           Same detach as a break, but marks the owner <b>archived</b> (left or removed).
@@ -52,7 +52,7 @@
         <button id="archiveOwnerBtn" class="button secondary">Archive owner</button>
         <div id="archiveOwnerStatus" class="status-line"></div>
       </div>
-      <div class="card">
+      <div class="card" id="ow-unarchive">
         <h2>Unarchive owner</h2>
         <p class="note">Moves an archived owner to <b>on break</b> so they can be linked to a club again.</p>
         <div class="row">
@@ -61,7 +61,7 @@
         <button id="unarchiveOwnerBtn" class="button">Unarchive</button>
         <div id="unarchiveOwnerStatus" class="status-line"></div>
       </div>
-      <div class="card">
+      <div class="card" id="ow-change-club">
         <h2>Change owner club</h2>
         <p class="note">
           Move an owner who <b>already has a club</b> to a different one. Old club is vacated and its nation released.
@@ -74,7 +74,7 @@
         <button id="changeOwnerBtn" class="button">Change club</button>
         <div id="changeOwnerStatus" class="status-line"></div>
       </div>
-      <div class="card">
+      <div class="card" id="ow-club-auction">
         <h2>Register for club auction (no club yet)</h2>
         <p class="note">
           New season owners: £600m pending balance, status <code>awaiting_club_auction</code>.
@@ -87,7 +87,7 @@
         <button id="clubAuctionRegisterBtn" class="button">Register for club auction</button>
         <div id="clubAuctionStatus" class="status-line"></div>
       </div>
-      <div class="card">
+      <div class="card" id="ow-link-club">
         <h2>Link existing login to club</h2>
         <p class="note">For owners on break with no club, or first-time assignment to a vacant club.</p>
         <div class="row">
@@ -97,7 +97,7 @@
         <button id="linkOwnerBtn" class="button">Link club to account</button>
         <div id="linkOwnerStatus" class="status-line"></div>
       </div>
-      <div class="card">
+      <div class="card" id="ow-update-email">
         <h2>Update email</h2>
         <div class="row">
           <div>
@@ -112,7 +112,7 @@
         <button id="updateEmailBtn" class="button">Update email</button>
         <div id="updateEmailStatus" class="status-line"></div>
       </div>
-      <div class="card">
+      <div class="card" id="ow-reset-password">
         <h2>Send reset email</h2>
         <div class="row">
           <div><input id="resetOwnerEmail" placeholder="Owner email"></div>

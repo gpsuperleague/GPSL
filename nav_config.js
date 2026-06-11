@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260604-admin-other";
+export const NAV_CONFIG_VERSION = "20260604-owners-mega";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -9,14 +9,19 @@ const seasonNavMod = await import(
 const seasonBreakNavMod = await import(
   `./admin_season_break_nav.js?v=${NAV_CONFIG_VERSION}`
 );
+const ownerNavMod = await import(
+  `./admin_owners_nav.js?v=${NAV_CONFIG_VERSION}`
+);
 
 const { seasonAdminNavHasActive, renderSeasonAdminNavHtml } = seasonNavMod;
 const { seasonBreakNavHasActive, renderSeasonBreakNavHtml } = seasonBreakNavMod;
+const { ownerAdminNavHasActive, renderOwnerAdminNavHtml } = ownerNavMod;
 
-/** Render Season management / Season Break mega-menu blocks (admin dropdown). */
+/** Render admin mega-menu blocks (Season management, Season Break, Owners & accounts). */
 export function renderAdminMegaNavHtml(item, pathname, search = "") {
   if (item?.seasonMega) return renderSeasonAdminNavHtml(pathname, search);
   if (item?.seasonBreakMega) return renderSeasonBreakNavHtml(pathname, search);
+  if (item?.ownersMega) return renderOwnerAdminNavHtml(pathname, search);
   return "";
 }
 
@@ -123,12 +128,12 @@ export const ADMIN_NAV_SECTION = {
   items: [
     { seasonMega: true, label: "Season management" },
     { seasonBreakMega: true, label: "Season Break" },
+    { ownersMega: true, label: "Owners & accounts" },
 
-    /* Not in Season management / Season Break — review and relocate later */
+    /* Not in workflow menus — review and relocate later */
     { heading: true, label: "Other" },
     { href: "admin_club_attendance.html", label: "Club attendance & prestige" },
     { href: "admin_manager_targets.html", label: "Manager contract targets" },
-    { href: "admin_owners.html", label: "Owners & accounts" },
   ],
 };
 
@@ -185,6 +190,7 @@ export function sectionHasActiveItem(section, pathname, search) {
   return section.items.some((item) => {
     if (item.seasonMega) return seasonAdminNavHasActive(pathname, search);
     if (item.seasonBreakMega) return seasonBreakNavHasActive(pathname, search);
+    if (item.ownersMega) return ownerAdminNavHasActive(pathname, search);
     if (item.heading || !item.href) return false;
     return isNavItemActive(item, pathname, search);
   });
