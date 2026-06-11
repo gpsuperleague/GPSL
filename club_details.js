@@ -285,43 +285,25 @@ function formatDivisionLabel(division) {
   return division;
 }
 
-function formatManagerBoostBands(row) {
+function formatManagerTarget(row) {
+  if (!row?.target_label) return "—";
+  if (row.target_kind === "max_position" && row.target_value) {
+    return `${row.target_label} (finish ≤ ${row.target_value})`;
+  }
+  return row.target_label;
+}
+
+function formatChartBands(row) {
   const parts = [row.boost1_label, row.boost2_label, row.boost3_label].filter(Boolean);
-  if (!parts.length) return "—";
-  return `${parts.join(" · ")} (reference chart)`;
-}
-
-function formatSquadImpact(row) {
-  const raw = row.squad_raw_avg;
-  const boosted = row.squad_boosted_avg;
-  const delta = row.squad_boost_delta;
-  if (raw == null || boosted == null) return "—";
-  const d = delta != null ? ` (+${Number(delta).toFixed(1)} chart weight)` : "";
-  return `${Number(raw).toFixed(1)} → ${Number(boosted).toFixed(1)} ref.${d} · top 18 · GPDB unchanged`;
-}
-
-function formatSeasonExpectation(row) {
-  const pos = row.expected_position;
-  const pts = row.expected_league_pts;
-  if (pos == null) return "—";
-  const ptsPart = pts != null ? ` · ~${Math.round(Number(pts))} pts` : "";
-  return `Position ${pos}${ptsPart}`;
+  if (!parts.length) return null;
+  return parts.join(" · ");
 }
 
 function formatTargetProgress(row) {
-  const pos = row.season_position;
-  const expected = row.expected_position;
-  const tier = row.expectancy_tier;
-  if (pos == null) return "Season in progress";
-  const posLabel = expected != null ? `${pos} (expect ${expected})` : String(pos);
-  if (tier === 3) return `${posLabel} — +3 exceeded ✓`;
-  if (tier === 2) return `${posLabel} — +2 beat expectation ✓`;
-  if (tier === 1) return `${posLabel} — +1 on course ✓ (renew)`;
-  if (tier === 0) {
-    const need = expected != null ? ` (need ≤${expected} for +1)` : "";
-    return `${posLabel} — below expectation ✗${need}`;
-  }
-  return posLabel;
+  if (row.target_met === true) return "On course ✓";
+  if (row.target_met === false) return "Off course ✗";
+  if (row.season_position != null) return `Position ${row.season_position} (pending evaluation)`;
+  return "Season in progress";
 }
 
 async function loadManagerSection(clubShortName) {
@@ -364,10 +346,9 @@ async function loadManagerSection(clubShortName) {
         <dt>Contract</dt><dd>${data.contract_seasons_remaining ?? 0} season(s) remaining</dd>
         <dt>Weekly wage</dt><dd>${formatMoney(Number(data.weekly_wage || 0))}</dd>
         <dt>Division</dt><dd>${formatDivisionLabel(data.division)}</dd>
-        <dt>Chart bands</dt><dd>${formatManagerBoostBands(data)}</dd>
-        <dt>Expectancy scaling</dt><dd>${formatSquadImpact(data)}</dd>
-        <dt>Season expectation</dt><dd>${formatSeasonExpectation(data)}</dd>
-        <dt>League position</dt><dd>${formatTargetProgress(data)}</dd>
+        <dt>Target</dt><dd>${formatManagerTarget(data)}</dd>
+        <dt>Progress</dt><dd>${formatTargetProgress(data)}</dd>
+        ${formatChartBands(data) ? `<dt>Impact chart</dt><dd>${formatChartBands(data)}</dd>` : ""}
         <dt>Sack allowance</dt><dd>${data.manager_sacks_remaining ? "Available this season" : "Used"}</dd>
       </dl>
     `;

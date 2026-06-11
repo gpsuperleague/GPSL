@@ -132,7 +132,7 @@ export const ADMIN_NAV_SECTION = {
 
     /* Not in workflow menus — review and relocate later */
     { heading: true, label: "Other" },
-    { href: "admin_manager_targets.html", label: "Manager expectancy chart" },
+    { href: "admin_manager_targets.html", label: "Manager contract targets" },
   ],
 };
 

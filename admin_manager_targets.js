@@ -2,7 +2,76 @@ import { initAdminPage, primeAdminPageChrome, supabase } from "./admin_common.js
 
 primeAdminPageChrome();
 
-let rows = [];
+const DIVISIONS = ["superleague", "championship_a", "championship_b"];
+const KINDS = ["max_position", "promotion", "avoid_relegation"];
+
+let targetRows = [];
+let chartRows = [];
+
+function renderTargets() {
+  const body = document.getElementById("targetsBody");
+  if (!body) return;
+
+  body.innerHTML = targetRows
+    .map(
+      (r, idx) => `<tr data-idx="${idx}">
+      <td><input type="number" class="min_rating" value="${r.min_rating}" min="1" max="99" style="width:60px"></td>
+      <td><input type="number" class="max_rating" value="${r.max_rating}" min="1" max="99" style="width:60px"></td>
+      <td><select class="division">${DIVISIONS.map((d) => `<option value="${d}" ${r.division === d ? "selected" : ""}>${d}</option>`).join("")}</select></td>
+      <td><select class="target_kind">${KINDS.map((k) => `<option value="${k}" ${r.target_kind === k ? "selected" : ""}>${k}</option>`).join("")}</select></td>
+      <td><input type="number" class="target_value" value="${r.target_value ?? ""}" style="width:60px" placeholder="—"></td>
+      <td><input type="text" class="label" value="${r.label ?? ""}" style="width:220px"></td>
+      <td><input type="number" class="sort_order" value="${r.sort_order ?? 0}" style="width:50px"></td>
+      <td>
+        <button type="button" class="button save-target">Save</button>
+        <button type="button" class="button delete-target">Delete</button>
+      </td>
+    </tr>`
+    )
+    .join("");
+
+  body.querySelectorAll(".save-target").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const tr = btn.closest("tr");
+      const idx = Number(tr.dataset.idx);
+      const payload = readTargetRow(tr);
+      payload.id = targetRows[idx].id;
+      const { error } = await supabase.rpc("admin_upsert_manager_rating_target", {
+        p_payload: payload,
+      });
+      setError(error?.message);
+      if (!error) await loadTargetRows();
+    });
+  });
+
+  body.querySelectorAll(".delete-target").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const tr = btn.closest("tr");
+      const idx = Number(tr.dataset.idx);
+      const id = targetRows[idx].id;
+      if (!id) {
+        targetRows.splice(idx, 1);
+        renderTargets();
+        return;
+      }
+      const { error } = await supabase.rpc("admin_delete_manager_rating_target", { p_id: id });
+      setError(error?.message);
+      if (!error) await loadTargetRows();
+    });
+  });
+}
+
+function readTargetRow(tr) {
+  return {
+    min_rating: Number(tr.querySelector(".min_rating").value),
+    max_rating: Number(tr.querySelector(".max_rating").value),
+    division: tr.querySelector(".division").value,
+    target_kind: tr.querySelector(".target_kind").value,
+    target_value: tr.querySelector(".target_value").value || null,
+    label: tr.querySelector(".label").value,
+    sort_order: Number(tr.querySelector(".sort_order").value) || 0,
+  };
+}
 
 function bandInputs(row, minKey, maxKey) {
   const min = row[minKey];
@@ -14,42 +83,37 @@ function bandInputs(row, minKey, maxKey) {
     <td><input type="number" class="${maxKey}" value="${max ?? ""}" min="0" max="99"></td>`;
 }
 
-function render() {
+function renderChart() {
   const body = document.getElementById("expectancyBody");
   if (!body) return;
 
-  body.innerHTML = rows
+  body.innerHTML = chartRows
     .map(
       (r, idx) => `<tr data-idx="${idx}">
       <td><b>${r.proficiency}</b></td>
       ${bandInputs(r, "boost1_min", "boost1_max")}
       ${bandInputs(r, "boost2_min", "boost2_max")}
       ${bandInputs(r, "boost3_min", "boost3_max")}
-      <td><button type="button" class="button save-row">Save</button></td>
+      <td><button type="button" class="button save-chart">Save</button></td>
     </tr>`
     )
     .join("");
 
-  body.querySelectorAll(".save-row").forEach((btn) => {
+  body.querySelectorAll(".save-chart").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const tr = btn.closest("tr");
       const idx = Number(tr.dataset.idx);
-      const payload = readRow(tr, rows[idx].proficiency);
+      const payload = readChartRow(tr, chartRows[idx].proficiency);
       const { error } = await supabase.rpc("admin_upsert_manager_proficiency_expectancy", {
         p_payload: payload,
       });
-      const errEl = document.getElementById("adminError");
-      if (error) {
-        if (errEl) errEl.textContent = error.message;
-        return;
-      }
-      if (errEl) errEl.textContent = "";
-      await loadRows();
+      setError(error?.message);
+      if (!error) await loadChartRows();
     });
   });
 }
 
-function readRow(tr, proficiency) {
+function readChartRow(tr, proficiency) {
   const num = (sel) => {
     const v = tr.querySelector(sel)?.value;
     return v === "" || v == null ? null : Number(v);
@@ -65,7 +129,7 @@ function readRow(tr, proficiency) {
   };
 }
 
-function normalizeRow(row) {
+function normalizeChartRow(row) {
   return {
     proficiency: row.proficiency,
     boost1_min: row.boost1_min ?? row.tier1_min,
@@ -77,27 +141,59 @@ function normalizeRow(row) {
   };
 }
 
-async function loadRows() {
+function setError(msg) {
+  const el = document.getElementById("adminError");
+  if (el) el.textContent = msg || "";
+}
+
+async function loadTargetRows() {
+  const { data, error } = await supabase
+    .from("manager_rating_targets")
+    .select("*")
+    .order("sort_order")
+    .order("min_rating", { ascending: false });
+
+  if (error) {
+    setError(error.message);
+    return;
+  }
+  targetRows = data || [];
+  renderTargets();
+}
+
+async function loadChartRows() {
   const { data, error } = await supabase
     .from("manager_proficiency_expectancy")
     .select("*")
     .order("proficiency");
 
-  const errEl = document.getElementById("adminError");
   if (error) {
-    if (errEl) {
-      errEl.textContent = error.message.includes("manager_proficiency_expectancy")
-        ? "Run supabase/sql/patches/manager_squad_boost_impact.sql first."
-        : error.message;
+    if (error.message.includes("manager_proficiency_expectancy")) {
+      setError("Run supabase/sql/patches/manager_squad_boost_impact.sql for the impact chart.");
+    } else {
+      setError(error.message);
     }
     return;
   }
-  rows = (data || []).map(normalizeRow);
-  if (errEl) errEl.textContent = "";
-  render();
+  chartRows = (data || []).map(normalizeChartRow);
+  renderChart();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initAdminPage();
-  await loadRows();
+
+  document.getElementById("addRowBtn")?.addEventListener("click", () => {
+    targetRows.push({
+      min_rating: 80,
+      max_rating: 84,
+      division: "superleague",
+      target_kind: "max_position",
+      target_value: 6,
+      label: "",
+      sort_order: 0,
+    });
+    renderTargets();
+  });
+
+  await Promise.all([loadTargetRows(), loadChartRows()]);
 });
