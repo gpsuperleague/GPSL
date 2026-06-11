@@ -786,7 +786,13 @@ export async function refreshInboxNavBadge() {
 
   try {
     const clubShort = await getOwnerClubShort();
-    const unread = clubShort ? await countUnreadInbox(supabase, clubShort) : 0;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const unread =
+      clubShort || user?.id
+        ? await countUnreadInbox(supabase, clubShort, user?.id ?? null)
+        : 0;
 
     link.classList.toggle("has-unread", unread > 0);
     link.setAttribute(
@@ -1101,12 +1107,13 @@ export async function buildNav() {
 
   let unread = 0;
   try {
-    unread = clubShort
-      ? await Promise.race([
-          countUnreadInbox(supabase, clubShort),
-          new Promise((resolve) => setTimeout(() => resolve(0), 4000)),
-        ])
-      : 0;
+    unread =
+      clubShort || user?.id
+        ? await Promise.race([
+            countUnreadInbox(supabase, clubShort, user?.id ?? null),
+            new Promise((resolve) => setTimeout(() => resolve(0), 4000)),
+          ])
+        : 0;
   } catch (err) {
     console.warn("Inbox count skipped:", err);
   }

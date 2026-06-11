@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("fineTariffSelect").onchange = onTariffPick;
   document.getElementById("applyFineBtn").onclick = applyFine;
+  document.getElementById("applyPointsBtn").onclick = applyPointsAdjustment;
   document.getElementById("seedFinesBtn").onclick = seedTariffs;
   document.getElementById("reloadFinesBtn").onclick = () => loadTariffs();
   document.getElementById("saveFineTariffBtn").onclick = saveTariff;
@@ -21,11 +22,37 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function loadClubs() {
-  const sel = document.getElementById("fineClubSelect");
   const { data } = await supabase.from("Clubs").select("ShortName, Club").order("Club");
-  sel.innerHTML = (data || [])
+  const options = (data || [])
     .map((c) => `<option value="${c.ShortName}">${c.Club || c.ShortName}</option>`)
     .join("");
+  document.getElementById("fineClubSelect").innerHTML = options;
+  const pointsSel = document.getElementById("pointsClubSelect");
+  if (pointsSel) pointsSel.innerHTML = options;
+}
+
+async function applyPointsAdjustment() {
+  const club = document.getElementById("pointsClubSelect").value;
+  const delta = parseInt(document.getElementById("pointsDelta").value, 10);
+  const reason = document.getElementById("pointsReason").value.trim();
+  if (!club || !Number.isFinite(delta) || delta === 0) {
+    setStatus("applyPointsStatus", "Enter club and non-zero points delta.", false);
+    return;
+  }
+  if (!reason) {
+    setStatus("applyPointsStatus", "Reason is required.", false);
+    return;
+  }
+  if (!confirm(`${delta > 0 ? "Add" : "Deduct"} ${Math.abs(delta)} pts for ${club}?`)) return;
+
+  setStatus("applyPointsStatus", "Applying…");
+  const { error } = await supabase.rpc("competition_admin_adjust_league_points", {
+    p_club_short_name: club,
+    p_points_delta: delta,
+    p_reason: reason,
+    p_season_id: null,
+  });
+  setStatus("applyPointsStatus", error ? "❌ " + error.message : "✅ Points adjusted — owner notified.", !error);
 }
 
 function tariffOptionLabel(t) {

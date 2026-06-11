@@ -104,6 +104,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compCalendarSetBtn").onclick = setCompCalendar;
   document.getElementById("compCalendarBreakBtn").onclick = insertCompCalendarBreak;
   document.getElementById("compCalendarClearBtn").onclick = clearCompCalendar;
+  document.getElementById("compInboxMonthBtn").onclick = sendMonthPreviewInbox;
 
   await refreshCompetitionAdmin();
   await refreshCompCalendarAdmin();
@@ -181,15 +182,21 @@ async function archiveSeasonStats() {
   }
 
   setStatus("compArchiveStatus", "Archiving…");
-  const { data, error } = await supabase.rpc("competition_admin_archive_season", {
+  let { data, error } = await supabase.rpc("competition_admin_archive_season_with_inbox", {
     p_season_id: null,
   });
+
+  if (error?.message?.includes("competition_admin_archive_season_with_inbox")) {
+    ({ data, error } = await supabase.rpc("competition_admin_archive_season", {
+      p_season_id: null,
+    }));
+  }
 
   if (error) {
     setStatus(
       "compArchiveStatus",
       error.message.includes("competition_admin_archive_season")
-        ? "❌ Run supabase/sql/competition_history.sql in Supabase, then retry."
+        ? "❌ Run supabase/sql/competition_history.sql and patches/owner_inbox_notifications.sql in Supabase, then retry."
         : "❌ " + error.message,
       false
     );
@@ -581,4 +588,24 @@ async function clearCompCalendar() {
   }
   setStatus("compCalendarStatus", "✅ Calendar cleared.");
   await loadCalendarTableForSeason(seasonId);
+}
+
+async function sendMonthPreviewInbox() {
+  const seasonId = Number(document.getElementById("compCalendarSeason").value) || null;
+  if (!confirm("Send GPSL month fixture preview to all owners with matches this month?")) return;
+
+  setStatus("compCalendarStatus", "Sending inbox previews…");
+  const { data, error } = await supabase.rpc("owner_inbox_tick_monthly_notifications");
+  if (error) {
+    setStatus("compCalendarStatus", "❌ " + error.message, false);
+    return;
+  }
+  if (data?.ok === false) {
+    setStatus("compCalendarStatus", "⚠ " + (data.reason || "No active month"), false);
+    return;
+  }
+  setStatus(
+    "compCalendarStatus",
+    `✅ Month ${data.gpsl_month} previews sent to ${data.notified ?? 0} club(s).`
+  );
 }

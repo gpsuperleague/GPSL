@@ -91,6 +91,7 @@ export const NAV_SECTIONS = [
     id: "owners",
     label: "Owners",
     items: [
+      { href: "learning_gpsl.html", label: "Learning GPSL", page: "learning_gpsl" },
       { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings" },
       { href: "challenges.html", label: "Season challenges", page: "challenges" },
     ],

@@ -1,8 +1,10 @@
 import { supabase, initGlobal, refreshInboxNavBadge } from "./global.js";
 import { rejectFixtureResult } from "./competition.js";
 import { loadInboxMessages } from "./competition_inbox.js";
+import { inboxActionForMessage } from "./competition_inbox_actions.js";
 
 let myClub = { short: null, name: null };
+let myOwnerId = null;
 
 function setStatus(msg, isError = false) {
   const el = document.getElementById("inboxStatus");
@@ -46,21 +48,43 @@ function formatMessageTime(iso) {
   }
 }
 
+function appendMarkReadButton(actions, div, msg, readBtnState) {
+  const readBtn = document.createElement("button");
+  readBtn.className = "button secondary";
+  readBtn.textContent = msg.read_at ? "Read" : "Mark read";
+  readBtn.disabled = !!msg.read_at;
+  readBtn.onclick = async () => {
+    try {
+      div.classList.remove("unread");
+      readBtn.disabled = true;
+      readBtn.textContent = "Read";
+      await markRead(msg.id);
+    } catch (err) {
+      div.classList.add("unread");
+      readBtn.disabled = false;
+      readBtn.textContent = "Mark read";
+      setStatus("❌ " + (err.message || "Could not mark read"), true);
+    }
+  };
+  actions.appendChild(readBtn);
+}
+
 async function renderInbox() {
   const list = document.getElementById("inboxList");
-  if (!myClub.short) {
+  if (!myClub.short && !myOwnerId) {
     list.innerHTML =
-      '<p class="empty">Link your club to this account in Supabase (<b>Clubs.owner_id</b>) to receive notifications.</p>';
+      '<p class="empty">Link your club to this account in Supabase (<b>Clubs.owner_id</b>) to receive club notifications, or register as an owner awaiting club auction.</p>';
     return;
   }
 
   const messages = await loadInboxMessages(supabase, {
     clubShortName: myClub.short,
+    ownerId: myOwnerId,
   });
 
   if (!messages.length) {
     list.innerHTML =
-      '<p class="empty">No notifications yet. Transfer deals, opponent score confirmations, and other league updates will appear here.</p>';
+      '<p class="empty">No notifications yet. Results, transfers, fines, nation picks, monthly match previews, and season updates will appear here.</p>';
     return;
   }
 
@@ -78,10 +102,12 @@ async function renderInbox() {
     `;
 
     const actions = div.querySelector(".inbox-actions");
+    const action = inboxActionForMessage(msg);
 
     if (
       msg.message_type === "result_to_confirm" &&
       !msg.read_at &&
+      myClub.short &&
       (msg.recipient_club_short_name || "").toUpperCase() ===
         (myClub.short || "").toUpperCase()
     ) {
@@ -89,10 +115,7 @@ async function renderInbox() {
       confirmBtn.className = "button";
       confirmBtn.textContent = "Enter your stats & confirm";
       confirmBtn.onclick = () => {
-        const q = new URLSearchParams();
-        if (msg.fixture_id) q.set("fixture", String(msg.fixture_id));
-        if (msg.submission_id) q.set("confirm", String(msg.submission_id));
-        window.location = `matchday.html?${q.toString()}`;
+        window.location = action?.href || "matchday.html";
       };
 
       const rejectBtn = document.createElement("button");
@@ -103,24 +126,16 @@ async function renderInbox() {
       actions.appendChild(confirmBtn);
       actions.appendChild(rejectBtn);
     } else {
-      const readBtn = document.createElement("button");
-      readBtn.className = "button secondary";
-      readBtn.textContent = msg.read_at ? "Read" : "Mark read";
-      readBtn.disabled = !!msg.read_at;
-      readBtn.onclick = async () => {
-        try {
-          div.classList.remove("unread");
-          readBtn.disabled = true;
-          readBtn.textContent = "Read";
-          await markRead(msg.id);
-        } catch (err) {
-          div.classList.add("unread");
-          readBtn.disabled = false;
-          readBtn.textContent = "Mark read";
-          setStatus("❌ " + (err.message || "Could not mark read"), true);
-        }
-      };
-      actions.appendChild(readBtn);
+      if (action?.href) {
+        const openBtn = document.createElement("button");
+        openBtn.className = "button";
+        openBtn.textContent = action.label;
+        openBtn.onclick = () => {
+          window.location = action.href;
+        };
+        actions.appendChild(openBtn);
+      }
+      appendMarkReadButton(actions, div, msg);
     }
 
     list.appendChild(div);
@@ -130,11 +145,15 @@ async function renderInbox() {
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     window.location = "login.html";
     return;
   }
+
+  myOwnerId = user.id;
 
   const { data: club, error: clubErr } = await supabase
     .from("Clubs")
@@ -146,32 +165,30 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error("Club lookup:", clubErr);
   }
 
-  if (!club?.ShortName) {
+  if (club?.ShortName) {
+    myClub = { short: club.ShortName, name: club.Club };
+
+    const { data: regs } = await supabase
+      .from("competition_club_season_public")
+      .select("club_short_name, club_name, division");
+
+    const key = (myClub.short || "").trim().toUpperCase();
+    const reg = (regs || []).find(
+      (r) => (r.club_short_name || "").trim().toUpperCase() === key
+    );
+    if (reg) {
+      myClub.short = reg.club_short_name;
+      myClub.name = reg.club_name || myClub.name;
+    }
+
     document.getElementById("pageMeta").innerHTML =
-      "No club linked to this account. Set <b>Clubs.owner_id</b> in Supabase for your club.";
-    await renderInbox();
-    return;
+      `${myClub.name} — notifications for your club. ` +
+      `New owner? Read <a href="learning_gpsl.html">Learning GPSL</a>.`;
+  } else {
+    document.getElementById("pageMeta").innerHTML =
+      `Awaiting club assignment — owner messages appear here. ` +
+      `Read <a href="learning_gpsl.html">Learning GPSL</a> while you wait.`;
   }
-
-  myClub = { short: club.ShortName, name: club.Club };
-
-  const { data: regs } = await supabase
-    .from("competition_club_season_public")
-    .select("club_short_name, club_name, division");
-
-  const key = (myClub.short || "").trim().toUpperCase();
-  const reg = (regs || []).find(
-    (r) => (r.club_short_name || "").trim().toUpperCase() === key
-  );
-  if (reg) {
-    myClub.short = reg.club_short_name;
-    myClub.name = reg.club_name || myClub.name;
-  }
-
-  document.getElementById("pageMeta").innerHTML =
-    `${myClub.name} — notifications for your club only. ` +
-    `Submit scores on <a href="matchday.html">Match Day</a> or ` +
-    `<a href="fixtures.html">Fixtures</a>.`;
 
   await renderInbox();
 });

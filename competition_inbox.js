@@ -1,4 +1,4 @@
-// Inbox helpers (Phase 3 matchday)
+// Inbox helpers (Phase 3 matchday + owner notifications)
 
 import { normalizeClubKey } from "./competition.js";
 
@@ -10,16 +10,33 @@ function inboxForClub(msg, clubShortName) {
   );
 }
 
+function inboxForOwner(msg, ownerId) {
+  if (!ownerId || !msg?.owner_id) return false;
+  return String(msg.owner_id) === String(ownerId);
+}
+
+function buildInboxOrFilter(clubShortName, ownerId) {
+  const parts = [];
+  if (clubShortName) {
+    parts.push(`recipient_club_short_name.eq.${clubShortName}`);
+  }
+  if (ownerId) {
+    parts.push(`owner_id.eq.${ownerId}`);
+  }
+  return parts.length ? parts.join(",") : null;
+}
+
 export async function loadInboxMessages(
   supabase,
-  { clubShortName, unreadOnly = false } = {}
+  { clubShortName, ownerId, unreadOnly = false } = {}
 ) {
-  if (!clubShortName) return [];
+  const orFilter = buildInboxOrFilter(clubShortName, ownerId);
+  if (!orFilter) return [];
 
   let query = supabase
     .from("competition_inbox")
     .select("*")
-    .eq("recipient_club_short_name", clubShortName)
+    .or(orFilter)
     .order("created_at", { ascending: false });
 
   if (unreadOnly) query = query.is("read_at", null);
@@ -29,16 +46,24 @@ export async function loadInboxMessages(
     console.error("loadInboxMessages:", error);
     return [];
   }
-  return (data || []).filter((m) => inboxForClub(m, clubShortName));
+
+  return (data || []).filter(
+    (m) => inboxForClub(m, clubShortName) || inboxForOwner(m, ownerId)
+  );
 }
 
-export async function countUnreadInbox(supabase, clubShortName) {
-  if (!clubShortName) return 0;
+export async function countUnreadInbox(
+  supabase,
+  clubShortName,
+  ownerId = null
+) {
+  const orFilter = buildInboxOrFilter(clubShortName, ownerId);
+  if (!orFilter) return 0;
 
   const { count, error } = await supabase
     .from("competition_inbox")
     .select("id", { count: "exact", head: true })
-    .eq("recipient_club_short_name", clubShortName)
+    .or(orFilter)
     .is("read_at", null);
 
   if (error) {
@@ -47,4 +72,3 @@ export async function countUnreadInbox(supabase, clubShortName) {
   }
   return count || 0;
 }
-

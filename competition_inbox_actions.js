@@ -1,0 +1,44 @@
+/** Default action links when competition_inbox.action_href is not set. */
+
+export const INBOX_ACTION_DEFAULTS = {
+  welcome_gpsl: { label: "Learning GPSL", href: "learning_gpsl.html" },
+  result_submitted: { label: "Match Day", href: "matchday.html" },
+  result_to_confirm: { label: "Confirm result", href: "matchday.html" },
+  result_confirmed: { label: "Fixtures", href: "fixtures.html" },
+  result_rejected: { label: "Re-submit result", href: "matchday.html" },
+  transfer_signed: { label: "Squad", href: "squad.html" },
+  transfer_sold: { label: "Finances", href: "finances.html" },
+  transfer_upcoming: { label: "Transfer Centre", href: "transfer_center.html" },
+  draft_scheduled: { label: "Draft auction", href: "draftauction.html" },
+  fine_applied: { label: "Finances", href: "finances.html" },
+  points_deduction: { label: "League table", href: "progress.html" },
+  nation_pick_turn: { label: "Pick nation", href: "nation_select.html" },
+  nation_selection_open: { label: "Nation selection", href: "nation_select.html" },
+  season_expectations: { label: "Stadium", href: "stadium.html" },
+  season_overview: { label: "Club history", href: "history.html" },
+  player_awards: { label: "Club history", href: "history.html" },
+  monthly_fixtures: { label: "Fixtures", href: "fixtures.html" },
+};
+
+export function inboxActionForMessage(msg) {
+  if (!msg) return null;
+  if (msg.action_href) {
+    const defaults = INBOX_ACTION_DEFAULTS[msg.message_type];
+    return {
+      label: defaults?.label || "Open",
+      href: msg.action_href,
+    };
+  }
+  const def = INBOX_ACTION_DEFAULTS[msg.message_type];
+  if (!def) return null;
+  let href = def.href;
+  if (msg.message_type === "result_to_confirm" && msg.fixture_id) {
+    const q = new URLSearchParams();
+    q.set("fixture", String(msg.fixture_id));
+    if (msg.submission_id) q.set("confirm", String(msg.submission_id));
+    href = `matchday.html?${q.toString()}`;
+  } else if (msg.message_type === "result_submitted" && msg.fixture_id) {
+    href = `matchday.html?fixture=${msg.fixture_id}`;
+  }
+  return { label: def.label, href };
+}
