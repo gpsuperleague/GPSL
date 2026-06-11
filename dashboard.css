@@ -620,6 +620,28 @@ table.gpsl-table td {
   border-right: 1px solid #333;
 }
 
+.nav-owner-club {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 2px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.nav-owner-club:hover {
+  background: #2a2a2a;
+}
+
+.nav-owner-club-badge {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  display: block;
+}
+
 /* Live GPSL month / Pre-Season (active competition season) */
 .gpsl-nav-month {
   display: flex;

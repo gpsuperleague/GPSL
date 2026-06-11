@@ -742,6 +742,19 @@ function clubBadgeSrc(shortName) {
   return `images/club_badges/${code}.png`;
 }
 
+function renderNavOwnerClubBadge(ownerClub) {
+  if (!ownerClub?.short) return "";
+  const src = clubBadgeSrc(ownerClub.short);
+  if (!src) return "";
+  const title = escapeNavAttr(ownerClub.name || ownerClub.short);
+  return (
+    `<a href="club_details.html" class="nav-owner-club" title="${title}" aria-label="${title}">` +
+    `<img class="nav-owner-club-badge" src="${escapeNavAttr(src)}" alt="" loading="lazy" ` +
+    `onerror="this.parentElement.style.display='none'">` +
+    `</a>`
+  );
+}
+
 async function getOwnerClub() {
   const {
     data: { user },
@@ -1014,9 +1027,17 @@ export async function renderFallbackNav() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  let ownerClub = null;
+  try {
+    ownerClub = await getOwnerClub();
+  } catch (_) {
+    /* optional */
+  }
+
   nav.innerHTML = `
     <div class="gpsl-nav-bar gpsl-nav-fallback">
       <div class="gpsl-nav-shortcuts">
+      ${renderNavOwnerClubBadge(ownerClub)}
       <a href="dashboard.html" class="nav-shortcut nav-dashboard">Dashboard</a>
       <a href="inbox.html" class="nav-shortcut nav-inbox">📥 Inbox</a>
       </div>
@@ -1130,6 +1151,7 @@ export async function buildNav() {
 
   let html = `<div class="gpsl-nav-bar">`;
   html += `<div class="gpsl-nav-shortcuts">`;
+  html += renderNavOwnerClubBadge(ownerClub);
   html += `<a href="dashboard.html" class="nav-shortcut nav-dashboard${
     dashActive ? " active" : ""
   }" title="Dashboard">Dashboard</a>`;
