@@ -1025,7 +1025,8 @@ button.nav-admin-trigger {
   padding-bottom: 4px;
 }
 
-.nav-subgroup.open .nav-subgroup-panel {
+/* Direct child only — avoids opening every nested panel when a parent (e.g. Season management) is open */
+.nav-subgroup.open > .nav-subgroup-panel {
   display: flex;
 }
 
