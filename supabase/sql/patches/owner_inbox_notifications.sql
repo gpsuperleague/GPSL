@@ -777,51 +777,89 @@ $function$;
 -- Draft / transfer window upcoming (global_settings trigger)
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION public.trg_global_settings_inbox_notify()
-RETURNS trigger
+CREATE OR REPLACE FUNCTION public.owner_inbox_notify_draft_schedule_from_settings(
+  p_old public.global_settings,
+  p_new public.global_settings
+)
+RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
   v_start text;
+  v_start_changed boolean;
   v_player_on boolean;
   v_manager_on boolean;
+  v_player_notify boolean;
+  v_manager_notify boolean;
+  v_dedupe_ts text;
 BEGIN
-  IF NEW.draft_auction_start_time IS DISTINCT FROM OLD.draft_auction_start_time
-     AND NEW.draft_auction_start_time IS NOT NULL THEN
-    v_start := to_char(NEW.draft_auction_start_time AT TIME ZONE 'Europe/London', 'Dy DD Mon YYYY HH24:MI');
-    v_player_on := coalesce(NEW.draft_auction_enabled, false);
-    v_manager_on := coalesce(NEW.manager_draft_auction_enabled, false);
-
-    IF v_player_on THEN
-      PERFORM public.owner_inbox_notify_all_clubs(
-        'draft_scheduled',
-        'Player draft auction scheduled',
-        format(
-          E'Player draft auction opens %s (UK).\nBidding closes at a secret random time — the countdown on the draft auction page never shows the exact moment in advance.\nCheck GPDB and Draft Auction.',
-          v_start
-        ),
-        'draftauction.html',
-        'draft_scheduled:player:' || NEW.draft_auction_start_time::text,
-        NULL
-      );
-    END IF;
-
-    IF v_manager_on THEN
-      PERFORM public.owner_inbox_notify_all_clubs(
-        'draft_scheduled',
-        'Manager draft auction scheduled',
-        format(
-          E'Manager draft auction opens %s (UK).\nBidding closes at a secret random time — the countdown on MGDB never shows the exact moment in advance.\nCheck MGDB and Manager Draft Auction.',
-          v_start
-        ),
-        'manager_draftauction.html',
-        'draft_scheduled:manager:' || NEW.draft_auction_start_time::text,
-        NULL
-      );
-    END IF;
+  IF p_new.draft_auction_start_time IS NULL THEN
+    RETURN;
   END IF;
+
+  v_start_changed := p_new.draft_auction_start_time IS DISTINCT FROM p_old.draft_auction_start_time;
+  v_player_on := coalesce(p_new.draft_auction_enabled, false);
+  v_manager_on := coalesce(p_new.manager_draft_auction_enabled, false);
+
+  v_player_notify := v_player_on
+    AND (
+      v_start_changed
+      OR (v_player_on AND NOT coalesce(p_old.draft_auction_enabled, false))
+    );
+
+  v_manager_notify := v_manager_on
+    AND (
+      v_start_changed
+      OR (v_manager_on AND NOT coalesce(p_old.manager_draft_auction_enabled, false))
+    );
+
+  IF NOT v_player_notify AND NOT v_manager_notify THEN
+    RETURN;
+  END IF;
+
+  v_start := to_char(p_new.draft_auction_start_time AT TIME ZONE 'Europe/London', 'Dy DD Mon YYYY HH24:MI');
+  v_dedupe_ts := floor(extract(epoch FROM coalesce(p_new.updated_at, now())))::text;
+
+  IF v_player_notify THEN
+    PERFORM public.owner_inbox_notify_all_clubs(
+      'draft_scheduled',
+      'Player draft auction scheduled',
+      format(
+        E'Player draft auction opens %s (UK).\nBidding closes at a secret random time — the countdown on the draft auction page never shows the exact moment in advance.\nCheck GPDB and Draft Auction.',
+        v_start
+      ),
+      'draftauction.html',
+      'draft_scheduled:player:' || p_new.draft_auction_start_time::text || ':' || v_dedupe_ts,
+      NULL
+    );
+  END IF;
+
+  IF v_manager_notify THEN
+    PERFORM public.owner_inbox_notify_all_clubs(
+      'draft_scheduled',
+      'Manager draft auction scheduled',
+      format(
+        E'Manager draft auction opens %s (UK).\nBidding closes at a secret random time — the countdown on MGDB never shows the exact moment in advance.\nCheck MGDB and Manager Draft Auction.',
+        v_start
+      ),
+      'manager_draftauction.html',
+      'draft_scheduled:manager:' || p_new.draft_auction_start_time::text || ':' || v_dedupe_ts,
+      NULL
+    );
+  END IF;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.trg_global_settings_inbox_notify()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+BEGIN
+  PERFORM public.owner_inbox_notify_draft_schedule_from_settings(OLD, NEW);
 
   IF NEW.transfer_window_open IS TRUE AND coalesce(OLD.transfer_window_open, false) IS FALSE THEN
     PERFORM public.owner_inbox_notify_all_clubs(
