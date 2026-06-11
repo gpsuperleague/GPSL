@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260604-no-break-hub";
+export const NAV_CONFIG_VERSION = "20260604-no-fixture-submenu";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -123,11 +123,6 @@ export const ADMIN_NAV_SECTION = {
   items: [
     { seasonMega: true, label: "Season management" },
     { seasonBreakMega: true, label: "Season Break" },
-
-    { heading: true, label: "Fixture management" },
-    { href: "admin_fixtures-league.html", label: "League fixtures" },
-    { href: "admin_fixtures-cups.html", label: "Cup fixtures" },
-    { href: "admin_fixtures-playoffs.html", label: "Playoff fixtures" },
 
     { heading: true, label: "Money management" },
     { href: "admin_money.html", label: "Prizes, wages & gates" },
