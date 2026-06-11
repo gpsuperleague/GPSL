@@ -20,11 +20,43 @@ function selectedIds() {
     .filter((id) => Number.isFinite(id));
 }
 
+/** Safe to bulk-select for archive: not favourited, not awaiting match confirm/reject. */
+function isReadyForArchive(msg) {
+  if (msg.archived_at || msg.is_favourite) return false;
+
+  const pendingConfirm =
+    msg.message_type === "result_to_confirm" &&
+    !msg.read_at &&
+    myClub.short &&
+    (msg.recipient_club_short_name || "").toUpperCase() ===
+      (myClub.short || "").toUpperCase();
+
+  return !pendingConfirm;
+}
+
+function readyArchiveCheckboxes() {
+  return Array.from(document.querySelectorAll('.inbox-item-check[data-ready-archive="1"]'));
+}
+
+function selectAllReadyForArchive() {
+  readyArchiveCheckboxes().forEach((cb) => {
+    cb.checked = true;
+  });
+  updateToolbarButtons();
+}
+
 function updateToolbarButtons() {
   const checked = selectedIds().length;
   const archiveBtn = document.getElementById("archiveSelectedBtn");
   const restoreBtn = document.getElementById("restoreSelectedBtn");
+  const selectAllReadyBtn = document.getElementById("selectAllReadyBtn");
+  const readyCount = readyArchiveCheckboxes().length;
 
+  if (selectAllReadyBtn) {
+    selectAllReadyBtn.disabled = readyCount === 0 || viewArchived;
+    selectAllReadyBtn.textContent =
+      readyCount > 0 ? `Select all ready (${readyCount})` : "Select all ready";
+  }
   if (archiveBtn) {
     archiveBtn.disabled = checked === 0 || viewArchived;
     archiveBtn.textContent =
@@ -64,11 +96,13 @@ function setArchivedViewMode(on) {
   const archivedToolbar = document.getElementById("archivedToolbar");
   const markAllBtn = document.getElementById("markAllReadBtn");
   const archiveBtn = document.getElementById("archiveSelectedBtn");
+  const selectAllReadyBtn = document.getElementById("selectAllReadyBtn");
 
   if (archivedToolbar) {
     archivedToolbar.classList.toggle("visible", on);
   }
   if (markAllBtn) markAllBtn.hidden = on;
+  if (selectAllReadyBtn) selectAllReadyBtn.hidden = on;
   if (archiveBtn) archiveBtn.hidden = on;
   updateToolbarButtons();
 }
@@ -263,6 +297,9 @@ async function renderInbox() {
     checkbox.className = "inbox-item-check";
     checkbox.dataset.id = String(msg.id);
     checkbox.title = viewArchived ? "Select to restore" : "Select to archive";
+    if (!viewArchived && isReadyForArchive(msg)) {
+      checkbox.dataset.readyArchive = "1";
+    }
     checkbox.addEventListener("change", updateToolbarButtons);
 
     const body = document.createElement("div");
@@ -363,6 +400,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
 
   document.getElementById("markAllReadBtn").onclick = markAllRead;
+  document.getElementById("selectAllReadyBtn").onclick = selectAllReadyForArchive;
   document.getElementById("archiveSelectedBtn").onclick = archiveSelected;
   document.getElementById("restoreSelectedBtn").onclick = restoreSelected;
   document.getElementById("restoreAllBtn").onclick = restoreAllArchived;
