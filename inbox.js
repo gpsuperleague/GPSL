@@ -54,8 +54,7 @@ function updateToolbarButtons() {
 
   if (selectAllReadyBtn) {
     selectAllReadyBtn.disabled = readyCount === 0 || viewArchived;
-    selectAllReadyBtn.textContent =
-      readyCount > 0 ? `Select all ready (${readyCount})` : "Select all ready";
+    selectAllReadyBtn.textContent = "Select All";
   }
   if (archiveBtn) {
     archiveBtn.disabled = checked === 0 || viewArchived;
