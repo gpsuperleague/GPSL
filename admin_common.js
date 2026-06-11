@@ -1,4 +1,4 @@
-import { supabase, initGlobal, isGpslAdminUser } from "./global.js?v=20260603-nav-fix";
+import { supabase, initGlobal, isGpslAdminUser } from "./global.js?v=20260604";
 
 /** Apply dark admin chrome immediately (avoids white flash before module loads). */
 export function primeAdminPageChrome() {

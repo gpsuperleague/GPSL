@@ -1,4 +1,4 @@
-import { supabase, initGlobal } from "./global.js?v=20260603-nav-fix";
+import { supabase, initGlobal } from "./global.js?v=20260604";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 
