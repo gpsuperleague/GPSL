@@ -1,4 +1,4 @@
-import { supabase, initGlobal, isGpslAdminUser } from "./global.js?v=20260602-season-break";
+import { supabase, initGlobal, isGpslAdminUser } from "./global.js?v=20260602-challenges";
 
 /** Apply dark admin chrome immediately (avoids white flash before module loads). */
 export function primeAdminPageChrome() {

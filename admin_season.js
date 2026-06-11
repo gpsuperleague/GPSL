@@ -2,7 +2,7 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 import {
   renderSeasonAdminNavHtml,
   isSeasonAdminNavItemActive,
-} from "./admin_season_nav.js";
+} from "./admin_season_nav.js?v=20260602-challenges";
 
 primeAdminPageChrome();
 import {

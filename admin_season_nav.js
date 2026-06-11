@@ -1,4 +1,5 @@
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
+export const SEASON_ADMIN_NAV_VERSION = "20260602-challenges";
 
 export const SEASON_ADMIN_NAV = [
   {
@@ -156,12 +157,6 @@ export const SEASON_ADMIN_NAV = [
         hash: "wf-close-season",
         page: "admin_season",
       },
-    ],
-  },
-  {
-    id: "challenges",
-    label: "Challenge payouts",
-    items: [
       {
         label: "Challenge payouts",
         href: "admin_challenges.html",
