@@ -220,10 +220,23 @@ async function applyFine() {
     return;
   }
 
+  let inboxNote = "";
+  if (data?.applied_id) {
+    const { error: inboxErr } = await supabase.rpc("owner_inbox_notify_fine_applied", {
+      p_applied_id: data.applied_id,
+    });
+    if (inboxErr) {
+      inboxNote = " (inbox: run patches/owner_inbox_fine_fix.sql in Supabase)";
+      console.warn("owner_inbox_notify_fine_applied:", inboxErr);
+    } else {
+      inboxNote = " Owner notified in inbox.";
+    }
+  }
+
   const dir = data?.direction === "compensation" ? "Credited" : "Fined";
   setStatus(
     "applyFineStatus",
-    `✅ ${dir} ${club} ${formatMoney(data?.amount ?? 0)} (${code}).`,
+    `✅ ${dir} ${club} ${formatMoney(data?.amount ?? 0)} (${code}).${inboxNote}`,
     true
   );
   await loadRecent();
