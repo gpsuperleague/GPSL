@@ -1,7 +1,7 @@
 import {
-  loadGlobalSettings,
-  wireDraftCountdownUI,
-  buildNav,
+  initGlobal,
+  getManagerDraftEnabled,
+  getDraftAuctionStartTime,
   getUKNow,
   refreshDraftBiddingOpen,
   getDraftPhaseOptions,
@@ -192,12 +192,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  const settings = await loadGlobalSettings();
-  managerDraftEnabled = settings.managerDraftEnabled;
-  draftAuctionStartTime = settings.draftStart;
-
-  wireDraftCountdownUI();
-  await buildNav();
+  await initGlobal();
+  managerDraftEnabled = getManagerDraftEnabled();
+  draftAuctionStartTime = getDraftAuctionStartTime();
   await loadBuyerClub(user.id);
   wireTable();
   await updateLeadPanel();

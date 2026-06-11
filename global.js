@@ -72,6 +72,10 @@ export function getManagerDraftEnabled() {
   return managerDraftEnabled;
 }
 
+export function getDraftAuctionStartTime() {
+  return draftStart;
+}
+
 function isDraftCountdownActive() {
   return (draftEnabled || managerDraftEnabled) && isValidDate(draftStart);
 }
@@ -103,12 +107,42 @@ function ensureDraftRandomWindowFrozen() {
 }
 
 function applyDraftRandomFinishRevealed(data) {
-  const raw = data?.draft_random_finish_revealed;
+  if (!data) return;
+  const raw = data.draft_random_finish_revealed;
   if (raw) {
     draftRandomFinishRevealed = raw;
     syncDraftRandomLockFromRevealedFinish();
-  } else if (draftBiddingOpen === true) {
+    return;
+  }
+  if (!("draft_random_finish_revealed" in data)) return;
+  const biddingOpenNow =
+    ("draft_bidding_open" in data && data.draft_bidding_open === true) ||
+    ("manager_draft_bidding_open" in data && data.manager_draft_bidding_open === true);
+  if (biddingOpenNow) {
     draftRandomFinishRevealed = null;
+  }
+}
+
+function resolveRevealedFinishInstant(tickFinish) {
+  const fromTick =
+    tickFinish instanceof Date ? tickFinish : tickFinish ? new Date(tickFinish) : null;
+  if (isValidInstant(fromTick)) return fromTick;
+  if (!draftRandomFinishRevealed) return null;
+  const fromGlobal = new Date(draftRandomFinishRevealed);
+  return isValidDate(fromGlobal) ? fromGlobal : null;
+}
+
+function recomputeCombinedDraftBiddingOpen() {
+  if (draftEnabled && managerDraftEnabled) {
+    draftBiddingOpen =
+      playerDraftBiddingOpen === true || managerDraftBiddingOpen === true;
+  } else if (draftEnabled) {
+    draftBiddingOpen = playerDraftBiddingOpen;
+  } else if (managerDraftEnabled) {
+    draftBiddingOpen =
+      managerDraftBiddingOpen !== null ? managerDraftBiddingOpen : playerDraftBiddingOpen;
+  } else {
+    draftBiddingOpen = false;
   }
 }
 
@@ -579,12 +613,13 @@ export function wireDraftCountdownUI() {
 
   startDraftCountdown((tick) => {
     const { phase, ms, label, target, countUp, frozen, finishInstant } = tick;
-    const kind = getDraftCountdownKind();
+    const kind = shouldUseManagerDraftCountdown()
+      ? "manager"
+      : getDraftCountdownKind();
+    const revealedFinish = resolveRevealedFinishInstant(finishInstant);
     if (phase === "ended") {
-      const finish =
-        finishInstant instanceof Date ? finishInstant : finishInstant ? new Date(finishInstant) : null;
-      if (isValidInstant(finish)) {
-        const { duration, subline } = formatDraftConclusionLines(finish, kind);
+      if (isValidInstant(revealedFinish)) {
+        const { duration, subline } = formatDraftConclusionLines(revealedFinish, kind);
         el.textContent = duration;
         if (localEl) localEl.textContent = subline;
       } else {
@@ -599,7 +634,7 @@ export function wireDraftCountdownUI() {
     const { duration, subline } = formatLiveCountdownLines(label, ms, target, {
       countUp,
       frozen,
-      finishInstant,
+      finishInstant: revealedFinish,
     });
     el.textContent = prefixDraftCountdownDuration(duration, kind);
     if (localEl) {
@@ -630,28 +665,22 @@ async function queryGlobalSettingsPublic(select) {
 }
 
 function applyDraftBiddingOpenFromSettings(data) {
-  draftEnabled = data?.draft_auction_enabled === true;
-  managerDraftEnabled = data?.manager_draft_auction_enabled === true;
+  if (!data) return;
 
-  playerDraftBiddingOpen =
-    data && "draft_bidding_open" in data ? data.draft_bidding_open === true : null;
-  managerDraftBiddingOpen =
-    data && "manager_draft_bidding_open" in data
-      ? data.manager_draft_bidding_open === true
-      : null;
-
-  if (draftEnabled && managerDraftEnabled) {
-    draftBiddingOpen = playerDraftBiddingOpen === true || managerDraftBiddingOpen === true;
-  } else if (draftEnabled) {
-    draftBiddingOpen = playerDraftBiddingOpen;
-  } else if (managerDraftEnabled) {
-    draftBiddingOpen =
-      managerDraftBiddingOpen !== null ? managerDraftBiddingOpen : playerDraftBiddingOpen;
-  } else {
-    draftBiddingOpen = false;
-    playerDraftBiddingOpen = false;
-    managerDraftBiddingOpen = false;
+  if ("draft_auction_enabled" in data) {
+    draftEnabled = data.draft_auction_enabled === true;
   }
+  if ("manager_draft_auction_enabled" in data) {
+    managerDraftEnabled = data.manager_draft_auction_enabled === true;
+  }
+  if ("draft_bidding_open" in data) {
+    playerDraftBiddingOpen = data.draft_bidding_open === true;
+  }
+  if ("manager_draft_bidding_open" in data) {
+    managerDraftBiddingOpen = data.manager_draft_bidding_open === true;
+  }
+
+  recomputeCombinedDraftBiddingOpen();
 }
 
 export async function loadGlobalSettings() {
