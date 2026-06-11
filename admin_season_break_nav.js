@@ -31,6 +31,17 @@ export const SEASON_BREAK_NAV = [
     ],
   },
   {
+    id: "club_attendance",
+    label: "Club attendance & prestige",
+    items: [
+      {
+        label: "Club attendance & prestige",
+        href: "admin_club_attendance.html",
+        page: "admin_club_attendance",
+      },
+    ],
+  },
+  {
     id: "challenges",
     label: "Challenges",
     items: [
