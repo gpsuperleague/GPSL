@@ -4,7 +4,7 @@ import {
   getManagerDraftEnabled,
   getUKNow,
   refreshDraftBiddingOpen,
-  getDraftCountdownOptions,
+  getDraftPhaseOptions,
 } from "./global.js";
 import {
   isManagerGpdbFreeAgentOfferAllowed,
@@ -152,7 +152,7 @@ function renderPage() {
         if (col.key === "draft_action") {
           const isFa =
             !row.contracted_club || String(row.contracted_display) === "FREE AGENT";
-          const phaseOpts = getDraftCountdownOptions();
+          const phaseOpts = getDraftPhaseOptions();
           const now = getUKNow();
           const phase = draftStartTime
             ? getManagerDraftEffectivePhase(now, draftStartTime, phaseOpts)

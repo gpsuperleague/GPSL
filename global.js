@@ -45,7 +45,9 @@ let draftStart = null;        // Day 1 @ 19:00 UK
 let draftCutoff = null;       // Day 2 @ 18:00 UK
 let draftRandomStart = null;  // Day 2 @ 18:50 UK
 let draftPublicEnd = null;    // Latest possible end (18:59:59 day 2) — not secret finish
-let draftBiddingOpen = null;  // from global_settings_public.draft_bidding_open (secret finish)
+let draftBiddingOpen = null;  // combined bid gate for engine helpers
+let playerDraftBiddingOpen = null;
+let managerDraftBiddingOpen = null;
 let draftRandomLockedMs = null; // frozen count-up offset when secret finish fires
 let draftRandomFinishRevealed = null; // exposed only after now() >= secret finish
 
@@ -56,9 +58,14 @@ export function getDraftBiddingOpen() {
   return draftBiddingOpen;
 }
 
-/** Countdown tick options (bidding open, frozen random-window ms, revealed finish). */
+/** Engine/bid-lock phase options (real server bidding state). */
+export function getDraftPhaseOptions() {
+  return draftEnginePhaseOptions();
+}
+
+/** Countdown UI tick options (may defer random lock until finish is revealed). */
 export function getDraftCountdownOptions() {
-  return draftCountdownOptions();
+  return draftCountdownUiOptions();
 }
 
 export function getManagerDraftEnabled() {
@@ -86,32 +93,13 @@ function syncDraftRandomLockFromRevealedFinish() {
   draftRandomLockedMs = Math.max(0, finish.getTime() - timeline.randomStart.getTime());
 }
 
-/** Freeze count-up and lock phase once secret finish has passed (or bidding just closed). */
+/** Freeze count-up only once draft_random_finish_revealed is available from the server. */
 function ensureDraftRandomWindowFrozen() {
-  if (!isValidDate(draftStart)) return;
-
-  const timeline = getDraftTimelineFromStart(draftStart);
-  if (!timeline) return;
-
-  const now = getUKNow();
-  const inRandomWindow =
-    now >= timeline.randomStart && now < timeline.publicEnd;
-  const biddingClosed =
-    draftBiddingOpen === false || draftRandomFinishRevealed != null;
-
-  if (!inRandomWindow || !biddingClosed) return;
-
-  if (draftRandomFinishRevealed) {
-    syncDraftRandomLockFromRevealedFinish();
+  if (!draftRandomFinishRevealed || !isValidDate(draftStart)) {
+    draftRandomLockedMs = null;
     return;
   }
-
-  if (draftRandomLockedMs == null) {
-    draftRandomLockedMs = Math.max(
-      0,
-      now.getTime() - timeline.randomStart.getTime()
-    );
-  }
+  syncDraftRandomLockFromRevealedFinish();
 }
 
 function applyDraftRandomFinishRevealed(data) {
@@ -124,48 +112,102 @@ function applyDraftRandomFinishRevealed(data) {
   }
 }
 
-function draftCountdownOptions() {
-  ensureDraftRandomWindowFrozen();
-
-  const opts = {};
-  if (draftBiddingOpen !== null) {
-    opts.biddingOpen = draftBiddingOpen;
-  } else if (draftRandomFinishRevealed) {
-    opts.biddingOpen = false;
+function buildRevealedFinishOptions(opts) {
+  if (!draftRandomFinishRevealed) return opts;
+  opts.finishRevealed = true;
+  opts.biddingOpen = false;
+  const finish = new Date(draftRandomFinishRevealed);
+  if (isValidDate(finish)) {
+    opts.finishInstant = finish;
   }
-
   if (draftRandomLockedMs != null) {
     opts.frozenMs = draftRandomLockedMs;
-  }
-  if (draftRandomFinishRevealed) {
-    const finish = new Date(draftRandomFinishRevealed);
-    if (isValidDate(finish)) {
-      opts.finishInstant = finish;
-    }
   }
   return opts;
 }
 
-/** Which draft timer labels to show — page-specific so MGDB/GPDB never share the wrong auction. */
-export function getDraftCountdownKind() {
-  const page = (typeof window !== "undefined" && window.CURRENT_PAGE) || "";
+function draftEnginePhaseOptions() {
+  ensureDraftRandomWindowFrozen();
+  const opts = {};
+  if (draftBiddingOpen !== null) {
+    opts.biddingOpen = draftBiddingOpen;
+  }
+  return buildRevealedFinishOptions(opts);
+}
+
+function draftCountdownUiBiddingOpen() {
+  if (draftRandomFinishRevealed) return false;
+
+  const timeline = getDraftTimelineFromStart(draftStart);
+  const now = getUKNow();
+  const inRandomWindow =
+    timeline && now >= timeline.randomStart && now < timeline.publicEnd;
+
+  // Server closed bids but finish not revealed yet — keep count-up running in UI.
+  if (draftBiddingOpen === false && inRandomWindow) return true;
+
+  return draftBiddingOpen;
+}
+
+function draftCountdownUiOptions() {
+  ensureDraftRandomWindowFrozen();
+
+  const opts = {};
+  const uiBiddingOpen = draftCountdownUiBiddingOpen();
+
+  if (uiBiddingOpen !== null && uiBiddingOpen !== undefined) {
+    opts.biddingOpen = uiBiddingOpen;
+  }
+
+  return buildRevealedFinishOptions(opts);
+}
+
+function pageDraftKindHint() {
+  if (typeof window === "undefined") return null;
+  const page = String(window.CURRENT_PAGE || "").toLowerCase();
+  const path = String(window.location?.pathname || "").toLowerCase();
+
   if (
     page === "manager_draftauction" ||
     page === "manager_draftauction_manager" ||
-    page === "mgdb"
+    page === "mgdb" ||
+    /manager_draftauction|mgdb\.html/.test(path)
   ) {
     return "manager";
   }
   if (
     page === "draftauction" ||
     page === "draftauction_player" ||
-    page === "gpdb"
+    page === "gpdb" ||
+    /draftauction|gpdb\.html/.test(path)
   ) {
     return "player";
   }
+  if (page === "awaiting_club" || /awaiting_club|club_auction/.test(path)) {
+    return "club";
+  }
+  return null;
+}
+
+/** Which draft timer labels to show — page-specific so MGDB/GPDB never share the wrong auction. */
+export function getDraftCountdownKind() {
+  const hint = pageDraftKindHint();
+  if (hint) return hint;
+
   if (managerDraftEnabled && !draftEnabled) return "manager";
   if (draftEnabled && !managerDraftEnabled) return "player";
-  return "player";
+
+  if (managerDraftEnabled && draftEnabled) {
+    if (managerDraftBiddingOpen === true && playerDraftBiddingOpen !== true) {
+      return "manager";
+    }
+    if (playerDraftBiddingOpen === true && managerDraftBiddingOpen !== true) {
+      return "player";
+    }
+    return "manager";
+  }
+
+  return managerDraftEnabled ? "manager" : "player";
 }
 
 function shouldUseManagerDraftCountdown() {
@@ -193,7 +235,7 @@ export function isDraftAuctionEnded(nowUK, draftAuctionStartTime) {
   return isDraftAuctionEndedWithOptions(
     nowUK,
     draftAuctionStartTime,
-    draftCountdownOptions()
+    draftEnginePhaseOptions()
   );
 }
 
@@ -480,6 +522,8 @@ export async function refreshDraftBiddingOpen() {
   if (nowOpen === true) {
     draftRandomLockedMs = null;
     draftRandomFinishRevealed = null;
+  } else if (!draftRandomFinishRevealed) {
+    draftRandomLockedMs = null;
   }
 }
 
@@ -493,7 +537,7 @@ export function startDraftCountdown(onTick) {
     const tickData = getPageDraftCountdownTick(
       getUKNow(),
       draftStart,
-      draftCountdownOptions()
+      draftCountdownUiOptions()
     );
     if (onTick) onTick(tickData);
   };
@@ -588,22 +632,25 @@ async function queryGlobalSettingsPublic(select) {
 function applyDraftBiddingOpenFromSettings(data) {
   draftEnabled = data?.draft_auction_enabled === true;
   managerDraftEnabled = data?.manager_draft_auction_enabled === true;
+
+  playerDraftBiddingOpen =
+    data && "draft_bidding_open" in data ? data.draft_bidding_open === true : null;
+  managerDraftBiddingOpen =
+    data && "manager_draft_bidding_open" in data
+      ? data.manager_draft_bidding_open === true
+      : null;
+
   if (draftEnabled && managerDraftEnabled) {
-    draftBiddingOpen =
-      data?.draft_bidding_open === true ||
-      data?.manager_draft_bidding_open === true;
+    draftBiddingOpen = playerDraftBiddingOpen === true || managerDraftBiddingOpen === true;
   } else if (draftEnabled) {
-    draftBiddingOpen =
-      data && "draft_bidding_open" in data
-        ? data.draft_bidding_open === true
-        : null;
+    draftBiddingOpen = playerDraftBiddingOpen;
   } else if (managerDraftEnabled) {
     draftBiddingOpen =
-      data && "manager_draft_bidding_open" in data
-        ? data.manager_draft_bidding_open === true
-        : data?.draft_bidding_open === true;
+      managerDraftBiddingOpen !== null ? managerDraftBiddingOpen : playerDraftBiddingOpen;
   } else {
     draftBiddingOpen = false;
+    playerDraftBiddingOpen = false;
+    managerDraftBiddingOpen = false;
   }
 }
 

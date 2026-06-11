@@ -119,7 +119,7 @@ export function getDraftCountdownTick(nowUK, draftAuctionStartTime, options = {}
         label: "Bidding locked — draft settles after 7pm auctions",
         target: timeline.randomStart,
         countUp: true,
-        frozen: true,
+        frozen: Boolean(finishInstant),
         finishInstant,
       };
     }
@@ -274,7 +274,7 @@ export function getManagerDraftCountdownTick(nowUK, draftAuctionStartTime, optio
         label: "Bidding locked — manager draft settles after 7pm auctions",
         target: timeline.randomStart,
         countUp: true,
-        frozen: true,
+        frozen: Boolean(finishInstant),
         finishInstant,
       };
     }

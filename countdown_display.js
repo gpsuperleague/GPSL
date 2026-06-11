@@ -16,12 +16,32 @@ const ukDateTimeFmt = new Intl.DateTimeFormat("en-GB", {
   hour12: false,
 });
 
+const ukDateTimePreciseFmt = new Intl.DateTimeFormat("en-GB", {
+  timeZone: UK_TZ,
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
+  hour12: false,
+});
+
 const localDateTimeFmt = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
   day: "numeric",
   month: "short",
   hour: "2-digit",
   minute: "2-digit",
+});
+
+const localDateTimePreciseFmt = new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  second: "2-digit",
 });
 
 export function formatDurationMs(ms) {
@@ -34,15 +54,19 @@ export function formatDurationMs(ms) {
   return `${s}s`;
 }
 
-export function formatInstantUK(instant) {
+export function formatInstantUK(instant, options = {}) {
   if (!isValidInstant(instant)) return "";
-  return `${ukDateTimeFmt.format(instant)} UK`;
+  const fmt = options.precise ? ukDateTimePreciseFmt : ukDateTimeFmt;
+  return `${fmt.format(instant)} UK`;
 }
 
-export function formatInstantLocal(instant) {
+export function formatInstantLocal(instant, options = {}) {
   if (!isValidInstant(instant)) return "";
-  return `${localDateTimeFmt.format(instant)} (your time)`;
+  const fmt = options.precise ? localDateTimePreciseFmt : localDateTimeFmt;
+  return `${fmt.format(instant)} (your time)`;
 }
+
+const PRECISE = { precise: true };
 
 /** Plain text: UK line, then local line (for textContent / two-line labels). */
 export function formatTargetTimesSubline(targetInstant) {
@@ -56,14 +80,18 @@ export function formatStartedTimesSubline(startInstant) {
   return `Started ${formatInstantUK(startInstant)}\n${formatInstantLocal(startInstant)}`;
 }
 
-/** After secret random finish: when bidding closed (UK + viewer local). */
+/** After secret random finish: when bidding closed (UK + viewer local, with seconds). */
 export function formatClosedTimesSubline(closedInstant) {
   if (!isValidInstant(closedInstant)) return "";
-  return `Bidding closed ${formatInstantUK(closedInstant)}\n${formatInstantLocal(closedInstant)}`;
+  return (
+    `Bidding closed ${formatInstantUK(closedInstant, PRECISE)}\n` +
+    `${formatInstantLocal(closedInstant, PRECISE)}`
+  );
 }
 
 export function draftAuctionKindLabel(kind = "player") {
   if (kind === "manager") return "Manager draft";
+  if (kind === "club") return "Club auction";
   return "Player draft";
 }
 
@@ -74,7 +102,7 @@ export function formatDraftConclusionLines(finishInstant, kind = "player") {
   }
   const noun = draftAuctionKindLabel(kind);
   return {
-    duration: `${noun} concluded — random finish ${formatInstantUK(finishInstant)}`,
+    duration: `${noun} concluded — random finish ${formatInstantUK(finishInstant, PRECISE)}`,
     subline: formatClosedTimesSubline(finishInstant),
   };
 }
@@ -158,7 +186,7 @@ export function formatLiveCountdownLines(label, ms, targetInstant, options = {})
   const finishInstant = options.finishInstant;
   let headline = label;
   if (frozen && isValidInstant(finishInstant)) {
-    headline = `${label} — random finish ${formatInstantUK(finishInstant)}`;
+    headline = `${label} — random finish ${formatInstantUK(finishInstant, PRECISE)}`;
   }
   const duration =
     countUp || ms > 0 ? `${headline}: ${formatDurationMs(ms)}` : headline;

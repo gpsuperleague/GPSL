@@ -4,6 +4,7 @@ import {
   getUKNow,
   refreshDraftBiddingOpen,
   getDraftCountdownOptions,
+  getDraftPhaseOptions,
 } from "./global.js";
 import {
   supabase,
@@ -51,16 +52,17 @@ async function updateCountdown() {
     await refreshDraftBiddingOpen();
   }
   const nowUK = getUKNow();
-  const phaseOpts = getDraftCountdownOptions();
+  const uiOpts = getDraftCountdownOptions();
+  const engineOpts = getDraftPhaseOptions();
   const tick = getManagerDraftCountdownTick(
     nowUK,
     draftAuctionStartTime,
-    phaseOpts
+    uiOpts
   );
   auctionEnded = isManagerDraftAuctionEnded(
     nowUK,
     draftAuctionStartTime,
-    phaseOpts
+    engineOpts
   );
 
   const el = document.getElementById("timeRemaining");
