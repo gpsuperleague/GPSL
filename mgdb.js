@@ -66,21 +66,17 @@ function displayClub(contracted) {
 }
 
 function formatExpectancy(row) {
-  const targets = [
-    row.target_superleague && `SL: ${row.target_superleague}`,
-    row.target_championship_a && `CA: ${row.target_championship_a}`,
-    row.target_championship_b && `CB: ${row.target_championship_b}`,
-  ].filter(Boolean);
-  const bands = [row.boost1_label, row.boost2_label, row.boost3_label].filter(Boolean);
-  if (!targets.length && !bands.length) return "—";
-  const parts = [];
-  if (targets.length) {
-    parts.push(`<span class="mgdb-exp-targets">${targets.join(" · ")}</span>`);
-  }
-  if (bands.length) {
-    parts.push(`<span class="mgdb-exp-chart">${bands.join(" · ")}</span>`);
-  }
-  return parts.join("<br>");
+  const sl = row.target_superleague;
+  const ca = row.target_championship_a;
+  const cb = row.target_championship_b;
+  const champ =
+    ca && cb && ca === cb
+      ? `Champ: ${ca}`
+      : [ca && `CA: ${ca}`, cb && `CB: ${cb}`].filter(Boolean).join(" · ");
+
+  const parts = [sl && `SL: ${sl}`, champ].filter(Boolean);
+  if (!parts.length) return "—";
+  return `<span class="mgdb-exp-targets">${parts.join(" · ")}</span>`;
 }
 
 function buildTableHead() {
