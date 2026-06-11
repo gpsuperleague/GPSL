@@ -1033,6 +1033,39 @@ button.nav-admin-trigger {
   padding-top: 4px;
 }
 
+/* Admin: Season management → category → task (nested submenus) */
+.nav-subgroup-mega > .nav-subgroup-summary {
+  color: #ffcc66;
+  font-size: 13px;
+}
+
+.nav-subgroup-panel-mega {
+  background: #161616;
+}
+
+.nav-subgroup-nested {
+  border-top: 1px solid #2a2a2a;
+}
+
+.nav-subgroup-nested:first-child {
+  border-top: none;
+}
+
+.nav-subgroup-nested > .nav-subgroup-summary {
+  padding-left: 20px;
+  font-size: 12px;
+  color: #aaa;
+}
+
+.nav-subgroup-nested.open > .nav-subgroup-summary {
+  color: #ddd;
+}
+
+.nav-subgroup-nested .nav-link-sub {
+  padding-left: 28px;
+  font-size: 13px;
+}
+
 .nav-link {
   display: block;
   padding: 10px 16px;

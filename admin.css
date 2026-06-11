@@ -223,16 +223,7 @@ html.admin-root body.admin-page {
   margin-bottom: 0;
 }
 
-.admin-season-nav-title {
-  padding: 12px 14px;
-  font-size: 13px;
-  font-weight: bold;
-  color: #ff9900;
-  border-bottom: 1px solid #333;
-  letter-spacing: 0.03em;
-}
-
-.admin-season-nav .nav-subgroup-summary {
+.admin-season-nav .nav-subgroup-mega > .nav-subgroup-summary {
   font-size: 13px;
   padding: 10px 14px;
 }

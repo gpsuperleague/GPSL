@@ -1,6 +1,6 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
-import { seasonAdminNavItemsForFlyout } from "./admin_season_nav.js";
+import { seasonAdminNavHasActive } from "./admin_season_nav.js";
 
 export const NAV_SECTIONS = [
   {
@@ -102,7 +102,7 @@ export const ADMIN_NAV_SECTION = {
   id: "admin",
   label: "Admin",
   items: [
-    ...seasonAdminNavItemsForFlyout(),
+    { seasonMega: true, label: "Season management" },
 
     { heading: true, label: "Fixture management" },
     { href: "admin_fixtures-league.html", label: "League fixtures" },
@@ -180,7 +180,11 @@ export function isNavItemActive(item, pathname, search = "") {
 
 export function sectionHasActiveItem(section, pathname, search) {
   if (!section?.items?.length) return false;
-  return section.items.some((item) => isNavItemActive(item, pathname, search));
+  return section.items.some((item) => {
+    if (item.seasonMega) return seasonAdminNavHasActive(pathname, search);
+    if (item.heading || !item.href) return false;
+    return isNavItemActive(item, pathname, search);
+  });
 }
 
 /**

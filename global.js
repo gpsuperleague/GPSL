@@ -20,6 +20,7 @@ import {
 } from "./countdown_display.js";
 import { countUnreadInbox } from "./competition_inbox.js";
 import { initDashboardPinUi } from "./dashboard_pin.js";
+import { renderSeasonAdminNavHtml } from "./admin_season_nav.js";
 import { nationFlagSrc } from "./international_flags.js";
 export { supabase };
 
@@ -894,7 +895,7 @@ function navLinkIconHtml(item) {
 }
 
 function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
-  const hasHeadings = items.some((item) => item.heading);
+  const hasHeadings = items.some((item) => item.heading || item.seasonMega);
   if (!hasHeadings) {
     let flat = "";
     for (const item of items) {
@@ -935,6 +936,11 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
   };
 
   for (const item of items) {
+    if (item.seasonMega) {
+      flushPanel();
+      groupHtml += renderSeasonAdminNavHtml(pathname, search);
+      continue;
+    }
     if (item.heading) {
       flushPanel();
       panelLabel = item.label;
@@ -1066,7 +1072,7 @@ export async function buildNav() {
   let firstActiveNavSectionId;
   let normalizeNavPath;
   try {
-    const navMod = await import("./nav_config.js?v=20250602-wc-cups");
+    const navMod = await import("./nav_config.js?v=20250602-season-mega");
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;

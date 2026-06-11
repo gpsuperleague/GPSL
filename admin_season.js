@@ -1,7 +1,6 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import {
-  SEASON_ADMIN_NAV,
-  seasonAdminNavHref,
+  renderSeasonAdminNavHtml,
   isSeasonAdminNavItemActive,
 } from "./admin_season_nav.js";
 
@@ -32,45 +31,10 @@ const SEASON_PANEL_IDS = new Set([
   "wf-close-season",
 ]);
 
-function escapeHtml(text) {
-  return String(text ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 function renderSeasonSidebar() {
   const root = document.getElementById("adminSeasonNav");
   if (!root) return;
-
-  const pathname = window.location.pathname;
-  const search = window.location.search || "";
-  let html = `<div class="admin-season-nav-title">Season management</div>`;
-
-  for (const group of SEASON_ADMIN_NAV) {
-    const groupActive = group.items.some((item) =>
-      isSeasonAdminNavItemActive(item, pathname, search)
-    );
-    html += `<div class="nav-subgroup${groupActive ? " open" : ""}" data-nav-subgroup>`;
-    html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
-      groupActive ? "true" : "false"
-    }">${escapeHtml(group.label)}</button>`;
-    html += `<div class="nav-subgroup-panel" role="group">`;
-    for (const item of group.items) {
-      const href = seasonAdminNavHref(item);
-      const active = isSeasonAdminNavItemActive(item, pathname, search);
-      const panel = item.hash || "";
-      html += `<a href="${escapeHtml(href)}" class="nav-link nav-link-sub${
-        active ? " active" : ""
-      }" data-season-link${panel ? ` data-panel="${escapeHtml(panel)}"` : ""}>${escapeHtml(
-        item.label
-      )}</a>`;
-    }
-    html += `</div></div>`;
-  }
-
-  root.innerHTML = html;
+  root.innerHTML = renderSeasonAdminNavHtml(window.location.pathname, window.location.search || "");
 }
 
 function showSeasonPanel(panelId) {
@@ -79,9 +43,12 @@ function showSeasonPanel(panelId) {
     panel.hidden = panel.dataset.panel !== id;
   });
 
-  document.querySelectorAll("#adminSeasonNav .nav-link[data-season-link]").forEach((link) => {
-    const panel = link.dataset.panel || "";
-    link.classList.toggle("active", Boolean(panel && panel === id));
+  document.querySelectorAll("#adminSeasonNav a.nav-link-sub").forEach((link) => {
+    const href = link.getAttribute("href") || "";
+    const hash = href.includes("#") ? href.split("#")[1] : "";
+    if (href.includes("admin_season.html") && hash) {
+      link.classList.toggle("active", hash === id);
+    }
   });
 }
 
@@ -101,14 +68,14 @@ function wireSeasonSidebar() {
     });
   });
 
-  root.querySelectorAll("a[data-season-link][data-panel]").forEach((link) => {
+  root.querySelectorAll('a.nav-link-sub[href*="admin_season.html#"]').forEach((link) => {
     link.addEventListener("click", (e) => {
-      const panel = link.dataset.panel;
-      if (!panel || !SEASON_PANEL_IDS.has(panel)) return;
+      const hash = (link.getAttribute("href") || "").split("#")[1] || "";
+      if (!SEASON_PANEL_IDS.has(hash)) return;
       e.preventDefault();
-      const url = `${window.location.pathname}${window.location.search}#${panel}`;
+      const url = `${window.location.pathname}${window.location.search}#${hash}`;
       history.pushState(null, "", url);
-      showSeasonPanel(panel);
+      showSeasonPanel(hash);
     });
   });
 

@@ -176,22 +176,53 @@ export function seasonAdminNavHref(item) {
   return item.href;
 }
 
-/** Flat list for Admin dropdown (nav_config). */
-export function seasonAdminNavItemsForFlyout() {
-  const out = [
-    { href: "admin_season.html", label: "Season management", page: "admin_season" },
-  ];
+function escapeNavText(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function seasonAdminNavHasActive(pathname, search = "") {
   for (const group of SEASON_ADMIN_NAV) {
-    out.push({ heading: true, label: group.label });
     for (const item of group.items) {
-      out.push({
-        ...item,
-        href: seasonAdminNavHref(item),
-        indent: true,
-      });
+      if (isSeasonAdminNavItemActive(item, pathname, search)) return true;
     }
   }
-  return out;
+  return false;
+}
+
+/** Admin flyout: Season management → category → task link (3 levels). */
+export function renderSeasonAdminNavHtml(pathname, search = "") {
+  const linkActive = (item) => isSeasonAdminNavItemActive(item, pathname, search);
+  const megaOpen = seasonAdminNavHasActive(pathname, search);
+
+  let html = `<div class="nav-subgroup nav-subgroup-mega${megaOpen ? " open" : ""}" data-nav-subgroup>`;
+  html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
+    megaOpen ? "true" : "false"
+  }">Season management</button>`;
+  html += `<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">`;
+
+  for (const group of SEASON_ADMIN_NAV) {
+    const groupOpen = group.items.some(linkActive);
+    html += `<div class="nav-subgroup nav-subgroup-nested${groupOpen ? " open" : ""}" data-nav-subgroup>`;
+    html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
+      groupOpen ? "true" : "false"
+    }">${escapeNavText(group.label)}</button>`;
+    html += `<div class="nav-subgroup-panel" role="group">`;
+    for (const item of group.items) {
+      const href = seasonAdminNavHref(item);
+      const active = linkActive(item);
+      html += `<a href="${escapeNavText(href)}" class="nav-link nav-link-sub${
+        active ? " active" : ""
+      }">${escapeNavText(item.label)}</a>`;
+    }
+    html += `</div></div>`;
+  }
+
+  html += `</div></div>`;
+  return html;
 }
 
 export function isSeasonAdminNavItemActive(item, pathname, search = "") {
