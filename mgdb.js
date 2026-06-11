@@ -15,6 +15,8 @@ import { formatMoney } from "./competition.js";
 
 const TABLE_COLUMNS = [
   { key: "name", label: "Manager" },
+  { key: "rating", label: "Rating" },
+  { key: "expectancy", label: "Expectation" },
   { key: "draft_action", label: "Draft" },
   { key: "contracted_display", label: "Contracted Club" },
   { key: "nation", label: "Nation" },
@@ -63,6 +65,24 @@ function displayClub(contracted) {
   return fullClubName(raw) || raw;
 }
 
+function formatExpectancy(row) {
+  const targets = [
+    row.target_superleague && `SL: ${row.target_superleague}`,
+    row.target_championship_a && `CA: ${row.target_championship_a}`,
+    row.target_championship_b && `CB: ${row.target_championship_b}`,
+  ].filter(Boolean);
+  const bands = [row.boost1_label, row.boost2_label, row.boost3_label].filter(Boolean);
+  if (!targets.length && !bands.length) return "—";
+  const parts = [];
+  if (targets.length) {
+    parts.push(`<span class="mgdb-exp-targets">${targets.join(" · ")}</span>`);
+  }
+  if (bands.length) {
+    parts.push(`<span class="mgdb-exp-chart">${bands.join(" · ")}</span>`);
+  }
+  return parts.join("<br>");
+}
+
 function buildTableHead() {
   const head = document.getElementById("tableHead");
   if (!head) return;
@@ -79,6 +99,7 @@ function buildTableHead() {
   head.querySelectorAll("th").forEach((th) => {
     th.addEventListener("click", () => {
       const col = th.dataset.col;
+      if (col === "expectancy" || col === "draft_action") return;
       if (CURRENT_SORT_COLUMN === col) {
         CURRENT_SORT_DIR = CURRENT_SORT_DIR === "asc" ? "desc" : "asc";
       } else {
@@ -176,6 +197,12 @@ function renderPage() {
         if (col.key === "contracted_display") val = displayClub(val);
         if (col.key === "market_value") {
           return `<td class="money">${formatMoney(val)}</td>`;
+        }
+        if (col.key === "expectancy") {
+          return `<td class="mgdb-expectancy">${formatExpectancy(row)}</td>`;
+        }
+        if (col.key === "rating") {
+          return `<td>${val ?? "—"}</td>`;
         }
         return `<td>${val ?? "—"}</td>`;
       }).join("");
