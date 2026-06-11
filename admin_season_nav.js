@@ -205,11 +205,10 @@ export function renderSeasonAdminNavHtml(pathname, search = "") {
   html += `<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">`;
 
   for (const group of SEASON_ADMIN_NAV) {
-    const groupOpen = group.items.some(linkActive);
-    html += `<div class="nav-subgroup nav-subgroup-nested${groupOpen ? " open" : ""}" data-nav-subgroup>`;
-    html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
-      groupOpen ? "true" : "false"
-    }">${escapeNavText(group.label)}</button>`;
+    html += `<div class="nav-subgroup nav-subgroup-nested" data-nav-subgroup>`;
+    html += `<button type="button" class="nav-subgroup-summary" aria-expanded="false">${escapeNavText(
+      group.label
+    )}</button>`;
     html += `<div class="nav-subgroup-panel" role="group">`;
     for (const item of group.items) {
       const href = seasonAdminNavHref(item);
