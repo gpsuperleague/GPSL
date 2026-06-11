@@ -1,5 +1,5 @@
 import { initAdminPage, primeAdminPageChrome } from "./admin_common.js";
-import { renderSeasonBreakNavHtml } from "./admin_season_break_nav.js?v=20260602-challenges";
+import { renderSeasonBreakNavHtml } from "./admin_season_break_nav.js";
 
 primeAdminPageChrome();
 

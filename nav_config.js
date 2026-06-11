@@ -4,8 +4,8 @@ import {
   seasonAdminNavHasActive,
   renderSeasonAdminNavHtml,
   SEASON_ADMIN_NAV_VERSION,
-} from "./admin_season_nav.js?v=20260602-challenges";
-import { seasonBreakNavHasActive, renderSeasonBreakNavHtml } from "./admin_season_break_nav.js?v=20260602-challenges";
+} from "./admin_season_nav.js";
+import { seasonBreakNavHasActive, renderSeasonBreakNavHtml } from "./admin_season_break_nav.js";
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
 export const NAV_CONFIG_VERSION = SEASON_ADMIN_NAV_VERSION;

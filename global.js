@@ -1082,7 +1082,7 @@ export async function buildNav() {
   let normalizeNavPath;
   let renderAdminMegaNavHtml;
   try {
-    const navMod = await import("./nav_config.js?v=20260602-challenges");
+    const navMod = await import("./nav_config.js?v=20260603-nav-fix");
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;
