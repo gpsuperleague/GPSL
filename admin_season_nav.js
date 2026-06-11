@@ -129,11 +129,6 @@ export const SEASON_ADMIN_NAV = [
     label: "Mid Season",
     items: [
       {
-        label: "Challenge payouts",
-        href: "admin_challenges.html",
-        page: "admin_challenges",
-      },
-      {
         label: "Set transfer window open",
         href: "admin_transfers.html",
         page: "admin_transfers",
@@ -160,6 +155,17 @@ export const SEASON_ADMIN_NAV = [
         href: "admin_season.html",
         hash: "wf-close-season",
         page: "admin_season",
+      },
+    ],
+  },
+  {
+    id: "challenges",
+    label: "Challenge payouts",
+    items: [
+      {
+        label: "Challenge payouts",
+        href: "admin_challenges.html",
+        page: "admin_challenges",
       },
     ],
   },
