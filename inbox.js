@@ -5,7 +5,7 @@ import { inboxActionForMessage } from "./competition_inbox_actions.js";
 
 let myClub = { short: null, name: null };
 let myOwnerId = null;
-let showArchived = false;
+let viewArchived = false;
 
 function setStatus(msg, isError = false) {
   const el = document.getElementById("inboxStatus");
@@ -14,13 +14,41 @@ function setStatus(msg, isError = false) {
   el.style.color = isError ? "#f66" : "#ffcc00";
 }
 
-function updateArchiveButtonState() {
-  const btn = document.getElementById("archiveSelectedBtn");
-  if (!btn) return;
-  const checked = document.querySelectorAll(".inbox-item-check:checked").length;
-  btn.disabled = checked === 0;
-  btn.textContent =
-    checked > 0 ? `Archive selected (${checked})` : "Archive selected";
+function selectedIds() {
+  return Array.from(document.querySelectorAll(".inbox-item-check:checked"))
+    .map((cb) => Number(cb.dataset.id))
+    .filter((id) => Number.isFinite(id));
+}
+
+function updateToolbarButtons() {
+  const checked = selectedIds().length;
+  const archiveBtn = document.getElementById("archiveSelectedBtn");
+  const restoreBtn = document.getElementById("restoreSelectedBtn");
+
+  if (archiveBtn) {
+    archiveBtn.disabled = checked === 0 || viewArchived;
+    archiveBtn.textContent =
+      checked > 0 ? `Archive selected (${checked})` : "Archive selected";
+  }
+  if (restoreBtn) {
+    restoreBtn.disabled = checked === 0 || !viewArchived;
+    restoreBtn.textContent =
+      checked > 0 ? `Restore selected (${checked})` : "Restore selected";
+  }
+}
+
+function setArchivedViewMode(on) {
+  viewArchived = on;
+  const archivedToolbar = document.getElementById("archivedToolbar");
+  const markAllBtn = document.getElementById("markAllReadBtn");
+  const archiveBtn = document.getElementById("archiveSelectedBtn");
+
+  if (archivedToolbar) {
+    archivedToolbar.classList.toggle("visible", on);
+  }
+  if (markAllBtn) markAllBtn.hidden = on;
+  if (archiveBtn) archiveBtn.hidden = on;
+  updateToolbarButtons();
 }
 
 async function markRead(inboxId) {
@@ -29,6 +57,19 @@ async function markRead(inboxId) {
   });
   if (error) throw error;
   await refreshInboxNavBadge();
+}
+
+async function toggleFavourite(inboxId) {
+  const { data, error } = await supabase.rpc("competition_inbox_toggle_favourite", {
+    p_inbox_id: inboxId,
+  });
+  if (error) {
+    const hint = error.message?.includes("competition_inbox_toggle_favourite")
+      ? " — re-run patches/owner_inbox_archive.sql"
+      : "";
+    throw new Error((error.message || "Could not update favourite") + hint);
+  }
+  return data === true;
 }
 
 async function markAllRead() {
@@ -44,12 +85,9 @@ async function markAllRead() {
 }
 
 async function archiveSelected() {
-  const ids = Array.from(document.querySelectorAll(".inbox-item-check:checked"))
-    .map((cb) => Number(cb.dataset.id))
-    .filter((id) => Number.isFinite(id));
-
+  const ids = selectedIds();
   if (!ids.length) return;
-  if (!confirm(`Archive ${ids.length} selected message(s)?`)) return;
+  if (!confirm(`Archive ${ids.length} selected message(s)? They will move to View archived.`)) return;
 
   setStatus("Archiving…");
   const { data, error } = await supabase.rpc("competition_inbox_archive_messages", {
@@ -57,14 +95,47 @@ async function archiveSelected() {
   });
 
   if (error) {
-    const hint = error.message?.includes("competition_inbox_archive_messages")
-      ? " — run patches/owner_inbox_archive.sql in Supabase"
-      : "";
-    setStatus("❌ " + error.message + hint, true);
+    setStatus("❌ " + error.message, true);
     return;
   }
 
   setStatus(`Archived ${data ?? 0} message(s).`);
+  await renderInbox();
+  await refreshInboxNavBadge();
+}
+
+async function restoreSelected() {
+  const ids = selectedIds();
+  if (!ids.length) return;
+
+  setStatus("Restoring…");
+  const { data, error } = await supabase.rpc("competition_inbox_restore_messages", {
+    p_inbox_ids: ids,
+  });
+
+  if (error) {
+    setStatus("❌ " + error.message, true);
+    return;
+  }
+
+  setStatus(`Restored ${data ?? 0} message(s) to inbox.`);
+  await renderInbox();
+  await refreshInboxNavBadge();
+}
+
+async function restoreAllArchived() {
+  if (!confirm("Restore ALL archived messages back to your inbox?")) return;
+
+  setStatus("Restoring…");
+  const { data, error } = await supabase.rpc("competition_inbox_restore_all_archived");
+  if (error) {
+    setStatus("❌ " + error.message, true);
+    return;
+  }
+
+  setStatus(`Restored ${data ?? 0} message(s) to inbox.`);
+  document.getElementById("showArchivedCb").checked = false;
+  setArchivedViewMode(false);
   await renderInbox();
   await refreshInboxNavBadge();
 }
@@ -137,18 +208,19 @@ async function renderInbox() {
   }
 
   toolbar.hidden = false;
+  setArchivedViewMode(viewArchived);
 
   const messages = await loadInboxMessages(supabase, {
     clubShortName: myClub.short,
     ownerId: myOwnerId,
-    includeArchived: showArchived,
+    archivedOnly: viewArchived,
   });
 
   if (!messages.length) {
-    list.innerHTML = showArchived
-      ? '<p class="empty">No messages (including archived).</p>'
-      : '<p class="empty">No notifications. Archived messages are hidden — tick <b>Show archived</b> to view them.</p>';
-    updateArchiveButtonState();
+    list.innerHTML = viewArchived
+      ? '<p class="empty">No archived messages.</p>'
+      : '<p class="empty">No notifications in your inbox. Tick messages and use <b>Archive selected</b> to move them to archived — only then are they hidden.</p>';
+    updateToolbarButtons();
     return;
   }
 
@@ -157,37 +229,74 @@ async function renderInbox() {
   for (const msg of messages) {
     const div = document.createElement("div");
     const isArchived = !!msg.archived_at;
+    const isFav = !!msg.is_favourite;
     div.className =
       "inbox-item" +
       (msg.read_at || isArchived ? "" : " unread") +
-      (isArchived ? " archived" : "");
+      (isArchived ? " archived" : "") +
+      (isFav ? " favourite" : "");
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.className = "inbox-item-check";
     checkbox.dataset.id = String(msg.id);
-    checkbox.disabled = isArchived;
-    checkbox.title = isArchived ? "Already archived" : "Select to archive";
-    checkbox.addEventListener("change", updateArchiveButtonState);
+    checkbox.title = viewArchived ? "Select to restore" : "Select to archive";
+    checkbox.addEventListener("change", updateToolbarButtons);
 
     const body = document.createElement("div");
     body.className = "inbox-item-body";
-    body.innerHTML = `
-      <h3>${escapeHtml(msg.title)}${
-        isArchived ? '<span class="inbox-archived-tag">(archived)</span>' : ""
-      }</h3>
-      <p>${escapeHtml(msg.body)}</p>
-      <time>${formatMessageTime(msg.created_at)}</time>
-      <div class="inbox-actions"></div>
-    `;
+
+    const head = document.createElement("div");
+    head.className = "inbox-item-head";
+
+    const title = document.createElement("h3");
+    title.innerHTML =
+      escapeHtml(msg.title) +
+      (isArchived ? '<span class="inbox-archived-tag">(archived)</span>' : "");
+
+    const favBtn = document.createElement("button");
+    favBtn.type = "button";
+    favBtn.className = "inbox-fav-btn" + (isFav ? " on" : "");
+    favBtn.title = isFav ? "Remove favourite" : "Favourite — keep at top of inbox";
+    favBtn.setAttribute("aria-label", isFav ? "Unfavourite" : "Favourite");
+    favBtn.textContent = isFav ? "★" : "☆";
+    favBtn.onclick = async () => {
+      try {
+        const nowFav = await toggleFavourite(msg.id);
+        favBtn.classList.toggle("on", nowFav);
+        favBtn.textContent = nowFav ? "★" : "☆";
+        div.classList.toggle("favourite", nowFav);
+        setStatus(nowFav ? "Added to favourites." : "Removed from favourites.");
+        if (!viewArchived) await renderInbox();
+      } catch (err) {
+        setStatus("❌ " + err.message, true);
+      }
+    };
+
+    head.appendChild(title);
+    head.appendChild(favBtn);
+
+    const para = document.createElement("p");
+    para.textContent = msg.body;
+
+    const timeEl = document.createElement("time");
+    timeEl.textContent = formatMessageTime(msg.created_at);
+
+    const actions = document.createElement("div");
+    actions.className = "inbox-actions";
+
+    body.appendChild(head);
+    body.appendChild(para);
+    body.appendChild(timeEl);
+    body.appendChild(actions);
 
     div.appendChild(checkbox);
     div.appendChild(body);
 
-    const actions = body.querySelector(".inbox-actions");
     const action = inboxActionForMessage(msg);
 
     if (
+      !viewArchived &&
       !isArchived &&
       msg.message_type === "result_to_confirm" &&
       !msg.read_at &&
@@ -209,7 +318,7 @@ async function renderInbox() {
 
       actions.appendChild(confirmBtn);
       actions.appendChild(rejectBtn);
-    } else if (!isArchived) {
+    } else if (!viewArchived && !isArchived) {
       if (action?.href) {
         const openBtn = document.createElement("button");
         openBtn.className = "button";
@@ -225,7 +334,7 @@ async function renderInbox() {
     list.appendChild(div);
   }
 
-  updateArchiveButtonState();
+  updateToolbarButtons();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -233,8 +342,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("markAllReadBtn").onclick = markAllRead;
   document.getElementById("archiveSelectedBtn").onclick = archiveSelected;
+  document.getElementById("restoreSelectedBtn").onclick = restoreSelected;
+  document.getElementById("restoreAllBtn").onclick = restoreAllArchived;
   document.getElementById("showArchivedCb").onchange = async (e) => {
-    showArchived = e.target.checked;
+    viewArchived = e.target.checked;
+    setArchivedViewMode(viewArchived);
     await renderInbox();
   };
 

@@ -37,16 +37,29 @@
     }
     .inbox-item.unread { border-color:#ff9900; }
     .inbox-item.archived { opacity:0.72; border-color:#2a2a2a; }
+    .inbox-item.favourite { box-shadow: inset 3px 0 0 #ffcc00; }
     .inbox-item-check {
       margin-top:4px; accent-color:#ff9900; width:16px; height:16px; flex-shrink:0;
     }
     .inbox-item-body { flex:1; min-width:0; }
-    .inbox-item h3 { margin:0 0 6px; color:#ff9900; font-size:15px; }
+    .inbox-item-head {
+      display:flex; align-items:flex-start; justify-content:space-between; gap:8px;
+      margin-bottom:6px;
+    }
+    .inbox-item h3 { margin:0; color:#ff9900; font-size:15px; flex:1; }
+    .inbox-fav-btn {
+      background:none; border:none; color:#666; font-size:20px; line-height:1;
+      cursor:pointer; padding:0 2px; flex-shrink:0;
+    }
+    .inbox-fav-btn.on { color:#ffcc00; }
+    .inbox-fav-btn:hover { color:#ff9900; }
     .inbox-item p { margin:0 0 10px; color:#ccc; font-size:13px; white-space:pre-wrap; }
     .inbox-item time { font-size:11px; color:#666; }
     .inbox-archived-tag { font-size:11px; color:#888; margin-left:8px; }
     .inbox-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
     .empty { color:#888; }
+    #archivedToolbar { display:none; gap:8px; width:100%; margin-top:4px; }
+    #archivedToolbar.visible { display:flex; flex-wrap:wrap; }
   </style>
 </head>
 <body>
@@ -61,8 +74,12 @@
         <button type="button" id="archiveSelectedBtn" class="button secondary" disabled>Archive selected</button>
         <label>
           <input type="checkbox" id="showArchivedCb">
-          Show archived
+          View archived
         </label>
+        <div id="archivedToolbar">
+          <button type="button" id="restoreSelectedBtn" class="button secondary" disabled>Restore selected</button>
+          <button type="button" id="restoreAllBtn" class="button secondary">Restore all to inbox</button>
+        </div>
       </div>
       <div id="inboxList"></div>
       <div id="inboxStatus"></div>

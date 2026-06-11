@@ -26,33 +26,57 @@ function buildInboxOrFilter(clubShortName, ownerId) {
   return parts.length ? parts.join(",") : null;
 }
 
+function isArchived(msg) {
+  return msg?.archived_at != null && msg.archived_at !== "";
+}
+
+export function sortInboxMessages(messages) {
+  return [...messages].sort((a, b) => {
+    const favDiff = (b.is_favourite ? 1 : 0) - (a.is_favourite ? 1 : 0);
+    if (favDiff !== 0) return favDiff;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
+function filterInboxMessages(messages, { includeArchived = false, archivedOnly = false, unreadOnly = false } = {}) {
+  let rows = messages;
+
+  if (archivedOnly) {
+    rows = rows.filter((m) => isArchived(m));
+  } else if (!includeArchived) {
+    rows = rows.filter((m) => !isArchived(m));
+  }
+
+  if (unreadOnly) {
+    rows = rows.filter((m) => !m.read_at && !isArchived(m));
+  }
+
+  return sortInboxMessages(rows);
+}
+
 export async function loadInboxMessages(
   supabase,
-  { clubShortName, ownerId, unreadOnly = false, includeArchived = false } = {}
+  { clubShortName, ownerId, unreadOnly = false, includeArchived = false, archivedOnly = false } = {}
 ) {
   const orFilter = buildInboxOrFilter(clubShortName, ownerId);
   if (!orFilter) return [];
 
-  let query = supabase
+  const { data, error } = await supabase
     .from("competition_inbox")
     .select("*")
     .or(orFilter)
     .order("created_at", { ascending: false });
 
-  if (!includeArchived) {
-    query = query.is("archived_at", null);
-  }
-  if (unreadOnly) query = query.is("read_at", null);
-
-  const { data, error } = await query;
   if (error) {
     console.error("loadInboxMessages:", error);
     return [];
   }
 
-  return (data || []).filter(
+  const owned = (data || []).filter(
     (m) => inboxForClub(m, clubShortName) || inboxForOwner(m, ownerId)
   );
+
+  return filterInboxMessages(owned, { includeArchived, archivedOnly, unreadOnly });
 }
 
 export async function countUnreadInbox(
@@ -60,19 +84,10 @@ export async function countUnreadInbox(
   clubShortName,
   ownerId = null
 ) {
-  const orFilter = buildInboxOrFilter(clubShortName, ownerId);
-  if (!orFilter) return 0;
-
-  const { count, error } = await supabase
-    .from("competition_inbox")
-    .select("id", { count: "exact", head: true })
-    .or(orFilter)
-    .is("read_at", null)
-    .is("archived_at", null);
-
-  if (error) {
-    console.error("countUnreadInbox:", error);
-    return 0;
-  }
-  return count || 0;
+  const messages = await loadInboxMessages(supabase, {
+    clubShortName,
+    ownerId,
+    unreadOnly: true,
+  });
+  return messages.length;
 }
