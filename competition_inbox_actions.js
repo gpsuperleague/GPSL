@@ -24,8 +24,14 @@ export function inboxActionForMessage(msg) {
   if (!msg) return null;
   if (msg.action_href) {
     const defaults = INBOX_ACTION_DEFAULTS[msg.message_type];
+    let label = defaults?.label || "Open";
+    if (msg.action_href.includes("manager_draftauction")) {
+      label = "Manager draft";
+    } else if (msg.message_type === "draft_scheduled") {
+      label = "Player draft";
+    }
     return {
-      label: defaults?.label || "Open",
+      label,
       href: msg.action_href,
     };
   }

@@ -140,9 +140,9 @@ BEGIN
           v_href := 'transfer_center.html';
 
         WHEN 'draft_scheduled' THEN
-          v_title := '[TEST] Draft auction scheduled';
-          v_body := E'Player/manager draft auction opens Fri 19:00 UK.\nRandom finish: Sun 21:00 UK.\nCheck the draft auction pages and calendar.';
-          v_href := 'draftauction.html';
+          v_title := '[TEST] Manager draft auction scheduled';
+          v_body := E'Manager draft auction opens Fri 19:00 UK.\nBidding closes at a secret random time — the MGDB countdown never shows the exact moment in advance.\nCheck MGDB and Manager Draft Auction.';
+          v_href := 'manager_draftauction.html';
 
         WHEN 'fine_applied' THEN
           v_title := '[TEST] Fine applied';
