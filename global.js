@@ -21,6 +21,7 @@ import {
 import { countUnreadInbox } from "./competition_inbox.js";
 import { initDashboardPinUi } from "./dashboard_pin.js";
 import { nationFlagSrc } from "./international_flags.js";
+import { formatNavLabel } from "./nav_label.js";
 export { supabase };
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
@@ -911,7 +912,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
       const indent = item.indent ? " nav-link-sub" : "";
       flat += `<a href="${item.href}" class="nav-link${indent}${
         active ? " active" : ""
-      }">${navLinkIconHtml(item)}${escapeNavHtml(item.label)}</a>`;
+      }">${navLinkIconHtml(item)}${escapeNavHtml(formatNavLabel(item.label))}</a>`;
     }
     return flat;
   }
@@ -926,7 +927,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     const indent = item.indent ? " nav-link-sub" : "";
     return `<a href="${item.href}" class="nav-link${indent}${
       active ? " active" : ""
-    }">${navLinkIconHtml(item)}${escapeNavHtml(item.label)}</a>`;
+    }">${navLinkIconHtml(item)}${escapeNavHtml(formatNavLabel(item.label))}</a>`;
   };
 
   const flushPanel = () => {
@@ -934,7 +935,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     groupHtml += `<div class="nav-subgroup${panelHasActive ? " open" : ""}" data-nav-subgroup>`;
     groupHtml += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
       panelHasActive ? "true" : "false"
-    }">${escapeNavHtml(panelLabel)}</button>`;
+    }">${escapeNavHtml(formatNavLabel(panelLabel))}</button>`;
     groupHtml += `<div class="nav-subgroup-panel" role="group">${panelHtml}</div>`;
     groupHtml += `</div>`;
     panelHtml = "";
@@ -1082,7 +1083,7 @@ export async function buildNav() {
   let normalizeNavPath;
   let renderAdminMegaNavHtml;
   try {
-    const navMod = await import("./nav_config.js?v=20260604-club-attendance-break");
+    const navMod = await import("./nav_config.js?v=20260604-nav-title-case");
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;
@@ -1296,7 +1297,9 @@ export async function buildNav() {
     const hasActive = sectionMatchesPage && isPrimarySection;
 
     html += `<div class="nav-group${hasActive ? " nav-group-active" : ""}" data-nav-group>`;
-    html += `<button type="button" class="nav-group-summary" aria-expanded="false">${section.label}</button>`;
+    html += `<button type="button" class="nav-group-summary" aria-expanded="false">${escapeNavHtml(
+      formatNavLabel(section.label)
+    )}</button>`;
     const dropdownClass =
       section.id === "admin"
         ? "nav-dropdown nav-dropdown-scrollable"

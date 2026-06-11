@@ -1,3 +1,5 @@
+import { formatNavLabel } from "./nav_label.js";
+
 /** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
 
 export const SEASON_BREAK_NAV = [
@@ -224,13 +226,13 @@ export function renderSeasonBreakNavHtml(pathname, search = "") {
   let html = `<div class="nav-subgroup nav-subgroup-mega${megaOpen ? " open" : ""}" data-nav-subgroup>`;
   html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
     megaOpen ? "true" : "false"
-  }">Season Break</button>`;
+  }">${escapeNavText(formatNavLabel("Season Break"))}</button>`;
   html += `<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">`;
 
   for (const group of SEASON_BREAK_NAV) {
     html += `<div class="nav-subgroup nav-subgroup-nested" data-nav-subgroup>`;
     html += `<button type="button" class="nav-subgroup-summary" aria-expanded="false">${escapeNavText(
-      group.label
+      formatNavLabel(group.label)
     )}</button>`;
     html += `<div class="nav-subgroup-panel" role="group">`;
     for (const item of group.items) {
@@ -238,7 +240,7 @@ export function renderSeasonBreakNavHtml(pathname, search = "") {
       const active = linkActive(item);
       html += `<a href="${escapeNavText(href)}" class="nav-link nav-link-sub${
         active ? " active" : ""
-      }">${escapeNavText(item.label)}</a>`;
+      }">${escapeNavText(formatNavLabel(item.label))}</a>`;
     }
     html += `</div></div>`;
   }
