@@ -8,6 +8,14 @@ const KINDS = ["max_position", "promotion", "avoid_relegation"];
 let targetRows = [];
 let chartRows = [];
 
+function escapeHtml(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function renderTargets() {
   const body = document.getElementById("targetsBody");
   if (!body) return;
@@ -15,16 +23,18 @@ function renderTargets() {
   body.innerHTML = targetRows
     .map(
       (r, idx) => `<tr data-idx="${idx}">
-      <td><input type="number" class="min_rating" value="${r.min_rating}" min="1" max="99" style="width:60px"></td>
-      <td><input type="number" class="max_rating" value="${r.max_rating}" min="1" max="99" style="width:60px"></td>
+      <td><input type="number" class="min_rating inp-num" value="${r.min_rating}" min="1" max="99"></td>
+      <td><input type="number" class="max_rating inp-num" value="${r.max_rating}" min="1" max="99"></td>
       <td><select class="division">${DIVISIONS.map((d) => `<option value="${d}" ${r.division === d ? "selected" : ""}>${d}</option>`).join("")}</select></td>
       <td><select class="target_kind">${KINDS.map((k) => `<option value="${k}" ${r.target_kind === k ? "selected" : ""}>${k}</option>`).join("")}</select></td>
-      <td><input type="number" class="target_value" value="${r.target_value ?? ""}" style="width:60px" placeholder="—"></td>
-      <td><input type="text" class="label" value="${r.label ?? ""}" style="width:220px"></td>
-      <td><input type="number" class="sort_order" value="${r.sort_order ?? 0}" style="width:50px"></td>
-      <td>
-        <button type="button" class="button save-target">Save</button>
-        <button type="button" class="button delete-target">Delete</button>
+      <td><input type="number" class="target_value inp-num" value="${r.target_value ?? ""}" placeholder="—"></td>
+      <td class="col-label"><input type="text" class="label" value="${escapeHtml(r.label ?? "")}"></td>
+      <td><input type="number" class="sort_order inp-order" value="${r.sort_order ?? 0}"></td>
+      <td class="col-actions">
+        <div class="row-actions">
+          <button type="button" class="button save-target">Save</button>
+          <button type="button" class="button delete-target">Delete</button>
+        </div>
       </td>
     </tr>`
     )

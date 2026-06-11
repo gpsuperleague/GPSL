@@ -8,24 +8,89 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="admin.css">
   <style>
-    .section-note { color:#999; font-size:13px; line-height:1.5; max-width:920px; margin:0 0 12px; }
-    .targets-table, .expectancy-table { width:100%; border-collapse:collapse; margin-top:8px; font-size:13px; }
+    .admin-layout.admin-layout--wide { max-width: 1280px; }
+    .section-note { color:#999; font-size:13px; line-height:1.5; margin:0 0 12px; }
+    .table-scroll {
+      overflow-x: auto;
+      margin-top: 12px;
+      -webkit-overflow-scrolling: touch;
+      border: 1px solid #333;
+      border-radius: 6px;
+    }
+    .targets-table, .expectancy-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .targets-table { min-width: 980px; }
+    .expectancy-table { min-width: 720px; }
     .targets-table th, .targets-table td,
-    .expectancy-table th, .expectancy-table td { padding:8px; border-bottom:1px solid #333; text-align:left; }
-    .targets-table th, .expectancy-table th { color:#ff9900; background:#222; }
+    .expectancy-table th, .expectancy-table td {
+      padding: 10px 8px;
+      border-bottom: 1px solid #333;
+      text-align: left;
+      vertical-align: middle;
+    }
+    .targets-table tbody tr:last-child td,
+    .expectancy-table tbody tr:last-child td { border-bottom: none; }
+    .targets-table th, .expectancy-table th {
+      color: #ff9900;
+      background: #222;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .targets-table tbody tr { background: #1a1a1a; }
+    .targets-table tbody tr:hover { background: #222; }
     .targets-table input, .targets-table select,
-    .expectancy-table input { background:#222; color:#ddd; border:1px solid #444; padding:4px; border-radius:4px; }
-    .expectancy-table input { width:52px; }
-    .expectancy-table .na { color:#666; font-style:italic; }
-    .tier-head { font-size:12px; color:#bbb; }
-    .admin-section { margin-top:28px; }
-    .admin-section h2 { color:#ff9900; font-size:18px; margin:0 0 8px; }
+    .expectancy-table input {
+      background: #222;
+      color: #ddd;
+      border: 1px solid #444;
+      padding: 6px 8px;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .targets-table .inp-num { width: 4.5em; }
+    .targets-table .inp-order { width: 3.5em; }
+    .targets-table select.division { min-width: 9rem; }
+    .targets-table select.target_kind { min-width: 10rem; }
+    .targets-table input.label {
+      width: 100%;
+      min-width: 12rem;
+      max-width: 18rem;
+    }
+    .targets-table .col-label { min-width: 12rem; }
+    .targets-table .col-actions {
+      width: 1%;
+      white-space: nowrap;
+    }
+    .targets-table .row-actions {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 6px;
+    }
+    .targets-table .row-actions .button {
+      margin: 0;
+      padding: 6px 12px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .expectancy-table input { width: 52px; }
+    .expectancy-table .button { margin: 0; padding: 6px 12px; font-size: 12px; }
+    .expectancy-table .na { color: #666; font-style: italic; }
+    .tier-head { font-size: 12px; color: #bbb; }
+    .admin-section { margin-top: 0; }
+    .admin-section + .admin-section { margin-top: 24px; }
+    .admin-section h2 { color: #ff9900; font-size: 18px; margin: 0 0 8px; }
+    #addRowBtn { margin-bottom: 4px; }
   </style>
 </head>
 <body class="admin-page">
   <div id="nav"></div>
   <h1 class="admin-title">Manager contract targets</h1>
-  <div class="admin-layout" id="adminLayout">
+  <div class="admin-layout admin-layout--wide" id="adminLayout">
     <div class="admin-main">
       <p id="adminError" class="status-line error"></p>
 
@@ -36,6 +101,7 @@
           Hit target → 2-year renewal. Miss → released for market value.
         </p>
         <button type="button" class="button" id="addRowBtn">Add rule</button>
+        <div class="table-scroll">
         <table class="targets-table">
           <thead>
             <tr>
@@ -46,11 +112,12 @@
               <th>Position</th>
               <th>Label</th>
               <th>Order</th>
-              <th></th>
+              <th class="col-actions">Actions</th>
             </tr>
           </thead>
           <tbody id="targetsBody"></tbody>
         </table>
+        </div>
       </section>
 
       <section class="admin-section card">
@@ -60,6 +127,7 @@
           Manager proficiency (73–89) → player rating bands for +1 / +2 / +3 impact tiers.
           Used for context when scaling expectations. Run <code>manager_squad_boost_impact.sql</code>.
         </p>
+        <div class="table-scroll">
         <table class="expectancy-table">
           <thead>
             <tr>
@@ -77,9 +145,10 @@
           </thead>
           <tbody id="expectancyBody"></tbody>
         </table>
+        </div>
       </section>
     </div>
   </div>
-  <script type="module" src="admin_manager_targets.js?v=4"></script>
+  <script type="module" src="admin_manager_targets.js?v=5"></script>
 </body>
 </html>
