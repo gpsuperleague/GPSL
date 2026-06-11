@@ -22,6 +22,7 @@ import { formatMoney } from "./competition.js";
 import {
   formatLiveCountdownLines,
   formatDraftConclusionLines,
+  prefixDraftCountdownDuration,
   formatTargetTimesSubline,
   isValidInstant,
 } from "./countdown_display.js";
@@ -68,7 +69,7 @@ async function updateCountdown() {
     const finish = tick.finishInstant;
     if (isValidInstant(finish)) {
       const { duration, subline } = formatDraftConclusionLines(finish, "manager");
-      if (el) el.textContent = duration;
+      if (el) el.textContent = prefixDraftCountdownDuration(duration, "manager");
       if (sub) sub.textContent = subline;
     } else {
       if (el) el.textContent = managerDraftPhaseLabel(tick.phase);
@@ -86,7 +87,7 @@ async function updateCountdown() {
       finishInstant: tick.finishInstant,
     }
   );
-  if (el) el.textContent = duration;
+  if (el) el.textContent = prefixDraftCountdownDuration(duration, "manager");
   if (sub) {
     sub.textContent =
       subline ||

@@ -62,16 +62,30 @@ export function formatClosedTimesSubline(closedInstant) {
   return `Bidding closed ${formatInstantUK(closedInstant)}\n${formatInstantLocal(closedInstant)}`;
 }
 
+export function draftAuctionKindLabel(kind = "player") {
+  if (kind === "manager") return "Manager draft";
+  return "Player draft";
+}
+
 /** Conclusion banner once the draft window has fully ended. */
-export function formatDraftConclusionLines(finishInstant, kind = "draft") {
+export function formatDraftConclusionLines(finishInstant, kind = "player") {
   if (!isValidInstant(finishInstant)) {
     return { duration: "", subline: "" };
   }
-  const noun = kind === "manager" ? "Manager draft" : "Draft auction";
+  const noun = draftAuctionKindLabel(kind);
   return {
     duration: `${noun} concluded — random finish ${formatInstantUK(finishInstant)}`,
     subline: formatClosedTimesSubline(finishInstant),
   };
+}
+
+/** Prefix live countdown line so player vs manager draft is obvious on shared pages. */
+export function prefixDraftCountdownDuration(duration, kind = "player") {
+  const text = String(duration || "").trim();
+  if (!text) return text;
+  const noun = draftAuctionKindLabel(kind);
+  if (text.startsWith(noun)) return text;
+  return `${noun}: ${text}`;
 }
 
 /** HTML: UK and local each on their own line inside .countdown-times */

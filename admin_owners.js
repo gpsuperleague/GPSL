@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("addOwnerBtn").onclick = addOwner;
   document.getElementById("changeOwnerBtn").onclick = changeOwnerClub;
+  document.getElementById("clubAuctionRegisterBtn").onclick = registerForClubAuction;
   document.getElementById("linkOwnerBtn").onclick = linkOwner;
   document.getElementById("breakOwnerBtn").onclick = removeFromClub;
   document.getElementById("archiveOwnerBtn").onclick = archiveOwner;
@@ -37,6 +38,7 @@ async function loadOwnerList() {
     if (clubShort) return clubShort;
     if (row?.status === "archived") return `ARCHIVED (${row.last_club_short_name || "?"})`;
     if (row?.status === "on_break") return `ON BREAK (${row.last_club_short_name || "?"})`;
+    if (row?.status === "awaiting_club_auction") return "CLUB AUCTION";
     return "NO CLUB";
   };
 
@@ -183,6 +185,33 @@ async function changeOwnerClub() {
   if (data?.released_nation) msg += ` · released ${data.released_nation} from old club`;
   if (data?.displaced_owner_email) msg += ` · displaced ${data.displaced_owner_email} (on break)`;
   setStatus("changeOwnerStatus", msg, true);
+  await loadOwnerList();
+}
+
+async function registerForClubAuction() {
+  const email = document.getElementById("clubAuctionEmail")?.value?.trim();
+  if (!email) {
+    setStatus("clubAuctionStatus", "Enter owner email.", false);
+    return;
+  }
+  setStatus("clubAuctionStatus", "Registering…");
+  const { data, error } = await supabase.rpc("admin_owner_register_for_club_auction", {
+    p_owner_email: email,
+    p_starting_balance: 600000000,
+  });
+  if (error) {
+    setStatus(
+      "clubAuctionStatus",
+      "❌ " + error.message + " — run owner_onboarding_club_auction.sql",
+      false
+    );
+    return;
+  }
+  setStatus(
+    "clubAuctionStatus",
+    `✅ ${email} registered — £600m pending. They should open awaiting_club.html to set their tag.`,
+    true
+  );
   await loadOwnerList();
 }
 

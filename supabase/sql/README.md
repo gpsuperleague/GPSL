@@ -239,6 +239,18 @@ Run once after `central_bank_phase1.sql`:
 - **Ledger** for foreign sales, contract expiry MV, squad overflow releases, and special auctions (`special_auction_fee` / `special_auction_prize`)
 - Backfill missing ledger lines (safe in SQL Editor — does not change balances): `SELECT backfill_transfer_finance_ledger();`
 
+### Owner onboarding — club auction (new owners, no club yet)
+
+Run once after `owner_detach_archive.sql`:
+
+[`patches/owner_onboarding_club_auction.sql`](./patches/owner_onboarding_club_auction.sql)
+
+- Status `awaiting_club_auction` on `gpsl_owner_registry`
+- **£600m** `pending_starting_balance` until club auction win
+- Owners without a club: **`awaiting_club.html`** — set **owner tag** before full site access
+- Admin: **Owner administration → Register for club auction** or `admin_owner_register_for_club_auction(email)`
+- **Phase 2 (not built yet):** club auction bidding + settlement → `Clubs.owner_id` + `Club_Finances.balance`, then `status = active`
+
 ### Club owner linking (admin)
 
 Run once:

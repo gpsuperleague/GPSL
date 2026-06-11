@@ -14,6 +14,7 @@ import {
   formatDurationMs,
   formatLiveCountdownLines,
   formatDraftConclusionLines,
+  prefixDraftCountdownDuration,
   formatTargetTimesSubline,
   isValidInstant,
 } from "./countdown_display.js";
@@ -145,15 +146,40 @@ function draftCountdownOptions() {
   return opts;
 }
 
-function shouldUseManagerDraftCountdown() {
+/** Which draft timer labels to show — page-specific so MGDB/GPDB never share the wrong auction. */
+export function getDraftCountdownKind() {
   const page = (typeof window !== "undefined" && window.CURRENT_PAGE) || "";
   if (
     page === "manager_draftauction" ||
-    page === "manager_draftauction_manager"
+    page === "manager_draftauction_manager" ||
+    page === "mgdb"
   ) {
-    return true;
+    return "manager";
   }
-  return managerDraftEnabled && !draftEnabled;
+  if (
+    page === "draftauction" ||
+    page === "draftauction_player" ||
+    page === "gpdb"
+  ) {
+    return "player";
+  }
+  if (managerDraftEnabled && !draftEnabled) return "manager";
+  if (draftEnabled && !managerDraftEnabled) return "player";
+  return "player";
+}
+
+function shouldUseManagerDraftCountdown() {
+  return getDraftCountdownKind() === "manager";
+}
+
+function draftCountdownEndedSubline(kind) {
+  if (kind === "manager") {
+    return "Manager draft finished. Player draft may still be on — check Player Draft Auction / GPDB.";
+  }
+  if (managerDraftEnabled && draftEnabled) {
+    return "Player draft finished. Manager draft may still be on — see Manager Draft Auction / MGDB.";
+  }
+  return "Previous player draft window finished. Admin → Transfer window → Save settings to schedule the next 7pm UK start.";
 }
 
 function getPageDraftCountdownTick(nowUK, start, options) {
@@ -509,19 +535,18 @@ export function wireDraftCountdownUI() {
 
   startDraftCountdown((tick) => {
     const { phase, ms, label, target, countUp, frozen, finishInstant } = tick;
+    const kind = getDraftCountdownKind();
     if (phase === "ended") {
       const finish =
         finishInstant instanceof Date ? finishInstant : finishInstant ? new Date(finishInstant) : null;
       if (isValidInstant(finish)) {
-        const kind = shouldUseManagerDraftCountdown() ? "manager" : "draft";
         const { duration, subline } = formatDraftConclusionLines(finish, kind);
         el.textContent = duration;
         if (localEl) localEl.textContent = subline;
       } else {
-        el.textContent = label;
+        el.textContent = prefixDraftCountdownDuration(label, kind);
         if (localEl) {
-          localEl.textContent =
-            "Previous auction window finished. Admin → Transfer window → Save settings to schedule the next 7pm UK start.";
+          localEl.textContent = draftCountdownEndedSubline(kind);
         }
       }
       return;
@@ -532,7 +557,7 @@ export function wireDraftCountdownUI() {
       frozen,
       finishInstant,
     });
-    el.textContent = duration;
+    el.textContent = prefixDraftCountdownDuration(duration, kind);
     if (localEl) {
       localEl.textContent =
         subline || (!frozen && target ? formatTargetTimesSubline(target) : "");
@@ -1187,6 +1212,12 @@ export async function initGlobal() {
   window.supabase = supabase;
   ensureNavStyles();
   await loadGlobalSettings();
+  try {
+    const { enforceOwnerClubGate } = await import("./owner_gate.js");
+    await enforceOwnerClubGate();
+  } catch (err) {
+    console.warn("owner club gate:", err);
+  }
   wireDraftCountdownUI();
   try {
     await buildNav();

@@ -297,10 +297,11 @@ function showNoClubBanner(email) {
   }
   banner.innerHTML = `
     <b>No club linked to this login.</b><br>
-    Match Day, inbox, and squad need <code>Clubs.owner_id</code> set to this user&apos;s UUID
-    (<span style="color:#aaa;font-size:12px;">${email || "signed-in user"}</span>).
-    In Supabase → Table Editor → <b>Clubs</b>, set <b>owner_id</b> on the club you are testing as,
-    or ask admin to assign it.
+    New owners join via the <a href="awaiting_club.html" style="color:#ff9900;">club auction</a>
+    (£600m starting budget). Set your owner tag there while you wait.<br>
+    <span style="color:#aaa;font-size:12px;">${email || "signed-in user"}</span> —
+    admin can register you with <code>admin_owner_register_for_club_auction(email)</code>
+    after <code>owner_onboarding_club_auction.sql</code> is applied.
   `;
   const badge = document.getElementById("clubBadgeHeader");
   if (badge) badge.style.visibility = "hidden";
