@@ -10,7 +10,7 @@
 ALTER TABLE public.competition_inbox
   ADD COLUMN IF NOT EXISTS action_href text,
   ADD COLUMN IF NOT EXISTS dedupe_key text,
-  ADD COLUMN IF NOT EXISTS gpsl_month smallint,
+  ADD COLUMN IF NOT EXISTS gpsl_month text,
   ADD COLUMN IF NOT EXISTS season_id bigint REFERENCES public.competition_seasons (id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS owner_id uuid REFERENCES auth.users (id) ON DELETE CASCADE;
 
@@ -244,7 +244,7 @@ CREATE OR REPLACE FUNCTION public.owner_inbox_send(
   p_transfer_listing_id bigint DEFAULT NULL,
   p_action_href text DEFAULT NULL,
   p_dedupe_key text DEFAULT NULL,
-  p_gpsl_month smallint DEFAULT NULL,
+  p_gpsl_month text DEFAULT NULL,
   p_season_id bigint DEFAULT NULL
 )
 RETURNS bigint
@@ -440,7 +440,7 @@ BEGIN
 
   v_label := CASE
     WHEN v_fixture.competition_type = 'cup' THEN public.competition_cup_fixture_label(v_fixture)
-    ELSE format('GPSL month %s', coalesce(v_fixture.gpsl_month::text, v_fixture.matchday::text))
+    ELSE format('GPSL %s', coalesce(public.competition_gpsl_month_label(v_fixture.gpsl_month), v_fixture.gpsl_month, 'month'))
   END;
 
   PERFORM public.owner_inbox_send(
@@ -998,7 +998,7 @@ $function$;
 CREATE OR REPLACE FUNCTION public.owner_inbox_build_month_preview_body(
   p_club_short_name text,
   p_season_id bigint,
-  p_gpsl_month smallint
+  p_gpsl_month text
 )
 RETURNS text
 LANGUAGE plpgsql
@@ -1017,7 +1017,10 @@ DECLARE
   v_scorers text;
   v_assisters text;
   v_threats text;
+  v_month_label text;
 BEGIN
+  v_month_label := coalesce(public.competition_gpsl_month_label(p_gpsl_month), p_gpsl_month);
+
   FOR v_fixture IN
     SELECT f.*
     FROM public.competition_fixtures f
@@ -1100,7 +1103,7 @@ BEGIN
   END LOOP;
 
   IF coalesce(array_length(v_lines, 1), 0) = 0 THEN
-    RETURN 'No scheduled fixtures this GPSL month.';
+    RETURN 'No scheduled fixtures in ' || v_month_label || '.';
   END IF;
 
   RETURN array_to_string(v_lines, E'\n\n');
@@ -1109,7 +1112,7 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.owner_inbox_notify_monthly_fixtures(
   p_season_id bigint DEFAULT NULL,
-  p_gpsl_month smallint DEFAULT NULL
+  p_gpsl_month text DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -1118,10 +1121,11 @@ SET search_path = public
 AS $function$
 DECLARE
   v_season_id bigint;
-  v_month smallint;
+  v_month text;
   v_club record;
   v_body text;
   v_count int := 0;
+  v_label text;
 BEGIN
   v_season_id := p_season_id;
   IF v_season_id IS NULL THEN
@@ -1136,6 +1140,8 @@ BEGIN
   IF v_season_id IS NULL OR v_month IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'no_active_month');
   END IF;
+
+  v_label := coalesce(public.competition_gpsl_month_label(v_month), v_month);
 
   FOR v_club IN
     SELECT c."ShortName" AS short_name
@@ -1153,7 +1159,7 @@ BEGIN
 
     IF public.owner_inbox_send(
       'monthly_fixtures',
-      format('GPSL month %s — your matches', v_month),
+      format('GPSL %s — your matches', v_label),
       v_body,
       v_club.short_name,
       NULL,
@@ -1179,7 +1185,6 @@ SET search_path = public
 AS $function$
 DECLARE
   v_season_id bigint;
-  v_month smallint;
   v_month_row record;
 BEGIN
   SELECT id INTO v_season_id
@@ -1197,7 +1202,7 @@ BEGIN
   WHERE m.season_id = v_season_id
     AND now() >= m.unlock_at
     AND now() < m.lock_at
-  ORDER BY m.gpsl_month
+  ORDER BY m.sort_order
   LIMIT 1;
 
   IF NOT FOUND THEN
@@ -1571,7 +1576,7 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.owner_inbox_send(text, text, text, text, uuid, bigint, bigint, bigint, bigint, text, text, smallint, bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.owner_inbox_send(text, text, text, text, uuid, bigint, bigint, bigint, bigint, text, text, text, bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.owner_inbox_send_welcome(uuid, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.owner_inbox_notify_all_clubs(text, text, text, text, text, bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.owner_inbox_notify_monthly_fixtures(bigint, smallint) TO authenticated;

@@ -206,7 +206,7 @@ BEGIN
         NULL, NULL, NULL, NULL,
         v_href,
         'test:' || v_batch || ':' || v_type || ':' || v_club.short_name,
-        CASE WHEN v_type = 'monthly_fixtures' THEN 4::smallint ELSE NULL END,
+        CASE WHEN v_type = 'monthly_fixtures' THEN 'august'::text ELSE NULL END,
         NULL
       );
 

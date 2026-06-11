@@ -8,7 +8,7 @@ ALTER TABLE public.competition_inbox
   ADD COLUMN IF NOT EXISTS action_href text,
   ADD COLUMN IF NOT EXISTS dedupe_key text,
   ADD COLUMN IF NOT EXISTS owner_id uuid REFERENCES auth.users (id) ON DELETE CASCADE,
-  ADD COLUMN IF NOT EXISTS gpsl_month smallint,
+  ADD COLUMN IF NOT EXISTS gpsl_month text,
   ADD COLUMN IF NOT EXISTS season_id bigint REFERENCES public.competition_seasons (id) ON DELETE SET NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS competition_inbox_dedupe_idx
@@ -55,7 +55,7 @@ CREATE OR REPLACE FUNCTION public.owner_inbox_send(
   p_transfer_listing_id bigint DEFAULT NULL,
   p_action_href text DEFAULT NULL,
   p_dedupe_key text DEFAULT NULL,
-  p_gpsl_month smallint DEFAULT NULL,
+  p_gpsl_month text DEFAULT NULL,
   p_season_id bigint DEFAULT NULL
 )
 RETURNS bigint
