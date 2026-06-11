@@ -1063,8 +1063,14 @@ button.nav-admin-trigger {
 }
 
 .nav-subgroup-nested .nav-link-sub {
-  padding-left: 28px;
+  padding: 8px 14px 8px 28px;
   font-size: 13px;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .nav-link {
@@ -1076,6 +1082,8 @@ button.nav-admin-trigger {
   font-weight: 600;
   transition: background 0.12s, color 0.12s;
   white-space: nowrap;
+  box-sizing: border-box;
+  text-align: left;
 }
 
 .nav-link-sub {
@@ -1083,6 +1091,8 @@ button.nav-admin-trigger {
   font-size: 12px;
   font-weight: 500;
   color: #bbb;
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .nav-link:hover {

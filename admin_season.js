@@ -44,10 +44,11 @@ function showSeasonPanel(panelId) {
   });
 
   document.querySelectorAll("#adminSeasonNav a.nav-link-sub").forEach((link) => {
+    link.classList.remove("active");
     const href = link.getAttribute("href") || "";
     const hash = href.includes("#") ? href.split("#")[1] : "";
-    if (href.includes("admin_season.html") && hash) {
-      link.classList.toggle("active", hash === id);
+    if (href.includes("admin_season.html") && hash && hash === id) {
+      link.classList.add("active");
     }
   });
 }

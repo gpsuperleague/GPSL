@@ -228,13 +228,20 @@ html.admin-root body.admin-page {
   padding: 10px 14px;
 }
 
-.admin-season-nav .nav-link {
+.admin-season-nav .nav-link,
+.admin-season-nav .nav-link-sub {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   padding: 8px 14px 8px 22px;
   font-size: 13px;
   color: #bbb;
   text-decoration: none;
   border: none;
   background: transparent;
+  text-align: left;
+  white-space: normal;
+  line-height: 1.35;
 }
 
 .admin-season-nav .nav-link:hover {
@@ -246,7 +253,7 @@ html.admin-root body.admin-page {
   background: #2a2208;
   color: #ff9900;
   border-left: 3px solid #ff9900;
-  padding-left: 19px;
+  padding: 8px 14px 8px 19px;
 }
 
 .admin-season-content {
