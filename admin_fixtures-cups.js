@@ -14,6 +14,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const active = await loadCurrentSeason(supabase);
   compSelectedSeasonId = active?.id ?? null;
+
+  const cupParam = new URLSearchParams(window.location.search).get("cup");
+  if (cupParam) {
+    const select = document.getElementById("compCupSelect");
+    const valid = Array.from(select.options).some((o) => o.value === cupParam);
+    if (valid) select.value = cupParam;
+  }
+
   onCupSelectChange();
 });
 

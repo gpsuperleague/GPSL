@@ -101,7 +101,7 @@ export const ADMIN_NAV_SECTION = {
   label: "Admin",
   items: [
     { heading: true, label: "Season management" },
-    { href: "admin_season.html", label: "Season & calendar" },
+    { href: "admin_season.html", label: "Season management" },
 
     { heading: true, label: "Fixture management" },
     { href: "admin_fixtures-league.html", label: "League fixtures" },

@@ -7,97 +7,223 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="admin.css">
 </head>
-<body class="admin-page">
+<body class="admin-page admin-season-page">
   <div id="nav"></div>
-  <h1 class="admin-title">Season management</h1>
-  <div id="adminLayout">
+
+  <div class="admin-layout" id="adminLayout">
     <div class="admin-main" id="adminMain">
-      <div class="card">
-        <h2>Next season</h2>
-        <p class="note">Creates a pre-season competition year (60 clubs). If the legacy league year is still open, runs <code>rollover_season</code> and contract tick first — same as the old “Start New Season” button.</p>
-        <div id="compActiveSummary" class="note"></div>
-        <div class="row">
-          <div>
-            <label>Label for next season</label>
-            <input id="compSeasonLabel" placeholder="e.g. 2026/27">
-          </div>
-          <div style="display:flex;align-items:flex-end;">
-            <button id="compCreateNextBtn" class="button" style="background:#cc6600;">Create next season (pre-season)</button>
-          </div>
-        </div>
-        <div id="compCreateStatus" class="status-line"></div>
-        <div class="row" style="margin-top:16px;">
-          <button id="compEndSeasonBtn" class="button" style="background:#990000;">End current season (Summer Break)</button>
-        </div>
-        <div id="compEndStatus" class="status-line"></div>
-        <div class="row" style="margin-top:12px;">
-          <button id="compArchiveSeasonBtn" class="button" style="background:#336699;">Archive season stats &amp; awards</button>
-        </div>
-        <p class="note">Snapshots league tables, cup winners, player stats &amp; Ballon d'Or for <b>Club History</b>. Safe to re-run. Run <code>competition_history.sql</code> first.</p>
-        <div id="compArchiveStatus" class="status-line"></div>
-      </div>
 
-      <div class="card">
-        <h2>Divisions (pre-season)</h2>
-        <p class="note">Assign 20 SuperLeague + 40 Championship pool, draw A/B, then start the season once the real-world calendar is set below.</p>
-        <div class="row">
-          <div>
-            <label>Pre-season to configure</label>
-            <select id="compSetupSeasonSelect"></select>
-          </div>
-        </div>
-        <div id="compSetupCounts" style="color:#ffcc00;margin:10px 0;"></div>
-        <div style="max-height:420px;overflow:auto;border:1px solid #333;border-radius:6px;margin-bottom:12px;">
-          <table class="gpsl-table" style="width:100%;border-collapse:collapse;">
-            <thead>
-              <tr>
-                <th style="padding:8px;background:#222;color:#ff9900;text-align:left;">Club</th>
-                <th style="padding:8px;background:#222;color:#ff9900;text-align:left;">Division</th>
-              </tr>
-            </thead>
-            <tbody id="compAssignBody"></tbody>
-          </table>
-        </div>
-        <div class="row">
-          <button id="compSaveAssignBtn" class="button">Save assignments</button>
-          <button id="compDrawBtn" class="button" style="background:#336699;">Draw Championship A / B</button>
-          <button id="compResetDrawBtn" class="button" style="background:#555;">Reset A/B draw</button>
-          <button id="compStartSeasonBtn" class="button" style="background:#228822;display:none;">Start season (go live)</button>
-        </div>
-        <div id="compSeasonStatus" class="status-line"></div>
-      </div>
-
-      <div class="card">
-        <h2>GPSL season calendar</h2>
-        <p class="note">One UK week (Fri 19:00 → Fri 19:00) = one GPSL month. Set the anchor before <b>Start season</b>. Run <code>competition_real_world_calendar.sql</code> and <code>admin_season_lifecycle.sql</code> in Supabase first.</p>
-        <div id="compCalendarActiveNote" class="note"></div>
-        <div class="row">
-          <div>
-            <label>Season</label>
-            <select id="compCalendarSeason"></select>
-          </div>
-          <div>
-            <label>First unlock (UK local)</label>
-            <input type="datetime-local" id="compCalendarAnchor" step="60">
-          </div>
-        </div>
-        <div class="row">
-          <button id="compCalendarSetBtn" class="button" style="background:#336699;">Set / replace calendar</button>
-          <button id="compCalendarBreakBtn" class="button" style="background:#555;">Insert 1-week break</button>
-          <button id="compCalendarClearBtn" class="button" style="background:#990000;">Clear calendar</button>
-        </div>
-        <table class="gpsl-table" style="width:100%;border-collapse:collapse;margin-top:12px;">
-          <thead>
-            <tr>
-              <th style="padding:8px;background:#222;color:#ff9900;">Month</th>
-              <th style="padding:8px;background:#222;color:#ff9900;">Unlock (UK)</th>
-              <th style="padding:8px;background:#222;color:#ff9900;">Lock (UK)</th>
-              <th style="padding:8px;background:#222;color:#ff9900;">Status</th>
+      <div class="admin-workflow">
+        <div class="admin-workflow-banner">ADMIN</div>
+        <div class="admin-workflow-page-title">Season Management</div>
+        <table class="admin-workflow-table" aria-label="Season management workflow">
+          <tbody>
+            <tr class="admin-wf-group"><td colspan="2">Create New Season</td></tr>
+            <tr class="admin-wf-task">
+              <td><a href="#wf-calendar">Set season calendar</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
             </tr>
-          </thead>
-          <tbody id="compCalendarBody"></tbody>
+
+            <tr class="admin-wf-group"><td colspan="2">Assign Divisions</td></tr>
+            <tr class="admin-wf-task">
+              <td><a href="#wf-divisions">Setup superleague teams</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+            <tr class="admin-wf-task">
+              <td><a href="#wf-divisions">Setup championship teams</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+            <tr class="admin-wf-task">
+              <td><a href="#wf-divisions">Draw championship divisions</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+
+            <tr class="admin-wf-group"><td colspan="2">League Fixtures</td></tr>
+            <tr class="admin-wf-task">
+              <td><a href="admin_fixtures-league.html">Draw League Fixtures</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+
+            <tr class="admin-wf-group"><td colspan="2">Assign Cups</td></tr>
+            <tr class="admin-wf-task">
+              <td><a href="admin_fixtures-cups.html?cup=super8">Setup Super8</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+            <tr class="admin-wf-task">
+              <td><a href="admin_fixtures-cups.html?cup=plate">Setup Plate</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+            <tr class="admin-wf-task">
+              <td><a href="admin_fixtures-cups.html?cup=shield">Setup Shield</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+            <tr class="admin-wf-task">
+              <td><a href="admin_fixtures-cups.html?cup=spoon">Setup Spoon</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+            <tr class="admin-wf-task">
+              <td><a href="admin_fixtures-cups.html?cup=league_cup">Setup League Cup</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+
+            <tr class="admin-wf-group"><td colspan="2">Cup Fixtures</td></tr>
+            <tr class="admin-wf-task">
+              <td><a href="admin_fixtures-cups.html?cup=league_cup">Assign Byes</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+            <tr class="admin-wf-task">
+              <td><a href="admin_fixtures-cups.html">Draw cup fixtures</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+
+            <tr class="admin-wf-group"><td colspan="2">Kickoff</td></tr>
+            <tr class="admin-wf-task">
+              <td><a href="#wf-kickoff">Start New Season</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+
+            <tr class="admin-wf-group"><td colspan="2">Playoffs</td></tr>
+            <tr class="admin-wf-task">
+              <td><a href="admin_fixtures-playoffs.html">Assign Playoff positions</a></td>
+              <td><span class="admin-wf-status admin-wf-status-missing">Not Implemented</span></td>
+            </tr>
+
+            <tr class="admin-wf-group"><td colspan="2">Mid Season</td></tr>
+            <tr class="admin-wf-task">
+              <td><a href="admin_challenges.html">Challenge payouts</a></td>
+              <td><span class="admin-wf-status admin-wf-status-missing">Not Implemented</span></td>
+            </tr>
+            <tr class="admin-wf-task">
+              <td><a href="admin_transfers.html">Set transfer window open</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+            <tr class="admin-wf-task">
+              <td><a href="admin_transfers.html">Set transfer window closed</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+
+            <tr class="admin-wf-group"><td colspan="2">Close Season</td></tr>
+            <tr class="admin-wf-task">
+              <td><a href="#wf-close-season">Archive season stats &amp; awards</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+            <tr class="admin-wf-task">
+              <td><a href="#wf-close-season">End Current Season</a></td>
+              <td><span class="admin-wf-status admin-wf-status-test">Needs Testing</span></td>
+            </tr>
+          </tbody>
         </table>
-        <div id="compCalendarStatus" class="status-line"></div>
+      </div>
+
+      <div class="admin-wf-details">
+
+        <section id="wf-calendar" class="admin-wf-panel">
+          <span class="admin-wf-panel-tag">Create New Season</span>
+          <div class="card">
+            <h2>GPSL season calendar</h2>
+            <p class="note">One UK week (Fri 19:00 → Fri 19:00) = one GPSL month. Set the anchor before <b>Start season</b>. Run <code>competition_real_world_calendar.sql</code> and <code>admin_season_lifecycle.sql</code> in Supabase first.</p>
+            <div id="compCalendarActiveNote" class="note"></div>
+            <div class="row">
+              <div>
+                <label>Season</label>
+                <select id="compCalendarSeason"></select>
+              </div>
+              <div>
+                <label>First unlock (UK local)</label>
+                <input type="datetime-local" id="compCalendarAnchor" step="60">
+              </div>
+            </div>
+            <div class="row">
+              <button id="compCalendarSetBtn" class="button" style="background:#336699;">Set / replace calendar</button>
+              <button id="compCalendarBreakBtn" class="button" style="background:#555;">Insert 1-week break</button>
+              <button id="compCalendarClearBtn" class="button" style="background:#990000;">Clear calendar</button>
+            </div>
+            <table class="gpsl-table" style="width:100%;border-collapse:collapse;margin-top:12px;">
+              <thead>
+                <tr>
+                  <th style="padding:8px;background:#222;color:#ff9900;">Month</th>
+                  <th style="padding:8px;background:#222;color:#ff9900;">Unlock (UK)</th>
+                  <th style="padding:8px;background:#222;color:#ff9900;">Lock (UK)</th>
+                  <th style="padding:8px;background:#222;color:#ff9900;">Status</th>
+                </tr>
+              </thead>
+              <tbody id="compCalendarBody"></tbody>
+            </table>
+            <div id="compCalendarStatus" class="status-line"></div>
+          </div>
+        </section>
+
+        <section id="wf-divisions" class="admin-wf-panel">
+          <span class="admin-wf-panel-tag">Assign Divisions</span>
+          <div class="card">
+            <h2>Divisions (pre-season)</h2>
+            <p class="note">Assign 20 SuperLeague + 40 Championship pool, draw A/B, then start the season once the real-world calendar is set.</p>
+            <div class="row">
+              <div>
+                <label>Pre-season to configure</label>
+                <select id="compSetupSeasonSelect"></select>
+              </div>
+            </div>
+            <div id="compSetupCounts" style="color:#ffcc00;margin:10px 0;"></div>
+            <div style="max-height:420px;overflow:auto;border:1px solid #333;border-radius:6px;margin-bottom:12px;">
+              <table class="gpsl-table" style="width:100%;border-collapse:collapse;">
+                <thead>
+                  <tr>
+                    <th style="padding:8px;background:#222;color:#ff9900;text-align:left;">Club</th>
+                    <th style="padding:8px;background:#222;color:#ff9900;text-align:left;">Division</th>
+                  </tr>
+                </thead>
+                <tbody id="compAssignBody"></tbody>
+              </table>
+            </div>
+            <div class="row">
+              <button id="compSaveAssignBtn" class="button">Save assignments</button>
+              <button id="compDrawBtn" class="button" style="background:#336699;">Draw Championship A / B</button>
+              <button id="compResetDrawBtn" class="button" style="background:#555;">Reset A/B draw</button>
+            </div>
+            <div id="compSeasonStatus" class="status-line"></div>
+          </div>
+        </section>
+
+        <section id="wf-kickoff" class="admin-wf-panel">
+          <span class="admin-wf-panel-tag">Kickoff</span>
+          <div class="card">
+            <h2>Start new season</h2>
+            <p class="note">Creates a pre-season competition year (60 clubs). If the legacy league year is still open, runs <code>rollover_season</code> and contract tick first.</p>
+            <div id="compActiveSummary" class="note"></div>
+            <div class="row">
+              <div>
+                <label>Label for next season</label>
+                <input id="compSeasonLabel" placeholder="e.g. 2026/27">
+              </div>
+              <div style="display:flex;align-items:flex-end;">
+                <button id="compCreateNextBtn" class="button" style="background:#cc6600;">Create next season (pre-season)</button>
+              </div>
+            </div>
+            <div id="compCreateStatus" class="status-line"></div>
+            <div class="row" style="margin-top:16px;">
+              <button id="compStartSeasonBtn" class="button" style="background:#228822;display:none;">Start season (go live)</button>
+            </div>
+            <p class="note">Use <b>Start season</b> after divisions, calendar, and fixtures are ready. Button appears when pre-season setup is complete.</p>
+          </div>
+        </section>
+
+        <section id="wf-close-season" class="admin-wf-panel">
+          <span class="admin-wf-panel-tag">Close Season</span>
+          <div class="card">
+            <h2>Close season</h2>
+            <div class="row">
+              <button id="compArchiveSeasonBtn" class="button" style="background:#336699;">Archive season stats &amp; awards</button>
+            </div>
+            <p class="note">Snapshots league tables, cup winners, player stats &amp; Ballon d'Or for <b>Club History</b>. Safe to re-run. Run <code>competition_history.sql</code> first.</p>
+            <div id="compArchiveStatus" class="status-line"></div>
+            <div class="row" style="margin-top:16px;">
+              <button id="compEndSeasonBtn" class="button" style="background:#990000;">End current season (Summer Break)</button>
+            </div>
+            <div id="compEndStatus" class="status-line"></div>
+          </div>
+        </section>
+
       </div>
     </div>
   </div>

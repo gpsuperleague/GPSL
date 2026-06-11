@@ -205,3 +205,114 @@ html.admin-root body.admin-page {
   color: #ff9900;
 }
 
+/* Season management — spreadsheet-style workflow checklist */
+.admin-page.admin-season-page .admin-layout {
+  max-width: 1100px;
+}
+
+.admin-workflow {
+  margin-bottom: 28px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fff;
+  color: #111;
+}
+
+.admin-workflow-banner {
+  background: #ffc000;
+  color: #111;
+  font-weight: bold;
+  font-size: 15px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #c9a000;
+}
+
+.admin-workflow-page-title {
+  background: #4472c4;
+  color: #fff;
+  font-weight: bold;
+  font-size: 18px;
+  padding: 10px 12px;
+}
+
+.admin-workflow-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.admin-workflow-table td {
+  padding: 8px 12px;
+  border: 1px solid #d0d0d0;
+  vertical-align: middle;
+}
+
+.admin-workflow-table tr.admin-wf-group td {
+  background: #bdd7ee;
+  color: #111;
+  font-weight: bold;
+}
+
+.admin-workflow-table tr.admin-wf-task td:first-child {
+  background: #fff;
+}
+
+.admin-workflow-table tr.admin-wf-task td:last-child {
+  width: 160px;
+  text-align: center;
+  background: #fff;
+}
+
+.admin-workflow-table a {
+  color: #1155cc;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.admin-workflow-table a:hover {
+  color: #0a3d91;
+}
+
+.admin-wf-status {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.admin-wf-status-test {
+  background: #7030a0;
+}
+
+.admin-wf-status-missing {
+  background: #c00000;
+}
+
+.admin-wf-details {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-wf-panel {
+  scroll-margin-top: 80px;
+}
+
+.admin-wf-panel > .card {
+  margin-bottom: 0;
+}
+
+.admin-wf-panel-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  margin-bottom: 6px;
+}
+
