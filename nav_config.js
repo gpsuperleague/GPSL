@@ -1,6 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 import { seasonAdminNavHasActive } from "./admin_season_nav.js";
+import { seasonBreakNavHasActive } from "./admin_season_break_nav.js";
 
 export const NAV_SECTIONS = [
   {
@@ -104,6 +105,7 @@ export const ADMIN_NAV_SECTION = {
   label: "Admin",
   items: [
     { seasonMega: true, label: "Season management" },
+    { seasonBreakMega: true, label: "Season Break" },
 
     { heading: true, label: "Fixture management" },
     { href: "admin_fixtures-league.html", label: "League fixtures" },
@@ -183,6 +185,7 @@ export function sectionHasActiveItem(section, pathname, search) {
   if (!section?.items?.length) return false;
   return section.items.some((item) => {
     if (item.seasonMega) return seasonAdminNavHasActive(pathname, search);
+    if (item.seasonBreakMega) return seasonBreakNavHasActive(pathname, search);
     if (item.heading || !item.href) return false;
     return isNavItemActive(item, pathname, search);
   });

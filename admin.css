@@ -263,3 +263,14 @@ html.admin-root body.admin-page {
   }
 }
 
+/* Season Break deep links — clear fixed nav when scrolling to section */
+.admin-page [id^="sb-"] {
+  scroll-margin-top: 72px;
+}
+
+.admin-page .nav-anchor {
+  display: block;
+  height: 0;
+  overflow: hidden;
+}
+

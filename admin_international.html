@@ -33,7 +33,7 @@
   <div class="admin-wrap">
     <h1>International &amp; World Cup</h1>
 
-    <div class="card">
+    <div class="card" id="sb-nation-setup">
       <h2>Setup</h2>
       <p class="note">Run once after <code>competition_international.sql</code>. Seeds 60 nations.</p>
       <div class="row">
@@ -42,7 +42,7 @@
       <div id="setupStatus" class="status-line"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="sb-owner-rankings">
       <h2>Owner rankings</h2>
       <p class="note">
         Nation draft order uses <b>rolling points from the last four seasons</b>, computed automatically
@@ -56,7 +56,7 @@
       <div id="rankStatus" class="status-line"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="sb-nation-assign">
       <h2>Assign national team (admin override)</h2>
       <label for="assignClub">Club ShortName</label>
       <input id="assignClub" type="text">
@@ -68,7 +68,7 @@
       <div id="assignStatus" class="status-line"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="sb-nation-selection">
       <h2>Nation selection window</h2>
       <p class="note">
         <b>Open selection</b> — owners pick nations in rank order.

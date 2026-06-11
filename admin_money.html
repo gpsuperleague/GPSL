@@ -12,7 +12,7 @@
   <h1 class="admin-title">Money management</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
-      <div class="card">
+      <div class="card" id="sb-league-prizes">
         <h2>League prize money</h2>
         <p class="note">Paid automatically when all <b>38</b> league matches in a division are played (or use <b>Pay league prizes</b> manually). Run <code>competition_league_prizes.sql</code> once.</p>
         <div class="row">
@@ -41,7 +41,7 @@
         <h2>Season challenges</h2>
         <p class="note">Owners see targets on <a href="challenges.html">Season challenges</a> (Owners + League nav). Admin config: <a href="admin_challenges.html"><b>Admin → Season challenges</b></a>. Run <code>competition_challenges.sql</code>, then <b>Seed default targets</b>.</p>
       </div>
-      <div class="card">
+      <div class="card" id="sb-tv-revenue">
         <h2>TV revenue</h2>
         <p class="note">Selects big league fixtures per GPSL month per division (top-8 clashes, promotion/relegation battles, dry spells, etc.). Both clubs paid on confirm. Run <code>competition_tv_revenue.sql</code> after <code>government_subsidies.sql</code>.</p>
         <div class="row gov-subsidy-row">
@@ -95,7 +95,7 @@
         </div>
         <div id="tvRevenueStatus" class="status-line"></div>
       </div>
-      <div class="card">
+      <div class="card" id="sb-gov-subsidies">
         <h2>Government subsidies</h2>
         <p class="note">HG bands are <b>non-cumulative</b> for status (highest tier shown) but payout is per band: Quota ≤5, Flying 6–8, Pride 9+ only. Youth uses banded u21 counts. BnB: squad players at or below max rating. Paid at EOS when all <b>3</b> divisions have <b>38/38</b> league matches (run <code>government_subsidies.sql</code>).</p>
         <h3 class="admin-subheading">Homegrown (HG)</h3>
@@ -173,9 +173,10 @@
         </div>
         <div id="govSubsidyStatus" class="status-line"></div>
       </div>
-      <div class="card">
+      <div class="card" id="sb-wage-taxes">
         <h2>Wage bill &amp; taxes</h2>
         <p class="note">Season charges: squad wages (sum of contract wages), 34+ rating fee, star tax. Emergency TAC = % on cash above threshold. Run <code>competition_wages_taxes.sql</code>.</p>
+        <span id="sb-tax-34" class="nav-anchor" aria-hidden="true"></span>
         <div class="row gov-subsidy-row">
           <div>
             <label>34+ min rating</label>
@@ -185,6 +186,9 @@
             <label>₿ per 34+ player</label>
             <input type="number" id="tax34PerPlayer" min="0" step="50000" style="width:120px;">
           </div>
+        </div>
+        <span id="sb-star-tax" class="nav-anchor" aria-hidden="true"></span>
+        <div class="row gov-subsidy-row">
           <div>
             <label>Star tax from rating</label>
             <input type="number" id="starTaxMinRating" min="1" max="99" step="1" style="width:70px;">
@@ -211,7 +215,7 @@
         </div>
         <div id="upkeepTaxStatus" class="status-line"></div>
       </div>
-      <div class="card">
+      <div class="card" id="sb-wage-pct">
         <h2>Wage %</h2>
         <p class="note">Annual squad wage = market value × division % (run <code>player_wage_settings.sql</code>).</p>
         <div class="row">
@@ -231,11 +235,11 @@
         <h2>Fines &amp; compensation</h2>
         <p class="note">Instant <code>gov_fine_compensation</code> ledger lines from the Excel tariff list. <a href="admin_fines.html"><b>Admin → Fines &amp; compensation</b></a> (run <code>competition_fines.sql</code>).</p>
       </div>
-      <div class="card">
+      <div class="card" id="sb-tax-pct">
         <h2>Tax %</h2>
         <p class="note">League tax on transfers / income is handled via central bank ledger rules (<code>central_bank_phase1.sql</code>). A dedicated tax % admin control is not wired yet — set rates in SQL when introduced.</p>
       </div>
-      <div class="card" id="stadiumAttendanceCard">
+      <div class="card" id="sb-stadium-costs">
         <h2>Stadium attendance &amp; club prestige</h2>
         <p class="note">
           <b>Club rank</b> (not owner rank) from rolling league + cup points sets stature.

@@ -21,6 +21,7 @@ import {
 import { countUnreadInbox } from "./competition_inbox.js";
 import { initDashboardPinUi } from "./dashboard_pin.js";
 import { renderSeasonAdminNavHtml } from "./admin_season_nav.js";
+import { renderSeasonBreakNavHtml } from "./admin_season_break_nav.js";
 import { nationFlagSrc } from "./international_flags.js";
 export { supabase };
 
@@ -901,7 +902,9 @@ function navLinkIconHtml(item) {
 }
 
 function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
-  const hasHeadings = items.some((item) => item.heading || item.seasonMega);
+  const hasHeadings = items.some(
+    (item) => item.heading || item.seasonMega || item.seasonBreakMega
+  );
   if (!hasHeadings) {
     let flat = "";
     for (const item of items) {
@@ -945,6 +948,11 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive) {
     if (item.seasonMega) {
       flushPanel();
       groupHtml += renderSeasonAdminNavHtml(pathname, search);
+      continue;
+    }
+    if (item.seasonBreakMega) {
+      flushPanel();
+      groupHtml += renderSeasonBreakNavHtml(pathname, search);
       continue;
     }
     if (item.heading) {

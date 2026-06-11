@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Season Break — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page admin-season-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Season Break</h1>
+
+  <div class="admin-layout" id="adminLayout">
+    <div class="admin-season-shell">
+      <aside class="admin-season-nav card" id="adminSeasonBreakNav" aria-label="Season Break menu"></aside>
+
+      <div class="admin-season-content" id="adminSeasonBreakContent">
+        <section id="sb-overview" class="admin-season-panel" data-panel="sb-overview">
+          <div class="card">
+            <h2>Season Break workflow</h2>
+            <p class="note">
+              Run these steps after the season ends (Summer Break). Use the menu on the left in order:
+              open the transfer window, set prize money and challenges, configure bills &amp; income,
+              run auctions, close the transfer window, then set up internationals.
+            </p>
+            <p class="note">Each link opens the relevant admin page. Return here anytime via <b>Admin → Season Break</b>.</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_season_break.js"></script>
+</body>
+</html>
