@@ -56,8 +56,10 @@ AS $$
   WHERE e.proficiency = public.manager_proficiency_clamp(p_rating);
 $$;
 
+DROP FUNCTION IF EXISTS public.manager_boost_band_label(smallint, smallint, smallint);
+
 CREATE OR REPLACE FUNCTION public.manager_boost_band_label(
-  p_boost smallint,
+  p_boost integer,
   p_min smallint,
   p_max smallint
 )
