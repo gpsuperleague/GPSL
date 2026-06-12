@@ -188,7 +188,8 @@ function renderPage() {
             return `<td style="color:#888;font-size:11px;">No club</td>`;
           }
           if (viewerClubHasManager) {
-            return `<td style="color:#888;font-size:11px;" title="Sack your current manager first">Has manager</td>`;
+            const clubLabel = fullClubName(viewerClubShort) || viewerClubShort;
+            return `<td style="color:#888;font-size:11px;" title="Sack your current manager first">${clubLabel}: have a contracted Manager</td>`;
           }
           if (canOpen) {
             return `<td><a href="manager_draftauction_manager.html?manager=${row.id}" class="button" style="padding:4px 8px;font-size:11px;">Open</a></td>`;
