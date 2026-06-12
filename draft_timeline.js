@@ -304,7 +304,7 @@ export function managerDraftPhaseLabel(phase) {
     case "random_active":
       return "Random window — bidding closes at a random second between 6:50 and 6:59pm UK";
     case "random_locked":
-      return "Bidding locked — manager draft settles after tonight's 7pm transfer auctions";
+      return "Bidding locked — manager contracts settle automatically when the transfer engine runs";
     case "ended":
       return "Manager draft auction ended";
     default:

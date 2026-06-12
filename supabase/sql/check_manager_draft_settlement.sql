@@ -26,7 +26,7 @@ SELECT
     WHEN public.transferengine_standard_listings_block_draft_settlement(
       now(),
       g.draft_random_finish_time
-    ) THEN 'waiting on 7pm player transfer list (or extension)'
+    ) THEN 'player draft blocked by 7pm list — manager draft still settles (check engine cron or run admin_settle_manager_drafts_now)'
     WHEN to_regprocedure('public.transferengine_accept_manager_draft_sale(bigint)') IS NULL
       THEN 'run transferengine_draft.sql or patches/manager_draft_settlement_fix.sql'
     WHEN to_regprocedure('public.admin_settle_manager_drafts_now()') IS NULL

@@ -125,7 +125,7 @@ async function loadManagerDraftListings() {
 
   if (statusEl && auctionEnded) {
     statusEl.textContent =
-      "Bidding closed. Results settle after 7pm transfer auctions finish.";
+      "Bidding closed (random finish reached). Winning bids assign managers and debit balance via the transfer engine — usually within a minute. Refresh Club Details if not updated yet.";
   }
 
   tbody.innerHTML = "";
