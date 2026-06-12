@@ -44,14 +44,29 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <p class="note">
-          All GPSL clubs ranked <b>1–60</b> by 5-year prestige (excludes the FOREIGN placeholder club). Gate revenue uses <b>gate fill</b> (capped at 100%);
-          display fill can exceed 100% as cushion. Status reflects current-season delivery vs expectation.
+          All GPSL clubs ranked <b>1–60</b> by 5-year prestige (excludes the FOREIGN placeholder club).
+          <b>Rank is locked for the active season</b> and recalculates when the next season is started (after archive).
+          Gate revenue uses <b>gate fill</b> (capped at 100%); display fill can exceed 100% as cushion. Status reflects current-season delivery vs expectation.
           Settings live on <a href="admin_money.html">Prizes, wages &amp; gates</a>.
         </p>
+        <div class="card" style="margin-bottom:14px;padding:12px;background:#161616;border:1px solid #333;">
+          <h2 style="margin:0 0 8px;font-size:15px;color:#ff9900;">Initial prestige order (manual seed)</h2>
+          <p class="note" style="margin:0 0 10px;">
+            Before clubs have rolling season history, rank and <b>Start %</b> fall back to stadium capacity.
+            Set a manual <b>Seed #</b> (1 = biggest) per club, save, then apply to refresh Start % / Base % from the new order.
+            Once a club has rolling points, history takes over for that club.
+          </p>
+          <div class="att-toolbar" style="margin-bottom:0;">
+            <button type="button" id="seedFromRankBtn" class="button">Copy current rank → seed</button>
+            <button type="button" id="saveSeedBtn" class="button">Save seed order</button>
+            <button type="button" id="applySeedFillBtn" class="button">Apply seed to start fill</button>
+          </div>
+        </div>
         <div class="att-toolbar">
           <button type="button" id="refreshTableBtn" class="button">Refresh</button>
           <button type="button" id="syncFillBtn" class="button">Sync fill drift</button>
-          <button type="button" id="recomputeBtn" class="button">Recompute club rankings</button>
+          <button type="button" id="recomputeBtn" class="button">Recompute archived totals</button>
+          <button type="button" id="lockPrestigeBtn" class="button">Lock rank (current season)</button>
           <button type="button" id="saveOverridesBtn" class="button">Save tier overrides &amp; managers</button>
         </div>
         <div id="pageStatus" class="status-line"></div>

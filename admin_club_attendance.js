@@ -11,7 +11,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("refreshTableBtn").onclick = () => loadTable();
   document.getElementById("syncFillBtn").onclick = syncFill;
   document.getElementById("recomputeBtn").onclick = recomputeRankings;
+  document.getElementById("lockPrestigeBtn").onclick = lockPrestigeForSeason;
   document.getElementById("saveOverridesBtn").onclick = saveOverrides;
+  document.getElementById("seedFromRankBtn").onclick = copyCurrentRankToSeed;
+  document.getElementById("saveSeedBtn").onclick = saveSeedOrder;
+  document.getElementById("applySeedFillBtn").onclick = applySeedToStartFill;
   document.getElementById("filterTier").onchange = renderTable;
   document.getElementById("filterBand").onchange = renderTable;
 
@@ -93,6 +97,8 @@ function renderTable() {
       <thead>
         <tr>
           <th>#</th>
+          <th>Seed</th>
+          <th>Lock</th>
           <th>Club</th>
           <th>Tier</th>
           <th>Override</th>
@@ -126,6 +132,12 @@ function renderTable() {
             return `
           <tr data-club="${row.club_short_name}">
             <td class="rank">${row.prestige_rank}</td>
+            <td>
+              <input type="number" class="club-seed-rank" data-club="${row.club_short_name}"
+                min="1" max="99" step="1" style="width:44px;background:#222;color:#ddd;border:1px solid #444;"
+                value="${row.prestige_seed_rank ?? row.prestige_rank ?? ""}" placeholder="—">
+            </td>
+            <td>${row.prestige_rank_locked ? "🔒" : "—"}</td>
             <td>
               <div class="club-name">${row.club_name || row.club_short_name}</div>
               <div class="club-short">${row.club_short_name}</div>
@@ -185,7 +197,7 @@ async function fetchOverviewRows() {
   const { data, error } = await supabase
     .from("competition_club_stadium_overview_public")
     .select(
-      "prestige_rank,club_short_name,club_name,capacity,rolling_points,rolling_seasons_count,composite_score,effective_tier,tier_override,manager_rating,stadium_season_start_fill_pct,stadium_display_fill_pct,stadium_fill_target_pct,gate_fill_pct,cushion_pct,expected_points,actual_points,performance_gap,performance_band,prestige_base_fill_pct,expected_position,actual_position,last_seasons_json,projection_note,expansion_eligible"
+      "prestige_rank,prestige_seed_rank,prestige_rank_locked,club_short_name,club_name,capacity,rolling_points,rolling_seasons_count,composite_score,effective_tier,tier_override,manager_rating,stadium_season_start_fill_pct,stadium_display_fill_pct,stadium_fill_target_pct,gate_fill_pct,cushion_pct,expected_points,actual_points,performance_gap,performance_band,prestige_base_fill_pct,expected_position,actual_position,last_seasons_json,projection_note,expansion_eligible"
     )
     .order("prestige_rank", { ascending: true });
 
@@ -242,8 +254,46 @@ async function syncFill() {
   await loadTable();
 }
 
+async function lockPrestigeForSeason() {
+  if (
+    !confirm(
+      "Lock prestige rank for the current active season?\n\n" +
+        "Use once if you are mid-season after applying the season-lock patch, or to refresh the lock from completed seasons + seed order."
+    )
+  ) {
+    return;
+  }
+
+  setStatus("pageStatus", "Locking prestige for current season…");
+  const { data, error } = await supabase.rpc("competition_club_prestige_lock_current_season");
+
+  if (error) {
+    setStatus(
+      "pageStatus",
+      "❌ " + error.message + " — run stadium_attendance_prestige_season_lock.sql first.",
+      false
+    );
+    return;
+  }
+
+  setStatus(
+    "pageStatus",
+    `✅ Locked prestige for ${data?.clubs_locked ?? 0} clubs (season ${data?.season_id ?? "?"}).`,
+    true
+  );
+  await loadTable();
+}
+
 async function recomputeRankings() {
-  setStatus("pageStatus", "Recomputing club rankings…");
+  if (
+    !confirm(
+      "Recompute club season point totals for archived (complete) seasons only?\n\n" +
+        "Prestige rank (#) stays locked for the active season and updates when the next season is started."
+    )
+  ) {
+    return;
+  }
+  setStatus("pageStatus", "Recomputing archived season totals…");
   const { data, error } = await supabase.rpc("competition_club_ranking_recompute_all");
 
   if (error) {
@@ -251,8 +301,99 @@ async function recomputeRankings() {
     return;
   }
 
-  setStatus("pageStatus", `✅ Recomputed ${data ?? 0} club-season row(s). Syncing fill…`, true);
+  setStatus("pageStatus", `✅ Recomputed ${data ?? 0} archived season row(s). Prestige rank updates on next season start.`, true);
   await syncFill();
+}
+
+function copyCurrentRankToSeed() {
+  document.querySelectorAll(".club-seed-rank").forEach((inp) => {
+    const club = inp.dataset.club;
+    const row = allRows.find((r) => r.club_short_name === club);
+    if (row?.prestige_rank != null) {
+      inp.value = String(row.prestige_rank);
+    }
+  });
+  setStatus("pageStatus", "Copied current prestige rank into Seed # column — edit then Save seed order.", true);
+}
+
+function collectSeedRanks() {
+  const entries = [];
+  const seen = new Set();
+
+  for (const inp of document.querySelectorAll(".club-seed-rank")) {
+    const club = inp.dataset.club;
+    const raw = String(inp.value ?? "").trim();
+    if (!club || raw === "") continue;
+
+    const seedRank = Number(raw);
+    if (!Number.isFinite(seedRank) || seedRank < 1) {
+      throw new Error(`Invalid seed rank for ${club}`);
+    }
+    if (seen.has(seedRank)) {
+      throw new Error(`Duplicate seed rank ${seedRank}`);
+    }
+    seen.add(seedRank);
+    entries.push({ club_short_name: club, seed_rank: seedRank });
+  }
+
+  return entries;
+}
+
+async function saveSeedOrder() {
+  let ranks;
+  try {
+    ranks = collectSeedRanks();
+  } catch (err) {
+    setStatus("pageStatus", `❌ ${err.message}`, false);
+    return;
+  }
+
+  if (ranks.length !== allRows.length) {
+    setStatus(
+      "pageStatus",
+      `Enter a unique Seed # (1–${allRows.length}) for every club before saving.`,
+      false
+    );
+    return;
+  }
+
+  setStatus("pageStatus", "Saving seed order…");
+  const { error } = await supabase.rpc("admin_set_club_prestige_seed_ranks", {
+    p_ranks: ranks,
+  });
+
+  if (error) {
+    setStatus("pageStatus", "❌ " + error.message, false);
+    return;
+  }
+
+  setStatus(
+    "pageStatus",
+    `✅ Saved seed order for ${ranks.length} club(s). Apply seed to start fill to refresh Start % / Base %.`,
+    true
+  );
+  await loadTable();
+}
+
+async function applySeedToStartFill() {
+  setStatus("pageStatus", "Applying prestige seed to start fill…");
+  const { data, error } = await supabase.rpc("admin_apply_prestige_seed_to_start_fill");
+
+  if (error) {
+    setStatus(
+      "pageStatus",
+      "❌ " + error.message + " — run stadium_attendance_prestige_seed.sql first.",
+      false
+    );
+    return;
+  }
+
+  setStatus(
+    "pageStatus",
+    `✅ Updated start/display fill for ${data?.clubs_updated ?? 0} club(s).`,
+    true
+  );
+  await loadTable();
 }
 
 async function saveOverrides() {

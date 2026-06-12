@@ -292,7 +292,7 @@ BEGIN
 
   FOR r IN
     SELECT id FROM public.competition_seasons
-    WHERE status IN ('complete', 'active')
+    WHERE status = 'complete'
     ORDER BY id
   LOOP
     v_n := public.competition_club_ranking_recompute_season(r.id);
