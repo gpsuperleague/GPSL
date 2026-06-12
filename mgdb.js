@@ -10,6 +10,7 @@ import {
   isManagerGpdbFreeAgentOfferAllowed,
   getManagerDraftEffectivePhase,
 } from "./draft_timeline.js";
+import { getClubManagerVacancy } from "./manager_draft_engine.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 
@@ -42,6 +43,8 @@ let CURRENT_FILTERS = {};
 let allRowsCache = [];
 let managerDraftOn = false;
 let draftStartTime = null;
+let viewerClubShort = null;
+let viewerClubHasManager = false;
 
 function parseMoneyInput(value) {
   if (!value) return null;
@@ -181,6 +184,12 @@ function renderPage() {
             isManagerGpdbFreeAgentOfferAllowed(now, draftStartTime, phaseOpts);
           if (!managerDraftOn) return `<td>—</td>`;
           if (!isFa) return `<td>—</td>`;
+          if (!viewerClubShort) {
+            return `<td style="color:#888;font-size:11px;">No club</td>`;
+          }
+          if (viewerClubHasManager) {
+            return `<td style="color:#888;font-size:11px;" title="Sack your current manager first">Has manager</td>`;
+          }
           if (canOpen) {
             return `<td><a href="manager_draftauction_manager.html?manager=${row.id}" class="button" style="padding:4px 8px;font-size:11px;">Open</a></td>`;
           }
@@ -228,6 +237,28 @@ function renderPage() {
   }
 
   buildTableHead();
+}
+
+async function loadViewerClub() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: club } = await supabase
+    .from("Clubs")
+    .select("ShortName")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  viewerClubShort = club?.ShortName ?? null;
+  if (!viewerClubShort) {
+    viewerClubHasManager = false;
+    return;
+  }
+
+  const vacancy = await getClubManagerVacancy(viewerClubShort);
+  viewerClubHasManager = !vacancy.vacant;
 }
 
 async function loadManagers() {
@@ -359,6 +390,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   buildTableHead();
+  await loadViewerClub();
   await loadManagers();
 
   if (managerDraftOn && draftStartTime) {

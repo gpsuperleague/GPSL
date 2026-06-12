@@ -16,6 +16,7 @@ import {
   managerDraftMinimumBid,
   getManagerDraftBidEligibility,
   getClubLeadingManagerDraftId,
+  getClubManagerVacancy,
   submitManagerDraftBid,
 } from "./manager_draft_engine.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
@@ -33,6 +34,7 @@ let managerDraftEnabled = false;
 let draftAuctionStartTime = null;
 let currentManager = null;
 let auctionEnded = false;
+let managerVacancyBlocked = "";
 
 function parseMoney(value) {
   return Number(String(value || "").replace(/,/g, "")) || 0;
@@ -201,11 +203,18 @@ async function refreshLeadPanel() {
 function updateBidControls() {
   const submit = document.getElementById("submitBidBtn");
   const err = document.getElementById("bidError");
+  const blocked = auctionEnded || Boolean(managerVacancyBlocked);
   if (submit) {
-    submit.disabled = auctionEnded;
-    submit.textContent = auctionEnded ? "Auction ended" : "Submit bid";
+    submit.disabled = blocked;
+    submit.textContent = auctionEnded
+      ? "Auction ended"
+      : managerVacancyBlocked
+        ? "Manager vacancy required"
+        : "Submit bid";
   }
-  if (auctionEnded && err) {
+  if (err && managerVacancyBlocked) {
+    err.textContent = managerVacancyBlocked;
+  } else if (auctionEnded && err) {
     err.textContent = "";
   }
 }
@@ -284,8 +293,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await buildNav();
   await loadBuyerClub(user.id);
+  if (buyerShortName) {
+    const vacancy = await getClubManagerVacancy(buyerShortName);
+    if (!vacancy.vacant) {
+      managerVacancyBlocked = vacancy.reason;
+    }
+  }
   wireBidControls();
   await loadManager();
+  updateBidControls();
   await updateCountdown();
   setInterval(updateCountdown, 1000);
 });

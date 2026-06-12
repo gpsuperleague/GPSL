@@ -142,6 +142,40 @@ export async function getClubLeadingManagerDraftId(
   return null;
 }
 
+export async function getClubManagerVacancy(clubShortName) {
+  if (!clubShortName) {
+    return { vacant: false, reason: "No club linked to your account." };
+  }
+
+  const { data: clubRow } = await supabase
+    .from("Clubs")
+    .select("manager_id")
+    .eq("ShortName", clubShortName)
+    .maybeSingle();
+  if (clubRow?.manager_id != null) {
+    return {
+      vacant: false,
+      reason:
+        "Your club already has a manager — sack them before opening a manager draft auction.",
+    };
+  }
+
+  const { data: clubMgr } = await supabase
+    .from("Managers")
+    .select("id")
+    .eq("contracted_club", clubShortName)
+    .maybeSingle();
+  if (clubMgr?.id != null) {
+    return {
+      vacant: false,
+      reason:
+        "Your club already has a manager signed — sack them before opening a manager draft auction.",
+    };
+  }
+
+  return { vacant: true, reason: "" };
+}
+
 export async function getManagerDraftBidEligibility({
   managerId,
   buyerShortName,
@@ -172,28 +206,9 @@ export async function getManagerDraftBidEligibility({
     return { allowed: false, reason: "Bidding is not open right now." };
   }
 
-  const { data: clubRow } = await supabase
-    .from("Clubs")
-    .select("manager_id")
-    .eq("ShortName", buyerShortName)
-    .maybeSingle();
-  if (clubRow?.manager_id != null) {
-    return {
-      allowed: false,
-      reason: "Your club already has a manager — sack or wait until you have a vacancy.",
-    };
-  }
-
-  const { data: clubMgr } = await supabase
-    .from("Managers")
-    .select("id")
-    .eq("contracted_club", buyerShortName)
-    .maybeSingle();
-  if (clubMgr?.id != null) {
-    return {
-      allowed: false,
-      reason: "Your club already has a manager signed.",
-    };
+  const vacancy = await getClubManagerVacancy(buyerShortName);
+  if (!vacancy.vacant) {
+    return { allowed: false, reason: vacancy.reason };
   }
 
   const leadingElsewhere = await getClubLeadingManagerDraftId(
@@ -280,6 +295,16 @@ export async function submitManagerDraftBid(manager, offerAmount, buyerShortName
     return { ok: false, msg: "Manager is not a free agent." };
   }
 
+  const eligibility = await getManagerDraftBidEligibility({
+    managerId: manager.id,
+    buyerShortName,
+    managerDraftEnabled: getManagerDraftEnabled(),
+    draftAuctionStartTime: draftStart,
+  });
+  if (!eligibility.allowed) {
+    return { ok: false, msg: eligibility.reason };
+  }
+
   const existing = await fetchCurrentManagerDraftBids(manager.id, draftStart);
   const isFirstBid = existing.length === 0;
 
@@ -290,16 +315,6 @@ export async function submitManagerDraftBid(manager, offerAmount, buyerShortName
   const min = managerDraftMinimumBid(manager.market_value, existing);
   if (Number(offerAmount) < min) {
     return { ok: false, msg: `Minimum bid is ₿${min.toLocaleString("en-GB")}.` };
-  }
-
-  const eligibility = await getManagerDraftBidEligibility({
-    managerId: manager.id,
-    buyerShortName,
-    managerDraftEnabled: getManagerDraftEnabled(),
-    draftAuctionStartTime: draftStart,
-  });
-  if (!eligibility.allowed) {
-    return { ok: false, msg: eligibility.reason };
   }
 
   const { error } = await supabase.from("Manager_Transfer_Bids").insert({

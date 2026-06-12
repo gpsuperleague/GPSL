@@ -1,14 +1,6 @@
--- =============================================================================
--- Manager draft auction — bids, guard, settlement (parallel to player draft)
--- Run after managers_system.sql. Updates transferengine_settle_draft_auctions.
--- =============================================================================
+-- Block manager draft bids while the bidder's club already has a manager signed.
+-- Run after managers_draft_auction.sql.
 
-ALTER TABLE public."Manager_Transfer_Bids"
-  ADD COLUMN IF NOT EXISTS is_first_draft_bid boolean NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS is_draft_join boolean NOT NULL DEFAULT false,
-  ADD COLUMN IF NOT EXISTS draft_join_consumed boolean NOT NULL DEFAULT false;
-
--- Reject manager draft bids after secret finish (manager draft enabled)
 CREATE OR REPLACE FUNCTION public.trg_manager_transfer_bids_draft_guard()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -89,30 +81,3 @@ BEGIN
   RETURN NEW;
 END;
 $function$;
-
-DROP TRIGGER IF EXISTS manager_transfer_bids_draft_guard ON public."Manager_Transfer_Bids";
-CREATE TRIGGER manager_transfer_bids_draft_guard
-  BEFORE INSERT ON public."Manager_Transfer_Bids"
-  FOR EACH ROW
-  EXECUTE FUNCTION public.trg_manager_transfer_bids_draft_guard();
-
-DROP POLICY IF EXISTS manager_bids_insert ON public."Manager_Transfer_Bids";
-CREATE POLICY manager_bids_insert ON public."Manager_Transfer_Bids"
-  FOR INSERT TO authenticated
-  WITH CHECK (bidder_club_id = public.my_club_shortname());
-
-DROP POLICY IF EXISTS manager_listings_insert ON public."Manager_Transfer_Listings";
-CREATE POLICY manager_listings_insert ON public."Manager_Transfer_Listings"
-  FOR INSERT TO authenticated
-  WITH CHECK (listing_type = 'draft' AND seller_club_id IS NULL);
-
-DROP POLICY IF EXISTS manager_listings_update ON public."Manager_Transfer_Listings";
-CREATE POLICY manager_listings_update ON public."Manager_Transfer_Listings"
-  FOR UPDATE TO authenticated
-  USING (listing_type = 'draft' OR seller_club_id = public.my_club_shortname())
-  WITH CHECK (true);
-
--- Settlement lives in transferengine_draft.sql / manager_draft_settlement_fix.sql
--- (mirrors player draft: debit balance → assign → manager_sync_club_rating).
-
-GRANT EXECUTE ON FUNCTION public.transferengine_accept_manager_draft_sale(bigint) TO authenticated;
