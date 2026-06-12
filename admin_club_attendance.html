@@ -7,7 +7,20 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="admin.css">
   <style>
-    .att-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; }
+    .att-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-start; margin-bottom:8px; }
+    .att-btn-group { margin-bottom:14px; }
+    .att-btn-group h2, .att-btn-group h3 {
+      margin:0 0 6px; font-size:14px; color:#ff9900; font-weight:600;
+    }
+    .att-btn-group .att-group-hint {
+      margin:0 0 8px; font-size:12px; color:#999; line-height:1.45; max-width:920px;
+    }
+    .att-btn {
+      display:flex; flex-direction:column; align-items:flex-start; gap:3px;
+      max-width:220px;
+    }
+    .att-btn .button { margin:0; white-space:normal; text-align:left; line-height:1.25; }
+    .att-btn .att-btn-hint { font-size:10px; color:#777; line-height:1.35; }
     .att-summary { display:flex; flex-wrap:wrap; gap:16px; margin-bottom:14px; font-size:13px; }
     .att-summary span { padding:6px 10px; background:#1a1a1a; border-radius:4px; }
     .att-table-wrap { overflow:auto; max-height:calc(100vh - 220px); border:1px solid #333; border-radius:6px; }
@@ -49,25 +62,80 @@
           Gate revenue uses <b>gate fill</b> (capped at 100%); display fill can exceed 100% as cushion. Status reflects current-season delivery vs expectation.
           Settings live on <a href="admin_money.html">Prizes, wages &amp; gates</a>.
         </p>
-        <div class="card" style="margin-bottom:14px;padding:12px;background:#161616;border:1px solid #333;">
-          <h2 style="margin:0 0 8px;font-size:15px;color:#ff9900;">Initial prestige order (manual seed)</h2>
-          <p class="note" style="margin:0 0 10px;">
-            Before clubs have rolling season history, rank and <b>Start %</b> fall back to stadium capacity.
-            Set a manual <b>Seed #</b> (1 = biggest) per club, save, then apply to refresh Start % / Base % from the new order.
-            Once a club has rolling points, history takes over for that club.
+        <div class="att-btn-group card" style="padding:12px;background:#161616;border:1px solid #333;">
+          <h2>Initial prestige order (manual seed)</h2>
+          <p class="att-group-hint">
+            Use this before clubs build 5-year history, or to override capacity-only ordering.
+            Set every club’s <b>Seed #</b> (1 = biggest), save, then apply so <b>Start %</b> and <b>Base %</b> match that list.
+            After a club has rolling season points, history drives its rank instead of seed.
           </p>
-          <div class="att-toolbar" style="margin-bottom:0;">
-            <button type="button" id="seedFromRankBtn" class="button">Copy current rank → seed</button>
-            <button type="button" id="saveSeedBtn" class="button">Save seed order</button>
-            <button type="button" id="applySeedFillBtn" class="button">Apply seed to start fill</button>
+          <div class="att-toolbar">
+            <div class="att-btn">
+              <button type="button" id="seedFromRankBtn" class="button"
+                title="Copies today’s prestige rank into each Seed # field so you can tweak from the current table.">
+                Copy rank → Seed #
+              </button>
+              <span class="att-btn-hint">Prefill Seed # from the current # column.</span>
+            </div>
+            <div class="att-btn">
+              <button type="button" id="saveSeedBtn" class="button"
+                title="Stores all 60 Seed # values. Each rank 1–60 must be unique and every club must have one.">
+                Save seed order
+              </button>
+              <span class="att-btn-hint">Write manual 1–60 order to the database.</span>
+            </div>
+            <div class="att-btn">
+              <button type="button" id="applySeedFillBtn" class="button"
+                title="Recalculates Start %, Display %, and Base % from the saved seed order (via prestige rank mapping).">
+                Apply seed to start fill
+              </button>
+              <span class="att-btn-hint">Refresh Start % / Base % from saved seed.</span>
+            </div>
           </div>
         </div>
-        <div class="att-toolbar">
-          <button type="button" id="refreshTableBtn" class="button">Refresh</button>
-          <button type="button" id="syncFillBtn" class="button">Sync fill drift</button>
-          <button type="button" id="recomputeBtn" class="button">Recompute archived totals</button>
-          <button type="button" id="lockPrestigeBtn" class="button">Lock rank (current season)</button>
-          <button type="button" id="saveOverridesBtn" class="button">Save tier overrides &amp; managers</button>
+        <div class="att-btn-group">
+          <h3>Season table &amp; attendance</h3>
+          <p class="att-group-hint">
+            Prestige <b>#</b> is locked for the active season (see 🔒). It updates automatically when you
+            <b>start the next season</b> in Competition Season — after the previous one is archived.
+          </p>
+          <div class="att-toolbar">
+            <div class="att-btn">
+              <button type="button" id="refreshTableBtn" class="button"
+                title="Reload the table from Supabase and run a fill sync pass first.">
+                Refresh table
+              </button>
+              <span class="att-btn-hint">Reload all rows from the database.</span>
+            </div>
+            <div class="att-btn">
+              <button type="button" id="syncFillBtn" class="button"
+                title="Applies monthly attendance drift for the current GPSL month based on each club’s performance band vs expectation.">
+                Sync monthly fill drift
+              </button>
+              <span class="att-btn-hint">Update Display % for this GPSL month.</span>
+            </div>
+            <div class="att-btn">
+              <button type="button" id="recomputeBtn" class="button"
+                title="Rebuilds league + cup point totals in competition_club_season_ranking for finished seasons only. Does not change locked prestige rank mid-season.">
+                Recompute archived season points
+              </button>
+              <span class="att-btn-hint">Fix history rows for complete seasons only.</span>
+            </div>
+            <div class="att-btn">
+              <button type="button" id="lockPrestigeBtn" class="button"
+                title="Freezes prestige rank # for the current active season from completed seasons + seed. Normally runs automatically on season start; use once if mid-season after patching.">
+                Lock prestige for this season
+              </button>
+              <span class="att-btn-hint">Freeze # for active season (or after patch).</span>
+            </div>
+            <div class="att-btn">
+              <button type="button" id="saveOverridesBtn" class="button"
+                title="Saves Tier override (Auto/Big/Med/Low) and Manager rating columns. Affects expectation targets, not prestige rank.">
+                Save tier &amp; manager overrides
+              </button>
+              <span class="att-btn-hint">Persist tier dropdowns and Mgr ratings.</span>
+            </div>
+          </div>
         </div>
         <div id="pageStatus" class="status-line"></div>
         <div id="summaryStrip" class="att-summary"></div>
