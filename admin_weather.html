@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Weather &amp; pitch — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .wx-note { font-size:13px; color:#aaa; line-height:1.5; margin-bottom:14px; max-width:960px; }
+    .wx-continent { margin-bottom:20px; border:1px solid #333; border-radius:8px; overflow:hidden; }
+    .wx-continent-head {
+      padding:10px 14px; background:#1a1a1a; color:#ff9900; font-weight:600; font-size:15px;
+    }
+    .wx-season-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; padding:12px; }
+    .wx-season-card { background:#161616; border:1px solid #2a2a2a; border-radius:6px; padding:10px; }
+    .wx-season-title { font-weight:600; margin-bottom:4px; color:#ddd; }
+    .wx-months { font-size:11px; color:#888; margin-bottom:8px; min-height:2.4em; }
+    .wx-pct-group { margin-bottom:8px; }
+    .wx-pct-label { font-size:11px; color:#ffaa22; margin-bottom:4px; }
+    .wx-pct-row { display:flex; gap:6px; flex-wrap:wrap; }
+    .wx-pct-row label { font-size:11px; display:flex; align-items:center; gap:4px; }
+    .wx-pct-row input {
+      width:44px; background:#222; color:#ddd; border:1px solid #444; border-radius:4px; padding:3px 4px;
+    }
+    .wx-toolbar { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; align-items:center; }
+    .wx-sum { font-size:11px; color:#888; }
+    .wx-sum.bad { color:#e85c5c; }
+    .wx-sum.ok { color:#7ddf7d; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Weather &amp; pitch conditions</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="wx-note">
+          Home venue uses the club’s continent (<code>Clubs.continent</code> or inferred from <code>Nation</code>).
+          GPSL runs <b>August–May</b>; each continent maps those months to <b>Spring / Summer / Autumn / Winter</b>.
+          Percentages are roll weights for new fixtures (Fine / Rain / Snow and Normal / Dry / Wet).
+          Kit season: <b>Summer</b> = short sleeves (spring &amp; summer); <b>Winter</b> = long sleeves (autumn &amp; winter).
+          Northern Europe defaults include more snow; Southern Europe more fine weather.
+        </p>
+        <div class="wx-toolbar">
+          <button type="button" id="saveBtn" class="button">Save all continent settings</button>
+          <button type="button" id="reapplyBtn" class="button">Re-roll scheduled fixtures (active season)</button>
+          <button type="button" id="reloadBtn" class="button">Reload</button>
+        </div>
+        <div id="pageStatus" class="status-line"></div>
+        <div id="configRoot"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_weather.js"></script>
+</body>
+</html>

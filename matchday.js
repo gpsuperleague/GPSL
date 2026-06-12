@@ -17,6 +17,7 @@ import {
   loadCalendarStatus,
   calendarStatusBanner,
 } from "./competition_calendar.js";
+import { formatMatchConditions } from "./competition_conditions.js";
 import {
   loadHolidayPlayContext,
   isFixtureHolidayPlayable,
@@ -1125,7 +1126,8 @@ async function updateFixturePreview() {
 
   preview.innerHTML = `
     <b>Matchday ${f.matchday}</b> · ${month}<br>
-    ${f.home_club_name} vs ${f.away_club_name}${extra}
+    ${f.home_club_name} vs ${f.away_club_name}<br>
+    <span style="color:#aaa;font-size:13px;">${formatMatchConditions(f)}</span>${extra}
   `;
 
   document.getElementById("homeLabel").textContent = f.home_club_name;
