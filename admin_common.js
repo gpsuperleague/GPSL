@@ -1,4 +1,4 @@
-import { supabase, initGlobal, isGpslAdminUser } from "./global.js?v=20260604";
+import { supabase, initGlobal, isGpslAdminUser } from "./global.js?v=20260604-weather-nav";
 
 /** Apply dark admin chrome immediately (avoids white flash before module loads). */
 export function primeAdminPageChrome() {
