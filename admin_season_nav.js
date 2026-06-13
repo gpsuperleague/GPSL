@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260603-nav-fix";
+export const SEASON_ADMIN_NAV_VERSION = "20260604-weather-nav";
 
 export const SEASON_ADMIN_NAV = [
   {
@@ -48,6 +48,11 @@ export const SEASON_ADMIN_NAV = [
         label: "Draw league fixtures",
         href: "admin_fixtures-league.html",
         page: "admin_fixtures-league",
+      },
+      {
+        label: "Weather & pitch conditions",
+        href: "admin_weather.html",
+        page: "admin_weather",
       },
     ],
   },
