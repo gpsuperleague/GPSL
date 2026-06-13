@@ -85,7 +85,7 @@ BEGIN
   END IF;
 
   IF v = ANY (ARRAY[
-    'usa', 'united states', 'canada', 'mexico'
+    'usa', 'united states', 'canada', 'mexico', 'new mexico'
   ]) THEN
     RETURN 'north_america';
   END IF;
@@ -99,7 +99,7 @@ BEGIN
 
   IF v = ANY (ARRAY[
     'spain', 'italy', 'portugal', 'greece', 'croatia', 'serbia', 'romania',
-    'bulgaria', 'turkey', 'cyprus', 'malta', 'israel', 'slovenia', 'bosnia'
+    'bulgaria', 'cyprus', 'malta', 'israel', 'slovenia', 'bosnia'
   ]) THEN
     RETURN 'southern_europe';
   END IF;
@@ -107,7 +107,8 @@ BEGIN
   IF v = ANY (ARRAY[
     'japan', 'korea', 'south korea', 'north korea', 'china', 'saudi arabia',
     'uae', 'united arab emirates', 'qatar', 'australia', 'thailand',
-    'indonesia', 'malaysia', 'singapore', 'india', 'iran', 'iraq'
+    'indonesia', 'malaysia', 'singapore', 'india', 'iran', 'iraq',
+    'turkey', 'turkiye'
   ]) THEN
     RETURN 'asia';
   END IF;
