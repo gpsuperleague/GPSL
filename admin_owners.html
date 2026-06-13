@@ -75,16 +75,26 @@
         <div id="changeOwnerStatus" class="status-line"></div>
       </div>
       <div class="card" id="ow-club-auction">
-        <h2>Register for club auction (no club yet)</h2>
+        <h2>Add owner for club auction (no club yet)</h2>
         <p class="note">
-          New season owners: £600m pending balance, status <code>awaiting_club_auction</code>.
-          They only see <a href="awaiting_club.html">awaiting_club.html</a> until a club is assigned.
-          Requires <code>owner_onboarding_club_auction.sql</code>.
+          Creates the login, sets £600m pending balance, and status
+          <code>awaiting_club_auction</code>. They only see
+          <a href="awaiting_club.html">awaiting_club.html</a> until the auction assigns a club.
+          Requires <code>owner_onboarding_club_auction.sql</code> and the
+          <code>create-owner-club-auction</code> edge function deployed in Supabase.
         </p>
         <div class="row">
-          <div><input id="clubAuctionEmail" placeholder="Owner email"></div>
+          <div><input id="clubAuctionEmail" type="email" placeholder="Owner email"></div>
+          <div>
+            <input
+              id="clubAuctionPassword"
+              type="password"
+              autocomplete="new-password"
+              placeholder="Temporary password (min 6 chars)"
+            >
+          </div>
         </div>
-        <button id="clubAuctionRegisterBtn" class="button">Register for club auction</button>
+        <button id="clubAuctionRegisterBtn" class="button">Create owner for club auction</button>
         <div id="clubAuctionStatus" class="status-line"></div>
       </div>
       <div class="card" id="ow-link-club">

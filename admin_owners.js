@@ -189,27 +189,59 @@ async function changeOwnerClub() {
 }
 
 async function registerForClubAuction() {
-  const email = document.getElementById("clubAuctionEmail")?.value?.trim();
-  if (!email) {
-    setStatus("clubAuctionStatus", "Enter owner email.", false);
+  const email = document.getElementById("clubAuctionEmail")?.value?.trim().toLowerCase();
+  const password = document.getElementById("clubAuctionPassword")?.value?.trim() || "";
+
+  if (!email || !password) {
+    setStatus("clubAuctionStatus", "Enter email and temporary password.", false);
     return;
   }
-  setStatus("clubAuctionStatus", "Registering…");
-  const { data, error } = await supabase.rpc("admin_owner_register_for_club_auction", {
-    p_owner_email: email,
-    p_starting_balance: 600000000,
+
+  if (password.length < 6) {
+    setStatus("clubAuctionStatus", "Password must be at least 6 characters.", false);
+    return;
+  }
+
+  setStatus("clubAuctionStatus", "Creating owner…");
+
+  const { data, error } = await supabase.functions.invoke("create-owner-club-auction", {
+    body: { email, password, startingBalance: 600000000 },
   });
+
   if (error) {
+    const hint =
+      error.message?.includes("404") || error.message?.includes("not found")
+        ? " — deploy create-owner-club-auction edge function in Supabase"
+        : "";
+    setStatus("clubAuctionStatus", "❌ " + error.message + hint, false);
+    return;
+  }
+
+  if (data?.error) {
     setStatus(
       "clubAuctionStatus",
-      "❌ " + error.message + " — run owner_onboarding_club_auction.sql",
+      "❌ " + data.error + " — run owner_onboarding_club_auction.sql",
       false
     );
     return;
   }
+
+  if (document.getElementById("clubAuctionEmail")) {
+    document.getElementById("clubAuctionEmail").value = "";
+  }
+  if (document.getElementById("clubAuctionPassword")) {
+    document.getElementById("clubAuctionPassword").value = "";
+  }
+
+  const action = data?.auth_created
+    ? "created"
+    : data?.password_updated
+      ? "updated"
+      : "registered";
+
   setStatus(
     "clubAuctionStatus",
-    `✅ ${email} registered — £600m pending. They should open awaiting_club.html to set their tag.`,
+    `✅ ${email} ${action} — £600m pending. Share the login details, then they open awaiting_club.html to set their tag.`,
     true
   );
   await loadOwnerList();

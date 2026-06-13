@@ -14,7 +14,7 @@ export const OWNER_ADMIN_NAV = [
         page: "admin_owners",
       },
       {
-        label: "Register for club auction",
+        label: "Add owner for club auction",
         href: "admin_owners.html",
         hash: "ow-club-auction",
         page: "admin_owners",
