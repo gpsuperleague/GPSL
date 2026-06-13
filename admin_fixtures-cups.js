@@ -194,9 +194,11 @@ async function drawCompetitionCup() {
   }
   const d = result.data;
   const byeList = Array.isArray(d?.bye_clubs) ? d.bye_clubs.join(", ") : "";
+  const cupSynced = d?.fixtures_conditions_synced ?? "?";
   setStatus(
     "compCupStatus",
-    `✅ ${cup}: ${d.clubs} clubs, ${d.byes} byes${byeList ? ` (${byeList})` : ""}, ${d.r1_fixtures} R1 fixtures.`
+    `✅ ${cup}: ${d.clubs} clubs, ${d.byes} byes${byeList ? ` (${byeList})` : ""}, ` +
+      `${d.r1_fixtures} R1 fixtures, ${cupSynced} cup fixture(s) with schedule month + conditions.`
   );
 }
 

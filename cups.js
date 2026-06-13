@@ -19,6 +19,7 @@ import {
   normalizeClubKey,
 } from "./competition.js";
 import { loadCalendarStatus, isGpslMonthCurrentlyPlayable } from "./competition_calendar.js";
+import { formatMatchConditions } from "./competition_conditions.js";
 
 function cupFromUrl() {
   const raw = new URLSearchParams(window.location.search).get("cup");
@@ -130,6 +131,10 @@ function renderLegPane(leg, extras, opts) {
   const played = leg.fixture_status === "played";
   const scoreLines = played ? formatCupScoreLines(leg, extras) : null;
   const finance = played ? formatCupMatchFinance(leg, extras) : [];
+  const conditions =
+    leg.fixture_id && (leg.weather || leg.pitch_condition || leg.kit_season)
+      ? formatMatchConditions(leg)
+      : "";
   const { playable, reason } = legPlayable(leg, extras, opts);
 
   let actionHtml = "";
@@ -145,6 +150,7 @@ function renderLegPane(leg, extras, opts) {
     <div class="leg-pane ${isMyMatch(leg) ? "my-club" : ""} ${played ? "played" : ""}">
       <div class="leg-label">${escapeHtml(opts.legLabel)}</div>
       <div class="leg-teams">${escapeHtml(home)}<span class="vs">vs</span>${escapeHtml(away)}</div>
+      ${conditions ? `<div class="leg-conditions" style="font-size:11px;color:#888;margin:4px 0;">${escapeHtml(conditions)}</div>` : ""}
       ${renderScoreLinesHtml(scoreLines)}
       ${actionHtml}
       ${renderFinanceHtml(finance)}
@@ -210,6 +216,10 @@ function renderMatchCard(m, extras) {
   let actionHtml = "";
   const month = m.fixture_gpsl_month || m.round_gpsl_month;
   const monthOpen = isGpslMonthCurrentlyPlayable(month, calendarStatus);
+  const conditions =
+    m.fixture_id && (m.weather || m.pitch_condition || m.kit_season)
+      ? formatMatchConditions(m)
+      : "";
   if (!played && m.fixture_id && monthOpen && isMyMatch(m)) {
     actionHtml = `<a class="leg-action leg-enter" href="${matchdayUrl(m.fixture_id)}">Enter result</a>`;
   }
@@ -218,6 +228,7 @@ function renderMatchCard(m, extras) {
     <div class="bracket-match ${isMyMatch(m) ? "my-club" : ""} ${played ? "played" : ""}">
       <div class="match-status">M${m.match_no} · ${escapeHtml(status)}</div>
       <div class="match-teams">${escapeHtml(home)}<span class="vs">vs</span>${escapeHtml(away)}</div>
+      ${conditions ? `<div class="match-conditions" style="font-size:11px;color:#888;margin:4px 0;">${escapeHtml(conditions)}</div>` : ""}
       ${renderScoreLinesHtml(scoreLines)}
       ${actionHtml}
       ${winnerHtml}

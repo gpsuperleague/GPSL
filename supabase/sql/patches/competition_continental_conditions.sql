@@ -447,6 +447,7 @@ DECLARE
   v_row record;
   v_cond jsonb;
   v_count int := 0;
+  v_cup_sync jsonb;
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -465,11 +466,24 @@ BEGIN
     RAISE EXCEPTION 'No season to reapply conditions for';
   END IF;
 
+  IF to_regprocedure('public.competition_cup_sync_all_scheduled_cup_fixtures(bigint, text)') IS NOT NULL THEN
+    v_cup_sync := public.competition_cup_sync_all_scheduled_cup_fixtures(v_season_id, NULL);
+  END IF;
+
   FOR v_row IN
-    SELECT id, home_club_short_name, gpsl_month
-    FROM public.competition_fixtures
-    WHERE season_id = v_season_id
-      AND status = 'scheduled'
+    SELECT
+      f.id,
+      f.home_club_short_name,
+      coalesce(s.gpsl_month, f.gpsl_month) AS gpsl_month
+    FROM public.competition_fixtures f
+    LEFT JOIN public.competition_cup_bracket_nodes n ON n.fixture_id = f.id
+    LEFT JOIN public.competition_cup_round_schedule s
+      ON f.competition_type = 'cup'
+     AND s.cup_code = f.cup_code
+     AND s.round_no = f.cup_round
+     AND s.cup_leg = coalesce(f.cup_leg, 1)
+    WHERE f.season_id = v_season_id
+      AND f.status = 'scheduled'
   LOOP
     v_cond := public.competition_roll_home_match_conditions(
       v_row.home_club_short_name,
@@ -478,6 +492,7 @@ BEGIN
 
     UPDATE public.competition_fixtures f
     SET
+      gpsl_month = v_row.gpsl_month,
       weather = v_cond ->> 'weather',
       pitch_condition = v_cond ->> 'pitch_condition',
       kit_season = v_cond ->> 'kit_season'
@@ -486,7 +501,12 @@ BEGIN
     v_count := v_count + 1;
   END LOOP;
 
-  RETURN jsonb_build_object('ok', true, 'fixtures_updated', v_count, 'season_id', v_season_id);
+  RETURN jsonb_build_object(
+    'ok', true,
+    'fixtures_updated', v_count,
+    'season_id', v_season_id,
+    'cup_sync', coalesce(v_cup_sync, '{}'::jsonb)
+  );
 END;
 $function$;
 
