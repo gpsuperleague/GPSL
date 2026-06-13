@@ -36,13 +36,31 @@
               <option value="true">On</option>
             </select>
           </div>
+          <div>
+            <label>Club auction (new owners)</label>
+            <select id="clubAuctionSelect">
+              <option value="false">Off</option>
+              <option value="true">On</option>
+            </select>
+          </div>
         </div>
         <button class="button" id="saveSettingsBtn">Save transfer settings</button>
         <button class="button" id="resetDraftBtn" style="background:#664400;margin-left:8px;">Reset draft schedule</button>
         <div id="settingsMessage" class="status-line"></div>
         <div id="resetDraftStatus" class="status-line"></div>
         <p id="draftStartTime" class="note" style="margin-top:10px;"></p>
-        <p class="note">Reset draft schedule clears start/finish times and turns player + manager draft off. Completed transfers and bids are kept.</p>
+        <p class="note">Reset draft schedule clears start/finish times and turns player + manager + club draft off. Completed transfers and bids are kept.</p>
+      </div>
+      <div class="card" id="sb-club-auction">
+        <h2>Club auction</h2>
+        <p class="note">
+          Turn <b>Club auction</b> on above and <b>Save transfer settings</b> to share the draft schedule
+          (7pm UK open, random close). Then seed vacant clubs before owners bid.
+          Requires <code>patches/club_auction.sql</code>.
+        </p>
+        <button class="button" id="seedClubAuctionBtn">Seed vacant club listings</button>
+        <button class="button" id="settleClubAuctionsBtn" style="background:#335588;margin-left:8px;">Settle club auctions now</button>
+        <div id="clubAuctionStatus" class="status-line"></div>
       </div>
       <div class="card">
         <h2>Run transfer engine</h2>

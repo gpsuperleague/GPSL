@@ -14,6 +14,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("resetDraftBtn").onclick = resetDraftSchedule;
   document.getElementById("runTransferEngineBtn").onclick = runTransferEngine;
   document.getElementById("settleManagerDraftsBtn").onclick = settleManagerDraftsNow;
+  document.getElementById("seedClubAuctionBtn").onclick = seedClubAuctionListings;
+  document.getElementById("settleClubAuctionsBtn").onclick = settleClubAuctionsNow;
 });
 
 async function loadSettings() {
@@ -30,10 +32,16 @@ async function loadSettings() {
   if (mgrDraftSel) {
     mgrDraftSel.value = data.manager_draft_auction_enabled ? "true" : "false";
   }
+  const clubAuctionSel = document.getElementById("clubAuctionSelect");
+  if (clubAuctionSel) {
+    clubAuctionSel.value = data.club_auction_enabled ? "true" : "false";
+  }
 
   const el = document.getElementById("draftStartTime");
   const anyDraft =
-    data.draft_auction_enabled || data.manager_draft_auction_enabled;
+    data.draft_auction_enabled ||
+    data.manager_draft_auction_enabled ||
+    data.club_auction_enabled;
   if (anyDraft && data.draft_auction_start_time) {
     const ukFmt = new Intl.DateTimeFormat("en-GB", {
       timeZone: "Europe/London",
@@ -67,18 +75,23 @@ async function saveSettings() {
     document.getElementById("draftAuctionSelect").value === "true";
   const manager_draft_auction_enabled =
     document.getElementById("managerDraftAuctionSelect")?.value === "true";
+  const club_auction_enabled =
+    document.getElementById("clubAuctionSelect")?.value === "true";
 
   const { data: current } = await supabase
     .from("global_settings")
     .select(
-      "draft_auction_enabled, manager_draft_auction_enabled, draft_auction_start_time, draft_random_finish_time"
+      "draft_auction_enabled, manager_draft_auction_enabled, club_auction_enabled, draft_auction_start_time, draft_random_finish_time"
     )
     .eq("id", 1)
     .single();
 
   const wasAnyDraft =
-    current?.draft_auction_enabled || current?.manager_draft_auction_enabled;
-  const isAnyDraft = draft_auction_enabled || manager_draft_auction_enabled;
+    current?.draft_auction_enabled ||
+    current?.manager_draft_auction_enabled ||
+    current?.club_auction_enabled;
+  const isAnyDraft =
+    draft_auction_enabled || manager_draft_auction_enabled || club_auction_enabled;
 
   let draft_auction_start_time = current?.draft_auction_start_time || null;
   let draft_random_finish_time = current?.draft_random_finish_time || null;
@@ -121,26 +134,79 @@ async function saveSettings() {
           " — run managers_system.sql.",
         false
       );
-    } else if (isAnyDraft && draft_auction_start_time) {
-      const { error: schedErr } = await supabase.rpc("admin_set_draft_auction_schedule", {
-        p_start: draft_auction_start_time,
-        p_finish: draft_random_finish_time,
+    } else {
+      const { error: clubErr } = await supabase.rpc("admin_set_club_auction_enabled", {
+        p_enabled: club_auction_enabled,
       });
-      if (schedErr) {
+      if (clubErr) {
         setStatus(
           "settingsMessage",
-          "✅ Flags saved. Schedule RPC missing — run managers_draft_schedule.sql, then save again.",
-          true
+          "❌ Club auction flag: " +
+            (clubErr.message || "failed") +
+            " — run patches/club_auction.sql.",
+          false
         );
+      } else if (isAnyDraft && draft_auction_start_time) {
+        const { error: schedErr } = await supabase.rpc("admin_set_draft_auction_schedule", {
+          p_start: draft_auction_start_time,
+          p_finish: draft_random_finish_time,
+        });
+        if (schedErr) {
+          setStatus(
+            "settingsMessage",
+            "✅ Flags saved. Schedule RPC missing — run managers_draft_schedule.sql, then save again.",
+            true
+          );
+        } else {
+          setStatus("settingsMessage", "✅ Settings updated.", true);
+        }
       } else {
         setStatus("settingsMessage", "✅ Settings updated.", true);
       }
-    } else {
-      setStatus("settingsMessage", "✅ Settings updated.", true);
     }
   }
   await loadGlobalSettings();
   await loadSettings();
+}
+
+async function seedClubAuctionListings() {
+  setStatus("clubAuctionStatus", "Seeding listings…");
+  try {
+    const { data, error } = await supabase.rpc("admin_club_auction_seed_listings");
+    if (error) throw error;
+    setStatus(
+      "clubAuctionStatus",
+      `✅ Seeded ${data?.inserted ?? 0} clubs (${data?.skipped_existing_active ?? 0} already active).`,
+      true
+    );
+  } catch (err) {
+    setStatus(
+      "clubAuctionStatus",
+      "❌ " + (err.message || "Failed") + " — run patches/club_auction.sql.",
+      false
+    );
+  }
+}
+
+async function settleClubAuctionsNow() {
+  setStatus("clubAuctionStatus", "Settling club auctions…");
+  try {
+    const { data, error } = await supabase.rpc("admin_settle_club_auctions_now");
+    if (error) throw error;
+    const settled = data?.settled_count ?? 0;
+    const left = data?.active_after ?? 0;
+    setStatus(
+      "clubAuctionStatus",
+      `✅ Club auctions settled: ${settled}. Still active: ${left}.`,
+      left === 0
+    );
+  } catch (err) {
+    setStatus(
+      "clubAuctionStatus",
+      "❌ " + (err.message || "Failed") + " — run patches/club_auction.sql.",
+      false
+    );
+  }
 }
 
 async function resetDraftSchedule() {

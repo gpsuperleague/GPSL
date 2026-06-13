@@ -17,6 +17,7 @@ BEGIN
   UPDATE public.global_settings
   SET draft_auction_enabled = false,
       manager_draft_auction_enabled = false,
+      club_auction_enabled = false,
       draft_random_finish_time = null,
       draft_auction_start_time = null,
       updated_at = now()
@@ -55,6 +56,7 @@ BEGIN
   UPDATE public.global_settings
   SET draft_auction_enabled = false,
       manager_draft_auction_enabled = false,
+      club_auction_enabled = false,
       draft_random_finish_time = null,
       draft_auction_start_time = null,
       updated_at = now()
