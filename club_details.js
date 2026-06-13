@@ -499,7 +499,10 @@ function wireAccountSettings(user) {
     }
 
     changePasswordBtn.disabled = true;
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+      current_password: currentPassword,
+    });
     changePasswordBtn.disabled = false;
 
     if (error) {
