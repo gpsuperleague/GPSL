@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
   await loadSettings();
   document.getElementById("saveSettingsBtn").onclick = saveSettings;
+  document.getElementById("resetDraftBtn").onclick = resetDraftSchedule;
   document.getElementById("runTransferEngineBtn").onclick = runTransferEngine;
   document.getElementById("settleManagerDraftsBtn").onclick = settleManagerDraftsNow;
 });
@@ -138,6 +139,34 @@ async function saveSettings() {
       setStatus("settingsMessage", "✅ Settings updated.", true);
     }
   }
+  await loadGlobalSettings();
+  await loadSettings();
+}
+
+async function resetDraftSchedule() {
+  if (
+    !confirm(
+      "Reset draft schedule?\n\nClears start/finish times and turns the auction off. Completed transfers and bids are kept."
+    )
+  ) {
+    return;
+  }
+
+  setStatus("resetDraftStatus", "Resetting…");
+  const { error } = await supabase.rpc("admin_reset_draft_auction");
+
+  if (error) {
+    setStatus(
+      "resetDraftStatus",
+      "❌ " +
+        (error.message || "Failed") +
+        " — run admin_reset_draft_auction.sql in Supabase.",
+      false
+    );
+    return;
+  }
+
+  setStatus("resetDraftStatus", "✅ Draft schedule reset.", true);
   await loadGlobalSettings();
   await loadSettings();
 }

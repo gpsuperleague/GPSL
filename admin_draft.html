@@ -6,6 +6,7 @@
   <title>Draft auction — GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="admin.css">
+  <meta http-equiv="refresh" content="0;url=admin_transfers.html">
 </head>
 <body class="admin-page">
   <div id="nav"></div>
@@ -13,12 +14,18 @@
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <div class="card">
-        <p class="note">Clears draft start/finish times and disables the auction. History, bids and completed transfers are kept. Enable draft on <a href="admin_transfers.html">Transfer window</a>.</p>
-        <button id="resetDraftBtn" class="button" style="background:#664400;">Reset draft schedule</button>
-        <div id="resetDraftStatus" class="status-line"></div>
+        <p class="note">Draft settings and schedule reset are on <a href="admin_transfers.html">Transfer window &amp; engine</a>.</p>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_draft.js"></script>
+  <script type="module">
+    import { initAdminPage, primeAdminPageChrome } from "./admin_common.js";
+    primeAdminPageChrome();
+    document.addEventListener("DOMContentLoaded", async () => {
+      if (await initAdminPage()) {
+        window.location.replace("admin_transfers.html");
+      }
+    });
+  </script>
 </body>
 </html>

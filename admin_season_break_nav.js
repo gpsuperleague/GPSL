@@ -125,8 +125,8 @@ export const SEASON_BREAK_NAV = [
       },
       {
         label: "Reset draft",
-        href: "admin_draft.html",
-        page: "admin_draft",
+        href: "admin_transfers.html",
+        page: "admin_transfers",
       },
       {
         label: "Setup special auctions",
