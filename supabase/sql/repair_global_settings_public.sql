@@ -50,7 +50,8 @@ ALTER TABLE public.global_settings
   ADD COLUMN IF NOT EXISTS star_tax_per_player numeric(14, 2) NOT NULL DEFAULT 1000000,
   ADD COLUMN IF NOT EXISTS emergency_tac_pct numeric(6, 3) NOT NULL DEFAULT 10.000,
   ADD COLUMN IF NOT EXISTS emergency_tac_threshold numeric(14, 2) NOT NULL DEFAULT 100000000,
-  ADD COLUMN IF NOT EXISTS manager_draft_auction_enabled boolean NOT NULL DEFAULT false;
+  ADD COLUMN IF NOT EXISTS manager_draft_auction_enabled boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS club_auction_enabled boolean NOT NULL DEFAULT false;
 
 DROP VIEW IF EXISTS public.global_settings_public;
 
@@ -62,6 +63,7 @@ SELECT
   transfer_window_open,
   draft_auction_enabled,
   manager_draft_auction_enabled,
+  club_auction_enabled,
   draft_auction_start_time,
   updated_at,
   league_phase,
@@ -122,6 +124,13 @@ SELECT
     AND now() >= draft_auction_start_time
     AND now() < draft_random_finish_time
   ) AS manager_draft_bidding_open,
+  (
+    COALESCE(club_auction_enabled, false)
+    AND draft_auction_start_time IS NOT NULL
+    AND draft_random_finish_time IS NOT NULL
+    AND now() >= draft_auction_start_time
+    AND now() < draft_random_finish_time
+  ) AS club_auction_bidding_open,
   CASE
     WHEN draft_random_finish_time IS NOT NULL
      AND now() >= draft_random_finish_time
