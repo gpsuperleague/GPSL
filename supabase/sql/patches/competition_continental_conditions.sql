@@ -716,7 +716,9 @@ BEGIN
 END;
 $function$;
 
-CREATE OR REPLACE VIEW public.competition_fixtures_public
+DROP VIEW IF EXISTS public.competition_fixtures_public;
+
+CREATE VIEW public.competition_fixtures_public
 WITH (security_invoker = false)
 AS
 SELECT
@@ -724,6 +726,9 @@ SELECT
   f.season_id,
   f.division,
   f.competition_type,
+  f.cup_code,
+  f.cup_round,
+  f.cup_match,
   f.matchday,
   f.gpsl_month,
   f.week_in_month,
@@ -742,7 +747,10 @@ SELECT
   sub.submission_status,
   sub.submitted_by_club,
   sub.proposed_home_goals,
-  sub.proposed_away_goals
+  sub.proposed_away_goals,
+  sub.proposed_et_home_goals,
+  sub.proposed_et_away_goals,
+  sub.proposed_pen_winner_club
 FROM public.competition_fixtures f
 JOIN public.competition_seasons s ON s.id = f.season_id
 JOIN public."Clubs" hc ON hc."ShortName" = f.home_club_short_name
@@ -753,13 +761,24 @@ LEFT JOIN LATERAL (
     rs.status AS submission_status,
     rs.submitted_by_club,
     rs.home_goals AS proposed_home_goals,
-    rs.away_goals AS proposed_away_goals
+    rs.away_goals AS proposed_away_goals,
+    rs.et_home_goals AS proposed_et_home_goals,
+    rs.et_away_goals AS proposed_et_away_goals,
+    rs.pen_winner_club_short_name AS proposed_pen_winner_club
   FROM public.competition_result_submissions rs
   WHERE rs.fixture_id = f.id
     AND rs.status = 'pending'
+    AND (
+      public.is_gpsl_admin()
+      OR public.my_club_shortname() = f.home_club_short_name
+      OR public.my_club_shortname() = f.away_club_short_name
+    )
   LIMIT 1
 ) sub ON true
 WHERE s.status = 'active' AND s.is_current = true;
+
+GRANT SELECT ON public.competition_fixtures_public TO authenticated;
+GRANT SELECT ON public.competition_fixtures_public TO anon;
 
 GRANT EXECUTE ON FUNCTION public.competition_admin_continental_conditions_list() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_admin_save_continental_conditions(jsonb) TO authenticated;
