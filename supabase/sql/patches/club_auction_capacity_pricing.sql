@@ -4,7 +4,9 @@
 -- Run after patches/club_auction.sql
 -- =============================================================================
 
-CREATE OR REPLACE FUNCTION public.club_auction_opening_bid_for_capacity(p_capacity integer)
+DROP FUNCTION IF EXISTS public.club_auction_opening_bid_for_capacity(integer);
+
+CREATE OR REPLACE FUNCTION public.club_auction_opening_bid_for_capacity(p_capacity bigint)
 RETURNS numeric
 LANGUAGE sql
 IMMUTABLE
@@ -12,7 +14,7 @@ AS $$
   SELECT greatest(coalesce(p_capacity, 0), 0)::numeric * 1000;
 $$;
 
-COMMENT ON FUNCTION public.club_auction_opening_bid_for_capacity(integer) IS
+COMMENT ON FUNCTION public.club_auction_opening_bid_for_capacity(bigint) IS
   'Club auction opening bid = stadium capacity × ₿1,000.';
 
 -- Keep rank helper for legacy scripts; seed uses capacity now.
@@ -118,8 +120,8 @@ BEGIN
   END IF;
 
   UPDATE public."Club_Auction_Listings" l
-  SET opening_bid = public.club_auction_opening_bid_for_capacity(coalesce(c."Capacity", 0)),
-      reserve_price = public.club_auction_opening_bid_for_capacity(coalesce(c."Capacity", 0)),
+  SET opening_bid = public.club_auction_opening_bid_for_capacity(coalesce(c."Capacity", 0)::bigint),
+      reserve_price = public.club_auction_opening_bid_for_capacity(coalesce(c."Capacity", 0)::bigint),
       updated_at = now()
   FROM public."Clubs" c
   WHERE c."ShortName" = l.club_short_name
@@ -142,7 +144,7 @@ SELECT
   c."Club" AS club_name,
   c."Stadium" AS stadium,
   coalesce(c."Capacity", 0)::int AS capacity,
-  public.club_auction_opening_bid_for_capacity(coalesce(c."Capacity", 0)::int) AS stadium_cost,
+  public.club_auction_opening_bid_for_capacity(coalesce(c."Capacity", 0)::bigint) AS stadium_cost,
   round(coalesce(c."Capacity", 0)::numeric * 20) AS full_gate_matchday,
   round(coalesce(c."Capacity", 0)::numeric * 1500 * 0.125) AS season_maintenance_cost,
   c."Nation" AS nation,
@@ -174,13 +176,13 @@ ORDER BY l.prestige_rank NULLS LAST, l.club_short_name;
 GRANT SELECT ON public.club_auction_listings_public TO authenticated;
 GRANT SELECT ON public.club_auction_listings_public TO anon;
 
-GRANT EXECUTE ON FUNCTION public.club_auction_opening_bid_for_capacity(integer) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.club_auction_opening_bid_for_capacity(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_club_auction_refresh_opening_bids() TO authenticated;
 
 -- Align active listings with capacity × ₿1,000 (safe to re-run)
 UPDATE public."Club_Auction_Listings" l
-SET opening_bid = public.club_auction_opening_bid_for_capacity(coalesce(c."Capacity", 0)),
-    reserve_price = public.club_auction_opening_bid_for_capacity(coalesce(c."Capacity", 0)),
+SET opening_bid = public.club_auction_opening_bid_for_capacity(coalesce(c."Capacity", 0)::bigint),
+    reserve_price = public.club_auction_opening_bid_for_capacity(coalesce(c."Capacity", 0)::bigint),
     expected_position = public.competition_club_baseline_expected_position(
       l.prestige_rank,
       (SELECT count(*)::smallint FROM public."Clubs" c2 WHERE c2."ShortName" <> 'FOREIGN')
