@@ -1346,7 +1346,7 @@ export async function initGlobal() {
   ensureNavStyles();
   await loadGlobalSettings();
   try {
-    const { enforceOwnerClubGate } = await import("./owner_gate.js");
+    const { enforceOwnerClubGate } = await import("./owner_gate.js?v=20260605-club-auction");
     await enforceOwnerClubGate();
   } catch (err) {
     console.warn("owner club gate:", err);

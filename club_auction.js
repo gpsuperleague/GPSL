@@ -1,3 +1,5 @@
+window.CURRENT_PAGE = "club_auction";
+
 import {
   supabase,
   initGlobal,
@@ -17,22 +19,26 @@ let auctionState = null;
 let pollTimer = null;
 
 async function loadOwnerContext() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  ownerId = user?.id || null;
+
   const { data: self, error } = await supabase.rpc("owner_registry_get_self");
-  if (error) {
-    window.location = "awaiting_club.html";
-    return false;
-  }
+
   if (self?.has_club) {
     window.location = "dashboard.html";
     return false;
   }
-  if (!self?.needs_club_auction && self?.status !== "awaiting_club_auction") {
-    window.location = "awaiting_club.html";
-    return false;
+
+  if (error) {
+    ownerTag = null;
+    budget = 0;
+    return true;
   }
-  ownerId = (await supabase.auth.getUser()).data.user?.id || null;
-  ownerTag = self.owner_tag || null;
-  budget = Number(self.pending_starting_balance) || 0;
+
+  ownerTag = self?.owner_tag || null;
+  budget = Number(self?.pending_starting_balance) || 0;
   return true;
 }
 

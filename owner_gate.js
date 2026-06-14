@@ -24,9 +24,36 @@ function pageId() {
   return file.replace(/-/g, "_");
 }
 
+function pathLooksLike(pageKey) {
+  const path = (window.location.pathname || "").toLowerCase();
+  const href = (window.location.href || "").toLowerCase();
+  if (pageKey === "club_auction") {
+    return /club_auction/.test(path) || /club_auction/.test(href);
+  }
+  if (pageKey === "awaiting_club") {
+    return /awaiting_club/.test(path) || /awaiting_club/.test(href);
+  }
+  if (pageKey === "learning_gpsl") {
+    return /learning_gpsl/.test(path) || /learning_gpsl/.test(href);
+  }
+  return false;
+}
+
+export function isAllowedNoClubPage(page = pageId()) {
+  if (ALLOWED_WITHOUT_CLUB.has(page)) return true;
+  if (pathLooksLike("club_auction")) return true;
+  if (pathLooksLike("awaiting_club")) return true;
+  if (pathLooksLike("learning_gpsl")) return true;
+  return false;
+}
+
 function isAwaitingClubAuction(self) {
   if (!self || self.has_club) return false;
-  return Boolean(self.needs_club_auction || self.status === "awaiting_club_auction");
+  if (self.needs_club_auction === true) return true;
+  if (self.status === "awaiting_club_auction") return true;
+  // No registry row yet — still no club; treat as onboarding.
+  if (self.status == null && self.has_club === false) return true;
+  return false;
 }
 
 function isAdminPath() {
@@ -36,7 +63,7 @@ function isAdminPath() {
 
 export async function enforceOwnerClubGate() {
   const page = pageId();
-  if (ALLOWED_WITHOUT_CLUB.has(page) || isAdminPath()) return;
+  if (isAllowedNoClubPage(page) || isAdminPath()) return;
 
   const {
     data: { user },
@@ -54,10 +81,7 @@ export async function enforceOwnerClubGate() {
   const { data: self, error } = await supabase.rpc("owner_registry_get_self");
   if (error) return;
 
-  if (isAwaitingClubAuction(self)) {
-    const allowed = page === "awaiting_club" || page === "club_auction";
-    if (!allowed) {
-      window.location = "awaiting_club.html";
-    }
+  if (isAwaitingClubAuction(self) && !isAllowedNoClubPage(page)) {
+    window.location = "awaiting_club.html";
   }
 }
