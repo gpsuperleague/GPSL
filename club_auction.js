@@ -12,10 +12,110 @@ import {
   clubAuctionPhaseLabel,
 } from "./draft_timeline.js";
 
+const GATE_PRICE_PER_SEAT = 20;
+const STADIUM_VALUE_PER_SEAT = 1500;
+const MAINTENANCE_RATE = 0.125;
+const TABLE_COLS = 10;
+
 function formatMoney(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
   return `₿${Math.round(v).toLocaleString("en-GB")}`;
+}
+
+function formatNum(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "—";
+  return Math.round(v).toLocaleString("en-GB");
+}
+
+function ordinal(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v < 1) return "—";
+  const mod100 = v % 100;
+  if (mod100 >= 11 && mod100 <= 13) return `${v}th`;
+  const mod10 = v % 10;
+  if (mod10 === 1) return `${v}st`;
+  if (mod10 === 2) return `${v}nd`;
+  if (mod10 === 3) return `${v}rd`;
+  return `${v}th`;
+}
+
+function clubBadgeSrc(shortName) {
+  if (!shortName) return null;
+  return `images/club_badges/${shortName}.png`;
+}
+
+function fullGateMatchday(row) {
+  const fromView = Number(row.full_gate_matchday);
+  if (Number.isFinite(fromView) && fromView > 0) return fromView;
+  const cap = Number(row.capacity) || 0;
+  return cap * GATE_PRICE_PER_SEAT;
+}
+
+function seasonMaintenance(row) {
+  const fromView = Number(row.season_maintenance_cost);
+  if (Number.isFinite(fromView) && fromView > 0) return fromView;
+  const cap = Number(row.capacity) || 0;
+  return Math.round(cap * STADIUM_VALUE_PER_SEAT * MAINTENANCE_RATE);
+}
+
+function stadiumCost(row) {
+  const fromView = Number(row.stadium_cost);
+  if (Number.isFinite(fromView) && fromView > 0) return fromView;
+  const cap = Number(row.capacity) || 0;
+  return cap * 1000;
+}
+
+function season1Expected(row) {
+  return row.season1_expected_position ?? row.expected_position ?? row.prestige_rank;
+}
+
+function renderClubCell(row) {
+  const wrap = document.createElement("div");
+  wrap.className = "club-cell";
+
+  const shortName = row.club_short_name || "";
+  const badgeSrc = clubBadgeSrc(shortName);
+  const initials = shortName.slice(0, 3) || "?";
+
+  if (badgeSrc) {
+    const img = document.createElement("img");
+    img.className = "club-badge";
+    img.src = badgeSrc;
+    img.alt = "";
+    img.loading = "lazy";
+    img.onerror = () => {
+      const fallback = document.createElement("div");
+      fallback.className = "club-badge-fallback";
+      fallback.textContent = initials;
+      img.replaceWith(fallback);
+    };
+    wrap.appendChild(img);
+  } else {
+    const fallback = document.createElement("div");
+    fallback.className = "club-badge-fallback";
+    fallback.textContent = initials;
+    wrap.appendChild(fallback);
+  }
+
+  const meta = document.createElement("div");
+  meta.className = "club-meta";
+
+  const title = document.createElement("div");
+  title.className = "club-title";
+  title.textContent = row.club_name || shortName;
+  meta.appendChild(title);
+
+  if (row.stadium) {
+    const stadium = document.createElement("div");
+    stadium.className = "club-stadium";
+    stadium.textContent = row.stadium;
+    meta.appendChild(stadium);
+  }
+
+  wrap.appendChild(meta);
+  return wrap;
 }
 
 let ownerId = null;
@@ -144,7 +244,7 @@ async function loadListings() {
   if (!tbody) return;
 
   if (!auctionState?.enabled) {
-    tbody.innerHTML = `<tr><td colspan="6">Club auction is off.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${TABLE_COLS}" class="empty-row">Club auction is off.</td></tr>`;
     return;
   }
 
@@ -154,12 +254,12 @@ async function loadListings() {
     .order("prestige_rank", { ascending: true, nullsFirst: false });
 
   if (error) {
-    tbody.innerHTML = `<tr><td colspan="6">Could not load listings — ${error.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${TABLE_COLS}" class="empty-row">Could not load listings — ${error.message}</td></tr>`;
     return;
   }
 
   if (!listings?.length) {
-    tbody.innerHTML = `<tr><td colspan="6">No vacant clubs listed. Admin: Transfer management → Seed vacant club listings.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${TABLE_COLS}" class="empty-row">No vacant clubs listed. Admin: Transfer management → Seed vacant club listings.</td></tr>`;
     return;
   }
 
@@ -168,17 +268,28 @@ async function loadListings() {
 
   for (const row of listings) {
     const tr = document.createElement("tr");
-    const minBid = Number(row.min_next_bid) || Number(row.opening_bid) || 0;
+    const minBid = Number(row.min_next_bid) || Number(row.opening_bid) || stadiumCost(row);
     const isLeader = row.current_highest_bidder === ownerId;
+    const expPos = season1Expected(row);
+    const gate = fullGateMatchday(row);
+    const maint = seasonMaintenance(row);
+    const cost = stadiumCost(row);
+
     tr.innerHTML = `
-      <td><b>${row.club_name || row.club_short_name}</b> <span style="color:#666;">${row.club_short_name}</span></td>
-      <td>${row.prestige_rank ?? "—"}</td>
-      <td>${formatMoney(row.opening_bid)}</td>
-      <td>${row.current_highest_bid ? formatMoney(row.current_highest_bid) : "—"}</td>
-      <td>${row.current_leader_tag || "—"}${isLeader ? " (you)" : ""}</td>
       <td></td>
+      <td>${row.prestige_rank != null ? `<span class="rank-pill">${row.prestige_rank}</span>` : "—"}</td>
+      <td class="stat-num">${formatNum(row.capacity)}<span class="stat-sub">seats</span></td>
+      <td class="stat-num">${formatMoney(gate)}<span class="stat-sub">100% fill · ₿${GATE_PRICE_PER_SEAT}/seat</span></td>
+      <td class="stat-num">${formatMoney(maint)}<span class="stat-sub">12.5% × cap × ₿${STADIUM_VALUE_PER_SEAT.toLocaleString("en-GB")}</span></td>
+      <td class="exp-pos">${ordinal(expPos)}<span class="stat-sub">league table</span></td>
+      <td class="stat-num">${formatMoney(cost)}<span class="stat-sub">capacity × ₿1,000</span></td>
+      <td class="stat-num">${row.current_highest_bid ? formatMoney(row.current_highest_bid) : "—"}</td>
+      <td>${row.current_leader_tag || "—"}${isLeader ? ' <span class="leader-you">(you)</span>' : ""}</td>
+      <td class="bid-col"></td>
     `;
-    const bidCell = tr.lastElementChild;
+    tr.firstElementChild.appendChild(renderClubCell(row));
+
+    const bidCell = tr.querySelector(".bid-col");
     if (canBid) {
       const input = document.createElement("input");
       input.type = "number";
@@ -193,7 +304,6 @@ async function loadListings() {
       btn.textContent = "Bid";
       btn.onclick = () => placeBid(row.club_short_name, input.value, btn);
       bidCell.appendChild(input);
-      bidCell.appendChild(document.createTextNode(" "));
       bidCell.appendChild(btn);
     } else {
       bidCell.textContent = "—";
