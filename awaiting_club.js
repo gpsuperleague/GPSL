@@ -1,9 +1,51 @@
 import { supabase, initGlobal, buildNav } from "./global.js";
 
+let clubAssignmentPollTimer = null;
+
 function formatMoney(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
   return `₿${Math.round(v).toLocaleString("en-GB")}`;
+}
+
+async function showWonAwaitingSettlement(userId, statusEl) {
+  if (!userId || !statusEl) return;
+
+  const [{ data: auctionState }, { data: listings }] = await Promise.all([
+    supabase.rpc("club_auction_get_state"),
+    supabase
+      .from("Club_Auction_Listings")
+      .select("club_short_name, status, transfer_completed, current_highest_bid")
+      .eq("current_highest_bidder", userId)
+      .eq("status", "Active"),
+  ]);
+
+  const finishPassed =
+    auctionState?.finish_time != null &&
+    Date.now() >= new Date(auctionState.finish_time).getTime();
+  const biddingClosed = auctionState?.enabled && !auctionState?.bidding_open;
+
+  const wonActive = (listings || []).filter(
+    (row) => Number(row.current_highest_bid) > 0
+  );
+
+  if (!wonActive.length || (!finishPassed && !biddingClosed)) return;
+
+  const clubs = wonActive.map((row) => row.club_short_name).join(", ");
+  statusEl.innerHTML =
+    `<strong style="color:#9f9;">You won ${clubs}</strong> — waiting for auction settlement. ` +
+    "The site opens once admin settles club auctions (Transfer management → Settle club auctions now). " +
+    "This page will refresh automatically when your club is assigned.";
+  statusEl.style.color = "#ccc";
+
+  if (clubAssignmentPollTimer) clearInterval(clubAssignmentPollTimer);
+  clubAssignmentPollTimer = setInterval(async () => {
+    const { data: fresh } = await supabase.rpc("owner_registry_get_self");
+    if (fresh?.has_club) {
+      clearInterval(clubAssignmentPollTimer);
+      window.location = "dashboard.html";
+    }
+  }, 15000);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -41,6 +83,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.location = "dashboard.html";
     return;
   }
+
+  await showWonAwaitingSettlement(user.id, statusEl);
 
   if (self?.owner_tag && tagInput) tagInput.value = self.owner_tag;
   if (budgetEl && self?.pending_starting_balance > 0) {

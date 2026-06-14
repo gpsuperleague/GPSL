@@ -70,16 +70,10 @@ export async function enforceOwnerClubGate() {
   } = await supabase.auth.getUser();
   if (!user) return;
 
-  const { data: club } = await supabase
-    .from("Clubs")
-    .select("ShortName")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  if (club?.ShortName) return;
-
   const { data: self, error } = await supabase.rpc("owner_registry_get_self");
   if (error) return;
+
+  if (self?.has_club) return;
 
   if (isAwaitingClubAuction(self) && !isAllowedNoClubPage(page)) {
     window.location = "awaiting_club.html";
