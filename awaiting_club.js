@@ -48,6 +48,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     budgetEl.textContent = `Starting budget: ${formatMoney(self.pending_starting_balance)}`;
   }
 
+  const { data: auctionState } = await supabase.rpc("club_auction_get_state");
+  const scheduleEl = document.getElementById("scheduleLine");
+  if (scheduleEl && auctionState) {
+    if (!auctionState.enabled) {
+      scheduleEl.textContent = "Club auction is not enabled yet (admin: Transfer management).";
+      scheduleEl.style.color = "#faa";
+    } else if (auctionState.bidding_open) {
+      scheduleEl.textContent = "Bidding is open now — use the club auction room.";
+      scheduleEl.style.color = "#9f9";
+    } else if (auctionState.start_time) {
+      const start = new Date(auctionState.start_time);
+      scheduleEl.textContent = `Auction opens: ${start.toLocaleString("en-GB", { timeZone: "Europe/London" })} UK`;
+    } else {
+      scheduleEl.textContent =
+        "No start time scheduled — admin: Transfer management → Club auction On → Save settings.";
+      scheduleEl.style.color = "#faa";
+    }
+  }
+
   document.getElementById("saveTagBtn")?.addEventListener("click", async () => {
     const tag = tagInput?.value?.trim();
     if (!tag) {

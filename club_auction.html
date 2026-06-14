@@ -1,0 +1,65 @@
+<script>window.CURRENT_PAGE = "club_auction";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL — Club auction</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; }
+    .wrap { max-width:960px; margin:20px auto; padding:0 16px 40px; }
+    h1 { color:#ff9900; font-size:22px; margin:0 0 8px; }
+    .note { font-size:13px; color:#aaa; line-height:1.5; margin:0 0 12px; }
+    #auctionStatus { font-size:13px; color:#ccc; margin:8px 0 16px; min-height:18px; }
+    #draftCountdownContainer { margin:12px 0 16px; padding:10px 12px; background:#1a1a1a; border:1px solid #333; border-radius:6px; }
+    #draftCountdown { font-size:15px; color:#ff9900; font-weight:bold; }
+    #draftLocalStart { font-size:12px; color:#ccc; margin-top:4px; white-space:pre-line; }
+    .nav-links { margin:12px 0; font-size:13px; }
+    .nav-links a { color:#ff9900; margin-right:14px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }
+    th, td { padding:8px 10px; border-bottom:1px solid #333; text-align:left; }
+    th { color:#999; font-weight:normal; }
+    tr:hover { background:#222; }
+    .bid-btn { padding:4px 10px; background:#ff9900; color:#111; border:none; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold; }
+    .bid-btn:disabled { background:#555; color:#888; cursor:not-allowed; }
+    input.bid-input { width:90px; padding:4px 6px; background:#111; border:1px solid #444; color:#ddd; border-radius:4px; }
+    #leadPanel { font-size:12px; color:#aaa; margin:8px 0; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="wrap">
+    <h1>Club auction</h1>
+    <p class="note">
+      Bid for a GPSL club from your <b>£600m</b> starting budget. You may only lead one club at a time.
+      When the auction closes, the highest bidder wins the club and your balance is set to budget minus your winning bid.
+    </p>
+    <div class="nav-links">
+      <a href="awaiting_club.html">Owner tag &amp; budget</a>
+      <a href="learning_gpsl.html">Learning GPSL</a>
+    </div>
+    <div id="draftCountdownContainer">
+      <div id="draftCountdown"></div>
+      <div id="draftLocalStart"></div>
+    </div>
+    <div id="auctionStatus"></div>
+    <div id="leadPanel"></div>
+    <table>
+      <thead>
+        <tr>
+          <th>Club</th>
+          <th>Rank</th>
+          <th>Opening</th>
+          <th>High bid</th>
+          <th>Leader</th>
+          <th>Your bid</th>
+        </tr>
+      </thead>
+      <tbody id="auctionTableBody">
+        <tr><td colspan="6">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <script type="module" src="club_auction.js"></script>
+</body>
+</html>

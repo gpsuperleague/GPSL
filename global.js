@@ -42,6 +42,7 @@ export function isAdminPagePath(pathNorm) {
 // ------------------------------------------------------------
 let draftEnabled = false;
 let managerDraftEnabled = false;
+let clubAuctionEnabled = false;
 let draftStart = null;        // Day 1 @ 19:00 UK
 let draftCutoff = null;       // Day 2 @ 18:00 UK
 let draftRandomStart = null;  // Day 2 @ 18:50 UK
@@ -78,7 +79,9 @@ export function getDraftAuctionStartTime() {
 }
 
 function isDraftCountdownActive() {
-  return (draftEnabled || managerDraftEnabled) && isValidDate(draftStart);
+  return (
+    (draftEnabled || managerDraftEnabled || clubAuctionEnabled) && isValidDate(draftStart)
+  );
 }
 
 /** True when draft_auction_start_time is missing or the Day-2 window has fully passed. */
@@ -674,6 +677,9 @@ function applyDraftBiddingOpenFromSettings(data) {
   if ("manager_draft_auction_enabled" in data) {
     managerDraftEnabled = data.manager_draft_auction_enabled === true;
   }
+  if ("club_auction_enabled" in data) {
+    clubAuctionEnabled = data.club_auction_enabled === true;
+  }
   if ("draft_bidding_open" in data) {
     playerDraftBiddingOpen = data.draft_bidding_open === true;
   }
@@ -687,6 +693,7 @@ function applyDraftBiddingOpenFromSettings(data) {
 export async function loadGlobalSettings() {
   let data = null;
   const selects = [
+    "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, club_auction_enabled, draft_auction_start_time, draft_bidding_open, manager_draft_bidding_open, club_auction_bidding_open, draft_random_finish_revealed",
     "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, draft_auction_start_time, draft_bidding_open, manager_draft_bidding_open, draft_random_finish_revealed",
     "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, draft_auction_start_time, draft_bidding_open, manager_draft_bidding_open",
     "transfer_window_open, draft_auction_enabled, draft_auction_start_time, draft_bidding_open",
@@ -725,6 +732,7 @@ export async function loadGlobalSettings() {
   return {
     draftEnabled,
     managerDraftEnabled,
+    clubAuctionEnabled,
     draftStart,
     draftCutoff,
     draftRandomStart,

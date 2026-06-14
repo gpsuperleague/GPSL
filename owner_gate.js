@@ -5,6 +5,8 @@ import { supabase } from "./global.js";
 
 const ALLOWED_WITHOUT_CLUB = new Set([
   "awaiting_club",
+  "club_auction",
+  "learning_gpsl",
   "login",
   "reset_password",
   "index",
@@ -40,7 +42,8 @@ export async function enforceOwnerClubGate() {
   if (error) return;
 
   if (self?.needs_club_auction || self?.status === "awaiting_club_auction") {
-    if (page !== "awaiting_club") {
+    const allowed = page === "awaiting_club" || page === "club_auction";
+    if (!allowed) {
       window.location = "awaiting_club.html";
     }
   }

@@ -34,10 +34,25 @@
       <button type="button" class="button" id="saveTagBtn">Save tag</button>
       <div id="status"></div>
       <p class="budget" id="budgetLine" hidden></p>
+      <p class="note" id="scheduleLine" style="margin-top:12px;min-height:18px;"></p>
+      <div id="draftCountdownContainer" style="margin-top:12px;padding:8px 10px;background:#111;border:1px solid #333;border-radius:6px;">
+        <div id="draftCountdown" style="font-size:14px;color:#ff9900;font-weight:bold;"></div>
+        <div id="draftLocalStart" style="font-size:11px;color:#aaa;margin-top:4px;"></div>
+      </div>
     </div>
-    <p class="note" style="margin-top:20px;">
-      Read <a href="learning_gpsl.html" style="color:#ff9900;">Learning GPSL</a> for how auctions, contracts, and matchday work.
-      Club auction bidding UI is coming next — for now, admin will run the opening auction or assign clubs manually.
+    <p class="note" style="margin-top:16px;">
+      <a href="club_auction.html" style="color:#ff9900;font-weight:bold;">Open club auction room →</a>
+    </p>
+    <p class="note" style="margin-top:12px;">
+      Read <a href="learning_gpsl.html" style="color:#ff9900;">Learning GPSL</a> while you wait.
+    </p>
+    <div id="draftCountdownContainer" style="margin-top:16px;padding:10px 12px;background:#1a1a1a;border:1px solid #333;border-radius:6px;">
+      <div id="draftCountdown" style="font-size:15px;color:#ff9900;font-weight:bold;"></div>
+      <div id="draftLocalStart" style="font-size:12px;color:#ccc;margin-top:4px;"></div>
+    </div>
+    <p class="note" style="margin-top:16px;">
+      <a href="club_auction.html" style="color:#ff9900;font-weight:bold;">Open club auction room →</a>
+      to bid on vacant clubs when bidding is open.
     </p>
   </div>
   <script type="module" src="awaiting_club.js"></script>
