@@ -70,6 +70,14 @@
         <div id="transferEngineStatus" class="status-line"></div>
         <p class="note">If manager auctions are stuck after the random finish, run <code>patches/manager_draft_settlement_fix.sql</code> once, then <b>Settle manager drafts now</b>.</p>
       </div>
+      <div class="card" id="sb-test-reset" style="border-color:#844;">
+        <h2>Pre-launch test reset</h2>
+        <p class="note">
+          Wipe league state to re-test club auction → manager draft → player draft.
+          Requires <code>patches/admin_prelaunch_test_reset.sql</code>. Does not delete GPDB players.
+        </p>
+        <a href="admin_test_reset.html" class="button" style="display:inline-block;text-decoration:none;background:#664400;">Open test environment reset →</a>
+      </div>
     </div>
   </div>
   <script type="module" src="admin_transfers.js"></script>

@@ -133,6 +133,11 @@ export const SEASON_BREAK_NAV = [
         href: "admin_special-auctions.html",
         page: "admin_special-auctions",
       },
+      {
+        label: "Test environment reset",
+        href: "admin_test_reset.html",
+        page: "admin_test_reset",
+      },
     ],
   },
   {
