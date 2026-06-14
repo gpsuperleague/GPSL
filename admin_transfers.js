@@ -195,9 +195,16 @@ async function settleClubAuctionsNow() {
     if (error) throw error;
     const settled = data?.settled_count ?? 0;
     const left = data?.active_after ?? 0;
+    const still = data?.still_active || [];
+    let extra = "";
+    if (still.length) {
+      extra =
+        " Still active: " +
+        still.map((r) => `${r.club_short_name} (${r.leader_tag || "no bidder"})`).join("; ");
+    }
     setStatus(
       "clubAuctionStatus",
-      `✅ Club auctions settled: ${settled}. Still active: ${left}.`,
+      `✅ Club auctions settled: ${settled}. Still active: ${left}.${extra}`,
       left === 0
     );
   } catch (err) {
@@ -279,12 +286,15 @@ async function runTransferEngine() {
     if (error) throw error;
     const mgrSettled = data?.manager_draft_settled_count ?? 0;
     const mgrLeft = data?.active_manager_draft_after ?? "?";
+    const clubSettled = data?.club_auction_settled_count ?? 0;
+    const clubLeft = data?.active_club_auction_after ?? "?";
     setStatus(
       "transferEngineStatus",
       `✅ Ran at ${new Date(data?.ran_at || Date.now()).toLocaleString("en-GB")}. ` +
         `Stuck standard: ${data?.stuck_standard_before ?? "?"}. ` +
         `Player drafts left: ${data?.active_draft_after ?? "?"}. ` +
-        `Manager drafts settled: ${mgrSettled}, still active: ${mgrLeft}.`,
+        `Manager drafts settled: ${mgrSettled}, still active: ${mgrLeft}. ` +
+        `Club auctions settled: ${clubSettled}, still active: ${clubLeft}.`,
       true
     );
   } catch (err) {
