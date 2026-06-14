@@ -86,7 +86,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await showWonAwaitingSettlement(user.id, statusEl);
 
-  if (self?.owner_tag && tagInput) tagInput.value = self.owner_tag;
+  const displayTag = (self?.owner_tag || "").trim();
+  if (displayTag && tagInput) tagInput.value = displayTag;
   if (budgetEl && self?.pending_starting_balance > 0) {
     budgetEl.hidden = false;
     budgetEl.textContent = `Starting budget: ${formatMoney(self.pending_starting_balance)}`;
