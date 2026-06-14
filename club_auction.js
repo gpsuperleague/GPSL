@@ -4,7 +4,13 @@ import {
   supabase,
   initGlobal,
   getUKNow,
+  getDraftAuctionStartTime,
+  getDraftCountdownOptions,
 } from "./global.js";
+import {
+  getClubAuctionEffectivePhase,
+  clubAuctionPhaseLabel,
+} from "./draft_timeline.js";
 
 function formatMoney(n) {
   const v = Number(n);
@@ -76,7 +82,12 @@ function renderStatus() {
   }
 
   if (auctionState.bidding_open) {
-    el.textContent = `Bidding is open · ${auctionState.active_listings ?? 0} clubs listed · Budget ${formatMoney(budget)}`;
+    const start = getDraftAuctionStartTime();
+    const phase = start
+      ? getClubAuctionEffectivePhase(getUKNow(), start, getDraftCountdownOptions())
+      : null;
+    const phaseHint = phase ? clubAuctionPhaseLabel(phase) : "";
+    el.textContent = `Bidding is open · ${auctionState.active_listings ?? 0} clubs listed · Budget ${formatMoney(budget)}${phaseHint ? ` · ${phaseHint}` : ""}`;
     el.style.color = "#9f9";
     return;
   }
@@ -85,7 +96,13 @@ function renderStatus() {
     const start = new Date(auctionState.start_time);
     const now = getUKNow();
     if (now < start) {
-      el.textContent = `Auction opens at ${start.toLocaleString("en-GB", { timeZone: "Europe/London" })} UK`;
+      el.textContent = `Club auction opens at ${start.toLocaleString("en-GB", { timeZone: "Europe/London" })} UK (Day 1 · 7pm)`;
+      el.style.color = "#ccc";
+      return;
+    }
+    const phase = getClubAuctionEffectivePhase(now, start, getDraftCountdownOptions());
+    if (phase && phase !== "ended") {
+      el.textContent = clubAuctionPhaseLabel(phase);
       el.style.color = "#ccc";
       return;
     }

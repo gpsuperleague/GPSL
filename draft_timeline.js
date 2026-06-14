@@ -311,3 +311,100 @@ export function managerDraftPhaseLabel(phase) {
       return "";
   }
 }
+
+// ---------------------------------------------------------------------------
+// Club auction — same timeline as manager draft (no 6pm GPDB cutoff)
+// Day 1 7pm UK → Day 2 6:50 random window → 6:59:59 latest
+// ---------------------------------------------------------------------------
+
+export const getClubAuctionPhaseFromStart = getManagerDraftPhaseFromStart;
+export const getClubAuctionEffectivePhase = getManagerDraftEffectivePhase;
+export const isClubAuctionEnded = isManagerDraftAuctionEnded;
+
+export function getClubAuctionCountdownTick(nowUK, draftAuctionStartTime, options = {}) {
+  const timeline = getDraftTimelineFromStart(
+    isValidDate(draftAuctionStartTime) ? new Date(draftAuctionStartTime) : null
+  );
+  const phase = getClubAuctionEffectivePhase(nowUK, draftAuctionStartTime, options);
+
+  if (!timeline) {
+    return { phase, ms: 0, label: "Club auction disabled", target: null, countUp: false };
+  }
+
+  switch (phase) {
+    case "before_start":
+      return {
+        phase,
+        ms: Math.max(0, timeline.start.getTime() - nowUK.getTime()),
+        label: "Club auction starts in",
+        target: timeline.start,
+        countUp: false,
+      };
+    case "live":
+      return {
+        phase,
+        ms: Math.max(0, timeline.randomStart.getTime() - nowUK.getTime()),
+        label: "Random window begins in",
+        target: timeline.randomStart,
+        countUp: false,
+      };
+    case "random_active":
+      return {
+        phase,
+        ms: Math.max(0, nowUK.getTime() - timeline.randomStart.getTime()),
+        label: "Random window (bidding open)",
+        target: timeline.randomStart,
+        countUp: true,
+      };
+    case "random_locked": {
+      const finishInstant = parseFinishInstant(options.finishInstant);
+      const finishMs = finishInstant ? finishInstant.getTime() : null;
+      const elapsed =
+        options.frozenMs != null
+          ? options.frozenMs
+          : finishMs != null && Number.isFinite(finishMs)
+            ? Math.max(0, finishMs - timeline.randomStart.getTime())
+            : 0;
+      return {
+        phase,
+        ms: elapsed,
+        label: "Bidding locked — club auction settles when the transfer engine runs",
+        target: timeline.randomStart,
+        countUp: true,
+        frozen: Boolean(finishInstant),
+        finishInstant,
+      };
+    }
+    case "ended": {
+      const finishInstant = parseFinishInstant(options.finishInstant);
+      return {
+        phase,
+        ms: 0,
+        label: finishInstant ? "Club auction concluded" : "Club auction has ended",
+        target: null,
+        countUp: false,
+        concluded: Boolean(finishInstant),
+        finishInstant,
+      };
+    }
+    default:
+      return { phase, ms: 0, label: "Club auction disabled", target: null, countUp: false };
+  }
+}
+
+export function clubAuctionPhaseLabel(phase) {
+  switch (phase) {
+    case "before_start":
+      return "Club auction opens at 7pm UK (Day 1)";
+    case "live":
+      return "Live bidding — random window at 6:50pm UK (Day 2)";
+    case "random_active":
+      return "Random window — bidding closes at a random second between 6:50 and 6:59:59pm UK";
+    case "random_locked":
+      return "Bidding locked — winning bids assign clubs when the transfer engine runs";
+    case "ended":
+      return "Club auction ended";
+    default:
+      return "";
+  }
+}

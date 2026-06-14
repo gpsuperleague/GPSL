@@ -8,6 +8,7 @@ import {
   getDraftPhaseFromStart,
   getDraftCountdownTick,
   getManagerDraftCountdownTick,
+  getClubAuctionCountdownTick,
   isDraftAuctionEnded as isDraftAuctionEndedWithOptions,
 } from "./draft_timeline.js";
 import {
@@ -50,6 +51,7 @@ let draftPublicEnd = null;    // Latest possible end (18:59:59 day 2) — not se
 let draftBiddingOpen = null;  // combined bid gate for engine helpers
 let playerDraftBiddingOpen = null;
 let managerDraftBiddingOpen = null;
+let clubAuctionBiddingOpen = null;
 let draftRandomLockedMs = null; // frozen count-up offset when secret finish fires
 let draftRandomFinishRevealed = null; // exposed only after now() >= secret finish
 
@@ -181,6 +183,13 @@ function draftCountdownUiBiddingOpen() {
   const inRandomWindow =
     timeline && now >= timeline.randomStart && now < timeline.publicEnd;
 
+  const kind = pageDraftKindHint() || getDraftCountdownKind();
+
+  if (kind === "club") {
+    if (clubAuctionBiddingOpen === false && inRandomWindow) return true;
+    return clubAuctionBiddingOpen;
+  }
+
   // Server closed bids but finish not revealed yet — keep count-up running in UI.
   if (draftBiddingOpen === false && inRandomWindow) return true;
 
@@ -245,14 +254,19 @@ export function getDraftCountdownKind() {
     return "manager";
   }
 
+  if (clubAuctionEnabled && !draftEnabled && !managerDraftEnabled) return "club";
+
   return managerDraftEnabled ? "manager" : "player";
 }
 
-function shouldUseManagerDraftCountdown() {
-  return getDraftCountdownKind() === "manager";
+function getPageDraftCountdownKind() {
+  return getDraftCountdownKind();
 }
 
 function draftCountdownEndedSubline(kind) {
+  if (kind === "club") {
+    return "Club auction finished. Winners are assigned when admin or the transfer engine settles.";
+  }
   if (kind === "manager") {
     return "Manager draft finished. Player draft may still be on — check Player Draft Auction / GPDB.";
   }
@@ -263,7 +277,11 @@ function draftCountdownEndedSubline(kind) {
 }
 
 function getPageDraftCountdownTick(nowUK, start, options) {
-  if (shouldUseManagerDraftCountdown()) {
+  const kind = getPageDraftCountdownKind();
+  if (kind === "club") {
+    return getClubAuctionCountdownTick(nowUK, start, options);
+  }
+  if (kind === "manager") {
     return getManagerDraftCountdownTick(nowUK, start, options);
   }
   return getDraftCountdownTick(nowUK, start, options);
@@ -617,9 +635,7 @@ export function wireDraftCountdownUI() {
 
   startDraftCountdown((tick) => {
     const { phase, ms, label, target, countUp, frozen, finishInstant } = tick;
-    const kind = shouldUseManagerDraftCountdown()
-      ? "manager"
-      : getDraftCountdownKind();
+    const kind = getPageDraftCountdownKind();
     const revealedFinish = resolveRevealedFinishInstant(finishInstant);
     if (phase === "ended") {
       if (isValidInstant(revealedFinish)) {
@@ -685,6 +701,9 @@ function applyDraftBiddingOpenFromSettings(data) {
   }
   if ("manager_draft_bidding_open" in data) {
     managerDraftBiddingOpen = data.manager_draft_bidding_open === true;
+  }
+  if ("club_auction_bidding_open" in data) {
+    clubAuctionBiddingOpen = data.club_auction_bidding_open === true;
   }
 
   recomputeCombinedDraftBiddingOpen();
