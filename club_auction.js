@@ -1,11 +1,7 @@
 import {
   supabase,
   initGlobal,
-  buildNav,
   getUKNow,
-  loadGlobalSettings,
-  wireDraftCountdownUI,
-  startDraftCountdown,
 } from "./global.js";
 
 function formatMoney(n) {
@@ -22,7 +18,15 @@ let pollTimer = null;
 
 async function loadOwnerContext() {
   const { data: self, error } = await supabase.rpc("owner_registry_get_self");
-  if (error || !self?.needs_club_auction) {
+  if (error) {
+    window.location = "awaiting_club.html";
+    return false;
+  }
+  if (self?.has_club) {
+    window.location = "dashboard.html";
+    return false;
+  }
+  if (!self?.needs_club_auction && self?.status !== "awaiting_club_auction") {
     window.location = "awaiting_club.html";
     return false;
   }
@@ -207,16 +211,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  await initGlobal();
-  await buildNav();
-
   if (!(await loadOwnerContext())) return;
 
-  await loadGlobalSettings();
-  wireDraftCountdownUI();
-  if (document.getElementById("draftCountdown")) {
-    startDraftCountdown();
-  }
+  await initGlobal();
 
   await refreshAll();
   pollTimer = setInterval(refreshAll, 15000);

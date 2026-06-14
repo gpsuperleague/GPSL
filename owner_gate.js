@@ -13,7 +13,20 @@ const ALLOWED_WITHOUT_CLUB = new Set([
 ]);
 
 function pageId() {
-  return (window.CURRENT_PAGE || "").toLowerCase();
+  if (window.CURRENT_PAGE) {
+    return String(window.CURRENT_PAGE).toLowerCase();
+  }
+  const file = (window.location.pathname || "")
+    .split("/")
+    .pop()
+    .replace(/\.html$/i, "")
+    .toLowerCase();
+  return file.replace(/-/g, "_");
+}
+
+function isAwaitingClubAuction(self) {
+  if (!self || self.has_club) return false;
+  return Boolean(self.needs_club_auction || self.status === "awaiting_club_auction");
 }
 
 function isAdminPath() {
@@ -41,7 +54,7 @@ export async function enforceOwnerClubGate() {
   const { data: self, error } = await supabase.rpc("owner_registry_get_self");
   if (error) return;
 
-  if (self?.needs_club_auction || self?.status === "awaiting_club_auction") {
+  if (isAwaitingClubAuction(self)) {
     const allowed = page === "awaiting_club" || page === "club_auction";
     if (!allowed) {
       window.location = "awaiting_club.html";
