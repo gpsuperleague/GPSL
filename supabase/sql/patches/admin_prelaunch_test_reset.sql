@@ -390,12 +390,13 @@ BEGIN
 
   DELETE FROM public.competition_seasons WHERE true;
 
-  -- Phase G: per-club counters
+  -- Phase G: per-club counters (WHERE required by Supabase safe-update)
   UPDATE public."Clubs"
   SET foreign_interest_remaining = CASE WHEN "ShortName" = 'FOREIGN' THEN 0 ELSE 3 END,
       foreign_tracking_teams = '{}'::text[],
       voluntary_contract_releases_remaining = 3,
-      manager_sacks_remaining = 1;
+      manager_sacks_remaining = 1
+  WHERE "ShortName" IS NOT NULL;
 
   IF to_regprocedure('public.manager_reset_season_quotas()') IS NOT NULL THEN
     PERFORM public.manager_reset_season_quotas();

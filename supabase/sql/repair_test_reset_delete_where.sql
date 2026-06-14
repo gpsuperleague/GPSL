@@ -1,8 +1,11 @@
--- Fix: Supabase blocks DELETE/UPDATE without WHERE ("DELETE requires a WHERE clause")
--- Run once in SQL Editor, then retry Execute on admin_test_reset.html
+-- Fix: Supabase blocks DELETE/UPDATE without WHERE
+-- Run full patches/admin_prelaunch_test_reset.sql in SQL Editor, then retry Execute.
 --
--- Option A: run this file (minimal)
--- Option B: re-run full patches/admin_prelaunch_test_reset.sql + admin_club_auction_reset in club_auction.sql
+-- Known fixes included in that file:
+--   DELETE ... WHERE true
+--   UPDATE Club_Finances ... WHERE true
+--   UPDATE Clubs counters ... WHERE "ShortName" IS NOT NULL
+--   Clear Clubs.stadium_fill_season_id before DELETE competition_seasons
 
 CREATE OR REPLACE FUNCTION public.admin_club_auction_reset()
 RETURNS jsonb
