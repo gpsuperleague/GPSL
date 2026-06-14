@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260607-test-reset-nav";
+export const NAV_CONFIG_VERSION = "20260608-reset-nav-cleanup";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -126,6 +126,11 @@ export const ADMIN_NAV_SECTION = {
   id: "admin",
   label: "Admin",
   items: [
+    {
+      href: "admin_test_reset.html",
+      label: "Test environment reset",
+      navDanger: true,
+    },
     { seasonMega: true, label: "Season management" },
     { seasonBreakMega: true, label: "Season Break" },
     { ownersMega: true, label: "Owners & accounts" },
@@ -134,10 +139,26 @@ export const ADMIN_NAV_SECTION = {
     { heading: true, label: "Other" },
     { href: "admin_weather.html", label: "Weather & pitch conditions" },
     { href: "admin_manager_targets.html", label: "Manager contract targets" },
-    { heading: true, label: "Pre-launch (testing only)" },
-    { href: "admin_test_reset.html", label: "Test environment reset" },
   ],
 };
+
+/** Short admin flyout beside Dashboard — always visible links (no nested expand). */
+export const ADMIN_FLYOUT_LINKS = [
+  { href: "admin.html", label: "Admin hub", home: true },
+  {
+    heading: "Pre-launch testing",
+    links: [
+      { href: "admin_test_reset.html", label: "Test environment reset", danger: true },
+    ],
+  },
+  {
+    heading: "Transfers",
+    links: [
+      { href: "admin_transfers.html", label: "Transfer window & engine" },
+      { href: "admin_owners.html#ow-club-auction", label: "Add owner for club auction" },
+    ],
+  },
+];
 
 export function normalizeNavPath(pathname) {
   const p = (pathname || "").toLowerCase().replace(/\\/g, "/");

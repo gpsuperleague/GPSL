@@ -754,6 +754,27 @@ table.gpsl-table td {
   font-weight: bold;
 }
 
+.gpsl-admin-flyout-link-danger {
+  color: #f88;
+  font-weight: bold;
+}
+
+.gpsl-admin-flyout-link-danger:hover {
+  color: #faa;
+  background: #2a1818;
+}
+
+.nav-link-danger {
+  color: #f88 !important;
+  font-weight: bold;
+}
+
+.nav-link-danger:hover,
+.nav-link-danger.active {
+  color: #faa !important;
+  background: #2a1818;
+}
+
 .gpsl-admin-flyout-home {
   border-bottom: 1px solid #333;
   margin-bottom: 4px;
