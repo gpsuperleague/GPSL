@@ -257,31 +257,31 @@ BEGIN
 
   PERFORM public.international_admin_clear_nation_assignments();
 
-  -- Phase C: transfer market + auctions
-  DELETE FROM public."Player_Transfer_Bids";
+  -- Phase C: transfer market + auctions (WHERE true — Supabase blocks bare DELETE)
+  DELETE FROM public."Player_Transfer_Bids" WHERE true;
   GET DIAGNOSTICS v_deleted = ROW_COUNT;
   v_result := v_result || jsonb_build_object('deleted_player_bids', v_deleted);
 
-  DELETE FROM public."Manager_Transfer_Bids";
+  DELETE FROM public."Manager_Transfer_Bids" WHERE true;
   GET DIAGNOSTICS v_deleted = ROW_COUNT;
   v_result := v_result || jsonb_build_object('deleted_manager_bids', v_deleted);
 
-  DELETE FROM public."Transfer_History";
+  DELETE FROM public."Transfer_History" WHERE true;
   GET DIAGNOSTICS v_deleted = ROW_COUNT;
   v_result := v_result || jsonb_build_object('deleted_transfer_history', v_deleted);
 
-  DELETE FROM public."Player_Transfer_Listings";
+  DELETE FROM public."Player_Transfer_Listings" WHERE true;
   GET DIAGNOSTICS v_deleted = ROW_COUNT;
   v_result := v_result || jsonb_build_object('deleted_player_listings', v_deleted);
 
-  DELETE FROM public."Manager_Transfer_Listings";
+  DELETE FROM public."Manager_Transfer_Listings" WHERE true;
   GET DIAGNOSTICS v_deleted = ROW_COUNT;
   v_result := v_result || jsonb_build_object('deleted_manager_listings', v_deleted);
 
   v_result := v_result || public.admin_club_auction_reset();
 
-  DELETE FROM public.special_auction_bids;
-  DELETE FROM public.special_auctions;
+  DELETE FROM public.special_auction_bids WHERE true;
+  DELETE FROM public.special_auctions WHERE true;
 
   -- Phase D: squads (bulk — no per-player ledger reversals)
   UPDATE public."Players"
@@ -327,13 +327,14 @@ BEGIN
   -- Phase E: finances & loans
   DELETE FROM public.club_loan_installments
   WHERE loan_id IN (SELECT id FROM public.club_loans);
-  DELETE FROM public.club_loans;
+  DELETE FROM public.club_loans WHERE true;
 
-  DELETE FROM public.bank_ledger;
-  DELETE FROM public.competition_finance_ledger;
+  DELETE FROM public.bank_ledger WHERE true;
+  DELETE FROM public.competition_finance_ledger WHERE true;
 
   UPDATE public."Club_Finances"
-  SET balance = 0;
+  SET balance = 0
+  WHERE true;
 
   UPDATE public.gpsl_bank_account
   SET reserves = 0,
@@ -342,23 +343,23 @@ BEGIN
   WHERE id = 1;
 
   -- Phase F: matchday / stadium / inbox
-  DELETE FROM public.club_matchday_squad_player;
-  DELETE FROM public.club_matchday_squad;
+  DELETE FROM public.club_matchday_squad_player WHERE true;
+  DELETE FROM public.club_matchday_squad WHERE true;
 
-  DELETE FROM public.stadium_expansion_orders;
-  DELETE FROM public.stadium_expansion_quotes;
+  DELETE FROM public.stadium_expansion_orders WHERE true;
+  DELETE FROM public.stadium_expansion_quotes WHERE true;
 
-  DELETE FROM public.competition_inbox;
+  DELETE FROM public.competition_inbox WHERE true;
 
   IF v_clear_history THEN
-    DELETE FROM public.competition_player_season_archive;
-    DELETE FROM public.competition_club_season_archive;
-    DELETE FROM public.competition_cup_season_winner;
-    DELETE FROM public.competition_season_award;
-    DELETE FROM public.competition_owner_season_ranking;
+    DELETE FROM public.competition_player_season_archive WHERE true;
+    DELETE FROM public.competition_club_season_archive WHERE true;
+    DELETE FROM public.competition_cup_season_winner WHERE true;
+    DELETE FROM public.competition_season_award WHERE true;
+    DELETE FROM public.competition_owner_season_ranking WHERE true;
   END IF;
 
-  DELETE FROM public.competition_seasons;
+  DELETE FROM public.competition_seasons WHERE true;
 
   -- Phase G: per-club counters
   UPDATE public."Clubs"

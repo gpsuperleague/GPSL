@@ -751,8 +751,8 @@ BEGIN
   SELECT count(*)::int INTO v_bids FROM public."Club_Auction_Bids";
   SELECT count(*)::int INTO v_listings FROM public."Club_Auction_Listings";
 
-  DELETE FROM public."Club_Auction_Bids";
-  DELETE FROM public."Club_Auction_Listings";
+  DELETE FROM public."Club_Auction_Bids" WHERE true;
+  DELETE FROM public."Club_Auction_Listings" WHERE true;
 
   RETURN jsonb_build_object(
     'ok', true,
