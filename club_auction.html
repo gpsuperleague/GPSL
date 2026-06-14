@@ -1,88 +1,88 @@
-<script>window.CURRENT_PAGE = "club_auction";</script>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>GPSL — Club auction</title>
-  <link rel="stylesheet" href="dashboard.css">
-  <style>
-    body { background:#111; color:#ddd; font-family:Arial,sans-serif; }
-    .wrap { max-width:1180px; margin:20px auto; padding:0 16px 40px; }
-    h1 { color:#ff9900; font-size:22px; margin:0 0 8px; }
-    .note { font-size:13px; color:#aaa; line-height:1.5; margin:0 0 12px; }
-    #auctionStatus { font-size:13px; color:#ccc; margin:8px 0 16px; min-height:18px; }
-    #draftCountdownContainer { margin:12px 0 16px; padding:10px 12px; background:#1a1a1a; border:1px solid #333; border-radius:6px; }
-    #draftCountdown { font-size:15px; color:#ff9900; font-weight:bold; }
-    #draftLocalStart { font-size:12px; color:#ccc; margin-top:4px; white-space:pre-line; }
-    .nav-links { margin:12px 0; font-size:13px; }
-    .nav-links a { color:#ff9900; margin-right:14px; }
-    #leadPanel { font-size:12px; color:#aaa; margin:8px 0 14px; padding:10px 12px; background:#1a1a1a; border:1px solid #333; border-radius:6px; }
-    .auction-scroll { overflow-x:auto; margin-top:12px; border:1px solid #333; border-radius:8px; background:#161616; }
-    table.auction-table { width:100%; border-collapse:collapse; font-size:12px; min-width:980px; }
-    table.auction-table th, table.auction-table td { padding:10px 12px; border-bottom:1px solid #2a2a2a; text-align:left; vertical-align:middle; }
-    table.auction-table th { color:#888; font-weight:normal; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; background:#141414; position:sticky; top:0; z-index:1; }
-    table.auction-table tbody tr:hover { background:#222; }
-    table.auction-table tbody tr:last-child td { border-bottom:none; }
-    .club-cell { display:flex; align-items:center; gap:12px; min-width:180px; }
-    .club-badge { width:44px; height:44px; object-fit:contain; flex-shrink:0; background:#0d0d0d; border-radius:6px; padding:4px; border:1px solid #333; }
-    .club-badge-fallback { width:44px; height:44px; flex-shrink:0; border-radius:6px; background:#222; border:1px solid #333; display:flex; align-items:center; justify-content:center; font-size:11px; color:#666; font-weight:bold; }
-    .club-meta .club-title { font-size:14px; font-weight:bold; color:#eee; line-height:1.2; }
-    .club-meta .club-stadium { font-size:11px; color:#777; margin-top:2px; }
-    .stat-num { font-variant-numeric:tabular-nums; white-space:nowrap; }
-    .stat-sub { display:block; font-size:10px; color:#666; margin-top:2px; }
-    .rank-pill { display:inline-block; min-width:22px; text-align:center; padding:2px 6px; border-radius:999px; background:#2a2200; color:#ff9900; font-weight:bold; font-size:11px; }
-    .exp-pos { color:#ccc; font-weight:bold; }
-    .bid-col { min-width:130px; }
-    .bid-btn { padding:5px 12px; background:#ff9900; color:#111; border:none; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold; margin-left:6px; }
-    .bid-btn:disabled { background:#555; color:#888; cursor:not-allowed; }
-    input.bid-input { width:96px; padding:5px 6px; background:#111; border:1px solid #444; color:#ddd; border-radius:4px; font-size:12px; }
-    .leader-you { color:#9f9; }
-    .empty-row { text-align:center; color:#888; padding:24px !important; }
-    @media (max-width:720px) {
-      .wrap { padding:0 10px 32px; }
-    }
-  </style>
-</head>
-<body>
-  <div id="nav"></div>
-  <div class="wrap">
-    <h1>Club auction</h1>
-    <p class="note" id="clubAuctionIntro">
-      Bid for a GPSL club from your starting budget. You may only lead one club at a time.
-      When the auction closes, the highest bidder wins the club and your balance is set to budget minus your winning bid.
-    </p>
-    <div class="nav-links">
-      <a href="awaiting_club.html">Owner tag &amp; budget</a>
-      <a href="learning_gpsl.html">Learning GPSL</a>
-    </div>
-    <div id="draftCountdownContainer">
-      <div id="draftCountdown"></div>
-      <div id="draftLocalStart"></div>
-    </div>
-    <div id="auctionStatus"></div>
-    <div id="leadPanel"></div>
-    <div class="auction-scroll">
-      <table class="auction-table">
-        <thead>
-          <tr>
-            <th>Club</th>
-            <th>Rank</th>
-            <th>Capacity</th>
-            <th>Full gate / match</th>
-            <th>Maintenance / season</th>
-            <th>Season 1 exp.</th>
-            <th>Stadium cost</th>
-            <th>High bid</th>
-            <th>Leader</th>
-            <th class="bid-col">Your bid</th>
-          </tr>
-        </thead>
-        <tbody id="auctionTableBody">
-          <tr><td colspan="10" class="empty-row">Loading…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-  <script type="module" src="club_auction.js?v=20260608-club-cards"></script>
-</body>
-</html>
+<script>window.CURRENT_PAGE = "club_auction";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL — Club auction</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; }
+    .wrap { max-width:1180px; margin:20px auto; padding:0 16px 40px; }
+    h1 { color:#ff9900; font-size:22px; margin:0 0 8px; }
+    .note { font-size:13px; color:#aaa; line-height:1.5; margin:0 0 12px; }
+    #auctionStatus { font-size:13px; color:#ccc; margin:8px 0 16px; min-height:18px; }
+    #draftCountdownContainer { margin:12px 0 16px; padding:10px 12px; background:#1a1a1a; border:1px solid #333; border-radius:6px; }
+    #draftCountdown { font-size:15px; color:#ff9900; font-weight:bold; }
+    #draftLocalStart { font-size:12px; color:#ccc; margin-top:4px; white-space:pre-line; }
+    .nav-links { margin:12px 0; font-size:13px; }
+    .nav-links a { color:#ff9900; margin-right:14px; }
+    #leadPanel { font-size:12px; color:#aaa; margin:8px 0 14px; padding:10px 12px; background:#1a1a1a; border:1px solid #333; border-radius:6px; }
+    .auction-scroll { overflow-x:auto; margin-top:12px; border:1px solid #333; border-radius:8px; background:#161616; }
+    table.auction-table { width:100%; border-collapse:collapse; font-size:12px; min-width:980px; }
+    table.auction-table th, table.auction-table td { padding:10px 12px; border-bottom:1px solid #2a2a2a; text-align:left; vertical-align:middle; }
+    table.auction-table th { color:#888; font-weight:normal; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; background:#141414; position:sticky; top:0; z-index:1; }
+    table.auction-table tbody tr:hover { background:#222; }
+    table.auction-table tbody tr:last-child td { border-bottom:none; }
+    .club-cell { display:flex; align-items:center; gap:12px; min-width:180px; }
+    .club-badge { width:44px; height:44px; object-fit:contain; flex-shrink:0; filter:drop-shadow(0 1px 3px rgba(0,0,0,0.45)); }
+    .club-badge-fallback { width:44px; height:44px; flex-shrink:0; border-radius:6px; background:#222; border:1px solid #333; display:flex; align-items:center; justify-content:center; font-size:11px; color:#666; font-weight:bold; }
+    .club-meta .club-title { font-size:14px; font-weight:bold; color:#eee; line-height:1.2; }
+    .club-meta .club-stadium { font-size:11px; color:#777; margin-top:2px; }
+    .stat-num { font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .stat-sub { display:block; font-size:10px; color:#666; margin-top:2px; }
+    .rank-pill { display:inline-block; min-width:22px; text-align:center; padding:2px 6px; border-radius:999px; background:#2a2200; color:#ff9900; font-weight:bold; font-size:11px; }
+    .exp-pos { color:#ccc; font-weight:bold; }
+    .bid-col { min-width:130px; }
+    .bid-btn { padding:5px 12px; background:#ff9900; color:#111; border:none; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold; margin-left:6px; }
+    .bid-btn:disabled { background:#555; color:#888; cursor:not-allowed; }
+    input.bid-input { width:96px; padding:5px 6px; background:#111; border:1px solid #444; color:#ddd; border-radius:4px; font-size:12px; }
+    .leader-you { color:#9f9; }
+    .empty-row { text-align:center; color:#888; padding:24px !important; }
+    @media (max-width:720px) {
+      .wrap { padding:0 10px 32px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="wrap">
+    <h1>Club auction</h1>
+    <p class="note" id="clubAuctionIntro">
+      Bid for a GPSL club from your starting budget. You may only lead one club at a time.
+      When the auction closes, the highest bidder wins the club and your balance is set to budget minus your winning bid.
+    </p>
+    <div class="nav-links">
+      <a href="awaiting_club.html">Owner tag &amp; budget</a>
+      <a href="learning_gpsl.html">Learning GPSL</a>
+    </div>
+    <div id="draftCountdownContainer">
+      <div id="draftCountdown"></div>
+      <div id="draftLocalStart"></div>
+    </div>
+    <div id="auctionStatus"></div>
+    <div id="leadPanel"></div>
+    <div class="auction-scroll">
+      <table class="auction-table">
+        <thead>
+          <tr>
+            <th>Club</th>
+            <th>Rank</th>
+            <th>Capacity</th>
+            <th>Full gate / match</th>
+            <th>Maintenance / season</th>
+            <th>Season 1 exp.</th>
+            <th>Stadium cost</th>
+            <th>High bid</th>
+            <th>Leader</th>
+            <th class="bid-col">Your bid</th>
+          </tr>
+        </thead>
+        <tbody id="auctionTableBody">
+          <tr><td colspan="10" class="empty-row">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <script type="module" src="club_auction.js?v=20260608-club-badges"></script>
+</body>
+</html>
