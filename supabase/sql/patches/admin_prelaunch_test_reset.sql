@@ -11,8 +11,14 @@
 ALTER TABLE public.global_settings
   ADD COLUMN IF NOT EXISTS allow_test_environment_reset boolean NOT NULL DEFAULT false;
 
+ALTER TABLE public.global_settings
+  ADD COLUMN IF NOT EXISTS club_auction_starting_balance numeric(14, 2) NOT NULL DEFAULT 600000000;
+
 COMMENT ON COLUMN public.global_settings.allow_test_environment_reset IS
   'When true, admin_test_reset_execute() may run. Off by default — pre-launch only.';
+
+COMMENT ON COLUMN public.global_settings.club_auction_starting_balance IS
+  'Default pending budget for owners in club auction (awaiting_club / register). Updated by test reset.';
 
 CREATE TABLE IF NOT EXISTS public.test_reset_audit_log (
   id bigserial PRIMARY KEY,
@@ -35,6 +41,31 @@ CREATE POLICY test_reset_audit_log_admin ON public.test_reset_audit_log
   WITH CHECK (public.is_gpsl_admin());
 
 GRANT SELECT ON public.test_reset_audit_log TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.club_auction_default_starting_balance()
+RETURNS numeric
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT coalesce(
+    (SELECT g.club_auction_starting_balance FROM public.global_settings g WHERE g.id = 1),
+    600000000::numeric
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.club_auction_get_config()
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT jsonb_build_object(
+    'starting_balance', public.club_auction_default_starting_balance()
+  );
+$$;
 
 -- ---------------------------------------------------------------------------
 -- Count helpers (preview + audit)
@@ -149,7 +180,8 @@ BEGIN
 
   RETURN jsonb_build_object(
     'allow_test_environment_reset', v_enabled,
-    'confirm_phrase', 'RESET TEST ENVIRONMENT'
+    'confirm_phrase', 'RESET TEST ENVIRONMENT',
+    'default_starting_balance', public.club_auction_default_starting_balance()
   );
 END;
 $function$;
@@ -226,6 +258,11 @@ BEGIN
   v_clear_history := coalesce((p_options ->> 'clear_competition_history')::boolean, true);
   v_seed_club := coalesce((p_options ->> 'seed_club_auction')::boolean, false);
 
+  UPDATE public.global_settings
+  SET club_auction_starting_balance = v_starting,
+      updated_at = now()
+  WHERE id = 1;
+
   v_preview := public.admin_test_reset_counts();
 
   INSERT INTO public.test_reset_audit_log (
@@ -244,6 +281,50 @@ BEGIN
 
   -- Phase A: stop engines / schedules
   PERFORM public.admin_reset_draft_auction();
+
+  -- Phase B0: copy owner tags into registry before vacate clears Clubs.owner
+  INSERT INTO public.gpsl_owner_registry (
+    owner_id,
+    status,
+    owner_tag,
+    pending_starting_balance,
+    last_club_short_name,
+    status_changed_at
+  )
+  SELECT
+    c.owner_id,
+    'awaiting_club_auction',
+    nullif(btrim(c.owner), ''),
+    v_starting,
+    c."ShortName",
+    now()
+  FROM public."Clubs" c
+  WHERE c.owner_id IS NOT NULL
+  ON CONFLICT (owner_id) DO UPDATE
+  SET owner_tag = coalesce(
+        nullif(btrim(excluded.owner_tag), ''),
+        nullif(btrim(gpsl_owner_registry.owner_tag), '')
+      ),
+      last_club_short_name = coalesce(
+        excluded.last_club_short_name,
+        gpsl_owner_registry.last_club_short_name
+      ),
+      pending_starting_balance = excluded.pending_starting_balance,
+      status_changed_at = now()
+  WHERE gpsl_owner_registry.status <> 'archived';
+
+  UPDATE public.gpsl_owner_registry r
+  SET owner_tag = x.owner_tag
+  FROM (
+    SELECT DISTINCT ON (owner_id)
+      owner_id,
+      nullif(btrim(owner_tag), '') AS owner_tag
+    FROM public.competition_owner_season_ranking
+    WHERE nullif(btrim(owner_tag), '') IS NOT NULL
+    ORDER BY owner_id, season_id DESC
+  ) x
+  WHERE r.owner_id = x.owner_id
+    AND nullif(btrim(r.owner_tag), '') IS NULL;
 
   -- Phase B: detach all owners
   FOR v_club IN
@@ -414,7 +495,7 @@ BEGIN
         last_club_short_name = NULL,
         last_nation_code = NULL,
         status_changed_at = now()
-    WHERE r.status IN ('active', 'on_break', 'awaiting_club_auction');
+    WHERE r.status IS DISTINCT FROM 'archived';
   END IF;
 
   IF v_seed_club THEN
@@ -456,5 +537,7 @@ GRANT EXECUTE ON FUNCTION public.admin_test_reset_get_config() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_test_reset_preview() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_test_reset_execute(text, jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_test_reset_counts() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.club_auction_default_starting_balance() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.club_auction_get_config() TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

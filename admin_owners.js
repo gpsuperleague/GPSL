@@ -2,8 +2,24 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 
 primeAdminPageChrome();
 
+let clubAuctionStartingBalance = 600000000;
+
+function formatBudgetLabel(n) {
+  const v = Math.round(Number(n) || 0);
+  if (v >= 1_000_000) return `₿${(v / 1_000_000).toLocaleString("en-GB")}m`;
+  return `₿${v.toLocaleString("en-GB")}`;
+}
+
+async function loadClubAuctionConfig() {
+  const { data } = await supabase.rpc("club_auction_get_config");
+  if (data?.starting_balance > 0) {
+    clubAuctionStartingBalance = Math.round(Number(data.starting_balance));
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
+  await loadClubAuctionConfig();
   await loadOwnerList();
 
   document.getElementById("addOwnerBtn").onclick = addOwner;
@@ -205,7 +221,7 @@ async function registerForClubAuction() {
   setStatus("clubAuctionStatus", "Creating owner…");
 
   const { data, error } = await supabase.functions.invoke("create-owner-club-auction", {
-    body: { email, password, startingBalance: 600000000 },
+    body: { email, password, startingBalance: clubAuctionStartingBalance },
   });
 
   if (error) {
@@ -241,7 +257,7 @@ async function registerForClubAuction() {
 
   setStatus(
     "clubAuctionStatus",
-    `✅ ${email} ${action} — £600m pending. Share the login details, then they open awaiting_club.html to set their tag.`,
+    `✅ ${email} ${action} — ${formatBudgetLabel(clubAuctionStartingBalance)} pending. Share the login details, then they open awaiting_club.html to set their tag.`,
     true
   );
   await loadOwnerList();

@@ -27,10 +27,20 @@ const COUNT_LABELS = {
   players_foreign_contract: "Foreign contract locks",
 };
 
-function formatMoney(n) {
-  const v = Number(String(n).replace(/,/g, ""));
-  if (!Number.isFinite(v)) return "600000000";
+function parseStartingBalance(raw) {
+  const s = String(raw ?? "").trim().replace(/,/g, "");
+  if (!s) return null;
+  const mMatch = /^(\d+(?:\.\d+)?)\s*m$/i.exec(s);
+  if (mMatch) return Math.round(Number(mMatch[1]) * 1_000_000);
+  const v = Number(s);
+  if (!Number.isFinite(v) || v <= 0) return null;
   return Math.round(v);
+}
+
+function formatMoneyInput(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "";
+  return String(Math.round(v));
 }
 
 function renderPreviewGrid(counts) {
@@ -61,6 +71,10 @@ async function loadConfig() {
   updateArmBadge(!!data?.allow_test_environment_reset);
   const hint = document.getElementById("phraseHint");
   if (hint && data?.confirm_phrase) hint.textContent = data.confirm_phrase;
+  const balInput = document.getElementById("startingBalance");
+  if (balInput && data?.default_starting_balance > 0) {
+    balInput.value = formatMoneyInput(data.default_starting_balance);
+  }
 }
 
 async function setEnabled(enabled) {
@@ -112,8 +126,19 @@ async function runExecute() {
   }
 
   setStatus("executeStatus", "Running reset…");
+  const startingBalance = parseStartingBalance(
+    document.getElementById("startingBalance")?.value
+  );
+  if (!startingBalance) {
+    setStatus(
+      "executeStatus",
+      "Invalid starting balance — use 550000000 or 550m",
+      false
+    );
+    return;
+  }
   const options = {
-    starting_balance: formatMoney(document.getElementById("startingBalance")?.value),
+    starting_balance: startingBalance,
     reset_owners_to_auction: !!document.getElementById("optResetOwners")?.checked,
     clear_competition_history: !!document.getElementById("optClearHistory")?.checked,
     seed_club_auction: !!document.getElementById("optSeedClub")?.checked,

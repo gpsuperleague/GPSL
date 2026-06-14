@@ -45,6 +45,13 @@ async function loadOwnerContext() {
 
   ownerTag = self?.owner_tag || null;
   budget = Number(self?.pending_starting_balance) || 0;
+
+  const intro = document.getElementById("clubAuctionIntro");
+  if (intro && budget > 0) {
+    intro.innerHTML =
+      `Bid for a GPSL club from your <b>${formatMoney(budget)}</b> starting budget. You may only lead one club at a time. ` +
+      "When the auction closes, the highest bidder wins the club and your balance is set to budget minus your winning bid.";
+  }
   return true;
 }
 

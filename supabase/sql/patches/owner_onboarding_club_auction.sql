@@ -99,10 +99,13 @@ AS $function$
 DECLARE
   v_tag text;
   v_has_club boolean;
+  v_starting numeric;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
+
+  v_starting := public.club_auction_default_starting_balance();
 
   v_tag := nullif(btrim(coalesce(p_tag, '')), '');
   IF v_tag IS NULL THEN
@@ -132,7 +135,7 @@ BEGIN
     auth.uid(),
     'awaiting_club_auction',
     v_tag,
-    600000000,
+    v_starting,
     now()
   )
   ON CONFLICT (owner_id) DO UPDATE
@@ -144,7 +147,7 @@ BEGIN
       pending_starting_balance = CASE
         WHEN coalesce(gpsl_owner_registry.pending_starting_balance, 0) > 0
         THEN gpsl_owner_registry.pending_starting_balance
-        ELSE 600000000
+        ELSE v_starting
       END,
       status_changed_at = now()
   WHERE gpsl_owner_registry.status <> 'archived';
@@ -153,7 +156,10 @@ BEGIN
     'ok', true,
     'owner_tag', v_tag,
     'via', 'registry',
-    'pending_starting_balance', 600000000
+    'pending_starting_balance', coalesce(
+      (SELECT r.pending_starting_balance FROM public.gpsl_owner_registry r WHERE r.owner_id = auth.uid()),
+      v_starting
+    )
   );
 END;
 $function$;
@@ -161,7 +167,7 @@ $function$;
 -- Admin: register a new login for club auction (no club yet)
 CREATE OR REPLACE FUNCTION public.admin_owner_register_for_club_auction(
   p_owner_email text,
-  p_starting_balance numeric DEFAULT 600000000
+  p_starting_balance numeric DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -171,10 +177,13 @@ AS $function$
 DECLARE
   v_email text := lower(trim(p_owner_email));
   v_user_id uuid;
+  v_starting numeric;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
+
+  v_starting := greatest(coalesce(p_starting_balance, public.club_auction_default_starting_balance()), 0);
 
   SELECT u.id INTO v_user_id
   FROM auth.users u
@@ -198,15 +207,12 @@ BEGIN
   VALUES (
     v_user_id,
     'awaiting_club_auction',
-    greatest(coalesce(p_starting_balance, 600000000), 0),
+    v_starting,
     now()
   )
   ON CONFLICT (owner_id) DO UPDATE
   SET status = 'awaiting_club_auction',
-      pending_starting_balance = greatest(
-        coalesce(excluded.pending_starting_balance, 600000000),
-        coalesce(gpsl_owner_registry.pending_starting_balance, 0)
-      ),
+      pending_starting_balance = v_starting,
       status_changed_at = now()
   WHERE gpsl_owner_registry.status <> 'archived';
 
@@ -215,7 +221,7 @@ BEGIN
     'owner_id', v_user_id,
     'email', p_owner_email,
     'status', 'awaiting_club_auction',
-    'pending_starting_balance', greatest(coalesce(p_starting_balance, 600000000), 0)
+    'pending_starting_balance', v_starting
   );
 END;
 $function$;
