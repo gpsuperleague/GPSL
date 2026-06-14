@@ -359,6 +359,35 @@ BEGIN
     DELETE FROM public.competition_owner_season_ranking WHERE true;
   END IF;
 
+  -- Detach season FKs without ON DELETE CASCADE (e.g. Clubs.stadium_fill_season_id)
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'Clubs'
+      AND column_name = 'stadium_fill_season_id'
+  ) THEN
+    UPDATE public."Clubs"
+    SET stadium_fill_season_id = NULL
+    WHERE stadium_fill_season_id IS NOT NULL;
+  END IF;
+
+  IF to_regclass('public.international_fixtures') IS NOT NULL THEN
+    UPDATE public.international_fixtures
+    SET season_id = NULL
+    WHERE season_id IS NOT NULL;
+  END IF;
+
+  IF to_regclass('public.international_wc_cycles') IS NOT NULL THEN
+    UPDATE public.international_wc_cycles
+    SET qual_season_id_1 = NULL,
+        qual_season_id_2 = NULL,
+        finals_after_season_id = NULL
+    WHERE qual_season_id_1 IS NOT NULL
+       OR qual_season_id_2 IS NOT NULL
+       OR finals_after_season_id IS NOT NULL;
+  END IF;
+
   DELETE FROM public.competition_seasons WHERE true;
 
   -- Phase G: per-club counters
