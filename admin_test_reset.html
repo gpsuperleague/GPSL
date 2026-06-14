@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Pre-launch test reset — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .danger-card { border-color: #844; background: #1a1212; }
+    .danger-card h2 { color: #f66; }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 16px; margin-top: 12px; font-size: 13px; }
+    .preview-grid div { padding: 6px 8px; background: #111; border: 1px solid #333; border-radius: 4px; }
+    .preview-grid span { color: #ff9900; font-weight: bold; }
+    #confirmInput { max-width: 360px; width: 100%; padding: 8px; margin-top: 8px; background: #111; border: 1px solid #844; color: #ddd; border-radius: 4px; }
+    .arm-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+    .arm-badge { padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .arm-off { background: #333; color: #aaa; }
+    .arm-on { background: #522; color: #f88; border: 1px solid #a44; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Pre-launch test reset</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Wipes league <b>state</b> for re-testing club auction → manager draft → player draft.
+        Does <b>not</b> delete GPDB players or auth accounts. Keep your CSV backup offline.
+      </p>
+
+      <div class="card danger-card">
+        <h2>1. Arm reset (required)</h2>
+        <p class="note">Reset is blocked unless explicitly enabled. Turn off when not testing.</p>
+        <div class="arm-row">
+          <span id="armBadge" class="arm-badge arm-off">DISABLED</span>
+          <button type="button" class="button" id="enableResetBtn" style="background:#664400;">Enable test reset</button>
+          <button type="button" class="button" id="disableResetBtn" style="background:#444;">Disable test reset</button>
+        </div>
+        <div id="armStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>2. Preview (read-only)</h2>
+        <button type="button" class="button" id="previewBtn">Run preview</button>
+        <div id="previewStatus" class="status-line"></div>
+        <div id="previewGrid" class="preview-grid" hidden></div>
+      </div>
+
+      <div class="card danger-card">
+        <h2>3. Execute reset</h2>
+        <p class="note">Type exactly: <code id="phraseHint">RESET TEST ENVIRONMENT</code></p>
+        <label>
+          <input type="checkbox" id="optResetOwners" checked> Reset owners → awaiting club auction
+        </label><br>
+        <label>
+          <input type="checkbox" id="optClearHistory" checked> Clear competition history archives
+        </label><br>
+        <label>
+          <input type="checkbox" id="optSeedClub"> Seed club auction listings after reset
+        </label><br>
+        <label style="display:block;margin-top:10px;">Pending starting balance (auction budget)
+          <input type="text" id="startingBalance" value="600000000" style="max-width:200px;margin-left:8px;padding:6px;">
+        </label>
+        <input type="text" id="confirmInput" placeholder="Type confirmation phrase" autocomplete="off">
+        <br>
+        <button type="button" class="button" id="executeBtn" style="background:#882222;margin-top:12px;">Execute test reset</button>
+        <div id="executeStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>SQL</h2>
+        <p class="note">Run once: <code>supabase/sql/patches/admin_prelaunch_test_reset.sql</code></p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_test_reset.js"></script>
+</body>
+</html>
