@@ -22,17 +22,41 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const cronApiKey = Deno.env.get("CRON_API_KEY");
 
     if (!supabaseUrl || !serviceRoleKey) {
       return jsonResponse({ error: "Server misconfigured" }, 500);
     }
 
-    // Gateway validates Authorization + apikey; use service role for RPC.
+    // When Verify JWT is off (sb_secret_ cron calls): require matching apikey header.
+    const incomingKey = (req.headers.get("apikey") || "").trim();
+    const authBearer = (req.headers.get("Authorization") || "")
+      .replace(/^Bearer\s+/i, "")
+      .trim();
+    const allowedCronKeys = [cronApiKey, serviceRoleKey].filter(Boolean) as string[];
+
+    if (!authBearer.startsWith("eyJ")) {
+      const matched =
+        incomingKey &&
+        allowedCronKeys.some((k) => k === incomingKey || k === authBearer);
+      if (!matched) {
+        return jsonResponse({ error: "Unauthorized — invalid apikey" }, 401);
+      }
+    }
+
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const { data, error } = await adminClient.rpc("transferengine_run_report");
 
     if (error) {
-      return jsonResponse({ error: error.message }, 500);
+      return jsonResponse(
+        {
+          error: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        },
+        500
+      );
     }
 
     return jsonResponse({ ok: true, report: data ?? null });

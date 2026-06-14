@@ -248,4 +248,7 @@ BEGIN
 END;
 $function$;
 
+GRANT EXECUTE ON FUNCTION public.transferengine_run() TO service_role;
+GRANT EXECUTE ON FUNCTION public.transferengine_run_report() TO service_role;
+
 NOTIFY pgrst, 'reload schema';

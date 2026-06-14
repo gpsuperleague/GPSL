@@ -13,17 +13,37 @@ jobs:
         env:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+          KEY="$(printf '%s' "$SUPABASE_SERVICE_ROLE_KEY" | tr -d '\r\n')"
+          if [ -z "$KEY" ]; then
             echo "Missing GitHub secret SUPABASE_SERVICE_ROLE_KEY"
             exit 1
           fi
 
-          http_code=$(curl -sS -w "%{http_code}" -o /tmp/transferengine_response.json -X POST \
-            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
-            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
-            -H "Content-Type: application/json" \
-            -d '{}' \
-            "https://omyyogfumrjoaweuawjn.supabase.co/functions/v1/transferengine_run")
+          URL="https://omyyogfumrjoaweuawjn.supabase.co/functions/v1/transferengine_run"
+          CURL_ARGS=(-sS -w "%{http_code}" -o /tmp/transferengine_response.json -X POST \
+            -H "Content-Type: application/json" -d '{}' "$URL")
+
+          # Legacy service_role JWT (eyJ...) — use Authorization + apikey
+          if [[ "$KEY" == eyJ* ]]; then
+            echo "Using legacy service_role JWT"
+            CURL_ARGS=(-sS -w "%{http_code}" -o /tmp/transferengine_response.json -X POST \
+              -H "Authorization: Bearer ${KEY}" \
+              -H "apikey: ${KEY}" \
+              -H "Content-Type: application/json" -d '{}' "$URL")
+          # New Supabase secret key (sb_secret_...) — apikey ONLY (not a JWT)
+          elif [[ "$KEY" == sb_secret_* ]]; then
+            echo "Using new sb_secret_ key (apikey header only)"
+            echo "Edge Function must have Verify JWT = OFF in Supabase Dashboard"
+            CURL_ARGS=(-sS -w "%{http_code}" -o /tmp/transferengine_response.json -X POST \
+              -H "apikey: ${KEY}" \
+              -H "Content-Type: application/json" -d '{}' "$URL")
+          else
+            echo "Unrecognized key format (expected eyJ... or sb_secret_...)"
+            echo "Fix: Supabase Dashboard → Settings → API → Legacy API keys → copy service_role JWT"
+            exit 1
+          fi
+
+          http_code=$(curl "${CURL_ARGS[@]}")
 
           echo "HTTP ${http_code}"
           cat /tmp/transferengine_response.json
