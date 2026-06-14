@@ -10,7 +10,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Call Supabase Transfer Engine
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
-          curl -sf -X POST \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
-            https://omyyogfumrjoaweuawjn.supabase.co/functions/v1/transferengine_run
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "Missing GitHub secret SUPABASE_SERVICE_ROLE_KEY"
+            exit 1
+          fi
+
+          http_code=$(curl -sS -w "%{http_code}" -o /tmp/transferengine_response.json -X POST \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "https://omyyogfumrjoaweuawjn.supabase.co/functions/v1/transferengine_run")
+
+          echo "HTTP ${http_code}"
+          cat /tmp/transferengine_response.json
+          echo ""
+
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            exit 1
+          fi
