@@ -393,7 +393,7 @@ DECLARE
   v_winner uuid;
   v_registry public.gpsl_owner_registry%rowtype;
   v_tag text;
-  v_balance numeric;
+  v_starting numeric;
   v_club_name text;
 BEGIN
   SELECT * INTO v_listing
@@ -484,7 +484,7 @@ BEGIN
   END IF;
 
   v_tag := nullif(btrim(coalesce(v_registry.owner_tag, '')), '');
-  v_balance := greatest(coalesce(v_registry.pending_starting_balance, 0) - v_amount, 0);
+  v_starting := greatest(coalesce(v_registry.pending_starting_balance, 0), 0);
 
   SELECT c."Club" INTO v_club_name
   FROM public."Clubs" c
@@ -500,11 +500,31 @@ BEGIN
     WHERE f.club_name = v_listing.club_short_name
   ) THEN
     UPDATE public."Club_Finances"
-    SET balance = v_balance
+    SET balance = v_starting
     WHERE club_name = v_listing.club_short_name;
   ELSE
     INSERT INTO public."Club_Finances" (club_name, balance)
-    VALUES (v_listing.club_short_name, v_balance);
+    VALUES (v_listing.club_short_name, v_starting);
+  END IF;
+
+  IF v_amount > 0 THEN
+    PERFORM public.post_club_ledger(
+      v_listing.club_short_name,
+      'infra_purchase',
+      -v_amount,
+      format(
+        'Club auction — %s (%s)',
+        coalesce(v_club_name, v_listing.club_short_name),
+        v_listing.club_short_name
+      ),
+      jsonb_build_object(
+        'source', 'club_auction',
+        'listing_id', v_listing.id,
+        'winning_owner_id', v_winner,
+        'winning_bid', v_amount,
+        'starting_budget', v_starting
+      )
+    );
   END IF;
 
   UPDATE public.gpsl_owner_registry
