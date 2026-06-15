@@ -77,6 +77,11 @@ The extended bases are in `data/player_value_tables.json` under `baseValueByRati
 3. **GPDB / squad:** Rating shown as **85 (95)** (current + calc potential). **Pot.** column = calc potential. **Market value** column still shows **stored** DB values.
 4. `computedEconomicsForPlayer()` in `player_economics.js` returns what MV would be from formulas (for future admin tools); it does not write to the DB.
 
-## Migration (deferred)
+## Migration (admin sync)
 
-Bulk PESDB CSV import, staging, preview/apply, and automatic backup are **not** implemented yet.
+1. Run [`supabase/sql/patches/gpdb_pesdb_sync.sql`](../supabase/sql/patches/gpdb_pesdb_sync.sql).
+2. Deploy edge function `gpdb-pesdb-scrape` (see `scripts/README_pesdb_sync.md`).
+3. **Admin → Season Break → Data tools → GPDB PESDB sync** — scrape in-browser, preview, apply.
+4. Optional: **GPDB deduplication** after sync.
+
+Legacy cards (`pesdb_unavailable`) stay at their club, cannot be sold, renew **1 season** at a time. Admin can restore manually or clear on next sync when the card reappears on pesdb.net.

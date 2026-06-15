@@ -15,6 +15,7 @@ import {
 import {
   isContractFinalYear,
   isOnExpiryWageMarket,
+  isPesdbLegacyCard,
   playerBlockedFromTransferMarket,
 } from "./player_contracts.js";
 import { playerSignedCurrentSeason } from "./player_season_transfer.js";
@@ -38,6 +39,7 @@ export const TRANSFER_STATUS = {
   EXPIRY_WAGE_BID: "expiry_wage_bid",
   FOREIGN_CONTRACT: "foreign_contract",
   OVERFLOW_PAID_UP: "overflow_paid_up",
+  PESDB_LEGACY: "pesdb_legacy",
 };
 
 /** Canonical user-facing copy (keep in sync across pages). */
@@ -59,6 +61,8 @@ export const TRANSFER_STATUS_LABELS = {
     "Unavailable — sold to foreign club until next season",
   [TRANSFER_STATUS.OVERFLOW_PAID_UP]:
     "Unavailable — contract paid up (squad overflow) until next season",
+  [TRANSFER_STATUS.PESDB_LEGACY]:
+    "Legacy card — off pesdb.net, not sellable (renew 1 season)",
 };
 
 const PILL_CLASS = {
@@ -71,6 +75,7 @@ const PILL_CLASS = {
   [TRANSFER_STATUS.CONTRACT_FINAL_YEAR]: "status-contract-final",
   [TRANSFER_STATUS.FOREIGN_CONTRACT]: "status-foreign-contract",
   [TRANSFER_STATUS.OVERFLOW_PAID_UP]: "status-foreign-contract",
+  [TRANSFER_STATUS.PESDB_LEGACY]: "status-contract-final",
 };
 
 export function buildClubShortLookup(clubsRows) {
@@ -342,6 +347,13 @@ export function buildGpdbContractedBidCellHtml({
     !!normalizeClubShort(viewerClubShort, state) &&
     normalizeClubShort(viewerClubShort, state) ===
       normalizeClubShort(sellerClub, state);
+
+  if (isPesdbLegacyCard(player)) {
+    return formatTransferStatusMessageHtml({
+      code: TRANSFER_STATUS.PESDB_LEGACY,
+      label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.PESDB_LEGACY],
+    });
+  }
 
   if (playerSignedCurrentSeason(player, state?.currentSeasonLabel)) {
     return formatTransferStatusMessageHtml({

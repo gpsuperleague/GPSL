@@ -23,7 +23,13 @@ export function isContractFinalYear(player) {
   return Number.isFinite(n) && n === 1;
 }
 
+/** Card removed from pesdb.net — legacy GPSL card (not sellable). */
+export function isPesdbLegacyCard(player) {
+  return !!player?.pesdb_unavailable;
+}
+
 export function playerCanListOrSell(player, currentSeasonLabel) {
+  if (isPesdbLegacyCard(player)) return false;
   if (isContractFinalYear(player)) return false;
   const signed = String(player?.Season_Signed ?? "").trim();
   const cur = String(currentSeasonLabel ?? "").trim();
@@ -49,6 +55,7 @@ export function formatSquadContractCell(player) {
 
 /** Standard final-year players on hidden wage bid market (not HG ≤23). */
 export function isOnExpiryWageMarket(player, clubNation) {
+  if (isPesdbLegacyCard(player)) return false;
   return isContractFinalYear(player) && !isHgContractProtected(player, clubNation);
 }
 
@@ -60,10 +67,15 @@ export function squadContractActionOptionsHtml(
   if (!isContractFinalYear(player)) return null;
 
   const hg = isHgContractProtected(player, clubNation);
+  const legacy = isPesdbLegacyCard(player);
   const releaseOpt = voluntaryRelease?.optionHtml ?? "";
 
+  const renewLabel = legacy
+    ? (hg ? "Renew legacy card (1 season, same wage)" : "Renew legacy card (1 season)")
+    : (hg ? "Renew (same wage, 3 Seasons)" : "Renew contract (3 Seasons)");
+
   return `
-            <option value="renew">${hg ? "Renew (same wage, 3 Seasons)" : "Renew contract (3 Seasons)"}</option>
+            <option value="renew">${renewLabel}</option>
             <option value="expire">Expire — release for MV</option>
             ${releaseOpt}`;
 }

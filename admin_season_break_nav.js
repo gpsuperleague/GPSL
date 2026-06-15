@@ -199,6 +199,11 @@ export const SEASON_BREAK_NAV = [
     label: "Data tools",
     items: [
       {
+        label: "GPDB PESDB sync",
+        href: "admin_gpdb_sync.html",
+        page: "admin_gpdb_sync",
+      },
+      {
         label: "GPDB player deduplication",
         href: "admin_gpdb_dedup.html",
         page: "admin_gpdb_dedup",

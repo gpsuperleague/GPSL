@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>GPDB PESDB sync — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 16px; margin-top: 12px; font-size: 13px; }
+    .preview-grid div { padding: 6px 8px; background: #111; border: 1px solid #333; border-radius: 4px; }
+    .preview-grid span { color: #ff9900; font-weight: bold; }
+    .sync-table-wrap { overflow: auto; max-height: 420px; border: 1px solid #333; border-radius: 6px; margin-top: 12px; }
+    .sync-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .sync-table th, .sync-table td { border: 1px solid #333; padding: 6px 8px; text-align: left; vertical-align: top; }
+    .sync-table th { background: #222; color: #ff9900; position: sticky; top: 0; }
+    .tag-blocked { color: #f88; }
+    .tag-ok { color: #8c8; }
+    .tag-warn { color: #fc8; }
+    #confirmInput { max-width: 360px; width: 100%; padding: 8px; margin-top: 8px; background: #111; border: 1px solid #844; color: #ddd; border-radius: 4px; }
+    #csvFile { max-width: 100%; margin-top: 8px; color: #ccc; }
+    .step-num { color: #ff9900; font-weight: bold; margin-right: 6px; }
+    ol.workflow { margin: 0; padding-left: 20px; line-height: 1.55; color: #aaa; font-size: 13px; }
+    ol.workflow code { color: #ccc; }
+    .scrape-range { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 10px; }
+    .scrape-range label { font-size: 13px; color: #aaa; }
+    .scrape-range input[type="number"] { width: 72px; padding: 6px 8px; background: #111; border: 1px solid #444; color: #eee; border-radius: 4px; }
+    .scrape-progress { margin-top: 12px; height: 10px; background: #222; border-radius: 4px; overflow: hidden; }
+    .scrape-progress-bar { height: 100%; width: 0; background: linear-gradient(90deg, #664400, #ff9900); transition: width 0.25s ease; }
+    #scrapeProgressLabel { font-size: 12px; color: #888; margin-top: 6px; }
+    .scrape-options { margin-top: 10px; font-size: 13px; color: #aaa; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">GPDB ↔ PESDB sync</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Scrape from <a href="https://pesdb.net/efootball/" target="_blank" rel="noopener">pesdb.net</a> in-admin,
+        preview, then apply.
+        Requires <code>patches/gpdb_pesdb_sync.sql</code> and edge function <code>gpdb-pesdb-scrape</code>.
+        <b>Back up Players</b> first (<code>export_players_csv.sql</code>).
+      </p>
+
+      <div class="card">
+        <h2>Workflow</h2>
+        <ol class="workflow">
+          <li><span class="step-num">1</span><b>Scrape PESDB</b> below (or upload a CSV as fallback).</li>
+          <li><span class="step-num">2</span>Preview differences vs live <code>Players</code>.</li>
+          <li><span class="step-num">3</span>Apply — off-PESDB cards become <b>legacy</b> (stay at club, not sellable, 1-season renewals).</li>
+        </ol>
+      </div>
+
+      <div class="card">
+        <h2>1. Scrape PESDB → staging</h2>
+        <p class="note">
+          Fetches list pages from pesdb.net via Supabase edge function (no Selenium).
+          Max rating and playing style are read from each player’s max-level page.
+          Full database scrape may take 30–60+ minutes — use page ranges to test first (e.g. pages 1–3).
+        </p>
+        <div class="scrape-range">
+          <label>Start page <input type="number" id="scrapeStartPage" min="1" value="1"></label>
+          <label>End page <input type="number" id="scrapeEndPage" min="1" value="3"></label>
+          <button type="button" class="button" id="detectPagesBtn">Detect pages</button>
+        </div>
+        <div class="scrape-options">
+          <label><input type="checkbox" id="scrapeDetails" checked> Fetch max rating + playing style (slower, recommended)</label>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" class="button" id="scrapeBtn">Start scrape → staging</button>
+          <button type="button" class="button" id="scrapeStopBtn" disabled style="background:#444;">Stop after this page</button>
+        </div>
+        <div class="scrape-progress" aria-hidden="true"><div class="scrape-progress-bar" id="scrapeProgressBar"></div></div>
+        <div id="scrapeProgressLabel"></div>
+        <div id="scrapeStatus" class="status-line"></div>
+
+        <hr style="border:none;border-top:1px solid #333;margin:20px 0;">
+        <p class="note"><b>Or</b> upload an existing scrape CSV (e.g. from <code>scripts/pesdb_scrape.py</code>).</p>
+        <input type="file" id="csvFile" accept=".csv,text/csv">
+        <div class="row" style="margin-top:12px;">
+          <button type="button" class="button" id="importBtn">Upload CSV → staging</button>
+        </div>
+        <div id="importStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>2. Preview sync</h2>
+        <p class="note">Dry run — no changes to <code>Players</code>.</p>
+        <button type="button" class="button" id="previewBtn">Run preview</button>
+        <div id="previewStatus" class="status-line"></div>
+        <div id="previewGrid" class="preview-grid" hidden></div>
+        <div id="previewTableWrap" class="sync-table-wrap" hidden>
+          <table class="sync-table">
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Club</th>
+                <th>Rating</th>
+                <th>Detail</th>
+              </tr>
+            </thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="border-color:#844;background:#1a1212;">
+        <h2 style="color:#f88;">3. Apply sync</h2>
+        <p class="note">
+          Updates matched players; marks missing cards as legacy; inserts new cards as free agents.
+        </p>
+        <label for="confirmInput">Type <b>SYNC GPDB</b> to confirm</label>
+        <input id="confirmInput" type="text" autocomplete="off" spellcheck="false">
+        <div class="row" style="margin-top:12px;">
+          <button type="button" class="button" id="applyBtn" style="background:#662222;">Apply PESDB sync</button>
+        </div>
+        <div id="applyStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Legacy cards (off PESDB)</h2>
+        <p class="note">Owners may keep these at their club. Not sellable. Renew 1 season at a time. Restore manually if a card returns before the next full sync.</p>
+        <button type="button" class="button" id="refreshLegacyBtn">Refresh list</button>
+        <div id="legacyStatus" class="status-line"></div>
+        <div id="legacyTableWrap" class="sync-table-wrap" hidden>
+          <table class="sync-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Club</th>
+                <th>OVR</th>
+                <th>Since</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="legacyBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_gpdb_sync.js?v=20260615-pesdb-scrape"></script>
+</body>
+</html>

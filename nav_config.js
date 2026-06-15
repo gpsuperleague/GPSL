@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260615-gpdb-season-break";
+export const NAV_CONFIG_VERSION = "20260615-gpdb-pesdb-sync";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -156,6 +156,7 @@ export const ADMIN_FLYOUT_LINKS = [
   {
     heading: "Season Break",
     links: [
+      { href: "admin_gpdb_sync.html", label: "GPDB PESDB sync" },
       { href: "admin_gpdb_dedup.html", label: "GPDB player deduplication" },
     ],
   },
