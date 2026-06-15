@@ -51,6 +51,22 @@
     .fin-subnav-link.active {
       background:#332a00; border-color:#ff9900; color:#ff9900; font-weight:bold;
     }
+    .fin-season-nav {
+      display:flex; flex-wrap:wrap; gap:8px;
+    }
+    .fin-season-link {
+      display:inline-flex; flex-direction:column; gap:2px;
+      padding:8px 12px; font-size:12px; text-decoration:none;
+      color:#ccc; background:#222; border:1px solid #444; border-radius:8px;
+      min-width:120px;
+    }
+    .fin-season-link:hover { border-color:#ff9900; color:#ff9900; }
+    .fin-season-link.active {
+      background:#332a00; border-color:#ff9900; color:#ff9900; font-weight:bold;
+    }
+    .fin-season-net { font-size:11px; color:#aaa; }
+    .fin-season-net.positive { color:#6f6; }
+    .fin-season-net.negative { color:#f88; }
     .stat-box.stat-link {
       display:block; text-decoration:none; color:inherit;
       border:1px solid transparent; transition:border-color 0.15s, background 0.15s;
@@ -89,6 +105,14 @@
         <p id="pageMeta" class="meta" style="margin:0;"></p>
         <nav id="financeSubnav" class="finance-subnav" aria-label="Finances sections"></nav>
       </div>
+    </div>
+
+    <div class="panel">
+      <h2>Season history</h2>
+      <p class="footer-note" style="margin-top:0;">
+        Final finances for up to the last five completed seasons. Select a season to view its archived accounts and ledger.
+      </p>
+      <div id="financeSeasonHistory"></div>
     </div>
 
     <div class="panel">
@@ -155,6 +179,6 @@
       <div id="archiveList"></div>
     </div>
   </div>
-  <script type="module" src="finances.js?v=20260609-accounts-split"></script>
+  <script type="module" src="finances.js?v=20260610-finance-archive"></script>
 </body>
 </html>

@@ -29,6 +29,23 @@ h1 { color:#ff9900; margin:0; }
 .fin-subnav-link.active {
   background:#332a00; border-color:#ff9900; color:#ff9900; font-weight:bold;
 }
+.finance-season-history { margin-top:10px; }
+.fin-season-nav {
+  display:flex; flex-wrap:wrap; gap:8px;
+}
+.fin-season-link {
+  display:inline-flex; flex-direction:column; gap:2px;
+  padding:8px 12px; font-size:12px; text-decoration:none;
+  color:#ccc; background:#222; border:1px solid #444; border-radius:8px;
+  min-width:120px;
+}
+.fin-season-link:hover { border-color:#ff9900; color:#ff9900; }
+.fin-season-link.active {
+  background:#332a00; border-color:#ff9900; color:#ff9900; font-weight:bold;
+}
+.fin-season-net { font-size:11px; color:#aaa; }
+.fin-season-net.positive { color:#6f6; }
+.fin-season-net.negative { color:#f88; }
 .ledger-summary {
   font-size:14px; color:#ccc; margin:0 0 14px; font-weight:bold;
 }

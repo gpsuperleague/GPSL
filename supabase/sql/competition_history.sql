@@ -356,6 +356,7 @@ DECLARE
   v_clubs int := 0;
   v_players int := 0;
   v_cups int := 0;
+  v_finance int := 0;
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -617,13 +618,16 @@ BEGIN
     );
   END IF;
 
+  v_finance := public.competition_archive_club_finances_for_season(v_season.id);
+
   RETURN jsonb_build_object(
     'ok', true,
     'season_id', v_season.id,
     'season_label', v_season.label,
     'clubs_archived', v_clubs,
     'players_archived', v_players,
-    'cups_archived', v_cups
+    'cups_archived', v_cups,
+    'clubs_finance_archived', v_finance
   );
 END;
 $function$;

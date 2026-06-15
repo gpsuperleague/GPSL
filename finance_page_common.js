@@ -31,22 +31,186 @@ export const FINANCE_SUBNAV = [
   { id: "finances_outgoing", href: "finances_outgoing.html", label: "Outgoings" },
 ];
 
+export function parseFinanceSeasonParam() {
+  const raw = new URLSearchParams(window.location.search).get("season");
+  if (!raw) return null;
+  const id = Number(raw);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
+export function financePageQuery(shortName, adminPreview, seasonId = null) {
+  const params = new URLSearchParams();
+  if (adminPreview && shortName) params.set("club", shortName);
+  if (seasonId) params.set("season", String(seasonId));
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+/** @deprecated use financePageQuery */
 export function financeClubQuery(shortName) {
-  if (!shortName) return "";
-  return `?club=${encodeURIComponent(shortName)}`;
+  return financePageQuery(shortName, true);
 }
 
-export function financePageHref(pageFile, shortName, adminPreview) {
+export function financePageHref(pageFile, shortName, adminPreview, seasonId = null) {
   const base = pageFile.endsWith(".html") ? pageFile : `${pageFile}.html`;
-  if (adminPreview && shortName) return `${base}${financeClubQuery(shortName)}`;
-  return base;
+  return `${base}${financePageQuery(shortName, adminPreview, seasonId)}`;
 }
 
-export function wireFinanceStatLinks(shortName, adminPreview) {
-  const ledger = financePageHref("finances_ledger.html", shortName, adminPreview);
-  const incoming = financePageHref("finances_incoming.html", shortName, adminPreview);
-  const outgoing = financePageHref("finances_outgoing.html", shortName, adminPreview);
-  const accounts = financePageHref("finances_accounts.html", shortName, adminPreview);
+export async function loadCurrentSeasonId(supabase) {
+  const { data, error } = await supabase
+    .from("competition_season_public")
+    .select("id, label")
+    .eq("is_current", true)
+    .maybeSingle();
+
+  if (error) {
+    console.error("loadCurrentSeasonId:", error);
+    return { id: null, label: null };
+  }
+
+  return { id: data?.id ?? null, label: data?.label ?? null };
+}
+
+export async function loadClubFinanceSeasonArchives(supabase, clubShortName, limit = 5) {
+  const { data, error } = await supabase
+    .from("competition_club_finance_season_archive_public")
+    .select(
+      "season_id, season_label, club_short_name, opening_balance, closing_balance, income_total, cost_total, net_total, archived_at"
+    )
+    .eq("club_short_name", clubShortName)
+    .order("season_id", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    console.error("loadClubFinanceSeasonArchives:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function loadClubFinanceSeasonArchive(supabase, clubShortName, seasonId) {
+  const { data, error } = await supabase
+    .from("competition_club_finance_season_archive_public")
+    .select("*")
+    .eq("club_short_name", clubShortName)
+    .eq("season_id", seasonId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("loadClubFinanceSeasonArchive:", error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function resolveFinanceSeasonView(supabase, shortName) {
+  const requestedSeasonId = parseFinanceSeasonParam();
+  const currentSeason = await loadCurrentSeasonId(supabase);
+  const archives = await loadClubFinanceSeasonArchives(supabase, shortName, 5);
+
+  const activeSeasonId = requestedSeasonId ?? currentSeason.id;
+  const isHistorical =
+    requestedSeasonId != null &&
+    currentSeason.id != null &&
+    requestedSeasonId !== currentSeason.id;
+
+  let archiveRow = null;
+  if (isHistorical) {
+    archiveRow = await loadClubFinanceSeasonArchive(
+      supabase,
+      shortName,
+      requestedSeasonId
+    );
+  }
+
+  return {
+    requestedSeasonId,
+    currentSeasonId: currentSeason.id,
+    currentSeasonLabel: currentSeason.label,
+    activeSeasonId,
+    isHistorical,
+    archiveRow,
+    archives,
+  };
+}
+
+export function renderFinanceSeasonHistoryNav(
+  container,
+  { archives, currentSeasonId, currentSeasonLabel, shortName, adminPreview, activeSeasonId }
+) {
+  if (!container) return;
+
+  const pageFile =
+    window.location.pathname.split("/").pop() || "finances.html";
+
+  const links = [];
+
+  if (currentSeasonId) {
+    const active = activeSeasonId === currentSeasonId ? " active" : "";
+    const href = financePageHref(pageFile, shortName, adminPreview);
+    const label = currentSeasonLabel
+      ? `Current (${currentSeasonLabel})`
+      : "Current season";
+    links.push(
+      `<a href="${href}" class="fin-season-link${active}">${label}</a>`
+    );
+  }
+
+  for (const row of archives) {
+    if (row.season_id === currentSeasonId) continue;
+    const active = activeSeasonId === row.season_id ? " active" : "";
+    const href = financePageHref(
+      pageFile,
+      shortName,
+      adminPreview,
+      row.season_id
+    );
+    const net = Number(row.net_total || 0);
+    const netClass = net >= 0 ? "positive" : "negative";
+    links.push(
+      `<a href="${href}" class="fin-season-link${active}" title="Closing balance ${formatMoney(row.closing_balance)}">
+        <span>${row.season_label}</span>
+        <span class="fin-season-net ${netClass}">${formatMoney(row.closing_balance)}</span>
+      </a>`
+    );
+  }
+
+  if (!links.length) {
+    container.innerHTML =
+      '<p class="empty">No archived finance seasons yet — snapshots are created when admins archive a completed season.</p>';
+    return;
+  }
+
+  container.innerHTML = `<nav class="fin-season-nav" aria-label="Finance season history">${links.join("")}</nav>`;
+}
+
+export function applyHistoricalFinanceBanner(seasonView) {
+  if (!seasonView?.isHistorical) return;
+
+  const existing = document.getElementById("financeArchiveBanner");
+  if (existing) existing.remove();
+
+  const label = seasonView.archiveRow?.season_label || "selected season";
+  const note = document.createElement("p");
+  note.id = "financeArchiveBanner";
+  note.className = "finance-archive-banner";
+  note.style.cssText =
+    "margin:8px 0 0;padding:8px 12px;background:#2a2418;border:1px solid #664400;border-radius:6px;color:#e8c070;font-size:13px;";
+  note.textContent = `Viewing archived finances for ${label} — read-only snapshot from season end.`;
+
+  const meta = document.getElementById("pageMeta");
+  if (meta) {
+    meta.insertAdjacentElement("afterend", note);
+  }
+}
+
+export function wireFinanceStatLinks(shortName, adminPreview, seasonId = null) {
+  const ledger = financePageHref("finances_ledger.html", shortName, adminPreview, seasonId);
+  const incoming = financePageHref("finances_incoming.html", shortName, adminPreview, seasonId);
+  const outgoing = financePageHref("finances_outgoing.html", shortName, adminPreview, seasonId);
+  const accounts = financePageHref("finances_accounts.html", shortName, adminPreview, seasonId);
 
   for (const [id, href] of [
     ["linkLedger", ledger],
@@ -61,12 +225,12 @@ export function wireFinanceStatLinks(shortName, adminPreview) {
   }
 }
 
-export function renderFinanceSubnav(activePageId, shortName, adminPreview) {
+export function renderFinanceSubnav(activePageId, shortName, adminPreview, seasonId = null) {
   const el = document.getElementById("financeSubnav");
   if (!el) return;
 
   el.innerHTML = FINANCE_SUBNAV.map((item) => {
-    const href = financePageHref(item.href, shortName, adminPreview);
+    const href = financePageHref(item.href, shortName, adminPreview, seasonId);
     const active = item.id === activePageId ? " active" : "";
     return `<a href="${href}" class="fin-subnav-link${active}">${item.label}</a>`;
   }).join("");
@@ -253,7 +417,56 @@ export function renderLedgerTable(container, rows, { emptyMessage } = {}) {
   `;
 }
 
-export async function loadFinanceSeasonContext(supabase, shortName) {
+export async function loadFinanceSeasonContext(supabase, shortName, options = {}) {
+  const { seasonView = null } = options;
+
+  if (seasonView?.isHistorical) {
+    const archiveRow = seasonView.archiveRow;
+    if (!archiveRow) {
+      return {
+        isHistorical: true,
+        missingArchive: true,
+        balanceNow: 0,
+        ledger: [],
+        incomeTotal: 0,
+        costTotal: 0,
+        net: 0,
+        byLine: new Map(),
+        pendingByLine: new Map(),
+        totalPending: 0,
+        inferredOpeningAdjusted: 0,
+        projectedBalance: 0,
+      };
+    }
+
+    const ledger = Array.isArray(archiveRow.ledger_lines)
+      ? archiveRow.ledger_lines
+      : [];
+    const { incomeTotal, costTotal, net } = summariseLedgerTotals(ledger);
+    const byLine = aggregateLedgerByLine(ledger);
+    const balanceNow = Number(archiveRow.closing_balance ?? 0);
+    const inferredOpeningAdjusted = Number(
+      archiveRow.opening_balance ?? balanceNow - net
+    );
+
+    return {
+      isHistorical: true,
+      seasonId: archiveRow.season_id,
+      seasonLabel: archiveRow.season_label,
+      balanceRow: { balance: balanceNow, club_name: shortName },
+      balanceNow,
+      ledger,
+      incomeTotal: Number(archiveRow.income_total ?? incomeTotal),
+      costTotal: Number(archiveRow.cost_total ?? costTotal),
+      net: Number(archiveRow.net_total ?? net),
+      byLine,
+      pendingByLine: new Map(),
+      totalPending: 0,
+      inferredOpeningAdjusted,
+      projectedBalance: balanceNow,
+    };
+  }
+
   const balanceRow = await loadClubBalance(supabase, shortName);
   const balanceNow = Number(balanceRow?.balance ?? 0);
   const ledger = await loadFinanceLedger(supabase, shortName, 300);
@@ -280,6 +493,7 @@ export async function loadFinanceSeasonContext(supabase, shortName) {
   );
 
   return {
+    isHistorical: false,
     balanceRow,
     balanceNow,
     ledger,
@@ -322,28 +536,42 @@ export async function initFinanceAccountsPage() {
   }
 
   const { shortName, clubLabel, adminPreview } = ctx;
+  const seasonView = await resolveFinanceSeasonView(supabase, shortName);
+  const seasonId = seasonView.isHistorical ? seasonView.requestedSeasonId : null;
 
   await applyFinanceClubHeader(shortName, clubLabel, {
     adminPreview,
-    pageSuffix: "Finances",
+    pageSuffix: seasonView.isHistorical ? "Finances (archive)" : "Finances",
   });
 
   const meta = document.getElementById("pageMeta");
   if (meta && adminPreview) {
     meta.textContent = `Admin preview — ${shortName}.`;
   }
+  applyHistoricalFinanceBanner(seasonView);
+  renderFinanceSeasonHistoryNav(document.getElementById("financeSeasonHistory"), {
+    ...seasonView,
+    shortName,
+    adminPreview,
+  });
 
-  renderFinanceSubnav("finances_accounts", shortName, adminPreview);
+  renderFinanceSubnav("finances_accounts", shortName, adminPreview, seasonId);
 
   const overviewLink = document.getElementById("backToFinances");
   if (overviewLink) {
-    overviewLink.href = financePageHref("finances.html", shortName, adminPreview);
+    overviewLink.href = financePageHref("finances.html", shortName, adminPreview, seasonId);
   }
 
-  const data = await loadFinanceSeasonContext(supabase, shortName);
+  const data = await loadFinanceSeasonContext(supabase, shortName, { seasonView });
 
   const sectionsEl = document.getElementById("financeSections");
   if (sectionsEl) {
+    if (data.missingArchive) {
+      sectionsEl.innerHTML =
+        '<p class="empty">No finance archive found for this season. Ask an admin to run the finance archive backfill for that season.</p>';
+      return;
+    }
+
     sectionsEl.innerHTML = renderFinanceSections(data.byLine, {
       pendingByLine: data.pendingByLine,
       runningStart: data.inferredOpeningAdjusted,
@@ -385,25 +613,41 @@ export async function initFinanceSubPage({
   }
 
   const { shortName, clubLabel, adminPreview } = ctx;
+  const seasonView = await resolveFinanceSeasonView(supabase, shortName);
+  const seasonId = seasonView.isHistorical ? seasonView.requestedSeasonId : null;
 
   await applyFinanceClubHeader(shortName, clubLabel, {
     adminPreview,
-    pageSuffix,
+    pageSuffix: seasonView.isHistorical ? `${pageSuffix} (archive)` : pageSuffix,
   });
 
   const meta = document.getElementById("pageMeta");
   if (meta && adminPreview) {
     meta.textContent = `Admin preview — ${shortName}.`;
   }
+  applyHistoricalFinanceBanner(seasonView);
+  renderFinanceSeasonHistoryNav(document.getElementById("financeSeasonHistory"), {
+    ...seasonView,
+    shortName,
+    adminPreview,
+  });
 
-  renderFinanceSubnav(pageId, shortName, adminPreview);
+  renderFinanceSubnav(pageId, shortName, adminPreview, seasonId);
 
   const overviewLink = document.getElementById("backToFinances");
   if (overviewLink) {
-    overviewLink.href = financePageHref("finances.html", shortName, adminPreview);
+    overviewLink.href = financePageHref("finances.html", shortName, adminPreview, seasonId);
   }
 
-  const ledger = await loadFinanceLedger(supabase, shortName, 500);
+  let ledger = [];
+  if (seasonView.isHistorical && seasonView.archiveRow?.ledger_lines) {
+    ledger = seasonView.archiveRow.ledger_lines;
+  } else if (seasonView.isHistorical) {
+    ledger = [];
+  } else {
+    ledger = await loadFinanceLedger(supabase, shortName, 500);
+  }
+
   const filtered = filterLedgerRows(ledger, filter);
   const { incomeTotal, costTotal } = summariseLedgerTotals(ledger);
 
@@ -422,8 +666,9 @@ export async function initFinanceSubPage({
   }
 
   renderLedgerTable(document.getElementById("ledgerTable"), filtered, {
-    emptyMessage:
-      filter === "income"
+    emptyMessage: seasonView.isHistorical
+      ? "No ledger lines were archived for this season."
+      : filter === "income"
         ? "No posted income yet — gates, prizes, and transfer sales appear here when they post."
         : filter === "cost"
           ? "No posted costs yet — purchases, wages, and maintenance appear here when they post."
