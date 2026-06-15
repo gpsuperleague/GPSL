@@ -9,9 +9,10 @@ primeAdminPageChrome();
 
 const CONFIRM_TEXT = "SYNC GPDB";
 const SCRAPE_FUNCTION = "gpdb-pesdb-scrape";
-const DETAIL_BATCH_SIZE = 4;
-const PAGE_DELAY_MS = 10000;
-const BATCH_DELAY_MS = 4000;
+const DETAIL_BATCH_SIZE = 3;
+const PAGE_DELAY_MS = 30000;
+const BATCH_DELAY_MS = 12000;
+const RATE_LIMIT_RETRY_MS = 25000;
 let scrapeAbort = false;
 
 function sleep(ms) {
@@ -167,11 +168,11 @@ async function invokePesdbScrape(body, attempt = 1) {
     }
     if (data?.error) detail = String(data.error);
 
-    if (isRateLimitError(detail) && attempt < 5 && !scrapeAbort) {
-      const waitMs = 15000 * attempt;
+    if (isRateLimitError(detail) && attempt < 6 && !scrapeAbort) {
+      const waitMs = RATE_LIMIT_RETRY_MS * attempt;
       setStatus(
         "scrapeStatus",
-        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/4)…`,
+        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/5)…`,
         true
       );
       await sleep(waitMs);
@@ -184,11 +185,11 @@ async function invokePesdbScrape(body, attempt = 1) {
     throw new Error(detail + hint);
   }
   if (data?.error) {
-    if (isRateLimitError(data.error) && attempt < 5 && !scrapeAbort) {
-      const waitMs = 15000 * attempt;
+    if (isRateLimitError(data.error) && attempt < 6 && !scrapeAbort) {
+      const waitMs = RATE_LIMIT_RETRY_MS * attempt;
       setStatus(
         "scrapeStatus",
-        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/4)…`,
+        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/5)…`,
         true
       );
       await sleep(waitMs);
