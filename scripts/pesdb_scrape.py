@@ -87,6 +87,38 @@ HTTP_HEADERS = {
 _http_thread_local = threading.local()
 
 
+class ThrottleState:
+    """Shared pause when PESDB returns 429 — all workers wait together."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._pause_until = 0.0
+        self._last_warn = 0.0
+
+    def wait_if_paused(self) -> None:
+        with self._lock:
+            wait = self._pause_until - time.monotonic()
+        if wait > 0:
+            time.sleep(wait)
+
+    def on_429(self, attempt: int) -> None:
+        pause = min(600.0, 30.0 * attempt)
+        with self._lock:
+            self._pause_until = max(self._pause_until, time.monotonic() + pause)
+            should_warn = time.monotonic() - self._last_warn > 20.0
+            if should_warn:
+                self._last_warn = time.monotonic()
+                msg = (
+                    f"⏸ PESDB rate limit (HTTP 429) — pausing {pause:.0f}s "
+                    f"(try fewer workers / higher --delay if this repeats)"
+                )
+            else:
+                msg = ""
+        if msg:
+            print(msg, flush=True)
+        time.sleep(pause)
+
+
 def find_players_table(soup: BeautifulSoup):
     """PESDB player list uses <table class="players"> — not the first <table> on the page."""
     table = soup.select_one("table.players")
@@ -548,6 +580,7 @@ def html_looks_blocked(html: str) -> bool:
 def fetch_player_detail_http(
     player_id: str,
     rate_limiter: RateLimiter,
+    throttle: ThrottleState | None = None,
     retries: int = 5,
 ) -> tuple[str, str]:
     if not player_id:
@@ -555,7 +588,9 @@ def fetch_player_detail_http(
 
     url = f"{BASE_URL}?id={player_id}&mode=max_level"
     session = get_http_session()
+    throttle = throttle or ThrottleState()
     for attempt in range(1, retries + 1):
+        throttle.wait_if_paused()
         rate_limiter.wait()
         try:
             resp = session.get(url, timeout=30)
@@ -563,11 +598,11 @@ def fetch_player_detail_http(
             if attempt < retries:
                 time.sleep(min(30.0, 2.0 * attempt))
                 continue
-            print(f"     warn: player {player_id}: {exc}", file=sys.stderr)
+            print(f"     warn: player {player_id}: {exc}", file=sys.stderr, flush=True)
             return "None", "Unknown"
 
         if resp.status_code == 429:
-            time.sleep(min(120.0, 5.0 * attempt))
+            throttle.on_429(attempt)
             continue
         if resp.status_code == 404:
             return "None", "Unknown"
@@ -578,7 +613,7 @@ def fetch_player_detail_http(
             time.sleep(min(15.0, 1.5 * attempt))
             continue
         if html_looks_blocked(resp.text):
-            time.sleep(min(90.0, 10.0 * attempt))
+            throttle.on_429(attempt)
             continue
 
         return parse_player_detail_html(resp.text)
@@ -586,11 +621,25 @@ def fetch_player_detail_http(
     return "None", "Unknown"
 
 
+def probe_pesdb_http(player_id: str) -> int:
+    if requests is None:
+        return 0
+    try:
+        resp = requests.get(
+            f"{BASE_URL}?id={player_id}&mode=max_level",
+            headers=HTTP_HEADERS,
+            timeout=30,
+        )
+        return resp.status_code
+    except requests.RequestException:
+        return 0
+
+
 def resolve_delay(args, mode: str) -> float:
     if args.delay is not None:
         return args.delay
     if mode == "enrich_http":
-        return 0.2
+        return 1.0
     if mode == "enrich_browser":
         return 2.5
     return 1.5
@@ -681,20 +730,38 @@ def enrich_csv_http(args) -> int:
     delay = resolve_delay(args, "enrich_http")
     workers = max(1, args.workers)
     rate_limiter = RateLimiter(delay)
+    throttle = ThrottleState()
     est_per_sec = workers / max(delay, 0.05)
     est_hours = len(targets) / est_per_sec / 3600
 
+    probe_id = data[targets[0]][idx["player_id"]].strip()
+    if probe_id:
+        probe_status = probe_pesdb_http(probe_id)
+        if probe_status == 429:
+            print(
+                "⚠️ PESDB is rate-limiting your IP right now (HTTP 429).\n"
+                "   Stop (Ctrl+C), wait 30–60 minutes, then rerun with:\n"
+                "   python scripts/pesdb_scrape.py --enrich pesdb_list.csv "
+                "--output pesdb_full.csv --resume --workers 2 --delay 2\n"
+                "   Continuing anyway — you should see pause messages below…",
+                flush=True,
+            )
+        elif probe_status == 200:
+            print(f"  probe OK (player {probe_id})", flush=True)
+        elif probe_status:
+            print(f"  probe returned HTTP {probe_status} for player {probe_id}", flush=True)
+
     print(
         f"Enriching {len(targets)} players (HTTP, {workers} workers, "
-        f"{delay:.2f}s min interval) → ~{est_hours:.1f}h"
+        f"{delay:.2f}s min interval) → ~{est_hours:.1f}h",
+        flush=True,
     )
-    print(f"  {in_path.name} → {out_path.name}")
+    print(f"  {in_path.name} → {out_path.name}", flush=True)
 
     lock = threading.Lock()
     enriched = 0
     failed = 0
     completed = 0
-    last_checkpoint = 0
     started = time.monotonic()
 
     def enrich_row(row_i: int) -> tuple[int, str, str, str]:
@@ -702,7 +769,9 @@ def enrich_csv_http(args) -> int:
         player_id = row[idx["player_id"]].strip()
         if not player_id:
             return row_i, player_id, "None", "Unknown"
-        style, max_rating = fetch_player_detail_http(player_id, rate_limiter)
+        style, max_rating = fetch_player_detail_http(
+            player_id, rate_limiter, throttle
+        )
         return row_i, player_id, style, max_rating
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -722,21 +791,25 @@ def enrich_csv_http(args) -> int:
                     data[row_i] = row
                     enriched += 1
 
-                if enriched > 0 and enriched - last_checkpoint >= args.checkpoint:
+                should_save = (
+                    completed == 1
+                    or completed % args.checkpoint == 0
+                    or completed == len(targets)
+                )
+                should_log = (
+                    completed == 1
+                    or completed % 10 == 0
+                    or completed == len(targets)
+                )
+                if should_save:
                     write_csv_rows(out_path, header, data)
-                    last_checkpoint = enriched
-                    elapsed = time.monotonic() - started
-                    rate = enriched / elapsed if elapsed > 0 else 0
-                    print(
-                        f"   checkpoint: {enriched}/{len(targets)} enriched, "
-                        f"{failed} failed ({rate:.1f}/s)"
-                    )
-                elif completed % 250 == 0 or completed == len(targets):
+                if should_log:
                     elapsed = time.monotonic() - started
                     rate = completed / elapsed if elapsed > 0 else 0
                     print(
-                        f"  … {completed}/{len(targets)} processed "
-                        f"({enriched} ok, {failed} failed, {rate:.1f}/s)"
+                        f"  {completed}/{len(targets)} "
+                        f"({enriched} ok, {failed} failed, {rate:.2f}/s)",
+                        flush=True,
                     )
 
     write_csv_rows(out_path, header, data)
@@ -874,13 +947,13 @@ def main() -> int:
         "--delay",
         type=float,
         default=None,
-        help="Seconds between requests (enrich HTTP default 0.2; browser 2.5; list detail 1.5)",
+        help="Seconds between requests (enrich HTTP default 1.0; browser 2.5; list detail 1.5)",
     )
     parser.add_argument(
         "--workers",
         type=int,
-        default=8,
-        help="Parallel HTTP workers for --enrich (default 8; ignored with --browser)",
+        default=3,
+        help="Parallel HTTP workers for --enrich (default 3; use 2 if you see 429s)",
     )
     parser.add_argument(
         "--browser",
