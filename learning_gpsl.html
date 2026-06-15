@@ -7,18 +7,36 @@
   <link rel="stylesheet" href="dashboard.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
-    .page-container { width:95%; max-width:820px; margin:20px auto 48px; }
+    .page-container { width:95%; max-width:920px; margin:20px auto 48px; }
     h1 { color:#ff9900; margin-bottom:8px; }
-    .meta { color:#aaa; margin-bottom:24px; line-height:1.5; }
+    .meta { color:#aaa; margin-bottom:24px; line-height:1.55; font-size:14px; }
+    .toc {
+      background:#151515; border:1px solid #333; border-radius:8px;
+      padding:14px 18px; margin-bottom:20px;
+    }
+    .toc h2 { font-size:14px; color:#ff9900; margin:0 0 10px; }
+    .toc ul { margin:0; padding-left:18px; columns:2; column-gap:24px; }
+    .toc li { font-size:13px; margin-bottom:6px; break-inside:avoid; }
     .section {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       padding:18px 20px; margin-bottom:16px;
     }
     .section h2 { color:#ff9900; font-size:17px; margin:0 0 10px; }
+    .section h3 { color:#ffcc66; font-size:14px; margin:14px 0 8px; }
     .section p, .section li { color:#ccc; font-size:14px; line-height:1.55; }
     .section ul { margin:8px 0 0; padding-left:20px; }
     .section a { color:#ff9900; }
-    .tip { color:#9cdc9c; font-size:13px; margin-top:10px; }
+    .tip { color:#9cdc9c; font-size:13px; margin-top:10px; line-height:1.45; }
+    .warn { color:#e8a87c; font-size:13px; margin-top:10px; line-height:1.45; }
+    .link-grid {
+      display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 4px;
+    }
+    .link-grid a {
+      display:inline-block; padding:5px 11px; font-size:12px; text-decoration:none;
+      color:#ccc; background:#222; border:1px solid #444; border-radius:999px;
+    }
+    .link-grid a:hover { border-color:#ff9900; color:#ff9900; }
+    @media (max-width:640px) { .toc ul { columns:1; } }
   </style>
 </head>
 <body>
@@ -26,80 +44,342 @@
   <div class="page-container">
     <h1>Learning GPSL</h1>
     <p class="meta">
-      A quick guide for new owners — how to navigate the site, take part in auctions and transfers,
-      meet club expectations, and get the most from your inbox.
+      A guide for new and returning owners — how the site works, where to go, and the main league rules
+      you need day to day. Most actions start from your <a href="inbox.html">Inbox</a> or the
+      <a href="dashboard.html">Dashboard</a>.
     </p>
 
-    <div class="section">
+    <nav class="toc" aria-label="Contents">
+      <h2>Contents</h2>
+      <ul>
+        <li><a href="#getting-started">Getting started &amp; club auction</a></li>
+        <li><a href="#navigation">Navigation</a></li>
+        <li><a href="#my-club">My Club pages</a></li>
+        <li><a href="#finances">Finances</a></li>
+        <li><a href="#squad">Squad &amp; contracts</a></li>
+        <li><a href="#managers">Managers</a></li>
+        <li><a href="#transfers">Transfers &amp; markets</a></li>
+        <li><a href="#auctions">Auctions &amp; drafts</a></li>
+        <li><a href="#matchday">Match day &amp; results</a></li>
+        <li><a href="#league">League &amp; cups</a></li>
+        <li><a href="#international">Nation &amp; World Cup</a></li>
+        <li><a href="#owners">Rankings &amp; challenges</a></li>
+        <li><a href="#central-bank">Central Bank</a></li>
+        <li><a href="#season">Season rhythm &amp; inbox</a></li>
+        <li><a href="#help">Need help?</a></li>
+      </ul>
+    </nav>
+
+    <div class="section" id="getting-started">
+      <h2>Getting started &amp; club auction</h2>
+      <p>
+        Before you have a club, the site is limited to registration and the <b>club auction</b>.
+        Admin registers your login; you choose an <b>owner tag</b> (your public name on rankings and
+        auction leader boards) and bid on a vacant club from your starting budget.
+      </p>
+      <div class="link-grid">
+        <a href="awaiting_club.html">Club auction (registration)</a>
+        <a href="club_auction.html">Club auction room</a>
+        <a href="login.html">Login</a>
+      </div>
+      <h3>Rules</h3>
+      <ul>
+        <li><b>Owner tag</b> — set on <a href="awaiting_club.html">registration</a> before bidding.
+          It is shown as the auction leader and on owner rankings. <b>It cannot be changed</b> once saved for the club auction.</li>
+        <li><b>Starting budget</b> — you bid from a league-set balance (currently ₿550m for new owners). Winning bid is deducted when the club is assigned; the remainder becomes your club balance.</li>
+        <li><b>Opening bids</b> — based on club prestige and stadium capacity (stadium cost = capacity × ₿1,000). Check capacity, expected Season 1 position, gate income, and maintenance on the auction page before you bid.</li>
+        <li><b>Countdown</b> — club auction uses the same timed window as draft auctions (Day 1 19:00 UK start). The timer only appears on club auction pages when the club auction is enabled — not on player or manager draft pages.</li>
+        <li>After you win, your club is linked to your account, finances are set, and the full site opens.</li>
+      </ul>
+      <p class="tip">Read this guide while you wait. Once you have a club, your badge appears top-left in the nav and links to <a href="club_details.html">Club Details</a>.</p>
+    </div>
+
+    <div class="section" id="navigation">
       <h2>Navigation</h2>
-      <ul>
-        <li><b>Dashboard</b> — shortcuts to the pages you use most.</li>
-        <li><b>Inbox</b> — all owner notifications (results, deals, fines, nation picks, monthly previews).</li>
-        <li><b>My Club</b> — squad, finances, matchday, stadium, transfer centre.</li>
-        <li><b>League / Cups</b> — fixtures, tables, stats, cup brackets.</li>
-        <li><b>Transfers</b> — player &amp; manager databases, markets, draft auctions.</li>
-        <li><b>Owners</b> — rankings, challenges, and this guide.</li>
-      </ul>
-      <p class="tip">Your club badge appears top-left once you are linked to a club.</p>
+      <p>The top menu groups pages by what you are doing. Pin favourites on the <a href="dashboard.html">Dashboard</a> for quick access.</p>
+      <h3>Transfers</h3>
+      <div class="link-grid">
+        <a href="GPDB.html">Player Database (GPDB)</a>
+        <a href="MGDB.html">Manager Database (MGDB)</a>
+        <a href="all_listings.html">Transfer Market</a>
+        <a href="manager_listings.html">Manager Market</a>
+        <a href="draftauction.html">Player Draft Auction</a>
+        <a href="manager_draftauction.html">Manager Draft Auction</a>
+        <a href="expiring_contracts.html">Expiring Contracts</a>
+        <a href="season_transfers.html">Season Transfers</a>
+      </div>
+      <h3>League &amp; cups</h3>
+      <div class="link-grid">
+        <a href="clubs.html">Clubs</a>
+        <a href="fixtures.html">Fixtures</a>
+        <a href="progress.html">Tables</a>
+        <a href="league_stats.html">Stats</a>
+        <a href="cups.html?cup=league_cup">League Cup</a>
+        <a href="cups.html?cup=super8">Super8</a>
+        <a href="cups.html?cup=plate">Plate</a>
+        <a href="cups.html?cup=shield">Shield</a>
+        <a href="cups.html?cup=spoon">Spoon</a>
+        <a href="world_cup.html">World Cup</a>
+      </div>
+      <h3>My Club</h3>
+      <div class="link-grid">
+        <a href="club_details.html">Club Details</a>
+        <a href="finances.html">Finances</a>
+        <a href="squad.html">Squad</a>
+        <a href="history.html">Club History</a>
+        <a href="stadium.html">Stadium</a>
+        <a href="matchday.html">Match Day</a>
+        <a href="transfer_center.html">Transfer Centre</a>
+      </div>
+      <h3>Owners</h3>
+      <div class="link-grid">
+        <a href="learning_gpsl.html">Learning GPSL</a>
+        <a href="owner_rankings.html">Owner rankings</a>
+        <a href="challenges.html">Season challenges</a>
+        <a href="inbox.html">Inbox</a>
+      </div>
     </div>
 
-    <div class="section">
-      <h2>Auctions &amp; transfers</h2>
+    <div class="section" id="my-club">
+      <h2>My Club pages</h2>
       <ul>
-        <li><b>Transfer window</b> — list players, bid on the market, or accept direct offers via <a href="transfer_center.html">Transfer Centre</a>.</li>
-        <li><b>Draft auctions</b> — timed player and manager drafts; watch the countdown and bid before random finish.</li>
-        <li><b>Special auctions</b> — occasional league-run events (cash or player prizes).</li>
-        <li><b>Contracts</b> — check <a href="expiring_contracts.html">Expiring contracts</a> and renew or replace before players leave.</li>
-      </ul>
-      <p>Completed signings and sales appear in your <a href="inbox.html">Inbox</a>.</p>
-    </div>
-
-    <div class="section">
-      <h2>Matchday &amp; results</h2>
-      <ul>
-        <li>Play fixtures during the active <b>GPSL month</b> (see calendar badge in the nav).</li>
-        <li>Submit scores and player stats on <a href="matchday.html">Match Day</a>.</li>
-        <li>Your opponent confirms or rejects — you are notified at each step.</li>
-        <li>Cup ties cannot end in a draw; use extra time / penalties if needed.</li>
+        <li><b><a href="club_details.html">Club Details</a></b> — badge, division, nation, government subsidy cards (HG / Youth / B&amp;B), and club overview.</li>
+        <li><b><a href="squad.html">Squad</a></b> — registered players, home-grown and under-21 counts, contracts, list/sell actions.</li>
+        <li><b><a href="finances.html">Finances</a></b> — current balance and links to ledger, income, costs, and season accounts.</li>
+        <li><b><a href="stadium.html">Stadium</a></b> — capacity, attendance estimate, upcoming home gates, expansion.</li>
+        <li><b><a href="matchday.html">Match Day</a></b> — submit scores, player stats, and your match squad.</li>
+        <li><b><a href="transfer_center.html">Transfer Centre</a></b> — your listings, incoming offers, scouting targets, and direct deals.</li>
+        <li><b><a href="history.html">Club History</a></b> — past seasons, positions, and archived results.</li>
       </ul>
     </div>
 
-    <div class="section">
-      <h2>Club expectations</h2>
+    <div class="section" id="finances">
+      <h2>Finances</h2>
+      <div class="link-grid">
+        <a href="finances.html">Overview</a>
+        <a href="finances_ledger.html">Ledger</a>
+        <a href="finances_incoming.html">Posted income</a>
+        <a href="finances_outgoing.html">Posted costs</a>
+        <a href="finances_accounts.html">Season accounts</a>
+      </div>
+      <h3>How money moves</h3>
       <ul>
-        <li><b>Manager</b> — each manager has a league finish target by rating and division. Miss it and they may be released at season end.</li>
-        <li><b>Stadium &amp; attendance</b> — maintain strong gate fill on <a href="stadium.html">Stadium</a>; underperformance reduces revenue and can trigger penalties.</li>
-        <li><b>Squad size</b> — keep within squad limits; overflow can trigger automatic fines.</li>
-        <li><b>Fines</b> — matchday misconduct, illegal actions, and admin penalties are notified in your inbox and posted to finances.</li>
+        <li><b>Balance</b> — your spendable club cash. Transfers, wages, fines, and prizes all post here via the ledger.</li>
+        <li><b>Gate receipts</b> — league home matches: 100% to the home club. Formula: capacity × fill rate × <b>₿20/seat</b>. Fill depends on table position and recent history. Cup ties split 50/50.</li>
+        <li><b>Stadium maintenance</b> — seasonal cost based on capacity (12.5% × capacity × ₿1,500). Shown on <a href="stadium.html">Stadium</a> and in season accounts.</li>
+        <li><b>Government subsidies</b> — HG, Youth, and B&amp;B targets on <a href="club_details.html">Club Details</a>; payments appear in season accounts when earned.</li>
+        <li><b>Season accounts</b> — workbook-style view: <b>Posted</b> (ledger total this season), <b>Breakdown</b> by type, <b>Running total</b>, and <b>Pending</b> (forecast not yet on the ledger). Projected balance = current + pending.</li>
+      </ul>
+      <p class="tip">Fines, cup prizes, challenge payouts, and transfer fees all arrive as inbox messages and ledger lines.</p>
+    </div>
+
+    <div class="section" id="squad">
+      <h2>Squad &amp; contracts</h2>
+      <p>Rules are enforced when you sign players — warnings appear before you bid or confirm.</p>
+      <h3>Squad size &amp; composition</h3>
+      <ul>
+        <li><b>Maximum 28</b> registered players. You can still bid at 28, but a 29th signing triggers an automatic release of your highest-rated player who was <em>not</em> signed this season.</li>
+        <li>If a foreign sale slot is available, that route is used (no fine). Otherwise the player is released for market value, your club is fined <b>₿10,000,000</b>, and the player cannot be signed until next season.</li>
+        <li><b>Home-grown</b> — minimum <b>8</b> players whose nation matches your club nation.</li>
+        <li><b>Under-21</b> — minimum <b>5</b> players aged 21 or younger.</li>
+      </ul>
+      <h3>Contracts (summary)</h3>
+      <ul>
+        <li>Standard contracts run in <b>3-season</b> cycles. Track expiry on <a href="expiring_contracts.html">Expiring Contracts</a> and the squad page.</li>
+        <li><b>Final season</b> — you cannot list or sell the player on the transfer market. They enter the hidden wage auction at expiry (all clubs, including yours, may bid once).</li>
+        <li><b>Home-grown ≤23</b> — protected from the expiry auction; uncontested renewal applies while still eligible. Protection ends at age 24.</li>
+        <li>Winning an expiry bid gives a new 3-season contract at the bid wage from season rollover.</li>
+      </ul>
+      <div class="link-grid">
+        <a href="squad.html">Squad</a>
+        <a href="expiring_contracts.html">Expiring Contracts</a>
+        <a href="GPDB.html">Player Database</a>
+        <a href="player_career.html">Player career</a>
+      </div>
+    </div>
+
+    <div class="section" id="managers">
+      <h2>Managers</h2>
+      <div class="link-grid">
+        <a href="MGDB.html">Manager Database</a>
+        <a href="manager_listings.html">Manager Market</a>
+        <a href="manager_draftauction.html">Manager Draft Auction</a>
+      </div>
+      <ul>
+        <li>Each club has one manager. Their <b>rating</b> and your <b>division</b> set a league finish target for the season.</li>
+        <li>Miss the target and the manager may be released at season end (see inbox / season rollover messages).</li>
+        <li>You may sack a manager from squad/club pages when rules allow; vacancies block new manager draft bids until filled.</li>
+        <li>Manager draft auctions use the same timed window as player drafts but are controlled by a <b>separate enable flag</b> — only active when admin turns on the manager draft.</li>
       </ul>
     </div>
 
-    <div class="section">
-      <h2>Nation &amp; international</h2>
-      <p>
-        Owners pick a national team in ranking order when the selection window opens.
-        You will receive an inbox message when it is <b>your turn</b> — use
-        <a href="nation_select.html">Nation selection</a> to claim a nation, then manage squads on
-        <a href="national_team.html">National team</a>.
+    <div class="section" id="transfers">
+      <h2>Transfers &amp; markets</h2>
+      <div class="link-grid">
+        <a href="transfer_center.html">Transfer Centre</a>
+        <a href="all_listings.html">Transfer Market</a>
+        <a href="season_transfers.html">Season Transfers</a>
+      </div>
+      <h3>Transfer window</h3>
+      <ul>
+        <li>When the <b>transfer window</b> is open, list players from the squad or Transfer Centre, bid on <a href="all_listings.html">Transfer Market</a> listings, and accept or reject direct offers.</li>
+        <li>Completed deals post to finances and appear in your <a href="inbox.html">Inbox</a>.</li>
+        <li><b>Scouting targets</b> — save players from GPDB; review them under Transfer Centre → Scouting Targets.</li>
+      </ul>
+      <h3>Selling abroad</h3>
+      <ul>
+        <li>Limited <b>foreign club</b> sale slots per season — using one avoids the squad overflow fine when you need to free a place.</li>
+        <li>Check squad warnings before confirming any signing or winning bid.</li>
+      </ul>
+    </div>
+
+    <div class="section" id="auctions">
+      <h2>Auctions &amp; drafts</h2>
+      <p class="warn">
+        <b>Important:</b> Club auction, player draft, and manager draft are <b>independent</b>.
+        Admin enables each one separately. A countdown on a page only appears when that auction type is active —
+        enabling club auction does not turn on player or manager draft timers elsewhere.
       </p>
-    </div>
-
-    <div class="section">
-      <h2>Season rhythm</h2>
+      <h3>Club auction (pre-launch)</h3>
+      <div class="link-grid">
+        <a href="awaiting_club.html">Registration</a>
+        <a href="club_auction.html">Auction room</a>
+      </div>
       <ul>
-        <li>Each real-world month (from Friday 19:00 UK) is one <b>GPSL month</b> of fixtures.</li>
-        <li>At month start you receive a <b>match preview</b> in your inbox (opponents, form, threats).</li>
-        <li>End of season: awards (Golden Boot, Ballon d'Or, etc.), manager retention, and a season overview message.</li>
-        <li>Track owner performance on <a href="owner_rankings.html">Owner rankings</a> and <a href="challenges.html">Season challenges</a>.</li>
+        <li>Vacant clubs only. Highest bidder wins when the window closes and admin/engine settles.</li>
+        <li>Winning bid is charged; remaining budget becomes your club balance.</li>
+      </ul>
+      <h3>Player draft auction</h3>
+      <div class="link-grid">
+        <a href="GPDB.html">GPDB</a>
+        <a href="draftauction.html">Draft auction list</a>
+      </div>
+      <ul>
+        <li>Timed window: opens <b>Day 1 19:00 UK</b>, bids until Day 2 18:00, then a secret random finish between 18:50 and 18:59 — the countdown never shows the exact finish time in advance.</li>
+        <li><b>Draft credits</b> limit how many players you can win. Favourite listings on GPDB for quick access.</li>
+        <li>Highest bid wins each player when the draft settles.</li>
+      </ul>
+      <h3>Manager draft auction</h3>
+      <div class="link-grid">
+        <a href="MGDB.html">MGDB</a>
+        <a href="manager_draftauction.html">Manager draft list</a>
+      </div>
+      <ul>
+        <li>Same schedule pattern as player draft when enabled. You may only lead one manager auction at a time.</li>
+      </ul>
+      <h3>Special auctions</h3>
+      <div class="link-grid">
+        <a href="special_auction.html">Special Auction</a>
+      </div>
+      <ul>
+        <li>Occasional league events (e.g. lowest unique bid, snap auction) for cash or player prizes. Appears in the nav when live.</li>
       </ul>
     </div>
 
-    <div class="section">
+    <div class="section" id="matchday">
+      <h2>Match day &amp; results</h2>
+      <div class="link-grid">
+        <a href="matchday.html">Match Day</a>
+        <a href="fixtures.html">Fixtures</a>
+      </div>
+      <ul>
+        <li>Each real-world month (from Friday 19:00 UK) is one <b>GPSL month</b> of fixtures — see the calendar badge in the nav.</li>
+        <li>Submit scores and player stats on <a href="matchday.html">Match Day</a>. Set your <b>match squad</b> (11 starters + 12 subs) on the pitch tab; starters auto-tick in the stats table.</li>
+        <li>Your opponent confirms or rejects — you are notified at each step via the inbox.</li>
+        <li><b>League:</b> win 3 pts, draw 1, loss 0. <b>Cup ties</b> cannot end in a draw — play extra time / penalties if needed.</li>
+        <li>Confirmed results post gate receipts (where applicable) and update tables, stats, and challenges.</li>
+      </ul>
+    </div>
+
+    <div class="section" id="league">
+      <h2>League &amp; cups</h2>
+      <p>60 clubs: <b>SuperLeague</b> (20) plus two <b>Championship</b> divisions (20 each). Promotion, relegation, and playoffs follow the pyramid rules on the tables page.</p>
+      <div class="link-grid">
+        <a href="progress.html">Tables</a>
+        <a href="fixtures.html">Fixtures</a>
+        <a href="league_stats.html">Stats</a>
+        <a href="clubs.html">Clubs</a>
+        <a href="cups.html">Cup brackets</a>
+      </div>
+      <h3>Cups</h3>
+      <ul>
+        <li><b>League Cup</b> — 60-club knockout. <b>Prestige cups</b> (Super8, Plate, Shield, Spoon) qualify from league standings.</li>
+        <li>Cup round fees and prizes post to both clubs when matches are confirmed.</li>
+        <li><b>World Cup</b> — national teams; owner nations draft in ranking order (see International).</li>
+      </ul>
+    </div>
+
+    <div class="section" id="international">
+      <h2>Nation &amp; World Cup</h2>
+      <div class="link-grid">
+        <a href="nation_select.html">Nation selection</a>
+        <a href="national_team.html">National team</a>
+        <a href="world_cup.html">World Cup</a>
+      </div>
+      <ul>
+        <li>When the selection window opens, owners pick a national team in <b>owner ranking</b> order (rolling four-season points).</li>
+        <li>You receive an inbox message when it is <b>your turn</b> — use <a href="nation_select.html">Nation selection</a> to claim a nation.</li>
+        <li>Manage squads and fixtures on <a href="national_team.html">National team</a>. World Cup cycles add extra ranking points for owners.</li>
+        <li>Track standing on <a href="owner_rankings.html">Owner rankings</a> (rolling, season-by-season, and all-time tabs).</li>
+      </ul>
+    </div>
+
+    <div class="section" id="owners">
+      <h2>Rankings &amp; challenges</h2>
+      <div class="link-grid">
+        <a href="owner_rankings.html">Owner rankings</a>
+        <a href="challenges.html">Season challenges</a>
+      </div>
+      <h3>Owner rankings</h3>
+      <ul>
+        <li>Points from league position and cup runs each season. Rolling four seasons sets World Cup nation draft order.</li>
+        <li>The <b>Owner</b> column shows your <b>owner tag</b>, not the club short name.</li>
+      </ul>
+      <h3>Season challenges</h3>
+      <ul>
+        <li>Admin-set targets for the current season (e.g. goals, wins, clean sheets). Prizes post instantly when a match is confirmed.</li>
+        <li>First club to complete <b>all</b> targets in a window earns the period bonus.</li>
+      </ul>
+    </div>
+
+    <div class="section" id="central-bank">
+      <h2>Central Bank</h2>
+      <p>League-wide banking separate from your club balance — loans and services between owners and the league.</p>
+      <div class="link-grid">
+        <a href="central_bank.html">Bank balance</a>
+        <a href="central_bank_loans.html">League loans</a>
+        <a href="central_bank_counter.html">Service counter</a>
+      </div>
+    </div>
+
+    <div class="section" id="season">
+      <h2>Season rhythm &amp; inbox</h2>
+      <div class="link-grid">
+        <a href="inbox.html">Inbox</a>
+        <a href="dashboard.html">Dashboard</a>
+      </div>
+      <ul>
+        <li>At month start you receive a <b>match preview</b> (opponents, form, threats).</li>
+        <li>Transfer news, fines, cup draws, nation picks, and finance postings all go to the inbox — most messages link straight to the relevant page.</li>
+        <li>End of season: awards (Golden Boot, Ballon d'Or, etc.), manager retention, archived history, and season overview messages.</li>
+        <li>Unread count appears on the Inbox nav link.</li>
+      </ul>
+      <h3>Club expectations (summary)</h3>
+      <ul>
+        <li>Strong stadium attendance — underperformance reduces gate income and can trigger penalties (<a href="stadium.html">Stadium</a>).</li>
+        <li>Stay within squad limits and composition minimums (<a href="squad.html">Squad</a>).</li>
+        <li>Meet manager targets or plan for a change at season end.</li>
+        <li>Respond to inbox actions promptly (confirm results, accept deals, pick your nation when called).</li>
+      </ul>
+    </div>
+
+    <div class="section" id="help">
       <h2>Need help?</h2>
-      <p>
-        Check your <a href="inbox.html">Inbox</a> first — most actions link straight to the relevant page.
-        League admins can assist with disputes, fines, and technical issues.
-      </p>
+      <ul>
+        <li>Check your <a href="inbox.html">Inbox</a> first — it is the hub for anything needing action.</li>
+        <li>Use this page and the linked screens; rules on squad, finances, and match day are also shown in context where they apply.</li>
+        <li>League admins can assist with disputes, fines, account linking, and technical issues.</li>
+      </ul>
     </div>
   </div>
   <script type="module">
