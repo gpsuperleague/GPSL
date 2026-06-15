@@ -15,12 +15,41 @@ import {
 const GATE_PRICE_PER_SEAT = 20;
 const STADIUM_VALUE_PER_SEAT = 1500;
 const MAINTENANCE_RATE = 0.125;
+const BID_INCREMENT = 500000;
 const TABLE_COLS = 10;
 
 function formatMoney(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
-  return `₿${Math.round(v).toLocaleString("en-GB")}`;
+  return `₿\u00a0${Math.round(v).toLocaleString("en-GB")}`;
+}
+
+function parseMoneyInput(value) {
+  if (!value) return 0;
+  return Number(String(value).replace(/,/g, "")) || 0;
+}
+
+function roundBidToMillion(amount) {
+  return Math.round(amount / 1000000) * 1000000;
+}
+
+function listingMinimumBid(row) {
+  const min = Number(row.min_next_bid);
+  if (Number.isFinite(min) && min > 0) return min;
+  const opening = Number(row.opening_bid) || stadiumCost(row);
+  const high = Number(row.current_highest_bid) || 0;
+  if (!high) return opening;
+  return Math.max(opening, high + BID_INCREMENT);
+}
+
+function minimumBidHelpText(row) {
+  const min = listingMinimumBid(row);
+  const high = Number(row.current_highest_bid) || 0;
+  const cost = stadiumCost(row);
+  if (!high) {
+    return `Opening bid is stadium cost (${formatMoney(cost)} = capacity × ₿1,000). Bids round to the nearest ₿1,000,000.`;
+  }
+  return `Minimum bid is ${formatMoney(min)} (stadium cost or ₿500,000 above the current highest). Bids round to the nearest ₿1,000,000.`;
 }
 
 function formatNum(n) {
@@ -123,6 +152,8 @@ let ownerTag = null;
 let budget = 0;
 let auctionState = null;
 let pollTimer = null;
+let selectedListing = null;
+let listingsCache = [];
 
 async function loadOwnerContext() {
   const {
@@ -263,17 +294,21 @@ async function loadListings() {
     return;
   }
 
+  listingsCache = listings;
   const canBid = auctionState?.bidding_open && ownerTag;
   tbody.innerHTML = "";
 
   for (const row of listings) {
     const tr = document.createElement("tr");
-    const minBid = Number(row.min_next_bid) || Number(row.opening_bid) || stadiumCost(row);
+    const minBid = listingMinimumBid(row);
     const isLeader = row.current_highest_bidder === ownerId;
     const expPos = season1Expected(row);
     const gate = fullGateMatchday(row);
     const maint = seasonMaintenance(row);
     const cost = stadiumCost(row);
+    const highBidHtml = row.current_highest_bid
+      ? `<span class="high-bid-link" data-listing-id="${row.id}" title="View bid history">${formatMoney(row.current_highest_bid)}</span>`
+      : "—";
 
     tr.innerHTML = `
       <td></td>
@@ -283,56 +318,263 @@ async function loadListings() {
       <td class="stat-num">${formatMoney(maint)}<span class="stat-sub">12.5% × cap × ₿${STADIUM_VALUE_PER_SEAT.toLocaleString("en-GB")}</span></td>
       <td class="exp-pos">${ordinal(expPos)}<span class="stat-sub">league table</span></td>
       <td class="stat-num">${formatMoney(cost)}<span class="stat-sub">capacity × ₿1,000</span></td>
-      <td class="stat-num">${row.current_highest_bid ? formatMoney(row.current_highest_bid) : "—"}</td>
+      <td class="stat-num">${highBidHtml}</td>
       <td>${row.current_leader_tag || "—"}${isLeader ? ' <span class="leader-you">(you)</span>' : ""}</td>
       <td class="bid-col"></td>
     `;
     tr.firstElementChild.appendChild(renderClubCell(row));
 
     const bidCell = tr.querySelector(".bid-col");
-    if (canBid) {
-      const input = document.createElement("input");
-      input.type = "number";
-      input.className = "bid-input";
-      input.step = "1000000";
-      input.min = String(minBid);
-      input.value = String(minBid);
-      input.placeholder = formatMoney(minBid);
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "bid-btn";
-      btn.textContent = "Bid";
-      btn.onclick = () => placeBid(row.club_short_name, input.value, btn);
-      bidCell.appendChild(input);
-      bidCell.appendChild(btn);
-    } else {
-      bidCell.textContent = "—";
-    }
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = canBid ? "bid-btn" : "history-btn";
+    btn.textContent = canBid ? "Bid" : "History";
+    btn.onclick = () => openClubBidModal(row, canBid);
+    bidCell.appendChild(btn);
+
+    tr.querySelector(".high-bid-link")?.addEventListener("click", () => {
+      openClubBidModal(row, canBid);
+    });
+
     tbody.appendChild(tr);
   }
 }
 
+async function resolveOwnerTags(ownerIds) {
+  const unique = [...new Set(ownerIds.filter(Boolean))];
+  const map = {};
+  await Promise.all(
+    unique.map(async (id) => {
+      const { data, error } = await supabase.rpc("owner_registry_resolve_tag", {
+        p_owner_id: id,
+      });
+      map[id] = !error && data ? String(data) : "—";
+    })
+  );
+  return map;
+}
+
+async function loadBidHistory(listingId) {
+  const tbody = document.getElementById("clubBidHistoryBody");
+  if (!tbody) return;
+
+  tbody.innerHTML = `<tr><td colspan="3">Loading…</td></tr>`;
+
+  const { data: bids, error } = await supabase
+    .from("Club_Auction_Bids")
+    .select("bid_amount, bid_time, bidder_owner_id")
+    .eq("listing_id", listingId)
+    .order("bid_time", { ascending: false });
+
+  if (error) {
+    tbody.innerHTML = `<tr><td colspan="3">Could not load bids — ${error.message}</td></tr>`;
+    return;
+  }
+
+  if (!bids?.length) {
+    tbody.innerHTML = `<tr><td colspan="3">No bids yet</td></tr>`;
+    return;
+  }
+
+  const tagMap = await resolveOwnerTags(bids.map((b) => b.bidder_owner_id));
+  tbody.innerHTML = bids
+    .map((b) => {
+      const isYou = b.bidder_owner_id === ownerId;
+      const tag = isYou ? `${tagMap[b.bidder_owner_id] || "—"} (you)` : tagMap[b.bidder_owner_id] || "—";
+      return `<tr>
+        <td>${tag}</td>
+        <td>${formatMoney(b.bid_amount)}</td>
+        <td>${new Date(b.bid_time).toLocaleString("en-GB")}</td>
+      </tr>`;
+    })
+    .join("");
+}
+
+function validateClubBidInput() {
+  const input = document.getElementById("clubBidAmount");
+  const errorBox = document.getElementById("clubBidError");
+  const submitBtn = document.getElementById("clubBidSubmitBtn");
+  if (!input || !selectedListing) return;
+
+  const raw = parseMoneyInput(input.value);
+  const rounded = raw > 0 ? roundBidToMillion(raw) : 0;
+  const minBid = listingMinimumBid(selectedListing);
+
+  if (input.value !== "" && rounded > 0) {
+    input.value = rounded.toLocaleString("en-GB");
+  }
+
+  if (!rounded || rounded < minBid) {
+    input.style.border = "2px solid #a44";
+    if (errorBox) {
+      errorBox.textContent = rounded && rounded < minBid
+        ? `Minimum bid is ${formatMoney(minBid)} (after rounding to nearest ₿1m).`
+        : `Enter at least ${formatMoney(minBid)}.`;
+    }
+    if (submitBtn) submitBtn.disabled = true;
+    return;
+  }
+
+  if (rounded > budget) {
+    input.style.border = "2px solid #a44";
+    if (errorBox) errorBox.textContent = `Bid exceeds your budget (${formatMoney(budget)}).`;
+    if (submitBtn) submitBtn.disabled = true;
+    return;
+  }
+
+  input.style.border = "2px solid #4a4";
+  if (errorBox) errorBox.textContent = "";
+  if (submitBtn) submitBtn.disabled = false;
+}
+
+function adjustClubBid(delta) {
+  const input = document.getElementById("clubBidAmount");
+  if (!input || !selectedListing) return;
+
+  let current = parseMoneyInput(input.value);
+  if (!current) current = listingMinimumBid(selectedListing);
+  current = Math.max(0, current + delta);
+  const minBid = listingMinimumBid(selectedListing);
+  if (current < minBid) current = minBid;
+  input.value = roundBidToMillion(current).toLocaleString("en-GB");
+  validateClubBidInput();
+}
+
+async function openClubBidModal(row, allowBid = true) {
+  selectedListing = row;
+  const modal = document.getElementById("clubBidModal");
+  const form = document.getElementById("clubBidFormSection");
+  if (!modal) return;
+
+  document.getElementById("clubBidModalTitle").textContent =
+    row.club_name || row.club_short_name || "Club";
+  document.getElementById("clubBidModalStadium").textContent = row.stadium
+    ? row.stadium
+    : "";
+  document.getElementById("clubBidModalStadiumCost").textContent = formatMoney(
+    stadiumCost(row)
+  );
+  document.getElementById("clubBidModalHighBid").textContent = row.current_highest_bid
+    ? formatMoney(row.current_highest_bid)
+    : "—";
+  const leader = row.current_leader_tag || "—";
+  const isLeader = row.current_highest_bidder === ownerId;
+  document.getElementById("clubBidModalLeader").textContent = isLeader
+    ? `${leader} (you)`
+    : leader;
+  document.getElementById("clubBidModalBudget").textContent = formatMoney(budget);
+  document.getElementById("clubBidWarning").textContent = minimumBidHelpText(row);
+
+  if (form) form.style.display = allowBid ? "" : "none";
+
+  const input = document.getElementById("clubBidAmount");
+  const errorBox = document.getElementById("clubBidError");
+  const submitBtn = document.getElementById("clubBidSubmitBtn");
+  if (input) {
+    const minBid = listingMinimumBid(row);
+    input.value = roundBidToMillion(minBid).toLocaleString("en-GB");
+    input.style.border = "1px solid #444";
+    input.oninput = validateClubBidInput;
+  }
+  if (errorBox) errorBox.textContent = "";
+  if (submitBtn) submitBtn.disabled = !allowBid;
+
+  await loadBidHistory(row.id);
+
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+  validateClubBidInput();
+}
+
+function closeClubBidModal() {
+  const modal = document.getElementById("clubBidModal");
+  if (!modal) return;
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+  selectedListing = null;
+}
+
+function wireClubBidModal() {
+  document.getElementById("clubBidModalClose")?.addEventListener("click", closeClubBidModal);
+  document.getElementById("clubBidModal")?.addEventListener("click", (e) => {
+    if (e.target.id === "clubBidModal") closeClubBidModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeClubBidModal();
+  });
+
+  document.getElementById("clubBidQuickBtn")?.addEventListener("click", () => {
+    if (!selectedListing) return;
+    const input = document.getElementById("clubBidAmount");
+    input.value = roundBidToMillion(listingMinimumBid(selectedListing)).toLocaleString("en-GB");
+    validateClubBidInput();
+  });
+
+  document.querySelectorAll(".club-bid-inc-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      adjustClubBid(Number(btn.dataset.delta) || 0);
+    });
+  });
+
+  document.getElementById("clubBidSubmitBtn")?.addEventListener("click", async () => {
+    if (!selectedListing) return;
+    const input = document.getElementById("clubBidAmount");
+    const amount = roundBidToMillion(parseMoneyInput(input?.value));
+    const minBid = listingMinimumBid(selectedListing);
+    if (!amount || amount < minBid) {
+      validateClubBidInput();
+      return;
+    }
+    await placeBid(selectedListing.club_short_name, amount, document.getElementById("clubBidSubmitBtn"));
+  });
+}
+
 async function placeBid(shortName, rawAmount, btn) {
-  const amount = Number(rawAmount);
+  const amount = roundBidToMillion(Number(rawAmount));
   if (!Number.isFinite(amount) || amount <= 0) {
     alert("Enter a valid bid amount.");
     return;
   }
-  btn.disabled = true;
+  if (btn) btn.disabled = true;
   const { data, error } = await supabase.rpc("club_auction_place_bid", {
     p_club_short_name: shortName,
     p_amount: amount,
   });
-  btn.disabled = false;
+  if (btn) btn.disabled = false;
   if (error) {
     alert(error.message);
+    validateClubBidInput();
     return;
   }
   budget = Number(data?.remaining_budget) ?? budget;
+  document.getElementById("clubBidModalBudget").textContent = formatMoney(budget);
   await refreshAuctionState();
   renderStatus();
   await updateLeadPanel();
   await loadListings();
+  if (selectedListing) {
+    const refreshed = listingsCache.find(
+      (r) => r.club_short_name === selectedListing.club_short_name
+    );
+    if (refreshed) {
+      selectedListing = refreshed;
+      document.getElementById("clubBidModalHighBid").textContent = refreshed.current_highest_bid
+        ? formatMoney(refreshed.current_highest_bid)
+        : "—";
+      const leader = refreshed.current_leader_tag || "—";
+      const isLeader = refreshed.current_highest_bidder === ownerId;
+      document.getElementById("clubBidModalLeader").textContent = isLeader
+        ? `${leader} (you)`
+        : leader;
+      document.getElementById("clubBidWarning").textContent = minimumBidHelpText(refreshed);
+      await loadBidHistory(refreshed.id);
+      const input = document.getElementById("clubBidAmount");
+      if (input) {
+        input.value = roundBidToMillion(listingMinimumBid(refreshed)).toLocaleString("en-GB");
+      }
+      validateClubBidInput();
+    }
+  }
 }
 
 async function refreshAll() {
@@ -355,6 +597,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await initGlobal();
 
+  wireClubBidModal();
   await refreshAll();
   pollTimer = setInterval(refreshAll, 15000);
 });

@@ -9,10 +9,11 @@ primeAdminPageChrome();
 
 const CONFIRM_TEXT = "SYNC GPDB";
 const SCRAPE_FUNCTION = "gpdb-pesdb-scrape";
-const DETAIL_BATCH_SIZE = 3;
-const PAGE_DELAY_MS = 30000;
-const BATCH_DELAY_MS = 12000;
-const RATE_LIMIT_RETRY_MS = 25000;
+const DETAIL_BATCH_SIZE = 1;
+const PAGE_DELAY_MS = 60000;
+const BATCH_DELAY_MS = 30000;
+const RATE_LIMIT_RETRY_MS = 60000;
+const PAGE_START_DELAY_MS = 8000;
 let scrapeAbort = false;
 
 function sleep(ms) {
@@ -168,11 +169,11 @@ async function invokePesdbScrape(body, attempt = 1) {
     }
     if (data?.error) detail = String(data.error);
 
-    if (isRateLimitError(detail) && attempt < 6 && !scrapeAbort) {
+    if (isRateLimitError(detail) && attempt < 8 && !scrapeAbort) {
       const waitMs = RATE_LIMIT_RETRY_MS * attempt;
       setStatus(
         "scrapeStatus",
-        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/5)…`,
+        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/7)…`,
         true
       );
       await sleep(waitMs);
@@ -185,11 +186,11 @@ async function invokePesdbScrape(body, attempt = 1) {
     throw new Error(detail + hint);
   }
   if (data?.error) {
-    if (isRateLimitError(data.error) && attempt < 6 && !scrapeAbort) {
+    if (isRateLimitError(data.error) && attempt < 8 && !scrapeAbort) {
       const waitMs = RATE_LIMIT_RETRY_MS * attempt;
       setStatus(
         "scrapeStatus",
-        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/5)…`,
+        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/7)…`,
         true
       );
       await sleep(waitMs);
@@ -260,15 +261,19 @@ async function runPesdbScrape() {
 
     setStatus(
       "scrapeStatus",
-      `Scraping pesdb.net pages ${startPage}–${endPage}${includeDetails ? " (with max rating + style)" : ""}…`,
+      `Scraping pesdb.net pages ${startPage}–${endPage}${includeDetails ? " (slow mode — max rating + style)" : ""}…`,
       true
     );
+
+    await sleep(10000);
 
     for (let page = startPage; page <= endPage; page++) {
       if (scrapeAbort) {
         setStatus("scrapeStatus", `Stopped at page ${page - 1}. ${stagingTotal} players in staging.`, true);
         break;
       }
+
+      await sleep(PAGE_START_DELAY_MS);
 
       updateScrapeProgress(page - startPage, endPage - startPage + 1, stagingTotal);
       setStatus(
@@ -287,7 +292,7 @@ async function runPesdbScrape() {
       if (includeDetails && players.length && !scrapeAbort) {
         setStatus(
           "scrapeStatus",
-          `Page ${page}/${endPage} — max rating + style (${players.length} players, batches of ${DETAIL_BATCH_SIZE})…`,
+          `Page ${page}/${endPage} — max rating + style (${players.length} players, ~1 every 40s)…`,
           true
         );
         players = await enrichPlayersWithDetails(players);

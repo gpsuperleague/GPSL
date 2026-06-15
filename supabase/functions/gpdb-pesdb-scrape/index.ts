@@ -171,9 +171,9 @@ async function fetchPesdbHtml(url: string, attempt = 1): Promise<string> {
     },
   });
 
-  if ((res.status === 429 || res.status === 503) && attempt < 8) {
-    const waitMs = Math.min(120000, 10000 * Math.pow(2, attempt - 1));
-    console.warn(`PESDB ${res.status} — retry ${attempt}/7 in ${waitMs}ms: ${url}`);
+  if ((res.status === 429 || res.status === 503) && attempt < 10) {
+    const waitMs = Math.min(300000, 20000 * Math.pow(2, attempt - 1));
+    console.warn(`PESDB ${res.status} — retry ${attempt}/9 in ${waitMs}ms: ${url}`);
     await sleep(waitMs);
     return fetchPesdbHtml(url, attempt + 1);
   }
@@ -181,14 +181,14 @@ async function fetchPesdbHtml(url: string, attempt = 1): Promise<string> {
   if (!res.ok) {
     if (res.status === 429) {
       throw new Error(
-        "PESDB rate limited (429). Wait 15–30 minutes, then resume or use CSV upload."
+        "PESDB rate limited (429). Wait 30–60 minutes, then resume or use CSV upload."
       );
     }
     throw new Error(`PESDB fetch failed (${res.status}): ${url}`);
   }
 
   const text = await res.text();
-  await politePause(2200, 1800);
+  await politePause(4500, 3500);
   return text;
 }
 
@@ -266,8 +266,8 @@ Deno.serve(async (req) => {
       if (!Array.isArray(raw) || !raw.length) {
         return jsonResponse({ error: "players array required" }, 400);
       }
-      if (raw.length > 3) {
-        return jsonResponse({ error: "Max 3 players per enrich call (PESDB rate limit)" }, 400);
+      if (raw.length > 1) {
+        return jsonResponse({ error: "Max 1 player per enrich call (PESDB rate limit)" }, 400);
       }
 
       const players: ScrapePlayer[] = [];
@@ -297,7 +297,7 @@ Deno.serve(async (req) => {
             playing_style: "None",
           });
         }
-        await politePause(2800, 1200);
+        await politePause(6000, 4000);
       }
 
       return jsonResponse({
