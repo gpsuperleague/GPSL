@@ -26,7 +26,7 @@ import { formatNavLabel } from "./nav_label.js";
 export { supabase };
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260608-admin-flyout";
+export const GLOBAL_JS_VERSION = "20260609-draft-countdown-kind";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -83,10 +83,21 @@ export function getDraftAuctionStartTime() {
   return draftStart;
 }
 
+function isDraftKindEnabled(kind) {
+  if (kind === "club") return clubAuctionEnabled;
+  if (kind === "manager") return managerDraftEnabled;
+  if (kind === "player") return draftEnabled;
+  return false;
+}
+
 function isDraftCountdownActive() {
-  return (
-    (draftEnabled || managerDraftEnabled || clubAuctionEnabled) && isValidDate(draftStart)
-  );
+  if (!isValidDate(draftStart)) return false;
+  return isDraftKindEnabled(getPageDraftCountdownKind());
+}
+
+/** Page-aware: only true when this page's auction type is enabled and scheduled. */
+export function isPageDraftCountdownActive() {
+  return isDraftCountdownActive();
 }
 
 /** True when draft_auction_start_time is missing or the Day-2 window has fully passed. */

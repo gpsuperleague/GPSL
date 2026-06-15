@@ -469,7 +469,14 @@
       }
 
       await refreshDraftFavouriteButton();
-      startDraftPlayerCountdown();
+      if (draftEnabled && draftAuctionStartTimeUK) {
+        startDraftPlayerCountdown();
+      } else {
+        const el = document.getElementById("timeRemaining");
+        const sub = document.getElementById("timeRemainingSub");
+        if (el) el.textContent = "";
+        if (sub) sub.textContent = "";
+      }
 
       /* --- Credits --- */
       const { credits } = await getDraftCredits(buyerShortName, draftAuctionStartTimeUK);

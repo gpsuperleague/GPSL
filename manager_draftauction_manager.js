@@ -302,6 +302,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   wireBidControls();
   await loadManager();
   updateBidControls();
-  await updateCountdown();
-  setInterval(updateCountdown, 1000);
+  if (managerDraftEnabled && draftAuctionStartTime) {
+    await updateCountdown();
+    setInterval(updateCountdown, 1000);
+  } else {
+    const el = document.getElementById("timeRemaining");
+    const sub = document.getElementById("timeRemainingSub");
+    if (el) el.textContent = "";
+    if (sub) sub.textContent = "";
+  }
 });
