@@ -9,15 +9,14 @@ Requirements:
   pip install selenium webdriver-manager beautifulsoup4 lxml requests
 
 Usage:
-  python scripts/pesdb_scrape.py
-  python scripts/pesdb_scrape.py --start 1 --end 50 --output pesdb_full.csv
+  # One command — list all players (browser), then enrich details (HTTP):
+  python scripts/pesdb_scrape.py --output pesdb_full.csv --resume
 
-  # Recommended when PESDB throttles after ~2 list pages of details:
-  python scripts/pesdb_scrape.py --list-only --start 1 --end 633 --output pesdb_list.csv
-  # (writes to scrape_output/pesdb_list.csv — not committed to git)
-  python scripts/pesdb_scrape.py --enrich pesdb_list.csv --output pesdb_full.csv
-  # Fast HTTP enrich (default): ~1–2h for ~19k players with --workers 8
-  # Slow browser fallback: --browser --delay 2.5
+  # Enrich-only (retry / resume phase 2):
+  python scripts/pesdb_scrape.py --enrich pesdb_full.csv --output pesdb_full.csv --resume
+
+  # List phase only (skip enrich):
+  python scripts/pesdb_scrape.py --list-only --output pesdb_list.csv --resume
 """
 
 from __future__ import annotations
@@ -25,11 +24,12 @@ from __future__ import annotations
 import argparse
 import csv
 import re
+import signal
 import subprocess
 import sys
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 
 try:
@@ -85,6 +85,43 @@ HTTP_HEADERS = {
 }
 
 _http_thread_local = threading.local()
+_shutdown = threading.Event()
+_sigint_count = 0
+
+
+def request_shutdown(reason: str = "Ctrl+C") -> None:
+    if not _shutdown.is_set():
+        print(
+            f"\nStopping ({reason}) — saving progress… "
+            f"(press Ctrl+C again to force quit)",
+            flush=True,
+        )
+        _shutdown.set()
+
+
+def install_sigint_handler() -> None:
+    global _sigint_count
+
+    def handler(signum, frame):
+        global _sigint_count
+        _sigint_count += 1
+        if _sigint_count >= 2:
+            raise KeyboardInterrupt
+        request_shutdown("Ctrl+C")
+
+    signal.signal(signal.SIGINT, handler)
+
+
+def interruptible_sleep(seconds: float) -> bool:
+    """Sleep in short slices. Returns False if shutdown was requested."""
+    if seconds <= 0:
+        return not _shutdown.is_set()
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        if _shutdown.is_set():
+            return False
+        time.sleep(min(0.25, end - time.monotonic()))
+    return not _shutdown.is_set()
 
 
 class ThrottleState:
@@ -97,9 +134,9 @@ class ThrottleState:
 
     def wait_if_paused(self) -> None:
         with self._lock:
-            wait = self._pause_until - time.monotonic()
-        if wait > 0:
-            time.sleep(wait)
+            wait_s = self._pause_until - time.monotonic()
+        if wait_s > 0:
+            interruptible_sleep(wait_s)
 
     def on_429(self, attempt: int) -> None:
         pause = min(600.0, 30.0 * attempt)
@@ -110,13 +147,13 @@ class ThrottleState:
                 self._last_warn = time.monotonic()
                 msg = (
                     f"⏸ PESDB rate limit (HTTP 429) — pausing {pause:.0f}s "
-                    f"(try fewer workers / higher --delay if this repeats)"
+                    f"(Ctrl+C to stop; try --workers 1 --delay 4 if this repeats)"
                 )
             else:
                 msg = ""
         if msg:
             print(msg, flush=True)
-        time.sleep(pause)
+        interruptible_sleep(pause)
 
 
 def find_players_table(soup: BeautifulSoup):
@@ -590,13 +627,14 @@ def fetch_player_detail_http(
     session = get_http_session()
     throttle = throttle or ThrottleState()
     for attempt in range(1, retries + 1):
+        if _shutdown.is_set():
+            return "None", "Unknown"
         throttle.wait_if_paused()
         rate_limiter.wait()
         try:
             resp = session.get(url, timeout=30)
         except requests.RequestException as exc:
-            if attempt < retries:
-                time.sleep(min(30.0, 2.0 * attempt))
+            if attempt < retries and interruptible_sleep(min(30.0, 2.0 * attempt)):
                 continue
             print(f"     warn: player {player_id}: {exc}", file=sys.stderr, flush=True)
             return "None", "Unknown"
@@ -607,11 +645,13 @@ def fetch_player_detail_http(
         if resp.status_code == 404:
             return "None", "Unknown"
         if resp.status_code >= 500:
-            time.sleep(min(30.0, 2.0 * attempt))
-            continue
+            if attempt < retries and interruptible_sleep(min(30.0, 2.0 * attempt)):
+                continue
+            return "None", "Unknown"
         if resp.status_code != 200:
-            time.sleep(min(15.0, 1.5 * attempt))
-            continue
+            if attempt < retries and interruptible_sleep(min(15.0, 1.5 * attempt)):
+                continue
+            return "None", "Unknown"
         if html_looks_blocked(resp.text):
             throttle.on_429(attempt)
             continue
@@ -661,6 +701,8 @@ def prepare_enrich_job(args):
     if "player_id" not in idx:
         print("CSV must include player_id / konami_id column", file=sys.stderr)
         return None
+
+    data = dedupe_rows_by_player_id(header, data, idx)
 
     max_i = idx.get("max_level_rating")
     style_i = idx.get("playing_style")
@@ -758,13 +800,19 @@ def enrich_csv_http(args) -> int:
     )
     print(f"  {in_path.name} → {out_path.name}", flush=True)
 
+    install_sigint_handler()
+    _shutdown.clear()
+
     lock = threading.Lock()
     enriched = 0
     failed = 0
     completed = 0
     started = time.monotonic()
+    target_queue = list(targets)
 
     def enrich_row(row_i: int) -> tuple[int, str, str, str]:
+        if _shutdown.is_set():
+            return row_i, "", "None", "Unknown"
         row = data[row_i]
         player_id = row[idx["player_id"]].strip()
         if not player_id:
@@ -774,45 +822,77 @@ def enrich_csv_http(args) -> int:
         )
         return row_i, player_id, style, max_rating
 
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = [pool.submit(enrich_row, row_i) for row_i in targets]
-        for fut in as_completed(futures):
-            row_i, player_id, playing_style, max_rating = fut.result()
-            with lock:
-                completed += 1
-                if max_rating == "Unknown":
-                    failed += 1
-                else:
-                    row = data[row_i]
-                    while len(row) < len(header):
-                        row.append("")
-                    row[max_i] = max_rating
-                    row[style_i] = playing_style
-                    data[row_i] = row
-                    enriched += 1
+    def process_result(row_i: int, player_id: str, playing_style: str, max_rating: str) -> None:
+        nonlocal enriched, failed, completed
+        with lock:
+            completed += 1
+            if max_rating == "Unknown":
+                failed += 1
+            else:
+                row = data[row_i]
+                while len(row) < len(header):
+                    row.append("")
+                row[max_i] = max_rating
+                row[style_i] = playing_style
+                data[row_i] = row
+                enriched += 1
 
-                should_save = (
-                    completed == 1
-                    or completed % args.checkpoint == 0
-                    or completed == len(targets)
+            should_save = (
+                completed == 1
+                or completed % args.checkpoint == 0
+                or completed == len(targets)
+            )
+            should_log = (
+                completed == 1
+                or completed % 10 == 0
+                or completed == len(targets)
+            )
+            if should_save:
+                write_csv_rows(out_path, header, data)
+            if should_log:
+                elapsed = time.monotonic() - started
+                rate = completed / elapsed if elapsed > 0 else 0
+                print(
+                    f"  {completed}/{len(targets)} "
+                    f"({enriched} ok, {failed} failed, {rate:.2f}/s)",
+                    flush=True,
                 )
-                should_log = (
-                    completed == 1
-                    or completed % 10 == 0
-                    or completed == len(targets)
-                )
-                if should_save:
-                    write_csv_rows(out_path, header, data)
-                if should_log:
-                    elapsed = time.monotonic() - started
-                    rate = completed / elapsed if elapsed > 0 else 0
-                    print(
-                        f"  {completed}/{len(targets)} "
-                        f"({enriched} ok, {failed} failed, {rate:.2f}/s)",
-                        flush=True,
-                    )
 
-    write_csv_rows(out_path, header, data)
+    pending: set = set()
+    try:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            def submit_more() -> None:
+                while target_queue and len(pending) < workers * 2 and not _shutdown.is_set():
+                    row_i = target_queue.pop(0)
+                    pending.add(pool.submit(enrich_row, row_i))
+
+            submit_more()
+            while pending:
+                if _shutdown.is_set():
+                    break
+                done, pending = wait(pending, timeout=0.5, return_when=FIRST_COMPLETED)
+                if not done:
+                    continue
+                for fut in done:
+                    row_i, player_id, playing_style, max_rating = fut.result()
+                    if player_id:
+                        process_result(row_i, player_id, playing_style, max_rating)
+                submit_more()
+    except KeyboardInterrupt:
+        request_shutdown("forced quit")
+    finally:
+        write_csv_rows(out_path, header, data)
+
+    if _shutdown.is_set():
+        elapsed = time.monotonic() - started
+        print(
+            f"Stopped early: {enriched} enriched, {failed} failed in {elapsed / 60:.1f} min "
+            f"→ {out_path.resolve()}",
+            flush=True,
+        )
+        print("Resume with the same --skip-list --resume command.", flush=True)
+        return 130
+
     elapsed = time.monotonic() - started
     print(
         f"Enriched {enriched} players ({failed} failed) in {elapsed / 60:.1f} min "
@@ -938,6 +1018,135 @@ def make_driver(headless: bool) -> webdriver.Chrome:
     return driver
 
 
+def dedupe_rows_by_player_id(
+    header: list[str],
+    data: list[list[str]],
+    idx: dict[str, int],
+) -> list[list[str]]:
+    """Keep one row per player_id, preferring enriched rows."""
+    pid_i = idx["player_id"]
+    seen: dict[str, list[str]] = {}
+    order: list[str] = []
+    for row in data:
+        if pid_i >= len(row):
+            continue
+        pid = row[pid_i].strip()
+        if not pid:
+            continue
+        if pid not in seen:
+            order.append(pid)
+            seen[pid] = row
+            continue
+        existing = seen[pid]
+        if needs_enrichment(existing, idx) and not needs_enrichment(row, idx):
+            seen[pid] = row
+        elif not needs_enrichment(row, idx) and needs_enrichment(existing, idx):
+            pass  # keep existing enriched
+        # else keep first occurrence
+
+    deduped = [seen[pid] for pid in order]
+    removed = len(data) - len(deduped)
+    if removed > 0:
+        print(f"Removed {removed} duplicate player rows (kept enriched copies where possible)")
+    return deduped
+
+
+def list_phase_looks_complete(out_path: Path, end_page: int) -> bool:
+    if read_last_completed_page(out_path) >= end_page:
+        return True
+    if not out_path.is_file():
+        return False
+    header, data = read_csv_rows(out_path)
+    idx = col_index(header)
+    pid_i = idx.get("player_id", 0)
+    ids = [row[pid_i].strip() for row in data if row and pid_i < len(row) and row[pid_i].strip()]
+    unique = len(set(ids))
+    # ~633 list pages × 30 players/page
+    return unique >= 18000 and unique >= end_page * 28
+
+
+def resolve_list_output_path(raw: str, start: int, end: int) -> Path:
+    if raw:
+        p = Path(raw)
+        if p.is_file():
+            return p.resolve()
+    return resolve_output_path(raw, start, end)
+
+
+def run_list_scrape(args) -> tuple[int, Path | None]:
+    """Phase 1: scrape list pages with Selenium (no per-player browser visits)."""
+    session = DriverSession(headless=not args.no_headless)
+    data: list[list[str]] = []
+
+    try:
+        end_page = args.end or estimate_total_pages(session.driver, {})
+        if args.end == 0:
+            end_page = max(end_page, args.start)
+        start_page = max(1, args.start)
+        out_path = resolve_list_output_path(args.output, start_page, end_page)
+
+        if args.resume and out_path.is_file():
+            header, data = read_csv_rows(out_path)
+            idx = col_index(header)
+            raw_count = len(data)
+            data = dedupe_rows_by_player_id(header, data, idx)
+            if list_phase_looks_complete(out_path, end_page):
+                if len(data) != raw_count:
+                    write_csv_rows(out_path, header, data)
+                write_last_completed_page(out_path, end_page)
+                print(
+                    f"List phase already complete: {len(data)} players in {out_path.name} "
+                    f"(skipping re-scrape)"
+                )
+                return 0, out_path
+            last_done = read_last_completed_page(out_path)
+            if last_done >= start_page:
+                start_page = last_done + 1
+            print(f"Resume: {len(data)} players on disk, continuing from page {start_page}")
+
+        if start_page > end_page:
+            print("start page > end page", file=sys.stderr)
+            return 1, None
+
+        print(f"Phase 1 — list pages → {out_path.resolve()}")
+        print(f"Scraping pages {start_page}–{end_page}")
+        if args.no_headless:
+            print("Tip: keep the Chrome window open, or omit --no-headless for headless mode.")
+
+        for page in range(start_page, end_page + 1):
+            if page > start_page:
+                print(f"⏸ Pausing {args.page_delay:.0f}s before next list page…")
+                time.sleep(args.page_delay)
+            page_rows = scrape_list_page(
+                session,
+                page,
+                {},
+                args.list_delay,
+                resolve_delay(args, "list"),
+                args.page_retries,
+                args.retry_wait,
+                list_only=True,
+            )
+            data.extend(page_rows)
+            write_csv_rows(out_path, CSV_HEADER, data)
+            write_last_completed_page(out_path, page)
+            print(f"💾 Checkpoint: page {page} saved ({len(data)} players total)")
+    finally:
+        session.close()
+
+    print(f"List phase done: {len(data)} players → {out_path.resolve()}")
+    return 0, out_path
+
+
+def run_enrich_phase(args, csv_path: Path) -> int:
+    """Phase 2: HTTP enrich (or --browser Selenium fallback)."""
+    print(f"\nPhase 2 — enrich player details from {csv_path.name}")
+    args.enrich = str(csv_path)
+    if not args.output:
+        args.output = str(csv_path)
+    return enrich_csv(args)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Scrape pesdb.net for GPSL GPDB sync")
     parser.add_argument("--start", type=int, default=1, help="First page (default 1)")
@@ -967,13 +1176,13 @@ def main() -> int:
     parser.add_argument(
         "--list-only",
         action="store_true",
-        help="List pages only (no per-player detail visits) — avoids the ~2-page throttle",
+        help="Stop after phase 1 (list pages only; skip HTTP enrich)",
     )
     parser.add_argument(
         "--enrich",
         type=str,
         default="",
-        help="Enrich an existing list-only CSV with max_level_rating + playing_style",
+        help="Enrich-only: skip list scrape, fill max_level_rating + playing_style",
     )
     parser.add_argument(
         "--enrich-start",
@@ -1006,9 +1215,14 @@ def main() -> int:
         help="Save output every N enriched players (enrich mode)",
     )
     parser.add_argument(
+        "--skip-list",
+        action="store_true",
+        help="Skip phase 1 entirely — enrich an existing CSV (--output required)",
+    )
+    parser.add_argument(
         "--resume",
         action="store_true",
-        help="Continue from last saved page (.progress file next to --output)",
+        help="Resume list pages (.progress) and/or skip already-enriched rows",
     )
     parser.add_argument("--no-headless", action="store_true", help="Show browser window (often avoids blocks)")
     args = parser.parse_args()
@@ -1016,62 +1230,35 @@ def main() -> int:
     if args.enrich:
         return enrich_csv(args)
 
-    detail_delay = resolve_delay(args, "list")
-    session = DriverSession(headless=not args.no_headless)
-    data: list[list[str]] = []
-
-    try:
-        end_page = args.end or estimate_total_pages(session.driver, {})
-        if args.end == 0:
-            end_page = max(end_page, args.start)
-        start_page = max(1, args.start)
-        out_path = resolve_output_path(args.output, start_page, end_page)
-
-        if args.resume and out_path.is_file():
-            _, data = read_csv_rows(out_path)
-            last_done = read_last_completed_page(out_path)
-            if last_done >= start_page:
-                start_page = last_done + 1
-            print(f"Resume: {len(data)} players on disk, continuing from page {start_page}")
-
-        if start_page > end_page:
-            print("start page > end page", file=sys.stderr)
+    if args.skip_list:
+        if not args.output:
+            print("--skip-list requires --output path to an existing CSV", file=sys.stderr)
             return 1
+        out_path = Path(args.output)
+        if not out_path.is_file():
+            alt = resolve_output_path(args.output, 1, 1)
+            if alt.is_file():
+                out_path = alt
+        if not out_path.is_file():
+            print(f"File not found: {args.output}", file=sys.stderr)
+            return 1
+        return run_enrich_phase(args, out_path.resolve())
 
-        print(f"Output: {out_path.resolve()}")
-        print(f"Scraping pages {start_page}–{end_page}" + (" (list only)" if args.list_only else ""))
-        if args.no_headless:
-            print("Tip: keep the Chrome window open, or omit --no-headless for headless mode.")
+    code, out_path = run_list_scrape(args)
+    if code != 0 or out_path is None:
+        return code
 
-        for page in range(start_page, end_page + 1):
-            if page > start_page:
-                print(f"⏸ Pausing {args.page_delay:.0f}s before next list page…")
-                time.sleep(args.page_delay)
-            page_rows = scrape_list_page(
-                session,
-                page,
-                {},
-                args.list_delay,
-                detail_delay,
-                args.page_retries,
-                args.retry_wait,
-                list_only=args.list_only,
-            )
-            data.extend(page_rows)
-            write_csv_rows(out_path, CSV_HEADER, data)
-            write_last_completed_page(out_path, page)
-            print(f"💾 Checkpoint: page {page} saved ({len(data)} players total)")
-    finally:
-        session.close()
-
-    print(f"Saved {len(data)} players → {out_path.resolve()}")
     if args.list_only:
-        print("Note: --list-only leaves playing_style as None and max_level_rating as list rating.")
-        print("Run enrich for playstyles + true max ratings:")
-        print(f"  python scripts/pesdb_scrape.py --enrich {out_path.name} --output pesdb_full.csv --resume")
-    else:
-        print("Upload this file in Admin → Season Break → Data tools → GPDB PESDB sync")
-    return 0
+        print("Skipped phase 2 (--list-only). Rerun without it to enrich, or:")
+        print(f"  python scripts/pesdb_scrape.py --enrich {out_path.name} --output {out_path.name} --resume")
+        return 0
+
+    enrich_code = run_enrich_phase(args, out_path)
+    if enrich_code == 0:
+        final = Path(args.output) if args.output else out_path
+        print(f"\nDone. Upload → Admin → Season Break → Data tools → GPDB PESDB sync")
+        print(f"  {final.resolve()}")
+    return enrich_code
 
 
 if __name__ == "__main__":

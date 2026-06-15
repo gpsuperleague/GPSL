@@ -61,38 +61,30 @@ pip install selenium webdriver-manager beautifulsoup4 lxml
 python scripts/pesdb_scrape.py --output pesdb_full.csv
 ```
 
-### Recommended workflow (PESDB throttles after ~60 detail pages)
-
-PESDB often allows **~2 list pages** when each player triggers a detail visit (~60 requests), then list pages return empty. Use **two steps**:
-
-**Step 1 — list only** (one request per page; can run hundreds of pages):
+### Recommended: one command
 
 ```bash
-python scripts/pesdb_scrape.py --list-only --start 1 --end 633 --output pesdb_list.csv --page-delay 3
+pip install selenium webdriver-manager beautifulsoup4 lxml requests
+python scripts/pesdb_scrape.py --output pesdb_full.csv --resume
 ```
 
-Outputs go to **`scrape_output/`** (gitignored). Do not commit CSVs — upload in admin only.
+Phase 1 uses the browser for list pages only (~633 pages). Phase 2 enriches playstyles and max ratings over HTTP automatically.
 
-Use **headless** (default) for long runs — `--no-headless` is fine for debugging but don’t close the Chrome window. If the browser crashes, resume:
+If PESDB rate-limits you (HTTP 429), slow down phase 2:
 
 ```bash
-python scripts/pesdb_scrape.py --list-only --start 1 --end 633 --output pesdb_list.csv --resume --page-delay 3
+python scripts/pesdb_scrape.py --enrich pesdb_full.csv --output pesdb_full.csv --resume --workers 2 --delay 2
 ```
 
-**Step 2 — enrich details** (fast HTTP by default; ~1–2h for full list with 8 workers):
+### Split phases (optional)
+
+**List only** — stop before enrich:
 
 ```bash
-pip install requests   # if not already installed
-python scripts/pesdb_scrape.py --enrich pesdb_list.csv --output pesdb_full.csv --resume
+python scripts/pesdb_scrape.py --list-only --start 1 --end 633 --output pesdb_list.csv --page-delay 3 --resume
 ```
 
-Optional tuning: `--workers 8` (default), `--delay 0.2` (min seconds between HTTP requests globally).
-
-Slow Selenium fallback (only if HTTP gets blocked):
-
-```bash
-python scripts/pesdb_scrape.py --enrich pesdb_list.csv --output pesdb_full.csv --browser --delay 2.5
-```
+Outputs go to **`scrape_output/`** unless the file already exists in the current folder. Do not commit CSVs — upload in admin only.
 
 Resume enrich in ranges if needed:
 
