@@ -62,6 +62,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const statusEl = document.getElementById("status");
   const tagInput = document.getElementById("ownerTag");
+  const saveTagBtn = document.getElementById("saveTagBtn");
+  const tagLockedLine = document.getElementById("tagLockedLine");
   const budgetEl = document.getElementById("budgetLine");
 
   const { data: self, error } = await supabase.rpc("owner_registry_get_self");
@@ -87,7 +89,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   await showWonAwaitingSettlement(user.id, statusEl);
 
   const displayTag = (self?.owner_tag || "").trim();
-  if (displayTag && tagInput) tagInput.value = displayTag;
+  if (displayTag && tagInput) {
+    tagInput.value = displayTag;
+    tagInput.disabled = true;
+    if (saveTagBtn) saveTagBtn.disabled = true;
+    if (tagLockedLine) {
+      tagLockedLine.hidden = false;
+      tagLockedLine.textContent =
+        `Tag locked: “${displayTag}” — shown on club auction bids and your club if you win.`;
+    }
+  }
   if (budgetEl && self?.pending_starting_balance > 0) {
     budgetEl.hidden = false;
     budgetEl.textContent = `Starting budget: ${formatMoney(self.pending_starting_balance)}`;
@@ -113,6 +124,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   document.getElementById("saveTagBtn")?.addEventListener("click", async () => {
+    if (tagInput?.disabled) return;
     const tag = tagInput?.value?.trim();
     if (!tag) {
       if (statusEl) statusEl.textContent = "Enter a tag.";
@@ -129,8 +141,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     if (statusEl) {
-      statusEl.textContent = `Saved tag “${data?.owner_tag || tag}”.`;
+      statusEl.textContent = `Saved tag “${data?.owner_tag || tag}”. It is now locked for the club auction.`;
       statusEl.style.color = "#9f9";
+    }
+    if (tagInput) {
+      tagInput.disabled = true;
+      tagInput.value = data?.owner_tag || tag;
+    }
+    if (saveTagBtn) saveTagBtn.disabled = true;
+    if (tagLockedLine) {
+      tagLockedLine.hidden = false;
+      tagLockedLine.textContent =
+        `Tag locked: “${data?.owner_tag || tag}” — shown on club auction bids and your club if you win.`;
     }
   });
 });

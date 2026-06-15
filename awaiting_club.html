@@ -13,7 +13,10 @@
     .note { font-size:13px; color:#aaa; line-height:1.5; }
     label { display:block; margin-top:14px; font-size:13px; color:#ccc; }
     input { width:100%; max-width:320px; padding:8px; margin-top:6px; border-radius:4px; border:1px solid #444; background:#111; color:#ddd; }
+    input:disabled { opacity:0.85; color:#ccc; cursor:not-allowed; }
     .button { margin-top:12px; padding:10px 16px; background:#ff9900; color:#111; border:none; border-radius:6px; font-weight:bold; cursor:pointer; }
+    .button:disabled { background:#444; color:#888; cursor:not-allowed; }
+    .tag-locked { font-size:12px; color:#9f9; margin-top:8px; }
     #status { margin-top:12px; font-size:13px; min-height:18px; }
     .budget { font-size:18px; color:#9f9; margin:12px 0; }
   </style>
@@ -28,10 +31,11 @@
       your balance is set, and the full site opens.
     </p>
     <div class="card">
-      <p class="note">Set your <b>owner tag</b> now (shown on rankings, national team, and club pages once you have a club).</p>
+      <p class="note">Set your <b>owner tag</b> before bidding (shown as the auction leader and on club pages once you win). <b>It cannot be changed</b> after you save it for the club auction.</p>
       <label for="ownerTag">Owner tag</label>
       <input id="ownerTag" type="text" maxlength="64" placeholder="e.g. Rotavator" autocomplete="nickname">
       <button type="button" class="button" id="saveTagBtn">Save tag</button>
+      <p class="tag-locked" id="tagLockedLine" hidden></p>
       <div id="status"></div>
       <p class="budget" id="budgetLine" hidden></p>
       <p class="note" id="scheduleLine" style="margin-top:12px;min-height:18px;"></p>
@@ -55,6 +59,6 @@
       to bid on vacant clubs when bidding is open.
     </p>
   </div>
-  <script type="module" src="awaiting_club.js?v=20260608-starting-balance"></script>
+  <script type="module" src="awaiting_club.js?v=20260608-tag-lock"></script>
 </body>
 </html>
