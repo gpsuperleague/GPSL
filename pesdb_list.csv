@@ -5631,3 +5631,131 @@ player_id,Position,player_name,nationality,age,rating,max_level_rating,playing_s
 47089,RB,Nicky Devlin,Scotland,32,71,71,None
 47049,RWF,Rachid Ghezzal,Algeria,33,71,71,None
 46941,LB,Ridgeciano Haps,Suriname,32,71,71,None
+46865,GK,Kristoffer Nordfeldt,Sweden,36,71,71,None
+46843,CB,Roman Neustädter,Russia,37,71,71,None
+46833,AMF,Jonathan Viera,Spain,36,71,71,None
+46787,CF,Romell Quioto,Honduras,34,71,71,None
+46604,GK,Heinz Lindner,Austria,35,71,71,None
+46557,LB,Alexandru Chipciu,Romania,36,71,71,None
+46546,AMF,Georgi Milanov,Bulgaria,33,71,71,None
+46244,GK,Matheus Vidotto,Brazil,32,71,71,None
+46144,CMF,Valon Berisha,Kosovo,32,71,71,None
+46032,GK,Renan Ribeiro,Brazil,35,71,71,None
+45998,CF,Andrés Rentería,Colombia,32,71,71,None
+45982,CB,Michael Boxall,New Zealand,37,71,71,None
+45804,CB,Ramón Arias,Uruguay,33,71,71,None
+45788,CB,Miguel Araujo,Peru,31,71,71,None
+45656,DMF,Rodrigo Ureña,Chile,32,71,71,None
+45512,AMF,Negueba,Brazil,33,71,71,None
+45409,RB,Mario Sampirisi,Italy,33,71,71,None
+45374,CMF,Robin Lod,Finland,32,71,71,None
+45270,CB,Conor Coady,England,32,71,71,None
+45176,CF,Sébastien Haller,Côte d'Ivoire,31,71,71,None
+45078,GK,Donovan Léon,France,33,71,71,None
+44601,CF,M'Baye Niang,Senegal,31,71,71,None
+44328,LWF,Kamil Grosicki,Poland,37,71,71,None
+43731,CB,Wilker Ángel,Venezuela,32,71,71,None
+43646,LB,Lucas Rodríguez,Argentina,32,71,71,None
+43154,RWF,Nathan Redmond,England,31,71,71,None
+43041,CMF,Lewis Holtby,Germany,35,71,71,None
+43006,CB,Ramiro Funes Mori,Argentina,34,71,71,None
+42872,CB,Sergi Gómez,Spain,33,71,71,None
+42751,LB,Eugenio Mena,Chile,37,71,71,None
+42576,CB,Bruno Ecuele Manga,Gabon,37,71,71,None
+42479,GK,Joel Robles,Spain,35,71,71,None
+42440,DMF,Jordy Clasie,Netherlands,34,71,71,None
+42375,CB,Bruno Martins Indi,Netherlands,33,71,71,None
+42353,CB,Grant Hanley,Scotland,34,71,71,None
+42343,DMF,Josef de Souza,Brazil,36,71,71,None
+41637,RWF,Felipe Pardo,Colombia,35,71,71,None
+41619,CB,Andrés Mosquera,Colombia,35,71,71,None
+41555,GK,Esteban Andrada,Argentina,34,71,71,None
+41538,CB,Emmanuel Olivera,Argentina,35,71,71,None
+41527,CB,Fernando Tobio,Argentina,36,71,71,None
+41464,AMF,Bryan Rabello,Chile,31,71,71,None
+41088,CB,Jordi Amat,Indonesia,33,71,71,None
+40925,AMF,Alex Teixeira,Brazil,35,71,71,None
+40661,CF,Lucas Pratto,Argentina,37,71,71,None
+40646,GK,Kostas Lamprou,Greece,34,71,71,None
+40607,GK,Francesco Bardi,Italy,33,71,71,None
+40553,GK,Leandro Chichizola,Argentina,35,71,71,None
+40499,AMF,Nam Tae-Hee,Korea Republic,34,71,71,None
+40392,CB,Nick Viergever,Netherlands,36,71,71,None
+40260,DMF,Francis Coquelin,France,34,71,71,None
+39259,SS,Jay Rodriguez,England,36,71,71,None
+39033,GK,Kim Jin-Hyeon,Korea Republic,38,71,71,None
+39026,RB,Gotoku Sakai,Japan,34,71,71,None
+39020,CF,Yuya Osako,Japan,35,71,71,None
+38827,CB,Danny Wilson,Scotland,34,71,71,None
+38789,CMF,Barry Bannan,Scotland,36,71,71,None
+38362,CB,Liam Cooper,Scotland,34,71,71,None
+38261,RWF,Andriy Yarmolenko,Ukraine,36,71,71,None
+37291,GK,Asmir Begović,Bosnia and Herzegovina,38,71,71,None
+36878,GK,Raúl Fernández,Spain,37,71,71,None
+34799,CB,José Fonte,Portugal,42,71,71,None
+33301,GK,Regis Gurtner,France,39,71,71,None
+33167,CMF,Jonathan de Guzmán,Netherlands,38,71,71,None
+16812,GK,Kosuke Nakamura,Japan,30,71,71,None
+16555,SS,Heberty,Brazil,37,71,71,None
+16497,DMF,Jung Woo-Young,Korea Republic,36,71,71,None
+16453,CMF,Kento Hashimoto,Japan,32,71,71,None
+16345,CB,Gen Shoji,Japan,33,71,71,None
+16100,DMF,Takahiro Ohgihara,Japan,34,71,71,None
+15971,CB,Kim Young-Gwon,Korea Republic,35,71,71,None
+15075,RWF,Akihiro Ienaga,Japan,39,71,71,None
+8823,CF,Paolo Guerrero,Peru,41,71,71,None
+7474,AMF,Nenê,Brazil,44,71,71,None
+84067463,CB,Mohamed Ismail,Egypt,26,70,70,None
+84067431,CF,Redouane Berkane,Algeria,22,70,70,None
+84065645,LB,Tó Carneiro,Angola,30,70,70,None
+84065071,CB,Edmilson Dove,Mozambique,31,70,70,None
+84065030,CB,Nené,Mozambique,29,70,70,None
+84065025,CF,Osama Faisal,Egypt,24,70,70,None
+84065022,GK,Mostafa Shobeir,Egypt,25,70,70,None
+84065020,CB,Khaled Sobhy,Egypt,30,70,70,None
+84065007,GK,El Mehdi Al Harrar,Morocco,25,70,70,None
+84060432,CF,Christian Kofane,Cameroon,19,70,70,None
+84059923,CMF,Mohamed Shehata,Egypt,24,70,70,None
+84058615,LWF,Ousseynou Niang,Senegal,24,70,70,None
+84058125,RWF,Ibrahim Mbaye,Senegal,17,70,70,None
+84054524,CMF,Maestro,Angola,22,70,70,None
+84054092,RWF,Shavy Babicka,Gabon,25,70,70,None
+84053886,LMF,Oswin Appollis,South Africa,24,70,70,None
+84053882,RB,Khuliso Mudau,South Africa,30,70,70,None
+84053199,LB,Arsène Kouassi,Burkina Faso,21,70,70,None
+84050658,CF,Monsef Bakrar,Algeria,24,70,70,None
+84050353,RB,Rafik Belghali,Algeria,23,70,70,None
+84048726,RMF,Georgi Minoungou,Burkina Faso,23,70,70,None
+84040223,GK,Bechir Ben Said,Tunisia,33,70,70,None
+84040187,GK,Mohamed Sobhy,Egypt,26,70,70,None
+84038680,RB,Anthony Oyono,Gabon,24,70,70,None
+84034214,CMF,Hadj Mahmoud,Tunisia,25,70,70,None
+84033151,GK,Mohamed Koné,Côte d'Ivoire,23,70,70,None
+84031008,GK,Simon Omossola,Cameroon,27,70,70,None
+84030919,CB,Yasser Ibrahim,Egypt,32,70,70,None
+84030701,RB,Antoine Mendy,Senegal,21,70,70,None
+84030170,AMF,Ismaël Gharbi,Tunisia,21,70,70,None
+84029327,CMF,Oussama Targhalline,Morocco,23,70,70,None
+84027626,RB,Armel Zohouri,Côte d'Ivoire,24,70,70,None
+84022978,GK,Farid Ouédraogo,Burkina Faso,29,70,70,None
+84019160,RMF,Nathanaël Mbuku,Congo DR,23,70,70,None
+84018402,CB,Toby Sibbick,Uganda,26,70,70,None
+84018325,RMF,Jim Allevinah,Gabon,30,70,70,None
+84017176,RB,Saïd Bakari,Comoros,31,70,70,None
+84012266,RB,Yan Valery,Tunisia,26,70,70,None
+84007374,GK,Signori António,Angola,31,70,70,None
+84007075,CB,Mamadou Fofana,Mali,27,70,70,None
+84005566,CB,Jonathan Buatu,Angola,32,70,70,None
+84004810,GK,Francis Uzoho,Nigeria,27,70,70,None
+84004189,LWF,Melvyn Lorenzen,Uganda,31,70,70,None
+84000089,CB,Dylan Bronn,Tunisia,30,70,70,None
+83998464,RB,Mohamed Hany,Egypt,29,70,70,None
+83998201,CF,Seifeddine Jaziri,Tunisia,32,70,70,None
+83995328,CB,Elio Capradossi,Uganda,29,70,70,None
+83993785,CB,Aaron Appindangoyé,Gabon,33,70,70,None
+83990762,CB,Semi Ajayi,Nigeria,32,70,70,None
+83988565,CB,Nader Ghandri,Tunisia,30,70,70,None
+83987462,RMF,Jodel Dossou,Benin,33,70,70,None
+83987119,LB,Jordan Obita,Uganda,32,70,70,None
+83986594,RB,Carlos Akapo,Equatorial Guinea,32,70,70,None
+83933505,RB,Steeve Yago,Burkina Faso,33,70,70,None
