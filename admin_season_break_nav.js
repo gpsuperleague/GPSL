@@ -194,6 +194,17 @@ export const SEASON_BREAK_NAV = [
       },
     ],
   },
+  {
+    id: "data_tools",
+    label: "Data tools",
+    items: [
+      {
+        label: "GPDB player deduplication",
+        href: "admin_gpdb_dedup.html",
+        page: "admin_gpdb_dedup",
+      },
+    ],
+  },
 ];
 
 export function seasonBreakNavHref(item) {

@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260615-admin-testing-nav";
+export const NAV_CONFIG_VERSION = "20260615-gpdb-season-break";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -136,7 +136,6 @@ export const ADMIN_NAV_SECTION = {
     { seasonMega: true, label: "Season management" },
     { seasonBreakMega: true, label: "Season Break" },
     { ownersMega: true, label: "Owners & accounts" },
-    { href: "admin_gpdb_dedup.html", label: "GPDB player deduplication" },
 
     /* Not in workflow menus — review and relocate later */
     { heading: true, label: "Other" },
@@ -154,7 +153,12 @@ export const ADMIN_FLYOUT_LINKS = [
       { href: "admin_test_reset.html", label: "Test environment reset", danger: true },
     ],
   },
-  { href: "admin_gpdb_dedup.html", label: "GPDB player deduplication" },
+  {
+    heading: "Season Break",
+    links: [
+      { href: "admin_gpdb_dedup.html", label: "GPDB player deduplication" },
+    ],
+  },
   {
     heading: "Transfers",
     links: [
