@@ -1,0 +1,35 @@
+<script>window.CURRENT_PAGE = "finances_ledger";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Activity ledger — GPSL Finances</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="finances_subpage.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <div class="header-row">
+      <img id="clubBadgeHeader" src="" alt="">
+      <div>
+        <h1 id="pageTitle">Activity ledger</h1>
+        <div id="userEmail" class="meta"></div>
+        <p id="pageMeta" class="meta" style="margin:0;"></p>
+        <nav id="financeSubnav" class="finance-subnav" aria-label="Finances sections"></nav>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="toolbar">
+        <a id="backToFinances" href="finances.html" class="button">← Finances overview</a>
+        <a href="season_transfers.html" class="button">All league transfers</a>
+        <a href="stadium.html" class="button">Stadium &amp; gate estimate</a>
+      </p>
+      <p id="ledgerSummary" class="ledger-summary">Loading…</p>
+      <div id="ledgerTable"></div>
+    </div>
+  </div>
+  <script type="module" src="finances_ledger.js?v=20260609-ledger-split"></script>
+</body>
+</html>

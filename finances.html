@@ -40,6 +40,28 @@
     a { color:#ff9900; }
     .toolbar { margin-bottom:12px; }
     .toolbar a.button { font-size:13px; margin-right:8px; }
+    .finance-subnav {
+      display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;
+    }
+    .fin-subnav-link {
+      display:inline-block; padding:5px 12px; font-size:12px; text-decoration:none;
+      color:#ccc; background:#222; border:1px solid #444; border-radius:999px;
+    }
+    .fin-subnav-link:hover { border-color:#ff9900; color:#ff9900; }
+    .fin-subnav-link.active {
+      background:#332a00; border-color:#ff9900; color:#ff9900; font-weight:bold;
+    }
+    .stat-box.stat-link {
+      display:block; text-decoration:none; color:inherit;
+      border:1px solid transparent; transition:border-color 0.15s, background 0.15s;
+    }
+    .stat-box.stat-link:hover {
+      border-color:#ff9900; background:#2a2a2a;
+    }
+    .stat-box.stat-link .link-hint {
+      display:block; font-size:10px; color:#888; margin-top:4px; font-weight:normal;
+    }
+    .stat-box.stat-link:hover .link-hint { color:#ff9900; }
 
     #financeSections {
       --fin-col-label: minmax(7.5rem, 1.1fr);
@@ -274,6 +296,7 @@
         <h1 id="pageTitle">Club Finances</h1>
         <div id="userEmail" class="meta"></div>
         <p id="pageMeta" class="meta" style="margin:0;"></p>
+        <nav id="financeSubnav" class="finance-subnav" aria-label="Finances sections"></nav>
       </div>
     </div>
 
@@ -284,22 +307,25 @@
           <div class="label">Season opening balance</div>
           <div class="value muted" id="openingBalance">—</div>
         </div>
-        <div class="stat-box">
+        <a class="stat-box stat-link" id="linkLedger" href="finances_ledger.html" title="View full activity ledger">
           <div class="label">Current balance</div>
           <div class="value neutral" id="balanceAmount">—</div>
-        </div>
+          <span class="link-hint">View activity ledger →</span>
+        </a>
         <div class="stat-box">
           <div class="label">Predicted end-of-season balance</div>
           <div class="value muted" id="predictedBalance">—</div>
         </div>
-        <div class="stat-box">
+        <a class="stat-box stat-link" id="linkIncoming" href="finances_incoming.html" title="View posted income lines">
           <div class="label">Posted income (season ledger)</div>
           <div class="value positive" id="incomeSeasonTotal">—</div>
-        </div>
-        <div class="stat-box">
+          <span class="link-hint">View incoming →</span>
+        </a>
+        <a class="stat-box stat-link" id="linkOutgoing" href="finances_outgoing.html" title="View posted cost lines">
           <div class="label">Posted costs (season ledger)</div>
           <div class="value negative" id="costSeasonTotal">—</div>
-        </div>
+          <span class="link-hint">View outgoings →</span>
+        </a>
         <div class="stat-box">
           <div class="label">Posted net (ledger)</div>
           <div class="value" id="netSeasonTotal">—</div>
@@ -307,8 +333,8 @@
       </div>
       <p class="footer-note">
         <b>Current balance</b> is your spendable cash: opening balance plus all income and costs
-        posted to date (gates, transfers, prizes, etc.). Used by
-        <a href="transfer_center.html">Transfer Centre</a> and the market.
+        posted to date. Click the balance box for the full <a href="finances_ledger.html" id="linkLedgerInline">activity ledger</a>.
+        Used by <a href="transfer_center.html">Transfer Centre</a> and the market.
       </p>
       <p class="footer-note">
         <b>Predicted end-of-season balance</b> uses your current balance plus <b>pending</b> forecasts
@@ -366,19 +392,10 @@
     </div>
 
     <div class="panel">
-      <h2>Activity ledger</h2>
-      <div class="toolbar">
-        <a href="season_transfers.html" class="button">All league transfers</a>
-        <a href="stadium.html" class="button">Stadium &amp; gate estimate</a>
-      </div>
-      <div id="ledgerTable"></div>
-    </div>
-
-    <div class="panel">
       <h2>5-year record (gate multiplier)</h2>
       <div id="archiveList"></div>
     </div>
   </div>
-  <script type="module" src="finances.js?v=20260608-admin-preview"></script>
+  <script type="module" src="finances.js?v=20260609-ledger-split"></script>
 </body>
 </html>

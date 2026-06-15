@@ -1,13 +1,10 @@
-import { supabase, initGlobal, isGpslAdminUser } from "./global.js";
-import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import { supabase, initGlobal } from "./global.js";
 import {
   formatMoney,
   loadClubBalance,
   loadFinanceLedger,
   loadClubSeasonArchive,
   processMyDueLoanInstallments,
-  financeEntryLabel,
-  isFinanceIncomeEntry,
 } from "./competition.js";
 import {
   aggregateLedgerByLine,
@@ -22,59 +19,13 @@ import {
   mergeTransferHistoryIntoByLine,
   transferHistoryBalanceGap,
 } from "./finance_transfers.js";
-
-function renderLedger(rows) {
-  const el = document.getElementById("ledgerTable");
-  if (!el) return;
-
-  if (!rows.length) {
-    el.innerHTML =
-      '<p class="empty">No ledger lines yet for this club. Gates post on confirmed results; transfers post when deals complete.</p>';
-    return;
-  }
-
-  const body = rows
-    .map((r) => {
-      const md = r.matchday ? `MD${r.matchday}` : "—";
-      const fixture =
-        r.home_club_short_name && r.away_club_short_name
-          ? `${r.home_club_short_name} vs ${r.away_club_short_name}`
-          : "—";
-      const income = isFinanceIncomeEntry(r.entry_type, r.amount);
-      const rowClass = income ? "income" : "cost";
-      const sign = Number(r.amount) >= 0 ? "+" : "";
-
-      return `
-        <tr class="${rowClass}">
-          <td class="col-when">${new Date(r.created_at).toLocaleString("en-GB")}</td>
-          <td class="col-type">${financeEntryLabel(r.entry_type)}</td>
-          <td class="col-md">${md}</td>
-          <td class="col-fixture">${fixture}</td>
-          <td class="col-amount money">${sign}${formatMoney(Math.abs(r.amount))}</td>
-          <td class="col-detail">${r.description || ""}</td>
-        </tr>
-      `;
-    })
-    .join("");
-
-  el.innerHTML = `
-    <div class="ledger-scroll">
-      <table class="fin-table">
-        <thead>
-          <tr>
-            <th class="col-when">When</th>
-            <th class="col-type">Type</th>
-            <th class="col-md">MD</th>
-            <th class="col-fixture">Fixture</th>
-            <th class="col-amount">Amount</th>
-            <th class="col-detail">Detail</th>
-          </tr>
-        </thead>
-        <tbody>${body}</tbody>
-      </table>
-    </div>
-  `;
-}
+import {
+  applyFinanceClubHeader,
+  mountAdminFinancePicker,
+  renderFinanceSubnav,
+  resolveFinanceClubContext,
+  wireFinanceStatLinks,
+} from "./finance_page_common.js";
 
 function renderSubsidyGrid(preview, loadError) {
   const grid = document.getElementById("subsidyGrid");
@@ -160,24 +111,19 @@ function renderArchive(rows) {
   `;
 }
 
-const ADMIN_FINANCE_CLUB_KEY = "gpsl_admin_finance_club";
-
 async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false } = {}) {
-  await loadClubsMap();
-  const fullName = fullClubName(shortName) || clubLabel || shortName;
-
-  document.getElementById("pageTitle").textContent = adminPreview
-    ? `${fullName} — Finances (admin preview)`
-    : `${fullName} — Finances`;
-  document.getElementById("clubBadgeHeader").src =
-    `images/club_badges/${shortName}.png`;
+  await applyFinanceClubHeader(shortName, clubLabel, {
+    adminPreview,
+    pageSuffix: "Finances",
+  });
 
   const pageMeta = document.getElementById("pageMeta");
-  if (pageMeta) {
-    pageMeta.textContent = adminPreview
-      ? `Admin preview — viewing ${shortName}. You do not own this club.`
-      : "";
+  if (pageMeta && adminPreview) {
+    pageMeta.textContent = `Admin preview — viewing ${shortName}. You do not own this club.`;
   }
+
+  renderFinanceSubnav("finances", shortName, adminPreview);
+  wireFinanceStatLinks(shortName, adminPreview);
 
   if (!adminPreview) {
     await processMyDueLoanInstallments(supabase);
@@ -239,76 +185,8 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     });
   }
 
-  renderLedger(ledger);
   renderArchive(await loadClubSeasonArchive(supabase, shortName));
   await loadSubsidyStatus(shortName);
-}
-
-async function mountAdminFinancePicker(initialShortName) {
-  const pageMeta = document.getElementById("pageMeta");
-  if (!pageMeta) return null;
-
-  const { data: clubs, error } = await supabase
-    .from("Clubs")
-    .select("ShortName, Club")
-    .neq("ShortName", "FOREIGN")
-    .order("Club");
-
-  if (error || !clubs?.length) {
-    pageMeta.textContent = "Admin preview — could not load club list.";
-    return null;
-  }
-
-  const wrap = document.createElement("div");
-  wrap.className = "admin-finance-picker";
-  wrap.style.cssText =
-    "margin-top:8px;padding:10px 12px;background:#222;border:1px solid #444;border-radius:6px;font-size:13px;";
-
-  const label = document.createElement("label");
-  label.textContent = "Preview club finances: ";
-  label.style.marginRight = "8px";
-
-  const select = document.createElement("select");
-  select.id = "adminFinanceClubSelect";
-  select.style.cssText =
-    "padding:6px 8px;background:#111;border:1px solid #555;color:#ddd;border-radius:4px;min-width:220px;";
-
-  for (const c of clubs) {
-    const opt = document.createElement("option");
-    opt.value = c.ShortName;
-    opt.textContent = `${c.Club || c.ShortName} (${c.ShortName})`;
-    select.appendChild(opt);
-  }
-
-  const saved = initialShortName || sessionStorage.getItem(ADMIN_FINANCE_CLUB_KEY);
-  if (saved && [...select.options].some((o) => o.value === saved)) {
-    select.value = saved;
-  }
-
-  wrap.appendChild(label);
-  wrap.appendChild(select);
-  pageMeta.replaceWith(wrap);
-
-  return select;
-}
-
-async function setupAdminFinancePreview() {
-  const select = await mountAdminFinancePicker();
-  if (!select) return;
-
-  const loadSelected = async () => {
-    const shortName = select.value;
-    if (!shortName) return;
-    sessionStorage.setItem(ADMIN_FINANCE_CLUB_KEY, shortName);
-    const label = select.options[select.selectedIndex]?.textContent || shortName;
-    await loadFinancesForClub(shortName, label, { adminPreview: true });
-  };
-
-  select.addEventListener("change", () => {
-    loadSelected().catch((err) => console.error("Admin finance preview:", err));
-  });
-
-  await loadSelected();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -324,21 +202,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("userEmail").textContent = user.email;
 
-  const { data: club } = await supabase
-    .from("Clubs")
-    .select("ShortName, Club")
-    .eq("owner_id", user.id)
-    .maybeSingle();
+  const ctx = await resolveFinanceClubContext(user);
 
-  if (!club?.ShortName) {
-    if (isGpslAdminUser(user)) {
-      await setupAdminFinancePreview();
-      return;
-    }
+  if (ctx.noClub) {
     document.getElementById("pageMeta").textContent =
       "No club linked — assign owner in GPSL Admin.";
     return;
   }
 
-  await loadFinancesForClub(club.ShortName, club.Club);
+  if (ctx.needsAdminPicker) {
+    await mountAdminFinancePicker();
+    return;
+  }
+
+  await loadFinancesForClub(ctx.shortName, ctx.clubLabel, {
+    adminPreview: ctx.adminPreview,
+  });
 });

@@ -1,0 +1,36 @@
+<script>window.CURRENT_PAGE = "finances_outgoing";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Outgoings — GPSL Finances</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="finances_subpage.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <div class="header-row">
+      <img id="clubBadgeHeader" src="" alt="">
+      <div>
+        <h1 id="pageTitle">Outgoings</h1>
+        <div id="userEmail" class="meta"></div>
+        <p id="pageMeta" class="meta" style="margin:0;"></p>
+        <nav id="financeSubnav" class="finance-subnav" aria-label="Finances sections"></nav>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="toolbar">
+        <a id="backToFinances" href="finances.html" class="button">← Finances overview</a>
+      </p>
+      <p class="footer-note" style="margin-top:0;">
+        All <b>posted costs</b> from your season ledger — purchases, wages, maintenance, fines, etc.
+      </p>
+      <p id="ledgerSummary" class="ledger-summary negative">Loading…</p>
+      <div id="ledgerTable"></div>
+    </div>
+  </div>
+  <script type="module" src="finances_outgoing.js?v=20260609-ledger-split"></script>
+</body>
+</html>
