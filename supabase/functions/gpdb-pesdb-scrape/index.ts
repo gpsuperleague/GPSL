@@ -232,13 +232,57 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "enrich_players") {
+      const raw = body?.players;
+      if (!Array.isArray(raw) || !raw.length) {
+        return jsonResponse({ error: "players array required" }, 400);
+      }
+      if (raw.length > 8) {
+        return jsonResponse({ error: "Max 8 players per enrich call (timeout limit)" }, 400);
+      }
+
+      const players: ScrapePlayer[] = [];
+      for (const row of raw) {
+        const base: PesdbListRow = {
+          konami_id: String(row.konami_id ?? ""),
+          player_name: String(row.player_name ?? ""),
+          position: String(row.position ?? "CF"),
+          nationality: String(row.nationality ?? ""),
+          age: Number(row.age) || 25,
+          rating: Number(row.rating) || 60,
+        };
+        if (!base.konami_id) continue;
+        try {
+          const detailHtml = await fetchPesdbHtml(pesdbPlayerMaxUrl(base.konami_id));
+          const detail = parsePesdbMaxLevelPage(detailHtml);
+          players.push({
+            ...base,
+            max_level_rating: detail.max_level_rating ?? base.rating,
+            playing_style: detail.playing_style,
+          });
+        } catch (err) {
+          console.error(`detail ${base.konami_id}:`, err);
+          players.push({
+            ...base,
+            max_level_rating: base.rating,
+            playing_style: "None",
+          });
+        }
+        await new Promise((r) => setTimeout(r, 120));
+      }
+
+      return jsonResponse({
+        ok: true,
+        players,
+        players_enriched: players.length,
+      });
+    }
+
     if (action !== "scrape_page") {
       return jsonResponse({ error: `Unknown action: ${action}` }, 400);
     }
 
     const page = Math.max(1, Number(body?.page) || 1);
-    const includeDetails = body?.include_details !== false;
-    const concurrency = Math.min(8, Math.max(1, Number(body?.concurrency) || 4));
 
     const listHtml = await fetchPesdbHtml(pesdbListUrl(page));
     const listRows = parsePesdbListPage(listHtml);
@@ -253,40 +297,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    let players: ScrapePlayer[];
-
-    if (!includeDetails) {
-      players = listRows.map((row) => ({
-        ...row,
-        max_level_rating: row.rating,
-        playing_style: "None",
-      }));
-    } else {
-      players = await mapWithConcurrency(listRows, concurrency, async (row) => {
-        try {
-          const detailHtml = await fetchPesdbHtml(pesdbPlayerMaxUrl(row.konami_id));
-          const detail = parsePesdbMaxLevelPage(detailHtml);
-          return {
-            ...row,
-            max_level_rating: detail.max_level_rating ?? row.rating,
-            playing_style: detail.playing_style,
-          };
-        } catch (err) {
-          console.error(`detail ${row.konami_id}:`, err);
-          return {
-            ...row,
-            max_level_rating: row.rating,
-            playing_style: "None",
-          };
-        }
-      });
-    }
+    const players: ScrapePlayer[] = listRows.map((row) => ({
+      ...row,
+      max_level_rating: row.rating,
+      playing_style: "None",
+    }));
 
     return jsonResponse({
       ok: true,
       page,
       players,
       players_on_page: players.length,
+      list_only: true,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

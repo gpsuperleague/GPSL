@@ -9,6 +9,7 @@ primeAdminPageChrome();
 
 const CONFIRM_TEXT = "SYNC GPDB";
 const SCRAPE_FUNCTION = "gpdb-pesdb-scrape";
+const DETAIL_BATCH_SIZE = 6;
 let scrapeAbort = false;
 const fileInput = () => document.getElementById("csvFile");
 const importBtn = () => document.getElementById("importBtn");
@@ -144,13 +145,39 @@ async function invokePesdbScrape(body) {
     body,
   });
   if (error) {
-    const hint = error.message?.includes("Failed to send")
+    let detail = error.message || "Scrape request failed";
+    try {
+      const ctx = error.context;
+      if (ctx && typeof ctx.json === "function") {
+        const payload = await ctx.json();
+        if (payload?.error) detail = String(payload.error);
+      }
+    } catch (_) {
+      /* ignore parse errors */
+    }
+    if (data?.error) detail = String(data.error);
+    const hint = detail.includes("Failed to send")
       ? ` — deploy edge function ${SCRAPE_FUNCTION} in Supabase`
       : "";
-    throw new Error((error.message || "Scrape request failed") + hint);
+    throw new Error(detail + hint);
   }
   if (data?.error) throw new Error(String(data.error));
   return data;
+}
+
+async function enrichPlayersWithDetails(listPlayers) {
+  const out = [];
+  const batches = chunkRows(listPlayers, DETAIL_BATCH_SIZE);
+  for (let i = 0; i < batches.length; i++) {
+    if (scrapeAbort) break;
+    const batch = batches[i];
+    const data = await invokePesdbScrape({
+      action: "enrich_players",
+      players: batch,
+    });
+    out.push(...(data.players || []));
+  }
+  return out;
 }
 
 function updateScrapeProgress(page, endPage, stagingTotal) {
@@ -208,15 +235,29 @@ async function runPesdbScrape() {
       }
 
       updateScrapeProgress(page - startPage, endPage - startPage + 1, stagingTotal);
+      setStatus(
+        "scrapeStatus",
+        `Page ${page}/${endPage} — fetching list…`,
+        true
+      );
 
-      const data = await invokePesdbScrape({
+      const listData = await invokePesdbScrape({
         action: "scrape_page",
         page,
-        include_details: includeDetails,
-        concurrency: 4,
       });
 
-      const enriched = await enrichRowsWithEconomics(data.players || []);
+      let players = listData.players || [];
+
+      if (includeDetails && players.length && !scrapeAbort) {
+        setStatus(
+          "scrapeStatus",
+          `Page ${page}/${endPage} — max rating + style (${players.length} players, batches of ${DETAIL_BATCH_SIZE})…`,
+          true
+        );
+        players = await enrichPlayersWithDetails(players);
+      }
+
+      const enriched = await enrichRowsWithEconomics(players);
       if (enriched.length) {
         const chunks = chunkRows(enriched);
         for (const chunk of chunks) {
@@ -232,7 +273,7 @@ async function runPesdbScrape() {
       updateScrapeProgress(page - startPage + 1, endPage - startPage + 1, stagingTotal);
       setStatus(
         "scrapeStatus",
-        `Page ${page}/${endPage} done — ${data.players_on_page ?? 0} players (${stagingTotal} total in staging).`,
+        `Page ${page}/${endPage} done — ${players.length} players (${stagingTotal} total in staging).`,
         true
       );
     }
