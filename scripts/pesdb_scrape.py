@@ -996,11 +996,15 @@ def make_driver(headless: bool) -> webdriver.Chrome:
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
-    # Quiet Chrome stderr noise (e.g. GCM DEPRECATED_ENDPOINT) — not scrape errors.
+    # Quiet Chrome stderr noise (GCM / PHONE_REGISTRATION_ERROR) — not scrape failures.
     options.add_argument("--log-level=3")
     options.add_argument("--disable-background-networking")
     options.add_argument("--disable-sync")
     options.add_argument("--disable-default-apps")
+    options.add_argument("--disable-notifications")
+    options.add_argument(
+        "--disable-features=PushMessaging,BackgroundFetch,BackgroundSync,MediaRouter"
+    )
     options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
     options.add_experimental_option("useAutomationExtension", False)
     options.add_argument(
