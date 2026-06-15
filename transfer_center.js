@@ -327,11 +327,15 @@ async function loadActiveListings(shortName) {
           const reserve = Number(row.reserve_price).toLocaleString("en-GB");
           const endTime = row.end_time ? new Date(row.end_time) : null;
           const bidsCount = bidsCountMap.get(row.id) || 0;
+          const forced = row.perpetual_renew === true;
 
           let actionsHtml = "";
+          const forcedNote = forced
+            ? `<div style="font-size:11px;color:#e8a87c;margin-top:2px;">Underperformance — auto-relists at MV</div>`
+            : "";
 
-          // Only after cutoff AND no bids: show Extend / Remove
-          if (endTime && now > endTime && bidsCount === 0) {
+          // Only after cutoff AND no bids: show Extend / Remove (not for forced listings)
+          if (!forced && endTime && now > endTime && bidsCount === 0) {
             actionsHtml = `
               <button class="extend-listing-btn" data-id="${row.id}">Extend</button>
               <button class="expire-listing-btn" data-id="${row.id}" data-player-id="${row.player_id}">Remove</button>
@@ -340,7 +344,7 @@ async function loadActiveListings(shortName) {
 
           return `
             <tr>
-              <td>${name}</td>
+              <td>${name}${forcedNote}</td>
               <td>₿ ${reserve}</td>
               <td>${endTime ? endTime.toLocaleString() : "-"}</td>
               <td>${actionsHtml}</td>
@@ -381,6 +385,19 @@ async function extendListing(listingId, shortName) {
 }
 
 async function expireListing(listingId, playerId, shortName) {
+  const { data: row } = await supabase
+    .from("Player_Transfer_Listings")
+    .select("perpetual_renew")
+    .eq("id", listingId)
+    .maybeSingle();
+
+  if (row?.perpetual_renew) {
+    alert(
+      "This listing was created after club underperformance. It relists automatically at market value and cannot be removed manually."
+    );
+    return;
+  }
+
   await supabase
     .from("Player_Transfer_Listings")
     .update({ status: "Closed", transfer_completed: false })
@@ -782,8 +799,23 @@ async function loadSellerReview(shortName) {
               window.__gpslCurrentSeasonLabel
             );
 
+            const forced = row.perpetual_renew === true;
+            const forcedNote = forced
+              ? `<div style="font-size:11px;color:#e8a87c;">Underperformance listing — relists if rejected</div>`
+              : "";
+
             let actions;
-            if (!row.current_highest_bidder || bid <= 0) {
+            if (forced) {
+              if (!row.current_highest_bidder || bid <= 0) {
+                actions = `<span style="color:#aaa;">Awaiting bids</span>`;
+              } else if (locked) {
+                actions = `<button class="accept-below-btn" data-id="${row.id}">Accept ₿${bid.toLocaleString("en-GB")}</button>`;
+              } else if (expired) {
+                actions = `<button class="accept-below-btn" data-id="${row.id}">Accept ₿${bid.toLocaleString("en-GB")}</button>`;
+              } else {
+                actions = `<button class="accept-below-btn" data-id="${row.id}">Accept ₿${bid.toLocaleString("en-GB")}</button>`;
+              }
+            } else if (!row.current_highest_bidder || bid <= 0) {
               actions = `<button class="reject-below-btn" data-id="${row.id}">Close listing</button>`;
             } else if (locked) {
               actions = `<span class="locked-msg" title="${SAME_SEASON_TRANSFER_MESSAGE}">Signed this season</span>
@@ -798,7 +830,7 @@ async function loadSellerReview(shortName) {
 
             return `
             <tr>
-              <td>${name}</td>
+              <td>${name}${forcedNote}</td>
               <td>${formatMoney(reserve)}</td>
               <td>${bid > 0 ? formatMoney(bid) : "—"}</td>
               <td>${shortfall > 0 ? formatMoney(shortfall) : "—"}</td>
