@@ -76,39 +76,6 @@
       background: linear-gradient(180deg, #d4af37, #8b6914);
       color:#111; font-weight:bold; text-decoration:none; border-radius:4px;
     }
-    .subsidy-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 10px;
-    }
-    .subsidy-card {
-      background: #222;
-      border: 1px solid #333;
-      border-radius: 6px;
-      padding: 12px 14px;
-    }
-    .subsidy-card h3 {
-      margin: 0 0 8px;
-      font-size: 14px;
-      color: #ffcc66;
-    }
-    .subsidy-status {
-      font-size: 15px;
-      font-weight: 600;
-      color: #eee;
-      margin: 0 0 6px;
-    }
-    .subsidy-meta {
-      font-size: 12px;
-      color: #888;
-      margin: 0;
-      line-height: 1.4;
-    }
-    .subsidy-amount {
-      font-size: 13px;
-      color: #9c9;
-      margin-top: 8px;
-    }
   </style>
 </head>
 <body>
@@ -166,19 +133,6 @@
         in <a href="finances_accounts.html" id="linkAccountsInline">Season accounts</a> (upcoming home gates,
         stadium maintenance, squad wages where calculable).
       </p>
-    </div>
-
-    <div class="panel">
-      <h2>Government subsidies</h2>
-      <p class="footer-note" style="margin-top:0;">
-        Status from your current squad. Payouts post at season end when all league divisions
-        have played <b>38/38</b> matches. HG bands pay separately (Quota ≤5, Flying 6–8, Pride 9+);
-        status shows your highest tier. These also appear under <b>Pending</b> in
-        <a href="finances_accounts.html">Season accounts</a> until paid.
-      </p>
-      <div id="subsidyGrid" class="subsidy-grid">
-        <p class="subsidy-meta">Loading…</p>
-      </div>
     </div>
 
     <div class="panel">
