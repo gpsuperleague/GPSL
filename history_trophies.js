@@ -144,3 +144,64 @@ export function renderTrophyCabinet(honours) {
       </div>
     </div>`;
 }
+
+/** Sample honours for cabinet preview / forecast page (not live data). */
+export const TROPHY_CABINET_PREVIEW_SCENARIOS = [
+  {
+    id: "empty",
+    title: "New club — empty cabinet",
+    blurb: "Every bay shows a dash until you win and the season is archived.",
+    honours: [],
+  },
+  {
+    id: "first_win",
+    title: "First honours — one league title and one cup",
+    blurb: "Each win adds a single trophy figure in that competition’s bay.",
+    honours: [
+      {
+        honour_type: "league_champion",
+        division: "superleague",
+        season_label: "2024/25",
+      },
+      {
+        honour_type: "cup_winner",
+        cup_code: "league_cup",
+        season_label: "2024/25",
+      },
+    ],
+  },
+  {
+    id: "repeat_cup",
+    title: "Same cup twice — two trophies in one bay",
+    blurb: "Winning Super8 again places a second trophy beside the first, with its own season label.",
+    honours: [
+      {
+        honour_type: "cup_winner",
+        cup_code: "super8",
+        season_label: "2022/23",
+      },
+      {
+        honour_type: "cup_winner",
+        cup_code: "super8",
+        season_label: "2024/25",
+      },
+    ],
+  },
+  {
+    id: "full",
+    title: "Full cabinet — multiple seasons and competitions",
+    blurb: "How a long-running club might look after several archived seasons.",
+    honours: [
+      { honour_type: "league_champion", division: "superleague", season_label: "2020/21" },
+      { honour_type: "league_champion", division: "superleague", season_label: "2023/24" },
+      { honour_type: "league_champion", division: "championship_a", season_label: "2018/19" },
+      { honour_type: "cup_winner", cup_code: "league_cup", season_label: "2019/20" },
+      { honour_type: "cup_winner", cup_code: "league_cup", season_label: "2024/25" },
+      { honour_type: "cup_winner", cup_code: "super8", season_label: "2021/22" },
+      { honour_type: "cup_winner", cup_code: "super8", season_label: "2023/24" },
+      { honour_type: "cup_winner", cup_code: "plate", season_label: "2022/23" },
+      { honour_type: "cup_winner", cup_code: "shield", season_label: "2017/18" },
+      { honour_type: "cup_winner", cup_code: "bowl", season_label: "2016/17" },
+    ],
+  },
+];
