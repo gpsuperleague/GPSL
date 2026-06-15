@@ -232,11 +232,17 @@ SELECT
   c."ShortName" AS club_short_name,
   c."Club" AS club_name,
   public.owner_registry_resolve_tag(c.owner_id) AS owner_tag,
+  ion.nation_code,
+  n.name AS nation_name,
+  n.flag_emoji,
   round(coalesce(t.rolling_points, 0), 2) AS rolling_points,
   coalesce(t.seasons_count, 0) AS seasons_count,
   coalesce(t.season_breakdown, '[]'::jsonb) AS season_breakdown
 FROM public."Clubs" c
 LEFT JOIN totals t ON t.club_short_name = c."ShortName"
+LEFT JOIN public.international_owner_nations ion
+  ON ion.club_short_name = c."ShortName" AND ion.is_active = true
+LEFT JOIN public.international_nations n ON n.code = ion.nation_code
 WHERE c.owner_id IS NOT NULL
 ORDER BY rank_position;
 

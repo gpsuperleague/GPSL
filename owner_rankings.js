@@ -1,4 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
+import { renderNationFlag } from "./international_flags.js";
 
 let myClub = null;
 let activeTab = "rolling";
@@ -57,6 +58,17 @@ function rowClass(clubShort) {
   return parts.join(" ");
 }
 
+function renderNationCell(r) {
+  if (!r.nation_code) return '<span class="empty">—</span>';
+  const label = r.nation_name || r.nation_code;
+  return (
+    `<span class="nation-cell">${renderNationFlag(
+      { code: r.nation_code, flag_emoji: r.flag_emoji, name: label },
+      "sm"
+    )} ${label}</span>`
+  );
+}
+
 async function loadRolling() {
   const { data, error } = await supabase
     .from("competition_owner_ranking_rolling4_public")
@@ -72,13 +84,14 @@ async function loadRolling() {
       <td class="num">${r.rank_position}</td>
       <td>${r.owner_tag || r.owner_name}</td>
       <td>${r.club_name || r.club_short_name}</td>
+      <td>${renderNationCell(r)}</td>
       <td class="num"><b>${fmtPts(r.rolling_points)}</b></td>
       <td class="num">${r.seasons_count}/4</td>
       <td class="breakdown">${renderBreakdown(r.season_breakdown)}</td>
     </tr>`
   );
   return tableHtml(
-    ["#", "Owner", "Club", "Points", "Seasons", "Breakdown"],
+    ["#", "Owner", "Club", "Nation", "Points", "Seasons", "Breakdown"],
     rows
   );
 }
