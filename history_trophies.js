@@ -1,4 +1,4 @@
-/** Trophy cabinet slot config — PNG assets in images/trophies/ */
+/** Trophy cabinet — honours from archive appear on wooden shelves (one figure per win). */
 
 import { TROPHY_IMAGES } from "./trophy_assets.js";
 
@@ -78,64 +78,69 @@ function esc(text) {
     .replace(/"/g, "&quot;");
 }
 
-function renderTrophyItem(imageSrc, seasonLabel, won) {
-  const cls = won ? "trophy-item is-won" : "trophy-item is-ghost";
-  const season = won
-    ? `<span class="trophy-season">${esc(seasonLabel)}</span>`
-    : "";
-  return `<div class="${cls}">
-    <img class="trophy-png" src="${esc(imageSrc)}" alt="" width="52" height="68" loading="lazy">
-    ${season}
-  </div>`;
+function renderTrophyOnShelf(imageSrc, seasonLabel) {
+  return `
+    <figure class="trophy-on-shelf" title="${esc(seasonLabel)}">
+      <img class="trophy-png" src="${esc(imageSrc)}" alt="${esc(seasonLabel)} trophy" width="56" height="72" loading="lazy">
+      <figcaption class="trophy-season">${esc(seasonLabel)}</figcaption>
+    </figure>`;
 }
 
-function renderSlot(slot, honours) {
+function renderEmptyBay(slot) {
+  return `
+    <div class="trophy-bay is-empty" data-trophy="${esc(slot.id)}">
+      <div class="trophy-bay-label">${esc(slot.label)}</div>
+      <div class="trophy-bay-surface">
+        <span class="trophy-bay-empty">—</span>
+      </div>
+    </div>`;
+}
+
+function renderBay(slot, honours) {
   const wins = (honours || [])
     .filter(slot.match)
     .sort((a, b) => String(b.season_label).localeCompare(String(a.season_label)));
 
-  const isEmpty = !wins.length;
-  const pedestal = isEmpty
-    ? renderTrophyItem(slot.image, null, false)
-    : wins.map((w) => renderTrophyItem(slot.image, w.season_label, true)).join("");
+  if (!wins.length) {
+    return renderEmptyBay(slot);
+  }
 
-  const countNote =
-    wins.length > 1
-      ? `<span class="trophy-slot-count">×${wins.length}</span>`
-      : "";
+  const figures = wins
+    .map((w) => renderTrophyOnShelf(slot.image, w.season_label))
+    .join("");
 
   return `
-    <div class="trophy-slot${isEmpty ? " is-empty" : ""}" data-trophy="${esc(slot.id)}">
-      <div class="trophy-pedestal">${pedestal}</div>
-      <div class="trophy-slot-plaque">${esc(slot.label)}${countNote}</div>
+    <div class="trophy-bay has-trophies" data-trophy="${esc(slot.id)}">
+      <div class="trophy-bay-label">${esc(slot.label)}</div>
+      <div class="trophy-bay-surface">${figures}</div>
     </div>`;
 }
 
 function renderShelf(shelf, honours) {
-  const slots = shelf.slots.map((slot) => renderSlot(slot, honours)).join("");
+  const bays = shelf.slots.map((slot) => renderBay(slot, honours)).join("");
   return `
-    <section class="cabinet-shelf" data-shelf="${esc(shelf.id)}">
+    <section class="cabinet-shelf" data-shelf="${esc(shelf.id)}" aria-label="${esc(shelf.label)}">
       <div class="shelf-plaque">${esc(shelf.label)}</div>
-      <div class="cabinet-row">${slots}</div>
+      <div class="shelf-board">
+        <div class="shelf-bays">${bays}</div>
+      </div>
     </section>`;
 }
 
 export function renderTrophyCabinet(honours) {
-  const shelves = TROPHY_CABINET_SHELVES.map((s) => renderShelf(s, honours)).join("");
-  const totalWins = (honours || []).length;
+  const rows = honours || [];
+  const totalWins = rows.length;
+  const shelves = TROPHY_CABINET_SHELVES.map((s) => renderShelf(s, rows)).join("");
 
-  if (!totalWins) {
-    return `
-      <div class="trophy-cabinet">
-        <div class="trophy-cabinet-glass">
-          <p class="trophy-cabinet-empty">No trophies in the cabinet yet — league titles and cup wins appear here when seasons are archived.</p>
-          ${shelves}
-        </div>
-      </div>`;
-  }
+  const emptyNote = totalWins
+    ? ""
+    : `<p class="trophy-cabinet-empty">No trophies yet — wins appear here on the shelf when a season is archived.</p>`;
 
   return `
-    <div class="trophy-cabinet">
-      <div class="trophy-cabinet-glass">${shelves}</div>
+    <div class="trophy-cabinet${totalWins ? " has-wins" : ""}">
+      <div class="trophy-cabinet-glass">
+        ${emptyNote}
+        ${shelves}
+      </div>
     </div>`;
 }
