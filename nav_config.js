@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260615-gpdb-pesdb-sync";
+export const NAV_CONFIG_VERSION = "20260615-club-auction-nav";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -48,6 +48,11 @@ export const NAV_SECTIONS = [
         href: "manager_draftauction.html",
         label: "Manager Draft Auction",
         page: "manager_draftauction",
+      },
+      {
+        href: "club_auction.html",
+        label: "Club Auction",
+        page: "club_auction",
       },
       { href: "expiring_contracts.html", label: "Expiring Contracts", page: "expiring_contracts" },
       { href: "season_transfers.html", label: "Season Transfers", page: "season_transfers" },

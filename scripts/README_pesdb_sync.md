@@ -61,6 +61,18 @@ pip install selenium webdriver-manager beautifulsoup4 lxml
 python scripts/pesdb_scrape.py --output pesdb_full.csv
 ```
 
+### If you see “No table on page N”
+
+Page 3+ often fails **after** pages 1–2 because PESDB throttles automated traffic (~60 player-detail requests). Your browser still works; Selenium may get an empty or blocked response.
+
+1. **Resume** the failed chunk after a cooldown:
+   ```bash
+   python scripts/pesdb_scrape.py --start 3 --end 50 --output pesdb_3-50.csv --no-headless --delay 2.5 --page-delay 15
+   ```
+2. Check `pesdb_debug_page3.html` in the repo folder (saved on failure).
+3. Slow down: `--no-headless`, `--delay 2.5`, `--page-delay 15`, `--list-delay 5`
+4. Merge chunk CSVs before admin upload (one header row).
+
 Upload CSV on the same admin page. Preview/apply still work after the SQL patch.
 
 ---

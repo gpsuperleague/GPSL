@@ -26,6 +26,9 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
 BASE_URL = "https://pesdb.net/efootball/"
@@ -42,6 +45,58 @@ CSV_HEADER = [
     "player_id", "Position", "player_name", "nationality", "age",
     "rating", "max_level_rating", "playing_style",
 ]
+
+RATE_LIMIT_MARKERS = (
+    "429",
+    "too many requests",
+    "rate limit",
+    "access denied",
+    "captcha",
+    "cloudflare",
+    "please wait",
+    "blocked",
+)
+
+
+def find_players_table(soup: BeautifulSoup):
+    """PESDB player list uses <table class="players"> — not the first <table> on the page."""
+    table = soup.select_one("table.players")
+    if table:
+        return table
+    for table in soup.find_all("table"):
+        rows = table.find_all("tr")
+        player_links = table.find_all("a", href=re.compile(r"\?id="))
+        if len(rows) >= 5 and len(player_links) >= 3:
+            return table
+    return None
+
+
+def diagnose_page_html(html: str, page: int) -> str:
+    lower = html.lower()
+    for marker in RATE_LIMIT_MARKERS:
+        if marker in lower:
+            return f"possible rate limit / block ({marker!r})"
+    if "players found" in lower:
+        return "page mentions player count but players table missing — try slower delays or --no-headless"
+    title_m = re.search(r"<title[^>]*>([^<]+)</title>", html, re.I)
+    title = title_m.group(1).strip() if title_m else "unknown title"
+    return f"title={title!r}, html_len={len(html)}"
+
+
+def save_debug_html(page: int, html: str) -> Path:
+    path = Path(f"pesdb_debug_page{page}.html")
+    path.write_text(html, encoding="utf-8")
+    return path
+
+
+def wait_for_players_table(driver, timeout: float) -> bool:
+    try:
+        WebDriverWait(driver, timeout).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, "table.players"))
+        )
+        return True
+    except Exception:
+        return False
 
 
 def build_url(page: int, filters: dict) -> str:
@@ -103,13 +158,13 @@ def parse_playing_style(page_text: str, soup: BeautifulSoup) -> str:
     return "None"
 
 
-def get_player_details(driver, player_id: str | None) -> tuple[str, str]:
+def get_player_details(driver, player_id: str | None, delay: float) -> tuple[str, str]:
     if not player_id:
         return "Unknown", "Unknown"
     try:
         url = f"{BASE_URL}?id={player_id}&mode=max_level"
         driver.get(url)
-        time.sleep(1.2)
+        time.sleep(delay)
         soup = BeautifulSoup(driver.page_source, "lxml")
         page_text = soup.get_text()
         return parse_playing_style(page_text, soup), parse_max_rating(page_text, soup)
@@ -139,15 +194,50 @@ def estimate_total_pages(driver, filters: dict) -> int:
     return max(nums) if nums else 100
 
 
-def scrape_list_page(driver, page: int, filters: dict, delay: float) -> list[list[str]]:
+def scrape_list_page(
+    driver,
+    page: int,
+    filters: dict,
+    list_delay: float,
+    detail_delay: float,
+    page_retries: int,
+    retry_wait: float,
+) -> list[list[str]]:
     url = build_url(page, filters)
-    print(f"Page {page}: {url}")
-    driver.get(url)
-    time.sleep(delay)
-    soup = BeautifulSoup(driver.page_source, "lxml")
-    table = soup.find("table")
+    print(f"📄 Scraping page {page}")
+    print(f"🔗 URL: {url}")
+
+    html = ""
+    soup = None
+    table = None
+
+    for attempt in range(1, page_retries + 1):
+        driver.get(url)
+        loaded = wait_for_players_table(driver, list_delay + 2.0)
+        if not loaded:
+            time.sleep(max(1.0, list_delay))
+        html = driver.page_source
+        soup = BeautifulSoup(html, "lxml")
+        table = find_players_table(soup)
+        if table:
+            break
+
+        diag = diagnose_page_html(html, page)
+        wait_s = retry_wait * attempt
+        print(f"⚠️ No players table on page {page} (attempt {attempt}/{page_retries}) — {diag}")
+        if attempt < page_retries:
+            print(f"   waiting {wait_s:.0f}s before retry (PESDB may be throttling your IP)…")
+            time.sleep(wait_s)
+
     if not table:
-        print(f"  no table on page {page}")
+        debug_path = save_debug_html(page, html)
+        print(
+            f"❌ Giving up on page {page}. Saved HTML → {debug_path.resolve()}\n"
+            "   Tips: rerun with --no-headless, increase --list-delay / --page-delay,\n"
+            "   wait 30–60 min, or resume with --start {page} after pages 1–{prev} finished."
+            .format(page=page, prev=page - 1),
+            file=sys.stderr,
+        )
         return []
 
     tbody = table.find("tbody")
@@ -168,7 +258,7 @@ def scrape_list_page(driver, page: int, filters: dict, delay: float) -> list[lis
         rating = cols[7].get_text(strip=True)
 
         print(f"   {player_name} ({player_id})")
-        playing_style, max_rating = get_player_details(driver, player_id)
+        playing_style, max_rating = get_player_details(driver, player_id, detail_delay)
         out.append([
             player_id or "",
             position,
@@ -179,7 +269,7 @@ def scrape_list_page(driver, page: int, filters: dict, delay: float) -> list[lis
             max_rating,
             playing_style,
         ])
-        time.sleep(delay)
+        time.sleep(detail_delay)
     return out
 
 
@@ -213,8 +303,12 @@ def main() -> int:
     parser.add_argument("--start", type=int, default=1, help="First page (default 1)")
     parser.add_argument("--end", type=int, default=0, help="Last page (0 = auto-detect)")
     parser.add_argument("--output", type=str, default="", help="Output CSV path")
-    parser.add_argument("--delay", type=float, default=1.2, help="Seconds between player detail fetches")
-    parser.add_argument("--no-headless", action="store_true", help="Show browser window")
+    parser.add_argument("--delay", type=float, default=1.5, help="Seconds between player detail fetches")
+    parser.add_argument("--list-delay", type=float, default=3.0, help="Seconds to wait for list page load")
+    parser.add_argument("--page-delay", type=float, default=8.0, help="Pause between list pages")
+    parser.add_argument("--page-retries", type=int, default=4, help="Retries when list page has no players table")
+    parser.add_argument("--retry-wait", type=float, default=30.0, help="Base seconds between page retries")
+    parser.add_argument("--no-headless", action="store_true", help="Show browser window (often avoids blocks)")
     args = parser.parse_args()
 
     driver = make_driver(headless=not args.no_headless)
@@ -231,7 +325,20 @@ def main() -> int:
 
         print(f"Scraping pages {start_page}–{end_page}")
         for page in range(start_page, end_page + 1):
-            data.extend(scrape_list_page(driver, page, {}, args.delay))
+            if page > start_page:
+                print(f"⏸ Pausing {args.page_delay:.0f}s before next list page…")
+                time.sleep(args.page_delay)
+            data.extend(
+                scrape_list_page(
+                    driver,
+                    page,
+                    {},
+                    args.list_delay,
+                    args.delay,
+                    args.page_retries,
+                    args.retry_wait,
+                )
+            )
     finally:
         driver.quit()
 
