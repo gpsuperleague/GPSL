@@ -105,10 +105,11 @@ BEGIN
   END IF;
 
   IF v = ANY (ARRAY[
-    'japan', 'korea', 'south korea', 'north korea', 'china', 'saudi arabia',
+    'japan', 'korea', 'south korea', 'north korea', 'korea republic',
+    'china', 'china pr', 'saudi arabia',
     'uae', 'united arab emirates', 'qatar', 'australia', 'thailand',
-    'indonesia', 'malaysia', 'singapore', 'india', 'iran', 'iraq',
-    'turkey', 'turkiye'
+    'indonesia', 'malaysia', 'singapore', 'india', 'iran', 'ir iran', 'iraq',
+    'turkey', 'turkiye', 'türkiye'
   ]) THEN
     RETURN 'asia';
   END IF;

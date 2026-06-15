@@ -2,6 +2,12 @@
 -- GPSL International football — World Cup, nations, owner draft, player caps
 -- Run once after competition_phase0.sql
 -- v1 foundation: schema, owner nation draft, squads, cycle structure
+--
+-- Re-run on live DB: this file drops/recreates international_owner_draft_order
+-- with the foundation return type. Run competition_owner_ranking.sql (or
+-- patches/owner_ranking_owner_tag.sql) afterward to restore rolling rankings
+-- and owner_tag columns. For nation-name-only fixes use
+-- patches/international_nation_gpdb_names.sql instead of re-running this file.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -245,6 +251,12 @@ AS $$
   LIMIT 1;
 $$;
 
+-- Foundation draft order (superseded by competition_owner_ranking.sql on live systems).
+-- Drop first — return type differs after owner ranking patches (owner_id, owner_tag, …).
+DROP VIEW IF EXISTS public.international_owner_rank_public;
+DROP VIEW IF EXISTS public.international_selection_public;
+DROP FUNCTION IF EXISTS public.international_owner_draft_order();
+
 CREATE OR REPLACE FUNCTION public.international_owner_draft_order()
 RETURNS TABLE (
   pick_order smallint,
@@ -316,12 +328,12 @@ BEGIN
     ('SUI', 'Switzerland', '🇨🇭', 17),
     ('JPN', 'Japan', '🇯🇵', 18),
     ('SEN', 'Senegal', '🇸🇳', 19),
-    ('IRN', 'Iran', '🇮🇷', 20),
+    ('IRN', 'IR Iran', '🇮🇷', 20),
     ('DEN', 'Denmark', '🇩🇰', 21),
-    ('KOR', 'South Korea', '🇰🇷', 22),
+    ('KOR', 'Korea Republic', '🇰🇷', 22),
     ('AUS', 'Australia', '🇦🇺', 23),
     ('UKR', 'Ukraine', '🇺🇦', 24),
-    ('TUR', 'Turkey', '🇹🇷', 25),
+    ('TUR', 'Türkiye', '🇹🇷', 25),
     ('ECU', 'Ecuador', '🇪🇨', 26),
     ('POL', 'Poland', '🇵🇱', 27),
     ('SRB', 'Serbia', '🇷🇸', 28),
@@ -336,7 +348,7 @@ BEGIN
     ('SCO', 'Scotland', '🏴󠁧󠁢󠁳󠁣󠁴󠁿', 37),
     ('AUT', 'Austria', '🇦🇹', 38),
     ('HUN', 'Hungary', '🇭🇺', 39),
-    ('CZE', 'Czech Republic', '🇨🇿', 40),
+    ('CZE', 'Czechia', '🇨🇿', 40),
     ('NGA', 'Nigeria', '🇳🇬', 41),
     ('PAN', 'Panama', '🇵🇦', 42),
     ('TUN', 'Tunisia', '🇹🇳', 43),
@@ -346,7 +358,7 @@ BEGIN
     ('SVK', 'Slovakia', '🇸🇰', 47),
     ('SWE', 'Sweden', '🇸🇪', 48),
     ('FIN', 'Finland', '🇫🇮', 49),
-    ('IRL', 'Ireland', '🇮🇪', 50),
+    ('IRL', 'Republic of Ireland', '🇮🇪', 50),
     ('CMR', 'Cameroon', '🇨🇲', 51),
     ('RSA', 'South Africa', '🇿🇦', 52),
     ('JAM', 'Jamaica', '🇯🇲', 53),
@@ -356,7 +368,7 @@ BEGIN
     ('QAT', 'Qatar', '🇶🇦', 57),
     ('KSA', 'Saudi Arabia', '🇸🇦', 58),
     ('NZL', 'New Zealand', '🇳🇿', 59),
-    ('CHN', 'China', '🇨🇳', 60)
+    ('CHN', 'China PR', '🇨🇳', 60)
   ON CONFLICT (code) DO UPDATE
   SET name = EXCLUDED.name,
       flag_emoji = EXCLUDED.flag_emoji,
