@@ -158,6 +158,37 @@ let selectedListing = null;
 let listingsCache = [];
 let viewOnly = false;
 
+function applyViewOnlyIntro(isAdmin) {
+  const intro = document.getElementById("clubAuctionIntro");
+  const lead = document.getElementById("leadPanel");
+  if (intro) {
+    intro.innerHTML = isAdmin
+      ? "<b>Admin view</b> — you already have a club, so you cannot bid here. " +
+        "Use <b>History</b> on each listing to inspect bids. Owners without a club bid from this page during the auction window."
+      : "<b>View only</b> — you already manage a club, so bidding here is not available. " +
+        "You can still review listings and bid history.";
+  }
+  if (lead) {
+    lead.innerHTML = isAdmin
+      ? '<span style="color:#888;">Admin preview — bidding disabled while you hold a club.</span>'
+      : '<span style="color:#888;">You already have a club — bidding is disabled on this page.</span>';
+  }
+}
+
+async function userHasClub(userId) {
+  if (!userId) return false;
+  const { data, error } = await supabase
+    .from("Clubs")
+    .select("ShortName")
+    .eq("owner_id", userId)
+    .maybeSingle();
+  if (error) {
+    console.warn("club_auction: club lookup failed", error);
+    return false;
+  }
+  return Boolean(data?.ShortName);
+}
+
 async function loadOwnerContext() {
   const {
     data: { user },
@@ -166,27 +197,14 @@ async function loadOwnerContext() {
   const isAdmin = isGpslAdminUser(user);
 
   const { data: self, error } = await supabase.rpc("owner_registry_get_self");
+  const hasClub = Boolean(self?.has_club) || (await userHasClub(ownerId));
 
-  if (self?.has_club) {
-    if (isAdmin) {
-      viewOnly = true;
-      ownerTag = self?.owner_tag || null;
-      budget = 0;
-      const intro = document.getElementById("clubAuctionIntro");
-      if (intro) {
-        intro.innerHTML =
-          "<b>Admin view</b> — you already have a club, so you cannot bid here. " +
-          "Use <b>History</b> on each listing to inspect bids. Owners without a club bid from this page during the auction window.";
-      }
-      const lead = document.getElementById("leadPanel");
-      if (lead) {
-        lead.innerHTML =
-          '<span style="color:#888;">Admin preview — bidding disabled while you hold a club.</span>';
-      }
-      return true;
-    }
-    window.location = "dashboard.html";
-    return false;
+  if (hasClub) {
+    viewOnly = true;
+    ownerTag = self?.owner_tag || null;
+    budget = 0;
+    applyViewOnlyIntro(isAdmin);
+    return true;
   }
 
   if (error) {
@@ -239,7 +257,7 @@ function renderStatus() {
       ? getClubAuctionEffectivePhase(getUKNow(), start, getDraftCountdownOptions())
       : null;
     const phaseHint = phase ? clubAuctionPhaseLabel(phase) : "";
-    el.textContent = `Admin view · ${auctionState.active_listings ?? 0} clubs listed${phaseHint ? ` · ${phaseHint}` : ""}`;
+    el.textContent = `View only · ${auctionState.active_listings ?? 0} clubs listed${phaseHint ? ` · ${phaseHint}` : ""}`;
     el.style.color = "#ccc";
     return;
   }
