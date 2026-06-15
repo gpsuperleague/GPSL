@@ -11,6 +11,7 @@ import {
   getClubAuctionEffectivePhase,
   clubAuctionPhaseLabel,
 } from "./draft_timeline.js";
+import { stadiumImageUrl } from "./stadium_images.js";
 
 const GATE_PRICE_PER_SEAT = 20;
 const STADIUM_VALUE_PER_SEAT = 1500;
@@ -440,11 +441,53 @@ function adjustClubBid(delta) {
   validateClubBidInput();
 }
 
+function renderClubBidModalPhoto(row) {
+  const slot = document.getElementById("clubBidModalPhoto");
+  if (!slot) return;
+
+  const shortName = row.club_short_name || "";
+  const stadiumName = row.stadium || row.club_name || "Stadium";
+  const src = stadiumImageUrl(shortName);
+  slot.innerHTML = "";
+
+  if (!src) {
+    slot.style.display = "none";
+    return;
+  }
+
+  slot.style.display = "";
+  const img = new Image();
+  img.onload = () => {
+    const alt = stadiumName.replace(/"/g, "&quot;");
+    slot.innerHTML = `
+      <div class="club-bid-photo-wrap">
+        <img src="${src}" alt="${alt}">
+        <span class="club-bid-photo-credit">StadiumDB</span>
+      </div>
+    `;
+  };
+  img.onerror = () => {
+    const badgeSrc = clubBadgeSrc(shortName);
+    if (badgeSrc) {
+      slot.innerHTML = `
+        <div class="club-bid-photo-fallback">
+          <img src="${badgeSrc}" alt="">
+        </div>
+      `;
+      return;
+    }
+    slot.style.display = "none";
+  };
+  img.src = src;
+}
+
 async function openClubBidModal(row, allowBid = true) {
   selectedListing = row;
   const modal = document.getElementById("clubBidModal");
   const form = document.getElementById("clubBidFormSection");
   if (!modal) return;
+
+  renderClubBidModalPhoto(row);
 
   document.getElementById("clubBidModalTitle").textContent =
     row.club_name || row.club_short_name || "Club";
