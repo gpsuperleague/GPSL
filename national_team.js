@@ -16,7 +16,7 @@ const POSITION_GROUPS = {
   Goalkeepers: ["GK"],
   Defenders: ["LB", "CB", "RB"],
   Midfielders: ["DMF", "LMF", "CMF", "RMF", "AMF"],
-  Attackers: ["SS", "LW", "CF", "RW"],
+  Attackers: ["LW", "LWF", "SS", "RW", "RWF", "CF"],
 };
 
 function getNationCode() {

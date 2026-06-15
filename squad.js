@@ -526,7 +526,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
     "Goalkeepers": ["GK"],
     "Defenders": ["LB", "CB", "RB"],
     "Midfielders": ["DMF", "LMF", "CMF", "RMF", "AMF"],
-    "Attackers": ["SS", "LW", "CF", "RW"]
+    "Attackers": ["LW", "LWF", "SS", "RW", "RWF", "CF"]
   };
 
   for (const [groupName, positions] of Object.entries(groups)) {

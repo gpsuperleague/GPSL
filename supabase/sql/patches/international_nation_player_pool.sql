@@ -22,11 +22,13 @@ AS $$
     WHEN 'CMF' THEN 'mid'
     WHEN 'RMF' THEN 'mid'
     WHEN 'AMF' THEN 'mid'
-    WHEN 'WG' THEN 'mid'
-    WHEN 'SS' THEN 'fwd'
     WHEN 'LW' THEN 'fwd'
-    WHEN 'CF' THEN 'fwd'
+    WHEN 'LWF' THEN 'fwd'
+    WHEN 'SS' THEN 'fwd'
     WHEN 'RW' THEN 'fwd'
+    WHEN 'RWF' THEN 'fwd'
+    WHEN 'CF' THEN 'fwd'
+    WHEN 'WG' THEN 'fwd'
     ELSE NULL
   END;
 $$;
