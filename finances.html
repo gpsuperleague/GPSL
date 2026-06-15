@@ -63,184 +63,8 @@
     }
     .stat-box.stat-link:hover .link-hint { color:#ff9900; }
 
-    #financeSections {
-      --fin-col-label: minmax(7.5rem, 1.1fr);
-      --fin-col-posted: minmax(8.75rem, 9.25rem);
-      --fin-col-breakdown: minmax(12rem, 1.6fr);
-      --fin-col-running: minmax(8.75rem, 9.25rem);
-      --fin-col-pending: minmax(8.75rem, 9.25rem);
-      --fin-col-gap: 16px;
-      display:flex; flex-direction:column; gap:20px;
-    }
-    .fin-sheet {
-      background:#222; border:1px solid #333; border-radius:6px;
-      padding:14px 16px 16px; overflow-x:auto;
-      -webkit-overflow-scrolling:touch;
-    }
-    .fin-section {
-      background:transparent; border:none; border-radius:0;
-      padding:0; margin-top:18px;
-    }
-    .fin-section:first-of-type { margin-top:0; }
-    .fin-section h3 {
-      color:#ff9900; font-size:15px; margin:0 0 8px;
-      border-bottom:1px solid #333; padding-bottom:6px;
-    }
-    .fin-section-intro {
-      color:#999; font-size:12px; margin:0 0 10px; line-height:1.4;
-    }
-    .fin-line { margin-bottom:10px; }
-    .fin-line:last-of-type { margin-bottom:0; }
-    .fin-line-cols {
-      display:grid;
-      grid-template-columns: var(--fin-col-label) var(--fin-col-posted) var(--fin-col-breakdown) var(--fin-col-running) var(--fin-col-pending);
-      column-gap: var(--fin-col-gap);
-      row-gap:6px;
-      align-items:start;
-      min-width:62rem;
-    }
-    .fin-columns-head {
-      display:grid;
-      grid-template-columns: var(--fin-col-label) var(--fin-col-posted) var(--fin-col-breakdown) var(--fin-col-running) var(--fin-col-pending);
-      column-gap: var(--fin-col-gap);
-      font-size:11px;
-      color:#888;
-      text-transform:uppercase;
-      letter-spacing:0.04em;
-      padding-bottom:10px;
-      margin-bottom:4px;
-      border-bottom:1px solid #333;
-      min-width:62rem;
-    }
-    .fin-col-label,
-    .fin-line-label {
-      min-width:0;
-      padding-right:4px;
-      line-height:1.35;
-    }
-    .fin-col-posted,
-    .fin-col-running,
-    .fin-col-pending {
-      text-align:right;
-      white-space:nowrap;
-      font-variant-numeric: tabular-nums;
-      min-width:0;
-      padding-left:4px;
-    }
-    .fin-col-breakdown {
-      white-space:normal;
-      text-align:left;
-      font-size:11px;
-      line-height:1.4;
-      min-width:0;
-      overflow:hidden;
-    }
-    .fin-col-breakdown:has(.detail-line) {
-      display:grid;
-      grid-template-columns: max-content minmax(6.5rem, max-content);
-      column-gap:14px;
-      row-gap:3px;
-      justify-content:start;
-      align-content:start;
-      width:fit-content;
-      max-width:100%;
-    }
-    .fin-col-breakdown .detail-line {
-      display:contents;
-      color:#aaa;
-    }
-    .fin-col-breakdown .detail-line span:first-child {
-      min-width:0;
-      overflow-wrap:anywhere;
-      padding:1px 0;
-      color:#aaa;
-    }
-    .fin-col-breakdown .detail-line span:last-child {
-      color:#ccc;
-      white-space:nowrap;
-      text-align:right;
-      font-variant-numeric: tabular-nums;
-      padding:1px 0;
-    }
-    .fin-line-head.fin-line-cols {
-      display:grid;
-      font-size:14px;
-      font-weight:bold;
-    }
-    .fin-line-head.fin-line-cols .fin-col-posted,
-    .fin-line-head.fin-line-cols .fin-col-running,
-    .fin-line-head.fin-line-cols .fin-col-pending { font-weight:bold; }
-    .fin-line-head.fin-line-cols .fin-col-breakdown { font-weight:normal; font-size:11px; }
-    .fin-section-total.fin-line-cols {
-      display:grid;
-      margin-top:12px; padding-top:8px;
-      border-top:1px solid #333;
-      font-size:12px; color:#aaa; font-weight:normal;
-    }
-    .fin-pending-note { color:#6a8; font-style:italic; }
-    .pending-amt { opacity:0.95; }
-    .fin-projected-footer {
-      margin-top:16px; padding:14px 16px;
-      background:#1a2a1a; border:1px solid #3a5a3a; border-radius:6px;
-      font-size:14px;
-    }
-    .fin-projected-main {
-      display:flex; justify-content:space-between; align-items:baseline; gap:12px;
-    }
-    .fin-projected-value { font-size:22px; font-weight:bold; }
-    .fin-projected-sub { font-size:11px; color:#888; font-weight:normal; margin:8px 0 0; line-height:1.4; }
-    .fin-line-label { color:#eee; }
-    .fin-line-note {
-      margin:4px 0 0; font-size:11px; color:#777; line-height:1.35; font-weight:normal;
-    }
-    .fin-line-detail { margin-top:4px; padding-left:12px; }
-    .detail-line {
-      display:flex; justify-content:space-between; font-size:11px; color:#aaa;
-      padding:2px 0;
-    }
-    .planned-line .fin-line-label { color:#888; }
-    .amt.planned { color:#666; font-weight:normal; }
-    .amt.zero { color:#666; font-weight:normal; }
-    .income-amt { color:#8d8; }
-    .cost-amt { color:#e99; }
-
-    .ledger-scroll {
-      overflow-x:auto;
-      -webkit-overflow-scrolling:touch;
-      margin-top:4px;
-    }
-    table.fin-table {
-      width:100%;
-      min-width:720px;
-      border-collapse:collapse;
-      font-size:13px;
-      table-layout:fixed;
-    }
-    table.fin-table th, table.fin-table td {
-      border:1px solid #333;
-      padding:8px 10px;
-      text-align:left;
-      vertical-align:top;
-      overflow-wrap:anywhere;
-      word-break:break-word;
-    }
-    table.fin-table th { background:#222; color:#ff9900; }
-    table.fin-table .col-when { width:14%; white-space:nowrap; }
-    table.fin-table .col-type { width:13%; }
-    table.fin-table .col-md { width:5%; white-space:nowrap; }
-    table.fin-table .col-fixture { width:11%; }
-    table.fin-table .col-amount { width:12%; }
-    table.fin-table .col-detail { width:45%; }
-    table.fin-table td.money {
-      text-align:right;
-      white-space:nowrap;
-      font-variant-numeric: tabular-nums;
-    }
-    table.fin-table tr.income td.money { color:#8d8; }
-    table.fin-table tr.cost td.money { color:#e99; }
     .empty { color:#888; font-size:13px; }
     .archive-ul { margin:0; padding-left:20px; color:#ccc; }
-    .legend { font-size:11px; color:#777; margin-top:8px; }
     .bank-visit-card {
       display:flex; align-items:center; gap:20px; flex-wrap:wrap;
       background: linear-gradient(135deg, #1f1f28 0%, #1a1a22 100%);
@@ -326,10 +150,11 @@
           <div class="value negative" id="costSeasonTotal">—</div>
           <span class="link-hint">View outgoings →</span>
         </a>
-        <div class="stat-box">
+        <a class="stat-box stat-link" id="linkAccounts" href="finances_accounts.html" title="View season accounts workbook">
           <div class="label">Posted net (ledger)</div>
           <div class="value" id="netSeasonTotal">—</div>
-        </div>
+          <span class="link-hint">View season accounts →</span>
+        </a>
       </div>
       <p class="footer-note">
         <b>Current balance</b> is your spendable cash: opening balance plus all income and costs
@@ -338,28 +163,8 @@
       </p>
       <p class="footer-note">
         <b>Predicted end-of-season balance</b> uses your current balance plus <b>pending</b> forecasts
-        in Season accounts (upcoming home gates, stadium maintenance, squad wages where calculable).
-        More lines will be added as those systems post to the ledger.
-      </p>
-    </div>
-
-    <div class="panel">
-      <h2>Season accounts</h2>
-      <p class="toolbar">
-        <a class="button" href="challenges.html">Season challenges</a>
-      </p>
-      <p class="footer-note" style="margin-top:0;">
-        Same structure as the classic Excel workbook.
-        <b>Posted</b> = total already on your balance (ledger this season);
-        <b>Breakdown</b> = individual posted amounts per type;
-        <b>Running total</b> = season opening + posted lines so far;
-        <b>Pending</b> = known future income/costs not yet posted (upcoming gates, wages, maintenance, etc.).
-        Footer shows <b>projected balance</b>.
-      </p>
-      <div id="financeSections"></div>
-      <p class="legend">
-        Posted — = nothing on ledger yet &nbsp;|&nbsp; Pending — = no forecast for that line yet &nbsp;|&nbsp;
-        green/red = income / cost
+        in <a href="finances_accounts.html" id="linkAccountsInline">Season accounts</a> (upcoming home gates,
+        stadium maintenance, squad wages where calculable).
       </p>
     </div>
 
@@ -368,8 +173,8 @@
       <p class="footer-note" style="margin-top:0;">
         Status from your current squad. Payouts post at season end when all league divisions
         have played <b>38/38</b> matches. HG bands pay separately (Quota ≤5, Flying 6–8, Pride 9+);
-        status shows your highest tier. These also appear under <b>Pending</b> in Season accounts
-        until paid.
+        status shows your highest tier. These also appear under <b>Pending</b> in
+        <a href="finances_accounts.html">Season accounts</a> until paid.
       </p>
       <div id="subsidyGrid" class="subsidy-grid">
         <p class="subsidy-meta">Loading…</p>
@@ -396,6 +201,6 @@
       <div id="archiveList"></div>
     </div>
   </div>
-  <script type="module" src="finances.js?v=20260609-ledger-split"></script>
+  <script type="module" src="finances.js?v=20260609-accounts-split"></script>
 </body>
 </html>

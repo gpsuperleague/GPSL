@@ -2,16 +2,30 @@ import { supabase, initGlobal, isGpslAdminUser } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import {
   formatMoney,
+  loadClubBalance,
   loadFinanceLedger,
   financeEntryLabel,
   isFinanceIncomeEntry,
 } from "./competition.js";
-import { summariseLedgerTotals } from "./finance_ui.js";
+import {
+  aggregateLedgerByLine,
+  renderFinanceSections,
+  summariseLedgerTotals,
+} from "./finance_ui.js";
+import { buildFinanceProjections } from "./finance_projections.js";
+import {
+  aggregateClubTransfersFromHistory,
+  loadClubTransferHistoryForSeason,
+  loadCurrentSeasonStart,
+  mergeTransferHistoryIntoByLine,
+  transferHistoryBalanceGap,
+} from "./finance_transfers.js";
 
 export const ADMIN_FINANCE_CLUB_KEY = "gpsl_admin_finance_club";
 
 export const FINANCE_SUBNAV = [
   { id: "finances", href: "finances.html", label: "Overview" },
+  { id: "finances_accounts", href: "finances_accounts.html", label: "Season accounts" },
   { id: "finances_ledger", href: "finances_ledger.html", label: "Activity ledger" },
   { id: "finances_incoming", href: "finances_incoming.html", label: "Incoming" },
   { id: "finances_outgoing", href: "finances_outgoing.html", label: "Outgoings" },
@@ -32,12 +46,15 @@ export function wireFinanceStatLinks(shortName, adminPreview) {
   const ledger = financePageHref("finances_ledger.html", shortName, adminPreview);
   const incoming = financePageHref("finances_incoming.html", shortName, adminPreview);
   const outgoing = financePageHref("finances_outgoing.html", shortName, adminPreview);
+  const accounts = financePageHref("finances_accounts.html", shortName, adminPreview);
 
   for (const [id, href] of [
     ["linkLedger", ledger],
     ["linkIncoming", incoming],
     ["linkOutgoing", outgoing],
+    ["linkAccounts", accounts],
     ["linkLedgerInline", ledger],
+    ["linkAccountsInline", accounts],
   ]) {
     const el = document.getElementById(id);
     if (el) el.href = href;
@@ -234,6 +251,112 @@ export function renderLedgerTable(container, rows, { emptyMessage } = {}) {
       </table>
     </div>
   `;
+}
+
+export async function loadFinanceSeasonContext(supabase, shortName) {
+  const balanceRow = await loadClubBalance(supabase, shortName);
+  const balanceNow = Number(balanceRow?.balance ?? 0);
+  const ledger = await loadFinanceLedger(supabase, shortName, 300);
+  const { incomeTotal, costTotal, net } = summariseLedgerTotals(ledger);
+  const byLine = aggregateLedgerByLine(ledger);
+
+  const seasonStart = await loadCurrentSeasonStart(supabase);
+  const transferRows = await loadClubTransferHistoryForSeason(
+    supabase,
+    seasonStart
+  );
+  const transferAgg = aggregateClubTransfersFromHistory(
+    transferRows,
+    shortName
+  );
+  const transferGap = transferHistoryBalanceGap(transferAgg, byLine);
+  mergeTransferHistoryIntoByLine(byLine, transferAgg);
+
+  const inferredOpeningAdjusted = balanceNow - net - transferGap;
+  const { pendingByLine, totalPending } = await buildFinanceProjections(
+    supabase,
+    shortName,
+    { byLine }
+  );
+
+  return {
+    balanceRow,
+    balanceNow,
+    ledger,
+    incomeTotal,
+    costTotal,
+    net,
+    byLine,
+    pendingByLine,
+    totalPending,
+    inferredOpeningAdjusted,
+    projectedBalance: balanceNow + totalPending,
+  };
+}
+
+export async function initFinanceAccountsPage() {
+  await initGlobal();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    window.location = "login.html";
+    return;
+  }
+
+  const emailEl = document.getElementById("userEmail");
+  if (emailEl) emailEl.textContent = user.email;
+
+  const ctx = await resolveFinanceClubContext(user);
+
+  if (ctx.noClub) {
+    const meta = document.getElementById("pageMeta");
+    if (meta) meta.textContent = "No club linked — assign owner in GPSL Admin.";
+    return;
+  }
+
+  if (ctx.needsAdminPicker) {
+    await mountAdminFinancePicker();
+    return;
+  }
+
+  const { shortName, clubLabel, adminPreview } = ctx;
+
+  await applyFinanceClubHeader(shortName, clubLabel, {
+    adminPreview,
+    pageSuffix: "Season accounts",
+  });
+
+  const meta = document.getElementById("pageMeta");
+  if (meta && adminPreview) {
+    meta.textContent = `Admin preview — ${shortName}.`;
+  }
+
+  renderFinanceSubnav("finances_accounts", shortName, adminPreview);
+
+  const overviewLink = document.getElementById("backToFinances");
+  if (overviewLink) {
+    overviewLink.href = financePageHref("finances.html", shortName, adminPreview);
+  }
+
+  const data = await loadFinanceSeasonContext(supabase, shortName);
+
+  const summaryEl = document.getElementById("accountsSummary");
+  if (summaryEl) {
+    summaryEl.textContent =
+      `Posted net ${formatMoney(data.net)} · projected end-of-season ${formatMoney(data.projectedBalance)}`;
+    summaryEl.className = `ledger-summary ${data.net >= 0 ? "positive" : "negative"}`;
+  }
+
+  const sectionsEl = document.getElementById("financeSections");
+  if (sectionsEl) {
+    sectionsEl.innerHTML = renderFinanceSections(data.byLine, {
+      pendingByLine: data.pendingByLine,
+      runningStart: data.inferredOpeningAdjusted,
+      currentBalance: data.balanceNow,
+    });
+  }
 }
 
 export async function initFinanceSubPage({

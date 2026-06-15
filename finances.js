@@ -1,26 +1,8 @@
 import { supabase, initGlobal } from "./global.js";
-import {
-  formatMoney,
-  loadClubBalance,
-  loadFinanceLedger,
-  loadClubSeasonArchive,
-  processMyDueLoanInstallments,
-} from "./competition.js";
-import {
-  aggregateLedgerByLine,
-  renderFinanceSections,
-  summariseLedgerTotals,
-} from "./finance_ui.js";
-import { buildFinanceProjections } from "./finance_projections.js";
-import {
-  aggregateClubTransfersFromHistory,
-  loadClubTransferHistoryForSeason,
-  loadCurrentSeasonStart,
-  mergeTransferHistoryIntoByLine,
-  transferHistoryBalanceGap,
-} from "./finance_transfers.js";
+import { formatMoney, loadClubSeasonArchive, processMyDueLoanInstallments } from "./competition.js";
 import {
   applyFinanceClubHeader,
+  loadFinanceSeasonContext,
   mountAdminFinancePicker,
   renderFinanceSubnav,
   resolveFinanceClubContext,
@@ -129,61 +111,23 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     await processMyDueLoanInstallments(supabase);
   }
 
-  const balanceRow = await loadClubBalance(supabase, shortName);
-  document.getElementById("balanceAmount").textContent = formatMoney(
-    balanceRow?.balance ?? 0
-  );
+  const data = await loadFinanceSeasonContext(supabase, shortName);
 
-  const ledger = await loadFinanceLedger(supabase, shortName, 300);
-  const { incomeTotal, costTotal, net } = summariseLedgerTotals(ledger);
-  const balanceNow = Number(balanceRow?.balance ?? 0);
+  document.getElementById("balanceAmount").textContent = formatMoney(data.balanceNow);
+  document.getElementById("incomeSeasonTotal").textContent = formatMoney(data.incomeTotal);
+  document.getElementById("costSeasonTotal").textContent = formatMoney(data.costTotal);
 
-  document.getElementById("incomeSeasonTotal").textContent =
-    formatMoney(incomeTotal);
-  document.getElementById("costSeasonTotal").textContent = formatMoney(costTotal);
   const netEl = document.getElementById("netSeasonTotal");
-  netEl.textContent = formatMoney(net);
-  netEl.className = `value ${net >= 0 ? "positive" : "negative"}`;
-
-  const byLine = aggregateLedgerByLine(ledger);
-
-  const seasonStart = await loadCurrentSeasonStart(supabase);
-  const transferRows = await loadClubTransferHistoryForSeason(
-    supabase,
-    seasonStart
-  );
-  const transferAgg = aggregateClubTransfersFromHistory(
-    transferRows,
-    shortName
-  );
-  const transferGap = transferHistoryBalanceGap(transferAgg, byLine);
-  mergeTransferHistoryIntoByLine(byLine, transferAgg);
-
-  const inferredOpeningAdjusted = balanceNow - net - transferGap;
+  netEl.textContent = formatMoney(data.net);
+  netEl.className = `value ${data.net >= 0 ? "positive" : "negative"}`;
 
   document.getElementById("openingBalance").textContent = formatMoney(
-    inferredOpeningAdjusted
+    data.inferredOpeningAdjusted
   );
-
-  const { pendingByLine, totalPending } = await buildFinanceProjections(
-    supabase,
-    shortName,
-    { byLine }
-  );
-  const projectedBalance = balanceNow + totalPending;
 
   const predictedEl = document.getElementById("predictedBalance");
-  predictedEl.textContent = formatMoney(projectedBalance);
-  predictedEl.className = `value ${projectedBalance >= 0 ? "positive" : "negative"}`;
-
-  const sectionsEl = document.getElementById("financeSections");
-  if (sectionsEl) {
-    sectionsEl.innerHTML = renderFinanceSections(byLine, {
-      pendingByLine,
-      runningStart: inferredOpeningAdjusted,
-      currentBalance: balanceNow,
-    });
-  }
+  predictedEl.textContent = formatMoney(data.projectedBalance);
+  predictedEl.className = `value ${data.projectedBalance >= 0 ? "positive" : "negative"}`;
 
   renderArchive(await loadClubSeasonArchive(supabase, shortName));
   await loadSubsidyStatus(shortName);

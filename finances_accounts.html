@@ -1,0 +1,46 @@
+<script>window.CURRENT_PAGE = "finances_accounts";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Season accounts — GPSL Finances</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="finances_subpage.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <div class="header-row">
+      <img id="clubBadgeHeader" src="" alt="">
+      <div>
+        <h1 id="pageTitle">Season accounts</h1>
+        <div id="userEmail" class="meta"></div>
+        <p id="pageMeta" class="meta" style="margin:0;"></p>
+        <nav id="financeSubnav" class="finance-subnav" aria-label="Finances sections"></nav>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="toolbar">
+        <a id="backToFinances" href="finances.html" class="button">← Finances overview</a>
+        <a href="challenges.html" class="button">Season challenges</a>
+      </p>
+      <p class="footer-note" style="margin-top:0;">
+        Same structure as the classic Excel workbook.
+        <b>Posted</b> = total already on your balance (ledger this season);
+        <b>Breakdown</b> = individual posted amounts per type;
+        <b>Running total</b> = season opening + posted lines so far;
+        <b>Pending</b> = known future income/costs not yet posted (upcoming gates, wages, maintenance, etc.).
+        Footer shows <b>projected balance</b>.
+      </p>
+      <p id="accountsSummary" class="ledger-summary">Loading…</p>
+      <div id="financeSections"></div>
+      <p class="legend">
+        Posted — = nothing on ledger yet &nbsp;|&nbsp; Pending — = no forecast for that line yet &nbsp;|&nbsp;
+        green/red = income / cost
+      </p>
+    </div>
+  </div>
+  <script type="module" src="finances_accounts.js?v=20260609-accounts-split"></script>
+</body>
+</html>
