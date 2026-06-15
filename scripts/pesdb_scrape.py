@@ -160,7 +160,9 @@ def is_driver_window_error(exc: BaseException) -> bool:
         "no such window" in msg
         or "web view not found" in msg
         or "invalid session id" in msg
+        or "session deleted" in msg
         or "disconnected" in msg
+        or "not connected to devtools" in msg
     )
 
 
@@ -269,23 +271,50 @@ def parse_playing_style(page_text: str, soup: BeautifulSoup, page_html: str = ""
     return "None"
 
 
-def get_player_details(driver, player_id: str | None, delay: float) -> tuple[str, str]:
+def get_player_details(
+    session: DriverSession,
+    player_id: str | None,
+    delay: float,
+    retries: int = 4,
+) -> tuple[str, str]:
     if not player_id:
         return "Unknown", "Unknown"
-    try:
-        url = f"{BASE_URL}?id={player_id}&mode=max_level"
-        driver.get(url)
-        time.sleep(delay)
-        soup = BeautifulSoup(driver.page_source, "lxml")
-        page_html = driver.page_source
-        page_text = soup.get_text()
-        return (
-            parse_playing_style(page_text, soup, page_html),
-            parse_max_rating(page_text, soup),
-        )
-    except Exception as exc:
-        print(f"     warn: player {player_id}: {exc}", file=sys.stderr)
-        return "None", "Unknown"
+
+    last_error: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            driver = session.driver
+            url = f"{BASE_URL}?id={player_id}&mode=max_level"
+            driver.get(url)
+            time.sleep(delay)
+            page_html = driver.page_source
+            soup = BeautifulSoup(page_html, "lxml")
+            page_text = soup.get_text()
+            style = parse_playing_style(page_text, soup, page_html)
+            max_rating = parse_max_rating(page_text, soup)
+            return style, max_rating
+        except WebDriverException as exc:
+            last_error = exc
+            if is_driver_window_error(exc) and attempt < retries:
+                print(f"     browser lost — restarting ({attempt}/{retries})…")
+                session.restart("enrich/detail session crashed")
+                time.sleep(max(2.0, delay))
+                continue
+            print(f"     warn: player {player_id}: {exc}", file=sys.stderr)
+            break
+        except Exception as exc:
+            last_error = exc
+            if attempt < retries:
+                print(f"     retry {player_id} ({attempt}/{retries}): {exc}")
+                session.restart("detail fetch failed")
+                time.sleep(max(2.0, delay))
+                continue
+            print(f"     warn: player {player_id}: {exc}", file=sys.stderr)
+            break
+
+    if last_error:
+        print(f"     failed: player {player_id}", file=sys.stderr)
+    return "None", "Unknown"
 
 
 def estimate_total_pages(driver, filters: dict) -> int:
@@ -392,13 +421,13 @@ def scrape_list_page(
         else:
             try:
                 playing_style, max_rating = get_player_details(
-                    session.driver, player_id, detail_delay
+                    session, player_id, detail_delay
                 )
             except WebDriverException as exc:
                 if is_driver_window_error(exc):
                     session.restart("browser window closed during player detail")
                     playing_style, max_rating = get_player_details(
-                        session.driver, player_id, detail_delay
+                        session, player_id, detail_delay
                     )
                 else:
                     raise
@@ -466,7 +495,11 @@ def enrich_csv(args) -> int:
         return 1
 
     out_path = Path(args.output) if args.output else in_path
-    header, data = read_csv_rows(in_path)
+    if args.resume and out_path.is_file():
+        header, data = read_csv_rows(out_path)
+        print(f"Resume: loaded {len(data)} rows from {out_path.name}")
+    else:
+        header, data = read_csv_rows(in_path)
     idx = col_index(header)
     if "player_id" not in idx:
         print("CSV must include player_id / konami_id column", file=sys.stderr)
@@ -498,9 +531,12 @@ def enrich_csv(args) -> int:
         return 0
 
     print(f"Enriching {len(targets)} players from {in_path.name} → {out_path.name}")
+    if args.no_headless:
+        print("Tip: omit --no-headless for long enrich runs (Chrome window often closes/crashes).")
 
-    driver = make_driver(headless=not args.no_headless)
+    session = DriverSession(headless=not args.no_headless)
     enriched = 0
+    failed = 0
     try:
         for n, row_i in enumerate(targets, start=1):
             row = data[row_i]
@@ -512,12 +548,17 @@ def enrich_csv(args) -> int:
 
             if enriched > 0 and enriched % args.session_size == 0:
                 print(f"⏸ Session limit ({args.session_size}) — cooling down {args.cooldown:.0f}s…")
-                driver.quit()
+                session.restart("scheduled session refresh")
                 time.sleep(args.cooldown)
-                driver = make_driver(headless=not args.no_headless)
 
             print(f"  [{n}/{len(targets)}] {player_id}")
-            playing_style, max_rating = get_player_details(driver, player_id, args.delay)
+            playing_style, max_rating = get_player_details(session, player_id, args.delay)
+            if max_rating == "Unknown":
+                failed += 1
+                print(f"     left unchanged — rerun with --resume to retry failed rows")
+                time.sleep(args.delay)
+                continue
+
             row[max_i] = max_rating
             row[style_i] = playing_style
             data[row_i] = row
@@ -525,14 +566,20 @@ def enrich_csv(args) -> int:
 
             if enriched % args.checkpoint == 0:
                 write_csv_rows(out_path, header, data)
-                print(f"   checkpoint saved ({enriched} enriched)")
+                print(f"   checkpoint saved ({enriched} enriched, {failed} failed this run)")
 
             time.sleep(args.delay)
     finally:
-        driver.quit()
+        session.close()
 
     write_csv_rows(out_path, header, data)
-    print(f"Enriched {enriched} players → {out_path.resolve()}")
+    print(f"Enriched {enriched} players ({failed} failed) → {out_path.resolve()}")
+    if failed:
+        print("Retry failed rows:")
+        print(
+            f"  python scripts/pesdb_scrape.py --enrich {in_path.name} "
+            f"--output {out_path.name} --resume --delay {args.delay}"
+        )
     return 0
 
 
@@ -603,7 +650,7 @@ def main() -> int:
     parser.add_argument(
         "--session-size",
         type=int,
-        default=40,
+        default=25,
         help="Detail fetches per browser session before cooldown (enrich mode)",
     )
     parser.add_argument(
