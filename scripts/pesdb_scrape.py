@@ -6,7 +6,7 @@ Outputs CSV compatible with admin_gpdb_sync.html upload:
   player_id, Position, player_name, nationality, age, rating, max_level_rating, playing_style
 
 Requirements:
-  pip install selenium webdriver-manager beautifulsoup4 lxml
+  pip install selenium webdriver-manager beautifulsoup4 lxml requests
 
 Usage:
   python scripts/pesdb_scrape.py
@@ -15,7 +15,9 @@ Usage:
   # Recommended when PESDB throttles after ~2 list pages of details:
   python scripts/pesdb_scrape.py --list-only --start 1 --end 633 --output pesdb_list.csv
   # (writes to scrape_output/pesdb_list.csv — not committed to git)
-  python scripts/pesdb_scrape.py --enrich pesdb_list.csv --output pesdb_full.csv --delay 2.5
+  python scripts/pesdb_scrape.py --enrich pesdb_list.csv --output pesdb_full.csv
+  # Fast HTTP enrich (default): ~1–2h for ~19k players with --workers 8
+  # Slow browser fallback: --browser --delay 2.5
 """
 
 from __future__ import annotations
@@ -25,8 +27,15 @@ import csv
 import re
 import subprocess
 import sys
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+
+try:
+    import requests
+except ImportError:
+    requests = None  # type: ignore[assignment]
 
 SCRAPE_OUTPUT_DIR = Path("scrape_output")
 
@@ -65,6 +74,17 @@ RATE_LIMIT_MARKERS = (
     "please wait",
     "blocked",
 )
+
+HTTP_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+_http_thread_local = threading.local()
 
 
 def find_players_table(soup: BeautifulSoup):
@@ -455,6 +475,7 @@ def read_csv_rows(path: Path) -> tuple[list[str], list[list[str]]]:
 
 
 def write_csv_rows(path: Path, header: list[str], data: list[list[str]]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(header)
@@ -476,23 +497,110 @@ def col_index(header: list[str]) -> dict[str, int]:
     return idx
 
 
-def needs_enrichment(row: list[str], idx: dict[str, int]) -> bool:
-    max_i = idx.get("max_level_rating")
-    style_i = idx.get("playing_style")
-    max_val = row[max_i].strip() if max_i is not None and max_i < len(row) else ""
-    style_val = row[style_i].strip() if style_i is not None and style_i < len(row) else ""
-    if not max_val or max_val.lower() == "unknown":
+class RateLimiter:
+    """Global minimum interval between HTTP requests (shared across worker threads)."""
+
+    def __init__(self, min_interval: float):
+        self._min_interval = max(0.0, min_interval)
+        self._lock = threading.Lock()
+        self._last = 0.0
+
+    def wait(self) -> None:
+        if self._min_interval <= 0:
+            return
+        with self._lock:
+            now = time.monotonic()
+            wait = self._min_interval - (now - self._last)
+            if wait > 0:
+                time.sleep(wait)
+            self._last = time.monotonic()
+
+
+def get_http_session():
+    if requests is None:
+        raise RuntimeError("requests is required for HTTP enrich: pip install requests")
+    session = getattr(_http_thread_local, "session", None)
+    if session is None:
+        session = requests.Session()
+        session.headers.update(HTTP_HEADERS)
+        _http_thread_local.session = session
+    return session
+
+
+def parse_player_detail_html(html: str) -> tuple[str, str]:
+    soup = BeautifulSoup(html, "lxml")
+    page_text = soup.get_text()
+    style = parse_playing_style(page_text, soup, html)
+    max_rating = parse_max_rating(page_text, soup)
+    return style, max_rating
+
+
+def html_looks_blocked(html: str) -> bool:
+    lower = html.lower()
+    if len(html) < 500:
         return True
-    if not style_val or style_val.lower() in ("none", "unknown"):
-        return True
+    for marker in RATE_LIMIT_MARKERS:
+        if marker in lower:
+            return True
     return False
 
 
-def enrich_csv(args) -> int:
+def fetch_player_detail_http(
+    player_id: str,
+    rate_limiter: RateLimiter,
+    retries: int = 5,
+) -> tuple[str, str]:
+    if not player_id:
+        return "Unknown", "Unknown"
+
+    url = f"{BASE_URL}?id={player_id}&mode=max_level"
+    session = get_http_session()
+    for attempt in range(1, retries + 1):
+        rate_limiter.wait()
+        try:
+            resp = session.get(url, timeout=30)
+        except requests.RequestException as exc:
+            if attempt < retries:
+                time.sleep(min(30.0, 2.0 * attempt))
+                continue
+            print(f"     warn: player {player_id}: {exc}", file=sys.stderr)
+            return "None", "Unknown"
+
+        if resp.status_code == 429:
+            time.sleep(min(120.0, 5.0 * attempt))
+            continue
+        if resp.status_code == 404:
+            return "None", "Unknown"
+        if resp.status_code >= 500:
+            time.sleep(min(30.0, 2.0 * attempt))
+            continue
+        if resp.status_code != 200:
+            time.sleep(min(15.0, 1.5 * attempt))
+            continue
+        if html_looks_blocked(resp.text):
+            time.sleep(min(90.0, 10.0 * attempt))
+            continue
+
+        return parse_player_detail_html(resp.text)
+
+    return "None", "Unknown"
+
+
+def resolve_delay(args, mode: str) -> float:
+    if args.delay is not None:
+        return args.delay
+    if mode == "enrich_http":
+        return 0.2
+    if mode == "enrich_browser":
+        return 2.5
+    return 1.5
+
+
+def prepare_enrich_job(args):
     in_path = Path(args.enrich)
     if not in_path.is_file():
         print(f"File not found: {in_path}", file=sys.stderr)
-        return 1
+        return None
 
     out_path = Path(args.output) if args.output else in_path
     if args.resume and out_path.is_file():
@@ -503,7 +611,7 @@ def enrich_csv(args) -> int:
     idx = col_index(header)
     if "player_id" not in idx:
         print("CSV must include player_id / konami_id column", file=sys.stderr)
-        return 1
+        return None
 
     max_i = idx.get("max_level_rating")
     style_i = idx.get("playing_style")
@@ -516,13 +624,53 @@ def enrich_csv(args) -> int:
         style_i = len(header) - 1
     data = [row + [""] * (len(header) - len(row)) for row in data]
 
-    targets = [
-        i for i, row in enumerate(data) if needs_enrichment(row, idx)
-    ]
+    targets = [i for i, row in enumerate(data) if needs_enrichment(row, idx)]
     if args.enrich_start > 0:
         targets = [i for i in targets if i >= args.enrich_start - 1]
     if args.enrich_end > 0:
         targets = [i for i in targets if i < args.enrich_end]
+
+    return {
+        "in_path": in_path,
+        "out_path": out_path,
+        "header": header,
+        "data": data,
+        "idx": idx,
+        "max_i": max_i,
+        "style_i": style_i,
+        "targets": targets,
+    }
+
+
+def needs_enrichment(row: list[str], idx: dict[str, int]) -> bool:
+    max_i = idx.get("max_level_rating")
+    style_i = idx.get("playing_style")
+    max_val = row[max_i].strip() if max_i is not None and max_i < len(row) else ""
+    style_val = row[style_i].strip() if style_i is not None and style_i < len(row) else ""
+    if not max_val or max_val.lower() == "unknown":
+        return True
+    if not style_val or style_val.lower() in ("none", "unknown"):
+        return True
+    return False
+
+
+def enrich_csv_http(args) -> int:
+    if requests is None:
+        print("HTTP enrich requires: pip install requests", file=sys.stderr)
+        return 1
+
+    job = prepare_enrich_job(args)
+    if job is None:
+        return 1
+
+    in_path = job["in_path"]
+    out_path = job["out_path"]
+    header = job["header"]
+    data = job["data"]
+    idx = job["idx"]
+    max_i = job["max_i"]
+    style_i = job["style_i"]
+    targets = job["targets"]
 
     if not targets:
         print("No rows need enrichment in the selected range.")
@@ -530,7 +678,104 @@ def enrich_csv(args) -> int:
         print(f"Saved → {out_path.resolve()}")
         return 0
 
-    print(f"Enriching {len(targets)} players from {in_path.name} → {out_path.name}")
+    delay = resolve_delay(args, "enrich_http")
+    workers = max(1, args.workers)
+    rate_limiter = RateLimiter(delay)
+    est_per_sec = workers / max(delay, 0.05)
+    est_hours = len(targets) / est_per_sec / 3600
+
+    print(
+        f"Enriching {len(targets)} players (HTTP, {workers} workers, "
+        f"{delay:.2f}s min interval) → ~{est_hours:.1f}h"
+    )
+    print(f"  {in_path.name} → {out_path.name}")
+
+    lock = threading.Lock()
+    enriched = 0
+    failed = 0
+    completed = 0
+    last_checkpoint = 0
+    started = time.monotonic()
+
+    def enrich_row(row_i: int) -> tuple[int, str, str, str]:
+        row = data[row_i]
+        player_id = row[idx["player_id"]].strip()
+        if not player_id:
+            return row_i, player_id, "None", "Unknown"
+        style, max_rating = fetch_player_detail_http(player_id, rate_limiter)
+        return row_i, player_id, style, max_rating
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(enrich_row, row_i) for row_i in targets]
+        for fut in as_completed(futures):
+            row_i, player_id, playing_style, max_rating = fut.result()
+            with lock:
+                completed += 1
+                if max_rating == "Unknown":
+                    failed += 1
+                else:
+                    row = data[row_i]
+                    while len(row) < len(header):
+                        row.append("")
+                    row[max_i] = max_rating
+                    row[style_i] = playing_style
+                    data[row_i] = row
+                    enriched += 1
+
+                if enriched > 0 and enriched - last_checkpoint >= args.checkpoint:
+                    write_csv_rows(out_path, header, data)
+                    last_checkpoint = enriched
+                    elapsed = time.monotonic() - started
+                    rate = enriched / elapsed if elapsed > 0 else 0
+                    print(
+                        f"   checkpoint: {enriched}/{len(targets)} enriched, "
+                        f"{failed} failed ({rate:.1f}/s)"
+                    )
+                elif completed % 250 == 0 or completed == len(targets):
+                    elapsed = time.monotonic() - started
+                    rate = completed / elapsed if elapsed > 0 else 0
+                    print(
+                        f"  … {completed}/{len(targets)} processed "
+                        f"({enriched} ok, {failed} failed, {rate:.1f}/s)"
+                    )
+
+    write_csv_rows(out_path, header, data)
+    elapsed = time.monotonic() - started
+    print(
+        f"Enriched {enriched} players ({failed} failed) in {elapsed / 60:.1f} min "
+        f"→ {out_path.resolve()}"
+    )
+    if failed:
+        print("Retry failed rows:")
+        print(
+            f"  python scripts/pesdb_scrape.py --enrich {in_path.name} "
+            f"--output {out_path.name} --resume"
+        )
+    return 0
+
+
+def enrich_csv_browser(args) -> int:
+    job = prepare_enrich_job(args)
+    if job is None:
+        return 1
+
+    in_path = job["in_path"]
+    out_path = job["out_path"]
+    header = job["header"]
+    data = job["data"]
+    idx = job["idx"]
+    max_i = job["max_i"]
+    style_i = job["style_i"]
+    targets = job["targets"]
+
+    if not targets:
+        print("No rows need enrichment in the selected range.")
+        write_csv_rows(out_path, header, data)
+        print(f"Saved → {out_path.resolve()}")
+        return 0
+
+    delay = resolve_delay(args, "enrich_browser")
+    print(f"Enriching {len(targets)} players (browser) from {in_path.name} → {out_path.name}")
     if args.no_headless:
         print("Tip: omit --no-headless for long enrich runs (Chrome window often closes/crashes).")
 
@@ -552,11 +797,11 @@ def enrich_csv(args) -> int:
                 time.sleep(args.cooldown)
 
             print(f"  [{n}/{len(targets)}] {player_id}")
-            playing_style, max_rating = get_player_details(session, player_id, args.delay)
+            playing_style, max_rating = get_player_details(session, player_id, delay)
             if max_rating == "Unknown":
                 failed += 1
-                print(f"     left unchanged — rerun with --resume to retry failed rows")
-                time.sleep(args.delay)
+                print("     left unchanged — rerun with --resume to retry failed rows")
+                time.sleep(delay)
                 continue
 
             row[max_i] = max_rating
@@ -568,7 +813,7 @@ def enrich_csv(args) -> int:
                 write_csv_rows(out_path, header, data)
                 print(f"   checkpoint saved ({enriched} enriched, {failed} failed this run)")
 
-            time.sleep(args.delay)
+            time.sleep(delay)
     finally:
         session.close()
 
@@ -578,9 +823,15 @@ def enrich_csv(args) -> int:
         print("Retry failed rows:")
         print(
             f"  python scripts/pesdb_scrape.py --enrich {in_path.name} "
-            f"--output {out_path.name} --resume --delay {args.delay}"
+            f"--output {out_path.name} --resume --browser --delay {delay}"
         )
     return 0
+
+
+def enrich_csv(args) -> int:
+    if args.browser:
+        return enrich_csv_browser(args)
+    return enrich_csv_http(args)
 
 
 def make_driver(headless: bool) -> webdriver.Chrome:
@@ -619,7 +870,23 @@ def main() -> int:
     parser.add_argument("--start", type=int, default=1, help="First page (default 1)")
     parser.add_argument("--end", type=int, default=0, help="Last page (0 = auto-detect)")
     parser.add_argument("--output", type=str, default="", help="Output CSV path")
-    parser.add_argument("--delay", type=float, default=1.5, help="Seconds between player detail fetches")
+    parser.add_argument(
+        "--delay",
+        type=float,
+        default=None,
+        help="Seconds between requests (enrich HTTP default 0.2; browser 2.5; list detail 1.5)",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=8,
+        help="Parallel HTTP workers for --enrich (default 8; ignored with --browser)",
+    )
+    parser.add_argument(
+        "--browser",
+        action="store_true",
+        help="Use Selenium for --enrich instead of fast HTTP (slow; use if HTTP is blocked)",
+    )
     parser.add_argument("--list-delay", type=float, default=3.0, help="Seconds to wait for list page load")
     parser.add_argument("--page-delay", type=float, default=8.0, help="Pause between list pages")
     parser.add_argument("--page-retries", type=int, default=4, help="Retries when list page has no players table")
@@ -676,6 +943,7 @@ def main() -> int:
     if args.enrich:
         return enrich_csv(args)
 
+    detail_delay = resolve_delay(args, "list")
     session = DriverSession(headless=not args.no_headless)
     data: list[list[str]] = []
 
@@ -711,7 +979,7 @@ def main() -> int:
                 page,
                 {},
                 args.list_delay,
-                args.delay,
+                detail_delay,
                 args.page_retries,
                 args.retry_wait,
                 list_only=args.list_only,
@@ -727,7 +995,7 @@ def main() -> int:
     if args.list_only:
         print("Note: --list-only leaves playing_style as None and max_level_rating as list rating.")
         print("Run enrich for playstyles + true max ratings:")
-        print(f"  python scripts/pesdb_scrape.py --enrich {out_path.name} --output pesdb_full.csv --delay 2.5")
+        print(f"  python scripts/pesdb_scrape.py --enrich {out_path.name} --output pesdb_full.csv --resume")
     else:
         print("Upload this file in Admin → Season Break → Data tools → GPDB PESDB sync")
     return 0

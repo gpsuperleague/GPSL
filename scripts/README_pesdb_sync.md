@@ -79,10 +79,19 @@ Use **headless** (default) for long runs — `--no-headless` is fine for debuggi
 python scripts/pesdb_scrape.py --list-only --start 1 --end 633 --output pesdb_list.csv --resume --page-delay 3
 ```
 
-**Step 2 — enrich details** (restarts browser every 40 players with a 90s cooldown):
+**Step 2 — enrich details** (fast HTTP by default; ~1–2h for full list with 8 workers):
 
 ```bash
-python scripts/pesdb_scrape.py --enrich pesdb_list.csv --output pesdb_full.csv --no-headless --delay 2.5
+pip install requests   # if not already installed
+python scripts/pesdb_scrape.py --enrich pesdb_list.csv --output pesdb_full.csv --resume
+```
+
+Optional tuning: `--workers 8` (default), `--delay 0.2` (min seconds between HTTP requests globally).
+
+Slow Selenium fallback (only if HTTP gets blocked):
+
+```bash
+python scripts/pesdb_scrape.py --enrich pesdb_list.csv --output pesdb_full.csv --browser --delay 2.5
 ```
 
 Resume enrich in ranges if needed:
