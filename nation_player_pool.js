@@ -163,8 +163,8 @@ function renderTable() {
         ? `<span class="pool-owner">${row.owner_tag || row.owner_club || "Assigned"}</span>`
         : `<span class="pool-owner">Unassigned</span>`;
 
-      const bandCells = SUMMARY_BANDS.map((key) =>
-        countCell(section(row, key).total)
+      const bandCells = SUMMARY_BANDS.map(
+        (key) => `<td>${countCell(section(row, key).total)}</td>`
       ).join("");
 
       const mainRow = `
