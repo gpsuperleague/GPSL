@@ -1,4 +1,4 @@
-import { supabase, initGlobal } from "./global.js";
+import { supabase, initGlobal, isGpslAdminUser } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import {
   formatMoney,
@@ -160,40 +160,28 @@ function renderArchive(rows) {
   `;
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  await initGlobal();
+const ADMIN_FINANCE_CLUB_KEY = "gpsl_admin_finance_club";
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    window.location = "login.html";
-    return;
-  }
-
-  document.getElementById("userEmail").textContent = user.email;
-
-  const { data: club } = await supabase
-    .from("Clubs")
-    .select("ShortName, Club")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  if (!club?.ShortName) {
-    document.getElementById("pageMeta").textContent =
-      "No club linked — assign owner in GPSL Admin.";
-    return;
-  }
-
+async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false } = {}) {
   await loadClubsMap();
-  const shortName = club.ShortName;
-  const fullName = fullClubName(shortName) || club.Club;
+  const fullName = fullClubName(shortName) || clubLabel || shortName;
 
-  document.getElementById("pageTitle").textContent = `${fullName} — Finances`;
+  document.getElementById("pageTitle").textContent = adminPreview
+    ? `${fullName} — Finances (admin preview)`
+    : `${fullName} — Finances`;
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${shortName}.png`;
 
-  await processMyDueLoanInstallments(supabase);
+  const pageMeta = document.getElementById("pageMeta");
+  if (pageMeta) {
+    pageMeta.textContent = adminPreview
+      ? `Admin preview — viewing ${shortName}. You do not own this club.`
+      : "";
+  }
+
+  if (!adminPreview) {
+    await processMyDueLoanInstallments(supabase);
+  }
 
   const balanceRow = await loadClubBalance(supabase, shortName);
   document.getElementById("balanceAmount").textContent = formatMoney(
@@ -254,4 +242,103 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderLedger(ledger);
   renderArchive(await loadClubSeasonArchive(supabase, shortName));
   await loadSubsidyStatus(shortName);
+}
+
+async function mountAdminFinancePicker(initialShortName) {
+  const pageMeta = document.getElementById("pageMeta");
+  if (!pageMeta) return null;
+
+  const { data: clubs, error } = await supabase
+    .from("Clubs")
+    .select("ShortName, Club")
+    .neq("ShortName", "FOREIGN")
+    .order("Club");
+
+  if (error || !clubs?.length) {
+    pageMeta.textContent = "Admin preview — could not load club list.";
+    return null;
+  }
+
+  const wrap = document.createElement("div");
+  wrap.className = "admin-finance-picker";
+  wrap.style.cssText =
+    "margin-top:8px;padding:10px 12px;background:#222;border:1px solid #444;border-radius:6px;font-size:13px;";
+
+  const label = document.createElement("label");
+  label.textContent = "Preview club finances: ";
+  label.style.marginRight = "8px";
+
+  const select = document.createElement("select");
+  select.id = "adminFinanceClubSelect";
+  select.style.cssText =
+    "padding:6px 8px;background:#111;border:1px solid #555;color:#ddd;border-radius:4px;min-width:220px;";
+
+  for (const c of clubs) {
+    const opt = document.createElement("option");
+    opt.value = c.ShortName;
+    opt.textContent = `${c.Club || c.ShortName} (${c.ShortName})`;
+    select.appendChild(opt);
+  }
+
+  const saved = initialShortName || sessionStorage.getItem(ADMIN_FINANCE_CLUB_KEY);
+  if (saved && [...select.options].some((o) => o.value === saved)) {
+    select.value = saved;
+  }
+
+  wrap.appendChild(label);
+  wrap.appendChild(select);
+  pageMeta.replaceWith(wrap);
+
+  return select;
+}
+
+async function setupAdminFinancePreview() {
+  const select = await mountAdminFinancePicker();
+  if (!select) return;
+
+  const loadSelected = async () => {
+    const shortName = select.value;
+    if (!shortName) return;
+    sessionStorage.setItem(ADMIN_FINANCE_CLUB_KEY, shortName);
+    const label = select.options[select.selectedIndex]?.textContent || shortName;
+    await loadFinancesForClub(shortName, label, { adminPreview: true });
+  };
+
+  select.addEventListener("change", () => {
+    loadSelected().catch((err) => console.error("Admin finance preview:", err));
+  });
+
+  await loadSelected();
+}
+
+document.addEventListener("DOMContentLoaded", async () => {
+  await initGlobal();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    window.location = "login.html";
+    return;
+  }
+
+  document.getElementById("userEmail").textContent = user.email;
+
+  const { data: club } = await supabase
+    .from("Clubs")
+    .select("ShortName, Club")
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (!club?.ShortName) {
+    if (isGpslAdminUser(user)) {
+      await setupAdminFinancePreview();
+      return;
+    }
+    document.getElementById("pageMeta").textContent =
+      "No club linked — assign owner in GPSL Admin.";
+    return;
+  }
+
+  await loadFinancesForClub(club.ShortName, club.Club);
 });

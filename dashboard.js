@@ -295,10 +295,13 @@ function showNoClubBanner(email) {
       document.querySelector(".page-container")?.prepend(banner);
     }
   }
+  const adminNote = isAdmin
+    ? `<br><span style="color:#9f9;">League admin — you can open any page from the nav while you wait (Finances has a club preview dropdown).</span>`
+    : "";
   banner.innerHTML = `
     <b>No club linked to this login.</b><br>
     New owners join via the <a href="awaiting_club.html" style="color:#ff9900;">club auction</a>
-    (£600m starting budget). Set your owner tag there while you wait.<br>
+    (starting budget set by admin). Set your owner tag there while you wait.${adminNote}<br>
     <span style="color:#aaa;font-size:12px;">${email || "signed-in user"}</span> —
     admin can register you with <code>admin_owner_register_for_club_auction(email)</code>
     after <code>owner_onboarding_club_auction.sql</code> is applied.

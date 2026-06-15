@@ -1,7 +1,8 @@
 /**
  * Redirect owners without a club into the club-auction onboarding flow.
+ * League admins (isGpslAdminUser) may browse all pages for testing.
  */
-import { supabase } from "./global.js";
+import { supabase, isGpslAdminUser } from "./global.js";
 
 const ALLOWED_WITHOUT_CLUB = new Set([
   "awaiting_club",
@@ -69,6 +70,8 @@ export async function enforceOwnerClubGate() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return;
+
+  if (isGpslAdminUser(user)) return;
 
   const { data: self, error } = await supabase.rpc("owner_registry_get_self");
   if (error) return;
