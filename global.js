@@ -26,7 +26,7 @@ import { formatNavLabel } from "./nav_label.js";
 export { supabase };
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260615-bowl-trophies-themes";
+export const GLOBAL_JS_VERSION = "20260615-admin-testing-nav";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -943,7 +943,12 @@ function navLinkIconHtml(item) {
 
 function renderNavDropdownItems(items, pathname, search, isNavItemActive, renderMegaNavHtml) {
   const hasHeadings = items.some(
-    (item) => item.heading || item.seasonMega || item.seasonBreakMega || item.ownersMega
+    (item) =>
+      item.heading ||
+      item.testingMega ||
+      item.seasonMega ||
+      item.seasonBreakMega ||
+      item.ownersMega
   );
   if (!hasHeadings) {
     let flat = "";
@@ -986,7 +991,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
   };
 
   for (const item of items) {
-    if (item.seasonMega || item.seasonBreakMega || item.ownersMega) {
+    if (item.testingMega || item.seasonMega || item.seasonBreakMega || item.ownersMega) {
       if (renderMegaNavHtml) {
         flushPanel();
         groupHtml += renderMegaNavHtml(item, pathname, search);

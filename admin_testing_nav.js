@@ -1,0 +1,56 @@
+import { formatNavLabel } from "./nav_label.js";
+
+/** Pre-launch / sandbox tools — Admin → Testing */
+
+export const TESTING_ADMIN_NAV = [
+  {
+    label: "Test environment reset",
+    href: "admin_test_reset.html",
+    page: "admin_test_reset",
+    navDanger: true,
+  },
+];
+
+function escapeNavText(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function isTestingAdminNavItemActive(item, pathname) {
+  if (!item?.href) return false;
+  const file = (pathname || "").toLowerCase().replace(/\\/g, "/").split("/").pop() || "";
+  const itemFile = item.href.split("?")[0].split("#")[0].toLowerCase();
+  return file === itemFile;
+}
+
+export function testingAdminNavHasActive(pathname) {
+  for (const item of TESTING_ADMIN_NAV) {
+    if (isTestingAdminNavItemActive(item, pathname)) return true;
+  }
+  return false;
+}
+
+/** Admin dropdown: Testing → task links (same mega style as Season management). */
+export function renderTestingAdminNavHtml(pathname) {
+  const megaOpen = testingAdminNavHasActive(pathname);
+
+  let html = `<div class="nav-subgroup nav-subgroup-mega${megaOpen ? " open" : ""}" data-nav-subgroup>`;
+  html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
+    megaOpen ? "true" : "false"
+  }">${escapeNavText(formatNavLabel("Testing"))}</button>`;
+  html += `<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">`;
+
+  for (const item of TESTING_ADMIN_NAV) {
+    const active = isTestingAdminNavItemActive(item, pathname);
+    const danger = item.navDanger ? " nav-link-danger" : "";
+    html += `<a href="${escapeNavText(item.href)}" class="nav-link nav-link-sub${danger}${
+      active ? " active" : ""
+    }">${escapeNavText(formatNavLabel(item.label))}</a>`;
+  }
+
+  html += `</div></div>`;
+  return html;
+}

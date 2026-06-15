@@ -12,13 +12,18 @@ const seasonBreakNavMod = await import(
 const ownerNavMod = await import(
   `./admin_owners_nav.js?v=${NAV_CONFIG_VERSION}`
 );
+const testingNavMod = await import(
+  `./admin_testing_nav.js?v=${NAV_CONFIG_VERSION}`
+);
 
 const { seasonAdminNavHasActive, renderSeasonAdminNavHtml } = seasonNavMod;
 const { seasonBreakNavHasActive, renderSeasonBreakNavHtml } = seasonBreakNavMod;
 const { ownerAdminNavHasActive, renderOwnerAdminNavHtml } = ownerNavMod;
+const { testingAdminNavHasActive, renderTestingAdminNavHtml } = testingNavMod;
 
-/** Render admin mega-menu blocks (Season management, Season Break, Owners & accounts). */
+/** Render admin mega-menu blocks (Testing, Season management, Season Break, Owners & accounts). */
 export function renderAdminMegaNavHtml(item, pathname, search = "") {
+  if (item?.testingMega) return renderTestingAdminNavHtml(pathname, search);
   if (item?.seasonMega) return renderSeasonAdminNavHtml(pathname, search);
   if (item?.seasonBreakMega) return renderSeasonBreakNavHtml(pathname, search);
   if (item?.ownersMega) return renderOwnerAdminNavHtml(pathname, search);
@@ -127,12 +132,7 @@ export const ADMIN_NAV_SECTION = {
   id: "admin",
   label: "Admin",
   items: [
-    { heading: true, label: "Testing" },
-    {
-      href: "admin_test_reset.html",
-      label: "Test environment reset",
-      navDanger: true,
-    },
+    { testingMega: true, label: "Testing" },
     { seasonMega: true, label: "Season management" },
     { seasonBreakMega: true, label: "Season Break" },
     { ownersMega: true, label: "Owners & accounts" },
@@ -215,6 +215,7 @@ export function isNavItemActive(item, pathname, search = "") {
 export function sectionHasActiveItem(section, pathname, search) {
   if (!section?.items?.length) return false;
   return section.items.some((item) => {
+    if (item.testingMega) return testingAdminNavHasActive(pathname, search);
     if (item.seasonMega) return seasonAdminNavHasActive(pathname, search);
     if (item.seasonBreakMega) return seasonBreakNavHasActive(pathname, search);
     if (item.ownersMega) return ownerAdminNavHasActive(pathname, search);
