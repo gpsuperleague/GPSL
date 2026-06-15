@@ -238,13 +238,22 @@ BEGIN
         AND w.season_label = b.season_label
     );
 
-  UPDATE public."Player_Transfer_Listings" SET player_id = v_to WHERE player_id::text = v_from;
+  UPDATE public."Player_Transfer_Listings"
+  SET player_id = v_to
+  WHERE player_id::text = v_from;
+
   UPDATE public."Player_Transfer_Bids"
   SET player_id = v_to
   WHERE btrim(coalesce(player_id, '')) = v_from;
-  UPDATE public."Player_Transfer_Bids"
-  SET direct_bid_id = v_to
-  WHERE btrim(coalesce(direct_bid_id::text, '')) = v_from;
+
+  -- Legacy Konami ID stored in integer direct_bid_id (cast when numeric)
+  IF v_from ~ '^[0-9]+$' AND v_to ~ '^[0-9]+$' THEN
+    UPDATE public."Player_Transfer_Bids"
+    SET direct_bid_id = v_to::integer
+    WHERE direct_bid_id IS NOT NULL
+      AND btrim(direct_bid_id::text) = v_from;
+  END IF;
+
   UPDATE public."Transfer_History" SET player_id = v_to WHERE player_id::text = v_from;
   UPDATE public.competition_match_player_stats SET player_id = v_to WHERE player_id = v_from;
   UPDATE public.international_squad_callups SET player_id = v_to WHERE player_id = v_from;
