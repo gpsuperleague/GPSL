@@ -1,4 +1,4 @@
-import { supabase, initGlobal, isGpslAdminUser } from "./global.js";
+import { supabase, initGlobal } from "./global.js";
 import { loadNationPlayerPoolReport, renderNationFlag, NATIONAL_SQUAD_MIN_GK } from "./international.js";
 
 const POOL_MIN_PLAYERS = 24;
@@ -224,11 +224,6 @@ async function main() {
 
   if (!user) {
     window.location = "login.html";
-    return;
-  }
-
-  if (!isGpslAdminUser(user)) {
-    window.location = "dashboard.html";
     return;
   }
 

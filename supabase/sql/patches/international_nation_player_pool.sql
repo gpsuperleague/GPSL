@@ -2,6 +2,7 @@
 -- International nation GPDB player pool report (admin)
 -- Run after international_callup_gpdb.sql
 -- Powers nation_player_pool.html — pool counts by rating band, U21, position
+-- Readable by any signed-in user (aggregates only; no player PII)
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.international_player_pool_position_group(p_position text)
@@ -97,8 +98,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 BEGIN
-  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
-    RAISE EXCEPTION 'Admin only';
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sign in required';
   END IF;
 
   RETURN QUERY

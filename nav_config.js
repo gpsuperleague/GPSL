@@ -108,6 +108,7 @@ export const NAV_SECTIONS = [
     items: [
       { href: "national_team.html", label: "National team", page: "national_team" },
       { href: "nation_select.html", label: "Nation selection", page: "nation_select" },
+      { href: "nation_player_pool.html", label: "Nation player pool", page: "nation_player_pool" },
     ],
   },
   {
