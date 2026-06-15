@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>GPDB deduplication — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 16px; margin-top: 12px; font-size: 13px; }
+    .preview-grid div { padding: 6px 8px; background: #111; border: 1px solid #333; border-radius: 4px; }
+    .preview-grid span { color: #ff9900; font-weight: bold; }
+    .dedup-table-wrap { overflow: auto; max-height: 480px; border: 1px solid #333; border-radius: 6px; margin-top: 12px; }
+    .dedup-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .dedup-table th, .dedup-table td { border: 1px solid #333; padding: 6px 8px; text-align: left; vertical-align: top; }
+    .dedup-table th { background: #222; color: #ff9900; position: sticky; top: 0; }
+    .tag-blocked { color: #f88; }
+    .tag-ok { color: #8c8; }
+    .tag-warn { color: #fc8; }
+    #confirmInput { max-width: 360px; width: 100%; padding: 8px; margin-top: 8px; background: #111; border: 1px solid #844; color: #ddd; border-radius: 4px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">GPDB player deduplication</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · One row per real player (<b>Name + Nation</b>). Keeps the highest <b>Rating</b>
+        (then Potential, contracted player, lowest Konami ID). Remaps references, then deletes duplicates.
+        Best run <b>pre-season</b> before squads are set. Requires
+        <code>patches/gpdb_player_deduplication.sql</code>.
+      </p>
+
+      <div class="card">
+        <h2>1. Preview</h2>
+        <p class="note">Dry run — no database changes.</p>
+        <button type="button" class="button" id="previewBtn">Run preview</button>
+        <div id="previewStatus" class="status-line"></div>
+        <div id="previewGrid" class="preview-grid" hidden></div>
+        <div id="previewTableWrap" class="dedup-table-wrap" hidden>
+          <table class="dedup-table">
+            <thead>
+              <tr>
+                <th>Group</th>
+                <th>Keep</th>
+                <th>Drop</th>
+                <th>Refs</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="border-color:#844;background:#1a1212;">
+        <h2 style="color:#f88;">2. Apply deduplication</h2>
+        <p class="note">
+          Permanently removes duplicate player rows after remapping IDs. Groups where duplicates are
+          contracted to <b>different clubs</b> are skipped (manual review).
+        </p>
+        <label for="confirmInput">Type <b>DEDUP PLAYERS</b> to confirm</label>
+        <input id="confirmInput" type="text" autocomplete="off" spellcheck="false">
+        <div class="row" style="margin-top:12px;">
+          <button type="button" class="button" id="applyBtn" style="background:#662222;">Apply deduplication</button>
+        </div>
+        <div id="applyStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_gpdb_dedup.js"></script>
+</body>
+</html>

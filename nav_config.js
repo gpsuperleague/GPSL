@@ -150,6 +150,7 @@ export const ADMIN_FLYOUT_LINKS = [
     heading: "Pre-launch testing",
     links: [
       { href: "admin_test_reset.html", label: "Test environment reset", danger: true },
+      { href: "admin_gpdb_dedup.html", label: "GPDB player deduplication" },
     ],
   },
   {
