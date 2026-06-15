@@ -217,18 +217,54 @@ def parse_max_rating(page_text: str, soup: BeautifulSoup) -> str:
     return "Unknown"
 
 
-def parse_playing_style(page_text: str, soup: BeautifulSoup) -> str:
+def parse_playing_style(page_text: str, soup: BeautifulSoup, page_html: str = "") -> str:
+    html = page_html or str(soup)
+
+    # PESDB max-level layout: <tr><th>Playing Style</th></tr><tr><td>Goal Poacher</td></tr>
+    m = re.search(
+        r"<tr>\s*<th>\s*Playing Style\s*</th>\s*</tr>\s*<tr>\s*<td>([^<]+)</td>",
+        html,
+        re.I,
+    )
+    if m:
+        candidate = m.group(1).strip()
+        for style in PLAYING_STYLES:
+            if style.lower() == candidate.lower():
+                return style
+
     for table in soup.find_all("table"):
-        for row in table.find_all("tr"):
-            cells = row.find_all(["td", "th"])
-            for i, cell in enumerate(cells):
-                if "playing style" in cell.get_text(strip=True).lower() and i + 1 < len(cells):
-                    style_text = cells[i + 1].get_text(strip=True)
+        rows = table.find_all("tr")
+        for i, row in enumerate(rows):
+            headers = row.find_all("th")
+            if len(headers) != 1:
+                continue
+            if "playing style" not in headers[0].get_text(strip=True).lower():
+                continue
+
+            row_tds = row.find_all("td")
+            if row_tds:
+                candidate = row_tds[0].get_text(strip=True)
+                for style in PLAYING_STYLES:
+                    if style.lower() == candidate.lower():
+                        return style
+
+            if i + 1 < len(rows):
+                next_row = rows[i + 1]
+                if next_row.find("th"):
+                    continue
+                next_tds = next_row.find_all("td")
+                if len(next_tds) == 1:
+                    candidate = next_tds[0].get_text(strip=True)
                     for style in PLAYING_STYLES:
-                        if style == style_text:
+                        if style.lower() == candidate.lower():
                             return style
+
     for style in PLAYING_STYLES:
-        if f"Playing Style: {style}" in page_text or f"playing style: {style}" in page_text:
+        if re.search(rf"<td>\s*{re.escape(style)}\s*</td>", html, re.I):
+            return style
+
+    for style in PLAYING_STYLES:
+        if f"Playing Style: {style}" in page_text or f"playing style: {style}" in page_text.lower():
             return style
     return "None"
 
@@ -241,8 +277,12 @@ def get_player_details(driver, player_id: str | None, delay: float) -> tuple[str
         driver.get(url)
         time.sleep(delay)
         soup = BeautifulSoup(driver.page_source, "lxml")
+        page_html = driver.page_source
         page_text = soup.get_text()
-        return parse_playing_style(page_text, soup), parse_max_rating(page_text, soup)
+        return (
+            parse_playing_style(page_text, soup, page_html),
+            parse_max_rating(page_text, soup),
+        )
     except Exception as exc:
         print(f"     warn: player {player_id}: {exc}", file=sys.stderr)
         return "None", "Unknown"
@@ -638,8 +678,9 @@ def main() -> int:
 
     print(f"Saved {len(data)} players → {out_path.resolve()}")
     if args.list_only:
-        print("Next: enrich details with:")
-        print(f"  python scripts/pesdb_scrape.py --enrich {out_path.name} --output pesdb_full.csv --no-headless --delay 2.5")
+        print("Note: --list-only leaves playing_style as None and max_level_rating as list rating.")
+        print("Run enrich for playstyles + true max ratings:")
+        print(f"  python scripts/pesdb_scrape.py --enrich {out_path.name} --output pesdb_full.csv --delay 2.5")
     else:
         print("Upload this file in Admin → Season Break → Data tools → GPDB PESDB sync")
     return 0
