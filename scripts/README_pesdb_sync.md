@@ -71,6 +71,8 @@ PESDB often allows **~2 list pages** when each player triggers a detail visit (~
 python scripts/pesdb_scrape.py --list-only --start 1 --end 633 --output pesdb_list.csv --page-delay 3
 ```
 
+Outputs go to **`scrape_output/`** (gitignored). Do not commit CSVs — upload in admin only.
+
 Use **headless** (default) for long runs — `--no-headless` is fine for debugging but don’t close the Chrome window. If the browser crashes, resume:
 
 ```bash

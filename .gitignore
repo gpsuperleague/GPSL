@@ -1,0 +1,22 @@
+# PESDB local scrape outputs — upload via admin, do not commit
+pesdb_*.csv
+pesdb_*.csv.progress
+pesdb_debug_page*.html
+scrape_output/
+
+# Other local data exports
+players_export.csv
+GPSL_backup_*.csv
+data/managers_*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.cursor/

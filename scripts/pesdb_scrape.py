@@ -14,6 +14,7 @@ Usage:
 
   # Recommended when PESDB throttles after ~2 list pages of details:
   python scripts/pesdb_scrape.py --list-only --start 1 --end 633 --output pesdb_list.csv
+  # (writes to scrape_output/pesdb_list.csv — not committed to git)
   python scripts/pesdb_scrape.py --enrich pesdb_list.csv --output pesdb_full.csv --delay 2.5
 """
 
@@ -26,6 +27,8 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+
+SCRAPE_OUTPUT_DIR = Path("scrape_output")
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
@@ -90,9 +93,21 @@ def diagnose_page_html(html: str, page: int) -> str:
 
 
 def save_debug_html(page: int, html: str) -> Path:
-    path = Path(f"pesdb_debug_page{page}.html")
+    SCRAPE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    path = SCRAPE_OUTPUT_DIR / f"pesdb_debug_page{page}.html"
     path.write_text(html, encoding="utf-8")
     return path
+
+
+def resolve_output_path(raw: str, start: int, end: int) -> Path:
+    if raw:
+        p = Path(raw)
+        if not p.is_absolute() and p.parent == Path("."):
+            SCRAPE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+            return SCRAPE_OUTPUT_DIR / p.name
+        return p
+    SCRAPE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    return SCRAPE_OUTPUT_DIR / f"pesdb_scrape_pages{start}-{end or start}.csv"
 
 
 def progress_path_for(output: Path) -> Path:
@@ -574,7 +589,6 @@ def main() -> int:
     if args.enrich:
         return enrich_csv(args)
 
-    out_path = Path(args.output) if args.output else None
     session = DriverSession(headless=not args.no_headless)
     data: list[list[str]] = []
 
@@ -583,8 +597,9 @@ def main() -> int:
         if args.end == 0:
             end_page = max(end_page, args.start)
         start_page = max(1, args.start)
+        out_path = resolve_output_path(args.output, start_page, end_page)
 
-        if args.resume and out_path and out_path.is_file():
+        if args.resume and out_path.is_file():
             _, data = read_csv_rows(out_path)
             last_done = read_last_completed_page(out_path)
             if last_done >= start_page:
@@ -595,9 +610,7 @@ def main() -> int:
             print("start page > end page", file=sys.stderr)
             return 1
 
-        if not out_path:
-            out_path = Path(f"pesdb_scrape_pages{args.start}-{end_page or args.start}.csv")
-
+        print(f"Output: {out_path.resolve()}")
         print(f"Scraping pages {start_page}–{end_page}" + (" (list only)" if args.list_only else ""))
         if args.no_headless:
             print("Tip: keep the Chrome window open, or omit --no-headless for headless mode.")
