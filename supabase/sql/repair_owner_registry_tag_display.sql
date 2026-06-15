@@ -18,6 +18,7 @@ AS $$
       SELECT nullif(btrim(x.owner_tag), '')
       FROM public.competition_owner_season_ranking x
       WHERE x.owner_id = p_owner_id
+        AND upper(btrim(x.owner_tag)) IS DISTINCT FROM upper(x.club_short_name)
       ORDER BY x.season_id DESC
       LIMIT 1
     ),
@@ -25,6 +26,7 @@ AS $$
       SELECT nullif(btrim(c.owner), '')
       FROM public."Clubs" c
       WHERE c.owner_id = p_owner_id
+        AND upper(btrim(c.owner)) IS DISTINCT FROM upper(c."ShortName")
       LIMIT 1
     )
   );

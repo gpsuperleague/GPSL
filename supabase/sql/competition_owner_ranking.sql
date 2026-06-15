@@ -256,12 +256,12 @@ BEGIN
   END IF;
 
   FOR v_club IN
-    SELECT c."ShortName" AS club_short_name, c.owner_id, coalesce(c.owner, '') AS owner_tag
+    SELECT c."ShortName" AS club_short_name, c.owner_id
     FROM public."Clubs" c
     WHERE c.owner_id IS NOT NULL
   LOOP
     v_owner_id := v_club.owner_id;
-    v_owner_tag := coalesce(nullif(btrim(v_club.owner_tag), ''), v_club.club_short_name);
+    v_owner_tag := coalesce(public.owner_registry_resolve_tag(v_owner_id), '');
 
     SELECT coalesce(public.competition_owner_league_points(a.division, a.final_position), 0)
     INTO v_league_pts
@@ -399,21 +399,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
   SELECT coalesce(
-    nullif(btrim((
-      SELECT c.owner
-      FROM public."Clubs" c
-      WHERE c.owner_id = p_owner_id
-        AND nullif(btrim(c.owner), '') IS NOT NULL
-      LIMIT 1
-    )), ''),
-    nullif(btrim((
-      SELECT r.owner_tag
-      FROM public.competition_owner_season_ranking r
-      WHERE r.owner_id = p_owner_id
-        AND nullif(btrim(r.owner_tag), '') IS NOT NULL
-      ORDER BY r.season_id DESC
-      LIMIT 1
-    )), ''),
+    nullif(btrim(public.owner_registry_resolve_tag(p_owner_id)), ''),
     'Former owner'
   );
 $$;
@@ -463,7 +449,7 @@ SELECT
   public.competition_owner_display_name(c.owner_id) AS owner_name,
   c."ShortName" AS club_short_name,
   c."Club" AS club_name,
-  coalesce(nullif(btrim(c.owner), ''), c."ShortName") AS owner_tag,
+  public.owner_registry_resolve_tag(c.owner_id) AS owner_tag,
   round(coalesce(t.rolling_points, 0), 2) AS rolling_points,
   coalesce(t.seasons_count, 0) AS seasons_count,
   coalesce(t.season_breakdown, '[]'::jsonb) AS season_breakdown
@@ -507,7 +493,10 @@ SELECT
   c."Club" AS club_name,
   r.owner_id,
   public.competition_owner_display_name(r.owner_id) AS owner_name,
-  coalesce(nullif(btrim(c.owner), ''), r.owner_tag) AS owner_tag,
+  coalesce(
+    nullif(btrim(public.owner_registry_resolve_tag(r.owner_id)), ''),
+    nullif(btrim(r.owner_tag), '')
+  ) AS owner_tag,
   r.league_points,
   r.super8_points,
   r.plate_points,
@@ -556,7 +545,7 @@ AS $$
     c."Club" AS club_name,
     c.owner_id,
     public.competition_owner_display_name(c.owner_id) AS owner_name,
-    coalesce(nullif(btrim(c.owner), ''), c."ShortName") AS owner_tag,
+    public.owner_registry_resolve_tag(c.owner_id) AS owner_tag,
     coalesce(r4.rolling_points, 0) AS rank_points,
     ion.nation_code,
     n.name AS nation_name,
