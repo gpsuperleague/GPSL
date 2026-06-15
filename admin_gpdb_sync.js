@@ -9,8 +9,18 @@ primeAdminPageChrome();
 
 const CONFIRM_TEXT = "SYNC GPDB";
 const SCRAPE_FUNCTION = "gpdb-pesdb-scrape";
-const DETAIL_BATCH_SIZE = 6;
+const DETAIL_BATCH_SIZE = 4;
+const PAGE_DELAY_MS = 10000;
+const BATCH_DELAY_MS = 4000;
 let scrapeAbort = false;
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function isRateLimitError(message) {
+  return /429|rate limit/i.test(String(message || ""));
+}
 const fileInput = () => document.getElementById("csvFile");
 const importBtn = () => document.getElementById("importBtn");
 
@@ -140,7 +150,7 @@ async function uploadStagingRows(rows, statusId = "importStatus") {
   return imported;
 }
 
-async function invokePesdbScrape(body) {
+async function invokePesdbScrape(body, attempt = 1) {
   const { data, error } = await supabase.functions.invoke(SCRAPE_FUNCTION, {
     body,
   });
@@ -156,12 +166,36 @@ async function invokePesdbScrape(body) {
       /* ignore parse errors */
     }
     if (data?.error) detail = String(data.error);
+
+    if (isRateLimitError(detail) && attempt < 5 && !scrapeAbort) {
+      const waitMs = 15000 * attempt;
+      setStatus(
+        "scrapeStatus",
+        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/4)…`,
+        true
+      );
+      await sleep(waitMs);
+      return invokePesdbScrape(body, attempt + 1);
+    }
+
     const hint = detail.includes("Failed to send")
       ? ` — deploy edge function ${SCRAPE_FUNCTION} in Supabase`
       : "";
     throw new Error(detail + hint);
   }
-  if (data?.error) throw new Error(String(data.error));
+  if (data?.error) {
+    if (isRateLimitError(data.error) && attempt < 5 && !scrapeAbort) {
+      const waitMs = 15000 * attempt;
+      setStatus(
+        "scrapeStatus",
+        `PESDB rate limit — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/4)…`,
+        true
+      );
+      await sleep(waitMs);
+      return invokePesdbScrape(body, attempt + 1);
+    }
+    throw new Error(String(data.error));
+  }
   return data;
 }
 
@@ -176,6 +210,7 @@ async function enrichPlayersWithDetails(listPlayers) {
       players: batch,
     });
     out.push(...(data.players || []));
+    if (i < batches.length - 1) await sleep(BATCH_DELAY_MS);
   }
   return out;
 }
@@ -276,6 +311,15 @@ async function runPesdbScrape() {
         `Page ${page}/${endPage} done — ${players.length} players (${stagingTotal} total in staging).`,
         true
       );
+
+      if (page < endPage && !scrapeAbort) {
+        setStatus(
+          "scrapeStatus",
+          `Pausing ${PAGE_DELAY_MS / 1000}s before next page (PESDB rate limit)…`,
+          true
+        );
+        await sleep(PAGE_DELAY_MS);
+      }
     }
 
     if (!scrapeAbort) {

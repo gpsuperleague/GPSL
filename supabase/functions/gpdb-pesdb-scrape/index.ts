@@ -152,15 +152,39 @@ function parsePesdbMaxLevelPage(html: string) {
   };
 }
 
-async function fetchPesdbHtml(url: string): Promise<string> {
+async function sleep(ms: number): Promise<void> {
+  await new Promise((r) => setTimeout(r, ms));
+}
+
+/** Fetch with retry on 429/503 and a polite pause after each success. */
+async function fetchPesdbHtml(url: string, attempt = 1): Promise<string> {
   const res = await fetch(url, {
     headers: {
       "User-Agent": USER_AGENT,
       Accept: "text/html,application/xhtml+xml",
+      "Accept-Language": "en-GB,en;q=0.9",
     },
   });
-  if (!res.ok) throw new Error(`PESDB fetch failed (${res.status}): ${url}`);
-  return await res.text();
+
+  if ((res.status === 429 || res.status === 503) && attempt < 6) {
+    const waitMs = Math.min(45000, 4000 * Math.pow(2, attempt - 1));
+    console.warn(`PESDB ${res.status} — retry ${attempt}/5 in ${waitMs}ms: ${url}`);
+    await sleep(waitMs);
+    return fetchPesdbHtml(url, attempt + 1);
+  }
+
+  if (!res.ok) {
+    if (res.status === 429) {
+      throw new Error(
+        "PESDB rate limited (429). Wait 10–15 minutes, then retry with a smaller page range or use CSV upload."
+      );
+    }
+    throw new Error(`PESDB fetch failed (${res.status}): ${url}`);
+  }
+
+  const text = await res.text();
+  await sleep(500);
+  return text;
 }
 
 async function mapWithConcurrency<T, R>(
@@ -237,8 +261,8 @@ Deno.serve(async (req) => {
       if (!Array.isArray(raw) || !raw.length) {
         return jsonResponse({ error: "players array required" }, 400);
       }
-      if (raw.length > 8) {
-        return jsonResponse({ error: "Max 8 players per enrich call (timeout limit)" }, 400);
+      if (raw.length > 4) {
+        return jsonResponse({ error: "Max 4 players per enrich call (rate limit)" }, 400);
       }
 
       const players: ScrapePlayer[] = [];
@@ -268,7 +292,7 @@ Deno.serve(async (req) => {
             playing_style: "None",
           });
         }
-        await new Promise((r) => setTimeout(r, 120));
+        await sleep(1800);
       }
 
       return jsonResponse({

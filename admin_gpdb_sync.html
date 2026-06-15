@@ -59,7 +59,8 @@
         <p class="note">
           Fetches list pages from pesdb.net via Supabase edge function (no Selenium).
           Max rating and playing style are read in small batches (avoids edge function timeout).
-          Full database scrape may take 30–60+ minutes — use page ranges to test first (e.g. pages 1–3).
+          Full database scrape may take many hours. PESDB may rate-limit — if you see 429, wait 15 minutes or use CSV upload.
+          Test with pages <b>1–3</b> first.
         </p>
         <div class="scrape-range">
           <label>Start page <input type="number" id="scrapeStartPage" min="1" value="1"></label>
@@ -145,6 +146,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_sync.js?v=20260615-scrape-batches"></script>
+  <script type="module" src="admin_gpdb_sync.js?v=20260615-rate-limit"></script>
 </body>
 </html>
