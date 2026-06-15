@@ -81,7 +81,7 @@ export const SEASON_ADMIN_NAV = [
       {
         label: "Setup Spoon",
         href: "admin_fixtures-cups.html",
-        cup: "spoon",
+        cup: "bowl",
         page: "admin_fixtures-cups",
       },
       {

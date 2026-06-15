@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS public.competition_owner_season_ranking (
   super8_points numeric(8, 2) NOT NULL DEFAULT 0,
   plate_points numeric(8, 2) NOT NULL DEFAULT 0,
   shield_points numeric(8, 2) NOT NULL DEFAULT 0,
-  spoon_points numeric(8, 2) NOT NULL DEFAULT 0,
+  bowl_points numeric(8, 2) NOT NULL DEFAULT 0,
   league_cup_points numeric(8, 2) NOT NULL DEFAULT 0,
   season_total numeric(10, 2) NOT NULL DEFAULT 0,
   detail jsonb NOT NULL DEFAULT '{}'::jsonb,
@@ -89,7 +89,7 @@ AS $$
       WHEN 'r32' THEN 0
       ELSE 0
     END
-    WHEN 'spoon' THEN CASE p_achievement
+    WHEN 'bowl' THEN CASE p_achievement
       WHEN 'winner' THEN 1
       WHEN 'runner_up' THEN 0.5
       WHEN 'sf' THEN 0.25
@@ -201,7 +201,7 @@ BEGIN
         WHEN 1 THEN 'r16'
         ELSE NULL
       END;
-    ELSIF p_cup_code IN ('super8', 'spoon') THEN
+    ELSIF p_cup_code IN ('super8', 'bowl') THEN
       RETURN CASE v_max_round
         WHEN 3 THEN 'runner_up'
         WHEN 2 THEN 'sf'
@@ -234,7 +234,7 @@ DECLARE
   v_super8_pts numeric;
   v_plate_pts numeric;
   v_shield_pts numeric;
-  v_spoon_pts numeric;
+  v_bowl_pts numeric;
   v_lc_pts numeric;
   v_total numeric;
   v_ach text;
@@ -280,13 +280,13 @@ BEGIN
     v_ach := public.competition_club_cup_achievement(p_season_id, v_club.club_short_name, 'shield');
     v_shield_pts := coalesce(public.competition_owner_cup_points('shield', v_ach), 0);
 
-    v_ach := public.competition_club_cup_achievement(p_season_id, v_club.club_short_name, 'spoon');
-    v_spoon_pts := coalesce(public.competition_owner_cup_points('spoon', v_ach), 0);
+    v_ach := public.competition_club_cup_achievement(p_season_id, v_club.club_short_name, 'bowl');
+    v_bowl_pts := coalesce(public.competition_owner_cup_points('bowl', v_ach), 0);
 
     v_ach := public.competition_club_cup_achievement(p_season_id, v_club.club_short_name, 'league_cup');
     v_lc_pts := coalesce(public.competition_owner_cup_points('league_cup', v_ach), 0);
 
-    v_total := v_league_pts + v_super8_pts + v_plate_pts + v_shield_pts + v_spoon_pts + v_lc_pts;
+    v_total := v_league_pts + v_super8_pts + v_plate_pts + v_shield_pts + v_bowl_pts + v_lc_pts;
 
     v_detail := jsonb_build_object(
       'league', jsonb_build_object('points', v_league_pts),
@@ -302,9 +302,9 @@ BEGIN
         'achievement', public.competition_club_cup_achievement(p_season_id, v_club.club_short_name, 'shield'),
         'points', v_shield_pts
       ),
-      'spoon', jsonb_build_object(
-        'achievement', public.competition_club_cup_achievement(p_season_id, v_club.club_short_name, 'spoon'),
-        'points', v_spoon_pts
+      'bowl', jsonb_build_object(
+        'achievement', public.competition_club_cup_achievement(p_season_id, v_club.club_short_name, 'bowl'),
+        'points', v_bowl_pts
       ),
       'league_cup', jsonb_build_object(
         'achievement', public.competition_club_cup_achievement(p_season_id, v_club.club_short_name, 'league_cup'),
@@ -322,7 +322,7 @@ BEGIN
       super8_points,
       plate_points,
       shield_points,
-      spoon_points,
+      bowl_points,
       league_cup_points,
       season_total,
       detail,
@@ -338,7 +338,7 @@ BEGIN
       v_super8_pts,
       v_plate_pts,
       v_shield_pts,
-      v_spoon_pts,
+      v_bowl_pts,
       v_lc_pts,
       v_total,
       v_detail,
@@ -350,7 +350,7 @@ BEGIN
         super8_points = excluded.super8_points,
         plate_points = excluded.plate_points,
         shield_points = excluded.shield_points,
-        spoon_points = excluded.spoon_points,
+        bowl_points = excluded.bowl_points,
         league_cup_points = excluded.league_cup_points,
         season_total = excluded.season_total,
         detail = excluded.detail,
@@ -507,7 +507,7 @@ SELECT
   r.super8_points,
   r.plate_points,
   r.shield_points,
-  r.spoon_points,
+  r.bowl_points,
   r.league_cup_points,
   r.season_total,
   r.detail,

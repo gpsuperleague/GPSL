@@ -26,7 +26,7 @@ export const CUP_CODES = [
   "super8",
   "plate",
   "shield",
-  "spoon",
+  "bowl",
   "league_cup",
 ];
 
@@ -34,16 +34,16 @@ export const CUP_LABELS = {
   super8: "Super8",
   plate: "Plate",
   shield: "Shield",
-  spoon: "Spoon",
+  bowl: "Bowl",
   league_cup: "League Cup",
 };
 
-/** Pastel bar colours — matched to GPSL cup nav (Spoon gold · Shield green · Plate orange · Super8 navy). */
+/** Pastel bar colours — matched to GPSL cup nav (Bowl gold · Shield green · Plate orange · Super8 navy). */
 export const PRESTIGE_CUP_BAR_COLORS = {
   super8: "#5a7db5",
   plate: "#c98652",
   shield: "#6d9f7a",
-  spoon: "#c9a84c",
+  bowl: "#c9a84c",
 };
 
 /** Pastel legend chips for league outcome row tints. */
@@ -320,9 +320,9 @@ export function cupRoundTieCount(matches) {
   return new Set((matches || []).map((m) => m.match_no)).size;
 }
 
-/** Super8 & Spoon QF: one round, two legs (Sep + Oct). */
+/** Super8 & Bowl QF: one round, two legs (Sep + Oct). */
 export function isTwoLegCupQuarterFinal(cupCode, roundNo) {
-  return (cupCode === "super8" || cupCode === "spoon") && roundNo === 1;
+  return (cupCode === "super8" || cupCode === "bowl") && roundNo === 1;
 }
 
 /** Placeholder leg-2 node when bracket data predates the two-leg schedule. */
@@ -351,7 +351,7 @@ export function syntheticCupLeg2Node(leg1) {
 /** Pull mis-placed leg-2 QF nodes (old schedule used round_no 2) into round 1. */
 export function preprocessCupBracketRounds(nodes, cupCode) {
   const rounds = groupCupBracketByRound(nodes);
-  if (cupCode !== "super8" && cupCode !== "spoon") return rounds;
+  if (cupCode !== "super8" && cupCode !== "bowl") return rounds;
 
   const orphanLeg2 = [];
   const out = [];
@@ -943,13 +943,13 @@ export function prestigeCupForPosition(division, position) {
   }
   if (position <= 4) return "Plate";
   if (position >= 5 && position <= 15) return "Shield";
-  if (position >= 18) return "Spoon";
+  if (position >= 18) return "Bowl";
   return null;
 }
 
 const CH_PLAYOFF_DIVISIONS = ["championship_a", "championship_b"];
 
-/** CH 16v17 Shield/Spoon playoff results saved in admin (per division). */
+/** CH 16v17 Shield/Bowl playoff results saved in admin (per division). */
 export function parseShieldSpoonPlayoffQualifiers(rows) {
   const map = {
     championship_a: {},
@@ -958,7 +958,7 @@ export function parseShieldSpoonPlayoffQualifiers(rows) {
   for (const row of rows || []) {
     if (!map[row.division]) continue;
     if (row.cup_code === "shield") map[row.division].shield = row.club_short_name;
-    if (row.cup_code === "spoon") map[row.division].spoon = row.club_short_name;
+    if (row.cup_code === "bowl") map[row.division].bowl = row.club_short_name;
   }
   return map;
 }
@@ -972,7 +972,7 @@ export async function loadShieldSpoonPlayoffQualifiers(supabase, seasonId) {
     .select("division, cup_code, club_short_name")
     .eq("season_id", seasonId)
     .in("division", CH_PLAYOFF_DIVISIONS)
-    .in("cup_code", ["shield", "spoon"]);
+    .in("cup_code", ["shield", "bowl"]);
 
   if (error) {
     console.error("loadShieldSpoonPlayoffQualifiers:", error);
@@ -1003,7 +1003,7 @@ export function prestigeCupForStanding(
 
   const me = normalizeClubKey(clubShortName);
   if (divQ.shield && normalizeClubKey(divQ.shield) === me) return "Shield";
-  if (divQ.spoon && normalizeClubKey(divQ.spoon) === me) return "Spoon";
+  if (divQ.bowl && normalizeClubKey(divQ.bowl) === me) return "Bowl";
   return null;
 }
 
@@ -1038,7 +1038,7 @@ export function statusForStanding(
     return tags;
   }
 
-  if (position >= 16 && position <= 17 && !playoffCup) tags.push("Shield/Spoon PO");
+  if (position >= 16 && position <= 17 && !playoffCup) tags.push("Shield/Bowl PO");
   if (position <= 2) tags.push("Promotion");
   if (position >= 3 && position <= 6) tags.push("Playoffs");
   return tags;
@@ -1049,7 +1049,7 @@ export function zonesForPosition(division, position) {
   return statusForPosition(division, position);
 }
 
-/** Left bar colour: prestige cup (Super8 / Plate / Shield / Spoon). */
+/** Left bar colour: prestige cup (Super8 / Plate / Shield / Bowl). */
 export function prestigeBarKey(division, position) {
   return prestigeBarKeyForStanding(division, position, null, null);
 }
@@ -1078,7 +1078,7 @@ export function leagueTintKey(division, position) {
     if (position >= 16) return "playoff";
     return "safe";
   }
-  if (position >= 18) return "spoon";
+  if (position >= 18) return "bowl";
   if (position >= 16) return "playoff";
   if (position >= 3 && position <= 6) return "playoffs";
   if (position <= 2) return "promotion";
@@ -1098,7 +1098,7 @@ export function leagueBoundaryKey(division, position) {
     if (position >= 16) return "playoff";
     return "safe";
   }
-  if (position >= 18) return "spoon";
+  if (position >= 18) return "bowl";
   if (position >= 16) return "playoff";
   if (position >= 3 && position <= 6) return "playoffs";
   if (position <= 2) return "promotion";

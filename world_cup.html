@@ -6,6 +6,7 @@
   <title>World Cup — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="international.css">
+  <link rel="stylesheet" href="competition_themes.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1280px; margin:20px auto 40px; }
@@ -22,10 +23,17 @@
     .wc-phase { color:#aaa; font-size:14px; margin-bottom:16px; }
   </style>
 </head>
-<body>
+<body class="theme-world-cup">
   <div id="nav"></div>
   <div class="page-container">
-    <h1>🏆 GPSL World Cup</h1>
+    <header class="comp-hero comp-hero--wc">
+      <img class="comp-hero-trophy" src="images/trophies/world_cup.png" alt="World Cup trophy" width="88" height="110">
+      <div class="comp-hero-text">
+        <p class="comp-hero-kicker">GPSL International</p>
+        <h1 class="comp-hero-title">World Cup</h1>
+        <p class="comp-hero-tagline">60 nations · qualifying groups · finals knockout</p>
+      </div>
+    </header>
     <p class="intl-note">
       60 nations · 12 qualifying groups of 5 · top 2 plus 8 best third places (32 finalists) ·
       8 groups of 4 in the finals · R16 → QF → SF → Final.

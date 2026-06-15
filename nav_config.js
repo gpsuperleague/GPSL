@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260610-gpdb-dedup-nav";
+export const NAV_CONFIG_VERSION = "20260615-bowl-trophies-themes";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -79,7 +79,7 @@ export const NAV_SECTIONS = [
       { href: "cups.html?cup=super8", label: "Super8", page: "cups", cup: "super8", indent: true },
       { href: "cups.html?cup=plate", label: "Plate", page: "cups", cup: "plate", indent: true },
       { href: "cups.html?cup=shield", label: "Shield", page: "cups", cup: "shield", indent: true },
-      { href: "cups.html?cup=spoon", label: "Spoon", page: "cups", cup: "spoon", indent: true },
+      { href: "cups.html?cup=bowl", label: "Bowl", page: "cups", cup: "bowl", indent: true },
     ],
   },
   {

@@ -50,7 +50,7 @@ function renderLegend() {
     { color: PRESTIGE_CUP_BAR_COLORS.super8, label: "Bar · Super8" },
     { color: PRESTIGE_CUP_BAR_COLORS.plate, label: "Bar · Plate" },
     { color: PRESTIGE_CUP_BAR_COLORS.shield, label: "Bar · Shield" },
-    { color: PRESTIGE_CUP_BAR_COLORS.spoon, label: "Bar · Spoon" },
+    { color: PRESTIGE_CUP_BAR_COLORS.bowl, label: "Bar · Bowl" },
   ];
   const league = [
     { color: LEAGUE_TINT_LEGEND_COLORS.champion, label: "Tint · Champion" },
@@ -93,6 +93,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
 
   const panel = document.createElement("div");
   panel.className = "division-panel";
+  panel.dataset.division = division;
 
   if (!rows.length) {
     panel.innerHTML = `
@@ -140,11 +141,11 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
         leagueKey === "relegation" &&
         prevLeagueKey !== null &&
         prevLeagueKey !== "relegation";
-      const spoonBoundary =
+      const bowlBoundary =
         zoneBoundaries &&
-        leagueKey === "spoon" &&
+        leagueKey === "bowl" &&
         prevLeagueKey !== null &&
-        prevLeagueKey !== "spoon";
+        prevLeagueKey !== "bowl";
       if (zoneBoundaries) {
         prevPrestigeKey = prestigeKey;
         prevLeagueKey = leagueKey;
@@ -176,7 +177,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
       const leader = displayRank === 1 ? " row-leader" : "";
 
       return `
-        <tr class="prestige-${prestigeKey} league-${tintKey}${prestigeBoundary ? " zone-boundary" : ""}${playoffBoundary ? " zone-boundary-playoff" : ""}${relegationBoundary || spoonBoundary ? " zone-boundary zone-boundary-relegation" : ""}${leader}${mine}">
+        <tr class="prestige-${prestigeKey} league-${tintKey}${prestigeBoundary ? " zone-boundary" : ""}${playoffBoundary ? " zone-boundary-playoff" : ""}${relegationBoundary || bowlBoundary ? " zone-boundary zone-boundary-relegation" : ""}${leader}${mine}">
           <td class="num">${displayRank}</td>
           <td class="club-col">${clubWithOwnerHtml(row.club_name, row.club_short_name)}</td>
           <td class="status-col">${statusText}</td>

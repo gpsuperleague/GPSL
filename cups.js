@@ -20,9 +20,11 @@ import {
 } from "./competition.js";
 import { loadCalendarStatus, isGpslMonthCurrentlyPlayable } from "./competition_calendar.js";
 import { formatMatchConditions } from "./competition_conditions.js";
+import { applyCupPageTheme, renderCupHero } from "./trophy_assets.js";
 
 function cupFromUrl() {
   const raw = new URLSearchParams(window.location.search).get("cup");
+  if (raw === "spoon") return "bowl";
   if (raw && CUP_CODES.includes(raw)) return raw;
   return null;
 }
@@ -41,6 +43,11 @@ function renderToolbar() {
     btn.className = currentCup === code ? "active" : "";
     btn.onclick = () => {
       currentCup = code;
+      applyCupPageTheme(currentCup);
+      const hero = document.getElementById("cupHero");
+      if (hero) {
+        hero.innerHTML = renderCupHero(currentCup, CUP_LABELS[currentCup]);
+      }
       renderToolbar();
       void renderCup();
     };
@@ -315,6 +322,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const urlCup = cupFromUrl();
   if (urlCup) currentCup = urlCup;
+
+  applyCupPageTheme(currentCup);
+  const hero = document.getElementById("cupHero");
+  if (hero) {
+    hero.innerHTML = renderCupHero(currentCup, CUP_LABELS[currentCup]);
+  }
 
   document.getElementById("pageMeta").textContent =
     "Prestige cups (table places) and League Cup (60-club knockout)";

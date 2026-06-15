@@ -161,7 +161,7 @@ async function loadSeason(seasonId) {
       <td class="num">${fmtPts(r.super8_points)}</td>
       <td class="num">${fmtPts(r.plate_points)}</td>
       <td class="num">${fmtPts(r.shield_points)}</td>
-      <td class="num">${fmtPts(r.spoon_points)}</td>
+      <td class="num">${fmtPts(r.bowl_points ?? r.spoon_points)}</td>
       <td class="num">${fmtPts(r.league_cup_points)}</td>
       <td class="num"><b>${fmtPts(r.season_total)}</b></td>
     </tr>`
@@ -175,7 +175,7 @@ async function loadSeason(seasonId) {
       "Super8",
       "Plate",
       "Shield",
-      "Spoon",
+      "Bowl",
       "L.Cup",
       "Total",
     ],

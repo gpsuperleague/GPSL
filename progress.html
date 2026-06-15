@@ -7,6 +7,7 @@
   <meta charset="UTF-8">
   <title>Competition Progress — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="competition_themes.css">
   <style>
     body { background: #111; color: #ddd; font-family: Arial, sans-serif; margin: 0; }
     .page-container { width: 95%; max-width: 1400px; margin: 20px auto 40px; }
@@ -132,7 +133,7 @@
       --cup-super8: #5a7db5;
       --cup-plate: #c98652;
       --cup-shield: #6d9f7a;
-      --cup-spoon: #c9a84c;
+      --cup-bowl: #c9a84c;
       --line-playoff: #c98652;
       --tint-champion: #2a2418;
       --tint-runner-up: #1e1e26;
@@ -159,8 +160,8 @@
     table.standings-table tbody tr.league-playoff:nth-child(even) td { background: var(--tint-playoff-even); }
     table.standings-table tbody tr.league-relegation:nth-child(odd) td { background: var(--tint-relegation-odd); }
     table.standings-table tbody tr.league-relegation:nth-child(even) td { background: var(--tint-relegation-even); }
-    table.standings-table tbody tr.league-spoon:nth-child(odd) td { background: var(--tint-relegation-odd); }
-    table.standings-table tbody tr.league-spoon:nth-child(even) td { background: var(--tint-relegation-even); }
+    table.standings-table tbody tr.league-bowl:nth-child(odd) td { background: var(--tint-relegation-odd); }
+    table.standings-table tbody tr.league-bowl:nth-child(even) td { background: var(--tint-relegation-even); }
 
     a.standings-club-link {
       color: inherit;
@@ -182,8 +183,8 @@
     table.standings-table tbody tr.zone-boundary.prestige-super8 td { border-top-color: var(--cup-super8); }
     table.standings-table tbody tr.zone-boundary.prestige-plate td { border-top-color: var(--cup-plate); }
     table.standings-table tbody tr.zone-boundary.prestige-shield td { border-top-color: var(--cup-shield); }
-    table.standings-table tbody tr.zone-boundary.prestige-spoon td {
-      border-top-color: var(--cup-spoon);
+    table.standings-table tbody tr.zone-boundary.prestige-bowl td {
+      border-top-color: var(--cup-bowl);
     }
     table.standings-table tbody tr.zone-boundary-playoff td {
       border-top-width: 2px;
@@ -201,7 +202,7 @@
     table.standings-table tbody tr.prestige-super8 td:first-child { box-shadow: inset 5px 0 0 var(--cup-super8); }
     table.standings-table tbody tr.prestige-plate td:first-child { box-shadow: inset 5px 0 0 var(--cup-plate); }
     table.standings-table tbody tr.prestige-shield td:first-child { box-shadow: inset 5px 0 0 var(--cup-shield); }
-    table.standings-table tbody tr.prestige-spoon td:first-child { box-shadow: inset 5px 0 0 var(--cup-spoon); }
+    table.standings-table tbody tr.prestige-bowl td:first-child { box-shadow: inset 5px 0 0 var(--cup-bowl); }
 
     table.standings-table tbody tr.my-club td {
       background: #2a2418 !important;
@@ -216,8 +217,8 @@
     table.standings-table tbody tr.my-club.prestige-shield td:first-child {
       box-shadow: inset 5px 0 0 var(--cup-shield), inset 0 0 0 1px #ff990066 !important;
     }
-    table.standings-table tbody tr.my-club.prestige-spoon td:first-child {
-      box-shadow: inset 5px 0 0 var(--cup-spoon), inset 0 0 0 1px #ff990066 !important;
+    table.standings-table tbody tr.my-club.prestige-bowl td:first-child {
+      box-shadow: inset 5px 0 0 var(--cup-bowl), inset 0 0 0 1px #ff990066 !important;
     }
     table.standings-table tbody tr.my-club.prestige-none td:first-child {
       box-shadow: inset 0 0 0 1px #ff990066;
@@ -262,10 +263,17 @@
     .empty-msg { color: #888; padding: 20px; }
   </style>
 </head>
-<body>
+<body class="theme-superleague">
   <div id="nav"></div>
   <div class="page-container">
-    <h1>Competition Progress</h1>
+    <header class="comp-hero comp-hero--league">
+      <img class="comp-hero-trophy" src="images/trophies/superleague.png" alt="SuperLeague trophy" width="88" height="110">
+      <div class="comp-hero-text">
+        <p class="comp-hero-kicker">GPSL Pyramid · Tier 1</p>
+        <h1 class="comp-hero-title">Competition Progress</h1>
+        <p class="comp-hero-tagline">SuperLeague, Championship A &amp; B — tables, zones &amp; form</p>
+      </div>
+    </header>
     <p id="seasonMeta" class="season-meta">Loading…</p>
     <div class="division-filter" id="divisionFilter">
       <span class="filter-label">Show tables</span>

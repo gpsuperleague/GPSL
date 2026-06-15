@@ -26,7 +26,7 @@ import { formatNavLabel } from "./nav_label.js";
 export { supabase };
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260610-gpdb-dedup-nav";
+export const GLOBAL_JS_VERSION = "20260615-bowl-trophies-themes";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];

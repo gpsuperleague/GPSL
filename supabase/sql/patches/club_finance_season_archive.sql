@@ -326,7 +326,7 @@ BEGIN
   END LOOP;
 
   FOR v_cup IN
-    SELECT unnest(ARRAY['super8','plate','shield','spoon','league_cup']) AS cup_code
+    SELECT unnest(ARRAY['super8','plate','shield','bowl','league_cup']) AS cup_code
   LOOP
     SELECT max(n.round_no) INTO v_max_round
     FROM public.competition_cup_bracket_nodes n

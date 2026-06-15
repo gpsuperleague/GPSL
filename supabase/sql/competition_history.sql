@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS public.competition_cup_season_winner (
   season_id bigint NOT NULL REFERENCES public.competition_seasons (id) ON DELETE CASCADE,
   season_label text NOT NULL,
   cup_code text NOT NULL CHECK (
-    cup_code IN ('super8', 'plate', 'shield', 'spoon', 'league_cup')
+    cup_code IN ('super8', 'plate', 'shield', 'bowl', 'league_cup')
   ),
   winner_club_short_name text NOT NULL REFERENCES public."Clubs" ("ShortName"),
   runner_up_club_short_name text REFERENCES public."Clubs" ("ShortName"),
@@ -421,7 +421,7 @@ BEGIN
 
   -- Cup winners (final round)
   FOR v_cup IN
-    SELECT unnest(ARRAY['super8','plate','shield','spoon','league_cup']) AS cup_code
+    SELECT unnest(ARRAY['super8','plate','shield','bowl','league_cup']) AS cup_code
   LOOP
     SELECT max(n.round_no) INTO v_max_round
     FROM public.competition_cup_bracket_nodes n
@@ -670,7 +670,7 @@ SELECT
     WHEN 'super8' THEN 'Super8 winners'
     WHEN 'plate' THEN 'Plate winners'
     WHEN 'shield' THEN 'Shield winners'
-    WHEN 'spoon' THEN 'Spoon winners'
+    WHEN 'bowl' THEN 'Bowl winners'
     WHEN 'league_cup' THEN 'League Cup winners'
     ELSE w.cup_code
   END,

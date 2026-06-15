@@ -18,7 +18,7 @@ async function saveCompetitionPlayoffQualifier() {
   const cup =
     document.getElementById("compPlayoffRole").value === "shield_playoff_winner"
       ? "shield"
-      : "spoon";
+      : "bowl";
 
   const { error } = await supabase.rpc("competition_admin_set_playoff_qualifier", {
     p_season_id: active.id,

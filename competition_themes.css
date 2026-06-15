@@ -1,0 +1,245 @@
+/* GPSL competition page themes — keeps #111 / #ff9900 base with competition accents */
+
+.comp-hero {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+  padding: 18px 20px;
+  border-radius: 10px;
+  border: 1px solid #333;
+  background: linear-gradient(135deg, #1a1a1a 0%, #141414 100%);
+}
+
+.comp-hero-trophy {
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.55));
+}
+
+.comp-hero-kicker {
+  margin: 0 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #888;
+}
+
+.comp-hero-title {
+  margin: 0;
+  font-size: 28px;
+  color: #ff9900;
+}
+
+.comp-hero-tagline {
+  margin: 6px 0 0;
+  color: #aaa;
+  font-size: 14px;
+}
+
+/* —— Prestige cups (European comp feel) —— */
+
+.theme-cup-super8 {
+  --comp-accent: #4fc3f7;
+  --comp-accent-dim: #1a3a52;
+  --comp-glow: rgba(79, 195, 247, 0.15);
+}
+
+.theme-cup-super8 .comp-hero {
+  border-color: #2a5570;
+  background: linear-gradient(135deg, #121820 0%, #0f1418 55%, #111 100%);
+  box-shadow: inset 0 0 40px var(--comp-glow);
+}
+
+.theme-cup-super8 h1,
+.theme-cup-super8 .comp-hero-title,
+.theme-cup-super8 .panel h2,
+.theme-cup-super8 .round-title,
+.theme-cup-super8 .toolbar button.active {
+  color: var(--comp-accent);
+}
+
+.theme-cup-super8 .toolbar button.active {
+  background: var(--comp-accent-dim);
+  border-color: var(--comp-accent);
+}
+
+.theme-cup-plate {
+  --comp-accent: #ff8f45;
+  --comp-accent-dim: #4a2810;
+  --comp-glow: rgba(255, 143, 69, 0.12);
+}
+
+.theme-cup-plate .comp-hero {
+  border-color: #5a3820;
+  background: linear-gradient(135deg, #1a140f 0%, #121010 100%);
+  box-shadow: inset 0 0 36px var(--comp-glow);
+}
+
+.theme-cup-plate h1,
+.theme-cup-plate .comp-hero-title,
+.theme-cup-plate .panel h2,
+.theme-cup-plate .round-title,
+.theme-cup-plate .toolbar button.active {
+  color: var(--comp-accent);
+}
+
+.theme-cup-plate .toolbar button.active {
+  background: var(--comp-accent-dim);
+  border-color: var(--comp-accent);
+}
+
+.theme-cup-shield {
+  --comp-accent: #6ecf8a;
+  --comp-accent-dim: #1a3d28;
+  --comp-glow: rgba(110, 207, 138, 0.12);
+}
+
+.theme-cup-shield .comp-hero {
+  border-color: #2a5040;
+  background: linear-gradient(135deg, #101814 0%, #111 100%);
+  box-shadow: inset 0 0 36px var(--comp-glow);
+}
+
+.theme-cup-shield h1,
+.theme-cup-shield .comp-hero-title,
+.theme-cup-shield .panel h2,
+.theme-cup-shield .round-title,
+.theme-cup-shield .toolbar button.active {
+  color: var(--comp-accent);
+}
+
+.theme-cup-shield .toolbar button.active {
+  background: var(--comp-accent-dim);
+  border-color: var(--comp-accent);
+}
+
+.theme-cup-bowl {
+  --comp-accent: #c9a84c;
+  --comp-accent-dim: #3d3018;
+  --comp-glow: rgba(201, 168, 76, 0.14);
+}
+
+.theme-cup-bowl .comp-hero {
+  border-color: #5a4828;
+  background: linear-gradient(135deg, #18140e 0%, #111 100%);
+  box-shadow: inset 0 0 36px var(--comp-glow);
+}
+
+.theme-cup-bowl h1,
+.theme-cup-bowl .comp-hero-title,
+.theme-cup-bowl .panel h2,
+.theme-cup-bowl .round-title,
+.theme-cup-bowl .toolbar button.active {
+  color: var(--comp-accent);
+}
+
+.theme-cup-bowl .toolbar button.active {
+  background: var(--comp-accent-dim);
+  border-color: var(--comp-accent);
+}
+
+.theme-cup-league-cup {
+  --comp-accent: #e04040;
+  --comp-accent-dim: #4a1818;
+  --comp-glow: rgba(224, 64, 64, 0.12);
+}
+
+.theme-cup-league-cup .comp-hero {
+  border-color: #602828;
+  background: linear-gradient(135deg, #1a1010 0%, #111 100%);
+  box-shadow: inset 0 0 36px var(--comp-glow);
+}
+
+.theme-cup-league-cup h1,
+.theme-cup-league-cup .comp-hero-title,
+.theme-cup-league-cup .panel h2,
+.theme-cup-league-cup .round-title,
+.theme-cup-league-cup .toolbar button.active {
+  color: var(--comp-accent);
+}
+
+.theme-cup-league-cup .toolbar button.active {
+  background: var(--comp-accent-dim);
+  border-color: var(--comp-accent);
+}
+
+/* —— SuperLeague / Premier League feel —— */
+
+.theme-superleague .comp-hero {
+  border-color: #3a0080;
+  background: linear-gradient(135deg, #1a0033 0%, #120820 40%, #111 100%);
+  box-shadow: inset 0 0 48px rgba(120, 40, 200, 0.12);
+}
+
+.theme-superleague .comp-hero-title,
+.theme-superleague h1 {
+  color: #e8d4ff;
+}
+
+.theme-superleague .comp-hero-kicker {
+  color: #9b7fd4;
+}
+
+.theme-superleague .division-panel[data-division="superleague"] {
+  border-color: #4a2080;
+  box-shadow: 0 0 0 1px rgba(120, 60, 200, 0.2);
+}
+
+.theme-superleague .division-panel[data-division="superleague"] h2 {
+  color: #c9a8ff;
+}
+
+/* —— World Cup exotic —— */
+
+.theme-world-cup {
+  background: linear-gradient(180deg, #0a1628 0%, #111 35%, #111 100%) !important;
+}
+
+.theme-world-cup .comp-hero {
+  border-color: #2a6080;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(255, 215, 0, 0.08) 0%, transparent 55%),
+    linear-gradient(135deg, #0c1a2e 0%, #101820 50%, #111 100%);
+  box-shadow: inset 0 0 60px rgba(255, 215, 0, 0.06);
+}
+
+.theme-world-cup .comp-hero-title,
+.theme-world-cup h1 {
+  color: #ffd700;
+}
+
+.theme-world-cup .comp-hero-kicker {
+  color: #7ec8e3;
+}
+
+.theme-world-cup .panel {
+  border-color: #2a4560;
+  background: linear-gradient(180deg, #141e28 0%, #1a1a1a 100%);
+}
+
+.theme-world-cup .panel h2 {
+  color: #ffd700;
+}
+
+.theme-world-cup a {
+  color: #7ec8e3;
+}
+
+.theme-world-cup a.button,
+.theme-world-cup .toolbar a.button {
+  border-color: #3a6080;
+}
+
+/* Trophy cabinet PNG items */
+.trophy-item img.trophy-png {
+  width: 52px;
+  height: 68px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.5));
+}
+
+.trophy-item.is-ghost img.trophy-png {
+  opacity: 0.28;
+  filter: grayscale(1) brightness(0.85);
+}

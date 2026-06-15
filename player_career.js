@@ -1,6 +1,6 @@
 import { supabase, initGlobal } from "./global.js";
-import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
-import { DIVISION_LABELS } from "./competition.js";
+import { loadClubsMap, fullClubName, displayClubName } from "./clubs_lookup.js";
+import { DIVISION_LABELS, formatMoney } from "./competition.js";
 
 const AWARD_LABELS = {
   ballon_dor: "Ballon d'Or",
@@ -8,6 +8,13 @@ const AWARD_LABELS = {
   golden_playmaker: "Golden Playmaker",
   golden_glove: "Golden Glove",
   season_potm: "Most POTM",
+};
+
+const MOVE_LABELS = {
+  transfer: "Transfer",
+  free: "Free transfer",
+  foreign_sale: "Foreign sale",
+  overflow_release: "Squad release",
 };
 
 function divisionLabel(div) {
@@ -86,6 +93,64 @@ function renderStints(stints) {
     </table>`;
 }
 
+function formatTransferParties(row) {
+  const seller = displayClubName(row.seller_club_short_name) || row.seller_club_short_name || "—";
+  const buyer =
+    row.foreign_buyer_name ||
+    displayClubName(row.buyer_club_short_name) ||
+    row.buyer_club_short_name ||
+    "—";
+  return `${seller} → ${buyer}`;
+}
+
+function formatTransferFee(row) {
+  const fee = Number(row.fee || 0);
+  const agent = Number(row.agent_fee || 0);
+  if (fee <= 0 && agent <= 0) return "—";
+  if (agent > 0) {
+    return `${formatMoney(fee)} (+ ${formatMoney(agent)} agent)`;
+  }
+  return formatMoney(fee);
+}
+
+function renderTransfers(transfers) {
+  const el = document.getElementById("transfersPanel");
+  if (!el) return;
+
+  if (!transfers?.length) {
+    el.innerHTML =
+      '<p class="empty">No completed GPSL transfers recorded for this player yet.</p>';
+    return;
+  }
+
+  el.innerHTML = `
+    <table class="gpsl-table">
+      <thead>
+        <tr>
+          <th>Season</th>
+          <th>When</th>
+          <th>Move</th>
+          <th>Type</th>
+          <th class="num">Fee</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${transfers
+          .map(
+            (t) => `
+          <tr>
+            <td>${t.season_label || "—"}</td>
+            <td>${t.transfer_time ? new Date(t.transfer_time).toLocaleDateString("en-GB") : "—"}</td>
+            <td>${formatTransferParties(t)}</td>
+            <td>${MOVE_LABELS[t.move_kind] || t.move_kind || "Transfer"}</td>
+            <td class="num">${formatTransferFee(t)}</td>
+          </tr>`
+          )
+          .join("")}
+      </tbody>
+    </table>`;
+}
+
 function renderAwards(awards) {
   const el = document.getElementById("awardsPanel");
   if (!awards?.length) {
@@ -119,7 +184,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error("competition_player_career_bundle:", error);
     showError(
       error.message.includes("competition_player_career_bundle")
-        ? "Run supabase/sql/competition_history.sql in Supabase first."
+        ? "Run supabase/sql/competition_history.sql and patches/player_career_transfers.sql in Supabase first."
         : error.message
     );
     return;
@@ -149,5 +214,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   renderTotals(bundle.totals);
   renderStints(bundle.stints || []);
+  renderTransfers(bundle.transfers || []);
   renderAwards(bundle.awards || []);
 });
