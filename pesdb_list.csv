@@ -1919,3 +1919,1155 @@ player_id,Position,player_name,nationality,age,rating,max_level_rating,playing_s
 41281,GK,Nahuel Guzmán,Argentina,39,74,74,None
 41275,CB,Juan Insaurralde,Argentina,41,74,74,None
 41204,GK,Rafael,Brazil,36,74,74,None
+41185,CF,Michael Hoyos,Argentina,34,74,74,None
+41120,CMF,Tom Cairney,Scotland,34,74,74,None
+41083,RMF,Eduardo Salvio,Argentina,35,74,74,None
+40990,GK,Anthony Lopes,Portugal,35,74,74,None
+40456,CMF,Ander Herrera,Spain,36,74,74,None
+40422,AMF,Xherdan Shaqiri,Switzerland,34,74,74,None
+39719,CF,Salomón Rondón,Venezuela,36,74,74,None
+38567,RWF,Pedro,Spain,38,74,74,None
+37304,CF,Cristhian Stuani,Uruguay,39,74,74,None
+36774,DMF,Fernando,Brazil,38,74,74,None
+36768,GK,Fraser Forster,England,37,74,74,None
+35250,CMF,Éver Banega,Argentina,37,74,74,None
+35207,CB,David Luiz,Brazil,38,74,74,None
+35124,AMF,Óscar Trejo,Argentina,37,74,74,None
+35017,CF,André-Pierre Gignac,France,40,74,74,None
+34437,GK,Łukasz Fabiański,Poland,40,74,74,None
+32782,CF,Hugo Rodallega,Colombia,40,74,74,None
+15433,CB,Maya Yoshida,Japan,37,74,74,None
+7814,CB,Dante,Brazil,42,74,74,None
+5518,CB,Raúl Albiol,Spain,40,74,74,None
+4882,CMF,James Milner,England,39,74,74,None
+84056521,DMF,Marwan Attia,Egypt,27,73,73,None
+84051089,CF,Akor Adams,Nigeria,25,73,73,None
+84046074,CB,Igoh Ogbu,Nigeria,25,73,73,None
+84043757,RB,Guéla Doué,Côte d'Ivoire,23,73,73,None
+84041003,CMF,Noah Sadiki,Congo DR,21,73,73,None
+84039032,AMF,Bilal El Khannouss,Morocco,21,73,73,None
+84037611,RWF,Ilias Akhomach,Morocco,21,73,73,None
+84033324,CMF,Neil El Aynaoui,Morocco,24,73,73,None
+84031699,AMF,Hannibal Mejbri,Tunisia,22,73,73,None
+84029983,CB,Adamo Nagalo,Burkina Faso,23,73,73,None
+84028627,LB,Nouhou Tolo,Cameroon,28,73,73,None
+84028302,LB,Ismail Jakobs,Senegal,26,73,73,None
+84026781,RWF,Zito Luvumbo,Angola,23,73,73,None
+84019657,LB,Darlin Yongwa,Cameroon,25,73,73,None
+84019180,CMF,Azzedine Ounahi,Morocco,25,73,73,None
+84019165,LB,Ali Abdi,Tunisia,32,73,73,None
+84017278,CF,Randy Nteka,Angola,28,73,73,None
+84016549,CMF,Hichem Boudaoui,Algeria,26,73,73,None
+84016471,CF,Mostafa Mohamed,Egypt,28,73,73,None
+84015588,CF,Lyle Foster,South Africa,25,73,73,None
+84013881,CF,Lassina Traoré,Burkina Faso,24,73,73,None
+84013097,CB,Abdoulaye Seck,Senegal,33,73,73,None
+84011807,CB,Montassar Talbi,Tunisia,27,73,73,None
+84006532,CMF,Frank Onyeka,Nigeria,27,73,73,None
+84005774,CF,Mbwana Samatta,Tanzania,33,73,73,None
+84004755,RWF,Fashion Sakala,Zambia,28,73,73,None
+84004672,CB,Gerzino Nyamsi,Cameroon,28,73,73,None
+84004653,RB,Bright Osayi-Samuel,Nigeria,28,73,73,None
+84004361,CF,Danny Namaso,Cameroon,25,73,73,None
+84002430,RWF,Christian Bassogog,Cameroon,30,73,73,None
+84002130,CB,Sikou Niakaté,Mali,26,73,73,None
+84002074,CF,Cyriel Dessers,Nigeria,31,73,73,None
+84001172,RWF,Zizo,Egypt,29,73,73,None
+83998665,DMF,Charles Pickel,Congo DR,28,73,73,None
+83998478,GK,Hervé Koffi,Burkina Faso,29,73,73,None
+83996635,RB,Axel Tuanzebe,Congo DR,28,73,73,None
+83993307,GK,Mohamed El Shenawi,Egypt,37,73,73,None
+83992832,LWF,Naïm Sliti,Tunisia,33,73,73,None
+83990834,LB,Joris Kayembe,Congo DR,31,73,73,None
+83990391,CF,Steve Mounié,Benin,31,73,73,None
+83989395,DMF,Omar Mascarell,Equatorial Guinea,32,73,73,None
+83989055,CB,Adam Masina,Morocco,31,73,73,None
+83988467,DMF,Marvelous Nakamba,Zimbabwe,31,73,73,None
+83988419,GK,Munir El Kajoui,Morocco,36,73,73,None
+83988109,GK,Ronwen Williams,South Africa,33,73,73,None
+83946988,LWF,Georges N'Koudou,Cameroon,30,73,73,None
+83946927,CMF,Jean Michaël Seri,Côte d'Ivoire,34,73,73,None
+83932546,CB,Aissa Mandi,Algeria,34,73,73,None
+83930734,CB,Willy Boly,Côte d'Ivoire,34,73,73,None
+50454269,GK,Meshaal Barsham,Qatar,27,73,73,None
+50447373,CF,Almoez Ali,Qatar,29,73,73,None
+50434346,CF,Wu Lei,China PR,34,73,73,None
+50395355,AMF,Fábio Lima,United Arab Emirates,32,73,73,None
+50390685,DMF,Karim Boudiaf,Qatar,35,73,73,None
+50388745,RWF,Fahad Al-Muwallad,Saudi Arabia,31,73,73,None
+50378018,CB,Lucas Mendes,Qatar,35,73,73,None
+16924534,RB,Pedro Malheiro,Portugal,24,73,73,None
+16919398,RWF,Javairô Dilrosun,Netherlands,27,73,73,None
+16910023,CMF,Guga,Portugal,28,73,73,None
+16909336,CF,Sergio Castel,Spain,30,73,73,None
+16904472,CF,Leonardo,Brazil,28,73,73,None
+16899837,GK,Meshaal Barsham,Qatar,27,73,73,None
+16899058,GK,Keisuke Osako,Japan,26,73,73,None
+16898890,GK,Daiya Maekawa,Japan,31,73,73,None
+16896731,LMF,Moussa Djenepo,Mali,27,73,73,None
+16895715,CB,Matheus Thuler,Brazil,26,73,73,None
+16892941,CF,Almoez Ali,Qatar,29,73,73,None
+16892733,CF,Omar Khribin,Syria,31,73,73,None
+16891174,CF,Rafa Mújica,Spain,27,73,73,None
+16890745,CF,Guilherme Bissoli,Brazil,27,73,73,None
+16890702,LWF,João Figueiredo,Malaysia,29,73,73,None
+16886453,GK,Arthur Desmas,France,31,73,73,None
+16886007,CF,André Luís,Brazil,31,73,73,None
+16884959,CF,Fábio Abreu,Angola,32,73,73,None
+16884740,LB,Paulo Otávio,Brazil,31,73,73,None
+16881321,GK,Sergio Rico,Spain,32,73,73,None
+16879977,CB,Federico Barba,Italy,32,73,73,None
+16878287,RWF,Munir El Haddadi,Morocco,30,73,73,None
+16840923,AMF,Fábio Lima,United Arab Emirates,32,73,73,None
+16838476,LWF,Caio,United Arab Emirates,31,73,73,None
+16837693,CB,William Troost-Ekong,Nigeria,32,73,73,None
+16837653,RB,Youssouf Sabaly,Senegal,32,73,73,None
+16836253,DMF,Karim Boudiaf,Qatar,35,73,73,None
+16823390,DMF,Guilherme Torres,Brazil,34,73,73,None
+16820033,CF,Lennart Thy,Germany,33,73,73,None
+16818229,LWF,Maxime Lestienne,Belgium,33,73,73,None
+16817420,LMF,Darko Lazović,Serbia,35,73,73,None
+16812405,AMF,Adel Taarabt,Morocco,36,73,73,None
+182073,CMF,Alex Tóth,Hungary,20,73,73,None
+181809,RB,Alcides Benítez,Paraguay,23,73,73,None
+179082,LMF,Kristoffer Velde,Norway,26,73,73,None
+177704,CF,Rodrigo Auzmendi,Argentina,24,73,73,None
+177697,CF,Cláudio Braga,Portugal,26,73,73,None
+175475,CB,Alejo Osella,Argentina,25,73,73,None
+174497,CB,Kevin Jappert,Argentina,21,73,73,None
+174493,RMF,Enzo Giménez,Paraguay,27,73,73,None
+174185,CF,Marvin Ducksch,Germany,31,73,73,None
+174084,GK,Alexander Meyer,Germany,34,73,73,None
+174051,CMF,Assan Ouédraogo,Germany,19,73,73,None
+172643,CF,Idan Toklomati,Israel,21,73,73,None
+172362,LMF,Sebastian Nanasi,Sweden,23,73,73,None
+171610,DMF,Marc Bernal,Spain,18,73,73,None
+170822,CB,Christoph Klarer,Austria,25,73,73,None
+170790,CB,Finn Surman,New Zealand,22,73,73,None
+170441,DMF,Marwan Attia,Egypt,27,73,73,None
+169387,CB,Jemmes,Brazil,25,73,73,None
+169162,DMF,Agustín Medina,Argentina,19,73,73,None
+168453,AMF,Ernest Muçi,Albania,24,73,73,None
+168328,GK,Cezary Miszta,Poland,24,73,73,None
+167414,CMF,Damián Bobadilla,Paraguay,24,73,73,None
+166637,RWF,Matías Reali,Argentina,28,73,73,None
+166570,RWF,Geovany Quenda,Portugal,18,73,73,None
+166468,RB,Martim Fernandes,Portugal,19,73,73,None
+165874,AMF,Kendry Páez,Ecuador,18,73,73,None
+165739,RWF,Matías Abaldo,Uruguay,21,73,73,None
+165734,GK,Christos Mandas,Greece,24,73,73,None
+165733,CB,Sebastián Boselli,Uruguay,22,73,73,None
+165060,CF,Pio Esposito,Italy,20,73,73,None
+165009,CF,Akor Adams,Nigeria,25,73,73,None
+164959,CF,Prince Owusu,Germany,28,73,73,None
+164903,CB,Mariano Troilo,Argentina,22,73,73,None
+164896,DMF,Rafael Profini,Argentina,22,73,73,None
+164852,CB,Willy Kambwala,France,21,73,73,None
+164843,LWF,M. Fernández-Pardo,Belgium,20,73,73,None
+164539,DMF,Petar Sučić,Croatia,22,73,73,None
+164534,CB,Raz Shlomo,Israel,26,73,73,None
+164451,CF,Mojmír Chytil,Czechia,26,73,73,None
+164448,LMF,Conrad Wallem,Norway,25,73,73,None
+162323,CB,Clément Akpa,Côte d'Ivoire,24,73,73,None
+162209,AMF,Unai Gómez,Spain,22,73,73,None
+161600,CB,Javi Rodríguez,Spain,22,73,73,None
+161536,AMF,Finn Azaz,Republic of Ireland,25,73,73,None
+161222,CF,Žan Vipotnik,Slovenia,23,73,73,None
+161210,CMF,Hugo Vetlesen,Norway,25,73,73,None
+161132,CF,Nikola Krstović,Montenegro,25,73,73,None
+160977,SS,Éli Junior Kroupi,France,19,73,73,None
+160836,AMF,Claudio Echeverri,Argentina,19,73,73,None
+160495,CMF,Shea Charles,Northern Ireland,22,73,73,None
+160284,CB,Moise Bombito,Canada,25,73,73,None
+160275,CF,Kevin Kelsy,Venezuela,21,73,73,None
+160271,LWF,Osame Sahraoui,Morocco,24,73,73,None
+160191,CF,Gift Orban,Nigeria,23,73,73,None
+160133,CB,Wouter Goes,Netherlands,21,73,73,None
+159910,CB,Santiago Quirós,Argentina,22,73,73,None
+159788,CF,Stefanos Tzimas,Greece,19,73,73,None
+159706,RB,Agustín Sant'Anna,Uruguay,28,73,73,None
+159637,CF,Raúl Zúñiga,Colombia,31,73,73,None
+159624,CB,Facundo Mallo,Uruguay,30,73,73,None
+159487,CB,Kyle Hiebert,Canada,28,73,73,None
+159480,CB,Jérémy Jacquet,France,20,73,73,None
+159422,CF,Thiago Borbas,Uruguay,23,73,73,None
+159304,LWF,Michał Skóraś,Poland,25,73,73,None
+159206,CMF,Yegor Yarmolyuk,Ukraine,21,73,73,None
+159204,LWF,Mika Godts,Belgium,20,73,73,None
+158951,RWF,Santiago Solari,Argentina,27,73,73,None
+158880,DMF,Martín Río,Argentina,24,73,73,None
+158577,CB,Christian Mawissa,France,20,73,73,None
+158568,RWF,Ethan Nwaneri,England,18,73,73,None
+157971,LMF,Telasco Segovia,Venezuela,22,73,73,None
+157893,LB,Abel Bretones,Spain,25,73,73,None
+157864,CF,Gonzalo Mastriani,Uruguay,32,73,73,None
+157831,AMF,Hong Hyun-Seok,Korea Republic,26,73,73,None
+157806,AMF,Gustavo Sá,Portugal,21,73,73,None
+157603,RB,Tiago Santos,Portugal,23,73,73,None
+157602,LWF,Jean-Mattéo Bahoya,France,20,73,73,None
+157593,RB,Alexis Steimbach,Argentina,23,73,73,None
+157442,CB,Juan Ludueña,Argentina,22,73,73,None
+157256,CB,Jake O'Brien,Republic of Ireland,24,73,73,None
+157165,DMF,Stefan Bajčetić,Spain,21,73,73,None
+156976,RWF,Patrick Wimmer,Austria,24,73,73,None
+156851,DMF,Ulises Ortegoza,Chile,28,73,73,None
+156825,CF,Bojan Miovski,North Macedonia,26,73,73,None
+155752,CF,Orri Óskarsson,Iceland,21,73,73,None
+155740,LWF,Luca Koleosho,Italy,21,73,73,None
+155300,DMF,Sergi Altimira,Spain,24,73,73,None
+154923,CMF,Noah Sadiki,Congo DR,21,73,73,None
+154598,GK,Raúl Rangel,Mexico,25,73,73,None
+154214,CMF,Breno Bidon,Brazil,20,73,73,None
+153485,DMF,Christian Ordóñez,Argentina,21,73,73,None
+153447,RWF,Agustín Canobbio,Uruguay,27,73,73,None
+153432,CB,Jair Cunha,Brazil,20,73,73,None
+153383,AMF,Rodrigo Atencio,Argentina,23,73,73,None
+153222,CB,Robert Renan,Brazil,22,73,73,None
+153150,LWF,Duk,Cabo Verde,25,73,73,None
+153149,RWF,Tiago Gouveia,Portugal,24,73,73,None
+153143,LMF,Diego Moreira,Belgium,21,73,73,None
+153118,RWF,Kerwin Vargas,Colombia,23,73,73,None
+153108,CB,Sidney Lima,Brazil,28,73,73,None
+153032,RB,Alex Freeman,United States,21,73,73,None
+152952,AMF,Bilal El Khannouss,Morocco,21,73,73,None
+152815,GK,Patrick Schulte,United States,24,73,73,None
+152780,GK,Roman Celentano,United States,25,73,73,None
+152710,CMF,Kevin Ortíz,Argentina,25,73,73,None
+152692,RWF,Julián Fernández,Argentina,21,73,73,None
+152412,LWF,Pablo Pagis,France,23,73,73,None
+152322,RB,Arthur,Brazil,22,73,73,None
+152137,RWF,Ernest Nuamah,Ghana,22,73,73,None
+152031,CF,Kelvin Yeboah,Italy,25,73,73,None
+152013,RB,Armando Méndez,Uruguay,29,73,73,None
+151813,CB,Jarell Quansah,England,22,73,73,None
+151772,CB,Diego Coppola,Italy,22,73,73,None
+151687,CB,Alessandro Circati,Australia,22,73,73,None
+151531,RWF,Ilias Akhomach,Morocco,21,73,73,None
+151214,CMF,César Pérez,Chile,23,73,73,None
+151182,CB,Alan Barrionuevo,Argentina,28,73,73,None
+151002,RMF,Ulises Sánchez,Argentina,27,73,73,None
+151001,LMF,Facundo Lencioni,Argentina,24,73,73,None
+150998,AMF,Bruno Zapelli,Argentina,23,73,73,None
+150982,CMF,Cristian Zabala,Argentina,27,73,73,None
+148984,AMF,Kamory Doumbia,Mali,22,73,73,None
+148486,CF,Promise David,Canada,24,73,73,None
+148034,CMF,Owen Wolff,United States,21,73,73,None
+148013,AMF,James McAtee,England,23,73,73,None
+148012,CB,CJ Egan-Riley,England,22,73,73,None
+147919,RB,Rodrigo Huescas,Mexico,22,73,73,None
+147899,CF,Guillermo Martínez,Mexico,30,73,73,None
+147783,LWF,César Huerta,Mexico,25,73,73,None
+147780,CB,Gilberto Sepúlveda,Mexico,26,73,73,None
+147686,DMF,Emiliano Martínez,Uruguay,26,73,73,None
+147647,CB,Liam Scales,Republic of Ireland,27,73,73,None
+147624,SS,Valentín Depietri,Argentina,25,73,73,None
+147591,LWF,Gabri Martínez,Spain,22,73,73,None
+147504,GK,Antonín Kinský,Czechia,22,73,73,None
+147485,LWF,Samuel Edozie,England,22,73,73,None
+147365,LB,Bradley Locko,France,23,73,73,None
+147353,LB,Juan Andrés Meli,Argentina,25,73,73,None
+147337,CMF,Jobe Bellingham,England,20,73,73,None
+147294,AMF,Félix Lemaréchal,France,22,73,73,None
+147244,CMF,Neil El Aynaoui,Morocco,24,73,73,None
+147191,CB,Johan Vásquez,Mexico,27,73,73,None
+147144,CMF,Alhassan Yusuf,Nigeria,25,73,73,None
+147009,LB,Archie Brown,England,23,73,73,None
+146961,LMF,Alejandro Martínez,Argentina,28,73,73,None
+146945,RMF,Jackson Tchatchoua,Cameroon,24,73,73,None
+146944,CF,Lucas Stassin,Belgium,21,73,73,None
+146905,RB,Marcus Pedersen,Norway,25,73,73,None
+146884,CB,Soumaïla Coulibaly,France,22,73,73,None
+146789,AMF,Franco Zapiola,Argentina,24,73,73,None
+146751,CMF,Obed Vargas,Mexico,20,73,73,None
+146698,CB,Joseph Okumu,Kenya,28,73,73,None
+146512,SS,Julio Enciso,Paraguay,21,73,73,None
+146465,RWF,Abdul Fatawu,Ghana,21,73,73,None
+146398,RMF,Aron Dønnum,Norway,27,73,73,None
+146395,LB,Fredrik Bjørkan,Norway,27,73,73,None
+145619,AMF,Hannibal Mejbri,Tunisia,22,73,73,None
+145498,CMF,Patrick Yazbek,Australia,23,73,73,None
+145255,CMF,Connor Metcalfe,Australia,26,73,73,None
+144997,CF,Anastasios Douvikas,Greece,26,73,73,None
+144870,CB,Stian Gregersen,Norway,30,73,73,None
+144753,RWF,Liel Abada,Israel,24,73,73,None
+144743,GK,Dmytro Riznyk,Ukraine,26,73,73,None
+144664,LMF,Tomás Galván,Argentina,25,73,73,None
+144569,CF,Roberto Fernández,Spain,23,73,73,None
+144437,CMF,Luka Sučić,Croatia,23,73,73,None
+144436,DMF,Nicolas Seiwald,Austria,24,73,73,None
+144342,GK,Chris Brady,United States,21,73,73,None
+144296,DMF,Federico Redondo,Argentina,22,73,73,None
+144230,SS,Matheus França,Brazil,21,73,73,None
+144181,DMF,Felipe Peña Biafore,Argentina,24,73,73,None
+144150,CF,Alejo Véliz,Argentina,22,73,73,None
+144140,AMF,Facundo Buonanotte,Argentina,21,73,73,None
+144048,CMF,Matheus Dias,Brazil,23,73,73,None
+144031,LWF,Kevin,Brazil,22,73,73,None
+143903,CB,Adamo Nagalo,Burkina Faso,23,73,73,None
+143788,GK,Vladan Kovačević,Bosnia and Herzegovina,27,73,73,None
+143775,DMF,Bartosz Slisz,Poland,26,73,73,None
+143733,DMF,Matías Galarza,Argentina,23,73,73,None
+143702,GK,Adriel,Brazil,24,73,73,None
+143687,RWF,Darío Osorio,Chile,21,73,73,None
+143642,RB,Agustín Giay,Argentina,21,73,73,None
+143538,RWF,Sorriso,Brazil,24,73,73,None
+143435,LWF,Jakub Kamiński,Poland,23,73,73,None
+143418,CMF,Carney Chukwuemeka,Austria,22,73,73,None
+143323,LB,Quentin Merlin,France,23,73,73,None
+143311,CB,Nicolás Romero,Argentina,22,73,73,None
+143136,LB,Hugo Bueno,Spain,23,73,73,None
+143073,CF,Danny Musovski,North Macedonia,30,73,73,None
+143071,LWF,Brian Rodríguez,Uruguay,25,73,73,None
+143062,CB,Tristan Blackmon,United States,29,73,73,None
+143060,GK,Pablo Sisniega,Mexico,30,73,73,None
+143049,CMF,Jonathan Osorio,Canada,33,73,73,None
+143047,RB,Richie Laryea,Canada,30,73,73,None
+143008,CB,Joel Waterman,Canada,29,73,73,None
+143001,GK,James Pantemis,Canada,28,73,73,None
+142690,LWF,Milan Iloski,United States,26,73,73,None
+142678,CB,Justen Glad,United States,28,73,73,None
+142665,AMF,Brenden Aaronson,United States,25,73,73,None
+142664,LB,Kai Wagner,Germany,28,73,73,None
+142662,CB,Mark McKenzie,United States,26,73,73,None
+142630,AMF,Diego Fagúndez,Uruguay,30,73,73,None
+142622,LB,DeJuan Jones,United States,28,73,73,None
+142610,RMF,Efraín Álvarez,Mexico,23,73,73,None
+142606,RB,Julian Araujo,Mexico,24,73,73,None
+142585,LWF,Dániel Sallói,Hungary,29,73,73,None
+142577,CMF,Gianluca Busio,United States,23,73,73,None
+142564,CMF,Sebastian Berhalter,United States,24,73,73,None
+142552,RB,Álex Roldán,El Salvador,29,73,73,None
+142533,CB,Kamal Miller,Canada,28,73,73,None
+142532,CB,Robin Jansson,Sweden,34,73,73,None
+142525,CF,Jesús Ferreira,United States,25,73,73,None
+142524,DMF,Tanner Tessmann,United States,24,73,73,None
+142494,CB,Tim Parker,United States,32,73,73,None
+142462,LB,Miguel Navarro,Venezuela,26,73,73,None
+142460,GK,Gabriel Słonina,United States,21,73,73,None
+142353,CMF,Jakub Moder,Poland,26,73,73,None
+142281,RMF,Theo Corbeanu,Canada,23,73,73,None
+142230,CF,Tolu Arokodare,Nigeria,25,73,73,None
+142222,LB,Ismail Jakobs,Senegal,26,73,73,None
+142204,DMF,Ilia Gruev,Bulgaria,25,73,73,None
+142198,CF,Youssoufa Moukoko,Germany,21,73,73,None
+142183,CMF,Eduard Löwen,Germany,28,73,73,None
+142165,CB,Felix Uduokhai,Germany,28,73,73,None
+142077,LMF,Erik Thommy,Germany,31,73,73,None
+141976,AMF,Alex Luna,Argentina,21,73,73,None
+141911,CMF,Martin Baturina,Croatia,22,73,73,None
+141864,DMF,Raniele,Brazil,29,73,73,None
+141791,DMF,Marko Stamenic,New Zealand,23,73,73,None
+141716,CMF,Beñat Turrientes,Spain,23,73,73,None
+141641,CMF,Paulo Bernardo,Portugal,23,73,73,None
+141559,CB,Facundo Mansilla,Argentina,26,73,73,None
+141523,CMF,Gonzalo Abrego,Argentina,25,73,73,None
+141475,DMF,Lesley Ugochukwu,France,21,73,73,None
+141440,AMF,Tommaso Baldanzi,Italy,22,73,73,None
+141398,RB,Eric Meza,Argentina,26,73,73,None
+141145,CB,Juan Portillo,Argentina,25,73,73,None
+141013,DMF,Kristjan Asllani,Albania,23,73,73,None
+140987,RWF,Matteo Cancellieri,Italy,23,73,73,None
+140964,CF,Martín Satriano,Uruguay,24,73,73,None
+140952,CMF,Edoardo Bove,Italy,23,73,73,None
+140896,CF,Ibrahim Diabaté,Côte d'Ivoire,26,73,73,None
+140868,RWF,Facundo Pellistri,Uruguay,24,73,73,None
+140837,CB,Víctor Chust,Spain,25,73,73,None
+140739,CB,Otávio,Brazil,23,73,73,None
+140701,RWF,Zito Luvumbo,Angola,23,73,73,None
+140601,RWF,Cristian Olivera,Uruguay,23,73,73,None
+140556,LB,Emanuele Valeri,Italy,27,73,73,None
+140553,DMF,Obinna Nwobodo,Nigeria,29,73,73,None
+140315,CB,Michał Helik,Poland,30,73,73,None
+140303,LB,Agustín Sández,Paraguay,24,73,73,None
+140284,AMF,Arsen Zakharyan,Russia,22,73,73,None
+140176,DMF,Daniel Boloca,Romania,27,73,73,None
+140156,LB,Nahuel Banegas,Argentina,29,73,73,None
+140010,LB,Pep Chavarría,Spain,27,73,73,None
+139924,GK,Ricardo Velho,Portugal,27,73,73,None
+139830,RB,Devyne Rensch,Netherlands,22,73,73,None
+139727,DMF,Kristijan Jakić,Croatia,28,73,73,None
+139693,LWF,Couhaib Driouech,Morocco,23,73,73,None
+138677,CF,Jean-Philippe Krasso,Côte d'Ivoire,28,73,73,None
+138598,LWF,Moisés,Brazil,29,73,73,None
+138582,RB,Yukhym Konoplya,Ukraine,26,73,73,None
+138576,GK,Maduka Okoye,Nigeria,26,73,73,None
+138500,CF,Ferran Jutglà,Spain,26,73,73,None
+138465,CB,Arouna Sangante,Senegal,23,73,73,None
+138422,CB,Rodrigo Cáseres,Argentina,28,73,73,None
+138420,CF,Jan Kuchta,Czechia,28,73,73,None
+138329,DMF,Beñat Prados,Spain,24,73,73,None
+138294,CB,Mika Mármol,Spain,23,73,73,None
+138292,GK,Arnau Tenas,Spain,24,73,73,None
+138239,GK,Leo Román,Spain,25,73,73,None
+138152,DMF,Ardon Jashari,Switzerland,23,73,73,None
+138149,CB,Bobby Thomas,England,24,73,73,None
+138023,LB,Javi López,Spain,23,73,73,None
+138005,CF,Lorenzo Colombo,Italy,23,73,73,None
+137687,RWF,Ilan Kebbal,Algeria,27,73,73,None
+137628,CB,Samet Akaydın,Türkiye,31,73,73,None
+137538,CF,Zeki Amdouni,Switzerland,25,73,73,None
+137504,CB,Jay Idzes,Indonesia,25,73,73,None
+137321,AMF,Jack Rudoni,England,25,73,73,None
+137264,LWF,Chiquinho,Portugal,25,73,73,None
+137259,CMF,Miguel Crespo,Portugal,29,73,73,None
+137103,CMF,Gonçalo Franco,Portugal,25,73,73,None
+136703,LB,Harrison Burrows,England,23,73,73,None
+136683,LB,Souffian El Karouani,Morocco,25,73,73,None
+136672,CMF,Ivan Ilić,Serbia,24,73,73,None
+136514,CMF,A. Carrasquilla,Panama,27,73,73,None
+136123,LB,Sebastián Prieto,Argentina,32,73,73,None
+135937,LMF,Nicolás Laméndola,Argentina,27,73,73,None
+135882,CB,Yerson Mosquera,Colombia,24,73,73,None
+135877,CF,Oh Hyeon-Gyu,Korea Republic,24,73,73,None
+135576,CB,Sinaly Diomandé,Côte d'Ivoire,24,73,73,None
+135572,CMF,Unai Vencedor,Spain,25,73,73,None
+135514,RB,Seiya Maikuma,Japan,28,73,73,None
+135410,CF,Róbert Boženík,Slovakia,26,73,73,None
+135400,LB,Matías Viña,Uruguay,28,73,73,None
+135365,GK,Filip Stanković,Serbia,23,73,73,None
+135207,LB,Guilherme Biro,Brazil,25,73,73,None
+135167,LB,Guilherme,Brazil,35,73,73,None
+135144,RB,Juan Cáceres,Paraguay,25,73,73,None
+135033,CMF,Marcelino Núñez,Chile,25,73,73,None
+134937,CF,David Romero,Argentina,22,73,73,None
+134930,RB,Kiliann Sildillia,France,23,73,73,None
+134902,AMF,Kristian Thorstvedt,Norway,26,73,73,None
+134706,CF,Jay Stansfield,England,23,73,73,None
+134532,CB,Zaid Romero,Argentina,26,73,73,None
+134512,CF,Juan,Brazil,23,73,73,None
+134506,LB,Welington,Brazil,24,73,73,None
+134472,CMF,Ethan Galbraith,Northern Ireland,24,73,73,None
+134023,AMF,Luis Sequeira,Argentina,22,73,73,None
+133747,LB,Victor Kristiansen,Denmark,23,73,73,None
+133709,RB,Tariq Lamptey,Ghana,25,73,73,None
+133667,GK,Dani Cárdenas,Spain,28,73,73,None
+133651,LWF,Issa Soumaré,Senegal,25,73,73,None
+133264,CB,Jerome Opoku,Ghana,27,73,73,None
+133260,RWF,Gustav Isaksen,Denmark,24,73,73,None
+133239,RB,Mert Müldür,Türkiye,26,73,73,None
+133175,LWF,Borja Sainz,Spain,24,73,73,None
+133087,LB,Junior Hernández,Colombia,26,73,73,None
+133085,LB,Ali Abdi,Tunisia,32,73,73,None
+133029,RB,Nadir Zortea,Italy,26,73,73,None
+133022,CB,Anthony Rouault,France,24,73,73,None
+132964,LWF,Lucas da Cunha,France,24,73,73,None
+132901,GK,Bruno Ferreira,Brazil,31,73,73,None
+132817,CB,Damián Fernández,Argentina,24,73,73,None
+132813,CMF,Will Smallbone,Republic of Ireland,25,73,73,None
+132811,GK,Gavin Bazunu,Republic of Ireland,23,73,73,None
+132790,CMF,Kenneth Taylor,Netherlands,23,73,73,None
+132769,CMF,Jordan Holsgrove,Scotland,26,73,73,None
+132749,DMF,David Ayala,Argentina,23,73,73,None
+132734,DMF,Salis Abdul Samed,Ghana,25,73,73,None
+132668,CMF,Aster Vranckx,Belgium,23,73,73,None
+132627,CMF,Tommy Doyle,England,24,73,73,None
+132625,CB,T. Harwood-Bellis,England,23,73,73,None
+132624,CF,Troy Parrott,Republic of Ireland,23,73,73,None
+132563,CB,Nazareno Colombo,Argentina,26,73,73,None
+132559,CB,Tanguy Nianzou,France,23,73,73,None
+132535,CB,Santiago Ramos Mingo,Argentina,24,73,73,None
+132481,CMF,Braian Ojeda,Paraguay,25,73,73,None
+132402,RB,Jon Gallagher,Republic of Ireland,29,73,73,None
+132380,GK,Vítězslav Jaroš,Czechia,24,73,73,None
+132349,CMF,Sandi Lovrić,Slovenia,27,73,73,None
+132336,LWF,Zuriko Davitashvili,Georgia,24,73,73,None
+132310,RB,Milan van Ewijk,Netherlands,25,73,73,None
+132297,CB,Danilo Boza,Brazil,27,73,73,None
+132216,SS,Joshua Zirkzee,Netherlands,24,73,73,None
+132193,CB,Bartol Franjić,Croatia,25,73,73,None
+132179,GK,Michael Zetterer,Germany,30,73,73,None
+132147,CMF,Kerem Demirbay,Germany,32,73,73,None
+132067,RWF,Benjamin Nygren,Sweden,24,73,73,None
+131743,LB,César Ibáñez,Argentina,26,73,73,None
+131731,CMF,Jason Knight,Republic of Ireland,24,73,73,None
+131667,RMF,Antonio Sánchez,Spain,28,73,73,None
+131599,RB,Víctor Gómez,Spain,25,73,73,None
+131386,AMF,César Gelabert,Spain,25,73,73,None
+131335,LB,Manu Sánchez,Spain,25,73,73,None
+131198,CF,Randy Nteka,Angola,28,73,73,None
+131070,CB,João Victor,Brazil,27,73,73,None
+131043,AMF,Mateusz Bogusz,Poland,24,73,73,None
+131029,LWF,Nicolò Cambiaghi,Italy,25,73,73,None
+130817,LB,Eren Elmalı,Türkiye,25,73,73,None
+130724,CB,Eduardo Santos,Brazil,28,73,73,None
+130538,LWF,Imanol Machuca,Malaysia,25,73,73,None
+130469,CMF,Hichem Boudaoui,Algeria,26,73,73,None
+130461,CB,Ardian Ismajli,Albania,29,73,73,None
+130391,CF,Mostafa Mohamed,Egypt,28,73,73,None
+130367,CF,Leonardo Campana,Ecuador,25,73,73,None
+130362,CB,Daniel Ballard,Northern Ireland,26,73,73,None
+130347,CB,Darko Velkovski,North Macedonia,30,73,73,None
+130335,CMF,Hwang In-Beom,Korea Republic,29,73,73,None
+130310,CB,Aaron Long,United States,33,73,73,None
+130158,RWF,Vinícius Lopes,Brazil,26,73,73,None
+130120,LB,Abner Vinícius,Brazil,25,73,73,None
+130039,CB,Sabino,Brazil,29,73,73,None
+130013,CB,Jordan Beyer,Germany,25,73,73,None
+129780,AMF,Lee Dong-Gyeong,Korea Republic,28,73,73,None
+129694,RB,Saud Abdulhamid,Saudi Arabia,26,73,73,None
+129511,RB,Khellven,Brazil,24,73,73,None
+129508,CF,Lyle Foster,South Africa,25,73,73,None
+129144,CB,Igor Vujačić,Montenegro,31,73,73,None
+129094,CMF,Leandro Barreiro,Luxembourg,25,73,73,None
+129022,CMF,Marcos Antônio,Brazil,25,73,73,None
+128433,GK,Ivan Zlobin,Russia,28,73,73,None
+128424,LB,Cristián Borja,Colombia,32,73,73,None
+128406,GK,Jorge Soto,Colombia,32,73,73,None
+128391,CB,Gastón Ávila,Argentina,24,73,73,None
+128309,LB,Dimitris Giannoulis,Greece,30,73,73,None
+128088,GK,Lucas Arcanjo,Brazil,27,73,73,None
+128086,GK,Carlos Miguel,Brazil,27,73,73,None
+127975,RB,Matheuzinho,Brazil,25,73,73,None
+127823,AMF,F. González Metilli,Argentina,28,73,73,None
+127758,LWF,Iñigo Vicente,Spain,27,73,73,None
+127703,CB,Bruno Fuchs,Brazil,26,73,73,None
+127597,RB,Aaron Hickey,Scotland,23,73,73,None
+127577,AMF,Robert Navarro,Spain,23,73,73,None
+127542,CB,Tiago Djaló,Portugal,25,73,73,None
+127541,DMF,Batista Mendy,France,25,73,73,None
+127184,DMF,Lucien Agoumé,France,23,73,73,None
+127050,RB,Andrés Herrera,Argentina,27,73,73,None
+126908,GK,Mark Travers,Republic of Ireland,26,73,73,None
+126861,CB,Tsuyoshi Watanabe,Japan,28,73,73,None
+126834,LWF,Anthony Nwakaeme,Nigeria,36,73,73,None
+126791,CB,Willer Ditta,Colombia,27,73,73,None
+126634,AMF,Sem Steijn,Netherlands,24,73,73,None
+126583,CB,Juan Pablo Vargas,Costa Rica,30,73,73,None
+126582,CB,Jeisson Quiñones,Colombia,28,73,73,None
+126509,DMF,Oliver Skipp,England,25,73,73,None
+126407,LWF,Matías Pellegrini,Argentina,25,73,73,None
+126345,RB,Vladimír Coufal,Czechia,33,73,73,None
+126255,RB,Alex Vigo,Argentina,26,73,73,None
+126231,CB,Bećir Omeragić,Switzerland,23,73,73,None
+126179,CF,Joël Piroe,Suriname,26,73,73,None
+126130,RB,Gabriele Zappa,Italy,26,73,73,None
+126063,CB,Zé Pedro,Portugal,28,73,73,None
+126050,AMF,João Mendes,Portugal,31,73,73,None
+126039,RB,Tiago Esgaio,Portugal,30,73,73,None
+125882,CB,Edgar González,Spain,28,73,73,None
+125830,CMF,Dorukhan Toköz,Türkiye,29,73,73,None
+125727,CB,Montassar Talbi,Tunisia,27,73,73,None
+125380,SS,Zian Flemming,Netherlands,27,73,73,None
+125379,CMF,Anton Salétros,Sweden,29,73,73,None
+125349,CB,Toni Borevković,Croatia,28,73,73,None
+125301,LWF,Ademir,Brazil,30,73,73,None
+125000,LWF,Juan Cruz,Spain,25,73,73,None
+124663,RB,Alexander Bah,Denmark,28,73,73,None
+124274,GK,Anthony Racioppi,Switzerland,27,73,73,None
+124026,CMF,Morten Frendrup,Denmark,24,73,73,None
+123907,RWF,Déiber Caicedo,Colombia,25,73,73,None
+123720,RB,Enrico Del Prato,Italy,26,73,73,None
+123669,LMF,Malcom Braida,Argentina,28,73,73,None
+123483,DMF,Charles Vanhoutte,Belgium,27,73,73,None
+123446,CB,Pascal Struijk,Netherlands,26,73,73,None
+123265,CMF,Amadou Haidara,Mali,27,73,73,None
+123203,AMF,Dia Saba,Israel,33,73,73,None
+123020,DMF,Ezequiel Piovi,Argentina,33,73,73,None
+123005,RMF,Renzo Tesuri,Argentina,29,73,73,None
+122711,CF,Rafael Elias,Brazil,26,73,73,None
+122537,CMF,Yasuto Wakizaka,Japan,30,73,73,None
+122344,AMF,Dani de Wit,Netherlands,27,73,73,None
+122332,CF,Tyrese Campbell,England,26,73,73,None
+122319,CF,Lassine Sinayoko,Mali,26,73,73,None
+122011,LB,Mitchel Bakker,Netherlands,25,73,73,None
+121943,CB,Giangiacomo Magnani,Italy,30,73,73,None
+121842,GK,Keisuke Osako,Japan,26,73,73,None
+121674,GK,Daiya Maekawa,Japan,31,73,73,None
+121553,CB,Cédric Kipré,Côte d'Ivoire,29,73,73,None
+121526,CB,Ryan Porteous,Scotland,26,73,73,None
+121524,CF,Martin Boyle,Australia,32,73,73,None
+121421,LWF,Mikey Johnston,Republic of Ireland,26,73,73,None
+121358,CF,Gastón Verón,Argentina,24,73,73,None
+121344,CMF,Pavel Bucha,Czechia,27,73,73,None
+121332,RMF,Krépin Diatta,Senegal,26,73,73,None
+121314,LB,Junior Firpo,Dominican Republic,29,73,73,None
+121307,DMF,Antoine Makoumbou,Congo,27,73,73,None
+121266,DMF,Hugo Moura,Brazil,27,73,73,None
+121256,RB,Alessandro Zanoli,Italy,25,73,73,None
+120994,RWF,Efecan Karaca,Türkiye,36,73,73,None
+120922,RWF,Pontus Almqvist,Sweden,26,73,73,None
+120787,LWF,Jesper Karlsson,Sweden,27,73,73,None
+120786,CB,Christopher McVey,Sweden,28,73,73,None
+120634,CF,Mikael Uhre,Denmark,31,73,73,None
+120598,RWF,Saba Lobjanidze,Georgia,31,73,73,None
+120539,DMF,Jeppe Tverskov,Denmark,32,73,73,None
+120537,RB,Mikkel Desler,Denmark,30,73,73,None
+120525,GK,Oliver Christensen,Denmark,26,73,73,None
+120511,CMF,Magnus Mattsson,Denmark,26,73,73,None
+120500,CF,Gustaf Nilsson,Sweden,28,73,73,None
+120452,CMF,Frank Onyeka,Nigeria,27,73,73,None
+120449,CMF,Victor Torp,Denmark,26,73,73,None
+120430,CB,Abdul Mumin,Ghana,27,73,73,None
+120384,LWF,Jack Clarke,England,25,73,73,None
+120379,DMF,Benjamin Whiteman,England,29,73,73,None
+120328,CMF,Lewis O'Brien,England,27,73,73,None
+120137,GK,Devis Vásquez,Colombia,27,73,73,None
+120050,CB,Jeisson Palacios,Colombia,31,73,73,None
+120027,CMF,Eduard Atuesta,Colombia,28,73,73,None
+120025,RWF,Diego Valoyes,Colombia,29,73,73,None
+119990,CB,Eddie Segura,Colombia,28,73,73,None
+119921,AMF,Nicolás Benedetti,Colombia,28,73,73,None
+119915,DMF,Christian Rivera,Colombia,29,73,73,None
+119877,CMF,Mahdi Camara,France,27,73,73,None
+119875,CMF,Abdou Harroui,Morocco,27,73,73,None
+119826,RB,Ben Johnson,England,25,73,73,None
+119638,GK,H. Van Crombrugge,Belgium,32,73,73,None
+119557,GK,Colin Coosemans,Belgium,33,73,73,None
+119512,GK,Arnaud Bodart,Belgium,27,73,73,None
+119096,CB,Simone Canestrelli,Italy,25,73,73,None
+118942,CF,Mohamed Bayo,Guinea,27,73,73,None
+118880,LB,Jesús Alberto Angulo,Mexico,27,73,73,None
+118766,CF,Ricardo Marín,Mexico,27,73,73,None
+118765,LMF,Diego Lainez,Mexico,25,73,73,None
+118704,CB,Mads Bech Sørensen,Denmark,26,73,73,None
+118689,RWF,Marios Vrousai,Greece,27,73,73,None
+118685,RB,Andoni Gorosabel,Spain,29,73,73,None
+118656,RB,Dujon Sterling,England,26,73,73,None
+118573,RB,Bright Osayi-Samuel,Nigeria,28,73,73,None
+118535,CMF,Imran Louza,Morocco,26,73,73,None
+118499,CB,Matheus Thuler,Brazil,26,73,73,None
+118458,LWF,Tomás Chancalay,Argentina,26,73,73,None
+118449,GK,Tomás Durso,Argentina,26,73,73,None
+118405,CB,Nicolás Demartini,Argentina,26,73,73,None
+118400,CMF,Martín Payero,Argentina,27,73,73,None
+118376,CMF,Álex Corredera,Spain,29,73,73,None
+118371,CMF,Ander Guevara,Spain,28,73,73,None
+118365,CF,Leonardo Heredia,Argentina,29,73,73,None
+118352,LWF,Riccardo Sottil,Italy,26,73,73,None
+118349,CB,Luca Ranieri,Italy,26,73,73,None
+118255,CMF,Mykola Shaparenko,Ukraine,27,73,73,None
+118233,LWF,Emmanuel Gyasi,Ghana,31,73,73,None
+118181,RWF,Junior Messias,Brazil,34,73,73,None
+118173,LB,Omar Richards,England,27,73,73,None
+118098,DMF,Raúl Loaiza,Colombia,31,73,73,None
+118092,LMF,Mattéo Tramoni,Italy,25,73,73,None
+118060,RB,Aurélio Buta,Portugal,28,73,73,None
+118044,AMF,Enis Bardhi,North Macedonia,30,73,73,None
+117832,CF,Myron Boadu,Netherlands,24,73,73,None
+117804,RB,Jordan Lotomba,Switzerland,27,73,73,None
+117803,RWF,Christian Fassnacht,Switzerland,32,73,73,None
+117787,CF,Wilfried Kanga,Côte d'Ivoire,27,73,73,None
+117753,CF,Emmanuel Dennis,Nigeria,28,73,73,None
+117721,CMF,Diego Pituca,Brazil,33,73,73,None
+117676,RB,Santiago Moyano,Argentina,28,73,73,None
+117497,RB,Andrés Román,Colombia,30,73,73,None
+117420,CMF,Michel Aebischer,Switzerland,28,73,73,None
+117410,GK,Yvon Mvogo,Switzerland,31,73,73,None
+117396,RWF,Dennis Man,Romania,27,73,73,None
+117070,CB,Lucas Carrizo,Argentina,28,73,73,None
+117050,CB,Franco Pardo,Argentina,28,73,73,None
+116946,RB,Pasquale Mazzocchi,Italy,30,73,73,None
+116743,CMF,Gonzalo Villar,Spain,27,73,73,None
+116712,DMF,Flynn Downes,England,26,73,73,None
+116709,CB,Facundo Garcés,Malaysia,26,73,73,None
+116669,CMF,Rasmus Falk,Denmark,33,73,73,None
+116648,CF,Davie Selke,Germany,30,73,73,None
+116577,CF,Abel Ruiz,Spain,25,73,73,None
+116355,CF,Michael Gregoritsch,Austria,31,73,73,None
+116350,RWF,Christian Bassogog,Cameroon,30,73,73,None
+116325,CB,Walker Zimmerman,United States,32,73,73,None
+116321,RWF,Paul Arriola,United States,30,73,73,None
+116319,DMF,Wil Trapp,United States,32,73,73,None
+116226,CF,Viktor Claesson,Sweden,33,73,73,None
+116156,LWF,Luiz Fernando,Brazil,29,73,73,None
+116143,RB,Nacho Vidal,Spain,30,73,73,None
+116055,DMF,Răzvan Marin,Romania,29,73,73,None
+116049,CMF,Edu Expósito,Spain,29,73,73,None
+115656,GK,Dinko Horkaš,Croatia,26,73,73,None
+115653,AMF,Jon Guridi,Spain,30,73,73,None
+115651,GK,Ezequiel Centurión,Argentina,28,73,73,None
+115522,AMF,Callum O'Hare,England,27,73,73,None
+115373,CB,Imanol González,Argentina,27,73,73,None
+115244,CB,Kanu,Brazil,28,73,73,None
+115194,CF,Juan Otero,Colombia,30,73,73,None
+115178,GK,Gabriel Batista,Brazil,27,73,73,None
+115152,CB,Wout Faes,Belgium,27,73,73,None
+115146,CMF,Michael Folorunsho,Italy,27,73,73,None
+115112,AMF,Andrew Hjulsager,Denmark,30,73,73,None
+115092,RWF,Zizo,Egypt,29,73,73,None
+115070,CF,Sory Kaba,Guinea,30,73,73,None
+114984,LWF,Ben Brereton Díaz,Chile,26,73,73,None
+114948,CB,Chris Mepham,Wales,28,73,73,None
+114932,RWF,Jordan Larsson,Sweden,28,73,73,None
+114903,LB,Luca Pellegrini,Italy,26,73,73,None
+114873,CMF,Timothé Cognat,France,27,73,73,None
+114853,LB,Romain Perraud,France,28,73,73,None
+114803,DMF,Vítor Carvalho,Brazil,28,73,73,None
+114675,CB,Nicolás Zalazar,Argentina,28,73,73,None
+114653,LB,Christopher Opéri,Côte d'Ivoire,28,73,73,None
+114646,RWF,Jacob Brown,Scotland,27,73,73,None
+114637,AMF,Matías Zaracho,Argentina,27,73,73,None
+114568,CMF,Josh Dasilva,England,27,73,73,None
+114450,GK,Daniel,Brazil,31,73,73,None
+114434,CMF,Tommaso Pobega,Italy,26,73,73,None
+114366,RB,Fabricio Bustos,Argentina,29,73,73,None
+114331,CMF,Lucas Robertone,Argentina,28,73,73,None
+114239,CMF,Manu Morlanes,Spain,26,73,73,None
+114225,LB,Aarón Martín,Spain,28,73,73,None
+114223,CF,Emmanuel Latte Lath,Côte d'Ivoire,26,73,73,None
+114199,AMF,Gauthier Hein,France,29,73,73,None
+114191,AMF,Amine Harit,Morocco,28,73,73,None
+114169,LB,Juan Infante,Argentina,29,73,73,None
+114150,CMF,Luca de la Torre,United States,27,73,73,None
+113840,DMF,Iván Gómez,Argentina,28,73,73,None
+113792,AMF,Ianis Hagi,Romania,27,73,73,None
+113776,CMF,Dimitri Bisoli,Italy,31,73,73,None
+113590,CB,Luan Peres,Brazil,31,73,73,None
+113574,GK,Daniel Bentley,England,32,73,73,None
+113559,CF,Enzo Copetti,Argentina,29,73,73,None
+113558,RB,Lucas Blondel,Switzerland,29,73,73,None
+113529,CF,Guilherme Bissoli,Brazil,27,73,73,None
+113486,LWF,João Figueiredo,Malaysia,29,73,73,None
+113452,RB,Igor Vinícius,Brazil,28,73,73,None
+113443,RB,Valentin Rosier,France,29,73,73,None
+113364,CMF,Tchê Tchê,Brazil,33,73,73,None
+113271,DMF,Nikola Moro,Croatia,27,73,73,None
+113253,CB,Igor Julio,Brazil,27,73,73,None
+113236,SS,Fedor Chalov,Russia,27,73,73,None
+112940,RB,Álvaro Odriozola,Spain,30,73,73,None
+112888,CF,Nicolás Fernández,Argentina,29,73,73,None
+112606,CB,Alexis Maldonado,Argentina,28,73,73,None
+112568,LB,Adrián Spörle,Argentina,30,73,73,None
+112492,DMF,Sam Morsy,Egypt,34,73,73,None
+112417,LWF,Moumi Ngamaleu,Cameroon,31,73,73,None
+112228,CF,Sékou Koïta,Mali,26,73,73,None
+112034,CF,Dany Mota,Portugal,27,73,73,None
+111839,RWF,Dani Raba,Spain,30,73,73,None
+111465,CMF,Joe Rothwell,England,30,73,73,None
+111456,RB,Kevin Mac Allister,Argentina,28,73,73,None
+111428,CF,Cédric Itten,Switzerland,29,73,73,None
+111355,CF,Alfredo Morelos,Colombia,29,73,73,None
+111277,CF,Keinan Davis,England,27,73,73,None
+111213,CB,Matt Miazga,United States,30,73,73,None
+111130,GK,Justin Bijlow,Netherlands,27,73,73,None
+111097,LB,Pedro Silva,Argentina,28,73,73,None
+111083,AMF,Ryotaro Ito,Japan,27,73,73,None
+111061,CB,Marco Friedl,Austria,27,73,73,None
+111052,CB,Panagiotis Retsos,Greece,27,73,73,None
+111028,CMF,Rodrigo Aliendro,Argentina,34,73,73,None
+111017,CB,Ben Godfrey,England,27,73,73,None
+111001,CF,Fernando Zampedri,Chile,37,73,73,None
+110947,RWF,Daniel James,Wales,28,73,73,None
+110874,CF,Rodrigo Holgado,Malaysia,30,73,73,None
+110839,CF,Andraž Šporar,Slovenia,31,73,73,None
+110802,RMF,Yago Pikachu,Brazil,33,73,73,None
+110761,CB,Pantelis Hatzidiakos,Greece,28,73,73,None
+110735,CB,Andrea Cistana,Italy,28,73,73,None
+110635,CF,Rafa Mir,Spain,28,73,73,None
+110614,AMF,Tomás Pochettino,Argentina,29,73,73,None
+110600,LB,Alexis Soto,Argentina,32,73,73,None
+110565,LB,Marlon,Brazil,28,73,73,None
+110555,CB,Axel Tuanzebe,Congo DR,28,73,73,None
+110495,DMF,Santiago Colombatto,Argentina,28,73,73,None
+110422,CF,Renato Kayzer,Brazil,29,73,73,None
+110362,CB,Léo,Brazil,29,73,73,None
+110154,RMF,Eduard Bello,Venezuela,30,73,73,None
+110083,GK,Gautier Larsonneur,France,28,73,73,None
+110075,LB,Harry Toffolo,England,30,73,73,None
+110000,RB,Iza Carcelén,Spain,32,73,73,None
+109830,GK,Juan Espínola,Paraguay,31,73,73,None
+109827,CB,Joaquín Varela,Uruguay,27,73,73,None
+109739,CF,Adam Bareiro,Paraguay,29,73,73,None
+109629,DMF,Mateus Uribe,Colombia,34,73,73,None
+109580,CB,Bruno Viana,Brazil,30,73,73,None
+109571,CB,Rob Holding,England,30,73,73,None
+109566,GK,Ronaldo,Brazil,29,73,73,None
+109391,DMF,Josh Laurent,England,30,73,73,None
+109345,CB,Rúben Semedo,Portugal,31,73,73,None
+109343,CF,André Silva,Portugal,30,73,73,None
+109253,CF,Patrick Cutrone,Italy,27,73,73,None
+109081,AMF,Manu García,Spain,27,73,73,None
+109045,CF,Vincent Janssen,Netherlands,31,73,73,None
+108966,CMF,Olivier Ntcham,Cameroon,29,73,73,None
+108941,RWF,Bobby Decordova-Reid,Jamaica,32,73,73,None
+108930,GK,Alex Palmer,England,29,73,73,None
+108843,RWF,Marinho,Brazil,35,73,73,None
+108795,CB,Juninho,Brazil,30,73,73,None
+108709,CF,Kelechi Iheanacho,Nigeria,29,73,73,None
+108673,CB,Fernando Alarcón,Argentina,31,73,73,None
+108640,CB,Andrés Llinás,Colombia,28,73,73,None
+108453,CB,Martin Erlić,Croatia,27,73,73,None
+108450,AMF,Matheuzinho,Brazil,28,73,73,None
+108443,CMF,Juninho Bacuna,Curaçao,28,73,73,None
+108409,CB,Maracás,Brazil,31,73,73,None
+108218,DMF,Lucas Tousart,France,28,73,73,None
+108185,RWF,Jhon Fredy Salazar,Colombia,30,73,73,None
+108163,GK,Joël Drommel,Netherlands,29,73,73,None
+108160,CB,Danilo Arboleda,Colombia,30,73,73,None
+108117,CB,Domingos Duarte,Portugal,30,73,73,None
+107985,CB,Mouctar Diakhaby,Guinea,29,73,73,None
+107980,CF,Jordan Siebatcheu,United States,29,73,73,None
+107954,CB,Harold Moukoudi,Cameroon,28,73,73,None
+107932,CF,Carlton Morris,England,30,73,73,None
+107911,CMF,Javi Muñoz,Spain,30,73,73,None
+107847,CB,Kaio Pantaleão,Brazil,30,73,73,None
+107804,LWF,Jordan Morris,United States,31,73,73,None
+107778,DMF,Thiago Maia,Brazil,28,73,73,None
+107691,DMF,Harry Winks,England,29,73,73,None
+107657,DMF,Jair,Brazil,31,73,73,None
+107604,SS,Florian Sotoca,France,35,73,73,None
+107312,RB,Eli Dasa,Israel,33,73,73,None
+107271,CF,Tiquinho Soares,Brazil,34,73,73,None
+107227,GK,Mohamed El Shenawi,Egypt,37,73,73,None
+107212,CB,Erik Sviatchenko,Denmark,34,73,73,None
+106968,RB,Íñigo Lekue,Spain,32,73,73,None
+106777,LB,B. Mykhaylichenko,Ukraine,28,73,73,None
+106772,CF,Benito Raman,Belgium,31,73,73,None
+106764,AMF,Haris Hajradinović,Bosnia and Herzegovina,31,73,73,None
+106566,GK,Jean,Brazil,30,73,73,None
+106531,GK,Cláudio Ramos,Portugal,34,73,73,None
+106339,CB,Luis Abram,Peru,29,73,73,None
+106310,AMF,Dieter Villalpando,Mexico,34,73,73,None
+105988,CF,Yuma Suzuki,Japan,29,73,73,None
+105633,RWF,Cristian Pavón,Argentina,29,73,73,None
+105324,RB,Leonardo Godoy,Argentina,30,73,73,None
+105276,CF,Maximiliano Romero,Argentina,26,73,73,None
+105270,DMF,Nicolás Tripichio,Argentina,29,73,73,None
+105194,DMF,Mauricio Martínez,Argentina,32,73,73,None
+105192,CB,Emanuel Brítez,Argentina,33,73,73,None
+105181,AMF,Fabián Sambueza,Argentina,37,73,73,None
+105120,GK,Iván Arboleda,Colombia,29,73,73,None
+105117,CB,Joaquín Laso,Argentina,35,73,73,None
+104864,AMF,Pity Martínez,Argentina,32,73,73,None
+104794,LB,Ludwig Augustinsson,Sweden,31,73,73,None
+104784,CB,Alexander Scholz,Denmark,33,73,73,None
+104754,LB,Joris Kayembe,Congo DR,31,73,73,None
+104719,CB,Sebastiano Luperto,Italy,29,73,73,None
+104704,GK,Emil Audero,Indonesia,28,73,73,None
+104693,CB,Gautier Lloris,France,30,73,73,None
+104668,CB,Paddy McNair,Northern Ireland,30,73,73,None
+104647,CB,Eric Bailly,Côte d'Ivoire,31,73,73,None
+104635,CB,Benjamin Kuščević,Chile,29,73,73,None
+104518,SS,Víctor Dávila,Chile,28,73,73,None
+104394,CMF,Samú Silva,Portugal,29,73,73,None
+104388,DMF,Abdoulaye Touré,Guinea,31,73,73,None
+104311,CF,Steve Mounié,Benin,31,73,73,None
+104103,CB,Federico Ricca,Uruguay,31,73,73,None
+104093,CMF,Haris Belkebla,Algeria,31,73,73,None
+103997,RMF,Andy Polo,Peru,31,73,73,None
+103966,AMF,Jorge Carrascal,Colombia,27,73,73,None
+103519,CB,Kevin Diks,Indonesia,29,73,73,None
+103449,CB,Jake Cooper,England,30,73,73,None
+103440,CF,Lucas Passerini,Argentina,31,73,73,None
+103373,RWF,Édgar Méndez,Spain,35,73,73,None
+103319,CMF,Nicolás Oroz,Argentina,31,73,73,None
+103315,DMF,Omar Mascarell,Equatorial Guinea,32,73,73,None
+103310,CB,Leandro Cabrera,Uruguay,34,73,73,None
+103300,GK,Pierluigi Gollini,Italy,30,73,73,None
+103227,LMF,Omar Fernández,Colombia,32,73,73,None
+103125,CB,Edoardo Goldaniga,Italy,32,73,73,None
+102986,CF,Rodrigo Aguirre,Uruguay,31,73,73,None
+102968,GK,Alessandro Micai,Italy,32,73,73,None
+102765,RB,Elseid Hysaj,Albania,31,73,73,None
+102730,CF,Isaac Kiese Thelin,Sweden,33,73,73,None
+102667,CF,Ali Sowe,The Gambia,31,73,73,None
+102611,CF,Leandro Fernández,Argentina,34,73,73,None
+102566,CF,Cenk Tosun,Türkiye,34,73,73,None
+102531,LB,Ulisses Garcia,Switzerland,29,73,73,None
+102483,AMF,Téji Savanier,France,34,73,73,None
+102416,CMF,Gerard Gumbau,Spain,31,73,73,None
+102339,GK,Munir El Kajoui,Morocco,36,73,73,None
+102244,RWF,Pedro Henrique,Brazil,35,73,73,None
+102227,CF,Juan Martín Lucero,Argentina,34,73,73,None
+102214,GK,Gabriel Arias,Chile,38,73,73,None
+102029,GK,Ronwen Williams,South Africa,33,73,73,None
+101953,CB,Nicolás Figal,Argentina,31,73,73,None
+101910,CB,Mattia Bani,Italy,32,73,73,None
+101837,CB,Christian Burgess,England,34,73,73,None
+101771,RB,Adam Smith,England,34,73,73,None
+101356,CF,Danny Ings,England,33,73,73,None
+101294,CB,Amari'i Bell,Jamaica,31,73,73,None
+101234,LMF,Maxwel Cornet,Côte d'Ivoire,29,73,73,None
+101118,CB,Pedro Henrique,Brazil,30,73,73,None
+101054,CB,Luke O'Nien,England,31,73,73,None
+101012,CB,Ľubomír Šatka,Slovakia,30,73,73,None
+101011,RB,Kevin Mbabu,Switzerland,30,73,73,None
+100935,DMF,Baptiste Santamaria,France,30,73,73,None
+100564,CB,Rodrigo Ely,Brazil,32,73,73,None
+100530,CB,Jamaal Lascelles,England,32,73,73,None
+100510,RB,Héctor Bellerín,Spain,30,73,73,None
+100399,LB,Aaron Cresswell,England,36,73,73,None
+100297,CB,Ben Mee,England,36,73,73,None
+65045,CMF,Juan Pablo Nieto,Colombia,32,73,73,None
+64935,AMF,Lee Jae-Sung,Korea Republic,33,73,73,None
+63843,GK,Nicola Pérez,Uruguay,35,73,73,None
+63738,AMF,Portu,Spain,33,73,73,None
+63725,LWF,Franco Fragapane,Argentina,32,73,73,None
+63702,RB,Gilberto,Brazil,32,73,73,None
+63577,GK,Iago Herrerín,Spain,37,73,73,None
+63477,CMF,Zé Rafael,Brazil,32,73,73,None
+63371,GK,Aitor Fernández,Spain,34,73,73,None
+61710,LB,Jeffrey Schlupp,Ghana,33,73,73,None
+61676,GK,Marwin Hitz,Switzerland,38,73,73,None
+61643,LWF,Yeferson Soteldo,Venezuela,28,73,73,None
+61637,LWF,Jhon Murillo,Venezuela,30,73,73,None
+61167,GK,Ander Cantero,Spain,30,73,73,None
+61164,CF,Antonio Sanabria,Paraguay,29,73,73,None
+61145,GK,Aarón Escandell,Spain,30,73,73,None
+61125,CF,Juan Dinenno,Argentina,31,73,73,None
+60939,CF,Zé Roberto,Brazil,32,73,73,None
+60893,SS,Chuba Akpom,England,30,73,73,None
+60879,LMF,Adri Embarba,Spain,33,73,73,None
+60875,CB,David Costas,Spain,30,73,73,None
+60808,CF,Sandro Lima,Brazil,35,73,73,None
+60776,CMF,Bruno Henrique,Brazil,36,73,73,None
+60719,CMF,Álvaro Madrid,Chile,30,73,73,None
+60684,AMF,Claudio Aquino,Argentina,34,73,73,None
+60663,CB,José Palomino,Argentina,35,73,73,None
+60653,CB,Nehuén Paz,Argentina,32,73,73,None
+60560,GK,Simone Scuffet,Italy,29,73,73,None
+60558,GK,Rubén Blanco,Spain,30,73,73,None
+60534,RWF,Adnan Januzaj,Belgium,30,73,73,None
+60510,RB,Silvan Widmer,Switzerland,32,73,73,None
+60494,CF,Andrea Petagna,Italy,30,73,73,None
+60486,RB,Joshua Brenet,Curaçao,31,73,73,None
+60424,LB,Johan Mojica,Colombia,33,73,73,None
+60365,CB,Rafael Delgado,Argentina,35,73,73,None
+60351,GK,Jorge Broun,Argentina,39,73,73,None
+60347,RWF,Ezequiel Cerutti,Argentina,33,73,73,None
+60308,RMF,Maximiliano Meza,Argentina,33,73,73,None
+60234,CB,Claudio Corvalán,Argentina,36,73,73,None
+60224,GK,Manuel Vicentini,Argentina,35,73,73,None
+60203,RWF,Emiliano Rigoni,Argentina,32,73,73,None
+60186,GK,César Rigamonti,Argentina,38,73,73,None
+60167,CB,Matías Catalán,Chile,33,73,73,None
+60134,CMF,Fernando Zuqui,Argentina,34,73,73,None
+59995,CMF,Héctor Herrera,Mexico,35,73,73,None
+59948,SS,Darwin Quintero,Colombia,38,73,73,None
+59842,CMF,Morgan Sanson,France,31,73,73,None
+59840,DMF,Laurent Abergel,France,32,73,73,None
+59595,CB,Riechedly Bazoer,Curaçao,29,73,73,None
+59535,CB,Thiago Martins,Brazil,30,73,73,None
+59415,GK,Diego Sánchez,Chile,38,73,73,None
+59364,AMF,Léo Valencia,Chile,34,73,73,None
+59265,DMF,Claudio Baeza,Chile,32,73,73,None
+58847,CB,Aderllan Santos,Brazil,36,73,73,None
+58843,LB,Alberto Moreno,Spain,33,73,73,None
+58692,GK,Gustavo,Brazil,32,73,73,None
+58636,RMF,Valentino Lazaro,Austria,29,73,73,None
+58617,CMF,Ozan Tufan,Türkiye,30,73,73,None
+57418,CB,Marllon,Brazil,33,73,73,None
+57350,CMF,Moi Gómez,Spain,31,73,73,None
+57025,AMF,Alexandru Maxim,Romania,35,73,73,None
+57011,GK,Jesse Joronen,Finland,32,73,73,None
+48000,GK,Eder Chaux,Colombia,34,73,73,None
+47959,GK,Brayan Cortés,Chile,30,73,73,None
+47920,RB,Guillermo Varela,Uruguay,32,73,73,None
+47830,CB,Lisandro Magallán,Argentina,32,73,73,None
+47589,CB,Érik Godoy,Argentina,32,73,73,None
+47583,LWF,Lucas Janson,Argentina,31,73,73,None
+47470,RB,Mayke,Brazil,33,73,73,None
+47433,CMF,André Gomes,Portugal,32,73,73,None
+47429,CF,Neal Maupay,France,29,73,73,None
+47417,CMF,Jackson Irvine,Australia,32,73,73,None
+47382,DMF,Ashley Westwood,England,35,73,73,None
+47305,LWF,Darwin Machís,Venezuela,32,73,73,None
+47238,RB,Nathaniel Clyne,England,34,73,73,None
+47007,CMF,Alfred Duncan,Ghana,32,73,73,None
+46969,GK,Thomas Kaminski,Belgium,33,73,73,None
+46925,CB,Gustavo Henrique,Brazil,32,73,73,None
+46761,CB,Paulo Oliveira,Portugal,33,73,73,None
+46635,DMF,Guillermo Fernández,Argentina,34,73,73,None
+46611,CB,Matheus Dória,Brazil,31,73,73,None
+46583,CF,Anthony Lozano,Honduras,32,73,73,None
+46564,CMF,Vladimír Darida,Czechia,35,73,73,None
+46498,RB,Djibril Sidibé,France,33,73,73,None
+46237,DMF,Willian Arão,Brazil,33,73,73,None
+46218,GK,Mattijs Branderhorst,Netherlands,32,73,73,None
+46023,LWF,Vitinho,Brazil,32,73,73,None
+46021,DMF,Gabriel,Brazil,33,73,73,None
+45670,CB,Igor Lichnovsky,Chile,31,73,73,None
+45641,DMF,Allan,Brazil,34,73,73,None
+45576,DMF,Iván Marcone,Argentina,35,73,73,None
+45575,CB,Víctor Cuesta,Argentina,37,73,73,None
+45373,CF,Joel Pohjanpalo,Finland,31,73,73,None
+45193,GK,Luca Lezzerini,Italy,30,73,73,None
+45157,CMF,José Campaña,Spain,32,73,73,None
+45126,CMF,A.Oxlade Chamberlain,England,32,73,73,None
+45120,RB,Kenny Lala,France,34,73,73,None
+44857,RB,Santiago Arias,Colombia,33,73,73,None
+44654,CB,Willy Boly,Côte d'Ivoire,34,73,73,None
+43976,GK,Rafael Cabral,Brazil,35,73,73,None
+43694,GK,Gabriel Vasconcelos,Brazil,33,73,73,None
+43211,GK,Marko Dmitrović,Serbia,33,73,73,None
+43170,RMF,Andros Townsend,England,34,73,73,None
+42892,DMF,Sergi Roberto,Spain,33,73,73,None
+42821,GK,Benjamin Lecomte,France,34,73,73,None
+42715,CF,Ángel Sepúlveda,Mexico,34,73,73,None
+42660,LB,Patrick van Aanholt,Netherlands,35,73,73,None
+42348,AMF,Pizzi,Portugal,36,73,73,None
+42274,GK,Marcelo Lomba,Brazil,39,73,73,None
+42273,GK,Paulo Victor,Brazil,38,73,73,None
+41640,CF,Carlos Bacca,Colombia,39,73,73,None
+41270,GK,Lucas Hoyos,Argentina,36,73,73,None
+41163,DMF,Enzo Pérez,Argentina,39,73,73,None
+41100,LMF,Juanmi,Spain,32,73,73,None
+41011,AMF,Simone Verdi,Italy,33,73,73,None
+41000,AMF,Rémy Cabella,France,35,73,73,None
+40751,CF,Adrián Ramos,Colombia,39,73,73,None
+40749,SS,Teófilo Gutiérrez,Colombia,40,73,73,None
+40686,RWF,Osvaldo,Brazil,38,73,73,None
+40404,CF,Nélson Oliveira,Portugal,34,73,73,None
+40283,RB,Séamus Coleman,Republic of Ireland,37,73,73,None
+38852,RB,Davide Faraoni,Italy,34,73,73,None
+38338,CMF,Daniel Wass,Denmark,36,73,73,None
+38297,LWF,Willian,Brazil,37,73,73,None
+38288,CB,Ezequiel Muñoz,Argentina,35,73,73,None
+38274,CF,Dayro Moreno,Colombia,40,73,73,None
+38051,SS,Stevan Jovetić,Montenegro,36,73,73,None
+37901,DMF,Tomás Rincón,Venezuela,37,73,73,None
+37377,GK,Andrés Fernández,Spain,39,73,73,None
+37257,GK,Przemysław Tytoń,Poland,38,73,73,None
+37028,CF,André Ayew,Ghana,36,73,73,None
+36718,CF,Alexis Sánchez,Chile,37,73,73,None
+35883,AMF,Maxi Moralez,Argentina,38,73,73,None
+35880,CMF,José Sosa,Argentina,40,73,73,None
+35477,CF,Edinson Cavani,Uruguay,38,73,73,None
+34611,AMF,Dimitri Payet,France,38,73,73,None
+33075,RB,Lorenzo De Silvestri,Italy,37,73,73,None
+31044,CF,Radamel Falcao,Colombia,39,73,73,None
+16823,CB,Naomichi Ueda,Japan,31,73,73,None
+16728,RWF,Takuma Asano,Japan,31,73,73,None
+9167,GK,Remko Pasveer,Netherlands,42,73,73,None
+84067447,LWF,Bazoumana Touré,Côte d'Ivoire,19,72,72,None
+84059896,CF,Fiston Mayele,Congo DR,31,72,72,None
+84059833,LWF,Ibrahim Adel,Egypt,24,72,72,None
+84054420,RWF,Anis Hadj Moussa,Algeria,23,72,72,None
+84053834,LB,Mohamed Hamdy,Egypt,30,72,72,None
+84051061,CF,Luís Asué,Equatorial Guinea,24,72,72,None
+84050366,CF,Oumar Diakité,Côte d'Ivoire,22,72,72,None
+84046275,CMF,Emam Ashour,Egypt,27,72,72,None
+84043615,LMF,Mehdi Dorval,Algeria,24,72,72,None
+84043122,CMF,Mamadou Sangaré,Mali,23,72,72,None
+84037974,CF,Frank Magri,Cameroon,26,72,72,None
+84035064,AMF,Kamory Doumbia,Mali,22,72,72,None
+84033241,LWF,Elias Achouri,Tunisia,26,72,72,None
+84033116,LB,Mortadha Ben Ouanes,Tunisia,31,72,72,None
+84032530,CB,Nasser Djiga,Burkina Faso,23,72,72,None
+84031677,GK,Matthieu Epolo,Congo DR,20,72,72,None
+84030974,LWF,Sebastian Tounekti,Tunisia,23,72,72,None
+84030920,DMF,Hamdi Fathy,Egypt,31,72,72,None
+84030916,LWF,Soufiane Rahimi,Morocco,29,72,72,None
+84026112,CB,Ousmane Camara,Mali,22,72,72,None
+84026111,LB,Jaouen Hadjam,Algeria,22,72,72,None
+84025808,CMF,Fisayo Dele-Bashiru,Nigeria,24,72,72,None
+84024539,LWF,Michel A. Balikwisha,Congo DR,24,72,72,None
+84022033,SS,Meschack Elia,Congo DR,28,72,72,None
+84018954,LB,Bruno Langa,Mozambique,28,72,72,None
+84018513,CB,Teenage Hadebe,Zimbabwe,30,72,72,None
+84016882,RMF,Junior Dina Ebimbe,Cameroon,25,72,72,None
+84016222,AMF,Guélor Kanga,Gabon,35,72,72,None
+84012580,LWF,Cheikh Sabaly,Senegal,26,72,72,None
+84005947,CMF,Edo Kayembe,Congo DR,27,72,72,None
+84005806,AMF,Knowledge Musona,Zimbabwe,35,72,72,None
+84005784,RWF,Manuel Benson,Angola,28,72,72,None
+84005579,RB,Youcef Atal,Algeria,29,72,72,None
+84005557,CF,Cherif Ndiaye,Senegal,29,72,72,None
+84004862,RWF,Patrick Soko,Cameroon,28,72,72,None
+84000733,LB,Christopher Opéri,Côte d'Ivoire,28,72,72,None
+84000039,GK,Luca Zidane,Algeria,27,72,72,None
+83998481,CB,Issoufou Dayo,Burkina Faso,34,72,72,None
+83998463,RWF,Mostafa Fathi,Egypt,31,72,72,None
+83996453,AMF,Faïz Selemani,Comoros,32,72,72,None
+83995644,CMF,Ibrahima Sissoko,Mali,28,72,72,None
+83995331,CMF,José Machín,Equatorial Guinea,29,72,72,None
+83990992,LB,Ali Maâloul,Tunisia,35,72,72,None
+83990860,CMF,Ferjani Sassi,Tunisia,33,72,72,None
+83989250,CB,Rami Rabia,Egypt,32,72,72,None
+83986529,CB,Jean-Philippe Gbamin,Côte d'Ivoire,30,72,72,None
+83947002,RWF,Bertrand Traoré,Burkina Faso,30,72,72,None
+83946991,GK,Mory Diaw,Senegal,32,72,72,None
+83928730,CMF,Pedro Obiang,Equatorial Guinea,33,72,72,None
+83925017,AMF,Gaël Kakuta,Congo DR,34,72,72,None
+50479241,CF,Oday Dabbagh,Palestine,27,72,72,None
+50455004,CF,Aymen Hussein,Iraq,29,72,72,None
+50453997,LWF,Mehdi Ghayedi,IR Iran,27,72,72,None
+50452490,AMF,Saman Ghoddos,IR Iran,32,72,72,None
+50447323,CB,Hossein Kanani,IR Iran,31,72,72,None
+50447148,CB,Ali Al Bulayhi,Saudi Arabia,36,72,72,None
+50443989,LWF,Mehdi Torabi,IR Iran,31,72,72,None
+50443713,RB,Pedro Miguel,Qatar,35,72,72,None
+50393347,GK,Alireza Beiranvand,IR Iran,33,72,72,None
+50392171,CB,Jiang Guangtai,China PR,31,72,72,None
+50392060,LWF,J. Masharipov,Uzbekistan,32,72,72,None
+50391525,GK,Mohammed Al Owais,Saudi Arabia,34,72,72,None
+50377663,CF,Caio Canedo,United Arab Emirates,35,72,72,None
+16954793,CF,Felipe,Brazil,33,72,72,None
+16943609,RWF,Jasir Asani,Albania,30,72,72,None
+16942197,CF,Luís Asué,Equatorial Guinea,24,72,72,None
+16940065,RWF,Gustav Ludwigson,Sweden,32,72,72,None
+16937510,DMF,V. Atangana Edoa,France,20,72,72,None
+16936542,CF,George Ilenikhena,France,19,72,72,None
+16936529,CB,Cho Yu-Min,Korea Republic,29,72,72,None
+16922569,LWF,Song Min-Kyu,Korea Republic,26,72,72,None
+16912944,CB,Abdulelah Al Amri,Saudi Arabia,28,72,72,None
+16912480,CB,Tetsushi Yamakawa,Japan,28,72,72,None
+16910179,CF,Chadrac Akolo,Congo DR,30,72,72,None
+16907309,DMF,Dawhan,Brazil,29,72,72,None
+16904957,CB,Hayato Araki,Japan,29,72,72,None
+16904703,CMF,Jadsom Silva,Brazil,24,72,72,None
+16903948,LWF,Yuki Soma,Japan,28,72,72,None
+16902503,LMF,Shunki Higashi,Japan,25,72,72,None
+16900609,GK,Jo Hyeon-Woo,Korea Republic,34,72,72,None
+16900348,CMF,Peter Žulj,Austria,32,72,72,None
+16898907,CF,Ryo Germain,Japan,30,72,72,None
+16896715,RB,Youcef Atal,Algeria,29,72,72,None
+16895614,LWF,Florinel Coman,Romania,27,72,72,None
+16895613,CB,Bogdan Planić,Serbia,33,72,72,None
+16894839,DMF,Matheus Jussa,Brazil,29,72,72,None
+16893145,RB,Wilson Manafá,Portugal,31,72,72,None
+16892952,RB,Sadegh Moharrami,IR Iran,29,72,72,None
+16892787,CF,Jamie MacLaren,Australia,32,72,72,None
+16892614,GK,Kosei Tani,Japan,25,72,72,None
+16891525,CMF,Goran Čaušić,Serbia,33,72,72,None
+16889706,DMF,Tim Chow,Chinese Taipei,31,72,72,None
+16889281,RB,Pedro Miguel,Qatar,35,72,72,None
+16888615,CF,Raniel,Brazil,29,72,72,None
+16887768,AMF,Mateus Vital,Brazil,27,72,72,None
+16887229,AMF,Igor Coronado,Italy,33,72,72,None
+16886776,CB,Mason Holgate,Jamaica,29,72,72,None
+16885726,CB,Adryelson,Brazil,27,72,72,None
+16885685,LB,Ryo Hatsuse,Japan,28,72,72,None
+16885469,RMF,Rômulo,Brazil,30,72,72,None
+16884751,CB,Matej Mitrović,Croatia,32,72,72,None
+16884534,RMF,Iván Sánchez,Spain,33,72,72,None
+16882453,AMF,Nicolás Giménez,Argentina,29,72,72,None
+16882198,CB,Boualem Khoukhi,Qatar,35,72,72,None
+16881996,CMF,Ferjani Sassi,Tunisia,33,72,72,None
+16880480,CF,Gustavo,Brazil,31,72,72,None
+16879600,DMF,Ibrahim Amadou,France,32,72,72,None
+16879588,LMF,Wei Shihao,China PR,30,72,72,None
+16878796,AMF,Serginho,China PR,30,72,72,None
+16878205,AMF,João Carlos Teixeira,Portugal,32,72,72,None
+16877898,CB,Jean C. Castelletto,Cameroon,30,72,72,None
+16840706,DMF,Thom Haye,Indonesia,30,72,72,None
+16838915,GK,Alireza Beiranvand,IR Iran,33,72,72,None
+16838482,CB,Shinnosuke Nakatani,Japan,29,72,72,None
+16837746,RWF,Federico Cartabia,Argentina,32,72,72,None
+16837739,CB,Jiang Guangtai,China PR,31,72,72,None
+16837361,DMF,Gerónimo Poblete,Argentina,32,72,72,None
+16837168,AMF,Hassan Al Haydos,Qatar,35,72,72,None
+16837063,CB,Uroš Spajić,Serbia,32,72,72,None
+16836938,CMF,Hayao Kawabe,Japan,30,72,72,None
+16834609,LWF,Mathew Leckie,Australia,34,72,72,None
+16834423,LB,Layvin Kurzawa,France,33,72,72,None
+16823287,LWF,Salem Al Dawsari,Saudi Arabia,34,72,72,None
+16823231,CF,Caio Canedo,United Arab Emirates,35,72,72,None
+16793794,CB,Sho Sasaki,Japan,36,72,72,None
+16793762,CB,Jang Hyun-Soo,Korea Republic,34,72,72,None
+184164,LWF,Mostafa Zico,Egypt,28,72,72,None
+182039,RMF,Herman Johansson,Sweden,28,72,72,None
+182010,RMF,Bryan Ramírez,Ecuador,25,72,72,None
+179272,AMF,Dominik Fitz,Austria,26,72,72,None
+178942,GK,Mostafa Shobeir,Egypt,25,72,72,None
+178132,DMF,Gustav Berggren,Sweden,28,72,72,None
+177782,CF,C. Kostoulas,Greece,18,72,72,None
+177683,AMF,Facundo Gulli,Argentina,20,72,72,None
+177258,LWF,Alexandros Kyziridis,Greece,25,72,72,None
+176125,DMF,Ignacio Perruzzi,Argentina,20,72,72,None
+175999,LWF,Prince Amoako,Ghana,18,72,72,None
+175774,CMF,Du Queiroz,Brazil,25,72,72,None
+175582,CB,Ian Pilcher,United States,22,72,72,None
+175463,AMF,Tomás Aranda,Argentina,18,72,72,None
+175401,DMF,Lucas Sanabria,Uruguay,22,72,72,None
+175360,CF,Andrea Compagno,Italy,29,72,72,None
