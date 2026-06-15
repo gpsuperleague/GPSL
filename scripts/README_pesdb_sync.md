@@ -1,47 +1,70 @@
 # PESDB scrape → GPDB sync
 
-## Primary: in-GPSL admin scrape
+## What you need (3 separate steps)
 
-1. Run SQL patch: `supabase/sql/patches/gpdb_pesdb_sync.sql`
-2. **Deploy edge function** `gpdb-pesdb-scrape` in Supabase (Dashboard → Edge Functions, or CLI below)
-3. Open **Admin → Season Break → Data tools → GPDB PESDB sync**
-4. **Detect pages** → set range → **Start scrape → staging**
-5. **Preview** → **Apply**
+| Step | Where | What |
+|------|--------|------|
+| 1 | **Supabase SQL Editor** | Run `supabase/sql/patches/gpdb_pesdb_sync.sql` |
+| 2 | **GitHub** | Push site files (`admin_gpdb_sync.html`, etc.) |
+| 3 | **Supabase Edge Functions** | Deploy `gpdb-pesdb-scrape` (see below) |
 
-```bash
-# From repo root (Supabase CLI logged in)
+GitHub alone does **not** deploy the edge function.
+
+---
+
+## Deploy edge function
+
+### Option A — Supabase Dashboard (easiest)
+
+1. Open [Supabase Dashboard](https://supabase.com/dashboard) → your project → **Edge Functions**
+2. **Create new function** → name exactly: `gpdb-pesdb-scrape`
+3. **Delete** any placeholder code in the editor
+4. Copy **all** of `supabase/functions/gpdb-pesdb-scrape/index.ts` from this repo and paste it in
+5. **Do not** paste terminal commands (`supabase login`, etc.) into the editor — that causes parse errors
+6. Deploy the function
+7. Open function **Settings** → turn **OFF** “Enforce JWT verification” (same as `--no-verify-jwt`)
+
+### Option B — Supabase CLI (PowerShell / terminal)
+
+Run these in **PowerShell**, not in the Dashboard code editor:
+
+```powershell
+cd "e:\OneDrive\GPSL\Local Github\GPSL"
+supabase login
+supabase link --project-ref omyyogfumrjoaweuawjn
 supabase functions deploy gpdb-pesdb-scrape --no-verify-jwt
 ```
 
-The admin page calls the edge function page-by-page. Each page:
-- Fetches the pesdb.net list HTML
-- Fetches each player’s `?id=…&mode=max_level` page for max rating + playing style
-- Computes economics in the browser
-- Appends to `gpdb_pesdb_staging`
+Install CLI first if needed: https://supabase.com/docs/guides/cli
 
-No Selenium required — pesdb.net serves server-rendered HTML.
+---
 
-**Tip:** Test with pages **1–3** first. A full scrape (~100+ pages) can take 30–60+ minutes; leave the tab open.
+## Use in admin
 
-## Fallback: local Python scrape
+**Admin → Season Break → Data tools → GPDB PESDB sync**
 
-If the edge function is unavailable or you prefer offline scraping:
+1. **Detect pages**
+2. Set range (test **1–3** first)
+3. **Start scrape → staging**
+4. **Preview** → **Apply**
+
+Full scrape can take 30–60+ minutes.
+
+---
+
+## Fallback: CSV without edge function
+
+If you skip the edge function:
 
 ```bash
 pip install selenium webdriver-manager beautifulsoup4 lxml
 python scripts/pesdb_scrape.py --output pesdb_full.csv
 ```
 
-Upload the CSV on the same admin page (**Upload CSV → staging**).
+Upload CSV on the same admin page. Preview/apply still work after the SQL patch.
 
-## Deploy edge function
+---
 
-Function path: `supabase/functions/gpdb-pesdb-scrape/`
+## Legacy cards
 
-Requires env vars (set automatically in Supabase): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`.
-
-Admin auth: caller must pass JWT; function checks `is_gpsl_admin()` RPC.
-
-## What apply does
-
-See main workflow in admin page. Legacy cards (`pesdb_unavailable`) stay at club, not sellable, 1-season renewals.
+Players off pesdb.net stay at club, not sellable, renew 1 season at a time.
