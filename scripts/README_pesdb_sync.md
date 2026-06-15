@@ -61,6 +61,41 @@ pip install selenium webdriver-manager beautifulsoup4 lxml
 python scripts/pesdb_scrape.py --output pesdb_full.csv
 ```
 
+### Recommended workflow (PESDB throttles after ~60 detail pages)
+
+PESDB often allows **~2 list pages** when each player triggers a detail visit (~60 requests), then list pages return empty. Use **two steps**:
+
+**Step 1 — list only** (one request per page; can run hundreds of pages):
+
+```bash
+python scripts/pesdb_scrape.py --list-only --start 1 --end 633 --output pesdb_list.csv --page-delay 3
+```
+
+Use **headless** (default) for long runs — `--no-headless` is fine for debugging but don’t close the Chrome window. If the browser crashes, resume:
+
+```bash
+python scripts/pesdb_scrape.py --list-only --start 1 --end 633 --output pesdb_list.csv --resume --page-delay 3
+```
+
+**Step 2 — enrich details** (restarts browser every 40 players with a 90s cooldown):
+
+```bash
+python scripts/pesdb_scrape.py --enrich pesdb_list.csv --output pesdb_full.csv --no-headless --delay 2.5
+```
+
+Resume enrich in ranges if needed:
+
+```bash
+python scripts/pesdb_scrape.py --enrich pesdb_list.csv --output pesdb_full.csv --enrich-start 1 --enrich-end 500 --delay 2.5
+python scripts/pesdb_scrape.py --enrich pesdb_full.csv --output pesdb_full.csv --enrich-start 501 --delay 2.5
+```
+
+Upload `pesdb_full.csv` in admin. List-only CSV also works (max rating falls back to list rating).
+
+### Chrome stderr: `DEPRECATED_ENDPOINT` / GCM errors
+
+Harmless noise from Chrome’s background services — **not** PESDB blocking you. The script suppresses most of it. If a line still appears, ignore it unless you also see `No players table` or scrape failures.
+
 ### If you see “No table on page N”
 
 Page 3+ often fails **after** pages 1–2 because PESDB throttles automated traffic (~60 player-detail requests). Your browser still works; Selenium may get an empty or blocked response.

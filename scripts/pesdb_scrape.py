@@ -11,6 +11,10 @@ Requirements:
 Usage:
   python scripts/pesdb_scrape.py
   python scripts/pesdb_scrape.py --start 1 --end 50 --output pesdb_full.csv
+
+  # Recommended when PESDB throttles after ~2 list pages of details:
+  python scripts/pesdb_scrape.py --list-only --start 1 --end 633 --output pesdb_list.csv
+  python scripts/pesdb_scrape.py --enrich pesdb_list.csv --output pesdb_full.csv --delay 2.5
 """
 
 from __future__ import annotations
@@ -18,12 +22,14 @@ from __future__ import annotations
 import argparse
 import csv
 import re
+import subprocess
 import sys
 import time
 from pathlib import Path
 
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.by import By
@@ -87,6 +93,60 @@ def save_debug_html(page: int, html: str) -> Path:
     path = Path(f"pesdb_debug_page{page}.html")
     path.write_text(html, encoding="utf-8")
     return path
+
+
+def progress_path_for(output: Path) -> Path:
+    return output.with_suffix(output.suffix + ".progress")
+
+
+def read_last_completed_page(output: Path) -> int:
+    prog = progress_path_for(output)
+    if not prog.is_file():
+        return 0
+    text = prog.read_text(encoding="utf-8").strip()
+    m = re.search(r"last_page=(\d+)", text)
+    return int(m.group(1)) if m else 0
+
+
+def write_last_completed_page(output: Path, page: int) -> None:
+    progress_path_for(output).write_text(f"last_page={page}\n", encoding="utf-8")
+
+
+def safe_quit_driver(driver) -> None:
+    if driver is None:
+        return
+    try:
+        driver.quit()
+    except Exception:
+        pass
+
+
+class DriverSession:
+    def __init__(self, headless: bool):
+        self.headless = headless
+        self.driver = make_driver(headless)
+
+    def restart(self, reason: str = "") -> webdriver.Chrome:
+        if reason:
+            print(f"🔄 Restarting Chrome ({reason})…")
+        safe_quit_driver(self.driver)
+        time.sleep(2.0)
+        self.driver = make_driver(self.headless)
+        return self.driver
+
+    def close(self) -> None:
+        safe_quit_driver(self.driver)
+        self.driver = None
+
+
+def is_driver_window_error(exc: BaseException) -> bool:
+    msg = str(exc).lower()
+    return (
+        "no such window" in msg
+        or "web view not found" in msg
+        or "invalid session id" in msg
+        or "disconnected" in msg
+    )
 
 
 def wait_for_players_table(driver, timeout: float) -> bool:
@@ -195,13 +255,14 @@ def estimate_total_pages(driver, filters: dict) -> int:
 
 
 def scrape_list_page(
-    driver,
+    session: DriverSession,
     page: int,
     filters: dict,
     list_delay: float,
     detail_delay: float,
     page_retries: int,
     retry_wait: float,
+    list_only: bool = False,
 ) -> list[list[str]]:
     url = build_url(page, filters)
     print(f"📄 Scraping page {page}")
@@ -210,13 +271,24 @@ def scrape_list_page(
     html = ""
     soup = None
     table = None
+    driver = session.driver
 
     for attempt in range(1, page_retries + 1):
-        driver.get(url)
-        loaded = wait_for_players_table(driver, list_delay + 2.0)
-        if not loaded:
-            time.sleep(max(1.0, list_delay))
-        html = driver.page_source
+        try:
+            driver.get(url)
+            loaded = wait_for_players_table(driver, list_delay + 2.0)
+            if not loaded:
+                time.sleep(max(1.0, list_delay))
+            html = driver.page_source
+        except WebDriverException as exc:
+            if is_driver_window_error(exc) and attempt < page_retries:
+                driver = session.restart("browser window closed or crashed")
+                wait_s = max(5.0, retry_wait * 0.5)
+                print(f"   retrying page {page} in {wait_s:.0f}s…")
+                time.sleep(wait_s)
+                continue
+            raise
+
         soup = BeautifulSoup(html, "lxml")
         table = find_players_table(soup)
         if table:
@@ -228,6 +300,8 @@ def scrape_list_page(
         if attempt < page_retries:
             print(f"   waiting {wait_s:.0f}s before retry (PESDB may be throttling your IP)…")
             time.sleep(wait_s)
+            if "rate limit" in diag or "blocked" in diag or "429" in diag:
+                driver = session.restart("possible PESDB throttle")
 
     if not table:
         debug_path = save_debug_html(page, html)
@@ -258,7 +332,22 @@ def scrape_list_page(
         rating = cols[7].get_text(strip=True)
 
         print(f"   {player_name} ({player_id})")
-        playing_style, max_rating = get_player_details(driver, player_id, detail_delay)
+        if list_only:
+            playing_style, max_rating = "None", rating
+        else:
+            try:
+                playing_style, max_rating = get_player_details(
+                    session.driver, player_id, detail_delay
+                )
+            except WebDriverException as exc:
+                if is_driver_window_error(exc):
+                    session.restart("browser window closed during player detail")
+                    playing_style, max_rating = get_player_details(
+                        session.driver, player_id, detail_delay
+                    )
+                else:
+                    raise
+            time.sleep(detail_delay)
         out.append([
             player_id or "",
             position,
@@ -269,8 +358,127 @@ def scrape_list_page(
             max_rating,
             playing_style,
         ])
-        time.sleep(detail_delay)
     return out
+
+
+def read_csv_rows(path: Path) -> tuple[list[str], list[list[str]]]:
+    with path.open(newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        rows = list(reader)
+    if not rows:
+        return CSV_HEADER[:], []
+    return rows[0], rows[1:]
+
+
+def write_csv_rows(path: Path, header: list[str], data: list[list[str]]) -> None:
+    with path.open("w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(header)
+        writer.writerows(data)
+
+
+def col_index(header: list[str]) -> dict[str, int]:
+    norm = {h.strip().lower(): i for i, h in enumerate(header)}
+    idx = {}
+    for key, aliases in {
+        "player_id": ("player_id", "konami_id", "id"),
+        "max_level_rating": ("max_level_rating", "potential"),
+        "playing_style": ("playing_style", "playstyle"),
+    }.items():
+        for alias in aliases:
+            if alias in norm:
+                idx[key] = norm[alias]
+                break
+    return idx
+
+
+def needs_enrichment(row: list[str], idx: dict[str, int]) -> bool:
+    max_i = idx.get("max_level_rating")
+    style_i = idx.get("playing_style")
+    max_val = row[max_i].strip() if max_i is not None and max_i < len(row) else ""
+    style_val = row[style_i].strip() if style_i is not None and style_i < len(row) else ""
+    if not max_val or max_val.lower() == "unknown":
+        return True
+    if not style_val or style_val.lower() in ("none", "unknown"):
+        return True
+    return False
+
+
+def enrich_csv(args) -> int:
+    in_path = Path(args.enrich)
+    if not in_path.is_file():
+        print(f"File not found: {in_path}", file=sys.stderr)
+        return 1
+
+    out_path = Path(args.output) if args.output else in_path
+    header, data = read_csv_rows(in_path)
+    idx = col_index(header)
+    if "player_id" not in idx:
+        print("CSV must include player_id / konami_id column", file=sys.stderr)
+        return 1
+
+    max_i = idx.get("max_level_rating")
+    style_i = idx.get("playing_style")
+    if max_i is None:
+        header = header + ["max_level_rating"]
+        max_i = len(header) - 1
+        data = [row + [""] for row in data]
+    if style_i is None:
+        header = header + ["playing_style"]
+        style_i = len(header) - 1
+    data = [row + [""] * (len(header) - len(row)) for row in data]
+
+    targets = [
+        i for i, row in enumerate(data) if needs_enrichment(row, idx)
+    ]
+    if args.enrich_start > 0:
+        targets = [i for i in targets if i >= args.enrich_start - 1]
+    if args.enrich_end > 0:
+        targets = [i for i in targets if i < args.enrich_end]
+
+    if not targets:
+        print("No rows need enrichment in the selected range.")
+        write_csv_rows(out_path, header, data)
+        print(f"Saved → {out_path.resolve()}")
+        return 0
+
+    print(f"Enriching {len(targets)} players from {in_path.name} → {out_path.name}")
+
+    driver = make_driver(headless=not args.no_headless)
+    enriched = 0
+    try:
+        for n, row_i in enumerate(targets, start=1):
+            row = data[row_i]
+            while len(row) < len(header):
+                row.append("")
+            player_id = row[idx["player_id"]].strip()
+            if not player_id:
+                continue
+
+            if enriched > 0 and enriched % args.session_size == 0:
+                print(f"⏸ Session limit ({args.session_size}) — cooling down {args.cooldown:.0f}s…")
+                driver.quit()
+                time.sleep(args.cooldown)
+                driver = make_driver(headless=not args.no_headless)
+
+            print(f"  [{n}/{len(targets)}] {player_id}")
+            playing_style, max_rating = get_player_details(driver, player_id, args.delay)
+            row[max_i] = max_rating
+            row[style_i] = playing_style
+            data[row_i] = row
+            enriched += 1
+
+            if enriched % args.checkpoint == 0:
+                write_csv_rows(out_path, header, data)
+                print(f"   checkpoint saved ({enriched} enriched)")
+
+            time.sleep(args.delay)
+    finally:
+        driver.quit()
+
+    write_csv_rows(out_path, header, data)
+    print(f"Enriched {enriched} players → {out_path.resolve()}")
+    return 0
 
 
 def make_driver(headless: bool) -> webdriver.Chrome:
@@ -282,16 +490,22 @@ def make_driver(headless: bool) -> webdriver.Chrome:
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    # Quiet Chrome stderr noise (e.g. GCM DEPRECATED_ENDPOINT) — not scrape errors.
+    options.add_argument("--log-level=3")
+    options.add_argument("--disable-background-networking")
+    options.add_argument("--disable-sync")
+    options.add_argument("--disable-default-apps")
+    options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
     options.add_experimental_option("useAutomationExtension", False)
     options.add_argument(
         "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
         "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     )
-    driver = webdriver.Chrome(
-        service=ChromeService(ChromeDriverManager().install()),
-        options=options,
+    service = ChromeService(
+        ChromeDriverManager().install(),
+        log_output=subprocess.DEVNULL,
     )
+    driver = webdriver.Chrome(service=service, options=options)
     driver.execute_script(
         "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
     )
@@ -308,50 +522,113 @@ def main() -> int:
     parser.add_argument("--page-delay", type=float, default=8.0, help="Pause between list pages")
     parser.add_argument("--page-retries", type=int, default=4, help="Retries when list page has no players table")
     parser.add_argument("--retry-wait", type=float, default=30.0, help="Base seconds between page retries")
+    parser.add_argument(
+        "--list-only",
+        action="store_true",
+        help="List pages only (no per-player detail visits) — avoids the ~2-page throttle",
+    )
+    parser.add_argument(
+        "--enrich",
+        type=str,
+        default="",
+        help="Enrich an existing list-only CSV with max_level_rating + playing_style",
+    )
+    parser.add_argument(
+        "--enrich-start",
+        type=int,
+        default=0,
+        help="1-based data row to start enriching (0 = from first row)",
+    )
+    parser.add_argument(
+        "--enrich-end",
+        type=int,
+        default=0,
+        help="1-based data row to stop before (0 = through end)",
+    )
+    parser.add_argument(
+        "--session-size",
+        type=int,
+        default=40,
+        help="Detail fetches per browser session before cooldown (enrich mode)",
+    )
+    parser.add_argument(
+        "--cooldown",
+        type=float,
+        default=90.0,
+        help="Seconds between browser sessions (enrich mode)",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        type=int,
+        default=25,
+        help="Save output every N enriched players (enrich mode)",
+    )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Continue from last saved page (.progress file next to --output)",
+    )
     parser.add_argument("--no-headless", action="store_true", help="Show browser window (often avoids blocks)")
     args = parser.parse_args()
 
-    driver = make_driver(headless=not args.no_headless)
+    if args.enrich:
+        return enrich_csv(args)
+
+    out_path = Path(args.output) if args.output else None
+    session = DriverSession(headless=not args.no_headless)
     data: list[list[str]] = []
 
     try:
-        end_page = args.end or estimate_total_pages(driver, {})
+        end_page = args.end or estimate_total_pages(session.driver, {})
         if args.end == 0:
             end_page = max(end_page, args.start)
         start_page = max(1, args.start)
+
+        if args.resume and out_path and out_path.is_file():
+            _, data = read_csv_rows(out_path)
+            last_done = read_last_completed_page(out_path)
+            if last_done >= start_page:
+                start_page = last_done + 1
+            print(f"Resume: {len(data)} players on disk, continuing from page {start_page}")
+
         if start_page > end_page:
             print("start page > end page", file=sys.stderr)
             return 1
 
-        print(f"Scraping pages {start_page}–{end_page}")
+        if not out_path:
+            out_path = Path(f"pesdb_scrape_pages{args.start}-{end_page or args.start}.csv")
+
+        print(f"Scraping pages {start_page}–{end_page}" + (" (list only)" if args.list_only else ""))
+        if args.no_headless:
+            print("Tip: keep the Chrome window open, or omit --no-headless for headless mode.")
+
         for page in range(start_page, end_page + 1):
             if page > start_page:
                 print(f"⏸ Pausing {args.page_delay:.0f}s before next list page…")
                 time.sleep(args.page_delay)
-            data.extend(
-                scrape_list_page(
-                    driver,
-                    page,
-                    {},
-                    args.list_delay,
-                    args.delay,
-                    args.page_retries,
-                    args.retry_wait,
-                )
+            page_rows = scrape_list_page(
+                session,
+                page,
+                {},
+                args.list_delay,
+                args.delay,
+                args.page_retries,
+                args.retry_wait,
+                list_only=args.list_only,
             )
+            data.extend(page_rows)
+            write_csv_rows(out_path, CSV_HEADER, data)
+            write_last_completed_page(out_path, page)
+            print(f"💾 Checkpoint: page {page} saved ({len(data)} players total)")
     finally:
-        driver.quit()
-
-    out_path = Path(args.output) if args.output else Path(
-        f"pesdb_scrape_pages{args.start}-{end_page or args.start}.csv"
-    )
-    with out_path.open("w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
-        writer.writerow(CSV_HEADER)
-        writer.writerows(data)
+        session.close()
 
     print(f"Saved {len(data)} players → {out_path.resolve()}")
-    print("Upload this file in Admin → Season Break → Data tools → GPDB PESDB sync")
+    if args.list_only:
+        print("Next: enrich details with:")
+        print(f"  python scripts/pesdb_scrape.py --enrich {out_path.name} --output pesdb_full.csv --no-headless --delay 2.5")
+    else:
+        print("Upload this file in Admin → Season Break → Data tools → GPDB PESDB sync")
     return 0
 
 

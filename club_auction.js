@@ -6,6 +6,7 @@ import {
   getUKNow,
   getDraftAuctionStartTime,
   getDraftCountdownOptions,
+  isGpslAdminUser,
 } from "./global.js";
 import {
   getClubAuctionEffectivePhase,
@@ -155,16 +156,35 @@ let auctionState = null;
 let pollTimer = null;
 let selectedListing = null;
 let listingsCache = [];
+let viewOnly = false;
 
 async function loadOwnerContext() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   ownerId = user?.id || null;
+  const isAdmin = isGpslAdminUser(user);
 
   const { data: self, error } = await supabase.rpc("owner_registry_get_self");
 
   if (self?.has_club) {
+    if (isAdmin) {
+      viewOnly = true;
+      ownerTag = self?.owner_tag || null;
+      budget = 0;
+      const intro = document.getElementById("clubAuctionIntro");
+      if (intro) {
+        intro.innerHTML =
+          "<b>Admin view</b> — you already have a club, so you cannot bid here. " +
+          "Use <b>History</b> on each listing to inspect bids. Owners without a club bid from this page during the auction window.";
+      }
+      const lead = document.getElementById("leadPanel");
+      if (lead) {
+        lead.innerHTML =
+          '<span style="color:#888;">Admin preview — bidding disabled while you hold a club.</span>';
+      }
+      return true;
+    }
     window.location = "dashboard.html";
     return false;
   }
@@ -213,6 +233,17 @@ function renderStatus() {
     return;
   }
 
+  if (viewOnly) {
+    const start = getDraftAuctionStartTime();
+    const phase = start
+      ? getClubAuctionEffectivePhase(getUKNow(), start, getDraftCountdownOptions())
+      : null;
+    const phaseHint = phase ? clubAuctionPhaseLabel(phase) : "";
+    el.textContent = `Admin view · ${auctionState.active_listings ?? 0} clubs listed${phaseHint ? ` · ${phaseHint}` : ""}`;
+    el.style.color = "#ccc";
+    return;
+  }
+
   if (!ownerTag) {
     el.innerHTML =
       'Set your <a href="awaiting_club.html" style="color:#ff9900;">owner tag</a> before bidding.';
@@ -255,6 +286,7 @@ function renderStatus() {
 async function updateLeadPanel() {
   const el = document.getElementById("leadPanel");
   if (!el || !ownerId) return;
+  if (viewOnly) return;
 
   const { data: rows } = await supabase
     .from("club_auction_listings_public")
@@ -296,7 +328,7 @@ async function loadListings() {
   }
 
   listingsCache = listings;
-  const canBid = auctionState?.bidding_open && ownerTag;
+  const canBid = !viewOnly && auctionState?.bidding_open && ownerTag;
   tbody.innerHTML = "";
 
   for (const row of listings) {
