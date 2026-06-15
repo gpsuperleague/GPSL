@@ -325,7 +325,7 @@ export async function initFinanceAccountsPage() {
 
   await applyFinanceClubHeader(shortName, clubLabel, {
     adminPreview,
-    pageSuffix: "Season accounts",
+    pageSuffix: "Finances",
   });
 
   const meta = document.getElementById("pageMeta");
@@ -341,13 +341,6 @@ export async function initFinanceAccountsPage() {
   }
 
   const data = await loadFinanceSeasonContext(supabase, shortName);
-
-  const summaryEl = document.getElementById("accountsSummary");
-  if (summaryEl) {
-    summaryEl.textContent =
-      `Posted net ${formatMoney(data.net)} · projected end-of-season ${formatMoney(data.projectedBalance)}`;
-    summaryEl.className = `ledger-summary ${data.net >= 0 ? "positive" : "negative"}`;
-  }
 
   const sectionsEl = document.getElementById("financeSections");
   if (sectionsEl) {
