@@ -1,5 +1,6 @@
 -- Audit: GPDB player pool per international nation (for nation selection / call-ups)
 -- Run in Supabase SQL Editor. Requires competition_international.sql + international_callup_gpdb.sql
+-- UI: nation_player_pool.html (after international_nation_player_pool.sql)
 --
 -- Callable = Players.Nation normalizes to international_nations.name OR code
 -- (same rule as international_player_matches_nation / GPDB "My nation" filter)

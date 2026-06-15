@@ -1,0 +1,222 @@
+<script>window.CURRENT_PAGE = "nation_player_pool";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Nation player pool — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="international.css">
+  <style>
+    body.squad-page { padding-bottom: 48px; }
+    .pool-wrap { margin: 0 20px 24px; }
+    .pool-intro {
+      color: #aaa;
+      font-size: 14px;
+      line-height: 1.5;
+      margin: 0 0 16px;
+      max-width: 960px;
+    }
+    .pool-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 20px;
+      align-items: flex-end;
+      margin-bottom: 16px;
+    }
+    .pool-toolbar label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: #bbb;
+    }
+    .pool-toolbar select,
+    .pool-toolbar input[type="search"] {
+      padding: 8px 10px;
+      background: #222;
+      border: 1px solid #444;
+      color: #eee;
+      border-radius: 4px;
+      min-width: 180px;
+    }
+    .pool-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .pool-chip {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: #ccc;
+    }
+    .pool-chip b { color: #ff9900; }
+    .pool-table-wrap {
+      overflow: auto;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #141414;
+    }
+    .pool-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 1100px;
+    }
+    .pool-table th,
+    .pool-table td {
+      border: 1px solid #333;
+      padding: 6px 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .pool-table th {
+      background: #222;
+      color: #ff9900;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+    .pool-table th.pool-sticky,
+    .pool-table td.pool-sticky {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: #181818;
+      text-align: left;
+      min-width: 210px;
+    }
+    .pool-table th.pool-sticky { z-index: 3; background: #222; }
+    .pool-table tr.pool-detail-row td {
+      background: #101010;
+      padding: 0;
+    }
+    .pool-detail-inner {
+      padding: 10px 12px 12px;
+      overflow: auto;
+    }
+    .pool-detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 640px;
+    }
+    .pool-detail-table th,
+    .pool-detail-table td {
+      border: 1px solid #333;
+      padding: 5px 8px;
+      text-align: center;
+    }
+    .pool-detail-table th {
+      background: #1c1c1c;
+      color: #ff9900;
+    }
+    .pool-detail-table td:first-child {
+      text-align: left;
+      color: #ddd;
+      font-weight: 600;
+    }
+    .pool-nation-cell {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pool-owner {
+      display: block;
+      font-size: 11px;
+      color: #888;
+      margin-top: 2px;
+    }
+    .pool-status-ok { color: #8c8; }
+    .pool-status-warn { color: #fc8; }
+    .pool-status-bad { color: #f88; }
+    .pool-expand-btn {
+      margin-left: auto;
+      padding: 4px 8px;
+      font-size: 11px;
+      background: #333;
+      color: #ddd;
+      border: 1px solid #555;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .pool-expand-btn:hover { background: #444; }
+    .pool-zero { color: #666; }
+    .pool-error {
+      color: #f88;
+      padding: 16px;
+      background: #2a1515;
+      border: 1px solid #633;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body class="squad-page">
+  <div id="nav"></div>
+
+  <div class="pool-wrap">
+    <h1 style="color:#ff9900;margin:16px 0 8px;">Nation player pool</h1>
+    <p class="pool-intro">
+      GPDB counts for each selectable nation — rating bands, U21 (age ≤21), and position breakdown
+      (GK / DEF / MID / FWD). Uses the same nation matching as international call-ups.
+      Admin only — for club home-grown planning and World Cup nation selection.
+    </p>
+
+    <div id="poolError" class="pool-error" hidden></div>
+
+    <div class="pool-toolbar">
+      <label>
+        Sort
+        <select id="poolSort">
+          <option value="seed">Seed rank</option>
+          <option value="total_desc">Total players (high → low)</option>
+          <option value="total_asc">Total players (low → high)</option>
+          <option value="name">Nation name</option>
+        </select>
+      </label>
+      <label>
+        Filter
+        <select id="poolFilter">
+          <option value="all">All nations</option>
+          <option value="short">Short pool (&lt;24 or &lt;2 GK)</option>
+          <option value="empty">No GPDB match</option>
+          <option value="unassigned">Unassigned owner</option>
+          <option value="assigned">Assigned owner</option>
+        </select>
+      </label>
+      <label>
+        Search
+        <input type="search" id="poolSearch" placeholder="Nation or owner…">
+      </label>
+    </div>
+
+    <div id="poolSummary" class="pool-summary"></div>
+
+    <div class="pool-table-wrap">
+      <table class="pool-table" id="poolTable">
+        <thead>
+          <tr>
+            <th class="pool-sticky">Nation</th>
+            <th>Total</th>
+            <th>U21</th>
+            <th>≤65</th>
+            <th>66–69</th>
+            <th>70–72</th>
+            <th>73–75</th>
+            <th>76–78</th>
+            <th>79+</th>
+            <th>GK</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="poolBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script type="module" src="nation_player_pool.js"></script>
+</body>
+</html>

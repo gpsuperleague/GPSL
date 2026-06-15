@@ -187,6 +187,11 @@ export const SEASON_BREAK_NAV = [
         hash: "sb-owner-rankings",
         page: "admin_international",
       },
+      {
+        label: "Nation player pool",
+        href: "nation_player_pool.html",
+        page: "nation_player_pool",
+      },
     ],
   },
 ];

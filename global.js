@@ -1374,6 +1374,13 @@ export async function buildNav() {
           page: "nation_select",
         });
       }
+      if (isGpslAdminUser(user)) {
+        items.push({
+          href: "nation_player_pool.html",
+          label: "Nation player pool",
+          page: "nation_player_pool",
+        });
+      }
       return items;
     }
 

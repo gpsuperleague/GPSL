@@ -138,6 +138,16 @@ export function gpdbNationFilterValues(nation, nationFilterOptions = []) {
     .map((opt) => opt.value);
 }
 
+/** Admin: GPDB pool counts by nation (rating bands, U21, position). */
+export async function loadNationPlayerPoolReport(client = supabase) {
+  const { data, error } = await client.rpc("international_nation_player_pool_report");
+  if (error) {
+    console.error("loadNationPlayerPoolReport:", error);
+    throw error;
+  }
+  return data || [];
+}
+
 export async function loadNationalSquad(nationCode, client = supabase) {
   const { data, error } = await client
     .from("international_squad_public")
