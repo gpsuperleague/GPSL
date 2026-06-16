@@ -1,16 +1,21 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260618-kickoff-top-and-mid";
+export const SEASON_ADMIN_NAV_VERSION = "20260618-kickoff-calendar-preseason";
 
-const KICKOFF_NAV_ITEMS = [
-  {
-    label: "Create new season",
-    href: "admin_season.html",
-    hash: "wf-kickoff",
-    page: "admin_season",
-  },
-];
+const SEASON_CALENDAR_NAV_ITEM = {
+  label: "GPSL season calendar",
+  href: "admin_season.html",
+  hash: "wf-calendar",
+  page: "admin_season",
+};
+
+const PRE_SEASON_TRANSFERS_NAV_ITEM = {
+  label: "Pre-season transfers",
+  href: "admin_season.html",
+  hash: "wf-kickoff",
+  page: "admin_season",
+};
 
 const TRANSFER_WINDOW_NAV_ITEMS = [
   {
@@ -35,7 +40,7 @@ export const SEASON_ADMIN_NAV = [
   {
     id: "kickoff",
     label: "Kickoff",
-    items: [...KICKOFF_NAV_ITEMS],
+    items: [PRE_SEASON_TRANSFERS_NAV_ITEM],
   },
   {
     id: "divisions",
@@ -64,7 +69,7 @@ export const SEASON_ADMIN_NAV = [
   {
     id: "kickoff_go_live",
     label: "Kickoff",
-    items: [...KICKOFF_NAV_ITEMS],
+    items: [SEASON_CALENDAR_NAV_ITEM, PRE_SEASON_TRANSFERS_NAV_ITEM],
   },
   {
     id: "assign_cups",
@@ -133,15 +138,7 @@ export const SEASON_ADMIN_NAV = [
   {
     id: "create",
     label: "Create New Season",
-    items: [
-      {
-        label: "Set season calendar",
-        href: "admin_season.html",
-        hash: "wf-calendar",
-        page: "admin_season",
-      },
-      ...TRANSFER_WINDOW_NAV_ITEMS,
-    ],
+    items: [...TRANSFER_WINDOW_NAV_ITEMS],
   },
   {
     id: "mid_season",
