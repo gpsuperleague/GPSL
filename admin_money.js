@@ -413,7 +413,7 @@ async function postSeasonWageBills() {
 }
 
 async function applyEmergencyTac() {
-  setStatus("upkeepTaxStatus", "Applying TAC…");
+  setStatus("upkeepTaxStatus", "Applying emergency tax…");
   const { data, error } = await supabase.rpc("competition_admin_apply_emergency_tac", {
     p_season_id: currentSeasonId,
   });
@@ -423,7 +423,7 @@ async function applyEmergencyTac() {
   }
   setStatus(
     "upkeepTaxStatus",
-    `✅ Emergency TAC applied to ${data?.clubs_taxed ?? 0} club(s) above threshold. Once per club per season.`,
+    `✅ Emergency tax applied to ${data?.clubs_taxed ?? 0} club(s) above threshold. Once per club per season.`,
     true
   );
 }
