@@ -1,7 +1,20 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260618-mid-season-before-playoffs";
+export const SEASON_ADMIN_NAV_VERSION = "20260618-transfer-window-in-create";
+
+const TRANSFER_WINDOW_NAV_ITEMS = [
+  {
+    label: "Set transfer window open",
+    href: "admin_transfers.html",
+    page: "admin_transfers",
+  },
+  {
+    label: "Set transfer window closed",
+    href: "admin_transfers.html",
+    page: "admin_transfers",
+  },
+];
 
 export const SEASON_ADMIN_NAV = [
   {
@@ -114,23 +127,13 @@ export const SEASON_ADMIN_NAV = [
         hash: "wf-calendar",
         page: "admin_season",
       },
+      ...TRANSFER_WINDOW_NAV_ITEMS,
     ],
   },
   {
     id: "mid_season",
     label: "Mid Season",
-    items: [
-      {
-        label: "Set transfer window open",
-        href: "admin_transfers.html",
-        page: "admin_transfers",
-      },
-      {
-        label: "Set transfer window closed",
-        href: "admin_transfers.html",
-        page: "admin_transfers",
-      },
-    ],
+    items: [...TRANSFER_WINDOW_NAV_ITEMS],
   },
   {
     id: "playoffs",
