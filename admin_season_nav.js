@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260618-cups-after-divisions";
+export const SEASON_ADMIN_NAV_VERSION = "20260618-cup-fixtures-after-league";
 
 export const SEASON_ADMIN_NAV = [
   {
@@ -88,18 +88,6 @@ export const SEASON_ADMIN_NAV = [
     ],
   },
   {
-    id: "create",
-    label: "Create New Season",
-    items: [
-      {
-        label: "Set season calendar",
-        href: "admin_season.html",
-        hash: "wf-calendar",
-        page: "admin_season",
-      },
-    ],
-  },
-  {
     id: "cup_fixtures",
     label: "Cup Fixtures",
     items: [
@@ -113,6 +101,18 @@ export const SEASON_ADMIN_NAV = [
         label: "Draw cup fixtures",
         href: "admin_fixtures-cups.html",
         page: "admin_fixtures-cups",
+      },
+    ],
+  },
+  {
+    id: "create",
+    label: "Create New Season",
+    items: [
+      {
+        label: "Set season calendar",
+        href: "admin_season.html",
+        hash: "wf-calendar",
+        page: "admin_season",
       },
     ],
   },
