@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260617-season-break-weather";
+export const NAV_CONFIG_VERSION = "20260617-season-break-managers";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -146,10 +146,6 @@ export const ADMIN_NAV_SECTION = {
     { seasonMega: true, label: "Season management" },
     { seasonBreakMega: true, label: "Season Break" },
     { ownersMega: true, label: "Owners & accounts" },
-
-    /* Not in workflow menus — review and relocate later */
-    { heading: true, label: "Other" },
-    { href: "admin_manager_targets.html", label: "Manager contract targets" },
   ],
 };
 

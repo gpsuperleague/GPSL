@@ -57,6 +57,11 @@ export const SEASON_BREAK_NAV = [
         href: "admin_challenges.html",
         page: "admin_challenges",
       },
+      {
+        label: "Manager contract targets",
+        href: "admin_manager_targets.html",
+        page: "admin_manager_targets",
+      },
     ],
   },
   {
