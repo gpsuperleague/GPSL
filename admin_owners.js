@@ -204,24 +204,51 @@ async function changeOwnerClub() {
   await loadOwnerList();
 }
 
+async function invokeEdgeFunction(name, body) {
+  const { data, error } = await supabase.functions.invoke(name, { body });
+  if (error) {
+    let detail = error.message || "Request failed";
+    try {
+      const ctx = error.context;
+      if (ctx && typeof ctx.json === "function") {
+        const payload = await ctx.json();
+        if (payload?.error) detail = String(payload.error);
+      }
+    } catch {
+      /* ignore */
+    }
+    if (data?.error) detail = String(data.error);
+    return { data, error: new Error(detail) };
+  }
+  if (data?.error) {
+    return { data, error: new Error(String(data.error)) };
+  }
+  return { data, error: null };
+}
+
 async function registerForClubAuction() {
   const email = document.getElementById("clubAuctionEmail")?.value?.trim().toLowerCase();
   const password = document.getElementById("clubAuctionPassword")?.value?.trim() || "";
+  const registerOnly =
+    document.getElementById("clubAuctionRegisterOnly")?.checked === true;
 
-  if (!email || !password) {
-    setStatus("clubAuctionStatus", "Enter email and temporary password.", false);
+  if (!email) {
+    setStatus("clubAuctionStatus", "Enter owner email.", false);
     return;
   }
 
-  if (password.length < 6) {
+  if (!registerOnly && password.length < 6) {
     setStatus("clubAuctionStatus", "Password must be at least 6 characters.", false);
     return;
   }
 
-  setStatus("clubAuctionStatus", "Creating owner…");
+  setStatus("clubAuctionStatus", registerOnly ? "Registering existing account…" : "Creating owner…");
 
-  const { data, error } = await supabase.functions.invoke("create-owner-club-auction", {
-    body: { email, password, startingBalance: clubAuctionStartingBalance },
+  const { data, error } = await invokeEdgeFunction("create-owner-club-auction", {
+    email,
+    password: registerOnly ? undefined : password,
+    startingBalance: clubAuctionStartingBalance,
+    registerOnly,
   });
 
   if (error) {
@@ -233,15 +260,6 @@ async function registerForClubAuction() {
     return;
   }
 
-  if (data?.error) {
-    setStatus(
-      "clubAuctionStatus",
-      "❌ " + data.error + " — run owner_onboarding_club_auction.sql",
-      false
-    );
-    return;
-  }
-
   if (document.getElementById("clubAuctionEmail")) {
     document.getElementById("clubAuctionEmail").value = "";
   }
@@ -249,11 +267,13 @@ async function registerForClubAuction() {
     document.getElementById("clubAuctionPassword").value = "";
   }
 
-  const action = data?.auth_created
-    ? "created"
-    : data?.password_updated
-      ? "updated"
-      : "registered";
+  const action = data?.register_only
+    ? "registered (existing login kept)"
+    : data?.auth_created
+      ? "created"
+      : data?.password_updated
+        ? "updated"
+        : "registered";
 
   setStatus(
     "clubAuctionStatus",
