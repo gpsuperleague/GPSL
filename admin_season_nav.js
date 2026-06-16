@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260618-challenge-payouts-mid-season";
+export const SEASON_ADMIN_NAV_VERSION = "20260618-create-new-season-kickoff";
 
 const TRANSFER_WINDOW_NAV_ITEMS = [
   {
@@ -28,7 +28,7 @@ export const SEASON_ADMIN_NAV = [
     label: "Kickoff",
     items: [
       {
-        label: "Start new season",
+        label: "Create new season",
         href: "admin_season.html",
         hash: "wf-kickoff",
         page: "admin_season",
