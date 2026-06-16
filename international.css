@@ -96,6 +96,20 @@
 .nat-pick-card.taken { opacity: 0.45; cursor: not-allowed; }
 .nat-pick-card.disabled { opacity: 0.6; cursor: not-allowed; }
 .nat-pick-card.my-turn { box-shadow: 0 0 0 2px #ff9900; }
+.nat-pick-card.nat-pool-weak {
+  opacity: 0.42;
+  border-color: #333;
+  background: #181818;
+}
+.nat-pick-card.nat-pool-weak:hover:not(.taken):not(.disabled) {
+  border-color: #444;
+  transform: none;
+}
+.nat-pick-card.nat-pool-weak .name { color: #777; }
+.nat-pick-card.nat-pool-weak .nat-flag-img {
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
 .nat-pick-card .flag { font-size: 28px; display: block; margin-bottom: 4px; }
 .nat-pick-card .name { font-size: 12px; color: #ddd; }
 

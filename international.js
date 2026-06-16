@@ -6,6 +6,70 @@ import { normalizeNation } from "./squad_rules.js";
 
 export const NATIONAL_SQUAD_MAX = 23;
 export const NATIONAL_SQUAD_MIN_GK = 2;
+export const NATION_POOL_MIN_PLAYERS = 24;
+
+/** Min GPDB players per band to support one GPSL club on this nation. */
+export const NATION_HEALTHY_CLUB_REQUIREMENTS = [
+  { key: "r79_plus", min: 1, label: "79+ star" },
+  { key: "r76_78", min: 1, label: "76–78" },
+  { key: "r73_75", min: 5, label: "73–75" },
+  { key: "r70_72", min: 10, label: "70–72" },
+  { key: "r66_69", min: 10, label: "66–69" },
+  { key: "le_65", min: 5, label: "≤65" },
+  { key: "u21", min: 8, label: "U21" },
+];
+
+export function nationPoolSection(row, key) {
+  return row?.pool?.[key] || { total: 0, gk: 0, def: 0, mid: 0, fwd: 0 };
+}
+
+export function nationPoolStatus(row) {
+  const all = nationPoolSection(row, "all");
+  if (all.total === 0) return { key: "bad", label: "No GPDB match" };
+  if (all.total >= NATION_POOL_MIN_PLAYERS && all.gk >= NATIONAL_SQUAD_MIN_GK) {
+    return { key: "ok", label: "OK" };
+  }
+  if (all.total >= 23 && all.gk >= NATIONAL_SQUAD_MIN_GK) {
+    return { key: "warn", label: "Tight" };
+  }
+  return { key: "bad", label: "Short" };
+}
+
+export function nationHealthyClubCapacity(row) {
+  const caps = NATION_HEALTHY_CLUB_REQUIREMENTS.map(({ key, min }) => {
+    const available = nationPoolSection(row, key).total;
+    return Math.floor(available / min);
+  });
+  return caps.length ? Math.min(...caps) : 0;
+}
+
+export function nationHasViableSquad(row) {
+  return nationPoolStatus(row).key === "ok";
+}
+
+export function nationCanSupportAnyClub(row) {
+  return nationHealthyClubCapacity(row) > 0;
+}
+
+/** True when pool is too thin for a full squad and/or cannot support any club. */
+export function nationPoolIsFaint(row) {
+  if (!row?.pool) return false;
+  return !nationHasViableSquad(row) || !nationCanSupportAnyClub(row);
+}
+
+export function nationPoolFaintTitle(row) {
+  if (!row?.pool || !nationPoolIsFaint(row)) return "";
+  const parts = [];
+  if (!nationHasViableSquad(row)) {
+    parts.push(
+      `Needs ≥${NATION_POOL_MIN_PLAYERS} GPDB players and ≥${NATIONAL_SQUAD_MIN_GK} GKs for a 23-man squad`
+    );
+  }
+  if (!nationCanSupportAnyClub(row)) {
+    parts.push("Pool too thin to support a GPSL club");
+  }
+  return parts.join(" · ");
+}
 
 export const WC_QUAL_GROUPS = 12;
 export const WC_QUAL_GROUP_SIZE = 5;

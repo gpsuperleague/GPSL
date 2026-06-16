@@ -4,8 +4,11 @@ import {
   loadOwnerDraftOrder,
   loadSelectionWindow,
   loadMyNation,
+  loadNationPlayerPoolReport,
   claimNation,
   renderNationFlag,
+  nationPoolIsFaint,
+  nationPoolFaintTitle,
 } from "./international.js";
 
 function setStatus(msg, ok = true) {
@@ -73,7 +76,7 @@ function renderDraftBoard(draft, myClub, currentPick) {
     </table>`;
 }
 
-function renderNationGrid(nations, windowState, myPick, myClub, draft) {
+function renderNationGrid(nations, windowState, myPick, myClub, draft, poolByCode) {
   const el = document.getElementById("nationGrid");
   const hint = document.getElementById("pickHint");
   if (!el) return;
@@ -96,16 +99,21 @@ function renderNationGrid(nations, windowState, myPick, myClub, draft) {
     .map((n) => {
       const taken = n.is_taken;
       const disabled = !open || !myTurn || taken;
+      const poolRow = poolByCode?.get(n.code);
+      const faint = poolRow ? nationPoolIsFaint(poolRow) : false;
+      const faintTitle = poolRow ? nationPoolFaintTitle(poolRow) : "";
       const cls = [
         "nat-pick-card",
         taken ? "taken" : "",
         disabled ? "disabled" : "",
         myTurn && !taken ? "my-turn" : "",
+        faint ? "nat-pool-weak" : "",
       ]
         .filter(Boolean)
         .join(" ");
+      const title = [taken ? "Taken" : n.name, faintTitle].filter(Boolean).join(" — ");
       return `
-        <div class="${cls}" data-code="${n.code}" title="${taken ? "Taken" : n.name}">
+        <div class="${cls}" data-code="${n.code}" title="${title.replace(/"/g, "&quot;")}">
           <span class="flag">${renderNationFlag(n, "lg")}</span>
           <span class="name">${n.name}</span>
         </div>`;
@@ -140,12 +148,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     .maybeSingle();
   const myClub = clubRow?.ShortName || null;
 
-  const [nations, draft, windowState, myNation] = await Promise.all([
+  const [nations, draft, windowState, myNation, poolRows] = await Promise.all([
     loadInternationalNations(supabase),
     loadOwnerDraftOrder(supabase),
     loadSelectionWindow(supabase),
     loadMyNation(supabase),
+    loadNationPlayerPoolReport(supabase).catch((err) => {
+      console.warn("nation_select pool report:", err);
+      return [];
+    }),
   ]);
+
+  const poolByCode = new Map((poolRows || []).map((r) => [r.nation_code, r]));
 
   const myPickRow = draft.find((d) => d.club_short_name === myClub);
   const myPick = myPickRow?.pick_order ?? null;
@@ -160,5 +174,5 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   renderWindow(windowState, myPick, draft, nations);
   renderDraftBoard(draft, myClub, windowState?.current_pick_rank);
-  renderNationGrid(nations, windowState, myPick, myClub, draft);
+  renderNationGrid(nations, windowState, myPick, myClub, draft, poolByCode);
 });

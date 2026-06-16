@@ -147,6 +147,26 @@
     .pool-status-ok { color: #8c8; }
     .pool-status-warn { color: #fc8; }
     .pool-status-bad { color: #f88; }
+    .pool-table tr.pool-row-faint td {
+      color: #666;
+      background: #121212;
+    }
+    .pool-table tr.pool-row-faint td.pool-sticky {
+      background: #121212;
+    }
+    .pool-table tr.pool-row-faint .nat-flag-img {
+      opacity: 0.5;
+      filter: grayscale(0.35);
+    }
+    .pool-table tr.pool-row-faint .pool-status-ok,
+    .pool-table tr.pool-row-faint .pool-status-warn,
+    .pool-table tr.pool-row-faint .pool-status-bad {
+      color: #666;
+    }
+    .pool-table tr.pool-row-faint .pool-clubs-ok,
+    .pool-table tr.pool-row-faint .pool-clubs-over {
+      color: #666;
+    }
     .pool-expand-btn {
       flex: 0 0 auto;
       margin-left: auto;
