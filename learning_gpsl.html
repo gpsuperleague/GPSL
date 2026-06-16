@@ -77,6 +77,7 @@
         <li><a href="#owners">Rankings &amp; challenges</a></li>
         <li><a href="#central-bank">Central Bank</a></li>
         <li><a href="#season">Season rhythm &amp; inbox</a></li>
+        <li><a href="#recent-updates">Recent updates (2026)</a></li>
         <li><a href="#help">Need help?</a></li>
       </ul>
     </nav>
@@ -116,6 +117,8 @@
         <a href="manager_listings.html">Manager Market</a>
         <a href="draftauction.html">Player Draft Auction</a>
         <a href="manager_draftauction.html">Manager Draft Auction</a>
+        <a href="club_auction.html">Club Auction</a>
+        <a href="legacy_players.html">Legacy players</a>
         <a href="expiring_contracts.html">Expiring Contracts</a>
         <a href="season_transfers.html">Season Transfers</a>
       </div>
@@ -125,6 +128,7 @@
         <a href="fixtures.html">Fixtures</a>
         <a href="progress.html">Tables</a>
         <a href="league_stats.html">Stats</a>
+        <a href="challenges.html">Season challenges</a>
         <a href="cups.html?cup=league_cup">League Cup</a>
         <a href="cups.html?cup=super8">Super8</a>
         <a href="cups.html?cup=plate">Plate</a>
@@ -141,6 +145,13 @@
         <a href="stadium.html">Stadium</a>
         <a href="matchday.html">Match Day</a>
         <a href="transfer_center.html">Transfer Centre</a>
+      </div>
+      <h3>My Nation</h3>
+      <div class="link-grid">
+        <a href="national_team.html">National team</a>
+        <a href="nation_select.html">Nation selection</a>
+        <a href="nation_player_pool.html">Nation player pool</a>
+        <a href="world_cup.html">World Cup</a>
       </div>
       <h3>Owners</h3>
       <div class="link-grid">
@@ -160,7 +171,7 @@
         <li><b><a href="stadium.html">Stadium</a></b> — capacity, attendance estimate, upcoming home gates, expansion.</li>
         <li><b><a href="matchday.html">Match Day</a></b> — submit scores, player stats, and your match squad.</li>
         <li><b><a href="transfer_center.html">Transfer Centre</a></b> — your listings, incoming offers, scouting targets, and direct deals.</li>
-        <li><b><a href="history.html">Club History</a></b> — past seasons, positions, and archived results.</li>
+        <li><b><a href="history.html">Club History</a></b> — past seasons, positions, archived results, and a <b>trophy cabinet</b> (click a trophy for that season’s final table or cup bracket).</li>
       </ul>
     </div>
 
@@ -242,10 +253,25 @@
       <h3>Contracts (summary)</h3>
       <ul>
         <li>Standard contracts run in <b>3-season</b> cycles. Track expiry on <a href="expiring_contracts.html">Expiring Contracts</a> and the squad page.</li>
-        <li><b>Final season</b> — you cannot list or sell the player on the transfer market. They enter the hidden wage auction at expiry (all clubs, including yours, may bid once).</li>
+        <li><b>Final season</b> — you cannot list or sell the player on the transfer market. They enter the hidden wage auction at expiry (all clubs, including yours, may bid once) — unless they are a <b>legacy card</b> (see below).</li>
         <li><b>Home-grown ≤23</b> — protected from the expiry auction; uncontested renewal applies while still eligible. Protection ends at age 24.</li>
         <li>Winning an expiry bid gives a new 3-season contract at the bid wage from season rollover.</li>
       </ul>
+      <h3>Legacy cards (off PESDB)</h3>
+      <p>
+        When admin syncs GPDB with <a href="https://pesdb.net/efootball/" target="_blank" rel="noopener">pesdb.net</a>,
+        players still in GPSL but no longer on the site are marked <b>legacy</b>. They stay at their club and remain playable.
+      </p>
+      <ul>
+        <li><b>Cannot be sold or listed</b> on the transfer market at any time.</li>
+        <li><b>Not on the expiring-contracts wage bid market</b> — other clubs cannot bid for them.</li>
+        <li>In the <b>final contract year</b>, renew from <a href="squad.html">Squad</a>: <b>one season at a time</b> (not a new 3-year deal). Home-grown ≤23 may keep the same wage on renew.</li>
+        <li>Or choose <b>Expire — release for MV</b> from Squad to drop the player for market value.</li>
+        <li>If the card returns on a future sync, it becomes a normal GPDB card again.</li>
+      </ul>
+      <div class="link-grid">
+        <a href="legacy_players.html">Legacy players (league list)</a>
+      </div>
       <div class="link-grid">
         <a href="squad.html">Squad</a>
         <a href="expiring_contracts.html">Expiring Contracts</a>
@@ -282,6 +308,7 @@
         <li>When the <b>transfer window</b> is open, list players from the squad or Transfer Centre, bid on <a href="all_listings.html">Transfer Market</a> listings, and accept or reject direct offers.</li>
         <li>Completed deals post to finances and appear in your <a href="inbox.html">Inbox</a>.</li>
         <li><b>Scouting targets</b> — save players from GPDB; review them under Transfer Centre → Scouting Targets.</li>
+        <li><b>Legacy cards</b> — players removed from pesdb.net stay at their club but cannot be sold; see <a href="#squad">Squad &amp; contracts</a> and <a href="legacy_players.html">Legacy players</a>.</li>
       </ul>
       <h3>Selling abroad</h3>
       <ul>
@@ -433,6 +460,48 @@
         <li>Stay within squad limits and composition minimums (<a href="squad.html">Squad</a>).</li>
         <li>Meet manager targets or plan for a change at season end.</li>
         <li>Respond to inbox actions promptly (confirm results, accept deals, pick your nation when called).</li>
+      </ul>
+    </div>
+
+    <div class="section" id="recent-updates">
+      <h2>Recent updates (2026)</h2>
+      <p>Summary of newer features and rule changes — also woven into the sections above.</p>
+
+      <h3>GPDB &amp; player values</h3>
+      <p>
+        Admin can sync the <a href="GPDB.html">Player Database</a> from pesdb.net between seasons (Season Break tools).
+        After a sync, matched players get updated stats; new pesdb cards appear as free agents; missing cards become legacy.
+      </p>
+      <ul>
+        <li><b>Rating</b> in GPDB and squad may show as <b>85 (95)</b> — current OVR plus calculated potential used for economics.</li>
+        <li><b>Pot.</b> column — calculated potential (league formula), not always the same as the raw pesdb max level.</li>
+        <li><b>Market value</b> and <b>maximum reserve price</b> follow the league spreadsheet formulas (rating, potential, age, position). Maximum reserve is <b>1.5× market value</b>.</li>
+        <li>Stored values update when admin applies a sync — day-to-day screens use the database figures on listings, squad, and transfers.</li>
+      </ul>
+      <div class="link-grid">
+        <a href="GPDB.html">Player Database</a>
+        <a href="squad.html">Squad</a>
+        <a href="all_listings.html">Transfer Market</a>
+      </div>
+
+      <h3>Legacy players</h3>
+      <p>
+        Cards that leave pesdb.net but remain in GPSL are tagged <b>legacy</b>. They still count for squad, home-grown, and match day.
+        Transfer rules are restricted — full detail on <a href="legacy_players.html">Legacy players</a> and under
+        <a href="#squad">Squad &amp; contracts</a>.
+      </p>
+      <ul>
+        <li>Not sellable and not on the expiry wage auction.</li>
+        <li>Final-year renewals: <b>1 season</b> at a time from Squad.</li>
+        <li>League-wide list: Transfers → <a href="legacy_players.html">Legacy players</a>.</li>
+      </ul>
+
+      <h3>Navigation additions</h3>
+      <ul>
+        <li><b>Transfers → Legacy players</b> — all legacy cards by club.</li>
+        <li><b>Transfers → Club Auction</b> — also linked from registration when bidding for a vacant club.</li>
+        <li><b>My Nation → Nation player pool</b> — eligible players for your national team.</li>
+        <li><b>League → Challenges</b> — season challenge targets and prizes (also under Owners).</li>
       </ul>
     </div>
 

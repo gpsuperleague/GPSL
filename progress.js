@@ -3,6 +3,7 @@ import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
 import {
   loadCurrentSeason,
   loadStandingsWithPrizes,
+  loadArchivedSeasonStandings,
   loadLeagueFixtures,
   loadShieldSpoonPlayoffQualifiers,
   groupStandingsByDivision,
@@ -19,6 +20,45 @@ import {
   formatMoney,
   normalizeClubKey,
 } from "./competition.js";
+
+function seasonFromUrl() {
+  return new URLSearchParams(window.location.search).get("season")?.trim() || "";
+}
+
+function divisionFromUrl() {
+  const div = new URLSearchParams(window.location.search).get("division")?.trim() || "";
+  return LEAGUE_DIVISIONS.includes(div) ? div : "";
+}
+
+function applyDivisionFilterFromUrl() {
+  const div = divisionFromUrl();
+  if (!div) return;
+  document.querySelectorAll(".filter-div").forEach((el) => {
+    el.checked = el.dataset.division === div;
+  });
+  syncFilterAllCheckbox();
+}
+
+function scrollToDivisionFromUrl() {
+  const div = divisionFromUrl();
+  if (!div) return;
+  requestAnimationFrame(() => {
+    document
+      .querySelector(`.division-panel[data-division="${div}"]`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+function setArchiveModeUi(seasonLabel) {
+  const meta = document.getElementById("seasonMeta");
+  if (meta) {
+    meta.innerHTML = `Final tables — <b>${seasonLabel}</b> (archived) · <a class="gpsl-link" href="progress.html">Current season</a>`;
+  }
+  document.getElementById("homeAwaySection")?.setAttribute("hidden", "");
+  const venueFilter = document.getElementById("venueFilter");
+  if (venueFilter) venueFilter.hidden = true;
+  document.querySelector(".home-away-note")?.remove();
+}
 
 const DIVISION_TITLES = {
   superleague: "SuperLeague",
@@ -383,9 +423,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     .maybeSingle();
   myClubRef = { short: club?.ShortName || null, name: club?.Club || null };
 
-  const season = await loadCurrentSeason(supabase);
+  const archiveSeason = seasonFromUrl();
   const meta = document.getElementById("seasonMeta");
   const root = document.getElementById("tablesRoot");
+
+  if (archiveSeason) {
+    setArchiveModeUi(archiveSeason);
+    const archived = await loadArchivedSeasonStandings(supabase, archiveSeason);
+    if (!archived.length) {
+      root.innerHTML = `<p class="empty-msg">No archived tables for season “${archiveSeason}”. Check the season label matches the trophy (e.g. 2024/25).</p>`;
+      return;
+    }
+    shieldSpoonPlayoffQualifiers = { championship_a: {}, championship_b: {} };
+    standingsGroups = groupStandingsByDivision(archived);
+    applyDivisionFilterFromUrl();
+    wireDivisionFilter();
+    renderTables();
+    scrollToDivisionFromUrl();
+    return;
+  }
+
+  const season = await loadCurrentSeason(supabase);
 
   if (!season) {
     meta.textContent = "No active competition season yet.";

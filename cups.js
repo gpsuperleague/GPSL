@@ -5,6 +5,7 @@ import {
   CUP_LABELS,
   GPSL_MONTH_LABELS,
   loadCupBracket,
+  loadCupBracketForSeason,
   loadCupQualified,
   loadCupMatchExtras,
   preprocessCupBracketRounds,
@@ -29,6 +30,10 @@ function cupFromUrl() {
   return null;
 }
 
+function seasonFromUrl() {
+  return new URLSearchParams(window.location.search).get("season")?.trim() || "";
+}
+
 let myClubShort = null;
 let currentCup = "league_cup";
 let calendarStatus = null;
@@ -47,6 +52,13 @@ function renderToolbar() {
       const hero = document.getElementById("cupHero");
       if (hero) {
         hero.innerHTML = renderCupHero(currentCup, CUP_LABELS[currentCup]);
+      }
+      const archiveSeason = seasonFromUrl();
+      if (archiveSeason) {
+        const u = new URL(window.location.href);
+        u.searchParams.set("cup", code);
+        u.searchParams.set("season", archiveSeason);
+        history.replaceState(null, "", u);
       }
       renderToolbar();
       void renderCup();
@@ -290,6 +302,33 @@ function renderBracketRoundColumn(round_no, matches, extras) {
 }
 
 async function renderCup() {
+  const archiveSeason = seasonFromUrl();
+  const pageMeta = document.getElementById("pageMeta");
+
+  if (archiveSeason) {
+    if (pageMeta) {
+      pageMeta.innerHTML = `${CUP_LABELS[currentCup] || currentCup} · <b>${escapeHtml(archiveSeason)}</b> final bracket (archived) · <a class="gpsl-link" href="cups.html?cup=${encodeURIComponent(currentCup)}">Current season</a>`;
+    }
+    const nodes = await loadCupBracketForSeason(
+      supabase,
+      currentCup,
+      archiveSeason,
+      fullClubName
+    );
+    document.getElementById("qualifiedList").innerHTML = nodes.length
+      ? `<span class="empty">Archived ${escapeHtml(archiveSeason)} — ${nodes.length} bracket node${nodes.length === 1 ? "" : "s"}.</span>`
+      : `<span class="empty">No archived bracket for ${escapeHtml(archiveSeason)} ${escapeHtml(CUP_LABELS[currentCup] || currentCup)}.</span>`;
+    const fixtureIds = nodes.map((n) => n.fixture_id).filter(Boolean);
+    const extras = await loadCupMatchExtras(supabase, fixtureIds);
+    renderBracket(nodes, extras);
+    return;
+  }
+
+  if (pageMeta) {
+    pageMeta.textContent =
+      "Prestige cups (table places) and League Cup (60-club knockout)";
+  }
+
   const qualified = await loadCupQualified(supabase, currentCup);
   renderQualified(qualified);
 
@@ -328,9 +367,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (hero) {
     hero.innerHTML = renderCupHero(currentCup, CUP_LABELS[currentCup]);
   }
-
-  document.getElementById("pageMeta").textContent =
-    "Prestige cups (table places) and League Cup (60-club knockout)";
 
   renderToolbar();
   await renderCup();

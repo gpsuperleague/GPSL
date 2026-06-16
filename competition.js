@@ -1357,6 +1357,119 @@ export async function loadClubSeasonArchive(supabase, clubShortName) {
   return data || [];
 }
 
+/** Map archived club season row → standings table row shape. */
+export function mapArchiveRowToStanding(row) {
+  return {
+    club_short_name: row.club_short_name,
+    club_name: row.club_name,
+    division: row.division,
+    table_position: row.final_position,
+    mp: row.mp,
+    w: row.won,
+    d: row.drawn,
+    l: row.lost,
+    gf: row.gf,
+    ga: row.ga,
+    gd: row.gd,
+    pts: row.pts,
+    form_last10: "",
+    league_prize_amount: 0,
+    league_prize_paid: true,
+  };
+}
+
+export async function loadArchivedSeasonStandings(supabase, seasonLabel) {
+  const label = String(seasonLabel || "").trim();
+  if (!label) return [];
+
+  const { data, error } = await supabase
+    .from("competition_club_season_archive_public")
+    .select("*")
+    .eq("season_label", label)
+    .order("division", { ascending: true })
+    .order("final_position", { ascending: true });
+
+  if (error) {
+    console.error("loadArchivedSeasonStandings:", error);
+    return [];
+  }
+  return (data || []).map(mapArchiveRowToStanding);
+}
+
+/** Cup bracket for a completed season (by season label). */
+export async function loadCupBracketForSeason(
+  supabase,
+  cupCode,
+  seasonLabel,
+  clubNameFn = (short) => short
+) {
+  const label = String(seasonLabel || "").trim();
+  if (!label || !cupCode) return [];
+
+  const { data: season, error: seasonErr } = await supabase
+    .from("competition_seasons")
+    .select("id, label, status")
+    .eq("label", label)
+    .maybeSingle();
+
+  if (seasonErr || !season?.id) {
+    console.error("loadCupBracketForSeason season:", seasonErr);
+    return [];
+  }
+
+  const { data: nodes, error: nodeErr } = await supabase
+    .from("competition_cup_bracket_nodes")
+    .select(
+      "id, season_id, cup_code, round_no, match_no, cup_leg, leg1_node_id, home_club_short_name, away_club_short_name, winner_club_short_name, fixture_id, child_node_id, child_slot"
+    )
+    .eq("season_id", season.id)
+    .eq("cup_code", cupCode)
+    .order("round_no", { ascending: true })
+    .order("match_no", { ascending: true })
+    .order("cup_leg", { ascending: true });
+
+  if (nodeErr) {
+    console.error("loadCupBracketForSeason nodes:", nodeErr);
+    return [];
+  }
+  if (!nodes?.length) return [];
+
+  const fixtureIds = [...new Set(nodes.map((n) => n.fixture_id).filter(Boolean))];
+  let fixMap = new Map();
+  if (fixtureIds.length) {
+    const { data: fixtures, error: fixErr } = await supabase
+      .from("competition_fixtures")
+      .select(
+        "id, status, home_goals, away_goals, gpsl_month, weather, pitch_condition, kit_season"
+      )
+      .in("id", fixtureIds);
+    if (fixErr) {
+      console.error("loadCupBracketForSeason fixtures:", fixErr);
+    } else {
+      fixMap = new Map((fixtures || []).map((f) => [f.id, f]));
+    }
+  }
+
+  return nodes.map((n) => {
+    const f = fixMap.get(n.fixture_id) || {};
+    return {
+      ...n,
+      season_label: season.label,
+      home_club_name: clubNameFn(n.home_club_short_name),
+      away_club_name: clubNameFn(n.away_club_short_name),
+      winner_club_name: clubNameFn(n.winner_club_short_name),
+      fixture_status: f.status ?? null,
+      home_goals: f.home_goals ?? null,
+      away_goals: f.away_goals ?? null,
+      fixture_gpsl_month: f.gpsl_month ?? null,
+      weather: f.weather ?? null,
+      pitch_condition: f.pitch_condition ?? null,
+      kit_season: f.kit_season ?? null,
+      round_gpsl_month: f.gpsl_month ?? null,
+    };
+  });
+}
+
 export async function loadClubLoans(supabase) {
   const { data, error } = await supabase
     .from("club_loans_public")

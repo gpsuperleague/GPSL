@@ -78,11 +78,39 @@ function esc(text) {
     .replace(/"/g, "&quot;");
 }
 
-function renderTrophyOnShelf(imageSrc, seasonLabel) {
+/** Build URL to final tables or cup bracket for an archived honour. */
+export function trophyHonourHref(honour) {
+  if (!honour?.season_label) return null;
+  const season = encodeURIComponent(honour.season_label);
+  if (honour.honour_type === "league_champion" && honour.division) {
+    const div = encodeURIComponent(honour.division);
+    return `progress.html?season=${season}&division=${div}`;
+  }
+  if (honour.honour_type === "cup_winner" && honour.cup_code) {
+    const cup = honour.cup_code === "spoon" ? "bowl" : honour.cup_code;
+    return `cups.html?cup=${encodeURIComponent(cup)}&season=${season}`;
+  }
+  return null;
+}
+
+function renderTrophyOnShelf(imageSrc, honour, slotLabel) {
+  const seasonLabel = honour.season_label;
+  const href = trophyHonourHref(honour);
+  const title = href
+    ? `View ${seasonLabel} ${slotLabel} — final table / cup bracket`
+    : seasonLabel;
+  const figure = `
+      <img class="trophy-png" src="${esc(imageSrc)}" alt="${esc(seasonLabel)} trophy" width="56" height="72" loading="lazy">
+      <figcaption class="trophy-season">${esc(seasonLabel)}</figcaption>`;
+  if (href) {
+    return `
+    <a class="trophy-on-shelf trophy-link" href="${esc(href)}" title="${esc(title)}">
+      ${figure}
+    </a>`;
+  }
   return `
     <figure class="trophy-on-shelf" title="${esc(seasonLabel)}">
-      <img class="trophy-png" src="${esc(imageSrc)}" alt="${esc(seasonLabel)} trophy" width="56" height="72" loading="lazy">
-      <figcaption class="trophy-season">${esc(seasonLabel)}</figcaption>
+      ${figure}
     </figure>`;
 }
 
@@ -106,7 +134,7 @@ function renderBay(slot, honours) {
   }
 
   const figures = wins
-    .map((w) => renderTrophyOnShelf(slot.image, w.season_label))
+    .map((w) => renderTrophyOnShelf(slot.image, w, slot.label))
     .join("");
 
   return `
