@@ -26,7 +26,7 @@ import { formatNavLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260617-season-break-managers";
+export const GLOBAL_JS_VERSION = "20260617-season-club-purchases";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -1368,7 +1368,7 @@ export async function buildNav() {
       formatNavLabel(section.label)
     )}</button>`;
     const dropdownClass =
-      section.id === "admin"
+      section.id === "admin" || section.id === "transfers"
         ? "nav-dropdown nav-dropdown-scrollable"
         : "nav-dropdown";
     html += `<div class="${dropdownClass}" role="menu">`;
