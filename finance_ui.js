@@ -312,9 +312,32 @@ export const FINANCE_UI_SECTIONS = [
 ];
 
 /**
- * @param {Array<{ entry_type?: string, amount?: number }>} rows
+ * @param {Array<{ entry_type?: string, amount?: number, description?: string, metadata?: object, club_name?: string }>} rows
  * @returns {Map<string, { amount: number, detail: Record<string, number> }>}
  */
+function ledgerBreakdownLabel(row) {
+  const type = row.entry_type || "other";
+  if (type === "infra_purchase") {
+    const md = parseMetadata(row.metadata);
+    if (md.stadium_name) return String(md.stadium_name);
+    const desc = String(row.description || "");
+    const fromDesc = desc.match(/Stadium purchase — (.+?)(?:\s*\(|$)/i);
+    if (fromDesc?.[1]) return fromDesc[1].trim();
+    if (row.club_name) return String(row.club_name);
+  }
+  return financeEntryLabel(type);
+}
+
+function parseMetadata(raw) {
+  if (!raw) return {};
+  if (typeof raw === "object") return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
 export function aggregateLedgerByLine(rows) {
   const byLine = new Map();
 
@@ -327,15 +350,16 @@ export function aggregateLedgerByLine(rows) {
     const type = r.entry_type || "other";
     const amt = Number(r.amount || 0);
     const lineId = LEDGER_TYPE_TO_LINE[type];
+    const breakdownKey = ledgerBreakdownLabel(r);
     if (!lineId) {
       const bucket = ensure("_unmapped");
       bucket.amount += amt;
-      bucket.detail[type] = (bucket.detail[type] || 0) + amt;
+      bucket.detail[breakdownKey] = (bucket.detail[breakdownKey] || 0) + amt;
       continue;
     }
     const bucket = ensure(lineId);
     bucket.amount += amt;
-    bucket.detail[type] = (bucket.detail[type] || 0) + amt;
+    bucket.detail[breakdownKey] = (bucket.detail[breakdownKey] || 0) + amt;
   }
 
   return byLine;

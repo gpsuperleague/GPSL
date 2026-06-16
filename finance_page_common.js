@@ -13,6 +13,7 @@ import {
   summariseLedgerTotals,
 } from "./finance_ui.js";
 import { buildFinanceProjections } from "./finance_projections.js";
+import { appendAssignmentInfraPurchaseLedger } from "./finance_assignment_ledger.js";
 import {
   aggregateClubTransfersFromHistory,
   loadClubTransferHistoryForSeason,
@@ -469,7 +470,8 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
 
   const balanceRow = await loadClubBalance(supabase, shortName);
   const balanceNow = Number(balanceRow?.balance ?? 0);
-  const ledger = await loadFinanceLedger(supabase, shortName, 300);
+  let ledger = await loadFinanceLedger(supabase, shortName, 300);
+  ledger = await appendAssignmentInfraPurchaseLedger(supabase, shortName, ledger);
   const { incomeTotal, costTotal, net } = summariseLedgerTotals(ledger);
   const byLine = aggregateLedgerByLine(ledger);
 
