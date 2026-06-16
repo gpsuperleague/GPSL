@@ -232,6 +232,9 @@ CREATE TABLE IF NOT EXISTS public.gpdb_pesdb_scrape_jobs (
   end_page int NOT NULL DEFAULT 1,
   next_page int NOT NULL DEFAULT 1,
   last_completed_page int NOT NULL DEFAULT 0,
+  in_progress_page int NOT NULL DEFAULT 0,
+  players_completed_on_page int NOT NULL DEFAULT 0,
+  page_player_total int NOT NULL DEFAULT 0,
   pages_per_batch int NOT NULL DEFAULT 2,
   batch_cooldown_sec int NOT NULL DEFAULT 20,
   player_delay_sec numeric NOT NULL DEFAULT 3.5,
@@ -240,6 +243,15 @@ CREATE TABLE IF NOT EXISTS public.gpdb_pesdb_scrape_jobs (
   started_at timestamptz,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.gpdb_pesdb_scrape_jobs
+  ADD COLUMN IF NOT EXISTS in_progress_page int NOT NULL DEFAULT 0;
+
+ALTER TABLE public.gpdb_pesdb_scrape_jobs
+  ADD COLUMN IF NOT EXISTS players_completed_on_page int NOT NULL DEFAULT 0;
+
+ALTER TABLE public.gpdb_pesdb_scrape_jobs
+  ADD COLUMN IF NOT EXISTS page_player_total int NOT NULL DEFAULT 0;
 
 INSERT INTO public.gpdb_pesdb_scrape_jobs (job_key)
 VALUES ('active')
@@ -282,6 +294,9 @@ BEGIN
     'end_page', v_row.end_page,
     'next_page', v_row.next_page,
     'last_completed_page', v_row.last_completed_page,
+    'in_progress_page', v_row.in_progress_page,
+    'players_completed_on_page', v_row.players_completed_on_page,
+    'page_player_total', v_row.page_player_total,
     'pages_per_batch', v_row.pages_per_batch,
     'batch_cooldown_sec', v_row.batch_cooldown_sec,
     'player_delay_sec', v_row.player_delay_sec,
@@ -315,6 +330,9 @@ BEGIN
     end_page = coalesce((p_patch->>'end_page')::int, j.end_page),
     next_page = coalesce((p_patch->>'next_page')::int, j.next_page),
     last_completed_page = coalesce((p_patch->>'last_completed_page')::int, j.last_completed_page),
+    in_progress_page = coalesce((p_patch->>'in_progress_page')::int, j.in_progress_page),
+    players_completed_on_page = coalesce((p_patch->>'players_completed_on_page')::int, j.players_completed_on_page),
+    page_player_total = coalesce((p_patch->>'page_player_total')::int, j.page_player_total),
     pages_per_batch = coalesce((p_patch->>'pages_per_batch')::int, j.pages_per_batch),
     batch_cooldown_sec = coalesce((p_patch->>'batch_cooldown_sec')::int, j.batch_cooldown_sec),
     player_delay_sec = coalesce((p_patch->>'player_delay_sec')::numeric, j.player_delay_sec),
@@ -352,6 +370,9 @@ BEGIN
     end_page = 1,
     next_page = 1,
     last_completed_page = 0,
+    in_progress_page = 0,
+    players_completed_on_page = 0,
+    page_player_total = 0,
     staging_count = 0,
     last_error = NULL,
     started_at = NULL,

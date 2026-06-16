@@ -73,16 +73,47 @@ function readProgress() {
   }
 }
 
-function saveProgress(lastPage, endPage, stagingTotal) {
+function saveProgress(lastPage, endPage, stagingTotal, extra = {}) {
   localStorage.setItem(
     PROGRESS_KEY,
     JSON.stringify({
       lastPage,
       endPage,
       stagingTotal,
+      inProgressPage: null,
+      playersCompletedOnPage: 0,
+      pagePlayerTotal: null,
       savedAt: new Date().toISOString(),
+      ...extra,
     })
   );
+}
+
+function saveProgressPartial(page, endPage, stagingTotal, playersCompleted, pageTotal) {
+  saveProgress(Math.max(0, page - 1), endPage, stagingTotal, {
+    inProgressPage: page,
+    playersCompletedOnPage: playersCompleted,
+    pagePlayerTotal: pageTotal,
+  });
+}
+
+function saveProgressPageComplete(page, endPage, stagingTotal) {
+  saveProgress(page, endPage, stagingTotal, {
+    inProgressPage: null,
+    playersCompletedOnPage: 0,
+    pagePlayerTotal: null,
+  });
+}
+
+function midPageState(job) {
+  const prog = readProgress();
+  const page = prog?.inProgressPage || job?.in_progress_page || 0;
+  const done = prog?.playersCompletedOnPage ?? job?.players_completed_on_page ?? 0;
+  const total = prog?.pagePlayerTotal ?? job?.page_player_total ?? null;
+  if (page > 0 && done > 0 && (total == null || done < total)) {
+    return { page, done, total };
+  }
+  return null;
 }
 
 function clearProgress() {
@@ -154,6 +185,9 @@ function resolveEndPage(job) {
 }
 
 function resolveResumePage(job) {
+  const mid = midPageState(job);
+  if (mid) return mid.page;
+
   const prog = readProgress();
   const fromJobNext = Number(job?.next_page) || 0;
   const fromJobLast = (Number(job?.last_completed_page) || 0) + 1;
@@ -161,8 +195,16 @@ function resolveResumePage(job) {
   return Math.max(fromJobNext, fromJobLast, fromLocal, 1);
 }
 
+function resolvePlayersStartIndex(page, job) {
+  const mid = midPageState(job);
+  if (mid && mid.page === page) return mid.done;
+  return 0;
+}
+
 function shouldAutoResumeScrape(job) {
   if (document.getElementById("scrapeAutoResume")?.checked === false) return false;
+
+  if (midPageState(job)) return true;
 
   const prog = readProgress();
   const endPage = resolveEndPage(job);
@@ -219,6 +261,7 @@ function renderProgressPanel(stagingStats = null, scrapeJob = null) {
   const lastPage = job?.last_completed_page || prog?.lastPage;
   const endPage = resolveEndPage(job);
   const nextPage = resolveResumePage(job);
+  const mid = midPageState(job);
 
   const set = (id, text) => {
     const el = document.getElementById(id);
@@ -226,13 +269,27 @@ function renderProgressPanel(stagingStats = null, scrapeJob = null) {
   };
 
   const statusLabel = job?.status
-    ? `${job.status}${job.status === "running" ? " (page " + nextPage + ")" : ""}`
-    : "—";
+    ? `${job.status}${
+        mid
+          ? ` (page ${mid.page} · ${mid.done}/${mid.total ?? "?"} players)`
+          : job.status === "running"
+            ? " (page " + nextPage + ")"
+            : ""
+      }`
+    : mid
+      ? `in progress (page ${mid.page} · ${mid.done}/${mid.total ?? "?"} players)`
+      : "—";
   set("progJobStatus", statusLabel);
   set("progStagingCount", String(stagingCount));
-  set("progLastPage", lastPage ? String(lastPage) : "—");
+  set(
+    "progLastPage",
+    mid ? `${mid.page} · ${mid.done}/${mid.total ?? "?"} players` : lastPage ? String(lastPage) : "—"
+  );
   set("progTargetEnd", endPage ? String(endPage) : "—");
-  set("progNextPage", String(nextPage));
+  set(
+    "progNextPage",
+    mid ? `Page ${mid.page} · player ${mid.done + 1}${mid.total ? ` of ${mid.total}` : ""}` : String(nextPage)
+  );
   set("progLastSaved", formatWhen(job?.updated_at || prog?.savedAt));
   set(
     "progLastApply",
@@ -517,16 +574,24 @@ async function invokePesdbScrape(body, attempt = 1) {
 }
 
 /** Per-player detail fetch — mirrors local script: list row then max_level page. */
-async function enrichPagePlayers(listPlayers, page, endPage, playerDelayMs) {
+async function enrichPagePlayers(listPlayers, page, endPage, playerDelayMs, startIndex = 0, onPlayerDone) {
   const out = [];
   const total = listPlayers.length;
 
-  for (let i = 0; i < listPlayers.length; i++) {
+  if (startIndex > 0) {
+    setStatus(
+      "scrapeStatus",
+      `Resuming page ${page}/${endPage} from player ${startIndex + 1}/${total}…`,
+      true
+    );
+  }
+
+  for (let i = startIndex; i < listPlayers.length; i++) {
     if (scrapeAbort) break;
     const player = listPlayers[i];
     const name = player.player_name || player.konami_id;
     const pos = player.position ? ` (${player.position})` : "";
-    const isFirst = i === 0 && page === 1;
+    const isFirst = i === 0 && page === 1 && startIndex === 0;
 
     const data = await withLiveProgress(
       "scrapeStatus",
@@ -556,6 +621,9 @@ async function enrichPagePlayers(listPlayers, page, endPage, playerDelayMs) {
         `Page ${page}/${endPage} — ${i + 1}/${total} done: ${name} → OVR ${ovr}, ${style}`,
         true
       );
+      if (onPlayerDone) {
+        await onPlayerDone(row, i + 1, total);
+      }
     } else {
       setPlayerLabel(`✗ ${name} — no detail returned (${i + 1}/${total})`);
     }
@@ -581,7 +649,7 @@ function updateScrapeProgress(completedPages, totalPages, stagingTotal, batchLab
   label.textContent = `${batchLabel}${completedPages} / ${totalPages} pages · ${stagingTotal} players in staging`;
 }
 
-async function scrapeSinglePage(page, endPage, playerDelayMs) {
+async function scrapeSinglePage(page, endPage, playerDelayMs, startPlayerIndex = 0, onPlayerDone) {
   const listData = await withLiveProgress(
     "scrapeStatus",
     (sec) => `Page ${page}/${endPage} — loading player list from PESDB… ${sec}s`,
@@ -603,9 +671,24 @@ async function scrapeSinglePage(page, endPage, playerDelayMs) {
     );
   }
 
-  setPlayerLabel(`List loaded — ${players.length} players on page ${page}. Starting details…`);
-  players = await enrichPagePlayers(players, page, endPage, playerDelayMs);
-  setPlayerLabel(`Page ${page} complete — ${players.length} players enriched.`);
+  const resumeAt = Math.min(startPlayerIndex, players.length);
+  if (resumeAt > 0) {
+    setPlayerLabel(
+      `List loaded — resuming page ${page} at player ${resumeAt + 1}/${players.length}.`
+    );
+  } else {
+    setPlayerLabel(`List loaded — ${players.length} players on page ${page}. Starting details…`);
+  }
+
+  players = await enrichPagePlayers(
+    players,
+    page,
+    endPage,
+    playerDelayMs,
+    resumeAt,
+    onPlayerDone
+  );
+  setPlayerLabel(`Page ${page} complete — ${resumeAt + players.length}/${listData.players.length} players enriched this run.`);
   return players;
 }
 
@@ -682,38 +765,87 @@ async function executePesdbScrapeLoop(params) {
       for (let page = batchStart; page <= batchEnd; page++) {
         if (scrapeAbort) break;
 
+        const resumeJob = await fetchScrapeJob().catch(() => null);
+        const startPlayerIndex = resolvePlayersStartIndex(page, resumeJob);
+
         await saveScrapeJob({
           status: "running",
           next_page: page,
+          in_progress_page: startPlayerIndex > 0 ? page : 0,
+          players_completed_on_page: startPlayerIndex,
           staging_count: stagingTotal,
         });
 
-        const players = await scrapeSinglePage(page, endPage, playerDelayMs);
-        const importResult = await appendStagingRows(players);
-        stagingTotal = importResult.stagingCount;
+        const onPlayerDone = async (row, completedCount, totalOnPage) => {
+          const importResult = await appendStagingRows([row]);
+          stagingTotal = importResult.stagingCount;
+          saveProgressPartial(page, endPage, stagingTotal, completedCount, totalOnPage);
+          await saveScrapeJob({
+            status: "running",
+            next_page: page,
+            in_progress_page: page,
+            players_completed_on_page: completedCount,
+            page_player_total: totalOnPage,
+            staging_count: stagingTotal,
+          });
+          renderProgressPanel(
+            { staging_count: stagingTotal, last_loaded_at: new Date().toISOString() },
+            {
+              status: "running",
+              last_completed_page: Math.max(0, page - 1),
+              next_page: page,
+              in_progress_page: page,
+              players_completed_on_page: completedCount,
+              page_player_total: totalOnPage,
+              end_page: endPage,
+              staging_count: stagingTotal,
+              updated_at: new Date().toISOString(),
+            }
+          );
+        };
+
+        const players = await scrapeSinglePage(
+          page,
+          endPage,
+          playerDelayMs,
+          startPlayerIndex,
+          onPlayerDone
+        );
+        if (scrapeAbort) break;
+
         pagesDone += 1;
 
-        saveProgress(page, endPage, stagingTotal);
+        saveProgressPageComplete(page, endPage, stagingTotal);
         await saveScrapeJob({
           status: "running",
           last_completed_page: page,
           next_page: page + 1,
+          in_progress_page: 0,
+          players_completed_on_page: 0,
+          page_player_total: 0,
           staging_count: stagingTotal,
         });
 
         updateScrapeProgress(pagesDone, totalPages, stagingTotal, `Batch ${batchStart}–${batchEnd}: `);
         const dupeNote =
-          importResult.rowsUpdated > 0
-            ? ` (${importResult.rowsNew} new, ${importResult.rowsUpdated} updated)`
+          players.length > 0
+            ? ` (${players.length} enriched this run)`
             : "";
         setStatus(
           "scrapeStatus",
-          `Page ${page}/${endPage} done — ${players.length} players${dupeNote} (${stagingTotal} unique in staging).`,
+          `Page ${page}/${endPage} done${dupeNote} (${stagingTotal} unique in staging).`,
           true
         );
         renderProgressPanel(
           { staging_count: stagingTotal, last_loaded_at: new Date().toISOString() },
-          { status: "running", last_completed_page: page, next_page: page + 1, end_page: endPage, staging_count: stagingTotal, updated_at: new Date().toISOString() }
+          {
+            status: "running",
+            last_completed_page: page,
+            next_page: page + 1,
+            end_page: endPage,
+            staging_count: stagingTotal,
+            updated_at: new Date().toISOString(),
+          }
         );
       }
 
@@ -728,7 +860,7 @@ async function executePesdbScrapeLoop(params) {
     }
 
     if (!scrapeAbort && startPage <= endPage) {
-      saveProgress(endPage, endPage, stagingTotal);
+      saveProgressPageComplete(endPage, endPage, stagingTotal);
       await saveScrapeJob({
         status: "complete",
         last_completed_page: endPage,
@@ -747,10 +879,14 @@ async function executePesdbScrapeLoop(params) {
         staging_count: stagingTotal,
         last_error: null,
       });
-      const resumePage = resolveResumePage(await fetchScrapeJob().catch(() => null));
+      const resumeJob = await fetchScrapeJob().catch(() => null);
+      const resumePage = resolveResumePage(resumeJob);
+      const mid = midPageState(resumeJob);
       setStatus(
         "scrapeStatus",
-        `Stopped. ${stagingTotal} players in staging. Reopen or refresh this page to continue from page ${resumePage}.`,
+        mid
+          ? `Stopped. ${stagingTotal} in staging. Refresh to continue page ${mid.page} from player ${mid.done + 1}${mid.total ? ` of ${mid.total}` : ""}.`
+          : `Stopped. ${stagingTotal} in staging. Refresh to continue from page ${resumePage}.`,
         true
       );
     }
@@ -830,9 +966,12 @@ async function maybeAutoResumeScrape() {
     scrapeSettings();
 
   applyResumeToForm(job);
+  const mid = midPageState(job);
   setStatus(
     "scrapeStatus",
-    `Auto-resuming from page ${resumePage} of ${endPage} (saved progress)…`,
+    mid
+      ? `Auto-resuming page ${mid.page} from player ${mid.done + 1}${mid.total ? ` of ${mid.total}` : ""}…`
+      : `Auto-resuming from page ${resumePage} of ${endPage} (saved progress)…`,
     true
   );
 
