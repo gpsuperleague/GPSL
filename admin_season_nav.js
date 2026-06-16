@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260618-start-season-lower-kickoff";
+export const SEASON_ADMIN_NAV_VERSION = "20260618-league-before-cups";
 
 const SEASON_CALENDAR_NAV_ITEM = {
   label: "GPSL season calendar",
@@ -79,6 +79,17 @@ export const SEASON_ADMIN_NAV = [
     items: [SEASON_CALENDAR_NAV_ITEM, START_SEASON_NAV_ITEM],
   },
   {
+    id: "league_fixtures",
+    label: "League Fixtures",
+    items: [
+      {
+        label: "Draw league fixtures",
+        href: "admin_fixtures-league.html",
+        page: "admin_fixtures-league",
+      },
+    ],
+  },
+  {
     id: "assign_cups",
     label: "Assign Cups",
     items: [
@@ -111,17 +122,6 @@ export const SEASON_ADMIN_NAV = [
         href: "admin_fixtures-cups.html",
         cup: "league_cup",
         page: "admin_fixtures-cups",
-      },
-    ],
-  },
-  {
-    id: "league_fixtures",
-    label: "League Fixtures",
-    items: [
-      {
-        label: "Draw league fixtures",
-        href: "admin_fixtures-league.html",
-        page: "admin_fixtures-league",
       },
     ],
   },
