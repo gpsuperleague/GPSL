@@ -49,6 +49,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   });
 
+  document.getElementById("syncGpdbNationsBtn")?.addEventListener("click", async () => {
+    if (
+      !confirm(
+        "Add every GPDB nationality missing from international_nations?\n\nRun international_sync_gpdb_nations.sql in Supabase first if the RPC is missing."
+      )
+    ) {
+      return;
+    }
+    setStatus("setupStatus", "Syncing GPDB nations…");
+    const { data, error } = await supabase.rpc("international_sync_gpdb_nations");
+    if (error) {
+      setStatus("setupStatus", `❌ ${error.message}`, false);
+      return;
+    }
+    const inserted = data?.inserted ?? 0;
+    const active = data?.active_nations ?? "?";
+    setStatus(
+      "setupStatus",
+      `✅ Added ${inserted} nations (${active} active total). Refresh nation select / player pool.`,
+      true
+    );
+  });
+
   document.getElementById("recomputeRanksBtn")?.addEventListener("click", async () => {
     if (
       !confirm(

@@ -1,6 +1,6 @@
 -- =============================================================================
 -- GPDB Players.Nation vs international_nations (nation select / player pool)
--- Run in Supabase SQL Editor (requires international_callup_gpdb.sql)
+-- Run in Supabase SQL Editor (requires international_sync_gpdb_nations.sql)
 -- =============================================================================
 
 -- 1) All nations in nation player pool & nation select (active international list)
@@ -23,12 +23,7 @@ WHERE btrim(coalesce(p."Nation", '')) <> ''
     SELECT 1
     FROM public.international_nations n
     WHERE n.active = true
-      AND (
-        public.international_normalize_nation_label(p."Nation")
-          = public.international_normalize_nation_label(n.name)
-        OR public.international_normalize_nation_label(p."Nation")
-          = public.international_normalize_nation_label(n.code)
-      )
+      AND public.international_gpdb_matches_nation(p."Nation", n.code)
   )
 GROUP BY p."Nation"
 ORDER BY players DESC, p."Nation";
@@ -43,10 +38,7 @@ WHERE n.active = true
   AND NOT EXISTS (
     SELECT 1
     FROM public."Players" p
-    WHERE public.international_normalize_nation_label(p."Nation")
-          = public.international_normalize_nation_label(n.name)
-       OR public.international_normalize_nation_label(p."Nation")
-          = public.international_normalize_nation_label(n.code)
+    WHERE public.international_gpdb_matches_nation(p."Nation", n.code)
   )
 ORDER BY n.seed_rank;
 
@@ -68,12 +60,7 @@ SELECT
           SELECT 1
           FROM public.international_nations n
           WHERE n.active = true
-            AND (
-              public.international_normalize_nation_label(p."Nation")
-                = public.international_normalize_nation_label(n.name)
-              OR public.international_normalize_nation_label(p."Nation")
-                = public.international_normalize_nation_label(n.code)
-            )
+            AND public.international_gpdb_matches_nation(p."Nation", n.code)
         )
       GROUP BY p."Nation"
     ) x

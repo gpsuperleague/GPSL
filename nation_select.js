@@ -15,7 +15,7 @@ function setStatus(msg, ok = true) {
   el.className = ok ? "ok" : "err";
 }
 
-function renderWindow(windowState, myPick) {
+function renderWindow(windowState, myPick, draft, nations) {
   const el = document.getElementById("windowInfo");
   if (!el) return;
   if (!windowState?.is_open) {
@@ -27,9 +27,12 @@ function renderWindow(windowState, myPick) {
     myPick && windowState.current_pick_rank === myPick
       ? ' <b style="color:#ff9900;">— your pick!</b>'
       : "";
+  const draftSize =
+    windowState.draft_order_size || draft.length || windowState.nations_total || nations.length || 60;
+  const nationCount = windowState.nations_total || nations.length;
   el.innerHTML = `
-    <b>Nation selection</b> is open · Pick #${windowState.current_pick_rank} of 60
-    (${windowState.nations_assigned || 0} nations assigned)${mine}
+    <b>Nation selection</b> is open · Pick #${windowState.current_pick_rank} of ${draftSize}
+    · ${nationCount} nations available · ${windowState.nations_assigned || 0} assigned${mine}
   `;
 }
 
@@ -155,7 +158,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   }
 
-  renderWindow(windowState, myPick);
+  renderWindow(windowState, myPick, draft, nations);
   renderDraftBoard(draft, myClub, windowState?.current_pick_rank);
   renderNationGrid(nations, windowState, myPick, myClub, draft);
 });

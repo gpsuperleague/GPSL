@@ -609,8 +609,9 @@ BEGIN
       'nation_pick_turn',
       'Your turn — pick a nation',
       format(
-        E'Nation selection: you are pick #%s of 60.\nChoose your national team on the Nation selection page.',
-        p_pick_rank
+        E'Nation selection: you are pick #%s of %s.\nChoose your national team on the Nation selection page.',
+        p_pick_rank,
+        (SELECT count(*)::integer FROM public.international_owner_draft_order())
       ),
       v_club.club_short_name,
       NULL,

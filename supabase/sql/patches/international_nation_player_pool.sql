@@ -1,6 +1,7 @@
 -- =============================================================================
 -- International nation GPDB player pool report (admin)
--- Run after international_callup_gpdb.sql
+-- Run after competition_international.sql + international_callup_gpdb.sql
+-- After international_sync_gpdb_nations.sql (uses international_gpdb_matches_nation)
 -- Powers nation_player_pool.html — pool counts by rating band, U21, position
 -- Readable by any signed-in user (aggregates only; no player PII)
 -- =============================================================================
@@ -119,12 +120,7 @@ BEGIN
         AND btrim(p."Age"::text)::numeric <= 21
       ) AS is_u21
     FROM public.international_nations n
-    JOIN public."Players" p ON (
-      public.international_normalize_nation_label(p."Nation")
-        = public.international_normalize_nation_label(n.name)
-      OR public.international_normalize_nation_label(p."Nation")
-        = upper(n.code)
-    )
+    JOIN public."Players" p ON public.international_gpdb_matches_nation(p."Nation", n.code)
     WHERE n.active = true
   ),
   agg AS (
@@ -197,12 +193,7 @@ BEGIN
       n.code AS nation_code,
       count(*)::integer AS owned_clubs_count
     FROM public.international_nations n
-    JOIN public."Clubs" c ON (
-      public.international_normalize_nation_label(c."Nation")
-        = public.international_normalize_nation_label(n.name)
-      OR public.international_normalize_nation_label(c."Nation")
-        = upper(n.code)
-    )
+    JOIN public."Clubs" c ON public.international_gpdb_matches_nation(c."Nation", n.code)
     WHERE n.active = true
       AND c.owner_id IS NOT NULL
     GROUP BY n.code

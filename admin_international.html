@@ -35,9 +35,13 @@
 
     <div class="card" id="sb-nation-setup">
       <h2>Setup</h2>
-      <p class="note">Run once after <code>competition_international.sql</code>. Seeds 60 nations.</p>
+      <p class="note">
+        Seeds the core 60 nations. Use <b>Sync GPDB nations</b> to add every nationality in the player database
+        (flags, nation select, player pool).
+      </p>
       <div class="row">
-        <button type="button" class="button" id="seedNationsBtn">Seed nations</button>
+        <button type="button" class="button" id="seedNationsBtn">Seed nations (60)</button>
+        <button type="button" class="button secondary" id="syncGpdbNationsBtn">Sync GPDB nations</button>
       </div>
       <div id="setupStatus" class="status-line"></div>
     </div>
