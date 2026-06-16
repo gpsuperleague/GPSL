@@ -1,0 +1,60 @@
+1. ARG — Argentina
+2. FRA — France
+3. BRA — Brazil
+4. ENG — England
+5. BEL — Belgium
+6. POR — Portugal
+7. NED — Netherlands
+8. ESP — Spain
+9. ITA — Italy
+10. CRO — Croatia
+11. URU — Uruguay
+12. MAR — Morocco
+13. COL — Colombia
+14. GER — Germany
+15. MEX — Mexico
+16. USA — United States
+17. SUI — Switzerland
+18. JPN — Japan
+19. SEN — Senegal
+20. IRN — IR Iran
+21. DEN — Denmark
+22. KOR — Korea Republic
+23. AUS — Australia
+24. UKR — Ukraine
+25. TUR — Türkiye
+26. ECU — Ecuador
+27. POL — Poland
+28. SRB — Serbia
+29. WAL — Wales
+30. CAN — Canada
+31. GHA — Ghana
+32. NOR — Norway
+33. PAR — Paraguay
+34. CRC — Costa Rica
+35. EGY — Egypt
+36. ALG — Algeria
+37. SCO — Scotland
+38. AUT — Austria
+39. HUN — Hungary
+40. CZE — Czechia
+41. NGA — Nigeria
+42. PAN — Panama
+43. TUN — Tunisia
+44. PER — Peru
+45. CHI — Chile
+46. ROU — Romania
+47. SVK — Slovakia
+48. SWE — Sweden
+49. FIN — Finland
+50. IRL — Republic of Ireland
+51. CMR — Cameroon
+52. RSA — South Africa
+53. JAM — Jamaica
+54. BOL — Bolivia
+55. VEN — Venezuela
+56. IRQ — Iraq
+57. QAT — Qatar
+58. KSA — Saudi Arabia
+59. NZL — New Zealand
+60. CHN — China PR
