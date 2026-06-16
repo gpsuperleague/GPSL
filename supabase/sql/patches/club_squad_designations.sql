@@ -23,6 +23,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS club_squad_player_designations_one_ooo_per_clu
   ON public.club_squad_player_designations (club_short_name)
   WHERE designation = 'one_of_our_own';
 
+CREATE OR REPLACE FUNCTION public.club_squad_designations_is_privileged()
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SET search_path = public
+AS $$
+  SELECT public.is_gpsl_admin()
+    OR current_user IN ('postgres', 'supabase_admin', 'service_role');
+$$;
+
 CREATE OR REPLACE FUNCTION public.club_squad_star_cap(p_club_short_name text)
 RETURNS smallint
 LANGUAGE plpgsql
@@ -143,7 +153,7 @@ BEGIN
     RAISE EXCEPTION 'Club required';
   END IF;
 
-  IF NOT public.is_gpsl_admin()
+  IF NOT public.club_squad_designations_is_privileged()
      AND public.my_club_shortname() IS DISTINCT FROM v_club THEN
     RAISE EXCEPTION 'Not allowed';
   END IF;
@@ -279,7 +289,7 @@ DECLARE
   v_club text := btrim(p_club_short_name);
   v_player text;
 BEGIN
-  IF NOT public.is_gpsl_admin()
+  IF NOT public.club_squad_designations_is_privileged()
      AND public.my_club_shortname() IS DISTINCT FROM v_club THEN
     RAISE EXCEPTION 'Not allowed';
   END IF;
