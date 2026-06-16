@@ -117,11 +117,19 @@ function scrapeSettings() {
     2,
     Math.max(1, Number(document.getElementById("scrapePagesPerBatch")?.value) || 2)
   );
-  const batchCooldownMs =
-    Math.max(5, Number(document.getElementById("scrapeBatchCooldown")?.value) || 20) * 1000;
-  const playerDelayMs =
-    Math.max(2000, Number(document.getElementById("scrapePlayerDelay")?.value) || 3.5) * 1000;
-  return { pagesPerBatch, batchCooldownMs, playerDelayMs };
+  const batchCooldownSec = Math.max(
+    5,
+    Number(document.getElementById("scrapeBatchCooldown")?.value) || 20
+  );
+  const playerDelaySec = Math.min(
+    30,
+    Math.max(2, Number(document.getElementById("scrapePlayerDelay")?.value) || 3.5)
+  );
+  return {
+    pagesPerBatch,
+    batchCooldownMs: batchCooldownSec * 1000,
+    playerDelayMs: playerDelaySec * 1000,
+  };
 }
 
 function renderSummary(result, prefix = "") {
