@@ -57,8 +57,9 @@
 
       <div class="card" id="syncProgressCard">
         <h2>Scrape progress</h2>
-        <p class="note">Stored in Supabase <code>gpdb_pesdb_staging</code> (one row per player, no duplicates). Resume uses browser + staging counts.</p>
+        <p class="note">Stored in Supabase <code>gpdb_pesdb_staging</code>. Job state is saved to the database — <b>safe to refresh</b>; scrape auto-continues when you reopen this page.</p>
         <div id="syncProgressGrid" class="preview-grid">
+          <div><span id="progJobStatus">—</span> scrape job</div>
           <div><span id="progStagingCount">—</span> players in staging</div>
           <div><span id="progLastPage">—</span> last page scraped</div>
           <div><span id="progTargetEnd">—</span> target end page</div>
@@ -79,7 +80,8 @@
           PESDB allows about <b>2 list pages per session</b> (~32 players each, ~2 min/page with details).
           This scraper works in <b>2-page batches</b>: full list + max rating + playing style per player,
           then a short cooldown before the next batch (same logic as the local Python script).
-          Leave the tab open — progress is saved; use <b>Resume</b> after rate limits.
+          Progress is saved to the database after each page — <b>you can refresh this tab</b> and the scrape will auto-continue.
+          Closing the browser entirely pauses until you open this page again.
           Test with pages <b>1–2</b> first. CSV upload still available as fallback.
         </p>
         <div class="scrape-range">
@@ -95,6 +97,7 @@
         <div class="scrape-options">
           <label><input type="checkbox" id="scrapeDetails" checked disabled> Max rating + playing style (always on)</label>
           <label><input type="checkbox" id="scrapeResume" checked> Resume from last batch</label>
+          <label><input type="checkbox" id="scrapeAutoResume" checked> Auto-continue after refresh</label>
           <label><input type="checkbox" id="scrapeClearStaging"> Clear staging before start</label>
         </div>
         <div class="row" style="margin-top:12px;">
@@ -174,6 +177,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_sync.js?v=20260617-progress"></script>
+  <script type="module" src="admin_gpdb_sync.js?v=20260617-resume-db"></script>
 </body>
 </html>

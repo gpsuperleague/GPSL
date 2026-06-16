@@ -222,6 +222,147 @@ END;
 $function$;
 
 -- ---------------------------------------------------------------------------
+-- Scrape job (survives browser refresh — admin UI auto-resumes)
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS public.gpdb_pesdb_scrape_jobs (
+  job_key text PRIMARY KEY DEFAULT 'active',
+  status text NOT NULL DEFAULT 'idle',
+  start_page int NOT NULL DEFAULT 1,
+  end_page int NOT NULL DEFAULT 1,
+  next_page int NOT NULL DEFAULT 1,
+  last_completed_page int NOT NULL DEFAULT 0,
+  pages_per_batch int NOT NULL DEFAULT 2,
+  batch_cooldown_sec int NOT NULL DEFAULT 20,
+  player_delay_sec numeric NOT NULL DEFAULT 3.5,
+  staging_count int NOT NULL DEFAULT 0,
+  last_error text,
+  started_at timestamptz,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+INSERT INTO public.gpdb_pesdb_scrape_jobs (job_key)
+VALUES ('active')
+ON CONFLICT (job_key) DO NOTHING;
+
+ALTER TABLE public.gpdb_pesdb_scrape_jobs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS gpdb_pesdb_scrape_jobs_admin ON public.gpdb_pesdb_scrape_jobs;
+CREATE POLICY gpdb_pesdb_scrape_jobs_admin ON public.gpdb_pesdb_scrape_jobs
+  FOR ALL TO authenticated
+  USING (public.is_gpsl_admin())
+  WITH CHECK (public.is_gpsl_admin());
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.gpdb_pesdb_scrape_jobs TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.gpdb_pesdb_scrape_job_get()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_row public.gpdb_pesdb_scrape_jobs%rowtype;
+BEGIN
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  SELECT * INTO v_row FROM public.gpdb_pesdb_scrape_jobs WHERE job_key = 'active';
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', true, 'status', 'idle');
+  END IF;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'status', v_row.status,
+    'start_page', v_row.start_page,
+    'end_page', v_row.end_page,
+    'next_page', v_row.next_page,
+    'last_completed_page', v_row.last_completed_page,
+    'pages_per_batch', v_row.pages_per_batch,
+    'batch_cooldown_sec', v_row.batch_cooldown_sec,
+    'player_delay_sec', v_row.player_delay_sec,
+    'staging_count', v_row.staging_count,
+    'last_error', v_row.last_error,
+    'started_at', v_row.started_at,
+    'updated_at', v_row.updated_at
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.gpdb_pesdb_scrape_job_save(p_patch jsonb)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+BEGIN
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  INSERT INTO public.gpdb_pesdb_scrape_jobs (job_key)
+  VALUES ('active')
+  ON CONFLICT (job_key) DO NOTHING;
+
+  UPDATE public.gpdb_pesdb_scrape_jobs j
+  SET
+    status = coalesce(nullif(p_patch->>'status', ''), j.status),
+    start_page = coalesce((p_patch->>'start_page')::int, j.start_page),
+    end_page = coalesce((p_patch->>'end_page')::int, j.end_page),
+    next_page = coalesce((p_patch->>'next_page')::int, j.next_page),
+    last_completed_page = coalesce((p_patch->>'last_completed_page')::int, j.last_completed_page),
+    pages_per_batch = coalesce((p_patch->>'pages_per_batch')::int, j.pages_per_batch),
+    batch_cooldown_sec = coalesce((p_patch->>'batch_cooldown_sec')::int, j.batch_cooldown_sec),
+    player_delay_sec = coalesce((p_patch->>'player_delay_sec')::numeric, j.player_delay_sec),
+    staging_count = coalesce((p_patch->>'staging_count')::int, j.staging_count),
+    last_error = CASE
+      WHEN p_patch ? 'last_error' THEN nullif(p_patch->>'last_error', '')
+      ELSE j.last_error
+    END,
+    started_at = CASE
+      WHEN p_patch ? 'started_at' THEN (p_patch->>'started_at')::timestamptz
+      ELSE j.started_at
+    END,
+    updated_at = now()
+  WHERE j.job_key = 'active';
+
+  RETURN public.gpdb_pesdb_scrape_job_get();
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.gpdb_pesdb_scrape_job_clear()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+BEGIN
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  UPDATE public.gpdb_pesdb_scrape_jobs
+  SET
+    status = 'idle',
+    start_page = 1,
+    end_page = 1,
+    next_page = 1,
+    last_completed_page = 0,
+    staging_count = 0,
+    last_error = NULL,
+    started_at = NULL,
+    updated_at = now()
+  WHERE job_key = 'active';
+
+  RETURN jsonb_build_object('ok', true, 'status', 'idle');
+END;
+$function$;
+
+-- ---------------------------------------------------------------------------
 -- Preview audit (table)
 -- ---------------------------------------------------------------------------
 
@@ -571,7 +712,9 @@ RETURNS TABLE (
   konami_id text,
   player_name text,
   club text,
+  position text,
   rating text,
+  contract_seasons_remaining smallint,
   unavailable_since timestamptz
 )
 LANGUAGE sql
@@ -583,11 +726,13 @@ AS $$
     p."Konami_ID"::text,
     p."Name",
     p."Contracted_Team",
+    p."Position",
     p."Rating"::text,
+    p.contract_seasons_remaining,
     p.pesdb_unavailable_since
   FROM public."Players" p
   WHERE coalesce(p.pesdb_unavailable, false)
-  ORDER BY p.pesdb_unavailable_since DESC NULLS LAST, p."Name";
+  ORDER BY p."Contracted_Team" NULLS LAST, p."Name";
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -760,6 +905,9 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_staging_clear() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_staging_import(jsonb, boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_staging_stats() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_scrape_job_get() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_scrape_job_save(jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_scrape_job_clear() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_sync_audit() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_sync_apply(boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_restore_player(text) TO authenticated;

@@ -13,8 +13,8 @@ const SCRAPE_FUNCTION = "gpdb-pesdb-scrape";
 const SCRAPE_PACE = "chunked";
 const PROGRESS_KEY = "gpdb_pesdb_scrape_progress";
 const LAST_APPLY_KEY = "gpdb_pesdb_last_apply";
-const RATE_LIMIT_RETRY_MS = 60000;
 let scrapeAbort = false;
+let scrapeRunning = false;
 let liveTimerId = null;
 
 function sleep(ms) {
@@ -125,24 +125,82 @@ async function fetchStagingStats() {
   return data || { staging_count: 0 };
 }
 
-function renderProgressPanel(stagingStats = null) {
+async function fetchScrapeJob() {
+  const { data, error } = await supabase.rpc("gpdb_pesdb_scrape_job_get");
+  if (error) throw error;
+  return data?.ok ? data : null;
+}
+
+async function saveScrapeJob(patch) {
+  const { data, error } = await supabase.rpc("gpdb_pesdb_scrape_job_save", {
+    p_patch: patch,
+  });
+  if (error) {
+    console.warn("scrape job save:", error);
+    return null;
+  }
+  return data;
+}
+
+async function clearScrapeJob() {
+  const { error } = await supabase.rpc("gpdb_pesdb_scrape_job_clear");
+  if (error) throw error;
+}
+
+function applyJobToForm(job) {
+  if (!job) return;
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (el && val != null) el.value = String(val);
+  };
+  if (job.next_page) set("scrapeStartPage", job.next_page);
+  set("scrapeEndPage", job.end_page);
+  set("scrapePagesPerBatch", job.pages_per_batch);
+  set("scrapeBatchCooldown", job.batch_cooldown_sec);
+  set("scrapePlayerDelay", job.player_delay_sec);
+}
+
+function readScrapeParams() {
+  const { pagesPerBatch, batchCooldownMs, playerDelayMs } = scrapeSettings();
+  const startPage = Math.max(1, Number(document.getElementById("scrapeStartPage")?.value) || 1);
+  const endPage = Math.max(startPage, Number(document.getElementById("scrapeEndPage")?.value) || startPage);
+  return {
+    startPage,
+    endPage,
+    pagesPerBatch,
+    batchCooldownMs,
+    playerDelayMs,
+    batchCooldownSec: batchCooldownMs / 1000,
+    playerDelaySec: playerDelayMs / 1000,
+  };
+}
+
+const RATE_LIMIT_RETRY_MS = 60000;
+
+function renderProgressPanel(stagingStats = null, scrapeJob = null) {
   const prog = readProgress();
   const lastApply = readLastApply();
-  const stagingCount = stagingStats?.staging_count ?? prog?.stagingTotal ?? "—";
+  const job = scrapeJob || null;
+  const stagingCount =
+    stagingStats?.staging_count ?? job?.staging_count ?? prog?.stagingTotal ?? "—";
+  const lastPage = job?.last_completed_page || prog?.lastPage;
+  const endPage = job?.end_page || prog?.endPage;
+  const nextPage = job?.next_page || (lastPage ? lastPage + 1 : 1);
 
   const set = (id, text) => {
     const el = document.getElementById(id);
     if (el) el.textContent = text ?? "—";
   };
 
+  const statusLabel = job?.status
+    ? `${job.status}${job.status === "running" ? " (page " + nextPage + ")" : ""}`
+    : "—";
+  set("progJobStatus", statusLabel);
   set("progStagingCount", String(stagingCount));
-  set("progLastPage", prog?.lastPage ? String(prog.lastPage) : "—");
-  set("progTargetEnd", prog?.endPage ? String(prog.endPage) : "—");
-  set(
-    "progNextPage",
-    prog?.lastPage ? String(Math.min(prog.lastPage + 1, prog.endPage || prog.lastPage + 1)) : "1"
-  );
-  set("progLastSaved", formatWhen(prog?.savedAt));
+  set("progLastPage", lastPage ? String(lastPage) : "—");
+  set("progTargetEnd", endPage ? String(endPage) : "—");
+  set("progNextPage", String(nextPage));
+  set("progLastSaved", formatWhen(job?.updated_at || prog?.savedAt));
   set(
     "progLastApply",
     lastApply?.at
@@ -154,21 +212,26 @@ function renderProgressPanel(stagingStats = null) {
     const label = document.querySelector("#syncProgressCard .note");
     if (label) {
       label.textContent =
-        `Staging table: ${stagingCount} unique players (last row loaded ${formatWhen(stagingStats.last_loaded_at)}). ` +
-        "Re-scraping the same player updates the row — no duplicates.";
+        `Staging: ${stagingCount} unique players. Job saved in database — refresh safe; reopen page to continue.`;
     }
   }
 }
 
 async function refreshProgressPanel(statusId = "progressStatus") {
   try {
-    const stats = await fetchStagingStats();
-    renderProgressPanel(stats);
+    const [stats, job] = await Promise.all([
+      fetchStagingStats(),
+      fetchScrapeJob().catch(() => null),
+    ]);
+    renderProgressPanel(stats, job);
+    if (job?.status === "running" && job.next_page <= job.end_page) {
+      applyJobToForm(job);
+    }
     if (statusId) setStatus(statusId, "Progress refreshed.", true);
-    return stats;
+    return { stats, job };
   } catch (err) {
     console.error("staging stats:", err);
-    renderProgressPanel(null);
+    renderProgressPanel(null, null);
     if (statusId) setStatus(statusId, err.message || "Could not load staging stats.", false);
     return null;
   }
@@ -183,8 +246,8 @@ async function clearStagingAndProgress() {
     return;
   }
   setStatus("progressStatus", "Clearing staging…", true);
-  const { error } = await supabase.rpc("gpdb_pesdb_staging_clear");
-  if (error) throw error;
+  await supabase.rpc("gpdb_pesdb_staging_clear");
+  await clearScrapeJob();
   clearProgress();
   const startInput = document.getElementById("scrapeStartPage");
   if (startInput) startInput.value = "1";
@@ -541,30 +604,43 @@ async function detectPesdbPages() {
   }
 }
 
-async function runPesdbScrape() {
-  const startPage = Math.max(1, Number(document.getElementById("scrapeStartPage")?.value) || 1);
-  const endPage = Math.max(startPage, Number(document.getElementById("scrapeEndPage")?.value) || startPage);
-  const clearStaging = document.getElementById("scrapeClearStaging")?.checked === true;
-  const { pagesPerBatch, batchCooldownMs, playerDelayMs } = scrapeSettings();
+async function executePesdbScrapeLoop(params) {
+  const {
+    startPage,
+    endPage,
+    pagesPerBatch,
+    batchCooldownMs,
+    playerDelayMs,
+    batchCooldownSec,
+    playerDelaySec,
+  } = params;
 
   scrapeAbort = false;
+  scrapeRunning = true;
   document.getElementById("scrapeBtn")?.setAttribute("disabled", "disabled");
   document.getElementById("scrapeStopBtn")?.removeAttribute("disabled");
 
-  let stagingTotal = readProgress()?.stagingTotal ?? 0;
+  let stagingTotal = (await fetchStagingStats().catch(() => null))?.staging_count ?? 0;
   let pagesDone = 0;
   const totalPages = endPage - startPage + 1;
 
   try {
-    if (clearStaging) {
-      await supabase.rpc("gpdb_pesdb_staging_clear");
-      stagingTotal = 0;
-      clearProgress();
-    }
+    await saveScrapeJob({
+      status: "running",
+      start_page: startPage,
+      end_page: endPage,
+      next_page: startPage,
+      pages_per_batch: pagesPerBatch,
+      batch_cooldown_sec: batchCooldownSec,
+      player_delay_sec: playerDelaySec,
+      staging_count: stagingTotal,
+      last_error: null,
+      started_at: new Date().toISOString(),
+    });
 
     setStatus(
       "scrapeStatus",
-      `Chunked scrape pages ${startPage}–${endPage} · ${pagesPerBatch} pages/batch · ~${playerDelayMs / 1000}s per player…`,
+      `Chunked scrape pages ${startPage}–${endPage} · ${pagesPerBatch} pages/batch · ~${playerDelaySec}s per player…`,
       true
     );
 
@@ -581,12 +657,25 @@ async function runPesdbScrape() {
       for (let page = batchStart; page <= batchEnd; page++) {
         if (scrapeAbort) break;
 
+        await saveScrapeJob({
+          status: "running",
+          next_page: page,
+          staging_count: stagingTotal,
+        });
+
         const players = await scrapeSinglePage(page, endPage, playerDelayMs);
         const importResult = await appendStagingRows(players);
         stagingTotal = importResult.stagingCount;
         pagesDone += 1;
 
         saveProgress(page, endPage, stagingTotal);
+        await saveScrapeJob({
+          status: "running",
+          last_completed_page: page,
+          next_page: page + 1,
+          staging_count: stagingTotal,
+        });
+
         updateScrapeProgress(pagesDone, totalPages, stagingTotal, `Batch ${batchStart}–${batchEnd}: `);
         const dupeNote =
           importResult.rowsUpdated > 0
@@ -597,7 +686,10 @@ async function runPesdbScrape() {
           `Page ${page}/${endPage} done — ${players.length} players${dupeNote} (${stagingTotal} unique in staging).`,
           true
         );
-        renderProgressPanel({ staging_count: stagingTotal, last_loaded_at: new Date().toISOString() });
+        renderProgressPanel(
+          { staging_count: stagingTotal, last_loaded_at: new Date().toISOString() },
+          { status: "running", last_completed_page: page, next_page: page + 1, end_page: endPage, staging_count: stagingTotal, updated_at: new Date().toISOString() }
+        );
       }
 
       if (batchEnd < endPage && !scrapeAbort) {
@@ -610,33 +702,125 @@ async function runPesdbScrape() {
       }
     }
 
-    if (!scrapeAbort) {
+    if (!scrapeAbort && startPage <= endPage) {
       saveProgress(endPage, endPage, stagingTotal);
+      await saveScrapeJob({
+        status: "complete",
+        last_completed_page: endPage,
+        next_page: endPage + 1,
+        staging_count: stagingTotal,
+        last_error: null,
+      });
       setStatus(
         "scrapeStatus",
         `Scrape complete — ${stagingTotal} players in staging. Run preview next.`,
         true
       );
     } else {
+      await saveScrapeJob({
+        status: "stopped",
+        staging_count: stagingTotal,
+        last_error: null,
+      });
+      const resumePage = (await fetchScrapeJob().catch(() => null))?.next_page ?? startPage;
       setStatus(
         "scrapeStatus",
-        `Stopped. ${stagingTotal} players in staging. Resume will continue from page ${(readProgress()?.lastPage ?? startPage) + 1}.`,
+        `Stopped. ${stagingTotal} players in staging. Reopen or refresh this page to continue from page ${resumePage}.`,
         true
       );
     }
   } catch (err) {
     console.error("pesdb scrape:", err);
+    await saveScrapeJob({
+      status: "error",
+      last_error: String(err.message || err).slice(0, 500),
+      staging_count: stagingTotal,
+    });
     setStatus(
       "scrapeStatus",
       (err.message || `Scrape failed. Deploy ${SCRAPE_FUNCTION} edge function.`) +
-        " Progress saved — adjust start page and resume after cooldown.",
+        " Refresh this page to retry from the last saved page.",
       false
     );
   } finally {
+    scrapeRunning = false;
     document.getElementById("scrapeBtn")?.removeAttribute("disabled");
     document.getElementById("scrapeStopBtn")?.setAttribute("disabled", "disabled");
     refreshProgressPanel(null).catch(() => {});
   }
+}
+
+async function runPesdbScrape() {
+  if (scrapeRunning) return;
+
+  const clearStaging = document.getElementById("scrapeClearStaging")?.checked === true;
+  let params = readScrapeParams();
+
+  try {
+    if (clearStaging) {
+      await supabase.rpc("gpdb_pesdb_staging_clear");
+      await clearScrapeJob();
+      clearProgress();
+    } else {
+      const job = await fetchScrapeJob().catch(() => null);
+      const resume = document.getElementById("scrapeResume")?.checked !== false;
+      if (
+        resume &&
+        job &&
+        ["stopped", "error", "running"].includes(job.status) &&
+        job.next_page <= job.end_page
+      ) {
+        params = {
+          ...params,
+          startPage: job.next_page,
+          endPage: job.end_page,
+          pagesPerBatch: job.pages_per_batch ?? params.pagesPerBatch,
+          batchCooldownMs: (job.batch_cooldown_sec ?? params.batchCooldownSec) * 1000,
+          playerDelayMs: Number(job.player_delay_sec ?? params.playerDelaySec) * 1000,
+          batchCooldownSec: job.batch_cooldown_sec ?? params.batchCooldownSec,
+          playerDelaySec: Number(job.player_delay_sec ?? params.playerDelaySec),
+        };
+        applyJobToForm(job);
+      }
+    }
+
+    await executePesdbScrapeLoop(params);
+  } catch (err) {
+    setStatus("scrapeStatus", err.message || "Could not start scrape.", false);
+  }
+}
+
+async function maybeAutoResumeScrape() {
+  if (scrapeRunning) return;
+  if (document.getElementById("scrapeAutoResume")?.checked === false) return;
+
+  let job;
+  try {
+    job = await fetchScrapeJob();
+  } catch {
+    return;
+  }
+
+  if (!job || job.status !== "running" || job.next_page > job.end_page) return;
+
+  applyJobToForm(job);
+  setStatus(
+    "scrapeStatus",
+    `Auto-resuming scrape from page ${job.next_page} (job saved in database)…`,
+    true
+  );
+
+  const params = {
+    startPage: job.next_page,
+    endPage: job.end_page,
+    pagesPerBatch: job.pages_per_batch ?? 2,
+    batchCooldownMs: (job.batch_cooldown_sec ?? 20) * 1000,
+    playerDelayMs: Number(job.player_delay_sec ?? 3.5) * 1000,
+    batchCooldownSec: job.batch_cooldown_sec ?? 20,
+    playerDelaySec: Number(job.player_delay_sec ?? 3.5),
+  };
+
+  await executePesdbScrapeLoop(params);
 }
 
 function stopPesdbScrape() {
@@ -644,6 +828,7 @@ function stopPesdbScrape() {
   stopLiveTimer();
   setStatus("scrapeStatus", "Stopping after current player…", true);
   setPlayerLabel("Stop requested — finishing current request…");
+  saveScrapeJob({ status: "stopped" }).catch(() => {});
 }
 
 async function importCsv() {
@@ -756,6 +941,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await initAdminPage();
   applyResumeFromStorage();
   await refreshProgressPanel(null);
+  await maybeAutoResumeScrape();
 
   document.getElementById("scrapeEndPage")?.addEventListener("input", (e) => {
     e.target.dataset.userEdited = "1";

@@ -1,0 +1,78 @@
+<script>
+  window.CURRENT_PAGE = "legacy_players";
+</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Legacy players — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    #nav { padding:15px; background:#1a1a1a; border-bottom:1px solid #333; text-align:center; }
+    h1 { margin:20px 20px 8px; color:#ff9900; font-size:26px; }
+    .subtitle { margin:0 20px 16px; color:#999; font-size:14px; max-width:920px; line-height:1.5; }
+    .info-box {
+      background:#1a1a1a; border:1px solid #444; border-left:4px solid #c90;
+      padding:16px 18px; margin:0 20px 16px; border-radius:8px;
+      font-size:14px; line-height:1.6; max-width:920px;
+    }
+    .info-box h2 { margin:0 0 10px; color:#fc8; font-size:16px; }
+    .info-box ul { margin:8px 0 0; padding-left:20px; }
+    .info-box li { margin:6px 0; }
+    .panel { margin:20px; padding:20px; background:#1a1a1a; border:1px solid #333; border-radius:8px; }
+    table.gpsl-table { width:100%; border-collapse:collapse; }
+    table.gpsl-table th, table.gpsl-table td {
+      border:1px solid #333; padding:8px 10px; font-size:13px; text-align:left;
+    }
+    table.gpsl-table th { background:#222; color:#ff9900; text-align:center; }
+    table.gpsl-table td.num { text-align:center; }
+    .tag-legacy { color:#fc8; font-size:12px; }
+    .empty-note { color:#888; padding:16px; text-align:center; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <h1>Legacy players</h1>
+  <p class="subtitle">
+    Cards removed from <a href="https://pesdb.net/efootball/" target="_blank" rel="noopener" style="color:#ff9900;">pesdb.net</a>
+    but still owned in GPSL.
+  </p>
+
+  <div class="info-box">
+    <h2>What is a legacy card?</h2>
+    <p>
+      After each PESDB sync, players who are in GPSL but no longer appear on pesdb.net are marked as
+      <b>legacy</b>. They remain at their current club and can still be picked in your squad and play fixtures.
+    </p>
+    <h2>When their contract runs out</h2>
+    <ul>
+      <li><b>Cannot be sold or listed</b> on the transfer market at any time.</li>
+      <li><b>Not on the expiring-contracts wage bid market</b> — other clubs cannot bid for them.</li>
+      <li>In the <b>final contract year</b>, renew from <a href="squad.html" style="color:#ff9900;">Squad</a>:
+        <b>one season at a time</b> (not a new 3-year deal). Home-grown ≤23 may keep the same wage on renew.</li>
+      <li>Or choose <b>Expire — release for MV</b> from Squad to drop the player for market value.</li>
+      <li>If the card returns on a future PESDB sync, it becomes a normal GPDB card again (sellable, standard renewals).</li>
+    </ul>
+  </div>
+
+  <div class="panel">
+    <div id="listStatus" style="color:#aaa;margin-bottom:12px;">Loading…</div>
+    <table class="gpsl-table">
+      <thead>
+        <tr>
+          <th>Player</th>
+          <th>Pos</th>
+          <th>OVR</th>
+          <th>Club</th>
+          <th>Contract</th>
+          <th>Legacy since</th>
+        </tr>
+      </thead>
+      <tbody id="legacyBody"></tbody>
+    </table>
+  </div>
+
+  <script type="module" src="legacy_players.js?v=20260617"></script>
+</body>
+</html>
