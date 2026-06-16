@@ -367,6 +367,43 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.competition_post_club_star_tax(
+  p_season_id bigint,
+  p_club_short_name text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_count int;
+  v_rate numeric;
+  v_min int;
+  v_amount numeric;
+BEGIN
+  v_count := public.competition_club_star_tax_count(p_club_short_name);
+  IF v_count = 0 THEN
+    RETURN false;
+  END IF;
+
+  SELECT star_tax_per_player, star_tax_min_rating
+  INTO v_rate, v_min
+  FROM public.global_settings WHERE id = 1;
+
+  v_amount := round(v_count * coalesce(v_rate, 0), 0);
+
+  RETURN public.competition_post_club_charge(
+    p_season_id,
+    p_club_short_name,
+    'wage_star_tax',
+    v_amount,
+    format('Star maintenance — %s designated star player(s)', v_count),
+    jsonb_build_object('player_count', v_count, 'min_rating', v_min)
+  );
+END;
+$function$;
+
 GRANT SELECT ON public.club_squad_player_designations TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_squad_star_cap(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_squad_designations_state(text) TO authenticated;
