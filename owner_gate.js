@@ -8,6 +8,7 @@ import { getAuthUser } from "./supabase_client.js";
 const ALLOWED_WITHOUT_CLUB = new Set([
   "awaiting_club",
   "club_auction",
+  "season_club_purchases",
   "learning_gpsl",
   "login",
   "reset_password",

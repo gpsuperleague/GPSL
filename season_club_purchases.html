@@ -1,11 +1,11 @@
 <script>
-  window.CURRENT_PAGE = "season_transfers";
+  window.CURRENT_PAGE = "season_club_purchases";
 </script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Season transfers — GPSL</title>
+  <title>Season club purchases — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <style>
     body {
@@ -62,29 +62,17 @@
       line-height: 1.5;
     }
 
-    .toolbar {
+    .summary {
       display: flex;
       flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
+      gap: 12px 24px;
       margin-bottom: 16px;
+      font-size: 14px;
+      color: #bbb;
     }
 
-    .filter-btn {
-      padding: 6px 14px;
-      background: #222;
-      color: #ccc;
-      border: 1px solid #555;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-    }
-
-    .filter-btn.active {
-      background: #ff9900;
-      color: #111;
-      border-color: #ff9900;
-      font-weight: bold;
+    .summary strong {
+      color: #ff9900;
     }
 
     table.gpsl-table {
@@ -114,6 +102,12 @@
       background: #161616;
     }
 
+    table.gpsl-table tfoot td {
+      background: #222;
+      color: #ffcc66;
+      font-weight: bold;
+    }
+
     .gpsl-link {
       color: #6cf;
       text-decoration: none;
@@ -123,20 +117,15 @@
       text-decoration: underline;
     }
 
-    .type-pill {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
+    .owner-tag {
+      color: #9fdf9f;
       font-weight: bold;
-      background: #333;
-      color: #ccc;
     }
 
-    .type-pill.transfer { background: #2a3d2a; color: #9fdf9f; }
-    .type-pill.draft { background: #3d3520; color: #ffcc66; }
-    .type-pill.foreign { background: #2a2a3d; color: #aabfff; }
-    .type-pill.release { background: #3d2a2a; color: #ffaaaa; }
+    .rank-cell {
+      color: #aaa;
+      font-variant-numeric: tabular-nums;
+    }
 
     .empty {
       color: #888;
@@ -152,28 +141,23 @@
   </style>
 </head>
 <body>
-  <h1>Season transfers</h1>
+  <h1>Season club purchases</h1>
   <div id="nav"></div>
 
   <div class="page-wrap">
     <p class="meta">
       <a href="all_listings.html" class="button">← Transfer Market</a>
-      <a href="season_club_purchases.html" class="button">Season club purchases</a>
+      <a href="season_transfers.html" class="button">Season transfers</a>
       <span id="seasonLabel"></span>
     </p>
 
-    <div class="toolbar" id="filterBar">
-      <button type="button" class="filter-btn active" data-filter="all">All</button>
-      <button type="button" class="filter-btn" data-filter="transfer">Club transfers</button>
-      <button type="button" class="filter-btn" data-filter="draft">Draft signings</button>
-      <button type="button" class="filter-btn" data-filter="foreign">Foreign / releases</button>
-    </div>
+    <div class="summary" id="summaryBar" hidden></div>
 
     <div id="tableHost">
       <p class="empty">Loading…</p>
     </div>
   </div>
 
-  <script type="module" src="season_transfers.js"></script>
+  <script type="module" src="season_club_purchases.js"></script>
 </body>
 </html>

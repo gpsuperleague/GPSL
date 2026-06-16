@@ -36,6 +36,13 @@ export const DASHBOARD_PANELS = [
   },
   { id: "expiring_contracts", label: "Expiring Contracts", href: "expiring_contracts.html", page: "expiring_contracts.html", default: false },
   { id: "season_transfers", label: "Season Transfers", href: "season_transfers.html", page: "season_transfers.html", default: false },
+  {
+    id: "season_club_purchases",
+    label: "Season Club Purchases",
+    href: "season_club_purchases.html",
+    page: "season_club_purchases.html",
+    default: false,
+  },
   { id: "clubs", label: "Clubs", href: "clubs.html", page: "clubs.html", default: false },
   { id: "inbox", label: "Inbox", href: "inbox.html", page: "inbox.html", default: false },
   {

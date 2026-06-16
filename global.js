@@ -83,6 +83,11 @@ export function getDraftAuctionStartTime() {
   return draftStart;
 }
 
+/** ISO timestamp of secret random finish — only exposed after that instant has passed. */
+export function getDraftRandomFinishRevealed() {
+  return draftRandomFinishRevealed;
+}
+
 function isDraftKindEnabled(kind) {
   if (kind === "club") return clubAuctionEnabled;
   if (kind === "manager") return managerDraftEnabled;
@@ -92,7 +97,13 @@ function isDraftKindEnabled(kind) {
 
 function isDraftCountdownActive() {
   if (!isValidDate(draftStart)) return false;
-  return isDraftKindEnabled(getPageDraftCountdownKind());
+  const kind = getPageDraftCountdownKind();
+  if (kind === "club") {
+    if (clubAuctionEnabled) return true;
+    if (draftRandomFinishRevealed) return true;
+    return getDraftPhaseFromStart(getUKNow(), draftStart) !== "ended";
+  }
+  return isDraftKindEnabled(kind);
 }
 
 /** Page-aware: only true when this page's auction type is enabled and scheduled. */
@@ -137,7 +148,10 @@ function applyDraftRandomFinishRevealed(data) {
   if (!("draft_random_finish_revealed" in data)) return;
   const biddingOpenNow =
     ("draft_bidding_open" in data && data.draft_bidding_open === true) ||
-    ("manager_draft_bidding_open" in data && data.manager_draft_bidding_open === true);
+    ("manager_draft_bidding_open" in data &&
+      data.manager_draft_bidding_open === true) ||
+    ("club_auction_bidding_open" in data &&
+      data.club_auction_bidding_open === true);
   if (biddingOpenNow) {
     draftRandomFinishRevealed = null;
   }
@@ -279,7 +293,12 @@ function getPageDraftCountdownKind() {
 
 function draftCountdownEndedSubline(kind) {
   if (kind === "club") {
-    return "Club auction finished. Winners are assigned when admin or the transfer engine settles.";
+    const finish = getDraftRandomFinishRevealed();
+    if (finish) {
+      const { subline } = formatDraftConclusionLines(new Date(finish), "club");
+      return `${subline}\nWinners assign when the transfer engine runs (about every minute).`;
+    }
+    return "Club auction finished. Exact random finish time appears once the secret window closes. Winners assign via transfer engine or Admin → Settle club auctions.";
   }
   if (kind === "manager") {
     return "Manager draft finished. Player draft may still be on — check Player Draft Auction / GPDB.";

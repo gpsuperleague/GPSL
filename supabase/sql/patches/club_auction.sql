@@ -394,6 +394,8 @@ DECLARE
   v_registry public.gpsl_owner_registry%rowtype;
   v_tag text;
   v_starting numeric;
+  v_final_balance numeric;
+  v_season_id bigint;
   v_club_name text;
 BEGIN
   SELECT * INTO v_listing
@@ -485,6 +487,7 @@ BEGIN
 
   v_tag := nullif(btrim(coalesce(v_registry.owner_tag, '')), '');
   v_starting := greatest(coalesce(v_registry.pending_starting_balance, 0), 0);
+  v_final_balance := greatest(v_starting - coalesce(v_amount, 0), 0);
 
   SELECT c."Club" INTO v_club_name
   FROM public."Clubs" c
@@ -500,31 +503,47 @@ BEGIN
     WHERE f.club_name = v_listing.club_short_name
   ) THEN
     UPDATE public."Club_Finances"
-    SET balance = v_starting
+    SET balance = v_final_balance
     WHERE club_name = v_listing.club_short_name;
   ELSE
     INSERT INTO public."Club_Finances" (club_name, balance)
-    VALUES (v_listing.club_short_name, v_starting);
+    VALUES (v_listing.club_short_name, v_final_balance);
   END IF;
 
   IF v_amount > 0 THEN
-    PERFORM public.post_club_ledger(
-      v_listing.club_short_name,
-      'infra_purchase',
-      -v_amount,
-      format(
-        'Club auction — %s (%s)',
-        coalesce(v_club_name, v_listing.club_short_name),
-        v_listing.club_short_name
-      ),
-      jsonb_build_object(
-        'source', 'club_auction',
-        'listing_id', v_listing.id,
-        'winning_owner_id', v_winner,
-        'winning_bid', v_amount,
-        'starting_budget', v_starting
-      )
-    );
+    SELECT s.id INTO v_season_id
+    FROM public.competition_seasons s
+    WHERE s.is_current = true
+      AND s.status IN ('active', 'preseason')
+    ORDER BY CASE s.status WHEN 'active' THEN 0 ELSE 1 END, s.id DESC
+    LIMIT 1;
+
+    IF v_season_id IS NOT NULL THEN
+      PERFORM public.post_club_ledger(
+        v_listing.club_short_name,
+        'infra_purchase',
+        -v_amount,
+        format(
+          'Club auction — %s (%s)',
+          coalesce(v_club_name, v_listing.club_short_name),
+          v_listing.club_short_name
+        ),
+        jsonb_build_object(
+          'source', 'club_auction',
+          'listing_id', v_listing.id,
+          'winning_owner_id', v_winner,
+          'winning_bid', v_amount,
+          'starting_budget', v_starting
+        ),
+        v_season_id,
+        NULL,
+        false,
+        false
+      );
+    ELSE
+      RAISE NOTICE 'Club auction listing % — no current season; balance set to % without ledger line',
+        p_listing_id, v_final_balance;
+    END IF;
   END IF;
 
   UPDATE public.gpsl_owner_registry
@@ -774,7 +793,8 @@ DECLARE
   v_finish timestamptz;
   v_listing public."Club_Auction_Listings"%rowtype;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  IF NOT public.is_gpsl_admin()
+     AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 

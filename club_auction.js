@@ -7,8 +7,12 @@ import {
   getUKNow,
   getDraftAuctionStartTime,
   getDraftCountdownOptions,
+  getDraftRandomFinishRevealed,
   isGpslAdminUser,
 } from "./global.js";
+import {
+  formatDraftConclusionLines,
+} from "./countdown_display.js";
 import {
   getClubAuctionEffectivePhase,
   clubAuctionPhaseLabel,
@@ -233,6 +237,60 @@ async function refreshAuctionState() {
   auctionState = data;
 }
 
+function resolveClubAuctionFinishInstant() {
+  const fromState = auctionState?.finish_time;
+  if (fromState) {
+    const d = new Date(fromState);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  const revealed = getDraftRandomFinishRevealed();
+  if (revealed) {
+    const d = new Date(revealed);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
+function renderClosedAuctionStatus(el) {
+  const finish = resolveClubAuctionFinishInstant();
+  const active = Number(auctionState?.active_listings ?? 0);
+
+  if (finish) {
+    const { duration, subline } = formatDraftConclusionLines(finish, "club");
+    const settleNote =
+      active > 0
+        ? `${active} club listing${active === 1 ? "" : "s"} still open — winners assign automatically when the transfer engine runs (about every minute).`
+        : "All club listings settled — winners should see their club on the dashboard; refresh if you just won.";
+    el.innerHTML = `
+      <div style="color:#ddd;font-weight:600;">${duration}</div>
+      <div style="font-size:12px;color:#aaa;margin-top:6px;white-space:pre-line;line-height:1.45;">${subline}</div>
+      <div style="font-size:12px;color:${active > 0 ? "#ffcc00" : "#9f9"};margin-top:8px;">${settleNote}</div>`;
+    el.style.color = "#ddd";
+    return;
+  }
+
+  const start = getDraftAuctionStartTime();
+  const phase = start
+    ? getClubAuctionEffectivePhase(getUKNow(), start, getDraftCountdownOptions())
+    : null;
+  if (phase === "random_active") {
+    el.textContent =
+      "Random closing window (6:50–6:59pm UK Day 2) — bidding stops at a secret second; exact time appears here once closed.";
+    el.style.color = "#ffcc00";
+    return;
+  }
+  if (phase === "random_locked") {
+    el.textContent =
+      "Bidding locked — waiting for the secret random finish time to publish, then the transfer engine assigns winners.";
+    el.style.color = "#ccc";
+    return;
+  }
+
+  el.textContent =
+    "Bidding is closed. Exact random finish time appears here once the window ends; winners assign via the transfer engine or Admin → Settle club auctions.";
+  el.style.color = "#aaa";
+}
+
 function renderStatus() {
   const el = document.getElementById("auctionStatus");
   if (!el) return;
@@ -288,16 +346,14 @@ function renderStatus() {
       return;
     }
     const phase = getClubAuctionEffectivePhase(now, start, getDraftCountdownOptions());
-    if (phase && phase !== "ended") {
+    if (phase && phase !== "ended" && phase !== "random_locked") {
       el.textContent = clubAuctionPhaseLabel(phase);
-      el.style.color = "#ccc";
+      el.style.color = phase === "random_active" ? "#ffcc00" : "#ccc";
       return;
     }
   }
 
-  el.textContent =
-    "Bidding is closed. If the random finish has passed, admin will settle winners.";
-  el.style.color = "#aaa";
+  renderClosedAuctionStatus(el);
 }
 
 async function updateLeadPanel() {
