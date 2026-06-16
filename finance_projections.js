@@ -146,7 +146,7 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
         pendingByLine,
         "upkeep_star_tax",
         -(amtStar - postedStar),
-        `${upkeepPreview.players_star_tax ?? 0} player(s) rated ${upkeepPreview.settings?.star_tax_min_rating ?? 70}+`,
+        `${upkeepPreview.players_star_tax ?? 0} designated star player(s)`,
         byLine
       );
     }

@@ -28,6 +28,9 @@ export function designationForPlayer(state, playerId) {
 }
 
 export function squadDesignationOptionsHtml(player, state, clubNation) {
+  if (!state) {
+    return '<option value="" selected>Role unavailable</option>';
+  }
   const pid = String(player.Konami_ID);
   const current = designationForPlayer(state, pid);
   const minRating = Number(state?.star_min_rating ?? 79);

@@ -175,7 +175,7 @@
       </div>
       <div class="card" id="sb-wage-taxes">
         <h2>Wage bill &amp; taxes</h2>
-        <p class="note">Season charges: squad wages (sum of contract wages), 34+ rating fee, star tax. Emergency tax = % on cash above threshold. Run <code>competition_wages_taxes.sql</code>.</p>
+        <p class="note">Season charges: squad wages (sum of contract wages), 34+ rating fee, star maintenance (designated ★ players only — set on Squad). Emergency tax = % on cash above threshold. Run <code>competition_wages_taxes.sql</code> and <code>patches/club_squad_designations.sql</code>.</p>
         <span id="sb-tax-34" class="nav-anchor" aria-hidden="true"></span>
         <div class="row gov-subsidy-row">
           <div>
@@ -194,7 +194,7 @@
             <input type="number" id="starTaxMinRating" min="1" max="99" step="1" style="width:70px;">
           </div>
           <div>
-            <label>₿ per star player</label>
+            <label>₿ per designated star</label>
             <input type="number" id="starTaxPerPlayer" min="0" step="50000" style="width:120px;">
           </div>
         </div>

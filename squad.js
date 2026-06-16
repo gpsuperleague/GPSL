@@ -464,11 +464,6 @@ async function loadSquad() {
     loadPlayerSeasonStatsForSquad(supabase, playerIds, currentUserShort),
   ]);
   transferStatusState = state;
-  squadDesignationsState =
-    (await loadSquadDesignationsState(supabase, currentUserShort)) ||
-    squadDesignationsState;
-  renderSquadCompliance(list, squadDesignationsState);
-  refreshSquadDesignationSelects(list, squadDesignationsState);
 
   patchSquadEnrichment(transferStatusState, statsMapByPlayerId(seasonStats));
 }
