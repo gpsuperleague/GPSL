@@ -205,8 +205,6 @@ BEGIN
     RAISE EXCEPTION 'Sign in required';
   END IF;
 
-  PERFORM public.international_refresh_gpdb_label_map();
-
   RETURN QUERY
   WITH player_rows AS (
     SELECT
@@ -288,14 +286,30 @@ BEGIN
     (ion.id IS NOT NULL),
     coalesce(oc.owned_clubs_count, 0),
     jsonb_build_object(
-      'all', public.international_player_pool_section_json(a.all_total, a.all_gk, a.all_def, a.all_mid, a.all_fwd),
-      'le_65', public.international_player_pool_section_json(a.le_65_total, a.le_65_gk, a.le_65_def, a.le_65_mid, a.le_65_fwd),
-      'r66_69', public.international_player_pool_section_json(a.r66_69_total, a.r66_69_gk, a.r66_69_def, a.r66_69_mid, a.r66_69_fwd),
-      'r70_72', public.international_player_pool_section_json(a.r70_72_total, a.r70_72_gk, a.r70_72_def, a.r70_72_mid, a.r70_72_fwd),
-      'r73_75', public.international_player_pool_section_json(a.r73_75_total, a.r73_75_gk, a.r73_75_def, a.r73_75_mid, a.r73_75_fwd),
-      'r76_78', public.international_player_pool_section_json(a.r76_78_total, a.r76_78_gk, a.r76_78_def, a.r76_78_mid, a.r76_78_fwd),
-      'r79_plus', public.international_player_pool_section_json(a.r79_plus_total, a.r79_plus_gk, a.r79_plus_def, a.r79_plus_mid, a.r79_plus_fwd),
-      'u21', public.international_player_pool_section_json(a.u21_total, a.u21_gk, a.u21_def, a.u21_mid, a.u21_fwd)
+      'all', public.international_player_pool_section_json(
+        coalesce(a.all_total, 0), coalesce(a.all_gk, 0), coalesce(a.all_def, 0), coalesce(a.all_mid, 0), coalesce(a.all_fwd, 0)
+      ),
+      'le_65', public.international_player_pool_section_json(
+        coalesce(a.le_65_total, 0), coalesce(a.le_65_gk, 0), coalesce(a.le_65_def, 0), coalesce(a.le_65_mid, 0), coalesce(a.le_65_fwd, 0)
+      ),
+      'r66_69', public.international_player_pool_section_json(
+        coalesce(a.r66_69_total, 0), coalesce(a.r66_69_gk, 0), coalesce(a.r66_69_def, 0), coalesce(a.r66_69_mid, 0), coalesce(a.r66_69_fwd, 0)
+      ),
+      'r70_72', public.international_player_pool_section_json(
+        coalesce(a.r70_72_total, 0), coalesce(a.r70_72_gk, 0), coalesce(a.r70_72_def, 0), coalesce(a.r70_72_mid, 0), coalesce(a.r70_72_fwd, 0)
+      ),
+      'r73_75', public.international_player_pool_section_json(
+        coalesce(a.r73_75_total, 0), coalesce(a.r73_75_gk, 0), coalesce(a.r73_75_def, 0), coalesce(a.r73_75_mid, 0), coalesce(a.r73_75_fwd, 0)
+      ),
+      'r76_78', public.international_player_pool_section_json(
+        coalesce(a.r76_78_total, 0), coalesce(a.r76_78_gk, 0), coalesce(a.r76_78_def, 0), coalesce(a.r76_78_mid, 0), coalesce(a.r76_78_fwd, 0)
+      ),
+      'r79_plus', public.international_player_pool_section_json(
+        coalesce(a.r79_plus_total, 0), coalesce(a.r79_plus_gk, 0), coalesce(a.r79_plus_def, 0), coalesce(a.r79_plus_mid, 0), coalesce(a.r79_plus_fwd, 0)
+      ),
+      'u21', public.international_player_pool_section_json(
+        coalesce(a.u21_total, 0), coalesce(a.u21_gk, 0), coalesce(a.u21_def, 0), coalesce(a.u21_mid, 0), coalesce(a.u21_fwd, 0)
+      )
     )
   FROM public.international_nations n
   LEFT JOIN agg a ON a.nation_code = n.code

@@ -275,7 +275,13 @@ function renderTable() {
 }
 
 async function loadReport() {
+  const loading = document.getElementById("poolLoading");
+  const wrap = document.getElementById("poolTableWrap");
+  if (loading) loading.hidden = false;
+  if (wrap) wrap.hidden = true;
   reportRows = await loadNationPlayerPoolReport(supabase);
+  if (loading) loading.hidden = true;
+  if (wrap) wrap.hidden = false;
 }
 
 function wireControls() {
@@ -313,11 +319,13 @@ async function main() {
     renderTable();
   } catch (err) {
     console.error("nation_player_pool:", err);
+    const loading = document.getElementById("poolLoading");
+    if (loading) loading.hidden = true;
     if (errEl) {
       errEl.hidden = false;
       errEl.textContent =
         err.message ||
-        "Could not load nation pool report. Run supabase/sql/patches/international_nation_player_pool.sql in Supabase.";
+        "Could not load nation pool report. Re-run supabase/sql/patches/international_nation_player_pool.sql in Supabase (performance fix).";
     }
   }
 }

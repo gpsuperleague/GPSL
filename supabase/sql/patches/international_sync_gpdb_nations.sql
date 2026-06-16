@@ -406,6 +406,10 @@
           v_inserted := v_inserted + 1;
         END LOOP;
 
+        IF to_regprocedure('public.international_refresh_gpdb_label_map()') IS NOT NULL THEN
+          PERFORM public.international_refresh_gpdb_label_map();
+        END IF;
+
         RETURN jsonb_build_object(
           'inserted', v_inserted,
           'skipped_existing_code', v_skipped,
