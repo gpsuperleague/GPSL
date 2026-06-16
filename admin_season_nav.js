@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260618-kickoff-first";
+export const SEASON_ADMIN_NAV_VERSION = "20260618-league-fixtures-second";
 
 export const SEASON_ADMIN_NAV = [
   {
@@ -13,6 +13,17 @@ export const SEASON_ADMIN_NAV = [
         href: "admin_season.html",
         hash: "wf-kickoff",
         page: "admin_season",
+      },
+    ],
+  },
+  {
+    id: "league_fixtures",
+    label: "League Fixtures",
+    items: [
+      {
+        label: "Draw league fixtures",
+        href: "admin_fixtures-league.html",
+        page: "admin_fixtures-league",
       },
     ],
   },
@@ -49,17 +60,6 @@ export const SEASON_ADMIN_NAV = [
         href: "admin_season.html",
         hash: "wf-divisions",
         page: "admin_season",
-      },
-    ],
-  },
-  {
-    id: "league_fixtures",
-    label: "League Fixtures",
-    items: [
-      {
-        label: "Draw league fixtures",
-        href: "admin_fixtures-league.html",
-        page: "admin_fixtures-league",
       },
     ],
   },
