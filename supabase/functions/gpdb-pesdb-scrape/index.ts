@@ -156,13 +156,29 @@ async function sleep(ms: number): Promise<void> {
   await new Promise((r) => setTimeout(r, ms));
 }
 
+type ScrapePace = "slow" | "chunked";
+
+function paceDelays(pace: ScrapePace) {
+  if (pace === "chunked") {
+    // ~2 min/page in admin: list + ~32 detail fetches with browser-side gaps
+    return { afterFetchMs: 400, afterFetchJitterMs: 200, afterEnrichMs: 0 };
+  }
+  return { afterFetchMs: 4500, afterFetchJitterMs: 3500, afterEnrichMs: 6000 };
+}
+
 /** Randomised pause so requests are less bursty. */
 async function politePause(baseMs: number, jitterMs = 1500): Promise<void> {
+  if (baseMs <= 0) return;
   await sleep(baseMs + Math.floor(Math.random() * jitterMs));
 }
 
 /** Fetch with retry on 429/503 and a polite pause after each success. */
-async function fetchPesdbHtml(url: string, attempt = 1): Promise<string> {
+async function fetchPesdbHtml(
+  url: string,
+  pace: ScrapePace = "slow",
+  attempt = 1
+): Promise<string> {
+  const { afterFetchMs, afterFetchJitterMs } = paceDelays(pace);
   const res = await fetch(url, {
     headers: {
       "User-Agent": USER_AGENT,
@@ -175,7 +191,7 @@ async function fetchPesdbHtml(url: string, attempt = 1): Promise<string> {
     const waitMs = Math.min(300000, 20000 * Math.pow(2, attempt - 1));
     console.warn(`PESDB ${res.status} — retry ${attempt}/9 in ${waitMs}ms: ${url}`);
     await sleep(waitMs);
-    return fetchPesdbHtml(url, attempt + 1);
+    return fetchPesdbHtml(url, pace, attempt + 1);
   }
 
   if (!res.ok) {
@@ -188,7 +204,7 @@ async function fetchPesdbHtml(url: string, attempt = 1): Promise<string> {
   }
 
   const text = await res.text();
-  await politePause(4500, 3500);
+  await politePause(afterFetchMs, afterFetchJitterMs);
   return text;
 }
 
@@ -246,9 +262,10 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const action = String(body?.action || "scrape_page");
+    const pace: ScrapePace = body?.pace === "chunked" ? "chunked" : "slow";
 
     if (action === "detect") {
-      const html = await fetchPesdbHtml(pesdbListUrl(1));
+      const html = await fetchPesdbHtml(pesdbListUrl(1), pace);
       const { totalPlayers, maxPage } = detectPesdbTotals(html);
       const estimatedPages = totalPlayers
         ? Math.max(1, Math.ceil(totalPlayers / 30))
@@ -282,7 +299,10 @@ Deno.serve(async (req) => {
         };
         if (!base.konami_id) continue;
         try {
-          const detailHtml = await fetchPesdbHtml(pesdbPlayerMaxUrl(base.konami_id));
+          const detailHtml = await fetchPesdbHtml(
+            pesdbPlayerMaxUrl(base.konami_id),
+            pace
+          );
           const detail = parsePesdbMaxLevelPage(detailHtml);
           players.push({
             ...base,
@@ -297,7 +317,8 @@ Deno.serve(async (req) => {
             playing_style: "None",
           });
         }
-        await politePause(6000, 4000);
+        const { afterEnrichMs } = paceDelays(pace);
+        await politePause(afterEnrichMs, pace === "chunked" ? 0 : 4000);
       }
 
       return jsonResponse({
@@ -313,7 +334,7 @@ Deno.serve(async (req) => {
 
     const page = Math.max(1, Number(body?.page) || 1);
 
-    const listHtml = await fetchPesdbHtml(pesdbListUrl(page));
+    const listHtml = await fetchPesdbHtml(pesdbListUrl(page), pace);
     const listRows = parsePesdbListPage(listHtml);
 
     if (!listRows.length) {
@@ -322,7 +343,7 @@ Deno.serve(async (req) => {
         page,
         players: [],
         players_on_page: 0,
-        warning: "No players parsed on this page",
+        warning: "No players parsed on this page — PESDB may have hit the 2-page limit. Wait and resume the next batch.",
       });
     }
 
@@ -338,6 +359,7 @@ Deno.serve(async (req) => {
       players,
       players_on_page: players.length,
       list_only: true,
+      pace,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

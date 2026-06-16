@@ -9,11 +9,9 @@ primeAdminPageChrome();
 
 const CONFIRM_TEXT = "SYNC GPDB";
 const SCRAPE_FUNCTION = "gpdb-pesdb-scrape";
-const DETAIL_BATCH_SIZE = 1;
-const PAGE_DELAY_MS = 60000;
-const BATCH_DELAY_MS = 30000;
+const SCRAPE_PACE = "chunked";
+const PROGRESS_KEY = "gpdb_pesdb_scrape_progress";
 const RATE_LIMIT_RETRY_MS = 60000;
-const PAGE_START_DELAY_MS = 8000;
 let scrapeAbort = false;
 
 function sleep(ms) {
@@ -23,6 +21,46 @@ function sleep(ms) {
 function isRateLimitError(message) {
   return /429|rate limit/i.test(String(message || ""));
 }
+
+function readProgress() {
+  try {
+    return JSON.parse(localStorage.getItem(PROGRESS_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function saveProgress(lastPage, endPage, stagingTotal) {
+  localStorage.setItem(
+    PROGRESS_KEY,
+    JSON.stringify({
+      lastPage,
+      endPage,
+      stagingTotal,
+      savedAt: new Date().toISOString(),
+    })
+  );
+}
+
+function clearProgress() {
+  localStorage.removeItem(PROGRESS_KEY);
+}
+
+function applyResumeFromStorage() {
+  const resume = document.getElementById("scrapeResume")?.checked !== false;
+  if (!resume) return;
+  const prog = readProgress();
+  if (!prog?.lastPage) return;
+  const startInput = document.getElementById("scrapeStartPage");
+  const endInput = document.getElementById("scrapeEndPage");
+  if (startInput && prog.lastPage >= 1) {
+    startInput.value = String(prog.lastPage + 1);
+  }
+  if (endInput && prog.endPage && !endInput.dataset.userEdited) {
+    endInput.value = String(prog.endPage);
+  }
+}
+
 const fileInput = () => document.getElementById("csvFile");
 const importBtn = () => document.getElementById("importBtn");
 
@@ -31,6 +69,18 @@ function escapeHtml(text) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/"/g, "&quot;");
+}
+
+function scrapeSettings() {
+  const pagesPerBatch = Math.min(
+    2,
+    Math.max(1, Number(document.getElementById("scrapePagesPerBatch")?.value) || 2)
+  );
+  const batchCooldownMs =
+    Math.max(5, Number(document.getElementById("scrapeBatchCooldown")?.value) || 20) * 1000;
+  const playerDelayMs =
+    Math.max(2000, Number(document.getElementById("scrapePlayerDelay")?.value) || 3.5) * 1000;
+  return { pagesPerBatch, batchCooldownMs, playerDelayMs };
 }
 
 function renderSummary(result, prefix = "") {
@@ -152,9 +202,25 @@ async function uploadStagingRows(rows, statusId = "importStatus") {
   return imported;
 }
 
+async function appendStagingRows(rows) {
+  if (!rows?.length) return 0;
+  const enriched = await enrichRowsWithEconomics(rows);
+  const chunks = chunkRows(enriched);
+  let imported = 0;
+  for (const chunk of chunks) {
+    const { error } = await supabase.rpc("gpdb_pesdb_staging_import", {
+      p_rows: chunk,
+      p_replace: false,
+    });
+    if (error) throw error;
+    imported += chunk.length;
+  }
+  return imported;
+}
+
 async function invokePesdbScrape(body, attempt = 1) {
   const { data, error } = await supabase.functions.invoke(SCRAPE_FUNCTION, {
-    body,
+    body: { ...body, pace: SCRAPE_PACE },
   });
   if (error) {
     let detail = error.message || "Scrape request failed";
@@ -201,29 +267,64 @@ async function invokePesdbScrape(body, attempt = 1) {
   return data;
 }
 
-async function enrichPlayersWithDetails(listPlayers) {
+/** Per-player detail fetch — mirrors local script: list row then max_level page. */
+async function enrichPagePlayers(listPlayers, page, endPage, playerDelayMs) {
   const out = [];
-  const batches = chunkRows(listPlayers, DETAIL_BATCH_SIZE);
-  for (let i = 0; i < batches.length; i++) {
+  const total = listPlayers.length;
+
+  for (let i = 0; i < listPlayers.length; i++) {
     if (scrapeAbort) break;
-    const batch = batches[i];
+    const player = listPlayers[i];
+    setStatus(
+      "scrapeStatus",
+      `Page ${page}/${endPage} — player ${i + 1}/${total}: ${player.player_name || player.konami_id}…`,
+      true
+    );
+
     const data = await invokePesdbScrape({
       action: "enrich_players",
-      players: batch,
+      players: [player],
     });
     out.push(...(data.players || []));
-    if (i < batches.length - 1) await sleep(BATCH_DELAY_MS);
+
+    if (i < listPlayers.length - 1 && !scrapeAbort) {
+      await sleep(playerDelayMs);
+    }
   }
+
   return out;
 }
 
-function updateScrapeProgress(page, endPage, stagingTotal) {
+function updateScrapeProgress(completedPages, totalPages, stagingTotal, batchLabel = "") {
   const bar = document.getElementById("scrapeProgressBar");
   const label = document.getElementById("scrapeProgressLabel");
   if (!bar || !label) return;
-  const pct = endPage > 0 ? Math.round((page / endPage) * 100) : 0;
+  const pct = totalPages > 0 ? Math.round((completedPages / totalPages) * 100) : 0;
   bar.style.width = `${Math.min(100, pct)}%`;
-  label.textContent = `Page ${page} / ${endPage} · ${stagingTotal} players in staging`;
+  label.textContent = `${batchLabel}${completedPages} / ${totalPages} pages · ${stagingTotal} players in staging`;
+}
+
+async function scrapeSinglePage(page, endPage, playerDelayMs) {
+  setStatus("scrapeStatus", `Page ${page}/${endPage} — fetching list…`, true);
+
+  const listData = await invokePesdbScrape({
+    action: "scrape_page",
+    page,
+  });
+
+  if (listData.warning && !listData.players?.length) {
+    throw new Error(listData.warning);
+  }
+
+  let players = listData.players || [];
+  if (!players.length) {
+    throw new Error(
+      `No players on page ${page} — PESDB 2-page limit may be active. Wait 30–60 min, then resume from page ${page}.`
+    );
+  }
+
+  players = await enrichPagePlayers(players, page, endPage, playerDelayMs);
+  return players;
 }
 
 async function detectPesdbPages() {
@@ -233,10 +334,11 @@ async function detectPesdbPages() {
     const endInput = document.getElementById("scrapeEndPage");
     if (endInput && data.estimated_pages) {
       endInput.value = String(data.estimated_pages);
+      endInput.dataset.userEdited = "1";
     }
     setStatus(
       "scrapeStatus",
-      `~${data.total_players ?? "?"} players · ~${data.estimated_pages ?? "?"} pages. Set range and start scrape.`,
+      `~${data.total_players ?? "?"} players · ~${data.estimated_pages ?? "?"} pages. Start with pages 1–2 to test.`,
       true
     );
   } catch (err) {
@@ -248,90 +350,78 @@ async function detectPesdbPages() {
 async function runPesdbScrape() {
   const startPage = Math.max(1, Number(document.getElementById("scrapeStartPage")?.value) || 1);
   const endPage = Math.max(startPage, Number(document.getElementById("scrapeEndPage")?.value) || startPage);
-  const includeDetails = document.getElementById("scrapeDetails")?.checked !== false;
+  const clearStaging = document.getElementById("scrapeClearStaging")?.checked === true;
+  const { pagesPerBatch, batchCooldownMs, playerDelayMs } = scrapeSettings();
 
   scrapeAbort = false;
   document.getElementById("scrapeBtn")?.setAttribute("disabled", "disabled");
   document.getElementById("scrapeStopBtn")?.removeAttribute("disabled");
 
-  let stagingTotal = 0;
+  let stagingTotal = readProgress()?.stagingTotal ?? 0;
+  let pagesDone = 0;
+  const totalPages = endPage - startPage + 1;
 
   try {
-    await supabase.rpc("gpdb_pesdb_staging_clear");
+    if (clearStaging) {
+      await supabase.rpc("gpdb_pesdb_staging_clear");
+      stagingTotal = 0;
+      clearProgress();
+    }
 
     setStatus(
       "scrapeStatus",
-      `Scraping pesdb.net pages ${startPage}–${endPage}${includeDetails ? " (slow mode — max rating + style)" : ""}…`,
+      `Chunked scrape pages ${startPage}–${endPage} · ${pagesPerBatch} pages/batch · ~${playerDelayMs / 1000}s per player…`,
       true
     );
 
-    await sleep(10000);
+    for (let batchStart = startPage; batchStart <= endPage; batchStart += pagesPerBatch) {
+      if (scrapeAbort) break;
 
-    for (let page = startPage; page <= endPage; page++) {
-      if (scrapeAbort) {
-        setStatus("scrapeStatus", `Stopped at page ${page - 1}. ${stagingTotal} players in staging.`, true);
-        break;
-      }
-
-      await sleep(PAGE_START_DELAY_MS);
-
-      updateScrapeProgress(page - startPage, endPage - startPage + 1, stagingTotal);
+      const batchEnd = Math.min(batchStart + pagesPerBatch - 1, endPage);
       setStatus(
         "scrapeStatus",
-        `Page ${page}/${endPage} — fetching list…`,
+        `Batch pages ${batchStart}–${batchEnd} (fresh PESDB session)…`,
         true
       );
 
-      const listData = await invokePesdbScrape({
-        action: "scrape_page",
-        page,
-      });
+      for (let page = batchStart; page <= batchEnd; page++) {
+        if (scrapeAbort) break;
 
-      let players = listData.players || [];
+        const players = await scrapeSinglePage(page, endPage, playerDelayMs);
+        const added = await appendStagingRows(players);
+        stagingTotal += added;
+        pagesDone += 1;
 
-      if (includeDetails && players.length && !scrapeAbort) {
+        saveProgress(page, endPage, stagingTotal);
+        updateScrapeProgress(pagesDone, totalPages, stagingTotal, `Batch ${batchStart}–${batchEnd}: `);
         setStatus(
           "scrapeStatus",
-          `Page ${page}/${endPage} — max rating + style (${players.length} players, ~1 every 40s)…`,
+          `Page ${page}/${endPage} done — ${players.length} players (${stagingTotal} total in staging).`,
           true
         );
-        players = await enrichPlayersWithDetails(players);
       }
 
-      const enriched = await enrichRowsWithEconomics(players);
-      if (enriched.length) {
-        const chunks = chunkRows(enriched);
-        for (const chunk of chunks) {
-          const { error } = await supabase.rpc("gpdb_pesdb_staging_import", {
-            p_rows: chunk,
-            p_replace: false,
-          });
-          if (error) throw error;
-        }
-        stagingTotal += enriched.length;
-      }
-
-      updateScrapeProgress(page - startPage + 1, endPage - startPage + 1, stagingTotal);
-      setStatus(
-        "scrapeStatus",
-        `Page ${page}/${endPage} done — ${players.length} players (${stagingTotal} total in staging).`,
-        true
-      );
-
-      if (page < endPage && !scrapeAbort) {
+      if (batchEnd < endPage && !scrapeAbort) {
         setStatus(
           "scrapeStatus",
-          `Pausing ${PAGE_DELAY_MS / 1000}s before next page (PESDB rate limit)…`,
+          `Batch ${batchStart}–${batchEnd} complete. Cooldown ${batchCooldownMs / 1000}s before next batch…`,
           true
         );
-        await sleep(PAGE_DELAY_MS);
+        await sleep(batchCooldownMs);
       }
     }
 
     if (!scrapeAbort) {
+      saveProgress(endPage, endPage, stagingTotal);
       setStatus(
         "scrapeStatus",
         `Scrape complete — ${stagingTotal} players in staging. Run preview next.`,
+        true
+      );
+    } else {
+      setStatus(
+        "scrapeStatus",
+        `Stopped. ${stagingTotal} players in staging. Resume will continue from page ${(readProgress()?.lastPage ?? startPage) + 1}.`,
         true
       );
     }
@@ -339,7 +429,8 @@ async function runPesdbScrape() {
     console.error("pesdb scrape:", err);
     setStatus(
       "scrapeStatus",
-      err.message || `Scrape failed. Deploy ${SCRAPE_FUNCTION} edge function.`,
+      (err.message || `Scrape failed. Deploy ${SCRAPE_FUNCTION} edge function.`) +
+        " Progress saved — adjust start page and resume after cooldown.",
       false
     );
   } finally {
@@ -350,7 +441,7 @@ async function runPesdbScrape() {
 
 function stopPesdbScrape() {
   scrapeAbort = true;
-  setStatus("scrapeStatus", "Stopping after current page…", true);
+  setStatus("scrapeStatus", "Stopping after current player…", true);
 }
 
 async function importCsv() {
@@ -457,6 +548,12 @@ async function restorePlayer(playerId) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initAdminPage();
+  applyResumeFromStorage();
+
+  document.getElementById("scrapeEndPage")?.addEventListener("input", (e) => {
+    e.target.dataset.userEdited = "1";
+  });
+
   document.getElementById("importBtn")?.addEventListener("click", importCsv);
   document.getElementById("detectPagesBtn")?.addEventListener("click", detectPesdbPages);
   document.getElementById("scrapeBtn")?.addEventListener("click", runPesdbScrape);

@@ -57,19 +57,26 @@
       <div class="card">
         <h2>1. Scrape PESDB → staging</h2>
         <p class="note">
-          Fetches list pages from pesdb.net via Supabase edge function (no Selenium).
-          Max rating and playing style are read in small batches (avoids edge function timeout).
-          Uses a very slow pace (~1 player every 40s, ~15–25 min per page with details) to avoid PESDB 429 limits.
-          Full scrape may take <b>several days</b> — leave the tab open, or use CSV upload for bulk.
-          If rate-limited, wait <b>30–60 minutes</b> before resuming. Test pages <b>1–1</b> first (single page).
+          PESDB allows about <b>2 list pages per session</b> (~32 players each, ~2 min/page with details).
+          This scraper works in <b>2-page batches</b>: full list + max rating + playing style per player,
+          then a short cooldown before the next batch (same logic as the local Python script).
+          Leave the tab open — progress is saved; use <b>Resume</b> after rate limits.
+          Test with pages <b>1–2</b> first. CSV upload still available as fallback.
         </p>
         <div class="scrape-range">
           <label>Start page <input type="number" id="scrapeStartPage" min="1" value="1"></label>
-          <label>End page <input type="number" id="scrapeEndPage" min="1" value="3"></label>
+          <label>End page <input type="number" id="scrapeEndPage" min="1" value="2"></label>
           <button type="button" class="button" id="detectPagesBtn">Detect pages</button>
         </div>
         <div class="scrape-options">
-          <label><input type="checkbox" id="scrapeDetails" checked> Fetch max rating + playing style (slower, recommended)</label>
+          <label>Pages per batch <input type="number" id="scrapePagesPerBatch" min="1" max="2" value="2" style="width:52px;padding:4px 6px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;"></label>
+          <label>Batch cooldown (sec) <input type="number" id="scrapeBatchCooldown" min="5" value="20" style="width:52px;padding:4px 6px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;"></label>
+          <label>Delay per player (sec) <input type="number" id="scrapePlayerDelay" min="2" value="3.5" step="0.5" style="width:52px;padding:4px 6px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;"></label>
+        </div>
+        <div class="scrape-options">
+          <label><input type="checkbox" id="scrapeDetails" checked disabled> Max rating + playing style (always on)</label>
+          <label><input type="checkbox" id="scrapeResume" checked> Resume from last batch</label>
+          <label><input type="checkbox" id="scrapeClearStaging"> Clear staging before start</label>
         </div>
         <div class="row" style="margin-top:12px;">
           <button type="button" class="button" id="scrapeBtn">Start scrape → staging</button>
@@ -147,6 +154,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_sync.js?v=20260615-ultra-slow"></script>
+  <script type="module" src="admin_gpdb_sync.js?v=20260616-chunked"></script>
 </body>
 </html>

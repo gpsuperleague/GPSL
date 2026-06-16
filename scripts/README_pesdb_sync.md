@@ -61,20 +61,24 @@ pip install selenium webdriver-manager beautifulsoup4 lxml
 python scripts/pesdb_scrape.py --output pesdb_full.csv
 ```
 
-### Recommended: one command
+### Admin chunked scrape (2 pages at a time)
 
-```bash
-pip install selenium webdriver-manager beautifulsoup4 lxml requests
-python scripts/pesdb_scrape.py --output pesdb_full.csv --resume
+**Admin → Season Break → Data tools → GPDB PESDB sync**
+
+1. **Detect pages** → sets end page (~633)
+2. Test **pages 1–2** → **Start scrape → staging**
+3. Scraper grabs list + max rating + playing style per player (~3.5s/player, ~2 min/page)
+4. After **2 pages**, **20s cooldown**, then next batch automatically
+5. **Resume from last batch** continues where you left off (progress in browser localStorage)
+6. When complete → **Preview** → **Apply**
+
+Redeploy edge function after updates:
+
+```powershell
+supabase functions deploy gpdb-pesdb-scrape --no-verify-jwt
 ```
 
-Phase 1 uses the browser for list pages only (~633 pages). Phase 2 enriches playstyles and max ratings over HTTP automatically.
-
-If PESDB rate-limits you (HTTP 429), slow down phase 2:
-
-```bash
-python scripts/pesdb_scrape.py --enrich pesdb_full.csv --output pesdb_full.csv --resume --workers 2 --delay 2
-```
+If PESDB rate-limits mid-batch, wait 30–60 minutes and click **Start scrape** again (with **Resume** checked).
 
 ### Split phases (optional)
 
