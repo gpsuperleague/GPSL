@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260618-transfer-window-in-create";
+export const SEASON_ADMIN_NAV_VERSION = "20260618-challenge-payouts-mid-season";
 
 const TRANSFER_WINDOW_NAV_ITEMS = [
   {
@@ -15,6 +15,12 @@ const TRANSFER_WINDOW_NAV_ITEMS = [
     page: "admin_transfers",
   },
 ];
+
+const CHALLENGE_PAYOUTS_NAV_ITEM = {
+  label: "Challenge payouts",
+  href: "admin_challenges.html",
+  page: "admin_challenges",
+};
 
 export const SEASON_ADMIN_NAV = [
   {
@@ -133,7 +139,7 @@ export const SEASON_ADMIN_NAV = [
   {
     id: "mid_season",
     label: "Mid Season",
-    items: [...TRANSFER_WINDOW_NAV_ITEMS],
+    items: [...TRANSFER_WINDOW_NAV_ITEMS, CHALLENGE_PAYOUTS_NAV_ITEM],
   },
   {
     id: "playoffs",
@@ -150,11 +156,7 @@ export const SEASON_ADMIN_NAV = [
     id: "close",
     label: "Close Season",
     items: [
-      {
-        label: "Challenge payouts",
-        href: "admin_challenges.html",
-        page: "admin_challenges",
-      },
+      CHALLENGE_PAYOUTS_NAV_ITEM,
       {
         label: "Archive season stats & awards",
         href: "admin_season.html",
