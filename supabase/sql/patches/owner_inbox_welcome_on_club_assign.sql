@@ -2,6 +2,9 @@
 -- Backfill for owners who already have a club but no welcome message.
 -- Run after owner_inbox_notifications.sql and club_assignment_stadium_charge.sql.
 
+-- 3-arg version superseded the old (uuid, text) overload; drop it or calls are ambiguous.
+DROP FUNCTION IF EXISTS public.owner_inbox_send_welcome(uuid, text);
+
 CREATE OR REPLACE FUNCTION public.owner_inbox_send_welcome(
   p_owner_id uuid,
   p_club_short_name text DEFAULT NULL,

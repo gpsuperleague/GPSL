@@ -370,6 +370,8 @@ $function$;
 -- Welcome / learning GPSL
 -- ---------------------------------------------------------------------------
 
+DROP FUNCTION IF EXISTS public.owner_inbox_send_welcome(uuid, text);
+
 CREATE OR REPLACE FUNCTION public.owner_inbox_send_welcome(
   p_owner_id uuid,
   p_club_short_name text DEFAULT NULL,
