@@ -47,6 +47,15 @@ import {
   normalizeVoluntaryReleasesRemaining,
   voluntaryReleaseOptionLabel,
 } from "./voluntary_contract_release.js";
+import {
+  loadSquadDesignationsState,
+  setSquadDesignation,
+  squadDesignationOptionsHtml,
+  designationForPlayer,
+  designationRoleBadge,
+  starComplianceRow,
+  oooComplianceRow,
+} from "./squad_designations.js";
 
 window.supabase = supabase;
 
@@ -79,6 +88,7 @@ let foreignInterestRemaining = MAX_FOREIGN_INTEREST;
 /** Fictional clubs currently tracking (same length as interest slots). */
 let foreignTrackingTeams = [];
 let voluntaryReleasesRemaining = MAX_VOLUNTARY_CONTRACT_RELEASES;
+let squadDesignationsState = null;
 
 // ENTRY POINT
 document.addEventListener("DOMContentLoaded", async () => {
@@ -437,10 +447,15 @@ async function loadSquad() {
   const playerIds = list.map((p) => String(p.Konami_ID));
   const idsKey = playerIds.slice().sort().join(",");
 
-  renderSquadCompliance(list);
+  squadDesignationsState = await loadSquadDesignationsState(
+    supabase,
+    currentUserShort
+  );
+
+  renderSquadCompliance(list, squadDesignationsState);
 
   if (!hadSquad || tbody?.dataset.squadIds !== idsKey) {
-    renderSquad(list, null, new Map());
+    renderSquad(list, null, new Map(), squadDesignationsState);
     if (tbody) tbody.dataset.squadIds = idsKey;
   }
 
@@ -449,16 +464,37 @@ async function loadSquad() {
     loadPlayerSeasonStatsForSquad(supabase, playerIds, currentUserShort),
   ]);
   transferStatusState = state;
+  squadDesignationsState =
+    (await loadSquadDesignationsState(supabase, currentUserShort)) ||
+    squadDesignationsState;
+  renderSquadCompliance(list, squadDesignationsState);
+  refreshSquadDesignationSelects(list, squadDesignationsState);
 
   patchSquadEnrichment(transferStatusState, statsMapByPlayerId(seasonStats));
 }
 
-function renderSquadCompliance(players) {
+function refreshSquadDesignationSelects(players, state) {
+  if (!state) return;
+  document.querySelectorAll("select.squad-designation-select").forEach((sel) => {
+    const pid = sel.dataset.playerId;
+    const player = players.find((p) => String(p.Konami_ID) === String(pid));
+    if (!player) return;
+    const current = designationForPlayer(state, pid);
+    sel.innerHTML = squadDesignationOptionsHtml(player, state, clubNation);
+    sel.value = current || "";
+  });
+}
+
+function renderSquadCompliance(players, designationsState) {
   const el = document.getElementById("squadCompliancePanel");
   if (!el) return;
 
   const c = analyseSquadComposition(players, clubNation);
   const rows = squadComplianceRuleRows(c, clubNation);
+  if (designationsState) {
+    rows.push(starComplianceRow(designationsState));
+    rows.push(oooComplianceRow(designationsState));
+  }
   const panelClass = c.compliant
     ? "squad-rules-panel squad-rules-panel--ok"
     : "squad-rules-panel squad-rules-panel--warn";
@@ -516,7 +552,7 @@ function formatSeasonStat(row, key, fallback = "—") {
   return v;
 }
 
-function renderSquad(players, transferState, statsByPlayer = new Map()) {
+function renderSquad(players, transferState, statsByPlayer = new Map(), designationsState = null) {
   const tbody = document.getElementById("squad-body");
   if (!tbody) return;
 
@@ -572,10 +608,12 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
       const imgURL = `https://pesdb.net/assets/img/card/b${p.Konami_ID}.png`;
 
       const qualBadges = playerSquadQualificationBadges(p, clubNation);
+      const role = designationForPlayer(designationsState, p.Konami_ID);
+      const roleBadge = designationRoleBadge(role);
 
       tr.innerHTML = `
         <td><img src="${imgURL}" class="player-thumb" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
-        <td><a href="player_career.html?id=${encodeURIComponent(String(p.Konami_ID))}" class="squad-player-link">${p.Name}</a>${qualBadges}</td>
+        <td><a href="player_career.html?id=${encodeURIComponent(String(p.Konami_ID))}" class="squad-player-link">${p.Name}</a>${roleBadge}${qualBadges}</td>
         <td>${p.Nation || "-"}</td>
         <td>${p.Position}</td>
         <td>${formatRatingWithPotential(p)}</td>
@@ -586,7 +624,14 @@ function renderSquad(players, transferState, statsByPlayer = new Map()) {
         <td>${p.Playstyle || "-"}</td>
         <td><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
         <td class="squad-col-contract">${formatSquadContractCell(p)}</td>
-        <td class="squad-col-status">${status}</td>
+        <td class="squad-col-status">
+          <div class="squad-status-stack">
+            ${status}
+            <select class="squad-designation-select" data-player-id="${String(p.Konami_ID)}" aria-label="Squad role for ${escapeHtml(p.Name)}">
+              ${squadDesignationOptionsHtml(p, designationsState, clubNation)}
+            </select>
+          </div>
+        </td>
         <td class="squad-col-action">
           <select class="squad-action-select" data-player-id="${String(p.Konami_ID)}">
             <option value="">Action</option>
@@ -661,7 +706,10 @@ function wireSquadTable() {
   tbody.dataset.squadTableWired = "1";
 
   tbody.addEventListener("mousedown", (e) => {
-    if (e.target.closest("select.squad-action-select")) {
+    if (
+      e.target.closest("select.squad-action-select") ||
+      e.target.closest("select.squad-designation-select")
+    ) {
       e.stopPropagation();
     }
   });
@@ -671,7 +719,9 @@ function wireSquadTable() {
       return;
     }
 
-    const sel = e.target.closest("select.squad-action-select");
+    const sel =
+      e.target.closest("select.squad-action-select") ||
+      e.target.closest("select.squad-designation-select");
     if (sel) {
       e.stopPropagation();
       return;
@@ -695,11 +745,54 @@ function wireSquadTable() {
   });
 
   tbody.addEventListener("change", (e) => {
+    const desigSel = e.target.closest("select.squad-designation-select");
+    if (desigSel) {
+      e.stopPropagation();
+      void handleDesignationChange(desigSel);
+      return;
+    }
+
     const sel = e.target.closest("select.squad-action-select");
     if (!sel) return;
     e.stopPropagation();
     void handlePlayerAction(sel.dataset.playerId, sel.value, sel);
   });
+}
+
+async function handleDesignationChange(selectEl) {
+  const playerId = selectEl.dataset.playerId;
+  const value = selectEl.value;
+  const previous =
+    designationForPlayer(squadDesignationsState, playerId) || "";
+
+  try {
+    squadDesignationsState = await setSquadDesignation(
+      supabase,
+      playerId,
+      value || null
+    );
+    const { data: squadRows } = await supabase
+      .from("Players")
+      .select(SQUAD_PLAYER_COLUMNS)
+      .eq("Contracted_Team", currentUserShort);
+    renderSquadCompliance(squadRows || [], squadDesignationsState);
+    refreshSquadDesignationSelects(squadRows || [], squadDesignationsState);
+    document.querySelectorAll("tr[data-konami-id]").forEach((row) => {
+      const pid = row.dataset.konamiId;
+      const role = designationForPlayer(squadDesignationsState, pid);
+      const nameCell = row.querySelector("td:nth-child(2)");
+      if (!nameCell) return;
+      const link = nameCell.querySelector(".squad-player-link");
+      const qual = nameCell.querySelector(".squad-qual-badge");
+      if (link) {
+        nameCell.innerHTML = `${link.outerHTML}${designationRoleBadge(role)}${qual ? qual.outerHTML : ""}`;
+      }
+    });
+  } catch (err) {
+    console.error("Designation update failed:", err);
+    alert(err.message || "Could not update squad role.");
+    selectEl.value = previous;
+  }
 }
 
 // Blocks listing when transfer window is closed
