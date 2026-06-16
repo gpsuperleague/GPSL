@@ -269,7 +269,7 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.club_assignment_finance_display(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.repair_club_assignment_ledger_only(text) TO authenticated;
 
--- Urawa Reds — post ledger line if balance was already debited
-SELECT public.repair_club_assignment_ledger_only('URD');
+-- All owned clubs — post missing infra_purchase ledger lines (no double debit)
+SELECT public.repair_club_assignment_ledger_only();
 
 NOTIFY pgrst, 'reload schema';

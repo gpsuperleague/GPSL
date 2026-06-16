@@ -39,10 +39,7 @@ export async function appendAssignmentInfraPurchaseLedger(supabase, clubShortNam
     return rows;
   }
 
-  if (data.ledger_posted) {
-    return rows;
-  }
-
+  // Append when season accounts has no infra line yet (missing ledger or public view gap).
   const stadiumName = String(data.stadium_name || data.club_name || "Stadium purchase").trim();
   const amount = -Math.abs(Number(data.total_debit));
 
