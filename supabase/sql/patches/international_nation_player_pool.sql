@@ -84,6 +84,8 @@ AS $$
   );
 $$;
 
+DROP FUNCTION IF EXISTS public.international_nation_player_pool_report();
+
 CREATE OR REPLACE FUNCTION public.international_nation_player_pool_report()
 RETURNS TABLE (
   nation_code text,
