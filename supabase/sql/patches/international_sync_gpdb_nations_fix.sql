@@ -237,6 +237,10 @@ BEGIN
     PERFORM public.international_refresh_gpdb_label_map();
   END IF;
 
+  IF to_regprocedure('public.international_refresh_nation_player_pool_cache()') IS NOT NULL THEN
+    PERFORM public.international_refresh_nation_player_pool_cache();
+  END IF;
+
   RETURN jsonb_build_object(
     'inserted', v_inserted,
     'skipped_existing_code', v_skipped,

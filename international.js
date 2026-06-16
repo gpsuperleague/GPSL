@@ -202,7 +202,7 @@ export function gpdbNationFilterValues(nation, nationFilterOptions = []) {
     .map((opt) => opt.value);
 }
 
-/** Admin: GPDB pool counts by nation (rating bands, U21, position). */
+/** Admin: GPDB pool counts by nation (rating bands, U21, position). Reads precomputed cache. */
 export async function loadNationPlayerPoolReport(client = supabase) {
   const { data, error } = await client.rpc("international_nation_player_pool_report");
   if (error) {
@@ -210,6 +210,26 @@ export async function loadNationPlayerPoolReport(client = supabase) {
     throw error;
   }
   return data || [];
+}
+
+/** When pool counts were last scanned from GPDB Players (cache meta). */
+export async function loadNationPlayerPoolCacheMeta(client = supabase) {
+  const { data, error } = await client.rpc("international_nation_player_pool_cache_meta");
+  if (error) {
+    console.error("loadNationPlayerPoolCacheMeta:", error);
+    return null;
+  }
+  return data;
+}
+
+/** Admin: rescan GPDB Players into nation pool cache (~30–90s). Run after GPDB import or nation sync. */
+export async function refreshNationPlayerPoolCache(client = supabase) {
+  const { data, error } = await client.rpc("international_refresh_nation_player_pool_cache");
+  if (error) {
+    console.error("refreshNationPlayerPoolCache:", error);
+    throw error;
+  }
+  return data;
 }
 
 export async function loadNationalSquad(nationCode, client = supabase) {

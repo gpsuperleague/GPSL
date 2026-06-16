@@ -1,6 +1,8 @@
-import { supabase, initGlobal } from "./global.js";
+import { supabase, initGlobal, isGpslAdminUser } from "./global.js";
 import {
   loadNationPlayerPoolReport,
+  loadNationPlayerPoolCacheMeta,
+  refreshNationPlayerPoolCache,
   renderNationFlag,
   NATIONAL_SQUAD_MIN_GK,
   NATION_HEALTHY_CLUB_REQUIREMENTS,
@@ -27,6 +29,40 @@ const SUMMARY_BANDS = ["le_65", "r66_69", "r70_72", "r73_75", "r76_78", "r79_plu
 
 let reportRows = [];
 let expandedCode = null;
+let cacheMeta = null;
+
+function formatCacheAge(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
+function renderCacheMeta() {
+  const el = document.getElementById("poolCacheMeta");
+  const btn = document.getElementById("poolRefreshCacheBtn");
+  if (!el) return;
+
+  if (!cacheMeta?.cache_ready) {
+    el.hidden = false;
+    el.style.color = "#f88";
+    el.textContent =
+      "GPDB pool counts are not cached yet — page loads may time out. An admin must refresh the pool cache.";
+    if (btn) btn.hidden = !btn.dataset.admin;
+    return;
+  }
+
+  const when = formatCacheAge(cacheMeta.refreshed_at);
+  el.hidden = false;
+  el.style.color = "#999";
+  el.textContent = when
+    ? `GPDB counts as of ${when} (${cacheMeta.nation_count ?? "?"} nations). Owner/club columns are live.`
+    : "GPDB pool cache ready.";
+  if (btn) btn.hidden = !btn.dataset.admin;
+}
 
 function section(row, key) {
   return nationPoolSection(row, key);
@@ -267,9 +303,52 @@ async function loadReport() {
   const wrap = document.getElementById("poolTableWrap");
   if (loading) loading.hidden = false;
   if (wrap) wrap.hidden = true;
-  reportRows = await loadNationPlayerPoolReport(supabase);
+
+  const [rows, meta] = await Promise.all([
+    loadNationPlayerPoolReport(supabase),
+    loadNationPlayerPoolCacheMeta(supabase),
+  ]);
+  reportRows = rows;
+  cacheMeta = meta;
+  renderCacheMeta();
+
   if (loading) loading.hidden = true;
   if (wrap) wrap.hidden = false;
+}
+
+async function runCacheRefresh() {
+  const btn = document.getElementById("poolRefreshCacheBtn");
+  const errEl = document.getElementById("poolError");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Refreshing cache…";
+  }
+  if (errEl) errEl.hidden = true;
+
+  try {
+    const result = await refreshNationPlayerPoolCache(supabase);
+    cacheMeta = {
+      cache_ready: true,
+      refreshed_at: result?.refreshed_at ?? new Date().toISOString(),
+      nation_count: result?.nations_cached ?? null,
+    };
+    renderCacheMeta();
+    await loadReport();
+    renderTable();
+  } catch (err) {
+    console.error("pool cache refresh:", err);
+    if (errEl) {
+      errEl.hidden = false;
+      errEl.textContent =
+        err.message ||
+        "Pool cache refresh failed (admin only, may take up to 2 minutes).";
+    }
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Refresh pool cache (admin)";
+    }
+  }
 }
 
 function wireControls() {
@@ -285,6 +364,17 @@ function wireControls() {
     expandedCode = expandedCode === code ? null : code;
     renderTable();
   });
+
+  document.getElementById("poolRefreshCacheBtn")?.addEventListener("click", () => {
+    if (
+      !confirm(
+        "Rescan all GPDB players into the nation pool cache?\n\nTakes ~30–90 seconds. Run after GPDB import or nation sync."
+      )
+    ) {
+      return;
+    }
+    runCacheRefresh();
+  });
 }
 
 async function main() {
@@ -298,6 +388,11 @@ async function main() {
   }
 
   await initGlobal();
+
+  const refreshBtn = document.getElementById("poolRefreshCacheBtn");
+  if (refreshBtn && isGpslAdminUser(user)) {
+    refreshBtn.dataset.admin = "1";
+  }
 
   const errEl = document.getElementById("poolError");
   try {
@@ -313,7 +408,7 @@ async function main() {
       errEl.hidden = false;
       errEl.textContent =
         err.message ||
-        "Could not load nation pool report. Re-run supabase/sql/patches/international_nation_player_pool.sql in Supabase (performance fix).";
+        "Could not load nation pool report. Re-run supabase/sql/patches/international_nation_player_pool.sql in Supabase, then SELECT international_refresh_nation_player_pool_cache(); as admin.";
     }
   }
 }

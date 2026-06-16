@@ -16,6 +16,9 @@ CREATE INDEX IF NOT EXISTS international_gpdb_label_map_code_idx
 CREATE INDEX IF NOT EXISTS players_nation_norm_idx
   ON public."Players" (public.international_normalize_nation_label("Nation"));
 
+CREATE INDEX IF NOT EXISTS clubs_nation_norm_idx
+  ON public."Clubs" (public.international_normalize_nation_label("Nation"));
+
 CREATE OR REPLACE FUNCTION public.international_refresh_gpdb_label_map()
 RETURNS integer
 LANGUAGE plpgsql
@@ -182,30 +185,63 @@ AS $$
   );
 $$;
 
-DROP FUNCTION IF EXISTS public.international_nation_player_pool_report();
+CREATE OR REPLACE FUNCTION public.international_player_pool_empty_json()
+RETURNS jsonb
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT jsonb_build_object(
+    'all', public.international_player_pool_section_json(0, 0, 0, 0, 0),
+    'le_65', public.international_player_pool_section_json(0, 0, 0, 0, 0),
+    'r66_69', public.international_player_pool_section_json(0, 0, 0, 0, 0),
+    'r70_72', public.international_player_pool_section_json(0, 0, 0, 0, 0),
+    'r73_75', public.international_player_pool_section_json(0, 0, 0, 0, 0),
+    'r76_78', public.international_player_pool_section_json(0, 0, 0, 0, 0),
+    'r79_plus', public.international_player_pool_section_json(0, 0, 0, 0, 0),
+    'u21', public.international_player_pool_section_json(0, 0, 0, 0, 0)
+  );
+$$;
 
-CREATE OR REPLACE FUNCTION public.international_nation_player_pool_report()
-RETURNS TABLE (
-  nation_code text,
-  nation_name text,
-  seed_rank smallint,
-  owner_club text,
-  owner_tag text,
-  is_taken boolean,
-  owned_clubs_count integer,
-  pool jsonb
-)
+CREATE TABLE IF NOT EXISTS public.international_nation_player_pool_cache (
+  nation_code text PRIMARY KEY,
+  pool jsonb NOT NULL,
+  refreshed_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.international_nation_player_pool_meta (
+  id smallint PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  refreshed_at timestamptz,
+  nation_count integer NOT NULL DEFAULT 0
+);
+
+INSERT INTO public.international_nation_player_pool_meta (id, refreshed_at, nation_count)
+VALUES (1, NULL, 0)
+ON CONFLICT (id) DO NOTHING;
+
+DROP FUNCTION IF EXISTS public.international_refresh_nation_player_pool_cache();
+DROP FUNCTION IF EXISTS public.international_nation_player_pool_cache_meta();
+
+CREATE OR REPLACE FUNCTION public.international_refresh_nation_player_pool_cache()
+RETURNS jsonb
 LANGUAGE plpgsql
-STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $function$
+DECLARE
+  v_count integer := 0;
+  v_at timestamptz := now();
 BEGIN
-  IF auth.uid() IS NULL THEN
-    RAISE EXCEPTION 'Sign in required';
+  IF NOT public.is_gpsl_admin()
+     AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
+    RAISE EXCEPTION 'Admin only';
   END IF;
 
-  RETURN QUERY
+  PERFORM public.international_refresh_gpdb_label_map();
+  PERFORM set_config('statement_timeout', '120000', true);
+
+  TRUNCATE public.international_nation_player_pool_cache;
+
+  INSERT INTO public.international_nation_player_pool_cache (nation_code, pool, refreshed_at)
   WITH player_rows AS (
     SELECT
       m.nation_code,
@@ -266,25 +302,9 @@ BEGIN
       count(*) FILTER (WHERE pr.is_u21 AND pr.pos_group = 'fwd')::bigint AS u21_fwd
     FROM player_rows pr
     GROUP BY pr.nation_code
-  ),
-  owned_clubs AS (
-    SELECT
-      m.nation_code,
-      count(*)::integer AS owned_clubs_count
-    FROM public."Clubs" c
-    INNER JOIN public.international_gpdb_label_map m
-      ON m.norm_label = public.international_normalize_nation_label(c."Nation")
-    WHERE c.owner_id IS NOT NULL
-    GROUP BY m.nation_code
   )
   SELECT
     n.code,
-    n.name,
-    n.seed_rank,
-    ion.club_short_name,
-    coalesce(nullif(btrim(c.owner), ''), c."ShortName"),
-    (ion.id IS NOT NULL),
-    coalesce(oc.owned_clubs_count, 0),
     jsonb_build_object(
       'all', public.international_player_pool_section_json(
         coalesce(a.all_total, 0), coalesce(a.all_gk, 0), coalesce(a.all_def, 0), coalesce(a.all_mid, 0), coalesce(a.all_fwd, 0)
@@ -310,9 +330,90 @@ BEGIN
       'u21', public.international_player_pool_section_json(
         coalesce(a.u21_total, 0), coalesce(a.u21_gk, 0), coalesce(a.u21_def, 0), coalesce(a.u21_mid, 0), coalesce(a.u21_fwd, 0)
       )
-    )
+    ),
+    v_at
   FROM public.international_nations n
   LEFT JOIN agg a ON a.nation_code = n.code
+  WHERE n.active = true;
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+
+  UPDATE public.international_nation_player_pool_meta
+  SET refreshed_at = v_at,
+      nation_count = v_count
+  WHERE id = 1;
+
+  RETURN jsonb_build_object(
+    'nations_cached', v_count,
+    'refreshed_at', v_at
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.international_nation_player_pool_cache_meta()
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT jsonb_build_object(
+    'refreshed_at', m.refreshed_at,
+    'nation_count', m.nation_count,
+    'cache_ready', m.refreshed_at IS NOT NULL
+  )
+  FROM public.international_nation_player_pool_meta m
+  WHERE m.id = 1;
+$$;
+
+DROP FUNCTION IF EXISTS public.international_nation_player_pool_report();
+
+CREATE OR REPLACE FUNCTION public.international_nation_player_pool_report()
+RETURNS TABLE (
+  nation_code text,
+  nation_name text,
+  seed_rank smallint,
+  owner_club text,
+  owner_tag text,
+  is_taken boolean,
+  owned_clubs_count integer,
+  pool jsonb
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_empty jsonb := public.international_player_pool_empty_json();
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sign in required';
+  END IF;
+
+  RETURN QUERY
+  WITH owned_clubs AS (
+    SELECT
+      m.nation_code,
+      count(*)::integer AS owned_clubs_count
+    FROM public."Clubs" c
+    INNER JOIN public.international_gpdb_label_map m
+      ON m.norm_label = public.international_normalize_nation_label(c."Nation")
+    WHERE c.owner_id IS NOT NULL
+    GROUP BY m.nation_code
+  )
+  SELECT
+    n.code,
+    n.name,
+    n.seed_rank,
+    ion.club_short_name,
+    coalesce(nullif(btrim(c.owner), ''), c."ShortName"),
+    (ion.id IS NOT NULL),
+    coalesce(oc.owned_clubs_count, 0),
+    coalesce(cache.pool, v_empty)
+  FROM public.international_nations n
+  LEFT JOIN public.international_nation_player_pool_cache cache
+    ON cache.nation_code = n.code
   LEFT JOIN public.international_owner_nations ion
     ON ion.nation_code = n.code AND ion.is_active = true
   LEFT JOIN public."Clubs" c ON c."ShortName" = ion.club_short_name
@@ -323,9 +424,14 @@ END;
 $function$;
 
 SELECT public.international_refresh_gpdb_label_map();
+SELECT public.international_refresh_nation_player_pool_cache();
 
 GRANT SELECT ON public.international_gpdb_label_map TO authenticated;
+GRANT SELECT ON public.international_nation_player_pool_cache TO authenticated;
+GRANT SELECT ON public.international_nation_player_pool_meta TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_refresh_gpdb_label_map() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.international_refresh_nation_player_pool_cache() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.international_nation_player_pool_cache_meta() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_gpdb_label_map_rows() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_resolve_gpdb_nation_code(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_gpdb_matches_nation(text, text) TO authenticated;

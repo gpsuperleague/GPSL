@@ -208,7 +208,11 @@
 
     <div id="poolError" class="pool-error" hidden></div>
 
-    <div class="pool-toolbar">
+    <div class="pool-toolbar" style="align-items:center;">
+      <div id="poolCacheMeta" class="pool-intro" style="flex:1 1 100%;margin:0;" hidden></div>
+      <button type="button" id="poolRefreshCacheBtn" class="pool-expand-btn" hidden>
+        Refresh pool cache (admin)
+      </button>
       <label>
         Sort
         <select id="poolSort">

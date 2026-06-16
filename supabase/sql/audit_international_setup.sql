@@ -64,6 +64,16 @@ FROM (
     'Run international_nation_player_pool.sql'
   UNION ALL
   SELECT
+    'Pool patch: international_nation_player_pool_cache table',
+    CASE WHEN to_regclass('public.international_nation_player_pool_cache') IS NOT NULL THEN 'OK' ELSE 'MISSING' END,
+    'Re-run international_nation_player_pool.sql (cache fix — stops statement timeouts)'
+  UNION ALL
+  SELECT
+    'Pool patch: international_refresh_nation_player_pool_cache()',
+    CASE WHEN to_regprocedure('public.international_refresh_nation_player_pool_cache()') IS NOT NULL THEN 'OK' ELSE 'MISSING' END,
+    'Re-run international_nation_player_pool.sql'
+  UNION ALL
+  SELECT
     'Pool patch: players_nation_norm_idx index',
     CASE WHEN EXISTS (
       SELECT 1 FROM pg_indexes
@@ -131,7 +141,16 @@ SELECT
         )
       GROUP BY p."Nation"
     ) x
-  ) AS gpdb_labels_still_unmatched;
+  ) AS gpdb_labels_still_unmatched,
+  (
+    SELECT m.refreshed_at
+    FROM public.international_nation_player_pool_meta m
+    WHERE m.id = 1
+  ) AS pool_cache_refreshed_at,
+  (
+    SELECT count(*)::integer
+    FROM public.international_nation_player_pool_cache
+  ) AS pool_cache_nations;
 
 -- 3) Interpretation (read the row above)
 SELECT
@@ -151,6 +170,10 @@ SELECT
     WHEN (SELECT count(*) FROM public.international_gpdb_label_map) = 0
          AND to_regprocedure('public.international_refresh_gpdb_label_map()') IS NOT NULL
     THEN 'ACTION: Run SELECT public.international_refresh_gpdb_label_map();'
+    WHEN to_regclass('public.international_nation_player_pool_cache') IS NULL
+    THEN 'ACTION: Re-run international_nation_player_pool.sql (old report scans all Players — causes timeouts)'
+    WHEN (SELECT refreshed_at FROM public.international_nation_player_pool_meta WHERE id = 1) IS NULL
+    THEN 'ACTION: Run SELECT public.international_refresh_nation_player_pool_cache(); (admin / SQL Editor as postgres)'
     WHEN (SELECT count(*) FROM public.international_nations WHERE active = true) > 60
          AND (SELECT count(*) FROM (
            SELECT p."Nation" FROM public."Players" p

@@ -2,6 +2,7 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 import {
   loadSelectionWindow,
   loadOwnerDraftOrder,
+  refreshNationPlayerPoolCache,
 } from "./international.js";
 
 primeAdminPageChrome();
@@ -67,9 +68,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     const active = data?.active_nations ?? "?";
     setStatus(
       "setupStatus",
-      `✅ Added ${inserted} nations (${active} active total). Refresh nation select / player pool.`,
+      `✅ Added ${inserted} nations (${active} active total). Pool cache refreshed if patch deployed.`,
       true
     );
+  });
+
+  document.getElementById("refreshPoolCacheBtn")?.addEventListener("click", async () => {
+    if (
+      !confirm(
+        "Rescan GPDB players into the nation pool cache?\n\nTakes ~30–90 seconds. Required after GPDB import; fixes pool page timeouts."
+      )
+    ) {
+      return;
+    }
+    setStatus("setupStatus", "Refreshing nation pool cache… (may take up to 2 min)");
+    try {
+      const data = await refreshNationPlayerPoolCache(supabase);
+      const n = data?.nations_cached ?? "?";
+      const at = data?.refreshed_at
+        ? new Date(data.refreshed_at).toLocaleString()
+        : "now";
+      setStatus(
+        "setupStatus",
+        `✅ Pool cache refreshed (${n} nations) at ${at}`,
+        true
+      );
+    } catch (err) {
+      setStatus("setupStatus", `❌ ${err.message}`, false);
+    }
   });
 
   document.getElementById("recomputeRanksBtn")?.addEventListener("click", async () => {
