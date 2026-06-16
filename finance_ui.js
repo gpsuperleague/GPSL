@@ -141,7 +141,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "infra_purchase",
         label: "Infrastructure purchases",
         types: ["infra_purchase"],
-        note: "Club auction winning bid; starting-budget premium for larger stadiums (planned).",
+        note: "Stadium purchase at club assignment — capacity × ₿1,000 (club auction win or admin assign).",
       },
       {
         id: "infra_expansion",
