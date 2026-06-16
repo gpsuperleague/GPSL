@@ -3,6 +3,17 @@ import { loadNationPlayerPoolReport, renderNationFlag, NATIONAL_SQUAD_MIN_GK } f
 
 const POOL_MIN_PLAYERS = 24;
 
+/** Min GPDB players per band required to support one more owned club on this nation. */
+const HEALTHY_CLUB_REQUIREMENTS = [
+  { key: "r79_plus", min: 1, label: "79+ star" },
+  { key: "r76_78", min: 1, label: "76–78" },
+  { key: "r73_75", min: 5, label: "73–75" },
+  { key: "r70_72", min: 10, label: "70–72" },
+  { key: "r66_69", min: 10, label: "66–69" },
+  { key: "le_65", min: 5, label: "≤65" },
+  { key: "u21", min: 8, label: "U21" },
+];
+
 const SECTIONS = [
   { key: "all", label: "All players" },
   { key: "le_65", label: "≤65" },
@@ -33,6 +44,31 @@ function poolStatus(row) {
     return { key: "warn", label: "Tight" };
   }
   return { key: "bad", label: "Short" };
+}
+
+/** How many owned clubs the GPDB pool can support (bottleneck across rating bands). */
+function healthyClubCapacity(row) {
+  const caps = HEALTHY_CLUB_REQUIREMENTS.map(({ key, min }) => {
+    const available = section(row, key).total;
+    return Math.floor(available / min);
+  });
+  return caps.length ? Math.min(...caps) : 0;
+}
+
+function ownedClubCount(row) {
+  return Number(row?.owned_clubs_count ?? 0);
+}
+
+function ownedClubsCell(row) {
+  const owned = ownedClubCount(row);
+  const healthy = healthyClubCapacity(row);
+  const cls =
+    owned === 0
+      ? ""
+      : owned <= healthy
+        ? "pool-clubs-ok"
+        : "pool-clubs-over";
+  return `<span class="${cls}">${owned}</span>`;
 }
 
 function countCell(n) {
@@ -149,7 +185,7 @@ function renderTable() {
 
   if (!visible.length) {
     tbody.innerHTML =
-      '<tr><td colspan="11" style="padding:20px;color:#888;">No nations match this filter.</td></tr>';
+      '<tr><td colspan="13" style="padding:20px;color:#888;">No nations match this filter.</td></tr>';
     return;
   }
 
@@ -158,6 +194,7 @@ function renderTable() {
       const all = section(row, "all");
       const u21 = section(row, "u21");
       const status = poolStatus(row);
+      const healthy = healthyClubCapacity(row);
       const isOpen = expandedCode === row.nation_code;
       const ownerLine = row.is_taken
         ? `<span class="pool-owner">${row.owner_tag || row.owner_club || "Assigned"}</span>`
@@ -186,11 +223,13 @@ function renderTable() {
           <td>${countCell(u21.total)}</td>
           ${bandCells}
           <td>${countCell(all.gk)}</td>
+          <td title="${HEALTHY_CLUB_REQUIREMENTS.map((r) => `${r.min}× ${r.label}`).join(", ")}">${countCell(healthy)}</td>
+          <td>${ownedClubsCell(row)}</td>
           <td class="pool-status-${status.key}">${status.label}</td>
         </tr>`;
 
       const detailRow = isOpen
-        ? `<tr class="pool-detail-row"><td colspan="11">${detailTable(row)}</td></tr>`
+        ? `<tr class="pool-detail-row"><td colspan="13">${detailTable(row)}</td></tr>`
         : "";
 
       return mainRow + detailRow;

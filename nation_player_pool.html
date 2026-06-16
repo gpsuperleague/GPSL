@@ -65,7 +65,7 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 12px;
-      min-width: 1100px;
+      min-width: 1240px;
     }
     .pool-table th,
     .pool-table td {
@@ -150,6 +150,8 @@
     }
     .pool-expand-btn:hover { background: #444; }
     .pool-zero { color: #666; }
+    .pool-clubs-ok { color: #8c8; font-weight: 700; }
+    .pool-clubs-over { color: #f88; font-weight: 700; }
     .pool-error {
       color: #f88;
       padding: 16px;
@@ -167,7 +169,9 @@
     <p class="pool-intro">
       GPDB counts for each selectable nation — rating bands, U21 (age ≤21), and position breakdown
       (GK / DEF / MID / FWD). GPDB uses LWF/RWF for wide forwards. Uses the same nation matching as international call-ups.
-      Useful for club home-grown planning and World Cup nation selection.
+      <b>Healthy clubs</b> is how many owned clubs the pool can support (min per club: 1×79+, 1×76–78, 5×73–75,
+      10×70–72, 10×66–69, 5×≤65, 8×U21). <b>Owned clubs</b> counts GPSL clubs with an owner whose club nation matches
+      (green when owned ≤ healthy).
     </p>
 
     <div id="poolError" class="pool-error" hidden></div>
@@ -214,6 +218,8 @@
             <th>76–78</th>
             <th>79+</th>
             <th>GK</th>
+            <th title="Clubs supportable from pool (bottleneck band)">Healthy clubs</th>
+            <th title="Owned clubs with this nation (Clubs.Nation)">Owned clubs</th>
             <th>Status</th>
           </tr>
         </thead>

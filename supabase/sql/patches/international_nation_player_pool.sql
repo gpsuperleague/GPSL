@@ -92,6 +92,7 @@ RETURNS TABLE (
   owner_club text,
   owner_tag text,
   is_taken boolean,
+  owned_clubs_count integer,
   pool jsonb
 )
 LANGUAGE plpgsql
@@ -188,6 +189,21 @@ BEGIN
   ),
   empty_pool AS (
     SELECT public.international_player_pool_section_json(0, 0, 0, 0, 0) AS section
+  ),
+  owned_clubs AS (
+    SELECT
+      n.code AS nation_code,
+      count(*)::integer AS owned_clubs_count
+    FROM public.international_nations n
+    JOIN public."Clubs" c ON (
+      public.international_normalize_nation_label(c."Nation")
+        = public.international_normalize_nation_label(n.name)
+      OR public.international_normalize_nation_label(c."Nation")
+        = upper(n.code)
+    )
+    WHERE n.active = true
+      AND c.owner_id IS NOT NULL
+    GROUP BY n.code
   )
   SELECT
     n.code,
@@ -196,6 +212,7 @@ BEGIN
     ion.club_short_name,
     coalesce(nullif(btrim(c.owner), ''), c."ShortName"),
     (ion.id IS NOT NULL),
+    coalesce(oc.owned_clubs_count, 0),
     jsonb_build_object(
       'all', coalesce(a.all_players, ep.section),
       'le_65', coalesce(a.le_65, ep.section),
@@ -212,6 +229,7 @@ BEGIN
   LEFT JOIN public.international_owner_nations ion
     ON ion.nation_code = n.code AND ion.is_active = true
   LEFT JOIN public."Clubs" c ON c."ShortName" = ion.club_short_name
+  LEFT JOIN owned_clubs oc ON oc.nation_code = n.code
   WHERE n.active = true
   ORDER BY n.seed_rank;
 END;
