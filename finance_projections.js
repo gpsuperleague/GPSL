@@ -159,7 +159,7 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
         pendingByLine,
         "gov_emergency_tax",
         -tacRemain,
-        `If admin applies TAC (${upkeepPreview.settings?.emergency_tac_pct ?? 0}% above ${formatMoney(upkeepPreview.settings?.emergency_tac_threshold ?? 0)})`,
+        `If admin applies emergency tax (${upkeepPreview.settings?.emergency_tac_pct ?? 0}% above ${formatMoney(upkeepPreview.settings?.emergency_tac_threshold ?? 0)})`,
         byLine
       );
     }

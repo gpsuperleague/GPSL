@@ -183,7 +183,7 @@ export const FINANCE_UI_SECTIONS = [
       },
       {
         id: "gov_emergency_tax",
-        label: "Emergency TAC",
+        label: "Emergency tax",
         types: ["gov_emergency_tax"],
         note: "Admin % on balance above threshold — apply from Money management.",
       },
