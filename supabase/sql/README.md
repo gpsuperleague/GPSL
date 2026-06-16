@@ -513,7 +513,7 @@ Run once after `competition_phase0.sql`:
 
 Creates 60 core nations (expandable via GPDB sync), owner nation draft, World Cup cycle/group tables, international squads, and lifetime player caps (`international_player_career`).
 
-**GPDB nation sync:** Run [`patches/international_sync_gpdb_nations.sql`](./patches/international_sync_gpdb_nations.sql), then `SELECT public.international_sync_gpdb_nations();`, then re-run [`patches/international_nation_player_pool.sql`](./patches/international_nation_player_pool.sql). Admin → **Sync GPDB nations** on `admin_international.html`.
+**GPDB nation sync:** Run [`patches/international_sync_gpdb_nations.sql`](./patches/international_sync_gpdb_nations.sql), [`patches/international_nations_seed_rank_expand.sql`](./patches/international_nations_seed_rank_expand.sql) (required before sync — old schema capped seed rank at 99), then `SELECT public.international_sync_gpdb_nations();`, then re-run [`patches/international_nation_player_pool.sql`](./patches/international_nation_player_pool.sql). Admin → **Sync GPDB nations** on `admin_international.html`.
 
 **Admin:** GPSL Admin → **World Cup & nations** (`admin_international.html`) — seed nations, open nation selection, assign teams, **skip current pick** if an owner is slow (run [`patches/international_admin_skip_pick.sql`](./patches/international_admin_skip_pick.sql)).
 

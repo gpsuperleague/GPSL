@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS public.international_nations (
   code text PRIMARY KEY CHECK (code ~ '^[A-Z]{3}$'),
   name text NOT NULL,
   flag_emoji text NOT NULL DEFAULT '🏳️',
-  seed_rank smallint NOT NULL CHECK (seed_rank >= 1 AND seed_rank <= 99),
+  seed_rank smallint NOT NULL CHECK (seed_rank >= 1 AND seed_rank <= 32767),
   active boolean NOT NULL DEFAULT true,
   created_at timestamptz NOT NULL DEFAULT now()
 );

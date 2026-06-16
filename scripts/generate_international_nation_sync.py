@@ -356,19 +356,17 @@ def render_sql(catalog: list[dict]) -> str:
             v_base := 'XXX';
           END IF;
           v_code := v_base;
-          WHILE EXISTS (
-            SELECT 1 FROM public.international_nations n WHERE n.code = v_code
-          ) OR EXISTS (
-            SELECT 1 FROM public.international_nation_catalog c WHERE c.code = v_code
-          ) LOOP
-            v_i := v_i + 1;
-            v_code := left(v_base, greatest(1, 3 - length(v_i::text))) || v_i::text;
-            IF length(v_code) > 3 THEN
-              v_code := right(md5(p_label || v_i::text), 3);
-              v_code := upper(regexp_replace(v_code, '[^A-Z]', 'X', 'g'));
-            END IF;
-            EXIT WHEN v_i > 99;
-          END LOOP;
+        WHILE EXISTS (
+          SELECT 1 FROM public.international_nations n WHERE n.code = v_code
+        ) LOOP
+          v_i := v_i + 1;
+          v_code := upper(substring(md5(p_label || ':' || v_i::text) FROM 1 FOR 3));
+          v_code := regexp_replace(v_code, '[^A-Z]', 'X', 'g');
+          IF length(v_code) < 3 THEN
+            v_code := rpad(v_code, 3, 'X');
+          END IF;
+          EXIT WHEN v_i > 200;
+        END LOOP;
           RETURN v_code;
         END;
         $function$;
