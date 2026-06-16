@@ -80,6 +80,12 @@ export const OWNER_ADMIN_NAV = [
         page: "admin_owners",
       },
       {
+        label: "Set password",
+        href: "admin_owners.html",
+        hash: "ow-set-password",
+        page: "admin_owners",
+      },
+      {
         label: "Send reset email",
         href: "admin_owners.html",
         hash: "ow-reset-password",

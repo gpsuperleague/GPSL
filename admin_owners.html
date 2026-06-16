@@ -126,8 +126,30 @@
         <button id="updateEmailBtn" class="button">Update email</button>
         <div id="updateEmailStatus" class="status-line"></div>
       </div>
+      <div class="card" id="ow-set-password">
+        <h2>Set password (admin)</h2>
+        <p class="note">
+          Sets the login password immediately — for testing or when reset email is not enough.
+          Supabase may reject weak passwords (use at least 8 characters with letters and numbers).
+          Deploy the <code>set-owner-password</code> edge function in Supabase.
+        </p>
+        <div class="row">
+          <div><input id="setPasswordEmail" type="email" placeholder="Owner email"></div>
+          <div>
+            <input
+              id="setPasswordValue"
+              type="password"
+              autocomplete="new-password"
+              placeholder="New password (min 8 chars)"
+            >
+          </div>
+        </div>
+        <button id="setPasswordBtn" class="button">Set password</button>
+        <div id="setPasswordStatus" class="status-line"></div>
+      </div>
       <div class="card" id="ow-reset-password">
         <h2>Send reset email</h2>
+        <p class="note">Sends Supabase’s reset link — owner chooses their own new password.</p>
         <div class="row">
           <div><input id="resetOwnerEmail" placeholder="Owner email"></div>
         </div>

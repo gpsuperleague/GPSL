@@ -30,6 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("archiveOwnerBtn").onclick = archiveOwner;
   document.getElementById("unarchiveOwnerBtn").onclick = unarchiveOwner;
   document.getElementById("updateEmailBtn").onclick = updateEmail;
+  document.getElementById("setPasswordBtn").onclick = setOwnerPassword;
   document.getElementById("resetPasswordBtn").onclick = resetPassword;
 });
 
@@ -326,6 +327,55 @@ async function updateEmail() {
   });
 
   setStatus("updateEmailStatus", error ? "❌ " + error.message : "✅ Email updated.", !error);
+}
+
+async function setOwnerPassword() {
+  const email = document.getElementById("setPasswordEmail")?.value?.trim().toLowerCase();
+  const password = document.getElementById("setPasswordValue")?.value?.trim() || "";
+
+  if (!email) {
+    setStatus("setPasswordStatus", "Enter owner email.", false);
+    return;
+  }
+  if (password.length < 8) {
+    setStatus(
+      "setPasswordStatus",
+      "Password must be at least 8 characters (use letters and numbers for Supabase).",
+      false
+    );
+    return;
+  }
+  if (
+    !confirm(
+      `Set a new login password for ${email}?\n\nThey will use this on login.html. Share it securely.`
+    )
+  ) {
+    return;
+  }
+
+  setStatus("setPasswordStatus", "Setting password…");
+  const { data, error } = await invokeEdgeFunction("set-owner-password", {
+    email,
+    password,
+  });
+
+  if (error) {
+    const hint =
+      error.message?.includes("404") || error.message?.includes("not found")
+        ? " — deploy set-owner-password edge function in Supabase"
+        : "";
+    setStatus("setPasswordStatus", "❌ " + error.message + hint, false);
+    return;
+  }
+
+  if (document.getElementById("setPasswordValue")) {
+    document.getElementById("setPasswordValue").value = "";
+  }
+  setStatus(
+    "setPasswordStatus",
+    `✅ Password updated for ${data?.email || email}. Test at login.html`,
+    true
+  );
 }
 
 async function resetPassword() {
