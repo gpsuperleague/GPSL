@@ -65,7 +65,7 @@
       width: 100%;
       border-collapse: collapse;
       font-size: 12px;
-      min-width: 1240px;
+      min-width: 980px;
     }
     .pool-table th,
     .pool-table td {
@@ -90,7 +90,9 @@
       z-index: 1;
       background: #181818;
       text-align: left;
-      min-width: 210px;
+      width: var(--pool-nation-col-width, auto);
+      min-width: var(--pool-nation-col-width, auto);
+      max-width: var(--pool-nation-col-width, none);
     }
     .pool-table th.pool-sticky { z-index: 3; background: #222; }
     .pool-table tr.pool-detail-row td {
@@ -129,6 +131,13 @@
       align-items: center;
       gap: 8px;
     }
+    .pool-nation-meta {
+      min-width: 0;
+    }
+    .pool-nation-name {
+      display: block;
+      white-space: nowrap;
+    }
     .pool-owner {
       display: block;
       font-size: 11px;
@@ -139,6 +148,7 @@
     .pool-status-warn { color: #fc8; }
     .pool-status-bad { color: #f88; }
     .pool-expand-btn {
+      flex: 0 0 auto;
       margin-left: auto;
       padding: 4px 8px;
       font-size: 11px;

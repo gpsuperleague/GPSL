@@ -176,6 +176,41 @@ function sortRows(rows) {
   return copy;
 }
 
+function fitNationColumn() {
+  const table = document.getElementById("poolTable");
+  if (!table || !reportRows.length) return;
+
+  const probe = document.createElement("div");
+  probe.className = "pool-nation-meta";
+  probe.style.cssText =
+    "position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none;font-size:12px;font-family:Arial,sans-serif";
+  document.body.appendChild(probe);
+
+  let maxMeta = 0;
+  for (const row of reportRows) {
+    probe.replaceChildren();
+    const name = document.createElement("strong");
+    name.className = "pool-nation-name";
+    name.textContent = row.nation_name || "";
+    const seed = document.createElement("span");
+    seed.className = "pool-owner";
+    seed.textContent = `${row.nation_code} · seed ${row.seed_rank}`;
+    const owner = document.createElement("span");
+    owner.className = "pool-owner";
+    owner.textContent = row.is_taken
+      ? row.owner_tag || row.owner_club || "Assigned"
+      : "Unassigned";
+    probe.append(name, seed, owner);
+    maxMeta = Math.max(maxMeta, probe.scrollWidth);
+  }
+  probe.remove();
+
+  const btn = document.querySelector("#poolBody .pool-expand-btn");
+  const btnW = btn ? btn.offsetWidth : 76;
+  const colW = Math.ceil(maxMeta + 28 + 6 + 8 + btnW + 16);
+  table.style.setProperty("--pool-nation-col-width", `${colW}px`);
+}
+
 function renderTable() {
   const tbody = document.getElementById("poolBody");
   if (!tbody) return;
@@ -209,8 +244,8 @@ function renderTable() {
           <td class="pool-sticky">
             <div class="pool-nation-cell">
               ${renderNationFlag({ nation_code: row.nation_code, nation_name: row.nation_name }, "sm")}
-              <span>
-                <strong>${row.nation_name}</strong>
+              <span class="pool-nation-meta">
+                <strong class="pool-nation-name">${row.nation_name}</strong>
                 <span class="pool-owner">${row.nation_code} · seed ${row.seed_rank}</span>
                 ${ownerLine}
               </span>
@@ -235,6 +270,8 @@ function renderTable() {
       return mainRow + detailRow;
     })
     .join("");
+
+  requestAnimationFrame(fitNationColumn);
 }
 
 async function loadReport() {
