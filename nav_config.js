@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260617-legacy-players";
+export const NAV_CONFIG_VERSION = "20260617-nav-admin-zone";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -153,31 +153,6 @@ export const ADMIN_NAV_SECTION = {
     { href: "admin_manager_targets.html", label: "Manager contract targets" },
   ],
 };
-
-/** Short admin flyout beside Dashboard — always visible links (no nested expand). */
-export const ADMIN_FLYOUT_LINKS = [
-  { href: "admin.html", label: "Admin hub", home: true },
-  {
-    heading: "Testing",
-    links: [
-      { href: "admin_test_reset.html", label: "Test environment reset", danger: true },
-    ],
-  },
-  {
-    heading: "Season Break",
-    links: [
-      { href: "admin_gpdb_sync.html", label: "GPDB PESDB sync" },
-      { href: "admin_gpdb_dedup.html", label: "GPDB player deduplication" },
-    ],
-  },
-  {
-    heading: "Transfers",
-    links: [
-      { href: "admin_transfers.html", label: "Transfer window & engine" },
-      { href: "admin_owners.html#ow-club-auction", label: "Add owner for club auction" },
-    ],
-  },
-];
 
 export function normalizeNavPath(pathname) {
   const p = (pathname || "").toLowerCase().replace(/\\/g, "/");

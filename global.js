@@ -26,7 +26,7 @@ import { formatNavLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260617-ios-auth";
+export const GLOBAL_JS_VERSION = "20260617-nav-admin-zone";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -1028,86 +1028,6 @@ function wireNavLogout() {
   };
 }
 
-function renderAdminFlyoutHtml(links, pathname) {
-  const file = (pathname || "").toLowerCase().replace(/\\/g, "/").split("/").pop() || "";
-  let html = "";
-  for (const block of links || []) {
-    if (block.heading && block.links?.length) {
-      html += `<div class="gpsl-admin-flyout-group">`;
-      html += `<div class="gpsl-admin-flyout-title">${escapeNavHtml(block.heading)}</div>`;
-      for (const link of block.links) {
-        const href = link.href || "#";
-        const itemFile = href.split("?")[0].split("#")[0].toLowerCase();
-        const active = file === itemFile;
-        const cls = [
-          "gpsl-admin-flyout-link",
-          link.home ? "gpsl-admin-flyout-home" : "",
-          link.danger ? "gpsl-admin-flyout-link-danger" : "",
-          active ? "gpsl-admin-flyout-link-active" : "",
-        ]
-          .filter(Boolean)
-          .join(" ");
-        html += `<a href="${escapeNavAttr(href)}" class="${cls}">${escapeNavHtml(
-          formatNavLabel(link.label)
-        )}</a>`;
-      }
-      html += `</div>`;
-      continue;
-    }
-    if (!block.href) continue;
-    const itemFile = block.href.split("?")[0].split("#")[0].toLowerCase();
-    const active = file === itemFile;
-    const cls = [
-      "gpsl-admin-flyout-link",
-      block.home ? "gpsl-admin-flyout-home" : "",
-      active ? "gpsl-admin-flyout-link-active" : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
-    html += `<a href="${escapeNavAttr(block.href)}" class="${cls}">${escapeNavHtml(
-      formatNavLabel(block.label)
-    )}</a>`;
-  }
-  return html;
-}
-
-function wireAdminZone(nav) {
-  const zone = nav.querySelector("[data-nav-admin-zone]");
-  if (!zone || zone.dataset.wired === "1") return;
-  zone.dataset.wired = "1";
-  const trigger = zone.querySelector(".nav-admin-trigger");
-  if (!trigger) return;
-
-  const close = () => {
-    zone.classList.remove("open");
-    trigger.setAttribute("aria-expanded", "false");
-  };
-
-  trigger.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const willOpen = !zone.classList.contains("open");
-    nav.querySelectorAll("[data-nav-group].open").forEach((group) => {
-      group.classList.remove("open");
-      group.querySelector(".nav-group-summary")?.setAttribute("aria-expanded", "false");
-    });
-    zone.classList.toggle("open", willOpen);
-    trigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
-  });
-
-  zone.querySelectorAll(".gpsl-admin-flyout-link").forEach((link) => {
-    link.addEventListener("click", () => close());
-  });
-
-  if (!nav.dataset.adminZoneOutsideClose) {
-    nav.dataset.adminZoneOutsideClose = "1";
-    document.addEventListener("click", (e) => {
-      if (e.target.closest("[data-nav-admin-zone]")) return;
-      close();
-    });
-  }
-}
-
 function wireNavGroups(nav) {
   const groups = nav.querySelectorAll("[data-nav-group]");
 
@@ -1202,7 +1122,6 @@ export async function buildNav() {
   try {
   let NAV_SECTIONS;
   let ADMIN_NAV_SECTION;
-  let ADMIN_FLYOUT_LINKS;
   let isNavItemActive;
   let sectionHasActiveItem;
   let firstActiveNavSectionId;
@@ -1212,7 +1131,6 @@ export async function buildNav() {
     const navMod = await import(`./nav_config.js?v=${GLOBAL_JS_VERSION}`);
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
-    ADMIN_FLYOUT_LINKS = navMod.ADMIN_FLYOUT_LINKS;
     isNavItemActive = navMod.isNavItemActive;
     sectionHasActiveItem = navMod.sectionHasActiveItem;
     firstActiveNavSectionId = navMod.firstActiveNavSectionId;
@@ -1310,19 +1228,6 @@ export async function buildNav() {
   }
   html += `</a>`;
   html += `</div>`;
-
-  const showAdminZone = isGpslAdminUser(user);
-  if (showAdminZone && ADMIN_FLYOUT_LINKS?.length) {
-    const adminHubActive = pathNorm === "admin.html";
-    html += `<div class="gpsl-nav-admin-zone" data-nav-admin-zone>`;
-    html += `<span class="gpsl-nav-zone-label">Admin</span>`;
-    html += `<button type="button" class="nav-admin-trigger nav-shortcut${
-      adminHubActive ? " active" : ""
-    }" aria-expanded="false" aria-haspopup="true">Admin tools</button>`;
-    html += `<div class="gpsl-nav-admin-flyout" role="menu">`;
-    html += renderAdminFlyoutHtml(ADMIN_FLYOUT_LINKS, pathname);
-    html += `</div></div>`;
-  }
 
   if (!navMonthLabel) {
     try {
@@ -1467,7 +1372,6 @@ export async function buildNav() {
   nav.innerHTML = html;
   wireNavLogout();
   wireNavGroups(nav);
-  wireAdminZone(nav);
   } catch (err) {
     console.error("buildNav failed:", err);
     await renderFallbackNav();
