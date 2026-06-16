@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260617-season-club-purchases";
+export const NAV_CONFIG_VERSION = "20260618-transfers-submenu";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -35,36 +35,71 @@ export const NAV_SECTIONS = [
     id: "transfers",
     label: "Transfers",
     items: [
-      { href: "GPDB.html", label: "Player Database", page: "gpdb" },
-      { href: "MGDB.html", label: "Manager Database", page: "mgdb" },
-      { href: "all_listings.html", label: "Transfer Market", page: "all_listings" },
-      { href: "manager_listings.html", label: "Manager Market", page: "manager_listings" },
+      { heading: true, label: "Players" },
+      { href: "GPDB.html", label: "Player Database", page: "gpdb", indent: true },
+      { href: "all_listings.html", label: "Transfer Market", page: "all_listings", indent: true },
       {
         href: "draftauction.html",
-        label: "Player Draft Auction",
+        label: "Player Draft Auctions",
         page: "draftauction",
+        indent: true,
+      },
+      {
+        href: "legacy_players.html",
+        label: "Legacy Players",
+        page: "legacy_players",
+        indent: true,
+      },
+      {
+        href: "expiring_contracts.html",
+        label: "Expiring Contracts",
+        page: "expiring_contracts",
+        indent: true,
+      },
+      {
+        href: "season_transfers.html",
+        label: "Seasons Player Transfers",
+        page: "season_transfers",
+        indent: true,
+      },
+      { heading: true, label: "Managers" },
+      { href: "MGDB.html", label: "Manager Database", page: "mgdb", indent: true },
+      {
+        href: "manager_listings.html",
+        label: "Manager Market",
+        page: "manager_listings",
+        indent: true,
       },
       {
         href: "manager_draftauction.html",
         label: "Manager Draft Auction",
         page: "manager_draftauction",
+        indent: true,
+      },
+      {
+        href: "season_manager_transfers.html",
+        label: "Seasons Manager Transfers",
+        page: "season_manager_transfers",
+        indent: true,
+      },
+      { heading: true, label: "Clubs" },
+      {
+        href: "club_database.html",
+        label: "Club Database",
+        page: "club_database",
+        indent: true,
       },
       {
         href: "club_auction.html",
         label: "Club Auction",
         page: "club_auction",
+        indent: true,
       },
-      {
-        href: "legacy_players.html",
-        label: "Legacy players",
-        page: "legacy_players",
-      },
-      { href: "expiring_contracts.html", label: "Expiring Contracts", page: "expiring_contracts" },
-      { href: "season_transfers.html", label: "Season Transfers", page: "season_transfers" },
       {
         href: "season_club_purchases.html",
         label: "Season Club Purchases",
         page: "season_club_purchases",
+        indent: true,
       },
     ],
   },

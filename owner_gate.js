@@ -9,6 +9,7 @@ const ALLOWED_WITHOUT_CLUB = new Set([
   "awaiting_club",
   "club_auction",
   "season_club_purchases",
+  "club_database",
   "learning_gpsl",
   "login",
   "reset_password",
