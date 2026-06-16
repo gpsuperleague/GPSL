@@ -1,58 +1,87 @@
--- =============================================================================
--- Club assignment — stadium infra purchase (capacity × ₿1,000)
--- Matches finances_accounts → Infrastructure purchases / club auction stadium cost.
--- Run after club_auction_capacity_pricing.sql + central_bank_phase1.sql
---        (+ club_auction_settle_no_active_season.sql if already applied)
--- =============================================================================
+-- Welcome inbox when a club is linked (admin assign or club auction win).
+-- Backfill for owners who already have a club but no welcome message.
+-- Run after owner_inbox_notifications.sql and club_assignment_stadium_charge.sql.
 
-CREATE OR REPLACE FUNCTION public.competition_finances_current_season_id()
-RETURNS bigint
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT s.id
-  FROM public.competition_seasons s
-  WHERE s.is_current = true
-    AND s.status IN ('active', 'preseason')
-  ORDER BY CASE s.status WHEN 'active' THEN 0 ELSE 1 END, s.id DESC
-  LIMIT 1;
-$$;
-
-COMMENT ON FUNCTION public.competition_finances_current_season_id() IS
-  'Current season for finance ledger posts (active or preseason).';
-
-CREATE OR REPLACE FUNCTION public.club_stadium_infra_purchase_cost(p_club_short_name text)
-RETURNS numeric
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT public.club_auction_opening_bid_for_capacity(
-    coalesce(c."Capacity", 0)::bigint
-  )
-  FROM public."Clubs" c
-  WHERE c."ShortName" = upper(btrim(p_club_short_name));
-$$;
-
-COMMENT ON FUNCTION public.club_stadium_infra_purchase_cost(text) IS
-  'Stadium purchase line on season accounts: capacity × ₿1,000 (same as club auction opening bid).';
-
--- ---------------------------------------------------------------------------
--- Apply starting budget → club balance after assignment; post infra_purchase ledger
--- p_total_debit: auction winning bid (≥ stadium cost) or NULL → stadium cost only
--- ---------------------------------------------------------------------------
-
-CREATE OR REPLACE FUNCTION public.owner_apply_club_assignment_finances(
-  p_club_short_name text,
+CREATE OR REPLACE FUNCTION public.owner_inbox_send_welcome(
   p_owner_id uuid,
-  p_starting_budget numeric,
-  p_total_debit numeric DEFAULT NULL,
-  p_source text DEFAULT 'club_assignment',
-  p_metadata jsonb DEFAULT '{}'::jsonb,
-  p_description text DEFAULT NULL
+  p_club_short_name text DEFAULT NULL,
+  p_created_at timestamptz DEFAULT NULL
+)
+RETURNS bigint
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club_name text;
+  v_body text;
+  v_id bigint;
+  v_dedupe text;
+BEGIN
+  IF p_club_short_name IS NOT NULL THEN
+    SELECT c."Club" INTO v_club_name
+    FROM public."Clubs" c
+    WHERE c."ShortName" = upper(trim(p_club_short_name));
+
+    v_body := format(
+      E'Welcome to GPSL — you are now linked to %s.\n\nRead Learning GPSL for navigation, auctions, contracts, matchday, and club expectations.',
+      coalesce(v_club_name, upper(trim(p_club_short_name)))
+    );
+    v_dedupe := 'welcome:' || upper(trim(p_club_short_name));
+
+    IF EXISTS (SELECT 1 FROM public.competition_inbox i WHERE i.dedupe_key = v_dedupe) THEN
+      RETURN NULL;
+    END IF;
+
+    INSERT INTO public.competition_inbox (
+      recipient_club_short_name, owner_id, message_type,
+      title, body, action_href, dedupe_key, created_at
+    )
+    VALUES (
+      upper(trim(p_club_short_name)),
+      NULL,
+      'welcome_gpsl',
+      'Welcome to GPSL',
+      v_body,
+      'learning_gpsl.html',
+      v_dedupe,
+      coalesce(p_created_at, now())
+    )
+    RETURNING id INTO v_id;
+
+    RETURN v_id;
+  END IF;
+
+  v_body := E'Welcome to GPSL.\n\nYou are registered for the club auction. Read Learning GPSL while you wait — it covers navigation, auctions, contracts, and what is expected of owners.';
+  v_dedupe := 'welcome:owner:' || p_owner_id::text;
+
+  IF EXISTS (SELECT 1 FROM public.competition_inbox i WHERE i.dedupe_key = v_dedupe) THEN
+    RETURN NULL;
+  END IF;
+
+  INSERT INTO public.competition_inbox (
+    recipient_club_short_name, owner_id, message_type,
+    title, body, action_href, dedupe_key, created_at
+  )
+  VALUES (
+    NULL,
+    p_owner_id,
+    'welcome_gpsl',
+    'Welcome to GPSL',
+    v_body,
+    'learning_gpsl.html',
+    v_dedupe,
+    coalesce(p_created_at, now())
+  )
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.owner_inbox_backfill_club_welcome(
+  p_backdate timestamptz DEFAULT NULL,
+  p_club_short_name text DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -60,123 +89,49 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
-  v_club text := upper(btrim(p_club_short_name));
-  v_stadium numeric;
-  v_debit numeric;
-  v_starting numeric;
-  v_balance numeric;
-  v_season_id bigint;
-  v_club_name text;
-  v_desc text;
-  v_meta jsonb;
-  v_ledger_id bigint;
-  v_dup_key text;
+  v_club record;
+  v_backdate timestamptz;
+  v_sent int := 0;
+  v_skipped int := 0;
+  v_id bigint;
 BEGIN
-  IF v_club IS NULL OR v_club = '' THEN
-    RAISE EXCEPTION 'Club required';
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
   END IF;
 
-  v_stadium := coalesce(public.club_stadium_infra_purchase_cost(v_club), 0);
-  v_debit := coalesce(nullif(p_total_debit, 0), v_stadium);
-  v_debit := greatest(v_debit, v_stadium);
-  v_starting := greatest(coalesce(p_starting_budget, 0), 0);
-  v_balance := greatest(v_starting - v_debit, 0);
+  SELECT s.started_at INTO v_backdate
+  FROM public.competition_seasons s
+  WHERE s.is_current = true AND s.status = 'active'
+  ORDER BY s.started_at DESC NULLS LAST
+  LIMIT 1;
 
-  SELECT c."Club" INTO v_club_name
-  FROM public."Clubs" c
-  WHERE c."ShortName" = v_club;
+  v_backdate := coalesce(p_backdate, v_backdate, now());
 
-  v_meta := coalesce(p_metadata, '{}'::jsonb)
-    || jsonb_build_object(
-      'source', coalesce(nullif(btrim(p_source), ''), 'club_assignment'),
-      'owner_id', p_owner_id,
-      'stadium_cost', v_stadium,
-      'total_debit', v_debit,
-      'starting_budget', v_starting
-    );
-
-  v_dup_key := coalesce(v_meta->>'listing_id', v_meta->>'assignment_key', p_owner_id::text);
-
-  IF EXISTS (
-    SELECT 1 FROM public."Club_Finances" f WHERE f.club_name = v_club
-  ) THEN
-    UPDATE public."Club_Finances"
-    SET balance = v_balance
-    WHERE club_name = v_club;
-  ELSE
-    INSERT INTO public."Club_Finances" (club_name, balance)
-    VALUES (v_club, v_balance);
-  END IF;
-
-  v_season_id := public.competition_finances_current_season_id();
-
-  IF v_debit > 0 AND v_season_id IS NOT NULL THEN
-    IF NOT EXISTS (
-      SELECT 1
-      FROM public.competition_finance_ledger l
-      WHERE l.club_short_name = v_club
-        AND l.season_id = v_season_id
-        AND l.entry_type = 'infra_purchase'
-        AND coalesce(l.metadata->>'source', '') = coalesce(nullif(btrim(p_source), ''), 'club_assignment')
-        AND coalesce(l.metadata->>'dup_key', l.metadata->>'listing_id', '') = v_dup_key
-    ) THEN
-      v_desc := coalesce(
-        nullif(btrim(p_description), ''),
-        format(
-          'Stadium purchase — %s (%s) — ₿%s (capacity × ₿1,000)',
-          coalesce(v_club_name, v_club),
-          v_club,
-          to_char(v_stadium, 'FM999,999,999,999')
-        )
-      );
-
-      IF v_debit > v_stadium THEN
-        v_desc := v_desc || format(
-          ' + auction premium ₿%s',
-          to_char(v_debit - v_stadium, 'FM999,999,999,999')
-        );
-      END IF;
-
-      v_meta := v_meta || jsonb_build_object('dup_key', v_dup_key);
-
-      v_ledger_id := public.post_club_ledger(
-        v_club,
-        'infra_purchase',
-        -v_debit,
-        v_desc,
-        v_meta,
-        v_season_id,
-        NULL,
-        false,
-        false
-      );
+  FOR v_club IN
+    SELECT c."ShortName" AS short_name, c.owner_id
+    FROM public."Clubs" c
+    WHERE c.owner_id IS NOT NULL
+      AND c."ShortName" <> 'FOREIGN'
+      AND (p_club_short_name IS NULL OR c."ShortName" = upper(trim(p_club_short_name)))
+    ORDER BY c."ShortName"
+  LOOP
+    v_id := public.owner_inbox_send_welcome(v_club.owner_id, v_club.short_name, v_backdate);
+    IF v_id IS NOT NULL THEN
+      v_sent := v_sent + 1;
+    ELSE
+      v_skipped := v_skipped + 1;
     END IF;
-  END IF;
+  END LOOP;
 
   RETURN jsonb_build_object(
-    'ok', true,
-    'club_short_name', v_club,
-    'stadium_cost', v_stadium,
-    'total_debit', v_debit,
-    'starting_budget', v_starting,
-    'balance', v_balance,
-    'season_id', v_season_id,
-    'ledger_id', v_ledger_id,
-    'ledger_skipped_no_season', v_season_id IS NULL AND v_debit > 0
+    'sent', v_sent,
+    'skipped', v_skipped,
+    'backdate', v_backdate
   );
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.competition_finances_current_season_id() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.club_stadium_infra_purchase_cost(text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.owner_apply_club_assignment_finances(
-  text, uuid, numeric, numeric, text, jsonb, text
-) TO authenticated;
-
--- ---------------------------------------------------------------------------
--- Club auction settlement — use stadium cost + winning bid
--- ---------------------------------------------------------------------------
-
+-- Club auction settlement — welcome on win
 CREATE OR REPLACE FUNCTION public.transferengine_accept_club_auction_sale(p_listing_id bigint)
 RETURNS void
 LANGUAGE plpgsql
@@ -333,10 +288,7 @@ BEGIN
 END;
 $function$;
 
--- ---------------------------------------------------------------------------
--- Admin assign — charge stadium when linking owner to a vacant club
--- ---------------------------------------------------------------------------
-
+-- Admin assign — welcome when linking owner to a club
 CREATE OR REPLACE FUNCTION public.admin_assign_club_owner(
   p_owner_email text,
   p_club_short_name text
@@ -480,83 +432,11 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.admin_assign_club_owner(text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.owner_inbox_send_welcome(uuid, text, timestamptz) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.owner_inbox_backfill_club_welcome(timestamptz, text) TO authenticated;
 
--- ---------------------------------------------------------------------------
--- One-time repair: owned clubs missing infra_purchase (incl. Urawa / URD)
--- ---------------------------------------------------------------------------
-
-CREATE OR REPLACE FUNCTION public.repair_club_assignment_finances(
-  p_club_short_name text DEFAULT NULL
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_row record;
-  v_starting numeric;
-  v_debit numeric;
-  v_default numeric;
-  v_results jsonb := '[]'::jsonb;
-  v_fin jsonb;
-BEGIN
-  IF NOT public.is_gpsl_admin()
-     AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
-    RAISE EXCEPTION 'Admin only';
-  END IF;
-
-  v_default := public.club_auction_default_starting_balance();
-
-  FOR v_row IN
-    SELECT
-      c."ShortName" AS club_short_name,
-      c.owner_id,
-      l.id AS listing_id,
-      l.winning_bid,
-      reg.pending_starting_balance
-    FROM public."Clubs" c
-    JOIN public.gpsl_owner_registry reg ON reg.owner_id = c.owner_id
-    LEFT JOIN public."Club_Auction_Listings" l
-      ON l.club_short_name = c."ShortName"
-     AND l.transfer_completed = true
-     AND l.winning_owner_id = c.owner_id
-    WHERE c.owner_id IS NOT NULL
-      AND c."ShortName" <> 'FOREIGN'
-      AND (
-        p_club_short_name IS NULL
-        OR c."ShortName" = upper(btrim(p_club_short_name))
-      )
-  LOOP
-    v_starting := greatest(coalesce(nullif(v_row.pending_starting_balance, 0), v_default), 0);
-    v_debit := coalesce(nullif(v_row.winning_bid, 0), public.club_stadium_infra_purchase_cost(v_row.club_short_name));
-
-    v_fin := public.owner_apply_club_assignment_finances(
-      v_row.club_short_name,
-      v_row.owner_id,
-      v_starting,
-      v_debit,
-      CASE WHEN v_row.listing_id IS NOT NULL THEN 'club_auction' ELSE 'admin_assign' END,
-      jsonb_build_object(
-        'listing_id', v_row.listing_id::text,
-        'assignment_key', v_row.owner_id::text || ':' || v_row.club_short_name,
-        'dup_key', coalesce(v_row.listing_id::text, v_row.owner_id::text || ':' || v_row.club_short_name),
-        'repair', true
-      ),
-      NULL
-    );
-
-    v_results := v_results || jsonb_build_array(v_fin);
-  END LOOP;
-
-  RETURN jsonb_build_object('ok', true, 'repaired', jsonb_array_length(v_results), 'clubs', v_results);
-END;
-$function$;
-
-GRANT EXECUTE ON FUNCTION public.repair_club_assignment_finances(text) TO authenticated;
-
--- Repair Urawa Reds and any other owned clubs missing the stadium charge
-SELECT public.repair_club_assignment_finances('URD');
-
-NOTIFY pgrst, 'reload schema';
+-- Backfill all owned clubs (uses active season started_at unless you pass a date):
+-- SELECT public.owner_inbox_backfill_club_welcome(NULL, NULL);
+--
+-- One club, custom backdate:
+-- SELECT public.owner_inbox_backfill_club_welcome('2026-06-01 19:00:00+01'::timestamptz, 'URD');

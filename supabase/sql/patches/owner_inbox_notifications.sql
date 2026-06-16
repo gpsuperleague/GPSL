@@ -372,7 +372,8 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.owner_inbox_send_welcome(
   p_owner_id uuid,
-  p_club_short_name text DEFAULT NULL
+  p_club_short_name text DEFAULT NULL,
+  p_created_at timestamptz DEFAULT NULL
 )
 RETURNS bigint
 LANGUAGE plpgsql
@@ -382,6 +383,8 @@ AS $function$
 DECLARE
   v_club_name text;
   v_body text;
+  v_id bigint;
+  v_dedupe text;
 BEGIN
   IF p_club_short_name IS NOT NULL THEN
     SELECT c."Club" INTO v_club_name FROM public."Clubs" c WHERE c."ShortName" = p_club_short_name;
@@ -389,32 +392,55 @@ BEGIN
       E'Welcome to GPSL — you are now linked to %s.\n\nRead Learning GPSL for navigation, auctions, contracts, matchday, and club expectations.',
       coalesce(v_club_name, p_club_short_name)
     );
-    RETURN public.owner_inbox_send(
+    v_dedupe := 'welcome:' || upper(trim(p_club_short_name));
+
+    IF EXISTS (SELECT 1 FROM public.competition_inbox i WHERE i.dedupe_key = v_dedupe) THEN
+      RETURN NULL;
+    END IF;
+
+    INSERT INTO public.competition_inbox (
+      recipient_club_short_name, owner_id, message_type,
+      title, body, action_href, dedupe_key, created_at
+    )
+    VALUES (
+      upper(trim(p_club_short_name)),
+      NULL,
       'welcome_gpsl',
       'Welcome to GPSL',
       v_body,
-      p_club_short_name,
-      NULL,
-      NULL, NULL, NULL, NULL,
       'learning_gpsl.html',
-      'welcome:' || p_club_short_name,
-      NULL, NULL
-    );
+      v_dedupe,
+      coalesce(p_created_at, now())
+    )
+    RETURNING id INTO v_id;
+
+    RETURN v_id;
   END IF;
 
   v_body := E'Welcome to GPSL.\n\nYou are registered for the club auction. Read Learning GPSL while you wait — it covers navigation, auctions, contracts, and what is expected of owners.';
+  v_dedupe := 'welcome:owner:' || p_owner_id::text;
 
-  RETURN public.owner_inbox_send(
+  IF EXISTS (SELECT 1 FROM public.competition_inbox i WHERE i.dedupe_key = v_dedupe) THEN
+    RETURN NULL;
+  END IF;
+
+  INSERT INTO public.competition_inbox (
+    recipient_club_short_name, owner_id, message_type,
+    title, body, action_href, dedupe_key, created_at
+  )
+  VALUES (
+    NULL,
+    p_owner_id,
     'welcome_gpsl',
     'Welcome to GPSL',
     v_body,
-    NULL,
-    p_owner_id,
-    NULL, NULL, NULL, NULL,
     'learning_gpsl.html',
-    'welcome:owner:' || p_owner_id::text,
-    NULL, NULL
-  );
+    v_dedupe,
+    coalesce(p_created_at, now())
+  )
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
 END;
 $function$;
 
@@ -1635,7 +1661,7 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.owner_inbox_send(text, text, text, text, uuid, bigint, bigint, bigint, bigint, text, text, text, bigint) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.owner_inbox_send_welcome(uuid, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.owner_inbox_send_welcome(uuid, text, timestamptz) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.owner_inbox_notify_all_clubs(text, text, text, text, text, bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.owner_inbox_notify_monthly_fixtures(bigint, smallint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.owner_inbox_tick_monthly_notifications() TO authenticated;
