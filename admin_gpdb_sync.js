@@ -232,9 +232,10 @@ function scrapeProgressMetrics({ job, prog } = {}) {
 }
 
 function syncScrapeProgressBar(job, stagingTotal) {
+  const domCount = Number(document.getElementById("progStagingCount")?.textContent);
   const count =
     stagingTotal ??
-    Number(document.getElementById("progStagingCount")?.textContent) ||
+    (Number.isFinite(domCount) ? domCount : null) ??
     job?.staging_count ??
     readProgress()?.stagingTotal ??
     0;
