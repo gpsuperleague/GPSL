@@ -1,7 +1,16 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260618-kickoff-after-divisions";
+export const SEASON_ADMIN_NAV_VERSION = "20260618-kickoff-top-and-mid";
+
+const KICKOFF_NAV_ITEMS = [
+  {
+    label: "Create new season",
+    href: "admin_season.html",
+    hash: "wf-kickoff",
+    page: "admin_season",
+  },
+];
 
 const TRANSFER_WINDOW_NAV_ITEMS = [
   {
@@ -23,6 +32,11 @@ const CHALLENGE_PAYOUTS_NAV_ITEM = {
 };
 
 export const SEASON_ADMIN_NAV = [
+  {
+    id: "kickoff",
+    label: "Kickoff",
+    items: [...KICKOFF_NAV_ITEMS],
+  },
   {
     id: "divisions",
     label: "Assign Divisions",
@@ -48,16 +62,9 @@ export const SEASON_ADMIN_NAV = [
     ],
   },
   {
-    id: "kickoff",
+    id: "kickoff_go_live",
     label: "Kickoff",
-    items: [
-      {
-        label: "Create new season",
-        href: "admin_season.html",
-        hash: "wf-kickoff",
-        page: "admin_season",
-      },
-    ],
+    items: [...KICKOFF_NAV_ITEMS],
   },
   {
     id: "assign_cups",
