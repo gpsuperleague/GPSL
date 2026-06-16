@@ -1,9 +1,21 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260617-season-break-weather";
+export const SEASON_ADMIN_NAV_VERSION = "20260618-kickoff-first";
 
 export const SEASON_ADMIN_NAV = [
+  {
+    id: "kickoff",
+    label: "Kickoff",
+    items: [
+      {
+        label: "Start new season",
+        href: "admin_season.html",
+        hash: "wf-kickoff",
+        page: "admin_season",
+      },
+    ],
+  },
   {
     id: "create",
     label: "Create New Season",
@@ -101,18 +113,6 @@ export const SEASON_ADMIN_NAV = [
         label: "Draw cup fixtures",
         href: "admin_fixtures-cups.html",
         page: "admin_fixtures-cups",
-      },
-    ],
-  },
-  {
-    id: "kickoff",
-    label: "Kickoff",
-    items: [
-      {
-        label: "Start new season",
-        href: "admin_season.html",
-        hash: "wf-kickoff",
-        page: "admin_season",
       },
     ],
   },
