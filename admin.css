@@ -264,6 +264,11 @@ html.admin-root body.admin-page {
   margin-bottom: 0;
 }
 
+.comp-setup-counts {
+  margin: 10px 0;
+  font-weight: 600;
+}
+
 @media (max-width: 800px) {
   .admin-season-shell {
     grid-template-columns: 1fr;

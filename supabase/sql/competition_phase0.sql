@@ -133,6 +133,7 @@ BEGIN
   INSERT INTO public.competition_club_seasons (season_id, club_short_name, division)
   SELECT v_season_id, c."ShortName", 'unassigned'
   FROM public."Clubs" c
+  WHERE c."ShortName" <> 'FOREIGN'
   ORDER BY c."ShortName";
 
   GET DIAGNOSTICS v_club_count = ROW_COUNT;

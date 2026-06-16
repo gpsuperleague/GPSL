@@ -99,6 +99,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compArchiveSeasonBtn").onclick = archiveSeasonStats;
   document.getElementById("compSetupSeasonSelect").onchange = onCompSeasonSelected;
   document.getElementById("compSaveAssignBtn").onclick = saveCompetitionAssignments;
+  document.getElementById("compAssignBody").addEventListener("change", (e) => {
+    if (e.target.classList.contains("comp-div-select")) {
+      updateCompSetupCounts();
+    }
+  });
   document.getElementById("compDrawBtn").onclick = drawCompetitionAb;
   document.getElementById("compResetDrawBtn").onclick = resetCompetitionDraw;
   document.getElementById("compStartSeasonBtn").onclick = startCompetitionSeason;
@@ -349,14 +354,46 @@ function renderCompAssignTable() {
   }
 }
 
-function updateCompSetupCounts() {
-  const counts = countSetupDivisions(compRegistrations);
-  const el = document.getElementById("compSetupCounts");
-  el.textContent =
-    `SL ${counts.superleague}/20 · Pool ${counts.championship_pool}/40 · ` +
-    `CH A ${counts.championship_a}/20 · CH B ${counts.championship_b}/20 · ` +
-    `Unassigned ${counts.unassigned}`;
+function getCompSetupCountsFromUi() {
+  const byClub = new Map(
+    [...document.querySelectorAll(".comp-div-select")].map((sel) => [
+      sel.dataset.club,
+      sel.value,
+    ])
+  );
+  const merged = compRegistrations.map((row) =>
+    byClub.has(row.club_short_name)
+      ? { ...row, division: byClub.get(row.club_short_name) }
+      : row
+  );
+  return countSetupDivisions(merged);
+}
 
+function formatDivisionCount(label, current, target) {
+  let color = "#ffcc00";
+  if (current === target) color = "#66cc66";
+  else if (current > target) color = "#ff6666";
+  return `<span style="color:${color};">${label} ${current}/${target}</span>`;
+}
+
+function formatUnassignedCount(count) {
+  const color = count === 0 ? "#66cc66" : "#ff6666";
+  return `<span style="color:${color};">Unassigned ${count}</span>`;
+}
+
+function updateCompSetupCounts() {
+  const counts = getCompSetupCountsFromUi();
+  const el = document.getElementById("compSetupCounts");
+  const hasPending = document.querySelectorAll(".comp-div-select").length > 0;
+  el.innerHTML =
+    `${formatDivisionCount("SL", counts.superleague, 20)} · ` +
+    `${formatDivisionCount("Pool", counts.championship_pool, 40)} · ` +
+    `${formatDivisionCount("CH A", counts.championship_a, 20)} · ` +
+    `${formatDivisionCount("CH B", counts.championship_b, 20)} · ` +
+    formatUnassignedCount(counts.unassigned);
+  el.title = hasPending
+    ? "Live counts — includes unsaved dropdown picks (save to apply)"
+    : "";
   document.getElementById("compDrawBtn").disabled = !canDrawChampionshipAb(counts);
   const ready = canActivateSeason(counts);
   const startBtn = document.getElementById("compStartSeasonBtn");
