@@ -29,6 +29,7 @@
     .scrape-progress-bar { height: 100%; width: 0; background: linear-gradient(90deg, #664400, #ff9900); transition: width 0.25s ease; }
     #scrapeProgressLabel { font-size: 12px; color: #888; margin-top: 6px; }
     .scrape-options { margin-top: 10px; font-size: 13px; color: #aaa; }
+    #syncProgressGrid { margin-top: 10px; }
   </style>
 </head>
 <body class="admin-page">
@@ -52,6 +53,24 @@
           <li><span class="step-num">2</span>Preview differences vs live <code>Players</code>.</li>
           <li><span class="step-num">3</span>Apply — off-PESDB cards become <b>legacy</b> (stay at club, not sellable, 1-season renewals).</li>
         </ol>
+      </div>
+
+      <div class="card" id="syncProgressCard">
+        <h2>Scrape progress</h2>
+        <p class="note">Stored in Supabase <code>gpdb_pesdb_staging</code> (one row per player, no duplicates). Resume uses browser + staging counts.</p>
+        <div id="syncProgressGrid" class="preview-grid">
+          <div><span id="progStagingCount">—</span> players in staging</div>
+          <div><span id="progLastPage">—</span> last page scraped</div>
+          <div><span id="progTargetEnd">—</span> target end page</div>
+          <div><span id="progNextPage">—</span> next page to scrape</div>
+          <div><span id="progLastSaved">—</span> progress saved</div>
+          <div><span id="progLastApply">—</span> last apply to Players</div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" class="button" id="refreshProgressBtn">Refresh</button>
+          <button type="button" class="button" id="clearStagingBtn" style="background:#662222;">Clear staging &amp; reset progress</button>
+        </div>
+        <div id="progressStatus" class="status-line"></div>
       </div>
 
       <div class="card">
@@ -155,6 +174,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_sync.js?v=20260616-delay-fix"></script>
+  <script type="module" src="admin_gpdb_sync.js?v=20260617-progress"></script>
 </body>
 </html>

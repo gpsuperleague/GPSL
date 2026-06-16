@@ -117,7 +117,21 @@ export async function parsePesdbCsvToStagingRows(csvText) {
     });
   }
 
-  return { rows, skipped, headerCount: headers.length };
+  const deduped = dedupeRowsByKonamiId(rows);
+  const dupesRemoved = rows.length - deduped.length;
+
+  return { rows: deduped, skipped, headerCount: headers.length, dupesRemoved };
+}
+
+/** Drop duplicate konami_ids in a batch (last row wins). */
+export function dedupeRowsByKonamiId(rows) {
+  const map = new Map();
+  for (const row of rows || []) {
+    const kid = String(row.konami_id ?? row.player_id ?? "").trim();
+    if (!kid) continue;
+    map.set(kid, { ...row, konami_id: kid });
+  }
+  return [...map.values()];
 }
 
 export const PESDB_IMPORT_CHUNK = 150;

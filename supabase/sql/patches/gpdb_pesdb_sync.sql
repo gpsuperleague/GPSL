@@ -107,6 +107,8 @@ AS $function$
 DECLARE
   v_batch uuid := gen_random_uuid();
   v_inserted int := 0;
+  v_new int := 0;
+  v_updated int := 0;
   v_row jsonb;
   v_kid text;
 BEGIN
@@ -127,6 +129,12 @@ BEGIN
     v_kid := btrim(coalesce(v_row->>'konami_id', v_row->>'player_id', ''));
     IF v_kid = '' THEN
       CONTINUE;
+    END IF;
+
+    IF EXISTS (SELECT 1 FROM public.gpdb_pesdb_staging s WHERE s.konami_id = v_kid) THEN
+      v_updated := v_updated + 1;
+    ELSE
+      v_new := v_new + 1;
     END IF;
 
     INSERT INTO public.gpdb_pesdb_staging (
@@ -177,7 +185,38 @@ BEGIN
     'ok', true,
     'batch_id', v_batch,
     'rows_imported', v_inserted,
+    'rows_new', v_new,
+    'rows_updated', v_updated,
     'staging_count', (SELECT count(*)::int FROM public.gpdb_pesdb_staging)
+  );
+END;
+$function$;
+
+-- Staging summary for admin progress panel
+CREATE OR REPLACE FUNCTION public.gpdb_pesdb_staging_stats()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_count int;
+  v_last timestamptz;
+  v_first timestamptz;
+BEGIN
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  SELECT count(*)::int, max(loaded_at), min(loaded_at)
+  INTO v_count, v_last, v_first
+  FROM public.gpdb_pesdb_staging;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'staging_count', coalesce(v_count, 0),
+    'last_loaded_at', v_last,
+    'first_loaded_at', v_first
   );
 END;
 $function$;
@@ -720,6 +759,7 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_staging_clear() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_staging_import(jsonb, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_staging_stats() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_sync_audit() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_sync_apply(boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpdb_pesdb_restore_player(text) TO authenticated;

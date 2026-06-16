@@ -3,6 +3,7 @@ import {
   parsePesdbCsvToStagingRows,
   chunkRows,
   enrichRowsWithEconomics,
+  dedupeRowsByKonamiId,
 } from "./gpdb_pesdb_import.js";
 
 primeAdminPageChrome();
@@ -11,6 +12,7 @@ const CONFIRM_TEXT = "SYNC GPDB";
 const SCRAPE_FUNCTION = "gpdb-pesdb-scrape";
 const SCRAPE_PACE = "chunked";
 const PROGRESS_KEY = "gpdb_pesdb_scrape_progress";
+const LAST_APPLY_KEY = "gpdb_pesdb_last_apply";
 const RATE_LIMIT_RETRY_MS = 60000;
 let scrapeAbort = false;
 let liveTimerId = null;
@@ -85,6 +87,111 @@ function saveProgress(lastPage, endPage, stagingTotal) {
 
 function clearProgress() {
   localStorage.removeItem(PROGRESS_KEY);
+}
+
+function formatWhen(iso) {
+  if (!iso) return "—";
+  try {
+    return new Date(iso).toLocaleString();
+  } catch {
+    return iso;
+  }
+}
+
+function readLastApply() {
+  try {
+    return JSON.parse(localStorage.getItem(LAST_APPLY_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function saveLastApply(result) {
+  localStorage.setItem(
+    LAST_APPLY_KEY,
+    JSON.stringify({
+      at: new Date().toISOString(),
+      staging_rows: result?.staging_rows,
+      updated: result?.updated ?? result?.would_update,
+      inserted: result?.inserted_free_agents ?? result?.would_insert_free_agents,
+      legacy: result?.marked_unavailable ?? result?.would_mark_unavailable,
+    })
+  );
+}
+
+async function fetchStagingStats() {
+  const { data, error } = await supabase.rpc("gpdb_pesdb_staging_stats");
+  if (error) throw error;
+  return data || { staging_count: 0 };
+}
+
+function renderProgressPanel(stagingStats = null) {
+  const prog = readProgress();
+  const lastApply = readLastApply();
+  const stagingCount = stagingStats?.staging_count ?? prog?.stagingTotal ?? "—";
+
+  const set = (id, text) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text ?? "—";
+  };
+
+  set("progStagingCount", String(stagingCount));
+  set("progLastPage", prog?.lastPage ? String(prog.lastPage) : "—");
+  set("progTargetEnd", prog?.endPage ? String(prog.endPage) : "—");
+  set(
+    "progNextPage",
+    prog?.lastPage ? String(Math.min(prog.lastPage + 1, prog.endPage || prog.lastPage + 1)) : "1"
+  );
+  set("progLastSaved", formatWhen(prog?.savedAt));
+  set(
+    "progLastApply",
+    lastApply?.at
+      ? `${formatWhen(lastApply.at)} (${lastApply.updated ?? 0} updated, ${lastApply.inserted ?? 0} new)`
+      : "Never"
+  );
+
+  if (stagingStats?.last_loaded_at) {
+    const label = document.querySelector("#syncProgressCard .note");
+    if (label) {
+      label.textContent =
+        `Staging table: ${stagingCount} unique players (last row loaded ${formatWhen(stagingStats.last_loaded_at)}). ` +
+        "Re-scraping the same player updates the row — no duplicates.";
+    }
+  }
+}
+
+async function refreshProgressPanel(statusId = "progressStatus") {
+  try {
+    const stats = await fetchStagingStats();
+    renderProgressPanel(stats);
+    if (statusId) setStatus(statusId, "Progress refreshed.", true);
+    return stats;
+  } catch (err) {
+    console.error("staging stats:", err);
+    renderProgressPanel(null);
+    if (statusId) setStatus(statusId, err.message || "Could not load staging stats.", false);
+    return null;
+  }
+}
+
+async function clearStagingAndProgress() {
+  if (
+    !window.confirm(
+      "Clear all rows in gpdb_pesdb_staging and reset scrape progress? This does not change live Players until you apply."
+    )
+  ) {
+    return;
+  }
+  setStatus("progressStatus", "Clearing staging…", true);
+  const { error } = await supabase.rpc("gpdb_pesdb_staging_clear");
+  if (error) throw error;
+  clearProgress();
+  const startInput = document.getElementById("scrapeStartPage");
+  if (startInput) startInput.value = "1";
+  document.getElementById("scrapeClearStaging") &&
+    (document.getElementById("scrapeClearStaging").checked = false);
+  await refreshProgressPanel("progressStatus");
+  setStatus("progressStatus", "Staging cleared. Set end page (Detect pages) and start fresh scrape.", true);
 }
 
 function applyResumeFromStorage() {
@@ -232,11 +339,12 @@ function renderUnavailableTable(rows) {
 }
 
 async function uploadStagingRows(rows, statusId = "importStatus") {
-  if (!rows?.length) throw new Error("No rows to upload");
+  const unique = dedupeRowsByKonamiId(rows);
+  if (!unique?.length) throw new Error("No rows to upload");
 
   await supabase.rpc("gpdb_pesdb_staging_clear");
-  const chunks = chunkRows(rows);
-  let imported = 0;
+  const chunks = chunkRows(unique);
+  let stagingCount = 0;
 
   for (let i = 0; i < chunks.length; i++) {
     setStatus(statusId, `Staging batch ${i + 1} / ${chunks.length}…`, true);
@@ -245,26 +353,30 @@ async function uploadStagingRows(rows, statusId = "importStatus") {
       p_replace: i === 0,
     });
     if (error) throw error;
-    imported += data?.rows_imported ?? chunks[i].length;
+    stagingCount = data?.staging_count ?? stagingCount;
   }
 
-  return imported;
+  return stagingCount;
 }
 
 async function appendStagingRows(rows) {
-  if (!rows?.length) return 0;
-  const enriched = await enrichRowsWithEconomics(rows);
+  if (!rows?.length) return { stagingCount: 0, rowsNew: 0, rowsUpdated: 0 };
+  const enriched = dedupeRowsByKonamiId(await enrichRowsWithEconomics(rows));
   const chunks = chunkRows(enriched);
-  let imported = 0;
+  let stagingCount = 0;
+  let rowsNew = 0;
+  let rowsUpdated = 0;
   for (const chunk of chunks) {
-    const { error } = await supabase.rpc("gpdb_pesdb_staging_import", {
+    const { data, error } = await supabase.rpc("gpdb_pesdb_staging_import", {
       p_rows: chunk,
       p_replace: false,
     });
     if (error) throw error;
-    imported += chunk.length;
+    stagingCount = data?.staging_count ?? stagingCount;
+    rowsNew += data?.rows_new ?? 0;
+    rowsUpdated += data?.rows_updated ?? 0;
   }
-  return imported;
+  return { stagingCount, rowsNew, rowsUpdated };
 }
 
 async function invokePesdbScrape(body, attempt = 1) {
@@ -470,17 +582,22 @@ async function runPesdbScrape() {
         if (scrapeAbort) break;
 
         const players = await scrapeSinglePage(page, endPage, playerDelayMs);
-        const added = await appendStagingRows(players);
-        stagingTotal += added;
+        const importResult = await appendStagingRows(players);
+        stagingTotal = importResult.stagingCount;
         pagesDone += 1;
 
         saveProgress(page, endPage, stagingTotal);
         updateScrapeProgress(pagesDone, totalPages, stagingTotal, `Batch ${batchStart}–${batchEnd}: `);
+        const dupeNote =
+          importResult.rowsUpdated > 0
+            ? ` (${importResult.rowsNew} new, ${importResult.rowsUpdated} updated)`
+            : "";
         setStatus(
           "scrapeStatus",
-          `Page ${page}/${endPage} done — ${players.length} players (${stagingTotal} total in staging).`,
+          `Page ${page}/${endPage} done — ${players.length} players${dupeNote} (${stagingTotal} unique in staging).`,
           true
         );
+        renderProgressPanel({ staging_count: stagingTotal, last_loaded_at: new Date().toISOString() });
       }
 
       if (batchEnd < endPage && !scrapeAbort) {
@@ -518,6 +635,7 @@ async function runPesdbScrape() {
   } finally {
     document.getElementById("scrapeBtn")?.removeAttribute("disabled");
     document.getElementById("scrapeStopBtn")?.setAttribute("disabled", "disabled");
+    refreshProgressPanel(null).catch(() => {});
   }
 }
 
@@ -540,7 +658,7 @@ async function importCsv() {
 
   try {
     const text = await file.text();
-    const { rows, skipped } = await parsePesdbCsvToStagingRows(text);
+    const { rows, skipped, dupesRemoved } = await parsePesdbCsvToStagingRows(text);
     if (!rows.length) {
       throw new Error("No valid player rows in CSV");
     }
@@ -548,11 +666,13 @@ async function importCsv() {
     const imported = await uploadStagingRows(rows, "importStatus");
 
     const skipNote = skipped.length ? ` (${skipped.length} rows skipped)` : "";
+    const dupeNote = dupesRemoved ? ` (${dupesRemoved} CSV duplicates merged)` : "";
     setStatus(
       "importStatus",
-      `Staging loaded — ${imported} players${skipNote}. Run preview next.`,
+      `Staging loaded — ${imported} players${skipNote}${dupeNote}. Run preview next.`,
       true
     );
+    await refreshProgressPanel(null);
   } catch (err) {
     console.error("pesdb import:", err);
     setStatus("importStatus", err.message || "Import failed.", false);
@@ -607,8 +727,10 @@ async function runApply() {
       p_dry_run: false,
     });
     if (error) throw error;
+    saveLastApply(result);
     renderSummary(result, "applied ");
     await Promise.all([loadAuditRows().then(renderAuditTable), loadUnavailableList()]);
+    await refreshProgressPanel(null);
     setStatus("applyStatus", "Sync applied.", true);
   } catch (err) {
     console.error("pesdb sync apply:", err);
@@ -633,10 +755,16 @@ async function restorePlayer(playerId) {
 document.addEventListener("DOMContentLoaded", async () => {
   await initAdminPage();
   applyResumeFromStorage();
+  await refreshProgressPanel(null);
 
   document.getElementById("scrapeEndPage")?.addEventListener("input", (e) => {
     e.target.dataset.userEdited = "1";
   });
+
+  document.getElementById("refreshProgressBtn")?.addEventListener("click", () => refreshProgressPanel("progressStatus"));
+  document.getElementById("clearStagingBtn")?.addEventListener("click", () =>
+    clearStagingAndProgress().catch((err) => setStatus("progressStatus", err.message, false))
+  );
 
   document.getElementById("importBtn")?.addEventListener("click", importCsv);
   document.getElementById("detectPagesBtn")?.addEventListener("click", detectPesdbPages);
