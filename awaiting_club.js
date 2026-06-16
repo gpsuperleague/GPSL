@@ -1,4 +1,5 @@
-import { supabase, initGlobal, buildNav } from "./global.js";
+import { supabase, initGlobal } from "./global.js";
+import { getAuthUser } from "./supabase_client.js";
 
 let clubAssignmentPollTimer = null;
 
@@ -49,16 +50,13 @@ async function showWonAwaitingSettlement(userId, statusEl) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) {
     window.location = "login.html";
     return;
   }
 
   await initGlobal();
-  await buildNav();
 
   const statusEl = document.getElementById("status");
   const tagInput = document.getElementById("ownerTag");
@@ -81,7 +79,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  if (!self?.needs_club_auction && self?.status !== "awaiting_club_auction") {
+  // on_break without a club uses admin “link to club”, not the auction onboarding page
+  if (self?.status === "archived" || self?.status === "on_break") {
     window.location = "dashboard.html";
     return;
   }

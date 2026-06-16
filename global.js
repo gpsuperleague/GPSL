@@ -2,7 +2,7 @@
 // GLOBAL.JS — SINGLE SOURCE OF TRUTH FOR THE ENTIRE DRAFT SYSTEM
 // ============================================================
 
-import { supabase } from "./supabase_client.js";
+import { supabase, getAuthUser } from "./supabase_client.js";
 import {
   getDraftTimelineFromStart,
   getDraftPhaseFromStart,
@@ -23,10 +23,10 @@ import { countUnreadInbox } from "./competition_inbox.js";
 import { initDashboardPinUi } from "./dashboard_pin.js";
 import { nationFlagSrc } from "./international_flags.js";
 import { formatNavLabel } from "./nav_label.js";
-export { supabase };
+export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260615-gpdb-pesdb-sync";
+export const GLOBAL_JS_VERSION = "20260617-ios-auth";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -1166,9 +1166,7 @@ export async function renderFallbackNav() {
   const nav = document.getElementById("nav");
   if (!nav) return;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   let ownerClub = null;
   try {
@@ -1226,9 +1224,7 @@ export async function buildNav() {
     return;
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   if (!user) {
     window.location = "login.html";
@@ -1486,7 +1482,7 @@ export async function initGlobal() {
   ensureNavStyles();
   await loadGlobalSettings();
   try {
-    const { enforceOwnerClubGate } = await import("./owner_gate.js?v=20260608-admin-bypass");
+    const { enforceOwnerClubGate } = await import("./owner_gate.js?v=20260617-ios-auth");
     await enforceOwnerClubGate();
   } catch (err) {
     console.warn("owner club gate:", err);

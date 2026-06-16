@@ -3,6 +3,7 @@
  * League admins (isGpslAdminUser) may browse all pages for testing.
  */
 import { supabase, isGpslAdminUser } from "./global.js";
+import { getAuthUser } from "./supabase_client.js";
 
 const ALLOWED_WITHOUT_CLUB = new Set([
   "awaiting_club",
@@ -50,10 +51,13 @@ export function isAllowedNoClubPage(page = pageId()) {
 
 function isAwaitingClubAuction(self) {
   if (!self || self.has_club) return false;
+  if (self.status === "archived" || self.status === "on_break") return false;
   if (self.needs_club_auction === true) return true;
   if (self.status === "awaiting_club_auction") return true;
   // No registry row yet — still no club; treat as onboarding.
   if (self.status == null && self.has_club === false) return true;
+  // active but no club — stale registry; keep them on auction onboarding until linked
+  if (self.status === "active" && self.has_club === false) return true;
   return false;
 }
 
@@ -66,9 +70,7 @@ export async function enforceOwnerClubGate() {
   const page = pageId();
   if (isAllowedNoClubPage(page) || isAdminPath()) return;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) return;
 
   if (isGpslAdminUser(user)) return;

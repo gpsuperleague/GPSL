@@ -59,12 +59,7 @@
 
   <!-- SUPABASE CLIENT -->
   <script type="module">
-    import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
-
-    const supabase = createClient(
-      "https://omyyogfumrjoaweuawjn.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9teXlvZ2Z1bXJqb2F3ZXVhd2puIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5NTUxMzUsImV4cCI6MjA5MDUzMTEzNX0.7UVkpi4DOtC9VNjFLnE_ZnK6vhDtlfesZ_8rfnrkno4"
-    );
+    import { supabase, waitForAuthSession } from "./supabase_client.js";
 
     window.supabase = supabase;
 
@@ -78,9 +73,9 @@
         return;
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
       });
 
       if (error) {
@@ -88,7 +83,34 @@
         return;
       }
 
-      window.location = "dashboard.html";
+      const session = await waitForAuthSession();
+      if (!session?.user) {
+        alert(
+          "Login succeeded but the session could not be saved. On iPhone: Settings → Safari → turn off “Prevent Cross-Site Tracking” for this site, or allow cookies, then try again."
+        );
+        return;
+      }
+
+      let dest = "dashboard.html";
+      try {
+        const { data: self } = await supabase.rpc("owner_registry_get_self");
+        if (
+          self &&
+          !self.has_club &&
+          self.status !== "archived" &&
+          self.status !== "on_break" &&
+          (self.needs_club_auction ||
+            self.status === "awaiting_club_auction" ||
+            self.status == null ||
+            self.status === "active")
+        ) {
+          dest = "awaiting_club.html";
+        }
+      } catch (_) {
+        /* RPC missing — fall back to dashboard */
+      }
+
+      window.location.assign(dest);
     };
 
     /* PASSWORD RESET */

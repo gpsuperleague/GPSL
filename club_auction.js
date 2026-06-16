@@ -3,6 +3,7 @@ window.CURRENT_PAGE = "club_auction";
 import {
   supabase,
   initGlobal,
+  getAuthUser,
   getUKNow,
   getDraftAuctionStartTime,
   getDraftCountdownOptions,
@@ -190,9 +191,7 @@ async function userHasClub(userId) {
 }
 
 async function loadOwnerContext() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   ownerId = user?.id || null;
   const isAdmin = isGpslAdminUser(user);
 
@@ -678,9 +677,7 @@ async function refreshAll() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) {
     window.location = "login.html";
     return;
