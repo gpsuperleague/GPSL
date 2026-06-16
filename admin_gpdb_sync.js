@@ -147,17 +147,50 @@ async function clearScrapeJob() {
   if (error) throw error;
 }
 
-function applyJobToForm(job) {
-  if (!job) return;
+function resolveEndPage(job) {
+  const prog = readProgress();
+  const formEnd = Number(document.getElementById("scrapeEndPage")?.value) || 0;
+  return Math.max(job?.end_page || 0, prog?.endPage || 0, formEnd, 1);
+}
+
+function resolveResumePage(job) {
+  const prog = readProgress();
+  const fromJobNext = Number(job?.next_page) || 0;
+  const fromJobLast = (Number(job?.last_completed_page) || 0) + 1;
+  const fromLocal = prog?.lastPage ? prog.lastPage + 1 : 0;
+  return Math.max(fromJobNext, fromJobLast, fromLocal, 1);
+}
+
+function shouldAutoResumeScrape(job) {
+  if (document.getElementById("scrapeAutoResume")?.checked === false) return false;
+
+  const prog = readProgress();
+  const endPage = resolveEndPage(job);
+  const resumePage = resolveResumePage(job);
+
+  if (resumePage > endPage) return false;
+  if (job?.status === "complete") return false;
+  if (job?.status === "running") return true;
+  if (prog?.lastPage && prog.lastPage < endPage) return true;
+  if (job?.status === "stopped" || job?.status === "error") return resumePage <= endPage;
+
+  return false;
+}
+
+function applyResumeToForm(job) {
+  const resumePage = resolveResumePage(job);
+  const endPage = resolveEndPage(job);
   const set = (id, val) => {
     const el = document.getElementById(id);
     if (el && val != null) el.value = String(val);
   };
-  if (job.next_page) set("scrapeStartPage", job.next_page);
-  set("scrapeEndPage", job.end_page);
-  set("scrapePagesPerBatch", job.pages_per_batch);
-  set("scrapeBatchCooldown", job.batch_cooldown_sec);
-  set("scrapePlayerDelay", job.player_delay_sec);
+  set("scrapeStartPage", resumePage);
+  if (endPage) set("scrapeEndPage", endPage);
+  if (job) {
+    set("scrapePagesPerBatch", job.pages_per_batch);
+    set("scrapeBatchCooldown", job.batch_cooldown_sec);
+    set("scrapePlayerDelay", job.player_delay_sec);
+  }
 }
 
 function readScrapeParams() {
@@ -184,8 +217,8 @@ function renderProgressPanel(stagingStats = null, scrapeJob = null) {
   const stagingCount =
     stagingStats?.staging_count ?? job?.staging_count ?? prog?.stagingTotal ?? "—";
   const lastPage = job?.last_completed_page || prog?.lastPage;
-  const endPage = job?.end_page || prog?.endPage;
-  const nextPage = job?.next_page || (lastPage ? lastPage + 1 : 1);
+  const endPage = resolveEndPage(job);
+  const nextPage = resolveResumePage(job);
 
   const set = (id, text) => {
     const el = document.getElementById(id);
@@ -224,8 +257,8 @@ async function refreshProgressPanel(statusId = "progressStatus") {
       fetchScrapeJob().catch(() => null),
     ]);
     renderProgressPanel(stats, job);
-    if (job?.status === "running" && job.next_page <= job.end_page) {
-      applyJobToForm(job);
+    if (job || readProgress()?.lastPage) {
+      applyResumeToForm(job);
     }
     if (statusId) setStatus(statusId, "Progress refreshed.", true);
     return { stats, job };
@@ -260,16 +293,8 @@ async function clearStagingAndProgress() {
 function applyResumeFromStorage() {
   const resume = document.getElementById("scrapeResume")?.checked !== false;
   if (!resume) return;
-  const prog = readProgress();
-  if (!prog?.lastPage) return;
-  const startInput = document.getElementById("scrapeStartPage");
-  const endInput = document.getElementById("scrapeEndPage");
-  if (startInput && prog.lastPage >= 1) {
-    startInput.value = String(prog.lastPage + 1);
-  }
-  if (endInput && prog.endPage && !endInput.dataset.userEdited) {
-    endInput.value = String(prog.endPage);
-  }
+  if (!readProgress()?.lastPage) return;
+  applyResumeToForm(null);
 }
 
 const fileInput = () => document.getElementById("csvFile");
@@ -722,7 +747,7 @@ async function executePesdbScrapeLoop(params) {
         staging_count: stagingTotal,
         last_error: null,
       });
-      const resumePage = (await fetchScrapeJob().catch(() => null))?.next_page ?? startPage;
+      const resumePage = resolveResumePage(await fetchScrapeJob().catch(() => null));
       setStatus(
         "scrapeStatus",
         `Stopped. ${stagingTotal} players in staging. Reopen or refresh this page to continue from page ${resumePage}.`,
@@ -764,23 +789,20 @@ async function runPesdbScrape() {
     } else {
       const job = await fetchScrapeJob().catch(() => null);
       const resume = document.getElementById("scrapeResume")?.checked !== false;
-      if (
-        resume &&
-        job &&
-        ["stopped", "error", "running"].includes(job.status) &&
-        job.next_page <= job.end_page
-      ) {
+      if (resume) {
+        const resumePage = resolveResumePage(job);
+        const endFromJob = resolveEndPage(job);
         params = {
           ...params,
-          startPage: job.next_page,
-          endPage: job.end_page,
-          pagesPerBatch: job.pages_per_batch ?? params.pagesPerBatch,
-          batchCooldownMs: (job.batch_cooldown_sec ?? params.batchCooldownSec) * 1000,
-          playerDelayMs: Number(job.player_delay_sec ?? params.playerDelaySec) * 1000,
-          batchCooldownSec: job.batch_cooldown_sec ?? params.batchCooldownSec,
-          playerDelaySec: Number(job.player_delay_sec ?? params.playerDelaySec),
+          startPage: resumePage,
+          endPage: Math.max(params.endPage, endFromJob),
+          pagesPerBatch: job?.pages_per_batch ?? params.pagesPerBatch,
+          batchCooldownMs: (job?.batch_cooldown_sec ?? params.batchCooldownSec) * 1000,
+          playerDelayMs: Number(job?.player_delay_sec ?? params.playerDelaySec) * 1000,
+          batchCooldownSec: job?.batch_cooldown_sec ?? params.batchCooldownSec,
+          playerDelaySec: Number(job?.player_delay_sec ?? params.playerDelaySec),
         };
-        applyJobToForm(job);
+        applyResumeToForm(job);
       }
     }
 
@@ -792,35 +814,37 @@ async function runPesdbScrape() {
 
 async function maybeAutoResumeScrape() {
   if (scrapeRunning) return;
-  if (document.getElementById("scrapeAutoResume")?.checked === false) return;
 
-  let job;
+  let job = null;
   try {
     job = await fetchScrapeJob();
   } catch {
-    return;
+    /* use localStorage only */
   }
 
-  if (!job || job.status !== "running" || job.next_page > job.end_page) return;
+  if (!shouldAutoResumeScrape(job)) return;
 
-  applyJobToForm(job);
+  const resumePage = resolveResumePage(job);
+  const endPage = resolveEndPage(job);
+  const { pagesPerBatch, batchCooldownMs, playerDelayMs, batchCooldownSec, playerDelaySec } =
+    scrapeSettings();
+
+  applyResumeToForm(job);
   setStatus(
     "scrapeStatus",
-    `Auto-resuming scrape from page ${job.next_page} (job saved in database)…`,
+    `Auto-resuming from page ${resumePage} of ${endPage} (saved progress)…`,
     true
   );
 
-  const params = {
-    startPage: job.next_page,
-    endPage: job.end_page,
-    pagesPerBatch: job.pages_per_batch ?? 2,
-    batchCooldownMs: (job.batch_cooldown_sec ?? 20) * 1000,
-    playerDelayMs: Number(job.player_delay_sec ?? 3.5) * 1000,
-    batchCooldownSec: job.batch_cooldown_sec ?? 20,
-    playerDelaySec: Number(job.player_delay_sec ?? 3.5),
-  };
-
-  await executePesdbScrapeLoop(params);
+  await executePesdbScrapeLoop({
+    startPage: resumePage,
+    endPage,
+    pagesPerBatch: job?.pages_per_batch ?? pagesPerBatch,
+    batchCooldownMs: (job?.batch_cooldown_sec ?? batchCooldownSec) * 1000,
+    playerDelayMs: Number(job?.player_delay_sec ?? playerDelaySec) * 1000,
+    batchCooldownSec: job?.batch_cooldown_sec ?? batchCooldownSec,
+    playerDelaySec: Number(job?.player_delay_sec ?? playerDelaySec),
+  });
 }
 
 function stopPesdbScrape() {
