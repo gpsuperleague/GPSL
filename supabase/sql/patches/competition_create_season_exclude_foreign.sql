@@ -12,6 +12,35 @@ UPDATE public.competition_seasons
 SET status = 'preseason'
 WHERE status = 'setup';
 
+CREATE OR REPLACE FUNCTION public.competition_assert_setup_season(p_season_id bigint)
+RETURNS public.competition_seasons
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_season public.competition_seasons;
+BEGIN
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  SELECT * INTO v_season
+  FROM public.competition_seasons
+  WHERE id = p_season_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Season not found';
+  END IF;
+
+  IF v_season.status NOT IN ('setup', 'preseason') THEN
+    RAISE EXCEPTION 'Season is not in setup status';
+  END IF;
+
+  RETURN v_season;
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.competition_create_season(p_label text)
 RETURNS bigint
 LANGUAGE plpgsql

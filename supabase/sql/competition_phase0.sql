@@ -95,7 +95,7 @@ BEGIN
     RAISE EXCEPTION 'Season not found';
   END IF;
 
-  IF v_season.status <> 'setup' THEN
+  IF v_season.status NOT IN ('setup', 'preseason') THEN
     RAISE EXCEPTION 'Season is not in setup status';
   END IF;
 

@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260618-create-new-season-kickoff";
+export const SEASON_ADMIN_NAV_VERSION = "20260618-kickoff-after-divisions";
 
 const TRANSFER_WINDOW_NAV_ITEMS = [
   {
@@ -24,18 +24,6 @@ const CHALLENGE_PAYOUTS_NAV_ITEM = {
 
 export const SEASON_ADMIN_NAV = [
   {
-    id: "kickoff",
-    label: "Kickoff",
-    items: [
-      {
-        label: "Create new season",
-        href: "admin_season.html",
-        hash: "wf-kickoff",
-        page: "admin_season",
-      },
-    ],
-  },
-  {
     id: "divisions",
     label: "Assign Divisions",
     items: [
@@ -55,6 +43,18 @@ export const SEASON_ADMIN_NAV = [
         label: "Draw championship divisions",
         href: "admin_season.html",
         hash: "wf-divisions",
+        page: "admin_season",
+      },
+    ],
+  },
+  {
+    id: "kickoff",
+    label: "Kickoff",
+    items: [
+      {
+        label: "Create new season",
+        href: "admin_season.html",
+        hash: "wf-kickoff",
         page: "admin_season",
       },
     ],
