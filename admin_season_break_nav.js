@@ -41,6 +41,11 @@ export const SEASON_BREAK_NAV = [
         href: "admin_club_attendance.html",
         page: "admin_club_attendance",
       },
+      {
+        label: "Weather & pitch conditions",
+        href: "admin_weather.html",
+        page: "admin_weather",
+      },
     ],
   },
   {
