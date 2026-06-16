@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadClubsMap();
 
   document.getElementById("compCupSelect").onchange = onCupSelectChange;
+  document.getElementById("compRandomByesBtn").onclick = randomCupByes;
   document.getElementById("compSaveByesBtn").onclick = saveCupByes;
   document.getElementById("compDrawCupBtn").onclick = drawCompetitionCup;
   document.getElementById("compDeleteCupBtn").onclick = deleteCompetitionCup;
@@ -90,10 +91,12 @@ async function loadCupByePanel() {
     countEl.textContent = "Ready to draw";
     countEl.className = "bye-count ready";
     document.getElementById("compSaveByesBtn").disabled = true;
+    document.getElementById("compRandomByesBtn").disabled = true;
     return;
   }
 
   document.getElementById("compSaveByesBtn").disabled = false;
+  document.getElementById("compRandomByesBtn").disabled = false;
   summary.textContent = `${qualified.length} qualified clubs · ${slots} first-round slots (${r1Fixtures} fixtures) → pick exactly ${required} club(s) to receive a bye into round 2.`;
 
   grid.innerHTML = qualified
@@ -129,6 +132,43 @@ function updateByeCountLabel() {
     picked === required ? "bye-count ready" : picked > required ? "bye-count warn" : "bye-count";
 }
 
+function shuffleClubCodes(codes) {
+  const list = [...codes];
+  for (let i = list.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+}
+
+function applyByeClubSelection(selectedCodes) {
+  const selected = new Set(selectedCodes.map((c) => String(c).toUpperCase()));
+  document.querySelectorAll(".bye-club-cb").forEach((cb) => {
+    cb.checked = selected.has(String(cb.value).toUpperCase());
+  });
+  updateByeCountLabel();
+}
+
+async function randomCupByes() {
+  const required = Number(byeContext?.required_byes) || 0;
+  if (required === 0) return;
+
+  const qualified = (byeContext?.qualified_clubs || []).map((c) => String(c).toUpperCase());
+  if (qualified.length < required) {
+    setStatus(
+      "compByeStatus",
+      `Not enough qualified clubs for a random draw (need ${required}, have ${qualified.length}).`,
+      false
+    );
+    return;
+  }
+
+  const picked = shuffleClubCodes(qualified).slice(0, required);
+  applyByeClubSelection(picked);
+  setStatus("compByeStatus", `Random draw selected ${picked.length} club(s) — saving…`);
+  await saveCupByes();
+}
+
 async function saveCupByes() {
   const cup = document.getElementById("compCupSelect").value;
   const seasonId = await getSeasonId();
@@ -154,7 +194,8 @@ async function saveCupByes() {
   }
 
   byeContext = data;
-  setStatus("compByeStatus", `✅ Saved ${clubs.length} bye club(s) for ${cup}.`, true);
+  const names = clubs.map((c) => fullClubName(c) || c).join(", ");
+  setStatus("compByeStatus", `✅ Saved ${clubs.length} bye club(s) for ${cup}: ${names}.`, true);
   updateByeCountLabel();
 }
 
