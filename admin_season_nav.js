@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260618-cup-fixtures-after-league";
+export const SEASON_ADMIN_NAV_VERSION = "20260618-mid-season-before-playoffs";
 
 export const SEASON_ADMIN_NAV = [
   {
@@ -117,17 +117,6 @@ export const SEASON_ADMIN_NAV = [
     ],
   },
   {
-    id: "playoffs",
-    label: "Playoffs",
-    items: [
-      {
-        label: "Assign playoff positions",
-        href: "admin_fixtures-playoffs.html",
-        page: "admin_fixtures-playoffs",
-      },
-    ],
-  },
-  {
     id: "mid_season",
     label: "Mid Season",
     items: [
@@ -140,6 +129,17 @@ export const SEASON_ADMIN_NAV = [
         label: "Set transfer window closed",
         href: "admin_transfers.html",
         page: "admin_transfers",
+      },
+    ],
+  },
+  {
+    id: "playoffs",
+    label: "Playoffs",
+    items: [
+      {
+        label: "Assign playoff positions",
+        href: "admin_fixtures-playoffs.html",
+        page: "admin_fixtures-playoffs",
       },
     ],
   },
