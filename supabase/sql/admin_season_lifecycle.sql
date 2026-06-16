@@ -174,7 +174,7 @@ BEGIN
   WHERE is_current = true;
 
   UPDATE public.competition_seasons
-  SET status = 'active', is_current = true, activated_at = now()
+  SET status = 'active', is_current = true, started_at = coalesce(started_at, now())
   WHERE id = p_season_id;
 
   UPDATE public.global_settings

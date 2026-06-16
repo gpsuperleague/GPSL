@@ -467,26 +467,30 @@ async function resetCompetitionDraw() {
 }
 
 async function startCompetitionSeason() {
-  if (!compSelectedSeasonId) return;
+  if (!compSelectedSeasonId) {
+    setStatus("compStartStatus", "No pre-season year selected — open Assign Divisions first.", false);
+    return;
+  }
   if (
     !confirm(
-      "Start this season?\n\nRequires the real-world calendar below. It becomes the current live season for all owners."
+      "Start this season?\n\nRequires divisions (20+20+20) and the GPSL season calendar. It becomes the current live season for all owners."
     )
   ) {
     return;
   }
 
-  setCompStatus("Starting…");
+  setStatus("compStartStatus", "Starting season…");
   const { error } = await supabase.rpc("competition_activate_season", {
     p_season_id: compSelectedSeasonId,
   });
 
   if (error) {
-    setCompStatus("❌ " + error.message, false);
+    setStatus("compStartStatus", "❌ " + error.message, false);
     return;
   }
 
-  setCompStatus("✅ Season is live.");
+  setStatus("compStartStatus", "✅ Season is live.");
+  setStatus("compCreateStatus", "");
   await refreshCompetitionAdmin();
   await refreshCompCalendarAdmin();
 }
