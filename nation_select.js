@@ -8,6 +8,7 @@ import {
   claimNation,
   renderNationFlag,
   nationPoolIsFaint,
+  nationPoolIsSelectable,
   nationPoolFaintTitle,
 } from "./international.js";
 
@@ -91,27 +92,35 @@ function renderNationGrid(nations, windowState, myPick, myClub, draft, poolByCod
     if (!open) hint.textContent = "Selection is closed.";
     else if (alreadyPicked)
       hint.textContent = `You selected ${alreadyPicked.nation_name}. Waiting for other owners…`;
-    else if (myTurn) hint.textContent = "Click a nation to claim it.";
+    else if (myTurn)
+      hint.textContent =
+        "Click an available nation to claim it. Greyed-out nations cannot be selected — GPDB pool too small for a squad or GPSL club.";
     else hint.textContent = `Waiting for pick #${windowState?.current_pick_rank || "—"}.`;
   }
 
   el.innerHTML = nations
     .map((n) => {
       const taken = n.is_taken;
-      const disabled = !open || !myTurn || taken;
       const poolRow = poolByCode?.get(n.code);
+      const unselectable = poolRow ? !nationPoolIsSelectable(poolRow) : false;
       const faint = poolRow ? nationPoolIsFaint(poolRow) : false;
       const faintTitle = poolRow ? nationPoolFaintTitle(poolRow) : "";
+      const disabled = !open || !myTurn || taken || unselectable;
       const cls = [
         "nat-pick-card",
         taken ? "taken" : "",
         disabled ? "disabled" : "",
-        myTurn && !taken ? "my-turn" : "",
+        myTurn && !taken && !unselectable ? "my-turn" : "",
         faint ? "nat-pool-weak" : "",
       ]
         .filter(Boolean)
         .join(" ");
-      const title = [taken ? "Taken" : n.name, faintTitle].filter(Boolean).join(" — ");
+      const titleParts = [];
+      if (taken) titleParts.push("Taken");
+      else if (unselectable) titleParts.push("Not selectable");
+      titleParts.push(n.name);
+      if (faintTitle) titleParts.push(faintTitle);
+      const title = titleParts.join(" — ");
       return `
         <div class="${cls}" data-code="${n.code}" title="${title.replace(/"/g, "&quot;")}">
           <span class="flag">${renderNationFlag(n, "lg")}</span>

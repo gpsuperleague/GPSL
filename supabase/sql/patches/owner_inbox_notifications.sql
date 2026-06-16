@@ -733,6 +733,11 @@ BEGIN
     RAISE EXCEPTION 'Nation already taken';
   END IF;
 
+  IF to_regprocedure('public.international_nation_pool_is_selectable(text)') IS NOT NULL
+     AND NOT public.international_nation_pool_is_selectable(v_nation) THEN
+    RAISE EXCEPTION 'This nation cannot be selected — GPDB pool too small for a squad or GPSL club';
+  END IF;
+
   SELECT n.name INTO v_nation_name FROM public.international_nations n WHERE n.code = v_nation;
 
   SELECT id INTO v_cycle_id FROM public.international_wc_cycles ORDER BY cycle_no DESC LIMIT 1;

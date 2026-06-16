@@ -57,6 +57,12 @@ export function nationPoolIsFaint(row) {
   return !nationHasViableSquad(row) || !nationCanSupportAnyClub(row);
 }
 
+/** Nations owners may claim during nation selection. */
+export function nationPoolIsSelectable(row) {
+  if (!row?.pool) return true;
+  return !nationPoolIsFaint(row);
+}
+
 export function nationPoolFaintTitle(row) {
   if (!row?.pool || !nationPoolIsFaint(row)) return "";
   const parts = [];

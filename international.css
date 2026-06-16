@@ -100,10 +100,14 @@
   opacity: 0.42;
   border-color: #333;
   background: #181818;
+  cursor: not-allowed;
 }
-.nat-pick-card.nat-pool-weak:hover:not(.taken):not(.disabled) {
-  border-color: #444;
+.nat-pick-card.nat-pool-weak:hover {
+  border-color: #333;
   transform: none;
+}
+.nat-pick-card.nat-pool-weak.my-turn {
+  box-shadow: none;
 }
 .nat-pick-card.nat-pool-weak .name { color: #777; }
 .nat-pick-card.nat-pool-weak .nat-flag-img {

@@ -423,6 +423,168 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.international_nation_pool_is_selectable(p_nation_code text)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SET search_path = public
+AS $function$
+DECLARE
+  v_pool jsonb;
+  v_all jsonb;
+  v_total integer;
+  v_gk integer;
+  v_cap integer;
+  v_band record;
+  v_avail integer;
+  v_band_cap integer;
+BEGIN
+  SELECT cache.pool INTO v_pool
+  FROM public.international_nation_player_pool_cache cache
+  WHERE cache.nation_code = upper(btrim(p_nation_code));
+
+  IF v_pool IS NULL THEN
+    RETURN false;
+  END IF;
+
+  v_all := v_pool->'all';
+  v_total := coalesce((v_all->>'total')::integer, 0);
+  v_gk := coalesce((v_all->>'gk')::integer, 0);
+
+  IF v_total < 24 OR v_gk < 2 THEN
+    RETURN false;
+  END IF;
+
+  v_cap := NULL;
+  FOR v_band IN
+    SELECT *
+    FROM (
+      VALUES
+        ('r79_plus', 1),
+        ('r76_78', 1),
+        ('r73_75', 5),
+        ('r70_72', 10),
+        ('r66_69', 10),
+        ('le_65', 5),
+        ('u21', 8)
+    ) AS bands(key, min_players)
+  LOOP
+    v_avail := coalesce((v_pool->v_band.key->>'total')::integer, 0);
+    v_band_cap := v_avail / v_band.min_players;
+    IF v_cap IS NULL OR v_band_cap < v_cap THEN
+      v_cap := v_band_cap;
+    END IF;
+  END LOOP;
+
+  RETURN coalesce(v_cap, 0) > 0;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.international_claim_nation(p_nation_code text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club text := public.my_club_shortname();
+  v_window record;
+  v_my_pick smallint;
+  v_current_pick smallint;
+  v_nation text := btrim(upper(p_nation_code));
+  v_cycle_id bigint;
+  v_next_pick smallint;
+  v_nation_name text;
+BEGIN
+  IF v_club IS NULL OR v_club = '' THEN
+    RAISE EXCEPTION 'No club linked to your account';
+  END IF;
+
+  SELECT * INTO v_window
+  FROM public.international_selection_windows
+  WHERE is_open = true
+  ORDER BY id DESC
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Nation selection is not open';
+  END IF;
+
+  SELECT pick_order INTO v_my_pick
+  FROM public.international_owner_draft_order()
+  WHERE club_short_name = v_club;
+
+  IF v_my_pick IS NULL THEN
+    RAISE EXCEPTION 'Your club is not in the owner draft order';
+  END IF;
+
+  v_current_pick := v_window.current_pick_rank;
+
+  IF v_my_pick <> v_current_pick THEN
+    RAISE EXCEPTION 'Not your pick yet (currently pick #% — you are #%).', v_current_pick, v_my_pick;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.international_nations n
+    WHERE n.code = v_nation AND n.active = true
+  ) THEN
+    RAISE EXCEPTION 'Nation not found';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.international_owner_nations ion
+    WHERE ion.nation_code = v_nation AND ion.is_active = true
+  ) THEN
+    RAISE EXCEPTION 'Nation already taken';
+  END IF;
+
+  IF NOT public.international_nation_pool_is_selectable(v_nation) THEN
+    RAISE EXCEPTION 'This nation cannot be selected — GPDB pool too small for a squad or GPSL club';
+  END IF;
+
+  SELECT n.name INTO v_nation_name FROM public.international_nations n WHERE n.code = v_nation;
+
+  SELECT id INTO v_cycle_id FROM public.international_wc_cycles ORDER BY cycle_no DESC LIMIT 1;
+
+  UPDATE public.international_owner_nations
+  SET is_active = false, released_at = now()
+  WHERE club_short_name = v_club AND is_active = true;
+
+  INSERT INTO public.international_owner_nations (
+    club_short_name, nation_code, cycle_id, selection_phase, is_active, locked_until_cycle_id
+  )
+  VALUES (v_club, v_nation, v_cycle_id, v_window.phase, true, v_cycle_id);
+
+  SELECT coalesce(min(pick_order), 61)::smallint INTO v_next_pick
+  FROM public.international_owner_draft_order() d
+  WHERE NOT EXISTS (
+    SELECT 1 FROM public.international_owner_nations ion
+    WHERE ion.club_short_name = d.club_short_name AND ion.is_active = true
+  );
+
+  IF v_next_pick >= 61 THEN
+    UPDATE public.international_selection_windows
+    SET is_open = false, closes_at = now()
+    WHERE id = v_window.id;
+  ELSE
+    UPDATE public.international_selection_windows
+    SET current_pick_rank = v_next_pick
+    WHERE id = v_window.id;
+    IF to_regprocedure('public.owner_inbox_notify_nation_pick_turn(smallint)') IS NOT NULL THEN
+      PERFORM public.owner_inbox_notify_nation_pick_turn(v_next_pick);
+    END IF;
+  END IF;
+
+  RETURN jsonb_build_object(
+    'club', v_club,
+    'nation', v_nation,
+    'nation_name', v_nation_name,
+    'pick', v_my_pick,
+    'next_pick', v_next_pick
+  );
+END;
+$function$;
+
 SELECT public.international_refresh_gpdb_label_map();
 SELECT public.international_refresh_nation_player_pool_cache();
 
@@ -436,6 +598,8 @@ GRANT EXECUTE ON FUNCTION public.international_gpdb_label_map_rows() TO authenti
 GRANT EXECUTE ON FUNCTION public.international_resolve_gpdb_nation_code(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_gpdb_matches_nation(text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_player_matches_nation(text, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.international_nation_pool_is_selectable(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_nation_player_pool_report() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.international_claim_nation(text) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

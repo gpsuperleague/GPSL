@@ -74,6 +74,11 @@ FROM (
     'Re-run international_nation_player_pool.sql'
   UNION ALL
   SELECT
+    'Pool patch: international_nation_pool_is_selectable()',
+    CASE WHEN to_regprocedure('public.international_nation_pool_is_selectable(text)') IS NOT NULL THEN 'OK' ELSE 'MISSING' END,
+    'Re-run international_nation_player_pool.sql (blocks weak-pool nation claims)'
+  UNION ALL
+  SELECT
     'Pool patch: players_nation_norm_idx index',
     CASE WHEN EXISTS (
       SELECT 1 FROM pg_indexes
