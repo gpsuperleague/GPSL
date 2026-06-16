@@ -13,9 +13,50 @@ const SCRAPE_PACE = "chunked";
 const PROGRESS_KEY = "gpdb_pesdb_scrape_progress";
 const RATE_LIMIT_RETRY_MS = 60000;
 let scrapeAbort = false;
+let liveTimerId = null;
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+function setPlayerLabel(text) {
+  const el = document.getElementById("scrapePlayerLabel");
+  if (el) el.textContent = text || "";
+}
+
+function stopLiveTimer() {
+  if (liveTimerId != null) {
+    clearInterval(liveTimerId);
+    liveTimerId = null;
+  }
+}
+
+/** Tick status every second while an async call runs (edge cold start can take 30–60s). */
+async function withLiveProgress(statusId, messageFn, work) {
+  const started = Date.now();
+  const tick = () => {
+    const sec = Math.floor((Date.now() - started) / 1000);
+    const msg = messageFn(sec);
+    setStatus(statusId, msg, true);
+    setPlayerLabel(msg);
+  };
+  tick();
+  liveTimerId = setInterval(tick, 1000);
+  try {
+    return await work();
+  } finally {
+    stopLiveTimer();
+  }
+}
+
+async function sleepWithCountdown(statusId, label, ms) {
+  const end = Date.now() + ms;
+  while (Date.now() < end && !scrapeAbort) {
+    const left = Math.ceil((end - Date.now()) / 1000);
+    setPlayerLabel(`${label} ${left}s…`);
+    await sleep(500);
+  }
+  setPlayerLabel("");
 }
 
 function isRateLimitError(message) {
@@ -275,20 +316,48 @@ async function enrichPagePlayers(listPlayers, page, endPage, playerDelayMs) {
   for (let i = 0; i < listPlayers.length; i++) {
     if (scrapeAbort) break;
     const player = listPlayers[i];
-    setStatus(
+    const name = player.player_name || player.konami_id;
+    const pos = player.position ? ` (${player.position})` : "";
+    const isFirst = i === 0 && page === 1;
+
+    const data = await withLiveProgress(
       "scrapeStatus",
-      `Page ${page}/${endPage} — player ${i + 1}/${total}: ${player.player_name || player.konami_id}…`,
-      true
+      (sec) => {
+        const cold = isFirst && sec >= 8
+          ? " — first request can take up to 60s (edge cold start)"
+          : "";
+        return `Page ${page}/${endPage} · ${i + 1}/${total}: ${name}${pos} — fetching max rating + style… ${sec}s${cold}`;
+      },
+      () =>
+        invokePesdbScrape({
+          action: "enrich_players",
+          players: [player],
+        })
     );
 
-    const data = await invokePesdbScrape({
-      action: "enrich_players",
-      players: [player],
-    });
-    out.push(...(data.players || []));
+    const row = (data.players || [])[0];
+    if (row) {
+      out.push(row);
+      const ovr = row.max_level_rating ?? row.rating ?? "?";
+      const style = row.playing_style || "None";
+      setPlayerLabel(
+        `✓ ${name}${pos} — max OVR ${ovr}, ${style} (${i + 1}/${total} on page ${page})`
+      );
+      setStatus(
+        "scrapeStatus",
+        `Page ${page}/${endPage} — ${i + 1}/${total} done: ${name} → OVR ${ovr}, ${style}`,
+        true
+      );
+    } else {
+      setPlayerLabel(`✗ ${name} — no detail returned (${i + 1}/${total})`);
+    }
 
     if (i < listPlayers.length - 1 && !scrapeAbort) {
-      await sleep(playerDelayMs);
+      await sleepWithCountdown(
+        "scrapeStatus",
+        `Pause before next player on page ${page}:`,
+        playerDelayMs
+      );
     }
   }
 
@@ -305,12 +374,15 @@ function updateScrapeProgress(completedPages, totalPages, stagingTotal, batchLab
 }
 
 async function scrapeSinglePage(page, endPage, playerDelayMs) {
-  setStatus("scrapeStatus", `Page ${page}/${endPage} — fetching list…`, true);
-
-  const listData = await invokePesdbScrape({
-    action: "scrape_page",
-    page,
-  });
+  const listData = await withLiveProgress(
+    "scrapeStatus",
+    (sec) => `Page ${page}/${endPage} — loading player list from PESDB… ${sec}s`,
+    () =>
+      invokePesdbScrape({
+        action: "scrape_page",
+        page,
+      })
+  );
 
   if (listData.warning && !listData.players?.length) {
     throw new Error(listData.warning);
@@ -323,7 +395,9 @@ async function scrapeSinglePage(page, endPage, playerDelayMs) {
     );
   }
 
+  setPlayerLabel(`List loaded — ${players.length} players on page ${page}. Starting details…`);
   players = await enrichPagePlayers(players, page, endPage, playerDelayMs);
+  setPlayerLabel(`Page ${page} complete — ${players.length} players enriched.`);
   return players;
 }
 
@@ -441,7 +515,9 @@ async function runPesdbScrape() {
 
 function stopPesdbScrape() {
   scrapeAbort = true;
+  stopLiveTimer();
   setStatus("scrapeStatus", "Stopping after current player…", true);
+  setPlayerLabel("Stop requested — finishing current request…");
 }
 
 async function importCsv() {
