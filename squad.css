@@ -370,6 +370,48 @@ body.squad-page .status-direct-offer {
   color: #fff;
 }
 
+body.squad-page .squad-status-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 120px;
+}
+
+body.squad-page select.squad-designation-select {
+  width: 100%;
+  max-width: 160px;
+  font-size: 11px;
+  padding: 4px 6px;
+  background: #222;
+  color: #ddd;
+  border: 1px solid #444;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+body.squad-page .squad-role-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+body.squad-page .squad-role-star {
+  background: #3a2a00;
+  color: #ffcc00;
+  border: 1px solid #886600;
+}
+
+body.squad-page .squad-role-ooo {
+  background: #1a2a1a;
+  color: #8d8;
+  border: 1px solid #3a6a3a;
+}
+
 body.squad-page .status-offer-pending {
   background: #555;
   color: #ddd;
