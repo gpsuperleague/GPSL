@@ -13,6 +13,7 @@ export const TESTING_ADMIN_NAV = [
     label: "Assign manager to club",
     href: "admin_test_manager_assign.html",
     page: "admin_test_manager_assign",
+    navDanger: true,
   },
   {
     label: "Deploy month results",
