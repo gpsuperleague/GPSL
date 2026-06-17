@@ -33,7 +33,7 @@ DECLARE
   v_club_name  text := 'Jeju United';
   v_stadium    text := 'Jeju World Cup Stadium';
   v_capacity   integer := 29791;
-  v_nation     text := 'South Korea';
+  v_nation     text := 'Korea Republic';   -- GPDB/eFootball spelling (matches player Nation)
   v_continent  text := 'asia';
   v_matches    int;
   r            record;
