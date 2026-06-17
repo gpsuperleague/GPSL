@@ -274,6 +274,8 @@ DECLARE
   v_i int;
   v_home text;
   v_away text;
+  v_a text;
+  v_b text;
   v_cal record;
   v_weather text;
   v_inserted bigint := 0;
@@ -317,11 +319,21 @@ BEGIN
     FOR v_i IN 1..10
     LOOP
       IF v_i = 1 THEN
-        v_home := v_teams[1];
-        v_away := v_teams[20];
+        v_a := v_teams[1];
+        v_b := v_teams[20];
       ELSE
-        v_home := v_teams[v_i];
-        v_away := v_teams[21 - v_i];
+        v_a := v_teams[v_i];
+        v_b := v_teams[21 - v_i];
+      END IF;
+
+      -- Flip the home side every other matchday so no club gets long
+      -- home/away runs (circle method otherwise bunches ~10 in a row).
+      IF (v_round % 2) = 1 THEN
+        v_home := v_a;
+        v_away := v_b;
+      ELSE
+        v_home := v_b;
+        v_away := v_a;
       END IF;
 
       INSERT INTO public.competition_fixtures (
@@ -342,7 +354,7 @@ BEGIN
       || v_teams[2:19];
   END LOOP;
 
-  -- Second leg: matchdays 20–38 (home/away reversed)
+  -- Second leg: matchdays 20–38 (exact mirror of leg 1 — venues swapped)
   v_teams := NULL;
   SELECT array_agg(club_short_name ORDER BY league_position)
   INTO v_teams
@@ -359,11 +371,20 @@ BEGIN
     FOR v_i IN 1..10
     LOOP
       IF v_i = 1 THEN
-        v_home := v_teams[20];
-        v_away := v_teams[1];
+        v_a := v_teams[1];
+        v_b := v_teams[20];
       ELSE
-        v_home := v_teams[21 - v_i];
-        v_away := v_teams[v_i];
+        v_a := v_teams[v_i];
+        v_b := v_teams[21 - v_i];
+      END IF;
+
+      -- Mirror of leg 1: same pairing, opposite venue for each parity.
+      IF (v_round % 2) = 1 THEN
+        v_home := v_b;
+        v_away := v_a;
+      ELSE
+        v_home := v_a;
+        v_away := v_b;
       END IF;
 
       INSERT INTO public.competition_fixtures (

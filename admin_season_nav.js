@@ -220,7 +220,7 @@ export function renderSeasonAdminNavHtml(pathname, search = "") {
   let html = `<div class="nav-subgroup nav-subgroup-mega${megaOpen ? " open" : ""}" data-nav-subgroup>`;
   html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
     megaOpen ? "true" : "false"
-  }">${escapeNavText(formatNavLabel("Season management"))}</button>`;
+  }">${escapeNavText(formatNavLabel("Pre-Season"))}</button>`;
   html += `<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">`;
 
   for (const group of SEASON_ADMIN_NAV) {

@@ -183,7 +183,7 @@ export const ADMIN_NAV_SECTION = {
   label: "Admin",
   items: [
     { testingMega: true, label: "Testing" },
-    { seasonMega: true, label: "Season management" },
+    { seasonMega: true, label: "Pre-Season" },
     { seasonBreakMega: true, label: "Season Break" },
     { ownersMega: true, label: "Owners & accounts" },
   ],

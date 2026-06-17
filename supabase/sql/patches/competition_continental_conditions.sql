@@ -544,6 +544,8 @@ DECLARE
   v_i int;
   v_home text;
   v_away text;
+  v_a text;
+  v_b text;
   v_cal record;
   v_cond jsonb;
   v_inserted bigint := 0;
@@ -584,11 +586,21 @@ BEGIN
     FOR v_i IN 1..10
     LOOP
       IF v_i = 1 THEN
-        v_home := v_teams[1];
-        v_away := v_teams[20];
+        v_a := v_teams[1];
+        v_b := v_teams[20];
       ELSE
-        v_home := v_teams[v_i];
-        v_away := v_teams[21 - v_i];
+        v_a := v_teams[v_i];
+        v_b := v_teams[21 - v_i];
+      END IF;
+
+      -- Flip the home side every other matchday so no club gets long
+      -- home/away runs (circle method otherwise bunches ~10 in a row).
+      IF (v_round % 2) = 1 THEN
+        v_home := v_a;
+        v_away := v_b;
+      ELSE
+        v_home := v_b;
+        v_away := v_a;
       END IF;
 
       v_cond := public.competition_roll_home_match_conditions(v_home, v_cal.gpsl_month);
@@ -629,11 +641,20 @@ BEGIN
     FOR v_i IN 1..10
     LOOP
       IF v_i = 1 THEN
-        v_home := v_teams[20];
-        v_away := v_teams[1];
+        v_a := v_teams[1];
+        v_b := v_teams[20];
       ELSE
-        v_home := v_teams[21 - v_i];
-        v_away := v_teams[v_i];
+        v_a := v_teams[v_i];
+        v_b := v_teams[21 - v_i];
+      END IF;
+
+      -- Mirror of leg 1: same pairing, opposite venue for each parity.
+      IF (v_round % 2) = 1 THEN
+        v_home := v_b;
+        v_away := v_a;
+      ELSE
+        v_home := v_a;
+        v_away := v_b;
       END IF;
 
       v_cond := public.competition_roll_home_match_conditions(v_home, v_cal.gpsl_month);
