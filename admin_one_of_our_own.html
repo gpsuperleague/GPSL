@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>One of our Own — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .ooo-note { font-size:13px; color:#aaa; line-height:1.5; margin-bottom:14px; max-width:960px; }
+    .ooo-toolbar { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; align-items:center; }
+    .ooo-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .ooo-table th, .ooo-table td { text-align:left; padding:7px 10px; border-bottom:1px solid #2a2a2a; }
+    .ooo-table th { color:#ffaa22; font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+    .ooo-table tr.drawn { color:#888; }
+    .ooo-badge { font-size:11px; padding:2px 7px; border-radius:10px; background:#1d3a1d; color:#7ddf7d; }
+    .ooo-badge.none { background:#3a1d1d; color:#e88; }
+    .ooo-count-0 { color:#e88; }
+    .ooo-results { margin-top:16px; }
+    .ooo-results .row { padding:5px 0; border-bottom:1px solid #222; font-size:13px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">One of our Own — homegrown star draw</h1>
+  <p class="note" style="max-width:960px;margin:-8px 16px 12px;color:#aaa;font-size:13px;">
+    Nav: <b>Admin → Season Break → One of our Own</b>
+  </p>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="ooo-note">
+          Draws each selected club a random <b>free-agent</b> player that is <b>home grown</b>
+          (Nation matches the club) with a base <b>Rating of 79+</b>. The draw acts as a real
+          transfer: the player is signed on a contract, appears in the Transfer Centre, and the
+          club is charged the player's <b>market value</b> (balance may go negative) with the fee
+          paid to the GPSL Central Bank. Each club can receive this <b>only once, ever</b>.
+        </p>
+        <div class="ooo-toolbar">
+          <button type="button" id="selectAllBtn" class="button">Select all eligible</button>
+          <button type="button" id="clearSelBtn" class="button">Clear selection</button>
+          <button type="button" id="drawBtn" class="button" style="background:#228822;">Draw selected clubs</button>
+          <button type="button" id="reloadBtn" class="button">Reload</button>
+        </div>
+        <div id="pageStatus" class="status-line"></div>
+        <table class="ooo-table">
+          <thead>
+            <tr>
+              <th style="width:34px;"></th>
+              <th>Club</th>
+              <th>Nation</th>
+              <th>Eligible free agents</th>
+              <th>One of our Own</th>
+            </tr>
+          </thead>
+          <tbody id="clubRows">
+            <tr><td colspan="5" class="note">Loading…</td></tr>
+          </tbody>
+        </table>
+        <div id="drawResults" class="ooo-results"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_one_of_our_own.js"></script>
+</body>
+</html>

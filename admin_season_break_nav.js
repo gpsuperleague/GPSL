@@ -20,6 +20,17 @@ export const SEASON_BREAK_NAV = [
     ],
   },
   {
+    id: "one_of_our_own",
+    label: "One of our Own",
+    items: [
+      {
+        label: "Homegrown star draw",
+        href: "admin_one_of_our_own.html",
+        page: "admin_one_of_our_own",
+      },
+    ],
+  },
+  {
     id: "transfers_open",
     label: "Transfers",
     items: [
