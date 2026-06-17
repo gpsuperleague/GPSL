@@ -1,47 +1,58 @@
--- =============================================================================
--- APPLY recalculated market values to ALL players.
--- =============================================================================
--- Run player_value_recalc_functions.sql FIRST (defines the gpsl_pv_* functions
--- and lets you preview). This script WRITES to public."Players":
---   * market_value          = recalculated Market Value (col J)
---   * Maximum_Reserve_Price  = 1.5 x market_value
---   * Calc_Potential         = recalculated Calc Value (col G)
---
--- Only players with a parseable Rating are touched. Pes Max falls back to Rating
--- when Potential is missing (same as the JS scrape fallback).
---
--- This is hard to reverse — take a DB snapshot/backup first if you want a safety net.
--- =============================================================================
-
-BEGIN;
-
-WITH calc AS (
-  SELECT
-    p."Konami_ID" AS id,
-    public.gpsl_pv_int(p."Rating"::text) AS rating,
-    coalesce(public.gpsl_pv_int(p."Potential"::text),
-             public.gpsl_pv_int(p."Rating"::text)) AS pes_max,
-    public.gpsl_pv_int(p."Age"::text) AS age,
-    p."Position"::text AS position
-  FROM public."Players" p
-  WHERE public.gpsl_pv_int(p."Rating"::text) IS NOT NULL
-)
-UPDATE public."Players" p
-SET
-  market_value         = public.gpsl_pv_market_value(c.rating, c.pes_max, c.age, c.position),
-  "Maximum_Reserve_Price" = round(public.gpsl_pv_market_value(c.rating, c.pes_max, c.age, c.position) * 1.5),
-  "Calc_Potential"     = public.gpsl_pv_calc_potential(c.rating, c.pes_max, c.age)
-FROM calc c
-WHERE p."Konami_ID" = c.id;
-
-COMMIT;
-
-NOTIFY pgrst, 'reload schema';
-
--- Quick sanity check after applying.
-SELECT count(*) AS players_with_mv,
-       min(nullif(btrim(market_value::text), '')::numeric) AS min_mv,
-       max(nullif(btrim(market_value::text), '')::numeric) AS max_mv,
-       round(avg(nullif(btrim(market_value::text), '')::numeric)) AS avg_mv
-FROM public."Players"
-WHERE nullif(btrim(market_value::text), '') IS NOT NULL;
+-- =============================================================================
+-- APPLY recalculated market values to ALL players.
+-- =============================================================================
+-- PREREQUISITE: run player_value_recalc_functions.sql in the SAME Supabase project
+-- (creates gpsl_pv_* functions + gpsl_player_value_recalc_apply()).
+--
+-- WRITES to public."Players":
+--   * market_value            = recalculated Market Value (col J)
+--   * Maximum_Reserve_Price   = 1.5 x market_value
+--   * Calc_Potential          = recalculated Calc Value (col G)
+--
+-- GPDB and squad read the same Players table — no separate GPDB step.
+--
+-- IMPORTANT (Supabase SQL editor):
+--   * Run this ENTIRE file in one go (do not highlight only the last SELECT).
+--   * Avoid BEGIN/COMMIT — the apply function is a single atomic statement.
+--   * Check the JSON result: rows_updated must be > 0 (typically ~all players).
+--
+-- Take a DB snapshot first if you want a safety net.
+-- =============================================================================
+
+-- 1) Apply (returns row counts — must see rows_updated > 0)
+SELECT public.gpsl_player_value_recalc_apply() AS apply_result;
+
+-- 2) Sanity check — avg MV should jump well above legacy ~₿10M band for 79-rated players
+SELECT
+  count(*) AS players_with_mv,
+  min(nullif(btrim(market_value::text), '')::numeric) AS min_mv,
+  max(nullif(btrim(market_value::text), '')::numeric) AS max_mv,
+  round(avg(nullif(btrim(market_value::text), '')::numeric)) AS avg_mv
+FROM public."Players"
+WHERE nullif(btrim(market_value::text), '') IS NOT NULL;
+
+-- 3) Spot-check a 79-rated CB age 24 (adjust name if needed)
+SELECT
+  "Konami_ID",
+  "Name",
+  "Rating",
+  "Potential",
+  "Calc_Potential",
+  "Age",
+  "Position",
+  market_value,
+  "Maximum_Reserve_Price",
+  public.gpsl_pv_market_value(
+    public.gpsl_pv_int("Rating"::text),
+    coalesce(public.gpsl_pv_int("Potential"::text), public.gpsl_pv_int("Rating"::text)),
+    public.gpsl_pv_int("Age"::text),
+    "Position"::text
+  ) AS formula_mv_should_match
+FROM public."Players"
+WHERE "Rating"::text ~ '^79'
+  AND public.gpsl_pv_int("Age"::text) = 24
+  AND upper(btrim("Position"::text)) = 'CB'
+ORDER BY "Name"
+LIMIT 5;
+
+NOTIFY pgrst, 'reload schema';
