@@ -26,7 +26,7 @@ import { formatNavLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260617-one-of-our-own";
+export const GLOBAL_JS_VERSION = "20260617-auction-nav-active";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -77,6 +77,20 @@ export function getDraftCountdownOptions() {
 
 export function getManagerDraftEnabled() {
   return managerDraftEnabled;
+}
+
+/** True when live bidding is open for a nav auction link (player / manager / club). */
+export function isNavAuctionActive(kind) {
+  if (kind === "player") {
+    return draftEnabled && playerDraftBiddingOpen === true;
+  }
+  if (kind === "manager") {
+    return managerDraftEnabled && managerDraftBiddingOpen === true;
+  }
+  if (kind === "club") {
+    return clubAuctionEnabled && clubAuctionBiddingOpen === true;
+  }
+  return false;
 }
 
 export function getDraftAuctionStartTime() {
@@ -572,15 +586,20 @@ function msUntil(target) {
 }
 
 export async function refreshDraftBiddingOpen() {
-  if (!draftEnabled && !managerDraftEnabled) {
+  if (!draftEnabled && !managerDraftEnabled && !clubAuctionEnabled) {
     draftBiddingOpen = false;
+    playerDraftBiddingOpen = false;
+    managerDraftBiddingOpen = false;
+    clubAuctionBiddingOpen = false;
     draftRandomLockedMs = null;
     draftRandomFinishRevealed = null;
+    refreshNavAuctionIndicators();
     return;
   }
   const wasOpen = draftBiddingOpen === true;
   let data = null;
   const selectAttempts = [
+    "draft_bidding_open, manager_draft_bidding_open, club_auction_bidding_open, draft_random_finish_revealed",
     "draft_bidding_open, manager_draft_bidding_open, draft_random_finish_revealed",
     "draft_bidding_open, manager_draft_bidding_open",
     "draft_bidding_open, draft_random_finish_revealed",
@@ -614,6 +633,7 @@ export async function refreshDraftBiddingOpen() {
   } else if (!draftRandomFinishRevealed) {
     draftRandomLockedMs = null;
   }
+  refreshNavAuctionIndicators();
 }
 
 export function startDraftCountdown(onTick) {
@@ -960,6 +980,47 @@ function navLinkIconHtml(item) {
   return "";
 }
 
+function navAuctionActiveBadgeHtml(kind, visible = isNavAuctionActive(kind)) {
+  if (!kind) return "";
+  const hidden = visible ? "" : " is-hidden";
+  return `<span class="nav-auction-active${hidden}" title="Bidding is open" aria-hidden="${visible ? "false" : "true"}">Active</span>`;
+}
+
+function navLinkLabelHtml(item) {
+  const badge = item.auctionNav
+    ? navAuctionActiveBadgeHtml(item.auctionNav)
+    : "";
+  return `${badge}<span class="nav-link-label">${escapeNavHtml(
+    formatNavLabel(item.label)
+  )}</span>`;
+}
+
+/** Update Active badges without rebuilding the whole nav. */
+export function refreshNavAuctionIndicators() {
+  const nav = document.getElementById("nav");
+  if (!nav) return;
+  nav.querySelectorAll("[data-auction-nav]").forEach((link) => {
+    const kind = link.dataset.auctionNav;
+    const badge = link.querySelector(".nav-auction-active");
+    if (!badge || !kind) return;
+    const active = isNavAuctionActive(kind);
+    badge.classList.toggle("is-hidden", !active);
+    badge.setAttribute("aria-hidden", active ? "false" : "true");
+  });
+}
+
+let __navAuctionRefreshInterval = null;
+
+function startNavAuctionBadgeRefresh() {
+  if (__navAuctionRefreshInterval) return;
+  if (!draftEnabled && !managerDraftEnabled && !clubAuctionEnabled) return;
+  __navAuctionRefreshInterval = setInterval(() => {
+    refreshDraftBiddingOpen().catch((err) => {
+      console.warn("nav auction badge refresh:", err);
+    });
+  }, 30000);
+}
+
 function renderNavDropdownItems(items, pathname, search, isNavItemActive, renderMegaNavHtml) {
   const hasHeadings = items.some(
     (item) =>
@@ -978,7 +1039,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
       const indent = item.indent ? " nav-link-sub" : "";
       flat += `<a href="${item.href}" class="nav-link${indent}${
         active ? " active" : ""
-      }">${navLinkIconHtml(item)}${escapeNavHtml(formatNavLabel(item.label))}</a>`;
+      }"${item.auctionNav ? ` data-auction-nav="${item.auctionNav}"` : ""}>${navLinkIconHtml(item)}${navLinkLabelHtml(item)}</a>`;
     }
     return flat;
   }
@@ -992,9 +1053,12 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
   const renderLink = (item, active) => {
     const indent = item.indent ? " nav-link-sub" : "";
     const danger = item.navDanger ? " nav-link-danger" : "";
+    const auctionAttr = item.auctionNav
+      ? ` data-auction-nav="${item.auctionNav}"`
+      : "";
     return `<a href="${item.href}" class="nav-link${indent}${danger}${
       active ? " active" : ""
-    }">${navLinkIconHtml(item)}${escapeNavHtml(formatNavLabel(item.label))}</a>`;
+    }"${auctionAttr}>${navLinkIconHtml(item)}${navLinkLabelHtml(item)}</a>`;
   };
 
   const flushPanel = () => {
@@ -1392,6 +1456,8 @@ export async function buildNav() {
   nav.innerHTML = html;
   wireNavLogout();
   wireNavGroups(nav);
+  refreshNavAuctionIndicators();
+  startNavAuctionBadgeRefresh();
   } catch (err) {
     console.error("buildNav failed:", err);
     await renderFallbackNav();

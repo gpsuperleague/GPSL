@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260617-one-of-our-own";
+export const NAV_CONFIG_VERSION = "20260617-auction-nav-active";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -49,6 +49,7 @@ export const NAV_SECTIONS = [
         label: "Player Draft Auctions",
         page: "draftauction",
         indent: true,
+        auctionNav: "player",
       },
       {
         href: "legacy_players.html",
@@ -81,6 +82,7 @@ export const NAV_SECTIONS = [
         label: "Manager Draft Auction",
         page: "manager_draftauction",
         indent: true,
+        auctionNav: "manager",
       },
       {
         href: "season_manager_transfers.html",
@@ -100,6 +102,7 @@ export const NAV_SECTIONS = [
         label: "Club Auction",
         page: "club_auction",
         indent: true,
+        auctionNav: "club",
       },
       {
         href: "season_club_purchases.html",

@@ -1116,6 +1116,39 @@ button.nav-admin-trigger {
   line-height: 1.35;
 }
 
+.nav-auction-active {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  background: #1a3a1a;
+  color: #9d9;
+  border: 1px solid #3a6a3a;
+}
+
+.nav-auction-active.is-hidden {
+  display: none;
+}
+
+.nav-link.active .nav-auction-active {
+  background: #1a2a1a;
+  color: #bfb;
+  border-color: #4a7a4a;
+}
+
+.nav-link:hover .nav-auction-active {
+  color: #bfb;
+}
+
+.nav-link-label {
+  vertical-align: middle;
+}
+
 .nav-link:hover {
   background: #333;
   color: #ff9900;
