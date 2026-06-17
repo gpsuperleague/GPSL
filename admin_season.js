@@ -1,6 +1,7 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import {
   renderSeasonAdminNavHtml,
+  renderSeasonMgmtAdminNavHtml,
   isSeasonAdminNavItemActive,
 } from "./admin_season_nav.js";
 
@@ -34,7 +35,11 @@ const SEASON_PANEL_IDS = new Set([
 function renderSeasonSidebar() {
   const root = document.getElementById("adminSeasonNav");
   if (!root) return;
-  root.innerHTML = renderSeasonAdminNavHtml(window.location.pathname, window.location.search || "");
+  const pathname = window.location.pathname;
+  const search = window.location.search || "";
+  root.innerHTML =
+    renderSeasonAdminNavHtml(pathname, search) +
+    renderSeasonMgmtAdminNavHtml(pathname, search);
 }
 
 function showSeasonPanel(panelId) {

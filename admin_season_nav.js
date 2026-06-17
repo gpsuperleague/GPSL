@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260618-league-before-cups";
+export const SEASON_ADMIN_NAV_VERSION = "20260617-season-management-menu";
 
 const SEASON_CALENDAR_NAV_ITEM = {
   label: "GPSL season calendar",
@@ -147,6 +147,10 @@ export const SEASON_ADMIN_NAV = [
     label: "Pre-season transfers",
     items: [...TRANSFER_WINDOW_NAV_ITEMS],
   },
+];
+
+/** Season Management workflow — Mid Season / Playoffs / Close Season. */
+export const SEASON_MGMT_ADMIN_NAV = [
   {
     id: "mid_season",
     label: "Mid Season",
@@ -203,8 +207,8 @@ function escapeNavText(text) {
     .replace(/"/g, "&quot;");
 }
 
-export function seasonAdminNavHasActive(pathname, search = "") {
-  for (const group of SEASON_ADMIN_NAV) {
+function navArrayHasActive(navArray, pathname, search = "") {
+  for (const group of navArray) {
     for (const item of group.items) {
       if (isSeasonAdminNavItemActive(item, pathname, search)) return true;
     }
@@ -212,18 +216,18 @@ export function seasonAdminNavHasActive(pathname, search = "") {
   return false;
 }
 
-/** Admin flyout: Season management → category → task link (3 levels). */
-export function renderSeasonAdminNavHtml(pathname, search = "") {
+/** Admin flyout: mega label → category → task link (3 levels). */
+function renderSeasonMegaNavHtml(navArray, megaLabel, pathname, search = "") {
   const linkActive = (item) => isSeasonAdminNavItemActive(item, pathname, search);
-  const megaOpen = seasonAdminNavHasActive(pathname, search);
+  const megaOpen = navArrayHasActive(navArray, pathname, search);
 
   let html = `<div class="nav-subgroup nav-subgroup-mega${megaOpen ? " open" : ""}" data-nav-subgroup>`;
   html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
     megaOpen ? "true" : "false"
-  }">${escapeNavText(formatNavLabel("Pre-Season"))}</button>`;
+  }">${escapeNavText(formatNavLabel(megaLabel))}</button>`;
   html += `<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">`;
 
-  for (const group of SEASON_ADMIN_NAV) {
+  for (const group of navArray) {
     html += `<div class="nav-subgroup nav-subgroup-nested" data-nav-subgroup>`;
     html += `<button type="button" class="nav-subgroup-summary" aria-expanded="false">${escapeNavText(
       formatNavLabel(group.label)
@@ -241,6 +245,22 @@ export function renderSeasonAdminNavHtml(pathname, search = "") {
 
   html += `</div></div>`;
   return html;
+}
+
+export function seasonAdminNavHasActive(pathname, search = "") {
+  return navArrayHasActive(SEASON_ADMIN_NAV, pathname, search);
+}
+
+export function renderSeasonAdminNavHtml(pathname, search = "") {
+  return renderSeasonMegaNavHtml(SEASON_ADMIN_NAV, "Pre-Season", pathname, search);
+}
+
+export function seasonMgmtAdminNavHasActive(pathname, search = "") {
+  return navArrayHasActive(SEASON_MGMT_ADMIN_NAV, pathname, search);
+}
+
+export function renderSeasonMgmtAdminNavHtml(pathname, search = "") {
+  return renderSeasonMegaNavHtml(SEASON_MGMT_ADMIN_NAV, "Season Management", pathname, search);
 }
 
 export function isSeasonAdminNavItemActive(item, pathname, search = "") {

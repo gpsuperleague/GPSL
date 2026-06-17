@@ -26,7 +26,7 @@ import { formatNavLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260617-season-break-above-preseason";
+export const GLOBAL_JS_VERSION = "20260617-season-management-menu";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -966,6 +966,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
       item.heading ||
       item.testingMega ||
       item.seasonMega ||
+      item.seasonMgmtMega ||
       item.seasonBreakMega ||
       item.ownersMega
   );
@@ -1010,7 +1011,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
   };
 
   for (const item of items) {
-    if (item.testingMega || item.seasonMega || item.seasonBreakMega || item.ownersMega) {
+    if (item.testingMega || item.seasonMega || item.seasonMgmtMega || item.seasonBreakMega || item.ownersMega) {
       if (renderMegaNavHtml) {
         flushPanel();
         groupHtml += renderMegaNavHtml(item, pathname, search);
