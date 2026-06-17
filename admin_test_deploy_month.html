@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Deploy month results — GPSL Admin Testing</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .danger-card { border-color: #844; background: #1a1212; }
+    .danger-card h2 { color: #f66; }
+    .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .form-row label { font-size: 13px; color: #bbb; }
+    .form-row select {
+      display: block; min-width: 200px; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    #confirmInput {
+      max-width: 360px; width: 100%; padding: 8px; margin-top: 8px;
+      background: #111; border: 1px solid #844; color: #ddd; border-radius: 4px;
+    }
+    .preview-table-wrap { overflow-x: auto; margin-top: 12px; }
+    .preview-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .preview-table th, .preview-table td {
+      border: 1px solid #333; padding: 6px 8px; text-align: left;
+    }
+    .preview-table th { background: #1a1a1a; color: #ff9900; }
+    .preview-table tr.not-ready td { color: #888; }
+    .preview-table .ready-yes { color: #9d9; font-weight: bold; }
+    .preview-table .ready-no { color: #c88; }
+    .summary-pills { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; font-size: 13px; }
+    .summary-pills span { padding: 4px 10px; background: #111; border: 1px solid #333; border-radius: 4px; }
+    .summary-pills b { color: #ff9900; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Deploy month results</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Testing only — plays all <b>scheduled league</b> fixtures for a GPSL month with random scores,
+        auto squad stats (goals match score), and a POTM per club. Skips inbox submit/confirm.
+      </p>
+
+      <div class="card">
+        <h2>1. Preview</h2>
+        <div class="form-row">
+          <label>
+            GPSL month
+            <select id="monthSelect"></select>
+          </label>
+          <button type="button" class="button" id="previewBtn">Preview fixtures</button>
+        </div>
+        <div id="previewStatus" class="status-line"></div>
+        <div id="previewSummary" class="summary-pills" hidden></div>
+        <div class="preview-table-wrap">
+          <table class="preview-table" id="previewTable" hidden>
+            <thead>
+              <tr>
+                <th>MD</th>
+                <th>Div</th>
+                <th>Fixture</th>
+                <th>Status</th>
+                <th>Squads</th>
+                <th>Ready</th>
+              </tr>
+            </thead>
+            <tbody id="previewBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card danger-card">
+        <h2>2. Deploy results</h2>
+        <p class="note">
+          Random scores 0–4 per team. Clears any pending result submissions for those fixtures.
+          Cup fixtures are skipped (use Match Day for ET/penalties).
+        </p>
+        <p class="note">Type exactly: <code id="phraseHint">DEPLOY TEST MONTH</code></p>
+        <input type="text" id="confirmInput" placeholder="Type confirmation phrase" autocomplete="off">
+        <br>
+        <button type="button" class="button" id="deployBtn" style="background:#882222;margin-top:12px;">Deploy month results</button>
+        <div id="deployStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>SQL</h2>
+        <p class="note">Run once: <code>supabase/sql/patches/admin_testing_tools.sql</code></p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_test_deploy_month.js"></script>
+</body>
+</html>

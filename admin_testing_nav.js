@@ -9,6 +9,17 @@ export const TESTING_ADMIN_NAV = [
     page: "admin_test_reset",
     navDanger: true,
   },
+  {
+    label: "Assign manager to club",
+    href: "admin_test_manager_assign.html",
+    page: "admin_test_manager_assign",
+  },
+  {
+    label: "Deploy month results",
+    href: "admin_test_deploy_month.html",
+    page: "admin_test_deploy_month",
+    navDanger: true,
+  },
 ];
 
 function escapeNavText(text) {

@@ -479,6 +479,8 @@ Run once (after `competition_phase0.sql` and `competition_real_world_calendar.sq
 
 Front-end: sub-pages (`admin_season.html`, `admin_fixtures-*.html`, `admin_money.html`, etc.) share `admin.css`, `admin_nav.js`, and `admin_common.js`. Top bar **Admin** is a normal nav group (like Transfers / League) for admins only; optional hub at `admin.html`.
 
+**Testing (sandbox only):** [`patches/admin_prelaunch_test_reset.sql`](./patches/admin_prelaunch_test_reset.sql) — full environment wipe. [`patches/admin_testing_tools.sql`](./patches/admin_testing_tools.sql) — **Assign manager to club** (`admin_testing_assign_manager`) and **Deploy month results** (`admin_testing_deploy_month_results`) with auto squad stats + POTM, bypassing owner submit/confirm. Admin → **Testing** submenu.
+
 If you already ran the first script, also run [`special_auctions_scheduled_status.sql`](./special_auctions_scheduled_status.sql).
 
 ## Finances & central bank (planning)
