@@ -151,21 +151,26 @@ export function formatMatchConditions(fixture) {
 }
 
 /** Home venue label for the logged-in owner (home = your continent rules; away = opponent's). */
-export function fixtureHomeVenueLabel(fixture, myClubShort) {
+export function fixtureHomeVenueLabel(fixture, myClubShort, homeStadiumName) {
   if (!fixture) return "—";
   const home = (fixture.home_club_short_name || "").trim().toUpperCase();
   const mine = (myClubShort || "").trim().toUpperCase();
+  const venueName =
+    homeStadiumName ||
+    fixture.home_club_name ||
+    fixture.home_club_short_name ||
+    "opponent";
   if (mine && home === mine) return "Your home";
   if (mine) {
-    return `At ${fixture.home_club_name || fixture.home_club_short_name || "opponent"}`;
+    return `At ${venueName}`;
   }
-  return fixture.home_club_name || fixture.home_club_short_name || "Home venue";
+  return venueName;
 }
 
 /** Match conditions at the home venue, with continent (used on Fixtures). */
-export function formatFixtureConditionsRow(fixture, myClubShort) {
+export function formatFixtureConditionsRow(fixture, myClubShort, homeStadiumName) {
   if (!fixture) return "—";
-  const venue = fixtureHomeVenueLabel(fixture, myClubShort);
+  const venue = fixtureHomeVenueLabel(fixture, myClubShort, homeStadiumName);
   const continent =
     CONTINENT_LABELS[fixture.home_continent] || fixture.home_continent || null;
   const cond = formatMatchConditions(fixture);

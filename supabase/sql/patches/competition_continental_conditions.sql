@@ -62,7 +62,18 @@ RETURNS text
 LANGUAGE sql
 IMMUTABLE
 AS $$
-  SELECT lower(regexp_replace(btrim(coalesce(p_value, '')), '\s+', ' ', 'g'));
+  SELECT lower(
+    regexp_replace(
+      translate(
+        btrim(coalesce(p_value, '')),
+        'ÜüÖöÄäÉéÍíÓóÚúÇç',
+        'UuOoAaEeIiOoUuCc'
+      ),
+      '\s+',
+      ' ',
+      'g'
+    )
+  );
 $$;
 
 CREATE OR REPLACE FUNCTION public.competition_nation_to_continent(p_nation text)
@@ -85,7 +96,7 @@ BEGIN
   END IF;
 
   IF v = ANY (ARRAY[
-    'usa', 'united states', 'canada', 'mexico', 'new mexico'
+    'usa', 'united states', 'unitedstates', 'canada', 'mexico', 'new mexico'
   ]) THEN
     RETURN 'north_america';
   END IF;

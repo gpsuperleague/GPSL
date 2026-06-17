@@ -1,6 +1,7 @@
 // clubs_lookup.js
 
 let clubsMap = new Map();
+let stadiumMap = new Map();
 let ownerTagsMap = new Map();
 
 function getSupabase() {
@@ -22,7 +23,7 @@ export async function loadClubsMap() {
 
   const { data, error } = await supabase
     .from("Clubs")
-    .select("ShortName, Club, owner");
+    .select("ShortName, Club, Stadium, owner");
 
   if (error) {
     console.error("Failed to load clubs map:", error);
@@ -30,10 +31,12 @@ export async function loadClubsMap() {
   }
 
   clubsMap.clear();
+  stadiumMap.clear();
   ownerTagsMap.clear();
 
   data.forEach(row => {
     clubsMap.set(row.ShortName, row.Club);
+    if (row.Stadium?.trim()) stadiumMap.set(row.ShortName, row.Stadium.trim());
     const tag = row.owner?.trim();
     if (tag) ownerTagsMap.set(row.ShortName, tag);
   });
@@ -46,6 +49,10 @@ export async function loadClubsMap() {
    ============================================================ */
 export function fullClubName(shortName) {
   return clubsMap.get(shortName) || shortName;
+}
+
+export function stadiumName(shortName) {
+  return stadiumMap.get(shortName) || null;
 }
 
 export function ownerTagForClub(shortName) {

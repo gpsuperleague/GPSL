@@ -18,7 +18,7 @@ import {
   loadCalendarStatus,
   calendarStatusBanner,
 } from "./competition_calendar.js";
-import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
+import { loadClubsMap, clubWithOwnerHtml, stadiumName } from "./clubs_lookup.js";
 import { formatFixtureConditionsRow } from "./competition_conditions.js";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 
@@ -30,6 +30,14 @@ let currentDivision = "superleague";
 let fixtureView = "league";
 let currentCup = "league_cup";
 let allFixtures = [];
+
+function fixtureConditions(fixture) {
+  return formatFixtureConditionsRow(
+    fixture,
+    myClub.short,
+    stadiumName(fixture.home_club_short_name)
+  );
+}
 
 function matchdayUrl(fixtureId) {
   return `matchday.html?fixture=${encodeURIComponent(String(fixtureId))}`;
@@ -164,7 +172,7 @@ function renderCupFixtures() {
         <td>${clubWithOwnerHtml(f.home_club_name, f.home_club_short_name, "block")}</td>
         <td class="score">${formatFixtureScore(f, myClub)}</td>
         <td>${clubWithOwnerHtml(f.away_club_name, f.away_club_short_name, "block")}</td>
-        <td class="fixture-conditions">${formatFixtureConditionsRow(f, myClub.short)}</td>
+        <td class="fixture-conditions">${fixtureConditions(f)}</td>
         <td>${f.status}</td>
         <td class="my-actions">${actionCell(f)}</td>
       `;
@@ -203,9 +211,7 @@ function renderFixtures() {
     const myFixture = myClub.short
       ? rows.find((f) => fixtureInvolvesClub(f, myClub))
       : null;
-    const myConditions = myFixture
-      ? formatFixtureConditionsRow(myFixture, myClub.short)
-      : null;
+    const myConditions = myFixture ? fixtureConditions(myFixture) : null;
     const block = document.createElement("div");
     block.className = "matchday-block";
 
@@ -236,7 +242,7 @@ function renderFixtures() {
         <td>${clubWithOwnerHtml(f.home_club_name, f.home_club_short_name, "block")}</td>
         <td class="score">${formatFixtureScore(f, myClub)}</td>
         <td>${clubWithOwnerHtml(f.away_club_name, f.away_club_short_name, "block")}</td>
-        <td class="fixture-conditions">${formatFixtureConditionsRow(f, myClub.short)}</td>
+        <td class="fixture-conditions">${fixtureConditions(f)}</td>
         <td class="my-actions">${actionCell(f)}</td>
       `;
       tbody.appendChild(tr);
