@@ -24,7 +24,7 @@ ALTER TABLE public.competition_fixtures
 COMMENT ON COLUMN public.competition_fixtures.weather IS
   'eFootball weather at home venue: fine, rain, or snow.';
 COMMENT ON COLUMN public.competition_fixtures.pitch_condition IS
-  'eFootball pitch: normal, dry, or wet.';
+  'eFootball pitch: normal, dry, or wet. Rain/snow weather always forces wet (in-game rule).';
 COMMENT ON COLUMN public.competition_fixtures.kit_season IS
   'eFootball kit season at home venue: summer (short sleeves) or winter (long sleeves).';
 
@@ -291,11 +291,15 @@ BEGIN
       'rain', v_cfg.weather_rain_pct,
       'snow', v_cfg.weather_snow_pct
     );
-    v_pitch := public.competition_weighted_pick_3(
-      'normal', v_cfg.pitch_normal_pct,
-      'dry', v_cfg.pitch_dry_pct,
-      'wet', v_cfg.pitch_wet_pct
-    );
+    IF v_weather IN ('rain', 'snow') THEN
+      v_pitch := 'wet';
+    ELSE
+      v_pitch := public.competition_weighted_pick_3(
+        'normal', v_cfg.pitch_normal_pct,
+        'dry', v_cfg.pitch_dry_pct,
+        'wet', v_cfg.pitch_wet_pct
+      );
+    END IF;
   END IF;
 
   RETURN jsonb_build_object(
