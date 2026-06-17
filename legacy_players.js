@@ -1,6 +1,10 @@
 import { initGlobal, supabase } from "./global.js";
 import { loadClubsMap, displayClubName } from "./clubs_lookup.js";
 import { contractYearsLabel } from "./player_contracts.js";
+import {
+  playerThumbLinkHtml,
+  playerNameLinkHtml,
+} from "./player_links.js";
 
 function escapeHtml(text) {
   return String(text ?? "")
@@ -58,7 +62,7 @@ async function loadLegacyList() {
 
   if (!rows.length) {
     tbody.innerHTML =
-      '<tr><td colspan="6" class="empty-note">No legacy cards listed.</td></tr>';
+      '<tr><td colspan="7" class="empty-note">No legacy cards listed.</td></tr>';
     return;
   }
 
@@ -72,7 +76,8 @@ async function loadLegacyList() {
           : contract;
       return `
     <tr>
-      <td>${escapeHtml(r.player_name)}</td>
+      <td>${playerThumbLinkHtml(r.konami_id, { alt: r.player_name })}</td>
+      <td>${playerNameLinkHtml(r.konami_id, r.player_name)}</td>
       <td class="num">${escapeHtml(r.position || "—")}</td>
       <td class="num">${escapeHtml(r.rating || "—")}</td>
       <td>${escapeHtml(club)}</td>

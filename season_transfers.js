@@ -8,15 +8,12 @@ import {
   clubPageHref,
   isForeignBuyerClub,
 } from "./clubs_lookup.js";
+import { playerNameLinkHtml } from "./player_links.js";
 
 let allRows = [];
 let listingTypeById = new Map();
 let playerNameById = new Map();
 let activeFilter = "all";
-
-function pesdbPlayerUrl(konamiId) {
-  return `https://pesdb.net/efootball/?id=${encodeURIComponent(konamiId)}`;
-}
 
 function formatMoney(amount) {
   if (amount == null || Number.isNaN(Number(amount))) return "—";
@@ -129,9 +126,7 @@ function renderTable() {
       return `
         <tr>
           <td>${formatWhen(row.transfer_time)}</td>
-          <td>
-            <a class="gpsl-link" href="${pesdbPlayerUrl(pid)}" target="_blank" rel="noopener">${escapeHtml(name)}</a>
-          </td>
+          <td>${playerNameLinkHtml(pid, name, { className: "gpsl-link" })}</td>
           <td>${sellerCell(row)}</td>
           <td>${buyerCell(row)}</td>
           <td>${formatMoney(row.fee)}</td>

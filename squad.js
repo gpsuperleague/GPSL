@@ -59,6 +59,11 @@ import {
   DESIGNATION_STAR,
   DESIGNATION_OOO,
 } from "./squad_designations.js";
+import {
+  playerThumbLinkHtml,
+  playerNameLinkHtml,
+  pesdbPlayerUrl,
+} from "./player_links.js";
 
 window.supabase = supabase;
 
@@ -607,14 +612,12 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
       const avg =
         st?.avg_rating != null ? Number(st.avg_rating).toFixed(2) : "—";
 
-      const imgURL = `https://pesdb.net/assets/img/card/b${p.Konami_ID}.png`;
-
       const qualBadges = playerSquadQualificationBadges(p, clubNation);
       const roleBadge = roleBadgeForPlayer(p, designationsState);
 
       tr.innerHTML = `
-        <td><img src="${imgURL}" class="player-thumb" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
-        <td><a href="player_career.html?id=${encodeURIComponent(String(p.Konami_ID))}" class="squad-player-link">${p.Name}</a>${roleBadge}${qualBadges}</td>
+        <td>${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}</td>
+        <td>${playerNameLinkHtml(p.Konami_ID, p.Name)}${roleBadge}${qualBadges}</td>
         <td>${p.Nation || "-"}</td>
         <td>${p.Position}</td>
         <td>${formatRatingWithPotential(p)}</td>
@@ -723,7 +726,8 @@ function wireSquadTable() {
 
     if (
       e.target.closest("button") ||
-      e.target.closest(".decision-buttons")
+      e.target.closest(".decision-buttons") ||
+      e.target.closest("a")
     ) {
       return;
     }
@@ -731,11 +735,7 @@ function wireSquadTable() {
     const row = e.target.closest("tr[data-konami-id]");
     if (!row?.dataset.konamiId) return;
 
-    window.open(
-      `https://pesdb.net/efootball/?id=${row.dataset.konamiId}`,
-      "_blank",
-      "noopener"
-    );
+    window.open(pesdbPlayerUrl(row.dataset.konamiId), "_blank", "noopener");
   });
 
   tbody.addEventListener("change", (e) => {

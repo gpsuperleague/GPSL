@@ -1,6 +1,6 @@
 # GPSL finances — line items & central bank (design memory)
 
-**Status:** Phase 1 SQL + `finances.html` season accounts UI (Excel structure). Most lines are **planned** — only gates, generic prizes, and transfers post today. Loans & formulas TBD when rules are supplied.
+**Status:** Model A **signed off** (Jun 2026). SQL patch [`supabase/sql/patches/central_bank_model_a_flows.sql`](../supabase/sql/patches/central_bank_model_a_flows.sql) routes league flows through `post_club_ledger(..., p_bank_leg := true)`. Gate receipts stay outside the bank (“fans”). Club↔club transfer fees stay direct.
 
 **Currency:** ₿ everywhere in the app (Excel mixed £/$ — do not replicate).
 
@@ -90,7 +90,8 @@ Grouped like the spreadsheet. Each row should eventually map to a **ledger `entr
 | Code | Description | Direction | Notes |
 |------|-------------|-----------|--------|
 | `eos_debt_interest` | **Debt interest** | Debit | On **negative** balances at EOS (and loans when live) |
-| `eos_ffp_charge` | **FFP charges** | Debit | Fine if debt **> ₿99M** at any point in season |
+| `eos_balance_interest` | **Balance interest** | Credit | **0.5%** on **positive** balances at EOS — paid from central bank |
+| `eos_ffp_charge` | **FFP charges** | Debit | Fine if debt **> ₿99M** at any point in season — paid **to** central bank |
 | `eos_injection` | **End of season injection** | Credit | Individual or mass; same family as emergency tax — **admin** |
 
 ### 1.9 Balance summary (UI only, not ledger types)
@@ -137,9 +138,45 @@ Grouped like the spreadsheet. Each row should eventually map to a **ledger `entr
 - **A — Bank as league treasury:** Subsidies, taxes, prizes, gates, loans → club ↔ bank. **Club-to-club transfers** stay direct (buyer −, seller +) as today.
 - **B — Bank as escrow:** All transfers flow buyer → bank → seller (heavier, full audit trail).
 
-Default recommendation: **Model A** for subsidies/tax/loans/gates; keep **direct club-to-club** for transfer engine unless you want full traceability.
+Default recommendation: **Model A** — **signed off.**
 
-### 2.4 Functions to centralise (migrate over time)
+### 2.5 Signed-off counterparty rules (Model A)
+
+| Flow | Counterparty | Ledger | Central bank leg |
+|------|--------------|--------|------------------|
+| GPDB draft signings — **player**, **manager**, **club** auction | GPSL Central Bank | `transfer_purchase` / `infra_purchase` | Yes — fee paid **to** the bank |
+| Government subsidies (HG, youth, BnB) | Central bank | `gov_*_subsidy` | Yes — paid **from** the bank |
+| Taxes (emergency, income, **star tax**) | Central bank | `gov_emergency_tax`, `gov_income_tax`, `wage_star_tax` | Yes — collected **to** the bank |
+| Loan interest | Central bank | `loan_interest_payment` | Yes (already wired) |
+| **EOS balance interest** — **0.5%** on positive balances | Central bank | `eos_balance_interest` | Yes — paid **from** the bank at end of season |
+| GPSL monthly TV money | Central bank | `tv_revenue` | Yes |
+| League / cup / challenge prize money | Central bank | `prize_league`, `prize_cup`, `prize_challenge` | Yes |
+| Stadium purchase (club assignment / club auction) | Central bank | `infra_purchase` | Yes — **backfill** historical rows |
+| Stadium expansion (order, penalty, refund) | Central bank | `infra_expansion`, `infra_expansion_penalty`, `infra_expansion_refund` | Yes |
+| Fines | Central bank | `gov_fine_compensation` (debit) | Yes — clubs **to** the bank |
+| Compensation | Central bank | `gov_fine_compensation` (credit) | Yes — bank **to** clubs |
+| FFP charges | Central bank | `eos_ffp_charge` | Yes |
+| **Gate receipts** | Virtual **“fans”** (not a GPSL entity) | `gate_league_home`, `gate_cup_share` | **No** — outside income from match attendance |
+| Player wages, manager wages | Virtual **“players”** / staff | `wage_squad`, `staff_manager_salary` | **No** — club outgoings only |
+| 34+ renewal fees | Virtual **“players”** | `wage_renewal_34plus` | **No** |
+| Player / manager **transfer fees** (club market) | **Club ↔ club** | `transfer_sale`, `transfer_purchase` | **No** — buyer debited, seller credited directly |
+
+**Virtual counter-parties** (fans, players, managers) are not recorded in `gpsl_bank_account` or `bank_ledger`. They exist only as the semantic destination of club ledger descriptions.
+
+**Admin after deploy:**
+
+```sql
+-- Preview bank reserve adjustment from historical club ledger rows
+SELECT public.backfill_central_bank_legs(true);
+
+-- Apply mirror rows (no club balance change)
+SELECT public.backfill_central_bank_legs(false);
+
+-- End of season: 0.5% credit on positive balances
+SELECT public.competition_post_eos_balance_interest(<season_id>);
+```
+
+### 2.6 Functions to centralise (migrate over time)
 
 Replace direct balance updates in:
 
@@ -179,6 +216,7 @@ With: `post_club_ledger(p_club, p_entry_type, p_amount, p_description, p_metadat
 
 - **In-season:** optional small matchday interest (if loan outstanding).
 - **End of season:** `eos_debt_interest` — charge on **outstanding principal × rate** (and/or unpaid accrued).
+- **End of season:** `eos_balance_interest` — **0.5% credit** on positive club balances (central bank pays out).
 - Posting runs in **season rollover** job (same window as contract tick / wage bill).
 
 ### 3.4 UI (live)
@@ -219,13 +257,14 @@ With: `post_club_ledger(p_club, p_entry_type, p_amount, p_description, p_metadat
 | Area | Live today | Planned |
 |------|------------|---------|
 | Balance | `Club_Finances` | Same, fed only via ledger poster |
-| Gates / some prizes | `competition_finance_ledger` | Merge into unified ledger |
-| Transfers | Balance only | `transfer_sale` / `transfer_purchase` rows |
-| Wages | Calculated on squad, not billed | `wage_squad` season charge |
-| Infra / tax / subsidies | — | Bank-posted types |
-| Loans | `club_take_loan` / `club_repay_loan` | EOS interest job |
+| Gates | `competition_finance_ledger`, **no bank leg** (fans) | Unchanged |
+| GPDB drafts / subsidies / prizes / TV / fines | `post_club_ledger` + bank leg | Deploy `central_bank_model_a_flows.sql` |
+| Club↔club transfers | Direct balance, ledger only | Unchanged (no bank leg) |
+| Wages / 34+ | Club ledger debits, **no bank leg** | Virtual payees |
+| Loans | `club_take_loan` / `club_repay_loan` + bank leg | EOS debt interest job |
+| EOS balance interest | `competition_post_eos_balance_interest` | Wire into season rollover |
 | Owner UI | `finances.html` minimal | Full P&L + loans |
 
 ---
 
-*Last updated: planning note for post–transfer/draft work. Link from `supabase/sql/README.md` when implementation starts.*
+*Last updated: Model A counterparty rules signed off; see `central_bank_model_a_flows.sql`.*

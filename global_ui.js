@@ -3,7 +3,7 @@
 // ===============================
 
 // ===============================
-// PESDB CLICK HANDLER
+// PESDB CLICK HANDLER (legacy — prefer player_links.js for new UI)
 // ===============================
 export function applyPESDBRowClicks(tbodyId) {
   const tbody = document.getElementById(tbodyId);

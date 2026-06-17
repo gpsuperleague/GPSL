@@ -11,6 +11,10 @@ import {
   NATIONAL_SQUAD_MAX,
   NATIONAL_SQUAD_MIN_GK,
 } from "./international.js";
+import {
+  playerThumbLinkHtml,
+  playerNameLinkHtml,
+} from "./player_links.js";
 
 const POSITION_GROUPS = {
   Goalkeepers: ["GK"],
@@ -72,7 +76,6 @@ function renderSquad(rows, isMyNation) {
 
     for (const r of groupPlayers) {
       used.add(String(r.player_id));
-      const imgURL = `https://pesdb.net/assets/img/card/b${r.player_id}.png`;
       const rating = r.player_rating ?? "—";
       const avg =
         r.intl_avg_rating != null ? Number(r.intl_avg_rating).toFixed(2) : "—";
@@ -85,8 +88,8 @@ function renderSquad(rows, isMyNation) {
 
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td><img src="${imgURL}" class="player-thumb" alt="" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
-        <td><a href="player_career.html?id=${encodeURIComponent(String(r.player_id))}" class="squad-player-link">${r.player_name || r.player_id}</a></td>
+        <td>${playerThumbLinkHtml(r.player_id, { alt: r.player_name })}</td>
+        <td>${playerNameLinkHtml(r.player_id, r.player_name || r.player_id)}</td>
         <td>${club}</td>
         <td>${r.player_position || "—"}</td>
         <td>${rating}</td>
@@ -112,11 +115,10 @@ function renderSquad(rows, isMyNation) {
     tbody.appendChild(headerRow);
 
     for (const r of other) {
-      const imgURL = `https://pesdb.net/assets/img/card/b${r.player_id}.png`;
       const tr = document.createElement("tr");
       tr.innerHTML = `
-        <td><img src="${imgURL}" class="player-thumb" alt="" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
-        <td>${r.player_name || r.player_id}</td>
+        <td>${playerThumbLinkHtml(r.player_id, { alt: r.player_name })}</td>
+        <td>${playerNameLinkHtml(r.player_id, r.player_name || r.player_id)}</td>
         <td>${fullClubName(r.club_short_name) || r.club_short_name || "—"}</td>
         <td>${r.player_position || "—"}</td>
         <td>${r.player_rating ?? "—"}</td>

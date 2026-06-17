@@ -129,6 +129,10 @@
       formatAuctionTimerText,
       prizeDescription,
     } from "./special_auction.js";
+    import {
+      playerThumbLinkHtml,
+      playerNameLinkHtml,
+    } from "./player_links.js";
 
     let auction = null;
     let clubShort = null;
@@ -220,8 +224,8 @@
         if (p) {
           els.playerReveal.innerHTML = `
             <div class="clue-box">
-              <img src="https://pesdb.net/assets/img/card/b${p.Konami_ID}.png" height="80" alt="">
-              <b>${p.Name}</b> — ${p.Position} · ${p.Rating}
+              ${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}
+              <b>${playerNameLinkHtml(p.Konami_ID, p.Name, { className: "player-link" })}</b> — ${p.Position} · ${p.Rating}
             </div>`;
         }
       }

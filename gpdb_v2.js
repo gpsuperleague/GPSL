@@ -61,6 +61,11 @@ import {
   renderNationFlag,
   NATIONAL_SQUAD_MAX,
 } from "./international.js";
+import {
+  playerThumbLinkHtml,
+  playerNameLinkHtml,
+  pesdbPlayerUrl,
+} from "./player_links.js";
 
 let draftAuctionStartTime = null;
 let draftJoinWindowEnd = null;
@@ -557,6 +562,12 @@ document.addEventListener("DOMContentLoaded", () => {
       return CLUB_NAME_MAP[value] || value;
     }
 
+    if (col === "Name") {
+      return playerNameLinkHtml(player.Konami_ID, value, {
+        className: "player-link",
+      });
+    }
+
     return value ?? "";
   }
 
@@ -731,8 +742,6 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
 
-        const imgURL = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
-
         return `
           <tr data-konami-id="${player.Konami_ID}"
               data-rating="${player.Rating ?? ""}"
@@ -743,11 +752,10 @@ document.addEventListener("DOMContentLoaded", () => {
               data-contract-seasons="${player.contract_seasons_remaining ?? ""}"
               data-nation="${player.Nation ?? ""}"
               data-age="${player.Age ?? ""}">
-            <td>
-              <img src="${imgURL}"
-                   class="gpdb-thumb"
-                   onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'">
-            </td>
+            <td>${playerThumbLinkHtml(player.Konami_ID, {
+              className: "gpdb-thumb",
+              alt: player.Name,
+            })}</td>
             ${TABLE_DISPLAY_COLUMNS.map(
               (col) => `<td>${formatCellValue(col, player)}</td>`
             ).join("")}
@@ -774,13 +782,11 @@ document.addEventListener("DOMContentLoaded", () => {
     Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
       row.style.cursor = "pointer";
       row.addEventListener("click", e => {
-        if (e.target.closest(".make-offer-btn, .call-up-btn")) return;
+        if (e.target.closest(".make-offer-btn, .call-up-btn, a")) return;
         const konamiId = row.getAttribute("data-konami-id");
-        window.open(
-          `https://pesdb.net/efootball/?id=${konamiId}`,
-          "_blank",
-          "noopener"
-        );
+        if (konamiId) {
+          window.open(pesdbPlayerUrl(konamiId), "_blank", "noopener");
+        }
       });
     });
 

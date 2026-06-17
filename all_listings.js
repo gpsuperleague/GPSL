@@ -14,10 +14,14 @@ import {
   confirmSquadRulesBeforeBid,
   squadRulesBidWarningLines,
 } from "./squad_rules.js";
-
-function pesdbPlayerUrl(konamiId) {
-  return `https://pesdb.net/efootball/?id=${encodeURIComponent(konamiId)}`;
-}
+import {
+  playerThumbLinkHtml,
+  playerNameLinkHtml,
+  pesdbPlayerUrl,
+  pesdbPlayerCardUrl,
+  gpslPlayerCareerUrl,
+  PESDB_FALLBACK_CARD_IMG,
+} from "./player_links.js";
 
 // Use global Supabase client (created in all_listings.html)
 const supabase = window.supabase;
@@ -418,8 +422,6 @@ async function renderListings() {
 
     const highestClubText = highestClubLabel(listing, userBidListingIds);
 
-    const imgURL = `https://pesdb.net/assets/img/card/b${listing.player_id}.png`;
-    const pesdbUrl = pesdbPlayerUrl(listing.player_id);
     const clubUrl = clubPageHref(listing.seller_club_id);
     const clubLabel = fullClubName(listing.seller_club_id);
     const playerName = player?.Name || "Unknown";
@@ -444,16 +446,17 @@ async function renderListings() {
       </td>
 
       <td>
-        <a href="${pesdbUrl}" target="_blank" rel="noopener" class="gpsl-link listing-thumb-link pesdb-link">
-          <img src="${imgURL}"
-               class="listing-thumb"
-               alt="${playerName}"
-               onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'">
-        </a>
+        ${playerThumbLinkHtml(listing.player_id, {
+          className: "listing-thumb",
+          alt: playerName,
+          linkClass: "gpsl-link listing-thumb-link pesdb-link",
+        })}
       </td>
 
       <td>
-        <a href="${pesdbUrl}" target="_blank" rel="noopener" class="gpsl-link pesdb-link">${playerName}</a>
+        ${playerNameLinkHtml(listing.player_id, playerName, {
+          className: "gpsl-link squad-player-link",
+        })}
       </td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Playstyle || "-"}</td>
@@ -591,15 +594,20 @@ async function openBidModal(listing, player) {
   const pesdbUrl = pesdbPlayerUrl(konamiId);
   const imgEl = document.getElementById("bid-modal-player-img");
   const pesdbLink = document.getElementById("bid-player-pesdb-link");
+  const nameEl = document.getElementById("bid-player-name");
 
-  imgEl.src = `https://pesdb.net/assets/img/card/b${konamiId}.png`;
+  imgEl.src = pesdbPlayerCardUrl(konamiId);
   imgEl.onerror = () => {
-    imgEl.src = "https://i.imgur.com/3s8XQ7Y.png";
+    imgEl.src = PESDB_FALLBACK_CARD_IMG;
   };
   pesdbLink.href = pesdbUrl;
 
-  document.getElementById("bid-player-name").textContent =
-    player?.Name || "Unknown";
+  const playerName = player?.Name || "Unknown";
+  if (nameEl) {
+    nameEl.innerHTML = playerNameLinkHtml(konamiId, playerName, {
+      className: "gpsl-link squad-player-link",
+    });
+  }
   document.getElementById("bid-player-position").textContent =
     player?.Position || "-";
   document.getElementById("bid-player-playstyle").textContent =

@@ -89,7 +89,9 @@
 
     <div class="player-header">
       <div>
-        <img id="playerImg" class="player-img" src="" alt="Player">
+        <a id="playerImgLink" href="#" target="_blank" rel="noopener">
+          <img id="playerImg" class="player-img" src="" alt="Player">
+        </a>
       </div>
       <div class="player-card">
         <h2 style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">
@@ -184,6 +186,11 @@
       confirmSquadRulesBeforeBid,
       squadRulesBidWarningLines,
     } from "./squad_rules.js";
+    import {
+      playerNameLinkHtml,
+      pesdbPlayerUrl,
+      pesdbPlayerCardUrl,
+    } from "./player_links.js";
 
     /* ============================================================
        STATE
@@ -400,15 +407,22 @@
       draftBidPlayer = player;
 
       /* --- Player Info --- */
-      document.getElementById("playerName").textContent = player.Name;
+      const nameEl = document.getElementById("playerName");
+      if (nameEl) {
+        nameEl.innerHTML = playerNameLinkHtml(player.Konami_ID, player.Name, {
+          className: "player-link",
+        });
+      }
       document.getElementById("playerMeta").textContent =
         `Pos: ${player.Position} | Rating: ${player.Rating} | Age: ${player.Age}`;
       document.getElementById("playerValue").textContent =
         `Market Value: ₿ ${Number(player.market_value).toLocaleString("en-GB")}`;
 
       const img = document.getElementById("playerImg");
-      img.src = `https://pesdb.net/assets/img/card/b${player.Konami_ID}.png`;
-      img.onerror = () => img.src = "images/silhouette.png";
+      const imgLink = document.getElementById("playerImgLink");
+      img.src = pesdbPlayerCardUrl(player.Konami_ID);
+      img.onerror = () => { img.src = "images/silhouette.png"; };
+      if (imgLink) imgLink.href = pesdbPlayerUrl(player.Konami_ID);
 
       /* --- Bids (current draft window, draft-only rows) --- */
       const bids = await fetchCurrentDraftAuctionBids(

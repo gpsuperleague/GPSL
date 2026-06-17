@@ -491,7 +491,9 @@ Design memory for `finances.html` overhaul, ledger line types, and **GPSL Centra
 
 **Loans (run after phase 1):** [`central_bank_loans.sql`](./central_bank_loans.sql) — `club_loans`, `club_take_loan` / `club_repay_loan`, extended `gpsl_bank_public` (limits + `loans_enabled`).
 
-**Public bank views:** [`central_bank_public_views.sql`](./central_bank_public_views.sql) — `bank_ledger_public`, `club_loans_league_public` for [`central_bank.html`](../central_bank.html). EOS interest posting still TBD.
+**Model A flows (run after phase 1 + loans + subsidies/fines/wages/TV/prizes/stadium patches):** [`patches/central_bank_model_a_flows.sql`](./patches/central_bank_model_a_flows.sql) — routes GPDB drafts, subsidies, taxes, prizes, TV, fines, stadium purchase/expansion, and FFP through `post_club_ledger` with central bank legs; adds `competition_post_eos_balance_interest` (0.5% on positive balances) and `backfill_central_bank_legs()`.
+
+**Public bank views:** [`central_bank_public_views.sql`](./central_bank_public_views.sql) — `bank_ledger_public`, `club_loans_league_public` for [`central_bank.html`](../central_bank.html). Wire `competition_post_eos_balance_interest` into season rollover when ready.
 
 ## Fix active listing end times (24h + 7pm UK)
 

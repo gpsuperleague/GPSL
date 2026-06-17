@@ -8,6 +8,7 @@ import {
 } from "./clubs_lookup.js";
 import { DIVISION_LABELS } from "./competition.js";
 import { renderTrophyCabinet } from "./history_trophies.js";
+import { playerNameLinkHtml } from "./player_links.js";
 
 const AWARD_LABELS = {
   ballon_dor: "Ballon d'Or",
@@ -33,8 +34,7 @@ function signingSourceLabel(row) {
 
 function playerLink(id, name) {
   if (!id) return name || "—";
-  const label = name || id;
-  return `<a class="gpsl-link" href="player_career.html?id=${encodeURIComponent(id)}">${label}</a>`;
+  return playerNameLinkHtml(id, name || id, { className: "gpsl-link" });
 }
 
 function showError(msg) {

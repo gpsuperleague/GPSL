@@ -412,6 +412,11 @@
       confirmSquadRulesBeforeBid,
       squadRulesBidWarningLines,
     } from "./squad_rules.js";
+    import {
+      playerThumbLinkHtml,
+      playerNameLinkHtml,
+      pesdbPlayerCardUrl,
+    } from "./player_links.js";
 
     let transferWindowOpen = false;
     let buyerShortName = null;
@@ -603,22 +608,13 @@
               <tbody>
                 ${groupPlayers.map(p => `
                   <tr>
-                    <td>
-                      <img 
-                        class="club-thumb"
-                        src="https://pesdb.net/assets/img/card/b${p.Konami_ID}.png"
-                        onerror="this.src='images/silhouette.png'"
-                      >
-                    </td>
-                    <td>
-                      <a 
-                        href="https://pesdb.net/pes2021/?id=${p.Konami_ID}" 
-                        target="_blank" 
-                        class="player-link"
-                      >
-                        ${p.Name}
-                      </a>
-                    </td>
+                    <td>${playerThumbLinkHtml(p.Konami_ID, {
+                      className: "club-thumb",
+                      alt: p.Name,
+                    })}</td>
+                    <td>${playerNameLinkHtml(p.Konami_ID, p.Name, {
+                      className: "player-link",
+                    })}</td>
                     <td>${p.Nation}</td>
                     <td>${p.Position}</td>
                     <td>${p.Rating}</td>
@@ -762,8 +758,7 @@
       document.getElementById("offerPlayerValue").textContent =
         `Market Value: ₿ ${Number(value).toLocaleString("en-GB")}`;
 
-      document.getElementById("offerPlayerImg").src =
-        `https://pesdb.net/assets/img/card/b${imgId}.png`;
+      document.getElementById("offerPlayerImg").src = pesdbPlayerCardUrl(imgId);
       document.getElementById("offerPlayerImg").onerror = function () {
         this.src = 'images/silhouette.png';
       };

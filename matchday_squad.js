@@ -17,6 +17,12 @@ import {
   validateFormationMirroring,
   PITCH_LABEL_PRESETS,
 } from "./matchday_formations.js";
+import {
+  pesdbPlayerCardUrl,
+  pesdbPlayerUrl,
+  playerNameLinkHtml,
+  PESDB_FALLBACK_CARD_IMG,
+} from "./player_links.js";
 
 export { buildPitchLayoutPayload } from "./matchday_formations.js";
 
@@ -69,10 +75,10 @@ const POSITION_TO_PITCH = {
   CF: ["CF"],
 };
 
-const FALLBACK_IMG = "https://i.imgur.com/3s8XQ7Y.png";
+const FALLBACK_IMG = PESDB_FALLBACK_CARD_IMG;
 
 export function playerCardUrl(konamiId) {
-  return `https://pesdb.net/assets/img/card/b${konamiId}.png`;
+  return pesdbPlayerCardUrl(konamiId);
 }
 
 function playerKey(p) {
@@ -297,10 +303,12 @@ function renderPlayerCard(player, { compact = false, pitch = false } = {}) {
   card.draggable = true;
   card.dataset.playerId = id;
   card.innerHTML = `
-    <img src="${playerCardUrl(id)}" alt="" draggable="false"
-      onerror="this.src='${FALLBACK_IMG}'">
+    <a href="${pesdbPlayerUrl(id)}" target="_blank" rel="noopener" class="squad-player-card-thumb-link">
+      <img src="${playerCardUrl(id)}" alt="" draggable="false"
+        onerror="this.src='${FALLBACK_IMG}'">
+    </a>
     <div class="spc-meta">
-      <div class="spc-name">${name}</div>
+      <div class="spc-name">${playerNameLinkHtml(id, name, { className: "squad-player-link" })}</div>
       ${compact ? "" : `<div class="spc-pos">${pos}</div>`}
     </div>`;
   card.addEventListener("dragstart", (e) => {

@@ -36,6 +36,17 @@ import {
   isDraftFavouritesAvailable,
   draftFavouritesSetupHint,
 } from "./draft_favourites.js";
+import { playerNameLinkHtml } from "./player_links.js";
+
+function playerLinkCell(playerId, player, fallbackName) {
+  const pid = String(playerId ?? player?.Konami_ID ?? "").trim();
+  const name =
+    player?.Name || fallbackName || (pid ? `Player ${pid}` : "Unknown");
+  if (!pid) return name;
+  return playerNameLinkHtml(pid, name, {
+    className: "gpsl-link squad-player-link",
+  });
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
@@ -236,7 +247,7 @@ async function loadDraftFavouritesSection(shortName) {
           <td>
             <button type="button" class="draft-fav-remove fav-on" data-player-id="${pid}" title="${favouriteButtonLabel(true)}" aria-label="${favouriteButtonLabel(true)}">${favouriteStarChar(true)}</button>
           </td>
-          <td>${name}</td>
+          <td>${playerLinkCell(pid, player, name)}</td>
           <td>${highestText}</td>
           <td>${statusText}</td>
           <td>${actionHtml}</td>
@@ -344,7 +355,7 @@ async function loadActiveListings(shortName) {
 
           return `
             <tr>
-              <td>${name}${forcedNote}</td>
+              <td>${playerLinkCell(row.player_id, player, name)}${forcedNote}</td>
               <td>₿ ${reserve}</td>
               <td>${endTime ? endTime.toLocaleString() : "-"}</td>
               <td>${actionsHtml}</td>
@@ -493,16 +504,14 @@ async function renderBuyerBidTable(bids, listingMap, emptyText) {
       </tr>
       ${bids
         .map((row) => {
-          let playerName = "Unknown";
+          let playerId = "";
+          let player = null;
           let typeLabel = "Listing bid";
 
           if (row.listing_id != null) {
             const listing = listingMap.get(row.listing_id);
-            const player = playerFromMap(
-              playersFromListings,
-              listing?.player_id
-            );
-            playerName = player?.Name || "Unknown";
+            playerId = listing?.player_id;
+            player = playerFromMap(playersFromListings, playerId);
             const st = String(listing?.status || "");
             if (st === "Review" || st === "Seller Review") {
               typeLabel = "Leading — seller review";
@@ -514,14 +523,14 @@ async function renderBuyerBidTable(bids, listingMap, emptyText) {
               typeLabel = "Leading — auction live";
             }
           } else if (isPendingContractedDirectOffer(row)) {
-            const player = playerFromMap(directPlayers, getBidPlayerId(row));
-            playerName = player?.Name || "Unknown";
+            playerId = getBidPlayerId(row);
+            player = playerFromMap(directPlayers, playerId);
             typeLabel = "Direct offer — awaiting seller";
           }
 
           return `
           <tr>
-            <td>${playerName}</td>
+            <td>${playerLinkCell(playerId, player)}</td>
             <td>₿ ${Number(row.bid_amount).toLocaleString("en-GB")}</td>
             <td>${typeLabel}</td>
             <td>${new Date(row.bid_time).toLocaleString()}</td>
@@ -830,7 +839,7 @@ async function loadSellerReview(shortName) {
 
             return `
             <tr>
-              <td>${name}${forcedNote}</td>
+              <td>${playerLinkCell(row.player_id, player, name)}${forcedNote}</td>
               <td>${formatMoney(reserve)}</td>
               <td>${bid > 0 ? formatMoney(bid) : "—"}</td>
               <td>${shortfall > 0 ? formatMoney(shortfall) : "—"}</td>
@@ -873,7 +882,7 @@ async function loadSellerReview(shortName) {
 
             return `
             <tr>
-              <td>${name}</td>
+              <td>${playerLinkCell(pid, player, name)}</td>
               <td>${displayClubName(row.bidder_club_id)}</td>
               <td>${formatMoney(row.bid_amount)}</td>
               <td>${new Date(row.bid_time).toLocaleString()}</td>
@@ -952,15 +961,16 @@ async function loadClosedListings(shortName) {
         <th>Ended</th>
       </tr>
       ${listings
-        .map(
-          (row) => `
+        .map((row) => {
+          const player = playerFromMap(players, row.player_id);
+          return `
         <tr>
-          <td>${playerFromMap(players, row.player_id)?.Name || "Unknown"}</td>
+          <td>${playerLinkCell(row.player_id, player)}</td>
           <td>₿ ${Number(row.final_price || 0).toLocaleString("en-GB")}</td>
           <td>${new Date(row.end_time).toLocaleString()}</td>
         </tr>
-      `
-        )
+      `;
+        })
         .join("")}
     </table>
   `;
@@ -997,16 +1007,17 @@ async function loadSeasonSignings(shortName) {
         <th>Date</th>
       </tr>
       ${transfers
-        .map(
-          (row) => `
+        .map((row) => {
+          const player = playerFromMap(players, row.player_id);
+          return `
         <tr>
-          <td>${playerFromMap(players, row.player_id)?.Name || "Unknown"}</td>
+          <td>${playerLinkCell(row.player_id, player)}</td>
           <td>${displayClubName(row.seller_club_id)}</td>
           <td>₿ ${Number(row.fee).toLocaleString("en-GB")}</td>
           <td>${new Date(row.transfer_time).toLocaleString()}</td>
         </tr>
-      `
-        )
+      `;
+        })
         .join("")}
     </table>
   `;
@@ -1044,17 +1055,18 @@ async function loadSeasonSales(shortName) {
         <th>Date</th>
       </tr>
       ${transfers
-        .map(
-          (row) => `
+        .map((row) => {
+          const player = playerFromMap(players, row.player_id);
+          return `
         <tr>
-          <td>${playerFromMap(players, row.player_id)?.Name || "Unknown"}</td>
+          <td>${playerLinkCell(row.player_id, player)}</td>
           <td>${formatSeasonSaleType(row)}</td>
           <td>${formatSeasonSaleDestination(row)}</td>
           <td>₿ ${Number(row.fee).toLocaleString("en-GB")}</td>
           <td>${new Date(row.transfer_time).toLocaleString()}</td>
         </tr>
-      `
-        )
+      `;
+        })
         .join("")}
     </table>
   `;

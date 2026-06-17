@@ -329,6 +329,10 @@
       favouriteButtonLabel,
     } from "./draft_favourites.js";
     import { loadClubsMap, fullClubName, ownerTagForClub } from "./clubs_lookup.js";
+    import {
+      playerThumbLinkHtml,
+      playerNameLinkHtml,
+    } from "./player_links.js";
 
     /* ============================================================
        MODULE A: Global State
@@ -591,19 +595,13 @@
               title="${favouriteButtonLabel(isFav)}"
             >${favouriteStarChar(isFav)}</button>
           </td>
-          <td>
-            <img
-              class="draft-thumb"
-              src="https://pesdb.net/assets/img/card/b${player.Konami_ID}.png"
-              alt="${player.Name}"
-              onerror="this.src='https://i.imgur.com/3s8XQ7Y.png';"
-            />
-          </td>
-          <td>
-            <a class="player-link" href="draftauction_player.html?player=${player.Konami_ID}">
-              ${player.Name}
-            </a>
-          </td>
+          <td>${playerThumbLinkHtml(player.Konami_ID, {
+            className: "draft-thumb",
+            alt: player.Name,
+          })}</td>
+          <td>${playerNameLinkHtml(player.Konami_ID, player.Name, {
+            className: "player-link",
+          })}</td>
           <td>${player.Position}</td>
           <td>${player.Rating}</td>
           <td>₿ ${Number(player.market_value).toLocaleString("en-GB")}</td>

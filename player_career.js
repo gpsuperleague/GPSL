@@ -1,6 +1,11 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName, displayClubName } from "./clubs_lookup.js";
 import { DIVISION_LABELS, formatMoney } from "./competition.js";
+import {
+  pesdbPlayerUrl,
+  pesdbPlayerCardUrl,
+  PESDB_FALLBACK_CARD_IMG,
+} from "./player_links.js";
 
 const AWARD_LABELS = {
   ballon_dor: "Ballon d'Or",
@@ -207,10 +212,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     .join(" · ");
 
   const img = document.getElementById("playerImg");
-  img.src = `https://pesdb.net/assets/img/card/b${playerId}.png`;
+  const imgLink = document.getElementById("playerImgLink");
+  img.src = pesdbPlayerCardUrl(playerId);
   img.onerror = () => {
-    img.src = "https://i.imgur.com/3s8XQ7Y.png";
+    img.src = PESDB_FALLBACK_CARD_IMG;
   };
+  if (imgLink) imgLink.href = pesdbPlayerUrl(playerId);
 
   renderTotals(bundle.totals);
   renderStints(bundle.stints || []);
