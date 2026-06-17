@@ -11,8 +11,9 @@
 -- Pes Max source: Players."Potential" (falls back to Rating when missing — same
 -- as the JS scrape fallback max_level_rating ?? potential ?? rating).
 --
--- THIS FILE ONLY CREATES FUNCTIONS + RUNS A PREVIEW (no data is changed).
--- Apply the values with player_value_recalc_apply.sql once the preview looks right.
+-- THIS FILE: installs functions only (fast — safe for Supabase SQL editor).
+-- Preview (slow, full table scan): player_value_recalc_preview.sql
+-- Apply writes: player_value_recalc_apply.sql or player_value_recalc_apply_one.sql
 -- =============================================================================
 
 -- Parse a possibly-text numeric column (e.g. "79", "24", "79.0") to int, else NULL.
@@ -132,36 +133,7 @@ RETURNS numeric LANGUAGE sql IMMUTABLE AS $$
   FROM (SELECT public.gpsl_pv_base_value(p_rating) AS base) s;
 $$;
 
--- ---------------------------------------------------------------------------
--- PREVIEW — recalculated values vs current stored values (NO WRITES).
--- ---------------------------------------------------------------------------
-WITH calc AS (
-  SELECT
-    p."Konami_ID",
-    p."Name",
-    public.gpsl_pv_int(p."Rating"::text)    AS rating,
-    public.gpsl_pv_int(p."Potential"::text) AS potential,
-    public.gpsl_pv_int(p."Age"::text)       AS age,
-    btrim(p."Position"::text)               AS position,
-    nullif(btrim(p.market_value::text), '')::numeric AS current_mv,
-    public.gpsl_pv_market_value(
-      public.gpsl_pv_int(p."Rating"::text),
-      coalesce(public.gpsl_pv_int(p."Potential"::text), public.gpsl_pv_int(p."Rating"::text)),
-      public.gpsl_pv_int(p."Age"::text),
-      p."Position"::text
-    ) AS new_mv
-  FROM public."Players" p
-  WHERE public.gpsl_pv_int(p."Rating"::text) IS NOT NULL
-)
-SELECT
-  "Konami_ID", "Name", rating, potential, age, position,
-  current_mv, new_mv, (new_mv - current_mv) AS delta
-FROM calc
-ORDER BY abs(coalesce(new_mv, 0) - coalesce(current_mv, 0)) DESC;
-
--- ---------------------------------------------------------------------------
--- APPLY helper — call from player_value_recalc_apply.sql (returns row counts).
--- ---------------------------------------------------------------------------
+-- APPLY helper (optional — player_value_recalc_apply.sql uses inline UPDATE instead).
 CREATE OR REPLACE FUNCTION public.gpsl_player_value_recalc_apply()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -223,6 +195,172 @@ BEGIN
           THEN 'UPDATE matched 0 rows — re-run functions file first, then apply again'
         WHEN v_updated < v_eligible
           THEN 'Some players skipped (NULL new_mv / new_calc)'
+        ELSE NULL
+      END
+  );
+END;
+$function$;
+
+NOTIFY pgrst, 'reload schema';
+
+-- Smoke test (1 row — confirms functions installed)
+SELECT public.gpsl_pv_market_value(79, 79, 24, 'CB') AS smoke_test_mv_should_be_42412500;
+
+-- ---------------------------------------------------------------------------
+-- Admin apply (SECURITY DEFINER — use if direct UPDATE returns 0 rows)
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.gpsl_admin_player_mv_recalc_one(p_konami_id text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_kid_wanted text := btrim(coalesce(p_konami_id, ''));
+  v_row public."Players"%rowtype;
+  v_new_mv numeric;
+  v_new_calc integer;
+  v_rows integer := 0;
+  v_returning_mv text;
+  v_returning_reserve text;
+  v_returning_calc text;
+BEGIN
+  IF v_kid_wanted = '' THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'konami_id required');
+  END IF;
+
+  SELECT p.* INTO v_row
+  FROM public."Players" p
+  WHERE btrim(p."Konami_ID"::text) = v_kid_wanted
+     OR p."Konami_ID"::text = v_kid_wanted
+  ORDER BY p."Konami_ID"
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'error', 'player not found',
+      'konami_id_wanted', v_kid_wanted
+    );
+  END IF;
+
+  v_new_mv := public.gpsl_pv_market_value(
+    public.gpsl_pv_int(v_row."Rating"::text),
+    coalesce(
+      public.gpsl_pv_int(v_row."Potential"::text),
+      public.gpsl_pv_int(v_row."Rating"::text)
+    ),
+    public.gpsl_pv_int(v_row."Age"::text),
+    v_row."Position"::text
+  );
+
+  v_new_calc := public.gpsl_pv_calc_potential(
+    public.gpsl_pv_int(v_row."Rating"::text),
+    coalesce(
+      public.gpsl_pv_int(v_row."Potential"::text),
+      public.gpsl_pv_int(v_row."Rating"::text)
+    ),
+    public.gpsl_pv_int(v_row."Age"::text)
+  );
+
+  UPDATE public."Players" p
+  SET
+    market_value = v_new_mv,
+    "Maximum_Reserve_Price" = round(v_new_mv * 1.5),
+    "Calc_Potential" = v_new_calc
+  WHERE p."Konami_ID" IS NOT DISTINCT FROM v_row."Konami_ID"
+  RETURNING
+    p.market_value::text,
+    p."Maximum_Reserve_Price"::text,
+    p."Calc_Potential"::text
+  INTO v_returning_mv, v_returning_reserve, v_returning_calc;
+
+  GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+  RETURN jsonb_build_object(
+    'ok', v_rows = 1,
+    'konami_id_stored', v_row."Konami_ID"::text,
+    'konami_id_wanted', v_kid_wanted,
+    'name', v_row."Name",
+    'old_mv', v_row.market_value,
+    'new_mv', v_new_mv,
+    'new_reserve', round(v_new_mv * 1.5),
+    'new_calc_potential', v_new_calc,
+    'rows_updated', v_rows,
+    'returning_mv', v_returning_mv,
+    'returning_reserve', v_returning_reserve,
+    'returning_calc', v_returning_calc,
+    'write_blocked',
+      CASE
+        WHEN v_rows = 1
+         AND v_returning_mv IS NOT NULL
+         AND v_returning_mv::numeric IS DISTINCT FROM v_new_mv
+          THEN 'UPDATE ran but RETURNING mv != new_mv — check triggers/rules/views on Players'
+        ELSE NULL
+      END
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.gpsl_admin_player_mv_recalc_all()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_updated integer := 0;
+  v_eligible integer := 0;
+BEGIN
+  SELECT count(*)::integer INTO v_eligible
+  FROM public."Players" p
+  WHERE public.gpsl_pv_int(p."Rating"::text) IS NOT NULL;
+
+  WITH calc AS (
+    SELECT
+      p."Konami_ID" AS kid,
+      public.gpsl_pv_market_value(
+        public.gpsl_pv_int(p."Rating"::text),
+        coalesce(
+          public.gpsl_pv_int(p."Potential"::text),
+          public.gpsl_pv_int(p."Rating"::text)
+        ),
+        public.gpsl_pv_int(p."Age"::text),
+        p."Position"::text
+      ) AS new_mv,
+      public.gpsl_pv_calc_potential(
+        public.gpsl_pv_int(p."Rating"::text),
+        coalesce(
+          public.gpsl_pv_int(p."Potential"::text),
+          public.gpsl_pv_int(p."Rating"::text)
+        ),
+        public.gpsl_pv_int(p."Age"::text)
+      ) AS new_calc
+    FROM public."Players" p
+    WHERE public.gpsl_pv_int(p."Rating"::text) IS NOT NULL
+  ),
+  touched AS (
+    UPDATE public."Players" p
+    SET
+      market_value = c.new_mv,
+      "Maximum_Reserve_Price" = round(c.new_mv * 1.5),
+      "Calc_Potential" = c.new_calc
+    FROM calc c
+    WHERE p."Konami_ID" IS NOT DISTINCT FROM c.kid
+      AND c.new_mv IS NOT NULL
+      AND c.new_calc IS NOT NULL
+    RETURNING p."Konami_ID"
+  )
+  SELECT count(*)::integer INTO v_updated FROM touched;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'eligible_players', v_eligible,
+    'rows_updated', v_updated,
+    'warning',
+      CASE
+        WHEN v_updated = 0 AND v_eligible > 0 THEN 'UPDATE matched 0 rows'
+        WHEN v_updated < v_eligible THEN 'Some players skipped (NULL new_mv / new_calc)'
         ELSE NULL
       END
   );
