@@ -41,7 +41,11 @@ export async function loadClubsMap() {
     if (tag) ownerTagsMap.set(row.ShortName, tag);
   });
 
-  console.log("Clubs map loaded:", clubsMap);
+}
+
+export function formatFixtureContinent(fixture) {
+  if (!fixture) return "—";
+  return CONTINENT_LABELS[fixture.home_continent] || fixture.home_continent || "—";
 }
 
 /* ============================================================

@@ -19,7 +19,11 @@ import {
   calendarStatusBanner,
 } from "./competition_calendar.js";
 import { loadClubsMap, clubWithOwnerHtml, stadiumName } from "./clubs_lookup.js";
-import { formatFixtureConditionsRow } from "./competition_conditions.js";
+import {
+  formatMatchConditions,
+  formatFixtureContinent,
+  fixtureStadiumLabel,
+} from "./competition_conditions.js";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 
 let calendarStatus = null;
@@ -31,12 +35,30 @@ let fixtureView = "league";
 let currentCup = "league_cup";
 let allFixtures = [];
 
-function fixtureConditions(fixture) {
-  return formatFixtureConditionsRow(
-    fixture,
-    myClub.short,
-    stadiumName(fixture.home_club_short_name)
-  );
+const FIXTURE_TABLE_HEAD = `
+  <th>Home</th>
+  <th></th>
+  <th>Away</th>
+  <th>Stadium</th>
+  <th>Continent</th>
+  <th>Conditions</th>
+  <th class="my-actions">Your match</th>
+`;
+
+function homeStadium(fixture) {
+  return stadiumName(fixture.home_club_short_name);
+}
+
+function fixtureStadiumCell(fixture) {
+  return fixtureStadiumLabel(fixture, myClub.short, homeStadium(fixture));
+}
+
+function fixtureContinentCell(fixture) {
+  return formatFixtureContinent(fixture);
+}
+
+function fixtureConditionsCell(fixture) {
+  return formatMatchConditions(fixture);
 }
 
 function matchdayUrl(fixtureId) {
@@ -69,6 +91,18 @@ function actionCell(fixture) {
   }
 
   return "";
+}
+
+function fixtureRowHtml(fixture) {
+  return `
+    <td>${clubWithOwnerHtml(fixture.home_club_name, fixture.home_club_short_name, "block")}</td>
+    <td class="score">${formatFixtureScore(fixture, myClub)}</td>
+    <td>${clubWithOwnerHtml(fixture.away_club_name, fixture.away_club_short_name, "block")}</td>
+    <td class="fixture-stadium">${fixtureStadiumCell(fixture)}</td>
+    <td class="fixture-continent">${fixtureContinentCell(fixture)}</td>
+    <td class="fixture-conditions">${fixtureConditionsCell(fixture)}</td>
+    <td class="my-actions">${actionCell(fixture)}</td>
+  `;
 }
 
 function renderDivisionToolbar() {
@@ -155,11 +189,7 @@ function renderCupFixtures() {
     block.innerHTML = `
       <div class="matchday-head"><span>${CUP_LABELS[currentCup] || currentCup} · Round ${round}</span></div>
       <table class="gpsl-table">
-        <thead>
-          <tr>
-            <th>Match</th><th>Home</th><th></th><th>Away</th><th>Conditions (home venue)</th><th>Status</th><th class="my-actions">Your action</th>
-          </tr>
-        </thead>
+        <thead><tr><th>Match</th>${FIXTURE_TABLE_HEAD}</tr></thead>
         <tbody></tbody>
       </table>
     `;
@@ -167,15 +197,7 @@ function renderCupFixtures() {
     for (const f of rows) {
       const tr = document.createElement("tr");
       if (fixtureInvolvesClub(f, myClub)) tr.classList.add("my-fixture");
-      tr.innerHTML = `
-        <td>M${f.cup_match}</td>
-        <td>${clubWithOwnerHtml(f.home_club_name, f.home_club_short_name, "block")}</td>
-        <td class="score">${formatFixtureScore(f, myClub)}</td>
-        <td>${clubWithOwnerHtml(f.away_club_name, f.away_club_short_name, "block")}</td>
-        <td class="fixture-conditions">${fixtureConditions(f)}</td>
-        <td>${f.status}</td>
-        <td class="my-actions">${actionCell(f)}</td>
-      `;
+      tr.innerHTML = `<td>M${f.cup_match}</td>${fixtureRowHtml(f)}`;
       tbody.appendChild(tr);
     }
     root.appendChild(block);
@@ -204,32 +226,19 @@ function renderFixtures() {
   for (const { matchday, fixtures: rows } of groups) {
     const sample = rows[0];
     const monthLabel = GPSL_MONTH_LABELS[sample.gpsl_month] || sample.gpsl_month;
-    const weekLabel = sample.week_in_month ?? "—";
     const monthLive =
       !calendarStatus?.calendar_configured ||
       calendarStatus.active_gpsl_month === sample.gpsl_month;
-    const myFixture = myClub.short
-      ? rows.find((f) => fixtureInvolvesClub(f, myClub))
-      : null;
-    const myConditions = myFixture ? fixtureConditions(myFixture) : null;
     const block = document.createElement("div");
     block.className = "matchday-block";
 
     block.innerHTML = `
       <div class="matchday-head">
         <span>Matchday ${matchday}</span>
-        <span>${monthLabel} · week ${weekLabel}${monthLive ? "" : " · <span style=\"color:#888\">locked</span>"}${myConditions ? ` · <span class="weather">Your match: ${myConditions}</span>` : ""}</span>
+        <span>${monthLabel} · Week ${matchday}${monthLive ? "" : " · <span style=\"color:#888\">locked</span>"}</span>
       </div>
       <table class="gpsl-table">
-        <thead>
-          <tr>
-            <th>Home</th>
-            <th></th>
-            <th>Away</th>
-            <th>Conditions (home venue)</th>
-            <th class="my-actions">Your match</th>
-          </tr>
-        </thead>
+        <thead><tr>${FIXTURE_TABLE_HEAD}</tr></thead>
         <tbody></tbody>
       </table>
     `;
@@ -238,13 +247,7 @@ function renderFixtures() {
     for (const f of rows) {
       const tr = document.createElement("tr");
       if (fixtureInvolvesClub(f, myClub)) tr.className = "my-fixture";
-      tr.innerHTML = `
-        <td>${clubWithOwnerHtml(f.home_club_name, f.home_club_short_name, "block")}</td>
-        <td class="score">${formatFixtureScore(f, myClub)}</td>
-        <td>${clubWithOwnerHtml(f.away_club_name, f.away_club_short_name, "block")}</td>
-        <td class="fixture-conditions">${fixtureConditions(f)}</td>
-        <td class="my-actions">${actionCell(f)}</td>
-      `;
+      tr.innerHTML = fixtureRowHtml(f);
       tbody.appendChild(tr);
     }
 
@@ -314,12 +317,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   meta.textContent = `${season.label} · ${DIVISION_LABELS[currentDivision]} · your games highlighted in gold`;
 
-  // Load every division so toolbar can switch Super League / Champ A / Champ B.
   const league = await loadLeagueFixtures(supabase);
   const cups = await loadCupFixtures(supabase);
   allFixtures = [...league, ...cups];
   if (!allFixtures.length && season) {
-    const root = document.getElementById("fixturesRoot");
     root.innerHTML =
       '<p class="empty">No fixtures loaded. Check an active season and that admin generated fixtures (GPSL Admin → League Fixtures). If the browser console shows a database error, run <code>competition_phase3_matchday.sql</code> after phase 1.</p>';
   }

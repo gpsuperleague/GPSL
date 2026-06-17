@@ -150,31 +150,19 @@ export function formatMatchConditions(fixture) {
   return parts.length ? parts.join(" · ") : fixture.weather || "—";
 }
 
-/** Home venue label for the logged-in owner (home = your continent rules; away = opponent's). */
-export function fixtureHomeVenueLabel(fixture, myClubShort, homeStadiumName) {
+/** Stadium label for fixtures table (home venue). */
+export function fixtureStadiumLabel(fixture, myClubShort, homeStadiumName) {
   if (!fixture) return "—";
-  const home = (fixture.home_club_short_name || "").trim().toUpperCase();
-  const mine = (myClubShort || "").trim().toUpperCase();
-  const venueName =
+  const name =
     homeStadiumName ||
     fixture.home_club_name ||
     fixture.home_club_short_name ||
-    "opponent";
-  if (mine && home === mine) return "Your home";
-  if (mine) {
-    return `At ${venueName}`;
-  }
-  return venueName;
-}
-
-/** Match conditions at the home venue, with continent (used on Fixtures). */
-export function formatFixtureConditionsRow(fixture, myClubShort, homeStadiumName) {
-  if (!fixture) return "—";
-  const venue = fixtureHomeVenueLabel(fixture, myClubShort, homeStadiumName);
-  const continent =
-    CONTINENT_LABELS[fixture.home_continent] || fixture.home_continent || null;
-  const cond = formatMatchConditions(fixture);
-  return [venue, continent, cond].filter(Boolean).join(" · ");
+    "—";
+  const home = (fixture.home_club_short_name || "").trim().toUpperCase();
+  const mine = (myClubShort || "").trim().toUpperCase();
+  if (mine && home === mine) return name;
+  if (mine && home !== mine) return `At ${name}`;
+  return name;
 }
 
 export const WEATHER_KEYS = ["fine", "rain", "snow"];
