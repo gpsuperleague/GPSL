@@ -53,8 +53,11 @@ import {
   squadRoleActionOptionsHtml,
   designationForPlayer,
   designationRoleBadge,
+  playerEligibleStar,
   starComplianceRow,
   oooComplianceRow,
+  DESIGNATION_STAR,
+  DESIGNATION_OOO,
 } from "./squad_designations.js";
 
 window.supabase = supabase;
@@ -607,8 +610,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
       const imgURL = `https://pesdb.net/assets/img/card/b${p.Konami_ID}.png`;
 
       const qualBadges = playerSquadQualificationBadges(p, clubNation);
-      const role = designationForPlayer(designationsState, p.Konami_ID);
-      const roleBadge = designationRoleBadge(role);
+      const roleBadge = roleBadgeForPlayer(p, designationsState);
 
       tr.innerHTML = `
         <td><img src="${imgURL}" class="player-thumb" onerror="this.src='https://i.imgur.com/3s8XQ7Y.png'"></td>
@@ -744,23 +746,35 @@ function wireSquadTable() {
   });
 }
 
+/** Star badge for 79+ players (automatic); OOO badge for the nominee. */
+function roleBadgeForPlayer(player, state) {
+  const role = designationForPlayer(state, player?.Konami_ID);
+  if (role === DESIGNATION_OOO) return designationRoleBadge(DESIGNATION_OOO);
+  const min = Number(state?.star_min_rating ?? 79);
+  if (state && playerEligibleStar(player, min)) {
+    return designationRoleBadge(DESIGNATION_STAR);
+  }
+  return "";
+}
+
 /** Reload squad + re-render compliance, action menus and role badges. */
 async function refreshAfterDesignationChange() {
   const { data: squadRows } = await supabase
     .from("Players")
     .select(SQUAD_PLAYER_COLUMNS)
     .eq("Contracted_Team", currentUserShort);
-  renderSquadCompliance(squadRows || [], squadDesignationsState);
-  refreshSquadDesignationSelects(squadRows || [], squadDesignationsState);
+  const rows = squadRows || [];
+  renderSquadCompliance(rows, squadDesignationsState);
+  refreshSquadDesignationSelects(rows, squadDesignationsState);
+  const byId = new Map(rows.map((p) => [String(p.Konami_ID), p]));
   document.querySelectorAll("tr[data-konami-id]").forEach((row) => {
-    const pid = row.dataset.konamiId;
-    const role = designationForPlayer(squadDesignationsState, pid);
+    const player = byId.get(String(row.dataset.konamiId));
     const nameCell = row.querySelector("td:nth-child(2)");
-    if (!nameCell) return;
+    if (!nameCell || !player) return;
     const link = nameCell.querySelector(".squad-player-link");
     const qual = nameCell.querySelector(".squad-qual-badge");
     if (link) {
-      nameCell.innerHTML = `${link.outerHTML}${designationRoleBadge(role)}${qual ? qual.outerHTML : ""}`;
+      nameCell.innerHTML = `${link.outerHTML}${roleBadgeForPlayer(player, squadDesignationsState)}${qual ? qual.outerHTML : ""}`;
     }
   });
 }

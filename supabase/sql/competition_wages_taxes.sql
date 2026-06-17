@@ -228,8 +228,19 @@ SET search_path = public
 AS $function$
 DECLARE
   v_min int;
+  v_ooo text;
 BEGIN
   v_min := (SELECT star_tax_min_rating FROM public.global_settings WHERE id = 1);
+
+  -- The nominated "One of our own" is excused from the star tax. Guarded so
+  -- this still works in environments where designations aren't installed yet.
+  IF to_regclass('public.club_squad_player_designations') IS NOT NULL THEN
+    SELECT d.player_id INTO v_ooo
+    FROM public.club_squad_player_designations d
+    WHERE d.club_short_name = p_club_short_name
+      AND d.designation = 'one_of_our_own'
+    LIMIT 1;
+  END IF;
 
   RETURN (
     SELECT count(*)::int
@@ -238,6 +249,7 @@ BEGIN
       AND p."Rating" IS NOT NULL
       AND btrim(p."Rating"::text) <> ''
       AND btrim(p."Rating"::text)::int >= coalesce(v_min, 70)
+      AND (v_ooo IS NULL OR p."Konami_ID"::text <> v_ooo)
   );
 END;
 $function$;

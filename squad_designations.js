@@ -18,8 +18,11 @@ export function playerEligibleStar(player, minRating = 79) {
   return r != null && r >= minRating;
 }
 
-export function playerEligibleOoo(player, clubNation) {
-  return isHomeGrownPlayer(player, clubNation);
+export function playerEligibleOoo(player, clubNation, minRating = 79) {
+  // Must be home-grown (Nation matches club) AND a star (rated minRating+).
+  return (
+    isHomeGrownPlayer(player, clubNation) && playerEligibleStar(player, minRating)
+  );
 }
 
 export function designationForPlayer(state, playerId) {
@@ -74,10 +77,10 @@ export function squadDesignationOptionsHtml(player, state, clubNation) {
 
 /**
  * Role options for the per-player Action dropdown (Squad page).
- * Returns only the actions currently available to the owner:
- *   - Remove the current role (if Star/OOO),
- *   - Set as Star player (if eligible and a star slot is free),
- *   - Set as One of our own (if home-grown and the club's OOO slot is free).
+ * Stars are automatic (rating-based) and are NOT set here. The only manual role
+ * is "One of our own": the owner nominates ONE home-grown star (Nation matches
+ * club, rated minRating+). The option only appears for eligible players and only
+ * while the club's single OOO slot is free (or already this player).
  * Values are prefixed "role:" so the action handler can route them.
  */
 export function squadRoleActionOptionsHtml(player, state, clubNation) {
@@ -85,35 +88,20 @@ export function squadRoleActionOptionsHtml(player, state, clubNation) {
   const pid = String(player.Konami_ID);
   const current = designationForPlayer(state, pid);
   const minRating = Number(state?.star_min_rating ?? 79);
-  const starCap = Number(state?.star_cap ?? 2);
-  const starCount = Number(state?.star_count ?? 0);
   const oooId = state?.one_of_our_own_player_id
     ? String(state.one_of_our_own_player_id)
     : null;
 
-  const canStar =
-    playerEligibleStar(player, minRating) &&
-    (current === DESIGNATION_STAR || starCount < starCap);
-  const canOoo =
-    playerEligibleOoo(player, clubNation) && (!oooId || oooId === pid);
+  if (current === DESIGNATION_OOO) {
+    return `<option value="role:">✕ Remove One of our own</option>`;
+  }
 
-  const opts = [];
-  if (current === DESIGNATION_STAR || current === DESIGNATION_OOO) {
-    const label =
-      current === DESIGNATION_STAR ? "Star player" : "One of our own";
-    opts.push(`<option value="role:">✕ Remove ${label}</option>`);
+  const canOoo =
+    playerEligibleOoo(player, clubNation, minRating) && (!oooId || oooId === pid);
+  if (canOoo) {
+    return `<option value="role:${DESIGNATION_OOO}">🏠 Set as One of our own</option>`;
   }
-  if (current !== DESIGNATION_STAR && canStar) {
-    opts.push(
-      `<option value="role:${DESIGNATION_STAR}">★ Set as Star player</option>`
-    );
-  }
-  if (current !== DESIGNATION_OOO && canOoo) {
-    opts.push(
-      `<option value="role:${DESIGNATION_OOO}">🏠 Set as One of our own</option>`
-    );
-  }
-  return opts.join("\n");
+  return "";
 }
 
 export function designationRoleBadge(designation) {
@@ -153,9 +141,9 @@ export function starComplianceRow(state) {
   const minRating = Number(state?.star_min_rating ?? 79);
   return {
     rule: "Star players",
-    whoCounts: `Designated ★ players rated ${minRating}+ (${tier})`,
+    whoCounts: `All players rated ${minRating}+ (automatic; ${tier})`,
     requirement: `Up to ${cap}`,
-    note: "One of our own does not count",
+    note: "One of our own is excused (saves star tax)",
     count: `${count} / ${cap}`,
     ok: count <= cap,
     status: count <= cap ? "Within limit" : "Over limit",

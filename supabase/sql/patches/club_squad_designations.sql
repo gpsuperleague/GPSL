@@ -1,7 +1,10 @@
 -- =============================================================================
--- Club squad designations: Star player (79+) and One of our own (home-grown)
--- Star caps: Super League 3, Championship 2. OOO does not count toward star cap.
--- Star tax (wage_star_tax) counts designated stars only — not all high-rated players.
+-- Club squad designations: Star player (automatic, 79+) and One of our own
+-- Stars are AUTOMATIC: every squad player rated >= the star minimum is a star.
+-- Star caps: Super League 3, Championship 2 (registration limit on stars).
+-- One of our own: owner nominates ONE home-grown (Nation matches club) star.
+--   The nominee is EXCUSED from the star count + star tax, freeing a star slot.
+-- Star tax (wage_star_tax) counts automatic stars minus the One of our own.
 -- Run after squad_composition_rules.sql + player_wage_settings.sql + competition_wages_taxes.sql
 -- =============================================================================
 
@@ -126,7 +129,11 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
+  -- "One of our own" must be a home-grown player (Nation matches club) that is
+  -- also a star (rated at or above the star minimum) and on the club's books.
   SELECT public.is_player_homegrown(btrim(p_player_id), p_club_short_name)
+    AND coalesce(public.club_squad_player_rating(btrim(p_player_id)), 0)
+        >= public.club_squad_star_min_rating()
     AND EXISTS (
       SELECT 1 FROM public."Players" p
       WHERE p."Konami_ID"::text = btrim(p_player_id)
@@ -162,16 +169,19 @@ BEGIN
   v_tier := public.competition_club_division_tier(v_club);
   v_min := public.club_squad_star_min_rating();
 
-  SELECT count(*)::integer INTO v_star_count
-  FROM public.club_squad_player_designations d
-  WHERE d.club_short_name = v_club
-    AND d.designation = 'star';
-
   SELECT d.player_id INTO v_ooo
   FROM public.club_squad_player_designations d
   WHERE d.club_short_name = v_club
     AND d.designation = 'one_of_our_own'
   LIMIT 1;
+
+  -- Stars are automatic: every squad player rated >= the star minimum counts,
+  -- EXCEPT the nominated "One of our own" (excused from the star count + tax).
+  SELECT count(*)::integer INTO v_star_count
+  FROM public."Players" p
+  WHERE p."Contracted_Team" = v_club
+    AND nullif(regexp_replace(coalesce(btrim(p."Rating"::text), ''), '[^0-9]', '', 'g'), '')::integer >= v_min
+    AND (v_ooo IS NULL OR p."Konami_ID"::text <> v_ooo);
 
   RETURN jsonb_build_object(
     'club_short_name', v_club,
@@ -208,8 +218,6 @@ DECLARE
   v_club text := public.my_club_shortname();
   v_player text := btrim(p_player_id);
   v_desig text := nullif(lower(btrim(coalesce(p_designation, ''))), '');
-  v_cap smallint;
-  v_star_count integer;
   v_current text;
 BEGIN
   IF v_club IS NULL OR v_club = '' THEN
@@ -220,7 +228,11 @@ BEGIN
     RAISE EXCEPTION 'Player required';
   END IF;
 
-  IF v_desig IS NOT NULL AND v_desig NOT IN ('star', 'one_of_our_own') THEN
+  IF v_desig = 'star' THEN
+    RAISE EXCEPTION 'Star players are automatic (rating-based) — only "One of our own" can be set';
+  END IF;
+
+  IF v_desig IS NOT NULL AND v_desig <> 'one_of_our_own' THEN
     RAISE EXCEPTION 'Invalid designation';
   END IF;
 
@@ -243,24 +255,9 @@ BEGIN
     RETURN public.club_squad_designations_state(v_club);
   END IF;
 
-  IF v_desig = 'star' THEN
-    IF NOT public.club_squad_player_eligible_star(v_player, v_club) THEN
-      RAISE EXCEPTION 'Star players must be rated % or higher', public.club_squad_star_min_rating();
-    END IF;
-
-    v_cap := public.club_squad_star_cap(v_club);
-    SELECT count(*)::integer INTO v_star_count
-    FROM public.club_squad_player_designations d
-    WHERE d.club_short_name = v_club
-      AND d.designation = 'star'
-      AND d.player_id <> v_player;
-
-    IF coalesce(v_star_count, 0) >= v_cap THEN
-      RAISE EXCEPTION 'Star player limit reached (% for %)', v_cap, public.competition_club_division_tier(v_club);
-    END IF;
-  ELSIF v_desig = 'one_of_our_own' THEN
+  IF v_desig = 'one_of_our_own' THEN
     IF NOT public.club_squad_player_eligible_one_of_our_own(v_player, v_club) THEN
-      RAISE EXCEPTION 'One of our own must be home-grown (player Nation matches club Nation)';
+      RAISE EXCEPTION 'One of our own must be home-grown (Nation matches club) and rated % or higher', public.club_squad_star_min_rating();
     END IF;
 
     DELETE FROM public.club_squad_player_designations
@@ -356,7 +353,8 @@ CREATE TRIGGER club_squad_designations_purge_player_trg
   FOR EACH ROW
   EXECUTE FUNCTION public.club_squad_designations_purge_player();
 
--- Star tax: designated stars only (OOO never counted — separate designation)
+-- Star tax: automatic — every squad player rated >= the star minimum is a star,
+-- EXCEPT the nominated "One of our own" (excused from the count and the tax).
 CREATE OR REPLACE FUNCTION public.competition_club_star_tax_count(p_club_short_name text)
 RETURNS int
 LANGUAGE plpgsql
@@ -364,15 +362,22 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $function$
+DECLARE
+  v_min smallint := public.club_squad_star_min_rating();
+  v_ooo text;
 BEGIN
+  SELECT d.player_id INTO v_ooo
+  FROM public.club_squad_player_designations d
+  WHERE d.club_short_name = p_club_short_name
+    AND d.designation = 'one_of_our_own'
+  LIMIT 1;
+
   RETURN (
     SELECT count(*)::int
-    FROM public.club_squad_player_designations d
-    INNER JOIN public."Players" p
-      ON p."Konami_ID"::text = d.player_id
-      AND p."Contracted_Team" = d.club_short_name
-    WHERE d.club_short_name = p_club_short_name
-      AND d.designation = 'star'
+    FROM public."Players" p
+    WHERE p."Contracted_Team" = p_club_short_name
+      AND nullif(regexp_replace(coalesce(btrim(p."Rating"::text), ''), '[^0-9]', '', 'g'), '')::integer >= v_min
+      AND (v_ooo IS NULL OR p."Konami_ID"::text <> v_ooo)
   );
 END;
 $function$;
@@ -408,11 +413,14 @@ BEGIN
     p_club_short_name,
     'wage_star_tax',
     v_amount,
-    format('Star maintenance — %s designated star player(s)', v_count),
+    format('Star maintenance — %s star player(s) rated %s+', v_count, v_min),
     jsonb_build_object('player_count', v_count, 'min_rating', v_min)
   );
 END;
 $function$;
+
+-- Stars are now automatic (rating-based); drop any legacy manual 'star' rows.
+DELETE FROM public.club_squad_player_designations WHERE designation = 'star';
 
 GRANT SELECT ON public.club_squad_player_designations TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_squad_star_cap(text) TO authenticated;
