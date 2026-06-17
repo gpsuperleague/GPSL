@@ -72,6 +72,50 @@ export function squadDesignationOptionsHtml(player, state, clubNation) {
   `;
 }
 
+/**
+ * Role options for the per-player Action dropdown (Squad page).
+ * Returns only the actions currently available to the owner:
+ *   - Remove the current role (if Star/OOO),
+ *   - Set as Star player (if eligible and a star slot is free),
+ *   - Set as One of our own (if home-grown and the club's OOO slot is free).
+ * Values are prefixed "role:" so the action handler can route them.
+ */
+export function squadRoleActionOptionsHtml(player, state, clubNation) {
+  if (!state) return "";
+  const pid = String(player.Konami_ID);
+  const current = designationForPlayer(state, pid);
+  const minRating = Number(state?.star_min_rating ?? 79);
+  const starCap = Number(state?.star_cap ?? 2);
+  const starCount = Number(state?.star_count ?? 0);
+  const oooId = state?.one_of_our_own_player_id
+    ? String(state.one_of_our_own_player_id)
+    : null;
+
+  const canStar =
+    playerEligibleStar(player, minRating) &&
+    (current === DESIGNATION_STAR || starCount < starCap);
+  const canOoo =
+    playerEligibleOoo(player, clubNation) && (!oooId || oooId === pid);
+
+  const opts = [];
+  if (current === DESIGNATION_STAR || current === DESIGNATION_OOO) {
+    const label =
+      current === DESIGNATION_STAR ? "Star player" : "One of our own";
+    opts.push(`<option value="role:">✕ Remove ${label}</option>`);
+  }
+  if (current !== DESIGNATION_STAR && canStar) {
+    opts.push(
+      `<option value="role:${DESIGNATION_STAR}">★ Set as Star player</option>`
+    );
+  }
+  if (current !== DESIGNATION_OOO && canOoo) {
+    opts.push(
+      `<option value="role:${DESIGNATION_OOO}">🏠 Set as One of our own</option>`
+    );
+  }
+  return opts.join("\n");
+}
+
 export function designationRoleBadge(designation) {
   if (designation === DESIGNATION_STAR) {
     return `<span class="squad-role-badge squad-role-star" title="Star player">★</span>`;
@@ -122,7 +166,7 @@ export function oooComplianceRow(state) {
   const has = !!state?.one_of_our_own_player_id;
   return {
     rule: "One of our own",
-    whoCounts: "Home-grown talisman — set in Status column",
+    whoCounts: "Home-grown talisman — set via the Action menu",
     requirement: "1 recommended",
     note: "Does not count toward star limit",
     count: has ? 1 : 0,

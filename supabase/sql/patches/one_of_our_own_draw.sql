@@ -173,9 +173,10 @@ BEGIN
 
     -- Per-club subtransaction: any failure rolls back just this club.
     BEGIN
-      -- Explicit 3-arg form (NULL wage = auto-calculate) avoids the
-      -- ambiguity between the 2-arg and 3-arg overloads.
-      PERFORM public.player_assign_to_club(v_player_id, v_club, NULL::numeric);
+      -- Full 4-arg form pins the latest overload (NULL wage = auto-calculate,
+      -- defer_squad_overflow = false). There are 2-/3-/4-arg overloads, so any
+      -- shorter call is ambiguous.
+      PERFORM public.player_assign_to_club(v_player_id, v_club, NULL::numeric, false);
 
       INSERT INTO public."Transfer_History" (
         player_id, seller_club_id, buyer_club_id, fee, agent_fee, transfer_time, listing_id

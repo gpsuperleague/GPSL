@@ -50,7 +50,7 @@ import {
 import {
   loadSquadDesignationsState,
   setSquadDesignation,
-  squadDesignationOptionsHtml,
+  squadRoleActionOptionsHtml,
   designationForPlayer,
   designationRoleBadge,
   starComplianceRow,
@@ -469,15 +469,19 @@ async function loadSquad() {
 }
 
 function refreshSquadDesignationSelects(players, state) {
-  if (!state) return;
-  document.querySelectorAll("select.squad-designation-select").forEach((sel) => {
+  document.querySelectorAll("select.squad-action-select").forEach((sel) => {
     const pid = sel.dataset.playerId;
     const player = players.find((p) => String(p.Konami_ID) === String(pid));
     if (!player) return;
-    const current = designationForPlayer(state, pid);
-    sel.innerHTML = squadDesignationOptionsHtml(player, state, clubNation);
-    sel.value = current || "";
+    sel.innerHTML = `
+            <option value="">Action</option>
+            ${squadRoleActionOptionsHtml(player, state, clubNation)}
+            ${squadActionOptionsHtml(player)}`;
+    sel.value = "";
   });
+  applyTransferWindowRules();
+  applyForeignSaleOptionState();
+  applyVoluntaryReleaseOptionState();
 }
 
 function renderSquadCompliance(players, designationsState) {
@@ -622,14 +626,12 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
         <td class="squad-col-status">
           <div class="squad-status-stack">
             ${status}
-            <select class="squad-designation-select" data-player-id="${String(p.Konami_ID)}" aria-label="Squad role for ${escapeHtml(p.Name)}">
-              ${squadDesignationOptionsHtml(p, designationsState, clubNation)}
-            </select>
           </div>
         </td>
         <td class="squad-col-action">
           <select class="squad-action-select" data-player-id="${String(p.Konami_ID)}">
             <option value="">Action</option>
+            ${squadRoleActionOptionsHtml(p, designationsState, clubNation)}
             ${squadActionOptionsHtml(p)}
           </select>
         </td>
@@ -701,10 +703,7 @@ function wireSquadTable() {
   tbody.dataset.squadTableWired = "1";
 
   tbody.addEventListener("mousedown", (e) => {
-    if (
-      e.target.closest("select.squad-action-select") ||
-      e.target.closest("select.squad-designation-select")
-    ) {
+    if (e.target.closest("select.squad-action-select")) {
       e.stopPropagation();
     }
   });
@@ -714,9 +713,7 @@ function wireSquadTable() {
       return;
     }
 
-    const sel =
-      e.target.closest("select.squad-action-select") ||
-      e.target.closest("select.squad-designation-select");
+    const sel = e.target.closest("select.squad-action-select");
     if (sel) {
       e.stopPropagation();
       return;
@@ -740,13 +737,6 @@ function wireSquadTable() {
   });
 
   tbody.addEventListener("change", (e) => {
-    const desigSel = e.target.closest("select.squad-designation-select");
-    if (desigSel) {
-      e.stopPropagation();
-      void handleDesignationChange(desigSel);
-      return;
-    }
-
     const sel = e.target.closest("select.squad-action-select");
     if (!sel) return;
     e.stopPropagation();
@@ -754,46 +744,48 @@ function wireSquadTable() {
   });
 }
 
-async function handleDesignationChange(selectEl) {
-  const playerId = selectEl.dataset.playerId;
-  const value = selectEl.value;
-  const previous =
-    designationForPlayer(squadDesignationsState, playerId) || "";
-
-  try {
-    squadDesignationsState = await setSquadDesignation(
-      supabase,
-      playerId,
-      value || null
-    );
-    const { data: squadRows } = await supabase
-      .from("Players")
-      .select(SQUAD_PLAYER_COLUMNS)
-      .eq("Contracted_Team", currentUserShort);
-    renderSquadCompliance(squadRows || [], squadDesignationsState);
-    refreshSquadDesignationSelects(squadRows || [], squadDesignationsState);
-    document.querySelectorAll("tr[data-konami-id]").forEach((row) => {
-      const pid = row.dataset.konamiId;
-      const role = designationForPlayer(squadDesignationsState, pid);
-      const nameCell = row.querySelector("td:nth-child(2)");
-      if (!nameCell) return;
-      const link = nameCell.querySelector(".squad-player-link");
-      const qual = nameCell.querySelector(".squad-qual-badge");
-      if (link) {
-        nameCell.innerHTML = `${link.outerHTML}${designationRoleBadge(role)}${qual ? qual.outerHTML : ""}`;
-      }
-    });
-  } catch (err) {
-    console.error("Designation update failed:", err);
-    alert(err.message || "Could not update squad role.");
-    selectEl.value = previous;
-  }
+/** Reload squad + re-render compliance, action menus and role badges. */
+async function refreshAfterDesignationChange() {
+  const { data: squadRows } = await supabase
+    .from("Players")
+    .select(SQUAD_PLAYER_COLUMNS)
+    .eq("Contracted_Team", currentUserShort);
+  renderSquadCompliance(squadRows || [], squadDesignationsState);
+  refreshSquadDesignationSelects(squadRows || [], squadDesignationsState);
+  document.querySelectorAll("tr[data-konami-id]").forEach((row) => {
+    const pid = row.dataset.konamiId;
+    const role = designationForPlayer(squadDesignationsState, pid);
+    const nameCell = row.querySelector("td:nth-child(2)");
+    if (!nameCell) return;
+    const link = nameCell.querySelector(".squad-player-link");
+    const qual = nameCell.querySelector(".squad-qual-badge");
+    if (link) {
+      nameCell.innerHTML = `${link.outerHTML}${designationRoleBadge(role)}${qual ? qual.outerHTML : ""}`;
+    }
+  });
 }
 
 // Blocks listing when transfer window is closed
 async function handlePlayerAction(playerId, action, selectEl) {
   if (!action) {
     resetActionSelect(selectEl);
+    return;
+  }
+
+  if (action.startsWith("role:")) {
+    resetActionSelect(selectEl);
+    const designation = action.slice("role:".length) || null;
+    try {
+      squadDesignationsState = await setSquadDesignation(
+        supabase,
+        playerId,
+        designation
+      );
+      await refreshAfterDesignationChange();
+    } catch (err) {
+      console.error("Designation update failed:", err);
+      alert(err.message || "Could not update squad role.");
+    }
     return;
   }
 
