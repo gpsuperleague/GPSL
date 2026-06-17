@@ -16,6 +16,7 @@
 import { writeFileSync, readFileSync, mkdirSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { execSync } from "child_process";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const seedPath = join(root, "supabase", "sql", "patches", "managers_seed_data.sql");
@@ -209,6 +210,14 @@ async function main() {
   }
 
   if (!dryRun) saveIdOverrides(overrides);
+
+  if (!dryRun && ok > 0) {
+    execSync("node scripts/sync_manager_portraits_manifest.mjs", {
+      cwd: root,
+      stdio: "inherit",
+    });
+  }
+
   console.log(`Done. saved=${ok} skipped=${skip} failed=${fail}`);
   if (fail) process.exitCode = 1;
 }

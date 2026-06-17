@@ -139,7 +139,7 @@ async function loadManager() {
   applyManagerPortrait(document.getElementById("managerPortrait"), mgr.slug, {
     fallbackEl,
     name: mgr.name,
-  });
+  }).catch((err) => console.warn("manager portrait", err));
 
   document.getElementById("managerValue").textContent =
     `Market value: ${formatMoney(mgr.market_value)}`;

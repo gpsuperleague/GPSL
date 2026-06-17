@@ -18,7 +18,7 @@ import {
 } from "./manager_draft_engine.js";
 import { loadClubsMap, fullClubName, ownerTagForClub } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
-import { managerListCellHtml } from "./manager_images.js";
+import { managerListCellHtml, loadManagerPortraitManifest } from "./manager_images.js";
 
 let buyerShortName = null;
 let managerDraftEnabled = false;
@@ -126,6 +126,8 @@ async function loadManagerDraftListings() {
   }
 
   tbody.innerHTML = "";
+
+  await loadManagerPortraitManifest();
 
   for (const listing of listings) {
     const mgr = managerMap.get(Number(listing.manager_id));
