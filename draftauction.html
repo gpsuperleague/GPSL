@@ -294,6 +294,7 @@
           <th>Market Value</th>
           <th>Highest Bid</th>
           <th>Leading Club</th>
+          <th>Owner</th>
           <th>Bid</th>
         </tr>
       </thead>
@@ -327,6 +328,7 @@
       favouriteStarChar,
       favouriteButtonLabel,
     } from "./draft_favourites.js";
+    import { loadClubsMap, fullClubName, ownerTagForClub } from "./clubs_lookup.js";
 
     /* ============================================================
        MODULE A: Global State
@@ -458,7 +460,7 @@
 
       if (!draftEnabled || !draftAuctionStartTimeUK) {
         if (statusEl) statusEl.textContent = "";
-        tbody.innerHTML = `<tr><td colspan="9">Draft auction is not active.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10">Draft auction is not active.</td></tr>`;
         return;
       }
 
@@ -473,7 +475,7 @@
       }
 
       if (nowUK < draftAuctionStartTimeUK) {
-        tbody.innerHTML = `<tr><td colspan="9">Draft auction has not started yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10">Draft auction has not started yet.</td></tr>`;
         return;
       }
 
@@ -484,7 +486,7 @@
         .eq("status", "Active");
 
       if (!listings || !listings.length) {
-        tbody.innerHTML = `<tr><td colspan="9">No active draft auctions.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10">No active draft auctions.</td></tr>`;
         return;
       }
 
@@ -512,13 +514,11 @@
       for (const bids of bidsByPlayer.values()) {
         for (const b of bids) clubShortNames.push(b.bidder_club_id);
       }
+      for (const l of listings) {
+        if (l.current_highest_bidder) clubShortNames.push(l.current_highest_bidder);
+      }
 
-      const { data: clubs } = await supabase
-        .from("Clubs")
-        .select("ShortName, Club")
-        .in("ShortName", clubShortNames);
-
-      const clubMap = new Map((clubs || []).map(c => [c.ShortName, c.Club]));
+      await loadClubsMap();
 
       const auctionEnded = isDraftAuctionEnded(nowUK, draftAuctionStartTimeUK);
 
@@ -558,8 +558,11 @@
         }
 
         const leadingClubFull = leadingClubShort
-          ? (clubMap.get(leadingClubShort) || leadingClubShort)
+          ? (fullClubName(leadingClubShort) || leadingClubShort)
           : "None";
+        const leadingOwner = leadingClubShort
+          ? (ownerTagForClub(leadingClubShort) || "—")
+          : "—";
 
         const canBid = await canClubBidOnPlayerDraft({
           konamiId: player.Konami_ID,
@@ -606,6 +609,7 @@
           <td>₿ ${Number(player.market_value).toLocaleString("en-GB")}</td>
           <td>${highestAmount !== null ? `₿ ${Number(highestAmount).toLocaleString("en-GB")}` : "None"}</td>
           <td>${leadingClubFull}</td>
+          <td><span class="club-owner-tag">${leadingOwner}</span></td>
           <td>
             <button
               class="bid-btn ${btnClass}"
@@ -620,7 +624,7 @@
       }
 
       if (!tbody.children.length) {
-        tbody.innerHTML = `<tr><td colspan="9">No active draft auctions.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10">No active draft auctions.</td></tr>`;
       }
     }
   </script>

@@ -425,7 +425,7 @@ async function loadListings() {
       <td class="exp-pos">${ordinal(expPos)}<span class="stat-sub">league table</span></td>
       <td class="stat-num">${formatMoney(cost)}<span class="stat-sub">capacity × ₿1,000</span></td>
       <td class="stat-num">${highBidHtml}</td>
-      <td>${row.current_leader_tag || "—"}${isLeader ? ' <span class="leader-you">(you)</span>' : ""}</td>
+      <td>${row.current_leader_tag ? `<span class="club-owner-tag">${row.current_leader_tag}</span>` : "—"}${isLeader ? ' <span class="leader-you">(you)</span>' : ""}</td>
       <td class="bid-col"></td>
     `;
     tr.firstElementChild.appendChild(renderClubCell(row));

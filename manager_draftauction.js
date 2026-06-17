@@ -16,7 +16,7 @@ import {
   getManagerDraftBidEligibility,
   getClubLeadingManagerDraftId,
 } from "./manager_draft_engine.js";
-import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import { loadClubsMap, fullClubName, ownerTagForClub } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 import { managerListCellHtml } from "./manager_images.js";
 
@@ -76,7 +76,7 @@ async function loadManagerDraftListings() {
 
   if (!managerDraftEnabled || !draftAuctionStartTime) {
     if (statusEl) statusEl.textContent = "";
-    tbody.innerHTML = `<tr><td colspan="8">Manager draft auction is not active.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9">Manager draft auction is not active.</td></tr>`;
     return;
   }
 
@@ -89,7 +89,7 @@ async function loadManagerDraftListings() {
   if (statusEl) statusEl.textContent = managerDraftPhaseLabel(phase);
 
   if (nowUK < draftAuctionStartTime) {
-    tbody.innerHTML = `<tr><td colspan="8">Manager draft has not started yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9">Manager draft has not started yet.</td></tr>`;
     return;
   }
 
@@ -100,7 +100,7 @@ async function loadManagerDraftListings() {
     .eq("status", "Active");
 
   if (!listings?.length) {
-    tbody.innerHTML = `<tr><td colspan="8">No active manager draft auctions. Open a free agent in <a href="MGDB.html" style="color:#ff9900;">MGDB</a>.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9">No active manager draft auctions. Open a free agent in <a href="MGDB.html" style="color:#ff9900;">MGDB</a>.</td></tr>`;
     return;
   }
 
@@ -113,10 +113,6 @@ async function loadManagerDraftListings() {
   const managerMap = new Map((managers || []).map((m) => [Number(m.id), m]));
   const bidsByManager = await fetchManagerDraftBidsGrouped(managerIds, draftAuctionStartTime);
 
-  const clubShorts = [];
-  for (const bids of bidsByManager.values()) {
-    for (const b of bids) clubShorts.push(b.bidder_club_id);
-  }
   await loadClubsMap();
   const auctionEnded = isManagerDraftAuctionEnded(
     nowUK,
@@ -139,6 +135,8 @@ async function loadManagerDraftListings() {
     const top = highestManagerDraftBid(bids);
     const high = top?.bid_amount ?? listing.current_highest_bid;
     const leader = top?.bidder_club_id ?? listing.current_highest_bidder;
+    const leaderClub = leader ? fullClubName(leader) || leader : "—";
+    const leaderOwner = leader ? ownerTagForClub(leader) || "—" : "—";
     const eligibility = await getManagerDraftBidEligibility({
       managerId: mgr.id,
       buyerShortName,
@@ -158,7 +156,8 @@ async function loadManagerDraftListings() {
       <td>${mgr.rating}</td>
       <td>${formatMoney(mgr.market_value)}</td>
       <td>${high != null ? formatMoney(high) : "—"}</td>
-      <td>${leader ? fullClubName(leader) || leader : "—"}</td>
+      <td>${leaderClub}</td>
+      <td><span class="club-owner-tag">${leaderOwner}</span></td>
       <td>
         <button class="bid-btn ${btnClass}" data-manager-id="${mgr.id}" title="${lockTitle.replace(/"/g, "&quot;")}" ${auctionEnded || canBid ? "" : "disabled"}>
           ${btnLabel}
