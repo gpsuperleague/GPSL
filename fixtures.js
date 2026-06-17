@@ -19,7 +19,7 @@ import {
   calendarStatusBanner,
 } from "./competition_calendar.js";
 import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
-import { formatMatchConditions } from "./competition_conditions.js";
+import { formatFixtureConditionsRow } from "./competition_conditions.js";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 
 let calendarStatus = null;
@@ -149,7 +149,7 @@ function renderCupFixtures() {
       <table class="gpsl-table">
         <thead>
           <tr>
-            <th>Match</th><th>Home</th><th></th><th>Away</th><th>Status</th><th class="my-actions">Your action</th>
+            <th>Match</th><th>Home</th><th></th><th>Away</th><th>Conditions (home venue)</th><th>Status</th><th class="my-actions">Your action</th>
           </tr>
         </thead>
         <tbody></tbody>
@@ -164,6 +164,7 @@ function renderCupFixtures() {
         <td>${clubWithOwnerHtml(f.home_club_name, f.home_club_short_name, "block")}</td>
         <td class="score">${formatFixtureScore(f, myClub)}</td>
         <td>${clubWithOwnerHtml(f.away_club_name, f.away_club_short_name, "block")}</td>
+        <td class="fixture-conditions">${formatFixtureConditionsRow(f, myClub.short)}</td>
         <td>${f.status}</td>
         <td class="my-actions">${actionCell(f)}</td>
       `;
@@ -195,16 +196,23 @@ function renderFixtures() {
   for (const { matchday, fixtures: rows } of groups) {
     const sample = rows[0];
     const monthLabel = GPSL_MONTH_LABELS[sample.gpsl_month] || sample.gpsl_month;
+    const weekLabel = sample.week_in_month ?? "—";
     const monthLive =
       !calendarStatus?.calendar_configured ||
       calendarStatus.active_gpsl_month === sample.gpsl_month;
+    const myFixture = myClub.short
+      ? rows.find((f) => fixtureInvolvesClub(f, myClub))
+      : null;
+    const myConditions = myFixture
+      ? formatFixtureConditionsRow(myFixture, myClub.short)
+      : null;
     const block = document.createElement("div");
     block.className = "matchday-block";
 
     block.innerHTML = `
       <div class="matchday-head">
         <span>Matchday ${matchday}</span>
-        <span>${monthLabel} · week ${matchday} · <span class="weather">${formatMatchConditions(sample)}</span>${monthLive ? "" : " · <span style=\"color:#888\">locked</span>"}</span>
+        <span>${monthLabel} · week ${weekLabel}${monthLive ? "" : " · <span style=\"color:#888\">locked</span>"}${myConditions ? ` · <span class="weather">Your match: ${myConditions}</span>` : ""}</span>
       </div>
       <table class="gpsl-table">
         <thead>
@@ -212,6 +220,7 @@ function renderFixtures() {
             <th>Home</th>
             <th></th>
             <th>Away</th>
+            <th>Conditions (home venue)</th>
             <th class="my-actions">Your match</th>
           </tr>
         </thead>
@@ -227,6 +236,7 @@ function renderFixtures() {
         <td>${clubWithOwnerHtml(f.home_club_name, f.home_club_short_name, "block")}</td>
         <td class="score">${formatFixtureScore(f, myClub)}</td>
         <td>${clubWithOwnerHtml(f.away_club_name, f.away_club_short_name, "block")}</td>
+        <td class="fixture-conditions">${formatFixtureConditionsRow(f, myClub.short)}</td>
         <td class="my-actions">${actionCell(f)}</td>
       `;
       tbody.appendChild(tr);

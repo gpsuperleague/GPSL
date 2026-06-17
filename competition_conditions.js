@@ -9,6 +9,10 @@ export const CONTINENTS = [
   { id: "asia", label: "Asia" },
 ];
 
+export const CONTINENT_LABELS = Object.fromEntries(
+  CONTINENTS.map((c) => [c.id, c.label])
+);
+
 export const METEO_SEASONS = [
   { id: "spring", label: "Spring" },
   { id: "summer", label: "Summer" },
@@ -144,6 +148,28 @@ export function formatMatchConditions(fixture) {
   if (fixture.weather) parts.push(formatWeatherLabel(fixture.weather));
   if (fixture.pitch_condition) parts.push(formatPitchLabel(fixture.pitch_condition));
   return parts.length ? parts.join(" · ") : fixture.weather || "—";
+}
+
+/** Home venue label for the logged-in owner (home = your continent rules; away = opponent's). */
+export function fixtureHomeVenueLabel(fixture, myClubShort) {
+  if (!fixture) return "—";
+  const home = (fixture.home_club_short_name || "").trim().toUpperCase();
+  const mine = (myClubShort || "").trim().toUpperCase();
+  if (mine && home === mine) return "Your home";
+  if (mine) {
+    return `At ${fixture.home_club_name || fixture.home_club_short_name || "opponent"}`;
+  }
+  return fixture.home_club_name || fixture.home_club_short_name || "Home venue";
+}
+
+/** Match conditions at the home venue, with continent (used on Fixtures). */
+export function formatFixtureConditionsRow(fixture, myClubShort) {
+  if (!fixture) return "—";
+  const venue = fixtureHomeVenueLabel(fixture, myClubShort);
+  const continent =
+    CONTINENT_LABELS[fixture.home_continent] || fixture.home_continent || null;
+  const cond = formatMatchConditions(fixture);
+  return [venue, continent, cond].filter(Boolean).join(" · ");
 }
 
 export const WEATHER_KEYS = ["fine", "rain", "snow"];
