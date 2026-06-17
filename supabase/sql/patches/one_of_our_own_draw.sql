@@ -150,7 +150,10 @@ BEGIN
     END IF;
 
     -- Random eligible free agent: home grown (Nation match) + Rating >= 79.
-    SELECT p."Konami_ID"::text, p."Name", round(coalesce(p.market_value, 0))
+    SELECT
+      p."Konami_ID"::text,
+      p."Name",
+      round(coalesce(nullif(btrim(p.market_value::text), '')::numeric, 0))
     INTO v_player_id, v_player_name, v_fee
     FROM public."Players" p
     WHERE (p."Contracted_Team" IS NULL OR btrim(p."Contracted_Team") = '')
@@ -170,7 +173,9 @@ BEGIN
 
     -- Per-club subtransaction: any failure rolls back just this club.
     BEGIN
-      PERFORM public.player_assign_to_club(v_player_id, v_club);
+      -- Explicit 3-arg form (NULL wage = auto-calculate) avoids the
+      -- ambiguity between the 2-arg and 3-arg overloads.
+      PERFORM public.player_assign_to_club(v_player_id, v_club, NULL::numeric);
 
       INSERT INTO public."Transfer_History" (
         player_id, seller_club_id, buyer_club_id, fee, agent_fee, transfer_time, listing_id
