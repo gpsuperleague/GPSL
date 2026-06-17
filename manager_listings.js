@@ -1,12 +1,19 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
+import {
+  parseMoneyInput,
+  setMoneyInputValue,
+  wireMoneyBidInput,
+} from "./money_input.js";
 
 let currentClub = null;
 let selectedListing = null;
+let currentMinBid = 0;
+let bidAmountControl = null;
 
-function parseMoney(value) {
-  return Number(String(value || "").replace(/,/g, "")) || 0;
+function getBidInput() {
+  return document.getElementById("bidAmount");
 }
 
 function formatEndTime(iso) {
@@ -55,27 +62,43 @@ async function loadListings() {
     .join("");
 
   body.querySelectorAll(".bid-btn").forEach((btn) => {
-    btn.addEventListener("click", () => openBidModal(listings.find((x) => x.id === Number(btn.dataset.id))));
+    btn.addEventListener("click", () =>
+      openBidModal(listings.find((x) => x.id === Number(btn.dataset.id)))
+    );
   });
+}
+
+function listingMinBid(listing) {
+  const mgr = listing?.Managers || {};
+  const high = Number(listing?.current_highest_bid) || 0;
+  const mv = Number(listing?.market_value) || Number(mgr.market_value) || 0;
+  return high ? Math.max(mv, high + 500000) : mv;
 }
 
 function openBidModal(listing) {
   selectedListing = listing;
   const mgr = listing?.Managers || {};
+  currentMinBid = listingMinBid(listing);
+
   document.getElementById("bidManagerName").textContent = mgr.name || "Manager";
-  const high = Number(listing.current_highest_bid) || 0;
-  const mv = Number(listing.market_value) || Number(mgr.market_value) || 0;
-  const min = high ? Math.max(mv, high + 500000) : mv;
-  document.getElementById("bidHint").textContent = `Minimum bid: ${formatMoney(min)}`;
-  document.getElementById("bidAmount").value = String(min);
+  document.getElementById("bidHint").textContent =
+    `Minimum bid: ${formatMoney(currentMinBid)}`;
+  setMoneyInputValue(getBidInput(), currentMinBid);
   document.getElementById("bidError").textContent = "";
   document.getElementById("bidModal").classList.add("open");
 }
 
 async function submitBid() {
   if (!selectedListing) return;
-  const amount = parseMoney(document.getElementById("bidAmount").value);
+  const amount = parseMoneyInput(getBidInput()?.value);
   const errEl = document.getElementById("bidError");
+  const mgr = selectedListing.Managers || {};
+
+  if (amount < currentMinBid) {
+    errEl.textContent = `Minimum bid is ${formatMoney(currentMinBid)}.`;
+    return;
+  }
+
   const { error } = await supabase.rpc("manager_place_bid", {
     p_listing_id: selectedListing.id,
     p_amount: amount,
@@ -84,15 +107,47 @@ async function submitBid() {
     errEl.textContent = error.message;
     return;
   }
+
   document.getElementById("bidModal").classList.remove("open");
+  selectedListing = null;
+  alert(
+    `Bid placed: ${formatMoney(amount)} for ${mgr.name || "manager"}.\n\nThe listing will update with your new highest bid.`
+  );
   await loadListings();
+}
+
+function wireBidModalControls() {
+  const input = getBidInput();
+  bidAmountControl = wireMoneyBidInput(input, {
+    min: () => currentMinBid,
+  });
+
+  document.querySelectorAll("#bidModal .inc-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      bidAmountControl?.adjust(Number(btn.dataset.delta) || 0);
+    });
+  });
+
+  document.querySelectorAll("#bidModal .dec-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      bidAmountControl?.adjust(Number(btn.dataset.delta) || 0);
+    });
+  });
+
+  document.getElementById("bidQuickMin")?.addEventListener("click", () => {
+    if (!selectedListing) return;
+    currentMinBid = listingMinBid(selectedListing);
+    bidAmountControl?.set(currentMinBid);
+  });
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
   await loadClubsMap();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     window.location = "login.html";
     return;
@@ -105,8 +160,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     .maybeSingle();
   currentClub = club?.ShortName || null;
 
+  wireBidModalControls();
+
   document.getElementById("bidCancel")?.addEventListener("click", () => {
     document.getElementById("bidModal").classList.remove("open");
+    selectedListing = null;
   });
   document.getElementById("bidSubmit")?.addEventListener("click", submitBid);
 

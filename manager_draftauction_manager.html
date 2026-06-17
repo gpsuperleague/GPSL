@@ -27,6 +27,7 @@
     .bid-row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:10px; }
     input { padding:6px; border-radius:4px; border:1px solid #444; background:#111; color:#ddd; width:160px; }
     .inc-btn, .quick-btn { padding:6px 10px; background:#222; color:#ddd; border:1px solid #555; border-radius:4px; cursor:pointer; }
+    .dec-btn { padding:6px 10px; background:#222; color:#ddd; border:1px solid #555; border-radius:4px; cursor:pointer; }
     #submitBidBtn { padding:8px 14px; background:#2f7a2f; color:#fff; border:none; border-radius:4px; font-weight:bold; cursor:pointer; }
     #submitBidBtn:disabled { background:#444; color:#999; }
     table.history { width:100%; border-collapse:collapse; margin-top:12px; }
@@ -61,8 +62,11 @@
       <h3 style="color:#ff9900;margin-top:0;">Place bid</h3>
       <div class="bid-row">
         <span style="color:#ff9900;font-weight:bold;font-size:18px;">₿</span>
-        <input type="text" id="bidAmount" inputmode="numeric">
+        <input type="text" id="bidAmount" inputmode="numeric" autocomplete="off">
         <button type="button" id="quickBidBtn" class="quick-btn">Min bid</button>
+        <button type="button" class="dec-btn" data-delta="-5000000">−5m</button>
+        <button type="button" class="dec-btn" data-delta="-1000000">−1m</button>
+        <button type="button" class="dec-btn" data-delta="-500000">−500k</button>
         <button type="button" class="inc-btn" data-delta="500000">+500k</button>
         <button type="button" class="inc-btn" data-delta="1000000">+1m</button>
         <button type="button" class="inc-btn" data-delta="5000000">+5m</button>
@@ -78,6 +82,6 @@
     </table>
   </div>
   <script type="module" src="global.js"></script>
-  <script type="module" src="manager_draftauction_manager.js?v=4"></script>
+  <script type="module" src="manager_draftauction_manager.js?v=5"></script>
 </body>
 </html>

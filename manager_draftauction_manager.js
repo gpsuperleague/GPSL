@@ -31,6 +31,12 @@ import {
   formatTargetTimesSubline,
   isValidInstant,
 } from "./countdown_display.js";
+import { formatMoney } from "./competition.js";
+import {
+  parseMoneyInput,
+  setMoneyInputValue,
+  wireMoneyBidInput,
+} from "./money_input.js";
 
 let buyerShortName = null;
 let managerDraftEnabled = false;
@@ -38,9 +44,15 @@ let draftAuctionStartTime = null;
 let currentManager = null;
 let auctionEnded = false;
 let managerVacancyBlocked = "";
+let bidAmountControl = null;
+let currentMinBid = 0;
 
-function parseMoney(value) {
-  return Number(String(value || "").replace(/,/g, "")) || 0;
+function getBidInput() {
+  return document.getElementById("bidAmount");
+}
+
+function resolveMinBid() {
+  return currentMinBid;
 }
 
 async function loadBuyerClub(userId) {
@@ -183,8 +195,11 @@ async function refreshBids() {
     : `<tr><td colspan="3">No bids yet</td></tr>`;
 
   const min = managerDraftMinimumBid(currentManager.market_value, bids);
-  const input = document.getElementById("bidAmount");
-  if (input && !input.dataset.touched) input.value = String(min);
+  currentMinBid = min;
+  const input = getBidInput();
+  if (input && !input.dataset.touched) {
+    setMoneyInputValue(input, min);
+  }
 }
 
 async function refreshLeadPanel() {
@@ -233,13 +248,26 @@ function updateBidControls() {
 }
 
 function wireBidControls() {
+  const input = getBidInput();
+  bidAmountControl = wireMoneyBidInput(input, { min: resolveMinBid });
+
+  input?.addEventListener("focus", () => {
+    input.dataset.touched = "1";
+  });
+
   document.querySelectorAll(".inc-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const input = document.getElementById("bidAmount");
       const delta = Number(btn.dataset.delta) || 0;
-      const cur = parseMoney(input.value);
-      input.value = String(Math.max(0, cur + delta));
       input.dataset.touched = "1";
+      bidAmountControl?.adjust(delta);
+    });
+  });
+
+  document.querySelectorAll(".dec-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const delta = Number(btn.dataset.delta) || 0;
+      input.dataset.touched = "1";
+      bidAmountControl?.adjust(delta);
     });
   });
 
@@ -250,9 +278,10 @@ function wireBidControls() {
       draftAuctionStartTime
     );
     const min = managerDraftMinimumBid(currentManager.market_value, bids);
-    const input = document.getElementById("bidAmount");
-    input.value = String(min);
-    input.dataset.touched = "1";
+    currentMinBid = min;
+    const bidInput = getBidInput();
+    bidInput.dataset.touched = "1";
+    bidAmountControl?.set(min);
   });
 
   document.getElementById("submitBidBtn")?.addEventListener("click", async () => {
@@ -261,7 +290,13 @@ function wireBidControls() {
       if (err) err.textContent = "No club linked to your account.";
       return;
     }
-    const amount = parseMoney(document.getElementById("bidAmount").value);
+    const amount = parseMoneyInput(getBidInput()?.value);
+    if (amount < currentMinBid) {
+      if (err) {
+        err.textContent = `Minimum bid is ${formatMoney(currentMinBid)}.`;
+      }
+      return;
+    }
     const eligibility = await getManagerDraftBidEligibility({
       managerId: currentManager.id,
       buyerShortName,
@@ -285,7 +320,11 @@ function wireBidControls() {
       return;
     }
     if (err) err.textContent = "";
-    document.getElementById("bidAmount").dataset.touched = "";
+    const bidInput = getBidInput();
+    bidInput.dataset.touched = "";
+    alert(
+      `Bid placed: ${formatMoney(amount)} for ${currentManager.name}.\n\nYou are now the leading bidder unless someone outbids you.`
+    );
     await refreshBids();
     await refreshLeadPanel();
   });

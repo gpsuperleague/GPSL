@@ -56,7 +56,19 @@
     <div class="modal-box">
       <h3 id="bidManagerName" style="color:#ff9900;margin-top:0;"></h3>
       <p id="bidHint" style="font-size:12px;color:#aaa;"></p>
-      <label>Bid (₿) <input id="bidAmount" type="text" style="width:160px;margin-left:8px;"></label>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0;">
+        <span style="color:#ff9900;font-weight:bold;font-size:18px;">₿</span>
+        <input id="bidAmount" type="text" inputmode="numeric" autocomplete="off" style="width:160px;padding:6px;border-radius:4px;border:1px solid #444;background:#111;color:#ddd;">
+        <button type="button" class="button" id="bidQuickMin" style="padding:6px 10px;font-size:12px;">Min bid</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+        <button type="button" class="button dec-btn" data-delta="-5000000" style="padding:4px 8px;font-size:11px;">−5m</button>
+        <button type="button" class="button dec-btn" data-delta="-1000000" style="padding:4px 8px;font-size:11px;">−1m</button>
+        <button type="button" class="button dec-btn" data-delta="-500000" style="padding:4px 8px;font-size:11px;">−500k</button>
+        <button type="button" class="button inc-btn" data-delta="500000" style="padding:4px 8px;font-size:11px;">+500k</button>
+        <button type="button" class="button inc-btn" data-delta="1000000" style="padding:4px 8px;font-size:11px;">+1m</button>
+        <button type="button" class="button inc-btn" data-delta="5000000" style="padding:4px 8px;font-size:11px;">+5m</button>
+      </div>
       <p id="bidError"></p>
       <div style="display:flex;justify-content:space-between;margin-top:14px;">
         <button class="button" id="bidCancel">Cancel</button>
@@ -66,6 +78,6 @@
   </div>
 
   <script type="module" src="global.js"></script>
-  <script type="module" src="manager_listings.js?v=1"></script>
+  <script type="module" src="manager_listings.js?v=2"></script>
 </body>
 </html>
