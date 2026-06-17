@@ -4,6 +4,22 @@ import { formatNavLabel } from "./nav_label.js";
 
 export const SEASON_BREAK_NAV = [
   {
+    id: "data_tools",
+    label: "GPDB Update",
+    items: [
+      {
+        label: "GPDB PESDB sync",
+        href: "admin_gpdb_sync.html",
+        page: "admin_gpdb_sync",
+      },
+      {
+        label: "GPDB player deduplication",
+        href: "admin_gpdb_dedup.html",
+        page: "admin_gpdb_dedup",
+      },
+    ],
+  },
+  {
     id: "transfers_open",
     label: "Transfers",
     items: [
@@ -201,22 +217,6 @@ export const SEASON_BREAK_NAV = [
         label: "Nation player pool",
         href: "nation_player_pool.html",
         page: "nation_player_pool",
-      },
-    ],
-  },
-  {
-    id: "data_tools",
-    label: "Data tools",
-    items: [
-      {
-        label: "GPDB PESDB sync",
-        href: "admin_gpdb_sync.html",
-        page: "admin_gpdb_sync",
-      },
-      {
-        label: "GPDB player deduplication",
-        href: "admin_gpdb_dedup.html",
-        page: "admin_gpdb_dedup",
       },
     ],
   },
