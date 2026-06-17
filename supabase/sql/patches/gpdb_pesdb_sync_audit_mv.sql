@@ -7,6 +7,8 @@
 -- Apply behaviour unchanged: all matched staging rows still update MV on apply.
 -- =============================================================================
 
+DROP FUNCTION IF EXISTS public.gpdb_pesdb_sync_audit();
+
 CREATE OR REPLACE FUNCTION public.gpdb_pesdb_sync_audit()
 RETURNS TABLE (
   action text,
