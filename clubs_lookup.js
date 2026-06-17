@@ -43,11 +43,6 @@ export async function loadClubsMap() {
 
 }
 
-export function formatFixtureContinent(fixture) {
-  if (!fixture) return "—";
-  return CONTINENT_LABELS[fixture.home_continent] || fixture.home_continent || "—";
-}
-
 /* ============================================================
    Convert ShortName → Full Club Name
    ============================================================ */

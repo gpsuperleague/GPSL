@@ -150,6 +150,11 @@ export function formatMatchConditions(fixture) {
   return parts.length ? parts.join(" · ") : fixture.weather || "—";
 }
 
+export function formatFixtureContinent(fixture) {
+  if (!fixture) return "—";
+  return CONTINENT_LABELS[fixture.home_continent] || fixture.home_continent || "—";
+}
+
 /** Stadium label for fixtures table (home venue). */
 export function fixtureStadiumLabel(fixture, myClubShort, homeStadiumName) {
   if (!fixture) return "—";
