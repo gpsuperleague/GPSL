@@ -308,7 +308,7 @@ function renderPlayerCard(player, { compact = false, pitch = false } = {}) {
         onerror="this.src='${FALLBACK_IMG}'">
     </a>
     <div class="spc-meta">
-      <div class="spc-name">${playerNameLinkHtml(id, name, { className: "squad-player-link" })}</div>
+      <div class="spc-name">${playerNameLinkHtml(id, name)}</div>
       ${compact ? "" : `<div class="spc-pos">${pos}</div>`}
     </div>`;
   card.addEventListener("dragstart", (e) => {

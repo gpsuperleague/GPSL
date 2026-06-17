@@ -126,7 +126,7 @@ function renderTable() {
       return `
         <tr>
           <td>${formatWhen(row.transfer_time)}</td>
-          <td>${playerNameLinkHtml(pid, name, { className: "gpsl-link" })}</td>
+          <td>${playerNameLinkHtml(pid, name)}</td>
           <td>${sellerCell(row)}</td>
           <td>${buyerCell(row)}</td>
           <td>${formatMoney(row.fee)}</td>

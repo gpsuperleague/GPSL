@@ -43,9 +43,7 @@ function playerLinkCell(playerId, player, fallbackName) {
   const name =
     player?.Name || fallbackName || (pid ? `Player ${pid}` : "Unknown");
   if (!pid) return name;
-  return playerNameLinkHtml(pid, name, {
-    className: "gpsl-link squad-player-link",
-  });
+  return playerNameLinkHtml(pid, name);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

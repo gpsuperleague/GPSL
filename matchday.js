@@ -931,7 +931,7 @@ function renderPlayerStatsTable() {
       ? ' <span class="squad-bench-tag">Sub</span>'
       : "";
     tr.innerHTML = `
-      <td class="name">${playerNameLinkHtml(id, p.Name, { className: "squad-player-link" })} <span style="color:#666;">${p.Position || ""}</span>${benchTag}</td>
+      <td class="name">${playerNameLinkHtml(id, p.Name)} <span style="color:#666;">${p.Position || ""}</span>${benchTag}</td>
       <td><input type="checkbox" class="stat-started" aria-label="Started"></td>
       <td><input type="checkbox" class="stat-subbed" aria-label="Subbed on"></td>
       <td>${statCountSelectHtml("stat-goals", "Goals", 0)}</td>

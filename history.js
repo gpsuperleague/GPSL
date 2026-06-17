@@ -34,7 +34,7 @@ function signingSourceLabel(row) {
 
 function playerLink(id, name) {
   if (!id) return name || "—";
-  return playerNameLinkHtml(id, name || id, { className: "gpsl-link" });
+  return playerNameLinkHtml(id, name || id);
 }
 
 function showError(msg) {

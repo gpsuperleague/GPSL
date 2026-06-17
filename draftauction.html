@@ -599,9 +599,7 @@
             className: "draft-thumb",
             alt: player.Name,
           })}</td>
-          <td>${playerNameLinkHtml(player.Konami_ID, player.Name, {
-            className: "player-link",
-          })}</td>
+          <td>${playerNameLinkHtml(player.Konami_ID, player.Name)}</td>
           <td>${player.Position}</td>
           <td>${player.Rating}</td>
           <td>₿ ${Number(player.market_value).toLocaleString("en-GB")}</td>

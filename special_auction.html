@@ -225,7 +225,7 @@
           els.playerReveal.innerHTML = `
             <div class="clue-box">
               ${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}
-              <b>${playerNameLinkHtml(p.Konami_ID, p.Name, { className: "player-link" })}</b> — ${p.Position} · ${p.Rating}
+              <b>${playerNameLinkHtml(p.Konami_ID, p.Name)}</b> — ${p.Position} · ${p.Rating}
             </div>`;
         }
       }

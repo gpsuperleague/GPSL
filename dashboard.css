@@ -1569,3 +1569,15 @@ button.nav-admin-trigger {
   margin: 0;
 }
 
+/* GPSL player name links (player_links.js) — match table text, no underline */
+a.gpsl-player-link {
+  color: #fff;
+  text-decoration: none;
+  font-weight: inherit;
+}
+
+a.gpsl-player-link:hover,
+a.gpsl-player-link:focus {
+  color: #fff;
+  text-decoration: none;
+}

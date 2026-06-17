@@ -454,9 +454,7 @@ async function renderListings() {
       </td>
 
       <td>
-        ${playerNameLinkHtml(listing.player_id, playerName, {
-          className: "gpsl-link squad-player-link",
-        })}
+        ${playerNameLinkHtml(listing.player_id, playerName)}
       </td>
       <td>${player?.Position || "-"}</td>
       <td>${player?.Playstyle || "-"}</td>
@@ -604,9 +602,7 @@ async function openBidModal(listing, player) {
 
   const playerName = player?.Name || "Unknown";
   if (nameEl) {
-    nameEl.innerHTML = playerNameLinkHtml(konamiId, playerName, {
-      className: "gpsl-link squad-player-link",
-    });
+    nameEl.innerHTML = playerNameLinkHtml(konamiId, playerName);
   }
   document.getElementById("bid-player-position").textContent =
     player?.Position || "-";

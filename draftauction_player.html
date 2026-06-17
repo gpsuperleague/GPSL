@@ -409,9 +409,7 @@
       /* --- Player Info --- */
       const nameEl = document.getElementById("playerName");
       if (nameEl) {
-        nameEl.innerHTML = playerNameLinkHtml(player.Konami_ID, player.Name, {
-          className: "player-link",
-        });
+        nameEl.innerHTML = playerNameLinkHtml(player.Konami_ID, player.Name);
       }
       document.getElementById("playerMeta").textContent =
         `Pos: ${player.Position} | Rating: ${player.Rating} | Age: ${player.Age}`;

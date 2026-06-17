@@ -60,7 +60,7 @@ export function playerThumbLinkHtml(konamiId, options = {}) {
 export function playerNameLinkHtml(konamiId, name, options = {}) {
   const id = String(konamiId ?? "").trim();
   const {
-    className = "squad-player-link",
+    className = "gpsl-player-link",
     fallbackId = true,
     raw = false,
   } = options;

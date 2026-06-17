@@ -563,9 +563,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     if (col === "Name") {
-      return playerNameLinkHtml(player.Konami_ID, value, {
-        className: "player-link",
-      });
+      return playerNameLinkHtml(player.Konami_ID, value);
     }
 
     return value ?? "";
