@@ -481,7 +481,14 @@ function renderAuditTable(rows) {
     already_unavailable: "tag-blocked",
     insert_free_agent: "tag-ok",
     update_stats: "tag-ok",
+    update_mv: "tag-ok",
     restore_and_update: "tag-ok",
+  };
+
+  const fmtMv = (v) => {
+    if (v == null || v === "") return "—";
+    const n = Number(v);
+    return Number.isFinite(n) ? `₿ ${n.toLocaleString("en-GB")}` : "—";
   };
 
   tbody.innerHTML = show
@@ -493,6 +500,7 @@ function renderAuditTable(rows) {
       <td>${escapeHtml(r.player_name || "—")}</td>
       <td>${escapeHtml(r.club || "—")}</td>
       <td>${escapeHtml(r.old_rating || "—")} → ${escapeHtml(r.new_rating || "—")}</td>
+      <td>${fmtMv(r.old_mv)} → ${fmtMv(r.new_mv)}</td>
       <td><small>${escapeHtml(r.detail || "")}</small></td>
     </tr>`
     )
@@ -500,10 +508,10 @@ function renderAuditTable(rows) {
 
   const hidden = rows.filter((r) => r.action === "unchanged").length;
   if (hidden) {
-    tbody.innerHTML += `<tr><td colspan="6" style="color:#888;padding:10px;">${hidden} unchanged row(s) hidden.</td></tr>`;
+    tbody.innerHTML += `<tr><td colspan="7" style="color:#888;padding:10px;">${hidden} unchanged row(s) hidden.</td></tr>`;
   }
   if (rows.length > show.length + hidden) {
-    tbody.innerHTML += `<tr><td colspan="6" style="color:#888;padding:10px;">Showing first ${show.length} changed rows.</td></tr>`;
+    tbody.innerHTML += `<tr><td colspan="7" style="color:#888;padding:10px;">Showing first ${show.length} changed rows.</td></tr>`;
   }
 }
 
