@@ -20,7 +20,10 @@ import {
   submitManagerDraftBid,
 } from "./manager_draft_engine.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
-import { formatMoney } from "./competition.js";
+import {
+  applyManagerPortrait,
+  managerInitials,
+} from "./manager_images.js";
 import {
   formatLiveCountdownLines,
   formatDraftConclusionLines,
@@ -128,6 +131,16 @@ async function loadManager() {
   document.getElementById("managerName").textContent = mgr.name;
   document.getElementById("managerMeta").textContent =
     `${mgr.nation || "—"} · Rating ${mgr.rating} · Age ${mgr.age ?? "—"}`;
+
+  const fallbackEl = document.getElementById("managerPortraitFallback");
+  if (fallbackEl) {
+    fallbackEl.textContent = managerInitials(mgr.name);
+  }
+  applyManagerPortrait(document.getElementById("managerPortrait"), mgr.slug, {
+    fallbackEl,
+    name: mgr.name,
+  });
+
   document.getElementById("managerValue").textContent =
     `Market value: ${formatMoney(mgr.market_value)}`;
 

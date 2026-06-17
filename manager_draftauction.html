@@ -31,6 +31,16 @@
     .bid-btn.disabled { background:#444; color:#999; cursor:not-allowed; }
     .bid-btn.view-only { background:#444; color:#ddd; }
     .player-link { color:#ff9900; font-weight:bold; text-decoration:none; }
+    .manager-list-cell { display:inline-flex; align-items:center; gap:10px; }
+    .manager-list-thumb-wrap {
+      width:40px; height:40px; flex-shrink:0; border-radius:6px; overflow:hidden;
+      background:#0a0a0a; border:1px solid #333;
+      display:inline-flex; align-items:center; justify-content:center;
+    }
+    .manager-list-thumb { width:100%; height:100%; object-fit:cover; display:block; }
+    .manager-list-thumb-fallback {
+      font-size:13px; font-weight:bold; color:#ff9900; letter-spacing:0.5px;
+    }
     #draftCountdown { color:#ff9900; font-weight:bold; font-family:monospace; font-size:16px; }
   </style>
 </head>
@@ -81,6 +91,6 @@
   </div>
 
   <script type="module" src="global.js"></script>
-  <script type="module" src="manager_draftauction.js?v=1"></script>
+  <script type="module" src="manager_draftauction.js?v=2"></script>
 </body>
 </html>

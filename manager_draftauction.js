@@ -18,6 +18,7 @@ import {
 } from "./manager_draft_engine.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
+import { managerListCellHtml } from "./manager_images.js";
 
 let buyerShortName = null;
 let managerDraftEnabled = false;
@@ -106,7 +107,7 @@ async function loadManagerDraftListings() {
   const managerIds = listings.map((l) => Number(l.manager_id));
   const { data: managers } = await supabase
     .from("Managers")
-    .select("id, name, nation, rating, market_value, contracted_club")
+    .select("id, slug, name, nation, rating, market_value, contracted_club")
     .in("id", managerIds);
 
   const managerMap = new Map((managers || []).map((m) => [Number(m.id), m]));
@@ -152,7 +153,7 @@ async function loadManagerDraftListings() {
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td><a class="player-link" href="manager_draftauction_manager.html?manager=${mgr.id}">${mgr.name}</a></td>
+      <td>${managerListCellHtml(mgr)}</td>
       <td>${mgr.nation || "—"}</td>
       <td>${mgr.rating}</td>
       <td>${formatMoney(mgr.market_value)}</td>
