@@ -5,7 +5,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Seasons manager transfers — GPSL</title>
+  <title>Season manager transfers — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <style>
     body {
@@ -25,22 +25,12 @@
       font-size: 26px;
     }
 
-    .page-wrap {
-      width: 92%;
-      max-width: 720px;
-      margin: 0 auto 40px;
-      line-height: 1.6;
+    #nav {
+      text-align: center;
+      margin-bottom: 16px;
     }
 
-    .note {
-      background: #1a1a1a;
-      border: 1px solid #444;
-      border-radius: 8px;
-      padding: 20px;
-      color: #ccc;
-    }
-
-    a.button {
+    a.button, button.button {
       display: inline-block;
       padding: 8px 16px;
       background: #1a1a1a;
@@ -49,22 +39,175 @@
       border-radius: 6px;
       text-decoration: none;
       font-weight: bold;
-      margin-top: 16px;
+      margin: 5px;
+      cursor: pointer;
+    }
+
+    .page-wrap {
+      width: 92%;
+      max-width: 1220px;
+      margin: 0 auto 40px;
+    }
+
+    .meta {
+      color: #aaa;
+      font-size: 14px;
+      margin: 0 0 16px;
+      line-height: 1.5;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .filter-btn {
+      padding: 6px 14px;
+      background: #222;
+      color: #ccc;
+      border: 1px solid #555;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .filter-btn.active {
+      background: #ff9900;
+      color: #111;
+      border-color: #ff9900;
+      font-weight: bold;
+    }
+
+    #summaryBar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px 24px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: #bbb;
+    }
+
+    table.gpsl-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      background: #1a1a1a;
+    }
+
+    table.gpsl-table th {
+      background: #222;
+      color: #ff9900;
+      padding: 8px;
+      text-align: left;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    table.gpsl-table td {
+      border: 1px solid #333;
+      padding: 8px;
+      vertical-align: middle;
+    }
+
+    table.gpsl-table tr:nth-child(even) {
+      background: #161616;
+    }
+
+    .gpsl-link {
+      color: #6cf;
+      text-decoration: none;
+    }
+
+    .gpsl-link:hover {
+      text-decoration: underline;
+    }
+
+    .type-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: bold;
+      background: #333;
+      color: #ccc;
+    }
+
+    .type-pill.draft { background: #3d3520; color: #ffcc66; }
+    .type-pill.market { background: #2a3d2a; color: #9fdf9f; }
+    .type-pill.assign { background: #2a2a3d; color: #aabfff; }
+
+    .empty {
+      color: #888;
+      font-style: italic;
+      padding: 24px 0;
+    }
+
+    .manager-list-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .manager-list-thumb-wrap {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+    }
+
+    .manager-list-thumb {
+      width: 28px;
+      height: 28px;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+
+    .manager-list-thumb-fallback {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      background: #333;
+      border-radius: 4px;
+      font-size: 10px;
+      color: #aaa;
     }
   </style>
 </head>
 <body>
-  <h1>Seasons manager transfers</h1>
+  <h1>Season manager transfers</h1>
   <div id="nav"></div>
 
   <div class="page-wrap">
-    <div class="note">
-      <p><b>Coming soon.</b> Completed manager moves for the current season — draft signings, market sales, and releases.</p>
-      <p>See <a href="season_transfers.html" style="color:#6cf;">Seasons player transfers</a> or the <a href="manager_listings.html" style="color:#6cf;">Manager market</a> in the meantime.</p>
-      <a href="manager_listings.html" class="button">Manager market</a>
+    <p class="meta">
+      <a href="manager_listings.html" class="button">← Manager market</a>
+      <a href="season_transfers.html" class="button">Season player transfers</a>
+      <a href="MGDB.html" class="button">MGDB</a>
+      <span id="seasonLabel"></span>
+    </p>
+
+    <div id="summaryBar" hidden></div>
+
+    <div class="toolbar" id="filterBar">
+      <button type="button" class="filter-btn active" data-filter="all">All</button>
+      <button type="button" class="filter-btn" data-filter="draft">Draft signings</button>
+      <button type="button" class="filter-btn" data-filter="market">Market transfers</button>
+      <button type="button" class="filter-btn" data-filter="assign">Direct / admin</button>
+    </div>
+
+    <div id="tableHost">
+      <p class="empty">Loading…</p>
     </div>
   </div>
 
-  <script type="module" src="season_manager_transfers.js"></script>
+  <script type="module" src="season_manager_transfers.js?v=20260617"></script>
 </body>
 </html>
