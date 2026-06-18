@@ -589,6 +589,10 @@ async function verifyCurrentPassword(email, password) {
   return { ok: true };
 }
 
+function accountEmailRedirectUrl() {
+  return new URL("club_details.html", window.location.href).href;
+}
+
 function wireAccountSettings(user) {
   const emailEl = document.getElementById("accountEmail");
   const newEmailInput = document.getElementById("newEmailInput");
@@ -627,7 +631,10 @@ function wireAccountSettings(user) {
     }
 
     changeEmailBtn.disabled = true;
-    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    const { error } = await supabase.auth.updateUser(
+      { email: newEmail },
+      { emailRedirectTo: accountEmailRedirectUrl() }
+    );
     changeEmailBtn.disabled = false;
 
     if (error) {

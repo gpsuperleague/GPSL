@@ -365,6 +365,19 @@
       color: #f88;
     }
 
+    .account-email-change-link {
+      display: inline-block;
+      margin-top: 6px;
+      font-size: 12px;
+      color: #6cf;
+      text-decoration: none;
+    }
+
+    .account-email-change-link:hover {
+      text-decoration: underline;
+      color: #9df;
+    }
+
     .club-info-panel {
       margin-bottom: 20px;
     }
@@ -464,9 +477,10 @@
           <span class="club-detail-value" id="clubNation">—</span>
         </div>
 
-        <div class="club-detail-cell">
+        <div class="club-detail-cell" id="loginEmailCell">
           <span class="club-detail-label">Login email</span>
           <span class="club-detail-value detail-muted" id="accountEmail">—</span>
+          <a class="account-email-change-link" href="#accountEmailChange">Change email</a>
         </div>
 
         <div class="club-detail-cell club-detail-cell--owner">
@@ -519,11 +533,11 @@
       </p>
 
       <div class="account-sections-row">
-      <div class="account-section">
+      <div class="account-section" id="accountEmailChange">
         <h3>Change email</h3>
         <p class="account-hint">
-          A confirmation link is sent to your <b>new</b> address. Your login email
-          updates only after you confirm.
+          Enter a new address and your current password. Supabase sends a confirmation link to the
+          <b>new</b> email — your login only updates after you click it (same as admin-initiated changes).
         </p>
         <div class="account-fields">
           <input
