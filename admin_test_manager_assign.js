@@ -31,7 +31,8 @@ function managerLabel(m) {
 
 function clubLabel(c) {
   const mgr = c.manager_name ? c.manager_name : "No manager";
-  return `${c.club_name || c.club_short_name} — ${mgr}`;
+  const owner = c.owner_label || "Unowned";
+  return `${c.club_name || c.club_short_name} — ${owner} — ${mgr}`;
 }
 
 function updateManagerMeta() {
@@ -57,7 +58,7 @@ function updateClubMeta() {
   const mgr = c.manager_name
     ? `${c.manager_name} (${c.manager_rating})`
     : "Vacant";
-  el.textContent = `Division ${c.division || "—"} · Manager: ${mgr}`;
+  el.textContent = `Owner: ${c.owner_label || "Unowned"} · Manager: ${mgr}`;
 }
 
 async function loadManagers() {
@@ -80,25 +81,47 @@ async function loadManagers() {
 }
 
 async function loadClubs() {
-  const [{ data: clubRows, error: clubErr }, { data: mgrRows, error: mgrErr }] =
-    await Promise.all([
-      supabase.from("Clubs").select("ShortName, Club, manager_id").order("Club"),
-      supabase
-        .from("Managers")
-        .select("id, name, rating")
-        .not("id", "is", null),
-    ]);
+  const [
+    { data: clubRows, error: clubErr },
+    { data: mgrRows, error: mgrErr },
+    { data: ownerRows, error: ownerErr },
+  ] = await Promise.all([
+    supabase
+      .from("Clubs")
+      .select("ShortName, Club, manager_id, owner_id, owner")
+      .order("Club"),
+    supabase.from("Managers").select("id, name, rating").not("id", "is", null),
+    supabase.rpc("admin_owner_list"),
+  ]);
   if (clubErr) throw clubErr;
   if (mgrErr) throw mgrErr;
+  if (ownerErr) {
+    console.warn("admin_owner_list:", ownerErr);
+  }
+
+  const ownerByClub = new Map();
+  for (const row of ownerRows || []) {
+    if (!row.club_short_name) continue;
+    const tag = row.owner_tag ? `@${row.owner_tag.replace(/^@/, "")}` : "";
+    ownerByClub.set(
+      row.club_short_name,
+      tag || row.email || "Owner linked"
+    );
+  }
 
   const mgrById = new Map((mgrRows || []).map((m) => [m.id, m]));
   clubs = (clubRows || []).map((c) => {
     const mgr = c.manager_id ? mgrById.get(c.manager_id) : null;
+    const ownerLabel =
+      ownerByClub.get(c.ShortName) ||
+      (c.owner ? `@${String(c.owner).replace(/^@/, "")}` : null) ||
+      (c.owner_id ? "Owner linked" : null);
     return {
       club_short_name: c.ShortName,
       club_name: c.Club,
       manager_name: mgr?.name || null,
       manager_rating: mgr?.rating || null,
+      owner_label: ownerLabel,
       division: null,
     };
   });
