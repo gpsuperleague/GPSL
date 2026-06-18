@@ -17,6 +17,7 @@ let scrapeAbort = false;
 let scrapeRunning = false;
 let liveTimerId = null;
 let lastAuditRows = [];
+let lastPreviewResult = null;
 
 const PREVIEW_ACTION_ORDER = {
   mark_unavailable: 1,
@@ -28,13 +29,6 @@ const PREVIEW_ACTION_ORDER = {
   unchanged: 99,
 };
 
-const PREVIEW_UPDATE_ACTIONS = new Set([
-  "update_stats",
-  "update_mv",
-  "restore_and_update",
-]);
-const PREVIEW_LEGACY_ACTIONS = new Set(["mark_unavailable", "already_unavailable"]);
-const PREVIEW_NEW_ACTIONS = new Set(["insert_free_agent"]);
 const PREVIEW_TABLE_LIMIT = 500;
 
 function sleep(ms) {
@@ -606,32 +600,46 @@ function scrapeSettings() {
   };
 }
 
+function previewFilterActions(filter) {
+  if (filter === "legacy") {
+    return ["mark_unavailable", "already_unavailable"];
+  }
+  if (filter === "new") {
+    return ["insert_free_agent"];
+  }
+  if (filter === "all") {
+    return [
+      "mark_unavailable",
+      "already_unavailable",
+      "restore_and_update",
+      "update_stats",
+      "update_mv",
+      "insert_free_agent",
+    ];
+  }
+  return ["update_stats", "update_mv", "restore_and_update"];
+}
+
 function renderSummary(result, prefix = "") {
   const grid = document.getElementById("previewGrid");
   if (!grid || !result) return;
   grid.hidden = false;
 
   const dry = result.dry_run !== false;
-  const counts = result.audit_counts || {};
-  const mvOnly = counts.update_mv ?? 0;
+  const mvOnly = result.would_update_mv_only ?? 0;
+  const statUpdates = dry
+    ? Math.max(0, (result.would_update ?? 0) - mvOnly)
+    : result.updated ?? 0;
 
   grid.innerHTML = `
     <div><span>${result.staging_rows ?? "—"}</span> staging rows</div>
     <div><span>${dry ? result.would_mark_unavailable ?? result.marked_unavailable ?? 0 : result.marked_unavailable ?? 0}</span> ${prefix}legacy (off PESDB)</div>
     <div><span>${dry ? result.would_insert_free_agents ?? result.inserted_free_agents ?? 0 : result.inserted_free_agents ?? 0}</span> ${prefix}new free agents</div>
-    <div><span>${dry ? result.would_update ?? result.updated ?? 0 : result.updated ?? 0}</span> ${prefix}stat updates</div>
+    <div><span>${statUpdates}</span> ${prefix}stat updates</div>
     ${mvOnly ? `<div><span>${mvOnly}</span> ${prefix}MV-only updates</div>` : ""}
     <div><span>${dry ? result.would_restore_from_legacy ?? result.restored_from_legacy ?? 0 : result.restored_from_legacy ?? 0}</span> ${prefix}restored from legacy</div>
     <div><span>${result.unchanged ?? 0}</span> unchanged (matched)</div>
   `;
-}
-
-function summarizeAuditRows(rows) {
-  const counts = {};
-  for (const r of rows || []) {
-    counts[r.action] = (counts[r.action] || 0) + 1;
-  }
-  return counts;
 }
 
 function sortAuditRows(rows) {
@@ -643,56 +651,38 @@ function sortAuditRows(rows) {
   });
 }
 
-function filterAuditRows(rows, filter) {
-  const changed = (rows || []).filter((r) => r.action !== "unchanged");
-  if (filter === "updates") {
-    return changed.filter((r) => PREVIEW_UPDATE_ACTIONS.has(r.action));
-  }
-  if (filter === "legacy") {
-    return changed.filter((r) => PREVIEW_LEGACY_ACTIONS.has(r.action));
-  }
-  if (filter === "new") {
-    return changed.filter((r) => PREVIEW_NEW_ACTIONS.has(r.action));
-  }
-  return changed;
-}
-
-function renderAuditTable(rows, filter = null) {
+function renderAuditTable(rows) {
   const wrap = document.getElementById("previewTableWrap");
   const tbody = document.getElementById("previewBody");
   const filterRow = document.getElementById("previewFilterRow");
   const filterNote = document.getElementById("previewFilterNote");
-  const filterSel = document.getElementById("previewFilter");
   if (!wrap || !tbody) return;
 
-  const activeFilter = filter ?? filterSel?.value ?? "updates";
+  const unchangedCount = lastPreviewResult?.unchanged ?? 0;
 
   if (!rows?.length) {
-    wrap.hidden = true;
-    if (filterRow) filterRow.hidden = true;
-    tbody.innerHTML = "";
+    wrap.hidden = false;
+    if (filterRow) filterRow.hidden = false;
+    tbody.innerHTML = `<tr><td colspan="7" style="color:#888;padding:10px;">No rows in this filter. Try another filter or check the summary counts above.</td></tr>`;
+    if (filterNote) {
+      filterNote.textContent = `${unchangedCount.toLocaleString()} unchanged (matched) in summary above.`;
+    }
     return;
   }
 
   const sorted = sortAuditRows(rows);
-  const unchangedCount = sorted.filter((r) => r.action === "unchanged").length;
-  const filtered = filterAuditRows(sorted, activeFilter);
-  const show = filtered.slice(0, PREVIEW_TABLE_LIMIT);
+  const show = sorted.slice(0, PREVIEW_TABLE_LIMIT);
 
   if (filterRow) filterRow.hidden = false;
   if (filterNote) {
-    const total = filtered.length;
     const shown = show.length;
+    const suffix = unchangedCount
+      ? ` (${unchangedCount.toLocaleString()} unchanged in summary above)`
+      : "";
     filterNote.textContent =
-      total > shown
-        ? `Showing ${shown} of ${total} in this filter (${unchangedCount} unchanged hidden).`
-        : `${total} row(s) in this filter (${unchangedCount} unchanged hidden).`;
-  }
-
-  if (!filtered.length) {
-    wrap.hidden = false;
-    tbody.innerHTML = `<tr><td colspan="7" style="color:#888;padding:10px;">No rows in this filter. Try another filter or check the summary counts above.</td></tr>`;
-    return;
+      sorted.length >= PREVIEW_TABLE_LIMIT
+        ? `Showing first ${shown} rows in this filter${suffix}.`
+        : `${sorted.length.toLocaleString()} row(s) in this filter${suffix}.`;
   }
 
   wrap.hidden = false;
@@ -726,13 +716,17 @@ function renderAuditTable(rows, filter = null) {
     )
     .join("");
 
-  if (filtered.length > show.length) {
-    tbody.innerHTML += `<tr><td colspan="7" style="color:#888;padding:10px;">… ${filtered.length - show.length} more in this filter (increase limit or export via SQL audit).</td></tr>`;
+  if (sorted.length > show.length) {
+    tbody.innerHTML += `<tr><td colspan="7" style="color:#888;padding:10px;">… ${sorted.length - show.length} more in this filter (export via SQL audit for full list).</td></tr>`;
   }
 }
 
-async function loadAuditRows() {
-  const { data, error } = await supabase.rpc("gpdb_pesdb_sync_audit");
+async function loadAuditRows(filter = "updates") {
+  const { data, error } = await supabase.rpc("gpdb_pesdb_sync_audit", {
+    p_actions: previewFilterActions(filter),
+    p_limit: PREVIEW_TABLE_LIMIT,
+    p_offset: 0,
+  });
   if (error) throw error;
   return data || [];
 }
@@ -1367,32 +1361,25 @@ async function importCsv() {
 async function runPreview() {
   setStatus("previewStatus", "Loading…", true);
   try {
-    const [auditRows, { data: result, error }] = await Promise.all([
-      loadAuditRows(),
+    const filter = document.getElementById("previewFilter")?.value ?? "updates";
+    const [{ data: result, error }, auditRows] = await Promise.all([
       supabase.rpc("gpdb_pesdb_sync_apply", { p_dry_run: true }),
+      loadAuditRows(filter),
     ]);
     if (error) throw error;
 
+    lastPreviewResult = result;
     lastAuditRows = auditRows || [];
-    const auditCounts = summarizeAuditRows(lastAuditRows);
-    const enriched = {
-      ...result,
-      audit_counts: auditCounts,
-      would_update:
-        (result?.would_update ?? 0) + (auditCounts.update_mv ?? 0),
-    };
 
-    renderSummary(enriched);
+    renderSummary(result);
     renderAuditTable(lastAuditRows);
 
-    const matched =
-      (auditCounts.update_stats ?? 0) +
-      (auditCounts.update_mv ?? 0) +
-      (auditCounts.restore_and_update ?? 0) +
-      (auditCounts.unchanged ?? 0);
-    const inserted = auditCounts.insert_free_agent ?? 0;
-    let statusMsg = `Preview ready — ${matched} staging rows match existing GPDB; ${inserted} new cards.`;
-    if (matched < 1000 && inserted > 5000) {
+    const matched = (result.unchanged ?? 0) + (result.would_update ?? 0);
+    const inserted = result.would_insert_free_agents ?? 0;
+    const legacy = result.would_mark_unavailable ?? 0;
+    let statusMsg = `Preview ready — ${matched.toLocaleString()} staging rows match existing GPDB; ${inserted.toLocaleString()} new cards; ${legacy.toLocaleString()} legacy.`;
+    const stagingRows = result.staging_rows ?? 0;
+    if (matched < 1000 && stagingRows > 5000) {
       statusMsg +=
         " ⚠️ Very few matches — check Konami IDs in staging vs Players (sample a known player ID in both tables).";
     }
@@ -1430,7 +1417,14 @@ async function runApply() {
     if (error) throw error;
     saveLastApply(result);
     renderSummary(result, "applied ");
-    await Promise.all([loadAuditRows().then(renderAuditTable), loadUnavailableList()]);
+    const filter = document.getElementById("previewFilter")?.value ?? "updates";
+    await Promise.all([
+      loadAuditRows(filter).then((rows) => {
+        lastAuditRows = rows;
+        renderAuditTable(rows);
+      }),
+      loadUnavailableList(),
+    ]);
     await refreshProgressPanel(null);
     setStatus("applyStatus", "Sync applied.", true);
   } catch (err) {
@@ -1476,8 +1470,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("scrapeBtn")?.addEventListener("click", runPesdbScrape);
   document.getElementById("scrapeStopBtn")?.addEventListener("click", stopPesdbScrape);
   document.getElementById("previewBtn")?.addEventListener("click", runPreview);
-  document.getElementById("previewFilter")?.addEventListener("change", () => {
-    renderAuditTable(lastAuditRows);
+  document.getElementById("previewFilter")?.addEventListener("change", async () => {
+    const filter = document.getElementById("previewFilter")?.value ?? "updates";
+    try {
+      lastAuditRows = await loadAuditRows(filter);
+      renderAuditTable(lastAuditRows);
+    } catch (err) {
+      setStatus("previewStatus", err.message || "Could not load preview filter.", false);
+    }
   });
   document.getElementById("applyBtn")?.addEventListener("click", runApply);
   document.getElementById("refreshLegacyBtn")?.addEventListener("click", loadUnavailableList);

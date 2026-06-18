@@ -622,8 +622,14 @@ BEGIN
       "Potential" = coalesce(v_rec.max_level_rating::text, p."Potential"::text),
       "Calc_Potential" = coalesce(v_rec.calc_potential::text, p."Calc_Potential"::text),
       "Playstyle" = coalesce(v_rec.playing_style, p."Playstyle"),
-      market_value = coalesce(v_rec.market_value, p.market_value),
-      "Maximum_Reserve_Price" = coalesce(v_rec.maximum_reserve_price, p."Maximum_Reserve_Price"),
+      market_value = coalesce(
+        v_rec.market_value,
+        nullif(btrim(p.market_value::text), '')::numeric
+      ),
+      "Maximum_Reserve_Price" = coalesce(
+        v_rec.maximum_reserve_price,
+        nullif(btrim(p."Maximum_Reserve_Price"::text), '')::numeric
+      ),
       pesdb_unavailable = false,
       pesdb_unavailable_since = NULL,
       contract_wage = CASE
