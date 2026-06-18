@@ -11,6 +11,8 @@ const DIVISION_TITLES = {
   championship_b: "Championship B",
 };
 
+const LEADERBOARD_TOP_COUNT = 10;
+
 let myClubShort = null;
 let allRows = [];
 
@@ -23,8 +25,7 @@ function renderLeaderboard(containerId, rows, valueKey, formatValue) {
     return;
   }
 
-  const top = rows.slice(0, 25);
-  const body = top
+  const body = rows
     .map((r, i) => {
       const mine =
         myClubShort &&
@@ -45,8 +46,11 @@ function renderLeaderboard(containerId, rows, valueKey, formatValue) {
     })
     .join("");
 
+  const hasMore = rows.length > LEADERBOARD_TOP_COUNT;
+  const collapsedClass = hasMore ? " lb-collapsed" : "";
+
   el.innerHTML = `
-    <table class="lb">
+    <table class="lb${collapsedClass}" data-lb-table>
       <thead>
         <tr>
           <th>#</th>
@@ -59,7 +63,23 @@ function renderLeaderboard(containerId, rows, valueKey, formatValue) {
       </thead>
       <tbody>${body}</tbody>
     </table>
+    ${
+      hasMore
+        ? `<button type="button" class="lb-show-all" data-lb-toggle>Show all (${rows.length})</button>`
+        : ""
+    }
   `;
+
+  const table = el.querySelector("[data-lb-table]");
+  const toggle = el.querySelector("[data-lb-toggle]");
+  if (!table || !toggle) return;
+
+  toggle.addEventListener("click", () => {
+    const collapsed = table.classList.toggle("lb-collapsed");
+    toggle.textContent = collapsed
+      ? `Show all (${rows.length})`
+      : "Show top 10";
+  });
 }
 
 function filterRows(division) {
