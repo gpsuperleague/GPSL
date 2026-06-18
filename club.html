@@ -55,6 +55,17 @@
       object-fit: contain;
     }
 
+    .club-header-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      line-height: 1.45;
+    }
+
+    .club-header-meta h1 {
+      margin: 0 0 6px;
+    }
+
     h2.section-title {
       margin-left: 20px;
       color: #ff9900;
@@ -526,16 +537,42 @@
 
       clubShortName = club.ShortName;
 
+      const managerLine = await loadClubManagerLine(club.ShortName);
+
       document.getElementById("clubHeader").innerHTML = `
         <img src="images/club_badges/${club.ShortName}.png" alt="${club.Club} badge">
-        <div>
+        <div class="club-header-meta">
           <h1>${club.Club}</h1>
           <div><strong>Stadium:</strong> ${club.Stadium}</div>
           <div><strong>Capacity:</strong> ${club.Capacity.toLocaleString()}</div>
           <div><strong>Nation:</strong> ${club.Nation}</div>
           <div><strong>Owner:</strong> ${club.owner ? club.owner : "<em>Unowned</em>"}</div>
+          ${managerLine}
         </div>
       `;
+    }
+
+    async function loadClubManagerLine(clubShort) {
+      const { data, error } = await supabase
+        .from("manager_club_status_public")
+        .select("manager_id, manager_name, manager_rating")
+        .eq("club_short_name", clubShort)
+        .maybeSingle();
+
+      if (error) {
+        console.warn("Manager status unavailable:", error.message);
+        return "<div><strong>Manager:</strong> <em>—</em></div>";
+      }
+
+      if (!data?.manager_id || !data.manager_name) {
+        return "<div><strong>Manager:</strong> <em>No manager employed</em></div>";
+      }
+
+      const href = `manager_draftauction_manager.html?manager=${encodeURIComponent(data.manager_id)}`;
+      const rating =
+        data.manager_rating != null ? ` (rating ${data.manager_rating})` : "";
+
+      return `<div><strong>Manager:</strong> <a class="player-link" href="${href}">${data.manager_name}</a>${rating}</div>`;
     }
 
     const POSITION_GROUPS = {
