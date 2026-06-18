@@ -101,7 +101,6 @@ CREATE POLICY competition_period_team_member_select ON public.competition_period
 
 GRANT SELECT ON public.competition_period_team TO authenticated, anon;
 GRANT SELECT ON public.competition_period_team_member TO authenticated, anon;
-GRANT SELECT ON public.competition_period_team_member TO authenticated, anon;
 
 -- ---------------------------------------------------------------------------
 -- Position / scoring helpers
@@ -772,7 +771,9 @@ $function$;
 -- Public views
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE VIEW public.competition_season_awards_public
+DROP VIEW IF EXISTS public.competition_season_awards_public;
+
+CREATE VIEW public.competition_season_awards_public
 WITH (security_invoker = false)
 AS
 SELECT
@@ -790,6 +791,8 @@ SELECT
 FROM public.competition_season_award a
 JOIN public."Players" p ON p."Konami_ID"::text = a.player_id
 JOIN public."Clubs" c ON c."ShortName" = a.club_short_name;
+
+GRANT SELECT ON public.competition_season_awards_public TO authenticated, anon;
 
 CREATE OR REPLACE VIEW public.competition_period_team_public
 WITH (security_invoker = false)
@@ -1054,3 +1057,5 @@ BEGIN
   RETURN v_out || jsonb_build_object('squad_minimum_august', v_enforcement);
 END;
 $function$;
+
+NOTIFY pgrst, 'reload schema';
