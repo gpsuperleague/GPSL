@@ -1621,6 +1621,11 @@ BEGIN
         )
       )
       OR (
+        l.entry_type = 'contract_signing_offer'
+        AND coalesce(l.metadata->>'kind', '') = 'manager'
+        AND coalesce(l.metadata->>'seller', '') = ''
+      )
+      OR (
         l.entry_type = 'infra_expansion_refund'
       )
     )

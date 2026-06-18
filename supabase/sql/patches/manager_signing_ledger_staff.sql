@@ -1,5 +1,5 @@
--- Manager signing fees → Staff (contract_signing_offer), not Player transfers.
--- Also fixes admin assign when "Waive signing fee" was left checked (no ledger line).
+-- Manager signing fees → Staff (contract_signing_offer). Free-agent fees also credit
+-- GPSL Central Bank — see manager_signing_central_bank.sql.
 
 CREATE OR REPLACE FUNCTION public.manager_assign_to_club(
   p_manager_id bigint,

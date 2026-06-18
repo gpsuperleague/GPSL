@@ -333,7 +333,8 @@ CREATE OR REPLACE FUNCTION public.manager_assign_to_club(
   p_club_short text,
   p_seasons smallint DEFAULT 2,
   p_fee numeric DEFAULT NULL,
-  p_buyer_pays boolean DEFAULT true
+  p_buyer_pays boolean DEFAULT true,
+  p_ledger_metadata jsonb DEFAULT '{}'::jsonb
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -347,6 +348,7 @@ DECLARE
   v_fee numeric;
   v_season_id bigint;
   v_wage bigint;
+  v_meta jsonb;
 BEGIN
   SELECT * INTO v_mgr FROM public."Managers" WHERE id = p_manager_id FOR UPDATE;
   IF NOT FOUND THEN
@@ -386,15 +388,18 @@ BEGIN
       RAISE EXCEPTION 'Insufficient balance (need %, have %)', v_fee, v_balance;
     END IF;
 
+    v_meta := coalesce(p_ledger_metadata, '{}'::jsonb)
+      || jsonb_build_object('manager_id', p_manager_id, 'kind', 'manager');
+
     PERFORM public.post_club_ledger(
       p_club_short,
       'contract_signing_offer',
       -abs(v_fee),
       format('Manager signing — %s', v_mgr.name),
-      jsonb_build_object('manager_id', p_manager_id, 'kind', 'manager'),
+      v_meta,
       v_season_id,
       NULL,
-      false,
+      true,
       true
     );
   END IF;
@@ -410,6 +415,14 @@ BEGIN
   WHERE id = p_manager_id;
 
   PERFORM public.manager_sync_club_rating(p_club_short);
+
+  UPDATE public."Manager_Transfer_Listings"
+  SET status = 'Closed',
+      transfer_completed = true,
+      updated_at = now()
+  WHERE manager_id = p_manager_id
+    AND listing_type = 'draft'
+    AND status = 'Active';
 
   IF to_regprocedure('public.owner_inbox_notify_season_expectations(text)') IS NOT NULL THEN
     PERFORM public.owner_inbox_notify_season_expectations(p_club_short);
