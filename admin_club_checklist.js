@@ -1,8 +1,11 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import { formatMoney } from "./competition.js";
 import { loadFinanceSeasonContext } from "./finance_page_common.js";
+import { MIN_SQUAD_SIZE, SQUAD_SIZE } from "./squad_rules.js";
 
 primeAdminPageChrome();
+
+const MIN_U21 = 5;
 
 /** @type {Array<Record<string, unknown>>} */
 let allRows = [];
@@ -15,6 +18,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("reloadBtn").onclick = () => loadTable();
   document.getElementById("filterOwner").onchange = renderTable;
   document.getElementById("filterDivision").onchange = renderTable;
+  document.getElementById("filterIssuesOnly").onchange = renderTable;
 
   await loadTable();
 });
@@ -25,6 +29,36 @@ function escapeHtml(text) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function rowHasOwner(row) {
+  return Boolean(row.owner_tag || row.owner_email);
+}
+
+/** @returns {Set<string>} */
+function evaluateRowIssues(row) {
+  const issues = new Set();
+  const hasOwner = rowHasOwner(row);
+  const squad = Number(row.squad_size ?? 0);
+  const u21 = Number(row.u21_count ?? 0);
+
+  if (!hasOwner) issues.add("owner");
+  if (hasOwner && !row.manager_name) issues.add("manager");
+  if (hasOwner && !row.ooo_player_name) issues.add("ooo");
+  if (squad < MIN_SQUAD_SIZE) issues.add("squad_low");
+  if (squad > SQUAD_SIZE) issues.add("squad_high");
+  if (hasOwner && u21 < MIN_U21) issues.add("u21");
+  if (Number(row.current_balance) < 0) issues.add("balance");
+  if (
+    row.projected_eos_balance != null &&
+    row.projected_eos_balance !== "" &&
+    Number(row.projected_eos_balance) < 0
+  ) {
+    issues.add("proj");
+  }
+  if (Number(row.fines_count) > 0) issues.add("fines");
+
+  return issues;
 }
 
 function compareValues(a, b, key) {
@@ -57,14 +91,17 @@ function compareValues(a, b, key) {
 function filteredRows() {
   const ownerFilter = document.getElementById("filterOwner")?.value || "";
   const divisionFilter = document.getElementById("filterDivision")?.value || "";
+  const issuesOnly = document.getElementById("filterIssuesOnly")?.checked;
 
   return allRows.filter((row) => {
-    const hasOwner = Boolean(row.owner_tag || row.owner_email);
+    const hasOwner = rowHasOwner(row);
     if (ownerFilter === "owned" && !hasOwner) return false;
     if (ownerFilter === "vacant" && hasOwner) return false;
 
     const div = row.division || "unassigned";
     if (divisionFilter && div !== divisionFilter) return false;
+
+    if (issuesOnly && evaluateRowIssues(row).size === 0) return false;
 
     return true;
   });
@@ -85,44 +122,50 @@ function renderSummary(rows) {
 
   let owned = 0;
   let vacant = 0;
-  let under24 = 0;
+  let underMin = 0;
   let negative = 0;
+  let flagged = 0;
 
-  for (const row of rows) {
-    if (row.owner_tag || row.owner_email) owned += 1;
+  for (const row of allRows) {
+    if (rowHasOwner(row)) owned += 1;
     else vacant += 1;
-    if (Number(row.squad_size) < 24) under24 += 1;
+    if (Number(row.squad_size) < MIN_SQUAD_SIZE) underMin += 1;
     if (Number(row.current_balance) < 0) negative += 1;
+    if (evaluateRowIssues(row).size > 0) flagged += 1;
   }
 
   el.innerHTML = `
-    <span><b>${rows.length}</b> clubs</span>
+    <span><b>${rows.length}</b> clubs shown</span>
     <span>${owned} owned · ${vacant} vacant</span>
-    <span>${under24} below 24 squad</span>
+    <span>${flagged} with issues</span>
+    <span>${underMin} below ${MIN_SQUAD_SIZE} squad</span>
     <span>${negative} negative balance</span>
   `;
 }
 
-function moneyCell(value, { warnBelow = null, badBelow = null } = {}) {
-  if (value === undefined) {
-    return '<td class="money proj-loading">…</td>';
-  }
-  if (value == null || value === "" || Number.isNaN(Number(value))) {
-    return '<td class="money vacant">—</td>';
-  }
-  const n = Number(value);
-  let cls = "money";
-  if (badBelow != null && n < badBelow) cls += " bad";
-  else if (warnBelow != null && n < warnBelow) cls += " warn";
-  return `<td class="${cls}">${formatMoney(n)}</td>`;
+function cellClass(level) {
+  if (level === "bad") return "chk-cell-bad";
+  if (level === "warn") return "chk-cell-warn";
+  return "chk-cell-ok";
 }
 
-function numCell(value, { warnBelow = null, badBelow = null } = {}) {
+function moneyCell(value, level = "ok") {
+  if (value === undefined) {
+    return '<td class="money chk-cell-ok proj-loading">…</td>';
+  }
+  if (value == null || value === "" || Number.isNaN(Number(value))) {
+    return `<td class="money ${cellClass("bad")}">—</td>`;
+  }
+  return `<td class="money ${cellClass(level)}">${formatMoney(Number(value))}</td>`;
+}
+
+function numCell(value, level = "ok") {
   const n = Number(value ?? 0);
-  let cls = "num";
-  if (badBelow != null && n < badBelow) cls += " bad";
-  else if (warnBelow != null && n < warnBelow) cls += " warn";
-  return `<td class="${cls}">${n}</td>`;
+  return `<td class="num ${cellClass(level)}">${n}</td>`;
+}
+
+function textCell(content, level = "ok") {
+  return `<td class="${cellClass(level)}">${content}</td>`;
 }
 
 function renderTable() {
@@ -131,7 +174,7 @@ function renderTable() {
   if (!wrap) return;
 
   const rows = sortedRows(filteredRows());
-  renderSummary(allRows);
+  renderSummary(rows);
 
   if (countEl) {
     countEl.textContent =
@@ -177,39 +220,64 @@ function renderTable() {
       <tbody>
         ${rows
           .map((row) => {
+            const issues = evaluateRowIssues(row);
+            const hasOwner = rowHasOwner(row);
+            const squad = Number(row.squad_size ?? 0);
+            const u21 = Number(row.u21_count ?? 0);
+            const rowFlagged = issues.size > 0 ? " chk-row-flagged" : "";
+
             const owner = row.owner_tag || row.owner_email;
             const ownerHtml = owner
               ? escapeHtml(owner)
               : '<span class="vacant">Vacant</span>';
+
             const manager = row.manager_name
               ? `${escapeHtml(row.manager_name)}${
                   row.manager_rating != null ? ` (${row.manager_rating})` : ""
                 }`
-              : '<span class="vacant">—</span>';
-            const ooo = row.ooo_player_name
-              ? escapeHtml(row.ooo_player_name)
-              : '<span class="vacant">—</span>';
+              : "—";
+
+            const ooo = row.ooo_player_name ? escapeHtml(row.ooo_player_name) : "—";
+
+            let squadLevel = "ok";
+            if (squad < MIN_SQUAD_SIZE || squad > SQUAD_SIZE) squadLevel = "bad";
+
+            let u21Level = "ok";
+            if (hasOwner && u21 < MIN_U21) u21Level = "bad";
+
+            let balanceLevel = Number(row.current_balance) < 0 ? "bad" : "ok";
+
+            let projLevel = "ok";
+            if (
+              row.projected_eos_balance != null &&
+              row.projected_eos_balance !== "" &&
+              Number(row.projected_eos_balance) < 0
+            ) {
+              projLevel = "warn";
+            }
+
+            const finesLevel = Number(row.fines_count) > 0 ? "warn" : "ok";
 
             return `
-          <tr data-club="${escapeHtml(row.club_short_name)}">
-            <td>${ownerHtml}</td>
-            <td class="club-cell">
+          <tr class="${rowFlagged.trim()}" data-club="${escapeHtml(row.club_short_name)}">
+            ${textCell(ownerHtml, issues.has("owner") ? "bad" : "ok")}
+            <td class="club-cell ${cellClass("ok")}">
               <div class="club-name">${escapeHtml(row.club_name || row.club_short_name)}</div>
               <div class="club-short">${escapeHtml(row.club_short_name)}${
                 row.division ? ` · ${escapeHtml(row.division)}` : ""
               }</div>
             </td>
-            <td>${manager}</td>
-            <td>${ooo}</td>
-            ${numCell(row.squad_size, { warnBelow: 24 })}
+            ${textCell(manager, issues.has("manager") ? "bad" : "ok")}
+            ${textCell(ooo, issues.has("ooo") ? "bad" : "ok")}
+            ${numCell(row.squad_size, squadLevel)}
             ${numCell(row.star_count)}
-            ${moneyCell(row.current_balance, { warnBelow: 0 })}
-            ${moneyCell(row.projected_eos_balance, { warnBelow: 0 })}
+            ${moneyCell(row.current_balance, balanceLevel)}
+            ${moneyCell(row.projected_eos_balance, projLevel)}
             ${moneyCell(row.total_wages)}
             ${numCell(row.contract_releases_remaining)}
             ${numCell(row.foreign_sales_remaining)}
-            ${numCell(row.fines_count, { warnBelow: 1 })}
-            ${numCell(row.u21_count, { warnBelow: 5 })}
+            ${numCell(row.fines_count, finesLevel)}
+            ${numCell(row.u21_count, u21Level)}
           </tr>`;
           })
           .join("")}

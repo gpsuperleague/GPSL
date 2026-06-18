@@ -1009,6 +1009,51 @@ function navGroupAuctionBadgeHtml(visible = hasAnyNavAuctionActive()) {
   return `<span class="nav-group-auction-active${hidden}" title="Auction bidding is open" aria-hidden="${visible ? "false" : "true"}">Active</span>`;
 }
 
+/** Target pages for live auction path indicators (Transfers → subgroup → page). */
+const NAV_AUCTION_TARGETS = {
+  player: "draftauction.html",
+  manager: "manager_draftauction.html",
+  club: "club_auction.html",
+};
+
+function currentNavPageFile() {
+  return (window.location.pathname || "").toLowerCase().replace(/\\/g, "/").split("/").pop() || "";
+}
+
+/** Vertical path bars on Transfers + subgroup until the auction page is open. */
+function refreshNavAuctionPathIndicators() {
+  const nav = document.getElementById("nav");
+  if (!nav) return;
+
+  nav.querySelectorAll(".nav-auction-path").forEach((el) => {
+    el.classList.remove("nav-auction-path");
+  });
+
+  const currentFile = currentNavPageFile();
+  const transfersGroup = nav.querySelector('[data-nav-auction-section="transfers"]');
+  let showTransfersPath = false;
+
+  for (const [kind, targetFile] of Object.entries(NAV_AUCTION_TARGETS)) {
+    if (!isNavAuctionActive(kind)) continue;
+    if (currentFile === targetFile) continue;
+
+    showTransfersPath = true;
+    nav.querySelectorAll("[data-nav-subgroup]").forEach((subgroup) => {
+      const kinds = (subgroup.dataset.auctionKinds || "")
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean);
+      if (kinds.includes(kind)) {
+        subgroup.classList.add("nav-auction-path");
+      }
+    });
+  }
+
+  if (showTransfersPath && transfersGroup) {
+    transfersGroup.classList.add("nav-auction-path");
+  }
+}
+
 /** Update Active badges without rebuilding the whole nav. */
 export function refreshNavAuctionIndicators() {
   const nav = document.getElementById("nav");
@@ -1032,6 +1077,8 @@ export function refreshNavAuctionIndicators() {
       groupBadge.setAttribute("aria-hidden", anyActive ? "false" : "true");
     }
   }
+
+  refreshNavAuctionPathIndicators();
 }
 
 let __navAuctionRefreshInterval = null;
@@ -1074,6 +1121,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
   let panelHtml = "";
   let panelLabel = "";
   let panelHasActive = false;
+  let panelAuctionKinds = [];
 
   const renderLink = (item, active) => {
     const indent = item.indent ? " nav-link-sub" : "";
@@ -1088,7 +1136,10 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
 
   const flushPanel = () => {
     if (!panelLabel) return;
-    groupHtml += `<div class="nav-subgroup${panelHasActive ? " open" : ""}" data-nav-subgroup>`;
+    const kindsAttr = panelAuctionKinds.length
+      ? ` data-auction-kinds="${panelAuctionKinds.join(",")}"`
+      : "";
+    groupHtml += `<div class="nav-subgroup${panelHasActive ? " open" : ""}" data-nav-subgroup${kindsAttr}>`;
     groupHtml += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
       panelHasActive ? "true" : "false"
     }">${escapeNavHtml(formatNavLabel(panelLabel))}</button>`;
@@ -1097,6 +1148,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     panelHtml = "";
     panelLabel = "";
     panelHasActive = false;
+    panelAuctionKinds = [];
   };
 
   for (const item of items) {
@@ -1121,6 +1173,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     }
 
     if (active) panelHasActive = true;
+    if (item.auctionNav) panelAuctionKinds.push(item.auctionNav);
     panelHtml += renderLink(item, active);
   }
   flushPanel();

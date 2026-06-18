@@ -1175,6 +1175,16 @@ button.nav-admin-trigger {
   color: #bfb;
 }
 
+/* Path finder: green bar on Transfers + subgroup while auction is live (until target page). */
+.nav-group.nav-auction-path > .nav-group-summary,
+.nav-subgroup.nav-auction-path > .nav-subgroup-summary {
+  box-shadow: inset 3px 0 0 #5cb85c;
+}
+
+.nav-group.nav-auction-path.nav-group-has-auction > .nav-group-summary {
+  box-shadow: inset 3px 0 0 #5cb85c;
+}
+
 .nav-link-label {
   vertical-align: middle;
 }

@@ -37,7 +37,7 @@ DECLARE
   v_star_min smallint := 70;
   v_has_designations boolean;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
