@@ -269,11 +269,16 @@ async function settleManagerDraftsNow() {
       left === 0
     );
   } catch (err) {
+    const msg = err.message || "Failed";
     setStatus(
       "transferEngineStatus",
       "❌ " +
-        (err.message || "Failed") +
-        " — run patches/manager_draft_settlement_fix.sql in Supabase.",
+        msg +
+        (msg.includes("manager_assign_to_club")
+          ? " — run supabase/sql/patches/manager_draft_auto_settle.sql in Supabase."
+          : msg.includes("owner_inbox_send")
+            ? " — run supabase/sql/patches/owner_inbox_send_dedupe.sql in Supabase."
+            : " — run supabase/sql/patches/manager_draft_auto_settle.sql in Supabase."),
       false
     );
   }

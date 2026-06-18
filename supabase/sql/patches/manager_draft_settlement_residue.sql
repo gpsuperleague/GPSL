@@ -1,0 +1,2 @@
+-- Superseded by manager_draft_auto_settle.sql (includes residue + assign + auto-run hooks).
+-- Run: supabase/sql/patches/manager_draft_auto_settle.sql

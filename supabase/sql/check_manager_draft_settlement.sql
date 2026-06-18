@@ -20,18 +20,25 @@ SELECT
     WHERE l.listing_type = 'draft' AND l.status = 'Active'
   ) AS active_manager_draft_listings,
   CASE
-    WHEN NOT COALESCE(g.manager_draft_auction_enabled, false) THEN 'manager draft disabled'
     WHEN g.draft_random_finish_time IS NULL THEN 'no random finish set — re-save draft in Admin'
     WHEN now() < g.draft_random_finish_time THEN 'before secret finish'
+    WHEN (
+      SELECT count(*)::int
+      FROM public."Manager_Transfer_Listings" l
+      WHERE l.listing_type = 'draft' AND l.status = 'Active'
+    ) > 0
+    AND NOT COALESCE(g.manager_draft_auction_enabled, false)
+      THEN 'manager draft disabled but Active listings remain — run patches/manager_draft_settlement_residue.sql then admin_settle_manager_drafts_now()'
+    WHEN NOT COALESCE(g.manager_draft_auction_enabled, false) THEN 'manager draft disabled (no active listings)'
     WHEN public.transferengine_standard_listings_block_draft_settlement(
       now(),
       g.draft_random_finish_time
     ) THEN 'player draft blocked by 7pm list — manager draft still settles (check engine cron or run admin_settle_manager_drafts_now)'
-    WHEN to_regprocedure('public.transferengine_accept_manager_draft_sale(bigint)') IS NULL
-      THEN 'run transferengine_draft.sql or patches/manager_draft_settlement_fix.sql'
+    WHEN to_regprocedure('public.manager_assign_to_club(bigint, text, smallint, numeric, boolean, jsonb)') IS NULL
+      THEN 'run patches/manager_draft_auto_settle.sql (manager_assign_to_club missing)'
     WHEN to_regprocedure('public.admin_settle_manager_drafts_now()') IS NULL
       THEN 'run patches/manager_draft_settlement_fix.sql'
-    ELSE 'ready — SELECT admin_settle_manager_drafts_now(); or Admin → Settle manager drafts now'
+    ELSE 'ready — auto via transferengine_run cron after random finish, or Admin → Settle manager drafts now'
   END AS manager_settlement_status
 FROM public.global_settings g
 WHERE g.id = 1;
