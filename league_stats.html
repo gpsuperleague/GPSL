@@ -3,13 +3,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>League Stats — GPSL</title>
+  <title>Competition Stats — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1200px; margin:20px auto 40px; }
     h1 { color:#ff9900; margin-bottom:8px; }
     .meta { color:#aaa; margin-bottom:16px; }
+    .stats-tabs {
+      display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px;
+    }
+    .stats-tab {
+      padding:8px 16px; background:#222; border:1px solid #444;
+      color:#bbb; border-radius:6px; cursor:pointer; font-size:14px; font-weight:600;
+    }
+    .stats-tab:hover { background:#2a2a2a; color:#ddd; }
+    .stats-tab.active { background:#332200; border-color:#ff9900; color:#ff9900; }
     .toolbar { margin-bottom:20px; }
     .toolbar label { display:inline; margin-right:8px; }
     .toolbar select {
@@ -49,54 +58,102 @@
       text-align: center;
     }
     .lb-show-all:hover { background: #2a2a2a; border-color: #666; }
+    .stats-tab-panel[hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <div id="nav"></div>
   <div class="page-container">
-    <h1>League player stats</h1>
+    <h1>Competition stats</h1>
     <p id="pageMeta" class="meta">Loading…</p>
 
-    <div class="toolbar">
-      <label for="divisionFilter">Division</label>
-      <select id="divisionFilter">
-        <option value="">All divisions</option>
-        <option value="superleague">SuperLeague</option>
-        <option value="championship_a">Championship A</option>
-        <option value="championship_b">Championship B</option>
-      </select>
+    <div class="stats-tabs" role="tablist">
+      <button type="button" class="stats-tab active" data-tab="league" role="tab" aria-selected="true">League</button>
+      <button type="button" class="stats-tab" data-tab="cups" role="tab" aria-selected="false">Cups</button>
+      <button type="button" class="stats-tab" data-tab="worldcup" role="tab" aria-selected="false">World Cup</button>
     </div>
 
-    <div class="stats-grid">
-      <div class="panel">
-        <h2>Top scorers</h2>
-        <div id="scorersTable"></div>
+    <div id="leaguePanel" class="stats-tab-panel" role="tabpanel">
+      <div class="toolbar">
+        <label for="divisionFilter">Division</label>
+        <select id="divisionFilter">
+          <option value="">All divisions</option>
+          <option value="superleague">SuperLeague</option>
+          <option value="championship_a">Championship A</option>
+          <option value="championship_b">Championship B</option>
+        </select>
       </div>
-      <div class="panel">
-        <h2>Top assists</h2>
-        <div id="assistsTable"></div>
+      <div class="stats-grid" id="leagueStatsGrid">
+        <div class="panel"><h2>Top scorers</h2><div id="scorersTable"></div></div>
+        <div class="panel"><h2>Top assists</h2><div id="assistsTable"></div></div>
+        <div class="panel">
+          <h2>Average rating</h2>
+          <p class="meta" style="margin:0 0 8px;font-size:12px;">Min. 3 appearances with a rated game.</p>
+          <div id="ratingsTable"></div>
+        </div>
+        <div class="panel"><h2>Player of the Match</h2><div id="potmTable"></div></div>
+        <div class="panel">
+          <h2>Goalkeeper clean sheets</h2>
+          <p class="meta" style="margin:0 0 8px;font-size:12px;">League games only — started in a 0-conceded match.</p>
+          <div id="cleanSheetsTable"></div>
+        </div>
       </div>
-      <div class="panel">
-        <h2>Average rating</h2>
-        <p class="meta" style="margin:0 0 8px;font-size:12px;">Min. 3 appearances with a rated game.</p>
-        <div id="ratingsTable"></div>
-      </div>
-      <div class="panel">
-        <h2>Player of the Match</h2>
-        <div id="potmTable"></div>
-      </div>
-      <div class="panel">
-        <h2>Goalkeeper clean sheets</h2>
-        <p class="meta" style="margin:0 0 8px;font-size:12px;">League games only — started in a 0-conceded match.</p>
-        <div id="cleanSheetsTable"></div>
-      </div>
+      <p class="footer-note" id="leagueFooter">
+        League stats are recorded when you submit on
+        <a href="matchday.html" style="color:#ff9900;">Match Day</a> and your opponent confirms.
+      </p>
     </div>
 
-    <p class="footer-note">
-      Stats are recorded when you submit a result on
-      <a href="matchday.html" style="color:#ff9900;">Match Day</a> and your opponent confirms.
-      Run <code>competition_phase4_player_stats.sql</code> in Supabase if tables are empty after confirmed games.
-    </p>
+    <div id="cupsPanel" class="stats-tab-panel" role="tabpanel" hidden>
+      <div class="toolbar">
+        <label for="cupFilter">Cup</label>
+        <select id="cupFilter">
+          <option value="">All cups</option>
+          <option value="league_cup">League Cup</option>
+          <option value="super8">Super8</option>
+          <option value="plate">Plate</option>
+          <option value="shield">Shield</option>
+          <option value="bowl">Bowl</option>
+        </select>
+      </div>
+      <div class="stats-grid" id="cupsStatsGrid">
+        <div class="panel"><h2>Top scorers</h2><div id="cupScorersTable"></div></div>
+        <div class="panel"><h2>Top assists</h2><div id="cupAssistsTable"></div></div>
+        <div class="panel">
+          <h2>Average rating</h2>
+          <p class="meta" style="margin:0 0 8px;font-size:12px;">Min. 3 cup appearances with a rated game.</p>
+          <div id="cupRatingsTable"></div>
+        </div>
+        <div class="panel"><h2>Player of the Match</h2><div id="cupPotmTable"></div></div>
+        <div class="panel">
+          <h2>Goalkeeper clean sheets</h2>
+          <p class="meta" style="margin:0 0 8px;font-size:12px;">Cup games only — started in a 0-conceded match.</p>
+          <div id="cupCleanSheetsTable"></div>
+        </div>
+      </div>
+      <p class="footer-note" id="cupsFooter">
+        Cup stats use the same Match Day submit/confirm flow as league fixtures.
+        Run <code>supabase/sql/patches/competition_cup_player_stats_public.sql</code> if this tab is empty after cup games.
+      </p>
+    </div>
+
+    <div id="worldcupPanel" class="stats-tab-panel" role="tabpanel" hidden>
+      <div class="stats-grid" id="worldcupStatsGrid">
+        <div class="panel"><h2>Top scorers</h2><div id="wcScorersTable"></div></div>
+        <div class="panel"><h2>Top assists</h2><div id="wcAssistsTable"></div></div>
+        <div class="panel">
+          <h2>Average rating</h2>
+          <p class="meta" style="margin:0 0 8px;font-size:12px;">Min. 3 caps with a rated game.</p>
+          <div id="wcRatingsTable"></div>
+        </div>
+        <div class="panel"><h2>Player of the Match</h2><div id="wcPotmTable"></div></div>
+        <div class="panel"><h2>Most caps</h2><div id="wcCapsTable"></div></div>
+      </div>
+      <p class="footer-note" id="wcFooter">
+        Lifetime international stats for World Cup qualifying and finals.
+        Caps update when international match results are recorded.
+      </p>
+    </div>
   </div>
   <script type="module" src="league_stats.js"></script>
 </body>

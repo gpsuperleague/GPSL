@@ -742,6 +742,32 @@ export async function loadPlayerSeasonStats(supabase, division = null) {
   return data || [];
 }
 
+export async function loadPlayerCupStats(supabase, cupCode = null) {
+  let query = supabase.from("competition_player_cup_stats_public").select("*");
+
+  if (cupCode) query = query.eq("cup_code", cupCode);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error("loadPlayerCupStats:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function loadInternationalPlayerStats(supabase) {
+  const { data, error } = await supabase
+    .from("international_player_career_public")
+    .select("*")
+    .order("goals", { ascending: false });
+
+  if (error) {
+    console.error("loadInternationalPlayerStats:", error);
+    return [];
+  }
+  return data || [];
+}
+
 /** Squad page: only stats for these Konami IDs at one club (fast). */
 export async function loadPlayerSeasonStatsForSquad(
   supabase,
