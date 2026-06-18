@@ -2,6 +2,7 @@ import { supabase, initGlobal, refreshInboxNavBadge } from "./global.js";
 import { rejectFixtureResult } from "./competition.js";
 import { loadInboxMessages } from "./competition_inbox.js";
 import { inboxActionForMessage } from "./competition_inbox_actions.js";
+import { acceptProposal } from "./match_scheduling.js";
 
 let myClub = { short: null, name: null };
 let myOwnerId = null;
@@ -376,6 +377,48 @@ async function renderInbox() {
 
       actions.appendChild(confirmBtn);
       actions.appendChild(rejectBtn);
+    } else if (
+      !viewArchived &&
+      !isArchived &&
+      (msg.message_type === "match_time_proposed" ||
+        msg.message_type === "match_time_countered") &&
+      !msg.read_at &&
+      msg.schedule_proposal_id &&
+      myClub.short &&
+      (msg.recipient_club_short_name || "").toUpperCase() ===
+        (myClub.short || "").toUpperCase()
+    ) {
+      const acceptBtn = document.createElement("button");
+      acceptBtn.className = "button";
+      acceptBtn.textContent = "Accept time";
+      acceptBtn.onclick = async () => {
+        acceptBtn.disabled = true;
+        try {
+          const res = await acceptProposal(msg.schedule_proposal_id);
+          if (!res.ok) throw new Error(res.msg);
+          setStatus("Kick-off agreed.");
+          await renderInbox();
+          await refreshInboxNavBadge();
+        } catch (err) {
+          setStatus("❌ " + err.message, true);
+          acceptBtn.disabled = false;
+        }
+      };
+
+      const counterBtn = document.createElement("button");
+      counterBtn.className = "button secondary";
+      counterBtn.textContent = "Counter / schedule";
+      counterBtn.onclick = () => {
+        const href =
+          action?.href ||
+          (msg.fixture_id
+            ? `fixture_schedule.html?fixture=${msg.fixture_id}`
+            : "fixture_schedule.html");
+        window.location = href;
+      };
+
+      actions.appendChild(acceptBtn);
+      actions.appendChild(counterBtn);
     } else if (!viewArchived && !isArchived) {
       if (action?.href) {
         const openBtn = document.createElement("button");

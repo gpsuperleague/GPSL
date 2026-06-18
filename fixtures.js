@@ -25,6 +25,7 @@ import {
   fixtureStadiumLabel,
 } from "./competition_conditions.js";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
+import { scheduleActionLabel, formatKickoff, UK_TZ } from "./match_scheduling.js";
 
 let calendarStatus = null;
 let holidayContext = null;
@@ -88,6 +89,17 @@ function actionCell(fixture) {
 
   if (fixture.status === "played") {
     return `<span style="color:#888;font-size:12px;">Played</span>`;
+  }
+
+  const sched = scheduleActionLabel(fixture, myClub.short);
+  if (sched) {
+    const agreed =
+      fixture.schedule_status === "agreed" && fixture.agreed_kickoff_at;
+    const kickoffLabel = agreed
+      ? `<span style="display:block;color:#8c8;font-size:11px;margin-top:2px;">${formatKickoff(fixture.agreed_kickoff_at, UK_TZ)} UK</span>`
+      : "";
+    const cls = sched.muted ? "btn-result secondary" : "btn-result";
+    return `<a href="${sched.href}" class="${cls}" style="text-decoration:none;display:inline-block;">${sched.label}</a>${kickoffLabel}`;
   }
 
   return "";

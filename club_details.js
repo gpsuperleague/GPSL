@@ -17,6 +17,7 @@ import {
   holidayStatusLabel,
   inclusiveDayCountFromDates,
 } from "./owner_holidays.js";
+import { wireAvailabilityPanel } from "./owner_availability.js";
 
 const MAX_OWNER_TAG_LEN = 64;
 
@@ -836,6 +837,7 @@ async function initClubDetailsPage() {
   await loadSubsidyStatus(club.ShortName);
 
   wireHolidayBooking();
+  wireAvailabilityPanel();
   wireManagerActions();
   await refreshHolidaySection();
 }

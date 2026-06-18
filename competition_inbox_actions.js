@@ -18,6 +18,9 @@ export const INBOX_ACTION_DEFAULTS = {
   season_overview: { label: "Club history", href: "history.html" },
   player_awards: { label: "Club history", href: "history.html" },
   monthly_fixtures: { label: "Fixtures", href: "fixtures.html" },
+  match_time_proposed: { label: "Schedule match", href: "fixture_schedule.html" },
+  match_time_countered: { label: "Respond to proposal", href: "fixture_schedule.html" },
+  match_time_accepted: { label: "View schedule", href: "fixture_schedule.html" },
 };
 
 export function inboxActionForMessage(msg) {
@@ -45,6 +48,13 @@ export function inboxActionForMessage(msg) {
     href = `matchday.html?${q.toString()}`;
   } else if (msg.message_type === "result_submitted" && msg.fixture_id) {
     href = `matchday.html?fixture=${msg.fixture_id}`;
+  } else if (
+    (msg.message_type === "match_time_proposed" ||
+      msg.message_type === "match_time_countered" ||
+      msg.message_type === "match_time_accepted") &&
+    msg.fixture_id
+  ) {
+    href = `fixture_schedule.html?fixture=${msg.fixture_id}`;
   }
   return { label: def.label, href };
 }

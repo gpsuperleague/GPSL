@@ -1,0 +1,52 @@
+<script>window.CURRENT_PAGE = "fixtures";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Schedule match — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:900px; margin:20px auto 40px; }
+    h1 { color:#ff9900; margin-bottom:8px; font-size:22px; }
+    .meta { color:#aaa; font-size:13px; line-height:1.45; margin-bottom:14px; }
+    .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:16px 18px; margin-bottom:16px; }
+    .panel h2 { color:#ff9900; font-size:16px; margin:0 0 10px; }
+    .fixture-head { font-size:18px; font-weight:bold; margin-bottom:6px; }
+    .status-agreed { color:#8c8; }
+    .status-pending { color:#fc6; }
+    .discord-hint {
+      background:#2a2200; border:1px solid #664400; border-radius:6px;
+      padding:12px 14px; color:#ecc; font-size:13px; line-height:1.45; margin-bottom:16px;
+    }
+    .slot-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+    .slot-btn {
+      padding:8px 12px; background:#222; border:1px solid #444; color:#ddd;
+      border-radius:6px; cursor:pointer; font-size:12px; text-align:left;
+    }
+    .slot-btn:hover { border-color:#ff9900; color:#ff9900; }
+    .slot-btn.selected { background:#3d3200; border-color:#ff9900; }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:14px; align-items:center; }
+    .button {
+      padding:8px 14px; background:#ff9900; color:#111; border:none;
+      border-radius:6px; font-weight:bold; cursor:pointer; font-size:13px;
+    }
+    .button.secondary { background:#444; color:#eee; }
+    .button:disabled { opacity:.5; cursor:not-allowed; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <p><a href="fixtures.html" style="color:#ff9900;">← Fixtures</a></p>
+    <h1>Schedule match</h1>
+    <p id="scheduleMeta" class="meta">Loading…</p>
+    <div id="discordHint" class="discord-hint" hidden>
+      You have each proposed two times. Contact your opponent on <b>Discord</b> to agree a time, then pick a slot below or continue countering.
+    </div>
+    <div id="scheduleRoot"></div>
+    <p id="scheduleStatus" class="meta" role="status"></p>
+  </div>
+  <script type="module" src="fixture_schedule.js"></script>
+</body>
+</html>
