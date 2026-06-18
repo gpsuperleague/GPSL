@@ -16,6 +16,12 @@ export const TESTING_ADMIN_NAV = [
     navDanger: true,
   },
   {
+    label: "Draft compliance seed",
+    href: "admin_test_draft_seed.html",
+    page: "admin_test_draft_seed",
+    navDanger: true,
+  },
+  {
     label: "Deploy month results",
     href: "admin_test_deploy_month.html",
     page: "admin_test_deploy_month",

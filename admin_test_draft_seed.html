@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Draft compliance seed — GPSL Admin Testing</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .form-grid { display: grid; gap: 12px; max-width: 560px; }
+    .form-grid label { display: block; font-size: 13px; color: #bbb; }
+    .form-grid select, .form-grid input[type="number"] {
+      width: 100%; max-width: 560px; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .form-grid .hint { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.45; }
+    .preview-box {
+      margin-top: 16px; padding: 12px; background: #161616; border: 1px solid #333;
+      border-radius: 6px; font-size: 12px; line-height: 1.5; max-height: 420px; overflow: auto;
+    }
+    .preview-box table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .preview-box th, .preview-box td { padding: 5px 8px; border-bottom: 1px solid #2a2a2a; text-align: left; }
+    .preview-box th { color: #ff9900; }
+    .tag { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 10px; margin-right: 4px; }
+    .tag-hg { background: #1a3a2a; color: #8ddf8d; }
+    .tag-u21 { background: #1a2a3a; color: #8ec8ff; }
+    .tag-open { background: #2a2a1a; color: #e8c547; }
+    .tag-join { background: #2a1a2a; color: #d8a8ff; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Draft compliance seed</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Testing tool — opens real GPDB draft auctions (or joins existing ones). Bids settle normally at random finish.
+        Run <code>admin_compliance_draft_seed.sql</code> in Supabase first. Player draft must be enabled and bidding open.
+      </p>
+
+      <div class="card">
+        <h2>Club &amp; limits</h2>
+        <div class="form-grid">
+          <label>
+            Club
+            <select id="clubSelect"><option value="">Loading…</option></select>
+          </label>
+          <label>
+            Max bids to place
+            <input type="number" id="maxBids" min="1" max="27" value="27">
+            <div class="hint">Capped at spare squad slots (28 minus current squad). Picks free agents toward 2 GK · 8 DEF · 10 MID · 8 FWD, min 24 squad, 8 HG, 5 U21, star cap.</div>
+          </label>
+          <label>
+            Budget reserve (₿)
+            <input type="number" id="budgetReserve" min="0" step="500000" value="5000000">
+            <div class="hint">Keeps this amount unspent from current balance when totalling bid amounts.</div>
+          </label>
+        </div>
+        <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;">
+          <button type="button" class="button" id="previewBtn">Preview plan</button>
+          <button type="button" class="button" id="placeBtn" style="background:#228822;">Place draft bids</button>
+        </div>
+        <div id="pageStatus" class="status-line"></div>
+        <div id="previewBox" class="preview-box" hidden></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_test_draft_seed.js?v=20260618"></script>
+</body>
+</html>
