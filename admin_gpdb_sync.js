@@ -30,6 +30,7 @@ const PREVIEW_ACTION_ORDER = {
 };
 
 const PREVIEW_TABLE_LIMIT = 500;
+const APPLY_BATCH_SIZE = 800;
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -1394,6 +1395,45 @@ async function runPreview() {
   }
 }
 
+async function runApplyPhase(phase, batchOffset = 0) {
+  return supabase.rpc("gpdb_pesdb_sync_apply", {
+    p_dry_run: false,
+    p_phase: phase,
+    p_batch_offset: batchOffset,
+    p_batch_size: APPLY_BATCH_SIZE,
+  });
+}
+
+async function runApplyBatchedPhase(statusId, phase, label, onBatch) {
+  let offset = 0;
+  let hasMore = true;
+  let totalDone = 0;
+  let totalExpected = null;
+
+  while (hasMore) {
+    const { data, error } = await runApplyPhase(phase, offset);
+    if (error) throw error;
+
+    const batchCount = data?.rows_this_batch ?? 0;
+    totalDone += batchCount;
+    if (phase === "update") totalExpected = data?.total_matched ?? totalExpected;
+    if (phase === "insert") totalExpected = data?.total_new ?? totalExpected;
+
+    const progress =
+      totalExpected != null
+        ? `${totalDone.toLocaleString()} / ${totalExpected.toLocaleString()}`
+        : totalDone.toLocaleString();
+
+    setStatus(statusId, `${label}… ${progress}`, true);
+    if (onBatch) onBatch(data, totalDone);
+
+    hasMore = data?.has_more === true && batchCount > 0;
+    offset = data?.next_offset ?? offset + batchCount;
+  }
+
+  return { totalDone, totalExpected };
+}
+
 async function runApply() {
   const confirm = document.getElementById("confirmInput")?.value?.trim();
   if (confirm !== CONFIRM_TEXT) {
@@ -1409,19 +1449,52 @@ async function runApply() {
     return;
   }
 
-  setStatus("applyStatus", "Applying… full catalog may take 1–3 minutes — do not close this tab.", true);
+  const applyBtn = document.getElementById("applyBtn");
+  applyBtn?.setAttribute("disabled", "disabled");
+
+  setStatus(
+    "applyStatus",
+    "Applying in batches (legacy → updates → new players) — keep this tab open.",
+    true
+  );
+
   try {
-    const { data: result, error } = await withLiveProgress(
+    const { data: legacy, error: legacyErr } = await runApplyPhase("legacy");
+    if (legacyErr) throw legacyErr;
+
+    const totals = {
+      ok: true,
+      dry_run: false,
+      staging_rows: legacy?.staging_rows ?? 0,
+      marked_unavailable: legacy?.marked_unavailable ?? 0,
+      restored_from_legacy: legacy?.restored_from_legacy ?? 0,
+      updated: 0,
+      inserted_free_agents: 0,
+    };
+
+    setStatus(
       "applyStatus",
-      (sec) => `Applying sync… ${sec}s (large catalog — please wait)`,
-      () =>
-        supabase.rpc("gpdb_pesdb_sync_apply", {
-          p_dry_run: false,
-        })
+      `Legacy marked: ${totals.marked_unavailable.toLocaleString()} — updating matched players…`,
+      true
     );
-    if (error) throw error;
-    saveLastApply(result);
-    renderSummary(result, "applied ");
+
+    const updateRun = await runApplyBatchedPhase(
+      "applyStatus",
+      "update",
+      "Updating matched players"
+    );
+    totals.updated = updateRun.totalDone;
+
+    setStatus("applyStatus", "Inserting new free agents…", true);
+    const insertRun = await runApplyBatchedPhase(
+      "applyStatus",
+      "insert",
+      "Inserting new free agents"
+    );
+    totals.inserted_free_agents = insertRun.totalDone;
+
+    saveLastApply(totals);
+    renderSummary(totals, "applied ");
     const filter = document.getElementById("previewFilter")?.value ?? "updates";
     await Promise.all([
       loadAuditRows(filter).then((rows) => {
@@ -1431,10 +1504,16 @@ async function runApply() {
       loadUnavailableList(),
     ]);
     await refreshProgressPanel(null);
-    setStatus("applyStatus", "Sync applied.", true);
+    setStatus(
+      "applyStatus",
+      `Sync applied — ${totals.updated.toLocaleString()} updated, ${totals.inserted_free_agents.toLocaleString()} new, ${totals.marked_unavailable.toLocaleString()} legacy.`,
+      true
+    );
   } catch (err) {
     console.error("pesdb sync apply:", err);
     setStatus("applyStatus", err.message || "Apply failed.", false);
+  } finally {
+    applyBtn?.removeAttribute("disabled");
   }
 }
 
