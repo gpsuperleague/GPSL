@@ -3,10 +3,6 @@ import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { loadCurrentSeason, CUP_LABELS, loadCupBracket, cupRoundLabel } from "./competition.js";
 import { applyCupPageTheme, renderCupHero } from "./trophy_assets.js";
 
-const BALL_COLORS = [
-  "#ff9900", "#6cf", "#9df", "#fc9", "#f9a", "#8d8", "#c9f", "#ff6",
-];
-
 let isAdmin = false;
 let seasonId = null;
 let speedMul = 1;
@@ -43,13 +39,6 @@ function clubLabel(code) {
   return fullClubName(code) || code;
 }
 
-function ballColor(code) {
-  let h = 0;
-  const s = String(code);
-  for (let i = 0; i < s.length; i += 1) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-  return BALL_COLORS[h % BALL_COLORS.length];
-}
-
 function setStatus(msg, kind = "") {
   const el = document.getElementById("drawStatus");
   if (!el) return;
@@ -82,8 +71,11 @@ function layoutBallsInBowl(codes) {
     const ball = document.createElement("div");
     ball.className = "cup-draw-ball";
     ball.dataset.code = code;
-    ball.style.setProperty("--ball-color", ballColor(code));
-    ball.textContent = clubLabel(code);
+    ball.innerHTML = `
+      <div class="cup-draw-ball-inner">
+        <div class="cup-draw-ball-face cup-draw-ball-front" aria-hidden="true"></div>
+        <div class="cup-draw-ball-face cup-draw-ball-back">${escapeHtml(clubLabel(code))}</div>
+      </div>`;
     const angle = (i / Math.max(codes.length, 1)) * Math.PI * 2 + Math.random() * 0.5;
     const radius = 0.15 + Math.random() * 0.32;
     const left = w / 2 + Math.cos(angle) * w * radius - 26;
@@ -114,7 +106,9 @@ async function pickBall(code) {
   const ball = findBall(code);
   if (!ball) return;
   ball.classList.add("picked");
-  await delay(420);
+  await delay(280);
+  ball.classList.add("revealed");
+  await delay(720);
   ball.classList.add("fly-away");
   ball.style.transform = "translateY(-120px) scale(1.2)";
   await delay(650);
