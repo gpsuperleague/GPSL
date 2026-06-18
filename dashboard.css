@@ -869,7 +869,9 @@ button.nav-admin-trigger {
 }
 
 .nav-group-summary {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   width: 100%;
   border: none;
   background: transparent;
@@ -1114,6 +1116,34 @@ button.nav-admin-trigger {
   color: #bbb;
   white-space: normal;
   line-height: 1.35;
+}
+
+.nav-group-auction-active {
+  display: inline-block;
+  margin-left: 2px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  background: #1a3a1a;
+  color: #9d9;
+  border: 1px solid #3a6a3a;
+}
+
+.nav-group-auction-active.is-hidden {
+  display: none;
+}
+
+.nav-group-has-auction .nav-group-summary {
+  color: #ffb84d;
+}
+
+.nav-group-has-auction.open .nav-group-summary,
+.nav-group-has-auction.nav-group-active .nav-group-summary {
+  color: #ffc966;
 }
 
 .nav-auction-active {

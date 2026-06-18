@@ -26,7 +26,7 @@ import { formatNavLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260617-auction-nav-active";
+export const GLOBAL_JS_VERSION = "20260617-transfers-auction-indicator";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -91,6 +91,15 @@ export function isNavAuctionActive(kind) {
     return clubAuctionEnabled && clubAuctionBiddingOpen === true;
   }
   return false;
+}
+
+/** True when any transfer auction has live bidding open. */
+export function hasAnyNavAuctionActive() {
+  return (
+    isNavAuctionActive("player") ||
+    isNavAuctionActive("manager") ||
+    isNavAuctionActive("club")
+  );
 }
 
 export function getDraftAuctionStartTime() {
@@ -995,6 +1004,11 @@ function navLinkLabelHtml(item) {
   )}</span>`;
 }
 
+function navGroupAuctionBadgeHtml(visible = hasAnyNavAuctionActive()) {
+  const hidden = visible ? "" : " is-hidden";
+  return `<span class="nav-group-auction-active${hidden}" title="Auction bidding is open" aria-hidden="${visible ? "false" : "true"}">Active</span>`;
+}
+
 /** Update Active badges without rebuilding the whole nav. */
 export function refreshNavAuctionIndicators() {
   const nav = document.getElementById("nav");
@@ -1007,6 +1021,17 @@ export function refreshNavAuctionIndicators() {
     badge.classList.toggle("is-hidden", !active);
     badge.setAttribute("aria-hidden", active ? "false" : "true");
   });
+
+  const transfersGroup = nav.querySelector('[data-nav-auction-section="transfers"]');
+  if (transfersGroup) {
+    const anyActive = hasAnyNavAuctionActive();
+    transfersGroup.classList.toggle("nav-group-has-auction", anyActive);
+    const groupBadge = transfersGroup.querySelector(".nav-group-auction-active");
+    if (groupBadge) {
+      groupBadge.classList.toggle("is-hidden", !anyActive);
+      groupBadge.setAttribute("aria-hidden", anyActive ? "false" : "true");
+    }
+  }
 }
 
 let __navAuctionRefreshInterval = null;
@@ -1427,11 +1452,15 @@ export async function buildNav() {
     const sectionMatchesPage = sectionHasActiveItem({ items }, pathname, search);
     const isPrimarySection = section.id === openSectionId;
     const hasActive = sectionMatchesPage && isPrimarySection;
+    const isTransfersSection = section.id === "transfers";
+    const anyAuctionActive = isTransfersSection && hasAnyNavAuctionActive();
 
-    html += `<div class="nav-group${hasActive ? " nav-group-active" : ""}" data-nav-group>`;
+    html += `<div class="nav-group${hasActive ? " nav-group-active" : ""}${
+      anyAuctionActive ? " nav-group-has-auction" : ""
+    }"${isTransfersSection ? ' data-nav-auction-section="transfers"' : ""} data-nav-group>`;
     html += `<button type="button" class="nav-group-summary" aria-expanded="false">${escapeNavHtml(
       formatNavLabel(section.label)
-    )}</button>`;
+    )}${isTransfersSection ? navGroupAuctionBadgeHtml(anyAuctionActive) : ""}</button>`;
     const dropdownClass =
       section.id === "admin" || section.id === "transfers"
         ? "nav-dropdown nav-dropdown-scrollable"
