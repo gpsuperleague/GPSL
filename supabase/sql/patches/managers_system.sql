@@ -407,6 +407,10 @@ BEGIN
 
   PERFORM public.manager_sync_club_rating(p_club_short);
 
+  IF to_regprocedure('public.owner_inbox_notify_season_expectations(text)') IS NOT NULL THEN
+    PERFORM public.owner_inbox_notify_season_expectations(p_club_short);
+  END IF;
+
   RETURN jsonb_build_object(
     'ok', true,
     'manager_id', p_manager_id,

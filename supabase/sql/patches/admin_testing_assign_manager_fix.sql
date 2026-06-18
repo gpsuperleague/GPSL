@@ -1,5 +1,5 @@
--- Fix: manager_assign_to_club(bigint, text, smallint, numeric, boolean) overload mismatch
--- Re-run after managers_system.sql (or owner_inbox_notifications.sql).
+-- Fix: manager_assign_to_club overload mismatch / "function is not unique".
+-- Prefer manager_assign_to_club_dedupe.sql (drops all overloads + recreates canonical).
 
 CREATE OR REPLACE FUNCTION public.admin_testing_assign_manager(
   p_manager_id bigint,
@@ -19,6 +19,9 @@ DECLARE
   v_mgr public."Managers"%rowtype;
   v_club_mgr_id bigint;
   v_result jsonb;
+  v_seasons smallint := greatest(coalesce(p_seasons, 2), 1::smallint);
+  v_fee numeric;
+  v_buyer_pays boolean := NOT coalesce(p_waive_fee, true);
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -68,12 +71,18 @@ BEGIN
     PERFORM public.manager_release_from_club(p_manager_id, NULL, 0, 'admin_testing');
   END IF;
 
+  IF coalesce(p_waive_fee, true) THEN
+    v_fee := 0;
+  ELSE
+    v_fee := NULL;
+  END IF;
+
   v_result := public.manager_assign_to_club(
     p_manager_id,
     v_club,
-    greatest(coalesce(p_seasons, 2), 1::smallint)::smallint,
-    (CASE WHEN coalesce(p_waive_fee, true) THEN 0::numeric ELSE NULL::numeric END),
-    NOT coalesce(p_waive_fee, true)
+    v_seasons,
+    v_fee,
+    v_buyer_pays
   );
 
   RETURN v_result || jsonb_build_object(
