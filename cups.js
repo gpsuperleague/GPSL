@@ -264,12 +264,16 @@ function renderBracket(nodes, extras) {
   }
 
   const rounds = preprocessCupBracketRounds(nodes, currentCup);
+  const flowClass =
+    currentCup === "league_cup" ? "bracket-flow bracket-flow--league-cup" : "bracket-flow";
   root.innerHTML = `
-    <div class="bracket-flow">
+    <div class="${flowClass}">
       ${rounds.map(({ round_no, matches }) => renderBracketRoundColumn(round_no, matches, extras)).join("")}
     </div>
     <p class="bracket-arrow-hint">← Early rounds · Final →</p>
   `;
+  const flow = root.querySelector(".bracket-flow");
+  if (flow) flow.scrollLeft = 0;
 }
 
 function renderBracketRoundColumn(round_no, matches, extras) {

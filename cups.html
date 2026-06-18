@@ -26,14 +26,32 @@
     .meta { color:#aaa; margin-bottom:12px; }
     a { color:#ff9900; }
 
+    /* Full-width bracket — League Cup has 6 rounds and needs the whole viewport */
+    .panel-bracket {
+      width: 100vw;
+      max-width: 100vw;
+      margin-left: calc(50% - 50vw);
+      margin-right: calc(50% - 50vw);
+      box-sizing: border-box;
+      padding: 16px max(20px, 2.5vw);
+      border-left: none;
+      border-right: none;
+      border-radius: 0;
+    }
+    .panel-bracket .bracket-intro { max-width: 1280px; margin: 0 auto 12px; }
+
     .bracket-flow {
       display:flex; flex-direction:row; align-items:stretch; gap:0;
-      overflow-x:auto; padding:8px 4px 16px; min-height:200px;
+      overflow-x:auto; overflow-y:hidden;
+      padding:8px 4px 12px; min-height:200px;
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x proximity;
     }
     .bracket-round {
       display:flex; flex-direction:column; justify-content:space-around;
       min-width:220px; flex:0 0 auto; padding:0 12px;
       border-right:1px solid #333;
+      scroll-snap-align: start;
     }
     .bracket-round-two-leg { min-width:360px; }
     .bracket-round:last-child { border-right:none; }
@@ -106,6 +124,28 @@
     .bracket-arrow-hint {
       font-size:11px; color:#666; text-align:center; margin-top:8px;
     }
+
+    /* 60-club League Cup: tighter columns so all six rounds fit on typical screens */
+    .bracket-flow--league-cup .bracket-round { min-width: 175px; padding: 0 8px; }
+    .bracket-flow--league-cup .round-title { font-size: 11px; margin-bottom: 8px; }
+    .bracket-flow--league-cup .bracket-match {
+      padding: 6px 8px; margin: 4px 0; font-size: 11px; line-height: 1.35;
+    }
+    .bracket-flow--league-cup .match-teams { margin-bottom: 4px; font-size: 11px; }
+    .bracket-flow--league-cup .match-status { font-size: 10px; margin-bottom: 2px; }
+    .bracket-flow--league-cup .bracket-round[data-round="1"],
+    .bracket-flow--league-cup .bracket-round[data-round="2"] {
+      justify-content: flex-start;
+      max-height: min(72vh, 820px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    @media (min-width: 1400px) {
+      .bracket-flow--league-cup .bracket-round { min-width: 190px; }
+    }
+    @media (max-width: 900px) {
+      .bracket-flow--league-cup .bracket-round { min-width: 158px; }
+    }
   </style>
 </head>
 <body>
@@ -121,9 +161,9 @@
       <div id="qualifiedList" class="qual-list">—</div>
     </div>
 
-    <div class="panel">
+    <div class="panel panel-bracket">
       <h2>Knockout bracket</h2>
-      <p class="meta" style="margin-top:0;">
+      <p class="meta bracket-intro" style="margin-top:0;">
         Progression left → right. Scores show 90 minutes, after extra time, and penalty shootout winner when applicable.
         Gate receipts and prize money appear after results are confirmed.
       </p>
@@ -136,6 +176,6 @@
       International: <a href="world_cup.html">World Cup</a> · <a href="nation_select.html">Nation selection</a>.
     </p>
   </div>
-  <script type="module" src="cups.js?v=20260610-bowl-themes"></script>
+  <script type="module" src="cups.js?v=20260617-bracket-width"></script>
 </body>
 </html>
