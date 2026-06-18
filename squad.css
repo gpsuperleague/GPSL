@@ -227,7 +227,17 @@ body.squad-page table.gpsl-table.squad-table {
   border-collapse: collapse;
   background: rgba(255, 255, 255, 0.05);
   color: #ddd;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #333;
+}
+
+body.squad-page table.gpsl-table.squad-table th,
+body.squad-page table.gpsl-table.squad-table td {
+  border-right: 1px solid #333;
+}
+
+body.squad-page table.gpsl-table.squad-table th:last-child,
+body.squad-page table.gpsl-table.squad-table td:last-child {
+  border-right: none;
 }
 
 body.squad-page table.gpsl-table.squad-table col.squad-col-thumb { width: 76px; }
@@ -255,7 +265,7 @@ body.squad-page .gpsl-table th {
   background: rgba(255, 255, 255, 0.08);
   color: #ff9900;
   padding: 8px 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid #444;
   text-align: center;
   vertical-align: middle;
   font-size: 12px;
@@ -270,7 +280,7 @@ body.squad-page table.gpsl-table.squad-table th:nth-child(2) {
 
 body.squad-page .gpsl-table td {
   padding: 8px 6px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid #333;
   color: #ddd;
   vertical-align: middle;
   overflow: hidden;
@@ -325,6 +335,8 @@ body.squad-page .squad-col-rating {
 
 body.squad-page .squad-section-row td {
   overflow: visible;
+  border-right: none;
+  border-bottom: 1px solid #333;
 }
 
 body.squad-page a.squad-player-link {
