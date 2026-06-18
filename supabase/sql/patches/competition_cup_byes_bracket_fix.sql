@@ -1,10 +1,7 @@
 -- =============================================================================
--- Fix cup byes: admin-selected clubs skip R1 and appear in round 2 correctly.
--- Bug: bye teams were placed on R2 home, then overwritten by R1 child links
---      (standard 2:1 pairing). Also leaves empty ghost R1 slots (M29–32).
--- Run after competition_cup_byes_admin.sql + competition_cup_weather_from_schedule.sql
--- Then re-draw the cup in GPSL Admin (saved byes are kept).
--- =============================================================================
+-- Fix cup byes: show bye clubs in opening round; wire R1→R2 correctly.
+-- UI fix (competition.js): do not hide empty later-round placeholder nodes.
+-- Re-run this patch then re-draw League Cup in GPSL Admin (saved byes kept).-- =============================================================================
 
 DROP FUNCTION IF EXISTS public.competition_build_knockout_bracket(bigint, text, text[]);
 
@@ -233,10 +230,16 @@ BEGIN
       AND round_no = v_first_round
       AND coalesce(cup_leg, 1) = 1;
 
+    -- Bye clubs in opening round (last R1 slots): e.g. M29–32 for 4 byes
     FOR v_i IN 1..v_byes LOOP
       UPDATE public.competition_cup_bracket_nodes n
-      SET home_club_short_name = v_byes_clubs[v_i]
-      WHERE n.id = v_r2_ids[v_i];
+      SET home_club_short_name = v_byes_clubs[v_i],
+          away_club_short_name = NULL
+      WHERE n.id = v_r1_ids[v_r1_playable + v_i];
+
+      UPDATE public.competition_cup_bracket_nodes
+      SET child_node_id = v_r2_ids[v_i], child_slot = 'home'
+      WHERE id = v_r1_ids[v_r1_playable + v_i];
 
       UPDATE public.competition_cup_bracket_nodes
       SET child_node_id = v_r2_ids[v_i], child_slot = 'away'

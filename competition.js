@@ -353,16 +353,20 @@ export function preprocessCupBracketRounds(nodes, cupCode) {
   let rounds = groupCupBracketByRound(nodes);
 
   if (cupCode === "league_cup") {
+    const firstRoundNo = rounds[0]?.round_no ?? 1;
     rounds = rounds
       .map((round) => ({
         ...round,
-        matches: round.matches.filter(
-          (m) =>
-            m.home_club_short_name ||
-            m.away_club_short_name ||
-            m.winner_club_short_name ||
-            m.fixture_id
-        ),
+        matches:
+          round.round_no === firstRoundNo
+            ? round.matches.filter(
+                (m) =>
+                  m.home_club_short_name ||
+                  m.away_club_short_name ||
+                  m.winner_club_short_name ||
+                  m.fixture_id
+              )
+            : round.matches,
       }))
       .filter((round) => round.matches.length > 0);
   }

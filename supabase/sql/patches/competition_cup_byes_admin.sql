@@ -447,10 +447,16 @@ BEGIN
       AND round_no = v_first_round
       AND coalesce(cup_leg, 1) = 1;
 
+    -- Bye clubs in opening round (last R1 slots): e.g. M29–32 for 4 byes
     FOR v_i IN 1..v_byes LOOP
       UPDATE public.competition_cup_bracket_nodes n
-      SET home_club_short_name = v_byes_clubs[v_i]
-      WHERE n.id = v_r2_ids[v_i];
+      SET home_club_short_name = v_byes_clubs[v_i],
+          away_club_short_name = NULL
+      WHERE n.id = v_r1_ids[v_r1_playable + v_i];
+
+      UPDATE public.competition_cup_bracket_nodes
+      SET child_node_id = v_r2_ids[v_i], child_slot = 'home'
+      WHERE id = v_r1_ids[v_r1_playable + v_i];
 
       UPDATE public.competition_cup_bracket_nodes
       SET child_node_id = v_r2_ids[v_i], child_slot = 'away'

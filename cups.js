@@ -215,9 +215,16 @@ function renderTwoLegTieCard(tie, extras) {
     </div>`;
 }
 
-function renderMatchCard(m, extras) {
+function renderMatchCard(m, extras, roundNo) {
+  const r1Bye =
+    roundNo === 1 &&
+    m.home_club_short_name &&
+    !m.away_club_short_name &&
+    !m.fixture_id;
   const home = m.home_club_name || m.home_club_short_name || "TBD";
-  const away = m.away_club_name || m.away_club_short_name || "TBD";
+  const away = r1Bye
+    ? "Bye"
+    : m.away_club_name || m.away_club_short_name || "TBD";
   const played = m.fixture_status === "played";
   const scoreLines = played ? formatCupScoreLines(m, extras) : null;
   const finance = played ? formatCupMatchFinance(m, extras) : [];
@@ -225,12 +232,13 @@ function renderMatchCard(m, extras) {
   let status = "Awaiting draw / teams";
   if (played) status = "Played";
   else if (m.fixture_id) status = "Scheduled";
-  else if (m.winner_club_name && !m.fixture_id) status = "Bye / advanced";
+  else if (r1Bye || (m.winner_club_name && !m.fixture_id)) status = "Bye to Last 32";
   else if (
-    (m.home_club_short_name && !m.away_club_short_name) ||
-    (!m.home_club_short_name && m.away_club_short_name)
+    roundNo > 1 &&
+    ((m.home_club_short_name && !m.away_club_short_name) ||
+      (!m.home_club_short_name && m.away_club_short_name))
   ) {
-    status = "Bye — awaiting opponent";
+    status = "Awaiting opponent";
   }
 
   let winnerHtml = "";
@@ -301,7 +309,7 @@ function renderBracketRoundColumn(round_no, matches, extras) {
     sample.round_gpsl_month ||
     "";
   const columnTitle = month ? `${title} · ${month}` : title;
-  const cards = matches.map((m) => renderMatchCard(m, extras)).join("");
+  const cards = matches.map((m) => renderMatchCard(m, extras, round_no)).join("");
   return `
     <div class="bracket-round" data-round="${round_no}">
       <div class="round-title">${escapeHtml(columnTitle)}</div>
