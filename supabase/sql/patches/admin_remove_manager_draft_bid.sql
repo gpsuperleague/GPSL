@@ -15,7 +15,8 @@ DECLARE
   v_top_amount numeric;
   v_top_bidder text;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  -- SQL Editor runs without auth.uid(); admin UI uses JWT email check.
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
