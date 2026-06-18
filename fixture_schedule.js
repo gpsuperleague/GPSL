@@ -5,6 +5,9 @@ import {
   loadScheduleContext,
   proposeKickoff,
   acceptProposal,
+  checkInToFixture,
+  voluntaryRescheduleDrop,
+  emergencyDrop,
   formatKickoffPair,
   UK_TZ,
 } from "./match_scheduling.js";
@@ -35,6 +38,88 @@ function fixtureTitle(f) {
   return `${home} vs ${away}`;
 }
 
+function renderAgreedPanel(root, f, sch) {
+  const homeTz = ctx.home_timezone || UK_TZ;
+  const awayTz = ctx.away_timezone || UK_TZ;
+  const ci = ctx.checkin || {};
+  const al = ctx.allowances || {};
+  const homeName = fullClubName(f.home_club_short_name);
+  const awayName = fullClubName(f.away_club_short_name);
+
+  const checkinStatus = `Home (${homeName}): ${ci.home_checked_in ? "checked in ✓" : "waiting…"} · Away (${awayName}): ${ci.away_checked_in ? "checked in ✓" : "waiting…"}`;
+
+  root.innerHTML = `
+    <div class="panel">
+      <div class="fixture-head">${fixtureTitle(f)}</div>
+      <p class="status-agreed"><b>Kick-off agreed:</b> ${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
+      <p class="meta">${checkinStatus}</p>
+      <p class="meta">Check-in opens at kick-off for <b>10 minutes</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
+      <p class="meta">Emergency drops remaining this season: <b>${al.emergency_drops_remaining ?? "—"}</b>/2 · Reschedule this GPSL month: <b>${al.reschedule_used_this_month ? "used" : "available"}</b></p>
+      <div class="actions">
+        ${ci.can_check_in ? '<button type="button" id="checkInBtn" class="button">Check in now</button>' : ""}
+        ${ci.can_play ? `<a href="matchday.html?fixture=${f.id}" class="button" style="text-decoration:none;display:inline-block;">Enter result on Match Day</a>` : ""}
+        ${al.can_voluntary_drop ? '<button type="button" id="voluntaryDropBtn" class="button secondary">Drop & reschedule (24h+ notice)</button>' : ""}
+        ${al.can_emergency_drop ? '<button type="button" id="emergencyDropBtn" class="button secondary">Emergency drop (&lt;24h)</button>' : ""}
+      </div>
+    </div>
+  `;
+
+  const checkInBtn = document.getElementById("checkInBtn");
+  if (checkInBtn) {
+    checkInBtn.onclick = async () => {
+      checkInBtn.disabled = true;
+      setStatus("Checking in…");
+      const res = await checkInToFixture(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, true);
+        checkInBtn.disabled = false;
+        return;
+      }
+      setStatus("Checked in.");
+      await reload();
+    };
+  }
+
+  const volBtn = document.getElementById("voluntaryDropBtn");
+  if (volBtn) {
+    volBtn.onclick = async () => {
+      if (!confirm("Drop the agreed time and return to scheduling? Uses your 1 reschedule for this GPSL month.")) return;
+      volBtn.disabled = true;
+      const res = await voluntaryRescheduleDrop(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, true);
+        volBtn.disabled = false;
+        return;
+      }
+      setStatus("Returned to scheduling — propose a new time.");
+      await reload();
+    };
+  }
+
+  const emBtn = document.getElementById("emergencyDropBtn");
+  if (emBtn) {
+    emBtn.onclick = async () => {
+      const left = al.emergency_drops_remaining ?? 0;
+      if (
+        !confirm(
+          `Emergency drop (<24h before kick-off)? Uses 1 of ${left} remaining this season.`
+        )
+      ) {
+        return;
+      }
+      emBtn.disabled = true;
+      const res = await emergencyDrop(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, true);
+        emBtn.disabled = false;
+        return;
+      }
+      setStatus("Emergency drop recorded — reschedule on this page.");
+      await reload();
+    };
+  }
+}
+
 function render() {
   const root = document.getElementById("scheduleRoot");
   const meta = document.getElementById("scheduleMeta");
@@ -55,19 +140,21 @@ function render() {
     discord.hidden = !sch.discord_hint_shown;
   }
 
-  if (sch.status === "agreed" && sch.agreed_kickoff_at) {
-    const homeTz = ctx.home_timezone || UK_TZ;
-    const awayTz = ctx.away_timezone || UK_TZ;
+  if (f.status === "played" || f.is_forfeit) {
     root.innerHTML = `
       <div class="panel">
         <div class="fixture-head">${fixtureTitle(f)}</div>
-        <p class="status-agreed"><b>Kick-off agreed:</b> ${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
-        <p class="meta">Result entry opens on Match Day when the GPSL month is live (or during holiday early play).</p>
+        <p class="status-agreed">${f.is_forfeit ? "<b>Forfeit</b> — result recorded." : "<b>Played</b>."}</p>
         <div class="actions">
-          <a href="matchday.html?fixture=${f.id}" class="button secondary" style="text-decoration:none;display:inline-block;">Match Day</a>
+          <a href="fixtures.html" class="button secondary" style="text-decoration:none;display:inline-block;">Fixtures</a>
         </div>
       </div>
     `;
+    return;
+  }
+
+  if (sch.status === "agreed" && sch.agreed_kickoff_at) {
+    renderAgreedPanel(root, f, sch);
     return;
   }
 
@@ -227,7 +314,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     setStatus(
       msg.includes("match_schedule_fixture_context")
         ? "Scheduling not deployed — run supabase/sql/patches/match_scheduling_phase1.sql"
-        : msg,
+        : msg.includes("fixture_check_in")
+          ? "Phase 2 not deployed — run supabase/sql/patches/match_scheduling_phase2.sql"
+          : msg,
       true
     );
   }

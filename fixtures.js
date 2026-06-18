@@ -95,9 +95,14 @@ function actionCell(fixture) {
   if (sched) {
     const agreed =
       fixture.schedule_status === "agreed" && fixture.agreed_kickoff_at;
-    const kickoffLabel = agreed
-      ? `<span style="display:block;color:#8c8;font-size:11px;margin-top:2px;">${formatKickoff(fixture.agreed_kickoff_at, UK_TZ)} UK</span>`
-      : "";
+    let kickoffLabel = "";
+    if (agreed) {
+      const ci =
+        fixture.home_checked_in && fixture.away_checked_in
+          ? "Both checked in"
+          : "Check in at kick-off";
+      kickoffLabel = `<span style="display:block;color:#8c8;font-size:11px;margin-top:2px;">${formatKickoff(fixture.agreed_kickoff_at, UK_TZ)} UK · ${ci}</span>`;
+    }
     const cls = sched.muted ? "btn-result secondary" : "btn-result";
     return `<a href="${sched.href}" class="${cls}" style="text-decoration:none;display:inline-block;">${sched.label}</a>${kickoffLabel}`;
   }

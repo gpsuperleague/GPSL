@@ -84,6 +84,51 @@ export async function acceptProposal(proposalId) {
   return { ok: true };
 }
 
+export async function checkInToFixture(fixtureId) {
+  const { data, error } = await supabase.rpc("fixture_check_in", {
+    p_fixture_id: fixtureId,
+  });
+  if (error) return { ok: false, msg: error.message };
+  return { ok: true, data };
+}
+
+export async function voluntaryRescheduleDrop(fixtureId) {
+  const { error } = await supabase.rpc("fixture_voluntary_reschedule_drop", {
+    p_fixture_id: fixtureId,
+  });
+  if (error) return { ok: false, msg: error.message };
+  return { ok: true };
+}
+
+export async function emergencyDrop(fixtureId) {
+  const { error } = await supabase.rpc("fixture_emergency_drop", {
+    p_fixture_id: fixtureId,
+  });
+  if (error) return { ok: false, msg: error.message };
+  return { ok: true };
+}
+
+/** Client mirror of server play window (after Phase 2). */
+export function canPlayAgreedFixture(fixture) {
+  if (!fixture || fixture.status !== "scheduled") return false;
+  if (fixture.schedule_status !== "agreed" || !fixture.agreed_kickoff_at) return false;
+
+  const kickoff = new Date(fixture.agreed_kickoff_at).getTime();
+  const now = Date.now();
+  const blockMs = SLOT_MINUTES * 60 * 1000;
+
+  if (now < kickoff || now >= kickoff + blockMs) return false;
+  if (!fixture.home_checked_in || !fixture.away_checked_in) return false;
+  return true;
+}
+
+export function checkinStatusLabel(fixture) {
+  if (fixture?.schedule_status !== "agreed" || !fixture?.agreed_kickoff_at) return null;
+  const h = fixture.home_checked_in ? "✓" : "—";
+  const a = fixture.away_checked_in ? "✓" : "—";
+  return `Check-in: home ${h} · away ${a}`;
+}
+
 export function slotKey(isoDow, hour, minute) {
   return `${isoDow}:${hour}:${minute}`;
 }
@@ -104,7 +149,7 @@ export function scheduleActionLabel(fixture, myClubShort) {
   if (!fixture || !myClubShort) return null;
   if (fixture.status !== "scheduled") return null;
   if (fixture.schedule_status === "agreed" && fixture.agreed_kickoff_at) {
-    return { label: "Scheduled", href: scheduleUrl(fixture.id), muted: true };
+    return { label: "Match day", href: scheduleUrl(fixture.id), muted: true };
   }
   const isHome =
     (fixture.home_club_short_name || "").toUpperCase() ===

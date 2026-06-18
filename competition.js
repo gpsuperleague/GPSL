@@ -867,6 +867,27 @@ export function canSubmitResult(
     }
   }
 
+  if (
+    fixture.schedule_status != null &&
+    fixture.schedule_status !== "agreed"
+  ) {
+    return false;
+  }
+
+  if (fixture.schedule_status === "agreed") {
+    const kickoff = fixture.agreed_kickoff_at
+      ? new Date(fixture.agreed_kickoff_at).getTime()
+      : NaN;
+    const now = Date.now();
+    const blockEnd = kickoff + 30 * 60 * 1000;
+    if (!Number.isFinite(kickoff) || now < kickoff || now >= blockEnd) {
+      return false;
+    }
+    if (!fixture.home_checked_in || !fixture.away_checked_in) {
+      return false;
+    }
+  }
+
   return true;
 }
 

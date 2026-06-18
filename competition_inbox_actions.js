@@ -21,6 +21,9 @@ export const INBOX_ACTION_DEFAULTS = {
   match_time_proposed: { label: "Schedule match", href: "fixture_schedule.html" },
   match_time_countered: { label: "Respond to proposal", href: "fixture_schedule.html" },
   match_time_accepted: { label: "View schedule", href: "fixture_schedule.html" },
+  match_rescheduled: { label: "Reschedule match", href: "fixture_schedule.html" },
+  match_emergency_drop: { label: "Reschedule match", href: "fixture_schedule.html" },
+  match_forfeit_applied: { label: "View fixture", href: "fixture_schedule.html" },
 };
 
 export function inboxActionForMessage(msg) {
@@ -52,6 +55,13 @@ export function inboxActionForMessage(msg) {
     (msg.message_type === "match_time_proposed" ||
       msg.message_type === "match_time_countered" ||
       msg.message_type === "match_time_accepted") &&
+    msg.fixture_id
+  ) {
+    href = `fixture_schedule.html?fixture=${msg.fixture_id}`;
+  } else if (
+    (msg.message_type === "match_rescheduled" ||
+      msg.message_type === "match_emergency_drop" ||
+      msg.message_type === "match_forfeit_applied") &&
     msg.fixture_id
   ) {
     href = `fixture_schedule.html?fixture=${msg.fixture_id}`;
