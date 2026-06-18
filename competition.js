@@ -350,7 +350,23 @@ export function syntheticCupLeg2Node(leg1) {
 
 /** Pull mis-placed leg-2 QF nodes (old schedule used round_no 2) into round 1. */
 export function preprocessCupBracketRounds(nodes, cupCode) {
-  const rounds = groupCupBracketByRound(nodes);
+  let rounds = groupCupBracketByRound(nodes);
+
+  if (cupCode === "league_cup") {
+    rounds = rounds
+      .map((round) => ({
+        ...round,
+        matches: round.matches.filter(
+          (m) =>
+            m.home_club_short_name ||
+            m.away_club_short_name ||
+            m.winner_club_short_name ||
+            m.fixture_id
+        ),
+      }))
+      .filter((round) => round.matches.length > 0);
+  }
+
   if (cupCode !== "super8" && cupCode !== "bowl") return rounds;
 
   const orphanLeg2 = [];

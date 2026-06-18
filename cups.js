@@ -226,6 +226,12 @@ function renderMatchCard(m, extras) {
   if (played) status = "Played";
   else if (m.fixture_id) status = "Scheduled";
   else if (m.winner_club_name && !m.fixture_id) status = "Bye / advanced";
+  else if (
+    (m.home_club_short_name && !m.away_club_short_name) ||
+    (!m.home_club_short_name && m.away_club_short_name)
+  ) {
+    status = "Bye — awaiting opponent";
+  }
 
   let winnerHtml = "";
   if (m.winner_club_name && !scoreLines?.some((l) => l.label === "Pens")) {
