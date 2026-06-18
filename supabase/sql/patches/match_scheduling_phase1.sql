@@ -822,6 +822,7 @@ DECLARE
   v_club text;
   v_fixture public.competition_fixtures;
   v_schedule public.competition_fixture_schedule;
+  v_schedule_found boolean := false;
   v_pending public.competition_fixture_schedule_proposal;
   v_role text;
   v_home text;
@@ -829,6 +830,12 @@ DECLARE
   v_unlock timestamptz;
   v_lock timestamptz;
   v_slots jsonb;
+  v_status text;
+  v_agreed timestamptz;
+  v_home_count smallint;
+  v_away_count smallint;
+  v_discord_hint boolean;
+  v_pending_id bigint;
 BEGIN
   v_club := public.my_club_shortname();
 
@@ -854,15 +861,33 @@ BEGIN
     v_role := 'admin';
   END IF;
 
-  SELECT * INTO v_schedule FROM public.competition_fixture_schedule WHERE fixture_id = p_fixture_id;
-  IF NOT FOUND THEN
-    v_schedule := public.match_schedule_ensure_row(p_fixture_id);
+  SELECT * INTO v_schedule
+  FROM public.competition_fixture_schedule
+  WHERE fixture_id = p_fixture_id;
+
+  v_schedule_found := FOUND;
+
+  IF v_schedule_found THEN
+    v_status := v_schedule.status;
+    v_agreed := v_schedule.agreed_kickoff_at;
+    v_home_count := v_schedule.home_proposal_count;
+    v_away_count := v_schedule.away_proposal_count;
+    v_discord_hint := v_schedule.discord_hint_shown;
+    v_pending_id := v_schedule.pending_proposal_id;
+  ELSE
+    v_status := 'unscheduled';
+    v_agreed := NULL;
+    v_home_count := 0;
+    v_away_count := 0;
+    v_discord_hint := false;
+    v_pending_id := NULL;
   END IF;
 
-  IF v_schedule.pending_proposal_id IS NOT NULL THEN
+  IF v_pending_id IS NOT NULL THEN
+
     SELECT * INTO v_pending
     FROM public.competition_fixture_schedule_proposal
-    WHERE id = v_schedule.pending_proposal_id;
+    WHERE id = v_pending_id;
   END IF;
 
   SELECT w.unlock_at, w.lock_at INTO v_unlock, v_lock
@@ -891,11 +916,11 @@ BEGIN
       'competition_type', v_fixture.competition_type
     ),
     'schedule', jsonb_build_object(
-      'status', v_schedule.status,
-      'agreed_kickoff_at', v_schedule.agreed_kickoff_at,
-      'home_proposal_count', v_schedule.home_proposal_count,
-      'away_proposal_count', v_schedule.away_proposal_count,
-      'discord_hint_shown', v_schedule.discord_hint_shown
+      'status', v_status,
+      'agreed_kickoff_at', v_agreed,
+      'home_proposal_count', v_home_count,
+      'away_proposal_count', v_away_count,
+      'discord_hint_shown', v_discord_hint
     ),
     'pending_proposal', CASE WHEN v_pending.id IS NULL THEN NULL ELSE jsonb_build_object(
       'id', v_pending.id,
@@ -912,11 +937,11 @@ BEGIN
       SELECT COALESCE(jsonb_agg(i.kickoff_at ORDER BY i.kickoff_at), '[]'::jsonb)
       FROM public.match_schedule_intersection_slots(p_fixture_id) i
     ),
-    'can_propose_first', (v_role = 'home' AND v_schedule.status = 'unscheduled'),
+    'can_propose_first', (v_role = 'home' AND v_status = 'unscheduled'),
     'can_respond', (
       v_pending.id IS NOT NULL
       AND v_pending.proposed_by_club_short_name <> v_club
-      AND v_schedule.status = 'negotiating'
+      AND v_status = 'negotiating'
     )
   );
 END;
