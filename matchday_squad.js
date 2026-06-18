@@ -303,7 +303,7 @@ function renderPlayerCard(player, { compact = false, pitch = false } = {}) {
   card.draggable = true;
   card.dataset.playerId = id;
   card.innerHTML = `
-    <a href="${pesdbPlayerUrl(id)}" target="_blank" rel="noopener" class="squad-player-card-thumb-link">
+    <a href="${pesdbPlayerUrl(id)}" target="_blank" rel="noopener" class="squad-player-card-thumb-link" draggable="false">
       <img src="${playerCardUrl(id)}" alt="" draggable="false"
         onerror="this.src='${FALLBACK_IMG}'">
     </a>
@@ -312,56 +312,104 @@ function renderPlayerCard(player, { compact = false, pitch = false } = {}) {
       ${compact ? "" : `<div class="spc-pos">${pos}</div>`}
     </div>`;
   card.addEventListener("dragstart", (e) => {
+    e.dataTransfer.setData("text/plain", id);
     e.dataTransfer.setData("text/player-id", id);
     e.dataTransfer.effectAllowed = "move";
     card.classList.add("dragging");
+  });
+  card.querySelectorAll("a").forEach((link) => {
+    link.draggable = false;
+    link.addEventListener("dragstart", (e) => e.preventDefault());
   });
   card.addEventListener("dragend", () => card.classList.remove("dragging"));
   return card;
 }
 
 function resolveDropTarget(el) {
+  if (!el) return null;
+
   const pitchDrop = el.closest(".pitch-slot-drop[data-slot-id]");
   if (pitchDrop) {
     return { area: "pitch", slotId: pitchDrop.dataset.slotId };
   }
+
+  const pitchSlot = el.closest(".pitch-slot[data-slot-id]");
+  if (pitchSlot) {
+    return { area: "pitch", slotId: pitchSlot.dataset.slotId };
+  }
+
   const benchDrop = el.closest(".bench-slot-drop[data-bench-idx]");
   if (benchDrop) {
     return { area: "bench", index: Number(benchDrop.dataset.benchIdx) };
   }
+
+  const benchSlot = el.closest(".bench-slot");
+  if (benchSlot) {
+    const nested = benchSlot.querySelector(".bench-slot-drop[data-bench-idx]");
+    if (nested) {
+      return { area: "bench", index: Number(nested.dataset.benchIdx) };
+    }
+  }
+
   if (el.closest("#squadPoolList")) {
     return { area: "pool" };
   }
+
   return null;
+}
+
+function dropTargetFromEvent(e) {
+  const direct = resolveDropTarget(e.target);
+  if (direct) return direct;
+
+  if (typeof e.clientX === "number" && typeof e.clientY === "number") {
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    if (under && under !== e.target) {
+      return resolveDropTarget(under);
+    }
+  }
+
+  return null;
+}
+
+function dropHighlightEl(el) {
+  return (
+    el?.closest(".pitch-slot-drop") ||
+    el?.closest(".pitch-slot") ||
+    el?.closest(".bench-slot-drop") ||
+    el?.closest(".bench-slot") ||
+    el?.closest("#squadPoolList") ||
+    null
+  );
 }
 
 function wireDragDrop(root, state, rerender) {
   root.addEventListener("dragover", (e) => {
-    const target = resolveDropTarget(e.target);
+    const target = dropTargetFromEvent(e);
     if (!target) return;
     e.preventDefault();
-    const dropEl =
-      e.target.closest(".pitch-slot-drop") ||
-      e.target.closest(".bench-slot-drop") ||
-      e.target.closest("#squadPoolList");
+    e.dataTransfer.dropEffect = "move";
+    const dropEl = dropHighlightEl(
+      document.elementFromPoint(e.clientX, e.clientY) || e.target
+    );
     dropEl?.classList.add("drag-over");
   });
 
   root.addEventListener("dragleave", (e) => {
-    const dropEl =
-      e.target.closest(".pitch-slot-drop") ||
-      e.target.closest(".bench-slot-drop") ||
-      e.target.closest("#squadPoolList");
+    const dropEl = dropHighlightEl(e.target);
     dropEl?.classList.remove("drag-over");
   });
 
   root.addEventListener("drop", (e) => {
-    const target = resolveDropTarget(e.target);
+    const target = dropTargetFromEvent(e);
     if (!target) return;
     e.preventDefault();
+    e.stopPropagation();
     root.querySelectorAll(".drag-over").forEach((el) => el.classList.remove("drag-over"));
 
-    const id = e.dataTransfer.getData("text/player-id");
+    const id =
+      e.dataTransfer.getData("text/player-id") ||
+      e.dataTransfer.getData("text/plain");
     if (!id) return;
     const loc = findPlayerLocation(state, id);
     if (!loc) return;
