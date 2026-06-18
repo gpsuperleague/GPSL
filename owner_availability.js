@@ -41,6 +41,10 @@ function ensureModal() {
           <select id="availTimezoneSelect"></select>
         </label>
       </div>
+      <div class="avail-grid-toolbar">
+        <button type="button" id="availMarkAllBtn" class="small-btn secondary">Mark all times available</button>
+        <button type="button" id="availClearAllBtn" class="small-btn secondary">Clear all</button>
+      </div>
       <div id="availGrid" class="avail-grid"></div>
       <p id="availSlotCount" class="avail-slot-count"></p>
       <div class="avail-modal-actions">
@@ -57,8 +61,51 @@ function ensureModal() {
   });
 
   document.getElementById("availSaveBtn").addEventListener("click", onSave);
+  document.getElementById("availMarkAllBtn").addEventListener("click", markAllAvailable);
+  document.getElementById("availClearAllBtn").addEventListener("click", clearAllAvailable);
 
   return modalEl;
+}
+
+function allSlotKeys() {
+  const keys = [];
+  for (const hour of GRID_HOURS) {
+    for (const minute of [0, 30]) {
+      for (let isoDow = 1; isoDow <= 7; isoDow++) {
+        keys.push(slotKey(isoDow, hour, minute));
+      }
+    }
+  }
+  return keys;
+}
+
+function nextIsoDow(isoDow) {
+  return isoDow === 7 ? 1 : isoDow + 1;
+}
+
+function markAllAvailable() {
+  for (const key of allSlotKeys()) {
+    selectedKeys.add(key);
+  }
+  renderGrid();
+}
+
+function clearAllAvailable() {
+  selectedKeys.clear();
+  renderGrid();
+}
+
+function copyDayToNext(isoDow) {
+  const next = nextIsoDow(isoDow);
+  for (const hour of GRID_HOURS) {
+    for (const minute of [0, 30]) {
+      const srcKey = slotKey(isoDow, hour, minute);
+      const dstKey = slotKey(next, hour, minute);
+      if (selectedKeys.has(srcKey)) selectedKeys.add(dstKey);
+      else selectedKeys.delete(dstKey);
+    }
+  }
+  renderGrid();
 }
 
 function populateTimezoneSelect(current) {
@@ -103,7 +150,11 @@ function renderGrid() {
 
   let html = '<div class="avail-grid-corner"></div>';
   for (let d = 1; d <= 7; d++) {
-    html += `<div class="avail-grid-dow">${ISO_DOW_LABELS[d - 1]}</div>`;
+    const next = nextIsoDow(d);
+    html += `<div class="avail-grid-dow">
+      <span>${ISO_DOW_LABELS[d - 1]}</span>
+      <button type="button" class="avail-copy-day" data-dow="${d}" title="Copy ${ISO_DOW_LABELS[d - 1]} to ${ISO_DOW_LABELS[next - 1]}">→ ${ISO_DOW_LABELS[next - 1]}</button>
+    </div>`;
   }
 
   for (const hour of GRID_HOURS) {
@@ -118,6 +169,12 @@ function renderGrid() {
   }
 
   grid.innerHTML = html;
+  grid.querySelectorAll(".avail-copy-day").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      copyDayToNext(Number(btn.dataset.dow));
+    });
+  });
   grid.querySelectorAll(".avail-cell").forEach((btn) => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.key;
@@ -226,9 +283,16 @@ export function injectAvailabilityStyles() {
     .avail-modal-intro { color: #aaa; font-size: 13px; line-height: 1.45; margin: 10px 0 14px; }
     .avail-tz-row label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #ccc; }
     .avail-tz-row select { max-width: 280px; padding: 6px 8px; background: #222; border: 1px solid #444; color: #ddd; border-radius: 4px; }
+    .avail-grid-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+    .avail-grid-toolbar .secondary { background: #333; color: #ddd; border: 1px solid #555; }
     .avail-grid { display: grid; grid-template-columns: 52px repeat(7, 1fr); gap: 2px; margin: 14px 0 8px; user-select: none; }
     .avail-grid-corner { }
-    .avail-grid-dow { text-align: center; font-size: 11px; color: #ff9900; font-weight: bold; padding: 4px 0; }
+    .avail-grid-dow { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11px; color: #ff9900; font-weight: bold; padding: 4px 0; }
+    .avail-copy-day {
+      font-size: 9px; font-weight: normal; color: #888; background: none; border: 1px solid #444;
+      border-radius: 3px; padding: 1px 4px; cursor: pointer; line-height: 1.3;
+    }
+    .avail-copy-day:hover { color: #ff9900; border-color: #666; }
     .avail-grid-time { font-size: 10px; color: #666; text-align: right; padding: 2px 4px 0 0; line-height: 28px; }
     .avail-cell { height: 28px; min-width: 0; border: 1px solid #333; background: #111; border-radius: 3px; cursor: pointer; padding: 0; }
     .avail-cell.on { background: #3d3200; border-color: #ff9900; }

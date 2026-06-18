@@ -1,5 +1,6 @@
 import { supabase, initGlobal } from "./global.js";
 import { GPSL_MONTH_LABELS } from "./competition.js";
+import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import {
   loadScheduleContext,
   proposeKickoff,
@@ -28,6 +29,12 @@ function parseFixtureId() {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
+function fixtureTitle(f) {
+  const home = fullClubName(f.home_club_short_name);
+  const away = fullClubName(f.away_club_short_name);
+  return `${home} vs ${away}`;
+}
+
 function render() {
   const root = document.getElementById("scheduleRoot");
   const meta = document.getElementById("scheduleMeta");
@@ -53,7 +60,7 @@ function render() {
     const awayTz = ctx.away_timezone || UK_TZ;
     root.innerHTML = `
       <div class="panel">
-        <div class="fixture-head">${f.home_club_short_name} vs ${f.away_club_short_name}</div>
+        <div class="fixture-head">${fixtureTitle(f)}</div>
         <p class="status-agreed"><b>Kick-off agreed:</b> ${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
         <p class="meta">Result entry opens on Match Day when the GPSL month is live (or during holiday early play).</p>
         <div class="actions">
@@ -75,7 +82,7 @@ function render() {
       <div class="panel">
         <h2>Pending proposal</h2>
         <p class="status-pending">
-          <b>${pending.proposed_by_club_short_name}</b> proposed
+          <b>${fullClubName(pending.proposed_by_club_short_name)}</b> proposed
           ${formatKickoffPair(pending.kickoff_at, homeTz, awayTz)}
         </p>
         ${
@@ -99,7 +106,7 @@ function render() {
 
   root.innerHTML = `
     <div class="panel">
-      <div class="fixture-head">${f.home_club_short_name} vs ${f.away_club_short_name}</div>
+      <div class="fixture-head">${fixtureTitle(f)}</div>
       <p class="meta">
         Home proposes first. Pick a 30-minute block where <b>both</b> clubs are available
         (${slots.length} mutual slot${slots.length === 1 ? "" : "s"} in this GPSL month).
@@ -191,6 +198,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   await initGlobal();
+  await loadClubsMap();
 
   const {
     data: { user },
