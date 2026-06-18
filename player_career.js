@@ -1,13 +1,15 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName, displayClubName } from "./clubs_lookup.js";
 import { DIVISION_LABELS, formatMoney } from "./competition.js";
-import { TROPHY_IMAGES, trophyImageForCup } from "./trophy_assets.js";
-import { trophyHonourHref } from "./history_trophies.js";
 import {
   pesdbPlayerUrl,
   pesdbPlayerCardUrl,
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
+import {
+  PLAYER_MEDALS_PREVIEW_SCENARIOS,
+  renderHonoursHtml,
+} from "./player_career_medals.js";
 
 const AWARD_LABELS = {
   ballon_dor: "Ballon d'Or",
@@ -206,58 +208,10 @@ function renderTransfers(transfers) {
     </table>`;
 }
 
-function trophyImageForHonour(h) {
-  if (h.honour_type === "league_champion") {
-    return TROPHY_IMAGES[h.division] || TROPHY_IMAGES.championship;
-  }
-  return trophyImageForCup(h.cup_code);
-}
-
-function formatHonourDetail(h) {
-  const club = fullClubName(h.club_short_name) || h.club_name || h.club_short_name;
-  return [h.season_label, club].filter(Boolean).join(" · ");
-}
-
 function renderHonours(honours) {
   const el = document.getElementById("medalsPanel");
   if (!el) return;
-
-  if (!honours?.length) {
-    el.innerHTML =
-      '<p class="empty">No winner medals yet — league titles and cups appear after season archive (5+ league apps or 1+ cup app with the winning club).</p>';
-    return;
-  }
-
-  const sorted = [...honours].sort((a, b) => {
-    const pri = (h) => (h.honour_type === "league_champion" ? 0 : 1);
-    const p = pri(a) - pri(b);
-    if (p !== 0) return p;
-    return String(b.season_label || "").localeCompare(String(a.season_label || ""));
-  });
-
-  el.innerHTML = `
-    <ul class="trophy-list">
-      ${sorted
-        .map((h) => {
-          const img = trophyImageForHonour(h);
-          const href = trophyHonourHref(h);
-          const thumb = img
-            ? `<img class="medal-thumb" src="${img}" alt="" width="44" height="56" loading="lazy">`
-            : `<span class="medal-thumb-fallback" aria-hidden="true">🏆</span>`;
-          const body = `
-            <div class="trophy-body">
-              <div class="trophy-title">${h.honour_label || "Winner"}</div>
-              <div class="trophy-meta">${formatHonourDetail(h)}</div>
-            </div>`;
-          if (href) {
-            return `<li class="trophy-item medal-item">
-              <a class="medal-link" href="${href}">${thumb}${body}</a>
-            </li>`;
-          }
-          return `<li class="trophy-item medal-item">${thumb}${body}</li>`;
-        })
-        .join("")}
-    </ul>`;
+  el.innerHTML = renderHonoursHtml(honours);
 }
 
 function renderAwards(awards) {
@@ -307,6 +261,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const params = new URLSearchParams(window.location.search);
   const playerId = params.get("id")?.trim();
+  const previewMedals = params.get("preview") === "medals";
+
+  if (previewMedals) {
+    const scenario =
+      PLAYER_MEDALS_PREVIEW_SCENARIOS.find((s) => s.id === params.get("scenario")) ||
+      PLAYER_MEDALS_PREVIEW_SCENARIOS.find((s) => s.id === "multi_club");
+
+    document.getElementById("playerTitle").textContent = scenario.player_name || "Preview Player";
+    document.getElementById("playerMeta").textContent =
+      "Sample data · CF · France · Rating 84";
+    document.getElementById("totalsRow").innerHTML =
+      '<span><b>Preview</b> sample medals only</span>';
+    document.getElementById("stintsPanel").innerHTML =
+      '<p class="empty">Stints hidden in medal preview — use a real player id without <code>?preview=medals</code>.</p>';
+    document.getElementById("transfersPanel").innerHTML =
+      '<p class="empty">Transfers hidden in medal preview.</p>';
+    document.getElementById("previewBanner").hidden = false;
+    renderHonours(scenario.honours);
+    renderAwards([]);
+    return;
+  }
+
   if (!playerId) {
     showError("Missing player id.");
     return;
