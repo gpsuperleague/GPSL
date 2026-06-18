@@ -287,15 +287,15 @@ function formatGpslMonthLabel(month) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-async function renderTeamOfMonth() {
-  const el = document.getElementById("totmPanel");
+async function renderTeamOfMonthPanel(panelId, divisionScope, emptyLabel) {
+  const el = document.getElementById(panelId);
   if (!el) return;
 
   const { data: team, error: teamErr } = await supabase
     .from("competition_period_team")
     .select("id, season_label, gpsl_month, formation_id, computed_at")
     .eq("period_kind", "month")
-    .eq("division_scope", "superleague")
+    .eq("division_scope", divisionScope)
     .order("id", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -306,8 +306,7 @@ async function renderTeamOfMonth() {
   }
 
   if (!team) {
-    el.innerHTML =
-      '<p class="empty">No Team of the Month yet — awarded when a GPSL month locks after confirmed league games.</p>';
+    el.innerHTML = `<p class="empty">${emptyLabel}</p>`;
     return;
   }
 
@@ -379,6 +378,21 @@ async function renderTeamOfMonth() {
           .join("")}
       </tbody>
     </table>`;
+}
+
+async function renderTeamOfMonth() {
+  await Promise.all([
+    renderTeamOfMonthPanel(
+      "totmSuperPanel",
+      "superleague",
+      "No Super League Team of the Month yet — awarded when a GPSL month locks after confirmed league games."
+    ),
+    renderTeamOfMonthPanel(
+      "totmChampionshipPanel",
+      "championship",
+      "No Championship Team of the Month yet — awarded when a GPSL month locks after confirmed league games."
+    ),
+  ]);
 }
 
 function setActiveTab(tab) {

@@ -13,7 +13,8 @@ const AWARD_LABELS = {
   golden_playmaker: "Golden Playmaker",
   golden_glove: "Golden Glove",
   season_potm: "Most POTM",
-  team_of_month: "Team of the Month",
+  team_of_month: "Super League Team of the Month",
+  championship_team_of_month: "Championship Team of the Month",
   team_of_season: "Team of the Season",
   championship_player_of_season: "Championship Player of the Season",
 };
@@ -25,6 +26,7 @@ const AWARD_TROPHY = {
   golden_glove: "🧤",
   season_potm: "⭐",
   team_of_month: "📅",
+  championship_team_of_month: "📅",
   team_of_season: "🌟",
   championship_player_of_season: "🏅",
 };
@@ -38,7 +40,10 @@ function formatGpslMonthLabel(month) {
 
 function formatAwardTitle(a) {
   const base = AWARD_LABELS[a.award_type] || a.award_type;
-  if (a.award_type === "team_of_month" && a.gpsl_month) {
+  if (
+    (a.award_type === "team_of_month" || a.award_type === "championship_team_of_month") &&
+    a.gpsl_month
+  ) {
     return `${base} (${formatGpslMonthLabel(a.gpsl_month)})`;
   }
   return base;
@@ -47,7 +52,11 @@ function formatAwardTitle(a) {
 function formatAwardDetail(a) {
   const club = fullClubName(a.club_short_name) || a.club_name || a.club_short_name;
   const parts = [a.season_label, club];
-  if (a.award_type === "team_of_month" || a.award_type === "team_of_season") {
+  if (
+    a.award_type === "team_of_month" ||
+    a.award_type === "championship_team_of_month" ||
+    a.award_type === "team_of_season"
+  ) {
     const slot = a.detail?.slot_label || a.detail?.pitch_slot;
     if (slot) parts.push(String(slot));
   }
@@ -211,7 +220,7 @@ function renderAwards(awards) {
           ? 1
           : t === "team_of_season"
             ? 2
-            : t === "team_of_month"
+            : t === "team_of_month" || t === "championship_team_of_month"
               ? 3
               : 9;
     const p = pri(a.award_type) - pri(b.award_type);

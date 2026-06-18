@@ -24,6 +24,7 @@ ALTER TABLE public.competition_season_award
       'golden_glove',
       'season_potm',
       'team_of_month',
+      'championship_team_of_month',
       'team_of_season',
       'championship_player_of_season'
     )
@@ -46,6 +47,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS competition_season_award_singleton_idx
 CREATE UNIQUE INDEX IF NOT EXISTS competition_season_award_team_month_player_idx
   ON public.competition_season_award (season_id, gpsl_month, award_type, player_id)
   WHERE award_type = 'team_of_month';
+
+CREATE UNIQUE INDEX IF NOT EXISTS competition_season_award_championship_team_month_player_idx
+  ON public.competition_season_award (season_id, gpsl_month, award_type, player_id)
+  WHERE award_type = 'championship_team_of_month';
 
 CREATE UNIQUE INDEX IF NOT EXISTS competition_season_award_team_season_player_idx
   ON public.competition_season_award (season_id, award_type, player_id)
@@ -441,9 +446,10 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  v_award_type := CASE p_period_kind
-    WHEN 'month' THEN 'team_of_month'
-    WHEN 'season' THEN 'team_of_season'
+  v_award_type := CASE
+    WHEN p_period_kind = 'month' AND p_division_scope = 'superleague' THEN 'team_of_month'
+    WHEN p_period_kind = 'month' AND p_division_scope = 'championship' THEN 'championship_team_of_month'
+    WHEN p_period_kind = 'season' AND p_division_scope = 'superleague' THEN 'team_of_season'
     ELSE NULL
   END;
 
@@ -461,12 +467,17 @@ BEGIN
     AND division_scope = p_division_scope
     AND coalesce(gpsl_month, '') = coalesce(p_gpsl_month, '');
 
-  IF p_period_kind = 'month' THEN
+  IF p_period_kind = 'month' AND p_division_scope = 'superleague' THEN
     DELETE FROM public.competition_season_award
     WHERE season_id = p_season_id
       AND award_type = 'team_of_month'
       AND gpsl_month = p_gpsl_month;
-  ELSIF p_period_kind = 'season' THEN
+  ELSIF p_period_kind = 'month' AND p_division_scope = 'championship' THEN
+    DELETE FROM public.competition_season_award
+    WHERE season_id = p_season_id
+      AND award_type = 'championship_team_of_month'
+      AND gpsl_month = p_gpsl_month;
+  ELSIF p_period_kind = 'season' AND p_division_scope = 'superleague' THEN
     DELETE FROM public.competition_season_award
     WHERE season_id = p_season_id
       AND award_type = 'team_of_season';
@@ -482,7 +493,10 @@ BEGIN
     p_period_kind,
     p_division_scope,
     p_team ->> 'formation_id',
-    jsonb_build_object('formation_id', p_team ->> 'formation_id')
+    jsonb_build_object(
+      'formation_id', p_team ->> 'formation_id',
+      'division_scope', p_division_scope
+    )
   )
   RETURNING id INTO v_team_id;
 
@@ -524,7 +538,8 @@ BEGIN
           'formation_id', p_team ->> 'formation_id',
           'pitch_slot', v_member ->> 'pitch_slot',
           'slot_label', v_member ->> 'slot_label',
-          'gpsl_month', p_gpsl_month
+          'gpsl_month', p_gpsl_month,
+          'division_scope', p_division_scope
         )
       )
       ON CONFLICT DO NOTHING;
@@ -537,7 +552,8 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.competition_compute_team_of_month(
   p_season_id bigint,
-  p_gpsl_month text
+  p_gpsl_month text,
+  p_division_scope text DEFAULT 'superleague'
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -549,7 +565,12 @@ DECLARE
   v_candidates jsonb;
   v_team jsonb;
   v_team_id bigint;
+  v_scope text := lower(btrim(coalesce(p_division_scope, 'superleague')));
 BEGIN
+  IF v_scope NOT IN ('superleague', 'championship') THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'invalid_division_scope');
+  END IF;
+
   SELECT label INTO v_label FROM public.competition_seasons WHERE id = p_season_id;
 
   SELECT coalesce(jsonb_agg(to_jsonb(s)), '[]'::jsonb)
@@ -557,21 +578,30 @@ BEGIN
   FROM public.competition_player_month_stats_public s
   WHERE s.season_id = p_season_id
     AND s.gpsl_month = p_gpsl_month
-    AND s.division = 'superleague'
-    AND s.appearances >= 2;
+    AND s.appearances >= 2
+    AND (
+      (v_scope = 'superleague' AND s.division = 'superleague')
+      OR (v_scope = 'championship' AND s.division IN ('championship_a', 'championship_b'))
+    );
 
   v_team := public.competition_pick_period_team(v_candidates);
   IF v_team IS NULL THEN
-    RETURN jsonb_build_object('ok', false, 'reason', 'no_valid_xi', 'gpsl_month', p_gpsl_month);
+    RETURN jsonb_build_object(
+      'ok', false,
+      'reason', 'no_valid_xi',
+      'gpsl_month', p_gpsl_month,
+      'division_scope', v_scope
+    );
   END IF;
 
   v_team_id := public.competition_store_period_team(
-    p_season_id, v_label, p_gpsl_month, 'month', 'superleague', v_team
+    p_season_id, v_label, p_gpsl_month, 'month', v_scope, v_team
   );
 
   RETURN jsonb_build_object(
     'ok', true,
     'gpsl_month', p_gpsl_month,
+    'division_scope', v_scope,
     'team_id', v_team_id,
     'formation_id', v_team ->> 'formation_id'
   );
@@ -724,6 +754,8 @@ SET search_path = public
 AS $function$
 DECLARE
   v_cal record;
+  v_scope text;
+  v_job_key text;
   v_results jsonb := '[]'::jsonb;
   v_res jsonb;
 BEGIN
@@ -734,33 +766,59 @@ BEGIN
       AND c.gpsl_month IS NOT NULL
       AND c.lock_at IS NOT NULL
       AND c.lock_at <= now()
-      AND NOT EXISTS (
+    ORDER BY public.competition_gpsl_month_sort(c.gpsl_month)
+  LOOP
+    FOREACH v_scope IN ARRAY ARRAY['superleague', 'championship']::text[]
+    LOOP
+      v_job_key := 'team_of_month:' || v_scope || ':' || v_cal.gpsl_month;
+
+      IF v_scope = 'superleague' AND EXISTS (
         SELECT 1
         FROM public.competition_season_calendar_jobs j
         WHERE j.season_id = p_season_id
-          AND j.job_key = 'team_of_month:' || c.gpsl_month
+          AND j.job_key IN (
+            v_job_key,
+            'team_of_month:' || v_cal.gpsl_month
+          )
+      ) THEN
+        CONTINUE;
+      ELSIF EXISTS (
+        SELECT 1
+        FROM public.competition_season_calendar_jobs j
+        WHERE j.season_id = p_season_id
+          AND j.job_key = v_job_key
+      ) THEN
+        CONTINUE;
+      END IF;
+
+      v_res := public.competition_compute_team_of_month(
+        p_season_id,
+        v_cal.gpsl_month,
+        v_scope
+      );
+
+      INSERT INTO public.competition_season_calendar_jobs (
+        season_id, job_key, gpsl_month, result
       )
-    ORDER BY public.competition_gpsl_month_sort(c.gpsl_month)
-  LOOP
-    v_res := public.competition_compute_team_of_month(p_season_id, v_cal.gpsl_month);
+      VALUES (
+        p_season_id,
+        v_job_key,
+        v_cal.gpsl_month,
+        coalesce(v_res, '{}'::jsonb)
+      )
+      ON CONFLICT (season_id, job_key) DO UPDATE
+        SET result = excluded.result,
+            gpsl_month = excluded.gpsl_month,
+            ran_at = now();
 
-    INSERT INTO public.competition_season_calendar_jobs (
-      season_id, job_key, gpsl_month, result
-    )
-    VALUES (
-      p_season_id,
-      'team_of_month:' || v_cal.gpsl_month,
-      v_cal.gpsl_month,
-      coalesce(v_res, '{}'::jsonb)
-    )
-    ON CONFLICT (season_id, job_key) DO UPDATE
-      SET result = excluded.result,
-          gpsl_month = excluded.gpsl_month,
-          ran_at = now();
-
-    v_results := v_results || jsonb_build_array(
-      jsonb_build_object('gpsl_month', v_cal.gpsl_month, 'result', v_res)
-    );
+      v_results := v_results || jsonb_build_array(
+        jsonb_build_object(
+          'gpsl_month', v_cal.gpsl_month,
+          'division_scope', v_scope,
+          'result', v_res
+        )
+      );
+    END LOOP;
   END LOOP;
 
   RETURN jsonb_build_object('ok', true, 'processed', v_results);
@@ -959,7 +1017,7 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.competition_finalize_season_player_awards(bigint, text) TO authenticated;
 
-GRANT EXECUTE ON FUNCTION public.competition_compute_team_of_month(bigint, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_compute_team_of_month(bigint, text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_process_month_team_awards(bigint) TO authenticated;
 
 -- ---------------------------------------------------------------------------
