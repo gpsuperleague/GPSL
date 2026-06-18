@@ -487,8 +487,8 @@ BEGIN
   v_result := public.manager_assign_to_club(
     p_manager_id,
     v_club,
-    greatest(coalesce(p_seasons, 2), 1),
-    CASE WHEN coalesce(p_waive_fee, true) THEN 0 ELSE NULL END,
+    greatest(coalesce(p_seasons, 2), 1::smallint)::smallint,
+    (CASE WHEN coalesce(p_waive_fee, true) THEN 0::numeric ELSE NULL::numeric END),
     NOT coalesce(p_waive_fee, true)
   );
 
