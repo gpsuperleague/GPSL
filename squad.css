@@ -423,6 +423,20 @@ body.squad-page .squad-contract-wage {
   white-space: nowrap;
 }
 
+body.squad-page .squad-loan-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+  background: #1a2a3a;
+  color: #9ec8e8;
+  border: 1px solid #3a5a7a;
+  white-space: nowrap;
+}
+
 body.squad-page .squad-qual-badge {
   color: #6cf;
   font-size: 11px;

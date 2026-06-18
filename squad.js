@@ -60,6 +60,14 @@ import {
   DESIGNATION_OOO,
 } from "./squad_designations.js";
 import {
+  loadActiveSeasonLoanPlayerIds,
+  loadClubSquadMinimumStatus,
+  seasonLoanBadgeHtml,
+  seasonLoanTerminateOptionHtml,
+  TERMINATE_SEASON_LOAN_ACTION,
+  terminateSeasonLoan,
+} from "./season_loan.js";
+import {
   playerThumbLinkHtml,
   playerNameLinkHtml,
   pesdbPlayerUrl,
@@ -99,6 +107,9 @@ let foreignInterestRemaining = MAX_FOREIGN_INTEREST;
 let foreignTrackingTeams = [];
 let voluntaryReleasesRemaining = MAX_VOLUNTARY_CONTRACT_RELEASES;
 let squadDesignationsState = null;
+let squadMinimumStatus = null;
+/** @type {Set<string>} */
+let seasonLoanPlayerIds = new Set();
 
 // ENTRY POINT
 document.addEventListener("DOMContentLoaded", async () => {
@@ -267,6 +278,13 @@ function voluntaryReleaseOptionHtml(player) {
 }
 
 function squadActionOptionsHtml(player) {
+  const pid = String(player?.Konami_ID ?? "");
+  if (seasonLoanPlayerIds.has(pid)) {
+    return seasonLoanTerminateOptionHtml(
+      !!squadMinimumStatus?.can_terminate_loans
+    );
+  }
+
   const releaseOpt = voluntaryReleaseOptionHtml(player);
   const contractOpts = squadContractActionOptionsHtml(player, clubNation, {
     optionHtml: releaseOpt,
@@ -465,6 +483,10 @@ async function loadSquad() {
     supabase,
     currentUserShort
   );
+  [squadMinimumStatus, seasonLoanPlayerIds] = await Promise.all([
+    loadClubSquadMinimumStatus(supabase, currentUserShort),
+    loadActiveSeasonLoanPlayerIds(supabase, currentUserShort),
+  ]);
 
   renderSquadCompliance(list, squadDesignationsState);
 
@@ -503,14 +525,19 @@ function renderSquadCompliance(players, designationsState) {
   if (!el) return;
 
   const c = analyseSquadComposition(players, clubNation);
-  const rows = squadComplianceRuleRows(c, clubNation);
+  const rows = squadComplianceRuleRows(c, clubNation, squadMinimumStatus);
   if (designationsState) {
     rows.push(starComplianceRow(designationsState));
     rows.push(oooComplianceRow(designationsState));
   }
-  const panelClass = c.compliant
-    ? "squad-rules-panel squad-rules-panel--ok"
-    : "squad-rules-panel squad-rules-panel--warn";
+  const preAugust = !squadMinimumStatus?.punishments_active;
+  const minOk = c.minSquadOk || preAugust;
+  const panelClass =
+    c.compliant && minOk
+      ? "squad-rules-panel squad-rules-panel--ok"
+      : c.compliant && preAugust && !c.minSquadOk
+        ? "squad-rules-panel"
+        : "squad-rules-panel squad-rules-panel--warn";
 
   const tableRows = rows
     .map(
@@ -525,10 +552,27 @@ function renderSquadCompliance(players, designationsState) {
     )
     .join("");
 
-  const overall = c.compliant
-    ? '<p class="squad-rules-overall squad-rules-overall--ok">Your squad meets all registration requirements.</p>'
-    : `<p class="squad-rules-overall squad-rules-overall--warn">Your squad does not yet meet all requirements:</p>
-       <ul class="squad-rules-issues">${c.issues.map((i) => `<li>${i}</li>`).join("")}</ul>`;
+  const overallNotes = [...c.issues];
+  if (!c.minSquadOk) {
+    overallNotes.push(
+      preAugust
+        ? `Build to at least 24 players before August (${c.minSquadShort} more needed — no penalty until then).`
+        : `Squad minimum not met (${c.minSquadShort} below 24 — August penalties may apply).`
+    );
+  }
+  if (squadMinimumStatus?.enforcement?.total_fine > 0) {
+    overallNotes.push(
+      `August enforcement: ₿${Number(squadMinimumStatus.enforcement.total_fine).toLocaleString("en-GB")} fines, ${squadMinimumStatus.enforcement.loans_granted} season loan(s) granted.`
+    );
+  }
+
+  const overall =
+    c.compliant && c.minSquadOk
+      ? '<p class="squad-rules-overall squad-rules-overall--ok">Your squad meets all registration requirements.</p>'
+      : c.compliant && preAugust && !c.minSquadOk
+        ? `<p class="squad-rules-overall">Pre-season: ${overallNotes.join(" ")}</p>`
+        : `<p class="squad-rules-overall squad-rules-overall--warn">Your squad does not yet meet all requirements:</p>
+       <ul class="squad-rules-issues">${overallNotes.map((i) => `<li>${i}</li>`).join("")}</ul>`;
 
   el.innerHTML = `
     <section class="${panelClass}" aria-label="Squad registration requirements">
@@ -536,8 +580,9 @@ function renderSquadCompliance(players, designationsState) {
         <h2 class="squad-rules-title">Squad registration requirements</h2>
         <p class="squad-rules-intro">
           Counts are based on your contracted players in the table below.
-          <strong>Home-grown</strong> and <strong>under-21</strong> are <em>minimums</em> — you may have more than required.
-          Only <strong>squad size</strong> has a maximum.
+          <strong>Minimum squad (24)</strong> applies from <strong>August</strong> — no penalties before then.
+          <strong>Home-grown</strong> and <strong>under-21</strong> are <em>minimums</em>.
+          <strong>Maximum squad size</strong> is ${28}.
         </p>
       </header>
       <table class="squad-rules-table">
@@ -620,10 +665,13 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
 
       const qualBadges = playerSquadQualificationBadges(p, clubNation);
       const roleBadge = roleBadgeForPlayer(p, designationsState);
+      const loanBadge = seasonLoanPlayerIds.has(String(p.Konami_ID))
+        ? seasonLoanBadgeHtml()
+        : "";
 
       tr.innerHTML = `
         <td class="squad-col-thumb">${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}</td>
-        <td class="squad-col-player">${playerNameLinkHtml(p.Konami_ID, p.Name)}${roleBadge}${qualBadges}</td>
+        <td class="squad-col-player">${playerNameLinkHtml(p.Konami_ID, p.Name)}${loanBadge}${roleBadge}${qualBadges}</td>
         <td class="squad-col-nation">${p.Nation || "-"}</td>
         <td class="squad-col-position">${p.Position}</td>
         <td class="num squad-col-age">${p.Age != null && p.Age !== "" ? p.Age : "—"}</td>
@@ -860,6 +908,12 @@ async function handlePlayerAction(playerId, action, selectEl) {
       return;
     }
 
+    if (action === TERMINATE_SEASON_LOAN_ACTION) {
+      resetActionSelect(selectEl);
+      await terminateSeasonLoanPlayer(playerId);
+      return;
+    }
+
     if (action === "renew") {
       resetActionSelect(selectEl);
       await renewPlayerContract(playerId);
@@ -1045,6 +1099,35 @@ async function releasePlayerFromContract(playerId) {
     `${data?.player_name || player.Name} released.\n\n` +
       `Buy-out paid: ${formatMoney(data?.buyout_cost ?? cost)}.\n` +
       `Unavailable until ${data?.unavailable_until_season || "next season"}.`
+  );
+  await loadSquad();
+}
+
+async function terminateSeasonLoanPlayer(playerId) {
+  const { data: player } = await supabase
+    .from("Players")
+    .select("Konami_ID, Name")
+    .eq("Konami_ID", playerId)
+    .maybeSingle();
+
+  if (
+    !confirm(
+      `Terminate season loan for ${player?.Name || "this player"}?\n\n` +
+        "50% of the loan fee is refunded. August minimum fines are not refunded."
+    )
+  ) {
+    return;
+  }
+
+  const { data, error } = await terminateSeasonLoan(supabase, playerId);
+  if (error) {
+    alert(error.message || "Could not terminate season loan.");
+    return;
+  }
+
+  alert(
+    `${data?.player_name || player?.Name || "Player"} loan ended.\n\n` +
+      `Refund: ₿${Number(data?.refund || 0).toLocaleString("en-GB")}`
   );
   await loadSquad();
 }

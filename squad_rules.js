@@ -3,6 +3,9 @@
 /** Registered squad size (league rule). */
 export const SQUAD_SIZE = 28;
 
+/** Minimum registered squad from GPSL August. */
+export const MIN_SQUAD_SIZE = 24;
+
 /** League fine per MV overflow forced release (not foreign overflow). */
 export const SQUAD_OVERFLOW_MV_FINE = 10_000_000;
 
@@ -384,21 +387,41 @@ export function analyseSquadComposition(players, clubNation) {
     homeGrownOk: homeGrown >= MIN_HOME_GROWN,
     under21Ok: under21 >= MIN_UNDER_21,
     squadSizeOk: total <= SQUAD_SIZE,
+    minSquadOk: total >= MIN_SQUAD_SIZE,
     homeGrownShort: Math.max(0, MIN_HOME_GROWN - homeGrown),
     under21Short: Math.max(0, MIN_UNDER_21 - under21),
     squadOver: Math.max(0, total - SQUAD_SIZE),
+    minSquadShort: Math.max(0, MIN_SQUAD_SIZE - total),
   };
 }
 
-/** Display rows for the Squad page rules panel. */
-export function squadComplianceRuleRows(c, clubNation) {
+/** @param {object} [minimumStatus] — club_squad_minimum_status RPC */
+export function squadComplianceRuleRows(c, clubNation, minimumStatus = null) {
   const nation = clubNation?.trim() || null;
   const nationLabel = nation ? formatNationLabel(nation) : null;
   const nationHint = nationLabel
     ? `Player Nation = club Nation (${nationLabel})`
     : "Player Nation must match club Nation (set on Club Details)";
 
+  const punishmentsActive = !!minimumStatus?.punishments_active;
+  const minNote = punishmentsActive
+    ? "₿5m fine + HG loan (≤72) + ₿5m loan fee per missing player at August start"
+    : "No penalty until August — build to 24 before the season month starts";
+
   return [
+    {
+      rule: "Minimum squad",
+      whoCounts: "All contracted players (incl. season loans)",
+      requirement: `At least ${MIN_SQUAD_SIZE} from August`,
+      note: minNote,
+      count: c.total,
+      ok: c.minSquadOk || !punishmentsActive,
+      status: c.minSquadOk
+        ? "Requirement met"
+        : punishmentsActive
+          ? `Need ${c.minSquadShort} more — penalties apply`
+          : `Need ${c.minSquadShort} more by August`,
+    },
     {
       rule: "Home-grown",
       whoCounts: nationHint,
@@ -422,7 +445,7 @@ export function squadComplianceRuleRows(c, clubNation) {
         : `Need ${c.under21Short} more`,
     },
     {
-      rule: "Squad size",
+      rule: "Maximum squad",
       whoCounts: "All players on your contract list below",
       requirement: `No more than ${SQUAD_SIZE}`,
       note: "Signing a 29th auto-releases highest rated (not signed this season)",
