@@ -258,18 +258,44 @@ export function getManagerDraftListingEndTime() {
 
 export async function ensureManagerDraftListing(manager) {
   const managerId = Number(manager.id);
-  const { data: existing } = await supabase
+  const { data: listingId, error } = await supabase.rpc("manager_draft_ensure_listing", {
+    p_manager_id: managerId,
+  });
+
+  if (!error && listingId) {
+    return { ok: true, listingId };
+  }
+
+  if (error?.message?.includes("manager_draft_ensure_listing")) {
+    const { data: rows } = await supabase
+      .from("Manager_Transfer_Listings")
+      .select("id")
+      .eq("manager_id", managerId)
+      .eq("listing_type", "draft")
+      .eq("status", "Active")
+      .order("id", { ascending: true })
+      .limit(1);
+
+    if (rows?.[0]?.id) {
+      return { ok: true, listingId: rows[0].id };
+    }
+  }
+
+  const { data: rows } = await supabase
     .from("Manager_Transfer_Listings")
     .select("id")
     .eq("manager_id", managerId)
     .eq("listing_type", "draft")
     .eq("status", "Active")
-    .maybeSingle();
+    .order("id", { ascending: true })
+    .limit(1);
 
-  if (existing?.id) return { ok: true, listingId: existing.id };
+  if (rows?.[0]?.id) {
+    return { ok: true, listingId: rows[0].id };
+  }
 
   const end = getManagerDraftListingEndTime();
-  const { data: listing, error } = await supabase
+  const { data: listing, error: insertError } = await supabase
     .from("Manager_Transfer_Listings")
     .insert({
       manager_id: managerId,
@@ -282,8 +308,8 @@ export async function ensureManagerDraftListing(manager) {
     .select("id")
     .single();
 
-  if (error || !listing) {
-    return { ok: false, msg: error?.message || "Could not open manager draft listing." };
+  if (insertError || !listing) {
+    return { ok: false, msg: insertError?.message || "Could not open manager draft listing." };
   }
   return { ok: true, listingId: listing.id };
 }

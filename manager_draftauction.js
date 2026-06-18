@@ -63,6 +63,30 @@ async function updateLeadPanel() {
   `;
 }
 
+function dedupeManagerDraftListings(listings) {
+  const byManager = new Map();
+  for (const listing of listings || []) {
+    const mid = Number(listing.manager_id);
+    const prev = byManager.get(mid);
+    if (!prev) {
+      byManager.set(mid, listing);
+      continue;
+    }
+    const prevBid = Number(prev.current_highest_bid) || 0;
+    const bid = Number(listing.current_highest_bid) || 0;
+    const prevLeader = prev.current_highest_bidder ? 1 : 0;
+    const leader = listing.current_highest_bidder ? 1 : 0;
+    if (
+      leader > prevLeader ||
+      (leader === prevLeader && bid > prevBid) ||
+      (leader === prevLeader && bid === prevBid && listing.id < prev.id)
+    ) {
+      byManager.set(mid, listing);
+    }
+  }
+  return [...byManager.values()];
+}
+
 async function loadManagerDraftListings() {
   const tbody = document.getElementById("draftTableBody");
   const statusEl = document.getElementById("draftStatus");
@@ -93,13 +117,15 @@ async function loadManagerDraftListings() {
     return;
   }
 
-  const { data: listings } = await supabase
+  const { data: listingsRaw } = await supabase
     .from("Manager_Transfer_Listings")
     .select("id, manager_id, status, current_highest_bid, current_highest_bidder")
     .eq("listing_type", "draft")
     .eq("status", "Active");
 
-  if (!listings?.length) {
+  const listings = dedupeManagerDraftListings(listingsRaw || []);
+
+  if (!listings.length) {
     tbody.innerHTML = `<tr><td colspan="9">No active manager draft auctions. Open a free agent in <a href="MGDB.html" style="color:#ff9900;">MGDB</a>.</td></tr>`;
     return;
   }
