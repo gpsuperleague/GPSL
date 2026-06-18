@@ -32,6 +32,16 @@
     .trophy-icon { font-size:24px; line-height:1; margin-top:2px; }
     .trophy-title { color:#ffcc66; font-weight:600; font-size:15px; }
     .trophy-meta { color:#999; font-size:13px; margin-top:4px; }
+    .honours-subhead { color:#ccc; font-size:14px; margin:0 0 10px; font-weight:600; }
+    .medal-item .medal-link {
+      display:flex; gap:12px; align-items:flex-start;
+      color:inherit; text-decoration:none; width:100%;
+    }
+    .medal-item .medal-link:hover .trophy-title { color:#ff9900; }
+    .medal-thumb {
+      width:44px; height:56px; object-fit:contain; flex-shrink:0;
+    }
+    .medal-thumb-fallback { font-size:28px; line-height:1; margin-top:4px; }
     #careerError { color:#f88; display:none; margin-bottom:12px; }
   </style>
 </head>
@@ -63,7 +73,11 @@
 
     <div class="panel">
       <h2>Honours &amp; awards</h2>
-      <p class="sub" style="margin:-4px 0 12px;">Ballon d'Or, Team of the Month/Season, Golden Boot, and other GPSL trophies earned in this career.</p>
+      <h3 class="honours-subhead">Winner medals</h3>
+      <p class="sub" style="margin:-4px 0 12px;">League titles and cups with the champion club (5+ league apps or 1+ cup appearance that season).</p>
+      <div id="medalsPanel"><span class="empty">Loading…</span></div>
+      <h3 class="honours-subhead" style="margin-top:22px;">Individual awards</h3>
+      <p class="sub" style="margin:-4px 0 12px;">Ballon d'Or, Team of the Month/Season, Golden Boot, and other personal GPSL trophies.</p>
       <div id="awardsPanel"><span class="empty">Loading…</span></div>
     </div>
   </div>

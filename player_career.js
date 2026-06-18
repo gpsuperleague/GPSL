@@ -1,6 +1,8 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName, displayClubName } from "./clubs_lookup.js";
 import { DIVISION_LABELS, formatMoney } from "./competition.js";
+import { TROPHY_IMAGES, trophyImageForCup } from "./trophy_assets.js";
+import { trophyHonourHref } from "./history_trophies.js";
 import {
   pesdbPlayerUrl,
   pesdbPlayerCardUrl,
@@ -204,11 +206,65 @@ function renderTransfers(transfers) {
     </table>`;
 }
 
+function trophyImageForHonour(h) {
+  if (h.honour_type === "league_champion") {
+    return TROPHY_IMAGES[h.division] || TROPHY_IMAGES.championship;
+  }
+  return trophyImageForCup(h.cup_code);
+}
+
+function formatHonourDetail(h) {
+  const club = fullClubName(h.club_short_name) || h.club_name || h.club_short_name;
+  return [h.season_label, club].filter(Boolean).join(" · ");
+}
+
+function renderHonours(honours) {
+  const el = document.getElementById("medalsPanel");
+  if (!el) return;
+
+  if (!honours?.length) {
+    el.innerHTML =
+      '<p class="empty">No winner medals yet — league titles and cups appear after season archive (5+ league apps or 1+ cup app with the winning club).</p>';
+    return;
+  }
+
+  const sorted = [...honours].sort((a, b) => {
+    const pri = (h) => (h.honour_type === "league_champion" ? 0 : 1);
+    const p = pri(a) - pri(b);
+    if (p !== 0) return p;
+    return String(b.season_label || "").localeCompare(String(a.season_label || ""));
+  });
+
+  el.innerHTML = `
+    <ul class="trophy-list">
+      ${sorted
+        .map((h) => {
+          const img = trophyImageForHonour(h);
+          const href = trophyHonourHref(h);
+          const thumb = img
+            ? `<img class="medal-thumb" src="${img}" alt="" width="44" height="56" loading="lazy">`
+            : `<span class="medal-thumb-fallback" aria-hidden="true">🏆</span>`;
+          const body = `
+            <div class="trophy-body">
+              <div class="trophy-title">${h.honour_label || "Winner"}</div>
+              <div class="trophy-meta">${formatHonourDetail(h)}</div>
+            </div>`;
+          if (href) {
+            return `<li class="trophy-item medal-item">
+              <a class="medal-link" href="${href}">${thumb}${body}</a>
+            </li>`;
+          }
+          return `<li class="trophy-item medal-item">${thumb}${body}</li>`;
+        })
+        .join("")}
+    </ul>`;
+}
+
 function renderAwards(awards) {
   const el = document.getElementById("awardsPanel");
   if (!awards?.length) {
     el.innerHTML =
-      '<p class="empty">No GPSL honours yet — awards appear after monthly Team of the Month picks and season archive.</p>';
+      '<p class="empty">No individual GPSL awards yet — Ballon d\'Or, Golden Boot, Team of the Month, and similar honours appear after season archive.</p>';
     return;
   }
 
@@ -297,5 +353,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderTotals(bundle.totals);
   renderStints(bundle.stints || []);
   renderTransfers(bundle.transfers || []);
+  renderHonours(bundle.honours || []);
   renderAwards(bundle.awards || []);
 });
