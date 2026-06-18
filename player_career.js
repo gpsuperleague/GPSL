@@ -13,7 +13,46 @@ const AWARD_LABELS = {
   golden_playmaker: "Golden Playmaker",
   golden_glove: "Golden Glove",
   season_potm: "Most POTM",
+  team_of_month: "Team of the Month",
+  team_of_season: "Team of the Season",
+  championship_player_of_season: "Championship Player of the Season",
 };
+
+const AWARD_TROPHY = {
+  ballon_dor: "🏆",
+  golden_boot: "👟",
+  golden_playmaker: "🎯",
+  golden_glove: "🧤",
+  season_potm: "⭐",
+  team_of_month: "📅",
+  team_of_season: "🌟",
+  championship_player_of_season: "🏅",
+};
+
+function formatGpslMonthLabel(month) {
+  if (!month) return "";
+  return String(month)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatAwardTitle(a) {
+  const base = AWARD_LABELS[a.award_type] || a.award_type;
+  if (a.award_type === "team_of_month" && a.gpsl_month) {
+    return `${base} (${formatGpslMonthLabel(a.gpsl_month)})`;
+  }
+  return base;
+}
+
+function formatAwardDetail(a) {
+  const club = fullClubName(a.club_short_name) || a.club_name || a.club_short_name;
+  const parts = [a.season_label, club];
+  if (a.award_type === "team_of_month" || a.award_type === "team_of_season") {
+    const slot = a.detail?.slot_label || a.detail?.pitch_slot;
+    if (slot) parts.push(String(slot));
+  }
+  return parts.filter(Boolean).join(" · ");
+}
 
 const MOVE_LABELS = {
   transfer: "Transfer",
@@ -159,15 +198,42 @@ function renderTransfers(transfers) {
 function renderAwards(awards) {
   const el = document.getElementById("awardsPanel");
   if (!awards?.length) {
-    el.innerHTML = '<p class="empty">No season awards yet.</p>';
+    el.innerHTML =
+      '<p class="empty">No GPSL honours yet — awards appear after monthly Team of the Month picks and season archive.</p>';
     return;
   }
-  el.innerHTML = awards
-    .map(
-      (a) =>
-        `<span class="award-pill">${AWARD_LABELS[a.award_type] || a.award_type} · ${a.season_label} · ${fullClubName(a.club_short_name) || a.club_name}</span>`
-    )
-    .join("");
+
+  const sorted = [...awards].sort((a, b) => {
+    const pri = (t) =>
+      t === "ballon_dor"
+        ? 0
+        : t === "championship_player_of_season"
+          ? 1
+          : t === "team_of_season"
+            ? 2
+            : t === "team_of_month"
+              ? 3
+              : 9;
+    const p = pri(a.award_type) - pri(b.award_type);
+    if (p !== 0) return p;
+    return String(b.season_label || "").localeCompare(String(a.season_label || ""));
+  });
+
+  el.innerHTML = `
+    <ul class="trophy-list">
+      ${sorted
+        .map(
+          (a) => `
+        <li class="trophy-item">
+          <span class="trophy-icon" aria-hidden="true">${AWARD_TROPHY[a.award_type] || "🏆"}</span>
+          <div class="trophy-body">
+            <div class="trophy-title">${formatAwardTitle(a)}</div>
+            <div class="trophy-meta">${formatAwardDetail(a)}</div>
+          </div>
+        </li>`
+        )
+        .join("")}
+    </ul>`;
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

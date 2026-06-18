@@ -255,11 +255,7 @@ DECLARE
   v_winner text;
   v_runner text;
   v_fix_id bigint;
-  v_ballon record;
-  v_boot record;
-  v_play record;
-  v_potm record;
-  v_glove record;
+  v_awards jsonb;
   v_clubs int := 0;
   v_players int := 0;
   v_cups int := 0;
@@ -421,105 +417,7 @@ BEGIN
     v_players := v_players + 1;
   END LOOP;
 
-  DELETE FROM public.competition_season_award WHERE season_id = v_season.id;
-
-  SELECT a.*
-  INTO v_ballon
-  FROM public.competition_player_season_archive a
-  WHERE a.season_id = v_season.id
-    AND a.appearances >= 5
-  ORDER BY a.ballon_points DESC, a.goals DESC, a.assists DESC
-  LIMIT 1;
-
-  IF FOUND AND v_ballon.ballon_points > 0 THEN
-    INSERT INTO public.competition_season_award (
-      season_id, season_label, award_type, player_id, club_short_name,
-      stat_value, detail
-    )
-    VALUES (
-      v_season.id, v_season.label, 'ballon_dor',
-      v_ballon.player_id, v_ballon.club_short_name,
-      v_ballon.ballon_points,
-      jsonb_build_object(
-        'goals', v_ballon.goals,
-        'assists', v_ballon.assists,
-        'potm', v_ballon.potm_awards,
-        'clean_sheets', v_ballon.clean_sheets,
-        'avg_rating', v_ballon.avg_rating,
-        'stat_role', v_ballon.stat_role
-      )
-    );
-  END IF;
-
-  SELECT a.*
-  INTO v_boot
-  FROM public.competition_player_season_archive a
-  WHERE a.season_id = v_season.id AND a.goals > 0
-  ORDER BY a.goals DESC, a.assists DESC
-  LIMIT 1;
-
-  IF FOUND THEN
-    INSERT INTO public.competition_season_award (
-      season_id, season_label, award_type, player_id, club_short_name, stat_value
-    )
-    VALUES (
-      v_season.id, v_season.label, 'golden_boot',
-      v_boot.player_id, v_boot.club_short_name, v_boot.goals
-    );
-  END IF;
-
-  SELECT a.*
-  INTO v_play
-  FROM public.competition_player_season_archive a
-  WHERE a.season_id = v_season.id AND a.assists > 0
-  ORDER BY a.assists DESC, a.goals DESC
-  LIMIT 1;
-
-  IF FOUND THEN
-    INSERT INTO public.competition_season_award (
-      season_id, season_label, award_type, player_id, club_short_name, stat_value
-    )
-    VALUES (
-      v_season.id, v_season.label, 'golden_playmaker',
-      v_play.player_id, v_play.club_short_name, v_play.assists
-    );
-  END IF;
-
-  SELECT a.*
-  INTO v_potm
-  FROM public.competition_player_season_archive a
-  WHERE a.season_id = v_season.id AND a.potm_awards > 0
-  ORDER BY a.potm_awards DESC, a.goals DESC
-  LIMIT 1;
-
-  IF FOUND THEN
-    INSERT INTO public.competition_season_award (
-      season_id, season_label, award_type, player_id, club_short_name, stat_value
-    )
-    VALUES (
-      v_season.id, v_season.label, 'season_potm',
-      v_potm.player_id, v_potm.club_short_name, v_potm.potm_awards
-    );
-  END IF;
-
-  SELECT a.*
-  INTO v_glove
-  FROM public.competition_player_season_archive a
-  WHERE a.season_id = v_season.id
-    AND a.stat_role = 'goalkeeper'
-    AND a.clean_sheets > 0
-  ORDER BY a.clean_sheets DESC, a.avg_rating DESC NULLS LAST
-  LIMIT 1;
-
-  IF FOUND THEN
-    INSERT INTO public.competition_season_award (
-      season_id, season_label, award_type, player_id, club_short_name, stat_value
-    )
-    VALUES (
-      v_season.id, v_season.label, 'golden_glove',
-      v_glove.player_id, v_glove.club_short_name, v_glove.clean_sheets
-    );
-  END IF;
+  v_awards := public.competition_finalize_season_player_awards(v_season.id, v_season.label);
 
   v_finance := public.competition_archive_club_finances_for_season(v_season.id);
 
@@ -530,7 +428,8 @@ BEGIN
     'clubs_archived', v_clubs,
     'players_archived', v_players,
     'cups_archived', v_cups,
-    'clubs_finance_archived', v_finance
+    'clubs_finance_archived', v_finance,
+    'player_awards', v_awards
   );
 END;
 $function$;

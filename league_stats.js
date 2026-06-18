@@ -6,6 +6,7 @@ import {
   loadInternationalPlayerStats,
   CUP_LABELS,
 } from "./competition.js";
+import { playerNameLinkHtml } from "./player_links.js";
 
 const DIVISION_TITLES = {
   superleague: "SuperLeague",
@@ -279,6 +280,107 @@ function renderWorldCup() {
   });
 }
 
+function formatGpslMonthLabel(month) {
+  if (!month) return "—";
+  return String(month)
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+async function renderTeamOfMonth() {
+  const el = document.getElementById("totmPanel");
+  if (!el) return;
+
+  const { data: team, error: teamErr } = await supabase
+    .from("competition_period_team")
+    .select("id, season_label, gpsl_month, formation_id, computed_at")
+    .eq("period_kind", "month")
+    .eq("division_scope", "superleague")
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (teamErr) {
+    el.innerHTML = `<p class="empty">${teamErr.message}</p>`;
+    return;
+  }
+
+  if (!team) {
+    el.innerHTML =
+      '<p class="empty">No Team of the Month yet — awarded when a GPSL month locks after confirmed league games.</p>';
+    return;
+  }
+
+  const { data: rows, error } = await supabase
+    .from("competition_period_team_public")
+    .select("*")
+    .eq("team_id", team.id)
+    .order("pitch_slot");
+
+  if (error) {
+    el.innerHTML = `<p class="empty">${error.message}</p>`;
+    return;
+  }
+
+  if (!rows?.length) {
+    el.innerHTML = '<p class="empty">Team lineup unavailable.</p>';
+    return;
+  }
+
+  const slotOrder = [
+    "GK",
+    "LB",
+    "CB1",
+    "CB2",
+    "RB",
+    "LMF",
+    "CMF",
+    "RMF",
+    "LWF",
+    "CF",
+    "RWF",
+  ];
+  const sorted = [...rows].sort(
+    (a, b) => slotOrder.indexOf(a.pitch_slot) - slotOrder.indexOf(b.pitch_slot)
+  );
+
+  el.innerHTML = `
+    <p class="meta" style="margin:0 0 10px;">
+      <b>${formatGpslMonthLabel(team.gpsl_month)}</b> · ${team.season_label} · ${team.formation_id}
+    </p>
+    <table class="lb">
+      <thead>
+        <tr>
+          <th>Pos</th>
+          <th>Player</th>
+          <th>Club</th>
+          <th class="num">Apps</th>
+          <th class="num">G</th>
+          <th class="num">A</th>
+          <th class="num">Avg</th>
+          <th class="num">CS</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${sorted
+          .map(
+            (r) => `
+          <tr${myClubShort && r.club_short_name === myClubShort ? ' class="highlight"' : ""}>
+            <td>${r.slot_label || r.pitch_slot}</td>
+            <td>${playerNameLinkHtml(r.player_id, r.player_name)}</td>
+            <td>${r.club_name || r.club_short_name}</td>
+            <td class="num">${r.appearances ?? 0}</td>
+            <td class="num">${r.goals ?? 0}</td>
+            <td class="num">${r.assists ?? 0}</td>
+            <td class="num">${r.avg_rating != null ? Number(r.avg_rating).toFixed(2) : "—"}</td>
+            <td class="num">${r.clean_sheets ?? 0}</td>
+          </tr>`
+          )
+          .join("")}
+      </tbody>
+    </table>`;
+}
+
 function setActiveTab(tab) {
   activeTab = tab;
   document.querySelectorAll(".stats-tab").forEach((btn) => {
@@ -290,8 +392,10 @@ function setActiveTab(tab) {
   document.getElementById("cupsPanel").hidden = tab !== "cups";
   document.getElementById("worldcupPanel").hidden = tab !== "worldcup";
 
-  if (tab === "league") renderLeague();
-  else if (tab === "cups") renderCups();
+  if (tab === "league") {
+    renderLeague();
+    renderTeamOfMonth();
+  } else if (tab === "cups") renderCups();
   else renderWorldCup();
 }
 

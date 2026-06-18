@@ -57,6 +57,7 @@ DECLARE
   v_august_sort constant smallint := public.competition_gpsl_month_sort('august');
   v_job_id bigint;
   v_enforcement jsonb;
+  v_totm jsonb;
   v_out jsonb;
 BEGIN
   SELECT id
@@ -95,6 +96,11 @@ BEGIN
       ELSE 'in_month'
     END
   );
+
+  IF to_regprocedure('public.competition_process_month_team_awards(bigint)') IS NOT NULL THEN
+    v_totm := public.competition_process_month_team_awards(v_season_id);
+    v_out := v_out || jsonb_build_object('team_of_month', v_totm);
+  END IF;
 
   IF v_month IS NULL OR v_month_sort IS NULL OR v_month_sort < v_august_sort THEN
     RETURN v_out || jsonb_build_object(

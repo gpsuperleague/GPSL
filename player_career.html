@@ -24,6 +24,14 @@
     .empty { color:#777; font-style:italic; }
     .gpsl-link { color:#6cf; text-decoration:none; }
     .award-pill { display:inline-block; background:#332200; border:1px solid #664400; color:#ffcc66; border-radius:4px; padding:4px 8px; margin:4px 6px 0 0; font-size:13px; }
+    .trophy-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+    .trophy-item {
+      display:flex; gap:12px; align-items:flex-start;
+      background:#222; border:1px solid #3a3a3a; border-radius:8px; padding:12px 14px;
+    }
+    .trophy-icon { font-size:24px; line-height:1; margin-top:2px; }
+    .trophy-title { color:#ffcc66; font-weight:600; font-size:15px; }
+    .trophy-meta { color:#999; font-size:13px; margin-top:4px; }
     #careerError { color:#f88; display:none; margin-bottom:12px; }
   </style>
 </head>
@@ -54,7 +62,8 @@
     </div>
 
     <div class="panel">
-      <h2>Awards</h2>
+      <h2>Honours &amp; awards</h2>
+      <p class="sub" style="margin:-4px 0 12px;">Ballon d'Or, Team of the Month/Season, Golden Boot, and other GPSL trophies earned in this career.</p>
       <div id="awardsPanel"><span class="empty">Loading…</span></div>
     </div>
   </div>
