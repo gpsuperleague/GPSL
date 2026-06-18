@@ -307,6 +307,13 @@ export async function submitManagerDraftBid(manager, offerAmount, buyerShortName
 
   const existing = await fetchCurrentManagerDraftBids(manager.id, draftStart);
   const isFirstBid = existing.length === 0;
+  const top = highestManagerDraftBid(existing);
+  if (top?.bidder_club_id === buyerShortName) {
+    return {
+      ok: false,
+      msg: "You already hold the highest bid on this manager. Wait until you are outbid before bidding again.",
+    };
+  }
 
   const listingResult = await ensureManagerDraftListing(manager);
   if (!listingResult.ok) return listingResult;
