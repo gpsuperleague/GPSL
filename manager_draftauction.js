@@ -24,6 +24,34 @@ let buyerShortName = null;
 let managerDraftEnabled = false;
 let draftAuctionStartTime = null;
 let pollTimer = null;
+let portraitsLoaded = false;
+let lastBiddingOpenRefresh = 0;
+
+const LIST_POLL_ACTIVE_MS = 30000;
+const LIST_POLL_ENDED_MS = 60000;
+const BIDDING_OPEN_REFRESH_MS = 30000;
+
+function stopListPoll() {
+  if (pollTimer) {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+}
+
+function scheduleListPoll(auctionEnded) {
+  stopListPoll();
+  const ms = auctionEnded ? LIST_POLL_ENDED_MS : LIST_POLL_ACTIVE_MS;
+  pollTimer = setInterval(() => {
+    if (document.hidden) return;
+    loadManagerDraftListings({ silent: true });
+  }, ms);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) {
+    loadManagerDraftListings({ silent: true });
+  }
+});
 
 async function loadBuyerClub(userId) {
   const { data } = await supabase
@@ -87,7 +115,8 @@ function dedupeManagerDraftListings(listings) {
   return [...byManager.values()];
 }
 
-async function loadManagerDraftListings() {
+async function loadManagerDraftListings(options = {}) {
+  const { silent = false } = options;
   const tbody = document.getElementById("draftTableBody");
   const statusEl = document.getElementById("draftStatus");
   if (!tbody) return;
@@ -95,12 +124,17 @@ async function loadManagerDraftListings() {
   const nowUK = getUKNow();
 
   if (managerDraftEnabled && draftAuctionStartTime) {
-    await refreshDraftBiddingOpen();
+    const now = Date.now();
+    if (!options.silent || now - lastBiddingOpenRefresh >= BIDDING_OPEN_REFRESH_MS) {
+      await refreshDraftBiddingOpen();
+      lastBiddingOpenRefresh = now;
+    }
   }
 
   if (!managerDraftEnabled || !draftAuctionStartTime) {
     if (statusEl) statusEl.textContent = "";
     tbody.innerHTML = `<tr><td colspan="9">Manager draft auction is not active.</td></tr>`;
+    stopListPoll();
     return;
   }
 
@@ -114,6 +148,7 @@ async function loadManagerDraftListings() {
 
   if (nowUK < draftAuctionStartTime) {
     tbody.innerHTML = `<tr><td colspan="9">Manager draft has not started yet.</td></tr>`;
+    stopListPoll();
     return;
   }
 
@@ -127,6 +162,7 @@ async function loadManagerDraftListings() {
 
   if (!listings.length) {
     tbody.innerHTML = `<tr><td colspan="9">No active manager draft auctions. Open a free agent in <a href="MGDB.html" style="color:#ff9900;">MGDB</a>.</td></tr>`;
+    stopListPoll();
     return;
   }
 
@@ -151,9 +187,44 @@ async function loadManagerDraftListings() {
       "Bidding closed (random finish reached). Winning bids assign managers and debit balance via the transfer engine — usually within a minute. Refresh Club Details if not updated yet.";
   }
 
-  tbody.innerHTML = "";
+  if (!portraitsLoaded) {
+    await loadManagerPortraitManifest();
+    portraitsLoaded = true;
+  }
 
-  await loadManagerPortraitManifest();
+  if (silent && tbody.rows.length === listings.length) {
+    let unchanged = true;
+    const rows = [...tbody.querySelectorAll("tr")];
+    for (let i = 0; i < listings.length; i++) {
+      const listing = listings[i];
+      const mgr = managerMap.get(Number(listing.manager_id));
+      if (!mgr) continue;
+      const bids = bidsByManager.get(Number(listing.manager_id)) || [];
+      const top = highestManagerDraftBid(bids);
+      const high = top?.bid_amount ?? listing.current_highest_bid;
+      const leader = top?.bidder_club_id ?? listing.current_highest_bidder;
+      const row = rows[i];
+      if (!row || row.dataset.managerId !== String(mgr.id)) {
+        unchanged = false;
+        break;
+      }
+      const cells = row.cells;
+      if (
+        cells[4]?.textContent !== (high != null ? formatMoney(high) : "—") ||
+        cells[5]?.textContent !== (leader ? fullClubName(leader) || leader : "—")
+      ) {
+        unchanged = false;
+        break;
+      }
+    }
+    if (unchanged) {
+      await updateLeadPanel();
+      scheduleListPoll(auctionEnded);
+      return;
+    }
+  }
+
+  tbody.innerHTML = "";
 
   for (const listing of listings) {
     const mgr = managerMap.get(Number(listing.manager_id));
@@ -178,6 +249,7 @@ async function loadManagerDraftListings() {
     const lockTitle = !auctionEnded && !canBid ? eligibility.reason : "";
 
     const tr = document.createElement("tr");
+    tr.dataset.managerId = String(mgr.id);
     tr.innerHTML = `
       <td>${managerListCellHtml(mgr)}</td>
       <td>${mgr.nation || "—"}</td>
@@ -196,10 +268,7 @@ async function loadManagerDraftListings() {
   }
 
   await updateLeadPanel();
-
-  if (!pollTimer) {
-    pollTimer = setInterval(() => loadManagerDraftListings(), auctionEnded ? 10000 : 5000);
-  }
+  scheduleListPoll(auctionEnded);
 }
 
 function wireTable() {

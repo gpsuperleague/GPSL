@@ -46,6 +46,72 @@ let auctionEnded = false;
 let managerVacancyBlocked = "";
 let bidAmountControl = null;
 let currentMinBid = 0;
+let countdownTimer = null;
+let auctionRefreshTimer = null;
+let bidsPollTimer = null;
+
+const AUCTION_STATE_REFRESH_MS = 30000;
+const BIDS_POLL_MS = 25000;
+
+function stopManagerRoomTimers() {
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+  if (auctionRefreshTimer) {
+    clearInterval(auctionRefreshTimer);
+    auctionRefreshTimer = null;
+  }
+  if (bidsPollTimer) {
+    clearInterval(bidsPollTimer);
+    bidsPollTimer = null;
+  }
+}
+
+function isBidInputFocused() {
+  const input = getBidInput();
+  return input && document.activeElement === input;
+}
+
+async function refreshAuctionState() {
+  if (managerDraftEnabled && draftAuctionStartTime) {
+    await refreshDraftBiddingOpen();
+  }
+  const wasEnded = auctionEnded;
+  await updateCountdownDisplay();
+  if (!wasEnded && auctionEnded) {
+    await refreshBids();
+    updateBidControls();
+  }
+}
+
+function scheduleManagerRoomTimers() {
+  stopManagerRoomTimers();
+  if (!managerDraftEnabled || !draftAuctionStartTime) return;
+
+  updateCountdownDisplay();
+  countdownTimer = setInterval(updateCountdownDisplay, 1000);
+
+  refreshAuctionState();
+  auctionRefreshTimer = setInterval(() => {
+    if (document.hidden) return;
+    refreshAuctionState();
+  }, AUCTION_STATE_REFRESH_MS);
+
+  bidsPollTimer = setInterval(() => {
+    if (document.hidden || auctionEnded || isBidInputFocused()) return;
+    refreshBids();
+    refreshLeadPanel();
+  }, BIDS_POLL_MS);
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && managerDraftEnabled && draftAuctionStartTime) {
+    refreshAuctionState();
+    refreshBids();
+    refreshLeadPanel();
+  }
+});
 
 function getBidInput() {
   return document.getElementById("bidAmount");
@@ -64,10 +130,7 @@ async function loadBuyerClub(userId) {
   buyerShortName = data?.ShortName || null;
 }
 
-async function updateCountdown() {
-  if (managerDraftEnabled && draftAuctionStartTime) {
-    await refreshDraftBiddingOpen();
-  }
+async function updateCountdownDisplay() {
   const nowUK = getUKNow();
   const uiOpts = getDraftCountdownOptions();
   const engineOpts = getDraftPhaseOptions();
@@ -94,6 +157,7 @@ async function updateCountdown() {
       if (el) el.textContent = managerDraftPhaseLabel(tick.phase);
       if (sub) sub.textContent = "";
     }
+    updateBidControls();
     return;
   }
   const { duration, subline } = formatLiveCountdownLines(
@@ -355,8 +419,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadManager();
   updateBidControls();
   if (managerDraftEnabled && draftAuctionStartTime) {
-    await updateCountdown();
-    setInterval(updateCountdown, 1000);
+    scheduleManagerRoomTimers();
   } else {
     const el = document.getElementById("timeRemaining");
     const sub = document.getElementById("timeRemainingSub");
