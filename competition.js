@@ -1281,7 +1281,7 @@ export const GATE_ENTRY_LABELS = {
   wage_renewal_34plus: "34+ renewals",
   wage_star_tax: "Star tax",
   staff_manager_salary: "Manager salary",
-  contract_signing_offer: "Contract offers",
+  contract_signing_offer: "Manager signing / contract offers",
   contract_release_comp: "Contract release (paid)",
   contract_release_comp_received: "Contract release (received)",
   contract_termination: "Contract termination",

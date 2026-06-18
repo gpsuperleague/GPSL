@@ -382,16 +382,16 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM public.competition_finance_ledger l
-    WHERE l.entry_type = 'transfer_purchase'
+    WHERE l.entry_type = 'contract_signing_offer'
       AND l.metadata->>'listing_id' = v_listing.id::text
       AND l.metadata->>'manager_draft' = 'true'
   ) THEN
     PERFORM public.post_club_ledger(
       v_buyer,
-      'transfer_purchase',
+      'contract_signing_offer',
       -abs(v_amount),
       format('Manager draft signing — %s', v_mgr_name),
-      v_meta,
+      v_meta || jsonb_build_object('kind', 'manager'),
       v_season_id,
       NULL,
       true,

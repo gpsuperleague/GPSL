@@ -368,6 +368,11 @@ BEGIN
 
   v_fee := coalesce(p_fee, v_mgr.market_value::numeric);
 
+  SELECT id INTO v_season_id
+  FROM public.competition_seasons
+  WHERE is_current = true
+  LIMIT 1;
+
   IF p_buyer_pays AND v_fee > 0 THEN
     SELECT balance INTO v_balance
     FROM public."Club_Finances"
@@ -383,17 +388,16 @@ BEGIN
 
     PERFORM public.post_club_ledger(
       p_club_short,
-      'transfer_purchase',
+      'contract_signing_offer',
       -abs(v_fee),
       format('Manager signing — %s', v_mgr.name),
-      jsonb_build_object('manager_id', p_manager_id, 'kind', 'manager')
+      jsonb_build_object('manager_id', p_manager_id, 'kind', 'manager'),
+      v_season_id,
+      NULL,
+      false,
+      true
     );
   END IF;
-
-  SELECT id INTO v_season_id
-  FROM public.competition_seasons
-  WHERE is_current = true
-  LIMIT 1;
 
   v_wage := public.manager_weekly_wage_for(v_mgr.market_value);
 
@@ -709,10 +713,10 @@ BEGIN
   IF v_fee > 0 THEN
     PERFORM public.post_club_ledger(
       v_buyer,
-      'transfer_purchase',
+      'contract_signing_offer',
       -abs(v_fee),
       format('Manager purchase — listing %s', p_listing_id),
-      jsonb_build_object('manager_id', v_mgr_id, 'seller', v_seller)
+      jsonb_build_object('manager_id', v_mgr_id, 'seller', v_seller, 'kind', 'manager')
     );
 
     IF v_seller IS NOT NULL THEN
@@ -721,7 +725,7 @@ BEGIN
         'transfer_sale',
         abs(v_fee),
         format('Manager sale — listing %s', p_listing_id),
-        jsonb_build_object('manager_id', v_mgr_id, 'buyer', v_buyer)
+        jsonb_build_object('manager_id', v_mgr_id, 'buyer', v_buyer, 'kind', 'manager')
       );
     END IF;
   END IF;

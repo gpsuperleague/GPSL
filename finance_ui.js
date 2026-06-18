@@ -237,8 +237,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "staff_offers",
         label: "Contract offers",
         types: ["contract_signing_offer"],
-        planned: true,
-        note: "Renewal fee every two seasons.",
+        note: "Manager signing fees (draft, market, admin assign) and renewal fees every two seasons.",
       },
       {
         id: "staff_release",
@@ -349,7 +348,14 @@ export function aggregateLedgerByLine(rows) {
   for (const r of rows) {
     const type = r.entry_type || "other";
     const amt = Number(r.amount || 0);
-    const lineId = LEDGER_TYPE_TO_LINE[type];
+    const meta = parseMetadata(r.metadata);
+    let lineId = LEDGER_TYPE_TO_LINE[type];
+    if (
+      type === "transfer_purchase" &&
+      (meta.kind === "manager" || meta.manager_draft === true || meta.manager_draft === "true")
+    ) {
+      lineId = "staff_offers";
+    }
     const breakdownKey = ledgerBreakdownLabel(r);
     if (!lineId) {
       const bucket = ensure("_unmapped");
