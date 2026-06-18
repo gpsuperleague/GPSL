@@ -225,9 +225,6 @@ DECLARE
   v_mv_only int := 0;
   v_restored int := 0;
   v_unchanged int := 0;
-  v_rec record;
-  v_club text;
-  v_wage numeric;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -262,6 +259,8 @@ BEGIN
     );
   END IF;
 
+  PERFORM set_config('statement_timeout', '900000', true);
+
   UPDATE public."Players" p
   SET
     pesdb_unavailable = true,
@@ -274,55 +273,49 @@ BEGIN
 
   GET DIAGNOSTICS v_marked = ROW_COUNT;
 
-  FOR v_rec IN
-    SELECT
-      s.*,
-      p."Konami_ID"::text AS kid,
-      p."Contracted_Team" AS club,
-      p.pesdb_unavailable AS was_unavailable
-    FROM public.gpdb_pesdb_staging s
-    JOIN public."Players" p ON p."Konami_ID"::text = s.konami_id
-  LOOP
-    v_club := public.player_contracted_club_key(v_rec.club);
+  SELECT count(*)::int INTO v_restored
+  FROM public.gpdb_pesdb_staging s
+  JOIN public."Players" p ON p."Konami_ID"::text = s.konami_id
+  WHERE coalesce(p.pesdb_unavailable, false);
 
-    UPDATE public."Players" p
-    SET
-      "Name" = coalesce(v_rec.player_name, p."Name"),
-      "Position" = coalesce(v_rec.position, p."Position"),
-      "Nation" = coalesce(v_rec.nationality, p."Nation"),
-      "Age" = coalesce(v_rec.age::text, p."Age"::text),
-      "Rating" = coalesce(v_rec.rating::text, p."Rating"::text),
-      "Potential" = coalesce(v_rec.max_level_rating::text, p."Potential"::text),
-      "Calc_Potential" = coalesce(v_rec.calc_potential::text, p."Calc_Potential"::text),
-      "Playstyle" = coalesce(v_rec.playing_style, p."Playstyle"),
-      market_value = coalesce(
-        v_rec.market_value,
-        nullif(btrim(p.market_value::text), '')::numeric
-      ),
-      "Maximum_Reserve_Price" = coalesce(
-        v_rec.maximum_reserve_price,
-        nullif(btrim(p."Maximum_Reserve_Price"::text), '')::numeric
-      ),
-      pesdb_unavailable = false,
-      pesdb_unavailable_since = NULL,
-      contract_wage = CASE
-        WHEN v_club IS NOT NULL AND v_rec.market_value IS NOT NULL THEN
-          round(
-            public.calculate_standard_player_wage(
-              v_rec.market_value,
-              public.competition_club_division_tier(v_club)
-            ),
-            0
-          )
-        ELSE p.contract_wage
-      END
-    WHERE p."Konami_ID"::text = v_rec.kid;
+  UPDATE public."Players" p
+  SET
+    "Name" = coalesce(s.player_name, p."Name"),
+    "Position" = coalesce(s.position, p."Position"),
+    "Nation" = coalesce(s.nationality, p."Nation"),
+    "Age" = coalesce(s.age::text, p."Age"::text),
+    "Rating" = coalesce(s.rating::text, p."Rating"::text),
+    "Potential" = coalesce(s.max_level_rating::text, p."Potential"::text),
+    "Calc_Potential" = coalesce(s.calc_potential::text, p."Calc_Potential"::text),
+    "Playstyle" = coalesce(s.playing_style, p."Playstyle"),
+    market_value = coalesce(
+      s.market_value,
+      nullif(btrim(p.market_value::text), '')::numeric
+    ),
+    "Maximum_Reserve_Price" = coalesce(
+      s.maximum_reserve_price,
+      nullif(btrim(p."Maximum_Reserve_Price"::text), '')::numeric
+    ),
+    pesdb_unavailable = false,
+    pesdb_unavailable_since = NULL,
+    contract_wage = CASE
+      WHEN public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
+       AND s.market_value IS NOT NULL THEN
+        round(
+          public.calculate_standard_player_wage(
+            s.market_value,
+            public.competition_club_division_tier(
+              public.player_contracted_club_key(p."Contracted_Team")
+            )
+          ),
+          0
+        )
+      ELSE p.contract_wage
+    END
+  FROM public.gpdb_pesdb_staging s
+  WHERE p."Konami_ID"::text = s.konami_id;
 
-    v_updated := v_updated + 1;
-    IF coalesce(v_rec.was_unavailable, false) THEN
-      v_restored := v_restored + 1;
-    END IF;
-  END LOOP;
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
 
   INSERT INTO public."Players" (
     "Konami_ID",

@@ -1409,11 +1409,16 @@ async function runApply() {
     return;
   }
 
-  setStatus("applyStatus", "Applying…", true);
+  setStatus("applyStatus", "Applying… full catalog may take 1–3 minutes — do not close this tab.", true);
   try {
-    const { data: result, error } = await supabase.rpc("gpdb_pesdb_sync_apply", {
-      p_dry_run: false,
-    });
+    const { data: result, error } = await withLiveProgress(
+      "applyStatus",
+      (sec) => `Applying sync… ${sec}s (large catalog — please wait)`,
+      () =>
+        supabase.rpc("gpdb_pesdb_sync_apply", {
+          p_dry_run: false,
+        })
+    );
     if (error) throw error;
     saveLastApply(result);
     renderSummary(result, "applied ");
