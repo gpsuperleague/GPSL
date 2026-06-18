@@ -74,6 +74,8 @@ const SQUAD_PLAYER_COLUMNS =
 const SQUAD_PLAYER_COLUMNS_LEGACY =
   "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team, Season_Signed, contract_seasons_remaining, contract_wage";
 
+const SQUAD_TABLE_COLS = 15;
+
 function isMissingEconomicsColumnError(error) {
   const msg = String(error?.message || "").toLowerCase();
   return msg.includes("potential") || msg.includes("calc_potential");
@@ -425,7 +427,9 @@ async function loadSquad() {
 
   if (tbody && !hadSquad) {
     tbody.innerHTML =
-      '<tr data-squad-loading><td colspan="14" style="color:#888;padding:16px;">Loading squad…</td></tr>';
+      '<tr data-squad-loading><td colspan="' +
+      SQUAD_TABLE_COLS +
+      '" style="color:#888;padding:16px;">Loading squad…</td></tr>';
   }
 
   let { data: players, error } = await supabase
@@ -446,7 +450,9 @@ async function loadSquad() {
     console.error("Squad load error", error);
     if (tbody) {
       tbody.innerHTML =
-        '<tr><td colspan="14" style="color:#f88;">Failed to load squad.</td></tr>';
+        '<tr><td colspan="' +
+        SQUAD_TABLE_COLS +
+        '" style="color:#f88;">Failed to load squad.</td></tr>';
     }
     return;
   }
@@ -576,7 +582,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
     const headerRow = document.createElement("tr");
     headerRow.classList.add("squad-section-row");
     headerRow.innerHTML =
-      `<td colspan="14" class="squad-section-title">${groupName}</td>`;
+      `<td colspan="${SQUAD_TABLE_COLS}" class="squad-section-title">${groupName}</td>`;
     tbody.appendChild(headerRow);
 
     const groupPlayers = players
@@ -616,17 +622,18 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
       const roleBadge = roleBadgeForPlayer(p, designationsState);
 
       tr.innerHTML = `
-        <td>${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}</td>
-        <td>${playerNameLinkHtml(p.Konami_ID, p.Name)}${roleBadge}${qualBadges}</td>
-        <td>${p.Nation || "-"}</td>
-        <td>${p.Position}</td>
-        <td>${formatRatingWithPotential(p)}</td>
+        <td class="squad-col-thumb">${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}</td>
+        <td class="squad-col-player">${playerNameLinkHtml(p.Konami_ID, p.Name)}${roleBadge}${qualBadges}</td>
+        <td class="squad-col-nation">${p.Nation || "-"}</td>
+        <td class="squad-col-position">${p.Position}</td>
+        <td class="num squad-col-age">${p.Age != null && p.Age !== "" ? p.Age : "—"}</td>
+        <td class="num squad-col-rating">${formatRatingWithPotential(p)}</td>
         <td class="num squad-col-apps">${formatSeasonStat(st, "appearances", "0")}</td>
         <td class="num squad-col-goals">${formatSeasonStat(st, "goals", "0")}</td>
         <td class="num squad-col-assists">${formatSeasonStat(st, "assists", "0")}</td>
         <td class="num squad-col-avg">${avg}</td>
-        <td>${p.Playstyle || "-"}</td>
-        <td><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
+        <td class="squad-col-playstyle">${p.Playstyle || "-"}</td>
+        <td class="squad-col-value"><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
         <td class="squad-col-contract">${formatSquadContractCell(p)}</td>
         <td class="squad-col-status">
           <div class="squad-status-stack">

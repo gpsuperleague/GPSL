@@ -50,10 +50,14 @@
       justify-content: flex-start !important;
     }
 
-    .gpsl-table th {
-      text-align: center !important;
+    .gpsl-table.squad-table th {
+      text-align: center;
       color: #ff9900;
       font-weight: bold;
+    }
+
+    .gpsl-table.squad-table th:nth-child(2) {
+      text-align: left;
     }
 
     .squad-section-title {
@@ -100,13 +104,32 @@
     <div class="panel">
       <h2 class="section-header">Squad</h2>
 
-      <table class="gpsl-table">
+      <div class="squad-table-scroll">
+      <table class="gpsl-table squad-table">
+        <colgroup>
+          <col class="squad-col-thumb" />
+          <col class="squad-col-player" />
+          <col class="squad-col-nation" />
+          <col class="squad-col-position" />
+          <col class="squad-col-age" />
+          <col class="squad-col-rating" />
+          <col class="squad-col-stat" />
+          <col class="squad-col-stat" />
+          <col class="squad-col-stat" />
+          <col class="squad-col-stat" />
+          <col class="squad-col-playstyle" />
+          <col class="squad-col-value" />
+          <col class="squad-col-contract" />
+          <col class="squad-col-status" />
+          <col class="squad-col-action" />
+        </colgroup>
         <thead>
           <tr>
             <th></th>
             <th>Player</th>
             <th>Nation</th>
-            <th>Position</th>
+            <th>Pos</th>
+            <th>Age</th>
             <th>Rating (Pot.)</th>
             <th>Apps</th>
             <th>G</th>
@@ -121,6 +144,7 @@
         </thead>
         <tbody id="squad-body"></tbody>
       </table>
+      </div>
     </div>
 
   </div>
