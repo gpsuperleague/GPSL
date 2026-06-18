@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Club season checklist — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .chk-note { font-size:13px; color:#aaa; line-height:1.5; margin-bottom:14px; max-width:1100px; }
+    .chk-toolbar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px; }
+    .chk-summary { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:12px; font-size:13px; }
+    .chk-summary span { padding:6px 10px; background:#1a1a1a; border-radius:4px; }
+    .chk-table-wrap { overflow:auto; max-height:calc(100vh - 240px); border:1px solid #333; border-radius:6px; }
+    .chk-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .chk-table th, .chk-table td { padding:6px 8px; border-bottom:1px solid #2a2a2a; text-align:left; vertical-align:top; white-space:nowrap; }
+    .chk-table th { position:sticky; top:0; background:#1e1e1e; z-index:1; color:#ff9900; cursor:pointer; user-select:none; }
+    .chk-table th:hover { background:#252525; }
+    .chk-table th.sorted-asc::after { content:" ▲"; font-size:9px; }
+    .chk-table th.sorted-desc::after { content:" ▼"; font-size:9px; }
+    .chk-table tbody tr:hover { background:#1a1a1a; }
+    .chk-table .club-cell { white-space:normal; min-width:120px; }
+    .chk-table .club-name { font-weight:600; }
+    .chk-table .club-short { color:#888; font-size:11px; }
+    .chk-table .vacant { color:#888; font-style:italic; }
+    .chk-table .money { text-align:right; font-variant-numeric:tabular-nums; }
+    .chk-table .num { text-align:center; font-variant-numeric:tabular-nums; }
+    .chk-table .warn { color:#e8a047; }
+    .chk-table .bad { color:#e85c5c; }
+    .chk-table .proj-loading { color:#666; font-style:italic; }
+    .chk-filter select { background:#222; color:#ddd; border:1px solid #444; padding:4px 8px; border-radius:4px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Club season checklist</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="chk-note">
+          All GPSL clubs at a glance for the active season. <b>Projected EOS balance</b> loads after the table
+          (pending gates, prizes, wages, etc.). Run <code>admin_club_season_checklist.sql</code> in Supabase first.
+          Nav: <b>Admin → Season Management → Mid Season → Club season checklist</b>.
+        </p>
+        <div class="chk-toolbar">
+          <button type="button" id="reloadBtn" class="button">Reload</button>
+          <label class="chk-filter">
+            Owner
+            <select id="filterOwner">
+              <option value="">All clubs</option>
+              <option value="owned">With owner</option>
+              <option value="vacant">Vacant</option>
+            </select>
+          </label>
+          <label class="chk-filter">
+            Division
+            <select id="filterDivision">
+              <option value="">All</option>
+              <option value="superleague">SuperLeague</option>
+              <option value="championship_a">Championship A</option>
+              <option value="championship_b">Championship B</option>
+              <option value="unassigned">Unassigned</option>
+            </select>
+          </label>
+          <span id="rowCount" class="note"></span>
+        </div>
+        <div id="summaryStrip" class="chk-summary"></div>
+        <div id="pageStatus" class="status-line"></div>
+        <div id="tableWrap" class="chk-table-wrap">
+          <p class="note">Loading…</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_club_checklist.js?v=20260618"></script>
+</body>
+</html>

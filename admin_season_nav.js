@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260617-season-management-menu";
+export const SEASON_ADMIN_NAV_VERSION = "20260618-club-checklist";
 
 const SEASON_CALENDAR_NAV_ITEM = {
   label: "GPSL season calendar",
@@ -154,7 +154,15 @@ export const SEASON_MGMT_ADMIN_NAV = [
   {
     id: "mid_season",
     label: "Mid Season",
-    items: [...TRANSFER_WINDOW_NAV_ITEMS, CHALLENGE_PAYOUTS_NAV_ITEM],
+    items: [
+      {
+        label: "Club season checklist",
+        href: "admin_club_checklist.html",
+        page: "admin_club_checklist",
+      },
+      ...TRANSFER_WINDOW_NAV_ITEMS,
+      CHALLENGE_PAYOUTS_NAV_ITEM,
+    ],
   },
   {
     id: "playoffs",
