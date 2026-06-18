@@ -53,6 +53,10 @@ async function loadOwnerList() {
   const { data: registry } = await supabase
     .from("gpsl_owner_registry")
     .select("owner_id, status, last_club_short_name, owner_tag");
+  const { data: rankings } = await supabase
+    .from("competition_owner_season_ranking")
+    .select("owner_id, owner_tag, club_short_name, season_id")
+    .order("season_id", { ascending: false });
   if (dropdown) dropdown.innerHTML = "";
   if (tagDropdown) tagDropdown.innerHTML = "";
 
@@ -69,11 +73,26 @@ async function loadOwnerList() {
     const row = registry?.find((r) => r.owner_id === ownerId);
     const fromRegistry = String(row?.owner_tag || "").trim();
     if (fromRegistry) return fromRegistry;
+
+    const rankingRow = rankings?.find(
+      (r) =>
+        r.owner_id === ownerId &&
+        String(r.owner_tag || "").trim() &&
+        String(r.owner_tag).trim().toUpperCase() !==
+          String(r.club_short_name || "").toUpperCase()
+    );
+    if (rankingRow) return String(rankingRow.owner_tag).trim();
+
     const fromClub = String(clubOwner || "").trim();
     if (fromClub && fromClub.toUpperCase() !== String(clubShort || "").toUpperCase()) {
       return fromClub;
     }
     return "";
+  };
+
+  const formatTagOptionLabel = (shortName, email, tag) => {
+    if (tag) return `${shortName} — ${tag} — ${email}`;
+    return `${shortName} — ${email}`;
   };
 
   ownerData.users.forEach((u) => {
@@ -88,24 +107,38 @@ async function loadOwnerList() {
     if (tagDropdown) {
       const tagOption = document.createElement("option");
       tagOption.value = u.email;
-      tagOption.textContent = `${shortName} — ${u.email}`;
+      tagOption.dataset.ownerId = u.id;
+      tagOption.textContent = formatTagOptionLabel(shortName, u.email, currentTag);
       if (currentTag) tagOption.dataset.currentTag = currentTag;
       tagDropdown.appendChild(tagOption);
     }
   });
 
-  tagDropdown?.dispatchEvent(new Event("change"));
+  await syncOwnerTagInputFromSelect();
 }
 
-function syncOwnerTagInputFromSelect() {
+async function syncOwnerTagInputFromSelect() {
   const tagDropdown = document.getElementById("tagOwnerSelect");
   const tagInput = document.getElementById("ownerTagInput");
   const hint = document.getElementById("currentTagHint");
   if (!tagDropdown || !tagInput) return;
 
   const opt = tagDropdown.selectedOptions[0];
-  const currentTag = opt?.dataset?.currentTag || "";
+  let currentTag = opt?.dataset?.currentTag || "";
+
+  const ownerId = opt?.dataset?.ownerId;
+  if (ownerId) {
+    const { data, error } = await supabase.rpc("owner_registry_resolve_tag", {
+      p_owner_id: ownerId,
+    });
+    if (!error && data) {
+      currentTag = String(data).trim();
+      if (currentTag) opt.dataset.currentTag = currentTag;
+    }
+  }
+
   tagInput.value = currentTag;
+  tagInput.placeholder = currentTag ? currentTag : "e.g. @username";
   if (hint) {
     hint.textContent = currentTag ? `Current tag: ${currentTag}` : "No tag set for this owner.";
   }
