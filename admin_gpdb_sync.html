@@ -121,10 +121,26 @@
 
       <div class="card">
         <h2>2. Preview sync</h2>
-        <p class="note">Dry run — no changes to <code>Players</code>.</p>
+        <p class="note">
+          Dry run — no changes to <code>Players</code>.
+          Check the <b>summary counts</b> first; the table defaults to <b>Updates (existing GPDB)</b> so you can compare ratings/MV.
+          New PESDB cards are listed separately (often thousands — not shown in the first 250 by default).
+        </p>
         <button type="button" class="button" id="previewBtn">Run preview</button>
         <div id="previewStatus" class="status-line"></div>
         <div id="previewGrid" class="preview-grid" hidden></div>
+        <div id="previewFilterRow" class="scrape-range" hidden style="margin-top:12px;">
+          <label>
+            Show
+            <select id="previewFilter" style="padding:6px 8px;background:#111;border:1px solid #444;color:#eee;border-radius:4px;">
+              <option value="updates" selected>Updates (existing GPDB)</option>
+              <option value="legacy">Legacy (off PESDB)</option>
+              <option value="new">New free agents</option>
+              <option value="all">All changes</option>
+            </select>
+          </label>
+          <span id="previewFilterNote" style="font-size:12px;color:#888;"></span>
+        </div>
         <div id="previewTableWrap" class="sync-table-wrap" hidden>
           <table class="sync-table">
             <thead>
@@ -179,6 +195,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_sync.js?v=20260617-scrape-catalog-end"></script>
+  <script type="module" src="admin_gpdb_sync.js?v=20260617-preview-filters"></script>
 </body>
 </html>

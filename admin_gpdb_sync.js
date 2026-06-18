@@ -16,6 +16,26 @@ const LAST_APPLY_KEY = "gpdb_pesdb_last_apply";
 let scrapeAbort = false;
 let scrapeRunning = false;
 let liveTimerId = null;
+let lastAuditRows = [];
+
+const PREVIEW_ACTION_ORDER = {
+  mark_unavailable: 1,
+  already_unavailable: 2,
+  restore_and_update: 3,
+  update_stats: 4,
+  update_mv: 5,
+  insert_free_agent: 6,
+  unchanged: 99,
+};
+
+const PREVIEW_UPDATE_ACTIONS = new Set([
+  "update_stats",
+  "update_mv",
+  "restore_and_update",
+]);
+const PREVIEW_LEGACY_ACTIONS = new Set(["mark_unavailable", "already_unavailable"]);
+const PREVIEW_NEW_ACTIONS = new Set(["insert_free_agent"]);
+const PREVIEW_TABLE_LIMIT = 500;
 
 function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
@@ -592,29 +612,90 @@ function renderSummary(result, prefix = "") {
   grid.hidden = false;
 
   const dry = result.dry_run !== false;
+  const counts = result.audit_counts || {};
+  const mvOnly = counts.update_mv ?? 0;
+
   grid.innerHTML = `
     <div><span>${result.staging_rows ?? "—"}</span> staging rows</div>
     <div><span>${dry ? result.would_mark_unavailable ?? result.marked_unavailable ?? 0 : result.marked_unavailable ?? 0}</span> ${prefix}legacy (off PESDB)</div>
     <div><span>${dry ? result.would_insert_free_agents ?? result.inserted_free_agents ?? 0 : result.inserted_free_agents ?? 0}</span> ${prefix}new free agents</div>
     <div><span>${dry ? result.would_update ?? result.updated ?? 0 : result.updated ?? 0}</span> ${prefix}stat updates</div>
+    ${mvOnly ? `<div><span>${mvOnly}</span> ${prefix}MV-only updates</div>` : ""}
     <div><span>${dry ? result.would_restore_from_legacy ?? result.restored_from_legacy ?? 0 : result.restored_from_legacy ?? 0}</span> ${prefix}restored from legacy</div>
-    <div><span>${result.unchanged ?? 0}</span> unchanged</div>
+    <div><span>${result.unchanged ?? 0}</span> unchanged (matched)</div>
   `;
 }
 
-function renderAuditTable(rows) {
+function summarizeAuditRows(rows) {
+  const counts = {};
+  for (const r of rows || []) {
+    counts[r.action] = (counts[r.action] || 0) + 1;
+  }
+  return counts;
+}
+
+function sortAuditRows(rows) {
+  return [...(rows || [])].sort((a, b) => {
+    const ao = PREVIEW_ACTION_ORDER[a.action] ?? 50;
+    const bo = PREVIEW_ACTION_ORDER[b.action] ?? 50;
+    if (ao !== bo) return ao - bo;
+    return String(a.konami_id).localeCompare(String(b.konami_id));
+  });
+}
+
+function filterAuditRows(rows, filter) {
+  const changed = (rows || []).filter((r) => r.action !== "unchanged");
+  if (filter === "updates") {
+    return changed.filter((r) => PREVIEW_UPDATE_ACTIONS.has(r.action));
+  }
+  if (filter === "legacy") {
+    return changed.filter((r) => PREVIEW_LEGACY_ACTIONS.has(r.action));
+  }
+  if (filter === "new") {
+    return changed.filter((r) => PREVIEW_NEW_ACTIONS.has(r.action));
+  }
+  return changed;
+}
+
+function renderAuditTable(rows, filter = null) {
   const wrap = document.getElementById("previewTableWrap");
   const tbody = document.getElementById("previewBody");
+  const filterRow = document.getElementById("previewFilterRow");
+  const filterNote = document.getElementById("previewFilterNote");
+  const filterSel = document.getElementById("previewFilter");
   if (!wrap || !tbody) return;
+
+  const activeFilter = filter ?? filterSel?.value ?? "updates";
 
   if (!rows?.length) {
     wrap.hidden = true;
+    if (filterRow) filterRow.hidden = true;
     tbody.innerHTML = "";
     return;
   }
 
+  const sorted = sortAuditRows(rows);
+  const unchangedCount = sorted.filter((r) => r.action === "unchanged").length;
+  const filtered = filterAuditRows(sorted, activeFilter);
+  const show = filtered.slice(0, PREVIEW_TABLE_LIMIT);
+
+  if (filterRow) filterRow.hidden = false;
+  if (filterNote) {
+    const total = filtered.length;
+    const shown = show.length;
+    filterNote.textContent =
+      total > shown
+        ? `Showing ${shown} of ${total} in this filter (${unchangedCount} unchanged hidden).`
+        : `${total} row(s) in this filter (${unchangedCount} unchanged hidden).`;
+  }
+
+  if (!filtered.length) {
+    wrap.hidden = false;
+    tbody.innerHTML = `<tr><td colspan="7" style="color:#888;padding:10px;">No rows in this filter. Try another filter or check the summary counts above.</td></tr>`;
+    return;
+  }
+
   wrap.hidden = false;
-  const show = rows.filter((r) => r.action !== "unchanged").slice(0, 250);
   const actionClass = {
     mark_unavailable: "tag-warn",
     already_unavailable: "tag-blocked",
@@ -645,12 +726,8 @@ function renderAuditTable(rows) {
     )
     .join("");
 
-  const hidden = rows.filter((r) => r.action === "unchanged").length;
-  if (hidden) {
-    tbody.innerHTML += `<tr><td colspan="7" style="color:#888;padding:10px;">${hidden} unchanged row(s) hidden.</td></tr>`;
-  }
-  if (rows.length > show.length + hidden) {
-    tbody.innerHTML += `<tr><td colspan="7" style="color:#888;padding:10px;">Showing first ${show.length} changed rows.</td></tr>`;
+  if (filtered.length > show.length) {
+    tbody.innerHTML += `<tr><td colspan="7" style="color:#888;padding:10px;">… ${filtered.length - show.length} more in this filter (increase limit or export via SQL audit).</td></tr>`;
   }
 }
 
@@ -1295,13 +1372,31 @@ async function runPreview() {
       supabase.rpc("gpdb_pesdb_sync_apply", { p_dry_run: true }),
     ]);
     if (error) throw error;
-    renderSummary(result);
-    renderAuditTable(auditRows);
-    setStatus(
-      "previewStatus",
-      "Preview ready — review changes before applying.",
-      true
-    );
+
+    lastAuditRows = auditRows || [];
+    const auditCounts = summarizeAuditRows(lastAuditRows);
+    const enriched = {
+      ...result,
+      audit_counts: auditCounts,
+      would_update:
+        (result?.would_update ?? 0) + (auditCounts.update_mv ?? 0),
+    };
+
+    renderSummary(enriched);
+    renderAuditTable(lastAuditRows);
+
+    const matched =
+      (auditCounts.update_stats ?? 0) +
+      (auditCounts.update_mv ?? 0) +
+      (auditCounts.restore_and_update ?? 0) +
+      (auditCounts.unchanged ?? 0);
+    const inserted = auditCounts.insert_free_agent ?? 0;
+    let statusMsg = `Preview ready — ${matched} staging rows match existing GPDB; ${inserted} new cards.`;
+    if (matched < 1000 && inserted > 5000) {
+      statusMsg +=
+        " ⚠️ Very few matches — check Konami IDs in staging vs Players (sample a known player ID in both tables).";
+    }
+    setStatus("previewStatus", statusMsg, true);
   } catch (err) {
     console.error("pesdb sync preview:", err);
     setStatus(
@@ -1381,6 +1476,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("scrapeBtn")?.addEventListener("click", runPesdbScrape);
   document.getElementById("scrapeStopBtn")?.addEventListener("click", stopPesdbScrape);
   document.getElementById("previewBtn")?.addEventListener("click", runPreview);
+  document.getElementById("previewFilter")?.addEventListener("change", () => {
+    renderAuditTable(lastAuditRows);
+  });
   document.getElementById("applyBtn")?.addEventListener("click", runApply);
   document.getElementById("refreshLegacyBtn")?.addEventListener("click", loadUnavailableList);
 
