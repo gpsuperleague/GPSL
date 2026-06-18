@@ -33,6 +33,7 @@ ALTER TABLE public.competition_finance_ledger
       'gov_hg_subsidy',
       'gov_youth_subsidy',
       'gov_bnb_subsidy',
+      'gov_fine_compensation',
       'gov_emergency_tax',
       'gov_income_tax',
       'wage_squad',
@@ -53,7 +54,20 @@ ALTER TABLE public.competition_finance_ledger
       'infra_purchase',
       'infra_expansion',
       'infra_expansion_refund',
-      'infra_expansion_penalty'
+      'infra_expansion_penalty',
+      'contract_release_comp',
+      'contract_release_comp_received',
+      'contract_termination',
+      'contract_signing_offer',
+      'staff_manager_salary',
+      'eos_debt_interest',
+      'eos_ffp_charge',
+      'eos_balance_interest',
+      'eos_injection',
+      'special_auction_fee',
+      'special_auction_prize',
+      'season_loan_fee',
+      'season_loan_refund'
     )
   );
 
