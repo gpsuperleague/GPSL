@@ -61,9 +61,15 @@
       <div class="cup-draw-stage">
         <div class="cup-draw-spotlight" id="spotlight"></div>
         <div class="cup-draw-bowl-wrap">
-          <div class="cup-draw-ball-pit" id="ballPit"></div>
-          <div class="cup-draw-bowl" id="bowl">
-            <div class="cup-draw-bowl-rim"></div>
+          <div class="cup-draw-glass" id="bowl">
+            <div class="cup-draw-glass-rim"></div>
+            <div class="cup-draw-glass-highlight"></div>
+            <div class="cup-draw-glass-body">
+              <div class="cup-draw-ball-pit" id="ballPit"></div>
+            </div>
+            <div class="cup-draw-bowl-exit" id="bowlExit" aria-hidden="true"></div>
+            <div class="cup-draw-glass-foot"></div>
+            <div class="cup-draw-glass-base"></div>
           </div>
         </div>
         <div class="cup-draw-announce" id="announce">
@@ -80,6 +86,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="cup_draw.js?v=20260617-black-balls"></script>
+  <script type="module" src="cup_draw.js?v=20260617-glass-bowl"></script>
 </body>
 </html>

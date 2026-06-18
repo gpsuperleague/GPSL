@@ -64,8 +64,9 @@ function shuffle(arr) {
 function layoutBallsInBowl(codes) {
   const pit = document.getElementById("ballPit");
   pit.innerHTML = "";
-  const w = pit.clientWidth || 280;
-  const h = pit.clientHeight || 200;
+  const w = pit.clientWidth || 240;
+  const h = pit.clientHeight || 168;
+  const ballSize = 52;
 
   codes.forEach((code, i) => {
     const ball = document.createElement("div");
@@ -76,14 +77,40 @@ function layoutBallsInBowl(codes) {
         <div class="cup-draw-ball-face cup-draw-ball-front" aria-hidden="true"></div>
         <div class="cup-draw-ball-face cup-draw-ball-back">${escapeHtml(clubLabel(code))}</div>
       </div>`;
-    const angle = (i / Math.max(codes.length, 1)) * Math.PI * 2 + Math.random() * 0.5;
-    const radius = 0.15 + Math.random() * 0.32;
-    const left = w / 2 + Math.cos(angle) * w * radius - 26;
-    const top = h * 0.35 + Math.sin(angle) * h * radius * 0.55 + Math.random() * 40;
-    ball.style.left = `${Math.max(4, Math.min(w - 56, left))}px`;
-    ball.style.top = `${Math.max(4, Math.min(h - 56, top))}px`;
+
+    const spread = Math.min(w * 0.38, 90);
+    const left = w / 2 - ballSize / 2 + (Math.random() - 0.5) * spread * 2;
+    const top = h - ballSize - 6 - Math.random() * Math.min(48, h * 0.28) - (i % 3) * 4;
+    ball.style.left = `${Math.max(8, Math.min(w - ballSize - 8, left))}px`;
+    ball.style.top = `${Math.max(h * 0.35, Math.min(h - ballSize - 4, top))}px`;
     pit.appendChild(ball);
   });
+}
+
+function getBowlExitPosition() {
+  const pit = document.getElementById("ballPit");
+  const w = pit.clientWidth || 240;
+  const h = pit.clientHeight || 168;
+  return {
+    left: w / 2 - 26,
+    top: h - 54,
+  };
+}
+
+function moveBallToExit(ball) {
+  const exit = getBowlExitPosition();
+  ball.style.left = `${exit.left}px`;
+  ball.style.top = `${exit.top}px`;
+}
+
+function reparentBallToStage(ball) {
+  const wrap = document.querySelector(".cup-draw-bowl-wrap");
+  if (!wrap || ball.parentElement === wrap) return;
+  const ballRect = ball.getBoundingClientRect();
+  const wrapRect = wrap.getBoundingClientRect();
+  ball.style.left = `${ballRect.left - wrapRect.left}px`;
+  ball.style.top = `${ballRect.top - wrapRect.top}px`;
+  wrap.appendChild(ball);
 }
 
 async function shakeBowl() {
@@ -105,13 +132,22 @@ async function pickBall(code) {
   await shakeBowl();
   const ball = findBall(code);
   if (!ball) return;
+
+  moveBallToExit(ball);
+  ball.classList.add("at-exit");
+  await delay(480);
+
+  reparentBallToStage(ball);
   ball.classList.add("picked");
-  await delay(280);
+  await delay(220);
   ball.classList.add("revealed");
-  await delay(720);
+  await delay(680);
+
+  ball.classList.add("rise");
+  await delay(900);
+
   ball.classList.add("fly-away");
-  ball.style.transform = "translateY(-120px) scale(1.2)";
-  await delay(650);
+  await delay(420);
   ball.classList.add("hidden");
 }
 
