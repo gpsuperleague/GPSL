@@ -272,8 +272,6 @@ function renderBracket(nodes, extras) {
     </div>
     <p class="bracket-arrow-hint">← Early rounds · Final →</p>
   `;
-  const flow = root.querySelector(".bracket-flow");
-  if (flow) flow.scrollLeft = 0;
 }
 
 function renderBracketRoundColumn(round_no, matches, extras) {
