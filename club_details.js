@@ -306,6 +306,125 @@ function formatTargetProgress(row) {
   return "Season in progress";
 }
 
+function formatClubTierLabel(tier) {
+  if (tier === "big") return "Big club";
+  if (tier === "medium") return "Medium club";
+  if (tier === "low") return "Low club";
+  return tier || "—";
+}
+
+function formatPerformanceBand(band) {
+  if (!band || band === "—") return "—";
+  const labels = {
+    on_target: "On target",
+    slight: "Slight miss",
+    bad: "Bad miss",
+    abysmal: "Abysmal miss",
+  };
+  return labels[band] || band;
+}
+
+function performanceBandClass(band) {
+  if (!band || band === "on_target") return "expectation-band--on_target";
+  if (band === "slight") return "expectation-band--slight";
+  if (band === "bad") return "expectation-band--bad";
+  if (band === "abysmal") return "expectation-band--abysmal";
+  return "";
+}
+
+function failurePunishmentNote(tier) {
+  const stadium =
+    "Gate fill drifts down when below expectation (slight −10%, bad −20%, abysmal −25%).";
+  if (tier === "big") {
+    return `At season end, one random player from your top four rated may be forced onto the transfer market at market value (perpetual relisting, cannot remove). ${stadium}`;
+  }
+  if (tier === "medium") {
+    return `At season end, one player rated 74–78 who is over 21 may be forced onto the transfer market at market value (perpetual relisting, cannot remove). ${stadium}`;
+  }
+  return `Low clubs are not subject to underperformance transfer requests. ${stadium}`;
+}
+
+function managerLiftNote(data) {
+  const baseline = Number(data.baseline_expected_position);
+  const combined = Number(data.expected_position);
+  const rating = data.manager_rating;
+  const tier = data.club_tier;
+
+  if (!Number.isFinite(baseline) || !Number.isFinite(combined)) return "";
+
+  if (tier === "big") {
+    return "Big clubs are held to a high standard — manager rating does not lower the bar.";
+  }
+
+  const lift = baseline - combined;
+  if (lift > 0 && rating) {
+    return `Manager rating ${rating} raises expectation by ${lift} place${lift === 1 ? "" : "s"}.`;
+  }
+  if (rating && tier !== "big") {
+    return `Manager rating ${rating} — rating below the lift threshold, so club baseline applies.`;
+  }
+  return "No manager signed — club baseline applies.";
+}
+
+async function loadExpectationSection(clubShortName) {
+  const statusEl = document.getElementById("expectationStatus");
+  if (!statusEl) return;
+
+  const { data, error } = await supabase.rpc("competition_compute_stadium_fill", {
+    p_club_short_name: clubShortName,
+  });
+
+  if (error) {
+    const msg = String(error.message || "");
+    statusEl.textContent = msg.includes("competition_compute_stadium_fill")
+      ? "Run stadium_attendance_v2.sql to enable expectations."
+      : msg;
+    return;
+  }
+
+  if (!data || data.error) {
+    statusEl.textContent = data?.error || "Expectation data unavailable.";
+    return;
+  }
+
+  const baselinePos = data.baseline_expected_position ?? "—";
+  const seasonPos = data.expected_position ?? "—";
+  const expectedPts = Number(data.expected_points || 0);
+  const actualPos = data.actual_position ?? "—";
+  const actualPts = Number(data.actual_points || 0);
+  const band = data.performance_band || "—";
+  const tier = data.club_tier || "";
+  const prestigeRank = data.prestige_rank ?? "—";
+  const liftNote = managerLiftNote(data);
+
+  statusEl.innerHTML = `
+    <div class="expectation-block">
+      <h3>Club expectation</h3>
+      <dl class="expectation-dl">
+        <dt>Club tier</dt><dd>${formatClubTierLabel(tier)} · prestige rank ${prestigeRank}</dd>
+        <dt>Expected finish</dt><dd>League position ${baselinePos}</dd>
+      </dl>
+      <p class="expectation-note">From 5-year prestige — where the club is expected to finish without manager lift.</p>
+    </div>
+
+    <div class="expectation-block">
+      <h3>Season expectation</h3>
+      <dl class="expectation-dl">
+        <dt>Expected finish</dt><dd>League ${seasonPos} · ${expectedPts.toFixed(2)} pts</dd>
+        <dt>Current delivery</dt><dd>League ${actualPos} · ${actualPts.toFixed(2)} pts</dd>
+        <dt>Performance</dt><dd><span class="${performanceBandClass(band)}">${formatPerformanceBand(band)}</span></dd>
+      </dl>
+      ${liftNote ? `<p class="expectation-note">${liftNote}</p>` : ""}
+    </div>
+
+    <div class="expectation-block">
+      <h3>Failure punishment</h3>
+      <p class="expectation-note">${failurePunishmentNote(tier)}</p>
+      <p class="expectation-note">Checked at season archive. See <a href="learning_gpsl.html#club-expectations" style="color:#ff9900;">Learning GPSL</a> and <a href="stadium.html" style="color:#ff9900;">Stadium</a> for full rules.</p>
+    </div>
+  `;
+}
+
 async function loadManagerSection(clubShortName) {
   const statusEl = document.getElementById("managerStatus");
   const hintEl = document.getElementById("managerHint");
@@ -703,7 +822,10 @@ async function initClubDetailsPage() {
   }
 
   await loadChallengeProgress(club.ShortName);
-  await loadManagerSection(club.ShortName);
+  await Promise.all([
+    loadExpectationSection(club.ShortName),
+    loadManagerSection(club.ShortName),
+  ]);
   await loadSubsidyStatus(club.ShortName);
 
   wireHolidayBooking();
@@ -749,7 +871,12 @@ function wireManagerActions() {
         return;
       }
       if (hintEl) hintEl.textContent = "Manager sacked.";
-      if (clubShort) await loadManagerSection(clubShort);
+      if (clubShort) {
+        await Promise.all([
+          loadExpectationSection(clubShort),
+          loadManagerSection(clubShort),
+        ]);
+      }
     });
   }
 }

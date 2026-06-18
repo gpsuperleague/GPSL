@@ -152,6 +152,70 @@
       margin: 0;
     }
 
+    .club-details-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+      align-items: start;
+    }
+
+    .club-details-row .panel {
+      margin-top: 0;
+    }
+
+    @media (max-width: 960px) {
+      .club-details-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .expectation-block {
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #333;
+    }
+
+    .expectation-block:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    .expectation-block h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #ffcc66;
+    }
+
+    .expectation-dl {
+      display: grid;
+      grid-template-columns: max-content 1fr;
+      gap: 6px 16px;
+      margin: 0;
+      font-size: 14px;
+    }
+
+    .expectation-dl dt {
+      color: #aaa;
+    }
+
+    .expectation-dl dd {
+      margin: 0;
+    }
+
+    .expectation-note {
+      color: #888;
+      font-size: 12px;
+      line-height: 1.45;
+      margin: 8px 0 0;
+    }
+
+    .expectation-band--on_target { color: #9c9; }
+    .expectation-band--slight { color: #cc9; }
+    .expectation-band--bad { color: #e88; }
+    .expectation-band--abysmal { color: #f66; font-weight: 600; }
+
     .subsidy-panel {
       margin-top: 20px;
       padding: 16px 18px;
@@ -402,17 +466,28 @@
       </div>
     </div>
 
-    <div class="panel panel-bg" id="managerPanel">
-      <h2 class="subsidy-title">Manager</h2>
-      <p class="subsidy-intro">
-        Signed manager, contract target, and season progress. Sack once per season for half market value.
-      </p>
-      <div id="managerStatus" class="subsidy-meta">Loading…</div>
-      <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
-        <button type="button" id="listManagerBtn" class="small-btn is-hidden">List for transfer</button>
-        <button type="button" id="sackManagerBtn" class="small-btn is-hidden">Sack manager</button>
+    <div class="club-details-row">
+      <div class="panel panel-bg" id="expectationPanel">
+        <h2 class="subsidy-title">Expectations</h2>
+        <p class="subsidy-intro">
+          Prestige sets your club baseline. A strong manager can raise the bar on medium and low clubs.
+          Missing season expectation affects stadium gate fill and can trigger player transfer requests.
+        </p>
+        <div id="expectationStatus" class="subsidy-meta">Loading…</div>
       </div>
-      <p id="managerHint" class="owner-tag-hint" role="status"></p>
+
+      <div class="panel panel-bg" id="managerPanel">
+        <h2 class="subsidy-title">Manager</h2>
+        <p class="subsidy-intro">
+          Signed manager, contract target, and season progress. Sack once per season for half market value.
+        </p>
+        <div id="managerStatus" class="subsidy-meta">Loading…</div>
+        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="button" id="listManagerBtn" class="small-btn is-hidden">List for transfer</button>
+          <button type="button" id="sackManagerBtn" class="small-btn is-hidden">Sack manager</button>
+        </div>
+        <p id="managerHint" class="owner-tag-hint" role="status"></p>
+      </div>
     </div>
 
     <div class="panel panel-bg account-panel" id="accountPanel">
