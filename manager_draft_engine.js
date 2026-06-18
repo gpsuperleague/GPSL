@@ -43,6 +43,20 @@ export function getManagerDraftBidWindowBounds(draftAuctionStartTime) {
   };
 }
 
+export function dedupeManagerDraftBidRows(rows) {
+  const keep = new Map();
+  for (const b of rows || []) {
+    const key = `${b.manager_id}|${b.bidder_club_id}|${b.bid_amount}`;
+    const prev = keep.get(key);
+    if (!prev || Number(b.id) < Number(prev.id)) {
+      keep.set(key, b);
+    }
+  }
+  return [...keep.values()].sort(
+    (a, b) => new Date(a.bid_time).getTime() - new Date(b.bid_time).getTime()
+  );
+}
+
 export async function fetchManagerDraftBidsGrouped(managerIds, draftAuctionStartTime) {
   const bounds = getManagerDraftBidWindowBounds(draftAuctionStartTime);
   const ids = [...new Set((managerIds || []).map((id) => Number(id)).filter(Number.isFinite))];
@@ -69,6 +83,9 @@ export async function fetchManagerDraftBidsGrouped(managerIds, draftAuctionStart
     const mid = Number(row.manager_id);
     if (!map.has(mid)) continue;
     map.get(mid).push(row);
+  }
+  for (const [mid, rows] of map) {
+    map.set(mid, dedupeManagerDraftBidRows(rows));
   }
   return map;
 }
