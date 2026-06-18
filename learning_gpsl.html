@@ -71,6 +71,7 @@
         <li><a href="#managers">Managers</a></li>
         <li><a href="#transfers">Transfers &amp; markets</a></li>
         <li><a href="#auctions">Auctions &amp; drafts</a></li>
+        <li><a href="#match-scheduling">Match scheduling</a></li>
         <li><a href="#matchday">Match day &amp; results</a></li>
         <li><a href="#league">League &amp; cups</a></li>
         <li><a href="#international">Nation &amp; World Cup</a></li>
@@ -174,13 +175,14 @@
     <div class="section" id="my-club">
       <h2>My Club pages</h2>
       <ul>
-        <li><b><a href="club_details.html">Club Details</a></b> — badge, division, nation, government subsidy cards (HG / Youth / B&amp;B), and club overview.</li>
+        <li><b><a href="club_details.html">Club Details</a></b> — badge, division, nation, government subsidy cards (HG / Youth / B&amp;B), <b>match availability</b> (weekly calendar), <b>holiday booking</b>, email/password, and club overview.</li>
         <li><b><a href="squad.html">Squad</a></b> — registered players, home-grown and under-21 counts, contracts, list/sell actions.</li>
         <li><b><a href="finances.html">Finances</a></b> — current balance and links to ledger, income, costs, and season accounts.</li>
         <li><b><a href="stadium.html">Stadium</a></b> — capacity, attendance estimate, upcoming home gates, expansion.</li>
-        <li><b><a href="matchday.html">Match Day</a></b> — submit scores, player stats, and your match squad.</li>
+        <li><b><a href="matchday.html">Match Day</a></b> — submit scores, player stats, and your match squad (after kick-off is agreed and both owners have checked in).</li>
         <li><b><a href="transfer_center.html">Transfer Centre</a></b> — your listings, incoming offers, scouting targets, and direct deals.</li>
         <li><b><a href="history.html">Club History</a></b> — past seasons, positions, archived results, and a <b>trophy cabinet</b> (click a trophy for that season’s final table or cup bracket).</li>
+        <li><b><a href="fixtures.html">Fixtures</a></b> — your games highlighted; <b>Propose time</b> / <b>Respond</b> opens the scheduling page for that match.</li>
       </ul>
     </div>
 
@@ -302,6 +304,8 @@
         <li>Missing expectations can also trigger a <b>player transfer request</b> on big and medium clubs — see <a href="#club-expectations">Big &amp; medium club expectations</a>.</li>
         <li>You may sack a manager from squad/club pages when rules allow; vacancies block new manager draft bids until filled.</li>
         <li>Manager draft auctions use the same timed window as player drafts but are controlled by a <b>separate enable flag</b> — only active when admin turns on the manager draft.</li>
+        <li>When the random finish passes, winning bids are settled automatically (manager assigned, fee debited). If a club already has a manager, that auction closes without a transfer.</li>
+        <li>Season expectations message arrives in your <a href="inbox.html">Inbox</a> when a manager is signed.</li>
       </ul>
     </div>
 
@@ -364,7 +368,10 @@
         <a href="manager_draftauction.html">Manager draft list</a>
       </div>
       <ul>
-        <li>Same schedule pattern as player draft when enabled. You may only lead one manager auction at a time.</li>
+        <li>Same schedule pattern as player draft when enabled (Day 1 19:00 UK start, secret random finish on Day 2).</li>
+        <li>You may only <b>lead one</b> manager auction at a time — finish or get outbid before bidding elsewhere.</li>
+        <li>Open a free agent from <a href="MGDB.html">MGDB</a> to start their draft thread, or bid from the <a href="manager_draftauction.html">Manager draft list</a>.</li>
+        <li>After the random finish, winners are assigned automatically within about a minute — check <a href="club_details.html">Club Details</a> for your new manager. The draft list clears once settlement runs.</li>
       </ul>
       <h3>Special auctions</h3>
       <div class="link-grid">
@@ -375,6 +382,57 @@
       </ul>
     </div>
 
+    <div class="section" id="match-scheduling">
+      <h2>Match scheduling</h2>
+      <p>
+        Fixtures are published at the start of each GPSL month, but you and your opponent must <b>agree a kick-off time</b>
+        before playing. Use <a href="club_details.html">Club Details</a> to set when you are generally free, then
+        <a href="fixtures.html">Fixtures</a> to propose or respond.
+      </p>
+      <div class="link-grid">
+        <a href="club_details.html">Club Details (availability)</a>
+        <a href="fixtures.html">Fixtures</a>
+        <a href="inbox.html">Inbox</a>
+      </div>
+
+      <h3>1 — Set your availability (once per season, tweak anytime)</h3>
+      <ul>
+        <li><b>Club Details → Edit weekly availability</b> — paint 30-minute blocks (UK time) when you are usually free to play Mon–Sun.</li>
+        <li>Use <b>Mark all times available</b> then untick blocks you cannot do, or <b>copy a day</b> to the next day.</li>
+        <li>Set your <b>timezone</b> so proposed times show in your local clock on the schedule page.</li>
+        <li><b>Holidays</b> (real-world dates, up to 14 days/season) overlay as unavailable and can unlock early result entry for overlapping GPSL months — but you can only book a holiday <b>before</b> that GPSL month opens (Fri 19:00 UK).</li>
+      </ul>
+
+      <h3>2 — Agree a time (Phase 1)</h3>
+      <ul>
+        <li><b>Home club proposes first</b> — pick a slot from the list of <b>mutual</b> times (where both owners’ calendars intersect inside that fixture’s GPSL month).</li>
+        <li>Away owner gets an <a href="inbox.html">Inbox</a> message — <b>Accept</b> or <b>Counter-propose</b> another mutual slot.</li>
+        <li>Each side may propose up to <b>two</b> times; after that the site suggests contacting your opponent on <b>Discord</b> to agree offline, then pick a slot on the schedule page.</li>
+        <li>Scheduling uses <b>full club names</b> on the schedule page (not three-letter codes).</li>
+      </ul>
+
+      <h3>3 — Play the match (Phase 2)</h3>
+      <ul>
+        <li>At the <b>agreed kick-off</b>, both owners open the <b>schedule page</b> (from Fixtures or Inbox) and <b>Check in</b> within a <b>10-minute</b> window.</li>
+        <li>When both have checked in, <b>Enter result on Match Day</b> unlocks for that 30-minute block (~20 minutes to play).</li>
+        <li><b>Voluntary drop</b> (≥24h before kick-off) — uses your <b>one reschedule per GPSL month</b>; match returns to scheduling with no forfeit.</li>
+        <li><b>Emergency drop</b> (&lt;24h before kick-off) — uses <b>one of two per season</b>; match returns to scheduling. If you have no emergency tokens left, you forfeit <b>3–0</b> and a fine.</li>
+        <li><b>No-show</b> — one owner checks in, the other does not → no-show club forfeits <b>3–0</b> and a fine. Forfeit results do not count for player stats.</li>
+      </ul>
+
+      <h3>Inbox messages</h3>
+      <ul>
+        <li><b>Match time proposed / countered</b> — Accept from Inbox or open the schedule page to counter.</li>
+        <li><b>Match time agreed</b> — kick-off confirmed; check in at the agreed time.</li>
+        <li><b>Reschedule / emergency drop</b> — opponent dropped the agreed time; home proposes again.</li>
+      </ul>
+
+      <p class="warn">
+        Automatic forfeits for failing to propose or respond by month deadline, admin extensions when no mutual slot exists,
+        and check-in reminders are planned for a later phase — for now, agree times in good faith and use Discord if stuck.
+      </p>
+    </div>
+
     <div class="section" id="matchday">
       <h2>Match day &amp; results</h2>
       <div class="link-grid">
@@ -383,10 +441,12 @@
       </div>
       <ul>
         <li>Each real-world month (from Friday 19:00 UK) is one <b>GPSL month</b> of fixtures — see the calendar badge in the nav.</li>
-        <li>Submit scores and player stats on <a href="matchday.html">Match Day</a>. Set your <b>match squad</b> (11 starters + 12 subs) on the pitch tab; starters auto-tick in the stats table.</li>
+        <li>You need an <b>agreed kick-off</b> and <b>both check-ins</b> before you can enter a result (see <a href="#match-scheduling">Match scheduling</a>).</li>
+        <li>Submit scores and player stats on <a href="matchday.html">Match Day</a>. Set your <b>match squad</b> (11 starters + subs) on the pitch tab; starters auto-tick in the stats table.</li>
         <li>Your opponent confirms or rejects — you are notified at each step via the inbox.</li>
         <li><b>League:</b> win 3 pts, draw 1, loss 0. <b>Cup ties</b> cannot end in a draw — play extra time / penalties if needed.</li>
         <li>Confirmed results post gate receipts (where applicable) and update tables, stats, and challenges.</li>
+        <li>If you booked a <b>holiday</b> overlapping the GPSL month, you may enter results early before the normal Friday unlock — see <a href="club_details.html">Club Details</a>.</li>
       </ul>
     </div>
 
@@ -459,7 +519,7 @@
       </div>
       <ul>
         <li>At month start you receive a <b>match preview</b> (opponents, form, threats).</li>
-        <li>Transfer news, fines, cup draws, nation picks, and finance postings all go to the inbox — most messages link straight to the relevant page.</li>
+        <li>Transfer news, fines, cup draws, nation picks, <b>match scheduling</b>, and finance postings all go to the inbox — most messages link straight to the relevant page.</li>
         <li>End of season: awards (Golden Boot, Ballon d'Or, etc.), manager retention, archived history, and season overview messages.</li>
         <li>Unread count appears on the Inbox nav link.</li>
       </ul>
@@ -469,7 +529,7 @@
         <li>Big and medium clubs that miss the season target may lose a star player via a <b>forced transfer listing</b> — <a href="#club-expectations">full rules</a>.</li>
         <li>Stay within squad limits and composition minimums (<a href="squad.html">Squad</a>).</li>
         <li>Meet manager targets or plan for a change at season end.</li>
-        <li>Respond to inbox actions promptly (confirm results, accept deals, pick your nation when called).</li>
+        <li>Respond to inbox actions promptly (confirm results, accept deals, pick your nation when called, <b>accept or counter match times</b>).</li>
       </ul>
     </div>
 
@@ -506,12 +566,45 @@
         <li>League-wide list: Transfers → <a href="legacy_players.html">Legacy players</a>.</li>
       </ul>
 
+      <h3>Match scheduling (June 2026)</h3>
+      <p>
+        Owners set weekly availability on <a href="club_details.html">Club Details</a>, then agree kick-off times from
+        <a href="fixtures.html">Fixtures</a>. Home proposes first; away accepts or counters; only <b>mutual</b> 30-minute
+        slots inside the GPSL month are offered. After agreement, both check in at kick-off before
+        <a href="matchday.html">Match Day</a> opens. Full walkthrough: <a href="#match-scheduling">Match scheduling</a>.
+      </p>
+
+      <h3>Manager draft auto-settlement</h3>
+      <ul>
+        <li>After the Day 2 random finish, winning manager bids settle automatically (fee debited, manager assigned to club).</li>
+        <li>If the high bidder already has a manager, that listing closes without a transfer.</li>
+        <li>The <a href="manager_draftauction.html">Manager draft list</a> should clear within about a minute of finish — refresh Club Details to see your signing.</li>
+      </ul>
+
+      <h3>Player career honours</h3>
+      <ul>
+        <li><a href="player_career.html">Player career</a> pages show <b>winner medals</b> (league and cup) for players who met appearance thresholds.</li>
+        <li>League medals need <b>5+</b> league apps that season; cup medals need <b>1+</b> cup appearance.</li>
+      </ul>
+
+      <h3>Championship Team of the Month</h3>
+      <ul>
+        <li>Separate TOTM panels for <b>Championship A</b> and <b>Championship B</b> on <a href="league_stats.html">Stats</a>, in addition to Super League TOTM.</li>
+      </ul>
+
+      <h3>Club Details</h3>
+      <ul>
+        <li><b>Change email</b> and <b>change password</b> side by side on Club Details.</li>
+        <li><b>Match availability</b> calendar and existing holiday booking — see <a href="#match-scheduling">Match scheduling</a>.</li>
+      </ul>
+
       <h3>Navigation additions</h3>
       <ul>
         <li><b>Transfers → Legacy players</b> — all legacy cards by club.</li>
         <li><b>Transfers → Club Auction</b> — also linked from registration when bidding for a vacant club.</li>
         <li><b>My Nation → Nation player pool</b> — eligible players for your national team.</li>
         <li><b>League → Challenges</b> — season challenge targets and prizes (also under Owners).</li>
+        <li><b>Fixtures → Propose time / Respond</b> — per-match scheduling for your club’s games.</li>
       </ul>
     </div>
 
