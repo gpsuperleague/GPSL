@@ -243,7 +243,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let CURRENT_FILTERS = {};
   const FILTER_OPTION_CACHE = {};
-  const MAX_ROWS_FOR_NAME_SEARCH = 15000;
 
   let CURRENT_SORT_COLUMN = "Rating";
   let CURRENT_SORT_DIR = "desc";
@@ -402,16 +401,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const from = (page - 1) * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
-    const nameSearch = String(CURRENT_FILTERS.Name || "").trim();
-    const useClientNameSearch = nameSearch.length > 0;
 
     let query = supabase
       .from("Players")
       .select(playerSelectList(), { count: "exact" });
 
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
-      if (col === "Name") return;
-
       if (DROPDOWN_COLUMNS.includes(col)) {
         const values = Array.isArray(value) ? value : (value ? [value] : []);
         if (!values.length) return;
@@ -455,11 +450,7 @@ document.addEventListener("DOMContentLoaded", () => {
         .order("market_value", { ascending: false });
     }
 
-    if (useClientNameSearch) {
-      query = query.limit(MAX_ROWS_FOR_NAME_SEARCH);
-    } else {
-      query = query.range(from, to);
-    }
+    query = query.range(from, to);
 
     let { data, error, count } = await query;
 
@@ -475,12 +466,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let filtered = data || [];
 
-    if (useClientNameSearch) {
-      filtered = filtered.filter((row) =>
-        textMatchesSearch(row.Name, nameSearch)
-      );
-    }
-
     if (MV_MIN !== null || MV_MAX !== null) {
       filtered = filtered.filter(row => {
         const mv = Number(String(row.market_value).replace(/,/g, "").trim()) || 0;
@@ -492,15 +477,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    if (useClientNameSearch) {
-      filtered = sortPlayersClient(
-        filtered,
-        CURRENT_SORT_COLUMN,
-        CURRENT_SORT_DIR
-      );
-      TOTAL_ROWS = filtered.length;
-      filtered = filtered.slice(from, to + 1);
-    } else if (CURRENT_SORT_COLUMN === "Position") {
+    if (CURRENT_SORT_COLUMN === "Position") {
       filtered.sort((a, b) => {
         const ai = POSITION_ORDER.indexOf(a.Position);
         const bi = POSITION_ORDER.indexOf(b.Position);
@@ -508,10 +485,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const bIdx = bi === -1 ? 999 : bi;
         return CURRENT_SORT_DIR === "asc" ? aIdx - bIdx : bIdx - aIdx;
       });
-      TOTAL_ROWS = count;
-    } else {
-      TOTAL_ROWS = count;
     }
+
+    TOTAL_ROWS = count;
 
     renderTable(filtered);
     renderPagination();
@@ -1610,7 +1586,7 @@ document.addEventListener("DOMContentLoaded", () => {
           return `
             <label class="text-filter">
               ${textLabel}
-              <input type="text" id="filter-${col}" placeholder="Filter ${textLabel} (ignores accents)">
+              <input type="text" id="filter-${col}" placeholder="Filter ${textLabel} (searches all players)">
             </label>
           `;
         }
