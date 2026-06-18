@@ -39,82 +39,100 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function loadOwnerList() {
   const dropdown = document.getElementById("updateOwnerSelect");
   const tagDropdown = document.getElementById("tagOwnerSelect");
-  const { data: ownerData, error: ownerError } =
-    await supabase.functions.invoke("list-owners");
 
-  if (ownerError || !ownerData?.users) {
+  const owners = await fetchAdminOwnerRows();
+  if (!owners.length) {
     const errHtml = `<option>Error loading owners</option>`;
     if (dropdown) dropdown.innerHTML = errHtml;
     if (tagDropdown) tagDropdown.innerHTML = errHtml;
     return;
   }
 
-  const { data: clubs } = await supabase.from("Clubs").select("ShortName, owner_id, owner");
-  const { data: registry } = await supabase
-    .from("gpsl_owner_registry")
-    .select("owner_id, status, last_club_short_name, owner_tag");
-  const { data: rankings } = await supabase
-    .from("competition_owner_season_ranking")
-    .select("owner_id, owner_tag, club_short_name, season_id")
-    .order("season_id", { ascending: false });
   if (dropdown) dropdown.innerHTML = "";
   if (tagDropdown) tagDropdown.innerHTML = "";
 
-  const statusLabel = (ownerId, clubShort) => {
-    const row = registry?.find((r) => r.owner_id === ownerId);
-    if (clubShort) return clubShort;
-    if (row?.status === "archived") return `ARCHIVED (${row.last_club_short_name || "?"})`;
-    if (row?.status === "on_break") return `ON BREAK (${row.last_club_short_name || "?"})`;
-    if (row?.status === "awaiting_club_auction") return "CLUB AUCTION";
-    return "NO CLUB";
-  };
-
-  const resolveOwnerTag = (ownerId, clubShort, clubOwner) => {
-    const row = registry?.find((r) => r.owner_id === ownerId);
-    const fromRegistry = String(row?.owner_tag || "").trim();
-    if (fromRegistry) return fromRegistry;
-
-    const rankingRow = rankings?.find(
-      (r) =>
-        r.owner_id === ownerId &&
-        String(r.owner_tag || "").trim() &&
-        String(r.owner_tag).trim().toUpperCase() !==
-          String(r.club_short_name || "").toUpperCase()
-    );
-    if (rankingRow) return String(rankingRow.owner_tag).trim();
-
-    const fromClub = String(clubOwner || "").trim();
-    if (fromClub && fromClub.toUpperCase() !== String(clubShort || "").toUpperCase()) {
-      return fromClub;
+  const statusLabel = (row) => {
+    if (row.clubShortName) return row.clubShortName;
+    if (row.registryStatus === "archived") {
+      return `ARCHIVED (${row.lastClubShortName || "?"})`;
     }
-    return "";
+    if (row.registryStatus === "on_break") {
+      return `ON BREAK (${row.lastClubShortName || "?"})`;
+    }
+    if (row.registryStatus === "awaiting_club_auction") return "CLUB AUCTION";
+    return "NO CLUB";
   };
 
   const formatTagOptionLabel = (shortName, email, tag) => {
     if (tag) return `${shortName} — ${tag} — ${email}`;
-    return `${shortName} — ${email}`;
+    return `${shortName} — no tag — ${email}`;
   };
 
-  ownerData.users.forEach((u) => {
-    const club = clubs?.find((c) => c.owner_id === u.id);
-    const shortName = statusLabel(u.id, club?.ShortName);
-    const currentTag = resolveOwnerTag(u.id, club?.ShortName, club?.owner);
+  owners.forEach((row) => {
+    const shortName = statusLabel(row);
+    const currentTag = String(row.ownerTag || "").trim();
     const option = document.createElement("option");
-    option.value = u.id;
-    option.textContent = `${shortName} — ${u.email}`;
+    option.value = row.id;
+    option.textContent = `${shortName} — ${row.email}`;
     dropdown?.appendChild(option);
 
     if (tagDropdown) {
       const tagOption = document.createElement("option");
-      tagOption.value = u.email;
-      tagOption.dataset.ownerId = u.id;
-      tagOption.textContent = formatTagOptionLabel(shortName, u.email, currentTag);
+      tagOption.value = row.email;
+      tagOption.dataset.ownerId = row.id;
+      tagOption.textContent = formatTagOptionLabel(shortName, row.email, currentTag);
       if (currentTag) tagOption.dataset.currentTag = currentTag;
       tagDropdown.appendChild(tagOption);
     }
   });
 
   await syncOwnerTagInputFromSelect();
+}
+
+async function fetchAdminOwnerRows() {
+  const { data: rpcOwners, error: rpcError } = await supabase.rpc("admin_owner_list");
+  const byId = new Map();
+
+  if (!rpcError && rpcOwners?.length) {
+    for (const row of rpcOwners) {
+      byId.set(row.owner_id, {
+        id: row.owner_id,
+        email: row.email,
+        clubShortName: row.club_short_name || null,
+        lastClubShortName: row.club_short_name || null,
+        ownerTag: row.owner_tag || "",
+        registryStatus: row.registry_status || null,
+      });
+    }
+  }
+
+  const { data: ownerData } = await supabase.functions.invoke("list-owners");
+  if (ownerData?.users?.length) {
+    const { data: registry } = await supabase
+      .from("gpsl_owner_registry")
+      .select("owner_id, status, last_club_short_name, owner_tag");
+    const { data: clubs } = await supabase.from("Clubs").select("ShortName, owner_id, owner");
+
+    for (const u of ownerData.users) {
+      if (byId.has(u.id)) continue;
+      const club = clubs?.find((c) => c.owner_id === u.id);
+      const reg = registry?.find((r) => r.owner_id === u.id);
+      byId.set(u.id, {
+        id: u.id,
+        email: u.email,
+        clubShortName: club?.ShortName || null,
+        lastClubShortName: reg?.last_club_short_name || club?.ShortName || null,
+        ownerTag: reg?.owner_tag || club?.owner || "",
+        registryStatus: reg?.status || null,
+      });
+    }
+  }
+
+  return [...byId.values()].sort((a, b) => {
+    const ak = (a.clubShortName || a.lastClubShortName || a.email || "").toLowerCase();
+    const bk = (b.clubShortName || b.lastClubShortName || b.email || "").toLowerCase();
+    return ak.localeCompare(bk) || String(a.email).localeCompare(String(b.email));
+  });
 }
 
 async function syncOwnerTagInputFromSelect() {
@@ -165,8 +183,9 @@ async function setOwnerTag() {
 
   if (error) {
     const hint =
-      error.message?.includes("admin_owner_set_tag") || error.message?.includes("function")
-        ? " — run patches/admin_owner_set_tag.sql in Supabase"
+      error.message?.includes("admin_owner_set_tag") ||
+      error.message?.includes("function")
+        ? " — re-run patches/admin_owner_set_tag.sql in Supabase"
         : "";
     setStatus("setOwnerTagStatus", "❌ " + error.message + hint, false);
     return;

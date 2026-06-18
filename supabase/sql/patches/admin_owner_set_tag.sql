@@ -3,6 +3,51 @@
 -- Run in Supabase SQL Editor. Admin UI: admin_owners.html → Set owner tag
 -- =============================================================================
 
+CREATE OR REPLACE FUNCTION public.admin_owner_list()
+RETURNS TABLE (
+  owner_id uuid,
+  email text,
+  club_short_name text,
+  club_name text,
+  owner_tag text,
+  registry_status text
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+BEGIN
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  RETURN QUERY
+  WITH owner_ids AS (
+    SELECT r.owner_id FROM public.gpsl_owner_registry r
+    UNION
+    SELECT c.owner_id FROM public."Clubs" c WHERE c.owner_id IS NOT NULL
+  )
+  SELECT
+    o.owner_id,
+    u.email::text,
+    c."ShortName"::text,
+    c."Club"::text,
+    public.owner_registry_resolve_tag(o.owner_id),
+    coalesce(
+      reg.status,
+      CASE WHEN c.owner_id IS NOT NULL THEN 'active' ELSE 'on_break' END
+    )::text
+  FROM owner_ids o
+  JOIN auth.users u ON u.id = o.owner_id
+  LEFT JOIN public."Clubs" c ON c.owner_id = o.owner_id
+  LEFT JOIN public.gpsl_owner_registry reg ON reg.owner_id = o.owner_id
+  ORDER BY
+    coalesce(c."ShortName", reg.last_club_short_name, split_part(u.email, '@', 1)),
+    u.email;
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.admin_owner_set_tag(
   p_owner_email text,
   p_tag text
@@ -107,6 +152,7 @@ BEGIN
 END;
 $function$;
 
+GRANT EXECUTE ON FUNCTION public.admin_owner_list() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_owner_set_tag(text, text) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
