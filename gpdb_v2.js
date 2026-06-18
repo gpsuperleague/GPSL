@@ -249,6 +249,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let MV_MIN = null;
   let MV_MAX = null;
+  let useNameSearchKey = true;
 
   /* ============================================================
      MODULE D: Global Settings Loader
@@ -352,31 +353,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return haystack.includes(query);
   }
 
-  function sortPlayersClient(rows, column, dir) {
-    const asc = dir === "asc";
-    const copy = [...rows];
-    copy.sort((a, b) => {
-      if (column === "Position") {
-        const ai = POSITION_ORDER.indexOf(a.Position);
-        const bi = POSITION_ORDER.indexOf(b.Position);
-        const aIdx = ai === -1 ? 999 : ai;
-        const bIdx = bi === -1 ? 999 : bi;
-        return asc ? aIdx - bIdx : bIdx - aIdx;
-      }
-      const av = a[column];
-      const bv = b[column];
-      if (column === "Rating" || column === "Age" || column === "market_value") {
-        const an = Number(av) || 0;
-        const bn = Number(bv) || 0;
-        return asc ? an - bn : bn - an;
-      }
-      const as = String(av ?? "");
-      const bs = String(bv ?? "");
-      return asc ? as.localeCompare(bs) : bs.localeCompare(as);
-    });
-    return copy;
-  }
-
   function buildContractedTeamOrClause(values) {
     const hasFA = values.includes("FREE AGENT");
     const clubs = values.filter(v => v !== "FREE AGENT");
@@ -393,6 +369,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     return parts.length ? parts.join(",") : null;
+  }
+
+  function applyTextColumnFilter(query, col, value) {
+    if (!value || value.trim() === "") return query;
+    if (col === "Name" && useNameSearchKey) {
+      const normalized = normalizeSearchText(value);
+      if (!normalized) return query;
+      return query.ilike("name_search_key", `%${normalized}%`);
+    }
+    return query.ilike(col, `%${value}%`);
   }
 
   async function loadPage(page = 1) {
@@ -420,8 +406,7 @@ document.addEventListener("DOMContentLoaded", () => {
           query = query.in(col, values);
         }
       } else {
-        if (!value || value.trim() === "") return;
-        query = query.ilike(col, `%${value}%`);
+        query = applyTextColumnFilter(query, col, value);
       }
     });
 
@@ -456,6 +441,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (error && isMissingEconomicsColumnError(error) && useEconomicsDbColumns) {
       useEconomicsDbColumns = false;
+      return loadPage(page);
+    }
+
+    if (
+      error &&
+      useNameSearchKey &&
+      String(error.message || "").includes("name_search_key") &&
+      Object.prototype.hasOwnProperty.call(CURRENT_FILTERS, "Name")
+    ) {
+      console.warn("GPDB name search: run supabase/sql/patches/gpdb_name_search.sql");
+      useNameSearchKey = false;
       return loadPage(page);
     }
 
@@ -1586,7 +1582,7 @@ document.addEventListener("DOMContentLoaded", () => {
           return `
             <label class="text-filter">
               ${textLabel}
-              <input type="text" id="filter-${col}" placeholder="Filter ${textLabel} (searches all players)">
+              <input type="text" id="filter-${col}" placeholder="Filter ${textLabel} (ignores accents, searches all players)">
             </label>
           `;
         }
