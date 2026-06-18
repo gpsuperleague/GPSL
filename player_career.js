@@ -7,9 +7,12 @@ import {
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
 import {
-  PLAYER_MEDALS_PREVIEW_SCENARIOS,
+  PLAYER_MEDALS_PREVIEW_HONOURS,
   renderHonoursHtml,
 } from "./player_career_medals.js";
+
+let careerHonoursReal = [];
+let medalsPreviewOn = false;
 
 const AWARD_LABELS = {
   ballon_dor: "Ballon d'Or",
@@ -214,6 +217,26 @@ function renderHonours(honours) {
   el.innerHTML = renderHonoursHtml(honours);
 }
 
+function setMedalsPreview(on) {
+  medalsPreviewOn = on;
+  const banner = document.getElementById("previewBanner");
+  const btn = document.getElementById("previewMedalsBtn");
+  if (banner) banner.hidden = !on;
+  if (btn) {
+    btn.textContent = on ? "Show real medals" : "Preview sample medals";
+    btn.classList.toggle("is-active", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+  renderHonours(on ? PLAYER_MEDALS_PREVIEW_HONOURS : careerHonoursReal);
+}
+
+function setupMedalsPreviewToggle() {
+  const btn = document.getElementById("previewMedalsBtn");
+  if (!btn) return;
+  btn.hidden = false;
+  btn.addEventListener("click", () => setMedalsPreview(!medalsPreviewOn));
+}
+
 function renderAwards(awards) {
   const el = document.getElementById("awardsPanel");
   if (!awards?.length) {
@@ -261,27 +284,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const params = new URLSearchParams(window.location.search);
   const playerId = params.get("id")?.trim();
-  const previewMedals = params.get("preview") === "medals";
-
-  if (previewMedals) {
-    const scenario =
-      PLAYER_MEDALS_PREVIEW_SCENARIOS.find((s) => s.id === params.get("scenario")) ||
-      PLAYER_MEDALS_PREVIEW_SCENARIOS.find((s) => s.id === "multi_club");
-
-    document.getElementById("playerTitle").textContent = scenario.player_name || "Preview Player";
-    document.getElementById("playerMeta").textContent =
-      "Sample data · CF · France · Rating 84";
-    document.getElementById("totalsRow").innerHTML =
-      '<span><b>Preview</b> sample medals only</span>';
-    document.getElementById("stintsPanel").innerHTML =
-      '<p class="empty">Stints hidden in medal preview — use a real player id without <code>?preview=medals</code>.</p>';
-    document.getElementById("transfersPanel").innerHTML =
-      '<p class="empty">Transfers hidden in medal preview.</p>';
-    document.getElementById("previewBanner").hidden = false;
-    renderHonours(scenario.honours);
-    renderAwards([]);
-    return;
-  }
 
   if (!playerId) {
     showError("Missing player id.");
@@ -329,6 +331,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderTotals(bundle.totals);
   renderStints(bundle.stints || []);
   renderTransfers(bundle.transfers || []);
-  renderHonours(bundle.honours || []);
+  careerHonoursReal = bundle.honours || [];
+  setupMedalsPreviewToggle();
+  if (params.get("preview") === "medals") {
+    setMedalsPreview(true);
+  } else {
+    renderHonours(careerHonoursReal);
+  }
   renderAwards(bundle.awards || []);
 });

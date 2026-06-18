@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <title>Player career — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="player_career_medals.css?v=20260617-ribbons">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:900px; margin:30px auto 50px; }
@@ -33,37 +34,6 @@
     .trophy-title { color:#ffcc66; font-weight:600; font-size:15px; }
     .trophy-meta { color:#999; font-size:13px; margin-top:4px; }
     .honours-subhead { color:#ccc; font-size:14px; margin:0 0 10px; font-weight:600; }
-    .medal-item .medal-link {
-      display:flex; gap:12px; align-items:flex-start;
-      color:inherit; text-decoration:none; width:100%;
-    }
-    .medal-item .medal-link:hover .trophy-title { color:#ff9900; }
-    .medal-thumb {
-      width:44px; height:56px; object-fit:contain; flex-shrink:0;
-    }
-    .medal-thumb-fallback { font-size:28px; line-height:1; margin-top:4px; }
-    .preview-medals-btn {
-      display:inline-block;
-      margin-left:10px;
-      padding:4px 10px;
-      font-size:12px;
-      font-weight:bold;
-      color:#111;
-      background:#ff9900;
-      border-radius:4px;
-      text-decoration:none;
-      vertical-align:middle;
-    }
-    .preview-medals-btn:hover { background:#ffaa22; color:#111; }
-    .preview-banner {
-      background:#332200;
-      border:1px solid #664400;
-      color:#ffcc66;
-      padding:10px 14px;
-      border-radius:6px;
-      margin-bottom:14px;
-      font-size:13px;
-    }
     #careerError { color:#f88; display:none; margin-bottom:12px; }
   </style>
 </head>
@@ -73,9 +43,7 @@
     <p><a href="javascript:history.back()" class="gpsl-link">← Back</a></p>
     <div id="careerError"></div>
     <div id="previewBanner" class="preview-banner" hidden>
-      Showing <b>sample winner medals</b> for layout preview —
-      <a class="gpsl-link" href="player_medals_preview.html">open full preview</a>
-      · <a class="gpsl-link" href="player_career.html">exit preview</a>
+      Showing <b>sample winner medals</b> on this profile — stats and transfers are still real.
     </div>
     <div class="head-row">
       <a id="playerImgLink" href="#" target="_blank" rel="noopener">
@@ -102,9 +70,13 @@
       <h2>Honours &amp; awards</h2>
       <h3 class="honours-subhead">
         Winner medals
-        <a class="preview-medals-btn" href="player_medals_preview.html">Preview medals</a>
+        <button type="button" class="preview-medals-btn" id="previewMedalsBtn" hidden>
+          Preview sample medals
+        </button>
       </h3>
-      <p class="sub" style="margin:-4px 0 12px;">League titles and cups with the champion club (5+ league apps or 1+ cup appearance that season).</p>
+      <p class="sub honours-medal-note" style="margin:-4px 0 12px;">
+        Gold, silver &amp; bronze medals with competition ribbons — earned with the champion club (5+ league apps or 1+ cup app that season).
+      </p>
       <div id="medalsPanel"><span class="empty">Loading…</span></div>
       <h3 class="honours-subhead" style="margin-top:22px;">Individual awards</h3>
       <p class="sub" style="margin:-4px 0 12px;">Ballon d'Or, Team of the Month/Season, Golden Boot, and other personal GPSL trophies.</p>

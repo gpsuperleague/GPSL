@@ -1,0 +1,271 @@
+/**
+ * GPSL player winner medals — ribbon + disc per competition (real-life style).
+ */
+
+/* ------------------------------------------------------------------ */
+/* Medal pin (wall + list)                                            */
+/* ------------------------------------------------------------------ */
+
+.gpsl-medal-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.gpsl-medal-pin figcaption {
+  font-size: 10px;
+  font-weight: 700;
+  color: #aaa;
+  letter-spacing: 0.02em;
+  text-align: center;
+  max-width: 64px;
+  line-height: 1.2;
+}
+
+.gpsl-medal-wall {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 18px;
+  padding: 16px 14px;
+  margin-bottom: 16px;
+  background: linear-gradient(180deg, #1e1e22 0%, #141416 100%);
+  border: 1px solid #333;
+  border-radius: 10px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.gpsl-medal-wall:empty {
+  display: none;
+}
+
+/* Hanging medal */
+.gpsl-medal {
+  --ribbon-left: #2c3e8f;
+  --ribbon-right: #c9a227;
+  --disc-edge: #8a6d12;
+  --disc-face: linear-gradient(145deg, #fff4c4 0%, #e8c547 38%, #c9a227 62%, #9a7b1a 100%);
+  --disc-text: #1a1408;
+  --disc-shine: rgba(255, 255, 255, 0.45);
+  width: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.45));
+}
+
+.gpsl-medal--list {
+  width: 44px;
+  transform: scale(0.92);
+  transform-origin: top center;
+}
+
+.gpsl-medal-ribbons {
+  display: flex;
+  justify-content: center;
+  width: 34px;
+  height: 20px;
+  margin-bottom: -3px;
+  z-index: 2;
+  position: relative;
+}
+
+.gpsl-medal-ribbon {
+  width: 17px;
+  height: 22px;
+  margin: 0 -1px;
+  clip-path: polygon(8% 0%, 92% 0%, 100% 100%, 0% 100%);
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.gpsl-medal-ribbon--l {
+  background: linear-gradient(
+    180deg,
+    var(--ribbon-left) 0%,
+    var(--ribbon-left) 50%,
+    rgba(0, 0, 0, 0.28) 100%
+  );
+  transform: skewX(6deg);
+}
+
+.gpsl-medal-ribbon--r {
+  background: linear-gradient(
+    180deg,
+    var(--ribbon-right) 0%,
+    var(--ribbon-right) 50%,
+    rgba(0, 0, 0, 0.28) 100%
+  );
+  transform: skewX(-6deg);
+}
+
+.gpsl-medal-disc {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--disc-face);
+  border: 2px solid var(--disc-edge);
+  box-shadow:
+    inset 0 2px 6px var(--disc-shine),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.25),
+    0 2px 4px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.gpsl-medal-disc::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  pointer-events: none;
+}
+
+.gpsl-medal-disc-text {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--disc-text);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+  line-height: 1;
+}
+
+/* ------------------------------------------------------------------ */
+/* Competition colours                                                */
+/* ------------------------------------------------------------------ */
+
+/* Super League — gold disc, purple & gold ribbons */
+.gpsl-medal--superleague {
+  --ribbon-left: #4a148c;
+  --ribbon-right: #ffcc00;
+  --disc-edge: #9a7b1a;
+  --disc-face: linear-gradient(145deg, #fff8d6 0%, #f0d060 40%, #d4af37 70%, #a67c00 100%);
+}
+
+/* Championship A — silver, sky & navy */
+.gpsl-medal--championship_a {
+  --ribbon-left: #1565c0;
+  --ribbon-right: #0d1b3e;
+  --disc-edge: #6b7680;
+  --disc-face: linear-gradient(145deg, #f5f7fa 0%, #d8dde3 35%, #b0b8c0 65%, #8a939c 100%);
+  --disc-text: #1a2233;
+}
+
+/* Championship B — silver, emerald & white */
+.gpsl-medal--championship_b {
+  --ribbon-left: #1b7a4a;
+  --ribbon-right: #e8ecef;
+  --disc-edge: #5a6a62;
+  --disc-face: linear-gradient(145deg, #f0f4f2 0%, #cdd8d2 40%, #a8b8b0 70%, #7a8f86 100%);
+  --disc-text: #142218;
+}
+
+/* League Cup — gold, green & white */
+.gpsl-medal--league_cup {
+  --ribbon-left: #1e7a34;
+  --ribbon-right: #f0f4f0;
+  --disc-edge: #8a6d12;
+  --disc-face: linear-gradient(145deg, #fff4c4 0%, #e8c547 40%, #c9a227 70%, #9a7b1a 100%);
+}
+
+/* Super8 — gold, royal blue & white (continental) */
+.gpsl-medal--super8 {
+  --ribbon-left: #0d2d6b;
+  --ribbon-right: #e8ecf4;
+  --disc-edge: #9a7b1a;
+  --disc-face: linear-gradient(145deg, #fff8d6 0%, #f0d060 38%, #d4af37 68%, #a67c00 100%);
+}
+
+/* Plate — silver, orange & midnight */
+.gpsl-medal--plate {
+  --ribbon-left: #e65100;
+  --ribbon-right: #1a237e;
+  --disc-edge: #707880;
+  --disc-face: linear-gradient(145deg, #f8f9fb 0%, #d4dae2 40%, #aeb8c4 70%, #8892a0 100%);
+  --disc-text: #1a2030;
+}
+
+/* Shield — bronze, teal & navy */
+.gpsl-medal--shield {
+  --ribbon-left: #00838f;
+  --ribbon-right: #1a2744;
+  --disc-edge: #6b4e2a;
+  --disc-face: linear-gradient(145deg, #f0d4b0 0%, #d4a574 35%, #b8864a 65%, #8b5e2a 100%);
+  --disc-text: #2a1808;
+}
+
+/* Bowl — bronze, claret & gold */
+.gpsl-medal--bowl,
+.gpsl-medal--spoon {
+  --ribbon-left: #7b1f2a;
+  --ribbon-right: #c9a227;
+  --disc-edge: #5c4020;
+  --disc-face: linear-gradient(145deg, #e8c8a0 0%, #c9956a 40%, #a86e3a 70%, #7a4e22 100%);
+  --disc-text: #2a1408;
+}
+
+/* List row with medal */
+.medal-item .medal-link {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  color: inherit;
+  text-decoration: none;
+  width: 100%;
+}
+
+.medal-item .medal-link:hover .trophy-title {
+  color: #ff9900;
+}
+
+.medal-item .gpsl-medal {
+  flex-shrink: 0;
+}
+
+.honours-medal-note {
+  font-size: 12px;
+  color: #777;
+  margin: 0 0 12px;
+  line-height: 1.45;
+}
+
+.preview-medals-btn {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #111;
+  background: #ff9900;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  vertical-align: middle;
+  font-family: inherit;
+}
+
+.preview-medals-btn:hover {
+  background: #ffaa22;
+}
+
+.preview-medals-btn.is-active {
+  background: #444;
+  color: #ffcc66;
+  border: 1px solid #666;
+}
+
+.preview-banner {
+  background: #332200;
+  border: 1px solid #664400;
+  color: #ffcc66;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
