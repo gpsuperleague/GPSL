@@ -140,6 +140,11 @@ export const SEASON_ADMIN_NAV = [
         href: "admin_fixtures-cups.html",
         page: "admin_fixtures-cups",
       },
+      {
+        label: "Cup draw ceremony",
+        href: "cup_draw.html",
+        page: "cup_draw",
+      },
     ],
   },
   {

@@ -1,0 +1,82 @@
+<script>window.CURRENT_PAGE = "cup_draw";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cup draw — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="competition_themes.css">
+  <link rel="stylesheet" href="cup_draw.css">
+  <style>
+    body { margin: 0; color: #ddd; font-family: Arial, sans-serif; }
+    .page-wrap { width: 94%; max-width: 1100px; margin: 0 auto 40px; padding-top: 12px; }
+    a.button {
+      display: inline-block; padding: 8px 14px; background: #1a1a1a; color: #ff9900;
+      border: 1px solid #666; border-radius: 6px; text-decoration: none; font-weight: bold; margin: 4px;
+    }
+    button.button {
+      padding: 8px 16px; background: #ff9900; color: #111; border: none;
+      border-radius: 6px; font-weight: bold; cursor: pointer;
+    }
+    button.button:disabled { opacity: 0.45; cursor: not-allowed; }
+    button.button.secondary { background: #333; color: #ddd; border: 1px solid #555; }
+    h1 { color: #ff9900; font-size: 26px; margin: 8px 0 4px; }
+    .meta { color: #aaa; font-size: 14px; margin-bottom: 12px; line-height: 1.5; }
+  </style>
+</head>
+<body class="cup-draw-page">
+  <div id="nav"></div>
+  <div class="page-wrap">
+    <div id="cupHero"></div>
+    <h1 id="drawTitle">Cup draw</h1>
+    <p class="meta" id="drawMeta">Random draw from the bowl — opening round pairings and byes.</p>
+
+    <div class="cup-draw-controls">
+      <label>
+        Cup
+        <select id="cupSelect">
+          <option value="super8">Super8</option>
+          <option value="plate">Plate</option>
+          <option value="shield">Shield</option>
+          <option value="bowl">Bowl</option>
+          <option value="league_cup">League Cup</option>
+        </select>
+      </label>
+      <div class="cup-draw-speed" id="speedBar" title="Animation speed">
+        <span style="font-size:12px;color:#888;margin-right:4px;">Speed</span>
+        <button type="button" data-speed="1" class="active">1×</button>
+        <button type="button" data-speed="0.35">3×</button>
+        <button type="button" data-speed="0.08">Fast</button>
+      </div>
+      <button type="button" class="button" id="startBtn">Start draw</button>
+      <button type="button" class="button secondary" id="commitBtn" hidden>Confirm &amp; save bracket</button>
+      <a href="cups.html" class="button secondary" id="viewBracketBtn" hidden>View bracket</a>
+    </div>
+    <div id="drawStatus" class="cup-draw-status"></div>
+
+    <div class="cup-draw-layout">
+      <div class="cup-draw-stage">
+        <div class="cup-draw-spotlight" id="spotlight"></div>
+        <div class="cup-draw-bowl-wrap">
+          <div class="cup-draw-ball-pit" id="ballPit"></div>
+          <div class="cup-draw-bowl" id="bowl">
+            <div class="cup-draw-bowl-rim"></div>
+          </div>
+        </div>
+        <div class="cup-draw-announce" id="announce">
+          <div class="phase" id="announcePhase">Ready</div>
+          <div class="headline" id="announceHeadline">Press Start draw</div>
+          <div class="sub" id="announceSub"></div>
+        </div>
+      </div>
+
+      <div class="cup-draw-panel">
+        <h2>Draw results</h2>
+        <div id="resultsList"></div>
+        <div id="bracketOutline"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="cup_draw.js?v=20260617"></script>
+</body>
+</html>

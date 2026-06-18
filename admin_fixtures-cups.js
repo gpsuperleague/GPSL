@@ -33,6 +33,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 async function onCupSelectChange() {
   await loadCupByePanel();
+  syncCeremonyLink();
+}
+
+function syncCeremonyLink() {
+  const cup = document.getElementById("compCupSelect")?.value;
+  const link = document.getElementById("compDrawCeremonyLink");
+  if (link && cup) {
+    link.href = `cup_draw.html?cup=${encodeURIComponent(cup)}`;
+  }
 }
 
 async function getSeasonId() {

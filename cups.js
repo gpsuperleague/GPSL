@@ -61,6 +61,7 @@ function renderToolbar() {
         history.replaceState(null, "", u);
       }
       renderToolbar();
+      syncCupDrawReplayLink();
       void renderCup();
     };
     bar.appendChild(btn);
@@ -385,5 +386,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   renderToolbar();
+  syncCupDrawReplayLink();
   await renderCup();
 });
+
+function syncCupDrawReplayLink() {
+  const link = document.getElementById("cupDrawReplayLink");
+  if (link) {
+    link.href = `cup_draw.html?cup=${encodeURIComponent(currentCup)}&replay=1`;
+  }
+}
