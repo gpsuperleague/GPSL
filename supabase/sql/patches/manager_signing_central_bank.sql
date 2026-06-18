@@ -1,6 +1,22 @@
 -- Manager free-agent signings → club ledger + GPSL Central Bank (Model A).
 -- Fixes: admin assign / manager_assign_to_club with bank_leg=false, and draft settlement
 -- paths that debited Club_Finances without competition_finance_ledger or bank_ledger.
+-- Drops all manager_assign_to_club overloads first (5-arg + 6-arg both match 5-arg calls).
+
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT p.oid::regprocedure AS sig
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'manager_assign_to_club'
+  LOOP
+    EXECUTE 'DROP FUNCTION IF EXISTS ' || r.sig;
+  END LOOP;
+END $$;
 
 CREATE OR REPLACE FUNCTION public.manager_assign_to_club(
   p_manager_id bigint,

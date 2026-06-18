@@ -22,6 +22,7 @@ DECLARE
   v_seasons smallint := greatest(coalesce(p_seasons, 2), 1::smallint);
   v_fee numeric;
   v_buyer_pays boolean := NOT coalesce(p_waive_fee, true);
+  v_meta jsonb := '{}'::jsonb;
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -82,7 +83,8 @@ BEGIN
     v_club,
     v_seasons,
     v_fee,
-    v_buyer_pays
+    v_buyer_pays,
+    v_meta
   );
 
   RETURN v_result || jsonb_build_object(
