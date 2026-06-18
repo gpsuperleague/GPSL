@@ -291,16 +291,37 @@
       margin: 0 0 16px;
     }
 
-    .account-section {
-      border-top: 1px solid #333;
-      padding-top: 14px;
-      margin-top: 14px;
+    .account-sections-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 20px 28px;
+      align-items: start;
     }
 
-    .account-section:first-of-type {
-      border-top: none;
+    .account-section {
       padding-top: 0;
       margin-top: 0;
+      min-width: 0;
+    }
+
+    .account-section + .account-section {
+      border-left: 1px solid #333;
+      padding-left: 28px;
+    }
+
+    @media (max-width: 720px) {
+      .account-sections-row {
+        grid-template-columns: 1fr;
+        gap: 0;
+      }
+
+      .account-section + .account-section {
+        border-left: none;
+        padding-left: 0;
+        border-top: 1px solid #333;
+        padding-top: 14px;
+        margin-top: 14px;
+      }
     }
 
     .account-section h3 {
@@ -497,6 +518,7 @@
         <b>current password</b> to confirm any change.
       </p>
 
+      <div class="account-sections-row">
       <div class="account-section">
         <h3>Change email</h3>
         <p class="account-hint">
@@ -546,6 +568,7 @@
           <button type="button" id="changePasswordBtn" class="small-btn">Update password</button>
           <span id="passwordChangeStatus" class="account-status" role="status"></span>
         </div>
+      </div>
       </div>
     </div>
 
