@@ -343,7 +343,8 @@ Deno.serve(async (req) => {
         page,
         players: [],
         players_on_page: 0,
-        warning: "No players parsed on this page — PESDB may have hit the 2-page limit. Wait and resume the next batch.",
+        warning:
+          "No players on this page — PESDB rate limit, or you are past the last page with players (detect often overestimates; e.g. ~594 real pages vs ~633 estimated).",
       });
     }
 

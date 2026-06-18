@@ -312,6 +312,145 @@ function readScrapeParams() {
 }
 
 const RATE_LIMIT_RETRY_MS = 60000;
+const EMPTY_PAGE_RETRY_MS = 45000;
+const EMPTY_PAGE_MAX_RETRIES = 6;
+
+class PesdbScrapePauseError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "PesdbScrapePauseError";
+  }
+}
+
+/** PESDB has no more player pages (detect often overestimates vs real catalog end). */
+class PesdbCatalogEndError extends Error {
+  constructor(lastPage, message) {
+    super(message);
+    this.name = "PesdbCatalogEndError";
+    this.lastPage = lastPage;
+  }
+}
+
+function isEmptyPesdbListResponse(listData) {
+  return !listData?.players?.length;
+}
+
+async function fetchPesdbPageList(page, endPage, lastCompletedPage = 0) {
+  for (let attempt = 1; attempt <= EMPTY_PAGE_MAX_RETRIES; attempt++) {
+    if (scrapeAbort) return null;
+
+    const listData = await withLiveProgress(
+      "scrapeStatus",
+      (sec) => `Page ${page}/${endPage} — loading player list from PESDB… ${sec}s`,
+      () =>
+        invokePesdbScrape({
+          action: "scrape_page",
+          page,
+        })
+    );
+
+    if (!isEmptyPesdbListResponse(listData)) {
+      return listData;
+    }
+
+    // Page after the last successful one is empty → real end of catalog (not rate limit).
+    if (lastCompletedPage > 0 && page > lastCompletedPage) {
+      throw new PesdbCatalogEndError(
+        lastCompletedPage,
+        `End of PESDB catalog at page ${lastCompletedPage} (page ${page} has no players). Detect may overestimate; ${lastCompletedPage} is the last page with data.`
+      );
+    }
+
+    if (attempt < EMPTY_PAGE_MAX_RETRIES) {
+      const waitMs = EMPTY_PAGE_RETRY_MS * attempt;
+      const msg = listData?.warning || `PESDB returned no players on page ${page}`;
+      setStatus(
+        "scrapeStatus",
+        `${msg} — waiting ${Math.round(waitMs / 1000)}s before retry (${attempt}/${EMPTY_PAGE_MAX_RETRIES - 1})…`,
+        true
+      );
+      setPlayerLabel(`2-page limit cooldown — retry ${attempt} in ${Math.round(waitMs / 1000)}s`);
+      await sleep(waitMs);
+      continue;
+    }
+
+    const hint =
+      listData?.warning ||
+      `No players on page ${page} — PESDB 2-page limit. Wait 30–60 min, then refresh to resume from page ${page}.`;
+    throw new PesdbScrapePauseError(hint);
+  }
+  return null;
+}
+
+async function finalizeScrapeComplete(actualEndPage, stagingTotal) {
+  const endPage = Math.max(1, actualEndPage);
+  saveProgressPageComplete(endPage, endPage, stagingTotal);
+  const endInput = document.getElementById("scrapeEndPage");
+  if (endInput) {
+    endInput.value = String(endPage);
+    endInput.dataset.userEdited = "1";
+  }
+  await saveScrapeJob({
+    status: "complete",
+    start_page: OVERALL_SCRAPE_START_PAGE,
+    end_page: endPage,
+    last_completed_page: endPage,
+    next_page: endPage + 1,
+    in_progress_page: 0,
+    players_completed_on_page: 0,
+    page_player_total: 0,
+    staging_count: stagingTotal,
+    last_error: null,
+  });
+  setStatus(
+    "scrapeStatus",
+    `Scrape complete at page ${endPage} — ${stagingTotal} players in staging. Run preview next.`,
+    true
+  );
+  renderProgressPanel(
+    { staging_count: stagingTotal, last_loaded_at: new Date().toISOString() },
+    {
+      status: "complete",
+      last_completed_page: endPage,
+      end_page: endPage,
+      next_page: endPage + 1,
+      staging_count: stagingTotal,
+    }
+  );
+  updateScrapeProgressBar(
+    scrapeProgressMetrics({
+      job: { end_page: endPage, last_completed_page: endPage },
+    }),
+    stagingTotal
+  );
+}
+
+async function markScrapeComplete() {
+  const job = await fetchScrapeJob().catch(() => null);
+  const prog = readProgress();
+  const stagingTotal = (await fetchStagingStats().catch(() => null))?.staging_count ?? 0;
+  const lastPage = Math.max(
+    Number(job?.last_completed_page ?? 0),
+    Number(prog?.lastPage ?? 0)
+  );
+  if (!lastPage) {
+    setStatus("progressStatus", "No completed pages yet — cannot mark complete.", false);
+    return;
+  }
+  if (
+    !confirm(
+      `Mark scrape complete at page ${lastPage}? (${stagingTotal} players in staging). Use when PESDB has no more pages (detect overestimated).`
+    )
+  ) {
+    return;
+  }
+  await finalizeScrapeComplete(lastPage, stagingTotal);
+  setStatus(
+    "progressStatus",
+    `Marked complete at page ${lastPage}. You can run preview / apply.`,
+    true
+  );
+}
 
 function renderProgressPanel(stagingStats = null, scrapeJob = null) {
   const prog = readProgress();
@@ -727,28 +866,18 @@ function updateScrapeProgressBar(metrics, stagingTotal = 0, extraLabel = "") {
     ` · ${stagingTotal} in staging${pageNote}`;
 }
 
-async function scrapeSinglePage(page, endPage, playerDelayMs, startPlayerIndex = 0, onPlayerDone) {
-  const listData = await withLiveProgress(
-    "scrapeStatus",
-    (sec) => `Page ${page}/${endPage} — loading player list from PESDB… ${sec}s`,
-    () =>
-      invokePesdbScrape({
-        action: "scrape_page",
-        page,
-      })
-  );
-
-  if (listData.warning && !listData.players?.length) {
-    throw new Error(listData.warning);
-  }
+async function scrapeSinglePage(
+  page,
+  endPage,
+  playerDelayMs,
+  startPlayerIndex = 0,
+  onPlayerDone,
+  lastCompletedPage = 0
+) {
+  const listData = await fetchPesdbPageList(page, endPage, lastCompletedPage);
+  if (!listData) return [];
 
   let players = listData.players || [];
-  if (!players.length) {
-    throw new Error(
-      `No players on page ${page} — PESDB 2-page limit may be active. Wait 30–60 min, then resume from page ${page}.`
-    );
-  }
-
   const resumeAt = Math.min(startPlayerIndex, players.length);
   if (resumeAt > 0) {
     setPlayerLabel(
@@ -781,7 +910,9 @@ async function detectPesdbPages() {
     }
     setStatus(
       "scrapeStatus",
-      `~${data.total_players ?? "?"} players · ~${data.estimated_pages ?? "?"} pages. Start with pages 1–2 to test.`,
+      `~${data.total_players ?? "?"} players · detect estimates ~${data.estimated_pages ?? "?"} pages` +
+        (data.max_page_link ? ` (pagination shows ${data.max_page_link})` : "") +
+        `. PESDB often has trailing empty pages — scrape stops at the first empty page after the last one with players.`,
       true
     );
   } catch (err) {
@@ -860,6 +991,10 @@ async function executePesdbScrapeLoop(params) {
 
         const resumeJob = await fetchScrapeJob().catch(() => null);
         const startPlayerIndex = resolvePlayersStartIndex(page, resumeJob);
+        const lastCompletedPage = Math.max(
+          Number(resumeJob?.last_completed_page ?? 0),
+          Number(readProgress()?.lastPage ?? 0)
+        );
 
         await saveScrapeJob({
           status: "running",
@@ -900,13 +1035,23 @@ async function executePesdbScrapeLoop(params) {
           );
         };
 
-        const players = await scrapeSinglePage(
-          page,
-          endPage,
-          playerDelayMs,
-          startPlayerIndex,
-          onPlayerDone
-        );
+        let players;
+        try {
+          players = await scrapeSinglePage(
+            page,
+            endPage,
+            playerDelayMs,
+            startPlayerIndex,
+            onPlayerDone,
+            lastCompletedPage
+          );
+        } catch (err) {
+          if (err?.name === "PesdbCatalogEndError") {
+            await finalizeScrapeComplete(err.lastPage || lastCompletedPage, stagingTotal);
+            return;
+          }
+          throw err;
+        }
         if (scrapeAbort) break;
 
         saveProgressPageComplete(page, endPage, stagingTotal);
@@ -968,19 +1113,13 @@ async function executePesdbScrapeLoop(params) {
     }
 
     if (!scrapeAbort && startPage <= endPage) {
-      saveProgressPageComplete(endPage, endPage, stagingTotal);
-      await saveScrapeJob({
-        status: "complete",
-        last_completed_page: endPage,
-        next_page: endPage + 1,
-        staging_count: stagingTotal,
-        last_error: null,
-      });
-      setStatus(
-        "scrapeStatus",
-        `Scrape complete — ${stagingTotal} players in staging. Run preview next.`,
-        true
+      const job = await fetchScrapeJob().catch(() => null);
+      const actualEnd = Math.max(
+        Number(job?.last_completed_page ?? 0),
+        Number(readProgress()?.lastPage ?? 0),
+        endPage
       );
+      await finalizeScrapeComplete(actualEnd, stagingTotal);
     } else {
       await saveScrapeJob({
         status: "stopped",
@@ -1000,16 +1139,27 @@ async function executePesdbScrapeLoop(params) {
     }
   } catch (err) {
     console.error("pesdb scrape:", err);
+    if (err?.name === "PesdbCatalogEndError") {
+      await finalizeScrapeComplete(err.lastPage || 0, stagingTotal);
+      return;
+    }
+    const isPause =
+      err?.name === "PesdbScrapePauseError" ||
+      /2-page limit|No players parsed|No players on page/i.test(String(err.message || err));
+    const resumeJob = await fetchScrapeJob().catch(() => null);
+    const resumePage = resolveResumePage(resumeJob);
     await saveScrapeJob({
-      status: "error",
+      status: isPause ? "stopped" : "error",
       last_error: String(err.message || err).slice(0, 500),
       staging_count: stagingTotal,
     });
     setStatus(
       "scrapeStatus",
-      (err.message || `Scrape failed. Deploy ${SCRAPE_FUNCTION} edge function.`) +
-        " Refresh this page to retry from the last saved page.",
-      false
+      isPause
+        ? `${err.message} Progress saved — ${stagingTotal} in staging. Wait 30–60 min, refresh this page (auto-resume will continue from page ${resumePage}).`
+        : (err.message || `Scrape failed. Deploy ${SCRAPE_FUNCTION} edge function.`) +
+            " Refresh this page to retry from the last saved page.",
+      isPause
     );
   } finally {
     scrapeRunning = false;
@@ -1219,6 +1369,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   document.getElementById("refreshProgressBtn")?.addEventListener("click", () => refreshProgressPanel("progressStatus"));
+  document.getElementById("markCompleteBtn")?.addEventListener("click", () =>
+    markScrapeComplete().catch((err) => setStatus("progressStatus", err.message, false))
+  );
   document.getElementById("clearStagingBtn")?.addEventListener("click", () =>
     clearStagingAndProgress().catch((err) => setStatus("progressStatus", err.message, false))
   );
