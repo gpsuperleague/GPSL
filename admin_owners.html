@@ -111,6 +111,27 @@
         <button id="linkOwnerBtn" class="button">Link club to account</button>
         <div id="linkOwnerStatus" class="status-line"></div>
       </div>
+      <div class="card" id="ow-set-tag">
+        <h2>Set owner tag</h2>
+        <p class="note">
+          Sets the owner&apos;s Discord tag in <code>gpsl_owner_registry</code> and, if they have a club,
+          <code>Clubs.owner</code> (shown on fixtures, rankings, and club pages).
+          Requires <code>patches/admin_owner_set_tag.sql</code>.
+        </p>
+        <div class="row">
+          <div>
+            <label for="tagOwnerSelect">Owner</label>
+            <select id="tagOwnerSelect"></select>
+          </div>
+          <div>
+            <label for="ownerTagInput">Discord tag</label>
+            <input id="ownerTagInput" placeholder="e.g. @username" maxlength="64" autocomplete="off">
+          </div>
+        </div>
+        <p id="currentTagHint" class="note" style="margin-top:8px;"></p>
+        <button id="setOwnerTagBtn" class="button">Set owner tag</button>
+        <div id="setOwnerTagStatus" class="status-line"></div>
+      </div>
       <div class="card" id="ow-update-email">
         <h2>Update email</h2>
         <div class="row">

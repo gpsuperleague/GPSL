@@ -74,6 +74,12 @@ export const OWNER_ADMIN_NAV = [
     label: "Login & email",
     items: [
       {
+        label: "Set owner tag",
+        href: "admin_owners.html",
+        hash: "ow-set-tag",
+        page: "admin_owners",
+      },
+      {
         label: "Update email",
         href: "admin_owners.html",
         hash: "ow-update-email",

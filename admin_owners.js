@@ -30,25 +30,31 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("archiveOwnerBtn").onclick = archiveOwner;
   document.getElementById("unarchiveOwnerBtn").onclick = unarchiveOwner;
   document.getElementById("updateEmailBtn").onclick = updateEmail;
+  document.getElementById("setOwnerTagBtn").onclick = setOwnerTag;
+  document.getElementById("tagOwnerSelect")?.addEventListener("change", syncOwnerTagInputFromSelect);
   document.getElementById("setPasswordBtn").onclick = setOwnerPassword;
   document.getElementById("resetPasswordBtn").onclick = resetPassword;
 });
 
 async function loadOwnerList() {
   const dropdown = document.getElementById("updateOwnerSelect");
+  const tagDropdown = document.getElementById("tagOwnerSelect");
   const { data: ownerData, error: ownerError } =
     await supabase.functions.invoke("list-owners");
 
   if (ownerError || !ownerData?.users) {
-    dropdown.innerHTML = `<option>Error loading owners</option>`;
+    const errHtml = `<option>Error loading owners</option>`;
+    if (dropdown) dropdown.innerHTML = errHtml;
+    if (tagDropdown) tagDropdown.innerHTML = errHtml;
     return;
   }
 
-  const { data: clubs } = await supabase.from("Clubs").select("ShortName, owner_id");
+  const { data: clubs } = await supabase.from("Clubs").select("ShortName, owner_id, owner");
   const { data: registry } = await supabase
     .from("gpsl_owner_registry")
-    .select("owner_id, status, last_club_short_name");
-  dropdown.innerHTML = "";
+    .select("owner_id, status, last_club_short_name, owner_tag");
+  if (dropdown) dropdown.innerHTML = "";
+  if (tagDropdown) tagDropdown.innerHTML = "";
 
   const statusLabel = (ownerId, clubShort) => {
     const row = registry?.find((r) => r.owner_id === ownerId);
@@ -59,14 +65,87 @@ async function loadOwnerList() {
     return "NO CLUB";
   };
 
+  const resolveOwnerTag = (ownerId, clubShort, clubOwner) => {
+    const row = registry?.find((r) => r.owner_id === ownerId);
+    const fromRegistry = String(row?.owner_tag || "").trim();
+    if (fromRegistry) return fromRegistry;
+    const fromClub = String(clubOwner || "").trim();
+    if (fromClub && fromClub.toUpperCase() !== String(clubShort || "").toUpperCase()) {
+      return fromClub;
+    }
+    return "";
+  };
+
   ownerData.users.forEach((u) => {
     const club = clubs?.find((c) => c.owner_id === u.id);
     const shortName = statusLabel(u.id, club?.ShortName);
+    const currentTag = resolveOwnerTag(u.id, club?.ShortName, club?.owner);
     const option = document.createElement("option");
     option.value = u.id;
     option.textContent = `${shortName} — ${u.email}`;
-    dropdown.appendChild(option);
+    dropdown?.appendChild(option);
+
+    if (tagDropdown) {
+      const tagOption = document.createElement("option");
+      tagOption.value = u.email;
+      tagOption.textContent = `${shortName} — ${u.email}`;
+      if (currentTag) tagOption.dataset.currentTag = currentTag;
+      tagDropdown.appendChild(tagOption);
+    }
   });
+
+  tagDropdown?.dispatchEvent(new Event("change"));
+}
+
+function syncOwnerTagInputFromSelect() {
+  const tagDropdown = document.getElementById("tagOwnerSelect");
+  const tagInput = document.getElementById("ownerTagInput");
+  const hint = document.getElementById("currentTagHint");
+  if (!tagDropdown || !tagInput) return;
+
+  const opt = tagDropdown.selectedOptions[0];
+  const currentTag = opt?.dataset?.currentTag || "";
+  tagInput.value = currentTag;
+  if (hint) {
+    hint.textContent = currentTag ? `Current tag: ${currentTag}` : "No tag set for this owner.";
+  }
+}
+
+async function setOwnerTag() {
+  const email = document.getElementById("tagOwnerSelect")?.value?.trim();
+  const tag = document.getElementById("ownerTagInput")?.value?.trim();
+
+  if (!email || email.includes("Error")) {
+    setStatus("setOwnerTagStatus", "Select an owner.", false);
+    return;
+  }
+  if (!tag) {
+    setStatus("setOwnerTagStatus", "Enter a Discord tag.", false);
+    return;
+  }
+
+  setStatus("setOwnerTagStatus", "Saving…");
+  const { data, error } = await supabase.rpc("admin_owner_set_tag", {
+    p_owner_email: email,
+    p_tag: tag,
+  });
+
+  if (error) {
+    const hint =
+      error.message?.includes("admin_owner_set_tag") || error.message?.includes("function")
+        ? " — run patches/admin_owner_set_tag.sql in Supabase"
+        : "";
+    setStatus("setOwnerTagStatus", "❌ " + error.message + hint, false);
+    return;
+  }
+
+  const clubNote = data?.club_short_name ? ` (${data.club_short_name})` : "";
+  setStatus(
+    "setOwnerTagStatus",
+    `✅ Tag set to ${data?.owner_tag || tag} for ${data?.email || email}${clubNote}`,
+    true
+  );
+  await loadOwnerList();
 }
 
 async function addOwner() {
