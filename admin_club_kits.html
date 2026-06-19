@@ -146,6 +146,26 @@
     <a href="https://www.colours-of-football.com/" target="_blank" rel="noopener" style="color:#ff9900;">colours-of-football.com</a>.
   </p>
 
+  <div class="kits-actions card" style="padding:14px;margin-bottom:16px;background:#1a2a1a;border:1px solid #3a5a3a;border-radius:8px;">
+    <h2 style="margin:0 0 8px;font-size:16px;color:#7ddf7d;">One-time setup (required)</h2>
+    <p style="margin:0 0 8px;font-size:12px;color:#aaa;line-height:1.5;">
+      GitHub deploy alone does <b>not</b> install the edge function. Until this is done,
+      <b>Download latest kits</b> will show “Failed to send a request to the Edge Function”.
+    </p>
+    <ol style="margin:0 0 8px;padding-left:20px;font-size:12px;color:#ccc;line-height:1.55;">
+      <li>Supabase Dashboard → <b>Edge Functions</b> → <b>Create function</b></li>
+      <li>Name exactly: <code>club-kits-cof-sync</code></li>
+      <li>Paste all of <code>supabase/functions/club-kits-cof-sync/index.ts</code> from this repo</li>
+      <li>Deploy → Settings → turn <b>OFF</b> “Enforce JWT verification” (same as GPDB scrape)</li>
+      <li>Optional: Storage → create public bucket <code>club-kits</code> (for downloaded PNGs)</li>
+      <li>Run <code>supabase/sql/patches/club_kits.sql</code> if not already applied</li>
+    </ol>
+    <p style="margin:0;font-size:11px;color:#888;">
+      See <code>scripts/README_club_kits_cof.md</code>. No Supabase CLI needed — Dashboard paste is enough.
+      Or run <code>python scripts/fetch_club_kits.py</code> locally to fill <code>images/clubs_kits/</code> without the edge function.
+    </p>
+  </div>
+
   <div class="kits-actions card" style="padding:14px;margin-bottom:16px;background:#1a1a1a;border:1px solid #333;border-radius:8px;">
     <h2 style="margin:0 0 8px;font-size:16px;color:#ff9900;">Download latest kits</h2>
     <p style="margin:0 0 10px;font-size:12px;color:#999;line-height:1.45;">

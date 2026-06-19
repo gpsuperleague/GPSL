@@ -1,25 +1,66 @@
 # Club kits — Colours of Football
 
-## Admin (recommended)
+## What you need
 
-**Admin → Club kits → Download latest kits (all clubs)**
+| Step | Where | What |
+|------|--------|------|
+| 1 | **Supabase SQL Editor** | Run `supabase/sql/patches/club_kits.sql` |
+| 2 | **GitHub** | Push site files (`admin_club_kits.html`, etc.) |
+| 3 | **Supabase Edge Functions** | Deploy `club-kits-cof-sync` (see below) |
+| 4 | **Supabase Storage** (optional) | Public bucket `club-kits` for downloaded PNGs |
 
-- Reads COF page headers (`home kit 2025-2026`, `25-26`, etc.) to find the **latest season**
-- Downloads only kits matching that season (not older ones)
-- Saves to public Supabase Storage bucket `club-kits` + `club_kits` table
+GitHub alone does **not** deploy the edge function.
 
-Deploy edge function `club-kits-cof-sync` with both files in `supabase/functions/club-kits-cof-sync/`.
+---
 
-Create a **public** storage bucket named `club-kits` in Supabase Dashboard.
+## Deploy edge function (Dashboard — easiest)
 
-## Local download into repo (GitHub Pages)
+1. Open [Supabase Dashboard](https://supabase.com/dashboard) → your project → **Edge Functions**
+2. **Create new function** → name exactly: `club-kits-cof-sync`
+3. Delete placeholder code
+4. Copy **all** of `supabase/functions/club-kits-cof-sync/index.ts` and paste (single self-contained file)
+5. **Deploy**
+6. Function **Settings** → turn **OFF** “Enforce JWT verification” (same as `gpdb-pesdb-scrape`)
+
+After editing `club_kits_cof.js`, re-bundle before redeploy:
+
+```bash
+python scripts/bundle_club_kits_edge.py
+```
+
+Then paste the updated `index.ts` again.
+
+### CLI (optional)
+
+```powershell
+cd D:\GPSL_Cursor
+supabase login
+supabase link --project-ref omyyogfumrjoaweuawjn
+supabase functions deploy club-kits-cof-sync --no-verify-jwt
+```
+
+---
+
+## Admin UI
+
+**Admin → Season Break → Club kits → Download latest kits**
+
+- Reads COF headers (`home kit 2025-2026`, `25-26`, etc.) for the **latest season only**
+- **Download latest kits** — optional Storage upload + `club_kits` table
+- **Save COF links only** — no Storage bucket required
+
+---
+
+## Without edge function (local)
 
 ```bash
 python scripts/fetch_club_kits.py
 ```
 
-Writes `images/clubs_kits/{SHORT}_home.png` etc. Uses the same latest-season header logic.
+Writes `images/clubs_kits/{SHORT}_home.png` etc. Commit to GitHub for static hosting.
 
-## Manual slug overrides
+---
 
-`COF_CLUB_SLUG_OVERRIDES` / `COF_CLUB_PATH_OVERRIDES` in `club_kits_cof.js`.
+## Manual COF slug overrides
+
+`COF_CLUB_SLUG_OVERRIDES` / `COF_CLUB_PATH_OVERRIDES` in `club_kits_cof.js`, then re-bundle edge function.
