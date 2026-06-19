@@ -165,11 +165,6 @@ export const SEASON_MGMT_ADMIN_NAV = [
         href: "admin_club_checklist.html",
         page: "admin_club_checklist",
       },
-      {
-        label: "Club kits",
-        href: "admin_club_kits.html",
-        page: "admin_club_kits",
-      },
       ...TRANSFER_WINDOW_NAV_ITEMS,
       CHALLENGE_PAYOUTS_NAV_ITEM,
     ],

@@ -1,6 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
+export const SEASON_BREAK_NAV_VERSION = "20260619-season-break-kits";
 
 export const SEASON_BREAK_NAV = [
   {
@@ -27,6 +28,17 @@ export const SEASON_BREAK_NAV = [
         label: "Homegrown star draw",
         href: "admin_one_of_our_own.html",
         page: "admin_one_of_our_own",
+      },
+    ],
+  },
+  {
+    id: "club_kits",
+    label: "Club kits",
+    items: [
+      {
+        label: "Download latest kits",
+        href: "admin_club_kits.html",
+        page: "admin_club_kits",
       },
     ],
   },
