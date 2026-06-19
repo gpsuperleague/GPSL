@@ -9,7 +9,7 @@
       "away": "images/clubs_kits/ARS_away.png",
       "third": "images/clubs_kits/ARS_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:08Z"
+    "fetchedAt": "2026-06-19T17:18:35Z"
   },
   "AJX": {
     "club": "Ajax",
@@ -21,7 +21,7 @@
       "away": "images/clubs_kits/AJX_away.png",
       "third": "images/clubs_kits/AJX_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:05Z"
+    "fetchedAt": "2026-06-19T17:18:07Z"
   },
   "AND": {
     "club": "Anderlecht",
@@ -33,7 +33,7 @@
       "away": "images/clubs_kits/AND_away.png",
       "third": "images/clubs_kits/AND_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:07Z"
+    "fetchedAt": "2026-06-19T17:18:21Z"
   },
   "AVL": {
     "club": "Aston Villa",
@@ -45,7 +45,7 @@
       "away": "images/clubs_kits/AVL_away.png",
       "third": "images/clubs_kits/AVL_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:10Z"
+    "fetchedAt": "2026-06-19T17:18:47Z"
   },
   "ATA": {
     "club": "Atalanta",
@@ -57,7 +57,7 @@
       "away": "images/clubs_kits/ATA_away.png",
       "third": "images/clubs_kits/ATA_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:11Z"
+    "fetchedAt": "2026-06-19T17:19:01Z"
   },
   "ATM": {
     "club": "Atletico Madrid",
@@ -69,7 +69,7 @@
       "away": "images/clubs_kits/ATM_away.png",
       "third": "images/clubs_kits/ATM_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:13Z"
+    "fetchedAt": "2026-06-19T17:19:16Z"
   },
   "BAR": {
     "club": "Barcelona",
@@ -81,7 +81,7 @@
       "away": "images/clubs_kits/BAR_away.png",
       "third": "images/clubs_kits/BAR_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:14Z"
+    "fetchedAt": "2026-06-19T17:19:40Z"
   },
   "BEN": {
     "club": "Benfica",
@@ -93,7 +93,7 @@
       "away": "images/clubs_kits/BEN_away.png",
       "third": "images/clubs_kits/BEN_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:16Z"
+    "fetchedAt": "2026-06-19T17:19:55Z"
   },
   "BES": {
     "club": "Besiktas",
@@ -105,7 +105,7 @@
       "away": "images/clubs_kits/BES_away.png",
       "third": "images/clubs_kits/BES_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:18Z"
+    "fetchedAt": "2026-06-19T17:20:10Z"
   },
   "CVI": {
     "club": "Celta Vigo",
@@ -117,7 +117,7 @@
       "away": "images/clubs_kits/CVI_away.png",
       "third": "images/clubs_kits/CVI_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:20Z"
+    "fetchedAt": "2026-06-19T17:20:33Z"
   },
   "CEL": {
     "club": "Celtic",
@@ -129,7 +129,7 @@
       "away": "images/clubs_kits/CEL_away.png",
       "third": "images/clubs_kits/CEL_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:22Z"
+    "fetchedAt": "2026-06-19T17:20:49Z"
   },
   "CHE": {
     "club": "Chelsea",
@@ -141,7 +141,7 @@
       "away": "images/clubs_kits/CHE_away.png",
       "third": "images/clubs_kits/CHE_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:24Z"
+    "fetchedAt": "2026-06-19T17:21:04Z"
   },
   "BRU": {
     "club": "Club Brugge",
@@ -153,23 +153,31 @@
       "away": "images/clubs_kits/BRU_away.png",
       "third": "images/clubs_kits/BRU_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:25Z"
+    "fetchedAt": "2026-06-19T17:21:10Z"
   },
   "COR": {
     "club": "Corinthians",
     "nation": "Brazil",
-    "cof_name": "Sport Club Corinthians",
+    "cof_name": "Corinthians",
     "slug": "corinthians",
-    "kits": {},
-    "fetchedAt": "2026-06-19T10:50:26Z"
+    "kits": {
+      "home": "images/clubs_kits/COR_home.png",
+      "away": "images/clubs_kits/COR_away.png",
+      "third": "images/clubs_kits/COR_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:21:21Z"
   },
   "CRU": {
     "club": "Cruzeiro",
     "nation": "Brazil",
     "cof_name": "Cruzeiro Esporte Clube",
     "slug": "cruzeiro",
-    "kits": {},
-    "fetchedAt": "2026-06-19T10:50:27Z"
+    "kits": {
+      "home": "images/clubs_kits/CRU_home.png",
+      "away": "images/clubs_kits/CRU_away.png",
+      "third": "images/clubs_kits/CRU_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:21:32Z"
   },
   "DOR": {
     "club": "Dortmund",
@@ -181,7 +189,7 @@
       "away": "images/clubs_kits/DOR_away.png",
       "third": "images/clubs_kits/DOR_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:30Z"
+    "fetchedAt": "2026-06-19T17:21:49Z"
   },
   "ESP": {
     "club": "Espanyol",
@@ -193,7 +201,7 @@
       "away": "images/clubs_kits/ESP_away.png",
       "third": "images/clubs_kits/ESP_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:31Z"
+    "fetchedAt": "2026-06-19T17:22:02Z"
   },
   "FEY": {
     "club": "Feyenoord",
@@ -205,7 +213,7 @@
       "away": "images/clubs_kits/FEY_away.png",
       "third": "images/clubs_kits/FEY_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:35Z"
+    "fetchedAt": "2026-06-19T17:22:29Z"
   },
   "FIO": {
     "club": "Fiorentina",
@@ -217,7 +225,7 @@
       "away": "images/clubs_kits/FIO_away.png",
       "third": "images/clubs_kits/FIO_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:37Z"
+    "fetchedAt": "2026-06-19T17:22:42Z"
   },
   "FLA": {
     "club": "Flamengo",
@@ -226,9 +234,10 @@
     "slug": "flamengo",
     "kits": {
       "home": "images/clubs_kits/FLA_home.png",
-      "away": "images/clubs_kits/FLA_away.png"
+      "away": "images/clubs_kits/FLA_away.png",
+      "third": "images/clubs_kits/FLA_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:39Z"
+    "fetchedAt": "2026-06-19T17:22:52Z"
   },
   "GCZ": {
     "club": "Grasshoppers Club Zurich",
@@ -240,7 +249,7 @@
       "away": "images/clubs_kits/GCZ_away.png",
       "third": "images/clubs_kits/GCZ_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:40Z"
+    "fetchedAt": "2026-06-19T17:23:05Z"
   },
   "INT": {
     "club": "Inter Milan",
@@ -252,7 +261,7 @@
       "away": "images/clubs_kits/INT_away.png",
       "third": "images/clubs_kits/INT_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:42Z"
+    "fetchedAt": "2026-06-19T17:23:39Z"
   },
   "JUV": {
     "club": "Juventus",
@@ -264,7 +273,7 @@
       "away": "images/clubs_kits/JUV_away.png",
       "third": "images/clubs_kits/JUV_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:44Z"
+    "fetchedAt": "2026-06-19T17:23:57Z"
   },
   "KAS": {
     "club": "Kasimpasa",
@@ -276,7 +285,7 @@
       "away": "images/clubs_kits/KAS_away.png",
       "third": "images/clubs_kits/KAS_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:45Z"
+    "fetchedAt": "2026-06-19T17:24:08Z"
   },
   "LAZ": {
     "club": "Lazio",
@@ -288,7 +297,7 @@
       "away": "images/clubs_kits/LAZ_away.png",
       "third": "images/clubs_kits/LAZ_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:47Z"
+    "fetchedAt": "2026-06-19T17:24:22Z"
   },
   "LEV": {
     "club": "Leverkusen",
@@ -300,7 +309,7 @@
       "away": "images/clubs_kits/LEV_away.png",
       "third": "images/clubs_kits/LEV_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:49Z"
+    "fetchedAt": "2026-06-19T17:24:35Z"
   },
   "LIL": {
     "club": "Lille",
@@ -312,7 +321,7 @@
       "away": "images/clubs_kits/LIL_away.png",
       "third": "images/clubs_kits/LIL_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:50Z"
+    "fetchedAt": "2026-06-19T17:24:48Z"
   },
   "LIV": {
     "club": "Liverpool",
@@ -324,7 +333,7 @@
       "away": "images/clubs_kits/LIV_away.png",
       "third": "images/clubs_kits/LIV_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:52Z"
+    "fetchedAt": "2026-06-19T17:25:02Z"
   },
   "MCI": {
     "club": "Man City",
@@ -336,7 +345,7 @@
       "away": "images/clubs_kits/MCI_away.png",
       "third": "images/clubs_kits/MCI_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:53Z"
+    "fetchedAt": "2026-06-19T17:25:15Z"
   },
   "MAR": {
     "club": "Marseille",
@@ -348,7 +357,7 @@
       "away": "images/clubs_kits/MAR_away.png",
       "third": "images/clubs_kits/MAR_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:56Z"
+    "fetchedAt": "2026-06-19T17:25:29Z"
   },
   "MON": {
     "club": "Monaco",
@@ -360,15 +369,19 @@
       "away": "images/clubs_kits/MON_away.png",
       "third": "images/clubs_kits/MON_third.png"
     },
-    "fetchedAt": "2026-06-19T10:50:57Z"
+    "fetchedAt": "2026-06-19T17:25:44Z"
   },
   "NMU": {
     "club": "New Mexico United",
     "nation": "United States",
     "cof_name": "New Mexico United",
     "slug": "new_mexico_united",
-    "kits": {},
-    "fetchedAt": "2026-06-19T10:50:59Z"
+    "kits": {
+      "home": "images/clubs_kits/NMU_home.png",
+      "away": "images/clubs_kits/NMU_away.png",
+      "third": "images/clubs_kits/NMU_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:25:53Z"
   },
   "LYO": {
     "club": "Olympique Lyonnais",
@@ -380,7 +393,7 @@
       "away": "images/clubs_kits/LYO_away.png",
       "third": "images/clubs_kits/LYO_third.png"
     },
-    "fetchedAt": "2026-06-19T10:51:00Z"
+    "fetchedAt": "2026-06-19T17:26:03Z"
   },
   "POR": {
     "club": "Porto",
@@ -392,7 +405,7 @@
       "away": "images/clubs_kits/POR_away.png",
       "third": "images/clubs_kits/POR_third.png"
     },
-    "fetchedAt": "2026-06-19T10:51:02Z"
+    "fetchedAt": "2026-06-19T17:26:18Z"
   },
   "PSG": {
     "club": "PSG",
@@ -404,7 +417,7 @@
       "away": "images/clubs_kits/PSG_away.png",
       "third": "images/clubs_kits/PSG_third.png"
     },
-    "fetchedAt": "2026-06-19T10:51:04Z"
+    "fetchedAt": "2026-06-19T17:26:32Z"
   },
   "PSV": {
     "club": "PSV",
@@ -416,7 +429,7 @@
       "away": "images/clubs_kits/PSV_away.png",
       "third": "images/clubs_kits/PSV_third.png"
     },
-    "fetchedAt": "2026-06-19T10:51:06Z"
+    "fetchedAt": "2026-06-19T17:26:46Z"
   },
   "BET": {
     "club": "Real Betis",
@@ -428,7 +441,7 @@
       "away": "images/clubs_kits/BET_away.png",
       "third": "images/clubs_kits/BET_third.png"
     },
-    "fetchedAt": "2026-06-19T10:51:08Z"
+    "fetchedAt": "2026-06-19T17:27:07Z"
   },
   "RMA": {
     "club": "Real Madrid",
@@ -440,23 +453,31 @@
       "away": "images/clubs_kits/RMA_away.png",
       "third": "images/clubs_kits/RMA_third.png"
     },
-    "fetchedAt": "2026-06-19T10:51:10Z"
+    "fetchedAt": "2026-06-19T17:27:21Z"
   },
   "SAN": {
     "club": "Santos",
     "nation": "Brazil",
     "cof_name": "Santos FC",
     "slug": "santos",
-    "kits": {},
-    "fetchedAt": "2026-06-19T10:51:11Z"
+    "kits": {
+      "home": "images/clubs_kits/SAN_home.png",
+      "away": "images/clubs_kits/SAN_away.png",
+      "third": "images/clubs_kits/SAN_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:27:53Z"
   },
   "SAP": {
     "club": "Sao Paulo",
     "nation": "Brazil",
     "cof_name": "Sao Paulo FC",
     "slug": "sao_paulo",
-    "kits": {},
-    "fetchedAt": "2026-06-19T10:51:12Z"
+    "kits": {
+      "home": "images/clubs_kits/SAP_home.png",
+      "away": "images/clubs_kits/SAP_away.png",
+      "third": "images/clubs_kits/SAP_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:28:04Z"
   },
   "SCI": {
     "club": "SC Internacional",
@@ -468,7 +489,7 @@
       "away": "images/clubs_kits/SCI_away.png",
       "third": "images/clubs_kits/SCI_third.png"
     },
-    "fetchedAt": "2026-06-19T10:51:13Z"
+    "fetchedAt": "2026-06-19T17:28:14Z"
   },
   "SPO": {
     "club": "Sporting CP",
@@ -480,7 +501,7 @@
       "away": "images/clubs_kits/SPO_away.png",
       "third": "images/clubs_kits/SPO_third.png"
     },
-    "fetchedAt": "2026-06-19T10:51:15Z"
+    "fetchedAt": "2026-06-19T17:28:29Z"
   },
   "STE": {
     "club": "St Etienne",
@@ -492,7 +513,7 @@
       "away": "images/clubs_kits/STE_away.png",
       "third": "images/clubs_kits/STE_third.png"
     },
-    "fetchedAt": "2026-06-19T10:51:16Z"
+    "fetchedAt": "2026-06-19T17:28:41Z"
   },
   "TOT": {
     "club": "Tottenham Hotspur",
@@ -504,7 +525,7 @@
       "away": "images/clubs_kits/TOT_away.png",
       "third": "images/clubs_kits/TOT_third.png"
     },
-    "fetchedAt": "2026-06-19T10:51:19Z"
+    "fetchedAt": "2026-06-19T17:28:54Z"
   },
   "VAL": {
     "club": "Valencia",
@@ -516,7 +537,7 @@
       "away": "images/clubs_kits/VAL_away.png",
       "third": "images/clubs_kits/VAL_third.png"
     },
-    "fetchedAt": "2026-06-19T10:51:20Z"
+    "fetchedAt": "2026-06-19T17:29:08Z"
   },
   "VIL": {
     "club": "Villarreal",
@@ -528,6 +549,114 @@
       "away": "images/clubs_kits/VIL_away.png",
       "third": "images/clubs_kits/VIL_third.png"
     },
-    "fetchedAt": "2026-06-19T10:51:21Z"
+    "fetchedAt": "2026-06-19T17:29:20Z"
+  },
+  "NAC": {
+    "club": "Atletico Nacional",
+    "nation": "Colombia",
+    "cof_name": "Club Atletico Nacional",
+    "slug": "atletico_nacional",
+    "kits": {
+      "home": "images/clubs_kits/NAC_home.png",
+      "away": "images/clubs_kits/NAC_away.png",
+      "third": "images/clubs_kits/NAC_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:19:27Z"
+  },
+  "BOC": {
+    "club": "Boca",
+    "nation": "Argentina",
+    "cof_name": "CA Boca Juniors",
+    "slug": "boca_juniors",
+    "kits": {
+      "home": "images/clubs_kits/BOC_home.png",
+      "away": "images/clubs_kits/BOC_away.png",
+      "third": "images/clubs_kits/BOC_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:20:23Z"
+  },
+  "EST": {
+    "club": "Estudiantes",
+    "nation": "Argentina",
+    "cof_name": "Club Estudiantes de La Plata",
+    "slug": "estudiantes",
+    "kits": {
+      "home": "images/clubs_kits/EST_home.png",
+      "away": "images/clubs_kits/EST_away.png",
+      "third": "images/clubs_kits/EST_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:22:12Z"
+  },
+  "HUR": {
+    "club": "Huracan",
+    "nation": "Argentina",
+    "cof_name": "Club Atletico Huracan",
+    "slug": "huracan",
+    "kits": {
+      "home": "images/clubs_kits/HUR_home.png",
+      "away": "images/clubs_kits/HUR_away.png",
+      "third": "images/clubs_kits/HUR_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:23:15Z"
+  },
+  "IND": {
+    "club": "Independiente",
+    "nation": "Argentina",
+    "cof_name": "CA Independiente",
+    "slug": "independiente",
+    "kits": {
+      "home": "images/clubs_kits/IND_home.png",
+      "away": "images/clubs_kits/IND_away.png",
+      "third": "images/clubs_kits/IND_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:23:26Z"
+  },
+  "RAC": {
+    "club": "Racing Club",
+    "nation": "Argentina",
+    "cof_name": "Racing Club",
+    "slug": "racing_club",
+    "kits": {
+      "home": "images/clubs_kits/RAC_home.png",
+      "away": "images/clubs_kits/RAC_away.png",
+      "third": "images/clubs_kits/RAC_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:26:56Z"
+  },
+  "RIV": {
+    "club": "River Plate",
+    "nation": "Argentina",
+    "cof_name": "Club Atletico River Plate",
+    "slug": "river_plate",
+    "kits": {
+      "home": "images/clubs_kits/RIV_home.png",
+      "away": "images/clubs_kits/RIV_away.png",
+      "third": "images/clubs_kits/RIV_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:27:32Z"
+  },
+  "ROS": {
+    "club": "Rosario Central",
+    "nation": "Argentina",
+    "cof_name": "Club Atletico Rosario Central",
+    "slug": "rosario_central",
+    "kits": {
+      "home": "images/clubs_kits/ROS_home.png",
+      "away": "images/clubs_kits/ROS_away.png",
+      "third": "images/clubs_kits/ROS_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:27:42Z"
+  },
+  "WOL": {
+    "club": "Wolves",
+    "nation": "England",
+    "cof_name": "Wolves",
+    "slug": "wolverhmp",
+    "kits": {
+      "home": "images/clubs_kits/WOL_home.png",
+      "away": "images/clubs_kits/WOL_away.png",
+      "third": "images/clubs_kits/WOL_third.png"
+    },
+    "fetchedAt": "2026-06-19T17:29:32Z"
   }
 }

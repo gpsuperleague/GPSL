@@ -745,8 +745,154 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 
 const INVOCATION_BUDGET_MS = 50_000;
 
+const GITHUB_OWNER = Deno.env.get("GITHUB_OWNER") || "gpsuperleague";
+const GITHUB_REPO = Deno.env.get("GITHUB_REPO") || "GPSL";
+const GITHUB_BRANCH = Deno.env.get("GITHUB_BRANCH") || "main";
+
 function timedOut(deadline: number) {
   return Math.max(0, deadline - Date.now()) < 3000;
+}
+
+function githubToken(): string | null {
+  return Deno.env.get("GITHUB_TOKEN") ?? Deno.env.get("GPSL_GITHUB_TOKEN") ?? null;
+}
+
+function githubHeaders(token: string): Record<string, string> {
+  return {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+    "User-Agent": "GPSL-KitSync",
+  };
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+function repoKitPath(clubShort: string, kind: string, ext: string): string {
+  return `images/clubs_kits/${clubShort}_${kind}.${ext}`;
+}
+
+async function githubCommitClubKitImages(
+  token: string,
+  clubShort: string,
+  files: { kind: string; bytes: Uint8Array; ext: string }[]
+): Promise<{ paths: Record<string, string>; commitSha: string }> {
+  if (!files.length) return { paths: {}, commitSha: "" };
+
+  let lastErr: Error | null = null;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const api = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}`;
+
+      const headRes = await fetch(`${api}/git/ref/heads/${GITHUB_BRANCH}`, {
+        headers: githubHeaders(token),
+      });
+      if (!headRes.ok) {
+        throw new Error(`GitHub ref failed (${headRes.status})`);
+      }
+      const headRef = await headRes.json();
+      const headCommitSha = headRef.object.sha as string;
+
+      const commitMetaRes = await fetch(`${api}/git/commits/${headCommitSha}`, {
+        headers: githubHeaders(token),
+      });
+      if (!commitMetaRes.ok) {
+        throw new Error(`GitHub commit read failed (${commitMetaRes.status})`);
+      }
+      const commitMeta = await commitMetaRes.json();
+      const baseTreeSha = commitMeta.tree.sha as string;
+
+      const tree: { path: string; mode: string; type: string; sha: string }[] =
+        [];
+      const paths: Record<string, string> = {};
+
+      for (const f of files) {
+        const repoPath = repoKitPath(clubShort, f.kind, f.ext);
+        paths[f.kind] = repoPath;
+
+        const blobRes = await fetch(`${api}/git/blobs`, {
+          method: "POST",
+          headers: {
+            ...githubHeaders(token),
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            content: bytesToBase64(f.bytes),
+            encoding: "base64",
+          }),
+        });
+        if (!blobRes.ok) {
+          throw new Error(`GitHub blob failed (${blobRes.status})`);
+        }
+        const blob = await blobRes.json();
+        tree.push({
+          path: repoPath,
+          mode: "100644",
+          type: "blob",
+          sha: blob.sha as string,
+        });
+      }
+
+      const treeRes = await fetch(`${api}/git/trees`, {
+        method: "POST",
+        headers: {
+          ...githubHeaders(token),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ base_tree: baseTreeSha, tree }),
+      });
+      if (!treeRes.ok) {
+        throw new Error(`GitHub tree failed (${treeRes.status})`);
+      }
+      const newTree = await treeRes.json();
+
+      const kinds = files.map((f) => f.kind).join(", ");
+      const newCommitRes = await fetch(`${api}/git/commits`, {
+        method: "POST",
+        headers: {
+          ...githubHeaders(token),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: `Update ${clubShort} kit images (${kinds})`,
+          tree: newTree.sha,
+          parents: [headCommitSha],
+        }),
+      });
+      if (!newCommitRes.ok) {
+        throw new Error(`GitHub commit failed (${newCommitRes.status})`);
+      }
+      const newCommit = await newCommitRes.json();
+
+      const updateRefRes = await fetch(`${api}/git/refs/heads/${GITHUB_BRANCH}`, {
+        method: "PATCH",
+        headers: {
+          ...githubHeaders(token),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sha: newCommit.sha }),
+      });
+      if (!updateRefRes.ok) {
+        throw new Error(`GitHub ref update failed (${updateRefRes.status})`);
+      }
+
+      return { paths, commitSha: newCommit.sha as string };
+    } catch (err) {
+      lastErr = err instanceof Error ? err : new Error(String(err));
+      if (attempt < 2) {
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+      }
+    }
+  }
+
+  throw lastErr || new Error("GitHub commit failed");
 }
 
 type ClubRow = {
@@ -812,9 +958,10 @@ async function handleClubKitsCofSync(req: Request): Promise<Response> {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
     const downloadImages = body?.download === true;
-    const storageBucket = String(body?.bucket || "club-kits");
+    const commitToGithub = downloadImages && body?.github !== false;
     const cofCache = createCofFetchCache();
     const deadline = Date.now() + INVOCATION_BUDGET_MS;
+    const ghToken = githubToken();
 
     const seasonStartYear =
       body?.season_start_year != null && body?.season_start_year !== ""
@@ -961,53 +1108,80 @@ async function handleClubKitsCofSync(req: Request): Promise<Response> {
         }
 
         const kits = cof.kits || { home: null, away: null, third: null };
-        let homeUrl = kits.home;
-        let awayUrl = kits.away;
-        let thirdUrl = kits.third;
+        let homeUrl: string | null = kits.home;
+        let awayUrl: string | null = kits.away;
+        let thirdUrl: string | null = kits.third;
 
         if (downloadImages) {
-          if (timedOut(deadline)) {
-            entry.storage_warning =
-              "Skipped Storage download (edge time limit) — saved COF URLs. Use Save COF links only, or python scripts/fetch_club_kits.py for PNG files.";
-          } else {
-            const kinds = [
-              ["home", homeUrl],
-              ["away", awayUrl],
-              ["third", thirdUrl],
-            ] as const;
+          if (commitToGithub && !ghToken) {
+            entry.error =
+              "GITHUB_TOKEN not set — add a GitHub PAT with repo contents write access in Supabase → Edge Functions → Secrets.";
+            results.push(entry);
+            continue;
+          }
 
-            for (const [kind, src] of kinds) {
-              if (!src || timedOut(deadline)) continue;
-              try {
-                const { bytes, contentType } = await downloadCofImage(
-                  src,
-                  fetch,
-                  cofCache
-                );
-                const ext = contentType.includes("gif") ? "gif" : "png";
-                const path = `${club.ShortName}/${kind}.${ext}`;
-                const { error: upErr } = await adminClient.storage
-                  .from(storageBucket)
-                  .upload(path, bytes, {
-                    contentType,
-                    upsert: true,
-                  });
-                if (upErr) throw upErr;
-                const { data: pub } = adminClient.storage
-                  .from(storageBucket)
-                  .getPublicUrl(path);
-                if (kind === "home") homeUrl = pub.publicUrl;
-                if (kind === "away") awayUrl = pub.publicUrl;
-                if (kind === "third") thirdUrl = pub.publicUrl;
-              } catch (storageErr) {
-                const msg =
-                  storageErr instanceof Error
-                    ? storageErr.message
-                    : String(storageErr);
-                entry.storage_warning =
-                  `Storage upload failed (${msg}) — saved COF URL instead. Create public bucket "${storageBucket}".`;
-              }
+          if (timedOut(deadline)) {
+            entry.error =
+              "Edge time limit — retry this club (COF fetch took too long).";
+            results.push(entry);
+            continue;
+          }
+
+          const kinds = [
+            ["home", homeUrl],
+            ["away", awayUrl],
+            ["third", thirdUrl],
+          ] as const;
+
+          const filesToCommit: {
+            kind: string;
+            bytes: Uint8Array;
+            ext: string;
+          }[] = [];
+
+          for (const [kind, src] of kinds) {
+            if (!src || timedOut(deadline)) continue;
+            try {
+              const { bytes, contentType } = await downloadCofImage(
+                src,
+                fetch,
+                cofCache
+              );
+              const ext = contentType.includes("gif") ? "gif" : "png";
+              filesToCommit.push({ kind, bytes, ext });
+            } catch (imgErr) {
+              const msg =
+                imgErr instanceof Error ? imgErr.message : String(imgErr);
+              entry.download_warning =
+                `${entry.download_warning || ""} ${kind}: ${msg}`.trim();
             }
+          }
+
+          if (commitToGithub && filesToCommit.length) {
+            try {
+              const { paths, commitSha } = await githubCommitClubKitImages(
+                ghToken!,
+                club.ShortName,
+                filesToCommit
+              );
+              if (paths.home) homeUrl = paths.home;
+              if (paths.away) awayUrl = paths.away;
+              if (paths.third) thirdUrl = paths.third;
+              entry.github = {
+                committed: Object.values(paths),
+                commit_sha: commitSha,
+              };
+            } catch (ghErr) {
+              const msg =
+                ghErr instanceof Error ? ghErr.message : String(ghErr);
+              entry.error = `GitHub commit failed: ${msg}`;
+              results.push(entry);
+              continue;
+            }
+          } else if (commitToGithub) {
+            entry.error = "No kit images downloaded to commit to GitHub.";
+            results.push(entry);
+            continue;
           }
         }
 

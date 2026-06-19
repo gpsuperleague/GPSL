@@ -157,35 +157,31 @@
       <li>Name exactly: <code>club-kits-cof-sync</code></li>
       <li>Paste all of <code>supabase/functions/club-kits-cof-sync/index.ts</code> from this repo</li>
       <li>Deploy → Settings → turn <b>OFF</b> “Enforce JWT verification” (same as GPDB scrape)</li>
-      <li>Optional: Storage → create public bucket <code>club-kits</code> (for downloaded PNGs)</li>
+      <li>Edge Functions → <b>Secrets</b> → add <code>GITHUB_TOKEN</code> (GitHub PAT with <b>Contents: Read and write</b> on <code>gpsuperleague/GPSL</code>)</li>
       <li>Run <code>supabase/sql/patches/club_kits.sql</code> if not already applied</li>
     </ol>
     <p style="margin:0;font-size:11px;color:#888;">
-      See <code>scripts/README_club_kits_cof.md</code>. No Supabase CLI needed — Dashboard paste is enough.
-      Or run <code>python scripts/fetch_club_kits.py</code> locally to fill <code>images/clubs_kits/</code> without the edge function.
+      <b>Download latest kits</b> commits PNGs to <code>images/clubs_kits/</code> on GitHub automatically — no local script.
+      See <code>scripts/README_club_kits_cof.md</code>.
     </p>
   </div>
 
   <div class="kits-actions card" style="padding:14px;margin-bottom:16px;background:#1a1a1a;border:1px solid #333;border-radius:8px;">
     <h2 style="margin:0 0 8px;font-size:16px;color:#ff9900;">Download latest kits</h2>
     <p style="margin:0 0 10px;font-size:12px;color:#999;line-height:1.45;">
-      Pulls the <b>current-season</b> home, away, and third kits from
-      <a href="https://www.colours-of-football.com/" target="_blank" rel="noopener" style="color:#ff9900;">colours-of-football.com</a>.
-      Runs <b>latest season first</b>, then automatically retries older seasons (2024-25, 2023-24, …) only for clubs still missing kits.
-      Requires edge function <code>club-kits-cof-sync</code> (deploy <code>index.ts</code> + <code>club_kits_cof.js</code>).
+      Pulls kits from
+      <a href="https://www.colours-of-football.com/" target="_blank" rel="noopener" style="color:#ff9900;">colours-of-football.com</a>,
+      <b>commits PNGs to GitHub</b> (<code>images/clubs_kits/</code>), and updates <code>club_kits</code>.
+      Latest season first, then older seasons only for clubs still missing kits.
     </p>
     <div class="kits-actions">
       <button type="button" id="downloadLatestKitsBtn" class="button">Download latest kits (all clubs)</button>
       <button type="button" id="cofPreviewBtn" class="button secondary" disabled>Preview selected club</button>
       <button type="button" id="cofLinksOnlyBtn" class="button secondary">Save COF links only</button>
     </div>
-    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#bbb;margin-top:10px;">
-      <input type="checkbox" id="cofDownloadStorage">
-      Store images in Supabase Storage bucket <code>club-kits</code> (slow — may time out; prefer links only or local script)
-    </label>
     <p style="margin:8px 0 0;font-size:11px;color:#666;">
-      Recommended: use <b>Save COF links only</b> (fast, stays under the 60s edge limit). For PNG files in the repo, run
-      <code>python scripts/fetch_club_kits.py</code> locally and push <code>images/clubs_kits/</code>.
+      Each OK line with <code>→ GitHub</code> means files were pushed to the repo (live on GitHub Pages after deploy).
+      Use <b>Save COF links only</b> if <code>GITHUB_TOKEN</code> is not set yet.
     </p>
     <pre id="cofSyncLog" style="margin:10px 0 0;padding:10px;background:#111;border:1px solid #333;border-radius:6px;font-size:11px;color:#aaa;max-height:220px;overflow:auto;white-space:pre-wrap;"></pre>
   </div>
@@ -229,6 +225,6 @@
     <p style="padding:12px;color:#888;">Loading…</p>
   </div>
 
-  <script type="module" src="admin_club_kits.js?v=20260619-cof-cors"></script>
+  <script type="module" src="admin_club_kits.js?v=20260619-github-kits"></script>
 </body>
 </html>

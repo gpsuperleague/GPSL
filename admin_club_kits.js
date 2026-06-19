@@ -33,9 +33,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("saveKitsBtn").onclick = saveKits;
   document.getElementById("clubSelect").onchange = onClubSelect;
   document.getElementById("downloadLatestKitsBtn").onclick = () =>
-    downloadLatestKits({ download: true });
+    downloadLatestKits({ download: true, github: true });
   document.getElementById("cofLinksOnlyBtn").onclick = () =>
-    downloadLatestKits({ download: false });
+    downloadLatestKits({ download: false, github: false });
   document.getElementById("cofPreviewBtn").onclick = () => previewCofForSelected();
 
   for (const kind of KIT_KINDS) {
@@ -337,7 +337,7 @@ async function previewCofForSelected() {
 }
 
 async function runSyncPass({
-  useStorage,
+  downloadToGithub,
   seasonStartYear = null,
   clubShortNames = null,
   skipIfNewerSaved = false,
@@ -361,7 +361,8 @@ async function runSyncPass({
       action: "sync_batch",
       offset,
       limit: 1,
-      download: useStorage,
+      download: !!downloadToGithub,
+      github: !!downloadToGithub,
       strict_season: true,
     };
     if (seasonStartYear != null) body.season_start_year = seasonStartYear;
@@ -377,7 +378,11 @@ async function runSyncPass({
       } else if (row.ok) {
         ok += 1;
         const season = row.cof?.season_label || "?";
-        appendCofLog(`OK ${short} (${season})`);
+        const gh =
+          row.github?.committed?.length > 0
+            ? ` → GitHub (${row.github.committed.length} file(s))`
+            : "";
+        appendCofLog(`OK ${short} (${season})${gh}`);
       } else {
         fail += 1;
         if (short) failed.add(short);
@@ -393,15 +398,14 @@ async function runSyncPass({
   return { failed, ok, fail };
 }
 
-async function downloadLatestKits({ download } = { download: true }) {
+async function downloadLatestKits({ download, github } = { download: true, github: true }) {
   if (cofSyncRunning) return;
 
-  const useStorage =
-    download && document.getElementById("cofDownloadStorage")?.checked !== false;
+  const downloadToGithub = download && github !== false;
 
-  const msg = useStorage
-    ? "Download kits for all clubs (latest season, then fall back to older seasons for any that fail)?"
-    : "Save COF kit URLs for all clubs?\n\nRuns latest season first, then 2024-25, 2023-24, etc. only for clubs still missing kits.";
+  const msg = downloadToGithub
+    ? "Download latest kits from COF, commit PNGs to GitHub (images/clubs_kits/), and update club_kits?\n\nRequires GITHUB_TOKEN in Supabase Edge Function secrets."
+    : "Save COF image URLs to club_kits only (no GitHub files)?\n\nRuns latest season first, then older seasons for clubs still missing kits.";
 
   if (!confirm(msg)) return;
 
@@ -431,7 +435,7 @@ async function downloadLatestKits({ download } = { download: true }) {
       appendCofLog(`\n=== ${label} ===`);
 
       const { failed, ok, fail } = await runSyncPass({
-        useStorage,
+        downloadToGithub,
         seasonStartYear: targetYear,
         clubShortNames: pending ? [...pending] : null,
         skipIfNewerSaved: pass > 0,
