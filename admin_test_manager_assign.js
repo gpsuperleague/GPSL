@@ -114,8 +114,11 @@ async function loadClubs() {
     const mgr = c.manager_id ? mgrById.get(c.manager_id) : null;
     const ownerLabel =
       ownerByClub.get(c.ShortName) ||
-      (c.owner ? `@${String(c.owner).replace(/^@/, "")}` : null) ||
-      (c.owner_id ? "Owner linked" : null);
+      (c.owner_id
+        ? c.owner
+          ? `@${String(c.owner).replace(/^@/, "")}`
+          : "Owner linked"
+        : null);
     return {
       club_short_name: c.ShortName,
       club_name: c.Club,
