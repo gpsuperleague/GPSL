@@ -111,12 +111,13 @@
       padding:20px;
       border-radius:8px;
       border:1px solid #333;
+      overflow-x:auto;
     }
 
     table.gpsl-table {
       width:100%;
       border-collapse:collapse;
-      table-layout:fixed;
+      table-layout:auto;
     }
 
     table.gpsl-table th,
@@ -124,10 +125,45 @@
       border:1px solid #333;
       padding:8px;
       font-size:13px;
+      text-align:center;
+      vertical-align:middle;
+    }
+
+    table.gpsl-table .col-fav,
+    table.gpsl-table .col-thumb,
+    table.gpsl-table .col-compact {
+      width:1%;
+      white-space:nowrap;
+    }
+
+    table.gpsl-table .col-money {
+      white-space:nowrap;
+    }
+
+    table.gpsl-table .col-player {
+      max-width:14rem;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
+    }
+
+    table.gpsl-table .col-leading-club {
+      width:auto;
+      min-width:max(9rem, max-content);
+      white-space:nowrap;
+      overflow:visible;
+      text-overflow:clip;
+      text-align:left;
+      padding-left:12px;
+      padding-right:12px;
+    }
+
+    table.gpsl-table th.col-leading-club {
       text-align:center;
+    }
+
+    table.gpsl-table .col-owner {
+      white-space:nowrap;
     }
 
     table.gpsl-table th {
@@ -322,16 +358,16 @@
     <table class="gpsl-table">
       <thead>
         <tr>
-          <th title="Save thread">★</th>
-          <th></th>
-          <th>Player</th>
-          <th>Pos</th>
-          <th>Rating</th>
-          <th>Market Value</th>
-          <th>Highest Bid</th>
-          <th>Leading Club</th>
-          <th>Owner</th>
-          <th>Bid</th>
+          <th class="col-fav" title="Save thread">★</th>
+          <th class="col-thumb"></th>
+          <th class="col-player">Player</th>
+          <th class="col-compact">Pos</th>
+          <th class="col-compact">Rating</th>
+          <th class="col-money">Market Value</th>
+          <th class="col-money">Highest Bid</th>
+          <th class="col-leading-club">Leading Club</th>
+          <th class="col-owner">Owner</th>
+          <th class="col-compact">Bid</th>
         </tr>
       </thead>
       <tbody id="draftTableBody"></tbody>
@@ -668,7 +704,7 @@
         const row = document.createElement("tr");
         if (isFav) row.classList.add("draft-fav-row");
         row.innerHTML = `
-          <td>
+          <td class="col-fav">
             <button
               type="button"
               class="fav-btn${isFav ? " fav-on" : ""}"
@@ -677,18 +713,18 @@
               title="${favouriteButtonLabel(isFav)}"
             >${favouriteStarChar(isFav)}</button>
           </td>
-          <td>${playerThumbLinkHtml(player.Konami_ID, {
+          <td class="col-thumb">${playerThumbLinkHtml(player.Konami_ID, {
             className: "draft-thumb",
             alt: player.Name,
           })}</td>
-          <td>${playerNameLinkHtml(player.Konami_ID, player.Name)}</td>
-          <td>${player.Position}</td>
-          <td>${player.Rating}</td>
-          <td>₿ ${Number(player.market_value).toLocaleString("en-GB")}</td>
-          <td>${highestAmount !== null ? `₿ ${Number(highestAmount).toLocaleString("en-GB")}` : "None"}</td>
-          <td>${leadingClubFull}</td>
-          <td><span class="club-owner-tag">${leadingOwner}</span></td>
-          <td>
+          <td class="col-player">${playerNameLinkHtml(player.Konami_ID, player.Name)}</td>
+          <td class="col-compact">${player.Position}</td>
+          <td class="col-compact">${player.Rating}</td>
+          <td class="col-money">₿ ${Number(player.market_value).toLocaleString("en-GB")}</td>
+          <td class="col-money">${highestAmount !== null ? `₿ ${Number(highestAmount).toLocaleString("en-GB")}` : "None"}</td>
+          <td class="col-leading-club">${leadingClubFull}</td>
+          <td class="col-owner"><span class="club-owner-tag">${leadingOwner}</span></td>
+          <td class="col-compact">
             <button
               class="bid-btn ${btnClass}"
               data-konami-id="${player.Konami_ID}"
