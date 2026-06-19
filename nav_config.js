@@ -164,6 +164,12 @@ export const NAV_SECTIONS = [
         hash: "scouting-targets",
         indent: true,
       },
+      {
+        href: "scouting.html",
+        label: "Scouting board",
+        page: "scouting",
+        indent: true,
+      },
     ],
   },
   {

@@ -66,6 +66,12 @@ import {
   playerNameLinkHtml,
   pesdbPlayerUrl,
 } from "./player_links.js";
+import {
+  loadScoutingTargetMap,
+  toggleScoutingTarget,
+  scoutingStarChar,
+  isScoutingAvailable,
+} from "./scouting_targets.js";
 
 let draftAuctionStartTime = null;
 let draftJoinWindowEnd = null;
@@ -262,6 +268,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let PENDING_DIRECT_OFFERS_FOR_MY_CLUB = new Set();
   let TRANSFER_STATUS_STATE = null;
   let CURRENT_USER_CLUB_SHORT = null;
+  /** @type {Map<string, number>} */
+  let SCOUTING_TARGET_MAP = new Map();
 
   let CLUB_NAME_MAP = {};
   let CLUB_NATION_MAP = {};
@@ -285,6 +293,17 @@ document.addEventListener("DOMContentLoaded", () => {
         .maybeSingle();
 
       CURRENT_USER_CLUB_SHORT = club?.ShortName ?? null;
+      if (CURRENT_USER_CLUB_SHORT) {
+        try {
+          SCOUTING_TARGET_MAP = await loadScoutingTargetMap(
+            supabase,
+            CURRENT_USER_CLUB_SHORT
+          );
+        } catch (err) {
+          console.warn("Scouting targets:", err);
+          SCOUTING_TARGET_MAP = new Map();
+        }
+      }
     }
   }
 
@@ -642,6 +661,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const showCallUpCol = !!MY_NATION?.code;
+    const showScoutCol = !!CURRENT_USER_CLUB_SHORT;
 
     tableHead.innerHTML = `
       <tr>
@@ -655,6 +675,7 @@ document.addEventListener("DOMContentLoaded", () => {
           })
           .join("")}
         ${showCallUpCol ? '<th class="gpdb-callup-col">Call up</th>' : ""}
+        ${showScoutCol ? '<th class="gpdb-scout-col" title="Scouting shortlist">Scout</th>' : ""}
         <th>Bid</th>
       </tr>
     `;
@@ -665,6 +686,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         let bidCell = `<span class="locked-msg">Loading…</span>`;
         const callUpCell = buildGpdbCallUpCellHtml(player);
+        const scouted = SCOUTING_TARGET_MAP.has(String(player.Konami_ID));
+        const scoutTier = SCOUTING_TARGET_MAP.get(String(player.Konami_ID));
+        const scoutCell = showScoutCol
+          ? `<button type="button" class="scout-btn${scouted ? " scout-on" : ""}" data-player-id="${player.Konami_ID}" title="${scouted ? `Scouting (tier ${scoutTier}) — click to remove` : "Add to scouting (top target)"}">${scoutingStarChar(scouted)}</button>`
+          : "";
 
         if (GLOBAL_SETTINGS) {
           if (hasClub) {
@@ -730,6 +756,7 @@ document.addEventListener("DOMContentLoaded", () => {
               (col) => `<td>${formatCellValue(col, player)}</td>`
             ).join("")}
             ${showCallUpCol ? `<td class="gpdb-callup-col">${callUpCell || '<span class="locked-msg">—</span>'}</td>` : ""}
+            ${showScoutCol ? `<td class="gpdb-scout-col">${scoutCell}</td>` : ""}
             <td>${bidCell}</td>
           </tr>
         `;
@@ -752,7 +779,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
       row.style.cursor = "pointer";
       row.addEventListener("click", e => {
-        if (e.target.closest(".make-offer-btn, .call-up-btn, a")) return;
+        if (e.target.closest(".make-offer-btn, .call-up-btn, .scout-btn, a")) return;
         const konamiId = row.getAttribute("data-konami-id");
         if (konamiId) {
           window.open(pesdbPlayerUrl(konamiId), "_blank", "noopener");
@@ -768,6 +795,34 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         handleCallUpClick(btn.dataset.playerId);
+      });
+    });
+
+    document.querySelectorAll(".scout-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!CURRENT_USER_CLUB_SHORT) return;
+        if (!isScoutingAvailable()) {
+          alert("Scouting lists are not set up yet — ask admin to run club_scouting_targets.sql");
+          return;
+        }
+        const pid = btn.dataset.playerId;
+        try {
+          const on = await toggleScoutingTarget(supabase, pid, 1);
+          if (on) {
+            SCOUTING_TARGET_MAP.set(String(pid), 1);
+            btn.classList.add("scout-on");
+            btn.textContent = scoutingStarChar(true);
+            btn.title = "Scouting (tier 1) — click to remove";
+          } else {
+            SCOUTING_TARGET_MAP.delete(String(pid));
+            btn.classList.remove("scout-on");
+            btn.textContent = scoutingStarChar(false);
+            btn.title = "Add to scouting (top target)";
+          }
+        } catch (err) {
+          alert(err?.message || "Could not update scouting list.");
+        }
       });
     });
   }

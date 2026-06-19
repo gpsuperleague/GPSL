@@ -36,7 +36,12 @@ import {
   isDraftFavouritesAvailable,
   draftFavouritesSetupHint,
 } from "./draft_favourites.js";
-import { playerNameLinkHtml } from "./player_links.js";
+import {
+  loadScoutingTargets,
+  SCOUTING_TIER_LABELS,
+  isScoutingAvailable,
+  scoutingSetupHint,
+} from "./scouting_targets.js";
 
 function playerLinkCell(playerId, player, fallbackName) {
   const pid = String(playerId ?? player?.Konami_ID ?? "").trim();
@@ -74,6 +79,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${shortName}.png`;
 
+  loadGpdbScoutingSummary(shortName);
   loadDraftFavouritesSection(shortName);
   loadActiveListings(shortName);
   loadActiveBids(shortName);
@@ -130,6 +136,46 @@ async function fetchPlayersMap(playerIds) {
 function playerFromMap(map, id) {
   if (id == null || String(id).trim() === "") return null;
   return map.get(String(id)) ?? null;
+}
+
+// ============================================================
+// GPDB SCOUTING SUMMARY
+// ============================================================
+
+async function loadGpdbScoutingSummary(shortName) {
+  const el = document.getElementById("gpdbScoutingSummary");
+  if (!el) return;
+
+  if (!isScoutingAvailable()) {
+    el.innerHTML = `<i style="color:#c96;">${scoutingSetupHint()}</i>`;
+    return;
+  }
+
+  try {
+    const rows = await loadScoutingTargets(supabase, shortName);
+    if (!rows.length) {
+      el.innerHTML =
+        '<i style="color:#888;">No GPDB scouting targets yet — use ☆ in GPDB.</i>';
+      return;
+    }
+
+    const counts = [1, 2, 3, 4].map((tier) => ({
+      tier,
+      n: rows.filter((r) => Number(r.tier) === tier).length,
+    }));
+
+    el.innerHTML = `
+      <ul style="margin:0;padding-left:18px;color:#ccc;font-size:14px;line-height:1.6;">
+        ${counts
+          .map(
+            (c) =>
+              `<li><b>${SCOUTING_TIER_LABELS[c.tier]}</b>: ${c.n} player${c.n === 1 ? "" : "s"}</li>`
+          )
+          .join("")}
+      </ul>`;
+  } catch (err) {
+    el.innerHTML = `<i style="color:#c96;">${err?.message || "Could not load scouting targets."}</i>`;
+  }
 }
 
 // ============================================================

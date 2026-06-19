@@ -26,6 +26,7 @@ const TILE_WATERMARK_CLASS = {
   central_bank: "tile-bank",
   squad: "tile-squad",
   transfer_center: "tile-transfer",
+  scouting_board: "tile-transfer",
   matchday: "tile-matchday",
   fixtures: "tile-fixtures",
   history: "tile-history",

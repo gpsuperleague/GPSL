@@ -54,6 +54,7 @@ export const DASHBOARD_PANELS = [
     adminOnly: true,
   },
   { id: "tc_scouting", label: "Scouting Targets", href: "transfer_center.html#scouting-targets", page: "transfer_center.html", section: true },
+  { id: "scouting_board", label: "Scouting Board", href: "scouting.html", page: "scouting.html", section: false },
   { id: "tc_active_listings", label: "Active Listings", href: "transfer_center.html#active-listings", page: "transfer_center.html", section: true },
   { id: "tc_active_bids", label: "Active Bids", href: "transfer_center.html#active-bids", page: "transfer_center.html", section: true },
   { id: "tc_awaiting_seller", label: "Awaiting Seller", href: "transfer_center.html#awaiting-seller", page: "transfer_center.html", section: true },

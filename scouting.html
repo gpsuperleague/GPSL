@@ -1,0 +1,101 @@
+<script>window.CURRENT_PAGE = "scouting";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scouting — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="matchday_squad.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1200px; margin:20px auto 48px; }
+    h1 { color:#ff9900; margin:0 0 8px; font-size:26px; }
+    .meta { color:#aaa; font-size:14px; margin-bottom:20px; line-height:1.5; }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:18px 20px; margin-bottom:22px;
+    }
+    .panel h2 { color:#ff9900; font-size:18px; margin:0 0 12px; }
+    .panel-transfer::after {
+      background-image: url("images/panel_bg/Transfer.png");
+    }
+    .tier-block { margin-bottom:20px; }
+    .tier-block h3 {
+      color:#ffcc66; font-size:15px; margin:0 0 8px;
+      border-bottom:1px solid #333; padding-bottom:6px;
+    }
+    table.scout-table {
+      width:100%; border-collapse:collapse; font-size:12px;
+    }
+    table.scout-table th {
+      background:#222; color:#ff9900; padding:8px 6px;
+      border-bottom:2px solid #444; text-align:center; position:sticky; top:0;
+    }
+    table.scout-table td {
+      padding:6px; border-bottom:1px solid #333; text-align:center; vertical-align:middle;
+    }
+    table.scout-table td.name { text-align:left; }
+    table.scout-table tr:hover { background:#262626; }
+    .scout-empty { color:#888; font-style:italic; padding:8px 0; }
+    .scout-remove, .scout-tier-select {
+      background:#333; color:#ddd; border:1px solid #555;
+      border-radius:4px; padding:4px 6px; font-size:11px; cursor:pointer;
+    }
+    .scout-remove { color:#f88; }
+    a.button, .button-link {
+      display:inline-block; padding:8px 14px; background:#1a1a1a; color:#ff9900;
+      border:1px solid #666; border-radius:6px; text-decoration:none; font-weight:bold;
+    }
+    #plannerStatus { color:#8c8; font-size:13px; margin-top:8px; min-height:1.2em; }
+    #plannerStatus.err { color:#f88; }
+    .scout-tabs { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+    .scout-tabs button {
+      padding:8px 14px; background:#333; color:#ddd; border:1px solid #555;
+      border-radius:6px; cursor:pointer; font-weight:bold;
+    }
+    .scout-tabs button.active { background:#ff9900; color:#111; border-color:#ff9900; }
+    .scout-tab-panel { display:none; }
+    .scout-tab-panel.active { display:block; }
+    #scoutingPlannerRoot .squad-hint b { color:#ffcc66; }
+    #scoutingPlannerRoot #squadSaveBtn::after { content: " tactic board"; }
+  </style>
+</head>
+<body class="dashboard-page">
+  <div id="nav"></div>
+  <div class="page-container">
+    <div id="headerContainer" style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+      <img id="clubBadgeHeader" src="" alt="" style="width:48px;height:48px;">
+      <div>
+        <h1 id="pageTitle">Scouting</h1>
+        <div id="userEmail" class="meta" style="margin:0;"></div>
+      </div>
+    </div>
+    <p class="meta">
+      Star players in <a href="GPDB.html" style="color:#ff9900;">GPDB</a> to add them here.
+      Organise into top / backup / third / fourth choice, then plan a lineup on the tactic board.
+      <a href="transfer_center.html#scouting-targets" class="button-link" style="margin-left:8px;">Transfer Centre</a>
+    </p>
+
+    <div class="scout-tabs" role="tablist">
+      <button type="button" class="active" data-tab="lists">Target lists</button>
+      <button type="button" data-tab="planner">Tactic board</button>
+    </div>
+
+    <div id="tab-lists" class="scout-tab-panel active panel panel-bg panel-transfer">
+      <h2>Scouting targets</h2>
+      <div id="scoutingListsWrap"><i>Loading…</i></div>
+    </div>
+
+    <div id="tab-planner" class="scout-tab-panel panel panel-bg panel-transfer">
+      <h2>Tactic board</h2>
+      <p class="meta" style="margin-top:0;">
+        Drag scouting targets onto the pitch to see how a potential XI fits. Saved separately from your matchday squad.
+      </p>
+      <div id="scoutingPlannerRoot"></div>
+      <div id="plannerStatus"></div>
+    </div>
+  </div>
+
+  <script type="module" src="scouting.js"></script>
+</body>
+</html>
