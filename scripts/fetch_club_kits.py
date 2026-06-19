@@ -156,7 +156,7 @@ COF_NATION_MAP = {
     "turkey": ("tur", "tur.html"),
     "turkiye": ("tur", "tur.html"),
     "brazil": ("bra", "bra.html"),
-    "argentina": ("arg", "arg.html"),
+    "argentina": ("arg", "argentina.html"),
     "usa": ("usa", "usa.html"),
     "united states": ("usa", "usa.html"),
     "mexico": ("mex", "mex.html"),
@@ -183,7 +183,7 @@ COF_NATION_MAP = {
     "wales": ("wales", "wales.html"),
     "serbia": ("serbia", "serbia.html"),
     "chile": ("chile", "chile.html"),
-    "colombia": ("col", "col.html"),
+    "colombia": ("col", "colombia.html"),
     "uruguay": ("uru", "uru.html"),
     "paraguay": ("paraguay", "paraguay.html"),
     "peru": ("peru", "peru.html"),
@@ -276,7 +276,13 @@ COF_CLUB_SLUG_OVERRIDES: dict[str, str] = {
     "COR": "corinthians",
     "SAO": "saopaulo",
     "SAN": "santos",
-    "BOC": "boca",
+    "BOC": "boca_juniors",
+    "EST": "estudiantes",
+}
+
+COF_PATH_OVERRIDES = {
+    "WOL": ("wolverhmp", "wolves"),
+    "COR": ("corinthians", "carinthians"),
 }
 
 STRIP_WORDS = re.compile(
@@ -415,14 +421,28 @@ def parse_cof_season_digits(raw: int) -> dict | None:
 
 def parse_cof_kit_filename(file: str) -> dict | None:
     km = re.search(r"_(\d)[a-z]?_(\d{4})(?:_(\d+))?\.(?:png|gif)$", file, re.I)
-    if not km:
-        return None
-    kit_num = int(km.group(1))
-    variant = int(km.group(3) or 0)
-    season = parse_cof_season_digits(int(km.group(2)))
-    if not season or kit_num < 1 or kit_num > 3:
-        return None
-    return {"kit_num": kit_num, "variant": variant, **season}
+    if km:
+        kit_num = int(km.group(1))
+        variant = int(km.group(3) or 0)
+        season = parse_cof_season_digits(int(km.group(2)))
+        if season and 1 <= kit_num <= 3:
+            return {"kit_num": kit_num, "variant": variant, **season}
+
+    km2 = re.search(r"_(\d)[a-z]?_(\d{2})(?:_(\d+))?\.(?:png|gif)$", file, re.I)
+    if km2:
+        kit_num = int(km2.group(1))
+        variant = int(km2.group(3) or 0)
+        yy = int(km2.group(2))
+        start_year = 2000 + yy if yy <= 30 else 1900 + yy
+        if 1 <= kit_num <= 3 and 1990 <= start_year <= 2040:
+            code = int(str(start_year)[-2:] + str(start_year + 1)[-2:])
+            return {
+                "kit_num": kit_num,
+                "variant": variant,
+                "season_start_year": start_year,
+                "season_code": code,
+            }
+    return None
 
 
 def parse_kit_candidates(html: str, page_url: str) -> dict[str, list]:
@@ -480,6 +500,15 @@ def find_latest_season_from_html(html: str) -> int | None:
     ):
         consider(season_code_from_year_pair(m.group(1), m.group(2)))
 
+    for m in re.finditer(
+        r"(?:home|away|third)\s+kit\s+(\d{4})(?!\s*[-–/]\s*\d)",
+        html,
+        re.I,
+    ):
+        y = int(m.group(1))
+        if 1990 <= y <= 2040:
+            consider(int(str(y)[-2:] + str(y + 1)[-2:]))
+
     return best_code or None
 
 
@@ -528,17 +557,26 @@ def fetch_latest_kits(nation: str, club_name: str, short: str) -> dict:
         return {"error": f"No COF mapping for nation: {nation}"}
 
     folder, index = cfg
-    index_html = fetch_text(f"{COF_COLOURS}/{folder}/{index}")
-    links = parse_index_links(index_html)
 
-    override = COF_CLUB_SLUG_OVERRIDES.get(short)
-    link = None
-    if override:
-        link = next((l for l in links if l["slug"] == override or l["page_stem"] == override), None)
-    if not link:
-        link = match_club_link(links, club_name)
-    if not link:
-        return {"error": f"Club not found on COF ({folder}): {club_name}"}
+    path = COF_PATH_OVERRIDES.get(short)
+    if path:
+        slug, stem = path
+        link = {"slug": slug, "page_stem": stem, "name": club_name}
+    else:
+        index_html = fetch_text(f"{COF_COLOURS}/{folder}/{index}")
+        links = parse_index_links(index_html)
+
+        override = COF_CLUB_SLUG_OVERRIDES.get(short)
+        link = None
+        if override:
+            link = next(
+                (l for l in links if l["slug"] == override or l["page_stem"] == override),
+                None,
+            )
+        if not link:
+            link = match_club_link(links, club_name)
+        if not link:
+            return {"error": f"Club not found on COF ({folder}): {club_name}"}
 
     last = find_last_page(folder, link["slug"], link["page_stem"])
     buckets: dict[str, list] = {"home": [], "away": [], "third": []}

@@ -259,9 +259,19 @@ function clearCofLog() {
   if (el) el.textContent = "";
 }
 
-async function invokeCofSync(body) {
-  const { data, error } = await supabase.functions.invoke(COF_SYNC_FUNCTION, { body });
-  if (error) {
+async function invokeCofSync(body, { retries = 4 } = {}) {
+  let lastError = null;
+
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    const { data, error } = await supabase.functions.invoke(COF_SYNC_FUNCTION, {
+      body,
+    });
+
+    if (!error) {
+      if (data?.error) throw new Error(String(data.error));
+      return data;
+    }
+
     let detail = error.message || "COF sync request failed";
     try {
       const ctx = error.context;
@@ -273,17 +283,31 @@ async function invokeCofSync(body) {
       /* ignore */
     }
     if (data?.error) detail = String(data.error);
-    if (detail.includes("Failed to send")) {
-      detail += ` — deploy edge function ${COF_SYNC_FUNCTION}`;
+
+    const retryable =
+      /failed to send|cors|520|502|503|504|gateway timeout|network/i.test(
+        detail
+      );
+
+    if (!retryable || attempt >= retries - 1) {
+      if (detail.includes("Failed to send") || /520|502/.test(detail)) {
+        detail +=
+          " — edge function unreachable (520). Wait a minute, redeploy club-kits-cof-sync, then retry.";
+      }
+      if (detail.includes("504") || detail.includes("Gateway Timeout")) {
+        detail +=
+          " — edge function timed out (~60s). Use Save COF links only (uncheck Storage).";
+      }
+      throw new Error(detail);
     }
-    if (detail.includes("504") || detail.includes("Gateway Timeout")) {
-      detail +=
-        " — edge function timed out (~60s). Use Save COF links only (uncheck Storage), or run python scripts/fetch_club_kits.py for PNG files.";
-    }
-    throw new Error(detail);
+
+    lastError = new Error(detail);
+    const waitMs = 3000 * (attempt + 1);
+    appendCofLog(`Retry ${attempt + 2}/${retries} in ${waitMs / 1000}s… (${detail})`);
+    await new Promise((r) => setTimeout(r, waitMs));
   }
-  if (data?.error) throw new Error(String(data.error));
-  return data;
+
+  throw lastError || new Error("COF sync request failed");
 }
 
 async function previewCofForSelected() {

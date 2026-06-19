@@ -3,8 +3,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-api-version",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
 };
 
 function jsonResponse(body: Record<string, unknown>, status = 200) {
@@ -38,12 +39,29 @@ Deno.serve(async (req) => {
   }
 
   try {
+    return await handleClubKitsCofSync(req);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return jsonResponse({ error: message }, 500);
+  }
+});
+
+async function handleClubKitsCofSync(req: Request): Promise<Response> {
+  try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const anonKey =
+      Deno.env.get("SUPABASE_ANON_KEY") ?? req.headers.get("apikey") ?? "";
 
     if (!supabaseUrl || !serviceRoleKey || !anonKey) {
       return jsonResponse({ error: "Server misconfigured" }, 500);
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const action = String(body?.action || "sync_batch");
+
+    if (action === "ping") {
+      return jsonResponse({ ok: true, pong: true, ts: Date.now() });
     }
 
     const authHeader = req.headers.get("Authorization");
@@ -65,8 +83,6 @@ Deno.serve(async (req) => {
     if (adminError || !isAdmin) return jsonResponse({ error: "Admin only" }, 403);
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
-    const body = await req.json().catch(() => ({}));
-    const action = String(body?.action || "sync_batch");
     const downloadImages = body?.download === true;
     const storageBucket = String(body?.bucket || "club-kits");
     const cofCache = createCofFetchCache();
@@ -314,4 +330,4 @@ Deno.serve(async (req) => {
     const message = err instanceof Error ? err.message : String(err);
     return jsonResponse({ error: message }, 500);
   }
-});
+}
