@@ -299,17 +299,10 @@
       transform:none;
     }
 
-    .draft-refresh-row {
-      display:flex;
-      align-items:center;
-      flex-wrap:wrap;
-      gap:10px;
-      padding-bottom:6px;
-    }
-
     .draft-refresh-note {
       font-size:11px;
       color:#888;
+      margin:0 20px 10px 20px;
     }
 
     .draft-filters {
@@ -333,7 +326,8 @@
     }
 
     .draft-filters input[type="text"],
-    .draft-filters select {
+    .draft-filters select,
+    .draft-filters input[type="number"] {
       padding:7px 10px;
       background:#111;
       border:1px solid #444;
@@ -341,6 +335,11 @@
       border-radius:4px;
       font-size:13px;
       min-width:160px;
+    }
+
+    .draft-filters input[type="number"]#draftRefreshInterval {
+      min-width:88px;
+      max-width:100px;
     }
 
     .draft-filters input[type="text"] {
@@ -365,6 +364,30 @@
       width:16px;
       height:16px;
       cursor:pointer;
+    }
+
+    .draft-filters .filter-action {
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+
+    .draft-filters .filter-action-label {
+      font-size:12px;
+      color:#bbb;
+    }
+
+    .draft-filters .filter-action-btns {
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+    }
+
+    .draft-filters .filter-hint {
+      font-size:11px;
+      color:#888;
+      margin-top:2px;
     }
 
     .draft-filter-summary {
@@ -435,12 +458,20 @@
       <input type="checkbox" id="draftMyBidsOnly">
       <span>My club&apos;s bids only</span>
     </label>
-    <button type="button" id="draftClearFilters" class="button button-secondary">Clear filters</button>
-    <div class="draft-refresh-row">
-      <button type="button" id="draftRefreshBtn" class="button button-secondary">Refresh now</button>
-      <span id="draftRefreshNote" class="draft-refresh-note">Auto-refresh every minute</span>
+    <label>
+      Auto-refresh (sec)
+      <input type="number" id="draftRefreshInterval" min="1" max="300" step="1" value="60" aria-describedby="draftRefreshHint">
+      <span id="draftRefreshHint" class="filter-hint">1–300 seconds (5 min max)</span>
+    </label>
+    <div class="filter-action">
+      <span class="filter-action-label">Actions</span>
+      <div class="filter-action-btns">
+        <button type="button" id="draftClearFilters" class="button button-secondary">Clear filters</button>
+        <button type="button" id="draftRefreshBtn" class="button button-secondary">Refresh now</button>
+      </div>
     </div>
   </div>
+  <p id="draftRefreshNote" class="draft-refresh-note">Auto-refresh every minute</p>
   <p id="draftFilterSummary" class="draft-filter-summary" hidden></p>
 
   <div class="panel">
@@ -510,7 +541,9 @@
     let draftListingsPollMs = null;
     let listingsLoading = false;
     let draftRowsCache = [];
-    const DRAFT_LISTINGS_POLL_MS = 60000;
+    const DRAFT_REFRESH_DEFAULT_SEC = 60;
+    const DRAFT_REFRESH_MIN_SEC = 1;
+    const DRAFT_REFRESH_MAX_SEC = 300;
     const DRAFT_FILTER_STORAGE_PREFIX = "gpsl_draftauction_filters:";
 
     function draftFilterStorageKey() {
@@ -558,6 +591,61 @@
       if (myBids && buyerShortName && typeof saved.myBidsOnly === "boolean") {
         myBids.checked = saved.myBidsOnly;
       }
+
+      const refreshInterval = document.getElementById("draftRefreshInterval");
+      if (refreshInterval && typeof saved.refreshIntervalSec === "number") {
+        refreshInterval.value = String(
+          Math.min(
+            DRAFT_REFRESH_MAX_SEC,
+            Math.max(DRAFT_REFRESH_MIN_SEC, Math.round(saved.refreshIntervalSec))
+          )
+        );
+      }
+    }
+
+    function getDraftRefreshIntervalSec() {
+      const el = document.getElementById("draftRefreshInterval");
+      const n = Number(el?.value);
+      if (!Number.isFinite(n)) return DRAFT_REFRESH_DEFAULT_SEC;
+      return Math.min(
+        DRAFT_REFRESH_MAX_SEC,
+        Math.max(DRAFT_REFRESH_MIN_SEC, Math.round(n))
+      );
+    }
+
+    function getDraftRefreshIntervalMs() {
+      return getDraftRefreshIntervalSec() * 1000;
+    }
+
+    function clampDraftRefreshIntervalInput() {
+      const el = document.getElementById("draftRefreshInterval");
+      if (!el) return;
+      el.value = String(getDraftRefreshIntervalSec());
+    }
+
+    function formatAutoRefreshLabel(sec) {
+      if (sec < 60) return `Auto-refresh every ${sec}s`;
+      if (sec === 60) return "Auto-refresh every minute";
+      if (sec % 60 === 0) {
+        const mins = sec / 60;
+        return `Auto-refresh every ${mins} min`;
+      }
+      return `Auto-refresh every ${sec}s`;
+    }
+
+    function updateDraftRefreshNote(lastUpdatedText) {
+      const note = document.getElementById("draftRefreshNote");
+      if (!note) return;
+      const base = formatAutoRefreshLabel(getDraftRefreshIntervalSec());
+      note.textContent = lastUpdatedText ? `${lastUpdatedText} · ${base}` : base;
+    }
+
+    function applyDraftRefreshInterval() {
+      clampDraftRefreshIntervalInput();
+      if (draftEnabled && draftAuctionStartTimeUK) {
+        ensureDraftListingsPoll(getDraftRefreshIntervalMs());
+      }
+      updateDraftRefreshNote();
     }
 
     function stopDraftListingsPoll() {
@@ -566,7 +654,7 @@
       draftListingsPollMs = null;
     }
 
-    function ensureDraftListingsPoll(intervalMs = DRAFT_LISTINGS_POLL_MS) {
+    function ensureDraftListingsPoll(intervalMs = getDraftRefreshIntervalMs()) {
       if (draftListingsPollMs === intervalMs && draftListingsPoll) return;
       stopDraftListingsPoll();
       draftListingsPollMs = intervalMs;
@@ -595,7 +683,7 @@
             minute: "2-digit",
             second: "2-digit",
           });
-          note.textContent = `Updated ${time} · auto every minute`;
+          updateDraftRefreshNote(`Updated ${time}`);
         }
       } catch (err) {
         console.error(err);
@@ -670,6 +758,7 @@
       await loadBuyerClubShortName(user.id);
       await populateLeadingClubFilter();
       restorePersistedDraftFilters();
+      applyDraftRefreshInterval();
       favouriteIds = await loadDraftFavouriteIds(supabase, buyerShortName);
       wireDraftTableActions();
       wireDraftRefreshButton();
@@ -779,6 +868,7 @@
       const search = document.getElementById("draftPlayerSearch");
       const leading = document.getElementById("draftLeadingClubFilter");
       const myBids = document.getElementById("draftMyBidsOnly");
+      const refreshInterval = document.getElementById("draftRefreshInterval");
       const clearBtn = document.getElementById("draftClearFilters");
 
       let searchTimer = null;
@@ -795,6 +885,14 @@
       });
       myBids?.addEventListener("change", () => {
         renderDraftTable();
+        savePersistedDraftFilters();
+      });
+      refreshInterval?.addEventListener("change", () => {
+        applyDraftRefreshInterval();
+        savePersistedDraftFilters();
+      });
+      refreshInterval?.addEventListener("blur", () => {
+        applyDraftRefreshInterval();
         savePersistedDraftFilters();
       });
       clearBtn?.addEventListener("click", () => {
@@ -816,6 +914,7 @@
         nameQuery: document.getElementById("draftPlayerSearch")?.value.trim() || "",
         leadingClub: document.getElementById("draftLeadingClubFilter")?.value || "",
         myBidsOnly: document.getElementById("draftMyBidsOnly")?.checked === true,
+        refreshIntervalSec: getDraftRefreshIntervalSec(),
       };
     }
 
