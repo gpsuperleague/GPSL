@@ -56,6 +56,11 @@
             <input type="number" id="budgetReserve" min="0" step="500000" value="5000000">
             <div class="hint">Keeps this amount unspent from current balance when totalling bid amounts.</div>
           </label>
+          <label>
+            Fixed bid amount (₿)
+            <input type="number" id="fixedBidAmount" min="0" step="500000" placeholder="Leave blank for market value">
+            <div class="hint">Optional. Every opening bid uses this amount (e.g. 400000000 for ₿400M). Join bids use this too, or current high + ₿500k if that is higher.</div>
+          </label>
         </div>
         <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;">
           <button type="button" class="button" id="previewBtn">Preview plan</button>
@@ -66,6 +71,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_draft_seed.js?v=20260618"></script>
+  <script type="module" src="admin_test_draft_seed.js?v=20260619-fixed-bid"></script>
 </body>
 </html>

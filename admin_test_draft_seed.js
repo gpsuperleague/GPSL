@@ -62,11 +62,13 @@ function renderPreview(result) {
   const skipped = Array.isArray(result.skipped) ? result.skipped : [];
 
   box.hidden = false;
+  const fixedBid = Number(document.getElementById("fixedBidAmount")?.value || 0);
   box.innerHTML = `
     <p><b>${escapeHtml(result.club)}</b> · ${result.dry_run ? "Preview" : "Placed"} ·
       ${result.dry_run ? bids.length : result.placed} bid(s) ·
       spend ${formatMoney(result.total_spend || 0)} ·
       balance ${formatMoney(result.balance || 0)} (reserve ${formatMoney(Number(document.getElementById("budgetReserve")?.value || 0))}) ·
+      ${fixedBid > 0 ? `fixed bid ${formatMoney(fixedBid)} · ` : ""}
       draft credits after ${result.draft_credits_remaining ?? "—"}</p>
     <p>Projected squad: <b>${proj.squad_size ?? "—"}</b> players ·
       HG <b>${proj.home_grown ?? "—"}</b>/${targets.min_hg ?? 8} ·
@@ -112,6 +114,9 @@ async function runSeed(dryRun) {
   const club = document.getElementById("clubSelect")?.value?.trim();
   const maxBids = Number(document.getElementById("maxBids")?.value || 27);
   const budgetReserve = Number(document.getElementById("budgetReserve")?.value || 0);
+  const fixedBidRaw = document.getElementById("fixedBidAmount")?.value;
+  const fixedBidAmount =
+    fixedBidRaw === "" || fixedBidRaw == null ? null : Number(fixedBidRaw);
 
   if (!club) {
     setStatus("pageStatus", "Select a club first.", false);
@@ -140,6 +145,7 @@ async function runSeed(dryRun) {
     p_max_bids: maxBids,
     p_budget_reserve: budgetReserve,
     p_dry_run: dryRun,
+    p_bid_amount: fixedBidAmount,
   });
 
   if (error) {

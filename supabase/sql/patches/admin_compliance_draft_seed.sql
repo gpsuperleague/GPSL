@@ -178,7 +178,8 @@ CREATE OR REPLACE FUNCTION public.admin_compliance_draft_seed_bids(
   p_club_short_name text,
   p_max_bids int DEFAULT 27,
   p_budget_reserve numeric DEFAULT 5000000,
-  p_dry_run boolean DEFAULT true
+  p_dry_run boolean DEFAULT true,
+  p_bid_amount numeric DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -190,6 +191,7 @@ DECLARE
   v_club_nation text;
   v_max_bids int := greatest(coalesce(p_max_bids, 1), 1);
   v_reserve numeric := greatest(coalesce(p_budget_reserve, 0), 0);
+  v_fixed_bid numeric := NULLIF(greatest(coalesce(p_bid_amount, 0), 0), 0);
   v_bounds record;
   v_enabled boolean;
   v_balance numeric;
@@ -432,7 +434,7 @@ BEGIN
     v_is_first := v_window_bids = 0;
     v_is_join := NOT v_is_first;
     v_consume := false;
-    v_amount := greatest(coalesce(v_player.market_value, 0), 0);
+    v_high := 0;
 
     IF v_is_first THEN
       IF now() >= v_bounds.draft_cutoff THEN
@@ -455,8 +457,6 @@ BEGIN
         AND coalesce(b.player_id, b.direct_bid_id::text) = v_player.player_id
         AND b.bid_time >= v_bounds.draft_start
         AND b.bid_time < v_bounds.draft_window_end;
-
-      v_amount := v_high + 500000;
 
       IF EXISTS (
         SELECT 1
@@ -499,6 +499,17 @@ BEGIN
           AND b.bid_time >= v_bounds.draft_start
           AND b.bid_time < v_bounds.draft_window_end
       );
+    END IF;
+
+    IF v_fixed_bid IS NOT NULL THEN
+      v_amount := v_fixed_bid;
+      IF v_is_join AND v_amount <= v_high THEN
+        v_amount := v_high + 500000;
+      END IF;
+    ELSIF v_is_first THEN
+      v_amount := greatest(coalesce(v_player.market_value, 0), 0);
+    ELSE
+      v_amount := v_high + 500000;
     END IF;
 
     IF v_amount <= 0 THEN
@@ -614,6 +625,7 @@ BEGIN
     'total_spend', v_spent,
     'balance', v_balance,
     'budget_after_reserve', v_budget,
+    'fixed_bid_amount', v_fixed_bid,
     'draft_credits_remaining', v_credits,
     'composition_before', v_comp,
     'position_before', v_pos,
@@ -647,6 +659,8 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.admin_compliance_draft_seed_bids(text, int, numeric, boolean) TO authenticated;
+DROP FUNCTION IF EXISTS public.admin_compliance_draft_seed_bids(text, int, numeric, boolean);
+
+GRANT EXECUTE ON FUNCTION public.admin_compliance_draft_seed_bids(text, int, numeric, boolean, numeric) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
