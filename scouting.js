@@ -151,7 +151,7 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
 
             return `
           <tr data-player-id="${pid}">
-            <td>${playerThumbLinkHtml(pid, { className: "gpdb-thumb", alt: name })}</td>
+            <td>${playerThumbLinkHtml(pid, { className: "scout-thumb", alt: name })}</td>
             <td class="name">${playerNameLinkHtml(pid, name)}</td>
             <td>${p?.Nation || "—"}</td>
             <td>${p?.Position || "—"}</td>
