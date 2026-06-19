@@ -1,39 +1,33 @@
-# Club kits — Colours of Football sync
+# Club kits — Colours of Football
 
 Kit graphics from [colours-of-football.com](https://www.colours-of-football.com/) (credit Mikhail Sipovich / COF).
 
-## Admin UI
+## Download latest kits (same as stadiums)
 
-**Admin → Club kits → Sync all clubs from COF**
-
-- Looks up each GPSL club on COF by `Clubs.Nation` + `Clubs.Club` name
-- Picks the **latest season** home (`_1_`), away (`_2_`), and third (`_3_`) kit PNGs
-- Saves full COF image URLs into `club_kits` (shown on **Club Details**)
-
-## Edge function deploy
-
-1. Run `supabase/sql/patches/club_kits.sql` if not already applied
-2. In Supabase Dashboard → **Edge Functions** → create `club-kits-cof-sync`
-3. Deploy both files from `supabase/functions/club-kits-cof-sync/`:
-   - `index.ts`
-   - `club_kits_cof.js` (helper module — required)
-
-Optional **Supabase Storage** download:
-
-1. Create public bucket `club-kits`
-2. Tick **Download to Supabase Storage** in admin before sync
-3. Images are stored as `{SHORT}/home.png` etc. and public URLs are saved to the DB
-
-## Local download into the repo
-
-To commit kit files under `images/clubs_kits/` (GitHub Pages static hosting):
+From repo root — **no secrets needed** (reads anon key from `supabase_client.js`):
 
 ```bash
-node scripts/sync_club_kits_from_cof.mjs
+python scripts/fetch_club_kits.py
 ```
 
-Requires `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in the environment (or `.env` loaded by you).
+Options:
+
+- `--dry-run` — print URLs only
+- `--only ARS,LIV,MCI` — subset by `Clubs.ShortName`
+
+Outputs:
+
+- `images/clubs_kits/{ShortName}_home.png` (and `_away`, `_third`)
+- `data/club_kits_cof.json` — cached COF URLs + season
+
+**Latest season logic:** scans every COF page for the club, collects all kit images, then picks the **highest season code** per type (`_1_` home, `_2_` away, `_3_` third — e.g. `2526` = 2025–26).
+
+Club Details uses these files automatically via default paths when `club_kits` DB rows are empty.
+
+## Admin COF sync (URLs only)
+
+**Admin → Club kits → Sync all clubs from COF** saves COF image URLs to the database (edge function `club-kits-cof-sync`). Use the Python script above if you want files in the repo.
 
 ## Manual COF slug overrides
 
-If auto-match fails for a club, add an entry to `COF_CLUB_SLUG_OVERRIDES` in `club_kits_cof.js` (COF folder slug under the nation directory, e.g. `a_villa` for Aston Villa).
+If auto-match fails, add `ShortName: "cof_folder_slug"` to `COF_CLUB_SLUG_OVERRIDES` in `club_kits_cof.js` and re-run the fetch.

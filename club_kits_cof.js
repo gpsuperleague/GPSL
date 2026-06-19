@@ -12,7 +12,7 @@ export const COF_NATION_MAP = {
   france: { folder: "fra", index: "fra.html" },
   netherlands: { folder: "ned", index: "ned.html" },
   portugal: { folder: "por", index: "por.html" },
-  belgium: { folder: "bel", index: "bel.html" },
+  belgium: { folder: "bel", index: "belgium.html" },
   scotland: { folder: "sco", index: "scotland.html" },
   turkey: { folder: "tur", index: "tur.html" },
   turkiye: { folder: "tur", index: "tur.html" },
@@ -59,7 +59,29 @@ export const COF_NATION_MAP = {
 
 /** Manual overrides when auto-match fails: ShortName → COF club folder slug (under nation folder) */
 export const COF_CLUB_SLUG_OVERRIDES = {
-  // Example: SOME: "slug_folder",
+  AVL: "a_villa",
+  MUN: "manutd",
+  MCI: "man_city",
+  TOT: "tottenham",
+  WOL: "wolverhampton",
+  WHU: "westham",
+  BRE: "brentford",
+  BAR: "barcelona",
+  ATM: "atletico",
+  RMA: "real_madrid",
+  JUV: "juventus",
+  INT: "inter",
+  MIL: "milan",
+  DOR: "dortmund",
+  PSG: "psg",
+  AJX: "ajax",
+  BEN: "benfica",
+  POR: "porto",
+  SPO: "sporting",
+  BOC: "boca",
+  COR: "corinthians",
+  NAC: "atletico_nacional",
+  AND: "anderlecht",
 };
 
 const USER_AGENT =
@@ -176,7 +198,7 @@ export function matchCofClubLink(links, clubName) {
   return bestScore >= 6 ? best : null;
 }
 
-function parseKitImagesFromHtml(html, pageUrl) {
+function parseKitCandidatesFromHtml(html, pageUrl) {
   const buckets = { home: [], away: [], third: [] };
 
   for (const m of html.matchAll(/src="([^"]+\.(?:png|gif))"/gi)) {
@@ -199,28 +221,54 @@ function parseKitImagesFromHtml(html, pageUrl) {
     });
   }
 
-  const pick = (arr) => {
-    if (!arr.length) return null;
-    const maxSeason = Math.max(...arr.map((x) => x.season));
-    const top = arr.filter((x) => x.season === maxSeason);
-    top.sort(
-      (a, b) => a.variant - b.variant || a.file.localeCompare(b.file)
-    );
-    return top[0]?.url ?? null;
-  };
+  return buckets;
+}
 
+function pickLatestKitUrl(candidates) {
+  if (!candidates.length) return null;
+  const maxSeason = Math.max(...candidates.map((x) => x.season));
+  const top = candidates.filter((x) => x.season === maxSeason);
+  top.sort(
+    (a, b) => a.variant - b.variant || a.file.localeCompare(b.file)
+  );
+  return top[0]?.url ?? null;
+}
+
+function pickLatestKits(buckets) {
   return {
-    home: pick(buckets.home),
-    away: pick(buckets.away),
-    third: pick(buckets.third),
+    home: pickLatestKitUrl(buckets.home),
+    away: pickLatestKitUrl(buckets.away),
+    third: pickLatestKitUrl(buckets.third),
   };
 }
 
-function mergeKitUrls(a, b) {
+function mergeKitBuckets(a, b) {
   return {
-    home: a.home || b.home || null,
-    away: a.away || b.away || null,
-    third: a.third || b.third || null,
+    home: [...a.home, ...b.home],
+    away: [...a.away, ...b.away],
+    third: [...a.third, ...b.third],
+  };
+}
+
+/** @deprecated use pickLatestKits after merging buckets */
+function parseKitImagesFromHtml(html, pageUrl) {
+  return pickLatestKits(parseKitCandidatesFromHtml(html, pageUrl));
+}
+
+function mergeKitUrls(a, b) {
+  const seasonFromUrl = (url) => {
+    const m = String(url || "").match(/_(\d)_(\d{4})(?:_\d+)?\.(?:png|gif)$/i);
+    return m ? Number(m[2]) : 0;
+  };
+  const pick = (left, right) => {
+    if (!left) return right;
+    if (!right) return left;
+    return seasonFromUrl(left) >= seasonFromUrl(right) ? left : right;
+  };
+  return {
+    home: pick(a.home, b.home),
+    away: pick(a.away, b.away),
+    third: pick(a.third, b.third),
   };
 }
 
@@ -312,18 +360,23 @@ export async function fetchLatestCofKits(
     fetchImpl
   );
 
-  let merged = { home: null, away: null, third: null };
+  let buckets = { home: [], away: [], third: [] };
 
   for (let page = 1; page <= lastPage; page += 1) {
     const pageUrl = `${COF_COLOURS}/${nationFolder}/${slug}/${pageStem}_${page}.html`;
     const html = await fetchCofHtml(pageUrl, fetchImpl);
-    merged = mergeKitUrls(merged, parseKitImagesFromHtml(html, pageUrl));
+    buckets = mergeKitBuckets(
+      buckets,
+      parseKitCandidatesFromHtml(html, pageUrl)
+    );
   }
+
+  const kits = pickLatestKits(buckets);
 
   return {
     ...resolved,
     lastPage,
-    kits: merged,
+    kits,
     source: "colours-of-football.com",
   };
 }

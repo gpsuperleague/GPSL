@@ -1,0 +1,533 @@
+{
+  "ARS": {
+    "club": "Arsenal",
+    "nation": "England",
+    "cof_name": "Arsenal",
+    "slug": "arsenal",
+    "kits": {
+      "home": "images/clubs_kits/ARS_home.png",
+      "away": "images/clubs_kits/ARS_away.png",
+      "third": "images/clubs_kits/ARS_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:08Z"
+  },
+  "AJX": {
+    "club": "Ajax",
+    "nation": "Netherlands",
+    "cof_name": "Ajax",
+    "slug": "ajax",
+    "kits": {
+      "home": "images/clubs_kits/AJX_home.png",
+      "away": "images/clubs_kits/AJX_away.png",
+      "third": "images/clubs_kits/AJX_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:05Z"
+  },
+  "AND": {
+    "club": "Anderlecht",
+    "nation": "Belgium",
+    "cof_name": "RSC Anderlecht",
+    "slug": "anderlecht",
+    "kits": {
+      "home": "images/clubs_kits/AND_home.png",
+      "away": "images/clubs_kits/AND_away.png",
+      "third": "images/clubs_kits/AND_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:07Z"
+  },
+  "AVL": {
+    "club": "Aston Villa",
+    "nation": "England",
+    "cof_name": "Aston Villa",
+    "slug": "a_villa",
+    "kits": {
+      "home": "images/clubs_kits/AVL_home.png",
+      "away": "images/clubs_kits/AVL_away.png",
+      "third": "images/clubs_kits/AVL_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:10Z"
+  },
+  "ATA": {
+    "club": "Atalanta",
+    "nation": "Italy",
+    "cof_name": "Atalanta BC",
+    "slug": "atalanta",
+    "kits": {
+      "home": "images/clubs_kits/ATA_home.png",
+      "away": "images/clubs_kits/ATA_away.png",
+      "third": "images/clubs_kits/ATA_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:11Z"
+  },
+  "ATM": {
+    "club": "Atletico Madrid",
+    "nation": "Spain",
+    "cof_name": "Club Atletico de Madrid",
+    "slug": "atl_madrid",
+    "kits": {
+      "home": "images/clubs_kits/ATM_home.png",
+      "away": "images/clubs_kits/ATM_away.png",
+      "third": "images/clubs_kits/ATM_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:13Z"
+  },
+  "BAR": {
+    "club": "Barcelona",
+    "nation": "Spain",
+    "cof_name": "FC Barcelona",
+    "slug": "barcelona",
+    "kits": {
+      "home": "images/clubs_kits/BAR_home.png",
+      "away": "images/clubs_kits/BAR_away.png",
+      "third": "images/clubs_kits/BAR_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:14Z"
+  },
+  "BEN": {
+    "club": "Benfica",
+    "nation": "Portugal",
+    "cof_name": "SL Benfica",
+    "slug": "benfica",
+    "kits": {
+      "home": "images/clubs_kits/BEN_home.png",
+      "away": "images/clubs_kits/BEN_away.png",
+      "third": "images/clubs_kits/BEN_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:16Z"
+  },
+  "BES": {
+    "club": "Besiktas",
+    "nation": "T\u00fcrkiye",
+    "cof_name": "Besiktas JK",
+    "slug": "besiktas",
+    "kits": {
+      "home": "images/clubs_kits/BES_home.png",
+      "away": "images/clubs_kits/BES_away.png",
+      "third": "images/clubs_kits/BES_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:18Z"
+  },
+  "CVI": {
+    "club": "Celta Vigo",
+    "nation": "Spain",
+    "cof_name": "RC&nbsp;Celta de Vigo",
+    "slug": "celta",
+    "kits": {
+      "home": "images/clubs_kits/CVI_home.png",
+      "away": "images/clubs_kits/CVI_away.png",
+      "third": "images/clubs_kits/CVI_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:20Z"
+  },
+  "CEL": {
+    "club": "Celtic",
+    "nation": "Scotland",
+    "cof_name": "Celtic FC",
+    "slug": "celtic",
+    "kits": {
+      "home": "images/clubs_kits/CEL_home.png",
+      "away": "images/clubs_kits/CEL_away.png",
+      "third": "images/clubs_kits/CEL_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:22Z"
+  },
+  "CHE": {
+    "club": "Chelsea",
+    "nation": "England",
+    "cof_name": "Chelsea",
+    "slug": "chelsea",
+    "kits": {
+      "home": "images/clubs_kits/CHE_home.png",
+      "away": "images/clubs_kits/CHE_away.png",
+      "third": "images/clubs_kits/CHE_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:24Z"
+  },
+  "BRU": {
+    "club": "Club Brugge",
+    "nation": "Belgium",
+    "cof_name": "RSC Anderlecht",
+    "slug": "anderlecht",
+    "kits": {
+      "home": "images/clubs_kits/BRU_home.png",
+      "away": "images/clubs_kits/BRU_away.png",
+      "third": "images/clubs_kits/BRU_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:25Z"
+  },
+  "COR": {
+    "club": "Corinthians",
+    "nation": "Brazil",
+    "cof_name": "Sport Club Corinthians",
+    "slug": "corinthians",
+    "kits": {},
+    "fetchedAt": "2026-06-19T10:50:26Z"
+  },
+  "CRU": {
+    "club": "Cruzeiro",
+    "nation": "Brazil",
+    "cof_name": "Cruzeiro Esporte Clube",
+    "slug": "cruzeiro",
+    "kits": {},
+    "fetchedAt": "2026-06-19T10:50:27Z"
+  },
+  "DOR": {
+    "club": "Dortmund",
+    "nation": "Germany",
+    "cof_name": "BV Borussia Dortmund",
+    "slug": "dortmund",
+    "kits": {
+      "home": "images/clubs_kits/DOR_home.png",
+      "away": "images/clubs_kits/DOR_away.png",
+      "third": "images/clubs_kits/DOR_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:30Z"
+  },
+  "ESP": {
+    "club": "Espanyol",
+    "nation": "Spain",
+    "cof_name": "RCD Espanyol",
+    "slug": "espanyol",
+    "kits": {
+      "home": "images/clubs_kits/ESP_home.png",
+      "away": "images/clubs_kits/ESP_away.png",
+      "third": "images/clubs_kits/ESP_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:31Z"
+  },
+  "FEY": {
+    "club": "Feyenoord",
+    "nation": "Netherlands",
+    "cof_name": "Feyenoord",
+    "slug": "feyenoord",
+    "kits": {
+      "home": "images/clubs_kits/FEY_home.png",
+      "away": "images/clubs_kits/FEY_away.png",
+      "third": "images/clubs_kits/FEY_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:35Z"
+  },
+  "FIO": {
+    "club": "Fiorentina",
+    "nation": "Italy",
+    "cof_name": "AC Fiorentina",
+    "slug": "fiorentina",
+    "kits": {
+      "home": "images/clubs_kits/FIO_home.png",
+      "away": "images/clubs_kits/FIO_away.png",
+      "third": "images/clubs_kits/FIO_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:37Z"
+  },
+  "FLA": {
+    "club": "Flamengo",
+    "nation": "Brazil",
+    "cof_name": "CR Flamengo",
+    "slug": "flamengo",
+    "kits": {
+      "home": "images/clubs_kits/FLA_home.png",
+      "away": "images/clubs_kits/FLA_away.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:39Z"
+  },
+  "GCZ": {
+    "club": "Grasshoppers Club Zurich",
+    "nation": "Switzerland",
+    "cof_name": "FC Zurich",
+    "slug": "zurich",
+    "kits": {
+      "home": "images/clubs_kits/GCZ_home.png",
+      "away": "images/clubs_kits/GCZ_away.png",
+      "third": "images/clubs_kits/GCZ_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:40Z"
+  },
+  "INT": {
+    "club": "Inter Milan",
+    "nation": "Italy",
+    "cof_name": "FC Internazionale Milano",
+    "slug": "inter",
+    "kits": {
+      "home": "images/clubs_kits/INT_home.png",
+      "away": "images/clubs_kits/INT_away.png",
+      "third": "images/clubs_kits/INT_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:42Z"
+  },
+  "JUV": {
+    "club": "Juventus",
+    "nation": "Italy",
+    "cof_name": "Juventus FC",
+    "slug": "juventus",
+    "kits": {
+      "home": "images/clubs_kits/JUV_home.png",
+      "away": "images/clubs_kits/JUV_away.png",
+      "third": "images/clubs_kits/JUV_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:44Z"
+  },
+  "KAS": {
+    "club": "Kasimpasa",
+    "nation": "T\u00fcrkiye",
+    "cof_name": "Kasimpasa Spor Kulubu",
+    "slug": "kasimpasa",
+    "kits": {
+      "home": "images/clubs_kits/KAS_home.png",
+      "away": "images/clubs_kits/KAS_away.png",
+      "third": "images/clubs_kits/KAS_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:45Z"
+  },
+  "LAZ": {
+    "club": "Lazio",
+    "nation": "Italy",
+    "cof_name": "SS Lazio",
+    "slug": "lazio",
+    "kits": {
+      "home": "images/clubs_kits/LAZ_home.png",
+      "away": "images/clubs_kits/LAZ_away.png",
+      "third": "images/clubs_kits/LAZ_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:47Z"
+  },
+  "LEV": {
+    "club": "Leverkusen",
+    "nation": "Germany",
+    "cof_name": "Bayer 04 Leverkusen",
+    "slug": "leverkusen",
+    "kits": {
+      "home": "images/clubs_kits/LEV_home.png",
+      "away": "images/clubs_kits/LEV_away.png",
+      "third": "images/clubs_kits/LEV_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:49Z"
+  },
+  "LIL": {
+    "club": "Lille",
+    "nation": "France",
+    "cof_name": "CD&nbsp;Leganes",
+    "slug": "lille",
+    "kits": {
+      "home": "images/clubs_kits/LIL_home.png",
+      "away": "images/clubs_kits/LIL_away.png",
+      "third": "images/clubs_kits/LIL_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:50Z"
+  },
+  "LIV": {
+    "club": "Liverpool",
+    "nation": "England",
+    "cof_name": "Liverpool",
+    "slug": "liverpool",
+    "kits": {
+      "home": "images/clubs_kits/LIV_home.png",
+      "away": "images/clubs_kits/LIV_away.png",
+      "third": "images/clubs_kits/LIV_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:52Z"
+  },
+  "MCI": {
+    "club": "Man City",
+    "nation": "England",
+    "cof_name": "Manchester City",
+    "slug": "man_city",
+    "kits": {
+      "home": "images/clubs_kits/MCI_home.png",
+      "away": "images/clubs_kits/MCI_away.png",
+      "third": "images/clubs_kits/MCI_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:53Z"
+  },
+  "MAR": {
+    "club": "Marseille",
+    "nation": "France",
+    "cof_name": "Marseilles",
+    "slug": "om",
+    "kits": {
+      "home": "images/clubs_kits/MAR_home.png",
+      "away": "images/clubs_kits/MAR_away.png",
+      "third": "images/clubs_kits/MAR_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:56Z"
+  },
+  "MON": {
+    "club": "Monaco",
+    "nation": "France",
+    "cof_name": "Monaco",
+    "slug": "monaco",
+    "kits": {
+      "home": "images/clubs_kits/MON_home.png",
+      "away": "images/clubs_kits/MON_away.png",
+      "third": "images/clubs_kits/MON_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:50:57Z"
+  },
+  "NMU": {
+    "club": "New Mexico United",
+    "nation": "United States",
+    "cof_name": "New Mexico United",
+    "slug": "new_mexico_united",
+    "kits": {},
+    "fetchedAt": "2026-06-19T10:50:59Z"
+  },
+  "LYO": {
+    "club": "Olympique Lyonnais",
+    "nation": "France",
+    "cof_name": "Lyon",
+    "slug": "lyon",
+    "kits": {
+      "home": "images/clubs_kits/LYO_home.png",
+      "away": "images/clubs_kits/LYO_away.png",
+      "third": "images/clubs_kits/LYO_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:51:00Z"
+  },
+  "POR": {
+    "club": "Porto",
+    "nation": "Portugal",
+    "cof_name": "FC Porto",
+    "slug": "porto",
+    "kits": {
+      "home": "images/clubs_kits/POR_home.png",
+      "away": "images/clubs_kits/POR_away.png",
+      "third": "images/clubs_kits/POR_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:51:02Z"
+  },
+  "PSG": {
+    "club": "PSG",
+    "nation": "France",
+    "cof_name": "PSG",
+    "slug": "psg",
+    "kits": {
+      "home": "images/clubs_kits/PSG_home.png",
+      "away": "images/clubs_kits/PSG_away.png",
+      "third": "images/clubs_kits/PSG_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:51:04Z"
+  },
+  "PSV": {
+    "club": "PSV",
+    "nation": "Netherlands",
+    "cof_name": "PSV",
+    "slug": "psv",
+    "kits": {
+      "home": "images/clubs_kits/PSV_home.png",
+      "away": "images/clubs_kits/PSV_away.png",
+      "third": "images/clubs_kits/PSV_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:51:06Z"
+  },
+  "BET": {
+    "club": "Real Betis",
+    "nation": "Spain",
+    "cof_name": "Real Betis Balompie",
+    "slug": "betis",
+    "kits": {
+      "home": "images/clubs_kits/BET_home.png",
+      "away": "images/clubs_kits/BET_away.png",
+      "third": "images/clubs_kits/BET_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:51:08Z"
+  },
+  "RMA": {
+    "club": "Real Madrid",
+    "nation": "Spain",
+    "cof_name": "Real Madrid CF",
+    "slug": "real_madrid",
+    "kits": {
+      "home": "images/clubs_kits/RMA_home.png",
+      "away": "images/clubs_kits/RMA_away.png",
+      "third": "images/clubs_kits/RMA_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:51:10Z"
+  },
+  "SAN": {
+    "club": "Santos",
+    "nation": "Brazil",
+    "cof_name": "Santos FC",
+    "slug": "santos",
+    "kits": {},
+    "fetchedAt": "2026-06-19T10:51:11Z"
+  },
+  "SAP": {
+    "club": "Sao Paulo",
+    "nation": "Brazil",
+    "cof_name": "Sao Paulo FC",
+    "slug": "sao_paulo",
+    "kits": {},
+    "fetchedAt": "2026-06-19T10:51:12Z"
+  },
+  "SCI": {
+    "club": "SC Internacional",
+    "nation": "Brazil",
+    "cof_name": "SC Internacional",
+    "slug": "inter",
+    "kits": {
+      "home": "images/clubs_kits/SCI_home.png",
+      "away": "images/clubs_kits/SCI_away.png",
+      "third": "images/clubs_kits/SCI_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:51:13Z"
+  },
+  "SPO": {
+    "club": "Sporting CP",
+    "nation": "Portugal",
+    "cof_name": "Sporting Clube de Portugal",
+    "slug": "sporting",
+    "kits": {
+      "home": "images/clubs_kits/SPO_home.png",
+      "away": "images/clubs_kits/SPO_away.png",
+      "third": "images/clubs_kits/SPO_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:51:15Z"
+  },
+  "STE": {
+    "club": "St Etienne",
+    "nation": "France",
+    "cof_name": "St.Etienne",
+    "slug": "st_etienne",
+    "kits": {
+      "home": "images/clubs_kits/STE_home.png",
+      "away": "images/clubs_kits/STE_away.png",
+      "third": "images/clubs_kits/STE_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:51:16Z"
+  },
+  "TOT": {
+    "club": "Tottenham Hotspur",
+    "nation": "England",
+    "cof_name": "Tottenham Hotspur",
+    "slug": "tottenham",
+    "kits": {
+      "home": "images/clubs_kits/TOT_home.png",
+      "away": "images/clubs_kits/TOT_away.png",
+      "third": "images/clubs_kits/TOT_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:51:19Z"
+  },
+  "VAL": {
+    "club": "Valencia",
+    "nation": "Spain",
+    "cof_name": "Valencia CF",
+    "slug": "valencia",
+    "kits": {
+      "home": "images/clubs_kits/VAL_home.png",
+      "away": "images/clubs_kits/VAL_away.png",
+      "third": "images/clubs_kits/VAL_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:51:20Z"
+  },
+  "VIL": {
+    "club": "Villarreal",
+    "nation": "Spain",
+    "cof_name": "Villarreal CF",
+    "slug": "villareal",
+    "kits": {
+      "home": "images/clubs_kits/VIL_home.png",
+      "away": "images/clubs_kits/VIL_away.png",
+      "third": "images/clubs_kits/VIL_third.png"
+    },
+    "fetchedAt": "2026-06-19T10:51:21Z"
+  }
+}
