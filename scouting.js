@@ -17,6 +17,14 @@ import {
   saveScoutingPlanner,
 } from "./scouting_targets.js";
 import { initMatchdaySquadPanel } from "./matchday_squad.js";
+import {
+  loadScoutingDraftContext,
+  buildPlayerDraftUiState,
+  renderDraftManageCell,
+  ensureDraftListingForPlayer,
+  submitScoutingDraftBid,
+} from "./scouting_draft_actions.js";
+import { confirmSquadRulesBeforeBid } from "./squad_rules.js";
 
 const PLAYER_COLUMNS =
   "Konami_ID, Name, Nation, Position, Rating, Potential, Calc_Potential, Age, market_value, Playstyle, Contracted_Team";
@@ -25,9 +33,17 @@ const PLAYER_COLUMNS_LEGACY =
   "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Contracted_Team";
 
 let clubShort = null;
+let clubNation = null;
 let scoutingRows = [];
 let scoutingPlayers = [];
+let playerMapCache = new Map();
+let draftContext = null;
 let plannerApi = null;
+
+function parseBidAmount(raw) {
+  const n = Number(String(raw || "").replace(/[^\d]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
 
 function setPlannerStatus(msg, isError = false) {
   const el = document.getElementById("plannerStatus");
@@ -78,7 +94,7 @@ function playersForPlanner() {
   }));
 }
 
-function renderTierTable(tier, rows, playerMap) {
+function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
   if (!rows.length) {
     return `<p class="scout-empty">No players — star targets in GPDB (☆).</p>`;
   }
@@ -96,6 +112,10 @@ function renderTierTable(tier, rows, playerMap) {
           <th>MV</th>
           <th>Playstyle</th>
           <th>Club</th>
+          <th>Draft</th>
+          <th>Leading</th>
+          <th>Your bid</th>
+          <th>Manage bid</th>
           <th>Tier</th>
           <th></th>
         </tr>
@@ -116,6 +136,18 @@ function renderTierTable(tier, rows, playerMap) {
             const club = p?.Contracted_Team
               ? displayClubName(p.Contracted_Team)
               : "Free agent";
+            const draftUi = draftUiByPlayer.get(pid) || {
+              status: "—",
+              leadingText: "—",
+              yourBidText: "—",
+              playerId: pid,
+              canOpen: false,
+              canBidInline: false,
+              minBid: null,
+              playerPageUrl: null,
+              isLeading: false,
+            };
+            const yourBidClass = draftUi.isLeading ? "scout-leading-bid" : "";
 
             return `
           <tr data-player-id="${pid}">
@@ -128,6 +160,10 @@ function renderTierTable(tier, rows, playerMap) {
             <td>${mv}</td>
             <td>${p?.Playstyle || "—"}</td>
             <td>${club}</td>
+            <td class="scout-draft-status">${draftUi.status}</td>
+            <td>${draftUi.leadingText}</td>
+            <td class="${yourBidClass}">${draftUi.yourBidText}</td>
+            <td>${renderDraftManageCell(draftUi)}</td>
             <td>
               <select class="scout-tier-select" data-player-id="${pid}" aria-label="Tier for ${name}">
                 ${[1, 2, 3, 4]
@@ -146,6 +182,85 @@ function renderTierTable(tier, rows, playerMap) {
           .join("")}
       </tbody>
     </table>`;
+}
+
+async function buildDraftUiMap(playerMap) {
+  const draftUiByPlayer = new Map();
+  if (!draftContext) return draftUiByPlayer;
+
+  for (const p of playerMap.values()) {
+    const ui = await buildPlayerDraftUiState(draftContext, p);
+    draftUiByPlayer.set(String(p.Konami_ID), ui);
+  }
+  return draftUiByPlayer;
+}
+
+function wireDraftActions(wrap) {
+  wrap.querySelectorAll(".scout-open-auction").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const pid = btn.dataset.playerId;
+      const player = playerMapCache.get(pid);
+      if (!player) return;
+      btn.disabled = true;
+      try {
+        const result = await ensureDraftListingForPlayer(supabase, player);
+        if (!result.ok) {
+          alert(result.msg || "Could not open auction.");
+          return;
+        }
+        await renderScoutingLists();
+      } catch (err) {
+        alert(err?.message || "Could not open auction.");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  wrap.querySelectorAll(".scout-bid-submit").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const pid = btn.dataset.playerId;
+      const player = playerMapCache.get(pid);
+      const input = wrap.querySelector(`.scout-bid-input[data-player-id="${pid}"]`);
+      if (!player || !input) return;
+
+      const offer = parseBidAmount(input.value);
+      if (offer <= 0) {
+        alert("Enter a valid bid amount.");
+        return;
+      }
+
+      if (
+        !(await confirmSquadRulesBeforeBid(
+          supabase,
+          clubShort,
+          clubNation,
+          player
+        ))
+      ) {
+        return;
+      }
+
+      btn.disabled = true;
+      try {
+        const result = await submitScoutingDraftBid(supabase, {
+          player,
+          offerAmount: offer,
+          buyerShortName: clubShort,
+          draftAuctionStartTime: draftContext?.draftStart,
+        });
+        if (!result.ok) {
+          alert(result.msg || "Bid failed.");
+          return;
+        }
+        await renderScoutingLists();
+      } catch (err) {
+        alert(err?.message || "Bid failed.");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
 }
 
 async function renderScoutingLists() {
@@ -167,9 +282,17 @@ async function renderScoutingLists() {
   }
 
   const playerMap = await fetchPlayersByIds(scoutingRows.map((r) => r.player_id));
+  playerMapCache = playerMap;
   scoutingPlayers = scoutingRows
     .map((r) => playerMap.get(String(r.player_id)))
     .filter(Boolean);
+
+  draftContext = await loadScoutingDraftContext(
+    supabase,
+    clubShort,
+    scoutingRows.map((r) => r.player_id)
+  );
+  const draftUiByPlayer = await buildDraftUiMap(playerMap);
 
   wrap.innerHTML = [1, 2, 3, 4]
     .map((tier) => {
@@ -177,10 +300,12 @@ async function renderScoutingLists() {
       return `
         <div class="tier-block" data-tier="${tier}">
           <h3>${SCOUTING_TIER_LABELS[tier]} (${tierRows.length})</h3>
-          ${renderTierTable(tier, tierRows, playerMap)}
+          ${renderTierTable(tier, tierRows, playerMap, draftUiByPlayer)}
         </div>`;
     })
     .join("");
+
+  wireDraftActions(wrap);
 
   wrap.querySelectorAll(".scout-tier-select").forEach((sel) => {
     sel.addEventListener("change", async () => {
@@ -297,7 +422,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const { data: club } = await supabase
     .from("Clubs")
-    .select("ShortName, Club")
+    .select("ShortName, Club, Nation")
     .eq("owner_id", user.id)
     .maybeSingle();
 
@@ -308,6 +433,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   clubShort = club.ShortName;
+  clubNation = club.Nation || null;
   await loadClubsMap();
 
   const fullName = fullClubName(clubShort) || club.Club || clubShort;

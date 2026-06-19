@@ -56,8 +56,17 @@
     .scout-tabs button.active { background:#ff9900; color:#111; border-color:#ff9900; }
     .scout-tab-panel { display:none; }
     .scout-tab-panel.active { display:block; }
+    .scout-draft-status { font-size:11px; color:#bbb; max-width:120px; }
+    .scout-leading-bid { color:#8d8; font-weight:bold; }
+    .scout-draft-manage { display:flex; flex-direction:column; align-items:center; gap:6px; min-width:140px; }
+    .scout-bid-row { display:flex; gap:4px; align-items:center; flex-wrap:wrap; justify-content:center; }
+    .scout-bid-input {
+      width:88px; padding:4px 6px; font-size:11px;
+      background:#222; border:1px solid #555; color:#ddd; border-radius:4px;
+    }
+    .scout-table { font-size:11px; }
+    .scout-table th, .scout-table td { padding:5px 4px; }
     #scoutingPlannerRoot .squad-hint b { color:#ffcc66; }
-    #scoutingPlannerRoot #squadSaveBtn::after { content: " tactic board"; }
   </style>
 </head>
 <body class="dashboard-page">
@@ -71,8 +80,9 @@
       </div>
     </div>
     <p class="meta">
-      Star players in <a href="GPDB.html" style="color:#ff9900;">GPDB</a> to add them here.
-      Organise into top / backup / third / fourth choice, then plan a lineup on the tactic board.
+      Star players in <a href="GPDB.html" style="color:#ff9900;">GPDB</a> (☆ column) to add them here.
+      When the draft window opens, use <b>Open auction</b> on free agents, then bid inline or on the full bid page.
+      Plan lineups on the <b>Tactic board</b> tab.
       <a href="transfer_center.html#scouting-targets" class="button-link" style="margin-left:8px;">Transfer Centre</a>
     </p>
 
