@@ -21,10 +21,10 @@ export const COF_NATION_MAP = {
   usa: { folder: "usa", index: "usa.html" },
   "united states": { folder: "usa", index: "usa.html" },
   mexico: { folder: "mex", index: "mex.html" },
-  japan: { folder: "jap", index: "jap.html" },
-  korea: { folder: "kor", index: "kor.html" },
-  "south korea": { folder: "kor", index: "kor.html" },
-  "korea republic": { folder: "kor", index: "kor.html" },
+  japan: { folder: "jap", index: "jpn.html" },
+  korea: { folder: "kor", index: "korea.html" },
+  "south korea": { folder: "kor", index: "korea.html" },
+  "korea republic": { folder: "kor", index: "korea.html" },
   denmark: { folder: "den", index: "den.html" },
   sweden: { folder: "swe", index: "swe.html" },
   norway: { folder: "nor", index: "nor.html" },
@@ -85,6 +85,12 @@ export const COF_CLUB_SLUG_OVERRIDES = {
   AND: "anderlecht",
   PAL: "palmeiras",
   CVI: "celta",
+  LAZ: "lazio",
+  LIL: "lille",
+  LYO: "lyon",
+  COP: "fck",
+  JEJ: "jeju_united",
+  JUB: "jubilo_iwata",
 };
 
 /** When slug alone is not enough (page stem differs from folder name) */

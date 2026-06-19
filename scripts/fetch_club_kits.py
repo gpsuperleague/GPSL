@@ -160,10 +160,10 @@ COF_NATION_MAP = {
     "usa": ("usa", "usa.html"),
     "united states": ("usa", "usa.html"),
     "mexico": ("mex", "mex.html"),
-    "japan": ("jap", "jap.html"),
-    "korea": ("kor", "kor.html"),
-    "south korea": ("kor", "kor.html"),
-    "korea republic": ("kor", "kor.html"),
+    "japan": ("jap", "jpn.html"),
+    "korea": ("kor", "korea.html"),
+    "south korea": ("kor", "korea.html"),
+    "korea republic": ("kor", "korea.html"),
     "denmark": ("den", "den.html"),
     "sweden": ("swe", "swe.html"),
     "norway": ("nor", "nor.html"),
@@ -278,6 +278,9 @@ COF_CLUB_SLUG_OVERRIDES: dict[str, str] = {
     "SAN": "santos",
     "BOC": "boca_juniors",
     "EST": "estudiantes",
+    "COP": "fck",
+    "JEJ": "jeju_united",
+    "JUB": "jubilo_iwata",
 }
 
 COF_PATH_OVERRIDES = {
