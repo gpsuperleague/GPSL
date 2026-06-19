@@ -167,14 +167,15 @@ Deno.serve(async (req) => {
           }
         }
 
-        const { error: saveErr } = await adminClient.rpc(
-          "admin_club_kits_upsert",
+        const { error: saveErr } = await adminClient.from("club_kits").upsert(
           {
-            p_club_short_name: club.ShortName,
-            p_home_image_url: homeUrl,
-            p_away_image_url: awayUrl,
-            p_third_image_url: thirdUrl,
-          }
+            club_short_name: club.ShortName,
+            home_image_url: homeUrl,
+            away_image_url: awayUrl,
+            third_image_url: thirdUrl,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "club_short_name" }
         );
 
         if (saveErr) throw saveErr;
