@@ -531,7 +531,7 @@ BEGIN
       VALUES (
         v_listing_id,
         v_player.player_id,
-        v_player.player_id,
+        NULL,
         v_club,
         NULL,
         v_amount,
