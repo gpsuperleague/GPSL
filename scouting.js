@@ -40,6 +40,64 @@ let playerMapCache = new Map();
 let draftContext = null;
 let plannerApi = null;
 
+const SCOUTING_POSITION_ORDER = [
+  "GK",
+  "LB",
+  "CB",
+  "RB",
+  "DMF",
+  "LMF",
+  "CMF",
+  "RMF",
+  "AMF",
+  "LWF",
+  "SS",
+  "RWF",
+  "CF",
+];
+
+const SCOUTING_POSITION_ALIASES = {
+  LW: "LWF",
+  RW: "RWF",
+};
+
+function normalizeScoutingPosition(position) {
+  const p = String(position || "").trim().toUpperCase();
+  return SCOUTING_POSITION_ALIASES[p] || p;
+}
+
+function scoutingPositionSortIndex(position) {
+  const p = normalizeScoutingPosition(position);
+  const i = SCOUTING_POSITION_ORDER.indexOf(p);
+  return i >= 0 ? i : 999;
+}
+
+function sortScoutingRowsByPosition(rows, playerMap) {
+  return [...rows].sort((a, b) => {
+    const pa = playerMap.get(String(a.player_id));
+    const pb = playerMap.get(String(b.player_id));
+    const pos =
+      scoutingPositionSortIndex(pa?.Position) -
+      scoutingPositionSortIndex(pb?.Position);
+    if (pos !== 0) return pos;
+    return String(pa?.Name || "").localeCompare(String(pb?.Name || ""), "en", {
+      sensitivity: "base",
+    });
+  });
+}
+
+function sortPlayersByScoutingPosition(players) {
+  return [...players].sort((a, b) => {
+    const pos =
+      scoutingPositionSortIndex(a?.Position) -
+      scoutingPositionSortIndex(b?.Position);
+    if (pos !== 0) return pos;
+    return String(a?.Name || "").localeCompare(String(b?.Name || ""), "en", {
+      sensitivity: "base",
+    });
+  });
+}
+
 function parseBidAmount(raw) {
   const n = Number(String(raw || "").replace(/[^\d]/g, ""));
   return Number.isFinite(n) ? n : 0;
@@ -84,7 +142,7 @@ async function fetchPlayersByIds(ids) {
 }
 
 function playersForPlanner() {
-  return scoutingPlayers.map((p) => ({
+  return sortPlayersByScoutingPosition(scoutingPlayers).map((p) => ({
     Konami_ID: p.Konami_ID,
     Name: p.Name,
     Nation: p.Nation,
@@ -283,9 +341,11 @@ async function renderScoutingLists() {
 
   const playerMap = await fetchPlayersByIds(scoutingRows.map((r) => r.player_id));
   playerMapCache = playerMap;
-  scoutingPlayers = scoutingRows
-    .map((r) => playerMap.get(String(r.player_id)))
-    .filter(Boolean);
+  scoutingPlayers = sortPlayersByScoutingPosition(
+    scoutingRows
+      .map((r) => playerMap.get(String(r.player_id)))
+      .filter(Boolean)
+  );
 
   draftContext = await loadScoutingDraftContext(
     supabase,
@@ -296,7 +356,10 @@ async function renderScoutingLists() {
 
   wrap.innerHTML = [1, 2, 3, 4]
     .map((tier) => {
-      const tierRows = scoutingRows.filter((r) => Number(r.tier) === tier);
+      const tierRows = sortScoutingRowsByPosition(
+        scoutingRows.filter((r) => Number(r.tier) === tier),
+        playerMap
+      );
       return `
         <div class="tier-block" data-tier="${tier}">
           <h3>${SCOUTING_TIER_LABELS[tier]} (${tierRows.length})</h3>
