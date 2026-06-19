@@ -242,3 +242,126 @@ function escapeHtml(text) {
 function escapeAttr(text) {
   return escapeHtml(text).replace(/"/g, "&quot;");
 }
+
+function appendCofLog(line) {
+  const el = document.getElementById("cofSyncLog");
+  if (!el) return;
+  el.textContent += `${line}\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearCofLog() {
+  const el = document.getElementById("cofSyncLog");
+  if (el) el.textContent = "";
+}
+
+async function invokeCofSync(body) {
+  const { data, error } = await supabase.functions.invoke(COF_SYNC_FUNCTION, { body });
+  if (error) {
+    let detail = error.message || "COF sync request failed";
+    try {
+      const ctx = error.context;
+      if (ctx && typeof ctx.json === "function") {
+        const payload = await ctx.json();
+        if (payload?.error) detail = String(payload.error);
+      }
+    } catch (_) {
+      /* ignore */
+    }
+    if (data?.error) detail = String(data.error);
+    if (detail.includes("Failed to send")) {
+      detail += ` — deploy edge function ${COF_SYNC_FUNCTION}`;
+    }
+    throw new Error(detail);
+  }
+  if (data?.error) throw new Error(String(data.error));
+  return data;
+}
+
+async function previewCofForSelected() {
+  const short = document.getElementById("clubSelect")?.value || "";
+  if (!short) return;
+
+  clearCofLog();
+  setStatus("statusLine", `Looking up ${short} on Colours of Football…`, true);
+  try {
+    const data = await invokeCofSync({
+      action: "preview_club",
+      club_short_name: short,
+    });
+    const kits = data?.result?.kits || {};
+    appendCofLog(
+      `${short}: ${data?.result?.cofClubName || data?.result?.slug || "?"}\n` +
+        `  home: ${kits.home || "—"}\n` +
+        `  away: ${kits.away || "—"}\n` +
+        `  third: ${kits.third || "—"}`
+    );
+    setStatus("statusLine", `COF preview for ${short} ready.`, true);
+  } catch (err) {
+    setStatus("statusLine", err.message, false);
+    appendCofLog(err.message);
+  }
+}
+
+async function syncAllFromCof() {
+  if (cofSyncRunning) return;
+  if (
+    !confirm(
+      "Sync kit URLs from colours-of-football.com for all GPSL clubs? Existing custom URLs will be overwritten."
+    )
+  ) {
+    return;
+  }
+
+  cofSyncRunning = true;
+  const syncBtn = document.getElementById("cofSyncBtn");
+  const download = document.getElementById("cofDownloadStorage")?.checked === true;
+  if (syncBtn) syncBtn.disabled = true;
+  clearCofLog();
+
+  let offset = 0;
+  let ok = 0;
+  let fail = 0;
+
+  try {
+    while (true) {
+      setStatus(
+        "statusLine",
+        `COF sync — batch from club ${offset + 1}…`,
+        true
+      );
+      const data = await invokeCofSync({
+        action: "sync_batch",
+        offset,
+        limit: 4,
+        download,
+      });
+
+      for (const row of data?.results || []) {
+        if (row.ok) {
+          ok += 1;
+          appendCofLog(`✓ ${row.club_short_name}`);
+        } else {
+          fail += 1;
+          appendCofLog(`✗ ${row.club_short_name}: ${row.error || "failed"}`);
+        }
+      }
+
+      if (data?.done || data?.next_offset == null) break;
+      offset = data.next_offset;
+    }
+
+    await loadTable();
+    setStatus(
+      "statusLine",
+      `COF sync complete — ${ok} updated, ${fail} failed.`,
+      fail === 0
+    );
+  } catch (err) {
+    setStatus("statusLine", err.message, false);
+    appendCofLog(err.message);
+  } finally {
+    cofSyncRunning = false;
+    if (syncBtn) syncBtn.disabled = false;
+  }
+}
