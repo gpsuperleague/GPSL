@@ -137,7 +137,7 @@ export async function fetchDraftBidsGroupedForPlayers(
   for (const id of normalized) map.set(id, []);
   if (!bounds || !normalized.length) return map;
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("Player_Transfer_Bids")
     .select(
       "bidder_club_id, is_first_draft_bid, is_draft_join, draft_join_consumed, bid_time, bid_amount, bid_id, direct_bid_id, player_id"
@@ -145,8 +145,13 @@ export async function fetchDraftBidsGroupedForPlayers(
     .eq("is_direct", true)
     .is("seller_club_id", null)
     .gte("bid_time", bounds.startIso)
-    .lt("bid_time", bounds.endIso)
-    .order("bid_time", { ascending: true });
+    .lt("bid_time", bounds.endIso);
+
+  if (normalized.length <= 120) {
+    query = query.in("player_id", normalized);
+  }
+
+  const { data, error } = await query.order("bid_time", { ascending: true });
 
   if (error) {
     console.error("fetchDraftBidsGroupedForPlayers:", error);
@@ -262,17 +267,17 @@ export async function getDraftCreditsCount(clubShortName, draftAuctionStartTime)
   return credits;
 }
 
-/* ============================================================
-   MODULE F: Bidding Eligibility
-   ============================================================ */
-
-export async function canClubBidOnPlayerDraft({
-  konamiId,
+/**
+ * Eligibility check using preloaded bids/credits (no extra Supabase round-trips).
+ */
+export function canClubBidOnPlayerDraftSync({
   buyerShortName,
   draftAuctionEnabled,
   draftAuctionStartTime,
+  windowBids = [],
+  draftCredits = 0,
+  nowUK = getUKNow(),
 }) {
-  const nowUK = getUKNow();
   const start = draftAuctionStartTime ? new Date(draftAuctionStartTime) : null;
   const timeline = getDraftTimelineFromStart(start);
 
@@ -294,21 +299,44 @@ export async function canClubBidOnPlayerDraft({
     return false;
   }
 
-  const cutoff = timeline.cutoff;
+  const bids = windowBids || [];
+  if (bids.some((b) => b.bidder_club_id === buyerShortName)) return true;
 
-  const windowBids = await fetchCurrentDraftAuctionBids(konamiId, start);
-
-  if (windowBids.some((b) => b.bidder_club_id === buyerShortName)) return true;
-
-  const isFirstBid = windowBids.length === 0;
-
-  if (isFirstBid) {
-    if (nowUK >= cutoff) return false;
+  if (bids.length === 0) {
+    if (nowUK >= timeline.cutoff) return false;
     return true;
   }
 
-  const credits = await getDraftCreditsCount(buyerShortName, start);
-  return credits > 0;
+  return (draftCredits ?? 0) > 0;
+}
+
+/* ============================================================
+   MODULE F: Bidding Eligibility
+   ============================================================ */
+
+export async function canClubBidOnPlayerDraft({
+  konamiId,
+  buyerShortName,
+  draftAuctionEnabled,
+  draftAuctionStartTime,
+  windowBids,
+  draftCredits,
+}) {
+  const start = draftAuctionStartTime ? new Date(draftAuctionStartTime) : null;
+  const bids =
+    windowBids ??
+    (await fetchCurrentDraftAuctionBids(konamiId, start));
+  let credits = draftCredits;
+  if (credits == null && buyerShortName) {
+    credits = await getDraftCreditsCount(buyerShortName, start);
+  }
+  return canClubBidOnPlayerDraftSync({
+    buyerShortName,
+    draftAuctionEnabled,
+    draftAuctionStartTime: start,
+    windowBids: bids,
+    draftCredits: credits ?? 0,
+  });
 }
 
 /* ============================================================

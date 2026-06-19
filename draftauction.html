@@ -474,7 +474,7 @@
       getUKNow,
       isDraftAuctionEnded,
       getDraftCredits,
-      canClubBidOnPlayerDraft,
+      canClubBidOnPlayerDraftSync,
       getEffectiveDraftPhase,
       draftPhaseLabel,
       getDraftBiddingOpen,
@@ -890,27 +890,27 @@
           .filter(v => !Number.isNaN(v))
       )];
 
-      const { data: players } = await supabase
-        .from("Players")
-        .select("Konami_ID, Name, Position, Rating, market_value")
-        .in("Konami_ID", playerIds);
+      const playerIdKeys = playerIds.map((id) => normalizeKonamiId(id));
 
-      const playerMap = new Map(players.map(p => [Number(p.Konami_ID), p]));
+      const [
+        { data: players },
+        bidsByPlayer,
+        ,
+        draftCreditsResult,
+      ] = await Promise.all([
+        supabase
+          .from("Players")
+          .select("Konami_ID, Name, Position, Rating, market_value")
+          .in("Konami_ID", playerIds),
+        fetchDraftBidsGroupedForPlayers(playerIdKeys, draftAuctionStartTimeUK),
+        loadClubsMap(),
+        buyerShortName
+          ? getDraftCredits(buyerShortName, draftAuctionStartTimeUK)
+          : Promise.resolve({ credits: 0 }),
+      ]);
 
-      const bidsByPlayer = await fetchDraftBidsGroupedForPlayers(
-        playerIds.map((id) => normalizeKonamiId(id)),
-        draftAuctionStartTimeUK
-      );
-
-      const clubShortNames = [];
-      for (const bids of bidsByPlayer.values()) {
-        for (const b of bids) clubShortNames.push(b.bidder_club_id);
-      }
-      for (const l of listings) {
-        if (l.current_highest_bidder) clubShortNames.push(l.current_highest_bidder);
-      }
-
-      await loadClubsMap();
+      const playerMap = new Map((players || []).map(p => [Number(p.Konami_ID), p]));
+      const draftCredits = draftCreditsResult?.credits ?? 0;
 
       const auctionEnded = isDraftAuctionEnded(nowUK, draftAuctionStartTimeUK);
 
@@ -955,12 +955,16 @@
           : false;
         const myClubLeading = buyerShortName && leadingClubShort === buyerShortName;
 
-        const canBid = await canClubBidOnPlayerDraft({
-          konamiId: player.Konami_ID,
-          buyerShortName,
-          draftAuctionEnabled: draftEnabled,
-          draftAuctionStartTime: draftAuctionStartTimeUK,
-        });
+        const canBid =
+          !auctionEnded &&
+          canClubBidOnPlayerDraftSync({
+            buyerShortName,
+            draftAuctionEnabled: draftEnabled,
+            draftAuctionStartTime: draftAuctionStartTimeUK,
+            windowBids: playerBids,
+            draftCredits,
+            nowUK,
+          });
 
         const btnClass = auctionEnded
           ? "enabled view-only"
