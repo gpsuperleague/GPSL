@@ -206,7 +206,6 @@ DECLARE
   v_slots_remaining int;
   v_min_bid numeric;
   v_mode text;
-  v_modes text[] := ARRAY['star', 'hg', 'u21', 'pos', 'any'];
   v_player_found boolean;
   v_bounds record;
   v_enabled boolean;
@@ -258,6 +257,11 @@ DECLARE
   v_def_def int;
   v_def_mid int;
   v_def_fwd int;
+  v_squad_size_before int;
+  v_compliance_met boolean;
+  v_still_needed int;
+  v_afford_cap numeric;
+  v_pick_modes text[];
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -342,6 +346,7 @@ BEGIN
     AND (v_ooo IS NULL OR p."Konami_ID"::text <> v_ooo);
 
   v_spare_slots := greatest(v_max_squad - v_squad, 0);
+  v_squad_size_before := v_squad;
   v_loop_max := v_spare_slots;
   v_min_target := least(v_min_players, v_spare_slots);
 
@@ -383,10 +388,27 @@ BEGIN
 
     v_slots_remaining := v_loop_max - v_i + 1;
     v_remaining_budget := v_spend_cap - v_spent;
-    v_slot_reserve := 500000 * greatest(v_slots_remaining - 1, 0);
+    v_still_needed := greatest(v_min_target - v_placed, 0);
+    v_compliance_met := (
+      v_stars >= v_star_cap
+      AND v_hg >= v_min_hg
+      AND v_u21 >= v_min_u21
+      AND v_gk >= v_target_gk
+      AND v_def >= v_target_def
+      AND v_mid >= v_target_mid
+      AND v_fwd >= v_target_fwd
+    );
+    IF v_compliance_met THEN
+      v_pick_modes := ARRAY['any'];
+      v_slot_reserve := 500000 * greatest(v_slots_remaining - 1, 0);
+    ELSE
+      v_pick_modes := ARRAY['star', 'hg', 'u21', 'pos', 'any'];
+      v_slot_reserve := 500000 * greatest(v_slots_remaining - 1, 0);
+    END IF;
+    v_afford_cap := v_remaining_budget - v_slot_reserve;
     v_player_found := false;
 
-    FOREACH v_mode IN ARRAY v_modes LOOP
+    FOREACH v_mode IN ARRAY v_pick_modes LOOP
       IF v_mode = 'star' AND v_stars >= v_star_cap THEN
         CONTINUE;
       END IF;
@@ -470,13 +492,17 @@ BEGIN
         AND (
           p_total_spend_budget IS NULL
           OR (
-            coalesce(p.market_value::numeric, 0) >= 500000
-            AND coalesce(p.market_value::numeric, 0) <= v_remaining_budget - v_slot_reserve
+            greatest(coalesce(p.market_value::numeric, 0), 500000) <= v_afford_cap
           )
         )
       ORDER BY
         CASE
-          WHEN p_total_spend_budget IS NOT NULL THEN coalesce(p.market_value::numeric, 0)
+          WHEN p_total_spend_budget IS NOT NULL AND (v_mode = 'any' OR v_compliance_met)
+            THEN coalesce(p.market_value::numeric, 0)
+        END ASC NULLS LAST,
+        CASE
+          WHEN p_total_spend_budget IS NOT NULL AND v_mode <> 'any' AND NOT v_compliance_met
+            THEN coalesce(p.market_value::numeric, 0)
         END DESC NULLS LAST,
         CASE
           WHEN p_total_spend_budget IS NULL THEN coalesce(p.market_value::numeric, 0)
@@ -508,11 +534,74 @@ BEGIN
       END IF;
     END LOOP;
 
+    IF NOT v_player_found AND p_total_spend_budget IS NOT NULL AND v_afford_cap >= 500000 THEN
+      SELECT
+        p."Konami_ID"::text AS player_id,
+        p."Name" AS player_name,
+        p."Position" AS player_position,
+        coalesce(p.market_value::numeric, 0) AS market_value,
+        public.club_squad_player_rating(p."Konami_ID"::text) AS rating,
+        public.club_squad_player_age(p."Konami_ID"::text) AS age,
+        (
+          public.normalize_nation_key(p."Nation") = public.normalize_nation_key(v_club_nation)
+          AND public.normalize_nation_key(p."Nation") <> ''
+        ) AS is_home_grown,
+        public.international_player_pool_position_group(p."Position") AS pos_group
+      INTO v_player
+      FROM public."Players" p
+      WHERE (p."Contracted_Team" IS NULL OR btrim(p."Contracted_Team") = '')
+        AND coalesce(p.pesdb_unavailable, false) = false
+        AND NOT public.player_signed_this_season(p."Season_Signed")
+        AND (
+          p.contract_seasons_remaining IS NULL
+          OR p.contract_seasons_remaining > 1
+        )
+        AND NOT (p."Konami_ID"::text = ANY (v_exclude))
+        AND (
+          public.club_squad_player_rating(p."Konami_ID"::text) < v_star_min
+          OR v_stars < v_star_cap
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM public."Player_Transfer_Bids" b
+          WHERE b.bidder_club_id = v_club
+            AND b.is_direct = true
+            AND b.seller_club_id IS NULL
+            AND coalesce(b.player_id, b.direct_bid_id::text) = p."Konami_ID"::text
+            AND b.bid_time >= v_bounds.draft_start
+            AND b.bid_time < v_bounds.draft_window_end
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM public."Player_Transfer_Bids" b
+          WHERE b.is_direct = true
+            AND b.seller_club_id IS NULL
+            AND coalesce(b.player_id, b.direct_bid_id::text) = p."Konami_ID"::text
+            AND b.bid_time >= v_bounds.draft_start
+            AND b.bid_time < v_bounds.draft_window_end
+        )
+        AND greatest(coalesce(p.market_value::numeric, 0), 500000) <= v_remaining_budget
+      ORDER BY coalesce(p.market_value::numeric, 0) ASC, random()
+      LIMIT 1;
+
+      IF FOUND THEN
+        v_player_found := true;
+      END IF;
+    END IF;
+
     IF NOT v_player_found THEN
       v_skipped := v_skipped || jsonb_build_array(
-        jsonb_build_object('reason', 'no_eligible_player', 'attempt', v_i)
+        jsonb_build_object(
+          'reason', 'no_eligible_player',
+          'attempt', v_i,
+          'remaining_budget', v_remaining_budget,
+          'still_needed', v_still_needed
+        )
       );
-      EXIT;
+      IF v_placed >= v_min_target OR v_still_needed <= 0 THEN
+        EXIT;
+      END IF;
+      CONTINUE;
     END IF;
 
     v_rating := coalesce(v_player.rating, 0);
@@ -631,7 +720,8 @@ BEGIN
           'remaining_budget', v_spend_cap - v_spent
         )
       );
-      EXIT;
+      v_exclude := array_append(v_exclude, v_player.player_id);
+      CONTINUE;
     END IF;
 
     IF v_spent + v_amount > v_budget THEN
@@ -644,7 +734,8 @@ BEGIN
           'remaining_balance', v_budget - v_spent
         )
       );
-      EXIT;
+      v_exclude := array_append(v_exclude, v_player.player_id);
+      CONTINUE;
     END IF;
 
     IF NOT p_dry_run THEN
@@ -755,6 +846,18 @@ BEGIN
     'min_players_target', v_min_target,
     'min_players_met', jsonb_array_length(v_bids) >= v_min_target,
     'spare_squad_slots', v_spare_slots,
+    'squad_size_before', v_squad_size_before,
+    'squad_size_cap_note',
+      CASE
+        WHEN v_min_players > v_spare_slots THEN
+          format(
+            'Requested %s purchases but only %s spare squad slot(s) (squad %s/28).',
+            v_min_players,
+            v_spare_slots,
+            v_squad_size_before
+          )
+        ELSE NULL
+      END,
     'total_spend', v_spent,
     'balance', v_balance,
     'budget_after_reserve', v_budget,

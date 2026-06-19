@@ -52,7 +52,7 @@
           <label>
             Minimum players to buy
             <input type="number" id="minPlayersToBuy" min="1" max="27" value="27">
-            <div class="hint">Target at least this many draft signings (capped by spare squad slots: 28 minus current squad). Stops early only if budget or eligible pool runs out.</div>
+            <div class="hint">Target at least this many draft signings. Hard cap: spare squad slots (28 minus current squad). Preview shows squad size and effective target.</div>
           </label>
           <label>
             Budget reserve (₿)
@@ -62,7 +62,7 @@
           <label>
             Total spend budget (₿)
             <input type="number" id="totalSpendBudget" min="0" step="1000000" value="400000000">
-            <div class="hint">Cap for all bids at market value (e.g. 400000000 = ₿400M). Picks the most expensive eligible free agents that fit, targeting just under the cap. Opening bids only.</div>
+            <div class="hint">Cap for all bids at market value (e.g. 400000000 = ₿400M). Compliance picks first (expensive where needed), then cheaper fill to hit the player target.</div>
           </label>
         </div>
         <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;">
@@ -74,6 +74,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_draft_seed.js?v=20260619-min-players"></script>
+  <script type="module" src="admin_test_draft_seed.js?v=20260619-squad-cap"></script>
 </body>
 </html>

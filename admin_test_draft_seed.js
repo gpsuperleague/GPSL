@@ -75,14 +75,31 @@ function renderPreview(result) {
   const skipped = Array.isArray(result.skipped) ? result.skipped : [];
   const totalBudget = Number(document.getElementById("totalSpendBudget")?.value || 0);
   const avgBid = bids.length ? (result.total_spend || 0) / bids.length : 0;
+  const squadBefore = result.squad_size_before ?? result.composition_before?.total ?? null;
+  const spareSlots = result.spare_squad_slots;
+  const capNote = result.squad_size_cap_note;
+  const requestedMin = result.min_players_requested;
+  const effectiveTarget = result.min_players_target;
 
   box.hidden = false;
   box.innerHTML = `
     <p><b>${escapeHtml(result.club)}</b> · ${result.dry_run ? "Preview" : "Placed"} ·
-      ${result.dry_run ? bids.length : result.placed} bid(s)${result.min_players_target != null ? ` · target ≥ ${result.min_players_target}` : ""}${result.min_players_met === false ? " · <span style=\"color:#e8c547\">below minimum</span>" : ""} ·
+      ${result.dry_run ? bids.length : result.placed} bid(s)${effectiveTarget != null ? ` · target ≥ ${effectiveTarget}` : ""}${result.min_players_met === false ? " · <span style=\"color:#e8c547\">below minimum</span>" : ""} ·
       spend ${formatMoney(result.total_spend || 0)}${totalBudget > 0 ? ` / ${formatMoney(totalBudget)} cap` : ""}${avgBid > 0 ? ` · avg ${formatMoney(avgBid)}` : ""} ·
       balance ${formatMoney(result.balance || 0)} ·
       draft credits after ${result.draft_credits_remaining ?? "—"}</p>
+    ${
+      squadBefore != null || spareSlots != null
+        ? `<p>Squad now: <b>${squadBefore ?? "—"}</b>/28 · spare slots: <b>${spareSlots ?? "—"}</b>${
+            requestedMin != null ? ` · requested min: ${requestedMin}` : ""
+          }${effectiveTarget != null && requestedMin != null && effectiveTarget < requestedMin ? ` · effective target: <b>${effectiveTarget}</b>` : ""}</p>`
+        : ""
+    }
+    ${
+      capNote
+        ? `<p style="color:#e8c547;"><b>Cap:</b> ${escapeHtml(capNote)}</p>`
+        : ""
+    }
     <p>Projected squad: <b>${proj.squad_size ?? "—"}</b> players ·
       GK ${pos.gk ?? 0}/${targets.gk ?? 2} · DEF ${pos.def ?? 0}/${targets.def ?? 8} ·
       MID ${pos.mid ?? 0}/${targets.mid ?? 10} · FWD ${pos.fwd ?? 0}/${targets.fwd ?? 8}</p>
@@ -116,7 +133,13 @@ function renderPreview(result) {
     ${
       skipped.length
         ? `<p style="margin-top:10px;color:#aaa;">Skipped: ${skipped
-            .map((s) => escapeHtml(`${s.reason}${s.player_name ? ` (${s.player_name})` : ""}`))
+            .map((s) => {
+              const bits = [s.reason];
+              if (s.player_name) bits.push(s.player_name);
+              if (s.remaining_budget != null) bits.push(`left ${formatMoney(s.remaining_budget)}`);
+              if (s.still_needed != null) bits.push(`needed ${s.still_needed}`);
+              return escapeHtml(bits.join(" · "));
+            })
             .join("; ")}</p>`
         : ""
     }`;
