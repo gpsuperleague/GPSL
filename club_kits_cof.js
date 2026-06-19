@@ -401,7 +401,7 @@ function pickKitUrlForSeasonYear(candidates, seasonStartYear, strict = false) {
 
   const year = Number(seasonStartYear);
   if (Number.isFinite(year) && year >= 1990) {
-    const filtered = candidates.filter((x) => x.season === year);
+    const filtered = candidates.filter((x) => x.seasonStartYear === year);
     if (filtered.length) {
       filtered.sort(
         (a, b) => a.variant - b.variant || a.file.localeCompare(b.file)
@@ -411,8 +411,8 @@ function pickKitUrlForSeasonYear(candidates, seasonStartYear, strict = false) {
     if (strict) return null;
   }
 
-  const maxSeason = Math.max(...candidates.map((x) => x.season));
-  const top = candidates.filter((x) => x.season === maxSeason);
+  const maxSeason = Math.max(...candidates.map((x) => x.seasonStartYear));
+  const top = candidates.filter((x) => x.seasonStartYear === maxSeason);
   top.sort(
     (a, b) => a.variant - b.variant || a.file.localeCompare(b.file)
   );
@@ -460,10 +460,7 @@ function parseKitImagesFromHtml(html, pageUrl) {
 }
 
 function mergeKitUrls(a, b) {
-  const seasonFromUrl = (url) => {
-    const m = String(url || "").match(/_(\d)_(\d{4})(?:_\d+)?\.(?:png|gif)$/i);
-    return m ? Number(m[2]) : 0;
-  };
+  const seasonFromUrl = (url) => seasonStartFromKitUrl(url);
   const pick = (left, right) => {
     if (!left) return right;
     if (!right) return left;
