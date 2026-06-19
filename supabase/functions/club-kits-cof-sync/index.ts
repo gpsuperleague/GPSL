@@ -320,9 +320,52 @@ function startYearToSeasonCode(startYear) {
   return isPlausibleKitSeasonCode(code) ? code : null;
 }
 
+/** Parse COF filename season digits (2526→2025, 2021→2020, 0910→2009). */
+function parseCofSeasonDigits(raw) {
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+
+  const yy = Math.floor(n / 100);
+  const zz = n % 100;
+  if (zz === (yy + 1) % 100) {
+    const startYear = yy <= 30 ? 2000 + yy : 1900 + yy;
+    if (startYear >= 1990 && startYear <= 2040) {
+      return { seasonStartYear: startYear, seasonCode: n };
+    }
+  }
+
+  if (n >= 1990 && n <= 2040) {
+    const startYear = n - 1;
+    if (startYear >= 1989 && startYear <= 2039) {
+      return {
+        seasonStartYear: startYear,
+        seasonCode: startYearToSeasonCode(startYear),
+      };
+    }
+  }
+
+  return null;
+}
+
+/** eng_liverpool_1_2526.png → { kitNum, seasonStartYear, seasonCode, variant } */
+function parseCofKitFileName(file) {
+  const km = String(file || "").match(
+    /_(\d)[a-z]?_(\d{4})(?:_(\d+))?\.(?:png|gif)$/i
+  );
+  if (!km) return null;
+
+  const kitNum = Number(km[1]);
+  const variant = km[3] ? Number(km[3]) : 0;
+  const season = parseCofSeasonDigits(km[2]);
+  if (!season || kitNum < 1 || kitNum > 3) return null;
+
+  return { kitNum, variant, file, ...season };
+}
+
 function seasonStartFromKitUrl(url) {
-  const m = String(url || "").match(/_(\d)_(\d{4})(?:_\d+)?\.(?:png|gif)/i);
-  return m ? Number(m[2]) : 0;
+  const file = String(url || "").split("/").pop() || "";
+  const parsed = parseCofKitFileName(file);
+  return parsed?.seasonStartYear ?? 0;
 }
 
 function maxSeasonStartFromKitUrls(kits) {
@@ -343,18 +386,14 @@ function parseKitCandidatesFromHtml(html, pageUrl) {
   for (const m of html.matchAll(/src="([^"]+\.(?:png|gif))"/gi)) {
     const src = m[1];
     const file = src.split("/").pop() || "";
-    const km = file.match(/_(\d)_(\d{4})(?:_(\d+))?\.(?:png|gif)$/i);
-    if (!km) continue;
+    const parsed = parseCofKitFileName(file);
+    if (!parsed) continue;
 
-    const kitNum = Number(km[1]);
-    const season = Number(km[2]);
-    const variant = km[3] ? Number(km[3]) : 0;
-    if (kitNum < 1 || kitNum > 3 || !Number.isFinite(season)) continue;
-
-    const kind = ["home", "away", "third"][kitNum - 1];
+    const kind = ["home", "away", "third"][parsed.kitNum - 1];
     buckets[kind].push({
-      season,
-      variant,
+      seasonStartYear: parsed.seasonStartYear,
+      seasonCode: parsed.seasonCode,
+      variant: parsed.variant,
       file,
       url: resolveCofUrl(pageUrl, src),
     });
@@ -368,7 +407,7 @@ function pickKitUrlForSeasonYear(candidates, seasonStartYear, strict = false) {
 
   const year = Number(seasonStartYear);
   if (Number.isFinite(year) && year >= 1990) {
-    const filtered = candidates.filter((x) => x.season === year);
+    const filtered = candidates.filter((x) => x.seasonStartYear === year);
     if (filtered.length) {
       filtered.sort(
         (a, b) => a.variant - b.variant || a.file.localeCompare(b.file)
@@ -378,8 +417,8 @@ function pickKitUrlForSeasonYear(candidates, seasonStartYear, strict = false) {
     if (strict) return null;
   }
 
-  const maxSeason = Math.max(...candidates.map((x) => x.season));
-  const top = candidates.filter((x) => x.season === maxSeason);
+  const maxSeason = Math.max(...candidates.map((x) => x.seasonStartYear));
+  const top = candidates.filter((x) => x.seasonStartYear === maxSeason);
   top.sort(
     (a, b) => a.variant - b.variant || a.file.localeCompare(b.file)
   );
@@ -427,10 +466,7 @@ function parseKitImagesFromHtml(html, pageUrl) {
 }
 
 function mergeKitUrls(a, b) {
-  const seasonFromUrl = (url) => {
-    const m = String(url || "").match(/_(\d)_(\d{4})(?:_\d+)?\.(?:png|gif)$/i);
-    return m ? Number(m[2]) : 0;
-  };
+  const seasonFromUrl = (url) => seasonStartFromKitUrl(url);
   const pick = (left, right) => {
     if (!left) return right;
     if (!right) return left;
