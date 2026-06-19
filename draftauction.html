@@ -628,6 +628,26 @@
       await loadDraftListings();
     });
 
+    function applyDraftFavouriteLocal(konamiId, isFav) {
+      const key = String(konamiId);
+      if (isFav) favouriteIds.add(key);
+      else favouriteIds.delete(key);
+
+      for (const row of draftRowsCache) {
+        if (String(row.player.Konami_ID) === key) {
+          row.isFav = isFav;
+        }
+      }
+
+      draftRowsCache.sort((a, b) => {
+        const aFav = a.isFav ? 0 : 1;
+        const bFav = b.isFav ? 0 : 1;
+        return aFav - bFav;
+      });
+
+      renderDraftTable();
+    }
+
     function wireDraftTableActions() {
       if (draftTableWired) return;
       draftTableWired = true;
@@ -643,13 +663,22 @@
             return;
           }
           const konamiId = favBtn.getAttribute("data-konami-id");
+          const wasFav = favouriteIds.has(String(konamiId));
+          favBtn.disabled = true;
+
+          applyDraftFavouriteLocal(konamiId, !wasFav);
+
           try {
-            await toggleDraftFavourite(supabase, buyerShortName, konamiId);
-            favouriteIds = await loadDraftFavouriteIds(supabase, buyerShortName);
-            await loadDraftListings();
+            const isFav = await toggleDraftFavourite(supabase, buyerShortName, konamiId);
+            if (isFav !== !wasFav) {
+              applyDraftFavouriteLocal(konamiId, isFav);
+            }
           } catch (err) {
+            applyDraftFavouriteLocal(konamiId, wasFav);
             console.error(err);
             alert(err.message || "Could not update saved draft auction.");
+          } finally {
+            favBtn.disabled = false;
           }
           return;
         }
