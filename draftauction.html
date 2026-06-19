@@ -511,6 +511,54 @@
     let listingsLoading = false;
     let draftRowsCache = [];
     const DRAFT_LISTINGS_POLL_MS = 60000;
+    const DRAFT_FILTER_STORAGE_PREFIX = "gpsl_draftauction_filters:";
+
+    function draftFilterStorageKey() {
+      return `${DRAFT_FILTER_STORAGE_PREFIX}${buyerShortName || "anonymous"}`;
+    }
+
+    function readPersistedDraftFilters() {
+      try {
+        const raw = localStorage.getItem(draftFilterStorageKey());
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+
+    function savePersistedDraftFilters() {
+      try {
+        localStorage.setItem(
+          draftFilterStorageKey(),
+          JSON.stringify(getDraftFilterState())
+        );
+      } catch {
+        /* private mode / quota */
+      }
+    }
+
+    function restorePersistedDraftFilters() {
+      const saved = readPersistedDraftFilters();
+      if (!saved) return;
+
+      const search = document.getElementById("draftPlayerSearch");
+      const leading = document.getElementById("draftLeadingClubFilter");
+      const myBids = document.getElementById("draftMyBidsOnly");
+
+      if (search && typeof saved.nameQuery === "string") {
+        search.value = saved.nameQuery;
+      }
+      if (leading && typeof saved.leadingClub === "string") {
+        if ([...leading.options].some((o) => o.value === saved.leadingClub)) {
+          leading.value = saved.leadingClub;
+        }
+      }
+      if (myBids && buyerShortName && typeof saved.myBidsOnly === "boolean") {
+        myBids.checked = saved.myBidsOnly;
+      }
+    }
 
     function stopDraftListingsPoll() {
       if (draftListingsPoll) clearInterval(draftListingsPoll);
@@ -621,6 +669,7 @@
       await buildNav();
       await loadBuyerClubShortName(user.id);
       await populateLeadingClubFilter();
+      restorePersistedDraftFilters();
       favouriteIds = await loadDraftFavouriteIds(supabase, buyerShortName);
       wireDraftTableActions();
       wireDraftRefreshButton();
@@ -735,15 +784,25 @@
       let searchTimer = null;
       search?.addEventListener("input", () => {
         clearTimeout(searchTimer);
-        searchTimer = setTimeout(() => renderDraftTable(), 200);
+        searchTimer = setTimeout(() => {
+          renderDraftTable();
+          savePersistedDraftFilters();
+        }, 200);
       });
-      leading?.addEventListener("change", () => renderDraftTable());
-      myBids?.addEventListener("change", () => renderDraftTable());
+      leading?.addEventListener("change", () => {
+        renderDraftTable();
+        savePersistedDraftFilters();
+      });
+      myBids?.addEventListener("change", () => {
+        renderDraftTable();
+        savePersistedDraftFilters();
+      });
       clearBtn?.addEventListener("click", () => {
         if (search) search.value = "";
         if (leading) leading.value = "";
         if (myBids) myBids.checked = false;
         renderDraftTable();
+        savePersistedDraftFilters();
       });
 
       if (myBids && !buyerShortName) {
