@@ -311,6 +311,75 @@
       font-size:11px;
       color:#888;
     }
+
+    .draft-filters {
+      display:flex;
+      flex-wrap:wrap;
+      align-items:flex-end;
+      gap:12px 16px;
+      margin:0 20px 12px 20px;
+      padding:12px 14px;
+      background:#1a1a1a;
+      border:1px solid #333;
+      border-radius:8px;
+    }
+
+    .draft-filters label {
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      font-size:12px;
+      color:#bbb;
+    }
+
+    .draft-filters input[type="text"],
+    .draft-filters select {
+      padding:7px 10px;
+      background:#111;
+      border:1px solid #444;
+      color:#ddd;
+      border-radius:4px;
+      font-size:13px;
+      min-width:160px;
+    }
+
+    .draft-filters input[type="text"] {
+      min-width:200px;
+    }
+
+    .draft-filters select {
+      min-width:220px;
+      max-width:280px;
+    }
+
+    .draft-filters .filter-check {
+      flex-direction:row;
+      align-items:center;
+      gap:8px;
+      padding-bottom:6px;
+      cursor:pointer;
+      user-select:none;
+    }
+
+    .draft-filters .filter-check input {
+      width:16px;
+      height:16px;
+      cursor:pointer;
+    }
+
+    .draft-filter-summary {
+      font-size:12px;
+      color:#888;
+      margin:0 20px 10px 20px;
+    }
+
+    tr.draft-row-my-leading td {
+      background:#152515;
+    }
+
+    tr.draft-row-my-bid td {
+      background:#1f1f14;
+    }
   </style>
 </head>
 
@@ -351,8 +420,28 @@
     • No bids by 6pm → no bids after 6pm<br>
     • No free agent bids after 6pm<br>
     • All rules are based on <b>UK time</b>, but times you see are in <b>your local time</b><br>
-    • Click <b>☆</b> on a row to save a thread — saved auctions appear at the top here and in <b>Transfer Centre → Saved Draft Auctions</b>
+    • Click <b>☆</b> on a row to save a thread — saved auctions appear at the top here and in <b>Transfer Centre → Saved Draft Auctions</b><br>
+    • Use filters above the table to search by player, leading club, or threads your club has bid on
   </div>
+
+  <div class="draft-filters" role="search" aria-label="Filter draft auctions">
+    <label>
+      Player name
+      <input type="text" id="draftPlayerSearch" placeholder="Search name…" autocomplete="off">
+    </label>
+    <label>
+      Leading club
+      <select id="draftLeadingClubFilter">
+        <option value="">All clubs</option>
+      </select>
+    </label>
+    <label class="filter-check">
+      <input type="checkbox" id="draftMyBidsOnly">
+      <span>My club&apos;s bids only</span>
+    </label>
+    <button type="button" id="draftClearFilters" class="button button-secondary">Clear filters</button>
+  </div>
+  <p id="draftFilterSummary" class="draft-filter-summary" hidden></p>
 
   <div class="panel">
     <table class="gpsl-table">
@@ -419,6 +508,7 @@
     let draftListingsPoll = null;
     let draftListingsPollMs = null;
     let listingsLoading = false;
+    let draftRowsCache = [];
     const DRAFT_LISTINGS_POLL_MS = 60000;
 
     function stopDraftListingsPoll() {
@@ -529,9 +619,11 @@
 
       await buildNav();
       await loadBuyerClubShortName(user.id);
+      await populateLeadingClubFilter();
       favouriteIds = await loadDraftFavouriteIds(supabase, buyerShortName);
       wireDraftTableActions();
       wireDraftRefreshButton();
+      wireDraftFilters();
       await updateCreditPanel();
       await loadDraftListings();
     });
@@ -568,6 +660,174 @@
           window.location = `draftauction_player.html?player=${konamiId}`;
         }
       });
+    }
+
+    function escapeFilterAttr(text) {
+      return String(text ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;");
+    }
+
+    async function populateLeadingClubFilter() {
+      const sel = document.getElementById("draftLeadingClubFilter");
+      if (!sel) return;
+
+      const saved = sel.value;
+      const { data } = await supabase
+        .from("Clubs")
+        .select("ShortName, Club")
+        .neq("ShortName", "FOREIGN")
+        .order("Club");
+
+      const options = [['', 'All clubs']];
+      for (const row of data || []) {
+        options.push([row.ShortName, row.Club || row.ShortName]);
+      }
+
+      sel.innerHTML = options
+        .map(([value, label]) =>
+          `<option value="${escapeFilterAttr(value)}">${escapeFilterAttr(label)}</option>`
+        )
+        .join("");
+
+      if ([...sel.options].some((o) => o.value === saved)) {
+        sel.value = saved;
+      }
+    }
+
+    function wireDraftFilters() {
+      const search = document.getElementById("draftPlayerSearch");
+      const leading = document.getElementById("draftLeadingClubFilter");
+      const myBids = document.getElementById("draftMyBidsOnly");
+      const clearBtn = document.getElementById("draftClearFilters");
+
+      let searchTimer = null;
+      search?.addEventListener("input", () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => renderDraftTable(), 200);
+      });
+      leading?.addEventListener("change", () => renderDraftTable());
+      myBids?.addEventListener("change", () => renderDraftTable());
+      clearBtn?.addEventListener("click", () => {
+        if (search) search.value = "";
+        if (leading) leading.value = "";
+        if (myBids) myBids.checked = false;
+        renderDraftTable();
+      });
+
+      if (myBids && !buyerShortName) {
+        myBids.disabled = true;
+        myBids.title = "Link a club to your account to use this filter";
+      }
+    }
+
+    function getDraftFilterState() {
+      return {
+        nameQuery: document.getElementById("draftPlayerSearch")?.value.trim().toLowerCase() || "",
+        leadingClub: document.getElementById("draftLeadingClubFilter")?.value || "",
+        myBidsOnly: document.getElementById("draftMyBidsOnly")?.checked === true,
+      };
+    }
+
+    function applyDraftFilters(rows) {
+      const { nameQuery, leadingClub, myBidsOnly } = getDraftFilterState();
+      let filtered = rows;
+
+      if (nameQuery) {
+        filtered = filtered.filter((row) =>
+          row.playerName.toLowerCase().includes(nameQuery)
+        );
+      }
+
+      if (leadingClub) {
+        filtered = filtered.filter((row) => row.leadingClubShort === leadingClub);
+      }
+
+      if (myBidsOnly && buyerShortName) {
+        filtered = filtered.filter((row) => row.myClubBid);
+      }
+
+      return filtered;
+    }
+
+    function updateDraftFilterSummary(shown, total) {
+      const el = document.getElementById("draftFilterSummary");
+      if (!el) return;
+
+      const { nameQuery, leadingClub, myBidsOnly } = getDraftFilterState();
+      const active = nameQuery || leadingClub || myBidsOnly;
+
+      if (!active || total === 0) {
+        el.hidden = true;
+        el.textContent = "";
+        return;
+      }
+
+      el.hidden = false;
+      el.textContent =
+        shown === total
+          ? `Showing all ${total} thread${total === 1 ? "" : "s"} (filtered)`
+          : `Showing ${shown} of ${total} thread${total === 1 ? "" : "s"}`;
+    }
+
+    function renderDraftTable() {
+      const tbody = document.getElementById("draftTableBody");
+      if (!tbody) return;
+
+      tbody.innerHTML = "";
+      const filtered = applyDraftFilters(draftRowsCache);
+      updateDraftFilterSummary(filtered.length, draftRowsCache.length);
+
+      if (!draftRowsCache.length) {
+        return;
+      }
+
+      if (!filtered.length) {
+        tbody.innerHTML =
+          `<tr><td colspan="10">No threads match your filters.</td></tr>`;
+        return;
+      }
+
+      for (const row of filtered) {
+        const tr = document.createElement("tr");
+        if (row.isFav) tr.classList.add("draft-fav-row");
+        if (row.myClubLeading) tr.classList.add("draft-row-my-leading");
+        else if (row.myClubBid) tr.classList.add("draft-row-my-bid");
+
+        tr.innerHTML = `
+          <td class="col-fav">
+            <button
+              type="button"
+              class="fav-btn${row.isFav ? " fav-on" : ""}"
+              data-konami-id="${row.player.Konami_ID}"
+              aria-label="${favouriteButtonLabel(row.isFav)}"
+              title="${favouriteButtonLabel(row.isFav)}"
+            >${favouriteStarChar(row.isFav)}</button>
+          </td>
+          <td class="col-thumb">${playerThumbLinkHtml(row.player.Konami_ID, {
+            className: "draft-thumb",
+            alt: row.playerName,
+          })}</td>
+          <td class="col-player">${playerNameLinkHtml(row.player.Konami_ID, row.playerName)}</td>
+          <td class="col-compact">${row.player.Position}</td>
+          <td class="col-compact">${row.player.Rating}</td>
+          <td class="col-money">₿ ${Number(row.player.market_value).toLocaleString("en-GB")}</td>
+          <td class="col-money">${row.highestAmount !== null ? `₿ ${Number(row.highestAmount).toLocaleString("en-GB")}` : "None"}</td>
+          <td class="col-leading-club">${row.leadingClubFull}</td>
+          <td class="col-owner"><span class="club-owner-tag">${row.leadingOwner}</span></td>
+          <td class="col-compact">
+            <button
+              class="bid-btn ${row.btnClass}"
+              data-konami-id="${row.player.Konami_ID}"
+              ${row.auctionEnded || row.canBid ? "" : "disabled"}
+            >
+              ${row.btnLabel}
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      }
     }
 
     /* ============================================================
@@ -616,6 +876,8 @@
         .eq("status", "Active");
 
       if (!listings || !listings.length) {
+        draftRowsCache = [];
+        updateDraftFilterSummary(0, 0);
         tbody.innerHTML = `<tr><td colspan="10">No active draft auctions.</td></tr>`;
         return;
       }
@@ -657,6 +919,8 @@
           "Bidding closed (random finish reached). Results settle after 7pm transfer auctions finish — listings may still show Active briefly.";
       }
 
+      draftRowsCache = [];
+
       for (const listing of sortedListings) {
         const playerIdNum = Number(listing.player_id);
         const player = playerMap.get(playerIdNum);
@@ -686,6 +950,11 @@
           ? (ownerTagForClub(leadingClubShort) || "—")
           : "—";
 
+        const myClubBid = buyerShortName
+          ? playerBids.some((b) => b.bidder_club_id === buyerShortName)
+          : false;
+        const myClubLeading = buyerShortName && leadingClubShort === buyerShortName;
+
         const canBid = await canClubBidOnPlayerDraft({
           konamiId: player.Konami_ID,
           buyerShortName,
@@ -701,43 +970,26 @@
         const btnLabel = auctionEnded ? "View" : canBid ? "Bid" : "Locked";
         const isFav = favouriteIds.has(String(player.Konami_ID));
 
-        const row = document.createElement("tr");
-        if (isFav) row.classList.add("draft-fav-row");
-        row.innerHTML = `
-          <td class="col-fav">
-            <button
-              type="button"
-              class="fav-btn${isFav ? " fav-on" : ""}"
-              data-konami-id="${player.Konami_ID}"
-              aria-label="${favouriteButtonLabel(isFav)}"
-              title="${favouriteButtonLabel(isFav)}"
-            >${favouriteStarChar(isFav)}</button>
-          </td>
-          <td class="col-thumb">${playerThumbLinkHtml(player.Konami_ID, {
-            className: "draft-thumb",
-            alt: player.Name,
-          })}</td>
-          <td class="col-player">${playerNameLinkHtml(player.Konami_ID, player.Name)}</td>
-          <td class="col-compact">${player.Position}</td>
-          <td class="col-compact">${player.Rating}</td>
-          <td class="col-money">₿ ${Number(player.market_value).toLocaleString("en-GB")}</td>
-          <td class="col-money">${highestAmount !== null ? `₿ ${Number(highestAmount).toLocaleString("en-GB")}` : "None"}</td>
-          <td class="col-leading-club">${leadingClubFull}</td>
-          <td class="col-owner"><span class="club-owner-tag">${leadingOwner}</span></td>
-          <td class="col-compact">
-            <button
-              class="bid-btn ${btnClass}"
-              data-konami-id="${player.Konami_ID}"
-              ${auctionEnded || canBid ? "" : "disabled"}
-            >
-              ${btnLabel}
-            </button>
-          </td>
-        `;
-        tbody.appendChild(row);
+        draftRowsCache.push({
+          player,
+          playerName: player.Name || "",
+          leadingClubShort,
+          leadingClubFull,
+          leadingOwner,
+          highestAmount,
+          myClubBid,
+          myClubLeading,
+          canBid,
+          btnClass,
+          btnLabel,
+          isFav,
+          auctionEnded,
+        });
       }
 
-      if (!tbody.children.length) {
+      renderDraftTable();
+
+      if (!draftRowsCache.length) {
         tbody.innerHTML = `<tr><td colspan="10">No active draft auctions.</td></tr>`;
       }
       } finally {
