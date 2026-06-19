@@ -340,7 +340,7 @@ async function downloadLatestKits({ download } = { download: true }) {
       const data = await invokeCofSync({
         action: "sync_batch",
         offset,
-        limit: 4,
+        limit: 1,
         download: useStorage,
       });
 
@@ -357,6 +357,7 @@ async function downloadLatestKits({ download } = { download: true }) {
 
       if (data?.done || data?.next_offset == null) break;
       offset = data.next_offset;
+      await new Promise((r) => setTimeout(r, 2500));
     }
 
     await loadTable();

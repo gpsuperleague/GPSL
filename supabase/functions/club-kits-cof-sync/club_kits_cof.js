@@ -94,6 +94,61 @@ export const COF_CLUB_PATH_OVERRIDES = {
 const USER_AGENT =
   "Mozilla/5.0 (compatible; GPSL-KitSync/1.0; +https://github.com/gpsl)";
 
+const COF_MIN_GAP_MS = 1400;
+const COF_MAX_RETRIES = 6;
+
+export function createCofFetchCache() {
+  return { html: new Map(), lastFetchMs: 0 };
+}
+
+function sleepMs(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function politeCofPause(cache) {
+  if (!cache) return;
+  const elapsed = Date.now() - (cache.lastFetchMs || 0);
+  if (elapsed < COF_MIN_GAP_MS) {
+    await sleepMs(COF_MIN_GAP_MS - elapsed);
+  }
+}
+
+/** YYZZ kit code → season start year (2526 → 2025, 9899 → 1998). */
+export function seasonCodeToStartYear(code) {
+  const s = String(code).padStart(4, "0");
+  const yy = Number(s.slice(0, 2));
+  if (!Number.isFinite(yy)) return 0;
+  return yy <= 30 ? 2000 + yy : 1900 + yy;
+}
+
+function isPlausibleKitSeasonCode(code) {
+  const start = seasonCodeToStartYear(code);
+  return start >= 1990 && start <= 2040;
+}
+
+/** e.g. 2025 + 26 → 2526 (rejects bogus centuries like 1998-99 beating 2025-26). */
+export function seasonCodeFromYearPair(y1Text, y2Text) {
+  const raw1 = String(y1Text ?? "").trim();
+  const raw2 = String(y2Text ?? "").trim();
+  let y1 = Number(raw1);
+  let y2 = Number(raw2);
+  if (!Number.isFinite(y1) || !Number.isFinite(y2)) return null;
+
+  if (raw1.length === 2) {
+    y1 = y1 <= 30 ? 2000 + y1 : 1900 + y1;
+    y2 = Number(raw2) <= 30 ? 2000 + Number(raw2) : 1900 + Number(raw2);
+  } else if (raw2.length === 2) {
+    y2 = Math.floor(y1 / 100) * 100 + Number(raw2);
+    if (y2 < y1) y2 += 100;
+  }
+
+  if (y1 < 1990 || y1 > 2040) return null;
+  if (y2 < y1 || y2 > y1 + 1) return null;
+
+  const code = Number(String(y1).slice(-2) + String(y2).slice(-2));
+  return isPlausibleKitSeasonCode(code) ? code : null;
+}
+
 export function normalizeNationKey(value) {
   return String(value ?? "")
     .normalize("NFD")
@@ -205,44 +260,40 @@ export function matchCofClubLink(links, clubName) {
   return bestScore >= 6 ? best : null;
 }
 
-/** e.g. 2025 + 26 → 2526 */
-export function seasonCodeFromYearPair(y1Text, y2Text) {
-  const y1 = Number(y1Text);
-  if (!Number.isFinite(y1)) return null;
-  let y2 = String(y2Text ?? "");
-  if (y2.length === 2) y2 = String(y1).slice(0, 2) + y2;
-  else y2 = String(Number(y2));
-  if (!Number.isFinite(Number(y2))) return null;
-  return Number(String(y1).slice(-2) + String(y2).slice(-2));
-}
-
 /** Read COF on-page headers: "home kit 2025-2026", "away kit 25-26", etc. */
 export function findLatestSeasonFromHtml(html) {
-  let max = 0;
+  let bestCode = 0;
+  let bestStart = 0;
+
+  const consider = (code) => {
+    if (!code || !isPlausibleKitSeasonCode(code)) return;
+    const start = seasonCodeToStartYear(code);
+    if (start > bestStart) {
+      bestStart = start;
+      bestCode = code;
+    }
+  };
 
   for (const m of html.matchAll(
     /(?:home|away|third)\s+kit\s+(\d{4})\s*[-–/]\s*(\d{2,4})/gi
   )) {
-    const code = seasonCodeFromYearPair(m[1], m[2]);
-    if (code && code > max) max = code;
+    consider(seasonCodeFromYearPair(m[1], m[2]));
   }
 
   for (const m of html.matchAll(
     /(?:home|away|third)\s+kit\s+(\d{2})\s*[-–/]\s*(\d{2})/gi
   )) {
-    const code = Number(m[1] + m[2]);
-    if (Number.isFinite(code) && code > max) max = code;
+    consider(seasonCodeFromYearPair(m[1], m[2]));
   }
 
-  return max || null;
+  return bestCode || null;
 }
 
 /** 2526 → "2025-26" for admin log / UI */
 export function formatSeasonCode(code) {
   if (!code) return null;
-  const s = String(code).padStart(4, "0");
-  const y1 = Number(`20${s.slice(0, 2)}`);
-  const y2 = Number(`20${s.slice(2, 4)}`);
+  const y1 = seasonCodeToStartYear(code);
+  const y2 = y1 + 1;
   return `${y1}-${String(y2).slice(-2)}`;
 }
 
@@ -277,7 +328,8 @@ function pickLatestKitUrl(candidates, latestSeasonCode = null) {
 
   let pool = candidates;
   if (latestSeasonCode) {
-    const filtered = candidates.filter((x) => x.season === latestSeasonCode);
+    const seasonYear = seasonCodeToStartYear(latestSeasonCode);
+    const filtered = candidates.filter((x) => x.season === seasonYear);
     if (filtered.length) pool = filtered;
   }
 
@@ -327,31 +379,55 @@ function mergeKitUrls(a, b) {
   };
 }
 
-export async function fetchCofHtml(url, fetchImpl = fetch) {
-  const res = await fetchImpl(url, {
-    headers: { "User-Agent": USER_AGENT, Accept: "text/html" },
-  });
-  if (!res.ok) {
-    throw new Error(`COF fetch failed (${res.status}): ${url}`);
+export async function fetchCofHtml(url, fetchImpl = fetch, cache = null) {
+  if (cache?.html?.has(url)) return cache.html.get(url);
+
+  let lastErr = null;
+  for (let attempt = 0; attempt < COF_MAX_RETRIES; attempt += 1) {
+    await politeCofPause(cache);
+    try {
+      const res = await fetchImpl(url, {
+        headers: { "User-Agent": USER_AGENT, Accept: "text/html" },
+      });
+      cache && (cache.lastFetchMs = Date.now());
+
+      if (res.status === 429 || res.status === 503) {
+        const wait = Math.min(30000, 2000 * 2 ** attempt);
+        await sleepMs(wait);
+        continue;
+      }
+      if (!res.ok) {
+        throw new Error(`COF fetch failed (${res.status}): ${url}`);
+      }
+      const text = await res.text();
+      cache?.html?.set(url, text);
+      return text;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < COF_MAX_RETRIES - 1) {
+        await sleepMs(Math.min(30000, 1500 * 2 ** attempt));
+      }
+    }
   }
-  return res.text();
+  throw lastErr || new Error(`COF fetch failed: ${url}`);
 }
 
 export async function findLastCofClubPage(
   nationFolder,
   slug,
   pageStem,
-  fetchImpl = fetch
+  fetchImpl = fetch,
+  cache = null
 ) {
   let last = 1;
   for (let page = 1; page <= 12; page += 1) {
     const url = `${COF_COLOURS}/${nationFolder}/${slug}/${pageStem}_${page}.html`;
-    const res = await fetchImpl(url, {
-      method: "HEAD",
-      headers: { "User-Agent": USER_AGENT },
-    });
-    if (res.ok) last = page;
-    else break;
+    try {
+      await fetchCofHtml(url, fetchImpl, cache);
+      last = page;
+    } catch {
+      break;
+    }
   }
   return last;
 }
@@ -360,7 +436,8 @@ export async function resolveCofClubLink(
   nation,
   clubName,
   clubShort = null,
-  fetchImpl = fetch
+  fetchImpl = fetch,
+  cache = null
 ) {
   const overrideSlug = clubShort ? COF_CLUB_SLUG_OVERRIDES[clubShort] : null;
   const pathOverride = clubShort ? COF_CLUB_PATH_OVERRIDES[clubShort] : null;
@@ -378,7 +455,7 @@ export async function resolveCofClubLink(
   }
 
   const indexUrl = `${COF_COLOURS}/${cfg.folder}/${cfg.index}`;
-  const indexHtml = await fetchCofHtml(indexUrl, fetchImpl);
+  const indexHtml = await fetchCofHtml(indexUrl, fetchImpl, cache);
   const links = parseCofIndexLinks(indexHtml);
 
   let link = null;
@@ -408,13 +485,15 @@ export async function fetchLatestCofKits(
   nation,
   clubName,
   clubShort = null,
-  fetchImpl = fetch
+  fetchImpl = fetch,
+  cache = null
 ) {
   const resolved = await resolveCofClubLink(
     nation,
     clubName,
     clubShort,
-    fetchImpl
+    fetchImpl,
+    cache
   );
   if (resolved.error) return resolved;
 
@@ -423,7 +502,8 @@ export async function fetchLatestCofKits(
     nationFolder,
     slug,
     pageStem,
-    fetchImpl
+    fetchImpl,
+    cache
   );
 
   let buckets = { home: [], away: [], third: [] };
@@ -431,7 +511,7 @@ export async function fetchLatestCofKits(
 
   for (let page = 1; page <= lastPage; page += 1) {
     const pageUrl = `${COF_COLOURS}/${nationFolder}/${slug}/${pageStem}_${page}.html`;
-    const html = await fetchCofHtml(pageUrl, fetchImpl);
+    const html = await fetchCofHtml(pageUrl, fetchImpl, cache);
     htmlParts.push(html);
     buckets = mergeKitBuckets(
       buckets,
@@ -453,12 +533,32 @@ export async function fetchLatestCofKits(
   };
 }
 
-export async function downloadCofImage(url, fetchImpl = fetch) {
-  const res = await fetchImpl(url, {
-    headers: { "User-Agent": USER_AGENT, Accept: "image/*" },
-  });
-  if (!res.ok) throw new Error(`Image download failed (${res.status}): ${url}`);
-  const buf = await res.arrayBuffer();
-  const type = res.headers.get("content-type") || "image/png";
-  return { bytes: new Uint8Array(buf), contentType: type };
+export async function downloadCofImage(url, fetchImpl = fetch, cache = null) {
+  let lastErr = null;
+  for (let attempt = 0; attempt < COF_MAX_RETRIES; attempt += 1) {
+    await politeCofPause(cache);
+    try {
+      const res = await fetchImpl(url, {
+        headers: { "User-Agent": USER_AGENT, Accept: "image/*" },
+      });
+      cache && (cache.lastFetchMs = Date.now());
+
+      if (res.status === 429 || res.status === 503) {
+        await sleepMs(Math.min(30000, 2000 * 2 ** attempt));
+        continue;
+      }
+      if (!res.ok) {
+        throw new Error(`Image download failed (${res.status}): ${url}`);
+      }
+      const buf = await res.arrayBuffer();
+      const type = res.headers.get("content-type") || "image/png";
+      return { bytes: new Uint8Array(buf), contentType: type };
+    } catch (err) {
+      lastErr = err;
+      if (attempt < COF_MAX_RETRIES - 1) {
+        await sleepMs(Math.min(30000, 1500 * 2 ** attempt));
+      }
+    }
+  }
+  throw lastErr || new Error(`Image download failed: ${url}`);
 }

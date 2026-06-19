@@ -35,6 +35,113 @@ SUPABASE_JS = ROOT / "supabase_client.js"
 COF_BASE = "https://www.colours-of-football.com"
 COF_COLOURS = f"{COF_BASE}/colours03"
 UA = "GPSL-KitSync/1.0 (personal league project)"
+COF_MIN_GAP_SEC = 1.4
+COF_MAX_RETRIES = 6
+_last_fetch_at = 0.0
+_html_cache: dict[str, str] = {}
+
+
+def season_code_to_start_year(code: int) -> int:
+    s = str(code).zfill(4)
+    yy = int(s[:2])
+    return 2000 + yy if yy <= 30 else 1900 + yy
+
+
+def is_plausible_kit_season_code(code: int) -> bool:
+    start = season_code_to_start_year(code)
+    return 1990 <= start <= 2040
+
+
+def season_code_from_year_pair(y1_text: str, y2_text: str) -> int | None:
+    raw1 = (y1_text or "").strip()
+    raw2 = (y2_text or "").strip()
+    try:
+        y1 = int(raw1)
+        y2 = int(raw2)
+    except ValueError:
+        return None
+
+    if len(raw1) == 2:
+        y1 = 2000 + y1 if y1 <= 30 else 1900 + y1
+        y2 = 2000 + y2 if y2 <= 30 else 1900 + y2
+    elif len(raw2) == 2:
+        y2 = (y1 // 100) * 100 + y2
+        if y2 < y1:
+            y2 += 100
+
+    if y1 < 1990 or y1 > 2040:
+        return None
+    if y2 < y1 or y2 > y1 + 1:
+        return None
+
+    code = int(str(y1)[-2:] + str(y2)[-2:])
+    return code if is_plausible_kit_season_code(code) else None
+
+
+def polite_pause() -> None:
+    global _last_fetch_at
+    elapsed = time.monotonic() - _last_fetch_at
+    if elapsed < COF_MIN_GAP_SEC:
+        time.sleep(COF_MIN_GAP_SEC - elapsed)
+
+
+def fetch_text(url: str) -> str:
+    global _last_fetch_at
+    if url in _html_cache:
+        return _html_cache[url]
+
+    last_err: Exception | None = None
+    for attempt in range(COF_MAX_RETRIES):
+        polite_pause()
+        req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "text/html"})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as res:
+                _last_fetch_at = time.monotonic()
+                if res.status in (429, 503):
+                    time.sleep(min(30, 2 ** attempt * 2))
+                    continue
+                text = res.read().decode("utf-8", errors="replace")
+                _html_cache[url] = text
+                return text
+        except urllib.error.HTTPError as e:
+            _last_fetch_at = time.monotonic()
+            if e.code in (429, 503) and attempt < COF_MAX_RETRIES - 1:
+                time.sleep(min(30, 2 ** attempt * 2))
+                continue
+            last_err = e
+            break
+        except Exception as e:
+            last_err = e
+            if attempt < COF_MAX_RETRIES - 1:
+                time.sleep(min(30, 1.5 ** attempt * 1.5))
+    raise RuntimeError(f"COF fetch failed: {url}") from last_err
+
+
+def download_bytes(url: str) -> bytes:
+    global _last_fetch_at
+    last_err: Exception | None = None
+    for attempt in range(COF_MAX_RETRIES):
+        polite_pause()
+        req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "image/*"})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as res:
+                _last_fetch_at = time.monotonic()
+                if res.status in (429, 503):
+                    time.sleep(min(30, 2 ** attempt * 2))
+                    continue
+                return res.read()
+        except urllib.error.HTTPError as e:
+            _last_fetch_at = time.monotonic()
+            if e.code in (429, 503) and attempt < COF_MAX_RETRIES - 1:
+                time.sleep(min(30, 2 ** attempt * 2))
+                continue
+            last_err = e
+            break
+        except Exception as e:
+            last_err = e
+            if attempt < COF_MAX_RETRIES - 1:
+                time.sleep(min(30, 1.5 ** attempt * 1.5))
+    raise RuntimeError(f"Image download failed: {url}") from last_err
 
 COF_NATION_MAP = {
     "england": ("eng", "eng.html"),
@@ -192,12 +299,6 @@ def fetch_json(url: str, headers: dict | None = None) -> object:
         return json.loads(res.read().decode("utf-8"))
 
 
-def fetch_text(url: str) -> str:
-    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "text/html"})
-    with urllib.request.urlopen(req, timeout=60) as res:
-        return res.read().decode("utf-8", errors="replace")
-
-
 def head_ok(url: str) -> bool:
     req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": UA})
     try:
@@ -205,12 +306,6 @@ def head_ok(url: str) -> bool:
             return 200 <= res.status < 300
     except urllib.error.HTTPError as e:
         return e.code == 200
-
-
-def download_bytes(url: str) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "image/*"})
-    with urllib.request.urlopen(req, timeout=60) as res:
-        return res.read()
 
 
 def safe_print(text: str) -> None:
@@ -325,44 +420,50 @@ def parse_kit_candidates(html: str, page_url: str) -> dict[str, list]:
 def format_season_code(code: int | None) -> str | None:
     if not code:
         return None
-    s = str(code).zfill(4)
-    y1 = int(f"20{s[:2]}")
-    y2 = int(f"20{s[2:]}")
+    y1 = season_code_to_start_year(code)
+    y2 = y1 + 1
     return f"{y1}-{str(y2)[-2:]}"
 
 
 def find_latest_season_from_html(html: str) -> int | None:
-    max_code = 0
+    best_code = 0
+    best_start = 0
+
+    def consider(code: int | None) -> None:
+        nonlocal best_code, best_start
+        if not code or not is_plausible_kit_season_code(code):
+            return
+        start = season_code_to_start_year(code)
+        if start > best_start:
+            best_start = start
+            best_code = code
+
     for m in re.finditer(
         r"(?:home|away|third)\s+kit\s+(\d{4})\s*[-–/]\s*(\d{2,4})",
         html,
         re.I,
     ):
-        y1 = int(m.group(1))
-        y2 = m.group(2)
-        if len(y2) == 2:
-            code = int(str(y1)[-2:] + y2)
-        else:
-            code = int(str(y1)[-2:] + str(int(y2))[-2:])
-        max_code = max(max_code, code)
+        consider(season_code_from_year_pair(m.group(1), m.group(2)))
+
     for m in re.finditer(
         r"(?:home|away|third)\s+kit\s+(\d{2})\s*[-–/]\s*(\d{2})",
         html,
         re.I,
     ):
-        code = int(m.group(1) + m.group(2))
-        max_code = max(max_code, code)
-    return max_code or None
+        consider(season_code_from_year_pair(m.group(1), m.group(2)))
+
+    return best_code or None
 
 
 def pick_latest_kits(buckets: dict[str, list], latest_season: int | None = None) -> dict[str, str | None]:
     out: dict[str, str | None] = {"home": None, "away": None, "third": None}
+    season_year = season_code_to_start_year(latest_season) if latest_season else None
     for kind, arr in buckets.items():
         if not arr:
             continue
         pool = arr
-        if latest_season:
-            filtered = [x for x in arr if x["season"] == latest_season]
+        if season_year:
+            filtered = [x for x in arr if x["season"] == season_year]
             if filtered:
                 pool = filtered
         max_season = max(x["season"] for x in pool)
@@ -384,9 +485,10 @@ def find_last_page(folder: str, slug: str, stem: str) -> int:
     last = 1
     for page in range(1, 13):
         url = f"{COF_COLOURS}/{folder}/{slug}/{stem}_{page}.html"
-        if head_ok(url):
+        try:
+            fetch_text(url)
             last = page
-        else:
+        except RuntimeError:
             break
     return last
 
@@ -490,7 +592,7 @@ def main() -> None:
             }
             print("ok" if saved else "no kits found")
             ok += 1
-            time.sleep(0.35)
+            time.sleep(1.5)
         except Exception as e:
             msg = str(e).encode("ascii", errors="replace").decode("ascii")
             safe_print(f"fail - {msg}\n")
