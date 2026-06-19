@@ -31,7 +31,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("refreshBtn").onclick = () => loadTable();
   document.getElementById("saveKitsBtn").onclick = saveKits;
   document.getElementById("clubSelect").onchange = onClubSelect;
-  document.getElementById("cofSyncBtn").onclick = () => syncAllFromCof();
+  document.getElementById("downloadLatestKitsBtn").onclick = () =>
+    downloadLatestKits({ download: true });
+  document.getElementById("cofLinksOnlyBtn").onclick = () =>
+    downloadLatestKits({ download: false });
   document.getElementById("cofPreviewBtn").onclick = () => previewCofForSelected();
 
   for (const kind of KIT_KINDS) {
@@ -290,8 +293,9 @@ async function previewCofForSelected() {
       club_short_name: short,
     });
     const kits = data?.result?.kits || {};
+    const season = data?.result?.seasonLabel || data?.result?.latestSeasonCode || "?";
     appendCofLog(
-      `${short}: ${data?.result?.cofClubName || data?.result?.slug || "?"}\n` +
+      `${short} (${season}): ${data?.result?.cofClubName || data?.result?.slug || "?"}\n` +
         `  home: ${kits.home || "—"}\n` +
         `  away: ${kits.away || "—"}\n` +
         `  third: ${kits.third || "—"}`
@@ -303,20 +307,23 @@ async function previewCofForSelected() {
   }
 }
 
-async function syncAllFromCof() {
+async function downloadLatestKits({ download } = { download: true }) {
   if (cofSyncRunning) return;
-  if (
-    !confirm(
-      "Sync kit URLs from colours-of-football.com for all GPSL clubs? Existing custom URLs will be overwritten."
-    )
-  ) {
-    return;
-  }
+
+  const useStorage =
+    download && document.getElementById("cofDownloadStorage")?.checked !== false;
+
+  const msg = useStorage
+    ? "Download latest-season kits for all clubs into Supabase Storage and update club_kits?"
+    : "Save latest-season COF image URLs for all clubs to club_kits (no file download)?";
+
+  if (!confirm(msg)) return;
 
   cofSyncRunning = true;
-  const syncBtn = document.getElementById("cofSyncBtn");
-  const download = document.getElementById("cofDownloadStorage")?.checked === true;
-  if (syncBtn) syncBtn.disabled = true;
+  const mainBtn = document.getElementById("downloadLatestKitsBtn");
+  const linksBtn = document.getElementById("cofLinksOnlyBtn");
+  if (mainBtn) mainBtn.disabled = true;
+  if (linksBtn) linksBtn.disabled = true;
   clearCofLog();
 
   let offset = 0;
@@ -327,23 +334,24 @@ async function syncAllFromCof() {
     while (true) {
       setStatus(
         "statusLine",
-        `COF sync — batch from club ${offset + 1}…`,
+        `Downloading latest kits — club ${offset + 1}+…`,
         true
       );
       const data = await invokeCofSync({
         action: "sync_batch",
         offset,
         limit: 4,
-        download,
+        download: useStorage,
       });
 
       for (const row of data?.results || []) {
         if (row.ok) {
           ok += 1;
-          appendCofLog(`✓ ${row.club_short_name}`);
+          const season = row.cof?.season_label || "?";
+          appendCofLog(`OK ${row.club_short_name} (${season})`);
         } else {
           fail += 1;
-          appendCofLog(`✗ ${row.club_short_name}: ${row.error || "failed"}`);
+          appendCofLog(`FAIL ${row.club_short_name}: ${row.error || "failed"}`);
         }
       }
 
@@ -354,7 +362,7 @@ async function syncAllFromCof() {
     await loadTable();
     setStatus(
       "statusLine",
-      `COF sync complete — ${ok} updated, ${fail} failed.`,
+      `Latest kits — ${ok} updated, ${fail} failed.`,
       fail === 0
     );
   } catch (err) {
@@ -362,6 +370,7 @@ async function syncAllFromCof() {
     appendCofLog(err.message);
   } finally {
     cofSyncRunning = false;
-    if (syncBtn) syncBtn.disabled = false;
+    if (mainBtn) mainBtn.disabled = false;
+    if (linksBtn) linksBtn.disabled = false;
   }
 }

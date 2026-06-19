@@ -322,13 +322,51 @@ def parse_kit_candidates(html: str, page_url: str) -> dict[str, list]:
     return buckets
 
 
-def pick_latest_kits(buckets: dict[str, list]) -> dict[str, str | None]:
+def format_season_code(code: int | None) -> str | None:
+    if not code:
+        return None
+    s = str(code).zfill(4)
+    y1 = int(f"20{s[:2]}")
+    y2 = int(f"20{s[2:]}")
+    return f"{y1}-{str(y2)[-2:]}"
+
+
+def find_latest_season_from_html(html: str) -> int | None:
+    max_code = 0
+    for m in re.finditer(
+        r"(?:home|away|third)\s+kit\s+(\d{4})\s*[-–/]\s*(\d{2,4})",
+        html,
+        re.I,
+    ):
+        y1 = int(m.group(1))
+        y2 = m.group(2)
+        if len(y2) == 2:
+            code = int(str(y1)[-2:] + y2)
+        else:
+            code = int(str(y1)[-2:] + str(int(y2))[-2:])
+        max_code = max(max_code, code)
+    for m in re.finditer(
+        r"(?:home|away|third)\s+kit\s+(\d{2})\s*[-–/]\s*(\d{2})",
+        html,
+        re.I,
+    ):
+        code = int(m.group(1) + m.group(2))
+        max_code = max(max_code, code)
+    return max_code or None
+
+
+def pick_latest_kits(buckets: dict[str, list], latest_season: int | None = None) -> dict[str, str | None]:
     out: dict[str, str | None] = {"home": None, "away": None, "third": None}
     for kind, arr in buckets.items():
         if not arr:
             continue
-        max_season = max(x["season"] for x in arr)
-        top = [x for x in arr if x["season"] == max_season]
+        pool = arr
+        if latest_season:
+            filtered = [x for x in arr if x["season"] == latest_season]
+            if filtered:
+                pool = filtered
+        max_season = max(x["season"] for x in pool)
+        top = [x for x in pool if x["season"] == max_season]
         top.sort(key=lambda x: (x["variant"], x["url"]))
         out[kind] = top[0]["url"]
     return out
@@ -374,16 +412,20 @@ def fetch_latest_kits(nation: str, club_name: str, short: str) -> dict:
 
     last = find_last_page(folder, link["slug"], link["page_stem"])
     buckets: dict[str, list] = {"home": [], "away": [], "third": []}
+    html_parts: list[str] = []
     for page in range(1, last + 1):
         page_url = f"{COF_COLOURS}/{folder}/{link['slug']}/{link['page_stem']}_{page}.html"
         html = fetch_text(page_url)
+        html_parts.append(html)
         buckets = merge_buckets(buckets, parse_kit_candidates(html, page_url))
 
-    merged = pick_latest_kits(buckets)
+    latest_season = find_latest_season_from_html("\n".join(html_parts))
+    merged = pick_latest_kits(buckets, latest_season)
 
     return {
         "cof_name": link["name"],
         "slug": link["slug"],
+        "season_label": format_season_code(latest_season),
         "kits": merged,
     }
 

@@ -186,6 +186,8 @@ Deno.serve(async (req) => {
           nation_folder: cof.nationFolder,
           cof_club_name: cof.cofClubName,
           last_page: cof.lastPage,
+          season_label: cof.seasonLabel,
+          latest_season_code: cof.latestSeasonCode,
         };
         entry.kits = { home: homeUrl, away: awayUrl, third: thirdUrl };
       } catch (err) {

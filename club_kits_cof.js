@@ -60,10 +60,10 @@ export const COF_NATION_MAP = {
 /** Manual overrides when auto-match fails: ShortName → COF club folder slug (under nation folder) */
 export const COF_CLUB_SLUG_OVERRIDES = {
   AVL: "a_villa",
-  MUN: "manutd",
+  MUN: "man_utd",
   MCI: "man_city",
   TOT: "tottenham",
-  WOL: "wolverhampton",
+  WOL: "wolverhmp",
   WHU: "westham",
   BRE: "brentford",
   BAR: "barcelona",
@@ -82,6 +82,13 @@ export const COF_CLUB_SLUG_OVERRIDES = {
   COR: "corinthians",
   NAC: "atletico_nacional",
   AND: "anderlecht",
+  PAL: "palmeiras",
+  CVI: "celta",
+};
+
+/** When slug alone is not enough (page stem differs from folder name) */
+export const COF_CLUB_PATH_OVERRIDES = {
+  WOL: { slug: "wolverhmp", pageStem: "wolves" },
 };
 
 const USER_AGENT =
@@ -141,7 +148,7 @@ export function parseCofIndexLinks(html) {
   const seen = new Set();
 
   for (const m of html.matchAll(
-    /<a[^>]+href="([^"#?]+\/[^"#?]+_1\.html)"[^>]*>([\s\S]*?)<\/a>/gi
+    /<a[^>]+href="([^"#?]+\/[^"#?]+_\d+\.html)"[^>]*>([\s\S]*?)<\/a>/gi
   )) {
     const href = m[1].replace(/^\.\//, "");
     if (seen.has(href)) continue;
@@ -159,7 +166,7 @@ export function parseCofIndexLinks(html) {
       name,
       href,
       slug: parts[0],
-      pageStem: parts[1].replace(/_1\.html$/i, ""),
+      pageStem: parts[1].replace(/_\d+\.html$/i, ""),
     });
   }
 
@@ -198,6 +205,47 @@ export function matchCofClubLink(links, clubName) {
   return bestScore >= 6 ? best : null;
 }
 
+/** e.g. 2025 + 26 → 2526 */
+export function seasonCodeFromYearPair(y1Text, y2Text) {
+  const y1 = Number(y1Text);
+  if (!Number.isFinite(y1)) return null;
+  let y2 = String(y2Text ?? "");
+  if (y2.length === 2) y2 = String(y1).slice(0, 2) + y2;
+  else y2 = String(Number(y2));
+  if (!Number.isFinite(Number(y2))) return null;
+  return Number(String(y1).slice(-2) + String(y2).slice(-2));
+}
+
+/** Read COF on-page headers: "home kit 2025-2026", "away kit 25-26", etc. */
+export function findLatestSeasonFromHtml(html) {
+  let max = 0;
+
+  for (const m of html.matchAll(
+    /(?:home|away|third)\s+kit\s+(\d{4})\s*[-–/]\s*(\d{2,4})/gi
+  )) {
+    const code = seasonCodeFromYearPair(m[1], m[2]);
+    if (code && code > max) max = code;
+  }
+
+  for (const m of html.matchAll(
+    /(?:home|away|third)\s+kit\s+(\d{2})\s*[-–/]\s*(\d{2})/gi
+  )) {
+    const code = Number(m[1] + m[2]);
+    if (Number.isFinite(code) && code > max) max = code;
+  }
+
+  return max || null;
+}
+
+/** 2526 → "2025-26" for admin log / UI */
+export function formatSeasonCode(code) {
+  if (!code) return null;
+  const s = String(code).padStart(4, "0");
+  const y1 = Number(`20${s.slice(0, 2)}`);
+  const y2 = Number(`20${s.slice(2, 4)}`);
+  return `${y1}-${String(y2).slice(-2)}`;
+}
+
 function parseKitCandidatesFromHtml(html, pageUrl) {
   const buckets = { home: [], away: [], third: [] };
 
@@ -224,21 +272,28 @@ function parseKitCandidatesFromHtml(html, pageUrl) {
   return buckets;
 }
 
-function pickLatestKitUrl(candidates) {
+function pickLatestKitUrl(candidates, latestSeasonCode = null) {
   if (!candidates.length) return null;
-  const maxSeason = Math.max(...candidates.map((x) => x.season));
-  const top = candidates.filter((x) => x.season === maxSeason);
+
+  let pool = candidates;
+  if (latestSeasonCode) {
+    const filtered = candidates.filter((x) => x.season === latestSeasonCode);
+    if (filtered.length) pool = filtered;
+  }
+
+  const maxSeason = Math.max(...pool.map((x) => x.season));
+  const top = pool.filter((x) => x.season === maxSeason);
   top.sort(
     (a, b) => a.variant - b.variant || a.file.localeCompare(b.file)
   );
   return top[0]?.url ?? null;
 }
 
-function pickLatestKits(buckets) {
+function pickLatestKits(buckets, latestSeasonCode = null) {
   return {
-    home: pickLatestKitUrl(buckets.home),
-    away: pickLatestKitUrl(buckets.away),
-    third: pickLatestKitUrl(buckets.third),
+    home: pickLatestKitUrl(buckets.home, latestSeasonCode),
+    away: pickLatestKitUrl(buckets.away, latestSeasonCode),
+    third: pickLatestKitUrl(buckets.third, latestSeasonCode),
   };
 }
 
@@ -308,8 +363,19 @@ export async function resolveCofClubLink(
   fetchImpl = fetch
 ) {
   const overrideSlug = clubShort ? COF_CLUB_SLUG_OVERRIDES[clubShort] : null;
+  const pathOverride = clubShort ? COF_CLUB_PATH_OVERRIDES[clubShort] : null;
   const cfg = cofNationConfig(nation);
   if (!cfg) return { error: `No COF mapping for nation: ${nation}` };
+
+  if (pathOverride) {
+    return {
+      nationFolder: cfg.folder,
+      slug: pathOverride.slug,
+      pageStem: pathOverride.pageStem,
+      cofClubName: clubName,
+      indexUrl: `${COF_COLOURS}/${cfg.folder}/${cfg.index}`,
+    };
+  }
 
   const indexUrl = `${COF_COLOURS}/${cfg.folder}/${cfg.index}`;
   const indexHtml = await fetchCofHtml(indexUrl, fetchImpl);
@@ -361,21 +427,27 @@ export async function fetchLatestCofKits(
   );
 
   let buckets = { home: [], away: [], third: [] };
+  const htmlParts = [];
 
   for (let page = 1; page <= lastPage; page += 1) {
     const pageUrl = `${COF_COLOURS}/${nationFolder}/${slug}/${pageStem}_${page}.html`;
     const html = await fetchCofHtml(pageUrl, fetchImpl);
+    htmlParts.push(html);
     buckets = mergeKitBuckets(
       buckets,
       parseKitCandidatesFromHtml(html, pageUrl)
     );
   }
 
-  const kits = pickLatestKits(buckets);
+  const latestSeasonCode = findLatestSeasonFromHtml(htmlParts.join("\n"));
+  const kits = pickLatestKits(buckets, latestSeasonCode);
+  const seasonLabel = formatSeasonCode(latestSeasonCode);
 
   return {
     ...resolved,
     lastPage,
+    latestSeasonCode,
+    seasonLabel,
     kits,
     source: "colours-of-football.com",
   };

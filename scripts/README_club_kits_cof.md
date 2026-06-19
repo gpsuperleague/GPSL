@@ -1,33 +1,25 @@
 # Club kits — Colours of Football
 
-Kit graphics from [colours-of-football.com](https://www.colours-of-football.com/) (credit Mikhail Sipovich / COF).
+## Admin (recommended)
 
-## Download latest kits (same as stadiums)
+**Admin → Club kits → Download latest kits (all clubs)**
 
-From repo root — **no secrets needed** (reads anon key from `supabase_client.js`):
+- Reads COF page headers (`home kit 2025-2026`, `25-26`, etc.) to find the **latest season**
+- Downloads only kits matching that season (not older ones)
+- Saves to public Supabase Storage bucket `club-kits` + `club_kits` table
+
+Deploy edge function `club-kits-cof-sync` with both files in `supabase/functions/club-kits-cof-sync/`.
+
+Create a **public** storage bucket named `club-kits` in Supabase Dashboard.
+
+## Local download into repo (GitHub Pages)
 
 ```bash
 python scripts/fetch_club_kits.py
 ```
 
-Options:
+Writes `images/clubs_kits/{SHORT}_home.png` etc. Uses the same latest-season header logic.
 
-- `--dry-run` — print URLs only
-- `--only ARS,LIV,MCI` — subset by `Clubs.ShortName`
+## Manual slug overrides
 
-Outputs:
-
-- `images/clubs_kits/{ShortName}_home.png` (and `_away`, `_third`)
-- `data/club_kits_cof.json` — cached COF URLs + season
-
-**Latest season logic:** scans every COF page for the club, collects all kit images, then picks the **highest season code** per type (`_1_` home, `_2_` away, `_3_` third — e.g. `2526` = 2025–26).
-
-Club Details uses these files automatically via default paths when `club_kits` DB rows are empty.
-
-## Admin COF sync (URLs only)
-
-**Admin → Club kits → Sync all clubs from COF** saves COF image URLs to the database (edge function `club-kits-cof-sync`). Use the Python script above if you want files in the repo.
-
-## Manual COF slug overrides
-
-If auto-match fails, add `ShortName: "cof_folder_slug"` to `COF_CLUB_SLUG_OVERRIDES` in `club_kits_cof.js` and re-run the fetch.
+`COF_CLUB_SLUG_OVERRIDES` / `COF_CLUB_PATH_OVERRIDES` in `club_kits_cof.js`.

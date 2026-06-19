@@ -143,21 +143,27 @@
   </p>
 
   <div class="kits-actions card" style="padding:14px;margin-bottom:16px;background:#1a1a1a;border:1px solid #333;border-radius:8px;">
-    <h2 style="margin:0 0 8px;font-size:16px;color:#ff9900;">Sync from Colours of Football</h2>
+    <h2 style="margin:0 0 8px;font-size:16px;color:#ff9900;">Download latest kits</h2>
     <p style="margin:0 0 10px;font-size:12px;color:#999;line-height:1.45;">
-      Fetches the newest home / away / third kit images per club and saves URLs to the database.
-      Deploy edge function <code>club-kits-cof-sync</code> (see <code>scripts/README_club_kits_cof.md</code>).
-      Optional: tick <b>Download to Supabase Storage</b> if you created a public <code>club-kits</code> bucket.
+      Pulls the <b>current-season</b> home, away, and third kits from
+      <a href="https://www.colours-of-football.com/" target="_blank" rel="noopener" style="color:#ff9900;">colours-of-football.com</a>
+      by reading on-page headers such as <code>home kit 2025-2026</code> / <code>25-26</code>, then matching kit images for that season only.
+      Requires edge function <code>club-kits-cof-sync</code> (deploy <code>index.ts</code> + <code>club_kits_cof.js</code>).
     </p>
     <div class="kits-actions">
-      <button type="button" id="cofSyncBtn" class="button">Sync all clubs from COF</button>
+      <button type="button" id="downloadLatestKitsBtn" class="button">Download latest kits (all clubs)</button>
       <button type="button" id="cofPreviewBtn" class="button secondary" disabled>Preview selected club</button>
-      <label style="font-size:12px;color:#bbb;display:flex;align-items:center;gap:6px;">
-        <input type="checkbox" id="cofDownloadStorage">
-        Download to Supabase Storage
-      </label>
+      <button type="button" id="cofLinksOnlyBtn" class="button secondary">Save COF links only</button>
     </div>
-    <pre id="cofSyncLog" style="margin:10px 0 0;padding:10px;background:#111;border:1px solid #333;border-radius:6px;font-size:11px;color:#aaa;max-height:180px;overflow:auto;white-space:pre-wrap;"></pre>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#bbb;margin-top:10px;">
+      <input type="checkbox" id="cofDownloadStorage" checked>
+      Store images in Supabase Storage bucket <code>club-kits</code> (public) and save URLs to <code>club_kits</code>
+    </label>
+    <p style="margin:8px 0 0;font-size:11px;color:#666;">
+      Untick storage if you only want hotlink URLs saved to the database. For static files in the repo, run
+      <code>python scripts/fetch_club_kits.py</code> locally.
+    </p>
+    <pre id="cofSyncLog" style="margin:10px 0 0;padding:10px;background:#111;border:1px solid #333;border-radius:6px;font-size:11px;color:#aaa;max-height:220px;overflow:auto;white-space:pre-wrap;"></pre>
   </div>
 
   <div class="kits-toolbar">
@@ -199,6 +205,6 @@
     <p style="padding:12px;color:#888;">Loading…</p>
   </div>
 
-  <script type="module" src="admin_club_kits.js?v=20260617-cof-sync"></script>
+  <script type="module" src="admin_club_kits.js?v=20260619-download-latest"></script>
 </body>
 </html>
