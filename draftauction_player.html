@@ -207,6 +207,8 @@
     let canBid = false;
     let auctionEnded = false;
     let draftCountdownInterval = null;
+    let lastBiddingOpenRefreshMs = 0;
+    const BIDDING_OPEN_REFRESH_MS = 30000;
 
     /* ============================================================
        INIT
@@ -299,10 +301,18 @@
       }
     }
 
-    async function updateDraftCountdownUI() {
-      if (draftEnabled && draftAuctionStartTimeUK) {
-        await refreshDraftBiddingOpen();
+    async function maybeRefreshDraftBiddingOpen(force = false) {
+      if (!draftEnabled || !draftAuctionStartTimeUK) return;
+      const nowMs = Date.now();
+      if (!force && nowMs - lastBiddingOpenRefreshMs < BIDDING_OPEN_REFRESH_MS) {
+        return;
       }
+      lastBiddingOpenRefreshMs = nowMs;
+      await refreshDraftBiddingOpen();
+    }
+
+    function updateDraftCountdownUI() {
+      void maybeRefreshDraftBiddingOpen();
       const nowUK = getUKNow();
       const el = document.getElementById("timeRemaining");
       const sub = document.getElementById("timeRemainingSub");
@@ -338,7 +348,11 @@
 
     function startDraftPlayerCountdown() {
       if (draftCountdownInterval) clearInterval(draftCountdownInterval);
-      updateDraftCountdownUI();
+      lastBiddingOpenRefreshMs = 0;
+      void (async () => {
+        await maybeRefreshDraftBiddingOpen(true);
+        updateDraftCountdownUI();
+      })();
       draftCountdownInterval = setInterval(updateDraftCountdownUI, 1000);
     }
 

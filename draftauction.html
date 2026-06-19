@@ -345,6 +345,14 @@
     let favouriteIds = new Set();
     let draftTableWired = false;
     let draftListingsPoll = null;
+    let draftListingsPollMs = null;
+
+    function ensureDraftListingsPoll(intervalMs) {
+      if (draftListingsPollMs === intervalMs && draftListingsPoll) return;
+      if (draftListingsPoll) clearInterval(draftListingsPoll);
+      draftListingsPollMs = intervalMs;
+      draftListingsPoll = setInterval(() => loadDraftListings(), intervalMs);
+    }
 
     /* ============================================================
        MODULE B: Navigation
@@ -457,11 +465,6 @@
       const nowUK = getUKNow();
       const statusEl = document.getElementById("draftStatus");
 
-      if (draftEnabled && draftAuctionStartTimeUK) {
-        const { refreshDraftBiddingOpen } = await import("./global.js");
-        await refreshDraftBiddingOpen();
-      }
-
       if (!draftEnabled || !draftAuctionStartTimeUK) {
         if (statusEl) statusEl.textContent = "";
         tbody.innerHTML = `<tr><td colspan="10">Draft auction is not active.</td></tr>`;
@@ -531,12 +534,12 @@
           "Bidding closed (random finish reached). Results settle after 7pm transfer auctions finish — listings may still show Active briefly.";
       }
 
-      if (auctionEnded && !draftListingsPoll) {
-        draftListingsPoll = setInterval(() => loadDraftListings(), 10000);
-      } else if (!auctionEnded && !draftListingsPoll) {
-        draftListingsPoll = setInterval(() => loadDraftListings(), 5000);
-      } else if (!auctionEnded && phase === "random_active" && draftListingsPoll) {
-        /* keep polling during random window */
+      if (auctionEnded) {
+        ensureDraftListingsPoll(30000);
+      } else if (phase === "random_active") {
+        ensureDraftListingsPoll(12000);
+      } else {
+        ensureDraftListingsPoll(20000);
       }
 
       for (const listing of sortedListings) {

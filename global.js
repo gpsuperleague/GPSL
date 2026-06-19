@@ -645,11 +645,20 @@ export async function refreshDraftBiddingOpen() {
   refreshNavAuctionIndicators();
 }
 
+const DRAFT_BIDDING_OPEN_POLL_MS = 30000;
+let __lastCountdownBiddingRefreshMs = 0;
+
 export function startDraftCountdown(onTick) {
   stopDraftCountdown();
+  __lastCountdownBiddingRefreshMs = 0;
 
   const tick = async () => {
-    if (isDraftCountdownActive()) {
+    const nowMs = Date.now();
+    if (
+      isDraftCountdownActive() &&
+      nowMs - __lastCountdownBiddingRefreshMs >= DRAFT_BIDDING_OPEN_POLL_MS
+    ) {
+      __lastCountdownBiddingRefreshMs = nowMs;
       await refreshDraftBiddingOpen();
     }
     const tickData = getPageDraftCountdownTick(
@@ -660,8 +669,10 @@ export function startDraftCountdown(onTick) {
     if (onTick) onTick(tickData);
   };
 
-  tick();
-  __draftCountdownInterval = setInterval(tick, 1000);
+  void tick();
+  __draftCountdownInterval = setInterval(() => {
+    void tick();
+  }, 1000);
 }
 
 function ensureDraftLocalStartEl(countdownEl) {
