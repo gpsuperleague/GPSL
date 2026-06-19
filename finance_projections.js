@@ -11,6 +11,7 @@ import {
   loadStandingsWithPrizes,
   normalizeClubKey,
 } from "./competition.js";
+import { fetchClubLeadingDraftExposure } from "./draft_engine.js";
 
 const STADIUM_VALUE_PER_SEAT = 1500;
 const MAINTENANCE_RATE = 0.125;
@@ -313,6 +314,18 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
         byLine
       );
     }
+  }
+
+  const draftExposure = await fetchClubLeadingDraftExposure(supabase, clubShortName);
+  if (draftExposure.total > 0.5) {
+    const count = draftExposure.listings.length;
+    setPendingForecast(
+      pendingByLine,
+      "transfer_purchases",
+      -draftExposure.total,
+      `${count} winning draft auction bid${count === 1 ? "" : "s"} (unsettled — drops if outbid)`,
+      byLine
+    );
   }
 
   return filterPendingAgainstLedger(pendingByLine, byLine);

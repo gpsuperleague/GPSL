@@ -353,3 +353,47 @@ export async function syncDraftListingHighBid(
     })
     .eq("id", listingId);
 }
+
+/**
+ * Active draft listings this club currently leads (unsettled winning bids).
+ * @returns {Promise<{ total: number, listings: Array<{ player_id: string|number, current_highest_bid: number }> }>}
+ */
+export async function fetchClubLeadingDraftExposure(supabaseClient, clubShortName) {
+  if (!clubShortName) return { total: 0, listings: [] };
+
+  const { data: settings } = await supabaseClient
+    .from("global_settings_public")
+    .select("draft_auction_enabled, draft_auction_start_time")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (!settings?.draft_auction_enabled) {
+    return { total: 0, listings: [] };
+  }
+
+  const draftStart = settings.draft_auction_start_time
+    ? new Date(settings.draft_auction_start_time)
+    : null;
+  if (!draftStart || Number.isNaN(draftStart.getTime()) || new Date() < draftStart) {
+    return { total: 0, listings: [] };
+  }
+
+  const { data, error } = await supabaseClient
+    .from("Player_Transfer_Listings")
+    .select("player_id, current_highest_bid")
+    .eq("listing_type", "draft")
+    .eq("status", "Active")
+    .eq("current_highest_bidder", clubShortName)
+    .gt("current_highest_bid", 0);
+
+  if (error || !data?.length) {
+    return { total: 0, listings: [] };
+  }
+
+  const listings = data.map((row) => ({
+    player_id: row.player_id,
+    current_highest_bid: Number(row.current_highest_bid) || 0,
+  }));
+  const total = listings.reduce((sum, row) => sum + row.current_highest_bid, 0);
+  return { total, listings };
+}

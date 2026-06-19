@@ -75,7 +75,7 @@ export const FINANCE_UI_SECTIONS = [
         label: "Purchases",
         types: ["transfer_purchase", "transfer_agent_fee", "special_auction_fee"],
         note:
-          "All players bought: draft auction wins, transfer market, special auction fees. Agent fees included.",
+          "All players bought: draft auction wins, transfer market, special auction fees. Agent fees included. Winning draft bids show as pending until outbid or settled.",
       },
     ],
   },
