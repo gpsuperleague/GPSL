@@ -270,6 +270,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let CURRENT_USER_CLUB_SHORT = null;
   /** @type {Map<string, number>} */
   let SCOUTING_TARGET_MAP = new Map();
+  let SCOUTED_ONLY = false;
 
   let CLUB_NAME_MAP = {};
   let CLUB_NATION_MAP = {};
@@ -293,6 +294,11 @@ document.addEventListener("DOMContentLoaded", () => {
         .maybeSingle();
 
       CURRENT_USER_CLUB_SHORT = club?.ShortName ?? null;
+      const scoutedBtn = document.getElementById("myScoutedFilterBtn");
+      if (scoutedBtn) {
+        scoutedBtn.hidden = !CURRENT_USER_CLUB_SHORT;
+        scoutedBtn.classList.toggle("is-active", SCOUTED_ONLY);
+      }
       if (CURRENT_USER_CLUB_SHORT) {
         try {
           SCOUTING_TARGET_MAP = await loadScoutingTargetMap(
@@ -431,6 +437,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (MV_MIN !== null) query = query.gte("market_value", MV_MIN);
     if (MV_MAX !== null) query = query.lte("market_value", MV_MAX);
+
+    if (SCOUTED_ONLY && CURRENT_USER_CLUB_SHORT) {
+      const scoutIds = Array.from(SCOUTING_TARGET_MAP.keys()).filter(Boolean);
+      if (!scoutIds.length) {
+        TOTAL_ROWS = 0;
+        renderTable([]);
+        renderPagination();
+        return;
+      }
+      query = query.in("Konami_ID", scoutIds);
+    }
 
     if (CURRENT_SORT_COLUMN) {
       if (CURRENT_SORT_COLUMN === "Rating") {
@@ -650,6 +667,14 @@ document.addEventListener("DOMContentLoaded", () => {
     loadPage(1);
   }
 
+  function toggleScoutedOnlyFilter() {
+    if (!CURRENT_USER_CLUB_SHORT) return;
+    SCOUTED_ONLY = !SCOUTED_ONLY;
+    const btn = document.getElementById("myScoutedFilterBtn");
+    if (btn) btn.classList.toggle("is-active", SCOUTED_ONLY);
+    loadPage(1);
+  }
+
   function renderTable(players) {
     const tableHead = document.getElementById("tableHead");
     const tableBody = document.getElementById("tableBody");
@@ -820,6 +845,7 @@ document.addEventListener("DOMContentLoaded", () => {
             btn.textContent = scoutingStarChar(false);
             btn.title = "Add to scouting (top target)";
           }
+          if (SCOUTED_ONLY) await loadPage(CURRENT_PAGE);
         } catch (err) {
           alert(err?.message || "Could not update scouting list.");
         }
@@ -1729,10 +1755,17 @@ document.addEventListener("DOMContentLoaded", () => {
       applyMyNationFilter();
     });
 
+    document.getElementById("myScoutedFilterBtn")?.addEventListener("click", () => {
+      toggleScoutedOnlyFilter();
+    });
+
     document.getElementById("clearFiltersBtn").addEventListener("click", () => {
       CURRENT_FILTERS = {};
       MV_MIN = null;
       MV_MAX = null;
+      SCOUTED_ONLY = false;
+      const scoutedBtn = document.getElementById("myScoutedFilterBtn");
+      if (scoutedBtn) scoutedBtn.classList.remove("is-active");
       CURRENT_SORT_COLUMN = "Rating";
       CURRENT_SORT_DIR = "desc";
 

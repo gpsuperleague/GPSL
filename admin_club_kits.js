@@ -7,8 +7,11 @@ import {
 
 primeAdminPageChrome();
 
+const COF_SYNC_FUNCTION = "club-kits-cof-sync";
+
 /** @type {Array<Record<string, unknown>>} */
 let allRows = [];
+let cofSyncRunning = false;
 
 const FIELD_IDS = {
   home: "homeUrl",
@@ -28,6 +31,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("refreshBtn").onclick = () => loadTable();
   document.getElementById("saveKitsBtn").onclick = saveKits;
   document.getElementById("clubSelect").onchange = onClubSelect;
+  document.getElementById("cofSyncBtn").onclick = () => syncAllFromCof();
+  document.getElementById("cofPreviewBtn").onclick = () => previewCofForSelected();
 
   for (const kind of KIT_KINDS) {
     const input = document.getElementById(FIELD_IDS[kind]);
@@ -86,12 +91,17 @@ function onClubSelect() {
   if (!short) {
     if (editor) editor.hidden = true;
     if (saveBtn) saveBtn.disabled = true;
+    const previewBtn = document.getElementById("cofPreviewBtn");
+    if (previewBtn) previewBtn.disabled = true;
     return;
   }
 
   const row = rowForClub(short);
   if (editor) editor.hidden = false;
   if (saveBtn) saveBtn.disabled = false;
+
+  const previewBtn = document.getElementById("cofPreviewBtn");
+  if (previewBtn) previewBtn.disabled = false;
 
   document.getElementById("defaultHome").textContent = defaultKitImagePath(short, "home");
   document.getElementById("defaultAway").textContent = defaultKitImagePath(short, "away");
