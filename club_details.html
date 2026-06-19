@@ -431,6 +431,69 @@
       color: #aaa;
       font-size: 13px;
     }
+
+    .club-kits-panel {
+      margin-top: 18px;
+    }
+
+    .club-kits-title {
+      color: #ff9900;
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+
+    .club-kits-intro {
+      color: #aaa;
+      font-size: 13px;
+      line-height: 1.45;
+      margin: 0 0 14px;
+    }
+
+    .club-kits-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    @media (max-width: 720px) {
+      .club-kits-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .club-kit-card {
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .club-kit-label {
+      color: #ff9900;
+      font-size: 12px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .club-kit-img {
+      display: block;
+      width: 100%;
+      max-width: 200px;
+      height: auto;
+      max-height: 220px;
+      margin: 0 auto;
+      object-fit: contain;
+      background: #1a1a1a;
+      border-radius: 6px;
+    }
+
+    .club-kit-img--missing {
+      min-height: 120px;
+      opacity: 0.35;
+    }
   </style>
 
 </head>
@@ -499,6 +562,12 @@
           </div>
         </div>
       </div>
+    </div>
+
+    <div class="panel panel-bg club-kits-panel" id="clubKitsPanel">
+      <h2 class="club-kits-title">Club kits</h2>
+      <p class="club-kits-intro">Home, away, and third-choice kits for your club.</p>
+      <div id="clubKitsContent">Loading kits…</div>
     </div>
 
     <div class="club-details-row">
@@ -650,7 +719,7 @@
 
   </div>
 
-  <script type="module" src="club_details.js?v=20260609-gov-subsidies"></script>
+  <script type="module" src="club_details.js?v=20260617-club-kits"></script>
 
 </body>
 </html>

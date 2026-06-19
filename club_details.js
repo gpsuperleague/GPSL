@@ -18,6 +18,7 @@ import {
   inclusiveDayCountFromDates,
 } from "./owner_holidays.js";
 import { wireAvailabilityPanel } from "./owner_availability.js";
+import { loadClubKits, renderKitsPanelHtml } from "./club_kits_common.js";
 
 const MAX_OWNER_TAG_LEN = 64;
 
@@ -833,6 +834,7 @@ async function initClubDetailsPage() {
   await Promise.all([
     loadExpectationSection(club.ShortName),
     loadManagerSection(club.ShortName),
+    loadKitsSection(club.ShortName),
   ]);
   await loadSubsidyStatus(club.ShortName);
 
@@ -840,6 +842,19 @@ async function initClubDetailsPage() {
   wireAvailabilityPanel();
   wireManagerActions();
   await refreshHolidaySection();
+}
+
+async function loadKitsSection(clubShort) {
+  const el = document.getElementById("clubKitsContent");
+  if (!el) return;
+
+  try {
+    const kitRow = await loadClubKits(supabase, clubShort);
+    el.innerHTML = renderKitsPanelHtml(clubShort, kitRow);
+  } catch (err) {
+    console.warn("Club Details kits:", err);
+    el.textContent = "Could not load kit images.";
+  }
 }
 
 function wireManagerActions() {

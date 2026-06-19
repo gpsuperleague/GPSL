@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Club kits — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .kits-intro {
+      max-width: 920px;
+      font-size: 13px;
+      color: #999;
+      line-height: 1.5;
+      margin: 0 0 16px;
+    }
+    .kits-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+      margin-bottom: 16px;
+    }
+    .kits-toolbar label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: #bbb;
+    }
+    .kits-toolbar select,
+    .kits-toolbar input[type="text"] {
+      min-width: 280px;
+      padding: 8px 10px;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #eee;
+      font-size: 13px;
+    }
+    .kits-editor {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 900px) {
+      .kits-editor { grid-template-columns: 1fr; }
+    }
+    .kits-field-card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 12px;
+    }
+    .kits-field-card h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+      color: #ff9900;
+    }
+    .kits-field-card input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      background: #111;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #eee;
+      font-size: 12px;
+      margin-bottom: 8px;
+    }
+    .kits-field-card .kits-hint {
+      font-size: 11px;
+      color: #777;
+      line-height: 1.4;
+      margin: 0 0 8px;
+    }
+    .kits-preview {
+      min-height: 140px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #111;
+      border-radius: 6px;
+      padding: 8px;
+    }
+    .kits-preview img {
+      max-width: 100%;
+      max-height: 180px;
+      object-fit: contain;
+    }
+    .kits-table-wrap {
+      overflow: auto;
+      max-height: calc(100vh - 280px);
+      border: 1px solid #333;
+      border-radius: 6px;
+      margin-top: 20px;
+    }
+    .kits-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .kits-table th,
+    .kits-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #2a2a2a;
+      text-align: left;
+      vertical-align: middle;
+    }
+    .kits-table th {
+      position: sticky;
+      top: 0;
+      background: #1e1e1e;
+      z-index: 1;
+    }
+    .kits-table tbody tr:hover { background: #1a1a1a; }
+    .kits-table .club-short { color: #888; font-size: 11px; }
+    .kits-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+    .kits-pill--set { background: #1a3d1a; color: #7ddf7d; }
+    .kits-pill--default { background: #333; color: #aaa; }
+    .kits-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Club kits</h1>
+
+  <p class="kits-intro">
+    Set image paths or URLs for each club's home, away, and third kits. Owners see these on
+    <b>Club Details</b>. Leave a field blank to use the default path
+    <code>images/clubs_kits/{SHORT}_home.png</code> (and <code>_away</code> / <code>_third</code>).
+    Upload PNGs into the repo under <code>images/clubs_kits/</code>, or paste a full https URL.
+  </p>
+
+  <div class="kits-toolbar">
+    <label>
+      Club
+      <select id="clubSelect">
+        <option value="">— Select club —</option>
+      </select>
+    </label>
+    <button type="button" id="saveKitsBtn" class="button" disabled>Save kits</button>
+    <button type="button" id="refreshBtn" class="button secondary">Refresh list</button>
+  </div>
+
+  <p id="statusLine" class="status-line" role="status"></p>
+
+  <div class="kits-editor" id="kitsEditor" hidden>
+    <div class="kits-field-card" data-kind="home">
+      <h3>Home kit</h3>
+      <p class="kits-hint">Default: <span id="defaultHome">—</span></p>
+      <input type="text" id="homeUrl" placeholder="Leave blank for default path">
+      <div class="kits-preview"><img id="homePreview" alt="Home kit preview"></div>
+    </div>
+    <div class="kits-field-card" data-kind="away">
+      <h3>Away kit</h3>
+      <p class="kits-hint">Default: <span id="defaultAway">—</span></p>
+      <input type="text" id="awayUrl" placeholder="Leave blank for default path">
+      <div class="kits-preview"><img id="awayPreview" alt="Away kit preview"></div>
+    </div>
+    <div class="kits-field-card" data-kind="third">
+      <h3>3rd kit</h3>
+      <p class="kits-hint">Default: <span id="defaultThird">—</span></p>
+      <input type="text" id="thirdUrl" placeholder="Leave blank for default path">
+      <div class="kits-preview"><img id="thirdPreview" alt="3rd kit preview"></div>
+    </div>
+  </div>
+
+  <h2 class="admin-subtitle">All clubs</h2>
+  <div class="kits-table-wrap" id="tableWrap">
+    <p style="padding:12px;color:#888;">Loading…</p>
+  </div>
+
+  <script type="module" src="admin_club_kits.js?v=20260617-club-kits"></script>
+</body>
+</html>
