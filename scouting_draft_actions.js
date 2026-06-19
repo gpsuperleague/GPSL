@@ -354,7 +354,7 @@ export function renderDraftManageCell(ui) {
   if (ui.playerPageUrl) {
     const label = ui.canBidInline ? "Full bid page" : "View";
     parts.push(
-      `<a href="${ui.playerPageUrl}" class="gpsl-link" style="font-size:12px;">${label}</a>`
+      `<a href="${ui.playerPageUrl}" class="scout-bid-page-link">${label}</a>`
     );
   }
 
