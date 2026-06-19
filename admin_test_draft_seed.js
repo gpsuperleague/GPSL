@@ -45,6 +45,19 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;");
 }
 
+function complianceLine(proj, targets) {
+  const hgOk = (proj.home_grown ?? 0) >= (targets.min_hg ?? 8);
+  const u21Ok = (proj.under_21 ?? 0) >= (targets.min_u21 ?? 5);
+  const starOk = (proj.stars ?? 0) >= Math.min(targets.star_cap ?? 2, 2);
+  const cls = hgOk && u21Ok && starOk ? "compliance-ok" : "compliance-warn";
+  const bits = [
+    `HG ${hgOk ? "✓" : "⚠"} ${proj.home_grown ?? 0}/${targets.min_hg ?? 8}`,
+    `U21 ${u21Ok ? "✓" : "⚠"} ${proj.under_21 ?? 0}/${targets.min_u21 ?? 5}`,
+    `Stars ${starOk ? "✓" : "⚠"} ${proj.stars ?? 0}/${targets.star_cap ?? "—"} (≥${targets.star_min_rating ?? 79})`,
+  ];
+  return `<span class="${cls}">${bits.join(" · ")}</span>`;
+}
+
 function renderPreview(result) {
   const box = document.getElementById("previewBox");
   if (!box) return;
@@ -60,22 +73,20 @@ function renderPreview(result) {
   const targets = proj.targets || {};
   const bids = Array.isArray(result.bids) ? result.bids : [];
   const skipped = Array.isArray(result.skipped) ? result.skipped : [];
+  const totalBudget = Number(document.getElementById("totalSpendBudget")?.value || 0);
+  const avgBid = bids.length ? (result.total_spend || 0) / bids.length : 0;
 
   box.hidden = false;
-  const fixedBid = Number(document.getElementById("fixedBidAmount")?.value || 0);
   box.innerHTML = `
     <p><b>${escapeHtml(result.club)}</b> · ${result.dry_run ? "Preview" : "Placed"} ·
       ${result.dry_run ? bids.length : result.placed} bid(s) ·
-      spend ${formatMoney(result.total_spend || 0)} ·
-      balance ${formatMoney(result.balance || 0)} (reserve ${formatMoney(Number(document.getElementById("budgetReserve")?.value || 0))}) ·
-      ${fixedBid > 0 ? `fixed bid ${formatMoney(fixedBid)} · ` : ""}
+      spend ${formatMoney(result.total_spend || 0)}${totalBudget > 0 ? ` / ${formatMoney(totalBudget)} cap` : ""}${avgBid > 0 ? ` · avg ${formatMoney(avgBid)}` : ""} ·
+      balance ${formatMoney(result.balance || 0)} ·
       draft credits after ${result.draft_credits_remaining ?? "—"}</p>
     <p>Projected squad: <b>${proj.squad_size ?? "—"}</b> players ·
-      HG <b>${proj.home_grown ?? "—"}</b>/${targets.min_hg ?? 8} ·
-      U21 <b>${proj.under_21 ?? "—"}</b>/${targets.min_u21 ?? 5} ·
-      Stars <b>${proj.stars ?? "—"}</b>/${targets.star_cap ?? "—"} ·
       GK ${pos.gk ?? 0}/${targets.gk ?? 2} · DEF ${pos.def ?? 0}/${targets.def ?? 8} ·
       MID ${pos.mid ?? 0}/${targets.mid ?? 10} · FWD ${pos.fwd ?? 0}/${targets.fwd ?? 8}</p>
+    <p>Compliance: ${complianceLine(proj, targets)}</p>
     ${
       bids.length
         ? `<table>
@@ -83,6 +94,7 @@ function renderPreview(result) {
       <tbody>${bids
         .map((b) => {
           const tags = [];
+          if (b.is_star) tags.push('<span class="tag tag-star">STAR</span>');
           if (b.home_grown) tags.push('<span class="tag tag-hg">HG</span>');
           if (b.under_21) tags.push('<span class="tag tag-u21">U21</span>');
           const type =
@@ -114,9 +126,9 @@ async function runSeed(dryRun) {
   const club = document.getElementById("clubSelect")?.value?.trim();
   const maxBids = Number(document.getElementById("maxBids")?.value || 27);
   const budgetReserve = Number(document.getElementById("budgetReserve")?.value || 0);
-  const fixedBidRaw = document.getElementById("fixedBidAmount")?.value;
-  const fixedBidAmount =
-    fixedBidRaw === "" || fixedBidRaw == null ? null : Number(fixedBidRaw);
+  const totalSpendRaw = document.getElementById("totalSpendBudget")?.value;
+  const totalSpendBudget =
+    totalSpendRaw === "" || totalSpendRaw == null ? null : Number(totalSpendRaw);
 
   if (!club) {
     setStatus("pageStatus", "Select a club first.", false);
@@ -124,7 +136,6 @@ async function runSeed(dryRun) {
   }
 
   if (!dryRun) {
-    const n = lastPreview?.bids?.length ?? maxBids;
     if (
       !confirm(
         `Place up to ${maxBids} draft bid(s) for ${club}?\n\n` +
@@ -145,7 +156,7 @@ async function runSeed(dryRun) {
     p_max_bids: maxBids,
     p_budget_reserve: budgetReserve,
     p_dry_run: dryRun,
-    p_bid_amount: fixedBidAmount,
+    p_total_spend_budget: totalSpendBudget,
   });
 
   if (error) {

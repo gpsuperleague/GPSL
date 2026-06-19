@@ -26,6 +26,9 @@
     .tag-u21 { background: #1a2a3a; color: #8ec8ff; }
     .tag-open { background: #2a2a1a; color: #e8c547; }
     .tag-join { background: #2a1a2a; color: #d8a8ff; }
+    .tag-star { background: #3a2a1a; color: #ffcc66; }
+    .compliance-ok { color: #8ddf8d; }
+    .compliance-warn { color: #e8c547; }
   </style>
 </head>
 <body class="admin-page">
@@ -53,13 +56,13 @@
           </label>
           <label>
             Budget reserve (₿)
-            <input type="number" id="budgetReserve" min="0" step="500000" value="5000000">
-            <div class="hint">Keeps this amount unspent from current balance when totalling bid amounts.</div>
+            <input type="number" id="budgetReserve" min="0" step="500000" value="0">
+            <div class="hint">Keeps this amount unspent from club balance (on top of total spend cap below).</div>
           </label>
           <label>
-            Fixed bid amount (₿)
-            <input type="number" id="fixedBidAmount" min="0" step="500000" placeholder="Leave blank for market value">
-            <div class="hint">Optional. Every opening bid uses this amount (e.g. 400000000 for ₿400M). Join bids use this too, or current high + ₿500k if that is higher.</div>
+            Total spend budget (₿)
+            <input type="number" id="totalSpendBudget" min="0" step="1000000" value="400000000">
+            <div class="hint">Cap for all bids combined (e.g. 400000000 = ₿400M across 27 players). Split evenly; picks cheaper free agents. Opening bids only when set.</div>
           </label>
         </div>
         <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;">
@@ -71,6 +74,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_draft_seed.js?v=20260619-fixed-bid"></script>
+  <script type="module" src="admin_test_draft_seed.js?v=20260619-total-budget"></script>
 </body>
 </html>
