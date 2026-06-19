@@ -304,7 +304,7 @@
       align-items:center;
       flex-wrap:wrap;
       gap:10px;
-      margin-top:8px;
+      padding-bottom:6px;
     }
 
     .draft-refresh-note {
@@ -393,10 +393,6 @@
     <div>
       <p id="draftStatus" class="status-note" style="margin:0 0 6px 0;"></p>
       <p id="creditPanel" class="status-note" style="margin:0;"></p>
-      <div class="draft-refresh-row">
-        <button type="button" id="draftRefreshBtn" class="button button-secondary">Refresh now</button>
-        <span id="draftRefreshNote" class="draft-refresh-note">Auto-refresh every minute</span>
-      </div>
     </div>
     <div id="draftCountdownContainer" class="draft-timer">
       <span id="draftCountdown"></span>
@@ -427,7 +423,7 @@
   <div class="draft-filters" role="search" aria-label="Filter draft auctions">
     <label>
       Player name
-      <input type="text" id="draftPlayerSearch" placeholder="Search name…" autocomplete="off">
+      <input type="text" id="draftPlayerSearch" placeholder="Search name (ignores accents)…" autocomplete="off">
     </label>
     <label>
       Leading club
@@ -440,6 +436,10 @@
       <span>My club&apos;s bids only</span>
     </label>
     <button type="button" id="draftClearFilters" class="button button-secondary">Clear filters</button>
+    <div class="draft-refresh-row">
+      <button type="button" id="draftRefreshBtn" class="button button-secondary">Refresh now</button>
+      <span id="draftRefreshNote" class="draft-refresh-note">Auto-refresh every minute</span>
+    </div>
   </div>
   <p id="draftFilterSummary" class="draft-filter-summary" hidden></p>
 
@@ -494,6 +494,7 @@
       playerThumbLinkHtml,
       playerNameLinkHtml,
     } from "./player_links.js";
+    import { textMatchesSearch } from "./search_normalize.js";
 
     /* ============================================================
        MODULE A: Global State
@@ -753,7 +754,7 @@
 
     function getDraftFilterState() {
       return {
-        nameQuery: document.getElementById("draftPlayerSearch")?.value.trim().toLowerCase() || "",
+        nameQuery: document.getElementById("draftPlayerSearch")?.value.trim() || "",
         leadingClub: document.getElementById("draftLeadingClubFilter")?.value || "",
         myBidsOnly: document.getElementById("draftMyBidsOnly")?.checked === true,
       };
@@ -765,7 +766,7 @@
 
       if (nameQuery) {
         filtered = filtered.filter((row) =>
-          row.playerName.toLowerCase().includes(nameQuery)
+          textMatchesSearch(row.playerName, nameQuery)
         );
       }
 
