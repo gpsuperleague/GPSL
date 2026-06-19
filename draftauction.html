@@ -243,6 +243,38 @@
       cursor:pointer;
     }
     .bid-btn.view-only:hover { background:#555; }
+
+    button.button.button-secondary {
+      background:#333;
+      color:#ddd;
+      border:1px solid #555;
+      padding:8px 14px;
+      font-size:12px;
+    }
+
+    button.button.button-secondary:hover {
+      background:#444;
+      transform:none;
+    }
+
+    button.button.button-secondary:disabled {
+      opacity:0.65;
+      cursor:wait;
+      transform:none;
+    }
+
+    .draft-refresh-row {
+      display:flex;
+      align-items:center;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:8px;
+    }
+
+    .draft-refresh-note {
+      font-size:11px;
+      color:#888;
+    }
   </style>
 </head>
 
@@ -256,6 +288,10 @@
     <div>
       <p id="draftStatus" class="status-note" style="margin:0 0 6px 0;"></p>
       <p id="creditPanel" class="status-note" style="margin:0;"></p>
+      <div class="draft-refresh-row">
+        <button type="button" id="draftRefreshBtn" class="button button-secondary">Refresh now</button>
+        <span id="draftRefreshNote" class="draft-refresh-note">Auto-refresh every minute</span>
+      </div>
     </div>
     <div id="draftCountdownContainer" class="draft-timer">
       <span id="draftCountdown"></span>
@@ -346,12 +382,55 @@
     let draftTableWired = false;
     let draftListingsPoll = null;
     let draftListingsPollMs = null;
+    let listingsLoading = false;
+    const DRAFT_LISTINGS_POLL_MS = 60000;
 
-    function ensureDraftListingsPoll(intervalMs) {
-      if (draftListingsPollMs === intervalMs && draftListingsPoll) return;
+    function stopDraftListingsPoll() {
       if (draftListingsPoll) clearInterval(draftListingsPoll);
+      draftListingsPoll = null;
+      draftListingsPollMs = null;
+    }
+
+    function ensureDraftListingsPoll(intervalMs = DRAFT_LISTINGS_POLL_MS) {
+      if (draftListingsPollMs === intervalMs && draftListingsPoll) return;
+      stopDraftListingsPoll();
       draftListingsPollMs = intervalMs;
       draftListingsPoll = setInterval(() => loadDraftListings(), intervalMs);
+    }
+
+    function wireDraftRefreshButton() {
+      const btn = document.getElementById("draftRefreshBtn");
+      if (!btn) return;
+      btn.addEventListener("click", () => refreshDraftListingsManual());
+    }
+
+    async function refreshDraftListingsManual() {
+      if (listingsLoading) return;
+      const btn = document.getElementById("draftRefreshBtn");
+      const note = document.getElementById("draftRefreshNote");
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Refreshing…";
+      }
+      try {
+        await loadDraftListings();
+        if (note) {
+          const time = new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          });
+          note.textContent = `Updated ${time} · auto every minute`;
+        }
+      } catch (err) {
+        console.error(err);
+        if (note) note.textContent = "Refresh failed — try again";
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "Refresh now";
+        }
+      }
     }
 
     /* ============================================================
@@ -416,6 +495,7 @@
       await loadBuyerClubShortName(user.id);
       favouriteIds = await loadDraftFavouriteIds(supabase, buyerShortName);
       wireDraftTableActions();
+      wireDraftRefreshButton();
       await updateCreditPanel();
       await loadDraftListings();
     });
@@ -459,13 +539,17 @@
        ============================================================ */
 
     async function loadDraftListings() {
+      if (listingsLoading) return;
+      listingsLoading = true;
       const tbody = document.getElementById("draftTableBody");
       tbody.innerHTML = "";
 
       const nowUK = getUKNow();
       const statusEl = document.getElementById("draftStatus");
 
+      try {
       if (!draftEnabled || !draftAuctionStartTimeUK) {
+        stopDraftListingsPoll();
         if (statusEl) statusEl.textContent = "";
         tbody.innerHTML = `<tr><td colspan="10">Draft auction is not active.</td></tr>`;
         return;
@@ -482,9 +566,12 @@
       }
 
       if (nowUK < draftAuctionStartTimeUK) {
+        stopDraftListingsPoll();
         tbody.innerHTML = `<tr><td colspan="10">Draft auction has not started yet.</td></tr>`;
         return;
       }
+
+      ensureDraftListingsPoll();
 
       const { data: listings } = await supabase
         .from("Player_Transfer_Listings")
@@ -532,14 +619,6 @@
       if (statusEl && auctionEnded && listings.length) {
         statusEl.textContent =
           "Bidding closed (random finish reached). Results settle after 7pm transfer auctions finish — listings may still show Active briefly.";
-      }
-
-      if (auctionEnded) {
-        ensureDraftListingsPoll(30000);
-      } else if (phase === "random_active") {
-        ensureDraftListingsPoll(12000);
-      } else {
-        ensureDraftListingsPoll(20000);
       }
 
       for (const listing of sortedListings) {
@@ -624,6 +703,9 @@
 
       if (!tbody.children.length) {
         tbody.innerHTML = `<tr><td colspan="10">No active draft auctions.</td></tr>`;
+      }
+      } finally {
+        listingsLoading = false;
       }
     }
   </script>
