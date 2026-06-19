@@ -371,6 +371,12 @@ BEGIN
     INTO v_player
     FROM public."Players" p
     WHERE (p."Contracted_Team" IS NULL OR btrim(p."Contracted_Team") = '')
+      AND coalesce(p.pesdb_unavailable, false) = false
+      AND NOT public.player_signed_this_season(p."Season_Signed")
+      AND (
+        p.contract_seasons_remaining IS NULL
+        OR p.contract_seasons_remaining > 1
+      )
       AND NOT (p."Konami_ID"::text = ANY (v_exclude))
       AND (
         public.club_squad_player_rating(p."Konami_ID"::text) < v_star_min
@@ -513,48 +519,61 @@ BEGIN
     END IF;
 
     IF NOT p_dry_run THEN
-      v_listing_id := public.admin_ensure_draft_listing_for_player(v_player.player_id);
+      BEGIN
+        v_listing_id := public.admin_ensure_draft_listing_for_player(v_player.player_id);
 
-      INSERT INTO public."Player_Transfer_Bids" (
-        listing_id,
-        player_id,
-        direct_bid_id,
-        bidder_club_id,
-        seller_club_id,
-        bid_amount,
-        is_direct,
-        is_first_draft_bid,
-        is_draft_join,
-        draft_join_consumed,
-        bid_time
-      )
-      VALUES (
-        v_listing_id,
-        v_player.player_id,
-        NULL,
-        v_club,
-        NULL,
-        v_amount,
-        true,
-        v_is_first,
-        v_is_join,
-        v_consume,
-        now()
-      );
+        INSERT INTO public."Player_Transfer_Bids" (
+          listing_id,
+          player_id,
+          direct_bid_id,
+          bidder_club_id,
+          seller_club_id,
+          bid_amount,
+          is_direct,
+          is_first_draft_bid,
+          is_draft_join,
+          draft_join_consumed,
+          bid_time
+        )
+        VALUES (
+          v_listing_id,
+          v_player.player_id,
+          NULL,
+          v_club,
+          NULL,
+          v_amount,
+          true,
+          v_is_first,
+          v_is_join,
+          v_consume,
+          now()
+        );
 
-      UPDATE public."Player_Transfer_Listings" l
-      SET current_highest_bid = v_amount,
-          current_highest_bidder = v_club
-      WHERE l.id = v_listing_id
-        AND coalesce(l.current_highest_bid, 0) < v_amount;
+        UPDATE public."Player_Transfer_Listings" l
+        SET current_highest_bid = v_amount,
+            current_highest_bidder = v_club
+        WHERE l.id = v_listing_id
+          AND coalesce(l.current_highest_bid, 0) < v_amount;
 
-      IF v_is_first THEN
-        v_credits := v_credits + 2;
-      ELSIF v_consume THEN
-        v_credits := v_credits - 1;
-      END IF;
+        IF v_is_first THEN
+          v_credits := v_credits + 2;
+        ELSIF v_consume THEN
+          v_credits := v_credits - 1;
+        END IF;
 
-      v_placed := v_placed + 1;
+        v_placed := v_placed + 1;
+      EXCEPTION WHEN OTHERS THEN
+        v_skipped := v_skipped || jsonb_build_array(
+          jsonb_build_object(
+            'reason', 'transfer_blocked',
+            'detail', SQLERRM,
+            'player_id', v_player.player_id,
+            'player_name', v_player.player_name
+          )
+        );
+        v_exclude := array_append(v_exclude, v_player.player_id);
+        CONTINUE;
+      END;
     END IF;
 
     v_spent := v_spent + v_amount;
