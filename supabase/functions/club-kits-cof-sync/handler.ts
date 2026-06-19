@@ -16,18 +16,20 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 
 const INVOCATION_BUDGET_MS = 50_000;
 
-function remainingMs(deadline: number) {
-  return Math.max(0, deadline - Date.now());
-}
-
 function timedOut(deadline: number) {
-  return remainingMs(deadline) < 3000;
+  return Math.max(0, deadline - Date.now()) < 3000;
 }
 
 type ClubRow = {
   ShortName: string;
   Club: string;
   Nation: string;
+};
+
+type KitRow = {
+  home_image_url: string | null;
+  away_image_url: string | null;
+  third_image_url: string | null;
 };
 
 Deno.serve(async (req) => {
@@ -70,6 +72,23 @@ Deno.serve(async (req) => {
     const cofCache = createCofFetchCache();
     const deadline = Date.now() + INVOCATION_BUDGET_MS;
 
+    const seasonStartYear =
+      body?.season_start_year != null && body?.season_start_year !== ""
+        ? Number(body.season_start_year)
+        : null;
+    const strictSeason = body?.strict_season !== false;
+    const skipIfNewerSaved = body?.skip_if_newer_saved === true;
+    const cofOptions = {
+      targetStartYear: Number.isFinite(seasonStartYear) ? seasonStartYear : null,
+      strictSeason,
+    };
+
+    const clubShortNames = Array.isArray(body?.club_short_names)
+      ? body.club_short_names
+          .map((s: unknown) => String(s ?? "").trim().toUpperCase())
+          .filter(Boolean)
+      : null;
+
     if (action === "preview_club") {
       const short = String(body?.club_short_name || "").trim().toUpperCase();
       if (!short) return jsonResponse({ error: "club_short_name required" }, 400);
@@ -89,7 +108,8 @@ Deno.serve(async (req) => {
         club.Club,
         club.ShortName,
         fetch,
-        cofCache
+        cofCache,
+        cofOptions
       );
       return jsonResponse({ ok: true, club, result });
     }
@@ -101,18 +121,58 @@ Deno.serve(async (req) => {
     const offset = Math.max(0, Number(body?.offset) || 0);
     const limit = Math.min(4, Math.max(1, Number(body?.limit) || 1));
 
-    const { data: clubs, error: clubsError } = await adminClient
-      .from("Clubs")
-      .select("ShortName, Club, Nation")
-      .neq("ShortName", "FOREIGN")
-      .order("Club")
-      .range(offset, offset + limit - 1);
+    let rows: ClubRow[] = [];
+    let totalClubs = 0;
 
-    if (clubsError) {
-      return jsonResponse({ error: clubsError.message }, 500);
+    if (clubShortNames?.length) {
+      const slice = clubShortNames.slice(offset, offset + limit);
+      if (!slice.length) {
+        return jsonResponse({
+          ok: true,
+          offset,
+          limit,
+          next_offset: null,
+          done: true,
+          total_clubs: clubShortNames.length,
+          results: [],
+          season_start_year: seasonStartYear,
+        });
+      }
+
+      const { data: clubs, error: clubsError } = await adminClient
+        .from("Clubs")
+        .select("ShortName, Club, Nation")
+        .in("ShortName", slice)
+        .order("Club");
+
+      if (clubsError) {
+        return jsonResponse({ error: clubsError.message }, 500);
+      }
+
+      rows = (clubs || []) as ClubRow[];
+      totalClubs = clubShortNames.length;
+    } else {
+      const { data: clubs, error: clubsError } = await adminClient
+        .from("Clubs")
+        .select("ShortName, Club, Nation")
+        .neq("ShortName", "FOREIGN")
+        .order("Club")
+        .range(offset, offset + limit - 1);
+
+      if (clubsError) {
+        return jsonResponse({ error: clubsError.message }, 500);
+      }
+
+      rows = (clubs || []) as ClubRow[];
+
+      const { count } = await adminClient
+        .from("Clubs")
+        .select("*", { count: "exact", head: true })
+        .neq("ShortName", "FOREIGN");
+
+      totalClubs = count || 0;
     }
 
-    const rows = (clubs || []) as ClubRow[];
     const results: Record<string, unknown>[] = [];
 
     for (const club of rows) {
@@ -124,12 +184,30 @@ Deno.serve(async (req) => {
       };
 
       try {
+        if (skipIfNewerSaved && cofOptions.targetStartYear != null) {
+          const { data: existing } = await adminClient
+            .from("club_kits")
+            .select("home_image_url, away_image_url, third_image_url")
+            .eq("club_short_name", club.ShortName)
+            .maybeSingle();
+
+          const savedYear = maxSeasonStartFromKitUrls(existing as KitRow);
+          if (savedYear > cofOptions.targetStartYear) {
+            entry.ok = true;
+            entry.skipped = true;
+            entry.reason = `Already has ${savedYear}-${String(savedYear + 1).slice(-2)} kits`;
+            results.push(entry);
+            continue;
+          }
+        }
+
         const cof = await fetchLatestCofKits(
           club.Nation,
           club.Club,
           club.ShortName,
           fetch,
-          cofCache
+          cofCache,
+          cofOptions
         );
 
         if (cof.error) {
@@ -219,13 +297,8 @@ Deno.serve(async (req) => {
       results.push(entry);
     }
 
-    const { count } = await adminClient
-      .from("Clubs")
-      .select("*", { count: "exact", head: true })
-      .neq("ShortName", "FOREIGN");
-
     const nextOffset = offset + rows.length;
-    const done = nextOffset >= (count || 0);
+    const done = nextOffset >= totalClubs;
 
     return jsonResponse({
       ok: true,
@@ -233,7 +306,8 @@ Deno.serve(async (req) => {
       limit,
       next_offset: done ? null : nextOffset,
       done,
-      total_clubs: count,
+      total_clubs: totalClubs,
+      season_start_year: seasonStartYear,
       results,
     });
   } catch (err) {

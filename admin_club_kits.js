@@ -4,6 +4,7 @@ import {
   defaultKitImagePath,
   resolveKitImageSrc,
 } from "./club_kits_common.js";
+import { currentKitSeasonStartYear } from "./club_kits_cof.js";
 
 primeAdminPageChrome();
 
@@ -311,6 +312,63 @@ async function previewCofForSelected() {
   }
 }
 
+async function runSyncPass({
+  useStorage,
+  seasonStartYear = null,
+  clubShortNames = null,
+  skipIfNewerSaved = false,
+  passLabel = "",
+}) {
+  let offset = 0;
+  const failed = new Set();
+  let ok = 0;
+  let fail = 0;
+
+  while (true) {
+    setStatus(
+      "statusLine",
+      passLabel
+        ? `${passLabel} — club ${offset + 1}${clubShortNames ? ` / ${clubShortNames.length}` : "+"}…`
+        : `Downloading latest kits — club ${offset + 1}+…`,
+      true
+    );
+
+    const body = {
+      action: "sync_batch",
+      offset,
+      limit: 1,
+      download: useStorage,
+      strict_season: true,
+    };
+    if (seasonStartYear != null) body.season_start_year = seasonStartYear;
+    if (clubShortNames?.length) body.club_short_names = clubShortNames;
+    if (skipIfNewerSaved) body.skip_if_newer_saved = true;
+
+    const data = await invokeCofSync(body);
+
+    for (const row of data?.results || []) {
+      const short = row.club_short_name;
+      if (row.ok && row.skipped) {
+        appendCofLog(`SKIP ${short}: ${row.reason || "newer kits already saved"}`);
+      } else if (row.ok) {
+        ok += 1;
+        const season = row.cof?.season_label || "?";
+        appendCofLog(`OK ${short} (${season})`);
+      } else {
+        fail += 1;
+        if (short) failed.add(short);
+        appendCofLog(`FAIL ${short}: ${row.error || "failed"}`);
+      }
+    }
+
+    if (data?.done || data?.next_offset == null) break;
+    offset = data.next_offset;
+    await new Promise((r) => setTimeout(r, 1200));
+  }
+
+  return { failed, ok, fail };
+}
+
 async function downloadLatestKits({ download } = { download: true }) {
   if (cofSyncRunning) return;
 
@@ -318,8 +376,8 @@ async function downloadLatestKits({ download } = { download: true }) {
     download && document.getElementById("cofDownloadStorage")?.checked !== false;
 
   const msg = useStorage
-    ? "Download latest-season kits for all clubs into Supabase Storage and update club_kits?"
-    : "Save latest-season COF image URLs for all clubs to club_kits (no file download)?";
+    ? "Download kits for all clubs (latest season, then fall back to older seasons for any that fail)?"
+    : "Save COF kit URLs for all clubs?\n\nRuns latest season first, then 2024-25, 2023-24, etc. only for clubs still missing kits.";
 
   if (!confirm(msg)) return;
 
@@ -330,45 +388,45 @@ async function downloadLatestKits({ download } = { download: true }) {
   if (linksBtn) linksBtn.disabled = true;
   clearCofLog();
 
-  let offset = 0;
-  let ok = 0;
-  let fail = 0;
+  const seasonStart = currentKitSeasonStartYear();
+  const maxFallbackPasses = 4;
+  let pending = null;
+  let totalOk = 0;
+  let totalFail = 0;
 
   try {
-    while (true) {
-      setStatus(
-        "statusLine",
-        `Downloading latest kits — club ${offset + 1}+…`,
-        true
-      );
-      const data = await invokeCofSync({
-        action: "sync_batch",
-        offset,
-        limit: 1,
-        download: useStorage,
+    for (let pass = 0; pass < maxFallbackPasses; pass += 1) {
+      if (pending && pending.size === 0) break;
+
+      const targetYear = pass === 0 ? null : seasonStart - pass;
+      const label =
+        pass === 0
+          ? "Pass 1: latest season on COF"
+          : `Pass ${pass + 1}: ${targetYear}-${String(targetYear + 1).slice(-2)}`;
+
+      appendCofLog(`\n=== ${label} ===`);
+
+      const { failed, ok, fail } = await runSyncPass({
+        useStorage,
+        seasonStartYear: targetYear,
+        clubShortNames: pending ? [...pending] : null,
+        skipIfNewerSaved: pass > 0,
+        passLabel: label,
       });
 
-      for (const row of data?.results || []) {
-        if (row.ok) {
-          ok += 1;
-          const season = row.cof?.season_label || "?";
-          appendCofLog(`OK ${row.club_short_name} (${season})`);
-        } else {
-          fail += 1;
-          appendCofLog(`FAIL ${row.club_short_name}: ${row.error || "failed"}`);
-        }
-      }
-
-      if (data?.done || data?.next_offset == null) break;
-      offset = data.next_offset;
-      await new Promise((r) => setTimeout(r, 1200));
+      totalOk += ok;
+      totalFail = fail;
+      pending = failed;
     }
 
     await loadTable();
+    const remaining = pending?.size || 0;
     setStatus(
       "statusLine",
-      `Latest kits — ${ok} updated, ${fail} failed.`,
-      fail === 0
+      remaining
+        ? `Latest kits — ${totalOk} updated, ${remaining} still missing after fallback passes.`
+        : `Latest kits — ${totalOk} updated, all clubs matched.`,
+      remaining === 0
     );
   } catch (err) {
     setStatus("statusLine", err.message, false);

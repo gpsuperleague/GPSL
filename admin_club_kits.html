@@ -170,8 +170,8 @@
     <h2 style="margin:0 0 8px;font-size:16px;color:#ff9900;">Download latest kits</h2>
     <p style="margin:0 0 10px;font-size:12px;color:#999;line-height:1.45;">
       Pulls the <b>current-season</b> home, away, and third kits from
-      <a href="https://www.colours-of-football.com/" target="_blank" rel="noopener" style="color:#ff9900;">colours-of-football.com</a>
-      by reading on-page headers such as <code>home kit 2025-2026</code> / <code>25-26</code>, then matching kit images for that season only.
+      <a href="https://www.colours-of-football.com/" target="_blank" rel="noopener" style="color:#ff9900;">colours-of-football.com</a>.
+      Runs <b>latest season first</b>, then automatically retries older seasons (2024-25, 2023-24, …) only for clubs still missing kits.
       Requires edge function <code>club-kits-cof-sync</code> (deploy <code>index.ts</code> + <code>club_kits_cof.js</code>).
     </p>
     <div class="kits-actions">
@@ -229,6 +229,6 @@
     <p style="padding:12px;color:#888;">Loading…</p>
   </div>
 
-  <script type="module" src="admin_club_kits.js?v=20260619-cof-timeout"></script>
+  <script type="module" src="admin_club_kits.js?v=20260619-cof-fallback"></script>
 </body>
 </html>

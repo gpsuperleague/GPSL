@@ -94,8 +94,9 @@ export const COF_CLUB_PATH_OVERRIDES = {
 const USER_AGENT =
   "Mozilla/5.0 (compatible; GPSL-KitSync/1.0; +https://github.com/gpsl)";
 
-const COF_MIN_GAP_MS = 1400;
-const COF_MAX_RETRIES = 6;
+const COF_MIN_GAP_MS = 900;
+const COF_MAX_RETRIES = 4;
+const COF_MAX_BACKOFF_MS = 8000;
 
 export function createCofFetchCache() {
   return { html: new Map(), lastFetchMs: 0 };
@@ -297,6 +298,39 @@ export function formatSeasonCode(code) {
   return `${y1}-${String(y2).slice(-2)}`;
 }
 
+/** European season start year (Jul–Jun): e.g. Jun 2026 → 2025 for 2025-26. */
+export function currentKitSeasonStartYear(now = new Date()) {
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  return m >= 7 ? y : y - 1;
+}
+
+/** 2024 → 2425 */
+export function startYearToSeasonCode(startYear) {
+  const y1 = Number(startYear);
+  if (!Number.isFinite(y1) || y1 < 1990 || y1 > 2040) return null;
+  const y2 = y1 + 1;
+  const code = Number(String(y1).slice(-2) + String(y2).slice(-2));
+  return isPlausibleKitSeasonCode(code) ? code : null;
+}
+
+export function seasonStartFromKitUrl(url) {
+  const m = String(url || "").match(/_(\d)_(\d{4})(?:_\d+)?\.(?:png|gif)/i);
+  return m ? Number(m[2]) : 0;
+}
+
+export function maxSeasonStartFromKitUrls(kits) {
+  let max = 0;
+  for (const url of [kits?.home, kits?.away, kits?.third]) {
+    max = Math.max(max, seasonStartFromKitUrl(url));
+  }
+  return max;
+}
+
+export function countKitUrls(kits) {
+  return [kits?.home, kits?.away, kits?.third].filter(Boolean).length;
+}
+
 function parseKitCandidatesFromHtml(html, pageUrl) {
   const buckets = { home: [], away: [], third: [] };
 
@@ -323,29 +357,53 @@ function parseKitCandidatesFromHtml(html, pageUrl) {
   return buckets;
 }
 
-function pickLatestKitUrl(candidates, latestSeasonCode = null) {
+function pickKitUrlForSeasonYear(candidates, seasonStartYear, strict = false) {
   if (!candidates.length) return null;
 
-  let pool = candidates;
-  if (latestSeasonCode) {
-    const seasonYear = seasonCodeToStartYear(latestSeasonCode);
-    const filtered = candidates.filter((x) => x.season === seasonYear);
-    if (filtered.length) pool = filtered;
+  const year = Number(seasonStartYear);
+  if (Number.isFinite(year) && year >= 1990) {
+    const filtered = candidates.filter((x) => x.season === year);
+    if (filtered.length) {
+      filtered.sort(
+        (a, b) => a.variant - b.variant || a.file.localeCompare(b.file)
+      );
+      return filtered[0].url;
+    }
+    if (strict) return null;
   }
 
-  const maxSeason = Math.max(...pool.map((x) => x.season));
-  const top = pool.filter((x) => x.season === maxSeason);
+  const maxSeason = Math.max(...candidates.map((x) => x.season));
+  const top = candidates.filter((x) => x.season === maxSeason);
   top.sort(
     (a, b) => a.variant - b.variant || a.file.localeCompare(b.file)
   );
   return top[0]?.url ?? null;
 }
 
-function pickLatestKits(buckets, latestSeasonCode = null) {
+function pickLatestKitUrl(candidates, latestSeasonCode = null, strict = false) {
+  if (!candidates.length) return null;
+  if (!latestSeasonCode) {
+    if (strict) return null;
+    return pickKitUrlForSeasonYear(candidates, NaN, false);
+  }
+  const seasonYear = seasonCodeToStartYear(latestSeasonCode);
+  return pickKitUrlForSeasonYear(candidates, seasonYear, strict);
+}
+
+function pickLatestKits(buckets, latestSeasonCode = null, strict = false) {
   return {
-    home: pickLatestKitUrl(buckets.home, latestSeasonCode),
-    away: pickLatestKitUrl(buckets.away, latestSeasonCode),
-    third: pickLatestKitUrl(buckets.third, latestSeasonCode),
+    home: pickLatestKitUrl(buckets.home, latestSeasonCode, strict),
+    away: pickLatestKitUrl(buckets.away, latestSeasonCode, strict),
+    third: pickLatestKitUrl(buckets.third, latestSeasonCode, strict),
+  };
+}
+
+function pickKitsForSeasonYear(buckets, seasonStartYear, strict = true) {
+  const year = Number(seasonStartYear);
+  return {
+    home: pickKitUrlForSeasonYear(buckets.home, year, strict),
+    away: pickKitUrlForSeasonYear(buckets.away, year, strict),
+    third: pickKitUrlForSeasonYear(buckets.third, year, strict),
   };
 }
 
@@ -392,7 +450,7 @@ export async function fetchCofHtml(url, fetchImpl = fetch, cache = null) {
       cache && (cache.lastFetchMs = Date.now());
 
       if (res.status === 429 || res.status === 503) {
-        const wait = Math.min(30000, 2000 * 2 ** attempt);
+        const wait = Math.min(COF_MAX_BACKOFF_MS, 1500 * 2 ** attempt);
         await sleepMs(wait);
         continue;
       }
@@ -405,7 +463,7 @@ export async function fetchCofHtml(url, fetchImpl = fetch, cache = null) {
     } catch (err) {
       lastErr = err;
       if (attempt < COF_MAX_RETRIES - 1) {
-        await sleepMs(Math.min(30000, 1500 * 2 ** attempt));
+        await sleepMs(Math.min(COF_MAX_BACKOFF_MS, 1200 * 2 ** attempt));
       }
     }
   }
@@ -486,8 +544,13 @@ export async function fetchLatestCofKits(
   clubName,
   clubShort = null,
   fetchImpl = fetch,
-  cache = null
+  cache = null,
+  options = {}
 ) {
+  const {
+    targetStartYear = null,
+    strictSeason = false,
+  } = options;
   const resolved = await resolveCofClubLink(
     nation,
     clubName,
@@ -498,35 +561,65 @@ export async function fetchLatestCofKits(
   if (resolved.error) return resolved;
 
   const { nationFolder, slug, pageStem } = resolved;
-  const lastPage = await findLastCofClubPage(
-    nationFolder,
-    slug,
-    pageStem,
-    fetchImpl,
-    cache
-  );
-
   let buckets = { home: [], away: [], third: [] };
   const htmlParts = [];
+  let lastPage = 0;
 
-  for (let page = 1; page <= lastPage; page += 1) {
+  for (let page = 1; page <= 12; page += 1) {
     const pageUrl = `${COF_COLOURS}/${nationFolder}/${slug}/${pageStem}_${page}.html`;
-    const html = await fetchCofHtml(pageUrl, fetchImpl, cache);
-    htmlParts.push(html);
-    buckets = mergeKitBuckets(
-      buckets,
-      parseKitCandidatesFromHtml(html, pageUrl)
-    );
+    try {
+      const html = await fetchCofHtml(pageUrl, fetchImpl, cache);
+      lastPage = page;
+      htmlParts.push(html);
+      buckets = mergeKitBuckets(
+        buckets,
+        parseKitCandidatesFromHtml(html, pageUrl)
+      );
+    } catch {
+      break;
+    }
+  }
+
+  if (!lastPage) {
+    return { ...resolved, error: `No COF kit pages found for ${clubName}` };
   }
 
   const latestSeasonCode = findLatestSeasonFromHtml(htmlParts.join("\n"));
-  const kits = pickLatestKits(buckets, latestSeasonCode);
-  const seasonLabel = formatSeasonCode(latestSeasonCode);
+  const resolvedStartYear = targetStartYear != null
+    ? Number(targetStartYear)
+    : latestSeasonCode
+      ? seasonCodeToStartYear(latestSeasonCode)
+      : null;
+  const useStrict = strictSeason || targetStartYear != null;
+
+  const kits = targetStartYear != null
+    ? pickKitsForSeasonYear(buckets, targetStartYear, true)
+    : pickLatestKits(buckets, latestSeasonCode, useStrict);
+
+  const appliedSeasonCode =
+    resolvedStartYear != null
+      ? startYearToSeasonCode(resolvedStartYear)
+      : latestSeasonCode;
+  const seasonLabel = formatSeasonCode(appliedSeasonCode);
+  const kitCount = countKitUrls(kits);
+
+  if (kitCount === 0) {
+    const label = seasonLabel || "requested season";
+    return {
+      ...resolved,
+      lastPage,
+      latestSeasonCode: appliedSeasonCode,
+      seasonLabel,
+      kits,
+      source: "colours-of-football.com",
+      error: `No kits found for ${label}`,
+    };
+  }
 
   return {
     ...resolved,
     lastPage,
-    latestSeasonCode,
+    latestSeasonCode: appliedSeasonCode,
     seasonLabel,
     kits,
     source: "colours-of-football.com",
@@ -544,7 +637,7 @@ export async function downloadCofImage(url, fetchImpl = fetch, cache = null) {
       cache && (cache.lastFetchMs = Date.now());
 
       if (res.status === 429 || res.status === 503) {
-        await sleepMs(Math.min(30000, 2000 * 2 ** attempt));
+        await sleepMs(Math.min(COF_MAX_BACKOFF_MS, 1500 * 2 ** attempt));
         continue;
       }
       if (!res.ok) {
@@ -556,7 +649,7 @@ export async function downloadCofImage(url, fetchImpl = fetch, cache = null) {
     } catch (err) {
       lastErr = err;
       if (attempt < COF_MAX_RETRIES - 1) {
-        await sleepMs(Math.min(30000, 1500 * 2 ** attempt));
+        await sleepMs(Math.min(COF_MAX_BACKOFF_MS, 1200 * 2 ** attempt));
       }
     }
   }
