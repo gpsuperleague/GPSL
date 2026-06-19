@@ -397,22 +397,50 @@ def resolve_url(page_url: str, src: str) -> str:
     return urllib.parse.urljoin(base, src)
 
 
+def parse_cof_season_digits(raw: int) -> dict | None:
+    n = int(raw)
+    yy = n // 100
+    zz = n % 100
+    if zz == (yy + 1) % 100:
+        start_year = 2000 + yy if yy <= 30 else 1900 + yy
+        if 1990 <= start_year <= 2040:
+            return {"season_start_year": start_year, "season_code": n}
+    if 1990 <= n <= 2040:
+        start_year = n - 1
+        if 1989 <= start_year <= 2039:
+            code = int(str(start_year)[-2:] + str(start_year + 1)[-2:])
+            return {"season_start_year": start_year, "season_code": code}
+    return None
+
+
+def parse_cof_kit_filename(file: str) -> dict | None:
+    km = re.search(r"_(\d)[a-z]?_(\d{4})(?:_(\d+))?\.(?:png|gif)$", file, re.I)
+    if not km:
+        return None
+    kit_num = int(km.group(1))
+    variant = int(km.group(3) or 0)
+    season = parse_cof_season_digits(int(km.group(2)))
+    if not season or kit_num < 1 or kit_num > 3:
+        return None
+    return {"kit_num": kit_num, "variant": variant, **season}
+
+
 def parse_kit_candidates(html: str, page_url: str) -> dict[str, list]:
     buckets: dict[str, list] = {"home": [], "away": [], "third": []}
     for m in re.finditer(r'src="([^"]+\.(?:png|gif))"', html, re.I):
         src = m.group(1)
         file = src.split("/")[-1]
-        km = re.search(r"_(\d)_(\d{4})(?:_(\d+))?\.(?:png|gif)$", file, re.I)
-        if not km:
+        parsed = parse_cof_kit_filename(file)
+        if not parsed:
             continue
-        kit_num = int(km.group(1))
-        season = int(km.group(2))
-        variant = int(km.group(3) or 0)
-        if kit_num < 1 or kit_num > 3:
-            continue
-        kind = ["home", "away", "third"][kit_num - 1]
+        kind = ["home", "away", "third"][parsed["kit_num"] - 1]
         buckets[kind].append(
-            {"season": season, "variant": variant, "url": resolve_url(page_url, src)}
+            {
+                "season_start_year": parsed["season_start_year"],
+                "season_code": parsed["season_code"],
+                "variant": parsed["variant"],
+                "url": resolve_url(page_url, src),
+            }
         )
     return buckets
 
@@ -463,11 +491,11 @@ def pick_latest_kits(buckets: dict[str, list], latest_season: int | None = None)
             continue
         pool = arr
         if season_year:
-            filtered = [x for x in arr if x["season"] == season_year]
+            filtered = [x for x in arr if x["season_start_year"] == season_year]
             if filtered:
                 pool = filtered
-        max_season = max(x["season"] for x in pool)
-        top = [x for x in pool if x["season"] == max_season]
+        max_season = max(x["season_start_year"] for x in pool)
+        top = [x for x in pool if x["season_start_year"] == max_season]
         top.sort(key=lambda x: (x["variant"], x["url"]))
         out[kind] = top[0]["url"]
     return out
