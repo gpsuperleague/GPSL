@@ -174,6 +174,12 @@ BEGIN
 END;
 $function$;
 
+-- Must drop before CREATE when renaming parameters (p_bid_amount → p_total_spend_budget).
+DROP FUNCTION IF EXISTS public.admin_compliance_draft_seed_bids(text, integer, numeric, boolean, numeric);
+DROP FUNCTION IF EXISTS public.admin_compliance_draft_seed_bids(text, int, numeric, boolean, numeric);
+DROP FUNCTION IF EXISTS public.admin_compliance_draft_seed_bids(text, integer, numeric, boolean);
+DROP FUNCTION IF EXISTS public.admin_compliance_draft_seed_bids(text, int, numeric, boolean);
+
 CREATE OR REPLACE FUNCTION public.admin_compliance_draft_seed_bids(
   p_club_short_name text,
   p_max_bids int DEFAULT 27,
@@ -770,8 +776,6 @@ BEGIN
 END;
 $function$;
 
-DROP FUNCTION IF EXISTS public.admin_compliance_draft_seed_bids(text, int, numeric, boolean);
-
-GRANT EXECUTE ON FUNCTION public.admin_compliance_draft_seed_bids(text, int, numeric, boolean, numeric) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_compliance_draft_seed_bids(text, integer, numeric, boolean, numeric) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
