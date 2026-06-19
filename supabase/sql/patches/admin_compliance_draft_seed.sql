@@ -202,7 +202,6 @@ DECLARE
   v_reserve numeric := greatest(coalesce(p_budget_reserve, 0), 0);
   v_spend_cap numeric;
   v_remaining_budget numeric;
-  v_slot_reserve numeric;
   v_slots_remaining int;
   v_min_bid numeric;
   v_mode text;
@@ -261,7 +260,12 @@ DECLARE
   v_compliance_met boolean;
   v_still_needed int;
   v_afford_cap numeric;
+  v_afford_relaxed numeric;
+  v_per_slot numeric;
   v_pick_modes text[];
+  v_pick_join boolean;
+  v_join_high numeric;
+  v_planned int;
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -386,9 +390,12 @@ BEGIN
       v_pos_deficit := v_def_fwd;
     END IF;
 
+    v_planned := jsonb_array_length(v_bids);
     v_slots_remaining := v_loop_max - v_i + 1;
     v_remaining_budget := v_spend_cap - v_spent;
-    v_still_needed := greatest(v_min_target - v_placed, 0);
+    v_still_needed := greatest(v_min_target - v_planned, 0);
+    EXIT WHEN v_still_needed <= 0;
+
     v_compliance_met := (
       v_stars >= v_star_cap
       AND v_hg >= v_min_hg
@@ -400,13 +407,19 @@ BEGIN
     );
     IF v_compliance_met THEN
       v_pick_modes := ARRAY['any'];
-      v_slot_reserve := 500000 * greatest(v_slots_remaining - 1, 0);
     ELSE
       v_pick_modes := ARRAY['star', 'hg', 'u21', 'pos', 'any'];
-      v_slot_reserve := 500000 * greatest(v_slots_remaining - 1, 0);
     END IF;
-    v_afford_cap := v_remaining_budget - v_slot_reserve;
+    v_afford_cap := v_remaining_budget - 500000 * greatest(v_still_needed - 1, 0);
+    v_afford_relaxed := v_remaining_budget;
+    v_per_slot := CASE
+      WHEN p_total_spend_budget IS NOT NULL AND v_still_needed > 0
+        THEN v_remaining_budget / v_still_needed
+      ELSE v_remaining_budget
+    END;
     v_player_found := false;
+    v_pick_join := false;
+    v_join_high := NULL;
 
     FOREACH v_mode IN ARRAY v_pick_modes LOOP
       IF v_mode = 'star' AND v_stars >= v_star_cap THEN
@@ -492,18 +505,19 @@ BEGIN
         AND (
           p_total_spend_budget IS NULL
           OR (
-            greatest(coalesce(p.market_value::numeric, 0), 500000) <= v_afford_cap
+            v_afford_cap >= 500000
+            AND greatest(coalesce(p.market_value::numeric, 0), 500000) <= v_afford_cap
           )
         )
       ORDER BY
         CASE
-          WHEN p_total_spend_budget IS NOT NULL AND (v_mode = 'any' OR v_compliance_met)
-            THEN coalesce(p.market_value::numeric, 0)
+          WHEN p_total_spend_budget IS NOT NULL
+            THEN abs(coalesce(p.market_value::numeric, 0) - v_per_slot)
         END ASC NULLS LAST,
         CASE
-          WHEN p_total_spend_budget IS NOT NULL AND v_mode <> 'any' AND NOT v_compliance_met
+          WHEN p_total_spend_budget IS NOT NULL
             THEN coalesce(p.market_value::numeric, 0)
-        END DESC NULLS LAST,
+        END ASC NULLS LAST,
         CASE
           WHEN p_total_spend_budget IS NULL THEN coalesce(p.market_value::numeric, 0)
         END ASC NULLS LAST,
@@ -534,7 +548,7 @@ BEGIN
       END IF;
     END LOOP;
 
-    IF NOT v_player_found AND p_total_spend_budget IS NOT NULL AND v_afford_cap >= 500000 THEN
+    IF NOT v_player_found AND p_total_spend_budget IS NOT NULL AND v_afford_relaxed >= 500000 THEN
       SELECT
         p."Konami_ID"::text AS player_id,
         p."Name" AS player_name,
@@ -546,7 +560,8 @@ BEGIN
           public.normalize_nation_key(p."Nation") = public.normalize_nation_key(v_club_nation)
           AND public.normalize_nation_key(p."Nation") <> ''
         ) AS is_home_grown,
-        public.international_player_pool_position_group(p."Position") AS pos_group
+        public.international_player_pool_position_group(p."Position") AS pos_group,
+        NULL::numeric AS join_high
       INTO v_player
       FROM public."Players" p
       WHERE (p."Contracted_Team" IS NULL OR btrim(p."Contracted_Team") = '')
@@ -580,12 +595,70 @@ BEGIN
             AND b.bid_time >= v_bounds.draft_start
             AND b.bid_time < v_bounds.draft_window_end
         )
-        AND greatest(coalesce(p.market_value::numeric, 0), 500000) <= v_remaining_budget
+        AND greatest(coalesce(p.market_value::numeric, 0), 500000) <= v_afford_relaxed
       ORDER BY coalesce(p.market_value::numeric, 0) ASC, random()
       LIMIT 1;
 
       IF FOUND THEN
         v_player_found := true;
+      END IF;
+    END IF;
+
+    IF NOT v_player_found AND p_total_spend_budget IS NOT NULL AND v_afford_relaxed >= 500000 THEN
+      SELECT
+        p."Konami_ID"::text AS player_id,
+        p."Name" AS player_name,
+        p."Position" AS player_position,
+        coalesce(p.market_value::numeric, 0) AS market_value,
+        public.club_squad_player_rating(p."Konami_ID"::text) AS rating,
+        public.club_squad_player_age(p."Konami_ID"::text) AS age,
+        (
+          public.normalize_nation_key(p."Nation") = public.normalize_nation_key(v_club_nation)
+          AND public.normalize_nation_key(p."Nation") <> ''
+        ) AS is_home_grown,
+        public.international_player_pool_position_group(p."Position") AS pos_group,
+        au.high AS join_high
+      INTO v_player
+      FROM public."Players" p
+      INNER JOIN LATERAL (
+        SELECT coalesce(max(b.bid_amount), 0)::numeric AS high
+        FROM public."Player_Transfer_Bids" b
+        WHERE b.is_direct = true
+          AND b.seller_club_id IS NULL
+          AND coalesce(b.player_id, b.direct_bid_id::text) = p."Konami_ID"::text
+          AND b.bid_time >= v_bounds.draft_start
+          AND b.bid_time < v_bounds.draft_window_end
+      ) au ON au.high > 0
+      WHERE (p."Contracted_Team" IS NULL OR btrim(p."Contracted_Team") = '')
+        AND coalesce(p.pesdb_unavailable, false) = false
+        AND NOT public.player_signed_this_season(p."Season_Signed")
+        AND (
+          p.contract_seasons_remaining IS NULL
+          OR p.contract_seasons_remaining > 1
+        )
+        AND NOT (p."Konami_ID"::text = ANY (v_exclude))
+        AND (
+          public.club_squad_player_rating(p."Konami_ID"::text) < v_star_min
+          OR v_stars < v_star_cap
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM public."Player_Transfer_Bids" b
+          WHERE b.bidder_club_id = v_club
+            AND b.is_direct = true
+            AND b.seller_club_id IS NULL
+            AND coalesce(b.player_id, b.direct_bid_id::text) = p."Konami_ID"::text
+            AND b.bid_time >= v_bounds.draft_start
+            AND b.bid_time < v_bounds.draft_window_end
+        )
+        AND au.high + 500000 <= v_afford_relaxed
+      ORDER BY au.high + 500000 ASC, random()
+      LIMIT 1;
+
+      IF FOUND THEN
+        v_player_found := true;
+        v_pick_join := true;
+        v_join_high := coalesce(v_player.join_high, 0);
       END IF;
     END IF;
 
@@ -595,10 +668,11 @@ BEGIN
           'reason', 'no_eligible_player',
           'attempt', v_i,
           'remaining_budget', v_remaining_budget,
+          'afford_cap', v_afford_cap,
           'still_needed', v_still_needed
         )
       );
-      IF v_placed >= v_min_target OR v_still_needed <= 0 THEN
+      IF v_planned >= v_min_target OR v_still_needed <= 0 THEN
         EXIT;
       END IF;
       CONTINUE;
@@ -618,10 +692,10 @@ BEGIN
       AND b.bid_time >= v_bounds.draft_start
       AND b.bid_time < v_bounds.draft_window_end;
 
-    v_is_first := v_window_bids = 0;
+    v_is_first := v_window_bids = 0 AND NOT v_pick_join;
     v_is_join := NOT v_is_first;
     v_consume := false;
-    v_high := 0;
+    v_high := CASE WHEN v_pick_join THEN coalesce(v_join_high, 0) ELSE 0 END;
 
     IF v_is_first THEN
       IF now() >= v_bounds.draft_cutoff THEN
@@ -636,14 +710,16 @@ BEGIN
         CONTINUE;
       END IF;
     ELSE
-      SELECT coalesce(max(b.bid_amount), 0)
-      INTO v_high
-      FROM public."Player_Transfer_Bids" b
-      WHERE b.is_direct = true
-        AND b.seller_club_id IS NULL
-        AND coalesce(b.player_id, b.direct_bid_id::text) = v_player.player_id
-        AND b.bid_time >= v_bounds.draft_start
-        AND b.bid_time < v_bounds.draft_window_end;
+      IF NOT v_pick_join THEN
+        SELECT coalesce(max(b.bid_amount), 0)
+        INTO v_high
+        FROM public."Player_Transfer_Bids" b
+        WHERE b.is_direct = true
+          AND b.seller_club_id IS NULL
+          AND coalesce(b.player_id, b.direct_bid_id::text) = v_player.player_id
+          AND b.bid_time >= v_bounds.draft_start
+          AND b.bid_time < v_bounds.draft_window_end;
+      END IF;
 
       IF EXISTS (
         SELECT 1
@@ -673,7 +749,8 @@ BEGIN
             'player_name', v_player.player_name
           )
         );
-        EXIT;
+        v_exclude := array_append(v_exclude, v_player.player_id);
+        CONTINUE;
       END IF;
 
       v_consume := NOT EXISTS (
@@ -774,14 +851,6 @@ BEGIN
             current_highest_bidder = v_club
         WHERE l.id = v_listing_id
           AND coalesce(l.current_highest_bid, 0) < v_amount;
-
-        IF v_is_first THEN
-          v_credits := v_credits + 2;
-        ELSIF v_consume THEN
-          v_credits := v_credits - 1;
-        END IF;
-
-        v_placed := v_placed + 1;
       EXCEPTION WHEN OTHERS THEN
         v_skipped := v_skipped || jsonb_build_array(
           jsonb_build_object(
@@ -795,6 +864,14 @@ BEGIN
         CONTINUE;
       END;
     END IF;
+
+    IF v_is_first THEN
+      v_credits := v_credits + 2;
+    ELSIF v_is_join AND v_consume THEN
+      v_credits := v_credits - 1;
+    END IF;
+
+    v_placed := v_placed + 1;
 
     v_spent := v_spent + v_amount;
     v_exclude := array_append(v_exclude, v_player.player_id);
@@ -840,7 +917,7 @@ BEGIN
     'ok', true,
     'dry_run', p_dry_run,
     'club', v_club,
-    'placed', v_placed,
+    'placed', CASE WHEN p_dry_run THEN jsonb_array_length(v_bids) ELSE v_placed END,
     'planned_bids', jsonb_array_length(v_bids),
     'min_players_requested', v_min_players,
     'min_players_target', v_min_target,

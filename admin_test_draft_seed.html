@@ -62,7 +62,7 @@
           <label>
             Total spend budget (₿)
             <input type="number" id="totalSpendBudget" min="0" step="1000000" value="400000000">
-            <div class="hint">Cap for all bids at market value (e.g. 400000000 = ₿400M). Compliance picks first (expensive where needed), then cheaper fill to hit the player target.</div>
+            <div class="hint">Cap for all bids at market value (e.g. 400000000 = ₿400M). Spreads budget across the player target (~₿400M ÷ 27 ≈ ₿14.8M each). Opens new auctions or joins existing ones.</div>
           </label>
         </div>
         <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;">
@@ -74,6 +74,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_draft_seed.js?v=20260619-squad-cap"></script>
+  <script type="module" src="admin_test_draft_seed.js?v=20260619-budget-spread"></script>
 </body>
 </html>

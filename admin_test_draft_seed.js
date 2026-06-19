@@ -137,6 +137,7 @@ function renderPreview(result) {
               const bits = [s.reason];
               if (s.player_name) bits.push(s.player_name);
               if (s.remaining_budget != null) bits.push(`left ${formatMoney(s.remaining_budget)}`);
+              if (s.afford_cap != null) bits.push(`cap ${formatMoney(s.afford_cap)}`);
               if (s.still_needed != null) bits.push(`needed ${s.still_needed}`);
               return escapeHtml(bits.join(" · "));
             })
