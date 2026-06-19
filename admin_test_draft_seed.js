@@ -79,7 +79,7 @@ function renderPreview(result) {
   box.hidden = false;
   box.innerHTML = `
     <p><b>${escapeHtml(result.club)}</b> · ${result.dry_run ? "Preview" : "Placed"} ·
-      ${result.dry_run ? bids.length : result.placed} bid(s) ·
+      ${result.dry_run ? bids.length : result.placed} bid(s)${result.min_players_target != null ? ` · target ≥ ${result.min_players_target}` : ""}${result.min_players_met === false ? " · <span style=\"color:#e8c547\">below minimum</span>" : ""} ·
       spend ${formatMoney(result.total_spend || 0)}${totalBudget > 0 ? ` / ${formatMoney(totalBudget)} cap` : ""}${avgBid > 0 ? ` · avg ${formatMoney(avgBid)}` : ""} ·
       balance ${formatMoney(result.balance || 0)} ·
       draft credits after ${result.draft_credits_remaining ?? "—"}</p>
@@ -124,7 +124,7 @@ function renderPreview(result) {
 
 async function runSeed(dryRun) {
   const club = document.getElementById("clubSelect")?.value?.trim();
-  const maxBids = Number(document.getElementById("maxBids")?.value || 27);
+  const minPlayersToBuy = Number(document.getElementById("minPlayersToBuy")?.value || 27);
   const budgetReserve = Number(document.getElementById("budgetReserve")?.value || 0);
   const totalSpendRaw = document.getElementById("totalSpendBudget")?.value;
   const totalSpendBudget =
@@ -138,7 +138,7 @@ async function runSeed(dryRun) {
   if (!dryRun) {
     if (
       !confirm(
-        `Place up to ${maxBids} draft bid(s) for ${club}?\n\n` +
+        `Place at least ${minPlayersToBuy} draft bid(s) for ${club}?\n\n` +
           `This opens/joins real GPDB draft auctions. Settlement happens at random finish — not instant signings.\n\n` +
           (lastPreview?.total_spend
             ? `Preview spend: ${formatMoney(lastPreview.total_spend)}`
@@ -153,7 +153,7 @@ async function runSeed(dryRun) {
 
   const { data, error } = await supabase.rpc("admin_compliance_draft_seed_bids", {
     p_club_short_name: club,
-    p_max_bids: maxBids,
+    p_min_players_to_buy: minPlayersToBuy,
     p_budget_reserve: budgetReserve,
     p_dry_run: dryRun,
     p_total_spend_budget: totalSpendBudget,
@@ -186,9 +186,10 @@ async function runSeed(dryRun) {
   renderPreview(data);
 
   if (dryRun) {
+    const met = data.min_players_met !== false ? "" : " (below minimum target)";
     setStatus(
       "pageStatus",
-      `✅ Preview: ${data.planned_bids ?? 0} bid(s), ${formatMoney(data.total_spend || 0)} total.`
+      `✅ Preview: ${data.planned_bids ?? 0} bid(s), ${formatMoney(data.total_spend || 0)} total${met}.`
     );
   } else {
     setStatus(

@@ -50,9 +50,9 @@
             <select id="clubSelect"><option value="">Loading…</option></select>
           </label>
           <label>
-            Max bids to place
-            <input type="number" id="maxBids" min="1" max="27" value="27">
-            <div class="hint">Capped at spare squad slots (28 minus current squad). Picks free agents toward 2 GK · 8 DEF · 10 MID · 8 FWD, min 24 squad, 8 HG, 5 U21, star cap.</div>
+            Minimum players to buy
+            <input type="number" id="minPlayersToBuy" min="1" max="27" value="27">
+            <div class="hint">Target at least this many draft signings (capped by spare squad slots: 28 minus current squad). Stops early only if budget or eligible pool runs out.</div>
           </label>
           <label>
             Budget reserve (₿)
@@ -74,6 +74,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_draft_seed.js?v=20260619-total-budget"></script>
+  <script type="module" src="admin_test_draft_seed.js?v=20260619-min-players"></script>
 </body>
 </html>

@@ -182,7 +182,7 @@ DROP FUNCTION IF EXISTS public.admin_compliance_draft_seed_bids(text, int, numer
 
 CREATE OR REPLACE FUNCTION public.admin_compliance_draft_seed_bids(
   p_club_short_name text,
-  p_max_bids int DEFAULT 27,
+  p_min_players_to_buy int DEFAULT 27,
   p_budget_reserve numeric DEFAULT 5000000,
   p_dry_run boolean DEFAULT true,
   p_total_spend_budget numeric DEFAULT NULL
@@ -195,7 +195,10 @@ AS $function$
 DECLARE
   v_club text := btrim(p_club_short_name);
   v_club_nation text;
-  v_max_bids int := greatest(coalesce(p_max_bids, 1), 1);
+  v_min_players int := greatest(coalesce(p_min_players_to_buy, 1), 1);
+  v_spare_slots int;
+  v_loop_max int;
+  v_min_target int;
   v_reserve numeric := greatest(coalesce(p_budget_reserve, 0), 0);
   v_spend_cap numeric;
   v_remaining_budget numeric;
@@ -338,8 +341,11 @@ BEGIN
     AND public.club_squad_player_rating(p."Konami_ID"::text) >= v_star_min
     AND (v_ooo IS NULL OR p."Konami_ID"::text <> v_ooo);
 
-  v_max_bids := least(v_max_bids, greatest(v_max_squad - v_squad, 0));
-  IF v_max_bids <= 0 THEN
+  v_spare_slots := greatest(v_max_squad - v_squad, 0);
+  v_loop_max := v_spare_slots;
+  v_min_target := least(v_min_players, v_spare_slots);
+
+  IF v_loop_max <= 0 THEN
     RETURN jsonb_build_object(
       'ok', false,
       'reason', 'squad_full',
@@ -348,7 +354,7 @@ BEGIN
     );
   END IF;
 
-  FOR v_i IN 1..v_max_bids LOOP
+  FOR v_i IN 1..v_loop_max LOOP
     EXIT WHEN v_squad >= v_max_squad;
 
     v_def_gk := greatest(v_target_gk - v_gk, 0);
@@ -375,7 +381,7 @@ BEGIN
       v_pos_deficit := v_def_fwd;
     END IF;
 
-    v_slots_remaining := v_max_bids - v_i + 1;
+    v_slots_remaining := v_loop_max - v_i + 1;
     v_remaining_budget := v_spend_cap - v_spent;
     v_slot_reserve := 500000 * greatest(v_slots_remaining - 1, 0);
     v_player_found := false;
@@ -729,12 +735,26 @@ BEGIN
     );
   END LOOP;
 
+  IF jsonb_array_length(v_bids) < v_min_target THEN
+    v_skipped := v_skipped || jsonb_build_array(
+      jsonb_build_object(
+        'reason', 'below_min_players_target',
+        'planned', jsonb_array_length(v_bids),
+        'target', v_min_target
+      )
+    );
+  END IF;
+
   RETURN jsonb_build_object(
     'ok', true,
     'dry_run', p_dry_run,
     'club', v_club,
     'placed', v_placed,
     'planned_bids', jsonb_array_length(v_bids),
+    'min_players_requested', v_min_players,
+    'min_players_target', v_min_target,
+    'min_players_met', jsonb_array_length(v_bids) >= v_min_target,
+    'spare_squad_slots', v_spare_slots,
     'total_spend', v_spent,
     'balance', v_balance,
     'budget_after_reserve', v_budget,
