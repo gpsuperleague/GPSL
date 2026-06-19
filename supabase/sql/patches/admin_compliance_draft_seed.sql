@@ -198,7 +198,8 @@ DECLARE
   v_max_bids int := greatest(coalesce(p_max_bids, 1), 1);
   v_reserve numeric := greatest(coalesce(p_budget_reserve, 0), 0);
   v_spend_cap numeric;
-  v_share numeric;
+  v_remaining_budget numeric;
+  v_slot_reserve numeric;
   v_slots_remaining int;
   v_min_bid numeric;
   v_mode text;
@@ -375,7 +376,8 @@ BEGIN
     END IF;
 
     v_slots_remaining := v_max_bids - v_i + 1;
-    v_share := floor((v_spend_cap - v_spent) / greatest(v_slots_remaining, 1));
+    v_remaining_budget := v_spend_cap - v_spent;
+    v_slot_reserve := 500000 * greatest(v_slots_remaining - 1, 0);
     v_player_found := false;
 
     FOREACH v_mode IN ARRAY v_modes LOOP
@@ -461,11 +463,17 @@ BEGIN
         )
         AND (
           p_total_spend_budget IS NULL
-          OR coalesce(p.market_value::numeric, 0) <= greatest(v_share, v_spend_cap - v_spent)
+          OR (
+            coalesce(p.market_value::numeric, 0) >= 500000
+            AND coalesce(p.market_value::numeric, 0) <= v_remaining_budget - v_slot_reserve
+          )
         )
       ORDER BY
         CASE
           WHEN p_total_spend_budget IS NOT NULL THEN coalesce(p.market_value::numeric, 0)
+        END DESC NULLS LAST,
+        CASE
+          WHEN p_total_spend_budget IS NULL THEN coalesce(p.market_value::numeric, 0)
         END ASC NULLS LAST,
         CASE
           WHEN v_mode = 'star'
@@ -587,35 +595,24 @@ BEGIN
 
     IF v_is_first THEN
       v_min_bid := greatest(coalesce(v_player.market_value, 0), 500000);
+      v_amount := v_min_bid;
     ELSE
       v_min_bid := v_high + 500000;
+      v_amount := v_min_bid;
     END IF;
 
-    IF p_total_spend_budget IS NOT NULL AND p_total_spend_budget > 0 THEN
-      v_amount := greatest(v_min_bid, v_share);
-      v_amount := least(v_amount, v_spend_cap - v_spent);
-    ELSIF v_is_first THEN
-      v_amount := greatest(coalesce(v_player.market_value, 0), 0);
-    ELSE
-      v_amount := v_high + 500000;
-    END IF;
-
-    IF v_amount <= 0 OR v_min_bid > v_spend_cap - v_spent THEN
+    IF v_amount <= 0 OR v_min_bid > v_remaining_budget THEN
       v_skipped := v_skipped || jsonb_build_array(
         jsonb_build_object(
           'reason', 'cannot_afford_player',
           'player_id', v_player.player_id,
           'player_name', v_player.player_name,
           'min_bid', v_min_bid,
-          'remaining_budget', v_spend_cap - v_spent
+          'remaining_budget', v_remaining_budget
         )
       );
       v_exclude := array_append(v_exclude, v_player.player_id);
       CONTINUE;
-    END IF;
-
-    IF v_amount < v_min_bid THEN
-      v_amount := v_min_bid;
     END IF;
 
     IF v_spent + v_amount > v_spend_cap THEN
