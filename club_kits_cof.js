@@ -94,8 +94,9 @@ export const COF_CLUB_PATH_OVERRIDES = {
 const USER_AGENT =
   "Mozilla/5.0 (compatible; GPSL-KitSync/1.0; +https://github.com/gpsl)";
 
-const COF_MIN_GAP_MS = 1400;
-const COF_MAX_RETRIES = 6;
+const COF_MIN_GAP_MS = 900;
+const COF_MAX_RETRIES = 4;
+const COF_MAX_BACKOFF_MS = 8000;
 
 export function createCofFetchCache() {
   return { html: new Map(), lastFetchMs: 0 };
@@ -392,7 +393,7 @@ export async function fetchCofHtml(url, fetchImpl = fetch, cache = null) {
       cache && (cache.lastFetchMs = Date.now());
 
       if (res.status === 429 || res.status === 503) {
-        const wait = Math.min(30000, 2000 * 2 ** attempt);
+        const wait = Math.min(COF_MAX_BACKOFF_MS, 1500 * 2 ** attempt);
         await sleepMs(wait);
         continue;
       }
@@ -405,7 +406,7 @@ export async function fetchCofHtml(url, fetchImpl = fetch, cache = null) {
     } catch (err) {
       lastErr = err;
       if (attempt < COF_MAX_RETRIES - 1) {
-        await sleepMs(Math.min(30000, 1500 * 2 ** attempt));
+        await sleepMs(Math.min(COF_MAX_BACKOFF_MS, 1200 * 2 ** attempt));
       }
     }
   }
@@ -498,25 +499,27 @@ export async function fetchLatestCofKits(
   if (resolved.error) return resolved;
 
   const { nationFolder, slug, pageStem } = resolved;
-  const lastPage = await findLastCofClubPage(
-    nationFolder,
-    slug,
-    pageStem,
-    fetchImpl,
-    cache
-  );
-
   let buckets = { home: [], away: [], third: [] };
   const htmlParts = [];
+  let lastPage = 0;
 
-  for (let page = 1; page <= lastPage; page += 1) {
+  for (let page = 1; page <= 12; page += 1) {
     const pageUrl = `${COF_COLOURS}/${nationFolder}/${slug}/${pageStem}_${page}.html`;
-    const html = await fetchCofHtml(pageUrl, fetchImpl, cache);
-    htmlParts.push(html);
-    buckets = mergeKitBuckets(
-      buckets,
-      parseKitCandidatesFromHtml(html, pageUrl)
-    );
+    try {
+      const html = await fetchCofHtml(pageUrl, fetchImpl, cache);
+      lastPage = page;
+      htmlParts.push(html);
+      buckets = mergeKitBuckets(
+        buckets,
+        parseKitCandidatesFromHtml(html, pageUrl)
+      );
+    } catch {
+      break;
+    }
+  }
+
+  if (!lastPage) {
+    return { ...resolved, error: `No COF kit pages found for ${clubName}` };
   }
 
   const latestSeasonCode = findLatestSeasonFromHtml(htmlParts.join("\n"));
@@ -544,7 +547,7 @@ export async function downloadCofImage(url, fetchImpl = fetch, cache = null) {
       cache && (cache.lastFetchMs = Date.now());
 
       if (res.status === 429 || res.status === 503) {
-        await sleepMs(Math.min(30000, 2000 * 2 ** attempt));
+        await sleepMs(Math.min(COF_MAX_BACKOFF_MS, 1500 * 2 ** attempt));
         continue;
       }
       if (!res.ok) {
@@ -556,7 +559,7 @@ export async function downloadCofImage(url, fetchImpl = fetch, cache = null) {
     } catch (err) {
       lastErr = err;
       if (attempt < COF_MAX_RETRIES - 1) {
-        await sleepMs(Math.min(30000, 1500 * 2 ** attempt));
+        await sleepMs(Math.min(COF_MAX_BACKOFF_MS, 1200 * 2 ** attempt));
       }
     }
   }

@@ -275,6 +275,10 @@ async function invokeCofSync(body) {
     if (detail.includes("Failed to send")) {
       detail += ` — deploy edge function ${COF_SYNC_FUNCTION}`;
     }
+    if (detail.includes("504") || detail.includes("Gateway Timeout")) {
+      detail +=
+        " — edge function timed out (~60s). Use Save COF links only (uncheck Storage), or run python scripts/fetch_club_kits.py for PNG files.";
+    }
     throw new Error(detail);
   }
   if (data?.error) throw new Error(String(data.error));
@@ -357,7 +361,7 @@ async function downloadLatestKits({ download } = { download: true }) {
 
       if (data?.done || data?.next_offset == null) break;
       offset = data.next_offset;
-      await new Promise((r) => setTimeout(r, 2500));
+      await new Promise((r) => setTimeout(r, 1200));
     }
 
     await loadTable();

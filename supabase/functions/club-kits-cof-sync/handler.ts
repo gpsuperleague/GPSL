@@ -14,8 +14,14 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
+const INVOCATION_BUDGET_MS = 50_000;
+
+function remainingMs(deadline: number) {
+  return Math.max(0, deadline - Date.now());
+}
+
+function timedOut(deadline: number) {
+  return remainingMs(deadline) < 3000;
 }
 
 type ClubRow = {
@@ -62,6 +68,7 @@ Deno.serve(async (req) => {
     const downloadImages = body?.download === true;
     const storageBucket = String(body?.bucket || "club-kits");
     const cofCache = createCofFetchCache();
+    const deadline = Date.now() + INVOCATION_BUDGET_MS;
 
     if (action === "preview_club") {
       const short = String(body?.club_short_name || "").trim().toUpperCase();
@@ -128,7 +135,6 @@ Deno.serve(async (req) => {
         if (cof.error) {
           entry.error = cof.error;
           results.push(entry);
-          await sleep(1500);
           continue;
         }
 
@@ -138,42 +144,47 @@ Deno.serve(async (req) => {
         let thirdUrl = kits.third;
 
         if (downloadImages) {
-          const kinds = [
-            ["home", homeUrl],
-            ["away", awayUrl],
-            ["third", thirdUrl],
-          ] as const;
+          if (timedOut(deadline)) {
+            entry.storage_warning =
+              "Skipped Storage download (edge time limit) — saved COF URLs. Use Save COF links only, or python scripts/fetch_club_kits.py for PNG files.";
+          } else {
+            const kinds = [
+              ["home", homeUrl],
+              ["away", awayUrl],
+              ["third", thirdUrl],
+            ] as const;
 
-          for (const [kind, src] of kinds) {
-            if (!src) continue;
-            try {
-              const { bytes, contentType } = await downloadCofImage(
-                src,
-                fetch,
-                cofCache
-              );
-              const ext = contentType.includes("gif") ? "gif" : "png";
-              const path = `${club.ShortName}/${kind}.${ext}`;
-              const { error: upErr } = await adminClient.storage
-                .from(storageBucket)
-                .upload(path, bytes, {
-                  contentType,
-                  upsert: true,
-                });
-              if (upErr) throw upErr;
-              const { data: pub } = adminClient.storage
-                .from(storageBucket)
-                .getPublicUrl(path);
-              if (kind === "home") homeUrl = pub.publicUrl;
-              if (kind === "away") awayUrl = pub.publicUrl;
-              if (kind === "third") thirdUrl = pub.publicUrl;
-            } catch (storageErr) {
-              const msg =
-                storageErr instanceof Error
-                  ? storageErr.message
-                  : String(storageErr);
-              entry.storage_warning =
-                `Storage upload failed (${msg}) — saved COF URL instead. Create public bucket "${storageBucket}".`;
+            for (const [kind, src] of kinds) {
+              if (!src || timedOut(deadline)) continue;
+              try {
+                const { bytes, contentType } = await downloadCofImage(
+                  src,
+                  fetch,
+                  cofCache
+                );
+                const ext = contentType.includes("gif") ? "gif" : "png";
+                const path = `${club.ShortName}/${kind}.${ext}`;
+                const { error: upErr } = await adminClient.storage
+                  .from(storageBucket)
+                  .upload(path, bytes, {
+                    contentType,
+                    upsert: true,
+                  });
+                if (upErr) throw upErr;
+                const { data: pub } = adminClient.storage
+                  .from(storageBucket)
+                  .getPublicUrl(path);
+                if (kind === "home") homeUrl = pub.publicUrl;
+                if (kind === "away") awayUrl = pub.publicUrl;
+                if (kind === "third") thirdUrl = pub.publicUrl;
+              } catch (storageErr) {
+                const msg =
+                  storageErr instanceof Error
+                    ? storageErr.message
+                    : String(storageErr);
+                entry.storage_warning =
+                  `Storage upload failed (${msg}) — saved COF URL instead. Create public bucket "${storageBucket}".`;
+              }
             }
           }
         }
@@ -206,7 +217,6 @@ Deno.serve(async (req) => {
       }
 
       results.push(entry);
-      await sleep(2000);
     }
 
     const { count } = await adminClient

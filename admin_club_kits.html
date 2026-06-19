@@ -180,12 +180,12 @@
       <button type="button" id="cofLinksOnlyBtn" class="button secondary">Save COF links only</button>
     </div>
     <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:#bbb;margin-top:10px;">
-      <input type="checkbox" id="cofDownloadStorage" checked>
-      Store images in Supabase Storage bucket <code>club-kits</code> (public) and save URLs to <code>club_kits</code>
+      <input type="checkbox" id="cofDownloadStorage">
+      Store images in Supabase Storage bucket <code>club-kits</code> (slow — may time out; prefer links only or local script)
     </label>
     <p style="margin:8px 0 0;font-size:11px;color:#666;">
-      Untick storage if you only want hotlink URLs saved to the database. For static files in the repo, run
-      <code>python scripts/fetch_club_kits.py</code> locally.
+      Recommended: use <b>Save COF links only</b> (fast, stays under the 60s edge limit). For PNG files in the repo, run
+      <code>python scripts/fetch_club_kits.py</code> locally and push <code>images/clubs_kits/</code>.
     </p>
     <pre id="cofSyncLog" style="margin:10px 0 0;padding:10px;background:#111;border:1px solid #333;border-radius:6px;font-size:11px;color:#aaa;max-height:220px;overflow:auto;white-space:pre-wrap;"></pre>
   </div>
@@ -229,6 +229,6 @@
     <p style="padding:12px;color:#888;">Loading…</p>
   </div>
 
-  <script type="module" src="admin_club_kits.js?v=20260619-cof-rate-limit"></script>
+  <script type="module" src="admin_club_kits.js?v=20260619-cof-timeout"></script>
 </body>
 </html>

@@ -100,8 +100,9 @@ const COF_CLUB_PATH_OVERRIDES = {
 const USER_AGENT =
   "Mozilla/5.0 (compatible; GPSL-KitSync/1.0; +https://github.com/gpsl)";
 
-const COF_MIN_GAP_MS = 1400;
-const COF_MAX_RETRIES = 6;
+const COF_MIN_GAP_MS = 900;
+const COF_MAX_RETRIES = 4;
+const COF_MAX_BACKOFF_MS = 8000;
 
 function createCofFetchCache() {
   return { html: new Map(), lastFetchMs: 0 };
@@ -398,7 +399,7 @@ async function fetchCofHtml(url, fetchImpl = fetch, cache = null) {
       cache && (cache.lastFetchMs = Date.now());
 
       if (res.status === 429 || res.status === 503) {
-        const wait = Math.min(30000, 2000 * 2 ** attempt);
+        const wait = Math.min(COF_MAX_BACKOFF_MS, 1500 * 2 ** attempt);
         await sleepMs(wait);
         continue;
       }
@@ -411,7 +412,7 @@ async function fetchCofHtml(url, fetchImpl = fetch, cache = null) {
     } catch (err) {
       lastErr = err;
       if (attempt < COF_MAX_RETRIES - 1) {
-        await sleepMs(Math.min(30000, 1500 * 2 ** attempt));
+        await sleepMs(Math.min(COF_MAX_BACKOFF_MS, 1200 * 2 ** attempt));
       }
     }
   }
@@ -504,25 +505,27 @@ async function fetchLatestCofKits(
   if (resolved.error) return resolved;
 
   const { nationFolder, slug, pageStem } = resolved;
-  const lastPage = await findLastCofClubPage(
-    nationFolder,
-    slug,
-    pageStem,
-    fetchImpl,
-    cache
-  );
-
   let buckets = { home: [], away: [], third: [] };
   const htmlParts = [];
+  let lastPage = 0;
 
-  for (let page = 1; page <= lastPage; page += 1) {
+  for (let page = 1; page <= 12; page += 1) {
     const pageUrl = `${COF_COLOURS}/${nationFolder}/${slug}/${pageStem}_${page}.html`;
-    const html = await fetchCofHtml(pageUrl, fetchImpl, cache);
-    htmlParts.push(html);
-    buckets = mergeKitBuckets(
-      buckets,
-      parseKitCandidatesFromHtml(html, pageUrl)
-    );
+    try {
+      const html = await fetchCofHtml(pageUrl, fetchImpl, cache);
+      lastPage = page;
+      htmlParts.push(html);
+      buckets = mergeKitBuckets(
+        buckets,
+        parseKitCandidatesFromHtml(html, pageUrl)
+      );
+    } catch {
+      break;
+    }
+  }
+
+  if (!lastPage) {
+    return { ...resolved, error: `No COF kit pages found for ${clubName}` };
   }
 
   const latestSeasonCode = findLatestSeasonFromHtml(htmlParts.join("\n"));
@@ -550,7 +553,7 @@ async function downloadCofImage(url, fetchImpl = fetch, cache = null) {
       cache && (cache.lastFetchMs = Date.now());
 
       if (res.status === 429 || res.status === 503) {
-        await sleepMs(Math.min(30000, 2000 * 2 ** attempt));
+        await sleepMs(Math.min(COF_MAX_BACKOFF_MS, 1500 * 2 ** attempt));
         continue;
       }
       if (!res.ok) {
@@ -562,7 +565,7 @@ async function downloadCofImage(url, fetchImpl = fetch, cache = null) {
     } catch (err) {
       lastErr = err;
       if (attempt < COF_MAX_RETRIES - 1) {
-        await sleepMs(Math.min(30000, 1500 * 2 ** attempt));
+        await sleepMs(Math.min(COF_MAX_BACKOFF_MS, 1200 * 2 ** attempt));
       }
     }
   }
@@ -583,8 +586,14 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   });
 }
 
-function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
+const INVOCATION_BUDGET_MS = 50_000;
+
+function remainingMs(deadline: number) {
+  return Math.max(0, deadline - Date.now());
+}
+
+function timedOut(deadline: number) {
+  return remainingMs(deadline) < 3000;
 }
 
 type ClubRow = {
@@ -631,6 +640,7 @@ Deno.serve(async (req) => {
     const downloadImages = body?.download === true;
     const storageBucket = String(body?.bucket || "club-kits");
     const cofCache = createCofFetchCache();
+    const deadline = Date.now() + INVOCATION_BUDGET_MS;
 
     if (action === "preview_club") {
       const short = String(body?.club_short_name || "").trim().toUpperCase();
@@ -697,7 +707,6 @@ Deno.serve(async (req) => {
         if (cof.error) {
           entry.error = cof.error;
           results.push(entry);
-          await sleep(1500);
           continue;
         }
 
@@ -707,42 +716,47 @@ Deno.serve(async (req) => {
         let thirdUrl = kits.third;
 
         if (downloadImages) {
-          const kinds = [
-            ["home", homeUrl],
-            ["away", awayUrl],
-            ["third", thirdUrl],
-          ] as const;
+          if (timedOut(deadline)) {
+            entry.storage_warning =
+              "Skipped Storage download (edge time limit) — saved COF URLs. Use Save COF links only, or python scripts/fetch_club_kits.py for PNG files.";
+          } else {
+            const kinds = [
+              ["home", homeUrl],
+              ["away", awayUrl],
+              ["third", thirdUrl],
+            ] as const;
 
-          for (const [kind, src] of kinds) {
-            if (!src) continue;
-            try {
-              const { bytes, contentType } = await downloadCofImage(
-                src,
-                fetch,
-                cofCache
-              );
-              const ext = contentType.includes("gif") ? "gif" : "png";
-              const path = `${club.ShortName}/${kind}.${ext}`;
-              const { error: upErr } = await adminClient.storage
-                .from(storageBucket)
-                .upload(path, bytes, {
-                  contentType,
-                  upsert: true,
-                });
-              if (upErr) throw upErr;
-              const { data: pub } = adminClient.storage
-                .from(storageBucket)
-                .getPublicUrl(path);
-              if (kind === "home") homeUrl = pub.publicUrl;
-              if (kind === "away") awayUrl = pub.publicUrl;
-              if (kind === "third") thirdUrl = pub.publicUrl;
-            } catch (storageErr) {
-              const msg =
-                storageErr instanceof Error
-                  ? storageErr.message
-                  : String(storageErr);
-              entry.storage_warning =
-                `Storage upload failed (${msg}) — saved COF URL instead. Create public bucket "${storageBucket}".`;
+            for (const [kind, src] of kinds) {
+              if (!src || timedOut(deadline)) continue;
+              try {
+                const { bytes, contentType } = await downloadCofImage(
+                  src,
+                  fetch,
+                  cofCache
+                );
+                const ext = contentType.includes("gif") ? "gif" : "png";
+                const path = `${club.ShortName}/${kind}.${ext}`;
+                const { error: upErr } = await adminClient.storage
+                  .from(storageBucket)
+                  .upload(path, bytes, {
+                    contentType,
+                    upsert: true,
+                  });
+                if (upErr) throw upErr;
+                const { data: pub } = adminClient.storage
+                  .from(storageBucket)
+                  .getPublicUrl(path);
+                if (kind === "home") homeUrl = pub.publicUrl;
+                if (kind === "away") awayUrl = pub.publicUrl;
+                if (kind === "third") thirdUrl = pub.publicUrl;
+              } catch (storageErr) {
+                const msg =
+                  storageErr instanceof Error
+                    ? storageErr.message
+                    : String(storageErr);
+                entry.storage_warning =
+                  `Storage upload failed (${msg}) — saved COF URL instead. Create public bucket "${storageBucket}".`;
+              }
             }
           }
         }
@@ -775,7 +789,6 @@ Deno.serve(async (req) => {
       }
 
       results.push(entry);
-      await sleep(2000);
     }
 
     const { count } = await adminClient
