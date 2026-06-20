@@ -17,7 +17,6 @@ import {
   getUKNow,
   isDraftAuctionEnded,
   getDraftPhaseFromStart,
-  isGpdbFreeAgentOfferAllowed,
   draftPhaseLabel,
   canClubBidOnPlayerDraft,
   normalizeKonamiId,
@@ -250,7 +249,6 @@ export async function buildPlayerDraftUiState(ctx, player) {
       status: "Under contract",
       leadingText: "—",
       yourBidText: "—",
-      canOpen: false,
       canBid: false,
       canBidInline: false,
       minBid: null,
@@ -263,7 +261,6 @@ export async function buildPlayerDraftUiState(ctx, player) {
       status: "Draft disabled",
       leadingText: "—",
       yourBidText: "—",
-      canOpen: false,
       canBid: false,
       canBidInline: false,
       minBid: null,
@@ -290,9 +287,6 @@ export async function buildPlayerDraftUiState(ctx, player) {
     : "—";
 
   const draftStartDate = new Date(ctx.draftStart);
-  const canOpen =
-    !listing &&
-    isGpdbFreeAgentOfferAllowed(ctx.nowUK, draftStartDate);
 
   const canBid =
     !ctx.auctionEnded &&
@@ -310,8 +304,8 @@ export async function buildPlayerDraftUiState(ctx, player) {
     status = listing ? "Auction ended" : "Draft ended";
   } else if (listing) {
     status = "Auction open";
-  } else if (canOpen) {
-    status = "Ready — open auction";
+  } else if (canBid) {
+    status = "Ready to bid";
   } else if (ctx.phase === "before_start") {
     status = draftPhaseLabel("before_start");
   } else {
@@ -325,7 +319,6 @@ export async function buildPlayerDraftUiState(ctx, player) {
     status,
     leadingText,
     yourBidText,
-    canOpen,
     canBid,
     canBidInline: canBid,
     minBid,
@@ -336,12 +329,6 @@ export async function buildPlayerDraftUiState(ctx, player) {
 
 export function renderDraftManageCell(ui) {
   const parts = [];
-
-  if (ui.canOpen) {
-    parts.push(
-      `<button type="button" class="scout-open-auction button secondary" data-player-id="${ui.playerId}" style="padding:4px 10px;font-size:11px;margin:2px;">Open auction</button>`
-    );
-  }
 
   if (ui.canBidInline && ui.minBid != null) {
     parts.push(`

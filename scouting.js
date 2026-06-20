@@ -21,7 +21,6 @@ import {
   loadScoutingDraftContext,
   buildPlayerDraftUiState,
   renderDraftManageCell,
-  ensureDraftListingForPlayer,
   submitScoutingDraftBid,
 } from "./scouting_draft_actions.js";
 import { confirmSquadRulesBeforeBid } from "./squad_rules.js";
@@ -199,7 +198,6 @@ function renderTierTable(tier, rows, playerMap, draftUiByPlayer) {
               leadingText: "—",
               yourBidText: "—",
               playerId: pid,
-              canOpen: false,
               canBidInline: false,
               minBid: null,
               playerPageUrl: null,
@@ -254,27 +252,6 @@ async function buildDraftUiMap(playerMap) {
 }
 
 function wireDraftActions(wrap) {
-  wrap.querySelectorAll(".scout-open-auction").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const pid = btn.dataset.playerId;
-      const player = playerMapCache.get(pid);
-      if (!player) return;
-      btn.disabled = true;
-      try {
-        const result = await ensureDraftListingForPlayer(supabase, player);
-        if (!result.ok) {
-          alert(result.msg || "Could not open auction.");
-          return;
-        }
-        await renderScoutingLists();
-      } catch (err) {
-        alert(err?.message || "Could not open auction.");
-      } finally {
-        btn.disabled = false;
-      }
-    });
-  });
-
   wrap.querySelectorAll(".scout-bid-submit").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const pid = btn.dataset.playerId;
