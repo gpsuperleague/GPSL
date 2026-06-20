@@ -15,19 +15,37 @@ const BAND_INPUTS = [
   { id: "bandR79", key: "r79", label: "79+" },
 ];
 
+const POS_INPUTS = [
+  { id: "posGk", key: "gk", label: "GK" },
+  { id: "posDef", key: "def", label: "DEF" },
+  { id: "posMid", key: "mid", label: "MID" },
+  { id: "posFwd", key: "fwd", label: "FWD" },
+];
+
 const BAND_STORAGE_KEY = "gpsl_draft_seed_rating_bands";
+const POS_STORAGE_KEY = "gpsl_draft_seed_position_chart";
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
   loadBandTargets();
+  loadPositionTargets();
   updateBandSumLine();
+  updatePosSumLine();
+
   BAND_INPUTS.forEach(({ id }) => {
     document.getElementById(id)?.addEventListener("input", () => {
       updateBandSumLine();
       saveBandTargets();
     });
   });
+  POS_INPUTS.forEach(({ id }) => {
+    document.getElementById(id)?.addEventListener("input", () => {
+      updatePosSumLine();
+      savePositionTargets();
+    });
+  });
+
   document.getElementById("minPlayersToBuy")?.addEventListener("input", updateBandSumLine);
   document.getElementById("spreadBandsBtn").onclick = spreadBandsEvenly;
 
@@ -39,6 +57,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 function readRatingBandTargets() {
   const targets = {};
   for (const { id, key } of BAND_INPUTS) {
+    targets[key] = Math.max(0, Number(document.getElementById(id)?.value || 0));
+  }
+  return targets;
+}
+
+function readPositionTargets() {
+  const targets = {};
+  for (const { id, key } of POS_INPUTS) {
     targets[key] = Math.max(0, Number(document.getElementById(id)?.value || 0));
   }
   return targets;
@@ -62,9 +88,31 @@ function loadBandTargets() {
   }
 }
 
+function loadPositionTargets() {
+  try {
+    const raw = localStorage.getItem(POS_STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    for (const { id, key } of POS_INPUTS) {
+      const el = document.getElementById(id);
+      if (el && saved[key] != null) el.value = String(saved[key]);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 function saveBandTargets() {
   try {
     localStorage.setItem(BAND_STORAGE_KEY, JSON.stringify(readRatingBandTargets()));
+  } catch {
+    /* ignore */
+  }
+}
+
+function savePositionTargets() {
+  try {
+    localStorage.setItem(POS_STORAGE_KEY, JSON.stringify(readPositionTargets()));
   } catch {
     /* ignore */
   }
@@ -81,6 +129,14 @@ function updateBandSumLine() {
       ? ` · <span style="color:#e8c547">band total (${sum}) ≠ min players (${minPlayers})</span>`
       : "";
   el.innerHTML = `Band total: ${sum}${warn}`;
+}
+
+function updatePosSumLine() {
+  const targets = readPositionTargets();
+  const sum = Object.values(targets).reduce((a, b) => a + b, 0);
+  const el = document.getElementById("posSumLine");
+  if (!el) return;
+  el.textContent = `Position chart total: ${sum}`;
 }
 
 function spreadBandsEvenly() {
@@ -166,9 +222,14 @@ function renderPreview(result) {
   const proj = result.projected_after || {};
   const pos = proj.positions || {};
   const targets = proj.targets || {};
+  const posTargets = result.position_targets || {
+    gk: targets.gk,
+    def: targets.def,
+    mid: targets.mid,
+    fwd: targets.fwd,
+  };
   const bids = Array.isArray(result.bids) ? result.bids : [];
   const skipped = Array.isArray(result.skipped) ? result.skipped : [];
-  const totalBudget = Number(document.getElementById("totalSpendBudget")?.value || 0);
   const avgBid = bids.length ? (result.total_spend || 0) / bids.length : 0;
   const squadBefore = result.squad_size_before ?? result.composition_before?.total ?? null;
   const spareSlots = result.spare_squad_slots;
@@ -183,8 +244,8 @@ function renderPreview(result) {
   box.innerHTML = `
     <p><b>${escapeHtml(result.club)}</b> · ${result.dry_run ? "Preview" : "Placed"} ·
       ${result.dry_run ? bids.length : result.placed} bid(s)${effectiveTarget != null ? ` · target ≥ ${effectiveTarget}` : ""}${result.min_players_met === false ? " · <span style=\"color:#e8c547\">below minimum</span>" : ""} ·
-      spend ${formatMoney(result.total_spend || 0)}${totalBudget > 0 ? ` / ${formatMoney(totalBudget)} cap` : ""}${avgBid > 0 ? ` · avg ${formatMoney(avgBid)}` : ""} ·
-      balance ${formatMoney(result.balance || 0)} ·
+      spend ${formatMoney(result.total_spend || 0)} (market value)${avgBid > 0 ? ` · avg ${formatMoney(avgBid)}` : ""} ·
+      club balance ${formatMoney(result.balance || 0)} ·
       draft credits after ${result.draft_credits_remaining ?? "—"}</p>
     ${
       squadBefore != null || spareSlots != null
@@ -199,30 +260,26 @@ function renderPreview(result) {
         : ""
     }
     <p>Projected squad: <b>${proj.squad_size ?? "—"}</b> players ·
-      GK ${pos.gk ?? 0}/${targets.gk ?? 2} · DEF ${pos.def ?? 0}/${targets.def ?? 8} ·
-      MID ${pos.mid ?? 0}/${targets.mid ?? 10} · FWD ${pos.fwd ?? 0}/${targets.fwd ?? 8}</p>
+      GK ${pos.gk ?? 0}/${posTargets.gk ?? 2} · DEF ${pos.def ?? 0}/${posTargets.def ?? 8} ·
+      MID ${pos.mid ?? 0}/${posTargets.mid ?? 10} · FWD ${pos.fwd ?? 0}/${posTargets.fwd ?? 8}</p>
     <p>Compliance: ${complianceLine(proj, targets)}</p>
     ${bandLine ? `<p>${bandLine}</p>` : ""}
     ${
       bids.length
         ? `<table>
-      <thead><tr><th>Player</th><th>Pos</th><th>Rtg</th><th>Bid</th><th>Type</th><th>Tags</th></tr></thead>
+      <thead><tr><th>Player</th><th>Pos</th><th>Rtg</th><th>MV bid</th><th>Tags</th></tr></thead>
       <tbody>${bids
         .map((b) => {
           const tags = [];
           if (b.is_star) tags.push('<span class="tag tag-star">STAR</span>');
           if (b.home_grown) tags.push('<span class="tag tag-hg">HG</span>');
           if (b.under_21) tags.push('<span class="tag tag-u21">U21</span>');
-          const type =
-            b.bid_type === "open"
-              ? '<span class="tag tag-open">OPEN</span>'
-              : '<span class="tag tag-join">JOIN</span>';
+          tags.push('<span class="tag tag-open">OPEN</span>');
           return `<tr>
             <td>${escapeHtml(b.player_name)}</td>
             <td>${escapeHtml(b.position || b.pos_group || "—")}</td>
             <td>${escapeHtml(b.rating ?? "—")}</td>
             <td>${formatMoney(b.amount)}</td>
-            <td>${type}</td>
             <td>${tags.join("") || "—"}</td>
           </tr>`;
         })
@@ -235,8 +292,6 @@ function renderPreview(result) {
             .map((s) => {
               const bits = [s.reason];
               if (s.player_name) bits.push(s.player_name);
-              if (s.remaining_budget != null) bits.push(`left ${formatMoney(s.remaining_budget)}`);
-              if (s.afford_cap != null) bits.push(`cap ${formatMoney(s.afford_cap)}`);
               if (s.still_needed != null) bits.push(`needed ${s.still_needed}`);
               return escapeHtml(bits.join(" · "));
             })
@@ -248,11 +303,11 @@ function renderPreview(result) {
 async function runSeed(dryRun) {
   const club = document.getElementById("clubSelect")?.value?.trim();
   const minPlayersToBuy = Number(document.getElementById("minPlayersToBuy")?.value || 27);
-  const budgetReserve = Number(document.getElementById("budgetReserve")?.value || 0);
-  const totalSpendRaw = document.getElementById("totalSpendBudget")?.value;
-  const totalSpendBudget =
-    totalSpendRaw === "" || totalSpendRaw == null ? null : Number(totalSpendRaw);
   const ratingBandTargets = readRatingBandTargets();
+  const positionTargets = readPositionTargets();
+
+  saveBandTargets();
+  savePositionTargets();
 
   if (!club) {
     setStatus("pageStatus", "Select a club first.", false);
@@ -262,8 +317,8 @@ async function runSeed(dryRun) {
   if (!dryRun) {
     if (
       !confirm(
-        `Place at least ${minPlayersToBuy} draft bid(s) for ${club}?\n\n` +
-          `This opens/joins real GPDB draft auctions. Settlement happens at random finish — not instant signings.\n\n` +
+        `Place at least ${minPlayersToBuy} draft bid(s) for ${club} at market value?\n\n` +
+          `This opens real GPDB draft auctions. Settlement happens at random finish — not instant signings.\n\n` +
           (lastPreview?.total_spend
             ? `Preview spend: ${formatMoney(lastPreview.total_spend)}`
             : "Run Preview first to see the plan.")
@@ -278,10 +333,9 @@ async function runSeed(dryRun) {
   const { data, error } = await supabase.rpc("admin_compliance_draft_seed_bids", {
     p_club_short_name: club,
     p_min_players_to_buy: minPlayersToBuy,
-    p_budget_reserve: budgetReserve,
     p_dry_run: dryRun,
-    p_total_spend_budget: totalSpendBudget,
     p_rating_band_targets: hasRatingBandTargets(ratingBandTargets) ? ratingBandTargets : null,
+    p_position_targets: positionTargets,
   });
 
   if (error) {
@@ -300,6 +354,7 @@ async function runSeed(dryRun) {
       draft_not_scheduled: "Set draft auction start time.",
       draft_not_started: "Draft has not started yet.",
       draft_ended: "Draft bidding has ended.",
+      new_auction_locked_after_cutoff: "New draft auctions are locked after the 23-hour cutoff.",
       squad_full: `Squad already at ${data?.squad_size ?? 28} players.`,
     };
     setStatus("pageStatus", `❌ ${hints[reason] || reason}`, false);
@@ -314,7 +369,7 @@ async function runSeed(dryRun) {
     const met = data.min_players_met !== false ? "" : " (below minimum target)";
     setStatus(
       "pageStatus",
-      `✅ Preview: ${data.planned_bids ?? 0} bid(s), ${formatMoney(data.total_spend || 0)} total${met}.`
+      `✅ Preview: ${data.planned_bids ?? 0} bid(s) at market value, ${formatMoney(data.total_spend || 0)} total${met}.`
     );
   } else {
     setStatus(

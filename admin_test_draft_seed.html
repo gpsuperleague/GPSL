@@ -13,15 +13,15 @@
       width: 100%; max-width: 560px; padding: 8px; margin-top: 4px;
       background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
     }
-    .form-grid .hint { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.45; }
-    .band-grid {
+    .form-grid .hint, .hint { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.45; }
+    .band-grid, .pos-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
       gap: 10px 14px;
       max-width: 720px;
     }
-    .band-grid label { display: block; font-size: 13px; color: #bbb; }
-    .band-grid input[type="number"] {
+    .band-grid label, .pos-grid label { display: block; font-size: 13px; color: #bbb; }
+    .band-grid input[type="number"], .pos-grid input[type="number"] {
       width: 100%; padding: 8px; margin-top: 4px;
       background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
     }
@@ -43,7 +43,6 @@
     .tag-hg { background: #1a3a2a; color: #8ddf8d; }
     .tag-u21 { background: #1a2a3a; color: #8ec8ff; }
     .tag-open { background: #2a2a1a; color: #e8c547; }
-    .tag-join { background: #2a1a2a; color: #d8a8ff; }
     .tag-star { background: #3a2a1a; color: #ffcc66; }
     .compliance-ok { color: #8ddf8d; }
     .compliance-warn { color: #e8c547; }
@@ -56,7 +55,7 @@
     <div class="admin-main" id="adminMain">
       <p class="note">
         <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
-        · Testing tool — opens real GPDB draft auctions (or joins existing ones). Bids settle normally at random finish.
+        · Testing tool — opens real GPDB draft auctions at each player’s market value. Bids settle normally at random finish.
         Run <code>admin_compliance_draft_seed.sql</code> in Supabase first. Player draft must be enabled and bidding open.
       </p>
 
@@ -70,27 +69,32 @@
           <label>
             Minimum players to buy
             <input type="number" id="minPlayersToBuy" min="1" max="27" value="27">
-            <div class="hint">Target at least this many draft signings. Hard cap: spare squad slots (28 minus current squad). Preview shows squad size and effective target.</div>
-          </label>
-          <label>
-            Budget reserve (₿)
-            <input type="number" id="budgetReserve" min="0" step="500000" value="0">
-            <div class="hint">Keeps this amount unspent from club balance (on top of total spend cap below).</div>
-          </label>
-          <label>
-            Total spend budget (₿)
-            <input type="number" id="totalSpendBudget" min="0" step="1000000" value="400000000">
-            <div class="hint">Cap for all bids at market value (e.g. 400000000 = ₿400M). Spreads budget across the player target (~₿400M ÷ 27 ≈ ₿14.8M each). Opens new auctions or joins existing ones.</div>
+            <div class="hint">Target at least this many draft signings. Hard cap: spare squad slots (28 minus current squad).</div>
           </label>
         </div>
       </div>
 
       <div class="card" style="margin-top:14px;">
+        <h2>Squad position chart</h2>
+        <p class="hint" style="margin:0 0 10px;">
+          Minimum players per position group in the projected squad (defaults: GK 2 · DEF 8 · MID 10 · FWD 8).
+          The seed picks random free agents at market value to fill deficits before rating bands and general fill.
+        </p>
+        <div class="pos-grid">
+          <label>GK<input type="number" id="posGk" min="0" max="28" value="2"></label>
+          <label>DEF<input type="number" id="posDef" min="0" max="28" value="8"></label>
+          <label>MID<input type="number" id="posMid" min="0" max="28" value="10"></label>
+          <label>FWD<input type="number" id="posFwd" min="0" max="28" value="8"></label>
+        </div>
+        <p class="band-sum" id="posSumLine" style="margin-top:8px;">Position chart total: 28</p>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
         <h2>Rating band targets (new signings)</h2>
-        <p class="hint" style="font-size:12px;color:#888;margin:0 0 10px;line-height:1.45;">
+        <p class="hint" style="margin:0 0 10px;">
           How many of this seed’s purchases should fall in each rating band. Set to 0 for no preference.
           Compliance picks (stars, HG, U21, positions) still run first; bands guide the mix after that.
-          Band 79+ counts star-tier players (rating ≥ 79).
+          Band 79+ counts star-tier players (rating ≥ 79). All bids are at market value only.
         </p>
         <div class="band-grid">
           <label>≤65<input type="number" id="bandLe65" min="0" max="27" value="0"></label>
@@ -113,6 +117,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_draft_seed.js?v=20260619-rating-bands"></script>
+  <script type="module" src="admin_test_draft_seed.js?v=20260619-mv-only"></script>
 </body>
 </html>
