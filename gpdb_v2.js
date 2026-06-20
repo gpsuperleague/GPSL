@@ -12,6 +12,7 @@ import {
 } from "./global.js";
 
 import { formatMoney } from "./competition.js";
+import { loadWagePercentages, wageFromMarketValue } from "./wages.js";
 
 import {
   loadGlobalSettings as loadGlobalSettingsEngine,
@@ -221,12 +222,114 @@ document.addEventListener("DOMContentLoaded", () => {
     "contract_wage",
   ];
 
-  /** Continuous columns: load min/max from DB (distinct is capped ~1000 rows). */
-  const CONTINUOUS_RANGE_COLUMNS = ["contract_wage"];
-
   const MARKET_VALUE_FILTER_MIN = 1;
   const MARKET_VALUE_FILTER_MAX = 200_000_000;
   const MARKET_VALUE_FILTER_STEP = 1_000_000;
+
+  /** Championship % of MV — forecast wage for unsigned players in GPDB filters. */
+  const WAGE_FORECAST_TIER = "championship";
+  const CONTRACT_WAGE_FILTER_STEP = 10_000;
+
+  let WAGE_FORECAST_SETTINGS = { superleague: 5, championship: 4 };
+
+  async function loadWageForecastSettings() {
+    WAGE_FORECAST_SETTINGS = await loadWagePercentages(supabase);
+  }
+
+  function forecastWageFromMarketValue(mv) {
+    return wageFromMarketValue(mv, WAGE_FORECAST_TIER, WAGE_FORECAST_SETTINGS);
+  }
+
+  function marketValueBoundsForForecastWage(wMin, wMax) {
+    const pct =
+      WAGE_FORECAST_TIER === "superleague"
+        ? WAGE_FORECAST_SETTINGS.superleague
+        : WAGE_FORECAST_SETTINGS.championship;
+    const rate = pct / 100;
+    if (rate <= 0) {
+      return { mvMin: 0, mvMax: MARKET_VALUE_FILTER_MAX };
+    }
+    const mvMin = wMin <= 0 ? 0 : Math.max(0, Math.floor((wMin - 0.5) / rate));
+    const mvMax = Math.min(
+      MARKET_VALUE_FILTER_MAX,
+      Math.ceil((wMax + 0.5) / rate)
+    );
+    return { mvMin, mvMax };
+  }
+
+  function applyContractWageFilter(query, wMin, wMax) {
+    const { mvMin, mvMax } = marketValueBoundsForForecastWage(wMin, wMax);
+    const signedClause = `and(contract_wage.gt.0,contract_wage.gte.${wMin},contract_wage.lte.${wMax})`;
+    const forecastClause = `and(or(contract_wage.is.null,contract_wage.lte.0),market_value.gte.${mvMin},market_value.lte.${mvMax})`;
+    return query.or(`${signedClause},${forecastClause}`);
+  }
+
+  function snapContractWage(n) {
+    const num = Number(n);
+    if (!Number.isFinite(num)) return 0;
+    const bounds = RANGE_BOUNDS.contract_wage;
+    const floor = bounds?.min ?? 0;
+    const ceiling = bounds?.max ?? num;
+    const clamped = Math.max(floor, Math.min(num, ceiling));
+    const snapped =
+      Math.round(clamped / CONTRACT_WAGE_FILTER_STEP) * CONTRACT_WAGE_FILTER_STEP;
+    return Math.max(floor, Math.min(snapped, ceiling));
+  }
+
+  function normalizeContractWageActive() {
+    const bounds = RANGE_BOUNDS.contract_wage;
+    if (!bounds) return;
+
+    const active = RANGE_ACTIVE.contract_wage || {
+      min: bounds.min,
+      max: bounds.max,
+    };
+    let lo = snapContractWage(active.min);
+    let hi = snapContractWage(active.max);
+    if (lo > hi) [lo, hi] = [hi, lo];
+    RANGE_ACTIVE.contract_wage = { min: lo, max: hi };
+  }
+
+  async function loadContractWageBounds() {
+    const [{ data: minRows, error: minErr }, { data: maxRows, error: maxErr }] =
+      await Promise.all([
+        supabase
+          .from("Players")
+          .select("contract_wage")
+          .gt("contract_wage", 0)
+          .order("contract_wage", { ascending: true })
+          .limit(1),
+        supabase
+          .from("Players")
+          .select("contract_wage")
+          .gt("contract_wage", 0)
+          .order("contract_wage", { ascending: false })
+          .limit(1),
+      ]);
+
+    if (minErr || maxErr) {
+      console.error("Error loading contract wage bounds:", minErr || maxErr);
+    }
+
+    const forecastMin = forecastWageFromMarketValue(MARKET_VALUE_FILTER_MIN);
+    const forecastMax = forecastWageFromMarketValue(MARKET_VALUE_FILTER_MAX);
+
+    let min = Number(minRows?.[0]?.contract_wage);
+    let max = Number(maxRows?.[0]?.contract_wage);
+    if (!Number.isFinite(min)) min = forecastMin;
+    if (!Number.isFinite(max)) max = 0;
+
+    min = Math.min(min, forecastMin);
+    max = Math.max(max, forecastMax);
+
+    RANGE_BOUNDS.contract_wage = {
+      type: "numeric",
+      min,
+      max,
+      step: CONTRACT_WAGE_FILTER_STEP,
+    };
+    RANGE_ACTIVE.contract_wage = { min, max };
+  }
 
   function snapMarketValue(n) {
     const num = Number(n);
@@ -269,6 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function rangeFilterStep(col) {
     if (col === "market_value") return MARKET_VALUE_FILTER_STEP;
+    if (col === "contract_wage") return CONTRACT_WAGE_FILTER_STEP;
     const bounds = RANGE_BOUNDS[col];
     if (bounds?.step) return bounds.step;
     return 1;
@@ -280,6 +384,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const hi = Math.max(active.min, active.max);
     if (col === "market_value") {
       return { min: snapMarketValue(lo), max: snapMarketValue(hi) };
+    }
+    if (col === "contract_wage") {
+      return { min: snapContractWage(lo), max: snapContractWage(hi) };
     }
     return { min: lo, max: hi };
   }
@@ -387,6 +494,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (col === "market_value") {
         lo = snapMarketValue(lo);
         hi = snapMarketValue(hi);
+      } else if (col === "contract_wage") {
+        lo = snapContractWage(lo);
+        hi = snapContractWage(hi);
       } else {
         lo = Math.max(bounds.min, Math.min(lo, bounds.max));
         hi = Math.max(bounds.min, Math.min(hi, bounds.max));
@@ -432,6 +542,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     normalizeMarketValueActive();
+    normalizeContractWageActive();
 
     if (typeof saved.scoutedOnly === "boolean") {
       SCOUTED_ONLY = saved.scoutedOnly;
@@ -701,11 +812,19 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     for (const col of RANGE_FILTER_COLUMNS) {
-      if (col === "market_value" || col === "contract_wage") {
+      if (col === "market_value") {
         const bounds = RANGE_BOUNDS[col];
         const active = normalizedRangeActive(col);
         if (bounds && active && isRangeFilterActive(col)) {
           query = query.gte(col, active.min).lte(col, active.max);
+        }
+        continue;
+      }
+      if (col === "contract_wage") {
+        const bounds = RANGE_BOUNDS[col];
+        const active = normalizedRangeActive(col);
+        if (bounds && active && isRangeFilterActive(col)) {
+          query = applyContractWageFilter(query, active.min, active.max);
         }
         continue;
       }
@@ -890,48 +1009,14 @@ document.addEventListener("DOMContentLoaded", () => {
     RANGE_ACTIVE[col] = { min: 0, max: uniqueValues.length - 1 };
   }
 
-  async function loadNumericColumnBounds(col) {
-    const [{ data: minRows, error: minErr }, { data: maxRows, error: maxErr }] =
-      await Promise.all([
-        supabase
-          .from("Players")
-          .select(col)
-          .not(col, "is", null)
-          .order(col, { ascending: true })
-          .limit(1),
-        supabase
-          .from("Players")
-          .select(col)
-          .not(col, "is", null)
-          .order(col, { ascending: false })
-          .limit(1),
-      ]);
-
-    if (minErr || maxErr) {
-      console.error(`Error loading numeric bounds for ${col}:`, minErr || maxErr);
-      setRangeBoundsFromValues(col, []);
-      return;
-    }
-
-    const min = Number(minRows?.[0]?.[col]);
-    const max = Number(maxRows?.[0]?.[col]);
-    if (!Number.isFinite(min) || !Number.isFinite(max)) {
-      setRangeBoundsFromValues(col, []);
-      return;
-    }
-
-    RANGE_BOUNDS[col] = { type: "numeric", min, max };
-    RANGE_ACTIVE[col] = { min, max };
-  }
-
   async function loadRangeBounds() {
     setMarketValueBounds();
 
     for (const col of RANGE_FILTER_COLUMNS) {
       if (col === "market_value") continue;
 
-      if (CONTINUOUS_RANGE_COLUMNS.includes(col)) {
-        await loadNumericColumnBounds(col);
+      if (col === "contract_wage") {
+        await loadContractWageBounds();
         continue;
       }
 
@@ -1020,6 +1105,11 @@ document.addEventListener("DOMContentLoaded", () => {
     wrap.style.setProperty("--range-max", `${maxPct}%`);
   }
 
+  function contractWageFilterHintHtml() {
+    const pct = WAGE_FORECAST_SETTINGS.championship;
+    return `<div class="range-filter-wage-hint">Free agents use forecast wage (${pct}% of market value)</div>`;
+  }
+
   function rangeFilterHtml(col) {
     const bounds = RANGE_BOUNDS[col];
     const label = formatHeader(col);
@@ -1038,6 +1128,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const step = rangeFilterStep(col);
     const disabled = sliderMax <= sliderMin ? "disabled" : "";
 
+    const wageHint = col === "contract_wage" ? contractWageFilterHintHtml() : "";
+
     return `
       <div class="range-filter" data-col="${col}">
         <div class="range-filter-label">${label} <span class="range-filter-range" id="filter-${col}-range">${formatRangeBracket(col)}</span></div>
@@ -1046,6 +1138,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <input type="range" class="range-filter-min" id="filter-${col}-min" min="${sliderMin}" max="${sliderMax}" value="${active.min}" step="${step}" aria-label="${label} minimum" ${disabled}>
           <input type="range" class="range-filter-max" id="filter-${col}-max" min="${sliderMin}" max="${sliderMax}" value="${active.max}" step="${step}" aria-label="${label} maximum" ${disabled}>
         </div>
+        ${wageHint}
       </div>
     `;
   }
@@ -1107,6 +1200,13 @@ document.addEventListener("DOMContentLoaded", () => {
           maxEl.value = String(hi);
         }
 
+        if (col === "contract_wage") {
+          lo = snapContractWage(lo);
+          hi = snapContractWage(hi);
+          minEl.value = String(lo);
+          maxEl.value = String(hi);
+        }
+
         if (lo > hi) {
           if (document.activeElement === minEl) {
             hi = lo;
@@ -1119,6 +1219,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         RANGE_ACTIVE[col] = { min: lo, max: hi };
         if (col === "market_value") normalizeMarketValueActive();
+        if (col === "contract_wage") normalizeContractWageActive();
         const active = normalizedRangeActive(col);
         minEl.value = String(active.min);
         maxEl.value = String(active.max);
@@ -2421,6 +2522,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     await loadClubNames();
     await loadPlayerValueTables();
+    await loadWageForecastSettings();
 
     setupControls();
     await loadRangeBounds();
