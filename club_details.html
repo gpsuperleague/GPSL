@@ -502,11 +502,89 @@
 
     .theme-toggle-row {
       display: flex;
-      align-items: center;
-      gap: 8px;
+      align-items: flex-start;
+      gap: 10px;
       margin: 0 0 14px;
       font-size: 14px;
       color: #ddd;
+    }
+
+    .theme-toggle-row--prominent {
+      padding: 12px 14px;
+      background: #222;
+      border: 1px solid #444;
+      border-radius: 8px;
+    }
+
+    .theme-toggle-row input[type="checkbox"] {
+      margin-top: 3px;
+      flex-shrink: 0;
+    }
+
+    .theme-toggle-hint {
+      display: block;
+      margin-top: 4px;
+      font-size: 12px;
+      color: #888;
+      line-height: 1.4;
+      font-weight: normal;
+    }
+
+    .theme-toggle-row--off .theme-toggle-hint {
+      color: #da8;
+    }
+
+    .theme-scope-fieldset {
+      margin: 0 0 16px;
+      padding: 12px 14px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #1a1a1a;
+    }
+
+    .theme-scope-fieldset:disabled {
+      opacity: 0.55;
+    }
+
+    .theme-scope-fieldset legend {
+      padding: 0 6px;
+      color: #ff9900;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .theme-scope-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin: 0 0 10px;
+      font-size: 14px;
+      color: #ddd;
+      cursor: pointer;
+    }
+
+    .theme-scope-option:last-of-type {
+      margin-bottom: 0;
+    }
+
+    .theme-scope-option input {
+      margin-top: 3px;
+      flex-shrink: 0;
+    }
+
+    .theme-scope-hint {
+      display: block;
+      margin-top: 2px;
+      font-size: 12px;
+      color: #888;
+      font-weight: normal;
+    }
+
+    .theme-scope-note {
+      margin: 10px 0 0;
+      font-size: 12px;
+      color: #777;
+      line-height: 1.4;
     }
 
     .theme-color-grid {
@@ -668,14 +746,36 @@
     <div class="panel panel-bg club-theme-panel" id="clubThemePanel">
       <h2 class="club-kits-title">Dashboard colours</h2>
       <p class="club-kits-intro">
-        Tint your <a href="dashboard.html" class="gpsl-content-link">GPSL dashboard</a> and this page with club colours.
-        The dark layout stays the same — only accents change. Suggest from a kit, tweak if needed, then save.
+        Pick club accent colours for your GPSL dashboard. The dark layout and top menu stay the same.
+        Suggest from a kit, tweak if needed, then save.
       </p>
 
-      <label class="theme-toggle-row">
+      <label class="theme-toggle-row theme-toggle-row--prominent">
         <input type="checkbox" id="themeEnabled">
-        Use club colours below the menu (dashboard &amp; club details)
+        <span>
+          <strong>Use club colours</strong>
+          <span class="theme-toggle-hint">Preview below always shows your picks. The live site stays GPSL orange until this is on and you save.</span>
+        </span>
       </label>
+
+      <fieldset class="theme-scope-fieldset" id="themeScopeFieldset">
+        <legend>Apply club colours to</legend>
+        <label class="theme-scope-option">
+          <input type="radio" name="themeScope" id="themeScopeDashboard" value="dashboard" checked>
+          <span>
+            <strong>Dashboard only</strong>
+            <span class="theme-scope-hint">Tiles and header on your dashboard page</span>
+          </span>
+        </label>
+        <label class="theme-scope-option">
+          <input type="radio" name="themeScope" id="themeScopeClubPages" value="club_pages">
+          <span>
+            <strong>Dashboard and club pages</strong>
+            <span class="theme-scope-hint">Also Club Details and other owner pages below the menu</span>
+          </span>
+        </label>
+        <p class="theme-scope-note">The top GPSL menu always stays standard orange.</p>
+      </fieldset>
 
       <div class="theme-color-grid">
         <label class="theme-color-field">
@@ -864,7 +964,7 @@
 
   </div>
 
-  <script type="module" src="club_details.js?v=20260621-tile-text"></script>
+  <script type="module" src="club_details.js?v=20260621-theme-scope"></script>
 
 </body>
 </html>

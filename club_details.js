@@ -25,9 +25,11 @@ import {
   loadClubDashboardTheme,
   normalizeHexColor,
   normalizeThemeRow,
+  normalizeThemeScope,
   renderThemePreviewHtml,
   saveClubDashboardTheme,
   suggestThemeFromKit,
+  THEME_SCOPES,
 } from "./club_theme_common.js";
 
 const MAX_OWNER_TAG_LEN = 64;
@@ -881,10 +883,17 @@ function themeFieldIds() {
   ];
 }
 
+function readThemeScopeFromForm() {
+  const clubPages = document.getElementById("themeScopeClubPages");
+  if (clubPages?.checked) return THEME_SCOPES.clubPages;
+  return THEME_SCOPES.dashboard;
+}
+
 function readThemeDraftFromForm() {
   const enabledEl = document.getElementById("themeEnabled");
   const draft = { ...themeDraft };
   draft.enabled = enabledEl?.checked === true;
+  draft.theme_scope = readThemeScopeFromForm();
 
   for (const [pickerId, hexId, key] of themeFieldIds()) {
     const hexEl = document.getElementById(hexId);
@@ -897,10 +906,28 @@ function readThemeDraftFromForm() {
   return draft;
 }
 
+function syncThemeToggleHint() {
+  const row = document.querySelector(".theme-toggle-row--prominent");
+  const enabled = document.getElementById("themeEnabled")?.checked === true;
+  if (row) row.classList.toggle("theme-toggle-row--off", !enabled);
+}
+
+function syncThemeScopeUi() {
+  const enabled = document.getElementById("themeEnabled")?.checked === true;
+  const fieldset = document.getElementById("themeScopeFieldset");
+  if (fieldset) fieldset.disabled = !enabled;
+}
+
 function writeThemeDraftToForm(theme) {
   themeDraft = normalizeThemeRow(theme);
   const enabledEl = document.getElementById("themeEnabled");
   if (enabledEl) enabledEl.checked = themeDraft.enabled === true;
+
+  const scope = normalizeThemeScope(themeDraft.theme_scope);
+  const dashRadio = document.getElementById("themeScopeDashboard");
+  const clubRadio = document.getElementById("themeScopeClubPages");
+  if (dashRadio) dashRadio.checked = scope === THEME_SCOPES.dashboard;
+  if (clubRadio) clubRadio.checked = scope === THEME_SCOPES.clubPages;
 
   for (const [pickerId, hexId, key] of themeFieldIds()) {
     const pickerEl = document.getElementById(pickerId);
@@ -915,7 +942,9 @@ function writeThemeDraftToForm(theme) {
     preview.innerHTML = renderThemePreviewHtml(themeDraft);
   }
 
-  applyClubDashboardTheme(themeDraft);
+  syncThemeToggleHint();
+  syncThemeScopeUi();
+  applyClubDashboardTheme(themeDraft, { pageKey: "club_details" });
 }
 
 function setThemeStatus(message, kind = "") {
@@ -965,6 +994,13 @@ function wireDashboardThemePanel(clubShort) {
     writeThemeDraftToForm(themeDraft);
   });
 
+  for (const id of ["themeScopeDashboard", "themeScopeClubPages"]) {
+    document.getElementById(id)?.addEventListener("change", () => {
+      themeDraft = readThemeDraftFromForm();
+      writeThemeDraftToForm(themeDraft);
+    });
+  }
+
   document.getElementById("themeSuggestBtn")?.addEventListener("click", async () => {
     const btn = document.getElementById("themeSuggestBtn");
     const kind = document.getElementById("themeKitSource")?.value || "home";
@@ -975,6 +1011,7 @@ function wireDashboardThemePanel(clubShort) {
       themeDraft = {
         ...suggested,
         enabled: readThemeDraftFromForm().enabled,
+        theme_scope: readThemeDraftFromForm().theme_scope,
         source_kit: kind,
       };
       writeThemeDraftToForm(themeDraft);
@@ -991,6 +1028,7 @@ function wireDashboardThemePanel(clubShort) {
     themeDraft = {
       ...GPSL_THEME_DEFAULTS,
       enabled: readThemeDraftFromForm().enabled,
+      theme_scope: readThemeDraftFromForm().theme_scope,
       source_kit: "manual",
     };
     writeThemeDraftToForm(themeDraft);
@@ -1000,17 +1038,32 @@ function wireDashboardThemePanel(clubShort) {
   document.getElementById("themeSaveBtn")?.addEventListener("click", async () => {
     const btn = document.getElementById("themeSaveBtn");
     themeDraft = readThemeDraftFromForm();
+    themeDraft.enabled = true;
+    writeThemeDraftToForm(themeDraft);
     if (btn) btn.disabled = true;
     setThemeStatus("Saving…");
     try {
       await saveClubDashboardTheme(supabase, themeDraft);
-      setThemeStatus("Dashboard colours saved.", "ok");
+      const scopeLabel =
+        normalizeThemeScope(themeDraft.theme_scope) === THEME_SCOPES.clubPages
+          ? "Dashboard and club pages"
+          : "Dashboard only";
+      setThemeStatus(`Club colours saved and applied (${scopeLabel}).`, "ok");
     } catch (err) {
       console.warn("Theme save:", err);
       const msg = String(err?.message || err);
       if (msg.includes("club_owner_dashboard_theme_save") || msg.includes("function")) {
         setThemeStatus(
-          "Could not save — run supabase/sql/patches/club_dashboard_theme.sql in Supabase.",
+          "Could not save — run supabase/sql/patches/club_dashboard_theme_scope.sql in Supabase.",
+          "err"
+        );
+      } else if (
+        msg.includes("color_text") ||
+        msg.includes("theme_scope") ||
+        msg.includes("column")
+      ) {
+        setThemeStatus(
+          "Could not save — run supabase/sql/patches/club_dashboard_theme_scope.sql in Supabase.",
           "err"
         );
       } else {
@@ -1038,6 +1091,18 @@ async function loadDashboardThemeSection(clubShort) {
     const saved = await loadClubDashboardTheme(supabase, clubShort);
     writeThemeDraftToForm(saved);
     wireDashboardThemePanel(clubShort);
+    if (saved.enabled !== true) {
+      const hasCustom =
+        saved.color_primary !== GPSL_THEME_DEFAULTS.color_primary ||
+        saved.color_secondary !== GPSL_THEME_DEFAULTS.color_secondary ||
+        saved.color_border !== GPSL_THEME_DEFAULTS.color_border;
+      if (hasCustom) {
+        setThemeStatus(
+          "Colours saved but not active — tick the box above or click Save again to apply.",
+          "err"
+        );
+      }
+    }
   } catch (err) {
     console.warn("Club Details dashboard theme:", err);
     writeThemeDraftToForm(GPSL_THEME_DEFAULTS);

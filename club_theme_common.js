@@ -14,8 +14,33 @@ export const GPSL_THEME_DEFAULTS = {
   color_secondary: "#1a1a1a",
   color_border: "#333333",
   color_text: "#ff9900",
+  theme_scope: "dashboard",
   source_kit: "manual",
 };
+
+/** Where club colours apply (top nav always stays GPSL orange). */
+export const THEME_SCOPES = {
+  dashboard: "dashboard",
+  clubPages: "club_pages",
+};
+
+/** @typedef {'dashboard'|'club_details'} ThemePageKey */
+
+export function normalizeThemeScope(value) {
+  const v = String(value ?? "")
+    .trim()
+    .toLowerCase();
+  if (v === THEME_SCOPES.clubPages) return THEME_SCOPES.clubPages;
+  return THEME_SCOPES.dashboard;
+}
+
+export function themeAppliesOnPage(theme, pageKey) {
+  if (!theme?.enabled) return false;
+  const scope = normalizeThemeScope(theme.theme_scope);
+  if (pageKey === "dashboard") return true;
+  if (pageKey === "club_details") return scope === THEME_SCOPES.clubPages;
+  return false;
+}
 
 /** Suggested tile label colour when sampling from a kit. */
 export const GPSL_THEME_SUGGESTED_TILE_TEXT = "#ffffff";
@@ -255,6 +280,7 @@ export function normalizeThemeRow(row) {
       (row.enabled === true
         ? GPSL_THEME_SUGGESTED_TILE_TEXT
         : GPSL_THEME_DEFAULTS.color_text),
+    theme_scope: normalizeThemeScope(row.theme_scope),
     source_kit: row.source_kit || "manual",
   };
 }
@@ -265,7 +291,7 @@ export async function loadClubDashboardTheme(supabase, clubShort) {
   const { data, error } = await supabase
     .from("club_dashboard_theme")
     .select(
-      "club_short_name, enabled, color_primary, color_secondary, color_border, color_text, source_kit"
+      "club_short_name, enabled, color_primary, color_secondary, color_border, color_text, theme_scope, source_kit"
     )
     .eq("club_short_name", clubShort)
     .maybeSingle();
@@ -295,6 +321,7 @@ export async function saveClubDashboardTheme(supabase, theme) {
     p_color_text:
       normalizeHexColor(theme.color_text, GPSL_THEME_DEFAULTS.color_text) ||
       GPSL_THEME_DEFAULTS.color_text,
+    p_theme_scope: normalizeThemeScope(theme.theme_scope),
     p_source_kit: theme.source_kit || "manual",
   };
 
@@ -303,22 +330,29 @@ export async function saveClubDashboardTheme(supabase, theme) {
   return data;
 }
 
-export function applyClubDashboardTheme(theme, scopeEl) {
-  const scope =
-    scopeEl || document.querySelector(".page-container") || document.body;
-  const active = theme?.enabled === true;
+function clearClubThemeVars(scope) {
+  if (!scope) return;
+  scope.classList.remove("club-themed-scope");
+  scope.style.removeProperty("--club-accent");
+  scope.style.removeProperty("--club-panel");
+  scope.style.removeProperty("--club-border");
+  scope.style.removeProperty("--club-tile-text");
+  scope.style.removeProperty("--club-glow");
+  scope.style.removeProperty("--club-accent-rgb");
+}
 
-  scope.classList.toggle("club-themed-scope", active);
+export function applyClubDashboardTheme(theme, options = {}) {
+  const scope =
+    options.scopeEl || document.querySelector(".page-container") || document.body;
+  const pageKey = options.pageKey || window.CURRENT_PAGE || "dashboard";
+  const active = themeAppliesOnPage(theme, pageKey);
 
   if (!active) {
-    scope.style.removeProperty("--club-accent");
-    scope.style.removeProperty("--club-panel");
-    scope.style.removeProperty("--club-border");
-    scope.style.removeProperty("--club-tile-text");
-    scope.style.removeProperty("--club-glow");
-    scope.style.removeProperty("--club-accent-rgb");
+    clearClubThemeVars(scope);
     return;
   }
+
+  scope.classList.add("club-themed-scope");
 
   const primary =
     normalizeHexColor(theme.color_primary, GPSL_THEME_DEFAULTS.color_primary) ||

@@ -103,7 +103,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   try {
     const theme = await loadClubDashboardTheme(supabase, shortName);
-    applyClubDashboardTheme(theme);
+    applyClubDashboardTheme(theme, { pageKey: "dashboard" });
   } catch (err) {
     console.warn("Dashboard theme:", err);
   }

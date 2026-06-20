@@ -1,56 +1,12 @@
 -- =============================================================================
--- Club dashboard theme — owner-chosen accent colours for dashboard.html
--- Run once in Supabase SQL Editor.
--- UI: club_details.html (owners pick / suggest from kit), dashboard.html (apply)
+-- Club dashboard theme — where club colours apply (dashboard vs club pages)
+-- Run once in Supabase SQL Editor (after club_dashboard_theme_tile_text.sql).
+-- theme_scope: dashboard | club_pages  (top nav always stays GPSL orange)
 -- =============================================================================
 
-CREATE TABLE IF NOT EXISTS public.club_dashboard_theme (
-  club_short_name text NOT NULL PRIMARY KEY
-    REFERENCES public."Clubs" ("ShortName") ON DELETE CASCADE,
-  enabled boolean NOT NULL DEFAULT false,
-  color_primary text,
-  color_secondary text,
-  color_border text,
-  color_text text,
-  theme_scope text NOT NULL DEFAULT 'dashboard'
-    CHECK (theme_scope IN ('dashboard', 'club_pages')),
-  source_kit text NOT NULL DEFAULT 'manual'
-    CHECK (source_kit IN ('home', 'away', 'third', 'manual')),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
-
-COMMENT ON TABLE public.club_dashboard_theme IS
-  'Per-club dashboard accent colours (GPSL dark base unchanged).';
-
-ALTER TABLE public.club_dashboard_theme ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS club_dashboard_theme_select ON public.club_dashboard_theme;
-CREATE POLICY club_dashboard_theme_select ON public.club_dashboard_theme
-  FOR SELECT TO authenticated
-  USING (
-    club_short_name = public.my_club_shortname()
-    OR public.is_gpsl_admin()
-  );
-
-GRANT SELECT ON public.club_dashboard_theme TO authenticated;
-
-CREATE OR REPLACE FUNCTION public._normalize_theme_hex(p_color text)
-RETURNS text
-LANGUAGE plpgsql
-IMMUTABLE
-AS $function$
-DECLARE
-  v text := lower(btrim(coalesce(p_color, '')));
-BEGIN
-  IF v = '' THEN
-    RETURN NULL;
-  END IF;
-  IF v ~ '^#[0-9a-f]{6}$' THEN
-    RETURN v;
-  END IF;
-  RAISE EXCEPTION 'Invalid colour % (use #rrggbb)', p_color;
-END;
-$function$;
+ALTER TABLE public.club_dashboard_theme
+  ADD COLUMN IF NOT EXISTS theme_scope text NOT NULL DEFAULT 'dashboard'
+    CHECK (theme_scope IN ('dashboard', 'club_pages'));
 
 CREATE OR REPLACE FUNCTION public.club_owner_dashboard_theme_save(
   p_enabled boolean,
