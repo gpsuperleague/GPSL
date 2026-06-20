@@ -292,6 +292,181 @@ document.addEventListener("DOMContentLoaded", () => {
   let SCOUTING_TARGET_MAP = new Map();
   let SCOUTED_ONLY = false;
 
+  const GPDB_FILTER_STORAGE_PREFIX = "gpsl_gpdb_filters_";
+
+  function gpdbFilterStorageKey() {
+    return CURRENT_USER?.id
+      ? `${GPDB_FILTER_STORAGE_PREFIX}${CURRENT_USER.id}`
+      : null;
+  }
+
+  function loadSavedGpdbFilters() {
+    const key = gpdbFilterStorageKey();
+    if (!key) return null;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function clampSavedRangeActive(col, savedRange) {
+    const bounds = RANGE_BOUNDS[col];
+    if (!bounds || !savedRange || typeof savedRange !== "object") return;
+
+    if (bounds.type === "numeric") {
+      let lo = Number(savedRange.min);
+      let hi = Number(savedRange.max);
+      if (isNaN(lo) || isNaN(hi)) return;
+      lo = Math.max(bounds.min, Math.min(lo, bounds.max));
+      hi = Math.max(bounds.min, Math.min(hi, bounds.max));
+      if (lo > hi) [lo, hi] = [hi, lo];
+      RANGE_ACTIVE[col] = { min: lo, max: hi };
+      return;
+    }
+
+    const loVal = savedRange.minValue ?? savedRange.min;
+    const hiVal = savedRange.maxValue ?? savedRange.max;
+    if (loVal == null || hiVal == null) return;
+
+    let minIdx = bounds.values.indexOf(String(loVal));
+    let maxIdx = bounds.values.indexOf(String(hiVal));
+    if (minIdx === -1) minIdx = 0;
+    if (maxIdx === -1) maxIdx = Math.max(bounds.values.length - 1, 0);
+    if (minIdx > maxIdx) [minIdx, maxIdx] = [maxIdx, minIdx];
+    RANGE_ACTIVE[col] = { min: minIdx, max: maxIdx };
+  }
+
+  function applySavedGpdbFilterState(saved) {
+    if (!saved || typeof saved !== "object") return;
+
+    if (saved.filters && typeof saved.filters === "object") {
+      CURRENT_FILTERS = {};
+      for (const [col, value] of Object.entries(saved.filters)) {
+        if (DROPDOWN_COLUMNS.includes(col)) {
+          const values = Array.isArray(value) ? value : value ? [value] : [];
+          if (values.length) CURRENT_FILTERS[col] = values.map(String);
+        } else if (typeof value === "string" && value.trim() !== "") {
+          CURRENT_FILTERS[col] = value;
+        }
+      }
+    }
+
+    if (saved.range && typeof saved.range === "object") {
+      for (const [col, range] of Object.entries(saved.range)) {
+        if (RANGE_FILTER_COLUMNS.includes(col)) {
+          clampSavedRangeActive(col, range);
+        }
+      }
+    }
+
+    if (typeof saved.scoutedOnly === "boolean") {
+      SCOUTED_ONLY = saved.scoutedOnly;
+    }
+    if (saved.sortColumn) CURRENT_SORT_COLUMN = saved.sortColumn;
+    if (saved.sortDir === "asc" || saved.sortDir === "desc") {
+      CURRENT_SORT_DIR = saved.sortDir;
+    }
+  }
+
+  function serializeGpdbFilters() {
+    const range = {};
+    for (const col of RANGE_FILTER_COLUMNS) {
+      const bounds = RANGE_BOUNDS[col];
+      const active = RANGE_ACTIVE[col];
+      if (!bounds || !active || !isRangeFilterActive(col)) continue;
+
+      if (bounds.type === "numeric") {
+        range[col] = { min: active.min, max: active.max };
+      } else {
+        range[col] = {
+          minValue: bounds.values[active.min],
+          maxValue: bounds.values[active.max],
+        };
+      }
+    }
+
+    return {
+      filters: CURRENT_FILTERS,
+      range,
+      scoutedOnly: SCOUTED_ONLY,
+      sortColumn: CURRENT_SORT_COLUMN,
+      sortDir: CURRENT_SORT_DIR,
+    };
+  }
+
+  function saveGpdbFilters() {
+    const key = gpdbFilterStorageKey();
+    if (!key) return;
+
+    const payload = serializeGpdbFilters();
+    const hasDropdownOrText = Object.entries(payload.filters || {}).some(
+      ([col, value]) => {
+        if (DROPDOWN_COLUMNS.includes(col)) {
+          return Array.isArray(value) && value.length > 0;
+        }
+        return typeof value === "string" && value.trim() !== "";
+      }
+    );
+    const hasRange = Object.keys(payload.range || {}).length > 0;
+    const hasScouted = !!payload.scoutedOnly;
+    const hasCustomSort =
+      payload.sortColumn !== "Rating" || payload.sortDir !== "desc";
+
+    if (!hasDropdownOrText && !hasRange && !hasScouted && !hasCustomSort) {
+      localStorage.removeItem(key);
+      return;
+    }
+
+    try {
+      localStorage.setItem(key, JSON.stringify(payload));
+    } catch (err) {
+      console.warn("GPDB filter save failed:", err);
+    }
+  }
+
+  function clearGpdbFilterStorage() {
+    const key = gpdbFilterStorageKey();
+    if (key) localStorage.removeItem(key);
+  }
+
+  function restoreGpdbFilterUi() {
+    const textCols = COLUMNS.filter(
+      (col) =>
+        !FILTER_EXCLUDE.includes(col) &&
+        !DROPDOWN_COLUMNS.includes(col) &&
+        !RANGE_FILTER_COLUMNS.includes(col)
+    );
+
+    textCols.forEach((col) => {
+      const val = CURRENT_FILTERS[col];
+      const input = document.getElementById(`filter-${col}`);
+      if (input && typeof val === "string") input.value = val;
+    });
+
+    DROPDOWN_COLUMNS.forEach((col) => {
+      const values = CURRENT_FILTERS[col];
+      if (!Array.isArray(values) || !values.length) return;
+
+      const panel = document.getElementById(`filter-${col}-panel`);
+      if (!panel) return;
+
+      const selected = new Set(values.map(String));
+      panel
+        .querySelectorAll(".multi-filter-options input[type='checkbox']")
+        .forEach((cb) => {
+          cb.checked = selected.has(cb.value);
+        });
+      updateMultiFilterDisplay(col, { reload: false });
+    });
+
+    const scoutedBtn = document.getElementById("myScoutedFilterBtn");
+    if (scoutedBtn) scoutedBtn.classList.toggle("is-active", SCOUTED_ONLY);
+  }
+
   let CLUB_NAME_MAP = {};
   let CLUB_NATION_MAP = {};
   /** Full Clubs.Club name → ShortName (for direct-offer seller_club_id). */
@@ -806,6 +981,7 @@ document.addEventListener("DOMContentLoaded", () => {
         RANGE_ACTIVE[col] = { min: lo, max: hi };
         updateRangeReadout(col);
         updateRangeTrack(col);
+        saveGpdbFilters();
         loadPage(1);
       };
 
@@ -947,6 +1123,7 @@ document.addEventListener("DOMContentLoaded", () => {
     SCOUTED_ONLY = !SCOUTED_ONLY;
     const btn = document.getElementById("myScoutedFilterBtn");
     if (btn) btn.classList.toggle("is-active", SCOUTED_ONLY);
+    saveGpdbFilters();
     loadPage(1);
   }
 
@@ -1072,6 +1249,7 @@ document.addEventListener("DOMContentLoaded", () => {
           CURRENT_SORT_COLUMN = col;
           CURRENT_SORT_DIR = "asc";
         }
+        saveGpdbFilters();
         loadPage(1);
       };
     });
@@ -1783,7 +1961,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function updateMultiFilterDisplay(col) {
+  function updateMultiFilterDisplay(col, options = {}) {
+    const { reload = true } = options;
     const panel = document.getElementById(`filter-${col}-panel`);
     const display = document.getElementById(`filter-${col}-display`);
     if (!panel || !display) return;
@@ -1805,13 +1984,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (selected.length === 0) {
       display.textContent = "All";
+      delete CURRENT_FILTERS[col];
     } else if (selected.length === 1) {
       display.textContent = labels[0];
     } else {
       display.textContent = `${labels[0]} +${selected.length - 1}`;
     }
 
-    loadPage(1);
+    saveGpdbFilters();
+    if (reload) loadPage(1);
   }
 
   async function populateDropdowns() {
@@ -1969,6 +2150,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           CURRENT_FILTERS[col] = val;
         }
+        saveGpdbFilters();
         loadPage(1);
       };
 
@@ -2004,6 +2186,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("clearFiltersBtn").addEventListener("click", () => {
       CURRENT_FILTERS = {};
       SCOUTED_ONLY = false;
+      clearGpdbFilterStorage();
       const scoutedBtn = document.getElementById("myScoutedFilterBtn");
       if (scoutedBtn) scoutedBtn.classList.remove("is-active");
       CURRENT_SORT_COLUMN = "Rating";
@@ -2085,10 +2268,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     setupControls();
     await loadRangeBounds();
+    applySavedGpdbFilterState(loadSavedGpdbFilters());
     setupFilters();
     setupRangeFilters();
     setupTextFilters();
     await populateDropdowns();
+    restoreGpdbFilterUi();
     await loadTotalCount();
     await loadActiveDraftListings();
     await loadPendingDirectOfferPlayers();
