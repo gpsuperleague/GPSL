@@ -11,6 +11,8 @@ import {
   isValidDate,
 } from "./global.js";
 
+import { formatMoney } from "./competition.js";
+
 import {
   loadGlobalSettings as loadGlobalSettingsEngine,
   getDraftTimelineFromStart,
