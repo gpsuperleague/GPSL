@@ -174,7 +174,9 @@ BEGIN
 END;
 $function$;
 
--- Must drop before CREATE when renaming parameters (p_bid_amount → p_total_spend_budget).
+-- Must drop before CREATE when adding/changing parameters.
+DROP FUNCTION IF EXISTS public.admin_compliance_draft_seed_bids(text, integer, numeric, boolean, numeric, jsonb);
+DROP FUNCTION IF EXISTS public.admin_compliance_draft_seed_bids(text, int, numeric, boolean, numeric, jsonb);
 DROP FUNCTION IF EXISTS public.admin_compliance_draft_seed_bids(text, integer, numeric, boolean, numeric);
 DROP FUNCTION IF EXISTS public.admin_compliance_draft_seed_bids(text, int, numeric, boolean, numeric);
 DROP FUNCTION IF EXISTS public.admin_compliance_draft_seed_bids(text, integer, numeric, boolean);
@@ -185,7 +187,8 @@ CREATE OR REPLACE FUNCTION public.admin_compliance_draft_seed_bids(
   p_min_players_to_buy int DEFAULT 27,
   p_budget_reserve numeric DEFAULT 5000000,
   p_dry_run boolean DEFAULT true,
-  p_total_spend_budget numeric DEFAULT NULL
+  p_total_spend_budget numeric DEFAULT NULL,
+  p_rating_band_targets jsonb DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -266,6 +269,23 @@ DECLARE
   v_pick_join boolean;
   v_join_high numeric;
   v_planned int;
+  v_tgt_le65 int := 0;
+  v_tgt_r66_69 int := 0;
+  v_tgt_r70_72 int := 0;
+  v_tgt_r73_75 int := 0;
+  v_tgt_r76_78 int := 0;
+  v_tgt_r79 int := 0;
+  v_new_le65 int := 0;
+  v_new_r66_69 int := 0;
+  v_new_r70_72 int := 0;
+  v_new_r73_75 int := 0;
+  v_new_r76_78 int := 0;
+  v_new_r79 int := 0;
+  v_band_targets_enabled boolean := false;
+  v_band_lo int;
+  v_band_hi int;
+  v_band_deficit int;
+  v_band_key text;
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -354,6 +374,19 @@ BEGIN
   v_loop_max := v_spare_slots;
   v_min_target := least(v_min_players, v_spare_slots);
 
+  IF p_rating_band_targets IS NOT NULL AND jsonb_typeof(p_rating_band_targets) = 'object' THEN
+    v_tgt_le65 := greatest(coalesce((p_rating_band_targets->>'le65')::int, 0), 0);
+    v_tgt_r66_69 := greatest(coalesce((p_rating_band_targets->>'r66_69')::int, 0), 0);
+    v_tgt_r70_72 := greatest(coalesce((p_rating_band_targets->>'r70_72')::int, 0), 0);
+    v_tgt_r73_75 := greatest(coalesce((p_rating_band_targets->>'r73_75')::int, 0), 0);
+    v_tgt_r76_78 := greatest(coalesce((p_rating_band_targets->>'r76_78')::int, 0), 0);
+    v_tgt_r79 := greatest(coalesce((p_rating_band_targets->>'r79')::int, 0), 0);
+  END IF;
+
+  v_band_targets_enabled := (
+    v_tgt_le65 + v_tgt_r66_69 + v_tgt_r70_72 + v_tgt_r73_75 + v_tgt_r76_78 + v_tgt_r79
+  ) > 0;
+
   IF v_loop_max <= 0 THEN
     RETURN jsonb_build_object(
       'ok', false,
@@ -405,10 +438,63 @@ BEGIN
       AND v_mid >= v_target_mid
       AND v_fwd >= v_target_fwd
     );
+
+    v_band_lo := NULL;
+    v_band_hi := NULL;
+    v_band_key := NULL;
+    v_band_deficit := 0;
+
+    IF v_band_targets_enabled THEN
+      IF v_tgt_le65 > v_new_le65 AND v_tgt_le65 - v_new_le65 > v_band_deficit THEN
+        v_band_deficit := v_tgt_le65 - v_new_le65;
+        v_band_lo := 0;
+        v_band_hi := 65;
+        v_band_key := 'le65';
+      END IF;
+      IF v_tgt_r66_69 > v_new_r66_69 AND v_tgt_r66_69 - v_new_r66_69 > v_band_deficit THEN
+        v_band_deficit := v_tgt_r66_69 - v_new_r66_69;
+        v_band_lo := 66;
+        v_band_hi := 69;
+        v_band_key := 'r66_69';
+      END IF;
+      IF v_tgt_r70_72 > v_new_r70_72 AND v_tgt_r70_72 - v_new_r70_72 > v_band_deficit THEN
+        v_band_deficit := v_tgt_r70_72 - v_new_r70_72;
+        v_band_lo := 70;
+        v_band_hi := 72;
+        v_band_key := 'r70_72';
+      END IF;
+      IF v_tgt_r73_75 > v_new_r73_75 AND v_tgt_r73_75 - v_new_r73_75 > v_band_deficit THEN
+        v_band_deficit := v_tgt_r73_75 - v_new_r73_75;
+        v_band_lo := 73;
+        v_band_hi := 75;
+        v_band_key := 'r73_75';
+      END IF;
+      IF v_tgt_r76_78 > v_new_r76_78 AND v_tgt_r76_78 - v_new_r76_78 > v_band_deficit THEN
+        v_band_deficit := v_tgt_r76_78 - v_new_r76_78;
+        v_band_lo := 76;
+        v_band_hi := 78;
+        v_band_key := 'r76_78';
+      END IF;
+      IF v_tgt_r79 > v_new_r79 AND v_tgt_r79 - v_new_r79 > v_band_deficit THEN
+        v_band_deficit := v_tgt_r79 - v_new_r79;
+        v_band_lo := 79;
+        v_band_hi := 999;
+        v_band_key := 'r79';
+      END IF;
+    END IF;
+
     IF v_compliance_met THEN
-      v_pick_modes := ARRAY['any'];
+      IF v_band_lo IS NOT NULL THEN
+        v_pick_modes := ARRAY['band', 'any'];
+      ELSE
+        v_pick_modes := ARRAY['any'];
+      END IF;
     ELSE
-      v_pick_modes := ARRAY['star', 'hg', 'u21', 'pos', 'any'];
+      IF v_band_lo IS NOT NULL THEN
+        v_pick_modes := ARRAY['star', 'hg', 'u21', 'pos', 'band', 'any'];
+      ELSE
+        v_pick_modes := ARRAY['star', 'hg', 'u21', 'pos', 'any'];
+      END IF;
     END IF;
     v_afford_cap := v_remaining_budget - 500000 * greatest(v_still_needed - 1, 0);
     v_afford_relaxed := v_remaining_budget;
@@ -432,6 +518,9 @@ BEGIN
         CONTINUE;
       END IF;
       IF v_mode = 'pos' AND (v_need_pos IS NULL OR v_pos_deficit <= 0) THEN
+        CONTINUE;
+      END IF;
+      IF v_mode = 'band' AND v_band_lo IS NULL THEN
         CONTINUE;
       END IF;
 
@@ -489,6 +578,23 @@ BEGIN
         AND (
           v_mode <> 'pos'
           OR public.international_player_pool_position_group(p."Position") = v_need_pos
+        )
+        AND (
+          v_mode <> 'band'
+          OR (
+            v_band_lo IS NOT NULL
+            AND (
+              (
+                v_band_hi >= 999
+                AND public.club_squad_player_rating(p."Konami_ID"::text) >= v_band_lo
+              )
+              OR (
+                v_band_hi < 999
+                AND public.club_squad_player_rating(p."Konami_ID"::text) >= v_band_lo
+                AND public.club_squad_player_rating(p."Konami_ID"::text) <= v_band_hi
+              )
+            )
+          )
         )
         AND (
           p_total_spend_budget IS NULL
@@ -885,6 +991,28 @@ BEGIN
     ELSIF v_pos_group = 'fwd' THEN v_fwd := v_fwd + 1;
     END IF;
 
+    IF v_rating <= 65 THEN
+      v_new_le65 := v_new_le65 + 1;
+      v_band_key := 'le65';
+    ELSIF v_rating BETWEEN 66 AND 69 THEN
+      v_new_r66_69 := v_new_r66_69 + 1;
+      v_band_key := 'r66_69';
+    ELSIF v_rating BETWEEN 70 AND 72 THEN
+      v_new_r70_72 := v_new_r70_72 + 1;
+      v_band_key := 'r70_72';
+    ELSIF v_rating BETWEEN 73 AND 75 THEN
+      v_new_r73_75 := v_new_r73_75 + 1;
+      v_band_key := 'r73_75';
+    ELSIF v_rating BETWEEN 76 AND 78 THEN
+      v_new_r76_78 := v_new_r76_78 + 1;
+      v_band_key := 'r76_78';
+    ELSIF v_rating >= 79 THEN
+      v_new_r79 := v_new_r79 + 1;
+      v_band_key := 'r79';
+    ELSE
+      v_band_key := NULL;
+    END IF;
+
     v_bids := v_bids || jsonb_build_array(
       jsonb_build_object(
         'player_id', v_player.player_id,
@@ -892,6 +1020,7 @@ BEGIN
         'position', v_player.player_position,
         'pos_group', v_pos_group,
         'rating', v_rating,
+        'rating_band', v_band_key,
         'age', v_player.age,
         'home_grown', v_is_hg,
         'under_21', v_is_u21,
@@ -941,6 +1070,22 @@ BEGIN
     'total_spend_budget', NULLIF(greatest(coalesce(p_total_spend_budget, 0), 0), 0),
     'spend_cap', v_spend_cap,
     'draft_credits_remaining', v_credits,
+    'rating_band_targets', jsonb_build_object(
+      'le65', v_tgt_le65,
+      'r66_69', v_tgt_r66_69,
+      'r70_72', v_tgt_r70_72,
+      'r73_75', v_tgt_r73_75,
+      'r76_78', v_tgt_r76_78,
+      'r79', v_tgt_r79
+    ),
+    'rating_band_new_signings', jsonb_build_object(
+      'le65', v_new_le65,
+      'r66_69', v_new_r66_69,
+      'r70_72', v_new_r70_72,
+      'r73_75', v_new_r73_75,
+      'r76_78', v_new_r76_78,
+      'r79', v_new_r79
+    ),
     'composition_before', v_comp,
     'position_before', v_pos,
     'projected_after', jsonb_build_object(
@@ -964,7 +1109,23 @@ BEGIN
         'min_hg', v_min_hg,
         'min_u21', v_min_u21,
         'star_cap', v_star_cap,
-        'star_min_rating', v_star_min
+        'star_min_rating', v_star_min,
+        'rating_bands', jsonb_build_object(
+          'le65', v_tgt_le65,
+          'r66_69', v_tgt_r66_69,
+          'r70_72', v_tgt_r70_72,
+          'r73_75', v_tgt_r73_75,
+          'r76_78', v_tgt_r76_78,
+          'r79', v_tgt_r79
+        )
+      ),
+      'rating_bands', jsonb_build_object(
+        'le65', v_new_le65,
+        'r66_69', v_new_r66_69,
+        'r70_72', v_new_r70_72,
+        'r73_75', v_new_r73_75,
+        'r76_78', v_new_r76_78,
+        'r79', v_new_r79
       )
     ),
     'bids', v_bids,
@@ -973,6 +1134,6 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.admin_compliance_draft_seed_bids(text, integer, numeric, boolean, numeric) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_compliance_draft_seed_bids(text, integer, numeric, boolean, numeric, jsonb) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

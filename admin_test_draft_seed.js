@@ -6,13 +6,108 @@ primeAdminPageChrome();
 /** @type {object|null} */
 let lastPreview = null;
 
+const BAND_INPUTS = [
+  { id: "bandLe65", key: "le65", label: "≤65" },
+  { id: "bandR66_69", key: "r66_69", label: "66–69" },
+  { id: "bandR70_72", key: "r70_72", label: "70–72" },
+  { id: "bandR73_75", key: "r73_75", label: "73–75" },
+  { id: "bandR76_78", key: "r76_78", label: "76–78" },
+  { id: "bandR79", key: "r79", label: "79+" },
+];
+
+const BAND_STORAGE_KEY = "gpsl_draft_seed_rating_bands";
+
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
+
+  loadBandTargets();
+  updateBandSumLine();
+  BAND_INPUTS.forEach(({ id }) => {
+    document.getElementById(id)?.addEventListener("input", () => {
+      updateBandSumLine();
+      saveBandTargets();
+    });
+  });
+  document.getElementById("minPlayersToBuy")?.addEventListener("input", updateBandSumLine);
+  document.getElementById("spreadBandsBtn").onclick = spreadBandsEvenly;
 
   await loadClubs();
   document.getElementById("previewBtn").onclick = () => runSeed(true);
   document.getElementById("placeBtn").onclick = () => runSeed(false);
 });
+
+function readRatingBandTargets() {
+  const targets = {};
+  for (const { id, key } of BAND_INPUTS) {
+    targets[key] = Math.max(0, Number(document.getElementById(id)?.value || 0));
+  }
+  return targets;
+}
+
+function hasRatingBandTargets(targets) {
+  return Object.values(targets).some((n) => n > 0);
+}
+
+function loadBandTargets() {
+  try {
+    const raw = localStorage.getItem(BAND_STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    for (const { id, key } of BAND_INPUTS) {
+      const el = document.getElementById(id);
+      if (el && saved[key] != null) el.value = String(saved[key]);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+function saveBandTargets() {
+  try {
+    localStorage.setItem(BAND_STORAGE_KEY, JSON.stringify(readRatingBandTargets()));
+  } catch {
+    /* ignore */
+  }
+}
+
+function updateBandSumLine() {
+  const targets = readRatingBandTargets();
+  const sum = Object.values(targets).reduce((a, b) => a + b, 0);
+  const minPlayers = Number(document.getElementById("minPlayersToBuy")?.value || 0);
+  const el = document.getElementById("bandSumLine");
+  if (!el) return;
+  const warn =
+    sum > 0 && minPlayers > 0 && sum !== minPlayers
+      ? ` · <span style="color:#e8c547">band total (${sum}) ≠ min players (${minPlayers})</span>`
+      : "";
+  el.innerHTML = `Band total: ${sum}${warn}`;
+}
+
+function spreadBandsEvenly() {
+  const total = Math.max(0, Number(document.getElementById("minPlayersToBuy")?.value || 27));
+  const base = Math.floor(total / BAND_INPUTS.length);
+  const rem = total % BAND_INPUTS.length;
+  BAND_INPUTS.forEach(({ id }, i) => {
+    const el = document.getElementById(id);
+    if (el) el.value = String(base + (i < rem ? 1 : 0));
+  });
+  updateBandSumLine();
+  saveBandTargets();
+}
+
+function ratingBandLine(actual, targets) {
+  if (!targets || !actual) return "";
+  const bits = BAND_INPUTS.map(({ key, label }) => {
+    const tgt = targets[key] ?? 0;
+    const got = actual[key] ?? 0;
+    if (tgt <= 0) return null;
+    const ok = got >= tgt;
+    return `${label} ${ok ? "✓" : "⚠"} ${got}/${tgt}`;
+  }).filter(Boolean);
+  if (!bits.length) return "";
+  const allOk = bits.every((b) => b.includes("✓"));
+  return `<span class="${allOk ? "compliance-ok" : "compliance-warn"}">Rating bands: ${bits.join(" · ")}</span>`;
+}
 
 async function loadClubs() {
   const sel = document.getElementById("clubSelect");
@@ -80,6 +175,9 @@ function renderPreview(result) {
   const capNote = result.squad_size_cap_note;
   const requestedMin = result.min_players_requested;
   const effectiveTarget = result.min_players_target;
+  const bandTargets = result.rating_band_targets || targets.rating_bands || {};
+  const bandActual = result.rating_band_new_signings || proj.rating_bands || {};
+  const bandLine = ratingBandLine(bandActual, bandTargets);
 
   box.hidden = false;
   box.innerHTML = `
@@ -104,6 +202,7 @@ function renderPreview(result) {
       GK ${pos.gk ?? 0}/${targets.gk ?? 2} · DEF ${pos.def ?? 0}/${targets.def ?? 8} ·
       MID ${pos.mid ?? 0}/${targets.mid ?? 10} · FWD ${pos.fwd ?? 0}/${targets.fwd ?? 8}</p>
     <p>Compliance: ${complianceLine(proj, targets)}</p>
+    ${bandLine ? `<p>${bandLine}</p>` : ""}
     ${
       bids.length
         ? `<table>
@@ -153,6 +252,7 @@ async function runSeed(dryRun) {
   const totalSpendRaw = document.getElementById("totalSpendBudget")?.value;
   const totalSpendBudget =
     totalSpendRaw === "" || totalSpendRaw == null ? null : Number(totalSpendRaw);
+  const ratingBandTargets = readRatingBandTargets();
 
   if (!club) {
     setStatus("pageStatus", "Select a club first.", false);
@@ -181,6 +281,7 @@ async function runSeed(dryRun) {
     p_budget_reserve: budgetReserve,
     p_dry_run: dryRun,
     p_total_spend_budget: totalSpendBudget,
+    p_rating_band_targets: hasRatingBandTargets(ratingBandTargets) ? ratingBandTargets : null,
   });
 
   if (error) {

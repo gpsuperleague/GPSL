@@ -14,6 +14,24 @@
       background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
     }
     .form-grid .hint { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.45; }
+    .band-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px 14px;
+      max-width: 720px;
+    }
+    .band-grid label { display: block; font-size: 13px; color: #bbb; }
+    .band-grid input[type="number"] {
+      width: 100%; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .band-actions { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .band-actions button {
+      padding: 6px 10px; background: #222; border: 1px solid #555; color: #ccc;
+      border-radius: 4px; cursor: pointer; font-size: 12px;
+    }
+    .band-actions button:hover { border-color: #ff9900; color: #fff; }
+    .band-sum { font-size: 12px; color: #888; }
     .preview-box {
       margin-top: 16px; padding: 12px; background: #161616; border: 1px solid #333;
       border-radius: 6px; font-size: 12px; line-height: 1.5; max-height: 420px; overflow: auto;
@@ -65,6 +83,27 @@
             <div class="hint">Cap for all bids at market value (e.g. 400000000 = ₿400M). Spreads budget across the player target (~₿400M ÷ 27 ≈ ₿14.8M each). Opens new auctions or joins existing ones.</div>
           </label>
         </div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
+        <h2>Rating band targets (new signings)</h2>
+        <p class="hint" style="font-size:12px;color:#888;margin:0 0 10px;line-height:1.45;">
+          How many of this seed’s purchases should fall in each rating band. Set to 0 for no preference.
+          Compliance picks (stars, HG, U21, positions) still run first; bands guide the mix after that.
+          Band 79+ counts star-tier players (rating ≥ 79).
+        </p>
+        <div class="band-grid">
+          <label>≤65<input type="number" id="bandLe65" min="0" max="27" value="0"></label>
+          <label>66–69<input type="number" id="bandR66_69" min="0" max="27" value="0"></label>
+          <label>70–72<input type="number" id="bandR70_72" min="0" max="27" value="0"></label>
+          <label>73–75<input type="number" id="bandR73_75" min="0" max="27" value="0"></label>
+          <label>76–78<input type="number" id="bandR76_78" min="0" max="27" value="0"></label>
+          <label>79+<input type="number" id="bandR79" min="0" max="27" value="0"></label>
+        </div>
+        <div class="band-actions">
+          <button type="button" id="spreadBandsBtn">Spread evenly from min players</button>
+          <span class="band-sum" id="bandSumLine">Band total: 0</span>
+        </div>
         <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;">
           <button type="button" class="button" id="previewBtn">Preview plan</button>
           <button type="button" class="button" id="placeBtn" style="background:#228822;">Place draft bids</button>
@@ -74,6 +113,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_draft_seed.js?v=20260619-budget-spread"></script>
+  <script type="module" src="admin_test_draft_seed.js?v=20260619-rating-bands"></script>
 </body>
 </html>
