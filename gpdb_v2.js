@@ -221,6 +221,9 @@ document.addEventListener("DOMContentLoaded", () => {
     "contract_wage",
   ];
 
+  /** Continuous columns: use SQL min/max (distinct is capped ~1000 rows). */
+  const CONTINUOUS_RANGE_COLUMNS = ["market_value", "contract_wage"];
+
   const FILTER_LAYOUT_ROWS = [
     ["Position", "Nation", "Age", "Rating", "Playstyle"],
     ["Name", "market_value", "Contracted_Team"],
@@ -631,11 +634,11 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     for (const col of RANGE_FILTER_COLUMNS) {
-      if (col === "market_value") {
+      if (col === "market_value" || col === "contract_wage") {
         const bounds = RANGE_BOUNDS[col];
         const active = RANGE_ACTIVE[col];
         if (bounds && active && isRangeFilterActive(col)) {
-          query = query.gte("market_value", active.min).lte("market_value", active.max);
+          query = query.gte(col, active.min).lte(col, active.max);
         }
         continue;
       }
@@ -820,8 +823,36 @@ document.addEventListener("DOMContentLoaded", () => {
     RANGE_ACTIVE[col] = { min: 0, max: uniqueValues.length - 1 };
   }
 
+  async function loadNumericColumnBounds(col) {
+    const { data, error } = await supabase
+      .from("Players")
+      .select(`min_val:${col}.min(), max_val:${col}.max()`)
+      .maybeSingle();
+
+    if (error) {
+      console.error(`Error loading numeric bounds for ${col}:`, error);
+      setRangeBoundsFromValues(col, []);
+      return;
+    }
+
+    const min = Number(data?.min_val);
+    const max = Number(data?.max_val);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      setRangeBoundsFromValues(col, []);
+      return;
+    }
+
+    RANGE_BOUNDS[col] = { type: "numeric", min, max };
+    RANGE_ACTIVE[col] = { min, max };
+  }
+
   async function loadRangeBounds() {
     for (const col of RANGE_FILTER_COLUMNS) {
+      if (CONTINUOUS_RANGE_COLUMNS.includes(col)) {
+        await loadNumericColumnBounds(col);
+        continue;
+      }
+
       const { data, error } = await supabase
         .from("Players")
         .select(col, { distinct: true });
