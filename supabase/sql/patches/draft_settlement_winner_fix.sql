@@ -174,6 +174,7 @@ DECLARE
   v_player  public."Players"%rowtype;
   v_history_id bigint;
   v_draft_start timestamptz;
+  v_pid     text;
 BEGIN
   SELECT draft_auction_start_time INTO v_draft_start
   FROM public.global_settings WHERE id = 1;
@@ -218,29 +219,28 @@ BEGIN
   IF v_buyer IS NULL OR v_amount IS NULL OR v_amount <= 0 THEN
     UPDATE public."Player_Transfer_Listings"
     SET status = 'Closed',
-        transfer_completed = false,
-        updated_at = now()
+        transfer_completed = false
     WHERE id = v_listing.id;
     RETURN;
   END IF;
 
   UPDATE public."Player_Transfer_Listings"
   SET current_highest_bid = v_amount,
-      current_highest_bidder = v_buyer,
-      updated_at = now()
+      current_highest_bidder = v_buyer
   WHERE id = v_listing.id;
+
+  v_pid := btrim(v_listing.player_id::text);
 
   SELECT *
   INTO v_player
   FROM public."Players"
-  WHERE "Konami_ID"::text = btrim(v_listing.player_id::text)
+  WHERE "Konami_ID"::text = v_pid
   FOR UPDATE;
 
   IF NOT FOUND THEN
     UPDATE public."Player_Transfer_Listings"
     SET status = 'Closed',
-        transfer_completed = false,
-        updated_at = now()
+        transfer_completed = false
     WHERE id = v_listing.id;
     RETURN;
   END IF;
@@ -251,8 +251,7 @@ BEGIN
     SET status = 'Closed',
         transfer_completed = (btrim(v_player."Contracted_Team"::text) = v_buyer),
         winning_bid = CASE WHEN btrim(v_player."Contracted_Team"::text) = v_buyer THEN v_amount ELSE winning_bid END,
-        winning_club = CASE WHEN btrim(v_player."Contracted_Team"::text) = v_buyer THEN v_buyer ELSE winning_club END,
-        updated_at = now()
+        winning_club = CASE WHEN btrim(v_player."Contracted_Team"::text) = v_buyer THEN v_buyer ELSE winning_club END
     WHERE id = v_listing.id;
     RETURN;
   END IF;
@@ -263,9 +262,9 @@ BEGIN
     RAISE EXCEPTION 'Club_Finances missing for buyer % (listing %)', v_buyer, p_listing_id;
   END IF;
 
-  PERFORM public.assert_player_available_for_signing(btrim(v_listing.player_id::text));
+  PERFORM public.assert_player_available_for_signing(v_pid);
 
-  PERFORM public.player_assign_to_club(btrim(v_listing.player_id::text), v_buyer);
+  PERFORM public.player_assign_to_club(v_pid, v_buyer, NULL::numeric, false);
 
   INSERT INTO public."Transfer_History" (
     player_id,
@@ -277,7 +276,7 @@ BEGIN
     listing_id
   )
   VALUES (
-    btrim(v_listing.player_id::text),
+    v_pid,
     NULL,
     v_buyer,
     v_amount,
@@ -293,8 +292,7 @@ BEGIN
   SET status = 'Closed',
       transfer_completed = true,
       winning_bid = v_amount,
-      winning_club = v_buyer,
-      updated_at = now()
+      winning_club = v_buyer
   WHERE id = v_listing.id;
 END;
 $function$;

@@ -207,7 +207,8 @@ ORDER BY 1, 2;
 -- 10) Probe first N listings — surfaces errors hidden by settle loop (deploy draft_settlement_ledger_season_fix.sql)
 -- SELECT public.transferengine_probe_draft_settlement(3);
 
--- 11) Stale all-time bid vs listing leader (deploy draft_settlement_winner_fix.sql)
+-- 12) Single listing — surfaces assign/ledger errors (draft_settlement_assign_overload_fix.sql)
+-- SELECT public.transferengine_try_accept_draft_sale(215);
 -- SELECT public.transferengine_diagnose_draft_backlog();
 -- SELECT public.transferengine_explain_draft_listing(
 --   (SELECT id FROM "Player_Transfer_Listings"
