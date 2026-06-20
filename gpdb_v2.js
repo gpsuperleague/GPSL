@@ -211,7 +211,13 @@ document.addEventListener("DOMContentLoaded", () => {
     "Contracted_Team",
   ];
 
-  const RANGE_FILTER_COLUMNS = ["Rating", "Age", "Season_Signed"];
+  const RANGE_FILTER_COLUMNS = [
+    "Rating",
+    "Age",
+    "Season_Signed",
+    "contract_seasons_remaining",
+    "contract_wage",
+  ];
 
   const POSITION_ORDER = [
     "GK", "LB", "CB", "RB",
@@ -576,7 +582,12 @@ document.addEventListener("DOMContentLoaded", () => {
         .sort((a, b) => a.localeCompare(b));
     }
 
-    if (col === "Age" || col === "Rating") {
+    if (
+      col === "Age" ||
+      col === "Rating" ||
+      col === "contract_seasons_remaining" ||
+      col === "contract_wage"
+    ) {
       return [...new Set(values.map((v) => Number(v)))]
         .filter((v) => !isNaN(v))
         .sort((a, b) => a - b)
@@ -595,7 +606,12 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    if (col === "Age" || col === "Rating") {
+    if (
+      col === "Age" ||
+      col === "Rating" ||
+      col === "contract_seasons_remaining" ||
+      col === "contract_wage"
+    ) {
       const nums = uniqueValues.map(Number).filter((n) => !isNaN(n));
       const min = Math.min(...nums);
       const max = Math.max(...nums);
