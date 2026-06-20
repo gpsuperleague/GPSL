@@ -475,6 +475,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let PAGE_SIZE = 1000;
   let TOTAL_ROWS = 0;
+  let TOTAL_PLAYERS_ALL = 0;
   let CURRENT_PAGE = 1;
 
   let CURRENT_FILTERS = {};
@@ -775,7 +776,22 @@ document.addEventListener("DOMContentLoaded", () => {
       .from("Players")
       .select("*", { count: "exact", head: true });
 
-    TOTAL_ROWS = count;
+    TOTAL_PLAYERS_ALL = count ?? 0;
+    updatePlayerCountDisplay();
+  }
+
+  function updatePlayerCountDisplay() {
+    const el = document.getElementById("gpdbPlayerCount");
+    if (!el) return;
+
+    const filtered = Number(TOTAL_ROWS) || 0;
+    const all = Number(TOTAL_PLAYERS_ALL) || 0;
+    if (!all) {
+      el.textContent = "";
+      return;
+    }
+
+    el.textContent = `${filtered.toLocaleString("en-GB")} / ${all.toLocaleString("en-GB")} players`;
   }
 
   /** Fold accents & strip symbols for forgiving search (José → jose). */
@@ -881,6 +897,7 @@ document.addEventListener("DOMContentLoaded", () => {
         TOTAL_ROWS = 0;
         renderTable([]);
         renderPagination();
+        updatePlayerCountDisplay();
         return;
       }
       query = query.in("Konami_ID", scoutIds);
@@ -966,10 +983,11 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    TOTAL_ROWS = count;
+    TOTAL_ROWS = count ?? 0;
 
     renderTable(filtered);
     renderPagination();
+    updatePlayerCountDisplay();
   }
 
   function formatHeader(col) {

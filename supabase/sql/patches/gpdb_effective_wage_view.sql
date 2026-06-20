@@ -1,5 +1,5 @@
 -- GPDB: effective (per-season) wage for filters — actual contract wage or forecast from MV.
--- Forecast uses Championship % (same baseline as GPDB free-agent filter in gpdb_v2.js).
+-- Self-contained: does not require calculate_standard_player_wage() (inline Championship %).
 
 CREATE OR REPLACE VIEW public.gpdb_players_view
 WITH (security_invoker = true) AS
@@ -7,9 +7,16 @@ SELECT
   p.*,
   COALESCE(
     NULLIF(p.contract_wage, 0),
-    public.calculate_standard_player_wage(p.market_value, 'championship'::text)
+    round(
+      greatest(
+        coalesce(nullif(btrim(p.market_value::text), ''), '0')::numeric,
+        0
+      ) * coalesce(gs.wage_pct_championship, 4::numeric) / 100.0,
+      0
+    )
   ) AS effective_wage
-FROM public."Players" p;
+FROM public."Players" p
+LEFT JOIN public.global_settings gs ON gs.id = 1;
 
 GRANT SELECT ON public.gpdb_players_view TO authenticated;
 GRANT SELECT ON public.gpdb_players_view TO anon;

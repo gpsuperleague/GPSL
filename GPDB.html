@@ -125,6 +125,15 @@
       color:#ffaa22;
     }
 
+    .gpdb-player-count {
+      margin-left: auto;
+      align-self: center;
+      font-size: 13px;
+      color: #ccc;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
     .filter-row {
       width: 100%;
       display: flex;
@@ -640,6 +649,7 @@
       <button id="clearFiltersBtn" class="button">Clear Filters</button>
       <button id="myScoutedFilterBtn" class="button secondary" type="button" hidden>★ My scouting targets</button>
       <button id="myNationFilterBtn" class="button secondary" type="button" hidden>My nation</button>
+      <span id="gpdbPlayerCount" class="gpdb-player-count" aria-live="polite"></span>
     </div>
 
     <p id="nationalSquadPanel" class="status-note" style="margin:0 0 12px;display:none;"></p>
@@ -717,7 +727,7 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js"></script>
-  <script type="module" src="gpdb_v2.js?v=20260620-wage-season"></script>
+  <script type="module" src="gpdb_v2.js?v=20260620-player-count"></script>
 
 </body>
 </html>
