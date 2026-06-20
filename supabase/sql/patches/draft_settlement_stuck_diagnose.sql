@@ -35,37 +35,50 @@ BEGIN
     LIMIT v_limit
   LOOP
     BEGIN
-      SAVEPOINT probe_one;
-      BEGIN
-        PERFORM public.transferengine_accept_draft_sale(v_listing.id);
+      PERFORM public.transferengine_accept_draft_sale(v_listing.id);
 
+      IF EXISTS (
+        SELECT 1
+        FROM public."Player_Transfer_Listings" l
+        WHERE l.id = v_listing.id
+          AND l.status = 'Closed'
+          AND l.transfer_completed = true
+      ) THEN
         v_try := jsonb_build_object(
           'listing_id', v_listing.id,
           'player_id', v_listing.player_id,
           'buyer', v_listing.current_highest_bidder,
-          'ok', EXISTS (
-            SELECT 1
-            FROM public."Player_Transfer_Listings" l
-            WHERE l.id = v_listing.id
-              AND l.status = 'Closed'
-              AND l.transfer_completed = true
-          ),
+          'ok', true,
           'dry_run', true
         );
-
-        ROLLBACK TO SAVEPOINT probe_one;
-      EXCEPTION WHEN OTHERS THEN
-        ROLLBACK TO SAVEPOINT probe_one;
+      ELSE
         v_try := jsonb_build_object(
           'listing_id', v_listing.id,
           'player_id', v_listing.player_id,
           'buyer', v_listing.current_highest_bidder,
           'ok', false,
-          'error', SQLERRM,
-          'sqlstate', SQLSTATE,
+          'error', 'accept_draft_sale returned without closing listing',
           'dry_run', true
         );
-      END;
+      END IF;
+
+      -- Subtransaction rollback — PL/pgSQL cannot use ROLLBACK TO SAVEPOINT
+      RAISE EXCEPTION '__probe_dry_run__' USING ERRCODE = 'P0001';
+    EXCEPTION
+      WHEN OTHERS THEN
+        IF SQLSTATE = 'P0001' AND SQLERRM = '__probe_dry_run__' THEN
+          NULL;
+        ELSE
+          v_try := jsonb_build_object(
+            'listing_id', v_listing.id,
+            'player_id', v_listing.player_id,
+            'buyer', v_listing.current_highest_bidder,
+            'ok', false,
+            'error', SQLERRM,
+            'sqlstate', SQLSTATE,
+            'dry_run', true
+          );
+        END IF;
     END;
 
     v_samples := v_samples || jsonb_build_array(v_try);
@@ -134,11 +147,11 @@ BEGIN
       CASE
         WHEN v_gate IS NOT NULL AND coalesce((v_gate->>'will_settle_players')::boolean, false) = false
           THEN 'Gate closed — check will_settle_players / blocked_by_7pm_transfer_list'
-        WHEN jsonb_object_length(v_error_counts) > 0
-          THEN 'Sample listings failed — see error_summary and samples (try_accept mutates on success)'
+        WHEN v_error_counts <> '{}'::jsonb
+          THEN 'Sample listings failed — see error_summary and samples'
         ELSE 'Gate open and sample had no errors — cron may not be running; run transferengine_run_report()'
       END,
-    'note', 'samples use dry_run savepoints — they do not commit signings'
+    'note', 'samples dry-run via subtransaction rollback — they do not commit signings'
   );
 END;
 $function$;
