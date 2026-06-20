@@ -25,12 +25,16 @@
       width: 100%; padding: 8px; margin-top: 4px;
       background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
     }
-    .band-actions { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .band-actions button {
+    .settings-actions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .settings-actions button, .band-actions button {
       padding: 6px 10px; background: #222; border: 1px solid #555; color: #ccc;
       border-radius: 4px; cursor: pointer; font-size: 12px;
     }
-    .band-actions button:hover { border-color: #ff9900; color: #fff; }
+    .settings-actions button:hover, .band-actions button:hover { border-color: #ff9900; color: #fff; }
+    .settings-actions button.save-btn { border-color: #446644; color: #8ddf8d; }
+    .settings-actions button.save-btn:hover { border-color: #8ddf8d; color: #fff; }
+    .settings-note { font-size: 12px; color: #888; }
+    .band-actions { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .band-sum { font-size: 12px; color: #888; }
     .preview-box {
       margin-top: 16px; padding: 12px; background: #161616; border: 1px solid #333;
@@ -72,6 +76,10 @@
             <div class="hint">Target at least this many draft signings. Hard cap: spare squad slots (28 minus current squad).</div>
           </label>
         </div>
+        <div class="settings-actions">
+          <button type="button" class="save-btn" id="saveMinPlayersBtn">Save minimum players</button>
+          <span class="settings-note" id="minPlayersSaveNote"></span>
+        </div>
       </div>
 
       <div class="card" style="margin-top:14px;">
@@ -87,6 +95,10 @@
           <label>FWD<input type="number" id="posFwd" min="0" max="28" value="8"></label>
         </div>
         <p class="band-sum" id="posSumLine" style="margin-top:8px;">Position chart total: 28</p>
+        <div class="settings-actions">
+          <button type="button" class="save-btn" id="savePosBtn">Save position chart</button>
+          <span class="settings-note" id="posSaveNote"></span>
+        </div>
       </div>
 
       <div class="card" style="margin-top:14px;">
@@ -106,8 +118,10 @@
         </div>
         <div class="band-actions">
           <button type="button" id="spreadBandsBtn">Spread evenly from min players</button>
+          <button type="button" class="save-btn" id="saveBandsBtn">Save rating bands</button>
           <span class="band-sum" id="bandSumLine">Band total: 0</span>
         </div>
+        <p class="settings-note" id="bandsSaveNote" style="margin:6px 0 0;"></p>
         <div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:10px;">
           <button type="button" class="button" id="previewBtn">Preview plan</button>
           <button type="button" class="button" id="placeBtn" style="background:#228822;">Place draft bids</button>
@@ -117,6 +131,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_draft_seed.js?v=20260619-mv-only"></script>
+  <script type="module" src="admin_test_draft_seed.js?v=20260619-save-settings"></script>
 </body>
 </html>

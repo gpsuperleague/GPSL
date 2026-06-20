@@ -22,37 +22,50 @@ const POS_INPUTS = [
   { id: "posFwd", key: "fwd", label: "FWD" },
 ];
 
-const BAND_STORAGE_KEY = "gpsl_draft_seed_rating_bands";
-const POS_STORAGE_KEY = "gpsl_draft_seed_position_chart";
+const SETTINGS_STORAGE_KEY = "gpsl_draft_seed_settings";
+
+const DEFAULT_SETTINGS = {
+  minPlayersToBuy: 27,
+  positionTargets: { gk: 2, def: 8, mid: 10, fwd: 8 },
+  ratingBandTargets: { le65: 0, r66_69: 0, r70_72: 0, r73_75: 0, r76_78: 0, r79: 0 },
+};
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
-  loadBandTargets();
-  loadPositionTargets();
+  loadSettings();
   updateBandSumLine();
   updatePosSumLine();
-
-  BAND_INPUTS.forEach(({ id }) => {
-    document.getElementById(id)?.addEventListener("input", () => {
-      updateBandSumLine();
-      saveBandTargets();
-    });
-  });
-  POS_INPUTS.forEach(({ id }) => {
-    document.getElementById(id)?.addEventListener("input", () => {
-      updatePosSumLine();
-      savePositionTargets();
-    });
-  });
-
-  document.getElementById("minPlayersToBuy")?.addEventListener("input", updateBandSumLine);
-  document.getElementById("spreadBandsBtn").onclick = spreadBandsEvenly;
+  wireSettingsUi();
 
   await loadClubs();
-  document.getElementById("previewBtn").onclick = () => runSeed(true);
-  document.getElementById("placeBtn").onclick = () => runSeed(false);
+  document.getElementById("previewBtn")?.addEventListener("click", () => runSeed(true));
+  document.getElementById("placeBtn")?.addEventListener("click", () => runSeed(false));
 });
+
+function wireSettingsUi() {
+  document.getElementById("minPlayersToBuy")?.addEventListener("input", updateBandSumLine);
+  POS_INPUTS.forEach(({ id }) => {
+    document.getElementById(id)?.addEventListener("input", updatePosSumLine);
+  });
+  BAND_INPUTS.forEach(({ id }) => {
+    document.getElementById(id)?.addEventListener("input", updateBandSumLine);
+  });
+
+  document.getElementById("saveMinPlayersBtn")?.addEventListener("click", saveMinPlayersSetting);
+  document.getElementById("savePosBtn")?.addEventListener("click", savePositionChartSetting);
+  document.getElementById("saveBandsBtn")?.addEventListener("click", saveBandTargetsSetting);
+  document.getElementById("spreadBandsBtn")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    spreadBandsEvenly();
+  });
+}
+
+function readMinPlayers() {
+  const raw = Number(document.getElementById("minPlayersToBuy")?.value);
+  if (!Number.isFinite(raw)) return DEFAULT_SETTINGS.minPlayersToBuy;
+  return Math.max(1, Math.min(27, Math.trunc(raw)));
+}
 
 function readRatingBandTargets() {
   const targets = {};
@@ -74,61 +87,120 @@ function hasRatingBandTargets(targets) {
   return Object.values(targets).some((n) => n > 0);
 }
 
-function loadBandTargets() {
+function readSettingsFromStorage() {
   try {
-    const raw = localStorage.getItem(BAND_STORAGE_KEY);
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    for (const { id, key } of BAND_INPUTS) {
-      const el = document.getElementById(id);
-      if (el && saved[key] != null) el.value = String(saved[key]);
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      return {
+        minPlayersToBuy: saved.minPlayersToBuy ?? DEFAULT_SETTINGS.minPlayersToBuy,
+        positionTargets: { ...DEFAULT_SETTINGS.positionTargets, ...(saved.positionTargets || {}) },
+        ratingBandTargets: { ...DEFAULT_SETTINGS.ratingBandTargets, ...(saved.ratingBandTargets || {}) },
+      };
     }
-  } catch {
-    /* ignore */
-  }
-}
 
-function loadPositionTargets() {
-  try {
-    const raw = localStorage.getItem(POS_STORAGE_KEY);
-    if (!raw) return;
-    const saved = JSON.parse(raw);
-    for (const { id, key } of POS_INPUTS) {
-      const el = document.getElementById(id);
-      if (el && saved[key] != null) el.value = String(saved[key]);
+    // Migrate legacy keys from earlier builds.
+    const legacyBands = localStorage.getItem("gpsl_draft_seed_rating_bands");
+    const legacyPos = localStorage.getItem("gpsl_draft_seed_position_chart");
+    const migrated = { ...DEFAULT_SETTINGS };
+    if (legacyPos) {
+      migrated.positionTargets = {
+        ...migrated.positionTargets,
+        ...JSON.parse(legacyPos),
+      };
     }
+    if (legacyBands) {
+      migrated.ratingBandTargets = {
+        ...migrated.ratingBandTargets,
+        ...JSON.parse(legacyBands),
+      };
+    }
+    if (legacyBands || legacyPos) {
+      writeSettings(migrated);
+    }
+    return migrated;
   } catch {
-    /* ignore */
+    return { ...DEFAULT_SETTINGS };
   }
 }
 
-function saveBandTargets() {
-  try {
-    localStorage.setItem(BAND_STORAGE_KEY, JSON.stringify(readRatingBandTargets()));
-  } catch {
-    /* ignore */
+function readSettingsFromDom() {
+  return {
+    minPlayersToBuy: readMinPlayers(),
+    positionTargets: readPositionTargets(),
+    ratingBandTargets: readRatingBandTargets(),
+  };
+}
+
+function writeSettings(settings) {
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+}
+
+function loadSettings() {
+  const settings = readSettingsFromStorage();
+  const minEl = document.getElementById("minPlayersToBuy");
+  if (minEl) minEl.value = String(settings.minPlayersToBuy);
+
+  for (const { id, key } of POS_INPUTS) {
+    const el = document.getElementById(id);
+    if (el && settings.positionTargets[key] != null) {
+      el.value = String(settings.positionTargets[key]);
+    }
+  }
+
+  for (const { id, key } of BAND_INPUTS) {
+    const el = document.getElementById(id);
+    if (el && settings.ratingBandTargets[key] != null) {
+      el.value = String(settings.ratingBandTargets[key]);
+    }
   }
 }
 
-function savePositionTargets() {
-  try {
-    localStorage.setItem(POS_STORAGE_KEY, JSON.stringify(readPositionTargets()));
-  } catch {
-    /* ignore */
-  }
+function setSettingsNote(id, message) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = message;
+}
+
+function saveMinPlayersSetting() {
+  const settings = readSettingsFromStorage();
+  settings.minPlayersToBuy = readMinPlayers();
+  writeSettings(settings);
+  setSettingsNote("minPlayersSaveNote", `Saved: ${settings.minPlayersToBuy} players.`);
+  updateBandSumLine();
+}
+
+function savePositionChartSetting() {
+  const settings = readSettingsFromStorage();
+  settings.positionTargets = readPositionTargets();
+  writeSettings(settings);
+  const t = settings.positionTargets;
+  setSettingsNote(
+    "posSaveNote",
+    `Saved: GK ${t.gk} · DEF ${t.def} · MID ${t.mid} · FWD ${t.fwd}.`
+  );
+  updatePosSumLine();
+}
+
+function saveBandTargetsSetting() {
+  const settings = readSettingsFromStorage();
+  settings.ratingBandTargets = readRatingBandTargets();
+  writeSettings(settings);
+  const sum = Object.values(settings.ratingBandTargets).reduce((a, b) => a + b, 0);
+  setSettingsNote("bandsSaveNote", `Saved rating bands (total ${sum}).`);
+  updateBandSumLine();
 }
 
 function updateBandSumLine() {
   const targets = readRatingBandTargets();
   const sum = Object.values(targets).reduce((a, b) => a + b, 0);
-  const minPlayers = Number(document.getElementById("minPlayersToBuy")?.value || 0);
+  const minPlayers = readMinPlayers();
   const el = document.getElementById("bandSumLine");
   if (!el) return;
   const warn =
     sum > 0 && minPlayers > 0 && sum !== minPlayers
-      ? ` · <span style="color:#e8c547">band total (${sum}) ≠ min players (${minPlayers})</span>`
+      ? ` · mismatch with min players (${minPlayers})`
       : "";
-  el.innerHTML = `Band total: ${sum}${warn}`;
+  el.textContent = `Band total: ${sum}${warn}`;
 }
 
 function updatePosSumLine() {
@@ -140,15 +212,31 @@ function updatePosSumLine() {
 }
 
 function spreadBandsEvenly() {
-  const total = Math.max(0, Number(document.getElementById("minPlayersToBuy")?.value || 27));
+  const total = readMinPlayers();
+  if (total < 1) {
+    setSettingsNote("bandsSaveNote", "Set minimum players to buy (1–27) first.");
+    return;
+  }
+
   const base = Math.floor(total / BAND_INPUTS.length);
   const rem = total % BAND_INPUTS.length;
-  BAND_INPUTS.forEach(({ id }, i) => {
+  const values = [];
+
+  BAND_INPUTS.forEach(({ id, label }, i) => {
+    const val = base + (i < rem ? 1 : 0);
+    values.push(`${label} ${val}`);
     const el = document.getElementById(id);
-    if (el) el.value = String(base + (i < rem ? 1 : 0));
+    if (el) {
+      el.value = String(val);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    }
   });
+
   updateBandSumLine();
-  saveBandTargets();
+  setSettingsNote(
+    "bandsSaveNote",
+    `Spread ${total}: ${values.join(" · ")}. Click Save rating bands to keep.`
+  );
 }
 
 function ratingBandLine(actual, targets) {
@@ -302,12 +390,9 @@ function renderPreview(result) {
 
 async function runSeed(dryRun) {
   const club = document.getElementById("clubSelect")?.value?.trim();
-  const minPlayersToBuy = Number(document.getElementById("minPlayersToBuy")?.value || 27);
+  const minPlayersToBuy = readMinPlayers();
   const ratingBandTargets = readRatingBandTargets();
   const positionTargets = readPositionTargets();
-
-  saveBandTargets();
-  savePositionTargets();
 
   if (!club) {
     setStatus("pageStatus", "Select a club first.", false);
