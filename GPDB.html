@@ -125,6 +125,14 @@
       color:#ffaa22;
     }
 
+    .filter-row {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
     input {
       background:#222;
       color:#ddd;
@@ -616,37 +624,11 @@
 
     <p id="nationalSquadPanel" class="status-note" style="margin:0 0 12px;display:none;"></p>
 
-    <div class="filter-group">
-      <strong>Market Value</strong>
-
-      <label>
-        Min
-        <input
-          type="text"
-          id="mv-min"
-          style="width:140px; text-align:right;"
-          inputmode="numeric"
-          autocomplete="off"
-        >
-      </label>
-
-      <label>
-        Max
-        <input
-          type="text"
-          id="mv-max"
-          style="width:140px; text-align:right;"
-          inputmode="numeric"
-          autocomplete="off"
-        >
-      </label>
-
-      <button id="applyMV" class="button">Apply</button>
-    </div>
-
     <div class="filter-group" id="filters" style="margin-bottom:20px;">
       <strong>Filters</strong>
-      <!-- JS builds all custom dropdowns + text filters here -->
+      <div class="filter-row" id="filters-row-1"></div>
+      <div class="filter-row" id="filters-row-2"></div>
+      <div class="filter-row" id="filters-row-3"></div>
     </div>
 
     <table id="playersTable">

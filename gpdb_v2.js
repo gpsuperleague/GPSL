@@ -181,7 +181,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const FILTER_EXCLUDE = [
     "Maximum_Reserve_Price",
-    "market_value",
     "Konami_ID",
     "Potential",
     "Calc_Potential",
@@ -215,8 +214,15 @@ document.addEventListener("DOMContentLoaded", () => {
     "Rating",
     "Age",
     "Season_Signed",
+    "market_value",
     "contract_seasons_remaining",
     "contract_wage",
+  ];
+
+  const FILTER_LAYOUT_ROWS = [
+    ["Position", "Nation", "Age", "Rating", "Playstyle"],
+    ["Name", "market_value", "Contracted_Team"],
+    ["Season_Signed", "contract_seasons_remaining", "contract_wage"],
   ];
 
   const POSITION_ORDER = [
@@ -263,8 +269,6 @@ document.addEventListener("DOMContentLoaded", () => {
   let CURRENT_SORT_COLUMN = "Rating";
   let CURRENT_SORT_DIR = "desc";
 
-  let MV_MIN = null;
-  let MV_MAX = null;
   /** @type {Record<string, { type: 'numeric', min: number, max: number } | { type: 'ordinal', values: string[] }>} */
   const RANGE_BOUNDS = {};
   /** @type {Record<string, { min: number, max: number }>} */
@@ -449,10 +453,15 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
 
-    if (MV_MIN !== null) query = query.gte("market_value", MV_MIN);
-    if (MV_MAX !== null) query = query.lte("market_value", MV_MAX);
-
     for (const col of RANGE_FILTER_COLUMNS) {
+      if (col === "market_value") {
+        const bounds = RANGE_BOUNDS[col];
+        const active = RANGE_ACTIVE[col];
+        if (bounds && active && isRangeFilterActive(col)) {
+          query = query.gte("market_value", active.min).lte("market_value", active.max);
+        }
+        continue;
+      }
       const inValues = getRangeFilterInValues(col);
       if (inValues?.length) {
         query = query.in(col, inValues);
@@ -519,17 +528,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let filtered = data || [];
 
-    if (MV_MIN !== null || MV_MAX !== null) {
-      filtered = filtered.filter(row => {
-        const mv = Number(String(row.market_value).replace(/,/g, "").trim()) || 0;
-
-        if (MV_MIN !== null && mv < MV_MIN) return false;
-        if (MV_MAX !== null && mv > MV_MAX) return false;
-
-        return true;
-      });
-    }
-
     if (CURRENT_SORT_COLUMN === "Position") {
       filtered.sort((a, b) => {
         const ai = POSITION_ORDER.indexOf(a.Position);
@@ -582,6 +580,13 @@ document.addEventListener("DOMContentLoaded", () => {
         .sort((a, b) => a.localeCompare(b));
     }
 
+    if (col === "market_value") {
+      return [...new Set(values.map((v) => Number(v)))]
+        .filter((v) => !isNaN(v))
+        .sort((a, b) => a - b)
+        .map(String);
+    }
+
     if (
       col === "Age" ||
       col === "Rating" ||
@@ -609,6 +614,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (
       col === "Age" ||
       col === "Rating" ||
+      col === "market_value" ||
       col === "contract_seasons_remaining" ||
       col === "contract_wage"
     ) {
@@ -683,6 +689,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!bounds || !active) return "—";
 
     if (bounds.type === "numeric") {
+      if (col === "market_value" || col === "contract_wage") {
+        return `${formatMoney(active.min)} – ${formatMoney(active.max)}`;
+      }
       return `${active.min} – ${active.max}`;
     }
 
@@ -1894,44 +1903,47 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function setupFilters() {
-    const filtersDiv = document.getElementById("filters");
-
-    filtersDiv.innerHTML = COLUMNS
-      .filter(col => !FILTER_EXCLUDE.includes(col))
-      .map(col => {
-        const labelPlain =
-          col === "Contracted_Team"
-            ? "Contracted Team (DRAFT)"
-            : formatHeader(col);
-        const labelHtml = formatFilterLabel(col);
-        if (RANGE_FILTER_COLUMNS.includes(col)) {
-          return rangeFilterHtml(col);
-        }
-        if (DROPDOWN_COLUMNS.includes(col)) {
-          const draftHint =
-            col === "Contracted_Team" ? contractedTeamFilterHintHtml() : "";
-          return `
-            <div class="multi-filter" data-col="${col}">
-              <div class="multi-filter-label">${labelHtml}</div>
-              ${draftHint}
-              <div class="multi-filter-control" id="filter-${col}-display">All</div>
-              <div class="multi-filter-panel" id="filter-${col}-panel">
-                <input type="text" class="multi-filter-search" autocomplete="off" aria-label="Search ${labelPlain}">
-                <div class="multi-filter-options"></div>
-              </div>
+    const buildFilterHtml = (col) => {
+      const labelPlain =
+        col === "Contracted_Team"
+          ? "Contracted Team (DRAFT)"
+          : formatHeader(col);
+      const labelHtml = formatFilterLabel(col);
+      if (RANGE_FILTER_COLUMNS.includes(col)) {
+        return rangeFilterHtml(col);
+      }
+      if (DROPDOWN_COLUMNS.includes(col)) {
+        const draftHint =
+          col === "Contracted_Team" ? contractedTeamFilterHintHtml() : "";
+        return `
+          <div class="multi-filter" data-col="${col}">
+            <div class="multi-filter-label">${labelHtml}</div>
+            ${draftHint}
+            <div class="multi-filter-control" id="filter-${col}-display">All</div>
+            <div class="multi-filter-panel" id="filter-${col}-panel">
+              <input type="text" class="multi-filter-search" autocomplete="off" aria-label="Search ${labelPlain}">
+              <div class="multi-filter-options"></div>
             </div>
-          `;
-        } else {
-          const textLabel = formatHeader(col);
-          return `
-            <label class="text-filter">
-              ${textLabel}
-              <input type="text" id="filter-${col}" placeholder="Filter ${textLabel} (ignores accents, searches all players)">
-            </label>
-          `;
-        }
-      })
-      .join("");
+          </div>
+        `;
+      }
+      const textLabel = formatHeader(col);
+      return `
+        <label class="text-filter">
+          ${textLabel}
+          <input type="text" id="filter-${col}" placeholder="Filter ${textLabel} (ignores accents, searches all players)">
+        </label>
+      `;
+    };
+
+    FILTER_LAYOUT_ROWS.forEach((row, idx) => {
+      const rowEl = document.getElementById(`filters-row-${idx + 1}`);
+      if (!rowEl) return;
+      rowEl.innerHTML = row
+        .filter((col) => !FILTER_EXCLUDE.includes(col))
+        .map(buildFilterHtml)
+        .join("");
+    });
   }
 
   function setupTextFilters() {
@@ -1979,43 +1991,6 @@ document.addEventListener("DOMContentLoaded", () => {
       loadPage(1);
     });
 
-    const mvMinInput = document.getElementById("mv-min");
-    const mvMaxInput = document.getElementById("mv-max");
-    const applyMV = document.getElementById("applyMV");
-
-    mvMinInput.style.width = "140px";
-    mvMinInput.style.textAlign = "right";
-    mvMaxInput.style.width = "140px";
-    mvMaxInput.style.textAlign = "right";
-
-    const parseMV = (val) => {
-      const raw = val.replace(/[^\d]/g, "").trim();
-      if (raw === "") return null;
-      const num = Number(raw);
-      return isNaN(num) ? null : num;
-    };
-
-    const formatMVInput = (inputEl) => {
-      const raw = inputEl.value.replace(/[^\d]/g, "").trim();
-      if (raw === "") {
-        inputEl.value = "";
-        return;
-      }
-      const num = Number(raw);
-      if (!isNaN(num)) {
-        inputEl.value = num.toLocaleString("en-GB");
-      }
-    };
-
-    mvMinInput.addEventListener("input", () => formatMVInput(mvMinInput));
-    mvMaxInput.addEventListener("input", () => formatMVInput(mvMaxInput));
-
-    applyMV.addEventListener("click", () => {
-      MV_MIN = parseMV(mvMinInput.value);
-      MV_MAX = parseMV(mvMaxInput.value);
-      loadPage(1);
-    });
-
     document.getElementById("myNationFilterBtn")?.addEventListener("click", () => {
       applyMyNationFilter();
     });
@@ -2026,8 +2001,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("clearFiltersBtn").addEventListener("click", () => {
       CURRENT_FILTERS = {};
-      MV_MIN = null;
-      MV_MAX = null;
       SCOUTED_ONLY = false;
       const scoutedBtn = document.getElementById("myScoutedFilterBtn");
       if (scoutedBtn) scoutedBtn.classList.remove("is-active");
@@ -2054,9 +2027,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const display = document.getElementById(`filter-${col}-display`);
         if (display) display.textContent = "All";
       });
-
-      mvMinInput.value = "";
-      mvMaxInput.value = "";
 
       resetRangeFilters();
 
