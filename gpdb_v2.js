@@ -860,26 +860,26 @@ document.addEventListener("DOMContentLoaded", () => {
     return bounds.values.slice(active.min, active.max + 1);
   }
 
-  function formatRangeReadout(col) {
+  function formatRangeBracket(col) {
     const bounds = RANGE_BOUNDS[col];
     const active = RANGE_ACTIVE[col];
-    if (!bounds || !active) return "—";
+    if (!bounds || !active) return "(—)";
 
     if (bounds.type === "numeric") {
       if (col === "market_value" || col === "contract_wage") {
-        return `${formatMoney(active.min)} – ${formatMoney(active.max)}`;
+        return `(${formatMoney(active.min)}-${formatMoney(active.max)})`;
       }
-      return `${active.min} – ${active.max}`;
+      return `(${active.min}-${active.max})`;
     }
 
     const lo = bounds.values[active.min] ?? "—";
     const hi = bounds.values[active.max] ?? "—";
-    return `${lo} – ${hi}`;
+    return `(${lo}-${hi})`;
   }
 
   function updateRangeReadout(col) {
-    const el = document.getElementById(`filter-${col}-readout`);
-    if (el) el.textContent = formatRangeReadout(col);
+    const el = document.getElementById(`filter-${col}-range`);
+    if (el) el.textContent = formatRangeBracket(col);
   }
 
   function updateRangeTrack(col) {
@@ -911,8 +911,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!bounds) {
       return `
         <div class="range-filter" data-col="${col}">
-          <div class="range-filter-label">${label}</div>
-          <div class="range-filter-readout" id="filter-${col}-readout">—</div>
+          <div class="range-filter-label">${label} <span class="range-filter-range" id="filter-${col}-range">(—)</span></div>
         </div>
       `;
     }
@@ -925,8 +924,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     return `
       <div class="range-filter" data-col="${col}">
-        <div class="range-filter-label">${label}</div>
-        <div class="range-filter-readout" id="filter-${col}-readout">${formatRangeReadout(col)}</div>
+        <div class="range-filter-label">${label} <span class="range-filter-range" id="filter-${col}-range">${formatRangeBracket(col)}</span></div>
         <div class="range-filter-sliders" id="filter-${col}-sliders">
           <div class="range-filter-track"></div>
           <input type="range" id="filter-${col}-min" min="${sliderMin}" max="${sliderMax}" value="${active.min}" step="1" aria-label="${label} minimum" ${disabled}>

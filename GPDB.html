@@ -430,12 +430,15 @@
 
     .range-filter-label {
       font-weight: bold;
+      line-height: 1.3;
     }
 
-    .range-filter-readout {
+    .range-filter-range {
+      font-weight: normal;
       color: #ddd;
       font-size: 11px;
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     .range-filter-sliders {
@@ -697,7 +700,7 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js"></script>
-  <script type="module" src="gpdb_v2.js?v=20260620-filter-persist"></script>
+  <script type="module" src="gpdb_v2.js?v=20260620-range-bracket"></script>
 
 </body>
 </html>
