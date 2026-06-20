@@ -231,6 +231,39 @@ document.addEventListener("DOMContentLoaded", () => {
   const CONTRACT_WAGE_FILTER_STEP = 10_000;
 
   let WAGE_FORECAST_SETTINGS = { superleague: 5, championship: 4 };
+  const GPDB_PLAYERS_VIEW = "gpdb_players_view";
+  let gpdbUseEffectiveWageView = false;
+
+  async function probeGpdbPlayersView() {
+    const { error } = await supabase
+      .from(GPDB_PLAYERS_VIEW)
+      .select("Konami_ID", { head: true, count: "exact" });
+
+    gpdbUseEffectiveWageView = !error;
+    if (error) {
+      console.warn(
+        "GPDB effective_wage view unavailable — run supabase/sql/patches/gpdb_effective_wage_view.sql",
+        error
+      );
+    }
+  }
+
+  function gpdbPlayersFrom() {
+    return supabase.from(gpdbUseEffectiveWageView ? GPDB_PLAYERS_VIEW : "Players");
+  }
+
+  function effectiveWageForPlayer(player) {
+    const stored = Number(player?.contract_wage);
+    if (Number.isFinite(stored) && stored > 0) return stored;
+    return forecastWageFromMarketValue(player.market_value);
+  }
+
+  function refinePlayersByContractWage(players, wMin, wMax) {
+    return players.filter((player) => {
+      const wage = effectiveWageForPlayer(player);
+      return wage >= wMin && wage <= wMax;
+    });
+  }
 
   async function loadWageForecastSettings() {
     WAGE_FORECAST_SETTINGS = await loadWagePercentages(supabase);
@@ -247,17 +280,21 @@ document.addEventListener("DOMContentLoaded", () => {
         : WAGE_FORECAST_SETTINGS.championship;
     const rate = pct / 100;
     if (rate <= 0) {
-      return { mvMin: 0, mvMax: MARKET_VALUE_FILTER_MAX };
+      return { mvMin: 0, mvMax: 0 };
     }
-    const mvMin = wMin <= 0 ? 0 : Math.max(0, Math.floor((wMin - 0.5) / rate));
+    const mvMin = wMin <= 0 ? 0 : Math.max(0, Math.ceil((wMin - 0.5) / rate));
     const mvMax = Math.min(
       MARKET_VALUE_FILTER_MAX,
-      Math.ceil((wMax + 0.5) / rate)
+      Math.floor((wMax + 0.5) / rate)
     );
-    return { mvMin, mvMax };
+    return { mvMin, mvMax: Math.max(mvMin, mvMax) };
   }
 
   function applyContractWageFilter(query, wMin, wMax) {
+    if (gpdbUseEffectiveWageView) {
+      return query.gte("effective_wage", wMin).lte("effective_wage", wMax);
+    }
+
     const { mvMin, mvMax } = marketValueBoundsForForecastWage(wMin, wMax);
     const signedClause = `and(contract_wage.gt.0,contract_wage.gte.${wMin},contract_wage.lte.${wMax})`;
     const forecastClause = `and(or(contract_wage.is.null,contract_wage.lte.0),market_value.gte.${mvMin},market_value.lte.${mvMax})`;
@@ -291,19 +328,24 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadContractWageBounds() {
+    const relation = gpdbUseEffectiveWageView ? GPDB_PLAYERS_VIEW : "Players";
+    const wageCol = gpdbUseEffectiveWageView ? "effective_wage" : "contract_wage";
+
     const [{ data: minRows, error: minErr }, { data: maxRows, error: maxErr }] =
       await Promise.all([
         supabase
-          .from("Players")
-          .select("contract_wage")
-          .gt("contract_wage", 0)
-          .order("contract_wage", { ascending: true })
+          .from(relation)
+          .select(wageCol)
+          .not(wageCol, "is", null)
+          .gt(wageCol, 0)
+          .order(wageCol, { ascending: true })
           .limit(1),
         supabase
-          .from("Players")
-          .select("contract_wage")
-          .gt("contract_wage", 0)
-          .order("contract_wage", { ascending: false })
+          .from(relation)
+          .select(wageCol)
+          .not(wageCol, "is", null)
+          .gt(wageCol, 0)
+          .order(wageCol, { ascending: false })
           .limit(1),
       ]);
 
@@ -314,10 +356,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const forecastMin = forecastWageFromMarketValue(MARKET_VALUE_FILTER_MIN);
     const forecastMax = forecastWageFromMarketValue(MARKET_VALUE_FILTER_MAX);
 
-    let min = Number(minRows?.[0]?.contract_wage);
-    let max = Number(maxRows?.[0]?.contract_wage);
+    let min = Number(minRows?.[0]?.[wageCol]);
+    let max = Number(maxRows?.[0]?.[wageCol]);
     if (!Number.isFinite(min)) min = forecastMin;
-    if (!Number.isFinite(max)) max = 0;
+    if (!Number.isFinite(max)) max = forecastMax;
 
     min = Math.min(min, forecastMin);
     max = Math.max(max, forecastMax);
@@ -789,8 +831,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const from = (page - 1) * PAGE_SIZE;
     const to = from + PAGE_SIZE - 1;
 
-    let query = supabase
-      .from("Players")
+    let query = gpdbPlayersFrom()
       .select(playerSelectList(), { count: "exact" });
 
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
@@ -871,6 +912,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let { data, error, count } = await query;
 
+    if (error && gpdbUseEffectiveWageView && String(error.message || "").includes("effective_wage")) {
+      console.warn("GPDB falling back from effective_wage view:", error);
+      gpdbUseEffectiveWageView = false;
+      return loadPage(page);
+    }
+
     if (error && isMissingEconomicsColumnError(error) && useEconomicsDbColumns) {
       useEconomicsDbColumns = false;
       return loadPage(page);
@@ -894,6 +941,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let filtered = data || [];
 
+    const wageBounds = RANGE_BOUNDS.contract_wage;
+    const wageActive = normalizedRangeActive("contract_wage");
+    if (
+      wageBounds &&
+      wageActive &&
+      isRangeFilterActive("contract_wage") &&
+      !gpdbUseEffectiveWageView
+    ) {
+      filtered = refinePlayersByContractWage(
+        filtered,
+        wageActive.min,
+        wageActive.max
+      );
+    }
+
     if (CURRENT_SORT_COLUMN === "Position") {
       filtered.sort((a, b) => {
         const ai = POSITION_ORDER.indexOf(a.Position);
@@ -912,6 +974,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function formatHeader(col) {
     if (col === "market_value") return "Market Value";
+    if (col === "contract_wage") return "Contract wage (per season)";
     if (col === "Maximum_Reserve_Price") return "Maximum Reserve Price";
     if (col === "Potential") return "Pot.";
     if (col === "Contracted_Team") return "Contracted Team";
@@ -1107,7 +1170,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function contractWageFilterHintHtml() {
     const pct = WAGE_FORECAST_SETTINGS.championship;
-    return `<div class="range-filter-wage-hint">Free agents use forecast wage (${pct}% of market value)</div>`;
+    const deployNote = gpdbUseEffectiveWageView
+      ? ""
+      : " · run gpdb_effective_wage_view.sql for full-database accuracy";
+    return `<div class="range-filter-wage-hint">Per-season total wage. Free agents: forecast ${pct}% of market value${deployNote}</div>`;
   }
 
   function rangeFilterHtml(col) {
@@ -2523,6 +2589,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await loadClubNames();
     await loadPlayerValueTables();
     await loadWageForecastSettings();
+    await probeGpdbPlayersView();
 
     setupControls();
     await loadRangeBounds();
