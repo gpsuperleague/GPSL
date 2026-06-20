@@ -29,6 +29,38 @@
     .fav-btn.fav-on, .draft-fav-remove.fav-on {
       color: #ff9900;
     }
+
+    /* In-page links — GPSL orange, never underlined */
+    .page-container a.gpsl-link {
+      color: #ff9900;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .page-container a.gpsl-link:hover,
+    .page-container a.gpsl-link:focus {
+      color: #ffaa22;
+      text-decoration: none;
+    }
+
+    /* Table action links (Bid / View) */
+    .page-container a.gpsl-link.tc-action-link {
+      display: inline-block;
+      padding: 4px 10px;
+      background: #2a2218;
+      border: 1px solid #664400;
+      border-radius: 4px;
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .page-container a.gpsl-link.tc-action-link:hover,
+    .page-container a.gpsl-link.tc-action-link:focus {
+      background: #332a1a;
+      color: #ffcc66;
+      border-color: #ff9900;
+      text-decoration: none;
+    }
   </style>
 
   <style>
@@ -211,7 +243,7 @@
   <!-- ================================
        TRANSFER CENTRE JS (new file)
        ================================ -->
-  <script type="module" src="transfer_center.js?v=11"></script>
+  <script type="module" src="transfer_center.js?v=12"></script>
 
 </body>
 </html>

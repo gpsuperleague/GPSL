@@ -277,11 +277,11 @@ async function loadDraftFavouritesSection(shortName) {
       }
 
       let statusText = "Not in active draft auction";
-      let actionHtml = `<a href="draftauction_player.html?player=${encodeURIComponent(pid)}" class="gpsl-link">View</a>`;
+      let actionHtml = `<a href="draftauction_player.html?player=${encodeURIComponent(pid)}" class="gpsl-link tc-action-link">View</a>`;
       if (listing) {
         statusText = auctionEnded ? "Auction ended" : "Active";
         if (!auctionEnded) {
-          actionHtml = `<a href="draftauction_player.html?player=${encodeURIComponent(pid)}" class="gpsl-link">Bid</a>`;
+          actionHtml = `<a href="draftauction_player.html?player=${encodeURIComponent(pid)}" class="gpsl-link tc-action-link">Bid</a>`;
         }
       } else if (!draftEnabled) {
         statusText = "Draft window closed";
