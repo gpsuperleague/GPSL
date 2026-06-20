@@ -675,6 +675,29 @@ document.addEventListener("DOMContentLoaded", () => {
     if (el) el.textContent = formatRangeReadout(col);
   }
 
+  function updateRangeTrack(col) {
+    const wrap = document.getElementById(`filter-${col}-sliders`);
+    const bounds = RANGE_BOUNDS[col];
+    const active = RANGE_ACTIVE[col];
+    if (!wrap || !bounds || !active) return;
+
+    let baseMin;
+    let baseMax;
+    if (bounds.type === "numeric") {
+      baseMin = bounds.min;
+      baseMax = bounds.max;
+    } else {
+      baseMin = 0;
+      baseMax = Math.max(bounds.values.length - 1, 0);
+    }
+
+    const span = Math.max(baseMax - baseMin, 1);
+    const minPct = ((active.min - baseMin) / span) * 100;
+    const maxPct = ((active.max - baseMin) / span) * 100;
+    wrap.style.setProperty("--range-min", `${minPct}%`);
+    wrap.style.setProperty("--range-max", `${maxPct}%`);
+  }
+
   function rangeFilterHtml(col) {
     const bounds = RANGE_BOUNDS[col];
     const label = formatHeader(col);
@@ -697,7 +720,8 @@ document.addEventListener("DOMContentLoaded", () => {
       <div class="range-filter" data-col="${col}">
         <div class="range-filter-label">${label}</div>
         <div class="range-filter-readout" id="filter-${col}-readout">${formatRangeReadout(col)}</div>
-        <div class="range-filter-sliders">
+        <div class="range-filter-sliders" id="filter-${col}-sliders">
+          <div class="range-filter-track"></div>
           <input type="range" id="filter-${col}-min" min="${sliderMin}" max="${sliderMax}" value="${active.min}" step="1" aria-label="${label} minimum" ${disabled}>
           <input type="range" id="filter-${col}-max" min="${sliderMin}" max="${sliderMax}" value="${active.max}" step="1" aria-label="${label} maximum" ${disabled}>
         </div>
@@ -719,6 +743,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (minEl) minEl.value = String(RANGE_ACTIVE[col].min);
       if (maxEl) maxEl.value = String(RANGE_ACTIVE[col].max);
       updateRangeReadout(col);
+      updateRangeTrack(col);
     }
   }
 
@@ -748,6 +773,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         RANGE_ACTIVE[col] = { min: lo, max: hi };
         updateRangeReadout(col);
+        updateRangeTrack(col);
         loadPage(1);
       };
 
@@ -758,6 +784,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       minEl.addEventListener("input", scheduleApply);
       maxEl.addEventListener("input", scheduleApply);
+      updateRangeTrack(col);
     }
   }
 

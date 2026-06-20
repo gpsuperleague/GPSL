@@ -431,19 +431,91 @@
     }
 
     .range-filter-sliders {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+      position: relative;
+      height: 26px;
+      margin-top: 2px;
+    }
+
+    .range-filter-track {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 6px;
+      transform: translateY(-50%);
+      border-radius: 999px;
+      background:
+        linear-gradient(
+          to right,
+          #444 0%,
+          #444 var(--range-min, 0%),
+          #ff9900 var(--range-min, 0%),
+          #ff9900 var(--range-max, 100%),
+          #444 var(--range-max, 100%),
+          #444 100%
+        );
+      pointer-events: none;
     }
 
     .range-filter-sliders input[type="range"] {
+      position: absolute;
+      left: 0;
+      top: 0;
       width: 100%;
-      accent-color: #ff9900;
+      height: 26px;
+      margin: 0;
+      background: transparent;
+      appearance: none;
+      -webkit-appearance: none;
+      pointer-events: none;
+    }
+
+    .range-filter-sliders input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      background: transparent;
+    }
+
+    .range-filter-sliders input[type="range"]::-moz-range-track {
+      height: 6px;
+      background: transparent;
+    }
+
+    .range-filter-sliders input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ff9900;
+      border: 2px solid #111;
+      box-shadow: 0 0 0 1px #aa6a00;
+      margin-top: -4px;
       cursor: pointer;
+      pointer-events: auto;
+      position: relative;
+      z-index: 2;
+    }
+
+    .range-filter-sliders input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #ff9900;
+      border: 2px solid #111;
+      box-shadow: 0 0 0 1px #aa6a00;
+      cursor: pointer;
+      pointer-events: auto;
+      position: relative;
+      z-index: 2;
     }
 
     .range-filter-sliders input[type="range"]:disabled {
       opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .range-filter-sliders input[type="range"]:disabled::-webkit-slider-thumb,
+    .range-filter-sliders input[type="range"]:disabled::-moz-range-thumb {
       cursor: not-allowed;
     }
 
