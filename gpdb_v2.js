@@ -183,6 +183,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "Maximum_Reserve_Price",
     "market_value",
     "Konami_ID",
+    "Potential",
     "Calc_Potential",
   ];
 
