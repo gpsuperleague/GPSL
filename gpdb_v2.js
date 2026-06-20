@@ -824,19 +824,30 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadNumericColumnBounds(col) {
-    const { data, error } = await supabase
-      .from("Players")
-      .select(`min_val:${col}.min(), max_val:${col}.max()`)
-      .maybeSingle();
+    const [{ data: minRows, error: minErr }, { data: maxRows, error: maxErr }] =
+      await Promise.all([
+        supabase
+          .from("Players")
+          .select(col)
+          .not(col, "is", null)
+          .order(col, { ascending: true })
+          .limit(1),
+        supabase
+          .from("Players")
+          .select(col)
+          .not(col, "is", null)
+          .order(col, { ascending: false })
+          .limit(1),
+      ]);
 
-    if (error) {
-      console.error(`Error loading numeric bounds for ${col}:`, error);
+    if (minErr || maxErr) {
+      console.error(`Error loading numeric bounds for ${col}:`, minErr || maxErr);
       setRangeBoundsFromValues(col, []);
       return;
     }
 
-    const min = Number(data?.min_val);
-    const max = Number(data?.max_val);
+    const min = Number(minRows?.[0]?.[col]);
+    const max = Number(maxRows?.[0]?.[col]);
     if (!Number.isFinite(min) || !Number.isFinite(max)) {
       setRangeBoundsFromValues(col, []);
       return;
@@ -991,6 +1002,24 @@ document.addEventListener("DOMContentLoaded", () => {
       const maxEl = document.getElementById(`filter-${col}-max`);
       if (!minEl || !maxEl) continue;
 
+      const syncThumbZIndex = () => {
+        const lo = Number(minEl.value);
+        const hi = Number(maxEl.value);
+        if (document.activeElement === minEl) {
+          minEl.style.zIndex = "5";
+          maxEl.style.zIndex = "4";
+        } else if (document.activeElement === maxEl) {
+          maxEl.style.zIndex = "5";
+          minEl.style.zIndex = "4";
+        } else if (lo > hi) {
+          minEl.style.zIndex = "5";
+          maxEl.style.zIndex = "4";
+        } else {
+          minEl.style.zIndex = "3";
+          maxEl.style.zIndex = "4";
+        }
+      };
+
       const apply = () => {
         let lo = Number(minEl.value);
         let hi = Number(maxEl.value);
@@ -1010,6 +1039,7 @@ document.addEventListener("DOMContentLoaded", () => {
         RANGE_ACTIVE[col] = { min: lo, max: hi };
         updateRangeReadout(col);
         updateRangeTrack(col);
+        syncThumbZIndex();
         saveGpdbFilters();
         loadPage(1);
       };
@@ -1019,8 +1049,19 @@ document.addEventListener("DOMContentLoaded", () => {
         debounceTimer = setTimeout(apply, 250);
       };
 
-      minEl.addEventListener("input", scheduleApply);
-      maxEl.addEventListener("input", scheduleApply);
+      minEl.addEventListener("input", () => {
+        syncThumbZIndex();
+        scheduleApply();
+      });
+      maxEl.addEventListener("input", () => {
+        syncThumbZIndex();
+        scheduleApply();
+      });
+      minEl.addEventListener("mousedown", syncThumbZIndex);
+      maxEl.addEventListener("mousedown", syncThumbZIndex);
+      minEl.addEventListener("touchstart", syncThumbZIndex);
+      maxEl.addEventListener("touchstart", syncThumbZIndex);
+      syncThumbZIndex();
       updateRangeTrack(col);
     }
   }
