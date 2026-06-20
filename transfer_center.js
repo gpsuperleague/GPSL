@@ -42,6 +42,7 @@ import {
   isScoutingAvailable,
   scoutingSetupHint,
 } from "./scouting_targets.js";
+import { playerNameLinkHtml } from "./player_links.js";
 
 function playerLinkCell(playerId, player, fallbackName) {
   const pid = String(playerId ?? player?.Konami_ID ?? "").trim();
