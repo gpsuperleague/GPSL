@@ -11,6 +11,10 @@ import {
   saveOwnerDashboardLayout,
 } from "./dashboard_layout.js";
 import { refreshAllDashboardPins } from "./dashboard_pin.js";
+import {
+  applyClubDashboardTheme,
+  loadClubDashboardTheme,
+} from "./club_theme_common.js";
 
 let ownerId = null;
 let isAdmin = false;
@@ -96,6 +100,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("dashboardTitle").textContent = `${fullName} Dashboard`;
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${shortName}.png`;
+
+  try {
+    const theme = await loadClubDashboardTheme(supabase, shortName);
+    applyClubDashboardTheme(theme);
+  } catch (err) {
+    console.warn("Dashboard theme:", err);
+  }
 });
 
 async function initDashboardGrid(uid, { draftEnabled, specialAuction }) {

@@ -19,8 +19,20 @@ import {
 } from "./owner_holidays.js";
 import { wireAvailabilityPanel } from "./owner_availability.js";
 import { loadClubKits, renderKitsPanelHtml } from "./club_kits_common.js";
+import {
+  GPSL_THEME_DEFAULTS,
+  loadClubDashboardTheme,
+  normalizeHexColor,
+  normalizeThemeRow,
+  renderThemePreviewHtml,
+  saveClubDashboardTheme,
+  suggestThemeFromKit,
+} from "./club_theme_common.js";
 
 const MAX_OWNER_TAG_LEN = 64;
+
+let cachedKitRow = null;
+let themeDraft = { ...GPSL_THEME_DEFAULTS };
 
 const CLUB_SELECT_BASE =
   "ShortName, Club, Stadium, Capacity, Nation";
@@ -835,6 +847,7 @@ async function initClubDetailsPage() {
     loadExpectationSection(club.ShortName),
     loadManagerSection(club.ShortName),
     loadKitsSection(club.ShortName),
+    loadDashboardThemeSection(club.ShortName),
   ]);
   await loadSubsidyStatus(club.ShortName);
 
@@ -850,10 +863,185 @@ async function loadKitsSection(clubShort) {
 
   try {
     const kitRow = await loadClubKits(supabase, clubShort);
+    cachedKitRow = kitRow;
     el.innerHTML = renderKitsPanelHtml(clubShort, kitRow);
   } catch (err) {
     console.warn("Club Details kits:", err);
     el.textContent = "Could not load kit images.";
+  }
+}
+
+function themeFieldIds() {
+  return [
+    ["themePrimaryPicker", "themePrimaryHex", "color_primary"],
+    ["themeSecondaryPicker", "themeSecondaryHex", "color_secondary"],
+    ["themeBorderPicker", "themeBorderHex", "color_border"],
+  ];
+}
+
+function readThemeDraftFromForm() {
+  const enabledEl = document.getElementById("themeEnabled");
+  const draft = { ...themeDraft };
+  draft.enabled = enabledEl?.checked === true;
+
+  for (const [pickerId, hexId, key] of themeFieldIds()) {
+    const hexEl = document.getElementById(hexId);
+    const pickerEl = document.getElementById(pickerId);
+    const fromHex = normalizeHexColor(hexEl?.value);
+    const fromPicker = normalizeHexColor(pickerEl?.value);
+    draft[key] = fromHex || fromPicker || GPSL_THEME_DEFAULTS[key];
+  }
+
+  return draft;
+}
+
+function writeThemeDraftToForm(theme) {
+  themeDraft = normalizeThemeRow(theme);
+  const enabledEl = document.getElementById("themeEnabled");
+  if (enabledEl) enabledEl.checked = themeDraft.enabled === true;
+
+  for (const [pickerId, hexId, key] of themeFieldIds()) {
+    const pickerEl = document.getElementById(pickerId);
+    const hexEl = document.getElementById(hexId);
+    const value = themeDraft[key] || GPSL_THEME_DEFAULTS[key];
+    if (pickerEl) pickerEl.value = value;
+    if (hexEl) hexEl.value = value;
+  }
+
+  const preview = document.getElementById("themePreview");
+  if (preview) {
+    preview.innerHTML = renderThemePreviewHtml(themeDraft);
+  }
+}
+
+function setThemeStatus(message, kind = "") {
+  const el = document.getElementById("themeStatus");
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.remove("theme-status--ok", "theme-status--err");
+  if (kind === "ok") el.classList.add("theme-status--ok");
+  if (kind === "err") el.classList.add("theme-status--err");
+}
+
+function wireDashboardThemePanel(clubShort) {
+  if (document.getElementById("clubThemePanel")?.dataset.wired === "1") return;
+  const panel = document.getElementById("clubThemePanel");
+  if (!panel) return;
+  panel.dataset.wired = "1";
+
+  for (const [pickerId, hexId] of themeFieldIds()) {
+    const pickerEl = document.getElementById(pickerId);
+    const hexEl = document.getElementById(hexId);
+    if (!pickerEl || !hexEl) continue;
+
+    pickerEl.addEventListener("input", () => {
+      hexEl.value = pickerEl.value;
+      themeDraft = readThemeDraftFromForm();
+      themeDraft.source_kit = "manual";
+      writeThemeDraftToForm(themeDraft);
+    });
+
+    hexEl.addEventListener("change", () => {
+      const normalized = normalizeHexColor(hexEl.value);
+      if (!normalized) {
+        hexEl.value = pickerEl.value;
+        return;
+      }
+      hexEl.value = normalized;
+      pickerEl.value = normalized;
+      themeDraft = readThemeDraftFromForm();
+      themeDraft.source_kit = "manual";
+      writeThemeDraftToForm(themeDraft);
+    });
+  }
+
+  const enabledEl = document.getElementById("themeEnabled");
+  enabledEl?.addEventListener("change", () => {
+    themeDraft = readThemeDraftFromForm();
+    writeThemeDraftToForm(themeDraft);
+  });
+
+  document.getElementById("themeSuggestBtn")?.addEventListener("click", async () => {
+    const btn = document.getElementById("themeSuggestBtn");
+    const kind = document.getElementById("themeKitSource")?.value || "home";
+    if (btn) btn.disabled = true;
+    setThemeStatus("Sampling kit colours…");
+    try {
+      const suggested = await suggestThemeFromKit(clubShort, cachedKitRow, kind);
+      themeDraft = {
+        ...suggested,
+        enabled: readThemeDraftFromForm().enabled,
+        source_kit: kind,
+      };
+      writeThemeDraftToForm(themeDraft);
+      setThemeStatus(`Suggested from ${kind} kit — adjust if needed, then save.`, "ok");
+    } catch (err) {
+      console.warn("Theme suggest:", err);
+      setThemeStatus(err?.message || "Could not read colours from kit image.", "err");
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  document.getElementById("themeResetBtn")?.addEventListener("click", () => {
+    themeDraft = {
+      ...GPSL_THEME_DEFAULTS,
+      enabled: readThemeDraftFromForm().enabled,
+      source_kit: "manual",
+    };
+    writeThemeDraftToForm(themeDraft);
+    setThemeStatus("Reset to GPSL defaults (not saved yet).");
+  });
+
+  document.getElementById("themeSaveBtn")?.addEventListener("click", async () => {
+    const btn = document.getElementById("themeSaveBtn");
+    themeDraft = readThemeDraftFromForm();
+    if (btn) btn.disabled = true;
+    setThemeStatus("Saving…");
+    try {
+      await saveClubDashboardTheme(supabase, themeDraft);
+      setThemeStatus("Dashboard colours saved.", "ok");
+    } catch (err) {
+      console.warn("Theme save:", err);
+      const msg = String(err?.message || err);
+      if (msg.includes("club_owner_dashboard_theme_save") || msg.includes("function")) {
+        setThemeStatus(
+          "Could not save — run supabase/sql/patches/club_dashboard_theme.sql in Supabase.",
+          "err"
+        );
+      } else {
+        setThemeStatus(msg, "err");
+      }
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+}
+
+async function loadDashboardThemeSection(clubShort) {
+  const panel = document.getElementById("clubThemePanel");
+  if (!panel) return;
+
+  if (!cachedKitRow) {
+    try {
+      cachedKitRow = await loadClubKits(supabase, clubShort);
+    } catch (err) {
+      console.warn("Club Details kits for theme:", err);
+    }
+  }
+
+  try {
+    const saved = await loadClubDashboardTheme(supabase, clubShort);
+    writeThemeDraftToForm(saved);
+    wireDashboardThemePanel(clubShort);
+  } catch (err) {
+    console.warn("Club Details dashboard theme:", err);
+    writeThemeDraftToForm(GPSL_THEME_DEFAULTS);
+    wireDashboardThemePanel(clubShort);
+    setThemeStatus(
+      "Theme settings unavailable — run supabase/sql/patches/club_dashboard_theme.sql in Supabase.",
+      "err"
+    );
   }
 }
 
