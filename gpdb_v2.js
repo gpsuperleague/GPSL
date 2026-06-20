@@ -202,12 +202,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const DROPDOWN_COLUMNS = [
     "Nation",
     "Position",
-    "Age",
-    "Rating",
     "Playstyle",
     "Contracted_Team",
-    "Season_Signed"
   ];
+
+  const RANGE_FILTER_COLUMNS = ["Rating", "Age", "Season_Signed"];
 
   const POSITION_ORDER = [
     "GK", "LB", "CB", "RB",
@@ -255,6 +254,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let MV_MIN = null;
   let MV_MAX = null;
+  /** @type {Record<string, { type: 'numeric', min: number, max: number } | { type: 'ordinal', values: string[] }>} */
+  const RANGE_BOUNDS = {};
+  /** @type {Record<string, { min: number, max: number }>} */
+  const RANGE_ACTIVE = {};
   let useNameSearchKey = true;
 
   /* ============================================================
@@ -438,6 +441,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (MV_MIN !== null) query = query.gte("market_value", MV_MIN);
     if (MV_MAX !== null) query = query.lte("market_value", MV_MAX);
 
+    for (const col of RANGE_FILTER_COLUMNS) {
+      const inValues = getRangeFilterInValues(col);
+      if (inValues?.length) {
+        query = query.in(col, inValues);
+      }
+    }
+
     if (SCOUTED_ONLY && CURRENT_USER_CLUB_SHORT) {
       const scoutIds = Array.from(SCOUTING_TARGET_MAP.keys()).filter(Boolean);
       if (!scoutIds.length) {
@@ -543,6 +553,212 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function contractedTeamFilterHintHtml() {
     return `<div class="multi-filter-draft-hint">Select <b>FREE AGENT</b> to open draft bids here</div>`;
+  }
+
+  function normalizeDistinctColumnValues(col, rows) {
+    const values = (rows || [])
+      .map((row) => row[col])
+      .filter((v) => v !== null && v !== undefined);
+
+    if (col === "Season_Signed") {
+      const nums = values.map((v) => Number(v)).filter((v) => !isNaN(v));
+      const allNumeric = nums.length === values.length && values.length > 0;
+      if (allNumeric) {
+        return [...new Set(nums)].sort((a, b) => a - b).map(String);
+      }
+      return [...new Set(values.map((v) => String(v).trim()))]
+        .filter((v) => v !== "")
+        .sort((a, b) => a.localeCompare(b));
+    }
+
+    if (col === "Age" || col === "Rating") {
+      return [...new Set(values.map((v) => Number(v)))]
+        .filter((v) => !isNaN(v))
+        .sort((a, b) => a - b)
+        .map(String);
+    }
+
+    return [...new Set(values.map((v) => String(v).trim()))]
+      .filter((v) => v !== "")
+      .sort((a, b) => a.localeCompare(b));
+  }
+
+  function setRangeBoundsFromValues(col, uniqueValues) {
+    if (!uniqueValues.length) {
+      RANGE_BOUNDS[col] = { type: "numeric", min: 0, max: 0 };
+      RANGE_ACTIVE[col] = { min: 0, max: 0 };
+      return;
+    }
+
+    if (col === "Age" || col === "Rating") {
+      const nums = uniqueValues.map(Number).filter((n) => !isNaN(n));
+      const min = Math.min(...nums);
+      const max = Math.max(...nums);
+      RANGE_BOUNDS[col] = { type: "numeric", min, max };
+      RANGE_ACTIVE[col] = { min, max };
+      return;
+    }
+
+    const nums = uniqueValues.map((v) => Number(v));
+    const allNumeric =
+      nums.length === uniqueValues.length &&
+      uniqueValues.every((v) => v !== "" && !isNaN(Number(v)));
+
+    if (allNumeric) {
+      const min = Math.min(...nums);
+      const max = Math.max(...nums);
+      RANGE_BOUNDS[col] = { type: "numeric", min, max };
+      RANGE_ACTIVE[col] = { min, max };
+      return;
+    }
+
+    RANGE_BOUNDS[col] = { type: "ordinal", values: uniqueValues };
+    RANGE_ACTIVE[col] = { min: 0, max: uniqueValues.length - 1 };
+  }
+
+  async function loadRangeBounds() {
+    for (const col of RANGE_FILTER_COLUMNS) {
+      const { data, error } = await supabase
+        .from("Players")
+        .select(col, { distinct: true });
+
+      if (error || !data) {
+        console.error(`Error loading range bounds for ${col}:`, error);
+        setRangeBoundsFromValues(col, []);
+        continue;
+      }
+
+      setRangeBoundsFromValues(col, normalizeDistinctColumnValues(col, data));
+    }
+  }
+
+  function isRangeFilterActive(col) {
+    const bounds = RANGE_BOUNDS[col];
+    const active = RANGE_ACTIVE[col];
+    if (!bounds || !active) return false;
+    if (bounds.type === "numeric") {
+      return active.min > bounds.min || active.max < bounds.max;
+    }
+    return active.min > 0 || active.max < bounds.values.length - 1;
+  }
+
+  function getRangeFilterInValues(col) {
+    const bounds = RANGE_BOUNDS[col];
+    const active = RANGE_ACTIVE[col];
+    if (!bounds || !active || !isRangeFilterActive(col)) return null;
+
+    if (bounds.type === "numeric") {
+      const vals = [];
+      for (let i = active.min; i <= active.max; i++) vals.push(String(i));
+      return vals;
+    }
+
+    return bounds.values.slice(active.min, active.max + 1);
+  }
+
+  function formatRangeReadout(col) {
+    const bounds = RANGE_BOUNDS[col];
+    const active = RANGE_ACTIVE[col];
+    if (!bounds || !active) return "—";
+
+    if (bounds.type === "numeric") {
+      return `${active.min} – ${active.max}`;
+    }
+
+    const lo = bounds.values[active.min] ?? "—";
+    const hi = bounds.values[active.max] ?? "—";
+    return `${lo} – ${hi}`;
+  }
+
+  function updateRangeReadout(col) {
+    const el = document.getElementById(`filter-${col}-readout`);
+    if (el) el.textContent = formatRangeReadout(col);
+  }
+
+  function rangeFilterHtml(col) {
+    const bounds = RANGE_BOUNDS[col];
+    const label = formatHeader(col);
+    if (!bounds) {
+      return `
+        <div class="range-filter" data-col="${col}">
+          <div class="range-filter-label">${label}</div>
+          <div class="range-filter-readout" id="filter-${col}-readout">—</div>
+        </div>
+      `;
+    }
+
+    const active = RANGE_ACTIVE[col] || { min: 0, max: 0 };
+    const sliderMin = bounds.type === "numeric" ? bounds.min : 0;
+    const sliderMax =
+      bounds.type === "numeric" ? bounds.max : Math.max(bounds.values.length - 1, 0);
+    const disabled = sliderMax <= sliderMin ? "disabled" : "";
+
+    return `
+      <div class="range-filter" data-col="${col}">
+        <div class="range-filter-label">${label}</div>
+        <div class="range-filter-readout" id="filter-${col}-readout">${formatRangeReadout(col)}</div>
+        <div class="range-filter-sliders">
+          <input type="range" id="filter-${col}-min" min="${sliderMin}" max="${sliderMax}" value="${active.min}" step="1" aria-label="${label} minimum" ${disabled}>
+          <input type="range" id="filter-${col}-max" min="${sliderMin}" max="${sliderMax}" value="${active.max}" step="1" aria-label="${label} maximum" ${disabled}>
+        </div>
+      </div>
+    `;
+  }
+
+  function resetRangeFilters() {
+    for (const col of RANGE_FILTER_COLUMNS) {
+      const bounds = RANGE_BOUNDS[col];
+      if (!bounds) continue;
+      if (bounds.type === "numeric") {
+        RANGE_ACTIVE[col] = { min: bounds.min, max: bounds.max };
+      } else {
+        RANGE_ACTIVE[col] = { min: 0, max: Math.max(bounds.values.length - 1, 0) };
+      }
+      const minEl = document.getElementById(`filter-${col}-min`);
+      const maxEl = document.getElementById(`filter-${col}-max`);
+      if (minEl) minEl.value = String(RANGE_ACTIVE[col].min);
+      if (maxEl) maxEl.value = String(RANGE_ACTIVE[col].max);
+      updateRangeReadout(col);
+    }
+  }
+
+  function setupRangeFilters() {
+    let debounceTimer = null;
+
+    for (const col of RANGE_FILTER_COLUMNS) {
+      const minEl = document.getElementById(`filter-${col}-min`);
+      const maxEl = document.getElementById(`filter-${col}-max`);
+      if (!minEl || !maxEl) continue;
+
+      const apply = () => {
+        let lo = Number(minEl.value);
+        let hi = Number(maxEl.value);
+        if (isNaN(lo)) lo = 0;
+        if (isNaN(hi)) hi = lo;
+
+        if (lo > hi) {
+          if (document.activeElement === minEl) {
+            hi = lo;
+            maxEl.value = String(hi);
+          } else {
+            lo = hi;
+            minEl.value = String(lo);
+          }
+        }
+
+        RANGE_ACTIVE[col] = { min: lo, max: hi };
+        updateRangeReadout(col);
+        loadPage(1);
+      };
+
+      const scheduleApply = () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(apply, 250);
+      };
+
+      minEl.addEventListener("input", scheduleApply);
+      maxEl.addEventListener("input", scheduleApply);
+    }
   }
 
   function formatCellValue(col, player) {
@@ -1576,10 +1792,6 @@ document.addEventListener("DOMContentLoaded", () => {
           : [...new Set(values.map((v) => String(v).trim()))]
               .filter((v) => v !== "")
               .sort((a, b) => a.localeCompare(b));
-      } else if (col === "Age" || col === "Rating") {
-        uniqueValues = [...new Set(values.map(v => Number(v)))]
-          .filter(v => !isNaN(v))
-          .sort((a, b) => a - b);
       } else if (col === "Position") {
         uniqueValues = [...new Set(values.map(v => String(v).trim()))]
           .filter(v => v !== "")
@@ -1644,6 +1856,9 @@ document.addEventListener("DOMContentLoaded", () => {
             ? "Contracted Team (DRAFT)"
             : formatHeader(col);
         const labelHtml = formatFilterLabel(col);
+        if (RANGE_FILTER_COLUMNS.includes(col)) {
+          return rangeFilterHtml(col);
+        }
         if (DROPDOWN_COLUMNS.includes(col)) {
           const draftHint =
             col === "Contracted_Team" ? contractedTeamFilterHintHtml() : "";
@@ -1674,7 +1889,9 @@ document.addEventListener("DOMContentLoaded", () => {
   function setupTextFilters() {
     const textCols = COLUMNS.filter(
       (col) =>
-        !FILTER_EXCLUDE.includes(col) && !DROPDOWN_COLUMNS.includes(col)
+        !FILTER_EXCLUDE.includes(col) &&
+        !DROPDOWN_COLUMNS.includes(col) &&
+        !RANGE_FILTER_COLUMNS.includes(col)
     );
 
     let debounceTimer = null;
@@ -1793,6 +2010,8 @@ document.addEventListener("DOMContentLoaded", () => {
       mvMinInput.value = "";
       mvMaxInput.value = "";
 
+      resetRangeFilters();
+
       loadPage(1);
     });
   }
@@ -1845,7 +2064,9 @@ document.addEventListener("DOMContentLoaded", () => {
     await loadPlayerValueTables();
 
     setupControls();
+    await loadRangeBounds();
     setupFilters();
+    setupRangeFilters();
     setupTextFilters();
     await populateDropdowns();
     await loadTotalCount();

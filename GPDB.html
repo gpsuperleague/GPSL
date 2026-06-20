@@ -410,6 +410,43 @@
       font-size:12px;
     }
 
+    .range-filter {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 168px;
+      max-width: 220px;
+      font-size: 12px;
+      color: #ffaa22;
+    }
+
+    .range-filter-label {
+      font-weight: bold;
+    }
+
+    .range-filter-readout {
+      color: #ddd;
+      font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .range-filter-sliders {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .range-filter-sliders input[type="range"] {
+      width: 100%;
+      accent-color: #ff9900;
+      cursor: pointer;
+    }
+
+    .range-filter-sliders input[type="range"]:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
     /* Local start time line (same ids as dashboard) */
     #draftLocalStart {
       font-size: 12px;
@@ -606,7 +643,7 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js"></script>
-  <script type="module" src="gpdb_v2.js?v=20260617-scout-filter"></script>
+  <script type="module" src="gpdb_v2.js?v=20260619-range-filters"></script>
 
 </body>
 </html>
