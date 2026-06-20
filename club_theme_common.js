@@ -1,6 +1,12 @@
 /** Club dashboard theme — kit colour sampling, save/load, CSS apply */
 
-import { kitUrlFromRow, resolveKitImageSrc } from "./club_kits_common.js";
+import {
+  defaultKitImagePath,
+  isCrossOriginImageUrl,
+  kitSampleSrcCandidates,
+  kitUrlFromRow,
+  resolveKitImageSrc,
+} from "./club_kits_common.js";
 
 export const GPSL_THEME_DEFAULTS = {
   enabled: false,
@@ -105,11 +111,21 @@ export function deriveThemeFromPrimary(primary) {
 function loadImageElement(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    if (/^https?:\/\//i.test(src)) {
+      img.crossOrigin = "anonymous";
+    }
     img.onload = () => resolve(img);
     img.onerror = () => reject(new Error("Could not load kit image"));
     img.src = src;
   });
+}
+
+function readCanvasPixels(ctx, width, height) {
+  try {
+    return ctx.getImageData(0, 0, width, height);
+  } catch {
+    throw new Error("Kit image blocked by browser security (CORS)");
+  }
 }
 
 export async function extractKitThemeColors(imageSrc) {
@@ -122,7 +138,7 @@ export async function extractKitThemeColors(imageSrc) {
   if (!ctx) throw new Error("Canvas unavailable");
 
   ctx.drawImage(img, 0, 0, size, size);
-  const { data } = ctx.getImageData(0, 0, size, size);
+  const { data } = readCanvasPixels(ctx, size, size);
   const counts = new Map();
 
   for (let i = 0; i < data.length; i += 4) {
@@ -193,9 +209,27 @@ export function kitImageSrcForKind(clubShort, kitRow, kind) {
 }
 
 export async function suggestThemeFromKit(clubShort, kitRow, kind = "home") {
-  const src = kitImageSrcForKind(clubShort, kitRow, kind);
-  const colors = await extractKitThemeColors(src);
-  return { ...colors, source_kit: kind };
+  const dbUrl = kitUrlFromRow(kitRow, kind);
+  const candidates = kitSampleSrcCandidates(dbUrl, clubShort, kind);
+  let lastError = null;
+
+  for (const src of candidates) {
+    try {
+      const colors = await extractKitThemeColors(src);
+      return { ...colors, source_kit: kind };
+    } catch (err) {
+      lastError = err;
+    }
+  }
+
+  const local = defaultKitImagePath(clubShort, kind);
+  if (dbUrl && isCrossOriginImageUrl(resolveKitImageSrc(dbUrl, clubShort, kind))) {
+    throw new Error(
+      `Could not sample kit colours from ${local}. External kit URLs cannot be read — ask admin to sync local kit images.`
+    );
+  }
+
+  throw lastError || new Error("Could not sample kit colours");
 }
 
 export function normalizeThemeRow(row) {

@@ -20,6 +20,33 @@ export function defaultKitImagePath(clubShort, kind) {
   return `images/clubs_kits/${short}_${k}.png`;
 }
 
+/** True when a URL is http(s) on another site (canvas cannot read pixels). */
+export function isCrossOriginImageUrl(url) {
+  const trimmed = String(url ?? "").trim();
+  if (!trimmed || trimmed.startsWith("data:")) return false;
+  if (!/^https?:\/\//i.test(trimmed)) return false;
+  try {
+    const parsed = new URL(trimmed, window.location.href);
+    return parsed.origin !== window.location.origin;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Image paths safe for canvas colour sampling — prefers synced local PNGs
+ * when the DB stores external Colours-of-Football URLs.
+ */
+export function kitSampleSrcCandidates(url, clubShort, kind) {
+  const local = defaultKitImagePath(clubShort, kind);
+  const candidates = [local];
+  const resolved = url ? resolveKitImageSrc(url, clubShort, kind) : null;
+  if (resolved && resolved !== local && !isCrossOriginImageUrl(resolved)) {
+    candidates.push(resolved);
+  }
+  return candidates;
+}
+
 export function resolveKitImageSrc(url, clubShort, kind) {
   const trimmed = String(url ?? "").trim();
   if (trimmed) return trimmed;
