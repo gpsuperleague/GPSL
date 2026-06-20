@@ -102,11 +102,25 @@ async function saveSettings() {
       draft_auction_start_time ? new Date(draft_auction_start_time) : null
     );
 
-  if (isAnyDraft && (!wasAnyDraft || scheduleExpired || !draft_auction_start_time)) {
+  let pendingDraftListings = 0;
+  if (scheduleExpired) {
+    const { count } = await supabase
+      .from("Player_Transfer_Listings")
+      .select("*", { count: "exact", head: true })
+      .eq("listing_type", "draft")
+      .eq("status", "Active");
+    pendingDraftListings = count ?? 0;
+  }
+
+  if (
+    isAnyDraft &&
+    (!wasAnyDraft || scheduleExpired || !draft_auction_start_time) &&
+    pendingDraftListings === 0
+  ) {
     const times = computeNextDraftTimesFromNow();
     draft_auction_start_time = times.draftStartISO;
     draft_random_finish_time = times.randomFinishISO;
-  } else if (!isAnyDraft) {
+  } else if (!isAnyDraft && pendingDraftListings === 0) {
     draft_auction_start_time = null;
     draft_random_finish_time = null;
   }
@@ -155,6 +169,12 @@ async function saveSettings() {
           setStatus(
             "settingsMessage",
             "✅ Flags saved. Schedule RPC missing — run managers_draft_schedule.sql, then save again.",
+            true
+          );
+        } else if (pendingDraftListings > 0 && scheduleExpired) {
+          setStatus(
+            "settingsMessage",
+            `✅ Settings updated. ${pendingDraftListings} draft listing(s) still settling — kept previous secret finish time.`,
             true
           );
         } else {
