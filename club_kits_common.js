@@ -33,23 +33,41 @@ export function isCrossOriginImageUrl(url) {
   }
 }
 
-/**
- * Image paths safe for canvas colour sampling — prefers synced local PNGs
- * when the DB stores external Colours-of-Football URLs.
- */
-export function kitSampleSrcCandidates(url, clubShort, kind) {
-  const local = defaultKitImagePath(clubShort, kind);
-  const candidates = [local];
-  const resolved = url ? resolveKitImageSrc(url, clubShort, kind) : null;
-  if (resolved && resolved !== local && !isCrossOriginImageUrl(resolved)) {
-    candidates.push(resolved);
-  }
-  return candidates;
+export function getDisplayedKitImage(kind) {
+  const k = String(kind || "home").toLowerCase();
+  return document.querySelector(`.club-kit-card[data-kit-kind="${k}"] img.club-kit-img`);
 }
 
-export function resolveKitImageSrc(url, clubShort, kind) {
-  const trimmed = String(url ?? "").trim();
-  if (trimmed) return trimmed;
+export function displayedKitImageSrc(kind) {
+  const img = getDisplayedKitImage(kind);
+  if (!img) return null;
+  return img.currentSrc || img.src || null;
+}
+
+export function waitForDisplayedKitImage(kind, timeoutMs = 8000) {
+  const img = getDisplayedKitImage(kind);
+  if (!img) return Promise.resolve(null);
+  if (img.complete && img.naturalWidth > 0) return Promise.resolve(img);
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve(img.naturalWidth > 0 ? img : null);
+    };
+    img.addEventListener("load", finish, { once: true });
+    img.addEventListener("error", finish, { once: true });
+    setTimeout(finish, timeoutMs);
+  });
+}
+
+/**
+ * Kit image src for display and colour sampling.
+ * GPSL kits live in the repo: images/clubs_kits/{SHORT}_{kind}.png
+ * (COF sync or manual upload e.g. JUB). Legacy external COF URLs in club_kits are ignored.
+ */
+export function resolveKitImageSrc(_url, clubShort, kind) {
   return defaultKitImagePath(clubShort, kind);
 }
 

@@ -1015,7 +1015,11 @@ function wireDashboardThemePanel(clubShort) {
         source_kit: kind,
       };
       writeThemeDraftToForm(themeDraft);
-      setThemeStatus(`Suggested from ${kind} kit — adjust if needed, then save.`, "ok");
+      setThemeStatus(
+        suggested.sample_note ||
+          `Suggested from ${kind} kit — adjust if needed, then save.`,
+        "ok"
+      );
     } catch (err) {
       console.warn("Theme suggest:", err);
       setThemeStatus(err?.message || "Could not read colours from kit image.", "err");

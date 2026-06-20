@@ -2,10 +2,9 @@
 
 import {
   defaultKitImagePath,
-  isCrossOriginImageUrl,
-  kitSampleSrcCandidates,
   kitUrlFromRow,
   resolveKitImageSrc,
+  waitForDisplayedKitImage,
 } from "./club_kits_common.js";
 
 export const GPSL_THEME_DEFAULTS = {
@@ -115,8 +114,8 @@ function rgbToHue(r, g, b) {
 
 function isSkippablePixel(r, g, b, a) {
   if (a < 128) return true;
-  if (r > 235 && g > 235 && b > 235) return true;
-  if (r < 22 && g < 22 && b < 22) return true;
+  if (r > 240 && g > 240 && b > 240) return true;
+  if (r < 18 && g < 18 && b < 18) return true;
   return false;
 }
 
@@ -157,17 +156,40 @@ function readCanvasPixels(ctx, width, height) {
   }
 }
 
-export async function extractKitThemeColors(imageSrc) {
-  const img = await loadImageElement(imageSrc);
-  const size = 64;
-  const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
-  if (!ctx) throw new Error("Canvas unavailable");
+function drawKitTorsoSample(ctx, img, size) {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  if (!iw || !ih) {
+    ctx.drawImage(img, 0, 0, size, size);
+    return;
+  }
+  const sx = iw * 0.22;
+  const sy = ih * 0.06;
+  const sw = iw * 0.56;
+  const sh = ih * 0.36;
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, size, size);
+}
 
-  ctx.drawImage(img, 0, 0, size, size);
-  const { data } = readCanvasPixels(ctx, size, size);
+function pickPrimaryColor(ranked, total) {
+  const minCount = Math.max(2, total * 0.015);
+  const pool = ranked.filter((c) => c.count >= minCount);
+  const list = pool.length ? pool : ranked.slice(0, 10);
+
+  let best = list[0];
+  let bestScore = -1;
+  for (const c of list) {
+    const share = c.count / Math.max(total, 1);
+    const score =
+      c.count * (0.25 + c.sat) + (share > 0.18 && c.sat < 0.12 ? share * total * 0.5 : 0);
+    if (score > bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  return best?.hex || GPSL_THEME_DEFAULTS.color_primary;
+}
+
+function extractColorsFromPixelData(data) {
   const counts = new Map();
 
   for (let i = 0; i < data.length; i += 4) {
@@ -200,16 +222,11 @@ export async function extractKitThemeColors(imageSrc) {
     .sort((a, b) => b.count - a.count);
 
   const total = ranked.reduce((s, c) => s + c.count, 0);
-  const minCount = Math.max(3, total * 0.02);
-
-  const candidates = ranked.filter((c) => c.count >= minCount);
-  const pool = candidates.length ? candidates : ranked.slice(0, 8);
-
-  pool.sort((a, b) => b.sat * Math.log(b.count + 1) - a.sat * Math.log(a.count + 1));
-  const primary = pool[0]?.hex || GPSL_THEME_DEFAULTS.color_primary;
+  const primary = pickPrimaryColor(ranked, total);
 
   let secondary = null;
-  const primaryHue = pool[0]?.hue ?? 0;
+  const primaryEntry = ranked.find((c) => c.hex === primary) || ranked[0];
+  const primaryHue = primaryEntry?.hue ?? 0;
   for (const c of ranked) {
     if (c.hex === primary) continue;
     if (hueDistance(c.hue, primaryHue) >= 25 && c.sat >= 0.12) {
@@ -233,33 +250,62 @@ export async function extractKitThemeColors(imageSrc) {
   };
 }
 
+export async function extractKitThemeColorsFromImage(img) {
+  const size = 72;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) throw new Error("Canvas unavailable");
+
+  drawKitTorsoSample(ctx, img, size);
+  const { data } = readCanvasPixels(ctx, size, size);
+  return extractColorsFromPixelData(data);
+}
+
+export async function extractKitThemeColors(imageSrc) {
+  const img = await loadImageElement(imageSrc);
+  return extractKitThemeColorsFromImage(img);
+}
+
 export function kitImageSrcForKind(clubShort, kitRow, kind) {
   const url = kitUrlFromRow(kitRow, kind);
   return resolveKitImageSrc(url, clubShort, kind);
 }
 
 export async function suggestThemeFromKit(clubShort, kitRow, kind = "home") {
-  const dbUrl = kitUrlFromRow(kitRow, kind);
-  const candidates = kitSampleSrcCandidates(dbUrl, clubShort, kind);
+  const local = defaultKitImagePath(clubShort, kind);
+  const displayed = await waitForDisplayedKitImage(kind);
   let lastError = null;
 
-  for (const src of candidates) {
+  if (displayed && displayed.naturalWidth > 0) {
     try {
-      const colors = await extractKitThemeColors(src);
-      return { ...colors, source_kit: kind };
+      const colors = await extractKitThemeColorsFromImage(displayed);
+      return {
+        ...colors,
+        source_kit: kind,
+        sample_note: `Sampled from ${local} (kit shown above).`,
+      };
     } catch (err) {
       lastError = err;
     }
   }
 
-  const local = defaultKitImagePath(clubShort, kind);
-  if (dbUrl && isCrossOriginImageUrl(resolveKitImageSrc(dbUrl, clubShort, kind))) {
-    throw new Error(
-      `Could not sample kit colours from ${local}. External kit URLs cannot be read — ask admin to sync local kit images.`
-    );
+  try {
+    const colors = await extractKitThemeColors(local);
+    return {
+      ...colors,
+      source_kit: kind,
+      sample_note: `Sampled from ${local}.`,
+    };
+  } catch (err) {
+    lastError = err;
   }
 
-  throw lastError || new Error("Could not sample kit colours");
+  throw (
+    lastError ||
+    new Error(`Could not sample ${local}. Add or re-sync the PNG in images/clubs_kits/.`)
+  );
 }
 
 export function normalizeThemeRow(row) {

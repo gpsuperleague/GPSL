@@ -3,8 +3,8 @@
 -- Run once in Supabase SQL Editor.
 -- UI: club_details.html (owners), admin_club_kits.html (admin)
 --
--- Image URLs may be site-relative (images/clubs_kits/ARS_home.png) or https://…
--- Default fallback when unset: images/clubs_kits/{ShortName}_home.png etc.
+-- Image URLs in club_kits are optional metadata; the site always serves
+-- images/clubs_kits/{ShortName}_home.png from GitHub (COF sync or manual).
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS public.club_kits (
