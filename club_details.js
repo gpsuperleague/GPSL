@@ -20,6 +20,7 @@ import {
 import { wireAvailabilityPanel } from "./owner_availability.js";
 import { loadClubKits, renderKitsPanelHtml } from "./club_kits_common.js";
 import {
+  applyClubDashboardTheme,
   GPSL_THEME_DEFAULTS,
   loadClubDashboardTheme,
   normalizeHexColor,
@@ -912,6 +913,8 @@ function writeThemeDraftToForm(theme) {
   if (preview) {
     preview.innerHTML = renderThemePreviewHtml(themeDraft);
   }
+
+  applyClubDashboardTheme(themeDraft);
 }
 
 function setThemeStatus(message, kind = "") {

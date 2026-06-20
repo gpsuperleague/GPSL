@@ -256,21 +256,19 @@ export async function saveClubDashboardTheme(supabase, theme) {
   return data;
 }
 
-export function applyClubDashboardTheme(theme) {
-  const root = document.documentElement;
-  const body = document.body;
+export function applyClubDashboardTheme(theme, scopeEl) {
+  const scope =
+    scopeEl || document.querySelector(".page-container") || document.body;
   const active = theme?.enabled === true;
 
-  if (body) {
-    body.classList.toggle("club-dashboard-themed", active);
-  }
+  scope.classList.toggle("club-themed-scope", active);
 
   if (!active) {
-    root.style.removeProperty("--club-accent");
-    root.style.removeProperty("--club-panel");
-    root.style.removeProperty("--club-border");
-    root.style.removeProperty("--club-glow");
-    root.style.removeProperty("--club-accent-rgb");
+    scope.style.removeProperty("--club-accent");
+    scope.style.removeProperty("--club-panel");
+    scope.style.removeProperty("--club-border");
+    scope.style.removeProperty("--club-glow");
+    scope.style.removeProperty("--club-accent-rgb");
     return;
   }
 
@@ -285,11 +283,11 @@ export function applyClubDashboardTheme(theme) {
     GPSL_THEME_DEFAULTS.color_border;
   const rgb = hexToRgb(primary) || { r: 255, g: 153, b: 0 };
 
-  root.style.setProperty("--club-accent", primary);
-  root.style.setProperty("--club-panel", secondary);
-  root.style.setProperty("--club-border", border);
-  root.style.setProperty("--club-glow", `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14)`);
-  root.style.setProperty("--club-accent-rgb", `${rgb.r}, ${rgb.g}, ${rgb.b}`);
+  scope.style.setProperty("--club-accent", primary);
+  scope.style.setProperty("--club-panel", secondary);
+  scope.style.setProperty("--club-border", border);
+  scope.style.setProperty("--club-glow", `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14)`);
+  scope.style.setProperty("--club-accent-rgb", `${rgb.r}, ${rgb.g}, ${rgb.b}`);
 }
 
 export function renderThemePreviewHtml(theme) {

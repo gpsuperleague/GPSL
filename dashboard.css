@@ -7,11 +7,25 @@
    ============================================================ */
 
 :root {
-  --club-accent: #ff9900;
-  --club-panel: #1a1a1a;
-  --club-border: #333;
+  --gpsl-accent: #ff9900;
+  --gpsl-accent-rgb: 255, 153, 0;
+  --gpsl-panel: #1a1a1a;
+  --gpsl-border: #333;
+  --club-accent: var(--gpsl-accent);
+  --club-panel: var(--gpsl-panel);
+  --club-border: var(--gpsl-border);
   --club-glow: rgba(255, 153, 0, 0.12);
-  --club-accent-rgb: 255, 153, 0;
+  --club-accent-rgb: var(--gpsl-accent-rgb);
+}
+
+/* Top nav + dashboard chrome stay GPSL orange even when page content is club-themed */
+#nav,
+#nav *,
+.dashboard-toolbar,
+.dashboard-toolbar *,
+.dashboard-pin-btn {
+  --club-accent: var(--gpsl-accent);
+  --club-accent-rgb: var(--gpsl-accent-rgb);
 }
 
 
