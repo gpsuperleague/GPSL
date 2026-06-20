@@ -127,6 +127,34 @@
     .kits-pill--set { background: #1a3d1a; color: #7ddf7d; }
     .kits-pill--default { background: #333; color: #aaa; }
     .kits-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+    .kits-upload-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 900px) {
+      .kits-upload-grid { grid-template-columns: 1fr; }
+    }
+    .kits-upload-card {
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 10px;
+    }
+    .kits-upload-label {
+      font-size: 12px;
+      color: #ff9900;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .kits-upload-input {
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 8px;
+      font-size: 11px;
+      color: #ccc;
+    }
   </style>
 </head>
 <body class="admin-page">
@@ -138,10 +166,9 @@
   </p>
 
   <p class="kits-intro">
-    Set image paths or URLs for each club's home, away, and third kits. Owners see these on
-    <b>Club Details</b>. Leave a field blank to use the default path
-    <code>images/clubs_kits/{SHORT}_home.png</code> (and <code>_away</code> / <code>_third</code>),
-    or use <b>Sync from Colours of Football</b> below to pull the latest kits automatically.
+    Kits are PNGs in <code>images/clubs_kits/</code> on GitHub (COF sync or manual upload).
+    Owners see them on <b>Club Details</b>. Use <b>Replace kits for selected club</b> below to
+    re-download one club from Colours of Football or upload a custom PNG (e.g. Jubilo).
     Graphics courtesy of
     <a href="https://www.colours-of-football.com/" target="_blank" rel="noopener" style="color:#ff9900;">colours-of-football.com</a>.
   </p>
@@ -220,11 +247,41 @@
     </div>
   </div>
 
+  <div class="kits-replace-panel card" id="kitsReplacePanel" hidden style="padding:14px;margin-bottom:16px;background:#1a1a1a;border:1px solid #333;border-radius:8px;">
+    <h2 style="margin:0 0 8px;font-size:16px;color:#ff9900;">Replace kits for selected club</h2>
+    <p style="margin:0 0 12px;font-size:12px;color:#999;line-height:1.45;">
+      Kits are served from <code>images/clubs_kits/{SHORT}_home.png</code> on GitHub.
+      Re-download one club from COF, or upload a PNG (e.g. Jubilo — not on COF).
+      Requires <code>GITHUB_TOKEN</code> on the edge function. Live on GitHub Pages after deploy.
+    </p>
+    <div class="kits-actions" style="margin-bottom:14px;">
+      <button type="button" id="replaceCofBtn" class="button">Download selected club from COF → GitHub</button>
+    </div>
+    <div class="kits-upload-grid">
+      <div class="kits-upload-card" data-kind="home">
+        <div class="kits-upload-label">Upload home PNG</div>
+        <input type="file" id="uploadHomeFile" accept="image/png" class="kits-upload-input">
+        <button type="button" class="button secondary kits-upload-btn" data-kind="home">Upload home</button>
+      </div>
+      <div class="kits-upload-card" data-kind="away">
+        <div class="kits-upload-label">Upload away PNG</div>
+        <input type="file" id="uploadAwayFile" accept="image/png" class="kits-upload-input">
+        <button type="button" class="button secondary kits-upload-btn" data-kind="away">Upload away</button>
+      </div>
+      <div class="kits-upload-card" data-kind="third">
+        <div class="kits-upload-label">Upload 3rd PNG</div>
+        <input type="file" id="uploadThirdFile" accept="image/png" class="kits-upload-input">
+        <button type="button" class="button secondary kits-upload-btn" data-kind="third">Upload 3rd</button>
+      </div>
+    </div>
+    <pre id="replaceKitLog" style="margin:12px 0 0;padding:10px;background:#111;border:1px solid #333;border-radius:6px;font-size:11px;color:#aaa;max-height:120px;overflow:auto;white-space:pre-wrap;"></pre>
+  </div>
+
   <h2 class="admin-subtitle">All clubs</h2>
   <div class="kits-table-wrap" id="tableWrap">
     <p style="padding:12px;color:#888;">Loading…</p>
   </div>
 
-  <script type="module" src="admin_club_kits.js?v=20260619-cof-slugs"></script>
+  <script type="module" src="admin_club_kits.js?v=20260621-replace-kit"></script>
 </body>
 </html>

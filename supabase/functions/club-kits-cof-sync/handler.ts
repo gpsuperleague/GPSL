@@ -277,6 +277,91 @@ async function handleClubKitsCofSync(req: Request): Promise<Response> {
       return jsonResponse({ ok: true, club, result });
     }
 
+    if (action === "upload_club_kit") {
+      const short = String(body?.club_short_name || "").trim().toUpperCase();
+      const kind = String(body?.kind || "").trim().toLowerCase();
+      if (!short) return jsonResponse({ error: "club_short_name required" }, 400);
+      if (!["home", "away", "third"].includes(kind)) {
+        return jsonResponse({ error: "kind must be home, away, or third" }, 400);
+      }
+
+      const { data: club, error: clubErr } = await adminClient
+        .from("Clubs")
+        .select("ShortName")
+        .eq("ShortName", short)
+        .maybeSingle();
+      if (clubErr || !club) {
+        return jsonResponse({ error: `Club not found: ${short}` }, 404);
+      }
+
+      let raw = String(body?.image_base64 || "").trim();
+      if (!raw) return jsonResponse({ error: "image_base64 required" }, 400);
+      if (raw.includes(",")) raw = raw.split(",")[1] || raw;
+      raw = raw.replace(/\s/g, "");
+
+      let bytes: Uint8Array;
+      try {
+        bytes = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
+      } catch {
+        return jsonResponse({ error: "Invalid image_base64" }, 400);
+      }
+      if (bytes.length < 32) {
+        return jsonResponse({ error: "Image data too small" }, 400);
+      }
+      if (bytes.length > 6_000_000) {
+        return jsonResponse({ error: "Image too large (max ~6MB)" }, 400);
+      }
+
+      if (!ghToken) {
+        return jsonResponse(
+          {
+            error:
+              "GITHUB_TOKEN not set — add a GitHub PAT with repo contents write access in Supabase → Edge Functions → Secrets.",
+          },
+          400
+        );
+      }
+
+      const ext = body?.ext === "gif" ? "gif" : "png";
+      const { paths, commitSha } = await githubCommitClubKitImages(
+        ghToken,
+        short,
+        [{ kind, bytes, ext }]
+      );
+      const path = paths[kind] || repoKitPath(short, kind, ext);
+
+      const { data: existing } = await adminClient
+        .from("club_kits")
+        .select("home_image_url, away_image_url, third_image_url")
+        .eq("club_short_name", short)
+        .maybeSingle();
+
+      const upsert: Record<string, unknown> = {
+        club_short_name: short,
+        home_image_url: existing?.home_image_url ?? null,
+        away_image_url: existing?.away_image_url ?? null,
+        third_image_url: existing?.third_image_url ?? null,
+        updated_at: new Date().toISOString(),
+      };
+      if (kind === "home") upsert.home_image_url = path;
+      else if (kind === "away") upsert.away_image_url = path;
+      else upsert.third_image_url = path;
+
+      const { error: saveErr } = await adminClient
+        .from("club_kits")
+        .upsert(upsert, { onConflict: "club_short_name" });
+
+      if (saveErr) return jsonResponse({ error: saveErr.message }, 500);
+
+      return jsonResponse({
+        ok: true,
+        club_short_name: short,
+        kind,
+        path,
+        github: { commit_sha: commitSha },
+      });
+    }
+
     if (action !== "sync_batch") {
       return jsonResponse({ error: `Unknown action: ${action}` }, 400);
     }

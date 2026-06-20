@@ -37,6 +37,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("cofLinksOnlyBtn").onclick = () =>
     downloadLatestKits({ download: false, github: false });
   document.getElementById("cofPreviewBtn").onclick = () => previewCofForSelected();
+  document.getElementById("replaceCofBtn")?.addEventListener("click", () =>
+    replaceSelectedClubFromCof()
+  );
+
+  document.querySelectorAll(".kits-upload-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const kind = btn.getAttribute("data-kind");
+      if (kind) uploadKitFile(kind);
+    });
+  });
 
   for (const kind of KIT_KINDS) {
     const input = document.getElementById(FIELD_IDS[kind]);
@@ -91,9 +101,11 @@ function onClubSelect() {
   const short = document.getElementById("clubSelect")?.value || "";
   const editor = document.getElementById("kitsEditor");
   const saveBtn = document.getElementById("saveKitsBtn");
+  const replacePanel = document.getElementById("kitsReplacePanel");
 
   if (!short) {
     if (editor) editor.hidden = true;
+    if (replacePanel) replacePanel.hidden = true;
     if (saveBtn) saveBtn.disabled = true;
     const previewBtn = document.getElementById("cofPreviewBtn");
     if (previewBtn) previewBtn.disabled = true;
@@ -102,6 +114,7 @@ function onClubSelect() {
 
   const row = rowForClub(short);
   if (editor) editor.hidden = false;
+  if (replacePanel) replacePanel.hidden = false;
   if (saveBtn) saveBtn.disabled = false;
 
   const previewBtn = document.getElementById("cofPreviewBtn");
@@ -122,18 +135,166 @@ function updatePreviews() {
   const short = document.getElementById("clubSelect")?.value || "";
   if (!short) return;
 
+  const bust = Date.now();
+
   for (const kind of KIT_KINDS) {
     const input = document.getElementById(FIELD_IDS[kind]);
     const img = document.getElementById(PREVIEW_IDS[kind]);
     if (!img) continue;
     const src = resolveKitImageSrc(input?.value || "", short, kind);
-    img.src = src;
+    img.src = `${src}?t=${bust}`;
     img.onerror = () => {
       img.style.opacity = "0.35";
     };
     img.onload = () => {
       img.style.opacity = "1";
     };
+  }
+}
+
+function appendReplaceLog(line) {
+  const el = document.getElementById("replaceKitLog");
+  if (!el) return;
+  el.textContent += `${line}\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function clearReplaceLog() {
+  const el = document.getElementById("replaceKitLog");
+  if (el) el.textContent = "";
+}
+
+function fileInputForKind(kind) {
+  const id =
+    kind === "home"
+      ? "uploadHomeFile"
+      : kind === "away"
+        ? "uploadAwayFile"
+        : "uploadThirdFile";
+  return document.getElementById(id);
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function replaceSelectedClubFromCof() {
+  const short = document.getElementById("clubSelect")?.value || "";
+  if (!short) return;
+
+  const clubName = rowForClub(short)?.club_name || short;
+  if (
+    !confirm(
+      `Download latest kits for ${clubName} (${short}) from Colours of Football and commit to GitHub?\n\nOverwrites images/clubs_kits/${short}_home.png etc.`
+    )
+  ) {
+    return;
+  }
+
+  clearReplaceLog();
+  setStatus("statusLine", `Downloading ${short} from COF…`, true);
+  const btn = document.getElementById("replaceCofBtn");
+  if (btn) btn.disabled = true;
+
+  try {
+    const data = await invokeCofSync({
+      action: "sync_batch",
+      club_short_names: [short],
+      offset: 0,
+      limit: 1,
+      download: true,
+      github: true,
+      strict_season: true,
+    });
+
+    const row = data?.results?.[0];
+    if (row?.ok && !row.skipped) {
+      const gh = row.github?.committed?.length
+        ? ` → GitHub (${row.github.committed.length} file(s))`
+        : "";
+      appendReplaceLog(`OK ${short}${gh}`);
+      if (row.download_warning) appendReplaceLog(`Warning: ${row.download_warning}`);
+      setStatus("statusLine", `Replaced kits for ${short} on GitHub.`, true);
+    } else if (row?.skipped) {
+      appendReplaceLog(`SKIP ${short}: ${row.reason || "skipped"}`);
+      setStatus("statusLine", row.reason || "Club skipped.", false);
+    } else {
+      const err = row?.error || "COF sync failed";
+      appendReplaceLog(`FAIL ${short}: ${err}`);
+      setStatus("statusLine", err, false);
+    }
+
+    await loadTable();
+    onClubSelect();
+  } catch (err) {
+    setStatus("statusLine", err.message, false);
+    appendReplaceLog(err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function uploadKitFile(kind) {
+  const short = document.getElementById("clubSelect")?.value || "";
+  if (!short) return;
+
+  const input = fileInputForKind(kind);
+  const file = input?.files?.[0];
+  if (!file) {
+    setStatus("statusLine", "Choose a PNG or GIF file first.", false);
+    return;
+  }
+
+  if (!/^image\/png$/i.test(file.type)) {
+    setStatus("statusLine", "Only PNG images are supported.", false);
+    return;
+  }
+
+  const path = defaultKitImagePath(short, kind);
+  if (
+    !confirm(
+      `Upload ${file.name} as ${path} on GitHub for ${short}?`
+    )
+  ) {
+    return;
+  }
+
+  clearReplaceLog();
+  setStatus("statusLine", `Uploading ${kind} kit for ${short}…`, true);
+
+  const btn = document.querySelector(`.kits-upload-btn[data-kind="${kind}"]`);
+  if (btn) btn.disabled = true;
+
+  try {
+    const image_base64 = await readFileAsBase64(file);
+    const data = await invokeCofSync({
+      action: "upload_club_kit",
+      club_short_name: short,
+      kind,
+      image_base64,
+      ext: "png",
+    });
+
+    appendReplaceLog(`OK uploaded ${data.path} (commit ${data.github?.commit_sha?.slice(0, 7) || "?"})`);
+    setStatus(
+      "statusLine",
+      `Uploaded ${kind} kit for ${short}. Live after GitHub Pages deploy.`,
+      true
+    );
+
+    if (input) input.value = "";
+    await loadTable();
+    onClubSelect();
+  } catch (err) {
+    setStatus("statusLine", err.message, false);
+    appendReplaceLog(err.message);
+  } finally {
+    if (btn) btn.disabled = false;
   }
 }
 
@@ -230,7 +391,7 @@ function renderTable() {
       if (sel && short) {
         sel.value = short;
         onClubSelect();
-        document.getElementById("kitsEditor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        document.getElementById("kitsReplacePanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     });
   });
