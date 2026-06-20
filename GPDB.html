@@ -423,7 +423,7 @@
       flex-direction: column;
       gap: 4px;
       min-width: 168px;
-      max-width: 220px;
+      max-width: 280px;
       font-size: 12px;
       color: #ffaa22;
     }
@@ -490,6 +490,14 @@
     .range-filter-sliders input[type="range"]::-moz-range-track {
       height: 6px;
       background: transparent;
+    }
+
+    .range-filter-sliders input[type="range"].range-filter-min {
+      z-index: 3;
+    }
+
+    .range-filter-sliders input[type="range"].range-filter-max {
+      z-index: 4;
     }
 
     .range-filter-sliders input[type="range"]::-webkit-slider-thumb {
@@ -701,7 +709,7 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js"></script>
-  <script type="module" src="gpdb_v2.js?v=20260620-mv-bounds-v2"></script>
+  <script type="module" src="gpdb_v2.js?v=20260620-mv-fixed"></script>
 
 </body>
 </html>

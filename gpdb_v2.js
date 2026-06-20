@@ -221,8 +221,68 @@ document.addEventListener("DOMContentLoaded", () => {
     "contract_wage",
   ];
 
-  /** Continuous columns: use SQL min/max (distinct is capped ~1000 rows). */
-  const CONTINUOUS_RANGE_COLUMNS = ["market_value", "contract_wage"];
+  /** Continuous columns: load min/max from DB (distinct is capped ~1000 rows). */
+  const CONTINUOUS_RANGE_COLUMNS = ["contract_wage"];
+
+  const MARKET_VALUE_FILTER_MIN = 1;
+  const MARKET_VALUE_FILTER_MAX = 200_000_000;
+  const MARKET_VALUE_FILTER_STEP = 1_000_000;
+
+  function snapMarketValue(n) {
+    const num = Number(n);
+    if (!Number.isFinite(num)) return MARKET_VALUE_FILTER_MIN;
+    const clamped = Math.max(
+      MARKET_VALUE_FILTER_MIN,
+      Math.min(num, MARKET_VALUE_FILTER_MAX)
+    );
+    const snapped =
+      Math.round(clamped / MARKET_VALUE_FILTER_STEP) * MARKET_VALUE_FILTER_STEP;
+    return Math.max(MARKET_VALUE_FILTER_MIN, Math.min(snapped, MARKET_VALUE_FILTER_MAX));
+  }
+
+  function normalizeMarketValueActive() {
+    const bounds = RANGE_BOUNDS.market_value;
+    if (!bounds) return;
+
+    const active = RANGE_ACTIVE.market_value || {
+      min: bounds.min,
+      max: bounds.max,
+    };
+    let lo = snapMarketValue(active.min);
+    let hi = snapMarketValue(active.max);
+    if (lo > hi) [lo, hi] = [hi, lo];
+    RANGE_ACTIVE.market_value = { min: lo, max: hi };
+  }
+
+  function setMarketValueBounds() {
+    RANGE_BOUNDS.market_value = {
+      type: "numeric",
+      min: MARKET_VALUE_FILTER_MIN,
+      max: MARKET_VALUE_FILTER_MAX,
+      step: MARKET_VALUE_FILTER_STEP,
+    };
+    RANGE_ACTIVE.market_value = {
+      min: MARKET_VALUE_FILTER_MIN,
+      max: MARKET_VALUE_FILTER_MAX,
+    };
+  }
+
+  function rangeFilterStep(col) {
+    if (col === "market_value") return MARKET_VALUE_FILTER_STEP;
+    const bounds = RANGE_BOUNDS[col];
+    if (bounds?.step) return bounds.step;
+    return 1;
+  }
+
+  function normalizedRangeActive(col) {
+    const active = RANGE_ACTIVE[col] || { min: 0, max: 0 };
+    const lo = Math.min(active.min, active.max);
+    const hi = Math.max(active.min, active.max);
+    if (col === "market_value") {
+      return { min: snapMarketValue(lo), max: snapMarketValue(hi) };
+    }
+    return { min: lo, max: hi };
+  }
 
   const FILTER_LAYOUT_ROWS = [
     ["Position", "Nation", "Age", "Rating", "Playstyle"],
@@ -324,8 +384,13 @@ document.addEventListener("DOMContentLoaded", () => {
       let lo = Number(savedRange.min);
       let hi = Number(savedRange.max);
       if (isNaN(lo) || isNaN(hi)) return;
-      lo = Math.max(bounds.min, Math.min(lo, bounds.max));
-      hi = Math.max(bounds.min, Math.min(hi, bounds.max));
+      if (col === "market_value") {
+        lo = snapMarketValue(lo);
+        hi = snapMarketValue(hi);
+      } else {
+        lo = Math.max(bounds.min, Math.min(lo, bounds.max));
+        hi = Math.max(bounds.min, Math.min(hi, bounds.max));
+      }
       if (lo > hi) [lo, hi] = [hi, lo];
       RANGE_ACTIVE[col] = { min: lo, max: hi };
       return;
@@ -365,6 +430,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
     }
+
+    normalizeMarketValueActive();
 
     if (typeof saved.scoutedOnly === "boolean") {
       SCOUTED_ONLY = saved.scoutedOnly;
@@ -636,7 +703,7 @@ document.addEventListener("DOMContentLoaded", () => {
     for (const col of RANGE_FILTER_COLUMNS) {
       if (col === "market_value" || col === "contract_wage") {
         const bounds = RANGE_BOUNDS[col];
-        const active = RANGE_ACTIVE[col];
+        const active = normalizedRangeActive(col);
         if (bounds && active && isRangeFilterActive(col)) {
           query = query.gte(col, active.min).lte(col, active.max);
         }
@@ -858,7 +925,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function loadRangeBounds() {
+    setMarketValueBounds();
+
     for (const col of RANGE_FILTER_COLUMNS) {
+      if (col === "market_value") continue;
+
       if (CONTINUOUS_RANGE_COLUMNS.includes(col)) {
         await loadNumericColumnBounds(col);
         continue;
@@ -880,7 +951,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function isRangeFilterActive(col) {
     const bounds = RANGE_BOUNDS[col];
-    const active = RANGE_ACTIVE[col];
+    const active = normalizedRangeActive(col);
     if (!bounds || !active) return false;
     if (bounds.type === "numeric") {
       return active.min > bounds.min || active.max < bounds.max;
@@ -909,9 +980,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (bounds.type === "numeric") {
       if (col === "market_value" || col === "contract_wage") {
-        return `(${formatMoney(active.min)}-${formatMoney(active.max)})`;
+        const { min: lo, max: hi } = normalizedRangeActive(col);
+        return `(${formatMoney(lo)}-${formatMoney(hi)})`;
       }
-      return `(${active.min}-${active.max})`;
+      const { min: lo, max: hi } = normalizedRangeActive(col);
+      return `(${lo}-${hi})`;
     }
 
     const lo = bounds.values[active.min] ?? "—";
@@ -927,7 +1000,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function updateRangeTrack(col) {
     const wrap = document.getElementById(`filter-${col}-sliders`);
     const bounds = RANGE_BOUNDS[col];
-    const active = RANGE_ACTIVE[col];
+    const active = normalizedRangeActive(col);
     if (!wrap || !bounds || !active) return;
 
     let baseMin;
@@ -958,10 +1031,11 @@ document.addEventListener("DOMContentLoaded", () => {
       `;
     }
 
-    const active = RANGE_ACTIVE[col] || { min: 0, max: 0 };
+    const active = normalizedRangeActive(col);
     const sliderMin = bounds.type === "numeric" ? bounds.min : 0;
     const sliderMax =
       bounds.type === "numeric" ? bounds.max : Math.max(bounds.values.length - 1, 0);
+    const step = rangeFilterStep(col);
     const disabled = sliderMax <= sliderMin ? "disabled" : "";
 
     return `
@@ -969,8 +1043,8 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="range-filter-label">${label} <span class="range-filter-range" id="filter-${col}-range">${formatRangeBracket(col)}</span></div>
         <div class="range-filter-sliders" id="filter-${col}-sliders">
           <div class="range-filter-track"></div>
-          <input type="range" id="filter-${col}-min" min="${sliderMin}" max="${sliderMax}" value="${active.min}" step="1" aria-label="${label} minimum" ${disabled}>
-          <input type="range" id="filter-${col}-max" min="${sliderMin}" max="${sliderMax}" value="${active.max}" step="1" aria-label="${label} maximum" ${disabled}>
+          <input type="range" class="range-filter-min" id="filter-${col}-min" min="${sliderMin}" max="${sliderMax}" value="${active.min}" step="${step}" aria-label="${label} minimum" ${disabled}>
+          <input type="range" class="range-filter-max" id="filter-${col}-max" min="${sliderMin}" max="${sliderMax}" value="${active.max}" step="${step}" aria-label="${label} maximum" ${disabled}>
         </div>
       </div>
     `;
@@ -1026,6 +1100,13 @@ document.addEventListener("DOMContentLoaded", () => {
         if (isNaN(lo)) lo = 0;
         if (isNaN(hi)) hi = lo;
 
+        if (col === "market_value") {
+          lo = snapMarketValue(lo);
+          hi = snapMarketValue(hi);
+          minEl.value = String(lo);
+          maxEl.value = String(hi);
+        }
+
         if (lo > hi) {
           if (document.activeElement === minEl) {
             hi = lo;
@@ -1037,6 +1118,11 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         RANGE_ACTIVE[col] = { min: lo, max: hi };
+        if (col === "market_value") normalizeMarketValueActive();
+        const active = normalizedRangeActive(col);
+        minEl.value = String(active.min);
+        maxEl.value = String(active.max);
+        RANGE_ACTIVE[col] = { min: active.min, max: active.max };
         updateRangeReadout(col);
         updateRangeTrack(col);
         syncThumbZIndex();
