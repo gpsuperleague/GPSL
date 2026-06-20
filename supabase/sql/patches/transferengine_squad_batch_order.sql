@@ -98,16 +98,26 @@ BEGIN
     FROM public."Clubs" c
     WHERE public.club_squad_player_count(c."ShortName") > public.squad_max_size()
   LOOP
-    v_guard := 0;
-    LOOP
-      v_guard := v_guard + 1;
-      EXIT WHEN v_guard > 15;
+    BEGIN
+      v_guard := 0;
+      LOOP
+        v_guard := v_guard + 1;
+        EXIT WHEN v_guard > 15;
 
-      v_total := public.club_squad_player_count(v_club);
-      EXIT WHEN v_total <= public.squad_max_size();
+        v_total := public.club_squad_player_count(v_club);
+        EXIT WHEN v_total <= public.squad_max_size();
 
-      PERFORM public.enforce_squad_overflow_after_signing(v_club, NULL);
-    END LOOP;
+        BEGIN
+          PERFORM public.enforce_squad_overflow_after_signing(v_club, NULL);
+        EXCEPTION WHEN OTHERS THEN
+          RAISE WARNING 'deferred overflow release failed for % (squad %): %',
+            v_club, v_total, SQLERRM;
+          EXIT;
+        END;
+      END LOOP;
+    EXCEPTION WHEN OTHERS THEN
+      RAISE WARNING 'deferred overflow pass failed for %: %', v_club, SQLERRM;
+    END;
   END LOOP;
 END;
 $function$;

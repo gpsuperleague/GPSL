@@ -209,6 +209,10 @@ ORDER BY 1, 2;
 
 -- 12) Single listing — surfaces assign/ledger errors (draft_settlement_assign_overload_fix.sql)
 -- SELECT public.transferengine_try_accept_draft_sale(215);
+
+-- 13) Stuck mid-backlog — sample errors (draft_settlement_stuck_diagnose.sql)
+-- SELECT public.transferengine_diagnose_stuck_drafts(10);
+-- SELECT public.transferengine_settle_player_draft_listings_report(100);
 -- SELECT public.transferengine_diagnose_draft_backlog();
 -- SELECT public.transferengine_explain_draft_listing(
 --   (SELECT id FROM "Player_Transfer_Listings"
