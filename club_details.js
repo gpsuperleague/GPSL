@@ -875,6 +875,7 @@ async function loadKitsSection(clubShort) {
 function themeFieldIds() {
   return [
     ["themePrimaryPicker", "themePrimaryHex", "color_primary"],
+    ["themeTextPicker", "themeTextHex", "color_text"],
     ["themeSecondaryPicker", "themeSecondaryHex", "color_secondary"],
     ["themeBorderPicker", "themeBorderHex", "color_border"],
   ];

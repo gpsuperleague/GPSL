@@ -13,8 +13,12 @@ export const GPSL_THEME_DEFAULTS = {
   color_primary: "#ff9900",
   color_secondary: "#1a1a1a",
   color_border: "#333333",
+  color_text: "#ff9900",
   source_kit: "manual",
 };
+
+/** Suggested tile label colour when sampling from a kit. */
+export const GPSL_THEME_SUGGESTED_TILE_TEXT = "#ffffff";
 
 const HEX_RE = /^#[0-9a-f]{6}$/i;
 
@@ -199,6 +203,7 @@ export async function extractKitThemeColors(imageSrc) {
     color_primary: primary,
     color_secondary: secondary,
     color_border: border,
+    color_text: GPSL_THEME_SUGGESTED_TILE_TEXT,
     source_kit: "manual",
   };
 }
@@ -245,6 +250,11 @@ export function normalizeThemeRow(row) {
     color_border:
       normalizeHexColor(row.color_border, GPSL_THEME_DEFAULTS.color_border) ||
       GPSL_THEME_DEFAULTS.color_border,
+    color_text:
+      normalizeHexColor(row.color_text, null) ||
+      (row.enabled === true
+        ? GPSL_THEME_SUGGESTED_TILE_TEXT
+        : GPSL_THEME_DEFAULTS.color_text),
     source_kit: row.source_kit || "manual",
   };
 }
@@ -255,7 +265,7 @@ export async function loadClubDashboardTheme(supabase, clubShort) {
   const { data, error } = await supabase
     .from("club_dashboard_theme")
     .select(
-      "club_short_name, enabled, color_primary, color_secondary, color_border, source_kit"
+      "club_short_name, enabled, color_primary, color_secondary, color_border, color_text, source_kit"
     )
     .eq("club_short_name", clubShort)
     .maybeSingle();
@@ -282,6 +292,9 @@ export async function saveClubDashboardTheme(supabase, theme) {
     p_color_border:
       normalizeHexColor(theme.color_border, GPSL_THEME_DEFAULTS.color_border) ||
       GPSL_THEME_DEFAULTS.color_border,
+    p_color_text:
+      normalizeHexColor(theme.color_text, GPSL_THEME_DEFAULTS.color_text) ||
+      GPSL_THEME_DEFAULTS.color_text,
     p_source_kit: theme.source_kit || "manual",
   };
 
@@ -301,6 +314,7 @@ export function applyClubDashboardTheme(theme, scopeEl) {
     scope.style.removeProperty("--club-accent");
     scope.style.removeProperty("--club-panel");
     scope.style.removeProperty("--club-border");
+    scope.style.removeProperty("--club-tile-text");
     scope.style.removeProperty("--club-glow");
     scope.style.removeProperty("--club-accent-rgb");
     return;
@@ -315,11 +329,15 @@ export function applyClubDashboardTheme(theme, scopeEl) {
   const border =
     normalizeHexColor(theme.color_border, GPSL_THEME_DEFAULTS.color_border) ||
     GPSL_THEME_DEFAULTS.color_border;
+  const tileText =
+    normalizeHexColor(theme.color_text, GPSL_THEME_DEFAULTS.color_text) ||
+    GPSL_THEME_DEFAULTS.color_text;
   const rgb = hexToRgb(primary) || { r: 255, g: 153, b: 0 };
 
   scope.style.setProperty("--club-accent", primary);
   scope.style.setProperty("--club-panel", secondary);
   scope.style.setProperty("--club-border", border);
+  scope.style.setProperty("--club-tile-text", tileText);
   scope.style.setProperty("--club-glow", `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14)`);
   scope.style.setProperty("--club-accent-rgb", `${rgb.r}, ${rgb.g}, ${rgb.b}`);
 }
@@ -343,7 +361,7 @@ export function renderThemePreviewHtml(theme) {
         padding:8px 14px;
         border-radius:8px;
         border:1px solid ${t.color_border};
-        color:${t.color_primary};
+        color:${t.color_text};
         font-weight:bold;
         font-size:13px;
       ">Tile label</div>

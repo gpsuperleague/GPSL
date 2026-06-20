@@ -511,12 +511,18 @@
 
     .theme-color-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
       margin-bottom: 14px;
     }
 
-    @media (max-width: 720px) {
+    @media (max-width: 900px) {
+      .theme-color-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 520px) {
       .theme-color-grid {
         grid-template-columns: 1fr;
       }
@@ -673,9 +679,14 @@
 
       <div class="theme-color-grid">
         <label class="theme-color-field">
-          Accent (titles &amp; tiles)
+          Accent (titles)
           <input type="color" id="themePrimaryPicker" value="#ff9900">
           <input type="text" id="themePrimaryHex" maxlength="7" spellcheck="false" autocomplete="off">
+        </label>
+        <label class="theme-color-field">
+          Tile text
+          <input type="color" id="themeTextPicker" value="#ffffff">
+          <input type="text" id="themeTextHex" maxlength="7" spellcheck="false" autocomplete="off">
         </label>
         <label class="theme-color-field">
           Panel tint
@@ -853,7 +864,7 @@
 
   </div>
 
-  <script type="module" src="club_details.js?v=20260621-kit-sample"></script>
+  <script type="module" src="club_details.js?v=20260621-tile-text"></script>
 
 </body>
 </html>
