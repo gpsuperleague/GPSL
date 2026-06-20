@@ -2257,8 +2257,8 @@ document.addEventListener("DOMContentLoaded", () => {
         return `
           <div class="multi-filter" data-col="${col}">
             <div class="multi-filter-label">${labelHtml}</div>
-            ${draftHint}
             <div class="multi-filter-control" id="filter-${col}-display">All</div>
+            ${draftHint}
             <div class="multi-filter-panel" id="filter-${col}-panel">
               <input type="text" class="multi-filter-search" autocomplete="off" aria-label="Search ${labelPlain}">
               <div class="multi-filter-options"></div>
