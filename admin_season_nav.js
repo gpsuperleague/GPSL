@@ -43,7 +43,18 @@ const CHALLENGE_PAYOUTS_NAV_ITEM = {
   page: "admin_challenges",
 };
 
+const CLUB_SEASON_CHECKLIST_NAV_ITEM = {
+  label: "Club season checklist",
+  href: "admin_club_checklist.html",
+  page: "admin_club_checklist",
+};
+
 export const SEASON_ADMIN_NAV = [
+  {
+    id: "club_checklist",
+    label: "Club checklist",
+    items: [CLUB_SEASON_CHECKLIST_NAV_ITEM],
+  },
   {
     id: "kickoff",
     label: "Kickoff",
@@ -160,11 +171,6 @@ export const SEASON_MGMT_ADMIN_NAV = [
     id: "mid_season",
     label: "Mid Season",
     items: [
-      {
-        label: "Club season checklist",
-        href: "admin_club_checklist.html",
-        page: "admin_club_checklist",
-      },
       ...TRANSFER_WINDOW_NAV_ITEMS,
       CHALLENGE_PAYOUTS_NAV_ITEM,
     ],
