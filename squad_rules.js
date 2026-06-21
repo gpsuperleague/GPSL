@@ -415,7 +415,7 @@ export function squadComplianceRuleRows(c, clubNation, minimumStatus = null) {
       requirement: `At least ${MIN_SQUAD_SIZE} from August`,
       note: minNote,
       count: c.total,
-      ok: c.minSquadOk || !punishmentsActive,
+      ok: c.minSquadOk,
       status: c.minSquadOk
         ? "Requirement met"
         : punishmentsActive
