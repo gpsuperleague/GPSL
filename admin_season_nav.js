@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260617-club-kits";
+export const SEASON_ADMIN_NAV_VERSION = "20260621-checklist-presteason";
 
 const SEASON_CALENDAR_NAV_ITEM = {
   label: "GPSL season calendar",
@@ -49,12 +49,10 @@ const CLUB_SEASON_CHECKLIST_NAV_ITEM = {
   page: "admin_club_checklist",
 };
 
+/** Shown first inside Pre-Season (direct link, no nested subgroup). */
+export const SEASON_ADMIN_NAV_TOP_LINKS = [CLUB_SEASON_CHECKLIST_NAV_ITEM];
+
 export const SEASON_ADMIN_NAV = [
-  {
-    id: "club_checklist",
-    label: "Club checklist",
-    items: [CLUB_SEASON_CHECKLIST_NAV_ITEM],
-  },
   {
     id: "kickoff",
     label: "Kickoff",
@@ -226,7 +224,10 @@ function escapeNavText(text) {
     .replace(/"/g, "&quot;");
 }
 
-function navArrayHasActive(navArray, pathname, search = "") {
+function navArrayHasActive(navArray, pathname, search = "", topLinks = []) {
+  for (const item of topLinks) {
+    if (isSeasonAdminNavItemActive(item, pathname, search)) return true;
+  }
   for (const group of navArray) {
     for (const item of group.items) {
       if (isSeasonAdminNavItemActive(item, pathname, search)) return true;
@@ -236,15 +237,29 @@ function navArrayHasActive(navArray, pathname, search = "") {
 }
 
 /** Admin flyout: mega label → category → task link (3 levels). */
-function renderSeasonMegaNavHtml(navArray, megaLabel, pathname, search = "") {
+function renderSeasonMegaNavHtml(
+  navArray,
+  megaLabel,
+  pathname,
+  search = "",
+  { topLinks = [] } = {}
+) {
   const linkActive = (item) => isSeasonAdminNavItemActive(item, pathname, search);
-  const megaOpen = navArrayHasActive(navArray, pathname, search);
+  const megaOpen = navArrayHasActive(navArray, pathname, search, topLinks);
 
   let html = `<div class="nav-subgroup nav-subgroup-mega${megaOpen ? " open" : ""}" data-nav-subgroup>`;
   html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
     megaOpen ? "true" : "false"
   }">${escapeNavText(formatNavLabel(megaLabel))}</button>`;
   html += `<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">`;
+
+  for (const item of topLinks) {
+    const href = seasonAdminNavHref(item);
+    const active = linkActive(item);
+    html += `<a href="${escapeNavText(href)}" class="nav-link nav-link-sub nav-link-mega-top${
+      active ? " active" : ""
+    }">${escapeNavText(formatNavLabel(item.label))}</a>`;
+  }
 
   for (const group of navArray) {
     html += `<div class="nav-subgroup nav-subgroup-nested" data-nav-subgroup>`;
@@ -267,11 +282,13 @@ function renderSeasonMegaNavHtml(navArray, megaLabel, pathname, search = "") {
 }
 
 export function seasonAdminNavHasActive(pathname, search = "") {
-  return navArrayHasActive(SEASON_ADMIN_NAV, pathname, search);
+  return navArrayHasActive(SEASON_ADMIN_NAV, pathname, search, SEASON_ADMIN_NAV_TOP_LINKS);
 }
 
 export function renderSeasonAdminNavHtml(pathname, search = "") {
-  return renderSeasonMegaNavHtml(SEASON_ADMIN_NAV, "Pre-Season", pathname, search);
+  return renderSeasonMegaNavHtml(SEASON_ADMIN_NAV, "Pre-Season", pathname, search, {
+    topLinks: SEASON_ADMIN_NAV_TOP_LINKS,
+  });
 }
 
 export function seasonMgmtAdminNavHasActive(pathname, search = "") {

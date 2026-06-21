@@ -1,4 +1,4 @@
-import { supabase, initGlobal, isGpslAdminUser } from "./global.js?v=20260619-season-break-kits";
+import { supabase, initGlobal, isGpslAdminUser } from "./global.js?v=20260621-checklist-presteason";
 
 /** Apply dark admin chrome immediately (avoids white flash before module loads). */
 export function primeAdminPageChrome() {
