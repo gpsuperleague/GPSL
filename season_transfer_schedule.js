@@ -83,15 +83,16 @@ function resolveTransferWindows(calendar, months, transferOpen) {
             : "Pre-season transfer window has ended — season underway from August",
     },
     january: {
-      label: "January",
+      label: "Winter window",
       range: "January",
+      rangeSep: ": ",
       status: january,
       title:
         january === "open"
-          ? "January transfer window is open"
+          ? "Winter transfer window is open (January)"
           : january === "upcoming"
-            ? "January transfer window"
-            : "January transfer window has ended",
+            ? "Winter transfer window — opens in January"
+            : "Winter transfer window (January) has ended",
     },
   };
 }
@@ -219,10 +220,15 @@ function windowChipHtml(win) {
   const statusWord =
     status === "open" ? "open" : status === "upcoming" ? "soon" : "";
   const title = win.title || win.label;
+  const rangeSep = win.rangeSep ?? " ";
+  const rangeHtml =
+    win.range && win.range !== win.label
+      ? `<span class="ssc-chip-range">${escapeHtml(rangeSep)}${escapeHtml(win.range)}</span>`
+      : "";
   return (
     `<span class="ssc-chip ssc-window ssc-window--${escapeHtml(status)}" title="${escapeHtml(title)}">` +
     `<span class="ssc-chip-label">${escapeHtml(win.label)}</span>` +
-    `<span class="ssc-chip-range">${escapeHtml(win.range)}</span>` +
+    rangeHtml +
     (statusWord
       ? `<span class="ssc-chip-status">${escapeHtml(statusWord)}</span>`
       : "") +
