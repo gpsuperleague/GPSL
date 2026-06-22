@@ -25,6 +25,65 @@ function seasonFromUrl() {
   return new URLSearchParams(window.location.search).get("season")?.trim() || "";
 }
 
+const PROGRESS_FILTER_STORAGE_PREFIX = "gpsl_progress_filters:";
+
+let progressFilterUserId = null;
+
+function progressFilterStorageKey(userId) {
+  return `${PROGRESS_FILTER_STORAGE_PREFIX}${userId || "anonymous"}`;
+}
+
+function readPersistedProgressFilters(userId) {
+  try {
+    const raw = localStorage.getItem(progressFilterStorageKey(userId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function savePersistedProgressFilters() {
+  if (!progressFilterUserId) return;
+  try {
+    localStorage.setItem(
+      progressFilterStorageKey(progressFilterUserId),
+      JSON.stringify({
+        divisions: divisionFilterState(),
+        venue: venueFilterValue(),
+      })
+    );
+  } catch {
+    /* private mode / quota */
+  }
+}
+
+function applyPersistedProgressFilters(stored) {
+  if (!stored) return;
+
+  if (stored.divisions && typeof stored.divisions === "object") {
+    for (const div of LEAGUE_DIVISIONS) {
+      const el = document.querySelector(`.filter-div[data-division="${div}"]`);
+      if (el && typeof stored.divisions[div] === "boolean") {
+        el.checked = stored.divisions[div];
+      }
+    }
+    syncFilterAllCheckbox();
+  }
+
+  const venue = stored.venue;
+  if (venue === "" || venue === "home" || venue === "away") {
+    const radio = document.querySelector(`input[name="venueView"][value="${CSS.escape(venue)}"]`);
+    if (radio) radio.checked = true;
+  }
+}
+
+function restoreProgressFilters(userId) {
+  if (divisionFromUrl()) return;
+  applyPersistedProgressFilters(readPersistedProgressFilters(userId));
+}
+
 function divisionFromUrl() {
   const div = new URLSearchParams(window.location.search).get("division")?.trim() || "";
   return LEAGUE_DIVISIONS.includes(div) ? div : "";
@@ -379,18 +438,23 @@ function wireDivisionFilter() {
     const on = allEl.checked;
     for (const box of divBoxes) box.checked = on;
     allEl.indeterminate = false;
+    savePersistedProgressFilters();
     renderTables();
   });
 
   for (const box of divBoxes) {
     box.addEventListener("change", () => {
       syncFilterAllCheckbox();
+      savePersistedProgressFilters();
       renderTables();
     });
   }
 
   for (const radio of document.querySelectorAll('input[name="venueView"]')) {
-    radio.addEventListener("change", () => renderTables());
+    radio.addEventListener("change", () => {
+      savePersistedProgressFilters();
+      renderTables();
+    });
   }
 }
 
@@ -422,6 +486,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     .eq("owner_id", user.id)
     .maybeSingle();
   myClubRef = { short: club?.ShortName || null, name: club?.Club || null };
+  progressFilterUserId = user.id;
+  restoreProgressFilters(user.id);
 
   const archiveSeason = seasonFromUrl();
   const meta = document.getElementById("seasonMeta");
