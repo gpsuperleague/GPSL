@@ -610,6 +610,32 @@ function accountEmailRedirectUrl() {
   return new URL("club_details.html", window.location.href).href;
 }
 
+function wireAccountExpandToggles() {
+  const emailBtn = document.getElementById("toggleEmailChangeBtn");
+  const passwordBtn = document.getElementById("togglePasswordChangeBtn");
+  const emailPanel = document.getElementById("accountEmailChange");
+  const passwordPanel = document.getElementById("accountPasswordChange");
+
+  const toggle = (panel, btn, otherPanel, otherBtn) => {
+    if (!panel || !btn) return;
+    const show = panel.hidden;
+    panel.hidden = !show;
+    btn.setAttribute("aria-expanded", show ? "true" : "false");
+    if (show) {
+      if (otherPanel) otherPanel.hidden = true;
+      if (otherBtn) otherBtn.setAttribute("aria-expanded", "false");
+      panel.querySelector("input")?.focus();
+    }
+  };
+
+  emailBtn?.addEventListener("click", () =>
+    toggle(emailPanel, emailBtn, passwordPanel, passwordBtn)
+  );
+  passwordBtn?.addEventListener("click", () =>
+    toggle(passwordPanel, passwordBtn, emailPanel, emailBtn)
+  );
+}
+
 function wireAccountSettings(user) {
   const emailEl = document.getElementById("accountEmail");
   const newEmailInput = document.getElementById("newEmailInput");
@@ -624,6 +650,8 @@ function wireAccountSettings(user) {
   const passwordChangeStatus = document.getElementById("passwordChangeStatus");
 
   const loginEmail = user?.email || "";
+
+  wireAccountExpandToggles();
 
   changeEmailBtn?.addEventListener("click", async () => {
     const newEmail = newEmailInput?.value.trim().toLowerCase() || "";

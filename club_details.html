@@ -274,63 +274,6 @@
       margin-top: 8px;
     }
 
-    .account-panel {
-      margin-top: 20px;
-      padding: 16px 18px;
-    }
-
-    .account-title {
-      color: #ff9900;
-      margin: 0 0 8px;
-      font-size: 18px;
-    }
-
-    .account-intro {
-      color: #aaa;
-      font-size: 13px;
-      line-height: 1.45;
-      margin: 0 0 16px;
-    }
-
-    .account-sections-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 20px 28px;
-      align-items: start;
-    }
-
-    .account-section {
-      padding-top: 0;
-      margin-top: 0;
-      min-width: 0;
-    }
-
-    .account-section + .account-section {
-      border-left: 1px solid #333;
-      padding-left: 28px;
-    }
-
-    @media (max-width: 720px) {
-      .account-sections-row {
-        grid-template-columns: 1fr;
-        gap: 0;
-      }
-
-      .account-section + .account-section {
-        border-left: none;
-        padding-left: 0;
-        border-top: 1px solid #333;
-        padding-top: 14px;
-        margin-top: 14px;
-      }
-    }
-
-    .account-section h3 {
-      margin: 0 0 6px;
-      font-size: 15px;
-      color: #ffcc66;
-    }
-
     .account-hint {
       font-size: 12px;
       color: #888;
@@ -366,17 +309,45 @@
       color: #f88;
     }
 
-    .account-email-change-link {
-      display: inline-block;
+    .account-quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
       margin-top: 6px;
-      font-size: 12px;
-      color: #6cf;
-      text-decoration: none;
     }
 
-    .account-email-change-link:hover {
+    .account-quick-link {
+      font-size: 12px;
+      color: #6cf;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      text-decoration: none;
+      font-family: inherit;
+    }
+
+    .account-quick-link:hover {
       text-decoration: underline;
       color: #9df;
+    }
+
+    .club-account-expand {
+      margin-top: 12px;
+      padding: 12px 14px;
+      background: #1c1c1c;
+      border: 1px solid #333;
+      border-radius: 6px;
+    }
+
+    .club-account-expand[hidden] {
+      display: none !important;
+    }
+
+    .club-account-expand-title {
+      margin: 0 0 6px;
+      font-size: 14px;
+      color: #ffcc66;
     }
 
     .club-info-panel {
@@ -409,8 +380,26 @@
       min-width: 0;
     }
 
-    .club-detail-cell--owner {
-      grid-column: 1 / -1;
+    .club-detail-cell--owner .owner-tag-field {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+
+    .club-detail-cell--owner .owner-tag-field #ownerInput {
+      flex: none;
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+
+    .club-detail-cell--owner .owner-tag-field .small-btn {
+      align-self: flex-start;
+    }
+
+    .club-detail-cell--owner .owner-tag-hint {
+      font-size: 11px;
     }
 
     .club-detail-label {
@@ -716,7 +705,26 @@
         <div class="club-detail-cell" id="loginEmailCell">
           <span class="club-detail-label">Login email</span>
           <span class="club-detail-value detail-muted" id="accountEmail">—</span>
-          <a class="account-email-change-link" href="#accountEmailChange">Change email</a>
+          <div class="account-quick-links">
+            <button
+              type="button"
+              class="account-quick-link"
+              id="toggleEmailChangeBtn"
+              aria-expanded="false"
+              aria-controls="accountEmailChange"
+            >
+              Change email
+            </button>
+            <button
+              type="button"
+              class="account-quick-link"
+              id="togglePasswordChangeBtn"
+              aria-expanded="false"
+              aria-controls="accountPasswordChange"
+            >
+              Change password
+            </button>
+          </div>
         </div>
 
         <div class="club-detail-cell club-detail-cell--owner">
@@ -733,6 +741,57 @@
             <button type="button" id="saveOwnerBtn" class="small-btn">Save</button>
             <span id="ownerTagHint" class="owner-tag-hint" role="status"></span>
           </div>
+        </div>
+      </div>
+
+      <div class="club-account-expand" id="accountEmailChange" hidden>
+        <h3 class="club-account-expand-title">Change email</h3>
+        <p class="account-hint">
+          Enter a new address and your current password. Supabase sends a confirmation link to the
+          <b>new</b> email — your login only updates after you click it.
+        </p>
+        <div class="account-fields">
+          <input
+            type="email"
+            id="newEmailInput"
+            autocomplete="email"
+            placeholder="New email address"
+          />
+          <input
+            type="password"
+            id="emailCurrentPassword"
+            autocomplete="current-password"
+            placeholder="Current password"
+          />
+          <button type="button" id="changeEmailBtn" class="small-btn">Update email</button>
+          <span id="emailChangeStatus" class="account-status" role="status"></span>
+        </div>
+      </div>
+
+      <div class="club-account-expand" id="accountPasswordChange" hidden>
+        <h3 class="club-account-expand-title">Change password</h3>
+        <p class="account-hint">Choose a new password (minimum 6 characters). Enter your current password to confirm.</p>
+        <div class="account-fields">
+          <input
+            type="password"
+            id="currentPasswordInput"
+            autocomplete="current-password"
+            placeholder="Current password"
+          />
+          <input
+            type="password"
+            id="newPasswordInput"
+            autocomplete="new-password"
+            placeholder="New password"
+          />
+          <input
+            type="password"
+            id="confirmPasswordInput"
+            autocomplete="new-password"
+            placeholder="Confirm new password"
+          />
+          <button type="button" id="changePasswordBtn" class="small-btn">Update password</button>
+          <span id="passwordChangeStatus" class="account-status" role="status"></span>
         </div>
       </div>
     </div>
@@ -839,67 +898,6 @@
       </div>
     </div>
 
-    <div class="panel panel-bg account-panel" id="accountPanel">
-      <h2 class="account-title">Login &amp; password</h2>
-      <p class="account-intro">
-        Update the email and password for your GPSL account. You must enter your
-        <b>current password</b> to confirm any change.
-      </p>
-
-      <div class="account-sections-row">
-      <div class="account-section" id="accountEmailChange">
-        <h3>Change email</h3>
-        <p class="account-hint">
-          Enter a new address and your current password. Supabase sends a confirmation link to the
-          <b>new</b> email — your login only updates after you click it (same as admin-initiated changes).
-        </p>
-        <div class="account-fields">
-          <input
-            type="email"
-            id="newEmailInput"
-            autocomplete="email"
-            placeholder="New email address"
-          />
-          <input
-            type="password"
-            id="emailCurrentPassword"
-            autocomplete="current-password"
-            placeholder="Current password"
-          />
-          <button type="button" id="changeEmailBtn" class="small-btn">Update email</button>
-          <span id="emailChangeStatus" class="account-status" role="status"></span>
-        </div>
-      </div>
-
-      <div class="account-section">
-        <h3>Change password</h3>
-        <p class="account-hint">Choose a new password (minimum 6 characters).</p>
-        <div class="account-fields">
-          <input
-            type="password"
-            id="currentPasswordInput"
-            autocomplete="current-password"
-            placeholder="Current password"
-          />
-          <input
-            type="password"
-            id="newPasswordInput"
-            autocomplete="new-password"
-            placeholder="New password"
-          />
-          <input
-            type="password"
-            id="confirmPasswordInput"
-            autocomplete="new-password"
-            placeholder="Confirm new password"
-          />
-          <button type="button" id="changePasswordBtn" class="small-btn">Update password</button>
-          <span id="passwordChangeStatus" class="account-status" role="status"></span>
-        </div>
-      </div>
-      </div>
-    </div>
-
     <div class="panel panel-bg subsidy-panel" id="govSubsidyPanel">
       <h2 class="subsidy-title">Government subsidies</h2>
       <p class="subsidy-intro">
@@ -964,7 +962,7 @@
 
   </div>
 
-  <script type="module" src="club_details.js?v=20260621-github-kits"></script>
+  <script type="module" src="club_details.js?v=20260621-account-compact"></script>
 
 </body>
 </html>
