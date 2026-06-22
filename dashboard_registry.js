@@ -127,6 +127,7 @@ export const DASHBOARD_PANELS = [
   p("squad", "Squad", "squad.html", { defaultOn: true }),
   p("transfer_center", "Transfer Centre", "transfer_center.html", { defaultOn: true }),
   p("matchday", "Match Day", "matchday.html", { defaultOn: true }),
+  p("club_fixtures", "My Club Fixtures", "club_fixtures.html", { defaultOn: true }),
   p("fixtures", "Fixtures", "fixtures.html", { defaultOn: true }),
   p("history", "Club History", "history.html", { defaultOn: true }),
   p("progress", "Competition Progress", "progress.html", { defaultOn: true }),

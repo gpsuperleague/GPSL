@@ -62,6 +62,7 @@ export const CLUB_OWNER_PAGES = new Set([
   "history",
   "stadium",
   "matchday",
+  "club_fixtures",
   "transfer_center",
   "scouting",
   "national_team",

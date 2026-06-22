@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260621-waiting-list";
+export const NAV_CONFIG_VERSION = "20260620-club-fixtures";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -156,6 +156,7 @@ export const NAV_SECTIONS = [
       { href: "history.html", label: "Club History", page: "history" },
       { href: "stadium.html", label: "Stadium", page: "stadium" },
       { href: "matchday.html", label: "Match Day", page: "matchday" },
+      { href: "club_fixtures.html", label: "Fixtures", page: "club_fixtures" },
       { href: "transfer_center.html", label: "Transfer Centre", page: "transfer_center" },
       {
         href: "transfer_center.html#scouting-targets",

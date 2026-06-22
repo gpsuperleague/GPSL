@@ -1,0 +1,89 @@
+<script>window.CURRENT_PAGE = "club_fixtures";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Club Fixtures — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1200px; margin:20px auto 40px; }
+    h1 { color:#ff9900; margin-bottom:8px; }
+    .meta { color:#aaa; margin-bottom:16px; font-size:14px; line-height:1.45; }
+    #clubFixturesError {
+      color:#f88; background:#2a1515; border:1px solid #633;
+      border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:13px;
+      display:none;
+    }
+    .month-block {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      margin-bottom:18px; overflow:hidden;
+    }
+    .month-head {
+      background:#222; padding:12px 16px; color:#ff9900; font-weight:bold;
+      font-size:16px; border-bottom:1px solid #333;
+    }
+    .fixture-card {
+      padding:14px 16px; border-top:1px solid #2a2a2a;
+    }
+    .fixture-card:first-of-type { border-top:none; }
+    .fixture-top {
+      display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px;
+      margin-bottom:8px;
+    }
+    .fixture-match {
+      font-size:15px; color:#fff; font-weight:bold;
+    }
+    .fixture-match .mine { color:#ffcc66; }
+    .fixture-score {
+      font-size:16px; font-weight:bold; color:#fff;
+      background:#2a2a2a; padding:2px 10px; border-radius:4px;
+    }
+    .fixture-badge {
+      font-size:11px; text-transform:uppercase; letter-spacing:.04em;
+      padding:3px 8px; border-radius:4px; background:#333; color:#bbb;
+    }
+    .fixture-badge.league { background:#1e3a2f; color:#9fd4b0; }
+    .fixture-badge.cup { background:#2a2540; color:#c4b5fd; }
+    .fixture-meta {
+      display:flex; flex-wrap:wrap; gap:8px 18px; font-size:13px; color:#aaa;
+      margin-bottom:6px;
+    }
+    .fixture-meta b { color:#ccc; font-weight:600; }
+    .conditions-row {
+      font-size:13px; color:#bbb; margin-bottom:6px;
+    }
+    .conditions-row .weather { color:#8cf; }
+    .conditions-row .pitch { color:#cf8; }
+    .played-details {
+      margin-top:10px; padding-top:10px; border-top:1px dashed #333;
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px 16px;
+      font-size:13px;
+    }
+    .played-details .label {
+      color:#888; font-size:11px; text-transform:uppercase; letter-spacing:.04em;
+      margin-bottom:2px;
+    }
+    .played-details .value { color:#eee; line-height:1.4; }
+    .potm { color:#ffcc66; }
+    .empty { color:#888; padding:24px; }
+    .fixture-actions { margin-top:8px; }
+    .btn-link {
+      display:inline-block; padding:4px 10px; font-size:12px;
+      background:#ff9900; color:#111; border-radius:4px; font-weight:bold;
+      text-decoration:none;
+    }
+    .btn-link.secondary { background:#444; color:#eee; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <h1 id="clubFixturesTitle">My Club Fixtures</h1>
+    <p class="meta" id="clubFixturesMeta">Your season matches — grouped by month.</p>
+    <div id="clubFixturesError"></div>
+    <div id="clubFixturesRoot"><p class="empty">Loading…</p></div>
+  </div>
+  <script type="module" src="club_fixtures.js?v=20260620-club-fixtures"></script>
+</body>
+</html>
