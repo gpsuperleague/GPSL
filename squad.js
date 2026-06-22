@@ -92,7 +92,6 @@ const SQUAD_PLAYER_COLUMNS_LEGACY =
   "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team, Season_Signed, contract_seasons_remaining, contract_wage";
 
 const SQUAD_TABLE_COLS = 15;
-const SQUAD_PLAYER_COL_INDEX = 1;
 
 let squadColumnWidthResizeTimer = null;
 
@@ -813,22 +812,13 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
   syncSquadTableColumnWidths();
 }
 
-/** One table — column min-widths from content (incl. full playstyle text). */
-function measureSquadPlayerColumnWidth(cell, pad = 20) {
-  const nameRow = cell.querySelector(".squad-player-name-row");
-  if (nameRow) {
-    const prev = nameRow.style.whiteSpace;
-    nameRow.style.whiteSpace = "nowrap";
-    const w = nameRow.scrollWidth + pad;
-    nameRow.style.whiteSpace = prev;
-    return w;
-  }
-
+/** Measure cell content width for tight column sizing. */
+function measureSquadTableCellWidth(cell) {
   const prevWs = cell.style.whiteSpace;
   const prevOv = cell.style.overflow;
   cell.style.whiteSpace = "nowrap";
   cell.style.overflow = "visible";
-  const w = cell.scrollWidth + pad;
+  const w = Math.ceil(cell.getBoundingClientRect().width);
   cell.style.whiteSpace = prevWs;
   cell.style.overflow = prevOv;
   return w;
@@ -845,31 +835,16 @@ function syncSquadTableColumnWidths() {
   cols.forEach((col) => {
     col.style.width = "";
     col.style.minWidth = "";
+    col.style.maxWidth = "";
   });
-
+  table.style.width = "";
   table.style.tableLayout = "auto";
-  table.style.width = "max-content";
-  table.style.minWidth = "100%";
 
   const widths = Array.from(ths, () => 0);
-  const pad = 20;
 
   const measureCell = (cell, i) => {
     if (!cell || i >= widths.length || cell.colSpan > 1) return;
-    const w =
-      i === SQUAD_PLAYER_COL_INDEX
-        ? measureSquadPlayerColumnWidth(cell, pad)
-        : (() => {
-            const prevWs = cell.style.whiteSpace;
-            const prevOv = cell.style.overflow;
-            cell.style.whiteSpace = "nowrap";
-            cell.style.overflow = "visible";
-            const measured = cell.scrollWidth + pad;
-            cell.style.whiteSpace = prevWs;
-            cell.style.overflow = prevOv;
-            return measured;
-          })();
-    widths[i] = Math.max(widths[i], w);
+    widths[i] = Math.max(widths[i], measureSquadTableCellWidth(cell));
   };
 
   ths.forEach((th, i) => measureCell(th, i));
@@ -877,11 +852,19 @@ function syncSquadTableColumnWidths() {
     row.querySelectorAll("td").forEach((td, i) => measureCell(td, i));
   });
 
+  let total = 0;
   cols.forEach((col, i) => {
     if (widths[i] > 0) {
-      col.style.minWidth = `${widths[i]}px`;
+      const w = widths[i];
+      col.style.width = `${w}px`;
+      col.style.minWidth = `${w}px`;
+      col.style.maxWidth = `${w}px`;
+      total += w;
     }
   });
+
+  table.style.tableLayout = "fixed";
+  table.style.width = total > 0 ? `${total}px` : "max-content";
 }
 
 function ensureSquadTableColumnWidthSync() {

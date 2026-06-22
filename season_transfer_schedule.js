@@ -135,6 +135,19 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+/** Readable strip label — e.g. DB "1" → "Season 1". */
+export function formatSeasonStripLabel(raw) {
+  const s = String(raw ?? "").trim();
+  if (!s) return "Season";
+  if (/^season\b/i.test(s)) {
+    return s.replace(/^season/i, "Season");
+  }
+  if (/^\d+$/.test(s)) {
+    return `Season ${s}`;
+  }
+  return s;
+}
+
 function draftChipHtml(kind, label, data) {
   const live = data.live;
   const remaining = data.remaining;
@@ -187,14 +200,14 @@ export function renderSeasonScheduleStripHtml(schedule) {
     transferWindowChipHtml(schedule.transferWindow),
   ];
 
+  const seasonLabel = formatSeasonStripLabel(schedule.seasonLabel);
   const seasonHint = schedule.seasonLabel
-    ? `Season schedule — ${schedule.seasonLabel}`
+    ? `Season schedule — ${seasonLabel}`
     : "Season schedule";
-  const kicker = schedule.seasonLabel || "Season";
 
   return (
     `<div class="season-schedule-inner" role="region" aria-label="${escapeHtml(seasonHint)}">` +
-    `<span class="ssc-kicker">${escapeHtml(kicker)}</span>` +
+    `<span class="ssc-kicker">${escapeHtml(seasonLabel)}</span>` +
     `<div class="ssc-chips">${parts.join("")}</div>` +
     `</div>`
   );
