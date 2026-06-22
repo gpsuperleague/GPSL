@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260621-auction-db-active";
+export const NAV_CONFIG_VERSION = "20260621-nav-order";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -37,6 +37,67 @@ export function renderAdminMegaNavHtml(item, pathname, search = "") {
 }
 
 export const NAV_SECTIONS = [
+  {
+    id: "myclub",
+    label: "My Club",
+    items: [
+      { href: "club_details.html", label: "Club Details", page: "club_details" },
+      { href: "finances.html", label: "Finances", page: "finances" },
+      { href: "squad.html", label: "Squad", page: "squad" },
+      { href: "history.html", label: "Club History", page: "history" },
+      { href: "stadium.html", label: "Stadium", page: "stadium" },
+      { href: "matchday.html", label: "Match Day", page: "matchday" },
+      { href: "club_fixtures.html", label: "Fixtures", page: "club_fixtures" },
+      { href: "transfer_center.html", label: "Transfer Centre", page: "transfer_center" },
+      {
+        href: "transfer_center.html#scouting-targets",
+        label: "Scouting Targets",
+        page: "transfer_center",
+        hash: "scouting-targets",
+        indent: true,
+      },
+      {
+        href: "scouting.html",
+        label: "Scouting board",
+        page: "scouting",
+        indent: true,
+      },
+    ],
+  },
+  {
+    id: "mynation",
+    label: "My Nation",
+    items: [
+      { href: "national_team.html", label: "National team", page: "national_team" },
+      { href: "nation_select.html", label: "Nation selection", page: "nation_select" },
+      { href: "nation_player_pool.html", label: "Nation player pool", page: "nation_player_pool" },
+    ],
+  },
+  {
+    id: "league",
+    label: "League",
+    items: [
+      { href: "clubs.html", label: "Clubs", page: "clubs" },
+      { href: "fixtures.html", label: "Fixtures", page: "fixtures" },
+      { href: "progress.html", label: "Tables", page: "progress" },
+      { href: "league_stats.html", label: "Stats", page: "league_stats" },
+      { href: "challenges.html", label: "Challenges", page: "challenges" },
+    ],
+  },
+  {
+    id: "cups",
+    label: "Cups",
+    items: [
+      // Top-level cup pages (not under Prestige Cups)
+      { href: "cups.html?cup=league_cup", label: "League Cup", page: "cups", cup: "league_cup" },
+      { href: "world_cup.html", label: "World Cup", page: "world_cup" },
+      { heading: true, label: "Prestige Cups" },
+      { href: "cups.html?cup=super8", label: "Super8", page: "cups", cup: "super8", indent: true },
+      { href: "cups.html?cup=plate", label: "Plate", page: "cups", cup: "plate", indent: true },
+      { href: "cups.html?cup=shield", label: "Shield", page: "cups", cup: "shield", indent: true },
+      { href: "cups.html?cup=bowl", label: "Bowl", page: "cups", cup: "bowl", indent: true },
+    ],
+  },
   {
     id: "transfers",
     label: "Transfers",
@@ -132,67 +193,6 @@ export const NAV_SECTIONS = [
       { href: "central_bank.html", label: "Bank balance", page: "central_bank", indent: true },
       { href: "central_bank_loans.html", label: "League loans", page: "central_bank_loans", indent: true },
       { href: "central_bank_counter.html", label: "Service counter", page: "central_bank_counter", indent: true },
-    ],
-  },
-  {
-    id: "league",
-    label: "League",
-    items: [
-      { href: "clubs.html", label: "Clubs", page: "clubs" },
-      { href: "fixtures.html", label: "Fixtures", page: "fixtures" },
-      { href: "progress.html", label: "Tables", page: "progress" },
-      { href: "league_stats.html", label: "Stats", page: "league_stats" },
-      { href: "challenges.html", label: "Challenges", page: "challenges" },
-    ],
-  },
-  {
-    id: "cups",
-    label: "Cups",
-    items: [
-      // Top-level cup pages (not under Prestige Cups)
-      { href: "cups.html?cup=league_cup", label: "League Cup", page: "cups", cup: "league_cup" },
-      { href: "world_cup.html", label: "World Cup", page: "world_cup" },
-      { heading: true, label: "Prestige Cups" },
-      { href: "cups.html?cup=super8", label: "Super8", page: "cups", cup: "super8", indent: true },
-      { href: "cups.html?cup=plate", label: "Plate", page: "cups", cup: "plate", indent: true },
-      { href: "cups.html?cup=shield", label: "Shield", page: "cups", cup: "shield", indent: true },
-      { href: "cups.html?cup=bowl", label: "Bowl", page: "cups", cup: "bowl", indent: true },
-    ],
-  },
-  {
-    id: "myclub",
-    label: "My Club",
-    items: [
-      { href: "club_details.html", label: "Club Details", page: "club_details" },
-      { href: "finances.html", label: "Finances", page: "finances" },
-      { href: "squad.html", label: "Squad", page: "squad" },
-      { href: "history.html", label: "Club History", page: "history" },
-      { href: "stadium.html", label: "Stadium", page: "stadium" },
-      { href: "matchday.html", label: "Match Day", page: "matchday" },
-      { href: "club_fixtures.html", label: "Fixtures", page: "club_fixtures" },
-      { href: "transfer_center.html", label: "Transfer Centre", page: "transfer_center" },
-      {
-        href: "transfer_center.html#scouting-targets",
-        label: "Scouting Targets",
-        page: "transfer_center",
-        hash: "scouting-targets",
-        indent: true,
-      },
-      {
-        href: "scouting.html",
-        label: "Scouting board",
-        page: "scouting",
-        indent: true,
-      },
-    ],
-  },
-  {
-    id: "mynation",
-    label: "My Nation",
-    items: [
-      { href: "national_team.html", label: "National team", page: "national_team" },
-      { href: "nation_select.html", label: "Nation selection", page: "nation_select" },
-      { href: "nation_player_pool.html", label: "Nation player pool", page: "nation_player_pool" },
     ],
   },
   {
