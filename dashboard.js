@@ -5,7 +5,7 @@
 import { supabase, initGlobal, isGpslAdminUser, wireDraftCountdownUI } from "./global.js?v=20260608-admin-flyout";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { fetchActiveSpecialAuction } from "./special_auction.js";
-import { getDashboardPanel } from "./dashboard_registry.js";
+import { getDashboardPanel, getDashboardTileUrl } from "./dashboard_registry.js";
 import {
   loadOwnerDashboardLayout,
   saveOwnerDashboardLayout,
@@ -22,24 +22,6 @@ let panelIds = [];
 let editMode = false;
 let dragPanelId = null;
 let layoutSaveTimer = null;
-
-const TILE_WATERMARK_CLASS = {
-  club_details: "tile-club",
-  stadium: "tile-stadium",
-  finances: "tile-finances",
-  central_bank: "tile-bank",
-  squad: "tile-squad",
-  transfer_center: "tile-transfer",
-  scouting_board: "tile-transfer",
-  matchday: "tile-matchday",
-  fixtures: "tile-fixtures",
-  history: "tile-history",
-  progress: "tile-progress",
-  league_stats: "tile-progress",
-  cups: "tile-fixtures",
-  world_cup: "tile-fixtures",
-  special_auction: "tile-special-auction",
-};
 
 document.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -158,8 +140,13 @@ function renderDashboardTiles(ctx) {
     if (!panel) continue;
 
     const tile = document.createElement("div");
-    tile.className = `tile dashboard-tile ${TILE_WATERMARK_CLASS[id] || ""}`.trim();
+    tile.className = "tile dashboard-tile";
     tile.dataset.panelId = id;
+    const tileArt = getDashboardTileUrl(panel);
+    if (tileArt) {
+      tile.dataset.tileImage = "1";
+      tile.style.setProperty("--tile-art", `url("${tileArt}")`);
+    }
     tile.draggable = editMode;
 
     const label = document.createElement("span");

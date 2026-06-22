@@ -1541,11 +1541,22 @@ a.ssc-chip:hover {
   overflow: hidden;
 }
 
-.tile::after {
+.tile:not(.dashboard-tile)::after,
+.dashboard-tile[data-tile-image]::after,
+.tile-club::after,
+.tile-stadium::after,
+.tile-finances::after,
+.tile-squad::after,
+.tile-transfer::after,
+.tile-matchday::after,
+.tile-fixtures::after,
+.tile-history::after,
+.tile-progress::after,
+.tile-bank::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-size: contain; /* SCALE WITHOUT CROPPING */
+  background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
   opacity: 0.12;
@@ -1554,13 +1565,25 @@ a.ssc-chip:hover {
   z-index: 0;
 }
 
+/* Dashboard tiles — translucent art when pinned */
+.dashboard-tile[data-tile-image]::after {
+  background-image: var(--tile-art);
+  opacity: 0.32;
+  filter: grayscale(15%) contrast(95%) brightness(1.05);
+}
+
+.dashboard-tile:hover[data-tile-image]::after {
+  opacity: 0.42;
+}
+
 .tile > * {
   position: relative;
   z-index: 1;
 }
 
-/* Club Details watermark */
-.tile-club::after {
+/* Legacy panel watermarks (club pages) — keep for panel-bg panels */
+.tile-club::after,
+.panel-club::after {
   background-image: url("images/panel_bg/Club_Details.png");
 }
 
@@ -1793,6 +1816,15 @@ a.ssc-chip:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 12px;
+}
+
+.dashboard-page-pin-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 6px 16px;
+  background: #141414;
+  border-bottom: 1px solid #2a2a2a;
 }
 
 .dashboard-panel-head {

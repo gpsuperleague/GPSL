@@ -1,89 +1,183 @@
 /** Single source of dashboard shortcuts owners can pin and reorder. */
 
+const TILE_DIR = "images/dashboard_tiles";
+
+function tileFile(id) {
+  return `${TILE_DIR}/${id}.png`;
+}
+
+function p(
+  id,
+  label,
+  href,
+  {
+    page = null,
+    defaultOn = false,
+    section = false,
+    adminOnly = false,
+    requiresDraft = false,
+    when = null,
+  } = {}
+) {
+  const pageFile = (page || href.split("?")[0].split("#")[0]).toLowerCase();
+  return {
+    id,
+    label,
+    href,
+    page: pageFile,
+    default: defaultOn,
+    section: !!section,
+    adminOnly: !!adminOnly,
+    requiresDraft: !!requiresDraft,
+    when: when || null,
+    tile: tileFile(id),
+  };
+}
+
 export const DASHBOARD_PANELS = [
-  { id: "club_details", label: "Club Details", href: "club_details.html", page: "club_details.html", default: true },
-  { id: "stadium", label: "Stadium", href: "stadium.html", page: "stadium.html", default: true },
-  { id: "finances", label: "Club Finances", href: "finances.html", page: "finances.html", default: true },
-  { id: "challenges", label: "Season Challenges", href: "challenges.html", page: "challenges.html", default: false },
-  { id: "central_bank", label: "Central Bank", href: "central_bank.html", page: "central_bank.html", default: true },
-  { id: "squad", label: "Squad", href: "squad.html", page: "squad.html", default: true },
-  { id: "transfer_center", label: "Transfer Centre", href: "transfer_center.html", page: "transfer_center.html", default: true },
-  { id: "matchday", label: "Match Day", href: "matchday.html", page: "matchday.html", default: true },
-  { id: "fixtures", label: "Fixtures", href: "fixtures.html", page: "fixtures.html", default: true },
-  { id: "history", label: "Club History", href: "history.html", page: "history.html", default: true },
-  { id: "progress", label: "Competition Progress", href: "progress.html", page: "progress.html", default: true },
-  { id: "league_stats", label: "League Stats", href: "league_stats.html", page: "league_stats.html", default: true },
-  { id: "cups", label: "Cups", href: "cups.html", page: "cups.html", default: true },
-  { id: "world_cup", label: "World Cup", href: "world_cup.html", page: "world_cup.html", default: true },
-  { id: "owner_rankings", label: "Owner Rankings", href: "owner_rankings.html", page: "owner_rankings.html", default: false },
-  {
-    id: "special_auction",
-    label: "Special Auction",
-    href: "special_auction.html",
-    page: "special_auction.html",
-    default: false,
-    when: "special_auction",
-  },
-  { id: "gpdb", label: "Player Database", href: "GPDB.html", page: "gpdb.html", default: false },
-  { id: "transfer_market", label: "Transfer Market", href: "all_listings.html", page: "all_listings.html", default: false },
-  {
-    id: "draftauction",
-    label: "Draft Auction",
-    href: "draftauction.html",
-    page: "draftauction.html",
-    default: false,
+  p("club_details", "Club Details", "club_details.html", { defaultOn: true }),
+  p("stadium", "Stadium", "stadium.html", { defaultOn: true }),
+  p("finances", "Club Finances", "finances.html", { defaultOn: true }),
+  p("squad", "Squad", "squad.html", { defaultOn: true }),
+  p("transfer_center", "Transfer Centre", "transfer_center.html", { defaultOn: true }),
+  p("matchday", "Match Day", "matchday.html", { defaultOn: true }),
+  p("fixtures", "Fixtures", "fixtures.html", { defaultOn: true }),
+  p("history", "Club History", "history.html", { defaultOn: true }),
+  p("progress", "Competition Progress", "progress.html", { defaultOn: true }),
+  p("league_stats", "League Stats", "league_stats.html", { defaultOn: true }),
+  p("cups", "Cups", "cups.html", { defaultOn: true }),
+  p("world_cup", "World Cup", "world_cup.html", { defaultOn: true }),
+  p("challenges", "Season Challenges", "challenges.html"),
+  p("central_bank", "Central Bank", "central_bank.html", { defaultOn: true }),
+  p("central_bank_loans", "League Loans", "central_bank_loans.html"),
+  p("central_bank_counter", "Service Counter", "central_bank_counter.html"),
+  p("gpdb", "Player Database", "GPDB.html", { page: "gpdb.html" }),
+  p("transfer_market", "Transfer Market", "all_listings.html", { page: "all_listings.html" }),
+  p("draftauction", "Player Draft Auction", "draftauction.html", { requiresDraft: true }),
+  p("legacy_players", "Legacy Players", "legacy_players.html"),
+  p("expiring_contracts", "Expiring Contracts", "expiring_contracts.html"),
+  p("season_transfers", "Season Transfers", "season_transfers.html"),
+  p("mgdb", "Manager Database", "MGDB.html", { page: "mgdb.html" }),
+  p("manager_listings", "Manager Market", "manager_listings.html"),
+  p("manager_draftauction", "Manager Draft Auction", "manager_draftauction.html", {
     requiresDraft: true,
-  },
-  { id: "expiring_contracts", label: "Expiring Contracts", href: "expiring_contracts.html", page: "expiring_contracts.html", default: false },
-  { id: "season_transfers", label: "Season Transfers", href: "season_transfers.html", page: "season_transfers.html", default: false },
-  {
-    id: "season_club_purchases",
-    label: "Season Club Purchases",
-    href: "season_club_purchases.html",
-    page: "season_club_purchases.html",
-    default: false,
-  },
-  { id: "clubs", label: "Clubs", href: "clubs.html", page: "clubs.html", default: false },
-  { id: "inbox", label: "Inbox", href: "inbox.html", page: "inbox.html", default: false },
-  {
-    id: "admin",
-    label: "GPSL Admin",
-    href: "admin.html",
-    page: "admin.html",
-    default: false,
+  }),
+  p("season_manager_transfers", "Season Manager Transfers", "season_manager_transfers.html"),
+  p("club_database", "Club Database", "club_database.html"),
+  p("club_auction", "Club Auction", "club_auction.html"),
+  p("season_club_purchases", "Season Club Purchases", "season_club_purchases.html"),
+  p("clubs", "Clubs", "clubs.html"),
+  p("inbox", "Inbox", "inbox.html"),
+  p("owner_rankings", "Owner Rankings", "owner_rankings.html"),
+  p("learning_gpsl", "Learning GPSL", "learning_gpsl.html"),
+  p("waiting_list", "Waiting List", "waiting_list.html"),
+  p("member_home", "Member Home", "member_home.html"),
+  p("awaiting_club", "Club Auction Setup", "awaiting_club.html"),
+  p("scouting", "Scouting Board", "scouting.html"),
+  p("national_team", "National Team", "national_team.html"),
+  p("nation_select", "Nation Selection", "nation_select.html"),
+  p("nation_player_pool", "Nation Player Pool", "nation_player_pool.html"),
+  p("special_auction", "Special Auction", "special_auction.html", { when: "special_auction" }),
+  p("player_career", "Player Career", "player_career.html"),
+  p("cup_draw", "Cup Draw", "cup_draw.html"),
+  p("fixture_schedule", "Fixture Schedule", "fixture_schedule.html"),
+  p("finances_incoming", "Finances Incoming", "finances_incoming.html"),
+  p("finances_outgoing", "Finances Outgoing", "finances_outgoing.html"),
+  p("finances_ledger", "Finances Ledger", "finances_ledger.html"),
+  p("finances_accounts", "Season Accounts", "finances_accounts.html"),
+  p("dashboard", "Dashboard", "dashboard.html"),
+  p("admin", "GPSL Admin", "admin.html", { adminOnly: true }),
+  p("admin_owners", "Owner Admin", "admin_owners.html", { adminOnly: true }),
+  p("admin_transfers", "Transfer Admin", "admin_transfers.html", { adminOnly: true }),
+  p("admin_season", "Season Admin", "admin_season.html", { adminOnly: true }),
+  p("admin_draft", "Draft Admin", "admin_draft.html", { adminOnly: true }),
+  p("admin_fixtures_league", "League Fixtures", "admin_fixtures-league.html", {
+    page: "admin_fixtures-league.html",
     adminOnly: true,
-  },
-  { id: "tc_scouting", label: "Scouting Targets", href: "transfer_center.html#scouting-targets", page: "transfer_center.html", section: true },
-  { id: "scouting_board", label: "Scouting Board", href: "scouting.html", page: "scouting.html", section: false },
-  { id: "tc_active_listings", label: "Active Listings", href: "transfer_center.html#active-listings", page: "transfer_center.html", section: true },
-  { id: "tc_active_bids", label: "Active Bids", href: "transfer_center.html#active-bids", page: "transfer_center.html", section: true },
-  { id: "tc_awaiting_seller", label: "Awaiting Seller", href: "transfer_center.html#awaiting-seller", page: "transfer_center.html", section: true },
-  { id: "tc_seller_review", label: "Seller Review", href: "transfer_center.html#seller-review", page: "transfer_center.html", section: true },
-  { id: "tc_closed_listings", label: "Closed Listings", href: "transfer_center.html#closed-listings", page: "transfer_center.html", section: true },
-  { id: "tc_season_signings", label: "Season Signings", href: "transfer_center.html#season-signings", page: "transfer_center.html", section: true },
-  { id: "tc_season_sales", label: "Season Sales", href: "transfer_center.html#season-sales", page: "transfer_center.html", section: true },
+  }),
+  p("admin_fixtures_cups", "Cup Fixtures", "admin_fixtures-cups.html", {
+    page: "admin_fixtures-cups.html",
+    adminOnly: true,
+  }),
+  p("admin_fixtures_playoffs", "Playoff Fixtures", "admin_fixtures-playoffs.html", {
+    page: "admin_fixtures-playoffs.html",
+    adminOnly: true,
+  }),
+  p("admin_challenges", "Challenge Admin", "admin_challenges.html", { adminOnly: true }),
+  p("admin_club_checklist", "Club Checklist", "admin_club_checklist.html", { adminOnly: true }),
+  p("admin_special_auctions", "Special Auctions Admin", "admin_special-auctions.html", {
+    page: "admin_special-auctions.html",
+    adminOnly: true,
+  }),
+  p("admin_international", "International Admin", "admin_international.html", { adminOnly: true }),
+  p("admin_club_kits", "Club Kits Admin", "admin_club_kits.html", { adminOnly: true }),
+  p("admin_money", "Money Admin", "admin_money.html", { adminOnly: true }),
+  p("admin_fines", "Fines Admin", "admin_fines.html", { adminOnly: true }),
+  p("admin_cup_prizes", "Cup Prizes Admin", "admin_cup_prizes.html", { adminOnly: true }),
+  p("admin_weather", "Weather Admin", "admin_weather.html", { adminOnly: true }),
+  p("admin_gpdb_sync", "GPDB Sync", "admin_gpdb_sync.html", { adminOnly: true }),
+  p("admin_gpdb_dedup", "GPDB Dedup", "admin_gpdb_dedup.html", { adminOnly: true }),
+  p("admin_season_break", "Season Break Admin", "admin_season_break.html", { adminOnly: true }),
+  p("admin_one_of_our_own", "One Of Our Own", "admin_one_of_our_own.html", { adminOnly: true }),
+  p("admin_manager_targets", "Manager Targets", "admin_manager_targets.html", { adminOnly: true }),
+  p("admin_club_attendance", "Club Attendance", "admin_club_attendance.html", { adminOnly: true }),
+  p("tc_scouting", "Scouting Targets", "transfer_center.html#scouting-targets", {
+    page: "transfer_center.html",
+    section: true,
+  }),
+  p("tc_active_listings", "Active Listings", "transfer_center.html#active-listings", {
+    page: "transfer_center.html",
+    section: true,
+  }),
+  p("tc_active_bids", "Active Bids", "transfer_center.html#active-bids", {
+    page: "transfer_center.html",
+    section: true,
+  }),
+  p("tc_awaiting_seller", "Awaiting Seller", "transfer_center.html#awaiting-seller", {
+    page: "transfer_center.html",
+    section: true,
+  }),
+  p("tc_seller_review", "Seller Review", "transfer_center.html#seller-review", {
+    page: "transfer_center.html",
+    section: true,
+  }),
+  p("tc_closed_listings", "Closed Listings", "transfer_center.html#closed-listings", {
+    page: "transfer_center.html",
+    section: true,
+  }),
+  p("tc_season_signings", "Season Signings", "transfer_center.html#season-signings", {
+    page: "transfer_center.html",
+    section: true,
+  }),
+  p("tc_season_sales", "Season Sales", "transfer_center.html#season-sales", {
+    page: "transfer_center.html",
+    section: true,
+  }),
 ];
 
-export const DEFAULT_DASHBOARD_PANEL_IDS = DASHBOARD_PANELS.filter((p) => p.default).map((p) => p.id);
+export const DEFAULT_DASHBOARD_PANEL_IDS = DASHBOARD_PANELS.filter((x) => x.default).map((x) => x.id);
 
-const panelById = new Map(DASHBOARD_PANELS.map((p) => [p.id, p]));
+const panelById = new Map(DASHBOARD_PANELS.map((x) => [x.id, x]));
 
 export function getDashboardPanel(id) {
   return panelById.get(id) || null;
 }
 
+export function getDashboardTileUrl(panelOrId) {
+  const panel = typeof panelOrId === "string" ? getDashboardPanel(panelOrId) : panelOrId;
+  return panel?.tile || null;
+}
+
 export function getDashboardPanelsForPage(pageFile) {
   const page = (pageFile || "").toLowerCase();
-  return DASHBOARD_PANELS.filter((p) => (p.page || "").toLowerCase() === page);
+  return DASHBOARD_PANELS.filter((x) => (x.page || "").toLowerCase() === page);
 }
 
 /** Page-level pin (one per page file), not section-only entries. */
 export function getPageDashboardPanel(pageFile) {
   const page = (pageFile || "").toLowerCase();
   return (
-    DASHBOARD_PANELS.find(
-      (p) => (p.page || "").toLowerCase() === page && !p.section
-    ) || null
+    DASHBOARD_PANELS.find((x) => (x.page || "").toLowerCase() === page && !x.section) || null
   );
 }
 

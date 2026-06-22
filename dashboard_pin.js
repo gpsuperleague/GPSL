@@ -150,16 +150,40 @@ export async function initDashboardPinUi(supabase) {
   });
 
   const pagePanel = getPageDashboardPanel(page);
-  if (pagePanel && !document.querySelector(`[data-dashboard-panel="${pagePanel.id}"]`)) {
-    const h1 = document.getElementById("pageTitle") || document.querySelector("h1");
+  if (
+    pagePanel &&
+    !document.querySelector(`[data-dashboard-panel="${pagePanel.id}"]`) &&
+    !document.querySelector(`.dashboard-pin-btn[data-panel-id="${pagePanel.id}"]`)
+  ) {
+    const h1 =
+      document.getElementById("pageTitle") ||
+      document.querySelector("h1") ||
+      document.querySelector(".admin-title");
     const header =
       document.getElementById("headerLeft") ||
       document.getElementById("headerContainer") ||
-      document.querySelector(".header-row");
+      document.querySelector(".header-row") ||
+      document.querySelector(".page-container");
+    let mounted = false;
     if (h1) {
       mountPinButton(h1, pagePanel.id, "prepend-title");
+      mounted = true;
     } else if (header) {
       mountPinButton(header, pagePanel.id);
+      mounted = true;
+    }
+    if (!mounted) {
+      const nav = document.getElementById("nav");
+      if (nav) {
+        let bar = document.getElementById("dashboardPagePinBar");
+        if (!bar) {
+          bar = document.createElement("div");
+          bar.id = "dashboardPagePinBar";
+          bar.className = "dashboard-page-pin-bar";
+          nav.insertAdjacentElement("afterend", bar);
+        }
+        mountPinButton(bar, pagePanel.id);
+      }
     }
   }
 }
