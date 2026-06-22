@@ -26,7 +26,7 @@ import { formatNavLabel, renderNavGroupSummaryLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260621-nav-dot-only";
+export const GLOBAL_JS_VERSION = "20260621-nav-no-chevron";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -1207,9 +1207,12 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
       if (!item.href) continue;
       const active = isNavItemActive(item, pathname, search);
       const indent = item.indent ? " nav-link-sub" : "";
+      const auctionAttr = item.auctionNav
+        ? ` data-auction-nav="${item.auctionNav}"`
+        : "";
       flat += `<a href="${item.href}" class="nav-link${indent}${
         active ? " active" : ""
-      }">${item.auctionNav ? ` data-auction-nav="${item.auctionNav}"` : ""}>${navLinkInnerHtml(item)}</a>`;
+      }"${auctionAttr}>${navLinkInnerHtml(item)}</a>`;
     }
     return flat;
   }
