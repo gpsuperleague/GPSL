@@ -56,15 +56,38 @@
       width: 90%;
       max-width: 420px;
     }
-    .bid-modal input {
-      width: 100%;
+    .bid-modal input[type="text"] {
+      flex: 1;
+      min-width: 0;
       padding: 10px;
       font-size: 16px;
       background: #222;
       border: 1px solid #444;
       color: #eee;
       box-sizing: border-box;
+    }
+    .bid-amount-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
       margin: 10px 0;
+    }
+    .bid-amount-prefix {
+      color: #ff9900;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .bid-step-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .bid-step-row .button {
+      padding: 4px 8px;
+      font-size: 11px;
+      margin: 0;
     }
     .secret-note { color: #888; font-size: 13px; }
     .button { padding: 10px 18px; background: #ff9900; color: #111; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin: 4px; }
@@ -105,7 +128,19 @@
     <div class="bid-modal">
       <h3 id="bidModalTitle">Submit bid</h3>
       <p id="bidModalHint" class="secret-note"></p>
-      <input type="text" id="bidAmountInput" inputmode="numeric" placeholder="Amount">
+      <div class="bid-amount-row">
+        <span class="bid-amount-prefix" aria-hidden="true">₿</span>
+        <input type="text" id="bidAmountInput" inputmode="numeric" autocomplete="off" placeholder="1,000,000">
+      </div>
+      <div class="bid-step-row">
+        <button type="button" class="button secondary dec-btn" data-delta="-5000000">−5m</button>
+        <button type="button" class="button secondary dec-btn" data-delta="-1000000">−1m</button>
+        <button type="button" class="button secondary dec-btn" data-delta="-500000">−500k</button>
+        <button type="button" class="button secondary" id="bidQuickMin">Min ₿1m</button>
+        <button type="button" class="button secondary inc-btn" data-delta="500000">+500k</button>
+        <button type="button" class="button secondary inc-btn" data-delta="1000000">+1m</button>
+        <button type="button" class="button secondary inc-btn" data-delta="5000000">+5m</button>
+      </div>
       <p id="roundedPreview" class="secret-note"></p>
       <p id="bidError"></p>
       <button id="confirmBidBtn" class="button">Submit</button>
@@ -133,10 +168,18 @@
       playerThumbLinkHtml,
       playerNameLinkHtml,
     } from "./player_links.js";
+    import {
+      parseMoneyInput,
+      wireMoneyBidInput,
+    } from "./money_input.js";
+
+    const MIN_BID = 1000000;
 
     let auction = null;
     let clubShort = null;
     let timerInterval = null;
+    let bidAmountControl = null;
+    let modalStartAmount = MIN_BID;
 
     const els = {
       emptyMsg: document.getElementById("emptyMsg"),
@@ -155,8 +198,13 @@
       resultsHeading: document.getElementById("resultsHeading"),
     };
 
-    function parseMoneyInput(raw) {
-      return Number(String(raw).replace(/[^\d]/g, ""));
+    function updateRoundedPreview(amount) {
+      const preview = document.getElementById("roundedPreview");
+      if (auction?.auction_type === "lowest_unique" && amount > 0) {
+        preview.textContent = `Rounded bid: ${formatMoney(roundToMillion(amount))}`;
+      } else {
+        preview.textContent = "";
+      }
     }
 
     function openBidModal() {
@@ -167,8 +215,8 @@
       document.getElementById("bidModalHint").textContent = isLub
         ? "Only you will see your bid until the window ends. Amount is rounded to the nearest ₿1,000,000."
         : "Highest bid wins. You can update your club's bid until time expires. Winner pays bid + ₿500,000; others who bid pay ₿250,000.";
-      document.getElementById("bidAmountInput").value = "";
-      document.getElementById("roundedPreview").textContent = "";
+      bidAmountControl?.set(modalStartAmount);
+      updateRoundedPreview(modalStartAmount);
       document.getElementById("bidError").textContent = "";
       document.getElementById("bidModalBackdrop").classList.add("open");
     }
@@ -177,24 +225,42 @@
       document.getElementById("bidModalBackdrop").classList.remove("open");
     }
 
-    document.getElementById("bidAmountInput").addEventListener("input", (e) => {
-      const n = parseMoneyInput(e.target.value);
-      if (auction?.auction_type === "lowest_unique" && n > 0) {
-        document.getElementById("roundedPreview").textContent =
-          `Rounded bid: ${formatMoney(roundToMillion(n))}`;
-      } else {
-        document.getElementById("roundedPreview").textContent = "";
-      }
-    });
+    function wireBidModalControls() {
+      const input = document.getElementById("bidAmountInput");
+      bidAmountControl = wireMoneyBidInput(input, {
+        min: MIN_BID,
+        onChange: updateRoundedPreview,
+      });
+
+      document.querySelectorAll("#bidModalBackdrop .inc-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          bidAmountControl?.adjust(Number(btn.dataset.delta) || 0);
+        });
+      });
+
+      document.querySelectorAll("#bidModalBackdrop .dec-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          bidAmountControl?.adjust(Number(btn.dataset.delta) || 0);
+        });
+      });
+
+      document.getElementById("bidQuickMin")?.addEventListener("click", () => {
+        bidAmountControl?.set(MIN_BID);
+      });
+    }
+
+    wireBidModalControls();
 
     document.getElementById("cancelBidBtn").onclick = closeBidModal;
     document.getElementById("openBidBtn").onclick = openBidModal;
 
     document.getElementById("confirmBidBtn").onclick = async () => {
-      const amount = parseMoneyInput(document.getElementById("bidAmountInput").value);
-      if (!amount || amount < 1000000) {
+      const amount = bidAmountControl?.parse() ?? parseMoneyInput(
+        document.getElementById("bidAmountInput").value
+      );
+      if (!amount || amount < MIN_BID) {
         document.getElementById("bidError").textContent =
-          "Enter at least ₿1,000,000.";
+          `Enter at least ${formatMoney(MIN_BID)}.`;
         return;
       }
       const { error } = await submitSpecialBid(supabase, auction.id, amount);
@@ -347,6 +413,8 @@
       const canBid = phase === "live" && clubShort && (!mine || !isLub);
       els.openBid.style.display = canBid ? "inline-block" : "none";
       els.openBid.textContent = mine && !isLub ? "Update bid" : "Place bid";
+      modalStartAmount =
+        mine && !isLub && mine.bid_amount >= MIN_BID ? mine.bid_amount : MIN_BID;
 
       await renderResults(bids);
     }
