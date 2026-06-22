@@ -26,7 +26,7 @@ import { formatNavLabel, renderNavGroupSummaryLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260621-nav-order";
+export const GLOBAL_JS_VERSION = "20260621-nav-link-rows";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -1036,25 +1036,45 @@ function escapeNavAttr(s) {
 }
 
 /** Flat links, or collapsible sub-groups when items use `{ heading: true }`. */
-function navLinkIconHtml(item) {
+function navAuctionActiveBadgeHtml(kind, visible = isNavAuctionActive(kind)) {
+  if (!kind) return "";
+  const hidden = visible ? "" : " is-hidden";
+  return `<span class="nav-auction-active${hidden}" title="Bidding is open" aria-hidden="${visible ? "false" : "true"}">Active</span>`;
+}
+
+function navLinkLeadingHtml(item) {
   const nationSrc = item.nationCode ? nationFlagSrc(item.nationCode) : null;
   if (nationSrc) {
-    return `<img class="nav-nat-flag" src="${escapeNavAttr(nationSrc)}" alt="" loading="lazy" /> `;
+    return (
+      `<img class="nav-nat-flag" src="${escapeNavAttr(nationSrc)}" alt="" loading="lazy" />`
+    );
   }
   const clubSrc = item.clubShort ? clubBadgeSrc(item.clubShort) : null;
   if (clubSrc) {
     return (
       `<img class="nav-club-badge" src="${escapeNavAttr(clubSrc)}" alt="" loading="lazy" ` +
-      `onerror="this.style.display='none'" /> `
+      `onerror="this.outerHTML='<span class=&quot;nav-link-marker&quot; aria-hidden=&quot;true&quot;></span>'">`
     );
   }
-  return "";
+  return `<span class="nav-link-marker" aria-hidden="true"></span>`;
 }
 
-function navAuctionActiveBadgeHtml(kind, visible = isNavAuctionActive(kind)) {
-  if (!kind) return "";
-  const hidden = visible ? "" : " is-hidden";
-  return `<span class="nav-auction-active${hidden}" title="Bidding is open" aria-hidden="${visible ? "false" : "true"}">Active</span>`;
+function navLinkInnerHtml(item) {
+  const auction = item.auctionNav
+    ? navAuctionActiveBadgeHtml(item.auctionNav)
+    : "";
+  return (
+    `<span class="nav-link-leading">${navLinkLeadingHtml(item)}</span>` +
+    `<span class="nav-link-body">` +
+    auction +
+    `<span class="nav-link-label">${escapeNavHtml(formatNavLabel(item.label))}</span>` +
+    `</span>`
+  );
+}
+
+/** @deprecated use navLinkInnerHtml */
+function navLinkIconHtml(item) {
+  return navLinkLeadingHtml(item);
 }
 
 function navLinkLabelHtml(item) {
@@ -1189,7 +1209,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
       const indent = item.indent ? " nav-link-sub" : "";
       flat += `<a href="${item.href}" class="nav-link${indent}${
         active ? " active" : ""
-      }"${item.auctionNav ? ` data-auction-nav="${item.auctionNav}"` : ""}>${navLinkIconHtml(item)}${navLinkLabelHtml(item)}</a>`;
+      }">${item.auctionNav ? ` data-auction-nav="${item.auctionNav}"` : ""}>${navLinkInnerHtml(item)}</a>`;
     }
     return flat;
   }
@@ -1209,7 +1229,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
       : "";
     return `<a href="${item.href}" class="nav-link${indent}${danger}${
       active ? " active" : ""
-    }"${auctionAttr}>${navLinkIconHtml(item)}${navLinkLabelHtml(item)}</a>`;
+    }"${auctionAttr}>${navLinkInnerHtml(item)}</a>`;
   };
 
   const flushPanel = () => {

@@ -1104,20 +1104,75 @@ button.nav-admin-trigger {
   height: 12px;
   object-fit: cover;
   border-radius: 2px;
-  vertical-align: -2px;
-  margin-right: 4px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  display: block;
 }
+
 .nav-club-badge {
   width: 18px;
   height: 18px;
   object-fit: contain;
-  vertical-align: -4px;
-  margin-right: 5px;
+  display: block;
 }
 
 .nav-dropdown .nav-link {
   pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 2px 8px;
+  padding: 8px 10px;
+  border-radius: 5px;
+  border-left: 2px solid transparent;
+}
+
+.nav-link-leading {
+  flex-shrink: 0;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.35em;
+  padding-top: 1px;
+}
+
+.nav-link-marker {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3a3a3a;
+  border: 1px solid #555;
+  box-sizing: border-box;
+}
+
+.nav-link-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  line-height: 1.35;
+}
+
+.nav-dropdown .nav-link:hover {
+  background: #252525;
+  border-left-color: #444;
+}
+
+.nav-dropdown .nav-link.active {
+  background: #2a2218;
+  border-left-color: var(--club-accent);
+}
+
+.nav-dropdown .nav-link.active .nav-link-marker {
+  background: var(--club-accent);
+  border-color: var(--club-accent);
+}
+
+.nav-dropdown .nav-link:hover .nav-link-marker {
+  border-color: #777;
+  background: #4a4a4a;
 }
 
 /* Legacy flat headings (unused when sub-groups render) */
@@ -1233,10 +1288,12 @@ button.nav-admin-trigger {
 }
 
 .nav-subgroup-nested .nav-link-sub {
-  padding: 8px 14px 8px 28px;
+  padding: 8px 14px 8px 10px;
   font-size: 13px;
-  display: block;
-  width: 100%;
+  display: flex;
+  width: calc(100% - 16px);
+  margin-left: 8px;
+  margin-right: 8px;
   box-sizing: border-box;
   text-align: left;
   white-space: normal;
@@ -1244,25 +1301,36 @@ button.nav-admin-trigger {
 }
 
 .nav-link {
-  display: block;
-  padding: 10px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
   color: #ddd;
   text-decoration: none;
   font-size: 13px;
   font-weight: 600;
-  transition: background 0.12s, color 0.12s;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
   white-space: nowrap;
   box-sizing: border-box;
   text-align: left;
 }
 
 .nav-link-sub {
-  padding-left: 28px;
+  padding-left: 10px;
   font-size: 12px;
   font-weight: 500;
   color: #bbb;
   white-space: normal;
   line-height: 1.35;
+}
+
+.nav-link-sub .nav-link-leading {
+  width: 18px;
+}
+
+.nav-link-sub .nav-link-marker {
+  width: 5px;
+  height: 5px;
 }
 
 .nav-group-auction-active {
@@ -1296,7 +1364,7 @@ button.nav-admin-trigger {
 
 .nav-auction-active {
   display: inline-block;
-  margin-right: 6px;
+  margin-right: 0;
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 9px;
@@ -1335,6 +1403,7 @@ button.nav-admin-trigger {
 
 .nav-link-label {
   vertical-align: middle;
+  min-width: 0;
 }
 
 /* Season schedule strip — season/month + draft/window counters below nav bar */
