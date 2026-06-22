@@ -536,6 +536,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   standingsGroups = groupStandingsByDivision(standings);
   buildVenueGroups(standings, fixtures);
 
+  applyDivisionFilterFromUrl();
   wireDivisionFilter();
   renderTables();
+  scrollToDivisionFromUrl();
 });
