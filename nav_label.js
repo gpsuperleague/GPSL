@@ -54,21 +54,34 @@ export function formatNavLabel(text) {
 
 /**
  * Top-nav section button: stack multi-word labels (e.g. Central / Bank).
+ * When activeSubLabel is set, shows the current page name on a line below the section title.
  * @param {string} text
  * @param {(s: string) => string} escapeHtml
+ * @param {string|null} [activeSubLabel]
  */
-export function renderNavSectionLabelHtml(text, escapeHtml) {
+export function renderNavSectionLabelHtml(text, escapeHtml, activeSubLabel = null) {
   const formatted = formatNavLabel(text);
   const parts = formatted.split(/\s+/).filter(Boolean);
+  let mainHtml;
   if (parts.length < 2) {
-    return escapeHtml(formatted);
+    mainHtml = escapeHtml(formatted);
+  } else {
+    const line1 = escapeHtml(parts[0]);
+    const line2 = escapeHtml(parts.slice(1).join(" "));
+    mainHtml =
+      `<span class="nav-group-label-stack">` +
+      `<span class="nav-group-label-line">${line1}</span>` +
+      `<span class="nav-group-label-line">${line2}</span>` +
+      `</span>`;
   }
-  const line1 = escapeHtml(parts[0]);
-  const line2 = escapeHtml(parts.slice(1).join(" "));
+
+  const active = String(activeSubLabel ?? "").trim();
+  if (!active) return mainHtml;
+
   return (
-    `<span class="nav-group-label-stack">` +
-    `<span class="nav-group-label-line">${line1}</span>` +
-    `<span class="nav-group-label-line">${line2}</span>` +
+    `<span class="nav-group-label-wrap">` +
+    mainHtml +
+    `<span class="nav-group-active-page">${escapeHtml(formatNavLabel(active))}</span>` +
     `</span>`
   );
 }

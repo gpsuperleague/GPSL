@@ -26,7 +26,7 @@ import { formatNavLabel, renderNavSectionLabelHtml } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260621-nav-info-strip";
+export const GLOBAL_JS_VERSION = "20260621-nav-active-below";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -1308,6 +1308,14 @@ function wireNavGroups(nav) {
   }
 }
 
+function activeLabelForNavItems(items, pathname, search, isNavItemActive) {
+  for (const item of items || []) {
+    if (item.heading || !item.href) continue;
+    if (isNavItemActive(item, pathname, search)) return item.label;
+  }
+  return null;
+}
+
 /** Minimal nav if grouped menu fails (keeps site usable). */
 export async function renderFallbackNav() {
   const nav = document.getElementById("nav");
@@ -1543,13 +1551,17 @@ export async function buildNav() {
     const hasActive = sectionMatchesPage && isPrimarySection;
     const isTransfersSection = section.id === "transfers";
     const anyAuctionActive = isTransfersSection && hasAnyNavAuctionActive();
+    const activePageLabel = hasActive
+      ? activeLabelForNavItems(items, pathname, search, isNavItemActive)
+      : null;
 
     html += `<div class="nav-group${hasActive ? " nav-group-active" : ""}${
       anyAuctionActive ? " nav-group-has-auction" : ""
     }"${isTransfersSection ? ' data-nav-auction-section="transfers"' : ""} data-nav-group>`;
     html += `<button type="button" class="nav-group-summary" aria-expanded="false">${renderNavSectionLabelHtml(
       section.label,
-      escapeNavHtml
+      escapeNavHtml,
+      activePageLabel
     )}${isTransfersSection ? navGroupAuctionBadgeHtml(anyAuctionActive) : ""}</button>`;
     const dropdownClass =
       section.id === "admin" || section.id === "transfers"
