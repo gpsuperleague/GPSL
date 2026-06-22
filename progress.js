@@ -46,6 +46,7 @@ function readPersistedProgressFilters(userId) {
 
 function savePersistedProgressFilters() {
   if (!progressFilterUserId) return;
+  if (divisionFromUrl()) return;
   try {
     localStorage.setItem(
       progressFilterStorageKey(progressFilterUserId),
@@ -80,7 +81,10 @@ function applyPersistedProgressFilters(stored) {
 }
 
 function restoreProgressFilters(userId) {
-  if (divisionFromUrl()) return;
+  if (divisionFromUrl()) {
+    applyDivisionFilterFromUrl();
+    return;
+  }
   applyPersistedProgressFilters(readPersistedProgressFilters(userId));
 }
 
@@ -89,23 +93,43 @@ function divisionFromUrl() {
   return LEAGUE_DIVISIONS.includes(div) ? div : "";
 }
 
+function activeDivisionFilter() {
+  const urlDiv = divisionFromUrl();
+  if (urlDiv) {
+    return Object.fromEntries(
+      LEAGUE_DIVISIONS.map((d) => [d, d === urlDiv])
+    );
+  }
+  return divisionFilterState();
+}
+
 function applyDivisionFilterFromUrl() {
   const div = divisionFromUrl();
-  if (!div) return;
+  if (!div) return false;
   document.querySelectorAll(".filter-div").forEach((el) => {
     el.checked = el.dataset.division === div;
   });
   syncFilterAllCheckbox();
+  return true;
+}
+
+function clearDivisionUrlParam() {
+  if (!divisionFromUrl()) return;
+  const url = new URL(window.location.href);
+  url.searchParams.delete("division");
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  history.replaceState(null, "", next);
 }
 
 function scrollToDivisionFromUrl() {
   const div = divisionFromUrl();
   if (!div) return;
-  requestAnimationFrame(() => {
+  const scroll = () => {
     document
       .querySelector(`.division-panel[data-division="${div}"]`)
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+  };
+  requestAnimationFrame(() => requestAnimationFrame(scroll));
 }
 
 function setArchiveModeUi(seasonLabel) {
@@ -369,7 +393,7 @@ function renderTables() {
 
   if (overallSection) overallSection.hidden = false;
 
-  const filter = divisionFilterState();
+  const filter = activeDivisionFilter();
   const visible = LEAGUE_DIVISIONS.filter((div) => filter[div]);
 
   root.innerHTML = "";
@@ -401,7 +425,7 @@ function renderVenueTables() {
     return;
   }
 
-  const filter = divisionFilterState();
+  const filter = activeDivisionFilter();
   const visible = LEAGUE_DIVISIONS.filter((div) => filter[div]);
   const venueLabel = venue === "home" ? "Home" : "Away";
   const groups = venueStandingsGroups[venue] || {};
@@ -435,6 +459,7 @@ function wireDivisionFilter() {
   const divBoxes = [...document.querySelectorAll(".filter-div")];
 
   allEl?.addEventListener("change", () => {
+    clearDivisionUrlParam();
     const on = allEl.checked;
     for (const box of divBoxes) box.checked = on;
     allEl.indeterminate = false;
@@ -444,6 +469,7 @@ function wireDivisionFilter() {
 
   for (const box of divBoxes) {
     box.addEventListener("change", () => {
+      clearDivisionUrlParam();
       syncFilterAllCheckbox();
       savePersistedProgressFilters();
       renderTables();
@@ -468,6 +494,8 @@ function buildVenueGroups(allStandings, fixtures) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  applyDivisionFilterFromUrl();
+
   await initGlobal();
   await loadClubsMap();
   renderLegend();
