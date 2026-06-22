@@ -816,7 +816,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
   syncSquadTableColumnWidths();
 }
 
-/** One table — column widths from content across all position groups. */
+/** One table — column min-widths from content (incl. full playstyle text). */
 function syncSquadTableColumnWidths() {
   const table = document.querySelector("table.gpsl-table.squad-table");
   if (!table) return;
@@ -829,28 +829,40 @@ function syncSquadTableColumnWidths() {
     col.style.width = "";
     col.style.minWidth = "";
   });
+
   table.style.tableLayout = "auto";
+  table.style.width = "max-content";
+  table.style.minWidth = "100%";
 
   const widths = Array.from(ths, () => 0);
-  const measure = (cells) => {
-    cells.forEach((cell, i) => {
-      if (!cell || i >= widths.length) return;
-      if (cell.colSpan > 1) return;
-      widths[i] = Math.max(widths[i], cell.scrollWidth);
-    });
+  const pad = 20;
+
+  const measureCell = (cell, i) => {
+    if (!cell || i >= widths.length || cell.colSpan > 1) return;
+    const prevWs = cell.style.whiteSpace;
+    const prevOv = cell.style.overflow;
+    cell.style.whiteSpace = "nowrap";
+    cell.style.overflow = "visible";
+    widths[i] = Math.max(widths[i], cell.offsetWidth + pad);
+    cell.style.whiteSpace = prevWs;
+    cell.style.overflow = prevOv;
   };
 
-  measure(ths);
+  ths.forEach((th, i) => measureCell(th, i));
   table.querySelectorAll("tbody tr[data-konami-id]").forEach((row) => {
-    measure(row.querySelectorAll("td"));
+    row.querySelectorAll("td").forEach((td, i) => measureCell(td, i));
   });
 
   cols.forEach((col, i) => {
     if (widths[i] > 0) {
-      col.style.width = `${widths[i]}px`;
+      col.style.minWidth = `${widths[i]}px`;
     }
   });
-  table.style.tableLayout = "fixed";
+
+  // Player names may wrap; playstyle / headers stay on one line
+  table.querySelectorAll("td.squad-col-player").forEach((cell) => {
+    cell.style.whiteSpace = "normal";
+  });
 }
 
 /** Update stats + listing pills only — keeps action dropdowns mounted and clickable. */
