@@ -1,11 +1,9 @@
 /**
  * Season transfer & auction schedule — discreet strip for owners.
- * Counts draft days used this season (from inbox schedule notifications)
- * and shows transfer window months (summer window pre-season until August, winter window in January).
+ * Counts draft days used this season and shows a single transfer window status.
  */
 
 import { supabase } from "./supabase_client.js";
-import { loadCalendarStatus, loadSeasonCalendarMonths } from "./competition_calendar.js";
 
 export const SEASON_SCHEDULE_TOTALS = {
   player: 3,
@@ -43,64 +41,9 @@ function countDraftEvents(rows, kind, seasonStartIso) {
   return keys.size;
 }
 
-function windowStatusFromMonth(monthRow, transferOpen) {
-  if (!monthRow) return "closed";
-  if (monthRow.is_active) return transferOpen ? "open" : "closed";
-  if (monthRow.is_future) return "upcoming";
-  return "closed";
-}
-
-function resolveTransferWindows(calendar, months, transferOpen) {
-  const byMonth = Object.fromEntries(
-    (months || []).map((m) => [String(m.gpsl_month || "").toLowerCase(), m])
-  );
-  const aug = byMonth.august;
-  const jan = byMonth.january;
-  const phase = calendar?.calendar_phase;
-  const augStarted = aug?.has_started === true || aug?.is_active === true;
-
-  let preseason = "closed";
-  if (augStarted) {
-    preseason = "closed";
-  } else if (phase === "pre_season") {
-    preseason = transferOpen ? "open" : "closed";
-  } else if (aug?.is_future && calendar?.season_id) {
-    preseason = "upcoming";
-  }
-
-  const january = windowStatusFromMonth(jan, transferOpen);
-
-  return {
-    preseason: {
-      label: "Summer window",
-      range: "Pre-season until August",
-      rangeSep: ": ",
-      status: preseason,
-      title:
-        preseason === "open"
-          ? "Summer transfer window open — pre-season until August (season starts in August)"
-          : preseason === "upcoming"
-            ? "Summer transfer window — pre-season until August"
-            : "Summer transfer window has ended — season underway from August",
-    },
-    january: {
-      label: "Winter window",
-      range: "January",
-      rangeSep: ": ",
-      status: january,
-      title:
-        january === "open"
-          ? "Winter transfer window is open (January)"
-          : january === "upcoming"
-            ? "Winter transfer window — opens in January"
-            : "Winter transfer window (January) has ended",
-    },
-  };
-}
-
 export async function loadSeasonTransferSchedule() {
   const nowIso = new Date().toISOString();
-  const [{ data: season }, calendar, months, settingsRes, inboxRes, specialRes, liveSpecialRes] =
+  const [{ data: season }, settingsRes, inboxRes, specialRes, liveSpecialRes] =
     await Promise.all([
       supabase
         .from("competition_seasons")
@@ -108,8 +51,6 @@ export async function loadSeasonTransferSchedule() {
         .eq("is_current", true)
         .eq("status", "active")
         .maybeSingle(),
-      loadCalendarStatus(supabase),
-      loadSeasonCalendarMonths(supabase),
       supabase
         .from("global_settings_public")
         .select(
@@ -148,8 +89,6 @@ export async function loadSeasonTransferSchedule() {
     return !Number.isNaN(t) && t >= seasonStartMs;
   }).length;
 
-  const windows = resolveTransferWindows(calendar, months, transferOpen);
-
   return {
     seasonLabel: season?.label || null,
     player: {
@@ -177,8 +116,10 @@ export async function loadSeasonTransferSchedule() {
       live: !!liveSpecialRes.data?.id,
       href: "special_auction.html",
     },
-    windows,
-    transferOpen,
+    transferWindow: {
+      open: transferOpen,
+      href: "transfer_center.html",
+    },
   };
 }
 
@@ -216,24 +157,18 @@ function draftChipHtml(kind, label, data) {
   );
 }
 
-function windowChipHtml(win) {
-  const status = win.status || "closed";
-  const statusWord =
-    status === "open" ? "OPEN" : status === "upcoming" ? "SOON" : "";
-  const title = win.title || win.label;
-  const rangeSep = win.rangeSep ?? " ";
-  const rangeHtml =
-    win.range && win.range !== win.label
-      ? `<span class="ssc-chip-range">${escapeHtml(rangeSep)}${escapeHtml(win.range)}</span>`
-      : "";
+function transferWindowChipHtml(data) {
+  const open = data.open === true;
+  const statusText = open ? "Open" : "Closed";
+  const title = open
+    ? "Transfer window is open — list players and make offers"
+    : "Transfer window is closed";
+
   return (
-    `<span class="ssc-chip ssc-window ssc-window--${escapeHtml(status)}" title="${escapeHtml(title)}">` +
-    `<span class="ssc-chip-label">${escapeHtml(win.label)}</span>` +
-    rangeHtml +
-    (statusWord
-      ? `<span class="ssc-chip-status">${escapeHtml(statusWord)}</span>`
-      : "") +
-    `</span>`
+    `<a href="${escapeHtml(data.href)}" class="ssc-chip ssc-transfer ssc-chip--live" title="${escapeHtml(title)}">` +
+    `<span class="ssc-chip-label">Transfer window</span>` +
+    `<span class="ssc-chip-value">${escapeHtml(statusText)}</span>` +
+    `</a>`
   );
 }
 
@@ -245,8 +180,7 @@ export function renderSeasonScheduleStripHtml(schedule) {
     draftChipHtml("manager", "Manager draft", schedule.manager),
     draftChipHtml("special", "Special auction", schedule.special),
     `<span class="ssc-sep" aria-hidden="true"></span>`,
-    windowChipHtml(schedule.windows.preseason),
-    windowChipHtml(schedule.windows.january),
+    transferWindowChipHtml(schedule.transferWindow),
   ];
 
   const seasonHint = schedule.seasonLabel

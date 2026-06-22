@@ -1306,6 +1306,14 @@ a.ssc-chip:hover {
   background: #151a15;
 }
 
+.ssc-transfer.ssc-chip--live .ssc-chip-label {
+  color: #7a9;
+}
+
+.ssc-transfer.ssc-chip--live .ssc-chip-value {
+  color: #9d9;
+}
+
 .ssc-chip-range {
   color: #777;
   font-size: 10px;

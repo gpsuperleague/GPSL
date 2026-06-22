@@ -15,14 +15,10 @@ DECLARE
   v_season_label text;
   v_season_start timestamptz;
   v_transfer_open boolean;
-  v_cal record;
-  v_aug record;
-  v_jan record;
+  v_calendar_label text;
   v_player_used int;
   v_manager_used int;
   v_special_used int;
-  v_preseason text;
-  v_january text;
   v_player_live boolean;
   v_manager_live boolean;
   v_special_live boolean;
@@ -46,21 +42,9 @@ BEGIN
       AND sa.end_time > now()
   ) INTO v_special_live;
 
-  SELECT *
-  INTO v_cal
+  SELECT season_label
+  INTO v_calendar_label
   FROM public.competition_calendar_status_public
-  LIMIT 1;
-
-  SELECT m.*
-  INTO v_aug
-  FROM public.competition_season_calendar m
-  WHERE m.season_id = v_season_id AND m.gpsl_month = 'august'
-  LIMIT 1;
-
-  SELECT m.*
-  INTO v_jan
-  FROM public.competition_season_calendar m
-  WHERE m.season_id = v_season_id AND m.gpsl_month = 'january'
   LIMIT 1;
 
   SELECT COUNT(DISTINCT regexp_replace(i.dedupe_key, ':[^:]+$', ''))
@@ -92,27 +76,9 @@ BEGIN
       OR sa.created_at >= v_season_start
     );
 
-  IF coalesce(v_aug.has_started, false) OR coalesce(v_aug.is_active, false) THEN
-    v_preseason := 'closed';
-  ELSIF v_cal.calendar_phase = 'pre_season' THEN
-    v_preseason := CASE WHEN v_transfer_open THEN 'open' ELSE 'closed' END;
-  ELSIF coalesce(v_aug.is_future, false) AND v_season_id IS NOT NULL THEN
-    v_preseason := 'upcoming';
-  ELSE
-    v_preseason := 'closed';
-  END IF;
-
-  IF coalesce(v_jan.is_active, false) THEN
-    v_january := CASE WHEN v_transfer_open THEN 'open' ELSE 'closed' END;
-  ELSIF coalesce(v_jan.is_future, false) THEN
-    v_january := 'upcoming';
-  ELSE
-    v_january := 'closed';
-  END IF;
-
   RETURN jsonb_build_object(
     'season_id', v_season_id,
-    'season_label', coalesce(v_season_label, v_cal.season_label),
+    'season_label', coalesce(v_season_label, v_calendar_label),
     'player', jsonb_build_object(
       'total', 3,
       'used', coalesce(v_player_used, 0),
@@ -131,11 +97,9 @@ BEGIN
       'remaining', GREATEST(0, 3 - coalesce(v_special_used, 0)),
       'live', coalesce(v_special_live, false)
     ),
-    'windows', jsonb_build_object(
-      'preseason', jsonb_build_object('label', 'Summer window', 'range', 'Pre-season until August', 'status', v_preseason),
-      'january', jsonb_build_object('label', 'Winter window', 'range', 'January', 'status', v_january)
-    ),
-    'transfer_open', coalesce(v_transfer_open, false)
+    'transfer_window', jsonb_build_object(
+      'open', coalesce(v_transfer_open, false)
+    )
   );
 END;
 $function$;
