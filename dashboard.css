@@ -977,6 +977,14 @@ button.nav-admin-trigger {
   min-width: 0;
 }
 
+.nav-group-subline {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+}
+
 .nav-group-subline:not(:has(.nav-group-active-page)):has(.nav-group-auction-active.is-hidden:only-child) {
   display: none;
 }
