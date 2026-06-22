@@ -11,6 +11,9 @@ import {
   analyseSquadCompositionProjected,
   playerSquadQualificationBadges,
   squadComplianceRuleRows,
+  shortComplianceRequirement,
+  shortComplianceStatus,
+  complianceRowTooltip,
 } from "./squad_rules.js";
 import {
   loadSquadGhostAcquisitions,
@@ -541,148 +544,104 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
     rows.push(starComplianceRow(designationsState));
     rows.push(oooComplianceRow(designationsState));
   }
+
+  const ghosts = ghostPlayers || [];
+  const hasGhosts = ghosts.length > 0;
+  const projected = hasGhosts
+    ? analyseSquadCompositionProjected(players, ghosts, clubNation)
+    : null;
+  const projectedRows = hasGhosts
+    ? squadComplianceRuleRows(projected, clubNation, squadMinimumStatus)
+    : [];
+  const projectedByRule = new Map(projectedRows.map((r) => [r.rule, r]));
+
   const preAugust = !squadMinimumStatus?.punishments_active;
   const minOk = c.minSquadOk || preAugust;
   const panelClass =
     c.compliant && minOk
-      ? "squad-rules-panel squad-rules-panel--ok"
+      ? "squad-rules-panel squad-rules-panel--ok squad-rules-panel--compact"
       : c.compliant && preAugust && !c.minSquadOk
-        ? "squad-rules-panel"
-        : "squad-rules-panel squad-rules-panel--warn";
+        ? "squad-rules-panel squad-rules-panel--compact"
+        : "squad-rules-panel squad-rules-panel--warn squad-rules-panel--compact";
 
   const tableRows = rows
-    .map(
-      (r) => `
-    <tr class="${r.ok ? "squad-rules-row--ok" : "squad-rules-row--fail"}">
-      <th scope="row">${r.rule}</th>
-      <td class="squad-rules-who">${r.whoCounts}</td>
-      <td class="squad-rules-req">${r.requirement}<span class="squad-rules-note">${r.note}</span></td>
+    .map((r) => {
+      const rowOk =
+        r.rule === "Minimum squad" ? r.ok || preAugust : r.ok;
+      const proj = projectedByRule.get(r.rule);
+      const projCount =
+        proj && typeof proj.count === "number" ? proj.count : null;
+      const statusText =
+        r.rule === "Minimum squad" && preAugust && !r.ok
+          ? `−${c.minSquadShort} pre-Aug`
+          : shortComplianceStatus(r);
+      const projCell =
+        hasGhosts && projCount != null
+          ? `<td class="squad-rules-count squad-rules-count--ghost" title="If ${ghosts.length} pending bid${ghosts.length === 1 ? "" : "s"} complete"><strong>${projCount}</strong></td>`
+          : hasGhosts
+            ? `<td class="squad-rules-count squad-rules-count--ghost muted">—</td>`
+            : "";
+      const projHint =
+        proj && !proj.ok && rowOk
+          ? ` → ${shortComplianceStatus(proj)} if won`
+          : "";
+
+      return `
+    <tr class="${rowOk ? "squad-rules-row--ok" : "squad-rules-row--fail"}">
+      <th scope="row" title="${escapeHtml(complianceRowTooltip(r))}">${r.rule}</th>
+      <td class="squad-rules-req-compact" title="${escapeHtml(complianceRowTooltip(r))}">${shortComplianceRequirement(r)}</td>
       <td class="squad-rules-count"><strong>${r.count}</strong></td>
-      <td class="squad-rules-status">${r.ok ? "✓" : "✗"} ${r.status}</td>
-    </tr>`
-    )
+      ${projCell}
+      <td class="squad-rules-status-compact">
+        <span class="squad-rules-mark ${rowOk ? "squad-rules-mark--ok" : "squad-rules-mark--fail"}">${rowOk ? "✓" : "✗"}</span>
+        <span class="squad-rules-status-text">${statusText}${projHint}</span>
+      </td>
+    </tr>`;
+    })
     .join("");
 
-  const overallNotes = [...c.issues];
-  if (!c.minSquadOk) {
-    overallNotes.push(
-      preAugust
-        ? `Build to at least 24 players before August (${c.minSquadShort} more needed — no penalty until then).`
-        : `Squad minimum not met (${c.minSquadShort} below 24 — August penalties may apply).`
-    );
+  const failCount = rows.filter((r) =>
+    r.rule === "Minimum squad" ? !r.ok && !preAugust : !r.ok
+  ).length;
+
+  let footnote = "";
+  if (hasGhosts) {
+    footnote = `<p class="squad-rules-footnote">👻 <strong>If won</strong> includes ${ghosts.length} player${ghosts.length === 1 ? "" : "s"} you lead on market/draft — not contracted yet (ghost rows below).</p>`;
   }
-  if (squadMinimumStatus?.enforcement?.total_fine > 0) {
-    overallNotes.push(
-      `August enforcement: ₿${Number(squadMinimumStatus.enforcement.total_fine).toLocaleString("en-GB")} fines, ${squadMinimumStatus.enforcement.loans_granted} season loan(s) granted.`
-    );
-  }
-
-  const overall =
-    c.compliant && c.minSquadOk
-      ? '<p class="squad-rules-overall squad-rules-overall--ok">Your squad meets all registration requirements.</p>'
-      : c.compliant && preAugust && !c.minSquadOk
-        ? `<p class="squad-rules-overall">Pre-season: ${overallNotes.join(" ")}</p>`
-        : `<p class="squad-rules-overall squad-rules-overall--warn">Your squad does not yet meet all requirements:</p>
-       <ul class="squad-rules-issues">${overallNotes.map((i) => `<li>${i}</li>`).join("")}</ul>`;
-
-  const ghosts = ghostPlayers || [];
-  let ghostSection = "";
-  if (ghosts.length) {
-    const projected = analyseSquadCompositionProjected(
-      players,
-      ghosts,
-      clubNation
-    );
-    const projectedRows = squadComplianceRuleRows(
-      projected,
-      clubNation,
-      squadMinimumStatus
-    );
-    const ghostNames = ghosts
-      .map((g) => g.Name || g.Konami_ID)
-      .slice(0, 6)
-      .join(", ");
-    const nameSuffix =
-      ghosts.length > 6 ? ` +${ghosts.length - 6} more` : "";
-
-    const projectedTableRows = projectedRows
-      .map((r) => {
-        const rowClass = r.ok
-          ? "squad-rules-row--ok squad-rules-row--ghost"
-          : "squad-rules-row--fail squad-rules-row--ghost";
-        return `
-    <tr class="${rowClass}">
-      <th scope="row">${r.rule}</th>
-      <td class="squad-rules-who">${r.whoCounts}</td>
-      <td class="squad-rules-req">${r.requirement}<span class="squad-rules-note">${r.note}</span></td>
-      <td class="squad-rules-count"><strong>${r.count}</strong></td>
-      <td class="squad-rules-status">${r.ok ? "✓" : "✗"} ${r.status}</td>
-    </tr>`;
-      })
-      .join("");
-
-    const projectedIssues = projected.issues.filter(
-      (issue) => !c.issues.includes(issue)
-    );
-    const projectedOverall =
-      projected.compliant && projected.minSquadOk
-        ? '<p class="squad-rules-overall squad-rules-overall--ghost-ok">Projected squad would meet all counted requirements.</p>'
-        : projectedIssues.length
-          ? `<p class="squad-rules-overall squad-rules-overall--ghost-warn">If all pending signings complete, watch out for:</p>
-       <ul class="squad-rules-issues squad-rules-issues--ghost">${projectedIssues.map((i) => `<li>${i}</li>`).join("")}</ul>`
-          : `<p class="squad-rules-overall squad-rules-overall--ghost">Projected totals differ from your current squad (see table).</p>`;
-
-    ghostSection = `
-    <section class="squad-rules-panel squad-rules-panel--ghost" aria-label="Projected squad if pending signings complete">
-      <header class="squad-rules-header">
-        <h2 class="squad-rules-title">👻 What if pending signings complete?</h2>
-        <p class="squad-rules-intro squad-rules-intro--ghost">
-          Includes <strong>${ghosts.length}</strong> player${ghosts.length === 1 ? "" : "s"} you are currently <strong>winning</strong> on the transfer market or draft auction
-          (${ghostNames}${nameSuffix}) — <em>not contracted yet</em>. Ghost rows in the table below are for planning only.
-        </p>
-      </header>
-      <table class="squad-rules-table squad-rules-table--ghost">
-        <thead>
-          <tr>
-            <th scope="col">Rule</th>
-            <th scope="col">Who counts</th>
-            <th scope="col">League requirement</th>
-            <th scope="col">Projected squad</th>
-            <th scope="col">Status</th>
-          </tr>
-        </thead>
-        <tbody>${projectedTableRows}</tbody>
-      </table>
-      ${projectedOverall}
-    </section>`;
+  if (failCount > 0) {
+    const issues = c.issues
+      .map((i) => i.replace(/^[^:]+:\s*/, "").replace(/\.$/, ""))
+      .slice(0, 3)
+      .join(" · ");
+    footnote += `<p class="squad-rules-footnote squad-rules-footnote--warn">${failCount} rule${failCount === 1 ? "" : "s"} not met${issues ? `: ${issues}` : ""}.</p>`;
+  } else if (!hasGhosts) {
+    footnote = `<p class="squad-rules-footnote squad-rules-footnote--ok">All registration rules met.</p>`;
+  } else if (projected?.compliant) {
+    footnote += `<p class="squad-rules-footnote squad-rules-footnote--ok">All rules would be met if pending signings complete.</p>`;
   }
 
   el.innerHTML = `
     <section class="${panelClass}" aria-label="Squad registration requirements">
-      <header class="squad-rules-header">
-        <h2 class="squad-rules-title">Squad registration requirements</h2>
-        <p class="squad-rules-intro">
-          Counts are based on your contracted players in the table below.
-          <strong>Minimum squad (24)</strong> applies from <strong>August</strong> — no penalties before then.
-          <strong>Home-grown</strong> and <strong>under-21</strong> are <em>minimums</em>.
-          <strong>Maximum squad size</strong> is ${28}.
+      <header class="squad-rules-header squad-rules-header--compact">
+        <h2 class="squad-rules-title">Registration</h2>
+        <p class="squad-rules-intro squad-rules-intro--compact">
+          Contracted squad · min 24 from Aug · max 28
         </p>
       </header>
-      <table class="squad-rules-table">
+      <table class="squad-rules-table squad-rules-table--compact">
         <thead>
           <tr>
             <th scope="col">Rule</th>
-            <th scope="col">Who counts</th>
-            <th scope="col">League requirement</th>
-            <th scope="col">Your squad</th>
+            <th scope="col">Req</th>
+            <th scope="col">Now</th>
+            ${hasGhosts ? '<th scope="col" title="If pending winning bids complete">If won</th>' : ""}
             <th scope="col">Status</th>
           </tr>
         </thead>
         <tbody>${tableRows}</tbody>
       </table>
-      ${overall}
+      ${footnote}
     </section>
-    ${ghostSection}
   `;
 }
 
@@ -857,6 +816,44 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
   applyTransferWindowRules();
   applyForeignSaleOptionState();
   applyVoluntaryReleaseOptionState();
+  syncSquadTableColumnWidths();
+}
+
+/** One table — column widths from content across all position groups. */
+function syncSquadTableColumnWidths() {
+  const table = document.querySelector("table.gpsl-table.squad-table");
+  if (!table) return;
+
+  const cols = table.querySelectorAll("colgroup col");
+  const ths = table.querySelectorAll("thead th");
+  if (!cols.length || cols.length !== ths.length) return;
+
+  cols.forEach((col) => {
+    col.style.width = "";
+    col.style.minWidth = "";
+  });
+  table.style.tableLayout = "auto";
+
+  const widths = Array.from(ths, () => 0);
+  const measure = (cells) => {
+    cells.forEach((cell, i) => {
+      if (!cell || i >= widths.length) return;
+      if (cell.colSpan > 1) return;
+      widths[i] = Math.max(widths[i], cell.scrollWidth);
+    });
+  };
+
+  measure(ths);
+  table.querySelectorAll("tbody tr[data-konami-id]").forEach((row) => {
+    measure(row.querySelectorAll("td"));
+  });
+
+  cols.forEach((col, i) => {
+    if (widths[i] > 0) {
+      col.style.width = `${widths[i]}px`;
+    }
+  });
+  table.style.tableLayout = "fixed";
 }
 
 /** Update stats + listing pills only — keeps action dropdowns mounted and clickable. */

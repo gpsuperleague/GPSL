@@ -91,6 +91,13 @@ body.squad-page .squad-rules-panel {
   background: rgba(255, 255, 255, 0.04);
 }
 
+body.squad-page .squad-rules-panel--compact {
+  padding: 8px 12px 10px;
+  font-size: 12px;
+  line-height: 1.35;
+  margin-bottom: 12px;
+}
+
 body.squad-page .squad-rules-panel--ok {
   border-color: #2d5a2d;
   background: rgba(30, 60, 30, 0.35);
@@ -108,11 +115,33 @@ body.squad-page .squad-rules-title {
   font-weight: 600;
 }
 
+body.squad-page .squad-rules-panel--compact .squad-rules-title {
+  margin: 0;
+  font-size: 14px;
+  display: inline;
+  margin-right: 8px;
+}
+
+body.squad-page .squad-rules-header--compact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-bottom: 6px;
+}
+
 body.squad-page .squad-rules-intro {
   margin: 0 0 12px;
   color: #bbb;
   font-size: 13px;
   max-width: 52rem;
+}
+
+body.squad-page .squad-rules-intro--compact {
+  margin: 0;
+  font-size: 11px;
+  color: #888;
+  max-width: none;
 }
 
 body.squad-page .squad-rules-table {
@@ -121,6 +150,65 @@ body.squad-page .squad-rules-table {
   font-size: 13px;
   margin-bottom: 10px;
 }
+
+body.squad-page .squad-rules-table--compact {
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+body.squad-page .squad-rules-table--compact th,
+body.squad-page .squad-rules-table--compact td {
+  padding: 4px 8px;
+}
+
+body.squad-page .squad-rules-req-compact {
+  color: #999;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+body.squad-page .squad-rules-status-compact {
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+body.squad-page .squad-rules-mark {
+  display: inline-block;
+  width: 1.1em;
+  text-align: center;
+  font-weight: bold;
+}
+
+body.squad-page .squad-rules-mark--ok { color: #6c6; }
+body.squad-page .squad-rules-mark--fail { color: #e88; }
+
+body.squad-page .squad-rules-status-text {
+  color: #aaa;
+  margin-left: 4px;
+}
+
+body.squad-page .squad-rules-count {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+body.squad-page .squad-rules-count--ghost strong {
+  color: #9ec5ff;
+  font-style: italic;
+}
+
+body.squad-page .squad-rules-footnote {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #888;
+  line-height: 1.4;
+}
+
+body.squad-page .squad-rules-footnote--warn { color: #c9a080; }
+body.squad-page .squad-rules-footnote--ok { color: #7a9; }
+
+body.squad-page .muted { color: #666; }
 
 body.squad-page .squad-rules-table th,
 body.squad-page .squad-rules-table td {
@@ -222,7 +310,6 @@ body.squad-page .squad-table-scroll {
 
 body.squad-page table.gpsl-table.squad-table {
   width: 100%;
-  min-width: 1180px;
   table-layout: fixed;
   border-collapse: collapse;
   background: rgba(255, 255, 255, 0.05);
@@ -240,18 +327,7 @@ body.squad-page table.gpsl-table.squad-table td:last-child {
   border-right: none;
 }
 
-body.squad-page table.gpsl-table.squad-table col.squad-col-thumb { width: 76px; }
-body.squad-page table.gpsl-table.squad-table col.squad-col-player { width: 168px; }
-body.squad-page table.gpsl-table.squad-table col.squad-col-nation { width: 52px; }
-body.squad-page table.gpsl-table.squad-table col.squad-col-position { width: 44px; }
-body.squad-page table.gpsl-table.squad-table col.squad-col-age { width: 40px; }
-body.squad-page table.gpsl-table.squad-table col.squad-col-rating { width: 76px; }
-body.squad-page table.gpsl-table.squad-table col.squad-col-stat { width: 44px; }
-body.squad-page table.gpsl-table.squad-table col.squad-col-playstyle { width: 108px; }
-body.squad-page table.gpsl-table.squad-table col.squad-col-value { width: 96px; }
-body.squad-page table.gpsl-table.squad-table col.squad-col-contract { width: 84px; }
-body.squad-page table.gpsl-table.squad-table col.squad-col-status { width: 132px; }
-body.squad-page table.gpsl-table.squad-table col.squad-col-action { width: 132px; }
+/* Column widths set by syncSquadTableColumnWidths() after render */
 
 body.squad-page .gpsl-table {
   width: 100%;

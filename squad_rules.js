@@ -474,3 +474,42 @@ export function squadComplianceRuleRows(c, clubNation, minimumStatus = null) {
     },
   ];
 }
+
+/** One-line requirement for compact compliance table. */
+export function shortComplianceRequirement(row) {
+  if (!row) return "";
+  const rule = row.rule || "";
+  if (rule === "Minimum squad") return `≥${MIN_SQUAD_SIZE} (Aug)`;
+  if (rule === "Home-grown") return `≥${MIN_HOME_GROWN} HG`;
+  if (rule === "Under-21") return `≥${MIN_UNDER_21} U21`;
+  if (rule === "Maximum squad") return `≤${SQUAD_SIZE}`;
+  if (rule === "Star players") return row.requirement || `≤ cap`;
+  if (rule === "One of our own") return "1 rec.";
+  return row.requirement || "";
+}
+
+/** Short status line for compact table. */
+export function shortComplianceStatus(row) {
+  if (!row) return "";
+  if (row.ok) {
+    if (row.rule === "One of our own") {
+      return row.status === "Assigned" ? "OK" : "—";
+    }
+    return "OK";
+  }
+  const st = String(row.status || "");
+  const need = st.match(/Need (\d+)/);
+  if (need) return `−${need[1]}`;
+  if (row.rule === "Star players") return "Over";
+  if (row.rule === "One of our own") return "Unset";
+  if (st.includes("At max")) return "At max";
+  if (st.includes("over limit")) return "Over";
+  return st.slice(0, 20);
+}
+
+/** Tooltip combining who-counts + footnote. */
+export function complianceRowTooltip(row) {
+  if (!row) return "";
+  const parts = [row.whoCounts, row.note].filter(Boolean);
+  return parts.join(" · ");
+}
