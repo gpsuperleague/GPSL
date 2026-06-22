@@ -463,6 +463,7 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
       byLine,
       pendingByLine: new Map(),
       totalPending: 0,
+      subsidyPreview: null,
       inferredOpeningAdjusted,
       projectedBalance: balanceNow,
     };
@@ -488,7 +489,7 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
   mergeTransferHistoryIntoByLine(byLine, transferAgg);
 
   const inferredOpeningAdjusted = balanceNow - net - transferGap;
-  const { pendingByLine, totalPending } = await buildFinanceProjections(
+  const { pendingByLine, totalPending, subsidyPreview } = await buildFinanceProjections(
     supabase,
     shortName,
     { byLine }
@@ -505,6 +506,7 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
     byLine,
     pendingByLine,
     totalPending,
+    subsidyPreview,
     inferredOpeningAdjusted,
     projectedBalance: balanceNow + totalPending,
   };
@@ -578,6 +580,7 @@ export async function initFinanceAccountsPage() {
       pendingByLine: data.pendingByLine,
       runningStart: data.inferredOpeningAdjusted,
       currentBalance: data.balanceNow,
+      subsidyPreview: data.subsidyPreview,
     });
   }
 }

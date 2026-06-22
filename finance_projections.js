@@ -269,6 +269,9 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
     { p_club_short_name: clubShortName }
   );
 
+  /** @type {object|null} */
+  let subsidyPreview = null;
+
   const postedTv = byLine.get("prize_tv")?.amount || 0;
   if (season?.id) {
     const { data: tvUpcoming, error: tvErr } = await supabase
@@ -311,12 +314,19 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
     }
   }
 
-  if (!govPreviewErr && govPreview) {
+  if (govPreviewErr) {
+    console.warn("gov_subsidy_club_preview:", govPreviewErr);
+  } else if (govPreview) {
+    subsidyPreview = govPreview;
     for (const { lineId, type, key, label } of govLines) {
       if ((byLine.get(lineId)?.amount || 0) > 0.5 || paidGovTypes.has(type)) {
         continue;
       }
       const block = govPreview[key];
+      if (!block) {
+        console.warn(`gov_subsidy_club_preview missing key: ${key}`);
+        continue;
+      }
       const amt = Number(block?.amount || 0);
       const status = block?.status;
       if (amt > 0.5) {
@@ -368,5 +378,6 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
     );
   }
 
-  return filterPendingAgainstLedger(pendingByLine, byLine);
+  const result = filterPendingAgainstLedger(pendingByLine, byLine);
+  return { ...result, subsidyPreview };
 }

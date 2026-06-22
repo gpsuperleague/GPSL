@@ -270,8 +270,7 @@ function renderForeignInterestBadge() {
       : `${n} foreign ${n === 1 ? "club" : "clubs"} interested in your players`;
 
   el.innerHTML = `
-    <span class="foreign-interest-main">${escapeHtml(main)}</span>
-    <span class="foreign-interest-hint">Use action to sell to one of these clubs at market value</span>`;
+    <span class="foreign-interest-main">${escapeHtml(main)}</span><span class="foreign-interest-hint"> · Sell via Action at market value</span>`;
 }
 
 function voluntaryReleaseOptionHtml(player) {
@@ -356,14 +355,12 @@ function renderVoluntaryReleaseBadge() {
   const n = voluntaryReleasesRemaining;
   el.classList.toggle("foreign-interest-badge--empty", n <= 0);
   if (n <= 0) {
-    el.textContent =
-      "No voluntary contract releases left this season (0/3 used)";
+    el.textContent = "No voluntary releases left (0/3)";
     return;
   }
 
   el.innerHTML = `
-    <span class="foreign-interest-main">${n} voluntary contract ${n === 1 ? "release" : "releases"} remaining (max 3/season)</span>
-    <span class="foreign-interest-hint">Pay remaining wages — player unavailable until next season</span>`;
+    <span class="foreign-interest-main">${n} voluntary ${n === 1 ? "release" : "releases"} left · max 3/season</span><span class="foreign-interest-hint"> · Pays wages · out until next season</span>`;
 }
 
 function applyVoluntaryReleaseOptionState() {

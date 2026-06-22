@@ -38,40 +38,60 @@ body.squad-page .squad-header-titles {
   flex: 0 1 auto;
 }
 
-body.squad-page .foreign-interest-badge {
+body.squad-page .squad-header-badges {
   margin-left: auto;
-  margin-right: 12px;
-  padding: 10px 16px;
-  font-size: 15px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+  max-width: min(420px, 42vw);
+}
+
+body.squad-page .foreign-interest-badge {
+  margin: 0;
+  padding: 5px 10px;
+  font-size: 12px;
   font-weight: 600;
   color: #e8f4ff;
-  text-align: center;
-  border: 2px solid #6cf;
-  border-radius: 8px;
-  background: rgba(30, 60, 90, 0.45);
-  box-shadow: 0 0 12px rgba(102, 204, 255, 0.15);
-  max-width: 420px;
+  text-align: right;
+  border: 1px solid rgba(102, 204, 255, 0.55);
+  border-radius: 6px;
+  background: rgba(30, 60, 90, 0.4);
+  box-shadow: none;
+  max-width: 100%;
   line-height: 1.35;
 }
 
 body.squad-page .foreign-interest-badge .foreign-interest-main {
-  display: block;
+  display: inline;
 }
 
 body.squad-page .foreign-interest-badge .foreign-interest-hint {
-  display: block;
-  margin-top: 6px;
-  font-size: 12px;
+  display: inline;
+  margin-top: 0;
+  font-size: 11px;
   font-weight: 400;
-  color: #fff;
-  opacity: 0.92;
+  color: #9ab8cc;
+  opacity: 1;
+}
+
+body.squad-page .voluntary-release-badge {
+  border-color: rgba(140, 180, 140, 0.5);
+  background: rgba(35, 55, 40, 0.45);
+  color: #dce8dc;
+}
+
+body.squad-page .voluntary-release-badge .foreign-interest-hint {
+  color: #9ab09a;
 }
 
 body.squad-page .foreign-interest-badge--empty {
-  color: #aaa;
-  border-color: #666;
-  background: rgba(40, 40, 40, 0.5);
-  box-shadow: none;
+  color: #888;
+  border-color: #555;
+  background: rgba(40, 40, 40, 0.45);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 9px;
 }
 
 body.squad-page .foreign-interest-badge--empty .foreign-interest-hint {

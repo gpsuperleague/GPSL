@@ -415,6 +415,40 @@ function formatPendingAmount(pending) {
   return `<span class="amt ${cls} pending-amt">${sign}${formatMoney(Math.abs(n))}</span>`;
 }
 
+const SUBSIDY_PREVIEW_LINE_KEYS = {
+  gov_hg: "homegrown",
+  gov_youth: "youth",
+  gov_bnb: "bnb",
+};
+
+/** Shown under Government lines when preview exists but pending column is — */
+function subsidyQualifyingNote(lineId, preview) {
+  const key = SUBSIDY_PREVIEW_LINE_KEYS[lineId];
+  if (!key || !preview?.[key]) return "";
+
+  const block = preview[key];
+  const amt = Number(block.amount || 0);
+  const status = block.status && block.status !== "—" ? block.status : null;
+  const count = Number(block.count ?? 0);
+
+  if (lineId === "gov_bnb") {
+    const min = Number(block.min_required ?? 8);
+    const maxR = block.max_rating ?? 70;
+    const qual = `${count} at ≤${maxR} (need ${min}+)`;
+    return `Est. ${formatMoney(amt)} — ${qual}${status ? ` · ${status}` : ""} · paid at 38/38`;
+  }
+
+  if (lineId === "gov_youth") {
+    return `Est. ${formatMoney(amt)} — ${count} under-21${status ? ` · ${status}` : ""} · paid at 38/38`;
+  }
+
+  if (lineId === "gov_hg") {
+    return `Est. ${formatMoney(amt)} — ${count} homegrown${status ? ` · ${status}` : ""} · paid at 38/38`;
+  }
+
+  return "";
+}
+
 /** Pending only when not already fully reflected on the ledger for that line. */
 function resolvePendingForLine(lineId, pending, byLine) {
   if (!pending || Math.abs(pending.amount) < 0.001) return null;
@@ -449,6 +483,7 @@ function formatBreakdownColumn(bucket) {
  */
 export function renderFinanceSections(byLine, options = {}) {
   const pendingByLine = options.pendingByLine || new Map();
+  const subsidyPreview = options.subsidyPreview || null;
   let running = Number(options.runningStart) || 0;
   let totalPending = 0;
   for (const [lineId, pending] of pendingByLine.entries()) {
@@ -493,6 +528,15 @@ export function renderFinanceSections(byLine, options = {}) {
             ? `<p class="fin-line-note fin-pending-note">${pending.note}</p>`
             : "";
 
+        const subsidyNote =
+          subsidyPreview &&
+          (!pending || Math.abs(pending.amount) < 0.001)
+            ? subsidyQualifyingNote(line.id, subsidyPreview)
+            : "";
+        const subsidyNoteHtml = subsidyNote
+          ? `<p class="fin-line-note fin-subsidy-preview">${subsidyNote}</p>`
+          : "";
+
         return `
           <div class="fin-line ${planned ? "planned-line" : ""}">
             <div class="fin-line-head fin-line-cols">
@@ -509,6 +553,7 @@ export function renderFinanceSections(byLine, options = {}) {
                 : ""
             }
             ${pendingNote}
+            ${subsidyNoteHtml}
           </div>
         `;
       })
