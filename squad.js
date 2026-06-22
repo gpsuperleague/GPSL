@@ -92,6 +92,9 @@ const SQUAD_PLAYER_COLUMNS_LEGACY =
   "Konami_ID, Name, Nation, Position, Rating, Age, market_value, Playstyle, Maximum_Reserve_Price, Contracted_Team, Season_Signed, contract_seasons_remaining, contract_wage";
 
 const SQUAD_TABLE_COLS = 15;
+const SQUAD_PLAYER_COL_INDEX = 1;
+
+let squadColumnWidthResizeTimer = null;
 
 function isMissingEconomicsColumnError(error) {
   const msg = String(error?.message || "").toLowerCase();
@@ -806,10 +809,31 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
   applyTransferWindowRules();
   applyForeignSaleOptionState();
   applyVoluntaryReleaseOptionState();
+  ensureSquadTableColumnWidthSync();
   syncSquadTableColumnWidths();
 }
 
 /** One table — column min-widths from content (incl. full playstyle text). */
+function measureSquadPlayerColumnWidth(cell, pad = 20) {
+  const nameRow = cell.querySelector(".squad-player-name-row");
+  if (nameRow) {
+    const prev = nameRow.style.whiteSpace;
+    nameRow.style.whiteSpace = "nowrap";
+    const w = nameRow.scrollWidth + pad;
+    nameRow.style.whiteSpace = prev;
+    return w;
+  }
+
+  const prevWs = cell.style.whiteSpace;
+  const prevOv = cell.style.overflow;
+  cell.style.whiteSpace = "nowrap";
+  cell.style.overflow = "visible";
+  const w = cell.scrollWidth + pad;
+  cell.style.whiteSpace = prevWs;
+  cell.style.overflow = prevOv;
+  return w;
+}
+
 function syncSquadTableColumnWidths() {
   const table = document.querySelector("table.gpsl-table.squad-table");
   if (!table) return;
@@ -832,13 +856,20 @@ function syncSquadTableColumnWidths() {
 
   const measureCell = (cell, i) => {
     if (!cell || i >= widths.length || cell.colSpan > 1) return;
-    const prevWs = cell.style.whiteSpace;
-    const prevOv = cell.style.overflow;
-    cell.style.whiteSpace = "nowrap";
-    cell.style.overflow = "visible";
-    widths[i] = Math.max(widths[i], cell.offsetWidth + pad);
-    cell.style.whiteSpace = prevWs;
-    cell.style.overflow = prevOv;
+    const w =
+      i === SQUAD_PLAYER_COL_INDEX
+        ? measureSquadPlayerColumnWidth(cell, pad)
+        : (() => {
+            const prevWs = cell.style.whiteSpace;
+            const prevOv = cell.style.overflow;
+            cell.style.whiteSpace = "nowrap";
+            cell.style.overflow = "visible";
+            const measured = cell.scrollWidth + pad;
+            cell.style.whiteSpace = prevWs;
+            cell.style.overflow = prevOv;
+            return measured;
+          })();
+    widths[i] = Math.max(widths[i], w);
   };
 
   ths.forEach((th, i) => measureCell(th, i));
@@ -851,10 +882,14 @@ function syncSquadTableColumnWidths() {
       col.style.minWidth = `${widths[i]}px`;
     }
   });
+}
 
-  // Player names may wrap; playstyle / headers stay on one line
-  table.querySelectorAll("td.squad-col-player").forEach((cell) => {
-    cell.style.whiteSpace = "normal";
+function ensureSquadTableColumnWidthSync() {
+  if (window.__squadColumnWidthSyncBound) return;
+  window.__squadColumnWidthSyncBound = true;
+  window.addEventListener("resize", () => {
+    clearTimeout(squadColumnWidthResizeTimer);
+    squadColumnWidthResizeTimer = setTimeout(syncSquadTableColumnWidths, 120);
   });
 }
 

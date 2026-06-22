@@ -49,7 +49,6 @@ export async function loadSeasonTransferSchedule() {
         .from("competition_seasons")
         .select("id, label, started_at")
         .eq("is_current", true)
-        .eq("status", "active")
         .maybeSingle(),
       supabase
         .from("global_settings_public")
@@ -89,8 +88,13 @@ export async function loadSeasonTransferSchedule() {
     return !Number.isNaN(t) && t >= seasonStartMs;
   }).length;
 
+  const seasonLabel =
+    season?.label ||
+    (await supabase.rpc("current_gpsl_season_label")).data ||
+    null;
+
   return {
-    seasonLabel: season?.label || null,
+    seasonLabel: seasonLabel ? String(seasonLabel).trim() : null,
     player: {
       total: SEASON_SCHEDULE_TOTALS.player,
       used: playerUsed,
@@ -186,10 +190,11 @@ export function renderSeasonScheduleStripHtml(schedule) {
   const seasonHint = schedule.seasonLabel
     ? `Season schedule — ${schedule.seasonLabel}`
     : "Season schedule";
+  const kicker = schedule.seasonLabel || "Season";
 
   return (
     `<div class="season-schedule-inner" role="region" aria-label="${escapeHtml(seasonHint)}">` +
-    `<span class="ssc-kicker">Season</span>` +
+    `<span class="ssc-kicker">${escapeHtml(kicker)}</span>` +
     `<div class="ssc-chips">${parts.join("")}</div>` +
     `</div>`
   );
