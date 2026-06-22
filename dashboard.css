@@ -1205,36 +1205,56 @@ button.nav-admin-trigger {
 .nav-subgroup-summary {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  width: 100%;
+  gap: 10px;
+  width: calc(100% - 16px);
+  margin: 2px 8px;
   border: none;
   background: transparent;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  padding: 10px 14px 8px;
+  padding: 8px 10px;
   color: #ccc;
   font-weight: bold;
   font-size: 12px;
   letter-spacing: 0.02em;
   user-select: none;
   transition: background 0.12s, color 0.12s;
+  border-radius: 5px;
+  border-left: 2px solid transparent;
+  box-sizing: border-box;
+}
+
+.nav-subgroup-summary::before {
+  content: "";
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3a3a3a;
+  border: 1px solid #555;
+  box-sizing: border-box;
 }
 
 .nav-subgroup-summary::after {
-  content: "▸";
-  font-size: 11px;
-  opacity: 0.75;
-  transition: transform 0.15s;
+  content: none;
+  display: none;
 }
 
-.nav-subgroup.open .nav-subgroup-summary::after {
-  transform: rotate(90deg);
+.nav-subgroup.open .nav-subgroup-summary::before {
+  background: var(--club-accent);
+  border-color: var(--club-accent);
 }
 
 .nav-subgroup-summary:hover {
   background: #2a2a2a;
   color: #ffcc66;
+  border-left-color: #444;
+}
+
+.nav-subgroup-summary:hover::before {
+  border-color: #777;
+  background: #4a4a4a;
 }
 
 .nav-subgroup-panel {
