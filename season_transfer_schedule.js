@@ -1,7 +1,7 @@
 /**
  * Season transfer & auction schedule — discreet strip for owners.
  * Counts draft days used this season (from inbox schedule notifications)
- * and shows transfer window months (pre-season Aug–Sep, January).
+ * and shows transfer window months (pre-season until August, January).
  */
 
 import { supabase } from "./supabase_client.js";
@@ -55,16 +55,16 @@ function resolveTransferWindows(calendar, months, transferOpen) {
     (months || []).map((m) => [String(m.gpsl_month || "").toLowerCase(), m])
   );
   const aug = byMonth.august;
-  const sep = byMonth.september;
   const jan = byMonth.january;
   const phase = calendar?.calendar_phase;
+  const augStarted = aug?.has_started === true || aug?.is_active === true;
 
   let preseason = "closed";
-  if (sep?.has_started) {
+  if (augStarted) {
     preseason = "closed";
-  } else if (aug?.is_active || phase === "pre_season") {
+  } else if (phase === "pre_season") {
     preseason = transferOpen ? "open" : "closed";
-  } else if (aug?.is_future || (!calendar?.calendar_configured && calendar?.season_id)) {
+  } else if (aug?.is_future && calendar?.season_id) {
     preseason = "upcoming";
   }
 
@@ -73,14 +73,14 @@ function resolveTransferWindows(calendar, months, transferOpen) {
   return {
     preseason: {
       label: "Pre-season",
-      range: "Aug – Sep",
+      range: "Until Aug",
       status: preseason,
       title:
         preseason === "open"
-          ? "Transfer window open until September"
+          ? "Pre-season transfer window open — season starts in August"
           : preseason === "upcoming"
-            ? "Pre-season transfer window runs August until September starts"
-            : "Pre-season transfer window (August – September) has ended",
+            ? "Pre-season transfer window opens before August (season start)"
+            : "Pre-season transfer window has ended — season underway from August",
     },
     january: {
       label: "January",

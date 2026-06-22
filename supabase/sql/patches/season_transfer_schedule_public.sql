@@ -17,7 +17,6 @@ DECLARE
   v_transfer_open boolean;
   v_cal record;
   v_aug record;
-  v_sep record;
   v_jan record;
   v_player_used int;
   v_manager_used int;
@@ -59,12 +58,6 @@ BEGIN
   LIMIT 1;
 
   SELECT m.*
-  INTO v_sep
-  FROM public.competition_season_calendar m
-  WHERE m.season_id = v_season_id AND m.gpsl_month = 'september'
-  LIMIT 1;
-
-  SELECT m.*
   INTO v_jan
   FROM public.competition_season_calendar m
   WHERE m.season_id = v_season_id AND m.gpsl_month = 'january'
@@ -99,12 +92,11 @@ BEGIN
       OR sa.created_at >= v_season_start
     );
 
-  IF coalesce(v_sep.has_started, false) THEN
+  IF coalesce(v_aug.has_started, false) OR coalesce(v_aug.is_active, false) THEN
     v_preseason := 'closed';
-  ELSIF coalesce(v_aug.is_active, false) OR v_cal.calendar_phase = 'pre_season' THEN
+  ELSIF v_cal.calendar_phase = 'pre_season' THEN
     v_preseason := CASE WHEN v_transfer_open THEN 'open' ELSE 'closed' END;
-  ELSIF coalesce(v_aug.is_future, false)
-    OR (v_season_id IS NOT NULL AND NOT coalesce(v_cal.calendar_configured, false)) THEN
+  ELSIF coalesce(v_aug.is_future, false) AND v_season_id IS NOT NULL THEN
     v_preseason := 'upcoming';
   ELSE
     v_preseason := 'closed';
@@ -140,7 +132,7 @@ BEGIN
       'live', coalesce(v_special_live, false)
     ),
     'windows', jsonb_build_object(
-      'preseason', jsonb_build_object('label', 'Pre-season', 'range', 'Aug – Sep', 'status', v_preseason),
+      'preseason', jsonb_build_object('label', 'Pre-season', 'range', 'Until Aug', 'status', v_preseason),
       'january', jsonb_build_object('label', 'January', 'range', 'January', 'status', v_january)
     ),
     'transfer_open', coalesce(v_transfer_open, false)
