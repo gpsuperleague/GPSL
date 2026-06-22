@@ -198,9 +198,17 @@ export function canActivateSeason(counts) {
   );
 }
 
+export function divisionSlugForClub(registrations, clubShortName) {
+  const key = normalizeClubKey(clubShortName);
+  const row = registrations.find(
+    (r) => normalizeClubKey(r.club_short_name) === key
+  );
+  return row?.division || null;
+}
+
 export function divisionForClub(registrations, clubShortName) {
-  const row = registrations.find((r) => r.club_short_name === clubShortName);
-  return row ? DIVISION_LABELS[row.division] || row.division : null;
+  const slug = divisionSlugForClub(registrations, clubShortName);
+  return slug ? DIVISION_LABELS[slug] || slug : null;
 }
 
 /** Trim + uppercase for reliable ShortName comparisons. */

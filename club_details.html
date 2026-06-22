@@ -452,6 +452,19 @@
       margin-top: 2px;
     }
 
+    .subsidy-grid--compact {
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 8px;
+    }
+
+    .subsidy-grid--compact .subsidy-card {
+      padding: 10px 12px;
+    }
+
+    .subsidy-grid--compact .subsidy-card h3 {
+      font-size: 13px;
+    }
+
     .club-detail-label {
       display: block;
       color: #ff9900;
@@ -812,6 +825,33 @@
             Book holiday
           </button>
         </div>
+
+        <div class="club-detail-cell club-detail-cell--compact" id="challengeCell">
+          <span class="club-detail-label">Season challenges</span>
+          <p id="challengeSummary" class="club-detail-summary">Loading…</p>
+          <div class="club-detail-quick-links">
+            <button
+              type="button"
+              class="club-detail-link"
+              id="toggleChallengesBtn"
+              aria-expanded="false"
+              aria-controls="challengeExpand"
+            >
+              View details
+            </button>
+            <a href="challenges.html" class="club-detail-link">All challenges</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="club-account-expand" id="challengeExpand" hidden>
+        <h3 class="club-account-expand-title">Season challenges</h3>
+        <p class="account-hint">
+          Admin targets for the current season. Prizes post when you hit a target (after the match is confirmed).
+        </p>
+        <div id="challengeGrid" class="subsidy-grid subsidy-grid--compact">
+          <p class="subsidy-meta">Loading…</p>
+        </div>
       </div>
 
       <div class="club-account-expand" id="holidayBookingExpand" hidden>
@@ -981,7 +1021,8 @@
       <div class="panel panel-bg" id="managerPanel">
         <h2 class="subsidy-title">Manager</h2>
         <p class="subsidy-intro">
-          Signed manager, contract target, and season progress. Sack once per season for half market value.
+          Signed manager, contract target, and season progress. List for transfer or sack once per season
+          (<b>January only</b>) for half market value on sack.
         </p>
         <div id="managerStatus" class="subsidy-meta">Loading…</div>
         <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
@@ -1005,20 +1046,9 @@
       </div>
     </div>
 
-    <div class="panel panel-bg subsidy-panel" id="challengePanel">
-      <h2 class="subsidy-title">Season challenges</h2>
-      <p class="subsidy-intro">
-        Admin targets for the current season. Prizes post instantly when you hit a target (after the match is confirmed).
-        <a href="challenges.html" class="gpsl-content-link">View all challenges →</a>
-      </p>
-      <div id="challengeGrid" class="subsidy-grid">
-        <p class="subsidy-meta">Loading…</p>
-      </div>
-    </div>
-
   </div>
 
-  <script type="module" src="club_details.js?v=20260621-club-detail-links"></script>
+  <script type="module" src="club_details.js?v=20260621-club-detail-top"></script>
 
 </body>
 </html>

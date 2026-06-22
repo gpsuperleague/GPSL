@@ -6,9 +6,10 @@ import {
   formatMoney,
   loadCurrentSeason,
   loadActiveSeasonRegistrations,
-  divisionForClub,
+  divisionSlugForClub,
   LEAGUE_DIVISIONS,
 } from "./competition.js";
+import { loadCalendarStatus } from "./competition_calendar.js";
 import {
   HOLIDAY_DAYS_PER_SEASON,
   loadOwnerHolidays,
@@ -313,7 +314,29 @@ async function refreshHolidaySection() {
   renderHolidayList(holidays);
 }
 
+function renderChallengeSummary(progress, loadError) {
+  const summary = document.getElementById("challengeSummary");
+  if (!summary) return;
+
+  if (loadError) {
+    summary.textContent = loadError;
+    return;
+  }
+
+  const items = progress?.challenges || [];
+  if (!items.length) {
+    summary.textContent = "No active challenges this season.";
+    return;
+  }
+
+  const complete = items.filter(
+    (c) => c.awarded || Number(c.current_value) >= Number(c.target_value)
+  ).length;
+  summary.textContent = `${complete} of ${items.length} complete · prizes on match confirm`;
+}
+
 function renderChallengeGrid(progress, loadError) {
+  renderChallengeSummary(progress, loadError);
   const grid = document.getElementById("challengeGrid");
   if (!grid) return;
 
@@ -497,6 +520,12 @@ async function loadExpectationSection(clubShortName) {
   `;
 }
 
+async function isGpslJanuary() {
+  const status = await loadCalendarStatus(supabase);
+  if (!status?.calendar_configured) return false;
+  return String(status.active_gpsl_month || "").toLowerCase() === "january";
+}
+
 async function loadManagerSection(clubShortName) {
   const statusEl = document.getElementById("managerStatus");
   const hintEl = document.getElementById("managerHint");
@@ -545,13 +574,21 @@ async function loadManagerSection(clubShortName) {
     `;
   }
 
-  setBtnVisible(listBtn, true);
-  setBtnVisible(sackBtn, Boolean(data.manager_sacks_remaining));
+  const januaryWindow = await isGpslJanuary();
+
+  setBtnVisible(listBtn, januaryWindow);
+  setBtnVisible(sackBtn, januaryWindow && Boolean(data.manager_sacks_remaining));
 
   if (listBtn) listBtn.dataset.managerId = String(data.manager_id);
   if (sackBtn) {
     sackBtn.dataset.clubShort = clubShortName;
     sackBtn.disabled = !data.manager_sacks_remaining;
+  }
+
+  if (hintEl) {
+    hintEl.textContent = januaryWindow
+      ? ""
+      : "List for transfer and sack are available in January only.";
   }
 }
 
@@ -809,6 +846,17 @@ function wireAccountSettings(user) {
   });
 }
 
+function wireChallengeExpandToggle() {
+  const btn = document.getElementById("toggleChallengesBtn");
+  const panel = document.getElementById("challengeExpand");
+  btn?.addEventListener("click", () => {
+    if (!panel) return;
+    const show = panel.hidden;
+    panel.hidden = !show;
+    btn.setAttribute("aria-expanded", show ? "true" : "false");
+  });
+}
+
 function wireHolidayExpandToggle() {
   const btn = document.getElementById("toggleHolidayBookingBtn");
   const panel = document.getElementById("holidayBookingExpand");
@@ -941,7 +989,7 @@ async function initClubDetailsPage() {
     const season = await loadCurrentSeason(supabase);
     if (season) {
       const regs = await loadActiveSeasonRegistrations(supabase);
-      clubDivision = divisionForClub(regs, club.ShortName);
+      clubDivision = divisionSlugForClub(regs, club.ShortName);
       renderDivisionCell(divEl, clubDivision);
     } else {
       divEl.textContent = "No active season";
@@ -962,6 +1010,7 @@ async function initClubDetailsPage() {
 
   wireHolidayBooking();
   wireHolidayExpandToggle();
+  wireChallengeExpandToggle();
   wireAvailabilityPanel();
   wireManagerActions();
   await refreshHolidaySection();
