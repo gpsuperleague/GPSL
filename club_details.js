@@ -1,12 +1,13 @@
 // Club Details page
 
 import { supabase, initGlobal } from "./global.js";
-import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import { loadClubsMap, fullClubName, clubPageHref } from "./clubs_lookup.js";
 import {
   formatMoney,
   loadCurrentSeason,
   loadActiveSeasonRegistrations,
   divisionForClub,
+  LEAGUE_DIVISIONS,
 } from "./competition.js";
 import {
   HOLIDAY_DAYS_PER_SEASON,
@@ -54,6 +55,60 @@ function formatNationLabel(value) {
     .split(" ")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
     .join(" ");
+}
+
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function progressDivisionHref(division) {
+  if (!division || !LEAGUE_DIVISIONS.includes(division)) return null;
+  return `progress.html?division=${encodeURIComponent(division)}`;
+}
+
+function fixturesDivisionHref(division) {
+  if (!division || !LEAGUE_DIVISIONS.includes(division)) return null;
+  return `fixtures.html?division=${encodeURIComponent(division)}`;
+}
+
+function gpdbNationHref(nationRaw) {
+  const nation = String(nationRaw ?? "").trim();
+  if (!nation) return null;
+  return `GPDB.html?nation=${encodeURIComponent(nation)}`;
+}
+
+function setClubDetailLink(el, href, label) {
+  if (!el) return;
+  if (!href) {
+    el.textContent = label || "—";
+    return;
+  }
+  el.innerHTML = `<a href="${href}" class="club-detail-link club-detail-link--value">${escapeHtml(label || "—")}</a>`;
+}
+
+function renderDivisionCell(el, division) {
+  if (!el) return;
+  if (!division) {
+    el.textContent = "Not registered";
+    return;
+  }
+  const tableHref = progressDivisionHref(division);
+  const fixturesHref = fixturesDivisionHref(division);
+  const label = formatDivisionLabel(division);
+  if (!tableHref || !fixturesHref) {
+    el.textContent = label;
+    return;
+  }
+  el.innerHTML = `
+    <span class="club-detail-division-label">${escapeHtml(label)}</span>
+    <div class="club-detail-quick-links">
+      <a href="${tableHref}" class="club-detail-link">Table</a>
+      <a href="${fixturesHref}" class="club-detail-link">Fixtures</a>
+    </div>`;
 }
 
 export function normalizeOwnerTagInput(raw) {
@@ -754,6 +809,20 @@ function wireAccountSettings(user) {
   });
 }
 
+function wireHolidayExpandToggle() {
+  const btn = document.getElementById("toggleHolidayBookingBtn");
+  const panel = document.getElementById("holidayBookingExpand");
+  btn?.addEventListener("click", () => {
+    if (!panel) return;
+    const show = panel.hidden;
+    panel.hidden = !show;
+    btn.setAttribute("aria-expanded", show ? "true" : "false");
+    if (show) {
+      document.getElementById("holidayStartDate")?.focus();
+    }
+  });
+}
+
 function wireHolidayBooking() {
   const startInput = document.getElementById("holidayStartDate");
   const endInput = document.getElementById("holidayEndDate");
@@ -843,28 +912,37 @@ async function initClubDetailsPage() {
     return;
   }
 
-  document.getElementById("clubName").textContent =
-    fullClubName(club.ShortName) || club.Club || club.ShortName;
+  const clubNameEl = document.getElementById("clubName");
+  const displayName = fullClubName(club.ShortName) || club.Club || club.ShortName;
+  setClubDetailLink(clubNameEl, clubPageHref(club.ShortName), displayName);
   document.getElementById("shortName").textContent = club.ShortName;
-  document.getElementById("stadiumName").textContent = club.Stadium || "—";
+  setClubDetailLink(
+    document.getElementById("stadiumName"),
+    "stadium.html",
+    club.Stadium || "—"
+  );
   document.getElementById("stadiumCapacity").textContent =
     club.Capacity != null && club.Capacity !== ""
       ? String(club.Capacity)
       : "—";
-  document.getElementById("clubNation").textContent = club.Nation
-    ? formatNationLabel(club.Nation)
-    : "—";
+  const nationLabel = club.Nation ? formatNationLabel(club.Nation) : "—";
+  setClubDetailLink(
+    document.getElementById("clubNation"),
+    club.Nation ? gpdbNationHref(club.Nation) : null,
+    nationLabel
+  );
 
   storedTag = club.owner?.trim() || null;
   initOwnerTagField(ownerEls, storedTag);
 
   const divEl = document.getElementById("compDivision");
+  let clubDivision = null;
   try {
     const season = await loadCurrentSeason(supabase);
     if (season) {
       const regs = await loadActiveSeasonRegistrations(supabase);
-      const div = divisionForClub(regs, club.ShortName);
-      divEl.textContent = div ? `${div} (current season)` : "Not registered";
+      clubDivision = divisionForClub(regs, club.ShortName);
+      renderDivisionCell(divEl, clubDivision);
     } else {
       divEl.textContent = "No active season";
     }
@@ -883,6 +961,7 @@ async function initClubDetailsPage() {
   await loadSubsidyStatus(club.ShortName);
 
   wireHolidayBooking();
+  wireHolidayExpandToggle();
   wireAvailabilityPanel();
   wireManagerActions();
   await refreshHolidaySection();

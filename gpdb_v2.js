@@ -1435,6 +1435,44 @@ document.addEventListener("DOMContentLoaded", () => {
     await loadPage(CURRENT_PAGE);
   }
 
+  function applyGpdbNationFromUrl() {
+    const raw = new URLSearchParams(window.location.search).get("nation");
+    if (!raw?.trim()) return;
+
+    const requested = raw
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const options = FILTER_OPTION_CACHE.Nation || [];
+    let values = requested;
+
+    if (options.length) {
+      const matched = [];
+      for (const req of requested) {
+        const reqNorm = req.toLowerCase();
+        for (const opt of options) {
+          const val = String(opt.value ?? "");
+          const valNorm = val.toLowerCase();
+          if (valNorm === reqNorm || valNorm.includes(reqNorm) || reqNorm.includes(valNorm)) {
+            matched.push(val);
+          }
+        }
+      }
+      values = [...new Set(matched)];
+      if (!values.length) values = requested;
+    }
+
+    CURRENT_FILTERS.Nation = values;
+    const panel = document.getElementById("filter-Nation-panel");
+    if (panel) {
+      panel.querySelectorAll(".multi-filter-options input[type='checkbox']").forEach((cb) => {
+        cb.checked = values.includes(cb.value);
+      });
+    }
+    updateMultiFilterDisplay("Nation");
+    saveGpdbFilters();
+  }
+
   function applyMyNationFilter() {
     if (!MY_NATION?.code) return;
     const values = gpdbNationFilterValues(
@@ -2617,6 +2655,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setupTextFilters();
     await populateDropdowns();
     restoreGpdbFilterUi();
+    applyGpdbNationFromUrl();
     await loadTotalCount();
     await loadActiveDraftListings();
     await loadPendingDirectOfferPlayers();

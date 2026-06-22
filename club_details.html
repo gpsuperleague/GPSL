@@ -402,6 +402,56 @@
       font-size: 11px;
     }
 
+    .club-detail-link {
+      font-size: 12px;
+      color: #6cf;
+      text-decoration: none;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .club-detail-link:hover {
+      text-decoration: underline;
+      color: #9df;
+    }
+
+    a.club-detail-link--value {
+      font-size: 14px;
+      color: #ddd;
+      font-weight: normal;
+    }
+
+    a.club-detail-link--value:hover {
+      color: #fff;
+    }
+
+    .club-detail-quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 12px;
+      margin-top: 6px;
+    }
+
+    .club-detail-division-label {
+      display: block;
+      color: #ddd;
+      font-size: 14px;
+    }
+
+    .club-detail-summary {
+      margin: 0 0 8px;
+      font-size: 12px;
+      color: #888;
+      line-height: 1.4;
+    }
+
+    .club-detail-cell--compact .club-detail-summary {
+      margin-top: 2px;
+    }
+
     .club-detail-label {
       display: block;
       color: #ff9900;
@@ -742,6 +792,50 @@
             <span id="ownerTagHint" class="owner-tag-hint" role="status"></span>
           </div>
         </div>
+
+        <div class="club-detail-cell club-detail-cell--compact" id="availabilityCell">
+          <span class="club-detail-label">Match availability</span>
+          <p class="club-detail-summary">Weekly slots for league and cup scheduling.</p>
+          <button type="button" id="editAvailabilityBtn" class="club-detail-link">Edit availability</button>
+        </div>
+
+        <div class="club-detail-cell club-detail-cell--compact" id="holidayCell">
+          <span class="club-detail-label">Holiday booking</span>
+          <p id="holidayQuota" class="club-detail-summary">Loading allowance…</p>
+          <button
+            type="button"
+            class="club-detail-link"
+            id="toggleHolidayBookingBtn"
+            aria-expanded="false"
+            aria-controls="holidayBookingExpand"
+          >
+            Book holiday
+          </button>
+        </div>
+      </div>
+
+      <div class="club-account-expand" id="holidayBookingExpand" hidden>
+        <h3 class="club-account-expand-title">Holiday booking</h3>
+        <p class="account-hint">
+          Book real-world dates (up to <b>14 days per season</b>). Overlapping GPSL months unlock early on
+          <a href="matchday.html" class="gpsl-content-link">Match Day</a>.
+        </p>
+        <p id="holidayHint" class="owner-tag-hint" role="status"></p>
+        <div id="holidayList" class="holiday-list"></div>
+        <div class="holiday-book-form">
+          <div class="holiday-date-row">
+            <label>
+              From
+              <input type="date" id="holidayStartDate">
+            </label>
+            <label>
+              To
+              <input type="date" id="holidayEndDate">
+            </label>
+            <span id="holidayDayPreview" class="holiday-day-preview"></span>
+          </div>
+          <button type="button" id="bookHolidayBtn" class="small-btn">Book holiday</button>
+        </div>
       </div>
 
       <div class="club-account-expand" id="accountEmailChange" hidden>
@@ -922,47 +1016,9 @@
       </div>
     </div>
 
-    <div class="panel panel-bg holiday-panel" id="availabilityPanel">
-      <h2 class="holiday-title">Match availability</h2>
-      <p class="holiday-intro">
-        Set when you are generally free to play league and cup matches (30-minute blocks).
-        Your opponent only sees mutual slots when scheduling. Holidays below overlay as unavailable.
-      </p>
-      <button type="button" id="editAvailabilityBtn" class="small-btn">Edit weekly availability</button>
-    </div>
-
-    <div class="panel panel-bg holiday-panel" id="holidayPanel">
-      <h2 class="holiday-title">Holiday booking</h2>
-      <p class="holiday-intro">
-        Going away? Book real-world dates (up to <b>14 days per season</b>, in any chunks).
-        GPSL months that overlap your holiday unlock early on
-        <a href="matchday.html" class="gpsl-content-link">Match Day</a> so you can pre-play before the normal Friday unlock.
-      </p>
-
-      <p id="holidayQuota" class="holiday-quota">Loading allowance…</p>
-      <p id="holidayHint" class="owner-tag-hint" role="status"></p>
-
-      <div id="holidayList" class="holiday-list"></div>
-
-      <div class="holiday-book-form">
-        <div class="holiday-date-row">
-          <label>
-            From
-            <input type="date" id="holidayStartDate">
-          </label>
-          <label>
-            To
-            <input type="date" id="holidayEndDate">
-          </label>
-          <span id="holidayDayPreview" class="holiday-day-preview"></span>
-        </div>
-        <button type="button" id="bookHolidayBtn" class="small-btn">Book holiday</button>
-      </div>
-    </div>
-
   </div>
 
-  <script type="module" src="club_details.js?v=20260621-account-compact"></script>
+  <script type="module" src="club_details.js?v=20260621-club-detail-links"></script>
 
 </body>
 </html>

@@ -122,6 +122,11 @@ function fixtureRowHtml(fixture) {
   `;
 }
 
+function divisionFromUrl() {
+  const div = new URLSearchParams(window.location.search).get("division")?.trim() || "";
+  return LEAGUE_DIVISIONS.includes(div) ? div : null;
+}
+
 function renderDivisionToolbar() {
   const bar = document.getElementById("divisionToolbar");
   bar.innerHTML = "";
@@ -322,6 +327,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   } else if (hint) {
     hint.textContent = "Log in with a club owner account to enter results.";
+  }
+
+  const urlDivision = divisionFromUrl();
+  if (urlDivision) {
+    currentDivision = urlDivision;
   }
 
   calendarStatus = await loadCalendarStatus(supabase);
