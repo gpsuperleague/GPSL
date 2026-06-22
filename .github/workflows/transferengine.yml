@@ -1,8 +1,18 @@
 name: Transfer Engine Runner
 
+# Calls Supabase Edge Function transferengine_run → transferengine_run_report().
+# GitHub Actions schedule is UTC, best-effort, and minimum interval is 5 minutes
+# (*/1 is ignored/coalesced — do not use sub-5-minute cron here).
 on:
   schedule:
-    - cron: "*/1 * * * *"
+    # Baseline: every 5 minutes, 24/7 (transfer list, draft backlog, month tick).
+    - cron: "*/5 * * * *"
+    # Draft random finish 18:50–18:59 UK — 17:xx UTC (BST) and 18:xx UTC (GMT).
+    - cron: "50-59 17,18 * * *"
+    # 7pm UK transfer list + first anti-snipe extensions — 18:xx UTC (BST) / 19:xx UTC (GMT).
+    - cron: "0-15 18,19 * * *"
+    # Late extensions (~20:00–21:15 UK) — 19–21 UTC (BST) / 20–22 UTC (GMT).
+    - cron: "0-15 20,21 * * *"
   workflow_dispatch:
 
 jobs:

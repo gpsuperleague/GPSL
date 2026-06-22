@@ -259,7 +259,7 @@ function renderClosedAuctionStatus(el) {
     const { duration, subline } = formatDraftConclusionLines(finish, "club");
     const settleNote =
       active > 0
-        ? `${active} club listing${active === 1 ? "" : "s"} still open — winners assign automatically when the transfer engine runs (about every minute).`
+        ? `${active} club listing${active === 1 ? "" : "s"} still open — winners assign automatically when the transfer engine runs (about every 5 minutes).`
         : "All club listings settled — winners should see their club on the dashboard; refresh if you just won.";
     el.innerHTML = `
       <div style="color:#ddd;font-weight:600;">${duration}</div>

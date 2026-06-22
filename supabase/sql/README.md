@@ -388,7 +388,7 @@ Run once (after `player_wage_settings.sql` and an active `competition_seasons` r
 
 Free agents must **not** use the standard listed-player transfer path. Contracted players must **not** use draft settlement.
 
-The site triggers SQL every minute via Edge Function `transferengine_run` → `public.transferengine_run()`.
+The site triggers SQL via GitHub Actions (every **5 minutes**, plus extra evening UTC ticks for draft finish / 7pm UK transfers) → Edge Function `transferengine_run` → `public.transferengine_run()`. GitHub schedule is best-effort UTC — use **Run workflow** or Admin → **Run Transfer Engine Now** if something is stuck after random finish.
 
 **Listings vanished from Transfer Market but no deals?** The market only shows `Active` rows with `end_time > now()`. After 7pm the row is hidden but still `Active` until the engine runs. Check GitHub Actions workflow `Transfer Engine Runner` (needs repo secret `SUPABASE_SERVICE_ROLE_KEY`), or run [`repair_stuck_evening_transfers.sql`](./repair_stuck_evening_transfers.sql) then `SELECT transferengine_run();` or Admin → **Run Transfer Engine Now** (after [`admin_transferengine_run.sql`](./admin_transferengine_run.sql)). Re-apply [`transferengine_standard_bigint.sql`](./transferengine_standard_bigint.sql) so expired listings sync high bids from `Player_Transfer_Bids` before closing.
 

@@ -319,7 +319,7 @@ function draftCountdownEndedSubline(kind) {
     const finish = getDraftRandomFinishRevealed();
     if (finish) {
       const { subline } = formatDraftConclusionLines(new Date(finish), "club");
-      return `${subline}\nWinners assign when the transfer engine runs (about every minute).`;
+      return `${subline}\nWinners assign when the transfer engine runs (about every 5 minutes).`;
     }
     return "Club auction finished. Exact random finish time appears once the secret window closes. Winners assign via transfer engine or Admin → Settle club auctions.";
   }
