@@ -53,35 +53,54 @@ export function formatNavLabel(text) {
 }
 
 /**
- * Top-nav section button: stack multi-word labels (e.g. Central / Bank).
- * When activeSubLabel is set, shows the current page name on a line below the section title.
+ * Top-nav section button label: title + optional subline (active page, auction badge).
  * @param {string} text
  * @param {(s: string) => string} escapeHtml
  * @param {string|null} [activeSubLabel]
+ * @param {string} [auctionBadgeHtml]
  */
-export function renderNavSectionLabelHtml(text, escapeHtml, activeSubLabel = null) {
+export function renderNavGroupSummaryLabel(
+  text,
+  escapeHtml,
+  activeSubLabel = null,
+  auctionBadgeHtml = ""
+) {
   const formatted = formatNavLabel(text);
   const parts = formatted.split(/\s+/).filter(Boolean);
-  let mainHtml;
+  let titleHtml;
   if (parts.length < 2) {
-    mainHtml = escapeHtml(formatted);
+    titleHtml = escapeHtml(formatted);
   } else {
     const line1 = escapeHtml(parts[0]);
     const line2 = escapeHtml(parts.slice(1).join(" "));
-    mainHtml =
+    titleHtml =
       `<span class="nav-group-label-stack">` +
       `<span class="nav-group-label-line">${line1}</span>` +
       `<span class="nav-group-label-line">${line2}</span>` +
       `</span>`;
   }
 
+  const subline = [];
   const active = String(activeSubLabel ?? "").trim();
-  if (!active) return mainHtml;
+  if (active) {
+    subline.push(
+      `<span class="nav-group-active-page">${escapeHtml(formatNavLabel(active))}</span>`
+    );
+  }
+  if (auctionBadgeHtml) {
+    subline.push(auctionBadgeHtml);
+  }
+  if (!subline.length) return titleHtml;
 
   return (
-    `<span class="nav-group-label-wrap">` +
-    mainHtml +
-    `<span class="nav-group-active-page">${escapeHtml(formatNavLabel(active))}</span>` +
+    `<span class="nav-group-summary-label">` +
+    titleHtml +
+    `<span class="nav-group-subline">${subline.join("")}</span>` +
     `</span>`
   );
+}
+
+/** @deprecated use renderNavGroupSummaryLabel */
+export function renderNavSectionLabelHtml(text, escapeHtml, activeSubLabel = null) {
+  return renderNavGroupSummaryLabel(text, escapeHtml, activeSubLabel, "");
 }

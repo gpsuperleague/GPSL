@@ -968,6 +968,19 @@ button.nav-admin-trigger {
   transition: background 0.15s, color 0.15s;
 }
 
+.nav-group-summary-label {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nav-group-subline:not(:has(.nav-group-active-page)):has(.nav-group-auction-active.is-hidden:only-child) {
+  display: none;
+}
+
 .nav-group-label-wrap {
   display: flex;
   flex-direction: column;
@@ -1246,7 +1259,7 @@ button.nav-admin-trigger {
 
 .nav-group-auction-active {
   display: inline-block;
-  margin-left: 2px;
+  margin-left: 0;
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 8px;
@@ -1257,6 +1270,7 @@ button.nav-admin-trigger {
   background: #1a3a1a;
   color: #9d9;
   border: 1px solid #3a6a3a;
+  align-self: flex-start;
 }
 
 .nav-group-auction-active.is-hidden {
