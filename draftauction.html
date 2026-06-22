@@ -499,7 +499,7 @@
        IMPORT SHARED ENGINE
        ============================================================ */
 
-    import { loadGlobalSettings, wireDraftCountdownUI, buildNav } from "./global.js";
+    import { initGlobal, loadGlobalSettings } from "./global.js";
     import {
       supabase,
       getUKNow,
@@ -748,13 +748,11 @@
         return;
       }
 
+      await initGlobal();
+
       const settings = await loadGlobalSettings();
       draftEnabled = settings.draftEnabled;
       draftAuctionStartTimeUK = settings.draftStart;
-
-      wireDraftCountdownUI();
-
-      await buildNav();
       await loadBuyerClubShortName(user.id);
       await populateLeadingClubFilter();
       restorePersistedDraftFilters();
