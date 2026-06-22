@@ -26,7 +26,7 @@ import { formatNavLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260621-nav-layout";
+export const GLOBAL_JS_VERSION = "20260621-nav-two-row";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -1324,16 +1324,22 @@ export async function renderFallbackNav() {
 
   nav.innerHTML = `
     <div class="gpsl-nav-bar gpsl-nav-fallback">
-      <div class="gpsl-nav-groups">
-      <a href="GPDB.html" class="nav-link">Player Database</a>
-      <a href="all_listings.html" class="nav-link">Transfer Market</a>
-      <a href="fixtures.html" class="nav-link">Fixtures</a>
-      <a href="squad.html" class="nav-link">Squad</a>
+      <div class="gpsl-nav-row gpsl-nav-row-menus">
+        <div class="gpsl-nav-groups">
+          <a href="GPDB.html" class="nav-link">Player Database</a>
+          <a href="all_listings.html" class="nav-link">Transfer Market</a>
+          <a href="fixtures.html" class="nav-link">Fixtures</a>
+          <a href="squad.html" class="nav-link">Squad</a>
+        </div>
+        <div class="gpsl-nav-actions gpsl-nav-actions-primary">
+          ${renderNavDashboardHomeLink(ownerClub, "dashboard.html", false)}
+          <button type="button" id="logoutBtn" class="nav-logout">Logout</button>
+        </div>
       </div>
-      <div class="gpsl-nav-actions">
-      ${renderNavInboxLink(false, 0)}
-      ${renderNavDashboardHomeLink(ownerClub, "dashboard.html", false)}
-      <button type="button" id="logoutBtn" class="nav-logout">Logout</button>
+      <div class="gpsl-nav-row gpsl-nav-row-status">
+        <div class="gpsl-nav-actions gpsl-nav-actions-secondary">
+          ${renderNavInboxLink(false, 0)}
+        </div>
       </div>
     </div>
   `;
@@ -1456,6 +1462,7 @@ export async function buildNav() {
   }
 
   let html = `<div class="gpsl-nav-bar">`;
+  html += `<div class="gpsl-nav-row gpsl-nav-row-menus">`;
   html += `<div class="gpsl-nav-groups">`;
 
   if (!navMonthLabel) {
@@ -1593,12 +1600,16 @@ export async function buildNav() {
 
   html += `</div>`;
 
-  html += `<div class="gpsl-nav-actions">`;
-  html += renderNavInboxLink(inboxActive, unread);
+  html += `<div class="gpsl-nav-actions gpsl-nav-actions-primary">`;
   html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
-  html += renderNavMonthBlock(navMonthLabel, navMonthTitle, calendarStatus, calMod);
   html += `<button type="button" id="logoutBtn" class="nav-logout">Logout</button>`;
   html += `</div></div>`;
+
+  html += `<div class="gpsl-nav-row gpsl-nav-row-status">`;
+  html += `<div class="gpsl-nav-actions gpsl-nav-actions-secondary">`;
+  html += renderNavMonthBlock(navMonthLabel, navMonthTitle, calendarStatus, calMod);
+  html += renderNavInboxLink(inboxActive, unread);
+  html += `</div></div></div>`;
 
   nav.innerHTML = html;
   wireNavLogout();

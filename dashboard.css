@@ -628,10 +628,24 @@ table.gpsl-table td {
 
 .gpsl-nav-bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: stretch;
   gap: 0;
   max-width: 100%;
+}
+
+.gpsl-nav-row {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+}
+
+.gpsl-nav-row-menus {
+  border-bottom: 1px solid #333;
+}
+
+.gpsl-nav-row-status {
+  justify-content: flex-end;
 }
 
 .gpsl-nav-shortcuts {
@@ -899,6 +913,7 @@ button.nav-admin-trigger {
   align-items: stretch;
   flex: 1;
   gap: 0;
+  min-width: 0;
 }
 
 .nav-group {
@@ -1385,16 +1400,22 @@ a.ssc-chip:hover {
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
-  margin-left: auto;
-  border-left: 1px solid #333;
   flex-shrink: 0;
 }
 
-.gpsl-nav-actions .gpsl-nav-month {
-  border-right: none;
+.gpsl-nav-actions-primary {
   border-left: 1px solid #333;
-  margin-left: 2px;
-  padding-left: 14px;
+}
+
+.gpsl-nav-actions-secondary {
+  padding: 6px 14px;
+}
+
+.gpsl-nav-actions-secondary .gpsl-nav-month {
+  border: none;
+  margin: 0;
+  padding: 4px 12px;
+  min-width: 0;
 }
 
 .nav-shortcut.nav-admin {
@@ -1471,33 +1492,41 @@ a.ssc-chip:hover {
 }
 
 @media (max-width: 900px) {
-  .gpsl-nav-bar {
+  .gpsl-nav-row-menus {
     flex-direction: column;
   }
 
   .gpsl-nav-shortcuts,
   .gpsl-nav-admin-zone,
   .gpsl-nav-actions,
-  .gpsl-nav-actions .gpsl-nav-month {
+  .gpsl-nav-actions-primary,
+  .gpsl-nav-actions-secondary,
+  .gpsl-nav-actions-secondary .gpsl-nav-month {
     border-right: none;
+    border-left: none;
     border-bottom: 1px solid #333;
   }
 
-  .gpsl-nav-actions {
-    border-left: none;
-    margin-left: 0;
-    flex-wrap: wrap;
-    justify-content: flex-end;
+  .gpsl-nav-row-status {
+    justify-content: stretch;
   }
 
-  .gpsl-nav-actions .gpsl-nav-month {
-    border-left: none;
+  .gpsl-nav-actions,
+  .gpsl-nav-actions-primary,
+  .gpsl-nav-actions-secondary {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .gpsl-nav-actions-secondary .gpsl-nav-month {
     margin-left: 0;
-    padding-left: 16px;
+    padding-left: 12px;
   }
 
   .gpsl-nav-groups {
     flex-direction: column;
+    width: 100%;
   }
 
   .nav-group {
