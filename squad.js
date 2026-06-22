@@ -93,7 +93,44 @@ const SQUAD_PLAYER_COLUMNS_LEGACY =
 
 const SQUAD_TABLE_COLS = 15;
 
+const SQUAD_COLUMN_HEADER_CELLS = [
+  ["squad-col-thumb", ""],
+  ["squad-col-player", "Player"],
+  ["squad-col-nation", "Nation"],
+  ["squad-col-position", "Pos"],
+  ["squad-col-age", "Age"],
+  ["squad-col-rating", "Rating (Pot.)"],
+  ["squad-col-stat", "Apps"],
+  ["squad-col-stat", "G"],
+  ["squad-col-stat", "A"],
+  ["squad-col-stat", "Avg"],
+  ["squad-col-playstyle", "Playstyle"],
+  ["squad-col-value", "Market Value"],
+  ["squad-col-contract", "Contract"],
+  ["squad-col-status", "Status"],
+  ["squad-col-action", "Action"],
+];
+
 let squadColumnWidthResizeTimer = null;
+
+function createSquadSectionColumnHeaderRow() {
+  const tr = document.createElement("tr");
+  tr.className = "squad-section-cols-row";
+  tr.innerHTML = SQUAD_COLUMN_HEADER_CELLS.map(
+    ([cls, label]) => `<th scope="col" class="${cls}">${label}</th>`
+  ).join("");
+  return tr;
+}
+
+function appendSquadSectionHeader(tbody, groupName, { ghost = false } = {}) {
+  const titleRow = document.createElement("tr");
+  titleRow.className = ghost
+    ? "squad-section-row squad-section-row--ghost"
+    : "squad-section-row";
+  titleRow.innerHTML = `<td colspan="${SQUAD_TABLE_COLS}" class="squad-section-title">${groupName}</td>`;
+  tbody.appendChild(titleRow);
+  tbody.appendChild(createSquadSectionColumnHeaderRow());
+}
 
 function isMissingEconomicsColumnError(error) {
   const msg = String(error?.message || "").toLowerCase();
@@ -678,11 +715,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
 
     if (!groupPlayers.length && !groupGhosts.length) continue;
 
-    const headerRow = document.createElement("tr");
-    headerRow.classList.add("squad-section-row");
-    headerRow.innerHTML =
-      `<td colspan="${SQUAD_TABLE_COLS}" class="squad-section-title">${groupName}</td>`;
-    tbody.appendChild(headerRow);
+    appendSquadSectionHeader(tbody, groupName);
 
     groupPlayers.forEach(p => {
       const statusRow = transferState
@@ -789,17 +822,35 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
       return !Object.values(groups).some((arr) => arr.includes(pos));
     });
     if (orphanGhosts.length) {
-      const headerRow = document.createElement("tr");
-      headerRow.classList.add("squad-section-row", "squad-section-row--ghost");
-      headerRow.innerHTML =
-        `<td colspan="${SQUAD_TABLE_COLS}" class="squad-section-title">Pending acquisitions</td>`;
-      tbody.appendChild(headerRow);
+      appendSquadSectionHeader(tbody, "Pending acquisitions", { ghost: true });
       orphanGhosts.forEach((p) => {
         const tr = document.createElement("tr");
         tr.classList.add("squad-row-ghost");
         tr.dataset.konamiId = p.Konami_ID;
         tr.dataset.ghostPlayer = "1";
-        tr.innerHTML = `<td colspan="${SQUAD_TABLE_COLS}" class="squad-ghost-muted">${escapeHtml(p.Name || p.Konami_ID)} — ${p.ghostLabel || "Pending"}</td>`;
+
+        const qualBadges = playerSquadQualificationBadges(p, clubNation);
+        const playerCell = formatGhostPlayerNameCell(p, qualBadges);
+
+        tr.innerHTML = `
+        <td class="squad-col-thumb">${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}</td>
+        <td class="squad-col-player">${playerCell}</td>
+        <td class="squad-col-nation">${p.Nation || "-"}</td>
+        <td class="squad-col-position">${p.Position}</td>
+        <td class="num squad-col-age">${p.Age != null && p.Age !== "" ? p.Age : "—"}</td>
+        <td class="num squad-col-rating">${formatRatingWithPotential(p)}</td>
+        <td class="num squad-col-apps squad-ghost-muted">—</td>
+        <td class="num squad-col-goals squad-ghost-muted">—</td>
+        <td class="num squad-col-assists squad-ghost-muted">—</td>
+        <td class="num squad-col-avg squad-ghost-muted">—</td>
+        <td class="squad-col-playstyle">${p.Playstyle || "-"}</td>
+        <td class="squad-col-value"><span class="money squad-ghost-muted">₿ ${Number(p.market_value || 0).toLocaleString("en-GB")}</span></td>
+        <td class="squad-col-contract squad-ghost-muted" title="Not contracted yet">If won</td>
+        <td class="squad-col-status">${formatGhostStatusHtml(p)}</td>
+        <td class="squad-col-action">
+          <a href="${p.ghostHref}" class="squad-ghost-action-link">View bid${p.ghostBidAmount != null ? ` · ₿${Number(p.ghostBidAmount).toLocaleString("en-GB")}` : ""}</a>
+        </td>
+      `;
         tbody.appendChild(tr);
       });
     }
@@ -829,8 +880,10 @@ function syncSquadTableColumnWidths() {
   if (!table) return;
 
   const cols = table.querySelectorAll("colgroup col");
-  const ths = table.querySelectorAll("thead th");
-  if (!cols.length || cols.length !== ths.length) return;
+  const sectionColRows = table.querySelectorAll("tr.squad-section-cols-row");
+  if (!cols.length || !sectionColRows.length) return;
+  const thCount = sectionColRows[0].querySelectorAll("th").length;
+  if (thCount !== cols.length) return;
 
   cols.forEach((col) => {
     col.style.width = "";
@@ -847,7 +900,9 @@ function syncSquadTableColumnWidths() {
     widths[i] = Math.max(widths[i], measureSquadTableCellWidth(cell));
   };
 
-  ths.forEach((th, i) => measureCell(th, i));
+  table.querySelectorAll("tr.squad-section-cols-row").forEach((row) => {
+    row.querySelectorAll("th").forEach((th, i) => measureCell(th, i));
+  });
   table.querySelectorAll("tbody tr[data-konami-id]").forEach((row) => {
     row.querySelectorAll("td").forEach((td, i) => measureCell(td, i));
   });

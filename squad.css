@@ -471,6 +471,26 @@ body.squad-page .squad-section-title {
   padding: 8px;
   font-size: 18px;
   text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+body.squad-page tr.squad-section-cols-row th {
+  padding: 3px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #c88;
+  background: rgba(255, 153, 0, 0.06);
+  border-bottom: 1px solid #3a3a3a;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+body.squad-page tr.squad-section-cols-row + tr[data-konami-id] td,
+body.squad-page tr.squad-section-cols-row + tr.squad-row-ghost td {
+  border-top: none;
 }
 
 /* ==========================================================
