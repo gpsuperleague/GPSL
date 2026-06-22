@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260620-club-fixtures";
+export const NAV_CONFIG_VERSION = "20260621-auction-db-active";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -42,7 +42,13 @@ export const NAV_SECTIONS = [
     label: "Transfers",
     items: [
       { heading: true, label: "Players" },
-      { href: "GPDB.html", label: "Player Database", page: "gpdb", indent: true },
+      {
+        href: "GPDB.html",
+        label: "Player Database",
+        page: "gpdb",
+        indent: true,
+        auctionNav: "player",
+      },
       { href: "all_listings.html", label: "Transfer Market", page: "all_listings", indent: true },
       {
         href: "draftauction.html",
@@ -70,7 +76,13 @@ export const NAV_SECTIONS = [
         indent: true,
       },
       { heading: true, label: "Managers" },
-      { href: "MGDB.html", label: "Manager Database", page: "mgdb", indent: true },
+      {
+        href: "MGDB.html",
+        label: "Manager Database",
+        page: "mgdb",
+        indent: true,
+        auctionNav: "manager",
+      },
       {
         href: "manager_listings.html",
         label: "Manager Market",
@@ -96,6 +108,7 @@ export const NAV_SECTIONS = [
         label: "Club Database",
         page: "club_database",
         indent: true,
+        auctionNav: "club",
       },
       {
         href: "club_auction.html",

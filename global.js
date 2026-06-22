@@ -26,7 +26,7 @@ import { formatNavLabel, renderNavGroupSummaryLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260621-nav-active-below-v2";
+export const GLOBAL_JS_VERSION = "20260621-auction-db-active";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -1071,6 +1071,19 @@ function navGroupAuctionBadgeHtml(visible = hasAnyNavAuctionActive()) {
   return `<span class="nav-group-auction-active${hidden}" title="Auction bidding is open" aria-hidden="${visible ? "false" : "true"}">Active</span>`;
 }
 
+/** Live auction pages + related databases (path highlight stops on these). */
+const NAV_AUCTION_RELATED_PAGES = {
+  player: ["draftauction.html", "gpdb.html"],
+  manager: ["manager_draftauction.html", "mgdb.html"],
+  club: ["club_auction.html", "club_database.html"],
+};
+
+function isOnNavAuctionRelatedPage(kind, currentFile) {
+  const file = String(currentFile || "").toLowerCase();
+  const related = NAV_AUCTION_RELATED_PAGES[kind];
+  return related?.some((p) => p.toLowerCase() === file) ?? false;
+}
+
 /** Target pages for live auction path indicators (Transfers → subgroup → page). */
 const NAV_AUCTION_TARGETS = {
   player: "draftauction.html",
@@ -1097,7 +1110,7 @@ function refreshNavAuctionPathIndicators() {
 
   for (const [kind, targetFile] of Object.entries(NAV_AUCTION_TARGETS)) {
     if (!isNavAuctionActive(kind)) continue;
-    if (currentFile === targetFile) continue;
+    if (isOnNavAuctionRelatedPage(kind, currentFile)) continue;
 
     showTransfersPath = true;
     nav.querySelectorAll("[data-nav-subgroup]").forEach((subgroup) => {
