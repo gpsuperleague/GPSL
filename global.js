@@ -26,7 +26,7 @@ import { formatNavLabel, renderNavGroupSummaryLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260621-nav-no-chevron";
+export const GLOBAL_JS_VERSION = "20260622-special-auction-nav";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -55,6 +55,8 @@ let draftBiddingOpen = null;  // combined bid gate for engine helpers
 let playerDraftBiddingOpen = null;
 let managerDraftBiddingOpen = null;
 let clubAuctionBiddingOpen = null;
+let specialAuctionNavLive = false;
+let specialAuctionNavVisible = false;
 let draftRandomLockedMs = null; // frozen count-up offset when secret finish fires
 let draftRandomFinishRevealed = null; // exposed only after now() >= secret finish
 
@@ -90,6 +92,9 @@ export function isNavAuctionActive(kind) {
   if (kind === "club") {
     return clubAuctionEnabled && clubAuctionBiddingOpen === true;
   }
+  if (kind === "special") {
+    return specialAuctionNavLive;
+  }
   return false;
 }
 
@@ -98,7 +103,8 @@ export function hasAnyNavAuctionActive() {
   return (
     isNavAuctionActive("player") ||
     isNavAuctionActive("manager") ||
-    isNavAuctionActive("club")
+    isNavAuctionActive("club") ||
+    isNavAuctionActive("special")
   );
 }
 
@@ -970,33 +976,18 @@ export async function refreshInboxNavBadge() {
   }
 }
 
-async function fetchActiveSpecialAuctionNavItem() {
+async function refreshSpecialAuctionNavLive() {
   try {
-    const nowIso = new Date().toISOString();
-    const { data: sa } = await supabase
-      .from("special_auctions")
-      .select("id, title, start_time")
-      .in("status", ["scheduled", "active"])
-      .gt("end_time", nowIso)
-      .order("start_time", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    if (!sa) return null;
-
-    const starts = new Date(sa.start_time);
-    const beforeStart = Date.now() < starts.getTime();
-    const label = beforeStart
-      ? `Special Auction (${starts.toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" })})`
-      : "Special Auction";
-
-    return {
-      href: "special_auction.html",
-      label,
-      page: "special_auction",
-    };
-  } catch (_) {
-    return null;
+    const { fetchSpecialAuctionNavState, isSpecialAuctionLive } = await import(
+      `./special_auction.js?v=${GLOBAL_JS_VERSION}`
+    );
+    const state = await fetchSpecialAuctionNavState(supabase);
+    specialAuctionNavVisible = state.visible;
+    specialAuctionNavLive = state.live || isSpecialAuctionLive(state.auction);
+  } catch (err) {
+    console.warn("refreshSpecialAuctionNavLive:", err);
+    specialAuctionNavVisible = false;
+    specialAuctionNavLive = false;
   }
 }
 
@@ -1005,9 +996,9 @@ export async function specialAuctionNavLinkHtml() {
   const path = window.location.pathname.toLowerCase();
   if (path.includes("special_auction")) return "";
 
-  const item = await fetchActiveSpecialAuctionNavItem();
-  if (!item) return "";
-  return `<a id="nav-special-auction" href="${item.href}" class="button">${item.label}</a>`;
+  await refreshSpecialAuctionNavLive();
+  if (!specialAuctionNavVisible) return "";
+  return `<a id="nav-special-auction" href="special_auction.html" class="button">Special Auction</a>`;
 }
 
 /** Load nav layout CSS on every page (many HTML files never linked dashboard.css). */
@@ -1096,6 +1087,7 @@ const NAV_AUCTION_RELATED_PAGES = {
   player: ["draftauction.html", "gpdb.html"],
   manager: ["manager_draftauction.html", "mgdb.html"],
   club: ["club_auction.html", "club_database.html"],
+  special: ["special_auction.html"],
 };
 
 function isOnNavAuctionRelatedPage(kind, currentFile) {
@@ -1109,6 +1101,7 @@ const NAV_AUCTION_TARGETS = {
   player: "draftauction.html",
   manager: "manager_draftauction.html",
   club: "club_auction.html",
+  special: "special_auction.html",
 };
 
 function currentNavPageFile() {
@@ -1183,10 +1176,16 @@ let __navAuctionRefreshInterval = null;
 
 function startNavAuctionBadgeRefresh() {
   if (__navAuctionRefreshInterval) return;
-  if (!draftEnabled && !managerDraftEnabled && !clubAuctionEnabled) return;
   __navAuctionRefreshInterval = setInterval(() => {
-    refreshDraftBiddingOpen().catch((err) => {
-      console.warn("nav auction badge refresh:", err);
+    Promise.all([
+      draftEnabled || managerDraftEnabled || clubAuctionEnabled
+        ? refreshDraftBiddingOpen().catch((err) => {
+            console.warn("nav auction badge refresh:", err);
+          })
+        : Promise.resolve(),
+      refreshSpecialAuctionNavLive().then(() => refreshNavAuctionIndicators()),
+    ]).catch((err) => {
+      console.warn("nav badge refresh:", err);
     });
   }, 30000);
 }
@@ -1441,7 +1440,7 @@ export async function buildNav() {
     console.warn("Inbox count skipped:", err);
   }
 
-  const specialAuction = await fetchActiveSpecialAuctionNavItem();
+  await refreshSpecialAuctionNavLive();
 
   let myNation = null;
   try {
@@ -1558,13 +1557,11 @@ export async function buildNav() {
     const items = (section.items || [])
       .filter((item) => {
         if (item.requiresDraft && !draftEnabled) return false;
+        if (item.requiresSpecialAuction && !specialAuctionNavVisible) return false;
         if (isWaitingListMember && item.page === "club_auction") return false;
         return true;
       })
       .map((item) => ({ ...item }));
-    if (section.id === "transfers" && specialAuction) {
-      items.push({ ...specialAuction });
-    }
     return items;
   };
 

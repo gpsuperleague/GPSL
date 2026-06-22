@@ -15,7 +15,7 @@ export function roundToMillion(n) {
   return Math.round(x / 1000000) * 1000000;
 }
 
-/** Owner-visible auction: scheduled (before start) or active, not yet ended. */
+/** Owner-visible auction: scheduled (published) or active, not yet ended. */
 export async function fetchActiveSpecialAuction(supabase) {
   const nowIso = new Date().toISOString();
   const { data, error } = await supabase
@@ -32,6 +32,36 @@ export async function fetchActiveSpecialAuction(supabase) {
     return null;
   }
   return data;
+}
+
+/** Bidding window open (start_time reached, before end_time). */
+export function isSpecialAuctionLive(auction) {
+  if (!auction) return false;
+  if (!["scheduled", "active"].includes(String(auction.status || ""))) return false;
+  const now = Date.now();
+  const start = new Date(auction.start_time).getTime();
+  const end = new Date(auction.end_time).getTime();
+  return now >= start && now < end;
+}
+
+/** Published in nav / owner pages before start or while live. */
+export function isSpecialAuctionPublished(auction) {
+  if (!auction) return false;
+  if (!["scheduled", "active"].includes(String(auction.status || ""))) return false;
+  return Date.now() < new Date(auction.end_time).getTime();
+}
+
+/** Nav strip + dropdown visibility / live badge. */
+export async function fetchSpecialAuctionNavState(supabase) {
+  const auction = await fetchActiveSpecialAuction(supabase);
+  if (!auction) {
+    return { visible: false, live: false, auction: null };
+  }
+  return {
+    visible: isSpecialAuctionPublished(auction),
+    live: isSpecialAuctionLive(auction),
+    auction,
+  };
 }
 
 export async function fetchAuctionById(supabase, id) {

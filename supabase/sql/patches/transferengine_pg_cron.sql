@@ -63,7 +63,7 @@ END;
 $function$;
 
 COMMENT ON FUNCTION public.gpsl_transferengine_cron_tick IS
-  'pg_cron entrypoint — runs transferengine_run_report() (market + draft settlement).';
+  'pg_cron entrypoint — runs transferengine_run_report() (special auction start, market + draft settlement).';
 
 REVOKE ALL ON FUNCTION public.gpsl_transferengine_cron_tick() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.gpsl_transferengine_cron_tick() TO postgres;

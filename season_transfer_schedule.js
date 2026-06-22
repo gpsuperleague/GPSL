@@ -72,8 +72,9 @@ export async function loadSeasonTransferSchedule() {
         .in("status", ["scheduled", "active", "revealed", "settled"]),
       supabase
         .from("special_auctions")
-        .select("id")
+        .select("id, start_time")
         .in("status", ["scheduled", "active"])
+        .lte("start_time", nowIso)
         .gt("end_time", nowIso)
         .limit(1)
         .maybeSingle(),
