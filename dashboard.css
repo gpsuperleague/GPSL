@@ -1565,15 +1565,15 @@ a.ssc-chip:hover {
   z-index: 0;
 }
 
-/* Dashboard tiles — translucent art when pinned */
+/* Dashboard tiles — same translucent watermark style as before */
 .dashboard-tile[data-tile-image]::after {
   background-image: var(--tile-art);
-  opacity: 0.32;
-  filter: grayscale(15%) contrast(95%) brightness(1.05);
+  opacity: 0.12;
+  filter: grayscale(100%) contrast(80%);
 }
 
 .dashboard-tile:hover[data-tile-image]::after {
-  opacity: 0.42;
+  opacity: 0.18;
 }
 
 .tile > * {

@@ -259,7 +259,7 @@ $function$;
 CREATE OR REPLACE FUNCTION public.waiting_list_ordered_rows(p_include_email boolean DEFAULT false)
 RETURNS TABLE (
   owner_id uuid,
-  position int,
+  list_position int,
   owner_tag text,
   registry_status text,
   waiting_list_tier text,
@@ -314,12 +314,12 @@ BEGIN
           END NULLS LAST,
           b.account_created_at,
           b.owner_id
-      )::int AS position
+      )::int AS list_position
     FROM base b
   )
   SELECT
     ranked.owner_id,
-    ranked.position,
+    ranked.list_position,
     ranked.owner_tag,
     ranked.registry_status,
     ranked.waiting_list_tier,
@@ -330,7 +330,7 @@ BEGIN
     ranked.returned_to_list_at,
     ranked.pending_starting_balance
   FROM ranked
-  ORDER BY ranked.position;
+  ORDER BY ranked.list_position;
 END;
 $function$;
 
@@ -348,18 +348,18 @@ DECLARE
 BEGIN
   SELECT coalesce(jsonb_agg(
     jsonb_build_object(
-      'position', w.position,
+      'position', w.list_position,
       'owner_tag', w.owner_tag,
       'status', w.registry_status
     )
-    ORDER BY w.position
+    ORDER BY w.list_position
   ), '[]'::jsonb)
   INTO v_rows
   FROM public.waiting_list_ordered_rows(false) w;
 
   SELECT count(*)::int INTO v_total FROM public.waiting_list_ordered_rows(false);
 
-  SELECT w.position INTO v_self_pos
+  SELECT w.list_position INTO v_self_pos
   FROM public.waiting_list_ordered_rows(false) w
   WHERE w.owner_id = auth.uid();
 
@@ -388,7 +388,7 @@ BEGIN
 
   SELECT coalesce(jsonb_agg(
     jsonb_build_object(
-      'position', w.position,
+      'position', w.list_position,
       'owner_id', w.owner_id,
       'email', w.email,
       'owner_tag', w.owner_tag,
@@ -405,7 +405,7 @@ BEGIN
         WHERE r.owner_id = w.owner_id
       )
     )
-    ORDER BY w.position
+    ORDER BY w.list_position
   ), '[]'::jsonb)
   INTO v_waiting
   FROM public.waiting_list_ordered_rows(true) w;
@@ -505,7 +505,7 @@ BEGIN
     RAISE EXCEPTION 'direction must be -1 or 1';
   END IF;
 
-  SELECT array_agg(w.owner_id ORDER BY w.position)
+  SELECT array_agg(w.owner_id ORDER BY w.list_position)
   INTO v_ids
   FROM public.waiting_list_ordered_rows(false) w;
 
@@ -1022,7 +1022,7 @@ BEGIN
 
   v_tag := public.owner_registry_resolve_tag(auth.uid());
 
-  SELECT w.position INTO v_pos
+  SELECT w.list_position INTO v_pos
   FROM public.waiting_list_ordered_rows(false) w
   WHERE w.owner_id = auth.uid();
 

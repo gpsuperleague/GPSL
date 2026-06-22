@@ -1,9 +1,95 @@
 /** Single source of dashboard shortcuts owners can pin and reorder. */
 
-const TILE_DIR = "images/dashboard_tiles";
+const PANEL_BG = "images/panel_bg";
 
-function tileFile(id) {
-  return `${TILE_DIR}/${id}.png`;
+/** Original GPSL watermark artwork (do not replace with generated placeholders). */
+const TILE_IMAGE_BY_ID = {
+  club_details: `${PANEL_BG}/Club_Details.png`,
+  stadium: `${PANEL_BG}/stadium.png`,
+  finances: `${PANEL_BG}/Finances.png`,
+  squad: `${PANEL_BG}/Squad.png`,
+  transfer_center: `${PANEL_BG}/Transfer.png`,
+  matchday: `${PANEL_BG}/MatchDay.png`,
+  fixtures: `${PANEL_BG}/Fixtures.png`,
+  history: `${PANEL_BG}/History.png`,
+  progress: `${PANEL_BG}/Progress.png`,
+  league_stats: `${PANEL_BG}/Progress.png`,
+  central_bank: `${PANEL_BG}/Central_Bank.png`,
+  central_bank_loans: `${PANEL_BG}/Central_Bank.png`,
+  central_bank_counter: `${PANEL_BG}/Central_Bank.png`,
+  cups: `${PANEL_BG}/Fixtures.png`,
+  world_cup: `${PANEL_BG}/Fixtures.png`,
+  challenges: `${PANEL_BG}/Progress.png`,
+  gpdb: `${PANEL_BG}/Squad.png`,
+  transfer_market: `${PANEL_BG}/Transfer.png`,
+  draftauction: `${PANEL_BG}/Transfer.png`,
+  legacy_players: `${PANEL_BG}/Squad.png`,
+  expiring_contracts: `${PANEL_BG}/Squad.png`,
+  season_transfers: `${PANEL_BG}/Transfer.png`,
+  mgdb: `${PANEL_BG}/Squad.png`,
+  manager_listings: `${PANEL_BG}/Transfer.png`,
+  manager_draftauction: `${PANEL_BG}/Transfer.png`,
+  season_manager_transfers: `${PANEL_BG}/Transfer.png`,
+  club_database: `${PANEL_BG}/Club_Details.png`,
+  club_auction: `${PANEL_BG}/Club_Details.png`,
+  season_club_purchases: `${PANEL_BG}/Club_Details.png`,
+  clubs: `${PANEL_BG}/Club_Details.png`,
+  scouting: `${PANEL_BG}/Transfer.png`,
+  special_auction: `${PANEL_BG}/Transfer.png`,
+  finances_incoming: `${PANEL_BG}/Finances.png`,
+  finances_outgoing: `${PANEL_BG}/Finances.png`,
+  finances_ledger: `${PANEL_BG}/Finances.png`,
+  finances_accounts: `${PANEL_BG}/Finances.png`,
+  inbox: `${PANEL_BG}/History.png`,
+  owner_rankings: `${PANEL_BG}/Progress.png`,
+  learning_gpsl: `${PANEL_BG}/History.png`,
+  waiting_list: `${PANEL_BG}/History.png`,
+  member_home: `${PANEL_BG}/Club_Details.png`,
+  awaiting_club: `${PANEL_BG}/Club_Details.png`,
+  national_team: `${PANEL_BG}/Fixtures.png`,
+  nation_select: `${PANEL_BG}/Fixtures.png`,
+  nation_player_pool: `${PANEL_BG}/Squad.png`,
+  player_career: `${PANEL_BG}/Squad.png`,
+  cup_draw: `${PANEL_BG}/Fixtures.png`,
+  fixture_schedule: `${PANEL_BG}/Fixtures.png`,
+  dashboard: `${PANEL_BG}/Club_Details.png`,
+  tc_scouting: `${PANEL_BG}/Transfer.png`,
+  tc_active_listings: `${PANEL_BG}/Transfer.png`,
+  tc_active_bids: `${PANEL_BG}/Transfer.png`,
+  tc_awaiting_seller: `${PANEL_BG}/Transfer.png`,
+  tc_seller_review: `${PANEL_BG}/Transfer.png`,
+  tc_closed_listings: `${PANEL_BG}/Transfer.png`,
+  tc_season_signings: `${PANEL_BG}/Transfer.png`,
+  tc_season_sales: `${PANEL_BG}/Transfer.png`,
+  admin: `${PANEL_BG}/Central_Bank.png`,
+  admin_owners: `${PANEL_BG}/Club_Details.png`,
+  admin_transfers: `${PANEL_BG}/Transfer.png`,
+  admin_season: `${PANEL_BG}/Progress.png`,
+  admin_draft: `${PANEL_BG}/Transfer.png`,
+  admin_fixtures_league: `${PANEL_BG}/Fixtures.png`,
+  admin_fixtures_cups: `${PANEL_BG}/Fixtures.png`,
+  admin_fixtures_playoffs: `${PANEL_BG}/Fixtures.png`,
+  admin_challenges: `${PANEL_BG}/Progress.png`,
+  admin_club_checklist: `${PANEL_BG}/Club_Details.png`,
+  admin_special_auctions: `${PANEL_BG}/Transfer.png`,
+  admin_international: `${PANEL_BG}/Fixtures.png`,
+  admin_club_kits: `${PANEL_BG}/Club_Details.png`,
+  admin_money: `${PANEL_BG}/Finances.png`,
+  admin_fines: `${PANEL_BG}/Finances.png`,
+  admin_cup_prizes: `${PANEL_BG}/Fixtures.png`,
+  admin_weather: `${PANEL_BG}/Fixtures.png`,
+  admin_gpdb_sync: `${PANEL_BG}/Squad.png`,
+  admin_gpdb_dedup: `${PANEL_BG}/Squad.png`,
+  admin_season_break: `${PANEL_BG}/Progress.png`,
+  admin_one_of_our_own: `${PANEL_BG}/Squad.png`,
+  admin_manager_targets: `${PANEL_BG}/Squad.png`,
+  admin_club_attendance: `${PANEL_BG}/stadium.png`,
+};
+
+const TILE_FALLBACK = `${PANEL_BG}/Progress.png`;
+
+function resolveTileImage(id) {
+  return TILE_IMAGE_BY_ID[id] || TILE_FALLBACK;
 }
 
 function p(
@@ -30,7 +116,7 @@ function p(
     adminOnly: !!adminOnly,
     requiresDraft: !!requiresDraft,
     when: when || null,
-    tile: tileFile(id),
+    tile: resolveTileImage(id),
   };
 }
 
