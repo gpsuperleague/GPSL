@@ -1,8 +1,8 @@
 name: Transfer Engine Runner
 
-# Calls Supabase Edge Function transferengine_run → transferengine_run_report().
-# GitHub Actions schedule is UTC, best-effort, and minimum interval is 5 minutes
-# (*/1 is ignored/coalesced — do not use sub-5-minute cron here).
+# BACKUP only — primary schedule is Supabase pg_cron (patches/transferengine_pg_cron.sql).
+# Calls Edge Function transferengine_run → transferengine_run_report().
+# GitHub schedule is UTC, best-effort, minimum interval 5 minutes.
 on:
   schedule:
     # Baseline: every 5 minutes, 24/7 (transfer list, draft backlog, month tick).

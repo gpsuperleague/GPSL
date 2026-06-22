@@ -144,6 +144,13 @@ ORDER BY l.end_time;
 -- Prefer visible JSON report (deploy admin_transferengine_run.sql first):
 -- SELECT public.transferengine_run_report();
 --
+-- pg_cron (primary automation — patches/transferengine_pg_cron.sql):
+-- SELECT jobname, schedule, active FROM cron.job WHERE jobname LIKE 'gpsl-transfer-engine%';
+-- SELECT status, start_time, end_time, return_message
+-- FROM cron.job_run_details
+-- WHERE jobid IN (SELECT jobid FROM cron.job WHERE jobname LIKE 'gpsl-transfer-engine%')
+-- ORDER BY start_time DESC LIMIT 10;
+--
 -- Quick check after running:
 -- SELECT status, transfer_completed, count(*) FROM public."Player_Transfer_Listings"
 -- WHERE listing_type = 'draft' GROUP BY 1, 2 ORDER BY 1;
