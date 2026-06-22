@@ -592,24 +592,22 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
   const projectedByRule = new Map(projectedRows.map((r) => [r.rule, r]));
 
   const preAugust = !squadMinimumStatus?.punishments_active;
-  const minOk = c.minSquadOk || preAugust;
-  const panelClass =
-    c.compliant && minOk
-      ? "squad-rules-panel squad-rules-panel--ok squad-rules-panel--compact"
-      : c.compliant && preAugust && !c.minSquadOk
-        ? "squad-rules-panel squad-rules-panel--compact"
-        : "squad-rules-panel squad-rules-panel--warn squad-rules-panel--compact";
+  const registrationOk = c.compliant && c.minSquadOk;
+  const panelClass = registrationOk
+    ? "squad-rules-panel squad-rules-panel--ok squad-rules-panel--compact"
+    : "squad-rules-panel squad-rules-panel--warn squad-rules-panel--compact";
 
   const tableRows = rows
     .map((r) => {
-      const rowOk =
-        r.rule === "Minimum squad" ? r.ok || preAugust : r.ok;
+      const rowOk = r.ok;
       const proj = projectedByRule.get(r.rule);
       const projCount =
         proj && typeof proj.count === "number" ? proj.count : null;
       const statusText =
-        r.rule === "Minimum squad" && preAugust && !r.ok
-          ? `−${c.minSquadShort} pre-Aug`
+        r.rule === "Minimum squad" && !r.ok
+          ? preAugust
+            ? `−${c.minSquadShort} pre-Aug`
+            : shortComplianceStatus(r)
           : shortComplianceStatus(r);
       const projCell =
         hasGhosts && projCount != null
@@ -636,9 +634,7 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
     })
     .join("");
 
-  const failCount = rows.filter((r) =>
-    r.rule === "Minimum squad" ? !r.ok && !preAugust : !r.ok
-  ).length;
+  const failCount = rows.filter((r) => !r.ok).length;
 
   let footnote = "";
   if (hasGhosts) {
