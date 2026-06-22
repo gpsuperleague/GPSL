@@ -53,7 +53,7 @@ export const TRANSFER_STATUS_LABELS = {
   [TRANSFER_STATUS.YOUR_PLAYER]: "Your Player",
   [TRANSFER_STATUS.WINDOW_CLOSED]: "Window Closed",
   [TRANSFER_STATUS.SIGNED_THIS_SEASON]:
-    "Signed this season — not transferable until next season",
+    "Recently signed — not available for transfer until next season",
   [TRANSFER_STATUS.CONTRACT_FINAL_YEAR]:
     "Final contract year — renew or expire in Squad",
   [TRANSFER_STATUS.EXPIRY_WAGE_BID]: "Expiring contract — wage bid",
@@ -241,16 +241,15 @@ export function resolvePlayerTransferStatus({
   }
 
   if (
-    seasonSigned != null &&
-    playerBlockedSameSeasonTransfer(
+    playerSignedCurrentSeason(
       { Season_Signed: seasonSigned },
       state?.currentSeasonLabel
     )
   ) {
     return {
       code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
-      label: "Contract Signed",
-      subLabel: "Not Transferable this season",
+      label: "Recently signed",
+      subLabel: "Not available for transfer",
       pillClass: PILL_CLASS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
     };
   }

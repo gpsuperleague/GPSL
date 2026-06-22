@@ -540,18 +540,30 @@ async function loadSquad() {
 
   renderSquadCompliance(list, squadDesignationsState, squadGhostPlayers);
 
-  if (!hadSquad || tbody?.dataset.squadIds !== idsKey) {
-    renderSquad(list, null, new Map(), squadDesignationsState, squadGhostPlayers);
-    if (tbody) tbody.dataset.squadIds = idsKey;
-  }
-
   const [state, seasonStats] = await Promise.all([
     loadFreshTransferStatusState(),
     loadPlayerSeasonStatsForSquad(supabase, playerIds, currentUserShort),
   ]);
   transferStatusState = state;
+  if (!transferStatusState.currentSeasonLabel && currentGpslSeasonLabel) {
+    transferStatusState.currentSeasonLabel = currentGpslSeasonLabel;
+  } else if (transferStatusState.currentSeasonLabel) {
+    currentGpslSeasonLabel = transferStatusState.currentSeasonLabel;
+  }
 
-  patchSquadEnrichment(transferStatusState, statsMapByPlayerId(seasonStats));
+  const statsMap = statsMapByPlayerId(seasonStats);
+  if (!hadSquad || tbody?.dataset.squadIds !== idsKey) {
+    renderSquad(
+      list,
+      transferStatusState,
+      statsMap,
+      squadDesignationsState,
+      squadGhostPlayers
+    );
+    if (tbody) tbody.dataset.squadIds = idsKey;
+  } else {
+    patchSquadEnrichment(transferStatusState, statsMap);
+  }
 }
 
 function refreshSquadDesignationSelects(players, state) {
@@ -724,7 +736,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
             contractSeasonsRemaining: p.contract_seasons_remaining,
           })
         : {
-            label: "Not listed",
+            label: "—",
             pillClass: "status-not-listed",
           };
       const status = formatSquadStatusHtml(statusRow);
@@ -949,14 +961,18 @@ function patchSquadEnrichment(transferState, statsByPlayer) {
         st?.avg_rating != null ? Number(st.avg_rating).toFixed(2) : "—";
     }
     if (status && transferState) {
+      const seasonsRaw = row.dataset.contractSeasons;
       const statusRow = resolvePlayerTransferStatus({
         konamiId: id,
         contractedTeam:
           row.dataset.contractedTeam || currentUserShort,
         viewerClubShort: currentUserShort,
         state: transferState,
-        seasonSigned: row.dataset.seasonSigned || null,
-        contractSeasonsRemaining: row.dataset.contractSeasons || null,
+        seasonSigned: row.dataset.seasonSigned ?? null,
+        contractSeasonsRemaining:
+          seasonsRaw !== undefined && seasonsRaw !== ""
+            ? Number(seasonsRaw)
+            : null,
       });
       status.innerHTML = formatSquadStatusHtml(statusRow);
     }
