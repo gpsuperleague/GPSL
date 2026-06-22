@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>GPSL Member — Waiting for a club</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background: #111; color: #ddd; }
+    .mh-wrap { max-width: 760px; margin: 28px auto; padding: 0 16px; }
+    .mh-card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 20px 22px;
+      margin-bottom: 18px;
+    }
+    .mh-card h1 { margin: 0 0 10px; color: #ff9900; font-size: 24px; }
+    .mh-card h2 { margin: 0 0 8px; font-size: 17px; color: #ccc; }
+    .mh-card p { color: #999; line-height: 1.55; margin: 0 0 12px; }
+    .mh-pos { font-size: 32px; font-weight: bold; color: #9d9; margin: 8px 0; }
+    .mh-archived { border-color: #633; }
+    .mh-archived h1 { color: #c88; }
+    .mh-links { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 14px; }
+    .mh-links a {
+      color: #ff9900;
+      text-decoration: none;
+      padding: 8px 12px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #141414;
+    }
+    .mh-links a:hover { border-color: #ff9900; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="mh-wrap">
+    <div class="mh-card" id="mhMain">
+      <h1>Welcome to GPSL</h1>
+      <p id="mhIntro">You are a <strong>member</strong> on the owner waiting list. Browse league info and transfers while you wait for a club.</p>
+      <div id="mhPositionBlock" hidden>
+        <h2>Your position</h2>
+        <div class="wl-pos mh-pos" id="mhPos"></div>
+        <p id="mhPosHint"></p>
+      </div>
+      <div class="mh-links">
+        <a href="waiting_list.html">View waiting list</a>
+        <a href="learning_gpsl.html">Learning GPSL</a>
+        <a href="fixtures.html">Fixtures</a>
+        <a href="progress.html">Tables</a>
+        <a href="GPDB.html">Player database</a>
+        <a href="club_database.html">Club database</a>
+      </div>
+    </div>
+    <div class="mh-card mh-archived" id="mhArchived" hidden>
+      <h1>Account archived</h1>
+      <p>Your GPSL account is archived. Competition history is retained. Contact admin if you wish to return.</p>
+    </div>
+  </div>
+  <script type="module">
+    window.CURRENT_PAGE = "member_home";
+    import { initGlobal } from "./global.js";
+    import { initMemberHomePage } from "./member_home.js";
+    initGlobal().then(() => initMemberHomePage());
+  </script>
+</body>
+</html>

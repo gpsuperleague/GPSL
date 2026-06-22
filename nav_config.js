@@ -1,7 +1,7 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260621-checklist-presteason-v2";
+export const NAV_CONFIG_VERSION = "20260621-waiting-list";
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
@@ -186,6 +186,7 @@ export const NAV_SECTIONS = [
     label: "Owners",
     items: [
       { href: "learning_gpsl.html", label: "Learning GPSL", page: "learning_gpsl" },
+      { href: "waiting_list.html", label: "Waiting list", page: "waiting_list" },
       { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings" },
       { href: "challenges.html", label: "Season challenges", page: "challenges" },
     ],

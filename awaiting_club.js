@@ -79,9 +79,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // on_break without a club uses admin “link to club”, not the auction onboarding page
-  if (self?.status === "archived" || self?.status === "on_break") {
-    window.location = "dashboard.html";
+  // Members belong on member home; only auction invitees use this page
+  if (self?.is_member) {
+    window.location = "member_home.html";
+    return;
+  }
+
+  if (self?.is_archived) {
+    window.location = "member_home.html?archived=1";
+    return;
+  }
+
+  if (self?.status === "on_break") {
+    window.location = "member_home.html";
     return;
   }
 

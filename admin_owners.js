@@ -34,6 +34,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("tagOwnerSelect")?.addEventListener("change", syncOwnerTagInputFromSelect);
   document.getElementById("setPasswordBtn").onclick = setOwnerPassword;
   document.getElementById("resetPasswordBtn").onclick = resetPassword;
+
+  document.getElementById("wlRefreshBtn")?.addEventListener("click", loadWaitingListAdmin);
+  document.getElementById("wlRestoreOrderBtn")?.addEventListener("click", restoreWaitingListOrder);
+  document.getElementById("wlInviteAuctionBtn")?.addEventListener("click", inviteWaitingListAuction);
+  document.getElementById("wlDirectAssignBtn")?.addEventListener("click", directAssignFromWaitingList);
+  document.getElementById("wlAbsenceOnBtn")?.addEventListener("click", () => setWaitingListAbsence(true));
+  document.getElementById("wlAbsenceOffBtn")?.addEventListener("click", () => setWaitingListAbsence(false));
+
+  await loadWaitingListAdmin();
 });
 
 async function loadOwnerList() {
@@ -59,6 +68,8 @@ async function loadOwnerList() {
     if (row.registryStatus === "on_break") {
       return `ON BREAK (${row.lastClubShortName || "?"})`;
     }
+    if (row.registryStatus === "member") return "WAITING LIST";
+    if (row.registryStatus === "on_absence") return "ABSENCE";
     if (row.registryStatus === "awaiting_club_auction") return "CLUB AUCTION";
     return "NO CLUB";
   };
@@ -409,7 +420,7 @@ async function registerForClubAuction() {
 
   setStatus(
     "clubAuctionStatus",
-    `✅ ${email} ${action} — ${formatBudgetLabel(clubAuctionStartingBalance)} pending. Share the login details, then they open awaiting_club.html to set their tag.`,
+    `✅ ${email} ${action} — added to the bottom of the waiting list. Share login details; they start at member_home.html.`,
     true
   );
   await loadOwnerList();
@@ -522,4 +533,162 @@ async function resetPassword() {
   });
 
   setStatus("resetPasswordStatus", error ? "❌ " + error.message : "✅ Reset email sent.", !error);
+}
+
+function setWlActionStatus(msg, ok) {
+  setStatus("wlActionStatus", msg, ok);
+}
+
+async function loadWaitingListAdmin() {
+  const tableWrap = document.getElementById("wlAdminTableWrap");
+  const auctionWrap = document.getElementById("wlAuctionInviteWrap");
+  if (!tableWrap) return;
+
+  tableWrap.innerHTML = "<p class='note'>Loading…</p>";
+  const { data, error } = await supabase.rpc("waiting_list_admin");
+  if (error) {
+    tableWrap.innerHTML = `<p class="note" style="color:#f88">❌ ${error.message} — run gpsl_waiting_list.sql</p>`;
+    return;
+  }
+
+  const rows = data?.waiting || [];
+  if (!rows.length) {
+    tableWrap.innerHTML = "<p class='note'>No one on the waiting list.</p>";
+  } else {
+    let html =
+      "<table class='admin-table' style='width:100%;font-size:13px;border-collapse:collapse'>" +
+      "<thead><tr><th>#</th><th>Tag</th><th>Email</th><th>Tier</th><th>Status</th><th></th></tr></thead><tbody>";
+    for (const row of rows) {
+      const email = row.email || "";
+      html += `<tr>
+        <td>${row.position}</td>
+        <td>${escapeWl(row.owner_tag)}</td>
+        <td>${escapeWl(email)}</td>
+        <td>${escapeWl(row.tier || "—")}</td>
+        <td>${escapeWl(row.status)}</td>
+        <td style="white-space:nowrap">
+          <button type="button" class="button secondary wl-up" data-id="${row.owner_id}" data-email="${escapeWl(email)}">↑</button>
+          <button type="button" class="button secondary wl-down" data-id="${row.owner_id}" data-email="${escapeWl(email)}">↓</button>
+        </td>
+      </tr>`;
+    }
+    html += "</tbody></table>";
+    tableWrap.innerHTML = html;
+
+    tableWrap.querySelectorAll(".wl-up").forEach((btn) => {
+      btn.addEventListener("click", () => moveWaitingList(btn.dataset.id, -1));
+    });
+    tableWrap.querySelectorAll(".wl-down").forEach((btn) => {
+      btn.addEventListener("click", () => moveWaitingList(btn.dataset.id, 1));
+    });
+  }
+
+  const invited = data?.invited_to_auction || [];
+  if (!auctionWrap) return;
+  if (!invited.length) {
+    auctionWrap.innerHTML = "<p class='note'>No one currently invited to club auction.</p>";
+    return;
+  }
+  auctionWrap.innerHTML = invited
+    .map(
+      (r) =>
+        `<div class="note">${escapeWl(r.owner_tag || "—")} — ${escapeWl(r.email)} — <code>awaiting_club_auction</code></div>`
+    )
+    .join("");
+}
+
+function escapeWl(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function moveWaitingList(ownerId, direction) {
+  const { error } = await supabase.rpc("admin_waiting_list_move", {
+    p_owner_id: ownerId,
+    p_direction: direction,
+  });
+  if (error) {
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+  await loadWaitingListAdmin();
+  setWlActionStatus("✅ Order updated.", true);
+}
+
+async function restoreWaitingListOrder() {
+  setWlActionStatus("Restoring…");
+  const { error } = await supabase.rpc("admin_waiting_list_restore_join_order");
+  if (error) {
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+  await loadWaitingListAdmin();
+  setWlActionStatus("✅ Join-date order restored (admin overrides cleared).", true);
+}
+
+function wlActionEmail() {
+  return document.getElementById("wlActionEmail")?.value?.trim() || "";
+}
+
+async function inviteWaitingListAuction() {
+  const email = wlActionEmail();
+  if (!email) {
+    setWlActionStatus("Enter member email.", false);
+    return;
+  }
+  setWlActionStatus("Inviting…");
+  const { error } = await supabase.rpc("admin_waiting_list_invite_auction", {
+    p_owner_email: email,
+    p_starting_balance: clubAuctionStartingBalance,
+  });
+  if (error) {
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+  await loadWaitingListAdmin();
+  await loadOwnerList();
+  setWlActionStatus(`✅ ${email} invited to club auction.`, true);
+}
+
+async function directAssignFromWaitingList() {
+  const email = wlActionEmail();
+  const club = document.getElementById("wlAssignClub")?.value?.trim();
+  if (!email || !club) {
+    setWlActionStatus("Enter member email and club ShortName.", false);
+    return;
+  }
+  setWlActionStatus("Assigning…");
+  const { error } = await supabase.rpc("admin_waiting_list_assign_club", {
+    p_owner_email: email,
+    p_club_short_name: club,
+  });
+  if (error) {
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+  await loadWaitingListAdmin();
+  await loadOwnerList();
+  setWlActionStatus(`✅ ${email} assigned to ${club.toUpperCase()}.`, true);
+}
+
+async function setWaitingListAbsence(on) {
+  const email = wlActionEmail();
+  if (!email) {
+    setWlActionStatus("Enter member email.", false);
+    return;
+  }
+  const note = on ? "Marked on absence by admin" : null;
+  const { error } = await supabase.rpc("admin_waiting_list_set_absence", {
+    p_owner_email: email,
+    p_on_absence: on,
+    p_note: note,
+  });
+  if (error) {
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+  await loadWaitingListAdmin();
+  setWlActionStatus(on ? `✅ ${email} marked on absence.` : `✅ Absence cleared for ${email}.`, true);
 }

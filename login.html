@@ -94,17 +94,19 @@
       let dest = "dashboard.html";
       try {
         const { data: self } = await supabase.rpc("owner_registry_get_self");
-        if (
+        if (self?.is_archived) {
+          dest = "member_home.html?archived=1";
+        } else if (self && !self.has_club && self.needs_club_auction) {
+          dest = "awaiting_club.html";
+        } else if (self && !self.has_club && self.is_member) {
+          dest = "member_home.html";
+        } else if (
           self &&
           !self.has_club &&
-          self.status !== "archived" &&
-          self.status !== "on_break" &&
-          (self.needs_club_auction ||
-            self.status === "awaiting_club_auction" ||
-            self.status == null ||
-            self.status === "active")
+          !self.is_member &&
+          self.status == null
         ) {
-          dest = "awaiting_club.html";
+          dest = "member_home.html";
         }
       } catch (_) {
         /* RPC missing — fall back to dashboard */

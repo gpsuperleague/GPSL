@@ -74,8 +74,9 @@ async function registerOwnerForClubAuction(
     .upsert(
       {
         owner_id: userId,
-        status: "awaiting_club_auction",
+        status: "member",
         pending_starting_balance: balance,
+        waiting_list_tier: "new",
         status_changed_at: new Date().toISOString(),
       },
       { onConflict: "owner_id" }

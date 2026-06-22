@@ -26,7 +26,7 @@ import { formatNavLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260621-transfer-window-simple";
+export const GLOBAL_JS_VERSION = "20260621-waiting-list";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -1360,6 +1360,22 @@ export async function buildNav() {
     console.warn("Nav owner club skipped:", clubErr);
   }
 
+  let registrySelf = null;
+  try {
+    const { data: reg } = await supabase.rpc("owner_registry_get_self");
+    registrySelf = reg;
+  } catch (regErr) {
+    console.warn("Nav registry self skipped:", regErr);
+  }
+
+  const isWaitingListMember =
+    registrySelf?.is_member === true && registrySelf?.has_club !== true;
+  const memberHomeHref = "member_home.html";
+  const homeHref =
+    isWaitingListMember && !registrySelf?.needs_club_auction
+      ? memberHomeHref
+      : "dashboard.html";
+
   let calendarStatus = null;
   let navMonthLabel = null;
   let navMonthTitle = "";
@@ -1390,7 +1406,7 @@ export async function buildNav() {
   let html = `<div class="gpsl-nav-bar">`;
   html += `<div class="gpsl-nav-shortcuts">`;
   html += renderNavOwnerClubBadge(ownerClub);
-  html += `<a href="dashboard.html" class="nav-shortcut nav-dashboard${
+  html += `<a href="${homeHref}" class="nav-shortcut nav-dashboard${
     dashActive ? " active" : ""
   }" title="Dashboard">Dashboard</a>`;
   html += `<a href="inbox.html" class="nav-shortcut nav-inbox${
@@ -1435,6 +1451,13 @@ export async function buildNav() {
   html += `<div class="gpsl-nav-groups">`;
 
   const navItemsForSection = (section) => {
+    if (
+      (section.id === "myclub" || section.id === "mynation") &&
+      isWaitingListMember
+    ) {
+      return [];
+    }
+
     if (section.id === "mynation") {
       const items = [];
       if (myNation?.code) {
@@ -1493,6 +1516,7 @@ export async function buildNav() {
     const items = (section.items || [])
       .filter((item) => {
         if (item.requiresDraft && !draftEnabled) return false;
+        if (isWaitingListMember && item.page === "club_auction") return false;
         return true;
       })
       .map((item) => ({ ...item }));

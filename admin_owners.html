@@ -30,8 +30,8 @@
       <div class="card" id="ow-break">
         <h2>Remove owner from club (short break)</h2>
         <p class="note">
-          Detaches the owner from their club and national team. Season history, rankings, and archives are kept.
-          They can return later via <b>Link existing login to club</b>.
+          Detaches the owner from their club and national team. They rejoin the waiting list as a
+          <b>returning member</b> (above new joins). Season history is retained.
         </p>
         <div class="row">
           <div><input id="breakOwnerEmail" placeholder="Owner email"></div>
@@ -54,7 +54,7 @@
       </div>
       <div class="card" id="ow-unarchive">
         <h2>Unarchive owner</h2>
-        <p class="note">Moves an archived owner to <b>on break</b> so they can be linked to a club again.</p>
+        <p class="note">Moves an archived owner onto the waiting list as a returning member (unarchive).</p>
         <div class="row">
           <div><input id="unarchiveOwnerEmail" placeholder="Owner email"></div>
         </div>
@@ -74,14 +74,41 @@
         <button id="changeOwnerBtn" class="button">Change club</button>
         <div id="changeOwnerStatus" class="status-line"></div>
       </div>
-      <div class="card" id="ow-club-auction">
-        <h2>Add owner for club auction (no club yet)</h2>
+      <div class="card" id="ow-waiting-list">
+        <h2>Owner waiting list</h2>
         <p class="note">
-          Creates the login, sets £600m pending balance, and status
-          <code>awaiting_club_auction</code>. They only see
-          <a href="awaiting_club.html">awaiting_club.html</a> until the auction assigns a club.
-          Requires <code>owner_onboarding_club_auction.sql</code> and the
-          <code>create-owner-club-auction</code> edge function deployed in Supabase.
+          Members without a club. New admin adds go to the <b>bottom</b>; owners removed from a club rejoin
+          <b>above new joins</b> but below people already waiting. Invite to club auction or assign a
+          vacant club directly from here.
+        </p>
+        <div class="row" style="margin-bottom:12px;">
+          <button type="button" id="wlRefreshBtn" class="button secondary">Refresh</button>
+          <button type="button" id="wlRestoreOrderBtn" class="button secondary">Restore join-date order</button>
+        </div>
+        <div id="wlAdminTableWrap" style="overflow-x:auto;"></div>
+        <h3 style="margin:20px 0 8px;font-size:15px;color:#ccc;">Invited to club auction</h3>
+        <div id="wlAuctionInviteWrap"></div>
+        <hr style="border-color:#333;margin:20px 0;">
+        <h3 style="margin:0 0 8px;font-size:15px;color:#ccc;">Quick actions</h3>
+        <div class="row">
+          <div><input id="wlActionEmail" type="email" placeholder="Member email"></div>
+          <div><input id="wlAssignClub" placeholder="Club ShortName (direct assign)"></div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+          <button type="button" id="wlInviteAuctionBtn" class="button">Invite to club auction</button>
+          <button type="button" id="wlDirectAssignBtn" class="button">Assign club directly</button>
+          <button type="button" id="wlAbsenceOnBtn" class="button secondary">Mark on absence</button>
+          <button type="button" id="wlAbsenceOffBtn" class="button secondary">Clear absence</button>
+        </div>
+        <div id="wlActionStatus" class="status-line"></div>
+      </div>
+      <div class="card" id="ow-club-auction">
+        <h2>Add member (waiting list)</h2>
+        <p class="note">
+          Creates the login and adds them to the <b>bottom</b> of the waiting list as a
+          <code>member</code>. Use <a href="#ow-waiting-list">Waiting list</a> to invite them to a club
+          auction or assign a club when a slot opens. Requires
+          <code>gpsl_waiting_list.sql</code> and the <code>create-owner-club-auction</code> edge function.
         </p>
         <div class="row">
           <div><input id="clubAuctionEmail" type="email" placeholder="Owner email"></div>
@@ -98,7 +125,7 @@
           <input type="checkbox" id="clubAuctionRegisterOnly">
           Account already exists — register for auction only (do not reset password)
         </label>
-        <button id="clubAuctionRegisterBtn" class="button">Create owner for club auction</button>
+        <button id="clubAuctionRegisterBtn" class="button">Create member account</button>
         <div id="clubAuctionStatus" class="status-line"></div>
       </div>
       <div class="card" id="ow-link-club">

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Waiting list — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background: #111; color: #ddd; }
+    .wl-wrap { max-width: 720px; margin: 24px auto; padding: 0 16px; }
+    .wl-card {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+    .wl-card h1 { margin: 0 0 8px; color: #ff9900; font-size: 22px; }
+    .wl-card p { color: #999; line-height: 1.5; margin: 0 0 12px; }
+    .wl-pos { font-size: 28px; font-weight: bold; color: #9d9; }
+    .wl-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .wl-table th, .wl-table td { padding: 8px 10px; border-bottom: 1px solid #2a2a2a; text-align: left; }
+    .wl-table th { color: #888; font-weight: 600; font-size: 12px; text-transform: uppercase; }
+    .wl-you { background: #1a2218; }
+    .wl-status-absence { color: #c96; font-size: 12px; }
+    .wl-links a { color: #ff9900; margin-right: 14px; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="wl-wrap">
+    <div class="wl-card" id="wlMyCard" hidden>
+      <h1>Your place</h1>
+      <p id="wlMySummary"></p>
+      <div class="wl-pos" id="wlMyPos"></div>
+    </div>
+    <div class="wl-card">
+      <h1>Owner waiting list</h1>
+      <p>Position and owner tag only. When a club becomes available, admin will invite the next person for a club auction or direct assignment.</p>
+      <table class="wl-table">
+        <thead>
+          <tr><th>#</th><th>Tag</th><th></th></tr>
+        </thead>
+        <tbody id="wlBody"></tbody>
+      </table>
+    </div>
+    <p class="wl-links">
+      <a href="learning_gpsl.html">Learning GPSL</a>
+      <a href="member_home.html">Member home</a>
+    </p>
+  </div>
+  <script type="module">
+    window.CURRENT_PAGE = "waiting_list";
+    import { initGlobal } from "./global.js";
+    import { initWaitingListPage } from "./waiting_list.js";
+    initGlobal().then(() => initWaitingListPage());
+  </script>
+</body>
+</html>

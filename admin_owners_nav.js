@@ -4,6 +4,24 @@ import { formatNavLabel } from "./nav_label.js";
 
 export const OWNER_ADMIN_NAV = [
   {
+    id: "waiting_list",
+    label: "Waiting list",
+    items: [
+      {
+        label: "Manage waiting list",
+        href: "admin_owners.html",
+        hash: "ow-waiting-list",
+        page: "admin_owners",
+      },
+      {
+        label: "Add member",
+        href: "admin_owners.html",
+        hash: "ow-club-auction",
+        page: "admin_owners",
+      },
+    ],
+  },
+  {
     id: "new_owners",
     label: "New owners",
     items: [
@@ -14,7 +32,7 @@ export const OWNER_ADMIN_NAV = [
         page: "admin_owners",
       },
       {
-        label: "Add owner for club auction",
+        label: "Add member (waiting list)",
         href: "admin_owners.html",
         hash: "ow-club-auction",
         page: "admin_owners",
