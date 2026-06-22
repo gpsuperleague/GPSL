@@ -26,7 +26,7 @@ import { formatNavLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260621-season-strip-season1";
+export const GLOBAL_JS_VERSION = "20260621-nav-layout";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -856,6 +856,57 @@ function renderNavOwnerClubBadge(ownerClub) {
   );
 }
 
+function renderNavDashboardHomeLink(ownerClub, homeHref, dashActive) {
+  const active = dashActive ? " active" : "";
+  const title = escapeNavAttr(
+    ownerClub?.name ? `${ownerClub.name} — Dashboard` : "Dashboard"
+  );
+  let badgeHtml = "";
+  if (ownerClub?.short) {
+    const src = clubBadgeSrc(ownerClub.short);
+    if (src) {
+      badgeHtml =
+        `<img class="nav-dashboard-home-badge" src="${escapeNavAttr(src)}" alt="" loading="lazy" ` +
+        `onerror="this.style.display='none'">`;
+    }
+  }
+  return (
+    `<a href="${homeHref}" class="nav-shortcut nav-dashboard-home${active}" title="${title}" aria-label="${title}">` +
+    badgeHtml +
+    `<span class="nav-dashboard-home-label">Dashboard</span>` +
+    `</a>`
+  );
+}
+
+function renderNavInboxLink(inboxActive, unread) {
+  return (
+    `<a href="inbox.html" class="nav-shortcut nav-inbox${
+      inboxActive ? " active" : ""
+    }${unread > 0 ? " has-unread" : ""}" title="Inbox" aria-label="Inbox${
+      unread > 0 ? `, ${unread} unread` : ""
+    }">` +
+    `<span class="nav-inbox-icon" aria-hidden="true">📥</span>` +
+    (unread > 0
+      ? `<span class="nav-inbox-badge">${unread > 99 ? "99+" : unread}</span>`
+      : "") +
+    `</a>`
+  );
+}
+
+function renderNavMonthBlock(navMonthLabel, navMonthTitle, calendarStatus, calMod) {
+  if (!navMonthLabel) return "";
+  const isPre = calMod?.isPreSeasonPhase?.(calendarStatus) ?? false;
+  const isSummer = navMonthLabel === "Summer Break";
+  return (
+    `<div class="gpsl-nav-month${isPre ? " gpsl-nav-month-pre" : ""}${
+      isSummer ? " gpsl-nav-month-summer" : ""
+    }" title="${escapeNavAttr(navMonthTitle)}">` +
+    `<span class="gpsl-nav-month-kicker">GPSL</span>` +
+    `<span class="gpsl-nav-month-value">${escapeNavHtml(navMonthLabel)}</span>` +
+    `</div>`
+  );
+}
+
 async function getOwnerClub() {
   const {
     data: { user },
@@ -966,9 +1017,9 @@ function ensureNavStyles() {
   link.id = "gpsl-nav-styles";
   link.rel = "stylesheet";
   try {
-    link.href = new URL("dashboard.css", import.meta.url).href;
+    link.href = new URL(`dashboard.css?v=${GLOBAL_JS_VERSION}`, import.meta.url).href;
   } catch {
-    link.href = "dashboard.css";
+    link.href = `dashboard.css?v=${GLOBAL_JS_VERSION}`;
   }
   document.head.appendChild(link);
 }
@@ -1273,16 +1324,17 @@ export async function renderFallbackNav() {
 
   nav.innerHTML = `
     <div class="gpsl-nav-bar gpsl-nav-fallback">
-      <div class="gpsl-nav-shortcuts">
-      ${renderNavOwnerClubBadge(ownerClub)}
-      <a href="dashboard.html" class="nav-shortcut nav-dashboard">Dashboard</a>
-      <a href="inbox.html" class="nav-shortcut nav-inbox">📥 Inbox</a>
-      </div>
+      <div class="gpsl-nav-groups">
       <a href="GPDB.html" class="nav-link">Player Database</a>
       <a href="all_listings.html" class="nav-link">Transfer Market</a>
       <a href="fixtures.html" class="nav-link">Fixtures</a>
       <a href="squad.html" class="nav-link">Squad</a>
+      </div>
+      <div class="gpsl-nav-actions">
+      ${renderNavInboxLink(false, 0)}
+      ${renderNavDashboardHomeLink(ownerClub, "dashboard.html", false)}
       <button type="button" id="logoutBtn" class="nav-logout">Logout</button>
+      </div>
     </div>
   `;
   wireNavLogout();
@@ -1389,7 +1441,7 @@ export async function buildNav() {
     console.warn("Nav calendar badge skipped:", calErr);
   }
 
-  const dashActive = pathNorm === "dashboard.html";
+  const dashActive = pathNorm === normalizeNavPath(homeHref);
   const inboxActive = pathNorm === "inbox.html";
 
   let navSections = Array.isArray(NAV_SECTIONS) ? [...NAV_SECTIONS] : [];
@@ -1404,22 +1456,7 @@ export async function buildNav() {
   }
 
   let html = `<div class="gpsl-nav-bar">`;
-  html += `<div class="gpsl-nav-shortcuts">`;
-  html += renderNavOwnerClubBadge(ownerClub);
-  html += `<a href="${homeHref}" class="nav-shortcut nav-dashboard${
-    dashActive ? " active" : ""
-  }" title="Dashboard">Dashboard</a>`;
-  html += `<a href="inbox.html" class="nav-shortcut nav-inbox${
-    inboxActive ? " active" : ""
-  }${unread > 0 ? " has-unread" : ""}" title="Inbox" aria-label="Inbox${
-    unread > 0 ? `, ${unread} unread` : ""
-  }">`;
-  html += `<span class="nav-inbox-icon" aria-hidden="true">📥</span>`;
-  if (unread > 0) {
-    html += `<span class="nav-inbox-badge">${unread > 99 ? "99+" : unread}</span>`;
-  }
-  html += `</a>`;
-  html += `</div>`;
+  html += `<div class="gpsl-nav-groups">`;
 
   if (!navMonthLabel) {
     try {
@@ -1436,19 +1473,6 @@ export async function buildNav() {
       /* optional column until admin_season_lifecycle.sql is run */
     }
   }
-
-  if (navMonthLabel) {
-    const isPre = calMod?.isPreSeasonPhase?.(calendarStatus) ?? false;
-    const isSummer = navMonthLabel === "Summer Break";
-    html += `<div class="gpsl-nav-month${isPre ? " gpsl-nav-month-pre" : ""}${
-      isSummer ? " gpsl-nav-month-summer" : ""
-    }" title="${escapeNavAttr(navMonthTitle)}">`;
-    html += `<span class="gpsl-nav-month-kicker">GPSL</span>`;
-    html += `<span class="gpsl-nav-month-value">${escapeNavHtml(navMonthLabel)}</span>`;
-    html += `</div>`;
-  }
-
-  html += `<div class="gpsl-nav-groups">`;
 
   const navItemsForSection = (section) => {
     if (
@@ -1570,6 +1594,9 @@ export async function buildNav() {
   html += `</div>`;
 
   html += `<div class="gpsl-nav-actions">`;
+  html += renderNavInboxLink(inboxActive, unread);
+  html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
+  html += renderNavMonthBlock(navMonthLabel, navMonthTitle, calendarStatus, calMod);
   html += `<button type="button" id="logoutBtn" class="nav-logout">Logout</button>`;
   html += `</div></div>`;
 

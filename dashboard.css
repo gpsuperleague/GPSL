@@ -846,6 +846,22 @@ button.nav-admin-trigger {
   border-color: var(--club-accent);
 }
 
+.nav-dashboard-home {
+  gap: 8px;
+}
+
+.nav-dashboard-home-badge {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
+  flex-shrink: 0;
+}
+
+.nav-dashboard-home-label {
+  line-height: 1;
+}
+
 .nav-inbox {
   position: relative;
   padding: 8px 12px;
@@ -1370,6 +1386,15 @@ a.ssc-chip:hover {
   gap: 8px;
   padding: 10px 14px;
   margin-left: auto;
+  border-left: 1px solid #333;
+  flex-shrink: 0;
+}
+
+.gpsl-nav-actions .gpsl-nav-month {
+  border-right: none;
+  border-left: 1px solid #333;
+  margin-left: 2px;
+  padding-left: 14px;
 }
 
 .nav-shortcut.nav-admin {
@@ -1452,9 +1477,23 @@ a.ssc-chip:hover {
 
   .gpsl-nav-shortcuts,
   .gpsl-nav-admin-zone,
-  .gpsl-nav-actions {
+  .gpsl-nav-actions,
+  .gpsl-nav-actions .gpsl-nav-month {
     border-right: none;
     border-bottom: 1px solid #333;
+  }
+
+  .gpsl-nav-actions {
+    border-left: none;
+    margin-left: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .gpsl-nav-actions .gpsl-nav-month {
+    border-left: none;
+    margin-left: 0;
+    padding-left: 16px;
   }
 
   .gpsl-nav-groups {
