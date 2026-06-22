@@ -1218,6 +1218,135 @@ button.nav-admin-trigger {
   vertical-align: middle;
 }
 
+/* Season schedule strip — discreet draft/window counters below nav bar */
+.season-schedule-strip {
+  border-top: 1px solid #2a2a2a;
+  background: #141414;
+  padding: 4px 14px 6px;
+  font-size: 11px;
+  line-height: 1.3;
+  color: #888;
+}
+
+.season-schedule-strip[hidden] {
+  display: none !important;
+}
+
+.season-schedule-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  max-width: 100%;
+}
+
+.ssc-kicker {
+  flex-shrink: 0;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #555;
+}
+
+.ssc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+}
+
+.ssc-sep {
+  width: 1px;
+  height: 14px;
+  background: #333;
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+.ssc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid #2a2a2a;
+  background: #1a1a1a;
+  white-space: nowrap;
+}
+
+a.ssc-chip {
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+a.ssc-chip:hover {
+  border-color: #444;
+  color: #bbb;
+}
+
+.ssc-chip-label {
+  color: #666;
+}
+
+.ssc-chip-value {
+  font-weight: 600;
+  color: #aaa;
+  font-variant-numeric: tabular-nums;
+}
+
+.ssc-chip--live .ssc-chip-value {
+  color: #9d9;
+}
+
+.ssc-chip--live {
+  border-color: #2a4a2a;
+  background: #151a15;
+}
+
+.ssc-chip-range {
+  color: #777;
+  font-size: 10px;
+}
+
+.ssc-chip-status {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #666;
+}
+
+.ssc-window--open {
+  border-color: #2a3a2a;
+}
+
+.ssc-window--open .ssc-chip-status {
+  color: #7a9;
+}
+
+.ssc-window--upcoming .ssc-chip-status {
+  color: #886622;
+}
+
+@media (max-width: 720px) {
+  .season-schedule-strip {
+    padding: 4px 10px 5px;
+  }
+
+  .ssc-kicker {
+    display: none;
+  }
+
+  .ssc-chip-label {
+    max-width: 72px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 .nav-link:hover {
   background: #333;
   color: var(--club-accent);

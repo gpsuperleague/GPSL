@@ -26,7 +26,7 @@ import { formatNavLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260621-checklist-presteason";
+export const GLOBAL_JS_VERSION = "20260621-season-schedule";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -1090,6 +1090,9 @@ export function refreshNavAuctionIndicators() {
   }
 
   refreshNavAuctionPathIndicators();
+  import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`)
+    .then((m) => m.refreshSeasonScheduleStrip())
+    .catch(() => {});
 }
 
 let __navAuctionRefreshInterval = null;
@@ -1551,6 +1554,13 @@ export async function buildNav() {
   wireNavGroups(nav);
   refreshNavAuctionIndicators();
   startNavAuctionBadgeRefresh();
+  try {
+    const sched = await import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`);
+    sched.ensureSeasonScheduleStripMount();
+    sched.refreshSeasonScheduleStrip();
+  } catch (schedErr) {
+    console.warn("Season schedule strip skipped:", schedErr);
+  }
   } catch (err) {
     console.error("buildNav failed:", err);
     await renderFallbackNav();
@@ -1582,5 +1592,8 @@ export async function initGlobal() {
     initDashboardPinUi(supabase).catch((err) => {
       console.warn("Dashboard pin UI skipped:", err);
     });
+    import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`)
+      .then((m) => m.initSeasonScheduleStrip())
+      .catch((err) => console.warn("Season schedule strip skipped:", err));
   }
 }
