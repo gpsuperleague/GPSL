@@ -1,9 +1,14 @@
 /**
- * Season transfer & auction schedule — discreet strip for owners.
- * Counts draft days used this season and shows a single transfer window status.
+ * Season transfer & auction schedule — info strip below nav (season, month, drafts).
  */
 
 import { supabase } from "./supabase_client.js";
+import {
+  loadCalendarStatus,
+  navGpslMonthDisplay,
+  navGpslMonthTitle,
+  isPreSeasonPhase,
+} from "./competition_calendar.js";
 
 export const SEASON_SCHEDULE_TOTALS = {
   player: 3,
@@ -53,7 +58,7 @@ export async function loadSeasonTransferSchedule() {
       supabase
         .from("global_settings_public")
         .select(
-          "transfer_window_open, draft_auction_enabled, draft_bidding_open, manager_draft_auction_enabled, manager_draft_bidding_open"
+          "transfer_window_open, draft_auction_enabled, draft_bidding_open, manager_draft_auction_enabled, manager_draft_bidding_open, league_phase"
         )
         .maybeSingle(),
       supabase
@@ -93,8 +98,28 @@ export async function loadSeasonTransferSchedule() {
     (await supabase.rpc("current_gpsl_season_label")).data ||
     null;
 
+  let gpslMonthLabel = null;
+  let gpslMonthTitle = "";
+  let gpslMonthPre = false;
+  try {
+    const calStatus = await loadCalendarStatus(supabase);
+    gpslMonthLabel = navGpslMonthDisplay(calStatus);
+    gpslMonthTitle = navGpslMonthTitle(calStatus);
+    gpslMonthPre = isPreSeasonPhase(calStatus);
+  } catch (calErr) {
+    console.warn("season strip calendar:", calErr);
+  }
+
+  if (!gpslMonthLabel && settingsRes.data?.league_phase === "summer_break") {
+    gpslMonthLabel = "Summer Break";
+    gpslMonthTitle = "GPSL is in summer break — no active competition month";
+  }
+
   return {
     seasonLabel: seasonLabel ? String(seasonLabel).trim() : null,
+    gpslMonthLabel,
+    gpslMonthTitle,
+    gpslMonthPre,
     player: {
       total: SEASON_SCHEDULE_TOTALS.player,
       used: playerUsed,
@@ -189,6 +214,31 @@ function transferWindowChipHtml(data) {
   );
 }
 
+function gpslHeadlineHtml(schedule) {
+  const seasonLabel = formatSeasonStripLabel(schedule.seasonLabel);
+  const month = schedule.gpslMonthLabel || "—";
+  const title = schedule.gpslMonthTitle || "";
+  const pre = schedule.gpslMonthPre === true;
+  const summer = month === "Summer Break";
+  const classes = [
+    "ssc-gpsl-headline",
+    pre ? "ssc-gpsl-headline--pre" : "",
+    summer ? "ssc-gpsl-headline--summer" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return (
+    `<span class="${classes}" title="${escapeHtml(title)}">` +
+    `<span class="ssc-gpsl-brand">GPSL</span> ` +
+    `<span class="ssc-gpsl-season">${escapeHtml(seasonLabel)}</span>` +
+    `<span class="ssc-gpsl-colon">:</span> ` +
+    `<span class="ssc-gpsl-month">${escapeHtml(month)}</span>` +
+    `</span>` +
+    `<span class="ssc-sep" aria-hidden="true"></span>`
+  );
+}
+
 export function renderSeasonScheduleStripHtml(schedule) {
   if (!schedule) return "";
 
@@ -201,13 +251,14 @@ export function renderSeasonScheduleStripHtml(schedule) {
   ];
 
   const seasonLabel = formatSeasonStripLabel(schedule.seasonLabel);
+  const month = schedule.gpslMonthLabel || "—";
   const seasonHint = schedule.seasonLabel
-    ? `Season schedule — ${seasonLabel}`
-    : "Season schedule";
+    ? `GPSL ${seasonLabel} — ${month}`
+    : `GPSL season schedule — ${month}`;
 
   return (
     `<div class="season-schedule-inner" role="region" aria-label="${escapeHtml(seasonHint)}">` +
-    `<span class="ssc-kicker">${escapeHtml(seasonLabel)}</span>` +
+    gpslHeadlineHtml(schedule) +
     `<div class="ssc-chips">${parts.join("")}</div>` +
     `</div>`
   );

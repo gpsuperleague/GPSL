@@ -624,6 +624,8 @@ table.gpsl-table td {
   background: #1a1a1a;
   border-bottom: 1px solid #333;
   padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .gpsl-nav-bar {
@@ -641,11 +643,38 @@ table.gpsl-table td {
 }
 
 .gpsl-nav-row-menus {
-  border-bottom: 1px solid #333;
+  border-bottom: none;
 }
 
-.gpsl-nav-row-status {
-  justify-content: flex-end;
+.gpsl-nav-actions-primary {
+  border-left: 1px solid #333;
+  padding: 6px 10px;
+  gap: 6px;
+}
+
+.gpsl-nav-actions-primary .nav-shortcut {
+  padding: 5px 9px;
+  font-size: 12px;
+  gap: 5px;
+}
+
+.gpsl-nav-actions-primary .nav-dashboard-home-badge {
+  width: 22px;
+  height: 22px;
+}
+
+.gpsl-nav-actions-primary .nav-inbox {
+  padding: 5px 7px;
+}
+
+.gpsl-nav-actions-primary .nav-inbox-icon {
+  font-size: 16px;
+}
+
+.gpsl-nav-actions-primary .nav-logout,
+.gpsl-nav-actions-primary #logoutBtn {
+  padding: 5px 10px;
+  font-size: 12px;
 }
 
 .gpsl-nav-shortcuts {
@@ -1263,14 +1292,15 @@ button.nav-admin-trigger {
   vertical-align: middle;
 }
 
-/* Season schedule strip — discreet draft/window counters below nav bar */
+/* Season schedule strip — season/month + draft/window counters below nav bar */
 .season-schedule-strip {
-  border-top: 1px solid #2a2a2a;
+  border-top: 1px solid #333;
   background: #141414;
-  padding: 4px 14px 6px;
+  padding: 5px 14px 6px;
   font-size: 11px;
   line-height: 1.3;
   color: #888;
+  width: 100%;
 }
 
 .season-schedule-strip[hidden] {
@@ -1291,6 +1321,48 @@ button.nav-admin-trigger {
   font-weight: 700;
   letter-spacing: 0.02em;
   color: #666;
+}
+
+.ssc-gpsl-headline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2em;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9a9a9a;
+  white-space: nowrap;
+}
+
+.ssc-gpsl-brand {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #666;
+}
+
+.ssc-gpsl-season {
+  color: #aaa;
+}
+
+.ssc-gpsl-colon {
+  color: #555;
+  font-weight: 400;
+}
+
+.ssc-gpsl-month {
+  color: #9cdc9c;
+  font-weight: 700;
+}
+
+.ssc-gpsl-headline--pre .ssc-gpsl-month {
+  color: #e8c070;
+}
+
+.ssc-gpsl-headline--summer .ssc-gpsl-month {
+  color: #7ec8e3;
 }
 
 .ssc-chips {
@@ -1417,10 +1489,6 @@ a.ssc-chip:hover {
   flex-shrink: 0;
 }
 
-.gpsl-nav-actions-primary {
-  border-left: 1px solid #333;
-}
-
 .gpsl-nav-actions-secondary {
   padding: 6px 14px;
 }
@@ -1430,6 +1498,11 @@ a.ssc-chip:hover {
   margin: 0;
   padding: 4px 12px;
   min-width: 0;
+}
+
+/* legacy — status row removed from nav */
+.gpsl-nav-row-status {
+  display: none;
 }
 
 .nav-shortcut.nav-admin {

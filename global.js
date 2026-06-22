@@ -26,7 +26,7 @@ import { formatNavLabel, renderNavSectionLabelHtml } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260621-nav-label-stack";
+export const GLOBAL_JS_VERSION = "20260621-nav-info-strip";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -1333,12 +1333,8 @@ export async function renderFallbackNav() {
         </div>
         <div class="gpsl-nav-actions gpsl-nav-actions-primary">
           ${renderNavDashboardHomeLink(ownerClub, "dashboard.html", false)}
-          <button type="button" id="logoutBtn" class="nav-logout">Logout</button>
-        </div>
-      </div>
-      <div class="gpsl-nav-row gpsl-nav-row-status">
-        <div class="gpsl-nav-actions gpsl-nav-actions-secondary">
           ${renderNavInboxLink(false, 0)}
+          <button type="button" id="logoutBtn" class="nav-logout">Logout</button>
         </div>
       </div>
     </div>
@@ -1434,19 +1430,6 @@ export async function buildNav() {
       ? memberHomeHref
       : "dashboard.html";
 
-  let calendarStatus = null;
-  let navMonthLabel = null;
-  let navMonthTitle = "";
-  let calMod = null;
-  try {
-    calMod = await import("./competition_calendar.js");
-    calendarStatus = await calMod.loadCalendarStatus(supabase);
-    navMonthLabel = calMod.navGpslMonthDisplay(calendarStatus);
-    navMonthTitle = calMod.navGpslMonthTitle(calendarStatus);
-  } catch (calErr) {
-    console.warn("Nav calendar badge skipped:", calErr);
-  }
-
   const dashActive = pathNorm === normalizeNavPath(homeHref);
   const inboxActive = pathNorm === "inbox.html";
 
@@ -1464,22 +1447,6 @@ export async function buildNav() {
   let html = `<div class="gpsl-nav-bar">`;
   html += `<div class="gpsl-nav-row gpsl-nav-row-menus">`;
   html += `<div class="gpsl-nav-groups">`;
-
-  if (!navMonthLabel) {
-    try {
-      const { data: gs } = await supabase
-        .from("global_settings_public")
-        .select("league_phase")
-        .eq("id", 1)
-        .maybeSingle();
-      if (gs?.league_phase === "summer_break") {
-        navMonthLabel = "Summer Break";
-        navMonthTitle = "GPSL is in summer break — no active competition month";
-      }
-    } catch (_) {
-      /* optional column until admin_season_lifecycle.sql is run */
-    }
-  }
 
   const navItemsForSection = (section) => {
     if (
@@ -1603,13 +1570,8 @@ export async function buildNav() {
 
   html += `<div class="gpsl-nav-actions gpsl-nav-actions-primary">`;
   html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
-  html += `<button type="button" id="logoutBtn" class="nav-logout">Logout</button>`;
-  html += `</div></div>`;
-
-  html += `<div class="gpsl-nav-row gpsl-nav-row-status">`;
-  html += `<div class="gpsl-nav-actions gpsl-nav-actions-secondary">`;
-  html += renderNavMonthBlock(navMonthLabel, navMonthTitle, calendarStatus, calMod);
   html += renderNavInboxLink(inboxActive, unread);
+  html += `<button type="button" id="logoutBtn" class="nav-logout">Logout</button>`;
   html += `</div></div></div>`;
 
   nav.innerHTML = html;
