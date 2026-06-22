@@ -132,7 +132,7 @@ BEGIN
       'live', coalesce(v_special_live, false)
     ),
     'windows', jsonb_build_object(
-      'preseason', jsonb_build_object('label', 'Pre-season', 'range', 'Until Aug', 'status', v_preseason),
+      'preseason', jsonb_build_object('label', 'Summer window', 'range', 'Pre-season until August', 'status', v_preseason),
       'january', jsonb_build_object('label', 'Winter window', 'range', 'January', 'status', v_january)
     ),
     'transfer_open', coalesce(v_transfer_open, false)

@@ -1,7 +1,7 @@
 /**
  * Season transfer & auction schedule — discreet strip for owners.
  * Counts draft days used this season (from inbox schedule notifications)
- * and shows transfer window months (pre-season until August, January).
+ * and shows transfer window months (summer window pre-season until August, winter window in January).
  */
 
 import { supabase } from "./supabase_client.js";
@@ -72,15 +72,16 @@ function resolveTransferWindows(calendar, months, transferOpen) {
 
   return {
     preseason: {
-      label: "Pre-season",
-      range: "Until Aug",
+      label: "Summer window",
+      range: "Pre-season until August",
+      rangeSep: ": ",
       status: preseason,
       title:
         preseason === "open"
-          ? "Pre-season transfer window open — season starts in August"
+          ? "Summer transfer window open — pre-season until August (season starts in August)"
           : preseason === "upcoming"
-            ? "Pre-season transfer window opens before August (season start)"
-            : "Pre-season transfer window has ended — season underway from August",
+            ? "Summer transfer window — pre-season until August"
+            : "Summer transfer window has ended — season underway from August",
     },
     january: {
       label: "Winter window",
@@ -218,7 +219,7 @@ function draftChipHtml(kind, label, data) {
 function windowChipHtml(win) {
   const status = win.status || "closed";
   const statusWord =
-    status === "open" ? "open" : status === "upcoming" ? "soon" : "";
+    status === "open" ? "OPEN" : status === "upcoming" ? "SOON" : "";
   const title = win.title || win.label;
   const rangeSep = win.rangeSep ?? " ";
   const rangeHtml =
