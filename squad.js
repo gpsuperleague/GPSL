@@ -8,9 +8,15 @@ import {
 } from "./competition.js";
 import {
   analyseSquadComposition,
+  analyseSquadCompositionProjected,
   playerSquadQualificationBadges,
   squadComplianceRuleRows,
 } from "./squad_rules.js";
+import {
+  loadSquadGhostAcquisitions,
+  formatGhostAcquisitionBadge,
+  formatGhostStatusHtml,
+} from "./squad_ghost_acquisitions.js";
 import {
   loadPlayerValueTables,
   formatRatingWithPotential,
@@ -110,6 +116,8 @@ let squadDesignationsState = null;
 let squadMinimumStatus = null;
 /** @type {Set<string>} */
 let seasonLoanPlayerIds = new Set();
+/** @type {object[]} */
+let squadGhostPlayers = [];
 
 // ENTRY POINT
 document.addEventListener("DOMContentLoaded", async () => {
@@ -477,7 +485,10 @@ async function loadSquad() {
 
   const list = players || [];
   const playerIds = list.map((p) => String(p.Konami_ID));
-  const idsKey = playerIds.slice().sort().join(",");
+
+  squadGhostPlayers = await loadSquadGhostAcquisitions(supabase, currentUserShort);
+  const ghostIds = squadGhostPlayers.map((g) => String(g.Konami_ID));
+  const idsKey = [...playerIds, ...ghostIds].sort().join(",");
 
   squadDesignationsState = await loadSquadDesignationsState(
     supabase,
@@ -488,10 +499,10 @@ async function loadSquad() {
     loadActiveSeasonLoanPlayerIds(supabase, currentUserShort),
   ]);
 
-  renderSquadCompliance(list, squadDesignationsState);
+  renderSquadCompliance(list, squadDesignationsState, squadGhostPlayers);
 
   if (!hadSquad || tbody?.dataset.squadIds !== idsKey) {
-    renderSquad(list, null, new Map(), squadDesignationsState);
+    renderSquad(list, null, new Map(), squadDesignationsState, squadGhostPlayers);
     if (tbody) tbody.dataset.squadIds = idsKey;
   }
 
@@ -520,7 +531,7 @@ function refreshSquadDesignationSelects(players, state) {
   applyVoluntaryReleaseOptionState();
 }
 
-function renderSquadCompliance(players, designationsState) {
+function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
   const el = document.getElementById("squadCompliancePanel");
   if (!el) return;
 
@@ -574,6 +585,78 @@ function renderSquadCompliance(players, designationsState) {
         : `<p class="squad-rules-overall squad-rules-overall--warn">Your squad does not yet meet all requirements:</p>
        <ul class="squad-rules-issues">${overallNotes.map((i) => `<li>${i}</li>`).join("")}</ul>`;
 
+  const ghosts = ghostPlayers || [];
+  let ghostSection = "";
+  if (ghosts.length) {
+    const projected = analyseSquadCompositionProjected(
+      players,
+      ghosts,
+      clubNation
+    );
+    const projectedRows = squadComplianceRuleRows(
+      projected,
+      clubNation,
+      squadMinimumStatus
+    );
+    const ghostNames = ghosts
+      .map((g) => g.Name || g.Konami_ID)
+      .slice(0, 6)
+      .join(", ");
+    const nameSuffix =
+      ghosts.length > 6 ? ` +${ghosts.length - 6} more` : "";
+
+    const projectedTableRows = projectedRows
+      .map((r) => {
+        const rowClass = r.ok
+          ? "squad-rules-row--ok squad-rules-row--ghost"
+          : "squad-rules-row--fail squad-rules-row--ghost";
+        return `
+    <tr class="${rowClass}">
+      <th scope="row">${r.rule}</th>
+      <td class="squad-rules-who">${r.whoCounts}</td>
+      <td class="squad-rules-req">${r.requirement}<span class="squad-rules-note">${r.note}</span></td>
+      <td class="squad-rules-count"><strong>${r.count}</strong></td>
+      <td class="squad-rules-status">${r.ok ? "✓" : "✗"} ${r.status}</td>
+    </tr>`;
+      })
+      .join("");
+
+    const projectedIssues = projected.issues.filter(
+      (issue) => !c.issues.includes(issue)
+    );
+    const projectedOverall =
+      projected.compliant && projected.minSquadOk
+        ? '<p class="squad-rules-overall squad-rules-overall--ghost-ok">Projected squad would meet all counted requirements.</p>'
+        : projectedIssues.length
+          ? `<p class="squad-rules-overall squad-rules-overall--ghost-warn">If all pending signings complete, watch out for:</p>
+       <ul class="squad-rules-issues squad-rules-issues--ghost">${projectedIssues.map((i) => `<li>${i}</li>`).join("")}</ul>`
+          : `<p class="squad-rules-overall squad-rules-overall--ghost">Projected totals differ from your current squad (see table).</p>`;
+
+    ghostSection = `
+    <section class="squad-rules-panel squad-rules-panel--ghost" aria-label="Projected squad if pending signings complete">
+      <header class="squad-rules-header">
+        <h2 class="squad-rules-title">👻 What if pending signings complete?</h2>
+        <p class="squad-rules-intro squad-rules-intro--ghost">
+          Includes <strong>${ghosts.length}</strong> player${ghosts.length === 1 ? "" : "s"} you are currently <strong>winning</strong> on the transfer market or draft auction
+          (${ghostNames}${nameSuffix}) — <em>not contracted yet</em>. Ghost rows in the table below are for planning only.
+        </p>
+      </header>
+      <table class="squad-rules-table squad-rules-table--ghost">
+        <thead>
+          <tr>
+            <th scope="col">Rule</th>
+            <th scope="col">Who counts</th>
+            <th scope="col">League requirement</th>
+            <th scope="col">Projected squad</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>${projectedTableRows}</tbody>
+      </table>
+      ${projectedOverall}
+    </section>`;
+  }
+
   el.innerHTML = `
     <section class="${panelClass}" aria-label="Squad registration requirements">
       <header class="squad-rules-header">
@@ -599,6 +682,7 @@ function renderSquadCompliance(players, designationsState) {
       </table>
       ${overall}
     </section>
+    ${ghostSection}
   `;
 }
 
@@ -610,7 +694,7 @@ function formatSeasonStat(row, key, fallback = "—") {
   return v;
 }
 
-function renderSquad(players, transferState, statsByPlayer = new Map(), designationsState = null) {
+function renderSquad(players, transferState, statsByPlayer = new Map(), designationsState = null, ghostPlayers = []) {
   const tbody = document.getElementById("squad-body");
   if (!tbody) return;
 
@@ -623,16 +707,24 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
     "Attackers": ["LW", "LWF", "SS", "RW", "RWF", "CF"]
   };
 
+  const ghosts = ghostPlayers || [];
+
   for (const [groupName, positions] of Object.entries(groups)) {
+    const groupPlayers = players
+      .filter(p => positions.includes(p.Position))
+      .sort((a, b) => b.market_value - a.market_value);
+
+    const groupGhosts = ghosts
+      .filter((p) => positions.includes(p.Position))
+      .sort((a, b) => (b.market_value || 0) - (a.market_value || 0));
+
+    if (!groupPlayers.length && !groupGhosts.length) continue;
+
     const headerRow = document.createElement("tr");
     headerRow.classList.add("squad-section-row");
     headerRow.innerHTML =
       `<td colspan="${SQUAD_TABLE_COLS}" class="squad-section-title">${groupName}</td>`;
     tbody.appendChild(headerRow);
-
-    const groupPlayers = players
-      .filter(p => positions.includes(p.Position))
-      .sort((a, b) => b.market_value - a.market_value);
 
     groupPlayers.forEach(p => {
       const statusRow = transferState
@@ -699,6 +791,67 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
 
       tbody.appendChild(tr);
     });
+
+    groupGhosts.forEach((p) => {
+      const tr = document.createElement("tr");
+      tr.classList.add("squad-row-ghost");
+      tr.dataset.konamiId = p.Konami_ID;
+      tr.dataset.ghostPlayer = "1";
+
+      const qualBadges = playerSquadQualificationBadges(p, clubNation);
+      const ghostBadge = formatGhostAcquisitionBadge(p);
+      const bidNote =
+        p.ghostBidAmount != null
+          ? ` · ₿${Number(p.ghostBidAmount).toLocaleString("en-GB")}`
+          : "";
+
+      tr.innerHTML = `
+        <td class="squad-col-thumb">${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}</td>
+        <td class="squad-col-player">
+          <a href="${p.ghostHref}" class="squad-ghost-player-link">${escapeHtml(p.Name)}</a>
+          ${ghostBadge}${qualBadges}
+        </td>
+        <td class="squad-col-nation">${p.Nation || "-"}</td>
+        <td class="squad-col-position">${p.Position}</td>
+        <td class="num squad-col-age">${p.Age != null && p.Age !== "" ? p.Age : "—"}</td>
+        <td class="num squad-col-rating">${formatRatingWithPotential(p)}</td>
+        <td class="num squad-col-apps squad-ghost-muted">—</td>
+        <td class="num squad-col-goals squad-ghost-muted">—</td>
+        <td class="num squad-col-assists squad-ghost-muted">—</td>
+        <td class="num squad-col-avg squad-ghost-muted">—</td>
+        <td class="squad-col-playstyle">${p.Playstyle || "-"}</td>
+        <td class="squad-col-value"><span class="money squad-ghost-muted">₿ ${Number(p.market_value || 0).toLocaleString("en-GB")}</span></td>
+        <td class="squad-col-contract squad-ghost-muted" title="Not contracted yet">If won</td>
+        <td class="squad-col-status">${formatGhostStatusHtml(p)}</td>
+        <td class="squad-col-action">
+          <a href="${p.ghostHref}" class="squad-ghost-action-link">View bid${bidNote}</a>
+        </td>
+      `;
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  if (ghosts.length) {
+    const orphanGhosts = ghosts.filter((g) => {
+      const pos = g.Position;
+      return !Object.values(groups).some((arr) => arr.includes(pos));
+    });
+    if (orphanGhosts.length) {
+      const headerRow = document.createElement("tr");
+      headerRow.classList.add("squad-section-row", "squad-section-row--ghost");
+      headerRow.innerHTML =
+        `<td colspan="${SQUAD_TABLE_COLS}" class="squad-section-title">Pending acquisitions</td>`;
+      tbody.appendChild(headerRow);
+      orphanGhosts.forEach((p) => {
+        const tr = document.createElement("tr");
+        tr.classList.add("squad-row-ghost");
+        tr.dataset.konamiId = p.Konami_ID;
+        tr.dataset.ghostPlayer = "1";
+        tr.innerHTML = `<td colspan="${SQUAD_TABLE_COLS}" class="squad-ghost-muted">${escapeHtml(p.Name || p.Konami_ID)} — ${p.ghostLabel || "Pending"}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
   }
 
   applyTransferWindowRules();
@@ -711,7 +864,7 @@ function patchSquadEnrichment(transferState, statsByPlayer) {
   const tbody = document.getElementById("squad-body");
   if (!tbody) return;
 
-  tbody.querySelectorAll("tr[data-konami-id]").forEach((row) => {
+  tbody.querySelectorAll("tr[data-konami-id]:not([data-ghost-player])").forEach((row) => {
     const id = String(row.dataset.konamiId);
     const st = statsByPlayer.get(id);
     const apps = row.querySelector(".squad-col-apps");
@@ -789,6 +942,7 @@ function wireSquadTable() {
 
     const row = e.target.closest("tr[data-konami-id]");
     if (!row?.dataset.konamiId) return;
+    if (row.dataset.ghostPlayer) return;
 
     window.open(pesdbPlayerUrl(row.dataset.konamiId), "_blank", "noopener");
   });
@@ -819,10 +973,10 @@ async function refreshAfterDesignationChange() {
     .select(SQUAD_PLAYER_COLUMNS)
     .eq("Contracted_Team", currentUserShort);
   const rows = squadRows || [];
-  renderSquadCompliance(rows, squadDesignationsState);
+  renderSquadCompliance(rows, squadDesignationsState, squadGhostPlayers);
   refreshSquadDesignationSelects(rows, squadDesignationsState);
   const byId = new Map(rows.map((p) => [String(p.Konami_ID), p]));
-  document.querySelectorAll("tr[data-konami-id]").forEach((row) => {
+  document.querySelectorAll("tr[data-konami-id]:not([data-ghost-player])").forEach((row) => {
     const player = byId.get(String(row.dataset.konamiId));
     const nameCell = row.querySelector("td:nth-child(2)");
     if (!nameCell || !player) return;

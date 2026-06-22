@@ -395,6 +395,21 @@ export function analyseSquadComposition(players, clubNation) {
   };
 }
 
+/** Current squad plus ghost (pending winning-bid) players for what-if compliance. */
+export function analyseSquadCompositionProjected(
+  players,
+  ghostPlayers,
+  clubNation
+) {
+  const ghosts = (ghostPlayers || []).filter(Boolean);
+  const combined = [...(players || []), ...ghosts];
+  const projected = analyseSquadComposition(combined, clubNation);
+  return {
+    ...projected,
+    ghostCount: ghosts.length,
+  };
+}
+
 /** @param {object} [minimumStatus] — club_squad_minimum_status RPC */
 export function squadComplianceRuleRows(c, clubNation, minimumStatus = null) {
   const nation = clubNation?.trim() || null;
