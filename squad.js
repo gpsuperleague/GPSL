@@ -17,7 +17,7 @@ import {
 } from "./squad_rules.js";
 import {
   loadSquadGhostAcquisitions,
-  formatGhostAcquisitionBadge,
+  formatGhostPlayerNameCell,
   formatGhostStatusHtml,
 } from "./squad_ghost_acquisitions.js";
 import {
@@ -755,18 +755,11 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
       tr.dataset.ghostPlayer = "1";
 
       const qualBadges = playerSquadQualificationBadges(p, clubNation);
-      const ghostBadge = formatGhostAcquisitionBadge(p);
-      const bidNote =
-        p.ghostBidAmount != null
-          ? ` · ₿${Number(p.ghostBidAmount).toLocaleString("en-GB")}`
-          : "";
+      const playerCell = formatGhostPlayerNameCell(p, qualBadges);
 
       tr.innerHTML = `
         <td class="squad-col-thumb">${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}</td>
-        <td class="squad-col-player">
-          <a href="${p.ghostHref}" class="squad-ghost-player-link">${escapeHtml(p.Name)}</a>
-          ${ghostBadge}${qualBadges}
-        </td>
+        <td class="squad-col-player">${playerCell}</td>
         <td class="squad-col-nation">${p.Nation || "-"}</td>
         <td class="squad-col-position">${p.Position}</td>
         <td class="num squad-col-age">${p.Age != null && p.Age !== "" ? p.Age : "—"}</td>
@@ -780,7 +773,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
         <td class="squad-col-contract squad-ghost-muted" title="Not contracted yet">If won</td>
         <td class="squad-col-status">${formatGhostStatusHtml(p)}</td>
         <td class="squad-col-action">
-          <a href="${p.ghostHref}" class="squad-ghost-action-link">View bid${bidNote}</a>
+          <a href="${p.ghostHref}" class="squad-ghost-action-link">View bid${p.ghostBidAmount != null ? ` · ₿${Number(p.ghostBidAmount).toLocaleString("en-GB")}` : ""}</a>
         </td>
       `;
 

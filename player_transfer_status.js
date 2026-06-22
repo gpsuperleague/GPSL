@@ -249,7 +249,8 @@ export function resolvePlayerTransferStatus({
   ) {
     return {
       code: TRANSFER_STATUS.SIGNED_THIS_SEASON,
-      label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
+      label: "Contract Signed",
+      subLabel: "Not Transferable this season",
       pillClass: PILL_CLASS[TRANSFER_STATUS.SIGNED_THIS_SEASON],
     };
   }
@@ -323,6 +324,12 @@ export function resolvePlayerTransferStatus({
 /** Squad status column pill. */
 export function formatSquadStatusHtml(status) {
   const pillClass = status.pillClass || PILL_CLASS[TRANSFER_STATUS.NOT_LISTED];
+  const sub = status.subLabel
+    ? `<span class="squad-status-sub">${status.subLabel}</span>`
+    : "";
+  if (sub) {
+    return `<div class="squad-status-lines"><span class="status-pill ${pillClass}">${status.label}</span>${sub}</div>`;
+  }
   return `<span class="status-pill ${pillClass}">${status.label}</span>`;
 }
 

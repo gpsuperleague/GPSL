@@ -504,6 +504,22 @@ body.squad-page .squad-col-status {
   white-space: nowrap;
 }
 
+body.squad-page .squad-status-lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  white-space: normal;
+  line-height: 1.25;
+}
+
+body.squad-page .squad-status-sub {
+  font-size: 10px;
+  font-weight: 600;
+  color: #c8b878;
+  text-align: center;
+}
+
 body.squad-page .squad-col-contract {
   white-space: normal;
   line-height: 1.35;
@@ -780,6 +796,32 @@ body.squad-page .squad-ghost-player-link {
 
 body.squad-page .squad-ghost-player-link:hover {
   color: #fff;
+}
+
+body.squad-page .squad-player-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  line-height: 1.25;
+}
+
+body.squad-page .squad-player-name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+body.squad-page .squad-ghost-type {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b8d4ff;
+  opacity: 0.88;
+  font-style: italic;
 }
 
 body.squad-page .squad-ghost-muted {

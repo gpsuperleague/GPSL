@@ -163,6 +163,37 @@ export async function loadSquadGhostAcquisitions(supabase, clubShort) {
     .map((p) => ghostPlayerFromRow(p, pendingByPlayer.get(String(p.Konami_ID))));
 }
 
+export function ghostAcquisitionTypeLabel(ghost) {
+  const source = ghost?.ghostSource;
+  if (source === GHOST_SOURCE.DRAFT_AUCTION) return "DRAFT";
+  if (source === GHOST_SOURCE.AWAITING_SELLER) return "TRANSFER";
+  if (source === GHOST_SOURCE.TRANSFER_LIVE) return "TRANSFER";
+  return "PENDING";
+}
+
+export function formatGhostPlayerNameCell(ghost, qualBadgesHtml = "") {
+  const name = escapeHtml(ghost?.Name || ghost?.Konami_ID || "—");
+  const typeLabel = ghostAcquisitionTypeLabel(ghost);
+  const href = ghost?.ghostHref || "#";
+  return `
+    <div class="squad-player-cell">
+      <div class="squad-player-name-row">
+        <a href="${href}" class="squad-ghost-player-link">${name}</a>${qualBadgesHtml}
+      </div>
+      <div class="squad-player-ghost-row">
+        <span class="squad-ghost-type">${typeLabel}</span>
+      </div>
+    </div>`;
+}
+
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export function formatGhostAcquisitionBadge(ghost) {
   const label = ghost?.ghostLabel || "Pending signing";
   return `<span class="squad-ghost-badge" title="Not contracted — shown for planning only">👻 ${label}</span>`;
