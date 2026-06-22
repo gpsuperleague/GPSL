@@ -5,7 +5,7 @@
 -- =============================================================================
 -- HG (non-cumulative bands): Quota ≤5 @ rate1, Flying 6–8 @ rate2, Pride 9+ @ rate3
 -- Youth (banded): Grassroots ≤3, Youth Dev 4–5, Academy 6–7, Centre 8+
--- BnB: players with Rating ≤ max rating; payout if count ≥ minimum
+-- Weak squad bonus (BnB): 14+ contracted players with Rating ≤72 → flat ₿10M at EOS
 -- EOS payout when all 3 league divisions complete (38/38), idempotent per club/type
 -- =============================================================================
 
@@ -26,9 +26,9 @@ ALTER TABLE public.global_settings
   ADD COLUMN IF NOT EXISTS youth_sub_band3_max smallint NOT NULL DEFAULT 7,
   ADD COLUMN IF NOT EXISTS youth_sub_band3_per_player numeric(14, 2) NOT NULL DEFAULT 1250000,
   ADD COLUMN IF NOT EXISTS youth_sub_band4_per_player numeric(14, 2) NOT NULL DEFAULT 2000000,
-  ADD COLUMN IF NOT EXISTS bnb_max_rating smallint NOT NULL DEFAULT 70,
-  ADD COLUMN IF NOT EXISTS bnb_min_players smallint NOT NULL DEFAULT 8,
-  ADD COLUMN IF NOT EXISTS bnb_per_player numeric(14, 2) NOT NULL DEFAULT 1250000;
+  ADD COLUMN IF NOT EXISTS bnb_max_rating smallint NOT NULL DEFAULT 72,
+  ADD COLUMN IF NOT EXISTS bnb_min_players smallint NOT NULL DEFAULT 14,
+  ADD COLUMN IF NOT EXISTS bnb_per_player numeric(14, 2) NOT NULL DEFAULT 10000000;
 
 DROP VIEW IF EXISTS public.global_settings_public;
 
@@ -70,7 +70,7 @@ GRANT SELECT ON public.global_settings_public TO authenticated;
 GRANT SELECT ON public.global_settings_public TO anon;
 
 -- ---------------------------------------------------------------------------
--- Ledger types
+-- Ledger types (keep in sync with patches/competition_finance_ledger_entry_types_repair.sql)
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE public.competition_finance_ledger
@@ -85,9 +85,17 @@ ALTER TABLE public.competition_finance_ledger
       'prize',
       'prize_league',
       'prize_cup',
+      'prize_challenge',
+      'tv_revenue',
       'gov_hg_subsidy',
       'gov_youth_subsidy',
       'gov_bnb_subsidy',
+      'gov_fine_compensation',
+      'gov_emergency_tax',
+      'gov_income_tax',
+      'wage_squad',
+      'wage_renewal_34plus',
+      'wage_star_tax',
       'adjustment',
       'admin_one_off_injection',
       'admin_purchase_payment',
@@ -103,7 +111,20 @@ ALTER TABLE public.competition_finance_ledger
       'infra_purchase',
       'infra_expansion',
       'infra_expansion_refund',
-      'infra_expansion_penalty'
+      'infra_expansion_penalty',
+      'contract_release_comp',
+      'contract_release_comp_received',
+      'contract_termination',
+      'contract_signing_offer',
+      'staff_manager_salary',
+      'eos_debt_interest',
+      'eos_ffp_charge',
+      'eos_balance_interest',
+      'eos_injection',
+      'special_auction_fee',
+      'special_auction_prize',
+      'season_loan_fee',
+      'season_loan_refund'
     )
   );
 
@@ -354,8 +375,8 @@ BEGIN
   v_count := (public.gov_subsidy_squad_counts(p_club_short_name)->>'bnb_qualifying')::int;
 
   IF v_count >= v_s.bnb_min_players THEN
-    v_amount := round(v_count * v_s.bnb_per_player, 0);
-    v_status := 'Built not bought';
+    v_amount := round(coalesce(v_s.bnb_per_player, 0), 0);
+    v_status := 'Weak squad bonus';
   ELSE
     v_amount := 0;
     v_status := '—';
@@ -365,6 +386,7 @@ BEGIN
     'count', v_count,
     'min_required', v_s.bnb_min_players,
     'max_rating', v_s.bnb_max_rating,
+    'flat_bonus', v_s.bnb_per_player,
     'status', v_status,
     'amount', v_amount
   );
@@ -465,7 +487,7 @@ BEGIN
   v_desc := CASE p_subsidy_type
     WHEN 'gov_hg_subsidy' THEN format('HG subsidy — %s', coalesce(p_status_label, 'Homegrown'))
     WHEN 'gov_youth_subsidy' THEN format('Youth subsidy — %s', coalesce(p_status_label, 'Youth'))
-    WHEN 'gov_bnb_subsidy' THEN format('Built not bought — %s', coalesce(p_status_label, 'BnB'))
+    WHEN 'gov_bnb_subsidy' THEN format('Weak squad bonus — %s', coalesce(p_status_label, 'BnB'))
     ELSE 'Government subsidy'
   END;
 
@@ -722,6 +744,20 @@ BEGIN
   );
 END;
 $function$;
+
+-- Weak squad bonus defaults (safe to re-run)
+ALTER TABLE public.global_settings
+  ALTER COLUMN bnb_max_rating SET DEFAULT 72,
+  ALTER COLUMN bnb_min_players SET DEFAULT 14,
+  ALTER COLUMN bnb_per_player SET DEFAULT 10000000;
+
+UPDATE public.global_settings
+SET
+  bnb_max_rating = 72,
+  bnb_min_players = 14,
+  bnb_per_player = 10000000,
+  updated_at = now()
+WHERE id = 1;
 
 GRANT EXECUTE ON FUNCTION public.gov_subsidy_club_preview(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_admin_pay_government_subsidies(bigint) TO authenticated;

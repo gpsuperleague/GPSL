@@ -1323,7 +1323,7 @@ export const GATE_ENTRY_LABELS = {
   gov_fine_compensation: "Fines & compensation",
   gov_hg_subsidy: "Homegrown subsidy",
   gov_youth_subsidy: "Youth subsidy",
-  gov_bnb_subsidy: "Built not bought",
+  gov_bnb_subsidy: "Weak squad bonus",
   gov_emergency_tax: "Emergency tax",
   gov_income_tax: "Income tax",
   wage_squad: "Wages",

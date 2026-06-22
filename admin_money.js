@@ -321,9 +321,9 @@ async function loadGovSubsidySettings() {
   setGovInput("youthBand3Max", data.youth_sub_band3_max ?? 7);
   setGovInput("youthBand3Rate", data.youth_sub_band3_per_player ?? 1250000);
   setGovInput("youthBand4Rate", data.youth_sub_band4_per_player ?? 2000000);
-  setGovInput("bnbMaxRating", data.bnb_max_rating ?? 70);
-  setGovInput("bnbMinPlayers", data.bnb_min_players ?? 8);
-  setGovInput("bnbPerPlayer", data.bnb_per_player ?? 1250000);
+  setGovInput("bnbMaxRating", data.bnb_max_rating ?? 72);
+  setGovInput("bnbMinPlayers", data.bnb_min_players ?? 14);
+  setGovInput("bnbPerPlayer", data.bnb_per_player ?? 10000000);
 
   setStatus("govSubsidyStatus", "Subsidy settings loaded.", true);
 }

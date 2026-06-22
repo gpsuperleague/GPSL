@@ -177,9 +177,9 @@ export const FINANCE_UI_SECTIONS = [
       },
       {
         id: "gov_bnb",
-        label: "Built not bought",
+        label: "Weak squad bonus",
         types: ["gov_bnb_subsidy"],
-        note: "Squad players at or below admin max rating — paid at season end if minimum met.",
+        note: "14+ squad players rated ≤72 qualify for a flat ₿10M bonus at season end.",
       },
       {
         id: "gov_emergency_tax",
@@ -432,10 +432,11 @@ function subsidyQualifyingNote(lineId, preview) {
   const count = Number(block.count ?? 0);
 
   if (lineId === "gov_bnb") {
-    const min = Number(block.min_required ?? 8);
-    const maxR = block.max_rating ?? 70;
-    const qual = `${count} at ≤${maxR} (need ${min}+)`;
-    return `Est. ${formatMoney(amt)} — ${qual}${status ? ` · ${status}` : ""} · paid at 38/38`;
+    const min = Number(block.min_required ?? 14);
+    const maxR = block.max_rating ?? 72;
+    const bonus = Number(block.flat_bonus ?? 10000000);
+    const qual = `${count} of ${min} at ≤${maxR}`;
+    return `Est. ${formatMoney(amt)} — ${qual} for ${formatMoney(bonus)} weak squad bonus${status ? ` · ${status}` : ""} · paid at 38/38`;
   }
 
   if (lineId === "gov_youth") {

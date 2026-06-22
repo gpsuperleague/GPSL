@@ -250,7 +250,7 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
   const govLines = [
     { lineId: "gov_hg", type: "gov_hg_subsidy", key: "homegrown", label: "HG" },
     { lineId: "gov_youth", type: "gov_youth_subsidy", key: "youth", label: "Youth" },
-    { lineId: "gov_bnb", type: "gov_bnb_subsidy", key: "bnb", label: "BnB" },
+    { lineId: "gov_bnb", type: "gov_bnb_subsidy", key: "bnb", label: "Weak squad" },
   ];
 
   const season = await loadCurrentSeason(supabase);

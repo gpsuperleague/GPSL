@@ -97,7 +97,7 @@
       </div>
       <div class="card" id="sb-gov-subsidies">
         <h2>Government subsidies</h2>
-        <p class="note">HG bands are <b>non-cumulative</b> for status (highest tier shown) but payout is per band: Quota ≤5, Flying 6–8, Pride 9+ only. Youth uses banded u21 counts. BnB: squad players at or below max rating. Paid at EOS when all <b>3</b> divisions have <b>38/38</b> league matches (run <code>government_subsidies.sql</code>).</p>
+        <p class="note">HG bands are <b>non-cumulative</b> for status (highest tier shown) but payout is per band: Quota ≤5, Flying 6–8, Pride 9+ only. Youth uses banded u21 counts. Weak squad bonus: <b>14+</b> players rated <b>≤72</b> → flat <b>₿10M</b>. Paid at EOS when all <b>3</b> divisions have <b>38/38</b> league matches (run <code>government_subsidies.sql</code>).</p>
         <h3 class="admin-subheading">Homegrown (HG)</h3>
         <div class="row gov-subsidy-row">
           <div>
@@ -152,7 +152,7 @@
             <input type="number" id="youthBand4Rate" min="0" step="50000" style="width:120px;">
           </div>
         </div>
-        <h3 class="admin-subheading">Built not bought</h3>
+        <h3 class="admin-subheading">Weak squad bonus</h3>
         <div class="row gov-subsidy-row">
           <div>
             <label>Max base rating</label>
@@ -163,7 +163,7 @@
             <input type="number" id="bnbMinPlayers" min="1" max="28" step="1" style="width:80px;">
           </div>
           <div>
-            <label>₿ per qualifying player</label>
+            <label>Flat bonus (₿) when qualified</label>
             <input type="number" id="bnbPerPlayer" min="0" step="50000" style="width:120px;">
           </div>
         </div>

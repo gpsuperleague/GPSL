@@ -625,9 +625,9 @@ function renderSubsidyGrid(preview, loadError) {
       <p class="subsidy-amount">Est. payout ${formatMoney(Number(youth.amount || 0))}</p>
     </div>
     <div class="subsidy-card">
-      <h3>Built not bought</h3>
+      <h3>Weak squad bonus</h3>
       <p class="subsidy-status">${statusOrDash(bnb.status)}</p>
-      <p class="subsidy-meta">${bnb.count ?? 0} at rating ≤${bnb.max_rating ?? "—"} (need ${bnb.min_required ?? "—"}+)</p>
+      <p class="subsidy-meta">${bnb.count ?? 0} of ${bnb.min_required ?? 14} at rating ≤${bnb.max_rating ?? 72} · ${formatMoney(Number(bnb.flat_bonus ?? 10000000))} bonus when qualified</p>
       <p class="subsidy-amount">Est. payout ${formatMoney(Number(bnb.amount || 0))}</p>
     </div>
   `;
