@@ -51,3 +51,24 @@ export function formatNavLabel(text) {
 
   return tokens.map((token, i) => titleCaseToken(token, i === 0 || i === last)).join(" ");
 }
+
+/**
+ * Top-nav section button: stack multi-word labels (e.g. Central / Bank).
+ * @param {string} text
+ * @param {(s: string) => string} escapeHtml
+ */
+export function renderNavSectionLabelHtml(text, escapeHtml) {
+  const formatted = formatNavLabel(text);
+  const parts = formatted.split(/\s+/).filter(Boolean);
+  if (parts.length < 2) {
+    return escapeHtml(formatted);
+  }
+  const line1 = escapeHtml(parts[0]);
+  const line2 = escapeHtml(parts.slice(1).join(" "));
+  return (
+    `<span class="nav-group-label-stack">` +
+    `<span class="nav-group-label-line">${line1}</span>` +
+    `<span class="nav-group-label-line">${line2}</span>` +
+    `</span>`
+  );
+}

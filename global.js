@@ -22,11 +22,11 @@ import {
 import { countUnreadInbox } from "./competition_inbox.js";
 import { initDashboardPinUi } from "./dashboard_pin.js";
 import { nationFlagSrc } from "./international_flags.js";
-import { formatNavLabel } from "./nav_label.js";
+import { formatNavLabel, renderNavSectionLabelHtml } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
 
 /** Bump when nav/admin chrome changes (cache bust for dynamic imports). */
-export const GLOBAL_JS_VERSION = "20260621-nav-two-row";
+export const GLOBAL_JS_VERSION = "20260621-nav-label-stack";
 
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
@@ -1580,8 +1580,9 @@ export async function buildNav() {
     html += `<div class="nav-group${hasActive ? " nav-group-active" : ""}${
       anyAuctionActive ? " nav-group-has-auction" : ""
     }"${isTransfersSection ? ' data-nav-auction-section="transfers"' : ""} data-nav-group>`;
-    html += `<button type="button" class="nav-group-summary" aria-expanded="false">${escapeNavHtml(
-      formatNavLabel(section.label)
+    html += `<button type="button" class="nav-group-summary" aria-expanded="false">${renderNavSectionLabelHtml(
+      section.label,
+      escapeNavHtml
     )}${isTransfersSection ? navGroupAuctionBadgeHtml(anyAuctionActive) : ""}</button>`;
     const dropdownClass =
       section.id === "admin" || section.id === "transfers"
