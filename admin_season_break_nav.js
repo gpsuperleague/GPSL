@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
-export const SEASON_BREAK_NAV_VERSION = "20260622-prize-nav-no-etc";
+export const SEASON_BREAK_NAV_VERSION = "20260623-prize-menu";
 
 export const SEASON_BREAK_NAV = [
   {
@@ -62,6 +62,11 @@ export const SEASON_BREAK_NAV = [
         label: "Cup Prize Money",
         href: "admin_cup_prizes.html",
         page: "admin_cup_prizes",
+      },
+      {
+        label: "Set prizes etc",
+        href: "admin_money.html",
+        page: "admin_money",
       },
       {
         label: "League Prize Money",
