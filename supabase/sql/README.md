@@ -196,6 +196,16 @@ Run once:
 - **Apply emergency TAC** — `gov_emergency_tax` on balance above threshold
 - **`finances.html`** pending column forecasts unposted upkeep charges
 
+### Income tax on player spend (after Model A central bank)
+
+Run once:
+
+[`patches/gov_income_tax.sql`](./patches/gov_income_tax.sql)
+
+- Admin **Tax %** (`admin_tax_pct.html`) — `gov_income_tax_pct` on global settings (0 = off)
+- Posts `gov_income_tax` to club ledger (+ central bank leg) when transfer purchases or special auction fees settle
+- **`finances.html`** → Government → **Income tax**; activity ledger / outgoings show posted lines
+
 ### Fines & compensation (after wages/taxes)
 
 Run once:

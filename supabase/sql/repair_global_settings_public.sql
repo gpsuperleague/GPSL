@@ -50,6 +50,7 @@ ALTER TABLE public.global_settings
   ADD COLUMN IF NOT EXISTS star_tax_per_player numeric(14, 2) NOT NULL DEFAULT 1000000,
   ADD COLUMN IF NOT EXISTS emergency_tac_pct numeric(6, 3) NOT NULL DEFAULT 10.000,
   ADD COLUMN IF NOT EXISTS emergency_tac_threshold numeric(14, 2) NOT NULL DEFAULT 100000000,
+  ADD COLUMN IF NOT EXISTS gov_income_tax_pct numeric(6, 3) NOT NULL DEFAULT 0.000,
   ADD COLUMN IF NOT EXISTS manager_draft_auction_enabled boolean NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS club_auction_enabled boolean NOT NULL DEFAULT false;
 
@@ -110,6 +111,7 @@ SELECT
   star_tax_per_player,
   emergency_tac_pct,
   emergency_tac_threshold,
+  gov_income_tax_pct,
   (
     COALESCE(draft_auction_enabled, false)
     AND draft_auction_start_time IS NOT NULL

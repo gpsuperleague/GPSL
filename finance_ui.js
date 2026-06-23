@@ -161,7 +161,7 @@ export const FINANCE_UI_SECTIONS = [
   {
     id: "government",
     title: "Government",
-    intro: "Subsidies and taxes; emergency tax and income tax % from admin.",
+    intro: "Subsidies and taxes; emergency tax from Money management; income tax % from Tax % admin.",
     lines: [
       {
         id: "gov_hg",
@@ -191,8 +191,8 @@ export const FINANCE_UI_SECTIONS = [
         id: "gov_income_tax",
         label: "Income tax",
         types: ["gov_income_tax"],
-        planned: true,
-        note: "Percentage of player spend; rate set in admin.",
+        note:
+          "League % on player purchases (transfer fee + agent fee, special auction fees). Rate: Admin → Season Break → Bills & Income → Tax %.",
       },
     ],
   },
