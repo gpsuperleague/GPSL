@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>League prize money — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">League prize money</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card" id="sb-league-prizes">
+        <h2>League prize money</h2>
+        <p class="note">
+          Paid automatically when all <b>38</b> league matches in a division are played
+          (or use <b>Pay league prizes</b> manually). Run <code>competition_league_prizes.sql</code> once.
+          Other money settings remain on
+          <a href="admin_money.html">Money management</a>.
+        </p>
+        <div class="row">
+          <div>
+            <label>Division</label>
+            <select id="leaguePrizeDivision">
+              <option value="superleague">SuperLeague</option>
+              <option value="championship_a">Championship A</option>
+              <option value="championship_b">Championship B</option>
+            </select>
+          </div>
+        </div>
+        <div id="leaguePrizeGrid" class="league-prize-grid"></div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" id="saveLeaguePrizesBtn" class="button">Save prizes</button>
+          <button type="button" id="seedLeaguePrizesBtn" class="button">Load default amounts</button>
+          <button type="button" id="payLeaguePrizesBtn" class="button">Pay league prizes</button>
+        </div>
+        <div id="leaguePrizeStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_league_prizes.js"></script>
+</body>
+</html>

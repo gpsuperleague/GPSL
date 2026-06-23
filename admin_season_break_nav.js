@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
-export const SEASON_BREAK_NAV_VERSION = "20260622-transfer-window-page";
+export const SEASON_BREAK_NAV_VERSION = "20260622-league-prizes-page";
 
 export const SEASON_BREAK_NAV = [
   {
@@ -65,9 +65,8 @@ export const SEASON_BREAK_NAV = [
       },
       {
         label: "Set league prize money",
-        href: "admin_money.html",
-        hash: "sb-league-prizes",
-        page: "admin_money",
+        href: "admin_league_prizes.html",
+        page: "admin_league_prizes",
       },
     ],
   },

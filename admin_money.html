@@ -12,30 +12,14 @@
   <h1 class="admin-title">Money management</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
-      <div class="card" id="sb-league-prizes">
-        <h2>League prize money</h2>
-        <p class="note">Paid automatically when all <b>38</b> league matches in a division are played (or use <b>Pay league prizes</b> manually). Run <code>competition_league_prizes.sql</code> once.</p>
-        <div class="row">
-          <div>
-            <label>Division</label>
-            <select id="leaguePrizeDivision">
-              <option value="superleague">SuperLeague</option>
-              <option value="championship_a">Championship A</option>
-              <option value="championship_b">Championship B</option>
-            </select>
-          </div>
-        </div>
-        <div id="leaguePrizeGrid" class="league-prize-grid"></div>
-        <div class="row" style="margin-top:12px;">
-          <button type="button" id="saveLeaguePrizesBtn" class="button">Save prizes</button>
-          <button type="button" id="seedLeaguePrizesBtn" class="button">Load default amounts</button>
-          <button type="button" id="payLeaguePrizesBtn" class="button">Pay league prizes</button>
-        </div>
-        <div id="leaguePrizeStatus" class="status-line"></div>
-      </div>
       <div class="card">
         <h2>Cup prize money</h2>
-        <p class="note">Round fee paid to <b>both</b> clubs on confirm. Set stages on <a href="admin_fixtures-cups.html">Cup fixtures</a> (run <code>competition_cup_prizes_fix.sql</code>).</p>
+        <p class="note">
+          Round fee paid to <b>both</b> clubs on confirm. Set stages on
+          <a href="admin_fixtures-cups.html">Cup fixtures</a> (run <code>competition_cup_prizes_fix.sql</code>).
+          League table prizes:
+          <a href="admin_league_prizes.html"><b>Set league prize money</b></a>.
+        </p>
       </div>
       <div class="card">
         <h2>Season challenges</h2>
