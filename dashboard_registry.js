@@ -200,6 +200,7 @@ export const DASHBOARD_PANELS = [
   p("admin_international", "International Admin", "admin_international.html", { adminOnly: true }),
   p("admin_club_kits", "Club Kits Admin", "admin_club_kits.html", { adminOnly: true }),
   p("admin_money", "Money Admin", "admin_money.html", { adminOnly: true }),
+  p("admin_tv_revenue", "TV revenue", "admin_tv_revenue.html", { adminOnly: true }),
   p("admin_league_prizes", "League prizes", "admin_league_prizes.html", { adminOnly: true }),
   p("admin_stadium_settings", "Stadium settings", "admin_stadium_settings.html", { adminOnly: true }),
   p("admin_fines", "Fines Admin", "admin_fines.html", { adminOnly: true }),

@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
-export const SEASON_BREAK_NAV_VERSION = "20260623-stadium-settings";
+export const SEASON_BREAK_NAV_VERSION = "20260623-tv-revenue";
 
 export const SEASON_BREAK_NAV = [
   {
@@ -118,9 +118,9 @@ export const SEASON_BREAK_NAV = [
     items: [
       {
         label: "Set TV revenue",
-        href: "admin_money.html",
+        href: "admin_tv_revenue.html",
         hash: "sb-tv-revenue",
-        page: "admin_money",
+        page: "admin_tv_revenue",
       },
       {
         label: "Set government subsidies",
