@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
-export const SEASON_BREAK_NAV_VERSION = "20260623-prize-menu";
+export const SEASON_BREAK_NAV_VERSION = "20260623-stadium-settings";
 
 export const SEASON_BREAK_NAV = [
   {
@@ -72,6 +72,11 @@ export const SEASON_BREAK_NAV = [
         label: "League Prize Money",
         href: "admin_league_prizes.html",
         page: "admin_league_prizes",
+      },
+      {
+        label: "Stadium Settings",
+        href: "admin_stadium_settings.html",
+        page: "admin_stadium_settings",
       },
     ],
   },
@@ -154,9 +159,9 @@ export const SEASON_BREAK_NAV = [
       },
       {
         label: "Set stadium costs",
-        href: "admin_money.html",
+        href: "admin_stadium_settings.html",
         hash: "sb-stadium-costs",
-        page: "admin_money",
+        page: "admin_stadium_settings",
       },
     ],
   },

@@ -1,5 +1,5 @@
 import { initAdminPage, primeAdminPageChrome } from "./admin_common.js";
-import { renderSeasonBreakNavHtml } from "./admin_season_break_nav.js?v=20260623-prize-menu";
+import { renderSeasonBreakNavHtml } from "./admin_season_break_nav.js?v=20260623-stadium-settings";
 
 primeAdminPageChrome();
 
