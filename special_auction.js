@@ -3,7 +3,27 @@
 import {
   formatDurationMs,
   formatTargetTimesSubline,
+  formatInstantUK,
+  formatInstantLocal,
+  isValidInstant,
 } from "./countdown_display.js";
+
+export function formatBidTimeHtml(iso) {
+  const d = new Date(iso);
+  if (!isValidInstant(d)) return "—";
+  const uk = formatInstantUK(d, { precise: true });
+  const local = formatInstantLocal(d, { precise: true });
+  return (
+    `<span class="bid-time">${uk}</span>` +
+    `<span class="bid-time-local">${local}</span>`
+  );
+}
+
+export function formatBidTimePlain(iso) {
+  const d = new Date(iso);
+  if (!isValidInstant(d)) return "";
+  return formatInstantUK(d, { precise: true });
+}
 
 export function formatMoney(n) {
   return `₿ ${Number(n || 0).toLocaleString("en-GB")}`;

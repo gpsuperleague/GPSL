@@ -54,6 +54,8 @@
       margin: 12px 0;
       color: #ccc;
     }
+    .bid-time { display: block; white-space: nowrap; font-size: 12px; }
+    .bid-time-local { display: block; white-space: nowrap; font-size: 11px; color: #aaa; margin-top: 2px; }
     .bid-modal-backdrop {
       display: none;
       position: fixed;
@@ -134,7 +136,7 @@
         <h3 id="resultsHeading">Results</h3>
         <table class="gpsl-table">
           <thead>
-            <tr><th>Club</th><th>Bid</th><th>Fee</th><th></th></tr>
+            <tr><th>Club</th><th>Bid</th><th>Bid placed</th><th>Fee</th><th></th></tr>
           </thead>
           <tbody id="resultsBody"></tbody>
         </table>
@@ -182,6 +184,8 @@
       timeRemainingLabel,
       formatAuctionTimerText,
       prizeDescription,
+      formatBidTimeHtml,
+      formatBidTimePlain,
     } from "./special_auction.js";
     import {
       playerThumbLinkHtml,
@@ -337,7 +341,7 @@
         els.resultsBlock.style.display = "block";
         els.resultsHeading.textContent = "Results";
         els.resultsBody.innerHTML =
-          `<tr><td colspan="4">Bidding closed — waiting for the league to reveal bids.</td></tr>`;
+          `<tr><td colspan="5">Bidding closed — waiting for the league to reveal bids.</td></tr>`;
         return;
       }
 
@@ -346,8 +350,8 @@
         els.resultsBlock.style.display = "block";
         els.resultsHeading.textContent = "Current highest bid";
         els.resultsBody.innerHTML = top
-          ? `<tr><td>${fullClubName(top.club_id) || top.club_id}</td><td>${formatMoney(top.bid_amount)}</td><td>—</td><td></td></tr>`
-          : `<tr><td colspan="4">No bids yet</td></tr>`;
+          ? `<tr><td>${fullClubName(top.club_id) || top.club_id}</td><td>${formatMoney(top.bid_amount)}</td><td>${formatBidTimeHtml(top.bid_time)}</td><td>—</td><td></td></tr>`
+          : `<tr><td colspan="5">No bids yet</td></tr>`;
         return;
       }
 
@@ -380,11 +384,12 @@
           return `<tr class="${isWin ? "winner-row" : ""}">
             <td>${fullClubName(b.club_id) || b.club_id}</td>
             <td>${formatMoney(b.bid_amount)}</td>
+            <td>${formatBidTimeHtml(b.bid_time)}</td>
             <td>${b.fee_charged != null ? formatMoney(b.fee_charged) : "—"}</td>
             <td>${badge}</td>
           </tr>`;
         })
-        .join("") || `<tr><td colspan="4">No bids</td></tr>`;
+        .join("") || `<tr><td colspan="5">No bids</td></tr>`;
     }
 
     async function render() {
@@ -459,9 +464,15 @@
         els.myBidLine.textContent =
           "Place bid will appear here when the window opens (see timer above).";
       } else if (mine && (isLub || auction.status !== "active")) {
-        els.myBidLine.textContent = `Your club's bid: ${formatMoney(mine.bid_amount)}`;
+        const placed = formatBidTimePlain(mine.bid_time);
+        els.myBidLine.textContent = placed
+          ? `Your club's bid: ${formatMoney(mine.bid_amount)} (placed ${placed})`
+          : `Your club's bid: ${formatMoney(mine.bid_amount)}`;
       } else if (mine && !isLub) {
-        els.myBidLine.textContent = `Your club's current bid: ${formatMoney(mine.bid_amount)} (you may raise it)`;
+        const placed = formatBidTimePlain(mine.bid_time);
+        els.myBidLine.textContent = placed
+          ? `Your club's current bid: ${formatMoney(mine.bid_amount)} (placed ${placed}) — you may raise it`
+          : `Your club's current bid: ${formatMoney(mine.bid_amount)} (you may raise it)`;
       } else if (isLub && phase === "live") {
         els.myBidLine.textContent = "You have not submitted a secret bid yet.";
       } else {
