@@ -89,7 +89,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "prize_league",
         label: "League prize money",
         types: ["prize_league"],
-        note: "Set in admin (Money management) and shown on the league table; paid when all 38 league matches in your division are complete.",
+        note: "Set in admin (League Prize Money) and shown on the league table; paid when all 38 league matches in your division are complete.",
       },
       {
         id: "prize_cup",

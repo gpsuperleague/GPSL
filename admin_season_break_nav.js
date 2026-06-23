@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
-export const SEASON_BREAK_NAV_VERSION = "20260620-emergency-tax";
+export const SEASON_BREAK_NAV_VERSION = "20260620-remove-money";
 
 export const SEASON_BREAK_NAV = [
   {
@@ -62,11 +62,6 @@ export const SEASON_BREAK_NAV = [
         label: "Cup Prize Money",
         href: "admin_cup_prizes.html",
         page: "admin_cup_prizes",
-      },
-      {
-        label: "Set prizes etc",
-        href: "admin_money.html",
-        page: "admin_money",
       },
       {
         label: "League Prize Money",
@@ -145,6 +140,12 @@ export const SEASON_BREAK_NAV = [
         href: "admin_wage_pct.html",
         hash: "sb-wage-pct",
         page: "admin_wage_pct",
+      },
+      {
+        label: "Post season wage bills",
+        href: "admin_wage_bills.html",
+        hash: "sb-wage-bills",
+        page: "admin_wage_bills",
       },
       {
         label: "Set Tax %",
