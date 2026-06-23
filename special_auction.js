@@ -106,17 +106,40 @@ export async function loadOwnerClub(supabase) {
 }
 
 export async function fetchAuctionBids(supabase, auctionId) {
-  const { data, error } = await supabase
+  const { data, error } = await supabase.rpc("special_auction_list_bids", {
+    p_auction_id: auctionId,
+  });
+
+  if (!error) return data || [];
+
+  console.error("fetchAuctionBids (rpc):", error);
+
+  const { data: direct, error: directErr } = await supabase
     .from("special_auction_bids")
     .select("*")
     .eq("auction_id", auctionId)
     .order("bid_amount", { ascending: true });
 
-  if (error) {
-    console.error("fetchAuctionBids:", error);
+  if (directErr) {
+    console.error("fetchAuctionBids (table):", directErr);
     return [];
   }
-  return data || [];
+  return direct || [];
+}
+
+/** Refresh auction row (status / winner fields) during live polling. */
+export async function refreshAuctionRecord(supabase, auction) {
+  if (!auction?.id) return auction;
+  const { data, error } = await supabase
+    .from("special_auctions")
+    .select("*")
+    .eq("id", auction.id)
+    .maybeSingle();
+  if (error) {
+    console.error("refreshAuctionRecord:", error);
+    return auction;
+  }
+  return data || auction;
 }
 
 export async function submitSpecialBid(supabase, auctionId, amount) {

@@ -38,6 +38,22 @@
     table.gpsl-table th { background: #222; color: #ff9900; }
     tr.winner-row { background: linear-gradient(90deg, #3d3200, #1a1a1a); }
     tr.winner-row td { color: #ffd700; font-weight: bold; }
+    .winner-banner {
+      background: #2a2200;
+      border: 1px solid #ff9900;
+      border-radius: 6px;
+      padding: 12px 14px;
+      margin: 12px 0;
+      color: #ffd700;
+      font-weight: bold;
+    }
+    .waiting-banner {
+      background: #222;
+      border-left: 4px solid #888;
+      padding: 10px 12px;
+      margin: 12px 0;
+      color: #ccc;
+    }
     .bid-modal-backdrop {
       display: none;
       position: fixed;
@@ -108,6 +124,8 @@
       <p class="timer" id="auctionTimer"></p>
       <span class="timer-sub" id="auctionTimerSub"></span>
       <p id="prizeLine"></p>
+      <div id="winnerLine" class="winner-banner" style="display:none;"></div>
+      <div id="waitingReveal" class="waiting-banner" style="display:none;"></div>
       <div id="playerReveal"></div>
       <p id="rulesLine" class="secret-note"></p>
       <p id="myBidLine"></p>
@@ -156,6 +174,7 @@
       roundToMillion,
       fetchActiveSpecialAuction,
       fetchAuctionById,
+      refreshAuctionRecord,
       loadOwnerClub,
       fetchAuctionBids,
       submitSpecialBid,
@@ -196,6 +215,8 @@
       resultsBlock: document.getElementById("resultsBlock"),
       resultsBody: document.getElementById("resultsBody"),
       resultsHeading: document.getElementById("resultsHeading"),
+      winnerLine: document.getElementById("winnerLine"),
+      waitingReveal: document.getElementById("waitingReveal"),
     };
 
     function updateRoundedPreview(amount) {
@@ -298,17 +319,29 @@
     }
 
     async function renderResults(bids) {
+      const phase = auctionPhase(auction);
+      const isLub = auction.auction_type === "lowest_unique";
+      const revealed =
+        auction.status === "revealed" || auction.status === "settled";
       const show =
-        auction.status === "revealed" ||
-        auction.status === "settled" ||
-        (auction.auction_type === "snap" && auctionPhase(auction) !== "live");
+        revealed ||
+        (isLub && phase === "ended_pending") ||
+        (auction.auction_type === "snap" && phase !== "live");
 
-      if (!show && auction.auction_type === "lowest_unique") {
+      if (!show && isLub) {
         els.resultsBlock.style.display = "none";
         return;
       }
 
-      if (auction.auction_type === "snap" && auction.status === "active" && auctionPhase(auction) === "live") {
+      if (isLub && phase === "ended_pending" && !revealed) {
+        els.resultsBlock.style.display = "block";
+        els.resultsHeading.textContent = "Results";
+        els.resultsBody.innerHTML =
+          `<tr><td colspan="4">Bidding closed — waiting for the league to reveal bids.</td></tr>`;
+        return;
+      }
+
+      if (auction.auction_type === "snap" && auction.status === "active" && phase === "live") {
         const top = [...bids].sort((a, b) => b.bid_amount - a.bid_amount)[0];
         els.resultsBlock.style.display = "block";
         els.resultsHeading.textContent = "Current highest bid";
@@ -362,15 +395,40 @@
         return;
       }
 
+      auction = await refreshAuctionRecord(supabase, auction);
+
       els.emptyMsg.style.display = "none";
       els.content.style.display = "block";
 
       const isLub = auction.auction_type === "lowest_unique";
+      const revealed =
+        auction.status === "revealed" || auction.status === "settled";
       els.title.textContent = auction.title;
       els.type.textContent = isLub ? "Lowest unique bid" : "Snap auction";
       els.prize.textContent = prizeDescription(auction);
 
       const phase = auctionPhase(auction);
+      if (revealed) {
+        if (auction.winning_club_id) {
+          els.winnerLine.style.display = "block";
+          els.winnerLine.textContent =
+            `Winner: ${fullClubName(auction.winning_club_id) || auction.winning_club_id} — ${formatMoney(auction.winning_amount)}`;
+        } else {
+          els.winnerLine.style.display = "block";
+          els.winnerLine.textContent =
+            "No lowest unique bid — no winner this auction.";
+        }
+        els.waitingReveal.style.display = "none";
+      } else if (isLub && phase === "ended_pending") {
+        els.winnerLine.style.display = "none";
+        els.waitingReveal.style.display = "block";
+        els.waitingReveal.textContent =
+          "Bidding has closed. Results will appear here once the league reveals bids.";
+      } else {
+        els.winnerLine.style.display = "none";
+        els.waitingReveal.style.display = "none";
+      }
+
       if (phase === "live") {
         const t = formatAuctionTimerText("Time left", auction.end_time);
         els.timer.textContent = t.duration;
