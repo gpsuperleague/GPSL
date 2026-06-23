@@ -161,7 +161,7 @@ export const FINANCE_UI_SECTIONS = [
   {
     id: "government",
     title: "Government",
-    intro: "Subsidies and taxes; emergency tax from Money management; income tax % from Tax % admin.",
+    intro: "Subsidies and taxes; emergency tax and income tax % from Bills & Income admin.",
     lines: [
       {
         id: "gov_hg",
@@ -185,7 +185,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "gov_emergency_tax",
         label: "Emergency tax",
         types: ["gov_emergency_tax"],
-        note: "Admin % on balance above threshold — apply from Money management.",
+        note: "Admin % on balance above threshold — apply from Admin → Emergency tax.",
       },
       {
         id: "gov_income_tax",

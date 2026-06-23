@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
-export const SEASON_BREAK_NAV_VERSION = "20260620-bills-split";
+export const SEASON_BREAK_NAV_VERSION = "20260620-emergency-tax";
 
 export const SEASON_BREAK_NAV = [
   {
@@ -151,6 +151,12 @@ export const SEASON_BREAK_NAV = [
         href: "admin_tax_pct.html",
         hash: "sb-tax-pct",
         page: "admin_tax_pct",
+      },
+      {
+        label: "Set emergency tax",
+        href: "admin_emergency_tax.html",
+        hash: "sb-emergency-tax",
+        page: "admin_emergency_tax",
       },
       {
         label: "Set fines",
