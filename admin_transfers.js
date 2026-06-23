@@ -22,9 +22,6 @@ async function loadSettings() {
   const { data } = await supabase.from("global_settings").select("*").eq("id", 1).single();
   if (!data) return;
 
-  document.getElementById("transferWindowSelect").value = data.transfer_window_open
-    ? "true"
-    : "false";
   document.getElementById("draftAuctionSelect").value = data.draft_auction_enabled
     ? "true"
     : "false";
@@ -69,8 +66,6 @@ async function loadSettings() {
 }
 
 async function saveSettings() {
-  const transfer_window_open =
-    document.getElementById("transferWindowSelect").value === "true";
   const draft_auction_enabled =
     document.getElementById("draftAuctionSelect").value === "true";
   const manager_draft_auction_enabled =
@@ -81,10 +76,12 @@ async function saveSettings() {
   const { data: current } = await supabase
     .from("global_settings")
     .select(
-      "draft_auction_enabled, manager_draft_auction_enabled, club_auction_enabled, draft_auction_start_time, draft_random_finish_time"
+      "transfer_window_open, draft_auction_enabled, manager_draft_auction_enabled, club_auction_enabled, draft_auction_start_time, draft_random_finish_time"
     )
     .eq("id", 1)
     .single();
+
+  const transfer_window_open = current?.transfer_window_open === true;
 
   const wasAnyDraft =
     current?.draft_auction_enabled ||

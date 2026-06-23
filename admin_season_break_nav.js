@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
-export const SEASON_BREAK_NAV_VERSION = "20260619-season-break-kits";
+export const SEASON_BREAK_NAV_VERSION = "20260622-transfer-window-page";
 
 export const SEASON_BREAK_NAV = [
   {
@@ -48,9 +48,9 @@ export const SEASON_BREAK_NAV = [
     items: [
       {
         label: "Set transfer window open",
-        href: "admin_transfers.html",
-        hash: "sb-transfer-window",
-        page: "admin_transfers",
+        href: "admin_transfer_window.html",
+        hash: "open",
+        page: "admin_transfer_window",
       },
     ],
   },
@@ -163,13 +163,13 @@ export const SEASON_BREAK_NAV = [
       {
         label: "Switch on draft",
         href: "admin_transfers.html",
-        hash: "sb-transfer-window",
+        hash: "sb-draft-auctions",
         page: "admin_transfers",
       },
       {
         label: "Switch off draft",
         href: "admin_transfers.html",
-        hash: "sb-transfer-window",
+        hash: "sb-draft-auctions",
         page: "admin_transfers",
       },
       {
@@ -190,9 +190,9 @@ export const SEASON_BREAK_NAV = [
     items: [
       {
         label: "Set transfer window closed",
-        href: "admin_transfers.html",
-        hash: "sb-transfer-window",
-        page: "admin_transfers",
+        href: "admin_transfer_window.html",
+        hash: "closed",
+        page: "admin_transfer_window",
       },
     ],
   },

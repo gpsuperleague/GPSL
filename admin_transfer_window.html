@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Transfer window — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Transfer window</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card" id="sb-transfer-window">
+        <h2>Transfer window</h2>
+        <p class="note">
+          Controls whether owners can use the transfer market (listings, offers, transfer centre).
+          Draft auctions and the transfer engine are managed on
+          <a href="admin_transfers.html">Transfer window &amp; engine</a>.
+        </p>
+        <div class="row">
+          <div>
+            <label>Window</label>
+            <select id="transferWindowSelect">
+              <option value="true">Open</option>
+              <option value="false">Closed</option>
+            </select>
+          </div>
+        </div>
+        <button class="button" id="saveTransferWindowBtn">Save</button>
+        <div id="transferWindowStatus" class="status-line"></div>
+        <p id="transferWindowCurrent" class="note" style="margin-top:10px;"></p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_transfer_window.js"></script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260621-checklist-presteason";
+export const SEASON_ADMIN_NAV_VERSION = "20260622-transfer-window-page";
 
 const SEASON_CALENDAR_NAV_ITEM = {
   label: "GPSL season calendar",
@@ -27,13 +27,15 @@ const START_SEASON_NAV_ITEM = {
 const TRANSFER_WINDOW_NAV_ITEMS = [
   {
     label: "Set transfer window open",
-    href: "admin_transfers.html",
-    page: "admin_transfers",
+    href: "admin_transfer_window.html",
+    hash: "open",
+    page: "admin_transfer_window",
   },
   {
     label: "Set transfer window closed",
-    href: "admin_transfers.html",
-    page: "admin_transfers",
+    href: "admin_transfer_window.html",
+    hash: "closed",
+    page: "admin_transfer_window",
   },
 ];
 
