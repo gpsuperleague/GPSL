@@ -15,9 +15,23 @@ export function roundToMillion(n) {
   return Math.round(x / 1000000) * 1000000;
 }
 
-/** Owner-visible auction: scheduled (published) or active, not yet ended. */
+/** Owner-visible auction: scheduled/active before close, or revealed until settle. */
 export async function fetchActiveSpecialAuction(supabase) {
   const nowIso = new Date().toISOString();
+
+  const { data: revealed, error: revealedErr } = await supabase
+    .from("special_auctions")
+    .select("*")
+    .eq("status", "revealed")
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (revealedErr) {
+    console.error("fetchActiveSpecialAuction (revealed):", revealedErr);
+  }
+  if (revealed) return revealed;
+
   const { data, error } = await supabase
     .from("special_auctions")
     .select("*")
@@ -44,10 +58,12 @@ export function isSpecialAuctionLive(auction) {
   return now >= start && now < end;
 }
 
-/** Published in nav / owner pages before start or while live. */
+/** Published in nav / owner pages before start, while live, or after LUB reveal until settle. */
 export function isSpecialAuctionPublished(auction) {
   if (!auction) return false;
-  if (!["scheduled", "active"].includes(String(auction.status || ""))) return false;
+  const status = String(auction.status || "");
+  if (status === "revealed") return true;
+  if (!["scheduled", "active"].includes(status)) return false;
   return Date.now() < new Date(auction.end_time).getTime();
 }
 
