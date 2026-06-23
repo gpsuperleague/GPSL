@@ -12,19 +12,6 @@
   <h1 class="admin-title">Money management</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
-      <div class="card">
-        <h2>Cup prize money</h2>
-        <p class="note">
-          Round fee paid to <b>both</b> clubs on confirm. Set stages on
-          <a href="admin_fixtures-cups.html">Cup fixtures</a> (run <code>competition_cup_prizes_fix.sql</code>).
-          League table prizes:
-          <a href="admin_league_prizes.html"><b>Set league prize money</b></a>.
-        </p>
-      </div>
-      <div class="card">
-        <h2>Season challenges</h2>
-        <p class="note">Owners see targets on <a href="challenges.html">Season challenges</a> (Owners + League nav). Admin config: <a href="admin_challenges.html"><b>Admin → Season challenges</b></a>. Run <code>competition_challenges.sql</code>, then <b>Seed default targets</b>.</p>
-      </div>
       <div class="card" id="sb-tv-revenue">
         <h2>TV revenue</h2>
         <p class="note">Selects big league fixtures per GPSL month per division (top-8 clashes, promotion/relegation battles, dry spells, etc.). Both clubs paid on confirm. Run <code>competition_tv_revenue.sql</code> after <code>government_subsidies.sql</code>.</p>
