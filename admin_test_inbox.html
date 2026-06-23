@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Inbox test — GPSL Admin Testing</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Inbox test (all clubs)</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Sends sample owner inbox notifications for testing. Fines and points live on
+        <a href="admin_fines.html">Fines &amp; compensation</a>.
+      </p>
+
+      <div class="card">
+        <h2>Inbox test (all clubs)</h2>
+        <p class="note">
+          Sends one <b>[TEST]</b> sample of every notification type (17 messages) to each club with an owner.
+          Run <code>patches/owner_inbox_test_notifications.sql</code> first. Clears the previous test batch before resending.
+        </p>
+        <div class="row" style="margin-top:8px;">
+          <button type="button" id="sendTestInboxBtn" class="button" style="background:#446633;">Send test notifications to all clubs</button>
+          <button type="button" id="clearTestInboxBtn" class="button" style="background:#555;">Clear test notifications</button>
+        </div>
+        <div id="testInboxStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_test_inbox.js"></script>
+</body>
+</html>

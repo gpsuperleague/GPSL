@@ -27,6 +27,11 @@ export const TESTING_ADMIN_NAV = [
     page: "admin_test_deploy_month",
     navDanger: true,
   },
+  {
+    label: "Inbox test (all clubs)",
+    href: "admin_test_inbox.html",
+    page: "admin_test_inbox",
+  },
 ];
 
 function escapeNavText(text) {
