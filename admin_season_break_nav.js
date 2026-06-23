@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
-export const SEASON_BREAK_NAV_VERSION = "20260623-tv-revenue";
+export const SEASON_BREAK_NAV_VERSION = "20260620-bills-split";
 
 export const SEASON_BREAK_NAV = [
   {
@@ -124,33 +124,33 @@ export const SEASON_BREAK_NAV = [
       },
       {
         label: "Set government subsidies",
-        href: "admin_money.html",
+        href: "admin_gov_subsidies.html",
         hash: "sb-gov-subsidies",
-        page: "admin_money",
+        page: "admin_gov_subsidies",
       },
       {
         label: "Set 34+",
-        href: "admin_money.html",
+        href: "admin_tax_34.html",
         hash: "sb-tax-34",
-        page: "admin_money",
+        page: "admin_tax_34",
       },
       {
         label: "Set star %",
-        href: "admin_money.html",
+        href: "admin_star_tax.html",
         hash: "sb-star-tax",
-        page: "admin_money",
+        page: "admin_star_tax",
       },
       {
         label: "Set Wage %",
-        href: "admin_money.html",
+        href: "admin_wage_pct.html",
         hash: "sb-wage-pct",
-        page: "admin_money",
+        page: "admin_wage_pct",
       },
       {
         label: "Set Tax %",
-        href: "admin_money.html",
+        href: "admin_tax_pct.html",
         hash: "sb-tax-pct",
-        page: "admin_money",
+        page: "admin_tax_pct",
       },
       {
         label: "Set fines",
@@ -159,9 +159,9 @@ export const SEASON_BREAK_NAV = [
       },
       {
         label: "Set stadium costs",
-        href: "admin_stadium_settings.html",
+        href: "admin_stadium_costs.html",
         hash: "sb-stadium-costs",
-        page: "admin_stadium_settings",
+        page: "admin_stadium_costs",
       },
     ],
   },

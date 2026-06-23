@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Tax % — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Tax %</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card" id="sb-tax-pct">
+        <h2>Tax %</h2>
+        <p class="note">
+          League tax on transfers / income is handled via central bank ledger rules (<code>central_bank_phase1.sql</code>).
+          A dedicated tax % admin control is not wired yet — set rates in SQL when introduced.
+          Other money settings remain on <a href="admin_money.html">Money management</a>.
+        </p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_tax_pct.js"></script>
+</body>
+</html>

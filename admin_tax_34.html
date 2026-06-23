@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>34+ fee — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">34+ fee</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card" id="sb-tax-34">
+        <h2>34+ rating fee</h2>
+        <p class="note">
+          Season charge per squad player at or above the minimum rating. Posted with season wage bills (run <code>competition_wages_taxes.sql</code>).
+          Other money settings remain on <a href="admin_money.html">Money management</a>.
+        </p>
+        <div class="row gov-subsidy-row">
+          <div>
+            <label>34+ min rating</label>
+            <input type="number" id="tax34MinRating" min="1" max="99" step="1" style="width:70px;">
+          </div>
+          <div>
+            <label>₿ per 34+ player</label>
+            <input type="number" id="tax34PerPlayer" min="0" step="50000" style="width:120px;">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" id="saveTax34Btn" class="button">Save 34+ settings</button>
+        </div>
+        <div id="tax34Status" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_tax_34.js"></script>
+</body>
+</html>

@@ -12,110 +12,17 @@
   <h1 class="admin-title">Money management</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
-      <div class="card" id="sb-gov-subsidies">
-        <h2>Government subsidies</h2>
-        <p class="note">HG bands are <b>non-cumulative</b> for status (highest tier shown) but payout is per band: Quota ≤5, Flying 6–8, Pride 9+ only. Youth uses banded u21 counts. Weak squad bonus: <b>14+</b> players rated <b>≤72</b> → flat <b>₿10M</b>. Paid at EOS when all <b>3</b> divisions have <b>38/38</b> league matches (run <code>government_subsidies.sql</code>).</p>
-        <h3 class="admin-subheading">Homegrown (HG)</h3>
-        <div class="row gov-subsidy-row">
-          <div>
-            <label>Quota max players (≤)</label>
-            <input type="number" id="hgBand1Max" min="0" max="28" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>₿ per player (quota)</label>
-            <input type="number" id="hgBand1Rate" min="0" step="50000" style="width:120px;">
-          </div>
-          <div>
-            <label>Flying max players (≤)</label>
-            <input type="number" id="hgBand2Max" min="0" max="28" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>₿ per player (flying)</label>
-            <input type="number" id="hgBand2Rate" min="0" step="50000" style="width:120px;">
-          </div>
-          <div>
-            <label>₿ per player (pride 9+)</label>
-            <input type="number" id="hgBand3Rate" min="0" step="50000" style="width:120px;">
-          </div>
-        </div>
-        <h3 class="admin-subheading">Youth (under-21)</h3>
-        <div class="row gov-subsidy-row">
-          <div>
-            <label>Grassroots max (≤)</label>
-            <input type="number" id="youthBand1Max" min="0" max="28" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>₿ per player</label>
-            <input type="number" id="youthBand1Rate" min="0" step="50000" style="width:120px;">
-          </div>
-          <div>
-            <label>Youth dev max (≤)</label>
-            <input type="number" id="youthBand2Max" min="0" max="28" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>₿ per player</label>
-            <input type="number" id="youthBand2Rate" min="0" step="50000" style="width:120px;">
-          </div>
-          <div>
-            <label>Academy max (≤)</label>
-            <input type="number" id="youthBand3Max" min="0" max="28" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>₿ per player</label>
-            <input type="number" id="youthBand3Rate" min="0" step="50000" style="width:120px;">
-          </div>
-          <div>
-            <label>Centre (8+) ₿ per player</label>
-            <input type="number" id="youthBand4Rate" min="0" step="50000" style="width:120px;">
-          </div>
-        </div>
-        <h3 class="admin-subheading">Weak squad bonus</h3>
-        <div class="row gov-subsidy-row">
-          <div>
-            <label>Max base rating</label>
-            <input type="number" id="bnbMaxRating" min="1" max="99" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>Min qualifying players</label>
-            <input type="number" id="bnbMinPlayers" min="1" max="28" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>Flat bonus (₿) when qualified</label>
-            <input type="number" id="bnbPerPlayer" min="0" step="50000" style="width:120px;">
-          </div>
-        </div>
-        <div class="row" style="margin-top:12px;">
-          <button type="button" id="saveGovSubsidyBtn" class="button">Save subsidy settings</button>
-          <button type="button" id="payGovSubsidyBtn" class="button">Pay government subsidies</button>
-        </div>
-        <div id="govSubsidyStatus" class="status-line"></div>
+      <div class="card">
+        <h2>Bills &amp; income</h2>
+        <p class="note">Most settings now live on dedicated pages under <b>Admin → Season Break → Bills &amp; Income</b> (TV revenue, subsidies, 34+, star tax, wage %, tax %, fines, stadium costs).</p>
       </div>
       <div class="card" id="sb-wage-taxes">
-        <h2>Wage bill &amp; taxes</h2>
-        <p class="note">Season charges: squad wages (sum of contract wages), 34+ rating fee, star maintenance (designated ★ players only — set on Squad). Emergency tax = % on cash above threshold. Run <code>competition_wages_taxes.sql</code> and <code>patches/club_squad_designations.sql</code>.</p>
-        <span id="sb-tax-34" class="nav-anchor" aria-hidden="true"></span>
+        <h2>Wage bills &amp; emergency tax</h2>
+        <p class="note">
+          Post season charges (squad wages, 34+, stars) and apply emergency tax on cash above threshold.
+          Configure 34+ and star rates on their own pages. Run <code>competition_wages_taxes.sql</code>.
+        </p>
         <div class="row gov-subsidy-row">
-          <div>
-            <label>34+ min rating</label>
-            <input type="number" id="tax34MinRating" min="1" max="99" step="1" style="width:70px;">
-          </div>
-          <div>
-            <label>₿ per 34+ player</label>
-            <input type="number" id="tax34PerPlayer" min="0" step="50000" style="width:120px;">
-          </div>
-        </div>
-        <span id="sb-star-tax" class="nav-anchor" aria-hidden="true"></span>
-        <div class="row gov-subsidy-row">
-          <div>
-            <label>Star tax from rating</label>
-            <input type="number" id="starTaxMinRating" min="1" max="99" step="1" style="width:70px;">
-          </div>
-          <div>
-            <label>₿ per designated star</label>
-            <input type="number" id="starTaxPerPlayer" min="0" step="50000" style="width:120px;">
-          </div>
-        </div>
-        <div class="row gov-subsidy-row" style="margin-top:8px;">
           <div>
             <label>Emergency tax %</label>
             <input type="number" id="emergencyTacPct" min="0" max="100" step="0.1" style="width:80px;">
@@ -126,38 +33,14 @@
           </div>
         </div>
         <div class="row" style="margin-top:12px;">
-          <button type="button" id="saveUpkeepTaxBtn" class="button">Save wage/tax settings</button>
+          <button type="button" id="saveUpkeepTaxBtn" class="button">Save emergency tax settings</button>
           <button type="button" id="postWageBillsBtn" class="button">Post season wage bills</button>
           <button type="button" id="applyEmergencyTacBtn" class="button">Apply emergency tax</button>
         </div>
         <div id="upkeepTaxStatus" class="status-line"></div>
       </div>
-      <div class="card" id="sb-wage-pct">
-        <h2>Wage %</h2>
-        <p class="note">Annual squad wage = market value × division % (run <code>player_wage_settings.sql</code>).</p>
-        <div class="row">
-          <div>
-            <label>SuperLeague %</label>
-            <input type="number" id="wagePctSL" min="0" max="100" step="0.1" value="5" style="width:100px;">
-          </div>
-          <div>
-            <label>Championship %</label>
-            <input type="number" id="wagePctCH" min="0" max="100" step="0.1" value="4" style="width:100px;">
-          </div>
-        </div>
-        <button type="button" id="saveWagePctBtn" class="button">Save wage %</button>
-        <div id="wagePctStatus" class="status-line"></div>
-      </div>
-      <div class="card">
-        <h2>Fines &amp; compensation</h2>
-        <p class="note">Instant <code>gov_fine_compensation</code> ledger lines from the Excel tariff list. <a href="admin_fines.html"><b>Admin → Fines &amp; compensation</b></a> (run <code>competition_fines.sql</code>).</p>
-      </div>
-      <div class="card" id="sb-tax-pct">
-        <h2>Tax %</h2>
-        <p class="note">League tax on transfers / income is handled via central bank ledger rules (<code>central_bank_phase1.sql</code>). A dedicated tax % admin control is not wired yet — set rates in SQL when introduced.</p>
-      </div>
     </div>
   </div>
-  <script type="module" src="admin_money.js?v=20260623-tv-revenue"></script>
+  <script type="module" src="admin_money.js?v=20260620-bills-split"></script>
 </body>
 </html>

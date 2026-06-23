@@ -90,41 +90,8 @@
         <p class="note" style="margin-top:14px;">
           Full ranked table (1–60) with status, expectation, fill % and 5-year history:
           <a href="admin_club_attendance.html"><b>Club attendance &amp; prestige</b></a>.
+          Stadium expansion costs: <a href="admin_stadium_costs.html"><b>Stadium costs</b></a>.
         </p>
-      </div>
-      <div class="card" id="sb-stadium-costs">
-        <h2>Stadium costs</h2>
-        <p class="note">Expansion cost per seat tiers (by <b>current</b> capacity). Owners: seats × tier rate. Day-7 cancel penalty goes to Rapid Build Co.</p>
-        <div class="row">
-          <div>
-            <label>Below tier mid (&lt;30k default)</label>
-            <input type="number" id="stadiumCostTier1" min="1" step="100" style="width:120px;">
-          </div>
-          <div>
-            <label>Tier mid → high</label>
-            <input type="number" id="stadiumCostTier2" min="1" step="100" style="width:120px;">
-          </div>
-          <div>
-            <label>Above tier high</label>
-            <input type="number" id="stadiumCostTier3" min="1" step="100" style="width:120px;">
-          </div>
-        </div>
-        <div class="row" style="margin-top:10px;">
-          <div>
-            <label>Tier mid capacity</label>
-            <input type="number" id="stadiumTierMid" min="1" step="1000" style="width:120px;">
-          </div>
-          <div>
-            <label>Tier high capacity</label>
-            <input type="number" id="stadiumTierHigh" min="1" step="1000" style="width:120px;">
-          </div>
-          <div>
-            <label>Day-7 cancel penalty</label>
-            <input type="number" id="stadiumCancelPenalty" min="0" step="100000" style="width:140px;">
-          </div>
-        </div>
-        <button type="button" id="saveStadiumCostBtn" class="button">Save stadium costs</button>
-        <div id="stadiumCostStatus" class="status-line"></div>
       </div>
       <div class="card" id="sb-backfill-gates">
         <h2>Backfill gate receipts</h2>

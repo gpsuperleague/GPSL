@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Wage % — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Wage %</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card" id="sb-wage-pct">
+        <h2>Wage %</h2>
+        <p class="note">
+          Annual squad wage = market value × division % (run <code>player_wage_settings.sql</code>).
+          Other money settings remain on <a href="admin_money.html">Money management</a>.
+        </p>
+        <div class="row">
+          <div>
+            <label>SuperLeague %</label>
+            <input type="number" id="wagePctSL" min="0" max="100" step="0.1" value="5" style="width:100px;">
+          </div>
+          <div>
+            <label>Championship %</label>
+            <input type="number" id="wagePctCH" min="0" max="100" step="0.1" value="4" style="width:100px;">
+          </div>
+        </div>
+        <button type="button" id="saveWagePctBtn" class="button">Save wage %</button>
+        <div id="wagePctStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_wage_pct.js"></script>
+</body>
+</html>

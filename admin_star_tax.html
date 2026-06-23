@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Star tax — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Star tax</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card" id="sb-star-tax">
+        <h2>Star maintenance</h2>
+        <p class="note">
+          Season charge for designated ★ players (set on Squad). Run <code>competition_wages_taxes.sql</code> and <code>patches/club_squad_designations.sql</code>.
+          Other money settings remain on <a href="admin_money.html">Money management</a>.
+        </p>
+        <div class="row gov-subsidy-row">
+          <div>
+            <label>Star tax from rating</label>
+            <input type="number" id="starTaxMinRating" min="1" max="99" step="1" style="width:70px;">
+          </div>
+          <div>
+            <label>₿ per designated star</label>
+            <input type="number" id="starTaxPerPlayer" min="0" step="50000" style="width:120px;">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" id="saveStarTaxBtn" class="button">Save star settings</button>
+        </div>
+        <div id="starTaxStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_star_tax.js"></script>
+</body>
+</html>
