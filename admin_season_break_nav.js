@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
-export const SEASON_BREAK_NAV_VERSION = "20260620-club-stadium-manager";
+export const SEASON_BREAK_NAV_VERSION = "20260620-manager-targets-nav";
 
 export const SEASON_BREAK_NAV = [
   {
@@ -89,6 +89,11 @@ export const SEASON_BREAK_NAV = [
         href: "admin_weather.html",
         page: "admin_weather",
       },
+      {
+        label: "Manager contract targets",
+        href: "admin_manager_targets.html",
+        page: "admin_manager_targets",
+      },
     ],
   },
   {
@@ -99,11 +104,6 @@ export const SEASON_BREAK_NAV = [
         label: "Set initial season challenges",
         href: "admin_challenges.html",
         page: "admin_challenges",
-      },
-      {
-        label: "Manager contract targets",
-        href: "admin_manager_targets.html",
-        page: "admin_manager_targets",
       },
     ],
   },
