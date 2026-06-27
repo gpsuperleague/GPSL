@@ -16,7 +16,7 @@ export const TESTING_ADMIN_NAV = [
     navDanger: true,
   },
   {
-    label: "Draft compliance seed",
+    label: "Draft Auction (Auto) Bids",
     href: "admin_test_draft_seed.html",
     page: "admin_test_draft_seed",
     navDanger: true,
