@@ -22,64 +22,175 @@
           <code>stadium_attendance_v2.sql</code>, then <b>Recompute club rankings</b>.
         </p>
         <h3 class="admin-subheading">Fill limits</h3>
-        <div class="row gov-subsidy-row">
-          <div><label>Min fill %</label><input type="number" id="attMinFill" min="0" max="100" step="1" style="width:80px;"></div>
-          <div><label>Max fill %</label><input type="number" id="attMaxFill" min="0" max="100" step="1" style="width:80px;"></div>
-          <div><label>Neutral fill %</label><input type="number" id="attNeutralFill" min="0" max="100" step="1" style="width:80px;"></div>
-          <div><label>Rolling seasons</label><input type="number" id="attRollingSeasons" min="1" max="10" step="1" style="width:70px;"></div>
+        <div class="admin-settings-grid cols-4">
+          <div>
+            <label>Min fill %</label>
+            <input type="number" id="attMinFill" min="0" max="100" step="1">
+          </div>
+          <div>
+            <label>Max fill %</label>
+            <input type="number" id="attMaxFill" min="0" max="100" step="1">
+          </div>
+          <div>
+            <label>Neutral fill %</label>
+            <input type="number" id="attNeutralFill" min="0" max="100" step="1">
+          </div>
+          <div>
+            <label>Rolling seasons</label>
+            <input type="number" id="attRollingSeasons" min="1" max="10" step="1">
+          </div>
         </div>
         <h3 class="admin-subheading">Club tier cutoffs (prestige rank)</h3>
-        <div class="row gov-subsidy-row">
-          <div><label>Big club ≤ rank</label><input type="number" id="attBigMaxRank" min="1" max="60" step="1" style="width:70px;"></div>
-          <div><label>Medium club ≤ rank</label><input type="number" id="attMediumMaxRank" min="1" max="60" step="1" style="width:70px;"></div>
-          <div><label>Capacity weight</label><input type="number" id="attCapWeight" min="0" max="2" step="0.01" style="width:80px;"></div>
-          <div><label>Capacity ref seats</label><input type="number" id="attCapRef" min="1000" step="1000" style="width:100px;"></div>
+        <div class="admin-settings-grid cols-4">
+          <div>
+            <label>Big club ≤ rank</label>
+            <input type="number" id="attBigMaxRank" min="1" max="60" step="1">
+          </div>
+          <div>
+            <label>Medium club ≤ rank</label>
+            <input type="number" id="attMediumMaxRank" min="1" max="60" step="1">
+          </div>
+          <div>
+            <label>Capacity weight</label>
+            <input type="number" id="attCapWeight" min="0" max="2" step="0.01">
+          </div>
+          <div>
+            <label>Capacity ref seats</label>
+            <input type="number" id="attCapRef" min="1000" step="1000">
+          </div>
         </div>
         <h3 class="admin-subheading">Sensitivity &amp; gap scale</h3>
-        <div class="row gov-subsidy-row">
-          <div><label>Big club sensitivity</label><input type="number" id="attBigSens" min="0" max="3" step="0.05" style="width:80px;"></div>
-          <div><label>Medium sensitivity</label><input type="number" id="attMedSens" min="0" max="3" step="0.05" style="width:80px;"></div>
-          <div><label>Low sensitivity</label><input type="number" id="attLowSens" min="0" max="3" step="0.05" style="width:80px;"></div>
-          <div><label>Overperform cap</label><input type="number" id="attOverCap" min="0" max="2" step="0.05" style="width:80px;"></div>
-          <div><label>Points gap scale</label><input type="number" id="attGapScale" min="0" max="10" step="0.1" style="width:80px;"></div>
+        <div class="admin-settings-grid cols-5">
+          <div>
+            <label>Big club sensitivity</label>
+            <input type="number" id="attBigSens" min="0" max="3" step="0.05">
+          </div>
+          <div>
+            <label>Medium sensitivity</label>
+            <input type="number" id="attMedSens" min="0" max="3" step="0.05">
+          </div>
+          <div>
+            <label>Low sensitivity</label>
+            <input type="number" id="attLowSens" min="0" max="3" step="0.05">
+          </div>
+          <div>
+            <label>Overperform cap</label>
+            <input type="number" id="attOverCap" min="0" max="2" step="0.05">
+          </div>
+          <div>
+            <label>Points gap scale</label>
+            <input type="number" id="attGapScale" min="0" max="10" step="0.1">
+          </div>
         </div>
         <h3 class="admin-subheading">Expectation vs performance weights</h3>
-        <div class="row gov-subsidy-row">
-          <div><label>League expect wt</label><input type="number" id="attLeagueExpWt" min="0" max="1" step="0.05" style="width:80px;"></div>
-          <div><label>Cup expect wt</label><input type="number" id="attCupExpWt" min="0" max="1" step="0.05" style="width:80px;"></div>
-          <div><label>League perf wt</label><input type="number" id="attLeaguePerfWt" min="0" max="1" step="0.05" style="width:80px;"></div>
-          <div><label>Cup perf wt</label><input type="number" id="attCupPerfWt" min="0" max="1" step="0.05" style="width:80px;"></div>
+        <div class="admin-settings-grid cols-4">
+          <div>
+            <label>League expect wt</label>
+            <input type="number" id="attLeagueExpWt" min="0" max="1" step="0.05">
+          </div>
+          <div>
+            <label>Cup expect wt</label>
+            <input type="number" id="attCupExpWt" min="0" max="1" step="0.05">
+          </div>
+          <div>
+            <label>League perf wt</label>
+            <input type="number" id="attLeaguePerfWt" min="0" max="1" step="0.05">
+          </div>
+          <div>
+            <label>Cup perf wt</label>
+            <input type="number" id="attCupPerfWt" min="0" max="1" step="0.05">
+          </div>
         </div>
         <h3 class="admin-subheading">Manager lift (medium/low clubs only)</h3>
-        <div class="row gov-subsidy-row">
-          <div><label>Lift from rating</label><input type="number" id="attMgrThreshold" min="1" max="99" step="1" style="width:70px;"></div>
-          <div><label>Max rating ref</label><input type="number" id="attMgrMaxRating" min="1" max="99" step="1" style="width:70px;"></div>
-          <div><label>Max pos lift (med)</label><input type="number" id="attMgrLiftMed" min="0" max="19" step="0.5" style="width:80px;"></div>
-          <div><label>Max pos lift (low)</label><input type="number" id="attMgrLiftLow" min="0" max="19" step="0.5" style="width:80px;"></div>
+        <div class="admin-settings-grid cols-4">
+          <div>
+            <label>Lift from rating</label>
+            <input type="number" id="attMgrThreshold" min="1" max="99" step="1">
+          </div>
+          <div>
+            <label>Max rating ref</label>
+            <input type="number" id="attMgrMaxRating" min="1" max="99" step="1">
+          </div>
+          <div>
+            <label>Max pos lift (med)</label>
+            <input type="number" id="attMgrLiftMed" min="0" max="19" step="0.5">
+          </div>
+          <div>
+            <label>Max pos lift (low)</label>
+            <input type="number" id="attMgrLiftLow" min="0" max="19" step="0.5">
+          </div>
         </div>
         <h3 class="admin-subheading">Expected cup points by zone</h3>
-        <div class="row gov-subsidy-row">
-          <div><label>Super8 zone</label><input type="number" id="attExpCupSuper8" min="0" max="20" step="0.25" style="width:80px;"></div>
-          <div><label>Plate zone</label><input type="number" id="attExpCupPlate" min="0" max="20" step="0.25" style="width:80px;"></div>
-          <div><label>Shield zone</label><input type="number" id="attExpCupShield" min="0" max="20" step="0.25" style="width:80px;"></div>
-          <div><label>Spoon zone</label><input type="number" id="attExpCupSpoon" min="0" max="20" step="0.25" style="width:80px;"></div>
-          <div><label>League cup default</label><input type="number" id="attExpCupLC" min="0" max="20" step="0.25" style="width:80px;"></div>
+        <div class="admin-settings-grid cols-5">
+          <div>
+            <label>Super8 zone</label>
+            <input type="number" id="attExpCupSuper8" min="0" max="20" step="0.25">
+          </div>
+          <div>
+            <label>Plate zone</label>
+            <input type="number" id="attExpCupPlate" min="0" max="20" step="0.25">
+          </div>
+          <div>
+            <label>Shield zone</label>
+            <input type="number" id="attExpCupShield" min="0" max="20" step="0.25">
+          </div>
+          <div>
+            <label>Spoon zone</label>
+            <input type="number" id="attExpCupSpoon" min="0" max="20" step="0.25">
+          </div>
+          <div>
+            <label>League cup default</label>
+            <input type="number" id="attExpCupLC" min="0" max="20" step="0.25">
+          </div>
         </div>
         <h3 class="admin-subheading">Drift, cushion &amp; performance bands (v2)</h3>
-        <div class="row gov-subsidy-row">
-          <div><label>Gate cap %</label><input type="number" id="attTargetFill" min="50" max="100" step="1" style="width:80px;"></div>
-          <div><label>Max display %</label><input type="number" id="attMaxDisplayFill" min="100" max="150" step="1" style="width:80px;"></div>
-          <div><label>Monthly drift %</label><input type="number" id="attMonthlyDrift" min="0.5" max="10" step="0.5" style="width:80px;"></div>
-          <div><label>Prestige step ±%</label><input type="number" id="attPrestigeStep" min="0" max="15" step="0.5" style="width:80px;"></div>
-          <div><label>Gain / on-target season %</label><input type="number" id="attSeasonGain" min="1" max="25" step="0.5" style="width:80px;"></div>
+        <div class="admin-settings-grid cols-5">
+          <div>
+            <label>Gate cap %</label>
+            <input type="number" id="attTargetFill" min="50" max="100" step="1">
+          </div>
+          <div>
+            <label>Max display %</label>
+            <input type="number" id="attMaxDisplayFill" min="100" max="150" step="1">
+          </div>
+          <div>
+            <label>Monthly drift %</label>
+            <input type="number" id="attMonthlyDrift" min="0.5" max="10" step="0.5">
+          </div>
+          <div>
+            <label>Prestige step ±%</label>
+            <input type="number" id="attPrestigeStep" min="0" max="15" step="0.5">
+          </div>
+          <div>
+            <label>Gain / on-target season %</label>
+            <input type="number" id="attSeasonGain" min="1" max="25" step="0.5">
+          </div>
         </div>
-        <div class="row gov-subsidy-row">
-          <div><label>Slight under −%</label><input type="number" id="attUnderSlight" min="0" max="30" step="1" style="width:80px;"></div>
-          <div><label>Bad under −%</label><input type="number" id="attUnderBad" min="0" max="40" step="1" style="width:80px;"></div>
-          <div><label>Abysmal under −%</label><input type="number" id="attUnderAbysmal" min="0" max="50" step="1" style="width:80px;"></div>
-          <div><label>Slight gap ratio</label><input type="number" id="attSlightGap" min="0.01" max="0.5" step="0.01" style="width:80px;"></div>
-          <div><label>Bad gap ratio</label><input type="number" id="attBadGap" min="0.05" max="0.75" step="0.01" style="width:80px;"></div>
-          <div><label>Expansion max cap</label><input type="number" id="attNewBuildCap" min="10000" step="1000" style="width:100px;"></div>
+        <div class="admin-settings-grid cols-6">
+          <div>
+            <label>Slight under −%</label>
+            <input type="number" id="attUnderSlight" min="0" max="30" step="1">
+          </div>
+          <div>
+            <label>Bad under −%</label>
+            <input type="number" id="attUnderBad" min="0" max="40" step="1">
+          </div>
+          <div>
+            <label>Abysmal under −%</label>
+            <input type="number" id="attUnderAbysmal" min="0" max="50" step="1">
+          </div>
+          <div>
+            <label>Slight gap ratio</label>
+            <input type="number" id="attSlightGap" min="0.01" max="0.5" step="0.01">
+          </div>
+          <div>
+            <label>Bad gap ratio</label>
+            <input type="number" id="attBadGap" min="0.05" max="0.75" step="0.01">
+          </div>
+          <div>
+            <label>Expansion max cap</label>
+            <input type="number" id="attNewBuildCap" min="10000" step="1000">
+          </div>
         </div>
         <div class="row" style="margin-top:12px;">
           <button type="button" id="saveAttendanceSettingsBtn" class="button">Save attendance settings</button>
