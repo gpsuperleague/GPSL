@@ -147,6 +147,15 @@ html.admin-root body.admin-page {
   margin-top: 0;
 }
 
+.admin-page .admin-settings-sheet-blurb {
+  grid-column: 1 / -1;
+  margin: 0 0 6px;
+  color: #888;
+  font-size: 12px;
+  line-height: 1.45;
+  max-width: 52em;
+}
+
 .admin-page .admin-settings-field {
   display: flex;
   flex-direction: column;

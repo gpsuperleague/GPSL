@@ -23,6 +23,11 @@
         </p>
         <div class="admin-settings-sheet">
           <h3 class="admin-subheading admin-settings-sheet-heading">Fill limits</h3>
+          <p class="admin-settings-sheet-blurb">
+            Bounds and baseline for stadium fill %. <b>Min</b> is the floor for gate revenue and display fill.
+            <b>Max</b> caps the legacy instant fill calculation. <b>Neutral</b> is fill when performance matches
+            expectation. <b>Rolling seasons</b> is how many past seasons count toward club prestige rank.
+          </p>
           <div class="admin-settings-field">
             <label>Min fill %</label>
             <input type="number" id="attMinFill" min="0" max="100" step="1">
@@ -40,6 +45,11 @@
             <input type="number" id="attRollingSeasons" min="1" max="10" step="1">
           </div>
           <h3 class="admin-subheading admin-settings-sheet-heading">Club tier cutoffs (prestige rank)</h3>
+          <p class="admin-settings-sheet-blurb">
+            Maps prestige rank to <b>big</b>, <b>medium</b>, or <b>low</b> club tier (drives sensitivity and manager lift).
+            Clubs ranked ≤ big cutoff are big; ≤ medium cutoff are medium; the rest are low.
+            <b>Capacity weight</b> and <b>ref seats</b> add a small stadium-size bonus when computing prestige rank.
+          </p>
           <div class="admin-settings-field">
             <label>Big club ≤ rank</label>
             <input type="number" id="attBigMaxRank" min="1" max="60" step="1">
@@ -57,6 +67,11 @@
             <input type="number" id="attCapRef" min="1000" step="1000" class="field-wide">
           </div>
           <h3 class="admin-subheading admin-settings-sheet-heading">Sensitivity &amp; gap scale</h3>
+          <p class="admin-settings-sheet-blurb">
+            How strongly live performance vs expectation moves fill in the legacy model.
+            Each tier has its own multiplier. <b>Points gap scale</b> converts the performance gap (actual − expected
+            composite points) into a fill % change. <b>Overperform cap</b> limits upside when a club beats expectations.
+          </p>
           <div class="admin-settings-field">
             <label>Big club sensitivity</label>
             <input type="number" id="attBigSens" min="0" max="3" step="0.05" class="field-decimal">
@@ -78,6 +93,10 @@
             <input type="number" id="attGapScale" min="0" max="10" step="0.1" class="field-decimal">
           </div>
           <h3 class="admin-subheading admin-settings-sheet-heading">Expectation vs performance weights</h3>
+          <p class="admin-settings-sheet-blurb">
+            Blend league and cup points into composite scores. Expect weights build the season target;
+            perf weights measure actual results. Typical split is 80% league / 20% cup for each side.
+          </p>
           <div class="admin-settings-field">
             <label>League expect wt</label>
             <input type="number" id="attLeagueExpWt" min="0" max="1" step="0.05" class="field-decimal">
@@ -95,6 +114,11 @@
             <input type="number" id="attCupPerfWt" min="0" max="1" step="0.05" class="field-decimal">
           </div>
           <h3 class="admin-subheading admin-settings-sheet-heading">Manager lift (medium/low clubs only)</h3>
+          <p class="admin-settings-sheet-blurb">
+            A strong manager rating raises expected league position for medium and low clubs only (never lowers big-club
+            expectations). Lift starts above <b>Lift from rating</b>, scales to full effect at <b>Max rating ref</b>,
+            and is capped by the max position lift for each tier.
+          </p>
           <div class="admin-settings-field">
             <label>Lift from rating</label>
             <input type="number" id="attMgrThreshold" min="1" max="99" step="1">
@@ -112,6 +136,10 @@
             <input type="number" id="attMgrLiftLow" min="0" max="19" step="0.5" class="field-decimal">
           </div>
           <h3 class="admin-subheading admin-settings-sheet-heading">Expected cup points by zone</h3>
+          <p class="admin-settings-sheet-blurb">
+            Cup points baked into season expectation from expected league position and division cup zone
+            (Super8, Plate, Shield, Spoon). <b>League cup default</b> applies when no main-cup zone matches.
+          </p>
           <div class="admin-settings-field">
             <label>Super8 zone</label>
             <input type="number" id="attExpCupSuper8" min="0" max="20" step="0.25" class="field-decimal">
@@ -133,6 +161,14 @@
             <input type="number" id="attExpCupLC" min="0" max="20" step="0.25" class="field-decimal">
           </div>
           <h3 class="admin-subheading admin-settings-sheet-heading">Drift, cushion &amp; performance bands (v2)</h3>
+          <p class="admin-settings-sheet-blurb">
+            v2 fill model: display fill drifts monthly toward a season target. <b>Gate cap</b> is the max % used for
+            gate revenue; <b>Max display</b> allows cushion above that. <b>Monthly drift</b> controls how fast fill
+            moves. <b>Prestige step</b> nudges base fill for top/bottom third of the prestige table.
+            <b>Gain / on-target season</b> is fill added each on-target season. Underperformance bands apply
+            <b>slight / bad / abysmal</b> penalties; <b>gap ratios</b> set when each band triggers.
+            <b>Expansion max cap</b> is the largest stadium capacity eligible for new-build expansion.
+          </p>
           <div class="admin-settings-field">
             <label>Gate cap %</label>
             <input type="number" id="attTargetFill" min="50" max="100" step="1">
