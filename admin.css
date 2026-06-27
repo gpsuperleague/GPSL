@@ -130,6 +130,61 @@ html.admin-root body.admin-page {
   color: #aaa;
 }
 
+.admin-page .admin-settings-sheet {
+  display: grid;
+  grid-template-columns: repeat(6, max-content);
+  column-gap: 20px;
+  row-gap: 10px;
+  margin-bottom: 12px;
+}
+
+.admin-page .admin-settings-sheet-heading {
+  grid-column: 1 / -1;
+  margin: 14px 0 2px;
+}
+
+.admin-page .admin-settings-sheet-heading:first-child {
+  margin-top: 0;
+}
+
+.admin-page .admin-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-page .admin-settings-field label {
+  font-size: 12px;
+  color: #aaa;
+  line-height: 1.35;
+  min-height: 2.7em;
+}
+
+.admin-page .admin-settings-field input[type="number"] {
+  padding: 6px 8px;
+  background: #222;
+  border: 1px solid #444;
+  color: #ddd;
+  border-radius: 5px;
+  box-sizing: border-box;
+  width: 5.5ch;
+}
+
+.admin-page .admin-settings-field input.field-decimal {
+  width: 6.5ch;
+}
+
+.admin-page .admin-settings-field input.field-wide {
+  width: 9ch;
+}
+
+@media (max-width: 720px) {
+  .admin-page .admin-settings-sheet {
+    grid-template-columns: repeat(2, max-content);
+  }
+}
+
 .admin-page .admin-settings-grid {
   display: grid;
   gap: 10px 20px;
