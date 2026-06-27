@@ -132,20 +132,20 @@ html.admin-root body.admin-page {
 
 .admin-page .admin-settings-grid {
   display: grid;
-  gap: 10px 14px;
+  gap: 10px 20px;
   margin-bottom: 10px;
 }
 
 .admin-page .admin-settings-grid.cols-4 {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(4, auto);
 }
 
 .admin-page .admin-settings-grid.cols-5 {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(5, auto);
 }
 
 .admin-page .admin-settings-grid.cols-6 {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(6, auto);
 }
 
 .admin-page .admin-settings-grid > div {
@@ -162,16 +162,29 @@ html.admin-root body.admin-page {
   min-height: 2.7em;
 }
 
-.admin-page .admin-settings-grid input {
-  width: 100%;
-  max-width: 100%;
+.admin-page .admin-settings-grid input[type="number"] {
+  padding: 6px 8px;
+  background: #222;
+  border: 1px solid #444;
+  color: #ddd;
+  border-radius: 5px;
+  box-sizing: border-box;
+  width: 5.5ch;
+}
+
+.admin-page .admin-settings-grid input.field-decimal {
+  width: 6.5ch;
+}
+
+.admin-page .admin-settings-grid input.field-wide {
+  width: 9ch;
 }
 
 @media (max-width: 720px) {
   .admin-page .admin-settings-grid.cols-4,
   .admin-page .admin-settings-grid.cols-5,
   .admin-page .admin-settings-grid.cols-6 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(2, auto);
   }
 }
 
