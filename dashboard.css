@@ -1929,16 +1929,18 @@ a.ssc-chip:hover {
 .tile-grid,
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 14px;
   margin-top: 12px;
 }
 
 .dashboard-tile-label {
   position: relative;
   z-index: 1;
-  line-height: 1.2;
-  font-size: inherit;
+  line-height: 1.25;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(var(--club-accent-rgb), 0.68);
   hyphens: auto;
   overflow-wrap: anywhere;
 }
@@ -1961,6 +1963,11 @@ a.ssc-chip:hover {
   font-weight: bold;
   color: var(--club-tile-text, var(--club-accent));
   box-sizing: border-box;
+}
+
+.dashboard-tile {
+  min-height: 88px;
+  padding: 16px 12px;
 }
 
 .tile:hover,
