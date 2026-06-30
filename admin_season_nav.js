@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260622-transfer-window-page";
+export const SEASON_ADMIN_NAV_VERSION = "20260622-in-progress-nav";
 
 const SEASON_CALENDAR_NAV_ITEM = {
   label: "GPSL season calendar",
@@ -165,8 +165,16 @@ export const SEASON_ADMIN_NAV = [
   },
 ];
 
+/** WIP admin tools — add links here as pages are built. */
+export const SEASON_MGMT_IN_PROGRESS_NAV = [];
+
 /** Season Management workflow — Mid Season / Playoffs / Close Season. */
 export const SEASON_MGMT_ADMIN_NAV = [
+  {
+    id: "in_progress",
+    label: "In Progress",
+    items: SEASON_MGMT_IN_PROGRESS_NAV,
+  },
   {
     id: "mid_season",
     label: "Mid Season",
