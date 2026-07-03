@@ -1,7 +1,9 @@
 /** GPSL top navigation — single source of links (pages unchanged). */
 
+import { APP_VERSION } from "./app_version.js";
+
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
-export const NAV_CONFIG_VERSION = "20260703-site-map";
+export const NAV_CONFIG_VERSION = APP_VERSION;
 
 const seasonNavMod = await import(
   `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`

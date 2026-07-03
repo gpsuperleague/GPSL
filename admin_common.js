@@ -1,4 +1,5 @@
-import { supabase, initGlobal, isGpslAdminUser } from "./global.js?v=20260621-checklist-presteason";
+import { APP_VERSION } from "./app_version.js";
+import { supabase, initGlobal, isGpslAdminUser } from `./global.js?v=${APP_VERSION}`;
 
 /** Apply dark admin chrome immediately (avoids white flash before module loads). */
 export function primeAdminPageChrome() {
