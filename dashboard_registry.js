@@ -174,6 +174,7 @@ export const DASHBOARD_PANELS = [
   p("finances_accounts", "Season Accounts", "finances_accounts.html"),
   p("dashboard", "Dashboard", "dashboard.html"),
   p("admin", "GPSL Admin", "admin.html", { adminOnly: true }),
+  p("admin_site_map", "Site map", "admin_site_map.html", { adminOnly: true }),
   p("admin_owners", "Owner Admin", "admin_owners.html", { adminOnly: true }),
   p("admin_transfers", "Transfer Admin", "admin_transfers.html", { adminOnly: true }),
   p("admin_transfer_window", "Transfer window", "admin_transfer_window.html", { adminOnly: true }),

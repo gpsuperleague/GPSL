@@ -4,6 +4,11 @@ import { formatNavLabel } from "./nav_label.js";
 
 export const TESTING_ADMIN_NAV = [
   {
+    label: "Site map",
+    href: "admin_site_map.html",
+    page: "admin_site_map",
+  },
+  {
     label: "Test environment reset",
     href: "admin_test_reset.html",
     page: "admin_test_reset",
