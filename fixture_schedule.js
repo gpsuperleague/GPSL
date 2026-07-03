@@ -261,8 +261,9 @@ function render() {
       setStatus("Accepting…");
       const res = await acceptProposal(pending.id);
       if (!res.ok) {
-        setStatus(res.msg, true);
+        setStatus(res.msg, !res.soft);
         acceptBtn.disabled = false;
+        if (res.soft) await reload();
         return;
       }
       setStatus("Kick-off agreed.");

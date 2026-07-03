@@ -77,10 +77,24 @@ export async function proposeKickoff(fixtureId, kickoffAt) {
 }
 
 export async function acceptProposal(proposalId) {
-  const { error } = await supabase.rpc("fixture_schedule_accept", {
+  const { data, error } = await supabase.rpc("fixture_schedule_accept", {
     p_proposal_id: proposalId,
   });
   if (error) return { ok: false, msg: error.message };
+  if (data && data.ok === false) {
+    const softCodes = new Set([
+      "already_accepted",
+      "already_agreed",
+      "superseded",
+      "withdrawn",
+      "not_pending",
+    ]);
+    return {
+      ok: false,
+      msg: data.message || "Could not accept proposal",
+      soft: softCodes.has(data.code),
+    };
+  }
   return { ok: true };
 }
 

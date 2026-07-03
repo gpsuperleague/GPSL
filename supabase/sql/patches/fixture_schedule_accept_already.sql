@@ -1,8 +1,10 @@
--- Clearer message when re-accepting an already-agreed match time.
--- Run after match_scheduling_phase1.sql (and phase2 if applied).
+-- Idempotent accept: already-agreed returns HTTP 200 + jsonb (no console 400).
+-- Run after match_scheduling_phase1.sql (replaces fixture_schedule_accept_already.sql).
+
+DROP FUNCTION IF EXISTS public.fixture_schedule_accept(bigint);
 
 CREATE OR REPLACE FUNCTION public.fixture_schedule_accept(p_proposal_id bigint)
-RETURNS void
+RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
@@ -13,7 +15,6 @@ DECLARE
   v_any_proposal public.competition_fixture_schedule_proposal;
   v_schedule public.competition_fixture_schedule;
   v_fixture public.competition_fixtures;
-  v_opponent text;
   v_fmt text;
   v_body text;
 BEGIN
@@ -48,27 +49,46 @@ BEGIN
       )
     THEN
       v_fmt := public.match_schedule_format_kickoff_uk(v_any_proposal.kickoff_at);
-      RAISE EXCEPTION 'This match time was already accepted (%).', v_fmt;
+      RETURN jsonb_build_object(
+        'ok', false,
+        'code', 'already_accepted',
+        'message', format('This match time was already accepted (%s).', v_fmt)
+      );
     END IF;
 
     IF v_schedule.status = 'agreed' AND v_schedule.agreed_kickoff_at IS NOT NULL THEN
       v_fmt := public.match_schedule_format_kickoff_uk(v_schedule.agreed_kickoff_at);
-      RAISE EXCEPTION 'A kick-off time is already agreed for this match (%).', v_fmt;
+      RETURN jsonb_build_object(
+        'ok', false,
+        'code', 'already_agreed',
+        'message', format('A kick-off time is already agreed for this match (%s).', v_fmt)
+      );
     END IF;
 
     IF v_any_proposal.status = 'superseded' THEN
-      RAISE EXCEPTION 'This proposal was replaced — open Schedule to see the latest offer.';
+      RETURN jsonb_build_object(
+        'ok', false,
+        'code', 'superseded',
+        'message', 'This proposal was replaced — open Schedule to see the latest offer.'
+      );
     END IF;
 
     IF v_any_proposal.status = 'withdrawn' THEN
-      RAISE EXCEPTION 'This proposal is no longer available.';
+      RETURN jsonb_build_object(
+        'ok', false,
+        'code', 'withdrawn',
+        'message', 'This proposal is no longer available.'
+      );
     END IF;
 
-    RAISE EXCEPTION 'Proposal not found or no longer pending';
+    RETURN jsonb_build_object(
+      'ok', false,
+      'code', 'not_pending',
+      'message', 'Proposal not found or no longer pending.'
+    );
   END IF;
 
   SELECT * INTO v_fixture FROM public.competition_fixtures WHERE id = v_proposal.fixture_id;
-  v_opponent := public.competition_fixture_opponent(v_proposal.fixture_id, v_club);
 
   IF v_club NOT IN (v_fixture.home_club_short_name, v_fixture.away_club_short_name) THEN
     RAISE EXCEPTION 'You are not in this fixture';
@@ -109,6 +129,8 @@ BEGIN
     p_proposal_id,
     'accept:' || p_proposal_id::text
   );
+
+  RETURN jsonb_build_object('ok', true);
 END;
 $function$;
 

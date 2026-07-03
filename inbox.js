@@ -395,7 +395,12 @@ async function renderInbox() {
         acceptBtn.disabled = true;
         try {
           const res = await acceptProposal(msg.schedule_proposal_id);
-          if (!res.ok) throw new Error(res.msg);
+          if (!res.ok) {
+            setStatus(res.soft ? res.msg : "❌ " + res.msg, !res.soft);
+            acceptBtn.disabled = false;
+            if (res.soft) await renderInbox();
+            return;
+          }
           setStatus("Kick-off agreed.");
           await renderInbox();
           await refreshInboxNavBadge();
