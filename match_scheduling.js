@@ -122,6 +122,52 @@ export async function emergencyDrop(fixtureId) {
   return { ok: true };
 }
 
+export async function requestMutualOverridePlayNow(fixtureId) {
+  const { data, error } = await supabase.rpc("fixture_mutual_override_request", {
+    p_fixture_id: fixtureId,
+    p_kind: "play_now",
+  });
+  if (error) return { ok: false, msg: error.message };
+  return { ok: true, data };
+}
+
+export async function requestMutualOverrideNewTime(fixtureId, kickoffAt) {
+  const { data, error } = await supabase.rpc("fixture_mutual_override_request", {
+    p_fixture_id: fixtureId,
+    p_kind: "new_time",
+    p_kickoff_at: kickoffAt,
+  });
+  if (error) return { ok: false, msg: error.message };
+  return { ok: true, data };
+}
+
+export async function confirmMutualOverride(fixtureId) {
+  const { data, error } = await supabase.rpc("fixture_mutual_override_confirm", {
+    p_fixture_id: fixtureId,
+  });
+  if (error) return { ok: false, msg: error.message };
+  if (data && data.ok === false) {
+    const softCodes = new Set(["no_pending", "already_confirmed"]);
+    return {
+      ok: false,
+      msg: data.message || "Could not confirm override",
+      soft: softCodes.has(data.code),
+    };
+  }
+  return { ok: true, msg: data?.message, applied: data?.applied };
+}
+
+export async function cancelMutualOverride(fixtureId) {
+  const { data, error } = await supabase.rpc("fixture_mutual_override_cancel", {
+    p_fixture_id: fixtureId,
+  });
+  if (error) return { ok: false, msg: error.message };
+  if (data && data.ok === false) {
+    return { ok: false, msg: data.message, soft: true };
+  }
+  return { ok: true, msg: data?.message };
+}
+
 /** Client mirror of server play window (after Phase 2). */
 export function canPlayAgreedFixture(fixture) {
   if (!fixture || fixture.status !== "scheduled") return false;

@@ -8,6 +8,10 @@ import {
   checkInToFixture,
   voluntaryRescheduleDrop,
   emergencyDrop,
+  requestMutualOverridePlayNow,
+  requestMutualOverrideNewTime,
+  confirmMutualOverride,
+  cancelMutualOverride,
   formatKickoffPair,
   UK_TZ,
 } from "./match_scheduling.js";
@@ -43,10 +47,58 @@ function renderAgreedPanel(root, f, sch) {
   const awayTz = ctx.away_timezone || UK_TZ;
   const ci = ctx.checkin || {};
   const al = ctx.allowances || {};
+  const mo = ctx.mutual_override;
+  const moOpts = ctx.mutual_override_options || {};
   const homeName = fullClubName(f.home_club_short_name);
   const awayName = fullClubName(f.away_club_short_name);
 
   const checkinStatus = `Home (${homeName}): ${ci.home_checked_in ? "checked in ✓" : "waiting…"} · Away (${awayName}): ${ci.away_checked_in ? "checked in ✓" : "waiting…"}`;
+
+  let mutualHtml = "";
+  if (mo) {
+    const fromName = fullClubName(mo.requested_by_club_short_name);
+    const kindLabel = mo.kind === "play_now" ? "play now" : "change kick-off";
+    mutualHtml = `
+      <div class="panel mutual-panel">
+        <h2>Mutual override pending</h2>
+        <p class="status-pending">
+          <b>${fromName}</b> wants to ${kindLabel}:
+          ${formatKickoffPair(mo.proposed_kickoff_at, homeTz, awayTz)}
+        </p>
+        <p class="meta">Both clubs must agree. No reschedule or emergency allowance is used.</p>
+        <div class="actions">
+          ${mo.can_confirm ? '<button type="button" id="confirmMutualBtn" class="button">Confirm</button>' : ""}
+          ${mo.my_confirmed && !mo.can_confirm ? '<span class="meta">You confirmed — waiting for opponent.</span>' : ""}
+          ${mo.can_cancel ? '<button type="button" id="cancelMutualBtn" class="button secondary">Cancel request</button>' : ""}
+        </div>
+      </div>
+    `;
+  } else if (!sch.mutual_override_used && (moOpts.can_request_play_now || moOpts.can_request_new_time)) {
+    mutualHtml = `
+      <div class="panel mutual-panel">
+        <h2>Both agree? (no allowance used)</h2>
+        <p class="meta">If you have already agreed on Discord, you can update kick-off without using your monthly reschedule or an emergency drop. One change per fixture.</p>
+        <div class="actions">
+          ${
+            moOpts.can_request_play_now && moOpts.play_now_kickoff_at
+              ? `<button type="button" id="playNowMutualBtn" class="button">Play now (${formatKickoffPair(moOpts.play_now_kickoff_at, homeTz, awayTz)})</button>`
+              : ""
+          }
+        </div>
+        ${
+          moOpts.can_request_new_time
+            ? `<p class="meta" style="margin-top:12px;">Or pick a new mutual slot:</p>
+               <div class="slot-list" id="mutualSlotList"></div>
+               <div class="actions">
+                 <button type="button" id="newTimeMutualBtn" class="button secondary" disabled>Change kick-off (both agree)</button>
+               </div>`
+            : ""
+        }
+      </div>
+    `;
+  } else if (sch.mutual_override_used) {
+    mutualHtml = `<p class="meta">Mutual kick-off change already used for this fixture.</p>`;
+  }
 
   root.innerHTML = `
     <div class="panel">
@@ -62,6 +114,7 @@ function renderAgreedPanel(root, f, sch) {
         ${al.can_emergency_drop ? '<button type="button" id="emergencyDropBtn" class="button secondary">Emergency drop (&lt;24h)</button>' : ""}
       </div>
     </div>
+    ${mutualHtml}
   `;
 
   const checkInBtn = document.getElementById("checkInBtn");
@@ -115,6 +168,107 @@ function renderAgreedPanel(root, f, sch) {
         return;
       }
       setStatus("Emergency drop recorded — reschedule on this page.");
+      await reload();
+    };
+  }
+
+  let mutualSelectedKickoff = null;
+  const mutualSlotList = document.getElementById("mutualSlotList");
+  if (mutualSlotList && moOpts.can_request_new_time) {
+    const slots = ctx.intersection_slots || [];
+    for (const iso of slots) {
+      if (iso === sch.agreed_kickoff_at) continue;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "slot-btn";
+      btn.innerHTML = formatKickoffPair(iso, homeTz, awayTz).replace(/ · /g, "<br>");
+      btn.onclick = () => {
+        mutualSelectedKickoff = iso;
+        mutualSlotList.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        const newTimeBtn = document.getElementById("newTimeMutualBtn");
+        if (newTimeBtn) newTimeBtn.disabled = false;
+      };
+      mutualSlotList.appendChild(btn);
+    }
+  }
+
+  const playNowBtn = document.getElementById("playNowMutualBtn");
+  if (playNowBtn) {
+    playNowBtn.onclick = async () => {
+      if (
+        !confirm(
+          "Request play now? Your opponent must confirm. No reschedule allowance is used."
+        )
+      ) {
+        return;
+      }
+      playNowBtn.disabled = true;
+      setStatus("Sending play-now request…");
+      const res = await requestMutualOverridePlayNow(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, true);
+        playNowBtn.disabled = false;
+        return;
+      }
+      setStatus("Request sent — waiting for opponent to confirm.");
+      await reload();
+    };
+  }
+
+  const newTimeBtn = document.getElementById("newTimeMutualBtn");
+  if (newTimeBtn) {
+    newTimeBtn.onclick = async () => {
+      if (!mutualSelectedKickoff) return;
+      if (
+        !confirm(
+          "Request this new kick-off? Your opponent must confirm. No reschedule allowance is used."
+        )
+      ) {
+        return;
+      }
+      newTimeBtn.disabled = true;
+      setStatus("Sending new-time request…");
+      const res = await requestMutualOverrideNewTime(fixtureId, mutualSelectedKickoff);
+      if (!res.ok) {
+        setStatus(res.msg, true);
+        newTimeBtn.disabled = false;
+        return;
+      }
+      setStatus("Request sent — waiting for opponent to confirm.");
+      await reload();
+    };
+  }
+
+  const confirmMutualBtn = document.getElementById("confirmMutualBtn");
+  if (confirmMutualBtn) {
+    confirmMutualBtn.onclick = async () => {
+      confirmMutualBtn.disabled = true;
+      setStatus("Confirming…");
+      const res = await confirmMutualOverride(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, !res.soft);
+        confirmMutualBtn.disabled = false;
+        if (res.soft) await reload();
+        return;
+      }
+      setStatus(res.applied ? "Kick-off updated." : res.msg || "Confirmed.");
+      await reload();
+    };
+  }
+
+  const cancelMutualBtn = document.getElementById("cancelMutualBtn");
+  if (cancelMutualBtn) {
+    cancelMutualBtn.onclick = async () => {
+      if (!confirm("Cancel this mutual override request?")) return;
+      cancelMutualBtn.disabled = true;
+      const res = await cancelMutualOverride(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, !res.soft);
+        cancelMutualBtn.disabled = false;
+        return;
+      }
+      setStatus("Request cancelled.");
       await reload();
     };
   }
@@ -317,7 +471,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         ? "Scheduling not deployed — run supabase/sql/patches/match_scheduling_phase1.sql"
         : msg.includes("fixture_check_in")
           ? "Phase 2 not deployed — run supabase/sql/patches/match_scheduling_phase2.sql"
-          : msg,
+          : msg.includes("fixture_mutual_override")
+            ? "Phase 3 not deployed — run supabase/sql/patches/match_scheduling_phase3_mutual_override.sql"
+            : msg,
       true
     );
   }

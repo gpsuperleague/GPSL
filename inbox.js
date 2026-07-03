@@ -2,7 +2,7 @@ import { supabase, initGlobal, refreshInboxNavBadge } from "./global.js";
 import { rejectFixtureResult } from "./competition.js";
 import { loadInboxMessages } from "./competition_inbox.js";
 import { inboxActionForMessage } from "./competition_inbox_actions.js";
-import { acceptProposal } from "./match_scheduling.js";
+import { acceptProposal, confirmMutualOverride } from "./match_scheduling.js";
 
 let myClub = { short: null, name: null };
 let myOwnerId = null;
@@ -424,6 +424,52 @@ async function renderInbox() {
 
       actions.appendChild(acceptBtn);
       actions.appendChild(counterBtn);
+    } else if (
+      !viewArchived &&
+      !isArchived &&
+      msg.message_type === "match_mutual_override_requested" &&
+      !msg.read_at &&
+      msg.fixture_id &&
+      myClub.short &&
+      (msg.recipient_club_short_name || "").toUpperCase() ===
+        (myClub.short || "").toUpperCase()
+    ) {
+      const confirmMutualBtn = document.createElement("button");
+      confirmMutualBtn.className = "button";
+      confirmMutualBtn.textContent = "Confirm change";
+      confirmMutualBtn.onclick = async () => {
+        confirmMutualBtn.disabled = true;
+        try {
+          const res = await confirmMutualOverride(msg.fixture_id);
+          if (!res.ok) {
+            setStatus(res.soft ? res.msg : "❌ " + res.msg, !res.soft);
+            confirmMutualBtn.disabled = false;
+            if (res.soft) await renderInbox();
+            return;
+          }
+          setStatus(res.applied ? "Kick-off updated." : res.msg || "Confirmed.");
+          await renderInbox();
+          await refreshInboxNavBadge();
+        } catch (err) {
+          setStatus("❌ " + err.message, true);
+          confirmMutualBtn.disabled = false;
+        }
+      };
+
+      const scheduleBtn = document.createElement("button");
+      scheduleBtn.className = "button secondary";
+      scheduleBtn.textContent = "Open schedule";
+      scheduleBtn.onclick = () => {
+        const href =
+          action?.href ||
+          (msg.fixture_id
+            ? `fixture_schedule.html?fixture=${msg.fixture_id}`
+            : "fixture_schedule.html");
+        window.location = href;
+      };
+
+      actions.appendChild(confirmMutualBtn);
+      actions.appendChild(scheduleBtn);
     } else if (!viewArchived && !isArchived) {
       if (action?.href) {
         const openBtn = document.createElement("button");
