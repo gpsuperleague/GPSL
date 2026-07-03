@@ -1,5 +1,4 @@
-import { APP_VERSION } from "./app_version.js";
-import { supabase, initGlobal, isGpslAdminUser } from `./global.js?v=${APP_VERSION}`;
+import { supabase, initGlobal, isGpslAdminUser } from "./global.js";
 
 /** Apply dark admin chrome immediately (avoids white flash before module loads). */
 export function primeAdminPageChrome() {

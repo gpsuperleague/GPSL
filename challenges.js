@@ -1,5 +1,4 @@
-import { APP_VERSION } from "./app_version.js";
-import { supabase, initGlobal } from `./global.js?v=${APP_VERSION}`;
+import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 
