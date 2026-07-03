@@ -29,8 +29,20 @@ const { ownerAdminNavHasActive, renderOwnerAdminNavHtml } = ownerNavMod;
 const { testingAdminNavHasActive, renderTestingAdminNavHtml } = testingNavMod;
 
 /** Render admin mega-menu blocks (Testing, Season management, Season Break, Owners & accounts). */
+function ensureTestingSiteMapLink(html, pathname) {
+  if (html.includes("admin_site_map.html")) return html;
+  const file = normalizeNavPath(pathname);
+  const active = file === "admin_site_map.html" ? " active" : "";
+  return html.replace(
+    /class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">/,
+    `class="nav-subgroup-panel nav-subgroup-panel-mega" role="group"><a href="admin_site_map.html" class="nav-link nav-link-sub${active}">Site map</a>`
+  );
+}
+
 export function renderAdminMegaNavHtml(item, pathname, search = "") {
-  if (item?.testingMega) return renderTestingAdminNavHtml(pathname, search);
+  if (item?.testingMega) {
+    return ensureTestingSiteMapLink(renderTestingAdminNavHtml(pathname, search), pathname);
+  }
   if (item?.seasonMega) return renderSeasonAdminNavHtml(pathname, search);
   if (item?.seasonMgmtMega) return renderSeasonMgmtAdminNavHtml(pathname, search);
   if (item?.seasonBreakMega) return renderSeasonBreakNavHtml(pathname, search);
@@ -281,7 +293,9 @@ export function isNavItemActive(item, pathname, search = "") {
 export function sectionHasActiveItem(section, pathname, search) {
   if (!section?.items?.length) return false;
   return section.items.some((item) => {
-    if (item.testingMega) return testingAdminNavHasActive(pathname, search);
+    if (item.testingMega) {
+      return testingAdminNavHasActive(pathname, search) || normalizeNavPath(pathname) === "admin_site_map.html";
+    }
     if (item.seasonMega) return seasonAdminNavHasActive(pathname, search);
     if (item.seasonMgmtMega) return seasonMgmtAdminNavHasActive(pathname, search);
     if (item.seasonBreakMega) return seasonBreakNavHasActive(pathname, search);
