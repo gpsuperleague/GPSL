@@ -92,6 +92,34 @@ export function catchUpBadgeHtml() {
   return '<span class="catch-up-badge">Catch-up</span>';
 }
 
+/** Human-readable response deadline line for schedule UI. */
+export function formatResponseDeadlineLine(deadline, myClubShort) {
+  if (!deadline?.due_at) return "";
+  const mine = deadline.my_turn === true;
+  const overdue = deadline.overdue === true;
+  const uk = deadline.due_at_uk || formatKickoff(deadline.due_at, UK_TZ) + " UK";
+  const misses =
+    Number(deadline.miss_count) > 0
+      ? ` · ${deadline.miss_count} missed deadline${Number(deadline.miss_count) === 1 ? "" : "s"} (₿2.5m each)`
+      : "";
+  if (mine && overdue) {
+    return `Response overdue since ${uk}${misses} — respond now to stop further fines.`;
+  }
+  if (mine) {
+    return `Your response due by ${uk}${misses}.`;
+  }
+  if (deadline.required_club_short_name && myClubShort) {
+    const waiting =
+      (deadline.required_club_short_name || "").toUpperCase() ===
+      (myClubShort || "").toUpperCase()
+        ? "You"
+        : "Opponent";
+    if (waiting === "You") return `Your response due by ${uk}${misses}.`;
+    return `Waiting for opponent — response due ${uk}${misses}.`;
+  }
+  return `Response due ${uk}${misses}.`;
+}
+
 export async function loadScheduleContext(fixtureId) {
   const { data, error } = await supabase.rpc("match_schedule_fixture_context", {
     p_fixture_id: fixtureId,

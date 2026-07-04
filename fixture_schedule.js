@@ -18,6 +18,7 @@ import {
   filterSelectableKickoffSlots,
   isSelectableKickoffSlot,
   formatOwnerNowLine,
+  formatResponseDeadlineLine,
 } from "./match_scheduling.js";
 
 let ctx = null;
@@ -385,6 +386,10 @@ function render() {
   const ownerTz = ctx.my_timezone || UK_TZ;
   const selectableSlots = filterSelectableKickoffSlots(slots, ownerTz);
   const pastHidden = slots.length - selectableSlots.length;
+  const responseLine = formatResponseDeadlineLine(ctx.response_deadline, myClub.short);
+  const responseHtml = responseLine
+    ? `<p class="meta" style="color:${ctx.response_deadline?.overdue && ctx.response_deadline?.my_turn ? "#f88" : "#fc6"};">${responseLine}</p>`
+    : "";
 
   if (meta) {
     const comp = formatFixtureCompetition(f);
@@ -398,6 +403,7 @@ function render() {
     pendingHtml = `
       <div class="panel">
         <h2>Pending proposal</h2>
+        ${responseHtml}
         <p class="status-pending">
           <b>${fullClubName(pending.proposed_by_club_short_name)}</b> proposed
           ${formatKickoffPair(pending.kickoff_at, homeTz, awayTz)}
@@ -439,10 +445,10 @@ function render() {
     ${catchUpBannerHtml()}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
+      ${responseHtml}
       <p class="meta">
         Home proposes first. Pick a 30-minute block where <b>both</b> clubs are available
         (${slotCountLine}).
-        Proposals: home ${sch.home_proposal_count}/2 · away ${sch.away_proposal_count}/2.
       </p>
       ${
         !selectableSlots.length

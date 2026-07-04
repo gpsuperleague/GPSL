@@ -640,7 +640,10 @@ BEGIN
       'home_proposal_count', v_home_count,
       'away_proposal_count', v_away_count,
       'discord_hint_shown', v_discord_hint,
-      'mutual_override_used', v_mutual_used
+      'mutual_override_used', v_mutual_used,
+      'response_due_at', CASE WHEN v_schedule_found THEN v_schedule.response_due_at ELSE NULL END,
+      'response_required_club_short_name', CASE WHEN v_schedule_found THEN v_schedule.response_required_club_short_name ELSE NULL END,
+      'response_miss_count', CASE WHEN v_schedule_found THEN coalesce(v_schedule.response_miss_count, 0) ELSE 0 END
     ),
     'pending_proposal', CASE WHEN v_pending.id IS NULL THEN NULL ELSE jsonb_build_object(
       'id', v_pending.id,
@@ -680,6 +683,7 @@ BEGIN
       AND v_pending.proposed_by_club_short_name <> v_club
       AND v_status = 'negotiating'
     ),
+    'response_deadline', public.match_schedule_response_deadline_json(p_fixture_id, v_club),
     'mutual_override_options', jsonb_build_object(
       'can_request_play_now', v_can_play_now,
       'play_now_kickoff_at', v_play_now_kickoff,
