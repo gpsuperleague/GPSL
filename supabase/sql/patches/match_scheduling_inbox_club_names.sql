@@ -37,6 +37,7 @@ AS $function$
 DECLARE
   v_club text;
   v_club_name text;
+  v_opponent text;
   v_fixture public.competition_fixtures;
   v_schedule public.competition_fixture_schedule;
   v_proposal_id bigint;
@@ -110,13 +111,16 @@ BEGIN
   END;
   v_body := v_club_name || ' proposed ' || v_fmt || E'.\nOpen Schedule to accept or suggest another time.';
 
-  PERFORM public.match_schedule_notify_pair(
+  v_opponent := public.competition_fixture_opponent(p_fixture_id, v_club);
+
+  PERFORM public.match_schedule_notify_opponent(
     v_fixture,
     CASE WHEN v_schedule.status = 'unscheduled' THEN 'match_time_proposed' ELSE 'match_time_countered' END,
     v_title,
     v_body,
-    v_proposal_id,
-    'prop:' || v_proposal_id::text
+    v_opponent,
+    'prop:' || v_proposal_id::text || ':' || v_opponent,
+    v_proposal_id
   );
 
   RETURN v_proposal_id;

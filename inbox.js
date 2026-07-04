@@ -1,5 +1,5 @@
 import { supabase, initGlobal, refreshInboxNavBadge } from "./global.js";
-import { rejectFixtureResult } from "./competition.js";
+import { rejectFixtureResult, normalizeClubKey } from "./competition.js";
 import { loadInboxMessages } from "./competition_inbox.js";
 import { inboxActionForMessage } from "./competition_inbox_actions.js";
 import { acceptProposal, confirmMutualOverride } from "./match_scheduling.js";
@@ -252,6 +252,44 @@ function appendMarkReadButton(actions, div, msg) {
   actions.appendChild(readBtn);
 }
 
+async function loadScheduleProposalProposers(proposalIds) {
+  const ids = [...new Set(proposalIds.filter((id) => Number.isFinite(id) && id > 0))];
+  if (!ids.length) return new Map();
+
+  const { data, error } = await supabase
+    .from("competition_fixture_schedule_proposal")
+    .select("id, proposed_by_club_short_name")
+    .in("id", ids);
+
+  if (error) {
+    console.warn("inbox: proposal lookup failed", error);
+    return new Map();
+  }
+
+  return new Map(
+    (data || []).map((row) => [Number(row.id), row.proposed_by_club_short_name])
+  );
+}
+
+function isScheduleProposalRespondent(msg, proposalProposers) {
+  if (!msg?.schedule_proposal_id || !myClub.short) return false;
+  const proposer = proposalProposers.get(Number(msg.schedule_proposal_id));
+  if (!proposer) return true;
+  return normalizeClubKey(proposer) !== normalizeClubKey(myClub.short);
+}
+
+function scheduleInboxActionLabel(msg, proposalProposers) {
+  if (
+    (msg.message_type === "match_time_proposed" ||
+      msg.message_type === "match_time_countered") &&
+    msg.schedule_proposal_id &&
+    !isScheduleProposalRespondent(msg, proposalProposers)
+  ) {
+    return "View schedule";
+  }
+  return null;
+}
+
 async function renderInbox() {
   const list = document.getElementById("inboxList");
   const toolbar = document.getElementById("inboxToolbar");
@@ -279,6 +317,17 @@ async function renderInbox() {
     updateToolbarButtons();
     return;
   }
+
+  const proposalProposers = await loadScheduleProposalProposers(
+    messages
+      .filter(
+        (m) =>
+          m.schedule_proposal_id &&
+          (m.message_type === "match_time_proposed" ||
+            m.message_type === "match_time_countered")
+      )
+      .map((m) => Number(m.schedule_proposal_id))
+  );
 
   list.innerHTML = "";
 
@@ -386,7 +435,8 @@ async function renderInbox() {
       msg.schedule_proposal_id &&
       myClub.short &&
       (msg.recipient_club_short_name || "").toUpperCase() ===
-        (myClub.short || "").toUpperCase()
+        (myClub.short || "").toUpperCase() &&
+      isScheduleProposalRespondent(msg, proposalProposers)
     ) {
       const acceptBtn = document.createElement("button");
       acceptBtn.className = "button";
@@ -474,7 +524,8 @@ async function renderInbox() {
       if (action?.href) {
         const openBtn = document.createElement("button");
         openBtn.className = "button";
-        openBtn.textContent = action.label;
+        openBtn.textContent =
+          scheduleInboxActionLabel(msg, proposalProposers) || action.label;
         openBtn.onclick = () => {
           window.location = action.href;
         };

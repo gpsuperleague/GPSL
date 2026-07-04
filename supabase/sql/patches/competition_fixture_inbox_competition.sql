@@ -235,7 +235,8 @@ CREATE OR REPLACE FUNCTION public.match_schedule_notify_opponent(
   p_title text,
   p_body text,
   p_opponent_club text,
-  p_dedupe_suffix text
+  p_dedupe_suffix text,
+  p_proposal_id bigint DEFAULT NULL
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -263,7 +264,7 @@ BEGIN
     'schedule:' || p_fixture.id::text || ':' || p_dedupe_suffix,
     p_fixture.gpsl_month,
     p_fixture.season_id,
-    NULL
+    p_proposal_id
   );
 END;
 $function$;
