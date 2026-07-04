@@ -8,6 +8,7 @@ import {
   checkInToFixture,
   voluntaryRescheduleDrop,
   emergencyDrop,
+  catchUpResetSchedule,
   requestMutualOverridePlayNow,
   requestMutualOverrideNewTime,
   confirmMutualOverride,
@@ -64,6 +65,22 @@ function appendKickoffSlotButtons(container, slots, { homeTz, awayTz, ownerTz, o
   }
 
   return count;
+}
+
+function catchUpBannerHtml() {
+  if (!ctx?.is_catch_up) return "";
+  const playMonth = GPSL_MONTH_LABELS[ctx.fixture?.gpsl_month] || ctx.fixture?.gpsl_month || "original";
+  const prop = ctx.proposal_window || {};
+  const schedMonth =
+    prop.gpsl_month && GPSL_MONTH_LABELS[prop.gpsl_month]
+      ? GPSL_MONTH_LABELS[prop.gpsl_month]
+      : prop.gpsl_month
+        ? prop.gpsl_month
+        : "the current GPSL month";
+  return `<div class="catch-up-banner">
+    <strong>Catch-up match</strong> — originally due in <b>${playMonth}</b>.
+    Arrange and play in <b>${schedMonth}</b> (or a later GPSL month) until completed.
+  </div>`;
 }
 
 function renderAgreedPanel(root, f, sch) {
@@ -126,6 +143,7 @@ function renderAgreedPanel(root, f, sch) {
   }
 
   root.innerHTML = `
+    ${catchUpBannerHtml()}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
       <p class="status-agreed"><b>Kick-off agreed:</b> ${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
@@ -135,6 +153,7 @@ function renderAgreedPanel(root, f, sch) {
       <div class="actions">
         ${ci.can_check_in ? '<button type="button" id="checkInBtn" class="button">Check in now</button>' : ""}
         ${ci.can_play ? `<a href="matchday.html?fixture=${f.id}" class="button" style="text-decoration:none;display:inline-block;">Enter result on Match Day</a>` : ""}
+        ${al.can_catch_up_reset ? '<button type="button" id="catchUpResetBtn" class="button secondary">Reset for catch-up (pick new time)</button>' : ""}
         ${al.can_voluntary_drop ? '<button type="button" id="voluntaryDropBtn" class="button secondary">Drop & reschedule (24h+ notice)</button>' : ""}
         ${al.can_emergency_drop ? '<button type="button" id="emergencyDropBtn" class="button secondary">Emergency drop (&lt;24h)</button>' : ""}
       </div>
@@ -170,6 +189,28 @@ function renderAgreedPanel(root, f, sch) {
         return;
       }
       setStatus("Returned to scheduling — propose a new time.");
+      await reload();
+    };
+  }
+
+  const catchUpResetBtn = document.getElementById("catchUpResetBtn");
+  if (catchUpResetBtn) {
+    catchUpResetBtn.onclick = async () => {
+      if (
+        !confirm(
+          "Reset this catch-up fixture and pick a new kick-off in the current GPSL month? Does not use your reschedule allowance."
+        )
+      ) {
+        return;
+      }
+      catchUpResetBtn.disabled = true;
+      const res = await catchUpResetSchedule(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, true);
+        catchUpResetBtn.disabled = false;
+        return;
+      }
+      setStatus("Catch-up reset — propose a new time in the current GPSL month.");
       await reload();
     };
   }
@@ -382,12 +423,20 @@ function render() {
       ? "Counter-propose"
       : "Suggest another time";
 
+  const propMonth =
+    ctx.proposal_window?.gpsl_month && GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
+      ? GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
+      : ctx.is_catch_up
+        ? "the current GPSL month"
+        : "this GPSL month";
+
   const slotCountLine =
     selectableSlots.length === slots.length
-      ? `${selectableSlots.length} mutual slot${selectableSlots.length === 1 ? "" : "s"} in this GPSL month`
+      ? `${selectableSlots.length} mutual slot${selectableSlots.length === 1 ? "" : "s"} in ${propMonth}`
       : `${selectableSlots.length} future slot${selectableSlots.length === 1 ? "" : "s"} (${pastHidden} past slot${pastHidden === 1 ? "" : "s"} hidden for your timezone)`;
 
   root.innerHTML = `
+    ${catchUpBannerHtml()}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
       <p class="meta">
@@ -400,6 +449,13 @@ function render() {
           ? slots.length
             ? '<p class="meta" style="color:#f88;">All mutual slots are in the past for your timezone — update availability for later weeks or wait for the next GPSL month.</p>'
             : '<p class="meta" style="color:#f88;">No mutual slots — update your availability on <a href="club_details.html" style="color:#ff9900;">Club Details</a> and ask your opponent to do the same.</p>'
+          : ""
+      }
+      ${
+        ctx.allowances?.can_catch_up_reset
+          ? `<div class="actions">
+              <button type="button" id="catchUpResetBtn" class="button secondary">Reset catch-up scheduling</button>
+            </div>`
           : ""
       }
     </div>
@@ -446,6 +502,28 @@ function render() {
         return;
       }
       setStatus("Proposal sent — check your inbox.");
+      await reload();
+    };
+  }
+
+  const catchUpResetBtn = document.getElementById("catchUpResetBtn");
+  if (catchUpResetBtn) {
+    catchUpResetBtn.onclick = async () => {
+      if (
+        !confirm(
+          "Reset this catch-up fixture and pick a new kick-off in the current GPSL month? Does not use your reschedule allowance."
+        )
+      ) {
+        return;
+      }
+      catchUpResetBtn.disabled = true;
+      const res = await catchUpResetSchedule(fixtureId);
+      if (!res.ok) {
+        setStatus(res.msg, true);
+        catchUpResetBtn.disabled = false;
+        return;
+      }
+      setStatus("Catch-up reset — propose a new time in the current GPSL month.");
       await reload();
     };
   }

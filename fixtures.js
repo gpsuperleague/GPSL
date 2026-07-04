@@ -25,7 +25,7 @@ import {
   fixtureStadiumLabel,
 } from "./competition_conditions.js";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
-import { scheduleActionLabel, formatKickoff, UK_TZ } from "./match_scheduling.js";
+import { scheduleActionLabel, formatKickoff, UK_TZ, catchUpBadgeHtml, isCatchUpFixture } from "./match_scheduling.js";
 
 let calendarStatus = null;
 let holidayContext = null;
@@ -111,9 +111,13 @@ function actionCell(fixture) {
 }
 
 function fixtureRowHtml(fixture) {
+  const catchUp = isCatchUpFixture(fixture);
+  const catchUpCell = catchUp
+    ? `<span class="catch-up-cell">${catchUpBadgeHtml()}</span>`
+    : "";
   return `
     <td>${clubWithOwnerHtml(fixture.home_club_name, fixture.home_club_short_name, "block")}</td>
-    <td class="score">${formatFixtureScore(fixture, myClub)}</td>
+    <td class="score">${formatFixtureScore(fixture, myClub)}${catchUpCell}</td>
     <td>${clubWithOwnerHtml(fixture.away_club_name, fixture.away_club_short_name, "block")}</td>
     <td class="fixture-stadium">${fixtureStadiumCell(fixture)}</td>
     <td class="fixture-continent">${fixtureContinentCell(fixture)}</td>
@@ -275,9 +279,15 @@ function renderFixtures() {
   for (const { matchday, fixtures: rows } of groups) {
     const sample = rows[0];
     const monthLabel = GPSL_MONTH_LABELS[sample.gpsl_month] || sample.gpsl_month;
+    const catchUpCount = rows.filter((f) => isCatchUpFixture(f)).length;
     const monthLive =
       !calendarStatus?.calendar_configured ||
       calendarStatus.active_gpsl_month === sample.gpsl_month;
+    const monthStatus = monthLive
+      ? ""
+      : catchUpCount
+        ? ` · <span style="color:#888">play month closed</span> · <span class="catch-up-badge">${catchUpCount} catch-up</span>`
+        : ' · <span style="color:#888">play month closed</span>';
     const block = document.createElement("div");
     block.className = "matchday-block";
     block.dataset.gpslMonth = sample.gpsl_month || "";
@@ -286,7 +296,7 @@ function renderFixtures() {
     block.innerHTML = `
       <div class="matchday-head">
         <span>Matchday ${matchday}</span>
-        <span>${monthLabel} · Week ${matchday}${monthLive ? "" : " · <span style=\"color:#888\">locked</span>"}</span>
+        <span>${monthLabel} · Week ${matchday}${monthStatus}</span>
       </div>
       <table class="gpsl-table">
         <thead><tr>${FIXTURE_TABLE_HEAD}</tr></thead>

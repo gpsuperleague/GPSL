@@ -84,6 +84,14 @@ export function scheduleUrl(fixtureId) {
   return `fixture_schedule.html?fixture=${encodeURIComponent(String(fixtureId))}`;
 }
 
+export function isCatchUpFixture(fixture) {
+  return fixture?.is_catch_up === true;
+}
+
+export function catchUpBadgeHtml() {
+  return '<span class="catch-up-badge">Catch-up</span>';
+}
+
 export async function loadScheduleContext(fixtureId) {
   const { data, error } = await supabase.rpc("match_schedule_fixture_context", {
     p_fixture_id: fixtureId,
@@ -209,6 +217,14 @@ export async function voluntaryRescheduleDrop(fixtureId) {
   return { ok: true };
 }
 
+export async function catchUpResetSchedule(fixtureId) {
+  const { error } = await supabase.rpc("fixture_catch_up_reset_schedule", {
+    p_fixture_id: fixtureId,
+  });
+  if (error) return { ok: false, msg: error.message };
+  return { ok: true };
+}
+
 export async function emergencyDrop(fixtureId) {
   const { error } = await supabase.rpc("fixture_emergency_drop", {
     p_fixture_id: fixtureId,
@@ -303,26 +319,52 @@ export const GRID_HOURS = Array.from({ length: 18 }, (_, i) => 6 + i);
 export function scheduleActionLabel(fixture, myClubShort) {
   if (!fixture || !myClubShort) return null;
   if (fixture.status !== "scheduled") return null;
+  const catchUp = isCatchUpFixture(fixture);
   if (fixture.schedule_status === "agreed" && fixture.agreed_kickoff_at) {
-    return { label: "Match day", href: scheduleUrl(fixture.id), muted: true };
+    const kickoff = new Date(fixture.agreed_kickoff_at).getTime();
+    const stale = Number.isFinite(kickoff) && kickoff < Date.now();
+    if (catchUp && stale) {
+      return { label: "Catch-up · re-schedule", href: scheduleUrl(fixture.id) };
+    }
+    return {
+      label: catchUp ? "Catch-up · match day" : "Match day",
+      href: scheduleUrl(fixture.id),
+      muted: true,
+    };
   }
   const isHome =
     (fixture.home_club_short_name || "").toUpperCase() ===
     (myClubShort || "").toUpperCase();
   if (fixture.schedule_status === "unscheduled" && isHome) {
-    return { label: "Propose time", href: scheduleUrl(fixture.id) };
+    return {
+      label: catchUp ? "Catch-up · propose" : "Propose time",
+      href: scheduleUrl(fixture.id),
+    };
   }
   if (
     fixture.schedule_status === "negotiating" &&
     fixture.schedule_pending_proposal_id
   ) {
-    return { label: "Respond", href: scheduleUrl(fixture.id) };
+    return {
+      label: catchUp ? "Catch-up · respond" : "Respond",
+      href: scheduleUrl(fixture.id),
+    };
   }
   if (fixture.schedule_status === "negotiating" && isHome) {
-    return { label: "Schedule", href: scheduleUrl(fixture.id) };
+    return {
+      label: catchUp ? "Catch-up · schedule" : "Schedule",
+      href: scheduleUrl(fixture.id),
+    };
   }
   if (fixture.schedule_status === "unscheduled" && !isHome) {
-    return { label: "Awaiting home", href: scheduleUrl(fixture.id), muted: true };
+    return {
+      label: catchUp ? "Catch-up · awaiting home" : "Awaiting home",
+      href: scheduleUrl(fixture.id),
+      muted: true,
+    };
   }
-  return { label: "Schedule", href: scheduleUrl(fixture.id) };
+  return {
+    label: catchUp ? "Catch-up · schedule" : "Schedule",
+    href: scheduleUrl(fixture.id),
+  };
 }

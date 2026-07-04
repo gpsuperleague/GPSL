@@ -906,11 +906,17 @@ export function canSubmitResult(
       active &&
       String(fixture.gpsl_month || "").toLowerCase() ===
         String(active).toLowerCase();
+    const catchUp = fixture.is_catch_up === true;
 
     if (
       !inActiveMonth &&
+      !catchUp &&
       !isFixtureHolidayPlayable(fixture, clubIdentity, holidayContext)
     ) {
+      return false;
+    }
+
+    if (catchUp && !active) {
       return false;
     }
   }
