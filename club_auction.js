@@ -156,6 +156,9 @@ function renderClubCell(row) {
 
 let ownerId = null;
 let ownerTag = null;
+let auctionOnboardingReady = false;
+let needsOnboardingTimezone = false;
+let needsOnboardingAvailability = false;
 let budget = 0;
 let auctionState = null;
 let pollTimer = null;
@@ -217,6 +220,9 @@ async function loadOwnerContext() {
   }
 
   ownerTag = self?.owner_tag || null;
+  auctionOnboardingReady = Boolean(self?.auction_onboarding_ready);
+  needsOnboardingTimezone = Boolean(self?.needs_onboarding_timezone);
+  needsOnboardingAvailability = Boolean(self?.needs_onboarding_availability);
   budget = Number(self?.pending_starting_balance) || 0;
 
   const intro = document.getElementById("clubAuctionIntro");
@@ -326,6 +332,17 @@ function renderStatus() {
     return;
   }
 
+  if (!auctionOnboardingReady) {
+    const parts = [];
+    if (needsOnboardingTimezone) parts.push("timezone");
+    if (needsOnboardingAvailability) parts.push("match availability");
+    const detail = parts.length ? ` (${parts.join(" and ")})` : "";
+    el.innerHTML =
+      `Complete onboarding on <a href="awaiting_club.html" style="color:#ff9900;">awaiting club</a>${detail} before bidding.`;
+    el.style.color = "#faa";
+    return;
+  }
+
   if (auctionState.bidding_open) {
     const start = getDraftAuctionStartTime();
     const phase = start
@@ -401,7 +418,8 @@ async function loadListings() {
   }
 
   listingsCache = listings;
-  const canBid = !viewOnly && auctionState?.bidding_open && ownerTag;
+  const canBid =
+    !viewOnly && auctionState?.bidding_open && ownerTag && auctionOnboardingReady;
   tbody.innerHTML = "";
 
   for (const row of listings) {

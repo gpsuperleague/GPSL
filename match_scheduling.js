@@ -93,6 +93,28 @@ export async function setClubTimezoneForClub(clubShortName, timezone) {
   return { ok: true };
 }
 
+export async function loadOnboardingAvailabilityContext() {
+  const { data, error } = await supabase.rpc("owner_onboarding_availability_context");
+  if (error) throw error;
+  return data;
+}
+
+export async function saveOnboardingWeeklyAvailability(slots) {
+  const { error } = await supabase.rpc("owner_onboarding_availability_save_weekly", {
+    p_slots: slots,
+  });
+  if (error) return { ok: false, msg: error.message };
+  return { ok: true };
+}
+
+export async function setOnboardingTimezone(timezone) {
+  const { error } = await supabase.rpc("owner_onboarding_timezone_set", {
+    p_timezone: timezone,
+  });
+  if (error) return { ok: false, msg: error.message };
+  return { ok: true };
+}
+
 export async function proposeKickoff(fixtureId, kickoffAt) {
   const { data, error } = await supabase.rpc("fixture_schedule_propose", {
     p_fixture_id: fixtureId,

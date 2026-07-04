@@ -1,12 +1,49 @@
 import { supabase, initGlobal } from "./global.js";
 import { getAuthUser } from "./supabase_client.js";
+import { mountAvailabilityPanel } from "./owner_availability.js";
+import {
+  loadOnboardingAvailabilityContext,
+  saveOnboardingWeeklyAvailability,
+  setOnboardingTimezone,
+} from "./match_scheduling.js";
 
 let clubAssignmentPollTimer = null;
+let registrySelf = null;
 
 function formatMoney(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
   return `₿${Math.round(v).toLocaleString("en-GB")}`;
+}
+
+function updateAuctionRoomGate() {
+  const ready = Boolean(registrySelf?.auction_onboarding_ready);
+  const linkWrap = document.getElementById("auctionRoomLinkWrap");
+  const blocked = document.getElementById("auctionRoomBlocked");
+  const readyLine = document.getElementById("availabilityReadyLine");
+
+  if (linkWrap) linkWrap.hidden = !ready;
+  if (blocked) blocked.hidden = ready;
+
+  if (readyLine) {
+    if (ready) {
+      readyLine.hidden = false;
+      readyLine.textContent =
+        "Owner tag, timezone, and availability are set — you can enter the club auction room.";
+    } else {
+      readyLine.hidden = true;
+      readyLine.textContent = "";
+    }
+  }
+}
+
+async function refreshRegistrySelf() {
+  const { data, error } = await supabase.rpc("owner_registry_get_self");
+  if (!error && data) {
+    registrySelf = data;
+    updateAuctionRoomGate();
+  }
+  return { data, error };
 }
 
 async function showWonAwaitingSettlement(userId, statusEl) {
@@ -49,6 +86,30 @@ async function showWonAwaitingSettlement(userId, statusEl) {
   }, 15000);
 }
 
+async function mountOnboardingAvailability() {
+  const root = document.getElementById("onboardingAvailabilityRoot");
+  if (!root) return;
+
+  await mountAvailabilityPanel(root, {
+    loadContext: loadOnboardingAvailabilityContext,
+    saveWeekly: async (slots) => {
+      const tzSel = document.getElementById("availTimezoneSelect");
+      if (registrySelf?.needs_onboarding_timezone && tzSel?.value) {
+        await setOnboardingTimezone(tzSel.value);
+      }
+      const res = await saveOnboardingWeeklyAvailability(slots);
+      if (res.ok) await refreshRegistrySelf();
+      return res;
+    },
+    setTimezone: async (timezone) => {
+      const res = await setOnboardingTimezone(timezone);
+      if (res.ok) await refreshRegistrySelf();
+      return res;
+    },
+    showHolidays: false,
+  });
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   const user = await getAuthUser();
   if (!user) {
@@ -74,6 +135,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  registrySelf = self;
+
   if (self?.has_club) {
     window.location = "dashboard.html";
     return;
@@ -96,6 +159,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   await showWonAwaitingSettlement(user.id, statusEl);
+  updateAuctionRoomGate();
 
   const displayTag = (self?.owner_tag || "").trim();
   if (displayTag && tagInput) {
@@ -120,7 +184,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       scheduleEl.textContent = "Club auction is not enabled yet (admin: Transfer management).";
       scheduleEl.style.color = "#faa";
     } else if (auctionState.bidding_open) {
-      scheduleEl.textContent = "Bidding is open now — use the club auction room.";
+      scheduleEl.textContent = "Bidding is open now — complete onboarding above, then use the club auction room.";
       scheduleEl.style.color = "#9f9";
     } else if (auctionState.start_time) {
       const start = new Date(auctionState.start_time);
@@ -131,6 +195,8 @@ document.addEventListener("DOMContentLoaded", async () => {
       scheduleEl.style.color = "#faa";
     }
   }
+
+  await mountOnboardingAvailability();
 
   document.getElementById("saveTagBtn")?.addEventListener("click", async () => {
     if (tagInput?.disabled) return;
@@ -163,5 +229,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       tagLockedLine.textContent =
         `Tag locked: “${data?.owner_tag || tag}” — shown on club auction bids and your club if you win.`;
     }
+    await refreshRegistrySelf();
   });
 });
