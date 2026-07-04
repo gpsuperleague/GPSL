@@ -29,19 +29,32 @@ const { ownerAdminNavHasActive, renderOwnerAdminNavHtml } = ownerNavMod;
 const { testingAdminNavHasActive, renderTestingAdminNavHtml } = testingNavMod;
 
 /** Render admin mega-menu blocks (Testing, Season management, Season Break, Owners & accounts). */
-function ensureTestingSiteMapLink(html, pathname) {
-  if (html.includes("admin_site_map.html")) return html;
+function ensureTestingNavLinks(html, pathname) {
   const file = normalizeNavPath(pathname);
-  const active = file === "admin_site_map.html" ? " active" : "";
-  return html.replace(
-    /class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">/,
-    `class="nav-subgroup-panel nav-subgroup-panel-mega" role="group"><a href="admin_site_map.html" class="nav-link nav-link-sub${active}">Site map</a>`
-  );
+  let out = html;
+
+  if (!out.includes("admin_site_map.html")) {
+    const active = file === "admin_site_map.html" ? " active" : "";
+    out = out.replace(
+      /class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">/,
+      `class="nav-subgroup-panel nav-subgroup-panel-mega" role="group"><a href="admin_site_map.html" class="nav-link nav-link-sub${active}">Site map</a>`
+    );
+  }
+
+  if (!out.includes("admin_test_club_availability.html")) {
+    const active = file === "admin_test_club_availability.html" ? " active" : "";
+    out = out.replace(
+      /(<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">[\s\S]*)(<\/div>\s*<\/div>\s*)$/,
+      `$1<a href="admin_test_club_availability.html" class="nav-link nav-link-sub${active}">Club availability &amp; timezone</a>$2`
+    );
+  }
+
+  return out;
 }
 
 export function renderAdminMegaNavHtml(item, pathname, search = "") {
   if (item?.testingMega) {
-    return ensureTestingSiteMapLink(renderTestingAdminNavHtml(pathname, search), pathname);
+    return ensureTestingNavLinks(renderTestingAdminNavHtml(pathname, search), pathname);
   }
   if (item?.seasonMega) return renderSeasonAdminNavHtml(pathname, search);
   if (item?.seasonMgmtMega) return renderSeasonMgmtAdminNavHtml(pathname, search);
@@ -294,7 +307,11 @@ export function sectionHasActiveItem(section, pathname, search) {
   if (!section?.items?.length) return false;
   return section.items.some((item) => {
     if (item.testingMega) {
-      return testingAdminNavHasActive(pathname, search) || normalizeNavPath(pathname) === "admin_site_map.html";
+      return (
+        testingAdminNavHasActive(pathname, search)
+        || normalizeNavPath(pathname) === "admin_site_map.html"
+        || normalizeNavPath(pathname) === "admin_test_club_availability.html"
+      );
     }
     if (item.seasonMega) return seasonAdminNavHasActive(pathname, search);
     if (item.seasonMgmtMega) return seasonMgmtAdminNavHasActive(pathname, search);
