@@ -14,6 +14,9 @@ import {
   cancelMutualOverride,
   formatKickoffPair,
   UK_TZ,
+  filterSelectableKickoffSlots,
+  isSelectableKickoffSlot,
+  formatOwnerNowLine,
 } from "./match_scheduling.js";
 
 let ctx = null;
@@ -43,9 +46,30 @@ function fixtureTitle(f) {
   return comp ? `${comp} · ${home} vs ${away}` : `${home} vs ${away}`;
 }
 
+function appendKickoffSlotButtons(container, slots, { homeTz, awayTz, ownerTz, onSelect, excludeIso }) {
+  if (!container) return 0;
+
+  const selectable = filterSelectableKickoffSlots(slots, ownerTz);
+  let count = 0;
+
+  for (const iso of selectable) {
+    if (excludeIso && iso === excludeIso) continue;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "slot-btn";
+    btn.innerHTML = formatKickoffPair(iso, homeTz, awayTz).replace(/ · /g, "<br>");
+    btn.onclick = () => onSelect(iso, btn, container);
+    container.appendChild(btn);
+    count += 1;
+  }
+
+  return count;
+}
+
 function renderAgreedPanel(root, f, sch) {
   const homeTz = ctx.home_timezone || UK_TZ;
   const awayTz = ctx.away_timezone || UK_TZ;
+  const ownerTz = ctx.my_timezone || UK_TZ;
   const ci = ctx.checkin || {};
   const al = ctx.allowances || {};
   const mo = ctx.mutual_override;
@@ -176,21 +200,26 @@ function renderAgreedPanel(root, f, sch) {
   let mutualSelectedKickoff = null;
   const mutualSlotList = document.getElementById("mutualSlotList");
   if (mutualSlotList && moOpts.can_request_new_time) {
-    const slots = ctx.intersection_slots || [];
-    for (const iso of slots) {
-      if (iso === sch.agreed_kickoff_at) continue;
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "slot-btn";
-      btn.innerHTML = formatKickoffPair(iso, homeTz, awayTz).replace(/ · /g, "<br>");
-      btn.onclick = () => {
-        mutualSelectedKickoff = iso;
-        mutualSlotList.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
-        btn.classList.add("selected");
-        const newTimeBtn = document.getElementById("newTimeMutualBtn");
-        if (newTimeBtn) newTimeBtn.disabled = false;
-      };
-      mutualSlotList.appendChild(btn);
+    const mutualCount = appendKickoffSlotButtons(
+      mutualSlotList,
+      ctx.intersection_slots || [],
+      {
+        homeTz,
+        awayTz,
+        ownerTz,
+        excludeIso: sch.agreed_kickoff_at,
+        onSelect: (iso, btn, list) => {
+          mutualSelectedKickoff = iso;
+          list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
+          btn.classList.add("selected");
+          const newTimeBtn = document.getElementById("newTimeMutualBtn");
+          if (newTimeBtn) newTimeBtn.disabled = false;
+        },
+      }
+    );
+    if (!mutualCount) {
+      mutualSlotList.innerHTML =
+        '<p class="meta" style="color:#888;">No future mutual slots — past times are hidden.</p>';
     }
   }
 
@@ -287,11 +316,6 @@ function render() {
   const pending = ctx.pending_proposal;
   const monthLabel = GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month;
 
-  if (meta) {
-    const comp = formatFixtureCompetition(f);
-    meta.textContent = `${comp} · ${monthLabel} · Your role: ${ctx.my_role}`;
-  }
-
   if (discord) {
     discord.hidden = !sch.discord_hint_shown;
   }
@@ -317,10 +341,19 @@ function render() {
   const slots = ctx.intersection_slots || [];
   const homeTz = ctx.home_timezone || UK_TZ;
   const awayTz = ctx.away_timezone || UK_TZ;
+  const ownerTz = ctx.my_timezone || UK_TZ;
+  const selectableSlots = filterSelectableKickoffSlots(slots, ownerTz);
+  const pastHidden = slots.length - selectableSlots.length;
+
+  if (meta) {
+    const comp = formatFixtureCompetition(f);
+    meta.textContent = `${comp} · ${monthLabel} · Your role: ${ctx.my_role} · ${formatOwnerNowLine(ownerTz)}`;
+  }
 
   let pendingHtml = "";
   if (pending) {
     const fromOpponent = pending.proposed_by_club_short_name !== myClub.short;
+    const pendingStillValid = isSelectableKickoffSlot(pending.kickoff_at, ownerTz);
     pendingHtml = `
       <div class="panel">
         <h2>Pending proposal</h2>
@@ -329,11 +362,13 @@ function render() {
           ${formatKickoffPair(pending.kickoff_at, homeTz, awayTz)}
         </p>
         ${
-          fromOpponent && ctx.can_respond
-            ? `<div class="actions">
-                <button type="button" id="acceptBtn" class="button">Accept this time</button>
-              </div>`
-            : "<p class=\"meta\">Waiting for your opponent to respond.</p>"
+          !pendingStillValid
+            ? '<p class="meta" style="color:#f88;">This time has passed — ask your opponent to counter-propose a future slot.</p>'
+            : fromOpponent && ctx.can_respond
+              ? `<div class="actions">
+                  <button type="button" id="acceptBtn" class="button">Accept this time</button>
+                </div>`
+              : "<p class=\"meta\">Waiting for your opponent to respond.</p>"
         }
       </div>
     `;
@@ -347,17 +382,24 @@ function render() {
       ? "Counter-propose"
       : "Suggest another time";
 
+  const slotCountLine =
+    selectableSlots.length === slots.length
+      ? `${selectableSlots.length} mutual slot${selectableSlots.length === 1 ? "" : "s"} in this GPSL month`
+      : `${selectableSlots.length} future slot${selectableSlots.length === 1 ? "" : "s"} (${pastHidden} past slot${pastHidden === 1 ? "" : "s"} hidden for your timezone)`;
+
   root.innerHTML = `
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
       <p class="meta">
         Home proposes first. Pick a 30-minute block where <b>both</b> clubs are available
-        (${slots.length} mutual slot${slots.length === 1 ? "" : "s"} in this GPSL month).
+        (${slotCountLine}).
         Proposals: home ${sch.home_proposal_count}/2 · away ${sch.away_proposal_count}/2.
       </p>
       ${
-        !slots.length
-          ? '<p class="meta" style="color:#f88;">No mutual slots — update your availability on <a href="club_details.html" style="color:#ff9900;">Club Details</a> and ask your opponent to do the same.</p>'
+        !selectableSlots.length
+          ? slots.length
+            ? '<p class="meta" style="color:#f88;">All mutual slots are in the past for your timezone — update availability for later weeks or wait for the next GPSL month.</p>'
+            : '<p class="meta" style="color:#f88;">No mutual slots — update your availability on <a href="club_details.html" style="color:#ff9900;">Club Details</a> and ask your opponent to do the same.</p>'
           : ""
       }
     </div>
@@ -366,7 +408,7 @@ function render() {
       <h2>Mutual slots</h2>
       <div class="slot-list" id="slotList"></div>
       ${
-        canPick && slots.length
+        canPick && selectableSlots.length
           ? `<div class="actions">
               <button type="button" id="proposeBtn" class="button" disabled>${proposeLabel}</button>
             </div>`
@@ -377,20 +419,18 @@ function render() {
 
   const slotList = document.getElementById("slotList");
   if (slotList) {
-    for (const iso of slots) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "slot-btn";
-      btn.innerHTML = formatKickoffPair(iso, homeTz, awayTz).replace(/ · /g, "<br>");
-      btn.onclick = () => {
+    appendKickoffSlotButtons(slotList, slots, {
+      homeTz,
+      awayTz,
+      ownerTz,
+      onSelect: (iso, btn, list) => {
         selectedKickoff = iso;
-        slotList.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
+        list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
         btn.classList.add("selected");
         const proposeBtn = document.getElementById("proposeBtn");
         if (proposeBtn) proposeBtn.disabled = false;
-      };
-      slotList.appendChild(btn);
-    }
+      },
+    });
   }
 
   const proposeBtn = document.getElementById("proposeBtn");
@@ -411,7 +451,7 @@ function render() {
   }
 
   const acceptBtn = document.getElementById("acceptBtn");
-  if (acceptBtn && pending) {
+  if (acceptBtn && pending && isSelectableKickoffSlot(pending.kickoff_at, ownerTz)) {
     acceptBtn.onclick = async () => {
       acceptBtn.disabled = true;
       setStatus("Accepting…");

@@ -33,6 +33,53 @@ export function formatKickoffPair(iso, homeTz, awayTz) {
   return `${uk} · Home: ${formatKickoff(iso, homeTz)} · Away: ${formatKickoff(iso, awayTz)}`;
 }
 
+/** Wall-clock parts in a timezone (for comparing local date/time). */
+function localDateTimeKey(date, timeZone) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const pick = (type) => parts.find((p) => p.type === type)?.value || "00";
+  return `${pick("year")}-${pick("month")}-${pick("day")} ${pick("hour")}:${pick("minute")}:${pick("second")}`;
+}
+
+/**
+ * True if kick-off block start is still in the future in the owner's timezone.
+ */
+export function isSelectableKickoffSlot(iso, ownerTimezone = UK_TZ) {
+  if (!iso) return false;
+  const kickoff = new Date(iso);
+  if (Number.isNaN(kickoff.getTime())) return false;
+  const tz = ownerTimezone || UK_TZ;
+  return localDateTimeKey(kickoff, tz) > localDateTimeKey(new Date(), tz);
+}
+
+export function filterSelectableKickoffSlots(slots, ownerTimezone = UK_TZ) {
+  return (slots || []).filter((iso) => isSelectableKickoffSlot(iso, ownerTimezone));
+}
+
+export function formatOwnerNowLine(ownerTimezone = UK_TZ) {
+  const tz = ownerTimezone || UK_TZ;
+  const now = new Date();
+  const label = now.toLocaleString("en-GB", {
+    timeZone: tz,
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const tzLabel = tz.replace(/_/g, " ");
+  return `Your local time: ${label} (${tzLabel})`;
+}
+
 export function scheduleUrl(fixtureId) {
   return `fixture_schedule.html?fixture=${encodeURIComponent(String(fixtureId))}`;
 }
