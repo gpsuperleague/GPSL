@@ -30,6 +30,31 @@ import { APP_VERSION } from "./app_version.js";
 
 export const GLOBAL_JS_VERSION = APP_VERSION;
 
+/** Fail fast when Supabase REST/auth is unreachable (522 / network). */
+function withRequestTimeout(promise, ms, label) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out`)), ms)
+    ),
+  ]);
+}
+
+async function getAuthUserFast(timeoutMs = 10000) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const cachedUser = sessionData?.session?.user ?? null;
+
+  try {
+    const user = await withRequestTimeout(getAuthUser(), timeoutMs, "auth session");
+    return user ?? cachedUser;
+  } catch (err) {
+    console.warn("getAuthUserFast:", err);
+    return cachedUser;
+  }
+}
+
+export { getAuthUserFast };
+
 /** League admin logins (nav Admin link + must match Supabase is_gpsl_admin()). */
 export const GPSL_ADMIN_EMAILS = ["rotavator66@outlook.com"];
 
@@ -955,16 +980,27 @@ function renderNavMonthBlock(navMonthLabel, navMonthTitle, calendarStatus, calMo
   );
 }
 
-async function getOwnerClub() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+async function getOwnerClub(userFromCaller = null) {
+  const user = userFromCaller || (await getAuthUserFast());
   if (!user) return null;
-  const { data: club } = await supabase
-    .from("Clubs")
-    .select("ShortName, Club")
-    .eq("owner_id", user.id)
-    .maybeSingle();
+
+  let club;
+  try {
+    const { data } = await withRequestTimeout(
+      supabase
+        .from("Clubs")
+        .select("ShortName, Club")
+        .eq("owner_id", user.id)
+        .maybeSingle(),
+      8000,
+      "Clubs lookup"
+    );
+    club = data;
+  } catch (err) {
+    console.warn("getOwnerClub:", err);
+    return null;
+  }
+
   if (!club?.ShortName) return null;
   const short = club.ShortName.trim();
   return {
@@ -973,8 +1009,8 @@ async function getOwnerClub() {
   };
 }
 
-async function getOwnerClubShort() {
-  const club = await getOwnerClub();
+async function getOwnerClubShort(userFromCaller = null) {
+  const club = await getOwnerClub(userFromCaller);
   return club?.short || null;
 }
 
@@ -1457,7 +1493,7 @@ export async function buildNav() {
     return;
   }
 
-  const user = await getAuthUser();
+  const user = await getAuthUserFast();
 
   if (!user) {
     window.location = "login.html";
@@ -1467,7 +1503,7 @@ export async function buildNav() {
   const pathname = window.location.pathname;
   const search = window.location.search || "";
   const pathNorm = normalizeNavPath(pathname);
-  const clubShort = await getOwnerClubShort();
+  const clubShort = await getOwnerClubShort(user);
 
   let unread = 0;
   try {
@@ -1494,7 +1530,7 @@ export async function buildNav() {
 
   let ownerClub = null;
   try {
-    ownerClub = await getOwnerClub();
+    ownerClub = await getOwnerClub(user);
   } catch (clubErr) {
     console.warn("Nav owner club skipped:", clubErr);
   }

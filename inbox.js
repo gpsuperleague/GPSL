@@ -1,4 +1,4 @@
-import { supabase, initGlobal, refreshInboxNavBadge } from "./global.js";
+import { supabase, initGlobal, refreshInboxNavBadge, getAuthUserFast } from "./global.js";
 import { rejectFixtureResult, normalizeClubKey } from "./competition.js";
 import { loadInboxMessages } from "./competition_inbox.js";
 import { inboxActionForMessage } from "./competition_inbox_actions.js";
@@ -570,9 +570,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       await renderInbox();
     };
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getAuthUserFast();
     if (!user) {
       window.location = "login.html";
       return;
