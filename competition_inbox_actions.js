@@ -20,6 +20,8 @@ export const INBOX_ACTION_DEFAULTS = {
   monthly_fixtures: { label: "Fixtures", href: "fixtures.html" },
   match_time_proposed: { label: "Schedule match", href: "fixture_schedule.html" },
   match_time_countered: { label: "Respond to proposal", href: "fixture_schedule.html" },
+  match_time_proposal_sent: { label: "View schedule", href: "fixture_schedule.html" },
+  match_time_counter_sent: { label: "View schedule", href: "fixture_schedule.html" },
   match_time_accepted: { label: "View schedule", href: "fixture_schedule.html" },
   match_rescheduled: { label: "Reschedule match", href: "fixture_schedule.html" },
   match_emergency_drop: { label: "Reschedule match", href: "fixture_schedule.html" },
@@ -56,6 +58,8 @@ export function inboxActionForMessage(msg) {
   } else if (
     (msg.message_type === "match_time_proposed" ||
       msg.message_type === "match_time_countered" ||
+      msg.message_type === "match_time_proposal_sent" ||
+      msg.message_type === "match_time_counter_sent" ||
       msg.message_type === "match_time_accepted") &&
     msg.fixture_id
   ) {

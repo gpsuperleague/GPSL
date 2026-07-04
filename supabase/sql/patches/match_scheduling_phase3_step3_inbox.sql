@@ -26,6 +26,8 @@ ALTER TABLE public.competition_inbox
       'monthly_fixtures',
       'match_time_proposed',
       'match_time_countered',
+      'match_time_proposal_sent',
+      'match_time_counter_sent',
       'match_time_accepted',
       'match_rescheduled',
       'match_emergency_drop',

@@ -226,6 +226,33 @@ function renderCupFixtures() {
   }
 }
 
+function scrollToActiveMonthFixtures() {
+  if (fixtureView !== "league") return;
+
+  const activeMonth = calendarStatus?.active_gpsl_month;
+  if (!activeMonth || !calendarStatus?.calendar_configured) return;
+
+  const root = document.getElementById("fixturesRoot");
+  if (!root) return;
+
+  const monthBlocks = [...root.querySelectorAll(".matchday-block[data-gpsl-month]")].filter(
+    (el) =>
+      (el.dataset.gpslMonth || "").toLowerCase() ===
+      String(activeMonth).toLowerCase()
+  );
+  if (!monthBlocks.length) return;
+
+  const target = monthBlocks.reduce((best, el) => {
+    const md = Number(el.dataset.matchday) || 0;
+    const bestMd = Number(best?.dataset.matchday) || 0;
+    return md >= bestMd ? el : best;
+  }, monthBlocks[0]);
+
+  requestAnimationFrame(() => {
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
 function renderFixtures() {
   const root = document.getElementById("fixturesRoot");
 
@@ -253,6 +280,8 @@ function renderFixtures() {
       calendarStatus.active_gpsl_month === sample.gpsl_month;
     const block = document.createElement("div");
     block.className = "matchday-block";
+    block.dataset.gpslMonth = sample.gpsl_month || "";
+    block.dataset.matchday = String(matchday);
 
     block.innerHTML = `
       <div class="matchday-head">
@@ -275,6 +304,8 @@ function renderFixtures() {
 
     root.appendChild(block);
   }
+
+  scrollToActiveMonthFixtures();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
