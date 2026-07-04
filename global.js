@@ -755,12 +755,48 @@ export function stopDraftCountdown() {
 // ------------------------------------------------------------
 // LOAD GLOBAL SETTINGS (THE ONLY PLACE THAT DOES THIS)
 // ------------------------------------------------------------
-async function queryGlobalSettingsPublic(select) {
-  const { data, error } = await supabase
-    .from("global_settings_public")
-    .select(select)
-    .eq("id", 1)
-    .single();
+function globalSettingsErrorMessage(error) {
+  if (!error) return "";
+  return String(error.message || error.details || error || "");
+}
+
+function isGlobalSettingsConnectivityError(error) {
+  const msg = globalSettingsErrorMessage(error).toLowerCase();
+  return (
+    msg.includes("failed to fetch") ||
+    msg.includes("networkerror") ||
+    msg.includes("network request failed") ||
+    msg.includes("load failed") ||
+    msg.includes("timed out") ||
+    msg.includes("522")
+  );
+}
+
+function isGlobalSettingsSchemaColumnError(error) {
+  const msg = globalSettingsErrorMessage(error).toLowerCase();
+  return (
+    msg.includes("column") &&
+    (msg.includes("does not exist") || msg.includes("schema cache"))
+  );
+}
+
+async function queryGlobalSettingsPublic(select, timeoutMs = 12000) {
+  const run = () =>
+    supabase.from("global_settings_public").select(select).eq("id", 1).single();
+
+  let result;
+  try {
+    result = await Promise.race([
+      run(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("global_settings_public request timed out")), timeoutMs)
+      ),
+    ]);
+  } catch (err) {
+    return { data: null, error: err };
+  }
+
+  const { data, error } = result;
   if (error) return { data: null, error };
   return { data, error: null };
 }
@@ -806,9 +842,13 @@ export async function loadGlobalSettings() {
       data = row;
       break;
     }
+    if (isGlobalSettingsConnectivityError(error)) {
+      console.error("loadGlobalSettings: backend unreachable", error);
+      break;
+    }
     if (i === selects.length - 1) {
       console.error("loadGlobalSettings:", error);
-    } else if (i === 0) {
+    } else if (i === 0 && isGlobalSettingsSchemaColumnError(error)) {
       console.warn(
         "loadGlobalSettings: manager draft columns missing — run repair_global_settings_public.sql",
         error

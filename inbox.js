@@ -540,64 +540,83 @@ async function renderInbox() {
   updateToolbarButtons();
 }
 
+function showInboxLoadFailure(err) {
+  console.error("inbox init:", err);
+  const pageMeta = document.getElementById("pageMeta");
+  const list = document.getElementById("inboxList");
+  if (pageMeta) {
+    pageMeta.innerHTML =
+      "Could not reach GPSL servers. Try refreshing in a minute — if it persists, check whether the Supabase project is paused.";
+  }
+  if (list) {
+    list.innerHTML =
+      '<p class="empty" style="color:#f88;">Connection failed (often a temporary Supabase timeout). The browser may show a CORS warning; that usually means the API did not respond in time, not a site bug.</p>';
+  }
+  setStatus("❌ Could not load inbox — refresh to retry.", true);
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
-  await initGlobal();
+  try {
+    await initGlobal();
 
-  document.getElementById("markAllReadBtn").onclick = markAllRead;
-  document.getElementById("selectAllReadyBtn").onclick = selectAllReadyForArchive;
-  document.getElementById("archiveSelectedBtn").onclick = archiveSelected;
-  document.getElementById("restoreSelectedBtn").onclick = restoreSelected;
-  document.getElementById("restoreAllBtn").onclick = restoreAllArchived;
-  document.getElementById("showArchivedCb").onchange = async (e) => {
-    viewArchived = e.target.checked;
-    setArchivedViewMode(viewArchived);
-    await renderInbox();
-  };
+    document.getElementById("markAllReadBtn").onclick = markAllRead;
+    document.getElementById("selectAllReadyBtn").onclick = selectAllReadyForArchive;
+    document.getElementById("archiveSelectedBtn").onclick = archiveSelected;
+    document.getElementById("restoreSelectedBtn").onclick = restoreSelected;
+    document.getElementById("restoreAllBtn").onclick = restoreAllArchived;
+    document.getElementById("showArchivedCb").onchange = async (e) => {
+      viewArchived = e.target.checked;
+      setArchivedViewMode(viewArchived);
+      await renderInbox();
+    };
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    window.location = "login.html";
-    return;
-  }
-
-  myOwnerId = user.id;
-
-  const { data: club, error: clubErr } = await supabase
-    .from("Clubs")
-    .select("ShortName, Club")
-    .eq("owner_id", user.id)
-    .maybeSingle();
-
-  if (clubErr) {
-    console.error("Club lookup:", clubErr);
-  }
-
-  if (club?.ShortName) {
-    myClub = { short: club.ShortName, name: club.Club };
-
-    const { data: regs } = await supabase
-      .from("competition_club_season_public")
-      .select("club_short_name, club_name, division");
-
-    const key = (myClub.short || "").trim().toUpperCase();
-    const reg = (regs || []).find(
-      (r) => (r.club_short_name || "").trim().toUpperCase() === key
-    );
-    if (reg) {
-      myClub.short = reg.club_short_name;
-      myClub.name = reg.club_name || myClub.name;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      window.location = "login.html";
+      return;
     }
 
-    document.getElementById("pageMeta").innerHTML =
-      `${myClub.name} — notifications for your club. ` +
-      `New owner? Read <a href="learning_gpsl.html">Learning GPSL</a>.`;
-  } else {
-    document.getElementById("pageMeta").innerHTML =
-      `Awaiting club assignment — owner messages appear here. ` +
-      `Read <a href="learning_gpsl.html">Learning GPSL</a> while you wait.`;
-  }
+    myOwnerId = user.id;
 
-  await renderInbox();
+    const { data: club, error: clubErr } = await supabase
+      .from("Clubs")
+      .select("ShortName, Club")
+      .eq("owner_id", user.id)
+      .maybeSingle();
+
+    if (clubErr) {
+      console.error("Club lookup:", clubErr);
+    }
+
+    if (club?.ShortName) {
+      myClub = { short: club.ShortName, name: club.Club };
+
+      const { data: regs } = await supabase
+        .from("competition_club_season_public")
+        .select("club_short_name, club_name, division");
+
+      const key = (myClub.short || "").trim().toUpperCase();
+      const reg = (regs || []).find(
+        (r) => (r.club_short_name || "").trim().toUpperCase() === key
+      );
+      if (reg) {
+        myClub.short = reg.club_short_name;
+        myClub.name = reg.club_name || myClub.name;
+      }
+
+      document.getElementById("pageMeta").innerHTML =
+        `${myClub.name} — notifications for your club. ` +
+        `New owner? Read <a href="learning_gpsl.html">Learning GPSL</a>.`;
+    } else {
+      document.getElementById("pageMeta").innerHTML =
+        `Awaiting club assignment — owner messages appear here. ` +
+        `Read <a href="learning_gpsl.html">Learning GPSL</a> while you wait.`;
+    }
+
+    await renderInbox();
+  } catch (err) {
+    showInboxLoadFailure(err);
+  }
 });
