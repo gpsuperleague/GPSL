@@ -1,7 +1,6 @@
 -- =============================================================================
--- Competition label on fixture inbox + scheduling messages
--- Run once. Safe to re-run (CREATE OR REPLACE).
--- Adds SuperLeague / Championship A / League Cup / Super8 etc. to titles & bodies.
+-- Match scheduling inbox — full club names in message bodies (not ShortName)
+-- Run after competition_fixture_inbox_competition.sql, match_scheduling_mutual_notify_competition.sql
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.club_display_name(p_short text)
@@ -23,253 +22,109 @@ AS $$
 $$;
 
 -- ---------------------------------------------------------------------------
--- Labels (mirror competition.js DIVISION_LABELS + CUP_LABELS)
+-- Propose / counter-propose kick-off
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION public.competition_fixture_competition_label(
-  p_fixture public.competition_fixtures
-)
-RETURNS text
-LANGUAGE sql
-IMMUTABLE
-AS $$
-  SELECT CASE
-    WHEN p_fixture.competition_type = 'cup' OR p_fixture.cup_code IS NOT NULL THEN
-      CASE p_fixture.cup_code
-        WHEN 'super8' THEN 'Super8'
-        WHEN 'plate' THEN 'Plate'
-        WHEN 'shield' THEN 'Shield'
-        WHEN 'bowl' THEN 'Bowl'
-        WHEN 'league_cup' THEN 'League Cup'
-        ELSE initcap(replace(coalesce(p_fixture.cup_code, 'cup'), '_', ' '))
-      END
-    WHEN p_fixture.division = 'superleague' THEN 'SuperLeague'
-    WHEN p_fixture.division = 'championship_a' THEN 'Championship A'
-    WHEN p_fixture.division = 'championship_b' THEN 'Championship B'
-    WHEN p_fixture.division IS NOT NULL THEN initcap(replace(p_fixture.division, '_', ' '))
-    ELSE 'League'
-  END;
-$$;
-
-CREATE OR REPLACE FUNCTION public.competition_fixture_inbox_line(p_fixture_id bigint)
-RETURNS text
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_fixture public.competition_fixtures;
-  v_home text;
-  v_away text;
-BEGIN
-  SELECT * INTO v_fixture FROM public.competition_fixtures WHERE id = p_fixture_id;
-  IF NOT FOUND THEN
-    RETURN NULL;
-  END IF;
-
-  SELECT c."Club" INTO v_home FROM public."Clubs" c WHERE c."ShortName" = v_fixture.home_club_short_name;
-  SELECT c."Club" INTO v_away FROM public."Clubs" c WHERE c."ShortName" = v_fixture.away_club_short_name;
-
-  RETURN public.competition_fixture_competition_label(v_fixture)
-    || ' · '
-    || coalesce(v_home, v_fixture.home_club_short_name)
-    || ' vs '
-    || coalesce(v_away, v_fixture.away_club_short_name);
-END;
-$function$;
-
-CREATE OR REPLACE FUNCTION public.competition_fixture_inbox_title(
+CREATE OR REPLACE FUNCTION public.fixture_schedule_propose(
   p_fixture_id bigint,
-  p_title text
-)
-RETURNS text
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_fixture public.competition_fixtures;
-  v_label text;
-BEGIN
-  IF p_fixture_id IS NULL THEN
-    RETURN p_title;
-  END IF;
-
-  SELECT * INTO v_fixture FROM public.competition_fixtures WHERE id = p_fixture_id;
-  IF NOT FOUND THEN
-    RETURN p_title;
-  END IF;
-
-  v_label := public.competition_fixture_competition_label(v_fixture);
-  IF p_title ILIKE v_label || '%' OR p_title ILIKE '[' || v_label || ']%' THEN
-    RETURN p_title;
-  END IF;
-
-  RETURN format('[%s] %s', v_label, p_title);
-END;
-$function$;
-
-CREATE OR REPLACE FUNCTION public.competition_fixture_inbox_body(
-  p_fixture_id bigint,
-  p_body text
-)
-RETURNS text
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_line text;
-BEGIN
-  IF p_fixture_id IS NULL THEN
-    RETURN p_body;
-  END IF;
-
-  v_line := public.competition_fixture_inbox_line(p_fixture_id);
-  IF v_line IS NULL OR v_line = '' THEN
-    RETURN p_body;
-  END IF;
-
-  IF p_body IS NULL OR btrim(p_body) = '' THEN
-    RETURN v_line;
-  END IF;
-
-  IF left(p_body, length(v_line)) = v_line THEN
-    RETURN p_body;
-  END IF;
-
-  RETURN v_line || E'\n' || p_body;
-END;
-$function$;
-
--- ---------------------------------------------------------------------------
--- Central inbox wrappers (result confirm/submit/reject + scheduling)
--- ---------------------------------------------------------------------------
-
-CREATE OR REPLACE FUNCTION public.competition_inbox_notify(
-  p_recipient_club text,
-  p_message_type text,
-  p_fixture_id bigint,
-  p_submission_id bigint,
-  p_title text,
-  p_body text
+  p_kickoff_at timestamptz
 )
 RETURNS bigint
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $function$
-BEGIN
-  RETURN public.owner_inbox_send(
-    p_message_type,
-    public.competition_fixture_inbox_title(p_fixture_id, p_title),
-    public.competition_fixture_inbox_body(p_fixture_id, p_body),
-    p_recipient_club,
-    NULL,
-    p_fixture_id,
-    p_submission_id
-  );
-END;
-$function$;
-
-CREATE OR REPLACE FUNCTION public.match_schedule_notify_pair(
-  p_fixture public.competition_fixtures,
-  p_message_type text,
-  p_title text,
-  p_body text,
-  p_proposal_id bigint,
-  p_dedupe_suffix text
-)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $function$
 DECLARE
-  v_href text;
+  v_club text;
+  v_club_name text;
+  v_fixture public.competition_fixtures;
+  v_schedule public.competition_fixture_schedule;
+  v_proposal_id bigint;
   v_title text;
   v_body text;
+  v_fmt text;
 BEGIN
-  v_href := 'fixture_schedule.html?fixture=' || p_fixture.id::text;
-  v_title := public.competition_fixture_inbox_title(p_fixture.id, p_title);
-  v_body := public.competition_fixture_inbox_body(p_fixture.id, p_body);
+  v_club := public.my_club_shortname();
+  IF v_club IS NULL OR v_club = '' THEN
+    RAISE EXCEPTION 'No club linked to this account';
+  END IF;
 
-  PERFORM public.owner_inbox_send(
-    p_message_type,
+  v_club_name := public.club_display_name(v_club);
+
+  v_fixture := public.match_schedule_assert_kickoff_valid(p_fixture_id, p_kickoff_at);
+  v_schedule := public.match_schedule_ensure_row(p_fixture_id);
+
+  IF v_schedule.status = 'agreed' THEN
+    RAISE EXCEPTION 'Kick-off is already agreed for this fixture';
+  END IF;
+
+  IF v_schedule.status = 'unscheduled' THEN
+    IF v_club <> v_fixture.home_club_short_name THEN
+      RAISE EXCEPTION 'Home club must propose the first kick-off time';
+    END IF;
+  ELSE
+    IF v_schedule.pending_proposal_id IS NULL THEN
+      RAISE EXCEPTION 'No pending proposal to respond to';
+    END IF;
+
+    IF EXISTS (
+      SELECT 1
+      FROM public.competition_fixture_schedule_proposal p
+      WHERE p.id = v_schedule.pending_proposal_id
+        AND p.proposed_by_club_short_name = v_club
+    ) THEN
+      RAISE EXCEPTION 'Wait for your opponent to respond to your proposal';
+    END IF;
+  END IF;
+
+  IF v_schedule.pending_proposal_id IS NOT NULL THEN
+    UPDATE public.competition_fixture_schedule_proposal
+    SET status = 'superseded'
+    WHERE id = v_schedule.pending_proposal_id
+      AND status = 'pending';
+  END IF;
+
+  INSERT INTO public.competition_fixture_schedule_proposal (
+    fixture_id, proposed_by_club_short_name, kickoff_at, status
+  )
+  VALUES (p_fixture_id, v_club, p_kickoff_at, 'pending')
+  RETURNING id INTO v_proposal_id;
+
+  UPDATE public.competition_fixture_schedule
+  SET
+    status = 'negotiating',
+    pending_proposal_id = v_proposal_id,
+    home_proposal_count = home_proposal_count + CASE WHEN v_club = v_fixture.home_club_short_name THEN 1 ELSE 0 END,
+    away_proposal_count = away_proposal_count + CASE WHEN v_club = v_fixture.away_club_short_name THEN 1 ELSE 0 END,
+    discord_hint_shown = (
+      (home_proposal_count + CASE WHEN v_club = v_fixture.home_club_short_name THEN 1 ELSE 0 END) >= 2
+      AND (away_proposal_count + CASE WHEN v_club = v_fixture.away_club_short_name THEN 1 ELSE 0 END) >= 2
+    ),
+    updated_at = now()
+  WHERE fixture_id = p_fixture_id;
+
+  v_fmt := public.match_schedule_format_kickoff_uk(p_kickoff_at);
+  v_title := CASE
+    WHEN v_schedule.status = 'unscheduled' THEN 'Match time proposed'
+    ELSE 'Counter-proposal received'
+  END;
+  v_body := v_club_name || ' proposed ' || v_fmt || E'.\nOpen Schedule to accept or suggest another time.';
+
+  PERFORM public.match_schedule_notify_pair(
+    v_fixture,
+    CASE WHEN v_schedule.status = 'unscheduled' THEN 'match_time_proposed' ELSE 'match_time_countered' END,
     v_title,
     v_body,
-    p_fixture.home_club_short_name,
-    NULL,
-    p_fixture.id,
-    NULL, NULL, NULL,
-    v_href,
-    'schedule:' || p_fixture.id::text || ':' || p_dedupe_suffix || ':home',
-    p_fixture.gpsl_month,
-    p_fixture.season_id,
-    p_proposal_id
+    v_proposal_id,
+    'prop:' || v_proposal_id::text
   );
 
-  PERFORM public.owner_inbox_send(
-    p_message_type,
-    v_title,
-    v_body,
-    p_fixture.away_club_short_name,
-    NULL,
-    p_fixture.id,
-    NULL, NULL, NULL,
-    v_href,
-    'schedule:' || p_fixture.id::text || ':' || p_dedupe_suffix || ':away',
-    p_fixture.gpsl_month,
-    p_fixture.season_id,
-    p_proposal_id
-  );
-END;
-$function$;
-
-CREATE OR REPLACE FUNCTION public.match_schedule_notify_opponent(
-  p_fixture public.competition_fixtures,
-  p_message_type text,
-  p_title text,
-  p_body text,
-  p_opponent_club text,
-  p_dedupe_suffix text
-)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_href text;
-  v_title text;
-  v_body text;
-BEGIN
-  v_href := 'fixture_schedule.html?fixture=' || p_fixture.id::text;
-  v_title := public.competition_fixture_inbox_title(p_fixture.id, p_title);
-  v_body := public.competition_fixture_inbox_body(p_fixture.id, p_body);
-
-  PERFORM public.owner_inbox_send(
-    p_message_type,
-    v_title,
-    v_body,
-    p_opponent_club,
-    NULL,
-    p_fixture.id,
-    NULL, NULL, NULL,
-    v_href,
-    'schedule:' || p_fixture.id::text || ':' || p_dedupe_suffix,
-    p_fixture.gpsl_month,
-    p_fixture.season_id,
-    NULL
-  );
+  RETURN v_proposal_id;
 END;
 $function$;
 
 -- ---------------------------------------------------------------------------
--- Scheduling notifications (Phase 2 + 3) — use competition-aware wrapper
+-- Voluntary reschedule drop / emergency drop / forfeit (competition-aware bodies)
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.fixture_voluntary_reschedule_drop(p_fixture_id bigint)
@@ -280,6 +135,7 @@ SET search_path = public
 AS $function$
 DECLARE
   v_club text;
+  v_club_name text;
   v_fixture public.competition_fixtures;
   v_kickoff timestamptz;
   v_opponent text;
@@ -288,6 +144,8 @@ BEGIN
   IF v_club IS NULL OR v_club = '' THEN
     RAISE EXCEPTION 'No club linked to this account';
   END IF;
+
+  v_club_name := public.club_display_name(v_club);
 
   SELECT * INTO v_fixture FROM public.competition_fixtures WHERE id = p_fixture_id;
   IF NOT FOUND OR v_fixture.status <> 'scheduled' THEN
@@ -327,7 +185,7 @@ BEGIN
     v_fixture,
     'match_rescheduled',
     'Match returned to scheduling',
-    public.club_display_name(v_club) || ' dropped the agreed time (24h+ notice). Propose a new kick-off on the schedule page.',
+    v_club_name || ' dropped the agreed time (24h+ notice). Propose a new kick-off on the schedule page.',
     v_opponent,
     'reschedule:' || p_fixture_id::text || ':' || v_club
   );
@@ -342,6 +200,7 @@ SET search_path = public
 AS $function$
 DECLARE
   v_club text;
+  v_club_name text;
   v_fixture public.competition_fixtures;
   v_kickoff timestamptz;
   v_opponent text;
@@ -351,6 +210,8 @@ BEGIN
   IF v_club IS NULL OR v_club = '' THEN
     RAISE EXCEPTION 'No club linked to this account';
   END IF;
+
+  v_club_name := public.club_display_name(v_club);
 
   SELECT * INTO v_fixture FROM public.competition_fixtures WHERE id = p_fixture_id;
   IF NOT FOUND OR v_fixture.status <> 'scheduled' THEN
@@ -392,7 +253,7 @@ BEGIN
     v_fixture,
     'match_emergency_drop',
     'Emergency drop — reschedule needed',
-    public.club_display_name(v_club) || ' used an emergency drop (<24h). The match is back on the schedule page.',
+    v_club_name || ' used an emergency drop (<24h). The match is back on the schedule page.',
     v_opponent,
     'emergency:' || p_fixture_id::text || ':' || v_club
   );
@@ -415,6 +276,7 @@ DECLARE
   v_home_goals smallint;
   v_away_goals smallint;
   v_winner text;
+  v_loser_name text;
   v_title text;
   v_body text;
 BEGIN
@@ -434,6 +296,8 @@ BEGIN
   IF p_loser_club NOT IN (v_fixture.home_club_short_name, v_fixture.away_club_short_name) THEN
     RAISE EXCEPTION 'Loser must be a club in this fixture';
   END IF;
+
+  v_loser_name := public.club_display_name(p_loser_club);
 
   v_winner := CASE
     WHEN p_loser_club = v_fixture.home_club_short_name THEN v_fixture.away_club_short_name
@@ -485,7 +349,7 @@ BEGIN
   v_title := public.competition_fixture_inbox_title(p_fixture_id, 'Match forfeited');
   v_body := public.competition_fixture_inbox_body(
     p_fixture_id,
-    format('%s forfeited 3–0. %s', public.club_display_name(p_loser_club), coalesce(p_reason, ''))
+    format('%s forfeited 3–0. %s', v_loser_name, coalesce(p_reason, ''))
   );
 
   PERFORM public.owner_inbox_send(
@@ -507,48 +371,148 @@ BEGIN
 END;
 $function$;
 
--- Result submitted trigger (owner_inbox path)
-CREATE OR REPLACE FUNCTION public.trg_result_submission_notify_submitter()
-RETURNS trigger
+-- ---------------------------------------------------------------------------
+-- Mutual override request — opponent notification
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.fixture_mutual_override_request(
+  p_fixture_id bigint,
+  p_kind text,
+  p_kickoff_at timestamptz DEFAULT NULL
+)
+RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
+  v_club text;
+  v_club_name text;
   v_fixture public.competition_fixtures;
-  v_home_name text;
-  v_away_name text;
+  v_schedule public.competition_fixture_schedule;
+  v_kickoff timestamptz;
+  v_override_id bigint;
+  v_opponent text;
+  v_fmt text;
+  v_title text;
+  v_body text;
+  v_home_confirm timestamptz;
+  v_away_confirm timestamptz;
 BEGIN
-  SELECT * INTO v_fixture FROM public.competition_fixtures WHERE id = NEW.fixture_id;
-  SELECT "Club" INTO v_home_name FROM public."Clubs" WHERE "ShortName" = v_fixture.home_club_short_name;
-  SELECT "Club" INTO v_away_name FROM public."Clubs" WHERE "ShortName" = v_fixture.away_club_short_name;
+  PERFORM public.match_schedule_mutual_override_expire();
 
-  PERFORM public.owner_inbox_send(
-    'result_submitted',
-    public.competition_fixture_inbox_title(
-      NEW.fixture_id,
-      format('Result submitted: %s vs %s', v_home_name, v_away_name)
-    ),
-    public.competition_fixture_inbox_body(
-      NEW.fixture_id,
-      format(
-        E'You submitted %s %s–%s %s.\nWaiting for your opponent to confirm or reject.',
-        v_home_name, NEW.home_goals, NEW.away_goals, v_away_name
-      )
-    ),
-    NEW.submitted_by_club,
-    NULL,
-    NEW.fixture_id,
-    NEW.id,
-    NULL, NULL,
-    'matchday.html?fixture=' || NEW.fixture_id::text,
-    'result_submitted:' || NEW.id::text,
-    v_fixture.gpsl_month,
-    v_fixture.season_id
+  v_club := public.my_club_shortname();
+  IF v_club IS NULL OR v_club = '' THEN
+    RAISE EXCEPTION 'No club linked to this account';
+  END IF;
+
+  v_club_name := public.club_display_name(v_club);
+
+  SELECT * INTO v_fixture FROM public.competition_fixtures WHERE id = p_fixture_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Fixture not found';
+  END IF;
+
+  IF v_club NOT IN (v_fixture.home_club_short_name, v_fixture.away_club_short_name) THEN
+    RAISE EXCEPTION 'You are not in this fixture';
+  END IF;
+
+  IF v_fixture.status <> 'scheduled' THEN
+    RAISE EXCEPTION 'Fixture is not open for scheduling';
+  END IF;
+
+  v_schedule := public.match_schedule_ensure_row(p_fixture_id);
+
+  IF v_schedule.status <> 'agreed' OR v_schedule.agreed_kickoff_at IS NULL THEN
+    RAISE EXCEPTION 'Kick-off must be agreed before a mutual override';
+  END IF;
+
+  IF v_schedule.mutual_override_used THEN
+    RAISE EXCEPTION 'This fixture has already used its one mutual kick-off change';
+  END IF;
+
+  IF p_kind NOT IN ('play_now', 'new_time') THEN
+    RAISE EXCEPTION 'Invalid mutual override kind';
+  END IF;
+
+  IF p_kind = 'play_now' THEN
+    v_kickoff := public.match_schedule_play_now_kickoff(p_fixture_id);
+  ELSE
+    IF p_kickoff_at IS NULL THEN
+      RAISE EXCEPTION 'New kick-off time is required';
+    END IF;
+    PERFORM public.match_schedule_assert_kickoff_valid(p_fixture_id, p_kickoff_at);
+    IF p_kickoff_at = v_schedule.agreed_kickoff_at THEN
+      RAISE EXCEPTION 'Choose a different kick-off time';
+    END IF;
+    v_kickoff := p_kickoff_at;
+  END IF;
+
+  UPDATE public.competition_fixture_mutual_override
+  SET status = 'cancelled'
+  WHERE fixture_id = p_fixture_id
+    AND status = 'pending';
+
+  IF v_club = v_fixture.home_club_short_name THEN
+    v_home_confirm := now();
+    v_away_confirm := NULL;
+  ELSE
+    v_home_confirm := NULL;
+    v_away_confirm := now();
+  END IF;
+
+  INSERT INTO public.competition_fixture_mutual_override (
+    fixture_id,
+    requested_by_club,
+    kind,
+    proposed_kickoff_at,
+    status,
+    home_confirmed_at,
+    away_confirmed_at,
+    expires_at
+  )
+  VALUES (
+    p_fixture_id,
+    v_club,
+    p_kind,
+    v_kickoff,
+    'pending',
+    v_home_confirm,
+    v_away_confirm,
+    now() + interval '24 hours'
+  )
+  RETURNING id INTO v_override_id;
+
+  v_opponent := public.competition_fixture_opponent(p_fixture_id, v_club);
+  v_fmt := public.match_schedule_format_kickoff_uk(v_kickoff);
+  v_title := CASE p_kind
+    WHEN 'play_now' THEN 'Play now — confirm?'
+    ELSE 'New kick-off — confirm?'
+  END;
+  v_body := v_club_name || CASE p_kind
+    WHEN 'play_now' THEN ' wants to play now at '
+    ELSE ' proposed a new kick-off at '
+  END || v_fmt || E'.\nConfirm in your inbox or on Schedule match. No reschedule allowance is used when both agree.';
+
+  PERFORM public.match_schedule_notify_opponent(
+    v_fixture,
+    'match_mutual_override_requested',
+    v_title,
+    v_body,
+    v_opponent,
+    'mutual:' || p_fixture_id::text || ':req:' || v_override_id::text || ':' || v_opponent
   );
 
-  RETURN NEW;
+  RETURN jsonb_build_object(
+    'ok', true,
+    'override_id', v_override_id,
+    'proposed_kickoff_at', v_kickoff,
+    'awaiting_opponent', true
+  );
 END;
 $function$;
+
+GRANT EXECUTE ON FUNCTION public.club_display_name(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fixture_schedule_propose(bigint, timestamptz) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

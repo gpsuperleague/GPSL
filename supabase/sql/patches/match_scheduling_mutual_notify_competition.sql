@@ -180,7 +180,7 @@ BEGIN
     WHEN 'play_now' THEN 'Play now — confirm?'
     ELSE 'New kick-off — confirm?'
   END;
-  v_body := v_club || CASE p_kind
+  v_body := public.club_display_name(v_club) || CASE p_kind
     WHEN 'play_now' THEN ' wants to play now at '
     ELSE ' proposed a new kick-off at '
   END || v_fmt || E'.\nConfirm in your inbox or on Schedule match. No reschedule allowance is used when both agree.';
