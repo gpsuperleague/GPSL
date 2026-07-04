@@ -82,6 +82,26 @@ export const GPSL_MONTH_ORDER = [
   "may",
 ];
 
+/** Human-readable competition name for a fixture (league division or cup). */
+export function formatFixtureCompetition(f) {
+  if (!f) return "";
+  if (f.competition_type === "cup" || f.cup_code) {
+    return CUP_LABELS[f.cup_code] || f.cup_code || "Cup";
+  }
+  if (f.division) {
+    return DIVISION_LABELS[f.division] || f.division;
+  }
+  return "League";
+}
+
+/** e.g. "Championship A · Arsenal vs Chelsea" */
+export function formatFixtureCompetitionLine(f) {
+  const comp = formatFixtureCompetition(f);
+  const home = f.home_club_name || f.home_club_short_name || "Home";
+  const away = f.away_club_name || f.away_club_short_name || "Away";
+  return `${comp} · ${home} vs ${away}`;
+}
+
 export async function loadCurrentSeason(supabase) {
   const { data, error } = await supabase
     .from("competition_season_public")

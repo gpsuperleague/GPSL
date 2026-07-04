@@ -687,6 +687,8 @@ BEGIN
     'fixture', jsonb_build_object(
       'id', v_fixture.id,
       'gpsl_month', v_fixture.gpsl_month,
+      'division', v_fixture.division,
+      'cup_code', v_fixture.cup_code,
       'home_club_short_name', v_home,
       'away_club_short_name', v_away,
       'status', v_fixture.status,

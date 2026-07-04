@@ -3,6 +3,7 @@ import {
   loadLeagueFixtures,
   loadCupFixtures,
   GPSL_MONTH_LABELS,
+  formatFixtureCompetition,
   fixtureInvolvesClub,
   submitFixtureResult,
   confirmFixtureResult,
@@ -1109,6 +1110,7 @@ async function updateFixturePreview() {
   }
 
   const month = GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month;
+  const comp = formatFixtureCompetition(f);
   let extra = "";
   if (f.submission_status === "pending") {
     if (
@@ -1126,7 +1128,7 @@ async function updateFixturePreview() {
   }
 
   preview.innerHTML = `
-    <b>Matchday ${f.matchday}</b> · ${month}<br>
+    <b>${comp}</b>${f.competition_type === "league" ? ` · Matchday ${f.matchday}` : ""} · ${month}<br>
     ${f.home_club_name} vs ${f.away_club_name}<br>
     <span style="color:#aaa;font-size:13px;">${formatMatchConditions(f)}</span>${extra}
   `;
@@ -1188,10 +1190,11 @@ function populateFixtureSelect() {
     opt.value = f.id;
     const pending =
       f.submission_status === "pending" ? " · pending" : "";
+    const comp = formatFixtureCompetition(f);
     const label =
       f.competition_type === "cup"
-        ? `${(f.cup_code || "cup").toUpperCase()} R${f.cup_round}M${f.cup_match}`
-        : `MD${f.matchday}`;
+        ? `${comp} R${f.cup_round}M${f.cup_match}`
+        : `${comp} · MD${f.matchday}`;
     opt.textContent = `${label}: ${f.home_club_name} vs ${f.away_club_name}${pending}`;
     sel.appendChild(opt);
   }

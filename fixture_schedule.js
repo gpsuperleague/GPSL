@@ -1,5 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
-import { GPSL_MONTH_LABELS } from "./competition.js";
+import { GPSL_MONTH_LABELS, formatFixtureCompetition } from "./competition.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import {
   loadScheduleContext,
@@ -39,7 +39,8 @@ function parseFixtureId() {
 function fixtureTitle(f) {
   const home = fullClubName(f.home_club_short_name);
   const away = fullClubName(f.away_club_short_name);
-  return `${home} vs ${away}`;
+  const comp = formatFixtureCompetition(f);
+  return comp ? `${comp} · ${home} vs ${away}` : `${home} vs ${away}`;
 }
 
 function renderAgreedPanel(root, f, sch) {
@@ -287,7 +288,8 @@ function render() {
   const monthLabel = GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month;
 
   if (meta) {
-    meta.textContent = `${monthLabel} · ${f.competition_type} · Your role: ${ctx.my_role}`;
+    const comp = formatFixtureCompetition(f);
+    meta.textContent = `${comp} · ${monthLabel} · Your role: ${ctx.my_role}`;
   }
 
   if (discord) {

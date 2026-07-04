@@ -98,7 +98,6 @@ DECLARE
   v_fixture public.competition_fixtures;
   v_fmt text;
   v_body text;
-  v_href text;
 BEGIN
   SELECT * INTO v_override
   FROM public.competition_fixture_mutual_override
@@ -141,36 +140,14 @@ BEGIN
     WHEN 'play_now' THEN 'Both clubs agreed to play now. New kick-off: ' || v_fmt || E'.\nNo reschedule or emergency allowance was used.'
     ELSE 'Both clubs agreed a new kick-off: ' || v_fmt || E'.\nNo reschedule or emergency allowance was used.'
   END;
-  v_href := 'fixture_schedule.html?fixture=' || v_fixture.id::text;
 
-  PERFORM public.owner_inbox_send(
+  PERFORM public.match_schedule_notify_pair(
+    v_fixture,
     'match_mutual_override_applied',
     'Kick-off updated (mutual agreement)',
     v_body,
-    v_fixture.home_club_short_name,
     NULL,
-    v_fixture.id,
-    NULL, NULL, NULL,
-    v_href,
-    'mutual:' || v_override.fixture_id::text || ':applied:home:' || p_override_id::text,
-    v_fixture.gpsl_month,
-    v_fixture.season_id,
-    NULL
-  );
-
-  PERFORM public.owner_inbox_send(
-    'match_mutual_override_applied',
-    'Kick-off updated (mutual agreement)',
-    v_body,
-    v_fixture.away_club_short_name,
-    NULL,
-    v_fixture.id,
-    NULL, NULL, NULL,
-    v_href,
-    'mutual:' || v_override.fixture_id::text || ':applied:away:' || p_override_id::text,
-    v_fixture.gpsl_month,
-    v_fixture.season_id,
-    NULL
+    'mutual-applied:' || p_override_id::text
   );
 END;
 $function$;
@@ -199,7 +176,6 @@ DECLARE
   v_fmt text;
   v_title text;
   v_body text;
-  v_href text;
   v_home_confirm timestamptz;
   v_away_confirm timestamptz;
 BEGIN
@@ -295,21 +271,14 @@ BEGIN
     WHEN 'play_now' THEN ' wants to play now at '
     ELSE ' proposed a new kick-off at '
   END || v_fmt || E'.\nConfirm in your inbox or on Schedule match. No reschedule allowance is used when both agree.';
-  v_href := 'fixture_schedule.html?fixture=' || p_fixture_id::text;
 
-  PERFORM public.owner_inbox_send(
+  PERFORM public.match_schedule_notify_opponent(
+    v_fixture,
     'match_mutual_override_requested',
     v_title,
     v_body,
     v_opponent,
-    NULL,
-    p_fixture_id,
-    NULL, NULL, NULL,
-    v_href,
-    'mutual:' || p_fixture_id::text || ':req:' || v_override_id::text || ':' || v_opponent,
-    v_fixture.gpsl_month,
-    v_fixture.season_id,
-    NULL
+    'mutual:' || p_fixture_id::text || ':req:' || v_override_id::text || ':' || v_opponent
   );
 
   RETURN jsonb_build_object(
@@ -631,6 +600,8 @@ BEGIN
     'fixture', jsonb_build_object(
       'id', v_fixture.id,
       'gpsl_month', v_fixture.gpsl_month,
+      'division', v_fixture.division,
+      'cup_code', v_fixture.cup_code,
       'home_club_short_name', v_home,
       'away_club_short_name', v_away,
       'status', v_fixture.status,
