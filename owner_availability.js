@@ -315,3 +315,104 @@ export function wireAvailabilityPanel() {
     btn.addEventListener("click", () => openAvailabilityModal());
   }
 }
+
+/**
+ * Inline availability editor (admin or embedded pages).
+ * @param {HTMLElement} container
+ * @param {{
+ *   loadContext: () => Promise<object>,
+ *   saveWeekly: (slots: object[]) => Promise<{ ok: boolean, msg?: string }>,
+ *   setTimezone: (tz: string) => Promise<{ ok: boolean, msg?: string }>,
+ *   showHolidays?: boolean,
+ * }} options
+ */
+export async function mountAvailabilityPanel(container, options) {
+  if (!container || !options?.loadContext || !options?.saveWeekly || !options?.setTimezone) {
+    return;
+  }
+
+  injectAvailabilityStyles();
+
+  container.innerHTML = `
+    <p class="avail-modal-intro">
+      Mark when this club is generally free to play (30-minute blocks, UK time).
+      Holidays booked by the owner overlay as unavailable.
+    </p>
+    <div class="avail-tz-row">
+      <label>Display timezone
+        <select id="availTimezoneSelect"></select>
+      </label>
+    </div>
+    <div class="avail-grid-toolbar">
+      <button type="button" id="availMarkAllBtn" class="small-btn secondary">Mark all times available</button>
+      <button type="button" id="availClearAllBtn" class="small-btn secondary">Clear all</button>
+    </div>
+    <div id="availGrid" class="avail-grid"></div>
+    <p id="availSlotCount" class="avail-slot-count"></p>
+    <div class="avail-modal-actions">
+      <button type="button" id="availSaveBtn" class="small-btn">Save availability</button>
+      <span id="availStatus" class="account-status" role="status"></span>
+    </div>
+    <div id="availHolidayOverlay" class="avail-holiday-note"></div>
+  `;
+
+  const statusEl = () => document.getElementById("availStatus");
+  const saveBtn = document.getElementById("availSaveBtn");
+  const markAllBtn = document.getElementById("availMarkAllBtn");
+  const clearAllBtn = document.getElementById("availClearAllBtn");
+  const holidayEl = document.getElementById("availHolidayOverlay");
+
+  if (markAllBtn) markAllBtn.onclick = markAllAvailable;
+  if (clearAllBtn) clearAllBtn.onclick = clearAllAvailable;
+
+  if (saveBtn) {
+    saveBtn.onclick = async () => {
+      saveBtn.disabled = true;
+      const slots = slotsFromKeys([...selectedKeys]);
+      const res = await options.saveWeekly(slots);
+      const status = statusEl();
+      if (status) {
+        status.textContent = res.ok ? "Availability saved." : res.msg;
+        status.style.color = res.ok ? "#8c8" : "#f88";
+      }
+      saveBtn.disabled = false;
+    };
+  }
+
+  if (holidayEl && options.showHolidays === false) {
+    holidayEl.hidden = true;
+  }
+
+  try {
+    context = await options.loadContext();
+  } catch (err) {
+    const status = statusEl();
+    if (status) {
+      status.textContent =
+        err.message?.includes("admin_club_availability")
+          ? "Run supabase/sql/patches/admin_club_availability.sql in Supabase."
+          : err.message || "Could not load availability.";
+      status.style.color = "#f88";
+    }
+    context = { weekly_slots: [], holidays: [], timezone: UK_TZ };
+  }
+
+  selectedKeys = new Set(
+    (context.weekly_slots || []).map((s) => slotKey(s.iso_dow, s.hour, s.minute))
+  );
+
+  populateTimezoneSelect(context.timezone || UK_TZ);
+  const tzSel = document.getElementById("availTimezoneSelect");
+  if (tzSel) {
+    tzSel.onchange = async () => {
+      const res = await options.setTimezone(tzSel.value);
+      const status = statusEl();
+      if (status) {
+        status.textContent = res.ok ? "Timezone saved." : res.msg;
+        status.style.color = res.ok ? "#8c8" : "#f88";
+      }
+    };
+  }
+  renderGrid();
+  if (options.showHolidays !== false) renderHolidayNote();
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Club availability — GPSL Admin Testing</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .form-grid { display: grid; gap: 12px; max-width: 520px; margin-bottom: 16px; }
+    .form-grid label { display: block; font-size: 13px; color: #bbb; }
+    .form-grid select {
+      width: 100%; max-width: 520px; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .club-meta { font-size: 12px; color: #888; margin-top: 4px; }
+    #availabilityPanel { display: none; margin-top: 8px; }
+    #availabilityPanel.visible { display: block; }
+    #availabilityPanel .avail-modal-intro { margin-top: 0; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Club availability &amp; timezone</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Testing only — set weekly match availability and display timezone for any club
+        (same grid owners use on Club Details).
+      </p>
+
+      <div class="card">
+        <h2>Select club</h2>
+        <div class="form-grid">
+          <label>
+            Club
+            <select id="clubSelect">
+              <option value="">Loading clubs…</option>
+            </select>
+            <div id="clubMeta" class="club-meta"></div>
+          </label>
+        </div>
+        <div id="loadStatus" class="status-line"></div>
+      </div>
+
+      <div class="card" id="availabilityPanel">
+        <h2 id="availabilityPanelTitle">Availability</h2>
+        <div id="availabilityEditorRoot"></div>
+      </div>
+
+      <div class="card">
+        <h2>SQL</h2>
+        <p class="note">Run once: <code>supabase/sql/patches/admin_club_availability.sql</code></p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_test_club_availability.js"></script>
+</body>
+</html>

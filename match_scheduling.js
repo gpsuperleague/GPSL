@@ -67,6 +67,32 @@ export async function setOwnerTimezone(timezone) {
   return { ok: true };
 }
 
+export async function loadAvailabilityContextForClub(clubShortName) {
+  const { data, error } = await supabase.rpc("admin_club_availability_context", {
+    p_club_short_name: clubShortName,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function saveWeeklyAvailabilityForClub(clubShortName, slots) {
+  const { error } = await supabase.rpc("admin_club_availability_save_weekly", {
+    p_club_short_name: clubShortName,
+    p_slots: slots,
+  });
+  if (error) return { ok: false, msg: error.message };
+  return { ok: true };
+}
+
+export async function setClubTimezoneForClub(clubShortName, timezone) {
+  const { error } = await supabase.rpc("admin_club_owner_timezone_set", {
+    p_club_short_name: clubShortName,
+    p_timezone: timezone,
+  });
+  if (error) return { ok: false, msg: error.message };
+  return { ok: true };
+}
+
 export async function proposeKickoff(fixtureId, kickoffAt) {
   const { data, error } = await supabase.rpc("fixture_schedule_propose", {
     p_fixture_id: fixtureId,

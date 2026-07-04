@@ -37,6 +37,11 @@ export const TESTING_ADMIN_NAV = [
     href: "admin_test_inbox.html",
     page: "admin_test_inbox",
   },
+  {
+    label: "Club availability & timezone",
+    href: "admin_test_club_availability.html",
+    page: "admin_test_club_availability",
+  },
 ];
 
 function escapeNavText(text) {
