@@ -67,7 +67,13 @@ function appendKickoffSlotButtons(container, slots, { homeTz, awayTz, ownerTz, o
     btn.type = "button";
     btn.className = "slot-btn";
     btn.innerHTML = formatKickoffPair(iso, homeTz, awayTz).replace(/ · /g, "<br>");
-    btn.onclick = () => onSelect(iso, btn, container);
+    if (onSelect) {
+      btn.onclick = () => onSelect(iso, btn, container);
+    } else {
+      btn.disabled = true;
+      btn.style.opacity = "0.65";
+      btn.style.cursor = "default";
+    }
     container.appendChild(btn);
     count += 1;
   }
@@ -431,6 +437,14 @@ function render() {
       ? "Counter-propose"
       : "Suggest another time";
 
+  const waitingForHomeHtml =
+    !canPick && !pending && sch.status === "unscheduled" && ctx.my_role === "away"
+      ? `<p class="meta" style="margin-top:12px;">
+          <b>${fullClubName(f.home_club_short_name)}</b> (home) must propose first.
+          You will get an <a href="inbox.html" style="color:#ff9900;">Inbox</a> message to accept or counter-propose.
+        </p>`
+      : "";
+
   const propMonth =
     ctx.proposal_window?.gpsl_month && GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
       ? GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
@@ -480,7 +494,7 @@ function render() {
           ? `<div class="actions">
               <button type="button" id="proposeBtn" class="button" disabled>${proposeLabel}</button>
             </div>`
-          : ""
+          : waitingForHomeHtml
       }
     </div>
   `;
@@ -491,13 +505,15 @@ function render() {
       homeTz,
       awayTz,
       ownerTz,
-      onSelect: (iso, btn, list) => {
-        selectedKickoff = iso;
-        list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
-        btn.classList.add("selected");
-        const proposeBtn = document.getElementById("proposeBtn");
-        if (proposeBtn) proposeBtn.disabled = false;
-      },
+      onSelect: canPick
+        ? (iso, btn, list) => {
+            selectedKickoff = iso;
+            list.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
+            btn.classList.add("selected");
+            const proposeBtn = document.getElementById("proposeBtn");
+            if (proposeBtn) proposeBtn.disabled = false;
+          }
+        : null,
     });
   }
 
