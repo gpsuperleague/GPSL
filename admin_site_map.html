@@ -86,7 +86,7 @@
       <p class="sitemap-meta">
         Reference map of owner and admin pages. Navigation source: <code>nav_config.js</code>,
         <code>dashboard_registry.js</code>, <code>admin_*_nav.js</code>.
-        Last reviewed: <b>July 2026</b>.
+        Last reviewed: <b>July 2026</b> (match scheduling fines, replay reset, month-lock enforcement).
       </p>
 
       <nav class="sitemap-toc" aria-label="Site map contents">
@@ -95,6 +95,7 @@
           <li><a href="#overview">Overview &amp; access</a></li>
           <li><a href="#entry">Entry &amp; home</a></li>
           <li><a href="#myclub">My Club</a></li>
+          <li><a href="#match-scheduling">Match scheduling</a></li>
           <li><a href="#squad">Squad management</a></li>
           <li><a href="#finances">Finances &amp; Central Bank</a></li>
           <li><a href="#transfer-centre">Transfer Centre</a></li>
@@ -157,16 +158,43 @@
         <table class="page-table">
           <thead><tr><th>Page</th><th>Features</th></tr></thead>
           <tbody>
-            <tr><td><a href="club_details.html">club_details.html</a></td><td>Club profile — badge, nation, division, owner</td></tr>
+            <tr><td><a href="club_details.html">club_details.html</a></td><td>Club profile — badge, nation, division, owner, <b>weekly match availability</b>, timezone, holidays</td></tr>
             <tr><td><a href="history.html">history.html</a></td><td>Club history &amp; trophies</td></tr>
             <tr><td><a href="stadium.html">stadium.html</a></td><td>Venue, expansion, gate estimate, home fixtures</td></tr>
-            <tr><td><a href="matchday.html">matchday.html</a></td><td>Default XI, submit result, player stats</td></tr>
+            <tr><td><a href="matchday.html">matchday.html</a></td><td>Default XI, submit result, player stats (requires agreed kick-off + both check-ins)</td></tr>
             <tr><td><a href="club_fixtures.html">club_fixtures.html</a></td><td>Your club&apos;s fixtures</td></tr>
-            <tr><td><a href="fixture_schedule.html">fixture_schedule.html</a></td><td>Broader schedule view</td></tr>
+            <tr><td><a href="fixture_schedule.html">fixture_schedule.html</a></td><td>Per-fixture schedule — propose/respond, check-in, replay reset, catch-up, mutual override</td></tr>
             <tr><td><a href="transfer_center.html">transfer_center.html</a></td><td>Your transfer hub — see <a href="#transfer-centre">Transfer Centre</a></td></tr>
             <tr><td><a href="scouting.html">scouting.html</a></td><td>Scouting board &amp; draft favourites</td></tr>
           </tbody>
         </table>
+      </section>
+
+      <section class="sitemap-section" id="match-scheduling">
+        <h2>Match scheduling (league)</h2>
+        <p>
+          Owner guide: <a href="learning_gpsl.html#match-scheduling">Learning GPSL → Match scheduling</a>.
+          GPSL month = Fri 19:00 UK → Fri 19:00 UK. SQL patches under <code>supabase/sql/patches/match_scheduling_*.sql</code>.
+        </p>
+        <table class="page-table">
+          <thead><tr><th>Page / RPC</th><th>Features</th></tr></thead>
+          <tbody>
+            <tr><td><a href="fixtures.html">fixtures.html</a></td><td>League &amp; cup list — <b>Schedule</b>, catch-up badge, response deadline hints</td></tr>
+            <tr><td><a href="fixture_schedule.html">fixture_schedule.html</a></td><td>Mutual slots, propose/accept, check-in (10 min), Match Day link, voluntary/emergency drop, replay reset, catch-up reset, mutual override</td></tr>
+            <tr><td><a href="inbox.html">inbox.html</a></td><td>Proposals, agreed times, fines, replay/catch-up notices — accept/counter inline</td></tr>
+            <tr><td><a href="club_details.html">club_details.html</a></td><td>Weekly availability grid, timezone, holidays</td></tr>
+            <tr><td><a href="admin_fines.html">admin_fines.html</a></td><td>Manual fines &amp; compensation; scheduling tariffs seeded here</td></tr>
+          </tbody>
+        </table>
+        <h3>Rules (automated — league only)</h3>
+        <ul>
+          <li><b>Arrange</b> — from fixture draw / pre-season; home proposes first; mutual 30-min slots</li>
+          <li><b>Arrangement fines at month lock</b> — Match Management ₿10m (no proposal), Late arrangement ₿5m (first proposal in last 24h before play month)</li>
+          <li><b>Response deadlines</b> — tracked in-month; <b>Missed response ₿2.5m</b> at play-month lock if still overdue</li>
+          <li><b>Check-in</b> — both miss → no fine, replay reset; one misses → recorded, no instant forfeit if match later played normally; month lock → 3–0 + ₿5m if still unplayed</li>
+          <li><b>Catch-up</b> — play month closed unplayed → flag + reschedule in later active month</li>
+          <li><b>Cron</b> — <code>gpsl-transfer-engine-5min</code> → calendar month tick (fines throttled; deploy <code>free_tier_cron_throttle.sql</code> on Free/Pro Nano)</li>
+        </ul>
       </section>
 
       <section class="sitemap-section" id="squad">
@@ -268,7 +296,7 @@
           <thead><tr><th>Page</th><th>Features</th></tr></thead>
           <tbody>
             <tr><td><a href="clubs.html">clubs.html</a></td><td>All clubs</td></tr>
-            <tr><td><a href="fixtures.html">fixtures.html</a></td><td>League &amp; cup fixtures</td></tr>
+            <tr><td><a href="fixtures.html">fixtures.html</a></td><td>League &amp; cup fixtures — scheduling, catch-up, month lock status</td></tr>
             <tr><td><a href="progress.html">progress.html</a></td><td>League tables (SL, CHA, CHB)</td></tr>
             <tr><td><a href="league_stats.html">league_stats.html</a></td><td>Top scorers, assists, etc.</td></tr>
             <tr><td><a href="challenges.html">challenges.html</a></td><td>Season challenges — targets &amp; prizes</td></tr>
@@ -390,6 +418,7 @@
           <li><b>Squad rules</b> — HG ≥8, U21 ≥5, max 28, overflow release/fine</li>
           <li><b>Finance ledger</b> — all ₿ movements via RPCs and transfer completion</li>
           <li><b>Stadium attendance v2</b> — prestige rank, monthly fill drift, gate cap 100%</li>
+          <li><b>Match scheduling</b> — availability, propose/accept, check-in, replay &amp; catch-up reset, month-lock fines (arrangement, response, no-show); see <a href="#match-scheduling">Match scheduling</a></li>
           <li><b>Inbox</b> — owner notifications</li>
           <li><b>Dashboard registry</b> — pin/reorder pages as tiles</li>
         </ul>
