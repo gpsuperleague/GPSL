@@ -21,6 +21,13 @@ import {
   formatResponseDeadlineLine,
 } from "./match_scheduling.js";
 
+function replayResetConfirmMessage(allowances) {
+  if (allowances?.can_replay_reset) {
+    return "Missed check-in at the agreed time? Reset and pick a new kick-off in this fixture's play month. Does not use your reschedule allowance.";
+  }
+  return "Reset this catch-up fixture and pick a new kick-off in the current GPSL month? Does not use your reschedule allowance.";
+}
+
 let ctx = null;
 let fixtureId = null;
 let selectedKickoff = null;
@@ -154,7 +161,8 @@ function renderAgreedPanel(root, f, sch) {
       <div class="actions">
         ${ci.can_check_in ? '<button type="button" id="checkInBtn" class="button">Check in now</button>' : ""}
         ${ci.can_play ? `<a href="matchday.html?fixture=${f.id}" class="button" style="text-decoration:none;display:inline-block;">Enter result on Match Day</a>` : ""}
-        ${al.can_catch_up_reset ? '<button type="button" id="catchUpResetBtn" class="button secondary">Reset for catch-up (pick new time)</button>' : ""}
+        ${al.can_replay_reset ? '<button type="button" id="catchUpResetBtn" class="button secondary">Pick new time to play this month</button>' : ""}
+        ${al.can_catch_up_reset && !al.can_replay_reset ? '<button type="button" id="catchUpResetBtn" class="button secondary">Reset for catch-up (pick new time)</button>' : ""}
         ${al.can_voluntary_drop ? '<button type="button" id="voluntaryDropBtn" class="button secondary">Drop & reschedule (24h+ notice)</button>' : ""}
         ${al.can_emergency_drop ? '<button type="button" id="emergencyDropBtn" class="button secondary">Emergency drop (&lt;24h)</button>' : ""}
       </div>
@@ -197,13 +205,7 @@ function renderAgreedPanel(root, f, sch) {
   const catchUpResetBtn = document.getElementById("catchUpResetBtn");
   if (catchUpResetBtn) {
     catchUpResetBtn.onclick = async () => {
-      if (
-        !confirm(
-          "Reset this catch-up fixture and pick a new kick-off in the current GPSL month? Does not use your reschedule allowance."
-        )
-      ) {
-        return;
-      }
+      if (!confirm(replayResetConfirmMessage(al))) return;
       catchUpResetBtn.disabled = true;
       const res = await catchUpResetSchedule(fixtureId);
       if (!res.ok) {
@@ -458,9 +460,13 @@ function render() {
           : ""
       }
       ${
-        ctx.allowances?.can_catch_up_reset
+        ctx.allowances?.can_replay_reset || ctx.allowances?.can_catch_up_reset
           ? `<div class="actions">
-              <button type="button" id="catchUpResetBtn" class="button secondary">Reset catch-up scheduling</button>
+              <button type="button" id="catchUpResetBtn" class="button secondary">${
+                ctx.allowances?.can_replay_reset
+                  ? "Pick new time to play this month"
+                  : "Reset catch-up scheduling"
+              }</button>
             </div>`
           : ""
       }
@@ -515,13 +521,7 @@ function render() {
   const catchUpResetBtn = document.getElementById("catchUpResetBtn");
   if (catchUpResetBtn) {
     catchUpResetBtn.onclick = async () => {
-      if (
-        !confirm(
-          "Reset this catch-up fixture and pick a new kick-off in the current GPSL month? Does not use your reschedule allowance."
-        )
-      ) {
-        return;
-      }
+      if (!confirm(replayResetConfirmMessage(ctx.allowances))) return;
       catchUpResetBtn.disabled = true;
       const res = await catchUpResetSchedule(fixtureId);
       if (!res.ok) {
