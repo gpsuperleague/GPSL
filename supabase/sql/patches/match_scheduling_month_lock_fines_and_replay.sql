@@ -12,6 +12,15 @@
 --     without waiting for catch-up (after month closes).
 -- =============================================================================
 
+DROP FUNCTION IF EXISTS public.match_schedule_notify_opponent(
+  public.competition_fixtures,
+  text,
+  text,
+  text,
+  text,
+  text
+);
+
 CREATE OR REPLACE FUNCTION public.match_schedule_fixture_play_month_open(p_fixture_id bigint)
 RETURNS boolean
 LANGUAGE sql
@@ -366,7 +375,8 @@ BEGIN
     CASE
       WHEN v_is_catch_up THEN 'catchup_reset:' || p_fixture_id::text || ':' || v_club
       ELSE 'replay_reset:' || p_fixture_id::text || ':' || v_club
-    END
+    END,
+    NULL::bigint
   );
 END;
 $function$;

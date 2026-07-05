@@ -229,6 +229,15 @@ BEGIN
 END;
 $function$;
 
+DROP FUNCTION IF EXISTS public.match_schedule_notify_opponent(
+  public.competition_fixtures,
+  text,
+  text,
+  text,
+  text,
+  text
+);
+
 CREATE OR REPLACE FUNCTION public.match_schedule_notify_opponent(
   p_fixture public.competition_fixtures,
   p_message_type text,
