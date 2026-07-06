@@ -16,7 +16,7 @@ import {
 import { renderFormationPitchHtml } from "./pitch_display.js";
 
 const DIVISION_TITLES = {
-  superleague: "SuperLeague",
+  superleague: "Super League",
   championship_a: "Championship A",
   championship_b: "Championship B",
 };
