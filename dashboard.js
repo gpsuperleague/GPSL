@@ -30,6 +30,59 @@ let activeTileDrag = null;
 let activeSectionDrag = null;
 let focusSectionId = null;
 
+const DRAG_SCROLL_EDGE = 80;
+const DRAG_SCROLL_MAX_SPEED = 22;
+let dragScrollSpeed = 0;
+let dragScrollFrame = null;
+let dragAutoScrollBound = false;
+
+function bindDragAutoScroll() {
+  if (dragAutoScrollBound) return;
+  dragAutoScrollBound = true;
+  document.addEventListener("dragover", handleDragAutoScroll);
+}
+
+function handleDragAutoScroll(e) {
+  if (!activeTileDrag && !activeSectionDrag) {
+    stopDragAutoScroll();
+    return;
+  }
+
+  const y = e.clientY;
+  const vh = window.innerHeight;
+  let speed = 0;
+
+  if (y < DRAG_SCROLL_EDGE) {
+    speed = -DRAG_SCROLL_MAX_SPEED * (1 - Math.max(0, y) / DRAG_SCROLL_EDGE);
+  } else if (y > vh - DRAG_SCROLL_EDGE) {
+    speed = DRAG_SCROLL_MAX_SPEED * (1 - Math.max(0, vh - y) / DRAG_SCROLL_EDGE);
+  }
+
+  dragScrollSpeed = speed;
+  if (speed && !dragScrollFrame) {
+    dragScrollFrame = requestAnimationFrame(runDragAutoScroll);
+  } else if (!speed) {
+    stopDragAutoScroll();
+  }
+}
+
+function runDragAutoScroll() {
+  if (!dragScrollSpeed || (!activeTileDrag && !activeSectionDrag)) {
+    stopDragAutoScroll();
+    return;
+  }
+  window.scrollBy(0, dragScrollSpeed);
+  dragScrollFrame = requestAnimationFrame(runDragAutoScroll);
+}
+
+function stopDragAutoScroll() {
+  dragScrollSpeed = 0;
+  if (dragScrollFrame) {
+    cancelAnimationFrame(dragScrollFrame);
+    dragScrollFrame = null;
+  }
+}
+
 const DRAG_TILE = "gpsl-tile";
 const DRAG_SECTION = "gpsl-section";
 
@@ -121,6 +174,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await initDashboardGrid(user.id, dashboardCtx);
   wireDashboardToolbar();
+  bindDragAutoScroll();
 
   if (!club) {
     document.getElementById("dashboardTitle").textContent = "GPSL Dashboard";
@@ -324,6 +378,11 @@ function renderDashboardTiles(ctx) {
       }
       head.appendChild(titleInput);
 
+      const dropLabel = document.createElement("span");
+      dropLabel.className = "dashboard-section-head-drop-label";
+      dropLabel.textContent = "Drop tiles here";
+      head.appendChild(dropLabel);
+
       if (layoutSections.length > 1) {
         const removeSec = document.createElement("button");
         removeSec.type = "button";
@@ -358,12 +417,6 @@ function renderDashboardTiles(ctx) {
 
     if (editMode) {
       sectionGrip = head.querySelector(".dashboard-section-grip");
-      const dropHint = document.createElement("div");
-      dropHint.className = "dashboard-section-drop-hint";
-      dropHint.textContent = sec.panelIds.length
-        ? "Drop here to add to this group"
-        : "Drop tiles here";
-      sectionGrid.appendChild(dropHint);
     }
 
     sectionEl.appendChild(head);
@@ -371,6 +424,7 @@ function renderDashboardTiles(ctx) {
 
     if (editMode && sectionGrip) {
       wireSectionGripDrag(sectionGrip, sec.id, sectionEl, ctx);
+      wireSectionHeadTileDrop(head, sec.id, ctx);
       wireSectionGridDrop(sectionGrid, sec.id, ctx);
     }
 
@@ -458,6 +512,7 @@ function wireTileGripDrag(grip, tile, panelId, ctx) {
     activeTileDrag = { panelId, fromSectionId: sectionId };
     activeSectionDrag = null;
     tile.classList.add("dashboard-tile-dragging");
+    bindDragAutoScroll();
     e.dataTransfer.setData(
       "text/plain",
       encodeDrag(DRAG_TILE, { panelId, fromSectionId: sectionId })
@@ -468,6 +523,7 @@ function wireTileGripDrag(grip, tile, panelId, ctx) {
 
   grip.addEventListener("dragend", () => {
     tile.classList.remove("dashboard-tile-dragging");
+    stopDragAutoScroll();
     window.setTimeout(() => {
       activeTileDrag = null;
     }, 0);
@@ -506,8 +562,44 @@ function wireTileGripDrag(grip, tile, panelId, ctx) {
   });
 }
 
+function wireSectionHeadTileDrop(head, sectionId, ctx) {
+  const isDropChrome = (el) =>
+    !!el?.closest(".dashboard-section-grip, .dashboard-section-remove, input");
+
+  head.addEventListener("dragover", (e) => {
+    if (isDropChrome(e.target)) return;
+    if (!isTileDrag(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    head.classList.add("dashboard-section-head-tile-drop");
+  });
+
+  head.addEventListener("dragleave", (e) => {
+    if (head.contains(e.relatedTarget)) return;
+    head.classList.remove("dashboard-section-head-tile-drop");
+  });
+
+  head.addEventListener("drop", async (e) => {
+    if (isDropChrome(e.target)) return;
+    if (!isTileDrag(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    head.classList.remove("dashboard-section-head-tile-drop");
+
+    const drag = readDragFromEvent(e);
+    if (!drag || drag.kind !== DRAG_TILE) return;
+    const { panelId, fromSectionId } = drag.payload;
+    if (!panelId || !fromSectionId || fromSectionId === sectionId) return;
+
+    movePanelToSection(panelId, fromSectionId, sectionId);
+    await applyLayoutChange(ctx);
+  });
+}
+
 function wireSectionGridDrop(sectionGrid, sectionId, ctx) {
   sectionGrid.addEventListener("dragover", (e) => {
+    if (e.target.closest(".dashboard-tile")) return;
     if (!isTileDrag(e)) return;
     e.preventDefault();
     e.stopPropagation();
@@ -521,9 +613,7 @@ function wireSectionGridDrop(sectionGrid, sectionId, ctx) {
   });
 
   sectionGrid.addEventListener("drop", async (e) => {
-    if (e.target.closest(".dashboard-tile") && !e.target.closest(".dashboard-section-drop-hint")) {
-      return;
-    }
+    if (e.target.closest(".dashboard-tile")) return;
     e.preventDefault();
     e.stopPropagation();
     sectionGrid.classList.remove("dashboard-section-grid-drop-target");
@@ -543,6 +633,7 @@ function wireSectionGripDrag(grip, sectionId, sectionEl, ctx) {
     activeSectionDrag = { sectionId };
     activeTileDrag = null;
     sectionEl.classList.add("dashboard-section-dragging");
+    bindDragAutoScroll();
     e.dataTransfer.setData("text/plain", encodeDrag(DRAG_SECTION, { sectionId }));
     e.dataTransfer.effectAllowed = "move";
     e.stopPropagation();
@@ -550,6 +641,7 @@ function wireSectionGripDrag(grip, sectionId, sectionEl, ctx) {
 
   grip.addEventListener("dragend", () => {
     sectionEl.classList.remove("dashboard-section-dragging");
+    stopDragAutoScroll();
     window.setTimeout(() => {
       activeSectionDrag = null;
     }, 0);
@@ -596,6 +688,9 @@ function clearDropHighlights() {
   });
   document.querySelectorAll(".dashboard-section-grid-drop-target").forEach((el) => {
     el.classList.remove("dashboard-section-grid-drop-target");
+  });
+  document.querySelectorAll(".dashboard-section-head-tile-drop").forEach((el) => {
+    el.classList.remove("dashboard-section-head-tile-drop");
   });
 }
 
