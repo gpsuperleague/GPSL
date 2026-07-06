@@ -2393,3 +2393,15 @@ a.gpsl-player-link:focus {
   color: #fff;
   text-decoration: none;
 }
+
+a.gpsl-club-link {
+  color: #fff;
+  text-decoration: none;
+  font-weight: inherit;
+}
+
+a.gpsl-club-link:hover,
+a.gpsl-club-link:focus {
+  color: #fff;
+  text-decoration: none;
+}

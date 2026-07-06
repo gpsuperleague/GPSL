@@ -11,6 +11,7 @@ import {
   pesdbPlayerCardUrl,
   pesdbPlayerUrl,
   playerNameLinkHtml,
+  clubNameLinkHtml,
   escapePlayerHtml,
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
@@ -19,18 +20,26 @@ function escapeHtml(text) {
   return escapePlayerHtml(text);
 }
 
-function clubBadgeUrl(short) {
-  const code = String(short ?? "").trim();
-  return code ? `images/club_badges/${code}.png` : null;
-}
+function renderMemberStats(member) {
+  const cells = [
+    { val: member.appearances ?? 0, lbl: "apps" },
+    { val: member.goals ?? 0, lbl: "G" },
+    { val: member.assists ?? 0, lbl: "A" },
+    {
+      val: member.avg_rating != null ? Number(member.avg_rating).toFixed(2) : "—",
+      lbl: "avg",
+    },
+  ];
 
-function memberStatsLine(member) {
-  const parts = [];
-  if (member.appearances != null) parts.push(`${member.appearances} apps`);
-  if (member.goals != null) parts.push(`${member.goals}G`);
-  if (member.assists != null) parts.push(`${member.assists}A`);
-  if (member.avg_rating != null) parts.push(Number(member.avg_rating).toFixed(2));
-  return parts.join(" · ");
+  return `<div class="pitch-stat-grid">${cells
+    .map(
+      (c) => `
+      <div class="pitch-stat-cell">
+        <span class="pitch-stat-val">${escapeHtml(String(c.val))}</span>
+        <span class="pitch-stat-lbl">${escapeHtml(c.lbl)}</span>
+      </div>`
+    )
+    .join("")}</div>`;
 }
 
 function renderPitchPlayerCard(member, { highlight = false } = {}) {
@@ -40,8 +49,6 @@ function renderPitchPlayerCard(member, { highlight = false } = {}) {
 
   const id = String(member.player_id);
   const name = member.player_name || id;
-  const badge = clubBadgeUrl(member.club_short_name);
-  const stats = memberStatsLine(member);
   const highlightClass = highlight ? " pitch-player-card--highlight" : "";
 
   return `
@@ -49,17 +56,12 @@ function renderPitchPlayerCard(member, { highlight = false } = {}) {
       <a href="${pesdbPlayerUrl(id)}" target="_blank" rel="noopener" class="squad-player-card-thumb-link">
         <img src="${pesdbPlayerCardUrl(id)}" alt="" onerror="this.src='${PESDB_FALLBACK_CARD_IMG}'">
       </a>
-      <div class="spc-meta">
-        <div class="spc-name">${playerNameLinkHtml(id, name)}</div>
-        <div class="spc-club">
-          ${
-            badge
-              ? `<img src="${badge}" alt="" class="pitch-player-club-badge" onerror="this.style.display='none'">`
-              : ""
-          }
-          <span>${escapeHtml(member.club_name || member.club_short_name || "")}</span>
+      <div class="spc-meta pitch-player-meta">
+        <div class="spc-name pitch-player-name">${playerNameLinkHtml(id, name)}</div>
+        <div class="spc-club pitch-player-club">
+          ${clubNameLinkHtml(member.club_short_name, member.club_name || member.club_short_name)}
         </div>
-        ${stats ? `<div class="spc-stats">${escapeHtml(stats)}</div>` : ""}
+        ${renderMemberStats(member)}
       </div>
     </div>`;
 }
@@ -70,7 +72,7 @@ function renderPitchSlot(slot, member, opts) {
     opts.highlightClub && member?.club_short_name === opts.highlightClub;
 
   return `
-    <div class="pitch-slot" data-slot-id="${escapeHtml(slot.id)}" style="left:${slot.x}%;top:${slot.y}%;">
+    <div class="pitch-slot pitch-slot--readonly" data-slot-id="${escapeHtml(slot.id)}" style="left:${slot.x}%;top:${slot.y}%;">
       <span class="pitch-slot-label pitch-slot-label--readonly">${escapeHtml(label)}</span>
       <div class="pitch-slot-drop pitch-slot-drop--readonly">
         ${

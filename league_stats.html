@@ -31,16 +31,52 @@
       display:grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap:20px;
+      align-items: stretch;
     }
     .panel {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       padding:16px; overflow-x:auto;
+      display:flex; flex-direction:column;
+      min-height: 320px;
+    }
+    .panel > div[id$="Table"],
+    .panel > div[id$="Panel"] {
+      flex: 1;
+    }
+    .panel--wide {
+      grid-column: 1 / -1;
+      min-height: auto;
     }
     .panel h2 { color:#ff9900; font-size:17px; margin:0 0 12px; }
-    table.lb { width:100%; border-collapse:collapse; font-size:13px; }
-    table.lb th, table.lb td { border:1px solid #333; padding:6px 8px; }
-    table.lb th { background:#222; color:#ff9900; text-align:left; }
+    table.lb { width:100%; border-collapse:collapse; font-size:12px; }
+    table.lb th, table.lb td { border:1px solid #333; padding:5px 7px; vertical-align: middle; }
+    table.lb th { background:#222; color:#ff9900; text-align:left; font-size:11px; }
     table.lb td.num { text-align:center; }
+    table.lb .lb-thumb {
+      width: 40px;
+      padding: 3px 4px;
+      text-align: center;
+    }
+    table.lb .lb-player-thumb {
+      width: 34px;
+      height: 44px;
+      object-fit: cover;
+      display: block;
+      margin: 0 auto;
+      border-radius: 3px;
+    }
+    table.lb .lb-thumb-link {
+      display: block;
+      line-height: 0;
+    }
+    table.lb .lb-player-name,
+    table.lb .lb-club-name {
+      font-size: 12px;
+      white-space: nowrap;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     tr.highlight { outline:1px solid #ff9900; }
     .empty { color:#888; font-size:13px; }
     .footer-note { color:#888; font-size:12px; margin-top:16px; }
@@ -99,12 +135,12 @@
           <p class="meta" style="margin:0 0 8px;font-size:12px;">League games only — started in a 0-conceded match.</p>
           <div id="cleanSheetsTable"></div>
         </div>
-        <div class="panel" style="grid-column:1/-1;">
+        <div class="panel panel--wide">
           <h2>Super League — Team of the Month</h2>
           <p class="meta" style="margin:0 0 8px;font-size:12px;">Super League XI from confirmed league stats each GPSL month (min. 2 apps). Picked when the month locks.</p>
           <div id="totmSuperPanel"><span class="empty">Loading…</span></div>
         </div>
-        <div class="panel" style="grid-column:1/-1;">
+        <div class="panel panel--wide">
           <h2>Championship — Team of the Month</h2>
           <p class="meta" style="margin:0 0 8px;font-size:12px;">Combined Championship A &amp; B XI from confirmed league stats each GPSL month (min. 2 apps). Picked when the month locks.</p>
           <div id="totmChampionshipPanel"><span class="empty">Loading…</span></div>

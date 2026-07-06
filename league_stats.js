@@ -6,7 +6,12 @@ import {
   loadInternationalPlayerStats,
   CUP_LABELS,
 } from "./competition.js";
-import { playerNameLinkHtml } from "./player_links.js";
+import { loadClubsMap } from "./clubs_lookup.js";
+import {
+  playerNameLinkHtml,
+  playerThumbLinkHtml,
+  clubNameLinkHtml,
+} from "./player_links.js";
 import { renderFormationPitchHtml } from "./pitch_display.js";
 
 const DIVISION_TITLES = {
@@ -94,8 +99,13 @@ function renderLeaderboard(containerId, rows, options) {
       return `
         <tr class="${mine ? "highlight" : ""}">
           <td class="num">${i + 1}</td>
-          <td>${r.player_name || r.player_id}</td>
-          <td>${r.club_name || r.club_short_name || "—"}</td>
+          <td class="lb-thumb">${playerThumbLinkHtml(r.player_id, {
+            className: "lb-player-thumb",
+            linkClass: "lb-thumb-link",
+            alt: r.player_name || "",
+          })}</td>
+          <td class="lb-player-name">${playerNameLinkHtml(r.player_id, r.player_name)}</td>
+          <td class="lb-club-name">${clubNameLinkHtml(r.club_short_name, r.club_name || r.club_short_name)}</td>
           <td>${extraColumnValue(r)}</td>
           <td class="num">${formatValue(r)}</td>
           <td class="num">${appsValue(r)}</td>
@@ -112,6 +122,7 @@ function renderLeaderboard(containerId, rows, options) {
       <thead>
         <tr>
           <th>#</th>
+          <th class="lb-thumb" aria-label="Card"></th>
           <th>Player</th>
           <th>Club</th>
           <th>${extraColumnKey}</th>
@@ -295,10 +306,11 @@ function formatGpslMonthLabel(month) {
 
 function buildTotmStatsTable(rows) {
   return `
-    <table class="lb">
+    <table class="lb lb-totm">
       <thead>
         <tr>
           <th>Pos</th>
+          <th class="lb-thumb" aria-label="Card"></th>
           <th>Player</th>
           <th>Club</th>
           <th class="num">Apps</th>
@@ -314,8 +326,13 @@ function buildTotmStatsTable(rows) {
             (r) => `
           <tr${myClubShort && r.club_short_name === myClubShort ? ' class="highlight"' : ""}>
             <td>${r.slot_label || r.pitch_slot}</td>
-            <td>${playerNameLinkHtml(r.player_id, r.player_name)}</td>
-            <td>${r.club_name || r.club_short_name}</td>
+            <td class="lb-thumb">${playerThumbLinkHtml(r.player_id, {
+              className: "lb-player-thumb",
+              linkClass: "lb-thumb-link",
+              alt: r.player_name || "",
+            })}</td>
+            <td class="lb-player-name">${playerNameLinkHtml(r.player_id, r.player_name)}</td>
+            <td class="lb-club-name">${clubNameLinkHtml(r.club_short_name, r.club_name || r.club_short_name)}</td>
             <td class="num">${r.appearances ?? 0}</td>
             <td class="num">${r.goals ?? 0}</td>
             <td class="num">${r.assists ?? 0}</td>
@@ -433,6 +450,7 @@ function setActiveTab(tab) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
+  await loadClubsMap();
 
   const {
     data: { user },

@@ -4,6 +4,8 @@
  *   • Player name    → player_career.html (GPSL player file)
  */
 
+import { clubPageHref, fullClubName } from "./clubs_lookup.js";
+
 export const PESDB_FALLBACK_CARD_IMG = "https://i.imgur.com/3s8XQ7Y.png";
 
 export function pesdbPlayerUrl(konamiId) {
@@ -71,6 +73,20 @@ export function playerNameLinkHtml(konamiId, name, options = {}) {
   }
 
   return `<a href="${gpslPlayerCareerUrl(id)}" class="${className}">${escapePlayerHtml(label)}</a>`;
+}
+
+/**
+ * Linked GPSL club squad page (white plain text, same as player links).
+ */
+export function clubNameLinkHtml(shortName, name, options = {}) {
+  const { className = "gpsl-club-link" } = options;
+  const short = String(shortName ?? "").trim();
+  const label = name || fullClubName(short) || short || "—";
+  const href = clubPageHref(short);
+
+  if (!href) return escapePlayerHtml(label);
+
+  return `<a href="${href}" class="${className}">${escapePlayerHtml(label)}</a>`;
 }
 
 /** Standard table cells: thumb (PESDB) + name (GPSL). */
