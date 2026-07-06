@@ -25,29 +25,31 @@ IMMUTABLE
 AS $function$
 DECLARE
   v_local timestamp;
-  v_min int;
-  v_sec int;
-  v_add int;
+  v_remainder int;
+  v_on_boundary timestamptz;
 BEGIN
   IF p_at IS NULL THEN
     RETURN NULL;
   END IF;
 
-  v_local := date_trunc('second', p_at AT TIME ZONE 'Europe/London');
-  v_min := EXTRACT(MINUTE FROM v_local)::int;
-  v_sec := EXTRACT(SECOND FROM v_local)::int;
+  -- UK wall-clock, whole minutes only (strip seconds/microseconds before rounding)
+  v_local := date_trunc('minute', p_at AT TIME ZONE 'Europe/London');
+  v_on_boundary := v_local AT TIME ZONE 'Europe/London';
+  v_remainder := (
+    EXTRACT(HOUR FROM v_local)::int * 60 + EXTRACT(MINUTE FROM v_local)::int
+  ) % 30;
 
-  IF v_min % 30 = 0 AND v_sec = 0 THEN
-    RETURN v_local AT TIME ZONE 'Europe/London';
+  IF v_remainder = 0 AND p_at = v_on_boundary THEN
+    RETURN v_on_boundary;
   END IF;
 
-  IF v_min % 30 = 0 THEN
-    v_add := 30;
+  IF v_remainder = 0 THEN
+    v_local := v_local + interval '30 minutes';
   ELSE
-    v_add := 30 - (v_min % 30);
+    v_local := v_local + ((30 - v_remainder) * interval '1 minute');
   END IF;
 
-  RETURN (v_local + (v_add * interval '1 minute')) AT TIME ZONE 'Europe/London';
+  RETURN v_local AT TIME ZONE 'Europe/London';
 END;
 $function$;
 
@@ -231,6 +233,7 @@ BEGIN
     'is_catch_up', coalesce(v_prop.is_catch_up, false),
     'unlock_on_slot_boundary', coalesce(public.match_schedule_kickoff_is_slot(v_unlock), false),
     'aligned_first_slot', v_aligned,
+    'aligned_is_valid_slot', coalesce(public.match_schedule_kickoff_is_slot(v_aligned), false),
     'home_availability_slots', v_home_slots,
     'away_availability_slots', v_away_slots,
     'intersection_slot_count', v_intersection
