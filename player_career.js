@@ -1,6 +1,6 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName, displayClubName } from "./clubs_lookup.js";
-import { DIVISION_LABELS, formatMoney } from "./competition.js";
+import { DIVISION_LABELS, formatMoney, GPSL_MONTH_LABELS } from "./competition.js";
 import {
   pesdbPlayerUrl,
   pesdbPlayerCardUrl,
@@ -38,30 +38,40 @@ const AWARD_TROPHY = {
   championship_player_of_season: "🏅",
 };
 
+function isTeamOfMonthAward(awardType) {
+  return awardType === "team_of_month" || awardType === "championship_team_of_month";
+}
+
+function awardGpslMonth(a) {
+  return a.gpsl_month || a.detail?.gpsl_month || null;
+}
+
+function awardSeasonLabel(a) {
+  return a.season_label || a.detail?.season_label || null;
+}
+
 function formatGpslMonthLabel(month) {
   if (!month) return "";
-  return String(month)
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const key = String(month).toLowerCase();
+  return GPSL_MONTH_LABELS[key] || String(month).replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function formatAwardTitle(a) {
   const base = AWARD_LABELS[a.award_type] || a.award_type;
-  if (
-    (a.award_type === "team_of_month" || a.award_type === "championship_team_of_month") &&
-    a.gpsl_month
-  ) {
-    return `${base} (${formatGpslMonthLabel(a.gpsl_month)})`;
+  if (isTeamOfMonthAward(a.award_type)) {
+    const season = awardSeasonLabel(a);
+    const month = awardGpslMonth(a);
+    const parts = [season, month ? formatGpslMonthLabel(month) : null].filter(Boolean);
+    if (parts.length) return `${base} (${parts.join(" · ")})`;
   }
   return base;
 }
 
 function formatAwardDetail(a) {
   const club = fullClubName(a.club_short_name) || a.club_name || a.club_short_name;
-  const parts = [a.season_label, club];
+  const parts = isTeamOfMonthAward(a.award_type) ? [club] : [awardSeasonLabel(a), club];
   if (
-    a.award_type === "team_of_month" ||
-    a.award_type === "championship_team_of_month" ||
+    isTeamOfMonthAward(a.award_type) ||
     a.award_type === "team_of_season"
   ) {
     const slot = a.detail?.slot_label || a.detail?.pitch_slot;
@@ -258,7 +268,12 @@ function renderAwards(awards) {
               : 9;
     const p = pri(a.award_type) - pri(b.award_type);
     if (p !== 0) return p;
-    return String(b.season_label || "").localeCompare(String(a.season_label || ""));
+    const seasonCmp = String(b.season_label || "").localeCompare(String(a.season_label || ""));
+    if (seasonCmp !== 0) return seasonCmp;
+    if (isTeamOfMonthAward(a.award_type) && isTeamOfMonthAward(b.award_type)) {
+      return String(awardGpslMonth(b) || "").localeCompare(String(awardGpslMonth(a) || ""));
+    }
+    return 0;
   });
 
   el.innerHTML = `

@@ -765,6 +765,7 @@ SELECT
   a.season_id,
   a.season_label,
   a.award_type,
+  a.gpsl_month,
   a.player_id,
   p."Name" AS player_name,
   a.club_short_name,
