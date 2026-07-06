@@ -667,6 +667,10 @@ table.gpsl-table td {
   padding: 5px 7px;
 }
 
+.gpsl-nav-actions-primary .nav-gpsl-sport {
+  padding: 5px 7px;
+}
+
 .gpsl-nav-actions-primary .nav-inbox-icon {
   font-size: 16px;
 }

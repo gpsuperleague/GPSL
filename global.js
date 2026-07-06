@@ -21,6 +21,10 @@ import {
 } from "./countdown_display.js";
 import { countUnreadInbox } from "./competition_inbox.js";
 import { initDashboardPinUi } from "./dashboard_pin.js";
+import {
+  renderNavGpslSportButton,
+  initGpslSportUi,
+} from "./gpsl_sport.js";
 import { nationFlagSrc } from "./international_flags.js";
 import { formatNavLabel, renderNavGroupSummaryLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
@@ -1081,16 +1085,28 @@ export async function specialAuctionNavLinkHtml() {
 
 /** Load nav layout CSS on every page (many HTML files never linked dashboard.css). */
 function ensureNavStyles() {
-  if (document.getElementById("gpsl-nav-styles")) return;
-  const link = document.createElement("link");
-  link.id = "gpsl-nav-styles";
-  link.rel = "stylesheet";
-  try {
-    link.href = new URL(`dashboard.css?v=${GLOBAL_JS_VERSION}`, import.meta.url).href;
-  } catch {
-    link.href = `dashboard.css?v=${GLOBAL_JS_VERSION}`;
+  if (!document.getElementById("gpsl-nav-styles")) {
+    const link = document.createElement("link");
+    link.id = "gpsl-nav-styles";
+    link.rel = "stylesheet";
+    try {
+      link.href = new URL(`dashboard.css?v=${GLOBAL_JS_VERSION}`, import.meta.url).href;
+    } catch {
+      link.href = `dashboard.css?v=${GLOBAL_JS_VERSION}`;
+    }
+    document.head.appendChild(link);
   }
-  document.head.appendChild(link);
+  if (!document.getElementById("gpsl-sport-styles")) {
+    const sport = document.createElement("link");
+    sport.id = "gpsl-sport-styles";
+    sport.rel = "stylesheet";
+    try {
+      sport.href = new URL(`gpsl_sport.css?v=${GLOBAL_JS_VERSION}`, import.meta.url).href;
+    } catch {
+      sport.href = `gpsl_sport.css?v=${GLOBAL_JS_VERSION}`;
+    }
+    document.head.appendChild(sport);
+  }
 }
 
 function escapeNavHtml(s) {
@@ -1453,6 +1469,7 @@ export async function renderFallbackNav() {
           <a href="squad.html" class="nav-link">Squad</a>
         </div>
         <div class="gpsl-nav-actions gpsl-nav-actions-primary">
+          ${renderNavGpslSportButton()}
           ${renderNavDashboardHomeLink(ownerClub, "dashboard.html", false)}
           ${renderNavInboxLink(false, 0)}
           <button type="button" id="logoutBtn" class="nav-logout">Logout</button>
@@ -1693,6 +1710,7 @@ export async function buildNav() {
   html += `</div>`;
 
   html += `<div class="gpsl-nav-actions gpsl-nav-actions-primary">`;
+  html += renderNavGpslSportButton();
   html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
   html += renderNavInboxLink(inboxActive, unread);
   html += `<button type="button" id="logoutBtn" class="nav-logout">Logout</button>`;
@@ -1740,6 +1758,9 @@ export async function initGlobal() {
   if (document.getElementById("nav")) {
     initDashboardPinUi(supabase).catch((err) => {
       console.warn("Dashboard pin UI skipped:", err);
+    });
+    initGpslSportUi(supabase).catch((err) => {
+      console.warn("GPSL Sport UI skipped:", err);
     });
     import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`)
       .then((m) => m.initSeasonScheduleStrip())
