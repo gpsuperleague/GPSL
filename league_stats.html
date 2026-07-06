@@ -60,19 +60,27 @@
     }
     table.lb th, table.lb td {
       border:1px solid #333;
-      padding:5px 7px;
+      padding:4px 6px;
       vertical-align: middle;
-      overflow-wrap: anywhere;
-      word-break: break-word;
+      word-break: normal;
+      overflow-wrap: normal;
+      hyphens: none;
     }
     table.lb th { background:#222; color:#ff9900; text-align:left; font-size:11px; }
-    table.lb col.lb-col-rank { width: 5%; }
-    table.lb col.lb-col-thumb { width: 10%; }
-    table.lb col.lb-col-player { width: 22%; }
-    table.lb col.lb-col-club { width: 22%; }
-    table.lb col.lb-col-extra { width: 20%; }
-    table.lb col.lb-col-val { width: 10%; }
-    table.lb col.lb-col-apps { width: 11%; }
+    table.lb col.lb-col-rank { width: 4%; }
+    table.lb col.lb-col-thumb { width: 12%; }
+    table.lb col.lb-col-player { width: 24%; }
+    table.lb col.lb-col-club { width: 24%; }
+    table.lb col.lb-col-extra { width: 22%; }
+    table.lb col.lb-col-val { width: 7%; }
+    table.lb col.lb-col-apps { width: 7%; }
+    table.lb tbody tr {
+      min-height: 52px;
+    }
+    table.lb tbody td.lb-thumb {
+      height: 52px;
+      padding: 4px 3px;
+    }
     table.lb td.num,
     table.lb th.num,
     table.lb td.lb-rank,
@@ -103,9 +111,17 @@
     table.lb .lb-player-name,
     table.lb .lb-club-name,
     table.lb .lb-extra-col {
-      font-size: 12px;
-      line-height: 1.25;
-      white-space: normal;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+    table.lb .lb-word {
+      white-space: nowrap;
+      display: inline-block;
+    }
+    table.lb .lb-player-name a,
+    table.lb .lb-club-name a {
+      display: inline;
+      line-height: inherit;
     }
     @media (max-width: 960px) {
       .stats-grid {

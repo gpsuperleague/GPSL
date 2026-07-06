@@ -8,9 +8,10 @@ import {
 } from "./competition.js";
 import { loadClubsMap } from "./clubs_lookup.js";
 import {
-  playerNameLinkHtml,
+  playerNameWrappedLinkHtml,
   playerThumbLinkHtml,
-  clubNameLinkHtml,
+  clubNameWrappedLinkHtml,
+  wrapWordsHtml,
 } from "./player_links.js";
 import { renderFormationPitchHtml } from "./pitch_display.js";
 
@@ -32,6 +33,67 @@ const LEADERBOARD_COLGROUP = `
     <col class="lb-col-val">
     <col class="lb-col-apps">
   </colgroup>`;
+
+const LEADERBOARD_ROW_MIN_PX = 52;
+
+const LEADERBOARD_SYNC_GROUPS = {
+  league: [
+    ["scorersTable", "assistsTable", "ratingsTable"],
+    ["potmTable", "cleanSheetsTable"],
+  ],
+  cups: [
+    ["cupScorersTable", "cupAssistsTable", "cupRatingsTable"],
+    ["cupPotmTable", "cupCleanSheetsTable"],
+  ],
+  worldcup: [
+    ["wcScorersTable", "wcAssistsTable", "wcRatingsTable"],
+    ["wcPotmTable", "wcCapsTable"],
+  ],
+};
+
+let leaderboardSyncTimer = null;
+
+function leaderboardTables(containerIds) {
+  return containerIds
+    .map((id) => document.getElementById(id)?.querySelector("[data-lb-table]"))
+    .filter(Boolean);
+}
+
+function syncTableRowHeights(containerIds) {
+  const tables = leaderboardTables(containerIds);
+  if (tables.length < 2) return;
+
+  const rowCount = Math.max(
+    ...tables.map((t) => t.querySelectorAll("tbody tr").length)
+  );
+
+  for (let i = 0; i < rowCount; i += 1) {
+    const rows = tables
+      .map((t) => t.querySelectorAll("tbody tr")[i])
+      .filter(Boolean);
+    rows.forEach((row) => {
+      row.style.height = "";
+    });
+    let maxH = LEADERBOARD_ROW_MIN_PX;
+    rows.forEach((row) => {
+      maxH = Math.max(maxH, Math.ceil(row.getBoundingClientRect().height));
+    });
+    rows.forEach((row) => {
+      row.style.height = `${maxH}px`;
+    });
+  }
+}
+
+function scheduleLeaderboardSync() {
+  if (leaderboardSyncTimer) cancelAnimationFrame(leaderboardSyncTimer);
+  leaderboardSyncTimer = requestAnimationFrame(() => {
+    leaderboardSyncTimer = null;
+    const groups = LEADERBOARD_SYNC_GROUPS[activeTab] || [];
+    for (const group of groups) {
+      syncTableRowHeights(group);
+    }
+  });
+}
 
 let myClubShort = null;
 let myNation = null;
@@ -115,9 +177,9 @@ function renderLeaderboard(containerId, rows, options) {
             linkClass: "lb-thumb-link",
             alt: r.player_name || "",
           })}</td>
-          <td class="lb-player-name">${playerNameLinkHtml(r.player_id, r.player_name)}</td>
-          <td class="lb-club-name">${clubNameLinkHtml(r.club_short_name, r.club_name || r.club_short_name)}</td>
-          <td class="lb-extra-col">${extraColumnValue(r)}</td>
+          <td class="lb-player-name">${playerNameWrappedLinkHtml(r.player_id, r.player_name)}</td>
+          <td class="lb-club-name">${clubNameWrappedLinkHtml(r.club_short_name, r.club_name || r.club_short_name)}</td>
+          <td class="lb-extra-col">${wrapWordsHtml(extraColumnValue(r))}</td>
           <td class="num lb-val-col">${formatValue(r)}</td>
           <td class="num lb-apps-col">${appsValue(r)}</td>
         </tr>
@@ -153,14 +215,22 @@ function renderLeaderboard(containerId, rows, options) {
 
   const table = el.querySelector("[data-lb-table]");
   const toggle = el.querySelector("[data-lb-toggle]");
-  if (!table || !toggle) return;
-
-  toggle.addEventListener("click", () => {
-    const collapsed = table.classList.toggle("lb-collapsed");
-    toggle.textContent = collapsed
-      ? `Show all (${rows.length})`
-      : "Show top 10";
+  el.querySelectorAll("img").forEach((img) => {
+    if (!img.complete) {
+      img.addEventListener("load", scheduleLeaderboardSync, { once: true });
+    }
   });
+  if (!table) return;
+
+  if (toggle) {
+    toggle.addEventListener("click", () => {
+      const collapsed = table.classList.toggle("lb-collapsed");
+      toggle.textContent = collapsed
+        ? `Show all (${rows.length})`
+        : "Show top 10";
+      scheduleLeaderboardSync();
+    });
+  }
 }
 
 function statTableId(prefix, stem) {
@@ -224,6 +294,7 @@ function renderClubLeaderboards(prefix, rows, extraColumnKey, extraColumnValue) 
     valueKey: "CS",
     formatValue: (r) => r.clean_sheets,
   });
+  scheduleLeaderboardSync();
 }
 
 function renderLeague() {
@@ -307,6 +378,7 @@ function renderWorldCup() {
     valueKey: "Caps",
     formatValue: (r) => r.caps,
   });
+  scheduleLeaderboardSync();
 }
 
 function formatGpslMonthLabel(month) {
@@ -343,8 +415,8 @@ function buildTotmStatsTable(rows) {
               linkClass: "lb-thumb-link",
               alt: r.player_name || "",
             })}</td>
-            <td class="lb-player-name">${playerNameLinkHtml(r.player_id, r.player_name)}</td>
-            <td class="lb-club-name">${clubNameLinkHtml(r.club_short_name, r.club_name || r.club_short_name)}</td>
+            <td class="lb-player-name">${playerNameWrappedLinkHtml(r.player_id, r.player_name)}</td>
+            <td class="lb-club-name">${clubNameWrappedLinkHtml(r.club_short_name, r.club_name || r.club_short_name)}</td>
             <td class="num lb-stat-col">${r.appearances ?? 0}</td>
             <td class="num lb-stat-col">${r.goals ?? 0}</td>
             <td class="num lb-stat-col">${r.assists ?? 0}</td>
@@ -510,4 +582,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   setActiveTab("league");
+
+  window.addEventListener("resize", () => {
+    scheduleLeaderboardSync();
+  });
 });

@@ -75,6 +75,51 @@ export function playerNameLinkHtml(konamiId, name, options = {}) {
   return `<a href="${gpslPlayerCareerUrl(id)}" class="${className}">${escapePlayerHtml(label)}</a>`;
 }
 
+/** Wrap each whitespace-separated word so line breaks only fall between words. */
+export function wrapWordsHtml(text) {
+  const parts = String(text ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!parts.length) return "—";
+  return parts
+    .map((part) => `<span class="lb-word">${escapePlayerHtml(part)}</span>`)
+    .join(" ");
+}
+
+export function playerNameWrappedLinkHtml(konamiId, name, options = {}) {
+  const id = String(konamiId ?? "").trim();
+  const { className = "gpsl-player-link" } = options;
+  const parts = String(name || id || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!id) return wrapWordsHtml(name);
+
+  const inner = (parts.length ? parts : [id])
+    .map((part) => `<span class="lb-word">${escapePlayerHtml(part)}</span>`)
+    .join(" ");
+
+  return `<a href="${gpslPlayerCareerUrl(id)}" class="${className}">${inner}</a>`;
+}
+
+export function clubNameWrappedLinkHtml(shortName, name, options = {}) {
+  const { className = "gpsl-club-link" } = options;
+  const short = String(shortName ?? "").trim();
+  const label = name || fullClubName(short) || short || "—";
+  const href = clubPageHref(short);
+
+  if (!href) return wrapWordsHtml(label);
+
+  const parts = String(label).trim().split(/\s+/).filter(Boolean);
+  const inner = parts
+    .map((part) => `<span class="lb-word">${escapePlayerHtml(part)}</span>`)
+    .join(" ");
+
+  return `<a href="${href}" class="${className}">${inner}</a>`;
+}
+
 /**
  * Linked GPSL club squad page (white plain text, same as player links).
  */
