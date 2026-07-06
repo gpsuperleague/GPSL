@@ -144,7 +144,7 @@ async function runDeploy() {
     GPSL_MONTHS.find((m) => m.value === month)?.label || month;
   if (
     !confirm(
-      `Deploy random results for all ready league fixtures in ${label}? This cannot be undone easily.`
+      `Deploy random results for all ready league and cup fixtures in ${label}? This cannot be undone easily.`
     )
   ) {
     return;
