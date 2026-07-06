@@ -83,7 +83,7 @@ export const FINANCE_UI_SECTIONS = [
     id: "prizes",
     title: "Prize money & TV",
     intro:
-      "League prizes pay after all 38 league matches; cup prizes per round; TV revenue on selected league fixtures.",
+      "League prizes pay after all 38 league matches; cup prizes per round; TV revenue on selected league and cup fixtures (80% home / 20% away).",
     lines: [
       {
         id: "prize_league",
@@ -107,7 +107,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "prize_tv",
         label: "TV revenue",
         types: ["tv_revenue"],
-        note: "Selected league fixtures per GPSL month; paid to both clubs when the match is played.",
+        note: "Up to 5 league + cup matches per division per month; 80% home / 20% away when played. Selects automatically when each GPSL month locks.",
       },
       {
         id: "prize_other",
