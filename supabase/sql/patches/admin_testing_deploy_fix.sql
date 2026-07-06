@@ -3,6 +3,114 @@
 -- Run after admin_testing_tools.sql
 -- =============================================================================
 
+-- Fix: Supabase safe-updates rejects UPDATE without WHERE (POTM flag on temp stats)
+CREATE OR REPLACE FUNCTION public.admin_testing_build_club_match_stats(
+  p_club text,
+  p_expected_goals int
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+VOLATILE
+SET search_path = public
+AS $function$
+DECLARE
+  v_players text[];
+  v_n int;
+  v_sub_count int;
+  v_potm_player text;
+  v_assist_total int;
+  i int;
+BEGIN
+  IF p_expected_goals IS NULL OR p_expected_goals < 0 THEN
+    RAISE EXCEPTION 'Invalid expected goals';
+  END IF;
+
+  SELECT array_agg(p."Konami_ID"::text ORDER BY random())
+  INTO v_players
+  FROM public."Players" p
+  WHERE p."Contracted_Team" = p_club;
+
+  v_n := coalesce(array_length(v_players, 1), 0);
+  IF v_n < 11 THEN
+    RAISE EXCEPTION 'Club % has only % contracted players (need 11)', p_club, v_n;
+  END IF;
+
+  DROP TABLE IF EXISTS _admin_test_stats;
+  CREATE TEMP TABLE _admin_test_stats (
+    player_id text PRIMARY KEY,
+    started boolean NOT NULL DEFAULT false,
+    subbed_on boolean NOT NULL DEFAULT false,
+    goals int NOT NULL DEFAULT 0,
+    assists int NOT NULL DEFAULT 0,
+    potm boolean NOT NULL DEFAULT false
+  ) ON COMMIT DROP;
+
+  INSERT INTO _admin_test_stats (player_id, started)
+  SELECT unnest(v_players[1:11]), true;
+
+  v_sub_count := least(5, v_n - 11);
+  IF v_sub_count > 0 THEN
+    v_sub_count := floor(random() * (v_sub_count + 1))::int;
+    IF v_sub_count > 0 THEN
+      INSERT INTO _admin_test_stats (player_id, subbed_on)
+      SELECT unnest(v_players[12:11 + v_sub_count]), true;
+    END IF;
+  END IF;
+
+  SELECT s.player_id
+  INTO v_potm_player
+  FROM _admin_test_stats s
+  WHERE s.started
+  ORDER BY random()
+  LIMIT 1;
+
+  UPDATE _admin_test_stats
+  SET potm = (player_id = v_potm_player)
+  WHERE started OR subbed_on;
+
+  FOR i IN 1..p_expected_goals LOOP
+    UPDATE _admin_test_stats
+    SET goals = goals + 1
+    WHERE player_id = (
+      SELECT s.player_id FROM _admin_test_stats s ORDER BY random() LIMIT 1
+    );
+  END LOOP;
+
+  v_assist_total := CASE
+    WHEN p_expected_goals > 0 THEN floor(random() * (p_expected_goals + 1))::int
+    ELSE 0
+  END;
+
+  FOR i IN 1..v_assist_total LOOP
+    UPDATE _admin_test_stats
+    SET assists = assists + 1
+    WHERE player_id = (
+      SELECT s.player_id FROM _admin_test_stats s ORDER BY random() LIMIT 1
+    );
+  END LOOP;
+
+  RETURN (
+    SELECT coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'player_id', s.player_id,
+          'started', s.started,
+          'subbed_on', s.subbed_on,
+          'goals', s.goals,
+          'assists', s.assists,
+          'rating', 6.0,
+          'potm', s.potm
+        )
+        ORDER BY s.started DESC, s.player_id
+      ),
+      '[]'::jsonb
+    )
+    FROM _admin_test_stats s
+    WHERE s.started OR s.subbed_on
+  );
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.admin_testing_fixture_squads_ready(
   p_home_club text,
   p_away_club text

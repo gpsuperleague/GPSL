@@ -67,7 +67,9 @@ BEGIN
   ORDER BY random()
   LIMIT 1;
 
-  UPDATE _admin_test_stats SET potm = (player_id = v_potm_player);
+  UPDATE _admin_test_stats
+  SET potm = (player_id = v_potm_player)
+  WHERE started OR subbed_on;
 
   FOR i IN 1..p_expected_goals LOOP
     UPDATE _admin_test_stats
