@@ -287,7 +287,33 @@ END;
 $function$;
 
 -- Pull next month (and all later months) forward so the next month unlocks now.
--- Unlock snaps to the next UK :00/:30 so propose-time slots work (see match_scheduling_slot_align_fix.sql).
+-- Unlock snaps to the current UK :00/:30 floor so the month is LIVE immediately.
+CREATE OR REPLACE FUNCTION public.match_schedule_align_kickoff_down(p_at timestamptz)
+RETURNS timestamptz
+LANGUAGE plpgsql
+IMMUTABLE
+AS $function$
+DECLARE
+  v_local timestamp;
+  v_remainder int;
+BEGIN
+  IF p_at IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  v_local := date_trunc('minute', p_at AT TIME ZONE 'Europe/London');
+  v_remainder := (
+    EXTRACT(HOUR FROM v_local)::int * 60 + EXTRACT(MINUTE FROM v_local)::int
+  ) % 30;
+
+  IF v_remainder > 0 THEN
+    v_local := v_local - (v_remainder * interval '1 minute');
+  END IF;
+
+  RETURN v_local AT TIME ZONE 'Europe/London';
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.match_schedule_align_kickoff_up(p_at timestamptz)
 RETURNS timestamptz
 LANGUAGE plpgsql
@@ -368,7 +394,7 @@ BEGIN
     );
   END IF;
 
-  v_target_unlock := public.match_schedule_align_kickoff_up(now());
+  v_target_unlock := public.match_schedule_align_kickoff_down(now());
   IF v_target_unlock IS NULL THEN
     v_target_unlock := now();
   END IF;

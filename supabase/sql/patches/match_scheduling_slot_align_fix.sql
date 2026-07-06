@@ -8,8 +8,8 @@
 -- Fix:
 --   • Align slot search to the next valid UK half-hour (no-op when already
 --     Friday 19:00 or any :00/:30 kick-off).
---   • Pull-forward opens the next month on the next valid half-hour (7-day
---     window unchanged).
+--   • Pull-forward opens the next month on the current UK half-hour floor so the
+--     month is LIVE immediately (align up left a gap until the next :00/:30).
 --
 -- Compatible with:
 --   • Test seasons — early month end / calendar pull-forward
@@ -47,6 +47,33 @@ BEGIN
     v_local := v_local + interval '30 minutes';
   ELSE
     v_local := v_local + ((30 - v_remainder) * interval '1 minute');
+  END IF;
+
+  RETURN v_local AT TIME ZONE 'Europe/London';
+END;
+$function$;
+
+/** Floor to UK :00/:30 — use when opening the next GPSL month immediately. */
+CREATE OR REPLACE FUNCTION public.match_schedule_align_kickoff_down(p_at timestamptz)
+RETURNS timestamptz
+LANGUAGE plpgsql
+IMMUTABLE
+AS $function$
+DECLARE
+  v_local timestamp;
+  v_remainder int;
+BEGIN
+  IF p_at IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  v_local := date_trunc('minute', p_at AT TIME ZONE 'Europe/London');
+  v_remainder := (
+    EXTRACT(HOUR FROM v_local)::int * 60 + EXTRACT(MINUTE FROM v_local)::int
+  ) % 30;
+
+  IF v_remainder > 0 THEN
+    v_local := v_local - (v_remainder * interval '1 minute');
   END IF;
 
   RETURN v_local AT TIME ZONE 'Europe/London';
@@ -144,7 +171,7 @@ BEGIN
     );
   END IF;
 
-  v_target_unlock := public.match_schedule_align_kickoff_up(now());
+  v_target_unlock := public.match_schedule_align_kickoff_down(now());
   IF v_target_unlock IS NULL THEN
     v_target_unlock := now();
   END IF;
@@ -242,6 +269,7 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.match_schedule_align_kickoff_up(timestamptz) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.match_schedule_align_kickoff_down(timestamptz) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.match_schedule_fixture_slots_diagnose(bigint) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
