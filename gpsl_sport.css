@@ -729,6 +729,17 @@ body.gpsl-sport-open {
   }
 }
 
+.gpsl-sport-upgrade-notice {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #c41e3a;
+  background: rgba(196, 30, 58, 0.08);
+  color: #8b0000;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 /* In-season stats page */
 .gpsl-sport-subsection-title {
   font-family: "Helvetica Neue", Arial, sans-serif;

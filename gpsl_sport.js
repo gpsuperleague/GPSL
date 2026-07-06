@@ -11,6 +11,7 @@ let sportEditionId = null;
 let sportActivePage = "front";
 let sportSupabase = null;
 let sportArchive = [];
+let sportRefreshError = null;
 
 const TROPHY_IMAGES = {
   superleague: "images/trophies/superleague.png",
@@ -501,6 +502,26 @@ function pickPageTopStory(page, fallbackStories, leadOnFront) {
   return stories[0] || fallbackStories?.[0] || null;
 }
 
+function isLegacyInseasonEdition(edition) {
+  const front = edition?.front_page || {};
+  const stories = Array.isArray(front.stories) ? front.stories : [];
+  const legacyStory = stories.some((s) =>
+    String(s.body || "").includes("Full-time in") && String(s.body || "").includes("matchday")
+  );
+  const rich = edition?.detail?.inseason_rich === true;
+  const month = String(edition?.gpsl_month || front.gpsl_month || "").toLowerCase();
+  const inseason = month && !["may", "june", "july"].includes(month);
+  return inseason && !rich && (legacyStory || !edition?.stats_page?.enabled);
+}
+
+function renderLegacyUpgradeNotice(edition, refreshError) {
+  if (!isLegacyInseasonEdition(edition) && !refreshError) return "";
+  const msg = refreshError
+    ? `Rich edition rebuild failed: ${refreshError}`
+    : "This month was generated with the old GPSL Sport template. An admin must run the rich-edition SQL patch and rebuild August.";
+  return `<div class="gpsl-sport-upgrade-notice" role="status">${escapeHtml(msg)}</div>`;
+}
+
 function editionSportPages(edition, front = null) {
   const fp = front || edition?.front_page || {};
   const statsPage = edition?.stats_page || edition?.detail?.stats_page || {};
@@ -764,6 +785,7 @@ function renderSportPaper() {
 
   paper.innerHTML = `
     <div class="gpsl-sport-page gpsl-sport-page-front">
+      ${renderLegacyUpgradeNotice(edition, sportRefreshError)}
       ${renderMasthead(editionLabel, editionLabel)}
       <div class="gpsl-sport-front-grid">
         <article class="gpsl-sport-lead-block">
@@ -1016,7 +1038,12 @@ async function loadSportEdition(editionId, { markRead = false, preserveViewingEd
     return false;
   }
 
+  if (data.refresh_error) {
+    console.warn("GPSL Sport refresh:", data.refresh_error);
+  }
+
   window.__gpslSportEdition = data.edition;
+  sportRefreshError = data.refresh_error || null;
   sportActivePage = "front";
   syncSportTabs(data.edition);
 

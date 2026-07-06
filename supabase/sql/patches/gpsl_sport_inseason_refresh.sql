@@ -1,13 +1,9 @@
 -- =============================================================================
--- GPSL Sport — rebuild an existing in-season edition (e.g. bare-bones August)
+-- GPSL Sport — force-rebuild August (or any locked in-season month)
 --
--- 1. Run gpsl_sport_inseason_rich_edition.sql (full file) in Supabase SQL Editor
--- 2. Then run ONE of the options below
---
--- Do NOT run gpsl_sport_inseason_v_u_fix.sql — it is deprecated and reverts the rich generator.
+-- 1. Run the FULL file first: gpsl_sport_inseason_rich_edition.sql
+-- 2. Diagnose (optional):
+--    SELECT public.competition_admin_gpsl_sport_diagnose('august', NULL);
+-- 3. Force rebuild:
+--    SELECT public.competition_admin_regenerate_gpsl_sport('august', NULL);
 -- =============================================================================
-
--- Option A — rebuild August for the current season (paste and run):
--- SELECT public.competition_admin_regenerate_gpsl_sport('august', NULL);
-
--- Option B — Admin → Season → Calendar → "Rebuild GPSL Sport edition" (august selected)
