@@ -84,6 +84,7 @@ DECLARE
   v_cal record;
   v_transfer_stories jsonb := '[]'::jsonb;
   v_i int := 0;
+  v_first_shock jsonb;
 BEGIN
   IF p_season_id IS NULL OR v_gpsl_month IS NULL OR v_gpsl_month = '' THEN
     RETURN jsonb_build_object('error', 'invalid_args');
@@ -179,6 +180,10 @@ BEGIN
     ORDER BY (value->>'shock_score')::numeric DESC
     LIMIT 5
   ) q;
+
+  IF coalesce(jsonb_array_length(v_shocks), 0) > 0 THEN
+    v_first_shock := jsonb_array_element(v_shocks, 0);
+  END IF;
 
   -- Division standings: leader + challengers (with owners)
   SELECT jsonb_object_agg(div_key, div_data)
@@ -415,14 +420,14 @@ BEGIN
   END LOOP;
 
   -- Lead headline
-  IF jsonb_array_length(v_shocks) > 0 THEN
+  IF v_first_shock IS NOT NULL THEN
     v_vars := jsonb_build_object(
-      'winner', (v_shocks->0)->>'winner_name',
-      'loser', (v_shocks->0)->>'loser_name',
-      'winner_owner', (v_shocks->0)->>'winner_owner',
-      'loser_owner', (v_shocks->0)->>'loser_owner',
-      'score', (v_shocks->0)->>'score',
-      'division', (v_shocks->0)->>'division',
+      'winner', v_first_shock->>'winner_name',
+      'loser', v_first_shock->>'loser_name',
+      'winner_owner', v_first_shock->>'winner_owner',
+      'loser_owner', v_first_shock->>'loser_owner',
+      'score', v_first_shock->>'score',
+      'division', v_first_shock->>'division',
       'month', v_month_label
     );
     v_headline := public.gpsl_sport_apply_template(
@@ -434,15 +439,15 @@ BEGIN
       v_vars
     );
     v_subhead := format('%s leads our %s review — plus TOTM, top scorers and match report',
-      (v_shocks->0)->>'division', v_month_label);
+      v_first_shock->>'division', v_month_label);
     v_lead := format(
       E'It was the result that set the inbox alight. %s''s %s beat %s''s %s %s in %s — and GPSL Sport has plenty more from a hectic %s across the league.\n\nInside: Team of the Month, division leaders, monthly golden boot charts, and our Match of the Month report.',
-      (v_shocks->0)->>'winner_owner',
-      (v_shocks->0)->>'winner_name',
-      (v_shocks->0)->>'loser_owner',
-      (v_shocks->0)->>'loser_name',
-      (v_shocks->0)->>'score',
-      (v_shocks->0)->>'division',
+      v_first_shock->>'winner_owner',
+      v_first_shock->>'winner_name',
+      v_first_shock->>'loser_owner',
+      v_first_shock->>'loser_name',
+      v_first_shock->>'score',
+      v_first_shock->>'division',
       v_month_label
     );
   ELSIF v_match IS NOT NULL THEN
@@ -478,10 +483,10 @@ BEGIN
     'shock_results', v_shocks,
     'standings_snapshot', v_standings,
     'hero', CASE
-      WHEN jsonb_array_length(v_shocks) > 0 THEN jsonb_build_object(
+      WHEN v_first_shock IS NOT NULL THEN jsonb_build_object(
         'kind', 'stadium',
-        'club_short', (v_shocks->0)->>'winner_club',
-        'caption', (v_shocks->0)->>'winner_name' || ' — ' || (v_shocks->0)->>'score'
+        'club_short', v_first_shock->>'winner_club',
+        'caption', format('%s — %s', v_first_shock->>'winner_name', v_first_shock->>'score')
       )
       WHEN v_match IS NOT NULL THEN jsonb_build_object(
         'kind', 'stadium',
@@ -719,11 +724,11 @@ BEGIN
   DELETE FROM public.gpsl_sport_reads r
   WHERE r.edition_id IN (
     SELECT e.id FROM public.gpsl_sport_editions e
-    WHERE e.season_id = p_season_id AND e.gpsl_month = v_month
+    WHERE e.season_id = p_season_id AND lower(e.gpsl_month) = v_month
   );
 
   DELETE FROM public.gpsl_sport_editions e
-  WHERE e.season_id = p_season_id AND e.gpsl_month = v_month;
+  WHERE e.season_id = p_season_id AND lower(e.gpsl_month) = v_month;
 
   RETURN public.gpsl_sport_generate_edition(p_season_id, v_month);
 END;
@@ -742,8 +747,11 @@ DECLARE
   v_season_id bigint;
   v_month text;
   v_edition_id bigint;
+  v_role text := coalesce(auth.jwt() ->> 'role', '');
 BEGIN
-  IF public.is_gpsl_admin() IS NOT TRUE THEN
+  IF public.is_gpsl_admin() IS NOT TRUE
+     AND current_user NOT IN ('postgres', 'service_role')
+     AND v_role <> 'service_role' THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'admin_only');
   END IF;
 
@@ -921,8 +929,11 @@ DECLARE
   v_edition public.gpsl_sport_editions;
   v_build_error text;
   v_sample jsonb;
+  v_role text := coalesce(auth.jwt() ->> 'role', '');
 BEGIN
-  IF public.is_gpsl_admin() IS NOT TRUE THEN
+  IF public.is_gpsl_admin() IS NOT TRUE
+     AND current_user NOT IN ('postgres', 'service_role')
+     AND v_role <> 'service_role' THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'admin_only');
   END IF;
 
