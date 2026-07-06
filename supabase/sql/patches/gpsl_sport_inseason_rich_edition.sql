@@ -803,12 +803,12 @@ $function$;
 CREATE OR REPLACE FUNCTION public.gpsl_sport_get_edition(p_edition_id bigint)
 RETURNS jsonb
 LANGUAGE plpgsql
-STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
   v_edition public.gpsl_sport_editions;
+  v_month text;
 BEGIN
   IF auth.uid() IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'not_authenticated');
@@ -817,6 +817,20 @@ BEGIN
   SELECT * INTO v_edition FROM public.gpsl_sport_editions WHERE id = p_edition_id;
   IF NOT FOUND THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'not_found');
+  END IF;
+
+  v_month := lower(coalesce(v_edition.gpsl_month, ''));
+  IF coalesce((v_edition.detail->>'inseason_rich')::boolean, false) IS NOT TRUE
+     AND v_month NOT IN ('may', 'june', 'july', '')
+     AND to_regprocedure('public.gpsl_sport_refresh_inseason_edition(bigint, text)') IS NOT NULL THEN
+    BEGIN
+      PERFORM public.gpsl_sport_refresh_inseason_edition(v_edition.season_id, v_month);
+      SELECT * INTO v_edition FROM public.gpsl_sport_editions WHERE id = p_edition_id;
+    EXCEPTION
+      WHEN OTHERS THEN
+        RAISE WARNING 'gpsl_sport_get_edition: refresh failed for % (%): %',
+          v_month, p_edition_id, SQLERRM;
+    END;
   END IF;
 
   RETURN jsonb_build_object(

@@ -501,19 +501,33 @@ function pickPageTopStory(page, fallbackStories, leadOnFront) {
   return stories[0] || fallbackStories?.[0] || null;
 }
 
+function editionSportPages(edition, front = null) {
+  const fp = front || edition?.front_page || {};
+  const statsPage = edition?.stats_page || edition?.detail?.stats_page || {};
+  const matchPage = edition?.match_page || edition?.detail?.match_page || {};
+  const statsEnabled =
+    statsPage.enabled === true ||
+    (edition?.detail?.inseason_rich && Object.keys(statsPage).length > 1) ||
+    Boolean(fp.standings_snapshot && Object.keys(fp.standings_snapshot).length);
+  const matchEnabled =
+    matchPage.enabled === true ||
+    Boolean(matchPage.lead?.headline || matchPage.fixture?.home_name);
+
+  return { statsPage, matchPage, statsEnabled, matchEnabled };
+}
+
 function buildFrontRailTeasers(edition, front) {
   const teasers = [];
   const leadKind = String(front.lead_kind || front.hero?.kind || "");
   const managersPage = edition.managers_page || edition.detail?.managers_page || {};
   const ownersPage = edition.owners_page || edition.detail?.owners_page || {};
-  const statsPage = edition.stats_page || edition.detail?.stats_page || {};
-  const matchPage = edition.match_page || edition.detail?.match_page || {};
+  const { statsPage, matchPage, statsEnabled, matchEnabled } = editionSportPages(edition, front);
   const back = edition.back_page || {};
   const managerStories = Array.isArray(front.manager_stories) ? front.manager_stories : [];
   const ownerStories = Array.isArray(front.owner_stories) ? front.owner_stories : [];
   const xferStories = Array.isArray(back.stories) ? back.stories : [];
 
-  if (statsPage.enabled) {
+  if (statsEnabled) {
     const totm = Array.isArray(statsPage.totm_super) ? statsPage.totm_super : [];
     const star = totm.find((p) => p.pitch_slot === "CF") || totm[0];
     const story = statsPage.lead?.headline
@@ -529,7 +543,7 @@ function buildFrontRailTeasers(edition, front) {
     }
   }
 
-  if (matchPage.enabled && matchPage.lead?.headline) {
+  if (matchEnabled && matchPage.lead?.headline) {
     teasers.push({
       page: "match",
       label: "Match report",
@@ -690,15 +704,14 @@ function renderSportPaper() {
 
   const managersPage = edition.managers_page || edition.detail?.managers_page || {};
   const ownersPage = edition.owners_page || edition.detail?.owners_page || {};
-  const statsPage = edition.stats_page || edition.detail?.stats_page || {};
-  const matchPage = edition.match_page || edition.detail?.match_page || {};
+  const { statsPage, matchPage, statsEnabled, matchEnabled } = editionSportPages(edition, front);
 
-  if (sportActivePage === "stats" && statsPage.enabled) {
+  if (sportActivePage === "stats" && statsEnabled) {
     paper.innerHTML = renderStatsPage(editionLabel, statsPage);
     return;
   }
 
-  if (sportActivePage === "match" && matchPage.enabled) {
+  if (sportActivePage === "match" && matchEnabled) {
     paper.innerHTML = renderMatchPage(editionLabel, matchPage);
     return;
   }
@@ -860,10 +873,24 @@ export function ensureSportModal() {
     e.preventDefault();
     switchSportPage(link.dataset.sportPage);
   });
-  document.getElementById("gpslSportArchiveSelect")?.addEventListener("change", (e) => {
+  document.getElementById("gpslSportArchiveSelect")?.addEventListener("change", async (e) => {
     const nextId = Number(e.target.value);
     if (!nextId || nextId === Number(sportEditionId)) return;
-    loadSportEdition(nextId, { markRead: true });
+
+    const paper = document.getElementById("gpslSportPaper");
+    if (paper) {
+      paper.innerHTML =
+        '<div class="gpsl-sport-loading"><span class="gpsl-sport-loading-spinner"></span> Loading edition…</div>';
+    }
+
+    const ok = await loadSportEdition(nextId, { markRead: true, preserveViewingEdition: true });
+    if (!ok) {
+      renderSportArchiveSelect();
+      if (paper) {
+        paper.innerHTML =
+          '<div class="gpsl-sport-loading">Could not load that edition. Try another month.</div>';
+      }
+    }
   });
 
   document.addEventListener("keydown", (e) => {
@@ -891,10 +918,13 @@ function readEditionIdFromNavButton() {
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
-export async function refreshGpslSportNav(supabase) {
+export async function refreshGpslSportNav(supabase, { preserveViewingEdition = false } = {}) {
   const btn = document.getElementById("gpslSportNavBtn");
   const client = supabase || sportSupabase || window.supabase;
   if (!btn || !client) return;
+
+  const modalOpen = document.getElementById("gpslSportModal")?.classList.contains("is-open");
+  const keepViewingEdition = preserveViewingEdition || modalOpen;
 
   try {
     const { data, error } = await client.rpc("gpsl_sport_nav_state");
@@ -904,13 +934,15 @@ export async function refreshGpslSportNav(supabase) {
       btn.hidden = true;
       btn.removeAttribute("data-edition-id");
       btn.classList.remove("has-unread");
-      sportEditionId = null;
+      if (!keepViewingEdition) sportEditionId = null;
       return;
     }
 
     btn.hidden = false;
-    sportEditionId = data.edition_id;
-    btn.dataset.editionId = String(data.edition_id);
+    if (!keepViewingEdition) {
+      sportEditionId = data.edition_id;
+      btn.dataset.editionId = String(data.edition_id);
+    }
     btn.title = data.headline
       ? `GPSL Sport — ${data.headline}`
       : `GPSL Sport — ${data.edition_label || "Latest"}`;
@@ -945,19 +977,18 @@ function syncSportTabs(edition) {
   const backTab = document.getElementById("gpslSportBackTab");
   const managersPage = edition?.managers_page || edition?.detail?.managers_page || {};
   const ownersPage = edition?.owners_page || edition?.detail?.owners_page || {};
-  const statsPage = edition?.stats_page || edition?.detail?.stats_page || {};
-  const matchPage = edition?.match_page || edition?.detail?.match_page || {};
+  const { statsEnabled, matchEnabled } = editionSportPages(edition);
   const backEnabled = !!edition?.back_page?.enabled;
 
-  if (statsTab) statsTab.hidden = !statsPage.enabled;
-  if (matchTab) matchTab.hidden = !matchPage.enabled;
+  if (statsTab) statsTab.hidden = !statsEnabled;
+  if (matchTab) matchTab.hidden = !matchEnabled;
   if (managersTab) managersTab.hidden = !managersPage.enabled;
   if (ownersTab) ownersTab.hidden = !ownersPage.enabled;
   if (backTab) backTab.hidden = !backEnabled;
 
   const pages = ["front"];
-  if (statsPage.enabled) pages.push("stats");
-  if (matchPage.enabled) pages.push("match");
+  if (statsEnabled) pages.push("stats");
+  if (matchEnabled) pages.push("match");
   if (managersPage.enabled) pages.push("managers");
   if (ownersPage.enabled) pages.push("owners");
   if (backEnabled) pages.push("back");
@@ -968,13 +999,13 @@ function syncSportTabs(edition) {
   });
 }
 
-async function loadSportEdition(editionId, { markRead = false } = {}) {
+async function loadSportEdition(editionId, { markRead = false, preserveViewingEdition = false } = {}) {
   const client = sportSupabase || window.supabase;
   if (!client || !editionId) return false;
 
   sportEditionId = editionId;
   const btn = document.getElementById("gpslSportNavBtn");
-  if (btn) btn.dataset.editionId = String(editionId);
+  if (btn && !preserveViewingEdition) btn.dataset.editionId = String(editionId);
 
   const { data, error } = await client.rpc("gpsl_sport_get_edition", {
     p_edition_id: editionId,
@@ -994,7 +1025,7 @@ async function loadSportEdition(editionId, { markRead = false } = {}) {
 
   if (markRead) {
     await client.rpc("gpsl_sport_mark_read", { p_edition_id: editionId });
-    refreshGpslSportNav(client);
+    await refreshGpslSportNav(client, { preserveViewingEdition });
   }
 
   return true;
