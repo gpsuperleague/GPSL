@@ -1,7 +1,8 @@
 -- =============================================================================
 -- GPSL Sport — rich in-season monthly edition (August–April)
 -- TOTM, monthly top scorers, standings/owners, shock results, match report
--- Run after gpsl_sport_inseason_v_u_fix.sql + competition_totm patches
+-- Run gpsl_sport_inseason_rich_edition.sql THEN gpsl_sport_inseason_refresh.sql
+-- Do NOT re-run gpsl_sport_inseason_v_u_fix.sql (deprecated; reverts rich generator).
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.gpsl_sport_owner_byline(p_club_short text)
@@ -569,6 +570,175 @@ BEGIN
 END;
 $function$;
 
+CREATE OR REPLACE FUNCTION public.gpsl_sport_refresh_inseason_edition(
+  p_season_id bigint,
+  p_gpsl_month text
+)
+RETURNS bigint
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_built jsonb;
+  v_month_label text;
+  v_month text := lower(btrim(p_gpsl_month));
+  v_id bigint;
+BEGIN
+  IF p_season_id IS NULL OR v_month IS NULL OR v_month = '' THEN
+    RETURN NULL;
+  END IF;
+
+  IF to_regprocedure('public.gpsl_sport_build_inseason_month_content(bigint, text)') IS NULL THEN
+    RAISE EXCEPTION 'gpsl_sport_build_inseason_month_content is not installed — run gpsl_sport_inseason_rich_edition.sql first';
+  END IF;
+
+  v_month_label := public.gpsl_sport_month_label(v_month);
+  v_built := public.gpsl_sport_build_inseason_month_content(p_season_id, v_month);
+
+  UPDATE public.gpsl_sport_editions e
+  SET
+    edition_label = v_month_label,
+    story_type = coalesce(v_built->>'story_type', 'inseason_month'),
+    front_page = v_built->'front_page',
+    back_page = coalesce(v_built->'back_page', '{}'::jsonb),
+    detail = coalesce(e.detail, '{}'::jsonb) || jsonb_build_object(
+      'generated_at', now(),
+      'inseason_rich', true,
+      'stats_page', coalesce(v_built->'stats_page', '{}'::jsonb),
+      'match_page', coalesce(v_built->'match_page', '{}'::jsonb),
+      'refreshed_at', now()
+    ),
+    published_at = coalesce(e.published_at, now())
+  WHERE e.season_id = p_season_id
+    AND e.gpsl_month = v_month
+  RETURNING e.id INTO v_id;
+
+  IF v_id IS NOT NULL THEN
+    DELETE FROM public.gpsl_sport_reads r WHERE r.edition_id = v_id;
+    RETURN v_id;
+  END IF;
+
+  INSERT INTO public.gpsl_sport_editions (
+    season_id, gpsl_month, edition_label, story_type, front_page, back_page, detail
+  )
+  VALUES (
+    p_season_id,
+    v_month,
+    v_month_label,
+    coalesce(v_built->>'story_type', 'inseason_month'),
+    v_built->'front_page',
+    coalesce(v_built->'back_page', '{}'::jsonb),
+    jsonb_build_object(
+      'generated_at', now(),
+      'inseason_rich', true,
+      'stats_page', coalesce(v_built->'stats_page', '{}'::jsonb),
+      'match_page', coalesce(v_built->'match_page', '{}'::jsonb)
+    )
+  )
+  RETURNING id INTO v_id;
+
+  RETURN v_id;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.gpsl_sport_regenerate_edition(
+  p_season_id bigint,
+  p_gpsl_month text
+)
+RETURNS bigint
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_month text := lower(btrim(p_gpsl_month));
+  v_role text := coalesce(auth.jwt() ->> 'role', '');
+BEGIN
+  IF auth.uid() IS NULL
+     AND current_user NOT IN ('postgres', 'service_role')
+     AND v_role <> 'service_role' THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  IF public.is_gpsl_admin() IS NOT TRUE
+     AND current_user NOT IN ('postgres', 'service_role')
+     AND v_role <> 'service_role' THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  DELETE FROM public.gpsl_sport_reads r
+  WHERE r.edition_id IN (
+    SELECT e.id FROM public.gpsl_sport_editions e
+    WHERE e.season_id = p_season_id AND e.gpsl_month = v_month
+  );
+
+  DELETE FROM public.gpsl_sport_editions e
+  WHERE e.season_id = p_season_id AND e.gpsl_month = v_month;
+
+  RETURN public.gpsl_sport_generate_edition(p_season_id, v_month);
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.competition_admin_regenerate_gpsl_sport(
+  p_gpsl_month text DEFAULT NULL,
+  p_season_id bigint DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_season_id bigint;
+  v_month text;
+  v_edition_id bigint;
+BEGIN
+  IF public.is_gpsl_admin() IS NOT TRUE THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'admin_only');
+  END IF;
+
+  SELECT coalesce(
+    p_season_id,
+    (SELECT s.id FROM public.competition_seasons s WHERE s.is_current IS TRUE ORDER BY s.id DESC LIMIT 1)
+  ) INTO v_season_id;
+
+  IF v_season_id IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'no_season');
+  END IF;
+
+  v_month := lower(nullif(btrim(p_gpsl_month), ''));
+  IF v_month IS NULL THEN
+    SELECT c.gpsl_month INTO v_month
+    FROM public.competition_season_calendar c
+    WHERE c.season_id = v_season_id
+      AND c.lock_at IS NOT NULL
+      AND c.lock_at <= now()
+    ORDER BY public.competition_gpsl_month_sort(c.gpsl_month) DESC
+    LIMIT 1;
+  END IF;
+
+  IF v_month IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'no_month');
+  END IF;
+
+  IF to_regprocedure('public.gpsl_sport_refresh_inseason_edition(bigint, text)') IS NOT NULL
+     AND v_month NOT IN ('may', 'june', 'july') THEN
+    v_edition_id := public.gpsl_sport_refresh_inseason_edition(v_season_id, v_month);
+  ELSE
+    v_edition_id := public.gpsl_sport_regenerate_edition(v_season_id, v_month);
+  END IF;
+
+  RETURN jsonb_build_object(
+    'ok', v_edition_id IS NOT NULL,
+    'edition_id', v_edition_id,
+    'season_id', v_season_id,
+    'gpsl_month', v_month,
+    'edition_label', public.gpsl_sport_month_label(v_month)
+  );
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.gpsl_sport_generate_inseason_edition(
   p_season_id bigint,
   p_gpsl_month text
@@ -592,6 +762,15 @@ BEGIN
   WHERE e.season_id = p_season_id AND e.gpsl_month = p_gpsl_month;
 
   IF v_existing IS NOT NULL THEN
+    IF coalesce(
+      (SELECT (e.detail->>'inseason_rich')::boolean
+       FROM public.gpsl_sport_editions e
+       WHERE e.id = v_existing),
+      false
+    ) IS NOT TRUE
+    AND to_regprocedure('public.gpsl_sport_refresh_inseason_edition(bigint, text)') IS NOT NULL THEN
+      RETURN public.gpsl_sport_refresh_inseason_edition(p_season_id, p_gpsl_month);
+    END IF;
     RETURN v_existing;
   END IF;
 
@@ -662,6 +841,9 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.gpsl_sport_owner_byline(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpsl_sport_build_inseason_month_content(bigint, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.gpsl_sport_refresh_inseason_edition(bigint, text) TO service_role;
+GRANT EXECUTE ON FUNCTION public.gpsl_sport_regenerate_edition(bigint, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_admin_regenerate_gpsl_sport(text, bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpsl_sport_generate_inseason_edition(bigint, text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.gpsl_sport_get_edition(bigint) TO authenticated;
 

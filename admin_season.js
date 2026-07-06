@@ -119,6 +119,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compEndMonthPreviewBtn").onclick = previewEndGpslMonth;
   document.getElementById("compEndMonthBtn").onclick = endGpslMonthEarly;
   document.getElementById("compEndMonthOpenNext")?.addEventListener("change", updateEndMonthPhraseHint);
+  document.getElementById("compSportRebuildBtn").onclick = rebuildGpslSportEdition;
 
   await refreshCompetitionAdmin();
   await refreshCompCalendarAdmin();
@@ -826,4 +827,46 @@ async function endGpslMonthEarly() {
   } else {
     await refreshCompCalendarAdmin();
   }
+}
+
+async function rebuildGpslSportEdition() {
+  const seasonId = Number(document.getElementById("compCalendarSeason")?.value) || null;
+  const gpslMonth = document.getElementById("compSportRebuildMonth")?.value?.trim() || "august";
+
+  if (
+    !confirm(
+      `Rebuild GPSL Sport for ${gpslMonth}? Owners will see the edition as new again.`
+    )
+  ) {
+    return;
+  }
+
+  setStatus("compCalendarStatus", `Rebuilding GPSL Sport (${gpslMonth})…`);
+
+  const { data, error } = await supabase.rpc("competition_admin_regenerate_gpsl_sport", {
+    p_gpsl_month: gpslMonth,
+    p_season_id: seasonId || null,
+  });
+
+  if (error) {
+    const hint = error.message?.includes("competition_admin_regenerate_gpsl_sport")
+      ? " Run gpsl_sport_inseason_rich_edition.sql in Supabase first."
+      : "";
+    setStatus("compCalendarStatus", "❌ " + error.message + hint, false);
+    return;
+  }
+
+  if (!data?.ok) {
+    setStatus(
+      "compCalendarStatus",
+      "⚠ " + (data?.reason || "Sport edition was not rebuilt"),
+      false
+    );
+    return;
+  }
+
+  setStatus(
+    "compCalendarStatus",
+    `✅ GPSL Sport rebuilt: ${data.edition_label || gpslMonth} (edition #${data.edition_id}). Hard-refresh the site and reopen GPSL Sport.`
+  );
 }

@@ -59,6 +59,31 @@
                 <button id="compEndMonthBtn" class="button" style="background:#990000;">End current month now</button>
               </div>
             </div>
+            <div class="end-month-panel" style="margin-top:14px;padding-top:14px;border-top:1px solid #333;">
+              <h3 style="color:#ff9900;font-size:15px;margin:0 0 8px;">Rebuild GPSL Sport edition</h3>
+              <p class="note" style="margin:0 0 10px;">
+                Re-runs the rich in-season generator for a locked month (TOTM, top scorers, match report).
+                Use this if August still looks bare-bones after SQL patches — applying SQL alone does not update an existing edition row.
+                Run <code>gpsl_sport_inseason_rich_edition.sql</code> first.
+              </p>
+              <div class="row" style="align-items:center;gap:10px;">
+                <label>
+                  GPSL month
+                  <select id="compSportRebuildMonth" style="margin-left:6px;padding:6px;background:#222;border:1px solid #444;color:#ddd;border-radius:6px;">
+                    <option value="august">august</option>
+                    <option value="september">september</option>
+                    <option value="october">october</option>
+                    <option value="november">november</option>
+                    <option value="december">december</option>
+                    <option value="january">january</option>
+                    <option value="february">february</option>
+                    <option value="march">march</option>
+                    <option value="april">april</option>
+                  </select>
+                </label>
+                <button id="compSportRebuildBtn" class="button" style="background:#336655;">Rebuild Sport edition</button>
+              </div>
+            </div>
             <table class="gpsl-table" style="width:100%;border-collapse:collapse;margin-top:12px;">
               <thead>
                 <tr>
