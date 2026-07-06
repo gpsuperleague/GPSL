@@ -98,7 +98,7 @@ function renderLeaderboard(containerId, rows, options) {
       const mine = highlightRow(r);
       return `
         <tr class="${mine ? "highlight" : ""}">
-          <td class="num">${i + 1}</td>
+          <td class="num lb-rank">${i + 1}</td>
           <td class="lb-thumb">${playerThumbLinkHtml(r.player_id, {
             className: "lb-player-thumb",
             linkClass: "lb-thumb-link",
@@ -106,9 +106,9 @@ function renderLeaderboard(containerId, rows, options) {
           })}</td>
           <td class="lb-player-name">${playerNameLinkHtml(r.player_id, r.player_name)}</td>
           <td class="lb-club-name">${clubNameLinkHtml(r.club_short_name, r.club_name || r.club_short_name)}</td>
-          <td>${extraColumnValue(r)}</td>
-          <td class="num">${formatValue(r)}</td>
-          <td class="num">${appsValue(r)}</td>
+          <td class="lb-stat-col">${extraColumnValue(r)}</td>
+          <td class="num lb-stat-col">${formatValue(r)}</td>
+          <td class="num lb-stat-col">${appsValue(r)}</td>
         </tr>
       `;
     })
@@ -121,13 +121,13 @@ function renderLeaderboard(containerId, rows, options) {
     <table class="lb${collapsedClass}" data-lb-table>
       <thead>
         <tr>
-          <th>#</th>
+          <th class="lb-rank">#</th>
           <th class="lb-thumb" aria-label="Card"></th>
           <th>Player</th>
           <th>Club</th>
-          <th>${extraColumnKey}</th>
-          <th>${valueKey}</th>
-          <th>${appsKey}</th>
+          <th class="lb-stat-col">${extraColumnKey}</th>
+          <th class="num lb-stat-col">${valueKey}</th>
+          <th class="num lb-stat-col">${appsKey}</th>
         </tr>
       </thead>
       <tbody>${body}</tbody>
@@ -313,11 +313,11 @@ function buildTotmStatsTable(rows) {
           <th class="lb-thumb" aria-label="Card"></th>
           <th>Player</th>
           <th>Club</th>
-          <th class="num">Apps</th>
-          <th class="num">G</th>
-          <th class="num">A</th>
-          <th class="num">Avg</th>
-          <th class="num">CS</th>
+          <th class="num lb-stat-col">Apps</th>
+          <th class="num lb-stat-col">G</th>
+          <th class="num lb-stat-col">A</th>
+          <th class="num lb-stat-col">Avg</th>
+          <th class="num lb-stat-col">CS</th>
         </tr>
       </thead>
       <tbody>
@@ -325,7 +325,7 @@ function buildTotmStatsTable(rows) {
           .map(
             (r) => `
           <tr${myClubShort && r.club_short_name === myClubShort ? ' class="highlight"' : ""}>
-            <td>${r.slot_label || r.pitch_slot}</td>
+            <td class="lb-stat-col">${r.slot_label || r.pitch_slot}</td>
             <td class="lb-thumb">${playerThumbLinkHtml(r.player_id, {
               className: "lb-player-thumb",
               linkClass: "lb-thumb-link",
@@ -333,11 +333,11 @@ function buildTotmStatsTable(rows) {
             })}</td>
             <td class="lb-player-name">${playerNameLinkHtml(r.player_id, r.player_name)}</td>
             <td class="lb-club-name">${clubNameLinkHtml(r.club_short_name, r.club_name || r.club_short_name)}</td>
-            <td class="num">${r.appearances ?? 0}</td>
-            <td class="num">${r.goals ?? 0}</td>
-            <td class="num">${r.assists ?? 0}</td>
-            <td class="num">${r.avg_rating != null ? Number(r.avg_rating).toFixed(2) : "—"}</td>
-            <td class="num">${r.clean_sheets ?? 0}</td>
+            <td class="num lb-stat-col">${r.appearances ?? 0}</td>
+            <td class="num lb-stat-col">${r.goals ?? 0}</td>
+            <td class="num lb-stat-col">${r.assists ?? 0}</td>
+            <td class="num lb-stat-col">${r.avg_rating != null ? Number(r.avg_rating).toFixed(2) : "—"}</td>
+            <td class="num lb-stat-col">${r.clean_sheets ?? 0}</td>
           </tr>`
           )
           .join("")}
