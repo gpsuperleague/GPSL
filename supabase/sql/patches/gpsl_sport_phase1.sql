@@ -760,7 +760,8 @@ DECLARE
   v_season_id bigint;
   v_id bigint;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  IF NOT public.is_gpsl_admin()
+     AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
