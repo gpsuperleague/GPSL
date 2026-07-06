@@ -65,15 +65,16 @@
       word-break: normal;
       overflow-wrap: normal;
       hyphens: none;
+      box-sizing: border-box;
     }
     table.lb th { background:#222; color:#ff9900; text-align:left; font-size:11px; }
-    table.lb col.lb-col-rank { width: 4%; }
-    table.lb col.lb-col-thumb { width: 12%; }
-    table.lb col.lb-col-player { width: 24%; }
-    table.lb col.lb-col-club { width: 24%; }
-    table.lb col.lb-col-extra { width: 22%; }
-    table.lb col.lb-col-val { width: 7%; }
-    table.lb col.lb-col-apps { width: 7%; }
+    table.lb col.lb-col-rank { width: 5%; }
+    table.lb col.lb-col-thumb { width: 11%; }
+    table.lb col.lb-col-player { width: 21%; }
+    table.lb col.lb-col-club { width: 21%; }
+    table.lb col.lb-col-extra { width: 18%; }
+    table.lb col.lb-col-val { width: 11%; }
+    table.lb col.lb-col-apps { width: 13%; }
     table.lb tbody tr {
       min-height: 52px;
     }
@@ -92,6 +93,13 @@
       white-space: nowrap;
       overflow-wrap: normal;
       word-break: normal;
+      padding-left: 3px;
+      padding-right: 3px;
+    }
+    table.lb th.lb-val-col,
+    table.lb th.lb-apps-col {
+      font-size: 10px;
+      letter-spacing: 0;
     }
     table.lb .lb-thumb {
       padding: 3px 4px;
