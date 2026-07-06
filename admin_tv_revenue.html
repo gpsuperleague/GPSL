@@ -15,9 +15,11 @@
       <div class="card" id="sb-tv-revenue">
         <h2>TV revenue</h2>
         <p class="note">
-          Selects big league fixtures per GPSL month per division (top-8 clashes, promotion/relegation battles, dry spells, etc.).
-          Each selected match pays from a single pot: <strong>80% home</strong> / <strong>20% away</strong> of ₿ per TV match.
-          Run <code>competition_tv_revenue.sql</code> after <code>government_subsidies.sql</code>.
+          Picks up to <strong>5 TV matches per division per month</strong> from a combined pool of
+          <strong>league and cup</strong> fixtures (not separate quotas). Scoring uses table position,
+          cup round, promotion/relegation battles, and dry spells. Payout: <strong>80% home</strong> /
+          <strong>20% away</strong> of ₿ per TV match. Selection runs automatically when a GPSL month
+          locks (for the following month). Manual override below if needed.
         </p>
         <div class="row gov-subsidy-row">
           <div>

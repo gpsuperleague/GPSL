@@ -3,9 +3,9 @@
 -- Run after tv_revenue_home_away_split.sql
 --
 -- SQL Editor (preview):
---   SELECT public.competition_admin_backfill_tv_revenue_split(NULL, true);
+--   SELECT public.competition_admin_backfill_tv_revenue_split(NULL::bigint, true);
 -- Apply:
---   SELECT public.competition_admin_backfill_tv_revenue_split(NULL, false);
+--   SELECT public.competition_admin_backfill_tv_revenue_split(NULL::bigint, false);
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.competition_tv_resolve_fixture_pool(p_fixture_id bigint)
@@ -286,6 +286,8 @@ BEGIN
   );
 END;
 $function$;
+
+DROP FUNCTION IF EXISTS public.competition_admin_backfill_tv_revenue(bigint);
 
 CREATE OR REPLACE FUNCTION public.competition_admin_backfill_tv_revenue(p_season_id bigint DEFAULT NULL)
 RETURNS jsonb

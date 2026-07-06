@@ -6,7 +6,8 @@
 -- Shared month-lock job runner (idempotent; used by cron tick and admin early end)
 CREATE OR REPLACE FUNCTION public.competition_run_month_lock_jobs(
   p_season_id bigint,
-  p_force_scheduling boolean DEFAULT false
+  p_force_scheduling boolean DEFAULT false,
+  p_locked_gpsl_month text DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -17,6 +18,7 @@ DECLARE
   v_out jsonb := jsonb_build_object('ok', true, 'season_id', p_season_id);
   v_totm jsonb;
   v_sport jsonb;
+  v_tv jsonb;
   v_response_track jsonb;
   v_sched_fines jsonb;
   v_response_fines jsonb;
@@ -43,6 +45,11 @@ BEGIN
           'gpsl_sport', jsonb_build_object('ok', false, 'error', SQLERRM)
         );
     END;
+  END IF;
+
+  IF to_regprocedure('public.competition_tv_process_month_lock_selections(bigint,text)') IS NOT NULL THEN
+    v_tv := public.competition_tv_process_month_lock_selections(p_season_id, p_locked_gpsl_month);
+    v_out := v_out || jsonb_build_object('tv_selection', v_tv);
   END IF;
 
   IF p_force_scheduling THEN
@@ -527,7 +534,7 @@ BEGIN
     );
   END IF;
 
-  v_jobs := public.competition_run_month_lock_jobs(v_season_id, true);
+  v_jobs := public.competition_run_month_lock_jobs(v_season_id, true, v_month);
 
   IF coalesce(p_unlock_next_month, false) THEN
     v_pull := public.competition_admin_pull_forward_calendar_months(v_season_id, v_month);
@@ -558,7 +565,7 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.competition_run_month_lock_jobs(bigint, boolean) TO service_role;
+GRANT EXECUTE ON FUNCTION public.competition_run_month_lock_jobs(bigint, boolean, text) TO service_role;
 GRANT EXECUTE ON FUNCTION public.competition_admin_pull_forward_calendar_months(bigint, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_admin_end_gpsl_month_preview(text, bigint, boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_admin_end_gpsl_month_early(text, text, bigint, boolean) TO authenticated;

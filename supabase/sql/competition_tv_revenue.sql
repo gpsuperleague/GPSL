@@ -3,7 +3,7 @@
 -- Run once after competition_phase5_finances.sql and government_subsidies.sql
 -- (extends ledger entry types and recreates global_settings_public).
 -- =============================================================================
--- Selects big league fixtures per GPSL month per division (default 5).
+-- Selects big league + cup fixtures per GPSL month per division (default 5 combined).
 -- Home club receives 80% of tv_per_match_amount; away club 20% (single match pool).
 -- Club appearances per season bounded by tv_club_min / tv_club_max (default 4–12).
 -- =============================================================================
@@ -1020,6 +1020,8 @@ BEGIN
   );
 END;
 $function$;
+
+DROP FUNCTION IF EXISTS public.competition_admin_backfill_tv_revenue(bigint);
 
 CREATE OR REPLACE FUNCTION public.competition_admin_backfill_tv_revenue(p_season_id bigint DEFAULT NULL)
 RETURNS jsonb

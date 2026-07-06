@@ -806,7 +806,7 @@ BEGIN
   SELECT * INTO v_fixture
   FROM public.competition_fixtures
   WHERE id = p_fixture_id
-    AND competition_type = 'league'
+    AND competition_type IN ('league', 'cup')
     AND status = 'played'
     AND home_goals IS NOT NULL
     AND away_goals IS NOT NULL;
@@ -831,8 +831,8 @@ BEGIN
       AND entry_type = 'tv_revenue'
   ) THEN
     v_desc := format(
-      'TV revenue (home 80%%) MD%s — %s vs %s',
-      v_fixture.matchday,
+      'TV revenue (home 80%%) %s — %s vs %s',
+      public.competition_tv_fixture_settle_label(v_fixture),
       v_fixture.home_club_short_name,
       v_fixture.away_club_short_name
     );
@@ -840,7 +840,9 @@ BEGIN
       'gpsl_month', v_fixture.gpsl_month,
       'role', 'home',
       'tv_share_pct', 80,
-      'tv_match_pool', v_pool
+      'tv_match_pool', v_pool,
+      'competition_type', v_fixture.competition_type,
+      'cup_code', v_fixture.cup_code
     );
     PERFORM public.post_club_ledger(
       v_fixture.home_club_short_name,
@@ -862,8 +864,8 @@ BEGIN
       AND entry_type = 'tv_revenue'
   ) THEN
     v_desc := format(
-      'TV revenue (away 20%%) MD%s — %s vs %s',
-      v_fixture.matchday,
+      'TV revenue (away 20%%) %s — %s vs %s',
+      public.competition_tv_fixture_settle_label(v_fixture),
       v_fixture.home_club_short_name,
       v_fixture.away_club_short_name
     );
@@ -871,7 +873,9 @@ BEGIN
       'gpsl_month', v_fixture.gpsl_month,
       'role', 'away',
       'tv_share_pct', 20,
-      'tv_match_pool', v_pool
+      'tv_match_pool', v_pool,
+      'competition_type', v_fixture.competition_type,
+      'cup_code', v_fixture.cup_code
     );
     PERFORM public.post_club_ledger(
       v_fixture.away_club_short_name,
