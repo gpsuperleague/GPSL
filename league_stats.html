@@ -51,11 +51,21 @@
       grid-column: 1 / -1;
       min-height: auto;
     }
+    .stats-data-panel {
+      min-height: auto;
+    }
+    .stats-data-panel > div[id$="Table"] {
+      flex: 0 0 auto;
+    }
     .panel h2 { color:#ff9900; font-size:17px; line-height:1.2; }
-    .panel-title-slot {
+    .stats-data-panel .panel-title-slot {
+      flex: 0 0 44px;
       height: 44px;
+      min-height: 44px;
+      max-height: 44px;
       margin: 0 0 12px;
       box-sizing: border-box;
+      overflow: hidden;
     }
     .panel > h2 {
       margin: 0 0 12px;
@@ -233,26 +243,26 @@
         </select>
       </div>
       <div class="stats-grid" id="leagueStatsGrid">
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot"><h2>Top scorers</h2></div>
           <div id="scorersTable"></div>
         </div>
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot"><h2>Top assists</h2></div>
           <div id="assistsTable"></div>
         </div>
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot panel-title-slot--with-note">
             <h2>Average rating</h2>
             <span class="panel-head-note">(Min. 3 appearances with a rated game.)</span>
           </div>
           <div id="ratingsTable"></div>
         </div>
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot"><h2>Player of the Match</h2></div>
           <div id="potmTable"></div>
         </div>
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot panel-title-slot--with-note">
             <h2>Goalkeeper clean sheets</h2>
             <span class="panel-head-note">(League games only — started in a 0-conceded match.)</span>
@@ -289,26 +299,26 @@
         </select>
       </div>
       <div class="stats-grid" id="cupsStatsGrid">
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot"><h2>Top scorers</h2></div>
           <div id="cupScorersTable"></div>
         </div>
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot"><h2>Top assists</h2></div>
           <div id="cupAssistsTable"></div>
         </div>
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot panel-title-slot--with-note">
             <h2>Average rating</h2>
             <span class="panel-head-note">(Min. 3 cup appearances with a rated game.)</span>
           </div>
           <div id="cupRatingsTable"></div>
         </div>
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot"><h2>Player of the Match</h2></div>
           <div id="cupPotmTable"></div>
         </div>
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot panel-title-slot--with-note">
             <h2>Goalkeeper clean sheets</h2>
             <span class="panel-head-note">(Cup games only — started in a 0-conceded match.)</span>
@@ -324,26 +334,26 @@
 
     <div id="worldcupPanel" class="stats-tab-panel" role="tabpanel" hidden>
       <div class="stats-grid" id="worldcupStatsGrid">
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot"><h2>Top scorers</h2></div>
           <div id="wcScorersTable"></div>
         </div>
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot"><h2>Top assists</h2></div>
           <div id="wcAssistsTable"></div>
         </div>
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot panel-title-slot--with-note">
             <h2>Average rating</h2>
             <span class="panel-head-note">(Min. 3 caps with a rated game.)</span>
           </div>
           <div id="wcRatingsTable"></div>
         </div>
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot"><h2>Player of the Match</h2></div>
           <div id="wcPotmTable"></div>
         </div>
-        <div class="panel">
+        <div class="panel stats-data-panel">
           <div class="panel-title-slot"><h2>Most caps</h2></div>
           <div id="wcCapsTable"></div>
         </div>
