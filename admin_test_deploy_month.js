@@ -25,6 +25,7 @@ function populateMonthSelect() {
 
 function renderPreview(data) {
   const summary = document.getElementById("previewSummary");
+  const under11Wrap = document.getElementById("under11Wrap");
   const table = document.getElementById("previewTable");
   const body = document.getElementById("previewBody");
   const hint = document.getElementById("phraseHint");
@@ -35,12 +36,30 @@ function renderPreview(data) {
   }
 
   const fixtures = data?.fixtures || [];
+  const under11 = data?.clubs_under_11 || [];
   summary.hidden = false;
   summary.innerHTML = `
     <span>Month: <b>${data?.gpsl_month_label || data?.gpsl_month || "—"}</b></span>
     <span>Ready league: <b>${data?.scheduled_league_ready ?? 0}</b></span>
     <span>Blocked / other: <b>${data?.blocked_or_other ?? 0}</b></span>
+    <span>Owned clubs &lt;11: <b>${under11.length}</b></span>
   `;
+
+  if (under11Wrap) {
+    if (under11.length) {
+      const sample = under11
+        .slice(0, 12)
+        .map((c) => `${c.club_short || c.club_name} (${c.squad_size})`)
+        .join(", ");
+      const more = under11.length > 12 ? ` … +${under11.length - 12} more` : "";
+      under11Wrap.hidden = false;
+      under11Wrap.innerHTML =
+        `<b>Clubs under 11 players</b> (deploy skips these fixtures): ${escapeHtml(sample)}${escapeHtml(more)}`;
+    } else {
+      under11Wrap.hidden = true;
+      under11Wrap.innerHTML = "";
+    }
+  }
 
   if (!fixtures.length) {
     table.hidden = true;
@@ -59,10 +78,19 @@ function renderPreview(data) {
         <td>${f.status} · ${f.competition_type || "league"}</td>
         <td>${squads}</td>
         <td class="${ready ? "ready-yes" : "ready-no"}">${ready ? "Yes" : "No"}</td>
+        <td>${escapeHtml(f.block_reason || "")}</td>
       </tr>`;
     })
     .join("");
   table.hidden = false;
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 async function runPreview() {
@@ -126,10 +154,14 @@ async function runDeploy() {
   }
 
   const errs = data?.errors || [];
+  const summary = data?.error_summary || {};
   let msg = `Deployed ${data?.deployed_count ?? 0} fixture(s) for ${data?.gpsl_month_label || month}.`;
   if (errs.length) {
-    msg += ` ${errs.length} error(s) — see console.`;
+    const lines = Object.entries(summary).map(([text, cnt]) => `${cnt}× ${text}`);
+    const detail = lines.length ? lines.join(" | ") : errs[0]?.error || "unknown";
+    msg += ` ${errs.length} error(s): ${detail}`;
     console.warn("deploy month errors:", errs);
+    console.warn("deploy month error_summary:", summary);
   }
   setStatus("deployStatus", msg, errs.length === 0);
   await runPreview();
