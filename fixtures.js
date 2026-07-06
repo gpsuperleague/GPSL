@@ -26,6 +26,7 @@ import {
 } from "./competition_conditions.js";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 import { scheduleActionLabel, formatKickoff, UK_TZ, catchUpBadgeHtml, isCatchUpFixture } from "./match_scheduling.js";
+import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 
 let calendarStatus = null;
 let holidayContext = null;
@@ -117,7 +118,7 @@ function fixtureRowHtml(fixture) {
     : "";
   return `
     <td>${clubWithOwnerHtml(fixture.home_club_name, fixture.home_club_short_name, "block")}</td>
-    <td class="score">${formatFixtureScore(fixture, myClub)}${catchUpCell}</td>
+    <td class="score">${tvFixtureBadgeHtml(fixture.id)}${formatFixtureScore(fixture, myClub)}${catchUpCell}</td>
     <td>${clubWithOwnerHtml(fixture.away_club_name, fixture.away_club_short_name, "block")}</td>
     <td class="fixture-stadium">${fixtureStadiumCell(fixture)}</td>
     <td class="fixture-continent">${fixtureContinentCell(fixture)}</td>
@@ -388,6 +389,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   const league = await loadLeagueFixtures(supabase);
   const cups = await loadCupFixtures(supabase);
   allFixtures = [...league, ...cups];
+  await loadTvFixtureIds(supabase, season.id);
   if (!allFixtures.length && season) {
     root.innerHTML =
       '<p class="empty">No fixtures loaded. Check an active season and that admin generated fixtures (GPSL Admin → League Fixtures). If the browser console shows a database error, run <code>competition_phase3_matchday.sql</code> after phase 1.</p>';

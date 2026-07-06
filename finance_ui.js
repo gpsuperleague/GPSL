@@ -243,15 +243,13 @@ export const FINANCE_UI_SECTIONS = [
         id: "staff_release",
         label: "Contract releases",
         types: ["contract_release_comp", "contract_release_comp_received"],
-        planned: true,
-        note: "Failed objectives / resignation / sacking; fee may return; manager cannot rejoin same club.",
+        note: "Player contract buy-outs (wage × seasons remaining) and other release debits.",
       },
       {
         id: "staff_termination",
         label: "Contract termination",
         types: ["contract_termination"],
-        planned: true,
-        note: "Club fires manager mid-season or at season end.",
+        note: "Manager sack (January, half market value credit) and other termination payouts.",
       },
     ],
   },
@@ -355,6 +353,13 @@ export function aggregateLedgerByLine(rows) {
       (meta.kind === "manager" || meta.manager_draft === true || meta.manager_draft === "true")
     ) {
       lineId = "staff_offers";
+    }
+    if (
+      type === "contract_release_comp" &&
+      amt > 0.5 &&
+      (meta.kind === "manager" || meta.manager_sack === true || meta.sack === true)
+    ) {
+      lineId = "staff_termination";
     }
     const breakdownKey = ledgerBreakdownLabel(r);
     if (!lineId) {

@@ -2405,3 +2405,13 @@ a.gpsl-club-link:focus {
   color: #fff;
   text-decoration: none;
 }
+
+.tv-fixture-badge {
+  display: inline-block;
+  margin-right: 4px;
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.92;
+  vertical-align: middle;
+  cursor: help;
+}

@@ -22,6 +22,7 @@ import {
 } from "./competition_calendar.js";
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 import { scheduleActionLabel } from "./match_scheduling.js";
+import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 
 let myClub = { short: null, name: null };
 let calendarStatus = null;
@@ -178,6 +179,7 @@ function fixtureCardHtml(f) {
     <div class="fixture-card">
       <div class="fixture-top">
         <span class="fixture-badge ${badgeCls}">${competitionLabel(f)}</span>
+        ${tvFixtureBadgeHtml(f.id)}
         <span class="fixture-match">${matchLineHtml(f)}</span>
         <span class="fixture-score">${score}</span>
       </div>
@@ -348,6 +350,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         '<p class="empty">Fixtures appear once the league admin activates a season.</p>';
       return;
     }
+
+    await loadTvFixtureIds(supabase, season.id);
 
     calendarStatus = await loadCalendarStatus(supabase);
     holidayContext = await loadHolidayPlayContext(supabase, myClub.short);
