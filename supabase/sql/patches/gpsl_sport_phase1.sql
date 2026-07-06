@@ -648,6 +648,46 @@ $function$;
 -- Owner RPCs
 -- ---------------------------------------------------------------------------
 
+CREATE OR REPLACE FUNCTION public.gpsl_sport_list_editions()
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_rows jsonb;
+BEGIN
+  IF v_uid IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'not_authenticated');
+  END IF;
+
+  SELECT coalesce(jsonb_agg(row_data ORDER BY sort_key DESC), '[]'::jsonb)
+  INTO v_rows
+  FROM (
+    SELECT
+      jsonb_build_object(
+        'id', e.id,
+        'edition_label', e.edition_label,
+        'gpsl_month', e.gpsl_month,
+        'headline', e.front_page->>'headline',
+        'published_at', e.published_at,
+        'unread', NOT EXISTS (
+          SELECT 1 FROM public.gpsl_sport_reads r
+          WHERE r.owner_id = v_uid AND r.edition_id = e.id
+        )
+      ) AS row_data,
+      e.published_at AS sort_key
+    FROM public.gpsl_sport_editions e
+    JOIN public.competition_seasons s ON s.id = e.season_id AND s.is_current = true
+    ORDER BY e.published_at DESC
+  ) q;
+
+  RETURN jsonb_build_object('ok', true, 'editions', v_rows);
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.gpsl_sport_nav_state()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -776,6 +816,7 @@ BEGIN
 END;
 $function$;
 
+GRANT EXECUTE ON FUNCTION public.gpsl_sport_list_editions() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpsl_sport_nav_state() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpsl_sport_get_edition(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpsl_sport_mark_read(bigint) TO authenticated;

@@ -24,6 +24,7 @@ import { initDashboardPinUi } from "./dashboard_pin.js";
 import {
   renderNavGpslSportButton,
   initGpslSportUi,
+  refreshGpslSportNav,
 } from "./gpsl_sport.js";
 import { nationFlagSrc } from "./international_flags.js";
 import { formatNavLabel, renderNavGroupSummaryLabel } from "./nav_label.js";
@@ -1478,6 +1479,9 @@ export async function renderFallbackNav() {
     </div>
   `;
   wireNavLogout();
+  initGpslSportUi(supabase).catch((err) => {
+    console.warn("GPSL Sport nav refresh skipped:", err);
+  });
 }
 
 // ------------------------------------------------------------
@@ -1721,6 +1725,9 @@ export async function buildNav() {
   wireNavGroups(nav);
   refreshNavAuctionIndicators();
   startNavAuctionBadgeRefresh();
+  initGpslSportUi(supabase).catch((err) => {
+    console.warn("GPSL Sport nav refresh skipped:", err);
+  });
   try {
     const sched = await import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`);
     sched.ensureSeasonScheduleStripMount();
