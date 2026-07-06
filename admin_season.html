@@ -59,6 +59,20 @@
                 <button id="compEndMonthBtn" class="button" style="background:#990000;">End current month now</button>
               </div>
             </div>
+            <div id="compBetweenMonthsPanel" class="end-month-panel" hidden style="margin-top:14px;padding-top:14px;border-top:1px solid #333;background:#1f1a12;border-radius:6px;padding:14px;">
+              <h3 style="color:#ff9900;font-size:15px;margin:0 0 8px;">Between GPSL months</h3>
+              <p class="note" style="margin:0 0 10px;">
+                No GPSL month is live right now. This usually happens after ending a month <b>without</b> checking
+                “Also unlock next month now”. Open the next month to resume fixtures and scheduling.
+                Run <code>competition_admin_calendar_gap_recovery.sql</code> after updates.
+              </p>
+              <div id="compOpenNextPreview" class="note" hidden style="margin-bottom:10px;"></div>
+              <div class="row">
+                <button id="compOpenNextPreviewBtn" class="button" style="background:#663300;">Preview open next month</button>
+                <input id="compOpenNextPhrase" type="text" placeholder="Type: OPEN GPSL MONTH" style="min-width:240px;padding:8px;background:#222;border:1px solid #444;color:#ddd;border-radius:6px;">
+                <button id="compOpenNextBtn" class="button" style="background:#228822;">Open next GPSL month now</button>
+              </div>
+            </div>
             <div class="end-month-panel" style="margin-top:14px;padding-top:14px;border-top:1px solid #333;">
               <h3 style="color:#ff9900;font-size:15px;margin:0 0 8px;">Rebuild GPSL Sport edition</h3>
               <p class="note" style="margin:0 0 10px;">

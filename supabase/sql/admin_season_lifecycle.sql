@@ -102,8 +102,17 @@ BEGIN
 
   SELECT * INTO v_season
   FROM public.competition_seasons
-  WHERE is_current = true AND status = 'active'
+  WHERE is_current = true
+    AND status = 'active'
   LIMIT 1;
+
+  IF NOT FOUND THEN
+    SELECT * INTO v_season
+    FROM public.competition_seasons
+    WHERE status = 'active'
+    ORDER BY id DESC
+    LIMIT 1;
+  END IF;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'No active current season to end';
