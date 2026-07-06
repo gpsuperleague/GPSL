@@ -99,7 +99,8 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.competition_admin_end_gpsl_month_preview(
   p_gpsl_month text DEFAULT NULL,
-  p_season_id bigint DEFAULT NULL
+  p_season_id bigint DEFAULT NULL,
+  p_unlock_next_month boolean DEFAULT false
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -111,9 +112,11 @@ DECLARE
   v_season_id bigint;
   v_month text;
   v_cal record;
+  v_next record;
   v_unplayed_league int := 0;
   v_unplayed_cup int := 0;
   v_pending_submissions int := 0;
+  v_shift interval;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -150,7 +153,10 @@ BEGIN
       'ok', false,
       'reason', 'no_active_month',
       'season_id', v_season_id,
-      'confirm_phrase', 'END GPSL MONTH'
+      'confirm_phrase', CASE
+        WHEN coalesce(p_unlock_next_month, false) THEN 'END MONTH OPEN NEXT'
+        ELSE 'END GPSL MONTH'
+      END
     );
   END IF;
 
@@ -165,6 +171,30 @@ BEGIN
       'ok', false,
       'reason', 'month_not_on_calendar',
       'gpsl_month', v_month
+    );
+  END IF;
+
+  SELECT *
+  INTO v_next
+  FROM public.competition_season_calendar c
+  WHERE c.season_id = v_season_id
+    AND c.sort_order = v_cal.sort_order + 1;
+
+  IF coalesce(p_unlock_next_month, false) AND v_next.gpsl_month IS NULL THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'reason', 'no_next_month',
+      'gpsl_month', v_month,
+      'gpsl_month_label', public.competition_gpsl_month_label(v_month)
+    );
+  END IF;
+
+  IF coalesce(p_unlock_next_month, false) AND v_next.unlock_at <= now() THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'reason', 'next_month_already_open',
+      'gpsl_month', v_month,
+      'next_gpsl_month', v_next.gpsl_month
     );
   END IF;
 
@@ -192,6 +222,11 @@ BEGIN
     AND f.gpsl_month = v_month
     AND s.status = 'pending';
 
+  v_shift := CASE
+    WHEN coalesce(p_unlock_next_month, false) THEN now() - v_next.unlock_at
+    ELSE NULL
+  END;
+
   RETURN jsonb_build_object(
     'ok', true,
     'season_id', v_season_id,
@@ -204,7 +239,28 @@ BEGIN
     'unplayed_league', v_unplayed_league,
     'unplayed_cup', v_unplayed_cup,
     'pending_submissions', v_pending_submissions,
-    'confirm_phrase', 'END GPSL MONTH',
+    'unlock_next_month', coalesce(p_unlock_next_month, false),
+    'next_gpsl_month', v_next.gpsl_month,
+    'next_gpsl_month_label', CASE
+      WHEN v_next.gpsl_month IS NOT NULL THEN public.competition_gpsl_month_label(v_next.gpsl_month)
+      ELSE NULL
+    END,
+    'next_scheduled_unlock_at', v_next.unlock_at,
+    'next_scheduled_lock_at', v_next.lock_at,
+    'calendar_shift', v_shift,
+    'calendar_months_shifted', CASE
+      WHEN coalesce(p_unlock_next_month, false) AND v_next.gpsl_month IS NOT NULL THEN (
+        SELECT count(*)::int
+        FROM public.competition_season_calendar c
+        WHERE c.season_id = v_season_id
+          AND c.sort_order >= v_next.sort_order
+      )
+      ELSE 0
+    END,
+    'confirm_phrase', CASE
+      WHEN coalesce(p_unlock_next_month, false) THEN 'END MONTH OPEN NEXT'
+      ELSE 'END GPSL MONTH'
+    END,
     'jobs', jsonb_build_array(
       'calendar_lock',
       'loan_installments_due',
@@ -213,8 +269,87 @@ BEGIN
       'scheduling_response_deadlines',
       'scheduling_arrangement_fines',
       'scheduling_response_fines',
-      'scheduling_checkin_no_show_forfeits'
+      'scheduling_checkin_no_show_forfeits',
+      CASE
+        WHEN coalesce(p_unlock_next_month, false) THEN 'calendar_pull_forward'
+        ELSE NULL
+      END
     )
+  );
+END;
+$function$;
+
+-- Pull next month (and all later months) forward so the next month unlocks now.
+CREATE OR REPLACE FUNCTION public.competition_admin_pull_forward_calendar_months(
+  p_season_id bigint,
+  p_after_gpsl_month text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_current record;
+  v_next record;
+  v_shift interval;
+  v_count int := 0;
+  v_next_unlock timestamptz;
+  v_next_lock timestamptz;
+BEGIN
+  SELECT *
+  INTO v_current
+  FROM public.competition_season_calendar c
+  WHERE c.season_id = p_season_id
+    AND c.gpsl_month = p_after_gpsl_month;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'month_not_on_calendar');
+  END IF;
+
+  SELECT *
+  INTO v_next
+  FROM public.competition_season_calendar c
+  WHERE c.season_id = p_season_id
+    AND c.sort_order = v_current.sort_order + 1;
+
+  IF NOT FOUND THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'no_next_month');
+  END IF;
+
+  IF v_next.unlock_at <= now() THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'reason', 'next_month_already_open',
+      'next_gpsl_month', v_next.gpsl_month
+    );
+  END IF;
+
+  v_shift := now() - v_next.unlock_at;
+
+  UPDATE public.competition_season_calendar m
+  SET
+    unlock_at = m.unlock_at + v_shift,
+    lock_at = m.lock_at + v_shift
+  WHERE m.season_id = p_season_id
+    AND m.sort_order >= v_next.sort_order;
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+
+  SELECT unlock_at, lock_at
+  INTO v_next_unlock, v_next_lock
+  FROM public.competition_season_calendar c
+  WHERE c.season_id = p_season_id
+    AND c.gpsl_month = v_next.gpsl_month;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'shift', v_shift,
+    'months_shifted', v_count,
+    'next_gpsl_month', v_next.gpsl_month,
+    'next_gpsl_month_label', public.competition_gpsl_month_label(v_next.gpsl_month),
+    'next_unlock_at', v_next_unlock,
+    'next_lock_at', v_next_lock
   );
 END;
 $function$;
@@ -222,7 +357,8 @@ $function$;
 CREATE OR REPLACE FUNCTION public.competition_admin_end_gpsl_month_early(
   p_confirm_phrase text,
   p_gpsl_month text DEFAULT NULL,
-  p_season_id bigint DEFAULT NULL
+  p_season_id bigint DEFAULT NULL,
+  p_unlock_next_month boolean DEFAULT false
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -237,16 +373,27 @@ DECLARE
   v_prev_lock timestamptz;
   v_loans jsonb;
   v_jobs jsonb;
+  v_pull jsonb;
+  v_required_phrase text;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
-  IF coalesce(btrim(p_confirm_phrase), '') <> 'END GPSL MONTH' THEN
-    RAISE EXCEPTION 'Confirmation phrase required — type exactly: END GPSL MONTH';
+  v_required_phrase := CASE
+    WHEN coalesce(p_unlock_next_month, false) THEN 'END MONTH OPEN NEXT'
+    ELSE 'END GPSL MONTH'
+  END;
+
+  IF coalesce(btrim(p_confirm_phrase), '') <> v_required_phrase THEN
+    RAISE EXCEPTION 'Confirmation phrase required — type exactly: %', v_required_phrase;
   END IF;
 
-  v_preview := public.competition_admin_end_gpsl_month_preview(p_gpsl_month, p_season_id);
+  v_preview := public.competition_admin_end_gpsl_month_preview(
+    p_gpsl_month,
+    p_season_id,
+    p_unlock_next_month
+  );
 
   IF coalesce((v_preview ->> 'ok')::boolean, false) IS NOT TRUE THEN
     RETURN v_preview;
@@ -308,18 +455,38 @@ BEGIN
 
   v_jobs := public.competition_run_month_lock_jobs(v_season_id, true);
 
+  IF coalesce(p_unlock_next_month, false) THEN
+    v_pull := public.competition_admin_pull_forward_calendar_months(v_season_id, v_month);
+    IF coalesce((v_pull ->> 'ok')::boolean, false) IS NOT TRUE THEN
+      RETURN v_preview || jsonb_build_object(
+        'ended', true,
+        'previous_lock_at', v_prev_lock,
+        'new_lock_at', now(),
+        'loan_installments', v_loans,
+        'month_lock_jobs', v_jobs,
+        'calendar_pull_forward', v_pull,
+        'warning', 'month_locked_but_calendar_pull_failed'
+      );
+    END IF;
+  ELSE
+    v_pull := NULL;
+  END IF;
+
   RETURN v_preview || jsonb_build_object(
     'ended', true,
     'previous_lock_at', v_prev_lock,
     'new_lock_at', now(),
     'loan_installments', v_loans,
-    'month_lock_jobs', v_jobs
+    'month_lock_jobs', v_jobs,
+    'calendar_pull_forward', v_pull,
+    'active_gpsl_month_after', public.competition_active_gpsl_month(v_season_id, now())
   );
 END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.competition_run_month_lock_jobs(bigint, boolean) TO service_role;
-GRANT EXECUTE ON FUNCTION public.competition_admin_end_gpsl_month_preview(text, bigint) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.competition_admin_end_gpsl_month_early(text, text, bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_admin_pull_forward_calendar_months(bigint, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_admin_end_gpsl_month_preview(text, bigint, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_admin_end_gpsl_month_early(text, text, bigint, boolean) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

@@ -41,14 +41,21 @@
             <div class="end-month-panel" style="margin-top:16px;padding-top:14px;border-top:1px solid #333;">
               <h3 style="color:#ff9900;font-size:15px;margin:0 0 8px;">End GPSL month early</h3>
               <p class="note" style="margin:0 0 10px;">
-                Locks the live GPSL month <b>now</b> and runs the same automatic jobs as the Friday cron:
-                loan installments due, Team of the Month, GPSL Sport edition, scheduling fines, and no-show forfeits.
-                Run <code>competition_admin_end_gpsl_month.sql</code> in Supabase first.
+                Locks the live GPSL month <b>now</b> and runs the same automatic jobs as the Friday cron.
+                Optionally opens the <b>next</b> GPSL month immediately and pulls all remaining months forward
+                (each keeps its 7-day play window; season end moves earlier).
+                Re-run <code>competition_admin_end_gpsl_month.sql</code> after updates.
               </p>
               <div id="compEndMonthPreview" class="note" hidden style="margin-bottom:10px;"></div>
+              <div class="row" style="align-items:center;gap:12px;margin-bottom:10px;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                  <input type="checkbox" id="compEndMonthOpenNext">
+                  Also unlock next month now (pull calendar forward)
+                </label>
+              </div>
               <div class="row">
                 <button id="compEndMonthPreviewBtn" class="button" style="background:#663300;">Preview end month</button>
-                <input id="compEndMonthPhrase" type="text" placeholder="Type END GPSL MONTH" style="min-width:220px;padding:8px;background:#222;border:1px solid #444;color:#ddd;border-radius:6px;">
+                <input id="compEndMonthPhrase" type="text" placeholder="Confirmation phrase" style="min-width:240px;padding:8px;background:#222;border:1px solid #444;color:#ddd;border-radius:6px;">
                 <button id="compEndMonthBtn" class="button" style="background:#990000;">End current month now</button>
               </div>
             </div>

@@ -118,9 +118,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compInboxMonthBtn").onclick = sendMonthPreviewInbox;
   document.getElementById("compEndMonthPreviewBtn").onclick = previewEndGpslMonth;
   document.getElementById("compEndMonthBtn").onclick = endGpslMonthEarly;
+  document.getElementById("compEndMonthOpenNext")?.addEventListener("change", updateEndMonthPhraseHint);
 
   await refreshCompetitionAdmin();
   await refreshCompCalendarAdmin();
+  updateEndMonthPhraseHint();
 });
 
 function setCompStatus(msg, ok = true) {
@@ -659,6 +661,20 @@ async function sendMonthPreviewInbox() {
   );
 }
 
+function endMonthOpenNextChecked() {
+  return Boolean(document.getElementById("compEndMonthOpenNext")?.checked);
+}
+
+function endMonthConfirmPhrase(openNext) {
+  return openNext ? "END MONTH OPEN NEXT" : "END GPSL MONTH";
+}
+
+function updateEndMonthPhraseHint() {
+  const input = document.getElementById("compEndMonthPhrase");
+  if (!input) return;
+  input.placeholder = `Type: ${endMonthConfirmPhrase(endMonthOpenNextChecked())}`;
+}
+
 function renderEndMonthPreview(data) {
   const el = document.getElementById("compEndMonthPreview");
   if (!el) return;
@@ -669,6 +685,12 @@ function renderEndMonthPreview(data) {
     return;
   }
 
+  const openNext = Boolean(data.unlock_next_month);
+  let nextLine = "";
+  if (openNext && data.next_gpsl_month_label) {
+    nextLine = `<br><b>+ Open ${data.next_gpsl_month_label} now</b> — pulls ${data.calendar_months_shifted ?? 0} month(s) forward (was ${formatUkDateTime(data.next_scheduled_unlock_at)} UK).`;
+  }
+
   el.hidden = false;
   el.innerHTML = `
     <b>${data.gpsl_month_label || data.gpsl_month}</b>
@@ -676,17 +698,22 @@ function renderEndMonthPreview(data) {
     · unplayed league <b>${data.unplayed_league ?? 0}</b>
     · unplayed cup <b>${data.unplayed_cup ?? 0}</b>
     · pending submissions <b>${data.pending_submissions ?? 0}</b>
-    <br>Jobs: TOTM, GPSL Sport, scheduling fines, check-in forfeits, loan installments due.
+    ${nextLine}
+    <br>Phrase: <code>${data.confirm_phrase || endMonthConfirmPhrase(openNext)}</code>
+    · Jobs: TOTM, GPSL Sport, scheduling fines, check-in forfeits, loan installments.
   `;
+  updateEndMonthPhraseHint();
 }
 
 async function previewEndGpslMonth() {
   const seasonId = Number(document.getElementById("compCalendarSeason").value) || null;
+  const openNext = endMonthOpenNextChecked();
   setStatus("compCalendarStatus", "Loading end-month preview…");
 
   const { data, error } = await supabase.rpc("competition_admin_end_gpsl_month_preview", {
     p_gpsl_month: null,
     p_season_id: seasonId || null,
+    p_unlock_next_month: openNext,
   });
 
   if (error) {
@@ -701,19 +728,24 @@ async function previewEndGpslMonth() {
     return;
   }
 
+  const nextBit = openNext && data.next_gpsl_month_label
+    ? ` → open ${data.next_gpsl_month_label} now`
+    : "";
   setStatus(
     "compCalendarStatus",
-    `Preview: ${data.gpsl_month_label} can be ended early (${data.unplayed_league ?? 0} unplayed league, ${data.unplayed_cup ?? 0} cup).`
+    `Preview: end ${data.gpsl_month_label}${nextBit} (${data.unplayed_league ?? 0} unplayed league, ${data.unplayed_cup ?? 0} cup).`
   );
 }
 
 async function endGpslMonthEarly() {
   const seasonId = Number(document.getElementById("compCalendarSeason").value) || null;
+  const openNext = endMonthOpenNextChecked();
+  const requiredPhrase = endMonthConfirmPhrase(openNext);
   const phrase = document.getElementById("compEndMonthPhrase")?.value?.trim() || "";
 
   const { data: preview, error: previewErr } = await supabase.rpc(
     "competition_admin_end_gpsl_month_preview",
-    { p_gpsl_month: null, p_season_id: seasonId || null }
+    { p_gpsl_month: null, p_season_id: seasonId || null, p_unlock_next_month: openNext }
   );
 
   if (previewErr) {
@@ -734,22 +766,29 @@ async function endGpslMonthEarly() {
     `Unplayed: ${preview.unplayed_league ?? 0} league, ${preview.unplayed_cup ?? 0} cup`,
     `Pending submissions: ${preview.pending_submissions ?? 0}`,
     "",
-    "This runs the same month-lock jobs as the Friday cron (fines, TOTM, GPSL Sport, etc.).",
+    openNext && preview.next_gpsl_month_label
+      ? `Also open ${preview.next_gpsl_month_label} now and pull ${preview.calendar_months_shifted ?? 0} future month(s) forward.`
+      : "Next month stays on its scheduled unlock date (gap until then).",
+    "",
+    "Runs month-lock jobs (fines, TOTM, GPSL Sport, etc.).",
   ].join("\n");
 
   if (!confirm(msg)) return;
 
-  if (phrase !== "END GPSL MONTH") {
-    setStatus("compCalendarStatus", 'Type exactly: END GPSL MONTH', false);
+  if (phrase !== requiredPhrase) {
+    setStatus("compCalendarStatus", `Type exactly: ${requiredPhrase}`, false);
     return;
   }
 
-  setStatus("compCalendarStatus", "Ending month and running lock jobs…");
+  setStatus("compCalendarStatus", openNext
+    ? "Ending month, running lock jobs, opening next month…"
+    : "Ending month and running lock jobs…");
 
   const { data, error } = await supabase.rpc("competition_admin_end_gpsl_month_early", {
     p_confirm_phrase: phrase,
     p_gpsl_month: null,
     p_season_id: seasonId || null,
+    p_unlock_next_month: openNext,
   });
 
   if (error) {
@@ -770,11 +809,17 @@ async function endGpslMonthEarly() {
   const sport = data.month_lock_jobs?.gpsl_sport?.processed;
   const totmCount = Array.isArray(totm) ? totm.length : 0;
   const sportCount = Array.isArray(sport) ? sport.length : 0;
+  const activeAfter = data.active_gpsl_month_after;
+  const pull = data.calendar_pull_forward;
 
-  setStatus(
-    "compCalendarStatus",
-    `✅ ${data.gpsl_month_label} locked early. TOTM jobs: ${totmCount}, GPSL Sport: ${sportCount}, loans processed: ${data.loan_installments?.clubs ?? 0} club(s).`
-  );
+  let statusMsg = `✅ ${data.gpsl_month_label} locked early. TOTM: ${totmCount}, GPSL Sport: ${sportCount}.`;
+  if (openNext && pull?.ok) {
+    statusMsg += ` ${pull.next_gpsl_month_label} is live until ${formatUkDateTime(pull.next_lock_at)} UK.`;
+  } else if (activeAfter) {
+    statusMsg += ` Active month: ${activeAfter}.`;
+  }
+
+  setStatus("compCalendarStatus", statusMsg);
 
   if (seasonId) {
     await loadCalendarTableForSeason(seasonId);
