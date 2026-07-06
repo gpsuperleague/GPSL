@@ -175,7 +175,9 @@ BEGIN
     RETURN;
   END IF;
 
-  IF v_fixture.home_goals IS NOT DISTINCT FROM v_fixture.away_goals THEN
+  -- Skip only undecided draws. Pen shootouts store level 90-min goals + cup_pen_winner.
+  IF v_fixture.home_goals IS NOT DISTINCT FROM v_fixture.away_goals
+     AND coalesce(btrim(v_fixture.cup_pen_winner_club_short_name), '') = '' THEN
     RETURN;
   END IF;
 

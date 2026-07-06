@@ -357,6 +357,12 @@ BEGIN
       WHEN OTHERS THEN
         v_prize_err := SQLERRM;
     END;
+    BEGIN
+      PERFORM public.competition_pay_cup_fixture_prizes(p_fixture_id);
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_prize_err := coalesce(v_prize_err, SQLERRM);
+    END;
   END IF;
 
   RETURN jsonb_build_object(
