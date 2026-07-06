@@ -192,6 +192,274 @@ function renderStorySection(title, items, opts = {}) {
     </section>`;
 }
 
+const TOTM_SLOT_ORDER = [
+  "GK",
+  "LB",
+  "CB1",
+  "CB2",
+  "RB",
+  "LMF",
+  "CMF",
+  "RMF",
+  "LWF",
+  "CF",
+  "RWF",
+];
+
+const DIVISION_ORDER = ["superleague", "championship_a", "championship_b"];
+
+function divisionLabel(key, fallback) {
+  const map = {
+    superleague: "SuperLeague",
+    championship_a: "Championship A",
+    championship_b: "Championship B",
+    championship: "Championship",
+  };
+  return fallback || map[key] || String(key || "").replace(/_/g, " ");
+}
+
+function sortTotmRows(rows) {
+  return [...(rows || [])].sort(
+    (a, b) => TOTM_SLOT_ORDER.indexOf(a.pitch_slot) - TOTM_SLOT_ORDER.indexOf(b.pitch_slot)
+  );
+}
+
+function renderTotmCard(player) {
+  if (!player?.player_id) return "";
+  const card = pesdbPlayerCardUrl(String(player.player_id));
+  const badge = clubBadgeUrl(player.club_short);
+  const stats = [
+    player.appearances != null ? `${player.appearances} apps` : null,
+    player.goals != null ? `${player.goals}G` : null,
+    player.assists != null ? `${player.assists}A` : null,
+    player.avg_rating != null ? Number(player.avg_rating).toFixed(2) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return `
+    <div class="gpsl-sport-totm-card">
+      ${imgTag(card, "gpsl-sport-totm-player", player.player_name || "")}
+      <div class="gpsl-sport-totm-meta">
+        <span class="gpsl-sport-totm-slot">${escapeHtml(player.slot_label || player.pitch_slot || "")}</span>
+        <span class="gpsl-sport-totm-name">${escapeHtml(player.player_name || "—")}</span>
+        <span class="gpsl-sport-totm-club">
+          ${badge ? imgTag(badge, "gpsl-sport-totm-badge", "") : ""}
+          ${escapeHtml(player.club_name || player.club_short || "")}
+        </span>
+        ${stats ? `<span class="gpsl-sport-totm-stats">${escapeHtml(stats)}</span>` : ""}
+      </div>
+    </div>`;
+}
+
+function renderTotmSection(title, rows) {
+  const sorted = sortTotmRows(rows);
+  if (!sorted.length) {
+    return `<section class="gpsl-sport-totm-block">
+      <h3 class="gpsl-sport-subsection-title">${escapeHtml(title)}</h3>
+      <p class="gpsl-sport-empty-note">No Team of the Month lineup for this division yet.</p>
+    </section>`;
+  }
+
+  return `
+    <section class="gpsl-sport-totm-block">
+      <h3 class="gpsl-sport-subsection-title">${escapeHtml(title)}</h3>
+      <div class="gpsl-sport-totm-grid">${sorted.map((p) => renderTotmCard(p)).join("")}</div>
+    </section>`;
+}
+
+function renderScorerRow(scorer, rank) {
+  const card = scorer.player_id ? pesdbPlayerCardUrl(String(scorer.player_id)) : null;
+  const badge = clubBadgeUrl(scorer.club_short);
+  return `
+    <li class="gpsl-sport-scorer-row">
+      <span class="gpsl-sport-scorer-rank">${rank}</span>
+      ${card ? `<div class="gpsl-sport-scorer-card">${imgTag(card, "gpsl-sport-scorer-player", "")}</div>` : ""}
+      <div class="gpsl-sport-scorer-info">
+        <span class="gpsl-sport-scorer-name">${escapeHtml(scorer.player_name || "—")}</span>
+        <span class="gpsl-sport-scorer-club">
+          ${badge ? imgTag(badge, "gpsl-sport-scorer-badge", "") : ""}
+          ${escapeHtml(scorer.club_name || scorer.club_short || "")}
+          ${scorer.owner ? ` · ${escapeHtml(scorer.owner)}` : ""}
+        </span>
+      </div>
+      <span class="gpsl-sport-scorer-goals">${escapeHtml(String(scorer.goals ?? 0))}G</span>
+    </li>`;
+}
+
+function renderTopScorersSection(topScorers) {
+  const data = topScorers && typeof topScorers === "object" ? topScorers : {};
+  const blocks = DIVISION_ORDER.filter((k) => Array.isArray(data[k]) && data[k].length)
+    .map((key) => {
+      const rows = data[key];
+      return `
+        <div class="gpsl-sport-scorers-division">
+          <h3 class="gpsl-sport-subsection-title">${escapeHtml(divisionLabel(key))} golden boot</h3>
+          <ol class="gpsl-sport-scorer-list">
+            ${rows.map((s, i) => renderScorerRow(s, i + 1)).join("")}
+          </ol>
+        </div>`;
+    })
+    .join("");
+
+  if (!blocks) return "";
+  return `<section class="gpsl-sport-scorers-block">
+    <h2 class="gpsl-sport-section-title">Monthly top scorers</h2>
+    <div class="gpsl-sport-scorers-grid">${blocks}</div>
+  </section>`;
+}
+
+function renderStandingsDivision(div) {
+  if (!div) return "";
+  const leader = div.leader || {};
+  const chasers = Array.isArray(div.chasers) ? div.chasers : [];
+  const flying = Array.isArray(div.flying) ? div.flying : [];
+
+  const leaderBadge = clubBadgeUrl(leader.club_short);
+  const chaserHtml = chasers
+    .map(
+      (c) => `
+      <li>
+        ${clubBadgeUrl(c.club_short) ? imgTag(clubBadgeUrl(c.club_short), "gpsl-sport-standings-badge", "") : ""}
+        <span><strong>${escapeHtml(c.club_name || c.club_short || "")}</strong>
+        ${c.owner ? ` (${escapeHtml(c.owner)})` : ""} — ${escapeHtml(String(c.pts ?? 0))} pts
+        ${c.pts_behind != null && c.pts_behind > 0 ? `, ${escapeHtml(String(c.pts_behind))} behind` : ""}</span>
+      </li>`
+    )
+    .join("");
+
+  const flyingHtml = flying
+    .map(
+      (f) => `
+      <li>
+        ${clubBadgeUrl(f.club_short) ? imgTag(clubBadgeUrl(f.club_short), "gpsl-sport-standings-badge", "") : ""}
+        <span>${escapeHtml(f.club_name || f.club_short || "")}
+        ${f.owner ? ` · ${escapeHtml(f.owner)}` : ""}
+        ${f.form ? ` · form ${escapeHtml(f.form)}` : ""}</span>
+      </li>`
+    )
+    .join("");
+
+  return `
+    <article class="gpsl-sport-standings-division">
+      <h3 class="gpsl-sport-subsection-title">${escapeHtml(div.division_label || "Division")}</h3>
+      <div class="gpsl-sport-standings-leader">
+        ${leaderBadge ? imgTag(leaderBadge, "gpsl-sport-standings-leader-badge", "") : ""}
+        <div>
+          <div class="gpsl-sport-standings-leader-name">${escapeHtml(leader.club_name || leader.club_short || "—")}</div>
+          ${leader.owner ? `<div class="gpsl-sport-standings-owner">${escapeHtml(leader.owner)}</div>` : ""}
+          <div class="gpsl-sport-standings-pts">${escapeHtml(String(leader.pts ?? 0))} pts · P${escapeHtml(String(leader.position ?? 1))}</div>
+        </div>
+      </div>
+      ${chaserHtml ? `<div class="gpsl-sport-standings-chasers"><h4>Chasing the lead</h4><ul>${chaserHtml}</ul></div>` : ""}
+      ${flyingHtml ? `<div class="gpsl-sport-standings-flying"><h4>Flying high</h4><ul>${flyingHtml}</ul></div>` : ""}
+    </article>`;
+}
+
+function renderStandingsSection(standings) {
+  const data = standings && typeof standings === "object" ? standings : {};
+  const blocks = DIVISION_ORDER.map((k) => data[k]).filter(Boolean);
+  if (!blocks.length) return "";
+
+  return `
+    <section class="gpsl-sport-standings-block">
+      <h2 class="gpsl-sport-section-title">Division standings</h2>
+      <div class="gpsl-sport-standings-grid">${blocks.map((d) => renderStandingsDivision(d)).join("")}</div>
+    </section>`;
+}
+
+function renderStandingsSnapshotTeasers(snapshot) {
+  const data = snapshot && typeof snapshot === "object" ? snapshot : {};
+  const items = DIVISION_ORDER.map((key) => {
+    const div = data[key];
+    if (!div?.leader?.club_short) return null;
+    const l = div.leader;
+    return {
+      kicker: div.division_label || divisionLabel(key),
+      headline: `${l.club_name || l.club_short} lead on ${l.pts ?? 0} pts`,
+      body: l.owner
+        ? `${l.owner} sits top of ${div.division_label || divisionLabel(key)} with the challengers breathing down their neck.`
+        : `Top of ${div.division_label || divisionLabel(key)} after a busy month.`,
+      club_short: l.club_short,
+      story_kind: "standings_leader",
+    };
+  }).filter(Boolean);
+
+  return renderStorySection("At the top of the tables", items, { compact: true, columns: 1 });
+}
+
+function renderStatsPage(editionLabel, statsPage) {
+  const lead = statsPage.lead || {};
+  const leadBlock = lead.headline || lead.body
+    ? `<article class="gpsl-sport-lead-block gpsl-sport-lead-block-compact">
+        <h1 class="gpsl-sport-headline">${escapeHtml(lead.headline || statsPage.page_title || "Stats special")}</h1>
+        ${formatParagraphs(lead.body, true)}
+      </article>`
+    : "";
+
+  return `
+    <div class="gpsl-sport-page gpsl-sport-page-stats">
+      ${renderMasthead(editionLabel, editionLabel, escapeHtml(statsPage.page_title || "Stats special"))}
+      ${leadBlock}
+      ${renderTotmSection("Super League Team of the Month", statsPage.totm_super)}
+      ${renderTotmSection("Championship Team of the Month", statsPage.totm_championship)}
+      ${renderTopScorersSection(statsPage.top_scorers)}
+      ${renderStandingsSection(statsPage.standings)}
+      <footer class="gpsl-sport-footer">GPSL Sport · Confirmed league stats · Player cards pesdb.net</footer>
+    </div>`;
+}
+
+function renderMatchPage(editionLabel, matchPage) {
+  const lead = matchPage.lead || {};
+  const fixture = matchPage.fixture || {};
+  const clubShort = lead.club_short || fixture.home_club;
+  const hero = {
+    kind: "stadium",
+    club_short: clubShort,
+    caption: lead.headline || matchPage.page_title || "Match of the Month",
+  };
+
+  const scoreboard = fixture.home_name
+    ? `<div class="gpsl-sport-match-scoreboard">
+        <div class="gpsl-sport-match-team">
+          ${clubBadgeUrl(fixture.home_club) ? imgTag(clubBadgeUrl(fixture.home_club), "gpsl-sport-match-badge", "") : ""}
+          <span class="gpsl-sport-match-team-name">${escapeHtml(fixture.home_name)}</span>
+          ${fixture.home_owner ? `<span class="gpsl-sport-match-owner">${escapeHtml(fixture.home_owner)}</span>` : ""}
+        </div>
+        <div class="gpsl-sport-match-score">${escapeHtml(String(fixture.home_goals ?? 0))} – ${escapeHtml(String(fixture.away_goals ?? 0))}</div>
+        <div class="gpsl-sport-match-team">
+          ${clubBadgeUrl(fixture.away_club) ? imgTag(clubBadgeUrl(fixture.away_club), "gpsl-sport-match-badge", "") : ""}
+          <span class="gpsl-sport-match-team-name">${escapeHtml(fixture.away_name || "")}</span>
+          ${fixture.away_owner ? `<span class="gpsl-sport-match-owner">${escapeHtml(fixture.away_owner)}</span>` : ""}
+        </div>
+      </div>`
+    : "";
+
+  const scorers = fixture.scorers_home || fixture.scorers_away
+    ? `<div class="gpsl-sport-match-scorers">
+        ${fixture.scorers_home ? `<p><strong>${escapeHtml(fixture.home_name || "Home")}:</strong> ${escapeHtml(fixture.scorers_home)}</p>` : ""}
+        ${fixture.scorers_away ? `<p><strong>${escapeHtml(fixture.away_name || "Away")}:</strong> ${escapeHtml(fixture.scorers_away)}</p>` : ""}
+      </div>`
+    : "";
+
+  return `
+    <div class="gpsl-sport-page gpsl-sport-page-match">
+      ${renderMasthead(editionLabel, editionLabel, escapeHtml(matchPage.page_title || "Match of the Month"))}
+      <div class="gpsl-sport-front-grid gpsl-sport-front-grid-back">
+        <article class="gpsl-sport-lead-block">
+          ${renderHeroBlock(hero)}
+          <h1 class="gpsl-sport-headline">${escapeHtml(lead.headline || matchPage.page_title || "Match of the Month")}</h1>
+          ${lead.byline ? renderByline(lead.byline) : ""}
+          ${scoreboard}
+          ${formatParagraphs(lead.body, true)}
+          ${lead.pull_quote ? renderPullQuote(lead.pull_quote) : ""}
+          ${scorers}
+        </article>
+      </div>
+      <footer class="gpsl-sport-footer">GPSL Sport · Fictional match report · Stadium photos official GPSL assets</footer>
+    </div>`;
+}
+
 function renderStoryCard(story, { compact = false } = {}) {
   const clubShort = story.club_short || story.club_short_name;
   const playerId = story.player_id ? String(story.player_id) : null;
@@ -238,10 +506,39 @@ function buildFrontRailTeasers(edition, front) {
   const leadKind = String(front.lead_kind || front.hero?.kind || "");
   const managersPage = edition.managers_page || edition.detail?.managers_page || {};
   const ownersPage = edition.owners_page || edition.detail?.owners_page || {};
+  const statsPage = edition.stats_page || edition.detail?.stats_page || {};
+  const matchPage = edition.match_page || edition.detail?.match_page || {};
   const back = edition.back_page || {};
   const managerStories = Array.isArray(front.manager_stories) ? front.manager_stories : [];
   const ownerStories = Array.isArray(front.owner_stories) ? front.owner_stories : [];
   const xferStories = Array.isArray(back.stories) ? back.stories : [];
+
+  if (statsPage.enabled) {
+    const totm = Array.isArray(statsPage.totm_super) ? statsPage.totm_super : [];
+    const star = totm.find((p) => p.pitch_slot === "CF") || totm[0];
+    const story = statsPage.lead?.headline
+      ? {
+          headline: statsPage.lead.headline,
+          body: statsPage.lead.body,
+          player_id: star?.player_id,
+          club_short: star?.club_short,
+        }
+      : null;
+    if (story?.headline) {
+      teasers.push({ page: "stats", label: "Stats", story });
+    }
+  }
+
+  if (matchPage.enabled && matchPage.lead?.headline) {
+    teasers.push({
+      page: "match",
+      label: "Match report",
+      story: {
+        ...matchPage.lead,
+        club_short: matchPage.lead.club_short || matchPage.fixture?.home_club,
+      },
+    });
+  }
 
   if (managersPage.enabled) {
     const story = pickPageTopStory(
@@ -393,6 +690,18 @@ function renderSportPaper() {
 
   const managersPage = edition.managers_page || edition.detail?.managers_page || {};
   const ownersPage = edition.owners_page || edition.detail?.owners_page || {};
+  const statsPage = edition.stats_page || edition.detail?.stats_page || {};
+  const matchPage = edition.match_page || edition.detail?.match_page || {};
+
+  if (sportActivePage === "stats" && statsPage.enabled) {
+    paper.innerHTML = renderStatsPage(editionLabel, statsPage);
+    return;
+  }
+
+  if (sportActivePage === "match" && matchPage.enabled) {
+    paper.innerHTML = renderMatchPage(editionLabel, matchPage);
+    return;
+  }
 
   if (sportActivePage === "managers" && managersPage.enabled) {
     paper.innerHTML = renderInteriorPage(editionLabel, managersPage, {
@@ -437,6 +746,8 @@ function renderSportPaper() {
   }
 
   const railTeasers = buildFrontRailTeasers(edition, front);
+  const frontStories = Array.isArray(front.stories) ? front.stories : [];
+  const standingsTeasers = renderStandingsSnapshotTeasers(front.standings_snapshot);
 
   paper.innerHTML = `
     <div class="gpsl-sport-page gpsl-sport-page-front">
@@ -460,10 +771,12 @@ function renderSportPaper() {
               </aside>`
             : `<aside class="gpsl-sport-rail gpsl-sport-rail-empty">
                 <h2 class="gpsl-sport-rail-title">Inside this edition</h2>
-                <p class="gpsl-sport-rail-blurb">Use the tabs above for managers, owners and transfers.</p>
+                <p class="gpsl-sport-rail-blurb">Use the tabs above for stats, match report, managers, owners and transfers.</p>
               </aside>`
         }
       </div>
+      ${renderStorySection("Shock results", frontStories, { compact: true, columns: 1 })}
+      ${standingsTeasers}
       <footer class="gpsl-sport-footer">GPSL Sport · Stadium photos &amp; club badges official GPSL assets · Player cards pesdb.net</footer>
     </div>`;
 }
@@ -523,6 +836,8 @@ export function ensureSportModal() {
       </div>
       <div class="gpsl-sport-tabs" id="gpslSportTabs">
         <button type="button" class="gpsl-sport-tab active" data-page="front">Front</button>
+        <button type="button" class="gpsl-sport-tab" data-page="stats" id="gpslSportStatsTab" hidden>Stats</button>
+        <button type="button" class="gpsl-sport-tab" data-page="match" id="gpslSportMatchTab" hidden>Match report</button>
         <button type="button" class="gpsl-sport-tab" data-page="managers" id="gpslSportManagersTab" hidden>Managers</button>
         <button type="button" class="gpsl-sport-tab" data-page="owners" id="gpslSportOwnersTab" hidden>Owners</button>
         <button type="button" class="gpsl-sport-tab" data-page="back" id="gpslSportBackTab" hidden>Transfers</button>
@@ -623,18 +938,26 @@ export async function refreshGpslSportNav(supabase) {
 }
 
 function syncSportTabs(edition) {
+  const statsTab = document.getElementById("gpslSportStatsTab");
+  const matchTab = document.getElementById("gpslSportMatchTab");
   const managersTab = document.getElementById("gpslSportManagersTab");
   const ownersTab = document.getElementById("gpslSportOwnersTab");
   const backTab = document.getElementById("gpslSportBackTab");
   const managersPage = edition?.managers_page || edition?.detail?.managers_page || {};
   const ownersPage = edition?.owners_page || edition?.detail?.owners_page || {};
+  const statsPage = edition?.stats_page || edition?.detail?.stats_page || {};
+  const matchPage = edition?.match_page || edition?.detail?.match_page || {};
   const backEnabled = !!edition?.back_page?.enabled;
 
+  if (statsTab) statsTab.hidden = !statsPage.enabled;
+  if (matchTab) matchTab.hidden = !matchPage.enabled;
   if (managersTab) managersTab.hidden = !managersPage.enabled;
   if (ownersTab) ownersTab.hidden = !ownersPage.enabled;
   if (backTab) backTab.hidden = !backEnabled;
 
   const pages = ["front"];
+  if (statsPage.enabled) pages.push("stats");
+  if (matchPage.enabled) pages.push("match");
   if (managersPage.enabled) pages.push("managers");
   if (ownersPage.enabled) pages.push("owners");
   if (backEnabled) pages.push("back");

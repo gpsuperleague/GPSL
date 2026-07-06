@@ -34,8 +34,15 @@ BEGIN
   END IF;
 
   IF to_regprocedure('public.gpsl_sport_process_pending_editions(bigint)') IS NOT NULL THEN
-    v_sport := public.gpsl_sport_process_pending_editions(p_season_id);
-    v_out := v_out || jsonb_build_object('gpsl_sport', v_sport);
+    BEGIN
+      v_sport := public.gpsl_sport_process_pending_editions(p_season_id);
+      v_out := v_out || jsonb_build_object('gpsl_sport', v_sport);
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_out := v_out || jsonb_build_object(
+          'gpsl_sport', jsonb_build_object('ok', false, 'error', SQLERRM)
+        );
+    END;
   END IF;
 
   IF p_force_scheduling THEN

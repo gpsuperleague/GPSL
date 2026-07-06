@@ -197,6 +197,9 @@ DECLARE
   v_buyer_name text;
   v_fee text;
   v_i int := 0;
+  v_pressure_club text;
+  v_pressure_pts int;
+  v_pressure_position int;
 BEGIN
   IF p_season_id IS NULL OR p_gpsl_month IS NULL OR btrim(p_gpsl_month) = '' THEN
     RETURN NULL;
@@ -304,6 +307,9 @@ BEGIN
       v_story_score := v_shock;
       v_story_type := CASE WHEN v_u.tier = 'big' THEN 'manager_pressure' ELSE 'poor_start' END;
       v_winner := v_u.club_short_name;
+      v_pressure_club := v_u.club_short_name;
+      v_pressure_pts := v_u.pts;
+      v_pressure_position := v_u.table_position;
       v_winner_name := public.gpsl_sport_club_display_name(v_u.club_short_name);
       v_loser := NULL;
       v_loser_name := NULL;
@@ -370,8 +376,8 @@ BEGIN
     ];
     v_vars := v_vars || jsonb_build_object(
       'winner', v_winner_name,
-      'points', coalesce(v_u.pts::text, '0'),
-      'position', coalesce(v_u.table_position::text, '')
+      'points', coalesce(v_pressure_pts::text, '0'),
+      'position', coalesce(v_pressure_position::text, '')
     );
   ELSIF v_story_type = 'poor_start' THEN
     v_headlines := ARRAY[
@@ -389,8 +395,8 @@ BEGIN
     ];
     v_vars := v_vars || jsonb_build_object(
       'winner', v_winner_name,
-      'points', coalesce(v_u.pts::text, '0'),
-      'position', coalesce(v_u.table_position::text, '')
+      'points', coalesce(v_pressure_pts::text, '0'),
+      'position', coalesce(v_pressure_position::text, '')
     );
   ELSE
     v_story_type := 'roundup';

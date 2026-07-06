@@ -726,6 +726,9 @@ DECLARE
   v_buyer_name text;
   v_fee text;
   v_i int := 0;
+  v_pressure_club text;
+  v_pressure_pts int;
+  v_pressure_position int;
 BEGIN
   IF p_season_id IS NULL OR p_gpsl_month IS NULL OR btrim(p_gpsl_month) = '' THEN
     RETURN NULL;
@@ -802,7 +805,7 @@ BEGIN
     END IF;
   END LOOP;
 
-  IF v_story_type = 'shock_result' AND v_winner_name IS NULL THEN
+  IF v_story_type <> 'cup_upset' AND v_story_score < 50 THEN
     FOR v_u IN
       SELECT
         ccs.club_short_name,
@@ -823,6 +826,10 @@ BEGIN
       IF coalesce(v_u.mgr_rating, 70) >= 80 AND coalesce(v_u.pts, 0) <= 8 THEN
         v_story_score := 50;
         v_story_type := 'manager_pressure';
+        v_winner := v_u.club_short_name;
+        v_pressure_club := v_u.club_short_name;
+        v_pressure_pts := v_u.pts;
+        v_pressure_position := v_u.table_position;
         v_winner_name := public.gpsl_sport_club_display_name(v_u.club_short_name);
         v_division := public.gpsl_sport_fixture_division_label(v_u.division, NULL, 'league');
         EXIT;
@@ -863,7 +870,7 @@ BEGIN
       E'{{WINNER}} knocked out {{LOSER}} in the cups with a {{SCORE}} scoreline that will live long in GPSL folklore.',
       E'The cups delivered again. {{WINNER}}''s {{SCORE}} defeat of {{LOSER}} was the story {{MONTH}} needed.'
     ];
-  ELSIF v_story_type = 'manager_pressure' THEN
+  ELSIF v_story_type = 'manager_pressure' AND v_pressure_club IS NOT NULL THEN
     v_headlines := ARRAY[
       'MANAGER UNDER PRESSURE: {{WINNER}} FLOUNDER IN {{MONTH}}',
       '{{WINNER}} OWNER FACING QUESTIONS AFTER POOR {{MONTH}}'
@@ -875,8 +882,8 @@ BEGIN
     ];
     v_vars := v_vars || jsonb_build_object(
       'winner', v_winner_name,
-      'points', coalesce(v_u.pts::text, '0'),
-      'position', coalesce(v_u.table_position::text, '')
+      'points', coalesce(v_pressure_pts::text, '0'),
+      'position', coalesce(v_pressure_position::text, '')
     );
   ELSE
     v_story_type := 'roundup';
@@ -936,7 +943,7 @@ BEGIN
       )
       WHEN v_story_type = 'manager_pressure' AND v_winner_name IS NOT NULL THEN jsonb_build_object(
         'kind', 'stadium',
-        'club_short', v_u.club_short_name,
+        'club_short', coalesce(v_winner, v_pressure_club),
         'caption', v_winner_name || ' under the microscope'
       )
       ELSE jsonb_build_object('kind', 'generic', 'caption', v_month_label || ' round-up')
