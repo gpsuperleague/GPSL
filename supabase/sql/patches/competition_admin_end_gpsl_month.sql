@@ -287,6 +287,40 @@ END;
 $function$;
 
 -- Pull next month (and all later months) forward so the next month unlocks now.
+-- Unlock snaps to the next UK :00/:30 so propose-time slots work (see match_scheduling_slot_align_fix.sql).
+CREATE OR REPLACE FUNCTION public.match_schedule_align_kickoff_up(p_at timestamptz)
+RETURNS timestamptz
+LANGUAGE plpgsql
+IMMUTABLE
+AS $function$
+DECLARE
+  v_local timestamp;
+  v_min int;
+  v_sec int;
+  v_add int;
+BEGIN
+  IF p_at IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  v_local := date_trunc('second', p_at AT TIME ZONE 'Europe/London');
+  v_min := EXTRACT(MINUTE FROM v_local)::int;
+  v_sec := EXTRACT(SECOND FROM v_local)::int;
+
+  IF v_min % 30 = 0 AND v_sec = 0 THEN
+    RETURN v_local AT TIME ZONE 'Europe/London';
+  END IF;
+
+  IF v_min % 30 = 0 THEN
+    v_add := 30;
+  ELSE
+    v_add := 30 - (v_min % 30);
+  END IF;
+
+  RETURN (v_local + (v_add * interval '1 minute')) AT TIME ZONE 'Europe/London';
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.competition_admin_pull_forward_calendar_months(
   p_season_id bigint,
   p_after_gpsl_month text
@@ -303,6 +337,7 @@ DECLARE
   v_count int := 0;
   v_next_unlock timestamptz;
   v_next_lock timestamptz;
+  v_target_unlock timestamptz;
 BEGIN
   SELECT *
   INTO v_current
@@ -332,7 +367,12 @@ BEGIN
     );
   END IF;
 
-  v_shift := now() - v_next.unlock_at;
+  v_target_unlock := public.match_schedule_align_kickoff_up(now());
+  IF v_target_unlock IS NULL THEN
+    v_target_unlock := now();
+  END IF;
+
+  v_shift := v_target_unlock - v_next.unlock_at;
 
   UPDATE public.competition_season_calendar m
   SET
