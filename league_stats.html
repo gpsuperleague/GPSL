@@ -51,22 +51,24 @@
       grid-column: 1 / -1;
       min-height: auto;
     }
-    .panel h2 { color:#ff9900; font-size:17px; margin:0 0 12px; }
-    .panel-head {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: baseline;
-      gap: 4px 8px;
-      margin: 0 0 12px;
+    .panel h2 { color:#ff9900; font-size:17px; margin:0 0 12px; line-height:1.2; }
+    .panel-h2-with-note {
+      position: relative;
+      padding-right: 0;
     }
-    .panel-head h2 {
-      margin: 0;
-    }
-    .panel-head-note {
-      font-size: 10px;
+    .panel-h2-with-note .panel-head-note {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 62%;
+      font-size: 9px;
       font-weight: normal;
       color: #888;
-      line-height: 1.2;
+      text-align: right;
+      line-height: 1.15;
+    }
+    .stats-grid > .panel:nth-child(-n+3) > h2 {
+      min-height: 1.2em;
     }
     table.lb {
       width: 100%;
@@ -222,10 +224,7 @@
         <div class="panel"><h2>Top scorers</h2><div id="scorersTable"></div></div>
         <div class="panel"><h2>Top assists</h2><div id="assistsTable"></div></div>
         <div class="panel">
-          <div class="panel-head">
-            <h2>Average rating</h2>
-            <span class="panel-head-note">(Min. 3 appearances with a rated game.)</span>
-          </div>
+          <h2 class="panel-h2-with-note">Average rating<span class="panel-head-note">(Min. 3 appearances with a rated game.)</span></h2>
           <div id="ratingsTable"></div>
         </div>
         <div class="panel"><h2>Player of the Match</h2><div id="potmTable"></div></div>
@@ -267,10 +266,7 @@
         <div class="panel"><h2>Top scorers</h2><div id="cupScorersTable"></div></div>
         <div class="panel"><h2>Top assists</h2><div id="cupAssistsTable"></div></div>
         <div class="panel">
-          <div class="panel-head">
-            <h2>Average rating</h2>
-            <span class="panel-head-note">(Min. 3 cup appearances with a rated game.)</span>
-          </div>
+          <h2 class="panel-h2-with-note">Average rating<span class="panel-head-note">(Min. 3 cup appearances with a rated game.)</span></h2>
           <div id="cupRatingsTable"></div>
         </div>
         <div class="panel"><h2>Player of the Match</h2><div id="cupPotmTable"></div></div>
@@ -291,10 +287,7 @@
         <div class="panel"><h2>Top scorers</h2><div id="wcScorersTable"></div></div>
         <div class="panel"><h2>Top assists</h2><div id="wcAssistsTable"></div></div>
         <div class="panel">
-          <div class="panel-head">
-            <h2>Average rating</h2>
-            <span class="panel-head-note">(Min. 3 caps with a rated game.)</span>
-          </div>
+          <h2 class="panel-h2-with-note">Average rating<span class="panel-head-note">(Min. 3 caps with a rated game.)</span></h2>
           <div id="wcRatingsTable"></div>
         </div>
         <div class="panel"><h2>Player of the Match</h2><div id="wcPotmTable"></div></div>
