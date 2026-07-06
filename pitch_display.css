@@ -1,0 +1,123 @@
+/* Read-only formation pitch (league stats TOTM, awards, etc.) */
+
+.pitch-display {
+  margin-top: 4px;
+}
+
+.pitch-display-formation {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #9c9;
+  text-align: center;
+}
+
+.pitch-stage--readonly {
+  max-width: 520px;
+  margin: 0 auto 12px;
+}
+
+.football-pitch--readonly {
+  max-height: 640px;
+}
+
+.pitch-slot-label--readonly {
+  display: inline-block;
+  cursor: default;
+  pointer-events: none;
+}
+
+.pitch-slot-label--readonly:hover {
+  background: rgba(0, 0, 0, 0.45);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.pitch-slot-drop--readonly {
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.25);
+  cursor: default;
+}
+
+.pitch-slot-drop--readonly .squad-player-card {
+  cursor: default;
+}
+
+.pitch-player-card--readonly .squad-player-card-thumb-link {
+  pointer-events: auto;
+}
+
+.pitch-player-card--highlight {
+  outline: 2px solid #ff9900;
+  border-radius: 8px;
+  background: rgba(255, 153, 0, 0.12);
+}
+
+.pitch-player-club-badge {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  vertical-align: middle;
+  margin-right: 3px;
+}
+
+.pitch-slot-drop--readonly .spc-club {
+  font-size: 9px;
+  color: #aaa;
+  line-height: 1.2;
+  margin-top: 2px;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pitch-slot-drop--readonly .spc-stats {
+  font-size: 9px;
+  color: #8c8;
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+.pitch-display-table {
+  margin-top: 12px;
+  border-top: 1px solid #333;
+  padding-top: 8px;
+}
+
+.pitch-display-table summary {
+  cursor: pointer;
+  color: #ff9900;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  user-select: none;
+}
+
+.pitch-display-table summary:hover {
+  color: #ffcc66;
+}
+
+.pitch-display-table[open] summary {
+  margin-bottom: 10px;
+}
+
+@media (max-width: 560px) {
+  .pitch-stage--readonly {
+    max-width: 100%;
+  }
+
+  .pitch-slot {
+    width: 72px;
+    min-height: 88px;
+  }
+
+  .pitch-slot-drop--readonly {
+    width: 68px;
+    min-height: 72px;
+  }
+
+  .pitch-slot-drop--readonly .squad-player-card img {
+    width: 48px;
+    height: 64px;
+  }
+}

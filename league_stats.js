@@ -7,6 +7,7 @@ import {
   CUP_LABELS,
 } from "./competition.js";
 import { playerNameLinkHtml } from "./player_links.js";
+import { renderFormationPitchHtml } from "./pitch_display.js";
 
 const DIVISION_TITLES = {
   superleague: "SuperLeague",
@@ -292,6 +293,41 @@ function formatGpslMonthLabel(month) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function buildTotmStatsTable(rows) {
+  return `
+    <table class="lb">
+      <thead>
+        <tr>
+          <th>Pos</th>
+          <th>Player</th>
+          <th>Club</th>
+          <th class="num">Apps</th>
+          <th class="num">G</th>
+          <th class="num">A</th>
+          <th class="num">Avg</th>
+          <th class="num">CS</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (r) => `
+          <tr${myClubShort && r.club_short_name === myClubShort ? ' class="highlight"' : ""}>
+            <td>${r.slot_label || r.pitch_slot}</td>
+            <td>${playerNameLinkHtml(r.player_id, r.player_name)}</td>
+            <td>${r.club_name || r.club_short_name}</td>
+            <td class="num">${r.appearances ?? 0}</td>
+            <td class="num">${r.goals ?? 0}</td>
+            <td class="num">${r.assists ?? 0}</td>
+            <td class="num">${r.avg_rating != null ? Number(r.avg_rating).toFixed(2) : "—"}</td>
+            <td class="num">${r.clean_sheets ?? 0}</td>
+          </tr>`
+          )
+          .join("")}
+      </tbody>
+    </table>`;
+}
+
 async function renderTeamOfMonthPanel(panelId, divisionScope, emptyLabel) {
   const el = document.getElementById(panelId);
   if (!el) return;
@@ -348,41 +384,18 @@ async function renderTeamOfMonthPanel(panelId, divisionScope, emptyLabel) {
     (a, b) => slotOrder.indexOf(a.pitch_slot) - slotOrder.indexOf(b.pitch_slot)
   );
 
-  el.innerHTML = `
-    <p class="meta" style="margin:0 0 10px;">
-      <b>${formatGpslMonthLabel(team.gpsl_month)}</b> · ${team.season_label} · ${team.formation_id}
-    </p>
-    <table class="lb">
-      <thead>
-        <tr>
-          <th>Pos</th>
-          <th>Player</th>
-          <th>Club</th>
-          <th class="num">Apps</th>
-          <th class="num">G</th>
-          <th class="num">A</th>
-          <th class="num">Avg</th>
-          <th class="num">CS</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${sorted
-          .map(
-            (r) => `
-          <tr${myClubShort && r.club_short_name === myClubShort ? ' class="highlight"' : ""}>
-            <td>${r.slot_label || r.pitch_slot}</td>
-            <td>${playerNameLinkHtml(r.player_id, r.player_name)}</td>
-            <td>${r.club_name || r.club_short_name}</td>
-            <td class="num">${r.appearances ?? 0}</td>
-            <td class="num">${r.goals ?? 0}</td>
-            <td class="num">${r.assists ?? 0}</td>
-            <td class="num">${r.avg_rating != null ? Number(r.avg_rating).toFixed(2) : "—"}</td>
-            <td class="num">${r.clean_sheets ?? 0}</td>
-          </tr>`
-          )
-          .join("")}
-      </tbody>
-    </table>`;
+  const metaHtml = `
+    <p class="meta" style="margin:0 0 4px;text-align:center;">
+      <b>${formatGpslMonthLabel(team.gpsl_month)}</b> · ${team.season_label}
+    </p>`;
+
+  el.innerHTML = renderFormationPitchHtml({
+    formationId: team.formation_id,
+    members: sorted,
+    metaHtml,
+    highlightClub: myClubShort,
+    tableHtml: buildTotmStatsTable(sorted),
+  });
 }
 
 async function renderTeamOfMonth() {
