@@ -22,6 +22,17 @@ const DIVISION_TITLES = {
 
 const LEADERBOARD_TOP_COUNT = 10;
 
+const LEADERBOARD_COLGROUP = `
+  <colgroup>
+    <col class="lb-col-rank">
+    <col class="lb-col-thumb">
+    <col class="lb-col-player">
+    <col class="lb-col-club">
+    <col class="lb-col-extra">
+    <col class="lb-col-val">
+    <col class="lb-col-apps">
+  </colgroup>`;
+
 let myClubShort = null;
 let myNation = null;
 let leagueRows = [];
@@ -106,9 +117,9 @@ function renderLeaderboard(containerId, rows, options) {
           })}</td>
           <td class="lb-player-name">${playerNameLinkHtml(r.player_id, r.player_name)}</td>
           <td class="lb-club-name">${clubNameLinkHtml(r.club_short_name, r.club_name || r.club_short_name)}</td>
-          <td class="lb-stat-col">${extraColumnValue(r)}</td>
-          <td class="num lb-stat-col">${formatValue(r)}</td>
-          <td class="num lb-stat-col">${appsValue(r)}</td>
+          <td class="lb-extra-col">${extraColumnValue(r)}</td>
+          <td class="num lb-val-col">${formatValue(r)}</td>
+          <td class="num lb-apps-col">${appsValue(r)}</td>
         </tr>
       `;
     })
@@ -119,15 +130,16 @@ function renderLeaderboard(containerId, rows, options) {
 
   el.innerHTML = `
     <table class="lb${collapsedClass}" data-lb-table>
+      ${LEADERBOARD_COLGROUP}
       <thead>
         <tr>
           <th class="lb-rank">#</th>
           <th class="lb-thumb" aria-label="Card"></th>
           <th>Player</th>
           <th>Club</th>
-          <th class="lb-stat-col">${extraColumnKey}</th>
-          <th class="num lb-stat-col">${valueKey}</th>
-          <th class="num lb-stat-col">${appsKey}</th>
+          <th class="lb-extra-col">${extraColumnKey}</th>
+          <th class="num lb-val-col">${valueKey}</th>
+          <th class="num lb-apps-col">${appsKey}</th>
         </tr>
       </thead>
       <tbody>${body}</tbody>

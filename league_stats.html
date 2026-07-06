@@ -28,16 +28,20 @@
       color:#ddd; border-radius:6px;
     }
     .stats-grid {
-      display:grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap:20px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px;
       align-items: stretch;
     }
+    /* Row 2: two panels align under first two columns of row 1 */
+    .stats-grid > .panel:nth-child(4) { grid-column: 1; }
+    .stats-grid > .panel:nth-child(5) { grid-column: 2; }
     .panel {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
-      padding:16px; overflow-x:auto;
+      padding:16px;
       display:flex; flex-direction:column;
       min-height: 320px;
+      min-width: 0;
     }
     .panel > div[id$="Table"],
     .panel > div[id$="Panel"] {
@@ -49,27 +53,40 @@
     }
     .panel h2 { color:#ff9900; font-size:17px; margin:0 0 12px; }
     table.lb {
-      width: max-content;
-      min-width: 100%;
+      width: 100%;
       border-collapse: collapse;
       font-size: 12px;
-      table-layout: auto;
+      table-layout: fixed;
     }
-    table.lb th, table.lb td { border:1px solid #333; padding:5px 8px; vertical-align: middle; }
+    table.lb th, table.lb td {
+      border:1px solid #333;
+      padding:5px 7px;
+      vertical-align: middle;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
     table.lb th { background:#222; color:#ff9900; text-align:left; font-size:11px; }
+    table.lb col.lb-col-rank { width: 5%; }
+    table.lb col.lb-col-thumb { width: 10%; }
+    table.lb col.lb-col-player { width: 22%; }
+    table.lb col.lb-col-club { width: 22%; }
+    table.lb col.lb-col-extra { width: 20%; }
+    table.lb col.lb-col-val { width: 10%; }
+    table.lb col.lb-col-apps { width: 11%; }
     table.lb td.num,
     table.lb th.num,
     table.lb td.lb-rank,
-    table.lb th.lb-rank {
+    table.lb th.lb-rank,
+    table.lb .lb-thumb,
+    table.lb .lb-val-col,
+    table.lb .lb-apps-col {
       text-align: center;
       white-space: nowrap;
-      width: 1%;
+      overflow-wrap: normal;
+      word-break: normal;
     }
     table.lb .lb-thumb {
-      width: 1%;
-      white-space: nowrap;
-      padding: 3px 6px;
-      text-align: center;
+      padding: 3px 4px;
     }
     table.lb .lb-player-thumb {
       width: 34px;
@@ -84,13 +101,20 @@
       line-height: 0;
     }
     table.lb .lb-player-name,
-    table.lb .lb-club-name {
+    table.lb .lb-club-name,
+    table.lb .lb-extra-col {
       font-size: 12px;
-      white-space: nowrap;
+      line-height: 1.25;
+      white-space: normal;
     }
-    table.lb .lb-stat-col {
-      white-space: nowrap;
-      width: 1%;
+    @media (max-width: 960px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+      .stats-grid > .panel:nth-child(4),
+      .stats-grid > .panel:nth-child(5) {
+        grid-column: auto;
+      }
     }
     tr.highlight { outline:1px solid #ff9900; }
     .empty { color:#888; font-size:13px; }
