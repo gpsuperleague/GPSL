@@ -150,32 +150,91 @@ async function runDeploy() {
     return;
   }
 
-  setStatus("deployStatus", "Deploying…");
-  const { data, error } = await supabase.rpc("admin_testing_deploy_month_results", {
-    p_gpsl_month: month,
-    p_confirm_phrase: phrase,
-  });
+  const BATCH_SIZE = 10;
+  const MAX_PASSES = 24;
+  let totalDeployed = 0;
+  let totalLeague = 0;
+  let totalCup = 0;
+  let totalErrors = 0;
+  const errorSummary = {};
+  let pass = 0;
 
-  if (error) {
-    setStatus("deployStatus", error.message, false);
-    return;
+  while (pass < MAX_PASSES) {
+    pass += 1;
+    let afterFixtureId = null;
+    let passDeployed = 0;
+
+    while (true) {
+      setStatus(
+        "deployStatus",
+        `Deploying ${label}… pass ${pass}, batch of ${BATCH_SIZE}${afterFixtureId ? ` (after #${afterFixtureId})` : ""}`
+      );
+
+      const { data, error } = await supabase.rpc("admin_testing_deploy_month_results", {
+        p_gpsl_month: month,
+        p_confirm_phrase: afterFixtureId ? null : phrase,
+        p_limit: BATCH_SIZE,
+        p_after_fixture_id: afterFixtureId,
+        p_include_details: false,
+      });
+
+      if (error) {
+        const needsPatch =
+          error.message.includes("p_limit") ||
+          error.message.includes("admin_testing_deploy_month_results");
+        setStatus(
+          "deployStatus",
+          needsPatch
+            ? "❌ Re-run supabase/sql/patches/admin_testing_deploy_fix.sql in Supabase, then retry."
+            : error.message,
+          false
+        );
+        return;
+      }
+
+      const deployed = data?.deployed_count ?? 0;
+      passDeployed += deployed;
+      totalDeployed += deployed;
+      totalLeague += data?.league_deployed_count ?? 0;
+      totalCup += data?.cup_deployed_count ?? 0;
+      totalErrors += data?.error_count ?? 0;
+
+      for (const [text, cnt] of Object.entries(data?.error_summary || {})) {
+        errorSummary[text] = (errorSummary[text] || 0) + cnt;
+      }
+
+      if (data?.errors?.length) {
+        console.warn("deploy month batch errors:", data.errors);
+      }
+
+      if (!data?.has_more) break;
+      afterFixtureId = data.next_after_fixture_id;
+      if (!afterFixtureId) break;
+    }
+
+    const { data: preview } = await supabase.rpc("admin_testing_deploy_month_preview", {
+      p_gpsl_month: month,
+    });
+    const remaining = preview?.scheduled_total_ready ?? 0;
+
+    if (remaining <= 0) break;
+    if (passDeployed === 0) {
+      setStatus(
+        "deployStatus",
+        `Stopped: ${remaining} fixture(s) still ready but none deployed (check squad sizes / errors).`,
+        false
+      );
+      await runPreview();
+      return;
+    }
   }
 
-  const errs = data?.errors || [];
-  const summary = data?.error_summary || {};
-  let msg = `Deployed ${data?.deployed_count ?? 0} fixture(s) for ${data?.gpsl_month_label || month}`;
-  if (data?.league_deployed_count != null || data?.cup_deployed_count != null) {
-    msg += ` (${data.league_deployed_count ?? 0} league, ${data.cup_deployed_count ?? 0} cup)`;
+  let msg = `Deployed ${totalDeployed} fixture(s) for ${label} (${totalLeague} league, ${totalCup} cup).`;
+  if (totalErrors) {
+    const lines = Object.entries(errorSummary).map(([text, cnt]) => `${cnt}× ${text}`);
+    msg += ` ${totalErrors} error(s): ${lines.join(" | ") || "see console"}`;
   }
-  msg += ".";
-  if (errs.length) {
-    const lines = Object.entries(summary).map(([text, cnt]) => `${cnt}× ${text}`);
-    const detail = lines.length ? lines.join(" | ") : errs[0]?.error || "unknown";
-    msg += ` ${errs.length} error(s): ${detail}`;
-    console.warn("deploy month errors:", errs);
-    console.warn("deploy month error_summary:", summary);
-  }
-  setStatus("deployStatus", msg, errs.length === 0);
+  setStatus("deployStatus", msg, totalErrors === 0);
   await runPreview();
 }
 

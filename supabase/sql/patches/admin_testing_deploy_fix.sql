@@ -612,7 +612,10 @@ $function$;
 
 CREATE OR REPLACE FUNCTION public.admin_testing_deploy_month_results(
   p_gpsl_month text,
-  p_confirm_phrase text DEFAULT NULL
+  p_confirm_phrase text DEFAULT NULL,
+  p_limit integer DEFAULT NULL,
+  p_after_fixture_id bigint DEFAULT NULL,
+  p_include_details boolean DEFAULT false
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -629,14 +632,21 @@ DECLARE
   v_result jsonb;
   v_league_deployed int := 0;
   v_cup_deployed int := 0;
+  v_batch_count int := 0;
+  v_last_fixture_id bigint;
+  v_has_more boolean := false;
+  v_remaining int := 0;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
-  IF coalesce(trim(p_confirm_phrase), '') <> 'DEPLOY TEST MONTH' THEN
+  IF p_after_fixture_id IS NULL
+     AND coalesce(trim(p_confirm_phrase), '') <> 'DEPLOY TEST MONTH' THEN
     RAISE EXCEPTION 'Confirmation phrase required — type exactly: DEPLOY TEST MONTH';
   END IF;
+
+  PERFORM set_config('statement_timeout', '120s', true);
 
   SELECT id INTO v_season_id
   FROM public.competition_seasons
@@ -654,6 +664,7 @@ BEGIN
       AND f.gpsl_month = v_month
       AND f.status = 'scheduled'
       AND f.competition_type IN ('league', 'cup')
+      AND (p_after_fixture_id IS NULL OR f.id > p_after_fixture_id)
     ORDER BY
       CASE f.competition_type WHEN 'league' THEN 0 ELSE 1 END,
       f.cup_code NULLS FIRST,
@@ -662,10 +673,16 @@ BEGIN
       f.matchday,
       f.division,
       f.id
+    LIMIT p_limit
   LOOP
+    v_batch_count := v_batch_count + 1;
+    v_last_fixture_id := v_fixture.id;
+
     BEGIN
       v_result := public.admin_testing_deploy_scheduled_fixture(v_fixture.id);
-      v_deployed := v_deployed || jsonb_build_array(v_result);
+      IF coalesce(p_include_details, false) THEN
+        v_deployed := v_deployed || jsonb_build_array(v_result);
+      END IF;
       IF v_fixture.competition_type = 'cup' THEN
         v_cup_deployed := v_cup_deployed + 1;
       ELSE
@@ -682,6 +699,31 @@ BEGIN
     END;
   END LOOP;
 
+  IF v_last_fixture_id IS NOT NULL THEN
+    SELECT EXISTS (
+      SELECT 1
+      FROM public.competition_fixtures f
+      WHERE f.season_id = v_season_id
+        AND f.gpsl_month = v_month
+        AND f.status = 'scheduled'
+        AND f.competition_type IN ('league', 'cup')
+        AND f.id > v_last_fixture_id
+    )
+    INTO v_has_more;
+  END IF;
+
+  SELECT count(*)::int
+  INTO v_remaining
+  FROM public.competition_fixtures f
+  WHERE f.season_id = v_season_id
+    AND f.gpsl_month = v_month
+    AND f.status = 'scheduled'
+    AND f.competition_type IN ('league', 'cup')
+    AND public.admin_testing_fixture_squads_ready(
+      f.home_club_short_name,
+      f.away_club_short_name
+    );
+
   SELECT coalesce(jsonb_object_agg(err, cnt), '{}'::jsonb)
   INTO v_error_summary
   FROM (
@@ -695,17 +737,24 @@ BEGIN
     'gpsl_month', v_month,
     'gpsl_month_label', public.competition_gpsl_month_label(v_month),
     'season_id', v_season_id,
-    'deployed_count', jsonb_array_length(v_deployed),
+    'deployed_count', v_league_deployed + v_cup_deployed,
     'league_deployed_count', v_league_deployed,
     'cup_deployed_count', v_cup_deployed,
     'error_count', jsonb_array_length(v_errors),
     'error_summary', v_error_summary,
-    'deployed', v_deployed,
+    'batch_count', v_batch_count,
+    'has_more', coalesce(v_has_more, false),
+    'next_after_fixture_id', v_last_fixture_id,
+    'remaining_ready', v_remaining,
+    'deployed', CASE WHEN coalesce(p_include_details, false) THEN v_deployed ELSE NULL END,
     'errors', v_errors
   );
 END;
 $function$;
 
+GRANT EXECUTE ON FUNCTION public.admin_testing_deploy_month_results(text, text, integer, bigint, boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_testing_fixture_squads_ready(text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_testing_roll_cup_open_play() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_testing_deploy_scheduled_fixture(bigint) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';
