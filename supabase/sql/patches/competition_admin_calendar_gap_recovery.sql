@@ -122,7 +122,7 @@ AS $function$
 DECLARE
   v_season_id bigint;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
@@ -157,7 +157,7 @@ DECLARE
   v_season_id bigint;
   v_pull jsonb;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
@@ -215,7 +215,7 @@ DECLARE
   v_pending_submissions int := 0;
   v_shift interval;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
@@ -387,7 +387,7 @@ AS $function$
 DECLARE
   v_season public.competition_seasons;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
