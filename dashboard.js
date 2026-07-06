@@ -11,6 +11,9 @@ import {
   saveOwnerDashboardLayout,
   createDashboardSection,
   DEFAULT_SECTION_TITLE,
+  resolvePanelLabel,
+  defaultPanelLabel,
+  PANEL_LABEL_MAX_LEN,
 } from "./dashboard_layout.js";
 import { refreshAllDashboardPins } from "./dashboard_pin.js";
 import {
@@ -21,6 +24,7 @@ import {
 let ownerId = null;
 let isAdmin = false;
 let layoutSections = [];
+let panelLabels = {};
 let editMode = false;
 let layoutSaveTimer = null;
 let dashboardCtx = null;
@@ -217,15 +221,18 @@ async function refreshDashboardCtx() {
 
 async function initDashboardGrid(uid, ctx) {
   try {
-    layoutSections = await loadOwnerDashboardLayout(supabase, uid);
+    const layout = await loadOwnerDashboardLayout(supabase, uid);
+    layoutSections = layout.sections;
+    panelLabels = layout.panelLabels;
     hideLayoutWarn();
   } catch (err) {
     console.error("Load dashboard layout:", err);
     showLayoutWarn(
-      "Custom layout unavailable — run supabase/sql/owner_dashboard_layout.sql and owner_dashboard_sections.sql. Showing defaults."
+      "Custom layout unavailable — run supabase/sql/owner_dashboard_layout.sql, owner_dashboard_sections.sql, and owner_dashboard_panel_labels.sql. Showing defaults."
     );
     const { cloneDefaultSections } = await import("./dashboard_layout.js");
     layoutSections = cloneDefaultSections();
+    panelLabels = {};
   }
 
   renderDashboardTiles(ctx);
@@ -277,19 +284,35 @@ function createTileElement(id, ctx) {
     tile.style.setProperty("--tile-art", `url("${tileArt}")`);
   }
 
-  const label = document.createElement("span");
-  label.className = "dashboard-tile-label";
-  label.textContent =
-    panel.when === "special_auction" && ctx.specialAuction?.title
-      ? `Special Auction: ${ctx.specialAuction.title}`
-      : panel.label;
-  tile.appendChild(label);
+  const displayLabel = resolvePanelLabel(id, panel, panelLabels, ctx);
 
   if (!editMode) {
+    const label = document.createElement("span");
+    label.className = "dashboard-tile-label";
+    label.textContent = displayLabel;
+    tile.appendChild(label);
     tile.addEventListener("click", () => {
       window.location.href = panel.href;
     });
   } else {
+    const labelInput = document.createElement("input");
+    labelInput.type = "text";
+    labelInput.className = "dashboard-tile-label-input";
+    labelInput.value = displayLabel;
+    labelInput.maxLength = PANEL_LABEL_MAX_LEN;
+    labelInput.placeholder = defaultPanelLabel(panel, { specialAuctionTitle: ctx.specialAuction?.title });
+    labelInput.title = "Rename tile — only you see this";
+    labelInput.setAttribute("aria-label", `Rename ${panel.label}`);
+    if (panelLabels[id]) labelInput.classList.add("is-custom");
+    labelInput.addEventListener("mousedown", (e) => e.stopPropagation());
+    labelInput.addEventListener("click", (e) => e.stopPropagation());
+    labelInput.addEventListener("change", () => updatePanelLabel(id, panel, labelInput.value, ctx));
+    labelInput.addEventListener("blur", () => updatePanelLabel(id, panel, labelInput.value, ctx));
+    labelInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") labelInput.blur();
+    });
+    tile.appendChild(labelInput);
+
     const grip = document.createElement("span");
     grip.className = "dashboard-tile-grip";
     grip.textContent = "⋮⋮";
@@ -700,8 +723,26 @@ function clearDropHighlights() {
 
 function removePanelFromLayout(panelId, ctx) {
   layoutSections = removePanelFromAllSections(panelId);
+  const nextLabels = { ...panelLabels };
+  delete nextLabels[panelId];
+  panelLabels = nextLabels;
   applyLayoutChange(ctx);
   refreshAllDashboardPins();
+}
+
+function updatePanelLabel(panelId, panel, raw, ctx) {
+  const trimmed = (raw || "").trim().slice(0, PANEL_LABEL_MAX_LEN);
+  const fallback = defaultPanelLabel(panel, { specialAuctionTitle: ctx.specialAuction?.title });
+  const next = { ...panelLabels };
+
+  if (!trimmed || trimmed === fallback) {
+    delete next[panelId];
+  } else {
+    next[panelId] = trimmed;
+  }
+
+  panelLabels = next;
+  scheduleLayoutSave();
 }
 
 function updateSectionTitle(sectionId, title) {
@@ -740,14 +781,24 @@ async function commitLayoutSave() {
   if (!ownerId) return;
   clearTimeout(layoutSaveTimer);
   try {
-    layoutSections = await saveOwnerDashboardLayout(supabase, ownerId, layoutSections);
+    const saved = await saveOwnerDashboardLayout(
+      supabase,
+      ownerId,
+      layoutSections,
+      panelLabels
+    );
+    layoutSections = saved.sections;
+    panelLabels = saved.panelLabels;
     hideLayoutWarn();
   } catch (err) {
     console.error("Save dashboard layout:", err);
+    const msg = String(err?.message || err);
     showLayoutWarn(
-      err?.message?.includes("sections")
-        ? "Could not save groups — run supabase/sql/patches/owner_dashboard_sections.sql in Supabase."
-        : `Could not save dashboard layout: ${err?.message || err}`
+      msg.includes("panel_labels")
+        ? "Could not save tile names — run supabase/sql/patches/owner_dashboard_panel_labels.sql in Supabase."
+        : msg.includes("sections")
+          ? "Could not save groups — run supabase/sql/patches/owner_dashboard_sections.sql in Supabase."
+          : `Could not save dashboard layout: ${msg}`
     );
   }
 }

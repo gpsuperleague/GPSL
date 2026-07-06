@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.owner_dashboard_layout (
 );
 
 COMMENT ON TABLE public.owner_dashboard_layout IS
-  'Owner-chosen dashboard shortcuts; panel_ids match dashboard_registry.js ids. Optional sections JSON — see owner_dashboard_sections.sql.';
+  'Owner-chosen dashboard shortcuts; panel_ids match dashboard_registry.js ids. sections + panel_labels are per-owner only.';
 
 ALTER TABLE public.owner_dashboard_layout ENABLE ROW LEVEL SECURITY;
 

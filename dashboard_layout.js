@@ -6,6 +6,7 @@ import {
 const TABLE = "owner_dashboard_layout";
 
 export const DEFAULT_SECTION_TITLE = "Shortcuts";
+export const PANEL_LABEL_MAX_LEN = 48;
 
 /** Sensible default groups for owners who have not customised yet. */
 export const DEFAULT_DASHBOARD_SECTIONS = [
@@ -89,6 +90,34 @@ export function sanitizeSections(sections) {
   return out;
 }
 
+export function sanitizePanelLabels(labels, panelIdsOnDashboard) {
+  const allowed = new Set(panelIdsOnDashboard || []);
+  const out = {};
+
+  for (const [panelId, label] of Object.entries(labels || {})) {
+    if (!allowed.has(panelId) || !getDashboardPanel(panelId)) continue;
+    if (typeof label !== "string") continue;
+    const trimmed = label.trim().slice(0, PANEL_LABEL_MAX_LEN);
+    if (trimmed) out[panelId] = trimmed;
+  }
+
+  return out;
+}
+
+export function defaultPanelLabel(panel, { specialAuctionTitle = null } = {}) {
+  if (!panel) return "";
+  if (panel.when === "special_auction" && specialAuctionTitle) {
+    return `Special Auction: ${specialAuctionTitle}`;
+  }
+  return panel.label || "";
+}
+
+export function resolvePanelLabel(panelId, panel, panelLabels, ctx = {}) {
+  const custom = panelLabels?.[panelId];
+  if (typeof custom === "string" && custom.trim()) return custom.trim();
+  return defaultPanelLabel(panel, { specialAuctionTitle: ctx.specialAuction?.title });
+}
+
 export function sectionsFromPanelIds(panelIds) {
   const ids = sanitizePanelIds(panelIds);
   if (!ids.length) return cloneDefaultSections();
@@ -106,50 +135,57 @@ export function cloneDefaultSections() {
 export async function loadOwnerDashboardLayout(supabase, ownerId) {
   const { data, error } = await supabase
     .from(TABLE)
-    .select("panel_ids, sections")
+    .select("panel_ids, sections, panel_labels")
     .eq("owner_id", ownerId)
     .maybeSingle();
 
   if (error) throw error;
 
+  let sections;
   const rawSections = normalizeSectionsFromDb(data?.sections);
   if (rawSections.length) {
-    const sections = sanitizeSections(rawSections);
-    if (sections.length) return sections;
+    sections = sanitizeSections(rawSections);
+  }
+  if (!sections?.length) {
+    const rawPanelIds = normalizePanelIdsFromDb(data?.panel_ids);
+    sections =
+      rawPanelIds.length > 0 ? sectionsFromPanelIds(rawPanelIds) : cloneDefaultSections();
   }
 
-  const rawPanelIds = normalizePanelIdsFromDb(data?.panel_ids);
-  if (rawPanelIds.length) {
-    return sectionsFromPanelIds(rawPanelIds);
-  }
+  const panelIds = flattenPanelIds(sections);
+  const panelLabels = sanitizePanelLabels(normalizePanelLabelsFromDb(data?.panel_labels), panelIds);
 
-  return cloneDefaultSections();
+  return { sections, panelLabels };
 }
 
-export async function saveOwnerDashboardLayout(supabase, ownerId, sections) {
+export async function saveOwnerDashboardLayout(supabase, ownerId, sections, panelLabels = {}) {
   const cleaned = sanitizeSections(sections);
   const panelIds = flattenPanelIds(cleaned);
+  const cleanedLabels = sanitizePanelLabels(panelLabels, panelIds);
+
   const { error } = await supabase.from(TABLE).upsert(
     {
       owner_id: ownerId,
       panel_ids: panelIds,
       sections: cleaned,
+      panel_labels: cleanedLabels,
       updated_at: new Date().toISOString(),
     },
     { onConflict: "owner_id" }
   );
 
   if (error) throw error;
-  return cleaned;
+  return { sections: cleaned, panelLabels: cleanedLabels };
 }
 
 export async function isPanelOnDashboard(supabase, ownerId, panelId) {
-  const sections = await loadOwnerDashboardLayout(supabase, ownerId);
+  const { sections } = await loadOwnerDashboardLayout(supabase, ownerId);
   return flattenPanelIds(sections).includes(panelId);
 }
 
 export async function setPanelOnDashboard(supabase, ownerId, panelId, onDashboard) {
-  let sections = await loadOwnerDashboardLayout(supabase, ownerId);
+  const layout = await loadOwnerDashboardLayout(supabase, ownerId);
+  let { sections, panelLabels } = layout;
   const flat = flattenPanelIds(sections);
   const has = flat.includes(panelId);
 
@@ -162,13 +198,16 @@ export async function setPanelOnDashboard(supabase, ownerId, panelId, onDashboar
       ...sec,
       panelIds: sec.panelIds.filter((id) => id !== panelId),
     }));
+    const nextLabels = { ...panelLabels };
+    delete nextLabels[panelId];
+    panelLabels = nextLabels;
   }
 
-  return saveOwnerDashboardLayout(supabase, ownerId, sections);
+  return saveOwnerDashboardLayout(supabase, ownerId, sections, panelLabels);
 }
 
 export async function togglePanelOnDashboard(supabase, ownerId, panelId) {
-  const sections = await loadOwnerDashboardLayout(supabase, ownerId);
+  const { sections } = await loadOwnerDashboardLayout(supabase, ownerId);
   const on = flattenPanelIds(sections).includes(panelId);
   return setPanelOnDashboard(supabase, ownerId, panelId, !on);
 }
@@ -188,6 +227,23 @@ function normalizeSectionsFromDb(raw) {
     }
   }
   return [];
+}
+
+function normalizePanelLabelsFromDb(raw) {
+  if (raw == null) return {};
+  if (typeof raw === "object" && !Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    const s = raw.trim();
+    if (s.startsWith("{") && s.endsWith("}")) {
+      try {
+        const parsed = JSON.parse(s);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) return parsed;
+      } catch (_) {
+        /* fall through */
+      }
+    }
+  }
+  return {};
 }
 
 /** Postgres text[] sometimes arrives as a string — normalize for JS. */
