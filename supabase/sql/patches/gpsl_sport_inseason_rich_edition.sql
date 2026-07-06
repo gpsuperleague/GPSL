@@ -204,7 +204,17 @@ BEGIN
             'club_name', l.club_name,
             'owner', public.gpsl_sport_owner_byline(l.club_short_name),
             'pts', l.pts,
-            'position', l.table_position
+            'position', l.table_position,
+            'form', l.form_last10,
+            'pts_ahead', l.pts - coalesce((
+              SELECT c2.pts
+              FROM public.competition_standings_public c2
+              WHERE c2.season_id = p_season_id
+                AND c2.division = s.division
+                AND c2.table_position = 2
+            ), l.pts),
+            'mp', l.mp,
+            'gd', l.gd
           )
           FROM public.competition_standings_public l
           WHERE l.season_id = p_season_id AND l.division = s.division

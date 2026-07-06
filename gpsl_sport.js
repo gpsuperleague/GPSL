@@ -219,6 +219,180 @@ function divisionLabel(key, fallback) {
   return fallback || map[key] || String(key || "").replace(/_/g, " ");
 }
 
+function stablePickIndex(seed, count) {
+  let h = 2166136261;
+  const s = String(seed);
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return count > 0 ? (h >>> 0) % count : 0;
+}
+
+function parseRecentForm(form, n = 5) {
+  const chars = String(form || "")
+    .toUpperCase()
+    .replace(/[^WDL]/g, "");
+  const tail = chars.slice(-n);
+  let pts = 0;
+  let wins = 0;
+  let losses = 0;
+  for (const c of tail) {
+    if (c === "W") {
+      pts += 3;
+      wins += 1;
+    } else if (c === "D") pts += 1;
+    else if (c === "L") losses += 1;
+  }
+  return { pts, played: tail.length, wins, losses };
+}
+
+function buildStandingsLeaderTeaser(div, divisionKey, editionSeed = "") {
+  const l = div.leader || {};
+  const divLabel = div.division_label || divisionLabel(divisionKey);
+  const chasers = Array.isArray(div.chasers) ? div.chasers : [];
+  const flying = Array.isArray(div.flying) ? div.flying : [];
+  const leaderFly = flying.find((f) => f.club_short === l.club_short);
+  const form = l.form || leaderFly?.form || "";
+  const gap = Number(chasers[0]?.pts_behind ?? l.pts_ahead ?? 0);
+  const owner = String(l.owner || "").trim();
+  const club = l.club_name || l.club_short || "the leaders";
+  const isSuperLeague = divisionKey === "superleague";
+  const formInfo = parseRecentForm(form, 5);
+  const seed = `${editionSeed}|${divisionKey}|${l.club_short}|${gap}|${l.pts ?? 0}`;
+  const lines = [];
+
+  if (gap === 0) {
+    lines.push(
+      owner
+        ? `${owner} share top spot in ${divLabel} — dead level at the summit.`
+        : `${club} are level at the top of ${divLabel} with rivals right alongside.`,
+      owner
+        ? `No daylight at the top of ${divLabel}; ${owner} are neck and neck with the pack.`
+        : `Dead heat in ${divLabel} as ${club} cannot shake their closest rivals.`,
+      owner
+        ? `${owner} head ${divLabel} on points but know one slip could cost them the lead.`
+        : `${club} lead ${divLabel} on the thinnest of margins — every point counts now.`,
+    );
+  } else if (gap === 1) {
+    lines.push(
+      owner
+        ? `${owner} lead ${divLabel} by a solitary point — every match is a cup final.`
+        : `${club} top ${divLabel} by a single point with the chasers closing in.`,
+      owner
+        ? `One point in it at the summit of ${divLabel}; ${owner} will feel the breath on their neck.`
+        : `A one-point cushion is all ${club} have at the top of ${divLabel}.`,
+      owner
+        ? `${owner} sit top of ${divLabel} by the narrowest margin imaginable.`
+        : `${club} cling to the ${divLabel} lead by the skin of their teeth.`,
+    );
+  } else if (gap <= 3) {
+    lines.push(
+      owner
+        ? `${owner} sit top of ${divLabel} with the challengers breathing down their neck.`
+        : `${club} lead ${divLabel} but the chasing pack are within striking distance.`,
+      owner
+        ? `${owner} hold a slender ${gap}-point advantage in ${divLabel} — no room for error.`
+        : `${club} have a ${gap}-point lead in ${divLabel}; far from comfortable.`,
+      owner
+        ? `The chasing pack are within striking distance as ${owner} head the ${divLabel} table.`
+        : `Chasers lurk just behind as ${club} top the ${divLabel} standings.`,
+      owner
+        ? `${owner} lead ${divLabel} but this is far from a procession — ${gap} points separate them from the hunt.`
+        : `A tight ${divLabel} race: ${club} lead by ${gap} with rivals poised to pounce.`,
+    );
+  } else if (gap <= 6) {
+    lines.push(
+      owner
+        ? `${owner} have a handy buffer at the top of ${divLabel}, but the chasers haven't gone away.`
+        : `${club} enjoy a ${gap}-point cushion in ${divLabel}, though the pack are still in touch.`,
+      owner
+        ? `${owner} lead ${divLabel} with a bit of breathing space — for now.`
+        : `${club} have opened a useful gap at the top of ${divLabel}.`,
+      owner
+        ? `A ${gap}-point cushion gives ${owner} some comfort at the ${divLabel} summit.`
+        : `${club} sit ${gap} points clear at the top of ${divLabel}.`,
+    );
+  } else if (gap <= 11) {
+    lines.push(
+      owner
+        ? `${owner} are starting to pull away at the top of ${divLabel}.`
+        : `${club} are stretching their lead at the summit of ${divLabel}.`,
+      owner
+        ? `${owner} have opened up a healthy gap in ${divLabel} — the challengers are playing catch-up.`
+        : `The chasing pack are losing touch as ${club} build a ${gap}-point lead in ${divLabel}.`,
+      owner
+        ? `${gap} points clear, ${owner} look well placed at the top of ${divLabel}.`
+        : `${club} command a ${gap}-point advantage in ${divLabel}.`,
+    );
+  } else {
+    lines.push(
+      owner
+        ? `${owner} are in a league of their own at the top of ${divLabel}.`
+        : `${club} dominate the ${divLabel} summit with a commanding lead.`,
+      owner
+        ? `${owner} have built a commanding ${gap}-point lead in ${divLabel} — the rest are playing catch-up.`
+        : `Runaway leaders: ${club} are ${gap} points clear in ${divLabel}.`,
+      owner
+        ? `${owner} command ${divLabel} with daylight between them and the chasing pack.`
+        : `${club} have put real distance between themselves and the rest in ${divLabel}.`,
+    );
+  }
+
+  if (formInfo.played >= 3 && formInfo.pts >= 10) {
+    lines.push(
+      owner
+        ? `Ruthless recent form has propelled ${owner} to the ${divLabel} summit.`
+        : `Scorching form has ${club} flying at the top of ${divLabel}.`,
+      owner
+        ? `${owner} are flying at the top of ${divLabel} — results that demand respect.`
+        : `${club} arrive at the ${divLabel} summit on the back of a hot streak.`,
+      owner
+        ? `${owner}'s purple patch has them perched atop ${divLabel}.`
+        : `A run of strong results has ${club} leading the ${divLabel} charge.`,
+    );
+  } else if (formInfo.played >= 3 && formInfo.pts <= 4 && gap <= 6) {
+    lines.push(
+      owner
+        ? `${owner} still lead ${divLabel} despite a wobble in recent weeks — nervy times at the top.`
+        : `${club} cling to the ${divLabel} lead despite dipping form.`,
+      owner
+        ? `The table says first; recent results say worry for ${owner} in ${divLabel}.`
+        : `Leading ${divLabel} on points but not on form — ${club} will want a response.`,
+    );
+  }
+
+  if (isSuperLeague && gap >= 4) {
+    lines.push(
+      owner
+        ? `${owner} set the pace in the SuperLeague title race.`
+        : `${club} are the team to catch at the top of the SuperLeague.`,
+      owner
+        ? `SuperLeague summit: ${owner} have the title race firmly in their sights.`
+        : `The SuperLeague crown looks within reach for ${club} right now.`,
+    );
+  } else if (!isSuperLeague && gap >= 3) {
+    lines.push(
+      owner
+        ? `${owner} head the promotion chase in ${divLabel}.`
+        : `${club} lead the automatic promotion picture in ${divLabel}.`,
+      owner
+        ? `Promotion talk is getting louder around ${owner} at the top of ${divLabel}.`
+        : `${club} are setting the promotion pace in ${divLabel}.`,
+    );
+  }
+
+  if (!owner) {
+    lines.push(
+      `Top of ${divLabel}: ${club} on ${l.pts ?? 0} points with the chasing pack in pursuit.`,
+      `${club} lead ${divLabel} after a busy month at the sharp end.`,
+    );
+  }
+
+  const idx = stablePickIndex(seed, lines.length);
+  return lines[idx] || `Top of ${divLabel} after a busy month.`;
+}
+
 function sortTotmRows(rows) {
   return [...(rows || [])].sort(
     (a, b) => TOTM_SLOT_ORDER.indexOf(a.pitch_slot) - TOTM_SLOT_ORDER.indexOf(b.pitch_slot)
@@ -369,7 +543,7 @@ function renderStandingsSection(standings) {
     </section>`;
 }
 
-function renderStandingsSnapshotTeasers(snapshot) {
+function renderStandingsSnapshotTeasers(snapshot, editionSeed = "") {
   const data = snapshot && typeof snapshot === "object" ? snapshot : {};
   const items = DIVISION_ORDER.map((key) => {
     const div = data[key];
@@ -378,9 +552,7 @@ function renderStandingsSnapshotTeasers(snapshot) {
     return {
       kicker: div.division_label || divisionLabel(key),
       headline: `${l.club_name || l.club_short} lead on ${l.pts ?? 0} pts`,
-      body: l.owner
-        ? `${l.owner} sits top of ${div.division_label || divisionLabel(key)} with the challengers breathing down their neck.`
-        : `Top of ${div.division_label || divisionLabel(key)} after a busy month.`,
+      body: buildStandingsLeaderTeaser(div, key, editionSeed),
       club_short: l.club_short,
       story_kind: "standings_leader",
     };
@@ -781,7 +953,7 @@ function renderSportPaper() {
 
   const railTeasers = buildFrontRailTeasers(edition, front);
   const frontStories = Array.isArray(front.stories) ? front.stories : [];
-  const standingsTeasers = renderStandingsSnapshotTeasers(front.standings_snapshot);
+  const standingsTeasers = renderStandingsSnapshotTeasers(front.standings_snapshot, editionLabel);
 
   paper.innerHTML = `
     <div class="gpsl-sport-page gpsl-sport-page-front">
