@@ -139,6 +139,11 @@ function renderLeaderboard(containerId, rows, options) {
   });
 }
 
+function statTableId(prefix, stem) {
+  const suffix = stem.charAt(0).toUpperCase() + stem.slice(1) + "Table";
+  return prefix ? `${prefix}${suffix}` : `${stem}Table`;
+}
+
 function renderClubLeaderboards(prefix, rows, extraColumnKey, extraColumnValue) {
   const common = {
     extraColumnKey,
@@ -170,27 +175,27 @@ function renderClubLeaderboards(prefix, rows, extraColumnKey, extraColumnValue) 
         Number(b.avg_rating || 0) - Number(a.avg_rating || 0)
     );
 
-  renderLeaderboard(`${prefix}ScorersTable`, byGoals, {
+  renderLeaderboard(statTableId(prefix, "scorers"), byGoals, {
     ...common,
     valueKey: "Goals",
     formatValue: (r) => r.goals,
   });
-  renderLeaderboard(`${prefix}AssistsTable`, byAssists, {
+  renderLeaderboard(statTableId(prefix, "assists"), byAssists, {
     ...common,
     valueKey: "Assists",
     formatValue: (r) => r.assists,
   });
-  renderLeaderboard(`${prefix}RatingsTable`, byRating, {
+  renderLeaderboard(statTableId(prefix, "ratings"), byRating, {
     ...common,
     valueKey: "Avg",
     formatValue: (r) => Number(r.avg_rating).toFixed(2),
   });
-  renderLeaderboard(`${prefix}PotmTable`, byPotm, {
+  renderLeaderboard(statTableId(prefix, "potm"), byPotm, {
     ...common,
     valueKey: "POTM",
     formatValue: (r) => r.potm_awards,
   });
-  renderLeaderboard(`${prefix}CleanSheetsTable`, byCleanSheets, {
+  renderLeaderboard(statTableId(prefix, "cleanSheets"), byCleanSheets, {
     ...common,
     valueKey: "CS",
     formatValue: (r) => r.clean_sheets,
