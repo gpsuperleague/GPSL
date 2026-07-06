@@ -70,6 +70,10 @@
     .stats-grid > .panel:nth-child(-n+3) > h2 {
       min-height: 1.2em;
     }
+    .stats-grid > .panel:nth-child(4) > h2,
+    .stats-grid > .panel:nth-child(5) > h2 {
+      min-height: 1.2em;
+    }
     table.lb {
       width: 100%;
       border-collapse: collapse;
@@ -229,8 +233,7 @@
         </div>
         <div class="panel"><h2>Player of the Match</h2><div id="potmTable"></div></div>
         <div class="panel">
-          <h2>Goalkeeper clean sheets</h2>
-          <p class="meta" style="margin:0 0 8px;font-size:12px;">League games only — started in a 0-conceded match.</p>
+          <h2 class="panel-h2-with-note">Goalkeeper clean sheets<span class="panel-head-note">(League games only — started in a 0-conceded match.)</span></h2>
           <div id="cleanSheetsTable"></div>
         </div>
         <div class="panel panel--wide">
@@ -271,8 +274,7 @@
         </div>
         <div class="panel"><h2>Player of the Match</h2><div id="cupPotmTable"></div></div>
         <div class="panel">
-          <h2>Goalkeeper clean sheets</h2>
-          <p class="meta" style="margin:0 0 8px;font-size:12px;">Cup games only — started in a 0-conceded match.</p>
+          <h2 class="panel-h2-with-note">Goalkeeper clean sheets<span class="panel-head-note">(Cup games only — started in a 0-conceded match.)</span></h2>
           <div id="cupCleanSheetsTable"></div>
         </div>
       </div>
