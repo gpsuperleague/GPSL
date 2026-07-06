@@ -6,6 +6,7 @@ import { stadiumImageUrl } from "./stadium_images.js";
 import {
   pesdbPlayerCardUrl,
 } from "./player_links.js";
+import { loadManagerPortraitManifest, managerImageUrl } from "./manager_images.js";
 
 let sportEditionId = null;
 let sportActivePage = "front";
@@ -31,6 +32,12 @@ function escapeHtml(s) {
 
 function escapeAttr(s) {
   return escapeHtml(s).replace(/'/g, "&#39;");
+}
+
+function managerPortraitUrl(slug) {
+  const key = String(slug || "").trim().toLowerCase();
+  if (!key) return null;
+  return managerImageUrl(key) || `images/managers/${key}.jpg`;
 }
 
 function clubBadgeUrl(short) {
@@ -103,6 +110,19 @@ function renderHeroBlock(hero) {
   const clubShort = hero.club_short || hero.club_short_name;
   const stadium = stadiumImageUrl(clubShort);
   const badge = clubBadgeUrl(clubShort);
+
+  if (kind === "manager_signing" && clubShort) {
+    const portrait = managerPortraitUrl(hero.manager_slug);
+    return `
+      <figure class="gpsl-sport-hero gpsl-sport-hero-manager">
+        <div class="gpsl-sport-hero-bg" style="${stadium ? `--hero-bg:url('${escapeAttr(stadium)}')` : ""}"></div>
+        <div class="gpsl-sport-hero-layer gpsl-sport-hero-layer-manager">
+          ${badge ? imgTag(badge, "gpsl-sport-hero-badge", "") : ""}
+          ${portrait ? imgTag(portrait, "gpsl-sport-hero-manager-portrait", hero.manager_name || "Manager") : ""}
+        </div>
+        ${caption ? `<figcaption class="gpsl-sport-hero-cap">${caption}</figcaption>` : ""}
+      </figure>`;
+  }
 
   if (kind === "owner_takeover" && clubShort) {
     return `
@@ -183,13 +203,17 @@ function renderStorySection(title, items, opts = {}) {
 function renderStoryCard(story, { compact = false } = {}) {
   const clubShort = story.club_short || story.club_short_name;
   const playerId = story.player_id ? String(story.player_id) : null;
+  const managerSlug = story.manager_slug ? String(story.manager_slug) : null;
   const badge = clubBadgeUrl(clubShort);
   const card = playerId ? pesdbPlayerCardUrl(playerId) : null;
-  const stadium = !playerId && clubShort ? stadiumImageUrl(clubShort) : null;
+  const portrait = managerSlug ? managerPortraitUrl(managerSlug) : null;
+  const stadium = !playerId && !managerSlug && clubShort ? stadiumImageUrl(clubShort) : null;
 
   let media = "";
   if (card) {
     media = `<div class="gpsl-sport-story-media">${imgTag(card, "gpsl-sport-story-player", "")}</div>`;
+  } else if (portrait) {
+    media = `<div class="gpsl-sport-story-media gpsl-sport-story-media-manager">${imgTag(portrait, "gpsl-sport-story-manager", story.manager_name || "")}</div>`;
   } else if (stadium) {
     media = `<div class="gpsl-sport-story-media gpsl-sport-story-media-stadium" style="--story-bg:url('${escapeAttr(stadium)}')"></div>`;
   } else if (badge) {
@@ -228,6 +252,54 @@ function renderMasthead(label, editionLabel, pageTitle) {
     </div>`;
 }
 
+function renderInteriorPage(editionLabel, page, { defaultTitle = "GPSL Sport" } = {}) {
+  const lead = page.lead || {};
+  const stories = Array.isArray(page.stories) ? page.stories : [];
+  const leadHero =
+    lead.manager_slug || lead.story_kind === "manager_signing"
+      ? {
+          kind: "manager_signing",
+          club_short: lead.club_short,
+          manager_slug: lead.manager_slug,
+          manager_name: lead.manager_name,
+          caption: lead.headline || page.page_title,
+        }
+      : lead.story_kind === "owner_takeover"
+        ? {
+            kind: "owner_takeover",
+            club_short: lead.club_short,
+            owner_tag: lead.owner_tag,
+            caption: lead.headline || page.page_title,
+          }
+        : lead.player_id
+          ? {
+              kind: "transfer",
+              club_short: lead.buyer_club_short || lead.club_short,
+              player_id: String(lead.player_id),
+              caption: page.page_title,
+            }
+          : { kind: "generic", caption: page.page_title };
+
+  const leadBlock =
+    lead.headline || lead.body
+      ? `<article class="gpsl-sport-lead-block">
+          ${renderHeroBlock(leadHero)}
+          <h1 class="gpsl-sport-headline">${escapeHtml(lead.headline || page.page_title || defaultTitle)}</h1>
+          ${lead.byline ? renderByline(lead.byline) : ""}
+          ${formatParagraphs(lead.body, true)}
+          ${lead.pull_quote ? renderPullQuote(lead.pull_quote) : ""}
+        </article>`
+      : "";
+
+  return `
+    <div class="gpsl-sport-page gpsl-sport-page-interior">
+      ${renderMasthead(editionLabel, editionLabel, escapeHtml(page.page_title || defaultTitle))}
+      ${leadBlock ? `<div class="gpsl-sport-front-grid gpsl-sport-front-grid-back">${leadBlock}</div>` : ""}
+      ${stories.length ? renderStorySection(page.page_title || defaultTitle, stories, { compact: false, columns: 1 }) : ""}
+      <footer class="gpsl-sport-footer">GPSL Sport · Official GPSL assets · Player cards pesdb.net</footer>
+    </div>`;
+}
+
 function renderSportPaper() {
   const paper = document.getElementById("gpslSportPaper");
   const edition = window.__gpslSportEdition;
@@ -241,6 +313,24 @@ function renderSportPaper() {
   const backStories = Array.isArray(back.stories) ? back.stories : [];
   const hero = resolveHero(front, back, edition);
   const editionLabel = edition.edition_label || front.edition_label || "";
+
+  const managersPage = edition.managers_page || edition.detail?.managers_page || {};
+  const ownersPage = edition.owners_page || edition.detail?.owners_page || {};
+  const managerStories = Array.isArray(front.manager_stories) ? front.manager_stories : [];
+
+  if (sportActivePage === "managers" && managersPage.enabled) {
+    paper.innerHTML = renderInteriorPage(editionLabel, managersPage, {
+      defaultTitle: "Manager draft special",
+    });
+    return;
+  }
+
+  if (sportActivePage === "owners" && ownersPage.enabled) {
+    paper.innerHTML = renderInteriorPage(editionLabel, ownersPage, {
+      defaultTitle: "New owners",
+    });
+    return;
+  }
 
   if (sportActivePage === "back" && back.enabled) {
     const lead = back.lead || {};
@@ -270,11 +360,14 @@ function renderSportPaper() {
     return;
   }
 
-  const leadIsOwner =
-    (front.story_type || "").includes("owner") && front.hero?.kind === "owner_takeover";
+  const leadKind = front.lead_kind || front.hero?.kind || "";
+  const leadIsOwner = leadKind === "owner" || leadKind === "owner_takeover";
   const ownerSectionItems = leadIsOwner ? ownerStories.slice(1) : ownerStories;
-  const railOwnerStories = leadIsOwner ? ownerStories.slice(1) : ownerStories;
-  const railStories = [...railOwnerStories, ...stories].slice(0, 3);
+  const railStories = [
+    ...(leadKind === "manager" || leadKind === "manager_signing" ? managerStories.slice(1) : managerStories),
+    ...(leadIsOwner ? ownerStories.slice(1) : ownerStories),
+    ...stories,
+  ].slice(0, 4);
 
   paper.innerHTML = `
     <div class="gpsl-sport-page">
@@ -296,10 +389,11 @@ function renderSportPaper() {
               </aside>`
             : `<aside class="gpsl-sport-rail gpsl-sport-rail-empty">
                 <h2 class="gpsl-sport-rail-title">Inside this edition</h2>
-                <p class="gpsl-sport-rail-blurb">Boardroom moves, transfer fees and pre-season plotting across the GPSL.</p>
+                <p class="gpsl-sport-rail-blurb">Manager draft arrivals, club auction winners and transfer fees across pre-season.</p>
               </aside>`
         }
       </div>
+      ${renderStorySection("Manager arrivals", leadKind.includes("manager") ? managerStories.slice(1) : managerStories)}
       ${renderStorySection("New owners at the wheel", ownerSectionItems)}
       ${stories.length ? renderStorySection("Transfer wire", stories) : ""}
       <footer class="gpsl-sport-footer">GPSL Sport · Stadium photos &amp; club badges official GPSL assets · Player cards pesdb.net</footer>
@@ -359,9 +453,11 @@ export function ensureSportModal() {
         <label for="gpslSportArchiveSelect" class="gpsl-sport-archive-label">Edition archive</label>
         <select id="gpslSportArchiveSelect" class="gpsl-sport-archive-select" aria-label="Choose edition"></select>
       </div>
-      <div class="gpsl-sport-tabs">
-        <button type="button" class="gpsl-sport-tab active" data-page="front">Front page</button>
-        <button type="button" class="gpsl-sport-tab" data-page="back" id="gpslSportBackTab" hidden>Back page</button>
+      <div class="gpsl-sport-tabs" id="gpslSportTabs">
+        <button type="button" class="gpsl-sport-tab active" data-page="front">Front</button>
+        <button type="button" class="gpsl-sport-tab" data-page="managers" id="gpslSportManagersTab" hidden>Managers</button>
+        <button type="button" class="gpsl-sport-tab" data-page="owners" id="gpslSportOwnersTab" hidden>Owners</button>
+        <button type="button" class="gpsl-sport-tab" data-page="back" id="gpslSportBackTab" hidden>Transfers</button>
       </div>
       <div class="gpsl-sport-paper" id="gpslSportPaper"></div>
     </div>
@@ -458,6 +554,29 @@ export async function refreshGpslSportNav(supabase) {
   }
 }
 
+function syncSportTabs(edition) {
+  const managersTab = document.getElementById("gpslSportManagersTab");
+  const ownersTab = document.getElementById("gpslSportOwnersTab");
+  const backTab = document.getElementById("gpslSportBackTab");
+  const managersPage = edition?.managers_page || edition?.detail?.managers_page || {};
+  const ownersPage = edition?.owners_page || edition?.detail?.owners_page || {};
+  const backEnabled = !!edition?.back_page?.enabled;
+
+  if (managersTab) managersTab.hidden = !managersPage.enabled;
+  if (ownersTab) ownersTab.hidden = !ownersPage.enabled;
+  if (backTab) backTab.hidden = !backEnabled;
+
+  const pages = ["front"];
+  if (managersPage.enabled) pages.push("managers");
+  if (ownersPage.enabled) pages.push("owners");
+  if (backEnabled) pages.push("back");
+  if (!pages.includes(sportActivePage)) sportActivePage = "front";
+
+  document.getElementById("gpslSportTabs")?.querySelectorAll(".gpsl-sport-tab").forEach((b) => {
+    b.classList.toggle("active", b.dataset.page === sportActivePage);
+  });
+}
+
 async function loadSportEdition(editionId, { markRead = false } = {}) {
   const client = sportSupabase || window.supabase;
   if (!client || !editionId) return false;
@@ -477,15 +596,7 @@ async function loadSportEdition(editionId, { markRead = false } = {}) {
 
   window.__gpslSportEdition = data.edition;
   sportActivePage = "front";
-
-  const overlay = document.getElementById("gpslSportModal");
-  const backTab = document.getElementById("gpslSportBackTab");
-  const backEnabled = !!data.edition?.back_page?.enabled;
-  if (backTab) backTab.hidden = !backEnabled;
-
-  overlay?.querySelectorAll(".gpsl-sport-tab").forEach((b) => {
-    b.classList.toggle("active", b.dataset.page === "front");
-  });
+  syncSportTabs(data.edition);
 
   renderSportArchiveSelect();
   renderSportPaper();
@@ -506,6 +617,7 @@ export async function openGpslSport(supabase) {
   }
 
   ensureSportModal();
+  await loadManagerPortraitManifest().catch(() => {});
 
   const paper = document.getElementById("gpslSportPaper");
   if (paper) {

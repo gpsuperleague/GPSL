@@ -123,10 +123,10 @@ body.gpsl-sport-open {
 
 .gpsl-sport-tab {
   flex: 1;
-  padding: 10px 12px;
+  padding: 10px 6px;
   border: none;
   background: transparent;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.14em;
@@ -395,6 +395,37 @@ body.gpsl-sport-open {
   align-items: flex-end;
   justify-content: space-between;
   width: 100%;
+}
+
+.gpsl-sport-hero-layer-manager {
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.gpsl-sport-hero-manager-portrait {
+  width: 96px;
+  height: 120px;
+  object-fit: cover;
+  object-position: top center;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}
+
+.gpsl-sport-story-media-manager {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 120px;
+  background: linear-gradient(180deg, #2a2520, #1a1815);
+}
+
+.gpsl-sport-story-manager {
+  width: 72px;
+  height: 90px;
+  object-fit: cover;
+  object-position: top center;
+  border: 1px solid #ccc;
 }
 
 .gpsl-sport-columns-1 {
