@@ -41,6 +41,8 @@ function renderPreview(data) {
   summary.innerHTML = `
     <span>Month: <b>${data?.gpsl_month_label || data?.gpsl_month || "—"}</b></span>
     <span>Ready league: <b>${data?.scheduled_league_ready ?? 0}</b></span>
+    <span>Ready cup: <b>${data?.scheduled_cup_ready ?? 0}</b></span>
+    <span>Ready total: <b>${data?.scheduled_total_ready ?? data?.scheduled_league_ready ?? 0}</b></span>
     <span>Blocked / other: <b>${data?.blocked_or_other ?? 0}</b></span>
     <span>Owned clubs &lt;11: <b>${under11.length}</b></span>
   `;
@@ -70,8 +72,13 @@ function renderPreview(data) {
   body.innerHTML = fixtures
     .map((f) => {
       const ready = !!f.ready;
+      const typeLabel =
+        f.competition_type === "cup"
+          ? `${f.cup_code || "cup"} R${f.cup_round ?? "?"}`
+          : f.competition_type || "league";
       const squads = `${f.home_squad_size ?? "?"} / ${f.away_squad_size ?? "?"}`;
       return `<tr class="${ready ? "" : "not-ready"}">
+        <td>${escapeHtml(typeLabel)}</td>
         <td>${f.matchday ?? "—"}</td>
         <td>${f.division ?? "—"}</td>
         <td>${f.home_club} vs ${f.away_club}</td>
@@ -113,7 +120,8 @@ async function runPreview() {
   renderPreview(data);
   setStatus(
     "previewStatus",
-    `${data?.scheduled_league_ready ?? 0} league fixture(s) ready to deploy.`,
+    `${data?.scheduled_total_ready ?? data?.scheduled_league_ready ?? 0} fixture(s) ready to deploy ` +
+      `(${data?.scheduled_league_ready ?? 0} league, ${data?.scheduled_cup_ready ?? 0} cup).`,
     true
   );
 }
@@ -155,7 +163,11 @@ async function runDeploy() {
 
   const errs = data?.errors || [];
   const summary = data?.error_summary || {};
-  let msg = `Deployed ${data?.deployed_count ?? 0} fixture(s) for ${data?.gpsl_month_label || month}.`;
+  let msg = `Deployed ${data?.deployed_count ?? 0} fixture(s) for ${data?.gpsl_month_label || month}`;
+  if (data?.league_deployed_count != null || data?.cup_deployed_count != null) {
+    msg += ` (${data.league_deployed_count ?? 0} league, ${data.cup_deployed_count ?? 0} cup)`;
+  }
+  msg += ".";
   if (errs.length) {
     const lines = Object.entries(summary).map(([text, cnt]) => `${cnt}× ${text}`);
     const detail = lines.length ? lines.join(" | ") : errs[0]?.error || "unknown";

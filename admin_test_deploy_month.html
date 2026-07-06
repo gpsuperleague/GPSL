@@ -40,8 +40,9 @@
     <div class="admin-main" id="adminMain">
       <p class="note">
         <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
-        · Testing only — plays all <b>scheduled league</b> fixtures for a GPSL month with random scores,
-        auto squad stats (goals match score), and a POTM per club. Skips inbox submit/confirm.
+        · Testing only — plays all <b>scheduled league and cup</b> fixtures for a GPSL month with random scores,
+        auto squad stats (goals match score), and a POTM per club. Cup draws go to ET or penalties.
+        Skips inbox submit/confirm. League first, then cups by round.
       </p>
 
       <div class="card">
@@ -60,6 +61,7 @@
           <table class="preview-table" id="previewTable" hidden>
             <thead>
               <tr>
+                <th>Type</th>
                 <th>MD</th>
                 <th>Div</th>
                 <th>Fixture</th>
@@ -77,8 +79,8 @@
       <div class="card danger-card">
         <h2>2. Deploy results</h2>
         <p class="note">
-          Random scores 0–4 per team. Clears any pending result submissions for those fixtures.
-          Cup fixtures are skipped (use Match Day for ET/penalties).
+          Random scores 0–4 per team (league). Cups: random 90-min score; draws resolved by ET or pens.
+          Clears any pending result submissions for those fixtures.
         </p>
         <p class="note">Type exactly: <code id="phraseHint">DEPLOY TEST MONTH</code></p>
         <input type="text" id="confirmInput" placeholder="Type confirmation phrase" autocomplete="off">
