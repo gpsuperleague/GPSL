@@ -38,6 +38,20 @@
               <button id="compCalendarClearBtn" class="button" style="background:#990000;">Clear calendar</button>
               <button id="compInboxMonthBtn" class="button" style="background:#446633;" title="Notify owners of this month's fixtures">Send month preview inbox</button>
             </div>
+            <div class="end-month-panel" style="margin-top:16px;padding-top:14px;border-top:1px solid #333;">
+              <h3 style="color:#ff9900;font-size:15px;margin:0 0 8px;">End GPSL month early</h3>
+              <p class="note" style="margin:0 0 10px;">
+                Locks the live GPSL month <b>now</b> and runs the same automatic jobs as the Friday cron:
+                loan installments due, Team of the Month, GPSL Sport edition, scheduling fines, and no-show forfeits.
+                Run <code>competition_admin_end_gpsl_month.sql</code> in Supabase first.
+              </p>
+              <div id="compEndMonthPreview" class="note" hidden style="margin-bottom:10px;"></div>
+              <div class="row">
+                <button id="compEndMonthPreviewBtn" class="button" style="background:#663300;">Preview end month</button>
+                <input id="compEndMonthPhrase" type="text" placeholder="Type END GPSL MONTH" style="min-width:220px;padding:8px;background:#222;border:1px solid #444;color:#ddd;border-radius:6px;">
+                <button id="compEndMonthBtn" class="button" style="background:#990000;">End current month now</button>
+              </div>
+            </div>
             <table class="gpsl-table" style="width:100%;border-collapse:collapse;margin-top:12px;">
               <thead>
                 <tr>

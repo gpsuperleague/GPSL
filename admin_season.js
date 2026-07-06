@@ -116,6 +116,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compCalendarBreakBtn").onclick = insertCompCalendarBreak;
   document.getElementById("compCalendarClearBtn").onclick = clearCompCalendar;
   document.getElementById("compInboxMonthBtn").onclick = sendMonthPreviewInbox;
+  document.getElementById("compEndMonthPreviewBtn").onclick = previewEndGpslMonth;
+  document.getElementById("compEndMonthBtn").onclick = endGpslMonthEarly;
 
   await refreshCompetitionAdmin();
   await refreshCompCalendarAdmin();
@@ -655,4 +657,128 @@ async function sendMonthPreviewInbox() {
     "compCalendarStatus",
     `✅ Month ${data.gpsl_month} previews sent to ${data.notified ?? 0} club(s).`
   );
+}
+
+function renderEndMonthPreview(data) {
+  const el = document.getElementById("compEndMonthPreview");
+  if (!el) return;
+
+  if (!data?.ok) {
+    el.hidden = false;
+    el.innerHTML = `⚠ ${data?.reason || "Cannot preview end month."}`;
+    return;
+  }
+
+  el.hidden = false;
+  el.innerHTML = `
+    <b>${data.gpsl_month_label || data.gpsl_month}</b>
+    · scheduled lock ${formatUkDateTime(data.lock_at)} UK
+    · unplayed league <b>${data.unplayed_league ?? 0}</b>
+    · unplayed cup <b>${data.unplayed_cup ?? 0}</b>
+    · pending submissions <b>${data.pending_submissions ?? 0}</b>
+    <br>Jobs: TOTM, GPSL Sport, scheduling fines, check-in forfeits, loan installments due.
+  `;
+}
+
+async function previewEndGpslMonth() {
+  const seasonId = Number(document.getElementById("compCalendarSeason").value) || null;
+  setStatus("compCalendarStatus", "Loading end-month preview…");
+
+  const { data, error } = await supabase.rpc("competition_admin_end_gpsl_month_preview", {
+    p_gpsl_month: null,
+    p_season_id: seasonId || null,
+  });
+
+  if (error) {
+    setStatus("compCalendarStatus", "❌ " + error.message, false);
+    return;
+  }
+
+  renderEndMonthPreview(data);
+
+  if (!data?.ok) {
+    setStatus("compCalendarStatus", "⚠ " + (data.reason || "No live GPSL month"), false);
+    return;
+  }
+
+  setStatus(
+    "compCalendarStatus",
+    `Preview: ${data.gpsl_month_label} can be ended early (${data.unplayed_league ?? 0} unplayed league, ${data.unplayed_cup ?? 0} cup).`
+  );
+}
+
+async function endGpslMonthEarly() {
+  const seasonId = Number(document.getElementById("compCalendarSeason").value) || null;
+  const phrase = document.getElementById("compEndMonthPhrase")?.value?.trim() || "";
+
+  const { data: preview, error: previewErr } = await supabase.rpc(
+    "competition_admin_end_gpsl_month_preview",
+    { p_gpsl_month: null, p_season_id: seasonId || null }
+  );
+
+  if (previewErr) {
+    setStatus("compCalendarStatus", "❌ " + previewErr.message, false);
+    return;
+  }
+
+  if (!preview?.ok) {
+    renderEndMonthPreview(preview);
+    setStatus("compCalendarStatus", "⚠ " + (preview?.reason || "No live GPSL month"), false);
+    return;
+  }
+
+  const msg = [
+    `End GPSL ${preview.gpsl_month_label} now?`,
+    "",
+    `Scheduled lock: ${formatUkDateTime(preview.lock_at)} UK`,
+    `Unplayed: ${preview.unplayed_league ?? 0} league, ${preview.unplayed_cup ?? 0} cup`,
+    `Pending submissions: ${preview.pending_submissions ?? 0}`,
+    "",
+    "This runs the same month-lock jobs as the Friday cron (fines, TOTM, GPSL Sport, etc.).",
+  ].join("\n");
+
+  if (!confirm(msg)) return;
+
+  if (phrase !== "END GPSL MONTH") {
+    setStatus("compCalendarStatus", 'Type exactly: END GPSL MONTH', false);
+    return;
+  }
+
+  setStatus("compCalendarStatus", "Ending month and running lock jobs…");
+
+  const { data, error } = await supabase.rpc("competition_admin_end_gpsl_month_early", {
+    p_confirm_phrase: phrase,
+    p_gpsl_month: null,
+    p_season_id: seasonId || null,
+  });
+
+  if (error) {
+    setStatus("compCalendarStatus", "❌ " + error.message, false);
+    return;
+  }
+
+  if (!data?.ended) {
+    renderEndMonthPreview(data);
+    setStatus("compCalendarStatus", "⚠ " + (data?.reason || "Month was not ended"), false);
+    return;
+  }
+
+  document.getElementById("compEndMonthPhrase").value = "";
+  renderEndMonthPreview(data);
+
+  const totm = data.month_lock_jobs?.team_of_month?.processed;
+  const sport = data.month_lock_jobs?.gpsl_sport?.processed;
+  const totmCount = Array.isArray(totm) ? totm.length : 0;
+  const sportCount = Array.isArray(sport) ? sport.length : 0;
+
+  setStatus(
+    "compCalendarStatus",
+    `✅ ${data.gpsl_month_label} locked early. TOTM jobs: ${totmCount}, GPSL Sport: ${sportCount}, loans processed: ${data.loan_installments?.clubs ?? 0} club(s).`
+  );
+
+  if (seasonId) {
+    await loadCalendarTableForSeason(seasonId);
+  } else {
+    await refreshCompCalendarAdmin();
+  }
 }
