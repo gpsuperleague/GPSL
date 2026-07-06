@@ -1,4 +1,4 @@
-/* GPSL Sport newspaper */
+/* GPSL Sport — tabloid newspaper */
 
 .nav-gpsl-sport {
   position: relative;
@@ -44,11 +44,11 @@ body.gpsl-sport-open {
   position: fixed;
   inset: 0;
   z-index: 12000;
-  background: rgba(0, 0, 0, 0.82);
+  background: rgba(8, 8, 10, 0.92);
   display: none;
   align-items: flex-start;
   justify-content: center;
-  padding: 24px 16px;
+  padding: 20px 12px 32px;
   overflow-y: auto;
 }
 
@@ -62,27 +62,29 @@ body.gpsl-sport-open {
 
 .gpsl-sport-dialog {
   position: relative;
-  width: min(720px, 100%);
-  background: #f4efe6;
-  color: #1a1a1a;
-  border: 1px solid #bbb;
-  border-radius: 4px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55);
+  width: min(920px, 100%);
+  background: #f7f2e8;
+  color: #121212;
+  border: 1px solid #8a8070;
+  box-shadow:
+    0 2px 0 #fff inset,
+    0 28px 90px rgba(0, 0, 0, 0.65);
   margin: auto;
 }
 
 .gpsl-sport-close {
   position: absolute;
-  top: 8px;
-  right: 10px;
-  z-index: 2;
-  width: 32px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  font-size: 28px;
+  top: 6px;
+  right: 8px;
+  z-index: 5;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #999;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 22px;
   line-height: 1;
-  color: #333;
+  color: #222;
   cursor: pointer;
 }
 
@@ -90,42 +92,33 @@ body.gpsl-sport-open {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 22px 0;
-  background: #f4efe6;
+  padding: 10px 20px 0;
+  background: #ebe4d6;
+  border-bottom: 1px solid #c8bfb0;
 }
 
 .gpsl-sport-archive-label {
-  font-size: 11px;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: #555;
-  white-space: nowrap;
 }
 
 .gpsl-sport-archive-select {
   flex: 1;
-  min-width: 0;
   padding: 6px 8px;
-  border: 1px solid #bbb;
-  border-radius: 4px;
+  border: 1px solid #aaa;
   background: #fff;
   font-size: 13px;
-  color: #222;
-}
-
-.gpsl-sport-loading {
-  text-align: center;
-  padding: 40px 20px;
-  font-style: italic;
-  color: #555;
 }
 
 .gpsl-sport-tabs {
   display: flex;
-  gap: 0;
-  border-bottom: 2px solid #222;
-  background: #e8e0d4;
+  border-bottom: 3px solid #111;
+  background: #ded6c8;
+  font-family: "Helvetica Neue", Arial, sans-serif;
 }
 
 .gpsl-sport-tab {
@@ -133,90 +126,313 @@ body.gpsl-sport-open {
   padding: 10px 12px;
   border: none;
   background: transparent;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.14em;
   color: #555;
   cursor: pointer;
 }
 
 .gpsl-sport-tab.active {
-  background: #f4efe6;
+  background: #f7f2e8;
   color: #111;
+  box-shadow: inset 0 3px 0 #c41e3a;
 }
 
 .gpsl-sport-paper {
-  padding: 20px 22px 28px;
+  padding: 0;
   font-family: Georgia, "Times New Roman", Times, serif;
+  background: #f7f2e8;
 }
 
+.gpsl-sport-page {
+  padding: 18px 22px 24px;
+}
+
+/* Masthead */
 .gpsl-sport-masthead {
   text-align: center;
-  border-bottom: 3px double #222;
-  padding-bottom: 12px;
-  margin-bottom: 18px;
+  margin-bottom: 8px;
+}
+
+.gpsl-sport-masthead-rule {
+  height: 2px;
+  background: #111;
+  margin: 4px 0;
+}
+
+.gpsl-sport-masthead-rule:last-of-type {
+  height: 1px;
 }
 
 .gpsl-sport-masthead-name {
-  font-size: 42px;
-  font-weight: 900;
-  letter-spacing: 0.02em;
-  line-height: 1;
   font-family: "Times New Roman", Georgia, serif;
+  font-size: clamp(36px, 8vw, 56px);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.gpsl-sport-masthead-tagline {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: #666;
+  margin-top: 4px;
 }
 
 .gpsl-sport-masthead-edition {
-  margin-top: 6px;
-  font-size: 13px;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: #444;
+  letter-spacing: 0.16em;
+  margin-top: 6px;
 }
 
+.gpsl-sport-dateline {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #555;
+  border-top: 1px solid #111;
+  border-bottom: 1px solid #111;
+  padding: 5px 0;
+  margin-bottom: 16px;
+}
+
+.gpsl-sport-dateline-sep {
+  opacity: 0.45;
+}
+
+/* Front grid */
+.gpsl-sport-front-grid {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 18px;
+  align-items: start;
+  border-bottom: 2px solid #111;
+  padding-bottom: 18px;
+  margin-bottom: 16px;
+}
+
+.gpsl-sport-front-grid-back {
+  grid-template-columns: 1fr;
+}
+
+/* Hero */
+.gpsl-sport-hero {
+  position: relative;
+  margin: 0 0 14px;
+  overflow: hidden;
+  border: 1px solid #222;
+  background: #1a1a1a;
+  min-height: 200px;
+}
+
+.gpsl-sport-hero-bg {
+  position: absolute;
+  inset: 0;
+  background-image: var(--hero-bg);
+  background-size: cover;
+  background-position: center;
+  filter: saturate(0.85) contrast(1.05);
+}
+
+.gpsl-sport-hero-bg-fallback {
+  background: linear-gradient(135deg, #2a2520 0%, #4a4035 50%, #1a1815 100%);
+}
+
+.gpsl-sport-hero-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.75) 0%,
+    rgba(0, 0, 0, 0.25) 45%,
+    rgba(0, 0, 0, 0.1) 100%
+  );
+}
+
+.gpsl-sport-hero-layer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  gap: 12px;
+  min-height: 200px;
+  padding: 14px 16px;
+}
+
+.gpsl-sport-hero-layer-champion {
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.gpsl-sport-hero-badge {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+}
+
+.gpsl-sport-hero-badge-lg {
+  width: 72px;
+  height: 72px;
+}
+
+.gpsl-sport-hero-player {
+  width: 110px;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.55));
+  margin-left: auto;
+}
+
+.gpsl-sport-hero-player-solo {
+  margin: 16px auto;
+  display: block;
+  width: 140px;
+}
+
+.gpsl-sport-hero-trophy {
+  width: 64px;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+
+.gpsl-sport-hero-masthead-watermark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  font-weight: 900;
+  color: rgba(255, 255, 255, 0.08);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+.gpsl-sport-hero-cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  margin: 0;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #f5f0e6;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+}
+
+.gpsl-sport-hero img.is-broken {
+  opacity: 0.2;
+}
+
+/* Lead */
 .gpsl-sport-headline {
-  font-size: 28px;
-  line-height: 1.15;
+  font-family: "Times New Roman", Georgia, serif;
+  font-size: clamp(26px, 4.5vw, 38px);
+  line-height: 1.08;
   margin: 0 0 10px;
   font-weight: 900;
+  letter-spacing: -0.01em;
 }
 
 .gpsl-sport-subhead {
-  font-size: 16px;
+  font-size: 17px;
   font-style: italic;
-  color: #444;
-  margin: 0 0 14px;
+  color: #333;
+  margin: 0 0 12px;
+  padding-bottom: 10px;
   border-bottom: 1px solid #ccc;
-  padding-bottom: 12px;
+  line-height: 1.35;
 }
 
 .gpsl-sport-body {
   font-size: 15px;
-  line-height: 1.55;
-  color: #222;
+  line-height: 1.58;
+  color: #1a1a1a;
 }
 
 .gpsl-sport-body p {
-  margin: 0 0 12px;
+  margin: 0 0 11px;
 }
 
-.gpsl-sport-more {
-  margin-top: 22px;
-  padding-top: 14px;
-  border-top: 2px solid #222;
+.gpsl-sport-dropcap::first-letter {
+  float: left;
+  font-family: "Times New Roman", Georgia, serif;
+  font-size: 3.4em;
+  line-height: 0.82;
+  padding-right: 8px;
+  padding-top: 4px;
+  font-weight: 700;
+  color: #111;
 }
 
-.gpsl-sport-more h2 {
-  font-size: 14px;
+/* Rail */
+.gpsl-sport-rail {
+  border-left: 1px solid #bbb;
+  padding-left: 14px;
+}
+
+.gpsl-sport-rail-title,
+.gpsl-sport-section-title {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 11px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin: 0 0 12px;
-  color: #333;
+  letter-spacing: 0.14em;
+  margin: 0 0 10px;
+  color: #222;
+  border-bottom: 2px solid #c41e3a;
+  padding-bottom: 4px;
+}
+
+.gpsl-sport-rail-blurb {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #444;
+  font-style: italic;
+}
+
+/* Columns */
+.gpsl-sport-more {
+  margin-top: 4px;
+}
+
+.gpsl-sport-columns {
+  column-count: 2;
+  column-gap: 22px;
+  column-rule: 1px solid #d4cdc0;
+}
+
+.gpsl-sport-columns-2 {
+  column-count: 2;
 }
 
 .gpsl-sport-story {
-  margin-bottom: 16px;
-  padding-bottom: 14px;
+  break-inside: avoid;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
   border-bottom: 1px solid #ddd;
 }
 
@@ -224,31 +440,122 @@ body.gpsl-sport-open {
   border-bottom: none;
 }
 
-.gpsl-sport-story h3 {
-  font-size: 17px;
-  margin: 0 0 6px;
+.gpsl-sport-story-inner {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
 }
 
-.gpsl-sport-story-small h3 {
-  font-size: 15px;
+.gpsl-sport-story-media {
+  flex-shrink: 0;
+  width: 64px;
+}
+
+.gpsl-sport-story-media-stadium {
+  width: 72px;
+  height: 52px;
+  background-image: var(--story-bg);
+  background-size: cover;
+  background-position: center;
+  border: 1px solid #999;
+}
+
+.gpsl-sport-story-player {
+  width: 56px;
+  height: auto;
+  display: block;
+  border: 1px solid #ccc;
+  background: #fff;
+}
+
+.gpsl-sport-story-badge {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.gpsl-sport-story-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.gpsl-sport-story h3 {
+  font-size: 16px;
+  line-height: 1.2;
+  margin: 0 0 5px;
+  font-weight: 800;
+}
+
+.gpsl-sport-story-compact h3 {
+  font-size: 14px;
 }
 
 .gpsl-sport-kicker {
-  font-size: 11px;
-  font-weight: 700;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 9px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #666;
-  margin-bottom: 4px;
+  letter-spacing: 0.1em;
+  color: #c41e3a;
+  margin-bottom: 3px;
 }
 
-@media (max-width: 600px) {
-  .gpsl-sport-masthead-name {
-    font-size: 32px;
+.gpsl-sport-footer {
+  margin-top: 18px;
+  padding-top: 10px;
+  border-top: 1px solid #aaa;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #777;
+  text-align: center;
+}
+
+.gpsl-sport-loading {
+  text-align: center;
+  padding: 48px 20px;
+  font-style: italic;
+  color: #555;
+  font-family: Georgia, serif;
+}
+
+.gpsl-sport-loading-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #bbb;
+  border-top-color: #c41e3a;
+  border-radius: 50%;
+  animation: gpsl-sport-spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+@keyframes gpsl-sport-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 720px) {
+  .gpsl-sport-front-grid {
+    grid-template-columns: 1fr;
   }
 
-  .gpsl-sport-headline {
-    font-size: 22px;
+  .gpsl-sport-rail {
+    border-left: none;
+    border-top: 1px solid #bbb;
+    padding-left: 0;
+    padding-top: 14px;
+  }
+
+  .gpsl-sport-columns {
+    column-count: 1;
+  }
+
+  .gpsl-sport-hero-player {
+    width: 88px;
   }
 
   .nav-gpsl-sport-label {

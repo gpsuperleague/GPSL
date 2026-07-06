@@ -1,11 +1,25 @@
 /**
- * GPSL Sport — weekly newspaper modal
+ * GPSL Sport — immersive newspaper modal
  */
+
+import { stadiumImageUrl } from "./stadium_images.js";
+import {
+  pesdbPlayerCardUrl,
+} from "./player_links.js";
 
 let sportEditionId = null;
 let sportActivePage = "front";
 let sportSupabase = null;
 let sportArchive = [];
+
+const TROPHY_IMAGES = {
+  superleague: "images/trophies/superleague.png",
+  super8: "images/trophies/super8.png",
+  plate: "images/trophies/plate.png",
+  shield: "images/trophies/shield.png",
+  bowl: "images/trophies/bowl.png",
+  league_cup: "images/trophies/league_cup.png",
+};
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -15,11 +29,248 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
-function formatParagraphs(text) {
+function escapeAttr(s) {
+  return escapeHtml(s).replace(/'/g, "&#39;");
+}
+
+function clubBadgeUrl(short) {
+  const code = String(short ?? "").trim();
+  return code ? `images/club_badges/${code}.png` : null;
+}
+
+function imgTag(src, className, alt = "") {
+  if (!src) return "";
+  return (
+    `<img class="${className}" src="${escapeAttr(src)}" alt="${escapeAttr(alt)}" loading="lazy" ` +
+    `onerror="this.classList.add('is-broken')">`
+  );
+}
+
+function formatParagraphs(text, dropcap = false) {
   return escapeHtml(text || "")
     .split(/\n\n+/)
-    .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
+    .map((p, i) => {
+      const dc = dropcap && i === 0 ? " gpsl-sport-dropcap" : "";
+      return `<p class="gpsl-sport-body${dc}">${p.replace(/\n/g, "<br>")}</p>`;
+    })
     .join("");
+}
+
+function trophyUrl(code) {
+  if (!code) return null;
+  const key = String(code).toLowerCase();
+  return TROPHY_IMAGES[key] || `images/trophies/${key}.png`;
+}
+
+function resolveHero(front, back, edition) {
+  if (front?.hero && typeof front.hero === "object") return front.hero;
+
+  const storyType = front?.story_type || edition?.story_type || "";
+
+  if (storyType.includes("preseason") || storyType.includes("transfer")) {
+    const lead = back?.lead || {};
+    if (lead.player_id) {
+      return {
+        kind: "transfer",
+        club_short: lead.buyer_club_short,
+        player_id: String(lead.player_id),
+        caption: lead.headline || "Transfer special",
+      };
+    }
+  }
+
+  if (storyType === "season_review" && edition?.detail?.champion_club_short) {
+    return {
+      kind: "champion",
+      club_short: edition.detail.champion_club_short,
+      trophy: "superleague",
+      caption: "Champions of the GPSL",
+    };
+  }
+
+  return { kind: "generic", caption: front?.edition_label || "GPSL Sport" };
+}
+
+function renderHeroBlock(hero) {
+  if (!hero) return "";
+
+  const kind = hero.kind || "generic";
+  const caption = escapeHtml(hero.caption || "");
+  const clubShort = hero.club_short || hero.club_short_name;
+  const stadium = stadiumImageUrl(clubShort);
+  const badge = clubBadgeUrl(clubShort);
+
+  if (kind === "transfer" && hero.player_id) {
+    const card = pesdbPlayerCardUrl(hero.player_id);
+    return `
+      <figure class="gpsl-sport-hero gpsl-sport-hero-transfer">
+        <div class="gpsl-sport-hero-bg" style="${stadium ? `--hero-bg:url('${escapeAttr(stadium)}')` : ""}"></div>
+        <div class="gpsl-sport-hero-layer">
+          ${badge ? imgTag(badge, "gpsl-sport-hero-badge", "") : ""}
+          ${imgTag(card, "gpsl-sport-hero-player", "Player")}
+        </div>
+        ${caption ? `<figcaption class="gpsl-sport-hero-cap">${caption}</figcaption>` : ""}
+      </figure>`;
+  }
+
+  if (kind === "champion" || kind === "stadium") {
+    const trophy = hero.trophy ? trophyUrl(hero.trophy) : null;
+    return `
+      <figure class="gpsl-sport-hero gpsl-sport-hero-stadium">
+        <div class="gpsl-sport-hero-bg" style="${stadium ? `--hero-bg:url('${escapeAttr(stadium)}')` : ""}"></div>
+        <div class="gpsl-sport-hero-layer gpsl-sport-hero-layer-champion">
+          ${trophy ? imgTag(trophy, "gpsl-sport-hero-trophy", "Trophy") : ""}
+          ${badge ? imgTag(badge, "gpsl-sport-hero-badge gpsl-sport-hero-badge-lg", "") : ""}
+        </div>
+        ${caption ? `<figcaption class="gpsl-sport-hero-cap">${caption}</figcaption>` : ""}
+      </figure>`;
+  }
+
+  if (kind === "player" && hero.player_id) {
+    return `
+      <figure class="gpsl-sport-hero gpsl-sport-hero-player-only">
+        ${imgTag(pesdbPlayerCardUrl(hero.player_id), "gpsl-sport-hero-player gpsl-sport-hero-player-solo", "Player")}
+        ${caption ? `<figcaption class="gpsl-sport-hero-cap">${caption}</figcaption>` : ""}
+      </figure>`;
+  }
+
+  return `
+    <figure class="gpsl-sport-hero gpsl-sport-hero-generic">
+      <div class="gpsl-sport-hero-bg gpsl-sport-hero-bg-fallback"></div>
+      <div class="gpsl-sport-hero-masthead-watermark">GPSL Sport</div>
+      ${caption ? `<figcaption class="gpsl-sport-hero-cap">${caption}</figcaption>` : ""}
+    </figure>`;
+}
+
+function renderStoryCard(story, { compact = false } = {}) {
+  const clubShort = story.club_short || story.club_short_name;
+  const playerId = story.player_id ? String(story.player_id) : null;
+  const badge = clubBadgeUrl(clubShort);
+  const card = playerId ? pesdbPlayerCardUrl(playerId) : null;
+  const stadium = !playerId && clubShort ? stadiumImageUrl(clubShort) : null;
+
+  let media = "";
+  if (card) {
+    media = `<div class="gpsl-sport-story-media">${imgTag(card, "gpsl-sport-story-player", "")}</div>`;
+  } else if (stadium) {
+    media = `<div class="gpsl-sport-story-media gpsl-sport-story-media-stadium" style="--story-bg:url('${escapeAttr(stadium)}')"></div>`;
+  } else if (badge) {
+    media = `<div class="gpsl-sport-story-media gpsl-sport-story-media-badge">${imgTag(badge, "gpsl-sport-story-badge", "")}</div>`;
+  }
+
+  return `
+    <article class="gpsl-sport-story${compact ? " gpsl-sport-story-compact" : ""}">
+      <div class="gpsl-sport-story-inner">
+        ${media}
+        <div class="gpsl-sport-story-text">
+          ${story.kicker ? `<div class="gpsl-sport-kicker">${escapeHtml(story.kicker)}</div>` : ""}
+          <h3>${escapeHtml(story.headline)}</h3>
+          <div class="gpsl-sport-body">${formatParagraphs(story.body)}</div>
+        </div>
+      </div>
+    </article>`;
+}
+
+function renderMasthead(label, editionLabel, pageTitle) {
+  const sub = pageTitle || `${escapeHtml(editionLabel)} Edition`;
+  return `
+    <header class="gpsl-sport-masthead">
+      <div class="gpsl-sport-masthead-rule"></div>
+      <div class="gpsl-sport-masthead-name">GPSL Sport</div>
+      <div class="gpsl-sport-masthead-tagline">The league's paper of record</div>
+      <div class="gpsl-sport-masthead-rule"></div>
+      <div class="gpsl-sport-masthead-edition">${sub}</div>
+    </header>
+    <div class="gpsl-sport-dateline">
+      <span>${escapeHtml(label || editionLabel || "GPSL")}</span>
+      <span class="gpsl-sport-dateline-sep">|</span>
+      <span>Free inside the GPSL</span>
+    </div>`;
+}
+
+function renderSportPaper() {
+  const paper = document.getElementById("gpslSportPaper");
+  const edition = window.__gpslSportEdition;
+  if (!paper || !edition) return;
+
+  const front = edition.front_page || {};
+  const back = edition.back_page || {};
+  const stories = Array.isArray(front.stories) ? front.stories : [];
+  const backStories = Array.isArray(back.stories) ? back.stories : [];
+  const hero = resolveHero(front, back, edition);
+  const editionLabel = edition.edition_label || front.edition_label || "";
+
+  if (sportActivePage === "back" && back.enabled) {
+    const lead = back.lead || {};
+    const leadHero = {
+      kind: "transfer",
+      club_short: lead.buyer_club_short,
+      player_id: lead.player_id ? String(lead.player_id) : null,
+      caption: "Back page — transfer special",
+    };
+
+    paper.innerHTML = `
+      <div class="gpsl-sport-page gpsl-sport-page-back">
+        ${renderMasthead(editionLabel, editionLabel, escapeHtml(back.page_title || "Transfer special"))}
+        <div class="gpsl-sport-front-grid gpsl-sport-front-grid-back">
+          <article class="gpsl-sport-lead-block">
+            ${renderHeroBlock(lead.player_id ? leadHero : hero)}
+            <h1 class="gpsl-sport-headline">${escapeHtml(lead.headline)}</h1>
+            ${formatParagraphs(lead.body, true)}
+          </article>
+        </div>
+        ${
+          backStories.length
+            ? `<section class="gpsl-sport-more">
+                <h2 class="gpsl-sport-section-title">Also on the move</h2>
+                <div class="gpsl-sport-columns gpsl-sport-columns-2">${backStories
+                  .map((s) => renderStoryCard(s, { compact: true }))
+                  .join("")}</div>
+              </section>`
+            : ""
+        }
+        <footer class="gpsl-sport-footer">GPSL Sport · Transfer desk · Player images via pesdb.net</footer>
+      </div>`;
+    return;
+  }
+
+  const railStories = stories.slice(0, 2);
+  const columnStories = stories.slice(2);
+
+  paper.innerHTML = `
+    <div class="gpsl-sport-page">
+      ${renderMasthead(editionLabel, editionLabel)}
+      <div class="gpsl-sport-front-grid">
+        <article class="gpsl-sport-lead-block">
+          ${renderHeroBlock(hero)}
+          <h1 class="gpsl-sport-headline">${escapeHtml(front.headline)}</h1>
+          ${front.subhead ? `<p class="gpsl-sport-subhead">${escapeHtml(front.subhead)}</p>` : ""}
+          ${formatParagraphs(front.lead_paragraph, true)}
+        </article>
+        ${
+          railStories.length
+            ? `<aside class="gpsl-sport-rail">
+                <h2 class="gpsl-sport-rail-title">In brief</h2>
+                ${railStories.map((s) => renderStoryCard(s, { compact: true })).join("")}
+              </aside>`
+            : `<aside class="gpsl-sport-rail gpsl-sport-rail-empty">
+                <h2 class="gpsl-sport-rail-title">Inside this edition</h2>
+                <p class="gpsl-sport-rail-blurb">Results, transfers and owner drama from across the GPSL — your club, your league, your story.</p>
+              </aside>`
+        }
+      </div>
+      ${
+        columnStories.length
+          ? `<section class="gpsl-sport-more">
+              <h2 class="gpsl-sport-section-title">Elsewhere this month</h2>
+              <div class="gpsl-sport-columns">${columnStories
+                .map((s) => renderStoryCard(s))
+                .join("")}</div>
+            </section>`
+          : ""
+      }
+      <footer class="gpsl-sport-footer">GPSL Sport · Stadium photos &amp; club badges official GPSL assets · Player cards pesdb.net</footer>
+    </div>`;
 }
 
 export function showSportModal() {
@@ -106,71 +357,6 @@ export function ensureSportModal() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && overlay.classList.contains("is-open")) closeGpslSport();
   });
-}
-
-function renderSportPaper() {
-  const paper = document.getElementById("gpslSportPaper");
-  const edition = window.__gpslSportEdition;
-  if (!paper || !edition) return;
-
-  const front = edition.front_page || {};
-  const back = edition.back_page || {};
-  const stories = Array.isArray(front.stories) ? front.stories : [];
-  const backStories = Array.isArray(back.stories) ? back.stories : [];
-
-  if (sportActivePage === "back" && back.enabled) {
-    const lead = back.lead || {};
-    paper.innerHTML = `
-      <header class="gpsl-sport-masthead gpsl-sport-masthead-back">
-        <div class="gpsl-sport-masthead-name">GPSL Sport</div>
-        <div class="gpsl-sport-masthead-edition">${escapeHtml(back.page_title || "Transfer special")} · ${escapeHtml(edition.edition_label)}</div>
-      </header>
-      <article class="gpsl-sport-lead">
-        <h1 class="gpsl-sport-headline">${escapeHtml(lead.headline)}</h1>
-        <div class="gpsl-sport-body">${formatParagraphs(lead.body)}</div>
-      </article>
-      ${
-        backStories.length
-          ? `<section class="gpsl-sport-more"><h2>Also on the move</h2>${backStories
-              .map(
-                (s) => `
-            <article class="gpsl-sport-story gpsl-sport-story-small">
-              <h3>${escapeHtml(s.headline)}</h3>
-              <div class="gpsl-sport-body">${formatParagraphs(s.body)}</div>
-            </article>`
-              )
-              .join("")}</section>`
-          : ""
-      }
-    `;
-    return;
-  }
-
-  paper.innerHTML = `
-    <header class="gpsl-sport-masthead">
-      <div class="gpsl-sport-masthead-name">${escapeHtml(front.masthead || "GPSL Sport")}</div>
-      <div class="gpsl-sport-masthead-edition">${escapeHtml(edition.edition_label || front.edition_label)} Edition</div>
-    </header>
-    <article class="gpsl-sport-lead">
-      <h1 class="gpsl-sport-headline">${escapeHtml(front.headline)}</h1>
-      <p class="gpsl-sport-subhead">${escapeHtml(front.subhead)}</p>
-      <div class="gpsl-sport-body">${formatParagraphs(front.lead_paragraph)}</div>
-    </article>
-    ${
-      stories.length
-        ? `<section class="gpsl-sport-more"><h2>Elsewhere this month</h2>${stories
-            .map(
-              (s) => `
-          <article class="gpsl-sport-story">
-            <div class="gpsl-sport-kicker">${escapeHtml(s.kicker)}</div>
-            <h3>${escapeHtml(s.headline)}</h3>
-            <div class="gpsl-sport-body">${formatParagraphs(s.body)}</div>
-          </article>`
-            )
-            .join("")}</section>`
-        : ""
-    }
-  `;
 }
 
 async function loadSportArchive(client) {
@@ -282,7 +468,6 @@ async function loadSportEdition(editionId, { markRead = false } = {}) {
 export async function openGpslSport(supabase) {
   const client = supabase || sportSupabase || window.supabase;
   if (!client) {
-    console.warn("GPSL Sport: no supabase client");
     alert("GPSL Sport: not signed in.");
     return;
   }
@@ -290,18 +475,15 @@ export async function openGpslSport(supabase) {
   ensureSportModal();
 
   const paper = document.getElementById("gpslSportPaper");
-  if (paper) paper.innerHTML = '<p class="gpsl-sport-loading">Loading edition…</p>';
+  if (paper) {
+    paper.innerHTML =
+      '<div class="gpsl-sport-loading"><span class="gpsl-sport-loading-spinner"></span> Printing edition…</div>';
+  }
   showSportModal();
 
-  if (!sportEditionId) {
-    sportEditionId = readEditionIdFromNavButton();
-  }
-  if (!sportEditionId) {
-    await refreshGpslSportNav(client);
-  }
-  if (!sportEditionId) {
-    sportEditionId = readEditionIdFromNavButton();
-  }
+  if (!sportEditionId) sportEditionId = readEditionIdFromNavButton();
+  if (!sportEditionId) await refreshGpslSportNav(client);
+  if (!sportEditionId) sportEditionId = readEditionIdFromNavButton();
   if (!sportEditionId) {
     hideSportModal();
     alert("No GPSL Sport edition is available yet.");
@@ -311,7 +493,7 @@ export async function openGpslSport(supabase) {
   const ok = await loadSportEdition(sportEditionId, { markRead: true });
   if (!ok) {
     hideSportModal();
-    alert("Could not load this edition. Run gpsl_sport_phase1.sql in Supabase if this is new.");
+    alert("Could not load this edition.");
   }
 }
 

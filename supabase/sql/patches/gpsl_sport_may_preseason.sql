@@ -479,6 +479,8 @@ BEGIN
 
   FOR v_story IN
     SELECT
+      ps.player_id,
+      ps.club_short_name,
       p."Name" AS player_name,
       public.gpsl_sport_club_display_name(ps.club_short_name) AS club_name,
       ps.goals,
@@ -493,7 +495,9 @@ BEGIN
       jsonb_build_object(
         'kicker', 'Golden boot race',
         'headline', v_story.player_name || ' — ' || coalesce(v_story.goals, 0)::text || ' goals',
-        'body', format('%s for %s (%s assists).', v_story.player_name, v_story.club_name, coalesce(v_story.assists, 0))
+        'body', format('%s for %s (%s assists).', v_story.player_name, v_story.club_name, coalesce(v_story.assists, 0)),
+        'player_id', v_story.player_id,
+        'club_short', v_story.club_short_name
       )
     );
   END LOOP;
@@ -501,6 +505,7 @@ BEGIN
   FOR v_club_player IN
     SELECT DISTINCT ON (ps.club_short_name)
       ps.club_short_name,
+      ps.player_id,
       public.gpsl_sport_club_display_name(ps.club_short_name) AS club_name,
       p."Name" AS player_name,
       ps.ballon_points
@@ -515,7 +520,9 @@ BEGIN
       jsonb_build_object(
         'kicker', 'Club player of the season',
         'headline', v_club_player.club_name || ': ' || v_club_player.player_name,
-        'body', format('Stand-out performer at %s on Ballon points.', v_club_player.club_name)
+        'body', format('Stand-out performer at %s on Ballon points.', v_club_player.club_name),
+        'player_id', v_club_player.player_id,
+        'club_short', v_club_player.club_short_name
       )
     );
   END LOOP;
@@ -528,7 +535,16 @@ BEGIN
     'subhead', v_subhead,
     'lead_paragraph', v_lead,
     'stories', v_stories,
-    'story_type', 'season_review'
+    'story_type', 'season_review',
+    'hero', CASE
+      WHEN v_champion IS NOT NULL THEN jsonb_build_object(
+        'kind', 'champion',
+        'club_short', v_champion,
+        'trophy', 'superleague',
+        'caption', coalesce(v_champion_name, 'GPSL') || ' — SuperLeague champions'
+      )
+      ELSE jsonb_build_object('kind', 'generic', 'caption', 'Season review')
+    END
   );
 
   INSERT INTO public.gpsl_sport_editions (
@@ -541,7 +557,7 @@ BEGIN
     'season_review',
     v_front,
     v_back,
-    jsonb_build_object('generated_at', now(), 'season_label', v_season_label)
+    jsonb_build_object('generated_at', now(), 'season_label', v_season_label, 'champion_club_short', v_champion)
   )
   RETURNING id INTO v_existing;
 
@@ -898,7 +914,8 @@ BEGIN
       'headline', public.gpsl_sport_club_display_name(v_f.home_club_short_name)
         || ' ' || coalesce(v_f.home_goals, 0)::text || '–' || coalesce(v_f.away_goals, 0)::text
         || ' ' || public.gpsl_sport_club_display_name(v_f.away_club_short_name),
-      'body', format('Full-time in %s on a busy %s matchday.', v_division, v_month_label)
+      'body', format('Full-time in %s on a busy %s matchday.', v_division, v_month_label),
+      'club_short', v_f.home_club_short_name
     ));
   END LOOP;
 
@@ -910,7 +927,20 @@ BEGIN
     'subhead', v_subhead,
     'lead_paragraph', v_lead,
     'stories', v_stories,
-    'story_type', v_story_type
+    'story_type', v_story_type,
+    'hero', CASE
+      WHEN v_winner IS NOT NULL AND v_story_type IN ('shock_result', 'cup_upset') THEN jsonb_build_object(
+        'kind', 'stadium',
+        'club_short', v_winner,
+        'caption', coalesce(v_winner_name, 'GPSL') || ' — ' || coalesce(v_score, '') || ' headline'
+      )
+      WHEN v_story_type = 'manager_pressure' AND v_winner_name IS NOT NULL THEN jsonb_build_object(
+        'kind', 'stadium',
+        'club_short', v_u.club_short_name,
+        'caption', v_winner_name || ' under the microscope'
+      )
+      ELSE jsonb_build_object('kind', 'generic', 'caption', v_month_label || ' round-up')
+    END
   );
 
   SELECT c.unlock_at, c.lock_at INTO v_cal
