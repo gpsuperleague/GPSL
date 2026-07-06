@@ -218,10 +218,14 @@ body.gpsl-sport-open {
   display: grid;
   grid-template-columns: 1fr 220px;
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
   border-bottom: 2px solid #111;
   padding-bottom: 18px;
   margin-bottom: 16px;
+}
+
+.gpsl-sport-page-front .gpsl-sport-front-grid {
+  margin-bottom: 0;
 }
 
 .gpsl-sport-front-grid-back {
@@ -403,29 +407,20 @@ body.gpsl-sport-open {
   width: 100%;
 }
 
-.gpsl-sport-hero-manager-portrait {
-  width: 96px;
-  height: 120px;
-  object-fit: cover;
-  object-position: top center;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
-}
-
-.gpsl-sport-story-media-manager {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  min-height: 120px;
-  background: linear-gradient(180deg, #2a2520, #1a1815);
-}
-
-.gpsl-sport-story-manager {
-  width: 72px;
-  height: 90px;
-  object-fit: cover;
-  object-position: top center;
-  border: 1px solid #ccc;
+.gpsl-sport-hero-manager-tag {
+  margin-left: auto;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  text-align: right;
+  max-width: 55%;
+  line-height: 1.2;
 }
 
 .gpsl-sport-columns-1 {
@@ -467,6 +462,93 @@ body.gpsl-sport-open {
 .gpsl-sport-rail {
   border-left: 1px solid #bbb;
   padding-left: 14px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.gpsl-sport-rail-teasers {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 0;
+}
+
+.gpsl-sport-rail-teaser {
+  flex: 1;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  text-decoration: none;
+  color: inherit;
+  padding: 8px 0;
+  border-bottom: 1px solid #d4cdc0;
+  transition: background 0.15s ease;
+}
+
+.gpsl-sport-rail-teaser:last-child {
+  border-bottom: none;
+}
+
+.gpsl-sport-rail-teaser:hover {
+  background: rgba(196, 30, 58, 0.06);
+}
+
+.gpsl-sport-rail-teaser-media {
+  flex-shrink: 0;
+  width: 44px;
+}
+
+.gpsl-sport-rail-thumb-badge {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+}
+
+.gpsl-sport-rail-thumb-player {
+  width: 44px;
+  height: auto;
+  object-fit: contain;
+}
+
+.gpsl-sport-rail-teaser-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gpsl-sport-rail-teaser-label {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #c41e3a;
+}
+
+.gpsl-sport-rail-teaser-headline {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #111;
+}
+
+.gpsl-sport-rail-teaser-snippet {
+  font-size: 11px;
+  line-height: 1.35;
+  color: #555;
+  font-style: italic;
+}
+
+.gpsl-sport-rail-empty {
+  justify-content: flex-start;
+}
+
+.gpsl-sport-rail-empty .gpsl-sport-rail-blurb {
+  flex: 1;
 }
 
 .gpsl-sport-rail-title,
@@ -623,6 +705,15 @@ body.gpsl-sport-open {
     border-top: 1px solid #bbb;
     padding-left: 0;
     padding-top: 14px;
+    min-height: auto;
+  }
+
+  .gpsl-sport-rail-teasers {
+    justify-content: flex-start;
+  }
+
+  .gpsl-sport-rail-teaser {
+    flex: none;
   }
 
   .gpsl-sport-columns {
