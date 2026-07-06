@@ -2035,6 +2035,34 @@ a.ssc-chip:hover {
   border-radius: 8px;
 }
 
+.dashboard-edit-mode .dashboard-section-grid {
+  min-height: 88px;
+}
+
+.dashboard-section-drop-hint {
+  grid-column: 1 / -1;
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #444;
+  border-radius: 8px;
+  color: #777;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.dashboard-section-grid-drop-target .dashboard-section-drop-hint,
+.dashboard-section-tile-drop-target .dashboard-section-drop-hint {
+  border-color: var(--club-accent, #ff9900);
+  color: var(--club-accent, #ff9900);
+}
+
+.dashboard-section-tile-drop-target .dashboard-section-head {
+  border-bottom-color: var(--club-accent, #ff9900);
+  box-shadow: 0 2px 0 rgba(var(--club-accent-rgb), 0.35);
+}
+
 .dashboard-tile-label {
   position: relative;
   z-index: 1;

@@ -27,6 +27,70 @@ let dragFromSectionId = null;
 let dragSectionId = null;
 let layoutSaveTimer = null;
 
+const TILE_DRAG_MIME = "application/x-gpsl-dashboard-tile";
+const SECTION_DRAG_MIME = "application/x-gpsl-dashboard-section";
+
+function writeTileDragData(e, panelId, fromSectionId) {
+  const payload = JSON.stringify({ panelId, fromSectionId });
+  e.dataTransfer.setData(TILE_DRAG_MIME, payload);
+  e.dataTransfer.setData("text/plain", panelId);
+  e.dataTransfer.effectAllowed = "move";
+}
+
+function writeSectionDragData(e, sectionId) {
+  e.dataTransfer.setData(SECTION_DRAG_MIME, sectionId);
+  e.dataTransfer.setData("text/plain", `section:${sectionId}`);
+  e.dataTransfer.effectAllowed = "move";
+}
+
+function readTileDragData(e) {
+  try {
+    const raw = e.dataTransfer.getData(TILE_DRAG_MIME);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed?.panelId && parsed?.fromSectionId) return parsed;
+    }
+  } catch (_) {
+    /* fall through */
+  }
+  if (dragPanelId && dragFromSectionId) {
+    return { panelId: dragPanelId, fromSectionId: dragFromSectionId };
+  }
+  return null;
+}
+
+function isTileDragEvent(e) {
+  const types = e.dataTransfer?.types;
+  if (!types) return !!dragPanelId;
+  return Array.from(types).includes(TILE_DRAG_MIME);
+}
+
+function isSectionDragEvent(e) {
+  const types = e.dataTransfer?.types;
+  if (!types) return !!dragSectionId;
+  return Array.from(types).includes(SECTION_DRAG_MIME);
+}
+
+function readSectionDragData(e) {
+  const fromMime = e.dataTransfer.getData(SECTION_DRAG_MIME);
+  if (fromMime) return fromMime;
+  const plain = e.dataTransfer.getData("text/plain");
+  if (plain?.startsWith("section:")) return plain.slice("section:".length);
+  return dragSectionId;
+}
+
+function applyTileDrop(e, toSectionId, beforePanelId, ctx) {
+  const payload = readTileDragData(e);
+  if (!payload || payload.fromSectionId === undefined) return false;
+  if (payload.fromSectionId === toSectionId && !beforePanelId) {
+    /* append to same section — still valid */
+  }
+  movePanel(payload.panelId, payload.fromSectionId, toSectionId, beforePanelId);
+  scheduleLayoutSave();
+  renderDashboardTiles(ctx);
+  return true;
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   try {
     await initGlobal();
@@ -269,8 +333,16 @@ function renderDashboardTiles(ctx) {
       sectionGrid.appendChild(tile);
     }
 
+    if (editMode && !sec.panelIds.length) {
+      const dropHint = document.createElement("div");
+      dropHint.className = "dashboard-section-drop-hint";
+      dropHint.textContent = "Drop tiles here";
+      sectionGrid.appendChild(dropHint);
+    }
+
     if (editMode) {
       wireSectionGridDrop(sectionGrid, sec.id, ctx);
+      wireSectionTileDrop(sectionEl, sec.id, ctx);
     }
 
     sectionEl.appendChild(head);
@@ -318,8 +390,7 @@ function wireTileDrag(tile, sectionId, ctx) {
     dragFromSectionId = sectionId;
     dragSectionId = null;
     tile.classList.add("dashboard-tile-dragging");
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", dragPanelId);
+    writeTileDragData(e, dragPanelId, dragFromSectionId);
   });
 
   tile.addEventListener("dragend", () => {
@@ -330,9 +401,11 @@ function wireTileDrag(tile, sectionId, ctx) {
   });
 
   tile.addEventListener("dragover", (e) => {
+    if (!isTileDragEvent(e)) return;
     e.preventDefault();
     const overId = tile.dataset.panelId;
-    if (!dragPanelId || overId === dragPanelId) return;
+    const payload = readTileDragData(e);
+    if (!payload || overId === payload.panelId) return;
     e.dataTransfer.dropEffect = "move";
     tile.classList.add("dashboard-tile-drop-target");
   });
@@ -347,18 +420,16 @@ function wireTileDrag(tile, sectionId, ctx) {
     tile.classList.remove("dashboard-tile-drop-target");
     const targetId = tile.dataset.panelId;
     const toSectionId = tile.closest(".dashboard-section-grid")?.dataset.sectionId;
-    if (!dragPanelId || !targetId || !toSectionId || !dragFromSectionId) return;
-
-    movePanel(dragPanelId, dragFromSectionId, toSectionId, targetId);
-    scheduleLayoutSave();
-    renderDashboardTiles(ctx);
+    if (!targetId || !toSectionId) return;
+    applyTileDrop(e, toSectionId, targetId, ctx);
   });
 }
 
 function wireSectionGridDrop(sectionGrid, sectionId, ctx) {
   sectionGrid.addEventListener("dragover", (e) => {
-    if (!dragPanelId) return;
+    if (!isTileDragEvent(e)) return;
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
     sectionGrid.classList.add("dashboard-section-grid-drop-target");
   });
@@ -369,14 +440,38 @@ function wireSectionGridDrop(sectionGrid, sectionId, ctx) {
   });
 
   sectionGrid.addEventListener("drop", (e) => {
-    if (!dragPanelId || e.target.closest(".dashboard-tile")) return;
+    if (e.target.closest(".dashboard-tile")) return;
     e.preventDefault();
+    e.stopPropagation();
     sectionGrid.classList.remove("dashboard-section-grid-drop-target");
-    if (!dragFromSectionId) return;
+    applyTileDrop(e, sectionId, null, ctx);
+  });
+}
 
-    movePanel(dragPanelId, dragFromSectionId, sectionId);
-    scheduleLayoutSave();
-    renderDashboardTiles(ctx);
+function wireSectionTileDrop(sectionEl, sectionId, ctx) {
+  const head = sectionEl.querySelector(".dashboard-section-head");
+  if (!head) return;
+
+  head.addEventListener("dragover", (e) => {
+    if (isSectionDragEvent(e)) return;
+    if (!isTileDragEvent(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    sectionEl.classList.add("dashboard-section-tile-drop-target");
+  });
+
+  head.addEventListener("dragleave", (e) => {
+    if (head.contains(e.relatedTarget)) return;
+    sectionEl.classList.remove("dashboard-section-tile-drop-target");
+  });
+
+  head.addEventListener("drop", (e) => {
+    if (isSectionDragEvent(e)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    sectionEl.classList.remove("dashboard-section-tile-drop-target");
+    applyTileDrop(e, sectionId, null, ctx);
   });
 }
 
@@ -392,8 +487,7 @@ function wireSectionDrag(head, sectionId, ctx) {
     dragPanelId = null;
     dragFromSectionId = null;
     head.closest(".dashboard-section")?.classList.add("dashboard-section-dragging");
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", `section:${sectionId}`);
+    writeSectionDragData(e, sectionId);
   });
 
   head.addEventListener("dragend", () => {
@@ -403,7 +497,9 @@ function wireSectionDrag(head, sectionId, ctx) {
   });
 
   head.addEventListener("dragover", (e) => {
-    if (!dragSectionId || dragSectionId === sectionId) return;
+    if (isTileDragEvent(e)) return;
+    const fromSectionId = readSectionDragData(e);
+    if (!fromSectionId || fromSectionId === sectionId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
     head.closest(".dashboard-section")?.classList.add("dashboard-section-drop-target");
@@ -414,12 +510,14 @@ function wireSectionDrag(head, sectionId, ctx) {
   });
 
   head.addEventListener("drop", (e) => {
-    if (!dragSectionId || dragSectionId === sectionId) return;
+    if (isTileDragEvent(e)) return;
+    const fromSectionId = readSectionDragData(e);
+    if (!fromSectionId || fromSectionId === sectionId) return;
     e.preventDefault();
     e.stopPropagation();
     head.closest(".dashboard-section")?.classList.remove("dashboard-section-drop-target");
 
-    const from = findSectionIndex(dragSectionId);
+    const from = findSectionIndex(fromSectionId);
     const to = findSectionIndex(sectionId);
     if (from < 0 || to < 0 || from === to) return;
 
@@ -441,6 +539,9 @@ function clearDropHighlights() {
   });
   document.querySelectorAll(".dashboard-section-grid-drop-target").forEach((el) => {
     el.classList.remove("dashboard-section-grid-drop-target");
+  });
+  document.querySelectorAll(".dashboard-section-tile-drop-target").forEach((el) => {
+    el.classList.remove("dashboard-section-tile-drop-target");
   });
 }
 
