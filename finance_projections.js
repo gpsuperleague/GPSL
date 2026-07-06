@@ -276,7 +276,9 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
   if (season?.id) {
     const { data: tvUpcoming, error: tvErr } = await supabase
       .from("competition_tv_fixtures_public")
-      .select("fixture_id, amount_per_club, matchday, gpsl_month_label")
+      .select(
+        "fixture_id, home_club_short_name, away_club_short_name, home_tv_amount, away_tv_amount, matchday, gpsl_month_label"
+      )
       .eq("season_id", season.id)
       .eq("status", "scheduled")
       .or(
@@ -284,10 +286,13 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
       );
 
     if (!tvErr && tvUpcoming?.length) {
-      const tvPending = tvUpcoming.reduce(
-        (s, r) => s + (Number(r.amount_per_club) || 0),
-        0
-      );
+      const tvPending = tvUpcoming.reduce((s, r) => {
+        const share =
+          r.home_club_short_name === clubShortName
+            ? Number(r.home_tv_amount)
+            : Number(r.away_tv_amount);
+        return s + (share || 0);
+      }, 0);
       if (tvPending > 0.5) {
         setPendingForecast(
           pendingByLine,

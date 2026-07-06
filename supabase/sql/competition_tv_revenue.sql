@@ -4,7 +4,7 @@
 -- (extends ledger entry types and recreates global_settings_public).
 -- =============================================================================
 -- Selects big league fixtures per GPSL month per division (default 5).
--- Both clubs receive tv_per_match_amount when a selected fixture is played.
+-- Home club receives 80% of tv_per_match_amount; away club 20% (single match pool).
 -- Club appearances per season bounded by tv_club_min / tv_club_max (default 4–12).
 -- =============================================================================
 
@@ -613,8 +613,38 @@ END;
 $function$;
 
 -- ---------------------------------------------------------------------------
--- Payout on played TV fixtures
+-- Payout on played TV fixtures (80% home / 20% away of match pool)
 -- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.competition_tv_home_share(p_pool numeric)
+RETURNS numeric
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT round(coalesce(p_pool, 0) * 0.8, 2);
+$$;
+
+CREATE OR REPLACE FUNCTION public.competition_tv_away_share(p_pool numeric)
+RETURNS numeric
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT coalesce(p_pool, 0) - public.competition_tv_home_share(p_pool);
+$$;
+
+CREATE OR REPLACE FUNCTION public.competition_tv_club_share(
+  p_pool numeric,
+  p_is_home boolean
+)
+RETURNS numeric
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT CASE
+    WHEN coalesce(p_is_home, false) THEN public.competition_tv_home_share(p_pool)
+    ELSE public.competition_tv_away_share(p_pool)
+  END;
+$$;
 
 CREATE OR REPLACE FUNCTION public.competition_tv_settle_fixture(p_fixture_id bigint)
 RETURNS void
@@ -624,7 +654,9 @@ SET search_path = public
 AS $function$
 DECLARE
   v_fixture public.competition_fixtures;
-  v_amount numeric;
+  v_pool numeric;
+  v_home_amount numeric;
+  v_away_amount numeric;
   v_desc text;
 BEGIN
   IF p_fixture_id IS NULL THEN
@@ -649,11 +681,14 @@ BEGIN
     RETURN;
   END IF;
 
-  v_amount := (SELECT tv_per_match_amount FROM public.global_settings WHERE id = 1);
+  v_pool := (SELECT tv_per_match_amount FROM public.global_settings WHERE id = 1);
 
-  IF v_amount IS NULL OR v_amount <= 0 THEN
+  IF v_pool IS NULL OR v_pool <= 0 THEN
     RETURN;
   END IF;
+
+  v_home_amount := public.competition_tv_home_share(v_pool);
+  v_away_amount := public.competition_tv_away_share(v_pool);
 
   IF NOT EXISTS (
     SELECT 1 FROM public.competition_finance_ledger
@@ -661,9 +696,9 @@ BEGIN
       AND club_short_name = v_fixture.home_club_short_name
       AND entry_type = 'tv_revenue'
   ) THEN
-    PERFORM public.competition_credit_club_balance(v_fixture.home_club_short_name, v_amount);
+    PERFORM public.competition_credit_club_balance(v_fixture.home_club_short_name, v_home_amount);
     v_desc := format(
-      'TV revenue MD%s — %s vs %s',
+      'TV revenue (home 80%%) MD%s — %s vs %s',
       v_fixture.matchday,
       v_fixture.home_club_short_name,
       v_fixture.away_club_short_name
@@ -676,9 +711,14 @@ BEGIN
       p_fixture_id,
       v_fixture.home_club_short_name,
       'tv_revenue',
-      v_amount,
+      v_home_amount,
       v_desc,
-      jsonb_build_object('gpsl_month', v_fixture.gpsl_month, 'role', 'home')
+      jsonb_build_object(
+        'gpsl_month', v_fixture.gpsl_month,
+        'role', 'home',
+        'tv_share_pct', 80,
+        'tv_match_pool', v_pool
+      )
     );
   END IF;
 
@@ -688,9 +728,9 @@ BEGIN
       AND club_short_name = v_fixture.away_club_short_name
       AND entry_type = 'tv_revenue'
   ) THEN
-    PERFORM public.competition_credit_club_balance(v_fixture.away_club_short_name, v_amount);
+    PERFORM public.competition_credit_club_balance(v_fixture.away_club_short_name, v_away_amount);
     v_desc := format(
-      'TV revenue MD%s — %s vs %s',
+      'TV revenue (away 20%%) MD%s — %s vs %s',
       v_fixture.matchday,
       v_fixture.home_club_short_name,
       v_fixture.away_club_short_name
@@ -703,9 +743,14 @@ BEGIN
       p_fixture_id,
       v_fixture.away_club_short_name,
       'tv_revenue',
-      v_amount,
+      v_away_amount,
       v_desc,
-      jsonb_build_object('gpsl_month', v_fixture.gpsl_month, 'role', 'away')
+      jsonb_build_object(
+        'gpsl_month', v_fixture.gpsl_month,
+        'role', 'away',
+        'tv_share_pct', 20,
+        'tv_match_pool', v_pool
+      )
     );
   END IF;
 END;
@@ -800,7 +845,12 @@ BEGIN
   WHERE f.season_id = v_season_id
     AND (f.home_club_short_name = v_club OR f.away_club_short_name = v_club);
 
-  SELECT count(*)::int, coalesce(sum(v_s.tv_per_match_amount), 0)
+  SELECT count(*)::int, coalesce(sum(
+    public.competition_tv_club_share(
+      v_s.tv_per_match_amount,
+      f.home_club_short_name = v_club
+    )
+  ), 0)
   INTO v_pending, v_pending_amount
   FROM public.competition_tv_fixture_selection s
   JOIN public.competition_fixtures f ON f.id = s.fixture_id
@@ -822,6 +872,8 @@ BEGIN
     'pending_amount', v_pending_amount,
     'paid_amount', v_paid_amount,
     'per_match_amount', v_s.tv_per_match_amount,
+    'home_share_pct', 80,
+    'away_share_pct', 20,
     'club_min', v_s.tv_club_min_season,
     'club_max', v_s.tv_club_max_season
   );
@@ -846,6 +898,9 @@ SELECT
   f.status,
   f.home_goals,
   f.away_goals,
+  gs.tv_per_match_amount AS tv_match_pool,
+  public.competition_tv_home_share(gs.tv_per_match_amount) AS home_tv_amount,
+  public.competition_tv_away_share(gs.tv_per_match_amount) AS away_tv_amount,
   gs.tv_per_match_amount AS amount_per_club
 FROM public.competition_tv_fixture_selection s
 JOIN public.competition_fixtures f ON f.id = s.fixture_id

@@ -787,7 +787,9 @@ SET search_path = public
 AS $function$
 DECLARE
   v_fixture public.competition_fixtures;
-  v_amount numeric;
+  v_pool numeric;
+  v_home_amount numeric;
+  v_away_amount numeric;
   v_desc text;
   v_meta jsonb;
 BEGIN
@@ -813,11 +815,14 @@ BEGIN
     RETURN;
   END IF;
 
-  v_amount := (SELECT tv_per_match_amount FROM public.global_settings WHERE id = 1);
+  v_pool := (SELECT tv_per_match_amount FROM public.global_settings WHERE id = 1);
 
-  IF v_amount IS NULL OR v_amount <= 0 THEN
+  IF v_pool IS NULL OR v_pool <= 0 THEN
     RETURN;
   END IF;
+
+  v_home_amount := public.competition_tv_home_share(v_pool);
+  v_away_amount := public.competition_tv_away_share(v_pool);
 
   IF NOT EXISTS (
     SELECT 1 FROM public.competition_finance_ledger
@@ -826,16 +831,21 @@ BEGIN
       AND entry_type = 'tv_revenue'
   ) THEN
     v_desc := format(
-      'TV revenue MD%s — %s vs %s',
+      'TV revenue (home 80%%) MD%s — %s vs %s',
       v_fixture.matchday,
       v_fixture.home_club_short_name,
       v_fixture.away_club_short_name
     );
-    v_meta := jsonb_build_object('gpsl_month', v_fixture.gpsl_month, 'role', 'home');
+    v_meta := jsonb_build_object(
+      'gpsl_month', v_fixture.gpsl_month,
+      'role', 'home',
+      'tv_share_pct', 80,
+      'tv_match_pool', v_pool
+    );
     PERFORM public.post_club_ledger(
       v_fixture.home_club_short_name,
       'tv_revenue',
-      v_amount,
+      v_home_amount,
       v_desc,
       v_meta,
       v_fixture.season_id,
@@ -852,16 +862,21 @@ BEGIN
       AND entry_type = 'tv_revenue'
   ) THEN
     v_desc := format(
-      'TV revenue MD%s — %s vs %s',
+      'TV revenue (away 20%%) MD%s — %s vs %s',
       v_fixture.matchday,
       v_fixture.home_club_short_name,
       v_fixture.away_club_short_name
     );
-    v_meta := jsonb_build_object('gpsl_month', v_fixture.gpsl_month, 'role', 'away');
+    v_meta := jsonb_build_object(
+      'gpsl_month', v_fixture.gpsl_month,
+      'role', 'away',
+      'tv_share_pct', 20,
+      'tv_match_pool', v_pool
+    );
     PERFORM public.post_club_ledger(
       v_fixture.away_club_short_name,
       'tv_revenue',
-      v_amount,
+      v_away_amount,
       v_desc,
       v_meta,
       v_fixture.season_id,

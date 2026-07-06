@@ -16,11 +16,12 @@
         <h2>TV revenue</h2>
         <p class="note">
           Selects big league fixtures per GPSL month per division (top-8 clashes, promotion/relegation battles, dry spells, etc.).
-          Both clubs paid on confirm. Run <code>competition_tv_revenue.sql</code> after <code>government_subsidies.sql</code>.
+          Each selected match pays from a single pot: <strong>80% home</strong> / <strong>20% away</strong> of ₿ per TV match.
+          Run <code>competition_tv_revenue.sql</code> after <code>government_subsidies.sql</code>.
         </p>
         <div class="row gov-subsidy-row">
           <div>
-            <label>₿ per TV match</label>
+            <label>₿ per TV match (pool)</label>
             <input type="number" id="tvPerMatch" min="0" step="50000" style="width:120px;">
           </div>
           <div>
