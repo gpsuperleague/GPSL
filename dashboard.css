@@ -1927,11 +1927,112 @@ a.ssc-chip:hover {
    ============================================================ */
 
 .tile-grid,
-.dashboard-grid {
+.dashboard-grid,
+.dashboard-section-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
   gap: 14px;
   margin-top: 12px;
+}
+
+.dashboard-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  margin-top: 12px;
+}
+
+.dashboard-section {
+  margin: 0;
+}
+
+.dashboard-section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--club-border, #333);
+}
+
+.dashboard-section-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--club-accent, #ff9900);
+}
+
+.dashboard-section-title-input {
+  flex: 1;
+  min-width: 0;
+  max-width: 280px;
+  padding: 6px 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--club-accent, #ff9900);
+  background: #1a1a1a;
+  border: 1px solid #444;
+  border-radius: 6px;
+}
+
+.dashboard-section-title-input:focus {
+  outline: none;
+  border-color: var(--club-accent, #ff9900);
+}
+
+.dashboard-section-grip {
+  color: #666;
+  font-size: 12px;
+  letter-spacing: -2px;
+  user-select: none;
+  cursor: grab;
+}
+
+.dashboard-section-remove {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  border: 1px solid #555;
+  border-radius: 4px;
+  background: #2a1515;
+  color: #f88;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.dashboard-section-remove:hover {
+  background: #441818;
+  border-color: #933;
+}
+
+.dashboard-edit-mode .dashboard-section-head {
+  cursor: grab;
+}
+
+.dashboard-edit-mode .dashboard-section-head:active {
+  cursor: grabbing;
+}
+
+.dashboard-section-dragging {
+  opacity: 0.55;
+}
+
+.dashboard-section-drop-target .dashboard-section-head {
+  border-bottom-color: var(--club-accent, #ff9900);
+  box-shadow: 0 2px 0 rgba(var(--club-accent-rgb), 0.35);
+}
+
+.dashboard-section-grid {
+  margin-top: 10px;
+}
+
+.dashboard-section-grid-drop-target {
+  outline: 2px dashed rgba(var(--club-accent-rgb), 0.45);
+  outline-offset: 4px;
+  border-radius: 8px;
 }
 
 .dashboard-tile-label {
@@ -2046,10 +2147,21 @@ a.ssc-chip:hover {
   font-size: 14px;
 }
 
-.dashboard-toolbar-btn:hover,
 .dashboard-toolbar-btn[aria-pressed="true"] {
   background: #333;
   border-color: var(--club-accent);
+}
+
+.dashboard-toolbar-btn-secondary {
+  background: #1a1a1a;
+  border-color: #444;
+  color: #ccc;
+  font-weight: 600;
+}
+
+.dashboard-toolbar-btn-secondary:hover {
+  border-color: var(--club-accent);
+  color: var(--club-accent);
 }
 
 .dashboard-edit-hint {

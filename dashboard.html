@@ -128,12 +128,15 @@
       <button type="button" id="dashboardEditBtn" class="dashboard-toolbar-btn" aria-pressed="false">
         Arrange tiles
       </button>
+      <button type="button" id="dashboardAddSectionBtn" class="dashboard-toolbar-btn dashboard-toolbar-btn-secondary" hidden>
+        + New group
+      </button>
       <span id="dashboardEditHint" class="dashboard-edit-hint" hidden>
-        Drag tiles to reorder. Click × to remove. Add more from any page with “Add to Dashboard”.
+        Drag group headers to reorder sections. Drag tiles between groups. Rename headers. Click × to remove a tile or empty group.
       </span>
     </div>
 
-    <div id="dashboardGrid" class="tile-grid dashboard-grid"></div>
+    <div id="dashboardGrid" class="dashboard-sections"></div>
 
     <div id="dashboardEmpty" class="dashboard-empty" hidden>
       <p>Your dashboard is empty.</p>
@@ -145,7 +148,7 @@
   </div>
 
   <!-- MODULES (global via dashboard.js only — avoids double init) -->
-  <script type="module" src="dashboard.js?v=20260704-v3"></script>
+  <script type="module" src="dashboard.js?v=20260706-v1"></script>
 
 </body>
 </html>
