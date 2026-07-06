@@ -22,73 +22,63 @@ let ownerId = null;
 let isAdmin = false;
 let layoutSections = [];
 let editMode = false;
-let dragPanelId = null;
-let dragFromSectionId = null;
-let dragSectionId = null;
 let layoutSaveTimer = null;
+let dashboardCtx = null;
 
-const TILE_DRAG_MIME = "application/x-gpsl-dashboard-tile";
-const SECTION_DRAG_MIME = "application/x-gpsl-dashboard-section";
+/** Survives dragend-before-drop on some browsers. */
+let activeTileDrag = null;
+let activeSectionDrag = null;
+let focusSectionId = null;
 
-function writeTileDragData(e, panelId, fromSectionId) {
-  const payload = JSON.stringify({ panelId, fromSectionId });
-  e.dataTransfer.setData(TILE_DRAG_MIME, payload);
-  e.dataTransfer.setData("text/plain", panelId);
-  e.dataTransfer.effectAllowed = "move";
-}
+const DRAG_TILE = "gpsl-tile";
+const DRAG_SECTION = "gpsl-section";
 
-function writeSectionDragData(e, sectionId) {
-  e.dataTransfer.setData(SECTION_DRAG_MIME, sectionId);
-  e.dataTransfer.setData("text/plain", `section:${sectionId}`);
-  e.dataTransfer.effectAllowed = "move";
-}
-
-function readTileDragData(e) {
-  try {
-    const raw = e.dataTransfer.getData(TILE_DRAG_MIME);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed?.panelId && parsed?.fromSectionId) return parsed;
-    }
-  } catch (_) {
-    /* fall through */
+function encodeDrag(kind, data) {
+  if (kind === DRAG_SECTION) {
+    return `${DRAG_SECTION}:${data.sectionId}`;
   }
-  if (dragPanelId && dragFromSectionId) {
-    return { panelId: dragPanelId, fromSectionId: dragFromSectionId };
+  return `${kind}:${JSON.stringify(data)}`;
+}
+
+function decodeDrag(raw) {
+  if (!raw || typeof raw !== "string") return null;
+  if (raw.startsWith(`${DRAG_TILE}:`)) {
+    try {
+      const payload = JSON.parse(raw.slice(DRAG_TILE.length + 1));
+      if (payload?.panelId && payload?.fromSectionId) return { kind: DRAG_TILE, payload };
+    } catch (_) {
+      /* fall through */
+    }
+  }
+  if (raw.startsWith(`${DRAG_SECTION}:`)) {
+    const sectionId = raw.slice(DRAG_SECTION.length + 1);
+    if (sectionId) return { kind: DRAG_SECTION, payload: { sectionId } };
   }
   return null;
 }
 
-function isTileDragEvent(e) {
-  const types = e.dataTransfer?.types;
-  if (!types) return !!dragPanelId;
-  return Array.from(types).includes(TILE_DRAG_MIME);
+function readDragFromEvent(e) {
+  const raw = e.dataTransfer?.getData("text/plain");
+  const decoded = decodeDrag(raw);
+  if (decoded) return decoded;
+  if (activeTileDrag) return { kind: DRAG_TILE, payload: activeTileDrag };
+  if (activeSectionDrag) return { kind: DRAG_SECTION, payload: activeSectionDrag };
+  return null;
 }
 
-function isSectionDragEvent(e) {
-  const types = e.dataTransfer?.types;
-  if (!types) return !!dragSectionId;
-  return Array.from(types).includes(SECTION_DRAG_MIME);
+function isTileDrag(e) {
+  if (activeSectionDrag) return false;
+  if (activeTileDrag) return true;
+  const raw = e.dataTransfer?.getData?.("text/plain");
+  if (raw?.startsWith(`${DRAG_TILE}:`)) return true;
+  return false;
 }
 
-function readSectionDragData(e) {
-  const fromMime = e.dataTransfer.getData(SECTION_DRAG_MIME);
-  if (fromMime) return fromMime;
-  const plain = e.dataTransfer.getData("text/plain");
-  if (plain?.startsWith("section:")) return plain.slice("section:".length);
-  return dragSectionId;
-}
-
-function applyTileDrop(e, toSectionId, beforePanelId, ctx) {
-  const payload = readTileDragData(e);
-  if (!payload || payload.fromSectionId === undefined) return false;
-  if (payload.fromSectionId === toSectionId && !beforePanelId) {
-    /* append to same section — still valid */
-  }
-  movePanel(payload.panelId, payload.fromSectionId, toSectionId, beforePanelId);
-  scheduleLayoutSave();
-  renderDashboardTiles(ctx);
-  return true;
+function isSectionDrag(e) {
+  if (activeTileDrag) return false;
+  if (activeSectionDrag) return true;
+  const raw = e.dataTransfer?.getData?.("text/plain");
+  return !!raw?.startsWith(`${DRAG_SECTION}:`);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -127,8 +117,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const draftEnabled = settings?.draft_auction_enabled === true;
   const specialAuction = await fetchActiveSpecialAuction(supabase);
+  dashboardCtx = { draftEnabled, specialAuction };
 
-  await initDashboardGrid(user.id, { draftEnabled, specialAuction });
+  await initDashboardGrid(user.id, dashboardCtx);
   wireDashboardToolbar();
 
   if (!club) {
@@ -158,22 +149,45 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
+async function refreshDashboardCtx() {
+  const { data: settings } = await supabase
+    .from("global_settings_public")
+    .select("draft_auction_enabled")
+    .eq("id", 1)
+    .maybeSingle();
+  const draftEnabled = settings?.draft_auction_enabled === true;
+  const specialAuction = await fetchActiveSpecialAuction(supabase);
+  dashboardCtx = { draftEnabled, specialAuction };
+  return dashboardCtx;
+}
+
 async function initDashboardGrid(uid, ctx) {
   try {
     layoutSections = await loadOwnerDashboardLayout(supabase, uid);
+    hideLayoutWarn();
   } catch (err) {
     console.error("Load dashboard layout:", err);
-    const hint = document.getElementById("dashboardLayoutWarn");
-    if (hint) {
-      hint.hidden = false;
-      hint.textContent =
-        "Custom layout unavailable — run supabase/sql/owner_dashboard_layout.sql and owner_dashboard_sections.sql. Showing defaults.";
-    }
+    showLayoutWarn(
+      "Custom layout unavailable — run supabase/sql/owner_dashboard_layout.sql and owner_dashboard_sections.sql. Showing defaults."
+    );
     const { cloneDefaultSections } = await import("./dashboard_layout.js");
     layoutSections = cloneDefaultSections();
   }
 
   renderDashboardTiles(ctx);
+}
+
+function showLayoutWarn(msg) {
+  const hint = document.getElementById("dashboardLayoutWarn");
+  if (hint) {
+    hint.hidden = false;
+    hint.textContent = msg;
+  }
+}
+
+function hideLayoutWarn() {
+  const hint = document.getElementById("dashboardLayoutWarn");
+  if (hint) hint.hidden = true;
 }
 
 function filterVisiblePanelIds(ids, ctx) {
@@ -208,7 +222,6 @@ function createTileElement(id, ctx) {
     tile.dataset.tileImage = "1";
     tile.style.setProperty("--tile-art", `url("${tileArt}")`);
   }
-  tile.draggable = editMode;
 
   const label = document.createElement("span");
   label.className = "dashboard-tile-label";
@@ -226,7 +239,9 @@ function createTileElement(id, ctx) {
     const grip = document.createElement("span");
     grip.className = "dashboard-tile-grip";
     grip.textContent = "⋮⋮";
+    grip.title = "Drag to move or drop on another tile to create a group";
     grip.setAttribute("aria-hidden", "true");
+    grip.draggable = true;
 
     const remove = document.createElement("button");
     remove.type = "button";
@@ -240,6 +255,7 @@ function createTileElement(id, ctx) {
 
     tile.prepend(grip);
     tile.appendChild(remove);
+    wireTileGripDrag(grip, tile, id, ctx);
   }
 
   return tile;
@@ -283,6 +299,7 @@ function renderDashboardTiles(ctx) {
       grip.textContent = "⋮⋮";
       grip.title = "Drag to reorder group";
       grip.setAttribute("aria-hidden", "true");
+      grip.draggable = true;
       head.appendChild(grip);
 
       const titleInput = document.createElement("input");
@@ -298,6 +315,13 @@ function renderDashboardTiles(ctx) {
       titleInput.addEventListener("blur", () => {
         updateSectionTitle(sec.id, titleInput.value);
       });
+      if (focusSectionId === sec.id) {
+        window.requestAnimationFrame(() => {
+          titleInput.focus();
+          titleInput.select();
+          focusSectionId = null;
+        });
+      }
       head.appendChild(titleInput);
 
       if (layoutSections.length > 1) {
@@ -313,8 +337,6 @@ function renderDashboardTiles(ctx) {
         });
         head.appendChild(removeSec);
       }
-
-      wireSectionDrag(head, sec.id, ctx);
     } else {
       const title = document.createElement("h2");
       title.className = "dashboard-section-title";
@@ -326,27 +348,32 @@ function renderDashboardTiles(ctx) {
     sectionGrid.className = "tile-grid dashboard-section-grid";
     sectionGrid.dataset.sectionId = sec.id;
 
+    let sectionGrip = null;
+
     for (const id of sec.panelIds) {
       const tile = createTileElement(id, ctx);
       if (!tile) continue;
-      if (editMode) wireTileDrag(tile, sec.id, ctx);
       sectionGrid.appendChild(tile);
     }
 
-    if (editMode && !sec.panelIds.length) {
+    if (editMode) {
+      sectionGrip = head.querySelector(".dashboard-section-grip");
       const dropHint = document.createElement("div");
       dropHint.className = "dashboard-section-drop-hint";
-      dropHint.textContent = "Drop tiles here";
+      dropHint.textContent = sec.panelIds.length
+        ? "Drop here to add to this group"
+        : "Drop tiles here";
       sectionGrid.appendChild(dropHint);
-    }
-
-    if (editMode) {
-      wireSectionGridDrop(sectionGrid, sec.id, ctx);
-      wireSectionTileDrop(sectionEl, sec.id, ctx);
     }
 
     sectionEl.appendChild(head);
     sectionEl.appendChild(sectionGrid);
+
+    if (editMode && sectionGrip) {
+      wireSectionGripDrag(sectionGrip, sec.id, sectionEl, ctx);
+      wireSectionGridDrop(sectionGrid, sec.id, ctx);
+    }
+
     grid.appendChild(sectionEl);
   }
 }
@@ -355,79 +382,133 @@ function findSectionIndex(sectionId) {
   return layoutSections.findIndex((s) => s.id === sectionId);
 }
 
-function movePanel(panelId, fromSectionId, toSectionId, beforePanelId = null) {
+function removePanelFromAllSections(panelId) {
+  return layoutSections.map((sec) => ({
+    ...sec,
+    panelIds: sec.panelIds.filter((id) => id !== panelId),
+  }));
+}
+
+function movePanelToSection(panelId, fromSectionId, toSectionId) {
   const fromIdx = findSectionIndex(fromSectionId);
   const toIdx = findSectionIndex(toSectionId);
   if (fromIdx < 0 || toIdx < 0) return;
 
-  const fromIds = [...layoutSections[fromIdx].panelIds];
-  const panelPos = fromIds.indexOf(panelId);
-  if (panelPos < 0) return;
+  let next = layoutSections.map((sec) => ({
+    ...sec,
+    panelIds: [...sec.panelIds],
+  }));
 
-  fromIds.splice(panelPos, 1);
-  layoutSections[fromIdx] = { ...layoutSections[fromIdx], panelIds: fromIds };
+  const fromIds = next[fromIdx].panelIds;
+  const pos = fromIds.indexOf(panelId);
+  if (pos < 0) return;
+  fromIds.splice(pos, 1);
 
-  const toIds = fromIdx === toIdx ? fromIds : [...layoutSections[toIdx].panelIds];
-  if (fromIdx !== toIdx) {
-    const existing = toIds.indexOf(panelId);
-    if (existing >= 0) toIds.splice(existing, 1);
-  }
+  const toIds = next[toIdx].panelIds;
+  if (!toIds.includes(panelId)) toIds.push(panelId);
 
-  if (beforePanelId) {
-    const insertAt = toIds.indexOf(beforePanelId);
-    if (insertAt >= 0) toIds.splice(insertAt, 0, panelId);
-    else toIds.push(panelId);
-  } else {
-    toIds.push(panelId);
-  }
-
-  layoutSections[toIdx] = { ...layoutSections[toIdx], panelIds: toIds };
+  layoutSections = next;
 }
 
-function wireTileDrag(tile, sectionId, ctx) {
-  tile.addEventListener("dragstart", (e) => {
-    dragPanelId = tile.dataset.panelId;
-    dragFromSectionId = sectionId;
-    dragSectionId = null;
+/** Android-style: drop tile A onto tile B → new named group with both. */
+function createFolderFromTiles(draggedPanelId, targetPanelId, targetSectionId) {
+  if (!draggedPanelId || !targetPanelId || draggedPanelId === targetPanelId) return;
+
+  const targetIdx = findSectionIndex(targetSectionId);
+  if (targetIdx < 0) return;
+
+  let next = removePanelFromAllSections(draggedPanelId);
+  next = next.map((sec) => ({
+    ...sec,
+    panelIds: sec.panelIds.filter((id) => id !== targetPanelId),
+  }));
+
+  const folder = createDashboardSection("New group", [targetPanelId, draggedPanelId]);
+  next.splice(targetIdx, 0, folder);
+  focusSectionId = folder.id;
+
+  if (editMode) {
+    layoutSections = next;
+  } else {
+    layoutSections = next.filter((sec) => sec.panelIds.length > 0);
+  }
+}
+
+function reorderSection(fromSectionId, toSectionId) {
+  const from = findSectionIndex(fromSectionId);
+  const to = findSectionIndex(toSectionId);
+  if (from < 0 || to < 0 || from === to) return;
+
+  const next = [...layoutSections];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  layoutSections = next;
+}
+
+async function applyLayoutChange(ctx) {
+  renderDashboardTiles(ctx);
+  await commitLayoutSave();
+}
+
+function wireTileGripDrag(grip, tile, panelId, ctx) {
+  grip.addEventListener("dragstart", (e) => {
+    const sectionId = tile.closest(".dashboard-section-grid")?.dataset.sectionId;
+    if (!sectionId) return;
+
+    activeTileDrag = { panelId, fromSectionId: sectionId };
+    activeSectionDrag = null;
     tile.classList.add("dashboard-tile-dragging");
-    writeTileDragData(e, dragPanelId, dragFromSectionId);
+    e.dataTransfer.setData(
+      "text/plain",
+      encodeDrag(DRAG_TILE, { panelId, fromSectionId: sectionId })
+    );
+    e.dataTransfer.effectAllowed = "move";
+    e.stopPropagation();
   });
 
-  tile.addEventListener("dragend", () => {
+  grip.addEventListener("dragend", () => {
     tile.classList.remove("dashboard-tile-dragging");
-    dragPanelId = null;
-    dragFromSectionId = null;
+    window.setTimeout(() => {
+      activeTileDrag = null;
+    }, 0);
     clearDropHighlights();
   });
 
   tile.addEventListener("dragover", (e) => {
-    if (!isTileDragEvent(e)) return;
-    e.preventDefault();
-    const overId = tile.dataset.panelId;
-    const payload = readTileDragData(e);
-    if (!payload || overId === payload.panelId) return;
-    e.dataTransfer.dropEffect = "move";
-    tile.classList.add("dashboard-tile-drop-target");
-  });
-
-  tile.addEventListener("dragleave", () => {
-    tile.classList.remove("dashboard-tile-drop-target");
-  });
-
-  tile.addEventListener("drop", (e) => {
+    if (!isTileDrag(e)) return;
+    const drag = readDragFromEvent(e);
+    if (!drag || drag.kind !== DRAG_TILE) return;
+    if (drag.payload.panelId === panelId) return;
     e.preventDefault();
     e.stopPropagation();
-    tile.classList.remove("dashboard-tile-drop-target");
-    const targetId = tile.dataset.panelId;
+    e.dataTransfer.dropEffect = "move";
+    tile.classList.add("dashboard-tile-folder-target");
+  });
+
+  tile.addEventListener("dragleave", (e) => {
+    if (tile.contains(e.relatedTarget)) return;
+    tile.classList.remove("dashboard-tile-folder-target");
+  });
+
+  tile.addEventListener("drop", async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    tile.classList.remove("dashboard-tile-folder-target");
+
+    const drag = readDragFromEvent(e);
+    if (!drag || drag.kind !== DRAG_TILE) return;
+    const { panelId: fromPanelId, fromSectionId } = drag.payload;
     const toSectionId = tile.closest(".dashboard-section-grid")?.dataset.sectionId;
-    if (!targetId || !toSectionId) return;
-    applyTileDrop(e, toSectionId, targetId, ctx);
+    if (!toSectionId || fromPanelId === panelId) return;
+
+    createFolderFromTiles(fromPanelId, panelId, toSectionId);
+    await applyLayoutChange(ctx);
   });
 }
 
 function wireSectionGridDrop(sectionGrid, sectionId, ctx) {
   sectionGrid.addEventListener("dragover", (e) => {
-    if (!isTileDragEvent(e)) return;
+    if (!isTileDrag(e)) return;
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
@@ -439,100 +520,76 @@ function wireSectionGridDrop(sectionGrid, sectionId, ctx) {
     sectionGrid.classList.remove("dashboard-section-grid-drop-target");
   });
 
-  sectionGrid.addEventListener("drop", (e) => {
-    if (e.target.closest(".dashboard-tile")) return;
+  sectionGrid.addEventListener("drop", async (e) => {
+    if (e.target.closest(".dashboard-tile") && !e.target.closest(".dashboard-section-drop-hint")) {
+      return;
+    }
     e.preventDefault();
     e.stopPropagation();
     sectionGrid.classList.remove("dashboard-section-grid-drop-target");
-    applyTileDrop(e, sectionId, null, ctx);
+
+    const drag = readDragFromEvent(e);
+    if (!drag || drag.kind !== DRAG_TILE) return;
+    const { panelId, fromSectionId } = drag.payload;
+    if (!panelId || !fromSectionId) return;
+
+    movePanelToSection(panelId, fromSectionId, sectionId);
+    await applyLayoutChange(ctx);
   });
 }
 
-function wireSectionTileDrop(sectionEl, sectionId, ctx) {
-  const head = sectionEl.querySelector(".dashboard-section-head");
-  if (!head) return;
-
-  head.addEventListener("dragover", (e) => {
-    if (isSectionDragEvent(e)) return;
-    if (!isTileDragEvent(e)) return;
-    e.preventDefault();
+function wireSectionGripDrag(grip, sectionId, sectionEl, ctx) {
+  grip.addEventListener("dragstart", (e) => {
+    activeSectionDrag = { sectionId };
+    activeTileDrag = null;
+    sectionEl.classList.add("dashboard-section-dragging");
+    e.dataTransfer.setData("text/plain", encodeDrag(DRAG_SECTION, { sectionId }));
+    e.dataTransfer.effectAllowed = "move";
     e.stopPropagation();
-    e.dataTransfer.dropEffect = "move";
-    sectionEl.classList.add("dashboard-section-tile-drop-target");
   });
 
-  head.addEventListener("dragleave", (e) => {
-    if (head.contains(e.relatedTarget)) return;
-    sectionEl.classList.remove("dashboard-section-tile-drop-target");
-  });
-
-  head.addEventListener("drop", (e) => {
-    if (isSectionDragEvent(e)) return;
-    e.preventDefault();
-    e.stopPropagation();
-    sectionEl.classList.remove("dashboard-section-tile-drop-target");
-    applyTileDrop(e, sectionId, null, ctx);
-  });
-}
-
-function wireSectionDrag(head, sectionId, ctx) {
-  head.draggable = true;
-
-  head.addEventListener("dragstart", (e) => {
-    if (e.target.closest("input, button")) {
-      e.preventDefault();
-      return;
-    }
-    dragSectionId = sectionId;
-    dragPanelId = null;
-    dragFromSectionId = null;
-    head.closest(".dashboard-section")?.classList.add("dashboard-section-dragging");
-    writeSectionDragData(e, sectionId);
-  });
-
-  head.addEventListener("dragend", () => {
-    head.closest(".dashboard-section")?.classList.remove("dashboard-section-dragging");
-    dragSectionId = null;
+  grip.addEventListener("dragend", () => {
+    sectionEl.classList.remove("dashboard-section-dragging");
+    window.setTimeout(() => {
+      activeSectionDrag = null;
+    }, 0);
     clearDropHighlights();
   });
 
-  head.addEventListener("dragover", (e) => {
-    if (isTileDragEvent(e)) return;
-    const fromSectionId = readSectionDragData(e);
-    if (!fromSectionId || fromSectionId === sectionId) return;
+  sectionEl.addEventListener("dragover", (e) => {
+    if (!isSectionDrag(e) || isTileDrag(e)) return;
+    const drag = readDragFromEvent(e);
+    if (!drag || drag.kind !== DRAG_SECTION) return;
+    if (drag.payload.sectionId === sectionId) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    head.closest(".dashboard-section")?.classList.add("dashboard-section-drop-target");
+    sectionEl.classList.add("dashboard-section-drop-target");
   });
 
-  head.addEventListener("dragleave", () => {
-    head.closest(".dashboard-section")?.classList.remove("dashboard-section-drop-target");
+  sectionEl.addEventListener("dragleave", (e) => {
+    if (sectionEl.contains(e.relatedTarget)) return;
+    sectionEl.classList.remove("dashboard-section-drop-target");
   });
 
-  head.addEventListener("drop", (e) => {
-    if (isTileDragEvent(e)) return;
-    const fromSectionId = readSectionDragData(e);
-    if (!fromSectionId || fromSectionId === sectionId) return;
+  sectionEl.addEventListener("drop", async (e) => {
+    if (!isSectionDrag(e) || isTileDrag(e)) return;
+    const drag = readDragFromEvent(e);
+    if (!drag || drag.kind !== DRAG_SECTION) return;
+    const fromId = drag.payload.sectionId;
+    if (!fromId || fromId === sectionId) return;
+
     e.preventDefault();
     e.stopPropagation();
-    head.closest(".dashboard-section")?.classList.remove("dashboard-section-drop-target");
+    sectionEl.classList.remove("dashboard-section-drop-target");
 
-    const from = findSectionIndex(fromSectionId);
-    const to = findSectionIndex(sectionId);
-    if (from < 0 || to < 0 || from === to) return;
-
-    const next = [...layoutSections];
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    layoutSections = next;
-    scheduleLayoutSave();
-    renderDashboardTiles(ctx);
+    reorderSection(fromId, sectionId);
+    await applyLayoutChange(ctx);
   });
 }
 
 function clearDropHighlights() {
-  document.querySelectorAll(".dashboard-tile-drop-target").forEach((el) => {
-    el.classList.remove("dashboard-tile-drop-target");
+  document.querySelectorAll(".dashboard-tile-folder-target").forEach((el) => {
+    el.classList.remove("dashboard-tile-folder-target");
   });
   document.querySelectorAll(".dashboard-section-drop-target").forEach((el) => {
     el.classList.remove("dashboard-section-drop-target");
@@ -540,18 +597,11 @@ function clearDropHighlights() {
   document.querySelectorAll(".dashboard-section-grid-drop-target").forEach((el) => {
     el.classList.remove("dashboard-section-grid-drop-target");
   });
-  document.querySelectorAll(".dashboard-section-tile-drop-target").forEach((el) => {
-    el.classList.remove("dashboard-section-tile-drop-target");
-  });
 }
 
 function removePanelFromLayout(panelId, ctx) {
-  layoutSections = layoutSections.map((sec) => ({
-    ...sec,
-    panelIds: sec.panelIds.filter((id) => id !== panelId),
-  }));
-  scheduleLayoutSave();
-  renderDashboardTiles(ctx);
+  layoutSections = removePanelFromAllSections(panelId);
+  applyLayoutChange(ctx);
   refreshAllDashboardPins();
 }
 
@@ -565,8 +615,7 @@ function updateSectionTitle(sectionId, title) {
 
 function addSection(ctx) {
   layoutSections = [...layoutSections, createDashboardSection("New group")];
-  scheduleLayoutSave();
-  renderDashboardTiles(ctx);
+  applyLayoutChange(ctx);
 }
 
 function removeSection(sectionId, ctx) {
@@ -585,20 +634,28 @@ function removeSection(sectionId, ctx) {
     .filter((sec) => sec.id !== sectionId)
     .map((sec) => (sec.id === target.id ? { ...sec, panelIds: mergedIds } : sec));
 
-  scheduleLayoutSave();
-  renderDashboardTiles(ctx);
+  applyLayoutChange(ctx);
+}
+
+async function commitLayoutSave() {
+  if (!ownerId) return;
+  clearTimeout(layoutSaveTimer);
+  try {
+    layoutSections = await saveOwnerDashboardLayout(supabase, ownerId, layoutSections);
+    hideLayoutWarn();
+  } catch (err) {
+    console.error("Save dashboard layout:", err);
+    showLayoutWarn(
+      err?.message?.includes("sections")
+        ? "Could not save groups — run supabase/sql/patches/owner_dashboard_sections.sql in Supabase."
+        : `Could not save dashboard layout: ${err?.message || err}`
+    );
+  }
 }
 
 function scheduleLayoutSave() {
-  if (!ownerId) return;
   clearTimeout(layoutSaveTimer);
-  layoutSaveTimer = setTimeout(async () => {
-    try {
-      layoutSections = await saveOwnerDashboardLayout(supabase, ownerId, layoutSections);
-    } catch (err) {
-      console.error("Save dashboard layout:", err);
-    }
-  }, 400);
+  layoutSaveTimer = setTimeout(commitLayoutSave, 400);
 }
 
 function wireDashboardToolbar() {
@@ -609,32 +666,22 @@ function wireDashboardToolbar() {
 
   if (addSectionBtn) {
     addSectionBtn.addEventListener("click", async () => {
-      const { data: settings } = await supabase
-        .from("global_settings_public")
-        .select("draft_auction_enabled")
-        .eq("id", 1)
-        .maybeSingle();
-      const draftEnabled = settings?.draft_auction_enabled === true;
-      const specialAuction = await fetchActiveSpecialAuction(supabase);
-      addSection({ draftEnabled, specialAuction });
+      const ctx = await refreshDashboardCtx();
+      addSection(ctx);
     });
   }
 
   btn.addEventListener("click", async () => {
+    if (editMode) {
+      await commitLayoutSave();
+    }
     editMode = !editMode;
     btn.textContent = editMode ? "Done arranging" : "Arrange tiles";
     btn.setAttribute("aria-pressed", editMode ? "true" : "false");
     if (hint) hint.hidden = !editMode;
 
-    const { data: settings } = await supabase
-      .from("global_settings_public")
-      .select("draft_auction_enabled")
-      .eq("id", 1)
-      .maybeSingle();
-    const draftEnabled = settings?.draft_auction_enabled === true;
-    const specialAuction = await fetchActiveSpecialAuction(supabase);
-
-    renderDashboardTiles({ draftEnabled, specialAuction });
+    const ctx = await refreshDashboardCtx();
+    renderDashboardTiles(ctx);
   });
 }
 

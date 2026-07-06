@@ -1986,6 +1986,11 @@ a.ssc-chip:hover {
   letter-spacing: -2px;
   user-select: none;
   cursor: grab;
+  padding: 2px 4px;
+}
+
+.dashboard-section-grip:active {
+  cursor: grabbing;
 }
 
 .dashboard-section-remove {
@@ -2009,11 +2014,7 @@ a.ssc-chip:hover {
 }
 
 .dashboard-edit-mode .dashboard-section-head {
-  cursor: grab;
-}
-
-.dashboard-edit-mode .dashboard-section-head:active {
-  cursor: grabbing;
+  cursor: default;
 }
 
 .dashboard-section-dragging {
@@ -2107,7 +2108,7 @@ a.ssc-chip:hover {
 }
 
 .dashboard-edit-mode .dashboard-tile {
-  cursor: grab;
+  cursor: default;
   padding-top: 22px;
   padding-bottom: 22px;
 }
@@ -2120,9 +2121,28 @@ a.ssc-chip:hover {
   opacity: 0.45;
 }
 
-.dashboard-tile-drop-target {
+.dashboard-tile-drop-target,
+.dashboard-tile-folder-target {
   border-color: var(--club-accent);
   box-shadow: 0 0 0 2px rgba(var(--club-accent-rgb), 0.35);
+}
+
+.dashboard-tile-folder-target::before {
+  content: "+ Group";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  background: rgba(0, 0, 0, 0.82);
+  color: var(--club-accent, #ff9900);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--club-accent, #ff9900);
+  pointer-events: none;
+  white-space: nowrap;
 }
 
 .dashboard-tile-grip {
@@ -2133,6 +2153,13 @@ a.ssc-chip:hover {
   font-size: 11px;
   letter-spacing: -2px;
   user-select: none;
+  cursor: grab;
+  z-index: 3;
+  padding: 2px 4px;
+}
+
+.dashboard-tile-grip:active {
+  cursor: grabbing;
 }
 
 .dashboard-tile-remove {
