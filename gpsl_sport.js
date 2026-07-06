@@ -67,6 +67,10 @@ function resolveHero(front, back, edition) {
 
   const storyType = front?.story_type || edition?.story_type || "";
 
+  if (storyType.includes("owner") && front?.hero?.kind === "owner_takeover") {
+    return front.hero;
+  }
+
   if (storyType.includes("preseason") || storyType.includes("transfer")) {
     const lead = back?.lead || {};
     if (lead.player_id) {
@@ -99,6 +103,18 @@ function renderHeroBlock(hero) {
   const clubShort = hero.club_short || hero.club_short_name;
   const stadium = stadiumImageUrl(clubShort);
   const badge = clubBadgeUrl(clubShort);
+
+  if (kind === "owner_takeover" && clubShort) {
+    return `
+      <figure class="gpsl-sport-hero gpsl-sport-hero-owner">
+        <div class="gpsl-sport-hero-bg" style="${stadium ? `--hero-bg:url('${escapeAttr(stadium)}')` : ""}"></div>
+        <div class="gpsl-sport-hero-layer gpsl-sport-hero-layer-owner">
+          ${badge ? imgTag(badge, "gpsl-sport-hero-badge gpsl-sport-hero-badge-lg", "") : ""}
+          ${hero.owner_tag ? `<div class="gpsl-sport-hero-owner-tag">${escapeHtml(hero.owner_tag)}</div>` : ""}
+        </div>
+        ${caption ? `<figcaption class="gpsl-sport-hero-cap">${caption}</figcaption>` : ""}
+      </figure>`;
+  }
 
   if (kind === "transfer" && hero.player_id) {
     const card = pesdbPlayerCardUrl(hero.player_id);
@@ -142,6 +158,28 @@ function renderHeroBlock(hero) {
     </figure>`;
 }
 
+function renderByline(text) {
+  if (!text) return "";
+  return `<p class="gpsl-sport-byline">${escapeHtml(text)}</p>`;
+}
+
+function renderPullQuote(text) {
+  if (!text) return "";
+  const q = String(text).replace(/^["']|["']$/g, "");
+  return `<blockquote class="gpsl-sport-pullquote">${escapeHtml(q)}</blockquote>`;
+}
+
+function renderStorySection(title, items, opts = {}) {
+  if (!title || !items?.length) return "";
+  return `
+    <section class="gpsl-sport-more">
+      <h2 class="gpsl-sport-section-title">${escapeHtml(title)}</h2>
+      <div class="${opts.columns === 1 ? "gpsl-sport-columns-1" : "gpsl-sport-columns"}">${items
+        .map((s) => renderStoryCard(s, { compact: opts.compact }))
+        .join("")}</div>
+    </section>`;
+}
+
 function renderStoryCard(story, { compact = false } = {}) {
   const clubShort = story.club_short || story.club_short_name;
   const playerId = story.player_id ? String(story.player_id) : null;
@@ -165,7 +203,9 @@ function renderStoryCard(story, { compact = false } = {}) {
         <div class="gpsl-sport-story-text">
           ${story.kicker ? `<div class="gpsl-sport-kicker">${escapeHtml(story.kicker)}</div>` : ""}
           <h3>${escapeHtml(story.headline)}</h3>
+          ${story.byline ? renderByline(story.byline) : ""}
           <div class="gpsl-sport-body">${formatParagraphs(story.body)}</div>
+          ${story.pull_quote ? renderPullQuote(story.pull_quote) : ""}
         </div>
       </div>
     </article>`;
@@ -195,6 +235,8 @@ function renderSportPaper() {
 
   const front = edition.front_page || {};
   const back = edition.back_page || {};
+  const ownerStories = Array.isArray(front.owner_stories) ? front.owner_stories : [];
+  const backOwners = Array.isArray(back.owner_stories) ? back.owner_stories : [];
   const stories = Array.isArray(front.stories) ? front.stories : [];
   const backStories = Array.isArray(back.stories) ? back.stories : [];
   const hero = resolveHero(front, back, edition);
@@ -216,26 +258,23 @@ function renderSportPaper() {
           <article class="gpsl-sport-lead-block">
             ${renderHeroBlock(lead.player_id ? leadHero : hero)}
             <h1 class="gpsl-sport-headline">${escapeHtml(lead.headline)}</h1>
+            ${lead.byline ? renderByline(lead.byline) : ""}
             ${formatParagraphs(lead.body, true)}
+            ${lead.pull_quote ? renderPullQuote(lead.pull_quote) : ""}
           </article>
         </div>
-        ${
-          backStories.length
-            ? `<section class="gpsl-sport-more">
-                <h2 class="gpsl-sport-section-title">Also on the move</h2>
-                <div class="gpsl-sport-columns gpsl-sport-columns-2">${backStories
-                  .map((s) => renderStoryCard(s, { compact: true }))
-                  .join("")}</div>
-              </section>`
-            : ""
-        }
+        ${renderStorySection("New owners at the wheel", backOwners, { compact: true })}
+        ${renderStorySection("Done deals", backStories, { compact: true })}
         <footer class="gpsl-sport-footer">GPSL Sport · Transfer desk · Player images via pesdb.net</footer>
       </div>`;
     return;
   }
 
-  const railStories = stories.slice(0, 2);
-  const columnStories = stories.slice(2);
+  const leadIsOwner =
+    (front.story_type || "").includes("owner") && front.hero?.kind === "owner_takeover";
+  const ownerSectionItems = leadIsOwner ? ownerStories.slice(1) : ownerStories;
+  const railOwnerStories = leadIsOwner ? ownerStories.slice(1) : ownerStories;
+  const railStories = [...railOwnerStories, ...stories].slice(0, 3);
 
   paper.innerHTML = `
     <div class="gpsl-sport-page">
@@ -245,7 +284,9 @@ function renderSportPaper() {
           ${renderHeroBlock(hero)}
           <h1 class="gpsl-sport-headline">${escapeHtml(front.headline)}</h1>
           ${front.subhead ? `<p class="gpsl-sport-subhead">${escapeHtml(front.subhead)}</p>` : ""}
+          ${front.byline ? renderByline(front.byline) : ""}
           ${formatParagraphs(front.lead_paragraph, true)}
+          ${front.pull_quote ? renderPullQuote(front.pull_quote) : ""}
         </article>
         ${
           railStories.length
@@ -255,20 +296,12 @@ function renderSportPaper() {
               </aside>`
             : `<aside class="gpsl-sport-rail gpsl-sport-rail-empty">
                 <h2 class="gpsl-sport-rail-title">Inside this edition</h2>
-                <p class="gpsl-sport-rail-blurb">Results, transfers and owner drama from across the GPSL — your club, your league, your story.</p>
+                <p class="gpsl-sport-rail-blurb">Boardroom moves, transfer fees and pre-season plotting across the GPSL.</p>
               </aside>`
         }
       </div>
-      ${
-        columnStories.length
-          ? `<section class="gpsl-sport-more">
-              <h2 class="gpsl-sport-section-title">Elsewhere this month</h2>
-              <div class="gpsl-sport-columns">${columnStories
-                .map((s) => renderStoryCard(s))
-                .join("")}</div>
-            </section>`
-          : ""
-      }
+      ${renderStorySection("New owners at the wheel", ownerSectionItems)}
+      ${stories.length ? renderStorySection("Transfer wire", stories) : ""}
       <footer class="gpsl-sport-footer">GPSL Sport · Stadium photos &amp; club badges official GPSL assets · Player cards pesdb.net</footer>
     </div>`;
 }

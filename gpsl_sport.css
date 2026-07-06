@@ -357,6 +357,50 @@ body.gpsl-sport-open {
   letter-spacing: -0.01em;
 }
 
+.gpsl-sport-byline {
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #666;
+  margin: 0 0 10px;
+}
+
+.gpsl-sport-pullquote {
+  margin: 16px 0 14px;
+  padding: 12px 16px 12px 18px;
+  border-left: 4px solid #c41e3a;
+  background: rgba(196, 30, 58, 0.06);
+  font-size: 18px;
+  line-height: 1.35;
+  font-style: italic;
+  color: #222;
+}
+
+.gpsl-sport-hero-owner-tag {
+  margin-left: auto;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+.gpsl-sport-hero-layer-owner {
+  align-items: flex-end;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.gpsl-sport-columns-1 {
+  column-count: 1;
+}
+
 .gpsl-sport-subhead {
   font-size: 17px;
   font-style: italic;
