@@ -52,6 +52,22 @@
       min-height: auto;
     }
     .panel h2 { color:#ff9900; font-size:17px; margin:0 0 12px; }
+    .panel-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 4px 8px;
+      margin: 0 0 12px;
+    }
+    .panel-head h2 {
+      margin: 0;
+    }
+    .panel-head-note {
+      font-size: 10px;
+      font-weight: normal;
+      color: #888;
+      line-height: 1.2;
+    }
     table.lb {
       width: 100%;
       border-collapse: collapse;
@@ -206,8 +222,10 @@
         <div class="panel"><h2>Top scorers</h2><div id="scorersTable"></div></div>
         <div class="panel"><h2>Top assists</h2><div id="assistsTable"></div></div>
         <div class="panel">
-          <h2>Average rating</h2>
-          <p class="meta" style="margin:0 0 8px;font-size:12px;">Min. 3 appearances with a rated game.</p>
+          <div class="panel-head">
+            <h2>Average rating</h2>
+            <span class="panel-head-note">(Min. 3 appearances with a rated game.)</span>
+          </div>
           <div id="ratingsTable"></div>
         </div>
         <div class="panel"><h2>Player of the Match</h2><div id="potmTable"></div></div>
@@ -249,8 +267,10 @@
         <div class="panel"><h2>Top scorers</h2><div id="cupScorersTable"></div></div>
         <div class="panel"><h2>Top assists</h2><div id="cupAssistsTable"></div></div>
         <div class="panel">
-          <h2>Average rating</h2>
-          <p class="meta" style="margin:0 0 8px;font-size:12px;">Min. 3 cup appearances with a rated game.</p>
+          <div class="panel-head">
+            <h2>Average rating</h2>
+            <span class="panel-head-note">(Min. 3 cup appearances with a rated game.)</span>
+          </div>
           <div id="cupRatingsTable"></div>
         </div>
         <div class="panel"><h2>Player of the Match</h2><div id="cupPotmTable"></div></div>
@@ -271,8 +291,10 @@
         <div class="panel"><h2>Top scorers</h2><div id="wcScorersTable"></div></div>
         <div class="panel"><h2>Top assists</h2><div id="wcAssistsTable"></div></div>
         <div class="panel">
-          <h2>Average rating</h2>
-          <p class="meta" style="margin:0 0 8px;font-size:12px;">Min. 3 caps with a rated game.</p>
+          <div class="panel-head">
+            <h2>Average rating</h2>
+            <span class="panel-head-note">(Min. 3 caps with a rated game.)</span>
+          </div>
           <div id="wcRatingsTable"></div>
         </div>
         <div class="panel"><h2>Player of the Match</h2><div id="wcPotmTable"></div></div>
