@@ -152,6 +152,7 @@ export async function initDashboardPinUi(supabase) {
   const pagePanel = getPageDashboardPanel(page);
   if (
     pagePanel &&
+    !pagePanel.noPagePin &&
     !document.querySelector(`[data-dashboard-panel="${pagePanel.id}"]`) &&
     !document.querySelector(`.dashboard-pin-btn[data-panel-id="${pagePanel.id}"]`)
   ) {

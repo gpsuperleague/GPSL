@@ -103,6 +103,7 @@ function p(
     adminOnly = false,
     requiresDraft = false,
     when = null,
+    noPagePin = false,
   } = {}
 ) {
   const pageFile = (page || href.split("?")[0].split("#")[0]).toLowerCase();
@@ -116,6 +117,7 @@ function p(
     adminOnly: !!adminOnly,
     requiresDraft: !!requiresDraft,
     when: when || null,
+    noPagePin: !!noPagePin,
     tile: resolveTileImage(id),
   };
 }
@@ -172,7 +174,7 @@ export const DASHBOARD_PANELS = [
   p("finances_outgoing", "Finances Outgoing", "finances_outgoing.html"),
   p("finances_ledger", "Finances Ledger", "finances_ledger.html"),
   p("finances_accounts", "Season Accounts", "finances_accounts.html"),
-  p("dashboard", "Dashboard", "dashboard.html"),
+  p("dashboard", "Dashboard", "dashboard.html", { noPagePin: true }),
   p("admin", "GPSL Admin", "admin.html", { adminOnly: true }),
   p("admin_site_map", "Site map", "admin_site_map.html", { adminOnly: true }),
   p("admin_owners", "Owner Admin", "admin_owners.html", { adminOnly: true }),
