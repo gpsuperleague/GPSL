@@ -512,6 +512,7 @@ function wireTileGripDrag(grip, tile, panelId, ctx) {
     activeTileDrag = { panelId, fromSectionId: sectionId };
     activeSectionDrag = null;
     tile.classList.add("dashboard-tile-dragging");
+    document.body.classList.add("dashboard-tile-dragging");
     bindDragAutoScroll();
     e.dataTransfer.setData(
       "text/plain",
@@ -523,6 +524,7 @@ function wireTileGripDrag(grip, tile, panelId, ctx) {
 
   grip.addEventListener("dragend", () => {
     tile.classList.remove("dashboard-tile-dragging");
+    document.body.classList.remove("dashboard-tile-dragging");
     stopDragAutoScroll();
     window.setTimeout(() => {
       activeTileDrag = null;
@@ -563,26 +565,23 @@ function wireTileGripDrag(grip, tile, panelId, ctx) {
 }
 
 function wireSectionHeadTileDrop(head, sectionId, ctx) {
-  const isDropChrome = (el) =>
-    !!el?.closest(".dashboard-section-grip, .dashboard-section-remove, input");
-
-  head.addEventListener("dragover", (e) => {
-    if (isDropChrome(e.target)) return;
+  const onDragOver = (e) => {
     if (!isTileDrag(e)) return;
+    if (e.target.closest(".dashboard-section-remove")) return;
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
     head.classList.add("dashboard-section-head-tile-drop");
-  });
+  };
 
-  head.addEventListener("dragleave", (e) => {
+  const onDragLeave = (e) => {
     if (head.contains(e.relatedTarget)) return;
     head.classList.remove("dashboard-section-head-tile-drop");
-  });
+  };
 
-  head.addEventListener("drop", async (e) => {
-    if (isDropChrome(e.target)) return;
+  const onDrop = async (e) => {
     if (!isTileDrag(e)) return;
+    if (e.target.closest(".dashboard-section-remove")) return;
     e.preventDefault();
     e.stopPropagation();
     head.classList.remove("dashboard-section-head-tile-drop");
@@ -594,7 +593,12 @@ function wireSectionHeadTileDrop(head, sectionId, ctx) {
 
     movePanelToSection(panelId, fromSectionId, sectionId);
     await applyLayoutChange(ctx);
-  });
+  };
+
+  // Capture so drops work over the title field and grip (whole header bar).
+  head.addEventListener("dragover", onDragOver, true);
+  head.addEventListener("dragleave", onDragLeave, true);
+  head.addEventListener("drop", onDrop, true);
 }
 
 function wireSectionGridDrop(sectionGrid, sectionId, ctx) {

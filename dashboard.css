@@ -1961,6 +1961,20 @@ a.ssc-chip:hover {
   cursor: default;
   border-color: #3a3a3a;
   background: #161616;
+  position: relative;
+}
+
+body.dashboard-tile-dragging .dashboard-edit-mode .dashboard-section-head {
+  cursor: copy;
+}
+
+body.dashboard-tile-dragging .dashboard-section-title-input,
+body.dashboard-tile-dragging .dashboard-section-grip {
+  pointer-events: none;
+}
+
+body.dashboard-tile-dragging .dashboard-section-head-drop-label {
+  pointer-events: none;
 }
 
 .dashboard-section-head-drop-label {
@@ -1971,6 +1985,7 @@ a.ssc-chip:hover {
   white-space: nowrap;
   pointer-events: none;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .dashboard-section-head-tile-drop {
@@ -1994,19 +2009,19 @@ a.ssc-chip:hover {
 .dashboard-section-title-input {
   flex: 1;
   min-width: 0;
-  max-width: 280px;
   padding: 6px 10px;
   font-size: 15px;
   font-weight: 700;
   color: var(--club-accent, #ff9900);
-  background: #1a1a1a;
-  border: 1px solid #444;
+  background: transparent;
+  border: 1px solid transparent;
   border-radius: 6px;
 }
 
 .dashboard-section-title-input:focus {
   outline: none;
   border-color: var(--club-accent, #ff9900);
+  background: #1a1a1a;
 }
 
 .dashboard-section-grip {
