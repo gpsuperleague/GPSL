@@ -121,7 +121,7 @@ async function selectTvSeason() {
 }
 
 async function backfillTvRevenue() {
-  setStatus("tvRevenueStatus", "Backfilling…");
+  setStatus("tvRevenueStatus", "Backfilling split corrections + missing payouts…");
   const { data, error } = await supabase.rpc("competition_admin_backfill_tv_revenue", {
     p_season_id: currentSeasonId,
   });
@@ -131,9 +131,15 @@ async function backfillTvRevenue() {
     return;
   }
 
+  const split = data?.split ?? {};
+  const adjusted = split.fixtures_adjusted ?? 0;
+  const corrections = split.corrections_posted ?? 0;
+  const settled = data?.fixtures_settled ?? 0;
+
   setStatus(
     "tvRevenueStatus",
-    `✅ Processed ${data ?? 0} played TV fixture(s).`,
+    `✅ Split backfill: ${adjusted} fixture(s) adjusted (${corrections} correction line(s)). ` +
+      `Settled scan: ${settled} played TV fixture(s).`,
     true
   );
 }
