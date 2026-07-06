@@ -393,6 +393,22 @@ function buildStandingsLeaderTeaser(div, divisionKey, editionSeed = "") {
   return lines[idx] || `Top of ${divLabel} after a busy month.`;
 }
 
+function renderClubNewsSection(clubNews) {
+  const items = (Array.isArray(clubNews) ? clubNews : [])
+    .filter((c) => c?.comment && String(c.comment).trim())
+    .map((c) => ({
+      kicker: c.owner || "Club owner",
+      headline: c.club_name || c.club_short || "Club news",
+      body: String(c.comment).trim(),
+      byline: c.source_month_label
+        ? `Submitted during ${c.source_month_label}`
+        : "",
+      club_short: c.club_short,
+      story_kind: "club_news",
+    }));
+  return renderStorySection("Club news", items, { compact: true, columns: 1 });
+}
+
 function sortTotmRows(rows) {
   return [...(rows || [])].sort(
     (a, b) => TOTM_SLOT_ORDER.indexOf(a.pitch_slot) - TOTM_SLOT_ORDER.indexOf(b.pitch_slot)
@@ -954,6 +970,7 @@ function renderSportPaper() {
   const railTeasers = buildFrontRailTeasers(edition, front);
   const frontStories = Array.isArray(front.stories) ? front.stories : [];
   const standingsTeasers = renderStandingsSnapshotTeasers(front.standings_snapshot, editionLabel);
+  const clubNewsSection = renderClubNewsSection(front.club_news);
 
   paper.innerHTML = `
     <div class="gpsl-sport-page gpsl-sport-page-front">
@@ -983,6 +1000,7 @@ function renderSportPaper() {
         }
       </div>
       ${renderStorySection("Shock results", frontStories, { compact: true, columns: 1 })}
+      ${clubNewsSection}
       ${standingsTeasers}
       <footer class="gpsl-sport-footer">GPSL Sport · Stadium photos &amp; club badges official GPSL assets · Player cards pesdb.net</footer>
     </div>`;

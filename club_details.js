@@ -35,6 +35,7 @@ import {
 } from "./club_theme_common.js";
 
 const MAX_OWNER_TAG_LEN = 64;
+const MAX_SPORT_COMMENT_WORDS = 50;
 
 let cachedKitRow = null;
 let themeDraft = { ...GPSL_THEME_DEFAULTS };
@@ -181,6 +182,164 @@ export async function saveOwnerTag(tag) {
   }
 
   return { ok: true, tag: value };
+}
+
+export function countSportCommentWords(raw) {
+  const text = String(raw ?? "")
+    .trim()
+    .replace(/\s+/g, " ");
+  if (!text) return 0;
+  return text.split(" ").filter(Boolean).length;
+}
+
+export function normalizeSportCommentInput(raw) {
+  return String(raw ?? "")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+export async function loadSportCommentDraft() {
+  const { data, error } = await supabase.rpc("club_sport_comment_get");
+  if (error) {
+    const msg = String(error.message || "");
+    if (msg.includes("club_sport_comment_get") || msg.includes("function")) {
+      return {
+        ok: false,
+        msg: "Run supabase/sql/patches/gpsl_sport_owner_comments.sql in Supabase.",
+      };
+    }
+    return { ok: false, msg: msg || "Could not load GPSL Sport comment." };
+  }
+  if (!data?.ok) {
+    return { ok: false, msg: "Could not load GPSL Sport comment." };
+  }
+  return {
+    ok: true,
+    draft: data.draft || "",
+    wordCount: Number(data.word_count) || 0,
+    maxWords: Number(data.max_words) || MAX_SPORT_COMMENT_WORDS,
+    hasDraft: Boolean(data.has_draft),
+  };
+}
+
+export async function saveSportCommentDraft(comment) {
+  const value = normalizeSportCommentInput(comment);
+  const words = countSportCommentWords(value);
+  if (words > MAX_SPORT_COMMENT_WORDS) {
+    return {
+      ok: false,
+      msg: `Comment is ${words} words — maximum is ${MAX_SPORT_COMMENT_WORDS}.`,
+    };
+  }
+
+  const { data, error } = await supabase.rpc("club_sport_comment_set", {
+    p_comment: value,
+  });
+  if (error) {
+    const msg = String(error.message || "");
+    if (msg.includes("club_sport_comment_set") || msg.includes("function")) {
+      return {
+        ok: false,
+        msg: "Run supabase/sql/patches/gpsl_sport_owner_comments.sql in Supabase.",
+      };
+    }
+    return { ok: false, msg: msg || "Could not save GPSL Sport comment." };
+  }
+  if (!data?.ok) {
+    if (data?.reason === "too_long") {
+      return {
+        ok: false,
+        msg: `Comment is too long (${data.word_count ?? words} words, max ${data.max_words ?? MAX_SPORT_COMMENT_WORDS}).`,
+      };
+    }
+    return { ok: false, msg: "Could not save GPSL Sport comment." };
+  }
+
+  return {
+    ok: true,
+    draft: data.draft || "",
+    wordCount: Number(data.word_count) || 0,
+    hasDraft: Boolean(data.has_draft),
+  };
+}
+
+function setSportCommentHint(el, message, isError = false) {
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.toggle("owner-tag-hint--error", isError);
+}
+
+function updateSportCommentWordCount(inputEl, countEl) {
+  if (!inputEl || !countEl) return;
+  const words = countSportCommentWords(inputEl.value);
+  countEl.textContent = `${words} / ${MAX_SPORT_COMMENT_WORDS} words`;
+  countEl.classList.toggle("is-over", words > MAX_SPORT_COMMENT_WORDS);
+}
+
+function renderSportCommentSummary(summaryEl, draft) {
+  if (!summaryEl) return;
+  const text = normalizeSportCommentInput(draft);
+  if (!text) {
+    summaryEl.textContent = "No comment saved — add one for the next GPSL Sport edition.";
+    return;
+  }
+  const preview =
+    text.length > 90 ? `${text.slice(0, 90).trim()}…` : text;
+  summaryEl.textContent = preview;
+}
+
+function wireSportCommentExpandToggle() {
+  const btn = document.getElementById("toggleSportCommentBtn");
+  const panel = document.getElementById("sportCommentExpand");
+  if (!btn || !panel) return;
+
+  btn.addEventListener("click", () => {
+    const open = panel.hidden;
+    panel.hidden = !open;
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    btn.textContent = open ? "Hide comment" : "Edit comment";
+    if (open) {
+      document.getElementById("sportCommentInput")?.focus();
+    }
+  });
+}
+
+function wireSportCommentField(initialDraft = "") {
+  const input = document.getElementById("sportCommentInput");
+  const saveBtn = document.getElementById("saveSportCommentBtn");
+  const hint = document.getElementById("sportCommentHint");
+  const countEl = document.getElementById("sportCommentWordCount");
+  const summaryEl = document.getElementById("sportCommentSummary");
+  if (!input || !saveBtn) return;
+
+  input.value = initialDraft || "";
+  updateSportCommentWordCount(input, countEl);
+  renderSportCommentSummary(summaryEl, initialDraft);
+
+  input.addEventListener("input", () => {
+    updateSportCommentWordCount(input, countEl);
+  });
+
+  saveBtn.addEventListener("click", async () => {
+    saveBtn.disabled = true;
+    const result = await saveSportCommentDraft(input.value);
+    saveBtn.disabled = false;
+
+    if (!result.ok) {
+      setSportCommentHint(hint, result.msg, true);
+      return;
+    }
+
+    input.value = result.draft || "";
+    updateSportCommentWordCount(input, countEl);
+    renderSportCommentSummary(summaryEl, result.draft);
+    setSportCommentHint(
+      hint,
+      result.hasDraft
+        ? "Saved — appears in next month's GPSL Sport after this GPSL month locks."
+        : "Comment cleared."
+    );
+  });
 }
 
 function wireOwnerTagField(els, onSaved) {
@@ -1011,9 +1170,23 @@ async function initClubDetailsPage() {
   wireHolidayBooking();
   wireHolidayExpandToggle();
   wireChallengeExpandToggle();
+  wireSportCommentExpandToggle();
   wireAvailabilityPanel();
   wireManagerActions();
   await refreshHolidaySection();
+
+  const sportComment = await loadSportCommentDraft();
+  if (!sportComment.ok) {
+    const summaryEl = document.getElementById("sportCommentSummary");
+    if (summaryEl) summaryEl.textContent = "GPSL Sport comments unavailable.";
+    setSportCommentHint(
+      document.getElementById("sportCommentHint"),
+      sportComment.msg,
+      true
+    );
+  } else {
+    wireSportCommentField(sportComment.draft);
+  }
 }
 
 async function loadKitsSection(clubShort) {

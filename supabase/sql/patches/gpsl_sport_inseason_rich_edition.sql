@@ -85,6 +85,7 @@ DECLARE
   v_transfer_stories jsonb := '[]'::jsonb;
   v_i int := 0;
   v_first_shock jsonb;
+  v_club_news jsonb := '[]'::jsonb;
 BEGIN
   IF p_season_id IS NULL OR v_gpsl_month IS NULL OR v_gpsl_month = '' THEN
     RETURN jsonb_build_object('error', 'invalid_args');
@@ -481,6 +482,10 @@ BEGIN
     );
   END IF;
 
+  IF to_regprocedure('public.gpsl_sport_fetch_club_news(bigint,text)') IS NOT NULL THEN
+    v_club_news := public.gpsl_sport_fetch_club_news(p_season_id, v_gpsl_month);
+  END IF;
+
   v_front := jsonb_build_object(
     'masthead', 'GPSL Sport',
     'edition_label', v_month_label,
@@ -492,6 +497,7 @@ BEGIN
     'story_type', v_story_type,
     'shock_results', v_shocks,
     'standings_snapshot', v_standings,
+    'club_news', coalesce(v_club_news, '[]'::jsonb),
     'hero', CASE
       WHEN v_first_shock IS NOT NULL THEN jsonb_build_object(
         'kind', 'stadium',
