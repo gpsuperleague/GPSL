@@ -21,11 +21,6 @@ import {
 } from "./countdown_display.js";
 import { countUnreadInbox } from "./competition_inbox.js";
 import { initDashboardPinUi } from "./dashboard_pin.js";
-import {
-  renderNavGpslSportButton,
-  initGpslSportUi,
-  refreshGpslSportNav,
-} from "./gpsl_sport.js";
 import { nationFlagSrc } from "./international_flags.js";
 import { formatNavLabel, renderNavGroupSummaryLabel } from "./nav_label.js";
 export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js";
@@ -34,6 +29,50 @@ export { supabase, getAuthUser, waitForAuthSession } from "./supabase_client.js"
 import { APP_VERSION } from "./app_version.js";
 
 export const GLOBAL_JS_VERSION = APP_VERSION;
+
+let gpslSportModulePromise = null;
+
+function getGpslSportModule() {
+  if (!gpslSportModulePromise) {
+    gpslSportModulePromise = import(`./gpsl_sport.js?v=${GLOBAL_JS_VERSION}`);
+  }
+  return gpslSportModulePromise;
+}
+
+function renderNavGpslSportButton() {
+  const v = GLOBAL_JS_VERSION;
+  return (
+    `<button type="button" id="gpslSportNavBtn" class="nav-shortcut nav-gpsl-sport" hidden ` +
+    `onclick="(async(e)=>{e.preventDefault();e.stopPropagation();try{if(window.__openGpslSport){await window.__openGpslSport(e);return}const m=await import('./gpsl_sport.js?v=${v}');await m.openGpslSport(window.supabase)}catch(err){console.error(err);alert('GPSL Sport failed to open. Hard-refresh (Ctrl+F5).')}})(event)" ` +
+    `title="GPSL Sport" aria-label="GPSL Sport newspaper">` +
+    `<span class="nav-gpsl-sport-icon" aria-hidden="true">📰</span>` +
+    `<span class="nav-gpsl-sport-label">GPSL Sport</span>` +
+    `</button>`
+  );
+}
+
+async function handleGpslSportNavClick(e) {
+  e?.preventDefault?.();
+  e?.stopPropagation?.();
+  try {
+    const mod = await getGpslSportModule();
+    await mod.openGpslSport(supabase);
+  } catch (err) {
+    console.error("GPSL Sport open:", err);
+    alert("GPSL Sport could not open. Hard-refresh the page (Ctrl+F5).");
+  }
+}
+
+async function refreshGpslSportNavUi() {
+  try {
+    const mod = await getGpslSportModule();
+    await mod.initGpslSportUi(supabase);
+  } catch (err) {
+    console.warn("GPSL Sport nav refresh skipped:", err);
+  }
+}
+
+window.__openGpslSport = handleGpslSportNavClick;
 
 /** Fail fast when Supabase REST/auth is unreachable (522 / network). */
 function withRequestTimeout(promise, ms, label) {
@@ -1479,9 +1518,7 @@ export async function renderFallbackNav() {
     </div>
   `;
   wireNavLogout();
-  initGpslSportUi(supabase).catch((err) => {
-    console.warn("GPSL Sport nav refresh skipped:", err);
-  });
+  refreshGpslSportNavUi();
 }
 
 // ------------------------------------------------------------
@@ -1725,9 +1762,7 @@ export async function buildNav() {
   wireNavGroups(nav);
   refreshNavAuctionIndicators();
   startNavAuctionBadgeRefresh();
-  initGpslSportUi(supabase).catch((err) => {
-    console.warn("GPSL Sport nav refresh skipped:", err);
-  });
+  refreshGpslSportNavUi();
   try {
     const sched = await import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`);
     sched.ensureSeasonScheduleStripMount();
@@ -1766,9 +1801,7 @@ export async function initGlobal() {
     initDashboardPinUi(supabase).catch((err) => {
       console.warn("Dashboard pin UI skipped:", err);
     });
-    initGpslSportUi(supabase).catch((err) => {
-      console.warn("GPSL Sport UI skipped:", err);
-    });
+    refreshGpslSportNavUi();
     import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`)
       .then((m) => m.initSeasonScheduleStrip())
       .catch((err) => console.warn("Season schedule strip skipped:", err));

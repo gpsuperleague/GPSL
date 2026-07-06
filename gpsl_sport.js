@@ -2,7 +2,6 @@
  * GPSL Sport — weekly newspaper modal
  */
 
-let sportUiReady = false;
 let sportEditionId = null;
 let sportActivePage = "front";
 let sportSupabase = null;
@@ -23,7 +22,7 @@ function formatParagraphs(text) {
     .join("");
 }
 
-function showSportModal() {
+export function showSportModal() {
   const overlay = document.getElementById("gpslSportModal");
   if (!overlay) return;
   overlay.classList.add("is-open");
@@ -31,7 +30,7 @@ function showSportModal() {
   document.body.classList.add("gpsl-sport-open");
 }
 
-function hideSportModal() {
+export function hideSportModal() {
   const overlay = document.getElementById("gpslSportModal");
   if (!overlay) return;
   overlay.classList.remove("is-open");
@@ -62,7 +61,7 @@ function renderSportArchiveSelect() {
     .join("");
 }
 
-function ensureSportModal() {
+export function ensureSportModal() {
   if (document.getElementById("gpslSportModal")) return;
 
   const overlay = document.createElement("div");
@@ -107,23 +106,6 @@ function ensureSportModal() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && overlay.classList.contains("is-open")) closeGpslSport();
   });
-}
-
-function wireSportNavClick() {
-  if (sportUiReady) return;
-  sportUiReady = true;
-
-  document.addEventListener(
-    "click",
-    (e) => {
-      const btn = e.target.closest("#gpslSportNavBtn, .nav-gpsl-sport");
-      if (!btn || btn.hidden) return;
-      e.preventDefault();
-      e.stopPropagation();
-      openGpslSport(sportSupabase || window.supabase);
-    },
-    true
-  );
 }
 
 function renderSportPaper() {
@@ -203,9 +185,17 @@ async function loadSportArchive(client) {
   }
 }
 
+function readEditionIdFromNavButton() {
+  const btn = document.getElementById("gpslSportNavBtn");
+  const raw = btn?.dataset?.editionId;
+  if (!raw) return null;
+  const id = Number(raw);
+  return Number.isFinite(id) && id > 0 ? id : null;
+}
+
 export async function refreshGpslSportNav(supabase) {
   const btn = document.getElementById("gpslSportNavBtn");
-  const client = supabase || sportSupabase;
+  const client = supabase || sportSupabase || window.supabase;
   if (!btn || !client) return;
 
   try {
@@ -214,6 +204,7 @@ export async function refreshGpslSportNav(supabase) {
 
     if (!data?.has_edition) {
       btn.hidden = true;
+      btn.removeAttribute("data-edition-id");
       btn.classList.remove("has-unread");
       sportEditionId = null;
       return;
@@ -221,6 +212,7 @@ export async function refreshGpslSportNav(supabase) {
 
     btn.hidden = false;
     sportEditionId = data.edition_id;
+    btn.dataset.editionId = String(data.edition_id);
     btn.title = data.headline
       ? `GPSL Sport — ${data.headline}`
       : `GPSL Sport — ${data.edition_label || "Latest"}`;
@@ -242,6 +234,7 @@ export async function refreshGpslSportNav(supabase) {
   } catch (err) {
     console.warn("GPSL Sport nav:", err);
     btn.hidden = true;
+    btn.removeAttribute("data-edition-id");
     sportEditionId = null;
   }
 }
@@ -251,6 +244,8 @@ async function loadSportEdition(editionId, { markRead = false } = {}) {
   if (!client || !editionId) return false;
 
   sportEditionId = editionId;
+  const btn = document.getElementById("gpslSportNavBtn");
+  if (btn) btn.dataset.editionId = String(editionId);
 
   const { data, error } = await client.rpc("gpsl_sport_get_edition", {
     p_edition_id: editionId,
@@ -288,23 +283,30 @@ export async function openGpslSport(supabase) {
   const client = supabase || sportSupabase || window.supabase;
   if (!client) {
     console.warn("GPSL Sport: no supabase client");
+    alert("GPSL Sport: not signed in.");
     return;
   }
 
   ensureSportModal();
-  wireSportNavClick();
-
-  if (!sportEditionId) {
-    await refreshGpslSportNav(client);
-  }
-  if (!sportEditionId) {
-    alert("No GPSL Sport edition is available yet.");
-    return;
-  }
 
   const paper = document.getElementById("gpslSportPaper");
   if (paper) paper.innerHTML = '<p class="gpsl-sport-loading">Loading edition…</p>';
   showSportModal();
+
+  if (!sportEditionId) {
+    sportEditionId = readEditionIdFromNavButton();
+  }
+  if (!sportEditionId) {
+    await refreshGpslSportNav(client);
+  }
+  if (!sportEditionId) {
+    sportEditionId = readEditionIdFromNavButton();
+  }
+  if (!sportEditionId) {
+    hideSportModal();
+    alert("No GPSL Sport edition is available yet.");
+    return;
+  }
 
   const ok = await loadSportEdition(sportEditionId, { markRead: true });
   if (!ok) {
@@ -317,19 +319,8 @@ export function closeGpslSport() {
   hideSportModal();
 }
 
-export function renderNavGpslSportButton() {
-  return (
-    `<button type="button" id="gpslSportNavBtn" class="nav-shortcut nav-gpsl-sport" hidden ` +
-    `title="GPSL Sport" aria-label="GPSL Sport newspaper">` +
-    `<span class="nav-gpsl-sport-icon" aria-hidden="true">📰</span>` +
-    `<span class="nav-gpsl-sport-label">GPSL Sport</span>` +
-    `</button>`
-  );
-}
-
 export async function initGpslSportUi(supabase) {
   sportSupabase = supabase || window.supabase;
   ensureSportModal();
-  wireSportNavClick();
   await refreshGpslSportNav(sportSupabase);
 }
