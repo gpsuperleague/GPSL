@@ -84,10 +84,28 @@ function syncTableRowHeights(containerIds) {
   }
 }
 
+function fitPanelTitleHeadings() {
+  document.querySelectorAll(".panel-title-head > h2").forEach((h2) => {
+    const box = h2.parentElement;
+    if (!box) return;
+    const maxPx = 14;
+    const minPx = 7.5;
+    let size = maxPx;
+    h2.style.fontSize = `${size}px`;
+    const limit = box.clientWidth;
+    if (!limit) return;
+    while (size > minPx && h2.scrollWidth > limit) {
+      size -= 0.25;
+      h2.style.fontSize = `${size}px`;
+    }
+  });
+}
+
 function scheduleLeaderboardSync() {
   if (leaderboardSyncTimer) cancelAnimationFrame(leaderboardSyncTimer);
   leaderboardSyncTimer = requestAnimationFrame(() => {
     leaderboardSyncTimer = null;
+    fitPanelTitleHeadings();
     const groups = LEADERBOARD_SYNC_GROUPS[activeTab] || [];
     for (const group of groups) {
       syncTableRowHeights(group);
