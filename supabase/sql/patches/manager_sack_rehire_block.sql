@@ -493,30 +493,172 @@ BEGIN
 END;
 $function$;
 
--- Backfill blocks from existing manager sack ledger rows this season
-INSERT INTO public.manager_club_sack_blocks (
-  season_id,
-  club_short_name,
-  manager_id,
-  sacked_at
-)
-SELECT
-  coalesce(
-    l.season_id,
-    (SELECT id FROM public.competition_seasons WHERE is_current = true ORDER BY id DESC LIMIT 1)
-  ),
-  l.club_short_name,
-  (l.metadata->>'manager_id')::bigint,
-  l.created_at
-FROM public.competition_finance_ledger l
-WHERE l.entry_type = 'contract_release_comp'
-  AND l.amount > 0
-  AND coalesce(l.metadata->>'manager_sack', '') IN ('true', 't', '1')
-  AND coalesce(l.metadata->>'kind', '') = 'manager'
-  AND nullif(l.metadata->>'manager_id', '') ~ '^[0-9]+$'
-  AND l.club_short_name IS NOT NULL
-ON CONFLICT (season_id, club_short_name, manager_id) DO NOTHING;
+-- ---------------------------------------------------------------------------
+-- Backfill sack blocks from ledger history (idempotent; safe to re-run)
+-- ---------------------------------------------------------------------------
 
+CREATE OR REPLACE FUNCTION public.manager_sack_blocks_backfill(
+  p_season_id bigint DEFAULT NULL,
+  p_dry_run boolean DEFAULT false
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_season_id bigint := p_season_id;
+  v_candidates jsonb := '[]'::jsonb;
+  v_inserted int := 0;
+  v_row record;
+BEGIN
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  IF v_season_id IS NULL THEN
+    SELECT id INTO v_season_id
+    FROM public.competition_seasons
+    WHERE is_current = true
+    ORDER BY id DESC
+    LIMIT 1;
+  END IF;
+
+  IF v_season_id IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'no_season');
+  END IF;
+
+  -- Drop if left over from a prior call in the same session (e.g. dry-run then apply)
+  DROP TABLE IF EXISTS tmp_manager_sack_backfill;
+
+  CREATE TEMP TABLE tmp_manager_sack_backfill ON COMMIT DROP AS
+  WITH ledger_rows AS (
+    SELECT
+      l.id AS ledger_id,
+      coalesce(l.season_id, v_season_id) AS season_id,
+      l.club_short_name,
+      l.amount,
+      l.description,
+      l.created_at,
+      nullif(l.metadata->>'manager_id', '')::bigint AS metadata_manager_id,
+      coalesce(l.metadata->>'manager_sack', '') IN ('true', 't', '1') AS tagged_sack,
+      nullif(
+        btrim(substring(l.description FROM 'Manager sack — (.+) \(half MV\)')),
+        ''
+      ) AS parsed_manager_name
+    FROM public.competition_finance_ledger l
+    WHERE coalesce(l.season_id, v_season_id) = v_season_id
+      AND l.entry_type = 'contract_release_comp'
+      AND l.amount > 0
+      AND l.club_short_name IS NOT NULL
+      AND (
+        coalesce(l.metadata->>'manager_sack', '') IN ('true', 't', '1')
+        OR coalesce(l.metadata->>'kind', '') = 'manager'
+        OR l.description ILIKE 'Manager sack — %(half MV)%'
+      )
+  ),
+  resolved AS (
+    SELECT DISTINCT ON (lr.season_id, lr.club_short_name, candidate_manager_id)
+      lr.ledger_id,
+      lr.season_id,
+      lr.club_short_name,
+      candidate_manager_id AS manager_id,
+      lr.created_at AS sacked_at,
+      source_kind
+    FROM (
+      SELECT
+        lr.*,
+        coalesce(
+          lr.metadata_manager_id,
+          (
+            SELECT m.id
+            FROM public."Managers" m
+            WHERE lr.parsed_manager_name IS NOT NULL
+              AND m.name = lr.parsed_manager_name
+            ORDER BY
+              abs(round(greatest(m.market_value, 0)::numeric / 2.0, 0) - lr.amount),
+              m.id
+            LIMIT 1
+          )
+        ) AS candidate_manager_id,
+        CASE
+          WHEN lr.metadata_manager_id IS NOT NULL AND lr.tagged_sack THEN 'ledger_metadata'
+          WHEN lr.parsed_manager_name IS NOT NULL THEN 'ledger_description'
+          WHEN lr.metadata_manager_id IS NOT NULL THEN 'ledger_manager_credit'
+          ELSE 'unknown'
+        END AS source_kind
+      FROM ledger_rows lr
+    ) lr
+    WHERE lr.candidate_manager_id IS NOT NULL
+      AND (
+        lr.tagged_sack
+        OR lr.parsed_manager_name IS NOT NULL
+        OR (
+          lr.metadata_manager_id IS NOT NULL
+          AND coalesce(lr.description, '') ILIKE '%sack%'
+        )
+      )
+    ORDER BY lr.season_id, lr.club_short_name, candidate_manager_id, lr.created_at DESC
+  )
+  SELECT * FROM resolved;
+
+  SELECT coalesce(
+    jsonb_agg(
+      jsonb_build_object(
+        'club_short_name', t.club_short_name,
+        'manager_id', t.manager_id,
+        'sacked_at', t.sacked_at,
+        'source', t.source_kind,
+        'ledger_id', t.ledger_id
+      )
+      ORDER BY t.club_short_name, t.manager_id
+    ),
+    '[]'::jsonb
+  )
+  INTO v_candidates
+  FROM tmp_manager_sack_backfill t;
+
+  IF p_dry_run THEN
+    RETURN jsonb_build_object(
+      'ok', true,
+      'dry_run', true,
+      'season_id', v_season_id,
+      'candidate_count', jsonb_array_length(v_candidates),
+      'candidates', v_candidates
+    );
+  END IF;
+
+  INSERT INTO public.manager_club_sack_blocks (
+    season_id,
+    club_short_name,
+    manager_id,
+    sacked_at
+  )
+  SELECT
+    t.season_id,
+    t.club_short_name,
+    t.manager_id,
+    t.sacked_at
+  FROM tmp_manager_sack_backfill t
+  ON CONFLICT (season_id, club_short_name, manager_id) DO NOTHING;
+
+  GET DIAGNOSTICS v_inserted = ROW_COUNT;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'dry_run', false,
+    'season_id', v_season_id,
+    'candidate_count', jsonb_array_length(v_candidates),
+    'inserted', v_inserted,
+    'candidates', v_candidates
+  );
+END;
+$function$;
+
+-- Initial backfill on patch apply (cast NULL so Postgres picks bigint overload)
+SELECT public.manager_sack_blocks_backfill(NULL::bigint, false);
+
+GRANT EXECUTE ON FUNCTION public.manager_sack_blocks_backfill(bigint, boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.club_sacked_manager_ids() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.manager_sack() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.manager_assign_to_club(
