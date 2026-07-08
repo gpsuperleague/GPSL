@@ -193,6 +193,33 @@ export async function getClubManagerVacancy(clubShortName) {
   return { vacant: true, reason: "" };
 }
 
+let blockedSackedManagerIds = null;
+let blockedSackedManagerIdsAt = 0;
+const SACK_BLOCK_CACHE_MS = 60_000;
+
+export async function fetchClubSackedManagerIds({ force = false } = {}) {
+  const now = Date.now();
+  if (
+    !force &&
+    blockedSackedManagerIds != null &&
+    now - blockedSackedManagerIdsAt < SACK_BLOCK_CACHE_MS
+  ) {
+    return blockedSackedManagerIds;
+  }
+
+  const { data, error } = await supabase.rpc("club_sacked_manager_ids");
+  if (error) {
+    console.warn("club_sacked_manager_ids:", error.message);
+    return [];
+  }
+
+  blockedSackedManagerIds = (Array.isArray(data) ? data : [])
+    .map((id) => Number(id))
+    .filter(Number.isFinite);
+  blockedSackedManagerIdsAt = now;
+  return blockedSackedManagerIds;
+}
+
 export async function getManagerDraftBidEligibility({
   managerId,
   buyerShortName,
@@ -226,6 +253,15 @@ export async function getManagerDraftBidEligibility({
   const vacancy = await getClubManagerVacancy(buyerShortName);
   if (!vacancy.vacant) {
     return { allowed: false, reason: vacancy.reason };
+  }
+
+  const sackedIds = await fetchClubSackedManagerIds();
+  if (sackedIds.includes(Number(managerId))) {
+    return {
+      allowed: false,
+      reason:
+        "You cannot re-sign a manager you sacked this season. They may return next season.",
+    };
   }
 
   const leadingElsewhere = await getClubLeadingManagerDraftId(

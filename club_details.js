@@ -1473,7 +1473,11 @@ function wireManagerActions() {
   if (sackBtn && !sackBtn.dataset.wired) {
     sackBtn.dataset.wired = "1";
     sackBtn.addEventListener("click", async () => {
-      if (!confirm("Sack manager? You receive half market value and cannot sack again this season.")) {
+      if (
+        !confirm(
+          "Sack manager? You receive half market value, cannot sack again this season, and cannot re-sign this manager until next season."
+        )
+      ) {
         return;
       }
       const clubShort = sackBtn.dataset.clubShort;
@@ -1484,7 +1488,10 @@ function wireManagerActions() {
         if (hintEl) hintEl.textContent = error.message;
         return;
       }
-      if (hintEl) hintEl.textContent = "Manager sacked.";
+      if (hintEl) {
+        hintEl.textContent =
+          "Manager sacked. You cannot re-sign them until next season.";
+      }
       if (clubShort) {
         await Promise.all([
           loadExpectationSection(clubShort),
