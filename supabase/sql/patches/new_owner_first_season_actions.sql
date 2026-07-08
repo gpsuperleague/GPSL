@@ -375,7 +375,7 @@ BEGIN
     RAISE EXCEPTION 'This player already has an active New Owner transfer listing';
   END IF;
 
-  v_mv := coalesce(v_player.market_value, 0)::numeric;
+  v_mv := greatest(coalesce(v_player.market_value::numeric, 0::numeric), 0::numeric);
   IF v_mv <= 0 THEN
     RAISE EXCEPTION 'Player has no market value';
   END IF;
@@ -824,7 +824,7 @@ DECLARE
   v_player_id text;
   v_new_owner_listing boolean := false;
 BEGIN
-  v_player_id := btrim(coalesce(NEW.player_id, NEW.direct_bid_id::text, ''));
+  v_player_id := btrim(coalesce(NEW.player_id::text, NEW.direct_bid_id::text, ''));
 
   IF v_player_id = '' AND NEW.listing_id IS NOT NULL THEN
     SELECT btrim(l.player_id::text), coalesce(l.new_owner_slot, false)
