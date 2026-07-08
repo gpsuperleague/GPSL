@@ -428,7 +428,7 @@ function newOwnerListOptionHtml(player) {
   const remaining = newOwnerReleaseState.remaining;
   const availableNow = newOwnerReleaseState.availableNow;
   const listNow = newOwnerReleaseState.listAvailableNow;
-  const canList = playerCanListOrSellLocal(player);
+  const blockedReason = newOwnerListBlockedReason(player);
 
   if (remaining <= 0) {
     return `<option value="" disabled>${newOwnerListOptionLabel(remaining, {
@@ -446,12 +446,12 @@ function newOwnerListOptionHtml(player) {
     })}</option>`;
   }
 
-  if (!canList) {
+  if (blockedReason) {
     return `<option value="" disabled>${newOwnerListOptionLabel(remaining, {
       firstSeason: true,
       availableNow: true,
       transferWindowOpen: transferWindowOpen,
-    })} — ${isContractFinalYear(player) ? "final contract year" : "signed this season"}</option>`;
+    })} — ${blockedReason}</option>`;
   }
 
   if (!listNow) {
@@ -506,6 +506,14 @@ function squadActionOptionsHtml(player) {
 
 function playerCanListOrSellLocal(player) {
   return playerBlockedFromTransferMarket(player, currentGpslSeasonLabel) === false;
+}
+
+/** New Owner transfer list bypasses the same-season signing lock. */
+function newOwnerListBlockedReason(player) {
+  if (isContractFinalYear(player)) {
+    return "final contract year";
+  }
+  return null;
 }
 
 async function loadVoluntaryReleaseState() {
@@ -1798,11 +1806,12 @@ async function listPlayerNewOwner(playerId) {
     alert("No first-season slots remaining (maximum 3 release or transfer list actions).");
     return;
   }
-  if (!playerCanListOrSellLocal(player)) {
+  const blockedReason = newOwnerListBlockedReason(player);
+  if (blockedReason) {
     alert(
-      isContractFinalYear(player)
+      blockedReason === "final contract year"
         ? FINAL_YEAR_TRANSFER_MESSAGE
-        : SAME_SEASON_TRANSFER_MESSAGE
+        : "This player cannot be New Owner transfer listed."
     );
     return;
   }
@@ -1831,6 +1840,7 @@ async function listPlayerNewOwner(playerId) {
     `New Owner transfer list for ${player.Name}?\n\n` +
       `Standard listing at market value: ${formatMoney(mv)} reserve.\n` +
       `Uses 1 of your ${newOwnerReleaseState.remaining} first-season slot(s).\n` +
+      `Same-season signings can be listed here (normal transfer rules do not apply).\n` +
       `If the listing expires unsold, the slot is returned and you may release them instead (Central Bank refund of purchase fee).\n` +
       `If sold, the slot is used permanently.`
   );

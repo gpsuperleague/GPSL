@@ -270,7 +270,7 @@ BEGIN
   END IF;
 
   BEGIN
-    PERFORM public.assert_player_transferable(v_pid);
+    PERFORM public.assert_player_new_owner_listable(v_pid);
   EXCEPTION
     WHEN OTHERS THEN
       RETURN jsonb_build_object(
@@ -361,7 +361,7 @@ BEGIN
     RAISE EXCEPTION 'Player is not at your club';
   END IF;
 
-  PERFORM public.assert_player_transferable(v_pid);
+  PERFORM public.assert_player_new_owner_listable(v_pid);
 
   IF EXISTS (
     SELECT 1
@@ -751,5 +751,106 @@ GRANT EXECUTE ON FUNCTION public.new_owner_listing_settle_slot(bigint, boolean) 
 GRANT EXECUTE ON FUNCTION public.player_new_owner_list_preview(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.player_new_owner_transfer_list(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.manager_sack_window_open() TO authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Same-season override — New Owner transfer list only
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.assert_player_new_owner_listable(p_player_id text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_seasons smallint;
+  v_legacy boolean;
+BEGIN
+  SELECT p.contract_seasons_remaining, p.pesdb_unavailable
+  INTO v_seasons, v_legacy
+  FROM public."Players" p
+  WHERE p."Konami_ID"::text = btrim(p_player_id);
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Player not found';
+  END IF;
+
+  IF coalesce(v_legacy, false) THEN
+    RAISE EXCEPTION
+      'This player card is no longer on pesdb.net (legacy card). It cannot be sold or listed. Renew for one season at a time from your squad.';
+  END IF;
+
+  IF v_seasons IS NOT NULL AND v_seasons <= 1 THEN
+    RAISE EXCEPTION
+      'Player is in the final year of their contract and cannot be sold or listed. Renew or expire the contract from your squad page.';
+  END IF;
+
+  -- Same-season signing lock intentionally not applied for New Owner listings.
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.trg_listing_block_same_season_sale()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+BEGIN
+  IF NEW.player_id IS NULL OR btrim(NEW.player_id::text) = '' THEN
+    RETURN NEW;
+  END IF;
+
+  IF coalesce(NEW.new_owner_slot, false) THEN
+    RETURN NEW;
+  END IF;
+
+  IF coalesce(NEW.perpetual_renew, false)
+     AND coalesce(NEW.special_rules ->> 'source', '') = 'underperformance' THEN
+    RETURN NEW;
+  END IF;
+
+  PERFORM public.assert_player_transferable(btrim(NEW.player_id::text));
+  RETURN NEW;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.trg_transfer_bid_block_same_season_player()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_player_id text;
+  v_new_owner_listing boolean := false;
+BEGIN
+  v_player_id := btrim(coalesce(NEW.player_id, NEW.direct_bid_id::text, ''));
+
+  IF v_player_id = '' AND NEW.listing_id IS NOT NULL THEN
+    SELECT btrim(l.player_id::text), coalesce(l.new_owner_slot, false)
+    INTO v_player_id, v_new_owner_listing
+    FROM public."Player_Transfer_Listings" l
+    WHERE l.id = NEW.listing_id;
+  ELSIF NEW.listing_id IS NOT NULL THEN
+    SELECT coalesce(l.new_owner_slot, false)
+    INTO v_new_owner_listing
+    FROM public."Player_Transfer_Listings" l
+    WHERE l.id = NEW.listing_id;
+  END IF;
+
+  IF v_player_id IS NULL OR v_player_id = '' THEN
+    RETURN NEW;
+  END IF;
+
+  IF v_new_owner_listing THEN
+    RETURN NEW;
+  END IF;
+
+  PERFORM public.assert_player_transferable(v_player_id);
+  RETURN NEW;
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.assert_player_new_owner_listable(text) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
