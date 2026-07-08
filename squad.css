@@ -75,6 +75,55 @@ body.squad-page .foreign-interest-badge .foreign-interest-hint {
   opacity: 1;
 }
 
+body.squad-page .new-owner-release-badge {
+  border-color: rgba(100, 140, 200, 0.55);
+  background: rgba(30, 45, 70, 0.45);
+  color: #dce8f8;
+}
+
+body.squad-page .new-owner-release-badge .foreign-interest-hint {
+  color: #9ab0cc;
+}
+
+body.squad-page .manager-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  border-color: rgba(200, 160, 100, 0.5);
+  background: rgba(55, 45, 30, 0.45);
+  color: #f0e6d8;
+}
+
+body.squad-page .manager-badge .foreign-interest-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: right;
+}
+
+body.squad-page .squad-sack-btn {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fdd;
+  background: rgba(120, 40, 40, 0.85);
+  border: 1px solid rgba(220, 100, 100, 0.65);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+body.squad-page .squad-sack-btn:hover:not(:disabled) {
+  background: rgba(150, 50, 50, 0.95);
+}
+
+body.squad-page .squad-sack-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 body.squad-page .voluntary-release-badge {
   border-color: rgba(140, 180, 140, 0.5);
   background: rgba(35, 55, 40, 0.45);
