@@ -96,3 +96,6 @@ ORDER BY l.end_time;
 --
 -- Or visible JSON report:
 -- SELECT public.admin_transferengine_run();
+--
+-- Probe one listing (shows real error text):
+-- SELECT public.transferengine_probe_manager_draft_settlement(5);

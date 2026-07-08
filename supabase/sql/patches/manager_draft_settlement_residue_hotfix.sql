@@ -22,8 +22,11 @@ DECLARE
   v_amount  numeric;
   v_buyer   text;
   v_mgr     public."Managers"%rowtype;
-  v_meta    jsonb;
-  v_ledger_posted boolean := false;
+  v_buyer_balance numeric;
+  v_season_id bigint;
+  v_wage bigint;
+  v_mgr_name text;
+  v_meta jsonb;
 BEGIN
   SELECT * INTO v_listing
   FROM public."Manager_Transfer_Listings"
@@ -31,12 +34,11 @@ BEGIN
   FOR UPDATE;
 
   IF NOT FOUND THEN
-    RAISE NOTICE 'Manager draft listing % not found', p_listing_id;
-    RETURN;
+    RAISE EXCEPTION 'Manager draft listing % not found', p_listing_id;
   END IF;
 
   IF v_listing.listing_type IS DISTINCT FROM 'draft' THEN
-    RETURN;
+    RAISE EXCEPTION 'Manager listing % is not a draft listing', p_listing_id;
   END IF;
 
   IF v_listing.status NOT IN ('Active', 'Review') THEN
@@ -75,14 +77,13 @@ BEGIN
   FOR UPDATE;
 
   IF NOT FOUND THEN
-    RAISE WARNING 'Manager draft listing % — manager % not found', p_listing_id, v_listing.manager_id;
-    RETURN;
+    RAISE EXCEPTION 'Manager % not found for draft listing %', v_listing.manager_id, p_listing_id;
   END IF;
 
   IF v_mgr.contracted_club IS NOT NULL AND btrim(v_mgr.contracted_club) <> '' THEN
     UPDATE public."Manager_Transfer_Listings"
     SET status = 'Closed',
-        transfer_completed = (v_mgr.contracted_club = v_buyer),
+        transfer_completed = (upper(btrim(v_mgr.contracted_club)) = upper(btrim(v_buyer))),
         updated_at = now()
     WHERE id = v_listing.id;
     RETURN;
@@ -97,44 +98,88 @@ BEGIN
     UPDATE public."Manager_Transfer_Listings"
     SET status = 'Closed', transfer_completed = false, updated_at = now()
     WHERE id = v_listing.id;
-    RAISE WARNING 'Manager draft listing % — buyer % already has a manager', p_listing_id, v_buyer;
-    RETURN;
+    RAISE EXCEPTION 'Buyer % already has a manager — cannot settle draft listing %', v_buyer, p_listing_id;
   END IF;
+
+  SELECT balance
+  INTO v_buyer_balance
+  FROM public."Club_Finances"
+  WHERE club_name = v_buyer
+  FOR UPDATE;
+
+  IF v_buyer_balance IS NULL THEN
+    RAISE EXCEPTION 'Club finances not found for % (listing %)', v_buyer, p_listing_id;
+  END IF;
+
+  v_mgr_name := coalesce(nullif(btrim(v_mgr.name), ''), 'Manager #' || v_listing.manager_id::text);
 
   v_meta := jsonb_build_object(
     'manager_draft', true,
     'listing_id', v_listing.id,
+    'manager_id', v_listing.manager_id,
     'kind', 'manager'
   );
 
-  SELECT EXISTS (
+  IF NOT EXISTS (
     SELECT 1
     FROM public.competition_finance_ledger l
     WHERE l.entry_type = 'contract_signing_offer'
       AND l.metadata->>'listing_id' = v_listing.id::text
       AND coalesce(l.metadata->>'manager_draft', '') IN ('true', 't', '1')
-  ) INTO v_ledger_posted;
+  ) THEN
+    IF v_buyer_balance < v_amount THEN
+      RAISE EXCEPTION 'Insufficient balance for % (need %, have %)', v_buyer, v_amount, v_buyer_balance;
+    END IF;
 
-  IF v_ledger_posted THEN
-    PERFORM public.manager_assign_to_club(
-      v_listing.manager_id,
+    PERFORM public.post_club_ledger(
       v_buyer,
-      2::smallint,
-      v_amount,
-      false,
-      v_meta
+      'contract_signing_offer',
+      -abs(v_amount),
+      format('Manager draft signing — %s', v_mgr_name),
+      v_meta,
+      NULL,
+      NULL,
+      true,
+      true
     );
-    RETURN;
   END IF;
 
-  PERFORM public.manager_assign_to_club(
-    v_listing.manager_id,
-    v_buyer,
-    2::smallint,
-    v_amount,
-    true,
-    v_meta
-  );
+  SELECT id INTO v_season_id
+  FROM public.competition_seasons
+  WHERE is_current = true
+  ORDER BY id DESC
+  LIMIT 1;
+
+  v_wage := public.manager_weekly_wage_for(v_mgr.market_value);
+
+  UPDATE public."Managers"
+  SET contracted_club = v_buyer,
+      contract_seasons_remaining = 2,
+      weekly_wage = v_wage,
+      signed_season_id = v_season_id,
+      updated_at = now()
+  WHERE id = v_listing.manager_id;
+
+  PERFORM public.manager_sync_club_rating(v_buyer);
+
+  UPDATE public."Manager_Transfer_Listings"
+  SET status = 'Closed',
+      transfer_completed = true,
+      updated_at = now()
+  WHERE id = v_listing.id;
+
+  IF to_regprocedure(
+    'public.manager_stint_open(bigint, text, numeric, text, bigint, timestamp with time zone)'
+  ) IS NOT NULL THEN
+    PERFORM public.manager_stint_open(
+      v_listing.manager_id,
+      v_buyer,
+      v_amount,
+      'draft',
+      v_season_id,
+      now()
+    );
+  END IF;
 END;
 $function$;
 
@@ -169,9 +214,92 @@ BEGIN
       PERFORM public.transferengine_accept_manager_draft_sale(v_mgr_listing.id);
     EXCEPTION
       WHEN OTHERS THEN
-        RAISE WARNING 'Manager draft listing % failed: %', v_mgr_listing.id, SQLERRM;
+        RAISE WARNING 'Manager draft listing % failed: % (SQLSTATE %)',
+          v_mgr_listing.id, SQLERRM, SQLSTATE;
     END;
   END LOOP;
+END;
+$function$;
+
+
+CREATE OR REPLACE FUNCTION public.transferengine_probe_manager_draft_settlement(p_limit int DEFAULT 5)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_listing record;
+  v_limit int := greatest(coalesce(p_limit, 5), 1);
+  v_results jsonb := '[]'::jsonb;
+  v_closed boolean;
+BEGIN
+  FOR v_listing IN
+    SELECT
+      l.id,
+      l.manager_id,
+      m.name AS manager_name,
+      l.current_highest_bidder,
+      l.current_highest_bid,
+      cf.balance AS buyer_balance
+    FROM public."Manager_Transfer_Listings" l
+    LEFT JOIN public."Managers" m ON m.id = l.manager_id
+    LEFT JOIN public."Club_Finances" cf ON cf.club_name = l.current_highest_bidder
+    WHERE l.listing_type = 'draft'
+      AND l.status = 'Active'
+      AND l.current_highest_bidder IS NOT NULL
+    ORDER BY l.id
+    LIMIT v_limit
+  LOOP
+    BEGIN
+      PERFORM public.transferengine_accept_manager_draft_sale(v_listing.id);
+
+      SELECT EXISTS (
+        SELECT 1
+        FROM public."Manager_Transfer_Listings" l
+        WHERE l.id = v_listing.id
+          AND l.status = 'Closed'
+          AND l.transfer_completed = true
+      ) INTO v_closed;
+
+      v_results := v_results || jsonb_build_array(jsonb_build_object(
+        'listing_id', v_listing.id,
+        'manager_id', v_listing.manager_id,
+        'manager_name', v_listing.manager_name,
+        'buyer', v_listing.current_highest_bidder,
+        'fee', v_listing.current_highest_bid,
+        'buyer_balance_before', v_listing.buyer_balance,
+        'ok', v_closed,
+        'status_after', (
+          SELECT l.status FROM public."Manager_Transfer_Listings" l WHERE l.id = v_listing.id
+        ),
+        'transfer_completed_after', (
+          SELECT l.transfer_completed FROM public."Manager_Transfer_Listings" l WHERE l.id = v_listing.id
+        ),
+        'manager_contracted_club', (
+          SELECT m.contracted_club FROM public."Managers" m WHERE m.id = v_listing.manager_id
+        )
+      ));
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_results := v_results || jsonb_build_array(jsonb_build_object(
+          'listing_id', v_listing.id,
+          'manager_id', v_listing.manager_id,
+          'manager_name', v_listing.manager_name,
+          'buyer', v_listing.current_highest_bidder,
+          'fee', v_listing.current_highest_bid,
+          'buyer_balance_before', v_listing.buyer_balance,
+          'ok', false,
+          'error', SQLERRM,
+          'sqlstate', SQLSTATE
+        ));
+    END;
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'results', v_results
+  );
 END;
 $function$;
 
@@ -264,6 +392,8 @@ DECLARE
   v_after int;
   v_finish timestamptz;
   v_enabled boolean;
+  v_listing record;
+  v_errors jsonb := '[]'::jsonb;
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -278,7 +408,23 @@ BEGIN
   FROM public."Manager_Transfer_Listings"
   WHERE listing_type = 'draft' AND status = 'Active';
 
-  PERFORM public.transferengine_settle_manager_draft_auctions_only();
+  FOR v_listing IN
+    SELECT l.id
+    FROM public."Manager_Transfer_Listings" l
+    WHERE l.listing_type = 'draft' AND l.status = 'Active'
+    ORDER BY l.id
+  LOOP
+    BEGIN
+      PERFORM public.transferengine_accept_manager_draft_sale(v_listing.id);
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_errors := v_errors || jsonb_build_array(jsonb_build_object(
+          'listing_id', v_listing.id,
+          'error', SQLERRM,
+          'sqlstate', SQLSTATE
+        ));
+    END;
+  END LOOP;
 
   SELECT count(*)::int INTO v_after
   FROM public."Manager_Transfer_Listings"
@@ -299,6 +445,7 @@ BEGIN
     'active_manager_draft_before', v_before,
     'active_manager_draft_after', v_after,
     'manager_draft_settled_count', v_before - v_after,
+    'errors', v_errors,
     'still_active', (
       SELECT coalesce(jsonb_agg(jsonb_build_object(
         'listing_id', l.id,
@@ -306,6 +453,7 @@ BEGIN
         'manager_name', m.name,
         'high_bid', l.current_highest_bid,
         'high_bidder', l.current_highest_bidder,
+        'buyer_balance', cf.balance,
         'buyer_already_has_manager',
           EXISTS (
             SELECT 1 FROM public."Managers" mx
@@ -320,6 +468,7 @@ BEGIN
       ) ORDER BY l.id), '[]'::jsonb)
       FROM public."Manager_Transfer_Listings" l
       LEFT JOIN public."Managers" m ON m.id = l.manager_id
+      LEFT JOIN public."Club_Finances" cf ON cf.club_name = l.current_highest_bidder
       WHERE l.listing_type = 'draft' AND l.status = 'Active'
     )
   );
@@ -327,6 +476,8 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.transferengine_accept_manager_draft_sale(bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.transferengine_probe_manager_draft_settlement(int) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.transferengine_probe_manager_draft_settlement(int) TO service_role;
 GRANT EXECUTE ON FUNCTION public.admin_settle_manager_drafts_now() TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
