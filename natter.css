@@ -525,6 +525,18 @@ body {
 
 .natter-react-chip-emoji {
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+}
+
+.natter-react-custom {
+  display: block;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.natter-react-pick--custom {
+  background: var(--natter-panel);
 }
 
 .natter-react-chip-count {

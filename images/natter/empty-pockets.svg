@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Empty pockets">
+  <rect x="14" y="10" width="36" height="7" rx="2" fill="#2f4f73"/>
+  <rect x="14" y="16" width="36" height="2.5" fill="#243d5c"/>
+  <path d="M18 18.5 14 56h14l3-37.5Z" fill="#4a74a8"/>
+  <path d="M46 18.5 50 56H36l-3-37.5Z" fill="#4a74a8"/>
+  <path d="M31 18.5q1 5 2 0" fill="none" stroke="#3a628f" stroke-width="2" stroke-linecap="round"/>
+  <path d="M22 20c-4 0-7 1-8 4l-1.5 11c-.5 3 2 5 5 4.5l2.5-.5c2-.5 3-2.5 2.5-4.5L21 22c-.5-1.5-1-2-2-2Z" fill="#f2f5fa" stroke="#b8c4d4" stroke-width="1.2"/>
+  <path d="M42 20c4 0 7 1 8 4l1.5 11c.5 3-2 5-5 4.5l-2.5-.5c-2-.5-3-2.5-2.5-4.5L43 22c.5-1.5 1-2 2-2Z" fill="#f2f5fa" stroke="#b8c4d4" stroke-width="1.2"/>
+  <ellipse cx="22" cy="20.5" rx="5.5" ry="2" fill="#2f4f73"/>
+  <ellipse cx="42" cy="20.5" rx="5.5" ry="2" fill="#2f4f73"/>
+  <path d="M20 33.5h4M40 33.5h4" stroke="#c5ceda" stroke-width="1" stroke-linecap="round"/>
+</svg>

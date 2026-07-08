@@ -1,6 +1,6 @@
 -- =============================================================================
--- Natter reactions — finances & banter emojis (empty pockets, 💯, 💵, 🤷‍♂️)
--- Run after natter_reactions.sql
+-- Natter — custom empty-pockets reaction (trousers, pockets out)
+-- Run after natter_reaction_finance_emojis.sql (or natter_reactions.sql)
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.natter_allowed_reaction_emojis()
@@ -25,5 +25,10 @@ AS $$
     '💬', '🗣️', '📣', '🧍‍♂️💬', '🕺', '🎤', '🧃', '🪩', '🧱', '🧩'
   ]::text[];
 $$;
+
+-- Migrate interim 👖💸 reactions if finance emoji patch was applied
+UPDATE public.natter_reactions
+SET emoji = 'gpsl:empty-pockets'
+WHERE emoji = '👖💸';
 
 NOTIFY pgrst, 'reload schema';

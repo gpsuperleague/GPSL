@@ -4,6 +4,15 @@ const MAX_CHARS = 1000;
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MAX_IMAGE_EDGE = 1600;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+/** GPSL custom reactions — key stored in DB, rendered as image in UI. */
+const CUSTOM_REACTIONS = {
+  "gpsl:empty-pockets": {
+    src: "images/natter/empty-pockets.svg",
+    label: "Empty pockets",
+  },
+};
+
 const REACTION_EMOJIS = [
   "👍", "😂", "🔥", "⚽", "👏", "❤️",
   "🥅", "🧤", "🥇", "🥈", "🏆", "🏟️", "🚩", "🟥", "🟨",
@@ -11,7 +20,7 @@ const REACTION_EMOJIS = [
   "😍", "🤯", "😤", "😎", "😱", "🤩", "😡", "🤔", "🥳", "😭",
   "🧢", "👕", "🧣", "🎽", "🧭", "🏴", "🗺️", "🧾", "💼",
   "🧍‍♂️🧍‍♀️",
-  "👖💸", "💯", "💵", "🤷‍♂️",
+  "gpsl:empty-pockets", "💯", "💵", "🤷‍♂️",
   "💬", "🗣️", "📣", "🧍‍♂️💬", "🕺", "🎤", "🧃", "🪩", "🧱", "🧩",
 ];
 const MAX_REACTIONS_PER_POST = 3;
@@ -34,6 +43,22 @@ function escapeHtml(text) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function reactionLabel(emoji) {
+  return CUSTOM_REACTIONS[emoji]?.label || emoji;
+}
+
+function renderReactionGlyph(emoji, { size = "chip" } = {}) {
+  const custom = CUSTOM_REACTIONS[emoji];
+  if (custom) {
+    const px = size === "pick" ? 22 : 18;
+    return (
+      `<img class="natter-react-custom" src="${escapeHtml(custom.src)}" ` +
+      `width="${px}" height="${px}" alt="" aria-hidden="true" loading="lazy">`
+    );
+  }
+  return `<span aria-hidden="true">${emoji}</span>`;
 }
 
 function clubBadgeUrl(short) {
@@ -542,7 +567,7 @@ function renderAttachedReactions(post) {
         `<span class="natter-react-chip" ` +
         (title ? `title="${escapeHtml(title)}"` : "") +
         `>` +
-        `<span class="natter-react-chip-emoji" aria-hidden="true">${r.emoji}</span>` +
+        `<span class="natter-react-chip-emoji" aria-hidden="true">${renderReactionGlyph(r.emoji)}</span>` +
         `<span class="natter-react-chip-count">${Number(r.count)}</span>` +
         `</span>`
       );
@@ -570,19 +595,21 @@ function renderReactionPicker(post, { open = false } = {}) {
     const title = !canReact
       ? "Club owners can react"
       : isActive
-        ? "Remove your reaction"
+        ? `Remove your ${reactionLabel(emoji)} reaction`
         : mineCount >= MAX_REACTIONS_PER_POST
           ? `Limit reached (${MAX_REACTIONS_PER_POST}). Remove one to add another.`
-          : "Add reaction";
+          : `Add ${reactionLabel(emoji)} reaction`;
 
-    const isWide = [...emoji].length > 2 || emoji.length > 4;
+    const isWide =
+      !CUSTOM_REACTIONS[emoji] && ([...emoji].length > 2 || emoji.length > 4);
     const wideClass = isWide ? " natter-react-pick--wide" : "";
+    const pickClass = CUSTOM_REACTIONS[emoji] ? " natter-react-pick--custom" : "";
 
     return (
-      `<button type="button" class="natter-react-pick${active}${wideClass}" ` +
+      `<button type="button" class="natter-react-pick${active}${wideClass}${pickClass}" ` +
       `data-post-id="${postId}" data-emoji="${escapeHtml(emoji)}" ` +
       `title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"${disabled}>` +
-      `<span aria-hidden="true">${emoji}</span>` +
+      renderReactionGlyph(emoji, { size: "pick" }) +
       `</button>`
     );
   }).join("");
