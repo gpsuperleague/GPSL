@@ -25,8 +25,10 @@
 
     <section id="natterCompose" class="natter-compose" hidden>
       <div class="natter-compose-head">
-        <img id="composeBadge" class="natter-avatar" alt="" hidden>
-        <div class="natter-avatar-fallback" id="composeFallback">?</div>
+        <div class="natter-avatar-slot" aria-hidden="true">
+          <img id="composeBadge" class="natter-avatar" alt="" hidden>
+          <div class="natter-avatar-fallback" id="composeFallback">?</div>
+        </div>
         <div>
           <div class="natter-compose-club" id="composeClub">Your club</div>
           <div class="natter-compose-meta" id="composeMeta">This GPSL month</div>
@@ -51,9 +53,45 @@
       <div id="natterComposeHint" class="natter-hint" role="status"></div>
       <div id="natterImagePreviewWrap" class="natter-preview-wrap" hidden>
         <img id="natterImagePreview" class="natter-preview" alt="Selected image preview">
-        <button type="button" id="natterClearImage" class="natter-clear-image">Remove</button>
+        <div class="natter-preview-actions">
+          <button type="button" id="natterRecropImage" class="natter-clear-image natter-recrop">Crop again</button>
+          <button type="button" id="natterClearImage" class="natter-clear-image">Remove</button>
+        </div>
       </div>
     </section>
+
+    <div id="natterCropModal" class="natter-crop-modal" hidden>
+      <div class="natter-crop-dialog" role="dialog" aria-modal="true" aria-labelledby="natterCropTitle">
+        <header class="natter-crop-header">
+          <h2 id="natterCropTitle">Crop image</h2>
+          <p class="natter-crop-sub">Drag to reposition · resize with zoom · we’ll compress to under 3&nbsp;MB</p>
+        </header>
+        <div class="natter-crop-viewport" id="natterCropViewport">
+          <img id="natterCropSource" class="natter-crop-source" alt="" draggable="false">
+          <div class="natter-crop-frame" id="natterCropFrame"></div>
+        </div>
+        <div class="natter-crop-controls">
+          <label class="natter-crop-aspect">
+            Aspect
+            <select id="natterCropAspect">
+              <option value="free">Free</option>
+              <option value="16:9" selected>16:9</option>
+              <option value="4:3">4:3</option>
+              <option value="1:1">1:1</option>
+            </select>
+          </label>
+          <label class="natter-crop-zoom">
+            Zoom
+            <input type="range" id="natterCropZoom" min="1" max="3" step="0.01" value="1">
+          </label>
+          <span id="natterCropSizeHint" class="natter-crop-size">—</span>
+        </div>
+        <footer class="natter-crop-footer">
+          <button type="button" id="natterCropCancel" class="natter-crop-btn natter-crop-btn--ghost">Cancel</button>
+          <button type="button" id="natterCropApply" class="natter-crop-btn">Use image</button>
+        </footer>
+      </div>
+    </div>
 
     <section id="natterAlreadyPosted" class="natter-banner" hidden>
       You’ve already Nattered for this GPSL month — one-and-done. Browse the feed below.
