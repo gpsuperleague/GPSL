@@ -36,6 +36,7 @@ export const MEMBER_ALLOWED_PAGES = new Set([
   "manager_listings",
   "manager_draftauction",
   "season_manager_transfers",
+  "manager_career",
   "club_database",
   "season_club_purchases",
   "special_auction",

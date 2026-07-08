@@ -1,0 +1,86 @@
+<script>window.CURRENT_PAGE = "manager_career";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Manager career — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:920px; margin:30px auto 50px; }
+    h1 { color:#ff9900; margin-bottom:4px; }
+    .sub { color:#999; margin:0 0 18px; }
+    .panel { background:#1a1a1a; border:1px solid #333; border-radius:8px; padding:20px; margin-bottom:18px; }
+    .panel h2 { color:#ffcc66; margin:0 0 12px; font-size:17px; }
+    .head-row { display:flex; gap:18px; align-items:flex-start; flex-wrap:wrap; }
+    .manager-thumb {
+      width:96px; height:96px; border-radius:8px; object-fit:cover;
+      background:#222; border:1px solid #444;
+    }
+    .manager-thumb-fallback {
+      width:96px; height:96px; border-radius:8px; display:flex; align-items:center;
+      justify-content:center; background:#222; border:1px solid #444; color:#ff9900;
+      font-size:28px; font-weight:700;
+    }
+    .totals { display:flex; flex-wrap:wrap; gap:14px; margin-top:10px; }
+    .totals span { background:#222; border:1px solid #444; border-radius:6px; padding:8px 12px; font-size:14px; }
+    .totals b { color:#ff9900; }
+    .gpsl-table { width:100%; border-collapse:collapse; font-size:14px; }
+    .gpsl-table th { text-align:left; padding:8px; background:#222; color:#ff9900; }
+    .gpsl-table td { padding:8px; border-bottom:1px solid #2a2a2a; }
+    .empty { color:#777; font-style:italic; }
+    .gpsl-link { color:#6cf; text-decoration:none; }
+    .gpsl-link:hover { text-decoration:underline; }
+    .type-pill {
+      display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px;
+      border:1px solid #555; color:#ccc;
+    }
+    .type-pill.draft { border-color:#664400; color:#ffcc66; background:#2a1a00; }
+    .type-pill.sack { border-color:#844; color:#f99; background:#2a1515; }
+    .type-pill.market { border-color:#356; color:#9cf; background:#152030; }
+    #careerError { color:#f88; display:none; margin-bottom:12px; }
+    .trophy-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
+    .trophy-item {
+      display:flex; gap:12px; align-items:flex-start;
+      background:#222; border:1px solid #3a3a3a; border-radius:8px; padding:12px 14px;
+    }
+    .trophy-title { color:#ffcc66; font-weight:600; font-size:15px; }
+    .trophy-meta { color:#999; font-size:13px; margin-top:4px; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <p><a href="MGDB.html" class="gpsl-link">← Manager database</a></p>
+    <div id="careerError"></div>
+    <div class="head-row">
+      <img id="managerImg" class="manager-thumb" alt="" hidden>
+      <div id="managerFallback" class="manager-thumb-fallback" hidden>?</div>
+      <div>
+        <h1 id="managerTitle">Manager</h1>
+        <p class="sub" id="managerMeta"></p>
+        <div class="totals" id="totalsRow"></div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>GPSL clubs &amp; seasons</h2>
+      <div id="stintsPanel"><span class="empty">Loading…</span></div>
+    </div>
+
+    <div class="panel">
+      <h2>Transfer / signing history</h2>
+      <div id="transfersPanel"><span class="empty">Loading…</span></div>
+    </div>
+
+    <div class="panel">
+      <h2>Trophy cabinet</h2>
+      <p class="sub" style="margin-top:-6px;">
+        Titles won by clubs while this manager was registered as in charge (from archived seasons).
+      </p>
+      <div id="trophiesPanel"><span class="empty">Loading…</span></div>
+    </div>
+  </div>
+  <script type="module" src="manager_career.js"></script>
+</body>
+</html>

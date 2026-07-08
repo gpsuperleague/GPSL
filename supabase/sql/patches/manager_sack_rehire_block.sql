@@ -25,6 +25,20 @@ ALTER TABLE public.manager_club_sack_blocks ENABLE ROW LEVEL SECURITY;
 -- Helpers
 -- ---------------------------------------------------------------------------
 
+-- Resolve actual Clubs."ShortName" casing before FK insert
+CREATE OR REPLACE FUNCTION public.manager_club_short_canonical(p_club text)
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT c."ShortName"
+  FROM public."Clubs" c
+  WHERE upper(c."ShortName") = upper(btrim(coalesce(p_club, '')))
+  LIMIT 1;
+$$;
+
 CREATE OR REPLACE FUNCTION public.manager_club_sack_block_record(
   p_club_short text,
   p_manager_id bigint,
@@ -37,9 +51,10 @@ SET search_path = public
 AS $function$
 DECLARE
   v_season_id bigint := p_season_id;
-  v_club text := upper(btrim(coalesce(p_club_short, '')));
+  v_club text;
 BEGIN
-  IF v_club = '' OR p_manager_id IS NULL THEN
+  v_club := public.manager_club_short_canonical(p_club_short);
+  IF v_club IS NULL OR p_manager_id IS NULL THEN
     RETURN;
   END IF;
 
@@ -748,10 +763,11 @@ BEGIN
   )
   SELECT
     t.season_id,
-    upper(t.club_short_name),
+    public.manager_club_short_canonical(t.club_short_name),
     t.manager_id,
     t.sacked_at
   FROM tmp_manager_sack_backfill t
+  WHERE public.manager_club_short_canonical(t.club_short_name) IS NOT NULL
   ON CONFLICT (season_id, club_short_name, manager_id) DO NOTHING;
 
   GET DIAGNOSTICS v_inserted = ROW_COUNT;

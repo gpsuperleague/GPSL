@@ -10,7 +10,10 @@ import {
   isManagerGpdbFreeAgentOfferAllowed,
   getManagerDraftEffectivePhase,
 } from "./draft_timeline.js";
-import { getClubManagerVacancy } from "./manager_draft_engine.js";
+import {
+  getClubManagerVacancy,
+  fetchClubSackedManagerIds,
+} from "./manager_draft_engine.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 
@@ -45,6 +48,7 @@ let managerDraftOn = false;
 let draftStartTime = null;
 let viewerClubShort = null;
 let viewerClubHasManager = false;
+let viewerSackedManagerIds = new Set();
 
 function parseMoneyInput(value) {
   if (!value) return null;
@@ -191,6 +195,9 @@ function renderPage() {
             const clubLabel = fullClubName(viewerClubShort) || viewerClubShort;
             return `<td style="color:#888;font-size:11px;" title="Sack your current manager first">${clubLabel}: have a contracted Manager</td>`;
           }
+          if (viewerSackedManagerIds.has(Number(row.id))) {
+            return `<td style="color:#f88;font-size:11px;" title="You sacked this manager earlier this season">Sacked — closed</td>`;
+          }
           if (canOpen) {
             return `<td><a href="manager_draftauction_manager.html?manager=${row.id}" class="button" style="padding:4px 8px;font-size:11px;">Open</a></td>`;
           }
@@ -209,6 +216,10 @@ function renderPage() {
         }
         if (col.key === "rating") {
           return `<td>${val ?? "—"}</td>`;
+        }
+        if (col.key === "name") {
+          const href = `manager_career.html?manager=${encodeURIComponent(row.id)}`;
+          return `<td><a href="${href}" class="gpsl-link" style="color:#ffcc66;text-decoration:none;">${val ?? "—"}</a></td>`;
         }
         return `<td>${val ?? "—"}</td>`;
       }).join("");
@@ -260,6 +271,9 @@ async function loadViewerClub() {
 
   const vacancy = await getClubManagerVacancy(viewerClubShort);
   viewerClubHasManager = !vacancy.vacant;
+
+  const sacked = await fetchClubSackedManagerIds({ force: true });
+  viewerSackedManagerIds = new Set((sacked || []).map((id) => Number(id)));
 }
 
 async function loadManagers() {

@@ -126,6 +126,6 @@ export function managerListCellHtml(mgr) {
       </span>`
     : `<span class="manager-list-thumb-wrap"><span class="manager-list-thumb-fallback">${escapeHtml(initials)}</span></span>`;
   const id = mgr?.id;
-  const href = id ? `manager_draftauction_manager.html?manager=${id}` : "#";
+  const href = id ? `manager_career.html?manager=${id}` : "#";
   return `<span class="manager-list-cell">${thumb}<a class="player-link" href="${href}">${escapeHtml(name)}</a></span>`;
 }
