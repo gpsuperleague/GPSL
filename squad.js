@@ -1067,7 +1067,7 @@ function syncSquadTableColumnWidths() {
   table.style.width = "";
   table.style.tableLayout = "auto";
 
-  const widths = Array.from(ths, () => 0);
+  const widths = Array.from({ length: thCount }, () => 0);
 
   const measureCell = (cell, i) => {
     if (!cell || i >= widths.length || cell.colSpan > 1) return;
