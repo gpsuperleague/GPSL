@@ -1,7 +1,6 @@
 -- =============================================================================
 -- Natter reactions — club owners can react with a fixed emoji set
--- One reaction per owner per post (tap same = clear, different = switch).
--- Run after natter_platform.sql
+-- Up to 3 distinct emojis per owner per post (tap to toggle).
 -- =============================================================================
 
 CREATE TABLE IF NOT EXISTS public.natter_reactions (
@@ -14,14 +13,18 @@ CREATE TABLE IF NOT EXISTS public.natter_reactions (
   CONSTRAINT natter_reactions_emoji_check CHECK (
     emoji IN ('👍', '😂', '🔥', '⚽', '👏', '❤️')
   ),
-  CONSTRAINT natter_reactions_unique UNIQUE (post_id, owner_id)
+  CONSTRAINT natter_reactions_unique UNIQUE (post_id, owner_id, emoji)
 );
+
+-- Adjust constraint for older installs (was (post_id, owner_id) previously).
+ALTER TABLE public.natter_reactions DROP CONSTRAINT IF EXISTS natter_reactions_unique;
+ALTER TABLE public.natter_reactions ADD CONSTRAINT natter_reactions_unique UNIQUE (post_id, owner_id, emoji);
 
 CREATE INDEX IF NOT EXISTS natter_reactions_post_idx
   ON public.natter_reactions (post_id);
 
 COMMENT ON TABLE public.natter_reactions IS
-  'Natter: one emoji reaction per club owner per post.';
+  'Natter: up to 3 emoji reactions per club owner per post.';
 
 ALTER TABLE public.natter_reactions ENABLE ROW LEVEL SECURITY;
 
@@ -29,6 +32,7 @@ DROP POLICY IF EXISTS natter_reactions_select ON public.natter_reactions;
 CREATE POLICY natter_reactions_select ON public.natter_reactions
   FOR SELECT TO authenticated USING (true);
 
+-- Summary counts for the feed
 CREATE OR REPLACE FUNCTION public.natter_reaction_counts(p_post_id bigint)
 RETURNS jsonb
 LANGUAGE sql
@@ -48,6 +52,7 @@ AS $$
   ) q;
 $$;
 
+-- Toggle a specific emoji reaction (enforces max 3 distinct emojis per owner/post)
 CREATE OR REPLACE FUNCTION public.natter_react(
   p_post_id bigint,
   p_emoji text
@@ -59,10 +64,11 @@ SET search_path = public
 AS $function$
 DECLARE
   v_uid uuid := auth.uid();
-  v_club text;
   v_emoji text := nullif(btrim(coalesce(p_emoji, '')), '');
-  v_existing text;
-  v_cleared boolean := false;
+  v_exists boolean := false;
+  v_count int;
+  v_club text;
+  v_my_reactions jsonb;
 BEGIN
   IF v_uid IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'not_authenticated');
@@ -90,36 +96,55 @@ BEGIN
     RETURN jsonb_build_object('ok', false, 'reason', 'bad_emoji');
   END IF;
 
-  SELECT r.emoji INTO v_existing
-  FROM public.natter_reactions r
-  WHERE r.post_id = p_post_id
-    AND r.owner_id = v_uid
-  LIMIT 1;
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.natter_reactions r
+    WHERE r.post_id = p_post_id
+      AND r.owner_id = v_uid
+      AND r.emoji = v_emoji
+  )
+  INTO v_exists;
 
-  IF v_existing IS NOT NULL AND v_existing = v_emoji THEN
+  IF v_exists THEN
     DELETE FROM public.natter_reactions
-    WHERE post_id = p_post_id AND owner_id = v_uid;
-    v_cleared := true;
-  ELSIF v_existing IS NOT NULL THEN
-    UPDATE public.natter_reactions
-    SET emoji = v_emoji, updated_at = now()
-    WHERE post_id = p_post_id AND owner_id = v_uid;
+    WHERE post_id = p_post_id
+      AND owner_id = v_uid
+      AND emoji = v_emoji;
   ELSE
+    SELECT count(*)::int
+    INTO v_count
+    FROM public.natter_reactions r
+    WHERE r.post_id = p_post_id
+      AND r.owner_id = v_uid;
+
+    IF v_count >= 3 THEN
+      RETURN jsonb_build_object(
+        'ok', false,
+        'reason', 'limit_reached',
+        'max', 3
+      );
+    END IF;
+
     INSERT INTO public.natter_reactions (post_id, owner_id, emoji)
     VALUES (p_post_id, v_uid, v_emoji);
   END IF;
 
+  SELECT coalesce(jsonb_agg(r.emoji ORDER BY r.emoji), '[]'::jsonb)
+  INTO v_my_reactions
+  FROM public.natter_reactions r
+  WHERE r.post_id = p_post_id
+    AND r.owner_id = v_uid;
+
   RETURN jsonb_build_object(
     'ok', true,
     'post_id', p_post_id,
-    'cleared', v_cleared,
-    'my_reaction', CASE WHEN v_cleared THEN NULL ELSE v_emoji END,
+    'my_reactions', v_my_reactions,
     'reactions', public.natter_reaction_counts(p_post_id)
   );
 END;
 $function$;
 
--- Enrich list posts with reaction summary + caller's reaction
+-- Enrich list posts with reaction summary + caller's reaction set
 CREATE OR REPLACE FUNCTION public.natter_list_posts(
   p_season_id bigint DEFAULT NULL,
   p_gpsl_month text DEFAULT NULL,
@@ -178,13 +203,12 @@ BEGIN
             'image_path', p.image_path,
             'created_at', p.created_at,
             'reactions', public.natter_reaction_counts(p.id),
-            'my_reaction', (
-              SELECT r.emoji
+            'my_reactions', coalesce((
+              SELECT jsonb_agg(r.emoji ORDER BY r.emoji)
               FROM public.natter_reactions r
               WHERE r.post_id = p.id
                 AND r.owner_id = v_uid
-              LIMIT 1
-            )
+            ), '[]'::jsonb)
           ) AS row_data,
           p.created_at AS sort_at
         FROM public.natter_posts p

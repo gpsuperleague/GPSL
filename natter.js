@@ -5,6 +5,7 @@ const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MAX_IMAGE_EDGE = 1600;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const REACTION_EMOJIS = ["👍", "😂", "🔥", "⚽", "👏", "❤️"];
+const MAX_REACTIONS_PER_POST = 3;
 
 let composeState = null;
 let selectedFile = null;
@@ -517,20 +518,34 @@ function reactionCountMap(reactions) {
 
 function renderReactionBar(post) {
   const counts = reactionCountMap(post.reactions);
-  const mine = post.my_reaction || null;
+  const myReactions = Array.isArray(post.my_reactions) ? post.my_reactions : [];
+  const mineSet = new Set(myReactions);
+  const mineCount = mineSet.size;
+
   const buttons = REACTION_EMOJIS.map((emoji) => {
     const count = counts.get(emoji) || 0;
-    const active = mine === emoji ? " is-active" : "";
+    const isActive = mineSet.has(emoji);
+    const active = isActive ? " is-active" : "";
     const countHtml =
       count > 0
         ? `<span class="natter-react-count">${count}</span>`
         : `<span class="natter-react-count natter-react-count--empty"></span>`;
-    const disabled = canReact ? "" : " disabled";
-    const title = canReact
-      ? mine === emoji
+
+    let disabled = "";
+    if (!canReact) {
+      disabled = " disabled";
+    } else if (!isActive && mineCount >= MAX_REACTIONS_PER_POST) {
+      disabled = " disabled";
+    }
+
+    const title = !canReact
+      ? "Club owners can react"
+      : isActive
         ? "Remove reaction"
-        : "React"
-      : "Club owners can react";
+        : mineCount >= MAX_REACTIONS_PER_POST
+          ? `Limit reached (${MAX_REACTIONS_PER_POST}). Remove one to add another.`
+          : "React";
+
     return (
       `<button type="button" class="natter-react-btn${active}" ` +
       `data-post-id="${Number(post.id)}" data-emoji="${escapeHtml(emoji)}" ` +
@@ -540,7 +555,17 @@ function renderReactionBar(post) {
     );
   }).join("");
 
-  return `<div class="natter-react-bar" data-post-id="${Number(post.id)}">${buttons}</div>`;
+  const postId = Number(post.id);
+  const plusDisabled = canReact ? "" : " disabled";
+
+  return `
+    <div class="natter-react-wrap" data-post-id="${postId}">
+      <button type="button" class="natter-react-plus"${plusDisabled} aria-expanded="false" aria-label="Add reactions" data-post-id="${postId}">+</button>
+      <div class="natter-react-panel" hidden>
+        ${buttons}
+      </div>
+    </div>
+  `;
 }
 
 function renderFeed(posts) {
@@ -604,6 +629,7 @@ async function toggleReaction(postId, emoji) {
       bad_emoji: "That reaction isn’t available.",
       not_found: "Post not found.",
       not_authenticated: "Sign in to react.",
+      limit_reached: `You can react with up to ${MAX_REACTIONS_PER_POST} emojis per post.`,
     };
     setComposeHint(reasons[data?.reason] || "Could not react.", true);
     return;
@@ -613,17 +639,13 @@ async function toggleReaction(postId, emoji) {
   if (idx >= 0) {
     feedPosts[idx] = {
       ...feedPosts[idx],
-      my_reaction: data.my_reaction || null,
+      my_reactions: Array.isArray(data.my_reactions) ? data.my_reactions : [],
       reactions: data.reactions || [],
     };
-    const card = document.querySelector(
-      `.natter-card[data-post-id="${Number(postId)}"] .natter-react-bar`
+    const wrap = document.querySelector(
+      `.natter-card[data-post-id="${Number(postId)}"] .natter-react-wrap`
     );
-    if (card) {
-      card.outerHTML = renderReactionBar(feedPosts[idx]);
-    } else {
-      renderFeed(feedPosts);
-    }
+    if (wrap) wrap.outerHTML = renderReactionBar(feedPosts[idx]);
   }
 }
 
@@ -858,9 +880,23 @@ function wireCompose() {
   });
   postBtn?.addEventListener("click", () => void submitPost());
   feed?.addEventListener("click", (e) => {
+    const plus = e.target.closest?.(".natter-react-plus");
+    if (plus) {
+      if (plus.disabled) return;
+      const panel = plus.parentElement?.querySelector?.(".natter-react-panel");
+      if (!panel) return;
+      const isHidden = panel.hidden === true;
+      panel.hidden = !isHidden;
+      plus.setAttribute("aria-expanded", String(panel.hidden === false));
+      return;
+    }
+
     const btn = e.target.closest?.(".natter-react-btn");
     if (!btn || btn.disabled) return;
-    void toggleReaction(btn.getAttribute("data-post-id"), btn.getAttribute("data-emoji"));
+    void toggleReaction(
+      btn.getAttribute("data-post-id"),
+      btn.getAttribute("data-emoji")
+    );
   });
   wireCropUi();
 }

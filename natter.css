@@ -493,11 +493,32 @@ body {
   object-fit: cover;
 }
 
-.natter-react-bar {
+.natter-react-wrap {
+  margin-top: 12px;
+}
+
+.natter-react-plus {
+  border: 1px solid var(--natter-line);
+  background: var(--natter-panel-2);
+  color: var(--natter-ink);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-weight: 800;
+  cursor: pointer;
+  line-height: 1;
+  min-height: 28px;
+}
+
+.natter-react-plus:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.natter-react-panel {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .natter-react-btn {
