@@ -737,6 +737,10 @@ body.gpsl-sport-open {
   .nav-gpsl-sport-label {
     display: none;
   }
+
+  .nav-natter-label {
+    display: none;
+  }
 }
 
 .gpsl-sport-upgrade-notice {

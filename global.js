@@ -39,6 +39,17 @@ function getGpslSportModule() {
   return gpslSportModulePromise;
 }
 
+function renderNavNatterLink(natterActive = false) {
+  return (
+    `<a href="natter.html" class="nav-shortcut nav-natter${
+      natterActive ? " active" : ""
+    }" title="Natter" aria-label="Natter">` +
+    `<span class="nav-natter-mark" aria-hidden="true">N</span>` +
+    `<span class="nav-natter-label">Natter</span>` +
+    `</a>`
+  );
+}
+
 function renderNavGpslSportButton() {
   const v = GLOBAL_JS_VERSION;
   return (
@@ -1509,6 +1520,7 @@ export async function renderFallbackNav() {
           <a href="squad.html" class="nav-link">Squad</a>
         </div>
         <div class="gpsl-nav-actions gpsl-nav-actions-primary">
+          ${renderNavNatterLink(false)}
           ${renderNavGpslSportButton()}
           ${renderNavDashboardHomeLink(ownerClub, "dashboard.html", false)}
           ${renderNavInboxLink(false, 0)}
@@ -1611,6 +1623,7 @@ export async function buildNav() {
 
   const dashActive = pathNorm === normalizeNavPath(homeHref);
   const inboxActive = pathNorm === "inbox.html";
+  const natterActive = pathNorm === "natter.html";
 
   let navSections = Array.isArray(NAV_SECTIONS) ? [...NAV_SECTIONS] : [];
   if (!navSections.length) {
@@ -1751,6 +1764,7 @@ export async function buildNav() {
   html += `</div>`;
 
   html += `<div class="gpsl-nav-actions gpsl-nav-actions-primary">`;
+  html += renderNavNatterLink(natterActive);
   html += renderNavGpslSportButton();
   html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
   html += renderNavInboxLink(inboxActive, unread);
