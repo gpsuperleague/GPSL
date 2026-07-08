@@ -57,6 +57,12 @@ import {
   voluntaryReleaseOptionLabel,
 } from "./voluntary_contract_release.js";
 import {
+  MAX_NEW_OWNER_RELEASES,
+  NEW_OWNER_RELEASE_ACTION,
+  normalizeNewOwnerReleasesRemaining,
+  newOwnerReleaseOptionLabel,
+} from "./new_owner_release.js";
+import {
   loadSquadDesignationsState,
   setSquadDesignation,
   squadRoleActionOptionsHtml,
@@ -154,6 +160,13 @@ let foreignInterestRemaining = MAX_FOREIGN_INTEREST;
 /** Fictional clubs currently tracking (same length as interest slots). */
 let foreignTrackingTeams = [];
 let voluntaryReleasesRemaining = MAX_VOLUNTARY_CONTRACT_RELEASES;
+let newOwnerReleaseState = {
+  remaining: 0,
+  firstSeason: false,
+  windowOpen: false,
+  availableNow: false,
+};
+let playerPurchaseFeeById = new Map();
 let squadDesignationsState = null;
 let squadMinimumStatus = null;
 /** @type {Set<string>} */
@@ -222,9 +235,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   voluntaryReleasesRemaining = normalizeVoluntaryReleasesRemaining(
     club.voluntary_contract_releases_remaining
   );
-  await Promise.all([loadForeignInterestState(), loadVoluntaryReleaseState()]);
+  await Promise.all([
+    loadForeignInterestState(),
+    loadVoluntaryReleaseState(),
+    loadNewOwnerReleaseState(),
+  ]);
   renderForeignInterestBadge();
   renderVoluntaryReleaseBadge();
+  renderNewOwnerReleaseBadge();
   applyForeignSaleOptionState();
   applyVoluntaryReleaseOptionState();
 
@@ -326,6 +344,51 @@ function voluntaryReleaseOptionHtml(player) {
   )}</option>`;
 }
 
+function newOwnerReleaseOptionHtml(player) {
+  if (!newOwnerReleaseState.firstSeason && !newOwnerReleaseState.availableNow) {
+    return "";
+  }
+
+  const pid = String(player?.Konami_ID ?? "");
+  const fee = playerPurchaseFeeById.has(pid)
+    ? playerPurchaseFeeById.get(pid)
+    : null;
+  const remaining = newOwnerReleaseState.remaining;
+  const availableNow = newOwnerReleaseState.availableNow;
+  const eligibleFee = fee != null && fee > 0;
+
+  if (!newOwnerReleaseState.firstSeason) {
+    return "";
+  }
+
+  if (remaining <= 0) {
+    return `<option value="" disabled>${newOwnerReleaseOptionLabel(0, fee, {
+      firstSeason: true,
+      availableNow: false,
+    })}</option>`;
+  }
+
+  if (!availableNow) {
+    return `<option value="" disabled>${newOwnerReleaseOptionLabel(remaining, fee, {
+      firstSeason: true,
+      availableNow: false,
+    })}</option>`;
+  }
+
+  if (!eligibleFee) {
+    return `<option value="" disabled>${newOwnerReleaseOptionLabel(remaining, fee, {
+      firstSeason: true,
+      availableNow: true,
+    })}</option>`;
+  }
+
+  return `<option value="${NEW_OWNER_RELEASE_ACTION}">${newOwnerReleaseOptionLabel(
+    remaining,
+    fee,
+    { firstSeason: true, availableNow: true }
+  )}</option>`;
+}
+
 function squadActionOptionsHtml(player) {
   const pid = String(player?.Konami_ID ?? "");
   if (seasonLoanPlayerIds.has(pid)) {
@@ -335,8 +398,10 @@ function squadActionOptionsHtml(player) {
   }
 
   const releaseOpt = voluntaryReleaseOptionHtml(player);
+  const newOwnerOpt = newOwnerReleaseOptionHtml(player);
+  const releaseGroup = `${releaseOpt}${newOwnerOpt}`;
   const contractOpts = squadContractActionOptionsHtml(player, clubNation, {
-    optionHtml: releaseOpt,
+    optionHtml: releaseGroup,
   });
   if (contractOpts) return contractOpts;
 
@@ -344,7 +409,7 @@ function squadActionOptionsHtml(player) {
     if (isContractFinalYear(player)) {
       return `<option value="" disabled>Final contract year</option>`;
     }
-    return `${releaseOpt}
+    return `${releaseGroup}
             <option value="" disabled>Signed this season</option>`;
   }
   const foreignOpts =
@@ -355,7 +420,7 @@ function squadActionOptionsHtml(player) {
   return `
             <option value="list">Transfer List</option>
             ${foreignOpts}
-            ${releaseOpt}`;
+            ${releaseGroup}`;
 }
 
 function playerCanListOrSellLocal(player) {
@@ -400,6 +465,94 @@ function renderVoluntaryReleaseBadge() {
 
   el.innerHTML = `
     <span class="foreign-interest-main">${n} voluntary ${n === 1 ? "release" : "releases"} left · max 3/season</span><span class="foreign-interest-hint"> · Pays wages · out until next season</span>`;
+}
+
+async function loadNewOwnerReleaseState() {
+  const { data, error } = await supabase.rpc("club_new_owner_release_state");
+
+  if (error) {
+    const msg = String(error.message || "").toLowerCase();
+    if (
+      msg.includes("club_new_owner_release_state") ||
+      msg.includes("new_owner_releases") ||
+      error.code === "42883"
+    ) {
+      newOwnerReleaseState = {
+        remaining: 0,
+        firstSeason: false,
+        windowOpen: false,
+        availableNow: false,
+      };
+      return;
+    }
+    console.warn("club_new_owner_release_state:", error);
+    return;
+  }
+
+  newOwnerReleaseState = {
+    remaining: normalizeNewOwnerReleasesRemaining(
+      data?.new_owner_releases_remaining
+    ),
+    firstSeason: Boolean(data?.first_season_at_club),
+    windowOpen: Boolean(data?.window_open),
+    availableNow: Boolean(data?.available_now),
+  };
+}
+
+function renderNewOwnerReleaseBadge() {
+  const el = document.getElementById("newOwnerReleaseBadge");
+  if (!el) return;
+
+  if (!newOwnerReleaseState.firstSeason) {
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+
+  el.hidden = false;
+  const n = newOwnerReleaseState.remaining;
+  el.classList.toggle("foreign-interest-badge--empty", n <= 0);
+
+  if (n <= 0) {
+    el.textContent = "No New Owner releases left (0/3)";
+    return;
+  }
+
+  const windowHint = newOwnerReleaseState.windowOpen
+    ? " · Pre-season / January open"
+    : " · Pre-season / January only";
+  el.innerHTML = `
+    <span class="foreign-interest-main">${n} New Owner ${n === 1 ? "release" : "releases"} left · first season</span><span class="foreign-interest-hint">${windowHint} · Central Bank refund of purchase fee · out until next season</span>`;
+}
+
+async function loadSquadPurchaseFees(playerIds) {
+  playerPurchaseFeeById = new Map();
+  const ids = [...new Set((playerIds || []).map((id) => String(id)).filter(Boolean))];
+  if (!ids.length || !currentUserShort || !newOwnerReleaseState.firstSeason) {
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("Transfer_History")
+    .select("player_id, fee, transfer_time")
+    .eq("buyer_club_id", currentUserShort)
+    .in("player_id", ids)
+    .gt("fee", 0)
+    .order("transfer_time", { ascending: false });
+
+  if (error) {
+    console.warn("Transfer_History purchase fees:", error.message);
+    return;
+  }
+
+  for (const row of data || []) {
+    const pid = String(row.player_id);
+    if (playerPurchaseFeeById.has(pid)) continue;
+    const fee = Number(row.fee);
+    if (Number.isFinite(fee) && fee > 0) {
+      playerPurchaseFeeById.set(pid, fee);
+    }
+  }
 }
 
 function applyVoluntaryReleaseOptionState() {
@@ -474,11 +627,22 @@ function applyForeignSaleOptionState() {
   });
 }
 
+function applyNewOwnerReleaseOptionState() {
+  document.querySelectorAll("select.squad-action-select").forEach((sel) => {
+    const opt = sel.querySelector(`option[value="${NEW_OWNER_RELEASE_ACTION}"]`);
+    if (!opt) return;
+    const allow =
+      newOwnerReleaseState.availableNow && newOwnerReleaseState.remaining > 0;
+    opt.disabled = !allow;
+  });
+}
+
 function applyTransferWindowRules() {
   const msg = document.getElementById("windowClosedMessage");
   if (msg) msg.style.display = transferWindowOpen ? "none" : "block";
   applyForeignSaleOptionState();
   applyVoluntaryReleaseOptionState();
+  applyNewOwnerReleaseOptionState();
 }
 
 async function loadFreshTransferStatusState() {
@@ -537,6 +701,7 @@ async function loadSquad() {
     loadClubSquadMinimumStatus(supabase, currentUserShort),
     loadActiveSeasonLoanPlayerIds(supabase, currentUserShort),
   ]);
+  await loadSquadPurchaseFees(playerIds);
 
   renderSquadCompliance(list, squadDesignationsState, squadGhostPlayers);
 
@@ -580,6 +745,7 @@ function refreshSquadDesignationSelects(players, state) {
   applyTransferWindowRules();
   applyForeignSaleOptionState();
   applyVoluntaryReleaseOptionState();
+  applyNewOwnerReleaseOptionState();
 }
 
 function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
@@ -1146,6 +1312,12 @@ async function handlePlayerAction(playerId, action, selectEl) {
       return;
     }
 
+    if (action === NEW_OWNER_RELEASE_ACTION) {
+      resetActionSelect(selectEl);
+      await releasePlayerNewOwner(playerId);
+      return;
+    }
+
     if (action === TERMINATE_SEASON_LOAN_ACTION) {
       resetActionSelect(selectEl);
       await terminateSeasonLoanPlayer(playerId);
@@ -1336,6 +1508,95 @@ async function releasePlayerFromContract(playerId) {
   alert(
     `${data?.player_name || player.Name} released.\n\n` +
       `Buy-out paid: ${formatMoney(data?.buyout_cost ?? cost)}.\n` +
+      `Unavailable until ${data?.unavailable_until_season || "next season"}.`
+  );
+  await loadSquad();
+}
+
+async function releasePlayerNewOwner(playerId) {
+  const { data: player, error: loadErr } = await supabase
+    .from("Players")
+    .select("Konami_ID, Name, Contracted_Team")
+    .eq("Konami_ID", playerId)
+    .single();
+
+  if (loadErr || !player) {
+    alert("Could not load player.");
+    return;
+  }
+
+  const contracted = playerContractClubKey(player.Contracted_Team);
+  if (contracted !== currentUserShort) {
+    alert("This player is not at your club.");
+    return;
+  }
+
+  await loadNewOwnerReleaseState();
+  renderNewOwnerReleaseBadge();
+
+  if (!newOwnerReleaseState.firstSeason) {
+    alert("New Owner releases are only available in your first season in charge of this club.");
+    return;
+  }
+  if (!newOwnerReleaseState.windowOpen) {
+    alert("New Owner releases are only available in the pre-season window or the January transfer window.");
+    return;
+  }
+  if (newOwnerReleaseState.remaining <= 0) {
+    alert("No New Owner releases remaining (maximum 3 in your first season at this club).");
+    return;
+  }
+
+  const { data: preview, error: previewError } = await supabase.rpc(
+    "player_new_owner_release_preview",
+    { p_player_id: String(playerId) }
+  );
+
+  if (previewError) {
+    alert(previewError.message || "Could not preview New Owner release.");
+    return;
+  }
+
+  const fee = Number(preview?.fee);
+  if (!preview?.eligible_player || !Number.isFinite(fee) || fee <= 0) {
+    alert(
+      "No purchase fee found for this player at your club. New Owner release only applies to players the club paid a transfer fee for."
+    );
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `New Owner release for ${player.Name}?\n\n` +
+      `Club is refunded the purchase fee: ${formatMoney(fee)} from the Central Bank.\n` +
+      `The original transfer history fee is left unchanged.\n` +
+      `Player becomes a free agent but cannot be signed until next season.\n\n` +
+      `${newOwnerReleaseState.remaining - 1} New Owner release(s) will remain.`
+  );
+
+  if (!confirmed) return;
+
+  const { data, error } = await supabase.rpc("player_new_owner_release", {
+    p_player_id: String(playerId),
+  });
+
+  if (error) {
+    alert(error.message || "Could not complete New Owner release.");
+    return;
+  }
+
+  newOwnerReleaseState.remaining = normalizeNewOwnerReleasesRemaining(
+    data?.new_owner_releases_remaining
+  );
+  newOwnerReleaseState.availableNow =
+    newOwnerReleaseState.firstSeason &&
+    newOwnerReleaseState.windowOpen &&
+    newOwnerReleaseState.remaining > 0;
+  renderNewOwnerReleaseBadge();
+  applyNewOwnerReleaseOptionState();
+
+  alert(
+    `${data?.player_name || player.Name} released (New Owner).\n\n` +
+      `Central Bank refund: ${formatMoney(data?.refund ?? data?.fee ?? fee)}.\n` +
       `Unavailable until ${data?.unavailable_until_season || "next season"}.`
   );
   await loadSquad();

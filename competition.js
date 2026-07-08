@@ -1359,6 +1359,7 @@ export const GATE_ENTRY_LABELS = {
   contract_signing_offer: "Manager signing / contract offers",
   contract_release_comp: "Contract release (paid)",
   contract_release_comp_received: "Contract release (received)",
+  new_owner_release: "New Owner release",
   contract_termination: "Contract termination",
   eos_debt_interest: "Debt interest",
   eos_ffp_charge: "FFP charge",

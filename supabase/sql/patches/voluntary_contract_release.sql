@@ -70,7 +70,8 @@ ALTER TABLE public.competition_finance_ledger
       'eos_ffp_charge',
       'eos_injection',
       'special_auction_fee',
-      'special_auction_prize'
+      'special_auction_prize',
+      'new_owner_release'
     )
   );
 

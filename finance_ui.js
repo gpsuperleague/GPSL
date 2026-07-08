@@ -41,6 +41,7 @@ export const LEDGER_TYPE_TO_LINE = {
   contract_release_comp: "staff_release",
   contract_release_comp_received: "staff_release",
   contract_termination: "staff_termination",
+  new_owner_release: "staff_new_owner_release",
   eos_debt_interest: "eos_debt_interest",
   eos_ffp_charge: "eos_ffp",
   eos_injection: "eos_injection",
@@ -244,6 +245,12 @@ export const FINANCE_UI_SECTIONS = [
         label: "Contract releases",
         types: ["contract_release_comp", "contract_release_comp_received"],
         note: "Player contract buy-outs (wage × seasons remaining) and other release debits.",
+      },
+      {
+        id: "staff_new_owner_release",
+        label: "New Owner releases",
+        types: ["new_owner_release"],
+        note: "First season at a club only — Central Bank refund of the purchase fee the club paid (max 3). Transfer history is unchanged.",
       },
       {
         id: "staff_termination",
