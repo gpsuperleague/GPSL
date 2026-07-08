@@ -507,29 +507,49 @@ function renderMonthTabs(months, activeMonth) {
   });
 }
 
-function reactionCountMap(reactions) {
-  const map = new Map();
-  for (const r of Array.isArray(reactions) ? reactions : []) {
-    if (!r?.emoji) continue;
-    map.set(r.emoji, Number(r.count) || 0);
-  }
-  return map;
+function reactionDetailsList(post) {
+  return Array.isArray(post?.reactions) ? post.reactions : [];
 }
 
-function renderReactionBar(post) {
-  const counts = reactionCountMap(post.reactions);
+function ownerTooltip(owners) {
+  const names = (Array.isArray(owners) ? owners : [])
+    .map((o) => String(o || "").trim())
+    .filter(Boolean);
+  if (!names.length) return "";
+  return names.join(", ");
+}
+
+function renderAttachedReactions(post) {
+  const details = reactionDetailsList(post).filter(
+    (r) => r?.emoji && Number(r.count) > 0
+  );
+  if (!details.length) return "";
+
+  return details
+    .map((r) => {
+      const tip = ownerTooltip(r.owners);
+      const title = tip ? `Reacted by ${tip}` : "";
+      return (
+        `<span class="natter-react-chip" ` +
+        (title ? `title="${escapeHtml(title)}"` : "") +
+        `>` +
+        `<span class="natter-react-chip-emoji" aria-hidden="true">${r.emoji}</span>` +
+        `<span class="natter-react-chip-count">${Number(r.count)}</span>` +
+        `</span>`
+      );
+    })
+    .join("");
+}
+
+function renderReactionPicker(post, { open = false } = {}) {
   const myReactions = Array.isArray(post.my_reactions) ? post.my_reactions : [];
   const mineSet = new Set(myReactions);
   const mineCount = mineSet.size;
+  const postId = Number(post.id);
 
   const buttons = REACTION_EMOJIS.map((emoji) => {
-    const count = counts.get(emoji) || 0;
     const isActive = mineSet.has(emoji);
     const active = isActive ? " is-active" : "";
-    const countHtml =
-      count > 0
-        ? `<span class="natter-react-count">${count}</span>`
-        : `<span class="natter-react-count natter-react-count--empty"></span>`;
 
     let disabled = "";
     if (!canReact) {
@@ -541,29 +561,37 @@ function renderReactionBar(post) {
     const title = !canReact
       ? "Club owners can react"
       : isActive
-        ? "Remove reaction"
+        ? "Remove your reaction"
         : mineCount >= MAX_REACTIONS_PER_POST
           ? `Limit reached (${MAX_REACTIONS_PER_POST}). Remove one to add another.`
-          : "React";
+          : "Add reaction";
 
     return (
-      `<button type="button" class="natter-react-btn${active}" ` +
-      `data-post-id="${Number(post.id)}" data-emoji="${escapeHtml(emoji)}" ` +
+      `<button type="button" class="natter-react-pick${active}" ` +
+      `data-post-id="${postId}" data-emoji="${escapeHtml(emoji)}" ` +
       `title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"${disabled}>` +
-      `<span class="natter-react-emoji" aria-hidden="true">${emoji}</span>${countHtml}` +
+      `<span aria-hidden="true">${emoji}</span>` +
       `</button>`
     );
   }).join("");
 
+  return `<div class="natter-react-panel"${open ? "" : " hidden"}>${buttons}</div>`;
+}
+
+function renderReactionBar(post, { pickerOpen = false } = {}) {
   const postId = Number(post.id);
-  const plusDisabled = canReact ? "" : " disabled";
+  const attached = renderAttachedReactions(post);
+  const plusHtml = canReact
+    ? `<button type="button" class="natter-react-plus" aria-expanded="${pickerOpen ? "true" : "false"}" aria-label="Add reactions" data-post-id="${postId}">+</button>`
+    : "";
 
   return `
     <div class="natter-react-wrap" data-post-id="${postId}">
-      <button type="button" class="natter-react-plus"${plusDisabled} aria-expanded="false" aria-label="Add reactions" data-post-id="${postId}">+</button>
-      <div class="natter-react-panel" hidden>
-        ${buttons}
+      <div class="natter-react-row">
+        ${attached ? `<div class="natter-react-attached">${attached}</div>` : ""}
+        ${plusHtml}
       </div>
+      ${canReact ? renderReactionPicker(post, { open: pickerOpen }) : ""}
     </div>
   `;
 }
@@ -637,15 +665,21 @@ async function toggleReaction(postId, emoji) {
 
   const idx = feedPosts.findIndex((p) => Number(p.id) === Number(postId));
   if (idx >= 0) {
+    const wrap = document.querySelector(
+      `.natter-card[data-post-id="${Number(postId)}"] .natter-react-wrap`
+    );
+    const pickerOpen =
+      wrap?.querySelector(".natter-react-panel")?.hidden === false;
+
     feedPosts[idx] = {
       ...feedPosts[idx],
       my_reactions: Array.isArray(data.my_reactions) ? data.my_reactions : [],
       reactions: data.reactions || [],
     };
-    const wrap = document.querySelector(
-      `.natter-card[data-post-id="${Number(postId)}"] .natter-react-wrap`
-    );
-    if (wrap) wrap.outerHTML = renderReactionBar(feedPosts[idx]);
+
+    if (wrap) {
+      wrap.outerHTML = renderReactionBar(feedPosts[idx], { pickerOpen });
+    }
   }
 }
 
@@ -879,25 +913,49 @@ function wireCompose() {
     document.getElementById("natterImage")?.click();
   });
   postBtn?.addEventListener("click", () => void submitPost());
+
   feed?.addEventListener("click", (e) => {
     const plus = e.target.closest?.(".natter-react-plus");
     if (plus) {
-      if (plus.disabled) return;
-      const panel = plus.parentElement?.querySelector?.(".natter-react-panel");
+      e.stopPropagation();
+      const wrap = plus.closest(".natter-react-wrap");
+      const panel = wrap?.querySelector(".natter-react-panel");
       if (!panel) return;
-      const isHidden = panel.hidden === true;
-      panel.hidden = !isHidden;
-      plus.setAttribute("aria-expanded", String(panel.hidden === false));
+
+      const willOpen = panel.hidden === true;
+      document.querySelectorAll(".natter-react-panel").forEach((p) => {
+        p.hidden = true;
+      });
+      document.querySelectorAll(".natter-react-plus").forEach((btn) => {
+        btn.setAttribute("aria-expanded", "false");
+      });
+
+      if (willOpen) {
+        panel.hidden = false;
+        plus.setAttribute("aria-expanded", "true");
+      }
       return;
     }
 
-    const btn = e.target.closest?.(".natter-react-btn");
+    const btn = e.target.closest?.(".natter-react-pick");
     if (!btn || btn.disabled) return;
+    e.stopPropagation();
     void toggleReaction(
       btn.getAttribute("data-post-id"),
       btn.getAttribute("data-emoji")
     );
   });
+
+  document.addEventListener("click", (e) => {
+    if (e.target.closest?.(".natter-react-wrap")) return;
+    document.querySelectorAll(".natter-react-panel").forEach((p) => {
+      p.hidden = true;
+    });
+    document.querySelectorAll(".natter-react-plus").forEach((btn) => {
+      btn.setAttribute("aria-expanded", "false");
+    });
+  });
+
   wireCropUi();
 }
 

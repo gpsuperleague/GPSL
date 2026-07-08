@@ -495,6 +495,42 @@ body {
 
 .natter-react-wrap {
   margin-top: 12px;
+  position: relative;
+}
+
+.natter-react-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.natter-react-attached {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.natter-react-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--natter-line);
+  background: var(--natter-panel-2);
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 13px;
+  cursor: default;
+}
+
+.natter-react-chip-emoji {
+  line-height: 1;
+}
+
+.natter-react-chip-count {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--natter-muted);
 }
 
 .natter-react-plus {
@@ -502,16 +538,18 @@ body {
   background: var(--natter-panel-2);
   color: var(--natter-ink);
   border-radius: 999px;
-  padding: 4px 10px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   font-weight: 800;
+  font-size: 16px;
   cursor: pointer;
   line-height: 1;
-  min-height: 28px;
+  flex-shrink: 0;
 }
 
-.natter-react-plus:disabled {
-  opacity: 0.55;
-  cursor: default;
+.natter-react-plus:hover {
+  border-color: var(--natter-accent);
 }
 
 .natter-react-panel {
@@ -519,56 +557,44 @@ body {
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--natter-line);
+  border-radius: 12px;
+  background: var(--natter-panel-2);
 }
 
-.natter-react-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.natter-react-panel[hidden] {
+  display: none !important;
+}
+
+.natter-react-pick {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
   border: 1px solid var(--natter-line);
-  background: var(--natter-panel-2);
+  background: var(--natter-panel);
   color: var(--natter-ink);
-  border-radius: 999px;
-  padding: 4px 8px;
-  font-size: 14px;
+  border-radius: 8px;
+  font-size: 16px;
   cursor: pointer;
   line-height: 1;
-  min-height: 28px;
+  padding: 0;
 }
 
-.natter-react-btn:hover:not(:disabled) {
+.natter-react-pick:hover:not(:disabled) {
   border-color: var(--natter-accent);
 }
 
-.natter-react-btn.is-active {
+.natter-react-pick.is-active {
   border-color: var(--natter-accent);
   background: rgba(62, 207, 142, 0.16);
   box-shadow: 0 0 0 1px rgba(62, 207, 142, 0.25);
 }
 
-.natter-react-btn:disabled {
-  opacity: 0.55;
+.natter-react-pick:disabled {
+  opacity: 0.45;
   cursor: default;
-}
-
-.natter-react-emoji {
-  font-size: 15px;
-  line-height: 1;
-}
-
-.natter-react-count {
-  font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  color: var(--natter-muted);
-  min-width: 0.75em;
-}
-
-.natter-react-btn.is-active .natter-react-count {
-  color: var(--natter-accent);
-}
-
-.natter-react-count--empty {
-  display: none;
 }
 
 @media (max-width: 640px) {

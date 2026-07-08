@@ -32,7 +32,7 @@ DROP POLICY IF EXISTS natter_reactions_select ON public.natter_reactions;
 CREATE POLICY natter_reactions_select ON public.natter_reactions
   FOR SELECT TO authenticated USING (true);
 
--- Summary counts for the feed
+-- Summary counts (legacy helper)
 CREATE OR REPLACE FUNCTION public.natter_reaction_counts(p_post_id bigint)
 RETURNS jsonb
 LANGUAGE sql
@@ -47,6 +47,42 @@ AS $$
   FROM (
     SELECT r.emoji, count(*)::int AS cnt
     FROM public.natter_reactions r
+    WHERE r.post_id = p_post_id
+    GROUP BY r.emoji
+  ) q;
+$$;
+
+-- Per-emoji counts plus owner labels for hover tooltips
+CREATE OR REPLACE FUNCTION public.natter_reaction_details(p_post_id bigint)
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT coalesce(jsonb_agg(
+    jsonb_build_object(
+      'emoji', q.emoji,
+      'count', q.cnt,
+      'owners', q.owners
+    )
+    ORDER BY q.cnt DESC, q.emoji
+  ), '[]'::jsonb)
+  FROM (
+    SELECT
+      r.emoji,
+      count(*)::int AS cnt,
+      jsonb_agg(
+        coalesce(
+          nullif(btrim(c.owner), ''),
+          nullif(btrim(public.owner_registry_resolve_tag(c.owner_id)), ''),
+          public.natter_club_display_name(c."ShortName"),
+          'Club owner'
+        )
+        ORDER BY public.natter_club_display_name(c."ShortName"), c.owner
+      ) AS owners
+    FROM public.natter_reactions r
+    LEFT JOIN public."Clubs" c ON c.owner_id = r.owner_id
     WHERE r.post_id = p_post_id
     GROUP BY r.emoji
   ) q;
@@ -139,7 +175,7 @@ BEGIN
     'ok', true,
     'post_id', p_post_id,
     'my_reactions', v_my_reactions,
-    'reactions', public.natter_reaction_counts(p_post_id)
+    'reactions', public.natter_reaction_details(p_post_id)
   );
 END;
 $function$;
@@ -202,7 +238,7 @@ BEGIN
             'body', p.body,
             'image_path', p.image_path,
             'created_at', p.created_at,
-            'reactions', public.natter_reaction_counts(p.id),
+            'reactions', public.natter_reaction_details(p.id),
             'my_reactions', coalesce((
               SELECT jsonb_agg(r.emoji ORDER BY r.emoji)
               FROM public.natter_reactions r
@@ -225,6 +261,7 @@ $function$;
 GRANT SELECT ON public.natter_reactions TO authenticated;
 GRANT EXECUTE ON FUNCTION public.natter_react(bigint, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.natter_reaction_counts(bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.natter_reaction_details(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.natter_list_posts(bigint, text, int) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
