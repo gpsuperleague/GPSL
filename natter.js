@@ -4,12 +4,15 @@ const MAX_CHARS = 1000;
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MAX_IMAGE_EDGE = 1600;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const REACTION_EMOJIS = ["👍", "😂", "🔥", "⚽", "👏", "❤️"];
 
 let composeState = null;
 let selectedFile = null;
 let selectedObjectUrl = null;
 let viewSeasonId = null;
 let viewMonth = null;
+let canReact = false;
+let feedPosts = [];
 
 /** Active crop session (source image before crop/compress). */
 let cropSession = null;
@@ -503,16 +506,53 @@ function renderMonthTabs(months, activeMonth) {
   });
 }
 
+function reactionCountMap(reactions) {
+  const map = new Map();
+  for (const r of Array.isArray(reactions) ? reactions : []) {
+    if (!r?.emoji) continue;
+    map.set(r.emoji, Number(r.count) || 0);
+  }
+  return map;
+}
+
+function renderReactionBar(post) {
+  const counts = reactionCountMap(post.reactions);
+  const mine = post.my_reaction || null;
+  const buttons = REACTION_EMOJIS.map((emoji) => {
+    const count = counts.get(emoji) || 0;
+    const active = mine === emoji ? " is-active" : "";
+    const countHtml =
+      count > 0
+        ? `<span class="natter-react-count">${count}</span>`
+        : `<span class="natter-react-count natter-react-count--empty"></span>`;
+    const disabled = canReact ? "" : " disabled";
+    const title = canReact
+      ? mine === emoji
+        ? "Remove reaction"
+        : "React"
+      : "Club owners can react";
+    return (
+      `<button type="button" class="natter-react-btn${active}" ` +
+      `data-post-id="${Number(post.id)}" data-emoji="${escapeHtml(emoji)}" ` +
+      `title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"${disabled}>` +
+      `<span class="natter-react-emoji" aria-hidden="true">${emoji}</span>${countHtml}` +
+      `</button>`
+    );
+  }).join("");
+
+  return `<div class="natter-react-bar" data-post-id="${Number(post.id)}">${buttons}</div>`;
+}
+
 function renderFeed(posts) {
   const feed = document.getElementById("natterFeed");
   if (!feed) return;
-  const rows = Array.isArray(posts) ? posts : [];
-  if (!rows.length) {
+  feedPosts = Array.isArray(posts) ? posts : [];
+  if (!feedPosts.length) {
     feed.innerHTML = `<p class="natter-empty">No Natters for this month yet.</p>`;
     return;
   }
 
-  feed.innerHTML = rows
+  feed.innerHTML = feedPosts
     .map((p) => {
       const club = p.club_name || p.club_short || "Club";
       const badge = clubBadgeUrl(p.club_short);
@@ -529,7 +569,7 @@ function renderFeed(posts) {
         .filter(Boolean)
         .join(" · ");
       return `
-        <article class="natter-card">
+        <article class="natter-card" data-post-id="${Number(p.id)}">
           <div class="natter-avatar-slot">
             ${avatar}
             ${fallback}
@@ -541,10 +581,50 @@ function renderFeed(posts) {
             </div>
             <div class="natter-card-body">${escapeHtml(p.body)}</div>
             ${img}
+            ${renderReactionBar(p)}
           </div>
         </article>`;
     })
     .join("");
+}
+
+async function toggleReaction(postId, emoji) {
+  if (!canReact || !postId || !emoji) return;
+  const { data, error } = await supabase.rpc("natter_react", {
+    p_post_id: Number(postId),
+    p_emoji: emoji,
+  });
+  if (error) {
+    setComposeHint(error.message || "Could not react.", true);
+    return;
+  }
+  if (!data?.ok) {
+    const reasons = {
+      no_club: "Only club owners can react.",
+      bad_emoji: "That reaction isn’t available.",
+      not_found: "Post not found.",
+      not_authenticated: "Sign in to react.",
+    };
+    setComposeHint(reasons[data?.reason] || "Could not react.", true);
+    return;
+  }
+
+  const idx = feedPosts.findIndex((p) => Number(p.id) === Number(postId));
+  if (idx >= 0) {
+    feedPosts[idx] = {
+      ...feedPosts[idx],
+      my_reaction: data.my_reaction || null,
+      reactions: data.reactions || [],
+    };
+    const card = document.querySelector(
+      `.natter-card[data-post-id="${Number(postId)}"] .natter-react-bar`
+    );
+    if (card) {
+      card.outerHTML = renderReactionBar(feedPosts[idx]);
+    } else {
+      renderFeed(feedPosts);
+    }
+  }
 }
 
 async function loadComposeState() {
@@ -615,6 +695,12 @@ async function loadFeed() {
       feed.innerHTML = `<p class="natter-empty">Could not load posts.</p>`;
     }
     return;
+  }
+
+  canReact = data?.can_react === true;
+  if (Array.isArray(data?.reaction_emojis) && data.reaction_emojis.length) {
+    // Keep local constant in sync if server returns a custom set
+    REACTION_EMOJIS.splice(0, REACTION_EMOJIS.length, ...data.reaction_emojis);
   }
 
   document.querySelectorAll("#natterMonthTabs [data-month]").forEach((btn) => {
@@ -760,6 +846,7 @@ function wireCompose() {
   const clearBtn = document.getElementById("natterClearImage");
   const recropBtn = document.getElementById("natterRecropImage");
   const postBtn = document.getElementById("natterPostBtn");
+  const feed = document.getElementById("natterFeed");
 
   input?.addEventListener("input", updateCharCount);
   file?.addEventListener("change", () => {
@@ -770,6 +857,11 @@ function wireCompose() {
     document.getElementById("natterImage")?.click();
   });
   postBtn?.addEventListener("click", () => void submitPost());
+  feed?.addEventListener("click", (e) => {
+    const btn = e.target.closest?.(".natter-react-btn");
+    if (!btn || btn.disabled) return;
+    void toggleReaction(btn.getAttribute("data-post-id"), btn.getAttribute("data-emoji"));
+  });
   wireCropUi();
 }
 
