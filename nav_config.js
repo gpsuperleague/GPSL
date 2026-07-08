@@ -237,6 +237,7 @@ export const NAV_SECTIONS = [
       { href: "learning_gpsl.html", label: "Learning GPSL", page: "learning_gpsl" },
       { href: "waiting_list.html", label: "Waiting list", page: "waiting_list" },
       { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings" },
+      { href: "natter.html", label: "Natter", page: "natter" },
       { href: "challenges.html", label: "Season challenges", page: "challenges" },
     ],
   },

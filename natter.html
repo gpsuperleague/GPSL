@@ -1,0 +1,70 @@
+<script>window.CURRENT_PAGE = "natter";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Natter — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="natter.css">
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="natter-shell">
+    <header class="natter-top">
+      <div class="natter-brand-block">
+        <div class="natter-mark" aria-hidden="true">N</div>
+        <div>
+          <h1 class="natter-title">Natter</h1>
+          <p class="natter-tagline">GPSL boardroom chat — one post a GPSL month</p>
+        </div>
+      </div>
+      <div id="natterContext" class="natter-context">Loading…</div>
+    </header>
+
+    <div id="natterError" class="natter-error" hidden></div>
+
+    <section id="natterCompose" class="natter-compose" hidden>
+      <div class="natter-compose-head">
+        <img id="composeBadge" class="natter-avatar" alt="" hidden>
+        <div class="natter-avatar-fallback" id="composeFallback">?</div>
+        <div>
+          <div class="natter-compose-club" id="composeClub">Your club</div>
+          <div class="natter-compose-meta" id="composeMeta">This GPSL month</div>
+        </div>
+      </div>
+      <textarea
+        id="natterBody"
+        class="natter-textarea"
+        maxlength="1000"
+        rows="4"
+        placeholder="What’s happening at your club this GPSL month?"
+      ></textarea>
+      <div class="natter-compose-tools">
+        <label class="natter-attach">
+          <input type="file" id="natterImage" accept="image/jpeg,image/png,image/webp" hidden>
+          <span>Add image</span>
+        </label>
+        <span id="natterImageName" class="natter-image-name"></span>
+        <span id="natterCharCount" class="natter-chars">0 / 1000</span>
+        <button type="button" id="natterPostBtn" class="natter-post-btn">Post</button>
+      </div>
+      <div id="natterComposeHint" class="natter-hint" role="status"></div>
+      <div id="natterImagePreviewWrap" class="natter-preview-wrap" hidden>
+        <img id="natterImagePreview" class="natter-preview" alt="Selected image preview">
+        <button type="button" id="natterClearImage" class="natter-clear-image">Remove</button>
+      </div>
+    </section>
+
+    <section id="natterAlreadyPosted" class="natter-banner" hidden>
+      You’ve already Nattered for this GPSL month — one-and-done. Browse the feed below.
+    </section>
+
+    <nav id="natterMonthTabs" class="natter-months" aria-label="Natter months"></nav>
+
+    <main id="natterFeed" class="natter-feed">
+      <p class="natter-empty">Loading Natter…</p>
+    </main>
+  </div>
+  <script type="module" src="natter.js"></script>
+</body>
+</html>

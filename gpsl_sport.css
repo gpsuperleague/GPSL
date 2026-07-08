@@ -647,6 +647,16 @@ body.gpsl-sport-open {
   font-size: 14px;
 }
 
+.gpsl-sport-club-news-image {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-top: 10px;
+  border: 1px solid #ccc;
+}
+
 .gpsl-sport-kicker {
   font-family: "Helvetica Neue", Arial, sans-serif;
   font-size: 9px;

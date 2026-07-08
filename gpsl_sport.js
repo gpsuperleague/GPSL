@@ -393,6 +393,17 @@ function buildStandingsLeaderTeaser(div, divisionKey, editionSeed = "") {
   return lines[idx] || `Top of ${divLabel} after a busy month.`;
 }
 
+function natterMediaPublicUrl(path) {
+  const p = String(path || "").trim();
+  if (!p || !sportSupabase) return null;
+  try {
+    const { data } = sportSupabase.storage.from("natter-media").getPublicUrl(p);
+    return data?.publicUrl || null;
+  } catch {
+    return null;
+  }
+}
+
 function renderClubNewsSection(clubNews) {
   const items = (Array.isArray(clubNews) ? clubNews : [])
     .filter((c) => c?.comment && String(c.comment).trim())
@@ -405,6 +416,7 @@ function renderClubNewsSection(clubNews) {
         : "",
       club_short: c.club_short,
       story_kind: "club_news",
+      image_url: natterMediaPublicUrl(c.image_path),
     }));
   return renderStorySection("Club news", items, { compact: true, columns: 1 });
 }
@@ -653,9 +665,11 @@ function renderStoryCard(story, { compact = false } = {}) {
   const clubShort = story.club_short || story.club_short_name;
   const playerId = story.player_id ? String(story.player_id) : null;
   const isManager = story.story_kind === "manager_signing" || story.manager_id;
+  const isClubNews = story.story_kind === "club_news";
   const badge = clubBadgeUrl(clubShort);
   const card = playerId ? pesdbPlayerCardUrl(playerId) : null;
   const stadium = !playerId && clubShort && !isManager ? stadiumImageUrl(clubShort) : null;
+  const natterImage = story.image_url || null;
 
   let media = "";
   if (card) {
@@ -666,6 +680,11 @@ function renderStoryCard(story, { compact = false } = {}) {
     media = `<div class="gpsl-sport-story-media gpsl-sport-story-media-badge">${imgTag(badge, "gpsl-sport-story-badge", "")}</div>`;
   }
 
+  const attached =
+    isClubNews && natterImage
+      ? `<img class="gpsl-sport-club-news-image" src="${escapeAttr(natterImage)}" alt="" loading="lazy">`
+      : "";
+
   return `
     <article class="gpsl-sport-story${compact ? " gpsl-sport-story-compact" : ""}">
       <div class="gpsl-sport-story-inner">
@@ -675,6 +694,7 @@ function renderStoryCard(story, { compact = false } = {}) {
           <h3>${escapeHtml(story.headline)}</h3>
           ${story.byline ? renderByline(story.byline) : ""}
           <div class="gpsl-sport-body">${formatParagraphs(story.body)}</div>
+          ${attached}
           ${story.pull_quote ? renderPullQuote(story.pull_quote) : ""}
         </div>
       </div>
@@ -1254,6 +1274,7 @@ export async function openGpslSport(supabase) {
     alert("GPSL Sport: not signed in.");
     return;
   }
+  sportSupabase = client;
 
   ensureSportModal();
 

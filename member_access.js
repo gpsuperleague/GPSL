@@ -46,6 +46,7 @@ export const MEMBER_ALLOWED_PAGES = new Set([
   "central_bank_counter",
   // Owners
   "owner_rankings",
+  "natter",
 ]);
 
 /** Club auction onboarding — invited from waiting list only. */
@@ -70,6 +71,7 @@ export const CLUB_OWNER_PAGES = new Set([
   "nation_select",
   "nation_player_pool",
   "club",
+  "natter",
 ]);
 
 export function normalizePageId(page) {
