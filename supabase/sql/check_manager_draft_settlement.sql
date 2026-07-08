@@ -28,7 +28,7 @@ SELECT
       WHERE l.listing_type = 'draft' AND l.status = 'Active'
     ) > 0
     AND NOT COALESCE(g.manager_draft_auction_enabled, false)
-      THEN 'manager draft disabled but Active listings remain — run patches/manager_draft_settlement_residue.sql then admin_settle_manager_drafts_now()'
+      THEN 'manager draft toggle off but Active listings remain — run patches/manager_draft_settlement_residue_hotfix.sql then admin_settle_manager_drafts_now()'
     WHEN NOT COALESCE(g.manager_draft_auction_enabled, false) THEN 'manager draft disabled (no active listings)'
     WHEN public.transferengine_standard_listings_block_draft_settlement(
       now(),

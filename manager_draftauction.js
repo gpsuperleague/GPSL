@@ -184,7 +184,7 @@ async function loadManagerDraftListings(options = {}) {
 
   if (statusEl && auctionEnded) {
     statusEl.textContent =
-      "Bidding closed (random finish reached). Winning bids assign managers and debit balance via the transfer engine — usually within a minute. Refresh Club Details if not updated yet.";
+      "Bidding closed (random finish reached). Winning bids assign managers and debit balance via the transfer engine — usually within about 5 minutes. Refresh Club Details if not updated yet.";
   }
 
   if (!portraitsLoaded) {
