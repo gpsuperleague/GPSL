@@ -118,6 +118,10 @@ body.squad-page .manager-badge {
   color: #f0e6d8;
 }
 
+body.squad-page .manager-badge[hidden] {
+  display: none !important;
+}
+
 body.squad-page .manager-badge .foreign-interest-main {
   flex: 1 1 auto;
   min-width: 0;

@@ -663,9 +663,17 @@ function renderSquadManagerBadge() {
   const sackBtn = document.getElementById("sackManagerBtn");
   if (!badge || !mainEl) return;
 
-  if (!squadManagerState.managerId) {
+  const hasManager =
+    squadManagerState.managerId != null &&
+    String(squadManagerState.managerName || "").trim() !== "";
+
+  if (!hasManager) {
     badge.hidden = true;
-    if (sackBtn) sackBtn.hidden = true;
+    mainEl.textContent = "";
+    if (sackBtn) {
+      sackBtn.hidden = true;
+      sackBtn.disabled = true;
+    }
     return;
   }
 
