@@ -127,10 +127,7 @@ BEGIN
       AND l.metadata->>'listing_id' = v_listing.id::text
       AND coalesce(l.metadata->>'manager_draft', '') IN ('true', 't', '1')
   ) THEN
-    IF v_buyer_balance < v_amount THEN
-      RAISE EXCEPTION 'Insufficient balance for % (need %, have %)', v_buyer, v_amount, v_buyer_balance;
-    END IF;
-
+    -- Clubs may go into debt; FFP / debt penalties apply elsewhere — never block settlement.
     PERFORM public.post_club_ledger(
       v_buyer,
       'contract_signing_offer',
@@ -357,6 +354,13 @@ BEGIN
 
   PERFORM public.transferengine_process_standard_listings(v_now);
 
+  -- Manager draft first: player draft debits can leave winners unable to pay manager fees.
+  v_should_settle_managers := v_mgr_active > 0;
+
+  IF v_should_settle_managers THEN
+    PERFORM public.transferengine_settle_manager_draft_auctions_only();
+  END IF;
+
   v_should_settle_players :=
     v_player_draft_active > 0
     AND NOT public.transferengine_standard_listings_block_draft_settlement(
@@ -366,12 +370,6 @@ BEGIN
 
   IF v_should_settle_players THEN
     PERFORM public.transferengine_settle_player_draft_listings(100);
-  END IF;
-
-  v_should_settle_managers := v_mgr_active > 0;
-
-  IF v_should_settle_managers THEN
-    PERFORM public.transferengine_settle_manager_draft_auctions_only();
   END IF;
 
   IF to_regprocedure('public.transferengine_settle_club_auctions_only()') IS NOT NULL THEN

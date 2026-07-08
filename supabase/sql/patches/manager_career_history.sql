@@ -248,9 +248,6 @@ BEGIN
     IF v_balance IS NULL THEN
       RAISE EXCEPTION 'Club finances not found for %', p_club_short;
     END IF;
-    IF v_balance < v_fee THEN
-      RAISE EXCEPTION 'Insufficient balance (need %, have %)', v_fee, v_balance;
-    END IF;
 
     v_meta := coalesce(p_ledger_metadata, '{}'::jsonb)
       || jsonb_build_object('manager_id', p_manager_id, 'kind', 'manager');

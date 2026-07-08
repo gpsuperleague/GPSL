@@ -61,6 +61,7 @@ DECLARE
   v_club_active int;
   v_player_draft_active int;
   v_should_settle_players boolean;
+  v_should_settle_managers boolean;
 BEGIN
   SELECT
     draft_auction_enabled,
@@ -99,6 +100,13 @@ BEGIN
 
   PERFORM public.transferengine_process_standard_listings(v_now);
 
+  -- Manager draft before player draft (player debits can void manager winning bids).
+  v_should_settle_managers := v_mgr_active > 0;
+
+  IF v_should_settle_managers THEN
+    PERFORM public.transferengine_settle_manager_draft_auctions_only();
+  END IF;
+
   v_should_settle_players :=
     v_player_draft_active > 0
     AND (
@@ -113,8 +121,6 @@ BEGIN
   IF v_should_settle_players THEN
     PERFORM public.transferengine_settle_player_draft_listings(100);
   END IF;
-
-  PERFORM public.transferengine_settle_manager_draft_auctions_only();
 
   IF to_regprocedure('public.transferengine_settle_club_auctions_only()') IS NOT NULL THEN
     PERFORM public.transferengine_settle_club_auctions_only();
