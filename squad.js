@@ -1,7 +1,13 @@
 // squad.js — CLEAN, FIXED, MODERN VERSION WITH TRANSFER WINDOW LOGIC
 
 import { fullClubName } from "./clubs_lookup.js";
-import { computeStandardListingEndTime, initGlobal, supabase } from "./global.js";
+import {
+  computeStandardListingEndTime,
+  initGlobal,
+  refreshNavClubListingState,
+  refreshNavListingIndicators,
+  supabase,
+} from "./global.js";
 import {
   loadPlayerSeasonStatsForSquad,
   statsMapByPlayerId,
@@ -1872,6 +1878,8 @@ async function listPlayerNewOwner(playerId) {
       `Reserve: ${formatMoney(data?.reserve_price ?? mv)}.\n` +
       `${newOwnerReleaseState.remaining} first-season slot(s) remaining.`
   );
+  await refreshNavClubListingState(currentUserShort);
+  refreshNavListingIndicators();
   await loadSquad();
 }
 
@@ -2182,6 +2190,9 @@ async function validateAndCreateListing() {
   }
 
   document.getElementById("list-player-modal-backdrop").style.display = "none";
+
+  await refreshNavClubListingState(currentUserShort);
+  refreshNavListingIndicators();
 
   // ⭐ Reload fresh listing state from DB
   await loadSquad();

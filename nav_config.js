@@ -137,7 +137,13 @@ export const NAV_SECTIONS = [
         indent: true,
         auctionNav: "player",
       },
-      { href: "all_listings.html", label: "Transfer Market", page: "all_listings", indent: true },
+      {
+        href: "all_listings.html",
+        label: "Transfer Market",
+        page: "all_listings",
+        indent: true,
+        listingNav: "player",
+      },
       {
         href: "draftauction.html",
         label: "Player Draft Auctions",
@@ -184,6 +190,7 @@ export const NAV_SECTIONS = [
         label: "Manager Market",
         page: "manager_listings",
         indent: true,
+        listingNav: "manager",
       },
       {
         href: "manager_draftauction.html",

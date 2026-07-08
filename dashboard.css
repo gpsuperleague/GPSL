@@ -1473,6 +1473,78 @@ button.nav-admin-trigger {
   color: #bfb;
 }
 
+.nav-listing-active {
+  display: inline-block;
+  margin-right: 0;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  background: #3a2a12;
+  color: #fc9;
+  border: 1px solid #6a4a22;
+}
+
+.nav-listing-active.is-hidden {
+  display: none;
+}
+
+.nav-link.nav-link-has-listing .nav-link-marker,
+.nav-link:hover .nav-listing-active,
+.nav-link.active .nav-listing-active {
+  color: #fdd;
+}
+
+.nav-link.active .nav-listing-active {
+  background: #2a2010;
+  border-color: #7a5528;
+}
+
+.nav-group-listing-active {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  background: #3a2a12;
+  color: #fc9;
+  border: 1px solid #6a4a22;
+}
+
+.nav-group-listing-active.is-hidden {
+  display: none;
+}
+
+.nav-group-has-listing .nav-group-summary {
+  color: #e8c080;
+}
+
+.nav-group-has-listing.open .nav-group-summary,
+.nav-group-has-listing.nav-group-active .nav-group-summary {
+  color: #f0cc90;
+}
+
+/* Path finder: amber bar on Transfers + subgroup while you have a live listing. */
+.nav-group.nav-listing-path > .nav-group-summary,
+.nav-subgroup.nav-listing-path > .nav-subgroup-summary {
+  box-shadow: inset 3px 0 0 #e8a030;
+}
+
+.nav-group.nav-listing-path.nav-group-has-listing > .nav-group-summary {
+  box-shadow: inset 3px 0 0 #e8a030;
+}
+
+.nav-link.nav-link-has-listing {
+  box-shadow: inset 3px 0 0 #e8a030;
+}
+
 /* Path finder: green bar on Transfers + subgroup while auction is live (until target page). */
 .nav-group.nav-auction-path > .nav-group-summary,
 .nav-subgroup.nav-auction-path > .nav-subgroup-summary {

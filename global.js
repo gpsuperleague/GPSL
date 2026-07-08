@@ -187,6 +187,8 @@ let managerDraftBiddingOpen = null;
 let clubAuctionBiddingOpen = null;
 let specialAuctionNavLive = false;
 let specialAuctionNavVisible = false;
+let navClubPlayerListed = false;
+let navClubManagerListed = false;
 let draftRandomLockedMs = null; // frozen count-up offset when secret finish fires
 let draftRandomFinishRevealed = null; // exposed only after now() >= secret finish
 
@@ -1226,6 +1228,18 @@ function navAuctionActiveBadgeHtml(kind, visible = isNavAuctionActive(kind)) {
   return `<span class="nav-auction-active${hidden}" title="Bidding is open" aria-hidden="${visible ? "false" : "true"}">Active</span>`;
 }
 
+function navListingActiveBadgeHtml(kind, visible = isNavListingActive(kind)) {
+  if (!kind) return "";
+  const hidden = visible ? "" : " is-hidden";
+  const title =
+    kind === "manager"
+      ? "Your manager is listed on the market"
+      : "You have a player listed on the market";
+  return `<span class="nav-listing-active${hidden}" title="${escapeNavAttr(
+    title
+  )}" aria-hidden="${visible ? "false" : "true"}">Listed</span>`;
+}
+
 function navLinkLeadingHtml(item) {
   const nationSrc = item.nationCode ? nationFlagSrc(item.nationCode) : null;
   if (nationSrc) {
@@ -1247,10 +1261,14 @@ function navLinkInnerHtml(item) {
   const auction = item.auctionNav
     ? navAuctionActiveBadgeHtml(item.auctionNav)
     : "";
+  const listing = item.listingNav
+    ? navListingActiveBadgeHtml(item.listingNav)
+    : "";
   return (
     `<span class="nav-link-leading">${navLinkLeadingHtml(item)}</span>` +
     `<span class="nav-link-body">` +
     auction +
+    listing +
     `<span class="nav-link-label">${escapeNavHtml(formatNavLabel(item.label))}</span>` +
     `</span>`
   );
@@ -1275,6 +1293,11 @@ function navGroupAuctionBadgeHtml(visible = hasAnyNavAuctionActive()) {
   return `<span class="nav-group-auction-active${hidden}" title="Auction bidding is open" aria-hidden="${visible ? "false" : "true"}">Active</span>`;
 }
 
+function navGroupListingBadgeHtml(visible = hasAnyNavListingActive()) {
+  const hidden = visible ? "" : " is-hidden";
+  return `<span class="nav-group-listing-active${hidden}" title="You have a player or manager on the market" aria-hidden="${visible ? "false" : "true"}">Listed</span>`;
+}
+
 /** Live auction pages + related databases (path highlight stops on these). */
 const NAV_AUCTION_RELATED_PAGES = {
   player: ["draftauction.html", "gpdb.html"],
@@ -1296,6 +1319,79 @@ const NAV_AUCTION_TARGETS = {
   club: "club_auction.html",
   special: "special_auction.html",
 };
+
+const NAV_LISTING_TARGETS = {
+  player: "all_listings.html",
+  manager: "manager_listings.html",
+};
+
+function isNavListingActive(kind) {
+  if (kind === "player") return navClubPlayerListed;
+  if (kind === "manager") return navClubManagerListed;
+  return false;
+}
+
+function hasAnyNavListingActive() {
+  return navClubPlayerListed || navClubManagerListed;
+}
+
+function isOnNavListingTargetPage(kind, currentFile) {
+  const file = String(currentFile || "").toLowerCase();
+  const target = NAV_LISTING_TARGETS[kind];
+  return target?.toLowerCase() === file;
+}
+
+async function loadNavClubListingFlags(clubShort) {
+  if (!clubShort) {
+    return { player: false, manager: false };
+  }
+
+  const nowIso = new Date().toISOString();
+  const [playerRes, managerRes] = await Promise.all([
+    supabase
+      .from("Player_Transfer_Listings")
+      .select("id", { count: "exact", head: true })
+      .eq("seller_club_id", clubShort)
+      .neq("listing_type", "draft")
+      .in("status", ["Active", "Review", "Seller Review"]),
+    supabase
+      .from("Manager_Transfer_Listings")
+      .select("id", { count: "exact", head: true })
+      .eq("seller_club_id", clubShort)
+      .eq("status", "Active")
+      .neq("listing_type", "draft")
+      .gt("end_time", nowIso),
+  ]);
+
+  if (playerRes.error) {
+    console.warn("nav player listing count:", playerRes.error.message);
+  }
+  if (managerRes.error) {
+    console.warn("nav manager listing count:", managerRes.error.message);
+  }
+
+  return {
+    player: !playerRes.error && (playerRes.count ?? 0) > 0,
+    manager: !managerRes.error && (managerRes.count ?? 0) > 0,
+  };
+}
+
+/** Reload whether this club has live player/manager market listings (nav badges). */
+export async function refreshNavClubListingState(clubShort) {
+  try {
+    const short =
+      clubShort ?? (await getOwnerClubShort(await getAuthUserFast()));
+    const flags = await loadNavClubListingFlags(short);
+    navClubPlayerListed = flags.player;
+    navClubManagerListed = flags.manager;
+    return flags;
+  } catch (err) {
+    console.warn("refreshNavClubListingState:", err);
+    navClubPlayerListed = false;
+    navClubManagerListed = false;
+    return { player: false, manager: false };
+  }
+}
 
 function currentNavPageFile() {
   return (window.location.pathname || "").toLowerCase().replace(/\\/g, "/").split("/").pop() || "";
@@ -1333,6 +1429,69 @@ function refreshNavAuctionPathIndicators() {
   if (showTransfersPath && transfersGroup) {
     transfersGroup.classList.add("nav-auction-path");
   }
+}
+
+/** Amber path bars on Transfers + subgroup while you have a live listing (until market page). */
+function refreshNavListingPathIndicators() {
+  const nav = document.getElementById("nav");
+  if (!nav) return;
+
+  nav.querySelectorAll(".nav-listing-path").forEach((el) => {
+    el.classList.remove("nav-listing-path");
+  });
+
+  const currentFile = currentNavPageFile();
+  const transfersGroup = nav.querySelector('[data-nav-auction-section="transfers"]');
+  let showTransfersPath = false;
+
+  for (const kind of ["player", "manager"]) {
+    if (!isNavListingActive(kind)) continue;
+    if (isOnNavListingTargetPage(kind, currentFile)) continue;
+
+    showTransfersPath = true;
+    nav.querySelectorAll("[data-nav-subgroup]").forEach((subgroup) => {
+      const kinds = (subgroup.dataset.listingKinds || "")
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean);
+      if (kinds.includes(kind)) {
+        subgroup.classList.add("nav-listing-path");
+      }
+    });
+  }
+
+  if (showTransfersPath && transfersGroup) {
+    transfersGroup.classList.add("nav-listing-path");
+  }
+}
+
+/** Update Listed badges + path bars without rebuilding the whole nav. */
+export function refreshNavListingIndicators() {
+  const nav = document.getElementById("nav");
+  if (!nav) return;
+
+  nav.querySelectorAll("[data-listing-nav]").forEach((link) => {
+    const kind = link.dataset.listingNav;
+    const badge = link.querySelector(".nav-listing-active");
+    if (!badge || !kind) return;
+    const active = isNavListingActive(kind);
+    badge.classList.toggle("is-hidden", !active);
+    badge.setAttribute("aria-hidden", active ? "false" : "true");
+    link.classList.toggle("nav-link-has-listing", active);
+  });
+
+  const transfersGroup = nav.querySelector('[data-nav-auction-section="transfers"]');
+  if (transfersGroup) {
+    const anyListed = hasAnyNavListingActive();
+    transfersGroup.classList.toggle("nav-group-has-listing", anyListed);
+    const groupBadge = transfersGroup.querySelector(".nav-group-listing-active");
+    if (groupBadge) {
+      groupBadge.classList.toggle("is-hidden", !anyListed);
+      groupBadge.setAttribute("aria-hidden", anyListed ? "false" : "true");
+    }
+  }
+
+  refreshNavListingPathIndicators();
 }
 
 /** Update Active badges without rebuilding the whole nav. */
@@ -1377,6 +1536,7 @@ function startNavAuctionBadgeRefresh() {
           })
         : Promise.resolve(),
       refreshSpecialAuctionNavLive().then(() => refreshNavAuctionIndicators()),
+      refreshNavClubListingState().then(() => refreshNavListingIndicators()),
     ]).catch((err) => {
       console.warn("nav badge refresh:", err);
     });
@@ -1402,9 +1562,12 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
       const auctionAttr = item.auctionNav
         ? ` data-auction-nav="${item.auctionNav}"`
         : "";
+      const listingAttr = item.listingNav
+        ? ` data-listing-nav="${item.listingNav}"`
+        : "";
       flat += `<a href="${item.href}" class="nav-link${indent}${
         active ? " active" : ""
-      }"${auctionAttr}>${navLinkInnerHtml(item)}</a>`;
+      }"${auctionAttr}${listingAttr}>${navLinkInnerHtml(item)}</a>`;
     }
     return flat;
   }
@@ -1415,6 +1578,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
   let panelLabel = "";
   let panelHasActive = false;
   let panelAuctionKinds = [];
+  let panelListingKinds = [];
 
   const renderLink = (item, active) => {
     const indent = item.indent ? " nav-link-sub" : "";
@@ -1422,9 +1586,16 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     const auctionAttr = item.auctionNav
       ? ` data-auction-nav="${item.auctionNav}"`
       : "";
-    return `<a href="${item.href}" class="nav-link${indent}${danger}${
+    const listingAttr = item.listingNav
+      ? ` data-listing-nav="${item.listingNav}"`
+      : "";
+    const listingClass =
+      item.listingNav && isNavListingActive(item.listingNav)
+        ? " nav-link-has-listing"
+        : "";
+    return `<a href="${item.href}" class="nav-link${indent}${danger}${listingClass}${
       active ? " active" : ""
-    }"${auctionAttr}>${navLinkInnerHtml(item)}</a>`;
+    }"${auctionAttr}${listingAttr}>${navLinkInnerHtml(item)}</a>`;
   };
 
   const flushPanel = () => {
@@ -1432,7 +1603,10 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     const kindsAttr = panelAuctionKinds.length
       ? ` data-auction-kinds="${panelAuctionKinds.join(",")}"`
       : "";
-    groupHtml += `<div class="nav-subgroup${panelHasActive ? " open" : ""}" data-nav-subgroup${kindsAttr}>`;
+    const listingKindsAttr = panelListingKinds.length
+      ? ` data-listing-kinds="${panelListingKinds.join(",")}"`
+      : "";
+    groupHtml += `<div class="nav-subgroup${panelHasActive ? " open" : ""}" data-nav-subgroup${kindsAttr}${listingKindsAttr}>`;
     groupHtml += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
       panelHasActive ? "true" : "false"
     }">${escapeNavHtml(formatNavLabel(panelLabel))}</button>`;
@@ -1442,6 +1616,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     panelLabel = "";
     panelHasActive = false;
     panelAuctionKinds = [];
+    panelListingKinds = [];
   };
 
   for (const item of items) {
@@ -1467,6 +1642,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
 
     if (active) panelHasActive = true;
     if (item.auctionNav) panelAuctionKinds.push(item.auctionNav);
+    if (item.listingNav) panelListingKinds.push(item.listingNav);
     panelHtml += renderLink(item, active);
   }
   flushPanel();
@@ -1649,6 +1825,21 @@ export async function buildNav() {
     console.warn("Natter unread count skipped:", err);
   }
 
+  if (clubShort) {
+    try {
+      const listingFlags = await Promise.race([
+        loadNavClubListingFlags(clubShort),
+        new Promise((resolve) =>
+          setTimeout(() => resolve({ player: false, manager: false }), 4000)
+        ),
+      ]);
+      navClubPlayerListed = listingFlags.player;
+      navClubManagerListed = listingFlags.manager;
+    } catch (err) {
+      console.warn("Nav listing flags skipped:", err);
+    }
+  }
+
   await refreshSpecialAuctionNavLive();
 
   let myNation = null;
@@ -1794,18 +1985,25 @@ export async function buildNav() {
     const hasActive = sectionMatchesPage && isPrimarySection;
     const isTransfersSection = section.id === "transfers";
     const anyAuctionActive = isTransfersSection && hasAnyNavAuctionActive();
+    const anyListingActive = isTransfersSection && hasAnyNavListingActive();
     const activePageLabel = hasActive
       ? activeLabelForNavItems(items, pathname, search, isNavItemActive)
       : null;
 
     html += `<div class="nav-group${hasActive ? " nav-group-active" : ""}${
       anyAuctionActive ? " nav-group-has-auction" : ""
-    }"${isTransfersSection ? ' data-nav-auction-section="transfers"' : ""} data-nav-group>`;
+    }${anyListingActive ? " nav-group-has-listing" : ""}"${
+      isTransfersSection ? ' data-nav-auction-section="transfers"' : ""
+    } data-nav-group>`;
     html += `<button type="button" class="nav-group-summary" aria-expanded="false">${renderNavGroupSummaryLabel(
       section.label,
       escapeNavHtml,
       activePageLabel,
-      isTransfersSection ? navGroupAuctionBadgeHtml(anyAuctionActive) : ""
+      isTransfersSection
+        ? `${navGroupAuctionBadgeHtml(anyAuctionActive)}${navGroupListingBadgeHtml(
+            anyListingActive
+          )}`
+        : ""
     )}</button>`;
     const dropdownClass =
       section.id === "admin" || section.id === "transfers"
@@ -1836,6 +2034,7 @@ export async function buildNav() {
   wireNavLogout();
   wireNavGroups(nav);
   refreshNavAuctionIndicators();
+  refreshNavListingIndicators();
   startNavAuctionBadgeRefresh();
   refreshGpslSportNavUi();
   try {

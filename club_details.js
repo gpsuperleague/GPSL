@@ -1,6 +1,11 @@
 // Club Details page
 
-import { supabase, initGlobal } from "./global.js";
+import {
+  supabase,
+  initGlobal,
+  refreshNavClubListingState,
+  refreshNavListingIndicators,
+} from "./global.js";
 import { loadClubsMap, fullClubName, clubPageHref } from "./clubs_lookup.js";
 import {
   formatMoney,
@@ -1294,6 +1299,8 @@ function wireManagerActions() {
         return;
       }
       if (hintEl) hintEl.textContent = "Manager listed — see Manager Transfer Market.";
+      await refreshNavClubListingState(clubShort);
+      refreshNavListingIndicators();
     });
   }
 
