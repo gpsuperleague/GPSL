@@ -150,17 +150,31 @@ async function encodeCroppedImage(sourceImg, cropPx) {
   const ctx = work.getContext("2d");
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(
-    sourceImg,
-    cropPx.x,
-    cropPx.y,
-    cropW,
-    cropH,
-    0,
-    0,
-    outW,
-    outH
-  );
+  // Dark letterbox if zoomed out past the image edges
+  ctx.fillStyle = "#0a0e13";
+  ctx.fillRect(0, 0, outW, outH);
+
+  const sx = cropPx.x;
+  const sy = cropPx.y;
+  const sw = cropPx.w;
+  const sh = cropPx.h;
+  const nw = cropPx.naturalW ?? sourceImg.naturalWidth;
+  const nh = cropPx.naturalH ?? sourceImg.naturalHeight;
+
+  const ix0 = Math.max(0, sx);
+  const iy0 = Math.max(0, sy);
+  const ix1 = Math.min(nw, sx + sw);
+  const iy1 = Math.min(nh, sy + sh);
+  const iw = ix1 - ix0;
+  const ih = iy1 - iy0;
+
+  if (iw > 0 && ih > 0) {
+    const dx = ((ix0 - sx) / sw) * outW;
+    const dy = ((iy0 - sy) / sh) * outH;
+    const dw = (iw / sw) * outW;
+    const dh = (ih / sh) * outH;
+    ctx.drawImage(sourceImg, ix0, iy0, iw, ih, dx, dy, dw, dh);
+  }
 
   // JPEG compress with quality steps, then downscale further if still too big
   let quality = 0.88;
@@ -243,8 +257,8 @@ function applyCropLayout() {
   frame.style.width = `${fw}px`;
   frame.style.height = `${fh}px`;
 
-  const zoom = Number(zoomEl?.value) || 1;
-  // Cover the frame at zoom 1
+  const zoom = Math.min(3, Math.max(0.5, Number(zoomEl?.value) || 1));
+  // zoom 1 = cover the frame; below 1 = zoom out (may letterbox); above 1 = zoom in
   const cover = Math.max(fw / naturalW, fh / naturalH) * zoom;
   const dispW = naturalW * cover;
   const dispH = naturalH * cover;
@@ -259,8 +273,17 @@ function applyCropLayout() {
     cropSession.offsetY = fy + (fh - dispH) / 2;
     cropSession.needsCenter = false;
   } else {
-    cropSession.offsetX = Math.min(maxOx, Math.max(minOx, cropSession.offsetX));
-    cropSession.offsetY = Math.min(maxOy, Math.max(minOy, cropSession.offsetY));
+    // When zoomed out, image can be smaller than the frame — still clamp usefully
+    if (dispW >= fw) {
+      cropSession.offsetX = Math.min(maxOx, Math.max(minOx, cropSession.offsetX));
+    } else {
+      cropSession.offsetX = fx + (fw - dispW) / 2;
+    }
+    if (dispH >= fh) {
+      cropSession.offsetY = Math.min(maxOy, Math.max(minOy, cropSession.offsetY));
+    } else {
+      cropSession.offsetY = fy + (fh - dispH) / 2;
+    }
   }
 
   source.style.width = `${dispW}px`;
@@ -293,15 +316,15 @@ function updateCropSizeHint() {
 function getCropRectInNaturalPixels() {
   const { frame, display, naturalW, naturalH, offsetX, offsetY } = cropSession;
   const scale = naturalW / display.w;
-  let x = (frame.x - offsetX) * scale;
-  let y = (frame.y - offsetY) * scale;
-  let w = frame.w * scale;
-  let h = frame.h * scale;
-  x = Math.max(0, Math.min(naturalW - 1, x));
-  y = Math.max(0, Math.min(naturalH - 1, y));
-  w = Math.max(1, Math.min(naturalW - x, w));
-  h = Math.max(1, Math.min(naturalH - y, h));
-  return { x, y, w, h };
+  // May extend outside the image when zoomed out — encoder letterboxes.
+  return {
+    x: (frame.x - offsetX) * scale,
+    y: (frame.y - offsetY) * scale,
+    w: frame.w * scale,
+    h: frame.h * scale,
+    naturalW,
+    naturalH,
+  };
 }
 
 async function openCropModal(file) {
