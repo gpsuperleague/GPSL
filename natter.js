@@ -4,7 +4,15 @@ const MAX_CHARS = 1000;
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MAX_IMAGE_EDGE = 1600;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-const REACTION_EMOJIS = ["👍", "😂", "🔥", "⚽", "👏", "❤️"];
+const REACTION_EMOJIS = [
+  "👍", "😂", "🔥", "⚽", "👏", "❤️",
+  "🥅", "🧤", "🥇", "🥈", "🏆", "🏟️", "🚩", "🟥", "🟨",
+  "💥", "💨", "🧊", "🕶️", "🧠", "🪄", "🕰️", "⏱️", "🧨",
+  "😍", "🤯", "😤", "😎", "😱", "🤩", "😡", "🤔", "🥳", "😭",
+  "🧢", "👕", "🧣", "🎽", "🧭", "🏴", "🗺️", "🧾", "💼",
+  "🧍‍♂️🧍‍♀️",
+  "💬", "🗣️", "📣", "🧍‍♂️💬", "🕺", "🎤", "🧃", "🪩", "🧱", "🧩",
+];
 const MAX_REACTIONS_PER_POST = 3;
 
 let composeState = null;
@@ -566,8 +574,11 @@ function renderReactionPicker(post, { open = false } = {}) {
           ? `Limit reached (${MAX_REACTIONS_PER_POST}). Remove one to add another.`
           : "Add reaction";
 
+    const isWide = [...emoji].length > 2 || emoji.length > 4;
+    const wideClass = isWide ? " natter-react-pick--wide" : "";
+
     return (
-      `<button type="button" class="natter-react-pick${active}" ` +
+      `<button type="button" class="natter-react-pick${active}${wideClass}" ` +
       `data-post-id="${postId}" data-emoji="${escapeHtml(emoji)}" ` +
       `title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"${disabled}>` +
       `<span aria-hidden="true">${emoji}</span>` +
