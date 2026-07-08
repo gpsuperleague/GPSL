@@ -1,4 +1,4 @@
-import { supabase, initGlobal, getAuthUserFast } from "./global.js";
+import { supabase, initGlobal, getAuthUserFast, refreshNatterNavBadge } from "./global.js";
 
 const MAX_CHARS = 1000;
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
@@ -959,6 +959,15 @@ function wireCompose() {
   wireCropUi();
 }
 
+async function markNatterSeen() {
+  try {
+    await supabase.rpc("natter_mark_seen");
+    await refreshNatterNavBadge();
+  } catch (err) {
+    console.warn("natter_mark_seen:", err);
+  }
+}
+
 async function boot() {
   await initGlobal();
   const user = await getAuthUserFast();
@@ -972,6 +981,7 @@ async function boot() {
   if (!state) return;
   await loadMonths();
   await loadFeed();
+  await markNatterSeen();
 }
 
 boot().catch((err) => {

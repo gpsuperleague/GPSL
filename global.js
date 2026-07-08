@@ -39,15 +39,63 @@ function getGpslSportModule() {
   return gpslSportModulePromise;
 }
 
-function renderNavNatterLink(natterActive = false) {
+function renderNavNatterLink(natterActive = false, unread = 0) {
+  const n = Number(unread) || 0;
   return (
     `<a href="natter.html" class="nav-shortcut nav-natter${
       natterActive ? " active" : ""
-    }" title="Natter" aria-label="Natter">` +
+    }${n > 0 ? " has-unread" : ""}" title="Natter" aria-label="Natter${
+      n > 0 ? `, ${n} new` : ""
+    }">` +
     `<span class="nav-natter-mark" aria-hidden="true">N</span>` +
     `<span class="nav-natter-label">Natter</span>` +
+    (n > 0
+      ? `<span class="nav-natter-badge">${n > 99 ? "99+" : n}</span>`
+      : "") +
     `</a>`
   );
+}
+
+async function countNatterUnread() {
+  try {
+    const { data, error } = await supabase.rpc("natter_unread_count");
+    if (error || !data?.ok) return 0;
+    return Number(data.count) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+/** Update nav Natter badge after visiting Natter (no full nav rebuild). */
+export async function refreshNatterNavBadge() {
+  const link = document.querySelector("a.nav-natter");
+  if (!link) return;
+
+  try {
+    const unread = await countNatterUnread();
+    link.classList.toggle("has-unread", unread > 0);
+    link.setAttribute(
+      "aria-label",
+      unread > 0 ? `Natter, ${unread} new` : "Natter"
+    );
+
+    let badge = link.querySelector(".nav-natter-badge");
+    if (unread > 0) {
+      const label = unread > 99 ? "99+" : String(unread);
+      if (badge) {
+        badge.textContent = label;
+      } else {
+        badge = document.createElement("span");
+        badge.className = "nav-natter-badge";
+        badge.textContent = label;
+        link.appendChild(badge);
+      }
+    } else if (badge) {
+      badge.remove();
+    }
+  } catch (err) {
+    console.warn("refreshNatterNavBadge:", err);
+  }
 }
 
 function renderNavGpslSportButton() {
@@ -1520,7 +1568,7 @@ export async function renderFallbackNav() {
           <a href="squad.html" class="nav-link">Squad</a>
         </div>
         <div class="gpsl-nav-actions gpsl-nav-actions-primary">
-          ${renderNavNatterLink(false)}
+          ${renderNavNatterLink(false, 0)}
           ${renderNavGpslSportButton()}
           ${renderNavDashboardHomeLink(ownerClub, "dashboard.html", false)}
           ${renderNavInboxLink(false, 0)}
@@ -1531,6 +1579,9 @@ export async function renderFallbackNav() {
   `;
   wireNavLogout();
   refreshGpslSportNavUi();
+  refreshNatterNavBadge().catch((err) => {
+    console.warn("Natter nav badge skipped:", err);
+  });
 }
 
 // ------------------------------------------------------------
@@ -1576,6 +1627,7 @@ export async function buildNav() {
   const clubShort = await getOwnerClubShort(user);
 
   let unread = 0;
+  let natterUnread = 0;
   try {
     unread =
       clubShort || user?.id
@@ -1586,6 +1638,15 @@ export async function buildNav() {
         : 0;
   } catch (err) {
     console.warn("Inbox count skipped:", err);
+  }
+
+  try {
+    natterUnread = await Promise.race([
+      countNatterUnread(),
+      new Promise((resolve) => setTimeout(() => resolve(0), 4000)),
+    ]);
+  } catch (err) {
+    console.warn("Natter unread count skipped:", err);
   }
 
   await refreshSpecialAuctionNavLive();
@@ -1764,7 +1825,7 @@ export async function buildNav() {
   html += `</div>`;
 
   html += `<div class="gpsl-nav-actions gpsl-nav-actions-primary">`;
-  html += renderNavNatterLink(natterActive);
+  html += renderNavNatterLink(natterActive, natterUnread);
   html += renderNavGpslSportButton();
   html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
   html += renderNavInboxLink(inboxActive, unread);
@@ -1816,6 +1877,9 @@ export async function initGlobal() {
       console.warn("Dashboard pin UI skipped:", err);
     });
     refreshGpslSportNavUi();
+    refreshNatterNavBadge().catch((err) => {
+      console.warn("Natter nav badge skipped:", err);
+    });
     import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`)
       .then((m) => m.initSeasonScheduleStrip())
       .catch((err) => console.warn("Season schedule strip skipped:", err));
