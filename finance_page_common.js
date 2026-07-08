@@ -13,7 +13,7 @@ import {
   summariseLedgerTotals,
 } from "./finance_ui.js";
 import { buildFinanceProjections } from "./finance_projections.js";
-import { appendAssignmentInfraPurchaseLedger } from "./finance_assignment_ledger.js";
+import { appendAssignmentInfraPurchaseLedger, ledgerStartingBudget } from "./finance_assignment_ledger.js";
 import {
   aggregateClubTransfersFromHistory,
   loadClubTransferHistoryForSeason,
@@ -418,6 +418,57 @@ export function renderLedgerTable(container, rows, { emptyMessage } = {}) {
   `;
 }
 
+async function loadPreviousSeasonClosingBalance(supabase, clubShortName, currentSeasonId) {
+  if (!currentSeasonId) return null;
+
+  const { data, error } = await supabase
+    .from("competition_club_finance_season_archive_public")
+    .select("closing_balance, season_id")
+    .eq("club_short_name", clubShortName)
+    .lt("season_id", currentSeasonId)
+    .order("season_id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("loadPreviousSeasonClosingBalance:", error);
+    return null;
+  }
+
+  if (data?.closing_balance == null) return null;
+  const value = Number(data.closing_balance);
+  return Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Season opening = GPSL starting budget (before auctions) for new assignments,
+ * or prior season closing for continuing clubs. Falls back to ledger inference.
+ */
+async function resolveSeasonOpeningBalance(
+  supabase,
+  shortName,
+  { ledger, balanceNow, net, transferGap, seasonId }
+) {
+  const fromLedger = ledgerStartingBudget(ledger);
+  if (fromLedger != null) return fromLedger;
+
+  const prevClosing = await loadPreviousSeasonClosingBalance(supabase, shortName, seasonId);
+  if (prevClosing != null) return prevClosing;
+
+  const { data: assign, error } = await supabase.rpc("club_assignment_finance_display", {
+    p_club_short_name: shortName,
+  });
+
+  if (error) {
+    console.warn("club_assignment_finance_display:", error);
+  } else if (assign?.show_in_accounts) {
+    const starting = Number(assign.starting_budget);
+    if (Number.isFinite(starting) && starting > 0) return starting;
+  }
+
+  return balanceNow - net - transferGap;
+}
+
 export async function loadFinanceSeasonContext(supabase, shortName, options = {}) {
   const { seasonView = null } = options;
 
@@ -446,8 +497,16 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
     const { incomeTotal, costTotal, net } = summariseLedgerTotals(ledger);
     const byLine = aggregateLedgerByLine(ledger);
     const balanceNow = Number(archiveRow.closing_balance ?? 0);
-    const inferredOpeningAdjusted = Number(
-      archiveRow.opening_balance ?? balanceNow - net
+    const inferredOpeningAdjusted = await resolveSeasonOpeningBalance(
+      supabase,
+      shortName,
+      {
+        ledger,
+        balanceNow,
+        net: Number(archiveRow.net_total ?? net),
+        transferGap: 0,
+        seasonId: archiveRow.season_id,
+      }
     );
 
     return {
@@ -488,7 +547,18 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
   const transferGap = transferHistoryBalanceGap(transferAgg, byLine);
   mergeTransferHistoryIntoByLine(byLine, transferAgg);
 
-  const inferredOpeningAdjusted = balanceNow - net - transferGap;
+  const currentSeason = await loadCurrentSeasonId(supabase);
+  const inferredOpeningAdjusted = await resolveSeasonOpeningBalance(
+    supabase,
+    shortName,
+    {
+      ledger,
+      balanceNow,
+      net,
+      transferGap,
+      seasonId: currentSeason.id,
+    }
+  );
   const { pendingByLine, totalPending, subsidyPreview } = await buildFinanceProjections(
     supabase,
     shortName,

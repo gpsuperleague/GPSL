@@ -3,7 +3,7 @@
  * synthesize a ledger row for season accounts (until repair_club_assignment_ledger_only runs).
  */
 
-function parseMetadata(raw) {
+export function parseLedgerMetadata(raw) {
   if (!raw) return {};
   if (typeof raw === "object") return raw;
   try {
@@ -11,6 +11,30 @@ function parseMetadata(raw) {
   } catch {
     return {};
   }
+}
+
+/**
+ * GPSL starting budget from club-assignment infra_purchase metadata (pre-auction cash).
+ * @param {Array<{ entry_type?: string, metadata?: unknown, created_at?: string }>} ledger
+ * @returns {number | null}
+ */
+export function ledgerStartingBudget(ledger) {
+  if (!Array.isArray(ledger) || !ledger.length) return null;
+
+  const infraRows = ledger
+    .filter((r) => r.entry_type === "infra_purchase")
+    .sort(
+      (a, b) =>
+        new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime()
+    );
+
+  for (const row of infraRows) {
+    const md = parseLedgerMetadata(row.metadata);
+    const value = Number(md.starting_budget);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+
+  return null;
 }
 
 /**
@@ -52,6 +76,7 @@ export async function appendAssignmentInfraPurchaseLedger(supabase, clubShortNam
       stadium_name: stadiumName,
       source: "club_assignment",
       synthetic: true,
+      starting_budget: Number(data.starting_budget) > 0 ? Number(data.starting_budget) : undefined,
     },
     club_name: data.club_name || clubShortName,
     club_short_name: clubShortName,
