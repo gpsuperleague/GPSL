@@ -172,37 +172,21 @@ async function loadSeasonStart() {
   };
 }
 
-async function loadSignedManagers(seasonId, listingManagerIds) {
-  const cols =
-    "id, name, slug, rating, contracted_club, market_value, signed_season_id, updated_at";
+async function loadManagersByIds(ids) {
+  const unique = [...new Set((ids || []).map((id) => Number(id)).filter(Number.isFinite))];
+  if (!unique.length) return new Map();
+
+  const { data, error } = await supabase
+    .from("Managers")
+    .select("id, name, slug, rating, market_value")
+    .in("id", unique);
+  if (error) throw error;
+
   const byId = new Map();
-
-  if (seasonId) {
-    const { data, error } = await supabase
-      .from("Managers")
-      .select(cols)
-      .eq("signed_season_id", seasonId)
-      .not("contracted_club", "is", null);
-    if (error) throw error;
-    for (const mgr of data || []) {
-      byId.set(mgr.id, mgr);
-    }
+  for (const mgr of data || []) {
+    byId.set(Number(mgr.id), mgr);
   }
-
-  const extraIds = listingManagerIds.filter((id) => !byId.has(id));
-  if (extraIds.length) {
-    const { data, error } = await supabase
-      .from("Managers")
-      .select(cols)
-      .in("id", extraIds)
-      .not("contracted_club", "is", null);
-    if (error) throw error;
-    for (const mgr of data || []) {
-      byId.set(mgr.id, mgr);
-    }
-  }
-
-  return [...byId.values()];
+  return byId;
 }
 
 async function loadSeasonListings(seasonStartedAt) {
@@ -211,7 +195,7 @@ async function loadSeasonListings(seasonStartedAt) {
     .select(
       "id, manager_id, seller_club_id, listing_type, current_highest_bid, current_highest_bidder, transfer_completed, status, updated_at"
     )
-    .in("status", ["Closed", "Review"])
+    .eq("transfer_completed", true)
     .not("current_highest_bidder", "is", null)
     .order("updated_at", { ascending: false });
 
@@ -224,21 +208,30 @@ async function loadSeasonListings(seasonStartedAt) {
   return data || [];
 }
 
-function pickListingForManager(managerId, toClub, listings) {
-  const matches = listings.filter(
-    (l) => String(l.manager_id) === String(managerId)
-  );
-  if (!matches.length) return null;
+async function loadSeasonSigningLedger(seasonId, seasonStartedAt) {
+  let q = supabase
+    .from("competition_finance_ledger")
+    .select("id, club_short_name, amount, description, metadata, created_at, season_id")
+    .eq("entry_type", "contract_signing_offer")
+    .lt("amount", 0)
+    .order("created_at", { ascending: false });
 
-  const buyerMatch = matches.find((l) => l.current_highest_bidder === toClub);
-  if (buyerMatch) return buyerMatch;
+  if (seasonId) {
+    q = q.eq("season_id", seasonId);
+  } else if (seasonStartedAt) {
+    q = q.gte("created_at", seasonStartedAt);
+  }
 
-  const completed = matches.find((l) => l.transfer_completed);
-  if (completed) return completed;
+  const { data, error } = await q.limit(500);
+  if (error) {
+    console.warn("manager signing ledger:", error.message);
+    return [];
+  }
 
-  return matches.sort(
-    (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  )[0];
+  return (data || []).filter((row) => {
+    const mid = Number(row.metadata?.manager_id);
+    return Number.isFinite(mid);
+  });
 }
 
 function listingDealKind(listingType) {
@@ -247,46 +240,78 @@ function listingDealKind(listingType) {
   return "market";
 }
 
-function buildRows(managers, listings) {
-  const rows = [];
+function buildRowsFromEvents(listings, ledgerRows, managersById) {
+  const byKey = new Map();
 
-  for (const mgr of managers) {
-    const toClub = mgr.contracted_club;
-    const listing = pickListingForManager(mgr.id, toClub, listings);
+  for (const listing of listings || []) {
+    const managerId = Number(listing.manager_id);
+    const toClub = String(listing.current_highest_bidder || "").trim().toUpperCase();
+    if (!Number.isFinite(managerId) || !toClub) continue;
 
-    if (listing && listing.current_highest_bidder !== toClub) {
-      continue;
-    }
-
-    let dealKind = "assign";
-    let fee = mgr.market_value;
-    let fromClub = null;
-    let signedAt = mgr.updated_at;
-
-    if (listing) {
-      dealKind = listingDealKind(listing.listing_type);
-      fee = listing.current_highest_bid ?? mgr.market_value;
-      fromClub = listing.seller_club_id || null;
-      signedAt = listing.updated_at || mgr.updated_at;
-    }
-
-    rows.push({
-      managerId: mgr.id,
-      managerName: mgr.name,
-      managerSlug: mgr.slug,
-      rating: mgr.rating,
-      fromClub,
+    const key = `${managerId}|${toClub}`;
+    const mgr = managersById.get(managerId);
+    const row = {
+      managerId,
+      managerName: mgr?.name || `Manager #${managerId}`,
+      managerSlug: mgr?.slug || null,
+      rating: mgr?.rating ?? null,
+      fromClub: listing.seller_club_id || null,
       toClub,
-      fee,
-      signedAt,
-      dealKind,
-    });
+      fee: listing.current_highest_bid ?? mgr?.market_value ?? 0,
+      signedAt: listing.updated_at,
+      dealKind: listingDealKind(listing.listing_type),
+    };
+    const prev = byKey.get(key);
+    if (!prev || new Date(row.signedAt) > new Date(prev.signedAt)) {
+      byKey.set(key, row);
+    }
   }
 
-  rows.sort(
+  for (const ledger of ledgerRows || []) {
+    const managerId = Number(ledger.metadata?.manager_id);
+    const toClub = String(ledger.club_short_name || "").trim().toUpperCase();
+    if (!Number.isFinite(managerId) || !toClub) continue;
+
+    const key = `${managerId}|${toClub}`;
+    const mgr = managersById.get(managerId);
+    const isDraft =
+      ledger.metadata?.manager_draft === true ||
+      ledger.metadata?.manager_draft === "true" ||
+      ledger.metadata?.manager_draft === "t" ||
+      ledger.metadata?.manager_draft === "1";
+    const row = {
+      managerId,
+      managerName: mgr?.name || `Manager #${managerId}`,
+      managerSlug: mgr?.slug || null,
+      rating: mgr?.rating ?? null,
+      fromClub: null,
+      toClub,
+      fee: Math.abs(Number(ledger.amount) || 0),
+      signedAt: ledger.created_at,
+      dealKind: isDraft ? "draft" : "assign",
+    };
+    const prev = byKey.get(key);
+    if (!prev) {
+      byKey.set(key, row);
+      continue;
+    }
+    // Prefer listing deal type/fee when both exist; keep newest timestamp.
+    if (new Date(row.signedAt) >= new Date(prev.signedAt)) {
+      byKey.set(key, {
+        ...prev,
+        ...row,
+        dealKind: prev.dealKind === "draft" || isDraft ? "draft" : prev.dealKind,
+        fee: prev.fee || row.fee,
+        fromClub: prev.fromClub ?? row.fromClub,
+      });
+    } else if (isDraft && prev.dealKind !== "draft") {
+      prev.dealKind = "draft";
+    }
+  }
+
+  return [...byKey.values()].sort(
     (a, b) => new Date(b.signedAt).getTime() - new Date(a.signedAt).getTime()
   );
-  return rows;
 }
 
 function wireFilters() {
@@ -324,13 +349,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         : ` — ${label}`;
     }
 
-    const listings = await loadSeasonListings(startedAt);
-    const listingManagerIds = [
-      ...new Set(listings.map((l) => l.manager_id).filter(Boolean)),
-    ];
-    const managers = await loadSignedManagers(seasonId, listingManagerIds);
+    const [listings, ledgerRows] = await Promise.all([
+      loadSeasonListings(startedAt),
+      loadSeasonSigningLedger(seasonId, startedAt),
+    ]);
 
-    allRows = buildRows(managers, listings);
+    const managerIds = [
+      ...listings.map((l) => l.manager_id),
+      ...ledgerRows.map((l) => l.metadata?.manager_id),
+    ];
+    const managersById = await loadManagersByIds(managerIds);
+
+    allRows = buildRowsFromEvents(listings, ledgerRows, managersById);
     renderTable();
   } catch (err) {
     console.error(err);

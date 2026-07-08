@@ -45,11 +45,11 @@ BEGIN
     );
   END IF;
 
+  -- Keep signed_season_id — season transfer history still needs the original season link.
   UPDATE public."Managers"
   SET contracted_club = NULL,
       contract_seasons_remaining = 0,
       weekly_wage = 0,
-      signed_season_id = NULL,
       updated_at = now()
   WHERE id = p_manager_id;
 

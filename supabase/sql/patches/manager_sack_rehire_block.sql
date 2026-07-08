@@ -37,8 +37,9 @@ SET search_path = public
 AS $function$
 DECLARE
   v_season_id bigint := p_season_id;
+  v_club text := upper(btrim(coalesce(p_club_short, '')));
 BEGIN
-  IF p_club_short IS NULL OR btrim(p_club_short) = '' OR p_manager_id IS NULL THEN
+  IF v_club = '' OR p_manager_id IS NULL THEN
     RETURN;
   END IF;
 
@@ -60,9 +61,77 @@ BEGIN
     manager_id,
     sacked_at
   )
-  VALUES (v_season_id, p_club_short, p_manager_id, now())
+  VALUES (v_season_id, v_club, p_manager_id, now())
   ON CONFLICT (season_id, club_short_name, manager_id)
   DO UPDATE SET sacked_at = excluded.sacked_at;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.manager_club_was_sacked_this_season(
+  p_club_short text,
+  p_manager_id bigint
+)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club text := upper(btrim(coalesce(p_club_short, '')));
+  v_season_id bigint;
+BEGIN
+  IF v_club = '' OR p_manager_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  SELECT id INTO v_season_id
+  FROM public.competition_seasons
+  WHERE is_current = true
+  ORDER BY id DESC
+  LIMIT 1;
+
+  IF v_season_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.manager_club_sack_blocks b
+    WHERE b.season_id = v_season_id
+      AND upper(b.club_short_name) = v_club
+      AND b.manager_id = p_manager_id
+  ) THEN
+    RETURN true;
+  END IF;
+
+  -- Ledger fallback (covers sacks before block table / missed backfill)
+  IF EXISTS (
+    SELECT 1
+    FROM public.competition_finance_ledger l
+    WHERE l.season_id = v_season_id
+      AND upper(l.club_short_name) = v_club
+      AND l.entry_type = 'contract_release_comp'
+      AND l.amount > 0
+      AND (
+        (
+          coalesce(l.metadata->>'manager_sack', '') IN ('true', 't', '1')
+          AND nullif(l.metadata->>'manager_id', '')::bigint = p_manager_id
+        )
+        OR (
+          coalesce(l.metadata->>'kind', '') = 'manager'
+          AND nullif(l.metadata->>'manager_id', '')::bigint = p_manager_id
+          AND (
+            coalesce(l.metadata->>'manager_sack', '') IN ('true', 't', '1')
+            OR l.description ILIKE 'Manager sack%'
+          )
+        )
+      )
+  ) THEN
+    RETURN true;
+  END IF;
+
+  RETURN false;
 END;
 $function$;
 
@@ -77,19 +146,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 BEGIN
-  IF p_club_short IS NULL OR btrim(p_club_short) = '' OR p_manager_id IS NULL THEN
-    RETURN;
-  END IF;
-
-  IF EXISTS (
-    SELECT 1
-    FROM public.manager_club_sack_blocks b
-    JOIN public.competition_seasons s
-      ON s.id = b.season_id
-     AND s.is_current = true
-    WHERE b.club_short_name = p_club_short
-      AND b.manager_id = p_manager_id
-  ) THEN
+  IF public.manager_club_was_sacked_this_season(p_club_short, p_manager_id) THEN
     RAISE EXCEPTION
       'You cannot re-sign a manager you sacked this season — try again next season';
   END IF;
@@ -105,24 +162,74 @@ SET search_path = public
 AS $function$
 DECLARE
   v_club text;
+  v_season_id bigint;
   v_ids jsonb;
 BEGIN
-  v_club := public.my_club_shortname();
-  IF v_club IS NULL THEN
+  v_club := upper(btrim(coalesce(public.my_club_shortname(), '')));
+  IF v_club = '' THEN
     RETURN '[]'::jsonb;
   END IF;
 
-  SELECT coalesce(jsonb_agg(b.manager_id ORDER BY b.manager_id), '[]'::jsonb)
+  SELECT id INTO v_season_id
+  FROM public.competition_seasons
+  WHERE is_current = true
+  ORDER BY id DESC
+  LIMIT 1;
+
+  IF v_season_id IS NULL THEN
+    RETURN '[]'::jsonb;
+  END IF;
+
+  SELECT coalesce(jsonb_agg(mid ORDER BY mid), '[]'::jsonb)
   INTO v_ids
-  FROM public.manager_club_sack_blocks b
-  JOIN public.competition_seasons s
-    ON s.id = b.season_id
-   AND s.is_current = true
-  WHERE b.club_short_name = v_club;
+  FROM (
+    SELECT DISTINCT mid
+    FROM (
+      SELECT b.manager_id AS mid
+      FROM public.manager_club_sack_blocks b
+      WHERE b.season_id = v_season_id
+        AND upper(b.club_short_name) = v_club
+      UNION
+      SELECT nullif(l.metadata->>'manager_id', '')::bigint AS mid
+      FROM public.competition_finance_ledger l
+      WHERE l.season_id = v_season_id
+        AND upper(l.club_short_name) = v_club
+        AND l.entry_type = 'contract_release_comp'
+        AND l.amount > 0
+        AND nullif(l.metadata->>'manager_id', '') ~ '^[0-9]+$'
+        AND (
+          coalesce(l.metadata->>'manager_sack', '') IN ('true', 't', '1')
+          OR (
+            coalesce(l.metadata->>'kind', '') = 'manager'
+            AND l.description ILIKE 'Manager sack%'
+          )
+        )
+    ) src
+    WHERE mid IS NOT NULL
+  ) q;
 
   RETURN coalesce(v_ids, '[]'::jsonb);
 END;
 $function$;
+
+-- Dedicated bid trigger — survives later rewrites of the draft vacancy guard
+CREATE OR REPLACE FUNCTION public.trg_manager_transfer_bids_sack_block()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+BEGIN
+  PERFORM public.manager_assert_not_sack_blocked(NEW.bidder_club_id, NEW.manager_id);
+  RETURN NEW;
+END;
+$function$;
+
+DROP TRIGGER IF EXISTS manager_transfer_bids_sack_block ON public."Manager_Transfer_Bids";
+CREATE TRIGGER manager_transfer_bids_sack_block
+  BEFORE INSERT ON public."Manager_Transfer_Bids"
+  FOR EACH ROW
+  EXECUTE FUNCTION public.trg_manager_transfer_bids_sack_block();
 
 -- ---------------------------------------------------------------------------
 -- Record block on sack
@@ -543,7 +650,12 @@ BEGIN
       nullif(l.metadata->>'manager_id', '')::bigint AS metadata_manager_id,
       coalesce(l.metadata->>'manager_sack', '') IN ('true', 't', '1') AS tagged_sack,
       nullif(
-        btrim(substring(l.description FROM 'Manager sack — (.+) \(half MV\)')),
+        btrim(
+          substring(
+            l.description
+            FROM 'Manager sack\s*[—\-]\s*(.+)\s*\(half MV\)'
+          )
+        ),
         ''
       ) AS parsed_manager_name
     FROM public.competition_finance_ledger l
@@ -554,7 +666,7 @@ BEGIN
       AND (
         coalesce(l.metadata->>'manager_sack', '') IN ('true', 't', '1')
         OR coalesce(l.metadata->>'kind', '') = 'manager'
-        OR l.description ILIKE 'Manager sack — %(half MV)%'
+        OR l.description ILIKE 'Manager sack%half MV%'
       )
   ),
   resolved AS (
@@ -636,7 +748,7 @@ BEGIN
   )
   SELECT
     t.season_id,
-    t.club_short_name,
+    upper(t.club_short_name),
     t.manager_id,
     t.sacked_at
   FROM tmp_manager_sack_backfill t

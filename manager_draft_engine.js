@@ -255,7 +255,7 @@ export async function getManagerDraftBidEligibility({
     return { allowed: false, reason: vacancy.reason };
   }
 
-  const sackedIds = await fetchClubSackedManagerIds();
+  const sackedIds = await fetchClubSackedManagerIds({ force: true });
   if (sackedIds.includes(Number(managerId))) {
     return {
       allowed: false,
