@@ -32,7 +32,7 @@
 ## Nation strength (admin)
 
 1. **Refresh selectable nations** — import GPDB nationalities, rebuild pool cache, set `active` only for squad-viable nations (**≥24 GPDB players and ≥2 GKs**). Club-depth rating bands are informational on the pool page only — they do not gate selection.
-2. **Recompute seed ranks from pool** — order active nations by weighted rating-band totals (`seed_rank` 1 = strongest). Used for balanced qualifying pots; owner draft order stays on rolling owner rankings.
+2. **Recompute seed ranks** — order active nations by **average rating of their top 100 GPDB players** (`seed_rank` 1 = strongest; fewer than 100 → average of all). Used for balanced qualifying pots; owner draft order stays on rolling owner rankings.
 
 SQL: `supabase/sql/patches/international_refresh_selectable_and_seed_ranks.sql`
 

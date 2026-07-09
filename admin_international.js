@@ -25,7 +25,11 @@ function showTopSeeds(rows) {
     .map(
       (r) =>
         `<li>#${r.seed_rank} ${r.code} — ${r.name}` +
-        (r.strength != null ? ` <span style="color:#888">(score ${Number(r.strength).toFixed(1)})</span>` : "") +
+        (r.avg_rating != null
+          ? ` <span style="color:#888">(top ${r.players_used ?? 100} avg ${Number(r.avg_rating).toFixed(2)})</span>`
+          : r.strength != null
+            ? ` <span style="color:#888">(score ${Number(r.strength).toFixed(1)})</span>`
+            : "") +
         `</li>`
     )
     .join("");
@@ -180,7 +184,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("seedNationsBtn")?.addEventListener("click", async () => {
     if (
       !confirm(
-        "Step 4 — Recompute nation seed ranks from the player pool?\n\nActive nations ordered by rating-band strength. Seed 1 = strongest (qualifying pots).\nDoes not change owner draft pick order."
+        "Step 4 — Recompute nation seed ranks?\n\nActive nations ordered by average rating of their highest-rated 100 GPDB players (fewer than 100 → average of all).\nSeed 1 = strongest (qualifying pots).\nDoes not change owner draft pick order."
       )
     ) {
       return;

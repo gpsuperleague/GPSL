@@ -10,8 +10,7 @@
 --      Slowest — if it times out, use Admin → Refresh pool cache, or retry.
 --   3) SELECT public.international_apply_selectable_from_pool_cache();
 --   4) SELECT public.international_recompute_seed_ranks_from_pool();
---
--- If you already have nations + a fresh pool cache, skip to step 3.
+--      Ranks by average rating of each nation's top 100 GPDB players.
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.international_nation_pool_strength_score(p_pool jsonb)
@@ -273,6 +272,48 @@ BEGIN
 END;
 $function$;
 
+-- Top-100 average rating per nation (GPDB). Fewer than 100 → average of all.
+CREATE OR REPLACE FUNCTION public.international_nation_top100_avg_ratings()
+RETURNS TABLE (
+  nation_code text,
+  players_used integer,
+  avg_rating numeric
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  WITH rated AS (
+    SELECT
+      m.nation_code,
+      NULLIF(btrim(p."Rating"::text), '')::numeric AS rating
+    FROM public."Players" p
+    INNER JOIN public.international_gpdb_label_map m
+      ON m.norm_label = public.international_normalize_nation_label(p."Nation")
+    WHERE btrim(coalesce(p."Nation", '')) <> ''
+      AND NULLIF(btrim(p."Rating"::text), '') ~ '^[0-9]+(\.[0-9]+)?$'
+  ),
+  ranked AS (
+    SELECT
+      nation_code,
+      rating,
+      row_number() OVER (
+        PARTITION BY nation_code
+        ORDER BY rating DESC
+      ) AS rn
+    FROM rated
+    WHERE rating IS NOT NULL
+  )
+  SELECT
+    r.nation_code,
+    count(*)::integer AS players_used,
+    round(avg(r.rating)::numeric, 3) AS avg_rating
+  FROM ranked r
+  WHERE r.rn <= 100
+  GROUP BY r.nation_code;
+$$;
+
 CREATE OR REPLACE FUNCTION public.international_recompute_seed_ranks_from_pool()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -280,45 +321,51 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
-  v_cache jsonb := '{}'::jsonb;
   v_active integer := 0;
   v_inactive integer := 0;
-  v_cache_count integer := 0;
+  v_scored integer := 0;
 BEGIN
   IF NOT public.is_gpsl_admin()
      AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
-  SELECT count(*)::integer INTO v_cache_count
-  FROM public.international_nation_player_pool_cache;
+  PERFORM set_config('statement_timeout', '55000', true);
 
-  IF v_cache_count = 0 THEN
+  IF to_regclass('public.international_gpdb_label_map') IS NULL THEN
     RAISE EXCEPTION
-      'Nation pool cache is empty. Run SELECT public.international_refresh_nation_player_pool_cache(); first.';
+      'international_gpdb_label_map missing — run international_nation_player_pool.sql first';
   END IF;
 
-  v_cache := jsonb_build_object(
-    'nations_cached', v_cache_count,
-    'refreshed_via', 'existing_cache'
-  );
+  -- Materialize top-100 averages once (avoids rescanning Players in the RETURN query)
+  CREATE TEMP TABLE IF NOT EXISTS _intl_top100_avg (
+    nation_code text PRIMARY KEY,
+    players_used integer NOT NULL,
+    avg_rating numeric NOT NULL
+  ) ON COMMIT DROP;
+  TRUNCATE _intl_top100_avg;
+
+  INSERT INTO _intl_top100_avg (nation_code, players_used, avg_rating)
+  SELECT t.nation_code, t.players_used, t.avg_rating
+  FROM public.international_nation_top100_avg_ratings() t;
+
+  GET DIAGNOSTICS v_scored = ROW_COUNT;
 
   WITH scored AS (
     SELECT
       n.code,
-      public.international_nation_pool_strength_score(cache.pool) AS strength,
-      coalesce((cache.pool->'all'->>'total')::numeric, 0) AS players_total,
+      coalesce(a.avg_rating, 0) AS avg_rating,
+      coalesce(a.players_used, 0) AS players_used,
       n.name
     FROM public.international_nations n
-    LEFT JOIN public.international_nation_player_pool_cache cache
-      ON cache.nation_code = n.code
+    LEFT JOIN _intl_top100_avg a ON a.nation_code = n.code
     WHERE n.active = true
   ),
   ranked AS (
     SELECT
       code,
       row_number() OVER (
-        ORDER BY strength DESC, players_total DESC, name ASC, code ASC
+        ORDER BY avg_rating DESC, players_used DESC, name ASC, code ASC
       )::smallint AS new_rank
     FROM scored
   )
@@ -350,7 +397,8 @@ BEGIN
   GET DIAGNOSTICS v_inactive = ROW_COUNT;
 
   RETURN jsonb_build_object(
-    'cache', v_cache,
+    'method', 'top100_avg_rating',
+    'nations_scored', v_scored,
     'active_ranked', v_active,
     'inactive_ranked', v_inactive,
     'top_nations', (
@@ -360,7 +408,8 @@ BEGIN
             'seed_rank', t.seed_rank,
             'code', t.code,
             'name', t.name,
-            'strength', t.strength
+            'avg_rating', t.avg_rating,
+            'players_used', t.players_used
           )
           ORDER BY t.seed_rank
         ),
@@ -371,10 +420,10 @@ BEGIN
           n.seed_rank,
           n.code,
           n.name,
-          public.international_nation_pool_strength_score(cache.pool) AS strength
+          a.avg_rating,
+          a.players_used
         FROM public.international_nations n
-        LEFT JOIN public.international_nation_player_pool_cache cache
-          ON cache.nation_code = n.code
+        LEFT JOIN _intl_top100_avg a ON a.nation_code = n.code
         WHERE n.active = true
         ORDER BY n.seed_rank
         LIMIT 10
@@ -387,6 +436,7 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.international_nation_pool_strength_score(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_nation_pool_json_is_selectable(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_nation_pool_is_selectable(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.international_nation_top100_avg_ratings() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_sync_gpdb_nation_labels(integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_apply_selectable_from_pool_cache() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_refresh_selectable_nations() TO authenticated;
