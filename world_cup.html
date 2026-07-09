@@ -43,6 +43,7 @@
     <div class="toolbar">
       <a class="button" href="nation_select.html">Nation selection</a>
       <a class="button" href="owner_rankings.html">Owner rankings</a>
+      <a class="button" href="international_matchday.html">International matchday</a>
       <a class="button" href="national_team.html" id="myNationLink" hidden>My national team</a>
     </div>
 
@@ -65,9 +66,10 @@
 
     <div class="panel">
       <h2>Knockout stage</h2>
-      <p id="knockoutNote" class="empty">Knockout bracket will appear once finals groups are complete.</p>
+      <div id="knockoutBracket"></div>
+      <p id="knockoutNote" class="empty" hidden>Knockout bracket will appear once finals groups are complete.</p>
     </div>
   </div>
-  <script type="module" src="world_cup.js"></script>
+  <script type="module" src="world_cup.js?v=20260710-ko"></script>
 </body>
 </html>

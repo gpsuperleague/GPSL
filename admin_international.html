@@ -74,6 +74,63 @@
       <div id="topSeedsPreview"></div>
     </div>
 
+    <div class="card" id="sb-wc-cycle">
+      <h2>World Cup cycle</h2>
+      <p class="note">
+        Create a cycle, bind the two qualifying seasons and the season after which finals are played,
+        then draw groups and generate fixtures. Qualifying: 12 groups × 5 (pots by seed rank).
+        Finals: top 2 + 8 best thirds → 8×4 → knockout.
+      </p>
+      <p class="note" id="wcCycleLive">No cycle loaded yet.</p>
+
+      <label for="wcLabel">Cycle label</label>
+      <input id="wcLabel" placeholder="e.g. World Cup 1 (after Season 4)" maxlength="80">
+
+      <div class="row" style="align-items:flex-start;">
+        <div>
+          <label for="wcQual1">Qualifying season 1</label>
+          <select id="wcQual1" style="max-width:280px;"><option value="">Loading…</option></select>
+        </div>
+        <div>
+          <label for="wcQual2">Qualifying season 2</label>
+          <select id="wcQual2" style="max-width:280px;"><option value="">Loading…</option></select>
+        </div>
+        <div>
+          <label for="wcFinalsAfter">Finals after season</label>
+          <select id="wcFinalsAfter" style="max-width:280px;"><option value="">Loading…</option></select>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <button type="button" class="button" id="wcCreateBtn">Create cycle</button>
+        <button type="button" class="button secondary" id="wcRefreshBtn">Refresh</button>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #333;margin:16px 0;">
+
+      <p class="note"><b>Qualifying</b></p>
+      <div class="row">
+        <button type="button" class="button" id="wcDrawQualBtn">1. Draw qual groups (seed pots)</button>
+        <button type="button" class="button" id="wcGenQualFixBtn">2. Generate qual fixtures</button>
+        <button type="button" class="button secondary" id="wcRankThirdsBtn">3. Rank thirds / qualify 32</button>
+      </div>
+
+      <p class="note" style="margin-top:14px;"><b>Finals</b></p>
+      <div class="row">
+        <button type="button" class="button" id="wcDrawFinalsBtn">4. Draw finals groups</button>
+        <button type="button" class="button" id="wcGenFinalsFixBtn">5. Generate finals fixtures</button>
+        <button type="button" class="button" id="wcSeedKoBtn">6. Seed knockout (after groups)</button>
+      </div>
+
+      <p class="note" style="margin-top:14px;"><b>Status / post-WC</b></p>
+      <div class="row">
+        <button type="button" class="button secondary" id="wcStatusQualBtn">Set status → qualifying</button>
+        <button type="button" class="button secondary" id="wcStatusFinalsBtn">Set status → finals</button>
+        <button type="button" class="button" id="wcCompleteReselectBtn">Complete WC + open re-selection</button>
+      </div>
+      <div id="wcStatus" class="status-line"></div>
+    </div>
+
     <div class="card" id="sb-owner-rankings">
       <h2>Owner rankings</h2>
       <p class="note">
@@ -135,10 +192,11 @@
       <p>
         <a href="world_cup.html">World Cup page</a> ·
         <a href="nation_select.html">Nation selection</a> ·
-        <a href="nation_player_pool.html">Nation player pool</a>
+        <a href="nation_player_pool.html">Nation player pool</a> ·
+        <a href="international_matchday.html">International matchday</a>
       </p>
     </div>
   </div>
-  <script type="module" src="admin_international.js?v=20260709-open-fix"></script>
+  <script type="module" src="admin_international.js?v=20260710-wc-engine"></script>
 </body>
 </html>

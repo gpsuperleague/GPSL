@@ -15,32 +15,55 @@
 2. After **Season 1**, admin opens **initial** selection window.
 3. Owners pick in order 1→60 on `nation_select.html`.
 4. Nation **locked** until post–World Cup re-selection.
-5. After each WC, admin opens **post_world_cup** window — all nations free; draft order by current rank (top owners can take nations previously held by lower-ranked owners if they pick first).
+5. After each WC, admin runs **Complete WC + open re-selection** — rankings refresh, all nations free, `post_world_cup` draft by current rank.
+
+## Competition engine (admin)
+
+SQL patches (run in order):
+
+1. `supabase/sql/patches/international_wc_competition_engine.sql`
+2. `supabase/sql/patches/international_wc_competition_engine_part2.sql`
+
+Admin UI: `admin_international.html` → **World Cup cycle**
+
+| Step | Action |
+|------|--------|
+| Create cycle | Label + qual season 1 + qual season 2 + finals-after season |
+| Draw qual groups | Seed pots 1–5 (ranks 1–12, 13–24, …); one from each pot → groups A–L |
+| Generate qual fixtures | Double RR per group (20×12=240); MD 1–5 → season 1, MD 6–10 → season 2 |
+| Rank thirds | After all qual played: top 2 + 8 best thirds → 32 |
+| Draw finals | 4 pots of 8 by seed among qualified → groups A–H |
+| Generate finals fixtures | Single RR (6 per group) |
+| Seed knockout | After finals groups played: R16 pairings → QF/SF/Final advance on results |
+| Complete + re-select | Mark complete, recompute owner rankings, release nations, open draft |
+
+## Owner matchday
+
+- `international_matchday.html` — propose/accept kickoff, submit/confirm results, default squad JSON
+- Career stats + call-up appearance (MV boost) update on confirm
+- Standings recompute on group results; knockout winners advance automatically
 
 ## Pages
 
 | Page | Purpose |
 |------|---------|
-| `world_cup.html` | Cycle info, qual/finals group tables |
+| `world_cup.html` | Cycle info, qual/finals tables, knockout bracket |
+| `international_matchday.html` | Arrange + results for your nation |
 | `nation_select.html` | Owner draft pick |
 | `national_team.html?nation=XXX` | Flag, squad, call-ups |
-| `admin_international.html` | Admin setup |
+| `admin_international.html` | Admin setup + WC cycle |
 
 ## SQL
 
-`supabase/sql/competition_international.sql`
+`supabase/sql/competition_international.sql` + WC engine patches above.
 
 ## Nation strength (admin)
 
-1. **Refresh selectable nations** — import GPDB nationalities, rebuild pool cache, set `active` only for squad-viable nations (**≥24 GPDB players and ≥2 GKs**). Club-depth rating bands are informational on the pool page only — they do not gate selection.
-2. **Recompute seed ranks** — order active nations by **average rating of their top 100 GPDB players** (`seed_rank` 1 = strongest; fewer than 100 → average of all). Used for balanced qualifying pots; owner draft order stays on rolling owner rankings.
+1. **Refresh selectable nations** — import GPDB nationalities, rebuild pool cache, set `active` only for squad-viable nations (**≥24 GPDB players and ≥2 GKs**).
+2. **Recompute seed ranks** — order active nations by **average rating of their top 100 GPDB players** (`seed_rank` 1 = strongest). Used for qualifying/finals pots; owner draft order stays on rolling owner rankings.
 
-SQL: `supabase/sql/patches/international_refresh_selectable_and_seed_ranks.sql`
+## Still thin / follow-ups
 
-## Not in v1 (later)
-
-- Auto qual/finals group draw
-- International fixtures + matchday
-- Stats apply on intl match confirm
-- Best-third-place ranking job
-- Knockout bracket UI
+- Full pitch UI for intl default XI (currently JSON / club-parity RPCs; club matchday UI not fully reused yet)
+- Check-in window parity with club matchday (intl uses agreed kickoff only for now)
+- Calendar deep-links to specific intl fixtures by `gpsl_month`

@@ -148,6 +148,106 @@ function showTopSeeds(rows) {
   el.style.display = "block";
 }
 
+/** @type {number|null} */
+let activeWcCycleId = null;
+
+async function loadSeasonOptions() {
+  const selects = ["wcQual1", "wcQual2", "wcFinalsAfter"]
+    .map((id) => document.getElementById(id))
+    .filter(Boolean);
+  if (!selects.length) return;
+
+  const { data, error } = await supabase
+    .from("competition_seasons")
+    .select("id, label, status")
+    .order("id", { ascending: true });
+
+  if (error) {
+    for (const sel of selects) {
+      sel.innerHTML = `<option value="">❌ ${escapeOpt(error.message)}</option>`;
+    }
+    return;
+  }
+
+  const opts = [`<option value="">Select season…</option>`].concat(
+    (data || []).map(
+      (s) =>
+        `<option value="${s.id}">${escapeOpt(s.label || `Season ${s.id}`)} (${escapeOpt(
+          s.status || "?"
+        )})</option>`
+    )
+  );
+  const html = opts.join("");
+  for (const sel of selects) sel.innerHTML = html;
+}
+
+async function refreshWcCycleLive() {
+  const live = document.getElementById("wcCycleLive");
+  if (!live) return;
+
+  const { data, error } = await supabase
+    .from("international_wc_cycle_public")
+    .select("*")
+    .order("cycle_no", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    live.textContent = `❌ ${error.message} — run international_wc_competition_engine.sql`;
+    activeWcCycleId = null;
+    return;
+  }
+
+  const c = data?.[0];
+  if (!c) {
+    live.textContent = "No World Cup cycle yet — create one above.";
+    activeWcCycleId = null;
+    return;
+  }
+
+  activeWcCycleId = c.id ?? null;
+  // public view may not expose id — fall back via RPC list if needed
+  if (activeWcCycleId == null) {
+    const { data: raw } = await supabase
+      .from("international_wc_cycles")
+      .select("id, cycle_no, status, label")
+      .order("cycle_no", { ascending: false })
+      .limit(1);
+    activeWcCycleId = raw?.[0]?.id ?? null;
+  }
+
+  live.innerHTML =
+    `<b>${escapeOpt(c.label)}</b> · cycle #${escapeOpt(c.cycle_no)} · status <b>${escapeOpt(
+      c.status
+    )}</b><br>` +
+    `Qual: ${escapeOpt(c.qual_season_1_label || "—")} &amp; ${escapeOpt(
+      c.qual_season_2_label || "—"
+    )} · Finals after ${escapeOpt(c.finals_after_season_label || "—")}`;
+}
+
+function requireWcCycleId() {
+  if (!activeWcCycleId) {
+    setStatus("wcStatus", "Create or refresh a World Cup cycle first.", false);
+    return null;
+  }
+  return activeWcCycleId;
+}
+
+async function wcRpc(fn, args, okMsg) {
+  setStatus("wcStatus", "Working…");
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) {
+    setStatus(
+      "wcStatus",
+      `❌ ${error.message} — ensure both WC engine SQL patches are applied.`,
+      false
+    );
+    return null;
+  }
+  setStatus("wcStatus", okMsg ? `✅ ${okMsg}` : `✅ ${fn} ok`, true);
+  await refreshWcCycleLive();
+  return data;
+}
+
 async function refreshSelectionLive() {
   const liveEl = document.getElementById("selectionLive");
   const skipBtn = document.getElementById("skipCurrentPickBtn");
@@ -179,7 +279,169 @@ async function refreshSelectionLive() {
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
+  await loadSeasonOptions();
+  await refreshWcCycleLive();
   await refreshSelectionLive();
+
+  document.getElementById("wcRefreshBtn")?.addEventListener("click", async () => {
+    await loadSeasonOptions();
+    await refreshWcCycleLive();
+    setStatus("wcStatus", "✅ Refreshed", true);
+  });
+
+  document.getElementById("wcCreateBtn")?.addEventListener("click", async () => {
+    const label = document.getElementById("wcLabel")?.value?.trim();
+    const q1 = Number(document.getElementById("wcQual1")?.value || 0);
+    const q2 = Number(document.getElementById("wcQual2")?.value || 0);
+    const fin = Number(document.getElementById("wcFinalsAfter")?.value || 0);
+    if (!label || !q1 || !q2 || !fin) {
+      setStatus("wcStatus", "Label and all three seasons are required.", false);
+      return;
+    }
+    if (
+      !confirm(
+        `Create World Cup cycle?\n\n${label}\nQual seasons: ${q1} + ${q2}\nFinals after: ${fin}`
+      )
+    ) {
+      return;
+    }
+    const data = await wcRpc(
+      "international_admin_create_wc_cycle",
+      {
+        p_label: label,
+        p_qual_season_id_1: q1,
+        p_qual_season_id_2: q2,
+        p_finals_after_season_id: fin,
+      },
+      "Cycle created"
+    );
+    if (data?.cycle_id) activeWcCycleId = data.cycle_id;
+  });
+
+  document.getElementById("wcDrawQualBtn")?.addEventListener("click", async () => {
+    const id = requireWcCycleId();
+    if (!id) return;
+    if (
+      !confirm(
+        "Draw qualifying groups?\n\n60 owner nations → 5 pots by seed_rank (1–12, 13–24…).\nOne from each pot into each of 12 groups (A–L).\nReplaces any existing undrawn/unplayed qual draw."
+      )
+    ) {
+      return;
+    }
+    await wcRpc("international_admin_draw_qual_groups", { p_cycle_id: id }, "Qualifying groups drawn");
+  });
+
+  document.getElementById("wcGenQualFixBtn")?.addEventListener("click", async () => {
+    const id = requireWcCycleId();
+    if (!id) return;
+    if (
+      !confirm(
+        "Generate qualifying fixtures?\n\nDouble round-robin per group (20 games × 12 = 240).\nMatchdays 1–5 → qual season 1; 6–10 → qual season 2."
+      )
+    ) {
+      return;
+    }
+    const data = await wcRpc(
+      "international_generate_qual_fixtures",
+      { p_cycle_id: id },
+      null
+    );
+    if (data) {
+      setStatus(
+        "wcStatus",
+        `✅ Generated ${data.fixtures ?? "?"} qualifying fixtures`,
+        true
+      );
+    }
+  });
+
+  document.getElementById("wcRankThirdsBtn")?.addEventListener("click", async () => {
+    const id = requireWcCycleId();
+    if (!id) return;
+    if (!confirm("Rank group thirds and mark top 2 + 8 best thirds as qualified (32)?")) return;
+    const data = await wcRpc("international_rank_qual_thirds", { p_cycle_id: id }, null);
+    if (data) {
+      setStatus("wcStatus", `✅ Qualified ${data.qualified ?? 32} nations`, true);
+    }
+  });
+
+  document.getElementById("wcDrawFinalsBtn")?.addEventListener("click", async () => {
+    const id = requireWcCycleId();
+    if (!id) return;
+    if (
+      !confirm(
+        "Draw finals groups?\n\n32 qualified → 4 pots by seed_rank → 8 groups of 4."
+      )
+    ) {
+      return;
+    }
+    await wcRpc("international_admin_draw_finals_groups", { p_cycle_id: id }, "Finals groups drawn");
+  });
+
+  document.getElementById("wcGenFinalsFixBtn")?.addEventListener("click", async () => {
+    const id = requireWcCycleId();
+    if (!id) return;
+    if (!confirm("Generate finals group fixtures (single round-robin, 6 games per group)?")) return;
+    const data = await wcRpc(
+      "international_generate_finals_group_fixtures",
+      { p_cycle_id: id },
+      null
+    );
+    if (data) {
+      setStatus("wcStatus", `✅ Generated ${data.fixtures ?? "?"} finals fixtures`, true);
+    }
+  });
+
+  document.getElementById("wcSeedKoBtn")?.addEventListener("click", async () => {
+    const id = requireWcCycleId();
+    if (!id) return;
+    if (
+      !confirm(
+        "Seed knockout bracket from finals group winners/runners-up?\n\nRequires all finals group fixtures played."
+      )
+    ) {
+      return;
+    }
+    await wcRpc("international_seed_knockout_bracket", { p_cycle_id: id }, "Knockout seeded (R16)");
+  });
+
+  document.getElementById("wcStatusQualBtn")?.addEventListener("click", async () => {
+    const id = requireWcCycleId();
+    if (!id) return;
+    await wcRpc(
+      "international_admin_set_wc_cycle_status",
+      { p_cycle_id: id, p_status: "qualifying" },
+      "Status → qualifying"
+    );
+  });
+
+  document.getElementById("wcStatusFinalsBtn")?.addEventListener("click", async () => {
+    const id = requireWcCycleId();
+    if (!id) return;
+    await wcRpc(
+      "international_admin_set_wc_cycle_status",
+      { p_cycle_id: id, p_status: "finals" },
+      "Status → finals"
+    );
+  });
+
+  document.getElementById("wcCompleteReselectBtn")?.addEventListener("click", async () => {
+    const id = requireWcCycleId();
+    if (!id) return;
+    if (
+      !confirm(
+        "Complete this World Cup and open post-WC nation re-selection?\n\n• Marks cycle complete\n• Recomputes owner rankings\n• Releases ALL nations\n• Opens post_world_cup draft\n\nThis cannot be undone easily."
+      )
+    ) {
+      return;
+    }
+    await wcRpc(
+      "international_admin_complete_wc_and_open_reselection",
+      { p_cycle_id: id },
+      "WC complete — re-selection open"
+    );
+    await refreshSelectionLive();
+  });
   await loadOwnerEmails();
   await refreshAssignDropdowns();
 

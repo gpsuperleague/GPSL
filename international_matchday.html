@@ -1,0 +1,114 @@
+<script>window.CURRENT_PAGE = "international_matchday";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>International matchday — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="international.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:960px; margin:20px auto 40px; }
+    h1 { color:#ff9900; }
+    h2 { color:#ff9900; font-size:17px; margin:0 0 10px; }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:18px; margin-bottom:18px;
+    }
+    .note { color:#999; font-size:13px; line-height:1.45; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { text-align:left; padding:7px 8px; border-bottom:1px solid #2a2a2a; }
+    th { color:#ffaa22; font-size:11px; text-transform:uppercase; }
+    tr.active { background:#222a18; }
+    .status { margin-top:10px; font-size:13px; color:#ffcc00; }
+    .status.err { color:#f88; }
+    .status.ok { color:#8d8; }
+    input, select {
+      background:#222; border:1px solid #444; color:#eee;
+      padding:7px 8px; border-radius:4px;
+    }
+    .row { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-top:10px; }
+    label { display:block; font-size:12px; color:#aaa; margin-bottom:4px; }
+    a { color:#ff9900; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <h1>International matchday</h1>
+    <p class="note">
+      Arrange kickoffs and submit/confirm results for your national team.
+      Use the same flow as club matches: propose a time → opponent accepts → submit score → opponent confirms
+      (with player stats). Default XI / formations can be saved from your 23-man call-up.
+    </p>
+    <div class="toolbar">
+      <a class="button" href="national_team.html" id="nationLink">National team</a>
+      <a class="button" href="world_cup.html">World Cup</a>
+      <a class="button" href="fixture_schedule.html">Club scheduling</a>
+    </div>
+
+    <div class="panel">
+      <h2>Your fixtures</h2>
+      <p id="nationBanner" class="note">Loading…</p>
+      <div id="fixtureList"></div>
+    </div>
+
+    <div class="panel" id="detailPanel" hidden>
+      <h2 id="detailTitle">Fixture</h2>
+      <p id="detailMeta" class="note"></p>
+
+      <div id="scheduleBlock">
+        <h2 style="margin-top:14px;">Arrange kickoff</h2>
+        <div class="row">
+          <div>
+            <label for="kickoffInput">Proposed kickoff (local)</label>
+            <input type="datetime-local" id="kickoffInput">
+          </div>
+          <button type="button" class="button" id="proposeBtn">Propose</button>
+          <button type="button" class="button secondary" id="acceptBtn" hidden>Accept pending proposal</button>
+        </div>
+        <p id="scheduleStatus" class="note"></p>
+      </div>
+
+      <div id="resultBlock" style="margin-top:16px;">
+        <h2>Result</h2>
+        <div class="row">
+          <div>
+            <label for="homeGoals">Home goals</label>
+            <input type="number" id="homeGoals" min="0" max="30" value="0" style="width:80px;">
+          </div>
+          <div>
+            <label for="awayGoals">Away goals</label>
+            <input type="number" id="awayGoals" min="0" max="30" value="0" style="width:80px;">
+          </div>
+          <button type="button" class="button" id="submitBtn">Submit result</button>
+          <button type="button" class="button" id="confirmBtn" hidden>Confirm pending</button>
+          <button type="button" class="button secondary" id="rejectBtn" hidden>Reject</button>
+        </div>
+        <p class="note">
+          Player stats JSON (optional on submit; confirmer should add their XI stats):
+          <code>[{"player_id":"…","goals":0,"assists":0,"rating":7.5,"potm":false,"clean_sheet":false}]</code>
+        </p>
+        <textarea id="statsJson" rows="4" style="width:100%;max-width:100%;background:#222;color:#eee;border:1px solid #444;border-radius:4px;padding:8px;font-family:monospace;font-size:12px;"></textarea>
+      </div>
+
+      <div id="squadBlock" style="margin-top:16px;">
+        <h2>Default matchday squad</h2>
+        <p class="note">
+          Save pitch / bench / reserve from your current call-up (same shape as club matchday).
+          Full pitch UI reuses club formations — paste a players JSON array for now, or manage call-ups on National team.
+        </p>
+        <textarea id="squadJson" rows="5" style="width:100%;background:#222;color:#eee;border:1px solid #444;border-radius:4px;padding:8px;font-family:monospace;font-size:12px;"
+          placeholder='[{"player_id":"123","slot_kind":"pitch","pitch_slot":"gk","sort_order":0}]'></textarea>
+        <div class="row">
+          <button type="button" class="button secondary" id="saveSquadBtn">Save default squad</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="pageStatus" class="status"></div>
+  </div>
+  <script type="module" src="international_matchday.js?v=20260710"></script>
+</body>
+</html>

@@ -164,6 +164,7 @@ export const DASHBOARD_PANELS = [
   p("awaiting_club", "Club Auction Setup", "awaiting_club.html"),
   p("scouting", "Scouting Board", "scouting.html"),
   p("national_team", "National Team", "national_team.html"),
+  p("international_matchday", "Intl Matchday", "international_matchday.html"),
   p("nation_select", "Nation Selection", "nation_select.html"),
   p("nation_player_pool", "Nation Player Pool", "nation_player_pool.html"),
   p("special_auction", "Special Auction", "special_auction.html", { when: "special_auction" }),

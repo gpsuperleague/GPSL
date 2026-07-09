@@ -24,6 +24,7 @@ export const MEMBER_ALLOWED_PAGES = new Set([
   "challenges",
   "cups",
   "world_cup",
+  "international_matchday",
   "competition",
   // Transfers (market / databases — not club-specific actions)
   "gpdb",
