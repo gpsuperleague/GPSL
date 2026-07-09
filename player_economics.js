@@ -51,7 +51,7 @@ export function formatRatingWithPotential(player) {
 }
 
 /** What MV / max reserve would be if formulas ran today (does not change DB). */
-export function computedEconomicsForPlayer(player) {
+export function computedEconomicsForPlayer(player, opts = {}) {
   const rating = Number(player?.Rating);
   const age = Number(player?.Age);
   const pos = player?.Position ?? "GK";
@@ -61,7 +61,9 @@ export function computedEconomicsForPlayer(player) {
     return null;
   }
 
-  const market_value = calculateMarketValue(rating, calc, age, pos);
+  const market_value = calculateMarketValue(rating, calc, age, pos, {
+    internationalBoost: !!opts.internationalBoost,
+  });
   return {
     calcPotential: calc,
     market_value,

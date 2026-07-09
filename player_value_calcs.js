@@ -131,10 +131,15 @@ function xlookupExactOrInterpolate(map, key, defaultValue = 0) {
   return defaultValue;
 }
 
+/** +5% when in current national squad or previous WC-cycle squad (2 windows). */
+export const INTERNATIONAL_SQUAD_MV_BOOST = 0.05;
+
 /**
  * Market Value (col J) — uses GPSL extended base value; other lookups match Excel.
+ * @param {object} [opts]
+ * @param {boolean} [opts.internationalBoost] — apply 5% national-squad window boost
  */
-export function calculateMarketValue(rating, calcPotential, age, position) {
+export function calculateMarketValue(rating, calcPotential, age, position, opts = {}) {
   const r = Math.round(Number(rating));
   const calc = Math.round(Number(calcPotential));
   const a = Math.round(Number(age));
@@ -158,7 +163,11 @@ export function calculateMarketValue(rating, calcPotential, age, position) {
   valueCalc += baseValue * xlookupExact(t.positionPctByPosition, pos, 0);
 
   const floor = a < 30 ? t.mvFloorUnder30 : t.mvFloor30Plus;
-  return Math.max(floor, Math.round(valueCalc));
+  let mv = Math.max(floor, Math.round(valueCalc));
+  if (opts.internationalBoost) {
+    mv = Math.round(mv * (1 + INTERNATIONAL_SQUAD_MV_BOOST));
+  }
+  return mv;
 }
 
 export function calculateMaximumReservePrice(marketValue) {

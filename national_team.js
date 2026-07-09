@@ -27,18 +27,100 @@ function getNationCode() {
   return new URLSearchParams(window.location.search).get("nation")?.toUpperCase() || null;
 }
 
+function nationalSquadRuleRows(summary) {
+  const slotsLeft = Math.max(0, NATIONAL_SQUAD_MAX - summary.total);
+  const gkShort = Math.max(0, NATIONAL_SQUAD_MIN_GK - summary.gkCount);
+  const sizeOk = summary.total <= NATIONAL_SQUAD_MAX;
+
+  return [
+    {
+      rule: "Squad size",
+      req: `≤${NATIONAL_SQUAD_MAX}`,
+      count: summary.total,
+      ok: sizeOk,
+      status: !sizeOk
+        ? "Over limit"
+        : summary.full
+          ? "At max"
+          : `${slotsLeft} slot${slotsLeft === 1 ? "" : "s"} left`,
+    },
+    {
+      rule: "Goalkeepers",
+      req: `≥${NATIONAL_SQUAD_MIN_GK}`,
+      count: summary.gkCount,
+      ok: summary.gkOk,
+      status: summary.gkOk ? "OK" : `−${gkShort}`,
+    },
+  ];
+}
+
 function renderSummary(summary, isMyNation) {
-  const el = document.getElementById("squadSummary");
+  const el = document.getElementById("squadCompliancePanel");
   if (!el) return;
 
-  const gkLine = summary.gkOk
-    ? `${summary.gkCount} goalkeepers`
-    : `${summary.gkCount} goalkeeper(s) — need at least ${NATIONAL_SQUAD_MIN_GK}`;
+  const rows = nationalSquadRuleRows(summary);
+  const allOk = rows.every((r) => r.ok);
+  const panelClass = allOk
+    ? "squad-rules-panel squad-rules-panel--ok squad-rules-panel--compact"
+    : "squad-rules-panel squad-rules-panel--warn squad-rules-panel--compact";
 
-  el.classList.toggle("warn", isMyNation && !summary.gkOk);
+  const tableRows = rows
+    .map(
+      (r) => `
+    <tr class="${r.ok ? "squad-rules-row--ok" : "squad-rules-row--fail"}">
+      <th scope="row">${r.rule}</th>
+      <td class="squad-rules-req-compact">${r.req}</td>
+      <td class="squad-rules-count"><strong>${r.count}</strong></td>
+      <td class="squad-rules-status-compact">
+        <span class="squad-rules-mark ${r.ok ? "squad-rules-mark--ok" : "squad-rules-mark--fail"}">${r.ok ? "✓" : "✗"}</span>
+        <span class="squad-rules-status-text">${r.status}</span>
+      </td>
+    </tr>`
+    )
+    .join("");
+
+  let footnote = "";
+  if (!allOk) {
+    const issues = rows
+      .filter((r) => !r.ok)
+      .map((r) =>
+        r.rule === "Goalkeepers"
+          ? `need ${NATIONAL_SQUAD_MIN_GK} GKs`
+          : "over 23 players"
+      )
+      .join(" · ");
+    footnote = `<p class="squad-rules-footnote squad-rules-footnote--warn">${issues}.</p>`;
+  } else if (summary.full) {
+    footnote = `<p class="squad-rules-footnote squad-rules-footnote--ok">23-man squad complete · ${summary.gkCount} GKs.</p>`;
+  } else {
+    footnote = `<p class="squad-rules-footnote squad-rules-footnote--ok">Within limits · call up in GPDB to fill remaining slots.</p>`;
+  }
+
+  if (isMyNation) {
+    footnote += `<p class="squad-rules-footnote">Manage call-ups in <a href="GPDB.html" style="color:#ff9900;">GPDB</a> (My nation filter) or release below.</p>`;
+  }
+
   el.innerHTML = `
-    <b>Squad:</b> ${summary.total} / ${NATIONAL_SQUAD_MAX} players · ${gkLine}
-    ${isMyNation ? ` · Call up more in <a href="GPDB.html" style="color:#ff9900;">GPDB</a> (My nation filter)` : ""}
+    <section class="${panelClass}" aria-label="International squad requirements">
+      <header class="squad-rules-header squad-rules-header--compact">
+        <h2 class="squad-rules-title">International squad</h2>
+        <p class="squad-rules-intro squad-rules-intro--compact">
+          Max ${NATIONAL_SQUAD_MAX} · min ${NATIONAL_SQUAD_MIN_GK} goalkeepers
+        </p>
+      </header>
+      <table class="squad-rules-table squad-rules-table--compact">
+        <thead>
+          <tr>
+            <th scope="col">Rule</th>
+            <th scope="col">Req</th>
+            <th scope="col">Now</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+      ${footnote}
+    </section>
   `;
 }
 
@@ -71,7 +153,7 @@ function renderSquad(rows, isMyNation) {
 
     const headerRow = document.createElement("tr");
     headerRow.classList.add("squad-section-row");
-    headerRow.innerHTML = `<td colspan="11" class="squad-section-title">${groupName}</td>`;
+    headerRow.innerHTML = `<td colspan="12" class="squad-section-title">${groupName}</td>`;
     tbody.appendChild(headerRow);
 
     for (const r of groupPlayers) {
@@ -97,6 +179,7 @@ function renderSquad(rows, isMyNation) {
         <td class="num">${r.intl_goals ?? 0}</td>
         <td class="num">${r.intl_assists ?? 0}</td>
         <td class="num">${r.intl_potm ?? 0}</td>
+        <td class="num">${r.intl_clean_sheets ?? 0}</td>
         <td class="num">${avg}</td>
         <td>${releaseBtn}</td>
       `;
@@ -111,7 +194,7 @@ function renderSquad(rows, isMyNation) {
   if (other.length) {
     const headerRow = document.createElement("tr");
     headerRow.classList.add("squad-section-row");
-    headerRow.innerHTML = `<td colspan="11" class="squad-section-title">Other</td>`;
+    headerRow.innerHTML = `<td colspan="12" class="squad-section-title">Other</td>`;
     tbody.appendChild(headerRow);
 
     for (const r of other) {
@@ -126,6 +209,7 @@ function renderSquad(rows, isMyNation) {
         <td class="num">${r.intl_goals ?? 0}</td>
         <td class="num">${r.intl_assists ?? 0}</td>
         <td class="num">${r.intl_potm ?? 0}</td>
+        <td class="num">${r.intl_clean_sheets ?? 0}</td>
         <td class="num">${r.intl_avg_rating != null ? Number(r.intl_avg_rating).toFixed(2) : "—"}</td>
         <td></td>
       `;

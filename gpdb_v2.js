@@ -57,6 +57,7 @@ import {
 import {
   loadMyNation,
   loadNationalSquad,
+  loadInternationalCareerMap,
   callUpPlayer,
   releaseCallup,
   playerBelongsToNation,
@@ -181,7 +182,22 @@ document.addEventListener("DOMContentLoaded", () => {
     "market_value",
     "Contracted_Team",
     "Season_Signed",
+    "intl_caps",
+    "intl_goals",
+    "intl_assists",
+    "intl_potm",
+    "intl_clean_sheets",
+    "intl_avg_rating",
   ];
+
+  const INTL_STAT_COLUMNS = new Set([
+    "intl_caps",
+    "intl_goals",
+    "intl_assists",
+    "intl_potm",
+    "intl_clean_sheets",
+    "intl_avg_rating",
+  ]);
 
   const FILTER_EXCLUDE = [
     "Maximum_Reserve_Price",
@@ -192,6 +208,12 @@ document.addEventListener("DOMContentLoaded", () => {
     "foreign_contract_sold_season_id",
     "foreign_contract_unlock_season_label",
     "foreign_contract_lock_kind",
+    "intl_caps",
+    "intl_goals",
+    "intl_assists",
+    "intl_potm",
+    "intl_clean_sheets",
+    "intl_avg_rating",
   ];
 
   const ECONOMICS_DB_COLS = ["Potential", "Calc_Potential"];
@@ -913,8 +935,11 @@ document.addEventListener("DOMContentLoaded", () => {
         query = query
           .order("market_value", { ascending: CURRENT_SORT_DIR === "asc" })
           .order("Rating", { ascending: false });
-      } else if (CURRENT_SORT_COLUMN === "Position") {
-        // client-side sort
+      } else if (
+        CURRENT_SORT_COLUMN === "Position" ||
+        INTL_STAT_COLUMNS.has(CURRENT_SORT_COLUMN)
+      ) {
+        // client-side sort (intl stats joined after fetch)
       } else {
         query = query.order(CURRENT_SORT_COLUMN, {
           ascending: CURRENT_SORT_DIR === "asc"
@@ -974,6 +999,11 @@ document.addEventListener("DOMContentLoaded", () => {
       );
     }
 
+    const careerMap = await loadInternationalCareerMap(
+      filtered.map((p) => p.Konami_ID)
+    );
+    filtered = attachIntlStats(filtered, careerMap);
+
     if (CURRENT_SORT_COLUMN === "Position") {
       filtered.sort((a, b) => {
         const ai = POSITION_ORDER.indexOf(a.Position);
@@ -981,6 +1011,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const aIdx = ai === -1 ? 999 : ai;
         const bIdx = bi === -1 ? 999 : bi;
         return CURRENT_SORT_DIR === "asc" ? aIdx - bIdx : bIdx - aIdx;
+      });
+    } else if (INTL_STAT_COLUMNS.has(CURRENT_SORT_COLUMN)) {
+      const col = CURRENT_SORT_COLUMN;
+      filtered.sort((a, b) => {
+        const av = a[col] == null ? -Infinity : Number(a[col]);
+        const bv = b[col] == null ? -Infinity : Number(b[col]);
+        return CURRENT_SORT_DIR === "asc" ? av - bv : bv - av;
       });
     }
 
@@ -997,6 +1034,12 @@ document.addEventListener("DOMContentLoaded", () => {
     if (col === "Maximum_Reserve_Price") return "Maximum Reserve Price";
     if (col === "Potential") return "Pot.";
     if (col === "Contracted_Team") return "Contracted Team";
+    if (col === "intl_caps") return "Intl Apps";
+    if (col === "intl_goals") return "Intl G";
+    if (col === "intl_assists") return "Intl A";
+    if (col === "intl_potm") return "Intl POTM";
+    if (col === "intl_clean_sheets") return "Intl CS";
+    if (col === "intl_avg_rating") return "Intl Avg";
     return col.replace(/_/g, " ");
   }
 
@@ -1367,7 +1410,31 @@ document.addEventListener("DOMContentLoaded", () => {
       return playerNameLinkHtml(player.Konami_ID, value);
     }
 
+    if (INTL_STAT_COLUMNS.has(col)) {
+      if (col === "intl_avg_rating") {
+        return value != null && Number.isFinite(Number(value))
+          ? Number(value).toFixed(2)
+          : "—";
+      }
+      return value != null ? value : 0;
+    }
+
     return value ?? "";
+  }
+
+  function attachIntlStats(players, careerMap) {
+    return (players || []).map((p) => {
+      const st = careerMap.get(String(p.Konami_ID).trim()) || null;
+      return {
+        ...p,
+        intl_caps: st?.caps ?? 0,
+        intl_goals: st?.goals ?? 0,
+        intl_assists: st?.assists ?? 0,
+        intl_potm: st?.potm ?? 0,
+        intl_clean_sheets: st?.clean_sheets ?? 0,
+        intl_avg_rating: st?.avg_rating ?? null,
+      };
+    });
   }
 
   /* ============================================================

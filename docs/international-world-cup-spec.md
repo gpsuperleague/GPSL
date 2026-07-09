@@ -6,7 +6,8 @@
 - **World Cup every 4 GPSL seasons** — finals between S4–5, S8–9, …
 - **Qualifying** — 2 seasons before finals; 12×5 groups; top 2 + 8 best third → 32 finalists.
 - **Finals** — 8×4 groups; top 2 → R16 → QF → SF → Final.
-- **Player international stats** — cumulative caps, goals, assists, POTM, average rating (`international_player_career`).
+- **Player international stats** — cumulative caps, goals, assists, POTM, clean sheets, average rating (`international_player_career`; overall, not per season).
+- **Market value** — **+5%** while in the current national squad, or if called up in the **previous** WC cycle (two squad windows). Applied in `gpsl_pv_*` / call-up & release.
 
 ## Nation selection
 

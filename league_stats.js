@@ -370,6 +370,13 @@ function renderWorldCup() {
   const byCaps = [...rows]
     .filter((r) => (r.caps || 0) > 0)
     .sort((a, b) => b.caps - a.caps || b.goals - a.goals);
+  const byCleanSheets = [...rows]
+    .filter((r) => (r.clean_sheets || 0) > 0)
+    .sort(
+      (a, b) =>
+        b.clean_sheets - a.clean_sheets ||
+        Number(b.avg_rating || 0) - Number(a.avg_rating || 0)
+    );
 
   renderLeaderboard("wcScorersTable", byGoals, {
     ...common,
@@ -395,6 +402,11 @@ function renderWorldCup() {
     ...common,
     valueKey: "Caps",
     formatValue: (r) => r.caps,
+  });
+  renderLeaderboard("wcCleanSheetsTable", byCleanSheets, {
+    ...common,
+    valueKey: "CS",
+    formatValue: (r) => r.clean_sheets,
   });
   scheduleLeaderboardSync();
 }

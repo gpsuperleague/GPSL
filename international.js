@@ -245,6 +245,40 @@ export async function loadNationalSquad(nationCode, client = supabase) {
   return data || [];
 }
 
+/**
+ * Overall international career stats keyed by Konami ID.
+ * Caps / G / A / POTM / CS / avg — not season-split.
+ */
+export async function loadInternationalCareerMap(playerIds, client = supabase) {
+  const ids = [...new Set((playerIds || []).map((id) => String(id).trim()).filter(Boolean))];
+  const map = new Map();
+  if (!ids.length) return map;
+
+  const chunkSize = 200;
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const { data, error } = await client
+      .from("international_player_career_public")
+      .select("player_id, caps, goals, assists, potm, clean_sheets, avg_rating")
+      .in("player_id", chunk);
+    if (error) {
+      console.error("loadInternationalCareerMap:", error);
+      continue;
+    }
+    for (const row of data || []) {
+      map.set(String(row.player_id), {
+        caps: row.caps ?? 0,
+        goals: row.goals ?? 0,
+        assists: row.assists ?? 0,
+        potm: row.potm ?? 0,
+        clean_sheets: row.clean_sheets ?? 0,
+        avg_rating: row.avg_rating != null ? Number(row.avg_rating) : null,
+      });
+    }
+  }
+  return map;
+}
+
 export async function claimNation(nationCode, client = supabase) {
   const { data, error } = await client.rpc("international_claim_nation", {
     p_nation_code: nationCode,

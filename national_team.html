@@ -17,16 +17,10 @@
       flex-wrap: wrap;
     }
     .nat-meta { color: #aaa; font-size: 14px; margin-top: 4px; }
-    .nat-squad-summary {
+    .nat-compliance-wrap {
       margin: 0 20px 16px;
-      padding: 12px 14px;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 8px;
-      font-size: 13px;
-      line-height: 1.5;
+      max-width: 520px;
     }
-    .nat-squad-summary.warn { border-color: #884; color: #fcc; }
     .nat-toolbar {
       margin: 0 20px 16px;
       display: flex;
@@ -73,7 +67,7 @@
     </div>
   </div>
 
-  <div id="squadSummary" class="nat-squad-summary"></div>
+  <div id="squadCompliancePanel" class="nat-compliance-wrap"></div>
 
   <div class="nat-toolbar">
     <a class="button" href="GPDB.html" id="gpdbCallUpLink">Call up in GPDB</a>
@@ -94,6 +88,7 @@
           <th>G</th>
           <th>A</th>
           <th>POTM</th>
+          <th>CS</th>
           <th>Avg</th>
           <th></th>
         </tr>
