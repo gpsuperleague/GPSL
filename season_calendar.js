@@ -140,31 +140,54 @@ function messagingDeadlineText(monthKey) {
   return `Arrange ${nextLabel} fixtures before ${thisLabel} locks (primary messaging / arrangement deadline).`;
 }
 
+function leagueFixturesHref(monthKey) {
+  return `fixtures.html?view=league&month=${encodeURIComponent(monthKey)}`;
+}
+
+function clubFixturesHref(monthKey) {
+  return `club_fixtures.html?month=${encodeURIComponent(monthKey)}`;
+}
+
 function staticEventsForMonth(monthKey) {
   const events = [];
+  const monthLabel = MONTH_LABELS[monthKey] || monthKey;
 
   if (monthKey === "june" || monthKey === "july") {
     events.push({
       kind: "phase",
-      text: "Pre-season",
-      href: null,
+      short: "Pre-season",
+      detail:
+        "June & July sit before GPSL August. Use this window for squad building, manager auctions, and arranging early fixtures.",
+      links: [{ href: "learning_gpsl.html", label: "Learning GPSL" }],
     });
   }
 
   const league = leagueLabel(monthKey);
   if (league) {
+    const range = LEAGUE_BY_MONTH[monthKey];
     events.push({
       kind: "league",
-      text: league,
-      href: "fixtures.html",
+      short: league,
+      detail: `${monthLabel} league programme: matchdays ${range.from}–${range.to}. Open the league fixtures list scrolled to this GPSL month.`,
+      links: [
+        { href: leagueFixturesHref(monthKey), label: "League fixtures" },
+        { href: clubFixturesHref(monthKey), label: "My club fixtures" },
+      ],
     });
   }
 
   for (const cup of CUP_BY_MONTH[monthKey] || []) {
     events.push({
       kind: "cup",
-      text: cup.label,
-      href: `cups.html?cup=${encodeURIComponent(cup.cup)}`,
+      short: cup.label,
+      detail: `${cup.label} is scheduled in ${monthLabel}. Jump to the cup bracket or your club fixtures for this month.`,
+      links: [
+        {
+          href: `cups.html?cup=${encodeURIComponent(cup.cup)}`,
+          label: CUP_NAME[cup.cup] || cup.cup,
+        },
+        { href: clubFixturesHref(monthKey), label: "My club fixtures", secondary: true },
+      ],
       cup: cup.cup,
     });
   }
@@ -173,29 +196,46 @@ function staticEventsForMonth(monthKey) {
   if (tw === "open") {
     events.push({
       kind: "transfer-open",
-      text: "Transfer window open",
-      href: "transfer_center.html",
+      short: "Transfer window open",
+      detail: `Transfer window is open during ${monthLabel} (guide). List players, bid on the market, and manage offers in Transfer Centre.`,
+      links: [
+        { href: "transfer_center.html", label: "Transfer Centre" },
+        { href: "all_listings.html", label: "Transfer Market", secondary: true },
+      ],
     });
   } else if (tw === "closed") {
     events.push({
       kind: "transfer-closed",
-      text: "Transfer window closed",
-      href: "transfer_center.html",
+      short: "Transfer window closed",
+      detail: `Transfer window is closed for ${monthLabel} in the season guide (Sep–Dec and Feb–May). Check live status on Transfer Centre.`,
+      links: [{ href: "transfer_center.html", label: "Transfer Centre" }],
     });
   }
 
   if (monthKey === "june" || monthKey === "july" || monthKey === "january") {
     events.push({
       kind: "manager-auction",
-      text: "Manager auctions",
-      href: "manager_draftauction.html",
+      short: "Manager auctions",
+      detail: `Manager draft auctions typically run in pre-season and January. Open the manager draft page when one is scheduled or live.`,
+      links: [
+        { href: "manager_draftauction.html", label: "Manager draft" },
+        { href: "MGDB.html", label: "Managers database", secondary: true },
+      ],
     });
   }
 
   events.push({
     kind: "deadline",
-    text: messagingDeadlineText(monthKey),
-    href: "learning_gpsl.html#match-scheduling",
+    short: "Arrange fixtures",
+    detail: messagingDeadlineText(monthKey),
+    links: [
+      { href: clubFixturesHref(monthKey), label: "My fixtures" },
+      {
+        href: "learning_gpsl.html#match-scheduling",
+        label: "Scheduling rules",
+        secondary: true,
+      },
+    ],
   });
 
   return events;
@@ -279,10 +319,11 @@ async function loadLiveOverlays(status) {
       const live = settings.draft_bidding_open === true;
       byMonth[mk].push({
         kind: "draft",
-        text: live
-          ? `Player draft auction — live (started ${formatUkDateTime(draftStart)} UK)`
-          : `Player draft auction — scheduled ${formatUkDateTime(draftStart)} UK`,
-        href: "draftauction.html",
+        short: live ? "Player draft — live" : "Player draft auction",
+        detail: live
+          ? `Player draft auction is live (started ${formatUkDateTime(draftStart)} UK).`
+          : `Player draft auction scheduled for ${formatUkDateTime(draftStart)} UK.`,
+        links: [{ href: "draftauction.html", label: "Open draft auction" }],
         live,
       });
     }
@@ -293,10 +334,13 @@ async function loadLiveOverlays(status) {
       const live = settings.manager_draft_bidding_open === true;
       byMonth[mk].push({
         kind: "manager-auction",
-        text: live
-          ? `Manager draft auction — live (started ${formatUkDateTime(draftStart)} UK)`
-          : `Manager draft auction — scheduled ${formatUkDateTime(draftStart)} UK`,
-        href: "manager_draftauction.html",
+        short: live ? "Manager draft — live" : "Manager draft auction",
+        detail: live
+          ? `Manager draft auction is live (started ${formatUkDateTime(draftStart)} UK).`
+          : `Manager draft auction scheduled for ${formatUkDateTime(draftStart)} UK.`,
+        links: [
+          { href: "manager_draftauction.html", label: "Open manager draft" },
+        ],
         live,
       });
     }
@@ -312,15 +356,17 @@ async function loadLiveOverlays(status) {
     const dedupe = `${parsed.kind}:${when}`;
     if (seenDraftKeys.has(dedupe)) continue;
     seenDraftKeys.add(dedupe);
-    const label =
-      parsed.kind === "manager" ? "Manager draft" : "Player draft";
+    const isMgr = parsed.kind === "manager";
     byMonth[mk].push({
-      kind: parsed.kind === "manager" ? "manager-auction" : "draft",
-      text: `${label} scheduled — ${formatUkDateTime(when)} UK`,
-      href:
-        parsed.kind === "manager"
-          ? "manager_draftauction.html"
-          : "draftauction.html",
+      kind: isMgr ? "manager-auction" : "draft",
+      short: isMgr ? "Manager draft scheduled" : "Player draft scheduled",
+      detail: `${isMgr ? "Manager" : "Player"} draft scheduled — ${formatUkDateTime(when)} UK.`,
+      links: [
+        {
+          href: isMgr ? "manager_draftauction.html" : "draftauction.html",
+          label: isMgr ? "Manager draft" : "Draft auction",
+        },
+      ],
     });
   }
 
@@ -334,10 +380,13 @@ async function loadLiveOverlays(status) {
         row.end_time > nowIso);
     byMonth[mk].push({
       kind: "special",
-      text: live
-        ? `Special auction live${row.title ? ` — ${row.title}` : ""}`
-        : `Special auction — ${formatUkDateTime(row.start_time)} UK`,
-      href: "special_auction.html",
+      short: live ? "Special auction — live" : "Special auction",
+      detail: live
+        ? `Special auction is live${row.title ? ` — ${row.title}` : ""}.`
+        : `Special auction scheduled ${formatUkDateTime(row.start_time)} UK${
+            row.title ? ` — ${row.title}` : ""
+          }.`,
+      links: [{ href: "special_auction.html", label: "Special auction" }],
       live,
     });
   }
@@ -362,8 +411,9 @@ async function loadLiveOverlays(status) {
     for (const mk of ["june", "july", "august"]) {
       byMonth[mk].push({
         kind: "world-cup",
-        text: wcText,
-        href: "world_cup.html",
+        short: "World Cup",
+        detail: wcText,
+        links: [{ href: "world_cup.html", label: "World Cup" }],
       });
     }
   }
@@ -389,8 +439,12 @@ async function loadLiveOverlays(status) {
     const phase = fix.phase ? String(fix.phase).replace(/_/g, " ") : "fixture";
     const ev = {
       kind: "international",
-      text: `International (${phase}): ${home} vs ${away}`,
-      href: "national_team.html",
+      short: `Intl: ${home} vs ${away}`,
+      detail: `Your nation has an unplayed international (${phase}): ${home} vs ${away}.`,
+      links: [
+        { href: "national_team.html", label: "National team" },
+        { href: "world_cup.html", label: "World Cup", secondary: true },
+      ],
       mine: true,
     };
     internationalMine.push(ev);
@@ -457,7 +511,7 @@ function formatClubFixtureLine(f) {
     f.home_goals != null && f.away_goals != null
       ? ` ${f.home_goals}–${f.away_goals}`
       : "";
-  return { home, away, comp, score, ko: "", id: f.id || f.fixture_id };
+  return { home, away, comp, score, id: f.id || f.fixture_id };
 }
 
 function isCurrentMonth(monthKey, status) {
@@ -476,46 +530,81 @@ function isCurrentMonth(monthKey, status) {
   return false;
 }
 
-function renderEventItem(ev) {
+function eventShortLabel(ev) {
+  return ev.short || ev.text || "Event";
+}
+
+function eventDetailText(ev, monthKey, ctx) {
+  if (ev.detail) return ev.detail;
+  if (ev.text) return ev.text;
+  const label = MONTH_LABELS[monthKey] || monthKey;
+  return `${eventShortLabel(ev)} in ${label}.`;
+}
+
+function eventLinks(ev, monthKey) {
+  if (Array.isArray(ev.links) && ev.links.length) return ev.links;
+  if (ev.href) return [{ href: ev.href, label: "Open" }];
+  return [];
+}
+
+function clubFixtureEvents(fixtures, monthKey) {
+  if (!fixtures?.length) return [];
+  const lines = fixtures.map(formatClubFixtureLine);
+  const preview = lines
+    .slice(0, 6)
+    .map((l) => `${l.comp}: ${l.home} vs ${l.away}${l.score}`)
+    .join(" · ");
+  const more =
+    lines.length > 6 ? ` (+${lines.length - 6} more)` : "";
+  return [
+    {
+      kind: "club-fixture",
+      short: `Your fixtures (${fixtures.length})`,
+      detail: `Your club in ${MONTH_LABELS[monthKey] || monthKey}: ${preview}${more}.`,
+      links: [
+        {
+          href: clubFixturesHref(monthKey),
+          label: "Open my fixtures",
+        },
+        {
+          href: leagueFixturesHref(monthKey),
+          label: "League fixtures",
+          secondary: true,
+        },
+      ],
+      mine: true,
+    },
+  ];
+}
+
+function renderBullet(ev, monthKey, ctx, idx) {
+  const short = escapeHtml(eventShortLabel(ev));
+  const detail = escapeHtml(eventDetailText(ev, monthKey, ctx));
+  const links = eventLinks(ev, monthKey)
+    .map((l) => {
+      const cls = l.secondary ? " secondary" : "";
+      return `<a class="${cls.trim()}" href="${escapeHtml(l.href)}">${escapeHtml(
+        l.label
+      )}</a>`;
+    })
+    .join("");
   const cls = [
-    "sc-event",
-    `sc-event--${ev.kind}`,
-    ev.live ? "sc-event--live" : "",
-    ev.mine ? "sc-event--mine" : "",
+    "sc-bullet",
+    `sc-bullet--${ev.kind}`,
+    ev.live ? "sc-bullet--live" : "",
+    ev.mine ? "sc-bullet--mine" : "",
   ]
     .filter(Boolean)
     .join(" ");
-  const inner = escapeHtml(ev.text);
-  if (ev.href) {
-    return `<li class="${cls}"><a href="${escapeHtml(ev.href)}">${inner}</a></li>`;
-  }
-  return `<li class="${cls}"><span>${inner}</span></li>`;
-}
-
-function renderClubFixtures(fixtures) {
-  if (!fixtures?.length) return "";
-  const items = fixtures
-    .map((f) => {
-      const line = formatClubFixtureLine(f);
-      const href = line.id
-        ? `fixture_schedule.html?fixture=${encodeURIComponent(line.id)}`
-        : "club_fixtures.html";
-      return (
-        `<li class="sc-event sc-event--club-fixture sc-event--mine">` +
-        `<a href="${escapeHtml(href)}">` +
-        `<span class="sc-club-comp">${escapeHtml(line.comp)}</span> ` +
-        `<span class="mine">${escapeHtml(line.home)}</span> vs ` +
-        `<span class="mine">${escapeHtml(line.away)}</span>` +
-        `${escapeHtml(line.score)}${escapeHtml(line.ko)}` +
-        `</a></li>`
-      );
-    })
-    .join("");
+  const id = `sc-b-${monthKey}-${idx}`;
   return (
-    `<div class="sc-club-block">` +
-    `<h3 class="sc-club-heading">Your fixtures</h3>` +
-    `<ul class="sc-events sc-events--club">${items}</ul>` +
-    `</div>`
+    `<li class="${cls}" data-bullet-id="${id}">` +
+    `<button type="button" class="sc-bullet-btn" aria-expanded="false" aria-controls="${id}-detail">${short}</button>` +
+    `<div class="sc-bullet-detail" id="${id}-detail" hidden>` +
+    `<p>${detail}</p>` +
+    (links ? `<div class="sc-bullet-links">${links}</div>` : "") +
+    `</div>` +
+    `</li>`
   );
 }
 
@@ -529,43 +618,77 @@ function renderMonthCard(monthKey, ctx) {
 
   const staticEvents = staticEventsForMonth(monthKey);
   const liveEvents = ctx.live.byMonth[monthKey] || [];
-  // Prefer live draft/special overlays; keep static manager-auction in preseason/Jan
-  const events = [...staticEvents, ...liveEvents];
+  const clubEvents = clubFixtureEvents(ctx.club.byMonth[monthKey] || [], monthKey);
+  const events = [...staticEvents, ...liveEvents, ...clubEvents];
 
   let windowNote = "";
   if (calRow?.unlock_at || calRow?.lock_at) {
     windowNote =
-      `<p class="sc-window">` +
       (calRow.unlock_at
-        ? `Unlocks ${escapeHtml(formatUkDateTime(calRow.unlock_at))} UK`
+        ? `Unlocks ${formatUkDateTime(calRow.unlock_at)} UK`
         : "") +
       (calRow.unlock_at && calRow.lock_at ? " · " : "") +
-      (calRow.lock_at
-        ? `Locks ${escapeHtml(formatUkDateTime(calRow.lock_at))} UK`
-        : "") +
-      `</p>`;
+      (calRow.lock_at ? `Locks ${formatUkDateTime(calRow.lock_at)} UK` : "");
   } else if (isPre && ctx.status?.anchor_unlock_at) {
-    windowNote = `<p class="sc-window">GPSL August unlocks ${escapeHtml(
-      formatUkDateTime(ctx.status.anchor_unlock_at)
-    )} UK</p>`;
+    windowNote = `GPSL August unlocks ${formatUkDateTime(ctx.status.anchor_unlock_at)} UK`;
   }
 
-  const clubFx = ctx.club.byMonth[monthKey] || [];
+  if (windowNote) {
+    events.unshift({
+      kind: "phase",
+      short: isPre ? "Calendar window" : "Month window",
+      detail: windowNote,
+      links: [],
+    });
+  }
+
+  const bullets =
+    events.length > 0
+      ? `<ul class="sc-bullets">${events
+          .map((ev, i) => renderBullet(ev, monthKey, ctx, i))
+          .join("")}</ul>`
+      : `<p class="sc-empty-bullets">No listed activities</p>`;
 
   return (
     `<article class="sc-month${isPre ? " sc-month--pre" : ""}${
       current ? " sc-month--current" : ""
     }" id="month-${escapeHtml(monthKey)}" data-month="${escapeHtml(monthKey)}">` +
-    `<header class="sc-month-head">` +
+    `<header class="sc-month-banner">` +
     `<h2>${escapeHtml(label)}</h2>` +
     (current ? `<span class="sc-now-badge">Now</span>` : "") +
-    (isPre ? `<span class="sc-pre-badge">Pre-season</span>` : "") +
+    (isPre && !current ? `<span class="sc-pre-badge">Pre</span>` : "") +
     `</header>` +
-    windowNote +
-    `<ul class="sc-events">${events.map(renderEventItem).join("")}</ul>` +
-    renderClubFixtures(clubFx) +
+    `<div class="sc-month-body">${bullets}</div>` +
     `</article>`
   );
+}
+
+function wireBulletToggles(root) {
+  root.addEventListener("click", (e) => {
+    const btn = e.target.closest(".sc-bullet-btn");
+    if (!btn || !root.contains(btn)) return;
+    const li = btn.closest(".sc-bullet");
+    if (!li) return;
+    const detail = li.querySelector(".sc-bullet-detail");
+    const open = !li.classList.contains("is-open");
+
+    // Accordion within the same month card
+    const card = li.closest(".sc-month");
+    if (card) {
+      card.querySelectorAll(".sc-bullet.is-open").forEach((other) => {
+        if (other === li) return;
+        other.classList.remove("is-open");
+        const ob = other.querySelector(".sc-bullet-btn");
+        const od = other.querySelector(".sc-bullet-detail");
+        if (ob) ob.setAttribute("aria-expanded", "false");
+        if (od) od.hidden = true;
+      });
+    }
+
+    li.classList.toggle("is-open", open);
+    btn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (detail) detail.hidden = !open;
+  });
 }
 
 function showError(msg) {
@@ -616,25 +739,26 @@ async function renderPage(user) {
     meta.textContent = bits.filter(Boolean).join(" · ");
   }
 
-  const jump = SEASON_MONTH_ORDER.map((mk) => {
-    const current = isCurrentMonth(mk, status);
-    return (
-      `<a class="sc-jump${current ? " sc-jump--current" : ""}" href="#month-${escapeHtml(
-        mk
-      )}">${escapeHtml(MONTH_LABELS[mk])}</a>`
-    );
-  }).join("");
-
   root.innerHTML =
-    `<nav class="sc-jump-nav" aria-label="Jump to month">${jump}</nav>` +
     `<div class="sc-grid">` +
     SEASON_MONTH_ORDER.map((mk) => renderMonthCard(mk, ctx)).join("") +
     `</div>` +
     `<p class="sc-footnote">` +
-    `League matchdays follow the fixed GPSL calendar (Aug 1–3, then four per month Sep–Apr, May 36–38). ` +
-    `Cup rounds match the published schedule. Live draft / special auction / international dates appear when scheduled. ` +
-    `Your fixtures are highlighted when you own a club.` +
+    `Click a bullet for details and links. League matchdays: Aug 1–3, then four per month Sep–Apr, May 36–38. ` +
+    `Cup rounds follow the published schedule. Live drafts and special auctions appear when scheduled.` +
     `</p>`;
+
+  wireBulletToggles(root);
+
+  const current = SEASON_MONTH_ORDER.find((mk) => isCurrentMonth(mk, status));
+  if (current) {
+    const el = document.getElementById(`month-${current}`);
+    if (el) {
+      requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    }
+  }
 }
 
 async function main() {

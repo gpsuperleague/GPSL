@@ -270,6 +270,12 @@ function groupByMonth(fixtures) {
     });
 }
 
+function requestedClubFixturesMonth() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = (params.get("month") || "").trim().toLowerCase();
+  return raw || null;
+}
+
 function renderFixtures(fixtures) {
   const root = document.getElementById("clubFixturesRoot");
   if (!fixtures.length) {
@@ -279,18 +285,31 @@ function renderFixtures(fixtures) {
   }
 
   const groups = groupByMonth(fixtures);
+  const focusMonth = requestedClubFixturesMonth();
   root.innerHTML = groups
     .map((g) => {
       const label = GPSL_MONTH_LABELS[g.gpsl_month] || g.gpsl_month || "—";
       const cards = g.fixtures.map(fixtureCardHtml).join("");
+      const monthKey = String(g.gpsl_month || "").toLowerCase();
       return `
-        <div class="month-block">
+        <div class="month-block" id="month-${monthKey}" data-gpsl-month="${monthKey}">
           <div class="month-head">${label}</div>
           ${cards}
         </div>
       `;
     })
     .join("");
+
+  if (focusMonth) {
+    const target = root.querySelector(
+      `.month-block[data-gpsl-month="${CSS.escape(focusMonth)}"]`
+    );
+    if (target) {
+      requestAnimationFrame(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  }
 }
 
 async function loadMyClub(user) {

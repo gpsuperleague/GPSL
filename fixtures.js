@@ -132,6 +132,15 @@ function divisionFromUrl() {
   return LEAGUE_DIVISIONS.includes(div) ? div : null;
 }
 
+function viewFromUrl() {
+  const v = (new URLSearchParams(window.location.search).get("view") || "")
+    .trim()
+    .toLowerCase();
+  if (v === "cups" || v === "cup") return "cups";
+  if (v === "league") return "league";
+  return null;
+}
+
 function renderDivisionToolbar() {
   const bar = document.getElementById("divisionToolbar");
   bar.innerHTML = "";
@@ -231,11 +240,22 @@ function renderCupFixtures() {
   }
 }
 
+function requestedFixturesMonth() {
+  const params = new URLSearchParams(window.location.search);
+  const raw = (params.get("month") || "").trim().toLowerCase();
+  return raw || null;
+}
+
 function scrollToActiveMonthFixtures() {
   if (fixtureView !== "league") return;
 
-  const activeMonth = calendarStatus?.active_gpsl_month;
-  if (!activeMonth || !calendarStatus?.calendar_configured) return;
+  const requested = requestedFixturesMonth();
+  const activeMonth =
+    requested ||
+    (calendarStatus?.calendar_configured
+      ? calendarStatus?.active_gpsl_month
+      : null);
+  if (!activeMonth) return;
 
   const root = document.getElementById("fixturesRoot");
   if (!root) return;
@@ -247,11 +267,19 @@ function scrollToActiveMonthFixtures() {
   );
   if (!monthBlocks.length) return;
 
-  const target = monthBlocks.reduce((best, el) => {
-    const md = Number(el.dataset.matchday) || 0;
-    const bestMd = Number(best?.dataset.matchday) || 0;
-    return md >= bestMd ? el : best;
-  }, monthBlocks[0]);
+  // Deep-link from season calendar: first matchday of that month.
+  // Default (no ?month=): last matchday of the live month (existing behaviour).
+  const target = requested
+    ? monthBlocks.reduce((best, el) => {
+        const md = Number(el.dataset.matchday) || 0;
+        const bestMd = Number(best?.dataset.matchday) || Infinity;
+        return md < bestMd ? el : best;
+      }, monthBlocks[0])
+    : monthBlocks.reduce((best, el) => {
+        const md = Number(el.dataset.matchday) || 0;
+        const bestMd = Number(best?.dataset.matchday) || 0;
+        return md >= bestMd ? el : best;
+      }, monthBlocks[0]);
 
   requestAnimationFrame(() => {
     target.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -374,6 +402,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   const urlDivision = divisionFromUrl();
   if (urlDivision) {
     currentDivision = urlDivision;
+  }
+
+  const urlView = viewFromUrl();
+  if (urlView) {
+    fixtureView = urlView;
   }
 
   calendarStatus = await loadCalendarStatus(supabase);

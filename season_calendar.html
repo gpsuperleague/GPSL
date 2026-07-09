@@ -7,111 +7,200 @@
   <link rel="stylesheet" href="dashboard.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
-    .page-container { width:95%; max-width:1100px; margin:20px auto 48px; }
+    .page-container { width:95%; max-width:1180px; margin:20px auto 48px; }
     h1 { color:#ff9900; margin:0 0 8px; }
-    .meta { color:#aaa; margin-bottom:16px; font-size:14px; line-height:1.45; }
+    .meta { color:#aaa; margin-bottom:12px; font-size:14px; line-height:1.45; }
     #seasonCalendarError {
       color:#f88; background:#2a1515; border:1px solid #633;
       border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:13px;
       display:none;
     }
     .sc-intro {
-      color:#bbb; font-size:14px; line-height:1.5; margin:0 0 18px; max-width:52rem;
+      color:#bbb; font-size:14px; line-height:1.5; margin:0 0 16px; max-width:52rem;
     }
     .sc-loading, .sc-footnote { color:#888; font-size:13px; }
-    .sc-footnote { margin-top:20px; line-height:1.45; }
-    .sc-jump-nav {
-      display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px;
+    .sc-footnote { margin-top:18px; line-height:1.45; }
+
+    /* 4×3 calendar grid */
+    .sc-grid {
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:14px;
     }
-    .sc-jump {
-      display:inline-block; padding:5px 10px; font-size:12px; font-weight:bold;
-      background:#222; color:#ccc; border:1px solid #333; border-radius:4px;
+    @media (max-width: 980px) {
+      .sc-grid { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .sc-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 480px) {
+      .sc-grid { grid-template-columns:1fr; }
+    }
+
+    .sc-month {
+      display:flex;
+      flex-direction:column;
+      min-height:220px;
+      background:#f7f4ef;
+      border:2px solid #1a1a1a;
+      border-radius:2px;
+      overflow:hidden;
+      color:#1a1a1a;
+      box-shadow:0 2px 0 rgba(0,0,0,.35);
+    }
+    .sc-month--current {
+      border-color:#ff9900;
+      box-shadow:0 0 0 2px rgba(255,153,0,.45), 0 2px 0 rgba(0,0,0,.35);
+    }
+    .sc-month--pre .sc-month-banner {
+      letter-spacing:.04em;
+    }
+
+    .sc-month-banner {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:10px 8px;
+      text-align:center;
+      border-bottom:2px solid #1a1a1a;
+      position:relative;
+    }
+    .sc-month-banner h2 {
+      margin:0;
+      font-size:16px;
+      font-weight:bold;
+      color:#111;
+      letter-spacing:.02em;
+    }
+    .sc-now-badge, .sc-pre-badge {
+      position:absolute;
+      right:6px;
+      top:50%;
+      transform:translateY(-50%);
+      font-size:9px;
+      text-transform:uppercase;
+      letter-spacing:.05em;
+      padding:2px 6px;
+      border-radius:3px;
+      font-weight:bold;
+      background:rgba(0,0,0,.18);
+      color:#111;
+    }
+    .sc-month--current .sc-now-badge {
+      background:#111;
+      color:#ff9900;
+    }
+
+    /* GPSL-themed month header colours */
+    .sc-month[data-month="june"] .sc-month-banner { background:#c9a84c; }
+    .sc-month[data-month="july"] .sc-month-banner { background:#e0b85a; }
+    .sc-month[data-month="august"] .sc-month-banner { background:#ff9900; }
+    .sc-month[data-month="september"] .sc-month-banner { background:#6d9f7a; }
+    .sc-month[data-month="october"] .sc-month-banner { background:#c98652; }
+    .sc-month[data-month="november"] .sc-month-banner { background:#5a7db5; color:#fff; }
+    .sc-month[data-month="november"] .sc-month-banner h2,
+    .sc-month[data-month="november"] .sc-pre-badge,
+    .sc-month[data-month="november"] .sc-now-badge { color:#fff; }
+    .sc-month[data-month="december"] .sc-month-banner { background:#9b87b8; }
+    .sc-month[data-month="january"] .sc-month-banner { background:#7ec8e3; }
+    .sc-month[data-month="february"] .sc-month-banner { background:#6ecf8a; }
+    .sc-month[data-month="march"] .sc-month-banner { background:#ff8f45; }
+    .sc-month[data-month="april"] .sc-month-banner { background:#4fc3f7; }
+    .sc-month[data-month="may"] .sc-month-banner { background:#c9a84c; }
+
+    .sc-month-body {
+      flex:1;
+      padding:10px 12px 12px;
+      background:#faf8f4;
+    }
+    .sc-bullets {
+      list-style:disc;
+      margin:0;
+      padding:0 0 0 18px;
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .sc-bullet {
+      font-size:12.5px;
+      line-height:1.35;
+      color:#222;
+    }
+    .sc-bullet-btn {
+      display:inline;
+      margin:0;
+      padding:0;
+      border:0;
+      background:none;
+      font:inherit;
+      color:#1a1a1a;
+      cursor:pointer;
+      text-align:left;
+      text-decoration:underline;
+      text-decoration-color:rgba(0,0,0,.25);
+      text-underline-offset:2px;
+    }
+    .sc-bullet-btn:hover,
+    .sc-bullet.is-open .sc-bullet-btn {
+      color:#b36b00;
+      text-decoration-color:#ff9900;
+    }
+    .sc-bullet--live .sc-bullet-btn {
+      color:#1a5c32;
+      font-weight:bold;
+    }
+    .sc-bullet--mine .sc-bullet-btn {
+      color:#8a4b00;
+      font-weight:bold;
+    }
+    .sc-bullet-detail {
+      display:none;
+      margin:6px 0 4px -6px;
+      padding:8px 10px;
+      background:#fff;
+      border:1px solid #d8d0c4;
+      border-left:3px solid #ff9900;
+      border-radius:4px;
+      font-size:12px;
+      line-height:1.45;
+      color:#333;
+    }
+    .sc-bullet.is-open .sc-bullet-detail { display:block; }
+    .sc-bullet-detail p { margin:0 0 8px; }
+    .sc-bullet-links {
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+    }
+    .sc-bullet-links a {
+      display:inline-block;
+      padding:3px 8px;
+      font-size:11px;
+      font-weight:bold;
+      background:#ff9900;
+      color:#111;
+      border-radius:3px;
       text-decoration:none;
     }
-    .sc-jump:hover { border-color:#ff9900; color:#ff9900; }
-    .sc-jump--current {
-      background:#2a2210; border-color:#ff9900; color:#ffcc66;
+    .sc-bullet-links a.secondary {
+      background:#333;
+      color:#eee;
     }
-    .sc-grid {
-      display:flex; flex-direction:column; gap:14px;
+    .sc-bullet-links a:hover { filter:brightness(1.08); }
+
+    .sc-empty-bullets {
+      margin:0;
+      color:#777;
+      font-size:12px;
+      font-style:italic;
     }
-    .sc-month {
-      background:#1a1a1a; border:1px solid #333; border-radius:8px;
-      padding:14px 16px 16px; scroll-margin-top:72px;
+
+    .sc-hint {
+      margin:0 0 14px;
+      font-size:12px;
+      color:#888;
     }
-    .sc-month--pre { border-color:#4a3f20; background:#18160f; }
-    .sc-month--current {
-      border-color:#ff9900; box-shadow:0 0 0 1px rgba(255,153,0,.25);
-    }
-    .sc-month-head {
-      display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px;
-      margin-bottom:6px;
-    }
-    .sc-month-head h2 {
-      margin:0; color:#ff9900; font-size:18px;
-    }
-    .sc-month--pre .sc-month-head h2 { color:#e8c070; }
-    .sc-now-badge, .sc-pre-badge {
-      font-size:10px; text-transform:uppercase; letter-spacing:.06em;
-      padding:2px 8px; border-radius:4px; font-weight:bold;
-    }
-    .sc-now-badge { background:#3a2a10; color:#ffcc66; }
-    .sc-pre-badge { background:#2a2618; color:#c9b070; }
-    .sc-window {
-      margin:0 0 10px; font-size:12px; color:#888;
-    }
-    .sc-events {
-      list-style:none; margin:0; padding:0;
-      display:flex; flex-direction:column; gap:6px;
-    }
-    .sc-event {
-      font-size:13px; line-height:1.4;
-      padding:6px 10px; border-radius:4px; background:#141414;
-      border-left:3px solid #444;
-    }
-    .sc-event a { color:#ddd; text-decoration:none; }
-    .sc-event a:hover { color:#ff9900; }
-    .sc-event--league { border-left-color:#6d9f7a; }
-    .sc-event--cup { border-left-color:#5a7db5; }
-    .sc-event--transfer-open { border-left-color:#9fd4b0; }
-    .sc-event--transfer-closed { border-left-color:#666; color:#999; }
-    .sc-event--manager-auction { border-left-color:#c9a84c; }
-    .sc-event--draft { border-left-color:#c98652; }
-    .sc-event--special { border-left-color:#9b87b8; }
-    .sc-event--deadline { border-left-color:#888; }
-    .sc-event--phase { border-left-color:#e8c070; }
-    .sc-event--world-cup { border-left-color:#c9a84c; }
-    .sc-event--international { border-left-color:#7ec8e3; }
-    .sc-event--club-fixture { border-left-color:#ff9900; background:#221a0c; }
-    .sc-event--live {
-      background:#1a2418;
-    }
-    .sc-event--live a, .sc-event--live span { color:#9fd4b0; font-weight:bold; }
-    .sc-event--mine a { color:#ffcc66; }
-    .sc-club-block { margin-top:12px; padding-top:10px; border-top:1px dashed #333; }
-    .sc-club-heading {
-      margin:0 0 8px; font-size:12px; text-transform:uppercase;
-      letter-spacing:.06em; color:#ff9900;
-    }
-    .sc-club-comp {
-      display:inline-block; font-size:11px; color:#aaa;
-      margin-right:4px;
-    }
-    .sc-event .mine { color:#ffcc66; font-weight:bold; }
-    .sc-legend {
-      display:flex; flex-wrap:wrap; gap:8px 14px; margin:0 0 16px;
-      font-size:12px; color:#999;
-    }
-    .sc-legend span::before {
-      content:""; display:inline-block; width:8px; height:8px;
-      border-radius:2px; margin-right:6px; vertical-align:middle;
-      background:#444;
-    }
-    .sc-legend .lg-league::before { background:#6d9f7a; }
-    .sc-legend .lg-cup::before { background:#5a7db5; }
-    .sc-legend .lg-transfer::before { background:#9fd4b0; }
-    .sc-legend .lg-auction::before { background:#c9a84c; }
-    .sc-legend .lg-yours::before { background:#ff9900; }
   </style>
 </head>
 <body>
@@ -121,18 +210,10 @@
     <p id="seasonCalendarMeta" class="meta">Loading…</p>
     <div id="seasonCalendarError"></div>
     <p class="sc-intro">
-      Pre-season is June &amp; July, then August–May for the competition year.
-      Each month lists league matchdays, cup rounds, transfer window status,
-      manager auctions, messaging deadlines, and any scheduled drafts or international ties.
-      Your club&apos;s fixtures are highlighted when you own a club.
+      Pre-season is June &amp; July, then August–May. Click a bullet in any month for details and links
+      (league fixtures for that month, cups, drafts, transfers, and more).
     </p>
-    <div class="sc-legend" aria-hidden="true">
-      <span class="lg-league">League</span>
-      <span class="lg-cup">Cups</span>
-      <span class="lg-transfer">Transfers</span>
-      <span class="lg-auction">Auctions</span>
-      <span class="lg-yours">Your fixtures</span>
-    </div>
+    <p class="sc-hint">Tip: your club fixtures appear as highlighted bullets when you own a club.</p>
     <div id="seasonCalendarRoot"></div>
   </div>
   <script type="module" src="season_calendar.js"></script>
