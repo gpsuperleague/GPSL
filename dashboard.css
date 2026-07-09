@@ -671,6 +671,10 @@ table.gpsl-table td {
   padding: 5px 7px;
 }
 
+.gpsl-nav-actions-primary .nav-season-calendar {
+  padding: 5px 7px;
+}
+
 .gpsl-nav-actions-primary .nav-gpsl-sport {
   padding: 5px 7px;
 }
@@ -683,6 +687,21 @@ table.gpsl-table td {
   position: relative;
   text-decoration: none;
   gap: 5px;
+}
+
+.nav-season-calendar {
+  text-decoration: none;
+  gap: 5px;
+}
+
+.nav-season-calendar-mark {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.nav-season-calendar-label {
+  font-size: 12px;
+  font-weight: bold;
 }
 
 .nav-natter.has-unread .nav-natter-mark {
@@ -1784,7 +1803,8 @@ a.ssc-chip:hover {
     flex-direction: column;
   }
 
-  .nav-natter-label {
+  .nav-natter-label,
+  .nav-season-calendar-label {
     display: none;
   }
 

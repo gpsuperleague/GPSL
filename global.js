@@ -39,6 +39,17 @@ function getGpslSportModule() {
   return gpslSportModulePromise;
 }
 
+function renderNavSeasonCalendarLink(calendarActive = false) {
+  return (
+    `<a href="season_calendar.html" class="nav-shortcut nav-season-calendar${
+      calendarActive ? " active" : ""
+    }" title="Season calendar" aria-label="Season calendar">` +
+    `<span class="nav-season-calendar-mark" aria-hidden="true">📅</span>` +
+    `<span class="nav-season-calendar-label">Calendar</span>` +
+    `</a>`
+  );
+}
+
 function renderNavNatterLink(natterActive = false, unread = 0) {
   const n = Number(unread) || 0;
   return (
@@ -1670,6 +1681,7 @@ export async function renderFallbackNav() {
           <a href="squad.html" class="nav-link">Squad</a>
         </div>
         <div class="gpsl-nav-actions gpsl-nav-actions-primary">
+          ${renderNavSeasonCalendarLink(false)}
           ${renderNavNatterLink(false, 0)}
           ${renderNavGpslSportButton()}
           ${renderNavDashboardHomeLink(ownerClub, "dashboard.html", false)}
@@ -1802,6 +1814,7 @@ export async function buildNav() {
   const dashActive = pathNorm === normalizeNavPath(homeHref);
   const inboxActive = pathNorm === "inbox.html";
   const natterActive = pathNorm === "natter.html";
+  const calendarActive = pathNorm === "season_calendar.html";
 
   let navSections = Array.isArray(NAV_SECTIONS) ? [...NAV_SECTIONS] : [];
   if (!navSections.length) {
@@ -1942,6 +1955,7 @@ export async function buildNav() {
   html += `</div>`;
 
   html += `<div class="gpsl-nav-actions gpsl-nav-actions-primary">`;
+  html += renderNavSeasonCalendarLink(calendarActive);
   html += renderNavNatterLink(natterActive, natterUnread);
   html += renderNavGpslSportButton();
   html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);

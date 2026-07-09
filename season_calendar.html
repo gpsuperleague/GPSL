@@ -1,0 +1,140 @@
+<script>window.CURRENT_PAGE = "season_calendar";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Season Calendar — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1100px; margin:20px auto 48px; }
+    h1 { color:#ff9900; margin:0 0 8px; }
+    .meta { color:#aaa; margin-bottom:16px; font-size:14px; line-height:1.45; }
+    #seasonCalendarError {
+      color:#f88; background:#2a1515; border:1px solid #633;
+      border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:13px;
+      display:none;
+    }
+    .sc-intro {
+      color:#bbb; font-size:14px; line-height:1.5; margin:0 0 18px; max-width:52rem;
+    }
+    .sc-loading, .sc-footnote { color:#888; font-size:13px; }
+    .sc-footnote { margin-top:20px; line-height:1.45; }
+    .sc-jump-nav {
+      display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px;
+    }
+    .sc-jump {
+      display:inline-block; padding:5px 10px; font-size:12px; font-weight:bold;
+      background:#222; color:#ccc; border:1px solid #333; border-radius:4px;
+      text-decoration:none;
+    }
+    .sc-jump:hover { border-color:#ff9900; color:#ff9900; }
+    .sc-jump--current {
+      background:#2a2210; border-color:#ff9900; color:#ffcc66;
+    }
+    .sc-grid {
+      display:flex; flex-direction:column; gap:14px;
+    }
+    .sc-month {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:14px 16px 16px; scroll-margin-top:72px;
+    }
+    .sc-month--pre { border-color:#4a3f20; background:#18160f; }
+    .sc-month--current {
+      border-color:#ff9900; box-shadow:0 0 0 1px rgba(255,153,0,.25);
+    }
+    .sc-month-head {
+      display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px;
+      margin-bottom:6px;
+    }
+    .sc-month-head h2 {
+      margin:0; color:#ff9900; font-size:18px;
+    }
+    .sc-month--pre .sc-month-head h2 { color:#e8c070; }
+    .sc-now-badge, .sc-pre-badge {
+      font-size:10px; text-transform:uppercase; letter-spacing:.06em;
+      padding:2px 8px; border-radius:4px; font-weight:bold;
+    }
+    .sc-now-badge { background:#3a2a10; color:#ffcc66; }
+    .sc-pre-badge { background:#2a2618; color:#c9b070; }
+    .sc-window {
+      margin:0 0 10px; font-size:12px; color:#888;
+    }
+    .sc-events {
+      list-style:none; margin:0; padding:0;
+      display:flex; flex-direction:column; gap:6px;
+    }
+    .sc-event {
+      font-size:13px; line-height:1.4;
+      padding:6px 10px; border-radius:4px; background:#141414;
+      border-left:3px solid #444;
+    }
+    .sc-event a { color:#ddd; text-decoration:none; }
+    .sc-event a:hover { color:#ff9900; }
+    .sc-event--league { border-left-color:#6d9f7a; }
+    .sc-event--cup { border-left-color:#5a7db5; }
+    .sc-event--transfer-open { border-left-color:#9fd4b0; }
+    .sc-event--transfer-closed { border-left-color:#666; color:#999; }
+    .sc-event--manager-auction { border-left-color:#c9a84c; }
+    .sc-event--draft { border-left-color:#c98652; }
+    .sc-event--special { border-left-color:#9b87b8; }
+    .sc-event--deadline { border-left-color:#888; }
+    .sc-event--phase { border-left-color:#e8c070; }
+    .sc-event--world-cup { border-left-color:#c9a84c; }
+    .sc-event--international { border-left-color:#7ec8e3; }
+    .sc-event--club-fixture { border-left-color:#ff9900; background:#221a0c; }
+    .sc-event--live {
+      background:#1a2418;
+    }
+    .sc-event--live a, .sc-event--live span { color:#9fd4b0; font-weight:bold; }
+    .sc-event--mine a { color:#ffcc66; }
+    .sc-club-block { margin-top:12px; padding-top:10px; border-top:1px dashed #333; }
+    .sc-club-heading {
+      margin:0 0 8px; font-size:12px; text-transform:uppercase;
+      letter-spacing:.06em; color:#ff9900;
+    }
+    .sc-club-comp {
+      display:inline-block; font-size:11px; color:#aaa;
+      margin-right:4px;
+    }
+    .sc-event .mine { color:#ffcc66; font-weight:bold; }
+    .sc-legend {
+      display:flex; flex-wrap:wrap; gap:8px 14px; margin:0 0 16px;
+      font-size:12px; color:#999;
+    }
+    .sc-legend span::before {
+      content:""; display:inline-block; width:8px; height:8px;
+      border-radius:2px; margin-right:6px; vertical-align:middle;
+      background:#444;
+    }
+    .sc-legend .lg-league::before { background:#6d9f7a; }
+    .sc-legend .lg-cup::before { background:#5a7db5; }
+    .sc-legend .lg-transfer::before { background:#9fd4b0; }
+    .sc-legend .lg-auction::before { background:#c9a84c; }
+    .sc-legend .lg-yours::before { background:#ff9900; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <h1>Season Calendar</h1>
+    <p id="seasonCalendarMeta" class="meta">Loading…</p>
+    <div id="seasonCalendarError"></div>
+    <p class="sc-intro">
+      Pre-season is June &amp; July, then August–May for the competition year.
+      Each month lists league matchdays, cup rounds, transfer window status,
+      manager auctions, messaging deadlines, and any scheduled drafts or international ties.
+      Your club&apos;s fixtures are highlighted when you own a club.
+    </p>
+    <div class="sc-legend" aria-hidden="true">
+      <span class="lg-league">League</span>
+      <span class="lg-cup">Cups</span>
+      <span class="lg-transfer">Transfers</span>
+      <span class="lg-auction">Auctions</span>
+      <span class="lg-yours">Your fixtures</span>
+    </div>
+    <div id="seasonCalendarRoot"></div>
+  </div>
+  <script type="module" src="season_calendar.js"></script>
+</body>
+</html>

@@ -46,6 +46,7 @@ export const MEMBER_ALLOWED_PAGES = new Set([
   "central_bank_counter",
   // Owners
   "owner_rankings",
+  "season_calendar",
   "natter",
 ]);
 
