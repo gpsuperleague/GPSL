@@ -730,23 +730,33 @@ document.addEventListener("DOMContentLoaded", () => {
     SEASON_EXCLUDED_PLAYER_IDS = new Set();
     SEASON_EXCLUDED_NATION_LABELS = new Set();
     try {
-      const { data, error } = await supabase.rpc("gpdb_season_exclusions_bundle");
+      const { data, error } = await supabase.rpc("gpdb_season_exclusions_bundle", {
+        p_season_id: null,
+      });
       if (error) {
-        if (!String(error.message || "").includes("gpdb_season_exclusions_bundle")) {
-          console.warn("gpdb_season_exclusions_bundle:", error);
+        // Fallback: zero-arg overload (older PostgREST / after bundle_fix.sql)
+        const retry = await supabase.rpc("gpdb_season_exclusions_bundle");
+        if (retry.error) {
+          console.warn("gpdb_season_exclusions_bundle:", error, retry.error);
+          return;
         }
+        applyExclusionBundle(retry.data);
         return;
       }
-      for (const id of data?.player_ids || []) {
-        const s = String(id).trim();
-        if (s) SEASON_EXCLUDED_PLAYER_IDS.add(s);
-      }
-      for (const lab of data?.nation_labels || []) {
-        const s = String(lab).trim();
-        if (s) SEASON_EXCLUDED_NATION_LABELS.add(s);
-      }
+      applyExclusionBundle(data);
     } catch (e) {
       console.warn("loadSeasonExclusions:", e);
+    }
+  }
+
+  function applyExclusionBundle(data) {
+    for (const id of data?.player_ids || []) {
+      const s = String(id).trim();
+      if (s) SEASON_EXCLUDED_PLAYER_IDS.add(s);
+    }
+    for (const lab of data?.nation_labels || []) {
+      const s = String(lab).trim();
+      if (s) SEASON_EXCLUDED_NATION_LABELS.add(s);
     }
   }
 

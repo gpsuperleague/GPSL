@@ -290,7 +290,7 @@ BEGIN
 END;
 $function$;
 
--- Bundle for GPDB client
+-- Bundle for GPDB client (NULL season = all open seasons; zero-arg overload for PostgREST)
 CREATE OR REPLACE FUNCTION public.gpdb_season_exclusions_bundle(p_season_id bigint DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -299,23 +299,61 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
-  v_season bigint := public.gpdb_exclusion_season_id(p_season_id);
+  v_season bigint;
+  v_player_ids text[] := ARRAY[]::text[];
+  v_nation_codes text[] := ARRAY[]::text[];
+  v_nation_labels text[] := ARRAY[]::text[];
 BEGIN
+  BEGIN
+    v_season := public.gpdb_exclusion_season_id(p_season_id);
+  EXCEPTION WHEN OTHERS THEN
+    v_season := NULL;
+  END;
+
+  BEGIN
+    v_player_ids := public.gpdb_season_excluded_player_ids(p_season_id);
+  EXCEPTION WHEN OTHERS THEN
+    v_player_ids := ARRAY[]::text[];
+  END;
+
+  BEGIN
+    SELECT coalesce(array_agg(DISTINCT en.nation_code ORDER BY en.nation_code), ARRAY[]::text[])
+    INTO v_nation_codes
+    FROM public.gpdb_season_excluded_nations en
+    JOIN public.competition_seasons s ON s.id = en.season_id
+    WHERE CASE
+      WHEN p_season_id IS NOT NULL THEN en.season_id = p_season_id
+      ELSE s.is_current = true
+        OR s.status IN ('active', 'preseason', 'summer_break', 'setup')
+    END;
+  EXCEPTION WHEN OTHERS THEN
+    v_nation_codes := ARRAY[]::text[];
+  END;
+
+  BEGIN
+    v_nation_labels := public.gpdb_season_excluded_nation_labels(p_season_id);
+  EXCEPTION WHEN OTHERS THEN
+    v_nation_labels := ARRAY[]::text[];
+  END;
+
   RETURN jsonb_build_object(
     'season_id', v_season,
-    'player_ids', to_jsonb(public.gpdb_season_excluded_player_ids(v_season)),
-    'nation_codes', coalesce(
-      (
-        SELECT jsonb_agg(en.nation_code ORDER BY en.nation_code)
-        FROM public.gpdb_season_excluded_nations en
-        WHERE en.season_id = v_season
-      ),
-      '[]'::jsonb
-    ),
-    'nation_labels', to_jsonb(public.gpdb_season_excluded_nation_labels(v_season))
+    'player_ids', to_jsonb(coalesce(v_player_ids, ARRAY[]::text[])),
+    'nation_codes', to_jsonb(coalesce(v_nation_codes, ARRAY[]::text[])),
+    'nation_labels', to_jsonb(coalesce(v_nation_labels, ARRAY[]::text[]))
   );
 END;
 $function$;
+
+CREATE OR REPLACE FUNCTION public.gpdb_season_exclusions_bundle()
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.gpdb_season_exclusions_bundle(NULL::bigint);
+$$;
 
 -- ---------------------------------------------------------------------------
 -- Admin list / mutate
@@ -920,6 +958,7 @@ GRANT EXECUTE ON FUNCTION public.assert_player_not_season_excluded(text) TO auth
 GRANT EXECUTE ON FUNCTION public.gpdb_season_excluded_player_ids(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpdb_season_excluded_nation_labels(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpdb_season_exclusions_bundle(bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.gpdb_season_exclusions_bundle() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_gpdb_exclusions_list(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_gpdb_exclude_player(text, text, bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_gpdb_unexclude_player(text, bigint) TO authenticated;
