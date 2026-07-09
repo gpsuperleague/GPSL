@@ -26,6 +26,11 @@
     }
     button.button.secondary:hover { background:#555; }
     #selectionLive b { color:#ff9900; }
+    #topSeedsPreview {
+      margin-top:10px; font-size:12px; color:#bbb; line-height:1.5;
+      display:none;
+    }
+    #topSeedsPreview ol { margin:6px 0 0; padding-left:20px; }
   </style>
 </head>
 <body class="admin-page">
@@ -36,18 +41,25 @@
     <div class="card" id="sb-nation-setup">
       <h2>Setup</h2>
       <p class="note">
-        Seeds the core 60 nations. Use <b>Sync GPDB nations</b> to add every nationality in the player database
-        (flags, nation select, player pool).
+        <b>Refresh selectable nations</b> — imports missing GPDB nationalities, rebuilds the player pool cache,
+        then marks a nation <b>active</b> only if it can form a 23-man squad (≥24 players, ≥2 GKs) and support a GPSL club
+        (same rating-band rules as nation select). Thin nations are deactivated (kept in the DB; assigned nations stay active).
+      </p>
+      <p class="note">
+        <b>Recompute seed ranks</b> — orders <b>active</b> nations by pool strength (weighted rating bands from
+        nation player pool). Seed 1 = strongest. Used for balanced qualifying pots later — does <b>not</b> change owner draft order.
       </p>
       <div class="row">
-        <button type="button" class="button" id="seedNationsBtn">Seed nations (60)</button>
-        <button type="button" class="button secondary" id="syncGpdbNationsBtn">Sync GPDB nations</button>
-        <button type="button" class="button secondary" id="refreshPoolCacheBtn">Refresh nation pool cache</button>
+        <button type="button" class="button" id="syncGpdbNationsBtn">Refresh selectable nations</button>
+        <button type="button" class="button" id="seedNationsBtn">Recompute seed ranks from pool</button>
+        <button type="button" class="button secondary" id="refreshPoolCacheBtn">Refresh pool cache only</button>
       </div>
       <p class="note">
-        After GPDB player import or nation sync, refresh the pool cache so nation player pool / nation select load instantly.
+        Run <code>supabase/sql/patches/international_refresh_selectable_and_seed_ranks.sql</code> in Supabase once
+        if these buttons error with a missing function.
       </p>
       <div id="setupStatus" class="status-line"></div>
+      <div id="topSeedsPreview"></div>
     </div>
 
     <div class="card" id="sb-owner-rankings">
@@ -106,6 +118,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="admin_international.js"></script>
+  <script type="module" src="admin_international.js?v=20260709-intl-seed"></script>
 </body>
 </html>

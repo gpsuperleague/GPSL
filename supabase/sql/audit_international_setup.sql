@@ -8,8 +8,9 @@
 --   3) international_sync_gpdb_nations.sql
 --   4) international_nation_player_pool.sql
 --   5) international_nations_seed_rank_expand.sql  (if sync fails seed_rank check)
---   6) SELECT public.international_sync_gpdb_nations();  -- adds GPDB nations
---   7) SELECT public.international_refresh_gpdb_label_map();  -- if map empty
+--   6) international_refresh_selectable_and_seed_ranks.sql
+--   7) SELECT public.international_refresh_selectable_nations();  -- admin button
+--   8) SELECT public.international_recompute_seed_ranks_from_pool();  -- admin button
 -- =============================================================================
 
 -- 1) Patch checklist — scan status column; want all OK
@@ -106,6 +107,16 @@ FROM (
         AND pg_get_constraintdef(c.oid) LIKE '%32767%'
     ) THEN 'OK' ELSE 'MISSING' END,
     'Run international_nations_seed_rank_expand.sql (sync fails at rank 100 without this)'
+  UNION ALL
+  SELECT
+    'Selectable refresh: international_refresh_selectable_nations()',
+    CASE WHEN to_regprocedure('public.international_refresh_selectable_nations()') IS NOT NULL THEN 'OK' ELSE 'MISSING' END,
+    'Run international_refresh_selectable_and_seed_ranks.sql'
+  UNION ALL
+  SELECT
+    'Seed ranks from pool: international_recompute_seed_ranks_from_pool()',
+    CASE WHEN to_regprocedure('public.international_recompute_seed_ranks_from_pool()') IS NOT NULL THEN 'OK' ELSE 'MISSING' END,
+    'Run international_refresh_selectable_and_seed_ranks.sql'
   UNION ALL
   SELECT
     'View: international_selection_public has nations_total',
