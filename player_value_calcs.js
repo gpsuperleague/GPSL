@@ -131,13 +131,14 @@ function xlookupExactOrInterpolate(map, key, defaultValue = 0) {
   return defaultValue;
 }
 
-/** +5% when in current national squad or previous WC-cycle squad (2 windows). */
+/** +5% after ≥4 apps in current national squad or previous WC-cycle call-up. */
 export const INTERNATIONAL_SQUAD_MV_BOOST = 0.05;
+export const INTERNATIONAL_SQUAD_MV_BOOST_MIN_APPS = 4;
 
 /**
  * Market Value (col J) — uses GPSL extended base value; other lookups match Excel.
  * @param {object} [opts]
- * @param {boolean} [opts.internationalBoost] — apply 5% national-squad window boost
+ * @param {boolean} [opts.internationalBoost] — apply 5% boost (≥4 apps in squad window)
  */
 export function calculateMarketValue(rating, calcPotential, age, position, opts = {}) {
   const r = Math.round(Number(rating));

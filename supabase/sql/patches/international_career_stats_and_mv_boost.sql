@@ -2,12 +2,13 @@
 -- International career: clean sheets + 5% market-value boost for squad windows
 --
 -- 1) Add clean_sheets to international_player_career (overall, not per season)
--- 2) Refresh public views used by GPDB / national team / league stats
--- 3) 5% MV boost when player is:
+-- 2) Track appearances_in_cycle on each call-up row
+-- 3) Refresh public views used by GPDB / national team / league stats
+-- 4) 5% MV boost when player has ≥4 apps in a qualifying squad window:
 --      - currently in a national squad (is_active), OR
 --      - was called up in the previous WC cycle (cycle_id = prior cycle)
---    = two squad windows (current + previous)
--- 4) Recalc MV on call-up / release
+--    = two squad windows (current + previous); boost only after 4 matches
+-- 5) Recalc MV on call-up / release (and when cycle apps are recorded)
 --
 -- Run once in Supabase SQL Editor. Safe re-run.
 -- Prerequisite: player_value_recalc_functions.sql (gpsl_pv_*),
@@ -25,6 +26,28 @@ ALTER TABLE public.international_player_career
 
 COMMENT ON COLUMN public.international_player_career.clean_sheets IS
   'Lifetime international clean sheets (overall, not per season).';
+
+-- ---------------------------------------------------------------------------
+-- Call-up: apps in this WC / call-up cycle (for MV boost gate)
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE public.international_squad_callups
+  ADD COLUMN IF NOT EXISTS appearances_in_cycle integer NOT NULL DEFAULT 0
+  CHECK (appearances_in_cycle >= 0);
+
+ALTER TABLE public.international_squad_callups
+  ADD COLUMN IF NOT EXISTS prev_cycle_id bigint
+  REFERENCES public.international_wc_cycles (id);
+
+ALTER TABLE public.international_squad_callups
+  ADD COLUMN IF NOT EXISTS prev_appearances_in_cycle integer NOT NULL DEFAULT 0
+  CHECK (prev_appearances_in_cycle >= 0);
+
+COMMENT ON COLUMN public.international_squad_callups.appearances_in_cycle IS
+  'International matches played during this call-up / WC cycle. MV +5% needs ≥4.';
+
+COMMENT ON COLUMN public.international_squad_callups.prev_appearances_in_cycle IS
+  'Apps from the previous call-up stint (kept when re-called into a new cycle).';
 
 -- ---------------------------------------------------------------------------
 -- Views
@@ -45,6 +68,7 @@ SELECT
   p."Rating" AS player_rating,
   sc.club_short_name,
   sc.called_at,
+  coalesce(sc.appearances_in_cycle, 0) AS appearances_in_cycle,
   coalesce(ipc.caps, 0) AS intl_caps,
   coalesce(ipc.goals, 0) AS intl_goals,
   coalesce(ipc.assists, 0) AS intl_assists,
@@ -90,8 +114,16 @@ LEFT JOIN public."Clubs" c ON c."ShortName" = p."Contracted_Team";
 GRANT SELECT ON public.international_player_career_public TO authenticated;
 
 -- ---------------------------------------------------------------------------
--- MV boost eligibility: current squad OR previous WC-cycle squad
+-- MV boost eligibility: current/previous squad window AND ≥4 cycle apps
 -- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.gpsl_pv_international_boost_min_apps()
+RETURNS integer
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT 4;
+$$;
 
 CREATE OR REPLACE FUNCTION public.gpsl_pv_international_boost_eligible(p_player_id text)
 RETURNS boolean
@@ -105,25 +137,92 @@ AS $$
            row_number() OVER (ORDER BY cycle_no DESC) AS rn
     FROM public.international_wc_cycles
   ),
+  cur AS (
+    SELECT id FROM cycles WHERE rn = 1
+  ),
   prev AS (
     SELECT id FROM cycles WHERE rn = 2
+  ),
+  min_apps AS (
+    SELECT public.gpsl_pv_international_boost_min_apps() AS n
   )
   SELECT EXISTS (
     SELECT 1
     FROM public.international_squad_callups sc
+    CROSS JOIN min_apps m
     WHERE sc.player_id = btrim(p_player_id)
       AND (
-        sc.is_active = true
+        -- Current squad window: active + ≥4 apps this cycle
+        (
+          sc.is_active = true
+          AND coalesce(sc.appearances_in_cycle, 0) >= m.n
+        )
+        -- Previous squad window: released/stale row still on prior cycle
         OR (
           sc.cycle_id IS NOT NULL
           AND sc.cycle_id = (SELECT id FROM prev)
+          AND coalesce(sc.appearances_in_cycle, 0) >= m.n
+        )
+        -- Previous window preserved after re-call into a newer cycle
+        OR (
+          sc.prev_cycle_id IS NOT NULL
+          AND sc.prev_cycle_id = (SELECT id FROM prev)
+          AND coalesce(sc.prev_appearances_in_cycle, 0) >= m.n
+        )
+        -- Only one cycle exists: treat current cycle as the sole window
+        OR (
+          (SELECT id FROM prev) IS NULL
+          AND sc.is_active = true
+          AND coalesce(sc.appearances_in_cycle, 0) >= m.n
         )
       )
   );
 $$;
 
 COMMENT ON FUNCTION public.gpsl_pv_international_boost_eligible(text) IS
-  'True when player is in the current national squad or was called up in the previous WC cycle (2 squad windows).';
+  'True when player has ≥4 apps in the current national squad or previous WC-cycle call-up (2 squad windows).';
+
+-- Increment cycle apps on active call-up (call from intl match confirm later).
+-- Recalcs MV when the player crosses the 4-app threshold.
+CREATE OR REPLACE FUNCTION public.international_record_callup_appearance(p_player_id text)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_pid text := btrim(p_player_id);
+  v_apps integer;
+  v_before integer;
+BEGIN
+  SELECT coalesce(sc.appearances_in_cycle, 0)
+  INTO v_before
+  FROM public.international_squad_callups sc
+  WHERE sc.player_id = v_pid
+    AND sc.is_active = true
+  LIMIT 1;
+
+  IF v_before IS NULL THEN
+    RETURN 0;
+  END IF;
+
+  UPDATE public.international_squad_callups sc
+  SET appearances_in_cycle = coalesce(sc.appearances_in_cycle, 0) + 1
+  WHERE sc.player_id = v_pid
+    AND sc.is_active = true
+  RETURNING sc.appearances_in_cycle INTO v_apps;
+
+  IF v_before < public.gpsl_pv_international_boost_min_apps()
+     AND v_apps >= public.gpsl_pv_international_boost_min_apps() THEN
+    PERFORM public.gpsl_pv_recalc_player_market_value(v_pid);
+  ELSIF v_apps >= public.gpsl_pv_international_boost_min_apps() THEN
+    -- Keep MV in sync if base formula changed; cheap single-row recalc
+    PERFORM public.gpsl_pv_recalc_player_market_value(v_pid);
+  END IF;
+
+  RETURN coalesce(v_apps, 0);
+END;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.gpsl_pv_apply_international_boost(
   p_base_mv numeric,
@@ -233,7 +332,7 @@ END;
 $function$;
 
 COMMENT ON FUNCTION public.apply_calc_value() IS
-  'BEFORE INSERT/UPDATE on Players: Calc_Potential + market_value via gpsl_pv_* with 5% international squad-window boost.';
+  'BEFORE INSERT/UPDATE on Players: Calc_Potential + market_value via gpsl_pv_* with 5% international boost (≥4 apps in current/previous squad window).';
 
 -- Bulk apply: include intl boost
 CREATE OR REPLACE FUNCTION public.gpsl_player_value_recalc_apply()
@@ -370,34 +469,59 @@ BEGIN
     AND nation_code <> v_nation
     AND is_active = true;
 
+  -- Other-nation release may drop their boost; recalc if a row was touched
+  IF FOUND THEN
+    PERFORM public.gpsl_pv_recalc_player_market_value(v_pid);
+  END IF;
+
   IF EXISTS (
     SELECT 1
     FROM public.international_squad_callups sc
     WHERE sc.nation_code = v_nation
       AND sc.player_id = v_pid
   ) THEN
-    UPDATE public.international_squad_callups
+    UPDATE public.international_squad_callups sc
     SET is_active = true,
         released_at = NULL,
         called_at = now(),
         club_short_name = v_player_club,
-        cycle_id = v_cycle_id
-    WHERE nation_code = v_nation
-      AND player_id = v_pid;
+        -- Stash prior cycle apps when moving to a new WC cycle
+        prev_cycle_id = CASE
+          WHEN sc.cycle_id IS DISTINCT FROM v_cycle_id AND sc.cycle_id IS NOT NULL
+            THEN sc.cycle_id
+          ELSE sc.prev_cycle_id
+        END,
+        prev_appearances_in_cycle = CASE
+          WHEN sc.cycle_id IS DISTINCT FROM v_cycle_id AND sc.cycle_id IS NOT NULL
+            THEN coalesce(sc.appearances_in_cycle, 0)
+          ELSE sc.prev_appearances_in_cycle
+        END,
+        cycle_id = v_cycle_id,
+        appearances_in_cycle = CASE
+          WHEN sc.cycle_id IS DISTINCT FROM v_cycle_id THEN 0
+          WHEN sc.is_active THEN coalesce(sc.appearances_in_cycle, 0)
+          ELSE 0  -- fresh stint in same cycle after release
+        END
+    WHERE sc.nation_code = v_nation
+      AND sc.player_id = v_pid;
   ELSE
     INSERT INTO public.international_squad_callups (
       nation_code,
       player_id,
       club_short_name,
       cycle_id,
-      is_active
+      is_active,
+      appearances_in_cycle,
+      prev_appearances_in_cycle
     )
     VALUES (
       v_nation,
       v_pid,
       v_player_club,
       v_cycle_id,
-      true
+      true,
+      0,
+      0
     );
   END IF;
 
@@ -444,10 +568,12 @@ BEGIN
 END;
 $function$;
 
+GRANT EXECUTE ON FUNCTION public.gpsl_pv_international_boost_min_apps() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpsl_pv_international_boost_eligible(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpsl_pv_apply_international_boost(numeric, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpsl_pv_recalc_player_market_value(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpsl_player_value_recalc_apply() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.international_record_callup_appearance(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_call_up_player(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_release_callup(text) TO authenticated;
 

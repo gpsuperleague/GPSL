@@ -7,7 +7,7 @@
 - **Qualifying** — 2 seasons before finals; 12×5 groups; top 2 + 8 best third → 32 finalists.
 - **Finals** — 8×4 groups; top 2 → R16 → QF → SF → Final.
 - **Player international stats** — cumulative caps, goals, assists, POTM, clean sheets, average rating (`international_player_career`; overall, not per season).
-- **Market value** — **+5%** while in the current national squad, or if called up in the **previous** WC cycle (two squad windows). Applied in `gpsl_pv_*` / call-up & release.
+- **Market value** — **+5%** after **4 international appearances** in the current national call-up, or if they reached 4 apps in the **previous** WC-cycle call-up (two squad windows). Applied in `gpsl_pv_*` / call-up & release / `international_record_callup_appearance`.
 
 ## Nation selection
 
