@@ -67,6 +67,24 @@ BEGIN
   END IF;
 
   IF v_player."Contracted_Team" IS DISTINCT FROM v_seller THEN
+    -- Partial prior run: player already assigned to buyer, listing still open
+    IF v_player."Contracted_Team" IS NOT DISTINCT FROM v_buyer
+       AND EXISTS (
+         SELECT 1
+         FROM public."Transfer_History" h
+         WHERE h.listing_id = v_listing.id
+       ) THEN
+      UPDATE public."Player_Transfer_Listings"
+      SET status = 'Closed',
+          transfer_completed = true,
+          winning_bid = coalesce(v_fee, v_listing.winning_bid),
+          winning_club = coalesce(v_buyer, v_listing.winning_club)
+      WHERE id = v_listing.id
+        AND status IN ('Active', 'Review');
+      RAISE NOTICE 'Listing % already transferred — closed listing only', p_listing_id;
+      RETURN;
+    END IF;
+
     RAISE NOTICE 'Player no longer at selling club for listing %', p_listing_id;
     RETURN;
   END IF;
@@ -211,8 +229,87 @@ BEGIN
 END;
 $function$;
 
+-- ---------------------------------------------------------------------------
+-- Fix nested UPDATE from BEFORE trigger (tuple already modified)
+-- new_owner_listing_settle_slot must NOT UPDATE Player_Transfer_Listings —
+-- the BEFORE trigger sets NEW.new_owner_slot_settled; only restore club slots.
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.new_owner_listing_settle_slot(
+  p_listing_id bigint,
+  p_sold boolean
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_listing public."Player_Transfer_Listings"%rowtype;
+BEGIN
+  SELECT * INTO v_listing
+  FROM public."Player_Transfer_Listings"
+  WHERE id = p_listing_id
+  FOR UPDATE;
+
+  IF NOT FOUND OR coalesce(v_listing.new_owner_slot, false) IS NOT TRUE THEN
+    RETURN;
+  END IF;
+
+  IF coalesce(v_listing.new_owner_slot_settled, false) THEN
+    RETURN;
+  END IF;
+
+  -- Sold: slot stays consumed. Do not UPDATE the listing here (BEFORE trigger
+  -- already sets NEW.new_owner_slot_settled — nested UPDATE causes 27000).
+  IF p_sold THEN
+    RETURN;
+  END IF;
+
+  -- Unsold close: refund the first-season slot to the club only.
+  PERFORM public.club_new_owner_slot_restore(v_listing.seller_club_id);
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.trg_player_transfer_listings_new_owner_slot()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+BEGIN
+  IF coalesce(NEW.new_owner_slot, false) IS NOT TRUE THEN
+    RETURN NEW;
+  END IF;
+
+  IF coalesce(NEW.new_owner_slot_settled, false) THEN
+    RETURN NEW;
+  END IF;
+
+  IF coalesce(NEW.transfer_completed, false) IS TRUE
+    AND coalesce(OLD.transfer_completed, false) IS DISTINCT FROM TRUE THEN
+    PERFORM public.new_owner_listing_settle_slot(NEW.id, true);
+    NEW.new_owner_slot_settled := true;
+    RETURN NEW;
+  END IF;
+
+  IF NEW.status = 'Closed'
+    AND coalesce(NEW.transfer_completed, false) IS NOT TRUE
+    AND (
+      OLD.status IS DISTINCT FROM 'Closed'
+      OR coalesce(OLD.transfer_completed, false) IS DISTINCT FROM false
+    ) THEN
+    PERFORM public.new_owner_listing_settle_slot(NEW.id, false);
+    NEW.new_owner_slot_settled := true;
+  END IF;
+
+  RETURN NEW;
+END;
+$function$;
+
 GRANT EXECUTE ON FUNCTION public.transferengine_accept_sale(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.transferengine_evaluate_expired_listing(bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.new_owner_listing_settle_slot(bigint, boolean) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
 

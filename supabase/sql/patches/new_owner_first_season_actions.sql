@@ -105,18 +105,14 @@ BEGIN
     RETURN;
   END IF;
 
+  -- Sold: slot stays consumed. Do not UPDATE the listing here — the BEFORE
+  -- trigger sets NEW.new_owner_slot_settled (nested UPDATE causes 27000).
   IF p_sold THEN
-    UPDATE public."Player_Transfer_Listings"
-    SET new_owner_slot_settled = true
-    WHERE id = p_listing_id;
     RETURN;
   END IF;
 
+  -- Unsold close: refund the first-season slot to the club only.
   PERFORM public.club_new_owner_slot_restore(v_listing.seller_club_id);
-
-  UPDATE public."Player_Transfer_Listings"
-  SET new_owner_slot_settled = true
-  WHERE id = p_listing_id;
 END;
 $function$;
 
