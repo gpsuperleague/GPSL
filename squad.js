@@ -1399,13 +1399,14 @@ async function refreshAfterDesignationChange() {
   const byId = new Map(rows.map((p) => [String(p.Konami_ID), p]));
   document.querySelectorAll("tr[data-konami-id]:not([data-ghost-player])").forEach((row) => {
     const player = byId.get(String(row.dataset.konamiId));
-    const nameCell = row.querySelector("td:nth-child(2)");
+    const nameCell = row.querySelector("td.squad-col-player");
     if (!nameCell || !player) return;
-    const link = nameCell.querySelector(".squad-player-link");
-    const qual = nameCell.querySelector(".squad-qual-badge");
-    if (link) {
-      nameCell.innerHTML = `${link.outerHTML}${roleBadgeForPlayer(player, squadDesignationsState)}${qual ? qual.outerHTML : ""}`;
-    }
+    const loanBadge = seasonLoanPlayerIds.has(String(player.Konami_ID))
+      ? seasonLoanBadgeHtml()
+      : "";
+    const roleBadge = roleBadgeForPlayer(player, squadDesignationsState);
+    const qualBadges = playerSquadQualificationBadges(player, clubNation);
+    nameCell.innerHTML = `${playerNameLinkHtml(player.Konami_ID, player.Name)}${loanBadge}${roleBadge}${qualBadges}`;
   });
 }
 
