@@ -58,6 +58,7 @@ import {
   loadMyNation,
   loadNationalSquad,
   callUpPlayer,
+  releaseCallup,
   playerBelongsToNation,
   summarizeNationalSquad,
   gpdbNationFilterValues,
@@ -1405,7 +1406,7 @@ document.addEventListener("DOMContentLoaded", () => {
       panel.innerHTML = `
         ${renderNationFlag(MY_NATION, "sm")}
         <b>${MY_NATION.name} squad:</b> ${s.total}/${s.max} · ${gkNote}
-        · Call up eligible players below, or
+        · Call up or remove players below, or
         <a href="national_team.html?nation=${encodeURIComponent(MY_NATION.code)}" style="color:#ff9900;">view squad</a>
       `;
     }
@@ -1417,7 +1418,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const id = String(player.Konami_ID).trim();
     if (NATIONAL_CALLED_UP.has(id)) {
-      return `<span class="locked-msg">In national squad</span>`;
+      return `<button type="button" class="button release-callup-btn" data-player-id="${id}">Remove</button>`;
     }
     if (NATIONAL_SQUAD_SUMMARY?.full) {
       return `<span class="locked-msg">Squad full (${NATIONAL_SQUAD_MAX})</span>`;
@@ -1427,6 +1428,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   async function handleCallUpClick(konamiId) {
     const res = await callUpPlayer(String(konamiId), supabase);
+    if (res.error) {
+      alert(res.error);
+      return;
+    }
+    await refreshNationalSquadState();
+    await loadPage(CURRENT_PAGE);
+  }
+
+  async function handleReleaseCallUpClick(konamiId) {
+    const res = await releaseCallup(String(konamiId), supabase);
     if (res.error) {
       alert(res.error);
       return;
@@ -1636,7 +1647,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
       row.style.cursor = "pointer";
       row.addEventListener("click", e => {
-        if (e.target.closest(".make-offer-btn, .call-up-btn, .scout-btn, a")) return;
+        if (e.target.closest(".make-offer-btn, .call-up-btn, .release-callup-btn, .scout-btn, a")) return;
         const konamiId = row.getAttribute("data-konami-id");
         if (konamiId) {
           window.open(pesdbPlayerUrl(konamiId), "_blank", "noopener");
@@ -1652,6 +1663,13 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         handleCallUpClick(btn.dataset.playerId);
+      });
+    });
+
+    document.querySelectorAll(".release-callup-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        handleReleaseCallUpClick(btn.dataset.playerId);
       });
     });
 
