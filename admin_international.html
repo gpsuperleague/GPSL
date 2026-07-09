@@ -41,22 +41,24 @@
     <div class="card" id="sb-nation-setup">
       <h2>Setup</h2>
       <p class="note">
-        <b>Refresh selectable nations</b> — imports missing GPDB nationalities, rebuilds the player pool cache,
-        then marks a nation <b>active</b> only if it can form a 23-man squad (≥24 players, ≥2 GKs) and support a GPSL club
-        (same rating-band rules as nation select). Thin nations are deactivated (kept in the DB; assigned nations stay active).
+        Run these <b>one step at a time</b> (each can take up to ~1–2 min). Do not combine them in one SQL query —
+        Supabase times out long combined jobs.
       </p>
       <p class="note">
-        <b>Recompute seed ranks</b> — orders <b>active</b> nations by pool strength (weighted rating bands from
-        nation player pool). Seed 1 = strongest. Used for balanced qualifying pots later — does <b>not</b> change owner draft order.
+        <b>1. Import GPDB labels</b> — add missing nationalities from the player database.<br>
+        <b>2. Refresh pool cache</b> — recount players by rating band (slowest step).<br>
+        <b>3. Apply selectable</b> — activate only nations that can form a 23-man squad (≥24 players, ≥2 GKs + club depth).<br>
+        <b>4. Recompute seed ranks</b> — order active nations by pool strength (seed 1 = strongest for qualifying pots).
       </p>
       <div class="row">
-        <button type="button" class="button" id="syncGpdbNationsBtn">Refresh selectable nations</button>
-        <button type="button" class="button" id="seedNationsBtn">Recompute seed ranks from pool</button>
-        <button type="button" class="button secondary" id="refreshPoolCacheBtn">Refresh pool cache only</button>
+        <button type="button" class="button secondary" id="importLabelsBtn">1. Import GPDB labels</button>
+        <button type="button" class="button secondary" id="refreshPoolCacheBtn">2. Refresh pool cache</button>
+        <button type="button" class="button" id="syncGpdbNationsBtn">3. Apply selectable</button>
+        <button type="button" class="button" id="seedNationsBtn">4. Recompute seed ranks</button>
       </div>
       <p class="note">
-        Run <code>supabase/sql/patches/international_refresh_selectable_and_seed_ranks.sql</code> in Supabase once
-        if these buttons error with a missing function.
+        First deploy: run <code>supabase/sql/patches/international_refresh_selectable_and_seed_ranks.sql</code> in Supabase.
+        If a button times out, run the matching <code>SELECT …</code> alone in the SQL Editor.
       </p>
       <div id="setupStatus" class="status-line"></div>
       <div id="topSeedsPreview"></div>
@@ -118,6 +120,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="admin_international.js?v=20260709-intl-seed"></script>
+  <script type="module" src="admin_international.js?v=20260709-intl-steps"></script>
 </body>
 </html>

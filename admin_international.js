@@ -66,88 +66,59 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await refreshSelectionLive();
 
-  document.getElementById("syncGpdbNationsBtn")?.addEventListener("click", async () => {
-    if (
-      !confirm(
-        "Refresh selectable nations from GPDB?\n\n• Import missing nationalities\n• Rebuild pool cache\n• Activate only nations with enough players for a 23-man squad (+ club depth)\n\nThin nations are deactivated (assigned nations stay active).\n\nMay take 1–2 minutes."
-      )
-    ) {
-      return;
-    }
-    setStatus("setupStatus", "Refreshing selectable nations… (may take 1–2 min)");
-    hideTopSeeds();
-    const { data, error } = await supabase.rpc(
-      "international_refresh_selectable_nations"
-    );
-    if (error) {
-      setStatus(
-        "setupStatus",
-        `❌ ${error.message}${
-          /could not find|does not exist|PGRST/i.test(error.message || "")
-            ? " — run supabase/sql/patches/international_refresh_selectable_and_seed_ranks.sql in Supabase."
-            : ""
-        }`,
-        false
-      );
-      return;
-    }
-    const inserted = data?.sync?.inserted ?? 0;
-    const active = data?.active_nations ?? "?";
-    const inactive = data?.inactive_nations ?? "?";
-    const activated = data?.activated ?? 0;
-    const deactivated = data?.deactivated ?? 0;
-    setStatus(
-      "setupStatus",
-      `✅ Selectable refresh done — ${active} active / ${inactive} inactive` +
-        ` (imported ${inserted}, activated ${activated}, deactivated ${deactivated})` +
-        `. Next: Recompute seed ranks from pool.`,
-      true
-    );
-  });
+  function rpcMissingHint(msg) {
+    return /could not find|does not exist|PGRST202/i.test(msg || "")
+      ? " — re-run supabase/sql/patches/international_refresh_selectable_and_seed_ranks.sql in Supabase."
+      : /timeout|cancel|57014|statement timeout|upstream timeout/i.test(msg || "")
+        ? " — timed out. Run the matching SELECT alone in the SQL Editor."
+        : "";
+  }
 
-  document.getElementById("seedNationsBtn")?.addEventListener("click", async () => {
+  document.getElementById("importLabelsBtn")?.addEventListener("click", async () => {
     if (
       !confirm(
-        "Recompute nation seed ranks from the player pool?\n\nActive nations are ordered by rating-band strength (same categories as Nation player pool).\nSeed 1 = strongest — for balanced qualifying pots.\n\nDoes not change owner draft pick order."
+        "Step 1 — Import missing GPDB nationality labels into international_nations?\n\nDoes not rebuild the pool cache."
       )
     ) {
       return;
     }
-    setStatus("setupStatus", "Recomputing seed ranks from pool…");
+    setStatus("setupStatus", "Importing GPDB nation labels…");
     hideTopSeeds();
-    const { data, error } = await supabase.rpc(
-      "international_recompute_seed_ranks_from_pool"
-    );
-    if (error) {
+    try {
+      const { data, error } = await supabase.rpc("international_sync_gpdb_nation_labels", {
+        p_limit: 25,
+      });
+      if (error) {
+        setStatus("setupStatus", `❌ ${error.message}${rpcMissingHint(error.message)}`, false);
+        return;
+      }
+      const inserted = data?.inserted ?? 0;
       setStatus(
         "setupStatus",
-        `❌ ${error.message}${
-          /could not find|does not exist|PGRST/i.test(error.message || "")
-            ? " — run supabase/sql/patches/international_refresh_selectable_and_seed_ranks.sql in Supabase."
-            : ""
-        }`,
+        inserted > 0
+          ? `✅ Step 1 batch — imported ${inserted}. Run again until it says no missing labels, then Refresh pool cache.`
+          : `✅ Step 1 done — no missing labels left. Next: Refresh pool cache.`,
+        true
+      );
+    } catch (err) {
+      setStatus(
+        "setupStatus",
+        `❌ ${err?.message || err}. SQL Editor: SELECT public.international_sync_gpdb_nation_labels();`,
         false
       );
-      return;
     }
-    const ranked = data?.active_ranked ?? 0;
-    setStatus(
-      "setupStatus",
-      `✅ Seed ranks updated for ${ranked} active nation(s)`,
-      true
-    );
-    showTopSeeds(data?.top_nations || []);
   });
 
   document.getElementById("refreshPoolCacheBtn")?.addEventListener("click", async () => {
     if (
       !confirm(
-        "Rescan GPDB players into the nation pool cache?\n\nTakes ~30–90 seconds. Required after GPDB import; fixes pool page timeouts."
+        "Step 2 — Rebuild nation player pool cache from GPDB?\n\nSlowest step (~30–90s). Required after importing labels or a big GPDB update."
       )
     ) {
       return;
     }
     setStatus("setupStatus", "Refreshing nation pool cache… (may take up to 2 min)");
+    hideTopSeeds();
     try {
       const data = await refreshNationPlayerPoolCache(supabase);
       const n = data?.nations_cached ?? "?";
@@ -156,11 +127,87 @@ document.addEventListener("DOMContentLoaded", async () => {
         : "now";
       setStatus(
         "setupStatus",
-        `✅ Pool cache refreshed (${n} nations) at ${at}`,
+        `✅ Step 2 done — pool cache refreshed (${n} nations) at ${at}. Next: Apply selectable.`,
         true
       );
     } catch (err) {
-      setStatus("setupStatus", `❌ ${err.message}`, false);
+      setStatus(
+        "setupStatus",
+        `❌ ${err.message}${rpcMissingHint(err.message)}. SQL Editor: SELECT public.international_refresh_nation_player_pool_cache();`,
+        false
+      );
+    }
+  });
+
+  document.getElementById("syncGpdbNationsBtn")?.addEventListener("click", async () => {
+    if (
+      !confirm(
+        "Step 3 — Apply selectable flags from the existing pool cache?\n\nActivates nations that can form a 23-man squad (+ club depth). Thin nations are deactivated (assigned nations stay active).\n\nFast — requires step 2 cache to exist."
+      )
+    ) {
+      return;
+    }
+    setStatus("setupStatus", "Applying selectable from pool cache…");
+    hideTopSeeds();
+    try {
+      const { data, error } = await supabase.rpc(
+        "international_apply_selectable_from_pool_cache"
+      );
+      if (error) {
+        setStatus("setupStatus", `❌ ${error.message}${rpcMissingHint(error.message)}`, false);
+        console.error("international_apply_selectable_from_pool_cache:", error);
+        return;
+      }
+      const active = data?.active_nations ?? "?";
+      const inactive = data?.inactive_nations ?? "?";
+      setStatus(
+        "setupStatus",
+        `✅ Step 3 done — ${active} active / ${inactive} inactive` +
+          ` (activated ${data?.activated ?? 0}, deactivated ${data?.deactivated ?? 0}).` +
+          ` Next: Recompute seed ranks.`,
+        true
+      );
+    } catch (err) {
+      setStatus(
+        "setupStatus",
+        `❌ ${err?.message || err}. SQL Editor: SELECT public.international_apply_selectable_from_pool_cache();`,
+        false
+      );
+      console.error(err);
+    }
+  });
+
+  document.getElementById("seedNationsBtn")?.addEventListener("click", async () => {
+    if (
+      !confirm(
+        "Step 4 — Recompute nation seed ranks from the player pool?\n\nActive nations ordered by rating-band strength. Seed 1 = strongest (qualifying pots).\nDoes not change owner draft pick order."
+      )
+    ) {
+      return;
+    }
+    setStatus("setupStatus", "Recomputing seed ranks from pool…");
+    hideTopSeeds();
+    try {
+      const { data, error } = await supabase.rpc(
+        "international_recompute_seed_ranks_from_pool"
+      );
+      if (error) {
+        setStatus("setupStatus", `❌ ${error.message}${rpcMissingHint(error.message)}`, false);
+        return;
+      }
+      const ranked = data?.active_ranked ?? 0;
+      setStatus(
+        "setupStatus",
+        `✅ Step 4 done — seed ranks updated for ${ranked} active nation(s)`,
+        true
+      );
+      showTopSeeds(data?.top_nations || []);
+    } catch (err) {
+      setStatus(
+        "setupStatus",
+        `❌ ${err?.message || err}. SQL Editor: SELECT public.international_recompute_seed_ranks_from_pool();`,
+        false
+      );
     }
   });
 
