@@ -2,10 +2,121 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 import {
   loadSelectionWindow,
   loadOwnerDraftOrder,
+  loadInternationalNations,
   refreshNationPlayerPoolCache,
 } from "./international.js";
 
 primeAdminPageChrome();
+
+/** @type {Map<string, string>} owner_id → email */
+let ownerEmailById = new Map();
+
+function escapeOpt(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function loadOwnerEmails() {
+  ownerEmailById = new Map();
+  try {
+    const { data, error } = await supabase.functions.invoke("list-owners");
+    if (error) {
+      console.warn("list-owners:", error);
+      return;
+    }
+    for (const u of data?.users || []) {
+      if (u?.id && u?.email) ownerEmailById.set(u.id, u.email);
+    }
+  } catch (err) {
+    console.warn("list-owners skipped:", err);
+  }
+}
+
+function clubAssignLabel(row) {
+  const club = row.club_name || row.club_short_name || "?";
+  const short = row.club_short_name || "";
+  const tag = row.owner_tag || row.owner_name || "";
+  const email = row.owner_id ? ownerEmailById.get(row.owner_id) : null;
+  const who = [tag, email].filter(Boolean).join(" · ") || "No owner tag";
+  const taken = row.nation_code
+    ? ` — already ${row.nation_code}${row.nation_name ? ` (${row.nation_name})` : ""}`
+    : "";
+  return `${club} [${short}] — ${who}${taken}`;
+}
+
+function nationAssignLabel(row) {
+  const rank = row.seed_rank != null ? `#${row.seed_rank}` : "#—";
+  const flag = row.flag_emoji ? `${row.flag_emoji} ` : "";
+  const taken = row.is_taken
+    ? ` — taken${row.owner_club_name || row.owner_club ? ` by ${row.owner_club_name || row.owner_club}` : ""}`
+    : "";
+  return `${rank} ${flag}${row.code} — ${row.name || row.code}${taken}`;
+}
+
+async function refreshAssignDropdowns() {
+  const clubSel = document.getElementById("assignClubSelect");
+  const nationSel = document.getElementById("assignNationSelect");
+  if (!clubSel || !nationSel) return;
+
+  const prevClub = clubSel.value;
+  const prevNation = nationSel.value;
+
+  clubSel.innerHTML = `<option value="">Loading clubs…</option>`;
+  nationSel.innerHTML = `<option value="">Loading nations…</option>`;
+
+  const [draft, nations] = await Promise.all([
+    loadOwnerDraftOrder(supabase),
+    loadInternationalNations(supabase),
+  ]);
+
+  const clubs = (draft || []).filter((d) => d.club_short_name);
+  clubs.sort((a, b) => {
+    const aTaken = a.nation_code ? 1 : 0;
+    const bTaken = b.nation_code ? 1 : 0;
+    if (aTaken !== bTaken) return aTaken - bTaken;
+    return String(a.club_name || a.club_short_name).localeCompare(
+      String(b.club_name || b.club_short_name)
+    );
+  });
+
+  const clubOpts = [`<option value="">Select owner / club…</option>`];
+  for (const row of clubs) {
+    const taken = !!row.nation_code;
+    clubOpts.push(
+      `<option value="${escapeOpt(row.club_short_name)}"${taken ? " disabled" : ""}${
+        !taken && prevClub === row.club_short_name ? " selected" : ""
+      }>${escapeOpt(clubAssignLabel(row))}</option>`
+    );
+  }
+  clubSel.innerHTML = clubOpts.join("");
+  if (!clubs.length) {
+    clubSel.innerHTML = `<option value="">No owned clubs found</option>`;
+  }
+
+  const nationRows = (nations || []).slice().sort((a, b) => {
+    const ar = Number(a.seed_rank) || 9999;
+    const br = Number(b.seed_rank) || 9999;
+    if (ar !== br) return ar - br;
+    return String(a.code).localeCompare(String(b.code));
+  });
+
+  const nationOpts = [`<option value="">Select nation…</option>`];
+  for (const row of nationRows) {
+    const taken = !!row.is_taken;
+    nationOpts.push(
+      `<option value="${escapeOpt(row.code)}"${taken ? " disabled" : ""}${
+        !taken && prevNation === row.code ? " selected" : ""
+      }>${escapeOpt(nationAssignLabel(row))}</option>`
+    );
+  }
+  nationSel.innerHTML = nationOpts.join("");
+  if (!nationRows.length) {
+    nationSel.innerHTML = `<option value="">No active nations — run Apply selectable first</option>`;
+  }
+}
 
 function hideTopSeeds() {
   const el = document.getElementById("topSeedsPreview");
@@ -69,6 +180,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
   await refreshSelectionLive();
+  await loadOwnerEmails();
+  await refreshAssignDropdowns();
 
   function rpcMissingHint(msg) {
     return /could not find|does not exist|PGRST202/i.test(msg || "")
@@ -234,11 +347,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     );
   });
 
+  document.getElementById("refreshAssignListsBtn")?.addEventListener("click", async () => {
+    setStatus("assignStatus", "Refreshing lists…");
+    await loadOwnerEmails();
+    await refreshAssignDropdowns();
+    setStatus("assignStatus", "✅ Lists refreshed", true);
+  });
+
   document.getElementById("assignBtn")?.addEventListener("click", async () => {
-    const club = document.getElementById("assignClub")?.value?.trim();
-    const nation = document.getElementById("assignNation")?.value?.trim().toUpperCase();
-    if (!club || !nation) {
-      setStatus("assignStatus", "Enter club and nation code.", false);
+    const clubSel = document.getElementById("assignClubSelect");
+    const nationSel = document.getElementById("assignNationSelect");
+    const club = clubSel?.value?.trim();
+    const nation = nationSel?.value?.trim().toUpperCase();
+    if (!club) {
+      setStatus("assignStatus", "Select an owner / club.", false);
+      return;
+    }
+    if (!nation) {
+      setStatus("assignStatus", "Select a nation.", false);
+      return;
+    }
+    const clubLabel = clubSel.selectedOptions[0]?.textContent || club;
+    const nationLabel = nationSel.selectedOptions[0]?.textContent || nation;
+    if (!confirm(`Assign national team?\n\n${nationLabel}\n→\n${clubLabel}`)) {
       return;
     }
     setStatus("assignStatus", "Assigning…");
@@ -246,11 +377,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       p_club: club,
       p_nation_code: nation,
     });
-    setStatus(
-      "assignStatus",
-      error ? `❌ ${error.message}` : `✅ ${nation} → ${club}`,
-      !error
-    );
+    if (error) {
+      setStatus("assignStatus", `❌ ${error.message}`, false);
+      return;
+    }
+    setStatus("assignStatus", `✅ ${nation} → ${club}`, true);
+    await refreshAssignDropdowns();
+    await refreshSelectionLive();
   });
 
   document.getElementById("openInitialBtn")?.addEventListener("click", () =>
@@ -296,14 +429,20 @@ async function openSelection(phase) {
     error ? `❌ ${error.message}` : `✅ Selection open (window #${data})`,
     !error
   );
-  if (!error) await refreshSelectionLive();
+  if (!error) {
+    await refreshSelectionLive();
+    await refreshAssignDropdowns();
+  }
 }
 
 async function closeSelection() {
   setStatus("selectionStatus", "Closing…");
   const { error } = await supabase.rpc("international_admin_close_selection");
   setStatus("selectionStatus", error ? `❌ ${error.message}` : "✅ Selection closed", !error);
-  if (!error) await refreshSelectionLive();
+  if (!error) {
+    await refreshSelectionLive();
+    await refreshAssignDropdowns();
+  }
 }
 
 async function clearAssignments() {
@@ -321,5 +460,8 @@ async function clearAssignments() {
     error ? `❌ ${error.message}` : `✅ Cleared ${data ?? 0} nation assignment(s)`,
     !error
   );
-  if (!error) await refreshSelectionLive();
+  if (!error) {
+    await refreshSelectionLive();
+    await refreshAssignDropdowns();
+  }
 }

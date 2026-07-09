@@ -31,6 +31,16 @@
       display:none;
     }
     #topSeedsPreview ol { margin:6px 0 0; padding-left:20px; }
+    #assignClubSelect option:disabled,
+    #assignNationSelect option:disabled {
+      color: #666;
+      background: #1a1a1a;
+    }
+    #assignClubSelect,
+    #assignNationSelect {
+      width: 100%;
+      max-width: 560px;
+    }
   </style>
 </head>
 <body class="admin-page">
@@ -80,12 +90,21 @@
 
     <div class="card" id="sb-nation-assign">
       <h2>Assign national team (admin override)</h2>
-      <label for="assignClub">Club ShortName</label>
-      <input id="assignClub" type="text">
-      <label for="assignNation">Nation code</label>
-      <input id="assignNation" type="text" placeholder="BRA" maxlength="3" style="text-transform:uppercase;">
+      <p class="note">
+        Pick an <b>unassigned</b> club/owner and an <b>available</b> nation (ordered by seed rank).
+        Clubs that already have a nation, and nations already taken, are greyed out.
+      </p>
+      <label for="assignClubSelect">Owner / club</label>
+      <select id="assignClubSelect" style="max-width:100%;">
+        <option value="">Loading…</option>
+      </select>
+      <label for="assignNationSelect">Nation (by seed rank)</label>
+      <select id="assignNationSelect" style="max-width:100%;">
+        <option value="">Loading…</option>
+      </select>
       <div class="row">
         <button type="button" class="button" id="assignBtn">Assign nation</button>
+        <button type="button" class="button secondary" id="refreshAssignListsBtn">Refresh lists</button>
       </div>
       <div id="assignStatus" class="status-line"></div>
     </div>
@@ -120,6 +139,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="admin_international.js?v=20260709-intl-steps"></script>
+  <script type="module" src="admin_international.js?v=20260709-assign-dd"></script>
 </body>
 </html>
