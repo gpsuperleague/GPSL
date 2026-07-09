@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
-export const SEASON_BREAK_NAV_VERSION = "20260620-manager-targets-nav";
+export const SEASON_BREAK_NAV_VERSION = "20260709-gpdb-exclusions";
 
 export const SEASON_BREAK_NAV = [
   {
@@ -17,6 +17,11 @@ export const SEASON_BREAK_NAV = [
         label: "GPDB player deduplication",
         href: "admin_gpdb_dedup.html",
         page: "admin_gpdb_dedup",
+      },
+      {
+        label: "GPDB season exclusions",
+        href: "admin_gpdb_exclusions.html",
+        page: "admin_gpdb_exclusions",
       },
     ],
   },

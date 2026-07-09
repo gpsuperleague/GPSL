@@ -722,6 +722,44 @@ document.addEventListener("DOMContentLoaded", () => {
   let MY_NATION = null;
   let NATIONAL_CALLED_UP = new Set();
   let NATIONAL_SQUAD_SUMMARY = null;
+  /** Season exclusions — hide from GPDB browse (player ids + nation labels). */
+  let SEASON_EXCLUDED_PLAYER_IDS = [];
+  let SEASON_EXCLUDED_NATION_LABELS = [];
+
+  async function loadSeasonExclusions() {
+    SEASON_EXCLUDED_PLAYER_IDS = [];
+    SEASON_EXCLUDED_NATION_LABELS = [];
+    try {
+      const { data, error } = await supabase.rpc("gpdb_season_exclusions_bundle");
+      if (error) {
+        if (!String(error.message || "").includes("gpdb_season_exclusions_bundle")) {
+          console.warn("gpdb_season_exclusions_bundle:", error);
+        }
+        return;
+      }
+      SEASON_EXCLUDED_PLAYER_IDS = (data?.player_ids || [])
+        .map((id) => String(id).trim())
+        .filter(Boolean);
+      SEASON_EXCLUDED_NATION_LABELS = (data?.nation_labels || [])
+        .map((lab) => String(lab).trim())
+        .filter(Boolean);
+    } catch (e) {
+      console.warn("loadSeasonExclusions:", e);
+    }
+  }
+
+  function applySeasonExclusionFilters(query) {
+    let q = query;
+    if (SEASON_EXCLUDED_PLAYER_IDS.length) {
+      const list = `(${SEASON_EXCLUDED_PLAYER_IDS.map((id) => `"${String(id).replace(/"/g, "")}"`).join(",")})`;
+      q = q.not("Konami_ID", "in", list);
+    }
+    if (SEASON_EXCLUDED_NATION_LABELS.length) {
+      const list = `(${SEASON_EXCLUDED_NATION_LABELS.map((lab) => `"${String(lab).replace(/"/g, '""')}"`).join(",")})`;
+      q = q.not("Nation", "in", list);
+    }
+    return q;
+  }
 
   async function loadUser() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -872,6 +910,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let query = gpdbPlayersFrom()
       .select(playerSelectList(), { count: "exact" });
+
+    query = applySeasonExclusionFilters(query);
 
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
       if (DROPDOWN_COLUMNS.includes(col)) {
@@ -2731,6 +2771,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await loadPlayerValueTables();
     await loadWageForecastSettings();
     await probeGpdbPlayersView();
+    await loadSeasonExclusions();
 
     setupControls();
     await loadRangeBounds();

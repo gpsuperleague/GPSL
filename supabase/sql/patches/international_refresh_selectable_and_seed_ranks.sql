@@ -211,21 +211,27 @@ BEGIN
         FROM public.international_owner_nations ion
         WHERE ion.nation_code = n.code
           AND ion.is_active = true
-      ) AS has_owner
+      ) AS has_owner,
+      CASE
+        WHEN to_regprocedure('public.gpdb_nation_is_season_excluded(text, bigint)') IS NOT NULL
+          THEN public.gpdb_nation_is_season_excluded(n.code, NULL)
+        ELSE false
+      END AS season_excluded
     FROM public.international_nations n
     LEFT JOIN public.international_nation_player_pool_cache cache
       ON cache.nation_code = n.code
   ),
   applied AS (
     UPDATE public.international_nations n
-    SET active = (d.pool_ok OR d.has_owner)
+    SET active = ((d.pool_ok OR d.has_owner) AND NOT d.season_excluded)
     FROM decisions d
     WHERE n.code = d.code
     RETURNING
       n.active AS is_active,
       d.was_active,
       d.pool_ok,
-      d.has_owner
+      d.has_owner,
+      d.season_excluded
   )
   SELECT
     coalesce(count(*) FILTER (WHERE is_active AND NOT was_active), 0)::integer,
@@ -241,6 +247,15 @@ BEGIN
     'deactivated', v_deactivated,
     'kept_active_for_assignment', v_kept_assigned,
     'active_nations', v_selectable,
+    'season_excluded_forced_inactive', CASE
+      WHEN to_regclass('public.gpdb_season_excluded_nations') IS NOT NULL
+        THEN (
+          SELECT count(*)::integer
+          FROM public.gpdb_season_excluded_nations en
+          WHERE en.season_id = public.gpdb_exclusion_season_id(NULL)
+        )
+      ELSE 0
+    END,
     'inactive_nations', (
       SELECT count(*)::integer
       FROM public.international_nations

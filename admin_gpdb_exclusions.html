@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>GPDB season exclusions — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .excl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 960px) { .excl-grid { grid-template-columns: 1fr; } }
+    .excl-table-wrap { overflow: auto; max-height: 420px; border: 1px solid #333; border-radius: 6px; margin-top: 12px; }
+    .excl-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .excl-table th, .excl-table td { border: 1px solid #333; padding: 6px 8px; text-align: left; vertical-align: top; }
+    .excl-table th { background: #222; color: #ff9900; position: sticky; top: 0; }
+    .excl-search { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-top: 8px; }
+    .excl-search input, .excl-search select, .excl-search textarea {
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px; padding: 8px;
+    }
+    .excl-search input[type="text"] { min-width: 200px; flex: 1; }
+    .excl-search textarea { width: 100%; min-height: 48px; }
+    .search-hits { margin-top: 8px; font-size: 12px; }
+    .search-hits button { margin: 2px 0; }
+    .muted { color: #888; font-size: 12px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">GPDB season exclusions</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Season Break tool to remove <b>players</b> or <b>nations</b> from GPSL for a season
+        (e.g. misconduct, conflict zones). Excluded players are hidden from GPDB and cannot be
+        signed, drafted, or called up. Excluded nations cannot be claimed and their players are
+        treated as excluded. Requires
+        <code>patches/gpdb_season_exclusions.sql</code>.
+      </p>
+
+      <div class="card">
+        <h2>Season</h2>
+        <div class="excl-search">
+          <label>
+            Apply to
+            <select id="seasonSelect"></select>
+          </label>
+          <button type="button" class="button" id="reloadBtn">Reload lists</button>
+        </div>
+        <p class="muted" id="seasonHint">Uses the current competition season by default.</p>
+        <div id="listStatus" class="status-line"></div>
+      </div>
+
+      <div class="excl-grid">
+        <div class="card">
+          <h2>Excluded players</h2>
+          <p class="note">Search by name or Konami ID, then add with an optional reason.</p>
+          <div class="excl-search">
+            <input id="playerQuery" type="text" placeholder="Player name or Konami ID" autocomplete="off">
+            <button type="button" class="button" id="playerSearchBtn">Search</button>
+          </div>
+          <textarea id="playerReason" placeholder="Reason (optional, admin-only note)"></textarea>
+          <div id="playerHits" class="search-hits"></div>
+          <div class="excl-table-wrap">
+            <table class="excl-table">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>Nation</th>
+                  <th>Reason</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="playerBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Excluded nations</h2>
+          <p class="note">Pick a nation code from the international catalog.</p>
+          <div class="excl-search">
+            <select id="nationSelect"></select>
+            <button type="button" class="button" id="nationAddBtn">Exclude nation</button>
+          </div>
+          <textarea id="nationReason" placeholder="Reason (optional, admin-only note)"></textarea>
+          <div class="excl-table-wrap">
+            <table class="excl-table">
+              <thead>
+                <tr>
+                  <th>Nation</th>
+                  <th>Reason</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="nationBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>After changes</h2>
+        <ol class="note">
+          <li>Re-run <a href="admin_international.html" style="color:#ff9900;">Internationals</a> → refresh pool cache → apply selectable (excluded nations stay inactive).</li>
+          <li>Optionally <code>SELECT public.gpdb_force_excluded_nations_inactive();</code> in SQL Editor.</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_gpdb_exclusions.js"></script>
+</body>
+</html>
