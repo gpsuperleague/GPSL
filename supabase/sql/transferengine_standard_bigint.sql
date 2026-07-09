@@ -63,7 +63,12 @@ BEGIN
     RETURN;
   END IF;
 
-  IF public.player_signed_this_season(v_player."Season_Signed") THEN
+  IF public.player_signed_this_season(v_player."Season_Signed")
+     AND NOT (
+       coalesce(v_listing.new_owner_slot, false)
+       OR coalesce(v_listing.perpetual_renew, false)
+       OR coalesce(v_listing.special_rules ->> 'new_owner_list', '') = 'true'
+     ) THEN
     RAISE NOTICE 'Player signed this season — sale blocked for listing %', p_listing_id;
     RETURN;
   END IF;
@@ -202,6 +207,20 @@ BEGIN
 
   IF v_listing.current_highest_bid >= v_listing.reserve_price THEN
     PERFORM transferengine_accept_sale(v_listing.id);
+
+    IF EXISTS (
+      SELECT 1 FROM "Player_Transfer_Listings"
+      WHERE id = v_listing.id AND status = 'Active'
+    ) THEN
+      UPDATE "Player_Transfer_Listings"
+      SET status = 'Review',
+          seller_review_deadline = v_now + interval '24 hours'
+      WHERE id = v_listing.id
+        AND status = 'Active';
+      RAISE NOTICE
+        'Listing % accept_sale did not complete — moved to Review',
+        v_listing.id;
+    END IF;
     RETURN;
   END IF;
 

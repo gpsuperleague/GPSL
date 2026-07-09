@@ -343,7 +343,12 @@ BEGIN
     RETURN;
   END IF;
 
-  IF public.player_signed_this_season(v_player."Season_Signed") THEN
+  IF public.player_signed_this_season(v_player."Season_Signed")
+     AND NOT (
+       coalesce(v_listing.new_owner_slot, false)
+       OR coalesce(v_listing.perpetual_renew, false)
+       OR coalesce(v_listing.special_rules ->> 'new_owner_list', '') = 'true'
+     ) THEN
     RAISE NOTICE 'Player signed this season — sale blocked for listing %', p_listing_id;
     RETURN;
   END IF;
