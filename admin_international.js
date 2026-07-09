@@ -386,9 +386,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     await refreshSelectionLive();
   });
 
-  document.getElementById("openInitialBtn")?.addEventListener("click", () =>
-    openSelection("initial")
-  );
+  document.getElementById("openInitialBtn")?.addEventListener("click", async () => {
+    // Soft warning if everyone already has a nation
+    try {
+      const draft = await loadOwnerDraftOrder(supabase);
+      const waiting = (draft || []).filter((d) => !d.nation_code).length;
+      if (waiting === 0 && draft?.length) {
+        if (
+          !confirm(
+            "Every club already has a national team assigned.\n\nOpening selection will create a window then close it immediately (nothing left to pick).\n\nContinue anyway?"
+          )
+        ) {
+          return;
+        }
+      }
+    } catch (_) {
+      /* ignore */
+    }
+    openSelection("initial");
+  });
   document.getElementById("clearAssignmentsBtn")?.addEventListener("click", clearAssignments);
   document.getElementById("closeSelectionBtn")?.addEventListener("click", closeSelection);
 
