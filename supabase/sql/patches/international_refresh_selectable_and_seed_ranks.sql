@@ -32,52 +32,34 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.international_nation_pool_json_is_selectable(p_pool jsonb)
 RETURNS boolean
-LANGUAGE plpgsql
+LANGUAGE sql
 IMMUTABLE
+AS $$
+  -- National-team selectable = enough GPDB players for a 23-man squad.
+  -- Club-depth bands (79+, U21 quotas, etc.) are informational on the pool
+  -- page only — they must NOT gate World Cup nation selection.
+  SELECT
+    p_pool IS NOT NULL
+    AND coalesce((p_pool->'all'->>'total')::integer, 0) >= 24
+    AND coalesce((p_pool->'all'->>'gk')::integer, 0) >= 2;
+$$;
+
+-- Keep claim_nation / older callers in sync with the same rule
+CREATE OR REPLACE FUNCTION public.international_nation_pool_is_selectable(p_nation_code text)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
 AS $function$
 DECLARE
-  v_all jsonb;
-  v_total integer;
-  v_gk integer;
-  v_cap integer;
-  v_band record;
-  v_avail integer;
-  v_band_cap integer;
+  v_pool jsonb;
 BEGIN
-  IF p_pool IS NULL THEN
-    RETURN false;
-  END IF;
+  SELECT cache.pool INTO v_pool
+  FROM public.international_nation_player_pool_cache cache
+  WHERE cache.nation_code = upper(btrim(p_nation_code));
 
-  v_all := p_pool->'all';
-  v_total := coalesce((v_all->>'total')::integer, 0);
-  v_gk := coalesce((v_all->>'gk')::integer, 0);
-
-  IF v_total < 24 OR v_gk < 2 THEN
-    RETURN false;
-  END IF;
-
-  v_cap := NULL;
-  FOR v_band IN
-    SELECT *
-    FROM (
-      VALUES
-        ('r79_plus', 1),
-        ('r76_78', 1),
-        ('r73_75', 5),
-        ('r70_72', 10),
-        ('r66_69', 10),
-        ('le_65', 5),
-        ('u21', 8)
-    ) AS bands(key, min_players)
-  LOOP
-    v_avail := coalesce((p_pool->v_band.key->>'total')::integer, 0);
-    v_band_cap := v_avail / v_band.min_players;
-    IF v_cap IS NULL OR v_band_cap < v_cap THEN
-      v_cap := v_band_cap;
-    END IF;
-  END LOOP;
-
-  RETURN coalesce(v_cap, 0) > 0;
+  RETURN public.international_nation_pool_json_is_selectable(v_pool);
 END;
 $function$;
 
@@ -404,6 +386,7 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.international_nation_pool_strength_score(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_nation_pool_json_is_selectable(jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.international_nation_pool_is_selectable(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_sync_gpdb_nation_labels(integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_apply_selectable_from_pool_cache() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.international_refresh_selectable_nations() TO authenticated;

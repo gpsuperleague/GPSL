@@ -51,30 +51,24 @@ export function nationCanSupportAnyClub(row) {
   return nationHealthyClubCapacity(row) > 0;
 }
 
-/** True when pool is too thin for a full squad and/or cannot support any club. */
+/** True when pool is too thin for a full national squad. */
 export function nationPoolIsFaint(row) {
   if (!row?.pool) return false;
-  return !nationHasViableSquad(row) || !nationCanSupportAnyClub(row);
+  return !nationHasViableSquad(row);
 }
 
-/** Nations owners may claim during nation selection. */
+/** Nations owners may claim during nation selection (23-man squad bar only). */
 export function nationPoolIsSelectable(row) {
   if (!row?.pool) return true;
-  return !nationPoolIsFaint(row);
+  return nationHasViableSquad(row);
 }
 
 export function nationPoolFaintTitle(row) {
   if (!row?.pool || !nationPoolIsFaint(row)) return "";
-  const parts = [];
   if (!nationHasViableSquad(row)) {
-    parts.push(
-      `Needs ≥${NATION_POOL_MIN_PLAYERS} GPDB players and ≥${NATIONAL_SQUAD_MIN_GK} GKs for a 23-man squad`
-    );
+    return `Needs ≥${NATION_POOL_MIN_PLAYERS} GPDB players and ≥${NATIONAL_SQUAD_MIN_GK} GKs for a 23-man squad`;
   }
-  if (!nationCanSupportAnyClub(row)) {
-    parts.push("Pool too thin to support a GPSL club");
-  }
-  return parts.join(" · ");
+  return "";
 }
 
 export const WC_QUAL_GROUPS = 12;
