@@ -722,19 +722,20 @@ document.addEventListener("DOMContentLoaded", () => {
   let MY_NATION = null;
   let NATIONAL_CALLED_UP = new Set();
   let NATIONAL_SQUAD_SUMMARY = null;
-  /** Season exclusions — grey out + block bids/call-ups (player ids + nation labels). */
+  /** Season exclusions — grey out + block bids/call-ups (player ids + nation labels/codes). */
   let SEASON_EXCLUDED_PLAYER_IDS = new Set();
   let SEASON_EXCLUDED_NATION_LABELS = new Set();
+  let SEASON_EXCLUDED_NATION_CODES = new Set();
 
   async function loadSeasonExclusions() {
     SEASON_EXCLUDED_PLAYER_IDS = new Set();
     SEASON_EXCLUDED_NATION_LABELS = new Set();
+    SEASON_EXCLUDED_NATION_CODES = new Set();
     try {
       const { data, error } = await supabase.rpc("gpdb_season_exclusions_bundle", {
         p_season_id: null,
       });
       if (error) {
-        // Fallback: zero-arg overload (older PostgREST / after bundle_fix.sql)
         const retry = await supabase.rpc("gpdb_season_exclusions_bundle");
         if (retry.error) {
           console.warn("gpdb_season_exclusions_bundle:", error, retry.error);
@@ -756,7 +757,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     for (const lab of data?.nation_labels || []) {
       const s = String(lab).trim();
-      if (s) SEASON_EXCLUDED_NATION_LABELS.add(s);
+      if (s) {
+        SEASON_EXCLUDED_NATION_LABELS.add(s);
+        SEASON_EXCLUDED_NATION_LABELS.add(s.toLowerCase());
+      }
+    }
+    for (const code of data?.nation_codes || []) {
+      const s = String(code).trim().toUpperCase();
+      if (s) SEASON_EXCLUDED_NATION_CODES.add(s);
     }
   }
 
@@ -764,8 +772,17 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!player) return false;
     const id = String(player.Konami_ID ?? "").trim();
     if (id && SEASON_EXCLUDED_PLAYER_IDS.has(id)) return true;
+
     const nation = String(player.Nation ?? "").trim();
-    if (nation && SEASON_EXCLUDED_NATION_LABELS.has(nation)) return true;
+    if (!nation) return false;
+    if (SEASON_EXCLUDED_NATION_LABELS.has(nation)) return true;
+    if (SEASON_EXCLUDED_NATION_LABELS.has(nation.toLowerCase())) return true;
+    if (SEASON_EXCLUDED_NATION_CODES.has(nation.toUpperCase())) return true;
+
+    // Match international nation codes via same normalize used for call-ups
+    for (const code of SEASON_EXCLUDED_NATION_CODES) {
+      if (playerBelongsToNation(player, { code, name: code })) return true;
+    }
     return false;
   }
 
