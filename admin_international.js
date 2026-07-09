@@ -276,12 +276,25 @@ async function refreshSelectionLive() {
   if (skipHint) skipHint.hidden = waiting <= 1;
 }
 
+function scrollToAdminHash() {
+  const hash = (window.location.hash || "").replace("#", "");
+  if (!hash) return;
+  const el = document.getElementById(hash);
+  if (el) {
+    requestAnimationFrame(() => {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
   await loadSeasonOptions();
   await refreshWcCycleLive();
   await refreshSelectionLive();
+  scrollToAdminHash();
+  window.addEventListener("hashchange", scrollToAdminHash);
 
   document.getElementById("wcRefreshBtn")?.addEventListener("click", async () => {
     await loadSeasonOptions();

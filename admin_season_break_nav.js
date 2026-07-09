@@ -228,6 +228,12 @@ export const SEASON_BREAK_NAV = [
         page: "admin_international",
       },
       {
+        label: "World Cup cycle",
+        href: "admin_international.html",
+        hash: "sb-wc-cycle",
+        page: "admin_international",
+      },
+      {
         label: "Open Nation Selection",
         href: "admin_international.html",
         hash: "sb-nation-selection",
