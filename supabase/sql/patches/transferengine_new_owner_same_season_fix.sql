@@ -88,7 +88,13 @@ BEGIN
     RETURN;
   END IF;
 
-  PERFORM public.player_assign_to_club(v_listing.player_id::text, v_buyer);
+  -- Disambiguate overloads: (text, text) vs (text, text, numeric) vs 4-arg
+  PERFORM public.player_assign_to_club(
+    v_listing.player_id::text,
+    v_buyer,
+    NULL::numeric,
+    false
+  );
 
   INSERT INTO public."Transfer_History" (
     player_id,

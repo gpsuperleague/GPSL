@@ -83,7 +83,9 @@ BEGIN
 
   PERFORM public.player_assign_to_club(
     v_listing.player_id::text,
-    v_listing.current_highest_bidder
+    v_listing.current_highest_bidder,
+    NULL::numeric,
+    false
   );
 
   INSERT INTO "Transfer_History" (

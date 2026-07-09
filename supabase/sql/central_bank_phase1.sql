@@ -353,7 +353,12 @@ BEGIN
     RETURN;
   END IF;
 
-  PERFORM public.player_assign_to_club(v_listing.player_id::text, v_buyer);
+  PERFORM public.player_assign_to_club(
+    v_listing.player_id::text,
+    v_buyer,
+    NULL::numeric,
+    false
+  );
 
   INSERT INTO "Transfer_History" (
     player_id,
