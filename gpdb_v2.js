@@ -722,13 +722,13 @@ document.addEventListener("DOMContentLoaded", () => {
   let MY_NATION = null;
   let NATIONAL_CALLED_UP = new Set();
   let NATIONAL_SQUAD_SUMMARY = null;
-  /** Season exclusions — hide from GPDB browse (player ids + nation labels). */
-  let SEASON_EXCLUDED_PLAYER_IDS = [];
-  let SEASON_EXCLUDED_NATION_LABELS = [];
+  /** Season exclusions — grey out + block bids/call-ups (player ids + nation labels). */
+  let SEASON_EXCLUDED_PLAYER_IDS = new Set();
+  let SEASON_EXCLUDED_NATION_LABELS = new Set();
 
   async function loadSeasonExclusions() {
-    SEASON_EXCLUDED_PLAYER_IDS = [];
-    SEASON_EXCLUDED_NATION_LABELS = [];
+    SEASON_EXCLUDED_PLAYER_IDS = new Set();
+    SEASON_EXCLUDED_NATION_LABELS = new Set();
     try {
       const { data, error } = await supabase.rpc("gpdb_season_exclusions_bundle");
       if (error) {
@@ -737,28 +737,30 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         return;
       }
-      SEASON_EXCLUDED_PLAYER_IDS = (data?.player_ids || [])
-        .map((id) => String(id).trim())
-        .filter(Boolean);
-      SEASON_EXCLUDED_NATION_LABELS = (data?.nation_labels || [])
-        .map((lab) => String(lab).trim())
-        .filter(Boolean);
+      for (const id of data?.player_ids || []) {
+        const s = String(id).trim();
+        if (s) SEASON_EXCLUDED_PLAYER_IDS.add(s);
+      }
+      for (const lab of data?.nation_labels || []) {
+        const s = String(lab).trim();
+        if (s) SEASON_EXCLUDED_NATION_LABELS.add(s);
+      }
     } catch (e) {
       console.warn("loadSeasonExclusions:", e);
     }
   }
 
-  function applySeasonExclusionFilters(query) {
-    let q = query;
-    if (SEASON_EXCLUDED_PLAYER_IDS.length) {
-      const list = `(${SEASON_EXCLUDED_PLAYER_IDS.map((id) => `"${String(id).replace(/"/g, "")}"`).join(",")})`;
-      q = q.not("Konami_ID", "in", list);
-    }
-    if (SEASON_EXCLUDED_NATION_LABELS.length) {
-      const list = `(${SEASON_EXCLUDED_NATION_LABELS.map((lab) => `"${String(lab).replace(/"/g, '""')}"`).join(",")})`;
-      q = q.not("Nation", "in", list);
-    }
-    return q;
+  function isSeasonExcludedPlayer(player) {
+    if (!player) return false;
+    const id = String(player.Konami_ID ?? "").trim();
+    if (id && SEASON_EXCLUDED_PLAYER_IDS.has(id)) return true;
+    const nation = String(player.Nation ?? "").trim();
+    if (nation && SEASON_EXCLUDED_NATION_LABELS.has(nation)) return true;
+    return false;
+  }
+
+  function seasonExcludedBidHtml() {
+    return `<span class="locked-msg gpdb-excluded-msg" title="Admin season exclusion">Unavailable</span>`;
   }
 
   async function loadUser() {
@@ -910,8 +912,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let query = gpdbPlayersFrom()
       .select(playerSelectList(), { count: "exact" });
-
-    query = applySeasonExclusionFilters(query);
 
     Object.entries(CURRENT_FILTERS).forEach(([col, value]) => {
       if (DROPDOWN_COLUMNS.includes(col)) {
@@ -1524,6 +1524,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!playerBelongsToNation(player, MY_NATION)) return "";
 
     const id = String(player.Konami_ID).trim();
+    if (isSeasonExcludedPlayer(player)) {
+      return `<span class="locked-msg gpdb-excluded-msg" title="Admin season exclusion">Unavailable</span>`;
+    }
     if (NATIONAL_CALLED_UP.has(id)) {
       return `<button type="button" class="button release-callup-btn" data-player-id="${id}">Remove</button>`;
     }
@@ -1657,16 +1660,21 @@ document.addEventListener("DOMContentLoaded", () => {
     tableBody.innerHTML = players
       .map(player => {
         const hasClub = !!player.Contracted_Team;
+        const seasonExcluded = isSeasonExcludedPlayer(player);
 
         let bidCell = `<span class="locked-msg">Loading…</span>`;
         const callUpCell = buildGpdbCallUpCellHtml(player);
         const scouted = SCOUTING_TARGET_MAP.has(String(player.Konami_ID));
         const scoutTier = SCOUTING_TARGET_MAP.get(String(player.Konami_ID));
         const scoutCell = showScoutCol
-          ? `<button type="button" class="scout-btn${scouted ? " scout-on" : ""}" data-player-id="${player.Konami_ID}" title="${scouted ? `Scouting (tier ${scoutTier}) — click to remove` : "Add to scouting (top target)"}">${scoutingStarChar(scouted)}</button>`
+          ? seasonExcluded
+            ? `<span class="locked-msg">—</span>`
+            : `<button type="button" class="scout-btn${scouted ? " scout-on" : ""}" data-player-id="${player.Konami_ID}" title="${scouted ? `Scouting (tier ${scoutTier}) — click to remove` : "Add to scouting (top target)"}">${scoutingStarChar(scouted)}</button>`
           : "";
 
-        if (GLOBAL_SETTINGS) {
+        if (seasonExcluded) {
+          bidCell = seasonExcludedBidHtml();
+        } else if (GLOBAL_SETTINGS) {
           if (hasClub) {
             const holderShort = resolveContractedClubShort(
               player.Contracted_Team
@@ -1712,8 +1720,12 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
 
+        const nameCell = seasonExcluded
+          ? `${formatCellValue("Name", player)} <span class="gpdb-excluded-badge" title="Admin season exclusion">Unavailable</span>`
+          : formatCellValue("Name", player);
+
         return `
-          <tr data-konami-id="${player.Konami_ID}"
+          <tr class="${seasonExcluded ? "gpdb-row-excluded" : ""}" data-konami-id="${player.Konami_ID}"
               data-rating="${player.Rating ?? ""}"
               data-playstyle="${player.Playstyle ?? ""}"
               data-market-value="${player.market_value ?? ""}"
@@ -1721,14 +1733,16 @@ document.addEventListener("DOMContentLoaded", () => {
               data-season-signed="${player.Season_Signed ?? ""}"
               data-contract-seasons="${player.contract_seasons_remaining ?? ""}"
               data-nation="${player.Nation ?? ""}"
-              data-age="${player.Age ?? ""}">
+              data-age="${player.Age ?? ""}"
+              data-season-excluded="${seasonExcluded ? "1" : "0"}">
             <td>${playerThumbLinkHtml(player.Konami_ID, {
               className: "gpdb-thumb",
               alt: player.Name,
             })}</td>
-            ${TABLE_DISPLAY_COLUMNS.map(
-              (col) => `<td>${formatCellValue(col, player)}</td>`
-            ).join("")}
+            ${TABLE_DISPLAY_COLUMNS.map((col) => {
+              if (col === "Name") return `<td>${nameCell}</td>`;
+              return `<td>${formatCellValue(col, player)}</td>`;
+            }).join("")}
             ${showCallUpCol ? `<td class="gpdb-callup-col">${callUpCell || '<span class="locked-msg">—</span>'}</td>` : ""}
             ${showScoutCol ? `<td class="gpdb-scout-col">${scoutCell}</td>` : ""}
             <td>${bidCell}</td>

@@ -105,27 +105,55 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
-  v_season bigint := public.gpdb_exclusion_season_id(p_season_id);
   v_pid text := btrim(p_player_id);
 BEGIN
-  IF v_season IS NULL OR v_pid IS NULL OR v_pid = '' THEN
+  IF v_pid IS NULL OR v_pid = '' THEN
+    RETURN false;
+  END IF;
+
+  IF p_season_id IS NOT NULL THEN
+    IF EXISTS (
+      SELECT 1
+      FROM public.gpdb_season_excluded_players ep
+      WHERE ep.season_id = p_season_id
+        AND ep.player_id = v_pid
+    ) THEN
+      RETURN true;
+    END IF;
+
+    IF EXISTS (
+      SELECT 1
+      FROM public.gpdb_season_excluded_nations en
+      WHERE en.season_id = p_season_id
+        AND public.international_player_matches_nation(v_pid, en.nation_code)
+    ) THEN
+      RETURN true;
+    END IF;
+
     RETURN false;
   END IF;
 
   IF EXISTS (
     SELECT 1
     FROM public.gpdb_season_excluded_players ep
-    WHERE ep.season_id = v_season
-      AND ep.player_id = v_pid
+    JOIN public.competition_seasons s ON s.id = ep.season_id
+    WHERE ep.player_id = v_pid
+      AND (
+        s.is_current = true
+        OR s.status IN ('active', 'preseason', 'summer_break', 'setup')
+      )
   ) THEN
     RETURN true;
   END IF;
 
-  -- Nation exclusion via GPDB nationality match
   IF EXISTS (
     SELECT 1
     FROM public.gpdb_season_excluded_nations en
-    WHERE en.season_id = v_season
+    JOIN public.competition_seasons s ON s.id = en.season_id
+    WHERE (
+        s.is_current = true
+        OR s.status IN ('active', 'preseason', 'summer_break', 'setup')
+      )
       AND public.international_player_matches_nation(v_pid, en.nation_code)
   ) THEN
     RETURN true;
@@ -140,18 +168,39 @@ CREATE OR REPLACE FUNCTION public.gpdb_nation_is_season_excluded(
   p_season_id bigint DEFAULT NULL
 )
 RETURNS boolean
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $$
-  SELECT EXISTS (
+AS $function$
+DECLARE
+  v_code text := upper(btrim(p_nation_code));
+BEGIN
+  IF v_code IS NULL OR v_code = '' THEN
+    RETURN false;
+  END IF;
+
+  IF p_season_id IS NOT NULL THEN
+    RETURN EXISTS (
+      SELECT 1
+      FROM public.gpdb_season_excluded_nations en
+      WHERE en.season_id = p_season_id
+        AND en.nation_code = v_code
+    );
+  END IF;
+
+  RETURN EXISTS (
     SELECT 1
     FROM public.gpdb_season_excluded_nations en
-    WHERE en.season_id = public.gpdb_exclusion_season_id(p_season_id)
-      AND en.nation_code = upper(btrim(p_nation_code))
+    JOIN public.competition_seasons s ON s.id = en.season_id
+    WHERE en.nation_code = v_code
+      AND (
+        s.is_current = true
+        OR s.status IN ('active', 'preseason', 'summer_break', 'setup')
+      )
   );
-$$;
+END;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.assert_player_not_season_excluded(p_player_id text)
 RETURNS void
@@ -167,7 +216,7 @@ BEGIN
 END;
 $function$;
 
--- Player IDs directly excluded (for GPDB .not.in filter)
+-- Player IDs directly excluded (for GPDB UI) — all open seasons when p_season_id is null
 CREATE OR REPLACE FUNCTION public.gpdb_season_excluded_player_ids(p_season_id bigint DEFAULT NULL)
 RETURNS text[]
 LANGUAGE sql
@@ -175,9 +224,14 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT coalesce(array_agg(ep.player_id ORDER BY ep.player_id), ARRAY[]::text[])
+  SELECT coalesce(array_agg(DISTINCT ep.player_id ORDER BY ep.player_id), ARRAY[]::text[])
   FROM public.gpdb_season_excluded_players ep
-  WHERE ep.season_id = public.gpdb_exclusion_season_id(p_season_id);
+  JOIN public.competition_seasons s ON s.id = ep.season_id
+  WHERE CASE
+    WHEN p_season_id IS NOT NULL THEN ep.season_id = p_season_id
+    ELSE s.is_current = true
+      OR s.status IN ('active', 'preseason', 'summer_break', 'setup')
+  END;
 $$;
 
 -- GPDB Nation label strings that map to excluded nation codes

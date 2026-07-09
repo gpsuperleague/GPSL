@@ -90,6 +90,39 @@
       font-weight: bold;
     }
 
+    .gpdb-excluded-msg {
+      color: #e88;
+    }
+
+    .gpdb-excluded-badge {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: bold;
+      letter-spacing: 0.02em;
+      color: #fcc;
+      background: #3a1a1a;
+      border: 1px solid #844;
+      border-radius: 4px;
+      vertical-align: middle;
+    }
+
+    tr.gpdb-row-excluded {
+      opacity: 0.55;
+      background: #1a1212;
+    }
+
+    tr.gpdb-row-excluded td {
+      color: #999;
+    }
+
+    tr.gpdb-row-excluded .gpdb-excluded-badge,
+    tr.gpdb-row-excluded .gpdb-excluded-msg {
+      opacity: 1;
+      color: #e88;
+    }
+
     #pageTitle {
       background:#222;
       color:#ff9900;
@@ -727,7 +760,7 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js?v=20260706-v18"></script>
-  <script type="module" src="gpdb_v2.js?v=20260709-gpdb-season-exclusions"></script>
+  <script type="module" src="gpdb_v2.js?v=20260709-gpdb-excluded-badge"></script>
 
 </body>
 </html>
