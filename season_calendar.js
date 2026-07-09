@@ -549,22 +549,46 @@ function eventLinks(ev, monthKey) {
 
 function clubFixtureEvents(fixtures, monthKey) {
   if (!fixtures?.length) return [];
-  const lines = fixtures.map(formatClubFixtureLine);
-  const preview = lines
-    .slice(0, 6)
-    .map((l) => `${l.comp}: ${l.home} vs ${l.away}${l.score}`)
-    .join(" · ");
-  const more =
-    lines.length > 6 ? ` (+${lines.length - 6} more)` : "";
+  const monthLabel = MONTH_LABELS[monthKey] || monthKey;
+  const rows = fixtures.map((f) => {
+    const line = formatClubFixtureLine(f);
+    const href = line.id
+      ? `fixture_schedule.html?fixture=${encodeURIComponent(line.id)}`
+      : clubFixturesHref(monthKey);
+    return { ...line, href };
+  });
+  const listHtml =
+    `<ul class="sc-fix-list">` +
+    rows
+      .map(
+        (r) =>
+          `<li>` +
+          `<a href="${escapeHtml(r.href)}">` +
+          `<span class="sc-fix-comp">${escapeHtml(r.comp)}</span>` +
+          `<span class="sc-fix-match">` +
+          `<span class="sc-fix-club">${escapeHtml(r.home)}</span>` +
+          `<span class="sc-fix-vs">vs</span>` +
+          `<span class="sc-fix-club">${escapeHtml(r.away)}</span>` +
+          (r.score
+            ? `<span class="sc-fix-score">${escapeHtml(r.score.trim())}</span>`
+            : "") +
+          `</span>` +
+          `</a>` +
+          `</li>`
+      )
+      .join("") +
+    `</ul>`;
+
   return [
     {
       kind: "club-fixture",
       short: `Your fixtures (${fixtures.length})`,
-      detail: `Your club in ${MONTH_LABELS[monthKey] || monthKey}: ${preview}${more}.`,
+      detail: `${fixtures.length} fixture${fixtures.length === 1 ? "" : "s"} in ${monthLabel}.`,
+      detailHtml: listHtml,
       links: [
         {
           href: clubFixturesHref(monthKey),
-          label: "Open my fixtures",
+          label: "All my fixtures",
         },
         {
           href: leagueFixturesHref(monthKey),
@@ -580,6 +604,9 @@ function clubFixtureEvents(fixtures, monthKey) {
 function renderBullet(ev, monthKey, ctx, idx) {
   const short = escapeHtml(eventShortLabel(ev));
   const detail = escapeHtml(eventDetailText(ev, monthKey, ctx));
+  const bodyHtml = ev.detailHtml
+    ? `<p class="sc-detail-lead">${detail}</p>${ev.detailHtml}`
+    : `<p>${detail}</p>`;
   const links = eventLinks(ev, monthKey)
     .map((l) => {
       const cls = l.secondary ? " secondary" : "";
@@ -601,7 +628,7 @@ function renderBullet(ev, monthKey, ctx, idx) {
     `<li class="${cls}" data-bullet-id="${id}">` +
     `<button type="button" class="sc-bullet-btn" aria-expanded="false" aria-controls="${id}-detail">${short}</button>` +
     `<div class="sc-bullet-detail" id="${id}-detail" hidden>` +
-    `<p>${detail}</p>` +
+    bodyHtml +
     (links ? `<div class="sc-bullet-links">${links}</div>` : "") +
     `</div>` +
     `</li>`
