@@ -94,6 +94,24 @@ function ownedClubsCell(row) {
   return `<span class="${cls}">${owned}</span>`;
 }
 
+/** Owned clubs as % of healthy club capacity (how full the nation’s club slots are). */
+function healthyClubsPctCell(row) {
+  const owned = ownedClubCount(row);
+  const healthy = healthyClubCapacity(row);
+  if (healthy <= 0) {
+    if (owned <= 0) return `<span class="pool-zero">—</span>`;
+    return `<span class="pool-clubs-over pool-clubs-pct" title="No healthy capacity">n/a</span>`;
+  }
+  const pct = Math.round((owned / healthy) * 100);
+  const cls =
+    owned === 0
+      ? "pool-clubs-pct"
+      : owned <= healthy
+        ? "pool-clubs-ok pool-clubs-pct"
+        : "pool-clubs-over pool-clubs-pct";
+  return `<span class="${cls}" title="${owned} owned / ${healthy} healthy">${pct}%</span>`;
+}
+
 function countCell(n) {
   const v = Number(n) || 0;
   return `<span class="${v ? "" : "pool-zero"}">${v}</span>`;
@@ -243,7 +261,7 @@ function renderTable() {
 
   if (!visible.length) {
     tbody.innerHTML =
-      '<tr><td colspan="13" style="padding:20px;color:#888;">No nations match this filter.</td></tr>';
+      '<tr><td colspan="14" style="padding:20px;color:#888;">No nations match this filter.</td></tr>';
     return;
   }
 
@@ -284,11 +302,12 @@ function renderTable() {
           <td>${countCell(all.gk)}</td>
           <td title="${HEALTHY_CLUB_REQUIREMENTS.map((r) => `${r.min}× ${r.label}`).join(", ")}">${countCell(healthy)}</td>
           <td>${ownedClubsCell(row)}</td>
+          <td>${healthyClubsPctCell(row)}</td>
           <td class="pool-status-${status.key}">${status.label}</td>
         </tr>`;
 
       const detailRow = isOpen
-        ? `<tr class="pool-detail-row"><td colspan="13">${detailTable(row)}</td></tr>`
+        ? `<tr class="pool-detail-row"><td colspan="14">${detailTable(row)}</td></tr>`
         : "";
 
       return mainRow + detailRow;

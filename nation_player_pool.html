@@ -182,6 +182,7 @@
     .pool-zero { color: #666; }
     .pool-clubs-ok { color: #8c8; font-weight: 700; }
     .pool-clubs-over { color: #f88; font-weight: 700; }
+    .pool-clubs-pct { font-variant-numeric: tabular-nums; }
     .pool-error {
       color: #f88;
       padding: 16px;
@@ -201,7 +202,7 @@
       (GK / DEF / MID / FWD). GPDB uses LWF/RWF for wide forwards. Uses the same nation matching as international call-ups.
       <b>Healthy clubs</b> is how many owned clubs the pool can support (min per club: 1×79+, 1×76–78, 5×73–75,
       10×70–72, 10×66–69, 5×≤65, 8×U21). <b>Owned clubs</b> counts GPSL clubs with an owner whose club nation matches
-      (green when owned ≤ healthy).
+      (green when owned ≤ healthy). <b>% of healthy</b> is owned ÷ healthy capacity (how full that nation’s club slots are).
     </p>
 
     <div id="poolLoading" class="pool-intro" style="color:#ffcc00;">Loading nation pool report…</div>
@@ -256,6 +257,7 @@
             <th>GK</th>
             <th title="Clubs supportable from pool (bottleneck band)">Healthy clubs</th>
             <th title="Owned clubs with this nation (Clubs.Nation)">Owned clubs</th>
+            <th title="Owned clubs ÷ healthy club capacity">% of healthy</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -264,6 +266,6 @@
     </div>
   </div>
 
-  <script type="module" src="nation_player_pool.js"></script>
+  <script type="module" src="nation_player_pool.js?v=20260709-healthy-pct"></script>
 </body>
 </html>
