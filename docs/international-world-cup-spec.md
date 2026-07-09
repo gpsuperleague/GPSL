@@ -30,7 +30,7 @@ Admin UI: `admin_international.html` → **World Cup cycle**
 |------|--------|
 | Create cycle | Label + qual season 1 + qual season 2 + finals-after season |
 | Draw qual groups | Seed pots 1–5 (ranks 1–12, 13–24, …); one from each pot → groups A–L |
-| Generate qual fixtures | Double RR per group (20×12=240); MD 1–5 → season 1, MD 6–10 → season 2 |
+| Generate qual fixtures | Double RR in groups of 5: **8 games per nation** (4/season). 5 calendar windows/season (bye each round) spaced Aug–May; seasons 1 then 2 |
 | Rank thirds | After all qual played: top 2 + 8 best thirds → 32 |
 | Draw finals | 4 pots of 8 by seed among qualified → groups A–H |
 | Generate finals fixtures | Single RR (6 per group) |

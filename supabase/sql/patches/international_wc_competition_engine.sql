@@ -265,25 +265,24 @@ BEGIN
 END;
 $function$;
 
--- Map qual match_no 1..10 onto GPSL months (spread through a season)
+-- Map qual match_no 1..10 onto GPSL months across the FULL season (Aug–May).
+-- Matchdays 1–5 = qual season 1; 6–10 = season 2 — same month pattern each year.
+-- Not pre-season only; five international windows spaced through Aug–May.
 CREATE OR REPLACE FUNCTION public.international_qual_match_calendar(p_match_no integer)
 RETURNS TABLE (gpsl_month text, week_in_month smallint)
 LANGUAGE sql
 IMMUTABLE
 AS $$
   SELECT
-    CASE
-      WHEN p_match_no BETWEEN 1 AND 2 THEN 'august'
-      WHEN p_match_no BETWEEN 3 AND 4 THEN 'october'
-      WHEN p_match_no BETWEEN 5 AND 6 THEN 'november'
-      WHEN p_match_no BETWEEN 7 AND 8 THEN 'february'
-      WHEN p_match_no BETWEEN 9 AND 10 THEN 'april'
+    CASE ((CASE WHEN p_match_no <= 5 THEN p_match_no ELSE p_match_no - 5 END))
+      WHEN 1 THEN 'august'
+      WHEN 2 THEN 'october'
+      WHEN 3 THEN 'december'
+      WHEN 4 THEN 'february'
+      WHEN 5 THEN 'april'
       ELSE 'may'
     END,
-    CASE
-      WHEN p_match_no IN (1, 3, 5, 7, 9) THEN 1::smallint
-      ELSE 3::smallint
-    END;
+    2::smallint;
 $$;
 
 -- ---------------------------------------------------------------------------
@@ -541,8 +540,10 @@ END;
 $function$;
 
 -- ---------------------------------------------------------------------------
--- Qualifying fixtures — double round-robin per group of 5 (10 matchdays)
--- Matchdays 1–5 → qual season 1; 6–10 → qual season 2
+-- Qualifying fixtures — double round-robin per group of 5
+-- Each nation: 4 opponents × home & away = 8 games (4 per season).
+-- Calendar: 5 windows per season (one bye each round) × 2 seasons.
+-- Windows 1–5 → qual season 1; 6–10 → season 2 (Aug–May spread).
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.international_generate_qual_fixtures(p_cycle_id bigint)
@@ -677,7 +678,12 @@ BEGIN
     'cycle_id', p_cycle_id,
     'fixtures', v_inserted,
     'per_group', 20,
-    'matchdays', 10
+    'games_per_nation', 8,
+    'games_per_nation_per_season', 4,
+    'calendar_windows_per_season', 5,
+    'note',
+      'Each nation plays 4 games per season (8 total). '
+      '5 calendar windows per season because groups of 5 need one bye each round.'
   );
 END;
 $function$;

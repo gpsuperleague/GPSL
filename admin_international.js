@@ -412,7 +412,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!id) return;
     if (
       !confirm(
-        "Generate qualifying fixtures?\n\nDouble round-robin per group (20 games × 12 = 240).\nMatchdays 1–5 → qual season 1; 6–10 → qual season 2."
+        "Generate qualifying fixtures?\n\n" +
+          "Double round-robin in groups of 5:\n" +
+          "• Each nation plays 8 matches (4 per season) — home & away vs the other four\n" +
+          "• 5 calendar windows per season (one bye each round) × 2 seasons\n" +
+          "• Season 1 windows → Aug/Oct/Dec/Feb/Apr; Season 2 same spread\n" +
+          "• 20 fixtures per group, 240 total"
       )
     ) {
       return;
