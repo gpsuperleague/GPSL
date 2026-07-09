@@ -569,10 +569,10 @@ function clubFixtureEvents(fixtures, monthKey) {
           `<span class="sc-fix-club">${escapeHtml(r.home)}</span>` +
           `<span class="sc-fix-vs">vs</span>` +
           `<span class="sc-fix-club">${escapeHtml(r.away)}</span>` +
+          `</span>` +
           (r.score
             ? `<span class="sc-fix-score">${escapeHtml(r.score.trim())}</span>`
-            : "") +
-          `</span>` +
+            : `<span class="sc-fix-score"></span>`) +
           `</a>` +
           `</li>`
       )
@@ -583,7 +583,7 @@ function clubFixtureEvents(fixtures, monthKey) {
     {
       kind: "club-fixture",
       short: `Your fixtures (${fixtures.length})`,
-      detail: `${fixtures.length} fixture${fixtures.length === 1 ? "" : "s"} in ${monthLabel}.`,
+      detail: `${fixtures.length} fixture${fixtures.length === 1 ? "" : "s"} in ${monthLabel}`,
       detailHtml: listHtml,
       links: [
         {
@@ -773,6 +773,7 @@ async function renderPage(user) {
     `<p class="sc-footnote">` +
     `Click a bullet for details and links. League matchdays: Aug 1–3, then four per month Sep–Apr, May 36–38. ` +
     `Cup rounds follow the published schedule. Live drafts and special auctions appear when scheduled.` +
+    ` <span class="sc-build">Calendar build 20260709-v3</span>` +
     `</p>`;
 
   wireBulletToggles(root);

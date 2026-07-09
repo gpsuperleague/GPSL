@@ -167,50 +167,57 @@
       color:#333;
     }
     .sc-bullet.is-open .sc-bullet-detail { display:block; }
-    .sc-bullet-detail p { margin:0 0 8px; }
+    .sc-bullet-detail > p { margin:0 0 8px; }
     .sc-detail-lead {
       margin:0 0 8px !important;
       color:#666;
       font-size:11px;
     }
     .sc-fix-list {
-      list-style:none;
-      margin:0 0 10px;
-      padding:0;
+      list-style:none !important;
+      margin:0 0 10px !important;
+      padding:0 !important;
       display:flex;
       flex-direction:column;
       gap:0;
       border:1px solid #e6e0d6;
       border-radius:4px;
       overflow:hidden;
-    }
-    .sc-fix-list li { margin:0; padding:0; }
-    .sc-fix-list li + li { border-top:1px solid #eee8de; }
-    .sc-fix-list a {
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-      padding:7px 8px;
-      text-decoration:none;
-      color:#222;
       background:#faf8f4;
     }
-    .sc-fix-list a:hover {
-      background:#fff4e0;
-      color:#111;
+    .sc-fix-list > li {
+      list-style:none !important;
+      margin:0 !important;
+      padding:0 !important;
     }
+    .sc-fix-list > li + li { border-top:1px solid #eee8de; }
+    .sc-fix-list a {
+      display:grid;
+      grid-template-columns:72px 1fr auto;
+      align-items:center;
+      gap:8px;
+      padding:8px 9px;
+      text-decoration:none;
+      color:#222;
+      background:transparent;
+    }
+    .sc-fix-list a:hover { background:#fff4e0; color:#111; }
     .sc-fix-comp {
       font-size:10px;
       font-weight:bold;
       text-transform:uppercase;
-      letter-spacing:.04em;
+      letter-spacing:.03em;
       color:#888;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
     .sc-fix-match {
       display:flex;
-      flex-wrap:wrap;
+      flex-wrap:nowrap;
       align-items:baseline;
       gap:5px;
+      min-width:0;
       font-size:12px;
       font-weight:bold;
     }
@@ -221,10 +228,10 @@
       font-size:11px;
     }
     .sc-fix-score {
-      margin-left:auto;
       font-size:11px;
       color:#666;
       font-weight:bold;
+      white-space:nowrap;
     }
     .sc-bullet-links {
       display:flex;
@@ -259,6 +266,10 @@
       font-size:12px;
       color:#888;
     }
+    .sc-build {
+      color:#555;
+      font-size:11px;
+    }
   </style>
 </head>
 <body>
@@ -274,6 +285,6 @@
     <p class="sc-hint">Tip: your club fixtures appear as highlighted bullets when you own a club.</p>
     <div id="seasonCalendarRoot"></div>
   </div>
-  <script type="module" src="season_calendar.js"></script>
+  <script type="module" src="season_calendar.js?v=20260709-v3"></script>
 </body>
 </html>
