@@ -151,15 +151,22 @@ function showTopSeeds(rows) {
 /** @type {number|null} */
 let activeWcCycleId = null;
 
-async function loadSeasonOptions() {
+async function loadSeasonOptions(preferred = {}) {
   const selects = ["wcQual1", "wcQual2", "wcFinalsAfter"]
     .map((id) => document.getElementById(id))
     .filter(Boolean);
   if (!selects.length) return;
 
+  const prev = {
+    wcQual1: preferred.wcQual1 ?? document.getElementById("wcQual1")?.value,
+    wcQual2: preferred.wcQual2 ?? document.getElementById("wcQual2")?.value,
+    wcFinalsAfter:
+      preferred.wcFinalsAfter ?? document.getElementById("wcFinalsAfter")?.value,
+  };
+
   const { data, error } = await supabase
     .from("competition_seasons")
-    .select("id, label, status")
+    .select("id, label, status, is_current")
     .order("id", { ascending: true });
 
   if (error) {
@@ -169,16 +176,35 @@ async function loadSeasonOptions() {
     return;
   }
 
+  const rows = data || [];
   const opts = [`<option value="">Select season…</option>`].concat(
-    (data || []).map(
-      (s) =>
-        `<option value="${s.id}">${escapeOpt(s.label || `Season ${s.id}`)} (${escapeOpt(
-          s.status || "?"
-        )})</option>`
-    )
+    rows.map((s, i) => {
+      const ordinal = i + 1;
+      const cur = s.is_current ? " · current" : "";
+      return `<option value="${s.id}">#${ordinal} ${escapeOpt(
+        s.label || `Season ${s.id}`
+      )} (${escapeOpt(s.status || "?")}${cur})</option>`;
+    })
   );
   const html = opts.join("");
-  for (const sel of selects) sel.innerHTML = html;
+  for (const sel of selects) {
+    sel.innerHTML = html;
+    const keep = prev[sel.id];
+    if (keep && [...sel.options].some((o) => o.value === String(keep))) {
+      sel.value = String(keep);
+    }
+  }
+
+  // Sensible defaults for a first WC: qual S3+S4, finals after S4 (when present)
+  if (rows.length >= 4) {
+    const byOrd = (n) => String(rows[n - 1]?.id ?? "");
+    const q1 = document.getElementById("wcQual1");
+    const q2 = document.getElementById("wcQual2");
+    const fin = document.getElementById("wcFinalsAfter");
+    if (q1 && !q1.value) q1.value = byOrd(3);
+    if (q2 && !q2.value) q2.value = byOrd(4);
+    if (fin && !fin.value) fin.value = byOrd(4);
+  }
 }
 
 async function refreshWcCycleLive() {
@@ -300,6 +326,43 @@ document.addEventListener("DOMContentLoaded", async () => {
     await loadSeasonOptions();
     await refreshWcCycleLive();
     setStatus("wcStatus", "✅ Refreshed", true);
+  });
+
+  document.getElementById("wcEnsureSeasonsBtn")?.addEventListener("click", async () => {
+    const through = Number(document.getElementById("wcEnsureThrough")?.value || 0);
+    if (!through || through < 1) {
+      setStatus("wcStatus", "Enter how many seasons to ensure (e.g. 4).", false);
+      return;
+    }
+    if (
+      !confirm(
+        `Create any missing competition seasons up through #${through}?\n\n` +
+          `Placeholder seasons only (not started). Needed so you can bind the WC cycle to Season 3 / 4 before they begin.`
+      )
+    ) {
+      return;
+    }
+    setStatus("wcStatus", "Creating missing seasons…");
+    const { data, error } = await supabase.rpc("international_admin_ensure_seasons_through", {
+      p_through_ordinal: through,
+    });
+    if (error) {
+      setStatus(
+        "wcStatus",
+        `❌ ${error.message} — run patches/international_wc_ensure_future_seasons.sql`,
+        false
+      );
+      return;
+    }
+    await loadSeasonOptions();
+    const created = data?.created ?? 0;
+    setStatus(
+      "wcStatus",
+      created > 0
+        ? `✅ Created ${created} season(s); dropdowns now go through #${through}`
+        : `✅ Seasons already existed through #${through} — dropdowns refreshed`,
+      true
+    );
   });
 
   document.getElementById("wcCreateBtn")?.addEventListener("click", async () => {
