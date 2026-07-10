@@ -191,7 +191,11 @@ async function loadSeasonOptions(preferred = {}) {
   const opts = [`<option value="">Select season…</option>`].concat(
     rows.map((s, i) => {
       const ordinal = i + 1;
-      const tag = seasonTag(s);
+      let tag = seasonTag(s);
+      // Finals host season is the pre-season window after the two qual seasons
+      if (ordinal >= 5 && (tag === "planned" || tag === "setup")) {
+        tag = "finals pre-season window";
+      }
       return `<option value="${s.id}">Season ${ordinal} — ${escapeOpt(
         s.label || `Season ${s.id}`
       )} (${escapeOpt(tag)})</option>`;
@@ -324,10 +328,56 @@ function scrollToAdminHash() {
   }
 }
 
+async function ensureSeasonsThrough(through, { quiet = false } = {}) {
+  const n = Number(through || 0);
+  if (!n || n < 1) {
+    if (!quiet) setStatus("wcStatus", "Enter how many seasons to ensure (e.g. 5).", false);
+    return null;
+  }
+  if (!quiet) setStatus("wcStatus", "Creating missing seasons…");
+  const { data, error } = await supabase.rpc("international_admin_ensure_seasons_through", {
+    p_through_ordinal: n,
+  });
+  if (error) {
+    if (!quiet) {
+      setStatus(
+        "wcStatus",
+        `❌ ${error.message} — run patches/international_wc_ensure_future_seasons.sql`,
+        false
+      );
+    }
+    return null;
+  }
+  await loadSeasonOptions();
+  if (!quiet) {
+    const created = data?.created ?? 0;
+    setStatus(
+      "wcStatus",
+      created > 0
+        ? `✅ Created ${created} season(s); dropdowns now go through #${n}`
+        : `✅ Seasons already existed through #${n} — dropdowns refreshed`,
+      true
+    );
+  }
+  return data;
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
   await loadSeasonOptions();
+  // First WC needs Season 5 as finals pre-season host — create placeholders if missing
+  const ensureEl = document.getElementById("wcEnsureThrough");
+  const through = Math.max(5, Number(ensureEl?.value || 5));
+  if (ensureEl) ensureEl.value = String(through);
+  const ensured = await ensureSeasonsThrough(through, { quiet: true });
+  if (!ensured) {
+    setStatus(
+      "wcStatus",
+      "Season 5 not available yet — click Create missing seasons (through #5), or run international_wc_ensure_future_seasons.sql",
+      false
+    );
+  }
   await refreshWcCycleLive();
   await refreshSelectionLive();
   scrollToAdminHash();
@@ -335,45 +385,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("wcRefreshBtn")?.addEventListener("click", async () => {
     await loadSeasonOptions();
+    await ensureSeasonsThrough(Math.max(5, Number(document.getElementById("wcEnsureThrough")?.value || 5)), {
+      quiet: true,
+    });
     await refreshWcCycleLive();
     setStatus("wcStatus", "✅ Refreshed", true);
   });
 
   document.getElementById("wcEnsureSeasonsBtn")?.addEventListener("click", async () => {
-    const through = Number(document.getElementById("wcEnsureThrough")?.value || 0);
-    if (!through || through < 1) {
-      setStatus("wcStatus", "Enter how many seasons to ensure (e.g. 4).", false);
-      return;
-    }
+    const through = Math.max(5, Number(document.getElementById("wcEnsureThrough")?.value || 5));
+    document.getElementById("wcEnsureThrough").value = String(through);
     if (
       !confirm(
         `Create any missing competition seasons up through #${through}?\n\n` +
-          `Placeholder seasons only (not started). Needed so you can bind qual to Season 3 / 4 and finals to Season 5 pre-season.`
+          `Placeholder seasons only (not started).\n` +
+          `Season 5 is required as the finals pre-season host (after Season 4 qualifying).`
       )
     ) {
       return;
     }
-    setStatus("wcStatus", "Creating missing seasons…");
-    const { data, error } = await supabase.rpc("international_admin_ensure_seasons_through", {
-      p_through_ordinal: through,
-    });
-    if (error) {
-      setStatus(
-        "wcStatus",
-        `❌ ${error.message} — run patches/international_wc_ensure_future_seasons.sql`,
-        false
-      );
-      return;
-    }
-    await loadSeasonOptions();
-    const created = data?.created ?? 0;
-    setStatus(
-      "wcStatus",
-      created > 0
-        ? `✅ Created ${created} season(s); dropdowns now go through #${through}`
-        : `✅ Seasons already existed through #${through} — dropdowns refreshed`,
-      true
-    );
+    await ensureSeasonsThrough(through);
   });
 
   document.getElementById("wcCreateBtn")?.addEventListener("click", async () => {
