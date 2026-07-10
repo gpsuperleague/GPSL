@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <title>World Cup — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
-  <link rel="stylesheet" href="international.css?v=20260710-group-grid">
+  <link rel="stylesheet" href="international.css?v=20260710-fixtures">
   <link rel="stylesheet" href="competition_themes.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
@@ -54,8 +54,17 @@
 
     <div class="panel">
       <h2>Qualifying — 12 × groups of 5</h2>
-      <p class="intl-note">Played over the two GPSL seasons before each finals window.</p>
+      <p class="intl-note">Played over the two GPSL seasons before each finals window. Nations listed by seed (strongest first) until results change the table.</p>
       <div id="qualGroups" class="intl-grid"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Qualifying fixtures</h2>
+      <p class="intl-note">
+        Each nation plays 8 matches (4 per season). Windows spaced Aug / Oct / Dec / Feb / Apr.
+        Arrange and submit results on <a href="international_matchday.html">International matchday</a>.
+      </p>
+      <div id="qualFixtures"></div>
     </div>
 
     <div class="panel">
@@ -65,11 +74,16 @@
     </div>
 
     <div class="panel">
+      <h2>Finals group fixtures</h2>
+      <div id="finalsFixtures"></div>
+    </div>
+
+    <div class="panel">
       <h2>Knockout stage</h2>
       <div id="knockoutBracket"></div>
       <p id="knockoutNote" class="empty" hidden>Knockout bracket will appear once finals groups are complete.</p>
     </div>
   </div>
-  <script type="module" src="world_cup.js?v=20260710-group-grid"></script>
+  <script type="module" src="world_cup.js?v=20260710-fixtures"></script>
 </body>
 </html>

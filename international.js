@@ -145,10 +145,26 @@ export async function loadQualStandings(cycleNo, client = supabase) {
     .from("international_qual_standings_public")
     .select("*")
     .order("group_code", { ascending: true })
-    .order("points", { ascending: false });
+    .order("points", { ascending: false })
+    .order("seed_rank", { ascending: true });
   if (cycleNo != null) query = query.eq("cycle_no", cycleNo);
   const { data, error } = await query;
   if (error) {
+    // Older view without seed_rank — retry without that order
+    if (/seed_rank/i.test(error.message || "")) {
+      let q2 = client
+        .from("international_qual_standings_public")
+        .select("*")
+        .order("group_code", { ascending: true })
+        .order("points", { ascending: false });
+      if (cycleNo != null) q2 = q2.eq("cycle_no", cycleNo);
+      const retry = await q2;
+      if (retry.error) {
+        console.error("loadQualStandings:", retry.error);
+        return [];
+      }
+      return retry.data || [];
+    }
     console.error("loadQualStandings:", error);
     return [];
   }
@@ -160,11 +176,43 @@ export async function loadFinalsStandings(cycleNo, client = supabase) {
     .from("international_finals_standings_public")
     .select("*")
     .order("group_code", { ascending: true })
-    .order("points", { ascending: false });
+    .order("points", { ascending: false })
+    .order("seed_rank", { ascending: true });
   if (cycleNo != null) query = query.eq("cycle_no", cycleNo);
   const { data, error } = await query;
   if (error) {
+    if (/seed_rank/i.test(error.message || "")) {
+      let q2 = client
+        .from("international_finals_standings_public")
+        .select("*")
+        .order("group_code", { ascending: true })
+        .order("points", { ascending: false });
+      if (cycleNo != null) q2 = q2.eq("cycle_no", cycleNo);
+      const retry = await q2;
+      if (retry.error) {
+        console.error("loadFinalsStandings:", retry.error);
+        return [];
+      }
+      return retry.data || [];
+    }
     console.error("loadFinalsStandings:", error);
+    return [];
+  }
+  return data || [];
+}
+
+export async function loadInternationalFixtures(cycleNo, phase = null, client = supabase) {
+  let query = client
+    .from("international_fixtures_public")
+    .select("*")
+    .order("match_no", { ascending: true })
+    .order("group_code", { ascending: true })
+    .order("id", { ascending: true });
+  if (cycleNo != null) query = query.eq("cycle_no", cycleNo);
+  if (phase) query = query.eq("phase", phase);
+  const { data, error } = await query;
+  if (error) {
+    console.error("loadInternationalFixtures:", error);
     return [];
   }
   return data || [];
@@ -312,7 +360,21 @@ export function nationLink(code, label) {
 }
 
 export function groupStandingsTable(rows, groupCode) {
-  const groupRows = rows.filter((r) => r.group_code === groupCode);
+  const groupRows = rows
+    .filter((r) => r.group_code === groupCode)
+    .slice()
+    .sort((a, b) => {
+      const pts = Number(b.points || 0) - Number(a.points || 0);
+      if (pts) return pts;
+      const gd =
+        Number(b.goal_diff ?? (b.goals_for || 0) - (b.goals_against || 0)) -
+        Number(a.goal_diff ?? (a.goals_for || 0) - (a.goals_against || 0));
+      if (gd) return gd;
+      const gf = Number(b.goals_for || 0) - Number(a.goals_for || 0);
+      if (gf) return gf;
+      // At equal table (e.g. all 0 before kickoff): strongest seed first
+      return (Number(a.seed_rank) || 9999) - (Number(b.seed_rank) || 9999);
+    });
   if (!groupRows.length) {
     return `<p class="empty">Group ${groupCode} — not drawn yet.</p>`;
   }
@@ -325,6 +387,11 @@ export function groupStandingsTable(rows, groupCode) {
           <span class="intl-nation-cell">
             ${renderNationFlag(r, "sm")}
             ${nationLink(r.nation_code, r.nation_name)}
+            ${
+              r.seed_rank != null
+                ? `<span class="intl-seed" title="Seed rank">#${Number(r.seed_rank)}</span>`
+                : ""
+            }
           </span>
         </td>
         <td>${r.played}</td>

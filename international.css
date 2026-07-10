@@ -81,6 +81,51 @@
   text-decoration: none;
   overflow-wrap: anywhere;
 }
+.intl-seed {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: #888;
+  margin-left: 2px;
+}
+
+.intl-fix-md {
+  margin-bottom: 18px;
+}
+.intl-fix-md h3 {
+  margin: 0 0 8px;
+  color: #ffaa22;
+  font-size: 14px;
+}
+.intl-fix-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid #2a2a2a;
+  font-size: 13px;
+}
+.intl-fix-group {
+  flex: 0 0 52px;
+  color: #888;
+  font-size: 12px;
+}
+.intl-fix-sides {
+  flex: 1 1 220px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.intl-fix-sides .nat-flag-img {
+  flex: 0 0 auto;
+  margin-right: 0;
+}
+.intl-fix-link {
+  flex: 0 0 auto;
+  font-size: 12px;
+}
 
 .intl-grid {
   display: grid;
