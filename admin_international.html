@@ -165,10 +165,10 @@
     </div>
 
     <div class="card" id="sb-nation-assign">
-      <h2>Assign national team (admin override)</h2>
+      <h2>Assign / change national team (admin override)</h2>
       <p class="note">
-        Pick an <b>unassigned</b> club/owner and an <b>available</b> nation (ordered by seed rank).
-        Clubs that already have a nation, and nations already taken, are greyed out.
+        Pick a club and a nation (ordered by seed rank). Clubs that already have a nation can be
+        <b>reassigned</b> (their old nation is freed). Nations already taken by another club stay greyed out.
       </p>
       <label for="assignClubSelect">Owner / club</label>
       <select id="assignClubSelect" style="max-width:100%;">
@@ -179,7 +179,7 @@
         <option value="">Loading…</option>
       </select>
       <div class="row">
-        <button type="button" class="button" id="assignBtn">Assign nation</button>
+        <button type="button" class="button" id="assignBtn">Assign / change nation</button>
         <button type="button" class="button secondary" id="refreshAssignListsBtn">Refresh lists</button>
       </div>
       <div id="assignStatus" class="status-line"></div>
@@ -216,6 +216,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="admin_international.js?v=20260710-wc-draw-59"></script>
+  <script type="module" src="admin_international.js?v=20260710-reassign-nation"></script>
 </body>
 </html>

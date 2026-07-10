@@ -84,10 +84,9 @@ async function refreshAssignDropdowns() {
 
   const clubOpts = [`<option value="">Select owner / club…</option>`];
   for (const row of clubs) {
-    const taken = !!row.nation_code;
     clubOpts.push(
-      `<option value="${escapeOpt(row.club_short_name)}"${taken ? " disabled" : ""}${
-        !taken && prevClub === row.club_short_name ? " selected" : ""
+      `<option value="${escapeOpt(row.club_short_name)}"${
+        prevClub === row.club_short_name ? " selected" : ""
       }>${escapeOpt(clubAssignLabel(row))}</option>`
     );
   }
@@ -103,12 +102,16 @@ async function refreshAssignDropdowns() {
     return String(a.code).localeCompare(String(b.code));
   });
 
+  // When reassigning a club, their current nation should stay selectable (no-op / keep)
+  const selectedClub = clubs.find((c) => c.club_short_name === (prevClub || clubSel.value));
+  const currentNation = selectedClub?.nation_code || null;
+
   const nationOpts = [`<option value="">Select nation…</option>`];
   for (const row of nationRows) {
-    const taken = !!row.is_taken;
+    const takenByOther = !!row.is_taken && row.code !== currentNation;
     nationOpts.push(
-      `<option value="${escapeOpt(row.code)}"${taken ? " disabled" : ""}${
-        !taken && prevNation === row.code ? " selected" : ""
+      `<option value="${escapeOpt(row.code)}"${takenByOther ? " disabled" : ""}${
+        !takenByOther && prevNation === row.code ? " selected" : ""
       }>${escapeOpt(nationAssignLabel(row))}</option>`
     );
   }
@@ -116,6 +119,18 @@ async function refreshAssignDropdowns() {
   if (!nationRows.length) {
     nationSel.innerHTML = `<option value="">No active nations — run Apply selectable first</option>`;
   }
+
+  // Refresh nation disable state when club changes (so current nation isn't greyed)
+  clubSel.onchange = () => {
+    const club = clubs.find((c) => c.club_short_name === clubSel.value);
+    const keepNation = club?.nation_code || null;
+    for (const opt of nationSel.options) {
+      if (!opt.value) continue;
+      const row = nationRows.find((n) => n.code === opt.value);
+      const takenByOther = !!row?.is_taken && row.code !== keepNation;
+      opt.disabled = takenByOther;
+    }
+  };
 }
 
 function hideTopSeeds() {
@@ -791,7 +806,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     const clubLabel = clubSel.selectedOptions[0]?.textContent || club;
     const nationLabel = nationSel.selectedOptions[0]?.textContent || nation;
-    if (!confirm(`Assign national team?\n\n${nationLabel}\n→\n${clubLabel}`)) {
+    if (
+      !confirm(
+        `Assign / change national team?\n\n${nationLabel}\n→\n${clubLabel}\n\n` +
+          `If this club already has a nation, that old nation is freed.`
+      )
+    ) {
       return;
     }
     setStatus("assignStatus", "Assigning…");
