@@ -33,7 +33,7 @@ function renderCycle(cycles) {
     Qualifying seasons: ${escapeHtml(c.qual_season_1_label || "—")} &amp; ${escapeHtml(
       c.qual_season_2_label || "—"
     )}<br>
-    Finals window: after ${escapeHtml(c.finals_after_season_label || "—")} (season ${escapeHtml(
+    Finals: pre-season of ${escapeHtml(c.finals_after_season_label || "—")} (season ${escapeHtml(
       c.finals_after_season_ordinal || "—"
     )})
   `;

@@ -206,15 +206,15 @@ async function loadSeasonOptions(preferred = {}) {
     }
   }
 
-  // Sensible defaults for a first WC: qual S3+S4, finals after S4 (when present)
-  if (rows.length >= 4) {
+  // Sensible defaults for a first WC: qual S3+S4, finals in S5 pre-season
+  if (rows.length >= 5) {
     const byOrd = (n) => String(rows[n - 1]?.id ?? "");
     const q1 = document.getElementById("wcQual1");
     const q2 = document.getElementById("wcQual2");
     const fin = document.getElementById("wcFinalsAfter");
     if (q1 && !q1.value) q1.value = byOrd(3);
     if (q2 && !q2.value) q2.value = byOrd(4);
-    if (fin && !fin.value) fin.value = byOrd(4);
+    if (fin && !fin.value) fin.value = byOrd(5);
   }
 }
 
@@ -258,7 +258,7 @@ async function refreshWcCycleLive() {
     )}</b><br>` +
     `Qual: ${escapeOpt(c.qual_season_1_label || "—")} &amp; ${escapeOpt(
       c.qual_season_2_label || "—"
-    )} · Finals after ${escapeOpt(c.finals_after_season_label || "—")}`;
+    )} · Finals in pre-season of ${escapeOpt(c.finals_after_season_label || "—")}`;
 }
 
 function requireWcCycleId() {
@@ -348,7 +348,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (
       !confirm(
         `Create any missing competition seasons up through #${through}?\n\n` +
-          `Placeholder seasons only (not started). Needed so you can bind the WC cycle to Season 3 / 4 before they begin.`
+          `Placeholder seasons only (not started). Needed so you can bind qual to Season 3 / 4 and finals to Season 5 pre-season.`
       )
     ) {
       return;
@@ -395,7 +395,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       !confirm(
         `Create World Cup cycle?\n\n${label}\n` +
           `Qual seasons:\n  • ${q1Text}\n  • ${q2Text}\n` +
-          `Finals after:\n  • ${finText}`
+          `Finals (pre-season of):\n  • ${finText}`
       )
     ) {
       return;

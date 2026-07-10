@@ -3,7 +3,7 @@
 ## Overview
 
 - **60 nations** — owners manage one national team each via draft selection.
-- **World Cup every 4 GPSL seasons** — finals between S4–5, S8–9, …
+- **World Cup every 4 GPSL seasons** — finals in **pre-season of S5, S9, …** (after two qualifying seasons).
 - **Qualifying** — 2 seasons before finals; 12×5 groups; top 2 + 8 best third → 32 finalists.
 - **Finals** — 8×4 groups; top 2 → R16 → QF → SF → Final.
 - **Player international stats** — cumulative caps, goals, assists, POTM, clean sheets, average rating (`international_player_career`; overall, not per season).
@@ -28,7 +28,7 @@ Admin UI: `admin_international.html` → **World Cup cycle**
 
 | Step | Action |
 |------|--------|
-| Create cycle | Label + qual season 1 + qual season 2 + finals-after season |
+| Create cycle | Label + qual season 1 + qual season 2 + **finals season (pre-season)** e.g. S3 + S4 qual, S5 finals |
 | Draw qual groups | Seed pots 1–5 (ranks 1–12, 13–24, …); one from each pot → groups A–L |
 | Generate qual fixtures | Double RR in groups of 5: **8 games per nation** (4/season). 5 calendar windows/season (bye each round) spaced Aug–May; seasons 1 then 2 |
 | Rank thirds | After all qual played: top 2 + 8 best thirds → 32 |
