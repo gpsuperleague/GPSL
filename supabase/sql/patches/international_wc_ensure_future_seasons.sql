@@ -1,11 +1,13 @@
 -- =============================================================================
--- World Cup: ensure future competition seasons exist for cycle planning
+-- WC future seasons: use status 'setup' (planned), not 'preseason'
 --
--- Creates lightweight Season N rows up to a given ordinal so admin can bind
--- WC qualifying / finals to seasons that have not started yet.
--- Does NOT run rollover or activate seasons.
+-- 'preseason' means the league is in pre-season for that season row.
+-- Placeholder Season 3 / 4 for WC binding should read as planned/setup.
 --
--- Run once in Supabase SQL Editor. Safe re-run.
+-- Also re-tags existing non-current, never-started preseason rows that sit
+-- after the latest real season as setup.
+--
+-- Safe re-run.
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.international_admin_ensure_seasons_through(
@@ -24,7 +26,7 @@ DECLARE
   v_id bigint;
   v_created integer := 0;
   v_ids bigint[] := ARRAY[]::bigint[];
-  v_status text := 'setup';
+  v_retagged integer := 0;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -38,16 +40,23 @@ BEGIN
     RAISE EXCEPTION 'Refusing to create more than 40 seasons at once';
   END IF;
 
-  -- Prefer preseason if the DB allows it (admin_season_lifecycle); else setup
-  BEGIN
-    INSERT INTO public.competition_seasons (label, status, is_current)
-    VALUES ('__wc_status_probe__', 'preseason', false);
-    DELETE FROM public.competition_seasons WHERE label = '__wc_status_probe__';
-    v_status := 'preseason';
-  EXCEPTION WHEN OTHERS THEN
-    DELETE FROM public.competition_seasons WHERE label = '__wc_status_probe__';
-    v_status := 'setup';
-  END;
+  -- Fix earlier WC placeholders wrongly marked preseason
+  WITH latest_real AS (
+    SELECT coalesce(max(id), 0) AS id
+    FROM public.competition_seasons
+    WHERE is_current = true
+       OR status IN ('active', 'complete', 'summer_break')
+       OR started_at IS NOT NULL
+  )
+  UPDATE public.competition_seasons s
+  SET status = 'setup'
+  FROM latest_real r
+  WHERE s.id > r.id
+    AND s.is_current IS NOT TRUE
+    AND s.status = 'preseason'
+    AND s.started_at IS NULL;
+
+  GET DIAGNOSTICS v_retagged = ROW_COUNT;
 
   SELECT count(*)::integer INTO v_have FROM public.competition_seasons;
 
@@ -57,8 +66,9 @@ BEGIN
       v_label := format('Season %s (planned)', v_next);
     END IF;
 
+    -- Always setup for future placeholders (not preseason)
     INSERT INTO public.competition_seasons (label, status, is_current)
-    VALUES (v_label, v_status, false)
+    VALUES (v_label, 'setup', false)
     RETURNING id INTO v_id;
 
     BEGIN
@@ -80,6 +90,7 @@ BEGIN
     'had', v_have,
     'through_ordinal', v_need,
     'created', v_created,
+    'retagged_to_setup', v_retagged,
     'created_ids', to_jsonb(v_ids),
     'seasons', (
       SELECT coalesce(jsonb_agg(
@@ -107,5 +118,37 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.international_admin_ensure_seasons_through(integer) TO authenticated;
+
+-- One-shot retag even without creating new seasons
+DO $$
+DECLARE
+  v_n integer;
+BEGIN
+  IF NOT public.is_gpsl_admin() AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
+    RAISE NOTICE 'Skip one-shot retag (not admin in this session)';
+    RETURN;
+  END IF;
+
+  WITH latest_real AS (
+    SELECT coalesce(max(id), 0) AS id
+    FROM public.competition_seasons
+    WHERE is_current = true
+       OR status IN ('active', 'complete', 'summer_break')
+       OR started_at IS NOT NULL
+  )
+  UPDATE public.competition_seasons s
+  SET status = 'setup'
+  FROM latest_real r
+  WHERE s.id > r.id
+    AND s.is_current IS NOT TRUE
+    AND s.status = 'preseason'
+    AND s.started_at IS NULL;
+
+  GET DIAGNOSTICS v_n = ROW_COUNT;
+  RAISE NOTICE 'Retagged % future season row(s) from preseason → setup', v_n;
+EXCEPTION WHEN OTHERS THEN
+  -- Constraint may still use old check without setup; ignore in editor if needed
+  RAISE NOTICE 'Retag skipped: %', SQLERRM;
+END $$;
 
 NOTIFY pgrst, 'reload schema';

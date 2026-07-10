@@ -166,7 +166,7 @@ async function loadSeasonOptions(preferred = {}) {
 
   const { data, error } = await supabase
     .from("competition_seasons")
-    .select("id, label, status, is_current")
+    .select("id, label, status, is_current, started_at")
     .order("id", { ascending: true });
 
   if (error) {
@@ -176,14 +176,25 @@ async function loadSeasonOptions(preferred = {}) {
     return;
   }
 
+  function seasonTag(s) {
+    if (s.is_current) return "current";
+    const st = String(s.status || "").toLowerCase();
+    if (st === "setup") return "planned";
+    if (st === "preseason") return "pre-season";
+    if (st === "summer_break") return "summer break";
+    if (st === "active") return "active";
+    if (st === "complete") return "complete";
+    return st || "?";
+  }
+
   const rows = data || [];
   const opts = [`<option value="">Select season…</option>`].concat(
     rows.map((s, i) => {
       const ordinal = i + 1;
-      const cur = s.is_current ? " · current" : "";
-      return `<option value="${s.id}">#${ordinal} ${escapeOpt(
+      const tag = seasonTag(s);
+      return `<option value="${s.id}">Season ${ordinal} — ${escapeOpt(
         s.label || `Season ${s.id}`
-      )} (${escapeOpt(s.status || "?")}${cur})</option>`;
+      )} (${escapeOpt(tag)})</option>`;
     })
   );
   const html = opts.join("");
