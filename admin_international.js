@@ -447,6 +447,35 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wcDrawQualBtn")?.addEventListener("click", async () => {
     const id = requireWcCycleId();
     if (!id) return;
+
+    setStatus("wcStatus", "Checking nation assignments…");
+    const { data: ready, error: readyErr } = await supabase.rpc(
+      "international_admin_qual_draw_readiness"
+    );
+    if (readyErr) {
+      setStatus(
+        "wcStatus",
+        `❌ ${readyErr.message} — run patches/international_wc_qual_draw_readiness.sql`,
+        false
+      );
+      return;
+    }
+    if (!ready?.ok) {
+      const parts = [
+        `Need 60 active owner nations (have ${ready?.active_assigned_nations ?? "?"}).`,
+      ];
+      if (ready?.clubs_without_nation) {
+        parts.push(`Clubs without a nation: ${ready.clubs_without_nation}`);
+      }
+      if (ready?.assigned_inactive_nations) {
+        parts.push(`Assigned but inactive: ${ready.assigned_inactive_nations}`);
+      }
+      parts.push("Assign the missing nation on Manual National Team Assignment, then retry.");
+      setStatus("wcStatus", `❌ ${parts.join(" ")}`, false);
+      alert(parts.join("\n\n"));
+      return;
+    }
+
     if (
       !confirm(
         "Draw qualifying groups?\n\n60 owner nations → 5 pots by seed_rank (1–12, 13–24…).\nOne from each pot into each of 12 groups (A–L).\nReplaces any existing undrawn/unplayed qual draw."
