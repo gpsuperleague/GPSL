@@ -33,7 +33,14 @@ const TABLE_COLUMNS = [
   { key: "market_value", label: "Market Value" },
 ];
 
-const FILTER_COLUMNS = ["nation", "contracted_display", "age", "rating"];
+const DROPDOWN_FILTER_COLUMNS = [
+  { key: "nation", label: "Nation" },
+  { key: "contracted_display", label: "Club" },
+];
+const RANGE_FILTER_COLUMNS = [
+  { key: "age", label: "Age" },
+  { key: "rating", label: "Rating" },
+];
 
 let PAGE_SIZE = 100;
 let CURRENT_PAGE = 1;
@@ -44,12 +51,16 @@ let MV_MIN = null;
 let MV_MAX = null;
 let CURRENT_FILTERS = {};
 let FREE_AGENTS_ONLY = false;
+let FILTER_OPTION_CACHE = {};
+let RANGE_BOUNDS = {};
+let RANGE_ACTIVE = {};
 let allRowsCache = [];
 let managerDraftOn = false;
 let draftStartTime = null;
 let viewerClubShort = null;
 let viewerClubHasManager = false;
 let viewerSackedManagerIds = new Set();
+let multiFilterClickWired = false;
 
 function parseMoneyInput(value) {
   if (!value) return null;
@@ -142,11 +153,23 @@ function applyFilters(rows) {
     );
   }
 
-  for (const [col, value] of Object.entries(CURRENT_FILTERS)) {
-    if (col === "name" || !value) continue;
-    const values = Array.isArray(value) ? value : [value];
-    if (!values.length) continue;
-    filtered = filtered.filter((r) => values.includes(String(r[col] ?? "")));
+  for (const { key } of DROPDOWN_FILTER_COLUMNS) {
+    const values = CURRENT_FILTERS[key];
+    if (!Array.isArray(values) || !values.length) continue;
+    filtered = filtered.filter((r) => values.includes(String(r[key] ?? "")));
+  }
+
+  for (const { key } of RANGE_FILTER_COLUMNS) {
+    const bounds = RANGE_BOUNDS[key];
+    const active = RANGE_ACTIVE[key];
+    if (!bounds || !active) continue;
+    const fullRange = active.min <= bounds.min && active.max >= bounds.max;
+    if (fullRange) continue;
+    filtered = filtered.filter((r) => {
+      const n = Number(r[key]);
+      if (!Number.isFinite(n)) return false;
+      return n >= active.min && n <= active.max;
+    });
   }
 
   if (MV_MIN !== null) {
@@ -286,6 +309,343 @@ async function loadViewerClub() {
   viewerSackedManagerIds = new Set((sacked || []).map((id) => Number(id)));
 }
 
+function computeRangeBounds() {
+  RANGE_BOUNDS = {};
+  RANGE_ACTIVE = {};
+  for (const { key } of RANGE_FILTER_COLUMNS) {
+    const nums = allRowsCache
+      .map((r) => Number(r[key]))
+      .filter((n) => Number.isFinite(n));
+    if (!nums.length) {
+      RANGE_BOUNDS[key] = { min: 0, max: 0 };
+      RANGE_ACTIVE[key] = { min: 0, max: 0 };
+      continue;
+    }
+    const min = Math.min(...nums);
+    const max = Math.max(...nums);
+    RANGE_BOUNDS[key] = { min, max };
+    RANGE_ACTIVE[key] = { min, max };
+  }
+}
+
+function closeAllMultiFilters() {
+  document.querySelectorAll("#filters .multi-filter.open").forEach((el) => {
+    el.classList.remove("open");
+  });
+}
+
+function textMatchesSearch(label, query) {
+  const q = normalizeSearchText(query);
+  if (!q) return true;
+  return normalizeSearchText(label).includes(q);
+}
+
+function renderMultiFilterOptions(col, searchQuery = "") {
+  const panel = document.getElementById(`filter-${col}-panel`);
+  const container = panel?.querySelector(".multi-filter-options");
+  if (!container) return;
+
+  const options = FILTER_OPTION_CACHE[col] || [];
+  const checkedBefore = new Set(
+    Array.isArray(CURRENT_FILTERS[col]) ? CURRENT_FILTERS[col] : []
+  );
+  container.querySelectorAll("input[type='checkbox']:checked").forEach((cb) => {
+    checkedBefore.add(cb.value);
+  });
+
+  container.innerHTML = "";
+  let matchCount = 0;
+
+  options.forEach((opt) => {
+    if (!textMatchesSearch(opt.label, searchQuery)) return;
+    matchCount += 1;
+
+    const optionDiv = document.createElement("div");
+    optionDiv.className = "multi-filter-option";
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.value = opt.value;
+    cb.setAttribute("data-label", opt.label);
+    cb.checked = checkedBefore.has(opt.value);
+    cb.addEventListener("change", () => updateMultiFilterDisplay(col));
+
+    const span = document.createElement("span");
+    span.textContent = opt.label;
+
+    optionDiv.appendChild(cb);
+    optionDiv.appendChild(span);
+    container.appendChild(optionDiv);
+  });
+
+  if (matchCount === 0) {
+    container.innerHTML =
+      '<div class="multi-filter-empty">No matches — try fewer letters</div>';
+  }
+}
+
+function updateMultiFilterDisplay(col) {
+  const panel = document.getElementById(`filter-${col}-panel`);
+  const display = document.getElementById(`filter-${col}-display`);
+  if (!panel || !display) return;
+
+  const checkboxes = panel.querySelectorAll(
+    ".multi-filter-options input[type='checkbox']"
+  );
+  const selected = [];
+  const labels = [];
+  checkboxes.forEach((cb) => {
+    if (cb.checked) {
+      selected.push(cb.value);
+      labels.push(cb.getAttribute("data-label") || cb.value);
+    }
+  });
+
+  if (!selected.length) {
+    display.textContent = "All";
+    delete CURRENT_FILTERS[col];
+  } else {
+    CURRENT_FILTERS[col] = selected;
+    display.textContent =
+      selected.length === 1 ? labels[0] : `${labels[0]} +${selected.length - 1}`;
+  }
+
+  CURRENT_PAGE = 1;
+  renderPage();
+}
+
+function updateRangeReadout(col) {
+  const el = document.getElementById(`filter-${col}-range`);
+  const active = RANGE_ACTIVE[col];
+  if (!el || !active) return;
+  el.textContent = `(${active.min}–${active.max})`;
+}
+
+function updateRangeTrack(col) {
+  const wrap = document.getElementById(`filter-${col}-sliders`);
+  const bounds = RANGE_BOUNDS[col];
+  const active = RANGE_ACTIVE[col];
+  if (!wrap || !bounds || !active) return;
+  const span = Math.max(bounds.max - bounds.min, 1);
+  const minPct = ((active.min - bounds.min) / span) * 100;
+  const maxPct = ((active.max - bounds.min) / span) * 100;
+  wrap.style.setProperty("--range-min", `${minPct}%`);
+  wrap.style.setProperty("--range-max", `${maxPct}%`);
+}
+
+function setupRangeFilters() {
+  let debounceTimer = null;
+
+  for (const { key: col } of RANGE_FILTER_COLUMNS) {
+    const minEl = document.getElementById(`filter-${col}-min`);
+    const maxEl = document.getElementById(`filter-${col}-max`);
+    if (!minEl || !maxEl) continue;
+
+    const syncThumbZIndex = () => {
+      const lo = Number(minEl.value);
+      const hi = Number(maxEl.value);
+      if (document.activeElement === minEl) {
+        minEl.style.zIndex = "5";
+        maxEl.style.zIndex = "4";
+      } else if (document.activeElement === maxEl) {
+        maxEl.style.zIndex = "5";
+        minEl.style.zIndex = "4";
+      } else if (lo > hi) {
+        minEl.style.zIndex = "5";
+        maxEl.style.zIndex = "4";
+      } else {
+        minEl.style.zIndex = "3";
+        maxEl.style.zIndex = "4";
+      }
+    };
+
+    const apply = () => {
+      let lo = Number(minEl.value);
+      let hi = Number(maxEl.value);
+      if (Number.isNaN(lo)) lo = RANGE_BOUNDS[col]?.min ?? 0;
+      if (Number.isNaN(hi)) hi = RANGE_BOUNDS[col]?.max ?? lo;
+      if (lo > hi) {
+        if (document.activeElement === minEl) {
+          hi = lo;
+          maxEl.value = String(hi);
+        } else {
+          lo = hi;
+          minEl.value = String(lo);
+        }
+      }
+      RANGE_ACTIVE[col] = { min: lo, max: hi };
+      updateRangeReadout(col);
+      updateRangeTrack(col);
+      syncThumbZIndex();
+      CURRENT_PAGE = 1;
+      renderPage();
+    };
+
+    const scheduleApply = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(apply, 200);
+    };
+
+    minEl.addEventListener("input", () => {
+      syncThumbZIndex();
+      scheduleApply();
+    });
+    maxEl.addEventListener("input", () => {
+      syncThumbZIndex();
+      scheduleApply();
+    });
+    minEl.addEventListener("mousedown", syncThumbZIndex);
+    maxEl.addEventListener("mousedown", syncThumbZIndex);
+    syncThumbZIndex();
+    updateRangeTrack(col);
+  }
+}
+
+function wireMultiFilterClicks() {
+  if (multiFilterClickWired) return;
+  multiFilterClickWired = true;
+
+  document.addEventListener("click", () => {
+    closeAllMultiFilters();
+  });
+
+  document.addEventListener("click", (e) => {
+    const wrapper = e.target.closest("#filters .multi-filter");
+    if (!wrapper) return;
+    e.stopPropagation();
+    const wasOpen = wrapper.classList.contains("open");
+    closeAllMultiFilters();
+    if (!wasOpen) {
+      wrapper.classList.add("open");
+      const search = wrapper.querySelector(".multi-filter-search");
+      if (search) {
+        search.focus();
+        search.select();
+      }
+    }
+  });
+}
+
+function buildFilterControls() {
+  const container = document.getElementById("filters");
+  if (!container) return;
+
+  FILTER_OPTION_CACHE = {};
+  for (const { key } of DROPDOWN_FILTER_COLUMNS) {
+    const values = [
+      ...new Set(
+        allRowsCache.map((r) => String(r[key] ?? "").trim()).filter(Boolean)
+      ),
+    ].sort((a, b) => {
+      if (key === "contracted_display") {
+        if (a === "FREE AGENT") return -1;
+        if (b === "FREE AGENT") return 1;
+        return displayClub(a).localeCompare(displayClub(b));
+      }
+      return a.localeCompare(b);
+    });
+    FILTER_OPTION_CACHE[key] = values.map((v) => ({
+      value: v,
+      label: key === "contracted_display" ? displayClub(v) : v,
+    }));
+  }
+
+  const parts = [`<strong>Filters</strong>`];
+
+  parts.push(`
+    <label class="mgdb-free-only">
+      <input type="checkbox" id="filter-free-only" ${FREE_AGENTS_ONLY ? "checked" : ""}>
+      Not contracted only
+    </label>
+  `);
+
+  parts.push(`
+    <label class="text-filter">
+      Manager name
+      <input type="text" id="filter-name" placeholder="Search…" value="${String(
+        CURRENT_FILTERS.name || ""
+      ).replace(/"/g, "&quot;")}">
+    </label>
+  `);
+
+  for (const { key, label } of DROPDOWN_FILTER_COLUMNS) {
+    const selected = Array.isArray(CURRENT_FILTERS[key]) ? CURRENT_FILTERS[key] : [];
+    let display = "All";
+    if (selected.length === 1) {
+      const opt = FILTER_OPTION_CACHE[key]?.find((o) => o.value === selected[0]);
+      display = opt?.label || selected[0];
+    } else if (selected.length > 1) {
+      const opt = FILTER_OPTION_CACHE[key]?.find((o) => o.value === selected[0]);
+      display = `${opt?.label || selected[0]} +${selected.length - 1}`;
+    }
+    parts.push(`
+      <div class="multi-filter" data-col="${key}">
+        <div class="multi-filter-label">${label}</div>
+        <div class="multi-filter-control" id="filter-${key}-display">${display}</div>
+        <div class="multi-filter-panel" id="filter-${key}-panel">
+          <input type="text" class="multi-filter-search" autocomplete="off" placeholder="Type to narrow…" aria-label="Search ${label}">
+          <div class="multi-filter-options"></div>
+        </div>
+      </div>
+    `);
+  }
+
+  for (const { key, label } of RANGE_FILTER_COLUMNS) {
+    const bounds = RANGE_BOUNDS[key] || { min: 0, max: 0 };
+    const active = RANGE_ACTIVE[key] || bounds;
+    const disabled = bounds.max <= bounds.min ? "disabled" : "";
+    parts.push(`
+      <div class="range-filter" data-col="${key}">
+        <div class="range-filter-label">${label} <span class="range-filter-range" id="filter-${key}-range">(${active.min}–${active.max})</span></div>
+        <div class="range-filter-sliders" id="filter-${key}-sliders">
+          <div class="range-filter-track"></div>
+          <input type="range" class="range-filter-min" id="filter-${key}-min" min="${bounds.min}" max="${bounds.max}" value="${active.min}" step="1" aria-label="${label} minimum" ${disabled}>
+          <input type="range" class="range-filter-max" id="filter-${key}-max" min="${bounds.min}" max="${bounds.max}" value="${active.max}" step="1" aria-label="${label} maximum" ${disabled}>
+        </div>
+      </div>
+    `);
+  }
+
+  container.innerHTML = parts.join("");
+
+  document.getElementById("filter-free-only")?.addEventListener("change", (e) => {
+    FREE_AGENTS_ONLY = !!e.target.checked;
+    CURRENT_PAGE = 1;
+    renderPage();
+  });
+
+  let nameDebounce = null;
+  document.getElementById("filter-name")?.addEventListener("input", (e) => {
+    clearTimeout(nameDebounce);
+    nameDebounce = setTimeout(() => {
+      CURRENT_FILTERS.name = e.target.value;
+      CURRENT_PAGE = 1;
+      renderPage();
+    }, 200);
+  });
+
+  for (const { key } of DROPDOWN_FILTER_COLUMNS) {
+    const panel = document.getElementById(`filter-${key}-panel`);
+    const searchInput = panel?.querySelector(".multi-filter-search");
+    if (searchInput) {
+      let searchDebounce = null;
+      searchInput.addEventListener("input", () => {
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(() => {
+          renderMultiFilterOptions(key, searchInput.value);
+        }, 120);
+      });
+      searchInput.addEventListener("click", (e) => e.stopPropagation());
+      searchInput.addEventListener("keydown", (e) => e.stopPropagation());
+    }
+    panel?.addEventListener("click", (e) => e.stopPropagation());
+    renderMultiFilterOptions(key, "");
+  }
+
+  setupRangeFilters();
+  wireMultiFilterClicks();
+}
+
 async function loadManagers() {
   const errEl = document.getElementById("mgdbError");
   const { data, error } = await supabase
@@ -311,70 +671,9 @@ async function loadManagers() {
   }));
 
   if (errEl) errEl.hidden = true;
+  computeRangeBounds();
   buildFilterControls();
   renderPage();
-}
-
-function buildFilterControls() {
-  const container = document.getElementById("filters");
-  if (!container) return;
-
-  const unique = (key) =>
-    [...new Set(allRowsCache.map((r) => String(r[key] ?? "").trim()).filter(Boolean))].sort();
-
-  container.innerHTML = `<strong>Filters</strong>`;
-
-  const freeWrap = document.createElement("label");
-  freeWrap.style.cssText =
-    "display:flex;align-items:center;gap:8px;min-width:180px;color:#ddd;font-size:13px;cursor:pointer;";
-  freeWrap.innerHTML = `<input type="checkbox" id="filter-free-only" ${
-    FREE_AGENTS_ONLY ? "checked" : ""
-  }> Not contracted only`;
-  container.appendChild(freeWrap);
-  document.getElementById("filter-free-only")?.addEventListener("change", (e) => {
-    FREE_AGENTS_ONLY = !!e.target.checked;
-    CURRENT_PAGE = 1;
-    renderPage();
-  });
-
-  const nameLabel = document.createElement("label");
-  nameLabel.innerHTML = `Manager name <input type="text" id="filter-name" placeholder="Search…">`;
-  container.appendChild(nameLabel);
-
-  document.getElementById("filter-name")?.addEventListener("input", (e) => {
-    CURRENT_FILTERS.name = e.target.value;
-    CURRENT_PAGE = 1;
-    renderPage();
-  });
-  if (CURRENT_FILTERS.name) {
-    const nameInput = document.getElementById("filter-name");
-    if (nameInput) nameInput.value = CURRENT_FILTERS.name;
-  }
-
-  for (const col of FILTER_COLUMNS) {
-    const values = unique(col === "contracted_display" ? "contracted_display" : col);
-    const wrap = document.createElement("div");
-    wrap.style.minWidth = "160px";
-    const label = col === "rating" ? "Rating" : col === "contracted_display" ? "Club" : col;
-    wrap.innerHTML = `<div style="font-size:12px;color:#ffaa22;margin-bottom:4px;">${label}</div>`;
-    const sel = document.createElement("select");
-    sel.multiple = true;
-    sel.size = Math.min(6, values.length + 1);
-    sel.style.minWidth = "150px";
-    values.forEach((v) => {
-      const opt = document.createElement("option");
-      opt.value = v;
-      opt.textContent = col === "contracted_display" ? displayClub(v) : v;
-      sel.appendChild(opt);
-    });
-    sel.addEventListener("change", () => {
-      CURRENT_FILTERS[col] = [...sel.selectedOptions].map((o) => o.value);
-      CURRENT_PAGE = 1;
-      renderPage();
-    });
-    wrap.appendChild(sel);
-    container.appendChild(wrap);
-  }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -421,6 +720,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const mvMax = document.getElementById("mv-max");
     if (mvMin) mvMin.value = "";
     if (mvMax) mvMax.value = "";
+    computeRangeBounds();
     CURRENT_PAGE = 1;
     buildFilterControls();
     renderPage();
