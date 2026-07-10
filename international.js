@@ -3,6 +3,9 @@
  */
 import { supabase } from "./supabase_client.js";
 import { normalizeNation } from "./squad_rules.js";
+import { nationFlagSrc, renderNationFlag } from "./international_flags.js";
+
+export { nationFlagSrc, renderNationFlag };
 
 export const NATIONAL_SQUAD_MAX = 23;
 export const NATIONAL_SQUAD_MIN_GK = 2;
@@ -307,8 +310,6 @@ export function nationLink(code, label) {
   const text = label || code;
   return `<a href="national_team.html?nation=${encodeURIComponent(code)}">${text}</a>`;
 }
-
-export { nationFlagSrc, renderNationFlag } from "./international_flags.js";
 
 export function groupStandingsTable(rows, groupCode) {
   const groupRows = rows.filter((r) => r.group_code === groupCode);
