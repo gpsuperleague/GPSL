@@ -43,6 +43,7 @@ let CURRENT_SORT_DIR = "desc";
 let MV_MIN = null;
 let MV_MAX = null;
 let CURRENT_FILTERS = {};
+let FREE_AGENTS_ONLY = false;
 let allRowsCache = [];
 let managerDraftOn = false;
 let draftStartTime = null;
@@ -153,6 +154,15 @@ function applyFilters(rows) {
   }
   if (MV_MAX !== null) {
     filtered = filtered.filter((r) => Number(r.market_value) <= MV_MAX);
+  }
+
+  if (FREE_AGENTS_ONLY) {
+    filtered = filtered.filter(
+      (r) =>
+        !r.contracted_club ||
+        !String(r.contracted_club).trim() ||
+        String(r.contracted_display) === "FREE AGENT"
+    );
   }
 
   return filtered;
@@ -314,6 +324,19 @@ function buildFilterControls() {
 
   container.innerHTML = `<strong>Filters</strong>`;
 
+  const freeWrap = document.createElement("label");
+  freeWrap.style.cssText =
+    "display:flex;align-items:center;gap:8px;min-width:180px;color:#ddd;font-size:13px;cursor:pointer;";
+  freeWrap.innerHTML = `<input type="checkbox" id="filter-free-only" ${
+    FREE_AGENTS_ONLY ? "checked" : ""
+  }> Not contracted only`;
+  container.appendChild(freeWrap);
+  document.getElementById("filter-free-only")?.addEventListener("change", (e) => {
+    FREE_AGENTS_ONLY = !!e.target.checked;
+    CURRENT_PAGE = 1;
+    renderPage();
+  });
+
   const nameLabel = document.createElement("label");
   nameLabel.innerHTML = `Manager name <input type="text" id="filter-name" placeholder="Search…">`;
   container.appendChild(nameLabel);
@@ -323,6 +346,10 @@ function buildFilterControls() {
     CURRENT_PAGE = 1;
     renderPage();
   });
+  if (CURRENT_FILTERS.name) {
+    const nameInput = document.getElementById("filter-name");
+    if (nameInput) nameInput.value = CURRENT_FILTERS.name;
+  }
 
   for (const col of FILTER_COLUMNS) {
     const values = unique(col === "contracted_display" ? "contracted_display" : col);
@@ -387,6 +414,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
     CURRENT_FILTERS = {};
+    FREE_AGENTS_ONLY = false;
     MV_MIN = null;
     MV_MAX = null;
     const mvMin = document.getElementById("mv-min");
