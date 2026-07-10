@@ -40,6 +40,7 @@ const DROPDOWN_FILTER_COLUMNS = [
 const RANGE_FILTER_COLUMNS = [
   { key: "age", label: "Age" },
   { key: "rating", label: "Rating" },
+  { key: "market_value", label: "Market Value" },
 ];
 
 let PAGE_SIZE = 100;
@@ -47,8 +48,6 @@ let CURRENT_PAGE = 1;
 let TOTAL_ROWS = 0;
 let CURRENT_SORT_COLUMN = "rating";
 let CURRENT_SORT_DIR = "desc";
-let MV_MIN = null;
-let MV_MAX = null;
 let CURRENT_FILTERS = {};
 let FREE_AGENTS_ONLY = false;
 let FILTER_OPTION_CACHE = {};
@@ -66,6 +65,31 @@ function parseMoneyInput(value) {
   if (!value) return null;
   const n = Number(String(value).replace(/,/g, ""));
   return Number.isFinite(n) ? n : null;
+}
+
+function rangeStep(col) {
+  if (col !== "market_value") return 1;
+  const bounds = RANGE_BOUNDS[col];
+  if (!bounds) return 100000;
+  const span = Math.max(bounds.max - bounds.min, 1);
+  // ~100 steps across the range, snapped to nice money increments
+  const rough = span / 100;
+  if (rough <= 100000) return 100000;
+  if (rough <= 250000) return 250000;
+  if (rough <= 500000) return 500000;
+  if (rough <= 1000000) return 1000000;
+  return Math.ceil(rough / 1000000) * 1000000;
+}
+
+function snapRangeValue(col, n) {
+  if (col !== "market_value") return Math.round(n);
+  const step = rangeStep(col);
+  const bounds = RANGE_BOUNDS[col];
+  let v = Math.round(n / step) * step;
+  if (bounds) {
+    v = Math.max(bounds.min, Math.min(bounds.max, v));
+  }
+  return v;
 }
 
 function normalizeSearchText(value) {
@@ -170,13 +194,6 @@ function applyFilters(rows) {
       if (!Number.isFinite(n)) return false;
       return n >= active.min && n <= active.max;
     });
-  }
-
-  if (MV_MIN !== null) {
-    filtered = filtered.filter((r) => Number(r.market_value) >= MV_MIN);
-  }
-  if (MV_MAX !== null) {
-    filtered = filtered.filter((r) => Number(r.market_value) <= MV_MAX);
   }
 
   if (FREE_AGENTS_ONLY) {
@@ -418,6 +435,10 @@ function updateRangeReadout(col) {
   const el = document.getElementById(`filter-${col}-range`);
   const active = RANGE_ACTIVE[col];
   if (!el || !active) return;
+  if (col === "market_value") {
+    el.textContent = `(${formatMoney(active.min)}–${formatMoney(active.max)})`;
+    return;
+  }
   el.textContent = `(${active.min}–${active.max})`;
 }
 
@@ -464,6 +485,10 @@ function setupRangeFilters() {
       let hi = Number(maxEl.value);
       if (Number.isNaN(lo)) lo = RANGE_BOUNDS[col]?.min ?? 0;
       if (Number.isNaN(hi)) hi = RANGE_BOUNDS[col]?.max ?? lo;
+      lo = snapRangeValue(col, lo);
+      hi = snapRangeValue(col, hi);
+      minEl.value = String(lo);
+      maxEl.value = String(hi);
       if (lo > hi) {
         if (document.activeElement === minEl) {
           hi = lo;
@@ -593,14 +618,20 @@ function buildFilterControls() {
   for (const { key, label } of RANGE_FILTER_COLUMNS) {
     const bounds = RANGE_BOUNDS[key] || { min: 0, max: 0 };
     const active = RANGE_ACTIVE[key] || bounds;
+    const step = rangeStep(key);
     const disabled = bounds.max <= bounds.min ? "disabled" : "";
+    const rangeText =
+      key === "market_value"
+        ? `(${formatMoney(active.min)}–${formatMoney(active.max)})`
+        : `(${active.min}–${active.max})`;
+    const wide = key === "market_value" ? " range-filter--money" : "";
     parts.push(`
-      <div class="range-filter" data-col="${key}">
-        <div class="range-filter-label">${label} <span class="range-filter-range" id="filter-${key}-range">(${active.min}–${active.max})</span></div>
+      <div class="range-filter${wide}" data-col="${key}">
+        <div class="range-filter-label">${label} <span class="range-filter-range" id="filter-${key}-range">${rangeText}</span></div>
         <div class="range-filter-sliders" id="filter-${key}-sliders">
           <div class="range-filter-track"></div>
-          <input type="range" class="range-filter-min" id="filter-${key}-min" min="${bounds.min}" max="${bounds.max}" value="${active.min}" step="1" aria-label="${label} minimum" ${disabled}>
-          <input type="range" class="range-filter-max" id="filter-${key}-max" min="${bounds.min}" max="${bounds.max}" value="${active.max}" step="1" aria-label="${label} maximum" ${disabled}>
+          <input type="range" class="range-filter-min" id="filter-${key}-min" min="${bounds.min}" max="${bounds.max}" value="${active.min}" step="${step}" aria-label="${label} minimum" ${disabled}>
+          <input type="range" class="range-filter-max" id="filter-${key}-max" min="${bounds.min}" max="${bounds.max}" value="${active.max}" step="${step}" aria-label="${label} maximum" ${disabled}>
         </div>
       </div>
     `);
@@ -714,12 +745,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
     CURRENT_FILTERS = {};
     FREE_AGENTS_ONLY = false;
-    MV_MIN = null;
-    MV_MAX = null;
-    const mvMin = document.getElementById("mv-min");
-    const mvMax = document.getElementById("mv-max");
-    if (mvMin) mvMin.value = "";
-    if (mvMax) mvMax.value = "";
     computeRangeBounds();
     CURRENT_PAGE = 1;
     buildFilterControls();
