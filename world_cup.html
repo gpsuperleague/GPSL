@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <title>World Cup — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
-  <link rel="stylesheet" href="international.css?v=20260710-fixtures">
+  <link rel="stylesheet" href="international.css?v=20260710-qual-cut">
   <link rel="stylesheet" href="competition_themes.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
@@ -54,8 +54,17 @@
 
     <div class="panel">
       <h2>Qualifying — 12 × groups of 5</h2>
-      <p class="intl-note">Played over the two GPSL seasons before each finals window. Nations listed by seed (strongest first) until results change the table.</p>
+      <p class="intl-note">
+        Top 2 in each group qualify automatically (cut line below 2nd). 3rd place is marked;
+        the best 8 thirds overall also reach the finals (32 teams).
+      </p>
       <div id="qualGroups" class="intl-grid"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Best third-place ranking</h2>
+      <p id="bestThirdsNote" class="intl-note">Loading…</p>
+      <div id="bestThirds"></div>
     </div>
 
     <div class="panel">
@@ -69,7 +78,7 @@
 
     <div class="panel">
       <h2>Finals — 8 × groups of 4</h2>
-      <p class="intl-note">Top two from each group advance to the last 16.</p>
+      <p class="intl-note">Top two from each group advance to the last 16 (cut line below 2nd).</p>
       <div id="finalsGroups" class="intl-grid"></div>
     </div>
 
@@ -84,6 +93,6 @@
       <p id="knockoutNote" class="empty" hidden>Knockout bracket will appear once finals groups are complete.</p>
     </div>
   </div>
-  <script type="module" src="world_cup.js?v=20260710-fixtures"></script>
+  <script type="module" src="world_cup.js?v=20260710-qual-cut"></script>
 </body>
 </html>

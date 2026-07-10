@@ -359,34 +359,77 @@ export function nationLink(code, label) {
   return `<a href="national_team.html?nation=${encodeURIComponent(code)}">${text}</a>`;
 }
 
-export function groupStandingsTable(rows, groupCode) {
-  const groupRows = rows
-    .filter((r) => r.group_code === groupCode)
-    .slice()
-    .sort((a, b) => {
-      const pts = Number(b.points || 0) - Number(a.points || 0);
-      if (pts) return pts;
-      const gd =
-        Number(b.goal_diff ?? (b.goals_for || 0) - (b.goals_against || 0)) -
-        Number(a.goal_diff ?? (a.goals_for || 0) - (a.goals_against || 0));
-      if (gd) return gd;
-      const gf = Number(b.goals_for || 0) - Number(a.goals_for || 0);
-      if (gf) return gf;
-      // At equal table (e.g. all 0 before kickoff): strongest seed first
-      return (Number(a.seed_rank) || 9999) - (Number(b.seed_rank) || 9999);
-    });
+function sortGroupRows(rows) {
+  return rows.slice().sort((a, b) => {
+    const pts = Number(b.points || 0) - Number(a.points || 0);
+    if (pts) return pts;
+    const gd =
+      Number(b.goal_diff ?? (b.goals_for || 0) - (b.goals_against || 0)) -
+      Number(a.goal_diff ?? (a.goals_for || 0) - (a.goals_against || 0));
+    if (gd) return gd;
+    const gf = Number(b.goals_for || 0) - Number(a.goals_for || 0);
+    if (gf) return gf;
+    return (Number(a.seed_rank) || 9999) - (Number(b.seed_rank) || 9999);
+  });
+}
+
+/**
+ * @param {object[]} rows
+ * @param {string} groupCode
+ * @param {{ phase?: 'qualifying'|'finals' }} [opts]
+ */
+export function groupStandingsTable(rows, groupCode, opts = {}) {
+  const phase = opts.phase || "qualifying";
+  const groupRows = sortGroupRows(rows.filter((r) => r.group_code === groupCode));
   if (!groupRows.length) {
     return `<p class="empty">Group ${groupCode} — not drawn yet.</p>`;
   }
-  const body = groupRows
-    .map(
-      (r, i) => `
-      <tr>
-        <td>${i + 1}</td>
+
+  // Each nation plays 8 qual games (4 per season × 2); finals groups play 3.
+  const gamesExpected = phase === "finals" ? 3 : 8;
+  const allPlayed =
+    groupRows.length > 0 &&
+    groupRows.every((r) => Number(r.played || 0) >= gamesExpected);
+
+  const parts = [];
+  groupRows.forEach((r, i) => {
+    const pos = i + 1;
+    let rowClass = "";
+    let badge = "";
+
+    if (phase === "qualifying") {
+      if (pos <= 2) {
+        rowClass = "intl-row-qualify";
+        badge = `<span class="intl-badge intl-badge-q" title="Automatic qualifier">Q</span>`;
+      } else if (pos === 3) {
+        const thr = Number(r.third_place_rank);
+        const bestEight = r.qualified === true && thr > 0 && thr <= 8;
+        rowClass = bestEight ? "intl-row-best-third" : "intl-row-third";
+        badge = bestEight
+          ? `<span class="intl-badge intl-badge-3q" title="Best third — qualifies (rank ${thr})">3rd #${thr}</span>`
+          : thr > 0
+            ? `<span class="intl-badge intl-badge-3" title="3rd in group — overall third rank ${thr}">3rd #${thr}</span>`
+            : `<span class="intl-badge intl-badge-3" title="3rd in group — best thirds ranked when all qual games are played">3rd</span>`;
+      } else if (allPlayed) {
+        rowClass = "intl-row-out";
+      }
+    } else if (phase === "finals") {
+      if (pos <= 2) {
+        rowClass = "intl-row-qualify";
+        badge = `<span class="intl-badge intl-badge-q" title="Advances to knockout">KO</span>`;
+      } else if (allPlayed) {
+        rowClass = "intl-row-out";
+      }
+    }
+
+    parts.push(`
+      <tr class="${rowClass}">
+        <td>${pos}</td>
         <td>
           <span class="intl-nation-cell">
             ${renderNationFlag(r, "sm")}
             ${nationLink(r.nation_code, r.nation_name)}
+            ${badge}
             ${
               r.seed_rank != null
                 ? `<span class="intl-seed" title="Seed rank">#${Number(r.seed_rank)}</span>`
@@ -400,9 +443,22 @@ export function groupStandingsTable(rows, groupCode) {
         <td>${r.lost}</td>
         <td>${r.goals_for}:${r.goals_against}</td>
         <td><b>${r.points}</b></td>
-      </tr>`
-    )
-    .join("");
+      </tr>`);
+
+    if (phase === "qualifying" && pos === 2) {
+      parts.push(`
+        <tr class="intl-cut-row" aria-hidden="true">
+          <td colspan="8"><span class="intl-cut-label">Qualification cut — top 2</span></td>
+        </tr>`);
+    }
+    if (phase === "finals" && pos === 2) {
+      parts.push(`
+        <tr class="intl-cut-row" aria-hidden="true">
+          <td colspan="8"><span class="intl-cut-label">Knockout cut — top 2</span></td>
+        </tr>`);
+    }
+  });
+
   return `
     <table class="intl-table">
       <colgroup>
@@ -417,6 +473,37 @@ export function groupStandingsTable(rows, groupCode) {
           <th>#</th><th>Nation</th><th>P</th><th>W</th><th>D</th><th>L</th><th>F:A</th><th>Pts</th>
         </tr>
       </thead>
-      <tbody>${body}</tbody>
+      <tbody>${parts.join("")}</tbody>
     </table>`;
+}
+
+/** All group 3rds for the best-eight board (qualifying). */
+export function bestThirdPlaceRows(qualRows) {
+  const byGroup = new Map();
+  for (const r of qualRows || []) {
+    if (!byGroup.has(r.group_code)) byGroup.set(r.group_code, []);
+    byGroup.get(r.group_code).push(r);
+  }
+  const thirds = [];
+  for (const [group_code, list] of byGroup) {
+    const sorted = sortGroupRows(list);
+    if (sorted.length >= 3) {
+      thirds.push({ ...sorted[2], group_code, group_pos: 3 });
+    }
+  }
+  thirds.sort((a, b) => {
+    const ar = Number(a.third_place_rank);
+    const br = Number(b.third_place_rank);
+    if (ar > 0 && br > 0) return ar - br;
+    if (ar > 0) return -1;
+    if (br > 0) return 1;
+    const pts = Number(b.points || 0) - Number(a.points || 0);
+    if (pts) return pts;
+    const gd =
+      Number(b.goal_diff ?? (b.goals_for || 0) - (b.goals_against || 0)) -
+      Number(a.goal_diff ?? (a.goals_for || 0) - (a.goals_against || 0));
+    if (gd) return gd;
+    return (Number(a.seed_rank) || 9999) - (Number(b.seed_rank) || 9999);
+  });
+  return thirds;
 }

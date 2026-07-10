@@ -6,6 +6,7 @@ import {
   loadInternationalFixtures,
   loadMyNation,
   groupStandingsTable,
+  bestThirdPlaceRows,
   WC_QUAL_GROUPS,
   WC_FINALS_GROUPS,
 } from "./international.js";
@@ -41,7 +42,7 @@ function renderCycle(cycles) {
   `;
 }
 
-function renderGroupGrid(containerId, letters, rows) {
+function renderGroupGrid(containerId, letters, rows, phase) {
   const el = document.getElementById(containerId);
   if (!el) return;
   if (!rows.length) {
@@ -58,10 +59,78 @@ function renderGroupGrid(containerId, letters, rows) {
       (g) => `
       <div class="intl-group-card">
         <h4>Group ${g}</h4>
-        ${groupStandingsTable(rows, g)}
+        ${groupStandingsTable(rows, g, { phase })}
       </div>`
     )
     .join("");
+}
+
+function renderBestThirds(qualRows) {
+  const el = document.getElementById("bestThirds");
+  const note = document.getElementById("bestThirdsNote");
+  if (!el) return;
+
+  const thirds = bestThirdPlaceRows(qualRows);
+  if (!thirds.length) {
+    el.innerHTML = "";
+    if (note) {
+      note.hidden = false;
+      note.textContent =
+        "Third-place ranking appears once qualifying groups are drawn.";
+    }
+    return;
+  }
+
+  const ranked = thirds.some((r) => Number(r.third_place_rank) > 0);
+  if (note) {
+    note.hidden = false;
+    note.textContent = ranked
+      ? "Best 8 third-place nations (highlighted) join the 24 automatic qualifiers in the finals draw."
+      : "Group 3rds listed by current form. Best 8 are locked in when every qualifying fixture is played.";
+  }
+
+  el.innerHTML = `
+    <table class="intl-table intl-thirds-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Group</th><th>Nation</th><th>P</th><th>W</th><th>D</th><th>L</th><th>F:A</th><th>Pts</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${thirds
+          .map((r, i) => {
+            const thr = Number(r.third_place_rank) || i + 1;
+            const bestEight = r.qualified === true && Number(r.third_place_rank) > 0 && Number(r.third_place_rank) <= 8;
+            const pendingBest = !ranked && i < 8;
+            const rowClass = bestEight || pendingBest ? "intl-row-best-third" : "";
+            const tag = bestEight
+              ? `<span class="intl-badge intl-badge-3q">Finals</span>`
+              : ranked
+                ? `<span class="empty">—</span>`
+                : pendingBest
+                  ? `<span class="intl-badge intl-badge-3">Provisional</span>`
+                  : "";
+            return `<tr class="${rowClass}">
+              <td>${thr}</td>
+              <td>${escapeHtml(r.group_code)}</td>
+              <td>
+                <span class="intl-nation-cell">
+                  ${renderNationFlag(r, "sm")}
+                  ${escapeHtml(r.nation_name || r.nation_code)}
+                </span>
+              </td>
+              <td>${r.played}</td>
+              <td>${r.won}</td>
+              <td>${r.drawn}</td>
+              <td>${r.lost}</td>
+              <td>${r.goals_for}:${r.goals_against}</td>
+              <td><b>${r.points}</b></td>
+              <td>${tag}</td>
+            </tr>`;
+          })
+          .join("")}
+      </tbody>
+    </table>`;
 }
 
 function nationCell(code, name, flag) {
@@ -208,14 +277,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadInternationalFixtures(cycleNo, "finals_group", supabase),
   ]);
 
-  renderGroupGrid("qualGroups", QUAL_LETTERS.slice(0, WC_QUAL_GROUPS), qual);
+  renderGroupGrid("qualGroups", QUAL_LETTERS.slice(0, WC_QUAL_GROUPS), qual, "qualifying");
+  renderBestThirds(qual);
   renderFixtures(
     "qualFixtures",
     qualFix,
     "No qualifying fixtures yet — admin: World Cup cycle → Generate qual fixtures."
   );
 
-  renderGroupGrid("finalsGroups", FINALS_LETTERS.slice(0, WC_FINALS_GROUPS), finals);
+  renderGroupGrid("finalsGroups", FINALS_LETTERS.slice(0, WC_FINALS_GROUPS), finals, "finals");
   renderFixtures(
     "finalsFixtures",
     finalsFix,

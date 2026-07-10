@@ -31,7 +31,7 @@ Admin UI: `admin_international.html` → **World Cup cycle**
 | Create cycle | Label + qual season 1 + qual season 2 + **finals season (pre-season)** e.g. S3 + S4 qual, S5 finals |
 | Draw qual groups | Seed pots 1–5 (ranks 1–12, 13–24, …); one from each pot → groups A–L |
 | Generate qual fixtures | Double RR in groups of 5: **8 games per nation** (4/season). 5 calendar windows/season (bye each round) spaced Aug–May; seasons 1 then 2 |
-| Rank thirds | After all qual played: top 2 + 8 best thirds → 32 |
+| Rank thirds | After all qual played: top 2 + 8 best thirds → 32 (also auto-runs when the last qual result is confirmed) |
 | Draw finals | 4 pots of 8 by seed among qualified → groups A–H |
 | Generate finals fixtures | Single RR (6 per group) |
 | Seed knockout | After finals groups played: R16 pairings → QF/SF/Final advance on results |
@@ -47,7 +47,7 @@ Admin UI: `admin_international.html` → **World Cup cycle**
 
 | Page | Purpose |
 |------|---------|
-| `world_cup.html` | Cycle info, qual/finals tables, knockout bracket |
+| `world_cup.html` | Cycle info, qual/finals tables (Q cut + 3rd badges), best-thirds board, knockout |
 | `international_matchday.html` | Arrange + results for your nation |
 | `nation_select.html` | Owner draft pick |
 | `national_team.html?nation=XXX` | Flag, squad, call-ups |
@@ -55,7 +55,7 @@ Admin UI: `admin_international.html` → **World Cup cycle**
 
 ## SQL
 
-`supabase/sql/competition_international.sql` + WC engine patches above.
+`supabase/sql/competition_international.sql` + WC engine patches above, including `international_wc_auto_rank_thirds.sql`.
 
 ## Nation strength (admin)
 
