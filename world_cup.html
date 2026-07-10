@@ -6,7 +6,7 @@
   <title>World Cup — GPSL</title>
   <link rel="icon" href="images/trophies/world_cup.png" type="image/png">
   <link rel="stylesheet" href="dashboard.css">
-  <link rel="stylesheet" href="international.css?v=20260710-standings-clean">
+  <link rel="stylesheet" href="international.css?v=20260710-ko-polish">
   <link rel="stylesheet" href="competition_themes.css">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
@@ -51,6 +51,7 @@
     <div class="panel">
       <h2>Current cycle</h2>
       <div id="cycleInfo" class="wc-phase">Loading…</div>
+      <p id="nextIntl" class="intl-note" hidden style="margin-top:12px;"></p>
     </div>
 
     <div class="panel">
@@ -92,10 +93,16 @@
 
     <div class="panel">
       <h2>Knockout stage</h2>
+      <p class="intl-note">R16 → QF → SF → Final, plus 3rd-place playoff. Your nation’s ties are highlighted.</p>
       <div id="knockoutBracket"></div>
       <p id="knockoutNote" class="empty" hidden>Knockout bracket will appear once finals groups are complete.</p>
     </div>
+
+    <div class="panel">
+      <h2>World Cup history</h2>
+      <div id="wcHistory"></div>
+    </div>
   </div>
-  <script type="module" src="world_cup.js?v=20260710-standings-clean"></script>
+  <script type="module" src="world_cup.js?v=20260710-ko-polish"></script>
 </body>
 </html>

@@ -9,8 +9,8 @@ import {
   bestThirdPlaceRows,
   WC_QUAL_GROUPS,
   WC_FINALS_GROUPS,
-} from "./international.js?v=20260710-standings-clean";
-import { renderNationFlag } from "./international_flags.js?v=20260710-standings-clean";
+} from "./international.js?v=20260710-ko-polish";
+import { renderNationFlag } from "./international_flags.js?v=20260710-ko-polish";
 
 const QUAL_LETTERS = "ABCDEFGHIJKL".split("");
 const FINALS_LETTERS = "ABCDEFGH".split("");
@@ -31,6 +31,26 @@ function renderCycle(cycles) {
       '<span class="empty">No World Cup cycle configured yet — admin can set this up.</span>';
     return;
   }
+  let podium = "";
+  if (c.champion_nation || c.runner_up_nation || c.third_place_nation) {
+    podium = `<div class="intl-podium" style="margin-top:10px;">
+      ${
+        c.champion_nation
+          ? `<div><span class="intl-badge intl-badge-q">1st</span> ${escapeHtml(c.champion_flag || "")} ${escapeHtml(c.champion_name || c.champion_nation)}</div>`
+          : ""
+      }
+      ${
+        c.runner_up_nation
+          ? `<div><span class="intl-badge intl-badge-3">2nd</span> ${escapeHtml(c.runner_up_flag || "")} ${escapeHtml(c.runner_up_name || c.runner_up_nation)}</div>`
+          : ""
+      }
+      ${
+        c.third_place_nation
+          ? `<div><span class="intl-badge intl-badge-3q">3rd</span> ${escapeHtml(c.third_place_flag || "")} ${escapeHtml(c.third_place_name || c.third_place_nation)}</div>`
+          : ""
+      }
+    </div>`;
+  }
   el.innerHTML = `
     <b>${escapeHtml(c.label)}</b> — status: <b>${escapeHtml(c.status)}</b><br>
     Qualifying seasons: ${escapeHtml(c.qual_season_1_label || "—")} &amp; ${escapeHtml(
@@ -39,7 +59,68 @@ function renderCycle(cycles) {
     Finals: pre-season of ${escapeHtml(c.finals_after_season_label || "—")} (season ${escapeHtml(
       c.finals_after_season_ordinal || "—"
     )})
+    ${podium}
   `;
+}
+
+function renderHistory(cycles) {
+  const el = document.getElementById("wcHistory");
+  if (!el) return;
+  const done = (cycles || []).filter(
+    (c) => c.champion_nation || String(c.status).toLowerCase() === "complete"
+  );
+  if (!done.length) {
+    el.innerHTML = `<p class="empty">No completed World Cups yet — champions appear here after the final.</p>`;
+    return;
+  }
+  el.innerHTML = `
+    <table class="intl-table intl-thirds-table">
+      <thead>
+        <tr><th>Cycle</th><th>Champion</th><th>Runner-up</th><th>Third</th></tr>
+      </thead>
+      <tbody>
+        ${done
+          .map(
+            (c) => `<tr>
+              <td>${escapeHtml(c.label || `Cycle ${c.cycle_no}`)}</td>
+              <td>${escapeHtml(c.champion_flag || "")} ${escapeHtml(c.champion_name || c.champion_nation || "—")}</td>
+              <td>${escapeHtml(c.runner_up_flag || "")} ${escapeHtml(c.runner_up_name || c.runner_up_nation || "—")}</td>
+              <td>${escapeHtml(c.third_place_flag || "")} ${escapeHtml(c.third_place_name || c.third_place_nation || "—")}</td>
+            </tr>`
+          )
+          .join("")}
+      </tbody>
+    </table>`;
+}
+
+function renderNextIntl(myNationCode, fixtures) {
+  const el = document.getElementById("nextIntl");
+  if (!el || !myNationCode) {
+    if (el) el.hidden = true;
+    return;
+  }
+  const mine = (fixtures || []).filter(
+    (f) =>
+      !f.played &&
+      (String(f.home_nation).toUpperCase() === String(myNationCode).toUpperCase() ||
+        String(f.away_nation).toUpperCase() === String(myNationCode).toUpperCase())
+  );
+  if (!mine.length) {
+    el.hidden = true;
+    return;
+  }
+  const f = mine[0];
+  el.hidden = false;
+  const when = f.agreed_kickoff_at
+    ? new Date(f.agreed_kickoff_at).toLocaleString()
+    : f.gpsl_month
+      ? `${monthLabel(f.gpsl_month)}${f.season_label ? ` · ${f.season_label}` : ""}`
+      : "TBC";
+  el.innerHTML = `<b>Your next international:</b> ${escapeHtml(f.home_nation_name || f.home_nation)} vs ${escapeHtml(
+    f.away_nation_name || f.away_nation
+  )} · ${escapeHtml(when)}
+    <a href="international_matchday.html?fixture=${f.id}">Open matchday</a>
+    · <a href="season_calendar.html#month-${escapeHtml(String(f.gpsl_month || "").toLowerCase())}">Calendar</a>`;
 }
 
 function renderGroupGrid(containerId, letters, rows, phase) {
@@ -291,10 +372,27 @@ function renderFixtures(containerId, fixtures, emptyMsg, myNationCode, cycle) {
 
 function nationCellKo(code, name, flag) {
   if (!code) return '<span class="empty">TBD</span>';
-  return `${escapeHtml(flag || "")} ${escapeHtml(name || code)}`;
+  return `<span class="intl-ko-side">${escapeHtml(flag || "")} ${escapeHtml(name || code)}</span>`;
 }
 
-function renderKnockout(nodes) {
+function koMatchCard(n, mineCode) {
+  const score =
+    n.played && n.goals_a != null ? `${n.goals_a}–${n.goals_b}` : "vs";
+  const mine =
+    mineCode &&
+    (String(n.nation_a || "").toUpperCase() === String(mineCode).toUpperCase() ||
+      String(n.nation_b || "").toUpperCase() === String(mineCode).toUpperCase());
+  const winA = n.played && n.winner_nation && n.winner_nation === n.nation_a;
+  const winB = n.played && n.winner_nation && n.winner_nation === n.nation_b;
+  return `<div class="intl-ko-match${mine ? " intl-ko-match--mine" : ""}${n.played ? " is-played" : ""}">
+    <div class="intl-ko-match-no">#${n.match_no}</div>
+    <div class="intl-ko-team${winA ? " is-winner" : ""}">${nationCellKo(n.nation_a, n.nation_a_name, n.nation_a_flag)}</div>
+    <div class="intl-ko-score">${escapeHtml(score)}</div>
+    <div class="intl-ko-team${winB ? " is-winner" : ""}">${nationCellKo(n.nation_b, n.nation_b_name, n.nation_b_flag)}</div>
+  </div>`;
+}
+
+function renderKnockout(nodes, mineCode) {
   const root = document.getElementById("knockoutBracket");
   const note = document.getElementById("knockoutNote");
   if (!root) return;
@@ -306,45 +404,38 @@ function renderKnockout(nodes) {
   }
   if (note) note.hidden = true;
 
-  const stages = [
-    { key: "r16", label: "Round of 16" },
-    { key: "qf", label: "Quarter-finals" },
-    { key: "sf", label: "Semi-finals" },
-    { key: "final", label: "Final" },
-  ];
+  const byStage = (key) =>
+    nodes
+      .filter((n) => n.stage === key)
+      .sort((a, b) => Number(a.match_no) - Number(b.match_no));
 
-  root.innerHTML = stages
-    .map(({ key, label }) => {
-      const rows = nodes
-        .filter((n) => n.stage === key)
-        .sort((a, b) => Number(a.match_no) - Number(b.match_no));
-      if (!rows.length) return "";
-      return `
-        <div class="intl-ko-stage" style="margin-bottom:16px;">
-          <h3 style="color:#ffaa22;font-size:15px;margin:0 0 8px;">${label}</h3>
-          <div class="intl-grid">
-            ${rows
-              .map((n) => {
-                const score =
-                  n.played && n.goals_a != null
-                    ? `${n.goals_a}–${n.goals_b}`
-                    : "vs";
-                const winner = n.winner_nation
-                  ? `<div class="note">Winner: ${escapeHtml(n.winner_nation)}</div>`
-                  : "";
-                return `<div class="intl-group-card">
-                  <h4>Match ${n.match_no}</h4>
-                  <div>${nationCellKo(n.nation_a, n.nation_a_name, n.nation_a_flag)}</div>
-                  <div style="margin:4px 0;color:#888;">${score}</div>
-                  <div>${nationCellKo(n.nation_b, n.nation_b_name, n.nation_b_flag)}</div>
-                  ${winner}
-                </div>`;
-              })
-              .join("")}
-          </div>
-        </div>`;
-    })
-    .join("");
+  const r16 = byStage("r16");
+  const qf = byStage("qf");
+  const sf = byStage("sf");
+  const third = byStage("third_place");
+  const fin = byStage("final");
+
+  root.innerHTML = `
+    <div class="intl-ko-bracket">
+      <div class="intl-ko-col">
+        <h3>Round of 16</h3>
+        ${r16.map((n) => koMatchCard(n, mineCode)).join("") || '<p class="empty">—</p>'}
+      </div>
+      <div class="intl-ko-col">
+        <h3>Quarter-finals</h3>
+        ${qf.map((n) => koMatchCard(n, mineCode)).join("") || '<p class="empty">TBD</p>'}
+      </div>
+      <div class="intl-ko-col">
+        <h3>Semi-finals</h3>
+        ${sf.map((n) => koMatchCard(n, mineCode)).join("") || '<p class="empty">TBD</p>'}
+      </div>
+      <div class="intl-ko-col intl-ko-col--finals">
+        <h3>Final</h3>
+        ${fin.map((n) => koMatchCard(n, mineCode)).join("") || '<p class="empty">TBD</p>'}
+        <h3 style="margin-top:16px;">3rd place</h3>
+        ${third.map((n) => koMatchCard(n, mineCode)).join("") || '<p class="empty">TBD</p>'}
+      </div>
+    </div>`;
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -359,16 +450,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const cycles = await loadWcCycles(supabase);
   renderCycle(cycles);
+  renderHistory(cycles);
   const cycle = cycles[0] || null;
   const cycleNo = cycle?.cycle_no ?? null;
   const myNationCode = myNation?.code || null;
 
-  const [qual, finals, qualFix, finalsFix] = await Promise.all([
+  const [qual, finals, qualFix, finalsFix, koFix] = await Promise.all([
     loadQualStandings(cycleNo, supabase),
     loadFinalsStandings(cycleNo, supabase),
     loadInternationalFixtures(cycleNo, "qualifying", supabase),
     loadInternationalFixtures(cycleNo, "finals_group", supabase),
+    loadInternationalFixtures(cycleNo, "knockout", supabase),
   ]);
+
+  renderNextIntl(myNationCode, [...qualFix, ...finalsFix, ...koFix]);
 
   renderGroupGrid("qualGroups", QUAL_LETTERS.slice(0, WC_QUAL_GROUPS), qual, "qualifying");
   renderBestThirds(qual);
@@ -395,5 +490,5 @@ document.addEventListener("DOMContentLoaded", async () => {
     .order("match_no", { ascending: true });
   if (cycleNo != null) koQuery = koQuery.eq("cycle_no", cycleNo);
   const { data: koNodes } = await koQuery;
-  renderKnockout(koNodes || []);
+  renderKnockout(koNodes || [], myNationCode);
 });

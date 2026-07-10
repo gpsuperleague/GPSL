@@ -4,8 +4,9 @@
 <head>
   <meta charset="UTF-8">
   <title>International matchday — GPSL</title>
+  <link rel="icon" href="images/trophies/world_cup.png" type="image/png">
   <link rel="stylesheet" href="dashboard.css">
-  <link rel="stylesheet" href="international.css">
+  <link rel="stylesheet" href="international.css?v=20260710-md-ko">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:960px; margin:20px auto 40px; }
@@ -31,6 +32,25 @@
     .row { display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end; margin-top:10px; }
     label { display:block; font-size:12px; color:#aaa; margin-bottom:4px; }
     a { color:#ff9900; }
+    .checkin-box {
+      margin-top:10px; padding:10px 12px; border-radius:6px;
+      border:1px solid #333; background:#151515; font-size:13px; line-height:1.45;
+    }
+    .checkin-box.open { border-color:#2e7d4f; background:#142018; color:#9cdc9c; }
+    .checkin-box.warn { border-color:#6b5a28; background:#1e1a10; color:#d4b85a; }
+    .checkin-box.closed { border-color:#633; background:#1a1212; color:#e8a87c; }
+    .score-hint { color:#9c9; font-size:12px; margin:8px 0 0; }
+    #koEtRow, #koPenRow { margin-top:12px; }
+    .pen-pick { display:flex; flex-wrap:wrap; gap:16px; margin-top:6px; }
+    .pen-pick label { display:flex; align-items:center; gap:6px; cursor:pointer; color:#ddd; margin:0; }
+    .squad-picker { max-height:320px; overflow:auto; border:1px solid #333; border-radius:6px; }
+    .squad-picker table { margin:0; }
+    .squad-picker select { font-size:12px; padding:4px 6px; }
+    .next-intl {
+      background:#1a2210; border:1px solid #3a5a28; border-radius:8px;
+      padding:12px 14px; margin-bottom:16px; font-size:14px;
+    }
+    .next-intl b { color:#ffaa22; }
   </style>
 </head>
 <body>
@@ -39,14 +59,15 @@
     <h1>International matchday</h1>
     <p class="note">
       Arrange kickoffs and submit/confirm results for your national team.
-      Use the same flow as club matches: propose a time → opponent accepts → submit score → opponent confirms
-      (with player stats). Default XI / formations can be saved from your 23-man call-up.
+      Knockout ties that finish level after 90 minutes need <b>extra time</b> (total goals) and, if still level, a <b>penalty winner</b>.
     </p>
     <div class="toolbar">
       <a class="button" href="national_team.html" id="nationLink">National team</a>
       <a class="button" href="world_cup.html">World Cup</a>
-      <a class="button" href="fixture_schedule.html">Club scheduling</a>
+      <a class="button" href="season_calendar.html">Season calendar</a>
     </div>
+
+    <div id="nextIntlBanner" class="next-intl" hidden></div>
 
     <div class="panel">
       <h2>Your fixtures</h2>
@@ -57,6 +78,7 @@
     <div class="panel" id="detailPanel" hidden>
       <h2 id="detailTitle">Fixture</h2>
       <p id="detailMeta" class="note"></p>
+      <div id="checkinBox" class="checkin-box" hidden></div>
 
       <div id="scheduleBlock">
         <h2 style="margin-top:14px;">Arrange kickoff</h2>
@@ -73,15 +95,53 @@
 
       <div id="resultBlock" style="margin-top:16px;">
         <h2>Result</h2>
+        <p id="scorePeriodHint" class="note" hidden>
+          Knockout: enter 90-minute score first. If level, enter <b>total goals after extra time</b>
+          (e.g. 1–1 then 2–2 after ET), then pick the penalty winner if still level.
+        </p>
         <div class="row">
           <div>
-            <label for="homeGoals">Home goals</label>
+            <label for="homeGoals" id="homeGoalsLabel">Home goals (90)</label>
             <input type="number" id="homeGoals" min="0" max="30" value="0" style="width:80px;">
           </div>
           <div>
-            <label for="awayGoals">Away goals</label>
+            <label for="awayGoals" id="awayGoalsLabel">Away goals (90)</label>
             <input type="number" id="awayGoals" min="0" max="30" value="0" style="width:80px;">
           </div>
+        </div>
+
+        <div id="koEtRow" hidden>
+          <p class="note" style="margin:0 0 8px;">
+            Level after 90 — enter <b>total score after extra time</b> (90-min goals carry over).
+          </p>
+          <div class="row" style="margin-top:0;">
+            <div>
+              <label for="etHomeGoals" id="etHomeLabel">Home ET total</label>
+              <input type="number" id="etHomeGoals" min="0" max="30" value="" style="width:80px;" placeholder="—">
+            </div>
+            <div>
+              <label for="etAwayGoals" id="etAwayLabel">Away ET total</label>
+              <input type="number" id="etAwayGoals" min="0" max="30" value="" style="width:80px;" placeholder="—">
+            </div>
+          </div>
+          <p id="etPreview" class="score-hint"></p>
+        </div>
+
+        <div id="koPenRow" hidden>
+          <p class="note" style="margin:0 0 6px;">Still level after ET — who won the penalty shootout?</p>
+          <div class="pen-pick">
+            <label>
+              <input type="radio" name="penWinner" id="penWinnerHome" value="home">
+              <span id="penWinnerHomeLabel">Home</span>
+            </label>
+            <label>
+              <input type="radio" name="penWinner" id="penWinnerAway" value="away">
+              <span id="penWinnerAwayLabel">Away</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="row">
           <button type="button" class="button" id="submitBtn">Submit result</button>
           <button type="button" class="button" id="confirmBtn" hidden>Confirm pending</button>
           <button type="button" class="button secondary" id="rejectBtn" hidden>Reject</button>
@@ -96,19 +156,18 @@
       <div id="squadBlock" style="margin-top:16px;">
         <h2>Default matchday squad</h2>
         <p class="note">
-          Save pitch / bench / reserve from your current call-up (same shape as club matchday).
-          Full pitch UI reuses club formations — paste a players JSON array for now, or manage call-ups on National team.
+          Pick XI / bench / reserve from your current 23-man call-up. Saved as your nation default for internationals.
         </p>
-        <textarea id="squadJson" rows="5" style="width:100%;background:#222;color:#eee;border:1px solid #444;border-radius:4px;padding:8px;font-family:monospace;font-size:12px;"
-          placeholder='[{"player_id":"123","slot_kind":"pitch","pitch_slot":"gk","sort_order":0}]'></textarea>
+        <div id="squadPicker" class="squad-picker"></div>
         <div class="row">
           <button type="button" class="button secondary" id="saveSquadBtn">Save default squad</button>
+          <span id="squadCount" class="note"></span>
         </div>
       </div>
     </div>
 
     <div id="pageStatus" class="status"></div>
   </div>
-  <script type="module" src="international_matchday.js?v=20260710"></script>
+  <script type="module" src="international_matchday.js?v=20260710-md-ko"></script>
 </body>
 </html>

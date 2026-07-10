@@ -572,12 +572,45 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!id) return;
     if (
       !confirm(
-        "Seed knockout bracket from finals group winners/runners-up?\n\nRequires all finals group fixtures played."
+        "Seed knockout bracket from finals group winners/runners-up?\n\nRequires all finals group fixtures played.\nCreates R16 + empty QF/SF/3rd place/Final."
       )
     ) {
       return;
     }
-    await wcRpc("international_seed_knockout_bracket", { p_cycle_id: id }, "Knockout seeded (R16)");
+    await wcRpc("international_seed_knockout_bracket", { p_cycle_id: id }, "Knockout seeded (R16 + 3rd place)");
+  });
+
+  async function forcePlayRemaining(phase, label) {
+    const id = requireWcCycleId();
+    if (!id) return;
+    if (
+      !confirm(
+        `Force-play remaining ${label} fixtures with test scores?\n\nThis cannot be undone easily. Use for dry-runs only.`
+      )
+    ) {
+      return;
+    }
+    const data = await wcRpc(
+      "international_admin_force_play_remaining",
+      { p_cycle_id: id, p_phase: phase, p_limit: 500 },
+      null
+    );
+    if (data) {
+      setStatus("wcStatus", `✅ Force-played ${data.played ?? "?"} ${label} fixtures`, true);
+    }
+  }
+
+  document.getElementById("wcForceQualBtn")?.addEventListener("click", () => {
+    forcePlayRemaining("qualifying", "qualifying");
+  });
+  document.getElementById("wcForceFinalsBtn")?.addEventListener("click", () => {
+    forcePlayRemaining("finals_group", "finals group");
+  });
+  document.getElementById("wcForceKoBtn")?.addEventListener("click", () => {
+    forcePlayRemaining("knockout", "knockout");
+  });
+  document.getElementById("wcForceAllBtn")?.addEventListener("click", () => {
+    forcePlayRemaining("all", "ALL");
   });
 
   document.getElementById("wcStatusQualBtn")?.addEventListener("click", async () => {

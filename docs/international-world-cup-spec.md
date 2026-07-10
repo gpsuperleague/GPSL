@@ -64,6 +64,23 @@ Admin UI: `admin_international.html` → **World Cup cycle**
 
 ## Still thin / follow-ups
 
-- Full pitch UI for intl default XI (currently JSON / club-parity RPCs; club matchday UI not fully reused yet)
-- Check-in window parity with club matchday (intl uses agreed kickoff only for now)
-- Calendar deep-links to specific intl fixtures by `gpsl_month`
+- Full pitch canvas for intl default XI (call-up role picker ships; club pitch UI not fully reused yet)
+- Hard check-in enforcement on intl results (soft 48h window guidance ships)
+
+## Recent polish (2026-07)
+
+- Knockout ET / pens on international matchday
+- Visual KO bracket + 3rd-place playoff
+- Admin dry-run force-play remaining fixtures
+- WC history / podium on `world_cup.html`
+- Calendar pins + matchday deep-links for owner internationals
+
+## SQL patches (apply in order after engine part1/part2)
+
+- `international_wc_ensure_future_seasons.sql`
+- `international_wc_qual_full_season_calendar.sql`
+- `international_wc_qual_draw_readiness.sql`
+- `international_wc_standings_seed_order.sql`
+- `international_wc_auto_rank_thirds.sql`
+- `international_wc_fixtures_season_labels.sql`
+- `international_wc_ko_third_and_dryrun.sql`
