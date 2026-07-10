@@ -33,36 +33,94 @@
 .intl-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
-  margin-bottom: 12px;
+  table-layout: fixed;
+  font-size: 12px;
+  margin: 0;
 }
 .intl-table th,
 .intl-table td {
   border: 1px solid #333;
-  padding: 6px 8px;
+  padding: 5px 4px;
   text-align: center;
+  vertical-align: middle;
 }
 .intl-table th {
   background: #222;
   color: #ff9900;
 }
-.intl-table td:nth-child(2) { text-align: left; }
+.intl-table col.intl-col-pos { width: 7%; }
+.intl-table col.intl-col-nation { width: 42%; }
+.intl-table col.intl-col-stat { width: 8.5%; }
+.intl-table col.intl-col-fa { width: 12%; }
+.intl-table col.intl-col-pts { width: 9%; }
+.intl-table td:nth-child(2) {
+  text-align: left;
+  overflow: hidden;
+}
+.intl-nation-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.intl-nation-cell .nat-flag-img,
+.intl-nation-cell .nat-flag {
+  flex: 0 0 auto;
+  display: inline-block;
+  margin-right: 0;
+  vertical-align: middle;
+}
+.intl-nation-cell .nat-flag-fallback-hidden {
+  display: none !important;
+}
+.intl-nation-cell a {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.25;
+  color: #ff9900;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
 
 .intl-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+@media (max-width: 1100px) {
+  .intl-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 820px) {
+  .intl-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 520px) {
+  .intl-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .intl-group-card {
   background: #1e1e1e;
   border: 1px solid #444;
   border-radius: 8px;
   padding: 12px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  height: 100%;
 }
 .intl-group-card h4 {
   margin: 0 0 8px;
   color: #ff9900;
   font-size: 14px;
+  flex: 0 0 auto;
+}
+.intl-group-card .intl-table {
+  flex: 1 1 auto;
 }
 
 .nat-hero {

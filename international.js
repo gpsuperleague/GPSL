@@ -321,7 +321,12 @@ export function groupStandingsTable(rows, groupCode) {
       (r, i) => `
       <tr>
         <td>${i + 1}</td>
-        <td>${renderNationFlag(r, "sm")} ${nationLink(r.nation_code, r.nation_name)}</td>
+        <td>
+          <span class="intl-nation-cell">
+            ${renderNationFlag(r, "sm")}
+            ${nationLink(r.nation_code, r.nation_name)}
+          </span>
+        </td>
         <td>${r.played}</td>
         <td>${r.won}</td>
         <td>${r.drawn}</td>
@@ -333,6 +338,13 @@ export function groupStandingsTable(rows, groupCode) {
     .join("");
   return `
     <table class="intl-table">
+      <colgroup>
+        <col class="intl-col-pos">
+        <col class="intl-col-nation">
+        <col class="intl-col-stat"><col class="intl-col-stat"><col class="intl-col-stat"><col class="intl-col-stat">
+        <col class="intl-col-fa">
+        <col class="intl-col-pts">
+      </colgroup>
       <thead>
         <tr>
           <th>#</th><th>Nation</th><th>P</th><th>W</th><th>D</th><th>L</th><th>F:A</th><th>Pts</th>
