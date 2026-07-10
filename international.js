@@ -141,30 +141,16 @@ export async function loadWcCycles(client = supabase) {
 }
 
 export async function loadQualStandings(cycleNo, client = supabase) {
+  // Do not order by seed_rank in PostgREST — older DBs lack the column (400).
+  // Client-side sortGroupRows handles points then seed.
   let query = client
     .from("international_qual_standings_public")
     .select("*")
     .order("group_code", { ascending: true })
-    .order("points", { ascending: false })
-    .order("seed_rank", { ascending: true });
+    .order("points", { ascending: false });
   if (cycleNo != null) query = query.eq("cycle_no", cycleNo);
   const { data, error } = await query;
   if (error) {
-    // Older view without seed_rank — retry without that order
-    if (/seed_rank/i.test(error.message || "")) {
-      let q2 = client
-        .from("international_qual_standings_public")
-        .select("*")
-        .order("group_code", { ascending: true })
-        .order("points", { ascending: false });
-      if (cycleNo != null) q2 = q2.eq("cycle_no", cycleNo);
-      const retry = await q2;
-      if (retry.error) {
-        console.error("loadQualStandings:", retry.error);
-        return [];
-      }
-      return retry.data || [];
-    }
     console.error("loadQualStandings:", error);
     return [];
   }
@@ -176,25 +162,10 @@ export async function loadFinalsStandings(cycleNo, client = supabase) {
     .from("international_finals_standings_public")
     .select("*")
     .order("group_code", { ascending: true })
-    .order("points", { ascending: false })
-    .order("seed_rank", { ascending: true });
+    .order("points", { ascending: false });
   if (cycleNo != null) query = query.eq("cycle_no", cycleNo);
   const { data, error } = await query;
   if (error) {
-    if (/seed_rank/i.test(error.message || "")) {
-      let q2 = client
-        .from("international_finals_standings_public")
-        .select("*")
-        .order("group_code", { ascending: true })
-        .order("points", { ascending: false });
-      if (cycleNo != null) q2 = q2.eq("cycle_no", cycleNo);
-      const retry = await q2;
-      if (retry.error) {
-        console.error("loadFinalsStandings:", retry.error);
-        return [];
-      }
-      return retry.data || [];
-    }
     console.error("loadFinalsStandings:", error);
     return [];
   }
@@ -430,11 +401,6 @@ export function groupStandingsTable(rows, groupCode, opts = {}) {
             ${renderNationFlag(r, "sm")}
             ${nationLink(r.nation_code, r.nation_name)}
             ${badge}
-            ${
-              r.seed_rank != null
-                ? `<span class="intl-seed" title="Seed rank">#${Number(r.seed_rank)}</span>`
-                : ""
-            }
           </span>
         </td>
         <td>${r.played}</td>
@@ -448,13 +414,13 @@ export function groupStandingsTable(rows, groupCode, opts = {}) {
     if (phase === "qualifying" && pos === 2) {
       parts.push(`
         <tr class="intl-cut-row" aria-hidden="true">
-          <td colspan="8"><span class="intl-cut-label">Qualification cut — top 2</span></td>
+          <td colspan="8"><span class="intl-cut-label">Top 2</span></td>
         </tr>`);
     }
     if (phase === "finals" && pos === 2) {
       parts.push(`
         <tr class="intl-cut-row" aria-hidden="true">
-          <td colspan="8"><span class="intl-cut-label">Knockout cut — top 2</span></td>
+          <td colspan="8"><span class="intl-cut-label">Top 2</span></td>
         </tr>`);
     }
   });

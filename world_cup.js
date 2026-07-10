@@ -9,8 +9,8 @@ import {
   bestThirdPlaceRows,
   WC_QUAL_GROUPS,
   WC_FINALS_GROUPS,
-} from "./international.js";
-import { renderNationFlag } from "./international_flags.js";
+} from "./international.js?v=20260710-standings-clean";
+import { renderNationFlag } from "./international_flags.js?v=20260710-standings-clean";
 
 const QUAL_LETTERS = "ABCDEFGHIJKL".split("");
 const FINALS_LETTERS = "ABCDEFGH".split("");
