@@ -61,12 +61,6 @@ let viewerClubHasManager = false;
 let viewerSackedManagerIds = new Set();
 let multiFilterClickWired = false;
 
-function parseMoneyInput(value) {
-  if (!value) return null;
-  const n = Number(String(value).replace(/,/g, ""));
-  return Number.isFinite(n) ? n : null;
-}
-
 function rangeStep(col) {
   if (col !== "market_value") return 1;
   const bounds = RANGE_BOUNDS[col];
@@ -338,8 +332,15 @@ function computeRangeBounds() {
       RANGE_ACTIVE[key] = { min: 0, max: 0 };
       continue;
     }
-    const min = Math.min(...nums);
-    const max = Math.max(...nums);
+    let min = Math.min(...nums);
+    let max = Math.max(...nums);
+    if (key === "market_value") {
+      RANGE_BOUNDS[key] = { min, max };
+      const step = rangeStep(key);
+      min = Math.floor(min / step) * step;
+      max = Math.ceil(max / step) * step;
+      if (max <= min) max = min + step;
+    }
     RANGE_BOUNDS[key] = { min, max };
     RANGE_ACTIVE[key] = { min, max };
   }
@@ -575,7 +576,10 @@ function buildFilterControls() {
     }));
   }
 
-  const parts = [`<strong>Filters</strong>`];
+  const parts = [];
+
+  parts.push(`<button type="button" id="clearFiltersBtn" class="button">Clear Filters</button>`);
+  parts.push(`<strong>Filters</strong>`);
 
   parts.push(`
     <label class="mgdb-free-only">
@@ -675,6 +679,15 @@ function buildFilterControls() {
 
   setupRangeFilters();
   wireMultiFilterClicks();
+
+  document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
+    CURRENT_FILTERS = {};
+    FREE_AGENTS_ONLY = false;
+    computeRangeBounds();
+    CURRENT_PAGE = 1;
+    buildFilterControls();
+    renderPage();
+  });
 }
 
 async function loadManagers() {
@@ -734,22 +747,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     status.innerHTML = parts.join(" ");
   }
-
-  document.getElementById("applyMV")?.addEventListener("click", () => {
-    MV_MIN = parseMoneyInput(document.getElementById("mv-min")?.value);
-    MV_MAX = parseMoneyInput(document.getElementById("mv-max")?.value);
-    CURRENT_PAGE = 1;
-    renderPage();
-  });
-
-  document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
-    CURRENT_FILTERS = {};
-    FREE_AGENTS_ONLY = false;
-    computeRangeBounds();
-    CURRENT_PAGE = 1;
-    buildFilterControls();
-    renderPage();
-  });
 
   document.getElementById("pageSizeSelect")?.addEventListener("change", (e) => {
     PAGE_SIZE = Number(e.target.value) || 100;
