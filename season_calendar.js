@@ -269,6 +269,7 @@ async function loadLiveOverlays(status) {
     specialRes,
     wcRes,
     myNationRes,
+    currentSeasonRes,
     intlFixRes,
   ] = await Promise.all([
     supabase
@@ -298,14 +299,41 @@ async function loadLiveOverlays(status) {
       .maybeSingle(),
     supabase.from("international_my_nation_public").select("*").maybeSingle(),
     supabase
-      .from("international_fixtures")
+      .from("competition_seasons")
+      .select("id, label, is_current")
+      .eq("is_current", true)
+      .maybeSingle(),
+    supabase
+      .from("international_fixtures_public")
       .select(
-        "id, home_nation, away_nation, phase, played, played_at, cycle_id, season_id"
+        "id, home_nation, away_nation, home_nation_name, away_nation_name, phase, played, cycle_id, cycle_no, season_id, season_label, season_ordinal, gpsl_month, week_in_month, match_no, group_code"
       )
       .eq("played", false)
+      .order("match_no", { ascending: true })
       .order("id", { ascending: true })
-      .limit(120),
+      .limit(200),
   ]);
+
+  // If season_label columns not migrated yet, retry without them
+  let intlFixRows = intlFixRes.data || [];
+  if (intlFixRes.error) {
+    console.warn("season calendar intl fixtures:", intlFixRes.error);
+    const retry = await supabase
+      .from("international_fixtures_public")
+      .select(
+        "id, home_nation, away_nation, home_nation_name, away_nation_name, phase, played, cycle_id, cycle_no, season_id, gpsl_month, week_in_month, match_no, group_code"
+      )
+      .eq("played", false)
+      .order("match_no", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(200);
+    if (retry.error) {
+      console.warn("season calendar intl fixtures retry:", retry.error);
+      intlFixRows = [];
+    } else {
+      intlFixRows = retry.data || [];
+    }
+  }
 
   const byMonth = Object.fromEntries(
     SEASON_MONTH_ORDER.map((k) => [k, []])
@@ -394,6 +422,9 @@ async function loadLiveOverlays(status) {
   const wc = wcRes.data;
   const myNation = myNationRes.data || null;
   const myNationCode = myNation?.code || null;
+  const currentSeason = currentSeasonRes.data || null;
+  const currentSeasonId =
+    currentSeason?.id != null ? Number(currentSeason.id) : null;
   const internationalMine = [];
 
   if (wc && String(wc.status || "").toLowerCase() !== "complete") {
@@ -402,13 +433,14 @@ async function loadLiveOverlays(status) {
     if (wc.label) noteParts.push(String(wc.label));
     if (wc.status) noteParts.push(String(wc.status).replace(/_/g, " "));
     if (wc.finals_after_season_label) {
-      noteParts.push(`finals after ${wc.finals_after_season_label}`);
+      noteParts.push(`finals in pre-season of ${wc.finals_after_season_label}`);
     }
     const wcText =
       noteParts.length > 0
         ? `World Cup — ${noteParts.join(" · ")}`
         : "World Cup cycle active";
-    for (const mk of ["june", "july", "august"]) {
+    // Generic cycle reminder on pre-season months only (fixtures pin to real months below)
+    for (const mk of ["june", "july"]) {
       byMonth[mk].push({
         kind: "world-cup",
         short: "World Cup",
@@ -418,37 +450,70 @@ async function loadLiveOverlays(status) {
     }
   }
 
-  // International fixtures have no kick-off column — pin owner's unplayed ties
-  // onto the current GPSL month (or pre-season).
-  let pinMonth = "august";
-  if (isPreSeasonPhase(status)) pinMonth = "july";
-  else if (status?.active_gpsl_month) {
-    pinMonth = String(status.active_gpsl_month).toLowerCase();
-  } else if (status?.next_gpsl_month) {
-    pinMonth = String(status.next_gpsl_month).toLowerCase();
-  }
-
-  for (const fix of intlFixRes.data || []) {
+  // Owner's unplayed internationals → correct GPSL month (and only for current season)
+  for (const fix of intlFixRows) {
     const home = fix.home_nation || "?";
     const away = fix.away_nation || "?";
+    const homeName = fix.home_nation_name || home;
+    const awayName = fix.away_nation_name || away;
     const mine =
       myNationCode &&
       (String(home).toUpperCase() === String(myNationCode).toUpperCase() ||
         String(away).toUpperCase() === String(myNationCode).toUpperCase());
     if (!mine) continue;
-    const phase = fix.phase ? String(fix.phase).replace(/_/g, " ") : "fixture";
+
+    // Qualifying spans two seasons — only show fixtures for the calendar's current season.
+    // Finals/knockout use finals season id (pre-season months).
+    if (
+      fix.phase === "qualifying" &&
+      currentSeasonId != null &&
+      fix.season_id != null &&
+      Number(fix.season_id) !== currentSeasonId
+    ) {
+      continue;
+    }
+
+    let mk = String(fix.gpsl_month || "").toLowerCase();
+    if (!mk || !byMonth[mk]) {
+      // Fallback if month missing: pin to active GPSL month
+      if (isPreSeasonPhase(status)) mk = "july";
+      else if (status?.active_gpsl_month) {
+        mk = String(status.active_gpsl_month).toLowerCase();
+      } else if (status?.next_gpsl_month) {
+        mk = String(status.next_gpsl_month).toLowerCase();
+      } else {
+        mk = "august";
+      }
+    }
+    if (!byMonth[mk]) continue;
+
+    const phase =
+      fix.phase === "qualifying"
+        ? "WC qualifying"
+        : fix.phase === "finals_group"
+          ? "WC finals group"
+          : fix.phase === "knockout"
+            ? "WC knockout"
+            : String(fix.phase || "international").replace(/_/g, " ");
+    const groupBit = fix.group_code ? ` · Group ${fix.group_code}` : "";
+    const weekBit =
+      fix.week_in_month != null ? ` · week ${fix.week_in_month}` : "";
+    const seasonBit = fix.season_label ? ` · ${fix.season_label}` : "";
     const ev = {
       kind: "international",
-      short: `Intl: ${home} vs ${away}`,
-      detail: `Your nation has an unplayed international (${phase}): ${home} vs ${away}.`,
+      short: `WC: ${home} vs ${away}`,
+      detail: `${phase}${groupBit}${weekBit}${seasonBit}: ${homeName} vs ${awayName}.`,
       links: [
-        { href: "national_team.html", label: "National team" },
+        {
+          href: `international_matchday.html?fixture=${encodeURIComponent(fix.id)}`,
+          label: "Matchday",
+        },
         { href: "world_cup.html", label: "World Cup", secondary: true },
       ],
       mine: true,
     };
     internationalMine.push(ev);
-    if (byMonth[pinMonth]) byMonth[pinMonth].push(ev);
+    byMonth[mk].push(ev);
   }
 
   return {
@@ -772,8 +837,9 @@ async function renderPage(user) {
     `</div>` +
     `<p class="sc-footnote">` +
     `Click a bullet for details and links. League matchdays: Aug 1–3, then four per month Sep–Apr, May 36–38. ` +
-    `Cup rounds follow the published schedule. Live drafts and special auctions appear when scheduled.` +
-    ` <span class="sc-build">Calendar build 20260709-v3</span>` +
+    `Cup rounds follow the published schedule. Live drafts and special auctions appear when scheduled. ` +
+    `Your World Cup internationals appear in their GPSL month (Aug/Oct/Dec/Feb/Apr for qualifying).` +
+    ` <span class="sc-build">Calendar build 20260710-intl</span>` +
     `</p>`;
 
   wireBulletToggles(root);

@@ -143,7 +143,63 @@ function monthLabel(m) {
   return String(m).charAt(0).toUpperCase() + String(m).slice(1);
 }
 
-function renderFixtures(containerId, fixtures, emptyMsg) {
+function seasonTabLabel(sample, cycle) {
+  if (sample?.season_label) return String(sample.season_label);
+  if (sample?.season_ordinal != null) return `Season ${sample.season_ordinal}`;
+  const mn = Number(sample?.match_no) || 0;
+  if (sample?.phase === "qualifying" && cycle) {
+    if (mn >= 1 && mn <= 5) return cycle.qual_season_1_label || "Season 1";
+    if (mn >= 6 && mn <= 10) return cycle.qual_season_2_label || "Season 2";
+  }
+  if (sample?.phase === "finals_group" && cycle?.finals_after_season_label) {
+    return cycle.finals_after_season_label;
+  }
+  return "";
+}
+
+function windowTabTitle(sample, cycle) {
+  const month = monthLabel(sample?.gpsl_month);
+  const season = seasonTabLabel(sample, cycle);
+  if (month && season) return `${month} ${season}`;
+  if (month) return month;
+  if (season) return season;
+  return "Fixtures";
+}
+
+function isMyFixture(f, myNationCode) {
+  if (!myNationCode || !f) return false;
+  const code = String(myNationCode).toUpperCase();
+  return (
+    String(f.home_nation || "").toUpperCase() === code ||
+    String(f.away_nation || "").toUpperCase() === code
+  );
+}
+
+function fixtureRowHtml(f, myNationCode) {
+  const score = f.played
+    ? `<b>${f.home_goals}–${f.away_goals}</b>`
+    : `<span class="empty">vs</span>`;
+  const href = `international_matchday.html?fixture=${f.id}`;
+  const mine = isMyFixture(f, myNationCode);
+  return `<div class="intl-fix-row${mine ? " intl-fix-row--mine" : ""}">
+    <span class="intl-fix-group">Grp ${escapeHtml(f.group_code || "?")}</span>
+    <span class="intl-fix-sides">
+      ${renderNationFlag({ code: f.home_nation, name: f.home_nation_name, flag_emoji: f.home_flag }, "sm")}
+      ${escapeHtml(f.home_nation_name || f.home_nation)}
+      ${score}
+      ${renderNationFlag({ code: f.away_nation, name: f.away_nation_name, flag_emoji: f.away_flag }, "sm")}
+      ${escapeHtml(f.away_nation_name || f.away_nation)}
+    </span>
+    ${mine ? `<span class="intl-fix-mine-tag">Your match</span>` : ""}
+    <a class="intl-fix-link" href="${href}">Open</a>
+  </div>`;
+}
+
+/**
+ * Tabbed fixture windows: Window N / Month Season X
+ * Highlights the logged-in owner's nation fixtures.
+ */
+function renderFixtures(containerId, fixtures, emptyMsg, myNationCode, cycle) {
   const el = document.getElementById(containerId);
   if (!el) return;
 
@@ -160,42 +216,77 @@ function renderFixtures(containerId, fixtures, emptyMsg) {
   }
 
   const keys = [...byMatch.keys()].sort((a, b) => a - b);
-  el.innerHTML = keys
+
+  let defaultKey = keys[0];
+  const myUnplayed = keys.find((k) =>
+    (byMatch.get(k) || []).some((f) => isMyFixture(f, myNationCode) && !f.played)
+  );
+  if (myUnplayed != null) defaultKey = myUnplayed;
+  else {
+    const myAny = keys.find((k) =>
+      (byMatch.get(k) || []).some((f) => isMyFixture(f, myNationCode))
+    );
+    if (myAny != null) defaultKey = myAny;
+  }
+
+  const tabs = keys
     .map((md) => {
       const rows = byMatch.get(md) || [];
       const sample = rows[0];
-      const when = [monthLabel(sample?.gpsl_month), sample?.week_in_month != null ? `W${sample.week_in_month}` : ""]
-        .filter(Boolean)
-        .join(" · ");
-      const seasonHint = sample?.season_id != null ? ` · season id ${sample.season_id}` : "";
+      const hasMine = rows.some((f) => isMyFixture(f, myNationCode));
+      const title = windowTabTitle(sample, cycle);
+      const active = md === defaultKey ? " is-active" : "";
+      const mineCls = hasMine ? " has-mine" : "";
+      return `<button type="button" class="intl-fix-tab${active}${mineCls}" role="tab"
+        data-window="${md}" aria-selected="${md === defaultKey ? "true" : "false"}">
+        <span class="intl-fix-tab-win">Window ${md}</span>
+        <span class="intl-fix-tab-when">${escapeHtml(title)}</span>
+      </button>`;
+    })
+    .join("");
+
+  const panels = keys
+    .map((md) => {
+      const rows = byMatch.get(md) || [];
+      const sample = rows[0];
+      const title = windowTabTitle(sample, cycle);
+      const week =
+        sample?.week_in_month != null ? ` · week ${sample.week_in_month}` : "";
       const lines = rows
         .slice()
-        .sort((a, b) => String(a.group_code || "").localeCompare(String(b.group_code || "")))
-        .map((f) => {
-          const score = f.played
-            ? `<b>${f.home_goals}–${f.away_goals}</b>`
-            : `<span class="empty">vs</span>`;
-          const href = `international_matchday.html?fixture=${f.id}`;
-          return `<div class="intl-fix-row">
-            <span class="intl-fix-group">Grp ${escapeHtml(f.group_code || "?")}</span>
-            <span class="intl-fix-sides">
-              ${renderNationFlag({ code: f.home_nation, name: f.home_nation_name, flag_emoji: f.home_flag }, "sm")}
-              ${escapeHtml(f.home_nation_name || f.home_nation)}
-              ${score}
-              ${renderNationFlag({ code: f.away_nation, name: f.away_nation_name, flag_emoji: f.away_flag }, "sm")}
-              ${escapeHtml(f.away_nation_name || f.away_nation)}
-            </span>
-            <a class="intl-fix-link" href="${href}">Open</a>
-          </div>`;
+        .sort((a, b) => {
+          const mineA = isMyFixture(a, myNationCode) ? 0 : 1;
+          const mineB = isMyFixture(b, myNationCode) ? 0 : 1;
+          if (mineA !== mineB) return mineA - mineB;
+          return String(a.group_code || "").localeCompare(String(b.group_code || ""));
         })
+        .map((f) => fixtureRowHtml(f, myNationCode))
         .join("");
-
-      return `<div class="intl-fix-md">
-        <h3>Window ${md}${when ? ` — ${escapeHtml(when)}` : ""}${escapeHtml(seasonHint)}</h3>
+      const hidden = md === defaultKey ? "" : " hidden";
+      return `<div class="intl-fix-panel" data-window-panel="${md}" role="tabpanel"${hidden}>
+        <p class="intl-fix-panel-head">Window ${md} — ${escapeHtml(title)}${escapeHtml(week)}</p>
         ${lines}
       </div>`;
     })
     .join("");
+
+  el.innerHTML = `
+    <div class="intl-fix-tabs" role="tablist">${tabs}</div>
+    <div class="intl-fix-panels">${panels}</div>`;
+
+  el.querySelector(".intl-fix-tabs")?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".intl-fix-tab");
+    if (!btn || !el.contains(btn)) return;
+    const win = btn.getAttribute("data-window");
+    el.querySelectorAll(".intl-fix-tab").forEach((t) => {
+      const on = t.getAttribute("data-window") === win;
+      t.classList.toggle("is-active", on);
+      t.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    el.querySelectorAll(".intl-fix-panel").forEach((p) => {
+      p.hidden = p.getAttribute("data-window-panel") !== win;
+    });
+  });
 }
 
 function nationCellKo(code, name, flag) {
@@ -268,7 +359,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const cycles = await loadWcCycles(supabase);
   renderCycle(cycles);
-  const cycleNo = cycles[0]?.cycle_no ?? null;
+  const cycle = cycles[0] || null;
+  const cycleNo = cycle?.cycle_no ?? null;
+  const myNationCode = myNation?.code || null;
 
   const [qual, finals, qualFix, finalsFix] = await Promise.all([
     loadQualStandings(cycleNo, supabase),
@@ -282,14 +375,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderFixtures(
     "qualFixtures",
     qualFix,
-    "No qualifying fixtures yet — admin: World Cup cycle → Generate qual fixtures."
+    "No qualifying fixtures yet — admin: World Cup cycle → Generate qual fixtures.",
+    myNationCode,
+    cycle
   );
 
   renderGroupGrid("finalsGroups", FINALS_LETTERS.slice(0, WC_FINALS_GROUPS), finals, "finals");
   renderFixtures(
     "finalsFixtures",
     finalsFix,
-    "No finals fixtures yet — generated after finals groups are drawn."
+    "No finals fixtures yet — generated after finals groups are drawn.",
+    myNationCode,
+    cycle
   );
 
   let koQuery = supabase
