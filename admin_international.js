@@ -378,16 +378,24 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("wcCreateBtn")?.addEventListener("click", async () => {
     const label = document.getElementById("wcLabel")?.value?.trim();
-    const q1 = Number(document.getElementById("wcQual1")?.value || 0);
-    const q2 = Number(document.getElementById("wcQual2")?.value || 0);
-    const fin = Number(document.getElementById("wcFinalsAfter")?.value || 0);
+    const q1Sel = document.getElementById("wcQual1");
+    const q2Sel = document.getElementById("wcQual2");
+    const finSel = document.getElementById("wcFinalsAfter");
+    const q1 = Number(q1Sel?.value || 0);
+    const q2 = Number(q2Sel?.value || 0);
+    const fin = Number(finSel?.value || 0);
+    const q1Text = q1Sel?.selectedOptions?.[0]?.textContent?.trim() || String(q1);
+    const q2Text = q2Sel?.selectedOptions?.[0]?.textContent?.trim() || String(q2);
+    const finText = finSel?.selectedOptions?.[0]?.textContent?.trim() || String(fin);
     if (!label || !q1 || !q2 || !fin) {
       setStatus("wcStatus", "Label and all three seasons are required.", false);
       return;
     }
     if (
       !confirm(
-        `Create World Cup cycle?\n\n${label}\nQual seasons: ${q1} + ${q2}\nFinals after: ${fin}`
+        `Create World Cup cycle?\n\n${label}\n` +
+          `Qual seasons:\n  • ${q1Text}\n  • ${q2Text}\n` +
+          `Finals after:\n  • ${finText}`
       )
     ) {
       return;
