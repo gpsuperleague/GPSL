@@ -782,6 +782,61 @@ body.gpsl-sport-open {
   margin-bottom: 20px;
 }
 
+.gpsl-sport-totm-pitch {
+  margin-top: 8px;
+}
+
+.gpsl-sport-totm-pitch .pitch-display-formation {
+  color: #8a5a5a;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gpsl-sport-totm-pitch .pitch-display-table {
+  border-top-color: #d4cdc0;
+}
+
+.gpsl-sport-totm-pitch .pitch-display-table summary {
+  color: #c41e3a;
+}
+
+.gpsl-sport-totm-pitch .pitch-display-table summary:hover {
+  color: #8b1429;
+}
+
+.gpsl-sport-totm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.gpsl-sport-totm-table th,
+.gpsl-sport-totm-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #e8e2d8;
+  text-align: left;
+}
+
+.gpsl-sport-totm-table th {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #777;
+}
+
+.gpsl-sport-totm-table-club {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gpsl-sport-totm-badge {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
 .gpsl-sport-totm-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
@@ -829,12 +884,6 @@ body.gpsl-sport-open {
   justify-content: center;
   gap: 4px;
   color: #555;
-}
-
-.gpsl-sport-totm-badge {
-  width: 14px;
-  height: 14px;
-  object-fit: contain;
 }
 
 .gpsl-sport-totm-stats {

@@ -335,6 +335,7 @@ BEGIN
     jsonb_build_object(
       'pitch_slot', m.pitch_slot,
       'slot_label', m.slot_label,
+      'formation_id', m.formation_id,
       'player_id', m.player_id,
       'player_name', m.player_name,
       'club_short', m.club_short_name,
@@ -357,6 +358,7 @@ BEGIN
     jsonb_build_object(
       'pitch_slot', m.pitch_slot,
       'slot_label', m.slot_label,
+      'formation_id', m.formation_id,
       'player_id', m.player_id,
       'player_name', m.player_name,
       'club_short', m.club_short_name,

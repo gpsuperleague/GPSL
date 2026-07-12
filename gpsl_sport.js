@@ -6,6 +6,9 @@ import { stadiumImageUrl } from "./stadium_images.js";
 import {
   pesdbPlayerCardUrl,
 } from "./player_links.js";
+import { renderFormationPitchHtml } from "./pitch_display.js";
+import { DEFAULT_FORMATION_ID } from "./matchday_formations.js";
+import { APP_VERSION } from "./app_version.js";
 
 let sportEditionId = null;
 let sportActivePage = "front";
@@ -427,47 +430,74 @@ function sortTotmRows(rows) {
   );
 }
 
-function renderTotmCard(player) {
-  if (!player?.player_id) return "";
-  const card = pesdbPlayerCardUrl(String(player.player_id));
-  const badge = clubBadgeUrl(player.club_short);
-  const stats = [
-    player.appearances != null ? `${player.appearances} apps` : null,
-    player.goals != null ? `${player.goals}G` : null,
-    player.assists != null ? `${player.assists}A` : null,
-    player.avg_rating != null ? Number(player.avg_rating).toFixed(2) : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+function totmMembersForPitch(rows) {
+  return sortTotmRows(rows).map((p) => ({
+    ...p,
+    club_short_name: p.club_short_name || p.club_short,
+    club_name: p.club_name || p.club_short_name || p.club_short,
+  }));
+}
 
+function renderTotmStatsTable(rows) {
+  const members = totmMembersForPitch(rows);
+  if (!members.length) return "";
   return `
-    <div class="gpsl-sport-totm-card">
-      ${imgTag(card, "gpsl-sport-totm-player", player.player_name || "")}
-      <div class="gpsl-sport-totm-meta">
-        <span class="gpsl-sport-totm-slot">${escapeHtml(player.slot_label || player.pitch_slot || "")}</span>
-        <span class="gpsl-sport-totm-name">${escapeHtml(player.player_name || "—")}</span>
-        <span class="gpsl-sport-totm-club">
-          ${badge ? imgTag(badge, "gpsl-sport-totm-badge", "") : ""}
-          ${escapeHtml(player.club_name || player.club_short || "")}
-        </span>
-        ${stats ? `<span class="gpsl-sport-totm-stats">${escapeHtml(stats)}</span>` : ""}
-      </div>
-    </div>`;
+    <table class="gpsl-sport-totm-table">
+      <thead>
+        <tr>
+          <th>Pos</th>
+          <th>Player</th>
+          <th>Club</th>
+          <th>Apps</th>
+          <th>G</th>
+          <th>A</th>
+          <th>Avg</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${members
+          .map((p) => {
+            const badge = clubBadgeUrl(p.club_short_name || p.club_short);
+            return `<tr>
+              <td>${escapeHtml(p.slot_label || p.pitch_slot || "")}</td>
+              <td>${escapeHtml(p.player_name || "—")}</td>
+              <td class="gpsl-sport-totm-table-club">
+                ${badge ? imgTag(badge, "gpsl-sport-totm-badge", "") : ""}
+                ${escapeHtml(p.club_name || p.club_short_name || "")}
+              </td>
+              <td>${escapeHtml(String(p.appearances ?? 0))}</td>
+              <td>${escapeHtml(String(p.goals ?? 0))}</td>
+              <td>${escapeHtml(String(p.assists ?? 0))}</td>
+              <td>${p.avg_rating != null ? escapeHtml(Number(p.avg_rating).toFixed(2)) : "—"}</td>
+            </tr>`;
+          })
+          .join("")}
+      </tbody>
+    </table>`;
 }
 
 function renderTotmSection(title, rows) {
-  const sorted = sortTotmRows(rows);
-  if (!sorted.length) {
+  const members = totmMembersForPitch(rows);
+  if (!members.length) {
     return `<section class="gpsl-sport-totm-block">
       <h3 class="gpsl-sport-subsection-title">${escapeHtml(title)}</h3>
       <p class="gpsl-sport-empty-note">No Team of the Month lineup for this division yet.</p>
     </section>`;
   }
 
+  const formationId =
+    members.find((m) => m.formation_id)?.formation_id || DEFAULT_FORMATION_ID;
+
   return `
     <section class="gpsl-sport-totm-block">
       <h3 class="gpsl-sport-subsection-title">${escapeHtml(title)}</h3>
-      <div class="gpsl-sport-totm-grid">${sorted.map((p) => renderTotmCard(p)).join("")}</div>
+      <div class="gpsl-sport-totm-pitch">
+        ${renderFormationPitchHtml({
+          formationId,
+          members,
+          tableHtml: renderTotmStatsTable(members),
+        })}
+      </div>
     </section>`;
 }
 
@@ -1226,7 +1256,27 @@ function renderSportArchiveSelect() {
     .join("");
 }
 
+export function ensureSportPitchStyles() {
+  const sheets = [
+    ["gpsl-matchday-squad-styles", "matchday_squad.css"],
+    ["gpsl-pitch-display-styles", "pitch_display.css"],
+  ];
+  for (const [id, file] of sheets) {
+    if (document.getElementById(id)) continue;
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    try {
+      link.href = new URL(`${file}?v=${APP_VERSION}`, import.meta.url).href;
+    } catch {
+      link.href = `${file}?v=${APP_VERSION}`;
+    }
+    document.head.appendChild(link);
+  }
+}
+
 export function ensureSportModal() {
+  ensureSportPitchStyles();
   if (document.getElementById("gpslSportModal")) return;
 
   const overlay = document.createElement("div");
