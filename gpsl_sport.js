@@ -477,6 +477,14 @@ function renderScorerRow(scorer) {
   const goals = Number(scorer.goals ?? 0);
   const rank = Number(scorer.rank ?? 0) || "—";
   const goalLabel = goals === 1 ? "goal" : "goals";
+  const gpg = Number(scorer.goals_per_game);
+  const apps = Number(scorer.appearances);
+  const gpgBit =
+    Number.isFinite(gpg) && gpg > 0
+      ? ` · ${gpg.toFixed(2)}/game`
+      : Number.isFinite(apps) && apps > 0
+        ? ` · ${apps} apps`
+        : "";
   return `
     <li class="gpsl-sport-scorer-row">
       <span class="gpsl-sport-scorer-rank">${escapeHtml(String(rank))}</span>
@@ -487,9 +495,10 @@ function renderScorerRow(scorer) {
           ${badge ? imgTag(badge, "gpsl-sport-scorer-badge", "") : ""}
           ${escapeHtml(scorer.club_name || scorer.club_short || "")}
           ${scorer.owner ? ` · ${escapeHtml(scorer.owner)}` : ""}
+          ${gpgBit ? `<span class="gpsl-sport-scorer-gpg">${escapeHtml(gpgBit)}</span>` : ""}
         </span>
       </div>
-      <span class="gpsl-sport-scorer-goals" title="${goals} ${goalLabel} this GPSL month">
+      <span class="gpsl-sport-scorer-goals" title="${goals} ${goalLabel} (season to date)">
         <b>${escapeHtml(String(goals))}</b>
         <span class="gpsl-sport-scorer-goals-unit">${goalLabel}</span>
       </span>
@@ -497,32 +506,31 @@ function renderScorerRow(scorer) {
 }
 
 /**
- * Dense rank by goals (ties share a place). Keep everyone in places 1–maxRank.
- * e.g. five on 3 goals → all 1st; four on 2 → all 2nd; continue until place 10 filled.
+ * Top 10 by goals, then goals-per-game. Prefer server rank when present.
  */
-function denseRankTopScorers(rows, maxRank = 10) {
+function rankTopScorers(rows, maxPlaces = 10) {
   const sorted = (Array.isArray(rows) ? rows : [])
     .slice()
     .sort((a, b) => {
       const g = Number(b.goals || 0) - Number(a.goals || 0);
       if (g) return g;
+      const gpg = Number(b.goals_per_game || 0) - Number(a.goals_per_game || 0);
+      if (gpg) return gpg;
       const as = Number(b.assists || 0) - Number(a.assists || 0);
       if (as) return as;
       return String(a.player_name || "").localeCompare(String(b.player_name || ""));
     });
 
-  let lastGoals = null;
-  let denseRank = 0;
   const out = [];
-  for (const s of sorted) {
+  for (let i = 0; i < sorted.length && out.length < maxPlaces; i++) {
+    const s = sorted[i];
     const g = Number(s.goals || 0);
     if (!Number.isFinite(g) || g <= 0) continue;
-    if (g !== lastGoals) {
-      denseRank += 1;
-      lastGoals = g;
-    }
-    if (denseRank > maxRank) break;
-    out.push({ ...s, rank: denseRank, goals: g });
+    out.push({
+      ...s,
+      rank: s.rank != null ? Number(s.rank) : out.length + 1,
+      goals: g,
+    });
   }
   return out;
 }
@@ -531,7 +539,7 @@ function renderTopScorersSection(topScorers) {
   const data = topScorers && typeof topScorers === "object" ? topScorers : {};
   const blocks = DIVISION_ORDER.filter((k) => Array.isArray(data[k]) && data[k].length)
     .map((key) => {
-      const rows = denseRankTopScorers(data[key], 10);
+      const rows = rankTopScorers(data[key], 10);
       if (!rows.length) return "";
       return `
         <div class="gpsl-sport-scorers-division">
@@ -547,7 +555,7 @@ function renderTopScorersSection(topScorers) {
   if (!blocks) return "";
   return `<section class="gpsl-sport-scorers-block">
     <h2 class="gpsl-sport-section-title">Golden boot (season to date)</h2>
-    <p class="gpsl-sport-scorers-note">Places 1–10 by league goals through this GPSL month (tied players share a place and are all listed).</p>
+    <p class="gpsl-sport-scorers-note">Top 10 by league goals through this GPSL month. Equal goals are separated by average goals per game.</p>
     <div class="gpsl-sport-scorers-grid">${blocks}</div>
   </section>`;
 }

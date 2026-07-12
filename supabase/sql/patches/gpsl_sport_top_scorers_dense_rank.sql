@@ -1,7 +1,7 @@
 -- =============================================================================
--- GPSL Sport golden boot: dense places 1–10 (ties share a place), include rank
--- Totals = league goals season-to-date through the edition GPSL month (not month-only).
--- Post-processes scorers on refresh so existing editions pick this up when rebuilt.
+-- GPSL Sport golden boot: exactly top 10 per division
+-- Totals = league goals season-to-date through the edition GPSL month.
+-- Tie-break: average goals per appearance (then assists, then name).
 -- Safe re-run.
 -- =============================================================================
 
@@ -43,17 +43,19 @@ BEGIN
           'owner', public.gpsl_sport_owner_byline(r.club_short_name),
           'goals', r.goals,
           'assists', r.assists,
-          'rank', r.dense_place
+          'appearances', r.appearances,
+          'goals_per_game', r.goals_per_game,
+          'rank', r.place
         )
-        ORDER BY r.dense_place ASC, r.goals DESC, r.assists DESC, r.player_name ASC
+        ORDER BY r.place ASC
       ), '[]'::jsonb) AS scorer_rows
     FROM (
       SELECT
         g.*,
-        dense_rank() OVER (
+        row_number() OVER (
           PARTITION BY g.division
-          ORDER BY g.goals DESC
-        ) AS dense_place
+          ORDER BY g.goals DESC, g.goals_per_game DESC, g.assists DESC, g.player_name ASC
+        ) AS place
       FROM (
         SELECT
           m.player_id,
@@ -62,7 +64,13 @@ BEGIN
           c."Club" AS club_name,
           ccs.division,
           sum(m.goals)::int AS goals,
-          sum(m.assists)::int AS assists
+          sum(m.assists)::int AS assists,
+          count(*) FILTER (WHERE coalesce(m.appeared, true))::int AS appearances,
+          round(
+            (sum(m.goals)::numeric
+              / nullif(count(*) FILTER (WHERE coalesce(m.appeared, true)), 0)),
+            3
+          ) AS goals_per_game
         FROM public.competition_match_player_stats m
         JOIN public.competition_fixtures f ON f.id = m.fixture_id
         JOIN public.competition_club_seasons ccs
@@ -78,7 +86,7 @@ BEGIN
         HAVING sum(m.goals) > 0
       ) g
     ) r
-    WHERE r.dense_place <= 10
+    WHERE r.place <= 10
     GROUP BY r.division
   ) sc;
 
