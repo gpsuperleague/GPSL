@@ -713,6 +713,7 @@ DECLARE
   v_id bigint;
   v_scorers jsonb;
   v_motm jsonb;
+  v_standings jsonb;
 BEGIN
   SELECT * INTO v_row
   FROM public.gpsl_sport_editions
@@ -747,6 +748,24 @@ BEGIN
       coalesce(v_scorers, '{}'::jsonb),
       true
     );
+  END IF;
+
+  IF to_regprocedure('public.gpsl_sport_build_standings_page(bigint, text)') IS NOT NULL THEN
+    v_standings := public.gpsl_sport_build_standings_page(v_row.season_id, v_month);
+    v_built := jsonb_set(
+      v_built,
+      '{stats_page,standings}',
+      coalesce(v_standings, '{}'::jsonb),
+      true
+    );
+    IF v_built ? 'front_page' THEN
+      v_built := jsonb_set(
+        v_built,
+        '{front_page,standings_snapshot}',
+        coalesce(v_standings, '{}'::jsonb),
+        true
+      );
+    END IF;
   END IF;
 
   IF to_regprocedure('public.gpsl_sport_build_motm_report(bigint, text)') IS NOT NULL THEN

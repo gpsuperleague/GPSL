@@ -560,12 +560,91 @@ function renderTopScorersSection(topScorers) {
   </section>`;
 }
 
+function renderStandingsTable(rows) {
+  const list = Array.isArray(rows) ? rows : [];
+  if (!list.length) return "";
+  return `
+    <div class="gpsl-sport-table-wrap">
+      <table class="gpsl-sport-league-table">
+        <thead>
+          <tr>
+            <th class="gpsl-sport-league-pos">#</th>
+            <th class="gpsl-sport-league-club">Club</th>
+            <th>P</th>
+            <th>W</th>
+            <th>D</th>
+            <th>L</th>
+            <th>GF</th>
+            <th>GA</th>
+            <th>GD</th>
+            <th>Pts</th>
+            <th class="gpsl-sport-league-form">Form</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${list
+            .map((r) => {
+              const badge = clubBadgeUrl(r.club_short);
+              const gd = Number(r.gd ?? 0);
+              const gdText = gd > 0 ? `+${gd}` : String(gd);
+              return `<tr>
+                <td class="gpsl-sport-league-pos">${escapeHtml(String(r.position ?? ""))}</td>
+                <td class="gpsl-sport-league-club">
+                  ${badge ? imgTag(badge, "gpsl-sport-standings-badge", "") : ""}
+                  <span>
+                    <strong>${escapeHtml(r.club_name || r.club_short || "—")}</strong>
+                    ${r.owner ? `<em>${escapeHtml(r.owner)}</em>` : ""}
+                  </span>
+                </td>
+                <td>${escapeHtml(String(r.mp ?? 0))}</td>
+                <td>${escapeHtml(String(r.w ?? 0))}</td>
+                <td>${escapeHtml(String(r.d ?? 0))}</td>
+                <td>${escapeHtml(String(r.l ?? 0))}</td>
+                <td>${escapeHtml(String(r.gf ?? 0))}</td>
+                <td>${escapeHtml(String(r.ga ?? 0))}</td>
+                <td>${escapeHtml(gdText)}</td>
+                <td class="gpsl-sport-league-pts">${escapeHtml(String(r.pts ?? 0))}</td>
+                <td class="gpsl-sport-league-form">${escapeHtml(r.form || "—")}</td>
+              </tr>`;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderStandingsHighlights(highlights, monthLabel) {
+  const h = highlights && typeof highlights === "object" ? highlights : {};
+  const blurbs = ["climber", "best_home", "best_away", "most_goals", "best_defence"]
+    .map((key) => h[key]?.blurb)
+    .filter(Boolean);
+  if (!blurbs.length) return "";
+  return `
+    <div class="gpsl-sport-standings-notes">
+      <h4>${escapeHtml(monthLabel ? `${monthLabel} desk notes` : "Desk notes")}</h4>
+      ${blurbs.map((b) => `<p>${escapeHtml(b)}</p>`).join("")}
+    </div>`;
+}
+
 function renderStandingsDivision(div) {
   if (!div) return "";
+  const tableRows = Array.isArray(div.table) ? div.table : [];
+  const monthLabel = div.as_of_month_label || "";
+
+  if (tableRows.length) {
+    return `
+      <article class="gpsl-sport-standings-division gpsl-sport-standings-division-full">
+        <h3 class="gpsl-sport-subsection-title">${escapeHtml(div.division_label || "Division")}</h3>
+        ${monthLabel ? `<p class="gpsl-sport-standings-asof">Table through ${escapeHtml(monthLabel)}</p>` : ""}
+        ${renderStandingsTable(tableRows)}
+        ${renderStandingsHighlights(div.highlights, monthLabel)}
+      </article>`;
+  }
+
+  // Legacy fallback (leader / chasers only)
   const leader = div.leader || {};
   const chasers = Array.isArray(div.chasers) ? div.chasers : [];
   const flying = Array.isArray(div.flying) ? div.flying : [];
-
   const leaderBadge = clubBadgeUrl(leader.club_short);
   const chaserHtml = chasers
     .map(
@@ -578,7 +657,6 @@ function renderStandingsDivision(div) {
       </li>`
     )
     .join("");
-
   const flyingHtml = flying
     .map(
       (f) => `
@@ -615,7 +693,8 @@ function renderStandingsSection(standings) {
   return `
     <section class="gpsl-sport-standings-block">
       <h2 class="gpsl-sport-section-title">Division standings</h2>
-      <div class="gpsl-sport-standings-grid">${blocks.map((d) => renderStandingsDivision(d)).join("")}</div>
+      <p class="gpsl-sport-scorers-note">Full league tables as of this GPSL month, plus the month's climbers, form stories and scoring trends.</p>
+      <div class="gpsl-sport-standings-grid gpsl-sport-standings-grid-full">${blocks.map((d) => renderStandingsDivision(d)).join("")}</div>
     </section>`;
 }
 
