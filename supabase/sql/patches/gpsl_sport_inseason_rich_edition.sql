@@ -265,47 +265,57 @@ BEGIN
 
   v_standings := coalesce(v_standings, '{}'::jsonb);
 
-  -- Monthly top scorers per division (top 3)
+  -- Monthly top scorers per division (dense places 1–10; ties share a place)
   SELECT jsonb_object_agg(div_key, scorer_rows)
   INTO v_scorers
   FROM (
     SELECT
-      g.division AS div_key,
+      r.division AS div_key,
       coalesce(jsonb_agg(
         jsonb_build_object(
-          'player_id', g.player_id,
-          'player_name', coalesce(g.player_name, 'Unknown player'),
-          'club_short', g.club_short_name,
-          'club_name', g.club_name,
-          'owner', public.gpsl_sport_owner_byline(g.club_short_name),
-          'goals', g.goals,
-          'assists', g.assists
+          'player_id', r.player_id,
+          'player_name', coalesce(r.player_name, 'Unknown player'),
+          'club_short', r.club_short_name,
+          'club_name', r.club_name,
+          'owner', public.gpsl_sport_owner_byline(r.club_short_name),
+          'goals', r.goals,
+          'assists', r.assists,
+          'rank', r.dense_place
         )
-        ORDER BY g.goals DESC, g.assists DESC
+        ORDER BY r.dense_place ASC, r.goals DESC, r.assists DESC, r.player_name ASC
       ), '[]'::jsonb) AS scorer_rows
     FROM (
       SELECT
-        m.player_id,
-        p."Name" AS player_name,
-        m.club_short_name,
-        c."Club" AS club_name,
-        ccs.division,
-        sum(m.goals)::int AS goals,
-        sum(m.assists)::int AS assists
-      FROM public.competition_match_player_stats m
-      JOIN public.competition_fixtures f ON f.id = m.fixture_id
-      JOIN public.competition_club_seasons ccs
-        ON ccs.season_id = f.season_id AND ccs.club_short_name = m.club_short_name
-      JOIN public."Clubs" c ON c."ShortName" = m.club_short_name
-      LEFT JOIN public."Players" p ON p."Konami_ID"::text = m.player_id::text
-      WHERE f.season_id = p_season_id
-        AND lower(f.gpsl_month) = v_gpsl_month
-        AND f.competition_type = 'league'
-        AND f.status = 'played'
-      GROUP BY m.player_id, p."Name", m.club_short_name, c."Club", ccs.division
-      HAVING sum(m.goals) > 0
-    ) g
-    GROUP BY g.division
+        g.*,
+        dense_rank() OVER (
+          PARTITION BY g.division
+          ORDER BY g.goals DESC
+        ) AS dense_place
+      FROM (
+        SELECT
+          m.player_id,
+          p."Name" AS player_name,
+          m.club_short_name,
+          c."Club" AS club_name,
+          ccs.division,
+          sum(m.goals)::int AS goals,
+          sum(m.assists)::int AS assists
+        FROM public.competition_match_player_stats m
+        JOIN public.competition_fixtures f ON f.id = m.fixture_id
+        JOIN public.competition_club_seasons ccs
+          ON ccs.season_id = f.season_id AND ccs.club_short_name = m.club_short_name
+        JOIN public."Clubs" c ON c."ShortName" = m.club_short_name
+        LEFT JOIN public."Players" p ON p."Konami_ID"::text = m.player_id::text
+        WHERE f.season_id = p_season_id
+          AND lower(f.gpsl_month) = v_gpsl_month
+          AND f.competition_type = 'league'
+          AND f.status = 'played'
+        GROUP BY m.player_id, p."Name", m.club_short_name, c."Club", ccs.division
+        HAVING sum(m.goals) > 0
+      ) g
+    ) r
+    WHERE r.dense_place <= 10
+    GROUP BY r.division
   ) sc;
 
   v_scorers := coalesce(v_scorers, '{}'::jsonb);
@@ -850,6 +860,10 @@ BEGIN
 
   v_month_label := public.gpsl_sport_month_label(v_month);
   v_built := public.gpsl_sport_build_inseason_month_content(p_season_id, v_month);
+
+  IF v_built ? 'error' THEN
+    RAISE EXCEPTION 'gpsl_sport_build_inseason_month_content failed: %', v_built->>'error';
+  END IF;
 
   INSERT INTO public.gpsl_sport_editions (
     season_id, gpsl_month, edition_label, story_type, front_page, back_page, detail

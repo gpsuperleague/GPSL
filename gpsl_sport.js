@@ -471,12 +471,15 @@ function renderTotmSection(title, rows) {
     </section>`;
 }
 
-function renderScorerRow(scorer, rank) {
+function renderScorerRow(scorer) {
   const card = scorer.player_id ? pesdbPlayerCardUrl(String(scorer.player_id)) : null;
   const badge = clubBadgeUrl(scorer.club_short);
+  const goals = Number(scorer.goals ?? 0);
+  const rank = Number(scorer.rank ?? 0) || "—";
+  const goalLabel = goals === 1 ? "goal" : "goals";
   return `
     <li class="gpsl-sport-scorer-row">
-      <span class="gpsl-sport-scorer-rank">${rank}</span>
+      <span class="gpsl-sport-scorer-rank">${escapeHtml(String(rank))}</span>
       ${card ? `<div class="gpsl-sport-scorer-card">${imgTag(card, "gpsl-sport-scorer-player", "")}</div>` : ""}
       <div class="gpsl-sport-scorer-info">
         <span class="gpsl-sport-scorer-name">${escapeHtml(scorer.player_name || "—")}</span>
@@ -486,28 +489,65 @@ function renderScorerRow(scorer, rank) {
           ${scorer.owner ? ` · ${escapeHtml(scorer.owner)}` : ""}
         </span>
       </div>
-      <span class="gpsl-sport-scorer-goals">${escapeHtml(String(scorer.goals ?? 0))}G</span>
+      <span class="gpsl-sport-scorer-goals" title="${goals} ${goalLabel} this GPSL month">
+        <b>${escapeHtml(String(goals))}</b>
+        <span class="gpsl-sport-scorer-goals-unit">${goalLabel}</span>
+      </span>
     </li>`;
+}
+
+/**
+ * Dense rank by goals (ties share a place). Keep everyone in places 1–maxRank.
+ * e.g. five on 3 goals → all 1st; four on 2 → all 2nd; continue until place 10 filled.
+ */
+function denseRankTopScorers(rows, maxRank = 10) {
+  const sorted = (Array.isArray(rows) ? rows : [])
+    .slice()
+    .sort((a, b) => {
+      const g = Number(b.goals || 0) - Number(a.goals || 0);
+      if (g) return g;
+      const as = Number(b.assists || 0) - Number(a.assists || 0);
+      if (as) return as;
+      return String(a.player_name || "").localeCompare(String(b.player_name || ""));
+    });
+
+  let lastGoals = null;
+  let denseRank = 0;
+  const out = [];
+  for (const s of sorted) {
+    const g = Number(s.goals || 0);
+    if (!Number.isFinite(g) || g <= 0) continue;
+    if (g !== lastGoals) {
+      denseRank += 1;
+      lastGoals = g;
+    }
+    if (denseRank > maxRank) break;
+    out.push({ ...s, rank: denseRank, goals: g });
+  }
+  return out;
 }
 
 function renderTopScorersSection(topScorers) {
   const data = topScorers && typeof topScorers === "object" ? topScorers : {};
   const blocks = DIVISION_ORDER.filter((k) => Array.isArray(data[k]) && data[k].length)
     .map((key) => {
-      const rows = data[key];
+      const rows = denseRankTopScorers(data[key], 10);
+      if (!rows.length) return "";
       return `
         <div class="gpsl-sport-scorers-division">
           <h3 class="gpsl-sport-subsection-title">${escapeHtml(divisionLabel(key))} golden boot</h3>
           <ol class="gpsl-sport-scorer-list">
-            ${rows.map((s, i) => renderScorerRow(s, i + 1)).join("")}
+            ${rows.map((s) => renderScorerRow(s)).join("")}
           </ol>
         </div>`;
     })
+    .filter(Boolean)
     .join("");
 
   if (!blocks) return "";
   return `<section class="gpsl-sport-scorers-block">
     <h2 class="gpsl-sport-section-title">Monthly top scorers</h2>
+    <p class="gpsl-sport-scorers-note">Places 1–10 by goals this month (tied players share a place and are all listed).</p>
     <div class="gpsl-sport-scorers-grid">${blocks}</div>
   </section>`;
 }
