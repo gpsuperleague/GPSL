@@ -650,6 +650,20 @@ function renderStatsPage(editionLabel, statsPage) {
     </div>`;
 }
 
+function formatMotmBody(text, dropcap = false) {
+  return String(text || "")
+    .split(/\n\n+/)
+    .map((raw, i) => {
+      const trimmed = raw.trim();
+      if (/^[A-Z][A-Z0-9 &'/\-]{2,40}$/.test(trimmed)) {
+        return `<h2 class="gpsl-sport-motm-section">${escapeHtml(trimmed)}</h2>`;
+      }
+      const dc = dropcap && i === 0 ? " gpsl-sport-dropcap" : "";
+      return `<p class="gpsl-sport-body${dc}">${escapeHtml(raw).replace(/\n/g, "<br>")}</p>`;
+    })
+    .join("");
+}
+
 function renderMatchPage(editionLabel, matchPage) {
   const lead = matchPage.lead || {};
   const fixture = matchPage.fixture || {};
@@ -676,12 +690,31 @@ function renderMatchPage(editionLabel, matchPage) {
       </div>`
     : "";
 
-  const scorers = fixture.scorers_home || fixture.scorers_away
-    ? `<div class="gpsl-sport-match-scorers">
-        ${fixture.scorers_home ? `<p><strong>${escapeHtml(fixture.home_name || "Home")}:</strong> ${escapeHtml(fixture.scorers_home)}</p>` : ""}
-        ${fixture.scorers_away ? `<p><strong>${escapeHtml(fixture.away_name || "Away")}:</strong> ${escapeHtml(fixture.scorers_away)}</p>` : ""}
+  const tableSnap =
+    fixture.home_table || fixture.away_table
+      ? `<div class="gpsl-sport-match-table">
+          <p class="gpsl-sport-match-table-title">League snapshot</p>
+          ${fixture.home_table ? `<p><strong>${escapeHtml(fixture.home_name || "Home")}</strong> — ${escapeHtml(String(fixture.home_table.position))}th · ${escapeHtml(String(fixture.home_table.pts))} pts · GD ${escapeHtml(String(fixture.home_table.gd ?? 0))}${fixture.home_table.form ? ` · form ${escapeHtml(fixture.home_table.form)}` : ""}</p>` : ""}
+          ${fixture.away_table ? `<p><strong>${escapeHtml(fixture.away_name || "Away")}</strong> — ${escapeHtml(String(fixture.away_table.position))}th · ${escapeHtml(String(fixture.away_table.pts))} pts · GD ${escapeHtml(String(fixture.away_table.gd ?? 0))}${fixture.away_table.form ? ` · form ${escapeHtml(fixture.away_table.form)}` : ""}</p>` : ""}
+        </div>`
+      : "";
+
+  const scorers =
+    fixture.scorers_home ||
+    fixture.scorers_away ||
+    fixture.assists_home ||
+    fixture.assists_away ||
+    fixture.clean_sheet_home ||
+    fixture.clean_sheet_away
+      ? `<div class="gpsl-sport-match-scorers">
+        ${fixture.scorers_home && fixture.scorers_home !== "—" ? `<p><strong>${escapeHtml(fixture.home_name || "Home")} goals:</strong> ${escapeHtml(fixture.scorers_home)}</p>` : ""}
+        ${fixture.assists_home ? `<p><strong>${escapeHtml(fixture.home_name || "Home")} assists:</strong> ${escapeHtml(fixture.assists_home)}</p>` : ""}
+        ${fixture.scorers_away && fixture.scorers_away !== "—" ? `<p><strong>${escapeHtml(fixture.away_name || "Away")} goals:</strong> ${escapeHtml(fixture.scorers_away)}</p>` : ""}
+        ${fixture.assists_away ? `<p><strong>${escapeHtml(fixture.away_name || "Away")} assists:</strong> ${escapeHtml(fixture.assists_away)}</p>` : ""}
+        ${fixture.clean_sheet_home ? `<p><strong>Clean sheet:</strong> ${escapeHtml(fixture.home_name || "Home")}</p>` : ""}
+        ${fixture.clean_sheet_away ? `<p><strong>Clean sheet:</strong> ${escapeHtml(fixture.away_name || "Away")}</p>` : ""}
       </div>`
-    : "";
+      : "";
 
   return `
     <div class="gpsl-sport-page gpsl-sport-page-match">
@@ -692,12 +725,13 @@ function renderMatchPage(editionLabel, matchPage) {
           <h1 class="gpsl-sport-headline">${escapeHtml(lead.headline || matchPage.page_title || "Match of the Month")}</h1>
           ${lead.byline ? renderByline(lead.byline) : ""}
           ${scoreboard}
-          ${formatParagraphs(lead.body, true)}
+          ${tableSnap}
+          ${formatMotmBody(lead.body, true)}
           ${lead.pull_quote ? renderPullQuote(lead.pull_quote) : ""}
           ${scorers}
         </article>
       </div>
-      <footer class="gpsl-sport-footer">GPSL Sport · Fictional match report · Stadium photos official GPSL assets</footer>
+      <footer class="gpsl-sport-footer">GPSL Sport · Match of the Month · Stadium photos official GPSL assets</footer>
     </div>`;
 }
 
@@ -815,7 +849,7 @@ function buildFrontRailTeasers(edition, front) {
   if (matchEnabled && matchPage.lead?.headline) {
     teasers.push({
       page: "match",
-      label: "Match report",
+      label: "Match of the Month",
       story: {
         ...matchPage.lead,
         club_short: matchPage.lead.club_short || matchPage.fixture?.home_club,
@@ -1055,7 +1089,7 @@ function renderSportPaper() {
               </aside>`
             : `<aside class="gpsl-sport-rail gpsl-sport-rail-empty">
                 <h2 class="gpsl-sport-rail-title">Inside this edition</h2>
-                <p class="gpsl-sport-rail-blurb">Use the tabs above for stats, match report, managers, owners and transfers.</p>
+                <p class="gpsl-sport-rail-blurb">Use the tabs above for stats, Match of the Month, managers, owners and transfers.</p>
               </aside>`
         }
       </div>
@@ -1122,7 +1156,7 @@ export function ensureSportModal() {
       <div class="gpsl-sport-tabs" id="gpslSportTabs">
         <button type="button" class="gpsl-sport-tab active" data-page="front">Front</button>
         <button type="button" class="gpsl-sport-tab" data-page="stats" id="gpslSportStatsTab" hidden>Stats</button>
-        <button type="button" class="gpsl-sport-tab" data-page="match" id="gpslSportMatchTab" hidden>Match report</button>
+        <button type="button" class="gpsl-sport-tab" data-page="match" id="gpslSportMatchTab" hidden>Match of the Month</button>
         <button type="button" class="gpsl-sport-tab" data-page="managers" id="gpslSportManagersTab" hidden>Managers</button>
         <button type="button" class="gpsl-sport-tab" data-page="owners" id="gpslSportOwnersTab" hidden>Owners</button>
         <button type="button" class="gpsl-sport-tab" data-page="back" id="gpslSportBackTab" hidden>Transfers</button>

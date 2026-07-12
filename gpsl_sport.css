@@ -1016,7 +1016,7 @@ body.gpsl-sport-open {
   margin-top: 1px;
 }
 
-/* Match report page */
+/* Match of the Month page */
 .gpsl-sport-match-scoreboard {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -1077,6 +1077,42 @@ body.gpsl-sport-open {
 
 .gpsl-sport-match-scorers p:last-child {
   margin-bottom: 0;
+}
+
+.gpsl-sport-match-table {
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  border: 1px solid #d4cdc0;
+  background: rgba(0, 0, 0, 0.03);
+  font-size: 12px;
+}
+
+.gpsl-sport-match-table-title {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #c41e3a;
+}
+
+.gpsl-sport-match-table p {
+  margin: 0 0 4px;
+}
+
+.gpsl-sport-match-table p:last-child {
+  margin-bottom: 0;
+}
+
+.gpsl-sport-motm-section {
+  margin: 22px 0 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #c41e3a;
+  border-bottom: 1px solid #d4cdc0;
+  padding-bottom: 4px;
 }
 
 @media (max-width: 720px) {
