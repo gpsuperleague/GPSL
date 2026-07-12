@@ -307,9 +307,11 @@ BEGIN
         JOIN public."Clubs" c ON c."ShortName" = m.club_short_name
         LEFT JOIN public."Players" p ON p."Konami_ID"::text = m.player_id::text
         WHERE f.season_id = p_season_id
-          AND lower(f.gpsl_month) = v_gpsl_month
           AND f.competition_type = 'league'
           AND f.status = 'played'
+          AND f.gpsl_month IS NOT NULL
+          AND public.competition_gpsl_month_sort(lower(f.gpsl_month))
+            <= public.competition_gpsl_month_sort(v_gpsl_month)
         GROUP BY m.player_id, p."Name", m.club_short_name, c."Club", ccs.division
         HAVING sum(m.goals) > 0
       ) g

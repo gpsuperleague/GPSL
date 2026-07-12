@@ -546,8 +546,8 @@ function renderTopScorersSection(topScorers) {
 
   if (!blocks) return "";
   return `<section class="gpsl-sport-scorers-block">
-    <h2 class="gpsl-sport-section-title">Monthly top scorers</h2>
-    <p class="gpsl-sport-scorers-note">Places 1–10 by goals this month (tied players share a place and are all listed).</p>
+    <h2 class="gpsl-sport-section-title">Golden boot (season to date)</h2>
+    <p class="gpsl-sport-scorers-note">Places 1–10 by league goals through this GPSL month (tied players share a place and are all listed).</p>
     <div class="gpsl-sport-scorers-grid">${blocks}</div>
   </section>`;
 }

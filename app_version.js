@@ -1,2 +1,2 @@
 /** Single cache-bust string — bump when global.js or nav_config structure changes. */
-export const APP_VERSION = "20260712-sport-motm";
+export const APP_VERSION = "20260712-sport-motm2";

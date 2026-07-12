@@ -4,6 +4,88 @@
 -- After apply: rebuild the month via admin calendar → Rebuild GPSL Sport edition.
 -- =============================================================================
 
+-- Golden boot: season-to-date through edition month (dense places 1–10)
+CREATE OR REPLACE FUNCTION public.gpsl_sport_month_top_scorers(
+  p_season_id bigint,
+  p_gpsl_month text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_month text := lower(btrim(coalesce(p_gpsl_month, '')));
+  v_month_sort smallint;
+  v_out jsonb;
+BEGIN
+  IF p_season_id IS NULL OR v_month = '' THEN
+    RETURN '{}'::jsonb;
+  END IF;
+
+  v_month_sort := public.competition_gpsl_month_sort(v_month);
+  IF v_month_sort IS NULL THEN
+    RETURN '{}'::jsonb;
+  END IF;
+
+  SELECT coalesce(jsonb_object_agg(div_key, scorer_rows), '{}'::jsonb)
+  INTO v_out
+  FROM (
+    SELECT
+      r.division AS div_key,
+      coalesce(jsonb_agg(
+        jsonb_build_object(
+          'player_id', r.player_id,
+          'player_name', coalesce(r.player_name, 'Unknown player'),
+          'club_short', r.club_short_name,
+          'club_name', r.club_name,
+          'owner', public.gpsl_sport_owner_byline(r.club_short_name),
+          'goals', r.goals,
+          'assists', r.assists,
+          'rank', r.dense_place
+        )
+        ORDER BY r.dense_place ASC, r.goals DESC, r.assists DESC, r.player_name ASC
+      ), '[]'::jsonb) AS scorer_rows
+    FROM (
+      SELECT
+        g.*,
+        dense_rank() OVER (
+          PARTITION BY g.division
+          ORDER BY g.goals DESC
+        ) AS dense_place
+      FROM (
+        SELECT
+          m.player_id,
+          p."Name" AS player_name,
+          m.club_short_name,
+          c."Club" AS club_name,
+          ccs.division,
+          sum(m.goals)::int AS goals,
+          sum(m.assists)::int AS assists
+        FROM public.competition_match_player_stats m
+        JOIN public.competition_fixtures f ON f.id = m.fixture_id
+        JOIN public.competition_club_seasons ccs
+          ON ccs.season_id = f.season_id AND ccs.club_short_name = m.club_short_name
+        JOIN public."Clubs" c ON c."ShortName" = m.club_short_name
+        LEFT JOIN public."Players" p ON p."Konami_ID"::text = m.player_id::text
+        WHERE f.season_id = p_season_id
+          AND f.competition_type = 'league'
+          AND f.status = 'played'
+          AND f.gpsl_month IS NOT NULL
+          AND public.competition_gpsl_month_sort(lower(f.gpsl_month)) <= v_month_sort
+        GROUP BY m.player_id, p."Name", m.club_short_name, c."Club", ccs.division
+        HAVING sum(m.goals) > 0
+      ) g
+    ) r
+    WHERE r.dense_place <= 10
+    GROUP BY r.division
+  ) sc;
+
+  RETURN coalesce(v_out, '{}'::jsonb);
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.gpsl_sport_build_motm_report(
   p_season_id bigint,
   p_gpsl_month text
@@ -278,7 +360,7 @@ BEGIN
 
   v_home_rank_note := CASE
     WHEN v_home_st.table_position IS NULL THEN 'yet to settle in the table'
-    ELSE format('%s on %s points (GD %+s)',
+    ELSE format('%s on %s points (GD %s)',
       CASE
         WHEN v_home_st.table_position % 100 BETWEEN 11 AND 13 THEN v_home_st.table_position::text || 'th'
         WHEN v_home_st.table_position % 10 = 1 THEN v_home_st.table_position::text || 'st'
@@ -286,11 +368,15 @@ BEGIN
         WHEN v_home_st.table_position % 10 = 3 THEN v_home_st.table_position::text || 'rd'
         ELSE v_home_st.table_position::text || 'th'
       END,
-      v_home_st.pts, coalesce(v_home_st.gd, 0))
+      v_home_st.pts,
+      CASE
+        WHEN coalesce(v_home_st.gd, 0) > 0 THEN '+' || coalesce(v_home_st.gd, 0)::text
+        ELSE coalesce(v_home_st.gd, 0)::text
+      END)
   END;
   v_away_rank_note := CASE
     WHEN v_away_st.table_position IS NULL THEN 'still finding their level'
-    ELSE format('%s on %s points (GD %+s)',
+    ELSE format('%s on %s points (GD %s)',
       CASE
         WHEN v_away_st.table_position % 100 BETWEEN 11 AND 13 THEN v_away_st.table_position::text || 'th'
         WHEN v_away_st.table_position % 10 = 1 THEN v_away_st.table_position::text || 'st'
@@ -298,7 +384,11 @@ BEGIN
         WHEN v_away_st.table_position % 10 = 3 THEN v_away_st.table_position::text || 'rd'
         ELSE v_away_st.table_position::text || 'th'
       END,
-      v_away_st.pts, coalesce(v_away_st.gd, 0))
+      v_away_st.pts,
+      CASE
+        WHEN coalesce(v_away_st.gd, 0) > 0 THEN '+' || coalesce(v_away_st.gd, 0)::text
+        ELSE coalesce(v_away_st.gd, 0)::text
+      END)
   END;
 
   -- Crowd colour
@@ -755,6 +845,7 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.gpsl_sport_build_motm_report(bigint, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.gpsl_sport_month_top_scorers(bigint, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpsl_sport_refresh_inseason_edition_by_id(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gpsl_sport_refresh_inseason_edition_by_id(bigint) TO service_role;
 GRANT EXECUTE ON FUNCTION public.gpsl_sport_generate_inseason_edition(bigint, text) TO authenticated;

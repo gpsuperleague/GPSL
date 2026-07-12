@@ -1,5 +1,6 @@
 -- =============================================================================
 -- GPSL Sport golden boot: dense places 1–10 (ties share a place), include rank
+-- Totals = league goals season-to-date through the edition GPSL month (not month-only).
 -- Post-processes scorers on refresh so existing editions pick this up when rebuilt.
 -- Safe re-run.
 -- =============================================================================
@@ -16,9 +17,15 @@ SET search_path = public
 AS $function$
 DECLARE
   v_month text := lower(btrim(coalesce(p_gpsl_month, '')));
+  v_month_sort smallint;
   v_out jsonb;
 BEGIN
   IF p_season_id IS NULL OR v_month = '' THEN
+    RETURN '{}'::jsonb;
+  END IF;
+
+  v_month_sort := public.competition_gpsl_month_sort(v_month);
+  IF v_month_sort IS NULL THEN
     RETURN '{}'::jsonb;
   END IF;
 
@@ -63,9 +70,10 @@ BEGIN
         JOIN public."Clubs" c ON c."ShortName" = m.club_short_name
         LEFT JOIN public."Players" p ON p."Konami_ID"::text = m.player_id::text
         WHERE f.season_id = p_season_id
-          AND lower(f.gpsl_month) = v_month
           AND f.competition_type = 'league'
           AND f.status = 'played'
+          AND f.gpsl_month IS NOT NULL
+          AND public.competition_gpsl_month_sort(lower(f.gpsl_month)) <= v_month_sort
         GROUP BY m.player_id, p."Name", m.club_short_name, c."Club", ccs.division
         HAVING sum(m.goals) > 0
       ) g
