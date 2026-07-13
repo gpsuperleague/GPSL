@@ -1,0 +1,269 @@
+import { formatNavLabel } from "./nav_label.js";
+
+/**
+ * Primary Admin workflow menu (new).
+ * # sections → top-level Admin mega subgroups
+ * ~ groups → nested headers
+ * links → pages (hash when needed)
+ */
+
+function L(label, href, hash = null, page = null) {
+  const item = { label, href };
+  if (hash) item.hash = hash;
+  if (page) item.page = page;
+  else if (href) {
+    item.page = href.replace(/\.html.*$/i, "").replace(/-/g, "_");
+  }
+  return item;
+}
+
+function link(label, href, hash = null) {
+  return { type: "link", ...L(label, href, hash) };
+}
+
+function group(label, items = []) {
+  return { type: "group", label, items };
+}
+
+export const ADMIN_MAIN_NAV = [
+  {
+    id: "testing",
+    label: "Testing",
+    entries: [
+      link("Reset League", "admin_test_reset.html"),
+      link("Assign Manager to club", "admin_test_manager_assign.html"),
+      link("Draft Auction auto Bids", "admin_test_draft_seed.html"),
+      link("Deploy Monthly Results", "admin_test_deploy_month.html"),
+      link("Inbox Test All Clubs", "admin_test_inbox.html"),
+      link("Set Club Availability & timeZone", "admin_test_club_availability.html"),
+    ],
+  },
+  {
+    id: "owners",
+    label: "Owners",
+    entries: [
+      link("Manage Waiting List", "admin_owners.html", "ow-waiting-list"),
+      link("Owner Waiting List", "admin_owners.html", "ow-waiting-list"),
+      link("Create New Owner & Add to Waiting List", "admin_owners.html", "ow-club-auction"),
+      link("Create New Owner & Add Directly to Club", "admin_owners.html", "ow-add-owner"),
+      link("Remove Owner From Club", "admin_owners.html", "ow-break"),
+      link("Archive Owner(left GPSL)", "admin_owners.html", "ow-archive"),
+      link("Unarchive Owner(Return to GPSL)", "admin_owners.html", "ow-unarchive"),
+      link("Change Owner Club", "admin_owners.html", "ow-change-club"),
+      link("Link existing login to club", "admin_owners.html", "ow-link-club"),
+      link("Set Owner Tag", "admin_owners.html", "ow-set-tag"),
+      link("Update Email", "admin_owners.html", "ow-update-email"),
+      link("Set Password", "admin_owners.html", "ow-set-password"),
+      link("Send Reset Email", "admin_owners.html", "ow-reset-password"),
+      link("Assign Manager to club", "admin_test_manager_assign.html"),
+    ],
+  },
+  {
+    id: "season_break",
+    label: "Season Break",
+    entries: [
+      group("GPDB Update", [
+        L("GPDB Player Sync", "admin_gpdb_sync.html"),
+        L("GPDB Player Deduplication", "admin_gpdb_dedup.html"),
+        L("GPDB Player Exclusions", "admin_gpdb_exclusions.html"),
+      ]),
+      group("OooO", [L("Homegrown Star Draw", "admin_one_of_our_own.html")]),
+      group("Club Kits", [L("Download Latest Kits", "admin_club_kits.html")]),
+      group("Prize Money", [
+        L("Cup Prize Money", "admin_cup_prizes.html"),
+        L("League Prize Money", "admin_league_prizes.html"),
+      ]),
+      group("Club, Stadium & Manager", [
+        L("Club Attendance & Prestige", "admin_club_attendance.html"),
+        L("Stadium Settings", "admin_stadium_settings.html"),
+        L("Weather & Pitch conditions", "admin_weather.html"),
+        L("Manager Contract Targets", "admin_manager_targets.html"),
+      ]),
+      group("Internationals", [
+        L("Nation Setup", "admin_international.html", "sb-nation-setup"),
+        L("World Cup Cycle", "admin_international.html", "sb-wc-cycle"),
+        L("Open Nation Selection", "admin_international.html", "sb-nation-selection"),
+        L("Manual National Team Selection", "admin_international.html", "sb-nation-assign"),
+        L("Close Nation Selection", "admin_international.html", "sb-nation-selection"),
+        L("Clear Nation Selection", "admin_international.html", "sb-nation-selection"),
+        L("Set Owner Rankings", "admin_international.html", "sb-owner-rankings"),
+      ]),
+    ],
+  },
+  {
+    id: "create_season",
+    label: "Create Season",
+    entries: [
+      link("Create Pre-Season", "admin_season.html", "wf-kickoff"),
+      group("Assign divisions", [
+        L("Setup Superleague Teams", "admin_season.html", "wf-divisions"),
+        L("Setup Championship Teams", "admin_season.html", "wf-divisions"),
+        L("Draw Championship Divisions", "admin_season.html", "wf-divisions"),
+      ]),
+      link("Create Season Calendar", "admin_season.html", "wf-calendar"),
+      link("Create League Fixtures", "admin_fixtures-league.html"),
+      link("Setup Cups", "admin_fixtures-cups.html"),
+    ],
+  },
+  {
+    id: "pre_season",
+    label: "Pre-Season (June & July)",
+    entries: [
+      group("Challenges", [
+        L("Set Initial Season Challenges", "admin_challenges.html"),
+      ]),
+      group("Bills & Income", [
+        L("Set TV Revenue", "admin_tv_revenue.html"),
+        L("Set Government Subsidies", "admin_gov_subsidies.html"),
+        L("Set 34+ Fee", "admin_tax_34.html"),
+        L("Set Star Fee", "admin_star_tax.html"),
+        L("Set Wage %", "admin_wage_pct.html"),
+      ]),
+      link("Set Tax %", "admin_tax_pct.html"),
+      link("Set stadium costs", "admin_stadium_costs.html"),
+      group("Auctions", [L("Set on/off", "admin_transfers.html")]),
+      group("Transfers", [L("Set on/off", "admin_transfer_window.html")]),
+    ],
+  },
+  {
+    id: "season_management",
+    label: "Season Management",
+    entries: [
+      link("Club Season Checklist", "admin_club_checklist.html"),
+      group("Bills & Income", [L("Apply fines", "admin_fines.html")]),
+    ],
+  },
+  {
+    id: "season_checklist",
+    label: "Season Checklist",
+    entries: [
+      group("August", []),
+      group("September", [
+        L("Close Transfer Window", "admin_transfer_window.html", "closed"),
+      ]),
+      group("October", []),
+      group("November", []),
+      group("December", [
+        L("Start of Season challenge Payouts", "admin_challenges.html"),
+      ]),
+      group("January", [
+        L("Open Transfer Window", "admin_transfer_window.html", "open"),
+        L("Close Transfer Window", "admin_transfer_window.html", "closed"),
+      ]),
+      group("February", []),
+      group("March", []),
+      group("April", []),
+      group("May", []),
+    ],
+  },
+  {
+    id: "close_season",
+    label: "Close Season",
+    entries: [
+      link("Setup Playoffs", "admin_fixtures-playoffs.html"),
+      link("Mid-Season Challenge payouts", "admin_challenges.html"),
+      link("Archive season stats & awards", "admin_season.html", "wf-close-season"),
+      link("Charge Emergency Tax", "admin_emergency_tax.html"),
+      link("Close Finances", "admin_wage_bills.html"),
+    ],
+  },
+  {
+    id: "end_of_season",
+    label: "End Of Season",
+    entries: [
+      link("End current season {summer break}", "admin_season.html", "wf-close-season"),
+    ],
+  },
+];
+
+export function adminMainNavHref(item) {
+  if (!item?.href) return "#";
+  if (item.hash) return `${item.href}#${item.hash}`;
+  return item.href;
+}
+
+function escapeNavText(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function getAdminMainSection(sectionId) {
+  return ADMIN_MAIN_NAV.find((s) => s.id === sectionId) || null;
+}
+
+export function isAdminMainNavItemActive(item, pathname, search = "") {
+  if (!item?.href) return false;
+  const file = (pathname || "").toLowerCase().replace(/\\/g, "/").split("/").pop() || "";
+  const itemFile = item.href.split("?")[0].split("#")[0].toLowerCase();
+  if (file !== itemFile) return false;
+
+  const hash = (typeof window !== "undefined" ? window.location.hash || "" : "").replace("#", "");
+  if (item.hash) return hash === item.hash;
+  return true;
+}
+
+function entryHasActive(entry, pathname, search) {
+  if (entry.type === "link") {
+    return isAdminMainNavItemActive(entry, pathname, search);
+  }
+  if (entry.type === "group") {
+    return (entry.items || []).some((item) => isAdminMainNavItemActive(item, pathname, search));
+  }
+  return false;
+}
+
+export function adminMainSectionHasActive(sectionId, pathname, search = "") {
+  const section = getAdminMainSection(sectionId);
+  if (!section) return false;
+  return (section.entries || []).some((e) => entryHasActive(e, pathname, search));
+}
+
+export function adminMainNavHasActive(pathname, search = "") {
+  return ADMIN_MAIN_NAV.some((s) => adminMainSectionHasActive(s.id, pathname, search));
+}
+
+function renderLinkHtml(item, pathname, search) {
+  const href = adminMainNavHref(item);
+  const active = isAdminMainNavItemActive(item, pathname, search);
+  return `<a href="${escapeNavText(href)}" class="nav-link nav-link-sub${
+    active ? " active" : ""
+  }">${escapeNavText(formatNavLabel(item.label))}</a>`;
+}
+
+/** One # section under Admin (e.g. Testing, Season Break). */
+export function renderAdminMainSectionHtml(sectionId, pathname, search = "") {
+  const section = getAdminMainSection(sectionId);
+  if (!section) return "";
+
+  const megaOpen = adminMainSectionHasActive(sectionId, pathname, search);
+  let html = `<div class="nav-subgroup nav-subgroup-mega${megaOpen ? " open" : ""}" data-nav-subgroup>`;
+  html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
+    megaOpen ? "true" : "false"
+  }">${escapeNavText(formatNavLabel(section.label))}</button>`;
+  html += `<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">`;
+
+  for (const entry of section.entries || []) {
+    if (entry.type === "link") {
+      html += renderLinkHtml(entry, pathname, search);
+      continue;
+    }
+    if (entry.type === "group") {
+      const nestedOpen = entryHasActive(entry, pathname, search);
+      html += `<div class="nav-subgroup nav-subgroup-nested" data-nav-subgroup>`;
+      html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
+        nestedOpen ? "true" : "false"
+      }">${escapeNavText(formatNavLabel(entry.label))}</button>`;
+      html += `<div class="nav-subgroup-panel" role="group">`;
+      for (const item of entry.items || []) {
+        html += renderLinkHtml(item, pathname, search);
+      }
+      html += `</div></div>`;
+    }
+  }
+
+  html += `</div></div>`;
+  return html;
+}

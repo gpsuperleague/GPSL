@@ -17,6 +17,9 @@ const ownerNavMod = await import(
 const testingNavMod = await import(
   `./admin_testing_nav.js?v=${NAV_CONFIG_VERSION}`
 );
+const adminMainNavMod = await import(
+  `./admin_main_nav.js?v=${NAV_CONFIG_VERSION}`
+);
 
 const {
   seasonAdminNavHasActive,
@@ -27,8 +30,12 @@ const {
 const { seasonBreakNavHasActive, renderSeasonBreakNavHtml } = seasonBreakNavMod;
 const { ownerAdminNavHasActive, renderOwnerAdminNavHtml } = ownerNavMod;
 const { testingAdminNavHasActive, renderTestingAdminNavHtml } = testingNavMod;
+const {
+  renderAdminMainSectionHtml,
+  adminMainSectionHasActive,
+} = adminMainNavMod;
 
-/** Render admin mega-menu blocks (Testing, Season management, Season Break, Owners & accounts). */
+/** Render admin mega-menu blocks (new Admin + legacy Admin2). */
 function ensureTestingNavLinks(html, pathname) {
   const file = normalizeNavPath(pathname);
   let out = html;
@@ -53,6 +60,9 @@ function ensureTestingNavLinks(html, pathname) {
 }
 
 export function renderAdminMegaNavHtml(item, pathname, search = "") {
+  if (item?.adminMainMega && item.section) {
+    return renderAdminMainSectionHtml(item.section, pathname, search);
+  }
   if (item?.testingMega) {
     return ensureTestingNavLinks(renderTestingAdminNavHtml(pathname, search), pathname);
   }
@@ -252,10 +262,27 @@ export const NAV_SECTIONS = [
   },
 ];
 
-/** Admins only — appended in buildNav when isGpslAdminUser (same dropdown pattern as other sections). */
+/** New primary Admin workflow — # sections from admin_main_nav.js */
 export const ADMIN_NAV_SECTION = {
   id: "admin",
   label: "Admin",
+  items: [
+    { adminMainMega: true, section: "testing", label: "Testing" },
+    { adminMainMega: true, section: "owners", label: "Owners" },
+    { adminMainMega: true, section: "season_break", label: "Season Break" },
+    { adminMainMega: true, section: "create_season", label: "Create Season" },
+    { adminMainMega: true, section: "pre_season", label: "Pre-Season (June & July)" },
+    { adminMainMega: true, section: "season_management", label: "Season Management" },
+    { adminMainMega: true, section: "season_checklist", label: "Season Checklist" },
+    { adminMainMega: true, section: "close_season", label: "Close Season" },
+    { adminMainMega: true, section: "end_of_season", label: "End Of Season" },
+  ],
+};
+
+/** Legacy Admin tree — kept as Admin2 until the new menu is verified. */
+export const ADMIN2_NAV_SECTION = {
+  id: "admin2",
+  label: "Admin2",
   items: [
     { testingMega: true, label: "Testing" },
     { seasonBreakMega: true, label: "Season Break" },
@@ -316,6 +343,9 @@ export function isNavItemActive(item, pathname, search = "") {
 export function sectionHasActiveItem(section, pathname, search) {
   if (!section?.items?.length) return false;
   return section.items.some((item) => {
+    if (item.adminMainMega && item.section) {
+      return adminMainSectionHasActive(item.section, pathname, search);
+    }
     if (item.testingMega) {
       return (
         testingAdminNavHasActive(pathname, search)
