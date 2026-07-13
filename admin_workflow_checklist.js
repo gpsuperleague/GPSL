@@ -143,8 +143,6 @@ function setAllDetails(open) {
 
 async function setTaskDone(taskKey, isDone) {
   doneMap.set(taskKey, isDone);
-  updateSummary();
-  renderItemState(taskKey, isDone);
 
   if (storageMode === "db" && seasonId != null) {
     const { error } = await supabase.rpc("admin_workflow_checklist_set", {
@@ -153,7 +151,6 @@ async function setTaskDone(taskKey, isDone) {
       p_is_done: isDone,
     });
     if (error) {
-      // Fall back to local if RPC missing / RLS issue
       storageMode = "local";
       writeLocalDone();
       setStatus(
@@ -161,36 +158,29 @@ async function setTaskDone(taskKey, isDone) {
         `Saved locally (${error.message}). Run admin_workflow_checklist.sql for shared ticks.`,
         false
       );
+      render();
       return;
     }
     setStatus("wfStatus", isDone ? "Marked done." : "Marked not done.", true);
+    render();
     return;
   }
 
   writeLocalDone();
   setStatus("wfStatus", "Saved in this browser.", true);
-}
-
-function renderItemState(taskKey, isDone) {
-  const li = document.querySelector(`li.wf-item[data-task-key="${cssAttrEscape(taskKey)}"]`);
-  if (!li) return;
-  li.classList.toggle("done", isDone);
-  const cb = li.querySelector('input[type="checkbox"]');
-  if (cb) cb.checked = isDone;
-  if (hideDone) {
-    li.hidden = isDone;
-  } else {
-    li.hidden = false;
-  }
-}
-
-function cssAttrEscape(value) {
-  return String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  render();
 }
 
 function render() {
   const root = document.getElementById("wfRoot");
   if (!root) return;
+
+  const openIds = new Set(
+    [...root.querySelectorAll("details[data-section]")]
+      .filter((d) => d.open)
+      .map((d) => d.dataset.section)
+  );
+  const hadDetails = Boolean(root.querySelector("details[data-section]"));
 
   const sections = getAdminWorkflowChecklist();
   let html = "";
@@ -198,7 +188,8 @@ function render() {
   for (const section of sections) {
     const sectionTasks = section.blocks.flatMap((b) => b.items);
     const sectionDone = sectionTasks.filter((t) => doneMap.get(t.taskKey)).length;
-    html += `<details class="wf-section" open data-section="${escapeHtml(section.id)}">`;
+    const openAttr = !hadDetails || openIds.has(section.id) ? " open" : "";
+    html += `<details class="wf-section"${openAttr} data-section="${escapeHtml(section.id)}">`;
     html += `<summary><h2>${escapeHtml(section.label)} <span style="color:#888;font-weight:400;font-size:13px">(${sectionDone}/${sectionTasks.length})</span></h2></summary>`;
 
     for (const block of section.blocks) {
