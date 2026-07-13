@@ -131,7 +131,11 @@
       <div id="playerReveal"></div>
       <p id="rulesLine" class="secret-note"></p>
       <p id="myBidLine"></p>
-      <button id="openBidBtn" class="button" style="display:none;">Place bid</button>
+      <div class="sa-actions" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:10px 0 4px;">
+        <button id="openBidBtn" class="button" style="display:none;">Place bid</button>
+        <button id="refreshBtn" class="button secondary" type="button">Refresh bids</button>
+        <span id="refreshHint" class="secret-note" style="margin:0;"></span>
+      </div>
       <div id="resultsBlock" style="display:none; margin-top:20px;">
         <h3 id="resultsHeading">Results</h3>
         <table class="gpsl-table">
@@ -219,12 +223,22 @@
       rules: document.getElementById("rulesLine"),
       myBidLine: document.getElementById("myBidLine"),
       openBid: document.getElementById("openBidBtn"),
+      refreshBtn: document.getElementById("refreshBtn"),
+      refreshHint: document.getElementById("refreshHint"),
       resultsBlock: document.getElementById("resultsBlock"),
       resultsBody: document.getElementById("resultsBody"),
       resultsHeading: document.getElementById("resultsHeading"),
       winnerLine: document.getElementById("winnerLine"),
       waitingReveal: document.getElementById("waitingReveal"),
     };
+
+    const TIMER_MS = 1000;
+    const DATA_POLL_LIVE_MS = 20000;
+    const DATA_POLL_IDLE_MS = 60000;
+
+    let dataPollInterval = null;
+    let lastDataRefreshAt = 0;
+    let dataRefreshInFlight = false;
 
     function updateRoundedPreview(amount) {
       const preview = document.getElementById("roundedPreview");
@@ -297,7 +311,7 @@
         return;
       }
       closeBidModal();
-      await render();
+      await refreshData({ manual: true });
     };
 
     async function renderPlayerBlock() {
@@ -443,6 +457,55 @@
         .join("") || `<tr><td colspan="5">No bids</td></tr>`;
     }
 
+    function updateTimerOnly() {
+      if (!auction) return;
+      const phase = auctionPhase(auction);
+      const endIso = specialAuctionEffectiveEnd(auction);
+      if (phase === "live") {
+        const t = formatAuctionTimerText("Time left", endIso);
+        els.timer.textContent = t.duration;
+        els.timerSub.textContent = t.subline;
+      } else if (phase === "before_start") {
+        const t = formatAuctionTimerText("Bidding opens in", auction.start_time);
+        els.timer.textContent = t.duration;
+        els.timerSub.textContent = t.subline;
+      } else {
+        els.timer.textContent = `Ended: ${new Date(endIso).toLocaleString()}`;
+        const t = formatAuctionTimerText("Ended", endIso);
+        els.timerSub.textContent = t.subline;
+      }
+    }
+
+    function setRefreshHint(extra = "") {
+      if (!els.refreshHint) return;
+      const when = lastDataRefreshAt
+        ? `Last updated ${new Date(lastDataRefreshAt).toLocaleTimeString()}`
+        : "";
+      els.refreshHint.textContent = [when, extra].filter(Boolean).join(" · ");
+    }
+
+    function dataPollMsForPhase(phase) {
+      if (phase === "live") return DATA_POLL_LIVE_MS;
+      if (phase === "before_start" || phase === "ended_pending") return DATA_POLL_IDLE_MS;
+      return 0;
+    }
+
+    function restartDataPoll() {
+      if (dataPollInterval) {
+        clearInterval(dataPollInterval);
+        dataPollInterval = null;
+      }
+      if (!auction) return;
+      const phase = auctionPhase(auction);
+      const ms = dataPollMsForPhase(phase);
+      if (!ms) return;
+      dataPollInterval = setInterval(() => {
+        refreshData({ quiet: true });
+      }, ms);
+    }
+
+    let lastKnownPhase = null;
+
     async function render() {
       if (!auction) {
         els.emptyMsg.textContent = "No special auction is active right now.";
@@ -464,6 +527,7 @@
       els.prize.textContent = prizeDescription(auction);
 
       const phase = auctionPhase(auction);
+      lastKnownPhase = phase;
       if (revealed) {
         if (auction.winning_club_id) {
           els.winnerLine.style.display = "block";
@@ -485,20 +549,7 @@
         els.waitingReveal.style.display = "none";
       }
 
-      const endIso = specialAuctionEffectiveEnd(auction);
-      if (phase === "live") {
-        const t = formatAuctionTimerText("Time left", endIso);
-        els.timer.textContent = t.duration;
-        els.timerSub.textContent = t.subline;
-      } else if (phase === "before_start") {
-        const t = formatAuctionTimerText("Bidding opens in", auction.start_time);
-        els.timer.textContent = t.duration;
-        els.timerSub.textContent = t.subline;
-      } else {
-        const t = formatAuctionTimerText("Ended", endIso);
-        els.timer.textContent = `Ended: ${new Date(endIso).toLocaleString()}`;
-        els.timerSub.textContent = t.subline;
-      }
+      updateTimerOnly();
 
       els.rules.textContent = isLub
         ? "Submit one secret bid (nearest ₿1m). When the window ends, all bids are revealed; the lowest amount that only one club chose wins and pays that amount."
@@ -542,6 +593,27 @@
       await renderResults(bids);
     }
 
+    async function refreshData({ quiet = false, manual = false } = {}) {
+      if (!auction || dataRefreshInFlight) return;
+      dataRefreshInFlight = true;
+      if (manual && els.refreshBtn) {
+        els.refreshBtn.disabled = true;
+        els.refreshBtn.textContent = "Refreshing…";
+      }
+      try {
+        await render();
+        lastDataRefreshAt = Date.now();
+        setRefreshHint(manual ? "Manual refresh" : quiet ? "Auto" : "");
+        restartDataPoll();
+      } finally {
+        dataRefreshInFlight = false;
+        if (els.refreshBtn) {
+          els.refreshBtn.disabled = false;
+          els.refreshBtn.textContent = "Refresh bids";
+        }
+      }
+    }
+
     async function init() {
       await initGlobal();
       await loadClubsMap();
@@ -555,10 +627,20 @@
         if (id) auction = await fetchAuctionById(supabase, id);
       }
 
-      await render();
+      await refreshData({ quiet: true });
 
       if (timerInterval) clearInterval(timerInterval);
-      timerInterval = setInterval(render, 1000);
+      timerInterval = setInterval(() => {
+        updateTimerOnly();
+        if (!auction) return;
+        const phase = auctionPhase(auction);
+        if (lastKnownPhase && phase !== lastKnownPhase) {
+          lastKnownPhase = phase;
+          refreshData({ quiet: true });
+        }
+      }, TIMER_MS);
+
+      els.refreshBtn?.addEventListener("click", () => refreshData({ manual: true }));
     }
 
     init();
