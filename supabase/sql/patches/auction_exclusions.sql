@@ -191,7 +191,8 @@ DECLARE
   v_mv_min numeric := NULLIF(v_f->>'mv_min', '')::numeric;
   v_mv_max numeric := NULLIF(v_f->>'mv_max', '')::numeric;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  IF coalesce(auth.jwt() ->> 'role', '') = 'authenticated'
+     AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 

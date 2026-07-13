@@ -51,7 +51,10 @@ DECLARE
   v_mv_min numeric := NULLIF(v_f->>'mv_min', '')::numeric;
   v_mv_max numeric := NULLIF(v_f->>'mv_max', '')::numeric;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  -- App callers (authenticated JWT) must be GPSL admin.
+  -- SQL Editor / service role have no authenticated JWT role — allow those.
+  IF coalesce(auth.jwt() ->> 'role', '') = 'authenticated'
+     AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
