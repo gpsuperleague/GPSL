@@ -460,7 +460,7 @@ BEGIN
     RAISE EXCEPTION 'Prize options are not open for this auction';
   END IF;
 
-  SELECT p."market_value", p."Player_Name", p."Contracted_Team"
+  SELECT p."market_value", p."Name", p."Contracted_Team"
   INTO v_mv, v_name, v_team
   FROM public."Players" p
   WHERE p."Konami_ID"::text = v_pid

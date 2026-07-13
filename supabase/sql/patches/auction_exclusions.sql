@@ -70,7 +70,7 @@ BEGIN
   END IF;
 
   SELECT
-    coalesce(nullif(btrim(p."Player_Name"), ''), v_id),
+    coalesce(nullif(btrim(p."Name"), ''), v_id),
     nullif(btrim(p."Contracted_Team"), '')
   INTO v_name, v_club
   FROM public."Players" p
@@ -133,12 +133,12 @@ SET search_path = public
 AS $$
   SELECT
     e.player_id,
-    coalesce(nullif(btrim(p."Player_Name"), ''), e.player_name, e.player_id) AS player_name,
+    coalesce(nullif(btrim(p."Name"), ''), e.player_name, e.player_id) AS player_name,
     e.note,
     e.reserved_at,
     p."Position"::text AS player_position,
-    p."Overall_Rating"::int AS rating,
-    p."market_value"::numeric AS market_value
+    p."Rating"::int AS rating,
+    p.market_value::numeric AS market_value
   FROM public.auction_exclusion_players e
   LEFT JOIN public."Players" p ON p."Konami_ID"::text = e.player_id
   ORDER BY e.reserved_at DESC, e.player_id;
@@ -163,10 +163,10 @@ SET search_path = public
 AS $$
   SELECT
     p."Konami_ID"::text AS player_id,
-    p."Player_Name"::text AS player_name,
+    p."Name"::text AS player_name,
     p."Position"::text AS player_position,
-    p."Overall_Rating"::int AS rating,
-    p."market_value"::numeric AS market_value,
+    p."Rating"::int AS rating,
+    p.market_value::numeric AS market_value,
     EXISTS (
       SELECT 1 FROM public.auction_exclusion_players e WHERE e.player_id = p."Konami_ID"::text
     ) AS already_excluded
@@ -175,9 +175,9 @@ AS $$
     AND (
       btrim(coalesce(p_query, '')) = ''
       OR p."Konami_ID"::text ILIKE '%' || btrim(p_query) || '%'
-      OR p."Player_Name" ILIKE '%' || btrim(p_query) || '%'
+      OR p."Name" ILIKE '%' || btrim(p_query) || '%'
     )
-  ORDER BY p."Overall_Rating" DESC NULLS LAST, p."Player_Name"
+  ORDER BY p."Rating" DESC NULLS LAST, p."Name"
   LIMIT greatest(1, least(coalesce(p_limit, 25), 50));
 $$;
 
