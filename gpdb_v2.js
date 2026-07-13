@@ -726,6 +726,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let SEASON_EXCLUDED_PLAYER_IDS = new Set();
   let SEASON_EXCLUDED_NATION_LABELS = new Set();
   let SEASON_EXCLUDED_NATION_CODES = new Set();
+  /** Special-auction reserves — block draft bids in GPDB. */
+  let AUCTION_EXCLUDED_PLAYER_IDS = new Set();
 
   async function loadSeasonExclusions() {
     SEASON_EXCLUDED_PLAYER_IDS = new Set();
@@ -747,6 +749,25 @@ document.addEventListener("DOMContentLoaded", () => {
       applyExclusionBundle(data);
     } catch (e) {
       console.warn("loadSeasonExclusions:", e);
+    }
+  }
+
+  async function loadAuctionExclusions() {
+    AUCTION_EXCLUDED_PLAYER_IDS = new Set();
+    try {
+      const { data, error } = await supabase
+        .from("auction_exclusion_players")
+        .select("player_id");
+      if (error) {
+        console.warn("auction_exclusion_players:", error);
+        return;
+      }
+      for (const row of data || []) {
+        const s = String(row?.player_id ?? "").trim();
+        if (s) AUCTION_EXCLUDED_PLAYER_IDS.add(s);
+      }
+    } catch (e) {
+      console.warn("loadAuctionExclusions:", e);
     }
   }
 
@@ -786,8 +807,18 @@ document.addEventListener("DOMContentLoaded", () => {
     return false;
   }
 
+  function isAuctionExcludedPlayer(player) {
+    if (!player) return false;
+    const id = String(player.Konami_ID ?? "").trim();
+    return !!(id && AUCTION_EXCLUDED_PLAYER_IDS.has(id));
+  }
+
   function seasonExcludedBidHtml() {
     return `<span class="locked-msg gpdb-excluded-msg" title="Admin season exclusion">Unavailable</span>`;
+  }
+
+  function auctionExcludedBidHtml() {
+    return `<span class="locked-msg gpdb-auction-reserved-msg" title="Reserved for a special auction — not available in the draft">Reserved for special auction</span>`;
   }
 
   async function loadUser() {
@@ -1688,6 +1719,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .map(player => {
         const hasClub = !!player.Contracted_Team;
         const seasonExcluded = isSeasonExcludedPlayer(player);
+        const auctionExcluded = !seasonExcluded && isAuctionExcludedPlayer(player);
 
         let bidCell = `<span class="locked-msg">Loading…</span>`;
         const callUpCell = buildGpdbCallUpCellHtml(player);
@@ -1701,6 +1733,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (seasonExcluded) {
           bidCell = seasonExcludedBidHtml();
+        } else if (auctionExcluded) {
+          bidCell = auctionExcludedBidHtml();
         } else if (GLOBAL_SETTINGS) {
           if (hasClub) {
             const holderShort = resolveContractedClubShort(
@@ -1752,7 +1786,7 @@ document.addEventListener("DOMContentLoaded", () => {
           : formatCellValue("Name", player);
 
         return `
-          <tr class="${seasonExcluded ? "gpdb-row-excluded" : ""}" data-konami-id="${player.Konami_ID}"
+          <tr class="${seasonExcluded ? "gpdb-row-excluded" : ""}${auctionExcluded ? " gpdb-row-auction-reserved" : ""}" data-konami-id="${player.Konami_ID}"
               data-rating="${player.Rating ?? ""}"
               data-playstyle="${player.Playstyle ?? ""}"
               data-market-value="${player.market_value ?? ""}"
@@ -1761,7 +1795,8 @@ document.addEventListener("DOMContentLoaded", () => {
               data-contract-seasons="${player.contract_seasons_remaining ?? ""}"
               data-nation="${player.Nation ?? ""}"
               data-age="${player.Age ?? ""}"
-              data-season-excluded="${seasonExcluded ? "1" : "0"}">
+              data-season-excluded="${seasonExcluded ? "1" : "0"}"
+              data-auction-excluded="${auctionExcluded ? "1" : "0"}">
             <td>${playerThumbLinkHtml(player.Konami_ID, {
               className: "gpdb-thumb",
               alt: player.Name,
@@ -1861,6 +1896,14 @@ document.addEventListener("DOMContentLoaded", () => {
   async function openMakeOfferModal(konamiId) {
     const row = document.querySelector(`tr[data-konami-id="${konamiId}"]`);
     if (!row) return;
+
+    if (
+      row.dataset.auctionExcluded === "1" ||
+      AUCTION_EXCLUDED_PLAYER_IDS.has(String(konamiId).trim())
+    ) {
+      alert("This player is reserved for a special auction and cannot be bid on in the draft.");
+      return;
+    }
 
     const cells = row.querySelectorAll("td");
     const img = cells[0].querySelector("img");
@@ -2813,6 +2856,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await loadWageForecastSettings();
     await probeGpdbPlayersView();
     await loadSeasonExclusions();
+    await loadAuctionExclusions();
 
     setupControls();
     await loadRangeBounds();
