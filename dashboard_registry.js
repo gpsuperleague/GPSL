@@ -71,6 +71,7 @@ const TILE_IMAGE_BY_ID = {
   admin_fixtures_playoffs: `${PANEL_BG}/Fixtures.png`,
   admin_challenges: `${PANEL_BG}/Progress.png`,
   admin_club_checklist: `${PANEL_BG}/Club_Details.png`,
+  admin_workflow_checklist: `${PANEL_BG}/Progress.png`,
   admin_special_auctions: `${PANEL_BG}/Transfer.png`,
   admin_international: `${PANEL_BG}/Fixtures.png`,
   admin_club_kits: `${PANEL_BG}/Club_Details.png`,
