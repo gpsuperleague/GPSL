@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Set owner tag — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    button.button.secondary { background:#444; color:#ddd; }
+    button.button.secondary:hover { background:#555; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Set owner tag</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card" id="ow-set-tag">
+        <h2>Set owner tag</h2>
+        <p class="note">
+          Lists every owner in the registry or linked to a club — with or without a tag — so you can set
+          tags for owners who have not set one yet (e.g. after linking a club).
+          Requires <code>patches/admin_owner_set_tag.sql</code> (includes <code>admin_owner_list</code>).
+        </p>
+        <div class="row">
+          <div>
+            <label for="tagOwnerSelect">Owner</label>
+            <select id="tagOwnerSelect"></select>
+          </div>
+          <div>
+            <label for="ownerTagInput">Discord tag</label>
+            <input id="ownerTagInput" placeholder="e.g. @username" maxlength="64" autocomplete="off">
+          </div>
+        </div>
+        <p id="currentTagHint" class="note" style="margin-top:8px;"></p>
+        <button id="setOwnerTagBtn" class="button">Set owner tag</button>
+        <div id="setOwnerTagStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_owners.js"></script>
+</body>
+</html>

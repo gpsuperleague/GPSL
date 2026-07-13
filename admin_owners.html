@@ -8,8 +8,10 @@
   <link rel="stylesheet" href="admin.css">
   <style>
     .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
-    button.button.secondary { background:#444; color:#ddd; }
-    button.button.secondary:hover { background:#555; }
+    .owner-hub-list { list-style:none; padding:0; margin:0; }
+    .owner-hub-list li { margin:0 0 8px; }
+    .owner-hub-list a { color:#8cf; text-decoration:none; }
+    .owner-hub-list a:hover { text-decoration:underline; }
   </style>
 </head>
 <body class="admin-page">
@@ -17,200 +19,32 @@
   <h1 class="admin-title">Owner administration</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
-      <div class="card" id="ow-add-owner">
-        <h2>Add owner</h2>
-        <p class="note">
-          Creates the login, then assigns the club (same as create +
-          <a href="#ow-link-club">Link existing login to club</a>).
-          Requires the <code>create-owner</code> edge function.
-        </p>
-        <div class="row">
-          <div><input id="ownerEmail" placeholder="Owner email"></div>
-          <div><input id="ownerPassword" placeholder="Temporary password" type="password"></div>
-          <div><input id="ownerClub" placeholder="Club ShortName (e.g. ARS)"></div>
-        </div>
-        <button id="addOwnerBtn" class="button">Add owner</button>
-        <div id="ownerStatus" class="status-line"></div>
-      </div>
-      <div class="card" id="ow-break">
-        <h2>Remove owner from club (short break)</h2>
-        <p class="note">
-          Detaches the owner from their club and national team. They rejoin the waiting list as a
-          <b>returning member</b> (above new joins). Season history is retained.
-        </p>
-        <div class="row">
-          <div><input id="breakOwnerEmail" placeholder="Owner email"></div>
-        </div>
-        <button id="breakOwnerBtn" class="button secondary">Remove from club</button>
-        <div id="breakOwnerStatus" class="status-line"></div>
-      </div>
-      <div class="card" id="ow-archive">
-        <h2>Archive owner (left GPSL)</h2>
-        <p class="note">
-          Same detach as a break, but marks the owner <b>archived</b> (left or removed).
-          History is retained. Unarchive before linking them to a club again.
-        </p>
-        <div class="row">
-          <div><input id="archiveOwnerEmail" placeholder="Owner email"></div>
-          <div><input id="archiveOwnerNote" placeholder="Optional note"></div>
-        </div>
-        <button id="archiveOwnerBtn" class="button secondary">Archive owner</button>
-        <div id="archiveOwnerStatus" class="status-line"></div>
-      </div>
-      <div class="card" id="ow-unarchive">
-        <h2>Unarchive owner</h2>
-        <p class="note">Moves an archived owner onto the waiting list as a returning member (unarchive).</p>
-        <div class="row">
-          <div><input id="unarchiveOwnerEmail" placeholder="Owner email"></div>
-        </div>
-        <button id="unarchiveOwnerBtn" class="button">Unarchive</button>
-        <div id="unarchiveOwnerStatus" class="status-line"></div>
-      </div>
-      <div class="card" id="ow-change-club">
-        <h2>Change owner club</h2>
-        <p class="note">
-          Move an owner who <b>already has a club</b> to a different one. Old club is vacated and its nation released.
-          The new club keeps its existing nation assignment. History is retained.
-        </p>
-        <div class="row">
-          <div><input id="changeOwnerEmail" placeholder="Owner email"></div>
-          <div><input id="changeOwnerClub" placeholder="New club ShortName"></div>
-        </div>
-        <button id="changeOwnerBtn" class="button">Change club</button>
-        <div id="changeOwnerStatus" class="status-line"></div>
-      </div>
-      <div class="card" id="ow-waiting-list">
-        <h2>Owner waiting list</h2>
-        <p class="note">
-          Members without a club. New admin adds go to the <b>bottom</b>; owners removed from a club rejoin
-          <b>above new joins</b> but below people already waiting. Invite to club auction or assign a
-          vacant club directly from here.
-        </p>
-        <div class="row" style="margin-bottom:12px;">
-          <button type="button" id="wlRefreshBtn" class="button secondary">Refresh</button>
-          <button type="button" id="wlRestoreOrderBtn" class="button secondary">Restore join-date order</button>
-        </div>
-        <div id="wlAdminTableWrap" style="overflow-x:auto;"></div>
-        <h3 style="margin:20px 0 8px;font-size:15px;color:#ccc;">Invited to club auction</h3>
-        <div id="wlAuctionInviteWrap"></div>
-        <hr style="border-color:#333;margin:20px 0;">
-        <h3 style="margin:0 0 8px;font-size:15px;color:#ccc;">Quick actions</h3>
-        <div class="row">
-          <div><input id="wlActionEmail" type="email" placeholder="Member email"></div>
-          <div><input id="wlAssignClub" placeholder="Club ShortName (direct assign)"></div>
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
-          <button type="button" id="wlInviteAuctionBtn" class="button">Invite to club auction</button>
-          <button type="button" id="wlDirectAssignBtn" class="button">Assign club directly</button>
-          <button type="button" id="wlAbsenceOnBtn" class="button secondary">Mark on absence</button>
-          <button type="button" id="wlAbsenceOffBtn" class="button secondary">Clear absence</button>
-        </div>
-        <div id="wlActionStatus" class="status-line"></div>
-      </div>
-      <div class="card" id="ow-club-auction">
-        <h2>Add member (waiting list)</h2>
-        <p class="note">
-          Creates the login and adds them to the <b>bottom</b> of the waiting list as a
-          <code>member</code>. Use <a href="#ow-waiting-list">Waiting list</a> to invite them to a club
-          auction or assign a club when a slot opens. Requires
-          <code>gpsl_waiting_list.sql</code> and the <code>create-owner-club-auction</code> edge function.
-        </p>
-        <div class="row">
-          <div><input id="clubAuctionEmail" type="email" placeholder="Owner email"></div>
-          <div>
-            <input
-              id="clubAuctionPassword"
-              type="password"
-              autocomplete="new-password"
-              placeholder="Temporary password (min 6 chars)"
-            >
-          </div>
-        </div>
-        <label class="note" style="display:flex;align-items:center;gap:8px;margin:10px 0 0;">
-          <input type="checkbox" id="clubAuctionRegisterOnly">
-          Account already exists — register for auction only (do not reset password)
-        </label>
-        <button id="clubAuctionRegisterBtn" class="button">Create member account</button>
-        <div id="clubAuctionStatus" class="status-line"></div>
-      </div>
-      <div class="card" id="ow-link-club">
-        <h2>Link existing login to club</h2>
-        <p class="note">For owners on break with no club, or first-time assignment to a vacant club.</p>
-        <div class="row">
-          <div><input id="linkOwnerEmail" placeholder="Existing owner email"></div>
-          <div><input id="linkOwnerClub" placeholder="Club ShortName"></div>
-        </div>
-        <button id="linkOwnerBtn" class="button">Link club to account</button>
-        <div id="linkOwnerStatus" class="status-line"></div>
-      </div>
-      <div class="card" id="ow-set-tag">
-        <h2>Set owner tag</h2>
-        <p class="note">
-          Lists every owner in the registry or linked to a club — with or without a tag — so you can set
-          tags for owners who have not set one yet (e.g. after linking a club).
-          Requires <code>patches/admin_owner_set_tag.sql</code> (includes <code>admin_owner_list</code>).
-        </p>
-        <div class="row">
-          <div>
-            <label for="tagOwnerSelect">Owner</label>
-            <select id="tagOwnerSelect"></select>
-          </div>
-          <div>
-            <label for="ownerTagInput">Discord tag</label>
-            <input id="ownerTagInput" placeholder="e.g. @username" maxlength="64" autocomplete="off">
-          </div>
-        </div>
-        <p id="currentTagHint" class="note" style="margin-top:8px;"></p>
-        <button id="setOwnerTagBtn" class="button">Set owner tag</button>
-        <div id="setOwnerTagStatus" class="status-line"></div>
-      </div>
-      <div class="card" id="ow-update-email">
-        <h2>Update email</h2>
-        <div class="row">
-          <div>
-            <label>Owner</label>
-            <select id="updateOwnerSelect"></select>
-          </div>
-          <div>
-            <label>New email</label>
-            <input id="newOwnerEmail" placeholder="New email">
-          </div>
-        </div>
-        <button id="updateEmailBtn" class="button">Update email</button>
-        <div id="updateEmailStatus" class="status-line"></div>
-      </div>
-      <div class="card" id="ow-set-password">
-        <h2>Set password (admin)</h2>
-        <p class="note">
-          Sets the login password immediately — for testing or when reset email is not enough.
-          Supabase may reject weak passwords (use at least 8 characters with letters and numbers).
-          Deploy the <code>set-owner-password</code> edge function in Supabase.
-        </p>
-        <div class="row">
-          <div><input id="setPasswordEmail" type="email" placeholder="Owner email"></div>
-          <div>
-            <input
-              id="setPasswordValue"
-              type="password"
-              autocomplete="new-password"
-              placeholder="New password (min 8 chars)"
-            >
-          </div>
-        </div>
-        <button id="setPasswordBtn" class="button">Set password</button>
-        <div id="setPasswordStatus" class="status-line"></div>
-      </div>
-      <div class="card" id="ow-reset-password">
-        <h2>Send reset email</h2>
-        <p class="note">Sends Supabase’s reset link — owner chooses their own new password.</p>
-        <div class="row">
-          <div><input id="resetOwnerEmail" placeholder="Owner email"></div>
-        </div>
-        <button id="resetPasswordBtn" class="button">Send reset email</button>
-        <div id="resetPasswordStatus" class="status-line"></div>
+      <div class="card">
+        <h2>Owners tools</h2>
+        <p class="note">Each task has its own page. Use the Admin → Owners menu, or open a tool below.</p>
+        <ul class="owner-hub-list">
+          <li><a href="admin_owners_waiting_list.html">Manage / Owner waiting list</a></li>
+          <li><a href="admin_owners_add_member.html">Create new owner &amp; add to waiting list</a></li>
+          <li><a href="admin_owners_add_direct.html">Create new owner &amp; add directly to club</a></li>
+          <li><a href="admin_owners_remove.html">Remove owner from club</a></li>
+          <li><a href="admin_owners_archive.html">Archive owner (left GPSL)</a></li>
+          <li><a href="admin_owners_unarchive.html">Unarchive owner (return to GPSL)</a></li>
+          <li><a href="admin_owners_change_club.html">Change owner club</a></li>
+          <li><a href="admin_owners_link.html">Link existing login to club</a></li>
+          <li><a href="admin_owners_tag.html">Set owner tag</a></li>
+          <li><a href="admin_owners_email.html">Update email</a></li>
+          <li><a href="admin_owners_password.html">Set password</a></li>
+          <li><a href="admin_owners_reset.html">Send reset email</a></li>
+          <li><a href="admin_test_manager_assign.html">Assign manager to club</a></li>
+        </ul>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js"></script>
+  <script type="module">
+    import { initAdminPage } from "./admin_shared.js";
+    document.addEventListener("DOMContentLoaded", async () => {
+      await initAdminPage();
+    });
+  </script>
 </body>
 </html>

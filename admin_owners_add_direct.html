@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Add owner to club — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    button.button.secondary { background:#444; color:#ddd; }
+    button.button.secondary:hover { background:#555; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Create new owner &amp; add directly to club</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card" id="ow-add-owner">
+        <h2>Add owner</h2>
+        <p class="note">
+          Creates the login, then assigns the club (same as create +
+          <a href="admin_owners_link.html">Link existing login to club</a>).
+          Requires the <code>create-owner</code> edge function.
+        </p>
+        <div class="row">
+          <div><input id="ownerEmail" placeholder="Owner email"></div>
+          <div><input id="ownerPassword" placeholder="Temporary password" type="password"></div>
+          <div><input id="ownerClub" placeholder="Club ShortName (e.g. ARS)"></div>
+        </div>
+        <button id="addOwnerBtn" class="button">Add owner</button>
+        <div id="ownerStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_owners.js"></script>
+</body>
+</html>

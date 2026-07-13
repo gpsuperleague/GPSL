@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Owner waiting list — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    button.button.secondary { background:#444; color:#ddd; }
+    button.button.secondary:hover { background:#555; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Owner waiting list</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card" id="ow-waiting-list">
+        <h2>Owner waiting list</h2>
+        <p class="note">
+          Members without a club. New admin adds go to the <b>bottom</b>; owners removed from a club rejoin
+          <b>above new joins</b> but below people already waiting. Invite to club auction or assign a
+          vacant club directly from here.
+        </p>
+        <div class="row" style="margin-bottom:12px;">
+          <button type="button" id="wlRefreshBtn" class="button secondary">Refresh</button>
+          <button type="button" id="wlRestoreOrderBtn" class="button secondary">Restore join-date order</button>
+        </div>
+        <div id="wlAdminTableWrap" style="overflow-x:auto;"></div>
+        <h3 style="margin:20px 0 8px;font-size:15px;color:#ccc;">Invited to club auction</h3>
+        <div id="wlAuctionInviteWrap"></div>
+        <hr style="border-color:#333;margin:20px 0;">
+        <h3 style="margin:0 0 8px;font-size:15px;color:#ccc;">Quick actions</h3>
+        <div class="row">
+          <div><input id="wlActionEmail" type="email" placeholder="Member email"></div>
+          <div><input id="wlAssignClub" placeholder="Club ShortName (direct assign)"></div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+          <button type="button" id="wlInviteAuctionBtn" class="button">Invite to club auction</button>
+          <button type="button" id="wlDirectAssignBtn" class="button">Assign club directly</button>
+          <button type="button" id="wlAbsenceOnBtn" class="button secondary">Mark on absence</button>
+          <button type="button" id="wlAbsenceOffBtn" class="button secondary">Clear absence</button>
+        </div>
+        <div id="wlActionStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_owners.js"></script>
+</body>
+</html>

@@ -19,21 +19,34 @@ async function loadClubAuctionConfig() {
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
-  await loadClubAuctionConfig();
-  await loadOwnerList();
 
-  document.getElementById("addOwnerBtn").onclick = addOwner;
-  document.getElementById("changeOwnerBtn").onclick = changeOwnerClub;
-  document.getElementById("clubAuctionRegisterBtn").onclick = registerForClubAuction;
-  document.getElementById("linkOwnerBtn").onclick = linkOwner;
-  document.getElementById("breakOwnerBtn").onclick = removeFromClub;
-  document.getElementById("archiveOwnerBtn").onclick = archiveOwner;
-  document.getElementById("unarchiveOwnerBtn").onclick = unarchiveOwner;
-  document.getElementById("updateEmailBtn").onclick = updateEmail;
-  document.getElementById("setOwnerTagBtn").onclick = setOwnerTag;
+  const needsAuctionConfig = !!document.getElementById("clubAuctionRegisterBtn");
+  const needsOwnerList =
+    !!document.getElementById("updateOwnerSelect") ||
+    !!document.getElementById("tagOwnerSelect");
+  const needsWaitingList = !!document.getElementById("wlAdminTableWrap");
+
+  if (needsAuctionConfig) await loadClubAuctionConfig();
+  if (needsOwnerList) await loadOwnerList();
+
+  const bind = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.onclick = fn;
+  };
+
+  bind("addOwnerBtn", addOwner);
+  bind("changeOwnerBtn", changeOwnerClub);
+  bind("clubAuctionRegisterBtn", registerForClubAuction);
+  bind("linkOwnerBtn", linkOwner);
+  bind("breakOwnerBtn", removeFromClub);
+  bind("archiveOwnerBtn", archiveOwner);
+  bind("unarchiveOwnerBtn", unarchiveOwner);
+  bind("updateEmailBtn", updateEmail);
+  bind("setOwnerTagBtn", setOwnerTag);
+  bind("setPasswordBtn", setOwnerPassword);
+  bind("resetPasswordBtn", resetPassword);
+
   document.getElementById("tagOwnerSelect")?.addEventListener("change", syncOwnerTagInputFromSelect);
-  document.getElementById("setPasswordBtn").onclick = setOwnerPassword;
-  document.getElementById("resetPasswordBtn").onclick = resetPassword;
 
   document.getElementById("wlRefreshBtn")?.addEventListener("click", loadWaitingListAdmin);
   document.getElementById("wlRestoreOrderBtn")?.addEventListener("click", restoreWaitingListOrder);
@@ -42,7 +55,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wlAbsenceOnBtn")?.addEventListener("click", () => setWaitingListAbsence(true));
   document.getElementById("wlAbsenceOffBtn")?.addEventListener("click", () => setWaitingListAbsence(false));
 
-  await loadWaitingListAdmin();
+  if (needsWaitingList) await loadWaitingListAdmin();
 });
 
 async function loadOwnerList() {

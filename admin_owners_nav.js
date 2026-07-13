@@ -9,15 +9,13 @@ export const OWNER_ADMIN_NAV = [
     items: [
       {
         label: "Manage waiting list",
-        href: "admin_owners.html",
-        hash: "ow-waiting-list",
-        page: "admin_owners",
+        href: "admin_owners_waiting_list.html",
+        page: "admin_owners_waiting_list",
       },
       {
         label: "Add member",
-        href: "admin_owners.html",
-        hash: "ow-club-auction",
-        page: "admin_owners",
+        href: "admin_owners_add_member.html",
+        page: "admin_owners_add_member",
       },
     ],
   },
@@ -27,15 +25,13 @@ export const OWNER_ADMIN_NAV = [
     items: [
       {
         label: "Add owner",
-        href: "admin_owners.html",
-        hash: "ow-add-owner",
-        page: "admin_owners",
+        href: "admin_owners_add_direct.html",
+        page: "admin_owners_add_direct",
       },
       {
         label: "Add member (waiting list)",
-        href: "admin_owners.html",
-        hash: "ow-club-auction",
-        page: "admin_owners",
+        href: "admin_owners_add_member.html",
+        page: "admin_owners_add_member",
       },
     ],
   },
@@ -45,15 +41,13 @@ export const OWNER_ADMIN_NAV = [
     items: [
       {
         label: "Link existing login to club",
-        href: "admin_owners.html",
-        hash: "ow-link-club",
-        page: "admin_owners",
+        href: "admin_owners_link.html",
+        page: "admin_owners_link",
       },
       {
         label: "Change owner club",
-        href: "admin_owners.html",
-        hash: "ow-change-club",
-        page: "admin_owners",
+        href: "admin_owners_change_club.html",
+        page: "admin_owners_change_club",
       },
     ],
   },
@@ -63,9 +57,8 @@ export const OWNER_ADMIN_NAV = [
     items: [
       {
         label: "Remove owner from club",
-        href: "admin_owners.html",
-        hash: "ow-break",
-        page: "admin_owners",
+        href: "admin_owners_remove.html",
+        page: "admin_owners_remove",
       },
     ],
   },
@@ -75,15 +68,13 @@ export const OWNER_ADMIN_NAV = [
     items: [
       {
         label: "Archive owner (left GPSL)",
-        href: "admin_owners.html",
-        hash: "ow-archive",
-        page: "admin_owners",
+        href: "admin_owners_archive.html",
+        page: "admin_owners_archive",
       },
       {
         label: "Unarchive owner",
-        href: "admin_owners.html",
-        hash: "ow-unarchive",
-        page: "admin_owners",
+        href: "admin_owners_unarchive.html",
+        page: "admin_owners_unarchive",
       },
     ],
   },
@@ -93,27 +84,23 @@ export const OWNER_ADMIN_NAV = [
     items: [
       {
         label: "Set owner tag",
-        href: "admin_owners.html",
-        hash: "ow-set-tag",
-        page: "admin_owners",
+        href: "admin_owners_tag.html",
+        page: "admin_owners_tag",
       },
       {
         label: "Update email",
-        href: "admin_owners.html",
-        hash: "ow-update-email",
-        page: "admin_owners",
+        href: "admin_owners_email.html",
+        page: "admin_owners_email",
       },
       {
         label: "Set password",
-        href: "admin_owners.html",
-        hash: "ow-set-password",
-        page: "admin_owners",
+        href: "admin_owners_password.html",
+        page: "admin_owners_password",
       },
       {
         label: "Send reset email",
-        href: "admin_owners.html",
-        hash: "ow-reset-password",
-        page: "admin_owners",
+        href: "admin_owners_reset.html",
+        page: "admin_owners_reset",
       },
     ],
   },
@@ -146,9 +133,16 @@ function escapeNavText(text) {
     .replace(/"/g, "&quot;");
 }
 
+function isOwnerAdminPage(file) {
+  return (
+    file === "admin_owners.html" ||
+    /^admin_owners_[a-z0-9_]+\.html$/.test(file)
+  );
+}
+
 export function ownerAdminNavHasActive(pathname, search = "") {
   const file = (pathname || "").toLowerCase().replace(/\\/g, "/").split("/").pop() || "";
-  if (file === "admin_owners.html") return true;
+  if (isOwnerAdminPage(file)) return true;
   for (const group of OWNER_ADMIN_NAV) {
     for (const item of group.items) {
       if (isOwnerAdminNavItemActive(item, pathname, search)) return true;

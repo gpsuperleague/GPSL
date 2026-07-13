@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Change owner club — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    button.button.secondary { background:#444; color:#ddd; }
+    button.button.secondary:hover { background:#555; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Change owner club</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card" id="ow-change-club">
+        <h2>Change owner club</h2>
+        <p class="note">
+          Move an owner who <b>already has a club</b> to a different one. Old club is vacated and its nation released.
+          The new club keeps its existing nation assignment. History is retained.
+        </p>
+        <div class="row">
+          <div><input id="changeOwnerEmail" placeholder="Owner email"></div>
+          <div><input id="changeOwnerClub" placeholder="New club ShortName"></div>
+        </div>
+        <button id="changeOwnerBtn" class="button">Change club</button>
+        <div id="changeOwnerStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_owners.js"></script>
+</body>
+</html>
