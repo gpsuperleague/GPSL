@@ -122,7 +122,7 @@ RETURNS TABLE (
   player_name text,
   note text,
   reserved_at timestamptz,
-  position text,
+  player_position text,
   rating int,
   market_value numeric
 )
@@ -136,7 +136,7 @@ AS $$
     coalesce(nullif(btrim(p."Player_Name"), ''), e.player_name, e.player_id) AS player_name,
     e.note,
     e.reserved_at,
-    p."Position"::text AS position,
+    p."Position"::text AS player_position,
     p."Overall_Rating"::int AS rating,
     p."market_value"::numeric AS market_value
   FROM public.auction_exclusion_players e
@@ -151,7 +151,7 @@ CREATE OR REPLACE FUNCTION public.admin_auction_search_players_for_exclusion(
 RETURNS TABLE (
   player_id text,
   player_name text,
-  position text,
+  player_position text,
   rating int,
   market_value numeric,
   already_excluded boolean
@@ -164,7 +164,7 @@ AS $$
   SELECT
     p."Konami_ID"::text AS player_id,
     p."Player_Name"::text AS player_name,
-    p."Position"::text AS position,
+    p."Position"::text AS player_position,
     p."Overall_Rating"::int AS rating,
     p."market_value"::numeric AS market_value,
     EXISTS (

@@ -47,7 +47,7 @@ async function loadReserved() {
         <b>${escapeHtml(r.player_name || r.player_id)}</b><br>
         <small class="muted">${escapeHtml(r.player_id)}</small>
       </td>
-      <td>${escapeHtml(r.position || "—")}</td>
+      <td>${escapeHtml(r.player_position || r.position || "—")}</td>
       <td>${escapeHtml(r.rating ?? "—")}</td>
       <td>${formatMoney(r.market_value)}</td>
       <td>${r.reserved_at ? new Date(r.reserved_at).toLocaleString("en-GB") : "—"}</td>
@@ -99,7 +99,7 @@ async function runSearch() {
               <b>${escapeHtml(r.player_name)}</b><br>
               <small class="muted">${escapeHtml(r.player_id)}</small>
             </td>
-            <td>${escapeHtml(r.position || "—")}</td>
+            <td>${escapeHtml(r.player_position || r.position || "—")}</td>
             <td>${escapeHtml(r.rating ?? "—")}</td>
             <td>${formatMoney(r.market_value)}</td>
             <td>
