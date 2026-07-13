@@ -55,6 +55,7 @@ END;
 $function$;
 
 -- Active / published auction for owners (identity redacted while snap live)
+-- Prefer live scheduled/active; only show revealed briefly after close.
 CREATE OR REPLACE FUNCTION public.special_auction_fetch_owner_active()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -67,8 +68,8 @@ DECLARE
 BEGIN
   SELECT * INTO a
   FROM public.special_auctions
-  WHERE status = 'revealed'
-  ORDER BY id DESC
+  WHERE status IN ('scheduled', 'active')
+  ORDER BY start_time ASC
   LIMIT 1;
 
   IF FOUND THEN
@@ -77,15 +78,16 @@ BEGIN
 
   SELECT * INTO a
   FROM public.special_auctions
-  WHERE status IN ('scheduled', 'active')
-  ORDER BY start_time ASC
+  WHERE status = 'revealed'
+    AND coalesce(end_time, start_time) > (now() - interval '7 days')
+  ORDER BY id DESC
   LIMIT 1;
 
-  IF NOT FOUND THEN
-    RETURN NULL;
+  IF FOUND THEN
+    RETURN public.special_auction_owner_json(a);
   END IF;
 
-  RETURN public.special_auction_owner_json(a);
+  RETURN NULL;
 END;
 $function$;
 

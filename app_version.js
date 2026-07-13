@@ -1,2 +1,2 @@
 /** Single cache-bust string — bump when global.js or nav_config structure changes. */
-export const APP_VERSION = "20260713-sa-inbox-notify";
+export const APP_VERSION = "20260713-sa-fetch-priority";

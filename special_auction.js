@@ -64,7 +64,7 @@ export function sanitizeAuctionForOwner(auction) {
   return out;
 }
 
-/** Owner-visible auction: published until admin settles (incl. closed-awaiting-reveal). */
+/** Owner-visible auction: live/upcoming first; stale revealed LUBs do not block. */
 export async function fetchActiveSpecialAuction(supabase) {
   const { data: rpcData, error: rpcErr } = await supabase.rpc(
     "special_auction_fetch_owner_active"
@@ -72,19 +72,6 @@ export async function fetchActiveSpecialAuction(supabase) {
   if (!rpcErr) return rpcData || null;
 
   console.warn("special_auction_fetch_owner_active:", rpcErr);
-
-  const { data: revealed, error: revealedErr } = await supabase
-    .from("special_auctions")
-    .select("*")
-    .eq("status", "revealed")
-    .order("id", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (revealedErr) {
-    console.error("fetchActiveSpecialAuction (revealed):", revealedErr);
-  }
-  if (revealed) return sanitizeAuctionForOwner(revealed);
 
   const { data: live, error: liveErr } = await supabase
     .from("special_auctions")
@@ -96,9 +83,23 @@ export async function fetchActiveSpecialAuction(supabase) {
 
   if (liveErr) {
     console.error("fetchActiveSpecialAuction:", liveErr);
-    return null;
   }
-  return sanitizeAuctionForOwner(live);
+  if (live) return sanitizeAuctionForOwner(live);
+
+  const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: revealed, error: revealedErr } = await supabase
+    .from("special_auctions")
+    .select("*")
+    .eq("status", "revealed")
+    .gt("end_time", cutoff)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (revealedErr) {
+    console.error("fetchActiveSpecialAuction (revealed):", revealedErr);
+  }
+  return sanitizeAuctionForOwner(revealed);
 }
 
 /** Bidding window open (start_time reached, before end_time / snap random end). */
@@ -119,11 +120,20 @@ export function isSpecialAuctionLive(auction) {
   return now >= start && now < end;
 }
 
-/** Published in nav / owner pages until admin settles (incl. post-close / post-reveal). */
+/** True if a revealed auction is still within the short results window. */
+export function isRecentRevealedAuction(auction, maxAgeMs = 7 * 24 * 60 * 60 * 1000) {
+  if (!auction || String(auction.status || "") !== "revealed") return false;
+  const end = new Date(specialAuctionEffectiveEnd(auction) || auction.end_time).getTime();
+  if (!Number.isFinite(end)) return false;
+  return Date.now() - end <= maxAgeMs;
+}
+
+/** Published in nav / owner pages (live, upcoming, or recent results). */
 export function isSpecialAuctionPublished(auction) {
   if (!auction) return false;
   const status = String(auction.status || "");
-  return status === "revealed" || status === "scheduled" || status === "active";
+  if (status === "scheduled" || status === "active") return true;
+  return isRecentRevealedAuction(auction);
 }
 
 /** Nav strip + dropdown visibility / live badge. */
