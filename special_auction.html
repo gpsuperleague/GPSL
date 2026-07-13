@@ -188,6 +188,7 @@
       formatBidTimePlain,
       fetchVisibleClues,
       specialAuctionEffectiveEnd,
+      snapIdentityHidden,
     } from "./special_auction.js";
     import {
       playerThumbLinkHtml,
@@ -303,6 +304,8 @@
       els.playerReveal.innerHTML = "";
       const mode = auction.player_mode || "known";
       const pid = auction.known_player_id || auction.prize_player_id;
+      const phase = auctionPhase(auction);
+      const identityHidden = snapIdentityHidden(auction);
 
       if (auction.auction_type === "snap") {
         const clues = await fetchVisibleClues(supabase, auction.id);
@@ -323,16 +326,28 @@
             )
             .join("");
         }
-        if (locked.length) {
-          html += `<p style="color:#888;font-size:13px;">Next clue unlocks later in the auction.</p>`;
-        }
-        if (html) {
+        if (identityHidden) {
+          if (locked.length) {
+            html += `<p style="color:#888;font-size:13px;">Next clue unlocks later in the auction.</p>`;
+          }
+          html += `<p class="secret-note">Player identity is revealed when the auction ends (random finish in the last 10 minutes).</p>`;
           els.playerReveal.innerHTML = html;
           return;
         }
+        // Past random finish — show clues + reveal name
+        if (html) {
+          els.playerReveal.innerHTML = html;
+        }
       }
 
-      if (mode === "mystery" && auction.mystery_clue) {
+      if (identityHidden) {
+        if (mode === "mystery" && auction.mystery_clue) {
+          els.playerReveal.innerHTML = `<div class="clue-box"><b>Mystery player clue</b><br>${auction.mystery_clue}</div>`;
+        }
+        return;
+      }
+
+      if (mode === "mystery" && auction.mystery_clue && auction.auction_type !== "snap") {
         els.playerReveal.innerHTML = `<div class="clue-box"><b>Mystery player clue</b><br>${auction.mystery_clue}</div>`;
         return;
       }
@@ -343,11 +358,17 @@
           .eq("Konami_ID", pid)
           .maybeSingle();
         if (p) {
-          els.playerReveal.innerHTML = `
+          const revealNote =
+            auction.auction_type === "snap" && phase !== "live"
+              ? `<p class="secret-note">Identity revealed at the snap finish.</p>`
+              : "";
+          els.playerReveal.innerHTML =
+            (els.playerReveal.innerHTML || "") +
+            `
             <div class="clue-box">
               ${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}
               <b>${playerNameLinkHtml(p.Konami_ID, p.Name)}</b> — ${p.Position} · ${p.Rating}
-            </div>`;
+            </div>${revealNote}`;
         }
       }
     }

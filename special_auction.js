@@ -35,8 +35,44 @@ export function roundToMillion(n) {
   return Math.round(x / 1000000) * 1000000;
 }
 
+/** True while a snap is still before its random finish — player identity must stay hidden. */
+export function snapIdentityHidden(auction) {
+  if (!auction || auction.auction_type !== "snap") return false;
+  if (!["scheduled", "active"].includes(String(auction.status || ""))) return false;
+  const end = new Date(specialAuctionEffectiveEnd(auction)).getTime();
+  if (!Number.isFinite(end)) return true;
+  return Date.now() < end;
+}
+
+/** Client fallback if owner-fetch RPC is not deployed yet. */
+export function sanitizeAuctionForOwner(auction) {
+  if (!auction) return auction;
+  const out = { ...auction };
+  if (auction.auction_type === "snap" && ["scheduled", "active"].includes(auction.status)) {
+    const start = new Date(auction.start_time).getTime();
+    const mins = Number.isFinite(start)
+      ? Math.max(0, (Date.now() - start) / 60000)
+      : 0;
+    if (mins < 20) out.clue_2 = null;
+    if (mins < 40) out.clue_3 = null;
+    if (mins < 50) out.clue_4 = null;
+  }
+  if (snapIdentityHidden(auction)) {
+    out.prize_player_id = null;
+    out.known_player_id = null;
+  }
+  return out;
+}
+
 /** Owner-visible auction: published until admin settles (incl. closed-awaiting-reveal). */
 export async function fetchActiveSpecialAuction(supabase) {
+  const { data: rpcData, error: rpcErr } = await supabase.rpc(
+    "special_auction_fetch_owner_active"
+  );
+  if (!rpcErr) return rpcData || null;
+
+  console.warn("special_auction_fetch_owner_active:", rpcErr);
+
   const { data: revealed, error: revealedErr } = await supabase
     .from("special_auctions")
     .select("*")
@@ -48,9 +84,9 @@ export async function fetchActiveSpecialAuction(supabase) {
   if (revealedErr) {
     console.error("fetchActiveSpecialAuction (revealed):", revealedErr);
   }
-  if (revealed) return revealed;
+  if (revealed) return sanitizeAuctionForOwner(revealed);
 
-  const { data, error } = await supabase
+  const { data: live, error: liveErr } = await supabase
     .from("special_auctions")
     .select("*")
     .in("status", ["scheduled", "active"])
@@ -58,11 +94,11 @@ export async function fetchActiveSpecialAuction(supabase) {
     .limit(1)
     .maybeSingle();
 
-  if (error) {
-    console.error("fetchActiveSpecialAuction:", error);
+  if (liveErr) {
+    console.error("fetchActiveSpecialAuction:", liveErr);
     return null;
   }
-  return data;
+  return sanitizeAuctionForOwner(live);
 }
 
 /** Bidding window open (start_time reached, before end_time / snap random end). */
@@ -104,13 +140,19 @@ export async function fetchSpecialAuctionNavState(supabase) {
 }
 
 export async function fetchAuctionById(supabase, id) {
+  const { data: rpcData, error: rpcErr } = await supabase.rpc(
+    "special_auction_fetch_owner_by_id",
+    { p_auction_id: id }
+  );
+  if (!rpcErr) return rpcData || null;
+
   const { data, error } = await supabase
     .from("special_auctions")
     .select("*")
     .eq("id", id)
     .maybeSingle();
   if (error) return null;
-  return data;
+  return sanitizeAuctionForOwner(data);
 }
 
 export async function loadOwnerClub(supabase) {
@@ -153,6 +195,12 @@ export async function fetchAuctionBids(supabase, auctionId) {
 /** Refresh auction row (status / winner fields) during live polling. */
 export async function refreshAuctionRecord(supabase, auction) {
   if (!auction?.id) return auction;
+  const { data: rpcData, error: rpcErr } = await supabase.rpc(
+    "special_auction_fetch_owner_by_id",
+    { p_auction_id: auction.id }
+  );
+  if (!rpcErr && rpcData) return rpcData;
+
   const { data, error } = await supabase
     .from("special_auctions")
     .select("*")
@@ -162,7 +210,7 @@ export async function refreshAuctionRecord(supabase, auction) {
     console.error("refreshAuctionRecord:", error);
     return auction;
   }
-  return data || auction;
+  return sanitizeAuctionForOwner(data || auction);
 }
 
 export async function submitSpecialBid(supabase, auctionId, amount) {
@@ -212,8 +260,14 @@ export function formatAuctionTimerText(label, endIso) {
 
 export function prizeDescription(auction) {
   if (!auction) return "";
-  if (auction.prize_type === "player" && auction.prize_player_id) {
-    return `Player prize (ID ${auction.prize_player_id})`;
+  if (auction.prize_type === "player") {
+    if (snapIdentityHidden(auction)) {
+      return "Mystery player prize (identity revealed when the snap ends)";
+    }
+    if (auction.prize_player_id) {
+      return `Player prize (ID ${auction.prize_player_id})`;
+    }
+    return "Player prize";
   }
   if (auction.prize_type === "cash" && auction.prize_cash_amount) {
     return `Cash prize ${formatMoney(auction.prize_cash_amount)}`;
