@@ -65,13 +65,21 @@ export async function fetchActiveSpecialAuction(supabase) {
   return data;
 }
 
-/** Bidding window open (start_time reached, before end_time). */
+/** Bidding window open (start_time reached, before end_time / snap random end). */
+export function specialAuctionEffectiveEnd(auction) {
+  if (!auction) return null;
+  if (auction.auction_type === "snap" && auction.snap_random_end_at) {
+    return auction.snap_random_end_at;
+  }
+  return auction.end_time;
+}
+
 export function isSpecialAuctionLive(auction) {
   if (!auction) return false;
   if (!["scheduled", "active"].includes(String(auction.status || ""))) return false;
   const now = Date.now();
   const start = new Date(auction.start_time).getTime();
-  const end = new Date(auction.end_time).getTime();
+  const end = new Date(specialAuctionEffectiveEnd(auction)).getTime();
   return now >= start && now < end;
 }
 
@@ -168,11 +176,22 @@ export function auctionPhase(auction) {
   if (!auction) return "none";
   const now = Date.now();
   const start = new Date(auction.start_time).getTime();
-  const end = new Date(auction.end_time).getTime();
+  const end = new Date(specialAuctionEffectiveEnd(auction)).getTime();
   if (!["scheduled", "active"].includes(auction.status)) return auction.status;
   if (now < start) return "before_start";
   if (now >= end) return "ended_pending";
   return "live";
+}
+
+export async function fetchVisibleClues(supabase, auctionId) {
+  const { data, error } = await supabase.rpc("special_auction_visible_clues", {
+    p_auction_id: auctionId,
+  });
+  if (error) {
+    console.error("fetchVisibleClues:", error);
+    return [];
+  }
+  return Array.isArray(data) ? data : [];
 }
 
 export function timeRemainingLabel(endIso) {

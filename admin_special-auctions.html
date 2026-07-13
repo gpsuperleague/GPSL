@@ -6,6 +6,12 @@
   <title>Special Auction — GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="admin.css">
+  <style>
+    .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; max-width:900px; }
+    .snap-only { display:none; }
+    body.show-snap .snap-only { display:block; }
+    .clue-grid { display:grid; gap:10px; margin-top:8px; }
+  </style>
 </head>
 <body class="admin-page">
   <div id="nav"></div>
@@ -13,6 +19,12 @@
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <div class="card">
+        <p class="note">
+          Snap: 4 clues + first-bid discounts (20/10/5/0%), ₿300k per bid (winner 100% of fees, losers 25%),
+          random finish in the last 10 minutes. Player prizes must come from
+          <a href="admin_auction_exclusions.html">Auction Exclusions</a>.
+          Run <code>special_auction_snap_v2.sql</code> after <code>auction_exclusions.sql</code>.
+        </p>
         <h2>Create</h2>
         <div class="row">
           <div>
@@ -33,7 +45,7 @@
             <input id="saStart" type="datetime-local">
           </div>
           <div>
-            <label>End</label>
+            <label>End (LUB only — Snap auto 60m)</label>
             <input id="saEnd" type="datetime-local">
           </div>
         </div>
@@ -47,8 +59,11 @@
             </select>
           </div>
           <div>
-            <label>Player id (if prize is player)</label>
-            <input id="saPrizePlayerId" placeholder="Player ID">
+            <label>Reserved player (prize)</label>
+            <select id="saPrizePlayerSelect">
+              <option value="">— select reserved player —</option>
+            </select>
+            <input id="saPrizePlayerId" type="hidden">
           </div>
         </div>
         <div class="row">
@@ -61,23 +76,33 @@
             <input id="saPrizeDiscount" placeholder="e.g. 10% off next signing">
           </div>
         </div>
-        <div class="row">
+        <div class="snap-only">
+          <h3 style="color:#ccc;font-size:14px;margin:16px 0 6px;">Snap clues (cash &amp; player)</h3>
+          <p class="note">Clue 1 immediate (20% if first bid here) · Clue 2 @20m (10%) · Clue 3 @40m (5%) · Clue 4 @50m (0%)</p>
+          <div class="clue-grid">
+            <input id="saClue1" placeholder="Clue 1 (immediate)">
+            <input id="saClue2" placeholder="Clue 2 (after 20 minutes)">
+            <input id="saClue3" placeholder="Clue 3 (after 40 minutes)">
+            <input id="saClue4" placeholder="Clue 4 (after 50 minutes / random timer)">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
           <div>
-            <label>Player mode</label>
+            <label>Player mode (display)</label>
             <select id="saPlayerMode">
+              <option value="mystery">Mystery (clues)</option>
               <option value="known">Known player</option>
-              <option value="mystery">Mystery</option>
             </select>
           </div>
           <div>
-            <label>Known player id</label>
-            <input id="saKnownPlayerId" placeholder="Snap / optional">
+            <label>Known player id (optional display)</label>
+            <input id="saKnownPlayerId" placeholder="Usually same as prize player">
           </div>
         </div>
         <div class="row">
           <div>
-            <label>Mystery clue</label>
-            <input id="saMysteryClue" placeholder="e.g. World Cup winner…">
+            <label>Legacy mystery clue (LUB)</label>
+            <input id="saMysteryClue" placeholder="Optional single clue">
           </div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;color:#aaa;margin-bottom:12px;">

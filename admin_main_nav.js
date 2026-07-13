@@ -123,6 +123,7 @@ export const ADMIN_MAIN_NAV = [
       ]),
       group("Auctions", [
         L("Set Draft Auction On/Off", "admin_transfers.html"),
+        L("Auction Exclusions", "admin_auction_exclusions.html"),
         L("Special Auction", "admin_special-auctions.html"),
       ]),
       group("Transfers", [L("Set on/off", "admin_transfer_window.html")]),

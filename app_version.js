@@ -1,2 +1,2 @@
 /** Single cache-bust string — bump when global.js or nav_config structure changes. */
-export const APP_VERSION = "20260713-draft-auction-label";
+export const APP_VERSION = "20260713-snap-v2-exclusions";

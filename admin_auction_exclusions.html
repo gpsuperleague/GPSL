@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Auction Exclusions — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    table.gpsl-table { width:100%; border-collapse:collapse; font-size:13px; }
+    table.gpsl-table th, table.gpsl-table td { border:1px solid #333; padding:8px; text-align:left; }
+    table.gpsl-table th { background:#222; color:#ff9900; }
+    .muted { color:#888; }
+    .search-results { margin-top:10px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Auction Exclusions</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="note">
+          Reserve free-agent GPDB players for special auctions. Reserved players cannot be bid on in the
+          <b>draft auction</b>. Unlock to return them to the draft pool. Special Auction player prizes
+          only offer players from this list.
+        </p>
+        <p class="note">Run <code>supabase/sql/patches/auction_exclusions.sql</code> in Supabase first.</p>
+      </div>
+
+      <div class="card">
+        <h2>Search &amp; reserve</h2>
+        <div class="row">
+          <div>
+            <input id="searchQuery" placeholder="Name or Konami ID" style="min-width:240px;">
+          </div>
+          <div>
+            <button type="button" id="searchBtn" class="button">Search</button>
+          </div>
+        </div>
+        <div id="searchStatus" class="status-line"></div>
+        <div class="search-results" id="searchResults"></div>
+      </div>
+
+      <div class="card">
+        <h2>Reserved players</h2>
+        <button type="button" id="reloadBtn" class="button secondary">Refresh</button>
+        <div id="listStatus" class="status-line"></div>
+        <div style="overflow:auto;margin-top:10px;">
+          <table class="gpsl-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Pos</th>
+                <th>OVR</th>
+                <th>MV</th>
+                <th>Reserved</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="reservedBody">
+              <tr><td colspan="6" class="muted">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_auction_exclusions.js"></script>
+</body>
+</html>

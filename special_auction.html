@@ -186,6 +186,8 @@
       prizeDescription,
       formatBidTimeHtml,
       formatBidTimePlain,
+      fetchVisibleClues,
+      specialAuctionEffectiveEnd,
     } from "./special_auction.js";
     import {
       playerThumbLinkHtml,
@@ -239,7 +241,7 @@
         : "Snap auction bid";
       document.getElementById("bidModalHint").textContent = isLub
         ? "Only you will see your bid until the window ends. Amount is rounded to the nearest ₿1,000,000."
-        : "Highest bid wins. You can update your club's bid until time expires. Winner pays bid + ₿500,000; others who bid pay ₿250,000.";
+        : "Each bid costs ₿300,000. Highest bid wins. Winner pays full bid fees + discounted winning bid; non-winners pay 25% of their bid fees. First-bid timing sets your win discount (20% / 10% / 5% / 0%).";
       bidAmountControl?.set(modalStartAmount);
       updateRoundedPreview(modalStartAmount);
       document.getElementById("bidError").textContent = "";
@@ -301,6 +303,34 @@
       els.playerReveal.innerHTML = "";
       const mode = auction.player_mode || "known";
       const pid = auction.known_player_id || auction.prize_player_id;
+
+      if (auction.auction_type === "snap") {
+        const clues = await fetchVisibleClues(supabase, auction.id);
+        const visible = (clues || []).filter((c) => c.visible && c.text);
+        const locked = (clues || []).filter((c) => !c.visible && c.text);
+        let html = "";
+        if (visible.length) {
+          html += visible
+            .map(
+              (c) =>
+                `<div class="clue-box"><b>Clue ${c.n}</b>${
+                  c.discount_pct
+                    ? ` · first bid here → ${c.discount_pct}% off if you win`
+                    : " · no win discount"
+                }<br>${String(c.text)
+                  .replace(/&/g, "&amp;")
+                  .replace(/</g, "&lt;")}</div>`
+            )
+            .join("");
+        }
+        if (locked.length) {
+          html += `<p style="color:#888;font-size:13px;">Next clue unlocks later in the auction.</p>`;
+        }
+        if (html) {
+          els.playerReveal.innerHTML = html;
+          return;
+        }
+      }
 
       if (mode === "mystery" && auction.mystery_clue) {
         els.playerReveal.innerHTML = `<div class="clue-box"><b>Mystery player clue</b><br>${auction.mystery_clue}</div>`;
@@ -434,8 +464,9 @@
         els.waitingReveal.style.display = "none";
       }
 
+      const endIso = specialAuctionEffectiveEnd(auction);
       if (phase === "live") {
-        const t = formatAuctionTimerText("Time left", auction.end_time);
+        const t = formatAuctionTimerText("Time left", endIso);
         els.timer.textContent = t.duration;
         els.timerSub.textContent = t.subline;
       } else if (phase === "before_start") {
@@ -443,19 +474,20 @@
         els.timer.textContent = t.duration;
         els.timerSub.textContent = t.subline;
       } else {
-        const t = formatAuctionTimerText("Ended", auction.end_time);
-        els.timer.textContent = `Ended: ${new Date(auction.end_time).toLocaleString()}`;
+        const t = formatAuctionTimerText("Ended", endIso);
+        els.timer.textContent = `Ended: ${new Date(endIso).toLocaleString()}`;
         els.timerSub.textContent = t.subline;
       }
 
       els.rules.textContent = isLub
         ? "Submit one secret bid (nearest ₿1m). When the window ends, all bids are revealed; the lowest amount that only one club chose wins and pays that amount."
-        : "Bid for 1 hour. Highest bid wins and pays winning bid + ₿500,000 fee. Every other club that bid pays ₿250,000.";
+        : "Snap (~1 hour, random finish in last 10 min). Each bid costs ₿300k. Winner pays 100% of bid fees + winning bid (minus first-bid discount 20/10/5/0%). Non-winners pay 25% of bid fees. Clues unlock at 0 / 20 / 40 / 50 minutes.";
 
       await renderPlayerBlock();
 
       const bids = await fetchAuctionBids(supabase, auction.id);
-      const mine = bids.find((b) => b.club_id === clubShort);
+      const mineAll = bids.filter((b) => b.club_id === clubShort);
+      const mine = mineAll.sort((a, b) => b.bid_amount - a.bid_amount)[0];
 
       if (!clubShort) {
         els.myBidLine.textContent =
@@ -463,27 +495,28 @@
       } else if (phase === "before_start") {
         els.myBidLine.textContent =
           "Place bid will appear here when the window opens (see timer above).";
-      } else if (mine && (isLub || auction.status !== "active")) {
+      } else if (mine && isLub) {
         const placed = formatBidTimePlain(mine.bid_time);
         els.myBidLine.textContent = placed
           ? `Your club's bid: ${formatMoney(mine.bid_amount)} (placed ${placed})`
           : `Your club's bid: ${formatMoney(mine.bid_amount)}`;
-      } else if (mine && !isLub) {
+      } else if (mineAll.length && !isLub) {
         const placed = formatBidTimePlain(mine.bid_time);
         els.myBidLine.textContent = placed
-          ? `Your club's current bid: ${formatMoney(mine.bid_amount)} (placed ${placed}) — you may raise it`
-          : `Your club's current bid: ${formatMoney(mine.bid_amount)} (you may raise it)`;
+          ? `Your club: ${mineAll.length} bid(s), high ${formatMoney(mine.bid_amount)} (latest ${placed}) — each bid costs ₿300,000`
+          : `Your club: ${mineAll.length} bid(s), high ${formatMoney(mine.bid_amount)}`;
       } else if (isLub && phase === "live") {
         els.myBidLine.textContent = "You have not submitted a secret bid yet.";
+      } else if (!isLub && phase === "live") {
+        els.myBidLine.textContent = "No bids yet from your club — each bid costs ₿300,000.";
       } else {
         els.myBidLine.textContent = "";
       }
 
-      const canBid = phase === "live" && clubShort && (!mine || !isLub);
+      const canBid = phase === "live" && !!clubShort && (!isLub || !mine);
       els.openBid.style.display = canBid ? "inline-block" : "none";
-      els.openBid.textContent = mine && !isLub ? "Update bid" : "Place bid";
-      modalStartAmount =
-        mine && !isLub && mine.bid_amount >= MIN_BID ? mine.bid_amount : MIN_BID;
+      els.openBid.textContent = "Place bid";
+      modalStartAmount = MIN_BID;
 
       await renderResults(bids);
     }
