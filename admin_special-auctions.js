@@ -59,6 +59,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("saCreateBtn").onclick = createAuction;
   document.getElementById("saActivateBtn").onclick = activateAuction;
+  document.getElementById("saNotifyBtn").onclick = notifyOwners;
   document.getElementById("saRevealBtn").onclick = revealAuction;
   document.getElementById("saSettleBtn").onclick = settleAuction;
 });
@@ -182,8 +183,37 @@ async function activateAuction() {
     return;
   }
   const { error } = await supabase.rpc("special_auction_activate", { p_auction_id: id });
-  setStatus("saManageStatus", error ? "❌ " + error.message : "✅ Published.", !error);
+  setStatus(
+    "saManageStatus",
+    error ? "❌ " + error.message : "✅ Published (inbox notify sent to owners).",
+    !error
+  );
   await refreshSpecialAuctionSelect();
+}
+
+async function notifyOwners() {
+  const id = Number(document.getElementById("saSelect").value);
+  if (!id) {
+    setStatus("saManageStatus", "Select an auction.", false);
+    return;
+  }
+  const { data, error } = await supabase.rpc("admin_special_auction_notify_scheduled", {
+    p_auction_id: id,
+    p_force: true,
+  });
+  if (error) {
+    setStatus(
+      "saManageStatus",
+      "❌ " + error.message + " — run special_auction_inbox_notify.sql",
+      false
+    );
+    return;
+  }
+  setStatus(
+    "saManageStatus",
+    `✅ Inbox sent to ${data?.notified ?? 0} owner club(s).`,
+    true
+  );
 }
 
 async function revealAuction() {

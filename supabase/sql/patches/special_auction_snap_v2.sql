@@ -227,6 +227,14 @@ BEGIN
         updated_at = now()
     WHERE id = p_auction_id;
   END IF;
+
+  BEGIN
+    IF to_regprocedure('public.special_auction_notify_scheduled(bigint)') IS NOT NULL THEN
+      PERFORM public.special_auction_notify_scheduled(p_auction_id);
+    END IF;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'special_auction_notify_scheduled failed: %', SQLERRM;
+  END;
 END;
 $function$;
 
