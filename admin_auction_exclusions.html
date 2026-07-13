@@ -12,7 +12,89 @@
     table.gpsl-table th, table.gpsl-table td { border:1px solid #333; padding:8px; text-align:left; }
     table.gpsl-table th { background:#222; color:#ff9900; }
     .muted { color:#888; }
-    .search-results { margin-top:10px; }
+
+    .filter-group { margin: 0 0 14px; }
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px 18px;
+      align-items: flex-end;
+      margin-bottom: 12px;
+    }
+
+    .multi-filter { position: relative; min-width: 170px; }
+    .multi-filter-label { font-size: 12px; color: #ffaa22; margin-bottom: 2px; }
+    .multi-filter-control {
+      background:#222; color:#ddd; border:1px solid #444; padding:6px 8px; border-radius:4px;
+      font-size:12px; cursor:pointer; display:flex; align-items:center; justify-content:space-between;
+      min-height:28px;
+    }
+    .multi-filter-control::after { content:"▾"; font-size:10px; color:#888; margin-left:6px; }
+    .multi-filter-panel {
+      position:absolute; top:100%; left:0; background:#111; border:1px solid #444; border-radius:4px;
+      margin-top:2px; max-height:260px; overflow:hidden; min-width:100%; z-index:60;
+      display:none; flex-direction:column;
+    }
+    .multi-filter.open .multi-filter-panel { display:flex; }
+    .multi-filter-search {
+      width:100%; box-sizing:border-box; background:#1a1a1a; color:#ddd; border:0; border-bottom:1px solid #333;
+      padding:8px; font-size:12px; outline:none;
+    }
+    .multi-filter-options { overflow:auto; max-height:210px; padding:4px 0; }
+    .multi-filter-empty { color:#777; font-size:12px; padding:8px 10px; }
+    .multi-filter-option {
+      display:flex; gap:8px; align-items:center; padding:5px 10px; font-size:12px; cursor:pointer;
+    }
+    .multi-filter-option:hover { background:#1c1c1c; }
+    .multi-filter-option input { margin:0; }
+
+    .range-filter { min-width: 200px; flex: 1 1 200px; max-width: 280px; }
+    .range-filter-label { font-size: 12px; color: #ffaa22; margin-bottom: 6px; }
+    .range-filter-range { color:#ccc; font-weight: normal; }
+    .range-filter-sliders {
+      position: relative; height: 28px; --range-min: 0%; --range-max: 100%;
+    }
+    .range-filter-track {
+      position:absolute; left:0; right:0; top:50%; height:4px; margin-top:-2px; background:#333; border-radius:2px;
+    }
+    .range-filter-track::before {
+      content:""; position:absolute; left:var(--range-min); right:calc(100% - var(--range-max));
+      top:0; bottom:0; background:#ff9900; border-radius:2px;
+    }
+    .range-filter-sliders input[type="range"] {
+      position:absolute; left:0; width:100%; top:0; height:28px; margin:0; background:transparent;
+      pointer-events:none; -webkit-appearance:none; appearance:none;
+    }
+    .range-filter-sliders input[type="range"]::-webkit-slider-runnable-track { height:4px; background:transparent; }
+    .range-filter-sliders input[type="range"]::-moz-range-track { height:4px; background:transparent; }
+    .range-filter-sliders input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance:none; appearance:none; width:14px; height:14px; border-radius:50%;
+      background:#ff9900; border:1px solid #aa6600; pointer-events:auto; margin-top:-5px; cursor:pointer;
+    }
+    .range-filter-sliders input[type="range"]::-moz-range-thumb {
+      width:14px; height:14px; border-radius:50%; background:#ff9900; border:1px solid #aa6600;
+      pointer-events:auto; cursor:pointer;
+    }
+
+    .name-typeahead { position: relative; min-width: 260px; flex: 1 1 260px; }
+    .name-typeahead label { display:block; font-size:12px; color:#ffaa22; margin-bottom:2px; }
+    .name-typeahead input {
+      width:100%; box-sizing:border-box; background:#222; color:#ddd; border:1px solid #444;
+      border-radius:4px; padding:7px 10px; font-size:13px;
+    }
+    .name-suggest {
+      position:absolute; left:0; right:0; top:100%; z-index:70; background:#111; border:1px solid #444;
+      border-radius:4px; margin-top:2px; max-height:280px; overflow:auto; display:none;
+    }
+    .name-suggest.open { display:block; }
+    .name-suggest-item {
+      padding:8px 10px; cursor:pointer; border-bottom:1px solid #222; font-size:13px;
+    }
+    .name-suggest-item:hover, .name-suggest-item.active { background:#1c1c1c; }
+    .name-suggest-item .meta { color:#888; font-size:11px; margin-top:2px; }
+    .name-suggest-empty { padding:10px; color:#777; font-size:12px; }
+
+    .filter-actions { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:4px; }
   </style>
 </head>
 <body class="admin-page">
@@ -26,21 +108,27 @@
           <b>draft auction</b>. Unlock to return them to the draft pool. Special Auction player prizes
           only offer players from this list.
         </p>
-        <p class="note">Run <code>supabase/sql/patches/auction_exclusions.sql</code> in Supabase first.</p>
+        <p class="note">
+          Run <code>supabase/sql/patches/auction_exclusions.sql</code> and
+          <code>auction_exclusions_search_filters.sql</code> in Supabase if you have not already.
+        </p>
       </div>
 
       <div class="card">
         <h2>Search &amp; reserve</h2>
-        <div class="row">
-          <div>
-            <input id="searchQuery" placeholder="Name or Konami ID" style="min-width:240px;">
-          </div>
-          <div>
-            <button type="button" id="searchBtn" class="button">Search</button>
-          </div>
+        <p class="note">Free agents only. Filters match GPDB (Position, Nation, Age, Rating, Playstyle, MV). Type a name for live suggestions.</p>
+
+        <div class="filter-group" id="filters">
+          <div class="filter-row" id="filters-row-1"></div>
+          <div class="filter-row" id="filters-row-2"></div>
+        </div>
+
+        <div class="filter-actions">
+          <button type="button" id="searchBtn" class="button">Search</button>
+          <button type="button" id="clearFiltersBtn" class="button secondary">Clear filters</button>
         </div>
         <div id="searchStatus" class="status-line"></div>
-        <div class="search-results" id="searchResults"></div>
+        <div class="search-results" id="searchResults" style="margin-top:10px;"></div>
       </div>
 
       <div class="card">
