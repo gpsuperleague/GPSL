@@ -234,11 +234,16 @@ body {
 }
 
 .natter-preview {
-  width: 100%;
-  max-height: 320px;
-  object-fit: cover;
+  display: block;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  max-height: 420px;
+  margin-inline: auto;
+  object-fit: contain;
   border-radius: 14px;
   border: 1px solid var(--natter-line);
+  background: #0d0d0d;
 }
 
 .natter-preview-actions {
@@ -501,12 +506,16 @@ body {
 
 .natter-card-image {
   margin-top: 10px;
-  width: 100%;
+  display: block;
+  max-width: 100%;
+  width: auto;
+  height: auto;
+  max-height: min(70vh, 640px);
+  margin-inline: auto;
   border-radius: 14px;
   border: 1px solid var(--natter-line);
-  display: block;
-  max-height: 420px;
-  object-fit: cover;
+  object-fit: contain;
+  background: #0d0d0d;
 }
 
 .natter-react-wrap {
