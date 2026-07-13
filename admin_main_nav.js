@@ -30,7 +30,7 @@ export const ADMIN_MAIN_NAV = [
     id: "testing",
     label: "Testing",
     entries: [
-      link("Reset League", "admin_test_reset.html"),
+      link("Reset League (vanilla)", "admin_test_reset.html"),
       link("Assign Manager to club", "admin_test_manager_assign.html"),
       link("Draft Auction auto Bids", "admin_test_draft_seed.html"),
       link("Deploy Monthly Results", "admin_test_deploy_month.html"),

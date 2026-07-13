@@ -19,9 +19,19 @@ const COUNT_LABELS = {
   special_auctions: "Special auctions",
   club_loans: "Club loans",
   competition_seasons: "Competition seasons",
-  competition_fixtures: "Fixtures",
+  competition_fixtures: "League/cup fixtures",
+  competition_match_player_stats: "Player match stats",
   competition_inbox: "Inbox messages",
-  international_nations_active: "International nations",
+  owner_season_ranking_rows: "Owner points rows",
+  player_season_archive_rows: "Player season archives",
+  club_season_archive_rows: "Club season archives",
+  manager_club_stints: "Manager career stints",
+  gpsl_sport_editions: "GPSL Sport editions",
+  natter_posts: "Natter posts",
+  international_fixtures: "International fixtures",
+  international_wc_cycles: "WC cycles",
+  international_player_career: "International caps/career",
+  international_nations_active: "Active nation assignments",
   owners_registry_active: "Owners (active)",
   owners_registry_awaiting_auction: "Owners (awaiting auction)",
   players_foreign_contract: "Foreign contract locks",
@@ -119,13 +129,13 @@ async function runExecute() {
   const phrase = document.getElementById("confirmInput")?.value?.trim() || "";
   if (
     !confirm(
-      "FINAL WARNING\n\nThis wipes owners, squads, finances, transfers, fixtures, and history.\n\nContinue?"
+      "FINAL WARNING\n\nVanilla reset wipes league/cup/international history, player & manager careers, Sport, Natter, finances, assignments, and owner points.\n\nContinue?"
     )
   ) {
     return;
   }
 
-  setStatus("executeStatus", "Running reset…");
+  setStatus("executeStatus", "Running vanilla reset…");
   const startingBalance = parseStartingBalance(
     document.getElementById("startingBalance")?.value
   );
@@ -140,7 +150,7 @@ async function runExecute() {
   const options = {
     starting_balance: startingBalance,
     reset_owners_to_auction: !!document.getElementById("optResetOwners")?.checked,
-    clear_competition_history: !!document.getElementById("optClearHistory")?.checked,
+    clear_competition_history: true,
     seed_club_auction: !!document.getElementById("optSeedClub")?.checked,
   };
 

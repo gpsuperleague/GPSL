@@ -9,7 +9,7 @@ export const TESTING_ADMIN_NAV = [
     page: "admin_site_map",
   },
   {
-    label: "Test environment reset",
+    label: "Reset League (vanilla)",
     href: "admin_test_reset.html",
     page: "admin_test_reset",
     navDanger: true,

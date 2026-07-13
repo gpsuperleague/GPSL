@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <style>html,body{background:#111;color:#ddd;margin:0}</style>
-  <title>Pre-launch test reset — GPSL Admin</title>
+  <title>Reset League (vanilla) — GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="admin.css">
   <style>
     .danger-card { border-color: #844; background: #1a1212; }
     .danger-card h2 { color: #f66; }
-    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px 16px; margin-top: 12px; font-size: 13px; }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 16px; margin-top: 12px; font-size: 13px; }
     .preview-grid div { padding: 6px 8px; background: #111; border: 1px solid #333; border-radius: 4px; }
     .preview-grid span { color: #ff9900; font-weight: bold; }
     #confirmInput { max-width: 360px; width: 100%; padding: 8px; margin-top: 8px; background: #111; border: 1px solid #844; color: #ddd; border-radius: 4px; }
@@ -17,18 +17,34 @@
     .arm-badge { padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
     .arm-off { background: #333; color: #aaa; }
     .arm-on { background: #522; color: #f88; border: 1px solid #a44; }
+    .wipe-list { color: #aaa; font-size: 13px; line-height: 1.5; margin: 8px 0 0; padding-left: 18px; }
+    .wipe-list b { color: #ddd; }
   </style>
 </head>
 <body class="admin-page">
   <div id="nav"></div>
-  <h1 class="admin-title">Pre-launch test reset</h1>
+  <h1 class="admin-title">Reset League (vanilla)</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <p class="note">
         <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
-        · Wipes league <b>state</b> for re-testing club auction → manager draft → player draft.
-        Does <b>not</b> delete GPDB players or auth accounts. Keep your CSV backup offline.
+        · Full wipe back to <b>day-zero GPSL</b> (before club auction / drafts).
+        Keeps GPDB players, manager catalog, club rows, auth logins, and nation catalog.
       </p>
+
+      <div class="card">
+        <h2>What gets wiped</h2>
+        <ul class="wipe-list">
+          <li><b>League &amp; cups</b> — seasons, fixtures, results, player match stats, standings source, TOTM/TOTS</li>
+          <li><b>History</b> — player/club season archives, cup winners, awards, <b>owner points</b></li>
+          <li><b>Assignments</b> — player contracts, managers, nation assignments, matchday squads</li>
+          <li><b>Money</b> — ledgers, balances → 0, loans, transfer history</li>
+          <li><b>Inbox</b>, <b>GPSL Sport</b> editions, <b>Natter</b> posts</li>
+          <li><b>Manager career</b> stints / sack blocks</li>
+          <li><b>Internationals</b> — WC cycles, fixtures/results, call-ups, caps/career stats (nation list kept)</li>
+          <li><b>Admin checklist</b> ticks for the wiped seasons</li>
+        </ul>
+      </div>
 
       <div class="card danger-card">
         <h2>1. Arm reset (required)</h2>
@@ -49,13 +65,13 @@
       </div>
 
       <div class="card danger-card">
-        <h2>3. Execute reset</h2>
+        <h2>3. Execute vanilla reset</h2>
         <p class="note">Type exactly: <code id="phraseHint">RESET TEST ENVIRONMENT</code></p>
         <label>
           <input type="checkbox" id="optResetOwners" checked> Reset owners → awaiting club auction
         </label><br>
         <label>
-          <input type="checkbox" id="optClearHistory" checked> Clear competition history archives
+          <input type="checkbox" id="optClearHistory" checked disabled> Clear all competition / history / Sport / Natter / internationals (always on)
         </label><br>
         <label>
           <input type="checkbox" id="optSeedClub"> Seed club auction listings after reset
@@ -65,13 +81,13 @@
         </label>
         <input type="text" id="confirmInput" placeholder="Type confirmation phrase" autocomplete="off">
         <br>
-        <button type="button" class="button" id="executeBtn" style="background:#882222;margin-top:12px;">Execute test reset</button>
+        <button type="button" class="button" id="executeBtn" style="background:#882222;margin-top:12px;">Execute vanilla reset</button>
         <div id="executeStatus" class="status-line"></div>
       </div>
 
       <div class="card">
         <h2>SQL</h2>
-        <p class="note">Run once: <code>supabase/sql/patches/admin_prelaunch_test_reset.sql</code></p>
+        <p class="note">Re-run in Supabase: <code>supabase/sql/patches/admin_prelaunch_test_reset.sql</code></p>
       </div>
     </div>
   </div>
