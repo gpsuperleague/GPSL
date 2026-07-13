@@ -353,26 +353,27 @@ async function loadSuggestions(q) {
 }
 
 function buildSearchParams(query, limit = 40) {
-  const params = {
-    p_query: query || "",
-    p_limit: limit,
-  };
-  if (CURRENT_FILTERS.Position?.length) params.p_positions = CURRENT_FILTERS.Position;
-  if (CURRENT_FILTERS.Nation?.length) params.p_nations = CURRENT_FILTERS.Nation;
-  if (CURRENT_FILTERS.Playstyle?.length) params.p_playstyles = CURRENT_FILTERS.Playstyle;
+  const filters = {};
+  if (CURRENT_FILTERS.Position?.length) filters.positions = CURRENT_FILTERS.Position;
+  if (CURRENT_FILTERS.Nation?.length) filters.nations = CURRENT_FILTERS.Nation;
+  if (CURRENT_FILTERS.Playstyle?.length) filters.playstyles = CURRENT_FILTERS.Playstyle;
   if (isRangeActive("Age")) {
-    params.p_age_min = RANGE_ACTIVE.Age.min;
-    params.p_age_max = RANGE_ACTIVE.Age.max;
+    filters.age_min = RANGE_ACTIVE.Age.min;
+    filters.age_max = RANGE_ACTIVE.Age.max;
   }
   if (isRangeActive("Rating")) {
-    params.p_rating_min = RANGE_ACTIVE.Rating.min;
-    params.p_rating_max = RANGE_ACTIVE.Rating.max;
+    filters.rating_min = RANGE_ACTIVE.Rating.min;
+    filters.rating_max = RANGE_ACTIVE.Rating.max;
   }
   if (isRangeActive("market_value")) {
-    params.p_mv_min = RANGE_ACTIVE.market_value.min;
-    params.p_mv_max = RANGE_ACTIVE.market_value.max;
+    filters.mv_min = RANGE_ACTIVE.market_value.min;
+    filters.mv_max = RANGE_ACTIVE.market_value.max;
   }
-  return params;
+  return {
+    p_query: query || "",
+    p_limit: limit,
+    p_filters: filters,
+  };
 }
 
 async function loadFilterOptions() {
