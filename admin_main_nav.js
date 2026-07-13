@@ -121,7 +121,10 @@ export const ADMIN_MAIN_NAV = [
         L("Set Tax %", "admin_tax_pct.html"),
         L("Set stadium costs", "admin_stadium_costs.html"),
       ]),
-      group("Auctions", [L("Set on/off", "admin_transfers.html")]),
+      group("Auctions", [
+        L("Set on/off", "admin_transfers.html"),
+        L("Special Auction", "admin_special-auctions.html"),
+      ]),
       group("Transfers", [L("Set on/off", "admin_transfer_window.html")]),
     ],
   },
@@ -137,7 +140,9 @@ export const ADMIN_MAIN_NAV = [
     id: "season_checklist",
     label: "Season Checklist",
     entries: [
-      group("August", []),
+      group("August", [
+        L("Special Auction", "admin_special-auctions.html"),
+      ]),
       group("September", [
         L("Close Transfer Window", "admin_transfer_window.html", "closed"),
       ]),
@@ -147,6 +152,7 @@ export const ADMIN_MAIN_NAV = [
         L("Start of Season challenge Payouts", "admin_challenges.html"),
       ]),
       group("January", [
+        L("Special Auction", "admin_special-auctions.html"),
         L("Open Transfer Window", "admin_transfer_window.html", "open"),
         L("Close Transfer Window", "admin_transfer_window.html", "closed"),
       ]),
