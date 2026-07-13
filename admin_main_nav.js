@@ -225,6 +225,68 @@ export function adminMainNavHasActive(pathname, search = "") {
   return ADMIN_MAIN_NAV.some((s) => adminMainSectionHasActive(s.id, pathname, search));
 }
 
+/** Sections omitted from the manual Admin workflow checklist. */
+export const ADMIN_CHECKLIST_EXCLUDE_SECTION_IDS = new Set(["testing", "owners"]);
+
+/**
+ * Stable key for checklist persistence (season-scoped in DB / localStorage).
+ * @param {string} sectionId
+ * @param {string|null} groupLabel
+ * @param {{ label: string, href?: string, hash?: string }} item
+ */
+export function adminChecklistTaskKey(sectionId, groupLabel, item) {
+  return [sectionId, groupLabel || "", item.label || "", item.href || "", item.hash || ""].join("|");
+}
+
+/**
+ * Flatten Admin menu into checklist sections (excludes Testing & Owners).
+ * Empty groups (e.g. months with no tasks) are omitted.
+ */
+export function getAdminWorkflowChecklist() {
+  const sections = [];
+
+  for (const section of ADMIN_MAIN_NAV) {
+    if (ADMIN_CHECKLIST_EXCLUDE_SECTION_IDS.has(section.id)) continue;
+
+    /** @type {{ groupLabel: string|null, items: Array<Record<string, unknown>> }[]} */
+    const blocks = [];
+
+    for (const entry of section.entries || []) {
+      if (entry.type === "link") {
+        blocks.push({
+          groupLabel: null,
+          items: [
+            {
+              ...entry,
+              taskKey: adminChecklistTaskKey(section.id, null, entry),
+            },
+          ],
+        });
+        continue;
+      }
+      if (entry.type === "group") {
+        const items = (entry.items || [])
+          .filter((item) => item?.href)
+          .map((item) => ({
+            ...item,
+            taskKey: adminChecklistTaskKey(section.id, entry.label, item),
+          }));
+        if (!items.length) continue;
+        blocks.push({ groupLabel: entry.label, items });
+      }
+    }
+
+    if (!blocks.length) continue;
+    sections.push({
+      id: section.id,
+      label: section.label,
+      blocks,
+    });
+  }
+
+  return sections;
+}
+
 function renderLinkHtml(item, pathname, search) {
   const href = adminMainNavHref(item);
   const active = isAdminMainNavItemActive(item, pathname, search);

@@ -267,6 +267,12 @@ export const ADMIN_NAV_SECTION = {
   id: "admin",
   label: "Admin",
   items: [
+    {
+      href: "admin_workflow_checklist.html",
+      label: "Admin checklist",
+      page: "admin_workflow_checklist",
+      navChecklist: true,
+    },
     { adminMainMega: true, section: "testing", label: "Testing" },
     { adminMainMega: true, section: "owners", label: "Owners" },
     { adminMainMega: true, section: "season_break", label: "Season Break" },

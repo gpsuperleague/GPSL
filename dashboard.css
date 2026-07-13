@@ -921,6 +921,29 @@ table.gpsl-table td {
   background: #2a1818;
 }
 
+/* Top-level Admin → Admin checklist (distinct from submenu links) */
+.nav-dropdown .nav-link.nav-link-checklist {
+  margin: 4px 8px 10px;
+  padding: 10px 12px;
+  border: 1px solid #3a3428;
+  border-left: 2px solid #c4a35a;
+  background: #1a1814;
+}
+.nav-dropdown .nav-link.nav-link-checklist .nav-link-label {
+  font-family: "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  font-style: italic;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  color: #e8d9b0;
+}
+.nav-dropdown .nav-link.nav-link-checklist:hover .nav-link-label,
+.nav-dropdown .nav-link.nav-link-checklist.active .nav-link-label {
+  color: #fff1c9;
+}
+.nav-dropdown .nav-link.nav-link-checklist .nav-link-marker {
+  background: #c4a35a;
+}
+
 .gpsl-admin-flyout-home {
   border-bottom: 1px solid #333;
   margin-bottom: 4px;

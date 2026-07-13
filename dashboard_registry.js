@@ -180,6 +180,9 @@ export const DASHBOARD_PANELS = [
   p("admin", "GPSL Admin", "admin.html", { adminOnly: true }),
   p("admin_site_map", "Site map", "admin_site_map.html", { adminOnly: true }),
   p("admin_owners", "Owner Admin", "admin_owners.html", { adminOnly: true }),
+  p("admin_workflow_checklist", "Admin Checklist", "admin_workflow_checklist.html", {
+    adminOnly: true,
+  }),
   p("admin_transfers", "Transfer Admin", "admin_transfers.html", { adminOnly: true }),
   p("admin_transfer_window", "Transfer window", "admin_transfer_window.html", { adminOnly: true }),
   p("admin_season", "Season Admin", "admin_season.html", { adminOnly: true }),

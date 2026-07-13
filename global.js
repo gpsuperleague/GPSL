@@ -1530,13 +1530,14 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
   const renderLink = (item, active) => {
     const indent = item.indent ? " nav-link-sub" : "";
     const danger = item.navDanger ? " nav-link-danger" : "";
+    const checklist = item.navChecklist ? " nav-link-checklist" : "";
     const auctionAttr = item.auctionNav
       ? ` data-auction-nav="${item.auctionNav}"`
       : "";
     const listingAttr = item.listingNav
       ? ` data-listing-nav="${item.listingNav}"`
       : "";
-    return `<a href="${item.href}" class="nav-link${indent}${danger}${
+    return `<a href="${item.href}" class="nav-link${indent}${danger}${checklist}${
       active ? " active" : ""
     }${navListingPathClass(item, currentFile)}"${auctionAttr}${listingAttr}>${navLinkInnerHtml(item)}</a>`;
   };
