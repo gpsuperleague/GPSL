@@ -117,6 +117,17 @@ export const OWNER_ADMIN_NAV = [
       },
     ],
   },
+  {
+    id: "natter",
+    label: "Natter",
+    items: [
+      {
+        label: "Remove Natter posts",
+        href: "admin_natter.html",
+        page: "admin_natter",
+      },
+    ],
+  },
 ];
 
 export function ownerAdminNavHref(item) {

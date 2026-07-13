@@ -1,4 +1,4 @@
-import { supabase, initGlobal, getAuthUserFast, refreshNatterNavBadge } from "./global.js";
+import { supabase, initGlobal, getAuthUserFast, refreshNatterNavBadge, isGpslAdminUser } from "./global.js";
 
 const MAX_CHARS = 1000;
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
@@ -28,6 +28,7 @@ const MAX_REACTIONS_PER_POST = 3;
 let composeState = null;
 let selectedFile = null;
 let selectedObjectUrl = null;
+let isAdmin = false;
 let viewSeasonId = null;
 let viewMonth = null;
 let canReact = false;
@@ -660,6 +661,9 @@ function renderFeed(posts) {
       const meta = [p.owner_tag, p.month_label, formatWhen(p.created_at)]
         .filter(Boolean)
         .join(" · ");
+      const adminBtn = isAdmin
+        ? `<button type="button" class="natter-admin-delete" data-admin-delete="${Number(p.id)}" title="Delete post (admin)">Delete</button>`
+        : "";
       return `
         <article class="natter-card" data-post-id="${Number(p.id)}">
           <div class="natter-avatar-slot">
@@ -670,6 +674,7 @@ function renderFeed(posts) {
             <div class="natter-card-head">
               <span class="natter-card-club">${escapeHtml(club)}</span>
               <span class="natter-card-meta">${escapeHtml(meta)}</span>
+              ${adminBtn}
             </div>
             <div class="natter-card-body">${escapeHtml(p.body)}</div>
             ${img}
@@ -678,6 +683,27 @@ function renderFeed(posts) {
         </article>`;
     })
     .join("");
+}
+
+async function adminDeletePost(postId) {
+  if (!isAdmin || !postId) return;
+  if (!confirm(`Delete this Natter post (#${postId})? The club can post again for that month.`)) {
+    return;
+  }
+  const { data, error } = await supabase.rpc("natter_admin_delete_post", {
+    p_post_id: Number(postId),
+  });
+  if (error) {
+    setComposeHint(error.message || "Could not delete.", true);
+    return;
+  }
+  if (!data?.ok) {
+    setComposeHint(data?.reason === "admin_only" ? "Admin only." : "Could not delete.", true);
+    return;
+  }
+  feedPosts = feedPosts.filter((p) => Number(p.id) !== Number(postId));
+  renderFeed(feedPosts);
+  setComposeHint("Post deleted.", false);
 }
 
 async function toggleReaction(postId, emoji) {
@@ -954,6 +980,13 @@ function wireCompose() {
   postBtn?.addEventListener("click", () => void submitPost());
 
   feed?.addEventListener("click", (e) => {
+    const del = e.target.closest?.("[data-admin-delete]");
+    if (del) {
+      e.stopPropagation();
+      void adminDeletePost(Number(del.getAttribute("data-admin-delete")));
+      return;
+    }
+
     const plus = e.target.closest?.(".natter-react-plus");
     if (plus) {
       e.stopPropagation();
@@ -1014,6 +1047,7 @@ async function boot() {
     showPageError("Sign in to use Natter.");
     return;
   }
+  isAdmin = isGpslAdminUser(user);
 
   wireCompose();
   const state = await loadComposeState();

@@ -429,3 +429,55 @@ html.admin-root body.admin-page {
   overflow: hidden;
 }
 
+.admin-natter-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.admin-natter-card {
+  border: 1px solid #333;
+  background: #1a1a1a;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.admin-natter-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: baseline;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.admin-natter-card-head span {
+  color: #999;
+  font-size: 12px;
+}
+
+.admin-natter-body {
+  margin: 0 0 10px;
+  white-space: pre-wrap;
+  line-height: 1.4;
+  color: #ddd;
+}
+
+.admin-natter-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.button-danger {
+  background: #5a1515 !important;
+  border-color: #a33 !important;
+  color: #fcc !important;
+}
+
+.button-danger:hover {
+  background: #7a1c1c !important;
+}
+

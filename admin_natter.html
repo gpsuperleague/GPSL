@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Natter Admin — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Natter Admin</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card" id="admin-natter">
+        <h2>Remove Natter posts</h2>
+        <p class="note">
+          Delete owner Natter posts (and attached images). Reactions are removed with the post.
+          The club can post again for that GPSL month afterwards. Already-published GPSL Sport club news is unchanged until that edition is rebuilt.
+        </p>
+        <div class="admin-inline-row" style="gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+          <label>
+            Month
+            <select id="natterAdminMonth" class="admin-select">
+              <option value="">All months</option>
+              <option value="august">August</option>
+              <option value="september">September</option>
+              <option value="october">October</option>
+              <option value="november">November</option>
+              <option value="december">December</option>
+              <option value="january">January</option>
+              <option value="february">February</option>
+              <option value="march">March</option>
+              <option value="april">April</option>
+              <option value="may">May</option>
+              <option value="june">June</option>
+              <option value="july">July</option>
+            </select>
+          </label>
+          <button type="button" id="natterAdminRefresh" class="button">Refresh</button>
+        </div>
+        <div id="natterAdminStatus" class="status-line"></div>
+        <div id="natterAdminList" class="admin-natter-list"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_natter.js"></script>
+</body>
+</html>
