@@ -279,19 +279,6 @@ export const ADMIN_NAV_SECTION = {
   ],
 };
 
-/** Legacy Admin tree — kept as Admin2 until the new menu is verified. */
-export const ADMIN2_NAV_SECTION = {
-  id: "admin2",
-  label: "Admin2",
-  items: [
-    { testingMega: true, label: "Testing" },
-    { seasonBreakMega: true, label: "Season Break" },
-    { seasonMega: true, label: "Pre-Season" },
-    { seasonMgmtMega: true, label: "Season Management" },
-    { ownersMega: true, label: "Owners & accounts" },
-  ],
-};
-
 export function normalizeNavPath(pathname) {
   const p = (pathname || "").toLowerCase().replace(/\\/g, "/");
   const file = p.split("/").pop() || "";

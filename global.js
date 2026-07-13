@@ -1716,7 +1716,6 @@ export async function buildNav() {
   try {
   let NAV_SECTIONS;
   let ADMIN_NAV_SECTION;
-  let ADMIN2_NAV_SECTION;
   let isNavItemActive;
   let sectionHasActiveItem;
   let firstActiveNavSectionId;
@@ -1726,7 +1725,6 @@ export async function buildNav() {
     const navMod = await import(`./nav_config.js?v=${GLOBAL_JS_VERSION}`);
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
-    ADMIN2_NAV_SECTION = navMod.ADMIN2_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;
     sectionHasActiveItem = navMod.sectionHasActiveItem;
     firstActiveNavSectionId = navMod.firstActiveNavSectionId;
@@ -1835,9 +1833,6 @@ export async function buildNav() {
 
   if (isGpslAdminUser(user) && ADMIN_NAV_SECTION?.items?.length) {
     navSections.push(ADMIN_NAV_SECTION);
-  }
-  if (isGpslAdminUser(user) && ADMIN2_NAV_SECTION?.items?.length) {
-    navSections.push(ADMIN2_NAV_SECTION);
   }
 
   let html = `<div class="gpsl-nav-bar">`;
