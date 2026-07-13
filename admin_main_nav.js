@@ -122,7 +122,7 @@ export const ADMIN_MAIN_NAV = [
         L("Set stadium costs", "admin_stadium_costs.html"),
       ]),
       group("Auctions", [
-        L("Set on/off", "admin_transfers.html"),
+        L("Set Draft Auction On/Off", "admin_transfers.html"),
         L("Special Auction", "admin_special-auctions.html"),
       ]),
       group("Transfers", [L("Set on/off", "admin_transfer_window.html")]),
