@@ -149,9 +149,9 @@ DROP FUNCTION IF EXISTS public.admin_auction_search_players_for_exclusion(text, 
 DROP FUNCTION IF EXISTS public.admin_auction_search_players_for_exclusion(text, int, jsonb);
 
 CREATE OR REPLACE FUNCTION public.admin_auction_search_players_for_exclusion(
-  p_query text DEFAULT NULL,
-  p_limit int DEFAULT 40,
-  p_filters jsonb DEFAULT '{}'::jsonb
+  p_query text,
+  p_limit int,
+  p_filters jsonb
 )
 RETURNS TABLE (
   player_id text,
@@ -212,7 +212,7 @@ BEGIN
       THEN nullif(btrim(p."Rating"::text), '')::int
       ELSE NULL
     END AS rating,
-    p.market_value::numeric AS market_value,
+    nullif(btrim(p.market_value::text), '')::numeric AS market_value,
     EXISTS (
       SELECT 1 FROM public.auction_exclusion_players e WHERE e.player_id = p."Konami_ID"::text
     ) AS already_excluded
@@ -263,8 +263,14 @@ BEGIN
         AND nullif(btrim(p."Rating"::text), '')::int <= v_rating_max
       )
     )
-    AND (v_mv_min IS NULL OR p.market_value >= v_mv_min)
-    AND (v_mv_max IS NULL OR p.market_value <= v_mv_max)
+    AND (
+      v_mv_min IS NULL
+      OR nullif(btrim(p.market_value::text), '')::numeric >= v_mv_min
+    )
+    AND (
+      v_mv_max IS NULL
+      OR nullif(btrim(p.market_value::text), '')::numeric <= v_mv_max
+    )
   ORDER BY
     CASE
       WHEN nullif(btrim(p."Rating"::text), '') ~ '^[0-9]+$'
