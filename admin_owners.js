@@ -217,20 +217,42 @@ async function addOwner() {
   const club = document.getElementById("ownerClub").value.trim();
 
   if (!email || !password || !club) {
-    setStatus("ownerStatus", "Fill all fields.", false);
+    setStatus("ownerStatus", "Fill all fields (email, password, and club ShortName).", false);
     return;
   }
 
-  setStatus("ownerStatus", "Creating…");
+  setStatus("ownerStatus", "Creating login…");
   const { error } = await supabase.functions.invoke("create-owner", {
     body: { email, password, clubShortName: club },
   });
 
+  if (error) {
+    setStatus("ownerStatus", "❌ " + error.message, false);
+    return;
+  }
+
+  setStatus("ownerStatus", "Login created — linking club…");
+  const { data, error: linkErr } = await supabase.rpc("admin_assign_club_owner", {
+    p_owner_email: email,
+    p_club_short_name: club,
+  });
+
+  if (linkErr) {
+    setStatus(
+      "ownerStatus",
+      `⚠️ Login created for ${email}, but club link failed: ${linkErr.message}. Use Link existing login to club.`,
+      false
+    );
+    await loadOwnerList();
+    return;
+  }
+
   setStatus(
     "ownerStatus",
-    error ? "❌ " + error.message : "✅ Owner created — setup email sent.",
-    !error
+    `✅ ${email} created and linked to ${data?.club_name || club}.`,
+    true
   );
+  await loadOwnerList();
 }
 
 async function removeFromClub() {

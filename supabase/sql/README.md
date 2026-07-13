@@ -269,7 +269,7 @@ Run once:
 
 Then in **GPSL Admin → Owner Administration → Link existing login to club**, enter the user’s **email** and club **ShortName** (e.g. `HUR`). The RPC resolves `auth.users.id` and sets `Clubs.owner_id` (no manual UUID).
 
-**Add Owner** (edge function `create-owner`) still creates a **new** auth user and links the club in one step.
+**Add Owner** creates the auth user (`create-owner` edge function), then calls **`admin_assign_club_owner`** so the club ShortName is actually assigned in the same step.
 
 **Remove / archive owner** (short break vs left GPSL): [`patches/owner_detach_archive.sql`](./patches/owner_detach_archive.sql) — **GPSL Admin → Owner administration**. Detaches club + nation; keeps `competition_owner_season_ranking` history. Archived owners must be **unarchived** before **Link existing login to club**.
 
