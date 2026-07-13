@@ -88,6 +88,8 @@ BEGIN
 END;
 $function$;
 
+-- Labels = excluded NATIONS only. Never use excluded players' Nation
+-- (that wrongly blanketed whole countries, e.g. Greenwood → England).
 CREATE OR REPLACE FUNCTION public.gpdb_season_excluded_nation_labels(p_season_id bigint DEFAULT NULL)
 RETURNS text[]
 LANGUAGE plpgsql
@@ -101,12 +103,7 @@ BEGIN
   SELECT coalesce(array_agg(DISTINCT lab ORDER BY lab), ARRAY[]::text[])
   INTO v_labels
   FROM (
-    SELECT DISTINCT btrim(p."Nation") AS lab
-    FROM public."Players" p
-    WHERE p."Konami_ID"::text = ANY (public.gpdb_season_excluded_player_ids(p_season_id))
-      AND nullif(btrim(p."Nation"), '') IS NOT NULL
-    UNION
-    SELECT n.name
+    SELECT n.name AS lab
     FROM public.international_nations n
     JOIN public.gpdb_season_excluded_nations en ON en.nation_code = n.code
     JOIN public.competition_seasons s ON s.id = en.season_id
