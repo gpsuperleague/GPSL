@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Injuries — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .injury-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:10px; }
+    .injury-grid label { display:block; font-size:12px; color:#aaa; margin-bottom:4px; }
+    .injury-grid input, .injury-grid select {
+      width:100%; padding:6px 8px; background:#222; border:1px solid #444; color:#ddd; border-radius:4px;
+    }
+    .risk-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
+    .risk-table th { text-align:left; color:#ff9900; padding:6px; border-bottom:1px solid #333; }
+    .risk-table td { padding:6px; border-bottom:1px solid #2a2a2a; }
+    .secret-note { color:#fc6; font-size:12px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Injuries</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Season injury settings</h2>
+        <p class="note">
+          Caps, match roll chance, severity weights, and pre-season recovery.
+          Club injury-risk factors are <b>admin-secret only</b>.
+          Run <code>competition_injuries_engine.sql</code> once.
+        </p>
+        <div class="injury-grid" id="settingsGrid"></div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" id="saveSettingsBtn" class="button">Save settings</button>
+          <button type="button" id="initRisksBtn" class="button">Roll club risk factors (current season)</button>
+        </div>
+        <div id="settingsStatus" class="status-line"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h2>Pre-season recovery tick</h2>
+        <p class="note">
+          Applies virtual matches (default 4) against outstanding out then recovery.
+          New injuries never start in pre-season months — only carry-over recovery.
+          Default months: May, June, July.
+        </p>
+        <div class="row">
+          <select id="preseasonMonth">
+            <option value="may">May</option>
+            <option value="june">June</option>
+            <option value="july">July</option>
+            <option value="august">August</option>
+          </select>
+          <button type="button" id="tickPreseasonBtn" class="button">Apply pre-season month</button>
+        </div>
+        <div id="preseasonStatus" class="status-line"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h2>Club injury risk <span class="secret-note">(secret)</span></h2>
+        <p class="note">Multiplier on base match injury chance. Owners cannot see this.</p>
+        <div id="risksPanel"><span class="note">Loading…</span></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h2>Active injuries</h2>
+        <div id="activePanel"><span class="note">Loading…</span></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_injuries.js"></script>
+</body>
+</html>

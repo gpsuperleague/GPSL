@@ -1,7 +1,7 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
-export const SEASON_BREAK_NAV_VERSION = "20260709-gpdb-exclusions";
+export const SEASON_BREAK_NAV_VERSION = "20260714-injuries";
 
 export const SEASON_BREAK_NAV = [
   {
@@ -109,6 +109,17 @@ export const SEASON_BREAK_NAV = [
         label: "Set initial season challenges",
         href: "admin_challenges.html",
         page: "admin_challenges",
+      },
+    ],
+  },
+  {
+    id: "injuries",
+    label: "Injuries",
+    items: [
+      {
+        label: "Injury settings & risk factors",
+        href: "admin_injuries.html",
+        page: "admin_injuries",
       },
     ],
   },

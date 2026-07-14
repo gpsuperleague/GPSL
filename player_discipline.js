@@ -159,14 +159,23 @@ function formatUnavailableSideList(players) {
   }
   return players
     .map((p) => {
-      const cls =
-        p.reason === "injured" ? "unavailable-injured" : "unavailable-suspended";
-      const tag = p.reason === "injured" ? "Injured" : "Suspended";
+      let cls = "unavailable-suspended";
+      let tag = "Suspended";
+      if (p.reason === "injured") {
+        cls = "unavailable-injured";
+        tag = "Injured";
+      } else if (p.reason === "recovery") {
+        cls = "unavailable-recovery";
+        tag = "Gaining match fitness";
+      }
       const name = p.player_name || p.player_id;
       const pos = p.position ? ` <span class="unavailable-pos">${p.position}</span>` : "";
       const raw = p.detail || "";
       const detail = raw
-        ? ` — ${raw.replace(/^Suspended — |^Injured — /, "")}`
+        ? ` — ${raw
+            .replace(/^Suspended — /, "")
+            .replace(/^Injured — /, "")
+            .replace(/^Gaining match fitness — /, "")}`
         : "";
       return `<li class="${cls}"><span class="unavailable-tag">${tag}</span> ${name}${pos}<span class="unavailable-detail">${detail}</span></li>`;
     })
@@ -222,3 +231,99 @@ export function unavailablePlayerIdsForClub(payload, clubShort) {
         : [];
   return new Set((side || []).map((p) => String(p.player_id)));
 }
+
+/** @param {import("@supabase/supabase-js").SupabaseClient} supabase */
+export async function loadClubSquadDiscipline(supabase, club = null) {
+  const { data, error } = await supabase.rpc("competition_club_squad_discipline", {
+    p_club: club || null,
+  });
+  if (error) {
+    if (
+      /competition_club_squad_discipline|schema cache|Could not find/i.test(
+        error.message || ""
+      )
+    ) {
+      console.warn(
+        "competition_club_squad_discipline missing — run competition_club_squad_discipline.sql"
+      );
+      return { cards: [], injuries: [] };
+    }
+    console.error("competition_club_squad_discipline:", error);
+    return { cards: [], injuries: [] };
+  }
+  return {
+    cards: Array.isArray(data?.cards) ? data.cards : [],
+    injuries: Array.isArray(data?.injuries) ? data.injuries : [],
+  };
+}
+
+/** @param {{ player_id: string, yellows?: number, reds?: number }[]} cards */
+export function cardsByPlayerId(cards) {
+  /** @type {Map<string, { yellows: number, reds: number }>} */
+  const map = new Map();
+  for (const row of cards || []) {
+    map.set(String(row.player_id), {
+      yellows: Number(row.yellows) || 0,
+      reds: Number(row.reds) || 0,
+    });
+  }
+  return map;
+}
+
+/** @param {any[]} injuries */
+export function injuriesByPlayerId(injuries) {
+  /** @type {Map<string, any[]>} */
+  const map = new Map();
+  for (const row of injuries || []) {
+    const id = String(row.player_id);
+    if (!map.has(id)) map.set(id, []);
+    map.get(id).push(row);
+  }
+  return map;
+}
+
+/** @param {any[]} injuryRows */
+export function formatInjuryStatusHtml(injuryRows) {
+  if (!injuryRows?.length) return "";
+  return injuryRows
+    .map((inj) => {
+      const label = inj.label || "Injury";
+      const outLeft = Number(inj.matches_out_remaining) || 0;
+      const recLeft = Number(inj.recovery_remaining) || 0;
+      const pending = (inj.pending_matches || [])
+        .map((m) => m.label)
+        .filter(Boolean);
+      const pendingText = pending.length
+        ? ` — ${pending.slice(0, 2).join(", ")}${pending.length > 2 ? "…" : ""}`
+        : "";
+
+      if (outLeft > 0 || inj.phase === "out") {
+        return `<div class="squad-status-lines"><span class="status-pill status-injured" title="${label}">Injured — ${label} (${outLeft} left)${pendingText}</span></div>`;
+      }
+      return `<div class="squad-status-lines"><span class="status-pill status-recovery" title="${label}">Gaining match fitness — ${label} (${recLeft} left)${pendingText}</span></div>`;
+    })
+    .join("");
+}
+
+/** @param {{ yellows?: number, reds?: number }|null} cards */
+export function formatCardsStatusHtml(cards) {
+  if (!cards) return "";
+  const y = Number(cards.yellows) || 0;
+  const r = Number(cards.reds) || 0;
+  if (y <= 0 && r <= 0) return "";
+  const yClass =
+    y >= 8 ? "status-cards-ban" : y >= 6 ? "status-cards-warn" : "status-cards";
+  const parts = [];
+  if (y > 0) {
+    parts.push(
+      `<span class="status-pill ${yClass}" title="Season yellow cards (ban every 8)">YC ${y}/8</span>`
+    );
+  }
+  if (r > 0) {
+    parts.push(
+      `<span class="status-pill status-cards-red" title="Season red cards">RC ${r}</span>`
+    );
+  }
+  return `<div class="squad-status-lines">${parts.join(" ")}</div>`;
+}
+

@@ -689,12 +689,84 @@ body.squad-page .status-suspended {
   border: 1px solid #a04830;
 }
 
+body.squad-page .status-injured {
+  background: #1a3a4a;
+  color: #9ed4f0;
+  border: 1px solid #3a6a8a;
+}
+
+body.squad-page .status-recovery {
+  background: #2a3a1a;
+  color: #c8e89a;
+  border: 1px solid #5a7a3a;
+}
+
+body.squad-page .status-cards {
+  background: #3a3a10;
+  color: #e8e090;
+  border: 1px solid #6a6a20;
+}
+
+body.squad-page .status-cards-warn {
+  background: #4a3010;
+  color: #ffcc66;
+  border: 1px solid #8a6020;
+}
+
+body.squad-page .status-cards-ban,
+body.squad-page .status-cards-red {
+  background: #5a2018;
+  color: #ffd0a8;
+  border: 1px solid #a04830;
+}
+
 body.squad-page tr.squad-row-suspended {
   background: rgba(160, 55, 35, 0.18);
 }
 
 body.squad-page tr.squad-row-suspended:hover {
   background: rgba(160, 55, 35, 0.28);
+}
+
+body.squad-page tr.squad-row-injured {
+  background: rgba(40, 90, 120, 0.2);
+}
+
+body.squad-page tr.squad-row-injured:hover {
+  background: rgba(40, 90, 120, 0.3);
+}
+
+body.squad-page tr.squad-row-recovery {
+  background: rgba(60, 100, 40, 0.16);
+}
+
+body.squad-page tr.squad-row-recovery:hover {
+  background: rgba(60, 100, 40, 0.26);
+}
+
+body.squad-page .squad-yc-badge {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 3px;
+  vertical-align: middle;
+  background: #3a3a10;
+  color: #e8e090;
+  border: 1px solid #6a6a20;
+}
+
+body.squad-page .squad-yc-badge.warn {
+  background: #4a3010;
+  color: #ffcc66;
+  border-color: #8a6020;
+}
+
+body.squad-page .squad-yc-badge.ban {
+  background: #5a2018;
+  color: #ffd0a8;
+  border-color: #a04830;
 }
 
 body.squad-page .status-listed {

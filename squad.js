@@ -39,6 +39,11 @@ import {
   loadActiveSuspensions,
   suspensionsByPlayerId,
   formatSuspensionStatusHtml,
+  loadClubSquadDiscipline,
+  cardsByPlayerId,
+  injuriesByPlayerId,
+  formatInjuryStatusHtml,
+  formatCardsStatusHtml,
 } from "./player_discipline.js";
 import {
   loadCurrentGpslSeasonLabel,
@@ -169,6 +174,10 @@ let transferWindowOpen = true;
 let transferStatusState = null;
 /** @type {Map<string, any[]>} */
 let squadSuspensionsByPlayer = new Map();
+/** @type {Map<string, any[]>} */
+let squadInjuriesByPlayer = new Map();
+/** @type {Map<string, { yellows: number, reds: number }>} */
+let squadCardsByPlayer = new Map();
 let currentGpslSeasonLabel = "";
 
 const MAX_FOREIGN_INTEREST = 3;
@@ -883,13 +892,16 @@ async function loadSquad() {
 
   renderSquadCompliance(list, squadDesignationsState, squadGhostPlayers);
 
-  const [state, seasonStats, suspensionList] = await Promise.all([
+  const [state, seasonStats, suspensionList, discipline] = await Promise.all([
     loadFreshTransferStatusState(),
     loadPlayerSeasonStatsForSquad(supabase, playerIds, currentUserShort),
     loadActiveSuspensions(supabase, { club: currentUserShort }),
+    loadClubSquadDiscipline(supabase, currentUserShort),
   ]);
   transferStatusState = state;
   squadSuspensionsByPlayer = suspensionsByPlayerId(suspensionList);
+  squadInjuriesByPlayer = injuriesByPlayerId(discipline.injuries);
+  squadCardsByPlayer = cardsByPlayerId(discipline.cards);
   if (!transferStatusState.currentSeasonLabel && currentGpslSeasonLabel) {
     transferStatusState.currentSeasonLabel = currentGpslSeasonLabel;
   } else if (transferStatusState.currentSeasonLabel) {
@@ -1072,8 +1084,13 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
     appendSquadSectionHeader(tbody, groupName);
 
     groupPlayers.forEach(p => {
-      const suspRows = squadSuspensionsByPlayer.get(String(p.Konami_ID)) || [];
+      const pid = String(p.Konami_ID);
+      const suspRows = squadSuspensionsByPlayer.get(pid) || [];
+      const injuryRows = squadInjuriesByPlayer.get(pid) || [];
+      const cardRow = squadCardsByPlayer.get(pid) || null;
       const suspHtml = formatSuspensionStatusHtml(suspRows);
+      const injuryHtml = formatInjuryStatusHtml(injuryRows);
+      const cardsHtml = formatCardsStatusHtml(cardRow);
       const statusRow = transferState
         ? resolvePlayerTransferStatus({
             konamiId: p.Konami_ID,
@@ -1087,9 +1104,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
             label: "—",
             pillClass: "status-not-listed",
           };
-      const status = suspHtml
-        ? `${suspHtml}${formatSquadStatusHtml(statusRow)}`
-        : formatSquadStatusHtml(statusRow);
+      const status = `${injuryHtml}${suspHtml}${cardsHtml}${formatSquadStatusHtml(statusRow)}`;
 
       const tr = document.createElement("tr");
       tr.dataset.konamiId = p.Konami_ID;
@@ -1100,20 +1115,30 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
           ? String(p.contract_seasons_remaining)
           : "";
       if (suspRows.length) tr.classList.add("squad-row-suspended");
+      if (injuryRows.some((i) => (Number(i.matches_out_remaining) || 0) > 0 || i.phase === "out")) {
+        tr.classList.add("squad-row-injured");
+      } else if (injuryRows.length) {
+        tr.classList.add("squad-row-recovery");
+      }
       tr.style.cursor = "pointer";
-      const st = statsByPlayer.get(String(p.Konami_ID));
+      const st = statsByPlayer.get(pid);
       const avg =
         st?.avg_rating != null ? Number(st.avg_rating).toFixed(2) : "—";
+      const yCount = cardRow?.yellows || 0;
 
       const qualBadges = playerSquadQualificationBadges(p, clubNation);
       const roleBadge = roleBadgeForPlayer(p, designationsState);
-      const loanBadge = seasonLoanPlayerIds.has(String(p.Konami_ID))
+      const loanBadge = seasonLoanPlayerIds.has(pid)
         ? seasonLoanBadgeHtml()
         : "";
+      const ycBadge =
+        yCount > 0
+          ? `<span class="squad-yc-badge${yCount >= 6 ? " warn" : ""}${yCount >= 8 ? " ban" : ""}" title="Season yellow cards">YC ${yCount}/8</span>`
+          : "";
 
       tr.innerHTML = `
         <td class="squad-col-thumb">${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}</td>
-        <td class="squad-col-player">${playerNameLinkHtml(p.Konami_ID, p.Name)}${loanBadge}${roleBadge}${qualBadges}</td>
+        <td class="squad-col-player">${playerNameLinkHtml(p.Konami_ID, p.Name)}${loanBadge}${roleBadge}${qualBadges}${ycBadge}</td>
         <td class="squad-col-nation">${p.Nation || "-"}</td>
         <td class="squad-col-position">${p.Position}</td>
         <td class="num squad-col-age">${p.Age != null && p.Age !== "" ? p.Age : "—"}</td>
@@ -1131,7 +1156,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
           </div>
         </td>
         <td class="squad-col-action">
-          <select class="squad-action-select" data-player-id="${String(p.Konami_ID)}">
+          <select class="squad-action-select" data-player-id="${pid}">
             <option value="">Action</option>
             ${squadRoleActionOptionsHtml(p, designationsState, clubNation)}
             ${squadActionOptionsHtml(p)}
@@ -1314,7 +1339,11 @@ function patchSquadEnrichment(transferState, statsByPlayer) {
     if (status && transferState) {
       const seasonsRaw = row.dataset.contractSeasons;
       const suspRows = squadSuspensionsByPlayer.get(id) || [];
+      const injuryRows = squadInjuriesByPlayer.get(id) || [];
+      const cardRow = squadCardsByPlayer.get(id) || null;
       const suspHtml = formatSuspensionStatusHtml(suspRows);
+      const injuryHtml = formatInjuryStatusHtml(injuryRows);
+      const cardsHtml = formatCardsStatusHtml(cardRow);
       const statusRow = resolvePlayerTransferStatus({
         konamiId: id,
         contractedTeam:
@@ -1327,10 +1356,16 @@ function patchSquadEnrichment(transferState, statsByPlayer) {
             ? Number(seasonsRaw)
             : null,
       });
-      status.innerHTML = suspHtml
-        ? `${suspHtml}${formatSquadStatusHtml(statusRow)}`
-        : formatSquadStatusHtml(statusRow);
+      status.innerHTML = `${injuryHtml}${suspHtml}${cardsHtml}${formatSquadStatusHtml(statusRow)}`;
       row.classList.toggle("squad-row-suspended", suspRows.length > 0);
+      const injuredOut = injuryRows.some(
+        (i) => (Number(i.matches_out_remaining) || 0) > 0 || i.phase === "out"
+      );
+      row.classList.toggle("squad-row-injured", injuredOut);
+      row.classList.toggle(
+        "squad-row-recovery",
+        !injuredOut && injuryRows.length > 0
+      );
     }
   });
 }
