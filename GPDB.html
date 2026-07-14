@@ -241,12 +241,13 @@
       background: #5a2018;
       border: 1px solid #a04830;
       border-radius: 4px;
-      padding: 1px 6px;
+      padding: 2px 6px;
       vertical-align: middle;
-      max-width: 260px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      max-width: min(280px, 100%);
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.3;
     }
 
     #pagination {

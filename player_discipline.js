@@ -133,14 +133,38 @@ export function formatSuspensionStatusHtml(rows) {
   const label = formatSuspensionStatusLabel(rows);
   if (!label) return "";
   const reason = suspensionReasonLabel(rows[0]);
+  // Prefer multi-line: "Suspended" then match list
+  const labels = [];
+  for (const s of rows) {
+    for (const m of s.pending_matches || []) {
+      if (m?.label) labels.push(m.label);
+    }
+  }
+  const unique = [...new Set(labels)];
+  if (unique.length) {
+    const matches = unique.slice(0, 2).join("<br>") + (unique.length > 2 ? "<br>…" : "");
+    return `<div class="squad-status-lines"><span class="status-pill status-suspended" title="${reason}">Suspended<br>${matches}</span></div>`;
+  }
   return `<div class="squad-status-lines"><span class="status-pill status-suspended" title="${reason}">${label}</span></div>`;
 }
 
 /** Compact badge for name cells (GPDB / club). */
 export function formatSuspensionBadgeHtml(rows) {
-  const label = formatSuspensionStatusLabel(rows);
-  if (!label) return "";
-  return `<span class="suspension-badge" title="${label}">${label}</span>`;
+  const labels = [];
+  for (const s of rows || []) {
+    for (const m of s.pending_matches || []) {
+      if (m?.label) labels.push(m.label);
+    }
+  }
+  const unique = [...new Set(labels)];
+  if (!unique.length) {
+    const fallback = formatSuspensionStatusLabel(rows);
+    if (!fallback) return "";
+    return `<span class="suspension-badge" title="${fallback}">${fallback}</span>`;
+  }
+  const title = `Suspended — ${unique.join(", ")}`;
+  const body = `Suspended<br>${unique.slice(0, 2).join("<br>")}${unique.length > 2 ? "<br>…" : ""}`;
+  return `<span class="suspension-badge" title="${title}">${body}</span>`;
 }
 
 /** True if player is suspended for a specific fixture id. */

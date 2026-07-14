@@ -597,7 +597,9 @@ body.squad-page .squad-col-action {
 body.squad-page .squad-col-status {
   overflow: visible;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
+  min-width: 110px;
+  max-width: 180px;
 }
 
 body.squad-page .squad-status-lines {
@@ -681,6 +683,24 @@ body.squad-page .status-pill {
   font-size: 12px;
   font-weight: bold;
   color: #111;
+}
+
+body.squad-page .status-pill.status-suspended,
+body.squad-page .status-pill.status-injured,
+body.squad-page .status-pill.status-recovery {
+  display: inline-block;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.3;
+  text-align: center;
+}
+
+body.squad-page .squad-col-status {
+  white-space: normal;
+  min-width: 110px;
+  max-width: 180px;
 }
 
 body.squad-page .status-suspended {
