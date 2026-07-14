@@ -2,6 +2,66 @@
 
 import { normalizeClubKey } from "./competition.js";
 
+/** User-facing inbox filters → message_type sets (null = all). */
+export const INBOX_CATEGORY_FILTERS = [
+  { id: "all", label: "All" },
+  { id: "fixture_management", label: "Fixture management" },
+  { id: "auctions", label: "Auctions" },
+  { id: "transfers_in", label: "Transfers in" },
+  { id: "transfers_out", label: "Transfers out" },
+  { id: "other", label: "Other" },
+];
+
+const INBOX_CATEGORY_TYPES = {
+  fixture_management: new Set([
+    "result_submitted",
+    "result_to_confirm",
+    "result_rejected",
+    "result_confirmed",
+    "monthly_fixtures",
+    "match_time_proposed",
+    "match_time_countered",
+    "match_time_proposal_sent",
+    "match_time_counter_sent",
+    "match_time_accepted",
+    "match_rescheduled",
+    "match_emergency_drop",
+    "match_forfeit_applied",
+    "match_checkin_open",
+    "match_mutual_override_requested",
+    "match_mutual_override_applied",
+    "intl_result_to_confirm",
+    "intl_kickoff_proposal",
+  ]),
+  auctions: new Set(["draft_scheduled", "special_auction_scheduled"]),
+  transfers_in: new Set(["transfer_signed"]),
+  transfers_out: new Set(["transfer_sold", "underperformance_transfer"]),
+};
+
+const INBOX_TYPED_CATEGORIES = Object.values(INBOX_CATEGORY_TYPES);
+
+export function inboxMessageCategory(messageType) {
+  const t = String(messageType || "");
+  if (INBOX_CATEGORY_TYPES.fixture_management.has(t)) return "fixture_management";
+  if (INBOX_CATEGORY_TYPES.auctions.has(t)) return "auctions";
+  if (INBOX_CATEGORY_TYPES.transfers_in.has(t)) return "transfers_in";
+  if (INBOX_CATEGORY_TYPES.transfers_out.has(t)) return "transfers_out";
+  return "other";
+}
+
+export function filterInboxByCategory(messages, categoryId) {
+  if (!categoryId || categoryId === "all") return messages || [];
+  if (categoryId === "other") {
+    return (messages || []).filter((m) => {
+      const t = String(m?.message_type || "");
+      return !INBOX_TYPED_CATEGORIES.some((set) => set.has(t));
+    });
+  }
+  const set = INBOX_CATEGORY_TYPES[categoryId];
+  if (!set) return messages || [];
+  return (messages || []).filter((m) => set.has(String(m?.message_type || "")));
+}
+
 function inboxForClub(msg, clubShortName) {
   if (!clubShortName || !msg) return false;
   return (

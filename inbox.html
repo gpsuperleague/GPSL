@@ -17,11 +17,26 @@
     }
     .inbox-toolbar {
       display:flex; flex-wrap:wrap; gap:8px; align-items:center;
-      margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid #333;
+      margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #333;
     }
     .inbox-toolbar label {
       display:flex; align-items:center; gap:6px; font-size:13px; color:#aaa;
       margin-left:auto;
+    }
+    .inbox-filters {
+      display:flex; flex-wrap:wrap; gap:6px; align-items:center;
+      margin-bottom:16px;
+    }
+    .inbox-filters .filter-label {
+      font-size:12px; color:#888; margin-right:2px;
+    }
+    .inbox-filter-btn {
+      padding:6px 12px; background:#2a2a2a; color:#ccc; border:1px solid #444;
+      border-radius:999px; font-size:12px; font-weight:600; cursor:pointer;
+    }
+    .inbox-filter-btn:hover { border-color:#666; color:#fff; }
+    .inbox-filter-btn.active {
+      background:#ff9900; color:#111; border-color:#ff9900;
     }
     .button {
       padding:10px 18px; background:#ff9900; color:#111; border:none;
@@ -82,10 +97,11 @@
           <button type="button" id="restoreAllBtn" class="button secondary">Restore all to inbox</button>
         </div>
       </div>
+      <div id="inboxFilters" class="inbox-filters" hidden></div>
       <div id="inboxList"></div>
       <div id="inboxStatus"></div>
     </div>
   </div>
-  <script type="module" src="inbox.js?v=3"></script>
+  <script type="module" src="inbox.js?v=4-filters"></script>
 </body>
 </html>
