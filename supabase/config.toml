@@ -1,2 +1,10 @@
 [functions.club-kits-cof-sync]
 verify_jwt = false
+
+# Auth is checked inside the function (admin email). Gateway JWT on OPTIONS
+# breaks browser CORS preflight from github.io.
+[functions.set-owner-password]
+verify_jwt = false
+
+[functions.create-owner-club-auction]
+verify_jwt = false
