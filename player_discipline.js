@@ -329,7 +329,7 @@ export function formatInjuryStatusHtml(injuryRows) {
     .join("");
 }
 
-/** Compact badge for club.html name cells. */
+/** Compact badge for club.html name cells (multi-line so it wraps in the column). */
 export function formatInjuryBadgeHtml(injuryRows) {
   if (!injuryRows?.length) return "";
   return injuryRows
@@ -338,13 +338,15 @@ export function formatInjuryBadgeHtml(injuryRows) {
       const outLeft = Number(inj.matches_out_remaining) || 0;
       const recLeft = Number(inj.recovery_remaining) || 0;
       if (outLeft > 0 || inj.phase === "out") {
-        const text = `Injured — ${label} (${outLeft} left)`;
-        return `<span class="injury-badge injury-badge-out" title="${text}">${text}</span>`;
+        const title = `Injured — ${label} (${outLeft} left)`;
+        const body = `Injured<br>${label}<br>${outLeft} left`;
+        return `<span class="injury-badge injury-badge-out" title="${title}">${body}</span>`;
       }
-      const text = `Gaining match fitness — ${label} (${recLeft} left)`;
-      return `<span class="injury-badge injury-badge-recovery" title="${text}">${text}</span>`;
+      const title = `Gaining match fitness — ${label} (${recLeft} left)`;
+      const body = `Gaining match fitness<br>${label}<br>${recLeft} left`;
+      return `<span class="injury-badge injury-badge-recovery" title="${title}">${body}</span>`;
     })
-    .join(" ");
+    .join("");
 }
 
 /** @param {{ yellows?: number, reds?: number }|null} cards */
