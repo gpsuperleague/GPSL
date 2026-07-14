@@ -402,9 +402,7 @@ BEGIN
   FOR UPDATE;
 
   IF v_balance IS NULL THEN RAISE EXCEPTION 'Club finances not found'; END IF;
-  IF v_balance < v_cost THEN
-    RAISE EXCEPTION 'Insufficient balance (need %, have %)', v_cost, v_balance;
-  END IF;
+  -- Medical hires allowed on negative balance (still posts ledger debit)
 
   SELECT s.id INTO v_season
   FROM public.competition_seasons s
@@ -480,9 +478,7 @@ BEGIN
   FOR UPDATE;
 
   IF v_balance IS NULL THEN RAISE EXCEPTION 'Club finances not found'; END IF;
-  IF v_balance < v_cost THEN
-    RAISE EXCEPTION 'Insufficient balance (need %, have %)', v_cost, v_balance;
-  END IF;
+  -- Medical hires allowed on negative balance (still posts ledger debit)
 
   SELECT s.id INTO v_season
   FROM public.competition_seasons s
