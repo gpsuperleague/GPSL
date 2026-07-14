@@ -103,6 +103,26 @@
       color: #ff9900;
     }
 
+    tr.club-row-suspended {
+      background: rgba(160, 55, 35, 0.22) !important;
+    }
+    .suspension-badge {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #ffd0a8;
+      background: #5a2018;
+      border: 1px solid #a04830;
+      border-radius: 4px;
+      padding: 1px 6px;
+      vertical-align: middle;
+      max-width: 220px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .club-thumb {
       height: 70px;
       width: auto;
@@ -441,6 +461,11 @@
       formatTransferStatusMessageHtml,
       TRANSFER_STATUS,
     } from "./player_transfer_status.js";
+    import {
+      loadActiveSuspensions,
+      suspensionsByPlayerId,
+      formatSuspensionBadgeHtml,
+    } from "./player_discipline.js";
     import { SAME_SEASON_TRANSFER_MESSAGE } from "./player_season_transfer.js";
     import {
       confirmSquadRulesBeforeBid,
@@ -460,6 +485,8 @@
     let currentOfferSellerClub = null;
     let currentPlayerMarketValue = null;
     let transferStatusState = null;
+    /** @type {Map<string, any[]>} */
+    let clubSuspensionsByPlayer = new Map();
 
     document.addEventListener("DOMContentLoaded", async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -623,15 +650,20 @@
     async function loadPlayers() {
       if (!clubShortName) return;
 
-      const { data, error } = await supabase
-        .from("Players")
-        .select("Name, Nation, Position, Rating, Age, market_value, Playstyle, Konami_ID, Contracted_Team, Season_Signed")
-        .eq("Contracted_Team", clubShortName);
+      const [{ data, error }, suspensionList] = await Promise.all([
+        supabase
+          .from("Players")
+          .select("Name, Nation, Position, Rating, Age, market_value, Playstyle, Konami_ID, Contracted_Team, Season_Signed")
+          .eq("Contracted_Team", clubShortName),
+        loadActiveSuspensions(supabase, { club: clubShortName }),
+      ]);
 
       if (error) {
         console.error("Players load error:", error);
         return;
       }
+
+      clubSuspensionsByPlayer = suspensionsByPlayerId(suspensionList);
 
       const container = document.getElementById("squadContainer");
       container.innerHTML = "";
@@ -666,21 +698,25 @@
                 </tr>
               </thead>
               <tbody>
-                ${groupPlayers.map(p => `
-                  <tr>
+                ${groupPlayers.map(p => {
+                  const suspRows = clubSuspensionsByPlayer.get(String(p.Konami_ID)) || [];
+                  const suspBadge = formatSuspensionBadgeHtml(suspRows);
+                  const rowClass = suspRows.length ? ' class="club-row-suspended"' : "";
+                  return `
+                  <tr${rowClass}>
                     <td>${playerThumbLinkHtml(p.Konami_ID, {
                       className: "club-thumb",
                       alt: p.Name,
                     })}</td>
-                    <td>${playerNameLinkHtml(p.Konami_ID, p.Name)}</td>
+                    <td>${playerNameLinkHtml(p.Konami_ID, p.Name)}${suspBadge}</td>
                     <td>${p.Nation}</td>
                     <td>${p.Position}</td>
                     <td>${p.Rating}</td>
                     <td>₿ ${Number(p.market_value).toLocaleString("en-GB")}</td>
                     <td>${p.Playstyle || "-"}</td>
                     <td>${clubOfferCellHtml(p)}</td>
-                  </tr>
-                `).join("")}
+                  </tr>`;
+                }).join("")}
               </tbody>
             </table>
           </div>

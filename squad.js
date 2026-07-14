@@ -36,6 +36,11 @@ import {
   formatSquadStatusHtml,
 } from "./player_transfer_status.js";
 import {
+  loadActiveSuspensions,
+  suspensionsByPlayerId,
+  formatSuspensionStatusHtml,
+} from "./player_discipline.js";
+import {
   loadCurrentGpslSeasonLabel,
   playerBlockedSameSeasonTransfer,
   playerBlockedFromTransferMarket,
@@ -162,6 +167,8 @@ let selectedPlayerForListing = null;
 // ⭐ NEW: Transfer window state
 let transferWindowOpen = true;
 let transferStatusState = null;
+/** @type {Map<string, any[]>} */
+let squadSuspensionsByPlayer = new Map();
 let currentGpslSeasonLabel = "";
 
 const MAX_FOREIGN_INTEREST = 3;
@@ -876,11 +883,13 @@ async function loadSquad() {
 
   renderSquadCompliance(list, squadDesignationsState, squadGhostPlayers);
 
-  const [state, seasonStats] = await Promise.all([
+  const [state, seasonStats, suspensionList] = await Promise.all([
     loadFreshTransferStatusState(),
     loadPlayerSeasonStatsForSquad(supabase, playerIds, currentUserShort),
+    loadActiveSuspensions(supabase, { club: currentUserShort }),
   ]);
   transferStatusState = state;
+  squadSuspensionsByPlayer = suspensionsByPlayerId(suspensionList);
   if (!transferStatusState.currentSeasonLabel && currentGpslSeasonLabel) {
     transferStatusState.currentSeasonLabel = currentGpslSeasonLabel;
   } else if (transferStatusState.currentSeasonLabel) {
@@ -1063,6 +1072,8 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
     appendSquadSectionHeader(tbody, groupName);
 
     groupPlayers.forEach(p => {
+      const suspRows = squadSuspensionsByPlayer.get(String(p.Konami_ID)) || [];
+      const suspHtml = formatSuspensionStatusHtml(suspRows);
       const statusRow = transferState
         ? resolvePlayerTransferStatus({
             konamiId: p.Konami_ID,
@@ -1076,7 +1087,9 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
             label: "—",
             pillClass: "status-not-listed",
           };
-      const status = formatSquadStatusHtml(statusRow);
+      const status = suspHtml
+        ? `${suspHtml}${formatSquadStatusHtml(statusRow)}`
+        : formatSquadStatusHtml(statusRow);
 
       const tr = document.createElement("tr");
       tr.dataset.konamiId = p.Konami_ID;
@@ -1086,6 +1099,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
         p.contract_seasons_remaining != null
           ? String(p.contract_seasons_remaining)
           : "";
+      if (suspRows.length) tr.classList.add("squad-row-suspended");
       tr.style.cursor = "pointer";
       const st = statsByPlayer.get(String(p.Konami_ID));
       const avg =
@@ -1299,6 +1313,8 @@ function patchSquadEnrichment(transferState, statsByPlayer) {
     }
     if (status && transferState) {
       const seasonsRaw = row.dataset.contractSeasons;
+      const suspRows = squadSuspensionsByPlayer.get(id) || [];
+      const suspHtml = formatSuspensionStatusHtml(suspRows);
       const statusRow = resolvePlayerTransferStatus({
         konamiId: id,
         contractedTeam:
@@ -1311,7 +1327,10 @@ function patchSquadEnrichment(transferState, statsByPlayer) {
             ? Number(seasonsRaw)
             : null,
       });
-      status.innerHTML = formatSquadStatusHtml(statusRow);
+      status.innerHTML = suspHtml
+        ? `${suspHtml}${formatSquadStatusHtml(statusRow)}`
+        : formatSquadStatusHtml(statusRow);
+      row.classList.toggle("squad-row-suspended", suspRows.length > 0);
     }
   });
 }

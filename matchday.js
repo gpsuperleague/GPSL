@@ -30,6 +30,12 @@ import {
   getSquadPlayerIds,
 } from "./matchday_squad.js";
 import { playerNameLinkHtml } from "./player_links.js";
+import {
+  loadActiveSuspensions,
+  suspensionsByPlayerId,
+  formatSuspensionStatusLabel,
+  playerSuspendedForFixture,
+} from "./player_discipline.js";
 
 let myClub = { short: null, name: null };
 let calendarStatus = null;
@@ -38,6 +44,8 @@ let confirmMode = null;
 let myDivision = null;
 let upcomingFixtures = [];
 let allLeagueFixtures = [];
+/** @type {Map<string, import("./player_discipline.js").ActiveSuspension[]>} */
+let suspensionsByPlayer = new Map();
 let allSquadPlayers = [];
 let squadPlayers = [];
 let matchdaySquadRows = [];
@@ -641,6 +649,10 @@ function resetPlayerStatsDom() {
     if (assists) assists.value = "0";
     if (rating) rating.value = "";
     if (potm) potm.checked = false;
+    const yellow = tr.querySelector(".stat-yellow");
+    const red = tr.querySelector(".stat-red");
+    if (yellow) yellow.checked = false;
+    if (red) red.checked = false;
   });
 }
 
@@ -671,7 +683,11 @@ function fillTestMatchStats() {
 
   resetPlayerStatsDom();
 
-  const shuffled = shuffleArray(rows.map((tr) => tr.dataset.statPlayer));
+  const shuffled = shuffleArray(
+    rows
+      .filter((tr) => !tr.querySelector(".stat-started")?.disabled)
+      .map((tr) => tr.dataset.statPlayer)
+  );
   const starterIds = new Set(shuffled.slice(0, MAX_STARTERS));
   const subIds = new Set(
     shuffled.slice(MAX_STARTERS, MAX_STARTERS + MAX_SUBS)
@@ -819,7 +835,7 @@ function applyDefaultLineupFromSquad() {
     const id = tr.dataset.statPlayer;
     const startCb = tr.querySelector(".stat-started");
     const subCb = tr.querySelector(".stat-subbed");
-    if (!startCb) continue;
+    if (!startCb || startCb.disabled) continue;
     const isStarter = starters.includes(id);
     startCb.checked = isStarter;
     if (isStarter && subCb) subCb.checked = false;
@@ -909,6 +925,13 @@ function setMatchdayTab(tab) {
   }
 }
 
+async function loadClubSuspensions() {
+  suspensionsByPlayer = new Map();
+  if (!myClub.short) return;
+  const list = await loadActiveSuspensions(supabase, { club: myClub.short });
+  suspensionsByPlayer = suspensionsByPlayerId(list);
+}
+
 function renderPlayerStatsTable() {
   const tbody = document.getElementById("playerStatsBody");
   if (!tbody) return;
@@ -917,35 +940,77 @@ function renderPlayerStatsTable() {
   tbody.innerHTML = "";
   if (!squadPlayers.length) {
     tbody.innerHTML =
-      '<tr><td colspan="7" style="color:#888;">No squad players found.</td></tr>';
+      '<tr><td colspan="9" style="color:#888;">No squad players found.</td></tr>';
     return;
   }
 
   const benchIds = getDefaultBenchIds(matchdaySquadRows);
+  const fixture = selectedFixture();
+  const fixtureId = fixture?.id;
 
   for (const p of squadPlayers) {
     const id = String(p.Konami_ID);
     const tr = document.createElement("tr");
     tr.dataset.statPlayer = id;
     if (benchIds.has(id)) tr.classList.add("squad-bench-stat");
+
+    const suspRows = suspensionsByPlayer.get(id) || [];
+    const suspendedHere = playerSuspendedForFixture(suspRows, fixtureId);
+    const suspLabel = formatSuspensionStatusLabel(suspRows);
+    if (suspendedHere || suspRows.length) {
+      tr.classList.add("stat-suspended");
+    }
+
     const benchTag = benchIds.has(id)
       ? ' <span class="squad-bench-tag">Sub</span>'
       : "";
+    const suspTag = suspLabel
+      ? ` <span class="suspension-tag" title="${suspLabel}">${
+          suspendedHere ? "Suspended this match" : suspLabel
+        }</span>`
+      : "";
+
     tr.innerHTML = `
-      <td class="name">${playerNameLinkHtml(id, p.Name)} <span style="color:#666;">${p.Position || ""}</span>${benchTag}</td>
-      <td><input type="checkbox" class="stat-started" aria-label="Started"></td>
-      <td><input type="checkbox" class="stat-subbed" aria-label="Subbed on"></td>
+      <td class="name">${playerNameLinkHtml(id, p.Name)} <span style="color:#666;">${p.Position || ""}</span>${benchTag}${suspTag}</td>
+      <td><input type="checkbox" class="stat-started" aria-label="Started" ${suspendedHere ? "disabled" : ""}></td>
+      <td><input type="checkbox" class="stat-subbed" aria-label="Subbed on" ${suspendedHere ? "disabled" : ""}></td>
       <td>${statCountSelectHtml("stat-goals", "Goals", 0)}</td>
       <td>${statCountSelectHtml("stat-assists", "Assists", 0)}</td>
-      <td><input type="text" class="stat-rating stat-combo stat-rating-combo" list="statRatingList" inputmode="decimal" autocomplete="off" value="" placeholder="6.0" aria-label="Rating"></td>
-      <td><input type="radio" name="potm" class="stat-potm" value="${id}"></td>
+      <td><input type="text" class="stat-rating stat-combo stat-rating-combo" list="statRatingList" inputmode="decimal" autocomplete="off" value="" placeholder="6.0" aria-label="Rating" ${suspendedHere ? "disabled" : ""}></td>
+      <td><input type="radio" name="potm" class="stat-potm" value="${id}" ${suspendedHere ? "disabled" : ""}></td>
+      <td><input type="checkbox" class="stat-yellow" aria-label="Yellow card" ${suspendedHere ? "disabled" : ""}></td>
+      <td><input type="checkbox" class="stat-red" aria-label="Red card" ${suspendedHere ? "disabled" : ""}></td>
     `;
-    wirePlayedCheckboxes(tr);
+    if (!suspendedHere) {
+      wirePlayedCheckboxes(tr);
+      wireCardCheckboxes(tr);
+    }
     wireRatingInput(tr.querySelector(".stat-rating"));
     tbody.appendChild(tr);
   }
   applyDefaultLineupFromSquad();
   updateLineupCounter();
+}
+
+function wireCardCheckboxes(tr) {
+  const yellow = tr.querySelector(".stat-yellow");
+  const red = tr.querySelector(".stat-red");
+  const started = tr.querySelector(".stat-started");
+  const subbed = tr.querySelector(".stat-subbed");
+  const sync = () => {
+    const appeared = !!(started?.checked || subbed?.checked);
+    if (!appeared) {
+      if (yellow) yellow.checked = false;
+      if (red) red.checked = false;
+    }
+    if (yellow) yellow.disabled = !appeared;
+    if (red) red.disabled = !appeared;
+  };
+  started?.addEventListener("change", sync);
+  subbed?.addEventListener("change", sync);
+  yellow?.addEventListener("change", sync);
+  red?.addEventListener("change", sync);
+  sync();
 }
 
 function wirePlayedCheckboxes(tr) {
@@ -985,8 +1050,18 @@ function collectPlayerStats() {
     const ratingNorm = normalizeRatingInput(ratingRaw);
     const rating = ratingNorm ? Number(ratingNorm) : null;
     const potm = tr.querySelector(".stat-potm")?.checked ?? false;
+    const yellow_card = tr.querySelector(".stat-yellow")?.checked ?? false;
+    const red_card = tr.querySelector(".stat-red")?.checked ?? false;
 
-    if (!appeared && goals === 0 && assists === 0 && rating == null && !potm) {
+    if (
+      !appeared &&
+      goals === 0 &&
+      assists === 0 &&
+      rating == null &&
+      !potm &&
+      !yellow_card &&
+      !red_card
+    ) {
       continue;
     }
 
@@ -999,6 +1074,8 @@ function collectPlayerStats() {
       assists,
       rating: rating != null && !Number.isNaN(rating) ? rating : null,
       potm,
+      yellow_card,
+      red_card,
     });
   }
   return out;
@@ -1044,6 +1121,13 @@ function validatePlayerStats(fixture, homeGoals, awayGoals, playerStats, cupExtr
     }
     if (!row.appeared && row.potm) {
       return "Player of the Match must be started or subbed on.";
+    }
+    if (!row.appeared && (row.yellow_card || row.red_card)) {
+      return "Players with yellow or red cards must be started or subbed on.";
+    }
+    const suspRows = suspensionsByPlayer.get(String(row.player_id)) || [];
+    if (row.appeared && playerSuspendedForFixture(suspRows, fixture?.id)) {
+      return "A suspended player cannot appear in this match.";
     }
   }
 
@@ -1200,8 +1284,10 @@ function populateFixtureSelect() {
   }
 
   sel.onchange = () => {
+    renderPlayerStatsTable();
     void updateFixturePreview();
   };
+  renderPlayerStatsTable();
   void updateFixturePreview();
 }
 
@@ -1431,6 +1517,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadSquadPlayers();
   await loadMatchdaySquad();
+  await loadClubSuspensions();
   applyMatchdaySquadFilter();
   initSquadPanel();
   renderPlayerStatsTable();

@@ -683,6 +683,20 @@ body.squad-page .status-pill {
   color: #111;
 }
 
+body.squad-page .status-suspended {
+  background: #5a2018;
+  color: #ffd0a8;
+  border: 1px solid #a04830;
+}
+
+body.squad-page tr.squad-row-suspended {
+  background: rgba(160, 55, 35, 0.18);
+}
+
+body.squad-page tr.squad-row-suspended:hover {
+  background: rgba(160, 55, 35, 0.28);
+}
+
 body.squad-page .status-listed {
   background: #ff9900;
 }

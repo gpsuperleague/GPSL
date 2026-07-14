@@ -39,7 +39,8 @@ DECLARE
   v_title text;
   v_has_ledger boolean;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  IF NOT public.is_gpsl_admin()
+     AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
@@ -267,7 +268,8 @@ DECLARE
   v_posted int := 0;
   v_id bigint;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  IF NOT public.is_gpsl_admin()
+     AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 

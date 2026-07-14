@@ -36,6 +36,11 @@ import {
   formatForeignContractGpdbHtml,
 } from "./player_transfer_status.js";
 import {
+  loadActiveSuspensions,
+  suspensionsByPlayerId,
+  formatSuspensionBadgeHtml,
+} from "./player_discipline.js";
+import {
   playerForeignContractLocked,
   playerForeignContractStatusLabel,
 } from "./player_foreign_contract.js";
@@ -523,6 +528,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let PENDING_DIRECT_OFFER_PLAYERS = new Set();
   let PENDING_DIRECT_OFFERS_FOR_MY_CLUB = new Set();
   let TRANSFER_STATUS_STATE = null;
+  /** @type {Map<string, any[]>} */
+  let GPDB_SUSPENSIONS_BY_PLAYER = new Map();
   let CURRENT_USER_CLUB_SHORT = null;
   /** @type {Map<string, number>} */
   let SCOUTING_TARGET_MAP = new Map();
@@ -1781,12 +1788,22 @@ document.addEventListener("DOMContentLoaded", () => {
           }
         }
 
+        const suspRows = GPDB_SUSPENSIONS_BY_PLAYER.get(String(player.Konami_ID)) || [];
+        const suspBadge = formatSuspensionBadgeHtml(suspRows);
         const nameCell = seasonExcluded
           ? `${formatCellValue("Name", player)} <span class="gpdb-excluded-badge" title="Admin season exclusion">Unavailable</span>`
-          : formatCellValue("Name", player);
+          : `${formatCellValue("Name", player)}${suspBadge}`;
+
+        const rowClasses = [
+          seasonExcluded ? "gpdb-row-excluded" : "",
+          auctionExcluded ? "gpdb-row-auction-reserved" : "",
+          suspRows.length ? "gpdb-row-suspended" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
 
         return `
-          <tr class="${seasonExcluded ? "gpdb-row-excluded" : ""}${auctionExcluded ? " gpdb-row-auction-reserved" : ""}" data-konami-id="${player.Konami_ID}"
+          <tr class="${rowClasses}" data-konami-id="${player.Konami_ID}"
               data-rating="${player.Rating ?? ""}"
               data-playstyle="${player.Playstyle ?? ""}"
               data-market-value="${player.market_value ?? ""}"
@@ -2428,6 +2445,8 @@ document.addEventListener("DOMContentLoaded", () => {
       TRANSFER_STATUS_STATE,
       CURRENT_USER_CLUB_SHORT
     );
+    const suspensionList = await loadActiveSuspensions(supabase, {});
+    GPDB_SUSPENSIONS_BY_PLAYER = suspensionsByPlayerId(suspensionList);
   }
 
   async function loadActiveDraftListings() {

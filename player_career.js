@@ -116,7 +116,53 @@ function renderTotals(totals) {
     <span><b>POTM</b> ${t.potm_awards ?? 0}</span>
     <span><b>Clean sheets</b> ${t.clean_sheets ?? 0}</span>
     <span><b>Avg rating</b> ${t.avg_rating != null ? Number(t.avg_rating).toFixed(2) : "—"}</span>
+    <span><b>Yellows</b> ${t.yellow_cards ?? 0}</span>
+    <span><b>Reds</b> ${t.red_cards ?? 0}</span>
   `;
+}
+
+function renderDiscipline(rows) {
+  const el = document.getElementById("disciplinePanel");
+  if (!el) return;
+  if (!rows?.length) {
+    el.innerHTML =
+      '<p class="empty">No cards or suspensions recorded yet.</p>';
+    return;
+  }
+
+  el.innerHTML = `
+    <table class="gpsl-table">
+      <thead>
+        <tr>
+          <th>Season</th>
+          <th>Club</th>
+          <th>Incident</th>
+          <th>Matches</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map((d) => {
+            const matches = (d.matches || [])
+              .map(
+                (m) =>
+                  `${m.label || "Match"}${m.served ? " ✓" : ""}`
+              )
+              .join("<br>") || "—";
+            const active = d.status === "active";
+            return `
+          <tr class="${active ? "discipline-active" : ""}">
+            <td>${d.season_label || "—"}</td>
+            <td>${fullClubName(d.club_short_name) || d.club_short_name || "—"}</td>
+            <td>${d.summary || d.reason || "—"}</td>
+            <td>${matches}</td>
+            <td>${active ? "Active" : d.status || "—"}</td>
+          </tr>`;
+          })
+          .join("")}
+      </tbody>
+    </table>`;
 }
 
 function renderStints(stints) {
@@ -345,6 +391,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   renderTotals(bundle.totals);
   renderStints(bundle.stints || []);
+  renderDiscipline(bundle.discipline || []);
   renderTransfers(bundle.transfers || []);
   careerHonoursReal = bundle.honours || [];
   setupMedalsPreviewToggle();

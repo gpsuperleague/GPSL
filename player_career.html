@@ -24,6 +24,12 @@
     .num { text-align:right; font-variant-numeric:tabular-nums; }
     .empty { color:#777; font-style:italic; }
     .gpsl-link { color:#6cf; text-decoration:none; }
+    .discipline-active { background: rgba(160, 55, 35, 0.2); }
+    .card-pill {
+      display:inline-block; border-radius:4px; padding:2px 7px; font-size:12px; font-weight:600; margin-right:4px;
+    }
+    .card-pill.y { background:#5a5010; color:#ffe08a; border:1px solid #8a7820; }
+    .card-pill.r { background:#5a2018; color:#ffd0a8; border:1px solid #a04830; }
     .award-pill { display:inline-block; background:#332200; border:1px solid #664400; color:#ffcc66; border-radius:4px; padding:4px 8px; margin:4px 6px 0 0; font-size:13px; }
     .trophy-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:10px; }
     .trophy-item {
@@ -59,6 +65,12 @@
     <div class="panel">
       <h2>GPSL clubs &amp; seasons</h2>
       <div id="stintsPanel"><span class="empty">Loading…</span></div>
+    </div>
+
+    <div class="panel">
+      <h2>Cards &amp; suspensions</h2>
+      <p class="sub" style="margin-top:-6px;">Yellow/red cards from confirmed match reports and resulting bans (red = 2 matches; every 8 yellows = 2 matches).</p>
+      <div id="disciplinePanel"><span class="empty">Loading…</span></div>
     </div>
 
     <div class="panel">

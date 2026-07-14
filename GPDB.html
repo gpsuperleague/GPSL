@@ -229,6 +229,25 @@
     tbody tr:nth-child(odd) { background: #1f1f1f; }
     tbody tr:nth-child(even) { background: #262626; }
     tbody tr:hover { background: #333 !important; }
+    tbody tr.gpdb-row-suspended {
+      background: rgba(160, 55, 35, 0.28) !important;
+    }
+    .suspension-badge {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #ffd0a8;
+      background: #5a2018;
+      border: 1px solid #a04830;
+      border-radius: 4px;
+      padding: 1px 6px;
+      vertical-align: middle;
+      max-width: 260px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
     #pagination {
       color: #ff9900;

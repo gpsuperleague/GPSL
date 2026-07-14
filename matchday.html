@@ -104,6 +104,28 @@
     table.stats-table tr.squad-bench-stat td.name {
       border-left: 3px solid #5a9fd4;
     }
+    table.stats-table tr.stat-suspended {
+      background: rgba(180, 60, 40, 0.2);
+    }
+    table.stats-table tr.stat-suspended:hover {
+      background: rgba(180, 60, 40, 0.28);
+    }
+    table.stats-table tr.stat-suspended td.name {
+      border-left: 3px solid #c45a40;
+      color: #ffb8a8;
+    }
+    table.stats-table .suspension-tag {
+      display: inline-block;
+      margin-left: 4px;
+      padding: 1px 5px;
+      font-size: 9px;
+      font-weight: bold;
+      color: #ffd0a0;
+      background: rgba(140, 50, 30, 0.45);
+      border: 1px solid rgba(200, 90, 60, 0.55);
+      border-radius: 3px;
+      vertical-align: middle;
+    }
     table.stats-table .squad-bench-tag {
       display: inline-block;
       margin-left: 4px;
@@ -219,6 +241,8 @@
         <p class="stats-hint" id="statsPanelHint">
           You must tick exactly <b>11 Started</b> (subs optional: 0–5 <b>Subbed on</b>). Ratings 0.1–10.
           Player goals must match <b>your</b> total goals (90 min score, or after-ET total if extra time was played). Not penalties. One POTM max.
+          Tick <b>Y</b> / <b>R</b> for cards (player must have played). Red = 2-match ban; 8 yellows in a season = 2-match ban.
+          Suspended players are highlighted and cannot be selected.
           If you saved a default squad, <b>bench players are highlighted</b> (blue row + Sub tag) to help pick who subbed on.
         </p>
         <div class="stats-wrap">
@@ -231,10 +255,13 @@
                 <th rowspan="2">A</th>
                 <th rowspan="2">Rating</th>
                 <th rowspan="2">POTM</th>
+                <th colspan="2" class="stat-group-hdr">Cards</th>
               </tr>
               <tr>
                 <th class="stat-sub-hdr">Started</th>
                 <th class="stat-sub-hdr">Subbed on</th>
+                <th class="stat-sub-hdr" title="Yellow card">Y</th>
+                <th class="stat-sub-hdr" title="Red card (2-match ban)">R</th>
               </tr>
             </thead>
             <tbody id="playerStatsBody"></tbody>
@@ -250,6 +277,6 @@
       <div id="submitStatus"></div>
     </div>
   </div>
-  <script type="module" src="matchday.js?v=2"></script>
+  <script type="module" src="matchday.js?v=3"></script>
 </body>
 </html>
