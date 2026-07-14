@@ -650,12 +650,12 @@ function clubFixtureEvents(fixtures, monthKey) {
           `<span class="sc-fix-club">${escapeHtml(r.home)}</span>` +
           `<span class="sc-fix-vs">vs</span>` +
           `<span class="sc-fix-club">${escapeHtml(r.away)}</span>` +
-          `</span>` +
           (r.score
             ? `<span class="sc-fix-score">${escapeHtml(r.score.trim())}</span>`
             : r.when
-            ? `<span class="sc-fix-when">${escapeHtml(r.when)}</span>`
-            : `<span class="sc-fix-score"></span>`) +
+            ? `<span class="sc-fix-when">· ${escapeHtml(r.when)}</span>`
+            : "") +
+          `</span>` +
           `</a>` +
           `</li>`
       )

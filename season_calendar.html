@@ -203,8 +203,8 @@
     .sc-fix-list > li + li { border-top:1px solid #eee8de; }
     .sc-fix-list a {
       display:grid;
-      grid-template-columns:72px 1fr auto;
-      align-items:center;
+      grid-template-columns:56px 1fr;
+      align-items:start;
       gap:8px;
       padding:8px 9px;
       text-decoration:none;
@@ -219,17 +219,17 @@
       letter-spacing:.03em;
       color:#888;
       white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      padding-top:2px;
     }
     .sc-fix-match {
       display:flex;
-      flex-wrap:nowrap;
+      flex-wrap:wrap;
       align-items:baseline;
-      gap:5px;
+      gap:5px 6px;
       min-width:0;
       font-size:12px;
       font-weight:bold;
+      line-height:1.35;
     }
     .sc-fix-club { color:#1a1a1a; }
     .sc-fix-vs {
@@ -242,12 +242,14 @@
       color:#666;
       font-weight:bold;
       white-space:nowrap;
+      margin-left:2px;
     }
     .sc-fix-when {
       font-size:11px;
       color:#2a7a3a;
       font-weight:bold;
       white-space:nowrap;
+      margin-left:2px;
     }
     .sc-bullet-links {
       display:flex;
