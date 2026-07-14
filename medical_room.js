@@ -49,6 +49,12 @@ function renderHero() {
   `;
 }
 
+function staffName(row, fallback) {
+  const n = (row?.display_name || "").trim();
+  if (n && n !== "Club doctor" && n !== "Club physiotherapist") return n;
+  return fallback;
+}
+
 function renderDoctor() {
   const el = document.getElementById("doctorSlot");
   if (!el || !state) return;
@@ -58,6 +64,7 @@ function renderDoctor() {
       <div class="staff-card doctor-card">
         <div class="staff-slot-label">Club doctor</div>
         <div class="sil-wrap">${silhouetteSvg(doc.gender, true)}</div>
+        <div class="staff-name">${staffName(doc, "Club doctor")}</div>
         <div class="staff-bonus">−1 match on new injuries</div>
         <div class="staff-contract">${doc.seasons_remaining} season${doc.seasons_remaining === 1 ? "" : "s"} left</div>
       </div>`;
@@ -69,7 +76,7 @@ function renderDoctor() {
       <div class="staff-slot-label">Vacant — hire doctor</div>
       <div class="sil-wrap">${silhouetteSvg("male", false)}</div>
       <div class="staff-cost">${formatMoney(cost)}</div>
-      <div class="staff-contract">3-season contract · gender assigned on hire</div>
+      <div class="staff-contract">3-season contract · name &amp; gender assigned on hire</div>
       <div class="hire-row">
         <button type="button" data-hire-doctor="1">Hire</button>
       </div>
@@ -93,6 +100,7 @@ function renderPhysios() {
         <div class="staff-card">
           <div class="staff-slot-label">Physio ${slot}</div>
           <div class="sil-wrap">${silhouetteSvg(p.gender, true)}</div>
+          <div class="staff-name">${staffName(p, `Physio ${slot}`)}</div>
           <div class="staff-bonus">−0.5% injury chance</div>
           <div class="staff-contract">${p.seasons_remaining} season${p.seasons_remaining === 1 ? "" : "s"} left</div>
         </div>`;
@@ -206,7 +214,7 @@ async function hireDoctor() {
     return;
   }
   setStatus(
-    `Doctor hired (${data?.gender || "assigned"}) − ${formatMoney(data?.cost)}.`,
+    `Doctor hired: ${data?.display_name || data?.gender || "assigned"} (−${formatMoney(data?.cost)}).`,
     "ok"
   );
   await loadState();
@@ -243,7 +251,7 @@ async function hirePhysio(slot) {
     return;
   }
   setStatus(
-    `Physio hired in slot ${slot} (${data?.gender || "assigned"}) − ${formatMoney(data?.cost)}.`,
+    `Physio hired: ${data?.display_name || "assigned"} (slot ${slot}) − ${formatMoney(data?.cost)}.`,
     "ok"
   );
   await loadState();

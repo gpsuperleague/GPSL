@@ -139,6 +139,13 @@ body.medical-page {
 
 .sil-wrap svg { width: 64px; height: 90px; }
 
+.staff-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e8f4ff;
+  line-height: 1.25;
+}
+
 .staff-bonus {
   font-size: 12px;
   font-weight: 700;
