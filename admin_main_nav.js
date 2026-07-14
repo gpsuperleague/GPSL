@@ -36,6 +36,7 @@ export const ADMIN_MAIN_NAV = [
       link("Deploy Monthly Results", "admin_test_deploy_month.html"),
       link("Inbox Test All Clubs", "admin_test_inbox.html"),
       link("Set Club Availability & timeZone", "admin_test_club_availability.html"),
+      link("Injuries & Suspensions (test seed)", "admin_injuries.html"),
     ],
   },
   {
