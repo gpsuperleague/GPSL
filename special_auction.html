@@ -57,6 +57,30 @@
       margin: 12px 0;
       color: #ccc;
     }
+    .prize-options {
+      background: #1a2228;
+      border: 1px solid #3a6a8a;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 14px 0;
+    }
+    .prize-options h3 {
+      margin: 0 0 8px;
+      color: #7ec8ff;
+      font-size: 16px;
+    }
+    .prize-options-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .prize-options-actions .button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    #prizeOptionsStatus { min-height: 1.2em; color: #9c9; }
+    #prizeOptionsStatus.is-error { color: #f88; }
     .bid-time { display: block; white-space: nowrap; font-size: 12px; }
     .bid-time-local { display: block; white-space: nowrap; font-size: 11px; color: #aaa; margin-top: 2px; }
     .bid-modal-backdrop {
@@ -131,6 +155,18 @@
       <p id="prizeLine"></p>
       <div id="winnerLine" class="winner-banner" style="display:none;"></div>
       <div id="waitingReveal" class="waiting-banner" style="display:none;"></div>
+      <div id="prizeOptionsPanel" class="prize-options" style="display:none;">
+        <h3>Your prize options</h3>
+        <p id="prizeOptionsIntro" class="secret-note"></p>
+        <div id="prizeOptionsPlayer"></div>
+        <p id="prizeOptionsSquad" class="secret-note"></p>
+        <div class="prize-options-actions">
+          <button type="button" id="prizeKeepBtn" class="button">Keep player</button>
+          <button type="button" id="prizeListBtn" class="button secondary">List on transfer market (MV)</button>
+          <button type="button" id="prizeReleaseBtn" class="button secondary">Release at 125% MV</button>
+        </div>
+        <p id="prizeOptionsStatus" class="secret-note"></p>
+      </div>
       <div id="playerReveal"></div>
       <p id="rulesLine" class="secret-note"></p>
       <p id="myBidLine"></p>
@@ -201,6 +237,14 @@
       snapWinnerSummaryText,
       formatSnapAuctionTimer,
       snapTimerMode,
+      fetchClubSquadSize,
+      fetchPrizePlayerBrief,
+      fetchPrizeActiveListing,
+      winnerCanKeepPrize,
+      winnerKeepPrize,
+      winnerListPrize,
+      winnerReleasePrize,
+      SPECIAL_AUCTION_SQUAD_MAX,
     } from "./special_auction.js";
     import {
       playerThumbLinkHtml,
@@ -241,6 +285,14 @@
       resultsHeading: document.getElementById("resultsHeading"),
       winnerLine: document.getElementById("winnerLine"),
       waitingReveal: document.getElementById("waitingReveal"),
+      prizeOptions: document.getElementById("prizeOptionsPanel"),
+      prizeOptionsIntro: document.getElementById("prizeOptionsIntro"),
+      prizeOptionsPlayer: document.getElementById("prizeOptionsPlayer"),
+      prizeOptionsSquad: document.getElementById("prizeOptionsSquad"),
+      prizeOptionsStatus: document.getElementById("prizeOptionsStatus"),
+      prizeKeepBtn: document.getElementById("prizeKeepBtn"),
+      prizeListBtn: document.getElementById("prizeListBtn"),
+      prizeReleaseBtn: document.getElementById("prizeReleaseBtn"),
     };
 
     const TIMER_MS = 1000;
@@ -683,6 +735,162 @@
       modalStartAmount = snapMinBid;
 
       await renderResults(bids);
+      await renderPrizeOptionsPanel();
+    }
+
+    function setPrizeStatus(msg, isError = false) {
+      if (!els.prizeOptionsStatus) return;
+      els.prizeOptionsStatus.textContent = msg || "";
+      els.prizeOptionsStatus.classList.toggle("is-error", Boolean(isError && msg));
+    }
+
+    async function renderPrizeOptionsPanel() {
+      const panel = els.prizeOptions;
+      if (!panel) return;
+
+      const show =
+        auction &&
+        auction.status === "settled" &&
+        auction.prize_type === "player" &&
+        auction.winner_prize_pending &&
+        clubShort &&
+        auction.winning_club_id === clubShort;
+
+      if (!show) {
+        panel.style.display = "none";
+        return;
+      }
+
+      panel.style.display = "block";
+      setPrizeStatus("");
+
+      const pid = auction.prize_player_id || auction.known_player_id;
+      const [squadSize, player, listing] = await Promise.all([
+        fetchClubSquadSize(supabase, clubShort),
+        fetchPrizePlayerBrief(supabase, pid),
+        fetchPrizeActiveListing(supabase, pid, clubShort),
+      ]);
+
+      const canKeep = winnerCanKeepPrize(squadSize);
+      const mv = Number(player?.market_value) || 0;
+      const releaseCredit = Math.round(mv * 1.25);
+
+      els.prizeOptionsIntro.textContent = listing
+        ? "Prize is listed on the transfer market. You can wait for a sale, or release at 125% MV (cancels the listing)."
+        : "Choose what to do with your prize player. Release at 125% does not use a voluntary contract release.";
+
+      if (player) {
+        els.prizeOptionsPlayer.innerHTML = `
+          <div class="clue-box">
+            ${playerThumbLinkHtml(player.Konami_ID, { alt: player.Name })}
+            <b>${playerNameLinkHtml(player.Konami_ID, player.Name)}</b>
+            — ${player.Position || "?"} · ${player.Rating || "?"}
+            · MV ${formatMoney(mv)}
+            · 125% release ${formatMoney(releaseCredit)}
+          </div>`;
+      } else {
+        els.prizeOptionsPlayer.innerHTML = pid
+          ? `<p class="secret-note">Prize player ID ${pid}</p>`
+          : `<p class="secret-note">Prize player details unavailable.</p>`;
+      }
+
+      if (canKeep) {
+        els.prizeOptionsSquad.textContent = `Squad size: ${squadSize} / ${SPECIAL_AUCTION_SQUAD_MAX} — you can keep, list, or release.`;
+      } else {
+        els.prizeOptionsSquad.textContent = `Squad size: ${squadSize} / ${SPECIAL_AUCTION_SQUAD_MAX} — over the limit. You must list on the market or release at 125% MV (cannot keep).`;
+      }
+
+      if (els.prizeKeepBtn) {
+        els.prizeKeepBtn.style.display = listing ? "none" : "inline-block";
+        els.prizeKeepBtn.disabled = !canKeep;
+        els.prizeKeepBtn.title = canKeep
+          ? "Confirm you are keeping this player in your squad"
+          : "Squad is over 28 — list or release instead";
+      }
+      if (els.prizeListBtn) {
+        els.prizeListBtn.style.display = listing ? "none" : "inline-block";
+        els.prizeListBtn.disabled = false;
+        els.prizeListBtn.textContent = "List on transfer market (MV)";
+      }
+      if (els.prizeReleaseBtn) {
+        els.prizeReleaseBtn.disabled = false;
+        els.prizeReleaseBtn.textContent = listing
+          ? `Cancel listing & release at 125% (${formatMoney(releaseCredit)})`
+          : `Release at 125% MV (${formatMoney(releaseCredit)})`;
+      }
+    }
+
+    async function runPrizeAction(action) {
+      if (!auction?.id) return;
+      setPrizeStatus("Working…");
+      [els.prizeKeepBtn, els.prizeListBtn, els.prizeReleaseBtn].forEach((b) => {
+        if (b) b.disabled = true;
+      });
+
+      let result;
+      if (action === "keep") {
+        if (
+          !confirm(
+            "Keep this prize player in your squad and close prize options?"
+          )
+        ) {
+          setPrizeStatus("");
+          await renderPrizeOptionsPanel();
+          return;
+        }
+        result = await winnerKeepPrize(supabase, auction.id);
+      } else if (action === "list") {
+        if (
+          !confirm(
+            "List the prize player on the transfer market at market value for 24 hours?\n\nYou can still release at 125% MV later if unsold."
+          )
+        ) {
+          setPrizeStatus("");
+          await renderPrizeOptionsPanel();
+          return;
+        }
+        result = await winnerListPrize(supabase, auction.id);
+      } else if (action === "release") {
+        const pid = auction.prize_player_id;
+        const player = await fetchPrizePlayerBrief(supabase, pid);
+        const credit = Math.round((Number(player?.market_value) || 0) * 1.25);
+        if (
+          !confirm(
+            `Release ${player?.Name || "the prize player"} for ${formatMoney(credit)} (125% MV)?\n\nThis does not use a voluntary contract release.`
+          )
+        ) {
+          setPrizeStatus("");
+          await renderPrizeOptionsPanel();
+          return;
+        }
+        result = await winnerReleasePrize(supabase, auction.id, pid);
+      }
+
+      const { data, error } = result || {};
+      if (error) {
+        setPrizeStatus(error.message || "Action failed.", true);
+        await renderPrizeOptionsPanel();
+        return;
+      }
+
+      if (action === "list") {
+        setPrizeStatus(
+          data?.already_listed
+            ? "Already listed on the transfer market."
+            : `Listed at ${formatMoney(data?.asking_price)} — see Transfer Market.`
+        );
+        auction = await refreshAuctionRecord(supabase, auction);
+        await renderPrizeOptionsPanel();
+        return;
+      }
+
+      setPrizeStatus(
+        action === "keep"
+          ? "Prize kept — options closed."
+          : `Released for ${formatMoney(data?.credit)} — options closed.`
+      );
+      auction = await refreshAuctionRecord(supabase, auction);
+      await refreshData({ quiet: true });
     }
 
     async function refreshData({ quiet = false, manual = false } = {}) {
@@ -744,6 +952,9 @@
       }, TIMER_MS);
 
       els.refreshBtn?.addEventListener("click", () => refreshData({ manual: true }));
+      els.prizeKeepBtn?.addEventListener("click", () => runPrizeAction("keep"));
+      els.prizeListBtn?.addEventListener("click", () => runPrizeAction("list"));
+      els.prizeReleaseBtn?.addEventListener("click", () => runPrizeAction("release"));
     }
 
     init();

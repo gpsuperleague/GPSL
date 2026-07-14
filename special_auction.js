@@ -455,3 +455,73 @@ export function prizeDescription(auction) {
   }
   return "Prize TBC";
 }
+
+export const SPECIAL_AUCTION_SQUAD_MAX = 28;
+
+export async function fetchClubSquadSize(supabase, clubShort) {
+  if (!clubShort) return 0;
+  const { count, error } = await supabase
+    .from("Players")
+    .select("Konami_ID", { count: "exact", head: true })
+    .eq("Contracted_Team", clubShort);
+  if (error) {
+    console.error("fetchClubSquadSize:", error);
+    return 0;
+  }
+  return Number(count) || 0;
+}
+
+export async function fetchPrizePlayerBrief(supabase, playerId) {
+  if (!playerId) return null;
+  const { data, error } = await supabase
+    .from("Players")
+    .select("Konami_ID, Name, Position, Rating, market_value, Contracted_Team")
+    .eq("Konami_ID", playerId)
+    .maybeSingle();
+  if (error) {
+    console.error("fetchPrizePlayerBrief:", error);
+    return null;
+  }
+  return data;
+}
+
+export async function fetchPrizeActiveListing(supabase, playerId, clubShort) {
+  if (!playerId || !clubShort) return null;
+  const { data, error } = await supabase
+    .from("Player_Transfer_Listings")
+    .select("id, status, reserve_price, end_time")
+    .eq("player_id", String(playerId))
+    .eq("seller_club_id", clubShort)
+    .eq("status", "Active")
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    console.error("fetchPrizeActiveListing:", error);
+    return null;
+  }
+  return data;
+}
+
+/** Winner can keep only when squad ≤ 28 (prize already on the books). */
+export function winnerCanKeepPrize(squadSize) {
+  return Number(squadSize) <= SPECIAL_AUCTION_SQUAD_MAX;
+}
+
+export async function winnerKeepPrize(supabase, auctionId) {
+  return supabase.rpc("special_auction_winner_keep_prize", {
+    p_auction_id: auctionId,
+  });
+}
+
+export async function winnerListPrize(supabase, auctionId) {
+  return supabase.rpc("special_auction_winner_list_prize_player", {
+    p_auction_id: auctionId,
+  });
+}
+
+export async function winnerReleasePrize(supabase, auctionId, playerId = null) {
+  const args = { p_auction_id: auctionId };
+  if (playerId) args.p_player_id = String(playerId);
+  return supabase.rpc("special_auction_winner_release_player", args);
+}
