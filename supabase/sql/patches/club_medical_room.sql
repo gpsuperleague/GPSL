@@ -195,7 +195,7 @@ RETURNS numeric
 LANGUAGE sql
 IMMUTABLE
 AS $$
-  SELECT 150000000::numeric;
+  SELECT 5000000::numeric;
 $$;
 
 CREATE OR REPLACE FUNCTION public.medical_ensure_centre(p_club text)

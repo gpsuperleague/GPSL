@@ -1,5 +1,5 @@
 -- =============================================================================
--- Medical Room tweaks: €3m physios, random gender hire, 20 token slots
+-- Medical Room tweaks: €3m physios, €5m doctor, random gender hire, 20 token slots
 -- Safe re-run (after club_medical_room.sql).
 -- =============================================================================
 
@@ -18,6 +18,14 @@ AS $$
     WHEN p_slot BETWEEN 1 AND 5 THEN 3000000::numeric
     ELSE NULL
   END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.medical_doctor_hire_cost()
+RETURNS numeric
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT 5000000::numeric;
 $$;
 
 DROP FUNCTION IF EXISTS public.medical_hire_physio(int, text);
