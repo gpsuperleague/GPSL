@@ -55,6 +55,68 @@
     .button:disabled { opacity:0.5; cursor:not-allowed; }
     #submitStatus { min-height:1.2em; color:#ffcc00; margin-top:8px; }
     .fixture-preview {
+      background:#1a1a1a;
+      border:1px solid #333;
+      border-radius:8px;
+      padding:12px 14px;
+      margin:10px 0 14px;
+      font-size:14px;
+      line-height:1.45;
+    }
+    .fixture-unavailable {
+      margin-top:12px;
+      padding-top:10px;
+      border-top:1px solid #333;
+    }
+    .fixture-unavailable-title {
+      color:#ffcc66;
+      font-weight:600;
+      font-size:13px;
+      margin-bottom:8px;
+    }
+    .fixture-unavailable-grid {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+    @media (max-width:700px) {
+      .fixture-unavailable-grid { grid-template-columns:1fr; }
+    }
+    .fixture-unavailable-club {
+      color:#aaa;
+      font-size:12px;
+      margin-bottom:4px;
+      font-weight:600;
+    }
+    .unavailable-list {
+      list-style:none;
+      margin:0;
+      padding:0;
+      font-size:12px;
+    }
+    .unavailable-list li { margin:3px 0; }
+    .unavailable-none, .unavailable-empty { color:#777; font-style:italic; }
+    .unavailable-tag {
+      display:inline-block;
+      font-size:10px;
+      font-weight:700;
+      border-radius:3px;
+      padding:1px 5px;
+      margin-right:4px;
+      vertical-align:middle;
+    }
+    .unavailable-suspended .unavailable-tag {
+      background:#5a2018;
+      color:#ffd0a8;
+      border:1px solid #a04830;
+    }
+    .unavailable-injured .unavailable-tag {
+      background:#1a3a4a;
+      color:#9ed4f0;
+      border:1px solid #3a6a8a;
+    }
+    .unavailable-pos { color:#777; }
+    .unavailable-detail { color:#999; }
       background:#222; padding:12px; border-radius:6px; margin-bottom:12px;
       font-size:14px; color:#ccc;
     }

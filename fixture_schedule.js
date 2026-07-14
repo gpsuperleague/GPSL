@@ -20,6 +20,10 @@ import {
   formatOwnerNowLine,
   formatResponseDeadlineLine,
 } from "./match_scheduling.js";
+import {
+  loadFixtureUnavailable,
+  formatFixtureUnavailableHtml,
+} from "./player_discipline.js";
 
 function replayResetConfirmMessage(allowances) {
   if (allowances?.can_replay_reset) {
@@ -32,6 +36,15 @@ let ctx = null;
 let fixtureId = null;
 let selectedKickoff = null;
 let myClub = { short: null };
+/** @type {import("./player_discipline.js").FixtureUnavailablePayload|null} */
+let fixtureUnavailable = null;
+
+function unavailablePanelHtml(f) {
+  return formatFixtureUnavailableHtml(fixtureUnavailable, {
+    homeName: fullClubName(f.home_club_short_name) || f.home_club_short_name,
+    awayName: fullClubName(f.away_club_short_name) || f.away_club_short_name,
+  });
+}
 
 function setStatus(msg, isError = false) {
   const el = document.getElementById("scheduleStatus");
@@ -164,6 +177,7 @@ function renderAgreedPanel(root, f, sch) {
       <p class="meta">${checkinStatus}</p>
       <p class="meta">Check-in opens at kick-off for <b>10 minutes</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
       <p class="meta">Emergency drops remaining this season: <b>${al.emergency_drops_remaining ?? "—"}</b>/2 · Reschedule this GPSL month: <b>${al.reschedule_used_this_month ? "used" : "available"}</b></p>
+      ${unavailablePanelHtml(f)}
       <div class="actions">
         ${ci.can_check_in ? '<button type="button" id="checkInBtn" class="button">Check in now</button>' : ""}
         ${ci.can_play ? `<a href="matchday.html?fixture=${f.id}" class="button" style="text-decoration:none;display:inline-block;">Enter result on Match Day</a>` : ""}
@@ -462,6 +476,7 @@ function render() {
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
       ${responseHtml}
+      ${unavailablePanelHtml(f)}
       <p class="meta">
         Home proposes first. Pick a 30-minute block where <b>both</b> clubs are available
         (${slotCountLine}).
@@ -570,6 +585,7 @@ function render() {
 
 async function reload() {
   ctx = await loadScheduleContext(fixtureId);
+  fixtureUnavailable = await loadFixtureUnavailable(supabase, fixtureId);
   selectedKickoff = null;
   render();
 }

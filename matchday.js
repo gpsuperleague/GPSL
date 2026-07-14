@@ -35,6 +35,9 @@ import {
   suspensionsByPlayerId,
   formatSuspensionStatusLabel,
   playerSuspendedForFixture,
+  loadFixtureUnavailable,
+  formatFixtureUnavailableHtml,
+  unavailablePlayerIdsForClub,
 } from "./player_discipline.js";
 
 let myClub = { short: null, name: null };
@@ -46,6 +49,10 @@ let upcomingFixtures = [];
 let allLeagueFixtures = [];
 /** @type {Map<string, import("./player_discipline.js").ActiveSuspension[]>} */
 let suspensionsByPlayer = new Map();
+/** @type {import("./player_discipline.js").FixtureUnavailablePayload|null} */
+let fixtureUnavailable = null;
+/** @type {Set<string>} */
+let myUnavailableIds = new Set();
 let allSquadPlayers = [];
 let squadPlayers = [];
 let matchdaySquadRows = [];
@@ -955,8 +962,12 @@ function renderPlayerStatsTable() {
     if (benchIds.has(id)) tr.classList.add("squad-bench-stat");
 
     const suspRows = suspensionsByPlayer.get(id) || [];
-    const suspendedHere = playerSuspendedForFixture(suspRows, fixtureId);
-    const suspLabel = formatSuspensionStatusLabel(suspRows);
+    const suspendedHere =
+      myUnavailableIds.has(id) ||
+      playerSuspendedForFixture(suspRows, fixtureId);
+    const suspLabel =
+      formatSuspensionStatusLabel(suspRows) ||
+      (myUnavailableIds.has(id) ? "Unavailable this match" : null);
     if (suspendedHere || suspRows.length) {
       tr.classList.add("stat-suspended");
     }
@@ -1126,8 +1137,12 @@ function validatePlayerStats(fixture, homeGoals, awayGoals, playerStats, cupExtr
       return "Players with yellow or red cards must be started or subbed on.";
     }
     const suspRows = suspensionsByPlayer.get(String(row.player_id)) || [];
-    if (row.appeared && playerSuspendedForFixture(suspRows, fixture?.id)) {
-      return "A suspended player cannot appear in this match.";
+    if (
+      row.appeared &&
+      (myUnavailableIds.has(String(row.player_id)) ||
+        playerSuspendedForFixture(suspRows, fixture?.id))
+    ) {
+      return "A suspended or injured player cannot appear in this match.";
     }
   }
 
@@ -1187,6 +1202,8 @@ async function updateFixturePreview() {
 
   if (!f) {
     preview.textContent = "Select a fixture from the list above.";
+    fixtureUnavailable = null;
+    myUnavailableIds = new Set();
     setScoreInputsEnabled(false);
     confirmMode = null;
     applyConfirmModeUI();
@@ -1211,14 +1228,24 @@ async function updateFixturePreview() {
     }
   }
 
+  fixtureUnavailable = await loadFixtureUnavailable(supabase, f.id);
+  myUnavailableIds = unavailablePlayerIdsForClub(fixtureUnavailable, myClub.short);
+  const unavailableHtml = formatFixtureUnavailableHtml(fixtureUnavailable, {
+    homeName: f.home_club_name,
+    awayName: f.away_club_name,
+  });
+
   preview.innerHTML = `
     <b>${comp}</b>${f.competition_type === "league" ? ` · Matchday ${f.matchday}` : ""} · ${month}<br>
     ${f.home_club_name} vs ${f.away_club_name}<br>
     <span style="color:#aaa;font-size:13px;">${formatMatchConditions(f)}</span>${extra}
+    ${unavailableHtml}
   `;
 
   document.getElementById("homeLabel").textContent = f.home_club_name;
   document.getElementById("awayLabel").textContent = f.away_club_name;
+
+  renderPlayerStatsTable();
 
   if (needsInboxConfirm(f, myClub)) {
     await enterConfirmMode(f);
@@ -1284,10 +1311,8 @@ function populateFixtureSelect() {
   }
 
   sel.onchange = () => {
-    renderPlayerStatsTable();
     void updateFixturePreview();
   };
-  renderPlayerStatsTable();
   void updateFixturePreview();
 }
 

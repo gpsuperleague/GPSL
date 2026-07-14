@@ -39,6 +39,36 @@
       background:#2a2200; border:1px solid #996600; border-radius:8px;
       padding:12px 14px; color:#ecc; font-size:13px; line-height:1.45; margin-bottom:16px;
     }
+    .fixture-unavailable {
+      margin:12px 0 4px;
+      padding:10px 0 0;
+      border-top:1px solid #333;
+    }
+    .fixture-unavailable-title {
+      color:#ffcc66; font-weight:600; font-size:13px; margin-bottom:8px;
+    }
+    .fixture-unavailable-grid {
+      display:grid; grid-template-columns:1fr 1fr; gap:12px;
+    }
+    @media (max-width:700px) {
+      .fixture-unavailable-grid { grid-template-columns:1fr; }
+    }
+    .fixture-unavailable-club { color:#aaa; font-size:12px; margin-bottom:4px; font-weight:600; }
+    .unavailable-list { list-style:none; margin:0; padding:0; font-size:12px; }
+    .unavailable-list li { margin:3px 0; }
+    .unavailable-none, .unavailable-empty { color:#777; font-style:italic; }
+    .unavailable-tag {
+      display:inline-block; font-size:10px; font-weight:700;
+      border-radius:3px; padding:1px 5px; margin-right:4px; vertical-align:middle;
+    }
+    .unavailable-suspended .unavailable-tag {
+      background:#5a2018; color:#ffd0a8; border:1px solid #a04830;
+    }
+    .unavailable-injured .unavailable-tag {
+      background:#1a3a4a; color:#9ed4f0; border:1px solid #3a6a8a;
+    }
+    .unavailable-pos { color:#777; }
+    .unavailable-detail { color:#999; }
   </style>
 </head>
 <body>
