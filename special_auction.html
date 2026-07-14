@@ -470,9 +470,11 @@
               const isHigh = high && b.id === high.id;
               const fee = snapBidFeeDisplay(auction, b, { settled: snapSettled });
               let badge = "";
-              if (isWin) badge = "🏆 Winner";
+              if (snapSettled && isWin) badge = "🏆 Winner";
+              else if (!live && isHigh) badge = "Winning bid";
               else if (live && isHigh) badge = "Leading";
-              return `<tr class="${isWin ? "winner-row" : ""}">
+              const highlight = Boolean(isWin || (!live && isHigh));
+              return `<tr class="${highlight ? "winner-row" : ""}">
             <td>${fullClubName(b.club_id) || b.club_id}</td>
             <td>${formatMoney(b.bid_amount)}</td>
             <td>${formatBidTimeHtml(b.bid_time)}</td>
