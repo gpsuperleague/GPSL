@@ -113,17 +113,6 @@ export const SEASON_BREAK_NAV = [
     ],
   },
   {
-    id: "injuries",
-    label: "Injuries",
-    items: [
-      {
-        label: "Injury settings & risk factors",
-        href: "admin_injuries.html",
-        page: "admin_injuries",
-      },
-    ],
-  },
-  {
     id: "bills",
     label: "Bills & Income",
     items: [

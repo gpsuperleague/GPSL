@@ -42,6 +42,12 @@ export const TESTING_ADMIN_NAV = [
     href: "admin_test_club_availability.html",
     page: "admin_test_club_availability",
   },
+  {
+    label: "Injuries & suspensions (test seed)",
+    href: "admin_injuries.html",
+    page: "admin_injuries",
+    navDanger: true,
+  },
 ];
 
 function escapeNavText(text) {
