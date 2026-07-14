@@ -112,9 +112,45 @@ export function roundToMillion(n) {
 export function snapIdentityHidden(auction) {
   if (!auction || auction.auction_type !== "snap") return false;
   if (!["scheduled", "active"].includes(String(auction.status || ""))) return false;
+  if (typeof auction.snap_bidding_open === "boolean") {
+    return auction.snap_bidding_open;
+  }
   const end = new Date(specialAuctionEffectiveEnd(auction)).getTime();
   if (!Number.isFinite(end)) return true;
   return Date.now() < end;
+}
+
+/** Start of the final 10-minute mystery finish window (start + 50 min). */
+export function snapMysteryWindowAt(auction) {
+  if (!auction) return null;
+  if (auction.snap_mystery_window_at) return auction.snap_mystery_window_at;
+  const start = new Date(auction.start_time).getTime();
+  if (!Number.isFinite(start)) return null;
+  return new Date(start + 50 * 60 * 1000).toISOString();
+}
+
+/**
+ * Snap timer mode for owners:
+ *   before_start | countdown (to mystery window) | countup (mystery window) | ended
+ */
+export function snapTimerMode(auction) {
+  if (!auction || auction.auction_type !== "snap") return null;
+  if (!["scheduled", "active"].includes(String(auction.status || ""))) {
+    return "ended";
+  }
+  const now = Date.now();
+  const start = new Date(auction.start_time).getTime();
+  const mystery = new Date(snapMysteryWindowAt(auction)).getTime();
+  if (!Number.isFinite(start)) return "ended";
+  if (now < start) return "before_start";
+  if (typeof auction.snap_bidding_open === "boolean" && !auction.snap_bidding_open) {
+    return "ended";
+  }
+  // Without open flag, fall back to end_time (hour) only — never trust exposed random end
+  const hardEnd = new Date(auction.end_time).getTime();
+  if (Number.isFinite(hardEnd) && now >= hardEnd) return "ended";
+  if (Number.isFinite(mystery) && now >= mystery) return "countup";
+  return "countdown";
 }
 
 /** Client fallback if owner-fetch RPC is not deployed yet. */
@@ -129,8 +165,25 @@ export function sanitizeAuctionForOwner(auction) {
     if (mins < 20) out.clue_2 = null;
     if (mins < 40) out.clue_3 = null;
     if (mins < 50) out.clue_4 = null;
+
+    // Never leak the secret finish to the client UI
+    const mysteryMs = start + 50 * 60 * 1000;
+    out.snap_mystery_window_at =
+      auction.snap_mystery_window_at || new Date(mysteryMs).toISOString();
+    if (typeof auction.snap_bidding_open === "boolean") {
+      out.snap_bidding_open = auction.snap_bidding_open;
+    } else if (auction.snap_random_end_at) {
+      const rnd = new Date(auction.snap_random_end_at).getTime();
+      out.snap_bidding_open =
+        Date.now() >= start && Number.isFinite(rnd) && Date.now() < rnd;
+    } else {
+      const hard = new Date(auction.end_time).getTime();
+      out.snap_bidding_open =
+        Date.now() >= start && Number.isFinite(hard) && Date.now() < hard;
+    }
+    out.snap_random_end_at = null;
   }
-  if (snapIdentityHidden(auction)) {
+  if (snapIdentityHidden(out)) {
     out.prize_player_id = null;
     out.known_player_id = null;
   }
@@ -142,7 +195,7 @@ export async function fetchActiveSpecialAuction(supabase) {
   const { data: rpcData, error: rpcErr } = await supabase.rpc(
     "special_auction_fetch_owner_active"
   );
-  if (!rpcErr) return rpcData || null;
+  if (!rpcErr) return sanitizeAuctionForOwner(rpcData || null);
 
   console.warn("special_auction_fetch_owner_active:", rpcErr);
 
@@ -175,18 +228,22 @@ export async function fetchActiveSpecialAuction(supabase) {
   return sanitizeAuctionForOwner(revealed);
 }
 
-/** Bidding window open (start_time reached, before end_time / snap random end). */
+/**
+ * Display / phase end for owners.
+ * Snap: never use snap_random_end_at (secret). Use hour end_time for hard stop;
+ * live/open is driven by snap_bidding_open from the server.
+ */
 export function specialAuctionEffectiveEnd(auction) {
   if (!auction) return null;
-  if (auction.auction_type === "snap" && auction.snap_random_end_at) {
-    return auction.snap_random_end_at;
-  }
   return auction.end_time;
 }
 
 export function isSpecialAuctionLive(auction) {
   if (!auction) return false;
   if (!["scheduled", "active"].includes(String(auction.status || ""))) return false;
+  if (auction.auction_type === "snap" && typeof auction.snap_bidding_open === "boolean") {
+    return auction.snap_bidding_open;
+  }
   const now = Date.now();
   const start = new Date(auction.start_time).getTime();
   const end = new Date(specialAuctionEffectiveEnd(auction)).getTime();
@@ -227,7 +284,7 @@ export async function fetchAuctionById(supabase, id) {
     "special_auction_fetch_owner_by_id",
     { p_auction_id: id }
   );
-  if (!rpcErr) return rpcData || null;
+  if (!rpcErr) return sanitizeAuctionForOwner(rpcData || null);
 
   const { data, error } = await supabase
     .from("special_auctions")
@@ -282,7 +339,7 @@ export async function refreshAuctionRecord(supabase, auction) {
     "special_auction_fetch_owner_by_id",
     { p_auction_id: auction.id }
   );
-  if (!rpcErr && rpcData) return rpcData;
+  if (!rpcErr && rpcData) return sanitizeAuctionForOwner(rpcData);
 
   const { data, error } = await supabase
     .from("special_auctions")
@@ -305,13 +362,51 @@ export async function submitSpecialBid(supabase, auctionId, amount) {
 
 export function auctionPhase(auction) {
   if (!auction) return "none";
+  if (!["scheduled", "active"].includes(auction.status)) return auction.status;
+
+  if (auction.auction_type === "snap") {
+    const mode = snapTimerMode(auction);
+    if (mode === "before_start") return "before_start";
+    if (mode === "ended") return "ended_pending";
+    return "live";
+  }
+
   const now = Date.now();
   const start = new Date(auction.start_time).getTime();
   const end = new Date(specialAuctionEffectiveEnd(auction)).getTime();
-  if (!["scheduled", "active"].includes(auction.status)) return auction.status;
   if (now < start) return "before_start";
   if (now >= end) return "ended_pending";
   return "live";
+}
+
+/** Owner-facing snap timer lines (countdown to window, then count-up). */
+export function formatSnapAuctionTimer(auction) {
+  const mode = snapTimerMode(auction);
+  if (!mode) return null;
+  if (mode === "before_start") {
+    return formatAuctionTimerText("Bidding opens in", auction.start_time);
+  }
+  if (mode === "ended") {
+    return {
+      duration: "Snap finished",
+      subline: "Bidding closed — waiting for settlement / results",
+    };
+  }
+  const mysteryIso = snapMysteryWindowAt(auction);
+  const mystery = new Date(mysteryIso).getTime();
+  if (mode === "countdown") {
+    const ms = Math.max(0, mystery - Date.now());
+    return {
+      duration: `Random finish window in: ${formatDurationMs(ms)}`,
+      subline: "Final 10 minutes will count up — auction can end at any moment then",
+    };
+  }
+  // countup
+  const elapsed = Math.max(0, Date.now() - mystery);
+  return {
+    duration: `Random finish window: ${formatDurationMs(elapsed)}`,
+    subline: "Counting up — auction can end at any moment",
+  };
 }
 
 export async function fetchVisibleClues(supabase, auctionId) {

@@ -21,6 +21,7 @@
     }
     .panel h2 { color: #ff9900; margin-top: 0; }
     .timer { font-family: monospace; font-size: 18px; color: #ff9900; }
+    .timer.countup { color: #ff6666; }
     .timer-sub { display: block; font-size: 12px; color: #ccc; margin-top: 4px; font-family: Arial, sans-serif; }
     .clue-box {
       background: #222;
@@ -198,6 +199,8 @@
       snapBidUnitFee,
       snapBidFeeDisplay,
       snapWinnerSummaryText,
+      formatSnapAuctionTimer,
+      snapTimerMode,
     } from "./special_auction.js";
     import {
       playerThumbLinkHtml,
@@ -242,6 +245,7 @@
 
     const TIMER_MS = 1000;
     const DATA_POLL_LIVE_MS = 20000;
+    const DATA_POLL_COUNTUP_MS = 5000;
     const DATA_POLL_IDLE_MS = 60000;
 
     let dataPollInterval = null;
@@ -516,6 +520,21 @@
     function updateTimerOnly() {
       if (!auction) return;
       const phase = auctionPhase(auction);
+
+      if (auction.auction_type === "snap") {
+        const t = formatSnapAuctionTimer(auction);
+        if (t) {
+          els.timer.textContent = t.duration;
+          els.timerSub.textContent = t.subline;
+        }
+        els.timer.classList.toggle(
+          "countup",
+          snapTimerMode(auction) === "countup"
+        );
+        return;
+      }
+
+      els.timer.classList.remove("countup");
       const endIso = specialAuctionEffectiveEnd(auction);
       if (phase === "live") {
         const t = formatAuctionTimerText("Time left", endIso);
@@ -541,6 +560,10 @@
     }
 
     function dataPollMsForPhase(phase) {
+      if (phase === "live" && auction?.auction_type === "snap") {
+        const mode = snapTimerMode(auction);
+        if (mode === "countup") return DATA_POLL_COUNTUP_MS;
+      }
       if (phase === "live") return DATA_POLL_LIVE_MS;
       if (phase === "before_start" || phase === "ended_pending") return DATA_POLL_IDLE_MS;
       return 0;
@@ -561,6 +584,7 @@
     }
 
     let lastKnownPhase = null;
+    let lastSnapTimerMode = null;
 
     async function render() {
       if (!auction) {
@@ -591,7 +615,7 @@
 
       els.rules.textContent = isLub
         ? "Submit one secret bid (nearest ₿1m). When the window ends, all bids are revealed; the lowest amount that only one club chose wins and pays that amount."
-        : "Snap (~1 hour, random finish in last 10 min). Each bid costs ₿300k and must be at least ₿500k above the current highest. Winner pays 100% of bid fees + winning bid (minus first-bid discount 20/10/5/0%). Non-winners pay 25% of bid fees. Clues unlock at 0 / 20 / 40 / 50 minutes.";
+        : "Snap (~1 hour). Countdown until the final 10 minutes, then a count-up timer — auction ends at a random moment in that window. Each bid costs ₿300k and must be at least ₿500k above the current highest. Winner pays 100% of bid fees + winning bid (minus first-bid discount 20/10/5/0%). Non-winners pay 25% of bid fees. Clues unlock at 0 / 20 / 40 / 50 minutes.";
 
       await renderPlayerBlock();
 
@@ -703,6 +727,17 @@
         if (lastKnownPhase && phase !== lastKnownPhase) {
           lastKnownPhase = phase;
           refreshData({ quiet: true });
+          return;
+        }
+        if (auction.auction_type === "snap") {
+          const mode = snapTimerMode(auction);
+          if (lastSnapTimerMode && mode !== lastSnapTimerMode) {
+            lastSnapTimerMode = mode;
+            restartDataPoll();
+            refreshData({ quiet: true });
+          } else {
+            lastSnapTimerMode = mode;
+          }
         }
       }, TIMER_MS);
 
