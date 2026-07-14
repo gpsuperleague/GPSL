@@ -360,39 +360,76 @@ export function scheduleActionLabel(fixture, myClubShort) {
       muted: true,
     };
   }
-  const isHome =
-    (fixture.home_club_short_name || "").toUpperCase() ===
-    (myClubShort || "").toUpperCase();
+  const me = (myClubShort || "").toUpperCase();
+  const isHome = (fixture.home_club_short_name || "").toUpperCase() === me;
+  const isAway = (fixture.away_club_short_name || "").toUpperCase() === me;
+
   if (fixture.schedule_status === "unscheduled" && isHome) {
     return {
       label: catchUp ? "Catch-up · propose" : "Propose time",
       href: scheduleUrl(fixture.id),
     };
   }
-  if (
-    fixture.schedule_status === "negotiating" &&
-    fixture.schedule_pending_proposal_id
-  ) {
-    return {
-      label: catchUp ? "Catch-up · respond" : "Respond",
-      href: scheduleUrl(fixture.id),
-    };
-  }
-  if (fixture.schedule_status === "negotiating" && isHome) {
-    return {
-      label: catchUp ? "Catch-up · schedule" : "Schedule",
-      href: scheduleUrl(fixture.id),
-    };
-  }
-  if (fixture.schedule_status === "unscheduled" && !isHome) {
+  if (fixture.schedule_status === "unscheduled" && isAway) {
     return {
       label: catchUp ? "Catch-up · awaiting home" : "Awaiting home",
       href: scheduleUrl(fixture.id),
       muted: true,
     };
   }
+
+  if (
+    fixture.schedule_status === "negotiating" &&
+    fixture.schedule_pending_proposal_id
+  ) {
+    const myTurn = isMyScheduleResponseTurn(fixture, myClubShort);
+    if (myTurn) {
+      return {
+        label: catchUp
+          ? "Catch-up · confirm / propose"
+          : "Confirm / Propose new time",
+        href: scheduleUrl(fixture.id),
+      };
+    }
+    return {
+      label: catchUp
+        ? "Catch-up · awaiting confirmation"
+        : "Awaiting confirmation",
+      href: scheduleUrl(fixture.id),
+      muted: true,
+    };
+  }
+
+  if (fixture.schedule_status === "negotiating" && isHome) {
+    return {
+      label: catchUp ? "Catch-up · schedule" : "Schedule",
+      href: scheduleUrl(fixture.id),
+    };
+  }
+
   return {
     label: catchUp ? "Catch-up · schedule" : "Schedule",
     href: scheduleUrl(fixture.id),
   };
+}
+
+/**
+ * Whose turn is it to accept / counter-propose?
+ * Prefers schedule_response_required_club; falls back to proposal counts.
+ */
+export function isMyScheduleResponseTurn(fixture, myClubShort) {
+  if (!fixture || !myClubShort) return false;
+  const me = (myClubShort || "").toUpperCase();
+  const required = (fixture.schedule_response_required_club || "").toUpperCase();
+  if (required) return required === me;
+
+  const isHome = (fixture.home_club_short_name || "").toUpperCase() === me;
+  const isAway = (fixture.away_club_short_name || "").toUpperCase() === me;
+  if (!isHome && !isAway) return false;
+
+  const homeCount = Number(fixture.schedule_home_proposal_count) || 0;
+  const awayCount = Number(fixture.schedule_away_proposal_count) || 0;
+  // Home proposes first: if home has more proposals than away, away must respond.
+  if (isHome) return homeCount <= awayCount;
+  return homeCount > awayCount;
 }
