@@ -11,6 +11,7 @@ import {
 } from "./competition_calendar.js";
 import { GPSL_MONTH_LABELS, CUP_LABELS } from "./competition.js";
 import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
+import { formatKickoff, UK_TZ } from "./match_scheduling.js";
 
 const CUP_NAME = {
   ...CUP_LABELS,
@@ -563,8 +564,10 @@ async function loadClubFixturesByMonth(user) {
 }
 
 function formatClubFixtureLine(f) {
-  const home = f.home_club_short_name || f.home_short || "?";
-  const away = f.away_club_short_name || f.away_short || "?";
+  const home =
+    f.home_club_name || f.home_club_short_name || f.home_short || "?";
+  const away =
+    f.away_club_name || f.away_club_short_name || f.away_short || "?";
   let comp = "League";
   if (f.competition_type === "cup" || f.cup_code) {
     comp = CUP_NAME[f.cup_code] || f.cup_code || "Cup";
@@ -576,7 +579,20 @@ function formatClubFixtureLine(f) {
     f.home_goals != null && f.away_goals != null
       ? ` ${f.home_goals}–${f.away_goals}`
       : "";
-  return { home, away, comp, score, id: f.id || f.fixture_id };
+  let when = "";
+  if (
+    f.schedule_status === "agreed" &&
+    f.agreed_kickoff_at
+  ) {
+    when = `${formatKickoff(f.agreed_kickoff_at, UK_TZ)} UK`;
+  } else if (f.status === "played") {
+    when = "";
+  } else if (f.schedule_status === "negotiating") {
+    when = "Time TBC";
+  } else if (f.status === "scheduled") {
+    when = "Not arranged";
+  }
+  return { home, away, comp, score, when, id: f.id || f.fixture_id };
 }
 
 function isCurrentMonth(monthKey, status) {
@@ -637,6 +653,8 @@ function clubFixtureEvents(fixtures, monthKey) {
           `</span>` +
           (r.score
             ? `<span class="sc-fix-score">${escapeHtml(r.score.trim())}</span>`
+            : r.when
+            ? `<span class="sc-fix-when">${escapeHtml(r.when)}</span>`
             : `<span class="sc-fix-score"></span>`) +
           `</a>` +
           `</li>`
