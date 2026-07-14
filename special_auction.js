@@ -212,7 +212,29 @@ export async function fetchActiveSpecialAuction(supabase) {
   }
   if (live) return sanitizeAuctionForOwner(live);
 
+  // Client fallback: pending prize for any settled row, then recent settled/revealed
   const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data: pendingPrize } = await supabase
+    .from("special_auctions")
+    .select("*")
+    .eq("status", "settled")
+    .eq("winner_prize_pending", true)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (pendingPrize) return sanitizeAuctionForOwner(pendingPrize);
+
+  const { data: settled } = await supabase
+    .from("special_auctions")
+    .select("*")
+    .eq("status", "settled")
+    .gt("end_time", cutoff)
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (settled) return sanitizeAuctionForOwner(settled);
+
   const { data: revealed, error: revealedErr } = await supabase
     .from("special_auctions")
     .select("*")
@@ -250,10 +272,15 @@ export function isSpecialAuctionLive(auction) {
   return now >= start && now < end;
 }
 
-/** True if a revealed auction is still within the short results window. */
+/** True if a revealed/settled auction is still within the results window. */
 export function isRecentRevealedAuction(auction, maxAgeMs = 7 * 24 * 60 * 60 * 1000) {
-  if (!auction || String(auction.status || "") !== "revealed") return false;
-  const end = new Date(specialAuctionEffectiveEnd(auction) || auction.end_time).getTime();
+  if (!auction) return false;
+  const status = String(auction.status || "");
+  if (status === "settled" && auction.winner_prize_pending) return true;
+  if (status !== "revealed" && status !== "settled") return false;
+  const end = new Date(
+    specialAuctionEffectiveEnd(auction) || auction.end_time || auction.updated_at
+  ).getTime();
   if (!Number.isFinite(end)) return false;
   return Date.now() - end <= maxAgeMs;
 }
@@ -263,6 +290,7 @@ export function isSpecialAuctionPublished(auction) {
   if (!auction) return false;
   const status = String(auction.status || "");
   if (status === "scheduled" || status === "active") return true;
+  if (status === "settled" && auction.winner_prize_pending) return true;
   return isRecentRevealedAuction(auction);
 }
 

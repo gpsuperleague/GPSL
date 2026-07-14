@@ -754,7 +754,8 @@
         auction.prize_type === "player" &&
         auction.winner_prize_pending &&
         clubShort &&
-        auction.winning_club_id === clubShort;
+        String(auction.winning_club_id || "").toUpperCase() ===
+          String(clubShort).toUpperCase();
 
       if (!show) {
         panel.style.display = "none";
