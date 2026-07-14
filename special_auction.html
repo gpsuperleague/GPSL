@@ -39,6 +39,8 @@
     tr.winner-row { background: linear-gradient(90deg, #3d3200, #1a1a1a); }
     tr.winner-row td { color: #ffd700; font-weight: bold; }
     .winner-banner {
+      white-space: pre-line;
+      line-height: 1.45;
       background: #2a2200;
       border: 1px solid #ff9900;
       border-radius: 6px;
@@ -193,6 +195,9 @@
       fetchVisibleClues,
       specialAuctionEffectiveEnd,
       snapIdentityHidden,
+      snapBidUnitFee,
+      snapBidFeeDisplay,
+      snapWinnerSummaryText,
     } from "./special_auction.js";
     import {
       playerThumbLinkHtml,
@@ -414,10 +419,11 @@
       const isLub = auction.auction_type === "lowest_unique";
       const revealed =
         auction.status === "revealed" || auction.status === "settled";
+      const snapSettled = !isLub && auction.status === "settled";
       const show =
         revealed ||
         (isLub && phase === "ended_pending") ||
-        (auction.auction_type === "snap" && phase !== "live");
+        auction.auction_type === "snap";
 
       if (!show && isLub) {
         els.resultsBlock.style.display = "none";
@@ -432,24 +438,52 @@
         return;
       }
 
-      if (auction.auction_type === "snap" && auction.status === "active" && phase === "live") {
-        const top = [...bids].sort((a, b) => b.bid_amount - a.bid_amount)[0];
+      // Snap: always show full bid history (live + after close)
+      if (auction.auction_type === "snap") {
+        const sorted = [...bids].sort((a, b) => {
+          const d = Number(b.bid_amount) - Number(a.bid_amount);
+          if (d !== 0) return d;
+          return new Date(a.bid_time) - new Date(b.bid_time);
+        });
+        const high = sorted[0];
+        const unit = snapBidUnitFee(auction);
+        const live = phase === "live" && auction.status === "active";
         els.resultsBlock.style.display = "block";
-        els.resultsHeading.textContent = "Current highest bid";
-        els.resultsBody.innerHTML = top
-          ? `<tr><td>${fullClubName(top.club_id) || top.club_id}</td><td>${formatMoney(top.bid_amount)}</td><td>${formatBidTimeHtml(top.bid_time)}</td><td>—</td><td></td></tr>`
-          : `<tr><td colspan="5">No bids yet</td></tr>`;
+        els.resultsHeading.textContent = live
+          ? `Bid history (each bid fee ${formatMoney(unit)} — settled after close)`
+          : snapSettled
+          ? "Final bids (losers: 25% of bid fees · winner: 100% of bid fees)"
+          : "Bid history — awaiting settlement";
+
+        els.resultsBody.innerHTML =
+          sorted
+            .map((b) => {
+              const isWin =
+                snapSettled &&
+                (b.is_winner ||
+                  (auction.winning_club_id === b.club_id &&
+                    Number(auction.winning_amount) === Number(b.bid_amount)));
+              const isHigh = high && b.id === high.id;
+              const fee = snapBidFeeDisplay(auction, b, { settled: snapSettled });
+              let badge = "";
+              if (isWin) badge = "🏆 Winner";
+              else if (live && isHigh) badge = "Leading";
+              return `<tr class="${isWin ? "winner-row" : ""}">
+            <td>${fullClubName(b.club_id) || b.club_id}</td>
+            <td>${formatMoney(b.bid_amount)}</td>
+            <td>${formatBidTimeHtml(b.bid_time)}</td>
+            <td>${fee.label}</td>
+            <td>${badge}</td>
+          </tr>`;
+            })
+            .join("") || `<tr><td colspan="5">No bids yet</td></tr>`;
         return;
       }
 
       els.resultsBlock.style.display = "block";
-      els.resultsHeading.textContent =
-        auction.auction_type === "lowest_unique" ? "All bids (lowest unique wins)" : "Final bids";
+      els.resultsHeading.textContent = "All bids (lowest unique wins)";
 
-      const sorted =
-        auction.auction_type === "lowest_unique"
-          ? [...bids].sort((a, b) => a.bid_amount - b.bid_amount)
-          : [...bids].sort((a, b) => b.bid_amount - a.bid_amount);
+      const sorted = [...bids].sort((a, b) => a.bid_amount - b.bid_amount);
 
       const counts = {};
       bids.forEach((b) => {
@@ -459,15 +493,15 @@
       els.resultsBody.innerHTML = sorted
         .map((b) => {
           const unique = counts[b.bid_amount] === 1;
-          const isWin = b.is_winner || (auction.winning_club_id === b.club_id && auction.winning_amount === b.bid_amount);
-          const badge =
-            isWin && auction.auction_type === "lowest_unique"
-              ? "🏆 Lowest unique"
-              : isWin
-              ? "🏆 Winner"
-              : auction.auction_type === "lowest_unique" && !unique
-              ? "Duplicate"
-              : "";
+          const isWin =
+            b.is_winner ||
+            (auction.winning_club_id === b.club_id &&
+              auction.winning_amount === b.bid_amount);
+          const badge = isWin
+            ? "🏆 Lowest unique"
+            : !unique
+            ? "Duplicate"
+            : "";
           return `<tr class="${isWin ? "winner-row" : ""}">
             <td>${fullClubName(b.club_id) || b.club_id}</td>
             <td>${formatMoney(b.bid_amount)}</td>
@@ -550,26 +584,8 @@
 
       const phase = auctionPhase(auction);
       lastKnownPhase = phase;
-      if (revealed) {
-        if (auction.winning_club_id) {
-          els.winnerLine.style.display = "block";
-          els.winnerLine.textContent =
-            `Winner: ${fullClubName(auction.winning_club_id) || auction.winning_club_id} — ${formatMoney(auction.winning_amount)}`;
-        } else {
-          els.winnerLine.style.display = "block";
-          els.winnerLine.textContent =
-            "No lowest unique bid — no winner this auction.";
-        }
-        els.waitingReveal.style.display = "none";
-      } else if (isLub && phase === "ended_pending") {
-        els.winnerLine.style.display = "none";
-        els.waitingReveal.style.display = "block";
-        els.waitingReveal.textContent =
-          "Bidding has closed. Results will appear here once the league reveals bids.";
-      } else {
-        els.winnerLine.style.display = "none";
-        els.waitingReveal.style.display = "none";
-      }
+      els.waitingReveal.style.display = "none";
+      els.winnerLine.style.display = "none";
 
       updateTimerOnly();
 
@@ -585,6 +601,31 @@
       const mineAll = bids.filter((b) => b.club_id === clubShort);
       const mine = mineAll.sort((a, b) => b.bid_amount - a.bid_amount)[0];
 
+      if (revealed) {
+        els.winnerLine.style.display = "block";
+        if (!isLub) {
+          els.winnerLine.textContent = snapWinnerSummaryText(
+            auction,
+            bids,
+            fullClubName
+          );
+        } else if (auction.winning_club_id) {
+          els.winnerLine.textContent =
+            `Winner: ${fullClubName(auction.winning_club_id) || auction.winning_club_id} — ${formatMoney(auction.winning_amount)}`;
+        } else {
+          els.winnerLine.textContent =
+            "No lowest unique bid — no winner this auction.";
+        }
+      } else if (isLub && phase === "ended_pending") {
+        els.waitingReveal.style.display = "block";
+        els.waitingReveal.textContent =
+          "Bidding has closed. Results will appear here once the league reveals bids.";
+      } else if (!isLub && phase === "ended_pending") {
+        els.waitingReveal.style.display = "block";
+        els.waitingReveal.textContent =
+          "Snap finished — bid history below. Fees update when the league settles the auction.";
+      }
+
       if (!clubShort) {
         els.myBidLine.textContent =
           "No club is linked to your account — you cannot bid.";
@@ -598,13 +639,14 @@
           : `Your club's bid: ${formatMoney(mine.bid_amount)}`;
       } else if (mineAll.length && !isLub) {
         const placed = formatBidTimePlain(mine.bid_time);
+        const unit = snapBidUnitFee(auction);
         els.myBidLine.textContent = placed
-          ? `Your club: ${mineAll.length} bid(s), high ${formatMoney(mine.bid_amount)} (latest ${placed}) — each bid costs ₿300,000`
+          ? `Your club: ${mineAll.length} bid(s), high ${formatMoney(mine.bid_amount)} (latest ${placed}) — each bid fee ${formatMoney(unit)} (pending until settle)`
           : `Your club: ${mineAll.length} bid(s), high ${formatMoney(mine.bid_amount)}`;
       } else if (isLub && phase === "live") {
         els.myBidLine.textContent = "You have not submitted a secret bid yet.";
       } else if (!isLub && phase === "live") {
-        els.myBidLine.textContent = "No bids yet from your club — each bid costs ₿300,000.";
+        els.myBidLine.textContent = `No bids yet from your club — each bid costs ${formatMoney(snapBidUnitFee(auction))}.`;
       } else {
         els.myBidLine.textContent = "";
       }

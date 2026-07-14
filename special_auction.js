@@ -29,6 +29,79 @@ export function formatMoney(n) {
   return `₿ ${Number(n || 0).toLocaleString("en-GB")}`;
 }
 
+/** Default / configured snap per-bid fee. */
+export function snapBidUnitFee(auction) {
+  const n = Number(auction?.snap_bid_fee);
+  return Number.isFinite(n) && n > 0 ? n : 300000;
+}
+
+/**
+ * Fee to show for one snap bid row.
+ * Live / pending: full unit fee (pending settlement).
+ * Settled: fee_charged if set, else derive winner=100% / loser=25%.
+ */
+export function snapBidFeeDisplay(auction, bid, { settled = false } = {}) {
+  const unit = snapBidUnitFee(auction);
+  if (!settled) {
+    return { amount: unit, pending: true, label: `${formatMoney(unit)} (pending)` };
+  }
+  if (bid?.fee_charged != null && bid.fee_charged !== "") {
+    return {
+      amount: Number(bid.fee_charged),
+      pending: false,
+      label: formatMoney(bid.fee_charged),
+    };
+  }
+  const isWinnerClub =
+    auction?.winning_club_id && bid?.club_id === auction.winning_club_id;
+  const amount = isWinnerClub ? unit : Math.round(unit * 0.25);
+  return { amount, pending: false, label: formatMoney(amount) };
+}
+
+/** Total bid fees charged to a club after settlement (sum of per-bid fees). */
+export function snapClubBidFeesTotal(auction, bids, clubId) {
+  const clubBids = (bids || []).filter((b) => b.club_id === clubId);
+  if (!clubBids.length) return 0;
+  return clubBids.reduce((sum, b) => {
+    const { amount } = snapBidFeeDisplay(auction, b, { settled: true });
+    return sum + amount;
+  }, 0);
+}
+
+/**
+ * Multi-line winner summary for settled snap (plain text for winner banner).
+ */
+export function snapWinnerSummaryText(auction, bids, clubNameFn) {
+  if (!auction?.winning_club_id) {
+    return "No bids — no winner this auction.";
+  }
+  const name =
+    (typeof clubNameFn === "function"
+      ? clubNameFn(auction.winning_club_id)
+      : null) || auction.winning_club_id;
+  const winAmount = Number(auction.winning_amount) || 0;
+  const discountPct = Number(auction.winner_discount_pct) || 0;
+  const purchase =
+    auction.winner_purchase_amount != null && auction.winner_purchase_amount !== ""
+      ? Number(auction.winner_purchase_amount)
+      : Math.round(winAmount * (1 - discountPct / 100));
+  const bidFees = snapClubBidFeesTotal(auction, bids, auction.winning_club_id);
+  const lines = [
+    `Winner: ${name}`,
+    `Winning bid (before discount): ${formatMoney(winAmount)}`,
+    discountPct > 0
+      ? `First-bid discount: ${discountPct}% → amount charged: ${formatMoney(purchase)}`
+      : `No first-bid discount → amount charged: ${formatMoney(purchase)}`,
+    `Bid fees (100% × ${clubBidsCount(bids, auction.winning_club_id)} bid(s)): ${formatMoney(bidFees)}`,
+    `Total charged to winner: ${formatMoney(bidFees + purchase)}`,
+  ];
+  return lines.join("\n");
+}
+
+function clubBidsCount(bids, clubId) {
+  return (bids || []).filter((b) => b.club_id === clubId).length;
+}
+
 export function roundToMillion(n) {
   const x = Number(n);
   if (!Number.isFinite(x)) return 0;
