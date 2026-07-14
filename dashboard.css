@@ -1219,6 +1219,21 @@ button.nav-admin-trigger {
   display: block;
 }
 
+.nav-first-aid {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  line-height: 0;
+}
+
+.nav-first-aid svg {
+  display: block;
+  border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
 .nav-dropdown .nav-link {
   pointer-events: auto;
   display: flex;

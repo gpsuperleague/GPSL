@@ -1,0 +1,243 @@
+/* GPSL Medical Room — clinic theme (mirrors Central Bank layout) */
+body.medical-page {
+  background: linear-gradient(180deg, #0a1218 0%, #121c24 40%, #111 100%);
+  color: #ddd;
+  margin: 0;
+  min-height: 100vh;
+}
+
+.med-hero {
+  display: grid;
+  grid-template-columns: minmax(180px, 320px) 1fr;
+  gap: 24px;
+  align-items: center;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 20px 20px;
+  border-bottom: 2px solid #2a4a5a;
+  background: radial-gradient(ellipse at 40% 0%, rgba(60, 140, 180, 0.14) 0%, transparent 55%);
+}
+
+@media (max-width: 720px) {
+  .med-hero { grid-template-columns: 1fr; text-align: center; }
+  .med-svg { max-width: 240px; margin: 0 auto; display: block; }
+}
+
+.med-svg { width: 100%; height: auto; filter: drop-shadow(0 8px 24px rgba(0,0,0,0.55)); }
+
+.med-welcome {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #6a9aaa;
+}
+
+.med-hero h1 {
+  margin: 4px 0 8px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(26px, 4vw, 36px);
+  color: #9ed4f0;
+  font-weight: normal;
+}
+
+.med-tagline { margin: 0 0 16px; color: #999; font-size: 14px; }
+
+.med-hero-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.med-stat {
+  background: rgba(0,0,0,0.35);
+  border: 1px solid #2a4a5a;
+  border-radius: 6px;
+  padding: 10px 14px;
+  min-width: 110px;
+}
+
+.med-stat .label {
+  font-size: 11px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.med-stat .value {
+  font-size: 18px;
+  color: #9ed4f0;
+  font-weight: bold;
+  margin-top: 4px;
+}
+
+.med-main { max-width: 1100px; margin: 0 auto; padding: 20px 20px 48px; }
+
+.med-panel {
+  background: #161e24;
+  border: 1px solid #2a3a44;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.med-panel h2 {
+  margin: 0 0 8px;
+  color: #9ed4f0;
+  font-size: 18px;
+  font-family: Georgia, serif;
+}
+
+.med-intro { color: #999; font-size: 13px; line-height: 1.45; margin: 0 0 16px; }
+
+.med-status {
+  min-height: 1.2em;
+  color: #ffcc66;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.med-status.error { color: #f88; }
+.med-status.ok { color: #8d8; }
+
+.staff-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.staff-card {
+  background: #0f161c;
+  border: 1px solid #33444e;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.staff-card.doctor-card { border-color: #4a7a9a; }
+.staff-card.empty { border-style: dashed; opacity: 0.95; }
+
+.staff-slot-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #7a9aaa;
+}
+
+.sil-wrap {
+  width: 72px;
+  height: 96px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sil-wrap svg { width: 64px; height: 90px; }
+
+.staff-bonus {
+  font-size: 12px;
+  font-weight: 700;
+  color: #8dcc88;
+}
+
+.staff-contract {
+  font-size: 11px;
+  color: #aaa;
+}
+
+.staff-cost {
+  font-size: 12px;
+  color: #e8c86a;
+  font-weight: 600;
+}
+
+.hire-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin-top: auto;
+}
+
+.hire-row button,
+.med-btn {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  background: #3a6a8a;
+  color: #e8f4ff;
+}
+
+.hire-row button:hover,
+.med-btn:hover { filter: brightness(1.08); }
+
+.hire-row button.female { background: #6a4a7a; }
+.hire-row button:disabled,
+.med-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.token-vault {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.token-chip {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #c8e8ff, #3a7aaa 60%, #1a3a4a);
+  border: 2px solid #8ec8e8;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.token-chip.empty {
+  background: #1a2228;
+  border-style: dashed;
+  border-color: #445;
+  box-shadow: none;
+}
+
+.injury-list { display: flex; flex-direction: column; gap: 10px; }
+
+.injury-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  background: #0f161c;
+  border: 1px solid #33444e;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.injury-row .meta { font-size: 12px; color: #aaa; margin-top: 4px; }
+
+.equipment-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.equip-tile {
+  background: #0f161c;
+  border: 1px solid #2a3a44;
+  border-radius: 8px;
+  padding: 10px 8px;
+  text-align: center;
+  font-size: 11px;
+  color: #9ab;
+}
+
+.equip-tile svg { width: 40px; height: 40px; margin-bottom: 6px; }

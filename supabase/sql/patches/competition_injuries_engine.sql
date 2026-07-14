@@ -411,11 +411,21 @@ DECLARE
   v_cat public.competition_injury_catalogue%rowtype;
   v_id bigint;
   v_state public.competition_club_injury_season;
+  v_out int;
+  v_rec int;
 BEGIN
   SELECT * INTO v_cat FROM public.competition_injury_catalogue WHERE id = p_catalogue_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Injury catalogue row not found'; END IF;
 
   v_state := public.competition_injury_ensure_club_season(p_season_id, p_club);
+
+  v_out := greatest(coalesce(v_cat.matches_out, 0), 0);
+  v_rec := greatest(coalesce(v_cat.recovery_matches, 0), 0);
+  -- Club doctor: −1 match from the out phase on every new injury
+  IF to_regprocedure('public.medical_club_has_doctor(text)') IS NOT NULL
+     AND public.medical_club_has_doctor(p_club) THEN
+    v_out := greatest(v_out - 1, 0);
+  END IF;
 
   INSERT INTO public.competition_player_injuries (
     season_id, incurred_season_id, player_id, club_short_name,
@@ -427,8 +437,8 @@ BEGIN
   VALUES (
     p_season_id, p_season_id, p_player_id, p_club,
     v_cat.name, 'active', v_cat.id, v_cat.severity,
-    v_cat.matches_out, v_cat.recovery_matches,
-    v_cat.matches_out, v_cat.recovery_matches,
+    v_out, v_rec,
+    v_out, v_rec,
     p_source_fixture_id
   )
   RETURNING id INTO v_id;
@@ -553,6 +563,12 @@ BEGIN
   END IF;
 
   v_chance := least(1.0, greatest(0.0, v_settings.base_match_chance * v_state.injury_risk));
+  IF to_regprocedure('public.medical_injury_chance_reduction(text)') IS NOT NULL THEN
+    v_chance := least(
+      1.0,
+      greatest(0.0, v_chance - coalesce(public.medical_injury_chance_reduction(p_club), 0))
+    );
+  END IF;
   IF random() >= v_chance THEN
     INSERT INTO public.competition_fixture_injury_roll (fixture_id, club_short_name, did_injure)
     VALUES (p_fixture_id, p_club, false);

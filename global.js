@@ -1240,6 +1240,16 @@ function navAuctionActiveBadgeHtml(kind, visible = isNavAuctionActive(kind)) {
 }
 
 function navLinkLeadingHtml(item) {
+  if (item?.navIcon === "first_aid") {
+    return (
+      `<span class="nav-first-aid" title="Medical Room" aria-hidden="true">` +
+      `<svg viewBox="0 0 20 20" width="16" height="16" focusable="false">` +
+      `<rect x="1" y="1" width="18" height="18" rx="3" fill="#8b1a1a"/>` +
+      `<rect x="8" y="4" width="4" height="12" fill="#f5f5f5"/>` +
+      `<rect x="4" y="8" width="12" height="4" fill="#f5f5f5"/>` +
+      `</svg></span>`
+    );
+  }
   const nationSrc = item.nationCode ? nationFlagSrc(item.nationCode) : null;
   if (nationSrc) {
     return (

@@ -1,0 +1,101 @@
+<script>window.CURRENT_PAGE = "medical_room";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Medical Room — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="medical_room.css">
+</head>
+<body class="medical-page">
+  <div id="nav"></div>
+
+  <header class="med-hero">
+    <div class="med-hero-graphic" aria-hidden="true">
+      <svg class="med-svg" viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="medWall" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#1a3040"/>
+            <stop offset="100%" style="stop-color:#0e1820"/>
+          </linearGradient>
+        </defs>
+        <rect x="20" y="50" width="280" height="130" rx="6" fill="url(#medWall)" stroke="#4a8aaa" stroke-width="2"/>
+        <rect x="40" y="70" width="70" height="50" rx="3" fill="#0a1218" stroke="#3a6a7a"/>
+        <rect x="125" y="70" width="70" height="50" rx="3" fill="#0a1218" stroke="#3a6a7a"/>
+        <rect x="210" y="70" width="70" height="50" rx="3" fill="#0a1218" stroke="#3a6a7a"/>
+        <rect x="130" y="135" width="60" height="45" fill="#122028" stroke="#5a9aba"/>
+        <circle cx="160" cy="40" r="22" fill="#1a3a4a" stroke="#7ec8e8" stroke-width="2"/>
+        <rect x="152" y="28" width="16" height="24" fill="#9ed4f0"/>
+        <rect x="148" y="32" width="24" height="16" fill="#9ed4f0"/>
+        <text x="160" y="175" text-anchor="middle" fill="#7ec8e8" font-family="Georgia,serif" font-size="11">MEDICAL ROOM</text>
+      </svg>
+    </div>
+    <div class="med-hero-text">
+      <p class="med-welcome">Club facilities</p>
+      <h1>Medical Room</h1>
+      <p class="med-tagline" id="medTagline">Doctor · Physios · Specialist consultants</p>
+      <div class="med-hero-stats" id="heroStats"></div>
+    </div>
+  </header>
+
+  <main class="med-main">
+    <div id="medStatus" class="med-status"></div>
+
+    <section class="med-panel">
+      <h2>Clinic equipment</h2>
+      <p class="med-intro">Treatment rooms stocked for matchday care — flavour for your medical wing.</p>
+      <div class="equipment-row" aria-hidden="true">
+        <div class="equip-tile">
+          <svg viewBox="0 0 40 40"><rect x="8" y="18" width="24" height="10" rx="2" fill="#3a6a7a"/><circle cx="14" cy="23" r="3" fill="#9ed4f0"/><circle cx="26" cy="23" r="3" fill="#9ed4f0"/></svg>
+          Treatment bed
+        </div>
+        <div class="equip-tile">
+          <svg viewBox="0 0 40 40"><rect x="12" y="8" width="16" height="24" rx="2" fill="#2a4a5a" stroke="#6a9aaa"/><rect x="16" y="14" width="8" height="3" fill="#8ec8e8"/></svg>
+          Ice bath
+        </div>
+        <div class="equip-tile">
+          <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="12" fill="none" stroke="#5a9aba" stroke-width="2"/><path d="M20 12v16M12 20h16" stroke="#9ed4f0" stroke-width="2"/></svg>
+          First aid
+        </div>
+        <div class="equip-tile">
+          <svg viewBox="0 0 40 40"><rect x="10" y="10" width="20" height="20" rx="3" fill="#1a3040" stroke="#4a8aaa"/><circle cx="20" cy="20" r="5" fill="#3a6a8a"/></svg>
+          Scanner
+        </div>
+      </div>
+    </section>
+
+    <section class="med-panel" id="doctorPanel">
+      <h2>Club doctor</h2>
+      <p class="med-intro">
+        Required to use specialist consultant tokens.
+        While hired, every new injury is shortened by <b>1 match</b> (out phase).
+        3-season contract, then retires.
+      </p>
+      <div class="staff-grid" id="doctorSlot"></div>
+    </section>
+
+    <section class="med-panel" id="physioPanel">
+      <h2>Physiotherapists</h2>
+      <p class="med-intro">
+        Up to <b>5</b> physios. Each reduces this club’s injury chance by <b>0.5%</b>
+        (shown on the header). Cost rises with each slot. 3-season contracts.
+      </p>
+      <div class="staff-grid" id="physioSlots"></div>
+    </section>
+
+    <section class="med-panel" id="tokenPanel">
+      <h2>Specialist consultants</h2>
+      <p class="med-intro">
+        Tokens earned from rewards are stored here. Use <b>one token per injury</b>
+        to remove <b>2 matches</b> from the current phase (out first, then fitness).
+        Requires a club doctor.
+      </p>
+      <div class="token-vault" id="tokenVault"></div>
+      <h3 style="color:#9ed4f0;font-size:15px;margin:16px 0 8px;">Active injuries</h3>
+      <div class="injury-list" id="injuryList"></div>
+    </section>
+  </main>
+
+  <script type="module" src="medical_room.js?v=1"></script>
+</body>
+</html>

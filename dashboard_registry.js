@@ -6,6 +6,7 @@ const PANEL_BG = "images/panel_bg";
 const TILE_IMAGE_BY_ID = {
   club_details: `${PANEL_BG}/Club_Details.png`,
   stadium: `${PANEL_BG}/stadium.png`,
+  medical_room: `${PANEL_BG}/MatchDay.png`,
   finances: `${PANEL_BG}/Finances.png`,
   squad: `${PANEL_BG}/Squad.png`,
   transfer_center: `${PANEL_BG}/Transfer.png`,
@@ -127,6 +128,7 @@ function p(
 export const DASHBOARD_PANELS = [
   p("club_details", "Club Details", "club_details.html", { defaultOn: true }),
   p("stadium", "Stadium", "stadium.html", { defaultOn: true }),
+  p("medical_room", "Medical Room", "medical_room.html", { defaultOn: true }),
   p("finances", "Club Finances", "finances.html", { defaultOn: true }),
   p("squad", "Squad", "squad.html", { defaultOn: true }),
   p("transfer_center", "Transfer Centre", "transfer_center.html", { defaultOn: true }),
