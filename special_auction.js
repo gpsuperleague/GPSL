@@ -548,8 +548,9 @@ export async function winnerListPrize(supabase, auctionId) {
   });
 }
 
-export async function winnerReleasePrize(supabase, auctionId, playerId = null) {
-  const args = { p_auction_id: auctionId };
-  if (playerId) args.p_player_id = String(playerId);
-  return supabase.rpc("special_auction_winner_release_player", args);
+export async function winnerReleasePrize(supabase, auctionId, _playerId = null) {
+  // Single-arg RPC only — prize player comes from the auction row server-side
+  return supabase.rpc("special_auction_winner_release_player", {
+    p_auction_id: auctionId,
+  });
 }

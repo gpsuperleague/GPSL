@@ -869,7 +869,17 @@
 
       const { data, error } = result || {};
       if (error) {
-        setPrizeStatus(error.message || "Action failed.", true);
+        const msg = error.message || "Action failed.";
+        console.error("Prize action failed:", action, error);
+        setPrizeStatus(msg, true);
+        alert(msg);
+        await renderPrizeOptionsPanel();
+        return;
+      }
+      if (!data?.ok && data?.ok !== undefined) {
+        const msg = "Prize action did not complete.";
+        setPrizeStatus(msg, true);
+        alert(msg);
         await renderPrizeOptionsPanel();
         return;
       }
@@ -885,11 +895,12 @@
         return;
       }
 
-      setPrizeStatus(
+      const doneMsg =
         action === "keep"
           ? "Prize kept — options closed."
-          : `Released for ${formatMoney(data?.credit)} — options closed.`
-      );
+          : `Released for ${formatMoney(data?.credit)} — options closed.`;
+      setPrizeStatus(doneMsg);
+      alert(doneMsg);
       auction = await refreshAuctionRecord(supabase, auction);
       await refreshData({ quiet: true });
     }
