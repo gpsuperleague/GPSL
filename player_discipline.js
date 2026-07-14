@@ -306,6 +306,11 @@ export function injuriesByPlayerId(injuries) {
   return map;
 }
 
+/** e.g. "6 out · 2 fitness" — always shows both phases. */
+function injuryPhaseCountsText(outLeft, recLeft) {
+  return `${outLeft} out · ${recLeft} fitness`;
+}
+
 /** @param {any[]} injuryRows */
 export function formatInjuryStatusHtml(injuryRows) {
   if (!injuryRows?.length) return "";
@@ -314,6 +319,7 @@ export function formatInjuryStatusHtml(injuryRows) {
       const label = inj.label || "Injury";
       const outLeft = Number(inj.matches_out_remaining) || 0;
       const recLeft = Number(inj.recovery_remaining) || 0;
+      const counts = injuryPhaseCountsText(outLeft, recLeft);
       const pending = (inj.pending_matches || [])
         .map((m) => m.label)
         .filter(Boolean);
@@ -322,9 +328,9 @@ export function formatInjuryStatusHtml(injuryRows) {
         : "";
 
       if (outLeft > 0 || inj.phase === "out") {
-        return `<div class="squad-status-lines"><span class="status-pill status-injured" title="${label}">Injured — ${label} (${outLeft} left)${pendingText}</span></div>`;
+        return `<div class="squad-status-lines"><span class="status-pill status-injured" title="${label} — ${counts}">Injured — ${label} (${counts})${pendingText}</span></div>`;
       }
-      return `<div class="squad-status-lines"><span class="status-pill status-recovery" title="${label}">Gaining match fitness — ${label} (${recLeft} left)${pendingText}</span></div>`;
+      return `<div class="squad-status-lines"><span class="status-pill status-recovery" title="${label} — ${counts}">Gaining match fitness — ${label} (${counts})${pendingText}</span></div>`;
     })
     .join("");
 }
@@ -337,13 +343,14 @@ export function formatInjuryBadgeHtml(injuryRows) {
       const label = inj.label || "Injury";
       const outLeft = Number(inj.matches_out_remaining) || 0;
       const recLeft = Number(inj.recovery_remaining) || 0;
+      const counts = injuryPhaseCountsText(outLeft, recLeft);
       if (outLeft > 0 || inj.phase === "out") {
-        const title = `Injured — ${label} (${outLeft} left)`;
-        const body = `Injured<br>${label}<br>${outLeft} left`;
+        const title = `Injured — ${label} (${counts})`;
+        const body = `Injured<br>${label}<br>${counts}`;
         return `<span class="injury-badge injury-badge-out" title="${title}">${body}</span>`;
       }
-      const title = `Gaining match fitness — ${label} (${recLeft} left)`;
-      const body = `Gaining match fitness<br>${label}<br>${recLeft} left`;
+      const title = `Gaining match fitness — ${label} (${counts})`;
+      const body = `Gaining match fitness<br>${label}<br>${counts}`;
       return `<span class="injury-badge injury-badge-recovery" title="${title}">${body}</span>`;
     })
     .join("");
