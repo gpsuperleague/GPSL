@@ -43,10 +43,29 @@
   <main class="med-main">
     <div id="medStatus" class="med-status"></div>
 
-    <section class="med-panel">
-      <h2>Clinic equipment</h2>
-      <p class="med-intro">Treatment rooms stocked for matchday care — flavour for your medical wing.</p>
-      <div class="equipment-row" aria-hidden="true">
+    <section class="med-panel" id="doctorPanel">
+      <h2>Club doctor</h2>
+      <p class="med-intro">
+        Required to use specialist consultant tokens.
+        While hired, every new injury is shortened by <b>1 match</b> (out phase).
+        Name &amp; gender assigned at random on hire. 3-season contract, then retires.
+      </p>
+      <div class="equipment-row equipment-inline" aria-hidden="true">
+        <div class="equip-tile">
+          <svg viewBox="0 0 40 40"><rect x="10" y="10" width="20" height="20" rx="3" fill="#1a3040" stroke="#4a8aaa"/><circle cx="20" cy="20" r="5" fill="#3a6a8a"/></svg>
+          Scanner
+        </div>
+      </div>
+      <div class="staff-grid" id="doctorSlot"></div>
+    </section>
+
+    <section class="med-panel" id="physioPanel">
+      <h2>Physiotherapists</h2>
+      <p class="med-intro">
+        Up to <b>5</b> physios at <b>€3,000,000</b> each. Each reduces this club’s injury chance by <b>0.5%</b>.
+        Name &amp; gender assigned at random on hire. 3-season contracts.
+      </p>
+      <div class="equipment-row equipment-inline" aria-hidden="true">
         <div class="equip-tile">
           <svg viewBox="0 0 40 40"><rect x="8" y="18" width="24" height="10" rx="2" fill="#3a6a7a"/><circle cx="14" cy="23" r="3" fill="#9ed4f0"/><circle cx="26" cy="23" r="3" fill="#9ed4f0"/></svg>
           Treatment bed
@@ -56,32 +75,10 @@
           Ice bath
         </div>
         <div class="equip-tile">
-          <svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="12" fill="none" stroke="#5a9aba" stroke-width="2"/><path d="M20 12v16M12 20h16" stroke="#9ed4f0" stroke-width="2"/></svg>
-          First aid
-        </div>
-        <div class="equip-tile">
           <svg viewBox="0 0 40 40"><rect x="10" y="10" width="20" height="20" rx="3" fill="#1a3040" stroke="#4a8aaa"/><circle cx="20" cy="20" r="5" fill="#3a6a8a"/></svg>
           Scanner
         </div>
       </div>
-    </section>
-
-    <section class="med-panel" id="doctorPanel">
-      <h2>Club doctor</h2>
-      <p class="med-intro">
-        Required to use specialist consultant tokens.
-        While hired, every new injury is shortened by <b>1 match</b> (out phase).
-        Gender is assigned at random on hire. 3-season contract, then retires.
-      </p>
-      <div class="staff-grid" id="doctorSlot"></div>
-    </section>
-
-    <section class="med-panel" id="physioPanel">
-      <h2>Physiotherapists</h2>
-      <p class="med-intro">
-        Up to <b>5</b> physios at <b>€3,000,000</b> each. Each reduces this club’s injury chance by <b>0.5%</b>.
-        Gender is assigned at random on hire. 3-season contracts.
-      </p>
       <div class="staff-grid" id="physioSlots"></div>
     </section>
 
@@ -98,6 +95,6 @@
     </section>
   </main>
 
-  <script type="module" src="medical_room.js?v=4"></script>
+  <script type="module" src="medical_room.js?v=5"></script>
 </body>
 </html>

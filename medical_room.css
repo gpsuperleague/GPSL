@@ -237,6 +237,11 @@ body.medical-page {
   margin-top: 8px;
 }
 
+.equipment-inline {
+  margin: 0 0 14px;
+  max-width: 360px;
+}
+
 .equip-tile {
   background: #0f161c;
   border: 1px solid #2a3a44;
