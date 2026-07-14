@@ -267,19 +267,12 @@ function scrollToActiveMonthFixtures() {
   );
   if (!monthBlocks.length) return;
 
-  // Deep-link from season calendar: first matchday of that month.
-  // Default (no ?month=): last matchday of the live month (existing behaviour).
-  const target = requested
-    ? monthBlocks.reduce((best, el) => {
-        const md = Number(el.dataset.matchday) || 0;
-        const bestMd = Number(best?.dataset.matchday) || Infinity;
-        return md < bestMd ? el : best;
-      }, monthBlocks[0])
-    : monthBlocks.reduce((best, el) => {
-        const md = Number(el.dataset.matchday) || 0;
-        const bestMd = Number(best?.dataset.matchday) || 0;
-        return md >= bestMd ? el : best;
-      }, monthBlocks[0]);
+  // Scroll to the first matchday of the active (or ?month=) GPSL month.
+  const target = monthBlocks.reduce((best, el) => {
+    const md = Number(el.dataset.matchday) || 0;
+    const bestMd = Number(best?.dataset.matchday) || Infinity;
+    return md < bestMd ? el : best;
+  }, monthBlocks[0]);
 
   requestAnimationFrame(() => {
     target.scrollIntoView({ behavior: "smooth", block: "start" });
