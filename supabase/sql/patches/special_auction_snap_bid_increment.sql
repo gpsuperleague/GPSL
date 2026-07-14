@@ -4,8 +4,19 @@
 -- Bug: snap submit only checked ≥ ₿1,000,000, so owners could match the high.
 -- Lowest-unique auctions are unchanged (secret bids; duplicates are intentional).
 --
--- Run once in Supabase SQL Editor after special_auction_snap_v2.sql. Safe re-run.
+-- Also: snap is an open multi-bid auction. The old UNIQUE (auction_id, club_id)
+-- must be dropped so each raise inserts a new bid row (and charges another fee).
+--
+-- Run once in Supabase SQL Editor (ideally after special_auction_snap_v2.sql).
+-- Safe re-run.
 -- =============================================================================
+
+-- Open snap auctions: multiple bids per club (LUB still limited in the RPC)
+ALTER TABLE public.special_auction_bids
+  DROP CONSTRAINT IF EXISTS special_auction_bids_auction_id_club_id_key;
+
+CREATE INDEX IF NOT EXISTS special_auction_bids_auction_club_idx
+  ON public.special_auction_bids (auction_id, club_id, bid_time);
 
 CREATE OR REPLACE FUNCTION public.special_auction_submit_bid(
   p_auction_id bigint,
