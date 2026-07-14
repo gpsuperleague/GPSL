@@ -219,10 +219,27 @@ async function hirePhysio(slot) {
   }
   setStatus("Hiring physio…");
   const { data, error } = await supabase.rpc("medical_hire_physio", {
-    p_slot: slot,
+    p_slot: Number(slot),
   });
   if (error) {
-    setStatus("❌ " + error.message, "error");
+    const parts = [
+      error.message,
+      error.details,
+      error.hint,
+      error.code ? `(${error.code})` : "",
+    ].filter(Boolean);
+    const msg = parts.join(" — ") || "Hire failed";
+    const hint = /Could not find|schema cache|PGRST202|function/i.test(msg)
+      ? " — run club_medical_room_hire_fix.sql in Supabase"
+      : /entry_type|check constraint/i.test(msg)
+        ? " — ledger entry type missing; run club_medical_room_hire_fix.sql"
+        : "";
+    setStatus("❌ " + msg + hint, "error");
+    console.error("medical_hire_physio", error);
+    return;
+  }
+  if (!data?.ok && data?.error) {
+    setStatus("❌ " + data.error, "error");
     return;
   }
   setStatus(
