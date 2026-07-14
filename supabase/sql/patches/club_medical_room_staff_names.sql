@@ -1,6 +1,6 @@
 -- =============================================================================
--- Medical staff names (random first + surname by gender)
--- Safe re-run. Also backfills existing generic "Club doctor/physiotherapist" rows.
+-- Medical staff names — large name pools (hundreds of first + surnames)
+-- Safe re-run. Replaces medical_staff_random_name().
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.medical_staff_random_name(p_gender text)
@@ -14,20 +14,122 @@ DECLARE
   v_first text;
   v_last text;
   v_male text[] := ARRAY[
-    'James','Thomas','Daniel','Michael','David','Andrew','Robert','Paul',
-    'Mark','Steven','Christopher','Matthew','Jonathan','Benjamin','Alexander',
-    'William','Oliver','Harry','Jack','George','Noah','Leo','Arthur','Henry'
+    'James','John','Robert','Michael','William','David','Richard','Joseph','Thomas','Charles',
+    'Christopher','Daniel','Matthew','Anthony','Mark','Donald','Steven','Paul','Andrew','Joshua',
+    'Kenneth','Kevin','Brian','George','Timothy','Ronald','Edward','Jason','Jeffrey','Ryan',
+    'Jacob','Gary','Nicholas','Eric','Jonathan','Stephen','Larry','Justin','Scott','Brandon',
+    'Benjamin','Samuel','Raymond','Gregory','Frank','Alexander','Patrick','Jack','Dennis','Jerry',
+    'Tyler','Aaron','Jose','Adam','Nathan','Henry','Douglas','Zachary','Peter','Kyle',
+    'Noah','Ethan','Jeremy','Walter','Christian','Keith','Roger','Terry','Austin','Sean',
+    'Gerald','Carl','Harold','Dylan','Arthur','Lawrence','Jesse','Bryan','Billy','Bruce',
+    'Gabriel','Joe','Logan','Alan','Juan','Wayne','Roy','Ralph','Randy','Eugene',
+    'Vincent','Russell','Louis','Philip','Bobby','Johnny','Bradley','Albert','Harry','Fred',
+    'Wayne','Howard','Oscar','Martin','Victor','Leonard','Norman','Melvin','Clyde','Glen',
+    'Oliver','Harry','George','Leo','Arthur','Oscar','Theo','Freddie','Archie','Henry',
+    'Alfie','Charlie','Tommy','Finn','Lucas','Mason','Jackson','Aiden','Carter','Owen',
+    'Caleb','Hunter','Isaiah','Connor','Eli','Landon','Adrian','Colton','Julian','Levi',
+    'Xavier','Dominic','Jaxon','Carson','Chase','Blake','Max','Miles','Asher','Grayson',
+    'Ryder','Bentley','Jace','Kayden','Brody','Brayden','Camden','Parker','Sawyer','Tristan',
+    'Nolan','Cole','Diego','Ivan','Marcus','Felix','Hugo','Roman','Luca','Enzo',
+    'Marco','Antonio','Rafael','Mateo','Santiago','Sebastian','Andre','Pierre','Louis','Emile',
+    'Klaus','Stefan','Lukas','Niklas','Jonas','Tobias','Sven','Erik','Anders','Bjorn',
+    'Hassan','Omar','Yusuf','Ibrahim','Ahmed','Karim','Samir','Nabil','Rami','Tariq',
+    'Kenji','Hiroshi','Takeshi','Ravi','Arjun','Vikram','Anil','Raj','Sanjay','Deepak',
+    'Wei','Chen','Jun','Hao','Minh','Duc','Bao','Kofi','Kwame','Jabari',
+    'Callum','Rhys','Ewan','Fraser','Hamish','Angus','Duncan','Malcolm','Alastair','Iain',
+    'Declan','Cian','Oisin','Padraig','Cormac','Finnian','Liam','Sean','Niall','Eoin',
+    'Gareth','Owen','Dafydd','Ieuan','Rhodri','Trystan','Sion','Macsen','Elis','Osian',
+    'Paolo','Giovanni','Lorenzo','Francesco','Alessandro','Matteo','Nicolo','Davide','Simone','Andrea',
+    'Jorge','Carlos','Miguel','Pedro','Fernando','Ricardo','Eduardo','Manuel','Alvaro','Pablo',
+    'Jan','Piotr','Tomasz','Krzysztof','Marek','Adam','Bartosz','Michal','Kamil','Lukasz',
+    'Dmitri','Ivan','Alexei','Sergei','Nikolai','Yuri','Boris','Viktor','Oleg','Pavel'
   ];
   v_female text[] := ARRAY[
-    'Sarah','Emily','Laura','Rachel','Emma','Sophie','Olivia','Charlotte',
-    'Amelia','Jessica','Hannah','Megan','Chloe','Lucy','Grace','Ella',
-    'Mia','Isla','Poppy','Freya','Lily','Eva','Ruby','Alice'
+    'Mary','Patricia','Jennifer','Linda','Elizabeth','Barbara','Susan','Jessica','Sarah','Karen',
+    'Nancy','Lisa','Betty','Margaret','Sandra','Ashley','Kimberly','Emily','Donna','Michelle',
+    'Dorothy','Carol','Amanda','Melissa','Deborah','Stephanie','Rebecca','Sharon','Laura','Cynthia',
+    'Kathleen','Amy','Angela','Shirley','Anna','Brenda','Pamela','Emma','Nicole','Helen',
+    'Samantha','Katherine','Christine','Debra','Rachel','Carolyn','Janet','Catherine','Maria','Heather',
+    'Diane','Ruth','Julie','Olivia','Joyce','Virginia','Victoria','Kelly','Lauren','Christina',
+    'Joan','Evelyn','Judith','Andrea','Hannah','Megan','Cheryl','Jacqueline','Martha','Madison',
+    'Teresa','Gloria','Sara','Janice','Ann','Kathryn','Abigail','Sophia','Frances','Jean',
+    'Alice','Judy','Isabella','Julia','Grace','Denise','Amber','Doris','Marilyn','Danielle',
+    'Beverly','Charlotte','Natalie','Theresa','Diana','Brittany','Marie','Kayla','Alexis','Lori',
+    'Olivia','Amelia','Isla','Ava','Mia','Lily','Ella','Freya','Sophie','Grace',
+    'Evie','Florence','Poppy','Ivy','Willow','Rosie','Daisy','Elsie','Phoebe','Ruby',
+    'Chloe','Zoe','Scarlett','Layla','Penelope','Riley','Aria','Nora','Hazel','Violet',
+    'Aurora','Savannah','Audrey','Brooklyn','Bella','Claire','Skylar','Lucy','Paisley','Everly',
+    'Stella','Ellie','Maya','Naomi','Elena','Gabriella','Ariana','Allison','Hailey','Gianna',
+    'Serenity','Camila','Arianna','Sarah','Madelyn','Cora','Kaylee','Luna','Piper','Quinn',
+    'Fatima','Aisha','Layla','Noor','Yasmin','Amira','Leila','Salma','Hana','Zahra',
+    'Yuki','Akiko','Mei','Hana','Sakura','Priya','Ananya','Isha','Neha','Kavita',
+    'Sofia','Valentina','Isabella','Lucia','Carmen','Rosa','Elena','Marta','Ana','Ines',
+    'Giulia','Chiara','Francesca','Alessia','Martina','Sara','Elisa','Valentina','Bianca','Greta',
+    'Ingrid','Astrid','Freja','Maja','Ebba','Linnea','Saga','Alva','Elsa','Nora',
+    'Siobhan','Aoife','Niamh','Ciara','Orla','Saoirse','Aisling','Maeve','Roisin','Grainne',
+    'Ffion','Seren','Lowri','Catrin','Eira','Nia','Rhiannon','Bronwen','Gwen','Aneirin',
+    'Amina','Zara','Sana','Imaan','Maryam','Nadia','Rania','Dina','Lina','Maya',
+    'Thuy','Lan','Mai','Hoa','Binh','Siti','Putri','Ayu','Dewi','Rina',
+    'Olga','Natalia','Irina','Ekaterina','Anastasia','Svetlana','Tatiana','Yelena','Polina','Daria',
+    'Agnieszka','Katarzyna','Magdalena','Joanna','Monika','Ewa','Barbara','Aleksandra','Paulina','Karolina',
+    'Claire','Louise','Nicola','Joanne','Helen','Fiona','Morag','Kirsty','Shona','Eilidh'
   ];
   v_surnames text[] := ARRAY[
-    'Mitchell','Hughes','Patel','Singh','Murphy','Walsh','O''Brien','Kelly',
-    'Campbell','Stewart','Fraser','MacLeod','Nguyen','Chen','Garcia','Rossi',
-    'Schmidt','Andersen','Berg','Silva','Costa','Novak','Kowalski','Horvat',
-    'Baker','Turner','Collins','Reed','Foster','Bennett','Palmer','Hayes'
+    'Smith','Johnson','Williams','Brown','Jones','Garcia','Miller','Davis','Rodriguez','Martinez',
+    'Hernandez','Lopez','Gonzalez','Wilson','Anderson','Thomas','Taylor','Moore','Jackson','Martin',
+    'Lee','Perez','Thompson','White','Harris','Sanchez','Clark','Ramirez','Lewis','Robinson',
+    'Walker','Young','Allen','King','Wright','Scott','Torres','Nguyen','Hill','Flores',
+    'Green','Adams','Nelson','Baker','Hall','Rivera','Campbell','Mitchell','Carter','Roberts',
+    'Gomez','Phillips','Evans','Turner','Diaz','Parker','Cruz','Edwards','Collins','Reyes',
+    'Stewart','Morris','Morales','Murphy','Cook','Rogers','Gutierrez','Ortiz','Morgan','Cooper',
+    'Peterson','Bailey','Reed','Kelly','Howard','Ramos','Kim','Cox','Ward','Richardson',
+    'Watson','Brooks','Chavez','Wood','James','Bennett','Gray','Mendoza','Ruiz','Hughes',
+    'Price','Alvarez','Castillo','Sanders','Patel','Myers','Long','Ross','Foster','Jimenez',
+    'Powell','Jenkins','Perry','Russell','Sullivan','Bell','Coleman','Butler','Henderson','Barnes',
+    'Gonzales','Fisher','Vasquez','Simmons','Romero','Jordan','Patterson','Alexander','Hamilton','Graham',
+    'Reynolds','Griffin','Wallace','Moreno','West','Cole','Hayes','Bryant','Herrera','Gibson',
+    'Ellis','Tran','Medina','Aguilar','Stevens','Murray','Ford','Castro','Marshall','Owens',
+    'Harrison','Fernandez','McDonald','Woods','Washington','Kennedy','Wells','Vargas','Henry','Chen',
+    'Freeman','Webb','Tucker','Guzman','Burns','Crawford','Olson','Simpson','Porter','Hunter',
+    'Gordon','Mendez','Silva','Shaw','Snyder','Mason','Dixon','Munoz','Hunt','Hicks',
+    'Holmes','Palmer','Wagner','Black','Robertson','Boyd','Rose','Stone','Salazar','Fox',
+    'Warren','Mills','Meyer','Rice','Schmidt','Garza','Daniels','Ferguson','Nichols','Stephens',
+    'Soto','Weaver','Ryan','Gardner','Payne','Grant','Dunn','Kelley','Spencer','Hawkins',
+    'Arnold','Pierce','Vazquez','Hansen','Peters','Santos','Hart','Bradley','Knight','Elliott',
+    'Cunningham','Duncan','Armstrong','Hudson','Carroll','Lane','Riley','Andrews','Alvarado','Ray',
+    'Delgado','Berry','Perkins','Hoffman','Johnston','Matthews','Contreras','Vargas','Walsh','O''Brien',
+    'O''Connor','O''Neill','O''Sullivan','O''Reilly','Fitzgerald','Fitzpatrick','Gallagher','Doherty','Byrne','Doyle',
+    'MacLeod','MacDonald','MacKenzie','MacKay','Fraser','Stewart','Cameron','Gordon','Ross','Grant',
+    'Hughes','Davies','Evans','Roberts','Griffiths','Lewis','Morgan','Price','Jenkins','Owen',
+    'Singh','Kaur','Sharma','Khan','Ahmed','Ali','Hassan','Rahman','Chowdhury','Begum',
+    'Wang','Li','Zhang','Liu','Yang','Huang','Zhao','Wu','Zhou','Xu',
+    'Kim','Park','Choi','Jung','Kang','Cho','Yoon','Jang','Lim','Han',
+    'Tanaka','Suzuki','Yamamoto','Watanabe','Ito','Nakamura','Kobayashi','Saito','Kato','Yoshida',
+    'Novak','Horvat','Kowalski','Nowak','Wisniewski','Wojcik','Kamiński','Lewandowski','Zielinski','Szymanski',
+    'Ivanov','Petrov','Sidorov','Popov','Volkov','Sokolov','Lebedev','Kozlov','Novikov','Morozov',
+    'Berg','Hansen','Johansen','Olsen','Larsen','Andersen','Nilsen','Pedersen','Kristensen','Jensen',
+    'Mueller','Schmidt','Schneider','Fischer','Weber','Wagner','Becker','Hoffmann','Schaefer','Koch',
+    'Rossi','Russo','Ferrari','Esposito','Bianchi','Romano','Colombo','Ricci','Marino','Greco',
+    'Silva','Santos','Ferreira','Pereira','Oliveira','Costa','Rodrigues','Martins','Jesus','Sousa',
+    'Dubois','Laurent','Lefebvre','Moreau','Simon','Michel','Garcia','Bernard','Petit','Robert',
+    'Baker','Turner','Collins','Reed','Foster','Bennett','Palmer','Hayes','Barrett','Nash',
+    'Quinn','Blake','Fox','Hunt','Marsh','Frost','Snow','Shore','Field','Brook',
+    'Atkinson','Barker','Baxter','Bolton','Booth','Brennan','Buckley','Burgess','Carr','Chambers',
+    'Clayton','Coleman','Connolly','Curtis','Dalton','Daniels','Dawson','Dixon','Duffy','Farrell',
+    'Fleming','Flynn','Forster','Gibbs','Gilbert','Gill','Goodwin','Greenwood','Hale','Hancock',
+    'Hardy','Hartley','Hewitt','Higgins','Hobbs','Hodgson','Holden','Holland','Holt','Hooper',
+    'Hope','Horton','Howell','Humphreys','Hutchinson','Ingram','Jarvis','Jennings','Jordan','Joyce',
+    'Kane','Kerr','Kirk','Lamb','Lambert','Lawson','Leach','Lester','Lindsay','Little',
+    'Lloyd','Lowe','Lynch','Manning','Marsden','Marshall','May','Mellor','Metcalfe','Middleton',
+    'Miles','Millar','Milne','Moon','Morton','Moss','Neal','Nicholson','Nolan','Norman',
+    'Norris','North','Norton','Nunn','Oakley','Osborne','Page','Paine','Parsons','Peacock',
+    'Pearce','Peck','Pollard','Poole','Potter','Power','Pratt','Pritchard','Proctor','Pugh',
+    'Radford','Rae','Randall','Read','Reeves','Rhodes','Richards','Richmond','Riley','Robson',
+    'Rowe','Rowley','Sanderson','Savage','Sayers','Sheldon','Shepherd','Short','Simmons','Slater',
+    'Smart','Steele','Stephenson','Stevenson','Stokes','Storey','Street','Summers','Sutton','Swift',
+    'Sykes','Tait','Tate','Thorpe','Todd','Tomlinson','Townsend','Tucker','Vaughan','Wade',
+    'Walker','Wall','Walton','Waters','Watkins','Watts','Weeks','Welch','Weston','Wheeler',
+    'Whitaker','Whitehead','Whittaker','Wilkins','Wilkinson','Willis','Winter','Woodward','Worthington','Yates'
   ];
 BEGIN
   IF v_gender = 'female' THEN
@@ -41,183 +143,5 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.medical_staff_random_name(text) TO authenticated;
-
--- Backfill staff that still have placeholder titles
-UPDATE public.club_medical_staff s
-SET display_name = public.medical_staff_random_name(s.gender)
-WHERE coalesce(nullif(btrim(s.display_name), ''), '') = ''
-   OR s.display_name IN ('Club doctor', 'Club physiotherapist');
-
-DROP FUNCTION IF EXISTS public.medical_hire_physio(integer);
-DROP FUNCTION IF EXISTS public.medical_hire_physio(int);
-
-CREATE OR REPLACE FUNCTION public.medical_hire_physio(p_slot integer)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_club text := public.my_club_shortname();
-  v_gender text := CASE WHEN random() < 0.5 THEN 'male' ELSE 'female' END;
-  v_name text;
-  v_cost numeric;
-  v_balance numeric;
-  v_season bigint;
-  v_id bigint;
-BEGIN
-  IF v_club IS NULL THEN
-    RAISE EXCEPTION 'No club linked to this account';
-  END IF;
-  IF p_slot IS NULL OR p_slot < 1 OR p_slot > 5 THEN
-    RAISE EXCEPTION 'Physio slot must be 1–5';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM public.club_medical_staff
-    WHERE club_short_name = v_club AND role = 'physio' AND slot_index = p_slot
-  ) THEN
-    RAISE EXCEPTION 'That physio slot is already filled';
-  END IF;
-
-  IF public.medical_club_physio_count(v_club) >= 5 THEN
-    RAISE EXCEPTION 'Maximum 5 physios';
-  END IF;
-
-  v_cost := public.medical_physio_hire_cost(p_slot);
-  IF v_cost IS NULL THEN
-    RAISE EXCEPTION 'Invalid physio slot';
-  END IF;
-
-  v_name := public.medical_staff_random_name(v_gender);
-  PERFORM public.medical_ensure_centre(v_club);
-
-  SELECT balance INTO v_balance
-  FROM public."Club_Finances"
-  WHERE club_name = v_club
-  FOR UPDATE;
-
-  IF NOT FOUND OR v_balance IS NULL THEN
-    RAISE EXCEPTION 'Club finances not found for %', v_club;
-  END IF;
-
-  SELECT s.id INTO v_season
-  FROM public.competition_seasons s
-  WHERE s.is_current = true
-  ORDER BY s.id DESC
-  LIMIT 1;
-
-  PERFORM public.post_club_ledger(
-    v_club,
-    'medical_physio_hire',
-    -v_cost,
-    format('Medical Room — physio hire %s (slot %s)', v_name, p_slot),
-    jsonb_build_object('slot', p_slot, 'gender', v_gender, 'display_name', v_name),
-    v_season,
-    NULL,
-    false,
-    true
-  );
-
-  INSERT INTO public.club_medical_staff (
-    club_short_name, role, gender, display_name, slot_index,
-    seasons_remaining, hired_season_id, hire_cost
-  )
-  VALUES (
-    v_club, 'physio', v_gender, v_name,
-    p_slot, 3, v_season, v_cost
-  )
-  RETURNING id INTO v_id;
-
-  RETURN jsonb_build_object(
-    'ok', true,
-    'staff_id', v_id,
-    'slot', p_slot,
-    'gender', v_gender,
-    'display_name', v_name,
-    'cost', v_cost,
-    'physio_count', public.medical_club_physio_count(v_club)
-  );
-END;
-$function$;
-
-GRANT EXECUTE ON FUNCTION public.medical_hire_physio(integer) TO authenticated;
-
-DROP FUNCTION IF EXISTS public.medical_hire_doctor();
-DROP FUNCTION IF EXISTS public.medical_hire_doctor(text);
-
-CREATE OR REPLACE FUNCTION public.medical_hire_doctor()
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_club text := public.my_club_shortname();
-  v_gender text := CASE WHEN random() < 0.5 THEN 'male' ELSE 'female' END;
-  v_name text;
-  v_cost numeric := public.medical_doctor_hire_cost();
-  v_balance numeric;
-  v_season bigint;
-  v_id bigint;
-BEGIN
-  IF v_club IS NULL THEN
-    RAISE EXCEPTION 'No club linked to this account';
-  END IF;
-
-  IF public.medical_club_has_doctor(v_club) THEN
-    RAISE EXCEPTION 'Club already has a doctor';
-  END IF;
-
-  v_name := public.medical_staff_random_name(v_gender);
-  PERFORM public.medical_ensure_centre(v_club);
-
-  SELECT balance INTO v_balance
-  FROM public."Club_Finances"
-  WHERE club_name = v_club
-  FOR UPDATE;
-
-  IF NOT FOUND OR v_balance IS NULL THEN
-    RAISE EXCEPTION 'Club finances not found for %', v_club;
-  END IF;
-
-  SELECT s.id INTO v_season
-  FROM public.competition_seasons s
-  WHERE s.is_current = true
-  ORDER BY s.id DESC
-  LIMIT 1;
-
-  PERFORM public.post_club_ledger(
-    v_club,
-    'medical_doctor_hire',
-    -v_cost,
-    format('Medical Room — doctor hire %s', v_name),
-    jsonb_build_object('gender', v_gender, 'display_name', v_name),
-    v_season,
-    NULL,
-    false,
-    true
-  );
-
-  INSERT INTO public.club_medical_staff (
-    club_short_name, role, gender, display_name, slot_index,
-    seasons_remaining, hired_season_id, hire_cost
-  )
-  VALUES (
-    v_club, 'doctor', v_gender, v_name, NULL, 3, v_season, v_cost
-  )
-  RETURNING id INTO v_id;
-
-  RETURN jsonb_build_object(
-    'ok', true,
-    'staff_id', v_id,
-    'gender', v_gender,
-    'display_name', v_name,
-    'cost', v_cost
-  );
-END;
-$function$;
-
-GRANT EXECUTE ON FUNCTION public.medical_hire_doctor() TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
