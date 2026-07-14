@@ -44,7 +44,7 @@ import {
   injuriesByPlayerId,
   formatInjuryStatusHtml,
   formatCardsStatusHtml,
-} from "./player_discipline.js";
+} from "./player_discipline.js?v=20260714-injury-status-copy";
 import {
   loadCurrentGpslSeasonLabel,
   playerBlockedSameSeasonTransfer,

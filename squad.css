@@ -693,14 +693,19 @@ body.squad-page .status-pill.status-recovery {
   white-space: normal;
   overflow-wrap: anywhere;
   word-break: break-word;
-  line-height: 1.3;
-  text-align: center;
+  line-height: 1.35;
+  text-align: left;
+}
+
+body.squad-page .status-pill.status-injured,
+body.squad-page .status-pill.status-recovery {
+  font-size: 11px;
 }
 
 body.squad-page .squad-col-status {
   white-space: normal;
-  min-width: 110px;
-  max-width: 180px;
+  min-width: 140px;
+  max-width: 220px;
 }
 
 body.squad-page .status-suspended {
