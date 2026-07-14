@@ -305,6 +305,24 @@ export function formatInjuryStatusHtml(injuryRows) {
     .join("");
 }
 
+/** Compact badge for club.html name cells. */
+export function formatInjuryBadgeHtml(injuryRows) {
+  if (!injuryRows?.length) return "";
+  return injuryRows
+    .map((inj) => {
+      const label = inj.label || "Injury";
+      const outLeft = Number(inj.matches_out_remaining) || 0;
+      const recLeft = Number(inj.recovery_remaining) || 0;
+      if (outLeft > 0 || inj.phase === "out") {
+        const text = `Injured — ${label} (${outLeft} left)`;
+        return `<span class="injury-badge injury-badge-out" title="${text}">${text}</span>`;
+      }
+      const text = `Gaining match fitness — ${label} (${recLeft} left)`;
+      return `<span class="injury-badge injury-badge-recovery" title="${text}">${text}</span>`;
+    })
+    .join(" ");
+}
+
 /** @param {{ yellows?: number, reds?: number }|null} cards */
 export function formatCardsStatusHtml(cards) {
   if (!cards) return "";
@@ -326,4 +344,42 @@ export function formatCardsStatusHtml(cards) {
   }
   return `<div class="squad-status-lines">${parts.join(" ")}</div>`;
 }
+
+/**
+ * Active injuries for a club (any club — public squad / club.html view).
+ */
+export async function loadClubActiveInjuries(supabase, club) {
+  if (!club) return [];
+
+  const { data, error } = await supabase
+    .from("competition_player_injuries")
+    .select(
+      "id, player_id, label, severity, matches_out_remaining, recovery_remaining, status"
+    )
+    .eq("club_short_name", club)
+    .eq("status", "active");
+
+  if (error) {
+    if (/schema cache|Could not find|permission|RLS/i.test(error.message || "")) {
+      // Fall back to own-club RPC (may be empty for other clubs)
+      const viaRpc = await loadClubSquadDiscipline(supabase, club);
+      return viaRpc?.injuries || [];
+    }
+    console.error("loadClubActiveInjuries:", error);
+    return [];
+  }
+
+  return (data || [])
+    .filter(
+      (i) =>
+        (Number(i.matches_out_remaining) || 0) > 0 ||
+        (Number(i.recovery_remaining) || 0) > 0
+    )
+    .map((i) => ({
+      ...i,
+      injury_id: i.id,
+      phase: (Number(i.matches_out_remaining) || 0) > 0 ? "out" : "recovery",
+    }));
+}
+
 

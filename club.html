@@ -106,6 +106,12 @@
     tr.club-row-suspended {
       background: rgba(160, 55, 35, 0.22) !important;
     }
+    tr.club-row-injured {
+      background: rgba(40, 90, 120, 0.22) !important;
+    }
+    tr.club-row-recovery {
+      background: rgba(60, 100, 40, 0.18) !important;
+    }
     .suspension-badge {
       display: inline-block;
       margin-left: 6px;
@@ -121,6 +127,29 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+    .injury-badge {
+      display: inline-block;
+      margin-left: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 4px;
+      padding: 1px 6px;
+      vertical-align: middle;
+      max-width: 240px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .injury-badge-out {
+      color: #9ed4f0;
+      background: #1a3a4a;
+      border: 1px solid #3a6a8a;
+    }
+    .injury-badge-recovery {
+      color: #c8e89a;
+      background: #2a3a1a;
+      border: 1px solid #5a7a3a;
     }
 
     .club-thumb {
@@ -465,6 +494,9 @@
       loadActiveSuspensions,
       suspensionsByPlayerId,
       formatSuspensionBadgeHtml,
+      loadClubActiveInjuries,
+      injuriesByPlayerId,
+      formatInjuryBadgeHtml,
     } from "./player_discipline.js";
     import { SAME_SEASON_TRANSFER_MESSAGE } from "./player_season_transfer.js";
     import {
@@ -487,6 +519,8 @@
     let transferStatusState = null;
     /** @type {Map<string, any[]>} */
     let clubSuspensionsByPlayer = new Map();
+    /** @type {Map<string, any[]>} */
+    let clubInjuriesByPlayer = new Map();
 
     document.addEventListener("DOMContentLoaded", async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -650,12 +684,13 @@
     async function loadPlayers() {
       if (!clubShortName) return;
 
-      const [{ data, error }, suspensionList] = await Promise.all([
+      const [{ data, error }, suspensionList, injuryList] = await Promise.all([
         supabase
           .from("Players")
           .select("Name, Nation, Position, Rating, Age, market_value, Playstyle, Konami_ID, Contracted_Team, Season_Signed")
           .eq("Contracted_Team", clubShortName),
         loadActiveSuspensions(supabase, { club: clubShortName }),
+        loadClubActiveInjuries(supabase, clubShortName),
       ]);
 
       if (error) {
@@ -664,6 +699,7 @@
       }
 
       clubSuspensionsByPlayer = suspensionsByPlayerId(suspensionList);
+      clubInjuriesByPlayer = injuriesByPlayerId(injuryList);
 
       const container = document.getElementById("squadContainer");
       container.innerHTML = "";
@@ -699,16 +735,28 @@
               </thead>
               <tbody>
                 ${groupPlayers.map(p => {
-                  const suspRows = clubSuspensionsByPlayer.get(String(p.Konami_ID)) || [];
+                  const pid = String(p.Konami_ID);
+                  const suspRows = clubSuspensionsByPlayer.get(pid) || [];
+                  const injuryRows = clubInjuriesByPlayer.get(pid) || [];
                   const suspBadge = formatSuspensionBadgeHtml(suspRows);
-                  const rowClass = suspRows.length ? ' class="club-row-suspended"' : "";
+                  const injuryBadge = formatInjuryBadgeHtml(injuryRows);
+                  const injuredOut = injuryRows.some(
+                    (i) => (Number(i.matches_out_remaining) || 0) > 0 || i.phase === "out"
+                  );
+                  const rowClass = suspRows.length
+                    ? ' class="club-row-suspended"'
+                    : injuredOut
+                      ? ' class="club-row-injured"'
+                      : injuryRows.length
+                        ? ' class="club-row-recovery"'
+                        : "";
                   return `
                   <tr${rowClass}>
                     <td>${playerThumbLinkHtml(p.Konami_ID, {
                       className: "club-thumb",
                       alt: p.Name,
                     })}</td>
-                    <td>${playerNameLinkHtml(p.Konami_ID, p.Name)}${suspBadge}</td>
+                    <td>${playerNameLinkHtml(p.Konami_ID, p.Name)}${injuryBadge}${suspBadge}</td>
                     <td>${p.Nation}</td>
                     <td>${p.Position}</td>
                     <td>${p.Rating}</td>

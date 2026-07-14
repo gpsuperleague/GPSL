@@ -25,11 +25,9 @@ BEGIN
     RETURN jsonb_build_object('cards', '[]'::jsonb, 'injuries', '[]'::jsonb);
   END IF;
 
-  -- Owners may only query their own club unless admin
-  IF NOT public.is_gpsl_admin()
-     AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role')
-     AND v_club IS DISTINCT FROM public.my_club_shortname() THEN
-    RAISE EXCEPTION 'Not allowed';
+  -- Injury/card status is visible on public club squad pages
+  IF v_club IS NULL THEN
+    RETURN jsonb_build_object('cards', '[]'::jsonb, 'injuries', '[]'::jsonb);
   END IF;
 
   SELECT s.id INTO v_season
