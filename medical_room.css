@@ -186,18 +186,18 @@ body.medical-page {
 .token-vault {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
   margin-bottom: 14px;
 }
 
 .token-chip {
-  width: 36px;
-  height: 36px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%, #c8e8ff, #3a7aaa 60%, #1a3a4a);
   border: 2px solid #8ec8e8;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
 }
 
 .token-chip.empty {

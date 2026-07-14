@@ -69,15 +69,12 @@ function renderDoctor() {
       <div class="staff-slot-label">Vacant — hire doctor</div>
       <div class="sil-wrap">${silhouetteSvg("male", false)}</div>
       <div class="staff-cost">${formatMoney(cost)}</div>
-      <div class="staff-contract">3-season contract</div>
+      <div class="staff-contract">3-season contract · gender assigned on hire</div>
       <div class="hire-row">
-        <button type="button" data-hire-doctor="male">Hire male</button>
-        <button type="button" class="female" data-hire-doctor="female">Hire female</button>
+        <button type="button" data-hire-doctor="1">Hire</button>
       </div>
     </div>`;
-  el.querySelectorAll("[data-hire-doctor]").forEach((btn) => {
-    btn.onclick = () => hireDoctor(btn.dataset.hireDoctor);
-  });
+  el.querySelector("[data-hire-doctor]").onclick = () => hireDoctor();
 }
 
 function physioBySlot(slot) {
@@ -108,15 +105,14 @@ function renderPhysios() {
           <div class="staff-cost">${formatMoney(cost)}</div>
           <div class="staff-bonus">−0.5% if hired</div>
           <div class="hire-row">
-            <button type="button" data-hire-physio="${slot}" data-gender="male">Male</button>
-            <button type="button" class="female" data-hire-physio="${slot}" data-gender="female">Female</button>
+            <button type="button" data-hire-physio="${slot}">Hire</button>
           </div>
         </div>`;
     }
   }
   el.innerHTML = html;
   el.querySelectorAll("[data-hire-physio]").forEach((btn) => {
-    btn.onclick = () => hirePhysio(Number(btn.dataset.hirePhysio), btn.dataset.gender);
+    btn.onclick = () => hirePhysio(Number(btn.dataset.hirePhysio));
   });
 }
 
@@ -126,12 +122,14 @@ function renderTokens() {
   if (!vault || !list || !state) return;
 
   const tokens = Number(state.specialist_tokens) || 0;
-  const show = Math.max(tokens, 3);
+  const maxTokens = Number(state.max_specialist_tokens) || 20;
   let chips = "";
-  for (let i = 0; i < show; i++) {
-    chips += `<div class="token-chip${i < tokens ? "" : " empty"}" title="${i < tokens ? "Specialist token" : "Empty"}"></div>`;
+  for (let i = 0; i < maxTokens; i++) {
+    chips += `<div class="token-chip${i < tokens ? "" : " empty"}" title="${i < tokens ? "Specialist token" : "Empty slot"}"></div>`;
   }
-  vault.innerHTML = chips + `<span style="color:#9ab;font-size:13px;">${tokens} token${tokens === 1 ? "" : "s"} stored</span>`;
+  vault.innerHTML =
+    chips +
+    `<span style="color:#9ab;font-size:13px;">${tokens} / ${maxTokens} tokens stored</span>`;
 
   const injuries = state.active_injuries || [];
   if (!injuries.length) {
@@ -197,37 +195,40 @@ async function loadState() {
   renderTokens();
 }
 
-async function hireDoctor(gender) {
-  if (!confirm(`Hire a ${gender} club doctor for ${formatMoney(state?.doctor_hire_cost)}?`)) {
+async function hireDoctor() {
+  if (!confirm(`Hire a club doctor for ${formatMoney(state?.doctor_hire_cost)}?`)) {
     return;
   }
   setStatus("Hiring doctor…");
-  const { data, error } = await supabase.rpc("medical_hire_doctor", {
-    p_gender: gender,
-  });
+  const { data, error } = await supabase.rpc("medical_hire_doctor");
   if (error) {
     setStatus("❌ " + error.message, "error");
     return;
   }
-  setStatus(`Doctor hired (−${formatMoney(data?.cost)}).`, "ok");
+  setStatus(
+    `Doctor hired (${data?.gender || "assigned"}) − ${formatMoney(data?.cost)}.`,
+    "ok"
+  );
   await loadState();
 }
 
-async function hirePhysio(slot, gender) {
+async function hirePhysio(slot) {
   const cost = state?.physio_hire_costs?.[String(slot)];
-  if (!confirm(`Hire ${gender} physio for slot ${slot} (${formatMoney(cost)})?`)) {
+  if (!confirm(`Hire physio for slot ${slot} (${formatMoney(cost)})?`)) {
     return;
   }
   setStatus("Hiring physio…");
   const { data, error } = await supabase.rpc("medical_hire_physio", {
     p_slot: slot,
-    p_gender: gender,
   });
   if (error) {
     setStatus("❌ " + error.message, "error");
     return;
   }
-  setStatus(`Physio hired in slot ${slot} (−${formatMoney(data?.cost)}).`, "ok");
+  setStatus(
+    `Physio hired in slot ${slot} (${data?.gender || "assigned"}) − ${formatMoney(data?.cost)}.`,
+    "ok"
+  );
   await loadState();
 }
 
