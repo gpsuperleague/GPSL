@@ -829,9 +829,15 @@ async function placeBid() {
   if (bidError) {
     console.error("Bid insert error", bidError);
     const msg = String(bidError.message || "");
-    errorBox.textContent = msg.includes("current season")
-      ? "This player was signed in the current season and is not available on the transfer market until next season."
-      : "Bid failed. Please try again.";
+    if (msg.includes("current season")) {
+      errorBox.textContent =
+        "This player was signed in the current season and is not available on the transfer market until next season.";
+    } else if (/bid must be at least/i.test(msg)) {
+      errorBox.textContent = msg;
+      await loadListings();
+    } else {
+      errorBox.textContent = "Bid failed. Please try again.";
+    }
     return;
   }
 

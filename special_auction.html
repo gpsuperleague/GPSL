@@ -204,12 +204,15 @@
     } from "./money_input.js";
 
     const MIN_BID = 1000000;
+    const BID_INCREMENT = 500000;
 
     let auction = null;
     let clubShort = null;
     let timerInterval = null;
     let bidAmountControl = null;
     let modalStartAmount = MIN_BID;
+    let snapMinBid = MIN_BID;
+    let latestBids = [];
 
     const els = {
       emptyMsg: document.getElementById("emptyMsg"),
@@ -249,14 +252,28 @@
       }
     }
 
+    function snapMinimumBid(bids) {
+      const high = (bids || []).reduce(
+        (max, b) => Math.max(max, Number(b.bid_amount) || 0),
+        0
+      );
+      if (!high) return MIN_BID;
+      return high + BID_INCREMENT;
+    }
+
     function openBidModal() {
       const isLub = auction.auction_type === "lowest_unique";
+      snapMinBid = isLub ? MIN_BID : snapMinimumBid(latestBids);
+      modalStartAmount = snapMinBid;
       document.getElementById("bidModalTitle").textContent = isLub
         ? "Secret bid (one only)"
         : "Snap auction bid";
       document.getElementById("bidModalHint").textContent = isLub
         ? "Only you will see your bid until the window ends. Amount is rounded to the nearest ₿1,000,000."
-        : "Each bid costs ₿300,000. Highest bid wins. Winner pays full bid fees + discounted winning bid; non-winners pay 25% of their bid fees. First-bid timing sets your win discount (20% / 10% / 5% / 0%).";
+        : `Each bid costs ₿300,000. Must raise by at least ${formatMoney(BID_INCREMENT)} (min ${formatMoney(snapMinBid)}). Highest bid wins. Winner pays full bid fees + discounted winning bid; non-winners pay 25% of their bid fees. First-bid timing sets your win discount (20% / 10% / 5% / 0%).`;
+      document.getElementById("bidQuickMin").textContent = isLub
+        ? "Min ₿1m"
+        : `Min ${formatMoney(snapMinBid)}`;
       bidAmountControl?.set(modalStartAmount);
       updateRoundedPreview(modalStartAmount);
       document.getElementById("bidError").textContent = "";
@@ -270,7 +287,8 @@
     function wireBidModalControls() {
       const input = document.getElementById("bidAmountInput");
       bidAmountControl = wireMoneyBidInput(input, {
-        min: MIN_BID,
+        min: () =>
+          auction?.auction_type === "snap" ? snapMinBid : MIN_BID,
         onChange: updateRoundedPreview,
       });
 
@@ -287,7 +305,9 @@
       });
 
       document.getElementById("bidQuickMin")?.addEventListener("click", () => {
-        bidAmountControl?.set(MIN_BID);
+        const min =
+          auction?.auction_type === "snap" ? snapMinBid : MIN_BID;
+        bidAmountControl?.set(min);
       });
     }
 
@@ -300,9 +320,11 @@
       const amount = bidAmountControl?.parse() ?? parseMoneyInput(
         document.getElementById("bidAmountInput").value
       );
-      if (!amount || amount < MIN_BID) {
+      const isLub = auction?.auction_type === "lowest_unique";
+      const minRequired = isLub ? MIN_BID : snapMinimumBid(latestBids);
+      if (!amount || amount < minRequired) {
         document.getElementById("bidError").textContent =
-          `Enter at least ${formatMoney(MIN_BID)}.`;
+          `Enter at least ${formatMoney(minRequired)}.`;
         return;
       }
       const { error } = await submitSpecialBid(supabase, auction.id, amount);
@@ -553,11 +575,13 @@
 
       els.rules.textContent = isLub
         ? "Submit one secret bid (nearest ₿1m). When the window ends, all bids are revealed; the lowest amount that only one club chose wins and pays that amount."
-        : "Snap (~1 hour, random finish in last 10 min). Each bid costs ₿300k. Winner pays 100% of bid fees + winning bid (minus first-bid discount 20/10/5/0%). Non-winners pay 25% of bid fees. Clues unlock at 0 / 20 / 40 / 50 minutes.";
+        : "Snap (~1 hour, random finish in last 10 min). Each bid costs ₿300k and must be at least ₿500k above the current highest. Winner pays 100% of bid fees + winning bid (minus first-bid discount 20/10/5/0%). Non-winners pay 25% of bid fees. Clues unlock at 0 / 20 / 40 / 50 minutes.";
 
       await renderPlayerBlock();
 
       const bids = await fetchAuctionBids(supabase, auction.id);
+      latestBids = bids || [];
+      snapMinBid = isLub ? MIN_BID : snapMinimumBid(latestBids);
       const mineAll = bids.filter((b) => b.club_id === clubShort);
       const mine = mineAll.sort((a, b) => b.bid_amount - a.bid_amount)[0];
 
@@ -588,7 +612,7 @@
       const canBid = phase === "live" && !!clubShort && (!isLub || !mine);
       els.openBid.style.display = canBid ? "inline-block" : "none";
       els.openBid.textContent = "Place bid";
-      modalStartAmount = MIN_BID;
+      modalStartAmount = snapMinBid;
 
       await renderResults(bids);
     }
