@@ -371,10 +371,23 @@ export function formatCardsStatusHtml(cards) {
 
 /**
  * Active injuries for a club (any club — public squad / club.html view).
+ * Prefer SECURITY DEFINER RPC so RLS on competition_player_injuries cannot hide rows
+ * (admin_injuries uses the same path via admin RPCs).
  */
 export async function loadClubActiveInjuries(supabase, club) {
   if (!club) return [];
 
+  const viaRpc = await loadClubSquadDiscipline(supabase, club);
+  if (viaRpc?.injuries?.length) {
+    return viaRpc.injuries.map((i) => ({
+      ...i,
+      injury_id: i.injury_id ?? i.id,
+      status: i.status || "active",
+    }));
+  }
+
+  // Fallback: direct table (needs GRANT + RLS policy). Empty RPC may mean no injuries
+  // or missing function — still try table in case RPC failed open with [].
   const { data, error } = await supabase
     .from("competition_player_injuries")
     .select(
@@ -384,13 +397,10 @@ export async function loadClubActiveInjuries(supabase, club) {
     .eq("status", "active");
 
   if (error) {
-    if (/schema cache|Could not find|permission|RLS/i.test(error.message || "")) {
-      // Fall back to own-club RPC (may be empty for other clubs)
-      const viaRpc = await loadClubSquadDiscipline(supabase, club);
-      return viaRpc?.injuries || [];
+    if (!/schema cache|Could not find|permission|RLS/i.test(error.message || "")) {
+      console.error("loadClubActiveInjuries:", error);
     }
-    console.error("loadClubActiveInjuries:", error);
-    return [];
+    return viaRpc?.injuries || [];
   }
 
   return (data || [])
