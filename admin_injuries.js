@@ -233,6 +233,33 @@ async function loadActive() {
     </table>`;
 }
 
+async function seedDiscipline(force = false) {
+  const msg = force
+    ? "Force re-seed every club (cancel prior test injuries, add new suspension + injury)?"
+    : "Seed 1 suspended + 1 injured player for every club?";
+  if (!confirm(msg)) return;
+  setStatus("seedStatus", "Seeding…");
+  const { data, error } = await supabase.rpc("admin_test_seed_squad_discipline", {
+    p_force: force,
+  });
+  if (error) {
+    setStatus(
+      "seedStatus",
+      error.message.includes("admin_test_seed_squad_discipline")
+        ? "Run admin_test_seed_squad_discipline.sql in Supabase first."
+        : error.message,
+      true
+    );
+    return;
+  }
+  setStatus(
+    "seedStatus",
+    `Seeded ${data?.clubs_seeded ?? 0} clubs (${data?.suspensions ?? 0} suspensions, ${data?.injuries ?? 0} injuries, ${data?.skipped ?? 0} skipped).`
+  );
+  await loadRisks();
+  await loadActive();
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   await initAdminPage();
   await loadClubsMap();
@@ -249,5 +276,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
   document.getElementById("tickPreseasonBtn")?.addEventListener("click", () => {
     void tickPreseason();
+  });
+  document.getElementById("seedDisciplineBtn")?.addEventListener("click", () => {
+    void seedDiscipline(false);
+  });
+  document.getElementById("seedDisciplineForceBtn")?.addEventListener("click", () => {
+    void seedDiscipline(true);
   });
 });

@@ -39,6 +39,20 @@
       </div>
 
       <div class="card" style="margin-top:16px;">
+        <h2>Test seed (all clubs)</h2>
+        <p class="note">
+          For each club: pick <b>1 random player suspended</b> (2-match ban) and
+          <b>1 different random player injured</b> (random catalogue severity).
+          Sole fit GK is never injured. Skips clubs already seeded unless Force is used.
+        </p>
+        <div class="row">
+          <button type="button" id="seedDisciplineBtn" class="button">Seed suspended + injured per club</button>
+          <button type="button" id="seedDisciplineForceBtn" class="button secondary">Force re-seed</button>
+        </div>
+        <div id="seedStatus" class="status-line"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
         <h2>Pre-season recovery tick</h2>
         <p class="note">
           Applies virtual matches (default 4) against outstanding out then recovery.
