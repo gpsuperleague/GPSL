@@ -9,8 +9,29 @@
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
--- Round schedule: spoon → bowl
+-- Round schedule: drop cup_code CHECK first, then spoon → bowl
 -- ---------------------------------------------------------------------------
+
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT c.conname
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+      AND t.relname = 'competition_cup_round_schedule'
+      AND c.contype = 'c'
+      AND pg_get_constraintdef(c.oid) ILIKE '%cup_code%'
+  LOOP
+    EXECUTE format(
+      'ALTER TABLE public.competition_cup_round_schedule DROP CONSTRAINT IF EXISTS %I',
+      r.conname
+    );
+  END LOOP;
+END $$;
 
 UPDATE public.competition_cup_round_schedule
 SET cup_code = 'bowl'
@@ -44,29 +65,85 @@ WHERE NOT EXISTS (
 -- ---------------------------------------------------------------------------
 
 DO $$
+DECLARE
+  r record;
 BEGIN
-  IF to_regclass('public.competition_cup_first_round_byes') IS NOT NULL THEN
-    UPDATE public.competition_cup_first_round_byes
-    SET cup_code = 'bowl'
-    WHERE cup_code = 'spoon';
-
-    ALTER TABLE public.competition_cup_first_round_byes
-      DROP CONSTRAINT IF EXISTS competition_cup_first_round_byes_cup_check;
-
-    ALTER TABLE public.competition_cup_first_round_byes
-      ADD CONSTRAINT competition_cup_first_round_byes_cup_check
-      CHECK (cup_code IN ('super8', 'plate', 'shield', 'bowl', 'league_cup'));
+  IF to_regclass('public.competition_cup_first_round_byes') IS NULL THEN
+    RETURN;
   END IF;
+
+  FOR r IN
+    SELECT c.conname
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+      AND t.relname = 'competition_cup_first_round_byes'
+      AND c.contype = 'c'
+      AND pg_get_constraintdef(c.oid) ILIKE '%cup_code%'
+  LOOP
+    EXECUTE format(
+      'ALTER TABLE public.competition_cup_first_round_byes DROP CONSTRAINT IF EXISTS %I',
+      r.conname
+    );
+  END LOOP;
+
+  UPDATE public.competition_cup_first_round_byes
+  SET cup_code = 'bowl'
+  WHERE cup_code = 'spoon';
+
+  ALTER TABLE public.competition_cup_first_round_byes
+    DROP CONSTRAINT IF EXISTS competition_cup_first_round_byes_cup_check;
+
+  ALTER TABLE public.competition_cup_first_round_byes
+    ADD CONSTRAINT competition_cup_first_round_byes_cup_check
+    CHECK (cup_code IN ('super8', 'plate', 'shield', 'bowl', 'league_cup'));
 END $$;
 
--- Manual qualifiers: keep both role names readable during transition
-UPDATE public.competition_cup_manual_qualifiers
-SET cup_code = 'bowl'
-WHERE cup_code = 'spoon';
+-- Manual qualifiers: drop cup_code / role CHECKs, then migrate
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT c.conname
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+      AND t.relname = 'competition_cup_manual_qualifiers'
+      AND c.contype = 'c'
+      AND (
+        pg_get_constraintdef(c.oid) ILIKE '%cup_code%'
+        OR pg_get_constraintdef(c.oid) ILIKE '%qualifier_role%'
+      )
+  LOOP
+    EXECUTE format(
+      'ALTER TABLE public.competition_cup_manual_qualifiers DROP CONSTRAINT IF EXISTS %I',
+      r.conname
+    );
+  END LOOP;
 
-UPDATE public.competition_cup_manual_qualifiers
-SET qualifier_role = 'bowl_playoff_loser'
-WHERE qualifier_role = 'spoon_playoff_loser';
+  UPDATE public.competition_cup_manual_qualifiers
+  SET cup_code = 'bowl'
+  WHERE cup_code = 'spoon';
+
+  UPDATE public.competition_cup_manual_qualifiers
+  SET qualifier_role = 'bowl_playoff_loser'
+  WHERE qualifier_role = 'spoon_playoff_loser';
+
+  ALTER TABLE public.competition_cup_manual_qualifiers
+    DROP CONSTRAINT IF EXISTS competition_cup_manual_qualifiers_cup_code_check;
+  ALTER TABLE public.competition_cup_manual_qualifiers
+    ADD CONSTRAINT competition_cup_manual_qualifiers_cup_code_check
+    CHECK (cup_code IN ('shield', 'bowl'));
+
+  ALTER TABLE public.competition_cup_manual_qualifiers
+    DROP CONSTRAINT IF EXISTS competition_cup_manual_qualifiers_qualifier_role_check;
+  ALTER TABLE public.competition_cup_manual_qualifiers
+    ADD CONSTRAINT competition_cup_manual_qualifiers_qualifier_role_check
+    CHECK (qualifier_role IN ('shield_playoff_winner', 'bowl_playoff_loser'));
+END $$;
 
 -- ---------------------------------------------------------------------------
 -- Qualify: accept bowl (and legacy spoon)

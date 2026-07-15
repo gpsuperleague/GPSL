@@ -40,6 +40,8 @@ DECLARE
   v_match int;
   v_home text;
   v_away text;
+  v_leg1_home text;
+  v_leg1_away text;
   v_i int;
   v_idx int;
   v_node_id bigint;
@@ -59,38 +61,44 @@ DECLARE
   v_bye_pos int := 1;
   v_player_pos int := 1;
   v_slot int;
+  v_cup text := lower(btrim(coalesce(p_cup_code, '')));
+  v_bye_done int := 0;
 BEGIN
+  IF v_cup = 'spoon' THEN
+    v_cup := 'bowl';
+  END IF;
+
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
   IF p_clubs IS NULL OR array_length(p_clubs, 1) IS NULL OR array_length(p_clubs, 1) < 2 THEN
-    RAISE EXCEPTION 'Need at least 2 clubs to draw %', p_cup_code;
+    RAISE EXCEPTION 'Need at least 2 clubs to draw %', v_cup;
   END IF;
 
-  v_max_round := public.competition_cup_scheduled_round_count(p_cup_code);
+  v_max_round := public.competition_cup_scheduled_round_count(v_cup);
   IF v_max_round IS NULL OR v_max_round < 1 THEN
-    RAISE EXCEPTION 'No schedule configured for cup %', p_cup_code;
+    RAISE EXCEPTION 'No schedule configured for cup %', v_cup;
   END IF;
 
   SELECT min(round_no)
   INTO v_first_round
   FROM public.competition_cup_round_schedule
-  WHERE cup_code = p_cup_code;
+  WHERE cup_code = v_cup;
 
   DELETE FROM public.competition_cup_bracket_nodes
-  WHERE season_id = p_season_id AND cup_code = p_cup_code;
+  WHERE season_id = p_season_id AND cup_code = v_cup;
 
   DELETE FROM public.competition_fixtures
   WHERE season_id = p_season_id
     AND competition_type = 'cup'
-    AND cup_code = p_cup_code;
+    AND cup_code = v_cup;
 
   v_n := array_length(p_clubs, 1);
   SELECT max(matches_in_round) * 2
   INTO v_target
   FROM public.competition_cup_round_schedule
-  WHERE cup_code = p_cup_code
+  WHERE cup_code = v_cup
     AND round_no = v_first_round;
 
   IF v_target IS NULL THEN
@@ -108,14 +116,14 @@ BEGIN
 
   IF v_byes > 0 THEN
     IF p_bye_clubs IS NULL OR coalesce(array_length(p_bye_clubs, 1), 0) <> v_byes THEN
-      RAISE EXCEPTION 'Assign exactly % first-round bye club(s) for % before drawing', v_byes, p_cup_code;
+      RAISE EXCEPTION 'Assign exactly % first-round bye club(s) for % before drawing', v_byes, v_cup;
     END IF;
 
     v_byes_clubs := ARRAY[]::text[];
     FOREACH v_b IN ARRAY p_bye_clubs LOOP
       v_b := upper(trim(v_b));
       IF NOT (v_b = ANY (p_clubs)) THEN
-        RAISE EXCEPTION 'Bye club % is not in the qualified list for %', v_b, p_cup_code;
+        RAISE EXCEPTION 'Bye club % is not in the qualified list for %', v_b, v_cup;
       END IF;
       IF v_b = ANY (v_byes_clubs) THEN
         RAISE EXCEPTION 'Duplicate bye club %', v_b;
@@ -143,10 +151,10 @@ BEGIN
     FOREACH v_b IN ARRAY p_player_order LOOP
       v_b := upper(trim(v_b));
       IF NOT (v_b = ANY (p_clubs)) THEN
-        RAISE EXCEPTION 'Draw order club % is not qualified for %', v_b, p_cup_code;
+        RAISE EXCEPTION 'Draw order club % is not qualified for %', v_b, v_cup;
       END IF;
       IF v_b = ANY (v_byes_clubs) THEN
-        RAISE EXCEPTION 'Draw order club % is a bye club for %', v_b, p_cup_code;
+        RAISE EXCEPTION 'Draw order club % is a bye club for %', v_b, v_cup;
       END IF;
       IF v_b = ANY (v_players) THEN
         RAISE EXCEPTION 'Duplicate club % in draw order', v_b;
@@ -199,7 +207,7 @@ BEGIN
   FOR v_sched IN
     SELECT *
     FROM public.competition_cup_round_schedule
-    WHERE cup_code = p_cup_code
+    WHERE cup_code = v_cup
     ORDER BY round_no, cup_leg
   LOOP
     v_round := v_sched.round_no;
@@ -229,10 +237,18 @@ BEGIN
         END IF;
       ELSIF v_leg = 2 THEN
         v_leg1_node_id := v_leg1_ids[v_match];
-        SELECT away_club_short_name, home_club_short_name
-        INTO v_home, v_away
+        SELECT home_club_short_name, away_club_short_name
+        INTO v_leg1_home, v_leg1_away
         FROM public.competition_cup_bracket_nodes
         WHERE id = v_leg1_node_id;
+
+        IF v_leg1_away IS NULL AND v_leg1_home IS NOT NULL THEN
+          v_home := v_leg1_home;
+          v_away := NULL;
+        ELSE
+          v_home := v_leg1_away;
+          v_away := v_leg1_home;
+        END IF;
       END IF;
 
       INSERT INTO public.competition_cup_bracket_nodes (
@@ -240,7 +256,7 @@ BEGIN
         home_club_short_name, away_club_short_name, leg1_node_id
       )
       VALUES (
-        p_season_id, p_cup_code, v_round, v_match, v_leg,
+        p_season_id, v_cup, v_round, v_match, v_leg,
         v_home, v_away, v_leg1_node_id
       )
       RETURNING id INTO v_node_id;
@@ -278,30 +294,35 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Auto-advance first-round byes into the next round
-  FOR v_node IN
-    SELECT *
-    FROM public.competition_cup_bracket_nodes
-    WHERE season_id = p_season_id
-      AND cup_code = p_cup_code
-      AND round_no = v_first_round
-      AND coalesce(cup_leg, 1) = 1
-  LOOP
-    IF v_node.away_club_short_name IS NULL
-       AND v_node.home_club_short_name IS NOT NULL
-       AND v_node.winner_club_short_name IS NULL THEN
-      UPDATE public.competition_cup_bracket_nodes
-      SET winner_club_short_name = v_node.home_club_short_name
-      WHERE id = v_node.id;
-      PERFORM public.competition_cup_advance_node_winner(v_node.id);
-    END IF;
-  END LOOP;
+  -- Auto-advance first-round byes (leg2-aware for Super8/Bowl)
+  IF to_regprocedure('public.competition_cup_complete_first_round_byes(bigint, text)') IS NOT NULL THEN
+    v_bye_done := public.competition_cup_complete_first_round_byes(p_season_id, v_cup);
+  ELSE
+    FOR v_node IN
+      SELECT *
+      FROM public.competition_cup_bracket_nodes
+      WHERE season_id = p_season_id
+        AND cup_code = v_cup
+        AND round_no = v_first_round
+        AND coalesce(cup_leg, 1) = 1
+    LOOP
+      IF v_node.away_club_short_name IS NULL
+         AND v_node.home_club_short_name IS NOT NULL
+         AND v_node.winner_club_short_name IS NULL THEN
+        UPDATE public.competition_cup_bracket_nodes
+        SET winner_club_short_name = v_node.home_club_short_name
+        WHERE id = v_node.id;
+        PERFORM public.competition_cup_advance_node_winner(v_node.id);
+        v_bye_done := v_bye_done + 1;
+      END IF;
+    END LOOP;
+  END IF;
 
   FOR v_node IN
     SELECT *
     FROM public.competition_cup_bracket_nodes
     WHERE season_id = p_season_id
-      AND cup_code = p_cup_code
+      AND cup_code = v_cup
       AND home_club_short_name IS NOT NULL
       AND away_club_short_name IS NOT NULL
       AND fixture_id IS NULL
@@ -310,11 +331,12 @@ BEGIN
   END LOOP;
 
   RETURN jsonb_build_object(
-    'cup_code', p_cup_code,
+    'cup_code', v_cup,
     'clubs', v_n,
     'byes', v_byes,
     'bye_clubs', to_jsonb(coalesce(v_byes_clubs, ARRAY[]::text[])),
     'bye_match_nos', to_jsonb(coalesce(v_bye_slots, ARRAY[]::int[])),
+    'bye_advanced', v_bye_done,
     'rounds', v_max_round,
     'r1_fixtures', v_r1_count,
     'draw_order', to_jsonb(coalesce(v_players, ARRAY[]::text[]))
@@ -396,7 +418,7 @@ BEGIN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
-  IF p_cup_code NOT IN ('super8', 'plate', 'shield', 'spoon') THEN
+  IF p_cup_code NOT IN ('super8', 'plate', 'shield', 'spoon', 'bowl') THEN
     RAISE EXCEPTION 'Invalid prestige cup code';
   END IF;
 

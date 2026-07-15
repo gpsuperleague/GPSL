@@ -9,22 +9,45 @@ UPDATE public.competition_cup_bracket_nodes SET cup_code = 'bowl' WHERE cup_code
 UPDATE public.competition_cup_manual_qualifiers SET cup_code = 'bowl' WHERE cup_code = 'spoon';
 UPDATE public.competition_cup_prize_config SET cup_code = 'bowl' WHERE cup_code = 'spoon';
 UPDATE public.competition_cup_season_winner SET cup_code = 'bowl' WHERE cup_code = 'spoon';
-UPDATE public.competition_cup_round_schedule SET cup_code = 'bowl' WHERE cup_code = 'spoon';
 
 UPDATE public.competition_cup_manual_qualifiers
 SET qualifier_role = 'bowl_playoff_loser'
 WHERE qualifier_role = 'spoon_playoff_loser';
 
--- Round schedule CHECK (if table exists)
+-- Round schedule: drop CHECK first, then spoon → bowl
 DO $$
+DECLARE
+  r record;
 BEGIN
-  IF to_regclass('public.competition_cup_round_schedule') IS NOT NULL THEN
-    ALTER TABLE public.competition_cup_round_schedule
-      DROP CONSTRAINT IF EXISTS competition_cup_round_schedule_cup_code_check;
-    ALTER TABLE public.competition_cup_round_schedule
-      ADD CONSTRAINT competition_cup_round_schedule_cup_code_check
-      CHECK (cup_code IN ('super8', 'plate', 'shield', 'bowl', 'league_cup'));
+  IF to_regclass('public.competition_cup_round_schedule') IS NULL THEN
+    RETURN;
   END IF;
+
+  FOR r IN
+    SELECT c.conname
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+      AND t.relname = 'competition_cup_round_schedule'
+      AND c.contype = 'c'
+      AND pg_get_constraintdef(c.oid) ILIKE '%cup_code%'
+  LOOP
+    EXECUTE format(
+      'ALTER TABLE public.competition_cup_round_schedule DROP CONSTRAINT IF EXISTS %I',
+      r.conname
+    );
+  END LOOP;
+
+  UPDATE public.competition_cup_round_schedule
+  SET cup_code = 'bowl'
+  WHERE cup_code = 'spoon';
+
+  ALTER TABLE public.competition_cup_round_schedule
+    DROP CONSTRAINT IF EXISTS competition_cup_round_schedule_cup_code_check;
+  ALTER TABLE public.competition_cup_round_schedule
+    ADD CONSTRAINT competition_cup_round_schedule_cup_code_check
+    CHECK (cup_code IN ('super8', 'plate', 'shield', 'bowl', 'league_cup'));
 END $$;
 
 -- competition_owner_season_ranking column rename
