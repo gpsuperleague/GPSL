@@ -219,9 +219,15 @@ async function runDeploy() {
 
     if (remaining <= 0) break;
     if (passDeployed === 0) {
+      const errLines = Object.entries(errorSummary).map(
+        ([text, cnt]) => `${cnt}× ${text}`
+      );
+      const errHint = errLines.length
+        ? ` Errors: ${errLines.join(" | ")}`
+        : " No RPC errors returned — open browser console for batch details, or re-run preview and check Block reason.";
       setStatus(
         "deployStatus",
-        `Stopped: ${remaining} fixture(s) still ready but none deployed (check squad sizes / errors).`,
+        `Stopped: ${remaining} fixture(s) still ready but none deployed this pass.${errHint}`,
         false
       );
       await runPreview();
