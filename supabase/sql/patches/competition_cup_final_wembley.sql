@@ -39,11 +39,39 @@ STABLE
 SET search_path = public
 AS $$
   SELECT coalesce(p_fixture.competition_type, '') = 'cup'
-    AND public.competition_cup_round_stage(
-      p_fixture.cup_code,
-      p_fixture.cup_round,
-      NULL
-    ) = 'final';
+    AND p_fixture.cup_code IS NOT NULL
+    AND p_fixture.cup_round IS NOT NULL
+    AND (
+      EXISTS (
+        SELECT 1
+        FROM public.competition_cup_round_schedule s
+        WHERE s.cup_code = p_fixture.cup_code
+          AND s.round_no = p_fixture.cup_round::smallint
+          AND s.stage = 'final'
+      )
+      OR p_fixture.cup_round = (
+        SELECT max(n.round_no)
+        FROM public.competition_cup_bracket_nodes n
+        WHERE n.season_id = p_fixture.season_id
+          AND n.cup_code = p_fixture.cup_code
+      )
+      OR p_fixture.cup_round = (
+        SELECT max(s.round_no)
+        FROM public.competition_cup_round_schedule s
+        WHERE s.cup_code = p_fixture.cup_code
+      )
+      OR lower(coalesce(
+        (
+          SELECT s.round_label
+          FROM public.competition_cup_round_schedule s
+          WHERE s.cup_code = p_fixture.cup_code
+            AND s.round_no = p_fixture.cup_round::smallint
+          ORDER BY s.cup_leg DESC
+          LIMIT 1
+        ),
+        ''
+      )) LIKE '%final%'
+    );
 $$;
 
 CREATE OR REPLACE FUNCTION public.competition_apply_cup_final_venue(p_fixture_id bigint)
@@ -1067,19 +1095,45 @@ GRANT EXECUTE ON FUNCTION public.competition_fixture_is_cup_final(public.competi
 GRANT EXECUTE ON FUNCTION public.competition_apply_cup_final_venue(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_tv_ensure_cup_final_selected(bigint) TO authenticated;
 
--- Backfill existing cup finals
+-- Backfill existing cup finals (also available as competition_admin_backfill_cup_final_venues)
 DO $$
 DECLARE
   r record;
+  v_name text;
+  v_cap int;
 BEGIN
+  SELECT
+    coalesce(nullif(btrim(gs.cup_final_venue_name), ''), 'Wembley Stadium'),
+    greatest(coalesce(gs.cup_final_venue_capacity, 90000), 1)
+  INTO v_name, v_cap
+  FROM public.global_settings gs
+  WHERE gs.id = 1;
+
+  v_name := coalesce(v_name, 'Wembley Stadium');
+  v_cap := coalesce(v_cap, 90000);
+
   FOR r IN
     SELECT f.id
     FROM public.competition_fixtures f
     WHERE f.competition_type = 'cup'
       AND public.competition_fixture_is_cup_final(f)
   LOOP
-    PERFORM public.competition_apply_cup_final_venue(r.id);
+    UPDATE public.competition_fixtures
+    SET venue_name = v_name,
+        venue_capacity = v_cap
+    WHERE id = r.id;
   END LOOP;
+
+  UPDATE public.competition_fixtures f
+  SET venue_name = v_name,
+      venue_capacity = v_cap
+  WHERE f.competition_type = 'cup'
+    AND f.cup_round = (
+      SELECT max(n.round_no)
+      FROM public.competition_cup_bracket_nodes n
+      WHERE n.season_id = f.season_id
+        AND n.cup_code = f.cup_code
+    );
 END $$;
 
 NOTIFY pgrst, 'reload schema';
