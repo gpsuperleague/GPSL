@@ -700,20 +700,27 @@ DECLARE
   v_fixture public.competition_fixtures;
   v_node public.competition_cup_bracket_nodes;
   v_winner text;
+  v_pen text;
 BEGIN
   SELECT * INTO v_fixture FROM public.competition_fixtures WHERE id = p_fixture_id;
   IF NOT FOUND OR v_fixture.competition_type <> 'cup' THEN
     RETURN;
   END IF;
 
-  IF v_fixture.home_goals = v_fixture.away_goals THEN
+  IF v_fixture.home_goals IS NULL OR v_fixture.away_goals IS NULL THEN
     RETURN;
   END IF;
 
+  v_pen := nullif(btrim(coalesce(v_fixture.cup_pen_winner_club_short_name, '')), '');
+
   IF v_fixture.home_goals > v_fixture.away_goals THEN
     v_winner := v_fixture.home_club_short_name;
-  ELSE
+  ELSIF v_fixture.away_goals > v_fixture.home_goals THEN
     v_winner := v_fixture.away_club_short_name;
+  ELSIF v_pen IS NOT NULL THEN
+    v_winner := v_pen;
+  ELSE
+    RETURN;
   END IF;
 
   SELECT * INTO v_node
