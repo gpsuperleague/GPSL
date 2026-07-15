@@ -1,8 +1,94 @@
 -- =============================================================================
--- Cup bracket public: expose venue (home stadium / Wembley for finals only)
--- Run after competition_cup_final_wembley.sql (+ backfill if needed).
+-- Fix: non-final cup rounds wrongly showed Wembley
+--
+-- Cause: competition_fixture_is_cup_final used LIKE '%final%', which also
+-- matched "Quarter-final" and "Semi-final", so those fixtures were stamped
+-- with venue_name = Wembley Stadium.
+--
+-- This patch:
+--   1) Restricts is_cup_final to schedule stage = 'final' (or true Final label)
+--   2) Clears venue stamp on non-final cup fixtures
+--   3) Recreates bracket view so early rounds always use home stadium
+--
 -- Safe re-run.
 -- =============================================================================
+
+CREATE OR REPLACE FUNCTION public.competition_fixture_is_cup_final(
+  p_fixture public.competition_fixtures
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SET search_path = public
+AS $$
+  SELECT coalesce(p_fixture.competition_type, '') = 'cup'
+    AND p_fixture.cup_code IS NOT NULL
+    AND p_fixture.cup_round IS NOT NULL
+    AND (
+      EXISTS (
+        SELECT 1
+        FROM public.competition_cup_round_schedule s
+        WHERE s.cup_code = p_fixture.cup_code
+          AND s.round_no = p_fixture.cup_round::smallint
+          AND s.stage = 'final'
+      )
+      OR (
+        -- Bracket max round only when schedule agrees it is the final
+        -- (or there is no schedule row for this round — legacy brackets)
+        p_fixture.cup_round = (
+          SELECT max(n.round_no)
+          FROM public.competition_cup_bracket_nodes n
+          WHERE n.season_id = p_fixture.season_id
+            AND n.cup_code = p_fixture.cup_code
+        )
+        AND coalesce(
+          (
+            SELECT s.stage
+            FROM public.competition_cup_round_schedule s
+            WHERE s.cup_code = p_fixture.cup_code
+              AND s.round_no = p_fixture.cup_round::smallint
+            ORDER BY s.cup_leg DESC
+            LIMIT 1
+          ),
+          'final'
+        ) = 'final'
+      )
+      OR lower(coalesce(
+        (
+          SELECT s.round_label
+          FROM public.competition_cup_round_schedule s
+          WHERE s.cup_code = p_fixture.cup_code
+            AND s.round_no = p_fixture.cup_round::smallint
+          ORDER BY s.cup_leg DESC
+          LIMIT 1
+        ),
+        ''
+      )) = 'final'
+    );
+$$;
+
+-- Clear Wembley stamps from non-final cup ties
+UPDATE public.competition_fixtures f
+SET venue_name = NULL,
+    venue_capacity = NULL
+WHERE f.competition_type = 'cup'
+  AND f.venue_name IS NOT NULL
+  AND NOT public.competition_fixture_is_cup_final(f);
+
+-- Re-stamp genuine finals only
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT f.id
+    FROM public.competition_fixtures f
+    WHERE f.competition_type = 'cup'
+      AND public.competition_fixture_is_cup_final(f)
+  LOOP
+    PERFORM public.competition_apply_cup_final_venue(r.id);
+  END LOOP;
+END $$;
 
 DROP VIEW IF EXISTS public.competition_cup_qualified_public;
 DROP VIEW IF EXISTS public.competition_cup_bracket_public;
@@ -91,5 +177,6 @@ WHERE s.is_current = true AND s.status = 'active';
 GRANT SELECT ON public.competition_cup_bracket_public TO authenticated;
 GRANT SELECT ON public.competition_cup_bracket_public TO anon;
 GRANT SELECT ON public.competition_cup_qualified_public TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_fixture_is_cup_final(public.competition_fixtures) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

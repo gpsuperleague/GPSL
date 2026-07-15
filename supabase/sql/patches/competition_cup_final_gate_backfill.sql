@@ -54,7 +54,7 @@ AS $$
           LIMIT 1
         ),
         ''
-      )) LIKE '%final%'
+      )) = 'final'
     );
 $$;
 
