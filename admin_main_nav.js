@@ -1,10 +1,13 @@
 import { formatNavLabel } from "./nav_label.js";
+import { TESTING_ADMIN_NAV } from "./admin_testing_nav.js";
 
 /**
  * Primary Admin workflow menu (new).
  * # sections → top-level Admin mega subgroups
  * ~ groups → nested headers
  * links → pages (hash when needed)
+ *
+ * Testing links: maintain only in admin_testing_nav.js (TESTING_ADMIN_NAV).
  */
 
 function L(label, href, hash = null, page = null) {
@@ -29,16 +32,8 @@ export const ADMIN_MAIN_NAV = [
   {
     id: "testing",
     label: "Testing",
-    entries: [
-      link("Reset League (vanilla)", "admin_test_reset.html"),
-      link("Assign Manager to club", "admin_test_manager_assign.html"),
-      link("Draft Auction auto Bids", "admin_test_draft_seed.html"),
-      link("Deploy Monthly Results", "admin_test_deploy_month.html"),
-      link("End Month Early", "admin_test_end_month.html"),
-      link("Inbox Test All Clubs", "admin_test_inbox.html"),
-      link("Set Club Availability & timeZone", "admin_test_club_availability.html"),
-      link("Injuries & Suspensions (test seed)", "admin_injuries.html"),
-    ],
+    // Kept for checklist exclusion / section id only — live menu uses testingMega.
+    entries: TESTING_ADMIN_NAV.map((item) => link(item.label, item.href)),
   },
   {
     id: "owners",

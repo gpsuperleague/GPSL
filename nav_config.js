@@ -48,6 +48,14 @@ function ensureTestingNavLinks(html, pathname) {
     );
   }
 
+  if (!out.includes("admin_test_end_month.html")) {
+    const active = file === "admin_test_end_month.html" ? " active" : "";
+    out = out.replace(
+      /(<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">[\s\S]*)(<\/div>\s*<\/div>\s*)$/,
+      `$1<a href="admin_test_end_month.html" class="nav-link nav-link-sub nav-link-danger${active}">End Month Early</a>$2`
+    );
+  }
+
   if (!out.includes("admin_test_club_availability.html")) {
     const active = file === "admin_test_club_availability.html" ? " active" : "";
     out = out.replace(
@@ -279,7 +287,7 @@ export const ADMIN_NAV_SECTION = {
       page: "admin_workflow_checklist",
       navChecklist: true,
     },
-    { adminMainMega: true, section: "testing", label: "Testing" },
+    { testingMega: true, label: "Testing" },
     { adminMainMega: true, section: "owners", label: "Owners" },
     { adminMainMega: true, section: "season_break", label: "Season Break" },
     { adminMainMega: true, section: "create_season", label: "Create Season" },
@@ -350,6 +358,7 @@ export function sectionHasActiveItem(section, pathname, search) {
         testingAdminNavHasActive(pathname, search)
         || normalizeNavPath(pathname) === "admin_site_map.html"
         || normalizeNavPath(pathname) === "admin_test_club_availability.html"
+        || normalizeNavPath(pathname) === "admin_test_end_month.html"
       );
     }
     if (item.seasonMega) return seasonAdminNavHasActive(pathname, search);

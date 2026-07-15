@@ -1,7 +1,10 @@
 import { formatNavLabel } from "./nav_label.js";
 
-/** Pre-launch / sandbox tools — Admin → Testing */
-
+/**
+ * Canonical Admin → Testing mega-menu links.
+ * Wired from nav_config.js via `testingMega: true`.
+ * Do not maintain a second Testing list in admin_main_nav.js.
+ */
 export const TESTING_ADMIN_NAV = [
   {
     label: "Site map",
@@ -30,6 +33,12 @@ export const TESTING_ADMIN_NAV = [
     label: "Deploy month results",
     href: "admin_test_deploy_month.html",
     page: "admin_test_deploy_month",
+    navDanger: true,
+  },
+  {
+    label: "End Month Early",
+    href: "admin_test_end_month.html",
+    page: "admin_test_end_month",
     navDanger: true,
   },
   {

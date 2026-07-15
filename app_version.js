@@ -1,2 +1,2 @@
 /** Single cache-bust string — bump when global.js or nav_config structure changes. */
-export const APP_VERSION = "20260714-medical-room";
+export const APP_VERSION = "20260715-end-month-early";
