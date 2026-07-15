@@ -157,6 +157,7 @@ async function runDeploy() {
   let totalCup = 0;
   let totalErrors = 0;
   const errorSummary = {};
+  let lastDiscipline = null;
   let pass = 0;
 
   while (pass < MAX_PASSES) {
@@ -181,11 +182,12 @@ async function runDeploy() {
       if (error) {
         const needsPatch =
           error.message.includes("p_limit") ||
-          error.message.includes("admin_testing_deploy_month_results");
+          error.message.includes("admin_testing_deploy_month_results") ||
+          error.message.includes("seed_month_discipline");
         setStatus(
           "deployStatus",
           needsPatch
-            ? "❌ Re-run supabase/sql/patches/admin_testing_deploy_fix.sql in Supabase, then retry."
+            ? "❌ Re-run supabase/sql/patches/admin_testing_deploy_month_discipline.sql in Supabase, then retry."
             : error.message,
           false
         );
@@ -198,6 +200,7 @@ async function runDeploy() {
       totalLeague += data?.league_deployed_count ?? 0;
       totalCup += data?.cup_deployed_count ?? 0;
       totalErrors += data?.error_count ?? 0;
+      if (data?.discipline) lastDiscipline = data.discipline;
 
       for (const [text, cnt] of Object.entries(data?.error_summary || {})) {
         errorSummary[text] = (errorSummary[text] || 0) + cnt;
@@ -236,11 +239,20 @@ async function runDeploy() {
   }
 
   let msg = `Deployed ${totalDeployed} fixture(s) for ${label} (${totalLeague} league, ${totalCup} cup).`;
+  if (lastDiscipline?.ok) {
+    if (lastDiscipline.skipped) {
+      msg += ` Cards already seeded (${lastDiscipline.yellows_existing_before ?? "?"}Y / ${lastDiscipline.reds_existing_before ?? "?"}R).`;
+    } else {
+      msg += ` Cards: +${lastDiscipline.yellows_added ?? 0} yellow, +${lastDiscipline.reds_added ?? 0} red.`;
+    }
+  } else if (lastDiscipline?.error) {
+    msg += ` Card seeding failed: ${lastDiscipline.error}`;
+  }
   if (totalErrors) {
     const lines = Object.entries(errorSummary).map(([text, cnt]) => `${cnt}× ${text}`);
     msg += ` ${totalErrors} error(s): ${lines.join(" | ") || "see console"}`;
   }
-  setStatus("deployStatus", msg, totalErrors === 0);
+  setStatus("deployStatus", msg, totalErrors === 0 && !lastDiscipline?.error);
   await runPreview();
 }
 

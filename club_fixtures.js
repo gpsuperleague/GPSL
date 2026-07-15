@@ -67,6 +67,8 @@ function formatContributions(contributions) {
   const scorers = rows.filter((r) => (r.goals || 0) > 0);
   const assisters = rows.filter((r) => (r.assists || 0) > 0);
   const potm = rows.find((r) => r.is_player_of_match);
+  const yellows = rows.filter((r) => r.yellow_card);
+  const reds = rows.filter((r) => r.red_card);
 
   const fmtList = (list, field) =>
     list
@@ -77,11 +79,29 @@ function formatContributions(contributions) {
       })
       .join(", ") || "—";
 
+  const fmtNames = (list) =>
+    list.map((r) => r.player_name || r.player_id || "—").join(", ") || "—";
+
   return {
     scorers: fmtList(scorers, "goals"),
     assists: fmtList(assisters, "assists"),
-    potm: potm ? (potm.player_name || potm.player_id) : "—",
+    potm: potm ? potm.player_name || potm.player_id : "—",
+    yellows: fmtNames(yellows),
+    reds: fmtNames(reds),
   };
+}
+
+function formatInjuries(injuries) {
+  const rows = Array.isArray(injuries) ? injuries : [];
+  if (!rows.length) return "—";
+  return rows
+    .map((r) => {
+      const name = r.player_name || r.player_id || "—";
+      const label = r.label || "Injury";
+      const sev = r.severity ? ` (${r.severity})` : "";
+      return `${name} — ${label}${sev}`;
+    })
+    .join("; ");
 }
 
 function matchLineHtml(f) {
@@ -134,7 +154,10 @@ function fixtureCardHtml(f) {
 
   let playedBlock = "";
   if (f.status === "played") {
-    const { scorers, assists, potm } = formatContributions(f.match_contributions);
+    const { scorers, assists, potm, yellows, reds } = formatContributions(
+      f.match_contributions
+    );
+    const injuries = formatInjuries(f.match_injuries);
     const leaguePos =
       isLeague && f.league_position != null
         ? `${ordinal(f.league_position)} in ${DIVISION_LABELS[f.division] || f.division}`
@@ -165,6 +188,18 @@ function fixtureCardHtml(f) {
         <div>
           <div class="label">Player of the match</div>
           <div class="value potm">${potm === "—" ? potm : `⭐ ${potm}`}</div>
+        </div>
+        <div>
+          <div class="label">Yellow cards</div>
+          <div class="value card-yellow">${yellows}</div>
+        </div>
+        <div>
+          <div class="label">Red cards</div>
+          <div class="value card-red">${reds}</div>
+        </div>
+        <div>
+          <div class="label">Injuries</div>
+          <div class="value injury">${injuries}</div>
         </div>
       </div>
     `;
@@ -379,7 +414,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (error) {
       console.error("club_fixtures_my_club:", error);
       showError(
-        "Could not load club fixtures. Run supabase/sql/patches/club_fixtures_my_club.sql in Supabase, then refresh."
+        "Could not load club fixtures. Run supabase/sql/patches/club_fixtures_discipline_injuries.sql in Supabase, then refresh."
       );
       root.innerHTML = '<p class="empty">Fixtures unavailable.</p>';
       return;
