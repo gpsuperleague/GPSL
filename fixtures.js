@@ -48,6 +48,8 @@ const FIXTURE_TABLE_HEAD = `
 `;
 
 function homeStadium(fixture) {
+  const venue = String(fixture?.venue_name || "").trim();
+  if (venue) return venue;
   return stadiumName(fixture.home_club_short_name);
 }
 

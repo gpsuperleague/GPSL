@@ -155,14 +155,17 @@ export function formatFixtureContinent(fixture) {
   return CONTINENT_LABELS[fixture.home_continent] || fixture.home_continent || "—";
 }
 
-/** Stadium label for fixtures table (home venue). */
+/** Stadium label for fixtures table (home venue, or neutral e.g. Wembley). */
 export function fixtureStadiumLabel(fixture, myClubShort, homeStadiumName) {
   if (!fixture) return "—";
+  const neutral = String(fixture.venue_name || "").trim();
   const name =
+    neutral ||
     homeStadiumName ||
     fixture.home_club_name ||
     fixture.home_club_short_name ||
     "—";
+  if (neutral) return name;
   const home = (fixture.home_club_short_name || "").trim().toUpperCase();
   const mine = (myClubShort || "").trim().toUpperCase();
   if (mine && home === mine) return name;

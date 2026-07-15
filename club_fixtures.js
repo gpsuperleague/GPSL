@@ -150,7 +150,7 @@ function fixtureCardHtml(f) {
   const weather = formatWeatherLabel(f.weather);
   const pitch = formatPitchLabel(f.pitch_condition);
   const continent = formatFixtureContinent(f);
-  const stadium = fixtureStadiumLabel(f, myClub.short, null);
+  const stadium = fixtureStadiumLabel(f, myClub.short, f.venue_name || null);
 
   let playedBlock = "";
   if (f.status === "played") {
