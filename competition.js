@@ -548,7 +548,7 @@ export async function loadCupMatchExtras(supabase, fixtureIds) {
       .from("competition_finance_ledger_public")
       .select("fixture_id, club_short_name, club_name, entry_type, amount, description")
       .in("fixture_id", ids)
-      .in("entry_type", ["gate_cup_share", "prize", "prize_cup"]),
+      .in("entry_type", ["gate_cup_share", "prize", "prize_cup", "tv_revenue"]),
     supabase
       .from("competition_fixtures")
       .select("id, cup_pen_winner_club_short_name, home_goals, away_goals, home_club_short_name, away_club_short_name")
@@ -632,15 +632,16 @@ export function formatCupMatchFinance(match, extras) {
   for (const row of rows) {
     const key = row.club_short_name;
     if (!byClub.has(key)) {
-      byClub.set(key, { club: row.club_name || key, gate: 0, prize: 0 });
+      byClub.set(key, { club: row.club_name || key, gate: 0, prize: 0, tv: 0 });
     }
     const bucket = byClub.get(key);
     const amt = Number(row.amount) || 0;
     if (row.entry_type === "gate_cup_share") bucket.gate += amt;
     else if (row.entry_type === "prize" || row.entry_type === "prize_cup") bucket.prize += amt;
+    else if (row.entry_type === "tv_revenue") bucket.tv += amt;
   }
 
-  return [...byClub.values()].filter((c) => c.gate > 0 || c.prize > 0);
+  return [...byClub.values()].filter((c) => c.gate > 0 || c.prize > 0 || c.tv > 0);
 }
 
 export async function loadFixtureCountsForSeason(supabase, seasonId) {

@@ -22,6 +22,7 @@ import {
 import { loadCalendarStatus, isGpslMonthCurrentlyPlayable } from "./competition_calendar.js";
 import { formatMatchConditions } from "./competition_conditions.js";
 import { applyCupPageTheme, renderCupHero } from "./trophy_assets.js";
+import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 
 function cupFromUrl() {
   const raw = new URLSearchParams(window.location.search).get("cup");
@@ -114,6 +115,7 @@ function renderFinanceHtml(financeRows) {
     .map((c) => {
       const parts = [];
       if (c.gate > 0) parts.push(`<span class="fin-gate">Gate ${formatMoney(c.gate)}</span>`);
+      if (c.tv > 0) parts.push(`<span class="fin-tv">TV ${formatMoney(c.tv)}</span>`);
       if (c.prize > 0) parts.push(`<span class="fin-prize">Prize ${formatMoney(c.prize)}</span>`);
       return `<div class="club-fin"><b>${escapeHtml(c.club)}</b> — ${parts.join(" · ")}</div>`;
     })
@@ -145,10 +147,21 @@ function matchVenueLabel(m) {
   return String(m?.venue_name || "").trim();
 }
 
+function matchTvBadgeHtml(m) {
+  const stage = String(m?.round_stage || "").toLowerCase();
+  const label = String(m?.round_label || "").toLowerCase();
+  if (stage === "final" || label === "final") {
+    return '<span class="tv-fixture-badge" title="Cup final — always on TV">📺</span>';
+  }
+  return m?.fixture_id ? tvFixtureBadgeHtml(m.fixture_id) : "";
+}
+
 function renderVenueHtml(m) {
   const venue = matchVenueLabel(m);
-  if (!venue) return "";
-  return `<div class="match-venue">${escapeHtml(venue)}</div>`;
+  const tv = matchTvBadgeHtml(m);
+  if (!venue && !tv) return "";
+  if (!venue) return `<div class="match-venue">${tv}</div>`;
+  return `<div class="match-venue">${tv}${tv ? " " : ""}${escapeHtml(venue)}</div>`;
 }
 
 function renderLegPane(leg, extras, opts) {
@@ -356,6 +369,8 @@ async function renderCup() {
       : `<span class="empty">No archived bracket for ${escapeHtml(archiveSeason)} ${escapeHtml(CUP_LABELS[currentCup] || currentCup)}.</span>`;
     const fixtureIds = nodes.map((n) => n.fixture_id).filter(Boolean);
     const extras = await loadCupMatchExtras(supabase, fixtureIds);
+    const seasonId = nodes[0]?.season_id;
+    if (seasonId) await loadTvFixtureIds(supabase, seasonId);
     renderBracket(nodes, extras);
     return;
   }
@@ -371,6 +386,8 @@ async function renderCup() {
   const nodes = await loadCupBracket(supabase, currentCup);
   const fixtureIds = nodes.map((n) => n.fixture_id).filter(Boolean);
   const extras = await loadCupMatchExtras(supabase, fixtureIds);
+  const seasonId = nodes[0]?.season_id;
+  if (seasonId) await loadTvFixtureIds(supabase, seasonId);
   renderBracket(nodes, extras);
 }
 
