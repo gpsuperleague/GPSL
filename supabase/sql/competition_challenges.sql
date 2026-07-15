@@ -95,6 +95,23 @@ BEGIN
 END;
 $ledger_types$;
 
+-- Ensure challenge columns exist; do NOT shrink global_settings_public
+-- (older versions of this file dropped manager/club draft columns from the view).
+ALTER TABLE public.global_settings
+  ADD COLUMN IF NOT EXISTS challenge_default_prize numeric(14, 2) NOT NULL DEFAULT 1000000,
+  ADD COLUMN IF NOT EXISTS challenge_period_bonus numeric(14, 2) NOT NULL DEFAULT 5000000,
+  ADD COLUMN IF NOT EXISTS manager_draft_auction_enabled boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS club_auction_enabled boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS league_phase text,
+  ADD COLUMN IF NOT EXISTS wage_34plus_min_rating smallint NOT NULL DEFAULT 34,
+  ADD COLUMN IF NOT EXISTS wage_34plus_per_player numeric(14, 2) NOT NULL DEFAULT 500000,
+  ADD COLUMN IF NOT EXISTS star_tax_min_rating smallint NOT NULL DEFAULT 70,
+  ADD COLUMN IF NOT EXISTS star_tax_per_player numeric(14, 2) NOT NULL DEFAULT 1000000,
+  ADD COLUMN IF NOT EXISTS emergency_tac_pct numeric(6, 3) NOT NULL DEFAULT 10.000,
+  ADD COLUMN IF NOT EXISTS emergency_tac_threshold numeric(14, 2) NOT NULL DEFAULT 100000000,
+  ADD COLUMN IF NOT EXISTS gov_income_tax_pct numeric(6, 3) NOT NULL DEFAULT 0.000;
+
+-- Restore full public view (same as repair_global_settings_public.sql)
 DROP VIEW IF EXISTS public.global_settings_public;
 
 CREATE VIEW public.global_settings_public
@@ -104,8 +121,11 @@ SELECT
   id,
   transfer_window_open,
   draft_auction_enabled,
+  manager_draft_auction_enabled,
+  club_auction_enabled,
   draft_auction_start_time,
   updated_at,
+  league_phase,
   wage_pct_superleague,
   wage_pct_championship,
   stadium_cost_tier1,
@@ -142,11 +162,47 @@ SELECT
   tv_weight_dry_spell,
   tv_weight_below_min,
   challenge_default_prize,
-  challenge_period_bonus
+  challenge_period_bonus,
+  wage_34plus_min_rating,
+  wage_34plus_per_player,
+  star_tax_min_rating,
+  star_tax_per_player,
+  emergency_tac_pct,
+  emergency_tac_threshold,
+  gov_income_tax_pct,
+  (
+    COALESCE(draft_auction_enabled, false)
+    AND draft_auction_start_time IS NOT NULL
+    AND draft_random_finish_time IS NOT NULL
+    AND now() >= draft_auction_start_time
+    AND now() < draft_random_finish_time
+  ) AS draft_bidding_open,
+  (
+    COALESCE(manager_draft_auction_enabled, false)
+    AND draft_auction_start_time IS NOT NULL
+    AND draft_random_finish_time IS NOT NULL
+    AND now() >= draft_auction_start_time
+    AND now() < draft_random_finish_time
+  ) AS manager_draft_bidding_open,
+  (
+    COALESCE(club_auction_enabled, false)
+    AND draft_auction_start_time IS NOT NULL
+    AND draft_random_finish_time IS NOT NULL
+    AND now() >= draft_auction_start_time
+    AND now() < draft_random_finish_time
+  ) AS club_auction_bidding_open,
+  CASE
+    WHEN draft_random_finish_time IS NOT NULL
+     AND now() >= draft_random_finish_time
+    THEN draft_random_finish_time
+    ELSE NULL
+  END AS draft_random_finish_revealed
 FROM public.global_settings;
 
 GRANT SELECT ON public.global_settings_public TO authenticated;
 GRANT SELECT ON public.global_settings_public TO anon;
+
+NOTIFY pgrst, 'reload schema';
 
 -- ---------------------------------------------------------------------------
 -- Challenge config + awards
