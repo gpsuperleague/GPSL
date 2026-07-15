@@ -97,6 +97,9 @@
     .score-lines { margin:6px 0; padding:6px 8px; background:#1a1a1a; border-radius:4px; }
     .score-lines div { font-size:11px; color:#ccc; margin:2px 0; }
     .score-lines span.lbl { color:#888; display:inline-block; min-width:52px; }
+    .match-venue, .leg-pane .match-venue {
+      font-size:10px; color:#9ab; margin:2px 0 4px; line-height:1.3;
+    }
     .match-winner { color:#8d8; font-size:11px; margin-top:4px; }
     .match-finance { margin-top:8px; border-top:1px solid #333; padding-top:6px; }
     .match-finance .club-fin { font-size:10px; color:#aaa; margin:3px 0; }
@@ -128,7 +131,7 @@
       <h2>Knockout bracket</h2>
       <p class="meta" style="margin-top:0;">
         Progression left → right. Scores show 90 minutes, after extra time, and penalty shootout winner when applicable.
-        Gate receipts and prize money appear after results are confirmed.
+        Stadium is the home venue for each tie (cup finals at Wembley). Gate receipts and prize money appear after results are confirmed.
       </p>
       <div id="bracketRoot"></div>
     </div>
@@ -140,6 +143,6 @@
       International: <a href="world_cup.html">World Cup</a> · <a href="nation_select.html">Nation selection</a>.
     </p>
   </div>
-  <script type="module" src="cups.js?v=20260715-awaiting-opp"></script>
+  <script type="module" src="cups.js?v=20260715-venue"></script>
 </body>
 </html>

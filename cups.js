@@ -141,6 +141,16 @@ function legPlayable(leg, extras, { leg1Played = true } = {}) {
   return { playable: false, reason: "Scheduled" };
 }
 
+function matchVenueLabel(m) {
+  return String(m?.venue_name || "").trim();
+}
+
+function renderVenueHtml(m) {
+  const venue = matchVenueLabel(m);
+  if (!venue) return "";
+  return `<div class="match-venue">${escapeHtml(venue)}</div>`;
+}
+
 function renderLegPane(leg, extras, opts) {
   if (!leg) {
     return `<div class="leg-pane leg-empty"><div class="leg-label">${escapeHtml(opts.legLabel)}</div><div class="leg-teams">TBD <span class="vs">vs</span> TBD</div></div>`;
@@ -170,6 +180,7 @@ function renderLegPane(leg, extras, opts) {
     <div class="leg-pane ${isMyMatch(leg) ? "my-club" : ""} ${played ? "played" : ""}">
       <div class="leg-label">${escapeHtml(opts.legLabel)}</div>
       <div class="leg-teams">${escapeHtml(home)}<span class="vs">vs</span>${escapeHtml(away)}</div>
+      ${renderVenueHtml(leg)}
       ${conditions ? `<div class="leg-conditions" style="font-size:11px;color:#888;margin:4px 0;">${escapeHtml(conditions)}</div>` : ""}
       ${renderScoreLinesHtml(scoreLines)}
       ${actionHtml}
@@ -269,6 +280,7 @@ function renderMatchCard(m, extras, roundNo) {
     <div class="bracket-match ${isMyMatch(m) ? "my-club" : ""} ${played ? "played" : ""}">
       <div class="match-status">M${m.match_no} · ${escapeHtml(status)}</div>
       <div class="match-teams">${escapeHtml(home)}<span class="vs">vs</span>${escapeHtml(away)}</div>
+      ${renderVenueHtml(m)}
       ${conditions ? `<div class="match-conditions" style="font-size:11px;color:#888;margin:4px 0;">${escapeHtml(conditions)}</div>` : ""}
       ${renderScoreLinesHtml(scoreLines)}
       ${actionHtml}
