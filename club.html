@@ -5,6 +5,7 @@
   <title>Club Squad</title>
 
   <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="history_trophy_cabinet.css?v=20260715-club-cabinet">
 
   <style>
     body {
@@ -436,6 +437,18 @@
 
   <div id="windowNote" class="window-closed-note"></div>
 
+  <h2 class="section-title">Trophy cabinet</h2>
+  <div class="panel panel-bg panel-history" style="margin-top:0;">
+    <p class="window-closed-note" style="margin:0 0 12px;color:#999;font-style:normal;">
+      League titles and cup wins appear here when the season is <b>archived</b>
+      (not as soon as the final is played).
+      <a href="history.html" style="color:#6cf;">Full club history</a>
+      ·
+      <a href="history_trophy_preview.html" style="color:#6cf;">Cabinet preview</a>
+    </p>
+    <div id="clubTrophyCabinet"><span style="color:#777;font-style:italic;">Loading…</span></div>
+  </div>
+
   <div id="squadContainer"></div>
 
   <!-- Offer Modal -->
@@ -512,6 +525,7 @@
       playerNameLinkHtml,
       pesdbPlayerCardUrl,
     } from "./player_links.js";
+    import { renderTrophyCabinet } from "./history_trophies.js";
 
     let transferWindowOpen = false;
     let buyerShortName = null;
@@ -539,6 +553,7 @@
       await loadTransferWindowStatus();
       await loadBuyerClubShortName(user.id);
       await loadClub();
+      await loadClubTrophyCabinet();
       transferStatusState = await loadTransferStatusState(supabase);
       await loadPlayers();
       setupModalHandlers();
@@ -615,6 +630,38 @@
           ${managerLine}
         </div>
       `;
+    }
+
+    async function loadClubTrophyCabinet() {
+      const el = document.getElementById("clubTrophyCabinet");
+      if (!el) return;
+
+      if (!clubShortName) {
+        el.innerHTML =
+          '<p style="color:#777;font-style:italic;margin:0;">Club not found — no trophy cabinet.</p>';
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("competition_club_honours_public")
+        .select(
+          "club_short_name, season_label, season_id, honour_type, honour_label, division, cup_code, honoured_at"
+        )
+        .eq("club_short_name", clubShortName)
+        .order("honoured_at", { ascending: false });
+
+      if (error) {
+        console.warn("Trophy cabinet:", error.message);
+        el.innerHTML =
+          `<p style="color:#c99;margin:0;">Could not load honours` +
+          (String(error.message || "").includes("competition_club_honours")
+            ? " — run competition_history.sql in Supabase if missing."
+            : `: ${error.message}`) +
+          `</p>`;
+        return;
+      }
+
+      el.innerHTML = renderTrophyCabinet(data || []);
     }
 
     async function loadClubManagerLine(clubShort) {
