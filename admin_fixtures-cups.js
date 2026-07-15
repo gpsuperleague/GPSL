@@ -306,11 +306,11 @@ async function repairCupAdvancement() {
   }
 
   const d = data || {};
-  const unresolved = Array.isArray(d.still_unresolved_r1) ? d.still_unresolved_r1 : [];
-  const incomplete = Array.isArray(d.still_incomplete) ? d.still_incomplete : [];
+  const unresolved = Array.isArray(d?.still_unresolved_r1) ? d.still_unresolved_r1 : [];
+  const incomplete = Array.isArray(d?.still_incomplete) ? d.still_incomplete : [];
   const r1Hint =
     unresolved.length > 0
-      ? ` Blocked by ${unresolved.length} unfinished Last 64: ` +
+      ? ` Blocked by ${unresolved.length} unfinished opening-round tie(s): ` +
         unresolved
           .slice(0, 6)
           .map((t) => `M${t.match_no} ${t.home || "?"} vs ${t.away || "?"}`)
@@ -320,13 +320,14 @@ async function repairCupAdvancement() {
       : "";
   const incompleteHint =
     !r1Hint && incomplete.length > 0
-      ? ` Still ${incomplete.length} incomplete later-round slot(s) (check still_incomplete in SQL diagnose).`
+      ? ` Still ${incomplete.length} incomplete later-round slot(s).`
       : "";
 
   setStatus(
     "compCupStatus",
-    `✅ Force fill: relinked ${d.fixtures_relinked ?? 0}, winners ${d.winners_synced ?? 0}, ` +
-      `byes ${d.bye_winners_set ?? 0}, slots filled ${d.child_slots_force_filled ?? 0}, ` +
+    `✅ Force fill: relinked ${d.fixtures_relinked ?? 0}, winners ${d.winners_synced ?? 0}` +
+      (d.two_leg_winners_synced != null ? `, two-leg ${d.two_leg_winners_synced}` : "") +
+      `, byes ${d.bye_winners_set ?? 0}, slots filled ${d.child_slots_force_filled ?? 0}, ` +
       `fixtures created ${d.fixtures_created ?? 0}. ${d.note || ""}${r1Hint}${incompleteHint}`,
     unresolved.length === 0 && incomplete.length === 0
   );
