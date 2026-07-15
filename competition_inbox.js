@@ -6,6 +6,7 @@ import { normalizeClubKey } from "./competition.js";
 export const INBOX_CATEGORY_FILTERS = [
   { id: "all", label: "All" },
   { id: "fixture_management", label: "Fixture management" },
+  { id: "fines", label: "Fines" },
   { id: "auctions", label: "Auctions" },
   { id: "transfers_in", label: "Transfers in" },
   { id: "transfers_out", label: "Transfers out" },
@@ -33,6 +34,7 @@ const INBOX_CATEGORY_TYPES = {
     "intl_result_to_confirm",
     "intl_kickoff_proposal",
   ]),
+  fines: new Set(["fine_applied"]),
   auctions: new Set(["draft_scheduled", "special_auction_scheduled"]),
   transfers_in: new Set(["transfer_signed"]),
   transfers_out: new Set(["transfer_sold", "underperformance_transfer"]),
@@ -43,6 +45,7 @@ const INBOX_TYPED_CATEGORIES = Object.values(INBOX_CATEGORY_TYPES);
 export function inboxMessageCategory(messageType) {
   const t = String(messageType || "");
   if (INBOX_CATEGORY_TYPES.fixture_management.has(t)) return "fixture_management";
+  if (INBOX_CATEGORY_TYPES.fines.has(t)) return "fines";
   if (INBOX_CATEGORY_TYPES.auctions.has(t)) return "auctions";
   if (INBOX_CATEGORY_TYPES.transfers_in.has(t)) return "transfers_in";
   if (INBOX_CATEGORY_TYPES.transfers_out.has(t)) return "transfers_out";
