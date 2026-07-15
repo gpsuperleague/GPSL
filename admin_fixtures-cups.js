@@ -237,6 +237,8 @@ async function drawCompetitionCup() {
       : await supabase.rpc("competition_draw_prestige_cup", {
           p_season_id: seasonId,
           p_cup_code: cup,
+          p_player_order: null,
+          p_bye_match_nos: null,
         });
 
   if (result.error) {

@@ -371,6 +371,7 @@ BEGIN
 END;
 $function$;
 
+DROP FUNCTION IF EXISTS public.competition_draw_prestige_cup(bigint, text);
 DROP FUNCTION IF EXISTS public.competition_draw_prestige_cup(bigint, text, text[]);
 DROP FUNCTION IF EXISTS public.competition_draw_prestige_cup(bigint, text, text[], int[]);
 
