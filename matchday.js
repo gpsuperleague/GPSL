@@ -286,6 +286,55 @@ function isCupFixture(fixture) {
   return fixture?.competition_type === "cup";
 }
 
+/** First leg of a two-legged cup tie (Super8 / Bowl QF, etc.). */
+function isTwoLegFirstLeg(fixture, allFixtures = []) {
+  if (!isCupFixture(fixture) || Number(fixture.cup_leg || 1) !== 1) return false;
+  if (
+    allFixtures.some(
+      (x) =>
+        x.competition_type === "cup" &&
+        x.cup_code === fixture.cup_code &&
+        x.cup_round === fixture.cup_round &&
+        x.cup_match === fixture.cup_match &&
+        Number(x.cup_leg || 1) === 2
+    )
+  ) {
+    return true;
+  }
+  // Fallback when sibling isn't in this club's open list
+  return fixture.cup_code === "super8" || fixture.cup_code === "bowl";
+}
+
+function isTwoLegSecondLeg(fixture) {
+  return isCupFixture(fixture) && Number(fixture.cup_leg || 1) === 2;
+}
+
+/** Aggregate from tie-home (1st-leg home) perspective after 2nd-leg open-play totals. */
+function twoLegAggregate(leg1, leg2HomeOpen, leg2AwayOpen) {
+  const l1h = Number(leg1?.home_goals);
+  const l1a = Number(leg1?.away_goals);
+  if (!Number.isFinite(l1h) || !Number.isFinite(l1a)) return null;
+  return {
+    tieHome: l1h + Number(leg2AwayOpen || 0),
+    tieAway: l1a + Number(leg2HomeOpen || 0),
+  };
+}
+
+function cupNeedsEtPens(fixture, home90, away90, leg1Companion = null) {
+  if (!isCupFixture(fixture)) return false;
+  if (isTwoLegFirstLeg(fixture, upcomingFixtures)) return false;
+  if (isTwoLegSecondLeg(fixture)) {
+    if (!leg1Companion || leg1Companion.status !== "played") return false;
+    const agg = twoLegAggregate(leg1Companion, home90, away90);
+    return !!agg && agg.tieHome === agg.tieAway;
+  }
+  return (
+    Number.isFinite(home90) && Number.isFinite(away90) && home90 === away90
+  );
+}
+
+let leg1CompanionFixture = null;
+
 function readScoreInput(id) {
   const el = document.getElementById(id);
   if (!el || el.disabled) return NaN;
@@ -330,7 +379,23 @@ function updateCupScoreSections() {
   const etRow = document.getElementById("cupEtRow");
   const penRow = document.getElementById("cupPenRow");
 
-  if (hint) hint.style.display = isCup ? "block" : "none";
+  if (hint) {
+    if (!isCup) {
+      hint.style.display = "none";
+    } else if (isTwoLegFirstLeg(f, upcomingFixtures)) {
+      hint.style.display = "block";
+      hint.innerHTML =
+        "1st leg — enter the score after <b>90 minutes</b>. Draws are allowed; no extra time or penalties.";
+    } else if (isTwoLegSecondLeg(f)) {
+      hint.style.display = "block";
+      hint.innerHTML =
+        "2nd leg — enter the score after <b>90 minutes</b>. If the <b>tie is level on aggregate</b>, enter extra time (then pens if still level).";
+    } else {
+      hint.style.display = "block";
+      hint.innerHTML =
+        "Cup match — enter the score after <b>90 minutes</b> first.";
+    }
+  }
 
   if (!isCup || !etRow || !penRow) {
     if (etRow) etRow.style.display = "none";
@@ -340,10 +405,9 @@ function updateCupScoreSections() {
 
   const home90 = readScoreInput("homeGoals");
   const away90 = readScoreInput("awayGoals");
-  const level90 =
-    Number.isFinite(home90) && Number.isFinite(away90) && home90 === away90;
+  const needsDecider = cupNeedsEtPens(f, home90, away90, leg1CompanionFixture);
 
-  if (!level90) {
+  if (!needsDecider) {
     etRow.style.display = "none";
     penRow.style.display = "none";
     resetCupExtraScores();
@@ -351,6 +415,18 @@ function updateCupScoreSections() {
   }
 
   etRow.style.display = "block";
+  const etHint = etRow.querySelector(".stats-hint");
+  if (etHint && isTwoLegSecondLeg(f)) {
+    const agg = twoLegAggregate(leg1CompanionFixture, home90, away90);
+    etHint.innerHTML =
+      `Level on aggregate${agg ? ` (${agg.tieHome}–${agg.tieAway})` : ""} after 90 min — enter the <b>total score after extra time</b> ` +
+      `(90 min goals carry over; e.g. 2–2 then <b>4–4</b> here, not 2–2 again).`;
+  } else if (etHint) {
+    etHint.innerHTML =
+      "Level after 90 min — enter the <b>total score after extra time</b> " +
+      "(90 min goals carry over; e.g. 2–2 then <b>4–4</b> here, not 2–2 again).";
+  }
+
   document.getElementById("etHomeLabel").textContent =
     document.getElementById("homeLabel").textContent + " ET";
   document.getElementById("etAwayLabel").textContent =
@@ -376,13 +452,28 @@ function updateCupScoreSections() {
   });
 
   if (preview) {
-    preview.textContent = `After extra time: ${homeTotal}–${awayTotal} (90 min was ${home90}–${away90})`;
+    if (isTwoLegSecondLeg(f) && leg1CompanionFixture) {
+      const aggEt = twoLegAggregate(leg1CompanionFixture, homeTotal, awayTotal);
+      preview.textContent =
+        `After extra time: ${homeTotal}–${awayTotal} (90 min was ${home90}–${away90})` +
+        (aggEt ? ` · Aggregate ${aggEt.tieHome}–${aggEt.tieAway}` : "");
+    } else {
+      preview.textContent = `After extra time: ${homeTotal}–${awayTotal} (90 min was ${home90}–${away90})`;
+    }
   }
 
-  const levelAfterOpenPlay = homeTotal === awayTotal;
+  const stillLevel = isTwoLegSecondLeg(f)
+    ? cupNeedsEtPens(f, homeTotal, awayTotal, leg1CompanionFixture)
+    : homeTotal === awayTotal;
 
-  if (levelAfterOpenPlay) {
+  if (stillLevel) {
     penRow.style.display = "block";
+    const penHint = penRow.querySelector(".stats-hint");
+    if (penHint) {
+      penHint.innerHTML = isTwoLegSecondLeg(f)
+        ? "Still level on aggregate after extra time — who won the <b>penalty shootout</b>?"
+        : "Still level on open play — who won the <b>penalty shootout</b>?";
+    }
     const homeName = document.getElementById("homeLabel").textContent;
     const awayName = document.getElementById("awayLabel").textContent;
     document.getElementById("penWinnerHomeLabel").textContent = homeName;
@@ -420,37 +511,62 @@ function validateEtNotBelow90(home90, away90, etHome, etAway) {
   return null;
 }
 
-function validateCupScores(home90, away90, cupExtra) {
-  if (home90 !== away90) {
+function validateCupScores(fixture, home90, away90, cupExtra, leg1 = null) {
+  if (isTwoLegFirstLeg(fixture, upcomingFixtures)) {
     if (
       cupExtra?.etHome != null ||
       cupExtra?.etAway != null ||
       cupExtra?.penWinner
     ) {
-      return "Extra time and penalties only when level after 90 minutes.";
+      return "Extra time and penalties are only used in the 2nd leg (if aggregate is level).";
+    }
+    return null;
+  }
+
+  const needsAfter90 = cupNeedsEtPens(fixture, home90, away90, leg1);
+
+  if (!needsAfter90) {
+    if (
+      cupExtra?.etHome != null ||
+      cupExtra?.etAway != null ||
+      cupExtra?.penWinner
+    ) {
+      return isTwoLegSecondLeg(fixture)
+        ? "Extra time and penalties only when the tie is level on aggregate after 90 minutes."
+        : "Extra time and penalties only when level after 90 minutes.";
     }
     return null;
   }
 
   if (cupExtra?.etHome == null || cupExtra?.etAway == null) {
-    return "Cup draw after 90 minutes — enter total score after extra time.";
+    return isTwoLegSecondLeg(fixture)
+      ? "Tie level on aggregate after 90 minutes — enter total score after extra time."
+      : "Cup draw after 90 minutes — enter total score after extra time.";
   }
 
   const etErr = validateEtNotBelow90(home90, away90, cupExtra.etHome, cupExtra.etAway);
   if (etErr) return etErr;
 
   const { home, away } = openPlayTotals(home90, away90, cupExtra);
-  if (home === away && !cupExtra.penWinner) {
-    return "Still level after extra time — select who won the penalty shootout.";
+  const stillLevel = cupNeedsEtPens(fixture, home, away, leg1);
+
+  if (stillLevel && !cupExtra.penWinner) {
+    return isTwoLegSecondLeg(fixture)
+      ? "Still level on aggregate after extra time — select who won the penalty shootout."
+      : "Still level after extra time — select who won the penalty shootout.";
   }
-  if (home !== away && cupExtra.penWinner) {
-    return "Penalty shootout only when still level after extra time.";
+  if (!stillLevel && cupExtra.penWinner) {
+    return isTwoLegSecondLeg(fixture)
+      ? "Penalty shootout only when still level on aggregate after extra time."
+      : "Penalty shootout only when still level after extra time.";
   }
   return null;
 }
 
-function buildCupExtraForSubmit(fixture, home90, away90) {
-  if (home90 !== away90) return { cupExtra: null };
+function buildCupExtraForSubmit(fixture, home90, away90, leg1 = null) {
+  if (!cupNeedsEtPens(fixture, home90, away90, leg1)) {
+    return { cupExtra: null };
+  }
 
   const etHome = readScoreInput("etHomeGoals");
   const etAway = readScoreInput("etAwayGoals");
@@ -464,7 +580,7 @@ function buildCupExtraForSubmit(fixture, home90, away90) {
   const cupExtra = { etHome, etAway };
   const { home, away } = openPlayTotals(home90, away90, cupExtra);
 
-  if (home === away) {
+  if (cupNeedsEtPens(fixture, home, away, leg1)) {
     const penWinner = readPenWinnerClub(fixture);
     if (!penWinner) {
       return { error: "Select who won the penalty shootout." };
@@ -616,7 +732,7 @@ function expectedTeamGoalsForStats() {
   }
 
   let cupExtra = null;
-  if (isCupFixture(f) && homeGoals === awayGoals) {
+  if (isCupFixture(f) && cupNeedsEtPens(f, homeGoals, awayGoals, leg1CompanionFixture)) {
     const etHome = readScoreInput("etHomeGoals");
     const etAway = readScoreInput("etAwayGoals");
     if (!Number.isFinite(etHome) || !Number.isFinite(etAway)) {
@@ -1196,6 +1312,44 @@ function showNoFixturesHelp() {
   setScoreInputsEnabled(false);
 }
 
+async function loadLeg1Companion(fixture) {
+  leg1CompanionFixture = null;
+  if (!isTwoLegSecondLeg(fixture)) return null;
+
+  const fromList = upcomingFixtures.find(
+    (x) =>
+      x.competition_type === "cup" &&
+      x.cup_code === fixture.cup_code &&
+      x.cup_round === fixture.cup_round &&
+      x.cup_match === fixture.cup_match &&
+      Number(x.cup_leg || 1) === 1
+  );
+  if (fromList?.status === "played" && fromList.home_goals != null) {
+    leg1CompanionFixture = fromList;
+    return leg1CompanionFixture;
+  }
+
+  const { data, error } = await supabase
+    .from("competition_fixtures_public")
+    .select(
+      "id, status, home_goals, away_goals, home_club_short_name, away_club_short_name, home_club_name, away_club_name, cup_code, cup_round, cup_match, cup_leg, season_id"
+    )
+    .eq("season_id", fixture.season_id)
+    .eq("competition_type", "cup")
+    .eq("cup_code", fixture.cup_code)
+    .eq("cup_round", fixture.cup_round)
+    .eq("cup_match", fixture.cup_match)
+    .eq("cup_leg", 1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("loadLeg1Companion:", error.message);
+    return null;
+  }
+  leg1CompanionFixture = data || null;
+  return leg1CompanionFixture;
+}
+
 async function updateFixturePreview() {
   const f = selectedFixture();
   const preview = document.getElementById("fixturePreview");
@@ -1204,11 +1358,14 @@ async function updateFixturePreview() {
     preview.textContent = "Select a fixture from the list above.";
     fixtureUnavailable = null;
     myUnavailableIds = new Set();
+    leg1CompanionFixture = null;
     setScoreInputsEnabled(false);
     confirmMode = null;
     applyConfirmModeUI();
     return;
   }
+
+  await loadLeg1Companion(f);
 
   const month = GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month;
   const comp = formatFixtureCompetition(f);
@@ -1228,6 +1385,14 @@ async function updateFixturePreview() {
     }
   }
 
+  let aggregateHtml = "";
+  if (isTwoLegSecondLeg(f) && leg1CompanionFixture?.status === "played") {
+    const l1 = leg1CompanionFixture;
+    aggregateHtml =
+      `<br><span style="color:#9cf;font-size:13px;">1st leg: ${l1.home_club_name || l1.home_club_short_name} ` +
+      `${l1.home_goals}–${l1.away_goals} ${l1.away_club_name || l1.away_club_short_name}</span>`;
+  }
+
   fixtureUnavailable = await loadFixtureUnavailable(supabase, f.id);
   myUnavailableIds = unavailablePlayerIdsForClub(fixtureUnavailable, myClub.short);
   const unavailableHtml = formatFixtureUnavailableHtml(fixtureUnavailable, {
@@ -1238,7 +1403,7 @@ async function updateFixturePreview() {
   preview.innerHTML = `
     <b>${comp}</b>${f.competition_type === "league" ? ` · Matchday ${f.matchday}` : ""} · ${month}<br>
     ${f.home_club_name} vs ${f.away_club_name}<br>
-    <span style="color:#aaa;font-size:13px;">${formatMatchConditions(f)}</span>${extra}
+    <span style="color:#aaa;font-size:13px;">${formatMatchConditions(f)}</span>${extra}${aggregateHtml}
     ${unavailableHtml}
   `;
 
@@ -1417,13 +1582,19 @@ async function submitResult() {
 
   let cupExtra = null;
   if (isCupFixture(f)) {
-    const built = buildCupExtraForSubmit(f, homeGoals, awayGoals);
+    const built = buildCupExtraForSubmit(f, homeGoals, awayGoals, leg1CompanionFixture);
     if (built?.error) {
       setStatus("submitStatus", built.error, true);
       return;
     }
     cupExtra = built?.cupExtra ?? null;
-    const cupErr = validateCupScores(homeGoals, awayGoals, cupExtra || {});
+    const cupErr = validateCupScores(
+      f,
+      homeGoals,
+      awayGoals,
+      cupExtra || {},
+      leg1CompanionFixture
+    );
     if (cupErr) {
       setStatus("submitStatus", cupErr, true);
       return;
