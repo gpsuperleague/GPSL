@@ -1,17 +1,10 @@
 -- =============================================================================
--- Cup finals Wembley — fix backfill detection
+-- Cup finals Wembley — fix venue stamp backfill detection
 --
--- Problem: competition_fixture_is_cup_final only used competition_cup_round_stage
--- with p_max_round=NULL. If a final's cup_round no longer matches the schedule
--- (e.g. brackets drawn before Super8/Bowl went to 3 rounds), stage lookup misses
--- and venue is never stamped.
+-- For gate receipt corrections (balances + ledger), run:
+--   competition_cup_final_gate_backfill.sql
+--   or SELECT public.competition_admin_backfill_cup_final_gates(NULL, false);
 --
--- Fix: treat as final when schedule stage is final OR cup_round is the highest
--- round in that cup's bracket / schedule / label contains "final".
--- Then force-update all matching fixtures.
---
--- Run: whole file, or just:
---   SELECT public.competition_admin_backfill_cup_final_venues();
 -- Safe re-run.
 -- =============================================================================
 
