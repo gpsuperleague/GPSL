@@ -168,6 +168,21 @@ export const SEASON_ADMIN_NAV = [
 /** WIP admin tools — add links here as pages are built. */
 export const SEASON_MGMT_IN_PROGRESS_NAV = [];
 
+/** Shown first inside Season Management (direct links, no nested subgroup). */
+export const SEASON_MGMT_ADMIN_NAV_TOP_LINKS = [
+  CLUB_SEASON_CHECKLIST_NAV_ITEM,
+  {
+    label: "Apply fines",
+    href: "admin_fines.html",
+    page: "admin_fines",
+  },
+  {
+    label: "Red card appeal review",
+    href: "admin_prize_appeals.html",
+    page: "admin_prize_appeals",
+  },
+];
+
 /** Season Management workflow — Mid Season / Playoffs / Close Season. */
 export const SEASON_MGMT_ADMIN_NAV = [
   {
@@ -302,11 +317,13 @@ export function renderSeasonAdminNavHtml(pathname, search = "") {
 }
 
 export function seasonMgmtAdminNavHasActive(pathname, search = "") {
-  return navArrayHasActive(SEASON_MGMT_ADMIN_NAV, pathname, search);
+  return navArrayHasActive(SEASON_MGMT_ADMIN_NAV, pathname, search, SEASON_MGMT_ADMIN_NAV_TOP_LINKS);
 }
 
 export function renderSeasonMgmtAdminNavHtml(pathname, search = "") {
-  return renderSeasonMegaNavHtml(SEASON_MGMT_ADMIN_NAV, "Season Management", pathname, search);
+  return renderSeasonMegaNavHtml(SEASON_MGMT_ADMIN_NAV, "Season Management", pathname, search, {
+    topLinks: SEASON_MGMT_ADMIN_NAV_TOP_LINKS,
+  });
 }
 
 export function isSeasonAdminNavItemActive(item, pathname, search = "") {
