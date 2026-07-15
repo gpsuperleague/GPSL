@@ -10,6 +10,7 @@ const STAT_LABELS = {
   club_goals_for: "Club goals",
   club_clean_sheets: "Clean sheets",
   club_potm_awards: "POTM awards",
+  transfer_sign_nation: "Sign by nationality",
 };
 
 let currentSeasonId = null;
@@ -21,12 +22,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   currentSeasonId = season?.id ?? null;
 
   document.getElementById("challengeWindow").onchange = syncWindowMonths;
+  document.getElementById("challengeStatType").onchange = syncStatParamVisibility;
   document.getElementById("saveChallengeDefaultsBtn").onclick = saveChallengeDefaults;
   document.getElementById("seedChallengesBtn").onclick = seedChallenges;
   document.getElementById("recheckChallengesBtn").onclick = recheckChallenges;
   document.getElementById("saveChallengeBtn").onclick = saveChallenge;
   document.getElementById("clearChallengeFormBtn").onclick = clearChallengeForm;
 
+  syncWindowMonths();
+  syncStatParamVisibility();
   await loadChallengeDefaults();
   await loadChallengeList();
   await loadChallengeAwards();
@@ -37,11 +41,22 @@ function syncWindowMonths() {
   const from = document.getElementById("challengeMonthFrom");
   const to = document.getElementById("challengeMonthTo");
   if (window === "start") {
-    from.value = "august";
+    from.value = "june";
     to.value = "december";
   } else {
     from.value = "january";
     to.value = "may";
+  }
+}
+
+function syncStatParamVisibility() {
+  const stat = document.getElementById("challengeStatType").value;
+  const wrap = document.getElementById("challengeStatParamWrap");
+  if (!wrap) return;
+  wrap.hidden = stat !== "transfer_sign_nation";
+  if (stat === "transfer_sign_nation") {
+    const target = document.getElementById("challengeTarget");
+    if (target && !target.value) target.value = "1";
   }
 }
 
@@ -78,9 +93,11 @@ function clearChallengeForm() {
   document.getElementById("challengeEditId").value = "";
   document.getElementById("challengeTitle").value = "";
   document.getElementById("challengeTarget").value = "";
+  document.getElementById("challengeStatParam").value = "";
   document.getElementById("challengeWindow").value = "start";
   syncWindowMonths();
   document.getElementById("challengeStatType").value = "club_wins";
+  syncStatParamVisibility();
   document.getElementById("challengeIncludeLeague").checked = true;
   document.getElementById("challengeIncludeCup").checked = false;
   document.getElementById("challengeActive").checked = true;
@@ -95,11 +112,13 @@ function fillChallengeForm(row) {
   document.getElementById("challengeMonthFrom").value = row.gpsl_month_from;
   document.getElementById("challengeMonthTo").value = row.gpsl_month_to;
   document.getElementById("challengeStatType").value = row.stat_type;
+  document.getElementById("challengeStatParam").value = row.stat_param || "";
   document.getElementById("challengeTarget").value = String(row.target_value);
   document.getElementById("challengePrize").value = String(row.prize_amount);
   document.getElementById("challengeIncludeLeague").checked = row.include_league !== false;
   document.getElementById("challengeIncludeCup").checked = !!row.include_cup;
   document.getElementById("challengeActive").checked = row.is_active !== false;
+  syncStatParamVisibility();
 }
 
 async function loadChallengeList() {
@@ -131,13 +150,17 @@ async function loadChallengeList() {
   list.innerHTML = data
     .map((row) => {
       const comps = [row.include_league && "league", row.include_cup && "cup"].filter(Boolean).join("+");
+      const nation =
+        row.stat_type === "transfer_sign_nation" && row.stat_param
+          ? ` (${row.stat_param})`
+          : "";
       return `
         <div class="challenge-admin-item">
           <div>
             <b>${row.title}</b>
             <span class="challenge-admin-meta">
               ${row.window_phase} · ${row.gpsl_month_from_label}–${row.gpsl_month_to_label}
-              · ${STAT_LABELS[row.stat_type] || row.stat_type} ≥ ${row.target_value}
+              · ${STAT_LABELS[row.stat_type] || row.stat_type}${nation} ≥ ${row.target_value}
               · ${formatMoney(row.prize_amount)} · ${comps || "—"}
               ${row.is_active ? "" : " · <i>inactive</i>"}
             </span>
@@ -225,12 +248,18 @@ async function saveChallenge() {
     gpsl_month_from: document.getElementById("challengeMonthFrom").value,
     gpsl_month_to: document.getElementById("challengeMonthTo").value,
     stat_type: document.getElementById("challengeStatType").value,
+    stat_param: (document.getElementById("challengeStatParam").value || "").trim().toUpperCase() || null,
     target_value: Number(document.getElementById("challengeTarget").value),
     prize_amount: Number(document.getElementById("challengePrize").value),
     include_league: document.getElementById("challengeIncludeLeague").checked,
     include_cup: document.getElementById("challengeIncludeCup").checked,
     is_active: document.getElementById("challengeActive").checked,
   };
+
+  if (payload.stat_type === "transfer_sign_nation" && !payload.stat_param) {
+    setStatus("challengeFormStatus", "Nation code required (e.g. NOR, ESP, TPE).", false);
+    return;
+  }
 
   setStatus("challengeFormStatus", "Saving…");
   const { data, error } = await supabase.rpc("competition_admin_save_challenge", {

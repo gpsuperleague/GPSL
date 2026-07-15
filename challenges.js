@@ -9,6 +9,7 @@ const STAT_LABELS = {
   club_goals_for: "Goals scored",
   club_clean_sheets: "Clean sheets",
   club_potm_awards: "POTM awards",
+  transfer_sign_nation: "Sign by nationality",
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -77,7 +78,9 @@ function renderProgressGrid(items, elId, emptyMsg) {
           <h3>${c.title}</h3>
           <p class="challenge-progress ${st.className}">${st.text}</p>
           <p class="challenge-meta">
-            ${STAT_LABELS[c.stat_type] || c.stat_type} · Prize ${formatMoney(Number(c.prize_amount || 0))}
+            ${STAT_LABELS[c.stat_type] || c.stat_type}${
+              c.stat_param ? ` (${c.stat_param})` : ""
+            } · Prize ${formatMoney(Number(c.prize_amount || 0))}
           </p>
         </div>
       `;
@@ -143,7 +146,9 @@ async function loadCatalog() {
         <h3>${c.title}</h3>
         <p class="challenge-meta">
           ${c.gpsl_month_from_label}–${c.gpsl_month_to_label}<br>
-          ${STAT_LABELS[c.stat_type] || c.stat_type} ≥ <b>${c.target_value}</b><br>
+          ${STAT_LABELS[c.stat_type] || c.stat_type}${
+            c.stat_param ? ` (${c.stat_param})` : ""
+          } ≥ <b>${c.target_value}</b><br>
           Prize ${formatMoney(Number(c.prize_amount || 0))}
         </p>
       </div>

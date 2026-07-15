@@ -14,7 +14,9 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <h2>Defaults</h2>
-        <p class="note">Each club earns the configured prize when a target is met (instant ledger credit). First club to complete <b>all</b> targets in a window earns the period bonus. Run <code>competition_challenges.sql</code> once.</p>
+        <p class="note">Each club earns the configured prize when a target is met (instant ledger credit). First club to complete <b>all</b> targets in a window earns the period bonus.
+          <b>Start</b> runs June–December (transfer window + first half). <b>Mid</b> runs January–May.
+          Run <code>competition_challenges.sql</code> then <code>competition_challenges_june_transfers.sql</code>.</p>
         <div class="row gov-subsidy-row">
           <div>
             <label>Default prize per challenge</label>
@@ -50,7 +52,7 @@
           <div>
             <label>Window</label>
             <select id="challengeWindow">
-              <option value="start">Start (Aug–Dec)</option>
+              <option value="start">Start (Jun–Dec)</option>
               <option value="mid">Mid (Jan–May)</option>
             </select>
           </div>
@@ -63,7 +65,12 @@
               <option value="club_goals_for">Club goals scored</option>
               <option value="club_clean_sheets">Club clean sheets</option>
               <option value="club_potm_awards">Club POTM awards</option>
+              <option value="transfer_sign_nation">Sign player by nationality</option>
             </select>
+          </div>
+          <div id="challengeStatParamWrap" hidden>
+            <label>Nation code</label>
+            <input type="text" id="challengeStatParam" placeholder="NOR / ESP / TPE" style="width:120px;text-transform:uppercase;" maxlength="8">
           </div>
           <div>
             <label>Target</label>
@@ -78,6 +85,8 @@
           <div>
             <label>From month</label>
             <select id="challengeMonthFrom">
+              <option value="june">June</option>
+              <option value="july">July</option>
               <option value="august">August</option>
               <option value="september">September</option>
               <option value="october">October</option>
@@ -93,6 +102,8 @@
           <div>
             <label>To month</label>
             <select id="challengeMonthTo">
+              <option value="june">June</option>
+              <option value="july">July</option>
               <option value="august">August</option>
               <option value="september">September</option>
               <option value="october">October</option>
@@ -102,7 +113,7 @@
               <option value="february">February</option>
               <option value="march">March</option>
               <option value="april">April</option>
-              <option value="may" selected>May</option>
+              <option value="may">May</option>
             </select>
           </div>
           <div>
