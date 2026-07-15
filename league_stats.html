@@ -33,9 +33,10 @@
       gap: 20px;
       align-items: stretch;
     }
-    /* Row 2: two panels align under first two columns of row 1 */
+    /* Row 2: three panels under the first row */
     .stats-grid > .panel:nth-child(4) { grid-column: 1; }
     .stats-grid > .panel:nth-child(5) { grid-column: 2; }
+    .stats-grid > .panel:nth-child(6) { grid-column: 3; }
     .panel {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       padding:16px;
@@ -217,7 +218,8 @@
         grid-template-columns: 1fr;
       }
       .stats-grid > .panel:nth-child(4),
-      .stats-grid > .panel:nth-child(5) {
+      .stats-grid > .panel:nth-child(5),
+      .stats-grid > .panel:nth-child(6) {
         grid-column: auto;
       }
     }
@@ -291,6 +293,13 @@
             <span class="panel-head-note">(League games only — started in a 0-conceded match.)</span>
           </div>
           <div id="cleanSheetsTable"></div>
+        </div>
+        <div class="panel stats-data-panel">
+          <div class="panel-title-slot panel-title-slot--with-note">
+            <div class="panel-title-head"><h2>Discipline</h2></div>
+            <span class="panel-head-note">(Top 10 — YC period is toward next 8-yellow ban. Suspensions = reds + every 8 yellows.)</span>
+          </div>
+          <div id="disciplineTable"></div>
         </div>
         <div class="panel panel--wide">
           <h2>Super League — Team of the Month</h2>

@@ -39,7 +39,7 @@ const LEADERBOARD_ROW_MIN_PX = 52;
 const LEADERBOARD_SYNC_GROUPS = {
   league: [
     ["scorersTable", "assistsTable", "ratingsTable"],
-    ["potmTable", "cleanSheetsTable"],
+    ["potmTable", "cleanSheetsTable", "disciplineTable"],
   ],
   cups: [
     ["cupScorersTable", "cupAssistsTable", "cupRatingsTable"],
@@ -315,6 +315,104 @@ function renderClubLeaderboards(prefix, rows, extraColumnKey, extraColumnValue) 
   scheduleLeaderboardSync();
 }
 
+function renderDisciplineTable(rows) {
+  const el = document.getElementById("disciplineTable");
+  if (!el) return;
+
+  if (!rows?.length) {
+    el.innerHTML = '<p class="empty">No cards recorded yet.</p>';
+    return;
+  }
+
+  const body = rows
+    .map((r, i) => {
+      const mine =
+        myClubShort &&
+        (r.club_short_name || "").toUpperCase() === myClubShort.toUpperCase();
+      const period = `${r.yellow_period ?? 0}/${r.yellow_period_size ?? 8}`;
+      return `
+        <tr class="${mine ? "highlight" : ""}">
+          <td class="num lb-rank">${i + 1}</td>
+          <td class="lb-thumb">${playerThumbLinkHtml(r.player_id, {
+            className: "lb-player-thumb",
+            linkClass: "lb-thumb-link",
+            alt: r.player_name || "",
+          })}</td>
+          <td class="lb-player-name">${playerNameWrappedLinkHtml(r.player_id, r.player_name)}</td>
+          <td class="lb-club-name">${clubNameWrappedLinkHtml(r.club_short_name, r.club_name || r.club_short_name)}</td>
+          <td class="lb-extra-col">${wrapWordsHtml(
+            r.division ? DIVISION_TITLES[r.division] || r.division : "—"
+          )}</td>
+          <td class="num lb-val-col">${r.yellow_cards ?? 0}</td>
+          <td class="num lb-apps-col">${period}</td>
+          <td class="num lb-apps-col">${r.red_cards ?? 0}</td>
+          <td class="num lb-apps-col">${r.suspensions ?? 0}</td>
+        </tr>`;
+    })
+    .join("");
+
+  el.innerHTML = `
+    <table class="lb" data-lb-table>
+      <colgroup>
+        <col class="lb-col-rank">
+        <col class="lb-col-thumb">
+        <col class="lb-col-player">
+        <col class="lb-col-club">
+        <col class="lb-col-extra">
+        <col class="lb-col-val">
+        <col class="lb-col-apps">
+        <col class="lb-col-apps">
+        <col class="lb-col-apps">
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="lb-rank">#</th>
+          <th class="lb-thumb" aria-label="Card"></th>
+          <th>Player</th>
+          <th>Club</th>
+          <th class="lb-extra-col">Div</th>
+          <th class="num lb-val-col">YC</th>
+          <th class="num lb-apps-col">Period</th>
+          <th class="num lb-apps-col">RC</th>
+          <th class="num lb-apps-col">Susp</th>
+        </tr>
+      </thead>
+      <tbody>${body}</tbody>
+    </table>`;
+
+  el.querySelectorAll("img").forEach((img) => {
+    if (!img.complete) {
+      img.addEventListener("load", scheduleLeaderboardSync, { once: true });
+    }
+  });
+}
+
+async function loadDisciplineLeaders() {
+  const division = document.getElementById("divisionFilter")?.value || null;
+  const { data, error } = await supabase.rpc("competition_league_discipline_leaders", {
+    p_season_id: null,
+    p_division: division || null,
+    p_limit: 10,
+  });
+
+  if (error) {
+    const el = document.getElementById("disciplineTable");
+    if (el) {
+      el.innerHTML = `<p class="empty">${
+        /competition_league_discipline_leaders|schema cache|Could not find/i.test(
+          error.message || ""
+        )
+          ? "Run competition_league_discipline_leaders.sql in Supabase."
+          : error.message
+      }</p>`;
+    }
+    return;
+  }
+
+  renderDisciplineTable(Array.isArray(data) ? data : []);
+  scheduleLeaderboardSync();
+}
+
 function renderLeague() {
   const division = document.getElementById("divisionFilter")?.value || "";
   const rows = division
@@ -324,6 +422,7 @@ function renderLeague() {
   renderClubLeaderboards("", rows, "Div", (r) =>
     r.division ? DIVISION_TITLES[r.division] || r.division : "—"
   );
+  loadDisciplineLeaders();
 }
 
 function renderCups() {
