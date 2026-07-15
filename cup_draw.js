@@ -9,10 +9,19 @@ let speedMul = 1;
 let running = false;
 let playerOrder = [];
 let byeClubs = [];
+let byeMatchNos = [];
 let r1Pairings = [];
 let r1Byes = [];
 let roundCounts = [];
 let replayMode = false;
+
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 function cupFromUrl() {
   const raw = new URLSearchParams(window.location.search).get("cup");
@@ -251,87 +260,120 @@ async function runCeremony(ctx) {
   running = true;
   document.getElementById("startBtn").disabled = true;
   document.getElementById("resultsList").innerHTML = "";
+
+  const replayByes = replayMode ? [...r1Byes] : [];
+  const replayPairs = replayMode ? [...r1Pairings] : [];
   r1Pairings = [];
   r1Byes = [];
+  byeMatchNos = [];
 
-  let matchNo = 1;
+  const r1Total = (ctx.r1Fixtures || 0) + (byeClubs.length || 0);
   const byeQueue = [...byeClubs];
+  shuffleInPlace(byeQueue);
 
-  if (byeQueue.length) {
-    appendTie(`<div class="cup-draw-round-label">First-round byes</div>`);
-    for (let i = 0; i < byeQueue.length; i += 1) {
-      const code = byeQueue[i];
-      setAnnounce(
-        "Bye draw",
-        clubLabel(code),
-        `Bye to the next round (${i + 1} of ${byeQueue.length})`
-      );
-      if (!replayMode) await pickBall(code);
-      else await delay(350);
-
-      r1Byes.push({ club: code, matchNo });
-      appendTie(`
-        <div class="cup-draw-tie bye">
-          <span class="match-no">M${matchNo}</span>
-          <strong>${escapeHtml(clubLabel(code))}</strong>
-          <span class="vs">·</span> Bye
-        </div>`);
-      fillBracketSlot(0, matchNo - 1, `${clubLabel(code)} (bye)`);
-      matchNo += 1;
-      await delay(300);
-    }
+  // Scatter bye slots randomly through the opening round (not always at the top/bottom)
+  if (!replayMode && byeQueue.length && r1Total > 0) {
+    const slots = Array.from({ length: r1Total }, (_, i) => i + 1);
+    shuffleInPlace(slots);
+    byeMatchNos = slots.slice(0, byeQueue.length).sort((a, b) => a - b);
+  } else if (replayMode && replayByes.length) {
+    byeMatchNos = replayByes.map((b) => b.matchNo).sort((a, b) => a - b);
   }
 
-  appendTie(`<div class="cup-draw-round-label">Opening round ties</div>`);
+  const byeSlotSet = new Set(byeMatchNos);
+  let byeIdx = 0;
+  let pairIdx = 0;
 
-  if (replayMode && r1Pairings.length) {
-    for (const tie of r1Pairings) {
-      setAnnounce(
-        "Pairing",
-        `${clubLabel(tie.home)} vs ${clubLabel(tie.away)}`,
-        `Match ${tie.matchNo}`
-      );
-      await delay(400);
-      appendTie(`
-        <div class="cup-draw-tie">
-          <span class="match-no">M${tie.matchNo}</span>
-          <strong>${escapeHtml(clubLabel(tie.home))}</strong>
-          <span class="vs">vs</span>
-          <strong>${escapeHtml(clubLabel(tie.away))}</strong>
-        </div>`);
-      fillBracketSlot(0, tie.matchNo - 1, `${clubLabel(tie.home)} v ${clubLabel(tie.away)}`);
+  appendTie(`<div class="cup-draw-round-label">Opening round</div>`);
+
+  if (replayMode && (replayPairs.length || replayByes.length)) {
+    const byMatch = new Map();
+    for (const b of replayByes) byMatch.set(b.matchNo, { type: "bye", ...b });
+    for (const t of replayPairs) byMatch.set(t.matchNo, { type: "tie", ...t });
+    for (let matchNo = 1; matchNo <= r1Total; matchNo += 1) {
+      const row = byMatch.get(matchNo);
+      if (!row) continue;
+      if (row.type === "bye") {
+        setAnnounce("Bye", clubLabel(row.club), `Match ${matchNo} · bye to next round`);
+        await delay(350);
+        r1Byes.push({ club: row.club, matchNo });
+        appendTie(`
+          <div class="cup-draw-tie bye">
+            <span class="match-no">M${matchNo}</span>
+            <strong>${escapeHtml(clubLabel(row.club))}</strong>
+            <span class="vs">·</span> Bye
+          </div>`);
+        fillBracketSlot(0, matchNo - 1, `${clubLabel(row.club)} (bye)`);
+      } else {
+        setAnnounce(
+          "Pairing",
+          `${clubLabel(row.home)} vs ${clubLabel(row.away)}`,
+          `Match ${matchNo}`
+        );
+        await delay(400);
+        r1Pairings.push({ home: row.home, away: row.away, matchNo });
+        appendTie(`
+          <div class="cup-draw-tie">
+            <span class="match-no">M${matchNo}</span>
+            <strong>${escapeHtml(clubLabel(row.home))}</strong>
+            <span class="vs">vs</span>
+            <strong>${escapeHtml(clubLabel(row.away))}</strong>
+          </div>`);
+        fillBracketSlot(0, matchNo - 1, `${clubLabel(row.home)} v ${clubLabel(row.away)}`);
+      }
     }
   } else {
-    for (let i = 0; i < playerOrder.length; i += 2) {
-      const home = playerOrder[i];
-      const away = playerOrder[i + 1];
-      if (!away) break;
+    for (let matchNo = 1; matchNo <= r1Total; matchNo += 1) {
+      if (byeSlotSet.has(matchNo)) {
+        const code = byeQueue[byeIdx++];
+        setAnnounce(
+          "Bye draw",
+          clubLabel(code),
+          `Match ${matchNo} · bye to next round (${byeIdx} of ${byeQueue.length})`
+        );
+        if (!replayMode) await pickBall(code);
+        else await delay(350);
 
-      setAnnounce(
-        "Pairing draw",
-        `${clubLabel(home)} vs ${clubLabel(away)}`,
-        `Opening round tie ${r1Pairings.length + 1} of ${ctx.r1Fixtures}`
-      );
-
-      if (!replayMode) {
-        await pickBall(home);
-        setAnnounce("Pairing draw", clubLabel(away), `Joins ${clubLabel(home)}`);
-        await pickBall(away);
+        r1Byes.push({ club: code, matchNo });
+        appendTie(`
+          <div class="cup-draw-tie bye">
+            <span class="match-no">M${matchNo}</span>
+            <strong>${escapeHtml(clubLabel(code))}</strong>
+            <span class="vs">·</span> Bye
+          </div>`);
+        fillBracketSlot(0, matchNo - 1, `${clubLabel(code)} (bye)`);
+        await delay(300);
       } else {
-        await delay(400);
-      }
+        const home = playerOrder[pairIdx];
+        const away = playerOrder[pairIdx + 1];
+        pairIdx += 2;
+        if (!away) break;
 
-      r1Pairings.push({ home, away, matchNo });
-      appendTie(`
-        <div class="cup-draw-tie">
-          <span class="match-no">M${matchNo}</span>
-          <strong>${escapeHtml(clubLabel(home))}</strong>
-          <span class="vs">vs</span>
-          <strong>${escapeHtml(clubLabel(away))}</strong>
-        </div>`);
-      fillBracketSlot(0, matchNo - 1, `${clubLabel(home)} v ${clubLabel(away)}`);
-      matchNo += 1;
-      await delay(280);
+        setAnnounce(
+          "Pairing draw",
+          `${clubLabel(home)} vs ${clubLabel(away)}`,
+          `Match ${matchNo} · opening round`
+        );
+
+        if (!replayMode) {
+          await pickBall(home);
+          setAnnounce("Pairing draw", clubLabel(away), `Joins ${clubLabel(home)}`);
+          await pickBall(away);
+        } else {
+          await delay(400);
+        }
+
+        r1Pairings.push({ home, away, matchNo });
+        appendTie(`
+          <div class="cup-draw-tie">
+            <span class="match-no">M${matchNo}</span>
+            <strong>${escapeHtml(clubLabel(home))}</strong>
+            <span class="vs">vs</span>
+            <strong>${escapeHtml(clubLabel(away))}</strong>
+          </div>`);
+        fillBracketSlot(0, matchNo - 1, `${clubLabel(home)} v ${clubLabel(away)}`);
+        await delay(280);
+      }
     }
   }
 
@@ -368,11 +410,13 @@ async function commitDraw(cup) {
       ? await supabase.rpc("competition_draw_league_cup", {
           p_season_id: seasonId,
           p_player_order: playerOrder,
+          p_bye_match_nos: byeMatchNos.length ? byeMatchNos : null,
         })
       : await supabase.rpc("competition_draw_prestige_cup", {
           p_season_id: seasonId,
           p_cup_code: cup,
           p_player_order: playerOrder,
+          p_bye_match_nos: byeMatchNos.length ? byeMatchNos : null,
         });
 
   if (result.error) {

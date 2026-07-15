@@ -222,10 +222,20 @@ function renderMatchCard(m, extras, roundNo) {
     m.home_club_short_name &&
     !m.away_club_short_name &&
     !m.fixture_id;
-  const home = m.home_club_name || m.home_club_short_name || "TBD";
+  const awaitingOpp =
+    roundNo > 1 &&
+    ((m.home_club_short_name && !m.away_club_short_name) ||
+      (!m.home_club_short_name && m.away_club_short_name));
+  const home = r1Bye
+    ? m.home_club_name || m.home_club_short_name || "TBD"
+    : m.home_club_name ||
+      m.home_club_short_name ||
+      (awaitingOpp && !m.home_club_short_name ? "Awaiting opponent" : "TBD");
   const away = r1Bye
     ? "Bye"
-    : m.away_club_name || m.away_club_short_name || "TBD";
+    : m.away_club_name ||
+      m.away_club_short_name ||
+      (awaitingOpp && !m.away_club_short_name ? "Awaiting opponent" : "TBD");
   const played = m.fixture_status === "played";
   const scoreLines = played ? formatCupScoreLines(m, extras) : null;
   const finance = played ? formatCupMatchFinance(m, extras) : [];
@@ -233,12 +243,9 @@ function renderMatchCard(m, extras, roundNo) {
   let status = "Awaiting draw / teams";
   if (played) status = "Played";
   else if (m.fixture_id) status = "Scheduled";
-  else if (r1Bye || (m.winner_club_name && !m.fixture_id)) status = "Bye to Last 32";
-  else if (
-    roundNo > 1 &&
-    ((m.home_club_short_name && !m.away_club_short_name) ||
-      (!m.home_club_short_name && m.away_club_short_name))
-  ) {
+  else if (r1Bye || (m.winner_club_name && !m.fixture_id && roundNo === 1))
+    status = "Bye to next round";
+  else if (awaitingOpp) {
     status = "Awaiting opponent";
   }
 
