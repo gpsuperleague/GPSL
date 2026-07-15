@@ -9,10 +9,23 @@ UPDATE public.competition_cup_bracket_nodes SET cup_code = 'bowl' WHERE cup_code
 UPDATE public.competition_cup_manual_qualifiers SET cup_code = 'bowl' WHERE cup_code = 'spoon';
 UPDATE public.competition_cup_prize_config SET cup_code = 'bowl' WHERE cup_code = 'spoon';
 UPDATE public.competition_cup_season_winner SET cup_code = 'bowl' WHERE cup_code = 'spoon';
+UPDATE public.competition_cup_round_schedule SET cup_code = 'bowl' WHERE cup_code = 'spoon';
 
 UPDATE public.competition_cup_manual_qualifiers
 SET qualifier_role = 'bowl_playoff_loser'
 WHERE qualifier_role = 'spoon_playoff_loser';
+
+-- Round schedule CHECK (if table exists)
+DO $$
+BEGIN
+  IF to_regclass('public.competition_cup_round_schedule') IS NOT NULL THEN
+    ALTER TABLE public.competition_cup_round_schedule
+      DROP CONSTRAINT IF EXISTS competition_cup_round_schedule_cup_code_check;
+    ALTER TABLE public.competition_cup_round_schedule
+      ADD CONSTRAINT competition_cup_round_schedule_cup_code_check
+      CHECK (cup_code IN ('super8', 'plate', 'shield', 'bowl', 'league_cup'));
+  END IF;
+END $$;
 
 -- competition_owner_season_ranking column rename
 DO $$

@@ -1,5 +1,5 @@
 -- =============================================================================
--- GPSL — Cup calendars + two-legged QF (Super8 & Spoon)
+-- GPSL — Cup calendars + two-legged QF (Super8 & Bowl)
 -- Run once after competition_phase6_cups.sql
 -- Re-draw cups in Admin after applying (existing brackets keep old schedule).
 -- =============================================================================
@@ -37,7 +37,7 @@ ALTER TABLE public.competition_cup_bracket_nodes
 
 CREATE TABLE IF NOT EXISTS public.competition_cup_round_schedule (
   cup_code text NOT NULL CHECK (
-    cup_code IN ('super8', 'plate', 'shield', 'spoon', 'league_cup')
+    cup_code IN ('super8', 'plate', 'shield', 'bowl', 'league_cup')
   ),
   round_no smallint NOT NULL CHECK (round_no >= 1),
   cup_leg smallint NOT NULL DEFAULT 1 CHECK (cup_leg IN (1, 2)),
@@ -65,11 +65,11 @@ INSERT INTO public.competition_cup_round_schedule (
   ('super8', 1, 2, 'october', 'qf', 'Quarter-final', 4),
   ('super8', 2, 1, 'november', 'sf', 'Semi-final', 2),
   ('super8', 3, 1, 'december', 'final', 'Final', 1),
-  -- Spoon: same calendar as Super8
-  ('spoon', 1, 1, 'september', 'qf', 'Quarter-final', 4),
-  ('spoon', 1, 2, 'october', 'qf', 'Quarter-final', 4),
-  ('spoon', 2, 1, 'november', 'sf', 'Semi-final', 2),
-  ('spoon', 3, 1, 'december', 'final', 'Final', 1),
+  -- Bowl: same calendar as Super8
+  ('bowl', 1, 1, 'september', 'qf', 'Quarter-final', 4),
+  ('bowl', 1, 2, 'october', 'qf', 'Quarter-final', 4),
+  ('bowl', 2, 1, 'november', 'sf', 'Semi-final', 2),
+  ('bowl', 3, 1, 'december', 'final', 'Final', 1),
   -- Plate: R16 Sep, QF Oct, SF Nov, Final Dec
   ('plate', 1, 1, 'september', 'r2', 'Last 16', 8),
   ('plate', 2, 1, 'october', 'qf', 'Quarter-final', 4),
