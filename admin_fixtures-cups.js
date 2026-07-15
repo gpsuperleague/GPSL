@@ -16,6 +16,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compRandomByesBtn").onclick = randomCupByes;
   document.getElementById("compSaveByesBtn").onclick = saveCupByes;
   document.getElementById("compDrawCupBtn").onclick = drawCompetitionCup;
+  document.getElementById("compRepairCupBtn").onclick = repairCupAdvancement;
   document.getElementById("compDeleteCupBtn").onclick = deleteCompetitionCup;
 
   const active = await loadCurrentSeason(supabase);
@@ -249,6 +250,49 @@ async function drawCompetitionCup() {
     "compCupStatus",
     `✅ ${cup}: ${d.clubs} clubs, ${d.byes} byes${byeList ? ` (${byeList})` : ""}, ` +
       `${d.r1_fixtures} R1 fixtures, ${cupSynced} cup fixture(s) with schedule month + conditions.`
+  );
+}
+
+async function repairCupAdvancement() {
+  const cup = document.getElementById("compCupSelect").value;
+  const seasonId = await getSeasonId();
+  if (!seasonId) {
+    setStatus("compCupStatus", "No active season.", false);
+    return;
+  }
+
+  if (
+    !confirm(
+      `Repair ${cup} advancement?\n\nThis keeps the existing draw. It syncs winners, completes byes, fills next-round slots, and creates missing fixtures.`
+    )
+  ) {
+    return;
+  }
+
+  setStatus("compCupStatus", "Repairing advancement…");
+  const { data, error } = await supabase.rpc("competition_cup_repair_advancement", {
+    p_season_id: seasonId,
+    p_cup_code: cup,
+  });
+
+  if (error) {
+    const hint = /competition_cup_repair_advancement|schema cache|Could not find/i.test(
+      error.message || ""
+    )
+      ? " — run patches/competition_cup_repair_advancement.sql in Supabase"
+      : "";
+    setStatus("compCupStatus", "❌ " + error.message + hint, false);
+    return;
+  }
+
+  const d = data || {};
+  setStatus(
+    "compCupStatus",
+    `✅ Repair: winners ${d.winners_synced_from_fixtures ?? 0}, byes ${d.bye_winners_set ?? 0}, ` +
+      `slots filled ${d.child_slots_updated ?? 0}, fixtures created ${d.fixtures_created ?? 0}. ` +
+      `Last 32 fixtures: ${d.last32_fixtures_now ?? "?"}, Last 16 fixtures: ${d.last16_fixtures_now ?? "?"}. ` +
+      `${d.note || ""}`,
+    true
   );
 }
 
