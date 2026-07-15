@@ -89,13 +89,14 @@ BEGIN
     BEGIN
       IF NOT public.admin_testing_fixture_squads_ready(
         v_fx.home_club_short_name,
-        v_fx.away_club_short_name
+        v_fx.away_club_short_name,
+        v_id
       ) THEN
-        RAISE EXCEPTION 'Squad too small — % (%) vs % (%)',
+        RAISE EXCEPTION 'Squad too small — % (% avail) vs % (% avail)',
           v_fx.home_club_short_name,
-          public.club_squad_player_count(v_fx.home_club_short_name),
+          public.admin_testing_club_available_count(v_fx.home_club_short_name, v_id),
           v_fx.away_club_short_name,
-          public.club_squad_player_count(v_fx.away_club_short_name);
+          public.admin_testing_club_available_count(v_fx.away_club_short_name, v_id);
       END IF;
 
       UPDATE public.competition_result_submissions
@@ -151,12 +152,14 @@ BEGIN
       v_home_stats := public.admin_testing_build_club_match_stats(
         v_fx.home_club_short_name,
         CASE WHEN v_pen_winner IS NOT NULL
-          THEN (v_cup_roll->>'home_90')::int ELSE v_home_goals::int END
+          THEN (v_cup_roll->>'home_90')::int ELSE v_home_goals::int END,
+        v_id
       );
       v_away_stats := public.admin_testing_build_club_match_stats(
         v_fx.away_club_short_name,
         CASE WHEN v_pen_winner IS NOT NULL
-          THEN (v_cup_roll->>'away_90')::int ELSE v_away_goals::int END
+          THEN (v_cup_roll->>'away_90')::int ELSE v_away_goals::int END,
+        v_id
       );
 
       UPDATE public.competition_fixtures
