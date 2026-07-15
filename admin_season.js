@@ -117,16 +117,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compCalendarBreakBtn").onclick = insertCompCalendarBreak;
   document.getElementById("compCalendarClearBtn").onclick = clearCompCalendar;
   document.getElementById("compInboxMonthBtn").onclick = sendMonthPreviewInbox;
-  document.getElementById("compEndMonthPreviewBtn").onclick = previewEndGpslMonth;
-  document.getElementById("compEndMonthBtn").onclick = endGpslMonthEarly;
-  document.getElementById("compEndMonthOpenNext")?.addEventListener("change", updateEndMonthPhraseHint);
-  document.getElementById("compOpenNextPreviewBtn").onclick = previewOpenNextGpslMonth;
-  document.getElementById("compOpenNextBtn").onclick = openNextGpslMonth;
   document.getElementById("compSportRebuildBtn").onclick = rebuildGpslSportEdition;
 
   await refreshCompetitionAdmin();
   await refreshCompCalendarAdmin();
-  updateEndMonthPhraseHint();
 });
 
 function setCompStatus(msg, ok = true) {
@@ -549,15 +543,12 @@ async function refreshCompCalendarAdmin() {
     } else if (calStatus?.calendar_phase === "between_months") {
       const nextLabel =
         calStatus.next_gpsl_month_label || calStatus.next_gpsl_month || "next month";
-      note.textContent = `Between months — no live GPSL month. ${nextLabel} was scheduled for ${formatUkDateTime(calStatus.next_unlock_at)} UK. Use Open next GPSL month below.`;
+      note.textContent = `Between months — no live GPSL month. ${nextLabel} was scheduled for ${formatUkDateTime(calStatus.next_unlock_at)} UK. Use Admin → Testing → End Month Early to open the next month.`;
     } else {
       note.textContent = "Active season — configure or extend calendar below.";
     }
-    await refreshBetweenMonthsPanel(active.id);
     return;
   }
-
-  document.getElementById("compBetweenMonthsPanel").hidden = true;
 
   if (compSelectedSeasonId) {
     note.textContent = "Pre-season — set calendar before Start season.";
@@ -568,158 +559,6 @@ async function refreshCompCalendarAdmin() {
   note.textContent = "Create a pre-season year or activate a season to manage the calendar.";
   document.getElementById("compCalendarBody").innerHTML =
     `<tr><td colspan="4" style="padding:8px;color:#888;">—</td></tr>`;
-}
-
-function calendarGapReasonMessage(reason) {
-  if (reason === "between_months") {
-    return "Between GPSL months — open the next month below.";
-  }
-  if (reason === "no_active_season") {
-    return "No active competition season found (status must be active).";
-  }
-  if (reason === "no_active_month") {
-    return "No live GPSL month.";
-  }
-  return reason || "Calendar unavailable.";
-}
-
-async function refreshBetweenMonthsPanel(seasonId) {
-  const panel = document.getElementById("compBetweenMonthsPanel");
-  if (!panel) return;
-
-  const { data, error } = await supabase.rpc("competition_admin_open_next_gpsl_month_preview", {
-    p_season_id: seasonId || null,
-  });
-
-  if (error) {
-    panel.hidden = true;
-    return;
-  }
-
-  const show = data?.ok && data?.reason === "between_months";
-  panel.hidden = !show;
-  if (show) {
-    renderOpenNextPreview(data);
-  }
-}
-
-function renderOpenNextPreview(data) {
-  const el = document.getElementById("compOpenNextPreview");
-  if (!el) return;
-
-  if (!data?.ok) {
-    el.hidden = false;
-    el.innerHTML = `⚠ ${calendarGapReasonMessage(data?.reason)}`;
-    return;
-  }
-
-  el.hidden = false;
-  el.innerHTML = `
-    <b>${data.last_locked_month_label || data.last_locked_month}</b> is locked.
-    Open <b>${data.next_gpsl_month_label || data.next_gpsl_month}</b> now
-    (was scheduled ${formatUkDateTime(data.next_scheduled_unlock_at)} UK;
-    pulls ${data.calendar_months_shifted ?? 0} month(s) forward).
-    <br>Phrase: <code>${data.confirm_phrase || "OPEN GPSL MONTH"}</code>
-  `;
-}
-
-async function previewOpenNextGpslMonth() {
-  const seasonId = Number(document.getElementById("compCalendarSeason").value) || null;
-  setStatus("compCalendarStatus", "Loading open-next preview…");
-
-  const { data, error } = await supabase.rpc("competition_admin_open_next_gpsl_month_preview", {
-    p_season_id: seasonId || null,
-  });
-
-  if (error) {
-    const missing = error.message.includes("competition_admin_open_next_gpsl_month_preview");
-    setStatus(
-      "compCalendarStatus",
-      missing
-        ? "❌ Run supabase/sql/patches/competition_admin_calendar_gap_recovery.sql in Supabase, then retry."
-        : "❌ " + error.message,
-      false
-    );
-    return;
-  }
-
-  renderOpenNextPreview(data);
-
-  if (!data?.ok) {
-    setStatus("compCalendarStatus", "⚠ " + calendarGapReasonMessage(data?.reason), false);
-    return;
-  }
-
-  setStatus(
-    "compCalendarStatus",
-    `Preview: open ${data.next_gpsl_month_label} now (after ${data.last_locked_month_label}).`
-  );
-}
-
-async function openNextGpslMonth() {
-  const seasonId = Number(document.getElementById("compCalendarSeason").value) || null;
-  const phrase = document.getElementById("compOpenNextPhrase")?.value?.trim() || "";
-
-  const { data: preview, error: previewErr } = await supabase.rpc(
-    "competition_admin_open_next_gpsl_month_preview",
-    { p_season_id: seasonId || null }
-  );
-
-  if (previewErr) {
-    setStatus("compCalendarStatus", "❌ " + previewErr.message, false);
-    return;
-  }
-
-  if (!preview?.ok) {
-    renderOpenNextPreview(preview);
-    setStatus("compCalendarStatus", "⚠ " + calendarGapReasonMessage(preview?.reason), false);
-    return;
-  }
-
-  const msg = [
-    `Open GPSL ${preview.next_gpsl_month_label} now?`,
-    "",
-    `After locking ${preview.last_locked_month_label}, the league is between months.`,
-    `Scheduled unlock was ${formatUkDateTime(preview.next_scheduled_unlock_at)} UK.`,
-    `This pulls ${preview.calendar_months_shifted ?? 0} future month(s) forward.`,
-  ].join("\n");
-
-  if (!confirm(msg)) return;
-
-  if (phrase !== "OPEN GPSL MONTH") {
-    setStatus("compCalendarStatus", 'Type exactly: OPEN GPSL MONTH', false);
-    return;
-  }
-
-  setStatus("compCalendarStatus", "Opening next GPSL month…");
-
-  const { data, error } = await supabase.rpc("competition_admin_open_next_gpsl_month", {
-    p_confirm_phrase: phrase,
-    p_season_id: seasonId || null,
-  });
-
-  if (error) {
-    setStatus("compCalendarStatus", "❌ " + error.message, false);
-    return;
-  }
-
-  if (!data?.opened) {
-    renderOpenNextPreview(data);
-    setStatus("compCalendarStatus", "⚠ " + calendarGapReasonMessage(data?.reason), false);
-    return;
-  }
-
-  document.getElementById("compOpenNextPhrase").value = "";
-  renderOpenNextPreview(data);
-  const activeAfter = data.active_gpsl_month_after;
-  setStatus(
-    "compCalendarStatus",
-    `✅ Opened ${preview.next_gpsl_month_label}.${activeAfter ? ` Active month: ${activeAfter}.` : ""}`
-  );
-  await refreshCompCalendarAdmin();
-  if (seasonId) {
-    await loadCalendarTableForSeason(seasonId);
-  }
 }
 
 async function loadCalendarTableForSeason(seasonId) {
@@ -827,181 +666,6 @@ async function sendMonthPreviewInbox() {
     "compCalendarStatus",
     `✅ Month ${data.gpsl_month} previews sent to ${data.notified ?? 0} club(s).`
   );
-}
-
-function endMonthOpenNextChecked() {
-  return Boolean(document.getElementById("compEndMonthOpenNext")?.checked);
-}
-
-function endMonthConfirmPhrase(openNext) {
-  return openNext ? "END MONTH OPEN NEXT" : "END GPSL MONTH";
-}
-
-function updateEndMonthPhraseHint() {
-  const input = document.getElementById("compEndMonthPhrase");
-  if (!input) return;
-  input.placeholder = `Type: ${endMonthConfirmPhrase(endMonthOpenNextChecked())}`;
-}
-
-function renderEndMonthPreview(data) {
-  const el = document.getElementById("compEndMonthPreview");
-  if (!el) return;
-
-  if (!data?.ok) {
-    el.hidden = false;
-    if (data?.reason === "between_months") {
-      el.innerHTML = `
-        ⚠ Between GPSL months — <b>${data.last_locked_month_label || data.last_locked_month}</b> is locked and
-        <b>${data.next_gpsl_month_label || data.next_gpsl_month}</b> is not open yet
-        (scheduled ${formatUkDateTime(data.next_scheduled_unlock_at)} UK).
-        Use <b>Open next GPSL month</b> below instead of ending a month again.
-      `;
-      return;
-    }
-    el.innerHTML = `⚠ ${calendarGapReasonMessage(data?.reason)}`;
-    return;
-  }
-
-  const openNext = Boolean(data.unlock_next_month);
-  let nextLine = "";
-  if (openNext && data.next_gpsl_month_label) {
-    nextLine = `<br><b>+ Open ${data.next_gpsl_month_label} now</b> — pulls ${data.calendar_months_shifted ?? 0} month(s) forward (was ${formatUkDateTime(data.next_scheduled_unlock_at)} UK).`;
-  }
-
-  el.hidden = false;
-  el.innerHTML = `
-    <b>${data.gpsl_month_label || data.gpsl_month}</b>
-    · scheduled lock ${formatUkDateTime(data.lock_at)} UK
-    · unplayed league <b>${data.unplayed_league ?? 0}</b>
-    · unplayed cup <b>${data.unplayed_cup ?? 0}</b>
-    · pending submissions <b>${data.pending_submissions ?? 0}</b>
-    ${nextLine}
-    <br>Phrase: <code>${data.confirm_phrase || endMonthConfirmPhrase(openNext)}</code>
-    · Jobs: TOTM, GPSL Sport, scheduling fines, check-in forfeits, loan installments.
-  `;
-  updateEndMonthPhraseHint();
-}
-
-async function previewEndGpslMonth() {
-  const seasonId = Number(document.getElementById("compCalendarSeason").value) || null;
-  const openNext = endMonthOpenNextChecked();
-  setStatus("compCalendarStatus", "Loading end-month preview…");
-
-  const { data, error } = await supabase.rpc("competition_admin_end_gpsl_month_preview", {
-    p_gpsl_month: null,
-    p_season_id: seasonId || null,
-    p_unlock_next_month: openNext,
-  });
-
-  if (error) {
-    setStatus("compCalendarStatus", "❌ " + error.message, false);
-    return;
-  }
-
-  renderEndMonthPreview(data);
-
-  if (!data?.ok) {
-    setStatus("compCalendarStatus", "⚠ " + calendarGapReasonMessage(data.reason), false);
-    return;
-  }
-
-  const nextBit = openNext && data.next_gpsl_month_label
-    ? ` → open ${data.next_gpsl_month_label} now`
-    : "";
-  setStatus(
-    "compCalendarStatus",
-    `Preview: end ${data.gpsl_month_label}${nextBit} (${data.unplayed_league ?? 0} unplayed league, ${data.unplayed_cup ?? 0} cup).`
-  );
-}
-
-async function endGpslMonthEarly() {
-  const seasonId = Number(document.getElementById("compCalendarSeason").value) || null;
-  const openNext = endMonthOpenNextChecked();
-  const requiredPhrase = endMonthConfirmPhrase(openNext);
-  const phrase = document.getElementById("compEndMonthPhrase")?.value?.trim() || "";
-
-  const { data: preview, error: previewErr } = await supabase.rpc(
-    "competition_admin_end_gpsl_month_preview",
-    { p_gpsl_month: null, p_season_id: seasonId || null, p_unlock_next_month: openNext }
-  );
-
-  if (previewErr) {
-    setStatus("compCalendarStatus", "❌ " + previewErr.message, false);
-    return;
-  }
-
-  if (!preview?.ok) {
-    renderEndMonthPreview(preview);
-    setStatus("compCalendarStatus", "⚠ " + calendarGapReasonMessage(preview?.reason), false);
-    return;
-  }
-
-  const msg = [
-    `End GPSL ${preview.gpsl_month_label} now?`,
-    "",
-    `Scheduled lock: ${formatUkDateTime(preview.lock_at)} UK`,
-    `Unplayed: ${preview.unplayed_league ?? 0} league, ${preview.unplayed_cup ?? 0} cup`,
-    `Pending submissions: ${preview.pending_submissions ?? 0}`,
-    "",
-    openNext && preview.next_gpsl_month_label
-      ? `Also open ${preview.next_gpsl_month_label} now and pull ${preview.calendar_months_shifted ?? 0} future month(s) forward.`
-      : "Next month stays on its scheduled unlock date (gap until then).",
-    "",
-    "Runs month-lock jobs (fines, TOTM, GPSL Sport, etc.).",
-  ].join("\n");
-
-  if (!confirm(msg)) return;
-
-  if (phrase !== requiredPhrase) {
-    setStatus("compCalendarStatus", `Type exactly: ${requiredPhrase}`, false);
-    return;
-  }
-
-  setStatus("compCalendarStatus", openNext
-    ? "Ending month, running lock jobs, opening next month…"
-    : "Ending month and running lock jobs…");
-
-  const { data, error } = await supabase.rpc("competition_admin_end_gpsl_month_early", {
-    p_confirm_phrase: phrase,
-    p_gpsl_month: null,
-    p_season_id: seasonId || null,
-    p_unlock_next_month: openNext,
-  });
-
-  if (error) {
-    setStatus("compCalendarStatus", "❌ " + error.message, false);
-    return;
-  }
-
-  if (!data?.ended) {
-    renderEndMonthPreview(data);
-    setStatus("compCalendarStatus", "⚠ " + (data?.reason || "Month was not ended"), false);
-    return;
-  }
-
-  document.getElementById("compEndMonthPhrase").value = "";
-  renderEndMonthPreview(data);
-
-  const totm = data.month_lock_jobs?.team_of_month?.processed;
-  const sport = data.month_lock_jobs?.gpsl_sport?.processed;
-  const totmCount = Array.isArray(totm) ? totm.length : 0;
-  const sportCount = Array.isArray(sport) ? sport.length : 0;
-  const activeAfter = data.active_gpsl_month_after;
-  const pull = data.calendar_pull_forward;
-
-  let statusMsg = `✅ ${data.gpsl_month_label} locked early. TOTM: ${totmCount}, GPSL Sport: ${sportCount}.`;
-  if (openNext && pull?.ok) {
-    statusMsg += ` ${pull.next_gpsl_month_label} is live until ${formatUkDateTime(pull.next_lock_at)} UK.`;
-  } else if (activeAfter) {
-    statusMsg += ` Active month: ${activeAfter}.`;
-  }
-
-  setStatus("compCalendarStatus", statusMsg);
-
-  await refreshCompCalendarAdmin();
-  if (seasonId) {
-    await loadCalendarTableForSeason(seasonId);
-  }
 }
 
 async function rebuildGpslSportEdition() {

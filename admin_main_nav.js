@@ -34,6 +34,7 @@ export const ADMIN_MAIN_NAV = [
       link("Assign Manager to club", "admin_test_manager_assign.html"),
       link("Draft Auction auto Bids", "admin_test_draft_seed.html"),
       link("Deploy Monthly Results", "admin_test_deploy_month.html"),
+      link("End Month Early", "admin_test_end_month.html"),
       link("Inbox Test All Clubs", "admin_test_inbox.html"),
       link("Set Club Availability & timeZone", "admin_test_club_availability.html"),
       link("Injuries & Suspensions (test seed)", "admin_injuries.html"),

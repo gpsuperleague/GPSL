@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>End Month Early — GPSL Admin Testing</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .danger-card { border-color: #844; background: #1a1212; }
+    .danger-card h2 { color: #f66; }
+    .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .form-row label { font-size: 13px; color: #bbb; }
+    .form-row select, .form-row input[type="text"] {
+      display: block; min-width: 220px; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .phrase-input {
+      max-width: 360px; width: 100%; padding: 8px; margin-top: 8px;
+      background: #111; border: 1px solid #844; color: #ddd; border-radius: 4px;
+    }
+    .check-row {
+      display: flex; align-items: center; gap: 8px; margin: 12px 0;
+      font-size: 13px; color: #ccc; cursor: pointer;
+    }
+    .check-row input { width: auto; margin: 0; }
+    .preview-box {
+      margin: 12px 0; padding: 10px 12px; background: #111;
+      border: 1px solid #333; border-radius: 6px; font-size: 13px; line-height: 1.5;
+    }
+    .preview-box code { color: #ff9900; }
+    .calendar-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+    .calendar-table th, .calendar-table td {
+      border: 1px solid #333; padding: 8px; text-align: left;
+    }
+    .calendar-table th { background: #1a1a1a; color: #ff9900; }
+    .live-cell { color: #9d9; font-weight: bold; }
+    .locked-cell { color: #888; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">End Month Early</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Testing — locks the live GPSL month <b>now</b> and runs the same automatic jobs as the Friday cron
+        (TOTM, GPSL Sport, scheduling fines, check-in forfeits, loan installments).
+        Optionally opens the <b>next</b> month immediately and pulls the rest of the calendar forward.
+      </p>
+
+      <div class="card">
+        <h2>Current calendar</h2>
+        <div id="calendarNote" class="note">Loading…</div>
+        <div class="form-row" style="margin-top:10px;">
+          <label>
+            Season
+            <select id="seasonSelect"></select>
+          </label>
+          <button type="button" id="refreshBtn" class="button" style="background:#336699;">Refresh</button>
+        </div>
+        <table class="calendar-table">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Unlock (UK)</th>
+              <th>Lock (UK)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="calendarBody">
+            <tr><td colspan="4" style="color:#888;">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card danger-card" style="margin-top:16px;">
+        <h2>End current GPSL month now</h2>
+        <p class="note" style="margin-top:0;">
+          Use after deploying month results. Unplayed fixtures stay unplayed unless you deploy them first.
+          Run <code>competition_admin_end_gpsl_month.sql</code> in Supabase if RPCs are missing.
+        </p>
+        <div id="endMonthPreview" class="preview-box" hidden></div>
+        <label class="check-row">
+          <input type="checkbox" id="openNextCheck">
+          Also unlock next month now (pull calendar forward)
+        </label>
+        <div class="form-row">
+          <button type="button" id="previewEndBtn" class="button" style="background:#663300;">Preview end month</button>
+        </div>
+        <label style="display:block;margin-top:12px;font-size:13px;color:#bbb;">
+          Confirmation phrase
+          <input id="endMonthPhrase" class="phrase-input" type="text" autocomplete="off" placeholder="Type: END GPSL MONTH">
+        </label>
+        <div style="margin-top:12px;">
+          <button type="button" id="endMonthBtn" class="button" style="background:#990000;">End current month now</button>
+        </div>
+        <div id="endMonthStatus" class="status-line"></div>
+      </div>
+
+      <div id="betweenMonthsCard" class="card" hidden style="margin-top:16px;border-color:#664;background:#1f1a12;">
+        <h2 style="color:#ff9900;">Between GPSL months</h2>
+        <p class="note" style="margin-top:0;">
+          No GPSL month is live right now (usually after ending a month without opening the next).
+          Open the next month to resume fixtures. Run <code>competition_admin_calendar_gap_recovery.sql</code> if RPCs are missing.
+        </p>
+        <div id="openNextPreview" class="preview-box" hidden></div>
+        <div class="form-row">
+          <button type="button" id="previewOpenNextBtn" class="button" style="background:#663300;">Preview open next month</button>
+        </div>
+        <label style="display:block;margin-top:12px;font-size:13px;color:#bbb;">
+          Confirmation phrase
+          <input id="openNextPhrase" class="phrase-input" type="text" autocomplete="off" placeholder="Type: OPEN GPSL MONTH">
+        </label>
+        <div style="margin-top:12px;">
+          <button type="button" id="openNextBtn" class="button" style="background:#228822;">Open next GPSL month now</button>
+        </div>
+        <div id="openNextStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_test_end_month.js"></script>
+</body>
+</html>
