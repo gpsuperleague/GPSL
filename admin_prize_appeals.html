@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Red card appeals — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Red card appeal review</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="note">
+          Owners spend an <b>appeal card</b> (challenge period prize) to request an overturn of an active red-card ban.
+          Review carefully — reject clear DOGSO / goal-scoring opportunity denials. Rejected cards are consumed.
+        </p>
+        <div class="row" style="margin-bottom:12px;">
+          <button type="button" class="button" id="filterPendingBtn">Pending</button>
+          <button type="button" class="button" id="filterAllBtn">All</button>
+          <a class="button" href="admin_challenges.html">← Season challenges</a>
+        </div>
+        <div id="appealsList" class="challenge-admin-list"></div>
+        <div id="appealsStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_prize_appeals.js"></script>
+</body>
+</html>

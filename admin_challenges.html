@@ -14,21 +14,51 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <h2>Defaults</h2>
-        <p class="note">Each club earns the configured prize when a target is met (instant ledger credit). First club to complete <b>all</b> targets in a window earns the period bonus.
-          <b>Start</b> runs June–December (transfer window + first half). <b>Mid</b> runs January–May.
-          Run <code>competition_challenges.sql</code> then <code>competition_challenges_june_transfers.sql</code>.</p>
+        <p class="note">Each club earns the configured prize when a target is met (instant ledger credit). First club to complete <b>all</b> targets in a window earns the period bonus pack (cash + optional medical / discount / appeal prizes).
+          <b>Start</b> runs June–December. <b>Mid</b> runs January–May.
+          Run <code>competition_challenges.sql</code>, <code>competition_challenges_june_transfers.sql</code>, then <code>competition_challenge_prize_packs.sql</code> + <code>_part2.sql</code>.</p>
         <div class="row gov-subsidy-row">
           <div>
             <label>Default prize per challenge</label>
             <input type="number" id="challengeDefaultPrize" min="0" step="50000" style="width:120px;">
           </div>
           <div>
-            <label>Period bonus (all complete)</label>
+            <label>Legacy period bonus (fallback)</label>
             <input type="number" id="challengePeriodBonus" min="0" step="50000" style="width:120px;">
           </div>
         </div>
         <button type="button" id="saveChallengeDefaultsBtn" class="button">Save defaults</button>
         <div id="challengeDefaultsStatus" class="status-line"></div>
+
+        <h3 style="margin-top:18px;">Period bonus packs (first to finish all)</h3>
+        <p class="note">Separate Start / Mid pots. Medical tokens: 2,4,6,8,10 matches. Fee discounts: % off what the buyer pays (seller still gets full fee; central bank tops up). Appeal cards: red-card overturn requests (admin review).</p>
+        <div class="row gov-subsidy-row" style="align-items:flex-start;">
+          <div style="flex:1;min-width:240px;">
+            <h4>Start (Jun–Dec)</h4>
+            <label>Cash ₿</label>
+            <input type="number" id="packStartCash" min="0" step="50000" style="width:120px;"><br>
+            <label>Medical tokens (comma, e.g. 4,6)</label>
+            <input type="text" id="packStartMedical" placeholder="4,6" style="width:160px;"><br>
+            <label>Fee discounts % (comma, e.g. 10,15)</label>
+            <input type="text" id="packStartDiscount" placeholder="10" style="width:160px;"><br>
+            <label>Appeal cards</label>
+            <input type="number" id="packStartAppeals" min="0" max="5" step="1" style="width:80px;">
+          </div>
+          <div style="flex:1;min-width:240px;">
+            <h4>Mid (Jan–May)</h4>
+            <label>Cash ₿</label>
+            <input type="number" id="packMidCash" min="0" step="50000" style="width:120px;"><br>
+            <label>Medical tokens (comma)</label>
+            <input type="text" id="packMidMedical" placeholder="2,4" style="width:160px;"><br>
+            <label>Fee discounts % (comma)</label>
+            <input type="text" id="packMidDiscount" placeholder="5" style="width:160px;"><br>
+            <label>Appeal cards</label>
+            <input type="number" id="packMidAppeals" min="0" max="5" step="1" style="width:80px;">
+          </div>
+        </div>
+        <button type="button" id="saveChallengePacksBtn" class="button" style="margin-top:10px;">Save period packs</button>
+        <div id="challengePacksStatus" class="status-line"></div>
+        <p class="note" style="margin-top:8px;"><a href="admin_prize_appeals.html">Review red-card appeal cards →</a></p>
       </div>
 
       <div class="card">

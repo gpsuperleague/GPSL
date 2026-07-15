@@ -108,6 +108,7 @@ export const ADMIN_MAIN_NAV = [
     entries: [
       group("Challenges", [
         L("Set Initial Season Challenges", "admin_challenges.html"),
+        L("Red card appeal review", "admin_prize_appeals.html"),
       ]),
       group("Bills & Income", [
         L("Set TV Revenue", "admin_tv_revenue.html"),

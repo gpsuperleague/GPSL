@@ -1,0 +1,1019 @@
+-- =============================================================================
+-- Challenge prize packs — part 2 (settle hooks, medical tiers, appeals)
+-- Run after competition_challenge_prize_packs.sql
+-- Safe re-run.
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- Transfer settle: buyer discount + seller full + bank top-up
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.post_transfer_ledger_for_history(
+  p_transfer_history_id bigint,
+  p_apply_balance boolean DEFAULT true
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_h record;
+  v_player_name text;
+  v_desc_buy text;
+  v_desc_sell text;
+  v_meta jsonb;
+  v_draft_from_gpdb boolean;
+  v_fee numeric;
+  v_disc jsonb;
+  v_club_pays numeric;
+  v_gap numeric;
+  v_ctx_kind text;
+  v_pct text;
+BEGIN
+  SELECT *
+  INTO v_h
+  FROM public."Transfer_History" h
+  WHERE h.id = p_transfer_history_id;
+
+  IF NOT FOUND THEN
+    RETURN;
+  END IF;
+
+  v_fee := abs(coalesce(v_h.fee, 0));
+  v_meta := jsonb_build_object(
+    'transfer_history_id', v_h.id,
+    'listing_id', v_h.listing_id,
+    'player_id', v_h.player_id
+  );
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.competition_finance_ledger l
+    WHERE l.metadata->>'transfer_history_id' = v_h.id::text
+      AND l.entry_type IN ('transfer_sale', 'transfer_purchase')
+    LIMIT 1
+  ) THEN
+    RETURN;
+  END IF;
+
+  SELECT p."Name" INTO v_player_name
+  FROM public."Players" p
+  WHERE p."Konami_ID"::text = v_h.player_id::text
+  LIMIT 1;
+
+  v_player_name := coalesce(v_player_name, 'Player ' || v_h.player_id::text);
+  v_draft_from_gpdb := v_h.seller_club_id IS NULL OR btrim(v_h.seller_club_id::text) = '';
+
+  v_club_pays := v_fee;
+  v_gap := 0;
+  v_disc := '{}'::jsonb;
+
+  IF v_h.buyer_club_id IS NOT NULL
+     AND btrim(v_h.buyer_club_id::text) <> ''
+     AND v_h.buyer_club_id <> 'FOREIGN'
+     AND v_h.listing_id IS NOT NULL
+     AND v_fee > 0 THEN
+    v_ctx_kind := CASE WHEN v_draft_from_gpdb THEN 'draft_listing' ELSE 'listing' END;
+    v_disc := public.prize_apply_fee_discount_settlement(
+      v_h.buyer_club_id, v_ctx_kind, v_h.listing_id, v_fee
+    );
+    IF coalesce((v_disc->>'applied')::boolean, false) THEN
+      v_club_pays := coalesce((v_disc->>'club_pays')::numeric, v_fee);
+      v_gap := coalesce((v_disc->>'bank_gap')::numeric, 0);
+      v_pct := v_disc->>'discount_pct';
+      v_meta := v_meta || jsonb_build_object(
+        'fee_discount_pct', v_disc->'discount_pct',
+        'fee_discount_inventory_id', v_disc->'inventory_id',
+        'club_pays', v_club_pays,
+        'bank_gap', v_gap
+      );
+    END IF;
+  END IF;
+
+  IF v_h.buyer_club_id IS NOT NULL
+     AND btrim(v_h.buyer_club_id::text) <> ''
+     AND v_h.buyer_club_id <> 'FOREIGN' THEN
+    v_desc_buy := 'Purchase: ' || v_player_name;
+    IF v_gap > 0 THEN
+      v_desc_buy := v_desc_buy || format(' (%s%% prize discount)', v_pct);
+    END IF;
+    PERFORM public.post_club_ledger(
+      v_h.buyer_club_id,
+      'transfer_purchase',
+      -abs(v_club_pays),
+      v_desc_buy,
+      v_meta,
+      NULL,
+      NULL,
+      v_draft_from_gpdb,
+      p_apply_balance
+    );
+  END IF;
+
+  IF v_h.seller_club_id IS NOT NULL AND btrim(v_h.seller_club_id::text) <> '' THEN
+    v_desc_sell := 'Sale: ' || v_player_name;
+    IF coalesce(v_h.transfer_sale_note, '') = 'squad_overflow' THEN
+      PERFORM public.post_club_ledger(
+        v_h.seller_club_id,
+        CASE
+          WHEN v_h.buyer_club_id = 'FOREIGN' THEN 'transfer_foreign_sale'
+          ELSE 'transfer_overflow_release'
+        END,
+        abs(v_fee),
+        coalesce(nullif(btrim(v_h.foreign_buyer_name), ''), v_desc_sell),
+        v_meta || jsonb_build_object('transfer_sale_note', v_h.transfer_sale_note),
+        NULL,
+        NULL,
+        false,
+        p_apply_balance
+      );
+    ELSE
+      -- Buyer portion of sale
+      IF (abs(v_fee) - abs(v_gap)) > 0 THEN
+        PERFORM public.post_club_ledger(
+          v_h.seller_club_id,
+          'transfer_sale',
+          abs(v_fee) - abs(v_gap),
+          v_desc_sell,
+          v_meta,
+          NULL,
+          NULL,
+          false,
+          p_apply_balance
+        );
+      END IF;
+      -- Bank tops up so seller receives full fee
+      IF v_gap > 0 THEN
+        PERFORM public.post_club_ledger(
+          v_h.seller_club_id,
+          'prize_fee_discount_subsidy',
+          abs(v_gap),
+          format('Fee discount top-up (buyer prize token) — %s', v_player_name),
+          v_meta,
+          NULL,
+          NULL,
+          true,
+          p_apply_balance
+        );
+      ELSIF abs(v_fee) > 0 AND v_gap = 0 THEN
+        -- No discount: full sale credit (standard path)
+        NULL;
+      END IF;
+
+      -- If no gap and we skipped the reduced sale above when fee=gap edge case:
+      IF v_gap = 0 AND abs(v_fee) > 0 THEN
+        -- Already posted abs(v_fee)-0 above when gap=0; good.
+        NULL;
+      END IF;
+    END IF;
+  END IF;
+
+  IF coalesce(v_h.agent_fee, 0) > 0 AND v_h.buyer_club_id IS NOT NULL THEN
+    PERFORM public.post_club_ledger(
+      v_h.buyer_club_id,
+      'transfer_agent_fee',
+      -abs(v_h.agent_fee),
+      'Agent fee: ' || v_player_name,
+      v_meta,
+      NULL,
+      NULL,
+      false,
+      p_apply_balance
+    );
+  END IF;
+
+  IF v_h.listing_id IS NOT NULL THEN
+    PERFORM public.prize_release_locked_discounts_for_context(
+      CASE WHEN v_draft_from_gpdb THEN 'draft_listing' ELSE 'listing' END,
+      v_h.listing_id,
+      v_h.buyer_club_id
+    );
+  END IF;
+END;
+$function$;
+
+-- Fix: when gap=0, the branch posts abs(v_fee)-0 which is correct.
+-- When gap>0 and club_pays=0, only bank top-up — also OK.
+-- When gap=0 we must still post full transfer_sale — the IF (fee-gap)>0 handles it.
+
+-- ---------------------------------------------------------------------------
+-- Special auction settle helper: apply winner discount token on purchase/LUB fee
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.prize_special_auction_apply_winner_discount(
+  p_auction_id bigint,
+  p_win_club text,
+  p_amount numeric
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_disc jsonb;
+  v_club_pays numeric;
+  v_gap numeric;
+  v_full numeric := abs(coalesce(p_amount, 0));
+BEGIN
+  IF p_win_club IS NULL OR v_full <= 0 THEN
+    RETURN jsonb_build_object('club_pays', v_full, 'bank_gap', 0, 'applied', false);
+  END IF;
+
+  v_disc := public.prize_apply_fee_discount_settlement(
+    p_win_club, 'special_auction', p_auction_id, v_full
+  );
+
+  PERFORM public.prize_release_locked_discounts_for_context(
+    'special_auction', p_auction_id, p_win_club
+  );
+
+  IF coalesce((v_disc->>'applied')::boolean, false) THEN
+    v_club_pays := coalesce((v_disc->>'club_pays')::numeric, v_full);
+    v_gap := coalesce((v_disc->>'bank_gap')::numeric, 0);
+    -- For auctions there is no club seller: bank simply collects less (gap absorbed).
+    -- Optionally record bank gap as lost revenue metadata only.
+    RETURN jsonb_build_object(
+      'applied', true,
+      'club_pays', v_club_pays,
+      'bank_gap', v_gap,
+      'discount_pct', v_disc->'discount_pct',
+      'inventory_id', v_disc->'inventory_id'
+    );
+  END IF;
+
+  RETURN jsonb_build_object('club_pays', v_full, 'bank_gap', 0, 'applied', false);
+END;
+$function$;
+
+-- Patch special_auction_settle: wrap LUB and snap purchase charges
+CREATE OR REPLACE FUNCTION public.special_auction_settle(p_auction_id bigint)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_auction public.special_auctions%rowtype;
+  v_win_club text;
+  v_win_amount numeric;
+  v_win_bid_id bigint;
+  v_first_bid timestamptz;
+  v_discount numeric := 0;
+  v_purchase numeric := 0;
+  v_club text;
+  v_bid_count int;
+  v_fee_total numeric;
+  v_unit_fee numeric;
+  v_row_fee numeric;
+  v_title text;
+  v_has_ledger boolean;
+  v_token jsonb;
+  v_charge numeric;
+BEGIN
+  IF NOT public.is_gpsl_admin()
+     AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  SELECT * INTO v_auction FROM public.special_auctions WHERE id = p_auction_id FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Auction not found'; END IF;
+
+  v_title := coalesce(nullif(btrim(v_auction.title), ''), 'Auction #' || v_auction.id);
+  v_has_ledger := to_regprocedure(
+    'public.post_special_auction_ledger_line(text,text,numeric,text,bigint,boolean,jsonb)'
+  ) IS NOT NULL;
+
+  IF v_auction.auction_type = 'lowest_unique' THEN
+    IF v_auction.status = 'settled' THEN
+      RAISE EXCEPTION 'Auction already settled — use admin_special_auction_backfill_fee_ledger(%) for ledger-only backfill',
+        p_auction_id;
+    END IF;
+    IF v_auction.status = 'active' THEN
+      PERFORM public.special_auction_reveal_lowest_unique(p_auction_id);
+      SELECT * INTO v_auction FROM public.special_auctions WHERE id = p_auction_id;
+    END IF;
+    IF v_auction.status <> 'revealed' THEN
+      RAISE EXCEPTION 'Reveal the lowest unique auction first';
+    END IF;
+    v_win_club := v_auction.winning_club_id;
+    v_win_amount := v_auction.winning_amount;
+
+    IF v_win_club IS NULL THEN
+      UPDATE public.special_auctions SET status = 'settled', updated_at = now() WHERE id = p_auction_id;
+      PERFORM public.prize_release_locked_discounts_for_context('special_auction', p_auction_id, NULL);
+      RETURN;
+    END IF;
+
+    v_token := public.prize_special_auction_apply_winner_discount(p_auction_id, v_win_club, v_win_amount);
+    v_charge := coalesce((v_token->>'club_pays')::numeric, v_win_amount);
+
+    IF v_has_ledger THEN
+      PERFORM public.post_special_auction_ledger_line(
+        v_win_club,
+        'special_auction_fee',
+        -abs(coalesce(v_charge, 0)),
+        format('Lowest unique bid — %s%s', v_title,
+          CASE WHEN coalesce((v_token->>'applied')::boolean, false)
+            THEN format(' (%s%% prize discount)', v_token->>'discount_pct')
+            ELSE '' END),
+        p_auction_id,
+        true,
+        jsonb_build_object(
+          'ledger_role', 'lub_win',
+          'auction_type', 'lowest_unique',
+          'winning_amount', v_win_amount,
+          'club_pays', v_charge,
+          'prize_discount', v_token
+        )
+      );
+    ELSE
+      UPDATE public."Club_Finances"
+      SET balance = coalesce(balance, 0) - coalesce(v_charge, 0)
+      WHERE club_name = v_win_club;
+    END IF;
+
+    UPDATE public.special_auction_bids
+    SET fee_charged = v_charge, is_winner = (club_id = v_win_club)
+    WHERE auction_id = p_auction_id;
+
+    PERFORM public.special_auction_award_prize(v_auction, v_win_club, v_win_amount);
+    UPDATE public.special_auctions SET status = 'settled', updated_at = now() WHERE id = p_auction_id;
+    RETURN;
+  END IF;
+
+  IF v_auction.auction_type <> 'snap' THEN
+    RAISE EXCEPTION 'Unknown auction type';
+  END IF;
+
+  IF v_auction.status = 'settled' THEN
+    RAISE EXCEPTION 'Auction already settled — use admin_special_auction_backfill_fee_ledger(%) for ledger-only backfill',
+      p_auction_id;
+  END IF;
+
+  SELECT b.id, b.club_id, b.bid_amount
+  INTO v_win_bid_id, v_win_club, v_win_amount
+  FROM public.special_auction_bids b
+  WHERE b.auction_id = p_auction_id
+  ORDER BY b.bid_amount DESC, b.bid_time ASC
+  LIMIT 1;
+
+  UPDATE public.special_auction_bids SET is_winner = false WHERE auction_id = p_auction_id;
+  IF v_win_club IS NOT NULL THEN
+    UPDATE public.special_auction_bids SET is_winner = true WHERE id = v_win_bid_id;
+
+    SELECT min(b.bid_time) INTO v_first_bid
+    FROM public.special_auction_bids b
+    WHERE b.auction_id = p_auction_id AND b.club_id = v_win_club;
+
+    v_discount := public.special_auction_snap_discount_pct(v_auction.start_time, v_first_bid);
+    v_purchase := round(coalesce(v_win_amount, 0) * (1 - v_discount / 100.0));
+    -- Prize fee-discount token applies on top of snap time discount (on purchase amount)
+    v_token := public.prize_special_auction_apply_winner_discount(p_auction_id, v_win_club, v_purchase);
+    v_purchase := coalesce((v_token->>'club_pays')::numeric, v_purchase);
+  ELSE
+    PERFORM public.prize_release_locked_discounts_for_context('special_auction', p_auction_id, NULL);
+  END IF;
+
+  v_unit_fee := coalesce(nullif(v_auction.snap_bid_fee, 0), 300000);
+
+  FOR v_club, v_bid_count IN
+    SELECT b.club_id, count(*)::int
+    FROM public.special_auction_bids b
+    WHERE b.auction_id = p_auction_id
+    GROUP BY b.club_id
+  LOOP
+    v_fee_total := v_bid_count * v_unit_fee;
+
+    IF v_club = v_win_club THEN
+      v_row_fee := v_unit_fee;
+
+      IF v_has_ledger THEN
+        IF v_fee_total > 0 THEN
+          PERFORM public.post_special_auction_ledger_line(
+            v_club,
+            'special_auction_fee',
+            -abs(v_fee_total),
+            format(
+              'Snap bid fees (%s×₿%s) — %s',
+              v_bid_count,
+              to_char(v_unit_fee, 'FM999,999,999,999'),
+              v_title
+            ),
+            p_auction_id,
+            true,
+            jsonb_build_object(
+              'ledger_role', 'snap_bid_fees',
+              'auction_type', 'snap',
+              'bid_count', v_bid_count,
+              'unit_fee', v_unit_fee,
+              'is_winner', true
+            )
+          );
+        END IF;
+        IF coalesce(v_purchase, 0) > 0 THEN
+          PERFORM public.post_special_auction_ledger_line(
+            v_club,
+            'special_auction_fee',
+            -abs(v_purchase),
+            format(
+              'Snap winning bid (after discounts) — %s',
+              v_title
+            ),
+            p_auction_id,
+            true,
+            jsonb_build_object(
+              'ledger_role', 'snap_purchase',
+              'auction_type', 'snap',
+              'winning_amount', v_win_amount,
+              'time_discount_pct', v_discount,
+              'purchase_amount', v_purchase,
+              'prize_discount', v_token,
+              'is_winner', true
+            )
+          );
+        END IF;
+      ELSE
+        UPDATE public."Club_Finances"
+        SET balance = coalesce(balance, 0) - (v_fee_total + coalesce(v_purchase, 0))
+        WHERE club_name = v_club;
+      END IF;
+    ELSE
+      v_row_fee := round(v_unit_fee * 0.25);
+      v_fee_total := round(v_fee_total * 0.25);
+
+      IF v_has_ledger THEN
+        IF v_fee_total > 0 THEN
+          PERFORM public.post_special_auction_ledger_line(
+            v_club,
+            'special_auction_fee',
+            -abs(v_fee_total),
+            format(
+              'Snap bid fees (25%% of %s bid(s)) — %s',
+              v_bid_count,
+              v_title
+            ),
+            p_auction_id,
+            true,
+            jsonb_build_object(
+              'ledger_role', 'snap_bid_fees',
+              'auction_type', 'snap',
+              'bid_count', v_bid_count,
+              'unit_fee', v_unit_fee,
+              'is_winner', false
+            )
+          );
+        END IF;
+      ELSE
+        UPDATE public."Club_Finances"
+        SET balance = coalesce(balance, 0) - coalesce(v_fee_total, 0)
+        WHERE club_name = v_club;
+      END IF;
+    END IF;
+
+    UPDATE public.special_auction_bids
+    SET fee_charged = CASE WHEN club_id = v_win_club THEN v_row_fee ELSE v_row_fee END
+    WHERE auction_id = p_auction_id AND club_id = v_club;
+  END LOOP;
+
+  UPDATE public.special_auctions
+  SET
+    status = 'settled',
+    winning_club_id = v_win_club,
+    winning_amount = v_win_amount,
+    winner_discount_pct = v_discount,
+    winner_purchase_amount = v_purchase,
+    updated_at = now()
+  WHERE id = p_auction_id;
+
+  IF v_win_club IS NOT NULL THEN
+    PERFORM public.special_auction_award_prize(v_auction, v_win_club, v_win_amount);
+  END IF;
+END;
+$function$;
+
+-- ---------------------------------------------------------------------------
+-- Medical: apply inventory token (tiered matches) or legacy −2 stack
+-- ---------------------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS public.medical_apply_specialist_token(bigint);
+
+CREATE OR REPLACE FUNCTION public.medical_apply_specialist_token(
+  p_injury_id bigint,
+  p_inventory_id bigint DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club text := public.my_club_shortname();
+  v_inj public.competition_player_injuries%rowtype;
+  v_remove int := 2;
+  v_applied int := 0;
+  v_tokens int;
+  v_inv public.club_prize_inventory%rowtype;
+  v_use_inventory boolean := false;
+BEGIN
+  IF v_club IS NULL THEN RAISE EXCEPTION 'No club linked to this account'; END IF;
+  IF NOT public.medical_club_has_doctor(v_club) THEN
+    RAISE EXCEPTION 'A club doctor is required before using specialist consultants';
+  END IF;
+
+  SELECT * INTO v_inj
+  FROM public.competition_player_injuries
+  WHERE id = p_injury_id
+  FOR UPDATE;
+
+  IF NOT FOUND OR v_inj.club_short_name IS DISTINCT FROM v_club THEN
+    RAISE EXCEPTION 'Injury not found for your club';
+  END IF;
+  IF v_inj.status <> 'active' THEN
+    RAISE EXCEPTION 'Injury is not active';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.club_medical_token_use WHERE injury_id = p_injury_id) THEN
+    RAISE EXCEPTION 'A specialist consult was already used on this injury';
+  END IF;
+
+  PERFORM public.medical_ensure_centre(v_club);
+
+  IF p_inventory_id IS NOT NULL THEN
+    SELECT * INTO v_inv
+    FROM public.club_prize_inventory
+    WHERE id = p_inventory_id
+    FOR UPDATE;
+
+    IF NOT FOUND OR v_inv.club_short_name IS DISTINCT FROM v_club THEN
+      RAISE EXCEPTION 'Medical token not found';
+    END IF;
+    IF v_inv.prize_type <> 'medical_token' OR v_inv.status <> 'available' THEN
+      RAISE EXCEPTION 'Medical token not available';
+    END IF;
+    v_remove := v_inv.param_int;
+    v_use_inventory := true;
+  ELSE
+    -- Prefer an available inventory medical token if present
+    SELECT * INTO v_inv
+    FROM public.club_prize_inventory
+    WHERE club_short_name = v_club
+      AND prize_type = 'medical_token'
+      AND status = 'available'
+    ORDER BY param_int DESC, id
+    LIMIT 1
+    FOR UPDATE;
+
+    IF FOUND THEN
+      v_remove := v_inv.param_int;
+      v_use_inventory := true;
+      p_inventory_id := v_inv.id;
+    ELSE
+      SELECT specialist_tokens INTO v_tokens
+      FROM public.club_medical_centre
+      WHERE club_short_name = v_club
+      FOR UPDATE;
+
+      IF coalesce(v_tokens, 0) < 1 THEN
+        RAISE EXCEPTION 'No specialist tokens available';
+      END IF;
+      v_remove := 2;
+    END IF;
+  END IF;
+
+  IF coalesce(v_inj.matches_out_remaining, 0) > 0 THEN
+    v_applied := least(v_remove, v_inj.matches_out_remaining);
+    UPDATE public.competition_player_injuries
+    SET matches_out_remaining = matches_out_remaining - v_applied
+    WHERE id = p_injury_id;
+  ELSIF coalesce(v_inj.recovery_remaining, 0) > 0 THEN
+    v_applied := least(v_remove, v_inj.recovery_remaining);
+    UPDATE public.competition_player_injuries
+    SET recovery_remaining = recovery_remaining - v_applied
+    WHERE id = p_injury_id;
+  ELSE
+    RAISE EXCEPTION 'Nothing left to shorten on this injury';
+  END IF;
+
+  UPDATE public.competition_player_injuries i
+  SET status = 'recovered',
+      recovered_at = coalesce(i.recovered_at, now())
+  WHERE i.id = p_injury_id
+    AND coalesce(i.matches_out_remaining, 0) <= 0
+    AND coalesce(i.recovery_remaining, 0) <= 0;
+
+  INSERT INTO public.club_medical_token_use (club_short_name, injury_id, matches_removed)
+  VALUES (v_club, p_injury_id, v_applied);
+
+  IF v_use_inventory THEN
+    UPDATE public.club_prize_inventory
+    SET status = 'consumed',
+        consumed_at = now(),
+        updated_at = now(),
+        metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
+          'injury_id', p_injury_id,
+          'matches_removed', v_applied
+        )
+    WHERE id = p_inventory_id;
+  ELSE
+    UPDATE public.club_medical_centre
+    SET specialist_tokens = specialist_tokens - 1,
+        updated_at = now()
+    WHERE club_short_name = v_club;
+  END IF;
+
+  IF to_regprocedure('public.competition_injury_assign_fixtures(bigint)') IS NOT NULL THEN
+    PERFORM public.competition_injury_assign_fixtures(p_injury_id);
+  END IF;
+
+  SELECT specialist_tokens INTO v_tokens
+  FROM public.club_medical_centre
+  WHERE club_short_name = v_club;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'matches_removed', v_applied,
+    'token_tier', v_remove,
+    'inventory_id', p_inventory_id,
+    'tokens_left', coalesce(v_tokens, 0)
+  );
+END;
+$function$;
+
+-- ---------------------------------------------------------------------------
+-- Appeal card: owner submits, admin reviews (DOGSO-safe)
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.prize_submit_suspension_appeal(
+  p_suspension_id bigint,
+  p_inventory_id bigint,
+  p_owner_note text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club text := public.my_club_shortname();
+  v_sus public.competition_player_suspensions%rowtype;
+  v_inv public.club_prize_inventory%rowtype;
+  v_id bigint;
+  v_season_id bigint;
+BEGIN
+  IF v_club IS NULL THEN RAISE EXCEPTION 'No club linked'; END IF;
+
+  SELECT * INTO v_sus
+  FROM public.competition_player_suspensions
+  WHERE id = p_suspension_id
+  FOR UPDATE;
+
+  IF NOT FOUND OR v_sus.club_short_name IS DISTINCT FROM v_club THEN
+    RAISE EXCEPTION 'Suspension not found';
+  END IF;
+  IF v_sus.status <> 'active' THEN
+    RAISE EXCEPTION 'Suspension is not active';
+  END IF;
+  IF v_sus.reason IS DISTINCT FROM 'red_card' THEN
+    RAISE EXCEPTION 'Appeal cards are only for red-card suspensions';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM public.competition_suspension_appeals
+    WHERE suspension_id = p_suspension_id AND status = 'pending'
+  ) THEN
+    RAISE EXCEPTION 'An appeal is already pending for this suspension';
+  END IF;
+
+  SELECT * INTO v_inv
+  FROM public.club_prize_inventory
+  WHERE id = p_inventory_id
+  FOR UPDATE;
+
+  IF NOT FOUND OR v_inv.club_short_name IS DISTINCT FROM v_club THEN
+    RAISE EXCEPTION 'Appeal card not found';
+  END IF;
+  IF v_inv.prize_type <> 'appeal_card' OR v_inv.status <> 'available' THEN
+    RAISE EXCEPTION 'Appeal card not available';
+  END IF;
+
+  SELECT id INTO v_season_id
+  FROM public.competition_seasons
+  WHERE is_current = true
+  ORDER BY id DESC
+  LIMIT 1;
+
+  UPDATE public.club_prize_inventory
+  SET status = 'pending_review',
+      updated_at = now(),
+      metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object(
+        'suspension_id', p_suspension_id
+      )
+  WHERE id = p_inventory_id;
+
+  INSERT INTO public.competition_suspension_appeals (
+    season_id, club_short_name, suspension_id, inventory_id, owner_note
+  )
+  VALUES (
+    coalesce(v_sus.season_id, v_season_id),
+    v_club,
+    p_suspension_id,
+    p_inventory_id,
+    nullif(btrim(p_owner_note), '')
+  )
+  RETURNING id INTO v_id;
+
+  PERFORM public.owner_inbox_send(
+    'prize_appeal_submitted',
+    'Red card appeal submitted',
+    format(
+      'Your appeal against a red-card suspension is awaiting admin review.%s',
+      CASE WHEN nullif(btrim(p_owner_note), '') IS NOT NULL
+        THEN E'\nNote: ' || btrim(p_owner_note) ELSE '' END
+    ),
+    v_club,
+    NULL, NULL, NULL, NULL, NULL,
+    'club_prizes.html',
+    format('prize_appeal_submitted:%s', v_id),
+    NULL,
+    coalesce(v_sus.season_id, v_season_id)
+  );
+
+  RETURN jsonb_build_object('ok', true, 'appeal_id', v_id, 'status', 'pending');
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.admin_review_suspension_appeal(
+  p_appeal_id bigint,
+  p_approve boolean,
+  p_admin_note text DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_a public.competition_suspension_appeals%rowtype;
+  v_note text := nullif(btrim(p_admin_note), '');
+BEGIN
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  SELECT * INTO v_a
+  FROM public.competition_suspension_appeals
+  WHERE id = p_appeal_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Appeal not found';
+  END IF;
+  IF v_a.status <> 'pending' THEN
+    RAISE EXCEPTION 'Appeal already reviewed';
+  END IF;
+
+  IF p_approve THEN
+    -- Cancel remaining suspension matches
+    DELETE FROM public.competition_player_suspension_matches sm
+    WHERE sm.suspension_id = v_a.suspension_id
+      AND sm.served = false;
+
+    UPDATE public.competition_player_suspensions
+    SET status = 'cancelled'
+    WHERE id = v_a.suspension_id;
+
+    UPDATE public.club_prize_inventory
+    SET status = 'consumed',
+        consumed_at = now(),
+        updated_at = now()
+    WHERE id = v_a.inventory_id;
+
+    UPDATE public.competition_suspension_appeals
+    SET status = 'approved',
+        admin_note = v_note,
+        reviewed_by = auth.uid(),
+        reviewed_at = now()
+    WHERE id = p_appeal_id;
+
+    PERFORM public.owner_inbox_send(
+      'prize_appeal_resolved',
+      'Red card appeal approved',
+      coalesce(
+        'Admin overturned the suspension.' || CASE WHEN v_note IS NOT NULL THEN E'\n' || v_note ELSE '' END,
+        'Admin overturned the suspension.'
+      ),
+      v_a.club_short_name,
+      NULL, NULL, NULL, NULL, NULL,
+      'squad.html',
+      format('prize_appeal_resolved:%s', p_appeal_id),
+      NULL,
+      v_a.season_id
+    );
+  ELSE
+    -- Reject: return appeal card to available (or consume? User said admin review —
+    -- reject returns the card so they can try a clearer case, OR consume to prevent spam.
+    -- Consume on reject so one card = one attempt.)
+    UPDATE public.club_prize_inventory
+    SET status = 'rejected',
+        consumed_at = now(),
+        updated_at = now()
+    WHERE id = v_a.inventory_id;
+
+    UPDATE public.competition_suspension_appeals
+    SET status = 'rejected',
+        admin_note = v_note,
+        reviewed_by = auth.uid(),
+        reviewed_at = now()
+    WHERE id = p_appeal_id;
+
+    PERFORM public.owner_inbox_send(
+      'prize_appeal_resolved',
+      'Red card appeal rejected',
+      coalesce(
+        'Admin rejected the appeal (e.g. DOGSO / clear goal-scoring opportunity).' ||
+          CASE WHEN v_note IS NOT NULL THEN E'\n' || v_note ELSE '' END,
+        'Admin rejected the appeal.'
+      ),
+      v_a.club_short_name,
+      NULL, NULL, NULL, NULL, NULL,
+      'club_prizes.html',
+      format('prize_appeal_resolved:%s', p_appeal_id),
+      NULL,
+      v_a.season_id
+    );
+  END IF;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'appeal_id', p_appeal_id,
+    'status', CASE WHEN p_approve THEN 'approved' ELSE 'rejected' END
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.admin_list_suspension_appeals(p_status text DEFAULT 'pending')
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_out jsonb;
+BEGIN
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  SELECT coalesce(jsonb_agg(row_to_json(x)::jsonb ORDER BY x.created_at), '[]'::jsonb)
+  INTO v_out
+  FROM (
+    SELECT
+      a.id,
+      a.season_id,
+      a.club_short_name,
+      a.suspension_id,
+      a.inventory_id,
+      a.status,
+      a.owner_note,
+      a.admin_note,
+      a.created_at,
+      a.reviewed_at,
+      s.player_id,
+      s.reason,
+      s.ban_matches,
+      s.source_fixture_id,
+      (
+        SELECT count(*)::int
+        FROM public.competition_player_suspension_matches sm
+        WHERE sm.suspension_id = s.id AND sm.served = false
+      ) AS pending_matches,
+      p."Name" AS player_name
+    FROM public.competition_suspension_appeals a
+    JOIN public.competition_player_suspensions s ON s.id = a.suspension_id
+    LEFT JOIN public."Players" p ON p."Konami_ID"::text = s.player_id::text
+    WHERE p_status IS NULL OR a.status = p_status
+  ) x;
+
+  RETURN coalesce(v_out, '[]'::jsonb);
+END;
+$function$;
+
+-- Owner helpers: list appealable red suspensions
+CREATE OR REPLACE FUNCTION public.club_appealable_red_suspensions(p_club text DEFAULT NULL)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club text := coalesce(nullif(btrim(p_club), ''), public.my_club_shortname());
+  v_out jsonb;
+BEGIN
+  IF v_club IS NULL THEN RAISE EXCEPTION 'No club'; END IF;
+  IF NOT public.is_gpsl_admin() AND v_club IS DISTINCT FROM public.my_club_shortname() THEN
+    RAISE EXCEPTION 'Not allowed';
+  END IF;
+
+  SELECT coalesce(jsonb_agg(row_to_json(x)::jsonb), '[]'::jsonb)
+  INTO v_out
+  FROM (
+    SELECT
+      s.id AS suspension_id,
+      s.player_id,
+      s.ban_matches,
+      s.source_fixture_id,
+      s.created_at,
+      p."Name" AS player_name,
+      (
+        SELECT count(*)::int
+        FROM public.competition_player_suspension_matches sm
+        WHERE sm.suspension_id = s.id AND sm.served = false
+      ) AS pending_matches
+    FROM public.competition_player_suspensions s
+    LEFT JOIN public."Players" p ON p."Konami_ID"::text = s.player_id::text
+    WHERE s.club_short_name = v_club
+      AND s.status = 'active'
+      AND s.reason = 'red_card'
+      AND NOT EXISTS (
+        SELECT 1 FROM public.competition_suspension_appeals a
+        WHERE a.suspension_id = s.id AND a.status = 'pending'
+      )
+  ) x;
+
+  RETURN coalesce(v_out, '[]'::jsonb);
+END;
+$function$;
+
+-- ---------------------------------------------------------------------------
+-- Grants
+-- ---------------------------------------------------------------------------
+
+GRANT SELECT ON public.competition_challenge_period_pack TO authenticated;
+GRANT SELECT ON public.club_prize_inventory TO authenticated;
+GRANT SELECT ON public.competition_suspension_appeals TO authenticated;
+
+GRANT EXECUTE ON FUNCTION public.prize_grant_inventory_item(text, text, int, text, bigint, text, jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.prize_grant_period_pack(text, text, bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_update_challenge_period_packs(jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_update_challenge_settings(jsonb) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.club_prize_inventory_state(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.prize_lock_fee_discount(bigint, text, bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.prize_unlock_fee_discount(bigint) TO authenticated;
+-- Fix seller credit when no discount: always post full fee as transfer_sale
+-- (cleaner rewrite of the seller branch above was incomplete in edge cases —
+--  re-assert: if gap=0, post abs(v_fee); if gap>0, post fee-gap + subsidy)
+
+-- Note: post_transfer_ledger_for_history above already posts (fee - gap) then subsidy.
+-- When gap=0, (fee - gap) = fee. OK.
+
+-- Grant medical_apply with two-arg signature
+GRANT EXECUTE ON FUNCTION public.medical_apply_specialist_token(bigint, bigint) TO authenticated;
+
+GRANT EXECUTE ON FUNCTION public.prize_submit_suspension_appeal(bigint, bigint, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_review_suspension_appeal(bigint, boolean, text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_list_suspension_appeals(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.club_appealable_red_suspensions(text) TO authenticated;
+
+-- Extend medical_room_state with prize medical tokens (if function exists)
+DO $patch_med_state$
+BEGIN
+  IF to_regprocedure('public.medical_room_state(text)') IS NULL THEN
+    RETURN;
+  END IF;
+END;
+$patch_med_state$;
+
+CREATE OR REPLACE FUNCTION public.medical_room_prize_tokens(p_club text DEFAULT NULL)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_club text := coalesce(nullif(btrim(p_club), ''), public.my_club_shortname());
+  v_out jsonb;
+BEGIN
+  IF v_club IS NULL THEN
+    RETURN '[]'::jsonb;
+  END IF;
+  SELECT coalesce(jsonb_agg(jsonb_build_object(
+    'id', i.id,
+    'param_int', i.param_int,
+    'status', i.status
+  ) ORDER BY i.param_int DESC, i.id), '[]'::jsonb)
+  INTO v_out
+  FROM public.club_prize_inventory i
+  WHERE i.club_short_name = v_club
+    AND i.prize_type = 'medical_token'
+    AND i.status = 'available';
+  RETURN coalesce(v_out, '[]'::jsonb);
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.medical_room_prize_tokens(text) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';

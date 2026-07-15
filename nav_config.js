@@ -134,6 +134,7 @@ export const NAV_SECTIONS = [
       { href: "progress.html", label: "Tables", page: "progress" },
       { href: "league_stats.html", label: "Stats", page: "league_stats" },
       { href: "challenges.html", label: "Challenges", page: "challenges" },
+      { href: "club_prizes.html", label: "Club prizes", page: "club_prizes" },
     ],
   },
   {
@@ -272,6 +273,7 @@ export const NAV_SECTIONS = [
       { href: "season_calendar.html", label: "Season calendar", page: "season_calendar" },
       { href: "natter.html", label: "Natter", page: "natter" },
       { href: "challenges.html", label: "Season challenges", page: "challenges" },
+      { href: "club_prizes.html", label: "Club prizes", page: "club_prizes" },
     ],
   },
 ];

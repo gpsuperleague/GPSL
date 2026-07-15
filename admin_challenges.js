@@ -24,6 +24,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("challengeWindow").onchange = syncWindowMonths;
   document.getElementById("challengeStatType").onchange = syncStatParamVisibility;
   document.getElementById("saveChallengeDefaultsBtn").onclick = saveChallengeDefaults;
+  document.getElementById("saveChallengePacksBtn").onclick = saveChallengePacks;
   document.getElementById("seedChallengesBtn").onclick = seedChallenges;
   document.getElementById("recheckChallengesBtn").onclick = recheckChallenges;
   document.getElementById("saveChallengeBtn").onclick = saveChallenge;
@@ -32,9 +33,66 @@ document.addEventListener("DOMContentLoaded", async () => {
   syncWindowMonths();
   syncStatParamVisibility();
   await loadChallengeDefaults();
+  await loadChallengePacks();
   await loadChallengeList();
   await loadChallengeAwards();
 });
+
+function parseIntList(raw, allowed) {
+  return String(raw || "")
+    .split(/[,;\s]+/)
+    .map((s) => Number(s.trim()))
+    .filter((n) => Number.isFinite(n) && n > 0 && (!allowed || allowed.includes(n)));
+}
+
+function fillPackFields(phase, row) {
+  const pack = row?.pack || {};
+  const prefix = phase === "start" ? "packStart" : "packMid";
+  document.getElementById(`${prefix}Cash`).value = row?.cash_amount ?? 0;
+  document.getElementById(`${prefix}Medical`).value = (pack.medical_tokens || []).join(",");
+  document.getElementById(`${prefix}Discount`).value = (pack.fee_discounts || []).join(",");
+  document.getElementById(`${prefix}Appeals`).value = pack.appeal_cards ?? 0;
+}
+
+async function loadChallengePacks() {
+  const { data, error } = await supabase
+    .from("competition_challenge_period_pack")
+    .select("*");
+  if (error) {
+    setStatus("challengePacksStatus", "❌ " + error.message + " — run prize packs SQL", false);
+    return;
+  }
+  for (const row of data || []) {
+    if (row.window_phase === "start" || row.window_phase === "mid") {
+      fillPackFields(row.window_phase, row);
+    }
+  }
+}
+
+function packPayload(phase) {
+  const prefix = phase === "start" ? "packStart" : "packMid";
+  return {
+    window_phase: phase,
+    cash_amount: Number(document.getElementById(`${prefix}Cash`).value) || 0,
+    pack: {
+      medical_tokens: parseIntList(document.getElementById(`${prefix}Medical`).value, [2, 4, 6, 8, 10]),
+      fee_discounts: parseIntList(document.getElementById(`${prefix}Discount`).value).filter((n) => n <= 50),
+      appeal_cards: Math.max(0, Number(document.getElementById(`${prefix}Appeals`).value) || 0),
+    },
+  };
+}
+
+async function saveChallengePacks() {
+  setStatus("challengePacksStatus", "Saving packs…");
+  const { error } = await supabase.rpc("admin_update_challenge_period_packs", {
+    p_packs: [packPayload("start"), packPayload("mid")],
+  });
+  if (error) {
+    setStatus("challengePacksStatus", "❌ " + error.message, false);
+    return;
+  }
+  setStatus("challengePacksStatus", "✅ Period packs saved.", true);
+}
 
 function syncWindowMonths() {
   const window = document.getElementById("challengeWindow").value;

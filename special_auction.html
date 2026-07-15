@@ -205,6 +205,10 @@
         <button type="button" class="button secondary inc-btn" data-delta="5000000">+5m</button>
       </div>
       <p id="roundedPreview" class="secret-note"></p>
+      <div id="prizeDiscountWrap" style="margin:10px 0;display:none;">
+        <label for="prizeDiscountSelect" style="font-size:12px;color:#aaa;">Fee discount prize (optional, one at a time)</label>
+        <select id="prizeDiscountSelect" style="width:100%;margin-top:4px;background:#222;color:#eee;border:1px solid #444;padding:6px;"></select>
+      </div>
       <p id="bidError"></p>
       <button id="confirmBidBtn" class="button">Submit</button>
       <button id="cancelBidBtn" class="button secondary">Cancel</button>
@@ -322,7 +326,35 @@
       return high + BID_INCREMENT;
     }
 
-    function openBidModal() {
+    async function loadPrizeDiscountsForModal() {
+      const wrap = document.getElementById("prizeDiscountWrap");
+      const sel = document.getElementById("prizeDiscountSelect");
+      if (!wrap || !sel) return;
+      try {
+        const { data } = await supabase.rpc("club_prize_inventory_state");
+        const items = (data?.items || []).filter(
+          (i) => i.prize_type === "fee_discount" && (i.status === "available" || i.status === "locked")
+        );
+        if (!items.length) {
+          wrap.style.display = "none";
+          sel.innerHTML = "";
+          return;
+        }
+        wrap.style.display = "block";
+        sel.innerHTML =
+          '<option value="">No discount</option>' +
+          items
+            .map(
+              (i) =>
+                `<option value="${i.id}">${i.param_int}%${i.status === "locked" ? " (locked)" : ""}</option>`
+            )
+            .join("");
+      } catch {
+        wrap.style.display = "none";
+      }
+    }
+
+    async function openBidModal() {
       const isLub = auction.auction_type === "lowest_unique";
       snapMinBid = isLub ? MIN_BID : snapMinimumBid(latestBids);
       modalStartAmount = snapMinBid;
@@ -338,6 +370,7 @@
       bidAmountControl?.set(modalStartAmount);
       updateRoundedPreview(modalStartAmount);
       document.getElementById("bidError").textContent = "";
+      await loadPrizeDiscountsForModal();
       document.getElementById("bidModalBackdrop").classList.add("open");
     }
 
@@ -392,6 +425,20 @@
       if (error) {
         document.getElementById("bidError").textContent = error.message;
         return;
+      }
+      const discId = Number(document.getElementById("prizeDiscountSelect")?.value || 0);
+      if (discId) {
+        const { error: lockErr } = await supabase.rpc("prize_lock_fee_discount", {
+          p_inventory_id: discId,
+          p_context_kind: "special_auction",
+          p_context_id: auction.id,
+        });
+        if (lockErr) {
+          document.getElementById("bidError").textContent =
+            "Bid placed, but discount lock failed: " + lockErr.message;
+          await refreshData({ manual: true });
+          return;
+        }
       }
       closeBidModal();
       await refreshData({ manual: true });

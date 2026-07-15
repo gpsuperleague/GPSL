@@ -130,14 +130,19 @@ function renderTokens() {
   if (!vault || !list || !state) return;
 
   const tokens = Number(state.specialist_tokens) || 0;
+  const prizeTokens = state.prize_medical_tokens || [];
+  const hasPrize = prizeTokens.length > 0;
   const maxTokens = Number(state.max_specialist_tokens) || 20;
   let chips = "";
   for (let i = 0; i < maxTokens; i++) {
     chips += `<div class="token-chip${i < tokens ? "" : " empty"}" title="${i < tokens ? "Specialist token" : "Empty slot"}"></div>`;
   }
+  const prizeLabel = hasPrize
+    ? ` · Prize tokens: ${prizeTokens.map((t) => `−${t.param_int}`).join(", ")}`
+    : "";
   vault.innerHTML =
     chips +
-    `<span style="color:#9ab;font-size:13px;">${tokens} / ${maxTokens} tokens stored</span>`;
+    `<span style="color:#9ab;font-size:13px;">${tokens} / ${maxTokens} stored${prizeLabel} · <a href="club_prizes.html" style="color:#7ec8e8;">Club prizes</a></span>`;
 
   const injuries = state.active_injuries || [];
   if (!injuries.length) {
@@ -155,7 +160,10 @@ function renderTokens() {
           : `Building fitness — match availability in ${rec} match${rec === 1 ? "" : "es"}`;
       const used = !!inj.token_used;
       const canUse =
-        state.has_doctor && tokens > 0 && !used && (out > 0 || rec > 0);
+        state.has_doctor && (tokens > 0 || hasPrize) && !used && (out > 0 || rec > 0);
+      const bestTier = hasPrize
+        ? Math.max(...prizeTokens.map((t) => Number(t.param_int) || 0))
+        : state.specialist_matches_removed || 2;
       return `
         <div class="injury-row">
           <div>
@@ -166,7 +174,7 @@ function renderTokens() {
           </div>
           <button type="button" class="med-btn" data-token-injury="${inj.injury_id}"
             ${canUse ? "" : "disabled"}>
-            Use token (−${state.specialist_matches_removed || 2} matches)
+            Use token (−${bestTier}+ matches)
           </button>
         </div>`;
     })
@@ -197,6 +205,14 @@ async function loadState() {
     return;
   }
   state = data;
+  try {
+    const { data: prizeTok } = await supabase.rpc("medical_room_prize_tokens", {
+      p_club: data.club_short_name || null,
+    });
+    state.prize_medical_tokens = Array.isArray(prizeTok) ? prizeTok : [];
+  } catch {
+    state.prize_medical_tokens = [];
+  }
   renderHero();
   renderDoctor();
   renderPhysios();
@@ -258,23 +274,25 @@ async function hirePhysio(slot) {
 }
 
 async function applyToken(injuryId) {
+  const prize = (state?.prize_medical_tokens || [])[0];
+  const tier = prize?.param_int || state?.specialist_matches_removed || 2;
   if (
     !confirm(
-      "Use 1 specialist token to remove matches from this injury? (One token per injury.)"
+      `Use a specialist consult to remove up to ${tier} match(es) from this injury? (One consult per injury.)`
     )
   ) {
     return;
   }
   setStatus("Applying specialist consult…");
-  const { data, error } = await supabase.rpc("medical_apply_specialist_token", {
-    p_injury_id: injuryId,
-  });
+  const payload = { p_injury_id: injuryId };
+  if (prize?.id) payload.p_inventory_id = prize.id;
+  const { data, error } = await supabase.rpc("medical_apply_specialist_token", payload);
   if (error) {
     setStatus("❌ " + error.message, "error");
     return;
   }
   setStatus(
-    `Removed ${data?.matches_removed ?? 0} match(es). Tokens left: ${data?.tokens_left ?? "—"}`,
+    `Removed ${data?.matches_removed ?? 0} match(es) (tier −${data?.token_tier ?? tier}).`,
     "ok"
   );
   await loadState();
