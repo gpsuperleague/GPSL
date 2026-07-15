@@ -56,8 +56,9 @@ function inboxLooksLikeBank(msg) {
   return BANK_SOFT_MATCH.test(text);
 }
 
-export function inboxMessageCategory(messageType) {
-  const t = String(messageType || "");
+export function inboxMessageCategory(messageType, msg = null) {
+  if (msg && inboxLooksLikeBank(msg)) return "bank";
+  const t = String(messageType || msg?.message_type || "");
   if (INBOX_CATEGORY_TYPES.fixture_management.has(t)) return "fixture_management";
   if (INBOX_CATEGORY_TYPES.fines.has(t)) return "fines";
   if (INBOX_CATEGORY_TYPES.bank.has(t)) return "bank";
@@ -67,21 +68,28 @@ export function inboxMessageCategory(messageType) {
   return "other";
 }
 
-export function filterInboxByCategory(messages, categoryId) {
-  if (!categoryId || categoryId === "all") return messages || [];
-  if (categoryId === "bank") {
-    return (messages || []).filter((m) => inboxLooksLikeBank(m));
-  }
+export function messageMatchesInboxCategory(msg, categoryId) {
+  if (!categoryId || categoryId === "all") return true;
+  if (categoryId === "bank") return inboxLooksLikeBank(msg);
   if (categoryId === "other") {
-    return (messages || []).filter((m) => {
-      const t = String(m?.message_type || "");
-      if (inboxLooksLikeBank(m)) return false;
-      return !INBOX_TYPED_CATEGORIES.some((set) => set.has(t));
-    });
+    const t = String(msg?.message_type || "");
+    if (inboxLooksLikeBank(msg)) return false;
+    return !INBOX_TYPED_CATEGORIES.some((set) => set.has(t));
   }
   const set = INBOX_CATEGORY_TYPES[categoryId];
-  if (!set) return messages || [];
-  return (messages || []).filter((m) => set.has(String(m?.message_type || "")));
+  if (!set) return false;
+  return set.has(String(msg?.message_type || ""));
+}
+
+/** categoryIds: string | string[] | null. Empty / "all" = no filter. Multi = OR match. */
+export function filterInboxByCategory(messages, categoryIds) {
+  const list = messages || [];
+  let ids = categoryIds;
+  if (ids == null || ids === "" || ids === "all") return list;
+  if (!Array.isArray(ids)) ids = [ids];
+  ids = ids.map((id) => String(id || "")).filter((id) => id && id !== "all");
+  if (!ids.length) return list;
+  return list.filter((m) => ids.some((id) => messageMatchesInboxCategory(m, id)));
 }
 
 function inboxForClub(msg, clubShortName) {

@@ -7,7 +7,36 @@ import { acceptProposal, confirmMutualOverride } from "./match_scheduling.js";
 let myClub = { short: null, name: null };
 let myOwnerId = null;
 let viewArchived = false;
-let activeCategory = "all";
+/** Multi-select category ids. Empty = All. */
+let activeCategories = new Set();
+
+function selectedCategoryList() {
+  return Array.from(activeCategories);
+}
+
+function isCategoryActive(id) {
+  if (id === "all") return activeCategories.size === 0;
+  return activeCategories.has(id);
+}
+
+function syncFilterButtons(el) {
+  el.querySelectorAll(".inbox-filter-btn").forEach((b) => {
+    b.classList.toggle("active", isCategoryActive(b.dataset.category));
+    b.setAttribute("aria-pressed", isCategoryActive(b.dataset.category) ? "true" : "false");
+  });
+}
+
+function toggleInboxCategory(id) {
+  if (id === "all") {
+    activeCategories.clear();
+    return;
+  }
+  if (activeCategories.has(id)) {
+    activeCategories.delete(id);
+  } else {
+    activeCategories.add(id);
+  }
+}
 
 function setStatus(msg, isError = false) {
   const el = document.getElementById("inboxStatus");
@@ -303,19 +332,25 @@ function buildInboxFilters() {
   for (const cat of INBOX_CATEGORY_FILTERS) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.className = "inbox-filter-btn" + (cat.id === activeCategory ? " active" : "");
+    btn.className = "inbox-filter-btn" + (isCategoryActive(cat.id) ? " active" : "");
     btn.dataset.category = cat.id;
     btn.textContent = cat.label;
+    btn.setAttribute("aria-pressed", isCategoryActive(cat.id) ? "true" : "false");
+    btn.title =
+      cat.id === "all"
+        ? "Show all messages"
+        : "Toggle filter (multi-select)";
     btn.onclick = async () => {
-      if (activeCategory === cat.id) return;
-      activeCategory = cat.id;
-      el.querySelectorAll(".inbox-filter-btn").forEach((b) => {
-        b.classList.toggle("active", b.dataset.category === activeCategory);
-      });
+      toggleInboxCategory(cat.id);
+      syncFilterButtons(el);
       await renderInbox();
     };
     el.appendChild(btn);
   }
+  const hint = document.createElement("span");
+  hint.className = "filter-hint";
+  hint.textContent = "Tip: select multiple filters to combine.";
+  el.appendChild(hint);
   el.dataset.ready = "1";
 }
 
@@ -342,12 +377,16 @@ async function renderInbox() {
     ownerId: myOwnerId,
     archivedOnly: viewArchived,
   });
-  const messages = filterInboxByCategory(allMessages, activeCategory);
+  const selectedCats = selectedCategoryList();
+  const messages = filterInboxByCategory(allMessages, selectedCats);
 
   if (!messages.length) {
+    const filterLabels = selectedCats
+      .map((id) => INBOX_CATEGORY_FILTERS.find((c) => c.id === id)?.label || id)
+      .join(", ");
     const emptyFilter =
-      activeCategory !== "all" && allMessages.length > 0
-        ? `<p class="empty">No messages in this filter (${allMessages.length} in ${viewArchived ? "archived" : "inbox"}).</p>`
+      selectedCats.length > 0 && allMessages.length > 0
+        ? `<p class="empty">No messages in ${filterLabels} (${allMessages.length} in ${viewArchived ? "archived" : "inbox"}).</p>`
         : viewArchived
           ? '<p class="empty">No archived messages.</p>'
           : '<p class="empty">No notifications in your inbox. Tick messages and use <b>Archive selected</b> to move them to archived — only then are they hidden.</p>';
