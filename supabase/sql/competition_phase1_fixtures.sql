@@ -30,15 +30,10 @@ CREATE TABLE IF NOT EXISTS public.competition_fixtures (
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT competition_fixtures_clubs_diff CHECK (
     home_club_short_name <> away_club_short_name
-  ),
-  CONSTRAINT competition_fixtures_unique_pair UNIQUE (
-    season_id,
-    division,
-    competition_type,
-    matchday,
-    home_club_short_name,
-    away_club_short_name
   )
+  -- League pair uniqueness: see competition_fixtures_unique_league_pair_idx
+  -- (partial index). Do not UNIQUE across cups on matchday alone — cups share
+  -- division='cup' and matchday=round_no across cup_code.
 );
 
 CREATE INDEX IF NOT EXISTS competition_fixtures_season_div_md_idx
@@ -46,6 +41,16 @@ CREATE INDEX IF NOT EXISTS competition_fixtures_season_div_md_idx
 
 CREATE INDEX IF NOT EXISTS competition_fixtures_season_club_idx
   ON public.competition_fixtures (season_id, home_club_short_name, away_club_short_name);
+
+CREATE UNIQUE INDEX IF NOT EXISTS competition_fixtures_unique_league_pair_idx
+  ON public.competition_fixtures (
+    season_id,
+    division,
+    matchday,
+    home_club_short_name,
+    away_club_short_name
+  )
+  WHERE competition_type = 'league';
 
 -- ---------------------------------------------------------------------------
 -- Calendar + weather helpers
