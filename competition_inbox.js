@@ -7,6 +7,7 @@ export const INBOX_CATEGORY_FILTERS = [
   { id: "all", label: "All" },
   { id: "fixture_management", label: "Fixture management" },
   { id: "fines", label: "Fines" },
+  { id: "bank", label: "Bank" },
   { id: "auctions", label: "Auctions" },
   { id: "transfers_in", label: "Transfers in" },
   { id: "transfers_out", label: "Transfers out" },
@@ -35,6 +36,7 @@ const INBOX_CATEGORY_TYPES = {
     "intl_kickoff_proposal",
   ]),
   fines: new Set(["fine_applied"]),
+  bank: new Set(["loan_drawdown", "loan_repayment", "loan_interest"]),
   auctions: new Set(["draft_scheduled", "special_auction_scheduled"]),
   transfers_in: new Set(["transfer_signed"]),
   transfers_out: new Set(["transfer_sold", "underperformance_transfer"]),
@@ -42,10 +44,23 @@ const INBOX_CATEGORY_TYPES = {
 
 const INBOX_TYPED_CATEGORIES = Object.values(INBOX_CATEGORY_TYPES);
 
+const BANK_SOFT_MATCH =
+  /\b(loan|repayment|drawdown|interest|central bank|installment)\b/i;
+
+function inboxLooksLikeBank(msg) {
+  const t = String(msg?.message_type || "");
+  if (INBOX_CATEGORY_TYPES.bank.has(t)) return true;
+  const href = String(msg?.action_href || "");
+  if (/central_bank/i.test(href)) return true;
+  const text = `${msg?.title || ""} ${msg?.body || ""}`;
+  return BANK_SOFT_MATCH.test(text);
+}
+
 export function inboxMessageCategory(messageType) {
   const t = String(messageType || "");
   if (INBOX_CATEGORY_TYPES.fixture_management.has(t)) return "fixture_management";
   if (INBOX_CATEGORY_TYPES.fines.has(t)) return "fines";
+  if (INBOX_CATEGORY_TYPES.bank.has(t)) return "bank";
   if (INBOX_CATEGORY_TYPES.auctions.has(t)) return "auctions";
   if (INBOX_CATEGORY_TYPES.transfers_in.has(t)) return "transfers_in";
   if (INBOX_CATEGORY_TYPES.transfers_out.has(t)) return "transfers_out";
@@ -54,9 +69,13 @@ export function inboxMessageCategory(messageType) {
 
 export function filterInboxByCategory(messages, categoryId) {
   if (!categoryId || categoryId === "all") return messages || [];
+  if (categoryId === "bank") {
+    return (messages || []).filter((m) => inboxLooksLikeBank(m));
+  }
   if (categoryId === "other") {
     return (messages || []).filter((m) => {
       const t = String(m?.message_type || "");
+      if (inboxLooksLikeBank(m)) return false;
       return !INBOX_TYPED_CATEGORIES.some((set) => set.has(t));
     });
   }
