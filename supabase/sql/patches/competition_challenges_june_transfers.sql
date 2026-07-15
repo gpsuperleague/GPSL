@@ -3,6 +3,7 @@
 --
 -- Start window can run June → December (transfer window + first half).
 -- New stat_type: transfer_sign_nation (stat_param = nation code e.g. NOR, ESP, TPE).
+-- Seed includes a few nationality examples; add more anytime via Admin → Season challenges.
 --
 -- Run after competition_challenges.sql.
 -- Safe re-run.
@@ -669,6 +670,7 @@ BEGIN
   )
   VALUES
     -- Start (June–December): transfer window + first half
+    -- Nationality examples (add more via Admin with any nation code)
     (p_season_id, 'Northern lights', 'Sign a Norwegian player', 'start', 'june', 'december',
       'transfer_sign_nation', 'NOR', 1, v_default, true, false, 1),
     (p_season_id, 'Spanish acquisition', 'Sign a Spanish player', 'start', 'june', 'december',
@@ -699,10 +701,12 @@ END;
 $function$;
 
 -- ---------------------------------------------------------------------------
--- Views
+-- Views (DROP required when inserting columns mid-list)
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE VIEW public.competition_challenges_public
+DROP VIEW IF EXISTS public.competition_challenges_public;
+
+CREATE VIEW public.competition_challenges_public
 WITH (security_invoker = false)
 AS
 SELECT
@@ -716,8 +720,8 @@ SELECT
   public.competition_challenge_month_label(c.gpsl_month_from) AS gpsl_month_from_label,
   public.competition_challenge_month_label(c.gpsl_month_to) AS gpsl_month_to_label,
   c.stat_type,
-  c.stat_param,
   c.target_value,
+  c.stat_param,
   c.prize_amount,
   c.include_league,
   c.include_cup,
@@ -725,7 +729,12 @@ SELECT
   c.sort_order,
   c.created_at,
   c.updated_at
-FROM public.competition_challenge_config c;
+FROM public.competition_challenge_config c
+JOIN public.competition_seasons s ON s.id = c.season_id
+WHERE s.is_current = true;
+
+GRANT SELECT ON public.competition_challenges_public TO authenticated;
+GRANT SELECT ON public.competition_challenges_public TO anon;
 
 -- ---------------------------------------------------------------------------
 -- Award on transfer completion
