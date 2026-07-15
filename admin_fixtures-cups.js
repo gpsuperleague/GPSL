@@ -263,36 +263,70 @@ async function repairCupAdvancement() {
 
   if (
     !confirm(
-      `Repair ${cup} advancement?\n\nThis keeps the existing draw. It syncs winners, completes byes, fills next-round slots, and creates missing fixtures.`
+      `Force-fill ${cup} bracket?\n\nKeeps the existing draw. Relinks fixtures, syncs winners, completes byes, fills next-round slots, creates missing fixtures.`
     )
   ) {
     return;
   }
 
-  setStatus("compCupStatus", "Repairing advancement…");
-  const { data, error } = await supabase.rpc("competition_cup_repair_advancement", {
+  setStatus("compCupStatus", "Force-filling bracket…");
+  let { data, error } = await supabase.rpc("competition_cup_repair_force_fill", {
     p_season_id: seasonId,
     p_cup_code: cup,
   });
 
+  // Fallback if force-fill patch not applied yet
+  if (error && /competition_cup_repair_force_fill|schema cache|Could not find/i.test(error.message || "")) {
+    ({ data, error } = await supabase.rpc("competition_cup_repair_advancement", {
+      p_season_id: seasonId,
+      p_cup_code: cup,
+    }));
+    if (error) {
+      const hint =
+        " — run patches/competition_cup_repair_force_fill.sql (or competition_cup_repair_advancement.sql) in Supabase";
+      setStatus("compCupStatus", "❌ " + error.message + hint, false);
+      return;
+    }
+    const d = data || {};
+    setStatus(
+      "compCupStatus",
+      `✅ Repair (legacy): winners ${d.winners_synced_from_fixtures ?? 0}, byes ${d.bye_winners_set ?? 0}, ` +
+        `slots filled ${d.child_slots_updated ?? 0}, fixtures created ${d.fixtures_created ?? 0}. ` +
+        `${d.note || ""} Apply competition_cup_repair_force_fill.sql for stronger fill.`,
+      true
+    );
+    return;
+  }
+
   if (error) {
-    const hint = /competition_cup_repair_advancement|schema cache|Could not find/i.test(
-      error.message || ""
-    )
-      ? " — run patches/competition_cup_repair_advancement.sql in Supabase"
-      : "";
-    setStatus("compCupStatus", "❌ " + error.message + hint, false);
+    setStatus("compCupStatus", "❌ " + error.message, false);
     return;
   }
 
   const d = data || {};
+  const unresolved = Array.isArray(d.still_unresolved_r1) ? d.still_unresolved_r1 : [];
+  const incomplete = Array.isArray(d.still_incomplete) ? d.still_incomplete : [];
+  const r1Hint =
+    unresolved.length > 0
+      ? ` Blocked by ${unresolved.length} unfinished Last 64: ` +
+        unresolved
+          .slice(0, 6)
+          .map((t) => `M${t.match_no} ${t.home || "?"} vs ${t.away || "?"}`)
+          .join("; ") +
+        (unresolved.length > 6 ? "…" : "") +
+        ". Play/simulate those, then Force fill again."
+      : "";
+  const incompleteHint =
+    !r1Hint && incomplete.length > 0
+      ? ` Still ${incomplete.length} incomplete later-round slot(s) (check still_incomplete in SQL diagnose).`
+      : "";
+
   setStatus(
     "compCupStatus",
-    `✅ Repair: winners ${d.winners_synced_from_fixtures ?? 0}, byes ${d.bye_winners_set ?? 0}, ` +
-      `slots filled ${d.child_slots_updated ?? 0}, fixtures created ${d.fixtures_created ?? 0}. ` +
-      `Last 32 fixtures: ${d.last32_fixtures_now ?? "?"}, Last 16 fixtures: ${d.last16_fixtures_now ?? "?"}. ` +
-      `${d.note || ""}`,
-    true
+    `✅ Force fill: relinked ${d.fixtures_relinked ?? 0}, winners ${d.winners_synced ?? 0}, ` +
+      `byes ${d.bye_winners_set ?? 0}, slots filled ${d.child_slots_force_filled ?? 0}, ` +
+      `fixtures created ${d.fixtures_created ?? 0}. ${d.note || ""}${r1Hint}${incompleteHint}`,
+    unresolved.length === 0 && incomplete.length === 0
   );
 }
 

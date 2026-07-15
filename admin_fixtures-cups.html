@@ -71,18 +71,19 @@
         <div class="row" style="margin-top:16px;">
           <button id="compDrawCupBtn" class="button">Draw / regenerate cup</button>
           <a id="compDrawCeremonyLink" class="button" href="cup_draw.html" style="background:#336699;">Draw ceremony</a>
-          <button id="compRepairCupBtn" class="button" style="background:#2a6a4a;">Repair advancement</button>
+          <button id="compRepairCupBtn" class="button" style="background:#2a6a4a;">Force fill bracket</button>
           <button id="compDeleteCupBtn" class="button" style="background:#990000;">Delete cup bracket</button>
         </div>
         <p class="note" style="margin-top:8px;">
-          <b>Repair advancement</b> does not redraw. It syncs winners from played ties, completes byes,
-          fills next-round slots, and creates missing fixtures (fixes Last 32 TBD / thin Last 16).
+          <b>Force fill</b> does not redraw. Relinks orphan fixtures, syncs winners, completes byes,
+          force-writes winners into next-round slots, and creates missing fixtures.
+          If Last 32 still shows TBD, finish the unfinished Last 64 ties it lists, then click again.
         </p>
         <div id="compCupStatus" class="status-line"></div>
         <p class="note" style="margin-top:12px;">Cup prize amounts and walkover overrides: <a href="admin_cup_prizes.html"><b>Cup prize money</b></a>.</p>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fixtures-cups.js?v=20260715-cup-repair"></script>
+  <script type="module" src="admin_fixtures-cups.js?v=20260715-cup-force-fill"></script>
 </body>
 </html>
