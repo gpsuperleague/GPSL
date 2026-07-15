@@ -106,7 +106,7 @@ async function loadCalendarTable() {
     })
     .join("");
 
-  const calStatus = await loadCalendarStatus(seasonId);
+  const calStatus = await loadCalendarStatus(supabase);
   const active = months.find((m) => m.is_active);
   if (active) {
     note.textContent = `Live: GPSL ${active.gpsl_month_label} until ${formatUkDateTime(active.lock_at)} UK.`;
