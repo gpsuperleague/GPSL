@@ -92,6 +92,32 @@
       </div>
     </div>
 
+    <div class="panel">
+      <h2>Use draft token</h2>
+      <p class="meta">
+        Sign any <b>uncontracted</b> player at market value (paid to the central bank). If your squad is full (28),
+        release a current player first — they leave for market value credit. Find player IDs on
+        <a href="gpdb.html">GPDB</a> / draft pages.
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
+        <div>
+          <label>Draft token</label><br>
+          <select id="draftTokenSelect"></select>
+        </div>
+        <div>
+          <label>Sign player ID (Konami)</label><br>
+          <input type="text" id="draftSignPlayerId" placeholder="e.g. 123456" style="width:140px;">
+        </div>
+        <div style="flex:1;min-width:220px;">
+          <label>Release player (if squad full)</label><br>
+          <select id="draftReleasePlayerSelect"><option value="">— none —</option></select>
+        </div>
+        <button type="button" class="button" id="draftPreviewBtn">Preview</button>
+        <button type="button" class="button" id="draftUseBtn">Sign with token</button>
+      </div>
+      <div id="draftPreview" class="meta" style="margin-top:10px;"></div>
+    </div>
+
     <div id="prizeStatus" class="status"></div>
   </div>
   <script type="module" src="club_prizes.js"></script>
