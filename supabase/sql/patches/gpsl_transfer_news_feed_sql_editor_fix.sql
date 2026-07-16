@@ -1,18 +1,5 @@
--- =============================================================================
--- GPSL Transfer News ticker (nav strip)
---
--- Visible in GPSL May / June / July only.
--- May: "window opens in June" teaser + latest transfers in the May window.
--- June–July: top fees for the current UK calendar day (draft + free market),
---            padded from the current GPSL month if fewer than 5 today.
---
--- SELECT public.gpsl_transfer_news_feed();
--- Admin test: SELECT public.gpsl_transfer_news_feed('june');
--- Safe re-run.
--- =============================================================================
-
-DROP FUNCTION IF EXISTS public.gpsl_transfer_news_feed();
-DROP FUNCTION IF EXISTS public.gpsl_transfer_news_feed(text);
+-- Allow gpsl_transfer_news_feed('may'|'june'|'july') from SQL Editor
+-- (auth.uid() is null there). Browser still requires is_gpsl_admin().
 
 CREATE OR REPLACE FUNCTION public.gpsl_transfer_news_feed(
   p_force_month text DEFAULT NULL
@@ -62,8 +49,6 @@ BEGIN
     v_month := '';
   END;
 
-  -- Admin preview outside May–July: gpsl_transfer_news_feed('may'|'june'|'july')
-  -- SQL Editor has no auth.uid() — allow there; browser callers must be admin.
   IF v_force IS NOT NULL THEN
     IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
       RAISE EXCEPTION 'Admin only — force month is for testing';
@@ -98,7 +83,6 @@ BEGIN
     AND lower(m.gpsl_month) = v_month
   LIMIT 1;
 
-  -- May teaser: transfer window opens in June
   IF v_month = 'may' THEN
     v_stories := v_stories || jsonb_build_array(
       jsonb_build_object(
@@ -116,7 +100,6 @@ BEGIN
     v_need := 4;
   END IF;
 
-  -- Prefer today's UK deals by fee (June/July). May uses latest in-window.
   FOR v_row IN
     SELECT
       h.id,
@@ -232,7 +215,6 @@ BEGIN
     v_count := v_count + 1;
   END LOOP;
 
-  -- Pad June/July to 5 from current GPSL month (highest fees not already shown)
   IF v_month IN ('june', 'july') AND v_count < 5 THEN
     v_need := 5 - v_count;
     FOR v_row IN

@@ -92,12 +92,27 @@ function startRotation() {
   }, ROTATE_MS);
 }
 
+function testForceMonth() {
+  try {
+    const q = new URLSearchParams(window.location.search || "");
+    const raw = (q.get("transfer_news_test") || "").toLowerCase().trim();
+    if (raw === "may" || raw === "june" || raw === "july") return raw;
+    if (raw === "1" || raw === "true") return "june";
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 export async function refreshTransferNewsStrip() {
   const el = ensureTransferNewsStripMount();
   if (!el) return;
 
   try {
-    const { data, error } = await supabase.rpc("gpsl_transfer_news_feed");
+    const force = testForceMonth();
+    const { data, error } = force
+      ? await supabase.rpc("gpsl_transfer_news_feed", { p_force_month: force })
+      : await supabase.rpc("gpsl_transfer_news_feed");
     if (error) {
       console.warn("transfer news feed:", error.message);
       el.hidden = true;
