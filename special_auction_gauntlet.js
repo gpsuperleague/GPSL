@@ -51,10 +51,12 @@ function updateTimer() {
     refreshState();
     return;
   }
-  const s = Math.floor(ms / 1000);
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  el.textContent = `${m}:${String(r).padStart(2, "0")} remaining`;
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  const pad = (n) => String(n).padStart(2, "0");
+  el.textContent = `${pad(h)}:${pad(m)}:${pad(s)} remaining`;
 }
 
 function renderBidsTable(rows, cols) {
