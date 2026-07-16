@@ -1,0 +1,80 @@
+<script>window.CURRENT_PAGE = "special_auction";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Blind Gauntlet — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page { width:95%; max-width:900px; margin:20px auto 40px; }
+    h1 { color:#ff9900; margin:0 0 8px; }
+    .meta { color:#aaa; font-size:13px; line-height:1.45; margin-bottom:14px; }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:18px 20px; margin-bottom:16px;
+    }
+    .panel h2 { color:#ffcc66; font-size:16px; margin:0 0 10px; }
+    .timer { font-family:monospace; font-size:20px; color:#ff9900; }
+    .tier {
+      display:inline-block; padding:4px 10px; border-radius:4px;
+      font-weight:700; margin:6px 0;
+    }
+    .tier.top { background:#1e3a1e; color:#8d8; }
+    .tier.middle { background:#3a3210; color:#fc6; }
+    .tier.bottom { background:#3a1e1e; color:#f88; }
+    .button { cursor:pointer; }
+    input {
+      background:#222; color:#eee; border:1px solid #444; border-radius:4px; padding:8px 10px;
+    }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { border-bottom:1px solid #333; padding:8px; text-align:left; }
+    th { color:#ff9900; }
+    .status { margin-top:10px; font-size:13px; color:#aaa; }
+    .status.ok { color:#8d8; }
+    .status.err { color:#f88; }
+    .winner { color:#ffd700; font-weight:700; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page">
+    <h1 id="pageTitle">Blind Gauntlet</h1>
+    <p class="meta" id="pageMeta">
+      Phase 1 (15m blind) → reveal (5m) → Phase 2 (10m). Top 25% advance.
+      Middle pay ₿500k · Bottom pay ₿1m · Phase 2 entry ₿3m · winner also pays their Phase 2 bid.
+    </p>
+
+    <div class="panel">
+      <h2>Status</h2>
+      <div id="phaseLabel" class="meta">Loading…</div>
+      <div class="timer" id="timer">—</div>
+      <div id="myTier"></div>
+      <div id="myBids" class="meta"></div>
+    </div>
+
+    <div class="panel" id="bidPanel">
+      <h2>Place bid</h2>
+      <p class="meta" id="bidHelp">Bids are blind and rounded to ₿1,000,000.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
+        <div>
+          <label>Bid amount (₿)</label><br>
+          <input id="bidAmount" type="number" min="1000000" step="1000000" style="width:180px;">
+        </div>
+        <button type="button" class="button" id="bidBtn">Submit bid</button>
+      </div>
+      <div id="bidStatus" class="status"></div>
+    </div>
+
+    <div class="panel" id="revealPanel" hidden>
+      <h2>Full reveal</h2>
+      <div id="winnerBanner" class="meta"></div>
+      <h3 style="color:#ccc;font-size:14px;">Phase 2 bids</h3>
+      <div id="phase2Table"></div>
+      <h3 style="color:#ccc;font-size:14px;margin-top:14px;">Phase 1 bids</h3>
+      <div id="phase1Table"></div>
+    </div>
+  </div>
+  <script type="module" src="special_auction_gauntlet.js"></script>
+</body>
+</html>

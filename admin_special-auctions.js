@@ -13,39 +13,52 @@ function snapEndOneHourAfterStart(startIso) {
   return t.toISOString();
 }
 
-function syncSnapUi() {
-  const isSnap = document.getElementById("saType")?.value === "snap";
-  document.body.classList.toggle("show-snap", isSnap);
+function gauntletEndThirtyAfterStart(startIso) {
+  const t = new Date(startIso);
+  t.setMinutes(t.getMinutes() + 30);
+  return t.toISOString();
+}
+
+function parseIntList(raw, allowed) {
+  return String(raw || "")
+    .split(/[,;\s]+/)
+    .map((s) => Number(s.trim()))
+    .filter((n) => Number.isFinite(n) && n > 0 && (!allowed || allowed.includes(n)));
+}
+
+function syncTypeUi() {
+  const type = document.getElementById("saType")?.value;
+  document.body.classList.toggle("show-snap", type === "snap");
+  document.body.classList.toggle("show-gauntlet", type === "blind_gauntlet");
   const endEl = document.getElementById("saEnd");
-  if (endEl) endEl.disabled = isSnap;
+  if (endEl) endEl.disabled = type === "snap" || type === "blind_gauntlet";
+}
+
+function fillAutoEnd() {
+  const type = document.getElementById("saType")?.value;
+  const start = document.getElementById("saStart").value;
+  const endEl = document.getElementById("saEnd");
+  if (!start || !endEl) return;
+  if (type === "snap") {
+    endEl.value = new Date(snapEndOneHourAfterStart(toIsoFromLocalInput(start)))
+      .toISOString()
+      .slice(0, 16);
+  } else if (type === "blind_gauntlet") {
+    endEl.value = new Date(gauntletEndThirtyAfterStart(toIsoFromLocalInput(start)))
+      .toISOString()
+      .slice(0, 16);
+  }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
   const typeEl = document.getElementById("saType");
-  const endEl = document.getElementById("saEnd");
-
   typeEl.onchange = () => {
-    syncSnapUi();
-    if (typeEl.value === "snap") {
-      const start = document.getElementById("saStart").value;
-      if (start) {
-        endEl.value = new Date(snapEndOneHourAfterStart(toIsoFromLocalInput(start)))
-          .toISOString()
-          .slice(0, 16);
-      }
-    }
+    syncTypeUi();
+    fillAutoEnd();
   };
-  document.getElementById("saStart").onchange = () => {
-    if (typeEl.value === "snap" && document.getElementById("saStart").value) {
-      endEl.value = new Date(
-        snapEndOneHourAfterStart(toIsoFromLocalInput(document.getElementById("saStart").value))
-      )
-        .toISOString()
-        .slice(0, 16);
-    }
-  };
+  document.getElementById("saStart").onchange = fillAutoEnd;
 
   document.getElementById("saPrizePlayerSelect")?.addEventListener("change", (e) => {
     document.getElementById("saPrizePlayerId").value = e.target.value || "";
@@ -53,7 +66,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (known && e.target.value) known.value = e.target.value;
   });
 
-  syncSnapUi();
+  syncTypeUi();
   await loadReservedPlayers();
   await refreshSpecialAuctionSelect();
 
@@ -62,6 +75,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("saNotifyBtn").onclick = notifyOwners;
   document.getElementById("saRevealBtn").onclick = revealAuction;
   document.getElementById("saSettleBtn").onclick = settleAuction;
+  document.getElementById("saGauntletTickBtn")?.addEventListener("click", gauntletTick);
 });
 
 async function loadReservedPlayers() {
@@ -88,16 +102,27 @@ async function refreshSpecialAuctionSelect() {
   const sel = document.getElementById("saSelect");
   const { data } = await supabase
     .from("special_auctions")
-    .select("id, title, status, auction_type, start_time")
+    .select("id, title, status, auction_type, start_time, gauntlet_phase")
     .order("id", { ascending: false })
     .limit(30);
 
   sel.innerHTML = (data || [])
-    .map(
-      (a) =>
-        `<option value="${a.id}">#${a.id} ${a.title} [${a.status}] ${a.auction_type}</option>`
-    )
+    .map((a) => {
+      const phase = a.auction_type === "blind_gauntlet" && a.gauntlet_phase
+        ? `/${a.gauntlet_phase}`
+        : "";
+      return `<option value="${a.id}">#${a.id} ${a.title} [${a.status}${phase}] ${a.auction_type}</option>`;
+    })
     .join("");
+}
+
+function gauntletPackPayload() {
+  return {
+    medical_tokens: parseIntList(document.getElementById("saGauntletMedical")?.value, [2, 4, 6, 8, 10]),
+    fee_discounts: parseIntList(document.getElementById("saGauntletDiscount")?.value).filter((n) => n <= 50),
+    appeal_cards: Math.max(0, Number(document.getElementById("saGauntletAppeals")?.value) || 0),
+    draft_tokens: Math.max(0, Number(document.getElementById("saGauntletDraft")?.value) || 0),
+  };
 }
 
 async function createAuction() {
@@ -105,6 +130,7 @@ async function createAuction() {
   const start = toIsoFromLocalInput(document.getElementById("saStart").value);
   let end = toIsoFromLocalInput(document.getElementById("saEnd").value);
   if (type === "snap" && start) end = snapEndOneHourAfterStart(start);
+  if (type === "blind_gauntlet" && start) end = gauntletEndThirtyAfterStart(start);
 
   const prizeType = document.getElementById("saPrizeType").value;
   const prizePlayerId =
@@ -138,6 +164,11 @@ async function createAuction() {
     snap_bid_fee: 300000,
   };
 
+  if (type === "blind_gauntlet") {
+    row.gauntlet_phase = "phase1";
+    row.gauntlet_prize_pack = gauntletPackPayload();
+  }
+
   if (!start || !end) {
     setStatus("saCreateStatus", "❌ Set start and end times.", false);
     return;
@@ -148,6 +179,7 @@ async function createAuction() {
     return;
   }
 
+  setStatus("saCreateStatus", "Creating…");
   const { data: created, error } = await supabase
     .from("special_auctions")
     .insert(row)
@@ -155,19 +187,37 @@ async function createAuction() {
     .single();
 
   if (error) {
-    setStatus("saCreateStatus", "❌ " + error.message, false);
+    setStatus(
+      "saCreateStatus",
+      "❌ " + error.message + (type === "blind_gauntlet" ? " — run special_auction_blind_gauntlet.sql" : ""),
+      false
+    );
     return;
+  }
+
+  if (type === "blind_gauntlet" && created?.id) {
+    const { error: prepErr } = await supabase.rpc("special_auction_gauntlet_prepare", {
+      p_auction_id: created.id,
+    });
+    if (prepErr) {
+      setStatus("saCreateStatus", "Created but prepare failed: " + prepErr.message, false);
+      await refreshSpecialAuctionSelect();
+      return;
+    }
   }
 
   if (document.getElementById("saPublishOnCreate").checked && created?.id) {
     const { error: actErr } = await supabase.rpc("special_auction_activate", {
       p_auction_id: created.id,
     });
+    if (!actErr && type === "blind_gauntlet") {
+      await supabase.rpc("special_auction_gauntlet_prepare", { p_auction_id: created.id });
+    }
     setStatus(
       "saCreateStatus",
       actErr
         ? "✅ Created as draft but publish failed: " + actErr.message
-        : "✅ Created and published (snap random end set on activate).",
+        : "✅ Created and published.",
       !actErr
     );
   } else {
@@ -183,6 +233,9 @@ async function activateAuction() {
     return;
   }
   const { error } = await supabase.rpc("special_auction_activate", { p_auction_id: id });
+  if (!error) {
+    await supabase.rpc("special_auction_gauntlet_prepare", { p_auction_id: id }).catch(() => {});
+  }
   setStatus(
     "saManageStatus",
     error ? "❌ " + error.message : "✅ Published (inbox notify sent to owners).",
@@ -228,4 +281,31 @@ async function settleAuction() {
   const id = Number(document.getElementById("saSelect").value);
   const { error } = await supabase.rpc("special_auction_settle", { p_auction_id: id });
   setStatus("saManageStatus", error ? "❌ " + error.message : "✅ Settled.", !error);
+  await refreshSpecialAuctionSelect();
+}
+
+async function gauntletTick() {
+  const id = Number(document.getElementById("saSelect").value);
+  if (!id) {
+    setStatus("saManageStatus", "Select an auction.", false);
+    return;
+  }
+  setStatus("saManageStatus", "Running Gauntlet tick…");
+  const { data, error } = await supabase.rpc("special_auction_gauntlet_tick", {
+    p_auction_id: id,
+  });
+  if (error) {
+    setStatus(
+      "saManageStatus",
+      "❌ " + error.message + " — run special_auction_blind_gauntlet.sql",
+      false
+    );
+    return;
+  }
+  setStatus(
+    "saManageStatus",
+    `✅ Gauntlet tick OK (${(data?.events || []).length} event(s)).`,
+    true
+  );
+  await refreshSpecialAuctionSelect();
 }

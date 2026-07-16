@@ -986,6 +986,11 @@
         if (id) auction = await fetchAuctionById(supabase, id);
       }
 
+      if (auction?.auction_type === "blind_gauntlet" && auction?.id) {
+        window.location = `special_auction_gauntlet.html?id=${auction.id}`;
+        return;
+      }
+
       await refreshData({ quiet: true });
 
       if (timerInterval) clearInterval(timerInterval);

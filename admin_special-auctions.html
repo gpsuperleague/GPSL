@@ -8,8 +8,9 @@
   <link rel="stylesheet" href="admin.css">
   <style>
     .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; max-width:900px; }
-    .snap-only { display:none; }
+    .snap-only, .gauntlet-only { display:none; }
     body.show-snap .snap-only { display:block; }
+    body.show-gauntlet .gauntlet-only { display:block; }
     .clue-grid { display:grid; gap:10px; margin-top:8px; }
   </style>
 </head>
@@ -20,10 +21,10 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <p class="note">
-          Snap: 4 clues + first-bid discounts (20/10/5/0%), ₿300k per bid (winner 100% of fees, losers 25%),
-          random finish in the last 10 minutes. Player prizes must come from
+          Snap: 4 clues + first-bid discounts. <b>Blind Gauntlet</b>: Phase 1 15m → reveal 5m → Phase 2 10m
+          (auto end = start + 30m). Player prizes from
           <a href="admin_auction_exclusions.html">Auction Exclusions</a>.
-          Run <code>special_auction_snap_v2.sql</code> after <code>auction_exclusions.sql</code>.
+          Run <code>special_auction_blind_gauntlet.sql</code> for Gauntlet.
         </p>
         <h2>Create</h2>
         <div class="row">
@@ -32,6 +33,7 @@
             <select id="saType">
               <option value="lowest_unique">Lowest unique bid</option>
               <option value="snap">Snap (1 hour)</option>
+              <option value="blind_gauntlet">Blind Gauntlet (30 min)</option>
             </select>
           </div>
           <div>
@@ -45,7 +47,7 @@
             <input id="saStart" type="datetime-local">
           </div>
           <div>
-            <label>End (LUB only — Snap auto 60m)</label>
+            <label>End (LUB only — Snap 60m / Gauntlet 30m auto)</label>
             <input id="saEnd" type="datetime-local">
           </div>
         </div>
@@ -105,6 +107,28 @@
             <input id="saMysteryClue" placeholder="Optional single clue">
           </div>
         </div>
+        <div class="gauntlet-only">
+          <h3 style="color:#ccc;font-size:14px;margin:16px 0 6px;">Blind Gauntlet winner extras (optional)</h3>
+          <p class="note">Granted to the Phase 2 winner with the player/cash prize. Same inventory as Club prizes.</p>
+          <div class="row">
+            <div>
+              <label>Medical tokens (e.g. 4,6)</label>
+              <input id="saGauntletMedical" placeholder="4,6" style="width:120px;">
+            </div>
+            <div>
+              <label>Fee discounts % (e.g. 10)</label>
+              <input id="saGauntletDiscount" placeholder="10" style="width:120px;">
+            </div>
+            <div>
+              <label>Appeal cards</label>
+              <input id="saGauntletAppeals" type="number" min="0" max="5" value="0" style="width:80px;">
+            </div>
+            <div>
+              <label>Draft tokens</label>
+              <input id="saGauntletDraft" type="number" min="0" max="5" value="0" style="width:80px;">
+            </div>
+          </div>
+        </div>
         <label style="display:flex;align-items:center;gap:8px;color:#aaa;margin-bottom:12px;">
           <input type="checkbox" id="saPublishOnCreate" checked>
           Publish on create (owners see in nav)
@@ -120,8 +144,9 @@
           <button id="saNotifyBtn" class="button secondary">Notify owners (inbox)</button>
           <button id="saRevealBtn" class="button" style="background:#4466aa;">Reveal (LUB)</button>
           <button id="saSettleBtn" class="button" style="background:#2f7a2f;">Settle &amp; charge fees</button>
+          <button id="saGauntletTickBtn" class="button secondary">Gauntlet tick / settle now</button>
         </div>
-        <p class="note">Activate publishes the auction and sends an inbox message to all owners. Use Notify owners to resend.</p>
+        <p class="note">Activate publishes the auction and sends an inbox message to all owners. Gauntlet phases advance automatically (or use tick). Use Notify owners to resend.</p>
         <div id="saManageStatus" class="status-line"></div>
       </div>
     </div>
