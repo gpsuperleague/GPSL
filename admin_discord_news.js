@@ -97,7 +97,7 @@ async function saveAutoSettings() {
   }
 
   if (!url || !key) {
-    setStatus("autoStatus", "URL and invoke key are required.", false);
+    setStatus("autoStatus", "URL and service_role key are required.", false);
     return;
   }
 
@@ -118,9 +118,29 @@ async function saveAutoSettings() {
   setStatus(
     "autoStatus",
     data?.ok
-      ? `Saved. Auto-flush ${enabled ? "ON" : "OFF"}. Ensure edge secret DISCORD_FEED_INVOKE_KEY matches.`
+      ? `Saved. Auto-flush ${enabled ? "ON" : "OFF"}. Use Test auto-flush to verify.`
       : "Saved."
   );
+}
+
+async function testAutoFlush() {
+  setStatus("autoStatus", "Testing auto-flush…");
+  const { data, error } = await supabase.rpc("admin_discord_feed_flush_now");
+  if (error) {
+    setStatus(
+      "autoStatus",
+      `${error.message} — run gpsl_discord_feed_auto_flush_fix.sql`,
+      false
+    );
+    return;
+  }
+  setStatus(
+    "autoStatus",
+    data?.hint ||
+      `pending ${data?.pending_before ?? "?"} → ${data?.pending_after ?? "?"}`,
+    (data?.pending_after ?? 1) === 0
+  );
+  await loadQueue();
 }
 
 async function loadQueue() {
@@ -216,6 +236,9 @@ document.getElementById("newsRefreshBtn")?.addEventListener("click", () => {
 });
 document.getElementById("autoSaveBtn")?.addEventListener("click", () => {
   saveAutoSettings().catch((e) => setStatus("autoStatus", e.message || String(e), false));
+});
+document.getElementById("autoTestBtn")?.addEventListener("click", () => {
+  testAutoFlush().catch((e) => setStatus("autoStatus", e.message || String(e), false));
 });
 
 initAdminPage()

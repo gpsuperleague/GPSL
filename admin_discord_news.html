@@ -43,10 +43,11 @@
           as soon as something is queued (plus a 2-minute retry cron).
         </p>
         <p class="note">
-          1) Run <code>gpsl_discord_sky_feed_events_auto.sql</code><br>
-          2) Enable <code>pg_net</code> (and keep <code>pg_cron</code>)<br>
-          3) Set edge secret <code>DISCORD_FEED_INVOKE_KEY</code> to the same invoke key below<br>
-          4) Redeploy <code>discord-sky-feed</code> if you haven’t since adding that secret
+          Manual <b>Push</b> uses your admin login (works even when auto doesn’t).<br>
+          Auto-post must use the project <b>service_role</b> key
+          (Supabase → Project Settings → API → <code>service_role</code>),
+          not a random string — the gateway rejects custom keys.<br>
+          Also run <code>gpsl_discord_feed_auto_flush_fix.sql</code> and enable <code>pg_net</code>.
         </p>
         <div class="auto-form">
           <label>
@@ -54,8 +55,8 @@
             <input type="text" id="autoUrl" placeholder="https://….supabase.co/functions/v1/discord-sky-feed">
           </label>
           <label>
-            Invoke key (same as DISCORD_FEED_INVOKE_KEY)
-            <input type="password" id="autoKey" autocomplete="off" placeholder="long random string">
+            API key for auto-post (service_role)
+            <input type="password" id="autoKey" autocomplete="off" placeholder="eyJ… service_role secret">
           </label>
           <label class="check">
             <input type="checkbox" id="autoEnabled" checked>
@@ -63,6 +64,7 @@
           </label>
           <div class="news-actions" style="margin:0">
             <button type="button" id="autoSaveBtn" class="button">Save auto-post settings</button>
+            <button type="button" id="autoTestBtn" class="button secondary">Test auto-flush</button>
           </div>
         </div>
         <div id="autoStatus" class="status-line"></div>

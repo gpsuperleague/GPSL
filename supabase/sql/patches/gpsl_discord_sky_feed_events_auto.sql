@@ -5,13 +5,14 @@
 --
 -- After this patch:
 --   1) Edge secret DISCORD_FEED_INVOKE_KEY = a long random string
---      (same value you save in Admin → Discord News Feed → Auto-post settings)
+--      Prefer project service_role key (Settings → API) as Auto-post key
 --   2) Deploy/redeploy: supabase functions deploy discord-sky-feed
 --   3) Enable extension pg_net (Dashboard → Database → Extensions) if prompted
---   4) On Admin → Discord News Feed, save Auto-post URL + invoke key
+--   4) On Admin → Discord News Feed, save Auto-post URL + service_role key
+--   5) If pending sticks, also run gpsl_discord_feed_auto_flush_fix.sql
 --
 -- Auto-flush: AFTER INSERT on queue → pg_net POST to discord-sky-feed
---             + pg_cron every 2 minutes for retries
+--             + pg_cron every minute for retries
 -- =============================================================================
 
 DO $$
