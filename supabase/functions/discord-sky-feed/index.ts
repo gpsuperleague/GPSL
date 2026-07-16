@@ -36,6 +36,7 @@ function embedFor(row: FeedRow) {
     cup: 0xffd700,
     relegation: 0x995533,
     playoff: 0x9b59b6,
+    release: 0xbcbc80,
     other: 0x111111,
   };
   const color =
