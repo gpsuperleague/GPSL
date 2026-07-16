@@ -1,10 +1,12 @@
 import { initGlobal, supabase, getAuthUserFast } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
-import { formatMoney } from "./special_auction.js";
+import { formatMoney, fetchPrizePlayerBrief } from "./special_auction.js";
+import { playerNameLinkHtml } from "./player_links.js";
 
 let state = null;
 let auctionId = null;
 let timerHandle = null;
+let prizeHtml = "";
 
 function setBidStatus(msg, kind = "") {
   const el = document.getElementById("bidStatus");
@@ -76,6 +78,49 @@ function renderBidsTable(rows, cols) {
   </table>`;
 }
 
+function packExtrasLine(pack) {
+  if (!pack || typeof pack !== "object") return "";
+  const bits = [];
+  const med = pack.medical_tokens || [];
+  const disc = pack.fee_discounts || [];
+  if (med.length) bits.push(`Medical: ${med.map((n) => `${n}-match`).join(", ")}`);
+  if (disc.length) bits.push(`Fee discounts: ${disc.map((n) => `${n}%`).join(", ")}`);
+  if (pack.appeal_cards > 0) bits.push(`Appeal cards: ${pack.appeal_cards}`);
+  if (pack.draft_tokens > 0) bits.push(`Draft tokens: ${pack.draft_tokens}`);
+  return bits.length ? `<div style="margin-top:6px;color:#aaa;">Extras: ${bits.join(" · ")}</div>` : "";
+}
+
+async function loadPrizeBlock() {
+  const el = document.getElementById("prizeBlock");
+  if (!el || !state) return;
+
+  const packLine = packExtrasLine(state.gauntlet_prize_pack);
+  const pid = state.prize_player_id || state.known_player_id;
+
+  if (state.prize_type === "player" && pid) {
+    const p = await fetchPrizePlayerBrief(supabase, pid);
+    if (p) {
+      prizeHtml = `
+        <div style="font-size:15px;color:#eee;">
+          <b>${playerNameLinkHtml(p.Konami_ID, p.Name || pid)}</b>
+          — ${p.Position || "?"} · Rating ${p.Rating || "?"}
+          · MV ${formatMoney(p.market_value)}
+        </div>
+        <div class="meta" style="margin-top:4px;">Player prize · ID ${pid}</div>
+        ${packLine}`;
+    } else {
+      prizeHtml = `<div><b>Player prize</b> · ID ${pid}</div>${packLine}`;
+    }
+  } else if (state.prize_type === "cash") {
+    prizeHtml = `<div><b>Cash prize</b> · ${formatMoney(state.prize_cash_amount)}</div>${packLine}`;
+  } else if (state.prize_type === "discount") {
+    prizeHtml = `<div><b>Discount</b> · ${state.prize_discount_label || "—"}</div>${packLine}`;
+  } else {
+    prizeHtml = `<div>Prize not set on this auction.</div>${packLine}`;
+  }
+  el.innerHTML = prizeHtml;
+}
+
 function render() {
   if (!state) return;
   document.getElementById("pageTitle").textContent = state.title || "Blind Gauntlet";
@@ -83,6 +128,8 @@ function render() {
     state.gauntlet_phase,
     state.status
   );
+  const prizeEl = document.getElementById("prizeBlock");
+  if (prizeEl && prizeHtml) prizeEl.innerHTML = prizeHtml;
 
   const tierEl = document.getElementById("myTier");
   const tier = state.my_phase1?.tier;
@@ -161,6 +208,7 @@ async function refreshState() {
     return;
   }
   state = data;
+  await loadPrizeBlock();
   render();
 }
 
