@@ -7,16 +7,16 @@ function toIsoFromLocalInput(val) {
   return new Date(val).toISOString();
 }
 
-function snapEndOneHourAfterStart(startIso) {
-  const t = new Date(startIso);
-  t.setHours(t.getHours() + 1);
-  return t.toISOString();
-}
-
-function gauntletEndThirtyAfterStart(startIso) {
-  const t = new Date(startIso);
-  t.setMinutes(t.getMinutes() + 30);
-  return t.toISOString();
+/** Add minutes to a datetime-local value, keeping local wall-clock (not UTC). */
+function addMinutesToLocalInput(localVal, minutes) {
+  if (!localVal) return "";
+  const d = new Date(localVal);
+  if (Number.isNaN(d.getTime())) return "";
+  d.setMinutes(d.getMinutes() + minutes);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(
+    d.getMinutes()
+  )}`;
 }
 
 function parseIntList(raw, allowed) {
@@ -31,7 +31,11 @@ function syncTypeUi() {
   document.body.classList.toggle("show-snap", type === "snap");
   document.body.classList.toggle("show-gauntlet", type === "blind_gauntlet");
   const endEl = document.getElementById("saEnd");
-  if (endEl) endEl.disabled = type === "snap" || type === "blind_gauntlet";
+  // Auto types: show computed end, keep editable so timezone mistakes are fixable
+  if (endEl) {
+    endEl.disabled = false;
+    endEl.readOnly = type === "snap" || type === "blind_gauntlet";
+  }
 }
 
 function fillAutoEnd() {
@@ -40,13 +44,9 @@ function fillAutoEnd() {
   const endEl = document.getElementById("saEnd");
   if (!start || !endEl) return;
   if (type === "snap") {
-    endEl.value = new Date(snapEndOneHourAfterStart(toIsoFromLocalInput(start)))
-      .toISOString()
-      .slice(0, 16);
+    endEl.value = addMinutesToLocalInput(start, 60);
   } else if (type === "blind_gauntlet") {
-    endEl.value = new Date(gauntletEndThirtyAfterStart(toIsoFromLocalInput(start)))
-      .toISOString()
-      .slice(0, 16);
+    endEl.value = addMinutesToLocalInput(start, 30);
   }
 }
 
@@ -127,10 +127,12 @@ function gauntletPackPayload() {
 
 async function createAuction() {
   const type = document.getElementById("saType").value;
-  const start = toIsoFromLocalInput(document.getElementById("saStart").value);
-  let end = toIsoFromLocalInput(document.getElementById("saEnd").value);
-  if (type === "snap" && start) end = snapEndOneHourAfterStart(start);
-  if (type === "blind_gauntlet" && start) end = gauntletEndThirtyAfterStart(start);
+  const startLocal = document.getElementById("saStart").value;
+  let endLocal = document.getElementById("saEnd").value;
+  if (type === "snap" && startLocal) endLocal = addMinutesToLocalInput(startLocal, 60);
+  if (type === "blind_gauntlet" && startLocal) endLocal = addMinutesToLocalInput(startLocal, 30);
+  const start = toIsoFromLocalInput(startLocal);
+  const end = toIsoFromLocalInput(endLocal);
 
   const prizeType = document.getElementById("saPrizeType").value;
   const prizePlayerId =
