@@ -52,6 +52,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wlRestoreOrderBtn")?.addEventListener("click", restoreWaitingListOrder);
   document.getElementById("wlInviteAuctionBtn")?.addEventListener("click", inviteWaitingListAuction);
   document.getElementById("wlDirectAssignBtn")?.addEventListener("click", directAssignFromWaitingList);
+  document.getElementById("wlRemoveBtn")?.addEventListener("click", () =>
+    removeFromWaitingList({ email: wlActionEmail() })
+  );
   document.getElementById("wlAbsenceOnBtn")?.addEventListener("click", () => setWaitingListAbsence(true));
   document.getElementById("wlAbsenceOffBtn")?.addEventListener("click", () => setWaitingListAbsence(false));
 
@@ -604,6 +607,7 @@ async function loadWaitingListAdmin() {
         <td style="white-space:nowrap">
           <button type="button" class="button secondary wl-up" data-id="${row.owner_id}" data-email="${escapeWl(email)}">↑</button>
           <button type="button" class="button secondary wl-down" data-id="${row.owner_id}" data-email="${escapeWl(email)}">↓</button>
+          <button type="button" class="button secondary wl-remove" data-id="${row.owner_id}" data-email="${escapeWl(email)}" data-tag="${escapeWl(row.owner_tag || "")}">Remove</button>
         </td>
       </tr>`;
     }
@@ -615,6 +619,15 @@ async function loadWaitingListAdmin() {
     });
     tableWrap.querySelectorAll(".wl-down").forEach((btn) => {
       btn.addEventListener("click", () => moveWaitingList(btn.dataset.id, 1));
+    });
+    tableWrap.querySelectorAll(".wl-remove").forEach((btn) => {
+      btn.addEventListener("click", () =>
+        removeFromWaitingList({
+          ownerId: btn.dataset.id,
+          email: btn.dataset.email,
+          tag: btn.dataset.tag,
+        })
+      );
     });
   }
 
@@ -726,4 +739,36 @@ async function setWaitingListAbsence(on) {
   }
   await loadWaitingListAdmin();
   setWlActionStatus(on ? `✅ ${email} marked on absence.` : `✅ Absence cleared for ${email}.`, true);
+}
+
+async function removeFromWaitingList({ ownerId = null, email = "", tag = "" } = {}) {
+  const label = tag || email || "this member";
+  if (!ownerId && !email) {
+    setWlActionStatus("Enter member email, or use Remove on a row.", false);
+    return;
+  }
+  if (
+    !confirm(
+      `Remove ${label} from the waiting list?\n\nTheir login stays; they are archived and can be unarchived later.`
+    )
+  ) {
+    return;
+  }
+
+  setWlActionStatus("Removing…");
+  const payload = {};
+  if (ownerId) payload.p_owner_id = ownerId;
+  if (email) payload.p_owner_email = email;
+
+  const { data, error } = await supabase.rpc("admin_waiting_list_remove", payload);
+  if (error) {
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+  await loadWaitingListAdmin();
+  await loadOwnerList();
+  setWlActionStatus(
+    `✅ Removed ${data?.owner_tag || data?.email || label} from waiting list.`,
+    true
+  );
 }
