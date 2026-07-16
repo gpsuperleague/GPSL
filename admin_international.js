@@ -856,6 +856,36 @@ document.addEventListener("DOMContentLoaded", async () => {
     setStatus("assignStatus", "✅ Lists refreshed", true);
   });
 
+  document.getElementById("releaseNationBtn")?.addEventListener("click", async () => {
+    const clubSel = document.getElementById("assignClubSelect");
+    const club = clubSel?.value?.trim();
+    if (!club) {
+      setStatus("assignStatus", "Select an owner / club to remove.", false);
+      return;
+    }
+    const clubLabel = clubSel.selectedOptions[0]?.textContent || club;
+    if (
+      !confirm(
+        `Remove national team from this club?\n\n${clubLabel}\n\nTheir nation becomes available again. Selection window is not closed.`
+      )
+    ) {
+      return;
+    }
+    setStatus("assignStatus", "Removing…");
+    const { data, error } = await supabase.rpc("international_admin_release_nation", {
+      p_club: club,
+    });
+    if (error) {
+      setStatus("assignStatus", `❌ ${error.message}`, false);
+      return;
+    }
+    const nation =
+      data?.nation_name || data?.nation_code || "nation";
+    setStatus("assignStatus", `✅ Removed ${nation} from ${club}`, true);
+    await refreshAssignDropdowns();
+    await refreshSelectionLive();
+  });
+
   document.getElementById("assignBtn")?.addEventListener("click", async () => {
     const clubSel = document.getElementById("assignClubSelect");
     const nationSel = document.getElementById("assignNationSelect");

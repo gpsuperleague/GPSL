@@ -180,7 +180,8 @@
       <h2>Assign / change national team (admin override)</h2>
       <p class="note">
         Pick a club and a nation (ordered by seed rank). Clubs that already have a nation can be
-        <b>reassigned</b> (their old nation is freed). Nations already taken by another club stay greyed out.
+        <b>reassigned</b> (their old nation is freed). Nations already taken by another club stay greyed out.<br>
+        <b>Remove from nation</b> — frees that club’s national team only (selection window stays as-is).
       </p>
       <label for="assignClubSelect">Owner / club</label>
       <select id="assignClubSelect" style="max-width:100%;">
@@ -192,6 +193,7 @@
       </select>
       <div class="row">
         <button type="button" class="button" id="assignBtn">Assign / change nation</button>
+        <button type="button" class="button secondary" id="releaseNationBtn">Remove from nation</button>
         <button type="button" class="button secondary" id="refreshAssignListsBtn">Refresh lists</button>
       </div>
       <div id="assignStatus" class="status-line"></div>
@@ -231,6 +233,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="admin_international.js?v=20260716-listowners"></script>
+  <script type="module" src="admin_international.js?v=20260716-release"></script>
 </body>
 </html>
