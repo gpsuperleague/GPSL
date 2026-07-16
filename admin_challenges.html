@@ -33,6 +33,7 @@
         <p class="note">
           Set this before clubs finish the set. Separate Start / Mid pots.
           Medical tokens: 2,4,6,8,10 matches (Medical room). Fee discounts: % off what the <b>buyer</b> pays (seller still gets full fee; bank tops up). Appeal cards: red-card overturn requests (<a href="admin_prize_appeals.html">admin review</a>).
+          <b>Draft tokens</b>: sign any uncontracted player at market value (Club prizes); if squad is full (28), release a player at MV first.
           Save packs, then use <b>Recheck all clubs</b> if someone already completed all targets.
         </p>
         <div class="row gov-subsidy-row" style="align-items:flex-start;">
@@ -45,7 +46,9 @@
             <label>Fee discounts % (comma, e.g. 10,15)</label>
             <input type="text" id="packStartDiscount" placeholder="10" style="width:160px;"><br>
             <label>Appeal cards</label>
-            <input type="number" id="packStartAppeals" min="0" max="5" step="1" style="width:80px;">
+            <input type="number" id="packStartAppeals" min="0" max="5" step="1" style="width:80px;"><br>
+            <label>Draft tokens</label>
+            <input type="number" id="packStartDraft" min="0" max="5" step="1" style="width:80px;" title="Free market-value signing of an uncontracted player">
           </div>
           <div style="flex:1;min-width:240px;">
             <h4>Mid (Jan–May)</h4>
@@ -56,7 +59,9 @@
             <label>Fee discounts % (comma)</label>
             <input type="text" id="packMidDiscount" placeholder="5" style="width:160px;"><br>
             <label>Appeal cards</label>
-            <input type="number" id="packMidAppeals" min="0" max="5" step="1" style="width:80px;">
+            <input type="number" id="packMidAppeals" min="0" max="5" step="1" style="width:80px;"><br>
+            <label>Draft tokens</label>
+            <input type="number" id="packMidDraft" min="0" max="5" step="1" style="width:80px;">
           </div>
         </div>
         <button type="button" id="saveChallengePacksBtn" class="button" style="margin-top:10px;">Save period packs</button>

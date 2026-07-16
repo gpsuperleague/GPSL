@@ -54,6 +54,8 @@ function fillPackFields(phase, row) {
   document.getElementById(`${prefix}Medical`).value = (pack.medical_tokens || []).join(",");
   document.getElementById(`${prefix}Discount`).value = (pack.fee_discounts || []).join(",");
   document.getElementById(`${prefix}Appeals`).value = pack.appeal_cards ?? 0;
+  const draftEl = document.getElementById(`${prefix}Draft`);
+  if (draftEl) draftEl.value = pack.draft_tokens ?? 0;
 }
 
 async function loadChallengePacks() {
@@ -80,6 +82,7 @@ function packPayload(phase) {
       medical_tokens: parseIntList(document.getElementById(`${prefix}Medical`).value, [2, 4, 6, 8, 10]),
       fee_discounts: parseIntList(document.getElementById(`${prefix}Discount`).value).filter((n) => n <= 50),
       appeal_cards: Math.max(0, Number(document.getElementById(`${prefix}Appeals`).value) || 0),
+      draft_tokens: Math.max(0, Number(document.getElementById(`${prefix}Draft`)?.value) || 0),
     },
   };
 }
