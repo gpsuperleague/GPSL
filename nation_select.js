@@ -27,13 +27,23 @@ function renderWindow(windowState, myPick, draft, nations) {
       '<span class="empty">Nation selection is closed. Admin can open the window when ready.</span>';
     return;
   }
+  const isFfa = windowState.pick_mode === "free_for_all";
+  const nationCount = windowState.nations_total || nations.length;
+  const waiting = windowState.waiting_count ?? draft.filter((d) => !d.nation_code).length;
+  if (isFfa) {
+    el.innerHTML = `
+      <b>Nation selection</b> is open · <b style="color:#ff9900;">Free-for-all</b>
+      · any club without a nation can claim now
+      · ${nationCount} nations available · ${windowState.nations_assigned || 0} assigned · ${waiting} still to pick
+    `;
+    return;
+  }
   const mine =
     myPick && windowState.current_pick_rank === myPick
       ? ' <b style="color:#ff9900;">— your pick!</b>'
       : "";
   const draftSize =
     windowState.draft_order_size || draft.length || windowState.nations_total || nations.length || 60;
-  const nationCount = windowState.nations_total || nations.length;
   el.innerHTML = `
     <b>Nation selection</b> is open · Pick #${windowState.current_pick_rank} of ${draftSize}
     · ${nationCount} nations available · ${windowState.nations_assigned || 0} assigned${mine}
@@ -83,18 +93,26 @@ function renderNationGrid(nations, windowState, myPick, myClub, draft, poolByCod
   if (!el) return;
 
   const open = windowState?.is_open;
-  const myTurn = open && myPick && windowState.current_pick_rank === myPick;
+  const isFfa = windowState?.pick_mode === "free_for_all";
   const alreadyPicked = draft.find(
     (d) => d.club_short_name === myClub && d.nation_code
+  );
+  const myTurn = open && !alreadyPicked && (
+    isFfa
+      ? !!myClub
+      : !!(myPick && windowState.current_pick_rank === myPick)
   );
 
   if (hint) {
     if (!open) hint.textContent = "Selection is closed.";
     else if (alreadyPicked)
-      hint.textContent = `You selected ${alreadyPicked.nation_name}. Waiting for other owners…`;
+      hint.textContent = isFfa
+        ? `You selected ${alreadyPicked.nation_name}. Free-for-all continues for clubs still without a nation.`
+        : `You selected ${alreadyPicked.nation_name}. Waiting for other owners…`;
     else if (myTurn)
-      hint.textContent =
-        "Click an available nation to claim it. Greyed-out nations cannot be selected — GPDB pool too small for a squad or GPSL club.";
+      hint.textContent = isFfa
+        ? "Free-for-all: click an available nation to claim it now. Greyed-out nations cannot be selected."
+        : "Click an available nation to claim it. Greyed-out nations cannot be selected — GPDB pool too small for a squad or GPSL club.";
     else hint.textContent = `Waiting for pick #${windowState?.current_pick_rank || "—"}.`;
   }
 

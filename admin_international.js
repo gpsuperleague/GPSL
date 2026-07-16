@@ -319,10 +319,25 @@ async function refreshSelectionLive() {
   }
 
   const draft = await loadOwnerDraftOrder(supabase);
+  const waiting =
+    windowState.waiting_count ?? draft.filter((d) => !d.nation_code).length;
+  const isFfa = windowState.pick_mode === "free_for_all";
+
+  if (isFfa) {
+    liveEl.innerHTML = `
+      <b>Nation selection</b> is open ·
+      Mode: <b>free-for-all</b> (anyone without a nation can claim)
+      · ${windowState.nations_assigned || 0} assigned · ${waiting} still to pick
+    `;
+    if (skipBtn) skipBtn.hidden = true;
+    if (skipHint) skipHint.hidden = true;
+    return;
+  }
+
   const current = draft.find((d) => d.pick_order === windowState.current_pick_rank);
-  const waiting = draft.filter((d) => !d.nation_code).length;
   liveEl.innerHTML = `
     <b>Nation selection</b> is open ·
+    Mode: <b>draft order</b> ·
     On the clock: <b>#${windowState.current_pick_rank}</b>
     ${current ? `— ${current.owner_tag || current.owner_name || "Owner"} (${current.club_name || current.club_short_name})` : ""}
     · ${windowState.nations_assigned || 0} assigned · ${waiting} still to pick
@@ -878,7 +893,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (_) {
       /* ignore */
     }
-    openSelection("initial");
+    openSelection("initial", "ordered");
+  });
+  document.getElementById("openFfaBtn")?.addEventListener("click", async () => {
+    try {
+      const draft = await loadOwnerDraftOrder(supabase);
+      const waiting = (draft || []).filter((d) => !d.nation_code).length;
+      if (waiting === 0 && draft?.length) {
+        setStatus(
+          "selectionStatus",
+          "Everyone already has a nation — nothing for free-for-all to do.",
+          false
+        );
+        return;
+      }
+      if (
+        !confirm(
+          `Open free-for-all nation selection?\n\n${waiting} club(s) without a nation can claim immediately (no pick order).\n\nAny currently open draft window will close first.`
+        )
+      ) {
+        return;
+      }
+    } catch (_) {
+      /* ignore */
+    }
+    openSelection("initial", "free_for_all");
   });
   document.getElementById("clearAssignmentsBtn")?.addEventListener("click", clearAssignments);
   document.getElementById("closeSelectionBtn")?.addEventListener("click", closeSelection);
@@ -910,14 +949,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 });
 
-async function openSelection(phase) {
-  setStatus("selectionStatus", "Opening…");
+async function openSelection(phase, pickMode = "ordered") {
+  const modeLabel = pickMode === "free_for_all" ? "free-for-all" : "draft order";
+  setStatus("selectionStatus", `Opening (${modeLabel})…`);
   const { data, error } = await supabase.rpc("international_admin_open_selection", {
     p_phase: phase,
+    p_pick_mode: pickMode,
   });
   setStatus(
     "selectionStatus",
-    error ? `❌ ${error.message}` : `✅ Selection open (window #${data})`,
+    error ? `❌ ${error.message}` : `✅ Selection open — ${modeLabel} (window #${data})`,
     !error
   );
   if (!error) {
