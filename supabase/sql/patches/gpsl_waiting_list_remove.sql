@@ -63,7 +63,7 @@ BEGIN
       waiting_list_use_admin_sort = false,
       returned_to_list_at = NULL,
       absence_note = NULL,
-      pending_starting_balance = NULL,
+      pending_starting_balance = 0,
       status_note = coalesce(status_note, 'Removed from waiting list'),
       status_changed_at = now()
   WHERE owner_id = v_user_id;

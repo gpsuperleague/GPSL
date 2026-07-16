@@ -70,7 +70,7 @@ function gpslStatusHtml(m) {
     return `<span class="discord-status on-list">On waiting list</span>`;
   }
   if (m.gpsl_club) {
-    return `<span class="discord-status active">Club ${escapeHtml(m.gpsl_club)}</span>`;
+    return `<span class="discord-status active">${escapeHtml(m.gpsl_club)}</span>`;
   }
   if (m.gpsl_status) {
     return `<span class="discord-status active">${escapeHtml(m.gpsl_status)}</span>`;

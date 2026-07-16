@@ -150,7 +150,7 @@ Deno.serve(async (req) => {
 
     const { data: clubRows } = await adminClient
       .from("Clubs")
-      .select('ShortName, owner, owner_id');
+      .select('ShortName, Club, owner, owner_id');
 
     // Resolve emails for matched GPSL owners (for Set tag)
     const ownerIds = new Set<string>();
@@ -180,6 +180,7 @@ Deno.serve(async (req) => {
         owner_id: string | null;
         status: string | null;
         club_short_name: string | null;
+        club_name: string | null;
         waiting_list_tier: string | null;
         matched_tag: string;
         email: string | null;
@@ -196,6 +197,7 @@ Deno.serve(async (req) => {
         owner_id: oid,
         status: row.status,
         club_short_name: null,
+        club_name: null,
         waiting_list_tier: row.waiting_list_tier ?? null,
         matched_tag: String(row.owner_tag || "").trim(),
         email: oid ? emailByOwnerId.get(oid) || null : null,
@@ -209,10 +211,12 @@ Deno.serve(async (req) => {
       if (!tag) continue;
       const oid = row.owner_id ? String(row.owner_id) : null;
       const prev = byTag.get(tag);
+      const fullName = String(row.Club || "").trim() || null;
       byTag.set(tag, {
         owner_id: oid || prev?.owner_id || null,
         status: prev?.status || (row.owner_id ? "active" : null),
         club_short_name: row.ShortName,
+        club_name: fullName || row.ShortName || null,
         waiting_list_tier: prev?.waiting_list_tier ?? null,
         matched_tag: String(row.owner || "").trim(),
         email:
@@ -236,6 +240,7 @@ Deno.serve(async (req) => {
           owner_id: string | null;
           status: string | null;
           club_short_name: string | null;
+          club_name: string | null;
           waiting_list_tier: string | null;
           matched_tag: string;
           email: string | null;
@@ -259,7 +264,9 @@ Deno.serve(async (req) => {
             ? `https://cdn.discordapp.com/avatars/${u.id}/${u.avatar}.png?size=64`
             : null,
           gpsl_status: gpsl?.status ?? null,
-          gpsl_club: gpsl?.club_short_name ?? null,
+          // Prefer full club name for admin display
+          gpsl_club: gpsl?.club_name ?? gpsl?.club_short_name ?? null,
+          gpsl_club_short: gpsl?.club_short_name ?? null,
           gpsl_owner_id: gpsl?.owner_id ?? null,
           gpsl_email: gpsl?.email ?? null,
           gpsl_matched_tag: gpsl?.matched_tag ?? null,
