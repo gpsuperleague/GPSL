@@ -152,6 +152,28 @@ Deno.serve(async (req) => {
       .from("Clubs")
       .select('ShortName, owner, owner_id');
 
+    // Resolve emails for matched GPSL owners (for Set tag)
+    const ownerIds = new Set<string>();
+    for (const row of registryRows || []) {
+      if (row.owner_id) ownerIds.add(String(row.owner_id));
+    }
+    for (const row of clubRows || []) {
+      if (row.owner_id) ownerIds.add(String(row.owner_id));
+    }
+
+    const emailByOwnerId = new Map<string, string>();
+    for (const oid of ownerIds) {
+      try {
+        const { data: userData, error: userErr } =
+          await adminClient.auth.admin.getUserById(oid);
+        if (!userErr && userData?.user?.email) {
+          emailByOwnerId.set(oid, String(userData.user.email).toLowerCase());
+        }
+      } catch {
+        /* skip */
+      }
+    }
+
     const byTag = new Map<
       string,
       {
@@ -160,6 +182,7 @@ Deno.serve(async (req) => {
         club_short_name: string | null;
         waiting_list_tier: string | null;
         matched_tag: string;
+        email: string | null;
       }
     >();
 
@@ -168,12 +191,14 @@ Deno.serve(async (req) => {
         .trim()
         .toLowerCase();
       if (!tag) continue;
+      const oid = row.owner_id ? String(row.owner_id) : null;
       byTag.set(tag, {
-        owner_id: row.owner_id,
+        owner_id: oid,
         status: row.status,
         club_short_name: null,
         waiting_list_tier: row.waiting_list_tier ?? null,
         matched_tag: String(row.owner_tag || "").trim(),
+        email: oid ? emailByOwnerId.get(oid) || null : null,
       });
     }
 
@@ -182,13 +207,18 @@ Deno.serve(async (req) => {
         .trim()
         .toLowerCase();
       if (!tag) continue;
+      const oid = row.owner_id ? String(row.owner_id) : null;
       const prev = byTag.get(tag);
       byTag.set(tag, {
-        owner_id: row.owner_id || prev?.owner_id || null,
+        owner_id: oid || prev?.owner_id || null,
         status: prev?.status || (row.owner_id ? "active" : null),
         club_short_name: row.ShortName,
         waiting_list_tier: prev?.waiting_list_tier ?? null,
         matched_tag: String(row.owner || "").trim(),
+        email:
+          (oid && emailByOwnerId.get(oid)) ||
+          prev?.email ||
+          null,
       });
     }
 
@@ -208,6 +238,7 @@ Deno.serve(async (req) => {
           club_short_name: string | null;
           waiting_list_tier: string | null;
           matched_tag: string;
+          email: string | null;
         };
 
         for (const key of lookupKeys) {
@@ -230,6 +261,7 @@ Deno.serve(async (req) => {
           gpsl_status: gpsl?.status ?? null,
           gpsl_club: gpsl?.club_short_name ?? null,
           gpsl_owner_id: gpsl?.owner_id ?? null,
+          gpsl_email: gpsl?.email ?? null,
           gpsl_matched_tag: gpsl?.matched_tag ?? null,
           on_waiting_list:
             gpsl?.status === "member" || gpsl?.status === "on_absence",

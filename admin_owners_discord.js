@@ -5,7 +5,10 @@ primeAdminPageChrome();
 /** @type {Array<Record<string, unknown>>} */
 let allMembers = [];
 let clubAuctionStartingBalance = 600000000;
-let openAddId = null;
+/** @type {string|null} */
+let openPanelId = null;
+/** @type {"add"|"tag"|null} */
+let openPanelKind = null;
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -93,12 +96,17 @@ function filteredMembers() {
       m.nick,
       m.gpsl_club,
       m.gpsl_matched_tag,
+      m.gpsl_email,
     ]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
     return hay.includes(q);
   });
+}
+
+function defaultTag(m) {
+  return String(m.username || m.display_name || "").trim();
 }
 
 function renderTable() {
@@ -134,33 +142,51 @@ function renderTable() {
             const avatar = m.avatar_url
               ? `<img class="discord-avatar" src="${escapeHtml(m.avatar_url)}" alt="">`
               : `<span class="discord-avatar" style="display:inline-block;"></span>`;
-            const already =
-              m.on_waiting_list || m.awaiting_club_auction || m.gpsl_club;
-            const addOpen = openAddId === id;
+            const onGpsl =
+              m.on_waiting_list || m.awaiting_club_auction || m.gpsl_club || m.gpsl_status;
+            const addOpen = openPanelId === id && openPanelKind === "add";
+            const tagOpen = openPanelId === id && openPanelKind === "tag";
+            const tagValue = escapeHtml(defaultTag(m));
+            const emailValue = escapeHtml(m.gpsl_email || "");
             return `
           <tr data-discord-id="${escapeHtml(id)}">
             <td class="discord-meta">${idx + 1}</td>
             <td>
               ${avatar}
               <b>${escapeHtml(m.display_name)}</b>
-              <div class="discord-meta">@${escapeHtml(m.username || "—")}</div>
+              <div class="discord-meta">@${escapeHtml(m.username || "—")}${
+                m.gpsl_matched_tag
+                  ? ` · tag ${escapeHtml(m.gpsl_matched_tag)}`
+                  : ""
+              }</div>
             </td>
             <td>${escapeHtml(formatJoinedAt(m.joined_at))}</td>
             <td>${gpslStatusHtml(m)}</td>
             <td>
-              ${
-                already
-                  ? `<span class="discord-meta">—</span>`
-                  : `<button type="button" class="button secondary discord-add-btn" data-id="${escapeHtml(id)}">Add to waiting list</button>`
-              }
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                ${
+                  onGpsl
+                    ? ""
+                    : `<button type="button" class="button secondary discord-add-btn" data-id="${escapeHtml(id)}">Add to waiting list</button>`
+                }
+                <button type="button" class="button secondary discord-tag-btn" data-id="${escapeHtml(id)}">Set owner tag</button>
+              </div>
               <div class="discord-add-panel${addOpen ? " open" : ""}" id="add-panel-${escapeHtml(id)}">
                 <div class="row">
                   <input type="email" class="discord-email" data-id="${escapeHtml(id)}" placeholder="Owner email" autocomplete="off">
                   <input type="password" class="discord-password" data-id="${escapeHtml(id)}" placeholder="Temp password (min 6)" autocomplete="new-password">
-                  <input type="text" class="discord-tag" data-id="${escapeHtml(id)}" value="${escapeHtml(m.username || m.display_name || "")}" placeholder="Owner tag">
+                  <input type="text" class="discord-tag-add" data-id="${escapeHtml(id)}" value="${tagValue}" placeholder="Owner tag">
                 </div>
                 <button type="button" class="button discord-confirm-add" data-id="${escapeHtml(id)}">Create &amp; add to list</button>
-                <button type="button" class="button secondary discord-cancel-add" data-id="${escapeHtml(id)}">Cancel</button>
+                <button type="button" class="button secondary discord-cancel-panel" data-id="${escapeHtml(id)}">Cancel</button>
+              </div>
+              <div class="discord-add-panel${tagOpen ? " open" : ""}" id="tag-panel-${escapeHtml(id)}">
+                <div class="row">
+                  <input type="email" class="discord-tag-email" data-id="${escapeHtml(id)}" value="${emailValue}" placeholder="GPSL owner email" autocomplete="off">
+                  <input type="text" class="discord-tag-value" data-id="${escapeHtml(id)}" value="${tagValue}" placeholder="Owner tag (Discord name)">
+                </div>
+                <button type="button" class="button discord-confirm-tag" data-id="${escapeHtml(id)}">Save owner tag</button>
+                <button type="button" class="button secondary discord-cancel-panel" data-id="${escapeHtml(id)}">Cancel</button>
               </div>
             </td>
           </tr>`;
@@ -172,18 +198,30 @@ function renderTable() {
 
   wrap.querySelectorAll(".discord-add-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      openAddId = btn.getAttribute("data-id");
+      openPanelId = btn.getAttribute("data-id");
+      openPanelKind = "add";
       renderTable();
     });
   });
-  wrap.querySelectorAll(".discord-cancel-add").forEach((btn) => {
+  wrap.querySelectorAll(".discord-tag-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      openAddId = null;
+      openPanelId = btn.getAttribute("data-id");
+      openPanelKind = "tag";
+      renderTable();
+    });
+  });
+  wrap.querySelectorAll(".discord-cancel-panel").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openPanelId = null;
+      openPanelKind = null;
       renderTable();
     });
   });
   wrap.querySelectorAll(".discord-confirm-add").forEach((btn) => {
     btn.addEventListener("click", () => confirmAdd(btn.getAttribute("data-id")));
+  });
+  wrap.querySelectorAll(".discord-confirm-tag").forEach((btn) => {
+    btn.addEventListener("click", () => confirmSetTag(btn.getAttribute("data-id")));
   });
 }
 
@@ -205,14 +243,15 @@ async function loadMembers() {
     `✅ ${allMembers.length} member${allMembers.length === 1 ? "" : "s"} (oldest first)`,
     true
   );
-  openAddId = null;
+  openPanelId = null;
+  openPanelKind = null;
   renderTable();
 }
 
 async function confirmAdd(discordId) {
   const emailEl = document.querySelector(`.discord-email[data-id="${discordId}"]`);
   const passEl = document.querySelector(`.discord-password[data-id="${discordId}"]`);
-  const tagEl = document.querySelector(`.discord-tag[data-id="${discordId}"]`);
+  const tagEl = document.querySelector(`.discord-tag-add[data-id="${discordId}"]`);
 
   const email = emailEl?.value?.trim().toLowerCase() || "";
   const password = passEl?.value?.trim() || "";
@@ -229,7 +268,7 @@ async function confirmAdd(discordId) {
 
   setStatus("discordStatus", `Creating ${email} and adding to waiting list…`);
 
-  const { data, error } = await invokeEdgeFunction("create-owner-club-auction", {
+  const { error } = await invokeEdgeFunction("create-owner-club-auction", {
     email,
     password,
     startingBalance: clubAuctionStartingBalance,
@@ -241,7 +280,6 @@ async function confirmAdd(discordId) {
     return;
   }
 
-  // Best-effort tag via RPC (upsert usually already set it)
   if (ownerTag) {
     await supabase.rpc("admin_owner_set_tag", {
       p_owner_email: email,
@@ -254,7 +292,47 @@ async function confirmAdd(discordId) {
     `✅ ${email} added to waiting list${ownerTag ? ` (tag ${ownerTag})` : ""}. Share login; invite from Waiting list when ready.`,
     true
   );
-  openAddId = null;
+  openPanelId = null;
+  openPanelKind = null;
+  await loadMembers();
+}
+
+async function confirmSetTag(discordId) {
+  const emailEl = document.querySelector(`.discord-tag-email[data-id="${discordId}"]`);
+  const tagEl = document.querySelector(`.discord-tag-value[data-id="${discordId}"]`);
+
+  const email = emailEl?.value?.trim().toLowerCase() || "";
+  const tag = tagEl?.value?.trim() || "";
+
+  if (!email) {
+    setStatus("discordStatus", "Enter the GPSL owner email to update.", false);
+    return;
+  }
+  if (!tag) {
+    setStatus("discordStatus", "Enter an owner tag.", false);
+    return;
+  }
+
+  setStatus("discordStatus", `Saving tag “${tag}” for ${email}…`);
+
+  const { data, error } = await supabase.rpc("admin_owner_set_tag", {
+    p_owner_email: email,
+    p_tag: tag,
+  });
+
+  if (error) {
+    setStatus("discordStatus", "❌ " + error.message, false);
+    return;
+  }
+
+  const clubNote = data?.club_short_name ? ` (${data.club_short_name})` : "";
+  setStatus(
+    "discordStatus",
+    `✅ Tag set to “${data?.owner_tag || tag}” for ${email}${clubNote}`,
+    true
+  );
+  openPanelId = null;
+  openPanelKind = null;
   await loadMembers();
 }
 
