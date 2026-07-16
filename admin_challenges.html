@@ -63,12 +63,26 @@
 
       <div class="card">
         <h2>Targets</h2>
+        <p class="note">
+          <b>Recheck all clubs</b> scans every club’s season stats against these targets and pays any unpaid prizes
+          (works even if the Start/Mid month window has already closed — for catch-up after you set challenges late).
+        </p>
         <div class="row" style="margin-bottom:12px;">
           <button type="button" id="seedChallengesBtn" class="button">Seed default targets (10)</button>
           <button type="button" id="recheckChallengesBtn" class="button">Recheck all clubs</button>
+          <button type="button" id="refreshProgressBoardBtn" class="button">Refresh progress board</button>
         </div>
         <div id="challengeList" class="challenge-admin-list"></div>
         <div id="challengeListStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Who qualified / paid</h2>
+        <p class="note">
+          Per challenge: clubs that have met the target (or already been paid).
+          Owners also see their own progress on <a href="challenges.html">challenges.html</a>.
+        </p>
+        <div id="challengeProgressBoard" class="challenge-admin-list"></div>
       </div>
 
       <div class="card">
@@ -164,7 +178,8 @@
       </div>
 
       <div class="card">
-        <h2>Awards this season</h2>
+        <h2>Paid awards this season</h2>
+        <p class="note">Ledger payouts already recorded (same data owners see under Awards on challenges.html).</p>
         <div id="challengeAwardsList" class="challenge-admin-list"></div>
       </div>
     </div>

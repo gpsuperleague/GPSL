@@ -27,6 +27,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("saveChallengePacksBtn").onclick = saveChallengePacks;
   document.getElementById("seedChallengesBtn").onclick = seedChallenges;
   document.getElementById("recheckChallengesBtn").onclick = recheckChallenges;
+  document.getElementById("refreshProgressBoardBtn").onclick = loadChallengeProgressBoard;
   document.getElementById("saveChallengeBtn").onclick = saveChallenge;
   document.getElementById("clearChallengeFormBtn").onclick = clearChallengeForm;
 
@@ -35,6 +36,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadChallengeDefaults();
   await loadChallengePacks();
   await loadChallengeList();
+  await loadChallengeProgressBoard();
   await loadChallengeAwards();
 });
 
@@ -255,6 +257,80 @@ async function loadChallengeList() {
   });
 }
 
+async function loadChallengeProgressBoard() {
+  const board = document.getElementById("challengeProgressBoard");
+  if (!board) return;
+
+  board.innerHTML = "<p class='note'>Loading progress…</p>";
+  const { data, error } = await supabase.rpc("competition_admin_challenge_progress_board", {
+    p_season_id: currentSeasonId,
+  });
+
+  if (error) {
+    board.innerHTML = `<p class="note">❌ ${error.message} — run competition_challenges_admin_recheck_board.sql</p>`;
+    return;
+  }
+
+  const challenges = data?.challenges || [];
+  const bonuses = data?.period_bonuses || [];
+
+  if (!challenges.length) {
+    board.innerHTML = "<p class='note'>No active challenges to score.</p>";
+    return;
+  }
+
+  let html = challenges
+    .map((c) => {
+      const achievers = c.achievers || [];
+      const list =
+        achievers.length === 0
+          ? `<div class="note" style="margin:6px 0 0;">Nobody has met this yet.</div>`
+          : `<ul style="margin:8px 0 0;padding-left:18px;font-size:13px;line-height:1.5;">
+              ${achievers
+                .map((a) => {
+                  const badge = a.awarded
+                    ? `<span style="color:#8d8;">Paid</span>`
+                    : `<span style="color:#fc6;">Met — unpaid</span>`;
+                  return `<li><b>${a.club_name || a.club_short_name}</b> — ${a.current_value}/${a.target_value} · ${badge}</li>`;
+                })
+                .join("")}
+            </ul>`;
+      const openTag = c.window_open
+        ? `<span style="color:#8d8;">window open</span>`
+        : `<span style="color:#a88;">window closed</span>`;
+      return `
+        <div class="challenge-admin-item" style="display:block;">
+          <div>
+            <b>${c.title}</b>
+            <span class="challenge-admin-meta">
+              ${c.window_phase} · ${STAT_LABELS[c.stat_type] || c.stat_type}${
+                c.stat_param ? ` (${c.stat_param})` : ""
+              } ≥ ${c.target_value} · ${formatMoney(c.prize_amount)} · ${openTag}
+              · ${c.achiever_count || 0} club(s)
+            </span>
+          </div>
+          ${list}
+        </div>`;
+    })
+    .join("");
+
+  if (bonuses.length) {
+    html += `<div class="challenge-admin-item" style="display:block;margin-top:12px;">
+      <b>Period bonus (first to finish all)</b>
+      <ul style="margin:8px 0 0;padding-left:18px;font-size:13px;">
+        ${bonuses
+          .map(
+            (b) =>
+              `<li><b>${b.club_name || b.club_short_name}</b> — ${b.window_phase} · ${formatMoney(b.amount)}</li>`
+          )
+          .join("")}
+      </ul>
+    </div>`;
+  }
+
+  board.innerHTML = html;
+}
+
 async function loadChallengeAwards() {
   const list = document.getElementById("challengeAwardsList");
   if (!list || !currentSeasonId) return;
@@ -352,18 +428,24 @@ async function seedChallenges() {
 }
 
 async function recheckChallenges() {
-  setStatus("challengeListStatus", "Rechecking…");
+  setStatus("challengeListStatus", "Rechecking all clubs (catch-up payout)…");
   const { data, error } = await supabase.rpc("competition_admin_recheck_challenges", {
     p_season_id: currentSeasonId,
+    p_ignore_window: true,
   });
   if (error) {
-    setStatus("challengeListStatus", "❌ " + error.message, false);
+    setStatus(
+      "challengeListStatus",
+      "❌ " + error.message + " — run competition_challenges_admin_recheck_board.sql",
+      false
+    );
     return;
   }
+  await loadChallengeProgressBoard();
   await loadChallengeAwards();
   setStatus(
     "challengeListStatus",
-    `✅ Awarded ${data?.challenges_awarded ?? 0} new challenge(s).`,
+    `✅ Awarded ${data?.challenges_awarded ?? 0} new challenge prize(s). Progress board refreshed.`,
     true
   );
 }
