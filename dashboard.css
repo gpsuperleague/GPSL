@@ -1565,6 +1565,132 @@ button.nav-admin-trigger {
   display: none !important;
 }
 
+/* Sky-style transfer news ticker (May–July) */
+.transfer-news-strip {
+  border-top: 1px solid #3a0a0a;
+  background: linear-gradient(90deg, #1a0505 0%, #120808 40%, #141414 100%);
+  width: 100%;
+  min-height: 34px;
+}
+
+.transfer-news-strip[hidden] {
+  display: none !important;
+}
+
+.tn-inner {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  text-decoration: none;
+  color: inherit;
+  min-height: 34px;
+  max-width: 100%;
+}
+
+.tn-inner:hover .tn-headline {
+  color: #fff;
+}
+
+.tn-rail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 6px 10px;
+  background: #c8102e;
+  color: #fff;
+}
+
+.tn-live {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  background: #111;
+  color: #fff;
+  padding: 2px 5px;
+  border-radius: 2px;
+  animation: tn-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes tn-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.tn-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tn-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+  padding: 5px 12px;
+}
+
+.tn-headline {
+  font-size: 12px;
+  font-weight: 700;
+  color: #f2f2f2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tn-body {
+  font-size: 11px;
+  color: #b0b0b0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tn-kind-window .tn-headline {
+  color: #ffd36a;
+}
+
+.tn-kind-draft .tn-headline {
+  color: #9ad0ff;
+}
+
+.tn-dots {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+
+.tn-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #444;
+}
+
+.tn-dot.is-on {
+  background: #c8102e;
+}
+
+@media (max-width: 720px) {
+  .tn-kicker {
+    display: none;
+  }
+  .tn-body {
+    display: none;
+  }
+  .tn-rail {
+    padding: 6px 8px;
+  }
+}
+
 .season-schedule-inner {
   display: flex;
   flex-wrap: wrap;

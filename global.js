@@ -1715,6 +1715,12 @@ export async function renderFallbackNav() {
   refreshNatterNavBadge().catch((err) => {
     console.warn("Natter nav badge skipped:", err);
   });
+  try {
+    const tn = await import(`./transfer_news_ticker.js?v=${GLOBAL_JS_VERSION}`);
+    tn.initTransferNewsStrip();
+  } catch (tnErr) {
+    console.warn("Transfer news strip skipped:", tnErr);
+  }
 }
 
 // ------------------------------------------------------------
@@ -1996,6 +2002,13 @@ export async function buildNav() {
   } catch (schedErr) {
     console.warn("Season schedule strip skipped:", schedErr);
   }
+  try {
+    const tn = await import(`./transfer_news_ticker.js?v=${GLOBAL_JS_VERSION}`);
+    tn.ensureTransferNewsStripMount();
+    tn.refreshTransferNewsStrip();
+  } catch (tnErr) {
+    console.warn("Transfer news strip skipped:", tnErr);
+  }
   } catch (err) {
     console.error("buildNav failed:", err);
     await renderFallbackNav();
@@ -2034,5 +2047,8 @@ export async function initGlobal() {
     import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`)
       .then((m) => m.initSeasonScheduleStrip())
       .catch((err) => console.warn("Season schedule strip skipped:", err));
+    import(`./transfer_news_ticker.js?v=${GLOBAL_JS_VERSION}`)
+      .then((m) => m.initTransferNewsStrip())
+      .catch((err) => console.warn("Transfer news strip skipped:", err));
   }
 }
