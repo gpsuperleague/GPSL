@@ -14,9 +14,8 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <h2>Defaults</h2>
-        <p class="note">Each club earns the configured prize when a target is met (instant ledger credit). First club to complete <b>all</b> targets in a window earns the period bonus pack (cash + optional medical / discount / appeal prizes).
-          <b>Start</b> runs June–December. <b>Mid</b> runs January–May.
-          Run <code>competition_challenges.sql</code>, <code>competition_challenges_june_transfers.sql</code>, then <code>competition_challenge_prize_packs.sql</code> + <code>_part2.sql</code>.</p>
+        <p class="note">Each club earns the per-challenge prize when a target is met. The <b>first club to complete all challenges</b> in a window (e.g. all 5 Start targets) automatically wins the <b>big prize pack</b> below — cash, medical tokens, transfer fee discounts, and red-card appeal cards. That club is paid instantly, items go to Club prizes, and every owner gets an inbox announcement (plus Discord if the news feed is live).
+          <b>Start</b> = June–December. <b>Mid</b> = January–May.</p>
         <div class="row gov-subsidy-row">
           <div>
             <label>Default prize per challenge</label>
@@ -30,8 +29,12 @@
         <button type="button" id="saveChallengeDefaultsBtn" class="button">Save defaults</button>
         <div id="challengeDefaultsStatus" class="status-line"></div>
 
-        <h3 style="margin-top:18px;">Period bonus packs (first to finish all)</h3>
-        <p class="note">Separate Start / Mid pots. Medical tokens: 2,4,6,8,10 matches. Fee discounts: % off what the buyer pays (seller still gets full fee; central bank tops up). Appeal cards: red-card overturn requests (admin review).</p>
+        <h3 style="margin-top:18px;">Big prize pack (first to finish all challenges)</h3>
+        <p class="note">
+          Set this before clubs finish the set. Separate Start / Mid pots.
+          Medical tokens: 2,4,6,8,10 matches (Medical room). Fee discounts: % off what the <b>buyer</b> pays (seller still gets full fee; bank tops up). Appeal cards: red-card overturn requests (<a href="admin_prize_appeals.html">admin review</a>).
+          Save packs, then use <b>Recheck all clubs</b> if someone already completed all targets.
+        </p>
         <div class="row gov-subsidy-row" style="align-items:flex-start;">
           <div style="flex:1;min-width:240px;">
             <h4>Start (Jun–Dec)</h4>

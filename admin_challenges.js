@@ -93,7 +93,11 @@ async function saveChallengePacks() {
     setStatus("challengePacksStatus", "❌ " + error.message, false);
     return;
   }
-  setStatus("challengePacksStatus", "✅ Period packs saved.", true);
+  setStatus(
+    "challengePacksStatus",
+    "✅ Big prize packs saved — first club to finish all challenges in a window gets this automatically.",
+    true
+  );
 }
 
 function syncWindowMonths() {

@@ -38,11 +38,59 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.title = `Season challenges — ${fullClubName(club.ShortName) || club.ShortName}`;
 
   await Promise.all([
+    loadBigPrizePacks(),
     loadMyProgress(club.ShortName),
     loadCatalog(),
     loadAwards(club.ShortName),
   ]);
 });
+
+async function loadBigPrizePacks() {
+  const el = document.getElementById("challengeBigPrize");
+  if (!el) return;
+
+  const { data, error } = await supabase
+    .from("competition_challenge_period_packs_public")
+    .select("*")
+    .order("window_phase");
+
+  if (error) {
+    // Fallback to base table if view not deployed yet
+    const { data: packs, error: err2 } = await supabase
+      .from("competition_challenge_period_pack")
+      .select("window_phase, cash_amount, pack");
+    if (err2 || !packs?.length) {
+      el.innerHTML =
+        "Big prize packs not loaded yet — admin must run prize-pack SQL and set packs on Season challenges.";
+      return;
+    }
+    el.innerHTML = packs
+      .map((p) => {
+        const label = p.window_phase === "mid" ? "Mid (Jan–May)" : "Start (Jun–Dec)";
+        const pack = p.pack || {};
+        const med = (pack.medical_tokens || []).map((n) => `${n}-match`).join(", ") || "—";
+        const disc = (pack.fee_discounts || []).map((n) => `${n}%`).join(", ") || "—";
+        const appeals = pack.appeal_cards ?? 0;
+        return `<div style="margin-bottom:10px;"><b>${label}</b><br>
+          Cash ${formatMoney(Number(p.cash_amount || 0))} · Medical: ${med} ·
+          Transfer discounts: ${disc} · Appeal cards: ${appeals}</div>`;
+      })
+      .join("");
+    return;
+  }
+
+  if (!data?.length) {
+    el.innerHTML = "No big prize packs configured yet.";
+    return;
+  }
+
+  el.innerHTML = data
+    .map((p) => {
+      const label = p.window_phase === "mid" ? "Mid (Jan–May)" : "Start (Jun–Dec)";
+      return `<div style="margin-bottom:10px;"><b>${label}</b><br>${p.pack_summary || "—"}</div>`;
+    })
+    .join("");
+}
 
 function renderError(msg) {
   document.getElementById("challengeProgressGrid").innerHTML =
