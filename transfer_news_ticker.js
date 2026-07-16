@@ -1,6 +1,11 @@
 /**
  * Sky-style transfer news ticker under nav (May–July GPSL months).
  * Max 5 stories, rotating. Data: gpsl_transfer_news_feed().
+ *
+ * Test without waiting for May–July:
+ *   dashboard.html?transfer_news_test=may
+ *   dashboard.html?transfer_news_test=june
+ * (Works even if the RPC is missing — shows demo stories.)
  */
 
 import { supabase } from "./supabase_client.js";
@@ -21,6 +26,61 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+function testForceMonth() {
+  try {
+    const q = new URLSearchParams(window.location.search || "");
+    const raw = (q.get("transfer_news_test") || "").toLowerCase().trim();
+    if (raw === "may" || raw === "june" || raw === "july") return raw;
+    if (raw === "1" || raw === "true") return "june";
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+/** Guaranteed UI preview when ?transfer_news_test= is set. */
+function demoStories(month) {
+  const m = month || "june";
+  const base = [];
+  if (m === "may") {
+    base.push({
+      id: "demo-window",
+      kind: "window",
+      kicker: "TRANSFER NEWS",
+      headline: "Transfer window opens in June",
+      body: "Demo preview — free-market window unlocks next month.",
+      href: "transfer_center.html",
+    });
+  }
+  base.push(
+    {
+      id: "demo-1",
+      kind: "transfer",
+      kicker: "TRANSFER NEWS",
+      headline: "DONE DEAL — Demo Striker",
+      body: "Arsenal → Chelsea · ₿ 45,000,000 · Transfer list (auction)",
+      href: "transfer_center.html",
+    },
+    {
+      id: "demo-2",
+      kind: "draft",
+      kicker: "TRANSFER NEWS",
+      headline: "DRAFT DEAL — Demo Keeper joins Liverpool",
+      body: "Draft auction",
+      href: "transfer_center.html",
+    },
+    {
+      id: "demo-3",
+      kind: "transfer",
+      kicker: "TRANSFER NEWS",
+      headline: "DONE DEAL — Demo Midfielder",
+      body: "Free agent → Spurs · ₿ 12,500,000 · Direct offer",
+      href: "transfer_center.html",
+    }
+  );
+  return base.slice(0, 5);
+}
+
 export function ensureTransferNewsStripMount() {
   const nav = document.getElementById("nav");
   if (!nav) return null;
@@ -32,13 +92,7 @@ export function ensureTransferNewsStripMount() {
     el.className = "transfer-news-strip";
     el.setAttribute("aria-live", "polite");
     el.hidden = true;
-
-    const schedule = document.getElementById("seasonScheduleStrip");
-    if (schedule && schedule.parentNode === nav) {
-      schedule.insertAdjacentElement("afterend", el);
-    } else {
-      nav.appendChild(el);
-    }
+    nav.appendChild(el);
   }
   return el;
 }
@@ -92,53 +146,65 @@ function startRotation() {
   }, ROTATE_MS);
 }
 
-function testForceMonth() {
-  try {
-    const q = new URLSearchParams(window.location.search || "");
-    const raw = (q.get("transfer_news_test") || "").toLowerCase().trim();
-    if (raw === "may" || raw === "june" || raw === "july") return raw;
-    if (raw === "1" || raw === "true") return "june";
-  } catch {
-    /* ignore */
+function showStories(stories) {
+  __stories = (stories || []).slice(0, 5);
+  __index = 0;
+  if (!__stories.length) {
+    const el = document.getElementById("transferNewsStrip");
+    if (el) {
+      el.hidden = true;
+      el.innerHTML = "";
+    }
+    if (__rotateTimer) {
+      clearInterval(__rotateTimer);
+      __rotateTimer = null;
+    }
+    return;
   }
-  return null;
+  paintCurrent();
+  startRotation();
 }
 
 export async function refreshTransferNewsStrip() {
   const el = ensureTransferNewsStripMount();
   if (!el) return;
 
+  const force = testForceMonth();
+
+  // URL test mode: always show something (demo if RPC empty/fails)
+  if (force) {
+    try {
+      const { data, error } = await supabase.rpc("gpsl_transfer_news_feed", {
+        p_force_month: force,
+      });
+      if (!error && data?.visible && Array.isArray(data.stories) && data.stories.length) {
+        showStories(data.stories);
+        return;
+      }
+      if (error) console.warn("transfer news feed (test):", error.message);
+    } catch (err) {
+      console.warn("transfer news feed (test):", err);
+    }
+    showStories(demoStories(force));
+    return;
+  }
+
   try {
-    const force = testForceMonth();
-    const { data, error } = force
-      ? await supabase.rpc("gpsl_transfer_news_feed", { p_force_month: force })
-      : await supabase.rpc("gpsl_transfer_news_feed");
+    const { data, error } = await supabase.rpc("gpsl_transfer_news_feed");
     if (error) {
       console.warn("transfer news feed:", error.message);
-      el.hidden = true;
-      el.innerHTML = "";
+      showStories([]);
       return;
     }
-
-    const stories = Array.isArray(data?.stories) ? data.stories.slice(0, 5) : [];
+    const stories = Array.isArray(data?.stories) ? data.stories : [];
     if (!data?.visible || !stories.length) {
-      __stories = [];
-      el.hidden = true;
-      el.innerHTML = "";
-      if (__rotateTimer) {
-        clearInterval(__rotateTimer);
-        __rotateTimer = null;
-      }
+      showStories([]);
       return;
     }
-
-    __stories = stories;
-    __index = 0;
-    paintCurrent();
-    startRotation();
+    showStories(stories);
   } catch (err) {
     console.warn("transfer news strip:", err);
-    el.hidden = true;
+    showStories([]);
   }
 }
 

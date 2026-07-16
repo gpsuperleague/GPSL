@@ -1,18 +1,5 @@
--- =============================================================================
--- GPSL Transfer News ticker (nav strip)
---
--- Visible in GPSL May / June / July only.
--- May: "window opens in June" teaser + latest transfers in the May window.
--- June–July: top fees for the current UK calendar day (draft + free market),
---            padded from the current GPSL month if fewer than 5 today.
---
--- SELECT public.gpsl_transfer_news_feed();
--- Admin test: SELECT public.gpsl_transfer_news_feed('june');
--- Safe re-run.
--- =============================================================================
-
-DROP FUNCTION IF EXISTS public.gpsl_transfer_news_feed();
-DROP FUNCTION IF EXISTS public.gpsl_transfer_news_feed(text);
+-- Drop admin gate on force-month preview + ensure May teaser always visible when forced.
+-- Also: browser ?transfer_news_test= now falls back to client demo if RPC empty.
 
 CREATE OR REPLACE FUNCTION public.gpsl_transfer_news_feed(
   p_force_month text DEFAULT NULL
@@ -62,7 +49,6 @@ BEGIN
     v_month := '';
   END;
 
-  -- Anyone authenticated may force a preview month (ticker test only).
   IF v_force IS NOT NULL THEN
     IF v_force NOT IN ('may', 'june', 'july') THEN
       RAISE EXCEPTION 'force month must be may, june, or july';
@@ -94,7 +80,6 @@ BEGIN
     AND lower(m.gpsl_month) = v_month
   LIMIT 1;
 
-  -- May teaser: transfer window opens in June
   IF v_month = 'may' THEN
     v_stories := v_stories || jsonb_build_array(
       jsonb_build_object(
@@ -112,26 +97,15 @@ BEGIN
     v_need := 4;
   END IF;
 
-  -- Prefer today's UK deals by fee (June/July). May uses latest in-window.
   FOR v_row IN
     SELECT
-      h.id,
-      h.player_id,
-      h.seller_club_id,
-      h.buyer_club_id,
-      h.fee,
-      h.agent_fee,
-      h.transfer_time,
-      h.listing_id,
-      h.foreign_buyer_name,
-      h.transfer_sale_note,
+      h.id, h.player_id, h.seller_club_id, h.buyer_club_id, h.fee,
+      h.transfer_time, h.listing_id, h.foreign_buyer_name, h.transfer_sale_note,
       l.listing_type
     FROM public."Transfer_History" h
     LEFT JOIN public."Player_Transfer_Listings" l ON l.id = h.listing_id
     WHERE coalesce(h.transfer_sale_note, '') NOT IN (
-      'voluntary_contract_release',
-      'squad_overflow',
-      'new_owner_release'
+      'voluntary_contract_release', 'squad_overflow', 'new_owner_release'
     )
       AND (
         CASE
@@ -139,39 +113,33 @@ BEGIN
             (h.transfer_time AT TIME ZONE 'Europe/London')::date = v_uk_today
           ELSE
             (
-              (v_win_start IS NOT NULL AND h.transfer_time >= v_win_start AND h.transfer_time < coalesce(v_win_end, now() + interval '1 day'))
+              (v_win_start IS NOT NULL AND h.transfer_time >= v_win_start
+                AND h.transfer_time < coalesce(v_win_end, now() + interval '1 day'))
               OR (v_win_start IS NULL AND h.transfer_time >= (now() - interval '14 days'))
             )
         END
       )
     ORDER BY
       CASE WHEN v_month IN ('june', 'july') THEN coalesce(h.fee, 0) ELSE 0 END DESC,
-      h.transfer_time DESC,
-      h.id DESC
+      h.transfer_time DESC, h.id DESC
     LIMIT v_need
   LOOP
     v_ids := array_append(v_ids, v_row.id);
     v_listing_type := lower(coalesce(v_row.listing_type, ''));
 
-    SELECT p."Name" INTO v_name
-    FROM public."Players" p
-    WHERE p."Konami_ID"::text = v_row.player_id::text
-    LIMIT 1;
+    SELECT p."Name" INTO v_name FROM public."Players" p
+    WHERE p."Konami_ID"::text = v_row.player_id::text LIMIT 1;
     v_name := coalesce(nullif(btrim(v_name), ''), 'Player');
 
     SELECT coalesce(c."Club", v_row.seller_club_id) INTO v_seller
-    FROM public."Clubs" c
-    WHERE c."ShortName" = v_row.seller_club_id
-    LIMIT 1;
+    FROM public."Clubs" c WHERE c."ShortName" = v_row.seller_club_id LIMIT 1;
     v_seller := coalesce(v_seller, nullif(btrim(v_row.seller_club_id), ''), 'Free agent');
 
     IF v_row.buyer_club_id = 'FOREIGN' THEN
       v_buyer := coalesce(nullif(btrim(v_row.foreign_buyer_name), ''), 'Foreign club');
     ELSE
       SELECT coalesce(c."Club", v_row.buyer_club_id) INTO v_buyer
-      FROM public."Clubs" c
-      WHERE c."ShortName" = v_row.buyer_club_id
-      LIMIT 1;
+      FROM public."Clubs" c WHERE c."ShortName" = v_row.buyer_club_id LIMIT 1;
       v_buyer := coalesce(v_buyer, v_row.buyer_club_id, 'Unknown');
     END IF;
 
@@ -183,19 +151,11 @@ BEGIN
 
     BEGIN
       v_method := public.transfer_classify_method(
-        v_row.seller_club_id,
-        v_row.buyer_club_id,
-        v_row.listing_id,
-        v_row.transfer_sale_note,
-        v_row.foreign_buyer_name,
-        NULL
+        v_row.seller_club_id, v_row.buyer_club_id, v_row.listing_id,
+        v_row.transfer_sale_note, v_row.foreign_buyer_name, NULL
       );
     EXCEPTION WHEN OTHERS THEN
-      v_method := CASE
-        WHEN v_listing_type = 'draft' THEN 'Draft auction'
-        WHEN v_listing_type = 'direct' THEN 'Transfer market'
-        ELSE 'Transfer'
-      END;
+      v_method := CASE WHEN v_listing_type = 'draft' THEN 'Draft auction' ELSE 'Transfer' END;
     END;
 
     IF v_listing_type = 'draft' OR v_method ILIKE 'Draft%' THEN
@@ -206,9 +166,6 @@ BEGIN
       v_kind := 'transfer';
       v_headline := format('DONE DEAL — %s', v_name);
       v_body := format('%s → %s · %s', v_seller, v_buyer, v_fee_label);
-      IF v_method IS NOT NULL THEN
-        v_body := v_body || ' · ' || v_method;
-      END IF;
     END IF;
 
     v_stories := v_stories || jsonb_build_array(
@@ -220,54 +177,39 @@ BEGIN
         'body', v_body,
         'href', 'transfer_center.html',
         'fee', coalesce(v_row.fee, 0),
-        'transfer_time', v_row.transfer_time,
-        'player_name', v_name,
-        'method', v_method
+        'transfer_time', v_row.transfer_time
       )
     );
     v_count := v_count + 1;
   END LOOP;
 
-  -- Pad June/July to 5 from current GPSL month (highest fees not already shown)
   IF v_month IN ('june', 'july') AND v_count < 5 THEN
     v_need := 5 - v_count;
     FOR v_row IN
-      SELECT
-        h.id,
-        h.player_id,
-        h.seller_club_id,
-        h.buyer_club_id,
-        h.fee,
-        h.transfer_time,
-        h.listing_id,
-        h.foreign_buyer_name,
-        h.transfer_sale_note,
-        l.listing_type
+      SELECT h.id, h.player_id, h.seller_club_id, h.buyer_club_id, h.fee,
+             h.transfer_time, h.listing_id, h.foreign_buyer_name, l.listing_type
       FROM public."Transfer_History" h
       LEFT JOIN public."Player_Transfer_Listings" l ON l.id = h.listing_id
       WHERE coalesce(h.transfer_sale_note, '') NOT IN (
-        'voluntary_contract_release',
-        'squad_overflow',
-        'new_owner_release'
+        'voluntary_contract_release', 'squad_overflow', 'new_owner_release'
       )
         AND NOT (h.id = ANY (v_ids))
         AND (
-          (v_win_start IS NOT NULL AND h.transfer_time >= v_win_start AND h.transfer_time < coalesce(v_win_end, now() + interval '1 day'))
-          OR (v_win_start IS NULL AND (h.transfer_time AT TIME ZONE 'Europe/London')::date >= date_trunc('month', v_uk_today)::date)
+          (v_win_start IS NOT NULL AND h.transfer_time >= v_win_start
+            AND h.transfer_time < coalesce(v_win_end, now() + interval '1 day'))
+          OR (v_win_start IS NULL
+            AND (h.transfer_time AT TIME ZONE 'Europe/London')::date
+                >= date_trunc('month', v_uk_today)::date)
         )
       ORDER BY coalesce(h.fee, 0) DESC, h.transfer_time DESC, h.id DESC
       LIMIT v_need
     LOOP
-      SELECT p."Name" INTO v_name
-      FROM public."Players" p
-      WHERE p."Konami_ID"::text = v_row.player_id::text
-      LIMIT 1;
+      SELECT p."Name" INTO v_name FROM public."Players" p
+      WHERE p."Konami_ID"::text = v_row.player_id::text LIMIT 1;
       v_name := coalesce(nullif(btrim(v_name), ''), 'Player');
-
       SELECT coalesce(c."Club", v_row.seller_club_id) INTO v_seller
       FROM public."Clubs" c WHERE c."ShortName" = v_row.seller_club_id LIMIT 1;
       v_seller := coalesce(v_seller, nullif(btrim(v_row.seller_club_id), ''), 'Free agent');
-
       IF v_row.buyer_club_id = 'FOREIGN' THEN
         v_buyer := coalesce(nullif(btrim(v_row.foreign_buyer_name), ''), 'Foreign club');
       ELSE
@@ -275,24 +217,21 @@ BEGIN
         FROM public."Clubs" c WHERE c."ShortName" = v_row.buyer_club_id LIMIT 1;
         v_buyer := coalesce(v_buyer, v_row.buyer_club_id, 'Unknown');
       END IF;
-
       BEGIN
         v_fee_label := public.transfer_format_money(coalesce(v_row.fee, 0));
       EXCEPTION WHEN OTHERS THEN
         v_fee_label := coalesce(v_row.fee, 0)::text;
       END;
-
       v_listing_type := lower(coalesce(v_row.listing_type, ''));
       IF v_listing_type = 'draft' THEN
-        v_kind := 'draft';
         v_headline := format('DRAFT DEAL — %s joins %s', v_name, v_buyer);
         v_body := 'Draft auction';
+        v_kind := 'draft';
       ELSE
-        v_kind := 'transfer';
         v_headline := format('DONE DEAL — %s', v_name);
         v_body := format('%s → %s · %s', v_seller, v_buyer, v_fee_label);
+        v_kind := 'transfer';
       END IF;
-
       v_stories := v_stories || jsonb_build_array(
         jsonb_build_object(
           'id', 'transfer:' || v_row.id::text,
@@ -322,5 +261,4 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.gpsl_transfer_news_feed(text) TO authenticated;
-
 NOTIFY pgrst, 'reload schema';
