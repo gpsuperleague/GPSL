@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Discord News Feed — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    button.button.secondary { background:#444; color:#ddd; }
+    button.button.secondary:hover { background:#555; }
+    .news-actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+    .news-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .news-table th, .news-table td {
+      border-bottom:1px solid #333; padding:8px 10px; text-align:left; vertical-align:top;
+    }
+    .news-table th { color:#ff9900; font-size:12px; text-transform:uppercase; letter-spacing:0.03em; }
+    .news-table tr:hover td { background:#1a1a1a; }
+    .news-status { font-size:12px; text-transform:uppercase; letter-spacing:0.04em; }
+    .news-status.pending { color:#fc9; }
+    .news-status.posted { color:#8d8; }
+    .news-status.error { color:#f88; }
+    .news-body { color:#aaa; white-space:pre-wrap; }
+    code { background:#1a1a1a; padding:1px 5px; border-radius:3px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Discord News Feed</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Sky-style #gpsl-news</h2>
+        <p class="note">
+          Confirmed results, transfers, listings, and auctions are queued automatically.
+          Use <b>Push news to Discord</b> to drain the queue (or set up a Database Webhook for auto-post).
+        </p>
+        <p class="note">
+          One-time setup:
+          run SQL patch <code>supabase/sql/patches/gpsl_discord_sky_feed.sql</code>,
+          set secret <code>DISCORD_WEBHOOK_URL</code>,
+          deploy <code>supabase functions deploy discord-sky-feed</code>.
+        </p>
+        <div class="news-actions">
+          <button type="button" id="newsPushBtn" class="button">Push news to Discord</button>
+          <button type="button" id="newsTestBtn" class="button secondary">Send test message</button>
+          <button type="button" id="newsRefreshBtn" class="button secondary">Refresh queue</button>
+        </div>
+        <div id="newsStatus" class="status-line"></div>
+        <div id="newsTableWrap" style="overflow-x:auto;"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_discord_news.js"></script>
+</body>
+</html>

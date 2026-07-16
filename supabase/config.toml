@@ -8,3 +8,7 @@ verify_jwt = false
 
 [functions.create-owner-club-auction]
 verify_jwt = false
+
+# Auth checked inside (admin JWT / feed invoke key / service_role).
+[functions.discord-sky-feed]
+verify_jwt = false
