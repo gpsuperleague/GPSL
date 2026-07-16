@@ -1,17 +1,19 @@
 /**
- * Sky-style transfer news ticker under nav (May–July GPSL months).
+ * Sky-style transfer news ticker under nav.
+ * Active GPSL months: June, July, August, January (live transfer windows).
  * Max 5 stories, rotating. Data: gpsl_transfer_news_feed().
  *
- * Test without waiting for May–July:
- *   dashboard.html?transfer_news_test=may
+ * Test:
  *   dashboard.html?transfer_news_test=june
- * (Works even if the RPC is missing — shows demo stories.)
+ *   dashboard.html?transfer_news_test=august
+ *   dashboard.html?transfer_news_test=january
  */
 
 import { supabase } from "./supabase_client.js";
 
 const ROTATE_MS = 6500;
 const REFRESH_MS = 120_000;
+const WINDOW_MONTHS = new Set(["june", "july", "august", "january"]);
 
 let __rotateTimer = null;
 let __refreshTimer = null;
@@ -30,7 +32,7 @@ function testForceMonth() {
   try {
     const q = new URLSearchParams(window.location.search || "");
     const raw = (q.get("transfer_news_test") || "").toLowerCase().trim();
-    if (raw === "may" || raw === "june" || raw === "july") return raw;
+    if (WINDOW_MONTHS.has(raw)) return raw;
     if (raw === "1" || raw === "true") return "june";
   } catch {
     /* ignore */
@@ -40,19 +42,16 @@ function testForceMonth() {
 
 /** Guaranteed UI preview when ?transfer_news_test= is set. */
 function demoStories(month) {
-  const m = month || "june";
-  const base = [];
-  if (m === "may") {
-    base.push({
+  const label = month ? String(month).toUpperCase() : "TRANSFER WINDOW";
+  return [
+    {
       id: "demo-window",
       kind: "window",
       kicker: "TRANSFER NEWS",
-      headline: "Transfer window opens in June",
-      body: "Demo preview — free-market window unlocks next month.",
+      headline: `Transfer window live — ${label}`,
+      body: "Demo preview — draft auctions and free-market deals rotate here.",
       href: "transfer_center.html",
-    });
-  }
-  base.push(
+    },
     {
       id: "demo-1",
       kind: "transfer",
@@ -76,9 +75,8 @@ function demoStories(month) {
       headline: "DONE DEAL — Demo Midfielder",
       body: "Free agent → Spurs · ₿ 12,500,000 · Direct offer",
       href: "transfer_center.html",
-    }
-  );
-  return base.slice(0, 5);
+    },
+  ].slice(0, 5);
 }
 
 export function ensureTransferNewsStripMount() {
@@ -171,7 +169,6 @@ export async function refreshTransferNewsStrip() {
 
   const force = testForceMonth();
 
-  // URL test mode: always show something (demo if RPC empty/fails)
   if (force) {
     try {
       const { data, error } = await supabase.rpc("gpsl_transfer_news_feed", {

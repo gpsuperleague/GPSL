@@ -7,7 +7,7 @@
 --
 -- SELECT public.gpsl_transfer_news_feed();
 -- Test:   SELECT public.gpsl_transfer_news_feed('january');
--- Safe re-run. (Same as gpsl_transfer_news_feed_window_months.sql)
+-- Safe re-run.
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.gpsl_transfer_news_feed(
@@ -90,6 +90,7 @@ BEGIN
     AND lower(m.gpsl_month) = v_month
   LIMIT 1;
 
+  -- Today's UK deals by fee (draft + free market)
   FOR v_row IN
     SELECT
       h.id, h.player_id, h.seller_club_id, h.buyer_club_id, h.fee,
@@ -166,6 +167,7 @@ BEGIN
     v_count := v_count + 1;
   END LOOP;
 
+  -- Pad to 5 from current GPSL month window (highest fees)
   IF v_count < 5 THEN
     v_need := 5 - v_count;
     FOR v_row IN
