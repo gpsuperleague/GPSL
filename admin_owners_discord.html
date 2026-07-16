@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Discord members — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    button.button.secondary { background:#444; color:#ddd; }
+    button.button.secondary:hover { background:#555; }
+    .discord-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .discord-table th, .discord-table td {
+      border-bottom:1px solid #333; padding:8px 10px; text-align:left; vertical-align:middle;
+    }
+    .discord-table th { color:#ff9900; font-size:12px; text-transform:uppercase; letter-spacing:0.03em; }
+    .discord-table tr:hover td { background:#1a1a1a; }
+    .discord-avatar { width:28px; height:28px; border-radius:50%; vertical-align:middle; margin-right:8px; background:#333; }
+    .discord-meta { color:#888; font-size:12px; }
+    .discord-status { font-size:12px; }
+    .discord-status.on-list { color:#8d8; }
+    .discord-status.auction { color:#fc9; }
+    .discord-status.active { color:#9cf; }
+    .discord-status.none { color:#666; }
+    .discord-add-panel {
+      display:none; margin-top:8px; padding:10px; background:#1a1a1a; border:1px solid #333; border-radius:6px;
+    }
+    .discord-add-panel.open { display:block; }
+    .discord-add-panel .row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; }
+    .discord-add-panel input { min-width:180px; }
+    .discord-filters { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; }
+    .discord-filters input[type="search"] { min-width:220px; flex:1; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Discord members (join date)</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Priority by Discord join date</h2>
+        <p class="note">
+          Oldest members first — use this when deciding club-auction priority.
+          <b>Add to waiting list</b> creates a GPSL login (email + temp password) and places them at the
+          bottom of the waiting list with their Discord name as owner tag.
+          Then use <a href="admin_owners_waiting_list.html">Waiting list</a> to invite to auction.
+        </p>
+        <p class="note">
+          Deploy edge function <code>discord-guild-members</code> and set secrets
+          <code>DISCORD_BOT_TOKEN</code> + <code>DISCORD_GUILD_ID</code>.
+          Also redeploy <code>create-owner-club-auction</code> (supports Discord tag).
+        </p>
+        <div class="discord-filters">
+          <button type="button" id="discordRefreshBtn" class="button">Refresh from Discord</button>
+          <input type="search" id="discordSearch" placeholder="Filter by name / username…">
+          <label class="note" style="display:flex;align-items:center;gap:6px;margin:0;">
+            <input type="checkbox" id="discordHideKnown">
+            Hide already on GPSL / waiting list
+          </label>
+        </div>
+        <div id="discordStatus" class="status-line"></div>
+        <div id="discordTableWrap" style="overflow-x:auto;"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_owners_discord.js"></script>
+</body>
+</html>

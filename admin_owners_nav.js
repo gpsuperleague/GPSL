@@ -13,6 +13,11 @@ export const OWNER_ADMIN_NAV = [
         page: "admin_owners_waiting_list",
       },
       {
+        label: "Discord join order",
+        href: "admin_owners_discord.html",
+        page: "admin_owners_discord",
+      },
+      {
         label: "Add member",
         href: "admin_owners_add_member.html",
         page: "admin_owners_add_member",

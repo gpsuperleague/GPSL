@@ -40,7 +40,8 @@ async function findUserByEmail(
 async function registerOwnerForClubAuction(
   adminClient: SupabaseClient,
   userId: string,
-  startingBalance: number
+  startingBalance: number,
+  ownerTag: string | null = null
 ) {
   const { data: club, error: clubErr } = await adminClient
     .from("Clubs")
@@ -69,19 +70,22 @@ async function registerOwnerForClubAuction(
   }
 
   const balance = Math.max(Number(startingBalance) || 0, 0);
+  const tag = ownerTag ? String(ownerTag).trim().slice(0, 64) : null;
+  const upsertRow: Record<string, unknown> = {
+    owner_id: userId,
+    status: "member",
+    pending_starting_balance: balance,
+    waiting_list_tier: "new",
+    status_changed_at: new Date().toISOString(),
+  };
+  if (tag) {
+    upsertRow.owner_tag = tag;
+  }
+
   const { data: row, error: upsertErr } = await adminClient
     .from("gpsl_owner_registry")
-    .upsert(
-      {
-        owner_id: userId,
-        status: "member",
-        pending_starting_balance: balance,
-        waiting_list_tier: "new",
-        status_changed_at: new Date().toISOString(),
-      },
-      { onConflict: "owner_id" }
-    )
-    .select("owner_id, status, pending_starting_balance")
+    .upsert(upsertRow, { onConflict: "owner_id" })
+    .select("owner_id, status, pending_starting_balance, owner_tag")
     .single();
 
   if (upsertErr) {
@@ -132,6 +136,7 @@ Deno.serve(async (req) => {
     const password = String(body?.password || "").trim();
     const startingBalance = Number(body?.startingBalance ?? 600000000);
     const registerOnly = body?.registerOnly === true;
+    const ownerTag = body?.ownerTag != null ? String(body.ownerTag).trim() : "";
 
     if (!email) {
       return jsonResponse({ error: "Email is required" }, 400);
@@ -216,7 +221,8 @@ Deno.serve(async (req) => {
       registry = await registerOwnerForClubAuction(
         adminClient,
         userId,
-        startingBalance
+        startingBalance,
+        ownerTag || null
       );
     } catch (regErr) {
       const message =
