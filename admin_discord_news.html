@@ -23,6 +23,12 @@
     .news-status.error { color:#f88; }
     .news-body { color:#aaa; white-space:pre-wrap; }
     code { background:#1a1a1a; padding:1px 5px; border-radius:3px; }
+    .auto-form { display:grid; gap:10px; max-width:640px; margin-bottom:12px; }
+    .auto-form label { display:grid; gap:4px; font-size:13px; color:#ccc; }
+    .auto-form input[type="text"], .auto-form input[type="password"] {
+      padding:8px 10px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px;
+    }
+    .auto-form .check { display:flex; align-items:center; gap:8px; }
   </style>
 </head>
 <body class="admin-page">
@@ -31,16 +37,43 @@
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <div class="card">
-        <h2>Sky-style #gpsl-news</h2>
+        <h2>Auto-post (no button)</h2>
         <p class="note">
-          Confirmed results, transfers, listings, and auctions are queued automatically.
-          Use <b>Push news to Discord</b> to drain the queue (or set up a Database Webhook for auto-post).
+          Events are queued in the database. With auto-post enabled, Postgres calls the edge function
+          as soon as something is queued (plus a 2-minute retry cron).
         </p>
         <p class="note">
-          One-time setup:
-          run SQL patch <code>supabase/sql/patches/gpsl_discord_sky_feed.sql</code>,
-          set secret <code>DISCORD_WEBHOOK_URL</code>,
-          deploy <code>supabase functions deploy discord-sky-feed</code>.
+          1) Run <code>gpsl_discord_sky_feed_events_auto.sql</code><br>
+          2) Enable <code>pg_net</code> (and keep <code>pg_cron</code>)<br>
+          3) Set edge secret <code>DISCORD_FEED_INVOKE_KEY</code> to the same invoke key below<br>
+          4) Redeploy <code>discord-sky-feed</code> if you haven’t since adding that secret
+        </p>
+        <div class="auto-form">
+          <label>
+            Edge function URL
+            <input type="text" id="autoUrl" placeholder="https://….supabase.co/functions/v1/discord-sky-feed">
+          </label>
+          <label>
+            Invoke key (same as DISCORD_FEED_INVOKE_KEY)
+            <input type="password" id="autoKey" autocomplete="off" placeholder="long random string">
+          </label>
+          <label class="check">
+            <input type="checkbox" id="autoEnabled" checked>
+            Auto-flush enabled
+          </label>
+          <div class="news-actions" style="margin:0">
+            <button type="button" id="autoSaveBtn" class="button">Save auto-post settings</button>
+          </div>
+        </div>
+        <div id="autoStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Sky-style #gpsl-news</h2>
+        <p class="note">
+          Auto: direct transfer-market deals, manager appoint/sack/resign, owner appointments
+          (not season&nbsp;1 pre-season), title wins, cup wins, relegations, playoff results,
+          plus confirmed results / listings / auctions from the base feed.
         </p>
         <div class="news-actions">
           <button type="button" id="newsPushBtn" class="button">Push news to Discord</button>

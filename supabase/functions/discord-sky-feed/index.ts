@@ -30,6 +30,12 @@ function embedFor(row: FeedRow) {
     listing: 0xffcc00, // amber
     auction: 0x0057b8, // blue
     draft: 0x7b2cbf, // purple
+    manager: 0x3498db,
+    owner: 0xf1c40f,
+    title: 0xffd700,
+    cup: 0xffd700,
+    relegation: 0x995533,
+    playoff: 0x9b59b6,
     other: 0x111111,
   };
   const color =

@@ -2,6 +2,9 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 
 primeAdminPageChrome();
 
+const DEFAULT_FEED_URL =
+  "https://omyyogfumrjoaweuawjn.supabase.co/functions/v1/discord-sky-feed";
+
 function escapeHtml(s) {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
@@ -43,6 +46,81 @@ async function invokeFeed(body) {
     return { data, error: new Error(String(data.error)) };
   }
   return { data, error: null };
+}
+
+async function loadAutoSettings() {
+  const urlEl = document.getElementById("autoUrl");
+  const keyEl = document.getElementById("autoKey");
+  const enEl = document.getElementById("autoEnabled");
+  if (!urlEl) return;
+
+  const { data, error } = await supabase
+    .from("gpsl_discord_feed_settings")
+    .select("edge_function_url, invoke_key, auto_flush_enabled")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (error) {
+    setStatus(
+      "autoStatus",
+      `Auto-post settings unavailable — run gpsl_discord_sky_feed_events_auto.sql (${error.message})`,
+      false
+    );
+    if (!urlEl.value) urlEl.value = DEFAULT_FEED_URL;
+    return;
+  }
+
+  urlEl.value = data?.edge_function_url || DEFAULT_FEED_URL;
+  if (data?.invoke_key) keyEl.placeholder = "•••• saved (enter to replace)";
+  enEl.checked = data?.auto_flush_enabled !== false;
+
+  if (data?.edge_function_url && data?.invoke_key && data?.auto_flush_enabled !== false) {
+    setStatus("autoStatus", "Auto-post configured and enabled.");
+  } else {
+    setStatus("autoStatus", "Save URL + invoke key to enable hands-free posting.", false);
+  }
+}
+
+async function saveAutoSettings() {
+  const url = document.getElementById("autoUrl")?.value?.trim() || "";
+  const keyInput = document.getElementById("autoKey")?.value?.trim() || "";
+  const enabled = !!document.getElementById("autoEnabled")?.checked;
+
+  let key = keyInput;
+  if (!key) {
+    const { data } = await supabase
+      .from("gpsl_discord_feed_settings")
+      .select("invoke_key")
+      .eq("id", 1)
+      .maybeSingle();
+    key = data?.invoke_key || "";
+  }
+
+  if (!url || !key) {
+    setStatus("autoStatus", "URL and invoke key are required.", false);
+    return;
+  }
+
+  setStatus("autoStatus", "Saving…");
+  const { data, error } = await supabase.rpc("admin_discord_feed_set_auto", {
+    p_edge_function_url: url,
+    p_invoke_key: key,
+    p_enabled: enabled,
+  });
+
+  if (error) {
+    setStatus("autoStatus", error.message, false);
+    return;
+  }
+
+  document.getElementById("autoKey").value = "";
+  document.getElementById("autoKey").placeholder = "•••• saved (enter to replace)";
+  setStatus(
+    "autoStatus",
+    data?.ok
+      ? `Saved. Auto-flush ${enabled ? "ON" : "OFF"}. Ensure edge secret DISCORD_FEED_INVOKE_KEY matches.`
+      : "Saved."
+  );
 }
 
 async function loadQueue() {
@@ -136,10 +214,14 @@ document.getElementById("newsRefreshBtn")?.addEventListener("click", () => {
     .then(() => setStatus("newsStatus", "Queue refreshed."))
     .catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
+document.getElementById("autoSaveBtn")?.addEventListener("click", () => {
+  saveAutoSettings().catch((e) => setStatus("autoStatus", e.message || String(e), false));
+});
 
 initAdminPage()
-  .then((user) => {
+  .then(async (user) => {
     if (!user) return;
-    return loadQueue();
+    await loadAutoSettings();
+    await loadQueue();
   })
   .catch((e) => setStatus("newsStatus", e.message || String(e), false));
