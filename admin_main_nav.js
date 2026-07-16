@@ -41,6 +41,7 @@ export const ADMIN_MAIN_NAV = [
     entries: [
       link("Manage Waiting List", "admin_owners_waiting_list.html"),
       link("Owner Waiting List", "admin_owners_waiting_list.html"),
+      link("Discord Join Order", "admin_owners_discord.html"),
       link("Create New Owner & Add to Waiting List", "admin_owners_add_member.html"),
       link("Create New Owner & Add Directly to Club", "admin_owners_add_direct.html"),
       link("Remove Owner From Club", "admin_owners_remove.html"),
