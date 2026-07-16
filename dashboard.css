@@ -1565,129 +1565,159 @@ button.nav-admin-trigger {
   display: none !important;
 }
 
-/* Sky-style transfer news ticker (May–July) */
+/* Transfer news marquee — gold/black brand, under Calendar/Natter row */
 .transfer-news-strip {
-  border-top: 1px solid #3a0a0a;
-  background: linear-gradient(90deg, #1a0505 0%, #120808 40%, #141414 100%);
   width: 100%;
-  min-height: 34px;
+  height: 24px;
+  border-top: 1px solid #2a2a2a;
+  background: #0a0a0a;
+  overflow: hidden;
 }
 
 .transfer-news-strip[hidden] {
   display: none !important;
 }
 
-.tn-inner {
+.tn-shell {
   display: flex;
   align-items: stretch;
-  gap: 0;
-  text-decoration: none;
-  color: inherit;
-  min-height: 34px;
-  max-width: 100%;
+  height: 100%;
+  width: 100%;
 }
 
-.tn-inner:hover .tn-headline {
-  color: #fff;
-}
-
-.tn-rail {
+.tn-brand {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: stretch;
   flex-shrink: 0;
-  padding: 6px 10px;
-  background: #c8102e;
-  color: #fff;
-}
-
-.tn-live {
-  font-size: 9px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  background: #111;
-  color: #fff;
-  padding: 2px 5px;
-  border-radius: 2px;
-  animation: tn-pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes tn-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.55; }
-}
-
-.tn-kicker {
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.tn-copy {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 1px;
-  min-width: 0;
-  flex: 1;
-  padding: 5px 12px;
-}
-
-.tn-headline {
-  font-size: 12px;
-  font-weight: 700;
-  color: #f2f2f2;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.tn-body {
+  font-family: Arial Black, Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
   font-size: 11px;
-  color: #b0b0b0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: 2px 0 6px rgba(0, 0, 0, 0.45);
+  z-index: 2;
 }
 
-.tn-kind-window .tn-headline {
-  color: #ffd36a;
-}
-
-.tn-kind-draft .tn-headline {
-  color: #9ad0ff;
-}
-
-.tn-dots {
+.tn-brand-transfer {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 0 12px;
+  padding: 0 8px 0 10px;
+  color: #111;
+  background: linear-gradient(180deg, #ffe566 0%, #e8c84a 42%, #b8921f 100%);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.tn-brand-chevron {
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+  color: #ffe566;
+  background: #111;
+  font-size: 12px;
+  letter-spacing: -0.08em;
+}
+
+.tn-brand-news {
+  display: flex;
+  align-items: center;
+  padding: 0 10px 0 6px;
+  color: #ffe566;
+  background: #111;
+  text-shadow: 0 0 6px rgba(255, 229, 102, 0.35);
+}
+
+.tn-viewport {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 8px), transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12px, #000 calc(100% - 8px), transparent);
+}
+
+.tn-track {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  align-items: center;
+  animation: tn-marquee var(--tn-duration, 28s) linear infinite;
+  will-change: transform;
+}
+
+.tn-track:hover {
+  animation-play-state: paused;
+}
+
+.tn-seq {
+  display: flex;
+  align-items: center;
   flex-shrink: 0;
+  height: 100%;
+  padding-right: 2rem;
 }
 
-.tn-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: #444;
+.tn-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  color: #f0f0f0;
+  text-decoration: none;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 
-.tn-dot.is-on {
-  background: #c8102e;
+.tn-item:hover {
+  color: #ffe566;
+}
+
+.tn-bullet {
+  color: #c9a227;
+  font-size: 8px;
+  line-height: 1;
+}
+
+.tn-kind-draft .tn-bullet {
+  color: #7eb8ff;
+}
+
+.tn-kind-window .tn-text {
+  color: #ffe566;
+}
+
+.tn-sep {
+  color: #444;
+  padding: 0 2px;
+  font-weight: 400;
+}
+
+@keyframes tn-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
 }
 
 @media (max-width: 720px) {
-  .tn-kicker {
-    display: none;
+  .transfer-news-strip {
+    height: 22px;
   }
-  .tn-body {
-    display: none;
+  .tn-brand {
+    font-size: 9px;
   }
-  .tn-rail {
-    padding: 6px 8px;
+  .tn-brand-transfer {
+    padding: 0 6px 0 8px;
+  }
+  .tn-brand-news {
+    padding: 0 8px 0 4px;
+  }
+  .tn-item {
+    font-size: 10px;
   }
 }
 

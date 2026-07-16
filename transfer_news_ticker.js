@@ -1,24 +1,17 @@
 /**
- * Sky-style transfer news ticker under nav.
- * Active GPSL months: June, July, August, January (live transfer windows).
- * Max 5 stories, rotating. Data: gpsl_transfer_news_feed().
+ * Transfer news ticker — gold/black brand + RTL marquee under nav actions.
+ * Active GPSL months: June, July, August, January.
  *
- * Test:
- *   dashboard.html?transfer_news_test=june
- *   dashboard.html?transfer_news_test=august
- *   dashboard.html?transfer_news_test=january
+ * Test: dashboard.html?transfer_news_test=august
  */
 
 import { supabase } from "./supabase_client.js";
 
-const ROTATE_MS = 6500;
 const REFRESH_MS = 120_000;
 const WINDOW_MONTHS = new Set(["june", "july", "august", "january"]);
 
-let __rotateTimer = null;
 let __refreshTimer = null;
 let __stories = [];
-let __index = 0;
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -40,30 +33,26 @@ function testForceMonth() {
   return null;
 }
 
-/** Guaranteed UI preview when ?transfer_news_test= is set. */
 function demoStories(month) {
-  const label = month ? String(month).toUpperCase() : "TRANSFER WINDOW";
+  const label = month ? String(month).toUpperCase() : "WINDOW";
   return [
     {
       id: "demo-window",
       kind: "window",
-      kicker: "TRANSFER NEWS",
       headline: `Transfer window live — ${label}`,
-      body: "Demo preview — draft auctions and free-market deals rotate here.",
+      body: "",
       href: "transfer_center.html",
     },
     {
       id: "demo-1",
       kind: "transfer",
-      kicker: "TRANSFER NEWS",
       headline: "DONE DEAL — Demo Striker",
-      body: "Arsenal → Chelsea · ₿ 45,000,000 · Transfer list (auction)",
+      body: "Arsenal → Chelsea · ₿ 45,000,000",
       href: "transfer_center.html",
     },
     {
       id: "demo-2",
       kind: "draft",
-      kicker: "TRANSFER NEWS",
       headline: "DRAFT DEAL — Demo Keeper joins Liverpool",
       body: "Draft auction",
       href: "transfer_center.html",
@@ -71,14 +60,28 @@ function demoStories(month) {
     {
       id: "demo-3",
       kind: "transfer",
-      kicker: "TRANSFER NEWS",
       headline: "DONE DEAL — Demo Midfielder",
-      body: "Free agent → Spurs · ₿ 12,500,000 · Direct offer",
+      body: "Free agent → Spurs · ₿ 12,500,000",
       href: "transfer_center.html",
     },
-  ].slice(0, 5);
+    {
+      id: "demo-4",
+      kind: "transfer",
+      headline: "DONE DEAL — Demo Winger",
+      body: "Everton → City · ₿ 28,000,000",
+      href: "transfer_center.html",
+    },
+  ];
 }
 
+function storyLabel(story) {
+  const h = String(story?.headline || "").trim();
+  const b = String(story?.body || "").trim();
+  if (h && b) return `${h}  ·  ${b}`;
+  return h || b || "Transfer news";
+}
+
+/** Sit on the row directly under Calendar / Natter / … / Logout. */
 export function ensureTransferNewsStripMount() {
   const nav = document.getElementById("nav");
   if (!nav) return null;
@@ -88,79 +91,93 @@ export function ensureTransferNewsStripMount() {
     el = document.createElement("div");
     el.id = "transferNewsStrip";
     el.className = "transfer-news-strip";
-    el.setAttribute("aria-live", "polite");
+    el.setAttribute("aria-live", "off");
     el.hidden = true;
-    nav.appendChild(el);
   }
+
+  const bar = nav.querySelector(".gpsl-nav-bar");
+  const menusRow = nav.querySelector(".gpsl-nav-row-menus");
+  const schedule = document.getElementById("seasonScheduleStrip");
+
+  if (bar && menusRow) {
+    // Immediately under the menus/actions row, above season schedule
+    if (schedule && schedule.parentNode === bar) {
+      bar.insertBefore(el, schedule);
+    } else if (menusRow.nextSibling) {
+      bar.insertBefore(el, menusRow.nextSibling);
+    } else {
+      bar.appendChild(el);
+    }
+  } else if (el.parentNode !== nav) {
+    if (schedule && schedule.parentNode === nav) {
+      nav.insertBefore(el, schedule);
+    } else {
+      nav.appendChild(el);
+    }
+  }
+
   return el;
 }
 
-function renderStory(story, index, total) {
-  if (!story) return "";
-  const href = escapeHtml(story.href || "transfer_center.html");
-  const kicker = escapeHtml(story.kicker || "TRANSFER NEWS");
-  const headline = escapeHtml(story.headline || "");
-  const body = escapeHtml(story.body || "");
-  const kind = escapeHtml(story.kind || "transfer");
-  const dots =
-    total > 1
-      ? `<span class="tn-dots" aria-hidden="true">${Array.from({ length: total }, (_, i) =>
-          `<span class="tn-dot${i === index ? " is-on" : ""}"></span>`
-        ).join("")}</span>`
-      : "";
+function renderMarqueeTrack(stories) {
+  const items = stories
+    .map((s) => {
+      const href = escapeHtml(s.href || "transfer_center.html");
+      const kind = escapeHtml(s.kind || "transfer");
+      const label = escapeHtml(storyLabel(s));
+      return (
+        `<a class="tn-item tn-kind-${kind}" href="${href}">` +
+        `<span class="tn-bullet" aria-hidden="true">◆</span>` +
+        `<span class="tn-text">${label}</span>` +
+        `</a>`
+      );
+    })
+    .join('<span class="tn-sep" aria-hidden="true">|</span>');
 
+  // Duplicate for seamless loop
   return (
-    `<a class="tn-inner tn-kind-${kind}" href="${href}">` +
-    `<span class="tn-rail">` +
-    `<span class="tn-live">LIVE</span>` +
-    `<span class="tn-kicker">${kicker}</span>` +
-    `</span>` +
-    `<span class="tn-copy">` +
-    `<span class="tn-headline">${headline}</span>` +
-    (body ? `<span class="tn-body">${body}</span>` : "") +
-    `</span>` +
-    dots +
-    `</a>`
+    `<div class="tn-track">` +
+    `<div class="tn-seq">${items}</div>` +
+    `<div class="tn-seq" aria-hidden="true">${items}</div>` +
+    `</div>`
   );
 }
 
-function paintCurrent() {
+function paintMarquee(stories) {
   const el = document.getElementById("transferNewsStrip");
-  if (!el || !__stories.length) return;
-  const i = __index % __stories.length;
-  el.innerHTML = renderStory(__stories[i], i, __stories.length);
-  el.hidden = false;
-}
+  if (!el) return;
 
-function startRotation() {
-  if (__rotateTimer) {
-    clearInterval(__rotateTimer);
-    __rotateTimer = null;
+  if (!stories.length) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
   }
-  if (__stories.length <= 1) return;
-  __rotateTimer = setInterval(() => {
-    __index = (__index + 1) % __stories.length;
-    paintCurrent();
-  }, ROTATE_MS);
+
+  const duration = Math.max(18, stories.length * 7);
+
+  el.innerHTML =
+    `<div class="tn-shell">` +
+    `<div class="tn-brand" aria-hidden="true">` +
+    `<span class="tn-brand-transfer">TRANSFER</span>` +
+    `<span class="tn-brand-chevron">&gt;&gt;</span>` +
+    `<span class="tn-brand-news">NEWS</span>` +
+    `</div>` +
+    `<div class="tn-viewport">` +
+    renderMarqueeTrack(stories) +
+    `</div>` +
+    `</div>`;
+
+  const track = el.querySelector(".tn-track");
+  if (track) {
+    track.style.setProperty("--tn-duration", `${duration}s`);
+  }
+
+  el.hidden = false;
 }
 
 function showStories(stories) {
   __stories = (stories || []).slice(0, 5);
-  __index = 0;
-  if (!__stories.length) {
-    const el = document.getElementById("transferNewsStrip");
-    if (el) {
-      el.hidden = true;
-      el.innerHTML = "";
-    }
-    if (__rotateTimer) {
-      clearInterval(__rotateTimer);
-      __rotateTimer = null;
-    }
-    return;
-  }
-  paintCurrent();
-  startRotation();
+  paintMarquee(__stories);
 }
 
 export async function refreshTransferNewsStrip() {
