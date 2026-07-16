@@ -484,6 +484,7 @@ AS $function$
 DECLARE
   v_club text;
   v_tag text;
+  v_mention text;
   v_season_id bigint;
 BEGIN
   IF NEW.owner_id IS NULL THEN
@@ -511,14 +512,21 @@ BEGIN
   END;
 
   v_tag := coalesce(v_tag, nullif(btrim(NEW.owner), ''), 'New owner');
+  -- Always show as @tag (strip any existing leading @s first)
+  v_mention := '@' || ltrim(v_tag, '@');
 
   PERFORM public.gpsl_discord_feed_enqueue(
     'owner',
     format('🏟️ NEW OWNER — %s', v_club),
-    format('%s have appointed %s.', v_club, v_tag),
+    format('%s have appointed %s.', v_club, v_mention),
     15844367, -- 0xf1c40f
     'owner_appoint:' || NEW."ShortName" || ':' || NEW.owner_id::text,
-    jsonb_build_object('club', NEW."ShortName", 'owner_id', NEW.owner_id)
+    jsonb_build_object(
+      'club', NEW."ShortName",
+      'owner_id', NEW.owner_id,
+      'owner_tag', v_tag,
+      'mention', v_mention
+    )
   );
 
   RETURN NEW;

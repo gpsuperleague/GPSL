@@ -1,6 +1,8 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+const DISCORD_API = "https://discord.com/api/v10";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -21,6 +23,19 @@ type FeedRow = {
   body: string | null;
   color: number | null;
   metadata: Record<string, unknown> | null;
+};
+
+type DiscordUser = {
+  id: string;
+  username?: string;
+  global_name?: string | null;
+  discriminator?: string;
+  bot?: boolean;
+};
+
+type DiscordMember = {
+  user?: DiscordUser;
+  nick?: string | null;
 };
 
 function embedFor(row: FeedRow) {
@@ -53,17 +68,93 @@ function embedFor(row: FeedRow) {
   };
 }
 
+async function fetchGuildMembers(
+  botToken: string,
+  guildId: string
+): Promise<DiscordMember[]> {
+  const members: DiscordMember[] = [];
+  let after: string | null = null;
+
+  for (let page = 0; page < 50; page++) {
+    const url = new URL(`${DISCORD_API}/guilds/${guildId}/members`);
+    url.searchParams.set("limit", "1000");
+    if (after) url.searchParams.set("after", after);
+
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bot ${botToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(
+        `Discord guild members ${res.status}: ${text.slice(0, 200)}`
+      );
+    }
+
+    const batch = (await res.json()) as DiscordMember[];
+    if (!Array.isArray(batch) || batch.length === 0) break;
+
+    members.push(...batch);
+    const last = batch[batch.length - 1]?.user?.id;
+    if (!last || batch.length < 1000) break;
+    after = last;
+  }
+
+  return members;
+}
+
+function matchMemberId(
+  members: DiscordMember[],
+  ownerTag: string
+): string | null {
+  const needle = ownerTag.replace(/^@+/, "").trim().toLowerCase();
+  if (!needle) return null;
+
+  for (const m of members) {
+    const u = m.user;
+    if (!u || u.bot) continue;
+    const candidates = [
+      m.nick,
+      u.global_name,
+      u.username,
+      u.discriminator && u.discriminator !== "0"
+        ? `${u.username}#${u.discriminator}`
+        : null,
+    ]
+      .filter(Boolean)
+      .map((s) => String(s).trim().toLowerCase());
+
+    if (candidates.includes(needle)) return u.id;
+  }
+  return null;
+}
+
 async function postWebhook(
   webhookUrl: string,
-  embeds: Record<string, unknown>[]
+  embeds: Record<string, unknown>[],
+  opts?: {
+    content?: string;
+    allowedMentions?: { users?: string[]; parse?: string[] };
+  }
 ) {
+  const payload: Record<string, unknown> = {
+    username: "GPSL News",
+    embeds,
+  };
+  if (opts?.content) {
+    payload.content = opts.content.slice(0, 2000);
+  }
+  if (opts?.allowedMentions) {
+    payload.allowed_mentions = opts.allowedMentions;
+  }
+
   const res = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      username: "GPSL News",
-      embeds,
-    }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const text = await res.text();
@@ -84,6 +175,8 @@ Deno.serve(async (req) => {
     const feedKey = Deno.env.get("DISCORD_FEED_INVOKE_KEY") ||
       Deno.env.get("CRON_API_KEY") ||
       "";
+    const botToken = Deno.env.get("DISCORD_BOT_TOKEN") || "";
+    const guildId = Deno.env.get("DISCORD_GUILD_ID") || "";
     const adminEmail = "rotavator66@outlook.com";
 
     if (!supabaseUrl || !serviceRoleKey || !anonKey) {
@@ -183,9 +276,70 @@ Deno.serve(async (req) => {
     let posted = 0;
     const errors: string[] = [];
 
+    // Lazy-load guild members once if any owner posts need a real ping
+    let guildMembers: DiscordMember[] | null = null;
+    const needsOwnerResolve = pending.some(
+      (r) =>
+        r.event_type === "owner" &&
+        (r.metadata?.owner_tag || r.metadata?.mention)
+    );
+
+    if (needsOwnerResolve && botToken && guildId) {
+      try {
+        guildMembers = await fetchGuildMembers(botToken, guildId);
+      } catch {
+        guildMembers = null;
+      }
+    }
+
     for (const row of pending) {
       try {
-        await postWebhook(webhookUrl, [embedFor(row)]);
+        let content: string | undefined;
+        let allowedMentions: { users?: string[]; parse?: string[] } |
+          undefined;
+
+        if (row.event_type === "owner") {
+          const rawTag = String(
+            row.metadata?.owner_tag ||
+              row.metadata?.mention ||
+              ""
+          ).replace(/^@+/, "").trim();
+          const displayMention = rawTag ? `@${rawTag}` : "";
+          let ping: string | null = null;
+          let userId: string | null = null;
+
+          if (rawTag && guildMembers) {
+            userId = matchMemberId(guildMembers, rawTag);
+            if (userId) ping = `<@${userId}>`;
+          }
+
+          // Discord only notifies from message content (not embed text)
+          content = ping || displayMention || undefined;
+          if (userId) {
+            allowedMentions = { users: [userId] };
+          } else if (displayMention) {
+            // Soft mention text — may not notify without snowflake id
+            allowedMentions = { parse: [] };
+          }
+
+          // Ensure embed body shows @tag even if older queued rows lack it
+          if (displayMention && row.body && !row.body.includes(displayMention)) {
+            row.body = row.body.replace(
+              /(have appointed )([^.]+)\./i,
+              `$1${displayMention}.`
+            );
+          } else if (displayMention && row.body && !/@\S/.test(row.body)) {
+            row.body = row.body.replace(
+              /(have appointed )([^.]+)\./i,
+              `$1${displayMention}.`
+            );
+          }
+        }
+
+        await postWebhook(webhookUrl, [embedFor(row)], {
+          content,
+          allowedMentions,
+        });
         const { error: updErr } = await adminClient
           .from("gpsl_discord_feed_queue")
           .update({
