@@ -50,6 +50,12 @@ function parseIntList(raw, allowed) {
 function fillPackFields(phase, row) {
   const pack = row?.pack || {};
   const prefix = phase === "start" ? "packStart" : "packMid";
+  const nameEl = document.getElementById(`${prefix}Name`);
+  if (nameEl) {
+    nameEl.value =
+      row?.pack_name ||
+      (phase === "start" ? "Start of Season Challenge Prize" : "Mid-Season Challenge Prize");
+  }
   document.getElementById(`${prefix}Cash`).value = row?.cash_amount ?? 0;
   document.getElementById(`${prefix}Medical`).value = (pack.medical_tokens || []).join(",");
   document.getElementById(`${prefix}Discount`).value = (pack.fee_discounts || []).join(",");
@@ -77,6 +83,7 @@ function packPayload(phase) {
   const prefix = phase === "start" ? "packStart" : "packMid";
   return {
     window_phase: phase,
+    pack_name: (document.getElementById(`${prefix}Name`)?.value || "").trim() || null,
     cash_amount: Number(document.getElementById(`${prefix}Cash`).value) || 0,
     pack: {
       medical_tokens: parseIntList(document.getElementById(`${prefix}Medical`).value, [2, 4, 6, 8, 10]),
@@ -279,14 +286,47 @@ async function loadChallengeProgressBoard() {
   }
 
   const challenges = data?.challenges || [];
-  const bonuses = data?.period_bonuses || [];
+  const bigPrizes = data?.big_prizes || data?.period_bonuses || [];
+  const winnersEl = document.getElementById("challengeBigPrizeWinners");
+
+  if (winnersEl) {
+    if (!bigPrizes.length) {
+      winnersEl.innerHTML =
+        "<p class='note'>No big-prize status yet — run competition_challenge_pack_names.sql then refresh.</p>";
+    } else {
+      winnersEl.innerHTML = bigPrizes
+        .map((b) => {
+          const name = b.pack_name || (b.window_phase === "mid" ? "Mid-Season Challenge Prize" : "Start of Season Challenge Prize");
+          if (b.claimed || b.club_short_name) {
+            const when = b.awarded_at
+              ? new Date(b.awarded_at).toLocaleString("en-GB")
+              : "";
+            return `<div class="challenge-admin-item" style="display:block;">
+              <b>${name}</b>
+              <div class="note" style="margin:6px 0 0;color:#8d8;">
+                Won by <b>${b.club_name || b.club_short_name}</b>
+                ${b.amount != null ? ` · ${formatMoney(b.amount)}` : ""}
+                ${when ? ` · ${when}` : ""}
+              </div>
+              ${b.pack_summary ? `<div class="note" style="margin-top:4px;">${b.pack_summary}</div>` : ""}
+            </div>`;
+          }
+          return `<div class="challenge-admin-item" style="display:block;">
+            <b>${name}</b>
+            <div class="note" style="margin:6px 0 0;color:#fc6;">Still available — nobody has finished all ${b.window_phase} challenges yet.</div>
+            ${b.pack_summary ? `<div class="note" style="margin-top:4px;">${b.pack_summary}</div>` : ""}
+          </div>`;
+        })
+        .join("");
+    }
+  }
 
   if (!challenges.length) {
     board.innerHTML = "<p class='note'>No active challenges to score.</p>";
     return;
   }
 
-  let html = challenges
+  board.innerHTML = challenges
     .map((c) => {
       const achievers = c.achievers || [];
       const list =
@@ -320,22 +360,6 @@ async function loadChallengeProgressBoard() {
         </div>`;
     })
     .join("");
-
-  if (bonuses.length) {
-    html += `<div class="challenge-admin-item" style="display:block;margin-top:12px;">
-      <b>Period bonus (first to finish all)</b>
-      <ul style="margin:8px 0 0;padding-left:18px;font-size:13px;">
-        ${bonuses
-          .map(
-            (b) =>
-              `<li><b>${b.club_name || b.club_short_name}</b> — ${b.window_phase} · ${formatMoney(b.amount)}</li>`
-          )
-          .join("")}
-      </ul>
-    </div>`;
-  }
-
-  board.innerHTML = html;
 }
 
 async function loadChallengeAwards() {

@@ -39,6 +39,8 @@
         <div class="row gov-subsidy-row" style="align-items:flex-start;">
           <div style="flex:1;min-width:240px;">
             <h4>Start (Jun–Dec)</h4>
+            <label>Prize name</label>
+            <input type="text" id="packStartName" placeholder="Start of Season Challenge Prize" style="width:220px;"><br>
             <label>Cash ₿</label>
             <input type="number" id="packStartCash" min="0" step="50000" style="width:120px;"><br>
             <label>Medical tokens (comma, e.g. 4,6)</label>
@@ -52,6 +54,8 @@
           </div>
           <div style="flex:1;min-width:240px;">
             <h4>Mid (Jan–May)</h4>
+            <label>Prize name</label>
+            <input type="text" id="packMidName" placeholder="Mid-Season Challenge Prize" style="width:220px;"><br>
             <label>Cash ₿</label>
             <input type="number" id="packMidCash" min="0" step="50000" style="width:120px;"><br>
             <label>Medical tokens (comma)</label>
@@ -82,6 +86,12 @@
         </div>
         <div id="challengeList" class="challenge-admin-list"></div>
         <div id="challengeListStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Big prize winners</h2>
+        <p class="note">First club to complete <b>all</b> challenges in a window. Shown after Recheck / auto-award.</p>
+        <div id="challengeBigPrizeWinners" class="challenge-admin-list"></div>
       </div>
 
       <div class="card">

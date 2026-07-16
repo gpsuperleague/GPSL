@@ -66,14 +66,17 @@ async function loadBigPrizePacks() {
     }
     el.innerHTML = packs
       .map((p) => {
-        const label = p.window_phase === "mid" ? "Mid (Jan–May)" : "Start (Jun–Dec)";
+        const label =
+          p.pack_name ||
+          (p.window_phase === "mid" ? "Mid-Season Challenge Prize" : "Start of Season Challenge Prize");
         const pack = p.pack || {};
         const med = (pack.medical_tokens || []).map((n) => `${n}-match`).join(", ") || "—";
         const disc = (pack.fee_discounts || []).map((n) => `${n}%`).join(", ") || "—";
         const appeals = pack.appeal_cards ?? 0;
+        const drafts = pack.draft_tokens ?? 0;
         return `<div style="margin-bottom:10px;"><b>${label}</b><br>
           Cash ${formatMoney(Number(p.cash_amount || 0))} · Medical: ${med} ·
-          Transfer discounts: ${disc} · Appeal cards: ${appeals}</div>`;
+          Transfer discounts: ${disc} · Appeal cards: ${appeals} · Draft tokens: ${drafts}</div>`;
       })
       .join("");
     return;
@@ -86,7 +89,9 @@ async function loadBigPrizePacks() {
 
   el.innerHTML = data
     .map((p) => {
-      const label = p.window_phase === "mid" ? "Mid (Jan–May)" : "Start (Jun–Dec)";
+      const label =
+        p.pack_name ||
+        (p.window_phase === "mid" ? "Mid-Season Challenge Prize" : "Start of Season Challenge Prize");
       return `<div style="margin-bottom:10px;"><b>${label}</b><br>${p.pack_summary || "—"}</div>`;
     })
     .join("");
