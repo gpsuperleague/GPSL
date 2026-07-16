@@ -21,6 +21,23 @@ function escapeOpt(s) {
 
 async function loadOwnerEmails() {
   ownerEmailById = new Map();
+
+  // Prefer SQL RPC (no edge function / CORS). Fall back to list-owners.
+  try {
+    const { data: rpcOwners, error: rpcError } = await supabase.rpc("admin_owner_list");
+    if (!rpcError && Array.isArray(rpcOwners)) {
+      for (const row of rpcOwners) {
+        if (row?.owner_id && row?.email) {
+          ownerEmailById.set(row.owner_id, row.email);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("admin_owner_list skipped:", err);
+  }
+
+  if (ownerEmailById.size > 0) return;
+
   try {
     const { data, error } = await supabase.functions.invoke("list-owners");
     if (error) {
