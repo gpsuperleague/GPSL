@@ -118,6 +118,29 @@
     .tier.top { background:#1e3a1e; color:#8d8; }
     .tier.middle { background:#3a3210; color:#fc6; }
     .tier.bottom { background:#3a1e1e; color:#f88; }
+    .my-bids { color:#aaa; font-size:13px; margin-top:6px; }
+    .status-notes {
+      margin: 12px 0 0;
+      padding: 10px 12px;
+      background: #181818;
+      border: 1px solid #333;
+      border-radius: 8px;
+      list-style: none;
+    }
+    .status-notes li {
+      position: relative;
+      padding: 3px 0 3px 14px;
+      color: #aaa;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .status-notes li::before {
+      content: "·";
+      position: absolute;
+      left: 2px;
+      color: #ff9900;
+      font-weight: 700;
+    }
     .button { cursor:pointer; }
     .sa-player-row {
       display: flex;
@@ -202,7 +225,7 @@
           <div class="outcome">Eliminated · pay <b>₿1m</b></div>
         </div>
       </div>
-      <p class="rules-note">Winner also pays their Phase&nbsp;2 bid amount on top of the ₿3m entry fee. All bids round to ₿1,000,000.</p>
+      <p class="rules-note">Winner also pays their Phase&nbsp;2 bid amount on top of the ₿3m entry fee.</p>
     </div>
 
     <div class="panel">
@@ -215,12 +238,16 @@
       <div id="phaseLabel" class="meta">Loading…</div>
       <div class="timer" id="timer">—</div>
       <div id="myTier"></div>
-      <div id="myBids" class="meta"></div>
+      <div id="myBids" class="my-bids"></div>
+      <ul class="status-notes">
+        <li>Bids are rounded up to the nearest million (₿1,000,000).</li>
+        <li>If two bids match, the earlier bid time wins.</li>
+      </ul>
     </div>
 
     <div class="panel" id="bidPanel">
       <h2>Place bid</h2>
-      <p class="meta" id="bidHelp">Bids are blind and rounded to ₿1,000,000.</p>
+      <p class="meta" id="bidHelp">One secret bid per phase. Amount is rounded to the nearest million.</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
         <div>
           <label>Bid amount (₿)</label><br>
