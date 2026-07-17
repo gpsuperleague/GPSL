@@ -1,2 +1,2 @@
 /** Single cache-bust string — bump when global.js or nav_config structure changes. */
-export const APP_VERSION = "20260717-reward-actions";
+export const APP_VERSION = "20260717-unified-consults";

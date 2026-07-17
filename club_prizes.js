@@ -11,7 +11,8 @@ function setStatus(msg, kind = "") {
 }
 
 function labelItem(it) {
-  if (it.prize_type === "medical_token") return `Medical −${it.param_int} matches`;
+  if (it.prize_type === "medical_token")
+    return `Specialist consult −${it.param_int} matches`;
   if (it.prize_type === "fee_discount") return `Fee discount ${it.param_int}%`;
   if (it.prize_type === "appeal_card") return "Red card appeal card";
   if (it.prize_type === "draft_token") return "Draft token (sign free agent at MV)";
@@ -45,12 +46,10 @@ function renderInventory() {
   const discSel = document.getElementById("discountTokenSelect");
   const appealSel = document.getElementById("appealCardSelect");
   const draftSel = document.getElementById("draftTokenSelect");
-  const medicalTokSel = document.getElementById("medicalTokenSelect");
   const discounts = inventory.filter((i) => i.prize_type === "fee_discount" && i.status === "available");
   const locked = inventory.filter((i) => i.prize_type === "fee_discount" && i.status === "locked");
   const appeals = inventory.filter((i) => i.prize_type === "appeal_card" && i.status === "available");
   const drafts = inventory.filter((i) => i.prize_type === "draft_token" && i.status === "available");
-  const medicals = inventory.filter((i) => i.prize_type === "medical_token" && i.status === "available");
 
   discSel.innerHTML =
     (locked.length
@@ -69,14 +68,30 @@ function renderInventory() {
       ? drafts.map((i) => `<option value="${i.id}">Draft token #${i.id}</option>`).join("")
       : '<option value="">No draft tokens</option>';
   }
+}
 
-  if (medicalTokSel) {
-    medicalTokSel.innerHTML = medicals.length
-      ? medicals
-          .map((i) => `<option value="${i.id}">Medical −${i.param_int} matches (#${i.id})</option>`)
-          .join("")
-      : '<option value="">No prize medical tokens</option>';
+let medicalRoomSpecialistCount = 0;
+let medicalRoomSpecialistTier = 2;
+
+async function refreshMedicalConsultOptions() {
+  const medicalTokSel = document.getElementById("medicalTokenSelect");
+  if (!medicalTokSel) return;
+
+  const medicals = inventory.filter(
+    (i) => i.prize_type === "medical_token" && i.status === "available"
+  );
+  const parts = medicals.map(
+    (i) =>
+      `<option value="prize:${i.id}">Specialist consult −${i.param_int} matches</option>`
+  );
+  if (medicalRoomSpecialistCount > 0) {
+    parts.push(
+      `<option value="specialist">Specialist consult −${medicalRoomSpecialistTier} matches ×${medicalRoomSpecialistCount}</option>`
+    );
   }
+  medicalTokSel.innerHTML = parts.length
+    ? parts.join("")
+    : '<option value="">No specialist consults available</option>';
 }
 
 async function loadInventory() {
@@ -87,6 +102,7 @@ async function loadInventory() {
   }
   inventory = data?.items || [];
   renderInventory();
+  await refreshMedicalConsultOptions();
 }
 
 async function loadSuspensions() {
@@ -115,8 +131,14 @@ async function loadMedicalInjuries() {
   const { data, error } = await supabase.rpc("medical_room_state", { p_club: null });
   if (error) {
     sel.innerHTML = `<option value="">${error.message}</option>`;
+    medicalRoomSpecialistCount = 0;
+    await refreshMedicalConsultOptions();
     return;
   }
+  medicalRoomSpecialistCount = Number(data?.specialist_tokens) || 0;
+  medicalRoomSpecialistTier = Number(data?.specialist_matches_removed) || 2;
+  await refreshMedicalConsultOptions();
+
   if (!data?.has_doctor) {
     sel.innerHTML =
       '<option value="">Hire a club doctor in Medical Room first</option>';
@@ -124,7 +146,7 @@ async function loadMedicalInjuries() {
   }
   const rows = (data?.active_injuries || []).filter((inj) => !inj.token_used);
   if (!rows.length) {
-    sel.innerHTML = '<option value="">No injuries eligible for a token</option>';
+    sel.innerHTML = '<option value="">No injuries eligible for a consult</option>';
     return;
   }
   sel.innerHTML = rows
@@ -140,30 +162,37 @@ async function loadMedicalInjuries() {
 }
 
 async function applyMedicalToken() {
-  const inv = Number(document.getElementById("medicalTokenSelect")?.value);
+  const raw = document.getElementById("medicalTokenSelect")?.value || "";
   const injuryId = Number(document.getElementById("medicalInjurySelect")?.value);
-  if (!inv) {
-    setStatus("Select a medical token (or earn one via challenges).", "err");
+  if (!raw) {
+    setStatus("Select a specialist consult.", "err");
     return;
   }
   if (!injuryId) {
     setStatus("Select an eligible injury.", "err");
     return;
   }
-  if (!confirm("Apply this medical token to the selected injury? (One consult per injury.)")) {
+  if (
+    !confirm(
+      "Doctor refers this injury to a specialist consultant?\n(One consult per injury.)"
+    )
+  ) {
     return;
   }
-  setStatus("Applying medical token…");
-  const { data, error } = await supabase.rpc("medical_apply_specialist_token", {
-    p_injury_id: injuryId,
-    p_inventory_id: inv,
-  });
+  setStatus("Referring to specialist…");
+  const payload = { p_injury_id: injuryId };
+  if (raw.startsWith("prize:")) {
+    payload.p_inventory_id = Number(raw.slice(6));
+  } else if (raw === "specialist") {
+    payload.p_prefer_specialist = true;
+  }
+  const { data, error } = await supabase.rpc("medical_apply_specialist_token", payload);
   if (error) {
     setStatus("❌ " + error.message, "err");
     return;
   }
   setStatus(
-    `✅ Removed ${data?.matches_removed ?? 0} match(es) (tier −${data?.token_tier ?? "?"}).`,
+    `✅ Specialist consult removed ${data?.matches_removed ?? 0} match(es) (−${data?.token_tier ?? "?"}).`,
     "ok"
   );
   await loadInventory();

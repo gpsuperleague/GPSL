@@ -73,22 +73,23 @@
     </div>
 
     <div class="panel">
-      <h2>Use medical token</h2>
+      <h2>Specialist consultant (injury reduction)</h2>
       <p class="meta">
-        Spend a prize medical token (or a Medical Room specialist consult) on an active injury.
-        Requires a club doctor. One consult per injury.
-        You can also apply from <a href="medical_room.html">Medical room</a> or the squad Action menu.
+        Your club doctor assesses the injury, then refers the player to a specialist consultant.
+        That spends one consult (−2 / −4 / −6 / −8 / −10 matches). Requires a hired doctor.
+        One consult per injury. Same action is available in
+        <a href="medical_room.html">Medical Room</a> and the squad Action menu.
       </p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
         <div>
-          <label>Token</label><br>
+          <label>Consult</label><br>
           <select id="medicalTokenSelect"></select>
         </div>
         <div>
           <label>Injury</label><br>
           <select id="medicalInjurySelect"></select>
         </div>
-        <button type="button" class="button" id="applyMedicalTokenBtn">Apply token</button>
+        <button type="button" class="button" id="applyMedicalTokenBtn">Refer to specialist</button>
       </div>
     </div>
 
@@ -140,6 +141,6 @@
 
     <div id="prizeStatus" class="status"></div>
   </div>
-  <script type="module" src="club_prizes.js?v=20260717-rewards-apply"></script>
+  <script type="module" src="club_prizes.js?v=20260717-unified-consults"></script>
 </body>
 </html>

@@ -523,7 +523,7 @@ function squadRewardActionOptionsHtml(player) {
         2;
       const label = inj.label ? ` (${inj.label})` : "";
       opts.push(
-        `<option value="medical:${iid}">Use medical token −${best}${label}</option>`
+        `<option value="medical:${iid}">Specialist consult −${best}${label}</option>`
       );
     }
   }
@@ -1051,23 +1051,24 @@ async function applySquadMedicalToken(injuryId) {
     Number(prize?.param_int) || squadRewardCtx.specialistTier || 2;
   if (
     !confirm(
-      `Apply a medical token to remove up to ${tier} match(es) from this injury?\n(Requires a club doctor. One consult per injury.)`
+      `Doctor refers this injury to a specialist consultant (−${tier} matches)?\n(One consult per injury.)`
     )
   ) {
     return;
   }
   const payload = { p_injury_id: Number(injuryId) };
   if (prize?.id) payload.p_inventory_id = prize.id;
+  else payload.p_prefer_specialist = true;
   const { data, error } = await supabase.rpc(
     "medical_apply_specialist_token",
     payload
   );
   if (error) {
-    alert(error.message || "Could not apply medical token.");
+    alert(error.message || "Could not apply specialist consult.");
     return;
   }
   alert(
-    `Removed ${data?.matches_removed ?? 0} match(es) (tier −${data?.token_tier ?? tier}).`
+    `Specialist consult removed ${data?.matches_removed ?? 0} match(es) (−${data?.token_tier ?? tier}).`
   );
   await loadSquad();
 }

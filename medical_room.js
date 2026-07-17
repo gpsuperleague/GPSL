@@ -36,17 +36,132 @@ function silhouetteSvg(gender, filled) {
   </svg>`;
 }
 
+function availableConsults() {
+  const list = [];
+  const prizeTokens = state?.prize_medical_tokens || [];
+  for (const t of prizeTokens) {
+    list.push({
+      key: `prize:${t.id}`,
+      tier: Number(t.param_int) || 2,
+      label: `Specialist consult (−${t.param_int} matches)`,
+    });
+  }
+  const n = Number(state?.specialist_tokens) || 0;
+  const tier = Number(state?.specialist_matches_removed) || 2;
+  for (let i = 0; i < n; i++) {
+    list.push({
+      key: i === 0 ? "specialist" : `specialist:${i}`,
+      tier,
+      label: `Specialist consult (−${tier} matches)`,
+    });
+  }
+  // Prefer strongest consults first in pickers
+  list.sort((a, b) => b.tier - a.tier);
+  return list;
+}
+
+function totalConsultCount() {
+  return availableConsults().length;
+}
+
 function renderHero() {
   const stats = document.getElementById("heroStats");
   if (!stats || !state) return;
-  const tokens = Number(state.specialist_tokens) || 0;
+  const consults = totalConsultCount();
   stats.innerHTML = `
     <div class="med-stat"><div class="label">Injury chance</div><div class="value">−${state.injury_chance_reduction_pct ?? 0}%</div></div>
     <div class="med-stat"><div class="label">Doctor</div><div class="value">${state.has_doctor ? "Hired" : "Vacant"}</div></div>
     <div class="med-stat"><div class="label">Physios</div><div class="value">${state.physio_count ?? 0}/5</div></div>
-    <div class="med-stat"><div class="label">Tokens</div><div class="value">${tokens}</div></div>
+    <div class="med-stat"><div class="label">Consults</div><div class="value">${consults}</div></div>
     <div class="med-stat"><div class="label">Balance</div><div class="value">${formatMoney(state.balance)}</div></div>
   `;
+}
+
+function renderTokens() {
+  const vault = document.getElementById("tokenVault");
+  const list = document.getElementById("injuryList");
+  if (!vault || !list || !state) return;
+
+  const consults = availableConsults();
+  const maxSlots = Math.max(Number(state.max_specialist_tokens) || 20, consults.length);
+  let chips = "";
+  for (let i = 0; i < maxSlots; i++) {
+    const c = consults[i];
+    const title = c
+      ? `${c.label}`
+      : "Empty consult slot";
+    chips += `<div class="token-chip${c ? "" : " empty"}" title="${title}"></div>`;
+  }
+  const summary = consults.length
+    ? consults.map((c) => `−${c.tier}`).join(", ")
+    : "none";
+  vault.innerHTML =
+    chips +
+    `<span style="color:#9ab;font-size:13px;">${consults.length} specialist consult${
+      consults.length === 1 ? "" : "s"
+    } ready (${summary}) · <a href="club_prizes.html" style="color:#7ec8e8;">Rewards Centre</a></span>`;
+
+  const injuries = state.active_injuries || [];
+  if (!injuries.length) {
+    list.innerHTML = `<p class="med-intro" style="margin:0;">No active injuries to treat.</p>`;
+    return;
+  }
+
+  list.innerHTML = injuries
+    .map((inj) => {
+      const out = Number(inj.matches_out_remaining) || 0;
+      const rec = Number(inj.recovery_remaining) || 0;
+      const phase =
+        out > 0
+          ? `Injured — returning to light training in ${out} match${out === 1 ? "" : "es"}`
+          : `Building fitness — match availability in ${rec} match${rec === 1 ? "" : "es"}`;
+      const used = !!inj.token_used;
+      const canUse =
+        state.has_doctor && consults.length > 0 && !used && (out > 0 || rec > 0);
+      const tokenOpts = consults.map(
+        (c) => `<option value="${c.key}">${c.label}</option>`
+      );
+      const selectHtml = canUse
+        ? `<select class="med-token-pick" data-token-injury="${inj.injury_id}" style="max-width:260px;">${tokenOpts.join(
+            ""
+          )}</select>`
+        : "";
+      const disabledReason = !state.has_doctor
+        ? "Hire a club doctor first"
+        : used
+          ? "Consult already used"
+          : !consults.length
+            ? "No consults available"
+            : "";
+      return `
+        <div class="injury-row">
+          <div>
+            <strong>${inj.player_name || inj.player_id}</strong>
+            <div class="meta">${inj.label || "Injury"} · ${inj.severity || ""}</div>
+            <div class="meta">${phase}</div>
+            ${used ? `<div class="meta">Specialist consult already used on this injury</div>` : ""}
+            ${!canUse && disabledReason ? `<div class="meta">${disabledReason}</div>` : ""}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+            ${selectHtml}
+            <button type="button" class="med-btn" data-token-injury="${inj.injury_id}"
+              ${canUse ? "" : "disabled"}>
+              Refer to specialist
+            </button>
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  list.querySelectorAll("button[data-token-injury]").forEach((btn) => {
+    btn.onclick = () => {
+      const injuryId = Number(btn.dataset.tokenInjury);
+      const pick = list.querySelector(
+        `select.med-token-pick[data-token-injury="${injuryId}"]`
+      );
+      applyToken(injuryId, pick?.value || null);
+    };
+  });
 }
 
 function staffName(row, fallback) {
@@ -121,91 +236,6 @@ function renderPhysios() {
   el.innerHTML = html;
   el.querySelectorAll("[data-hire-physio]").forEach((btn) => {
     btn.onclick = () => hirePhysio(Number(btn.dataset.hirePhysio));
-  });
-}
-
-function renderTokens() {
-  const vault = document.getElementById("tokenVault");
-  const list = document.getElementById("injuryList");
-  if (!vault || !list || !state) return;
-
-  const tokens = Number(state.specialist_tokens) || 0;
-  const prizeTokens = state.prize_medical_tokens || [];
-  const hasPrize = prizeTokens.length > 0;
-  const maxTokens = Number(state.max_specialist_tokens) || 20;
-  let chips = "";
-  for (let i = 0; i < maxTokens; i++) {
-    chips += `<div class="token-chip${i < tokens ? "" : " empty"}" title="${i < tokens ? "Specialist token" : "Empty slot"}"></div>`;
-  }
-  const prizeLabel = hasPrize
-    ? ` · Prize tokens: ${prizeTokens.map((t) => `−${t.param_int}`).join(", ")}`
-    : "";
-  vault.innerHTML =
-    chips +
-    `<span style="color:#9ab;font-size:13px;">${tokens} / ${maxTokens} stored${prizeLabel} · <a href="club_prizes.html" style="color:#7ec8e8;">Rewards Centre</a></span>`;
-
-  const injuries = state.active_injuries || [];
-  if (!injuries.length) {
-    list.innerHTML = `<p class="med-intro" style="margin:0;">No active injuries to treat.</p>`;
-    return;
-  }
-
-  list.innerHTML = injuries
-    .map((inj) => {
-      const out = Number(inj.matches_out_remaining) || 0;
-      const rec = Number(inj.recovery_remaining) || 0;
-      const phase =
-        out > 0
-          ? `Injured — returning to light training in ${out} match${out === 1 ? "" : "es"}`
-          : `Building fitness — match availability in ${rec} match${rec === 1 ? "" : "es"}`;
-      const used = !!inj.token_used;
-      const canUse =
-        state.has_doctor && (tokens > 0 || hasPrize) && !used && (out > 0 || rec > 0);
-      const tokenOpts = [];
-      for (const t of prizeTokens) {
-        tokenOpts.push(
-          `<option value="prize:${t.id}">Prize −${t.param_int} matches</option>`
-        );
-      }
-      if (tokens > 0) {
-        tokenOpts.push(
-          `<option value="specialist">Specialist consult (−${
-            state.specialist_matches_removed || 2
-          })</option>`
-        );
-      }
-      const selectHtml = canUse
-        ? `<select class="med-token-pick" data-token-injury="${inj.injury_id}" style="max-width:200px;">${tokenOpts.join(
-            ""
-          )}</select>`
-        : "";
-      return `
-        <div class="injury-row">
-          <div>
-            <strong>${inj.player_name || inj.player_id}</strong>
-            <div class="meta">${inj.label || "Injury"} · ${inj.severity || ""}</div>
-            <div class="meta">${phase}</div>
-            ${used ? `<div class="meta">Specialist consult already used</div>` : ""}
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
-            ${selectHtml}
-            <button type="button" class="med-btn" data-token-injury="${inj.injury_id}"
-              ${canUse ? "" : "disabled"}>
-              Apply token
-            </button>
-          </div>
-        </div>`;
-    })
-    .join("");
-
-  list.querySelectorAll("button[data-token-injury]").forEach((btn) => {
-    btn.onclick = () => {
-      const injuryId = Number(btn.dataset.tokenInjury);
-      const pick = list.querySelector(
-        `select.med-token-pick[data-token-injury="${injuryId}"]`
-      );
-      applyToken(injuryId, pick?.value || null);
-    };
   });
 }
 
@@ -298,38 +328,34 @@ async function hirePhysio(slot) {
 }
 
 async function applyToken(injuryId, pickValue = null) {
+  const consults = availableConsults();
   let inventoryId = null;
+  let preferSpecialist = false;
   let tier = state?.specialist_matches_removed || 2;
-  const prizeTokens = state?.prize_medical_tokens || [];
 
-  if (pickValue?.startsWith("prize:")) {
-    inventoryId = Number(pickValue.slice(6));
-    const match = prizeTokens.find((t) => Number(t.id) === inventoryId);
-    tier = match?.param_int || tier;
-  } else if (pickValue === "specialist") {
-    inventoryId = null;
-    tier = state?.specialist_matches_removed || 2;
-  } else {
-    // Default: best prize token, else specialist
-    const prize = prizeTokens[0];
-    if (prize?.id) {
-      inventoryId = prize.id;
-      tier = prize.param_int || tier;
-    }
+  const picked =
+    (pickValue && consults.find((c) => c.key === pickValue)) || consults[0] || null;
+
+  if (picked?.key?.startsWith("prize:")) {
+    inventoryId = Number(picked.key.slice(6));
+    tier = picked.tier;
+  } else if (picked) {
+    preferSpecialist = true;
+    tier = picked.tier;
   }
 
   if (
     !confirm(
-      `Use a medical consult to remove up to ${tier} match(es) from this injury? (One consult per injury.)`
+      `Doctor refers this injury to a specialist consultant (−${tier} matches)?\n(One consult per injury.)`
     )
   ) {
     return;
   }
-  setStatus("Applying medical consult…");
+  setStatus("Referring to specialist…");
   const payload = { p_injury_id: injuryId };
   if (inventoryId) {
     payload.p_inventory_id = inventoryId;
-  } else if (pickValue === "specialist") {
+  } else if (preferSpecialist) {
     payload.p_prefer_specialist = true;
   }
   const { data, error } = await supabase.rpc("medical_apply_specialist_token", payload);
@@ -338,7 +364,7 @@ async function applyToken(injuryId, pickValue = null) {
     return;
   }
   setStatus(
-    `Removed ${data?.matches_removed ?? 0} match(es) (tier −${data?.token_tier ?? tier}).`,
+    `Specialist consult removed ${data?.matches_removed ?? 0} match(es) (−${data?.token_tier ?? tier}).`,
     "ok"
   );
   await loadState();
