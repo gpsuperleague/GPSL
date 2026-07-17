@@ -204,29 +204,8 @@ BEGIN
     );
   END IF;
 
-  -- Transfer window open / shut
-  IF TG_OP = 'UPDATE'
-     AND NEW.transfer_window_open IS DISTINCT FROM OLD.transfer_window_open THEN
-    IF NEW.transfer_window_open IS TRUE THEN
-      PERFORM public.gpsl_discord_feed_enqueue_notification(
-        'notification',
-        '🪟 TRANSFER WINDOW OPEN',
-        'The transfer window is now open. List players, make offers, and watch the market.',
-        5793266,
-        'transfer_window_open:' || to_char(now() AT TIME ZONE 'Europe/London', 'YYYY-MM-DD-HH24MI'),
-        jsonb_build_object('kind', 'transfer_window', 'open', true)
-      );
-    ELSE
-      PERFORM public.gpsl_discord_feed_enqueue_notification(
-        'notification',
-        '🪟 TRANSFER WINDOW CLOSED',
-        'The transfer window is now shut. Direct market deals are paused until it reopens.',
-        10038562,
-        'transfer_window_closed:' || to_char(now() AT TIME ZONE 'Europe/London', 'YYYY-MM-DD-HH24MI'),
-        jsonb_build_object('kind', 'transfer_window', 'open', false)
-      );
-    END IF;
-  END IF;
+  -- Transfer window: see gpsl_discord_transfer_window_notify_fix.sql
+  -- (dedicated trigger — do not handle here; old WHEN OTHERS swallowed failures)
 
   -- Player / manager draft auctions scheduled or enabled
   IF TG_OP = 'UPDATE' AND NEW.draft_auction_start_time IS NOT NULL THEN
@@ -240,14 +219,18 @@ BEGIN
          NEW.draft_auction_start_time IS DISTINCT FROM OLD.draft_auction_start_time
          OR NOT coalesce(OLD.draft_auction_enabled, false)
        ) THEN
-      PERFORM public.gpsl_discord_feed_enqueue_notification(
-        'draft',
-        '🧾 PLAYER DRAFT AUCTION',
-        format('Player draft auction is scheduled.%sStarts: %s', E'\n', v_start),
-        8070335,
-        'player_draft_sched:' || to_char(NEW.draft_auction_start_time AT TIME ZONE 'UTC', 'YYYYMMDDHH24MI'),
-        jsonb_build_object('kind', 'player_draft')
-      );
+      BEGIN
+        PERFORM public.gpsl_discord_feed_enqueue_notification(
+          'draft',
+          '🧾 PLAYER DRAFT AUCTION',
+          format('Player draft auction is scheduled.%sStarts: %s', E'\n', v_start),
+          8070335,
+          'player_draft_sched:' || to_char(NEW.draft_auction_start_time AT TIME ZONE 'UTC', 'YYYYMMDDHH24MI'),
+          jsonb_build_object('kind', 'player_draft')
+        );
+      EXCEPTION WHEN OTHERS THEN
+        RAISE WARNING 'gpsl discord player draft notify failed: %', SQLERRM;
+      END;
     END IF;
 
     IF coalesce(NEW.manager_draft_auction_enabled, false)
@@ -255,21 +238,23 @@ BEGIN
          NEW.draft_auction_start_time IS DISTINCT FROM OLD.draft_auction_start_time
          OR NOT coalesce(OLD.manager_draft_auction_enabled, false)
        ) THEN
-      PERFORM public.gpsl_discord_feed_enqueue_notification(
-        'draft',
-        '👔 MANAGER DRAFT AUCTION',
-        format('Manager draft auction is scheduled.%sStarts: %s', E'\n', v_start),
-        8070335,
-        'manager_draft_sched:' || to_char(NEW.draft_auction_start_time AT TIME ZONE 'UTC', 'YYYYMMDDHH24MI'),
-        jsonb_build_object('kind', 'manager_draft')
-      );
+      BEGIN
+        PERFORM public.gpsl_discord_feed_enqueue_notification(
+          'draft',
+          '👔 MANAGER DRAFT AUCTION',
+          format('Manager draft auction is scheduled.%sStarts: %s', E'\n', v_start),
+          8070335,
+          'manager_draft_sched:' || to_char(NEW.draft_auction_start_time AT TIME ZONE 'UTC', 'YYYYMMDDHH24MI'),
+          jsonb_build_object('kind', 'manager_draft')
+        );
+      EXCEPTION WHEN OTHERS THEN
+        RAISE WARNING 'gpsl discord manager draft notify failed: %', SQLERRM;
+      END;
     END IF;
   END IF;
 
   RETURN NEW;
 EXCEPTION WHEN undefined_column THEN
-  RETURN NEW;
-WHEN OTHERS THEN
   RETURN NEW;
 END;
 $function$;
@@ -285,6 +270,8 @@ BEGIN
     FOR EACH ROW
     EXECUTE FUNCTION public.gpsl_discord_feed_on_club_auction_settings();
 END $$;
+
+-- NOTE: also run gpsl_discord_transfer_window_notify_fix.sql for transfer window Discord posts.
 
 -- ---------------------------------------------------------------------------
 -- Season start
