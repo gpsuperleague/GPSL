@@ -1,6 +1,10 @@
 import { supabase, initGlobal } from "./global.js";
-import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
+import { loadClubsMap, fullClubName, clubPageHref } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
+
+let standingsData = null;
+let myClubShort = null;
+let activeStandingsTab = "overall";
 
 const STAT_LABELS = {
   player_max_goals: "Player max goals",
@@ -63,6 +67,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     .maybeSingle();
 
   const clubShort = club?.ShortName || null;
+  myClubShort = clubShort;
   document.title = clubShort
     ? `Season challenges — ${fullClubName(clubShort) || clubShort}`
     : "Season challenges";
@@ -76,8 +81,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     progressItems = data?.challenges || [];
   }
 
+  bindStandingsTabs();
+
   await Promise.all([
     loadBigPrizePacks(progressItems),
+    loadStandings(),
     loadCatalog(),
   ]);
 });
@@ -266,4 +274,144 @@ async function loadCatalog() {
   }
 
   renderPhaseGrids(data, "catalogStart", "catalogMid", "No targets in this window.");
+}
+
+function bindStandingsTabs() {
+  const tabs = document.getElementById("standingsTabs");
+  if (!tabs) return;
+  tabs.addEventListener("click", (e) => {
+    const btn = e.target.closest(".standings-tab");
+    if (!btn) return;
+    activeStandingsTab = btn.dataset.tab || "overall";
+    tabs.querySelectorAll(".standings-tab").forEach((t) => {
+      t.classList.toggle("active", t === btn);
+    });
+    renderStandings();
+  });
+}
+
+async function loadStandings() {
+  const el = document.getElementById("challengeStandings");
+  if (!el) return;
+
+  const { data, error } = await supabase.rpc("competition_challenge_league_table");
+  if (error) {
+    el.innerHTML = `<p class="phase-empty">Could not load standings (${error.message}). Run the league-table SQL patch if this is a new function.</p>`;
+    return;
+  }
+
+  standingsData = data;
+  renderStandings();
+}
+
+function standingsRowsForTab(tab) {
+  if (!standingsData) return { rows: [], total: 0, mode: tab };
+  if (tab === "start") {
+    return {
+      rows: standingsData.start || [],
+      total: Number(standingsData.start_total || 0),
+      mode: "start",
+    };
+  }
+  if (tab === "mid") {
+    return {
+      rows: standingsData.mid || [],
+      total: Number(standingsData.mid_total || 0),
+      mode: "mid",
+    };
+  }
+  return {
+    rows: standingsData.overall || [],
+    total:
+      Number(standingsData.start_total || 0) + Number(standingsData.mid_total || 0),
+    mode: "overall",
+  };
+}
+
+function rowMetrics(row, mode) {
+  if (mode === "start") {
+    return {
+      done: Number(row.start_completed || 0),
+      total: Number(row.start_total || 0),
+      pct: Number(row.start_pct || 0),
+      prize: Number(row.start_prize || 0),
+    };
+  }
+  if (mode === "mid") {
+    return {
+      done: Number(row.mid_completed || 0),
+      total: Number(row.mid_total || 0),
+      pct: Number(row.mid_pct || 0),
+      prize: Number(row.mid_prize || 0),
+    };
+  }
+  return {
+    done: Number(row.total_completed || 0),
+    total: Number(row.total_challenges || 0),
+    pct: Number(row.overall_pct || 0),
+    prize: Number(row.total_prize || 0),
+  };
+}
+
+function renderStandings() {
+  const el = document.getElementById("challengeStandings");
+  if (!el) return;
+
+  const { rows, total, mode } = standingsRowsForTab(activeStandingsTab);
+  if (!total) {
+    const label =
+      mode === "start"
+        ? "No start-of-season challenges configured."
+        : mode === "mid"
+          ? "No mid-season challenges configured."
+          : "No challenges configured for the current season.";
+    el.innerHTML = `<p class="phase-empty">${label}</p>`;
+    return;
+  }
+
+  if (!rows.length) {
+    el.innerHTML = `<p class="phase-empty">No clubs found for this season.</p>`;
+    return;
+  }
+
+  const body = rows
+    .map((row, i) => {
+      const m = rowMetrics(row, mode);
+      const short = row.club_short_name;
+      const name = fullClubName(short) || row.club_name || short;
+      const isMe = myClubShort && short === myClubShort;
+      const pct = Math.max(0, Math.min(100, m.pct));
+      const barClass = pct >= 100 ? "progress-bar complete" : "progress-bar";
+      const href = clubPageHref(short);
+      const clubCell = href
+        ? `<a href="${href}">${name}</a>`
+        : name;
+
+      return `<tr class="${isMe ? "me" : ""}">
+        <td class="pos">${i + 1}</td>
+        <td class="club">${clubCell}</td>
+        <td class="num">${m.done}/${m.total}</td>
+        <td class="bar-cell">
+          <span class="${barClass}" title="${pct}%"><span style="width:${pct}%"></span></span>
+          <span class="pct-label">${pct}%</span>
+        </td>
+        <td class="num">${m.prize > 0 ? formatMoney(m.prize) : "—"}</td>
+      </tr>`;
+    })
+    .join("");
+
+  el.innerHTML = `
+    <table class="league-table">
+      <thead>
+        <tr>
+          <th class="pos">#</th>
+          <th>Club</th>
+          <th class="num">Done</th>
+          <th>Progress</th>
+          <th class="num">Prizes won</th>
+        </tr>
+      </thead>
+      <tbody>${body}</tbody>
+    </table>
+  `;
 }

@@ -44,6 +44,50 @@
     .big-prize-card .prize-status-open { color:#fc6; margin-top:8px; font-size:13px; }
     .big-prize-card .prize-status-closed { color:#a88; margin-top:8px; font-size:13px; }
     .phase-empty { color:#888; font-size:13px; margin:0; }
+    .standings-tabs {
+      display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;
+    }
+    .standings-tab {
+      background:#222; border:1px solid #444; color:#ccc;
+      padding:6px 12px; border-radius:4px; cursor:pointer; font-size:13px;
+    }
+    .standings-tab:hover { border-color:#666; color:#fff; }
+    .standings-tab.active {
+      background:#333; border-color:#ff9900; color:#ffcc66;
+    }
+    .standings-wrap { overflow-x:auto; }
+    table.league-table {
+      width:100%; border-collapse:collapse; font-size:13px;
+    }
+    table.league-table th {
+      text-align:left; color:#888; font-weight:normal;
+      padding:8px 10px; border-bottom:1px solid #333;
+      white-space:nowrap;
+    }
+    table.league-table th.num,
+    table.league-table td.num { text-align:right; }
+    table.league-table td {
+      padding:9px 10px; border-bottom:1px solid #2a2a2a; color:#ddd;
+    }
+    table.league-table tr:hover td { background:#222; }
+    table.league-table tr.me td {
+      background:#1e2a1a; color:#dff0d8;
+    }
+    table.league-table tr.me:hover td { background:#243320; }
+    table.league-table .pos { color:#888; width:2.5em; }
+    table.league-table .club a { color:#ffcc66; text-decoration:none; }
+    table.league-table .club a:hover { text-decoration:underline; }
+    table.league-table .bar-cell { min-width:120px; }
+    .progress-bar {
+      height:8px; background:#333; border-radius:4px; overflow:hidden;
+      display:inline-block; width:72px; vertical-align:middle; margin-right:8px;
+    }
+    .progress-bar > span {
+      display:block; height:100%; background:#5a8f4a; border-radius:4px;
+    }
+    .progress-bar.complete > span { background:#7ec86a; }
+    .pct-label { color:#aaa; font-size:12px; }
+    .standings-note { color:#888; font-size:12px; margin:0 0 12px; line-height:1.4; }
   </style>
 </head>
 <body>
@@ -63,6 +107,22 @@
     </div>
 
     <div class="panel">
+      <h2>Challenge league table</h2>
+      <p class="standings-note">
+        Ranked by challenges completed, then overall progress toward remaining targets.
+        Your club is highlighted.
+      </p>
+      <div class="standings-tabs" id="standingsTabs">
+        <button type="button" class="standings-tab active" data-tab="overall">Overall</button>
+        <button type="button" class="standings-tab" data-tab="start">Start of season</button>
+        <button type="button" class="standings-tab" data-tab="mid">Mid-season</button>
+      </div>
+      <div id="challengeStandings" class="standings-wrap">
+        <p class="phase-empty">Loading…</p>
+      </div>
+    </div>
+
+    <div class="panel">
       <h2>All season targets</h2>
       <h3>Start of season</h3>
       <div id="catalogStart" class="challenge-grid">
@@ -74,6 +134,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="challenges.js?v=20260717-split"></script>
+  <script type="module" src="challenges.js?v=20260717-league"></script>
 </body>
 </html>
