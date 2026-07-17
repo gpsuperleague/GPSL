@@ -30,12 +30,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("refreshProgressBoardBtn").onclick = loadChallengeProgressBoard;
   document.getElementById("saveChallengeBtn").onclick = saveChallenge;
   document.getElementById("clearChallengeFormBtn").onclick = clearChallengeForm;
+  document.getElementById("saveChallengeTemplateBtn").onclick = saveChallengeTemplate;
 
   syncWindowMonths();
   syncStatParamVisibility();
   await loadChallengeDefaults();
   await loadChallengePacks();
   await loadChallengeList();
+  await loadChallengeTemplates();
   await loadChallengeProgressBoard();
   await loadChallengeAwards();
 });
@@ -456,6 +458,129 @@ async function seedChallenges() {
   }
   await loadChallengeList();
   setStatus("challengeListStatus", `✅ Seeded ${data ?? 0} challenges.`, true);
+}
+
+async function loadChallengeTemplates() {
+  const list = document.getElementById("challengeTemplateList");
+  if (!list) return;
+
+  const { data, error } = await supabase.rpc("competition_admin_list_challenge_templates");
+  if (error) {
+    list.innerHTML = `<p class="note">❌ ${error.message} — run competition_challenge_templates.sql</p>`;
+    return;
+  }
+
+  const rows = Array.isArray(data) ? data : [];
+  if (!rows.length) {
+    list.innerHTML =
+      "<p class='note'>No saved templates yet. Add targets above, then Save current targets.</p>";
+    return;
+  }
+
+  list.innerHTML = rows
+    .map((t) => {
+      const when = t.updated_at
+        ? new Date(t.updated_at).toLocaleDateString("en-GB")
+        : "";
+      return `<div class="challenge-admin-item">
+        <div>
+          <b>${t.name}</b>
+          <span class="challenge-admin-meta">
+            ${t.target_count || 0} targets
+            (${t.start_count || 0} start · ${t.mid_count || 0} mid)
+            ${when ? ` · updated ${when}` : ""}
+          </span>
+        </div>
+        <div class="challenge-admin-actions">
+          <button type="button" class="button tpl-apply-btn" data-id="${t.id}" data-name="${encodeURIComponent(t.name || "")}">Apply to season</button>
+          <button type="button" class="button tpl-delete-btn" data-id="${t.id}">Delete</button>
+        </div>
+      </div>`;
+    })
+    .join("");
+
+  list.querySelectorAll(".tpl-apply-btn").forEach((btn) => {
+    btn.onclick = () =>
+      applyChallengeTemplate(Number(btn.dataset.id), decodeURIComponent(btn.dataset.name || ""));
+  });
+  list.querySelectorAll(".tpl-delete-btn").forEach((btn) => {
+    btn.onclick = () => deleteChallengeTemplate(Number(btn.dataset.id));
+  });
+}
+
+async function saveChallengeTemplate() {
+  const name = (document.getElementById("challengeTemplateName")?.value || "").trim();
+  if (!name) {
+    setStatus("challengeTemplateStatus", "Enter a template name.", false);
+    return;
+  }
+  setStatus("challengeTemplateStatus", "Saving template…");
+  const { data, error } = await supabase.rpc("competition_admin_save_challenge_template", {
+    p_name: name,
+    p_season_id: currentSeasonId,
+  });
+  if (error) {
+    setStatus(
+      "challengeTemplateStatus",
+      "❌ " + error.message + " — run competition_challenge_templates.sql",
+      false
+    );
+    return;
+  }
+  document.getElementById("challengeTemplateName").value = "";
+  await loadChallengeTemplates();
+  setStatus(
+    "challengeTemplateStatus",
+    `✅ Saved “${data?.name || name}” (${data?.target_count ?? "?"} targets). Survives league reset.`,
+    true
+  );
+}
+
+async function applyChallengeTemplate(templateId, templateName) {
+  if (!currentSeasonId) {
+    setStatus("challengeTemplateStatus", "No current season.", false);
+    return;
+  }
+
+  const replace = confirm(
+    `Apply template “${templateName || templateId}” to the current season?\n\n` +
+      `OK = replace existing season targets\n` +
+      `Cancel = abort\n\n` +
+      `(If the season is empty, targets are added either way.)`
+  );
+  if (!replace) return;
+
+  setStatus("challengeTemplateStatus", "Applying template…");
+  const { data, error } = await supabase.rpc("competition_admin_apply_challenge_template", {
+    p_template_id: templateId,
+    p_season_id: currentSeasonId,
+    p_replace: true,
+  });
+  if (error) {
+    setStatus("challengeTemplateStatus", "❌ " + error.message, false);
+    return;
+  }
+  await loadChallengeList();
+  await loadChallengeProgressBoard();
+  setStatus(
+    "challengeTemplateStatus",
+    `✅ Applied “${data?.template_name || templateName}” — ${data?.inserted ?? 0} target(s).`,
+    true
+  );
+}
+
+async function deleteChallengeTemplate(templateId) {
+  if (!confirm("Delete this saved template? This cannot be undone.")) return;
+  setStatus("challengeTemplateStatus", "Deleting…");
+  const { error } = await supabase.rpc("competition_admin_delete_challenge_template", {
+    p_template_id: templateId,
+  });
+  if (error) {
+    setStatus("challengeTemplateStatus", "❌ " + error.message, false);
+    return;
+  }
+  await loadChallengeTemplates();
+  setStatus("challengeTemplateStatus", "✅ Template deleted.", true);
 }
 
 async function recheckChallenges() {
