@@ -97,7 +97,7 @@ export const NAV_SECTIONS = [
         page: "medical_room",
         navIcon: "first_aid",
       },
-      { href: "club_prizes.html", label: "Club Rewards Centre", page: "club_prizes" },
+      { href: "club_prizes.html", label: "Rewards Centre", page: "club_prizes" },
       { href: "matchday.html", label: "Match Day", page: "matchday" },
       { href: "club_fixtures.html", label: "Fixtures", page: "club_fixtures" },
       { href: "transfer_center.html", label: "Transfer Centre", page: "transfer_center" },

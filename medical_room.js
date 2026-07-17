@@ -142,7 +142,7 @@ function renderTokens() {
     : "";
   vault.innerHTML =
     chips +
-    `<span style="color:#9ab;font-size:13px;">${tokens} / ${maxTokens} stored${prizeLabel} · <a href="club_prizes.html" style="color:#7ec8e8;">Club Rewards Centre</a></span>`;
+    `<span style="color:#9ab;font-size:13px;">${tokens} / ${maxTokens} stored${prizeLabel} · <a href="club_prizes.html" style="color:#7ec8e8;">Rewards Centre</a></span>`;
 
   const injuries = state.active_injuries || [];
   if (!injuries.length) {
