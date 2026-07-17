@@ -484,18 +484,19 @@ async function loadChallengeTemplates() {
         : "";
       const startN = Number(t.start_count) || 0;
       const midN = Number(t.mid_count) || 0;
+      const anyN = Number(t.target_count) || startN + midN;
       return `<div class="challenge-admin-item">
         <div>
           <b>${t.name}</b>
           <span class="challenge-admin-meta">
-            ${t.target_count || 0} targets
+            ${anyN} targets
             (${startN} start · ${midN} mid)
             ${when ? ` · updated ${when}` : ""}
           </span>
         </div>
         <div class="challenge-admin-actions">
-          <button type="button" class="button tpl-apply-btn" data-id="${t.id}" data-phase="start" data-name="${encodeURIComponent(t.name || "")}" ${startN ? "" : "disabled title=\"No start targets in this template\""}>Apply to Start</button>
-          <button type="button" class="button tpl-apply-btn" data-id="${t.id}" data-phase="mid" data-name="${encodeURIComponent(t.name || "")}" ${midN ? "" : "disabled title=\"No mid targets in this template\""}>Apply to Mid</button>
+          <button type="button" class="button tpl-apply-btn" data-id="${t.id}" data-phase="start" data-name="${encodeURIComponent(t.name || "")}" ${anyN ? "" : "disabled"}>Apply to Start</button>
+          <button type="button" class="button tpl-apply-btn" data-id="${t.id}" data-phase="mid" data-name="${encodeURIComponent(t.name || "")}" ${anyN ? "" : "disabled"}>Apply to Mid</button>
           <button type="button" class="button tpl-delete-btn" data-id="${t.id}">Delete</button>
         </div>
       </div>`;
@@ -550,11 +551,14 @@ async function applyChallengeTemplate(templateId, templateName, windowPhase) {
   }
 
   const phaseLabel = windowPhase === "mid" ? "Mid-season" : "Start of season";
+  const monthHint =
+    windowPhase === "mid" ? "January–May" : "August–December";
   if (
     !confirm(
-      `Apply “${templateName || templateId}” → ${phaseLabel} challenges?\n\n` +
-        `This replaces any existing ${phaseLabel.toLowerCase()} targets on the current season ` +
-        `(the other window is left alone). You can edit them afterwards in the Targets list.`
+      `Apply “${templateName || templateId}” → ${phaseLabel}?\n\n` +
+        `• Uses that window’s targets if present, otherwise copies the other window across\n` +
+        `• Months reset to ${monthHint} (edit afterwards)\n` +
+        `• Replaces existing ${phaseLabel.toLowerCase()} targets only`
     )
   ) {
     return;
@@ -577,9 +581,12 @@ async function applyChallengeTemplate(templateId, templateName, windowPhase) {
   }
   await loadChallengeList();
   await loadChallengeProgressBoard();
+  const remapNote = data?.remapped
+    ? ` (copied from the other window; months set to ${monthHint})`
+    : ` (months set to ${monthHint})`;
   setStatus(
     "challengeTemplateStatus",
-    `✅ Applied ${data?.inserted ?? 0} ${phaseLabel.toLowerCase()} target(s) from “${data?.template_name || templateName}”. Edit them in the list above.`,
+    `✅ Applied ${data?.inserted ?? 0} ${phaseLabel.toLowerCase()} target(s)${remapNote}. Edit them in the Targets list.`,
     true
   );
 }

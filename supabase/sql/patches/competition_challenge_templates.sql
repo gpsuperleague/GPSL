@@ -184,9 +184,9 @@ BEGIN
 END;
 $function$;
 
--- Apply template into a season for Start, Mid, or both.
--- p_window_phase: 'start' | 'mid' | NULL (NULL = all phases in the template)
--- p_replace: clears existing season targets for the selected phase(s) first
+-- Apply template into a season for Start or Mid (required).
+-- If the template has no targets for that window, the other window's targets
+-- are remapped into it with default GPSL months so admin can edit afterwards.
 DROP FUNCTION IF EXISTS public.competition_admin_apply_challenge_template(bigint, bigint, boolean);
 DROP FUNCTION IF EXISTS public.competition_admin_apply_challenge_template(bigint, bigint, boolean, text);
 
@@ -204,13 +204,13 @@ AS $function$
 DECLARE
   v_season_id bigint;
   v_targets jsonb;
+  v_source jsonb;
   v_name text;
   v_row jsonb;
   v_inserted int := 0;
   v_existing int := 0;
   v_default numeric;
   v_title text;
-  v_phase text;
   v_from text;
   v_to text;
   v_stat text;
@@ -218,14 +218,15 @@ DECLARE
   v_target int;
   v_prize numeric;
   v_want text := nullif(lower(btrim(coalesce(p_window_phase, ''))), '');
-  v_phase_count int := 0;
+  v_matched int := 0;
+  v_remapped boolean := false;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
-  IF v_want IS NOT NULL AND v_want NOT IN ('start', 'mid') THEN
-    RAISE EXCEPTION 'window_phase must be start, mid, or null';
+  IF v_want IS NULL OR v_want NOT IN ('start', 'mid') THEN
+    RAISE EXCEPTION 'Choose Start or Mid (window_phase must be start or mid)';
   END IF;
 
   IF p_season_id IS NULL THEN
@@ -254,34 +255,58 @@ BEGIN
     RAISE EXCEPTION 'Template "%" has no targets', v_name;
   END IF;
 
-  IF v_want IS NOT NULL THEN
-    SELECT count(*)::int INTO v_phase_count
-    FROM jsonb_array_elements(v_targets) x
-    WHERE lower(btrim(coalesce(x.value->>'window_phase', ''))) = v_want;
+  -- Prefer same-window targets; otherwise remap the other window into this one
+  SELECT coalesce(jsonb_agg(x.value), '[]'::jsonb)
+  INTO v_source
+  FROM jsonb_array_elements(v_targets) x
+  WHERE lower(btrim(coalesce(x.value->>'window_phase', 'start'))) = v_want;
 
-    IF coalesce(v_phase_count, 0) = 0 THEN
-      RAISE EXCEPTION 'Template "%" has no % challenges to apply',
-        v_name,
-        CASE v_want WHEN 'mid' THEN 'mid-season' ELSE 'start-of-season' END;
+  v_matched := jsonb_array_length(coalesce(v_source, '[]'::jsonb));
+
+  IF v_matched = 0 THEN
+    SELECT coalesce(jsonb_agg(x.value), '[]'::jsonb)
+    INTO v_source
+    FROM jsonb_array_elements(v_targets) x
+    WHERE lower(btrim(coalesce(x.value->>'window_phase', 'start')))
+      IS DISTINCT FROM v_want;
+
+    -- If phases were missing/odd, fall back to entire template
+    IF jsonb_array_length(coalesce(v_source, '[]'::jsonb)) = 0 THEN
+      v_source := v_targets;
     END IF;
+
+    v_remapped := true;
+  END IF;
+
+  IF jsonb_array_length(coalesce(v_source, '[]'::jsonb)) = 0 THEN
+    RAISE EXCEPTION 'Template "%" has no usable targets to apply', v_name;
+  END IF;
+
+  -- Default months for the destination window
+  IF v_want = 'mid' THEN
+    v_from := 'january';
+    v_to := 'may';
+  ELSE
+    v_from := 'august';
+    v_to := 'december';
   END IF;
 
   SELECT count(*)::int INTO v_existing
   FROM public.competition_challenge_config
   WHERE season_id = v_season_id
-    AND (v_want IS NULL OR window_phase = v_want);
+    AND window_phase = v_want;
 
   IF v_existing > 0 AND NOT coalesce(p_replace, false) THEN
     RAISE EXCEPTION
       'Season already has % % challenge(s). Pass replace=true to clear them first, or delete manually.',
       v_existing,
-      CASE WHEN v_want IS NULL THEN 'total' WHEN v_want = 'mid' THEN 'mid-season' ELSE 'start-of-season' END;
+      CASE v_want WHEN 'mid' THEN 'mid-season' ELSE 'start-of-season' END;
   END IF;
 
   IF coalesce(p_replace, false) AND v_existing > 0 THEN
     DELETE FROM public.competition_challenge_config
     WHERE season_id = v_season_id
-      AND (v_want IS NULL OR window_phase = v_want);
+      AND window_phase = v_want;
   END IF;
 
   v_default := coalesce(
@@ -289,12 +314,9 @@ BEGIN
     1000000
   );
 
-  FOR v_row IN SELECT * FROM jsonb_array_elements(v_targets)
+  FOR v_row IN SELECT * FROM jsonb_array_elements(v_source)
   LOOP
     v_title := nullif(btrim(coalesce(v_row->>'title', '')), '');
-    v_phase := lower(btrim(coalesce(v_row->>'window_phase', 'start')));
-    v_from := lower(btrim(coalesce(v_row->>'gpsl_month_from', '')));
-    v_to := lower(btrim(coalesce(v_row->>'gpsl_month_to', '')));
     v_stat := btrim(coalesce(v_row->>'stat_type', ''));
     v_param := nullif(btrim(coalesce(v_row->>'stat_param', '')), '');
     v_target := coalesce((v_row->>'target_value')::int, 0);
@@ -303,22 +325,8 @@ BEGIN
     IF v_title IS NULL OR v_stat = '' OR v_target <= 0 THEN
       CONTINUE;
     END IF;
-    IF v_phase NOT IN ('start', 'mid') THEN
-      v_phase := 'start';
-    END IF;
 
-    -- Only apply the chosen window (Start or Mid)
-    IF v_want IS NOT NULL AND v_phase <> v_want THEN
-      CONTINUE;
-    END IF;
-
-    IF v_from IS NULL OR v_from = '' THEN
-      v_from := CASE WHEN v_phase = 'mid' THEN 'january' ELSE 'august' END;
-    END IF;
-    IF v_to IS NULL OR v_to = '' THEN
-      v_to := CASE WHEN v_phase = 'mid' THEN 'may' ELSE 'december' END;
-    END IF;
-
+    -- Force destination window + default months (admin edits afterwards)
     INSERT INTO public.competition_challenge_config (
       season_id, title, description, window_phase,
       gpsl_month_from, gpsl_month_to,
@@ -329,7 +337,7 @@ BEGIN
       v_season_id,
       v_title,
       nullif(btrim(coalesce(v_row->>'description', '')), ''),
-      v_phase,
+      v_want,
       v_from,
       v_to,
       v_stat,
@@ -351,6 +359,9 @@ BEGIN
     'template_name', v_name,
     'season_id', v_season_id,
     'window_phase', v_want,
+    'remapped', v_remapped,
+    'months_from', v_from,
+    'months_to', v_to,
     'replaced', coalesce(p_replace, false),
     'inserted', v_inserted
   );
