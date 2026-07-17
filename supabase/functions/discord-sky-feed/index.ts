@@ -38,6 +38,12 @@ type DiscordMember = {
   nick?: string | null;
 };
 
+function isResultsEvent(row: FeedRow): boolean {
+  if (row.event_type === "result") return true;
+  const channel = String(row.metadata?.channel || "").toLowerCase();
+  return channel === "results";
+}
+
 function embedFor(row: FeedRow) {
   const colors: Record<string, number> = {
     result: 0xe10600, // Sky-ish red
@@ -59,11 +65,13 @@ function embedFor(row: FeedRow) {
     colors[row.event_type] ??
     colors.other;
 
+  const results = isResultsEvent(row);
+
   return {
     title: row.headline.slice(0, 256),
     description: (row.body || "").slice(0, 4000) || undefined,
     color,
-    footer: { text: "GPSL News" },
+    footer: { text: results ? "GPSL Results" : "GPSL News" },
     timestamp: new Date().toISOString(),
   };
 }
@@ -136,12 +144,13 @@ async function postWebhook(
   webhookUrl: string,
   embeds: Record<string, unknown>[],
   opts?: {
+    username?: string;
     content?: string;
     allowedMentions?: { users?: string[]; parse?: string[] };
   }
 ) {
   const payload: Record<string, unknown> = {
-    username: "GPSL News",
+    username: opts?.username || "GPSL News",
     embeds,
   };
   if (opts?.content) {
@@ -162,6 +171,21 @@ async function postWebhook(
   }
 }
 
+function webhookForRow(
+  row: FeedRow,
+  newsUrl: string,
+  resultsUrl: string | null
+): { url: string; username: string } {
+  if (isResultsEvent(row)) {
+    if (resultsUrl) {
+      return { url: resultsUrl, username: "GPSL Results" };
+    }
+    // Fallback so results still post if secret not set yet
+    return { url: newsUrl, username: "GPSL Results" };
+  }
+  return { url: newsUrl, username: "GPSL News" };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -172,6 +196,10 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const webhookUrl = Deno.env.get("DISCORD_WEBHOOK_URL");
+    const resultsWebhookUrl =
+      Deno.env.get("DISCORD_RESULTS_WEBHOOK_URL") ||
+      Deno.env.get("DISCORD_WEBHOOK_RESULTS_URL") ||
+      "";
     const feedKey = Deno.env.get("DISCORD_FEED_INVOKE_KEY") ||
       Deno.env.get("CRON_API_KEY") ||
       "";
@@ -235,30 +263,56 @@ Deno.serve(async (req) => {
 
     // Optional: post a one-off test embed
     if (body?.test === true) {
-      await postWebhook(webhookUrl, [
-        {
-          title: "🚨 GPSL NEWS — TEST",
-          description: "Discord feed is connected.",
-          color: 0xe10600,
-          footer: { text: "GPSL News" },
-          timestamp: new Date().toISOString(),
-        },
-      ]);
-      return jsonResponse({ ok: true, test: true });
+      const toResults = body?.channel === "results";
+      const target = toResults
+        ? resultsWebhookUrl || webhookUrl
+        : webhookUrl;
+      await postWebhook(
+        target,
+        [
+          {
+            title: toResults
+              ? "🚨 GPSL RESULTS — TEST"
+              : "🚨 GPSL NEWS — TEST",
+            description: toResults
+              ? resultsWebhookUrl
+                ? "Results webhook is connected."
+                : "DISCORD_RESULTS_WEBHOOK_URL missing — posted to news webhook as fallback."
+              : "Discord news feed is connected.",
+            color: 0xe10600,
+            footer: { text: toResults ? "GPSL Results" : "GPSL News" },
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        { username: toResults ? "GPSL Results" : "GPSL News" }
+      );
+      return jsonResponse({
+        ok: true,
+        test: true,
+        channel: toResults ? "results" : "news",
+        used_results_webhook: Boolean(toResults && resultsWebhookUrl),
+      });
     }
 
     // Optional: direct event (from SQL/webhook payload)
     if (body?.headline && body?.event_type) {
-      await postWebhook(webhookUrl, [
-        embedFor({
-          id: 0,
-          event_type: String(body.event_type),
-          headline: String(body.headline),
-          body: body.body != null ? String(body.body) : null,
-          color: typeof body.color === "number" ? body.color : null,
-          metadata: null,
-        }),
-      ]);
+      const directRow: FeedRow = {
+        id: 0,
+        event_type: String(body.event_type),
+        headline: String(body.headline),
+        body: body.body != null ? String(body.body) : null,
+        color: typeof body.color === "number" ? body.color : null,
+        metadata:
+          body.metadata && typeof body.metadata === "object"
+            ? (body.metadata as Record<string, unknown>)
+            : body.channel
+              ? { channel: body.channel }
+              : null,
+      };
+      const target = webhookForRow(directRow, webhookUrl, resultsWebhookUrl || null);
+      await postWebhook(target.url, [embedFor(directRow)], {
+        username: target.username,
+      });
     }
 
     const { data: rows, error } = await adminClient
@@ -274,7 +328,19 @@ Deno.serve(async (req) => {
 
     const pending = (rows || []) as FeedRow[];
     let posted = 0;
+    let postedResults = 0;
+    let postedNews = 0;
     const errors: string[] = [];
+    const warnings: string[] = [];
+
+    if (
+      pending.some((r) => isResultsEvent(r)) &&
+      !resultsWebhookUrl
+    ) {
+      warnings.push(
+        "DISCORD_RESULTS_WEBHOOK_URL not set — results falling back to #gpsl-news webhook"
+      );
+    }
 
     // Lazy-load guild members once if any owner posts need a real ping
     let guildMembers: DiscordMember[] | null = null;
@@ -336,7 +402,13 @@ Deno.serve(async (req) => {
           }
         }
 
-        await postWebhook(webhookUrl, [embedFor(row)], {
+        const target = webhookForRow(
+          row,
+          webhookUrl,
+          resultsWebhookUrl || null
+        );
+        await postWebhook(target.url, [embedFor(row)], {
+          username: target.username,
           content,
           allowedMentions,
         });
@@ -350,6 +422,8 @@ Deno.serve(async (req) => {
           .eq("id", row.id);
         if (updErr) throw new Error(updErr.message);
         posted += 1;
+        if (isResultsEvent(row)) postedResults += 1;
+        else postedNews += 1;
         // Discord rate limit soft pause
         await new Promise((r) => setTimeout(r, 350));
       } catch (err) {
@@ -370,6 +444,10 @@ Deno.serve(async (req) => {
       ok: true,
       pending: pending.length,
       posted,
+      posted_news: postedNews,
+      posted_results: postedResults,
+      results_webhook_configured: Boolean(resultsWebhookUrl),
+      warnings,
       errors,
     });
   } catch (err) {

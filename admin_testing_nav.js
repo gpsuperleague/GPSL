@@ -36,6 +36,12 @@ export const TESTING_ADMIN_NAV = [
     navDanger: true,
   },
   {
+    label: "Deploy single fixture",
+    href: "admin_test_deploy_fixture.html",
+    page: "admin_test_deploy_fixture",
+    navDanger: true,
+  },
+  {
     label: "End Month Early",
     href: "admin_test_end_month.html",
     page: "admin_test_end_month",

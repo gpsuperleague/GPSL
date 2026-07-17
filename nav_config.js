@@ -48,6 +48,14 @@ function ensureTestingNavLinks(html, pathname) {
     );
   }
 
+  if (!out.includes("admin_test_deploy_fixture.html")) {
+    const active = file === "admin_test_deploy_fixture.html" ? " active" : "";
+    out = out.replace(
+      /(<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">[\s\S]*)(<\/div>\s*<\/div>\s*)$/,
+      `$1<a href="admin_test_deploy_fixture.html" class="nav-link nav-link-sub nav-link-danger${active}">Deploy single fixture</a>$2`
+    );
+  }
+
   if (!out.includes("admin_test_end_month.html")) {
     const active = file === "admin_test_end_month.html" ? " active" : "";
     out = out.replace(

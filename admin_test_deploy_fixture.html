@@ -1,0 +1,87 @@
+<script>window.CURRENT_PAGE = "admin_test_deploy_fixture";</script>
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Deploy single fixture — GPSL Admin Testing</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .danger-card { border-color: #844; background: #1a1212; }
+    .danger-card h2 { color: #f66; }
+    .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .form-row label { font-size: 13px; color: #bbb; }
+    .form-row select {
+      display: block; min-width: 220px; max-width: 420px; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .phrase-input {
+      max-width: 360px; width: 100%; padding: 8px; margin-top: 8px;
+      background: #111; border: 1px solid #844; color: #ddd; border-radius: 4px;
+    }
+    .fixture-box {
+      margin-top: 12px; padding: 12px; background: #111; border: 1px solid #333;
+      border-radius: 6px; font-size: 13px; line-height: 1.5;
+    }
+    .fixture-box .ok { color: #9d9; }
+    .fixture-box .bad { color: #c88; }
+    .fixture-box code { color: #ff9900; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Deploy single fixture</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Testing — pick a GPSL month and club, choose one fixture, then auto-generate score + player stats
+        (same engine as Deploy month results).
+        Run <code>admin_testing_deploy_one_fixture.sql</code> in Supabase first.
+      </p>
+
+      <div class="card">
+        <h2>1. Choose fixture</h2>
+        <div class="form-row">
+          <label>
+            GPSL month
+            <select id="monthSelect"></select>
+          </label>
+          <label>
+            Club
+            <select id="clubSelect">
+              <option value="">Select month first…</option>
+            </select>
+          </label>
+          <label>
+            Fixture
+            <select id="fixtureSelect" style="min-width:340px;">
+              <option value="">Select club first…</option>
+            </select>
+          </label>
+        </div>
+        <div id="fixtureDetail" class="fixture-box" hidden></div>
+        <div id="pickStatus" class="status-line"></div>
+      </div>
+
+      <div class="card danger-card" style="margin-top:16px;">
+        <h2>2. Auto-populate &amp; calculate</h2>
+        <p class="note" style="margin-top:0;">
+          Random score (league 0–4 each; cups handle ET/pens), builds XI stats to match the score, marks played.
+          Skips inbox submit/confirm.
+        </p>
+        <p class="note">Type exactly: <code>DEPLOY TEST FIXTURE</code></p>
+        <input id="confirmPhrase" class="phrase-input" type="text" autocomplete="off" placeholder="Type: DEPLOY TEST FIXTURE">
+        <div style="margin-top:12px;">
+          <button type="button" id="deployBtn" class="button" style="background:#882222;">
+            Auto-populate &amp; calculate
+          </button>
+        </div>
+        <div id="deployStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_test_deploy_fixture.js?v=20260717-deploy-one"></script>
+</body>
+</html>

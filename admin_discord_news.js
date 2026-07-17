@@ -206,28 +206,55 @@ async function pushNews() {
   const errs = Array.isArray(data?.errors) && data.errors.length
     ? ` (${data.errors.length} error${data.errors.length === 1 ? "" : "s"})`
     : "";
+  const warn =
+    Array.isArray(data?.warnings) && data.warnings.length
+      ? ` · ${data.warnings[0]}`
+      : "";
+  const split =
+    data?.posted_results != null || data?.posted_news != null
+      ? ` (news ${data?.posted_news ?? 0}, results ${data?.posted_results ?? 0})`
+      : "";
   setStatus(
     "newsStatus",
-    `Posted ${data?.posted ?? 0} of ${data?.pending ?? 0} pending${errs}.`
+    `Posted ${data?.posted ?? 0} of ${data?.pending ?? 0} pending${split}${errs}${warn}.`
   );
   await loadQueue();
 }
 
-async function sendTest() {
-  setStatus("newsStatus", "Sending test…");
-  const { data, error } = await invokeFeed({ test: true });
+async function sendTest(channel = "news") {
+  const label = channel === "results" ? "#gpsl-results" : "#gpsl-news";
+  setStatus("newsStatus", `Sending test to ${label}…`);
+  const { data, error } = await invokeFeed({
+    test: true,
+    channel: channel === "results" ? "results" : "news",
+  });
   if (error) {
     setStatus("newsStatus", error.message, false);
     return;
   }
-  setStatus("newsStatus", data?.ok ? "Test message sent to Discord." : "Unexpected response.");
+  if (!data?.ok) {
+    setStatus("newsStatus", "Unexpected response.", false);
+    return;
+  }
+  if (channel === "results" && data.used_results_webhook === false) {
+    setStatus(
+      "newsStatus",
+      "Test sent, but DISCORD_RESULTS_WEBHOOK_URL is missing — it went to the news webhook. Add the results secret and redeploy.",
+      false
+    );
+    return;
+  }
+  setStatus("newsStatus", `Test message sent to ${label}.`);
 }
 
 document.getElementById("newsPushBtn")?.addEventListener("click", () => {
   pushNews().catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
 document.getElementById("newsTestBtn")?.addEventListener("click", () => {
-  sendTest().catch((e) => setStatus("newsStatus", e.message || String(e), false));
+  sendTest("news").catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
+document.getElementById("resultsTestBtn")?.addEventListener("click", () => {
+  sendTest("results").catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
 document.getElementById("newsRefreshBtn")?.addEventListener("click", () => {
   loadQueue()
