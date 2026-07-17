@@ -6,6 +6,7 @@ import { normalizeClubKey } from "./competition.js";
 export const INBOX_CATEGORY_FILTERS = [
   { id: "all", label: "All" },
   { id: "fixture_management", label: "Fixture management" },
+  { id: "discipline", label: "Discipline" },
   { id: "fines", label: "Fines" },
   { id: "bank", label: "Bank" },
   { id: "auctions", label: "Auctions" },
@@ -35,6 +36,11 @@ const INBOX_CATEGORY_TYPES = {
     "intl_result_to_confirm",
     "intl_kickoff_proposal",
   ]),
+  discipline: new Set([
+    "prize_appeal_submitted",
+    "prize_appeal_resolved",
+    "points_deduction",
+  ]),
   fines: new Set(["fine_applied"]),
   bank: new Set(["loan_drawdown", "loan_repayment", "loan_interest"]),
   auctions: new Set(["draft_scheduled", "special_auction_scheduled"]),
@@ -47,6 +53,9 @@ const INBOX_TYPED_CATEGORIES = Object.values(INBOX_CATEGORY_TYPES);
 const BANK_SOFT_MATCH =
   /\b(loan|repayment|drawdown|interest|central bank|installment)\b/i;
 
+const DISCIPLINE_SOFT_MATCH =
+  /\b(red card|yellow card|yellows?|suspension|suspended|appeal|points?\s+deduction|match ban|banned)\b/i;
+
 function inboxLooksLikeBank(msg) {
   const t = String(msg?.message_type || "");
   if (INBOX_CATEGORY_TYPES.bank.has(t)) return true;
@@ -56,10 +65,24 @@ function inboxLooksLikeBank(msg) {
   return BANK_SOFT_MATCH.test(text);
 }
 
+function inboxLooksLikeDiscipline(msg) {
+  const t = String(msg?.message_type || "");
+  if (INBOX_CATEGORY_TYPES.discipline.has(t)) return true;
+  // Don't steal fine_applied — those stay under Fines
+  if (INBOX_CATEGORY_TYPES.fines.has(t)) return false;
+  if (INBOX_CATEGORY_TYPES.bank.has(t)) return false;
+  const href = String(msg?.action_href || "");
+  if (/admin_prize_appeals|club_prizes|appeal/i.test(href)) return true;
+  const text = `${msg?.title || ""} ${msg?.body || ""}`;
+  return DISCIPLINE_SOFT_MATCH.test(text);
+}
+
 export function inboxMessageCategory(messageType, msg = null) {
   if (msg && inboxLooksLikeBank(msg)) return "bank";
+  if (msg && inboxLooksLikeDiscipline(msg)) return "discipline";
   const t = String(messageType || msg?.message_type || "");
   if (INBOX_CATEGORY_TYPES.fixture_management.has(t)) return "fixture_management";
+  if (INBOX_CATEGORY_TYPES.discipline.has(t)) return "discipline";
   if (INBOX_CATEGORY_TYPES.fines.has(t)) return "fines";
   if (INBOX_CATEGORY_TYPES.bank.has(t)) return "bank";
   if (INBOX_CATEGORY_TYPES.auctions.has(t)) return "auctions";
@@ -71,9 +94,11 @@ export function inboxMessageCategory(messageType, msg = null) {
 export function messageMatchesInboxCategory(msg, categoryId) {
   if (!categoryId || categoryId === "all") return true;
   if (categoryId === "bank") return inboxLooksLikeBank(msg);
+  if (categoryId === "discipline") return inboxLooksLikeDiscipline(msg);
   if (categoryId === "other") {
     const t = String(msg?.message_type || "");
     if (inboxLooksLikeBank(msg)) return false;
+    if (inboxLooksLikeDiscipline(msg)) return false;
     return !INBOX_TYPED_CATEGORIES.some((set) => set.has(t));
   }
   const set = INBOX_CATEGORY_TYPES[categoryId];
