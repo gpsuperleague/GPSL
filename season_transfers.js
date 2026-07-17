@@ -38,6 +38,9 @@ function classifyDeal(row) {
     ? listingTypeById.get(String(row.listing_id))
     : null;
 
+  if (note === "special_auction" || note.startsWith("special_auction:")) {
+    return "special";
+  }
   if (listingType === "draft") return "draft";
   if (note === "squad_overflow") return "release";
   if (isForeignBuyerClub(row.buyer_club_id)) return "foreign";
@@ -60,6 +63,8 @@ function dealTypeLabel(kind) {
       return "Foreign sale";
     case "release":
       return "Squad release";
+    case "special":
+      return "Special auction";
     default:
       return "Deal";
   }
