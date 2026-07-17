@@ -157,7 +157,7 @@ async function loadPrizeBlock() {
   el.innerHTML = prizeHtml;
 }
 
-function render() {
+async function render() {
   if (!state) return;
   document.getElementById("pageTitle").textContent = state.title || "Blind Gauntlet";
   document.getElementById("phaseLabel").textContent = phaseTitle(
@@ -435,7 +435,7 @@ async function refreshState() {
   }
   state = data;
   await loadPrizeBlock();
-  render();
+  await render();
 }
 
 async function submitBid() {
