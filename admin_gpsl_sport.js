@@ -5,6 +5,7 @@ const {
   primeAdminPageChrome,
   setStatus,
   supabase,
+  whenDomReady,
 } = await import(`./admin_common.js?v=${APP_VERSION}`);
 
 primeAdminPageChrome();
@@ -184,7 +185,7 @@ async function republishSport() {
   await loadEditions();
 }
 
-async function bootPage() {
+whenDomReady(async () => {
   if (!(await initAdminPage())) return;
 
   document.getElementById("sportPublishBtn").onclick = republishSport;
@@ -193,19 +194,4 @@ async function bootPage() {
 
   await loadSeasons();
   await loadEditions();
-}
-
-// Top-level await means DOMContentLoaded may already have fired — don't wait for it.
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", () => {
-    bootPage().catch((err) => {
-      console.error(err);
-      setStatus("sportPublishStatus", "❌ " + (err?.message || err), false);
-    });
-  });
-} else {
-  bootPage().catch((err) => {
-    console.error(err);
-    setStatus("sportPublishStatus", "❌ " + (err?.message || err), false);
-  });
-}
+});

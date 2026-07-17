@@ -1,4 +1,4 @@
-import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+import { initAdminPage, primeAdminPageChrome, setStatus, supabase, whenDomReady } from "./admin_common.js";
 import {
   adminMainNavHref,
   getAdminWorkflowChecklist,
@@ -18,7 +18,7 @@ let doneMap = new Map();
 let storageMode = "local";
 let hideDone = false;
 
-document.addEventListener("DOMContentLoaded", async () => {
+whenDomReady(async () => {
   if (!(await initAdminPage())) return;
 
   document.getElementById("wfExpandAll")?.addEventListener("click", () => setAllDetails(true));
