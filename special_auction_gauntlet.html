@@ -24,6 +24,43 @@
     .tier.middle { background:#3a3210; color:#fc6; }
     .tier.bottom { background:#3a1e1e; color:#f88; }
     .button { cursor:pointer; }
+    .sa-player-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px;
+    }
+    .sa-player-row .sa-player-card-link { flex: 0 0 auto; line-height: 0; }
+    .sa-player-row .sa-player-card {
+      height: 140px;
+      width: auto;
+      max-width: 110px;
+      object-fit: contain;
+      display: block;
+      margin: 0;
+      background: #000;
+      border-radius: 6px;
+      border: 1px solid #333;
+      padding: 2px;
+    }
+    .sa-player-meta {
+      flex: 1 1 180px;
+      min-width: 0;
+      font-size: 15px;
+      line-height: 1.45;
+      color: #eee;
+    }
+    .sa-player-meta .gpsl-player-link {
+      color: #ff9900;
+      font-weight: bold;
+      text-decoration: none;
+    }
+    .sa-player-meta .gpsl-player-link:hover { text-decoration: underline; }
+    .sa-player-meta .sa-player-sub {
+      color: #aaa;
+      font-size: 13px;
+      margin-top: 4px;
+    }
     input {
       background:#222; color:#eee; border:1px solid #444; border-radius:4px; padding:8px 10px;
     }
@@ -80,6 +117,6 @@
       <div id="phase1Table"></div>
     </div>
   </div>
-  <script type="module" src="special_auction_gauntlet.js?v=20260717-money-format"></script>
+  <script type="module" src="special_auction_gauntlet.js?v=20260717-player-card"></script>
 </body>
 </html>

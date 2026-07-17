@@ -29,6 +29,47 @@
       padding: 12px;
       margin: 12px 0;
     }
+    .sa-player-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px;
+    }
+    .sa-player-row .sa-player-card-link {
+      flex: 0 0 auto;
+      line-height: 0;
+    }
+    .sa-player-row .player-thumb,
+    .sa-player-row .sa-player-card {
+      height: 140px;
+      width: auto;
+      max-width: 110px;
+      object-fit: contain;
+      display: block;
+      margin: 0;
+      background: #000;
+      border-radius: 6px;
+      border: 1px solid #333;
+      padding: 2px;
+    }
+    .sa-player-meta {
+      flex: 1 1 180px;
+      min-width: 0;
+      font-size: 15px;
+      line-height: 1.45;
+      color: #eee;
+    }
+    .sa-player-meta .gpsl-player-link {
+      color: #ff9900;
+      font-weight: bold;
+      text-decoration: none;
+    }
+    .sa-player-meta .gpsl-player-link:hover { text-decoration: underline; }
+    .sa-player-meta .sa-player-sub {
+      color: #aaa;
+      font-size: 13px;
+      margin-top: 4px;
+    }
     table.gpsl-table { width: 100%; border-collapse: collapse; }
     table.gpsl-table th, table.gpsl-table td {
       border: 1px solid #333;
@@ -511,9 +552,16 @@
           els.playerReveal.innerHTML =
             (els.playerReveal.innerHTML || "") +
             `
-            <div class="clue-box">
-              ${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}
-              <b>${playerNameLinkHtml(p.Konami_ID, p.Name)}</b> — ${p.Position} · ${p.Rating}
+            <div class="clue-box sa-player-row">
+              ${playerThumbLinkHtml(p.Konami_ID, {
+                alt: p.Name,
+                className: "sa-player-card",
+                linkClass: "sa-player-card-link",
+              })}
+              <div class="sa-player-meta">
+                <div>${playerNameLinkHtml(p.Konami_ID, p.Name)}</div>
+                <div class="sa-player-sub">${p.Position || "?"} · Rating ${p.Rating || "?"}</div>
+              </div>
             </div>${revealNote}`;
         }
       }
@@ -831,12 +879,20 @@
 
       if (player) {
         els.prizeOptionsPlayer.innerHTML = `
-          <div class="clue-box">
-            ${playerThumbLinkHtml(player.Konami_ID, { alt: player.Name })}
-            <b>${playerNameLinkHtml(player.Konami_ID, player.Name)}</b>
-            — ${player.Position || "?"} · ${player.Rating || "?"}
-            · MV ${formatMoney(mv)}
-            · 125% release ${formatMoney(releaseCredit)}
+          <div class="clue-box sa-player-row">
+            ${playerThumbLinkHtml(player.Konami_ID, {
+              alt: player.Name,
+              className: "sa-player-card",
+              linkClass: "sa-player-card-link",
+            })}
+            <div class="sa-player-meta">
+              <div>${playerNameLinkHtml(player.Konami_ID, player.Name)}</div>
+              <div class="sa-player-sub">
+                ${player.Position || "?"} · Rating ${player.Rating || "?"}
+                · MV ${formatMoney(mv)}
+                · 125% release ${formatMoney(releaseCredit)}
+              </div>
+            </div>
           </div>`;
       } else {
         els.prizeOptionsPlayer.innerHTML = pid

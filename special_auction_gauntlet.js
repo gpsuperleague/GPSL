@@ -1,7 +1,7 @@
 import { initGlobal, supabase, getAuthUserFast } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney, fetchPrizePlayerBrief } from "./special_auction.js";
-import { playerNameLinkHtml } from "./player_links.js";
+import { playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
 import { parseMoneyInput, wireMoneyBidInput } from "./money_input.js";
 
 let state = null;
@@ -102,12 +102,21 @@ async function loadPrizeBlock() {
     const p = await fetchPrizePlayerBrief(supabase, pid);
     if (p) {
       prizeHtml = `
-        <div style="font-size:15px;color:#eee;">
-          <b>${playerNameLinkHtml(p.Konami_ID, p.Name || pid)}</b>
-          — ${p.Position || "?"} · Rating ${p.Rating || "?"}
-          · MV ${formatMoney(p.market_value)}
+        <div class="sa-player-row">
+          ${playerThumbLinkHtml(p.Konami_ID, {
+            alt: p.Name || pid,
+            className: "sa-player-card",
+            linkClass: "sa-player-card-link",
+          })}
+          <div class="sa-player-meta">
+            <div>${playerNameLinkHtml(p.Konami_ID, p.Name || pid)}</div>
+            <div class="sa-player-sub">
+              ${p.Position || "?"} · Rating ${p.Rating || "?"}
+              · MV ${formatMoney(p.market_value)}
+            </div>
+            <div class="sa-player-sub">Player prize · ID ${pid}</div>
+          </div>
         </div>
-        <div class="meta" style="margin-top:4px;">Player prize · ID ${pid}</div>
         ${packLine}`;
     } else {
       prizeHtml = `<div><b>Player prize</b> · ID ${pid}</div>${packLine}`;
