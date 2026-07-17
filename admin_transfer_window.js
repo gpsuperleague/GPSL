@@ -65,22 +65,17 @@ async function saveTransferWindow() {
     return;
   }
 
-  const discordBit = data.discord_queue_id
-    ? ` Discord queued #${data.discord_queue_id} — Push on Discord News if needed.`
-    : data.changed === false
+  const discordBit =
+    data.changed === false
       ? " (already that state — flip the other way for Discord)."
-      : data.discord_error
-        ? ` Discord failed: ${data.discord_error}`
-        : data.hint
-          ? ` ${data.hint}`
-          : "";
+      : " One Discord notification should post to #gpsl-notifications.";
 
   setStatus(
     "transferWindowStatus",
     (transfer_window_open
       ? "✅ Transfer window is now open."
       : "✅ Transfer window is now closed.") + discordBit,
-    !data.discord_error
+    true
   );
   await loadGlobalSettings();
   await loadTransferWindow();
