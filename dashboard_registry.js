@@ -67,6 +67,7 @@ const TILE_IMAGE_BY_ID = {
   admin_owners: `${PANEL_BG}/Club_Details.png`,
   admin_transfers: `${PANEL_BG}/Transfer.png`,
   admin_season: `${PANEL_BG}/Progress.png`,
+  admin_gpsl_sport: `${PANEL_BG}/Progress.png`,
   admin_draft: `${PANEL_BG}/Transfer.png`,
   admin_fixtures_league: `${PANEL_BG}/Fixtures.png`,
   admin_fixtures_cups: `${PANEL_BG}/Fixtures.png`,
@@ -193,6 +194,7 @@ export const DASHBOARD_PANELS = [
   p("admin_transfers", "Transfer Admin", "admin_transfers.html", { adminOnly: true }),
   p("admin_transfer_window", "Transfer window", "admin_transfer_window.html", { adminOnly: true }),
   p("admin_season", "Season Admin", "admin_season.html", { adminOnly: true }),
+  p("admin_gpsl_sport", "Republish GPSL Sport", "admin_gpsl_sport.html", { adminOnly: true }),
   p("admin_draft", "Draft Admin", "admin_draft.html", { adminOnly: true }),
   p("admin_fixtures_league", "League Fixtures", "admin_fixtures-league.html", {
     page: "admin_fixtures-league.html",

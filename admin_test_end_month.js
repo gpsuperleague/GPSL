@@ -550,7 +550,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("openNextCheck")?.addEventListener("change", updateEndMonthPhraseHint);
   document.getElementById("previewEndBtn").onclick = previewEndGpslMonth;
   document.getElementById("endMonthBtn").onclick = endGpslMonthEarly;
-  document.getElementById("sportPublishBtn").onclick = publishSelectedSportEdition;
   document.getElementById("previewOpenNextBtn").onclick = previewOpenNextGpslMonth;
   document.getElementById("openNextBtn").onclick = openNextGpslMonth;
 

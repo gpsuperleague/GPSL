@@ -1,4 +1,14 @@
-import { supabase, initGlobal, isGpslAdminUser } from "./global.js";
+import { APP_VERSION } from "./app_version.js";
+
+/**
+ * Always load global.js with APP_VERSION so admin nav cache-busts when
+ * app_version.js is bumped (bare ./global.js stays stuck in the browser forever).
+ */
+const __gpslGlobal = await import(`./global.js?v=${APP_VERSION}`);
+
+export const supabase = __gpslGlobal.supabase;
+export const initGlobal = __gpslGlobal.initGlobal;
+export const isGpslAdminUser = __gpslGlobal.isGpslAdminUser;
 
 /** Apply dark admin chrome immediately (avoids white flash before module loads). */
 export function primeAdminPageChrome() {
@@ -38,4 +48,4 @@ export function setStatus(elementId, msg, ok = true) {
   el.className = ok ? "status-line" : "status-line error";
 }
 
-export { supabase };
+export { APP_VERSION };

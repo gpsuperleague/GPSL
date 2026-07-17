@@ -67,15 +67,39 @@ function ensureTestingNavLinks(html, pathname) {
   return out;
 }
 
+function ensureSeasonManagementNavLinks(html, pathname) {
+  const file = normalizeNavPath(pathname);
+  let out = html;
+
+  if (!out.includes("admin_gpsl_sport.html")) {
+    const active = file === "admin_gpsl_sport.html" ? " active" : "";
+    out = out.replace(
+      /class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">/,
+      `class="nav-subgroup-panel nav-subgroup-panel-mega" role="group"><a href="admin_gpsl_sport.html" class="nav-link nav-link-sub${active}">Republish GPSL Sport</a>`
+    );
+  }
+
+  return out;
+}
+
 export function renderAdminMegaNavHtml(item, pathname, search = "") {
   if (item?.adminMainMega && item.section) {
-    return renderAdminMainSectionHtml(item.section, pathname, search);
+    let html = renderAdminMainSectionHtml(item.section, pathname, search);
+    if (item.section === "season_management") {
+      html = ensureSeasonManagementNavLinks(html, pathname);
+    }
+    return html;
   }
   if (item?.testingMega) {
     return ensureTestingNavLinks(renderTestingAdminNavHtml(pathname, search), pathname);
   }
   if (item?.seasonMega) return renderSeasonAdminNavHtml(pathname, search);
-  if (item?.seasonMgmtMega) return renderSeasonMgmtAdminNavHtml(pathname, search);
+  if (item?.seasonMgmtMega) {
+    return ensureSeasonManagementNavLinks(
+      renderSeasonMgmtAdminNavHtml(pathname, search),
+      pathname
+    );
+  }
   if (item?.seasonBreakMega) return renderSeasonBreakNavHtml(pathname, search);
   if (item?.ownersMega) return renderOwnerAdminNavHtml(pathname, search);
   return "";

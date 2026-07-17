@@ -1,0 +1,91 @@
+<script>window.CURRENT_PAGE = "admin_gpsl_sport";</script>
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Republish GPSL Sport — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .form-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+    .form-row label { font-size: 13px; color: #bbb; }
+    .form-row select {
+      display: block; min-width: 220px; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .edition-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+    .edition-table th, .edition-table td {
+      border: 1px solid #333; padding: 8px; text-align: left;
+    }
+    .edition-table th { background: #1a1a1a; color: #ff9900; }
+    .missing { color: #c88; }
+    .ok { color: #9d9; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Republish GPSL Sport</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Create or rebuild a GPSL Sport edition for a locked month
+        (e.g. after <a href="admin_test_end_month.html" style="color:#ff9900;">End Month Early</a>).
+        Run <code>gpsl_sport_early_month_publish_fix.sql</code> in Supabase once if publish fails.
+      </p>
+
+      <div class="card">
+        <h2>Publish / rebuild edition</h2>
+        <div class="form-row">
+          <label>
+            Season
+            <select id="sportSeasonSelect"></select>
+          </label>
+          <label>
+            GPSL month
+            <select id="sportMonthSelect">
+              <option value="august">August</option>
+              <option value="september">September</option>
+              <option value="october">October</option>
+              <option value="november">November</option>
+              <option value="december">December</option>
+              <option value="january">January</option>
+              <option value="february">February</option>
+              <option value="march" selected>March</option>
+              <option value="april">April</option>
+              <option value="may">May</option>
+            </select>
+          </label>
+          <button type="button" id="sportPublishBtn" class="button" style="background:#336699;">
+            Republish GPSL Sport
+          </button>
+          <button type="button" id="sportRefreshBtn" class="button" style="background:#555;">
+            Refresh list
+          </button>
+        </div>
+        <div id="sportPublishStatus" class="status-line"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h2>Existing editions (current season)</h2>
+        <p class="note" id="sportListNote" style="margin-top:0;">Loading…</p>
+        <table class="edition-table">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Edition</th>
+              <th>Published</th>
+              <th>ID</th>
+            </tr>
+          </thead>
+          <tbody id="sportEditionBody">
+            <tr><td colspan="4" style="color:#888;">—</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_gpsl_sport.js?v=20260717-sport-nav-bust"></script>
+</body>
+</html>

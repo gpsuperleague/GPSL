@@ -117,7 +117,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compCalendarBreakBtn").onclick = insertCompCalendarBreak;
   document.getElementById("compCalendarClearBtn").onclick = clearCompCalendar;
   document.getElementById("compInboxMonthBtn").onclick = sendMonthPreviewInbox;
-  document.getElementById("compSportRebuildBtn").onclick = rebuildGpslSportEdition;
+  // Sport rebuild lives on admin_gpsl_sport.html
+  const sportRebuildBtn = document.getElementById("compSportRebuildBtn");
+  if (sportRebuildBtn) sportRebuildBtn.onclick = rebuildGpslSportEdition;
 
   await refreshCompetitionAdmin();
   await refreshCompCalendarAdmin();
