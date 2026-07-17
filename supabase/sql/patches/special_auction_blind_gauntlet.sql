@@ -138,9 +138,13 @@ BEGIN
   END IF;
 
   v_top := greatest(1, ceil(v_n * 0.25)::int);
-  v_bottom := greatest(0, floor(v_n * 0.25)::int);
+  v_bottom := greatest(0, ceil(v_n * 0.25)::int);
   IF v_top + v_bottom > v_n THEN
     v_bottom := greatest(0, v_n - v_top);
+  END IF;
+  -- Keep at least one middle seat when there are 3+ bids
+  IF v_n >= 3 AND v_top + v_bottom >= v_n THEN
+    v_bottom := greatest(0, v_n - v_top - 1);
   END IF;
   v_middle := v_n - v_top - v_bottom;
 
@@ -190,9 +194,9 @@ BEGIN
           WHEN 'top' THEN
             E'You finished in the Top tier (top 25%).\nYou advance to Phase 2.\nPhase 1 fee: ₿0.\nYour Phase 2 bid must be ≥ your Phase 1 bid.'
           WHEN 'middle' THEN
-            E'You finished in the Middle tier.\nYou are eliminated.\nPhase 1 fee charged: ₿500,000 (non-refundable).'
+            E'You finished in the Middle tier.\nYou have been eliminated from Round 2.\nPhase 1 fee charged: ₿500,000 (non-refundable).'
           ELSE
-            E'You finished in the Bottom tier.\nYou are eliminated.\nPhase 1 fee charged: ₿1,000,000 (non-refundable).'
+            E'You finished in the Bottom tier.\nYou have been eliminated from Round 2.\nPhase 1 fee charged: ₿1,000,000 (non-refundable).'
         END,
         r.club_id,
         NULL, NULL, NULL, NULL, NULL,
