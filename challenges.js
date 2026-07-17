@@ -294,7 +294,9 @@ async function loadStandings() {
   const el = document.getElementById("challengeStandings");
   if (!el) return;
 
-  const { data, error } = await supabase.rpc("competition_challenge_league_table");
+  const { data, error } = await supabase.rpc("competition_challenge_league_table", {
+    p_season_id: null,
+  });
   if (error) {
     el.innerHTML = `<p class="phase-empty">Could not load standings (${error.message}). Run the league-table SQL patch if this is a new function.</p>`;
     return;
