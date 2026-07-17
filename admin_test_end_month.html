@@ -79,7 +79,8 @@
         <h2>End current GPSL month now</h2>
         <p class="note" style="margin-top:0;">
           Use after deploying month results. Unplayed fixtures stay unplayed unless you deploy them first.
-          Run <code>competition_admin_end_gpsl_month.sql</code> in Supabase if RPCs are missing.
+          Run <code>competition_admin_end_gpsl_month.sql</code> once, then
+          <code>competition_admin_end_gpsl_month_timeout_fix.sql</code> if End Month Early times out.
         </p>
         <div id="endMonthPreview" class="preview-box" hidden></div>
         <label class="check-row">
@@ -120,6 +121,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_end_month.js"></script>
+  <script type="module" src="admin_test_end_month.js?v=20260717-timeout"></script>
 </body>
 </html>

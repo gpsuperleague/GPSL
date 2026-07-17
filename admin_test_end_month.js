@@ -282,8 +282,8 @@ async function endGpslMonthEarly() {
   setStatus(
     "endMonthStatus",
     openNext
-      ? "Ending month, running lock jobs, opening next month…"
-      : "Ending month and running lock jobs…"
+      ? "Ending month and opening next…"
+      : "Ending month…"
   );
 
   const { data, error } = await supabase.rpc("competition_admin_end_gpsl_month_early", {
@@ -307,12 +307,51 @@ async function endGpslMonthEarly() {
   document.getElementById("endMonthPhrase").value = "";
   renderEndMonthPreview(data);
 
-  const totm = data.month_lock_jobs?.team_of_month?.processed;
-  const sport = data.month_lock_jobs?.gpsl_sport?.processed;
+  // Month is locked in its own transaction; run heavy jobs separately so a
+  // Sport/TOTM timeout cannot roll back the calendar lock.
+  let jobs = data.month_lock_jobs || null;
+  if (data.lock_jobs_deferred !== false) {
+    setStatus(
+      "endMonthStatus",
+      `✅ ${data.gpsl_month_label} locked. Running month-lock jobs (TOTM, Sport, fines)…`
+    );
+    const { data: jobData, error: jobErr } = await supabase.rpc(
+      "competition_admin_run_month_lock_jobs",
+      {
+        p_season_id: data.season_id || seasonId || null,
+        p_gpsl_month: data.gpsl_month || null,
+        p_force_scheduling: true,
+      }
+    );
+    if (jobErr) {
+      const missing = /competition_admin_run_month_lock_jobs/i.test(jobErr.message || "");
+      setStatus(
+        "endMonthStatus",
+        missing
+          ? `✅ ${data.gpsl_month_label} locked, but job RPC missing — run competition_admin_end_gpsl_month_timeout_fix.sql then retry jobs.`
+          : `✅ ${data.gpsl_month_label} locked, but jobs failed: ${jobErr.message}`,
+        false
+      );
+      await loadCalendarTable();
+      return;
+    }
+    jobs = jobData;
+    data.month_lock_jobs = jobData;
+    renderEndMonthPreview(data);
+  }
+
+  const totm = jobs?.team_of_month?.processed;
+  const sport = jobs?.gpsl_sport?.processed;
   const totmCount = Array.isArray(totm) ? totm.length : 0;
   const sportCount = Array.isArray(sport) ? sport.length : 0;
   const activeAfter = data.active_gpsl_month_after;
   const pull = data.calendar_pull_forward;
+
+  const jobErrors = [
+    jobs?.team_of_month?.error,
+    jobs?.gpsl_sport?.error,
+    jobs?.tv_selection?.error,
+  ].filter(Boolean);
 
   let statusMsg = `✅ ${data.gpsl_month_label} locked early. TOTM: ${totmCount}, GPSL Sport: ${sportCount}.`;
   if (openNext && pull?.ok) {
@@ -320,8 +359,11 @@ async function endGpslMonthEarly() {
   } else if (activeAfter) {
     statusMsg += ` Active month: ${activeAfter}.`;
   }
+  if (jobErrors.length) {
+    statusMsg += ` Job warnings: ${jobErrors.join("; ")}`;
+  }
 
-  setStatus("endMonthStatus", statusMsg);
+  setStatus("endMonthStatus", statusMsg, jobErrors.length === 0);
   await loadCalendarTable();
 }
 
