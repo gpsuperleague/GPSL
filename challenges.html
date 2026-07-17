@@ -14,13 +14,19 @@
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       padding:18px 20px; margin-bottom:20px;
     }
+    .panel h2 { color:#ff9900; font-size:16px; margin:0 0 12px; }
+    .panel h3 {
+      color:#ccc; font-size:14px; margin:18px 0 10px;
+      padding-bottom:6px; border-bottom:1px solid #333;
+    }
+    .panel h3:first-of-type { margin-top:0; }
     .challenge-grid {
       display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px;
     }
     .challenge-card {
       background:#222; border:1px solid #333; border-radius:6px; padding:14px;
     }
-    .challenge-card h3 { margin:0 0 8px; font-size:15px; color:#ffcc66; }
+    .challenge-card h3 { margin:0 0 8px; font-size:15px; color:#ffcc66; border:none; padding:0; }
     .challenge-progress {
       font-size:22px; font-weight:700; color:#eee; margin:0 0 6px;
     }
@@ -37,6 +43,16 @@
       letter-spacing:0.05em; padding:2px 6px; border-radius:4px;
       background:#333; color:#bbb; margin-right:6px;
     }
+    .window-tag.start { background:#2a3d2a; color:#9fdf9f; }
+    .window-tag.mid { background:#2a353d; color:#9fd4ff; }
+    .big-prize-card {
+      background:#222; border:1px solid #333; border-radius:6px;
+      padding:14px; margin-bottom:12px;
+    }
+    .big-prize-card:last-child { margin-bottom:0; }
+    .big-prize-card .prize-status-won { color:#8d8; margin-top:8px; font-size:13px; }
+    .big-prize-card .prize-status-open { color:#fc6; margin-top:8px; font-size:13px; }
+    .phase-empty { color:#888; font-size:13px; margin:0; }
   </style>
 </head>
 <body>
@@ -50,29 +66,39 @@
     </p>
 
     <div class="panel">
-      <h2 style="color:#ff9900;font-size:16px;margin:0 0 12px;">Big prize (first to finish all)</h2>
+      <h2>Big prize (first to finish all)</h2>
       <div id="challengeBigPrize" class="meta">Loading…</div>
     </div>
 
     <div class="panel">
-      <h2 style="color:#ff9900;font-size:16px;margin:0 0 12px;">Your progress</h2>
-      <div id="challengeProgressGrid" class="challenge-grid">
-        <p class="meta">Loading…</p>
+      <h2>Your progress</h2>
+      <h3>Start of season</h3>
+      <div id="progressStart" class="challenge-grid">
+        <p class="phase-empty">Loading…</p>
+      </div>
+      <h3>Mid-season</h3>
+      <div id="progressMid" class="challenge-grid">
+        <p class="phase-empty">Loading…</p>
       </div>
     </div>
 
     <div class="panel">
-      <h2 style="color:#ff9900;font-size:16px;margin:0 0 12px;">All season targets</h2>
-      <div id="challengeCatalogGrid" class="challenge-grid">
-        <p class="meta">Loading…</p>
+      <h2>All season targets</h2>
+      <h3>Start of season</h3>
+      <div id="catalogStart" class="challenge-grid">
+        <p class="phase-empty">Loading…</p>
+      </div>
+      <h3>Mid-season</h3>
+      <div id="catalogMid" class="challenge-grid">
+        <p class="phase-empty">Loading…</p>
       </div>
     </div>
 
     <div class="panel">
-      <h2 style="color:#ff9900;font-size:16px;margin:0 0 12px;">Awards this season</h2>
+      <h2>Awards this season</h2>
       <ul id="challengeAwardsList" class="awards-list"></ul>
     </div>
   </div>
-  <script type="module" src="challenges.js"></script>
+  <script type="module" src="challenges.js?v=20260717-phases"></script>
 </body>
 </html>
