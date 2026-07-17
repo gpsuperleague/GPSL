@@ -21,7 +21,8 @@
         <h2>Add member (waiting list)</h2>
         <p class="note">
           Creates the login and adds them to the <b>bottom</b> of the waiting list as a
-          <code>member</code>. Use <a href="admin_owners_waiting_list.html">Waiting list</a> to invite them to a club
+          <code>member</code>. <b>Discord tag is required</b> (shown on waiting list / NEW OWNER news later).
+          Use <a href="admin_owners_waiting_list.html">Waiting list</a> to invite them to a club
           auction or assign a club when a slot opens. Requires
           <code>gpsl_waiting_list.sql</code> and the <code>create-owner-club-auction</code> edge function.
         </p>
@@ -35,6 +36,7 @@
               placeholder="Temporary password (min 6 chars)"
             >
           </div>
+          <div><input id="clubAuctionDiscordTag" placeholder="Discord tag / display name" autocomplete="off"></div>
         </div>
         <label class="note" style="display:flex;align-items:center;gap:8px;margin:10px 0 0;">
           <input type="checkbox" id="clubAuctionRegisterOnly">

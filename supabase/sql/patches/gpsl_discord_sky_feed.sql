@@ -327,9 +327,11 @@ BEGIN
   END IF;
 
   v_title := coalesce(nullif(btrim(NEW.title), ''), 'Special auction');
-  v_type_label := CASE
-    WHEN NEW.auction_type = 'snap' THEN 'Snap auction'
-    ELSE 'Lowest unique bid'
+  v_type_label := CASE NEW.auction_type
+    WHEN 'lowest_unique' THEN 'Lowest unique bid'
+    WHEN 'snap' THEN 'Snap auction'
+    WHEN 'blind_gauntlet' THEN 'Blind Gauntlet'
+    ELSE 'Special auction'
   END;
 
   v_detail := concat_ws(
@@ -337,7 +339,8 @@ BEGIN
     v_type_label,
     'Starts: ' || to_char(NEW.start_time AT TIME ZONE 'Europe/London', 'Dy DD Mon YYYY HH24:MI') || ' (UK)',
     CASE
-      WHEN NEW.auction_type IS DISTINCT FROM 'snap' THEN
+      WHEN NEW.auction_type = 'snap' THEN NULL
+      WHEN NEW.end_time IS NOT NULL THEN
         'Ends: ' || to_char(NEW.end_time AT TIME ZONE 'Europe/London', 'Dy DD Mon YYYY HH24:MI') || ' (UK)'
       ELSE NULL
     END

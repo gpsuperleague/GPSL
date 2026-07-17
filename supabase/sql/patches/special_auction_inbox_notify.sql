@@ -82,9 +82,11 @@ BEGIN
   END IF;
 
   v_start := to_char(a.start_time AT TIME ZONE 'Europe/London', 'Dy DD Mon YYYY HH24:MI');
-  v_type_label := CASE
-    WHEN a.auction_type = 'snap' THEN 'Snap auction'
-    ELSE 'Lowest unique bid auction'
+  v_type_label := CASE a.auction_type
+    WHEN 'lowest_unique' THEN 'Lowest unique bid auction'
+    WHEN 'snap' THEN 'Snap auction'
+    WHEN 'blind_gauntlet' THEN 'Blind Gauntlet'
+    ELSE 'Special auction'
   END;
 
   v_title := format('%s scheduled', v_type_label);
@@ -96,13 +98,32 @@ BEGIN
       coalesce(nullif(btrim(a.title), ''), 'Special auction'),
       v_start
     );
-  ELSE
+  ELSIF a.auction_type = 'blind_gauntlet' THEN
+    v_body := format(
+      E'%s — %s\n\nOpens %s (UK).\nTwo blind phases (Phase 1 → reveal → Phase 2). Check Special Auction / Blind Gauntlet for rules and fees.\n\nOpen Blind Gauntlet to take part.',
+      v_type_label,
+      coalesce(nullif(btrim(a.title), ''), 'Special auction'),
+      v_start
+    );
+  ELSIF a.auction_type = 'lowest_unique' THEN
     v_body := format(
       E'%s — %s\n\nBidding window: %s (UK) until %s (UK).\nOne secret bid per club (nearest ₿1m). Lowest unique bid wins.\n\nOpen Special Auction to take part.',
       v_type_label,
       coalesce(nullif(btrim(a.title), ''), 'Special auction'),
       v_start,
       to_char(a.end_time AT TIME ZONE 'Europe/London', 'Dy DD Mon YYYY HH24:MI')
+    );
+  ELSE
+    v_body := format(
+      E'%s — %s\n\nOpens %s (UK)%s.\n\nOpen Special Auction to take part.',
+      v_type_label,
+      coalesce(nullif(btrim(a.title), ''), 'Special auction'),
+      v_start,
+      CASE
+        WHEN a.end_time IS NOT NULL THEN
+          ' until ' || to_char(a.end_time AT TIME ZONE 'Europe/London', 'Dy DD Mon YYYY HH24:MI') || ' (UK)'
+        ELSE ''
+      END
     );
   END IF;
 
@@ -115,7 +136,10 @@ BEGIN
     'special_auction_scheduled',
     v_title,
     v_body,
-    'special_auction.html',
+    CASE
+      WHEN a.auction_type = 'blind_gauntlet' THEN 'special_auction_gauntlet.html'
+      ELSE 'special_auction.html'
+    END,
     v_dedupe,
     NULL
   );

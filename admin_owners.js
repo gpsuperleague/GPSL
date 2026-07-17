@@ -450,6 +450,8 @@ async function invokeEdgeFunction(name, body) {
 async function registerForClubAuction() {
   const email = document.getElementById("clubAuctionEmail")?.value?.trim().toLowerCase();
   const password = document.getElementById("clubAuctionPassword")?.value?.trim() || "";
+  const discordTag =
+    document.getElementById("clubAuctionDiscordTag")?.value?.trim() || "";
   const registerOnly =
     document.getElementById("clubAuctionRegisterOnly")?.checked === true;
 
@@ -463,6 +465,15 @@ async function registerForClubAuction() {
     return;
   }
 
+  if (!discordTag) {
+    setStatus(
+      "clubAuctionStatus",
+      "Enter their Discord tag / display name.",
+      false
+    );
+    return;
+  }
+
   setStatus("clubAuctionStatus", registerOnly ? "Registering existing account…" : "Creating owner…");
 
   const { data, error } = await invokeEdgeFunction("create-owner-club-auction", {
@@ -470,6 +481,7 @@ async function registerForClubAuction() {
     password: registerOnly ? undefined : password,
     startingBalance: clubAuctionStartingBalance,
     registerOnly,
+    ownerTag: discordTag,
   });
 
   if (error) {
@@ -481,11 +493,29 @@ async function registerForClubAuction() {
     return;
   }
 
+  // Ensure tag is stored even if edge upsert skipped it
+  const { error: tagErr } = await supabase.rpc("admin_owner_set_tag", {
+    p_owner_email: email,
+    p_tag: discordTag,
+  });
+  if (tagErr) {
+    setStatus(
+      "clubAuctionStatus",
+      `⚠️ Account on waiting list, but Discord tag failed: ${tagErr.message}. Set tag under Owners.`,
+      false
+    );
+    await loadOwnerList();
+    return;
+  }
+
   if (document.getElementById("clubAuctionEmail")) {
     document.getElementById("clubAuctionEmail").value = "";
   }
   if (document.getElementById("clubAuctionPassword")) {
     document.getElementById("clubAuctionPassword").value = "";
+  }
+  if (document.getElementById("clubAuctionDiscordTag")) {
+    document.getElementById("clubAuctionDiscordTag").value = "";
   }
 
   const action = data?.register_only
@@ -498,7 +528,7 @@ async function registerForClubAuction() {
 
   setStatus(
     "clubAuctionStatus",
-    `✅ ${email} ${action} — added to the bottom of the waiting list. Share login details; they start at member_home.html.`,
+    `✅ ${discordTag} (${email}) ${action} — added to the bottom of the waiting list. Share login details; they start at member_home.html.`,
     true
   );
   await loadOwnerList();
