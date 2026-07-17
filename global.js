@@ -1250,6 +1250,13 @@ function navLinkLeadingHtml(item) {
       `</svg></span>`
     );
   }
+  if (item?.navIcon === "rewards") {
+    return (
+      `<span class="nav-rewards-icon" title="Rewards Centre" aria-hidden="true">` +
+      `<img src="images/nav/rewards_medal.png" alt="" width="18" height="18" loading="lazy" />` +
+      `</span>`
+    );
+  }
   const nationSrc = item.nationCode ? nationFlagSrc(item.nationCode) : null;
   if (nationSrc) {
     return (

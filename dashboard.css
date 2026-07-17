@@ -1234,6 +1234,22 @@ button.nav-admin-trigger {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
+.nav-rewards-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  line-height: 0;
+}
+
+.nav-rewards-icon img {
+  display: block;
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
 .nav-dropdown .nav-link {
   pointer-events: auto;
   display: flex;
