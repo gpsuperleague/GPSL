@@ -143,6 +143,7 @@ export const DASHBOARD_PANELS = [
   p("cups", "Cups", "cups.html", { defaultOn: true }),
   p("world_cup", "World Cup", "world_cup.html", { defaultOn: true }),
   p("challenges", "Season Challenges", "challenges.html"),
+  p("club_challenges", "Challenges", "club_challenges.html", { defaultOn: true }),
   p("club_prizes", "Rewards Centre", "club_prizes.html"),
   p("central_bank", "Central Bank", "central_bank.html", { defaultOn: true }),
   p("central_bank_loans", "League Loans", "central_bank_loans.html"),

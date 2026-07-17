@@ -55,18 +55,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     .eq("owner_id", user.id)
     .maybeSingle();
 
-  if (!club?.ShortName) {
-    renderError("No club linked to your account.");
-    return;
+  const clubShort = club?.ShortName || null;
+  document.title = clubShort
+    ? `Season challenges — ${fullClubName(clubShort) || clubShort}`
+    : "Season challenges";
+
+  // Progress is only needed for big-prize open/closed status
+  let progressItems = [];
+  if (clubShort) {
+    const { data } = await supabase.rpc("competition_challenge_club_progress", {
+      p_club_short_name: clubShort,
+    });
+    progressItems = data?.challenges || [];
   }
 
-  document.title = `Season challenges — ${fullClubName(club.ShortName) || club.ShortName}`;
-
-  const progressItems = await loadMyProgress(club.ShortName);
   await Promise.all([
     loadBigPrizePacks(progressItems),
     loadCatalog(),
-    loadAwards(club.ShortName),
   ]);
 });
 
@@ -192,47 +197,92 @@ async function loadBigPrizePacks(progressItems = []) {
     .join("");
 }
 
-function renderError(msg) {
-  for (const id of ["progressStart", "progressMid", "catalogStart", "catalogMid"]) {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = `<p class="phase-empty">${msg}</p>`;
+function phaseWindowOpen(progressItems, phase) {
+  const rows = (progressItems || []).filter((c) => c.window_phase === phase);
+  if (!rows.length) return null;
+  return rows.some((c) => !c.expired);
+}
+
+async function loadCurrentSeasonId() {
+  const { data } = await supabase
+    .from("competition_season_public")
+    .select("id")
+    .eq("is_current", true)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+async function loadBigPrizeWinners(seasonId) {
+  if (!seasonId) return new Map();
+  const { data, error } = await supabase
+    .from("competition_challenge_period_bonus_awarded")
+    .select("window_phase, club_short_name, amount, awarded_at")
+    .eq("season_id", seasonId);
+
+  if (error) {
+    console.warn("big prize winners:", error.message);
+    return new Map();
   }
-  const awards = document.getElementById("challengeAwardsList");
-  if (awards) awards.innerHTML = "";
+
+  const map = new Map();
+  for (const row of data || []) {
+    map.set(row.window_phase, row);
+  }
+  return map;
 }
 
-function progressLabel(c) {
-  if (c.awarded) return { text: "Awarded", className: "challenge-status-awarded" };
-  if (c.expired) return { text: "Window closed", className: "challenge-status-expired" };
-  return {
-    text: `${c.current_value ?? 0} / ${c.target_value}`,
-    className: "",
-  };
+function fallbackPackHtml(p) {
+  const pack = p.pack || {};
+  const med = (pack.medical_tokens || []).map((n) => `${n}-match`).join(", ") || "—";
+  const disc = (pack.fee_discounts || []).map((n) => `${n}%`).join(", ") || "—";
+  const appeals = pack.appeal_cards ?? 0;
+  const drafts = pack.draft_tokens ?? 0;
+  return `Cash ${formatMoney(Number(p.cash_amount || 0))} · Medical: ${med} ·
+    Transfer discounts: ${disc} · Appeal cards: ${appeals} · Draft tokens: ${drafts}`;
 }
 
-function renderChallengeCards(items, { showProgress = false } = {}) {
+function packDisplayName(pack) {
+  return (
+    pack?.pack_name ||
+    (pack?.window_phase === "mid"
+      ? "Mid-Season Challenge Prize"
+      : "Start of Season Challenge Prize")
+  );
+}
+
+function windowLabel(phase) {
+  if (phase === "mid") return "Mid-season";
+  if (phase === "start") return "Start of season";
+  return phase || "—";
+}
+
+function splitByPhase(items) {
+  const start = [];
+  const mid = [];
+  for (const item of items || []) {
+    if (item.window_phase === "mid") mid.push(item);
+    else start.push(item);
+  }
+  return { start, mid };
+}
+
+function renderChallengeCards(items) {
   return items
     .map((c) => {
       const phaseClass = c.window_phase === "mid" ? "mid" : "start";
-      const st = showProgress ? progressLabel(c) : null;
       return `
         <div class="challenge-card">
           <span class="window-tag ${phaseClass}">${windowLabel(c.window_phase)}</span>
           <h3>${c.title}</h3>
-          ${
-            st
-              ? `<p class="challenge-progress ${st.className}">${st.text}</p>`
-              : ""
-          }
           <p class="challenge-meta">
             ${
-              !showProgress && c.gpsl_month_from_label
+              c.gpsl_month_from_label
                 ? `${c.gpsl_month_from_label}–${c.gpsl_month_to_label}<br>`
                 : ""
             }
             ${STAT_LABELS[c.stat_type] || c.stat_type}${
               c.stat_param ? ` (${c.stat_param})` : ""
-            }${showProgress ? "" : ` ≥ <b>${c.target_value}</b>`}
+            } ≥ <b>${c.target_value}</b>
             · Prize ${formatMoney(Number(c.prize_amount || 0))}
           </p>
         </div>
@@ -241,52 +291,20 @@ function renderChallengeCards(items, { showProgress = false } = {}) {
     .join("");
 }
 
-function renderPhaseGrids(items, startId, midId, emptyMsg, opts = {}) {
+function renderPhaseGrids(items, startId, midId, emptyMsg) {
   const { start, mid } = splitByPhase(items);
   const startEl = document.getElementById(startId);
   const midEl = document.getElementById(midId);
   if (startEl) {
     startEl.innerHTML = start.length
-      ? renderChallengeCards(start, opts)
+      ? renderChallengeCards(start)
       : `<p class="phase-empty">${emptyMsg}</p>`;
   }
   if (midEl) {
     midEl.innerHTML = mid.length
-      ? renderChallengeCards(mid, opts)
+      ? renderChallengeCards(mid)
       : `<p class="phase-empty">${emptyMsg}</p>`;
   }
-}
-
-async function loadMyProgress(clubShortName) {
-  const { data, error } = await supabase.rpc("competition_challenge_club_progress", {
-    p_club_short_name: clubShortName,
-  });
-
-  if (error) {
-    const msg = String(error.message || "");
-    const text =
-      msg.includes("competition_challenge") || msg.includes("function")
-        ? 'Challenges not enabled yet — admin must run <code>competition_challenges.sql</code> and seed targets.'
-        : `❌ ${msg}`;
-    renderPhaseGrids([], "progressStart", "progressMid", text);
-    return [];
-  }
-
-  const items = data?.challenges || [];
-  if (!items.length) {
-    renderPhaseGrids(
-      [],
-      "progressStart",
-      "progressMid",
-      "No challenges in this window. Ask admin to seed targets on Admin → Season challenges."
-    );
-    return [];
-  }
-
-  renderPhaseGrids(items, "progressStart", "progressMid", "No challenges in this window.", {
-    showProgress: true,
-  });
-  return items;
 }
 
 async function loadCatalog() {
@@ -317,42 +335,4 @@ async function loadCatalog() {
   }
 
   renderPhaseGrids(data, "catalogStart", "catalogMid", "No targets in this window.");
-}
-
-async function loadAwards(clubShortName) {
-  const list = document.getElementById("challengeAwardsList");
-  const { data, error } = await supabase
-    .from("competition_challenge_awards_public")
-    .select("*")
-    .eq("club_short_name", clubShortName)
-    .order("awarded_at", { ascending: false });
-
-  if (error) {
-    list.innerHTML = `<li class="meta">Could not load awards.</li>`;
-    return;
-  }
-
-  if (!data?.length) {
-    list.innerHTML = '<li class="meta">No challenge prizes awarded yet.</li>';
-    return;
-  }
-
-  const { start, mid } = splitByPhase(data);
-  const renderGroup = (phase, rows) => {
-    if (!rows.length) return "";
-    return (
-      `<li class="meta" style="background:transparent;border:none;padding:4px 0;color:#ccc;">
-        <b>${windowLabel(phase)}</b>
-      </li>` +
-      rows
-        .map(
-          (a) =>
-            `<li><span class="window-tag ${phase === "mid" ? "mid" : "start"}">${windowLabel(phase)}</span>
-              <b>${a.challenge_title}</b> — ${formatMoney(a.amount)} (${a.stat_value}/${a.target_value}) · ${new Date(a.awarded_at).toLocaleDateString("en-GB")}</li>`
-        )
-        .join("")
-    );
-  };
-
-  list.innerHTML = renderGroup("start", start) + renderGroup("mid", mid);
 }
