@@ -1,6 +1,18 @@
 import { initGlobal, supabase, getAuthUserFast } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
-import { formatMoney, fetchPrizePlayerBrief, fetchPlayerCareerBundle, renderPrizeCareerStatsHtml } from "./special_auction.js";
+import {
+  formatMoney,
+  fetchPrizePlayerBrief,
+  fetchPlayerCareerBundle,
+  renderPrizeCareerStatsHtml,
+  fetchClubSquadSize,
+  fetchPrizeActiveListing,
+  winnerCanKeepPrize,
+  winnerKeepPrize,
+  winnerListPrize,
+  winnerReleasePrize,
+  SPECIAL_AUCTION_SQUAD_MAX,
+} from "./special_auction.js";
 import { playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
 import { parseMoneyInput, wireMoneyBidInput } from "./money_input.js";
 import { renderHonoursHtml } from "./player_career_medals.js";
@@ -242,7 +254,174 @@ function render() {
     ]);
   }
 
+  await renderPrizeOptionsPanel();
   updateTimer();
+}
+
+function setPrizeStatus(msg, isError = false) {
+  const el = document.getElementById("prizeOptionsStatus");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.className = "status" + (isError ? " err" : msg ? " ok" : "");
+}
+
+async function renderPrizeOptionsPanel() {
+  const panel = document.getElementById("prizeOptionsPanel");
+  if (!panel || !state) return;
+
+  const myClub = state.my_club;
+  const iWon =
+    state.i_won ||
+    (myClub &&
+      state.winning_club_id &&
+      String(state.winning_club_id).toUpperCase() === String(myClub).toUpperCase());
+
+  const show =
+    state.status === "settled" &&
+    state.prize_type === "player" &&
+    state.winner_prize_pending &&
+    iWon;
+
+  panel.hidden = !show;
+  if (!show) return;
+
+  const keepBtn = document.getElementById("prizeKeepBtn");
+  const listBtn = document.getElementById("prizeListBtn");
+  const releaseBtn = document.getElementById("prizeReleaseBtn");
+  const intro = document.getElementById("prizeOptionsIntro");
+  const playerEl = document.getElementById("prizeOptionsPlayer");
+  const squadEl = document.getElementById("prizeOptionsSquad");
+
+  setPrizeStatus("");
+
+  const pid = state.prize_player_id || state.known_player_id;
+  const [squadSize, player, listing] = await Promise.all([
+    fetchClubSquadSize(supabase, myClub),
+    fetchPrizePlayerBrief(supabase, pid),
+    fetchPrizeActiveListing(supabase, pid, myClub),
+  ]);
+
+  const canKeep = winnerCanKeepPrize(squadSize);
+  const mv = Number(player?.market_value) || 0;
+  const releaseCredit = Math.round(mv * 1.25);
+
+  if (intro) {
+    intro.textContent = listing
+      ? "Prize is listed on the transfer market. You can wait for a sale, or release at 125% MV (cancels the listing)."
+      : "Choose what to do with your prize player. Release at 125% does not use a voluntary contract release.";
+  }
+
+  if (playerEl) {
+    if (player) {
+      const career = await fetchPlayerCareerBundle(supabase, player.Konami_ID);
+      const medalsHtml = career?.honours?.length
+        ? renderHonoursHtml(career.honours, {
+            emptyMessage: "No league/cup winner medals yet.",
+          })
+        : "";
+      const careerHtml = renderPrizeCareerStatsHtml(career, {
+        playerId: player.Konami_ID,
+        medalsHtml,
+      });
+      playerEl.innerHTML = `
+        <div class="sa-player-row">
+          ${playerThumbLinkHtml(player.Konami_ID, {
+            alt: player.Name,
+            className: "sa-player-card",
+            linkClass: "sa-player-card-link",
+          })}
+          <div class="sa-player-meta">
+            <div>${playerNameLinkHtml(player.Konami_ID, player.Name)}</div>
+            <div class="sa-player-sub">
+              ${player.Position || "?"} · Rating ${player.Rating || "?"}
+              · MV ${formatMoney(mv)}
+              · 125% release ${formatMoney(releaseCredit)}
+            </div>
+          </div>
+        </div>
+        ${careerHtml}`;
+    } else {
+      playerEl.innerHTML = pid
+        ? `<p class="meta">Prize player ID ${pid}</p>`
+        : `<p class="meta">Prize player details unavailable.</p>`;
+    }
+  }
+
+  if (squadEl) {
+    squadEl.textContent = canKeep
+      ? `Squad size: ${squadSize} / ${SPECIAL_AUCTION_SQUAD_MAX} — you can keep, list, or release.`
+      : `Squad size: ${squadSize} / ${SPECIAL_AUCTION_SQUAD_MAX} — over the limit. You must list on the market or release at 125% MV (cannot keep).`;
+  }
+
+  if (keepBtn) {
+    keepBtn.style.display = listing ? "none" : "inline-block";
+    keepBtn.disabled = !canKeep;
+  }
+  if (listBtn) {
+    listBtn.style.display = listing ? "none" : "inline-block";
+    listBtn.disabled = false;
+  }
+  if (releaseBtn) {
+    releaseBtn.disabled = false;
+    releaseBtn.textContent = listing
+      ? `Cancel listing & release at 125% (${formatMoney(releaseCredit)})`
+      : `Release at 125% MV (${formatMoney(releaseCredit)})`;
+  }
+}
+
+async function runPrizeAction(action) {
+  if (!auctionId) return;
+  const keepBtn = document.getElementById("prizeKeepBtn");
+  const listBtn = document.getElementById("prizeListBtn");
+  const releaseBtn = document.getElementById("prizeReleaseBtn");
+  [keepBtn, listBtn, releaseBtn].forEach((b) => {
+    if (b) b.disabled = true;
+  });
+  setPrizeStatus("Working…");
+
+  let result;
+  if (action === "keep") {
+    if (!confirm("Keep this prize player in your squad and close prize options?")) {
+      setPrizeStatus("");
+      await renderPrizeOptionsPanel();
+      return;
+    }
+    result = await winnerKeepPrize(supabase, auctionId);
+  } else if (action === "list") {
+    if (
+      !confirm(
+        "List the prize player on the transfer market at market value for 24 hours?\n\nYou can still release at 125% MV later if unsold."
+      )
+    ) {
+      setPrizeStatus("");
+      await renderPrizeOptionsPanel();
+      return;
+    }
+    result = await winnerListPrize(supabase, auctionId);
+  } else if (action === "release") {
+    const pid = state?.prize_player_id || state?.known_player_id;
+    const player = await fetchPrizePlayerBrief(supabase, pid);
+    const credit = Math.round((Number(player?.market_value) || 0) * 1.25);
+    if (
+      !confirm(
+        `Release ${player?.Name || "the prize player"} for ${formatMoney(credit)} (125% MV)?\n\nThis does not use a voluntary contract release.`
+      )
+    ) {
+      setPrizeStatus("");
+      await renderPrizeOptionsPanel();
+      return;
+    }
+    result = await winnerReleasePrize(supabase, auctionId);
+  }
+
+  if (result?.error) {
+    setPrizeStatus("❌ " + result.error.message, true);
+    await renderPrizeOptionsPanel();
+    return;
+  }
+
+  setPrizeStatus("✅ Prize options updated.", false);
+  await refreshState();
 }
 
 async function refreshState() {
@@ -315,6 +494,15 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   document.getElementById("bidBtn").onclick = submitBid;
+  document.getElementById("prizeKeepBtn")?.addEventListener("click", () =>
+    runPrizeAction("keep")
+  );
+  document.getElementById("prizeListBtn")?.addEventListener("click", () =>
+    runPrizeAction("list")
+  );
+  document.getElementById("prizeReleaseBtn")?.addEventListener("click", () =>
+    runPrizeAction("release")
+  );
 
   const bidInput = document.getElementById("bidAmount");
   bidAmountControl = wireMoneyBidInput(bidInput, {

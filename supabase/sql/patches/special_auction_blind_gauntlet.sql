@@ -770,6 +770,7 @@ BEGIN
     'gauntlet_prize_pack', a.gauntlet_prize_pack,
     'winning_club_id', a.winning_club_id,
     'winning_amount', a.winning_amount,
+    'winner_prize_pending', coalesce(a.winner_prize_pending, false),
     'my_club', v_club,
     'my_phase1', CASE WHEN v_p1.id IS NULL THEN NULL ELSE jsonb_build_object(
       'bid_amount', v_p1.bid_amount,
@@ -791,7 +792,12 @@ BEGIN
     'phase2_min', v_p1.bid_amount,
     'revealed', v_reveal,
     'phase1_bids', v_phase1_bids,
-    'phase2_bids', v_phase2_bids
+    'phase2_bids', v_phase2_bids,
+    'i_won', (
+      v_club IS NOT NULL
+      AND a.winning_club_id IS NOT NULL
+      AND upper(btrim(a.winning_club_id)) = upper(btrim(v_club))
+    )
   );
 END;
 $function$;

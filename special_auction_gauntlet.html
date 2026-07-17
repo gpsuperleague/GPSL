@@ -271,6 +271,14 @@
     .status.ok { color:#8d8; }
     .status.err { color:#f88; }
     .winner { color:#ffd700; font-weight:700; }
+    .prize-options-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    #prizeOptionsStatus { min-height: 1.2em; margin-top: 8px; }
+    #prizeOptionsStatus.is-error { color: #f88; }
   </style>
 </head>
 <body>
@@ -327,6 +335,21 @@
       </ul>
     </div>
 
+    <div class="panel" id="prizeOptionsPanel" hidden>
+      <h2>Your prize options</h2>
+      <p class="meta" id="prizeOptionsIntro">
+        Choose what to do with your prize player. If your squad is full (28), you must list or release.
+      </p>
+      <div id="prizeOptionsPlayer"></div>
+      <p class="meta" id="prizeOptionsSquad"></p>
+      <div class="prize-options-actions">
+        <button type="button" class="button" id="prizeKeepBtn">Keep player</button>
+        <button type="button" class="button secondary" id="prizeListBtn">List on transfer market (MV)</button>
+        <button type="button" class="button secondary" id="prizeReleaseBtn">Release at 125% MV</button>
+      </div>
+      <div id="prizeOptionsStatus" class="status"></div>
+    </div>
+
     <div class="panel" id="bidPanel">
       <h2>Place bid</h2>
       <p class="meta" id="bidHelp">One secret bid per phase. Amount is rounded to the nearest million.</p>
@@ -349,6 +372,6 @@
       <div id="phase1Table"></div>
     </div>
   </div>
-  <script type="module" src="special_auction_gauntlet.js?v=20260717-eliminated"></script>
+  <script type="module" src="special_auction_gauntlet.js?v=20260717-winner-prize"></script>
 </body>
 </html>
