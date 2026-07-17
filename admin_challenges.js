@@ -219,36 +219,49 @@ async function loadChallengeList() {
   }
 
   if (!data?.length) {
-    list.innerHTML = "<p class='note'>No challenges yet. Seed defaults or add one below.</p>";
+    list.innerHTML = "<p class='note'>No challenges yet. Seed defaults or add one above.</p>";
     return;
   }
 
-  list.innerHTML = data
-    .map((row) => {
-      const comps = [row.include_league && "league", row.include_cup && "cup"].filter(Boolean).join("+");
-      const nation =
-        row.stat_type === "transfer_sign_nation" && row.stat_param
-          ? ` (${row.stat_param})`
-          : "";
-      return `
-        <div class="challenge-admin-item">
-          <div>
-            <b>${row.title}</b>
-            <span class="challenge-admin-meta">
-              ${row.window_phase} · ${row.gpsl_month_from_label}–${row.gpsl_month_to_label}
-              · ${STAT_LABELS[row.stat_type] || row.stat_type}${nation} ≥ ${row.target_value}
-              · ${formatMoney(row.prize_amount)} · ${comps || "—"}
-              ${row.is_active ? "" : " · <i>inactive</i>"}
-            </span>
-          </div>
-          <div class="challenge-admin-actions">
-            <button type="button" class="button challenge-edit-btn" data-id="${row.id}">Edit</button>
-            <button type="button" class="button challenge-del-btn" data-id="${row.id}">Delete</button>
-          </div>
+  const start = data.filter((r) => r.window_phase === "start");
+  const mid = data.filter((r) => r.window_phase === "mid");
+
+  function renderRow(row) {
+    const comps = [row.include_league && "league", row.include_cup && "cup"].filter(Boolean).join("+");
+    const nation =
+      row.stat_type === "transfer_sign_nation" && row.stat_param
+        ? ` (${row.stat_param})`
+        : "";
+    return `
+      <div class="challenge-admin-item">
+        <div>
+          <b>${row.title}</b>
+          <span class="challenge-admin-meta">
+            ${row.gpsl_month_from_label}–${row.gpsl_month_to_label}
+            · ${STAT_LABELS[row.stat_type] || row.stat_type}${nation} ≥ ${row.target_value}
+            · ${formatMoney(row.prize_amount)} · ${comps || "—"}
+            ${row.is_active ? "" : " · <i>inactive</i>"}
+          </span>
         </div>
-      `;
-    })
-    .join("");
+        <div class="challenge-admin-actions">
+          <button type="button" class="button challenge-edit-btn" data-id="${row.id}">Edit</button>
+          <button type="button" class="button challenge-del-btn" data-id="${row.id}">Delete</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderGroup(label, rows) {
+    if (!rows.length) {
+      return `<h3 style="margin:14px 0 8px;color:#ccc;font-size:14px;">${label}</h3>
+        <p class="note">No targets in this window.</p>`;
+    }
+    return `<h3 style="margin:14px 0 8px;color:#ccc;font-size:14px;">${label}</h3>
+      ${rows.map(renderRow).join("")}`;
+  }
+
+  list.innerHTML =
+    renderGroup("Start of season", start) + renderGroup("Mid-season", mid);
 
   list.querySelectorAll(".challenge-edit-btn").forEach((btn) => {
     btn.onclick = () => {
