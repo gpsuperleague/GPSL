@@ -19,6 +19,8 @@
 -- Results: include GPSL month + competition (+ score already in headline)
 -- ---------------------------------------------------------------------------
 
+-- Body/headline fix lives in gpsl_discord_results_body_fix.sql (null-safe).
+-- Kept here for first-time installs of the results channel patch.
 CREATE OR REPLACE FUNCTION public.gpsl_discord_feed_on_fixture_played()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -34,6 +36,8 @@ DECLARE
   v_headline text;
   v_body text;
   v_pen text;
+  v_cup_round text;
+  v_cup_match text;
 BEGIN
   IF NEW.status IS DISTINCT FROM 'played' THEN
     RETURN NEW;
@@ -47,31 +51,44 @@ BEGIN
 
   SELECT c."Club" INTO v_home FROM public."Clubs" c WHERE c."ShortName" = NEW.home_club_short_name;
   SELECT c."Club" INTO v_away FROM public."Clubs" c WHERE c."ShortName" = NEW.away_club_short_name;
-  v_home := coalesce(v_home, NEW.home_club_short_name);
-  v_away := coalesce(v_away, NEW.away_club_short_name);
+  v_home := coalesce(nullif(btrim(v_home), ''), NEW.home_club_short_name, 'Home');
+  v_away := coalesce(nullif(btrim(v_away), ''), NEW.away_club_short_name, 'Away');
 
   BEGIN
     v_month := public.competition_gpsl_month_label(NEW.gpsl_month);
   EXCEPTION WHEN OTHERS THEN
-    v_month := initcap(coalesce(NEW.gpsl_month, ''));
+    v_month := NULL;
   END;
-  IF nullif(btrim(coalesce(v_month, '')), '') IS NULL THEN
-    v_month := 'Unknown month';
-  END IF;
+  v_month := coalesce(
+    nullif(btrim(v_month), ''),
+    nullif(initcap(btrim(coalesce(NEW.gpsl_month, ''))), ''),
+    'Unknown month'
+  );
 
-  IF NEW.competition_type = 'cup' OR NEW.cup_code IS NOT NULL THEN
+  IF NEW.competition_type = 'cup' OR nullif(btrim(coalesce(NEW.cup_code, '')), '') IS NOT NULL THEN
     BEGIN
       v_comp := public.competition_cup_fixture_label(NEW);
     EXCEPTION WHEN OTHERS THEN
-      v_comp := CASE lower(coalesce(NEW.cup_code, ''))
-        WHEN 'super8' THEN 'Super8'
-        WHEN 'plate' THEN 'Plate'
-        WHEN 'shield' THEN 'Shield'
-        WHEN 'bowl' THEN 'Bowl'
-        WHEN 'league_cup' THEN 'League Cup'
-        ELSE coalesce(nullif(btrim(NEW.cup_code), ''), 'Cup')
-      END;
+      v_comp := NULL;
     END;
+    IF nullif(btrim(coalesce(v_comp, '')), '') IS NULL THEN
+      v_cup_round := CASE WHEN NEW.cup_round IS NOT NULL THEN ' R' || NEW.cup_round::text ELSE '' END;
+      v_cup_match := CASE WHEN NEW.cup_match IS NOT NULL THEN ' M' || NEW.cup_match::text ELSE '' END;
+      v_comp := coalesce(
+        nullif(btrim(
+          CASE lower(coalesce(NEW.cup_code, ''))
+            WHEN 'super8' THEN 'Super8'
+            WHEN 'plate' THEN 'Plate'
+            WHEN 'shield' THEN 'Shield'
+            WHEN 'bowl' THEN 'Bowl'
+            WHEN 'league_cup' THEN 'League Cup'
+            ELSE initcap(replace(coalesce(NEW.cup_code, 'Cup'), '_', ' '))
+          END
+          || v_cup_round || v_cup_match
+        ), ''),
+        'Cup'
+      );
+    END IF;
   ELSE
     v_comp := CASE lower(coalesce(NEW.division, ''))
       WHEN 'superleague' THEN 'SuperLeague'
@@ -80,39 +97,40 @@ BEGIN
       ELSE coalesce(nullif(btrim(NEW.division), ''), 'League')
     END;
     IF NEW.matchday IS NOT NULL THEN
-      v_detail := format('Matchday %s', NEW.matchday);
+      v_detail := 'Matchday ' || NEW.matchday::text;
     END IF;
   END IF;
 
-  v_headline := format(
-    '🚨 FULL TIME — %s %s–%s %s',
-    v_home, NEW.home_goals, NEW.away_goals, v_away
-  );
+  v_comp := coalesce(nullif(btrim(v_comp), ''), 'Competition');
 
-  -- Use E'...' so \n is a real newline (plain '\n' is literal backslash+n → Discord shows "nScore")
-  v_body := format(
-    E'%s · %s\nScore: %s–%s',
+  v_headline := format(
+    '🚨 FULL TIME — %s · %s — %s %s–%s %s',
     v_month,
     v_comp,
+    v_home,
     NEW.home_goals,
-    NEW.away_goals
+    NEW.away_goals,
+    v_away
   );
+
+  v_body := v_month || ' · ' || v_comp || E'\nScore: '
+    || NEW.home_goals::text || '–' || NEW.away_goals::text;
   IF v_detail IS NOT NULL THEN
     v_body := v_body || E'\n' || v_detail;
   END IF;
-
   IF NEW.cup_pen_winner_club_short_name IS NOT NULL THEN
     SELECT c."Club" INTO v_pen
     FROM public."Clubs" c
     WHERE c."ShortName" = NEW.cup_pen_winner_club_short_name;
-    v_body := v_body || format(E'\nPens: %s', coalesce(v_pen, NEW.cup_pen_winner_club_short_name));
+    v_body := v_body || E'\nPens: '
+      || coalesce(nullif(btrim(v_pen), ''), NEW.cup_pen_winner_club_short_name);
   END IF;
 
   PERFORM public.gpsl_discord_feed_enqueue(
     'result',
     v_headline,
     v_body,
-    14747136, -- 0xe10600
+    14747136,
     'fixture:' || NEW.id::text,
     jsonb_build_object(
       'fixture_id', NEW.id,
