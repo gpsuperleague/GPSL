@@ -38,32 +38,38 @@ async function saveTransferWindow() {
     document.getElementById("transferWindowSelect").value === "true";
 
   setStatus("transferWindowStatus", "Saving…");
-  const { error } = await supabase.functions.invoke("update-global-settings", {
-    body: { transfer_window_open },
+
+  // Admin RPC (SECURITY DEFINER) — direct UPDATE on global_settings is revoked
+  // for authenticated; the old update-global-settings edge fn is unreliable.
+  const { data, error } = await supabase.rpc("admin_set_transfer_window_open", {
+    p_open: transfer_window_open,
   });
 
   if (error) {
-    const { error: updError } = await supabase
-      .from("global_settings")
-      .update({
-        transfer_window_open,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", 1);
+    setStatus(
+      "transferWindowStatus",
+      error.message.includes("admin_set_transfer_window_open")
+        ? "❌ Run admin_set_transfer_window_open.sql in Supabase first."
+        : "❌ " + error.message,
+      false
+    );
+    return;
+  }
 
-    if (updError) {
-      setStatus(
-        "transferWindowStatus",
-        "❌ " + (updError.message || error.message || "Save failed"),
-        false
-      );
-      return;
-    }
+  if (!data?.ok) {
+    setStatus(
+      "transferWindowStatus",
+      "⚠ " + (data?.reason || "Could not update transfer window"),
+      false
+    );
+    return;
   }
 
   setStatus(
     "transferWindowStatus",
-    transfer_window_open ? "✅ Transfer window is now open." : "✅ Transfer window is now closed.",
+    transfer_window_open
+      ? "✅ Transfer window is now open."
+      : "✅ Transfer window is now closed.",
     true
   );
   await loadGlobalSettings();
