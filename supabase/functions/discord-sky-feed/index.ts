@@ -172,6 +172,35 @@ function matchMemberId(
   return null;
 }
 
+class DiscordRateLimitError extends Error {
+  retryAfterMs: number;
+  constructor(retryAfterSec: number, detail: string) {
+    super(`Discord webhook 429: ${detail}`);
+    this.name = "DiscordRateLimitError";
+    this.retryAfterMs = Math.max(300, Math.ceil(retryAfterSec * 1000));
+  }
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function parseRetryAfterSec(res: Response, bodyText: string): number {
+  const header = res.headers.get("retry-after");
+  if (header && Number.isFinite(Number(header))) {
+    return Math.max(0.3, Number(header));
+  }
+  try {
+    const j = JSON.parse(bodyText) as { retry_after?: number };
+    if (typeof j.retry_after === "number" && Number.isFinite(j.retry_after)) {
+      return Math.max(0.3, j.retry_after);
+    }
+  } catch {
+    /* ignore */
+  }
+  return 1;
+}
+
 async function postWebhook(
   webhookUrl: string,
   embeds: Record<string, unknown>[],
@@ -192,13 +221,25 @@ async function postWebhook(
     payload.allowed_mentions = opts.allowedMentions;
   }
 
-  const res = await fetch(webhookUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) {
+  // Discord webhooks are ~5 req / 2s per webhook. Retry 429s instead of failing the queue.
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const res = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (res.ok) return;
+
     const text = await res.text();
+    if (res.status === 429) {
+      const waitSec = parseRetryAfterSec(res, text);
+      if (attempt < 5) {
+        await sleep(Math.ceil(waitSec * 1000) + 150);
+        continue;
+      }
+      throw new DiscordRateLimitError(waitSec, text.slice(0, 300));
+    }
+
     throw new Error(`Discord webhook ${res.status}: ${text.slice(0, 300)}`);
   }
 }
@@ -437,12 +478,13 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Smaller batches + slower pacing avoids Discord 429 storms across channels
     const { data: rows, error } = await adminClient
       .from("gpsl_discord_feed_queue")
       .select("id, event_type, headline, body, color, metadata, attempts")
       .eq("status", "pending")
       .order("id", { ascending: true })
-      .limit(25);
+      .limit(10);
 
     if (error) {
       return jsonResponse({ error: error.message }, 500);
@@ -536,11 +578,36 @@ Deno.serve(async (req) => {
           resultsWebhookUrl || null,
           natterWebhookUrl || null
         );
-        await postWebhook(target.url, [embedFor(row, supabaseUrl)], {
-          username: target.username,
-          content,
-          allowedMentions,
-        });
+        const embed = embedFor(row, supabaseUrl);
+        try {
+          await postWebhook(target.url, [embed], {
+            username: target.username,
+            content,
+            allowedMentions,
+          });
+        } catch (postErr) {
+          const postMsg =
+            postErr instanceof Error ? postErr.message : String(postErr);
+          const rateLimited =
+            postErr instanceof DiscordRateLimitError ||
+            /\b429\b/.test(postMsg) ||
+            /rate limited/i.test(postMsg);
+          // Discord sometimes rejects embed images (size/URL). Still post text.
+          // Do not retry text-only on 429 — that burns the rate limit further.
+          if (!rateLimited && isNatterEvent(row) && embed.image) {
+            const { image: _drop, ...textOnly } = embed;
+            await postWebhook(target.url, [textOnly], {
+              username: target.username,
+              content,
+              allowedMentions,
+            });
+            warnings.push(
+              `#${row.id}: natter image failed (${postMsg}) — posted text only`
+            );
+          } else {
+            throw postErr;
+          }
+        }
         const { error: updErr } = await adminClient
           .from("gpsl_discord_feed_queue")
           .update({
@@ -554,10 +621,33 @@ Deno.serve(async (req) => {
         if (isResultsEvent(row)) postedResults += 1;
         else if (isNatterEvent(row)) postedNatter += 1;
         else postedNews += 1;
-        // Discord rate limit soft pause
-        await new Promise((r) => setTimeout(r, 350));
+        // Discord webhooks: stay under ~5/2s — pause between successful posts
+        await sleep(700);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        const rateLimited =
+          err instanceof DiscordRateLimitError ||
+          /\b429\b/.test(message) ||
+          /rate limited/i.test(message);
+
+        if (rateLimited) {
+          // Keep pending so the next flush/cron can retry — do not mark as error
+          warnings.push(`#${row.id}: rate limited — left pending for retry`);
+          await adminClient
+            .from("gpsl_discord_feed_queue")
+            .update({
+              status: "pending",
+              last_error: message.slice(0, 500),
+              attempts: Number((row as { attempts?: number }).attempts || 0) + 1,
+            })
+            .eq("id", row.id);
+          const waitMs =
+            err instanceof DiscordRateLimitError ? err.retryAfterMs : 1000;
+          await sleep(waitMs);
+          // Stop this batch; remaining pending rows stay for the next run
+          break;
+        }
+
         errors.push(`#${row.id}: ${message}`);
         await adminClient
           .from("gpsl_discord_feed_queue")

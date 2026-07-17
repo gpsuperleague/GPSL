@@ -348,6 +348,52 @@ document.getElementById("resultsTestBtn")?.addEventListener("click", () => {
 document.getElementById("natterTestBtn")?.addEventListener("click", () => {
   sendTest("natter").catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
+document.getElementById("natterRequeueBtn")?.addEventListener("click", () => {
+  (async () => {
+    setStatus("newsStatus", "Requeueing recent Natter posts…");
+    const { data, error } = await supabase.rpc("admin_discord_requeue_natter_posts", {
+      p_days: 60,
+    });
+    if (error) {
+      setStatus(
+        "newsStatus",
+        error.message.includes("admin_discord_requeue_natter_posts")
+          ? "❌ Run gpsl_discord_natter_posts.sql in Supabase first."
+          : "❌ " + error.message,
+        false
+      );
+      return;
+    }
+    setStatus(
+      "newsStatus",
+      `Requeued ${data?.queued_or_reopened ?? 0} Natter(s). Click Push queue to Discord.`
+    );
+    await loadQueue();
+  })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
+document.getElementById("rateLimitRetryBtn")?.addEventListener("click", () => {
+  (async () => {
+    setStatus("newsStatus", "Reopening rate-limited (429) errors…");
+    const { data, error } = await supabase.rpc("admin_discord_requeue_rate_limited", {
+      p_limit: 200,
+    });
+    if (error) {
+      setStatus(
+        "newsStatus",
+        error.message.includes("admin_discord_requeue_rate_limited")
+          ? "❌ Run gpsl_discord_feed_retry_rate_limits.sql in Supabase first."
+          : "❌ " + error.message,
+        false
+      );
+      return;
+    }
+    setStatus(
+      "newsStatus",
+      `Reopened ${data?.reopened ?? 0} rate-limited item(s). Push queue once — wait a few seconds between pushes if many remain.`
+    );
+    await loadQueue();
+  })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
 document.getElementById("routingCheckBtn")?.addEventListener("click", () => {
   checkRouting().catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
