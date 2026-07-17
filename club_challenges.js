@@ -134,7 +134,7 @@ async function loadMyProgress(clubShortName) {
   if (!items.length) {
     renderPhaseGrids(
       [],
-      "No challenges in this window. See <a href=\"challenges.html\">Season challenges</a> for league targets."
+      'No challenges in this window. See <a href="challenges.html">Season challenges</a> for league targets.'
     );
     return [];
   }
@@ -181,29 +181,4 @@ async function loadAwards(clubShortName) {
   };
 
   list.innerHTML = renderGroup("start", start) + renderGroup("mid", mid);
-}
-
-function windowLabel(phase) {
-  if (phase === "mid") return "Mid-season";
-  if (phase === "start") return "Start of season";
-  return phase || "—";
-}
-
-function splitByPhase(items) {
-  const start = [];
-  const mid = [];
-  for (const item of items || []) {
-    if (item.window_phase === "mid") mid.push(item);
-    else start.push(item);
-  }
-  return { start, mid };
-}
-
-function renderError(msg) {
-  for (const id of ["progressStart", "progressMid"]) {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = `<p class="phase-empty">${msg}</p>`;
-  }
-  const awards = document.getElementById("challengeAwardsList");
-  if (awards) awards.innerHTML = "";
 }

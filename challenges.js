@@ -37,6 +37,13 @@ function splitByPhase(items) {
   return { start, mid };
 }
 
+/** Big prize stays claimable until the latest challenge deadline in that phase. */
+function phaseWindowOpen(progressItems, phase) {
+  const rows = (progressItems || []).filter((c) => c.window_phase === phase);
+  if (!rows.length) return null;
+  return rows.some((c) => !c.expired);
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
   await loadClubsMap();
@@ -74,13 +81,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadCatalog(),
   ]);
 });
-
-/** Big prize stays claimable until the latest challenge deadline in that phase. */
-function phaseWindowOpen(progressItems, phase) {
-  const rows = (progressItems || []).filter((c) => c.window_phase === phase);
-  if (!rows.length) return null;
-  return rows.some((c) => !c.expired);
-}
 
 async function loadCurrentSeasonId() {
   const { data } = await supabase
@@ -195,75 +195,6 @@ async function loadBigPrizePacks(progressItems = []) {
       )
     )
     .join("");
-}
-
-function phaseWindowOpen(progressItems, phase) {
-  const rows = (progressItems || []).filter((c) => c.window_phase === phase);
-  if (!rows.length) return null;
-  return rows.some((c) => !c.expired);
-}
-
-async function loadCurrentSeasonId() {
-  const { data } = await supabase
-    .from("competition_season_public")
-    .select("id")
-    .eq("is_current", true)
-    .maybeSingle();
-  return data?.id ?? null;
-}
-
-async function loadBigPrizeWinners(seasonId) {
-  if (!seasonId) return new Map();
-  const { data, error } = await supabase
-    .from("competition_challenge_period_bonus_awarded")
-    .select("window_phase, club_short_name, amount, awarded_at")
-    .eq("season_id", seasonId);
-
-  if (error) {
-    console.warn("big prize winners:", error.message);
-    return new Map();
-  }
-
-  const map = new Map();
-  for (const row of data || []) {
-    map.set(row.window_phase, row);
-  }
-  return map;
-}
-
-function fallbackPackHtml(p) {
-  const pack = p.pack || {};
-  const med = (pack.medical_tokens || []).map((n) => `${n}-match`).join(", ") || "—";
-  const disc = (pack.fee_discounts || []).map((n) => `${n}%`).join(", ") || "—";
-  const appeals = pack.appeal_cards ?? 0;
-  const drafts = pack.draft_tokens ?? 0;
-  return `Cash ${formatMoney(Number(p.cash_amount || 0))} · Medical: ${med} ·
-    Transfer discounts: ${disc} · Appeal cards: ${appeals} · Draft tokens: ${drafts}`;
-}
-
-function packDisplayName(pack) {
-  return (
-    pack?.pack_name ||
-    (pack?.window_phase === "mid"
-      ? "Mid-Season Challenge Prize"
-      : "Start of Season Challenge Prize")
-  );
-}
-
-function windowLabel(phase) {
-  if (phase === "mid") return "Mid-season";
-  if (phase === "start") return "Start of season";
-  return phase || "—";
-}
-
-function splitByPhase(items) {
-  const start = [];
-  const mid = [];
-  for (const item of items || []) {
-    if (item.window_phase === "mid") mid.push(item);
-    else start.push(item);
-  }
-  return { start, mid };
 }
 
 function renderChallengeCards(items) {
