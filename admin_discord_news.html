@@ -48,10 +48,12 @@
           <b>#gpsl-news</b> — transfers (filtered), managers, owners, cups, titles, etc.<br>
           Transfer filter: age ≤20 need rating ≥70; age ≥21 need rating ≥76.<br>
           <b>#gpsl-results</b> — confirmed match results only (month · competition · score).<br>
-          <b>#gpsl-natter</b> — owner Natter posts (text + image).
+          <b>#gpsl-natter</b> — owner Natter posts (text + image).<br>
+          <b>#gpsl-notifications</b> — auctions, transfer window, month ticks, season start, challenges,
+          nation pick turns (@owner), match reminders, OOC batch, vacant clubs.
         </p>
         <ol class="note" style="margin:0 0 12px;padding-left:1.2em;line-height:1.55;">
-          <li>In Discord: create channels <code>#gpsl-results</code> and <code>#gpsl-natter</code> if needed.</li>
+          <li>In Discord: create <code>#gpsl-results</code>, <code>#gpsl-natter</code>, <code>#gpsl-notifications</code> if needed.</li>
           <li>For each: Channel settings → Integrations → Webhooks → New Webhook → Copy URL
             (create the webhook <b>inside</b> that channel).</li>
           <li>Supabase → Edge Functions → <b>Secrets</b> (project-wide, not inside a function):
@@ -59,12 +61,12 @@
               <li><code>DISCORD_WEBHOOK_URL</code> = #gpsl-news</li>
               <li><code>DISCORD_RESULTS_WEBHOOK_URL</code> = #gpsl-results</li>
               <li><code>DISCORD_NATTER_WEBHOOK_URL</code> = #gpsl-natter</li>
+              <li><code>DISCORD_NOTIFICATIONS_WEBHOOK_URL</code> = #gpsl-notifications</li>
             </ul>
           </li>
-          <li>SQL: <code>gpsl_discord_results_channel_and_transfer_filter.sql</code> and
-            <code>gpsl_discord_natter_posts.sql</code>.</li>
+          <li>SQL: results/natter patches + <code>gpsl_discord_notifications_channel.sql</code>.</li>
           <li>Redeploy: <code>supabase functions deploy discord-sky-feed</code>.</li>
-          <li>Use <b>Check routing</b> then the channel test buttons.</li>
+          <li>Use <b>Check routing</b> then the channel test buttons. Run <b>Notifications tick</b> to fire digests.</li>
         </ol>
         <div id="routingStatus"></div>
       </div>
@@ -106,7 +108,7 @@
       <div class="card">
         <h2>Sky-style feeds</h2>
         <p class="note">
-          <b>News</b> (#gpsl-news) · <b>Results</b> (#gpsl-results) · <b>Natter</b> (#gpsl-natter, with images).
+          <b>News</b> · <b>Results</b> · <b>Natter</b> · <b>Notifications</b> (ops / calendars / auctions).
         </p>
         <div class="news-actions">
           <button type="button" id="newsPushBtn" class="button">Push queue to Discord</button>
@@ -114,6 +116,8 @@
           <button type="button" id="newsTestBtn" class="button secondary">Test #gpsl-news</button>
           <button type="button" id="resultsTestBtn" class="button secondary">Test #gpsl-results</button>
           <button type="button" id="natterTestBtn" class="button secondary">Test #gpsl-natter</button>
+          <button type="button" id="notificationsTestBtn" class="button secondary">Test #gpsl-notifications</button>
+          <button type="button" id="notificationsTickBtn" class="button secondary">Notifications tick</button>
           <button type="button" id="natterRequeueBtn" class="button secondary">Requeue Natters</button>
           <button type="button" id="rateLimitRetryBtn" class="button secondary">Retry 429 errors</button>
           <button type="button" id="newsRefreshBtn" class="button secondary">Refresh queue</button>
@@ -123,6 +127,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_discord_news.js?v=20260718-429"></script>
+  <script type="module" src="admin_discord_news.js?v=20260718-notify"></script>
 </body>
 </html>

@@ -50,6 +50,18 @@ function isNatterEvent(row: FeedRow): boolean {
   return channel === "natter";
 }
 
+function isNotificationsEvent(row: FeedRow): boolean {
+  if (row.event_type === "notification") return true;
+  const channel = String(row.metadata?.channel || "").toLowerCase();
+  return channel === "notifications" || channel === "notification";
+}
+
+function wantsOwnerPing(row: FeedRow): boolean {
+  if (row.event_type === "owner") return true;
+  if (row.metadata?.ping === true || row.metadata?.ping === "true") return true;
+  return Boolean(row.metadata?.owner_tag || row.metadata?.mention);
+}
+
 function publicNatterImageUrl(
   supabaseUrl: string,
   metadata: Record<string, unknown> | null
@@ -83,6 +95,7 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
     playoff: 0x9b59b6,
     release: 0xbcbc80,
     natter: 0x57f287,
+    notification: 0x5865f2,
     other: 0x111111,
   };
   const color =
@@ -92,6 +105,7 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
 
   const results = isResultsEvent(row);
   const natter = isNatterEvent(row);
+  const notifications = isNotificationsEvent(row);
   const imageUrl = natter
     ? publicNatterImageUrl(supabaseUrl, row.metadata)
     : null;
@@ -102,7 +116,13 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
     color,
     ...(imageUrl ? { image: { url: imageUrl } } : {}),
     footer: {
-      text: results ? "GPSL Results" : natter ? "GPSL Natter" : "GPSL News",
+      text: results
+        ? "GPSL Results"
+        : natter
+          ? "GPSL Natter"
+          : notifications
+            ? "GPSL Notifications"
+            : "GPSL News",
     },
     timestamp: new Date().toISOString(),
   };
@@ -248,7 +268,8 @@ function webhookForRow(
   row: FeedRow,
   newsUrl: string,
   resultsUrl: string | null,
-  natterUrl: string | null
+  natterUrl: string | null,
+  notificationsUrl: string | null
 ): { url: string; username: string } {
   if (isResultsEvent(row)) {
     if (!resultsUrl) {
@@ -265,6 +286,14 @@ function webhookForRow(
       );
     }
     return { url: natterUrl, username: "GPSL Natter" };
+  }
+  if (isNotificationsEvent(row)) {
+    if (!notificationsUrl) {
+      throw new Error(
+        "DISCORD_NOTIFICATIONS_WEBHOOK_URL secret missing — notification not posted to #gpsl-news. Add the #gpsl-notifications webhook secret and redeploy discord-sky-feed."
+      );
+    }
+    return { url: notificationsUrl, username: "GPSL Notifications" };
   }
   return { url: newsUrl, username: "GPSL News" };
 }
@@ -286,6 +315,10 @@ Deno.serve(async (req) => {
     const natterWebhookUrl =
       Deno.env.get("DISCORD_NATTER_WEBHOOK_URL") ||
       Deno.env.get("DISCORD_WEBHOOK_NATTER_URL") ||
+      "";
+    const notificationsWebhookUrl =
+      Deno.env.get("DISCORD_NOTIFICATIONS_WEBHOOK_URL") ||
+      Deno.env.get("DISCORD_WEBHOOK_NOTIFICATIONS_URL") ||
       "";
     const feedKey = Deno.env.get("DISCORD_FEED_INVOKE_KEY") ||
       Deno.env.get("CRON_API_KEY") ||
@@ -356,6 +389,7 @@ Deno.serve(async (req) => {
         news_webhook_configured: Boolean(webhookUrl),
         results_webhook_configured: Boolean(resultsWebhookUrl),
         natter_webhook_configured: Boolean(natterWebhookUrl),
+        notifications_webhook_configured: Boolean(notificationsWebhookUrl),
         routing: {
           result_events: resultsWebhookUrl
             ? "DISCORD_RESULTS_WEBHOOK_URL → #gpsl-results"
@@ -363,6 +397,9 @@ Deno.serve(async (req) => {
           natter_events: natterWebhookUrl
             ? "DISCORD_NATTER_WEBHOOK_URL → #gpsl-natter"
             : "BLOCKED until DISCORD_NATTER_WEBHOOK_URL is set",
+          notification_events: notificationsWebhookUrl
+            ? "DISCORD_NOTIFICATIONS_WEBHOOK_URL → #gpsl-notifications"
+            : "BLOCKED until DISCORD_NOTIFICATIONS_WEBHOOK_URL is set",
           other_events: "DISCORD_WEBHOOK_URL → #gpsl-news",
         },
         note:
@@ -375,6 +412,8 @@ Deno.serve(async (req) => {
       const channel = String(body?.channel || "news").toLowerCase();
       const toResults = channel === "results";
       const toNatter = channel === "natter";
+      const toNotifications =
+        channel === "notifications" || channel === "notification";
       if (toResults && !resultsWebhookUrl) {
         return jsonResponse(
           {
@@ -401,34 +440,59 @@ Deno.serve(async (req) => {
           400
         );
       }
+      if (toNotifications && !notificationsWebhookUrl) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "DISCORD_NOTIFICATIONS_WEBHOOK_URL secret missing — cannot test #gpsl-notifications. Add it under Edge Functions → Secrets and redeploy.",
+            channel: "notifications",
+            used_notifications_webhook: false,
+            notifications_webhook_configured: false,
+          },
+          400
+        );
+      }
       const target = toResults
         ? resultsWebhookUrl
         : toNatter
           ? natterWebhookUrl
-          : webhookUrl;
+          : toNotifications
+            ? notificationsWebhookUrl
+            : webhookUrl;
       const label = toResults
         ? "RESULTS"
         : toNatter
           ? "NATTER"
-          : "NEWS";
+          : toNotifications
+            ? "NOTIFICATIONS"
+            : "NEWS";
       const channelName = toResults
         ? "#gpsl-results"
         : toNatter
           ? "#gpsl-natter"
-          : "#gpsl-news";
+          : toNotifications
+            ? "#gpsl-notifications"
+            : "#gpsl-news";
       await postWebhook(
         target,
         [
           {
             title: `🚨 GPSL ${label} — TEST`,
             description: `${channelName} webhook is connected. This message must appear in ${channelName} only.`,
-            color: toNatter ? 0x57f287 : 0xe10600,
+            color: toNatter
+              ? 0x57f287
+              : toNotifications
+                ? 0x5865f2
+                : 0xe10600,
             footer: {
               text: toResults
                 ? "GPSL Results"
                 : toNatter
                   ? "GPSL Natter"
-                  : "GPSL News",
+                  : toNotifications
+                    ? "GPSL Notifications"
+                    : "GPSL News",
             },
             timestamp: new Date().toISOString(),
           },
@@ -438,17 +502,29 @@ Deno.serve(async (req) => {
             ? "GPSL Results"
             : toNatter
               ? "GPSL Natter"
-              : "GPSL News",
+              : toNotifications
+                ? "GPSL Notifications"
+                : "GPSL News",
         }
       );
       return jsonResponse({
         ok: true,
         test: true,
-        channel: toResults ? "results" : toNatter ? "natter" : "news",
+        channel: toResults
+          ? "results"
+          : toNatter
+            ? "natter"
+            : toNotifications
+              ? "notifications"
+              : "news",
         used_results_webhook: Boolean(toResults && resultsWebhookUrl),
         used_natter_webhook: Boolean(toNatter && natterWebhookUrl),
+        used_notifications_webhook: Boolean(
+          toNotifications && notificationsWebhookUrl
+        ),
         results_webhook_configured: Boolean(resultsWebhookUrl),
         natter_webhook_configured: Boolean(natterWebhookUrl),
+        notifications_webhook_configured: Boolean(notificationsWebhookUrl),
       });
     }
 
@@ -471,7 +547,8 @@ Deno.serve(async (req) => {
         directRow,
         webhookUrl,
         resultsWebhookUrl || null,
-        natterWebhookUrl || null
+        natterWebhookUrl || null,
+        notificationsWebhookUrl || null
       );
       await postWebhook(target.url, [embedFor(directRow, supabaseUrl)], {
         username: target.username,
@@ -494,6 +571,7 @@ Deno.serve(async (req) => {
     let posted = 0;
     let postedResults = 0;
     let postedNatter = 0;
+    let postedNotifications = 0;
     let postedNews = 0;
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -511,14 +589,18 @@ Deno.serve(async (req) => {
         "DISCORD_NATTER_WEBHOOK_URL not set — natter items will stay in error until the #gpsl-natter webhook secret is added"
       );
     }
+    if (
+      pending.some((r) => isNotificationsEvent(r)) &&
+      !notificationsWebhookUrl
+    ) {
+      warnings.push(
+        "DISCORD_NOTIFICATIONS_WEBHOOK_URL not set — notification items will stay in error until the #gpsl-notifications webhook secret is added"
+      );
+    }
 
-    // Lazy-load guild members once if any owner posts need a real ping
+    // Lazy-load guild members once if any posts need a real ping
     let guildMembers: DiscordMember[] | null = null;
-    const needsOwnerResolve = pending.some(
-      (r) =>
-        r.event_type === "owner" &&
-        (r.metadata?.owner_tag || r.metadata?.mention)
-    );
+    const needsOwnerResolve = pending.some((r) => wantsOwnerPing(r));
 
     if (needsOwnerResolve && botToken && guildId) {
       try {
@@ -534,7 +616,7 @@ Deno.serve(async (req) => {
         let allowedMentions: { users?: string[]; parse?: string[] } |
           undefined;
 
-        if (row.event_type === "owner") {
+        if (wantsOwnerPing(row)) {
           const rawTag = String(
             row.metadata?.owner_tag ||
               row.metadata?.mention ||
@@ -576,7 +658,8 @@ Deno.serve(async (req) => {
           row,
           webhookUrl,
           resultsWebhookUrl || null,
-          natterWebhookUrl || null
+          natterWebhookUrl || null,
+          notificationsWebhookUrl || null
         );
         const embed = embedFor(row, supabaseUrl);
         try {
@@ -620,6 +703,7 @@ Deno.serve(async (req) => {
         posted += 1;
         if (isResultsEvent(row)) postedResults += 1;
         else if (isNatterEvent(row)) postedNatter += 1;
+        else if (isNotificationsEvent(row)) postedNotifications += 1;
         else postedNews += 1;
         // Discord webhooks: stay under ~5/2s — pause between successful posts
         await sleep(700);
@@ -667,8 +751,10 @@ Deno.serve(async (req) => {
       posted_news: postedNews,
       posted_results: postedResults,
       posted_natter: postedNatter,
+      posted_notifications: postedNotifications,
       results_webhook_configured: Boolean(resultsWebhookUrl),
       natter_webhook_configured: Boolean(natterWebhookUrl),
+      notifications_webhook_configured: Boolean(notificationsWebhookUrl),
       warnings,
       errors,
     });
