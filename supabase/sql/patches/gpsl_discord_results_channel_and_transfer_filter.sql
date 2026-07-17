@@ -7,7 +7,10 @@
 -- 3) Supabase → Edge Functions → discord-sky-feed → Secrets:
 --      DISCORD_WEBHOOK_URL          = #gpsl-news webhook (transfers / other news)
 --      DISCORD_RESULTS_WEBHOOK_URL  = #gpsl-results webhook (match results only)
+--      Create the results webhook FROM INSIDE #gpsl-results (wrong channel = wrong destination).
 -- 4) Redeploy: supabase functions deploy discord-sky-feed
+--    Without the results secret, older builds silently posted results to #gpsl-news.
+--    Current edge function blocks results until DISCORD_RESULTS_WEBHOOK_URL is set.
 --
 -- Safe re-run.
 -- =============================================================================

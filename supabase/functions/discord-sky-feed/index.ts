@@ -177,11 +177,12 @@ function webhookForRow(
   resultsUrl: string | null
 ): { url: string; username: string } {
   if (isResultsEvent(row)) {
-    if (resultsUrl) {
-      return { url: resultsUrl, username: "GPSL Results" };
+    if (!resultsUrl) {
+      throw new Error(
+        "DISCORD_RESULTS_WEBHOOK_URL secret missing — result not posted to #gpsl-news. Add the #gpsl-results webhook secret and redeploy discord-sky-feed."
+      );
     }
-    // Fallback so results still post if secret not set yet
-    return { url: newsUrl, username: "GPSL Results" };
+    return { url: resultsUrl, username: "GPSL Results" };
   }
   return { url: newsUrl, username: "GPSL News" };
 }
@@ -261,12 +262,42 @@ Deno.serve(async (req) => {
       body = {};
     }
 
+    // Optional: routing / secrets check (no Discord post)
+    if (body?.diagnose === true) {
+      return jsonResponse({
+        ok: true,
+        diagnose: true,
+        news_webhook_configured: Boolean(webhookUrl),
+        results_webhook_configured: Boolean(resultsWebhookUrl),
+        routing: {
+          result_events: resultsWebhookUrl
+            ? "DISCORD_RESULTS_WEBHOOK_URL → #gpsl-results"
+            : "BLOCKED until DISCORD_RESULTS_WEBHOOK_URL is set",
+          other_events: "DISCORD_WEBHOOK_URL → #gpsl-news",
+        },
+        note: resultsWebhookUrl
+          ? "If results still appear in #gpsl-news, the results webhook URL itself is pointed at the wrong Discord channel — recreate the webhook inside #gpsl-results."
+          : "Results were previously falling back to #gpsl-news when this secret was missing. That fallback is disabled.",
+      });
+    }
+
     // Optional: post a one-off test embed
     if (body?.test === true) {
       const toResults = body?.channel === "results";
-      const target = toResults
-        ? resultsWebhookUrl || webhookUrl
-        : webhookUrl;
+      if (toResults && !resultsWebhookUrl) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "DISCORD_RESULTS_WEBHOOK_URL secret missing — cannot test #gpsl-results. Add it under Edge Function secrets and redeploy.",
+            channel: "results",
+            used_results_webhook: false,
+            results_webhook_configured: false,
+          },
+          400
+        );
+      }
+      const target = toResults ? resultsWebhookUrl : webhookUrl;
       await postWebhook(
         target,
         [
@@ -275,10 +306,8 @@ Deno.serve(async (req) => {
               ? "🚨 GPSL RESULTS — TEST"
               : "🚨 GPSL NEWS — TEST",
             description: toResults
-              ? resultsWebhookUrl
-                ? "Results webhook is connected."
-                : "DISCORD_RESULTS_WEBHOOK_URL missing — posted to news webhook as fallback."
-              : "Discord news feed is connected.",
+              ? "Results webhook is connected. This message must appear in #gpsl-results only."
+              : "Discord news feed is connected. This message must appear in #gpsl-news only.",
             color: 0xe10600,
             footer: { text: toResults ? "GPSL Results" : "GPSL News" },
             timestamp: new Date().toISOString(),
@@ -291,6 +320,7 @@ Deno.serve(async (req) => {
         test: true,
         channel: toResults ? "results" : "news",
         used_results_webhook: Boolean(toResults && resultsWebhookUrl),
+        results_webhook_configured: Boolean(resultsWebhookUrl),
       });
     }
 
@@ -338,7 +368,7 @@ Deno.serve(async (req) => {
       !resultsWebhookUrl
     ) {
       warnings.push(
-        "DISCORD_RESULTS_WEBHOOK_URL not set — results falling back to #gpsl-news webhook"
+        "DISCORD_RESULTS_WEBHOOK_URL not set — result items will stay in error until the #gpsl-results webhook secret is added"
       );
     }
 

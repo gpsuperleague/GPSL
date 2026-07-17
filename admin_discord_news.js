@@ -196,12 +196,68 @@ async function loadQueue() {
     </table>`;
 }
 
+function renderRoutingStatus(data) {
+  const el = document.getElementById("routingStatus");
+  if (!el) return;
+  const newsOk = data?.news_webhook_configured !== false;
+  const resultsOk = !!data?.results_webhook_configured;
+  el.innerHTML = `
+    <div class="${newsOk ? "ok" : "bad"}">#gpsl-news webhook: ${
+      newsOk ? "configured" : "missing DISCORD_WEBHOOK_URL"
+    }</div>
+    <div class="${resultsOk ? "ok" : "bad"}">#gpsl-results webhook: ${
+      resultsOk
+        ? "configured (DISCORD_RESULTS_WEBHOOK_URL)"
+        : "MISSING — results will not post until this secret is set + function redeployed"
+    }</div>
+    ${
+      data?.note
+        ? `<div class="note" style="margin-top:8px;">${escapeHtml(data.note)}</div>`
+        : ""
+    }
+  `;
+}
+
+async function checkRouting() {
+  setStatus("newsStatus", "Checking Discord webhook routing…");
+  const { data, error } = await invokeFeed({ diagnose: true });
+  if (error) {
+    setStatus("newsStatus", error.message, false);
+    renderRoutingStatus({
+      news_webhook_configured: false,
+      results_webhook_configured: false,
+      note: error.message,
+    });
+    return;
+  }
+  renderRoutingStatus(data);
+  if (!data?.results_webhook_configured) {
+    setStatus(
+      "newsStatus",
+      "Results are going to #gpsl-news because DISCORD_RESULTS_WEBHOOK_URL is not set on discord-sky-feed. Add the #gpsl-results webhook secret, redeploy, then Test #gpsl-results.",
+      false
+    );
+    return;
+  }
+  setStatus(
+    "newsStatus",
+    "Routing OK — results webhook is configured. Use Test #gpsl-results to confirm it lands in the right channel."
+  );
+}
+
 async function pushNews() {
   setStatus("newsStatus", "Pushing pending items…");
   const { data, error } = await invokeFeed({});
   if (error) {
     setStatus("newsStatus", error.message, false);
     return;
+  }
+  if (data?.results_webhook_configured === false) {
+    renderRoutingStatus({
+      news_webhook_configured: true,
+      results_webhook_configured: false,
+      note: "Result items fail until DISCORD_RESULTS_WEBHOOK_URL is set (they no longer fall back to #gpsl-news).",
+    });
   }
   const errs = Array.isArray(data?.errors) && data.errors.length
     ? ` (${data.errors.length} error${data.errors.length === 1 ? "" : "s"})`
@@ -230,21 +286,35 @@ async function sendTest(channel = "news") {
   });
   if (error) {
     setStatus("newsStatus", error.message, false);
+    if (channel === "results") {
+      renderRoutingStatus({
+        news_webhook_configured: true,
+        results_webhook_configured: false,
+        note: error.message,
+      });
+    }
     return;
   }
   if (!data?.ok) {
-    setStatus("newsStatus", "Unexpected response.", false);
+    setStatus(
+      "newsStatus",
+      data?.error || "Unexpected response.",
+      false
+    );
     return;
   }
   if (channel === "results" && data.used_results_webhook === false) {
     setStatus(
       "newsStatus",
-      "Test sent, but DISCORD_RESULTS_WEBHOOK_URL is missing — it went to the news webhook. Add the results secret and redeploy.",
+      "DISCORD_RESULTS_WEBHOOK_URL is missing — result test blocked (no longer posts to #gpsl-news).",
       false
     );
     return;
   }
-  setStatus("newsStatus", `Test message sent to ${label}.`);
+  setStatus(
+    "newsStatus",
+    `Test message sent to ${label}. If you do not see it there, the webhook URL is attached to the wrong Discord channel.`
+  );
 }
 
 document.getElementById("newsPushBtn")?.addEventListener("click", () => {
@@ -255,6 +325,9 @@ document.getElementById("newsTestBtn")?.addEventListener("click", () => {
 });
 document.getElementById("resultsTestBtn")?.addEventListener("click", () => {
   sendTest("results").catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
+document.getElementById("routingCheckBtn")?.addEventListener("click", () => {
+  checkRouting().catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
 document.getElementById("newsRefreshBtn")?.addEventListener("click", () => {
   loadQueue()
@@ -273,5 +346,6 @@ initAdminPage()
     if (!user) return;
     await loadAutoSettings();
     await loadQueue();
+    await checkRouting();
   })
   .catch((e) => setStatus("newsStatus", e.message || String(e), false));

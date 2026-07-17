@@ -29,6 +29,12 @@
       padding:8px 10px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px;
     }
     .auto-form .check { display:flex; align-items:center; gap:8px; }
+    #routingStatus {
+      margin-top:8px; padding:12px; background:#111; border:1px solid #333;
+      border-radius:6px; font-size:13px; line-height:1.5;
+    }
+    #routingStatus .ok { color:#9d9; }
+    #routingStatus .bad { color:#f88; }
   </style>
 </head>
 <body class="admin-page">
@@ -49,12 +55,18 @@
           <li>Supabase → Edge Functions → <code>discord-sky-feed</code> → Secrets:
             <ul style="margin:6px 0 0;padding-left:1.1em;">
               <li><code>DISCORD_WEBHOOK_URL</code> = existing #gpsl-news webhook</li>
-              <li><code>DISCORD_RESULTS_WEBHOOK_URL</code> = new #gpsl-results webhook</li>
+              <li><code>DISCORD_RESULTS_WEBHOOK_URL</code> = new #gpsl-results webhook (must be created inside #gpsl-results)</li>
             </ul>
           </li>
           <li>Run SQL patch <code>gpsl_discord_results_channel_and_transfer_filter.sql</code>.</li>
-          <li>Redeploy the edge function, then use the test buttons below.</li>
+          <li>Redeploy: <code>supabase functions deploy discord-sky-feed</code> (secrets alone are not enough if an old build is live).</li>
+          <li>Use <b>Check routing</b> then <b>Test #gpsl-results</b> — the test must appear in #gpsl-results only.</li>
         </ol>
+        <div id="routingStatus"></div>
+        <p class="note" style="margin-top:10px;color:#c88;">
+          If results still land in #gpsl-news, either the results secret is missing (old builds fell back silently)
+          or the results webhook URL was created in the wrong Discord channel.
+        </p>
       </div>
 
       <div class="card">
@@ -99,6 +111,7 @@
         </p>
         <div class="news-actions">
           <button type="button" id="newsPushBtn" class="button">Push queue to Discord</button>
+          <button type="button" id="routingCheckBtn" class="button secondary">Check routing</button>
           <button type="button" id="newsTestBtn" class="button secondary">Test #gpsl-news</button>
           <button type="button" id="resultsTestBtn" class="button secondary">Test #gpsl-results</button>
           <button type="button" id="newsRefreshBtn" class="button secondary">Refresh queue</button>
@@ -108,6 +121,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_discord_news.js?v=20260717-results-ch"></script>
+  <script type="module" src="admin_discord_news.js?v=20260717-results-fix"></script>
 </body>
 </html>
