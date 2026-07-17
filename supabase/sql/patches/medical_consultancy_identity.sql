@@ -112,7 +112,8 @@ CREATE OR REPLACE FUNCTION public.medical_create_named_consult(
   p_club text,
   p_matches int,
   p_source text DEFAULT NULL,
-  p_inventory_id bigint DEFAULT NULL
+  p_inventory_id bigint DEFAULT NULL,
+  p_identity jsonb DEFAULT NULL
 )
 RETURNS bigint
 LANGUAGE plpgsql
@@ -130,7 +131,12 @@ BEGIN
     RAISE EXCEPTION 'Invalid consult strength %', v_matches;
   END IF;
 
-  v_ident := public.medical_random_consultancy_identity();
+  IF p_identity IS NOT NULL
+     AND coalesce(nullif(p_identity->>'label', ''), '') <> '' THEN
+    v_ident := p_identity;
+  ELSE
+    v_ident := public.medical_random_consultancy_identity();
+  END IF;
 
   INSERT INTO public.club_medical_consults (
     club_short_name, matches_removed, status,
@@ -139,9 +145,12 @@ BEGIN
   )
   VALUES (
     v_club, v_matches, 'available',
-    v_ident->>'group_name',
-    v_ident->>'consultant_name',
-    v_ident->>'label',
+    coalesce(v_ident->>'group_name', 'Harley Medical Group'),
+    coalesce(v_ident->>'consultant_name', 'Helen Roberts'),
+    coalesce(
+      v_ident->>'label',
+      (v_ident->>'group_name') || ' - Specialist Consultant ' || (v_ident->>'consultant_name')
+    ),
     p_inventory_id,
     p_source
   )
@@ -211,7 +220,7 @@ BEGIN
 
   IF p_prize_type = 'medical_token' THEN
     v_consult_id := public.medical_create_named_consult(
-      v_club, p_param_int, coalesce(p_source, 'prize'), v_id
+      v_club, p_param_int, coalesce(p_source, 'prize'), v_id, v_ident
     );
     UPDATE public.club_prize_inventory
     SET metadata = coalesce(metadata, '{}'::jsonb) || jsonb_build_object('consult_id', v_consult_id)
@@ -577,7 +586,7 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.medical_random_consultancy_identity() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.medical_create_named_consult(text, int, text, bigint) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.medical_create_named_consult(text, int, text, bigint, jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.medical_sync_named_consults(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.medical_list_available_consults(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.medical_room_prize_tokens(text) TO authenticated;
@@ -617,14 +626,8 @@ BEGIN
       SELECT 1 FROM public.club_medical_consults c WHERE c.inventory_id = r.id
     ) THEN
       v_cid := public.medical_create_named_consult(
-        r.club_short_name, r.param_int, coalesce(r.source, 'prize_backfill'), r.id
+        r.club_short_name, r.param_int, coalesce(r.source, 'prize_backfill'), r.id, v_ident
       );
-      -- Overwrite with same identity as inventory
-      UPDATE public.club_medical_consults
-      SET group_name = v_ident->>'group_name',
-          consultant_name = v_ident->>'consultant_name',
-          label = v_ident->>'label'
-      WHERE id = v_cid;
 
       UPDATE public.club_prize_inventory
       SET metadata = metadata || jsonb_build_object('consult_id', v_cid)

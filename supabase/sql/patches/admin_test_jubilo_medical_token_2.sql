@@ -1,10 +1,13 @@
 -- =============================================================================
 -- Test: Jubilo (JUB) — specialist consult chips + prize medical (−2)
 --
--- After medical_consultancy_identity.sql, each consult gets a random label like:
+-- PREREQUISITE: run medical_consultancy_identity.sql first
+--   (creates public.club_medical_consults + named identities)
+--
+-- After that patch, each consult gets a random label like:
 --   "Harley Medical Group - Specialist Consultant Helen Roberts"
 --
--- Run in Supabase SQL Editor (after medical_consultancy_identity.sql).
+-- Run in Supabase SQL Editor.
 -- =============================================================================
 
 DO $$
@@ -14,6 +17,11 @@ DECLARE
   v_prize_id bigint;
   v_spec jsonb;
 BEGIN
+  IF to_regclass('public.club_medical_consults') IS NULL THEN
+    RAISE EXCEPTION
+      'Missing public.club_medical_consults — run medical_consultancy_identity.sql first, then re-run this test';
+  END IF;
+
   IF NOT EXISTS (SELECT 1 FROM public."Clubs" c WHERE c."ShortName" = v_club) THEN
     RAISE EXCEPTION 'Club % not found', v_club;
   END IF;
