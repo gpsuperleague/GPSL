@@ -155,7 +155,14 @@ function render() {
       )}`
     );
   }
-  document.getElementById("myBids").innerHTML = my.join("<br>") || "No bids from you yet.";
+  const waitingToOpen =
+    state.status === "scheduled" ||
+    (state.start_time && Date.now() < new Date(state.start_time).getTime());
+  document.getElementById("myBids").innerHTML =
+    my.join("<br>") ||
+    (waitingToOpen
+      ? "Waiting for Auction to open before bidding is allowed"
+      : "No bids from you yet.");
 
   const bidPanel = document.getElementById("bidPanel");
   const help = document.getElementById("bidHelp");

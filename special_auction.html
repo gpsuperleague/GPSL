@@ -756,7 +756,7 @@
           "No club is linked to your account — you cannot bid.";
       } else if (phase === "before_start") {
         els.myBidLine.textContent =
-          "Place bid will appear here when the window opens (see timer above).";
+          "Waiting for Auction to open before bidding is allowed";
       } else if (mine && isLub) {
         const placed = formatBidTimePlain(mine.bid_time);
         els.myBidLine.textContent = placed
