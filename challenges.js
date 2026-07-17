@@ -62,13 +62,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.title = `Season challenges — ${fullClubName(club.ShortName) || club.ShortName}`;
 
+  const progressItems = await loadMyProgress(club.ShortName);
   await Promise.all([
-    loadBigPrizePacks(),
-    loadMyProgress(club.ShortName),
+    loadBigPrizePacks(progressItems),
     loadCatalog(),
     loadAwards(club.ShortName),
   ]);
 });
+
+/** Big prize stays claimable until the latest challenge deadline in that phase. */
+function phaseWindowOpen(progressItems, phase) {
+  const rows = (progressItems || []).filter((c) => c.window_phase === phase);
+  if (!rows.length) return null;
+  return rows.some((c) => !c.expired);
+}
 
 async function loadCurrentSeasonId() {
   const { data } = await supabase
@@ -108,11 +115,13 @@ function fallbackPackHtml(p) {
     Transfer discounts: ${disc} · Appeal cards: ${appeals} · Draft tokens: ${drafts}`;
 }
 
-function renderBigPrizeCard(pack, winner) {
+function renderBigPrizeCard(pack, winner, windowOpen) {
   const label = packDisplayName(pack);
   const phase = pack.window_phase;
+  const phaseName = windowLabel(phase).toLowerCase();
   const summary = pack.pack_summary || fallbackPackHtml(pack);
   let statusHtml;
+
   if (winner?.club_short_name) {
     const clubName = fullClubName(winner.club_short_name) || winner.club_short_name;
     const when = winner.awarded_at
@@ -123,9 +132,13 @@ function renderBigPrizeCard(pack, winner) {
       ${winner.amount != null ? ` · ${formatMoney(Number(winner.amount))}` : ""}
       ${when ? ` · ${when}` : ""}
     </div>`;
+  } else if (windowOpen === false) {
+    statusHtml = `<div class="prize-status-closed">
+      Not claimed — the ${phaseName} window closed with no winner.
+    </div>`;
   } else {
     statusHtml = `<div class="prize-status-open">
-      Still available — first club to complete all ${windowLabel(phase).toLowerCase()} challenges wins.
+      Still available — first club to complete all ${phaseName} challenges wins.
     </div>`;
   }
 
@@ -137,7 +150,7 @@ function renderBigPrizeCard(pack, winner) {
   </div>`;
 }
 
-async function loadBigPrizePacks() {
+async function loadBigPrizePacks(progressItems = []) {
   const el = document.getElementById("challengeBigPrize");
   if (!el) return;
 
@@ -163,14 +176,19 @@ async function loadBigPrizePacks() {
     packs = fallback;
   }
 
-  // Always show start then mid
   const ordered = ["start", "mid"].map((phase) => {
     const pack = packs.find((p) => p.window_phase === phase);
     return pack || { window_phase: phase, pack_summary: "Pack not configured yet." };
   });
 
   el.innerHTML = ordered
-    .map((p) => renderBigPrizeCard(p, winners.get(p.window_phase)))
+    .map((p) =>
+      renderBigPrizeCard(
+        p,
+        winners.get(p.window_phase),
+        phaseWindowOpen(progressItems, p.window_phase)
+      )
+    )
     .join("");
 }
 
@@ -251,7 +269,7 @@ async function loadMyProgress(clubShortName) {
         ? 'Challenges not enabled yet — admin must run <code>competition_challenges.sql</code> and seed targets.'
         : `❌ ${msg}`;
     renderPhaseGrids([], "progressStart", "progressMid", text);
-    return;
+    return [];
   }
 
   const items = data?.challenges || [];
@@ -262,12 +280,13 @@ async function loadMyProgress(clubShortName) {
       "progressMid",
       "No challenges in this window. Ask admin to seed targets on Admin → Season challenges."
     );
-    return;
+    return [];
   }
 
   renderPhaseGrids(items, "progressStart", "progressMid", "No challenges in this window.", {
     showProgress: true,
   });
+  return items;
 }
 
 async function loadCatalog() {
