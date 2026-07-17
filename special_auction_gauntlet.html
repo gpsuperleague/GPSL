@@ -64,7 +64,7 @@
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
         <div>
           <label>Bid amount (₿)</label><br>
-          <input id="bidAmount" type="number" min="1000000" step="1000000" style="width:180px;">
+          <input id="bidAmount" type="text" inputmode="numeric" autocomplete="off" placeholder="12,500,000" style="width:220px;padding:8px 10px;font-size:16px;font-variant-numeric:tabular-nums;">
         </div>
         <button type="button" class="button" id="bidBtn">Submit bid</button>
       </div>
@@ -80,6 +80,6 @@
       <div id="phase1Table"></div>
     </div>
   </div>
-  <script type="module" src="special_auction_gauntlet.js?v=20260717-waiting-open"></script>
+  <script type="module" src="special_auction_gauntlet.js?v=20260717-money-format"></script>
 </body>
 </html>

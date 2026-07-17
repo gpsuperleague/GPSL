@@ -2,12 +2,13 @@ import { initGlobal, supabase, getAuthUserFast } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { formatMoney, fetchPrizePlayerBrief } from "./special_auction.js";
 import { playerNameLinkHtml } from "./player_links.js";
+import { parseMoneyInput, wireMoneyBidInput } from "./money_input.js";
 
 let state = null;
 let auctionId = null;
 let timerHandle = null;
 let prizeHtml = "";
-
+let bidAmountControl = null;
 function setBidStatus(msg, kind = "") {
   const el = document.getElementById("bidStatus");
   if (!el) return;
@@ -177,7 +178,9 @@ function render() {
       state.phase2_min || 0
     )}. Submitting charges ₿3,000,000 entry fee immediately.`;
     const input = document.getElementById("bidAmount");
-    if (input && state.phase2_min) input.min = String(state.phase2_min);
+    if (input && state.phase2_min) {
+      bidAmountControl?.set(Math.max(Number(state.phase2_min) || 0, 1000000));
+    }
   }
 
   const reveal = document.getElementById("revealPanel");
@@ -220,7 +223,9 @@ async function refreshState() {
 }
 
 async function submitBid() {
-  const raw = Number(document.getElementById("bidAmount").value);
+  const raw = bidAmountControl?.parse() ?? parseMoneyInput(
+    document.getElementById("bidAmount")?.value
+  );
   if (!raw || raw <= 0) {
     setBidStatus("Enter a bid amount.", "err");
     return;
@@ -240,6 +245,7 @@ async function submitBid() {
     return;
   }
   setBidStatus(`✅ Bid locked at ${formatMoney(data?.bid_amount)}. ${data?.note || ""}`, "ok");
+  bidAmountControl?.set(0);
   document.getElementById("bidAmount").value = "";
   await refreshState();
 }
@@ -272,6 +278,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   document.getElementById("bidBtn").onclick = submitBid;
+
+  const bidInput = document.getElementById("bidAmount");
+  bidAmountControl = wireMoneyBidInput(bidInput, {
+    min: () =>
+      state?.can_bid_phase2
+        ? Math.max(Number(state.phase2_min) || 0, 1000000)
+        : 1000000,
+  });
+  if (bidInput && !bidInput.value) {
+    bidAmountControl?.set(1000000);
+  }
+
   await refreshState();
   timerHandle = setInterval(updateTimer, 1000);
   setInterval(refreshState, 15000);
