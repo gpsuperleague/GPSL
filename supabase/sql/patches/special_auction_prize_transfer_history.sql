@@ -217,7 +217,8 @@ DECLARE
   v_seller text;
   v_fee numeric;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
+  -- SQL Editor has no JWT (auth.uid() IS NULL); allow that or GPSL admin.
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
