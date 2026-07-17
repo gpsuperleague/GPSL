@@ -10,6 +10,101 @@
     .page { width:95%; max-width:900px; margin:20px auto 40px; }
     h1 { color:#ff9900; margin:0 0 8px; }
     .meta { color:#aaa; font-size:13px; line-height:1.45; margin-bottom:14px; }
+    .rules-panel {
+      background: linear-gradient(165deg, #1c1c1c 0%, #151515 100%);
+      border: 1px solid #333;
+      border-radius: 10px;
+      padding: 16px 18px;
+      margin-bottom: 16px;
+    }
+    .rules-lead {
+      margin: 0 0 14px;
+      color: #ccc;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .rules-steps {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0 0 14px;
+      padding: 0;
+      list-style: none;
+      counter-reset: gauntlet-step;
+    }
+    .rules-steps li {
+      counter-increment: gauntlet-step;
+      background: #222;
+      border: 1px solid #3a3a3a;
+      border-radius: 8px;
+      padding: 10px 12px;
+      min-width: 0;
+    }
+    .rules-steps li::before {
+      content: "Step " counter(gauntlet-step);
+      display: block;
+      color: #ff9900;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .rules-steps strong {
+      display: block;
+      color: #eee;
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+    .rules-steps span {
+      display: block;
+      color: #999;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .rules-fees {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0 0 10px;
+    }
+    .rules-fee {
+      border-radius: 8px;
+      padding: 10px 12px;
+      border: 1px solid #333;
+      min-width: 0;
+    }
+    .rules-fee.top { background: #152015; border-color: #2a4a2a; }
+    .rules-fee.middle { background: #221c10; border-color: #4a3a18; }
+    .rules-fee.bottom { background: #221515; border-color: #4a2a2a; }
+    .rules-fee .label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+    }
+    .rules-fee.top .label { color: #8d8; }
+    .rules-fee.middle .label { color: #fc6; }
+    .rules-fee.bottom .label { color: #f88; }
+    .rules-fee .outcome {
+      color: #ddd;
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .rules-fee .outcome b { color: #fff; font-weight: 700; }
+    .rules-note {
+      margin: 0;
+      color: #888;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    @media (max-width: 640px) {
+      .rules-steps,
+      .rules-fees {
+        grid-template-columns: 1fr;
+      }
+    }
     .panel {
       background:#1a1a1a; border:1px solid #333; border-radius:8px;
       padding:18px 20px; margin-bottom:16px;
@@ -77,10 +172,38 @@
   <div id="nav"></div>
   <div class="page">
     <h1 id="pageTitle">Blind Gauntlet</h1>
-    <p class="meta" id="pageMeta">
-      Phase 1 (15m blind) → reveal (5m) → Phase 2 (10m). Top 25% advance.
-      Middle pay ₿500k · Bottom pay ₿1m · Phase 2 entry ₿3m · winner also pays their Phase 2 bid.
-    </p>
+    <div class="rules-panel" id="pageMeta">
+      <p class="rules-lead">Three timed rounds with secret bids. After Phase&nbsp;1, the top&nbsp;25% advance — highest Phase&nbsp;2 bid wins the prize.</p>
+      <ol class="rules-steps">
+        <li>
+          <strong>Phase 1 · 15 min</strong>
+          <span>One secret bid. Not charged yet. Sets your Phase&nbsp;2 floor.</span>
+        </li>
+        <li>
+          <strong>Reveal · 5 min</strong>
+          <span>Everyone ranked. Top&nbsp;25% advance; others are out and pay a fee.</span>
+        </li>
+        <li>
+          <strong>Phase 2 · 10 min</strong>
+          <span>Advancers place one final secret bid (≥ Phase&nbsp;1). Highest wins.</span>
+        </li>
+      </ol>
+      <div class="rules-fees">
+        <div class="rules-fee top">
+          <div class="label">Top 25%</div>
+          <div class="outcome">Advance free · then <b>₿3m</b> Phase&nbsp;2 entry</div>
+        </div>
+        <div class="rules-fee middle">
+          <div class="label">Middle</div>
+          <div class="outcome">Eliminated · pay <b>₿500k</b></div>
+        </div>
+        <div class="rules-fee bottom">
+          <div class="label">Bottom</div>
+          <div class="outcome">Eliminated · pay <b>₿1m</b></div>
+        </div>
+      </div>
+      <p class="rules-note">Winner also pays their Phase&nbsp;2 bid amount on top of the ₿3m entry fee. All bids round to ₿1,000,000.</p>
+    </div>
 
     <div class="panel">
       <h2>Prize</h2>
