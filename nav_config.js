@@ -97,6 +97,7 @@ export const NAV_SECTIONS = [
         page: "medical_room",
         navIcon: "first_aid",
       },
+      { href: "club_prizes.html", label: "Club Rewards Centre", page: "club_prizes" },
       { href: "matchday.html", label: "Match Day", page: "matchday" },
       { href: "club_fixtures.html", label: "Fixtures", page: "club_fixtures" },
       { href: "transfer_center.html", label: "Transfer Centre", page: "transfer_center" },
@@ -134,7 +135,6 @@ export const NAV_SECTIONS = [
       { href: "progress.html", label: "Tables", page: "progress" },
       { href: "league_stats.html", label: "Stats", page: "league_stats" },
       { href: "challenges.html", label: "Challenges", page: "challenges" },
-      { href: "club_prizes.html", label: "Club prizes", page: "club_prizes" },
     ],
   },
   {
@@ -273,7 +273,6 @@ export const NAV_SECTIONS = [
       { href: "season_calendar.html", label: "Season calendar", page: "season_calendar" },
       { href: "natter.html", label: "Natter", page: "natter" },
       { href: "challenges.html", label: "Season challenges", page: "challenges" },
-      { href: "club_prizes.html", label: "Club prizes", page: "club_prizes" },
     ],
   },
 ];
