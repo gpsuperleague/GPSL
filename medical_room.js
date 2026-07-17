@@ -38,25 +38,24 @@ function silhouetteSvg(gender, filled) {
 
 function availableConsults() {
   const list = [];
-  const prizeTokens = state?.prize_medical_tokens || [];
-  for (const t of prizeTokens) {
+  // medical_room_prize_tokens now returns ALL named consults (vault + prize)
+  const rows = state?.prize_medical_tokens || [];
+  for (const t of rows) {
+    const tier = Number(t.param_int ?? t.matches_removed) || 2;
+    const id = t.consult_id ?? t.id;
+    const label =
+      t.label ||
+      t.consultancy_label ||
+      `Specialist consult (−${tier} matches)`;
     list.push({
-      key: `prize:${t.id}`,
-      tier: Number(t.param_int) || 2,
-      label: `Specialist consult (−${t.param_int} matches)`,
-    });
-  }
-  const n = Number(state?.specialist_tokens) || 0;
-  const tier = Number(state?.specialist_matches_removed) || 2;
-  for (let i = 0; i < n; i++) {
-    list.push({
-      key: i === 0 ? "specialist" : `specialist:${i}`,
+      key: id != null ? `consult:${id}` : `tier:${tier}:${list.length}`,
+      consultId: id != null ? Number(id) : null,
+      inventoryId: t.inventory_id != null ? Number(t.inventory_id) : null,
       tier,
-      label: `Specialist consult (−${tier} matches)`,
+      label,
     });
   }
-  // Prefer strongest consults first in pickers
-  list.sort((a, b) => b.tier - a.tier);
+  list.sort((a, b) => b.tier - a.tier || (a.consultId || 0) - (b.consultId || 0));
   return list;
 }
 
@@ -122,7 +121,7 @@ function renderTokens() {
         (c) => `<option value="${c.key}">${c.label}</option>`
       );
       const selectHtml = canUse
-        ? `<select class="med-token-pick" data-token-injury="${inj.injury_id}" style="max-width:260px;">${tokenOpts.join(
+        ? `<select class="med-token-pick" data-token-injury="${inj.injury_id}" style="max-width:min(100%,420px);">${tokenOpts.join(
             ""
           )}</select>`
         : "";
@@ -329,33 +328,25 @@ async function hirePhysio(slot) {
 
 async function applyToken(injuryId, pickValue = null) {
   const consults = availableConsults();
-  let inventoryId = null;
-  let preferSpecialist = false;
-  let tier = state?.specialist_matches_removed || 2;
-
   const picked =
     (pickValue && consults.find((c) => c.key === pickValue)) || consults[0] || null;
-
-  if (picked?.key?.startsWith("prize:")) {
-    inventoryId = Number(picked.key.slice(6));
-    tier = picked.tier;
-  } else if (picked) {
-    preferSpecialist = true;
-    tier = picked.tier;
-  }
+  const tier = picked?.tier || state?.specialist_matches_removed || 2;
+  const who = picked?.label || `specialist consult (−${tier})`;
 
   if (
     !confirm(
-      `Doctor refers this injury to a specialist consultant (−${tier} matches)?\n(One consult per injury.)`
+      `Doctor refers this injury to:\n${who}\n\n(−${tier} matches; one consult per injury.)`
     )
   ) {
     return;
   }
   setStatus("Referring to specialist…");
   const payload = { p_injury_id: injuryId };
-  if (inventoryId) {
-    payload.p_inventory_id = inventoryId;
-  } else if (preferSpecialist) {
+  if (picked?.consultId) {
+    payload.p_consult_id = picked.consultId;
+  } else if (picked?.inventoryId) {
+    payload.p_inventory_id = picked.inventoryId;
+  } else {
     payload.p_prefer_specialist = true;
   }
   const { data, error } = await supabase.rpc("medical_apply_specialist_token", payload);
@@ -364,7 +355,7 @@ async function applyToken(injuryId, pickValue = null) {
     return;
   }
   setStatus(
-    `Specialist consult removed ${data?.matches_removed ?? 0} match(es) (−${data?.token_tier ?? tier}).`,
+    `${data?.label || who}: removed ${data?.matches_removed ?? 0} match(es).`,
     "ok"
   );
   await loadState();

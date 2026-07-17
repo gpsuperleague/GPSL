@@ -501,14 +501,21 @@ function newOwnerListOptionHtml(player) {
   })}</option>`;
 }
 
+function squadBestMedicalConsult() {
+  const rows = squadRewardCtx.prizeMedical || [];
+  if (!rows.length) return null;
+  return rows[0];
+}
+
 function squadRewardActionOptionsHtml(player) {
   const pid = String(player?.Konami_ID ?? "");
   const opts = [];
 
   const injRows = squadInjuriesByPlayer.get(pid) || [];
+  const consult = squadBestMedicalConsult();
   const canMedical =
     squadRewardCtx.hasDoctor &&
-    (squadRewardCtx.prizeMedical.length > 0 || squadRewardCtx.specialistTokens > 0);
+    (!!consult || squadRewardCtx.specialistTokens > 0);
   if (canMedical) {
     for (const inj of injRows) {
       if (inj.token_used) continue;
@@ -517,13 +524,17 @@ function squadRewardActionOptionsHtml(player) {
       const out = Number(inj.matches_out_remaining) || 0;
       const rec = Number(inj.recovery_remaining) || 0;
       if (out <= 0 && rec <= 0) continue;
-      const best =
-        Number(squadRewardCtx.prizeMedical[0]?.param_int) ||
+      const tier =
+        Number(consult?.param_int ?? consult?.matches_removed) ||
         squadRewardCtx.specialistTier ||
         2;
-      const label = inj.label ? ` (${inj.label})` : "";
+      const who =
+        consult?.label ||
+        consult?.consultancy_label ||
+        `Specialist consult −${tier}`;
+      const injLabel = inj.label ? ` (${inj.label})` : "";
       opts.push(
-        `<option value="medical:${iid}">Specialist consult −${best}${label}</option>`
+        `<option value="medical:${iid}">${who} (−${tier})${injLabel}</option>`
       );
     }
   }
@@ -1027,9 +1038,15 @@ async function loadSquadRewardContext() {
   }
 
   if (!prizeTokRes.error && Array.isArray(prizeTokRes.data)) {
-    squadRewardCtx.prizeMedical = prizeTokRes.data
-      .slice()
-      .sort((a, b) => (Number(b.param_int) || 0) - (Number(a.param_int) || 0));
+    // Unified named consults (vault + prize), strongest first
+    squadRewardCtx.prizeMedical = prizeTokRes.data.slice().sort((a, b) => {
+      const tb = Number(b.param_int ?? b.matches_removed) || 0;
+      const ta = Number(a.param_int ?? a.matches_removed) || 0;
+      return tb - ta || (Number(a.consult_id) || 0) - (Number(b.consult_id) || 0);
+    });
+    if (squadRewardCtx.prizeMedical.length) {
+      squadRewardCtx.specialistTokens = squadRewardCtx.prizeMedical.length;
+    }
   }
 
   const items = invRes.data?.items || [];
@@ -1046,18 +1063,27 @@ async function loadSquadRewardContext() {
 }
 
 async function applySquadMedicalToken(injuryId) {
-  const prize = squadRewardCtx.prizeMedical[0];
+  const consult = squadBestMedicalConsult();
   const tier =
-    Number(prize?.param_int) || squadRewardCtx.specialistTier || 2;
+    Number(consult?.param_int ?? consult?.matches_removed) ||
+    squadRewardCtx.specialistTier ||
+    2;
+  const who =
+    consult?.label ||
+    consult?.consultancy_label ||
+    `Specialist consult (−${tier})`;
   if (
     !confirm(
-      `Doctor refers this injury to a specialist consultant (−${tier} matches)?\n(One consult per injury.)`
+      `Doctor refers this injury to:\n${who}\n\n(−${tier} matches; one consult per injury.)`
     )
   ) {
     return;
   }
   const payload = { p_injury_id: Number(injuryId) };
-  if (prize?.id) payload.p_inventory_id = prize.id;
+  if (consult?.consult_id != null) payload.p_consult_id = Number(consult.consult_id);
+  else if (consult?.inventory_id != null)
+    payload.p_inventory_id = Number(consult.inventory_id);
+  else if (consult?.id != null) payload.p_inventory_id = Number(consult.id);
   else payload.p_prefer_specialist = true;
   const { data, error } = await supabase.rpc(
     "medical_apply_specialist_token",
@@ -1068,7 +1094,7 @@ async function applySquadMedicalToken(injuryId) {
     return;
   }
   alert(
-    `Specialist consult removed ${data?.matches_removed ?? 0} match(es) (−${data?.token_tier ?? tier}).`
+    `${data?.label || who}: removed ${data?.matches_removed ?? 0} match(es).`
   );
   await loadSquad();
 }

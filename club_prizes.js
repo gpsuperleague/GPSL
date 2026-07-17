@@ -11,8 +11,14 @@ function setStatus(msg, kind = "") {
 }
 
 function labelItem(it) {
-  if (it.prize_type === "medical_token")
+  if (it.prize_type === "medical_token") {
+    const named =
+      it.metadata?.label ||
+      it.metadata?.consultancy_label ||
+      it.label;
+    if (named) return `${named} (−${it.param_int})`;
     return `Specialist consult −${it.param_int} matches`;
+  }
   if (it.prize_type === "fee_discount") return `Fee discount ${it.param_int}%`;
   if (it.prize_type === "appeal_card") return "Red card appeal card";
   if (it.prize_type === "draft_token") return "Draft token (sign free agent at MV)";
@@ -70,27 +76,46 @@ function renderInventory() {
   }
 }
 
-let medicalRoomSpecialistCount = 0;
-let medicalRoomSpecialistTier = 2;
+let medicalConsultOptions = [];
 
 async function refreshMedicalConsultOptions() {
   const medicalTokSel = document.getElementById("medicalTokenSelect");
   if (!medicalTokSel) return;
 
-  const medicals = inventory.filter(
-    (i) => i.prize_type === "medical_token" && i.status === "available"
-  );
-  const parts = medicals.map(
-    (i) =>
-      `<option value="prize:${i.id}">Specialist consult −${i.param_int} matches</option>`
-  );
-  if (medicalRoomSpecialistCount > 0) {
-    parts.push(
-      `<option value="specialist">Specialist consult −${medicalRoomSpecialistTier} matches ×${medicalRoomSpecialistCount}</option>`
+  const { data, error } = await supabase.rpc("medical_list_available_consults", {
+    p_club: null,
+  });
+  if (error) {
+    // Fallback to inventory medical tokens only
+    const medicals = inventory.filter(
+      (i) => i.prize_type === "medical_token" && i.status === "available"
     );
+    medicalConsultOptions = medicals.map((i) => ({
+      key: i.metadata?.consult_id
+        ? `consult:${i.metadata.consult_id}`
+        : `prize:${i.id}`,
+      consultId: i.metadata?.consult_id ? Number(i.metadata.consult_id) : null,
+      inventoryId: Number(i.id),
+      tier: Number(i.param_int) || 2,
+      label:
+        i.metadata?.label ||
+        i.metadata?.consultancy_label ||
+        `Specialist consult −${i.param_int} matches`,
+    }));
+  } else {
+    medicalConsultOptions = (Array.isArray(data) ? data : []).map((t) => ({
+      key: `consult:${t.consult_id}`,
+      consultId: Number(t.consult_id),
+      inventoryId: t.inventory_id != null ? Number(t.inventory_id) : null,
+      tier: Number(t.param_int ?? t.matches_removed) || 2,
+      label: t.label || t.consultancy_label || `Specialist consult (−${t.param_int})`,
+    }));
   }
-  medicalTokSel.innerHTML = parts.length
-    ? parts.join("")
+
+  medicalTokSel.innerHTML = medicalConsultOptions.length
+    ? medicalConsultOptions
+        .map((c) => `<option value="${c.key}">${c.label} (−${c.tier})</option>`)
+        .join("")
     : '<option value="">No specialist consults available</option>';
 }
 
@@ -131,12 +156,9 @@ async function loadMedicalInjuries() {
   const { data, error } = await supabase.rpc("medical_room_state", { p_club: null });
   if (error) {
     sel.innerHTML = `<option value="">${error.message}</option>`;
-    medicalRoomSpecialistCount = 0;
     await refreshMedicalConsultOptions();
     return;
   }
-  medicalRoomSpecialistCount = Number(data?.specialist_tokens) || 0;
-  medicalRoomSpecialistTier = Number(data?.specialist_matches_removed) || 2;
   await refreshMedicalConsultOptions();
 
   if (!data?.has_doctor) {
@@ -164,7 +186,8 @@ async function loadMedicalInjuries() {
 async function applyMedicalToken() {
   const raw = document.getElementById("medicalTokenSelect")?.value || "";
   const injuryId = Number(document.getElementById("medicalInjurySelect")?.value);
-  if (!raw) {
+  const picked = medicalConsultOptions.find((c) => c.key === raw);
+  if (!picked) {
     setStatus("Select a specialist consult.", "err");
     return;
   }
@@ -174,25 +197,24 @@ async function applyMedicalToken() {
   }
   if (
     !confirm(
-      "Doctor refers this injury to a specialist consultant?\n(One consult per injury.)"
+      `Doctor refers this injury to:\n${picked.label}\n\n(−${picked.tier} matches; one consult per injury.)`
     )
   ) {
     return;
   }
   setStatus("Referring to specialist…");
   const payload = { p_injury_id: injuryId };
-  if (raw.startsWith("prize:")) {
-    payload.p_inventory_id = Number(raw.slice(6));
-  } else if (raw === "specialist") {
-    payload.p_prefer_specialist = true;
-  }
+  if (picked.consultId) payload.p_consult_id = picked.consultId;
+  else if (picked.inventoryId) payload.p_inventory_id = picked.inventoryId;
+  else payload.p_prefer_specialist = true;
+
   const { data, error } = await supabase.rpc("medical_apply_specialist_token", payload);
   if (error) {
     setStatus("❌ " + error.message, "err");
     return;
   }
   setStatus(
-    `✅ Specialist consult removed ${data?.matches_removed ?? 0} match(es) (−${data?.token_tier ?? "?"}).`,
+    `✅ ${data?.label || picked.label}: removed ${data?.matches_removed ?? 0} match(es).`,
     "ok"
   );
   await loadInventory();

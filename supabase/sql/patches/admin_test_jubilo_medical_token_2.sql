@@ -1,11 +1,10 @@
 -- =============================================================================
 -- Test: Jubilo (JUB) — specialist consult chips + prize medical (−2)
 --
--- Medical Room "0 / 20" chips = club_medical_centre.specialist_tokens
--- Rewards "Medical −2"        = club_prize_inventory medical_token
--- These are separate inventories.
+-- After medical_consultancy_identity.sql, each consult gets a random label like:
+--   "Harley Medical Group - Specialist Consultant Helen Roberts"
 --
--- Run in Supabase SQL Editor.
+-- Run in Supabase SQL Editor (after medical_consultancy_identity.sql).
 -- =============================================================================
 
 DO $$
@@ -48,25 +47,16 @@ BEGIN
   END IF;
 END $$;
 
-SELECT 'specialist_vault' AS kind,
+SELECT c.id AS consult_id,
        c.club_short_name,
-       c.specialist_tokens AS qty,
-       NULL::bigint AS inventory_id,
-       NULL::int AS param_int,
-       NULL::text AS status
-FROM public.club_medical_centre c
+       c.matches_removed,
+       c.status,
+       c.group_name,
+       c.consultant_name,
+       c.label,
+       c.inventory_id,
+       c.source
+FROM public.club_medical_consults c
 WHERE c.club_short_name = 'JUB'
-
-UNION ALL
-
-SELECT 'prize_medical',
-       i.club_short_name,
-       1,
-       i.id,
-       i.param_int,
-       i.status
-FROM public.club_prize_inventory i
-WHERE i.club_short_name = 'JUB'
-  AND i.prize_type = 'medical_token'
-  AND i.status = 'available'
-ORDER BY 1, 4 NULLS FIRST;
+  AND c.status = 'available'
+ORDER BY c.matches_removed DESC, c.id;
