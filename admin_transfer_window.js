@@ -65,12 +65,22 @@ async function saveTransferWindow() {
     return;
   }
 
+  const discordBit = data.discord_queue_id
+    ? ` Discord queued #${data.discord_queue_id} — Push on Discord News if needed.`
+    : data.changed === false
+      ? " (already that state — flip the other way for Discord)."
+      : data.discord_error
+        ? ` Discord failed: ${data.discord_error}`
+        : data.hint
+          ? ` ${data.hint}`
+          : "";
+
   setStatus(
     "transferWindowStatus",
-    transfer_window_open
+    (transfer_window_open
       ? "✅ Transfer window is now open."
-      : "✅ Transfer window is now closed.",
-    true
+      : "✅ Transfer window is now closed.") + discordBit,
+    !data.discord_error
   );
   await loadGlobalSettings();
   await loadTransferWindow();
