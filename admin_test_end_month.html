@@ -100,6 +100,35 @@
         <div id="endMonthStatus" class="status-line"></div>
       </div>
 
+      <div class="card" style="margin-top:16px;">
+        <h2>Publish GPSL Sport edition</h2>
+        <p class="note" style="margin-top:0;">
+          Use if a month was locked early but the Sport paper never appeared (e.g. March).
+          Run <code>gpsl_sport_early_month_publish_fix.sql</code> in Supabase first, then publish here.
+        </p>
+        <div class="form-row">
+          <label>
+            GPSL month
+            <select id="sportPublishMonth">
+              <option value="august">August</option>
+              <option value="september">September</option>
+              <option value="october">October</option>
+              <option value="november">November</option>
+              <option value="december">December</option>
+              <option value="january">January</option>
+              <option value="february">February</option>
+              <option value="march" selected>March</option>
+              <option value="april">April</option>
+              <option value="may">May</option>
+            </select>
+          </label>
+          <button type="button" id="sportPublishBtn" class="button" style="background:#336699;">
+            Publish GPSL Sport
+          </button>
+        </div>
+        <div id="sportPublishStatus" class="status-line"></div>
+      </div>
+
       <div id="betweenMonthsCard" class="card" hidden style="margin-top:16px;border-color:#664;background:#1f1a12;">
         <h2 style="color:#ff9900;">Between GPSL months</h2>
         <p class="note" style="margin-top:0;">
@@ -121,6 +150,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_end_month.js?v=20260717-timeout"></script>
+  <script type="module" src="admin_test_end_month.js?v=20260717-sport"></script>
 </body>
 </html>

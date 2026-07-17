@@ -340,6 +340,20 @@ async function endGpslMonthEarly() {
     renderEndMonthPreview(data);
   }
 
+  // Always publish GPSL Sport for the locked month (create if missing)
+  let sportPublish = null;
+  const lockedMonth = data.gpsl_month || null;
+  if (lockedMonth) {
+    setStatus(
+      "endMonthStatus",
+      `✅ ${data.gpsl_month_label} locked. Publishing GPSL Sport (${lockedMonth})…`
+    );
+    sportPublish = await publishGpslSportMonth(
+      lockedMonth,
+      data.season_id || seasonId || null
+    );
+  }
+
   const totm = jobs?.team_of_month?.processed;
   const sport = jobs?.gpsl_sport?.processed;
   const totmCount = Array.isArray(totm) ? totm.length : 0;
@@ -351,20 +365,80 @@ async function endGpslMonthEarly() {
     jobs?.team_of_month?.error,
     jobs?.gpsl_sport?.error,
     jobs?.tv_selection?.error,
+    sportPublish && !sportPublish.ok ? sportPublish.error || sportPublish.reason : null,
   ].filter(Boolean);
 
-  let statusMsg = `✅ ${data.gpsl_month_label} locked early. TOTM: ${totmCount}, GPSL Sport: ${sportCount}.`;
+  let statusMsg = `✅ ${data.gpsl_month_label} locked early. TOTM: ${totmCount}.`;
+  if (sportPublish?.ok) {
+    statusMsg += ` GPSL Sport published: ${sportPublish.edition_label || lockedMonth} (#${sportPublish.edition_id}).`;
+  } else if (sportCount > 0) {
+    statusMsg += ` GPSL Sport: ${sportCount}.`;
+  } else {
+    statusMsg += ` GPSL Sport NOT published — use “Publish GPSL Sport” below for ${lockedMonth || "this month"}.`;
+  }
   if (openNext && pull?.ok) {
     statusMsg += ` ${pull.next_gpsl_month_label} is live until ${formatUkDateTime(pull.next_lock_at)} UK.`;
   } else if (activeAfter) {
     statusMsg += ` Active month: ${activeAfter}.`;
   }
   if (jobErrors.length) {
-    statusMsg += ` Job warnings: ${jobErrors.join("; ")}`;
+    statusMsg += ` Warnings: ${jobErrors.join("; ")}`;
   }
 
-  setStatus("endMonthStatus", statusMsg, jobErrors.length === 0);
+  setStatus("endMonthStatus", statusMsg, jobErrors.length === 0 && Boolean(sportPublish?.ok || sportCount));
   await loadCalendarTable();
+}
+
+async function publishGpslSportMonth(gpslMonth, seasonId) {
+  const month = String(gpslMonth || "").trim().toLowerCase();
+  if (!month) {
+    return { ok: false, reason: "no_month" };
+  }
+
+  const { data, error } = await supabase.rpc("competition_admin_regenerate_gpsl_sport", {
+    p_gpsl_month: month,
+    p_season_id: seasonId || null,
+  });
+
+  if (error) {
+    return {
+      ok: false,
+      error: error.message,
+      reason: /competition_admin_regenerate_gpsl_sport/i.test(error.message || "")
+        ? "missing_rpc"
+        : "rpc_error",
+    };
+  }
+
+  return data || { ok: false, reason: "empty" };
+}
+
+async function publishSelectedSportEdition() {
+  const seasonId = selectedSeasonId();
+  const month = document.getElementById("sportPublishMonth")?.value?.trim().toLowerCase() || "march";
+
+  if (!confirm(`Publish / rebuild GPSL Sport for ${month}?`)) return;
+
+  setStatus("sportPublishStatus", `Publishing GPSL Sport (${month})…`);
+
+  const result = await publishGpslSportMonth(month, seasonId);
+  if (!result?.ok) {
+    const hint =
+      result?.reason === "missing_rpc"
+        ? " Run gpsl_sport_early_month_publish_fix.sql in Supabase first."
+        : "";
+    setStatus(
+      "sportPublishStatus",
+      `❌ ${result?.error || result?.reason || "Sport was not published"}.${hint}`,
+      false
+    );
+    return;
+  }
+
+  setStatus(
+    "sportPublishStatus",
+    `✅ GPSL Sport published: ${result.edition_label || month} (edition #${result.edition_id}). Hard-refresh GPSL Sport.`
+  );
 }
 
 async function previewOpenNextGpslMonth() {
@@ -476,6 +550,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("openNextCheck")?.addEventListener("change", updateEndMonthPhraseHint);
   document.getElementById("previewEndBtn").onclick = previewEndGpslMonth;
   document.getElementById("endMonthBtn").onclick = endGpslMonthEarly;
+  document.getElementById("sportPublishBtn").onclick = publishSelectedSportEdition;
   document.getElementById("previewOpenNextBtn").onclick = previewOpenNextGpslMonth;
   document.getElementById("openNextBtn").onclick = openNextGpslMonth;
 
