@@ -19,10 +19,14 @@
     <div class="admin-main" id="adminMain">
       <div class="card" id="ow-link-club">
         <h2>Link existing login to club</h2>
-        <p class="note">For owners on break with no club, or first-time assignment to a vacant club.</p>
+        <p class="note">
+          For owners on break with no club, or first-time assignment to a vacant club.
+          Set their <b>Discord tag</b> here so Discord NEW OWNER news shows @theirname.
+        </p>
         <div class="row">
           <div><input id="linkOwnerEmail" placeholder="Existing owner email"></div>
           <div><input id="linkOwnerClub" placeholder="Club ShortName"></div>
+          <div><input id="linkOwnerDiscordTag" placeholder="Discord tag / display name" autocomplete="off"></div>
         </div>
         <button id="linkOwnerBtn" class="button">Link club to account</button>
         <div id="linkOwnerStatus" class="status-line"></div>

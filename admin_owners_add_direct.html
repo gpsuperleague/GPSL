@@ -22,12 +22,14 @@
         <p class="note">
           Creates the login, then assigns the club (same as create +
           <a href="admin_owners_link.html">Link existing login to club</a>).
+          <b>Discord tag is required</b> — used on the club page and in Discord NEW OWNER news (@mentions).
           Requires the <code>create-owner</code> edge function.
         </p>
         <div class="row">
           <div><input id="ownerEmail" placeholder="Owner email"></div>
           <div><input id="ownerPassword" placeholder="Temporary password" type="password"></div>
           <div><input id="ownerClub" placeholder="Club ShortName (e.g. ARS)"></div>
+          <div><input id="ownerDiscordTag" placeholder="Discord tag / display name" autocomplete="off"></div>
         </div>
         <button id="addOwnerBtn" class="button">Add owner</button>
         <div id="ownerStatus" class="status-line"></div>

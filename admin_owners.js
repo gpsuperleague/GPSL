@@ -231,9 +231,18 @@ async function addOwner() {
   const email = document.getElementById("ownerEmail").value.trim();
   const password = document.getElementById("ownerPassword").value.trim();
   const club = document.getElementById("ownerClub").value.trim();
+  const discordTag = document.getElementById("ownerDiscordTag")?.value?.trim() || "";
 
   if (!email || !password || !club) {
-    setStatus("ownerStatus", "Fill all fields (email, password, and club ShortName).", false);
+    setStatus("ownerStatus", "Fill email, password, and club ShortName.", false);
+    return;
+  }
+  if (!discordTag) {
+    setStatus(
+      "ownerStatus",
+      "Enter their Discord tag / display name (shown on Discord NEW OWNER news).",
+      false
+    );
     return;
   }
 
@@ -247,17 +256,48 @@ async function addOwner() {
     return;
   }
 
+  // Save Discord tag before club link so the Discord news trigger can read it
+  setStatus("ownerStatus", "Saving Discord tag…");
+  const { error: tagErr } = await supabase.rpc("admin_owner_set_tag", {
+    p_owner_email: email,
+    p_tag: discordTag,
+  });
+  if (tagErr) {
+    setStatus(
+      "ownerStatus",
+      `⚠️ Login created, but Discord tag failed: ${tagErr.message}. Set tag, then link club.`,
+      false
+    );
+    await loadOwnerList();
+    return;
+  }
+
   setStatus("ownerStatus", "Login created — linking club…");
   const { data, error: linkErr } = await supabase.rpc("admin_assign_club_owner", {
     p_owner_email: email,
     p_club_short_name: club,
+    p_owner_tag: discordTag,
   });
 
   if (linkErr) {
+    // Fallback if 3-arg RPC not deployed yet
+    const { data: data2, error: linkErr2 } = await supabase.rpc("admin_assign_club_owner", {
+      p_owner_email: email,
+      p_club_short_name: club,
+    });
+    if (linkErr2) {
+      setStatus(
+        "ownerStatus",
+        `⚠️ Login + tag saved for ${email}, but club link failed: ${linkErr2.message}. Use Link existing login.`,
+        false
+      );
+      await loadOwnerList();
+      return;
+    }
     setStatus(
       "ownerStatus",
-      `⚠️ Login created for ${email}, but club link failed: ${linkErr.message}. Use Link existing login to club.`,
-      false
+      `✅ ${discordTag} created and linked to ${data2?.club_name || club}.`,
+      true
     );
     await loadOwnerList();
     return;
@@ -265,7 +305,7 @@ async function addOwner() {
 
   setStatus(
     "ownerStatus",
-    `✅ ${email} created and linked to ${data?.club_name || club}.`,
+    `✅ ${data?.owner_tag || discordTag} created and linked to ${data?.club_name || club}.`,
     true
   );
   await loadOwnerList();
@@ -467,17 +507,45 @@ async function registerForClubAuction() {
 async function linkOwner() {
   const email = document.getElementById("linkOwnerEmail").value.trim();
   const club = document.getElementById("linkOwnerClub").value.trim();
+  const discordTag = document.getElementById("linkOwnerDiscordTag")?.value?.trim() || "";
 
   if (!email || !club) {
     setStatus("linkOwnerStatus", "Enter email and club ShortName.", false);
     return;
   }
+  if (!discordTag) {
+    setStatus(
+      "linkOwnerStatus",
+      "Enter their Discord tag / display name for Discord news.",
+      false
+    );
+    return;
+  }
+
+  setStatus("linkOwnerStatus", "Saving Discord tag…");
+  const { error: tagErr } = await supabase.rpc("admin_owner_set_tag", {
+    p_owner_email: email,
+    p_tag: discordTag,
+  });
+  if (tagErr) {
+    setStatus("linkOwnerStatus", "❌ " + tagErr.message, false);
+    return;
+  }
 
   setStatus("linkOwnerStatus", "Linking…");
-  const { data, error } = await supabase.rpc("admin_assign_club_owner", {
+  let data = null;
+  let error = null;
+  ({ data, error } = await supabase.rpc("admin_assign_club_owner", {
     p_owner_email: email,
     p_club_short_name: club,
-  });
+    p_owner_tag: discordTag,
+  }));
+  if (error) {
+    ({ data, error } = await supabase.rpc("admin_assign_club_owner", {
+      p_owner_email: email,
+      p_club_short_name: club,
+    }));
+  }
 
   if (error) {
     setStatus("linkOwnerStatus", "❌ " + error.message, false);
@@ -486,7 +554,7 @@ async function linkOwner() {
 
   setStatus(
     "linkOwnerStatus",
-    `✅ ${data?.club_name || club} → ${data?.email || email}`,
+    `✅ ${data?.club_name || club} → ${data?.owner_tag || discordTag} (${data?.email || email})`,
     true
   );
   await loadOwnerList();
@@ -703,9 +771,28 @@ async function inviteWaitingListAuction() {
 async function directAssignFromWaitingList() {
   const email = wlActionEmail();
   const club = document.getElementById("wlAssignClub")?.value?.trim();
+  let discordTag = document.getElementById("wlAssignDiscordTag")?.value?.trim() || "";
   if (!email || !club) {
     setWlActionStatus("Enter member email and club ShortName.", false);
     return;
+  }
+  if (!discordTag) {
+    discordTag =
+      window.prompt(
+        "Discord tag / display name for NEW OWNER news (leave blank if already set):",
+        ""
+      )?.trim() || "";
+  }
+  if (discordTag) {
+    setWlActionStatus("Saving Discord tag…");
+    const { error: tagErr } = await supabase.rpc("admin_owner_set_tag", {
+      p_owner_email: email,
+      p_tag: discordTag,
+    });
+    if (tagErr) {
+      setWlActionStatus("❌ " + tagErr.message, false);
+      return;
+    }
   }
   setWlActionStatus("Assigning…");
   const { error } = await supabase.rpc("admin_waiting_list_assign_club", {
