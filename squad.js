@@ -178,6 +178,16 @@ let squadSuspensionsByPlayer = new Map();
 let squadInjuriesByPlayer = new Map();
 /** @type {Map<string, { yellows: number, reds: number }>} */
 let squadCardsByPlayer = new Map();
+/** Tokens / appeal cards available for squad Action menu */
+let squadRewardCtx = {
+  hasDoctor: false,
+  specialistTokens: 0,
+  specialistTier: 2,
+  prizeMedical: [],
+  appealCards: [],
+  /** @type {Map<string, any>} */
+  appealableByPlayer: new Map(),
+};
 let currentGpslSeasonLabel = "";
 
 const MAX_FOREIGN_INTEREST = 3;
@@ -491,6 +501,44 @@ function newOwnerListOptionHtml(player) {
   })}</option>`;
 }
 
+function squadRewardActionOptionsHtml(player) {
+  const pid = String(player?.Konami_ID ?? "");
+  const opts = [];
+
+  const injRows = squadInjuriesByPlayer.get(pid) || [];
+  const canMedical =
+    squadRewardCtx.hasDoctor &&
+    (squadRewardCtx.prizeMedical.length > 0 || squadRewardCtx.specialistTokens > 0);
+  if (canMedical) {
+    for (const inj of injRows) {
+      if (inj.token_used) continue;
+      const iid = inj.injury_id ?? inj.id;
+      if (!iid) continue;
+      const out = Number(inj.matches_out_remaining) || 0;
+      const rec = Number(inj.recovery_remaining) || 0;
+      if (out <= 0 && rec <= 0) continue;
+      const best =
+        Number(squadRewardCtx.prizeMedical[0]?.param_int) ||
+        squadRewardCtx.specialistTier ||
+        2;
+      const label = inj.label ? ` (${inj.label})` : "";
+      opts.push(
+        `<option value="medical:${iid}">Use medical token −${best}${label}</option>`
+      );
+    }
+  }
+
+  const appeal = squadRewardCtx.appealableByPlayer.get(pid);
+  if (appeal && squadRewardCtx.appealCards.length) {
+    const left = appeal.pending_matches != null ? ` (${appeal.pending_matches} left)` : "";
+    opts.push(
+      `<option value="appeal:${appeal.suspension_id}">Appeal red card ban${left}</option>`
+    );
+  }
+
+  return opts.join("\n");
+}
+
 function squadActionOptionsHtml(player) {
   const pid = String(player?.Konami_ID ?? "");
   if (seasonLoanPlayerIds.has(pid)) {
@@ -499,20 +547,21 @@ function squadActionOptionsHtml(player) {
     );
   }
 
+  const rewardOpts = squadRewardActionOptionsHtml(player);
   const releaseOpt = voluntaryReleaseOptionHtml(player);
   const newOwnerOpt = newOwnerReleaseOptionHtml(player);
   const newOwnerListOpt = newOwnerListOptionHtml(player);
   const releaseGroup = `${releaseOpt}${newOwnerOpt}${newOwnerListOpt}`;
   const contractOpts = squadContractActionOptionsHtml(player, clubNation, {
-    optionHtml: releaseGroup,
+    optionHtml: `${rewardOpts}${releaseGroup}`,
   });
   if (contractOpts) return contractOpts;
 
   if (!playerCanListOrSellLocal(player)) {
     if (isContractFinalYear(player)) {
-      return `<option value="" disabled>Final contract year</option>`;
+      return `${rewardOpts}<option value="" disabled>Final contract year</option>${releaseGroup}`;
     }
-    return `${releaseGroup}
+    return `${rewardOpts}${releaseGroup}
             <option value="" disabled>Signed this season</option>`;
   }
   const foreignOpts =
@@ -521,6 +570,7 @@ function squadActionOptionsHtml(player) {
       : `<option value="foreign">Sell to foreign club</option>`;
 
   return `
+            ${rewardOpts}
             <option value="list">Transfer List</option>
             ${foreignOpts}
             ${releaseGroup}`;
@@ -902,6 +952,7 @@ async function loadSquad() {
   squadSuspensionsByPlayer = suspensionsByPlayerId(suspensionList);
   squadInjuriesByPlayer = injuriesByPlayerId(discipline.injuries);
   squadCardsByPlayer = cardsByPlayerId(discipline.cards);
+  await loadSquadRewardContext();
   if (!transferStatusState.currentSeasonLabel && currentGpslSeasonLabel) {
     transferStatusState.currentSeasonLabel = currentGpslSeasonLabel;
   } else if (transferStatusState.currentSeasonLabel) {
@@ -938,6 +989,114 @@ function refreshSquadDesignationSelects(players, state) {
   applyForeignSaleOptionState();
   applyVoluntaryReleaseOptionState();
   applyNewOwnerReleaseOptionState();
+}
+
+async function loadSquadRewardContext() {
+  squadRewardCtx = {
+    hasDoctor: false,
+    specialistTokens: 0,
+    specialistTier: 2,
+    prizeMedical: [],
+    appealCards: [],
+    appealableByPlayer: new Map(),
+  };
+
+  const [medRes, prizeTokRes, invRes, appealRes] = await Promise.all([
+    supabase.rpc("medical_room_state", { p_club: null }),
+    supabase.rpc("medical_room_prize_tokens", { p_club: null }),
+    supabase.rpc("club_prize_inventory_state"),
+    supabase.rpc("club_appealable_red_suspensions"),
+  ]);
+
+  if (!medRes.error && medRes.data?.ok) {
+    squadRewardCtx.hasDoctor = !!medRes.data.has_doctor;
+    squadRewardCtx.specialistTokens = Number(medRes.data.specialist_tokens) || 0;
+    squadRewardCtx.specialistTier =
+      Number(medRes.data.specialist_matches_removed) || 2;
+    // Prefer token_used from medical room when discipline SQL lacks it
+    for (const inj of medRes.data.active_injuries || []) {
+      if (!inj?.token_used || !inj.injury_id) continue;
+      const pid = String(inj.player_id || "");
+      const rows = squadInjuriesByPlayer.get(pid) || [];
+      for (const row of rows) {
+        if (Number(row.injury_id ?? row.id) === Number(inj.injury_id)) {
+          row.token_used = true;
+        }
+      }
+    }
+  }
+
+  if (!prizeTokRes.error && Array.isArray(prizeTokRes.data)) {
+    squadRewardCtx.prizeMedical = prizeTokRes.data
+      .slice()
+      .sort((a, b) => (Number(b.param_int) || 0) - (Number(a.param_int) || 0));
+  }
+
+  const items = invRes.data?.items || [];
+  squadRewardCtx.appealCards = items.filter(
+    (i) => i.prize_type === "appeal_card" && i.status === "available"
+  );
+
+  const appeals = Array.isArray(appealRes.data) ? appealRes.data : [];
+  for (const s of appeals) {
+    if (s?.player_id != null && s?.suspension_id != null) {
+      squadRewardCtx.appealableByPlayer.set(String(s.player_id), s);
+    }
+  }
+}
+
+async function applySquadMedicalToken(injuryId) {
+  const prize = squadRewardCtx.prizeMedical[0];
+  const tier =
+    Number(prize?.param_int) || squadRewardCtx.specialistTier || 2;
+  if (
+    !confirm(
+      `Apply a medical token to remove up to ${tier} match(es) from this injury?\n(Requires a club doctor. One consult per injury.)`
+    )
+  ) {
+    return;
+  }
+  const payload = { p_injury_id: Number(injuryId) };
+  if (prize?.id) payload.p_inventory_id = prize.id;
+  const { data, error } = await supabase.rpc(
+    "medical_apply_specialist_token",
+    payload
+  );
+  if (error) {
+    alert(error.message || "Could not apply medical token.");
+    return;
+  }
+  alert(
+    `Removed ${data?.matches_removed ?? 0} match(es) (tier −${data?.token_tier ?? tier}).`
+  );
+  await loadSquad();
+}
+
+async function applySquadAppeal(suspensionId) {
+  const card = squadRewardCtx.appealCards[0];
+  if (!card?.id) {
+    alert("No appeal cards available. Check Rewards Centre.");
+    return;
+  }
+  const note = window.prompt("Optional note for the appeal review:", "") || null;
+  if (
+    !confirm(
+      "Submit a red-card appeal? This spends one appeal card and goes to admin review."
+    )
+  ) {
+    return;
+  }
+  const { error } = await supabase.rpc("prize_submit_suspension_appeal", {
+    p_suspension_id: Number(suspensionId),
+    p_inventory_id: card.id,
+    p_owner_note: note,
+  });
+  if (error) {
+    alert(error.message || "Could not submit appeal.");
+    return;
+  }
+  alert("Appeal submitted — pending admin review.");
+  await loadSquad();
 }
 
 function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
@@ -1485,6 +1644,18 @@ async function handlePlayerAction(playerId, action, selectEl) {
       console.error("Designation update failed:", err);
       alert(err.message || "Could not update squad role.");
     }
+    return;
+  }
+
+  if (action.startsWith("medical:")) {
+    resetActionSelect(selectEl);
+    await applySquadMedicalToken(action.slice("medical:".length));
+    return;
+  }
+
+  if (action.startsWith("appeal:")) {
+    resetActionSelect(selectEl);
+    await applySquadAppeal(action.slice("appeal:".length));
     return;
   }
 

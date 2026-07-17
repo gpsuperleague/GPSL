@@ -73,6 +73,26 @@
     </div>
 
     <div class="panel">
+      <h2>Use medical token</h2>
+      <p class="meta">
+        Spend a prize medical token (or a Medical Room specialist consult) on an active injury.
+        Requires a club doctor. One consult per injury.
+        You can also apply from <a href="medical_room.html">Medical room</a> or the squad Action menu.
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
+        <div>
+          <label>Token</label><br>
+          <select id="medicalTokenSelect"></select>
+        </div>
+        <div>
+          <label>Injury</label><br>
+          <select id="medicalInjurySelect"></select>
+        </div>
+        <button type="button" class="button" id="applyMedicalTokenBtn">Apply token</button>
+      </div>
+    </div>
+
+    <div class="panel">
       <h2>Red card appeal</h2>
       <p class="meta">Spend an appeal card on an active red-card ban. Admin reviews (DOGSO / clear goal-scoring opportunities are usually rejected).</p>
       <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;">
@@ -120,6 +140,6 @@
 
     <div id="prizeStatus" class="status"></div>
   </div>
-  <script type="module" src="club_prizes.js?v=20260717-rewards-centre"></script>
+  <script type="module" src="club_prizes.js?v=20260717-rewards-apply"></script>
 </body>
 </html>

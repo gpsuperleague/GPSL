@@ -161,9 +161,24 @@ function renderTokens() {
       const used = !!inj.token_used;
       const canUse =
         state.has_doctor && (tokens > 0 || hasPrize) && !used && (out > 0 || rec > 0);
-      const bestTier = hasPrize
-        ? Math.max(...prizeTokens.map((t) => Number(t.param_int) || 0))
-        : state.specialist_matches_removed || 2;
+      const tokenOpts = [];
+      for (const t of prizeTokens) {
+        tokenOpts.push(
+          `<option value="prize:${t.id}">Prize −${t.param_int} matches</option>`
+        );
+      }
+      if (tokens > 0) {
+        tokenOpts.push(
+          `<option value="specialist">Specialist consult (−${
+            state.specialist_matches_removed || 2
+          })</option>`
+        );
+      }
+      const selectHtml = canUse
+        ? `<select class="med-token-pick" data-token-injury="${inj.injury_id}" style="max-width:200px;">${tokenOpts.join(
+            ""
+          )}</select>`
+        : "";
       return `
         <div class="injury-row">
           <div>
@@ -172,16 +187,25 @@ function renderTokens() {
             <div class="meta">${phase}</div>
             ${used ? `<div class="meta">Specialist consult already used</div>` : ""}
           </div>
-          <button type="button" class="med-btn" data-token-injury="${inj.injury_id}"
-            ${canUse ? "" : "disabled"}>
-            Use token (−${bestTier}+ matches)
-          </button>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+            ${selectHtml}
+            <button type="button" class="med-btn" data-token-injury="${inj.injury_id}"
+              ${canUse ? "" : "disabled"}>
+              Apply token
+            </button>
+          </div>
         </div>`;
     })
     .join("");
 
-  list.querySelectorAll("[data-token-injury]").forEach((btn) => {
-    btn.onclick = () => applyToken(Number(btn.dataset.tokenInjury));
+  list.querySelectorAll("button[data-token-injury]").forEach((btn) => {
+    btn.onclick = () => {
+      const injuryId = Number(btn.dataset.tokenInjury);
+      const pick = list.querySelector(
+        `select.med-token-pick[data-token-injury="${injuryId}"]`
+      );
+      applyToken(injuryId, pick?.value || null);
+    };
   });
 }
 
@@ -273,19 +297,41 @@ async function hirePhysio(slot) {
   await loadState();
 }
 
-async function applyToken(injuryId) {
-  const prize = (state?.prize_medical_tokens || [])[0];
-  const tier = prize?.param_int || state?.specialist_matches_removed || 2;
+async function applyToken(injuryId, pickValue = null) {
+  let inventoryId = null;
+  let tier = state?.specialist_matches_removed || 2;
+  const prizeTokens = state?.prize_medical_tokens || [];
+
+  if (pickValue?.startsWith("prize:")) {
+    inventoryId = Number(pickValue.slice(6));
+    const match = prizeTokens.find((t) => Number(t.id) === inventoryId);
+    tier = match?.param_int || tier;
+  } else if (pickValue === "specialist") {
+    inventoryId = null;
+    tier = state?.specialist_matches_removed || 2;
+  } else {
+    // Default: best prize token, else specialist
+    const prize = prizeTokens[0];
+    if (prize?.id) {
+      inventoryId = prize.id;
+      tier = prize.param_int || tier;
+    }
+  }
+
   if (
     !confirm(
-      `Use a specialist consult to remove up to ${tier} match(es) from this injury? (One consult per injury.)`
+      `Use a medical consult to remove up to ${tier} match(es) from this injury? (One consult per injury.)`
     )
   ) {
     return;
   }
-  setStatus("Applying specialist consult…");
+  setStatus("Applying medical consult…");
   const payload = { p_injury_id: injuryId };
-  if (prize?.id) payload.p_inventory_id = prize.id;
+  if (inventoryId) {
+    payload.p_inventory_id = inventoryId;
+  } else if (pickValue === "specialist") {
+    payload.p_prefer_specialist = true;
+  }
   const { data, error } = await supabase.rpc("medical_apply_specialist_token", payload);
   if (error) {
     setStatus("❌ " + error.message, "error");

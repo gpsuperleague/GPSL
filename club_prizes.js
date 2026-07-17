@@ -45,10 +45,12 @@ function renderInventory() {
   const discSel = document.getElementById("discountTokenSelect");
   const appealSel = document.getElementById("appealCardSelect");
   const draftSel = document.getElementById("draftTokenSelect");
+  const medicalTokSel = document.getElementById("medicalTokenSelect");
   const discounts = inventory.filter((i) => i.prize_type === "fee_discount" && i.status === "available");
   const locked = inventory.filter((i) => i.prize_type === "fee_discount" && i.status === "locked");
   const appeals = inventory.filter((i) => i.prize_type === "appeal_card" && i.status === "available");
   const drafts = inventory.filter((i) => i.prize_type === "draft_token" && i.status === "available");
+  const medicals = inventory.filter((i) => i.prize_type === "medical_token" && i.status === "available");
 
   discSel.innerHTML =
     (locked.length
@@ -66,6 +68,14 @@ function renderInventory() {
     draftSel.innerHTML = drafts.length
       ? drafts.map((i) => `<option value="${i.id}">Draft token #${i.id}</option>`).join("")
       : '<option value="">No draft tokens</option>';
+  }
+
+  if (medicalTokSel) {
+    medicalTokSel.innerHTML = medicals.length
+      ? medicals
+          .map((i) => `<option value="${i.id}">Medical −${i.param_int} matches (#${i.id})</option>`)
+          .join("")
+      : '<option value="">No prize medical tokens</option>';
   }
 }
 
@@ -97,6 +107,67 @@ async function loadSuspensions() {
         `<option value="${s.suspension_id}">${s.player_name || s.player_id} (${s.pending_matches} left)</option>`
     )
     .join("");
+}
+
+async function loadMedicalInjuries() {
+  const sel = document.getElementById("medicalInjurySelect");
+  if (!sel) return;
+  const { data, error } = await supabase.rpc("medical_room_state", { p_club: null });
+  if (error) {
+    sel.innerHTML = `<option value="">${error.message}</option>`;
+    return;
+  }
+  if (!data?.has_doctor) {
+    sel.innerHTML =
+      '<option value="">Hire a club doctor in Medical Room first</option>';
+    return;
+  }
+  const rows = (data?.active_injuries || []).filter((inj) => !inj.token_used);
+  if (!rows.length) {
+    sel.innerHTML = '<option value="">No injuries eligible for a token</option>';
+    return;
+  }
+  sel.innerHTML = rows
+    .map((inj) => {
+      const left =
+        (Number(inj.matches_out_remaining) || 0) +
+        (Number(inj.recovery_remaining) || 0);
+      return `<option value="${inj.injury_id}">${inj.player_name || inj.player_id} — ${
+        inj.label || "Injury"
+      } (${left} left)</option>`;
+    })
+    .join("");
+}
+
+async function applyMedicalToken() {
+  const inv = Number(document.getElementById("medicalTokenSelect")?.value);
+  const injuryId = Number(document.getElementById("medicalInjurySelect")?.value);
+  if (!inv) {
+    setStatus("Select a medical token (or earn one via challenges).", "err");
+    return;
+  }
+  if (!injuryId) {
+    setStatus("Select an eligible injury.", "err");
+    return;
+  }
+  if (!confirm("Apply this medical token to the selected injury? (One consult per injury.)")) {
+    return;
+  }
+  setStatus("Applying medical token…");
+  const { data, error } = await supabase.rpc("medical_apply_specialist_token", {
+    p_injury_id: injuryId,
+    p_inventory_id: inv,
+  });
+  if (error) {
+    setStatus("❌ " + error.message, "err");
+    return;
+  }
+  setStatus(
+    `✅ Removed ${data?.matches_removed ?? 0} match(es) (tier −${data?.token_tier ?? "?"}).`,
+    "ok"
+  );
+  await loadInventory();
+  await loadMedicalInjuries();
 }
 
 async function loadDraftReleaseOptions() {
@@ -268,9 +339,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("lockDiscountBtn").onclick = lockDiscount;
   document.getElementById("unlockDiscountBtn").onclick = unlockDiscount;
   document.getElementById("submitAppealBtn").onclick = submitAppeal;
+  document.getElementById("applyMedicalTokenBtn")?.addEventListener("click", applyMedicalToken);
   document.getElementById("draftPreviewBtn")?.addEventListener("click", previewDraftToken);
   document.getElementById("draftUseBtn")?.addEventListener("click", useDraftToken);
   await loadInventory();
   await loadSuspensions();
+  await loadMedicalInjuries();
   await loadDraftReleaseOptions();
 });
