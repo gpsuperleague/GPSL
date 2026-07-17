@@ -1,10 +1,17 @@
 import { formatNavLabel } from "./nav_label.js";
 
 /** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260622-in-progress-nav";
+export const SEASON_ADMIN_NAV_VERSION = "20260717-sport-nav";
 
 const SEASON_CALENDAR_NAV_ITEM = {
   label: "GPSL season calendar",
+  href: "admin_season.html",
+  hash: "wf-calendar",
+  page: "admin_season",
+};
+
+const REBUILD_SPORT_NAV_ITEM = {
+  label: "Rebuild GPSL Sport",
   href: "admin_season.html",
   hash: "wf-calendar",
   page: "admin_season",
@@ -87,7 +94,7 @@ export const SEASON_ADMIN_NAV = [
   {
     id: "kickoff_go_live",
     label: "Kickoff",
-    items: [SEASON_CALENDAR_NAV_ITEM, START_SEASON_NAV_ITEM],
+    items: [SEASON_CALENDAR_NAV_ITEM, REBUILD_SPORT_NAV_ITEM, START_SEASON_NAV_ITEM],
   },
   {
     id: "league_fixtures",
