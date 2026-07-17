@@ -13,6 +13,7 @@
  *   pending_matches?: SuspensionMatch[],
  *   season_yellows?: number,
  *   season_reds?: number,
+ *   appeal_pending?: boolean,
  * }} ActiveSuspension
  * @typedef {{
  *   player_id: string,
@@ -103,19 +104,32 @@ export function suspensionReasonLabel(s) {
   return s?.reason || "Suspension";
 }
 
+/** @param {ActiveSuspension[]} rows */
+function anyAppealPending(rows) {
+  return (rows || []).some((s) => !!s?.appeal_pending);
+}
+
+/** @param {ActiveSuspension[]} rows */
+function pendingMatchLabels(rows) {
+  const labels = [];
+  for (const s of rows || []) {
+    for (const m of s.pending_matches || []) {
+      if (m?.label) labels.push(m.label);
+    }
+  }
+  return [...new Set(labels)];
+}
+
 /**
  * Short squad/GPDB label: "Suspended — MD12 vs X, MD13 vs Y"
  * @param {ActiveSuspension[]} rows
  */
 export function formatSuspensionStatusLabel(rows) {
   if (!rows?.length) return null;
-  const labels = [];
-  for (const s of rows) {
-    for (const m of s.pending_matches || []) {
-      if (m?.label) labels.push(m.label);
-    }
+  if (anyAppealPending(rows)) {
+    return "Suspended — Pending review";
   }
-  const unique = [...new Set(labels)];
+  const unique = pendingMatchLabels(rows);
   if (!unique.length) {
     return `Suspended (${suspensionReasonLabel(rows[0])})`;
   }
@@ -133,30 +147,33 @@ export function formatSuspensionStatusHtml(rows) {
   const label = formatSuspensionStatusLabel(rows);
   if (!label) return "";
   const reason = suspensionReasonLabel(rows[0]);
-  // Prefer multi-line: "Suspended" then match list
-  const labels = [];
-  for (const s of rows) {
-    for (const m of s.pending_matches || []) {
-      if (m?.label) labels.push(m.label);
-    }
-  }
-  const unique = [...new Set(labels)];
+  const pendingReview = anyAppealPending(rows);
+  const title = pendingReview ? `${reason} — appeal pending review` : reason;
+  const unique = pendingMatchLabels(rows);
+  const head = pendingReview ? "Suspended — Pending review" : "Suspended";
   if (unique.length) {
     const matches = unique.slice(0, 2).join("<br>") + (unique.length > 2 ? "<br>…" : "");
-    return `<div class="squad-status-lines"><span class="status-pill status-suspended" title="${reason}">Suspended<br>${matches}</span></div>`;
+    return `<div class="squad-status-lines"><span class="status-pill status-suspended" title="${title}">${head}<br>${matches}</span></div>`;
   }
-  return `<div class="squad-status-lines"><span class="status-pill status-suspended" title="${reason}">${label}</span></div>`;
+  return `<div class="squad-status-lines"><span class="status-pill status-suspended" title="${title}">${label}</span></div>`;
 }
 
 /** Compact badge for name cells (GPDB / club). */
 export function formatSuspensionBadgeHtml(rows) {
-  const labels = [];
-  for (const s of rows || []) {
-    for (const m of s.pending_matches || []) {
-      if (m?.label) labels.push(m.label);
-    }
+  if (!rows?.length) return "";
+  const pendingReview = anyAppealPending(rows);
+  const unique = pendingMatchLabels(rows);
+  if (pendingReview) {
+    const title = unique.length
+      ? `Suspended — Pending review (${unique.join(", ")})`
+      : "Suspended — Pending review";
+    const body = unique.length
+      ? `Suspended — Pending review<br>${unique.slice(0, 2).join("<br>")}${
+          unique.length > 2 ? "<br>…" : ""
+        }`
+      : "Suspended — Pending review";
+    return `<span class="suspension-badge" title="${title}">${body}</span>`;
   }
-  const unique = [...new Set(labels)];
   if (!unique.length) {
     const fallback = formatSuspensionStatusLabel(rows);
     if (!fallback) return "";

@@ -539,7 +539,16 @@ BEGIN
           WHERE m.season_id = s.season_id
             AND m.player_id = s.player_id
             AND m.red_card = true
-        ) AS season_reds
+        ) AS season_reds,
+        CASE
+          WHEN to_regclass('public.competition_suspension_appeals') IS NULL THEN false
+          ELSE EXISTS (
+            SELECT 1
+            FROM public.competition_suspension_appeals a
+            WHERE a.suspension_id = s.id
+              AND a.status = 'pending'
+          )
+        END AS appeal_pending
       FROM public.competition_player_suspensions s
       WHERE s.status = 'active'
         AND (v_club IS NULL OR s.club_short_name = v_club)
