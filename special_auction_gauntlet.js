@@ -1,8 +1,9 @@
 import { initGlobal, supabase, getAuthUserFast } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
-import { formatMoney, fetchPrizePlayerBrief } from "./special_auction.js";
+import { formatMoney, fetchPrizePlayerBrief, fetchPlayerCareerBundle, renderPrizeCareerStatsHtml } from "./special_auction.js";
 import { playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
 import { parseMoneyInput, wireMoneyBidInput } from "./money_input.js";
+import { renderHonoursHtml } from "./player_career_medals.js";
 
 let state = null;
 let auctionId = null;
@@ -99,8 +100,20 @@ async function loadPrizeBlock() {
   const pid = state.prize_player_id || state.known_player_id;
 
   if (state.prize_type === "player" && pid) {
-    const p = await fetchPrizePlayerBrief(supabase, pid);
+    const [p, career] = await Promise.all([
+      fetchPrizePlayerBrief(supabase, pid),
+      fetchPlayerCareerBundle(supabase, pid),
+    ]);
     if (p) {
+      const medalsHtml = career?.honours?.length
+        ? renderHonoursHtml(career.honours, {
+            emptyMessage: "No league/cup winner medals yet.",
+          })
+        : "";
+      const careerHtml = renderPrizeCareerStatsHtml(career, {
+        playerId: pid,
+        medalsHtml,
+      });
       prizeHtml = `
         <div class="sa-player-row">
           ${playerThumbLinkHtml(p.Konami_ID, {
@@ -117,6 +130,7 @@ async function loadPrizeBlock() {
             <div class="sa-player-sub">Player prize · ID ${pid}</div>
           </div>
         </div>
+        ${careerHtml}
         ${packLine}`;
     } else {
       prizeHtml = `<div><b>Player prize</b> · ID ${pid}</div>${packLine}`;
@@ -144,7 +158,21 @@ function render() {
   const tierEl = document.getElementById("myTier");
   const tier = state.my_phase1?.tier;
   if (tier && ["reveal", "phase2", "complete", "failed"].includes(state.gauntlet_phase)) {
-    tierEl.innerHTML = `<span class="tier ${tier}">Your tier: ${tier.toUpperCase()}</span>`;
+    if (tier === "top") {
+      tierEl.innerHTML = `
+        <span class="tier top">Your tier: TOP</span>
+        <p class="tier-note advance">You advanced to Phase 2 (Round 2).</p>`;
+    } else if (tier === "middle" || tier === "bottom") {
+      const fee =
+        Number(state.my_phase1?.phase1_fee) ||
+        (tier === "middle" ? 500000 : 1000000);
+      tierEl.innerHTML = `
+        <span class="tier ${tier}">Your tier: ${tier.toUpperCase()}</span>
+        <p class="tier-note eliminated">You have been eliminated from Round 2.</p>
+        <p class="tier-note fee">Phase 1 fee charged: ${formatMoney(fee)} (non-refundable).</p>`;
+    } else {
+      tierEl.innerHTML = `<span class="tier ${tier}">Your tier: ${String(tier).toUpperCase()}</span>`;
+    }
   } else {
     tierEl.innerHTML = "";
   }

@@ -513,6 +513,146 @@ export async function fetchPrizePlayerBrief(supabase, playerId) {
   return data;
 }
 
+/** Full GPSL career bundle (totals, honours, awards) for prize panels. */
+export async function fetchPlayerCareerBundle(supabase, playerId) {
+  if (!playerId) return null;
+  const { data, error } = await supabase.rpc("competition_player_career_bundle", {
+    p_player_id: String(playerId),
+  });
+  if (error) {
+    if (!/competition_player_career_bundle|schema cache|Could not find/i.test(error.message || "")) {
+      console.warn("competition_player_career_bundle:", error);
+    }
+    return null;
+  }
+  return data;
+}
+
+function escPrizeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatCareerAwardChip(a) {
+  const type = String(a?.award_type || "");
+  const season = a?.season_label || "";
+  if (type === "ballon_dor") return `Ballon d'Or${season ? ` (${season})` : ""}`;
+  if (type === "golden_boot") return `Golden Boot${season ? ` (${season})` : ""}`;
+  if (type === "championship_player_of_season") {
+    return `Champ Player of Season${season ? ` (${season})` : ""}`;
+  }
+  if (type === "team_of_season") return `Team of the Season${season ? ` (${season})` : ""}`;
+  if (type === "team_of_month" || type === "championship_team_of_month") {
+    const month = a?.gpsl_month || a?.metadata?.gpsl_month || "";
+    return `Team of the Month${month || season ? ` (${month || season})` : ""}`;
+  }
+  return a?.award_label || type || "Award";
+}
+
+/**
+ * Compact GPSL all-time stats + trophy haul for auction prize panels.
+ * @param {object|null} bundle from competition_player_career_bundle
+ * @param {{ playerId?: string, medalsHtml?: string }} opts
+ */
+export function renderPrizeCareerStatsHtml(bundle, opts = {}) {
+  const totals = bundle?.totals || {};
+  const honours = Array.isArray(bundle?.honours) ? bundle.honours : [];
+  const awards = Array.isArray(bundle?.awards) ? bundle.awards : [];
+  const playerId = opts.playerId || bundle?.player?.player_id || "";
+  const careerHref = playerId
+    ? `player_career.html?id=${encodeURIComponent(playerId)}`
+    : "";
+
+  const apps = Number(totals.appearances) || 0;
+  const goals = Number(totals.goals) || 0;
+  const assists = Number(totals.assists) || 0;
+  const potm = Number(totals.potm_awards) || 0;
+  const cs = Number(totals.clean_sheets) || 0;
+  const avg =
+    totals.avg_rating != null && totals.avg_rating !== ""
+      ? Number(totals.avg_rating).toFixed(2)
+      : "—";
+  const yc = Number(totals.yellow_cards) || 0;
+  const rc = Number(totals.red_cards) || 0;
+
+  const hasAnyCareer =
+    apps > 0 || goals > 0 || assists > 0 || potm > 0 || honours.length > 0 || awards.length > 0;
+
+  const statsRow = `
+    <div class="sa-career-stats">
+      <div class="sa-career-heading">All-time GPSL stats</div>
+      <div class="sa-career-totals">
+        <span><b>Apps</b> ${apps}</span>
+        <span><b>Goals</b> ${goals}</span>
+        <span><b>Assists</b> ${assists}</span>
+        <span><b>POTM</b> ${potm}</span>
+        <span><b>CS</b> ${cs}</span>
+        <span><b>Avg</b> ${avg}</span>
+        <span><b>YC</b> ${yc}</span>
+        <span><b>RC</b> ${rc}</span>
+      </div>
+    </div>`;
+
+  let trophiesBlock = "";
+  if (honours.length) {
+    const medals =
+      opts.medalsHtml ||
+      `<p class="sa-career-empty">${honours.length} winner medal${
+        honours.length === 1 ? "" : "s"
+      }</p>`;
+    trophiesBlock = `
+      <div class="sa-career-trophies">
+        <div class="sa-career-heading">Trophy haul</div>
+        ${medals}
+      </div>`;
+  } else {
+    trophiesBlock = `
+      <div class="sa-career-trophies">
+        <div class="sa-career-heading">Trophy haul</div>
+        <p class="sa-career-empty">No league/cup winner medals yet.</p>
+      </div>`;
+  }
+
+  let awardsBlock = "";
+  if (awards.length) {
+    const chips = awards
+      .slice(0, 8)
+      .map((a) => `<span class="sa-award-chip">${escPrizeHtml(formatCareerAwardChip(a))}</span>`)
+      .join("");
+    const more =
+      awards.length > 8
+        ? `<span class="sa-career-empty">+${awards.length - 8} more</span>`
+        : "";
+    awardsBlock = `
+      <div class="sa-career-awards">
+        <div class="sa-career-heading">Individual awards</div>
+        <div class="sa-award-chips">${chips}${more}</div>
+      </div>`;
+  }
+
+  const foot = careerHref
+    ? `<a class="sa-career-link" href="${careerHref}">Full player career →</a>`
+    : "";
+
+  if (!hasAnyCareer && !bundle) {
+    return `
+      <div class="sa-career-block">
+        <p class="sa-career-empty">GPSL career stats unavailable.</p>
+        ${foot}
+      </div>`;
+  }
+
+  return `
+    <div class="sa-career-block">
+      ${statsRow}
+      ${trophiesBlock}
+      ${awardsBlock}
+      ${foot}
+    </div>`;
+}
+
 export async function fetchPrizeActiveListing(supabase, playerId, clubShort) {
   if (!playerId || !clubShort) return null;
   const { data, error } = await supabase

@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <title>Blind Gauntlet — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="player_career_medals.css?v=20260617-ribbons">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page { width:95%; max-width:900px; margin:20px auto 40px; }
@@ -118,6 +119,24 @@
     .tier.top { background:#1e3a1e; color:#8d8; }
     .tier.middle { background:#3a3210; color:#fc6; }
     .tier.bottom { background:#3a1e1e; color:#f88; }
+    .tier-note {
+      margin: 8px 0 0;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    .tier-note.eliminated {
+      color: #f88;
+      font-weight: 700;
+    }
+    .tier-note.advance {
+      color: #8d8;
+      font-weight: 700;
+    }
+    .tier-note.fee {
+      color: #aaa;
+      font-size: 12px;
+      font-weight: 400;
+    }
     .my-bids { color:#aaa; font-size:13px; margin-top:6px; }
     .status-notes {
       margin: 12px 0 0;
@@ -179,6 +198,69 @@
       font-size: 13px;
       margin-top: 4px;
     }
+    .sa-career-block {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #333;
+      display: grid;
+      gap: 12px;
+    }
+    .sa-career-heading {
+      color: #ffcc66;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+    .sa-career-totals {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .sa-career-totals span {
+      background: #222;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 12px;
+      color: #ddd;
+    }
+    .sa-career-totals b { color: #ff9900; }
+    .sa-career-empty {
+      margin: 0;
+      color: #777;
+      font-size: 12px;
+      font-style: italic;
+    }
+    .sa-career-trophies .medal-detail-list { display: none; }
+    .sa-career-trophies .gpsl-medal-wall {
+      margin: 0;
+      gap: 8px;
+    }
+    .sa-career-trophies .gpsl-medal-pin figcaption {
+      font-size: 10px;
+    }
+    .sa-award-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .sa-award-chip {
+      display: inline-block;
+      background: #332200;
+      border: 1px solid #664400;
+      color: #ffcc66;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    .sa-career-link {
+      color: #6cf;
+      font-size: 12px;
+      text-decoration: none;
+    }
+    .sa-career-link:hover { text-decoration: underline; }
     input {
       background:#222; color:#eee; border:1px solid #444; border-radius:4px; padding:8px 10px;
     }
@@ -267,6 +349,6 @@
       <div id="phase1Table"></div>
     </div>
   </div>
-  <script type="module" src="special_auction_gauntlet.js?v=20260717-player-card"></script>
+  <script type="module" src="special_auction_gauntlet.js?v=20260717-eliminated"></script>
 </body>
 </html>
