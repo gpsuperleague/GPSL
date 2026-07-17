@@ -52,8 +52,11 @@ CREATE TABLE IF NOT EXISTS public.competition_finance_ledger (
   amount numeric(14, 2) NOT NULL CHECK (amount <> 0),
   description text NOT NULL,
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT competition_finance_ledger_fixture_unique UNIQUE (fixture_id, club_short_name, entry_type)
+  created_at timestamptz NOT NULL DEFAULT now()
+  -- Uniqueness for gate/TV/prize per fixture is enforced by partial index
+  -- competition_finance_ledger_fixture_once_idx (see patches/
+  -- competition_finance_ledger_fines_multi_per_fixture.sql). Fines may share
+  -- the same fixture_id.
 );
 
 CREATE INDEX IF NOT EXISTS competition_finance_ledger_club_idx
