@@ -74,53 +74,6 @@
       </div>
 
       <div class="card">
-        <h2>Targets</h2>
-        <p class="note">
-          <b>Recheck all clubs</b> scans every club’s season stats against these targets and pays any unpaid prizes
-          (works even if the Start/Mid month window has already closed — for catch-up after you set challenges late).
-        </p>
-        <div class="row" style="margin-bottom:12px;">
-          <button type="button" id="seedChallengesBtn" class="button">Seed default targets (10)</button>
-          <button type="button" id="recheckChallengesBtn" class="button">Recheck all clubs</button>
-          <button type="button" id="refreshProgressBoardBtn" class="button">Refresh progress board</button>
-        </div>
-        <div id="challengeList" class="challenge-admin-list"></div>
-        <div id="challengeListStatus" class="status-line"></div>
-
-        <h3 style="margin-top:18px;">Saved target templates</h3>
-        <p class="note">
-          Save the current season’s targets for reuse after a league/season reset.
-          Templates are <b>not</b> tied to a season, so they survive wipe/reset.
-        </p>
-        <div class="row gov-subsidy-row" style="align-items:flex-end;margin-bottom:10px;">
-          <div>
-            <label>Template name</label>
-            <input type="text" id="challengeTemplateName" placeholder="e.g. S26 Start+Mid" style="width:220px;">
-          </div>
-          <div>
-            <button type="button" id="saveChallengeTemplateBtn" class="button">Save current targets</button>
-          </div>
-        </div>
-        <div id="challengeTemplateList" class="challenge-admin-list"></div>
-        <div id="challengeTemplateStatus" class="status-line"></div>
-      </div>
-
-      <div class="card">
-        <h2>Big prize winners</h2>
-        <p class="note">First club to complete <b>all</b> challenges in a window. Shown after Recheck / auto-award.</p>
-        <div id="challengeBigPrizeWinners" class="challenge-admin-list"></div>
-      </div>
-
-      <div class="card">
-        <h2>Who qualified / paid</h2>
-        <p class="note">
-          Per challenge: clubs that have met the target (or already been paid).
-          Owners also see their own progress on <a href="challenges.html">challenges.html</a>.
-        </p>
-        <div id="challengeProgressBoard" class="challenge-admin-list"></div>
-      </div>
-
-      <div class="card">
         <h2>Add / edit challenge</h2>
         <input type="hidden" id="challengeEditId" value="">
         <div class="row gov-subsidy-row">
@@ -213,12 +166,59 @@
       </div>
 
       <div class="card">
+        <h2>Targets</h2>
+        <p class="note">
+          <b>Recheck all clubs</b> scans every club’s season stats against these targets and pays any unpaid prizes
+          (works even if the Start/Mid month window has already closed — for catch-up after you set challenges late).
+        </p>
+        <div class="row" style="margin-bottom:12px;">
+          <button type="button" id="seedChallengesBtn" class="button">Seed default targets (10)</button>
+          <button type="button" id="recheckChallengesBtn" class="button">Recheck all clubs</button>
+          <button type="button" id="refreshProgressBoardBtn" class="button">Refresh progress board</button>
+        </div>
+        <div id="challengeList" class="challenge-admin-list"></div>
+        <div id="challengeListStatus" class="status-line"></div>
+
+        <h3 style="margin-top:18px;">Saved target templates</h3>
+        <p class="note">
+          Save the current season’s targets for reuse after a league/season reset.
+          Templates are <b>not</b> tied to a season, so they survive wipe/reset.
+        </p>
+        <div class="row gov-subsidy-row" style="align-items:flex-end;margin-bottom:10px;">
+          <div>
+            <label>Template name</label>
+            <input type="text" id="challengeTemplateName" placeholder="e.g. S26 Start+Mid" style="width:220px;">
+          </div>
+          <div>
+            <button type="button" id="saveChallengeTemplateBtn" class="button">Save current targets</button>
+          </div>
+        </div>
+        <div id="challengeTemplateList" class="challenge-admin-list"></div>
+        <div id="challengeTemplateStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Big prize winners</h2>
+        <p class="note">First club to complete <b>all</b> challenges in a window. Shown after Recheck / auto-award.</p>
+        <div id="challengeBigPrizeWinners" class="challenge-admin-list"></div>
+      </div>
+
+      <div class="card">
+        <h2>Who qualified / paid</h2>
+        <p class="note">
+          Per challenge: clubs that have met the target (or already been paid).
+          Owners also see their own progress on <a href="challenges.html">challenges.html</a>.
+        </p>
+        <div id="challengeProgressBoard" class="challenge-admin-list"></div>
+      </div>
+
+      <div class="card">
         <h2>Paid awards this season</h2>
         <p class="note">Ledger payouts already recorded (same data owners see under Awards on challenges.html).</p>
         <div id="challengeAwardsList" class="challenge-admin-list"></div>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_challenges.js?v=20260717-templates"></script>
+  <script type="module" src="admin_challenges.js?v=20260717-form-move"></script>
 </body>
 </html>
