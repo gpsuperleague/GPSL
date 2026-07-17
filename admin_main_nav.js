@@ -8,6 +8,9 @@ import { TESTING_ADMIN_NAV } from "./admin_testing_nav.js";
  * links → pages (hash when needed)
  *
  * Testing links: maintain only in admin_testing_nav.js (TESTING_ADMIN_NAV).
+ *
+ * After editing this file (or any admin_*_nav.js), bump APP_VERSION in
+ * app_version.js — otherwise browsers keep the old menu via module cache.
  */
 
 function L(label, href, hash = null, page = null) {
