@@ -38,7 +38,6 @@ function silhouetteSvg(gender, filled) {
 
 function availableConsults() {
   const list = [];
-  // medical_room_prize_tokens now returns ALL named consults (vault + prize)
   const rows = state?.prize_medical_tokens || [];
   for (const t of rows) {
     const tier = Number(t.param_int ?? t.matches_removed) || 2;
@@ -55,6 +54,22 @@ function availableConsults() {
       label,
     });
   }
+
+  // Fallback when named-consult RPC missing/empty but vault chips still exist
+  if (!list.length) {
+    const n = Number(state?.specialist_tokens) || 0;
+    const tier = Number(state?.specialist_matches_removed) || 2;
+    for (let i = 0; i < n; i++) {
+      list.push({
+        key: i === 0 ? "specialist" : `specialist:${i}`,
+        consultId: null,
+        inventoryId: null,
+        tier,
+        label: `Specialist consult (−${tier} matches)`,
+      });
+    }
+  }
+
   list.sort((a, b) => b.tier - a.tier || (a.consultId || 0) - (b.consultId || 0));
   return list;
 }
@@ -259,11 +274,28 @@ async function loadState() {
   }
   state = data;
   try {
-    const { data: prizeTok } = await supabase.rpc("medical_room_prize_tokens", {
-      p_club: data.club_short_name || null,
-    });
-    state.prize_medical_tokens = Array.isArray(prizeTok) ? prizeTok : [];
-  } catch {
+    const { data: prizeTok, error: prizeErr } = await supabase.rpc(
+      "medical_room_prize_tokens",
+      { p_club: data.club_short_name || null }
+    );
+    if (prizeErr) {
+      console.warn("medical_room_prize_tokens", prizeErr);
+      state.prize_medical_tokens = [];
+      // Named consults SQL may not be applied yet — vault count still works via fallback
+    } else if (Array.isArray(prizeTok)) {
+      state.prize_medical_tokens = prizeTok;
+    } else if (typeof prizeTok === "string") {
+      try {
+        const parsed = JSON.parse(prizeTok);
+        state.prize_medical_tokens = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        state.prize_medical_tokens = [];
+      }
+    } else {
+      state.prize_medical_tokens = [];
+    }
+  } catch (e) {
+    console.warn("medical_room_prize_tokens", e);
     state.prize_medical_tokens = [];
   }
   renderHero();

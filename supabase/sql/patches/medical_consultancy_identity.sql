@@ -350,7 +350,7 @@ BEGIN
 
   PERFORM public.medical_sync_named_consults(v_club);
 
-  SELECT coalesce(jsonb_agg(row_to_json(x)::jsonb ORDER BY x.matches_removed DESC, x.id), '[]'::jsonb)
+  SELECT coalesce(jsonb_agg(row_to_json(x)::jsonb ORDER BY x.matches_removed DESC, x.consult_id), '[]'::jsonb)
   INTO v_out
   FROM (
     SELECT
