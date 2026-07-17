@@ -89,8 +89,9 @@ BEGIN
     v_home, NEW.home_goals, NEW.away_goals, v_away
   );
 
+  -- Use E'...' so \n is a real newline (plain '\n' is literal backslash+n → Discord shows "nScore")
   v_body := format(
-    '%s · %s\nScore: %s–%s',
+    E'%s · %s\nScore: %s–%s',
     v_month,
     v_comp,
     NEW.home_goals,
@@ -284,7 +285,7 @@ BEGIN
     'transfer',
     format('🔨 DONE DEAL — %s', v_name),
     format(
-      '%s → %s\nFee: %s\n%s\nAge %s · Rating %s',
+      E'%s → %s\nFee: %s\n%s\nAge %s · Rating %s',
       v_seller,
       v_buyer,
       v_fee,
