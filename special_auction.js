@@ -694,3 +694,31 @@ export async function winnerReleasePrize(supabase, auctionId, _playerId = null) 
     p_auction_id: auctionId,
   });
 }
+
+/** Release a current squad player (not the prize) at MV to unlock Keep-only path. */
+export async function winnerReleaseSquadForKeep(supabase, auctionId, playerId) {
+  return supabase.rpc("special_auction_winner_release_squad_for_keep", {
+    p_auction_id: auctionId,
+    p_player_id: String(playerId),
+  });
+}
+
+/** Squad players eligible to release while deciding on a special-auction prize. */
+export async function fetchSquadPlayersForPrizeKeepPrep(
+  supabase,
+  clubShort,
+  prizePlayerId
+) {
+  if (!clubShort) return [];
+  const { data, error } = await supabase
+    .from("Players")
+    .select("Konami_ID, Name, Position, Rating, market_value")
+    .eq("Contracted_Team", clubShort)
+    .order("Name", { ascending: true });
+  if (error) {
+    console.error("fetchSquadPlayersForPrizeKeepPrep:", error);
+    return [];
+  }
+  const prize = prizePlayerId != null ? String(prizePlayerId) : "";
+  return (data || []).filter((p) => String(p.Konami_ID) !== prize);
+}

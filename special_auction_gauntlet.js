@@ -11,6 +11,8 @@ import {
   winnerKeepPrize,
   winnerListPrize,
   winnerReleasePrize,
+  winnerReleaseSquadForKeep,
+  fetchSquadPlayersForPrizeKeepPrep,
   SPECIAL_AUCTION_SQUAD_MAX,
 } from "./special_auction.js";
 import { playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
@@ -288,6 +290,9 @@ async function renderPrizeOptionsPanel() {
   const keepBtn = document.getElementById("prizeKeepBtn");
   const listBtn = document.getElementById("prizeListBtn");
   const releaseBtn = document.getElementById("prizeReleaseBtn");
+  const keepPrep = document.getElementById("prizeKeepPrep");
+  const keepPrepSelect = document.getElementById("prizeKeepPrepSelect");
+  const keepPrepBtn = document.getElementById("prizeKeepPrepBtn");
   const intro = document.getElementById("prizeOptionsIntro");
   const playerEl = document.getElementById("prizeOptionsPlayer");
   const squadEl = document.getElementById("prizeOptionsSquad");
@@ -295,20 +300,32 @@ async function renderPrizeOptionsPanel() {
   setPrizeStatus("");
 
   const pid = state.prize_player_id || state.known_player_id;
-  const [squadSize, player, listing] = await Promise.all([
+  const keepPrepDone = Boolean(state.winner_keep_prep_done);
+  const [squadSize, player, listing, squadForPrep] = await Promise.all([
     fetchClubSquadSize(supabase, myClub),
     fetchPrizePlayerBrief(supabase, pid),
     fetchPrizeActiveListing(supabase, pid, myClub),
+    keepPrepDone
+      ? Promise.resolve([])
+      : fetchSquadPlayersForPrizeKeepPrep(supabase, myClub, pid),
   ]);
 
+  const listed = Boolean(listing);
   const canKeep = winnerCanKeepPrize(squadSize);
   const mv = Number(player?.market_value) || 0;
   const releaseCredit = Math.round(mv * 1.25);
 
   if (intro) {
-    intro.textContent = listing
-      ? "Prize is listed on the transfer market. You can wait for a sale, or release at 125% MV (cancels the listing)."
-      : "Choose what to do with your prize player. Release at 125% does not use a voluntary contract release.";
+    if (keepPrepDone) {
+      intro.textContent =
+        "You released a squad player to make room. Confirm Keep player to finish — list and 125% release are no longer available.";
+    } else if (listed) {
+      intro.textContent =
+        "Prize is listed on the transfer market. You can wait for a sale, or release at 125% MV (cancels the listing). Squad release for Keep is unavailable while listed.";
+    } else {
+      intro.textContent =
+        "Choose what to do with your prize. Release at 125% is for the prize player. Or release a current squad player at MV first if you need space/plans before Keep.";
+    }
   }
 
   if (playerEl) {
@@ -348,24 +365,47 @@ async function renderPrizeOptionsPanel() {
   }
 
   if (squadEl) {
-    squadEl.textContent = canKeep
-      ? `Squad size: ${squadSize} / ${SPECIAL_AUCTION_SQUAD_MAX} — you can keep, list, or release.`
-      : `Squad size: ${squadSize} / ${SPECIAL_AUCTION_SQUAD_MAX} — over the limit. You must list on the market or release at 125% MV (cannot keep).`;
+    if (keepPrepDone) {
+      squadEl.textContent = canKeep
+        ? `Squad size: ${squadSize} / ${SPECIAL_AUCTION_SQUAD_MAX} — use Keep player to finish.`
+        : `Squad size: ${squadSize} / ${SPECIAL_AUCTION_SQUAD_MAX} — still over the limit.`;
+    } else {
+      squadEl.textContent = canKeep
+        ? `Squad size: ${squadSize} / ${SPECIAL_AUCTION_SQUAD_MAX} — you can keep, list, release prize @125%, or release a squad player for Keep.`
+        : `Squad size: ${squadSize} / ${SPECIAL_AUCTION_SQUAD_MAX} — over the limit. List, release prize @125%, or release a squad player then Keep.`;
+    }
   }
 
   if (keepBtn) {
-    keepBtn.style.display = listing ? "none" : "inline-block";
+    keepBtn.style.display = listed ? "none" : "inline-block";
     keepBtn.disabled = !canKeep;
   }
   if (listBtn) {
-    listBtn.style.display = listing ? "none" : "inline-block";
+    listBtn.style.display = listed || keepPrepDone ? "none" : "inline-block";
     listBtn.disabled = false;
   }
   if (releaseBtn) {
+    releaseBtn.style.display = keepPrepDone ? "none" : "inline-block";
     releaseBtn.disabled = false;
-    releaseBtn.textContent = listing
+    releaseBtn.textContent = listed
       ? `Cancel listing & release at 125% (${formatMoney(releaseCredit)})`
       : `Release at 125% MV (${formatMoney(releaseCredit)})`;
+  }
+
+  const showKeepPrep = !listed && !keepPrepDone;
+  if (keepPrep) keepPrep.hidden = !showKeepPrep;
+  if (showKeepPrep && keepPrepSelect) {
+    const opts = (squadForPrep || [])
+      .map((p) => {
+        const mvP = Number(p.market_value) || 0;
+        const label = `${p.Name || p.Konami_ID} · ${p.Position || "?"} · ${formatMoney(mvP)}`;
+        return `<option value="${String(p.Konami_ID)}">${label}</option>`;
+      })
+      .join("");
+    keepPrepSelect.innerHTML = opts
+      ? `<option value="">Select squad player…</option>${opts}`
+      : `<option value="">No other squad players</option>`;
+    if (keepPrepBtn) keepPrepBtn.disabled = !opts;
   }
 }
 
@@ -374,7 +414,8 @@ async function runPrizeAction(action) {
   const keepBtn = document.getElementById("prizeKeepBtn");
   const listBtn = document.getElementById("prizeListBtn");
   const releaseBtn = document.getElementById("prizeReleaseBtn");
-  [keepBtn, listBtn, releaseBtn].forEach((b) => {
+  const keepPrepBtn = document.getElementById("prizeKeepPrepBtn");
+  [keepBtn, listBtn, releaseBtn, keepPrepBtn].forEach((b) => {
     if (b) b.disabled = true;
   });
   setPrizeStatus("Working…");
@@ -390,7 +431,7 @@ async function runPrizeAction(action) {
   } else if (action === "list") {
     if (
       !confirm(
-        "List the prize player on the transfer market at market value for 24 hours?\n\nYou can still release at 125% MV later if unsold."
+        "List the prize player on the transfer market at market value for 24 hours?\n\nYou can still release at 125% MV later if unsold. Squad release for Keep will be unavailable while listed."
       )
     ) {
       setPrizeStatus("");
@@ -412,6 +453,25 @@ async function runPrizeAction(action) {
       return;
     }
     result = await winnerReleasePrize(supabase, auctionId);
+  } else if (action === "keep_prep") {
+    const sel = document.getElementById("prizeKeepPrepSelect");
+    const pickId = sel?.value;
+    if (!pickId) {
+      setPrizeStatus("❌ Select a squad player to release.", true);
+      await renderPrizeOptionsPanel();
+      return;
+    }
+    const pickLabel = sel?.selectedOptions?.[0]?.textContent || "this player";
+    if (
+      !confirm(
+        `Release ${pickLabel} at market value to prepare Keep?\n\nAfter this, only Keep player remains (list and 125% prize release disappear). Does not use voluntary release quota.`
+      )
+    ) {
+      setPrizeStatus("");
+      await renderPrizeOptionsPanel();
+      return;
+    }
+    result = await winnerReleaseSquadForKeep(supabase, auctionId, pickId);
   }
 
   if (result?.error) {
@@ -420,7 +480,14 @@ async function runPrizeAction(action) {
     return;
   }
 
-  setPrizeStatus("✅ Prize options updated.", false);
+  if (action === "keep_prep") {
+    setPrizeStatus(
+      `✅ Released ${result?.data?.player_name || "squad player"} — now use Keep player.`,
+      false
+    );
+  } else {
+    setPrizeStatus("✅ Prize options updated.", false);
+  }
   await refreshState();
 }
 
@@ -502,6 +569,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   );
   document.getElementById("prizeReleaseBtn")?.addEventListener("click", () =>
     runPrizeAction("release")
+  );
+  document.getElementById("prizeKeepPrepBtn")?.addEventListener("click", () =>
+    runPrizeAction("keep_prep")
   );
 
   const bidInput = document.getElementById("bidAmount");

@@ -347,6 +347,18 @@
         <button type="button" class="button secondary" id="prizeListBtn">List on transfer market (MV)</button>
         <button type="button" class="button secondary" id="prizeReleaseBtn">Release at 125% MV</button>
       </div>
+      <div id="prizeKeepPrep" class="prize-keep-prep" hidden style="margin-top:12px;">
+        <p class="meta" style="margin:0 0 8px;">
+          Need space for Keep? Release one current squad player at market value
+          (not a voluntary release). After that, only Keep remains.
+        </p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+          <select id="prizeKeepPrepSelect" style="min-width:220px;max-width:100%;padding:6px 8px;"></select>
+          <button type="button" class="button secondary" id="prizeKeepPrepBtn">
+            Release squad player (MV)
+          </button>
+        </div>
+      </div>
       <div id="prizeOptionsStatus" class="status"></div>
     </div>
 
@@ -372,6 +384,6 @@
       <div id="phase1Table"></div>
     </div>
   </div>
-  <script type="module" src="special_auction_gauntlet.js?v=20260717-winner-prize-fix"></script>
+  <script type="module" src="special_auction_gauntlet.js?v=20260717-keep-prep"></script>
 </body>
 </html>
