@@ -153,6 +153,7 @@ export const ADMIN_MAIN_NAV = [
         L("Start of Season challenge Payouts", "admin_challenges.html"),
       ]),
       group("January", [
+        L("Set Mid-Season Challenges", "admin_challenges.html"),
         L("Special Auction", "admin_special-auctions.html"),
         L("Open Transfer Window", "admin_transfer_window.html", "open"),
         L("Close Transfer Window", "admin_transfer_window.html", "closed"),
