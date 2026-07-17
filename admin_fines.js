@@ -1,18 +1,33 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
-import { formatMoney } from "./competition.js";
+import {
+  formatMoney,
+  loadCurrentSeason,
+  GPSL_MONTH_LABELS,
+  GPSL_MONTH_ORDER,
+  CUP_LABELS,
+  DIVISION_LABELS,
+} from "./competition.js";
 
 primeAdminPageChrome();
 
 let tariffs = [];
+let currentSeasonId = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
+  const season = await loadCurrentSeason(supabase);
+  currentSeasonId = season?.id ?? null;
+
+  fillMonthSelect();
   await loadClubs();
   await loadTariffs();
   await loadRecent();
+  await loadFineFixtures();
 
   document.getElementById("fineTariffSelect").onchange = onTariffPick;
+  document.getElementById("fineClubSelect").onchange = () => loadFineFixtures();
+  document.getElementById("fineFixtureMonth").onchange = () => loadFineFixtures();
   document.getElementById("applyFineBtn").onclick = applyFine;
   document.getElementById("applyPointsBtn").onclick = applyPointsAdjustment;
   document.getElementById("seedFinesBtn").onclick = seedTariffs;
@@ -20,6 +35,117 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("saveFineTariffBtn").onclick = saveTariff;
   document.getElementById("clearFineFormBtn").onclick = clearFineForm;
 });
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function fillMonthSelect() {
+  const sel = document.getElementById("fineFixtureMonth");
+  if (!sel) return;
+  sel.innerHTML =
+    `<option value="">All months</option>` +
+    GPSL_MONTH_ORDER.map(
+      (m) => `<option value="${m}">${GPSL_MONTH_LABELS[m] || m}</option>`
+    ).join("");
+}
+
+function fixtureCompetitionLabel(f) {
+  if (f.competition_type === "cup") {
+    const cup = CUP_LABELS[f.cup_code] || f.cup_code || "Cup";
+    const round = f.cup_round != null ? ` R${f.cup_round}` : "";
+    return `${cup}${round}`;
+  }
+  if (f.competition_type === "playoff") return "Playoff";
+  const div = DIVISION_LABELS[f.division] || f.division || "League";
+  return f.matchday != null ? `${div} MD${f.matchday}` : div;
+}
+
+function fixtureOptionLabel(f) {
+  const month = GPSL_MONTH_LABELS[f.gpsl_month] || f.gpsl_month || "?";
+  const ha = `${f.home_club_short_name} vs ${f.away_club_short_name}`;
+  const score =
+    f.status === "played" && f.home_goals != null && f.away_goals != null
+      ? ` ${f.home_goals}–${f.away_goals}`
+      : "";
+  const status = f.status && f.status !== "scheduled" ? ` · ${f.status}` : "";
+  return `#${f.id} · ${month} · ${fixtureCompetitionLabel(f)} · ${ha}${score}${status}`;
+}
+
+async function loadFineFixtures() {
+  const sel = document.getElementById("fineFixtureId");
+  if (!sel) return;
+
+  const club = document.getElementById("fineClubSelect")?.value || "";
+  const month = document.getElementById("fineFixtureMonth")?.value || "";
+  const prev = sel.value;
+
+  if (!club) {
+    sel.innerHTML = `<option value="">— Select a club first —</option>`;
+    return;
+  }
+
+  sel.innerHTML = `<option value="">Loading…</option>`;
+
+  let query = supabase
+    .from("competition_fixtures")
+    .select(
+      "id, competition_type, division, cup_code, cup_round, matchday, gpsl_month, week_in_month, home_club_short_name, away_club_short_name, status, home_goals, away_goals"
+    )
+    .or(`home_club_short_name.eq.${club},away_club_short_name.eq.${club}`)
+    .order("matchday", { ascending: true })
+    .limit(500);
+
+  if (currentSeasonId) {
+    query = query.eq("season_id", currentSeasonId);
+  }
+  if (month) {
+    query = query.eq("gpsl_month", month);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    sel.innerHTML = `<option value="">— Could not load fixtures —</option>`;
+    console.warn("loadFineFixtures:", error);
+    return;
+  }
+
+  const monthSort = Object.fromEntries(GPSL_MONTH_ORDER.map((m, i) => [m, i]));
+  const rows = (data || []).slice().sort((a, b) => {
+    const ma = monthSort[a.gpsl_month] ?? 99;
+    const mb = monthSort[b.gpsl_month] ?? 99;
+    if (ma !== mb) return ma - mb;
+    return (a.matchday || 0) - (b.matchday || 0) || a.id - b.id;
+  });
+
+  const none = `<option value="">— None (optional) —</option>`;
+  if (!rows.length) {
+    sel.innerHTML =
+      none +
+      `<option value="" disabled>${
+        month ? "No fixtures for this club in that month" : "No fixtures for this club"
+      }</option>`;
+    return;
+  }
+
+  sel.innerHTML =
+    none +
+    rows
+      .map(
+        (f) =>
+          `<option value="${f.id}">${escapeHtml(fixtureOptionLabel(f))}</option>`
+      )
+      .join("");
+
+  if (prev && [...sel.options].some((o) => o.value === prev)) {
+    sel.value = prev;
+  }
+}
 
 async function loadClubs() {
   const { data } = await supabase.from("Clubs").select("ShortName, Club").order("Club");
