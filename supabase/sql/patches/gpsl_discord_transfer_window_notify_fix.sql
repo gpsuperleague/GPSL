@@ -41,12 +41,7 @@ BEGIN
     );
   END IF;
 
-  BEGIN
-    PERFORM public.gpsl_discord_feed_request_flush();
-  EXCEPTION WHEN OTHERS THEN
-    NULL;
-  END;
-
+  -- Do NOT call request_flush here — queue AFTER INSERT already flushes.
   RETURN v_id;
 END;
 $function$;

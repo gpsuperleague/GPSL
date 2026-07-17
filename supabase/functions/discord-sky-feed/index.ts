@@ -555,19 +555,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Smaller batches + slower pacing avoids Discord 429 storms across channels
-    const { data: rows, error } = await adminClient
-      .from("gpsl_discord_feed_queue")
-      .select("id, event_type, headline, body, color, metadata, attempts")
-      .eq("status", "pending")
-      .order("id", { ascending: true })
-      .limit(10);
-
-    if (error) {
-      return jsonResponse({ error: error.message }, 500);
-    }
-
-    const pending = (rows || []) as FeedRow[];
     let posted = 0;
     let postedResults = 0;
     let postedNatter = 0;
@@ -575,6 +562,33 @@ Deno.serve(async (req) => {
     let postedNews = 0;
     const errors: string[] = [];
     const warnings: string[] = [];
+
+    // Claim rows atomically so concurrent flushes cannot double-post the same item
+    let pending: FeedRow[] = [];
+    const { data: claimed, error: claimError } = await adminClient.rpc(
+      "gpsl_discord_feed_claim_pending",
+      { p_limit: 10 }
+    );
+    if (claimError) {
+      // Fallback for DBs that have not run the claim patch yet
+      const { data: rows, error } = await adminClient
+        .from("gpsl_discord_feed_queue")
+        .select("id, event_type, headline, body, color, metadata, attempts")
+        .eq("status", "pending")
+        .order("id", { ascending: true })
+        .limit(10);
+      if (error) {
+        return jsonResponse({ error: error.message }, 500);
+      }
+      pending = (rows || []) as FeedRow[];
+      if (pending.length) {
+        warnings.push(
+          "gpsl_discord_feed_claim_pending missing — run gpsl_discord_feed_claim_pending.sql to stop double Discord posts"
+        );
+      }
+    } else {
+      pending = (claimed || []) as FeedRow[];
+    }
 
     if (
       pending.some((r) => isResultsEvent(r)) &&
