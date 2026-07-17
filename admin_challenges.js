@@ -482,17 +482,20 @@ async function loadChallengeTemplates() {
       const when = t.updated_at
         ? new Date(t.updated_at).toLocaleDateString("en-GB")
         : "";
+      const startN = Number(t.start_count) || 0;
+      const midN = Number(t.mid_count) || 0;
       return `<div class="challenge-admin-item">
         <div>
           <b>${t.name}</b>
           <span class="challenge-admin-meta">
             ${t.target_count || 0} targets
-            (${t.start_count || 0} start · ${t.mid_count || 0} mid)
+            (${startN} start · ${midN} mid)
             ${when ? ` · updated ${when}` : ""}
           </span>
         </div>
         <div class="challenge-admin-actions">
-          <button type="button" class="button tpl-apply-btn" data-id="${t.id}" data-name="${encodeURIComponent(t.name || "")}">Apply to season</button>
+          <button type="button" class="button tpl-apply-btn" data-id="${t.id}" data-phase="start" data-name="${encodeURIComponent(t.name || "")}" ${startN ? "" : "disabled title=\"No start targets in this template\""}>Apply to Start</button>
+          <button type="button" class="button tpl-apply-btn" data-id="${t.id}" data-phase="mid" data-name="${encodeURIComponent(t.name || "")}" ${midN ? "" : "disabled title=\"No mid targets in this template\""}>Apply to Mid</button>
           <button type="button" class="button tpl-delete-btn" data-id="${t.id}">Delete</button>
         </div>
       </div>`;
@@ -501,7 +504,11 @@ async function loadChallengeTemplates() {
 
   list.querySelectorAll(".tpl-apply-btn").forEach((btn) => {
     btn.onclick = () =>
-      applyChallengeTemplate(Number(btn.dataset.id), decodeURIComponent(btn.dataset.name || ""));
+      applyChallengeTemplate(
+        Number(btn.dataset.id),
+        decodeURIComponent(btn.dataset.name || ""),
+        btn.dataset.phase
+      );
   });
   list.querySelectorAll(".tpl-delete-btn").forEach((btn) => {
     btn.onclick = () => deleteChallengeTemplate(Number(btn.dataset.id));
@@ -536,35 +543,43 @@ async function saveChallengeTemplate() {
   );
 }
 
-async function applyChallengeTemplate(templateId, templateName) {
+async function applyChallengeTemplate(templateId, templateName, windowPhase) {
   if (!currentSeasonId) {
     setStatus("challengeTemplateStatus", "No current season.", false);
     return;
   }
 
-  const replace = confirm(
-    `Apply template “${templateName || templateId}” to the current season?\n\n` +
-      `OK = replace existing season targets\n` +
-      `Cancel = abort\n\n` +
-      `(If the season is empty, targets are added either way.)`
-  );
-  if (!replace) return;
+  const phaseLabel = windowPhase === "mid" ? "Mid-season" : "Start of season";
+  if (
+    !confirm(
+      `Apply “${templateName || templateId}” → ${phaseLabel} challenges?\n\n` +
+        `This replaces any existing ${phaseLabel.toLowerCase()} targets on the current season ` +
+        `(the other window is left alone). You can edit them afterwards in the Targets list.`
+    )
+  ) {
+    return;
+  }
 
-  setStatus("challengeTemplateStatus", "Applying template…");
+  setStatus("challengeTemplateStatus", `Applying ${phaseLabel} targets…`);
   const { data, error } = await supabase.rpc("competition_admin_apply_challenge_template", {
     p_template_id: templateId,
     p_season_id: currentSeasonId,
     p_replace: true,
+    p_window_phase: windowPhase,
   });
   if (error) {
-    setStatus("challengeTemplateStatus", "❌ " + error.message, false);
+    setStatus(
+      "challengeTemplateStatus",
+      "❌ " + error.message + " — re-run competition_challenge_templates.sql",
+      false
+    );
     return;
   }
   await loadChallengeList();
   await loadChallengeProgressBoard();
   setStatus(
     "challengeTemplateStatus",
-    `✅ Applied “${data?.template_name || templateName}” — ${data?.inserted ?? 0} target(s).`,
+    `✅ Applied ${data?.inserted ?? 0} ${phaseLabel.toLowerCase()} target(s) from “${data?.template_name || templateName}”. Edit them in the list above.`,
     true
   );
 }

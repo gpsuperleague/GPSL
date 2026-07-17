@@ -184,11 +184,17 @@ BEGIN
 END;
 $function$;
 
--- Apply template into a season. p_replace=true clears existing season targets first.
+-- Apply template into a season for Start, Mid, or both.
+-- p_window_phase: 'start' | 'mid' | NULL (NULL = all phases in the template)
+-- p_replace: clears existing season targets for the selected phase(s) first
+DROP FUNCTION IF EXISTS public.competition_admin_apply_challenge_template(bigint, bigint, boolean);
+DROP FUNCTION IF EXISTS public.competition_admin_apply_challenge_template(bigint, bigint, boolean, text);
+
 CREATE OR REPLACE FUNCTION public.competition_admin_apply_challenge_template(
   p_template_id bigint,
   p_season_id bigint DEFAULT NULL,
-  p_replace boolean DEFAULT false
+  p_replace boolean DEFAULT false,
+  p_window_phase text DEFAULT NULL
 )
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -211,9 +217,15 @@ DECLARE
   v_param text;
   v_target int;
   v_prize numeric;
+  v_want text := nullif(lower(btrim(coalesce(p_window_phase, ''))), '');
+  v_phase_count int := 0;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  IF v_want IS NOT NULL AND v_want NOT IN ('start', 'mid') THEN
+    RAISE EXCEPTION 'window_phase must be start, mid, or null';
   END IF;
 
   IF p_season_id IS NULL THEN
@@ -242,18 +254,34 @@ BEGIN
     RAISE EXCEPTION 'Template "%" has no targets', v_name;
   END IF;
 
+  IF v_want IS NOT NULL THEN
+    SELECT count(*)::int INTO v_phase_count
+    FROM jsonb_array_elements(v_targets) x
+    WHERE lower(btrim(coalesce(x.value->>'window_phase', ''))) = v_want;
+
+    IF coalesce(v_phase_count, 0) = 0 THEN
+      RAISE EXCEPTION 'Template "%" has no % challenges to apply',
+        v_name,
+        CASE v_want WHEN 'mid' THEN 'mid-season' ELSE 'start-of-season' END;
+    END IF;
+  END IF;
+
   SELECT count(*)::int INTO v_existing
   FROM public.competition_challenge_config
-  WHERE season_id = v_season_id;
+  WHERE season_id = v_season_id
+    AND (v_want IS NULL OR window_phase = v_want);
 
   IF v_existing > 0 AND NOT coalesce(p_replace, false) THEN
     RAISE EXCEPTION
-      'Season already has % challenge(s). Pass replace=true to clear them first, or delete manually.',
-      v_existing;
+      'Season already has % % challenge(s). Pass replace=true to clear them first, or delete manually.',
+      v_existing,
+      CASE WHEN v_want IS NULL THEN 'total' WHEN v_want = 'mid' THEN 'mid-season' ELSE 'start-of-season' END;
   END IF;
 
   IF coalesce(p_replace, false) AND v_existing > 0 THEN
-    DELETE FROM public.competition_challenge_config WHERE season_id = v_season_id;
+    DELETE FROM public.competition_challenge_config
+    WHERE season_id = v_season_id
+      AND (v_want IS NULL OR window_phase = v_want);
   END IF;
 
   v_default := coalesce(
@@ -278,6 +306,12 @@ BEGIN
     IF v_phase NOT IN ('start', 'mid') THEN
       v_phase := 'start';
     END IF;
+
+    -- Only apply the chosen window (Start or Mid)
+    IF v_want IS NOT NULL AND v_phase <> v_want THEN
+      CONTINUE;
+    END IF;
+
     IF v_from IS NULL OR v_from = '' THEN
       v_from := CASE WHEN v_phase = 'mid' THEN 'january' ELSE 'august' END;
     END IF;
@@ -316,6 +350,7 @@ BEGIN
     'template_id', p_template_id,
     'template_name', v_name,
     'season_id', v_season_id,
+    'window_phase', v_want,
     'replaced', coalesce(p_replace, false),
     'inserted', v_inserted
   );
@@ -325,6 +360,6 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.competition_admin_save_challenge_template(text, bigint, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_admin_list_challenge_templates() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_admin_delete_challenge_template(bigint) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.competition_admin_apply_challenge_template(bigint, bigint, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_admin_apply_challenge_template(bigint, bigint, boolean, text) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
