@@ -28,6 +28,10 @@
     .gpsl-link { color:#6cf; text-decoration:none; }
     .gpsl-link:hover { text-decoration:underline; }
     #historyError { color:#f88; background:#2a1515; border:1px solid #633; padding:10px; border-radius:6px; margin-bottom:14px; display:none; }
+    .chart-wrap {
+      position:relative; width:100%; height:280px; margin-top:4px;
+    }
+    .chart-note { color:#888; font-size:12px; margin:0 0 10px; line-height:1.4; }
   </style>
 </head>
 <body>
@@ -41,6 +45,24 @@
       <h2>Trophy cabinet</h2>
       <p class="sub" style="margin:-4px 0 14px;">Each competition has a bay on the shelf — every win adds another trophy (with season label). <b>Click a trophy</b> to open that season’s final table or cup bracket. Empty bays stay blank until you win and the season is archived. <a class="gpsl-link" href="history_trophy_preview.html">Preview how the cabinet will look</a>.</p>
       <div id="honoursPanel"><span class="empty">Loading…</span></div>
+    </div>
+
+    <div class="panel">
+      <h2>League position this season</h2>
+      <p class="chart-note">Table position at the end of each GPSL month (1st at the top).</p>
+      <div class="chart-wrap">
+        <canvas id="monthlyPositionChart"></canvas>
+      </div>
+      <p class="empty" id="monthlyPositionEmpty" style="display:none;"></p>
+    </div>
+
+    <div class="panel">
+      <h2>Final league position by season</h2>
+      <p class="chart-note">Current season (live) plus up to nine previous archived finishes. 1st at the top.</p>
+      <div class="chart-wrap">
+        <canvas id="seasonPositionChart"></canvas>
+      </div>
+      <p class="empty" id="seasonPositionEmpty" style="display:none;"></p>
     </div>
 
     <div class="panel">
@@ -60,6 +82,6 @@
 
     <p class="sub">Run <code>competition_history.sql</code> once, then <b>Admin → Season management → Archive season stats</b> at end of each year.</p>
   </div>
-  <script type="module" src="history.js?v=20260615-shelf"></script>
+  <script type="module" src="history.js?v=20260717-charts"></script>
 </body>
 </html>

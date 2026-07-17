@@ -9,6 +9,28 @@ import {
 import { DIVISION_LABELS } from "./competition.js";
 import { renderTrophyCabinet } from "./history_trophies.js";
 import { playerNameLinkHtml } from "./player_links.js";
+import {
+  Chart,
+  LineController,
+  LineElement,
+  PointElement,
+  LinearScale,
+  CategoryScale,
+  Filler,
+  Tooltip,
+  Legend,
+} from "https://cdn.jsdelivr.net/npm/chart.js@4.4.1/+esm";
+
+Chart.register(
+  LineController,
+  LineElement,
+  PointElement,
+  LinearScale,
+  CategoryScale,
+  Filler,
+  Tooltip,
+  Legend
+);
 
 const AWARD_LABELS = {
   ballon_dor: "Ballon d'Or",
@@ -47,6 +69,262 @@ function showError(msg) {
   }
   el.style.display = "block";
   el.textContent = msg;
+}
+
+function positionYScale(maxPos) {
+  const top = Math.max(2, Number(maxPos) || 20);
+  return {
+    reverse: true,
+    min: 1,
+    max: top,
+    ticks: {
+      stepSize: 1,
+      color: "#aaa",
+      callback: (v) => (Number.isInteger(v) ? v : ""),
+    },
+    grid: { color: "rgba(255,255,255,0.06)" },
+    title: {
+      display: true,
+      text: "League position",
+      color: "#888",
+      font: { size: 11 },
+    },
+  };
+}
+
+function chartDefaults() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: "#1a1a1a",
+        titleColor: "#ffcc66",
+        bodyColor: "#ddd",
+        borderColor: "#444",
+        borderWidth: 1,
+      },
+    },
+  };
+}
+
+function renderMonthlyChart(data) {
+  const canvas = document.getElementById("monthlyPositionChart");
+  const empty = document.getElementById("monthlyPositionEmpty");
+  const wrap = canvas?.closest(".chart-wrap");
+  if (!canvas || !empty) return;
+
+  const rows = data?.monthly || [];
+  if (!rows.length) {
+    if (wrap) wrap.style.display = "none";
+    empty.style.display = "block";
+    empty.textContent =
+      "No monthly league positions yet — positions appear once league fixtures are played this season.";
+    return;
+  }
+
+  if (wrap) wrap.style.display = "block";
+  empty.style.display = "none";
+
+  const labels = rows.map((r) => r.month_label || r.gpsl_month);
+  const positions = rows.map((r) => Number(r.position));
+  const maxPos = Math.max(
+    Number(data.division_size) || 0,
+    ...positions.filter((n) => Number.isFinite(n))
+  );
+
+  new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Position",
+          data: positions,
+          borderColor: "#ff9900",
+          backgroundColor: "rgba(255,153,0,0.12)",
+          pointBackgroundColor: "#ffcc66",
+          pointBorderColor: "#ff9900",
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.25,
+          fill: true,
+          spanGaps: true,
+        },
+      ],
+    },
+    options: {
+      ...chartDefaults(),
+      plugins: {
+        ...chartDefaults().plugins,
+        tooltip: {
+          ...chartDefaults().plugins.tooltip,
+          callbacks: {
+            label(ctx) {
+              const row = rows[ctx.dataIndex];
+              const pos = row?.position ?? ctx.parsed.y;
+              const bits = [`${pos}${ordinalSuffix(pos)}`];
+              if (row?.pts != null) bits.push(`${row.pts} pts`);
+              if (row?.mp != null) bits.push(`${row.mp} played`);
+              return bits.join(" · ");
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: "#aaa" },
+          grid: { color: "rgba(255,255,255,0.04)" },
+        },
+        y: positionYScale(maxPos),
+      },
+    },
+  });
+}
+
+function renderSeasonChart(data) {
+  const canvas = document.getElementById("seasonPositionChart");
+  const empty = document.getElementById("seasonPositionEmpty");
+  const wrap = canvas?.closest(".chart-wrap");
+  if (!canvas || !empty) return;
+
+  const rows = data?.seasons || [];
+  if (!rows.length) {
+    if (wrap) wrap.style.display = "none";
+    empty.style.display = "block";
+    empty.textContent =
+      "No season position history yet. Archive past seasons from Admin → Season management, or wait for live standings this year.";
+    return;
+  }
+
+  if (wrap) wrap.style.display = "block";
+  empty.style.display = "none";
+
+  const labels = rows.map((r) => {
+    const base = r.season_label || "Season";
+    return r.is_current && !r.is_final ? `${base} (live)` : base;
+  });
+  const positions = rows.map((r) => Number(r.position));
+  const maxPos = Math.max(
+    20,
+    ...positions.filter((n) => Number.isFinite(n)),
+    Number(data.division_size) || 0
+  );
+
+  new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Final position",
+          data: positions,
+          borderColor: "#6cf",
+          backgroundColor: "rgba(102,204,255,0.12)",
+          pointBackgroundColor: rows.map((r) =>
+            r.is_current && !r.is_final ? "#ffcc66" : "#9fd4ff"
+          ),
+          pointBorderColor: rows.map((r) =>
+            r.is_current && !r.is_final ? "#ff9900" : "#6cf"
+          ),
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          tension: 0.25,
+          fill: true,
+          spanGaps: true,
+        },
+      ],
+    },
+    options: {
+      ...chartDefaults(),
+      plugins: {
+        ...chartDefaults().plugins,
+        tooltip: {
+          ...chartDefaults().plugins.tooltip,
+          callbacks: {
+            label(ctx) {
+              const row = rows[ctx.dataIndex];
+              const pos = row?.position ?? ctx.parsed.y;
+              const div = divisionLabel(row?.division);
+              const tag =
+                row?.is_current && !row?.is_final
+                  ? "live"
+                  : row?.is_final
+                    ? "final"
+                    : "";
+              return `${pos}${ordinalSuffix(pos)} · ${div}${tag ? ` · ${tag}` : ""}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          ticks: { color: "#aaa", maxRotation: 45, minRotation: 0 },
+          grid: { color: "rgba(255,255,255,0.04)" },
+        },
+        y: positionYScale(maxPos),
+      },
+    },
+  });
+}
+
+function ordinalSuffix(n) {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return "";
+  const v = num % 100;
+  if (v >= 11 && v <= 13) return "th";
+  switch (num % 10) {
+    case 1:
+      return "st";
+    case 2:
+      return "nd";
+    case 3:
+      return "rd";
+    default:
+      return "th";
+  }
+}
+
+async function loadPositionCharts(shortName) {
+  const { data, error } = await supabase.rpc("competition_club_position_charts", {
+    p_club_short_name: shortName,
+  });
+
+  if (error) {
+    console.warn("competition_club_position_charts:", error.message);
+    const monthlyEmpty = document.getElementById("monthlyPositionEmpty");
+    const seasonEmpty = document.getElementById("seasonPositionEmpty");
+    const monthlyWrap = document
+      .getElementById("monthlyPositionChart")
+      ?.closest(".chart-wrap");
+    const seasonWrap = document
+      .getElementById("seasonPositionChart")
+      ?.closest(".chart-wrap");
+    if (monthlyWrap) monthlyWrap.style.display = "none";
+    if (seasonWrap) seasonWrap.style.display = "none";
+    if (monthlyEmpty) {
+      monthlyEmpty.style.display = "block";
+      monthlyEmpty.textContent = error.message.includes(
+        "competition_club_position_charts"
+      )
+        ? "Run supabase/sql/patches/competition_club_position_charts.sql in Supabase to enable position charts."
+        : `Could not load monthly chart (${error.message}).`;
+    }
+    if (seasonEmpty) {
+      seasonEmpty.style.display = "block";
+      seasonEmpty.textContent = error.message.includes(
+        "competition_club_position_charts"
+      )
+        ? "Run supabase/sql/patches/competition_club_position_charts.sql in Supabase to enable position charts."
+        : `Could not load season chart (${error.message}).`;
+    }
+    return;
+  }
+
+  renderMonthlyChart(data || {});
+  renderSeasonChart(data || {});
 }
 
 function renderHonours(honours) {
@@ -254,4 +532,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderSeasons(bundle.seasons || []);
   renderRecords(bundle.records || {});
   renderBallon(bundle.ballon_winners || []);
+  await loadPositionCharts(shortName);
 });
