@@ -1253,7 +1253,7 @@ function navLinkLeadingHtml(item) {
   if (item?.navIcon === "rewards") {
     return (
       `<span class="nav-rewards-icon" title="Rewards Centre" aria-hidden="true">` +
-      `<img src="images/nav/rewards_medal.png" alt="" width="18" height="18" loading="lazy" />` +
+      `<img src="images/nav/rewards_medal.png?v=20260717-alpha" alt="" width="18" height="18" loading="lazy" />` +
       `</span>`
     );
   }
