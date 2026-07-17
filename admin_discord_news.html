@@ -47,26 +47,26 @@
         <p class="note">
           <b>#gpsl-news</b> — transfers (filtered), managers, owners, cups, titles, etc.<br>
           Transfer filter: age ≤20 need rating ≥70; age ≥21 need rating ≥76.<br>
-          <b>#gpsl-results</b> — confirmed match results only (month · competition · score).
+          <b>#gpsl-results</b> — confirmed match results only (month · competition · score).<br>
+          <b>#gpsl-natter</b> — owner Natter posts (text + image).
         </p>
         <ol class="note" style="margin:0 0 12px;padding-left:1.2em;line-height:1.55;">
-          <li>In Discord: create a channel (e.g. <code>#gpsl-results</code>).</li>
-          <li>Channel settings → Integrations → Webhooks → New Webhook → Copy Webhook URL.</li>
-          <li>Supabase → Edge Functions → <code>discord-sky-feed</code> → Secrets:
+          <li>In Discord: create channels <code>#gpsl-results</code> and <code>#gpsl-natter</code> if needed.</li>
+          <li>For each: Channel settings → Integrations → Webhooks → New Webhook → Copy URL
+            (create the webhook <b>inside</b> that channel).</li>
+          <li>Supabase → Edge Functions → <b>Secrets</b> (project-wide, not inside a function):
             <ul style="margin:6px 0 0;padding-left:1.1em;">
-              <li><code>DISCORD_WEBHOOK_URL</code> = existing #gpsl-news webhook</li>
-              <li><code>DISCORD_RESULTS_WEBHOOK_URL</code> = new #gpsl-results webhook (must be created inside #gpsl-results)</li>
+              <li><code>DISCORD_WEBHOOK_URL</code> = #gpsl-news</li>
+              <li><code>DISCORD_RESULTS_WEBHOOK_URL</code> = #gpsl-results</li>
+              <li><code>DISCORD_NATTER_WEBHOOK_URL</code> = #gpsl-natter</li>
             </ul>
           </li>
-          <li>Run SQL patch <code>gpsl_discord_results_channel_and_transfer_filter.sql</code>.</li>
-          <li>Redeploy: <code>supabase functions deploy discord-sky-feed</code> (secrets alone are not enough if an old build is live).</li>
-          <li>Use <b>Check routing</b> then <b>Test #gpsl-results</b> — the test must appear in #gpsl-results only.</li>
+          <li>SQL: <code>gpsl_discord_results_channel_and_transfer_filter.sql</code> and
+            <code>gpsl_discord_natter_posts.sql</code>.</li>
+          <li>Redeploy: <code>supabase functions deploy discord-sky-feed</code>.</li>
+          <li>Use <b>Check routing</b> then the channel test buttons.</li>
         </ol>
         <div id="routingStatus"></div>
-        <p class="note" style="margin-top:10px;color:#c88;">
-          If results still land in #gpsl-news, either the results secret is missing (old builds fell back silently)
-          or the results webhook URL was created in the wrong Discord channel.
-        </p>
       </div>
 
       <div class="card">
@@ -106,14 +106,14 @@
       <div class="card">
         <h2>Sky-style feeds</h2>
         <p class="note">
-          <b>News</b> (#gpsl-news): filtered transfer deals, manager/owner moves, cups &amp; titles.<br>
-          <b>Results</b> (#gpsl-results): full-time scores with GPSL month + competition.
+          <b>News</b> (#gpsl-news) · <b>Results</b> (#gpsl-results) · <b>Natter</b> (#gpsl-natter, with images).
         </p>
         <div class="news-actions">
           <button type="button" id="newsPushBtn" class="button">Push queue to Discord</button>
           <button type="button" id="routingCheckBtn" class="button secondary">Check routing</button>
           <button type="button" id="newsTestBtn" class="button secondary">Test #gpsl-news</button>
           <button type="button" id="resultsTestBtn" class="button secondary">Test #gpsl-results</button>
+          <button type="button" id="natterTestBtn" class="button secondary">Test #gpsl-natter</button>
           <button type="button" id="newsRefreshBtn" class="button secondary">Refresh queue</button>
         </div>
         <div id="newsStatus" class="status-line"></div>
@@ -121,6 +121,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_discord_news.js?v=20260717-results-fix"></script>
+  <script type="module" src="admin_discord_news.js?v=20260717-natter-ch"></script>
 </body>
 </html>

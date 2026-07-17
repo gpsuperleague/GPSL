@@ -44,7 +44,31 @@ function isResultsEvent(row: FeedRow): boolean {
   return channel === "results";
 }
 
-function embedFor(row: FeedRow) {
+function isNatterEvent(row: FeedRow): boolean {
+  if (row.event_type === "natter") return true;
+  const channel = String(row.metadata?.channel || "").toLowerCase();
+  return channel === "natter";
+}
+
+function publicNatterImageUrl(
+  supabaseUrl: string,
+  metadata: Record<string, unknown> | null
+): string | null {
+  if (!metadata) return null;
+  const direct = String(metadata.image_url || "").trim();
+  if (/^https?:\/\//i.test(direct)) return direct.slice(0, 2048);
+
+  const path = String(metadata.image_path || "")
+    .trim()
+    .replace(/^\/+/, "");
+  if (!path || path.includes("..")) return null;
+
+  const base = (supabaseUrl || "").replace(/\/+$/, "");
+  if (!base) return null;
+  return `${base}/storage/v1/object/public/natter-media/${path}`.slice(0, 2048);
+}
+
+function embedFor(row: FeedRow, supabaseUrl = "") {
   const colors: Record<string, number> = {
     result: 0xe10600, // Sky-ish red
     transfer: 0x00a651, // green
@@ -58,6 +82,7 @@ function embedFor(row: FeedRow) {
     relegation: 0x995533,
     playoff: 0x9b59b6,
     release: 0xbcbc80,
+    natter: 0x57f287,
     other: 0x111111,
   };
   const color =
@@ -66,12 +91,19 @@ function embedFor(row: FeedRow) {
     colors.other;
 
   const results = isResultsEvent(row);
+  const natter = isNatterEvent(row);
+  const imageUrl = natter
+    ? publicNatterImageUrl(supabaseUrl, row.metadata)
+    : null;
 
   return {
     title: row.headline.slice(0, 256),
     description: (row.body || "").slice(0, 4000) || undefined,
     color,
-    footer: { text: results ? "GPSL Results" : "GPSL News" },
+    ...(imageUrl ? { image: { url: imageUrl } } : {}),
+    footer: {
+      text: results ? "GPSL Results" : natter ? "GPSL Natter" : "GPSL News",
+    },
     timestamp: new Date().toISOString(),
   };
 }
@@ -174,7 +206,8 @@ async function postWebhook(
 function webhookForRow(
   row: FeedRow,
   newsUrl: string,
-  resultsUrl: string | null
+  resultsUrl: string | null,
+  natterUrl: string | null
 ): { url: string; username: string } {
   if (isResultsEvent(row)) {
     if (!resultsUrl) {
@@ -183,6 +216,14 @@ function webhookForRow(
       );
     }
     return { url: resultsUrl, username: "GPSL Results" };
+  }
+  if (isNatterEvent(row)) {
+    if (!natterUrl) {
+      throw new Error(
+        "DISCORD_NATTER_WEBHOOK_URL secret missing — natter not posted to #gpsl-news. Add the #gpsl-natter webhook secret and redeploy discord-sky-feed."
+      );
+    }
+    return { url: natterUrl, username: "GPSL Natter" };
   }
   return { url: newsUrl, username: "GPSL News" };
 }
@@ -201,6 +242,10 @@ Deno.serve(async (req) => {
       Deno.env.get("DISCORD_RESULTS_WEBHOOK_URL") ||
       Deno.env.get("DISCORD_WEBHOOK_RESULTS_URL") ||
       "";
+    const natterWebhookUrl =
+      Deno.env.get("DISCORD_NATTER_WEBHOOK_URL") ||
+      Deno.env.get("DISCORD_WEBHOOK_NATTER_URL") ||
+      "";
     const feedKey = Deno.env.get("DISCORD_FEED_INVOKE_KEY") ||
       Deno.env.get("CRON_API_KEY") ||
       "";
@@ -215,7 +260,7 @@ Deno.serve(async (req) => {
       return jsonResponse(
         {
           error:
-            "DISCORD_WEBHOOK_URL secret missing — add it under Edge Function secrets",
+            "DISCORD_WEBHOOK_URL secret missing — add it under Edge Functions → Secrets",
         },
         500
       );
@@ -269,27 +314,32 @@ Deno.serve(async (req) => {
         diagnose: true,
         news_webhook_configured: Boolean(webhookUrl),
         results_webhook_configured: Boolean(resultsWebhookUrl),
+        natter_webhook_configured: Boolean(natterWebhookUrl),
         routing: {
           result_events: resultsWebhookUrl
             ? "DISCORD_RESULTS_WEBHOOK_URL → #gpsl-results"
             : "BLOCKED until DISCORD_RESULTS_WEBHOOK_URL is set",
+          natter_events: natterWebhookUrl
+            ? "DISCORD_NATTER_WEBHOOK_URL → #gpsl-natter"
+            : "BLOCKED until DISCORD_NATTER_WEBHOOK_URL is set",
           other_events: "DISCORD_WEBHOOK_URL → #gpsl-news",
         },
-        note: resultsWebhookUrl
-          ? "If results still appear in #gpsl-news, the results webhook URL itself is pointed at the wrong Discord channel — recreate the webhook inside #gpsl-results."
-          : "Results were previously falling back to #gpsl-news when this secret was missing. That fallback is disabled.",
+        note:
+          "Create each webhook inside its Discord channel. Secrets live under Edge Functions → Secrets (project-wide), then redeploy discord-sky-feed.",
       });
     }
 
     // Optional: post a one-off test embed
     if (body?.test === true) {
-      const toResults = body?.channel === "results";
+      const channel = String(body?.channel || "news").toLowerCase();
+      const toResults = channel === "results";
+      const toNatter = channel === "natter";
       if (toResults && !resultsWebhookUrl) {
         return jsonResponse(
           {
             ok: false,
             error:
-              "DISCORD_RESULTS_WEBHOOK_URL secret missing — cannot test #gpsl-results. Add it under Edge Function secrets and redeploy.",
+              "DISCORD_RESULTS_WEBHOOK_URL secret missing — cannot test #gpsl-results. Add it under Edge Functions → Secrets and redeploy.",
             channel: "results",
             used_results_webhook: false,
             results_webhook_configured: false,
@@ -297,30 +347,67 @@ Deno.serve(async (req) => {
           400
         );
       }
-      const target = toResults ? resultsWebhookUrl : webhookUrl;
+      if (toNatter && !natterWebhookUrl) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "DISCORD_NATTER_WEBHOOK_URL secret missing — cannot test #gpsl-natter. Add it under Edge Functions → Secrets and redeploy.",
+            channel: "natter",
+            used_natter_webhook: false,
+            natter_webhook_configured: false,
+          },
+          400
+        );
+      }
+      const target = toResults
+        ? resultsWebhookUrl
+        : toNatter
+          ? natterWebhookUrl
+          : webhookUrl;
+      const label = toResults
+        ? "RESULTS"
+        : toNatter
+          ? "NATTER"
+          : "NEWS";
+      const channelName = toResults
+        ? "#gpsl-results"
+        : toNatter
+          ? "#gpsl-natter"
+          : "#gpsl-news";
       await postWebhook(
         target,
         [
           {
-            title: toResults
-              ? "🚨 GPSL RESULTS — TEST"
-              : "🚨 GPSL NEWS — TEST",
-            description: toResults
-              ? "Results webhook is connected. This message must appear in #gpsl-results only."
-              : "Discord news feed is connected. This message must appear in #gpsl-news only.",
-            color: 0xe10600,
-            footer: { text: toResults ? "GPSL Results" : "GPSL News" },
+            title: `🚨 GPSL ${label} — TEST`,
+            description: `${channelName} webhook is connected. This message must appear in ${channelName} only.`,
+            color: toNatter ? 0x57f287 : 0xe10600,
+            footer: {
+              text: toResults
+                ? "GPSL Results"
+                : toNatter
+                  ? "GPSL Natter"
+                  : "GPSL News",
+            },
             timestamp: new Date().toISOString(),
           },
         ],
-        { username: toResults ? "GPSL Results" : "GPSL News" }
+        {
+          username: toResults
+            ? "GPSL Results"
+            : toNatter
+              ? "GPSL Natter"
+              : "GPSL News",
+        }
       );
       return jsonResponse({
         ok: true,
         test: true,
-        channel: toResults ? "results" : "news",
+        channel: toResults ? "results" : toNatter ? "natter" : "news",
         used_results_webhook: Boolean(toResults && resultsWebhookUrl),
+        used_natter_webhook: Boolean(toNatter && natterWebhookUrl),
         results_webhook_configured: Boolean(resultsWebhookUrl),
+        natter_webhook_configured: Boolean(natterWebhookUrl),
       });
     }
 
@@ -339,8 +426,13 @@ Deno.serve(async (req) => {
               ? { channel: body.channel }
               : null,
       };
-      const target = webhookForRow(directRow, webhookUrl, resultsWebhookUrl || null);
-      await postWebhook(target.url, [embedFor(directRow)], {
+      const target = webhookForRow(
+        directRow,
+        webhookUrl,
+        resultsWebhookUrl || null,
+        natterWebhookUrl || null
+      );
+      await postWebhook(target.url, [embedFor(directRow, supabaseUrl)], {
         username: target.username,
       });
     }
@@ -359,6 +451,7 @@ Deno.serve(async (req) => {
     const pending = (rows || []) as FeedRow[];
     let posted = 0;
     let postedResults = 0;
+    let postedNatter = 0;
     let postedNews = 0;
     const errors: string[] = [];
     const warnings: string[] = [];
@@ -369,6 +462,11 @@ Deno.serve(async (req) => {
     ) {
       warnings.push(
         "DISCORD_RESULTS_WEBHOOK_URL not set — result items will stay in error until the #gpsl-results webhook secret is added"
+      );
+    }
+    if (pending.some((r) => isNatterEvent(r)) && !natterWebhookUrl) {
+      warnings.push(
+        "DISCORD_NATTER_WEBHOOK_URL not set — natter items will stay in error until the #gpsl-natter webhook secret is added"
       );
     }
 
@@ -435,9 +533,10 @@ Deno.serve(async (req) => {
         const target = webhookForRow(
           row,
           webhookUrl,
-          resultsWebhookUrl || null
+          resultsWebhookUrl || null,
+          natterWebhookUrl || null
         );
-        await postWebhook(target.url, [embedFor(row)], {
+        await postWebhook(target.url, [embedFor(row, supabaseUrl)], {
           username: target.username,
           content,
           allowedMentions,
@@ -453,6 +552,7 @@ Deno.serve(async (req) => {
         if (updErr) throw new Error(updErr.message);
         posted += 1;
         if (isResultsEvent(row)) postedResults += 1;
+        else if (isNatterEvent(row)) postedNatter += 1;
         else postedNews += 1;
         // Discord rate limit soft pause
         await new Promise((r) => setTimeout(r, 350));
@@ -476,7 +576,9 @@ Deno.serve(async (req) => {
       posted,
       posted_news: postedNews,
       posted_results: postedResults,
+      posted_natter: postedNatter,
       results_webhook_configured: Boolean(resultsWebhookUrl),
+      natter_webhook_configured: Boolean(natterWebhookUrl),
       warnings,
       errors,
     });

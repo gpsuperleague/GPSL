@@ -201,6 +201,7 @@ function renderRoutingStatus(data) {
   if (!el) return;
   const newsOk = data?.news_webhook_configured !== false;
   const resultsOk = !!data?.results_webhook_configured;
+  const natterOk = !!data?.natter_webhook_configured;
   el.innerHTML = `
     <div class="${newsOk ? "ok" : "bad"}">#gpsl-news webhook: ${
       newsOk ? "configured" : "missing DISCORD_WEBHOOK_URL"
@@ -208,7 +209,12 @@ function renderRoutingStatus(data) {
     <div class="${resultsOk ? "ok" : "bad"}">#gpsl-results webhook: ${
       resultsOk
         ? "configured (DISCORD_RESULTS_WEBHOOK_URL)"
-        : "MISSING — results will not post until this secret is set + function redeployed"
+        : "MISSING — set secret + redeploy discord-sky-feed"
+    }</div>
+    <div class="${natterOk ? "ok" : "bad"}">#gpsl-natter webhook: ${
+      natterOk
+        ? "configured (DISCORD_NATTER_WEBHOOK_URL)"
+        : "MISSING — set secret + redeploy discord-sky-feed"
     }</div>
     ${
       data?.note
@@ -226,22 +232,26 @@ async function checkRouting() {
     renderRoutingStatus({
       news_webhook_configured: false,
       results_webhook_configured: false,
+      natter_webhook_configured: false,
       note: error.message,
     });
     return;
   }
   renderRoutingStatus(data);
-  if (!data?.results_webhook_configured) {
+  const missing = [];
+  if (!data?.results_webhook_configured) missing.push("results");
+  if (!data?.natter_webhook_configured) missing.push("natter");
+  if (missing.length) {
     setStatus(
       "newsStatus",
-      "Results are going to #gpsl-news because DISCORD_RESULTS_WEBHOOK_URL is not set on discord-sky-feed. Add the #gpsl-results webhook secret, redeploy, then Test #gpsl-results.",
+      `Missing webhook secret(s): ${missing.join(", ")}. Add under Edge Functions → Secrets, then redeploy discord-sky-feed.`,
       false
     );
     return;
   }
   setStatus(
     "newsStatus",
-    "Routing OK — results webhook is configured. Use Test #gpsl-results to confirm it lands in the right channel."
+    "Routing OK — news, results, and natter webhooks are configured. Use the test buttons to confirm each channel."
   );
 }
 
@@ -252,11 +262,15 @@ async function pushNews() {
     setStatus("newsStatus", error.message, false);
     return;
   }
-  if (data?.results_webhook_configured === false) {
+  if (
+    data?.results_webhook_configured === false ||
+    data?.natter_webhook_configured === false
+  ) {
     renderRoutingStatus({
       news_webhook_configured: true,
-      results_webhook_configured: false,
-      note: "Result items fail until DISCORD_RESULTS_WEBHOOK_URL is set (they no longer fall back to #gpsl-news).",
+      results_webhook_configured: !!data?.results_webhook_configured,
+      natter_webhook_configured: !!data?.natter_webhook_configured,
+      note: "Missing channel secrets block those items (they do not fall back to #gpsl-news).",
     });
   }
   const errs = Array.isArray(data?.errors) && data.errors.length
@@ -267,8 +281,10 @@ async function pushNews() {
       ? ` · ${data.warnings[0]}`
       : "";
   const split =
-    data?.posted_results != null || data?.posted_news != null
-      ? ` (news ${data?.posted_news ?? 0}, results ${data?.posted_results ?? 0})`
+    data?.posted_results != null ||
+    data?.posted_news != null ||
+    data?.posted_natter != null
+      ? ` (news ${data?.posted_news ?? 0}, results ${data?.posted_results ?? 0}, natter ${data?.posted_natter ?? 0})`
       : "";
   setStatus(
     "newsStatus",
@@ -278,18 +294,29 @@ async function pushNews() {
 }
 
 async function sendTest(channel = "news") {
-  const label = channel === "results" ? "#gpsl-results" : "#gpsl-news";
+  const label =
+    channel === "results"
+      ? "#gpsl-results"
+      : channel === "natter"
+        ? "#gpsl-natter"
+        : "#gpsl-news";
   setStatus("newsStatus", `Sending test to ${label}…`);
   const { data, error } = await invokeFeed({
     test: true,
-    channel: channel === "results" ? "results" : "news",
+    channel:
+      channel === "results"
+        ? "results"
+        : channel === "natter"
+          ? "natter"
+          : "news",
   });
   if (error) {
     setStatus("newsStatus", error.message, false);
-    if (channel === "results") {
+    if (channel === "results" || channel === "natter") {
       renderRoutingStatus({
         news_webhook_configured: true,
-        results_webhook_configured: false,
+        results_webhook_configured: channel !== "results",
+        natter_webhook_configured: channel !== "natter",
         note: error.message,
       });
     }
@@ -299,14 +326,6 @@ async function sendTest(channel = "news") {
     setStatus(
       "newsStatus",
       data?.error || "Unexpected response.",
-      false
-    );
-    return;
-  }
-  if (channel === "results" && data.used_results_webhook === false) {
-    setStatus(
-      "newsStatus",
-      "DISCORD_RESULTS_WEBHOOK_URL is missing — result test blocked (no longer posts to #gpsl-news).",
       false
     );
     return;
@@ -325,6 +344,9 @@ document.getElementById("newsTestBtn")?.addEventListener("click", () => {
 });
 document.getElementById("resultsTestBtn")?.addEventListener("click", () => {
   sendTest("results").catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
+document.getElementById("natterTestBtn")?.addEventListener("click", () => {
+  sendTest("natter").catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
 document.getElementById("routingCheckBtn")?.addEventListener("click", () => {
   checkRouting().catch((e) => setStatus("newsStatus", e.message || String(e), false));
