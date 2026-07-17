@@ -44,6 +44,34 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+/** Size a <select> to the longest option label (plus padding for the dropdown arrow). */
+function fitSelectToOptions(select, { pad = 36, min = 72, max = 640 } = {}) {
+  if (!select) return;
+  const probe = document.createElement("span");
+  const cs = getComputedStyle(select);
+  probe.style.cssText = [
+    "position:absolute",
+    "left:-9999px",
+    "top:0",
+    "visibility:hidden",
+    "white-space:nowrap",
+    `font:${cs.font}`,
+    `letter-spacing:${cs.letterSpacing}`,
+    `padding:0 ${cs.paddingLeft} ${cs.paddingRight}`,
+  ].join(";");
+  document.body.appendChild(probe);
+
+  let widest = 0;
+  for (const opt of select.options) {
+    probe.textContent = opt.textContent || "";
+    widest = Math.max(widest, probe.offsetWidth);
+  }
+  probe.remove();
+
+  const width = Math.min(max, Math.max(min, widest + pad));
+  select.style.width = `${width}px`;
+}
+
 function fillMonthSelect() {
   const sel = document.getElementById("fineFixtureMonth");
   if (!sel) return;
@@ -52,6 +80,7 @@ function fillMonthSelect() {
     GPSL_MONTH_ORDER.map(
       (m) => `<option value="${m}">${GPSL_MONTH_LABELS[m] || m}</option>`
     ).join("");
+  fitSelectToOptions(sel, { min: 100, max: 220 });
 }
 
 function fixtureCompetitionLabel(f) {
@@ -86,10 +115,12 @@ async function loadFineFixtures() {
 
   if (!club) {
     sel.innerHTML = `<option value="">— Select a club first —</option>`;
+    fitSelectToOptions(sel, { max: 900 });
     return;
   }
 
   sel.innerHTML = `<option value="">Loading…</option>`;
+  fitSelectToOptions(sel, { max: 900 });
 
   let query = supabase
     .from("competition_fixtures")
@@ -111,6 +142,7 @@ async function loadFineFixtures() {
 
   if (error) {
     sel.innerHTML = `<option value="">— Could not load fixtures —</option>`;
+    fitSelectToOptions(sel, { max: 900 });
     console.warn("loadFineFixtures:", error);
     return;
   }
@@ -130,6 +162,7 @@ async function loadFineFixtures() {
       `<option value="" disabled>${
         month ? "No fixtures for this club in that month" : "No fixtures for this club"
       }</option>`;
+    fitSelectToOptions(sel, { max: 900 });
     return;
   }
 
@@ -145,14 +178,17 @@ async function loadFineFixtures() {
   if (prev && [...sel.options].some((o) => o.value === prev)) {
     sel.value = prev;
   }
+  fitSelectToOptions(sel, { max: 900 });
 }
 
 async function loadClubs() {
   const { data } = await supabase.from("Clubs").select("ShortName, Club").order("Club");
   const options = (data || [])
-    .map((c) => `<option value="${c.ShortName}">${c.Club || c.ShortName}</option>`)
+    .map((c) => `<option value="${c.ShortName}">${escapeHtml(c.Club || c.ShortName)}</option>`)
     .join("");
-  document.getElementById("fineClubSelect").innerHTML = options;
+  const clubSel = document.getElementById("fineClubSelect");
+  clubSel.innerHTML = options;
+  fitSelectToOptions(clubSel, { min: 100, max: 360 });
   const pointsSel = document.getElementById("pointsClubSelect");
   if (pointsSel) pointsSel.innerHTML = options;
 }
@@ -224,8 +260,9 @@ async function loadTariffs() {
   const pick = document.getElementById("fineTariffSelect");
   pick.innerHTML = tariffs
     .filter((t) => t.is_active)
-    .map((t) => `<option value="${t.code}">${tariffOptionLabel(t)}</option>`)
+    .map((t) => `<option value="${t.code}">${escapeHtml(tariffOptionLabel(t))}</option>`)
     .join("");
+  fitSelectToOptions(pick, { min: 160, max: 560 });
 
   const list = document.getElementById("fineTariffList");
   if (!tariffs.length) {
