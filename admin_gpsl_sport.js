@@ -45,11 +45,18 @@ async function loadSeasons() {
     .order("id", { ascending: false });
 
   if (error) {
+    sel.innerHTML = `<option value="">Could not load seasons</option>`;
     setStatus("sportPublishStatus", "❌ " + error.message, false);
     return;
   }
 
   const rows = data || [];
+  if (!rows.length) {
+    sel.innerHTML = `<option value="">No seasons found</option>`;
+    setStatus("sportPublishStatus", "⚠ No competition seasons found.", false);
+    return;
+  }
+
   sel.innerHTML = rows
     .map((s) => {
       const mark = s.is_current ? " (current)" : "";
@@ -58,7 +65,7 @@ async function loadSeasons() {
     .join("");
 
   const current = rows.find((s) => s.is_current) || rows[0];
-  if (current) sel.value = String(current.id);
+  sel.value = String(current.id);
 }
 
 async function loadEditions() {
@@ -131,6 +138,11 @@ async function republishSport() {
   const seasonId = selectedSeasonId();
   const month = selectedMonth();
 
+  if (!seasonId) {
+    setStatus("sportPublishStatus", "Select a season first.", false);
+    return;
+  }
+
   if (
     !confirm(
       `Republish GPSL Sport for ${monthLabel(month)}?\n\nCreates the edition if missing, or rebuilds it if it already exists.`
@@ -143,7 +155,7 @@ async function republishSport() {
 
   const { data, error } = await supabase.rpc("competition_admin_regenerate_gpsl_sport", {
     p_gpsl_month: month,
-    p_season_id: seasonId || null,
+    p_season_id: seasonId,
   });
 
   if (error) {
@@ -172,7 +184,7 @@ async function republishSport() {
   await loadEditions();
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
+async function bootPage() {
   if (!(await initAdminPage())) return;
 
   document.getElementById("sportPublishBtn").onclick = republishSport;
@@ -181,4 +193,19 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadSeasons();
   await loadEditions();
-});
+}
+
+// Top-level await means DOMContentLoaded may already have fired — don't wait for it.
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    bootPage().catch((err) => {
+      console.error(err);
+      setStatus("sportPublishStatus", "❌ " + (err?.message || err), false);
+    });
+  });
+} else {
+  bootPage().catch((err) => {
+    console.error(err);
+    setStatus("sportPublishStatus", "❌ " + (err?.message || err), false);
+  });
+}
