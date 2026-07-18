@@ -108,7 +108,11 @@ async function loadLeaguePrizeSettings() {
     if (el) el.value = String(row.amount ?? 0);
   }
 
-  setStatus("leaguePrizeStatus", `Loaded ${division} prizes for season ${currentSeasonId}.`, true);
+  setStatus(
+    "leaguePrizeStatus",
+    `Loaded ${DIVISION_LABELS[division] || division} prizes.`,
+    true
+  );
 }
 
 function leaguePrizeAmountsPayload() {
@@ -145,7 +149,11 @@ async function saveLeaguePrizes() {
     return;
   }
 
-  setStatus("leaguePrizeStatus", `✅ Saved ${data ?? 0} position(s) for ${division}.`, true);
+  setStatus(
+    "leaguePrizeStatus",
+    `✅ Saved ${data ?? 0} position(s) for ${DIVISION_LABELS[division] || division}.`,
+    true
+  );
 }
 
 async function seedLeaguePrizes() {
