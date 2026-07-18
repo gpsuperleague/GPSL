@@ -221,12 +221,26 @@ function setOwnerBadgeHint(message, isError = false) {
   el.classList.toggle("owner-tag-hint--error", isError);
 }
 
-function renderOwnerBadgePreview(badgePath, tag) {
+let ownerBadgeObjectUrl = null;
+
+function clearOwnerBadgeObjectUrl() {
+  if (ownerBadgeObjectUrl) {
+    URL.revokeObjectURL(ownerBadgeObjectUrl);
+    ownerBadgeObjectUrl = null;
+  }
+}
+
+/** @param {string|null} badgePathOrUrl storage path, full http(s) URL, or null */
+function renderOwnerBadgePreview(badgePathOrUrl, tag) {
   const img = document.getElementById("ownerBadgePreview");
   const fallback = document.getElementById("ownerBadgeFallback");
   if (!img || !fallback) return;
 
-  const url = ownerBadgePublicUrl(badgePath);
+  const raw = badgePathOrUrl ? String(badgePathOrUrl) : "";
+  const url = raw.startsWith("blob:") || raw.startsWith("http")
+    ? raw
+    : ownerBadgePublicUrl(raw || null);
+
   if (url) {
     img.src = url;
     img.alt = tag || "Owner badge";
@@ -235,6 +249,7 @@ function renderOwnerBadgePreview(badgePath, tag) {
     return;
   }
 
+  img.removeAttribute("src");
   img.hidden = true;
   fallback.hidden = false;
   fallback.textContent = String(tag || "?").slice(0, 2).toUpperCase();
@@ -272,10 +287,27 @@ function wireOwnerBadgeField(userId, getTag) {
   const fileInput = document.getElementById("ownerBadgeFile");
   if (!uploadBtn || !clearBtn || !fileInput) return;
 
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files?.[0];
+    if (!file) {
+      setOwnerBadgeHint("No badge yet — choose a file, then Save badge.");
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      setOwnerBadgeHint("Max 1 MB — pick a smaller image.", true);
+      fileInput.value = "";
+      return;
+    }
+    clearOwnerBadgeObjectUrl();
+    ownerBadgeObjectUrl = URL.createObjectURL(file);
+    renderOwnerBadgePreview(ownerBadgeObjectUrl, getTag());
+    setOwnerBadgeHint(`Selected “${file.name}”. Click Save badge to apply it.`);
+  });
+
   uploadBtn.addEventListener("click", async () => {
     const file = fileInput.files?.[0];
     if (!file) {
-      setOwnerBadgeHint("Choose an image first.", true);
+      setOwnerBadgeHint("Choose a file first, then click Save badge.", true);
       return;
     }
     if (file.size > 1024 * 1024) {
@@ -284,7 +316,7 @@ function wireOwnerBadgeField(userId, getTag) {
     }
 
     uploadBtn.disabled = true;
-    setOwnerBadgeHint("Uploading…");
+    setOwnerBadgeHint("Saving badge…");
 
     const { error: ensureErr } = await supabase.rpc("owner_registry_ensure_self");
     if (ensureErr) {
@@ -304,11 +336,16 @@ function wireOwnerBadgeField(userId, getTag) {
     const path = `${userId}/badge.${ext || "png"}`;
     const { error: upErr } = await supabase.storage
       .from("owner-badges")
-      .upload(path, file, { upsert: true, contentType: file.type });
+      .upload(path, file, { upsert: true, contentType: file.type || "image/png" });
 
     if (upErr) {
       uploadBtn.disabled = false;
-      setOwnerBadgeHint(upErr.message, true);
+      setOwnerBadgeHint(
+        /bucket|not found|row-level security|policy/i.test(upErr.message || "")
+          ? `${upErr.message} — run owner_profile_and_badge.sql (creates owner-badges bucket).`
+          : upErr.message,
+        true
+      );
       return;
     }
 
@@ -322,14 +359,15 @@ function wireOwnerBadgeField(userId, getTag) {
       return;
     }
 
+    clearOwnerBadgeObjectUrl();
     fileInput.value = "";
-    setOwnerBadgeHint("Badge saved.");
+    setOwnerBadgeHint("Badge saved — this is now your owner profile icon.");
     renderOwnerBadgePreview(path, getTag());
   });
 
   clearBtn.addEventListener("click", async () => {
     clearBtn.disabled = true;
-    setOwnerBadgeHint("Removing…");
+    setOwnerBadgeHint("Removing badge…");
     const { error } = await supabase.rpc("owner_registry_set_badge_path", {
       p_path: null,
     });
@@ -338,6 +376,7 @@ function wireOwnerBadgeField(userId, getTag) {
       setOwnerBadgeHint(error.message, true);
       return;
     }
+    clearOwnerBadgeObjectUrl();
     fileInput.value = "";
     setOwnerBadgeHint("Badge removed.");
     renderOwnerBadgePreview(null, getTag());

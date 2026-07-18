@@ -900,18 +900,19 @@
           </div>
           <div class="owner-badge-row">
             <img id="ownerBadgePreview" class="owner-badge-preview" alt="" hidden>
-            <div id="ownerBadgeFallback" class="owner-badge-fallback" hidden>?</div>
+            <div id="ownerBadgeFallback" class="owner-badge-fallback">?</div>
             <div class="owner-badge-controls">
               <span class="club-detail-label" style="margin:0">Profile badge</span>
               <p class="club-detail-summary" style="margin:0">
-                Your owner icon (not the club badge). Shown on your public profile.
+                Your owner icon (not the club badge). Choose a file, then click
+                <b>Save badge</b> to apply it. <b>Remove badge</b> clears it.
               </p>
               <input type="file" id="ownerBadgeFile" accept="image/png,image/jpeg,image/webp">
               <div class="owner-badge-actions">
-                <button type="button" id="ownerBadgeUploadBtn" class="small-btn">Upload badge</button>
-                <button type="button" id="ownerBadgeClearBtn" class="small-btn">Remove</button>
+                <button type="button" id="ownerBadgeUploadBtn" class="small-btn">Save badge</button>
+                <button type="button" id="ownerBadgeClearBtn" class="small-btn">Remove badge</button>
               </div>
-              <span id="ownerBadgeHint" class="owner-tag-hint" role="status"></span>
+              <span id="ownerBadgeHint" class="owner-tag-hint" role="status">No badge yet — choose a file, then Save badge.</span>
             </div>
           </div>
           <p class="owner-profile-link">
