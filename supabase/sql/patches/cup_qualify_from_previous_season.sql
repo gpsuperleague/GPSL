@@ -276,7 +276,276 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.competition_qualify_cup_clubs(bigint, text)
   TO authenticated, service_role;
 
--- Expose source season on bye panel / draw UI
+CREATE OR REPLACE FUNCTION public.competition_cup_ordinal(p_n int)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT CASE
+    WHEN p_n IS NULL THEN NULL
+    WHEN p_n % 100 BETWEEN 11 AND 13 THEN p_n::text || 'th'
+    WHEN p_n % 10 = 1 THEN p_n::text || 'st'
+    WHEN p_n % 10 = 2 THEN p_n::text || 'nd'
+    WHEN p_n % 10 = 3 THEN p_n::text || 'rd'
+    ELSE p_n::text || 'th'
+  END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.competition_cup_division_label(p_division text)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT CASE lower(btrim(coalesce(p_division, '')))
+    WHEN 'superleague' THEN 'Super League'
+    WHEN 'championship_a' THEN 'Championship A'
+    WHEN 'championship_b' THEN 'Championship B'
+    WHEN 'championship_pool' THEN 'Championship pool'
+    ELSE coalesce(p_division, '')
+  END;
+$$;
+
+-- Detailed qualifiers for admin cup draw UI: club + how they qualified
+CREATE OR REPLACE FUNCTION public.competition_qualify_cup_clubs_detailed(
+  p_season_id bigint,
+  p_cup_code text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_code text := lower(btrim(coalesce(p_cup_code, '')));
+  v_src bigint;
+  v_rows jsonb := '[]'::jsonb;
+BEGIN
+  IF v_code = 'spoon' THEN
+    v_code := 'bowl';
+  END IF;
+
+  v_src := public.competition_cup_qualification_source_season(p_season_id, v_code);
+
+  IF v_code = 'super8' THEN
+    SELECT coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'club', p.club_short_name,
+          'division', 'superleague',
+          'position', p.sort_key,
+          'reason',
+            public.competition_cup_division_label('superleague')
+            || ' · finished '
+            || public.competition_cup_ordinal(p.sort_key)
+        )
+        ORDER BY p.sort_key, p.club_short_name
+      ),
+      '[]'::jsonb
+    )
+    INTO v_rows
+    FROM public.competition_cup_source_league_places(
+      v_src, 'superleague', 1, 8
+    ) p;
+  ELSIF v_code = 'plate' THEN
+    SELECT coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'club', x.club,
+          'division', x.division,
+          'position', x.pos,
+          'reason', x.reason
+        )
+        ORDER BY x.sort_key, x.club
+      ),
+      '[]'::jsonb
+    )
+    INTO v_rows
+    FROM (
+      SELECT
+        p.club_short_name AS club,
+        'superleague'::text AS division,
+        p.sort_key AS pos,
+        p.sort_key AS sort_key,
+        public.competition_cup_division_label('superleague')
+          || ' · finished '
+          || public.competition_cup_ordinal(p.sort_key) AS reason
+      FROM public.competition_cup_source_league_places(
+        v_src, 'superleague', 9, 16
+      ) p
+      UNION ALL
+      SELECT
+        p.club_short_name,
+        'championship_a',
+        p.sort_key,
+        100 + p.sort_key,
+        public.competition_cup_division_label('championship_a')
+          || ' · finished '
+          || public.competition_cup_ordinal(p.sort_key)
+      FROM public.competition_cup_source_league_places(
+        v_src, 'championship_a', 1, 4
+      ) p
+      UNION ALL
+      SELECT
+        p.club_short_name,
+        'championship_b',
+        p.sort_key,
+        200 + p.sort_key,
+        public.competition_cup_division_label('championship_b')
+          || ' · finished '
+          || public.competition_cup_ordinal(p.sort_key)
+      FROM public.competition_cup_source_league_places(
+        v_src, 'championship_b', 1, 4
+      ) p
+    ) x;
+  ELSIF v_code = 'shield' THEN
+    SELECT coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'club', x.club,
+          'division', x.division,
+          'position', x.pos,
+          'reason', x.reason
+        )
+        ORDER BY x.sort_key, x.club
+      ),
+      '[]'::jsonb
+    )
+    INTO v_rows
+    FROM (
+      SELECT
+        p.club_short_name AS club,
+        'superleague'::text AS division,
+        p.sort_key AS pos,
+        p.sort_key AS sort_key,
+        public.competition_cup_division_label('superleague')
+          || ' · finished '
+          || public.competition_cup_ordinal(p.sort_key) AS reason
+      FROM public.competition_cup_source_league_places(
+        v_src, 'superleague', 17, 20
+      ) p
+      UNION ALL
+      SELECT
+        p.club_short_name,
+        'championship_a',
+        p.sort_key,
+        100 + p.sort_key,
+        public.competition_cup_division_label('championship_a')
+          || ' · finished '
+          || public.competition_cup_ordinal(p.sort_key)
+      FROM public.competition_cup_source_league_places(
+        v_src, 'championship_a', 5, 15
+      ) p
+      UNION ALL
+      SELECT
+        p.club_short_name,
+        'championship_b',
+        p.sort_key,
+        200 + p.sort_key,
+        public.competition_cup_division_label('championship_b')
+          || ' · finished '
+          || public.competition_cup_ordinal(p.sort_key)
+      FROM public.competition_cup_source_league_places(
+        v_src, 'championship_b', 5, 15
+      ) p
+      UNION ALL
+      SELECT
+        q.club_short_name,
+        'playoff',
+        NULL,
+        50,
+        'Shield / Bowl playoff winner'
+      FROM public.competition_cup_manual_qualifiers q
+      WHERE q.season_id = v_src
+        AND q.cup_code = 'shield'
+        AND q.qualifier_role = 'shield_playoff_winner'
+    ) x;
+  ELSIF v_code = 'bowl' THEN
+    SELECT coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'club', x.club,
+          'division', x.division,
+          'position', x.pos,
+          'reason', x.reason
+        )
+        ORDER BY x.sort_key, x.club
+      ),
+      '[]'::jsonb
+    )
+    INTO v_rows
+    FROM (
+      SELECT
+        p.club_short_name AS club,
+        'championship_a'::text AS division,
+        p.sort_key AS pos,
+        p.sort_key AS sort_key,
+        public.competition_cup_division_label('championship_a')
+          || ' · finished '
+          || public.competition_cup_ordinal(p.sort_key) AS reason
+      FROM public.competition_cup_source_league_places(
+        v_src, 'championship_a', 18, 20
+      ) p
+      UNION ALL
+      SELECT
+        p.club_short_name,
+        'championship_b',
+        p.sort_key,
+        100 + p.sort_key,
+        public.competition_cup_division_label('championship_b')
+          || ' · finished '
+          || public.competition_cup_ordinal(p.sort_key)
+      FROM public.competition_cup_source_league_places(
+        v_src, 'championship_b', 18, 20
+      ) p
+      UNION ALL
+      SELECT
+        q.club_short_name,
+        'playoff',
+        NULL,
+        50,
+        'Shield / Bowl playoff loser'
+      FROM public.competition_cup_manual_qualifiers q
+      WHERE q.season_id = v_src
+        AND q.cup_code IN ('bowl', 'spoon')
+        AND q.qualifier_role IN ('bowl_playoff_loser', 'spoon_playoff_loser')
+    ) x;
+  ELSIF v_code = 'league_cup' THEN
+    SELECT coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'club', ccs.club_short_name,
+          'division', ccs.division,
+          'position', NULL,
+          'reason',
+            public.competition_cup_division_label(ccs.division)
+            || ' · current season entry'
+        )
+        ORDER BY
+          CASE ccs.division
+            WHEN 'superleague' THEN 1
+            WHEN 'championship_a' THEN 2
+            WHEN 'championship_b' THEN 3
+            ELSE 9
+          END,
+          ccs.club_short_name
+      ),
+      '[]'::jsonb
+    )
+    INTO v_rows
+    FROM public.competition_club_seasons ccs
+    WHERE ccs.season_id = p_season_id
+      AND ccs.division IN ('superleague', 'championship_a', 'championship_b');
+  END IF;
+
+  RETURN coalesce(v_rows, '[]'::jsonb);
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.competition_qualify_cup_clubs_detailed(bigint, text)
+  TO authenticated, service_role;
+
+-- Expose source season + detailed qualifiers on bye panel / draw UI
 CREATE OR REPLACE FUNCTION public.competition_cup_compute_bye_requirements(
   p_season_id bigint,
   p_cup_code text
@@ -290,6 +559,7 @@ AS $function$
 DECLARE
   v_code text := lower(btrim(coalesce(p_cup_code, '')));
   v_clubs text[];
+  v_details jsonb;
   v_n int;
   v_target int;
   v_slots int;
@@ -306,7 +576,13 @@ BEGIN
   FROM public.competition_seasons s
   WHERE s.id = v_src;
 
-  v_clubs := public.competition_qualify_cup_clubs(p_season_id, v_code);
+  v_details := public.competition_qualify_cup_clubs_detailed(p_season_id, v_code);
+  SELECT coalesce(array_agg(d.club ORDER BY ord), ARRAY[]::text[])
+  INTO v_clubs
+  FROM jsonb_array_elements(v_details) WITH ORDINALITY AS t(elem, ord)
+  CROSS JOIN LATERAL (SELECT elem->>'club' AS club) d
+  WHERE d.club IS NOT NULL AND d.club <> '';
+
   v_n := coalesce(array_length(v_clubs, 1), 0);
 
   v_slots := public.competition_cup_first_round_slots(v_code);
@@ -332,6 +608,7 @@ BEGIN
     'required_byes', v_byes,
     'r1_fixtures', v_target / 2,
     'qualified_clubs', to_jsonb(coalesce(v_clubs, ARRAY[]::text[])),
+    'qualified_details', coalesce(v_details, '[]'::jsonb),
     'qualification_season_id', v_src,
     'qualification_season_label', v_src_label
   );

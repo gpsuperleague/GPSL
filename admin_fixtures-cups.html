@@ -34,6 +34,33 @@
     .bye-count.ready { color: #9cdc9c; }
     .bye-count.warn { color: #f88; }
     #compByePanel[hidden] { display: none !important; }
+    .cup-qual-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 16px;
+      font-size: 13px;
+    }
+    .cup-qual-table th {
+      padding: 8px;
+      background: #222;
+      color: #ff9900;
+      text-align: left;
+      border: 1px solid #333;
+    }
+    .cup-qual-table td {
+      padding: 8px;
+      border: 1px solid #333;
+      color: #ddd;
+    }
+    .cup-qual-table tr:nth-child(even) td { background: #181818; }
+    .cup-qual-reason { color: #aaa; }
+    .bye-club-option .bye-reason {
+      display: block;
+      font-size: 11px;
+      color: #888;
+      margin-left: 22px;
+      margin-top: -2px;
+    }
   </style>
 </head>
 <body class="admin-page">
@@ -53,6 +80,23 @@
               <option value="bowl">Bowl</option>
               <option value="league_cup">League Cup</option>
             </select>
+          </div>
+        </div>
+
+        <div id="compQualifiersPanel" hidden>
+          <h2 class="admin-subheading" style="margin-top:16px;">Clubs in the draw</h2>
+          <p id="compQualifiersSummary" class="bye-summary"></p>
+          <div style="max-height:420px;overflow:auto;border:1px solid #333;border-radius:6px;">
+            <table class="cup-qual-table">
+              <thead>
+                <tr>
+                  <th style="width:3rem;">#</th>
+                  <th>Club</th>
+                  <th>How they qualified</th>
+                </tr>
+              </thead>
+              <tbody id="compQualifiersBody"></tbody>
+            </table>
           </div>
         </div>
 
@@ -84,6 +128,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fixtures-cups.js?v=20260715-two-leg-repair"></script>
+  <script type="module" src="admin_fixtures-cups.js?v=20260718-cup-qualifiers-list"></script>
 </body>
 </html>

@@ -52,6 +52,50 @@ async function getSeasonId() {
   return compSelectedSeasonId;
 }
 
+function renderQualifiedClubsTable(data) {
+  const panel = document.getElementById("compQualifiersPanel");
+  const summary = document.getElementById("compQualifiersSummary");
+  const body = document.getElementById("compQualifiersBody");
+  if (!panel || !summary || !body) return;
+
+  const details = Array.isArray(data?.qualified_details)
+    ? data.qualified_details
+    : Array.isArray(data?.qualified_clubs)
+      ? data.qualified_clubs.map((club) => ({ club, reason: "" }))
+      : [];
+
+  if (!details.length) {
+    panel.hidden = true;
+    body.innerHTML = "";
+    summary.textContent = "";
+    return;
+  }
+
+  const qualFrom = data?.qualification_season_label
+    ? `From ${data.qualification_season_label}` +
+      (data.qualification_season_id != null
+        ? ` (id ${data.qualification_season_id})`
+        : "")
+    : "Qualification source unknown";
+
+  summary.textContent = `${details.length} club(s) in the draw · ${qualFrom}`;
+  body.innerHTML = details
+    .map((row, i) => {
+      const code = String(row.club || "").toUpperCase();
+      const name = fullClubName(code) || code;
+      const reason = row.reason || "—";
+      return (
+        `<tr>` +
+        `<td>${i + 1}</td>` +
+        `<td>${name}</td>` +
+        `<td class="cup-qual-reason">${reason}</td>` +
+        `</tr>`
+      );
+    })
+    .join("");
+  panel.hidden = false;
+}
+
 async function loadCupByePanel() {
   const panel = document.getElementById("compByePanel");
   const summary = document.getElementById("compByeSummary");
@@ -65,6 +109,7 @@ async function loadCupByePanel() {
 
   if (!seasonId) {
     panel.hidden = true;
+    document.getElementById("compQualifiersPanel").hidden = true;
     summary.textContent = "No active season.";
     return;
   }
@@ -76,8 +121,9 @@ async function loadCupByePanel() {
 
   if (error) {
     panel.hidden = false;
+    document.getElementById("compQualifiersPanel").hidden = true;
     summary.textContent =
-      "Could not load bye requirements — run patches/competition_cup_byes_admin.sql in Supabase.";
+      "Could not load bye requirements — run patches/cup_qualify_from_previous_season.sql in Supabase.";
     grid.innerHTML = "";
     countEl.textContent = "";
     setStatus("compByeStatus", error.message, false);
@@ -85,8 +131,18 @@ async function loadCupByePanel() {
   }
 
   byeContext = data;
+  renderQualifiedClubsTable(data);
+
   const required = Number(data?.required_byes) || 0;
-  const qualified = Array.isArray(data?.qualified_clubs) ? data.qualified_clubs : [];
+  const details = Array.isArray(data?.qualified_details) ? data.qualified_details : [];
+  const qualified = details.length
+    ? details.map((d) => d.club)
+    : Array.isArray(data?.qualified_clubs)
+      ? data.qualified_clubs
+      : [];
+  const reasonByClub = new Map(
+    details.map((d) => [String(d.club || "").toUpperCase(), d.reason || ""])
+  );
   const selected = new Set(
     Array.isArray(data?.selected_byes) ? data.selected_byes.map((c) => String(c).toUpperCase()) : []
   );
@@ -95,15 +151,8 @@ async function loadCupByePanel() {
 
   panel.hidden = false;
 
-  const qualFrom = data?.qualification_season_label
-    ? ` Qualifying from ${data.qualification_season_label}` +
-      (data.qualification_season_id != null
-        ? ` (id ${data.qualification_season_id}).`
-        : ".")
-    : "";
-
   if (required === 0) {
-    summary.textContent = `${qualified.length} qualified clubs — first round is full (${slots} slots, ${r1Fixtures} fixtures). No byes needed.${qualFrom}`;
+    summary.textContent = `First round is full (${slots} slots, ${r1Fixtures} fixtures). No byes needed.`;
     grid.innerHTML = "";
     countEl.textContent = "Ready to draw";
     countEl.className = "bye-count ready";
@@ -114,19 +163,20 @@ async function loadCupByePanel() {
 
   document.getElementById("compSaveByesBtn").disabled = false;
   document.getElementById("compRandomByesBtn").disabled = false;
-  summary.textContent =
-    `${qualified.length} qualified clubs · ${slots} first-round slots (${r1Fixtures} fixtures) → pick exactly ${required} club(s) to receive a bye into round 2.` +
-    qualFrom;
+  summary.textContent = `${qualified.length} qualified clubs · ${slots} first-round slots (${r1Fixtures} fixtures) → pick exactly ${required} club(s) to receive a bye into round 2.`;
 
   grid.innerHTML = qualified
     .map((shortName) => {
       const code = String(shortName).toUpperCase();
       const label = fullClubName(code) || code;
+      const reason = reasonByClub.get(code) || "";
       const checked = selected.has(code) ? "checked" : "";
       return (
         `<label class="bye-club-option">` +
         `<input type="checkbox" class="bye-club-cb" value="${code}" ${checked}>` +
-        `<span>${label}</span></label>`
+        `<span><span>${label}</span>` +
+        (reason ? `<span class="bye-reason">${reason}</span>` : "") +
+        `</span></label>`
       );
     })
     .join("");
