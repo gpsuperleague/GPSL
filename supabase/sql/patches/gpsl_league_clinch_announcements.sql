@@ -99,6 +99,11 @@ DECLARE
   v_has_auto_promo boolean;
   v_has_auto_rel boolean;
 BEGIN
+  -- Bulk admin deploy sets this so May multipass does not re-scan every result
+  IF current_setting('gpsl.skip_clinch_scan', true) = 'on' THEN
+    RETURN jsonb_build_object('ok', true, 'skipped', true, 'reason', 'bulk_deploy');
+  END IF;
+
   IF v_season_id IS NULL THEN
     SELECT id INTO v_season_id
     FROM public.competition_seasons

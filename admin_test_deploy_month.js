@@ -150,8 +150,9 @@ async function runDeploy() {
     return;
   }
 
-  const BATCH_SIZE = 10;
-  const MAX_PASSES = 24;
+  // Small batches — each result touches Discord/stats; May was timing out at 10
+  const BATCH_SIZE = 5;
+  const MAX_PASSES = 48;
   let totalDeployed = 0;
   let totalLeague = 0;
   let totalCup = 0;
@@ -180,15 +181,20 @@ async function runDeploy() {
       });
 
       if (error) {
+        const timedOut = /statement timeout|canceling statement/i.test(
+          error.message || ""
+        );
         const needsPatch =
           error.message.includes("p_limit") ||
           error.message.includes("admin_testing_deploy_month_results") ||
           error.message.includes("seed_month_discipline");
         setStatus(
           "deployStatus",
-          needsPatch
-            ? "❌ Re-run supabase/sql/patches/admin_testing_deploy_month_discipline.sql in Supabase, then retry."
-            : error.message,
+          timedOut
+            ? "❌ Timed out — run supabase/sql/patches/admin_testing_deploy_month_timeout_fix.sql then retry (smaller batches)."
+            : needsPatch
+              ? "❌ Re-run admin_testing_deploy_month_timeout_fix.sql (or month_discipline) in Supabase, then retry."
+              : error.message,
           false
         );
         return;
