@@ -43,29 +43,34 @@ function statusLine(tie) {
 
 const BRACKET_SECTIONS = [
   {
-    key: "sl_1617",
-    title: "SuperLeague — relegation playoff",
-    filter: (t) => t.bracket === "sl_1617",
-  },
-  {
-    key: "ch_sb",
-    title: "Championship — Shield / Bowl playoffs (16th vs 17th)",
-    filter: (t) => t.bracket === "ch_sb_a" || t.bracket === "ch_sb_b",
-  },
-  {
     key: "ch_promo_a",
-    title: "Championship A — promotion playoffs",
+    title: "Championship A — Semi Finals & Final",
     filter: (t) => t.bracket === "ch_promo_a",
   },
   {
     key: "ch_promo_b",
-    title: "Championship B — promotion playoffs",
+    title: "Championship B — Semi Finals & Final",
     filter: (t) => t.bracket === "ch_promo_b",
   },
   {
-    key: "finals",
-    title: "Finals",
-    filter: (t) => t.bracket === "ch_final" || t.bracket === "sl_final",
+    key: "ch_final",
+    title: "Championship Playoff Final",
+    filter: (t) => t.bracket === "ch_final",
+  },
+  {
+    key: "sl_1617",
+    title: "Super League Relegation Playoff Final",
+    filter: (t) => t.bracket === "sl_1617",
+  },
+  {
+    key: "ch_sb",
+    title: "Championship Shield Playoff Finals (16th vs 17th)",
+    filter: (t) => t.bracket === "ch_sb_a" || t.bracket === "ch_sb_b",
+  },
+  {
+    key: "sl_final",
+    title: "Super League Playoff Final",
+    filter: (t) => t.bracket === "sl_final",
   },
 ];
 

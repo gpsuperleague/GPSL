@@ -383,7 +383,7 @@ BEGIN
     home_club_short_name, away_club_short_name, cup_code, status
   )
   VALUES (
-    v_season_id, 'sl_1617', 1, 1, 'SuperLeague 16th vs 17th', 1,
+    v_season_id, 'sl_1617', 1, 1, 'Super League Relegation Playoff Final — 16th vs 17th', 1,
     public.competition_playoff_standing_club(v_season_id, 'superleague', 16),
     public.competition_playoff_standing_club(v_season_id, 'superleague', 17),
     'po_sl_1617', 'ready'
@@ -397,7 +397,7 @@ BEGIN
     home_club_short_name, away_club_short_name, cup_code, status
   )
   VALUES (
-    v_season_id, 'ch_sb_a', 1, 1, 'Championship A — Shield/Bowl playoff (16v17)', 1,
+    v_season_id, 'ch_sb_a', 1, 1, 'Championship A Shield Playoff Final — 16th vs 17th', 1,
     public.competition_playoff_standing_club(v_season_id, 'championship_a', 16),
     public.competition_playoff_standing_club(v_season_id, 'championship_a', 17),
     'po_ch_sb_a', 'ready'
@@ -409,7 +409,7 @@ BEGIN
     home_club_short_name, away_club_short_name, cup_code, status
   )
   VALUES (
-    v_season_id, 'ch_sb_b', 1, 1, 'Championship B — Shield/Bowl playoff (16v17)', 1,
+    v_season_id, 'ch_sb_b', 1, 1, 'Championship B Shield Playoff Final — 16th vs 17th', 1,
     public.competition_playoff_standing_club(v_season_id, 'championship_b', 16),
     public.competition_playoff_standing_club(v_season_id, 'championship_b', 17),
     'po_ch_sb_b', 'ready'
@@ -422,7 +422,7 @@ BEGIN
     home_club_short_name, away_club_short_name, cup_code, status
   )
   VALUES (
-    v_season_id, 'ch_promo_a', 1, 1, 'Championship A semi — 3rd vs 6th', 1,
+    v_season_id, 'ch_promo_a', 1, 1, 'Championship A Semi Final — 3rd vs 6th', 1,
     public.competition_playoff_standing_club(v_season_id, 'championship_a', 3),
     public.competition_playoff_standing_club(v_season_id, 'championship_a', 6),
     'po_ch_a', 'ready'
@@ -435,7 +435,7 @@ BEGIN
     home_club_short_name, away_club_short_name, cup_code, status
   )
   VALUES (
-    v_season_id, 'ch_promo_a', 1, 2, 'Championship A semi — 4th vs 5th', 1,
+    v_season_id, 'ch_promo_a', 1, 2, 'Championship A Semi Final — 4th vs 5th', 1,
     public.competition_playoff_standing_club(v_season_id, 'championship_a', 4),
     public.competition_playoff_standing_club(v_season_id, 'championship_a', 5),
     'po_ch_a', 'ready'
@@ -448,7 +448,7 @@ BEGIN
     home_source, away_source, cup_code, status
   )
   VALUES (
-    v_season_id, 'ch_promo_a', 2, 1, 'Championship A final', 2,
+    v_season_id, 'ch_promo_a', 2, 1, 'Championship A Final — semi-final winners', 2,
     'winner:' || v_semi_a_36::text, 'winner:' || v_semi_a_45::text,
     'po_ch_a', 'pending'
   )
@@ -461,7 +461,7 @@ BEGIN
     home_club_short_name, away_club_short_name, cup_code, status
   )
   VALUES (
-    v_season_id, 'ch_promo_b', 1, 1, 'Championship B semi — 3rd vs 6th', 1,
+    v_season_id, 'ch_promo_b', 1, 1, 'Championship B Semi Final — 3rd vs 6th', 1,
     public.competition_playoff_standing_club(v_season_id, 'championship_b', 3),
     public.competition_playoff_standing_club(v_season_id, 'championship_b', 6),
     'po_ch_b', 'ready'
@@ -474,7 +474,7 @@ BEGIN
     home_club_short_name, away_club_short_name, cup_code, status
   )
   VALUES (
-    v_season_id, 'ch_promo_b', 1, 2, 'Championship B semi — 4th vs 5th', 1,
+    v_season_id, 'ch_promo_b', 1, 2, 'Championship B Semi Final — 4th vs 5th', 1,
     public.competition_playoff_standing_club(v_season_id, 'championship_b', 4),
     public.competition_playoff_standing_club(v_season_id, 'championship_b', 5),
     'po_ch_b', 'ready'
@@ -487,7 +487,7 @@ BEGIN
     home_source, away_source, cup_code, status
   )
   VALUES (
-    v_season_id, 'ch_promo_b', 2, 1, 'Championship B final', 2,
+    v_season_id, 'ch_promo_b', 2, 1, 'Championship B Final — semi-final winners', 2,
     'winner:' || v_semi_b_36::text, 'winner:' || v_semi_b_45::text,
     'po_ch_b', 'pending'
   )
@@ -500,7 +500,7 @@ BEGIN
     home_source, away_source, cup_code, status
   )
   VALUES (
-    v_season_id, 'ch_final', 1, 1, 'Championships playoff final', 3,
+    v_season_id, 'ch_final', 1, 1, 'Championship Playoff Final — Championship A final winner vs Championship B final winner', 3,
     'winner:' || v_final_a::text, 'winner:' || v_final_b::text,
     'po_ch_final', 'pending'
   )
@@ -513,7 +513,7 @@ BEGIN
     home_source, away_source, cup_code, status
   )
   VALUES (
-    v_season_id, 'sl_final', 1, 1, 'SuperLeague playoff final', 3,
+    v_season_id, 'sl_final', 1, 1, 'Super League Playoff Final — relegation playoff winner vs Championship Playoff Final winner', 3,
     'winner:' || v_sl1617::text, 'winner:' || v_ch_final::text,
     'po_sl_final', 'pending'
   );
@@ -1108,13 +1108,33 @@ BEGIN
       BEGIN
         IF v_code LIKE 'po_%' THEN
           RETURN CASE v_code
-            WHEN 'po_sl_1617' THEN 'SuperLeague playoff — 16th vs 17th'
-            WHEN 'po_ch_a' THEN 'Championship A promotion playoff'
-            WHEN 'po_ch_b' THEN 'Championship B promotion playoff'
-            WHEN 'po_ch_sb_a' THEN 'Championship A Shield/Bowl playoff'
-            WHEN 'po_ch_sb_b' THEN 'Championship B Shield/Bowl playoff'
-            WHEN 'po_ch_final' THEN 'Championships playoff final'
-            WHEN 'po_sl_final' THEN 'SuperLeague playoff final'
+            WHEN 'po_sl_1617' THEN 'Super League Relegation Playoff Final — 16th vs 17th'
+            WHEN 'po_ch_a' THEN
+              CASE coalesce(p_fixture.cup_round, 0)
+                WHEN 1 THEN
+                  CASE coalesce(p_fixture.cup_match, 0)
+                    WHEN 1 THEN 'Championship A Semi Final — 3rd vs 6th'
+                    WHEN 2 THEN 'Championship A Semi Final — 4th vs 5th'
+                    ELSE 'Championship A Semi Final'
+                  END
+                WHEN 2 THEN 'Championship A Final — semi-final winners'
+                ELSE 'Championship A promotion playoff'
+              END
+            WHEN 'po_ch_b' THEN
+              CASE coalesce(p_fixture.cup_round, 0)
+                WHEN 1 THEN
+                  CASE coalesce(p_fixture.cup_match, 0)
+                    WHEN 1 THEN 'Championship B Semi Final — 3rd vs 6th'
+                    WHEN 2 THEN 'Championship B Semi Final — 4th vs 5th'
+                    ELSE 'Championship B Semi Final'
+                  END
+                WHEN 2 THEN 'Championship B Final — semi-final winners'
+                ELSE 'Championship B promotion playoff'
+              END
+            WHEN 'po_ch_sb_a' THEN 'Championship A Shield Playoff Final — 16th vs 17th'
+            WHEN 'po_ch_sb_b' THEN 'Championship B Shield Playoff Final — 16th vs 17th'
+            WHEN 'po_ch_final' THEN 'Championship Playoff Final — Championship A final winner vs Championship B final winner'
+            WHEN 'po_sl_final' THEN 'Super League Playoff Final — relegation playoff winner vs Championship Playoff Final winner'
             ELSE 'Playoff'
           END;
         END IF;

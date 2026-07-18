@@ -24,6 +24,50 @@ function populateMonthSelect() {
   ).join("");
 }
 
+/** Clear playoff names when preview RPC has no competition_label yet. */
+function fixtureTypeLabel(f) {
+  if (f?.competition_label) return f.competition_label;
+  const code = String(f?.cup_code || "").toLowerCase();
+  const round = Number(f?.cup_round);
+  const match = Number(f?.cup_match);
+  if (code.startsWith("po_")) {
+    if (code === "po_sl_1617") {
+      return "Super League Relegation Playoff Final — 16th vs 17th";
+    }
+    if (code === "po_ch_sb_a") {
+      return "Championship A Shield Playoff Final — 16th vs 17th";
+    }
+    if (code === "po_ch_sb_b") {
+      return "Championship B Shield Playoff Final — 16th vs 17th";
+    }
+    if (code === "po_ch_final") {
+      return "Championship Playoff Final — A final winner vs B final winner";
+    }
+    if (code === "po_sl_final") {
+      return "Super League Playoff Final — relegation winner vs Championship Playoff Final winner";
+    }
+    if (code === "po_ch_a") {
+      if (round === 1 && match === 1) return "Championship A Semi Final — 3rd vs 6th";
+      if (round === 1 && match === 2) return "Championship A Semi Final — 4th vs 5th";
+      if (round === 2) return "Championship A Final — semi-final winners";
+      return "Championship A promotion playoff";
+    }
+    if (code === "po_ch_b") {
+      if (round === 1 && match === 1) return "Championship B Semi Final — 3rd vs 6th";
+      if (round === 1 && match === 2) return "Championship B Semi Final — 4th vs 5th";
+      if (round === 2) return "Championship B Final — semi-final winners";
+      return "Championship B promotion playoff";
+    }
+    return "Playoff";
+  }
+  if (f?.competition_type === "cup") {
+    return `${f.cup_code || "cup"} R${f.cup_round ?? "?"}${
+      f.cup_match != null ? ` M${f.cup_match}` : ""
+    }`;
+  }
+  return f?.competition_type || "league";
+}
+
 function renderPreview(data) {
   const summary = document.getElementById("previewSummary");
   const under11Wrap = document.getElementById("under11Wrap");
@@ -73,10 +117,7 @@ function renderPreview(data) {
   body.innerHTML = fixtures
     .map((f) => {
       const ready = !!f.ready;
-      const typeLabel =
-        f.competition_type === "cup"
-          ? `${f.cup_code || "cup"} R${f.cup_round ?? "?"}`
-          : f.competition_type || "league";
+      const typeLabel = fixtureTypeLabel(f);
       const squads = `${f.home_squad_size ?? "?"} / ${f.away_squad_size ?? "?"}`;
       return `<tr class="${ready ? "" : "not-ready"}">
         <td>${escapeHtml(typeLabel)}</td>
