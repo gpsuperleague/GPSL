@@ -1048,16 +1048,23 @@ BEGIN
     v_processed := v_processed || jsonb_build_array(
       jsonb_build_object('gpsl_month', v_cal.gpsl_month, 'queue_id', v_qid)
     );
-
-    -- After May locks → generate playoffs
-    IF v_cal.gpsl_month = 'may' THEN
-      BEGIN
-        v_playoffs := public.competition_generate_playoffs(v_season_id, false);
-      EXCEPTION WHEN OTHERS THEN
-        v_playoffs := jsonb_build_object('ok', false, 'error', SQLERRM);
-      END;
-    END IF;
   END LOOP;
+
+  -- Whenever May is locked, ensure playoff brackets exist (not only on first tables job)
+  IF EXISTS (
+    SELECT 1
+    FROM public.competition_season_calendar c
+    WHERE c.season_id = v_season_id
+      AND c.gpsl_month = 'may'
+      AND c.lock_at IS NOT NULL
+      AND c.lock_at <= now()
+  ) THEN
+    BEGIN
+      v_playoffs := public.competition_generate_playoffs(v_season_id, false);
+    EXCEPTION WHEN OTHERS THEN
+      v_playoffs := jsonb_build_object('ok', false, 'error', SQLERRM);
+    END;
+  END IF;
 
   IF to_regprocedure('public.competition_process_league_clinches(bigint)') IS NOT NULL THEN
     BEGIN
@@ -1133,5 +1140,67 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
   NULL;
 END $$;
+
+-- Natter: no new posts in Playoffs week (May was last programme month)
+CREATE OR REPLACE FUNCTION public.natter_compose_open()
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_season_id bigint;
+  v_status text;
+  v_month text;
+BEGIN
+  SELECT s.id, s.status
+  INTO v_season_id, v_status
+  FROM public.competition_seasons s
+  WHERE s.is_current = true
+  ORDER BY s.id DESC
+  LIMIT 1;
+
+  IF v_season_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  IF lower(coalesce(v_status, '')) = 'preseason' THEN
+    RETURN true;
+  END IF;
+
+  v_month := public.competition_active_gpsl_month(v_season_id, now());
+  IF v_month IS NULL OR btrim(v_month) = '' THEN
+    RETURN false;
+  END IF;
+  -- Playoffs week is knockout-only; Natter stays on Aug–May
+  IF lower(v_month) = 'playoffs' THEN
+    RETURN false;
+  END IF;
+  RETURN true;
+END;
+$function$;
+
+-- Sport "previous month" for club news: Playoffs edition would look at May Natters
+CREATE OR REPLACE FUNCTION public.gpsl_sport_previous_gpsl_month(p_month text)
+RETURNS text
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT CASE public.competition_gpsl_month_sort(lower(btrim(p_month)))
+    WHEN 2 THEN 'august'
+    WHEN 3 THEN 'september'
+    WHEN 4 THEN 'october'
+    WHEN 5 THEN 'november'
+    WHEN 6 THEN 'december'
+    WHEN 7 THEN 'january'
+    WHEN 8 THEN 'february'
+    WHEN 9 THEN 'march'
+    WHEN 10 THEN 'april'
+    WHEN 11 THEN 'may'
+    WHEN 1 THEN 'july'
+    ELSE NULL
+  END;
+$$;
 
 NOTIFY pgrst, 'reload schema';
