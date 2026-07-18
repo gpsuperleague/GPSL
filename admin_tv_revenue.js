@@ -4,6 +4,8 @@ primeAdminPageChrome();
 
 let currentSeasonId = null;
 
+const THREE_MD_MONTHS = new Set(["august", "may"]);
+
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
@@ -14,6 +16,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("selectTvMonthBtn").onclick = selectTvMonth;
   document.getElementById("selectTvSeasonBtn").onclick = selectTvSeason;
   document.getElementById("backfillTvBtn").onclick = backfillTvRevenue;
+  document.getElementById("tvPerMonth").addEventListener("input", updateMatchdayHint);
+  document.getElementById("tvSelectMonth").addEventListener("change", updateMatchdayHint);
 });
 
 async function loadCurrentSeasonId() {
@@ -32,30 +36,95 @@ function setInput(id, val) {
   if (el && val != null) el.value = val;
 }
 
+function num(id, fallback = 0) {
+  const n = Number(document.getElementById(id)?.value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function updateMatchdayHint() {
+  const el = document.getElementById("tvMatchdayHint");
+  if (!el) return;
+  const total = Math.max(0, Math.floor(num("tvPerMonth", 12)));
+  const month = document.getElementById("tvSelectMonth")?.value || "august";
+  const mds = THREE_MD_MONTHS.has(month) ? 3 : 4;
+  const base = Math.floor(total / mds);
+  const rem = total % mds;
+  const parts = [];
+  for (let i = 0; i < mds; i++) {
+    parts.push(base + (i < rem ? 1 : 0));
+  }
+  el.textContent =
+    `${month}: ${mds} league matchdays → aim ${parts.join(" + ")} = ${total} league TV picks` +
+    (THREE_MD_MONTHS.has(month)
+      ? " (Aug/May pattern)."
+      : " (Sep–Apr pattern).");
+}
+
 async function loadTvSettings() {
   const { data, error } = await supabase.from("global_settings").select("*").eq("id", 1).single();
 
   if (error) {
-    setStatus("tvRevenueStatus", "❌ " + error.message + " — run competition_tv_revenue.sql", false);
+    setStatus(
+      "tvRevenueStatus",
+      "❌ " + error.message + " — run competition_tv_revenue.sql / tv_revenue_matchday_and_cup.sql",
+      false
+    );
     return;
   }
 
   if (!data) return;
 
   setInput("tvPerMatch", data.tv_per_match_amount ?? 1000000);
-  setInput("tvPerMonth", data.tv_matches_per_month ?? 5);
+  setInput("tvPerMonth", data.tv_matches_per_month ?? 12);
   setInput("tvClubMin", data.tv_club_min_season ?? 4);
   setInput("tvClubMax", data.tv_club_max_season ?? 12);
+  setInput(
+    "tvCupPerMatch",
+    data.tv_cup_per_match_amount ?? data.tv_per_match_amount ?? 1000000
+  );
+  setInput("tvCupPerMonth", data.tv_cup_matches_per_month ?? 2);
+
+  setInput("tvWTop8", data.tv_weight_top8_clash ?? 100);
+  setInput("tvWTitle", data.tv_weight_title_race ?? 80);
+  setInput("tvWSuper8", data.tv_weight_super8 ?? 60);
+  setInput("tvWPlayoff", data.tv_weight_playoff ?? 50);
+  setInput("tvWPromo", data.tv_weight_promotion ?? 70);
+  setInput("tvWRel", data.tv_weight_relegation ?? 70);
+  setInput("tvWDry", data.tv_weight_dry_spell ?? 40);
+  setInput("tvWBelowMin", data.tv_weight_below_min ?? 200);
+
+  setInput("tvWCupFinal", data.tv_weight_cup_final ?? 120);
+  setInput("tvWCupSf", data.tv_weight_cup_sf ?? 80);
+  setInput("tvWCupQf", data.tv_weight_cup_qf ?? 100);
+  setInput("tvWCupR2", data.tv_weight_cup_r2 ?? 60);
+  setInput("tvWCupR1", data.tv_weight_cup_r1 ?? 30);
+
+  updateMatchdayHint();
 }
 
 async function saveTvSettings() {
   setStatus("tvRevenueStatus", "Saving…");
   const { error } = await supabase.rpc("admin_update_tv_settings", {
     p_settings: {
-      tv_per_match_amount: Number(document.getElementById("tvPerMatch")?.value),
-      tv_matches_per_month: Number(document.getElementById("tvPerMonth")?.value),
-      tv_club_min_season: Number(document.getElementById("tvClubMin")?.value),
-      tv_club_max_season: Number(document.getElementById("tvClubMax")?.value),
+      tv_per_match_amount: num("tvPerMatch"),
+      tv_matches_per_month: num("tvPerMonth"),
+      tv_club_min_season: num("tvClubMin"),
+      tv_club_max_season: num("tvClubMax"),
+      tv_cup_per_match_amount: num("tvCupPerMatch"),
+      tv_cup_matches_per_month: num("tvCupPerMonth"),
+      tv_weight_top8_clash: num("tvWTop8"),
+      tv_weight_title_race: num("tvWTitle"),
+      tv_weight_super8: num("tvWSuper8"),
+      tv_weight_playoff: num("tvWPlayoff"),
+      tv_weight_promotion: num("tvWPromo"),
+      tv_weight_relegation: num("tvWRel"),
+      tv_weight_dry_spell: num("tvWDry"),
+      tv_weight_below_min: num("tvWBelowMin"),
+      tv_weight_cup_final: num("tvWCupFinal"),
+      tv_weight_cup_sf: num("tvWCupSf"),
+      tv_weight_cup_qf: num("tvWCupQf"),
+      tv_weight_cup_r2: num("tvWCupR2"),
+      tv_weight_cup_r1: num("tvWCupR1"),
     },
   });
 
@@ -65,6 +134,7 @@ async function saveTvSettings() {
   }
 
   setStatus("tvRevenueStatus", "✅ TV settings saved.", true);
+  updateMatchdayHint();
 }
 
 async function selectTvMonth() {
