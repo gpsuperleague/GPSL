@@ -67,6 +67,8 @@ export function isFixtureCalendarPlayable(fixture, status) {
 
 export function isPreSeasonPhase(status) {
   if (!status) return false;
+  const active = String(status.active_gpsl_month || "").toLowerCase();
+  if (active === "june" || active === "july") return true;
   const phase = status.calendar_phase;
   return (
     phase === "pre_season" ||
@@ -90,6 +92,14 @@ export function navGpslMonthDisplay(status) {
   }
 
   if (isPreSeasonPhase(status)) {
+    const active = String(status.active_gpsl_month || "").toLowerCase();
+    if (active === "june" || active === "july") {
+      return (
+        status.active_gpsl_month_label ||
+        GPSL_MONTH_LABELS[active] ||
+        active
+      );
+    }
     return "Pre-Season";
   }
 
@@ -117,9 +127,13 @@ export function navGpslMonthTitle(status) {
   }
   if (isPreSeasonPhase(status)) {
     if (!status.calendar_configured) {
-      return "Competition season is active — set the real-world calendar in GPSL Admin to open August";
+      return "Competition season is active — set the real-world calendar in GPSL Admin (season start = June)";
     }
-    return `Pre-Season — GPSL August unlocks ${formatUkDateTime(status.anchor_unlock_at)} UK`;
+    const active = String(status.active_gpsl_month || "").toLowerCase();
+    if (active === "june" || active === "july") {
+      return `GPSL ${status.active_gpsl_month_label || active} (pre-season) — until ${formatUkDateTime(status.active_lock_at)} UK`;
+    }
+    return `Before season start — June begins ${formatUkDateTime(status.anchor_unlock_at)} UK`;
   }
   if (status?.calendar_phase === "between_months") {
     const next =

@@ -71,6 +71,8 @@ export const LEAGUE_TINT_LEGEND_COLORS = {
 };
 
 export const GPSL_MONTH_LABELS = {
+  june: "June",
+  july: "July",
   august: "August",
   september: "September",
   october: "October",
@@ -85,6 +87,8 @@ export const GPSL_MONTH_LABELS = {
 };
 
 export const GPSL_MONTH_ORDER = [
+  "june",
+  "july",
   "august",
   "september",
   "october",

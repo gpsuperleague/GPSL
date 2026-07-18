@@ -20,7 +20,12 @@
         <section id="wf-calendar" class="admin-season-panel" data-panel="wf-calendar" hidden>
           <div class="card">
             <h2>GPSL season calendar</h2>
-            <p class="note">One UK week (Fri 19:00 → Fri 19:00) = one GPSL month. Set the anchor before <b>Start season</b>. Run <code>competition_real_world_calendar.sql</code> and <code>admin_season_lifecycle.sql</code> in Supabase first.</p>
+            <p class="note">
+              <b>One real UK week (Fri 19:00 → Fri 19:00) = one GPSL month</b> for every month,
+              including pre-season. Set <b>season start</b> = when <b>June</b> begins.
+              Then: June (week 1) → July (week 2) → August league start (week 3) → … → Playoffs.
+              Run <code>patches/calendar_june_july_weeks.sql</code> in Supabase first.
+            </p>
             <div id="compCalendarActiveNote" class="note"></div>
             <div class="row">
               <div>
@@ -28,10 +33,15 @@
                 <select id="compCalendarSeason"></select>
               </div>
               <div>
-                <label>First unlock (UK local)</label>
+                <label>Season start = June (Fri 19:00 UK)</label>
                 <input type="datetime-local" id="compCalendarAnchor" step="60">
               </div>
+              <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;">
+                <button type="button" id="compCalendarSuggestFriBtn" class="button" style="background:#555;">Next Friday 19:00</button>
+                <button type="button" id="compCalendarSuggest2wBtn" class="button" style="background:#555;">Friday in 2 weeks 19:00</button>
+              </div>
             </div>
+            <p class="note" id="compCalendarPreview" style="margin-top:8px;"></p>
             <div class="row">
               <button id="compCalendarSetBtn" class="button" style="background:#336699;">Set / replace calendar</button>
               <button id="compCalendarBreakBtn" class="button" style="background:#555;">Insert 1-week break</button>

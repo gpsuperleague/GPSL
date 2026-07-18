@@ -119,6 +119,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compCalendarBreakBtn").onclick = insertCompCalendarBreak;
   document.getElementById("compCalendarClearBtn").onclick = clearCompCalendar;
   document.getElementById("compInboxMonthBtn").onclick = sendMonthPreviewInbox;
+  document.getElementById("compCalendarAnchor").addEventListener("input", updateCalendarPreview);
+  document.getElementById("compCalendarSuggestFriBtn").onclick = () =>
+    fillCalendarAnchor(nextFriday1900Uk(0));
+  document.getElementById("compCalendarSuggest2wBtn").onclick = () =>
+    fillCalendarAnchor(nextFriday1900Uk(14));
+  updateCalendarPreview();
   // Sport rebuild lives on admin_gpsl_sport.html
   const sportRebuildBtn = document.getElementById("compSportRebuildBtn");
   if (sportRebuildBtn) sportRebuildBtn.onclick = rebuildGpslSportEdition;
@@ -652,6 +658,97 @@ function anchorLocalForRpc(datetimeLocalValue) {
   return v.replace("T", " ");
 }
 
+/** Parse datetime-local as a London wall-clock instant (no TZ in string). */
+function parseLocalDateTime(value) {
+  if (!value) return null;
+  const v = value.length === 16 ? `${value}:00` : value;
+  const m = v.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2}))?$/);
+  if (!m) return null;
+  return {
+    y: Number(m[1]),
+    mo: Number(m[2]),
+    d: Number(m[3]),
+    h: Number(m[4]),
+    mi: Number(m[5]),
+    s: Number(m[6] || 0),
+  };
+}
+
+function addDaysYmd(parts, days) {
+  const dt = new Date(Date.UTC(parts.y, parts.mo - 1, parts.d + days, parts.h, parts.mi, parts.s));
+  return {
+    y: dt.getUTCFullYear(),
+    mo: dt.getUTCMonth() + 1,
+    d: dt.getUTCDate(),
+    h: parts.h,
+    mi: parts.mi,
+    s: parts.s,
+  };
+}
+
+function formatPartsLocal(parts) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${parts.y}-${pad(parts.mo)}-${pad(parts.d)}T${pad(parts.h)}:${pad(parts.mi)}`;
+}
+
+function formatPartsReadable(parts) {
+  const pad = (n) => String(n).padStart(2, "0");
+  const dt = new Date(Date.UTC(parts.y, parts.mo - 1, parts.d, 12, 0, 0));
+  const weekday = dt.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
+  return `${weekday} ${pad(parts.d)}/${pad(parts.mo)}/${parts.y} ${pad(parts.h)}:${pad(parts.mi)} UK`;
+}
+
+/** Next Friday 19:00 UK wall clock, at least `minDaysFromNow` days ahead. */
+function nextFriday1900Uk(minDaysFromNow = 0) {
+  const now = new Date();
+  // Approximate "today" in UK for suggesting Fridays
+  const uk = new Date(now.toLocaleString("en-US", { timeZone: "Europe/London" }));
+  const day = uk.getDay(); // 0 Sun … 5 Fri
+  let add = (5 - day + 7) % 7;
+  if (add === 0 && (uk.getHours() > 19 || (uk.getHours() === 19 && uk.getMinutes() > 0))) {
+    add = 7;
+  }
+  const target = new Date(uk);
+  target.setDate(uk.getDate() + add);
+  while (
+    Math.floor((target - uk) / (24 * 60 * 60 * 1000)) < minDaysFromNow
+  ) {
+    target.setDate(target.getDate() + 7);
+  }
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${target.getFullYear()}-${pad(target.getMonth() + 1)}-${pad(target.getDate())}T19:00`;
+}
+
+function fillCalendarAnchor(value) {
+  const el = document.getElementById("compCalendarAnchor");
+  if (el) el.value = value;
+  updateCalendarPreview();
+}
+
+function resolveSeasonStartParts() {
+  return parseLocalDateTime(document.getElementById("compCalendarAnchor")?.value);
+}
+
+function updateCalendarPreview() {
+  const el = document.getElementById("compCalendarPreview");
+  if (!el) return;
+  const june = resolveSeasonStartParts();
+  if (!june) {
+    el.textContent =
+      "Pick season start Friday 19:00 UK = June week 1. July = +1 week. August (league) = +2 weeks. Each GPSL month is one real week.";
+    return;
+  }
+  const july = addDaysYmd(june, 7);
+  const august = addDaysYmd(june, 14);
+  const ends = addDaysYmd(june, 91);
+  el.innerHTML =
+    `<b>Preview</b> — ` +
+    `June <b>${formatPartsReadable(june)}</b> → ` +
+    `July <b>${formatPartsReadable(july)}</b> → ` +
+    `August <b>${formatPartsReadable(august)}</b> → … → ` +
+    `ends ~${formatPartsReadable(ends)}.`;
+}
+
 async function refreshCompCalendarForSeason(seasonId) {
   const sel = document.getElementById("compCalendarSeason");
   if (!seasonId) return;
@@ -681,6 +778,9 @@ async function refreshCompCalendarAdmin() {
     const activeRow = months.find((m) => m.is_active);
     if (activeRow) {
       note.textContent = `Live: GPSL ${activeRow.gpsl_month_label} until ${formatUkDateTime(activeRow.lock_at)} UK.`;
+    } else if (calStatus?.calendar_phase === "pre_season") {
+      note.textContent =
+        `Before season start — calendar begins (June) at ${formatUkDateTime(calStatus.anchor_unlock_at)} UK.`;
     } else if (calStatus?.calendar_phase === "between_months") {
       const nextLabel =
         calStatus.next_gpsl_month_label || calStatus.next_gpsl_month || "next month";
@@ -688,18 +788,22 @@ async function refreshCompCalendarAdmin() {
     } else {
       note.textContent = "Active season — configure or extend calendar below.";
     }
+    updateCalendarPreview();
     return;
   }
 
   if (compSelectedSeasonId) {
-    note.textContent = "Pre-season — set calendar before Start season.";
+    note.textContent =
+      "Pre-season setup — set season start (June Friday 19:00 UK) before Start season.";
     await refreshCompCalendarForSeason(compSelectedSeasonId);
+    updateCalendarPreview();
     return;
   }
 
   note.textContent = "Create a pre-season year or activate a season to manage the calendar.";
   document.getElementById("compCalendarBody").innerHTML =
     `<tr><td colspan="4" style="padding:8px;color:#888;">—</td></tr>`;
+  updateCalendarPreview();
 }
 
 async function loadCalendarTableForSeason(seasonId) {
@@ -717,11 +821,13 @@ async function loadCalendarTableForSeason(seasonId) {
 
   tbody.innerHTML = months
     .map((m) => {
+      const key = String(m.gpsl_month || "").toLowerCase();
+      const pre = key === "june" || key === "july" ? " (pre-season)" : "";
       let st = "upcoming";
       if (m.is_active) st = "LIVE";
       else if (m.is_locked) st = "locked";
       return `<tr>
-            <td style="padding:8px;border:1px solid #333;">${m.gpsl_month_label}</td>
+            <td style="padding:8px;border:1px solid #333;">${m.gpsl_month_label}${pre}</td>
             <td style="padding:8px;border:1px solid #333;">${formatUkDateTime(m.unlock_at)}</td>
             <td style="padding:8px;border:1px solid #333;">${formatUkDateTime(m.lock_at)}</td>
             <td style="padding:8px;border:1px solid #333;">${st}</td>
@@ -732,17 +838,36 @@ async function loadCalendarTableForSeason(seasonId) {
 
 async function setCompCalendar() {
   const seasonId = Number(document.getElementById("compCalendarSeason").value);
-  const anchor = anchorLocalForRpc(document.getElementById("compCalendarAnchor").value);
-  if (!seasonId || !anchor) {
-    setStatus("compCalendarStatus", "Pick season and anchor (Friday 19:00 UK).", false);
+  const june = resolveSeasonStartParts();
+  if (!seasonId || !june) {
+    setStatus(
+      "compCalendarStatus",
+      "Pick season and season start Friday 19:00 UK (that Friday = June).",
+      false
+    );
     return;
   }
-  if (!confirm(`Set calendar?\nFirst unlock (UK): ${anchor}`)) return;
+
+  const juneLocal = formatPartsLocal(june).replace("T", " ") + ":00";
+  const july = addDaysYmd(june, 7);
+  const august = addDaysYmd(june, 14);
+
+  if (
+    !confirm(
+      `Set calendar?\n\n` +
+        `Season start / June: ${formatPartsReadable(june)}\n` +
+        `July: ${formatPartsReadable(july)}\n` +
+        `August (league): ${formatPartsReadable(august)}\n\n` +
+        `Each GPSL month = one real week.`
+    )
+  ) {
+    return;
+  }
 
   setStatus("compCalendarStatus", "Saving…");
   const { data, error } = await supabase.rpc("competition_admin_set_season_calendar", {
     p_season_id: seasonId,
-    p_anchor_local: anchor,
+    p_anchor_local: juneLocal.slice(0, 19),
   });
   if (error) {
     setStatus("compCalendarStatus", "❌ " + error.message, false);
@@ -750,9 +875,11 @@ async function setCompCalendar() {
   }
   setStatus(
     "compCalendarStatus",
-    `✅ Calendar set. Anchor ${data.anchor_uk}; ends ${data.season_ends_uk}.`
+    `✅ Calendar set. June ${data.june_uk || data.anchor_uk}; ` +
+      `July ${data.july_uk || "?"}; August ${data.august_uk || "?"}; ends ${data.season_ends_uk}.`
   );
   await loadCalendarTableForSeason(seasonId);
+  await refreshCompCalendarAdmin();
 }
 
 async function insertCompCalendarBreak() {
