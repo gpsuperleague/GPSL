@@ -207,7 +207,7 @@ export const ADMIN_MAIN_NAV = [
         "Close Finances",
         "admin_wage_bills.html",
         null,
-        "Post season wage bills: player wages, manager salary (weekly × 52), 34+ fee, and star tax. Skips lines already posted."
+        "Wage bills, debt interest on overdrafts, FFP (−₿100M+), and 0.5% interest on positive balances. Skips lines already posted."
       ),
     ],
   },

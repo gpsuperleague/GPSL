@@ -257,21 +257,25 @@ export const FINANCE_UI_SECTIONS = [
   {
     id: "eos",
     title: "End of season",
-    intro: "Debt interest, FFP, and admin injections (individual or league-wide).",
+    intro: "Debt interest, FFP, balance interest, and admin injections (via Close Finances).",
     lines: [
       {
         id: "eos_debt_interest",
         label: "Debt interest",
         types: ["eos_debt_interest", "loan_interest_payment"],
-        planned: true,
-        note: "Charged on negative balances at season end (and loan interest when live).",
+        note: "Charged on negative balances at season end via Close Finances (bank rate).",
       },
       {
         id: "eos_ffp",
         label: "FFP charges",
         types: ["eos_ffp_charge"],
-        planned: true,
-        note: "Fine if debt exceeded ₿99M at any point in the season.",
+        note: "Flat fine if balance ≤ −₿100M at Close Finances (after debt interest).",
+      },
+      {
+        id: "eos_balance_interest",
+        label: "Balance interest",
+        types: ["eos_balance_interest"],
+        note: "0.5% credit on positive balances at Close Finances (paid by central bank).",
       },
       {
         id: "eos_injection",

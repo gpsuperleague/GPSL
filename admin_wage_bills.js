@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
   await loadCurrentSeasonId();
+  document.getElementById("closeFinancesBtn").onclick = closeFinances;
   document.getElementById("postWageBillsBtn").onclick = postSeasonWageBills;
 });
 
@@ -23,7 +24,7 @@ async function loadCurrentSeasonId() {
 }
 
 async function postSeasonWageBills() {
-  setStatus("wageBillsStatus", "Posting…");
+  setStatus("wageBillsStatus", "Posting wage bills…");
   const { data, error } = await supabase.rpc("competition_admin_post_season_wage_bills", {
     p_season_id: currentSeasonId,
   });
@@ -33,7 +34,47 @@ async function postSeasonWageBills() {
   }
   setStatus(
     "wageBillsStatus",
-    `✅ Posted ${data?.charge_lines ?? 0} charge line(s) for ${data?.clubs_charged ?? 0} club(s). Skips already posted.`,
+    `✅ Posted ${data?.charge_lines ?? 0} wage line(s) for ${data?.clubs_charged ?? 0} club(s). Skips already posted.`,
+    true
+  );
+}
+
+async function closeFinances() {
+  if (
+    !confirm(
+      "Close Finances for the current season?\n\n" +
+        "This posts wage bills, debt interest on overdrafts, FFP (−₿100M+), " +
+        "and 0.5% interest on positive balances.\n\n" +
+        "Already-posted lines are skipped."
+    )
+  ) {
+    return;
+  }
+
+  setStatus("wageBillsStatus", "Closing finances…");
+  const { data, error } = await supabase.rpc("competition_admin_close_finances", {
+    p_season_id: currentSeasonId,
+  });
+
+  if (error) {
+    setStatus(
+      "wageBillsStatus",
+      "❌ " +
+        error.message +
+        " — run supabase/sql/patches/close_finances_eos_interest_ffp.sql in Supabase.",
+      false
+    );
+    return;
+  }
+
+  const wages = data?.wages || {};
+  setStatus(
+    "wageBillsStatus",
+    `✅ Close Finances complete (season ${data?.season_id ?? "—"}). ` +
+      `Wages: ${wages.charge_lines ?? 0} line(s) / ${wages.clubs_charged ?? 0} club(s). ` +
+      `Debt interest: ${data?.debt_interest_clubs ?? 0}. ` +
+      `FFP: ${data?.ffp_clubs ?? 0}. ` +
+      `Balance interest: ${data?.balance_interest_clubs ?? 0}.`,
     true
   );
 }
