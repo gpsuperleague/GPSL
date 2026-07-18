@@ -1001,6 +1001,8 @@ async function loadSquad() {
     if (tbody) tbody.dataset.squadIds = idsKey;
   } else {
     patchSquadEnrichment(transferStatusState, statsMap);
+    // Rebuild Action menus so season unlock / appeals / foreign sales stay current
+    refreshSquadDesignationSelects(list, squadDesignationsState);
   }
 }
 
@@ -1464,6 +1466,14 @@ function measureSquadTableCellWidth(cell) {
   return w;
 }
 
+/** Minimum px widths — Action must never collapse to 0 under table-layout:fixed. */
+const SQUAD_COL_MIN_WIDTHS = {
+  "squad-col-action": 136,
+  "squad-col-status": 110,
+  "squad-col-contract": 72,
+  "squad-col-player": 120,
+};
+
 function syncSquadTableColumnWidths() {
   const table = document.querySelector("table.gpsl-table.squad-table");
   if (!table) return;
@@ -1498,13 +1508,12 @@ function syncSquadTableColumnWidths() {
 
   let total = 0;
   cols.forEach((col, i) => {
-    if (widths[i] > 0) {
-      const w = widths[i];
-      col.style.width = `${w}px`;
-      col.style.minWidth = `${w}px`;
-      col.style.maxWidth = `${w}px`;
-      total += w;
-    }
+    const minFromClass = SQUAD_COL_MIN_WIDTHS[col.className] || 40;
+    const w = Math.max(widths[i] || 0, minFromClass);
+    col.style.width = `${w}px`;
+    col.style.minWidth = `${w}px`;
+    col.style.maxWidth = `${w}px`;
+    total += w;
   });
 
   table.style.tableLayout = "fixed";

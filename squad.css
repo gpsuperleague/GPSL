@@ -588,20 +588,39 @@ body.squad-page select.squad-action-select {
   z-index: 2;
   pointer-events: auto;
   display: block;
-  width: 100%;
-  max-width: 124px;
+  width: auto;
+  min-width: 7.5rem;
+  max-width: 11rem;
   margin: 0 auto;
   box-sizing: border-box;
 }
 
+/* Keep Action visible when the wide squad table scrolls horizontally */
 body.squad-page .squad-col-action {
-  position: relative;
-  z-index: 2;
+  position: sticky;
+  right: 0;
+  z-index: 3;
   text-align: center;
   overflow: visible;
-  padding-left: 4px;
-  padding-right: 4px;
+  padding-left: 6px;
+  padding-right: 6px;
   white-space: nowrap;
+  min-width: 8.5rem;
+  width: 8.5rem;
+  background: #1a1a1a;
+  box-shadow: -6px 0 10px rgba(0, 0, 0, 0.35);
+}
+
+body.squad-page tr.squad-section-cols-row th.squad-col-action {
+  position: sticky;
+  right: 0;
+  z-index: 4;
+  background: #221a12;
+  box-shadow: -6px 0 10px rgba(0, 0, 0, 0.35);
+}
+
+body.squad-page tr[data-konami-id]:hover td.squad-col-action {
+  background: #222;
 }
 
 body.squad-page .squad-col-status {
