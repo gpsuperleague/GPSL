@@ -235,6 +235,21 @@ BEGIN
   UPDATE public.global_settings
   SET league_phase = NULL, updated_at = now()
   WHERE id = 1;
+
+  IF to_regprocedure('public.competition_stadium_snapshot_season_start(bigint)') IS NOT NULL THEN
+    PERFORM public.competition_stadium_snapshot_season_start(p_season_id);
+  END IF;
+
+  IF to_regprocedure('public.competition_club_prestige_lock_season(bigint)') IS NOT NULL THEN
+    PERFORM public.competition_club_prestige_lock_season(p_season_id);
+  END IF;
+
+  -- Per-season club quotas (voluntary releases + foreign interest)
+  IF to_regprocedure('public.competition_reset_club_season_quotas()') IS NOT NULL THEN
+    PERFORM public.competition_reset_club_season_quotas();
+  ELSIF to_regprocedure('public.club_reset_voluntary_contract_releases()') IS NOT NULL THEN
+    PERFORM public.club_reset_voluntary_contract_releases();
+  END IF;
 END;
 $function$;
 
