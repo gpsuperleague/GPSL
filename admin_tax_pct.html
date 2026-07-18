@@ -17,7 +17,8 @@
         <p class="note">
           League <b>income tax</b> on player spend — charged to the buying club when a purchase posts to the ledger.
           Applies to transfer fee + agent fee and special auction fees. Collected to the GPSL Central Bank (<code>gov_income_tax</code>).
-          Set <b>0</b> to disable. Run <code>patches/gov_income_tax.sql</code> after <code>central_bank_model_a_flows.sql</code>.
+          Set <b>0</b> to disable. Run <code>patches/gov_income_tax.sql</code> and
+          <code>patches/gov_income_tax_transfer_restore.sql</code> (restores tax after prize-discount transfer ledger).
         </p>
         <div class="row gov-subsidy-row">
           <div>
