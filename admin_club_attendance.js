@@ -35,7 +35,13 @@ function formatLastSeasons(json) {
 }
 
 function bandClass(band) {
-  return `band-pill band-${band || "slight"}`;
+  if (!band || band === "—") return "";
+  return `band-pill band-${band}`;
+}
+
+function formatBand(band) {
+  if (!band) return "—";
+  return String(band).replace(/_/g, " ");
 }
 
 function tierClass(tier) {
@@ -58,17 +64,25 @@ function renderSummary(rows) {
 
   const tiers = { big: 0, medium: 0, low: 0 };
   const bands = { on_target: 0, slight: 0, bad: 0, abysmal: 0 };
+  let pending = 0;
   for (const row of rows) {
     const t = row.effective_tier || "low";
     if (tiers[t] != null) tiers[t] += 1;
-    const b = row.performance_band || "slight";
-    if (bands[b] != null) bands[b] += 1;
+    const b = row.performance_band;
+    if (!b) pending += 1;
+    else if (bands[b] != null) bands[b] += 1;
   }
+
+  const statusLine =
+    pending === rows.length
+      ? "Status: — (after first month’s fixtures)"
+      : `Status: ${bands.on_target} on target · ${bands.slight} slight · ${bands.bad} bad · ${bands.abysmal} abysmal` +
+        (pending ? ` · ${pending} pending` : "");
 
   el.innerHTML = `
     <span><b>${rows.length}</b> clubs</span>
     <span>Tiers: ${tiers.big} big · ${tiers.medium} med · ${tiers.low} low</span>
-    <span>Status: ${bands.on_target} on target · ${bands.slight} slight · ${bands.bad} bad · ${bands.abysmal} abysmal</span>
+    <span>${statusLine}</span>
   `;
 }
 
@@ -124,10 +138,16 @@ function renderTable() {
       <tbody>
         ${rows
           .map((row) => {
-            const band = row.performance_band || "—";
+            const band = row.performance_band;
+            const gapReady = row.performance_gap != null && band;
             const gap = Number(row.performance_gap || 0);
-            const gapStr =
-              gap > 0 ? `+${gap.toFixed(2)}` : gap < 0 ? gap.toFixed(2) : "0";
+            const gapStr = !gapReady
+              ? "—"
+              : gap > 0
+                ? `+${gap.toFixed(2)}`
+                : gap < 0
+                  ? gap.toFixed(2)
+                  : "0";
             const cushion = Number(row.cushion_pct || 0);
             return `
           <tr data-club="${row.club_short_name}">
@@ -156,11 +176,11 @@ function renderTable() {
                 min="1" max="99" step="1" style="width:48px;background:#222;color:#ddd;border:1px solid #444;"
                 value="${row.manager_rating ?? ""}" placeholder="—">
             </td>
-            <td><span class="${bandClass(band)}">${band}</span></td>
+            <td>${band ? `<span class="${bandClass(band)}">${formatBand(band)}</span>` : "—"}</td>
             <td>${row.expected_position ?? "—"}</td>
-            <td>${row.actual_position ?? "—"}</td>
+            <td>${band ? (row.actual_position ?? "—") : "—"}</td>
             <td>${Number(row.expected_points || 0).toFixed(2)}</td>
-            <td>${Number(row.actual_points || 0).toFixed(2)}</td>
+            <td>${band && row.actual_points != null ? Number(row.actual_points).toFixed(2) : "—"}</td>
             <td>${gapStr}</td>
             <td>${row.stadium_season_start_fill_pct ?? "—"}</td>
             <td>${row.stadium_display_fill_pct ?? "—"}</td>

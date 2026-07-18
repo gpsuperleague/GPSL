@@ -535,10 +535,17 @@ async function loadExpectationSection(clubShortName) {
   const expectedPts = Number(data.expected_points || 0);
   const actualPos = data.actual_position ?? "—";
   const actualPts = Number(data.actual_points || 0);
-  const band = data.performance_band || "—";
+  const statusReady = data.performance_status_ready !== false && data.performance_band != null;
+  const band = statusReady ? data.performance_band : null;
   const tier = data.club_tier || "";
   const prestigeRank = data.prestige_rank ?? "—";
   const liftNote = managerLiftNote(data);
+  const deliveryLine = statusReady
+    ? `League ${actualPos} · ${actualPts.toFixed(2)} pts`
+    : "— (after first month’s fixtures)";
+  const performanceLine = statusReady
+    ? `<span class="${performanceBandClass(band)}">${formatPerformanceBand(band)}</span>`
+    : "—";
 
   statusEl.innerHTML = `
     <div class="expectation-block">
@@ -554,8 +561,8 @@ async function loadExpectationSection(clubShortName) {
       <h3>Season expectation</h3>
       <dl class="expectation-dl">
         <dt>Expected finish</dt><dd>League ${seasonPos} · ${expectedPts.toFixed(2)} pts</dd>
-        <dt>Current delivery</dt><dd>League ${actualPos} · ${actualPts.toFixed(2)} pts</dd>
-        <dt>Performance</dt><dd><span class="${performanceBandClass(band)}">${formatPerformanceBand(band)}</span></dd>
+        <dt>Current delivery</dt><dd>${deliveryLine}</dd>
+        <dt>Performance</dt><dd>${performanceLine}</dd>
       </dl>
       ${liftNote ? `<p class="expectation-note">${liftNote}</p>` : ""}
     </div>
