@@ -86,10 +86,10 @@ async function loadTvSettings() {
 
   setInput("tvWTop8", data.tv_weight_top8_clash ?? 100);
   setInput("tvWTitle", data.tv_weight_title_race ?? 80);
-  setInput("tvWSuper8", data.tv_weight_super8 ?? 60);
-  setInput("tvWPlayoff", data.tv_weight_playoff ?? 50);
   setInput("tvWPromo", data.tv_weight_promotion ?? 70);
   setInput("tvWRel", data.tv_weight_relegation ?? 70);
+  setInput("tvWForm", data.tv_weight_form ?? 70);
+  setInput("tvWGoals", data.tv_weight_goals ?? 60);
   setInput("tvWDry", data.tv_weight_dry_spell ?? 40);
   setInput("tvWBelowMin", data.tv_weight_below_min ?? 200);
 
@@ -114,10 +114,10 @@ async function saveTvSettings() {
       tv_cup_matches_per_month: num("tvCupPerMonth"),
       tv_weight_top8_clash: num("tvWTop8"),
       tv_weight_title_race: num("tvWTitle"),
-      tv_weight_super8: num("tvWSuper8"),
-      tv_weight_playoff: num("tvWPlayoff"),
       tv_weight_promotion: num("tvWPromo"),
       tv_weight_relegation: num("tvWRel"),
+      tv_weight_form: num("tvWForm"),
+      tv_weight_goals: num("tvWGoals"),
       tv_weight_dry_spell: num("tvWDry"),
       tv_weight_below_min: num("tvWBelowMin"),
       tv_weight_cup_final: num("tvWCupFinal"),
