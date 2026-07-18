@@ -28,6 +28,13 @@ export const CUP_CODES = [
   "shield",
   "bowl",
   "league_cup",
+  "po_sl_1617",
+  "po_ch_a",
+  "po_ch_b",
+  "po_ch_sb_a",
+  "po_ch_sb_b",
+  "po_ch_final",
+  "po_sl_final",
 ];
 
 export const CUP_LABELS = {
@@ -36,6 +43,13 @@ export const CUP_LABELS = {
   shield: "Shield",
   bowl: "Bowl",
   league_cup: "League Cup",
+  po_sl_1617: "SL playoff 16v17",
+  po_ch_a: "CH A promotion playoff",
+  po_ch_b: "CH B promotion playoff",
+  po_ch_sb_a: "CH A Shield/Bowl playoff",
+  po_ch_sb_b: "CH B Shield/Bowl playoff",
+  po_ch_final: "Championships playoff final",
+  po_sl_final: "SuperLeague playoff final",
 };
 
 /** Pastel bar colours — matched to GPSL cup nav (Bowl gold · Shield green · Plate orange · Super8 navy). */

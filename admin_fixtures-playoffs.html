@@ -13,10 +13,24 @@
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <div class="card">
-        <p class="note">Set Shield / Spoon playoff qualifiers for the active season (after league table is known).</p>
+        <h2>Phase 7 — generate brackets</h2>
+        <p class="note">
+          Creates Week 11 ties (SL 16v17, CH promotion 3–6, CH Shield/Bowl 16v17, finals) in
+          <code>playoffs</code> month. Also runs automatically when May locks.
+          Owners use <a href="playoffs.html">playoffs.html</a> (League → Playoffs in Week 11).
+        </p>
+        <div class="row">
+          <button type="button" id="genPlayoffsBtn" class="button">Generate playoffs</button>
+          <button type="button" id="forcePlayoffsBtn" class="button secondary">Force regenerate</button>
+          <button type="button" id="applyMovementsBtn" class="button secondary">Apply movements</button>
+        </div>
+        <div id="genPlayoffStatus" class="status-line"></div>
+      </div>
+      <div class="card">
+        <h2>Manual Shield / Bowl qualifiers</h2>
+        <p class="note">Fallback if prestige 16v17 was decided outside auto fixtures. Prefer playing the generated Shield/Bowl ties.</p>
         <div class="row">
           <select id="compPlayoffDiv">
-            <option value="superleague">SuperLeague</option>
             <option value="championship_a">Championship A</option>
             <option value="championship_b">Championship B</option>
           </select>

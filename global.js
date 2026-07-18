@@ -198,6 +198,9 @@ let managerDraftBiddingOpen = null;
 let clubAuctionBiddingOpen = null;
 let specialAuctionNavLive = false;
 let specialAuctionNavVisible = false;
+/** Active GPSL month key for conditional nav (e.g. playoffs). */
+let activeGpslMonthNav = "";
+let isGpslAdminNav = false;
 let navClubPlayerListed = false;
 let navClubManagerListed = false;
 let draftRandomLockedMs = null; // frozen count-up offset when secret finish fires
@@ -1812,6 +1815,16 @@ export async function buildNav() {
 
   await refreshSpecialAuctionNavLive();
 
+  activeGpslMonthNav = "";
+  try {
+    const calMod = await import("./competition_calendar.js");
+    const calStatus = await calMod.loadCalendarStatus(supabase);
+    activeGpslMonthNav = String(calStatus?.active_gpsl_month || "").toLowerCase();
+  } catch (calErr) {
+    console.warn("Nav calendar month skipped:", calErr);
+  }
+  isGpslAdminNav = isGpslAdminUser(user);
+
   let myNation = null;
   try {
     const intl = await import("./international.js");
@@ -1931,6 +1944,13 @@ export async function buildNav() {
         if (item.requiresDraft && !draftEnabled) return false;
         if (item.requiresSpecialAuction && !specialAuctionNavVisible) return false;
         if (isWaitingListMember && item.page === "club_auction") return false;
+        if (item.showWhenGpslMonth) {
+          const want = String(item.showWhenGpslMonth).toLowerCase();
+          const onPage = item.page && pathNorm === `${item.page}.html`;
+          const monthOk = activeGpslMonthNav === want;
+          const adminOk = item.showForAdmin && isGpslAdminNav;
+          if (!monthOk && !adminOk && !onPage) return false;
+        }
         return true;
       })
       .map((item) => ({ ...item }));

@@ -104,8 +104,8 @@ Qualification from **final league positions** that season:
 |-------------|-------------|-------------------------------|
 | **Super8** | Places **1–8** | — |
 | **Plate** | Places **9–16** | Places **1–4** |
-| **Shield** | — | Places **5–15** + **winners** of 16th vs 17th playoff |
-| **Bowl** | — | Places **18–20** + **losers** of 16th vs 17th playoff |
+| **Shield** | — | Places **5–15** + **winners** of Week 11 16th vs 17th playoff |
+| **Bowl** | — | Places **18–20** + **losers** of Week 11 16th vs 17th playoff |
 
 ### Championship 16th vs 17th (Prestige — Shield/Bowl)
 
@@ -237,7 +237,7 @@ Formula inputs (to detail in finance spec):
 5. **Phase 4 — Player stats** — G/A/apps, ratings, leaderboards.
 6. **Phase 5 — Gate receipts & finances ledger** — league home 100%, cup 50/50.
 7. **Phase 6 — Prestige cups + League cup** — draws, brackets, admin prize instant payout.
-8. **Phase 7 — Playoffs & end of season** — Week 11 calendar exists; still TODO: generate all Week 11 ties (SL 16v17, CH 3–6 promotion brackets, **CH Shield/Bowl 16v17 A+B**), schedule in `playoffs` month, apply promotion/relegation + prestige qualifiers after finals.
+8. **Phase 7 — Playoffs & end of season** — Week 11 calendar + bracket generation (`competition_phase7_playoffs.sql`), owner page `playoffs.html` (League → Playoffs in Week 11), auto Shield/Bowl qualifiers, movements apply after SL final. Next-season division assign still uses movements list + admin setup.
 9. **Phase 8 — Matchday v2** — formation / pitch / pre-match squad.
 
 ---

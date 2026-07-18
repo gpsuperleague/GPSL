@@ -171,6 +171,13 @@ export const NAV_SECTIONS = [
       { href: "clubs.html", label: "Clubs", page: "clubs" },
       { href: "fixtures.html", label: "Fixtures", page: "fixtures" },
       { href: "progress.html", label: "Tables", page: "progress" },
+      {
+        href: "playoffs.html",
+        label: "Playoffs",
+        page: "playoffs",
+        showWhenGpslMonth: "playoffs",
+        showForAdmin: true,
+      },
       { href: "league_stats.html", label: "Stats", page: "league_stats" },
       { href: "challenges.html", label: "Season Challenges", page: "challenges" },
     ],
