@@ -782,6 +782,18 @@ Deno.serve(async (req) => {
             gpslMonth: String(row.metadata?.gpsl_month || "month"),
             seasonId: Number(row.metadata?.season_id || 0),
             standings,
+            highlightDivision: row.metadata?.highlight_division
+              ? String(row.metadata.highlight_division)
+              : null,
+            highlightClub: row.metadata?.highlight_club
+              ? String(row.metadata.highlight_club)
+              : null,
+            subtitle: row.metadata?.clinch
+              ? String(row.headline || "League clinch")
+              : null,
+            embedTitlePrefix: row.metadata?.clinch
+              ? String(row.headline || "").slice(0, 250)
+              : null,
             postWebhook,
           });
           if (!pub.ok) {

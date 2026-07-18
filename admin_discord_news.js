@@ -430,6 +430,37 @@ document.getElementById("tablesPublishBtn")?.addEventListener("click", () => {
     await pushNews();
   })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
+document.getElementById("clinchesBtn")?.addEventListener("click", () => {
+  (async () => {
+    setStatus("newsStatus", "Scanning for mathematical league clinches…");
+    const { data, error } = await supabase.rpc(
+      "admin_competition_announce_clinches",
+      { p_season_id: null }
+    );
+    if (error) {
+      setStatus(
+        "newsStatus",
+        error.message.includes("admin_competition_announce_clinches")
+          ? "❌ Run gpsl_league_clinch_announcements.sql in Supabase first."
+          : "❌ " + error.message,
+        false
+      );
+      return;
+    }
+    const n = data?.new_clinches ?? 0;
+    const sample = Array.isArray(data?.announced) && data.announced[0]?.headline
+      ? ` First: ${data.announced[0].headline}`
+      : "";
+    setStatus(
+      "newsStatus",
+      n
+        ? `Announced ${n} new clinch(es).${sample} Pushing Discord queue…`
+        : "No new clinches — everything already announced (or nothing locked yet)."
+    );
+    if (n) await pushNews();
+    else await loadQueue();
+  })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
 document.getElementById("notificationsTickBtn")?.addEventListener("click", () => {
   (async () => {
     setStatus("newsStatus", "Running notifications tick…");

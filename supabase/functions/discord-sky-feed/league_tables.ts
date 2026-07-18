@@ -36,9 +36,12 @@ function divisionTitle(key: string): string {
 export function buildStandingsSvg(
   divisionKey: string,
   monthLabel: string,
-  rows: StandingRow[]
+  rows: StandingRow[],
+  opts?: { subtitle?: string; highlightClub?: string | null }
 ): string {
   const title = divisionTitle(divisionKey);
+  const subtitle = opts?.subtitle || `End of ${monthLabel} · League table`;
+  const highlight = String(opts?.highlightClub || "").toLowerCase();
   const sorted = [...rows].sort(
     (a, b) => (a.table_position || 99) - (b.table_position || 99)
   );
@@ -50,14 +53,17 @@ export function buildStandingsSvg(
   const bodyRows = sorted
     .map((r, i) => {
       const y = headerH + 28 + i * rowH;
-      const bg = i % 2 === 0 ? "#1a1a1a" : "#141414";
+      const isHi =
+        highlight &&
+        String(r.club_short_name || "").toLowerCase() === highlight;
+      const bg = isHi ? "#2a2208" : i % 2 === 0 ? "#1a1a1a" : "#141414";
       const name = esc(
         String(r.club_name || r.club_short_name || "Club").slice(0, 28)
       );
       return `
       <rect x="24" y="${y - 20}" width="${width - 48}" height="${rowH}" fill="${bg}"/>
       <text x="40" y="${y}" fill="#ff9900" font-size="14" font-family="Segoe UI, Arial, sans-serif" font-weight="700">${r.table_position ?? i + 1}</text>
-      <text x="78" y="${y}" fill="#eeeeee" font-size="14" font-family="Segoe UI, Arial, sans-serif">${name}</text>
+      <text x="78" y="${y}" fill="${isHi ? "#ffcc66" : "#eeeeee"}" font-size="14" font-family="Segoe UI, Arial, sans-serif"${isHi ? ' font-weight="700"' : ""}>${name}</text>
       <text x="360" y="${y}" fill="#cccccc" font-size="13" font-family="Consolas, monospace" text-anchor="end">${r.mp ?? 0}</text>
       <text x="410" y="${y}" fill="#cccccc" font-size="13" font-family="Consolas, monospace" text-anchor="end">${r.w ?? 0}</text>
       <text x="450" y="${y}" fill="#cccccc" font-size="13" font-family="Consolas, monospace" text-anchor="end">${r.d ?? 0}</text>
@@ -73,7 +79,7 @@ export function buildStandingsSvg(
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <rect width="100%" height="100%" fill="#111111"/>
   <text x="36" y="36" fill="#ff9900" font-size="22" font-family="Segoe UI, Arial, sans-serif" font-weight="700">GPSL ${esc(title)}</text>
-  <text x="36" y="62" fill="#aaaaaa" font-size="14" font-family="Segoe UI, Arial, sans-serif">End of ${esc(monthLabel)} · League table</text>
+  <text x="36" y="62" fill="#aaaaaa" font-size="14" font-family="Segoe UI, Arial, sans-serif">${esc(subtitle)}</text>
   <text x="360" y="${headerH}" fill="#888888" font-size="11" font-family="Consolas, monospace" text-anchor="end">P</text>
   <text x="410" y="${headerH}" fill="#888888" font-size="11" font-family="Consolas, monospace" text-anchor="end">W</text>
   <text x="450" y="${headerH}" fill="#888888" font-size="11" font-family="Consolas, monospace" text-anchor="end">D</text>
@@ -165,6 +171,10 @@ export async function publishLeagueTables(opts: {
   gpslMonth: string;
   seasonId: number | string;
   standings: StandingRow[];
+  highlightDivision?: string | null;
+  highlightClub?: string | null;
+  subtitle?: string | null;
+  embedTitlePrefix?: string | null;
   postWebhook: (
     url: string,
     embeds: Record<string, unknown>[],
@@ -178,20 +188,34 @@ export async function publishLeagueTables(opts: {
     gpslMonth,
     seasonId,
     standings,
+    highlightDivision,
+    highlightClub,
+    subtitle,
+    embedTitlePrefix,
     postWebhook,
   } = opts;
 
   const embeds: Record<string, unknown>[] = [];
   let images = 0;
   let usedText = false;
+  const onlyDiv = String(highlightDivision || "").toLowerCase();
+  const divisions = onlyDiv
+    ? DIVISIONS.filter((d) => d.key === onlyDiv)
+    : DIVISIONS;
 
-  for (const div of DIVISIONS) {
+  for (const div of divisions) {
     const rows = standings.filter((r) => r.division === div.key);
     if (!rows.length) continue;
 
-    const svg = buildStandingsSvg(div.key, monthLabel, rows);
+    const svg = buildStandingsSvg(div.key, monthLabel, rows, {
+      subtitle: subtitle || undefined,
+      highlightClub: highlightClub || undefined,
+    });
     const png = await svgToPng(svg);
     const path = `${seasonId}/${gpslMonth}/${div.key}-${Date.now()}.png`;
+    const title = embedTitlePrefix
+      ? `${embedTitlePrefix}`
+      : `📊 ${div.title} — ${monthLabel}`;
 
     if (png) {
       const { error: upErr } = await adminClient.storage
@@ -205,7 +229,7 @@ export async function publishLeagueTables(opts: {
           .from("league-tables")
           .getPublicUrl(path);
         embeds.push({
-          title: `📊 ${div.title} — ${monthLabel}`,
+          title: title.slice(0, 250),
           color: 0x5865f2,
           image: { url: data.publicUrl },
           footer: { text: "GPSL Tables" },
@@ -219,7 +243,7 @@ export async function publishLeagueTables(opts: {
     // Fallback: monospace table in embed description
     usedText = true;
     embeds.push({
-      title: `📊 ${div.title} — ${monthLabel}`,
+      title: title.slice(0, 250),
       description: standingsToCodeBlock(div.key, rows),
       color: 0x5865f2,
       footer: { text: "GPSL Tables (text fallback)" },

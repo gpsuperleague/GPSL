@@ -52,7 +52,9 @@
           <b>#gpsl-natter</b> — owner Natter posts (text + image).<br>
           <b>#gpsl-notifications</b> — auctions, transfer window, month ticks, season start, challenges,
           nation pick turns (@owner), match reminders, OOC batch, vacant clubs.<br>
-          <b>#gpsl-tables</b> — league table images when a GPSL month locks (SuperLeague + both Championships).
+          <b>#gpsl-tables</b> — league table images when a GPSL month locks (SuperLeague + both Championships).<br>
+          <b>League clinches</b> — when a title / auto promotion / playoff place / relegation is mathematically certain:
+          inbox + #gpsl-news + #gpsl-notifications + highlighted #gpsl-tables image. Use <b>Scan league clinches</b> to backfill (e.g. PSG).
         </p>
         <ol class="note" style="margin:0 0 12px;padding-left:1.2em;line-height:1.55;">
           <li>In Discord: create <code>#gpsl-results</code>, <code>#gpsl-natter</code>, <code>#gpsl-notifications</code>, <code>#gpsl-tables</code> if needed.</li>
@@ -122,6 +124,7 @@
           <button type="button" id="notificationsTestBtn" class="button secondary">Test #gpsl-notifications</button>
           <button type="button" id="tablesTestBtn" class="button secondary">Test #gpsl-tables</button>
           <button type="button" id="tablesPublishBtn" class="button secondary">Publish league tables now</button>
+          <button type="button" id="clinchesBtn" class="button secondary">Scan league clinches</button>
           <button type="button" id="notificationsTickBtn" class="button secondary">Notifications tick</button>
           <button type="button" id="natterRequeueBtn" class="button secondary">Requeue Natters</button>
           <button type="button" id="rateLimitRetryBtn" class="button secondary">Unstick posting / 429</button>
@@ -132,6 +135,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_discord_news.js?v=20260718-unstick"></script>
+  <script type="module" src="admin_discord_news.js?v=20260718-clinch"></script>
 </body>
 </html>
