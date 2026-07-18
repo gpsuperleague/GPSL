@@ -15,6 +15,23 @@
     .att-btn-group .att-group-hint {
       margin:0 0 8px; font-size:12px; color:#999; line-height:1.45; max-width:920px;
     }
+    .att-recovery {
+      margin-top:10px;
+      max-width:920px;
+      border:1px solid #333;
+      border-radius:6px;
+      padding:8px 12px;
+      background:#161616;
+    }
+    .att-recovery > summary {
+      cursor:pointer;
+      color:#aaa;
+      font-size:13px;
+      font-weight:600;
+      user-select:none;
+    }
+    .att-recovery[open] > summary { margin-bottom:8px; color:#ccc; }
+    .att-recovery .att-toolbar { margin-bottom:0; }
     .att-seed-callout {
       display: inline-block;
       margin: 0 0 10px;
@@ -114,6 +131,7 @@
           <p class="att-group-hint">
             Prestige <b>#</b> is locked for the active season (see 🔒). It updates automatically when you
             <b>start the next season</b> in Competition Season — after the previous one is archived.
+            Monthly fill drift syncs automatically when you <b>end a GPSL month</b> (month-lock jobs).
           </p>
           <div class="att-toolbar">
             <div class="att-btn">
@@ -121,28 +139,7 @@
                 title="Reload the table from Supabase and run a fill sync pass first.">
                 Refresh table
               </button>
-              <span class="att-btn-hint">Reload all rows from the database.</span>
-            </div>
-            <div class="att-btn">
-              <button type="button" id="syncFillBtn" class="button"
-                title="Applies monthly attendance drift for the current GPSL month based on each club’s performance band vs expectation.">
-                Sync monthly fill drift
-              </button>
-              <span class="att-btn-hint">Update Display % for this GPSL month.</span>
-            </div>
-            <div class="att-btn">
-              <button type="button" id="recomputeBtn" class="button"
-                title="Rebuilds league + cup point totals in competition_club_season_ranking for finished seasons only. Does not change locked prestige rank mid-season.">
-                Recompute archived season points
-              </button>
-              <span class="att-btn-hint">Fix history rows for complete seasons only.</span>
-            </div>
-            <div class="att-btn">
-              <button type="button" id="lockPrestigeBtn" class="button"
-                title="Freezes prestige rank # for the current active season from completed seasons + seed. Normally runs automatically on season start; use once if mid-season after patching.">
-                Lock prestige for this season
-              </button>
-              <span class="att-btn-hint">Freeze # for active season (or after patch).</span>
+              <span class="att-btn-hint">Reload rows (also syncs fill on load).</span>
             </div>
             <div class="att-btn">
               <button type="button" id="saveOverridesBtn" class="button"
@@ -152,6 +149,35 @@
               <span class="att-btn-hint">Persist tier dropdowns and Mgr ratings.</span>
             </div>
           </div>
+          <details class="att-recovery">
+            <summary>Recovery tools</summary>
+            <p class="att-group-hint">
+              Only if something looks wrong after a patch or a missed archive. Normal month/season flow does not need these.
+            </p>
+            <div class="att-toolbar">
+              <div class="att-btn">
+                <button type="button" id="syncFillBtn" class="button"
+                  title="Applies monthly attendance drift for the current GPSL month. Normally runs on End GPSL Month; use if you need to force a pass.">
+                  Sync monthly fill drift
+                </button>
+                <span class="att-btn-hint">Manual fill sync (auto on month lock).</span>
+              </div>
+              <div class="att-btn">
+                <button type="button" id="recomputeBtn" class="button"
+                  title="Rebuilds league + cup point totals in competition_club_season_ranking for finished seasons only. Does not change locked prestige rank mid-season.">
+                  Recompute archived season points
+                </button>
+                <span class="att-btn-hint">Fix history rows for complete seasons only.</span>
+              </div>
+              <div class="att-btn">
+                <button type="button" id="lockPrestigeBtn" class="button"
+                  title="Freezes prestige rank # for the current active season from completed seasons + seed. Normally runs automatically on season start; use once if mid-season after patching.">
+                  Lock prestige for this season
+                </button>
+                <span class="att-btn-hint">Freeze # for active season (or after patch).</span>
+              </div>
+            </div>
+          </details>
         </div>
         <div id="pageStatus" class="status-line"></div>
         <div id="summaryStrip" class="att-summary"></div>

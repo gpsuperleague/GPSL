@@ -56,6 +56,7 @@ DECLARE
   v_snap jsonb;
   v_totm_results jsonb := '[]'::jsonb;
   v_sport_results jsonb := '[]'::jsonb;
+  v_stadium_clubs int;
 BEGIN
   PERFORM set_config('statement_timeout', '240s', true);
 
@@ -479,6 +480,31 @@ BEGIN
         'scheduling', jsonb_build_object('skipped', true, 'reason', 'throttled')
       );
     END IF;
+  END IF;
+
+  -- Monthly stadium fill drift once league tables stage runs (or full 'all' run).
+  -- Safe to re-run: drift steps are 0 when fill_last_month already matches active month.
+  IF v_do_tables THEN
+    BEGIN
+      IF to_regprocedure('public.competition_stadium_sync_all_clubs(bigint)') IS NOT NULL THEN
+        v_stadium_clubs := public.competition_stadium_sync_all_clubs(p_season_id);
+        v_out := v_out || jsonb_build_object(
+          'stadium_fill_sync',
+          jsonb_build_object('ok', true, 'clubs', v_stadium_clubs)
+        );
+      ELSE
+        v_out := v_out || jsonb_build_object(
+          'stadium_fill_sync',
+          jsonb_build_object('skipped', true, 'reason', 'stadium_rpc_missing')
+        );
+      END IF;
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_out := v_out || jsonb_build_object(
+          'stadium_fill_sync',
+          jsonb_build_object('ok', false, 'error', SQLERRM)
+        );
+    END;
   END IF;
 
   RETURN v_out;
