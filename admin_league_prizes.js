@@ -17,8 +17,38 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("saveLeaguePrizesBtn").onclick = saveLeaguePrizes;
   document.getElementById("seedLeaguePrizesBtn").onclick = seedLeaguePrizes;
   document.getElementById("payLeaguePrizesBtn").onclick = payLeaguePrizes;
-  document.getElementById("leaguePrizeDivision").onchange = loadLeaguePrizeSettings;
+  document.getElementById("copyLeaguePrizesBtn").onclick = () => copyLeaguePrizes(false);
+  document.getElementById("copySaveLeaguePrizesBtn").onclick = () => copyLeaguePrizes(true);
+  document.getElementById("leaguePrizeDivision").onchange = () => {
+    syncCopyFromOptions();
+    loadLeaguePrizeSettings();
+  };
+  syncCopyFromOptions();
 });
+
+const DIVISION_LABELS = {
+  superleague: "SuperLeague",
+  championship_a: "Championship A",
+  championship_b: "Championship B",
+};
+
+function syncCopyFromOptions() {
+  const target = document.getElementById("leaguePrizeDivision")?.value;
+  const copySel = document.getElementById("leaguePrizeCopyFrom");
+  if (!copySel) return;
+  const prev = copySel.value;
+  copySel.innerHTML =
+    `<option value="">Select division…</option>` +
+    LEAGUE_DIVISIONS.filter((d) => d !== target)
+      .map(
+        (d) =>
+          `<option value="${d}">${DIVISION_LABELS[d] || d}</option>`
+      )
+      .join("");
+  if (prev && prev !== target && LEAGUE_DIVISIONS.includes(prev)) {
+    copySel.value = prev;
+  }
+}
 
 async function loadCurrentSeasonId() {
   const { data } = await supabase
@@ -158,6 +188,92 @@ async function payLeaguePrizes() {
   setStatus(
     "leaguePrizeStatus",
     `✅ Paid ${paid} club(s). SL: ${byDiv.superleague ?? 0}, CH A: ${byDiv.championship_a ?? 0}, CH B: ${byDiv.championship_b ?? 0}. (Only divisions with 38/38 played.)`,
+    true
+  );
+}
+
+async function copyLeaguePrizes(alsoSave) {
+  if (!currentSeasonId) {
+    setStatus("leaguePrizeStatus", "No current season.", false);
+    return;
+  }
+
+  const target = document.getElementById("leaguePrizeDivision")?.value;
+  const source = document.getElementById("leaguePrizeCopyFrom")?.value;
+
+  if (!source || !LEAGUE_DIVISIONS.includes(source)) {
+    setStatus("leaguePrizeStatus", "Choose a division to copy from.", false);
+    return;
+  }
+  if (source === target) {
+    setStatus("leaguePrizeStatus", "Source and editing division are the same.", false);
+    return;
+  }
+
+  setStatus(
+    "leaguePrizeStatus",
+    `Copying from ${DIVISION_LABELS[source] || source}…`
+  );
+
+  const { data, error } = await supabase
+    .from("competition_league_prize_config_public")
+    .select("position, amount")
+    .eq("season_id", currentSeasonId)
+    .eq("division", source);
+
+  if (error) {
+    setStatus("leaguePrizeStatus", "❌ " + error.message, false);
+    return;
+  }
+
+  if (!data?.length) {
+    setStatus(
+      "leaguePrizeStatus",
+      `⚠ ${DIVISION_LABELS[source] || source} has no saved prizes to copy.`,
+      false
+    );
+    return;
+  }
+
+  for (let pos = 1; pos <= LEAGUE_PRIZE_POSITIONS; pos++) {
+    const el = document.getElementById(`leaguePrizePos${pos}`);
+    if (el) el.value = "0";
+  }
+  for (const row of data) {
+    const el = document.getElementById(`leaguePrizePos${row.position}`);
+    if (el) el.value = String(row.amount ?? 0);
+  }
+
+  const srcLabel = DIVISION_LABELS[source] || source;
+  const tgtLabel = DIVISION_LABELS[target] || target;
+
+  if (!alsoSave) {
+    setStatus(
+      "leaguePrizeStatus",
+      `Copied ${data.length} position(s) from ${srcLabel} into the form for ${tgtLabel}. Click Save prizes to keep.`,
+      true
+    );
+    return;
+  }
+
+  setStatus("leaguePrizeStatus", "Saving copied prizes…");
+  const { data: saved, error: saveErr } = await supabase.rpc(
+    "competition_admin_save_league_prizes",
+    {
+      p_season_id: currentSeasonId,
+      p_division: target,
+      p_amounts: leaguePrizeAmountsPayload(),
+    }
+  );
+
+  if (saveErr) {
+    setStatus("leaguePrizeStatus", "❌ " + saveErr.message, false);
+    return;
+  }
+
+  setStatus(
+    "leaguePrizeStatus",
+    `✅ Copied & saved ${saved ?? data.length} position(s) from ${srcLabel} → ${tgtLabel}.`,
     true
   );
 }

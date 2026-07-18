@@ -20,14 +20,30 @@
         </p>
         <div class="row">
           <div>
-            <label>Division</label>
+            <label>Division (editing)</label>
             <select id="leaguePrizeDivision">
               <option value="superleague">SuperLeague</option>
               <option value="championship_a">Championship A</option>
               <option value="championship_b">Championship B</option>
             </select>
           </div>
+          <div>
+            <label>Copy prizes from</label>
+            <select id="leaguePrizeCopyFrom">
+              <option value="">Select division…</option>
+              <option value="superleague">SuperLeague</option>
+              <option value="championship_a">Championship A</option>
+              <option value="championship_b">Championship B</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;">
+            <button type="button" id="copyLeaguePrizesBtn" class="button secondary">Copy into form</button>
+            <button type="button" id="copySaveLeaguePrizesBtn" class="button secondary">Copy &amp; save</button>
+          </div>
         </div>
+        <p class="note" style="margin-top:0;">
+          Copy fills the grid for the division you’re editing. <b>Copy &amp; save</b> also writes it to the database.
+        </p>
         <div id="leaguePrizeGrid" class="league-prize-grid"></div>
         <div class="row" style="margin-top:12px;">
           <button type="button" id="saveLeaguePrizesBtn" class="button">Save prizes</button>
@@ -38,6 +54,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_league_prizes.js"></script>
+  <script type="module" src="admin_league_prizes.js?v=20260718-copy"></script>
 </body>
 </html>

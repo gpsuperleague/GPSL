@@ -3,7 +3,7 @@
 -- Run once after squad_composition_rules.sql and competition_league_prizes.sql
 -- (or any file that extended competition_finance_ledger entry types).
 -- =============================================================================
--- HG (non-cumulative bands): Quota ≤5 @ rate1, Flying 6–8 @ rate2, Pride 9+ @ rate3
+-- HG (layered bands): Quota 1–5 @ rate1, Flying the Flag 6–8 @ rate2, National Pride 9+ @ rate3
 -- Youth (banded): Grassroots ≤3, Youth Dev 4–5, Academy 6–7, Centre 8+
 -- Weak squad bonus (BnB): 14+ contracted players with Rating ≤72 → flat ₿10M at EOS
 -- EOS payout when all 3 league divisions complete (38/38), idempotent per club/type
@@ -15,17 +15,17 @@
 
 ALTER TABLE public.global_settings
   ADD COLUMN IF NOT EXISTS hg_sub_band1_max smallint NOT NULL DEFAULT 5,
-  ADD COLUMN IF NOT EXISTS hg_sub_band1_per_player numeric(14, 2) NOT NULL DEFAULT 250000,
+  ADD COLUMN IF NOT EXISTS hg_sub_band1_per_player numeric(14, 2) NOT NULL DEFAULT 500000,
   ADD COLUMN IF NOT EXISTS hg_sub_band2_max smallint NOT NULL DEFAULT 8,
   ADD COLUMN IF NOT EXISTS hg_sub_band2_per_player numeric(14, 2) NOT NULL DEFAULT 1500000,
   ADD COLUMN IF NOT EXISTS hg_sub_band3_per_player numeric(14, 2) NOT NULL DEFAULT 2000000,
   ADD COLUMN IF NOT EXISTS youth_sub_band1_max smallint NOT NULL DEFAULT 3,
-  ADD COLUMN IF NOT EXISTS youth_sub_band1_per_player numeric(14, 2) NOT NULL DEFAULT 200000,
+  ADD COLUMN IF NOT EXISTS youth_sub_band1_per_player numeric(14, 2) NOT NULL DEFAULT 500000,
   ADD COLUMN IF NOT EXISTS youth_sub_band2_max smallint NOT NULL DEFAULT 5,
-  ADD COLUMN IF NOT EXISTS youth_sub_band2_per_player numeric(14, 2) NOT NULL DEFAULT 750000,
+  ADD COLUMN IF NOT EXISTS youth_sub_band2_per_player numeric(14, 2) NOT NULL DEFAULT 1000000,
   ADD COLUMN IF NOT EXISTS youth_sub_band3_max smallint NOT NULL DEFAULT 7,
   ADD COLUMN IF NOT EXISTS youth_sub_band3_per_player numeric(14, 2) NOT NULL DEFAULT 1250000,
-  ADD COLUMN IF NOT EXISTS youth_sub_band4_per_player numeric(14, 2) NOT NULL DEFAULT 2000000,
+  ADD COLUMN IF NOT EXISTS youth_sub_band4_per_player numeric(14, 2) NOT NULL DEFAULT 1500000,
   ADD COLUMN IF NOT EXISTS bnb_max_rating smallint NOT NULL DEFAULT 72,
   ADD COLUMN IF NOT EXISTS bnb_min_players smallint NOT NULL DEFAULT 14,
   ADD COLUMN IF NOT EXISTS bnb_per_player numeric(14, 2) NOT NULL DEFAULT 10000000;

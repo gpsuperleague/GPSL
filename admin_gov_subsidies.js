@@ -45,17 +45,17 @@ async function loadGovSubsidySettings() {
   if (!data) return;
 
   setInput("hgBand1Max", data.hg_sub_band1_max ?? 5);
-  setInput("hgBand1Rate", data.hg_sub_band1_per_player ?? 250000);
+  setInput("hgBand1Rate", data.hg_sub_band1_per_player ?? 500000);
   setInput("hgBand2Max", data.hg_sub_band2_max ?? 8);
   setInput("hgBand2Rate", data.hg_sub_band2_per_player ?? 1500000);
   setInput("hgBand3Rate", data.hg_sub_band3_per_player ?? 2000000);
   setInput("youthBand1Max", data.youth_sub_band1_max ?? 3);
-  setInput("youthBand1Rate", data.youth_sub_band1_per_player ?? 200000);
+  setInput("youthBand1Rate", data.youth_sub_band1_per_player ?? 500000);
   setInput("youthBand2Max", data.youth_sub_band2_max ?? 5);
-  setInput("youthBand2Rate", data.youth_sub_band2_per_player ?? 750000);
+  setInput("youthBand2Rate", data.youth_sub_band2_per_player ?? 1000000);
   setInput("youthBand3Max", data.youth_sub_band3_max ?? 7);
   setInput("youthBand3Rate", data.youth_sub_band3_per_player ?? 1250000);
-  setInput("youthBand4Rate", data.youth_sub_band4_per_player ?? 2000000);
+  setInput("youthBand4Rate", data.youth_sub_band4_per_player ?? 1500000);
   setInput("bnbMaxRating", data.bnb_max_rating ?? 72);
   setInput("bnbMinPlayers", data.bnb_min_players ?? 14);
   setInput("bnbPerPlayer", data.bnb_per_player ?? 10000000);

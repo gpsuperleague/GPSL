@@ -86,9 +86,9 @@
       <div class="card" id="sb-gov-subsidies">
         <h2>Government subsidies</h2>
         <p class="note gov-intro">
-          HG bands are <b>non-cumulative</b> for status (highest tier shown) but payout is per band:
-          Quota ≤5, Flying 6–8, Pride 9+ only. Youth uses banded u21 counts.
-          Weak squad bonus: <b>14+</b> players rated <b>≤72</b> → flat <b>₿10M</b>.
+          Payout is <b>layered by band</b> (not all players at the top rate). Example HG with 10:
+          5× Quota + 3× Flying the Flag + 2× National Pride.
+          Status shows the highest tier only. Weak squad bonus: <b>14+</b> at rating <b>≤72</b> → flat amount.
           Paid at EOS when all <b>3</b> divisions have <b>38/38</b> league matches
           (run <code>government_subsidies.sql</code>).
         </p>
@@ -98,7 +98,7 @@
           <div class="gov-band-grid">
             <div class="gov-band">
               <p class="gov-band-title">Quota</p>
-              <p class="gov-band-hint">Up to this many HG players</p>
+              <p class="gov-band-hint">Players 1–5 (default)</p>
               <div class="gov-band-fields">
                 <div>
                   <label for="hgBand1Max">Max players (≤)</label>
@@ -111,8 +111,8 @@
               </div>
             </div>
             <div class="gov-band">
-              <p class="gov-band-title">Flying</p>
-              <p class="gov-band-hint">Above Quota, up to this many</p>
+              <p class="gov-band-title">Flying the Flag</p>
+              <p class="gov-band-hint">Players 6–8 (default)</p>
               <div class="gov-band-fields">
                 <div>
                   <label for="hgBand2Max">Max players (≤)</label>
@@ -125,8 +125,8 @@
               </div>
             </div>
             <div class="gov-band">
-              <p class="gov-band-title">Pride</p>
-              <p class="gov-band-hint">9+ HG players</p>
+              <p class="gov-band-title">National Pride</p>
+              <p class="gov-band-hint">Players 9+ (default)</p>
               <div class="gov-band-fields single">
                 <div>
                   <label for="hgBand3Rate">₿ per player</label>
@@ -142,7 +142,7 @@
           <div class="gov-band-grid">
             <div class="gov-band">
               <p class="gov-band-title">Grassroots</p>
-              <p class="gov-band-hint">Lowest youth band</p>
+              <p class="gov-band-hint">Players 1–3 (default)</p>
               <div class="gov-band-fields">
                 <div>
                   <label for="youthBand1Max">Max players (≤)</label>
@@ -156,7 +156,7 @@
             </div>
             <div class="gov-band">
               <p class="gov-band-title">Youth development</p>
-              <p class="gov-band-hint">Mid youth band</p>
+              <p class="gov-band-hint">Players 4–5 (default)</p>
               <div class="gov-band-fields">
                 <div>
                   <label for="youthBand2Max">Max players (≤)</label>
@@ -170,7 +170,7 @@
             </div>
             <div class="gov-band">
               <p class="gov-band-title">Academy</p>
-              <p class="gov-band-hint">Upper youth band</p>
+              <p class="gov-band-hint">Players 6–7 (default)</p>
               <div class="gov-band-fields">
                 <div>
                   <label for="youthBand3Max">Max players (≤)</label>
@@ -184,7 +184,7 @@
             </div>
             <div class="gov-band">
               <p class="gov-band-title">Centre of excellence</p>
-              <p class="gov-band-hint">8+ under-21 players</p>
+              <p class="gov-band-hint">Players 8+ (default)</p>
               <div class="gov-band-fields single">
                 <div>
                   <label for="youthBand4Rate">₿ per player</label>
@@ -233,6 +233,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gov_subsidies.js?v=20260718-tidy"></script>
+  <script type="module" src="admin_gov_subsidies.js?v=20260718-band-names"></script>
 </body>
 </html>
