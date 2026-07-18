@@ -479,7 +479,7 @@ document.getElementById("natterRequeueBtn")?.addEventListener("click", () => {
 });
 document.getElementById("rateLimitRetryBtn")?.addEventListener("click", () => {
   (async () => {
-    setStatus("newsStatus", "Reopening rate-limited (429) errors…");
+    setStatus("newsStatus", "Unsticking posting / reopening 429 errors…");
     const { data, error } = await supabase.rpc("admin_discord_requeue_rate_limited", {
       p_limit: 200,
     });
@@ -487,15 +487,17 @@ document.getElementById("rateLimitRetryBtn")?.addEventListener("click", () => {
       setStatus(
         "newsStatus",
         error.message.includes("admin_discord_requeue_rate_limited")
-          ? "❌ Run gpsl_discord_feed_retry_rate_limits.sql in Supabase first."
+          ? "❌ Run gpsl_discord_feed_unstick_posting.sql in Supabase first."
           : "❌ " + error.message,
         false
       );
       return;
     }
+    const posting = data?.unstuck_posting ?? 0;
+    const limited = data?.reopened_rate_limited ?? data?.reopened ?? 0;
     setStatus(
       "newsStatus",
-      `Reopened ${data?.reopened ?? 0} rate-limited item(s). Push queue once — wait a few seconds between pushes if many remain.`
+      `Unstuck ${posting} posting + reopened ${limited} rate-limit error(s) (total ${data?.reopened ?? 0}). Push queue slowly if many remain.`
     );
     await loadQueue();
   })().catch((e) => setStatus("newsStatus", e.message || String(e), false));

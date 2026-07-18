@@ -687,6 +687,31 @@ Deno.serve(async (req) => {
       }
     }
 
+    const claimedIds = pending.map((r) => r.id);
+    const settledIds = new Set<number>();
+
+    const releaseUnsettled = async (reason: string) => {
+      const stuck = claimedIds.filter((id) => !settledIds.has(id));
+      if (!stuck.length) return;
+      const { error: relErr } = await adminClient
+        .from("gpsl_discord_feed_queue")
+        .update({
+          status: "pending",
+          claimed_at: null,
+          last_error: reason.slice(0, 500),
+        })
+        .in("id", stuck)
+        .eq("status", "posting");
+      if (relErr) {
+        warnings.push(`Could not release stuck posting rows: ${relErr.message}`);
+      } else {
+        warnings.push(
+          `Released ${stuck.length} unposted claimed row(s) back to pending (${reason})`
+        );
+      }
+    };
+
+    try {
     for (const row of pending) {
       try {
         let content: string | undefined;
@@ -772,10 +797,12 @@ Deno.serve(async (req) => {
             .update({
               status: "posted",
               posted_at: new Date().toISOString(),
+              claimed_at: null,
               last_error: null,
             })
             .eq("id", row.id);
           if (updErr) throw new Error(updErr.message);
+          settledIds.add(row.id);
           posted += 1;
           postedTables += 1;
           await sleep(700);
@@ -825,10 +852,12 @@ Deno.serve(async (req) => {
           .update({
             status: "posted",
             posted_at: new Date().toISOString(),
+            claimed_at: null,
             last_error: null,
           })
           .eq("id", row.id);
         if (updErr) throw new Error(updErr.message);
+        settledIds.add(row.id);
         posted += 1;
         if (isResultsEvent(row)) postedResults += 1;
         else if (isNatterEvent(row)) postedNatter += 1;
@@ -851,14 +880,16 @@ Deno.serve(async (req) => {
             .from("gpsl_discord_feed_queue")
             .update({
               status: "pending",
+              claimed_at: null,
               last_error: message.slice(0, 500),
               attempts: Number((row as { attempts?: number }).attempts || 0) + 1,
             })
             .eq("id", row.id);
+          settledIds.add(row.id);
           const waitMs =
             err instanceof DiscordRateLimitError ? err.retryAfterMs : 1000;
           await sleep(waitMs);
-          // Stop this batch; remaining pending rows stay for the next run
+          // Stop this batch; release remaining claimed rows so they are not stuck
           break;
         }
 
@@ -867,11 +898,18 @@ Deno.serve(async (req) => {
           .from("gpsl_discord_feed_queue")
           .update({
             status: "error",
+            claimed_at: null,
             last_error: message.slice(0, 500),
             attempts: Number((row as { attempts?: number }).attempts || 0) + 1,
           })
           .eq("id", row.id);
+        settledIds.add(row.id);
       }
+    }
+    } finally {
+      await releaseUnsettled(
+        "Batch ended early (rate limit or interrupt) — reclaimed for retry"
+      );
     }
 
     return jsonResponse({

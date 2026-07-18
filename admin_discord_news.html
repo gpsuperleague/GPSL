@@ -19,6 +19,7 @@
     .news-table tr:hover td { background:#1a1a1a; }
     .news-status { font-size:12px; text-transform:uppercase; letter-spacing:0.04em; }
     .news-status.pending { color:#fc9; }
+    .news-status.posting { color:#9cf; }
     .news-status.posted { color:#8d8; }
     .news-status.error { color:#f88; }
     .news-body { color:#aaa; white-space:pre-wrap; }
@@ -123,7 +124,7 @@
           <button type="button" id="tablesPublishBtn" class="button secondary">Publish league tables now</button>
           <button type="button" id="notificationsTickBtn" class="button secondary">Notifications tick</button>
           <button type="button" id="natterRequeueBtn" class="button secondary">Requeue Natters</button>
-          <button type="button" id="rateLimitRetryBtn" class="button secondary">Retry 429 errors</button>
+          <button type="button" id="rateLimitRetryBtn" class="button secondary">Unstick posting / 429</button>
           <button type="button" id="newsRefreshBtn" class="button secondary">Refresh queue</button>
         </div>
         <div id="newsStatus" class="status-line"></div>
@@ -131,6 +132,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_discord_news.js?v=20260718-tables"></script>
+  <script type="module" src="admin_discord_news.js?v=20260718-unstick"></script>
 </body>
 </html>

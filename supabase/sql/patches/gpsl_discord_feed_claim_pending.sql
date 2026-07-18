@@ -11,6 +11,9 @@ ALTER TABLE public.gpsl_discord_feed_queue
   ADD CONSTRAINT gpsl_discord_feed_queue_status_check
   CHECK (status IN ('pending', 'posting', 'posted', 'error', 'skipped'));
 
+ALTER TABLE public.gpsl_discord_feed_queue
+  ADD COLUMN IF NOT EXISTS claimed_at timestamptz;
+
 CREATE OR REPLACE FUNCTION public.gpsl_discord_feed_claim_pending(p_limit integer DEFAULT 10)
 RETURNS SETOF public.gpsl_discord_feed_queue
 LANGUAGE plpgsql
@@ -20,6 +23,17 @@ AS $function$
 DECLARE
   v_limit int := greatest(1, least(coalesce(p_limit, 10), 25));
 BEGIN
+  -- Stale claims from crashed / rate-limit-aborted flushes
+  UPDATE public.gpsl_discord_feed_queue q
+  SET status = 'pending',
+      claimed_at = NULL,
+      last_error = left(
+        coalesce(nullif(btrim(q.last_error), ''), 'stuck posting') || ' [auto-unstuck]',
+        500
+      )
+  WHERE q.status = 'posting'
+    AND coalesce(q.claimed_at, q.created_at) < now() - interval '2 minutes';
+
   RETURN QUERY
   WITH picked AS (
     SELECT q.id
@@ -32,6 +46,7 @@ BEGIN
   claimed AS (
     UPDATE public.gpsl_discord_feed_queue q
     SET status = 'posting',
+        claimed_at = now(),
         last_error = NULL
     FROM picked p
     WHERE q.id = p.id
