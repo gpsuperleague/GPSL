@@ -194,6 +194,12 @@ export const ADMIN_MAIN_NAV = [
       link("Apply playoff movements", "admin_fixtures-playoffs.html"),
       link("Mid-Season Challenge payouts", "admin_challenges.html"),
       link("Pay government subsidies", "admin_gov_subsidies.html"),
+      link(
+        "Pay league prize money",
+        "admin_league_prizes.html",
+        null,
+        "Confirm amounts per division, then Pay league prizes (only pays divisions with 38/38 played; safe to re-run)."
+      ),
       link("Archive season stats & awards", "admin_season.html", "wf-close-season"),
       link("Process manager contracts (season end)", "admin_season.html", "wf-close-season"),
       link("Charge Emergency Tax", "admin_emergency_tax.html"),
