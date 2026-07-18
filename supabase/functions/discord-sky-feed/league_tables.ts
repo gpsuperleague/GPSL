@@ -21,6 +21,13 @@ const DIVISIONS: { key: string; title: string }[] = [
   { key: "championship_b", title: "Championship B" },
 ];
 
+/** Edge/Deno has no system fonts — resvg needs an embedded TTF or text is invisible */
+const FONT_FAMILY = "DejaVu Sans";
+const FONT_URL =
+  "https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf";
+const FONT_BOLD_URL =
+  "https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans-Bold.ttf";
+
 function esc(s: string): string {
   return s
     .replace(/&/g, "&amp;")
@@ -62,32 +69,32 @@ export function buildStandingsSvg(
       );
       return `
       <rect x="24" y="${y - 20}" width="${width - 48}" height="${rowH}" fill="${bg}"/>
-      <text x="40" y="${y}" fill="#ff9900" font-size="14" font-family="Segoe UI, Arial, sans-serif" font-weight="700">${r.table_position ?? i + 1}</text>
-      <text x="78" y="${y}" fill="${isHi ? "#ffcc66" : "#eeeeee"}" font-size="14" font-family="Segoe UI, Arial, sans-serif"${isHi ? ' font-weight="700"' : ""}>${name}</text>
-      <text x="360" y="${y}" fill="#cccccc" font-size="13" font-family="Consolas, monospace" text-anchor="end">${r.mp ?? 0}</text>
-      <text x="410" y="${y}" fill="#cccccc" font-size="13" font-family="Consolas, monospace" text-anchor="end">${r.w ?? 0}</text>
-      <text x="450" y="${y}" fill="#cccccc" font-size="13" font-family="Consolas, monospace" text-anchor="end">${r.d ?? 0}</text>
-      <text x="490" y="${y}" fill="#cccccc" font-size="13" font-family="Consolas, monospace" text-anchor="end">${r.l ?? 0}</text>
-      <text x="545" y="${y}" fill="#cccccc" font-size="13" font-family="Consolas, monospace" text-anchor="end">${r.gf ?? 0}</text>
-      <text x="585" y="${y}" fill="#cccccc" font-size="13" font-family="Consolas, monospace" text-anchor="end">${r.ga ?? 0}</text>
-      <text x="630" y="${y}" fill="#cccccc" font-size="13" font-family="Consolas, monospace" text-anchor="end">${r.gd ?? 0}</text>
-      <text x="680" y="${y}" fill="#ffffff" font-size="14" font-family="Consolas, monospace" font-weight="700" text-anchor="end">${r.pts ?? 0}</text>`;
+      <text x="40" y="${y}" fill="#ff9900" font-size="14" font-family="${FONT_FAMILY}" font-weight="700">${r.table_position ?? i + 1}</text>
+      <text x="78" y="${y}" fill="${isHi ? "#ffcc66" : "#eeeeee"}" font-size="14" font-family="${FONT_FAMILY}"${isHi ? ' font-weight="700"' : ""}>${name}</text>
+      <text x="360" y="${y}" fill="#cccccc" font-size="13" font-family="${FONT_FAMILY}" text-anchor="end">${r.mp ?? 0}</text>
+      <text x="410" y="${y}" fill="#cccccc" font-size="13" font-family="${FONT_FAMILY}" text-anchor="end">${r.w ?? 0}</text>
+      <text x="450" y="${y}" fill="#cccccc" font-size="13" font-family="${FONT_FAMILY}" text-anchor="end">${r.d ?? 0}</text>
+      <text x="490" y="${y}" fill="#cccccc" font-size="13" font-family="${FONT_FAMILY}" text-anchor="end">${r.l ?? 0}</text>
+      <text x="545" y="${y}" fill="#cccccc" font-size="13" font-family="${FONT_FAMILY}" text-anchor="end">${r.gf ?? 0}</text>
+      <text x="585" y="${y}" fill="#cccccc" font-size="13" font-family="${FONT_FAMILY}" text-anchor="end">${r.ga ?? 0}</text>
+      <text x="630" y="${y}" fill="#cccccc" font-size="13" font-family="${FONT_FAMILY}" text-anchor="end">${r.gd ?? 0}</text>
+      <text x="680" y="${y}" fill="#ffffff" font-size="14" font-family="${FONT_FAMILY}" font-weight="700" text-anchor="end">${r.pts ?? 0}</text>`;
     })
     .join("\n");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <rect width="100%" height="100%" fill="#111111"/>
-  <text x="36" y="36" fill="#ff9900" font-size="22" font-family="Segoe UI, Arial, sans-serif" font-weight="700">GPSL ${esc(title)}</text>
-  <text x="36" y="62" fill="#aaaaaa" font-size="14" font-family="Segoe UI, Arial, sans-serif">${esc(subtitle)}</text>
-  <text x="360" y="${headerH}" fill="#888888" font-size="11" font-family="Consolas, monospace" text-anchor="end">P</text>
-  <text x="410" y="${headerH}" fill="#888888" font-size="11" font-family="Consolas, monospace" text-anchor="end">W</text>
-  <text x="450" y="${headerH}" fill="#888888" font-size="11" font-family="Consolas, monospace" text-anchor="end">D</text>
-  <text x="490" y="${headerH}" fill="#888888" font-size="11" font-family="Consolas, monospace" text-anchor="end">L</text>
-  <text x="545" y="${headerH}" fill="#888888" font-size="11" font-family="Consolas, monospace" text-anchor="end">GF</text>
-  <text x="585" y="${headerH}" fill="#888888" font-size="11" font-family="Consolas, monospace" text-anchor="end">GA</text>
-  <text x="630" y="${headerH}" fill="#888888" font-size="11" font-family="Consolas, monospace" text-anchor="end">GD</text>
-  <text x="680" y="${headerH}" fill="#888888" font-size="11" font-family="Consolas, monospace" text-anchor="end">PTS</text>
+  <text x="36" y="36" fill="#ff9900" font-size="22" font-family="${FONT_FAMILY}" font-weight="700">GPSL ${esc(title)}</text>
+  <text x="36" y="62" fill="#aaaaaa" font-size="14" font-family="${FONT_FAMILY}">${esc(subtitle)}</text>
+  <text x="360" y="${headerH}" fill="#888888" font-size="11" font-family="${FONT_FAMILY}" text-anchor="end">P</text>
+  <text x="410" y="${headerH}" fill="#888888" font-size="11" font-family="${FONT_FAMILY}" text-anchor="end">W</text>
+  <text x="450" y="${headerH}" fill="#888888" font-size="11" font-family="${FONT_FAMILY}" text-anchor="end">D</text>
+  <text x="490" y="${headerH}" fill="#888888" font-size="11" font-family="${FONT_FAMILY}" text-anchor="end">L</text>
+  <text x="545" y="${headerH}" fill="#888888" font-size="11" font-family="${FONT_FAMILY}" text-anchor="end">GF</text>
+  <text x="585" y="${headerH}" fill="#888888" font-size="11" font-family="${FONT_FAMILY}" text-anchor="end">GA</text>
+  <text x="630" y="${headerH}" fill="#888888" font-size="11" font-family="${FONT_FAMILY}" text-anchor="end">GD</text>
+  <text x="680" y="${headerH}" fill="#888888" font-size="11" font-family="${FONT_FAMILY}" text-anchor="end">PTS</text>
   ${bodyRows}
 </svg>`;
 }
@@ -115,6 +122,7 @@ export function standingsToCodeBlock(
 }
 
 let wasmReady: Promise<void> | null = null;
+let fontBuffersPromise: Promise<Uint8Array[]> | null = null;
 
 async function ensureResvgWasm(): Promise<typeof import("npm:@resvg/resvg-wasm@2.6.2")> {
   const mod = await import("npm:@resvg/resvg-wasm@2.6.2");
@@ -139,14 +147,42 @@ async function ensureResvgWasm(): Promise<typeof import("npm:@resvg/resvg-wasm@2
   return mod;
 }
 
+async function loadFontBuffers(): Promise<Uint8Array[]> {
+  if (!fontBuffersPromise) {
+    fontBuffersPromise = (async () => {
+      const out: Uint8Array[] = [];
+      for (const url of [FONT_URL, FONT_BOLD_URL]) {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        out.push(new Uint8Array(await res.arrayBuffer()));
+      }
+      if (!out.length) {
+        throw new Error("Could not load fonts for league table PNG render");
+      }
+      return out;
+    })();
+  }
+  return fontBuffersPromise;
+}
+
 export async function svgToPng(svg: string): Promise<Uint8Array | null> {
   try {
     const mod = await ensureResvgWasm();
+    const fontBuffers = await loadFontBuffers();
     const resvg = new mod.Resvg(svg, {
       fitTo: { mode: "width", value: 720 },
+      font: {
+        fontBuffers,
+        defaultFontFamily: FONT_FAMILY,
+        defaultFontWeight: 400,
+        loadSystemFonts: false,
+      },
     });
     const rendered = resvg.render();
-    return rendered.asPng();
+    const png = rendered.asPng();
+    // Tiny / empty-ish PNGs mean render failed silently — prefer text fallback
+    if (!png || png.byteLength < 2000) return null;
+    return png;
   } catch {
     return null;
   }

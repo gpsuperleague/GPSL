@@ -7,9 +7,7 @@
 --
 -- Announces via:
 --   • Club inbox (affected club) + broadcast to all owners for major outcomes
---   • Discord #gpsl-notifications
---   • Discord #gpsl-news (celebrate / commiserate)
---   • Discord #gpsl-tables (division table image render)
+--   • Discord #gpsl-news only (not notifications / tables)
 --
 -- Runs after each league result is marked played, and after month league-tables job.
 -- Admin: SELECT public.admin_competition_announce_clinches(NULL);
@@ -95,7 +93,6 @@ DECLARE
   v_tone text;
   v_div_label text;
   v_id bigint;
-  v_snap jsonb;
   v_month text;
   v_month_label text;
   v_has_champions boolean;
@@ -391,26 +388,7 @@ BEGIN
         END;
       END IF;
 
-      -- Discord notifications
-      BEGIN
-        PERFORM public.gpsl_discord_feed_enqueue_notification(
-          'league_clinch',
-          v_headline,
-          v_body,
-          CASE WHEN v_tone = 'celebrate' THEN 5763839 ELSE 15158332 END,
-          'clinch_notify:' || v_season_id::text || ':' || v_div || ':' || t.club_short_name || ':' || v_clinch_type,
-          jsonb_build_object(
-            'channel', 'notifications',
-            'clinch_type', v_clinch_type,
-            'division', v_div,
-            'club_short_name', t.club_short_name
-          )
-        );
-      EXCEPTION WHEN OTHERS THEN
-        NULL;
-      END;
-
-      -- Discord news (celebrate / commiserate)
+      -- Discord #gpsl-news only
       BEGIN
         PERFORM public.gpsl_discord_feed_enqueue(
           'league_clinch',
@@ -424,32 +402,6 @@ BEGIN
             'division', v_div,
             'club_short_name', t.club_short_name,
             'tone', v_tone
-          )
-        );
-      EXCEPTION WHEN OTHERS THEN
-        NULL;
-      END;
-
-      -- Discord tables image for that division
-      BEGIN
-        v_snap := public.competition_league_tables_snapshot(v_season_id);
-        PERFORM public.gpsl_discord_feed_enqueue(
-          'tables',
-          format('📊 %s — %s', v_div_label, v_headline),
-          v_body,
-          5793266,
-          'clinch_tables:' || v_season_id::text || ':' || v_div || ':' || t.club_short_name || ':' || v_clinch_type,
-          jsonb_build_object(
-            'channel', 'tables',
-            'render', true,
-            'clinch', true,
-            'clinch_type', v_clinch_type,
-            'highlight_division', v_div,
-            'highlight_club', t.club_short_name,
-            'season_id', v_season_id,
-            'gpsl_month', coalesce(v_month, 'season'),
-            'month_label', coalesce(v_month_label, 'Season'),
-            'standings', coalesce(v_snap->'standings', '[]'::jsonb)
           )
         );
       EXCEPTION WHEN OTHERS THEN
