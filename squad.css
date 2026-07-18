@@ -595,7 +595,7 @@ body.squad-page select.squad-action-select {
   box-sizing: border-box;
 }
 
-/* Keep Action visible when the wide squad table scrolls horizontally */
+/* Action stays sticky on horizontal scroll, but uses the same row colours as other cells */
 body.squad-page .squad-col-action {
   position: sticky;
   right: 0;
@@ -607,20 +607,20 @@ body.squad-page .squad-col-action {
   white-space: nowrap;
   min-width: 8.5rem;
   width: 8.5rem;
-  background: #1a1a1a;
-  box-shadow: -6px 0 10px rgba(0, 0, 0, 0.35);
+  background: inherit;
+  box-shadow: none;
 }
 
 body.squad-page tr.squad-section-cols-row th.squad-col-action {
   position: sticky;
   right: 0;
   z-index: 4;
-  background: #221a12;
-  box-shadow: -6px 0 10px rgba(0, 0, 0, 0.35);
+  background: inherit;
+  box-shadow: none;
 }
 
 body.squad-page tr[data-konami-id]:hover td.squad-col-action {
-  background: #222;
+  background: inherit;
 }
 
 body.squad-page .squad-col-status {
