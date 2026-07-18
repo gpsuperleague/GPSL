@@ -210,6 +210,29 @@ BEGIN
 END;
 $function$;
 
+-- Season manager salary = stored weekly wage × 52 (weekly is MV × manager_wage_pct / 100 / 52).
+CREATE OR REPLACE FUNCTION public.competition_club_manager_salary_total(
+  p_club_short_name text
+)
+RETURNS numeric
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_weekly numeric;
+BEGIN
+  SELECT coalesce(m.weekly_wage, 0)::numeric
+  INTO v_weekly
+  FROM public."Clubs" c
+  LEFT JOIN public."Managers" m ON m.id = c.manager_id
+  WHERE c."ShortName" = p_club_short_name;
+
+  RETURN round(coalesce(v_weekly, 0) * 52, 0);
+END;
+$function$;
+
 CREATE OR REPLACE FUNCTION public.competition_club_34plus_count(p_club_short_name text)
 RETURNS int
 LANGUAGE plpgsql
@@ -344,6 +367,7 @@ BEGIN
     'season_id', v_season_id,
     'club_short_name', v_club,
     'wage_bill', v_wage,
+    'manager_salary', public.competition_club_manager_salary_total(v_club),
     'players_34plus', v_34,
     'amount_34plus', v_34_amt,
     'players_star_tax', v_star,
@@ -441,6 +465,52 @@ BEGIN
       SELECT count(*)::int FROM public."Players" WHERE "Contracted_Team" = p_club_short_name
     )),
     jsonb_build_object('wage_bill', v_amount)
+  );
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.competition_post_club_manager_salary(
+  p_season_id bigint,
+  p_club_short_name text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_amount numeric;
+  v_weekly numeric;
+  v_manager_id bigint;
+  v_manager_name text;
+BEGIN
+  SELECT m.id, m.name, coalesce(m.weekly_wage, 0)::numeric
+  INTO v_manager_id, v_manager_name, v_weekly
+  FROM public."Clubs" c
+  LEFT JOIN public."Managers" m ON m.id = c.manager_id
+  WHERE c."ShortName" = p_club_short_name;
+
+  IF v_manager_id IS NULL THEN
+    RETURN false;
+  END IF;
+
+  v_amount := round(coalesce(v_weekly, 0) * 52, 0);
+  IF v_amount <= 0 THEN
+    RETURN false;
+  END IF;
+
+  RETURN public.competition_post_club_charge(
+    p_season_id,
+    p_club_short_name,
+    'staff_manager_salary',
+    v_amount,
+    format('Season manager salary — %s', coalesce(v_manager_name, 'manager')),
+    jsonb_build_object(
+      'manager_id', v_manager_id,
+      'weekly_wage', v_weekly,
+      'weeks', 52,
+      'season_salary', v_amount
+    )
   );
 END;
 $function$;
@@ -577,6 +647,9 @@ BEGIN
   IF public.competition_post_club_wage_bill(p_season_id, p_club_short_name) THEN
     v_n := v_n + 1;
   END IF;
+  IF public.competition_post_club_manager_salary(p_season_id, p_club_short_name) THEN
+    v_n := v_n + 1;
+  END IF;
   IF public.competition_post_club_34plus_tax(p_season_id, p_club_short_name) THEN
     v_n := v_n + 1;
   END IF;
@@ -711,3 +784,4 @@ GRANT EXECUTE ON FUNCTION public.admin_update_upkeep_tax_settings(jsonb) TO auth
 GRANT EXECUTE ON FUNCTION public.competition_admin_post_season_wage_bills(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_admin_apply_emergency_tac(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_club_upkeep_preview(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.competition_club_manager_salary_total(text) TO authenticated;

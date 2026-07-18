@@ -15,8 +15,10 @@
       <div class="card" id="sb-wage-bills">
         <h2>Post season wage bills</h2>
         <p class="note">
-          Posts season charges for all clubs: squad wages, 34+ fee, and star tax.
-          Configure wage %, 34+, and star rates on their own pages. Run <code>competition_wages_taxes.sql</code>.
+          Posts season charges for all clubs: player squad wages, manager salary (weekly × 52),
+          34+ fee, and star tax. Configure wage %, manager wage %, 34+, and star rates on their own pages.
+          Run <code>competition_wages_taxes.sql</code> and
+          <code>patches/manager_season_salary_wage_bills.sql</code> if manager salary is missing.
         </p>
         <button type="button" id="postWageBillsBtn" class="button">Post season wage bills</button>
         <div id="wageBillsStatus" class="status-line"></div>

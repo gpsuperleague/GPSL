@@ -232,8 +232,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "staff_manager",
         label: "Manager salary",
         types: ["staff_manager_salary"],
-        planned: true,
-        note: "From manager rating → value → salary %.",
+        note: "Season manager salary (weekly wage × 52) — posted with admin Close Finances / Post season wage bills.",
       },
       {
         id: "staff_offers",
