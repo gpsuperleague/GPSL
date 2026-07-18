@@ -203,7 +203,12 @@ export const ADMIN_MAIN_NAV = [
       link("Archive season stats & awards", "admin_season.html", "wf-close-season"),
       link("Process manager contracts (season end)", "admin_season.html", "wf-close-season"),
       link("Charge Emergency Tax", "admin_emergency_tax.html"),
-      link("Close Finances", "admin_wage_bills.html"),
+      link(
+        "Post season wage bills",
+        "admin_wage_bills.html",
+        null,
+        "Debits each club once: squad wages (sum of player contract wages), 34+ fee, and star tax. Skips clubs already posted. Manager salary is not posted here yet."
+      ),
     ],
   },
   {
