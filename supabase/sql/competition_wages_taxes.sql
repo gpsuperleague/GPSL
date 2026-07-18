@@ -146,7 +146,13 @@ CREATE TABLE IF NOT EXISTS public.competition_season_charge_paid (
   season_id bigint NOT NULL REFERENCES public.competition_seasons (id) ON DELETE CASCADE,
   club_short_name text NOT NULL REFERENCES public."Clubs" ("ShortName"),
   charge_type text NOT NULL CHECK (
-    charge_type IN ('wage_squad', 'wage_renewal_34plus', 'wage_star_tax', 'gov_emergency_tax')
+    charge_type IN (
+      'wage_squad',
+      'wage_renewal_34plus',
+      'wage_star_tax',
+      'staff_manager_salary',
+      'gov_emergency_tax'
+    )
   ),
   amount numeric(14, 2) NOT NULL CHECK (amount > 0),
   metadata jsonb NOT NULL DEFAULT '{}'::jsonb,

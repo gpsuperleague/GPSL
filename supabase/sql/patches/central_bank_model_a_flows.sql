@@ -77,6 +77,7 @@ ALTER TABLE public.competition_season_charge_paid
       'wage_squad',
       'wage_renewal_34plus',
       'wage_star_tax',
+      'staff_manager_salary',
       'gov_emergency_tax',
       'gov_income_tax',
       'eos_ffp_charge',

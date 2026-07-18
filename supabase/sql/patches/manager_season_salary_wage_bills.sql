@@ -4,6 +4,25 @@
 -- Safe to re-run. Requires competition_wages_taxes.sql (staff_manager_salary type).
 -- =============================================================================
 
+ALTER TABLE public.competition_season_charge_paid
+  DROP CONSTRAINT IF EXISTS competition_season_charge_paid_charge_type_check;
+
+ALTER TABLE public.competition_season_charge_paid
+  ADD CONSTRAINT competition_season_charge_paid_charge_type_check
+  CHECK (
+    charge_type IN (
+      'wage_squad',
+      'wage_renewal_34plus',
+      'wage_star_tax',
+      'staff_manager_salary',
+      'gov_emergency_tax',
+      'gov_income_tax',
+      'eos_ffp_charge',
+      'eos_debt_interest',
+      'eos_balance_interest'
+    )
+  );
+
 CREATE OR REPLACE FUNCTION public.competition_club_manager_salary_total(
   p_club_short_name text
 )
