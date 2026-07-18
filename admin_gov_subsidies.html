@@ -6,6 +6,77 @@
   <title>Government subsidies — GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="admin.css">
+  <style>
+    .gov-intro { max-width: 52em; }
+    .gov-section { margin-top: 18px; }
+    .gov-section h3 {
+      color: #ff9900;
+      font-size: 15px;
+      margin: 0 0 10px;
+      font-weight: 600;
+    }
+    .gov-band-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .gov-band {
+      background: #161616;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+    .gov-band-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e0e0e0;
+      margin: 0 0 4px;
+    }
+    .gov-band-hint {
+      font-size: 11px;
+      color: #888;
+      margin: 0 0 10px;
+      line-height: 1.35;
+    }
+    .gov-band-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .gov-band-fields.single {
+      grid-template-columns: 1fr;
+    }
+    .gov-band-fields label {
+      display: block;
+      font-size: 11px;
+      color: #999;
+      margin-bottom: 4px;
+    }
+    .gov-band-fields input[type="number"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 8px 10px;
+      background: #222;
+      border: 1px solid #444;
+      color: #ddd;
+      border-radius: 5px;
+      -moz-appearance: textfield;
+    }
+    .gov-band-fields input[type="number"]::-webkit-outer-spin-button,
+    .gov-band-fields input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .gov-actions {
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid #333;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+  </style>
 </head>
 <body class="admin-page">
   <div id="nav"></div>
@@ -14,81 +85,147 @@
     <div class="admin-main" id="adminMain">
       <div class="card" id="sb-gov-subsidies">
         <h2>Government subsidies</h2>
-        <p class="note">
-          HG bands are <b>non-cumulative</b> for status (highest tier shown) but payout is per band: Quota ≤5, Flying 6–8, Pride 9+ only.
-          Youth uses banded u21 counts. Weak squad bonus: <b>14+</b> players rated <b>≤72</b> → flat <b>₿10M</b>.
-          Paid at EOS when all <b>3</b> divisions have <b>38/38</b> league matches (run <code>government_subsidies.sql</code>).
+        <p class="note gov-intro">
+          HG bands are <b>non-cumulative</b> for status (highest tier shown) but payout is per band:
+          Quota ≤5, Flying 6–8, Pride 9+ only. Youth uses banded u21 counts.
+          Weak squad bonus: <b>14+</b> players rated <b>≤72</b> → flat <b>₿10M</b>.
+          Paid at EOS when all <b>3</b> divisions have <b>38/38</b> league matches
+          (run <code>government_subsidies.sql</code>).
         </p>
-        <h3 class="admin-subheading">Homegrown (HG)</h3>
-        <div class="row gov-subsidy-row">
-          <div>
-            <label>Quota max players (≤)</label>
-            <input type="number" id="hgBand1Max" min="0" max="28" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>₿ per player (quota)</label>
-            <input type="number" id="hgBand1Rate" min="0" step="50000" style="width:120px;">
-          </div>
-          <div>
-            <label>Flying max players (≤)</label>
-            <input type="number" id="hgBand2Max" min="0" max="28" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>₿ per player (flying)</label>
-            <input type="number" id="hgBand2Rate" min="0" step="50000" style="width:120px;">
-          </div>
-          <div>
-            <label>₿ per player (pride 9+)</label>
-            <input type="number" id="hgBand3Rate" min="0" step="50000" style="width:120px;">
-          </div>
-        </div>
-        <h3 class="admin-subheading">Youth (under-21)</h3>
-        <div class="row gov-subsidy-row">
-          <div>
-            <label>Grassroots max (≤)</label>
-            <input type="number" id="youthBand1Max" min="0" max="28" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>₿ per player</label>
-            <input type="number" id="youthBand1Rate" min="0" step="50000" style="width:120px;">
-          </div>
-          <div>
-            <label>Youth dev max (≤)</label>
-            <input type="number" id="youthBand2Max" min="0" max="28" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>₿ per player</label>
-            <input type="number" id="youthBand2Rate" min="0" step="50000" style="width:120px;">
-          </div>
-          <div>
-            <label>Academy max (≤)</label>
-            <input type="number" id="youthBand3Max" min="0" max="28" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>₿ per player</label>
-            <input type="number" id="youthBand3Rate" min="0" step="50000" style="width:120px;">
-          </div>
-          <div>
-            <label>Centre (8+) ₿ per player</label>
-            <input type="number" id="youthBand4Rate" min="0" step="50000" style="width:120px;">
+
+        <div class="gov-section">
+          <h3>Homegrown (HG)</h3>
+          <div class="gov-band-grid">
+            <div class="gov-band">
+              <p class="gov-band-title">Quota</p>
+              <p class="gov-band-hint">Up to this many HG players</p>
+              <div class="gov-band-fields">
+                <div>
+                  <label for="hgBand1Max">Max players (≤)</label>
+                  <input type="number" id="hgBand1Max" min="0" max="28" step="1">
+                </div>
+                <div>
+                  <label for="hgBand1Rate">₿ per player</label>
+                  <input type="number" id="hgBand1Rate" min="0" step="50000">
+                </div>
+              </div>
+            </div>
+            <div class="gov-band">
+              <p class="gov-band-title">Flying</p>
+              <p class="gov-band-hint">Above Quota, up to this many</p>
+              <div class="gov-band-fields">
+                <div>
+                  <label for="hgBand2Max">Max players (≤)</label>
+                  <input type="number" id="hgBand2Max" min="0" max="28" step="1">
+                </div>
+                <div>
+                  <label for="hgBand2Rate">₿ per player</label>
+                  <input type="number" id="hgBand2Rate" min="0" step="50000">
+                </div>
+              </div>
+            </div>
+            <div class="gov-band">
+              <p class="gov-band-title">Pride</p>
+              <p class="gov-band-hint">9+ HG players</p>
+              <div class="gov-band-fields single">
+                <div>
+                  <label for="hgBand3Rate">₿ per player</label>
+                  <input type="number" id="hgBand3Rate" min="0" step="50000">
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <h3 class="admin-subheading">Weak squad bonus</h3>
-        <div class="row gov-subsidy-row">
-          <div>
-            <label>Max base rating</label>
-            <input type="number" id="bnbMaxRating" min="1" max="99" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>Min qualifying players</label>
-            <input type="number" id="bnbMinPlayers" min="1" max="28" step="1" style="width:80px;">
-          </div>
-          <div>
-            <label>Flat bonus (₿) when qualified</label>
-            <input type="number" id="bnbPerPlayer" min="0" step="50000" style="width:120px;">
+
+        <div class="gov-section">
+          <h3>Youth (under-21)</h3>
+          <div class="gov-band-grid">
+            <div class="gov-band">
+              <p class="gov-band-title">Grassroots</p>
+              <p class="gov-band-hint">Lowest youth band</p>
+              <div class="gov-band-fields">
+                <div>
+                  <label for="youthBand1Max">Max players (≤)</label>
+                  <input type="number" id="youthBand1Max" min="0" max="28" step="1">
+                </div>
+                <div>
+                  <label for="youthBand1Rate">₿ per player</label>
+                  <input type="number" id="youthBand1Rate" min="0" step="50000">
+                </div>
+              </div>
+            </div>
+            <div class="gov-band">
+              <p class="gov-band-title">Youth development</p>
+              <p class="gov-band-hint">Mid youth band</p>
+              <div class="gov-band-fields">
+                <div>
+                  <label for="youthBand2Max">Max players (≤)</label>
+                  <input type="number" id="youthBand2Max" min="0" max="28" step="1">
+                </div>
+                <div>
+                  <label for="youthBand2Rate">₿ per player</label>
+                  <input type="number" id="youthBand2Rate" min="0" step="50000">
+                </div>
+              </div>
+            </div>
+            <div class="gov-band">
+              <p class="gov-band-title">Academy</p>
+              <p class="gov-band-hint">Upper youth band</p>
+              <div class="gov-band-fields">
+                <div>
+                  <label for="youthBand3Max">Max players (≤)</label>
+                  <input type="number" id="youthBand3Max" min="0" max="28" step="1">
+                </div>
+                <div>
+                  <label for="youthBand3Rate">₿ per player</label>
+                  <input type="number" id="youthBand3Rate" min="0" step="50000">
+                </div>
+              </div>
+            </div>
+            <div class="gov-band">
+              <p class="gov-band-title">Centre of excellence</p>
+              <p class="gov-band-hint">8+ under-21 players</p>
+              <div class="gov-band-fields single">
+                <div>
+                  <label for="youthBand4Rate">₿ per player</label>
+                  <input type="number" id="youthBand4Rate" min="0" step="50000">
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="row" style="margin-top:12px;">
+
+        <div class="gov-section">
+          <h3>Weak squad bonus</h3>
+          <div class="gov-band-grid">
+            <div class="gov-band">
+              <p class="gov-band-title">Qualification</p>
+              <p class="gov-band-hint">Players at or below max rating</p>
+              <div class="gov-band-fields">
+                <div>
+                  <label for="bnbMaxRating">Max base rating</label>
+                  <input type="number" id="bnbMaxRating" min="1" max="99" step="1">
+                </div>
+                <div>
+                  <label for="bnbMinPlayers">Min players</label>
+                  <input type="number" id="bnbMinPlayers" min="1" max="28" step="1">
+                </div>
+              </div>
+            </div>
+            <div class="gov-band">
+              <p class="gov-band-title">Payout</p>
+              <p class="gov-band-hint">Flat amount when qualified</p>
+              <div class="gov-band-fields single">
+                <div>
+                  <label for="bnbPerPlayer">Flat bonus (₿)</label>
+                  <input type="number" id="bnbPerPlayer" min="0" step="50000">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="gov-actions">
           <button type="button" id="saveGovSubsidyBtn" class="button">Save subsidy settings</button>
           <button type="button" id="payGovSubsidyBtn" class="button">Pay government subsidies</button>
         </div>
@@ -96,6 +233,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gov_subsidies.js"></script>
+  <script type="module" src="admin_gov_subsidies.js?v=20260718-tidy"></script>
 </body>
 </html>

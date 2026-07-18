@@ -206,6 +206,9 @@ function render() {
         html += `<div class="wf-body">`;
         html += `<div class="wf-label">${escapeHtml(item.label)}</div>`;
         html += `<div class="wf-meta"><a href="${escapeHtml(href)}">Open task</a></div>`;
+        if (item.note) {
+          html += `<div class="wf-note">${escapeHtml(item.note)}</div>`;
+        }
         html += `</div></li>`;
       }
       html += `</ul>`;

@@ -13,18 +13,19 @@ import { TESTING_ADMIN_NAV } from "./admin_testing_nav.js";
  * app_version.js — otherwise browsers keep the old menu via module cache.
  */
 
-function L(label, href, hash = null, page = null) {
+function L(label, href, hash = null, page = null, note = null) {
   const item = { label, href };
   if (hash) item.hash = hash;
   if (page) item.page = page;
   else if (href) {
     item.page = href.replace(/\.html.*$/i, "").replace(/-/g, "_");
   }
+  if (note) item.note = note;
   return item;
 }
 
-function link(label, href, hash = null) {
-  return { type: "link", ...L(label, href, hash) };
+function link(label, href, hash = null, note = null) {
+  return { type: "link", ...L(label, href, hash, null, note) };
 }
 
 function group(label, items = []) {
@@ -175,7 +176,13 @@ export const ADMIN_MAIN_NAV = [
         L("Complete playoff fixtures", "admin_test_deploy_month.html"),
         L("Apply playoff movements", "admin_fixtures-playoffs.html"),
         L("Push Discord queue (results / news)", "admin_discord_news.html"),
-        L("Lock Playoffs month (End Month Early)", "admin_test_end_month.html"),
+        L(
+          "Lock Playoffs month (End Month Early)",
+          "admin_test_end_month.html",
+          null,
+          null,
+          "Playoffs is the last GPSL month — uncheck “Also unlock next month now”. Confirmation phrase: END GPSL MONTH (not END MONTH OPEN NEXT). Preview → End current month now."
+        ),
       ]),
     ],
   },
