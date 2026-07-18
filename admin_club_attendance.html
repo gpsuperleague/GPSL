@@ -15,6 +15,18 @@
     .att-btn-group .att-group-hint {
       margin:0 0 8px; font-size:12px; color:#999; line-height:1.45; max-width:920px;
     }
+    .att-seed-callout {
+      display: inline-block;
+      margin: 0 0 10px;
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: 1px solid #665522;
+      background: #2a2410;
+      color: #e8c547;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.4;
+    }
     .att-btn {
       display:flex; flex-direction:column; align-items:flex-start; gap:3px;
       max-width:220px;
@@ -65,10 +77,13 @@
         </p>
         <div class="att-btn-group card" style="padding:12px;background:#161616;border:1px solid #333;">
           <h2>Initial prestige order (manual seed)</h2>
+          <p class="att-seed-callout">
+            Season 1 setup only — ignore after clubs have archived season points.
+          </p>
           <p class="att-group-hint">
-            Use this before clubs build 5-year history, or to override capacity-only ordering.
+            Used before clubs build history (or for clubs with no rolling points yet).
             Set every club’s <b>Seed #</b> (1 = biggest), save, then apply so <b>Start %</b> and <b>Base %</b> match that list.
-            After a club has rolling season points, history drives its rank instead of seed.
+            From Season 2 onward, prestige <b>#</b> comes from archived history — you can skip this section.
           </p>
           <div class="att-toolbar">
             <div class="att-btn">
