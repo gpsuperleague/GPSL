@@ -406,6 +406,66 @@
       font-size: 11px;
     }
 
+    .club-detail-cell--owner .owner-badge-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #2a2a2a;
+    }
+
+    .club-detail-cell--owner .owner-badge-preview {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #222;
+      border: 1px solid #444;
+      flex-shrink: 0;
+    }
+
+    .club-detail-cell--owner .owner-badge-fallback {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #222;
+      border: 1px solid #444;
+      color: #ff9900;
+      font-size: 14px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .club-detail-cell--owner .owner-badge-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .club-detail-cell--owner .owner-badge-controls input[type="file"] {
+      font-size: 12px;
+      color: #ccc;
+      max-width: 100%;
+    }
+
+    .club-detail-cell--owner .owner-badge-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .club-detail-cell--owner .owner-profile-link {
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
     .sport-comment-field textarea {
       width: 100%;
       min-height: 96px;
@@ -838,6 +898,25 @@
             <button type="button" id="saveOwnerBtn" class="small-btn">Save</button>
             <span id="ownerTagHint" class="owner-tag-hint" role="status"></span>
           </div>
+          <div class="owner-badge-row">
+            <img id="ownerBadgePreview" class="owner-badge-preview" alt="" hidden>
+            <div id="ownerBadgeFallback" class="owner-badge-fallback" hidden>?</div>
+            <div class="owner-badge-controls">
+              <span class="club-detail-label" style="margin:0">Profile badge</span>
+              <p class="club-detail-summary" style="margin:0">
+                Your owner icon (not the club badge). Shown on your public profile.
+              </p>
+              <input type="file" id="ownerBadgeFile" accept="image/png,image/jpeg,image/webp">
+              <div class="owner-badge-actions">
+                <button type="button" id="ownerBadgeUploadBtn" class="small-btn">Upload badge</button>
+                <button type="button" id="ownerBadgeClearBtn" class="small-btn">Remove</button>
+              </div>
+              <span id="ownerBadgeHint" class="owner-tag-hint" role="status"></span>
+            </div>
+          </div>
+          <p class="owner-profile-link">
+            <a id="ownerProfileLink" class="club-detail-link" href="owner_rankings.html">View public owner profile</a>
+          </p>
         </div>
 
         <div class="club-detail-cell club-detail-cell--compact" id="natterCell">

@@ -38,6 +38,7 @@ import {
   suggestThemeFromKit,
   THEME_SCOPES,
 } from "./club_theme_common.js";
+import { ownerBadgePublicUrl, ownerProfileHref } from "./owner_badge.js";
 
 const MAX_OWNER_TAG_LEN = 64;
 
@@ -210,6 +211,136 @@ function wireOwnerTagField(els, onSaved) {
     els.input.value = result.tag;
     setOwnerTagMode(els, "locked");
     onSaved?.(result.tag);
+  });
+}
+
+function setOwnerBadgeHint(message, isError = false) {
+  const el = document.getElementById("ownerBadgeHint");
+  if (!el) return;
+  el.textContent = message || "";
+  el.classList.toggle("owner-tag-hint--error", isError);
+}
+
+function renderOwnerBadgePreview(badgePath, tag) {
+  const img = document.getElementById("ownerBadgePreview");
+  const fallback = document.getElementById("ownerBadgeFallback");
+  if (!img || !fallback) return;
+
+  const url = ownerBadgePublicUrl(badgePath);
+  if (url) {
+    img.src = url;
+    img.alt = tag || "Owner badge";
+    img.hidden = false;
+    fallback.hidden = true;
+    return;
+  }
+
+  img.hidden = true;
+  fallback.hidden = false;
+  fallback.textContent = String(tag || "?").slice(0, 2).toUpperCase();
+}
+
+async function loadOwnerBadgeState(userId, tag) {
+  const link = document.getElementById("ownerProfileLink");
+  if (link && userId) {
+    link.href = ownerProfileHref(userId);
+  }
+
+  const { data, error } = await supabase
+    .from("gpsl_owner_profile_public")
+    .select("badge_path, owner_tag")
+    .eq("owner_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    if (/gpsl_owner_profile_public|badge_path/i.test(error.message || "")) {
+      setOwnerBadgeHint(
+        "Run supabase/sql/patches/owner_profile_and_badge.sql to enable profile badges.",
+        true
+      );
+    }
+    renderOwnerBadgePreview(null, tag);
+    return;
+  }
+
+  renderOwnerBadgePreview(data?.badge_path, data?.owner_tag || tag);
+}
+
+function wireOwnerBadgeField(userId, getTag) {
+  const uploadBtn = document.getElementById("ownerBadgeUploadBtn");
+  const clearBtn = document.getElementById("ownerBadgeClearBtn");
+  const fileInput = document.getElementById("ownerBadgeFile");
+  if (!uploadBtn || !clearBtn || !fileInput) return;
+
+  uploadBtn.addEventListener("click", async () => {
+    const file = fileInput.files?.[0];
+    if (!file) {
+      setOwnerBadgeHint("Choose an image first.", true);
+      return;
+    }
+    if (file.size > 1024 * 1024) {
+      setOwnerBadgeHint("Max 1 MB.", true);
+      return;
+    }
+
+    uploadBtn.disabled = true;
+    setOwnerBadgeHint("Uploading…");
+
+    const { error: ensureErr } = await supabase.rpc("owner_registry_ensure_self");
+    if (ensureErr) {
+      uploadBtn.disabled = false;
+      setOwnerBadgeHint(
+        /owner_registry_ensure_self/i.test(ensureErr.message || "")
+          ? "Run supabase/sql/patches/owner_profile_and_badge.sql first."
+          : ensureErr.message,
+        true
+      );
+      return;
+    }
+
+    const ext = (file.name.split(".").pop() || "png")
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, "");
+    const path = `${userId}/badge.${ext || "png"}`;
+    const { error: upErr } = await supabase.storage
+      .from("owner-badges")
+      .upload(path, file, { upsert: true, contentType: file.type });
+
+    if (upErr) {
+      uploadBtn.disabled = false;
+      setOwnerBadgeHint(upErr.message, true);
+      return;
+    }
+
+    const { error } = await supabase.rpc("owner_registry_set_badge_path", {
+      p_path: path,
+    });
+    uploadBtn.disabled = false;
+
+    if (error) {
+      setOwnerBadgeHint(error.message, true);
+      return;
+    }
+
+    fileInput.value = "";
+    setOwnerBadgeHint("Badge saved.");
+    renderOwnerBadgePreview(path, getTag());
+  });
+
+  clearBtn.addEventListener("click", async () => {
+    clearBtn.disabled = true;
+    setOwnerBadgeHint("Removing…");
+    const { error } = await supabase.rpc("owner_registry_set_badge_path", {
+      p_path: null,
+    });
+    clearBtn.disabled = false;
+    if (error) {
+      setOwnerBadgeHint(error.message, true);
+      return;
+    }
+    fileInput.value = "";
+    setOwnerBadgeHint("Badge removed.");
+    renderOwnerBadgePreview(null, getTag());
   });
 }
 
@@ -1034,7 +1165,14 @@ async function initClubDetailsPage() {
   initOwnerTagField(ownerEls, null);
   wireOwnerTagField(ownerEls, (tag) => {
     storedTag = tag;
+    const img = document.getElementById("ownerBadgePreview");
+    if (img && !img.hidden && img.src) {
+      img.alt = tag || "Owner badge";
+    } else {
+      renderOwnerBadgePreview(null, tag);
+    }
   });
+  wireOwnerBadgeField(user.id, () => storedTag || ownerEls.input.value);
 
   const { data: club, error } = await loadOwnerClub(user.id);
 
@@ -1075,6 +1213,7 @@ async function initClubDetailsPage() {
 
   storedTag = club.owner?.trim() || null;
   initOwnerTagField(ownerEls, storedTag);
+  await loadOwnerBadgeState(user.id, storedTag);
 
   const divEl = document.getElementById("compDivision");
   let clubDivision = null;
