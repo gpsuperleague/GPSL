@@ -24,21 +24,13 @@
         <div class="admin-settings-sheet">
           <h3 class="admin-subheading admin-settings-sheet-heading">Fill limits</h3>
           <p class="admin-settings-sheet-blurb">
-            Bounds and baseline for stadium fill %. <b>Min</b> is the floor for gate revenue and display fill.
-            <b>Max</b> caps the legacy instant fill calculation. <b>Neutral</b> is fill when performance matches
-            expectation. <b>Rolling seasons</b> is how many past seasons count toward club prestige rank.
+            <b>Min</b> is the floor for gate revenue and display fill.
+            Upper bounds live under Drift, cushion &amp; performance bands (<b>Gate cap</b> / <b>Max display</b>).
+            <b>Rolling seasons</b> is how many past seasons count toward club prestige rank.
           </p>
           <div class="admin-settings-field">
             <label>Min fill %</label>
             <input type="number" id="attMinFill" min="0" max="100" step="1">
-          </div>
-          <div class="admin-settings-field">
-            <label>Max fill %</label>
-            <input type="number" id="attMaxFill" min="0" max="100" step="1">
-          </div>
-          <div class="admin-settings-field">
-            <label>Neutral fill %</label>
-            <input type="number" id="attNeutralFill" min="0" max="100" step="1">
           </div>
           <div class="admin-settings-field">
             <label>Rolling seasons</label>

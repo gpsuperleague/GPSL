@@ -4,8 +4,6 @@ primeAdminPageChrome();
 
 const ATTENDANCE_SETTING_FIELDS = [
   ["attMinFill", "stadium_min_fill_pct"],
-  ["attMaxFill", "stadium_max_fill_pct"],
-  ["attNeutralFill", "stadium_neutral_fill_pct"],
   ["attRollingSeasons", "stadium_rolling_seasons"],
   ["attBigMaxRank", "stadium_big_club_max_rank"],
   ["attMediumMaxRank", "stadium_medium_club_max_rank"],
