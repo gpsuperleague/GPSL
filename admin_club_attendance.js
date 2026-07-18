@@ -230,7 +230,7 @@ async function loadTable() {
   if (!allRows.length) {
     setStatus(
       "pageStatus",
-      "No clubs found — run SQL patches then Recompute club rankings.",
+      "No clubs found — during Summer Break run patches/stadium_attendance_admin_summer_break.sql, then reload. Otherwise run stadium attendance patches and Recompute club rankings.",
       false
     );
     if (wrap) wrap.innerHTML = "";
