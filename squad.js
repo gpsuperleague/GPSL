@@ -743,7 +743,6 @@ function renderSquadManagerBadge() {
   const mainEl = document.getElementById("managerBadgeMain");
   const sackBtn = document.getElementById("sackManagerBtn");
   const renewBtn = document.getElementById("renewManagerBtn");
-  const declineBtn = document.getElementById("declineRenewManagerBtn");
   if (!badge || !mainEl) return;
 
   const hasManager =
@@ -761,10 +760,6 @@ function renderSquadManagerBadge() {
       renewBtn.hidden = true;
       renewBtn.disabled = true;
     }
-    if (declineBtn) {
-      declineBtn.hidden = true;
-      declineBtn.disabled = true;
-    }
     return;
   }
 
@@ -779,10 +774,6 @@ function renderSquadManagerBadge() {
   if (renewBtn) {
     renewBtn.hidden = !pending;
     renewBtn.disabled = !pending;
-  }
-  if (declineBtn) {
-    declineBtn.hidden = !pending;
-    declineBtn.disabled = !pending;
   }
 
   if (!sackBtn) return;
@@ -2535,69 +2526,32 @@ function wireButtons() {
   wireManagerRenewButtons();
 }
 
-async function decideSquadManagerRenewal(renew) {
-  const { error } = await supabase.rpc("manager_owner_renew_decision", {
-    p_renew: Boolean(renew),
-  });
-  if (error) {
-    alert(error.message || "Could not update manager contract.");
-    return false;
-  }
-  return true;
-}
-
 function wireManagerRenewButtons() {
   const renewBtn = document.getElementById("renewManagerBtn");
-  const declineBtn = document.getElementById("declineRenewManagerBtn");
+  if (!renewBtn || renewBtn.dataset.wired) return;
+  renewBtn.dataset.wired = "1";
 
-  if (renewBtn && !renewBtn.dataset.wired) {
-    renewBtn.dataset.wired = "1";
-    renewBtn.addEventListener("click", async () => {
-      if (!squadManagerState.managerId || !squadManagerState.pendingOwnerRenewal) {
-        return;
-      }
-      if (
-        !window.confirm(
-          `Renew ${squadManagerState.managerName} for another 2-season deal?`
-        )
-      ) {
-        return;
-      }
-      renewBtn.disabled = true;
-      if (declineBtn) declineBtn.disabled = true;
-      const ok = await decideSquadManagerRenewal(true);
-      renewBtn.disabled = false;
-      if (declineBtn) declineBtn.disabled = false;
-      if (!ok) return;
-      alert(`${squadManagerState.managerName} renewed for 2 seasons.`);
-      await loadSquadManagerState();
-    });
-  }
-
-  if (declineBtn && !declineBtn.dataset.wired) {
-    declineBtn.dataset.wired = "1";
-    declineBtn.addEventListener("click", async () => {
-      if (!squadManagerState.managerId || !squadManagerState.pendingOwnerRenewal) {
-        return;
-      }
-      if (
-        !window.confirm(
-          `Let ${squadManagerState.managerName} leave?\n\n` +
-            `They become a free agent (no market-value payout, no rehire ban).`
-        )
-      ) {
-        return;
-      }
-      declineBtn.disabled = true;
-      if (renewBtn) renewBtn.disabled = true;
-      const ok = await decideSquadManagerRenewal(false);
-      declineBtn.disabled = false;
-      if (renewBtn) renewBtn.disabled = false;
-      if (!ok) return;
-      alert(`${squadManagerState.managerName} has left the club.`);
-      await loadSquadManagerState();
-    });
-  }
+  renewBtn.addEventListener("click", async () => {
+    if (!squadManagerState.managerId || !squadManagerState.pendingOwnerRenewal) {
+      return;
+    }
+    if (
+      !window.confirm(
+        `Renew ${squadManagerState.managerName} for another 2-season deal?`
+      )
+    ) {
+      return;
+    }
+    renewBtn.disabled = true;
+    const { error } = await supabase.rpc("manager_owner_renew");
+    renewBtn.disabled = false;
+    if (error) {
+      alert(error.message || "Could not renew manager.");
+      return;
+    }
+    alert(`${squadManagerState.managerName} renewed for 2 seasons.`);
+    await loadSquadManagerState();
+  });
 }
 
 function wireManagerSackButton() {

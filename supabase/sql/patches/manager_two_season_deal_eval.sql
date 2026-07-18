@@ -394,7 +394,7 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.manager_process_season_end() TO authenticated;
 
-CREATE OR REPLACE FUNCTION public.manager_owner_renew_decision(p_renew boolean)
+CREATE OR REPLACE FUNCTION public.manager_owner_renew()
 RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -425,40 +425,29 @@ BEGIN
   ORDER BY id DESC
   LIMIT 1;
 
-  IF coalesce(p_renew, false) THEN
-    UPDATE public."Managers"
-    SET contract_seasons_remaining = 2,
-        pending_owner_renewal = false,
-        signed_season_id = v_season_id,
-        deal_start_season_id = v_season_id,
-        weekly_wage = public.manager_weekly_wage_for(market_value),
-        updated_at = now()
-    WHERE id = v_mgr.id;
-
-    RETURN jsonb_build_object(
-      'ok', true,
-      'action', 'renewed',
-      'manager_id', v_mgr.id,
-      'club', v_club,
-      'contract_seasons_remaining', 2
-    );
-  END IF;
-
-  -- Leave with no payout (owner declined renewal) — no rehire ban
-  PERFORM public.manager_release_from_club(
-    v_mgr.id, NULL, NULL, 'transfer_sale'
-  );
+  UPDATE public."Managers"
+  SET contract_seasons_remaining = 2,
+      pending_owner_renewal = false,
+      signed_season_id = v_season_id,
+      deal_start_season_id = v_season_id,
+      weekly_wage = public.manager_weekly_wage_for(market_value),
+      updated_at = now()
+  WHERE id = v_mgr.id;
 
   RETURN jsonb_build_object(
     'ok', true,
-    'action', 'declined',
+    'action', 'renewed',
     'manager_id', v_mgr.id,
-    'club', v_club
+    'club', v_club,
+    'contract_seasons_remaining', 2
   );
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.manager_owner_renew_decision(boolean) TO authenticated;
+-- Drop old decline-capable RPC if present
+DROP FUNCTION IF EXISTS public.manager_owner_renew_decision(boolean);
+
+GRANT EXECUTE ON FUNCTION public.manager_owner_renew() TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.owner_inbox_notify_manager_season_end(p_results jsonb)
 RETURNS void
@@ -502,7 +491,7 @@ BEGIN
         coalesce(v_row ->> 'seasons_remaining', '?')
       )
       WHEN 'renewal_available' THEN format(
-        'Your manager completed their 2-season deal (finished %s this season). They hit their target in at least one season — renew or let them leave from Club Details / Squad.',
+        'Your manager completed their 2-season deal (finished %s this season). They hit their target in at least one season — renew them from Club Details or Squad.',
         coalesce(v_row ->> 'position', '?')
       )
       WHEN 'released_failed_deal' THEN format(

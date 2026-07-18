@@ -548,7 +548,6 @@ async function loadManagerSection(clubShortName) {
   const listBtn = document.getElementById("listManagerBtn");
   const sackBtn = document.getElementById("sackManagerBtn");
   const renewBtn = document.getElementById("renewManagerBtn");
-  const declineBtn = document.getElementById("declineRenewManagerBtn");
 
   const { data, error } = await supabase
     .from("manager_club_status_public")
@@ -574,7 +573,6 @@ async function loadManagerSection(clubShortName) {
     setBtnVisible(listBtn, false);
     setBtnVisible(sackBtn, false);
     setBtnVisible(renewBtn, false);
-    setBtnVisible(declineBtn, false);
     return;
   }
 
@@ -588,7 +586,7 @@ async function loadManagerSection(clubShortName) {
         <dt>Market value</dt><dd>${formatMoney(Number(data.market_value || 0))}</dd>
         <dt>Contract</dt><dd>${
           pendingRenewal
-            ? "Deal complete — renewal decision required"
+            ? "Deal complete — renew to keep them"
             : `${data.contract_seasons_remaining ?? 0} season(s) remaining`
         }</dd>
         <dt>Weekly wage</dt><dd>${formatMoney(Number(data.weekly_wage || 0))}</dd>
@@ -601,7 +599,7 @@ async function loadManagerSection(clubShortName) {
       </dl>
       ${
         pendingRenewal
-          ? `<p class="expectation-note" style="margin-top:10px;">They hit their target in at least one season of the deal. Renew for 2 seasons, or let them leave (no rehire ban).</p>`
+          ? `<p class="expectation-note" style="margin-top:10px;">They hit their target in at least one season of the deal. Renew for another 2 seasons.</p>`
           : ""
       }
     `;
@@ -610,7 +608,6 @@ async function loadManagerSection(clubShortName) {
   const januaryWindow = await isGpslJanuary();
 
   setBtnVisible(renewBtn, pendingRenewal);
-  setBtnVisible(declineBtn, pendingRenewal);
   setBtnVisible(listBtn, januaryWindow && !pendingRenewal);
   setBtnVisible(
     sackBtn,
@@ -625,8 +622,7 @@ async function loadManagerSection(clubShortName) {
 
   if (hintEl) {
     if (pendingRenewal) {
-      hintEl.textContent =
-        "Renewal available — decide below (also shown on Squad).";
+      hintEl.textContent = "Renewal available — also shown on Squad.";
     } else if (!januaryWindow) {
       hintEl.textContent =
         "List for transfer and sack are available in January only.";
@@ -1320,19 +1316,13 @@ async function loadDashboardThemeSection(clubShort) {
   }
 }
 
-async function decideManagerRenewal(renew, hintEl) {
-  const { error } = await supabase.rpc("manager_owner_renew_decision", {
-    p_renew: Boolean(renew),
-  });
+async function renewManagerContract(hintEl) {
+  const { error } = await supabase.rpc("manager_owner_renew");
   if (error) {
     if (hintEl) hintEl.textContent = error.message;
     return false;
   }
-  if (hintEl) {
-    hintEl.textContent = renew
-      ? "Manager renewed for 2 seasons."
-      : "Manager left the club.";
-  }
+  if (hintEl) hintEl.textContent = "Manager renewed for 2 seasons.";
   return true;
 }
 
@@ -1340,7 +1330,6 @@ function wireManagerActions() {
   const listBtn = document.getElementById("listManagerBtn");
   const sackBtn = document.getElementById("sackManagerBtn");
   const renewBtn = document.getElementById("renewManagerBtn");
-  const declineBtn = document.getElementById("declineRenewManagerBtn");
   const hintEl = document.getElementById("managerHint");
 
   if (renewBtn && !renewBtn.dataset.wired) {
@@ -1348,34 +1337,8 @@ function wireManagerActions() {
     renewBtn.addEventListener("click", async () => {
       if (!confirm("Renew manager for another 2-season deal?")) return;
       renewBtn.disabled = true;
-      if (declineBtn) declineBtn.disabled = true;
-      const ok = await decideManagerRenewal(true, hintEl);
+      const ok = await renewManagerContract(hintEl);
       renewBtn.disabled = false;
-      if (declineBtn) declineBtn.disabled = false;
-      if (ok && pageClubShort) {
-        await Promise.all([
-          loadExpectationSection(pageClubShort),
-          loadManagerSection(pageClubShort),
-        ]);
-      }
-    });
-  }
-
-  if (declineBtn && !declineBtn.dataset.wired) {
-    declineBtn.dataset.wired = "1";
-    declineBtn.addEventListener("click", async () => {
-      if (
-        !confirm(
-          "Let this manager leave? They will become a free agent (no market-value payout, no rehire ban)."
-        )
-      ) {
-        return;
-      }
-      declineBtn.disabled = true;
-      if (renewBtn) renewBtn.disabled = true;
-      const ok = await decideManagerRenewal(false, hintEl);
-      declineBtn.disabled = false;
-      if (renewBtn) renewBtn.disabled = false;
       if (ok && pageClubShort) {
         await Promise.all([
           loadExpectationSection(pageClubShort),
