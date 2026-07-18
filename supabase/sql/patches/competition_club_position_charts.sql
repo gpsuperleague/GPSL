@@ -114,6 +114,8 @@ DECLARE
   v_mp int;
   v_pts int;
   v_gd int;
+  v_avg_att numeric;
+  v_home_games int;
   v_monthly jsonb := '[]'::jsonb;
   v_seasons jsonb := '[]'::jsonb;
   v_past jsonb := '[]'::jsonb;
@@ -232,6 +234,24 @@ BEGIN
             AND f.away_club_short_name = v_club
         ) x;
 
+        -- Avg home attendance for league games in this GPSL month (capacity × attendance_rate)
+        SELECT
+          round(avg(
+            coalesce((l.metadata ->> 'capacity')::numeric, 0)
+            * coalesce((l.metadata ->> 'attendance_rate')::numeric, 0)
+          ))::numeric,
+          count(*)::int
+        INTO v_avg_att, v_home_games
+        FROM public.competition_finance_ledger l
+        JOIN public.competition_fixtures f ON f.id = l.fixture_id
+        WHERE l.season_id = v_season_id
+          AND l.club_short_name = v_club
+          AND l.entry_type = 'gate_league_home'
+          AND f.competition_type = 'league'
+          AND lower(f.gpsl_month) = v_month
+          AND coalesce((l.metadata ->> 'capacity')::numeric, 0) > 0
+          AND coalesce((l.metadata ->> 'attendance_rate')::numeric, 0) > 0;
+
         v_monthly := v_monthly || jsonb_build_array(
           jsonb_build_object(
             'gpsl_month', v_month,
@@ -239,7 +259,9 @@ BEGIN
             'position', v_pos,
             'mp', v_mp,
             'pts', v_pts,
-            'gd', v_gd
+            'gd', v_gd,
+            'avg_home_attendance', v_avg_att,
+            'home_games', coalesce(v_home_games, 0)
           )
         );
       END LOOP;
@@ -339,4 +361,4 @@ GRANT EXECUTE ON FUNCTION public.competition_club_position_charts(text) TO authe
 GRANT EXECUTE ON FUNCTION public.competition_club_position_charts(text) TO anon;
 
 COMMENT ON FUNCTION public.competition_club_position_charts(text) IS
-  'Club history charts: league position by GPSL month (current season) and final positions for current + past 9 seasons.';
+  'Club history charts: league position by GPSL month (current season, with avg home attendance) and final positions for current + past 9 seasons.';

@@ -110,6 +110,11 @@ function chartDefaults() {
   };
 }
 
+function formatAttendance(n) {
+  if (n == null || !Number.isFinite(Number(n))) return null;
+  return Math.round(Number(n)).toLocaleString("en-GB");
+}
+
 function renderMonthlyChart(data) {
   const canvas = document.getElementById("monthlyPositionChart");
   const empty = document.getElementById("monthlyPositionEmpty");
@@ -130,10 +135,17 @@ function renderMonthlyChart(data) {
 
   const labels = rows.map((r) => r.month_label || r.gpsl_month);
   const positions = rows.map((r) => Number(r.position));
+  const attendance = rows.map((r) => {
+    const n = Number(r.avg_home_attendance);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  });
   const maxPos = Math.max(
     Number(data.division_size) || 0,
     ...positions.filter((n) => Number.isFinite(n))
   );
+  const attValues = attendance.filter((n) => n != null);
+  const maxAtt = attValues.length ? Math.max(...attValues) : 0;
+  const hasAttendance = attValues.length > 0;
 
   new Chart(canvas, {
     type: "line",
@@ -143,6 +155,7 @@ function renderMonthlyChart(data) {
         {
           label: "Position",
           data: positions,
+          yAxisID: "y",
           borderColor: "#ff9900",
           backgroundColor: "rgba(255,153,0,0.12)",
           pointBackgroundColor: "#ffcc66",
@@ -152,22 +165,56 @@ function renderMonthlyChart(data) {
           tension: 0.25,
           fill: true,
           spanGaps: true,
+          order: 1,
         },
+        ...(hasAttendance
+          ? [
+              {
+                label: "Avg home attendance",
+                data: attendance,
+                yAxisID: "yAtt",
+                borderColor: "rgba(180, 190, 210, 0.55)",
+                backgroundColor: "rgba(140, 155, 180, 0.18)",
+                pointBackgroundColor: "rgba(200, 210, 225, 0.7)",
+                pointBorderColor: "rgba(160, 170, 190, 0.6)",
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                tension: 0.3,
+                fill: true,
+                spanGaps: true,
+                borderWidth: 1.5,
+                order: 2,
+              },
+            ]
+          : []),
       ],
     },
     options: {
       ...chartDefaults(),
       plugins: {
         ...chartDefaults().plugins,
+        legend: {
+          display: hasAttendance,
+          labels: { color: "#bbb", boxWidth: 12 },
+        },
         tooltip: {
           ...chartDefaults().plugins.tooltip,
           callbacks: {
             label(ctx) {
               const row = rows[ctx.dataIndex];
+              if (ctx.dataset.yAxisID === "yAtt") {
+                const att = formatAttendance(row?.avg_home_attendance);
+                const games = row?.home_games;
+                const bits = [att ? `Avg home att. ${att}` : "No attendance data"];
+                if (games != null) bits.push(`${games} home game${games === 1 ? "" : "s"}`);
+                return bits.join(" · ");
+              }
               const pos = row?.position ?? ctx.parsed.y;
               const bits = [`${pos}${ordinalSuffix(pos)}`];
               if (row?.pts != null) bits.push(`${row.pts} pts`);
               if (row?.mp != null) bits.push(`${row.mp} played`);
+              const att = formatAttendance(row?.avg_home_attendance);
+              if (att) bits.push(`att. ${att}`);
               return bits.join(" · ");
             },
           },
@@ -179,6 +226,28 @@ function renderMonthlyChart(data) {
           grid: { color: "rgba(255,255,255,0.04)" },
         },
         y: positionYScale(maxPos),
+        ...(hasAttendance
+          ? {
+              yAtt: {
+                position: "right",
+                beginAtZero: true,
+                suggestedMax: maxAtt > 0 ? maxAtt * 1.08 : undefined,
+                ticks: {
+                  color: "rgba(170, 180, 200, 0.85)",
+                  callback(v) {
+                    return Number(v).toLocaleString("en-GB");
+                  },
+                },
+                grid: { drawOnChartArea: false },
+                title: {
+                  display: true,
+                  text: "Avg home attendance",
+                  color: "rgba(170, 180, 200, 0.75)",
+                  font: { size: 11 },
+                },
+              },
+            }
+          : {}),
       },
     },
   });

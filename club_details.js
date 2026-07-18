@@ -43,6 +43,7 @@ const MAX_OWNER_TAG_LEN = 64;
 
 let cachedKitRow = null;
 let themeDraft = { ...GPSL_THEME_DEFAULTS };
+let pageClubShort = null;
 
 const CLUB_SELECT_BASE =
   "ShortName, Club, Stadium, Capacity, Nation";
@@ -531,11 +532,23 @@ async function isGpslJanuary() {
   return String(status.active_gpsl_month || "").toLowerCase() === "january";
 }
 
+function formatDealRecord(data) {
+  const hits = Number(data?.deal_target_hits);
+  const misses = Number(data?.deal_target_misses);
+  if (!Number.isFinite(hits) && !Number.isFinite(misses)) return null;
+  const h = Number.isFinite(hits) ? hits : 0;
+  const m = Number.isFinite(misses) ? misses : 0;
+  if (h + m <= 0) return "No completed seasons on this deal yet";
+  return `${h} hit · ${m} miss (this deal)`;
+}
+
 async function loadManagerSection(clubShortName) {
   const statusEl = document.getElementById("managerStatus");
   const hintEl = document.getElementById("managerHint");
   const listBtn = document.getElementById("listManagerBtn");
   const sackBtn = document.getElementById("sackManagerBtn");
+  const renewBtn = document.getElementById("renewManagerBtn");
+  const declineBtn = document.getElementById("declineRenewManagerBtn");
 
   const { data, error } = await supabase
     .from("manager_club_status_public")
@@ -547,7 +560,7 @@ async function loadManagerSection(clubShortName) {
     const msg = String(error.message || "");
     if (statusEl) {
       statusEl.textContent = msg.includes("manager_club_status")
-        ? "Run supabase/sql/patches/managers_system.sql to enable managers."
+        ? "Run supabase/sql/patches/managers_system.sql (and manager_two_season_deal_eval.sql) to enable managers."
         : msg;
     }
     return;
@@ -560,29 +573,49 @@ async function loadManagerSection(clubShortName) {
     }
     setBtnVisible(listBtn, false);
     setBtnVisible(sackBtn, false);
+    setBtnVisible(renewBtn, false);
+    setBtnVisible(declineBtn, false);
     return;
   }
+
+  const pendingRenewal = Boolean(data.pending_owner_renewal);
+  const dealRecord = formatDealRecord(data);
 
   if (statusEl) {
     statusEl.innerHTML = `
       <dl style="display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;margin:0;font-size:14px;">
         <dt>Manager</dt><dd><b>${data.manager_name}</b> (rating ${data.manager_rating})</dd>
         <dt>Market value</dt><dd>${formatMoney(Number(data.market_value || 0))}</dd>
-        <dt>Contract</dt><dd>${data.contract_seasons_remaining ?? 0} season(s) remaining</dd>
+        <dt>Contract</dt><dd>${
+          pendingRenewal
+            ? "Deal complete — renewal decision required"
+            : `${data.contract_seasons_remaining ?? 0} season(s) remaining`
+        }</dd>
         <dt>Weekly wage</dt><dd>${formatMoney(Number(data.weekly_wage || 0))}</dd>
         <dt>Division</dt><dd>${formatDivisionLabel(data.division)}</dd>
         <dt>Target</dt><dd>${formatManagerTarget(data)}</dd>
         <dt>Progress</dt><dd>${formatTargetProgress(data)}</dd>
+        ${dealRecord ? `<dt>Deal record</dt><dd>${dealRecord}</dd>` : ""}
         ${formatChartBands(data) ? `<dt>Impact chart</dt><dd>${formatChartBands(data)}</dd>` : ""}
         <dt>Sack allowance</dt><dd>${data.manager_sacks_remaining ? "Available this season" : "Used"}</dd>
       </dl>
+      ${
+        pendingRenewal
+          ? `<p class="expectation-note" style="margin-top:10px;">They hit their target in at least one season of the deal. Renew for 2 seasons, or let them leave (no rehire ban).</p>`
+          : ""
+      }
     `;
   }
 
   const januaryWindow = await isGpslJanuary();
 
-  setBtnVisible(listBtn, januaryWindow);
-  setBtnVisible(sackBtn, januaryWindow && Boolean(data.manager_sacks_remaining));
+  setBtnVisible(renewBtn, pendingRenewal);
+  setBtnVisible(declineBtn, pendingRenewal);
+  setBtnVisible(listBtn, januaryWindow && !pendingRenewal);
+  setBtnVisible(
+    sackBtn,
+    januaryWindow && !pendingRenewal && Boolean(data.manager_sacks_remaining)
+  );
 
   if (listBtn) listBtn.dataset.managerId = String(data.manager_id);
   if (sackBtn) {
@@ -591,9 +624,15 @@ async function loadManagerSection(clubShortName) {
   }
 
   if (hintEl) {
-    hintEl.textContent = januaryWindow
-      ? ""
-      : "List for transfer and sack are available in January only.";
+    if (pendingRenewal) {
+      hintEl.textContent =
+        "Renewal available — decide below (also shown on Squad).";
+    } else if (!januaryWindow) {
+      hintEl.textContent =
+        "List for transfer and sack are available in January only.";
+    } else {
+      hintEl.textContent = "";
+    }
   }
 }
 
@@ -1004,6 +1043,8 @@ async function initClubDetailsPage() {
     divEl.textContent = "—";
   }
 
+  pageClubShort = club.ShortName;
+
   await loadChallengeProgress(club.ShortName);
   await Promise.all([
     loadExpectationSection(club.ShortName),
@@ -1279,10 +1320,70 @@ async function loadDashboardThemeSection(clubShort) {
   }
 }
 
+async function decideManagerRenewal(renew, hintEl) {
+  const { error } = await supabase.rpc("manager_owner_renew_decision", {
+    p_renew: Boolean(renew),
+  });
+  if (error) {
+    if (hintEl) hintEl.textContent = error.message;
+    return false;
+  }
+  if (hintEl) {
+    hintEl.textContent = renew
+      ? "Manager renewed for 2 seasons."
+      : "Manager left the club.";
+  }
+  return true;
+}
+
 function wireManagerActions() {
   const listBtn = document.getElementById("listManagerBtn");
   const sackBtn = document.getElementById("sackManagerBtn");
+  const renewBtn = document.getElementById("renewManagerBtn");
+  const declineBtn = document.getElementById("declineRenewManagerBtn");
   const hintEl = document.getElementById("managerHint");
+
+  if (renewBtn && !renewBtn.dataset.wired) {
+    renewBtn.dataset.wired = "1";
+    renewBtn.addEventListener("click", async () => {
+      if (!confirm("Renew manager for another 2-season deal?")) return;
+      renewBtn.disabled = true;
+      if (declineBtn) declineBtn.disabled = true;
+      const ok = await decideManagerRenewal(true, hintEl);
+      renewBtn.disabled = false;
+      if (declineBtn) declineBtn.disabled = false;
+      if (ok && pageClubShort) {
+        await Promise.all([
+          loadExpectationSection(pageClubShort),
+          loadManagerSection(pageClubShort),
+        ]);
+      }
+    });
+  }
+
+  if (declineBtn && !declineBtn.dataset.wired) {
+    declineBtn.dataset.wired = "1";
+    declineBtn.addEventListener("click", async () => {
+      if (
+        !confirm(
+          "Let this manager leave? They will become a free agent (no market-value payout, no rehire ban)."
+        )
+      ) {
+        return;
+      }
+      declineBtn.disabled = true;
+      if (renewBtn) renewBtn.disabled = true;
+      const ok = await decideManagerRenewal(false, hintEl);
+      declineBtn.disabled = false;
+      if (renewBtn) renewBtn.disabled = false;
+      if (ok && pageClubShort) {
+        await Promise.all([
+          loadExpectationSection(pageClubShort),
+          loadManagerSection(pageClubShort),
+        ]);
+      }
+    });
+  }
 
   if (listBtn && !listBtn.dataset.wired) {
     listBtn.dataset.wired = "1";
@@ -1299,7 +1400,7 @@ function wireManagerActions() {
         return;
       }
       if (hintEl) hintEl.textContent = "Manager listed — see Manager Transfer Market.";
-      await refreshNavClubListingState(clubShort);
+      if (pageClubShort) await refreshNavClubListingState(pageClubShort);
       refreshNavListingIndicators();
     });
   }
@@ -1314,7 +1415,7 @@ function wireManagerActions() {
       ) {
         return;
       }
-      const clubShort = sackBtn.dataset.clubShort;
+      const short = sackBtn.dataset.clubShort;
       sackBtn.disabled = true;
       const { error } = await supabase.rpc("manager_sack");
       sackBtn.disabled = false;
@@ -1326,10 +1427,10 @@ function wireManagerActions() {
         hintEl.textContent =
           "Manager sacked. You cannot re-sign them until next season.";
       }
-      if (clubShort) {
+      if (short) {
         await Promise.all([
-          loadExpectationSection(clubShort),
-          loadManagerSection(clubShort),
+          loadExpectationSection(short),
+          loadManagerSection(short),
         ]);
       }
     });
