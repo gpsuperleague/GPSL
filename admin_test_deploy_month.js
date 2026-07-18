@@ -13,6 +13,7 @@ const GPSL_MONTHS = [
   { value: "march", label: "March" },
   { value: "april", label: "April" },
   { value: "may", label: "May" },
+  { value: "playoffs", label: "Playoffs" },
 ];
 
 function populateMonthSelect() {
