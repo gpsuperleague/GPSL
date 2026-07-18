@@ -165,7 +165,18 @@ export const ADMIN_MAIN_NAV = [
       group("February", []),
       group("March", []),
       group("April", []),
-      group("May", []),
+      group("May", [
+        L("Lock May (End Month Early)", "admin_test_end_month.html"),
+        L("Retry May month-lock jobs if timed out", "admin_test_end_month.html"),
+        L("Republish GPSL Sport (May)", "admin_gpsl_sport.html"),
+        L("Generate playoffs", "admin_fixtures-playoffs.html"),
+      ]),
+      group("Playoffs", [
+        L("Complete playoff fixtures", "admin_test_deploy_month.html"),
+        L("Apply playoff movements", "admin_fixtures-playoffs.html"),
+        L("Push Discord queue (results / news)", "admin_discord_news.html"),
+        L("Lock Playoffs month (End Month Early)", "admin_test_end_month.html"),
+      ]),
     ],
   },
   {
@@ -173,8 +184,11 @@ export const ADMIN_MAIN_NAV = [
     label: "Close Season",
     entries: [
       link("Setup Playoffs", "admin_fixtures-playoffs.html"),
+      link("Apply playoff movements", "admin_fixtures-playoffs.html"),
       link("Mid-Season Challenge payouts", "admin_challenges.html"),
+      link("Pay government subsidies", "admin_gov_subsidies.html"),
       link("Archive season stats & awards", "admin_season.html", "wf-close-season"),
+      link("Process manager contracts (season end)", "admin_season.html", "wf-close-season"),
       link("Charge Emergency Tax", "admin_emergency_tax.html"),
       link("Close Finances", "admin_wage_bills.html"),
     ],
@@ -184,6 +198,7 @@ export const ADMIN_MAIN_NAV = [
     label: "End Of Season",
     entries: [
       link("End current season {summer break}", "admin_season.html", "wf-close-season"),
+      link("Start Season Break workflow", "admin_season_break.html"),
     ],
   },
 ];

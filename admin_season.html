@@ -122,11 +122,20 @@
         <section id="wf-close-season" class="admin-season-panel" data-panel="wf-close-season" hidden>
           <div class="card">
             <h2>Close season</h2>
+            <p class="note" style="margin-top:0;">
+              After playoffs: apply movements on <a href="admin_fixtures-playoffs.html" style="color:#ff9900;">Playoff fixtures</a>,
+              pay mid-season challenges &amp; government subsidies, then archive → manager contracts → taxes/wages → end season.
+            </p>
             <div class="row">
               <button id="compArchiveSeasonBtn" class="button" style="background:#336699;">Archive season stats &amp; awards</button>
             </div>
-            <p class="note">Snapshots league tables, cup winners, player stats &amp; Ballon d'Or for <b>Club History</b>. Safe to re-run. Run <code>competition_history.sql</code> first.</p>
+            <p class="note">Snapshots league tables, cup winners, player stats &amp; Ballon d'Or for <b>Club History</b>. Also runs big/medium club underperformance transfer requests. Safe to re-run. Run <code>competition_history.sql</code> first.</p>
             <div id="compArchiveStatus" class="status-line"></div>
+            <div class="row" style="margin-top:16px;">
+              <button id="compManagerSeasonEndBtn" class="button" style="background:#664422;">Process manager contracts (season end)</button>
+            </div>
+            <p class="note">Runs 2-season deal evaluation (tick / renewal available / release + rehire ban). Requires <code>manager_two_season_deal_eval.sql</code>.</p>
+            <div id="compManagerSeasonEndStatus" class="status-line"></div>
             <div class="row" style="margin-top:16px;">
               <button id="compEndSeasonBtn" class="button" style="background:#990000;">End current season (Summer Break)</button>
             </div>
@@ -144,6 +153,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_season.js?v=20260618-start-season-fix"></script>
+  <script type="module" src="admin_season.js?v=20260718-mgr-eos"></script>
 </body>
 </html>

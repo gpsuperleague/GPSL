@@ -3,10 +3,13 @@
 -- Safe re-run. Updates existing ties + future generate_playoffs inserts.
 -- =============================================================================
 
+-- round_no / match_no on competition_playoff_ties are integer (not smallint)
+DROP FUNCTION IF EXISTS public.competition_playoff_label_for(text, smallint, smallint);
+
 CREATE OR REPLACE FUNCTION public.competition_playoff_label_for(
   p_bracket text,
-  p_round_no smallint,
-  p_match_no smallint
+  p_round_no integer,
+  p_match_no integer
 )
 RETURNS text
 LANGUAGE sql
@@ -47,7 +50,7 @@ AS $$
   END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.competition_playoff_label_for(text, smallint, smallint)
+GRANT EXECUTE ON FUNCTION public.competition_playoff_label_for(text, integer, integer)
   TO authenticated, anon, service_role;
 
 -- Keep labels consistent on insert / bracket changes (future generate_playoffs)

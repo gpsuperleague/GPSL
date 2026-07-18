@@ -103,6 +103,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compCreateNextBtn").onclick = createNextSeason;
   document.getElementById("compEndSeasonBtn").onclick = endCurrentSeason;
   document.getElementById("compArchiveSeasonBtn").onclick = archiveSeasonStats;
+  document.getElementById("compManagerSeasonEndBtn").onclick = processManagerSeasonEnd;
   document.getElementById("compSetupSeasonSelect").onchange = onCompSeasonSelected;
   document.getElementById("compSaveAssignBtn").onclick = saveCompetitionAssignments;
   document.getElementById("compAssignBody").addEventListener("change", (e) => {
@@ -242,6 +243,51 @@ async function archiveSeasonStats() {
     "compArchiveStatus",
     `✅ Archived ${data?.season_label || "season"} — ${data?.clubs_archived ?? 0} clubs, ${data?.players_archived ?? 0} players, ${data?.cups_archived ?? 0} cups.${rankNote}`,
     !rankNote.includes("not updated")
+  );
+}
+
+async function processManagerSeasonEnd() {
+  if (
+    !confirm(
+      "Process manager contracts for season end?\n\nTicks mid-deal seasons; at deal end offers owner renewal if they hit ≥1 target, or releases for MV with a 2-season rehire ban if they missed both."
+    )
+  ) {
+    return;
+  }
+
+  setStatus("compManagerSeasonEndStatus", "Processing managers…");
+  let { data, error } = await supabase.rpc("manager_process_season_end_with_inbox");
+  if (error?.message?.includes("manager_process_season_end_with_inbox")) {
+    ({ data, error } = await supabase.rpc("manager_process_season_end"));
+  }
+
+  if (error) {
+    setStatus(
+      "compManagerSeasonEndStatus",
+      error.message.includes("manager_process_season_end")
+        ? "❌ Run manager_two_season_deal_eval.sql (and owner_inbox_notifications.sql) in Supabase, then retry."
+        : "❌ " + error.message,
+      false
+    );
+    return;
+  }
+
+  const results = Array.isArray(data?.results) ? data.results : [];
+  const counts = results.reduce((acc, row) => {
+    const action = row?.action || "other";
+    acc[action] = (acc[action] || 0) + 1;
+    return acc;
+  }, {});
+  const summary = Object.keys(counts).length
+    ? Object.entries(counts)
+        .map(([k, n]) => `${n}× ${k}`)
+        .join(", ")
+    : "no contracted managers processed";
+
+  setStatus(
+    "compManagerSeasonEndStatus",
+    `✅ Manager season-end done — ${summary}.`,
+    true
   );
 }
 
