@@ -66,12 +66,18 @@ function renderHeader(profile, totals) {
   const img = document.getElementById("ownerBadge");
   const fallback = document.getElementById("ownerBadgeFallback");
   const url = badgePublicUrl(profile.badge_path);
-  if (url) {
+  if (url && profile.badge_path) {
     img.src = url;
     img.alt = tag;
     img.hidden = false;
     fallback.hidden = true;
+    img.onerror = () => {
+      img.hidden = true;
+      fallback.hidden = false;
+      fallback.textContent = String(tag).slice(0, 2).toUpperCase();
+    };
   } else {
+    img.removeAttribute("src");
     img.hidden = true;
     fallback.hidden = false;
     fallback.textContent = String(tag).slice(0, 2).toUpperCase();
