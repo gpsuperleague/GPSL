@@ -2,7 +2,8 @@
 -- GPSL — Season challenges (admin targets, stat triggers, instant award)
 -- Run once after competition_tv_revenue.sql (player stats + ledger types).
 -- =============================================================================
--- Start window: Aug–Dec (complete by mid-season). Mid window: Jan–May (EOS).
+-- Start window: Aug–Dec (complete by mid-season). Mid window: Jan–May
+-- (stays awardable through Playoffs week; stats still count Jan–May only).
 -- Each club earns prize_challenge when a target is met; first to finish all
 -- challenges in a window earns the period bonus (global_settings).
 -- =============================================================================
@@ -437,6 +438,8 @@ DECLARE
   v_active text;
   v_active_sort int;
   v_deadline_sort int;
+  v_deadline text := lower(btrim(coalesce(p_gpsl_month_to, '')));
+  v_phase text := lower(btrim(coalesce(p_window_phase, '')));
 BEGIN
   v_active := public.competition_active_gpsl_month(p_season_id, now());
   v_deadline_sort := public.competition_gpsl_month_sort(p_gpsl_month_to);
@@ -445,7 +448,22 @@ BEGIN
     RETURN true;
   END IF;
 
+  v_active := lower(btrim(v_active));
+
+  -- Mid-season (deadline May): remain open through Playoffs week
+  IF v_active = 'playoffs'
+     AND (
+       v_phase = 'mid'
+       OR v_deadline = 'may'
+     ) THEN
+    RETURN true;
+  END IF;
+
   v_active_sort := public.competition_gpsl_month_sort(v_active);
+  IF v_active_sort IS NULL OR v_deadline_sort IS NULL THEN
+    RETURN false;
+  END IF;
+
   RETURN v_active_sort <= v_deadline_sort;
 END;
 $function$;
