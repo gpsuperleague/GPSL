@@ -325,6 +325,50 @@ async function endCurrentSeason() {
   await refreshCompCalendarAdmin();
 }
 
+async function loadSeedFromSeasonOptions(targetSeasonId) {
+  const select = document.getElementById("compSeedFromSeasonSelect");
+  if (!select) return;
+
+  const prevValue = select.value;
+  select.innerHTML = `<option value="">Auto (first with movements / finished playoffs)</option>`;
+
+  const { data: seasons, error } = await supabase
+    .from("competition_seasons")
+    .select("id, label, status")
+    .order("id", { ascending: true });
+
+  if (error || !seasons?.length) return;
+
+  const { data: moveRows } = await supabase
+    .from("competition_season_movements")
+    .select("season_id");
+  const withMoves = new Set((moveRows || []).map((r) => r.season_id));
+
+  let preferred = "";
+  for (const s of seasons) {
+    if (targetSeasonId && s.id === targetSeasonId) continue;
+    const opt = document.createElement("option");
+    opt.value = String(s.id);
+    const tag = withMoves.has(s.id) ? " · has movements" : "";
+    opt.textContent = `${s.label} (id ${s.id}, ${s.status})${tag}`;
+    select.appendChild(opt);
+    if (!preferred && withMoves.has(s.id)) preferred = String(s.id);
+    // Prefer explicitly labelled Season 1 when present and no movements elsewhere yet
+    if (
+      !preferred &&
+      /^season\s*1$/i.test(String(s.label || "").trim())
+    ) {
+      preferred = String(s.id);
+    }
+  }
+
+  if (prevValue && [...select.options].some((o) => o.value === prevValue)) {
+    select.value = prevValue;
+  } else if (preferred) {
+    select.value = preferred;
+  }
+}
+
 async function refreshCompetitionAdmin() {
   const active = await loadCurrentSeason(supabase);
   const summary = document.getElementById("compActiveSummary");
@@ -345,6 +389,7 @@ async function refreshCompetitionAdmin() {
     renderCompAssignTable();
     updateCompSetupCounts();
     startBtn.style.display = "none";
+    await loadSeedFromSeasonOptions(null);
     return;
   }
 
@@ -357,6 +402,7 @@ async function refreshCompetitionAdmin() {
 
   compSelectedSeasonId = setupSeasons[0].id;
   select.value = String(compSelectedSeasonId);
+  await loadSeedFromSeasonOptions(compSelectedSeasonId);
   await loadCompSeasonData(compSelectedSeasonId);
   await refreshCompCalendarForSeason(compSelectedSeasonId);
 }
@@ -365,6 +411,7 @@ async function onCompSeasonSelected() {
   const val = document.getElementById("compSetupSeasonSelect").value;
   compSelectedSeasonId = val ? Number(val) : null;
   if (compSelectedSeasonId) {
+    await loadSeedFromSeasonOptions(compSelectedSeasonId);
     await loadCompSeasonData(compSelectedSeasonId);
     await refreshCompCalendarForSeason(compSelectedSeasonId);
   }
@@ -466,18 +513,28 @@ async function seedDivisionsFromMovements() {
     setCompStatus("Select a pre-season year.", false);
     return;
   }
+
+  const fromSelect = document.getElementById("compSeedFromSeasonSelect");
+  const fromVal = fromSelect?.value ? Number(fromSelect.value) : null;
+  const fromLabel = fromVal
+    ? fromSelect.options[fromSelect.selectedIndex]?.textContent || `id ${fromVal}`
+    : "auto-detected prior season";
+
   if (
     !confirm(
-      "Seed SuperLeague (20) and Championship pool (40) from the previous season’s promotions, relegations and playoff results?\n\nRequires Apply movements on the previous season. Overwrites current SL / pool / A–B assignments on this pre-season."
+      `Seed SuperLeague (20) and Championship pool (40) from ${fromLabel}?\n\nUses that season’s promotions, relegations and playoff results (applies movements if needed). Overwrites current SL / pool / A–B on this pre-season.`
     )
   ) {
     return;
   }
 
-  setCompStatus("Seeding from previous movements…");
+  setCompStatus("Seeding from source season movements…");
+  const args = { p_season_id: compSelectedSeasonId };
+  if (fromVal) args.p_from_season_id = fromVal;
+
   const { data, error } = await supabase.rpc(
     "admin_competition_seed_divisions_from_movements",
-    { p_season_id: compSelectedSeasonId }
+    args
   );
 
   if (error) {
@@ -486,9 +543,13 @@ async function seedDivisionsFromMovements() {
   }
 
   const prev = data?.previous_season_label || data?.previous_season_id || "?";
+  const appliedNote = data?.movements_applied_now
+    ? " (movements applied from playoffs)"
+    : "";
   setCompStatus(
-    `✅ Seeded from ${prev} — SL ${data?.superleague ?? 20}, pool ${data?.championship_pool ?? 40}. Draw A/B next.`
+    `✅ Seeded from ${prev}${appliedNote} — SL ${data?.superleague ?? 20}, pool ${data?.championship_pool ?? 40}. Draw A/B next.`
   );
+  await loadSeedFromSeasonOptions(compSelectedSeasonId);
   await loadCompSeasonData(compSelectedSeasonId);
 }
 
