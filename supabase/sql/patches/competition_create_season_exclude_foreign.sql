@@ -51,6 +51,7 @@ DECLARE
   v_label text := trim(p_label);
   v_season_id bigint;
   v_club_count bigint;
+  v_prev bigint;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -74,6 +75,27 @@ BEGIN
 
   IF v_club_count <> 60 THEN
     RAISE EXCEPTION 'Expected 60 clubs, found %', v_club_count;
+  END IF;
+
+  IF to_regprocedure('public.admin_gpdb_copy_season_exclusions(bigint, bigint)') IS NOT NULL THEN
+    SELECT s.id INTO v_prev
+    FROM public.competition_seasons s
+    WHERE s.id < v_season_id
+    ORDER BY s.id DESC
+    LIMIT 1;
+
+    IF v_prev IS NOT NULL
+       AND (
+         EXISTS (
+           SELECT 1 FROM public.gpdb_season_excluded_players ep WHERE ep.season_id = v_prev
+         )
+         OR EXISTS (
+           SELECT 1 FROM public.gpdb_season_excluded_nations en WHERE en.season_id = v_prev
+         )
+       )
+    THEN
+      PERFORM public.admin_gpdb_copy_season_exclusions(v_prev, v_season_id);
+    END IF;
   END IF;
 
   RETURN v_season_id;

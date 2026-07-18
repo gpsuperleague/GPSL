@@ -34,8 +34,10 @@
         · Season Break tool to remove <b>players</b> or <b>nations</b> from GPSL for a season
         (e.g. misconduct, conflict zones). Excluded players are hidden from GPDB and cannot be
         signed, drafted, or called up. Excluded nations cannot be claimed and their players are
-        treated as excluded. Requires
-        <code>patches/gpdb_season_exclusions.sql</code>.
+        treated as excluded. Lists are per season — creating a new season auto-copies the previous
+        season’s exclusions. You can also copy manually below. Requires
+        <code>patches/gpdb_season_exclusions.sql</code> and
+        <code>patches/gpdb_season_exclusions_persist.sql</code>.
       </p>
 
       <div class="card">
@@ -46,6 +48,15 @@
             <select id="seasonSelect"></select>
           </label>
           <button type="button" class="button" id="reloadBtn">Reload lists</button>
+        </div>
+        <div class="excl-search" style="margin-top:10px;">
+          <label>
+            Copy exclusions from
+            <select id="copyFromSelect"></select>
+          </label>
+          <button type="button" class="button secondary" id="copyExclusionsBtn">
+            Copy into selected season
+          </button>
         </div>
         <p class="muted" id="seasonHint">Uses the current competition season by default.</p>
         <div id="listStatus" class="status-line"></div>
@@ -108,6 +119,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_exclusions.js"></script>
+  <script type="module" src="admin_gpdb_exclusions.js?v=20260718-persist"></script>
 </body>
 </html>

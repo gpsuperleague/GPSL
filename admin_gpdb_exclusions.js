@@ -19,6 +19,28 @@ function seasonId() {
   return Number.isFinite(v) ? v : selectedSeasonId;
 }
 
+function seasonOptionHtml(s) {
+  const tag = s.is_current ? " (current)" : ` (${s.status || ""})`;
+  return `<option value="${s.id}">${escapeHtml(s.label || `Season ${s.id}`)}${tag}</option>`;
+}
+
+function syncCopyFromSelect() {
+  const copySel = document.getElementById("copyFromSelect");
+  const target = seasonId();
+  if (!copySel) return;
+  const prev = copySel.value;
+  const others = seasons.filter((s) => Number(s.id) !== Number(target));
+  copySel.innerHTML =
+    `<option value="">Select season…</option>` +
+    others.map(seasonOptionHtml).join("");
+  if (prev && others.some((s) => String(s.id) === prev)) {
+    copySel.value = prev;
+  } else {
+    const prior = others.find((s) => Number(s.id) < Number(target)) || others[0];
+    if (prior) copySel.value = String(prior.id);
+  }
+}
+
 async function loadSeasons() {
   const { data, error } = await supabase
     .from("competition_seasons")
@@ -28,17 +50,60 @@ async function loadSeasons() {
   seasons = data || [];
   const sel = document.getElementById("seasonSelect");
   if (!sel) return;
-  sel.innerHTML = seasons
-    .map((s) => {
-      const tag = s.is_current ? " (current)" : ` (${s.status || ""})`;
-      return `<option value="${s.id}">${escapeHtml(s.label || `Season ${s.id}`)}${tag}</option>`;
-    })
-    .join("");
+  sel.innerHTML = seasons.map(seasonOptionHtml).join("");
   const current = seasons.find((s) => s.is_current) || seasons[0];
   if (current) {
     sel.value = String(current.id);
     selectedSeasonId = current.id;
   }
+  syncCopyFromSelect();
+}
+
+async function copyExclusionsFromSeason() {
+  const toId = seasonId();
+  const fromRaw = document.getElementById("copyFromSelect")?.value;
+  const fromId = fromRaw ? Number(fromRaw) : null;
+  if (!toId) {
+    setStatus("listStatus", "Select a target season first.", false);
+    return;
+  }
+  if (!fromId || !Number.isFinite(fromId)) {
+    setStatus("listStatus", "Choose a season to copy from.", false);
+    return;
+  }
+  if (fromId === toId) {
+    setStatus("listStatus", "Source and target season are the same.", false);
+    return;
+  }
+  if (
+    !confirm(
+      `Copy all excluded players and nations from season ${fromId} into season ${toId}?\n\nExisting rows on the target are kept / updated.`
+    )
+  ) {
+    return;
+  }
+
+  setStatus("listStatus", "Copying exclusions…");
+  const { data, error } = await supabase.rpc("admin_gpdb_copy_season_exclusions", {
+    p_from_season_id: fromId,
+    p_to_season_id: toId,
+  });
+  if (error) {
+    setStatus(
+      "listStatus",
+      error.message.includes("admin_gpdb_copy_season_exclusions")
+        ? "Run patches/gpdb_season_exclusions_persist.sql first."
+        : error.message,
+      false
+    );
+    return;
+  }
+  await reloadLists();
+  setStatus(
+    "listStatus",
+    `✅ Copied ${data?.players_copied ?? 0} player(s) and ${data?.nations_copied ?? 0} nation(s) from season ${fromId} → ${toId}.`,
+    true
+  );
 }
 
 async function loadNations() {
@@ -261,7 +326,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   document.getElementById("reloadBtn")?.addEventListener("click", () => reloadLists());
-  document.getElementById("seasonSelect")?.addEventListener("change", () => reloadLists());
+  document.getElementById("seasonSelect")?.addEventListener("change", () => {
+    syncCopyFromSelect();
+    reloadLists();
+  });
+  document.getElementById("copyExclusionsBtn")?.addEventListener("click", () =>
+    copyExclusionsFromSeason()
+  );
   document.getElementById("playerSearchBtn")?.addEventListener("click", () => searchPlayers());
   document.getElementById("playerQuery")?.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
