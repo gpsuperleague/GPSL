@@ -67,6 +67,14 @@
       margin: 0 0 6px;
     }
 
+    .club-header-meta a.gpsl-link {
+      color: #ff9900;
+      text-decoration: none;
+    }
+    .club-header-meta a.gpsl-link:hover {
+      text-decoration: underline;
+    }
+
     h2.section-title {
       margin-left: 20px;
       color: #ff9900;
@@ -619,6 +627,15 @@
 
       const managerLine = await loadClubManagerLine(club.ShortName);
 
+      const ownerLabel = (club.owner || "").trim();
+      const ownerHtml = club.owner_id
+        ? `<a class="gpsl-link" href="owner_profile.html?owner=${encodeURIComponent(club.owner_id)}">${
+            ownerLabel || "View owner"
+          }</a>`
+        : ownerLabel
+          ? ownerLabel
+          : "<em>Unowned</em>";
+
       document.getElementById("clubHeader").innerHTML = `
         <img src="images/club_badges/${club.ShortName}.png" alt="${club.Club} badge">
         <div class="club-header-meta">
@@ -626,7 +643,7 @@
           <div><strong>Stadium:</strong> ${club.Stadium}</div>
           <div><strong>Capacity:</strong> ${club.Capacity.toLocaleString()}</div>
           <div><strong>Nation:</strong> ${club.Nation}</div>
-          <div><strong>Owner:</strong> ${club.owner ? club.owner : "<em>Unowned</em>"}</div>
+          <div><strong>Owner:</strong> ${ownerHtml}</div>
           ${managerLine}
         </div>
       `;
