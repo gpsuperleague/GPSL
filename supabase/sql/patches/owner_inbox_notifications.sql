@@ -1234,10 +1234,18 @@ DECLARE
   v_div text;
 BEGIN
   FOR v_club IN
-    SELECT a.club_short_name, a.division, a.final_position, a.pts, a.w, a.d, a.l, c."Club" AS club_name
+    SELECT
+      a.club_short_name,
+      a.division,
+      a.final_position,
+      a.pts,
+      a.won AS w,
+      a.drawn AS d,
+      a.lost AS l,
+      c."Club" AS club_name
     FROM public.competition_club_season_archive a
     JOIN public."Clubs" c ON c."ShortName" = a.club_short_name
-    WHERE a.season_id = p_season_id
+  WHERE a.season_id = p_season_id
       AND EXISTS (SELECT 1 FROM public."Clubs" cx WHERE cx."ShortName" = a.club_short_name AND cx.owner_id IS NOT NULL)
   LOOP
     v_award_lines := ARRAY[]::text[];
