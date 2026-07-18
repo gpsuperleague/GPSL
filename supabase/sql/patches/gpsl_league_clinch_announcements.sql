@@ -98,6 +98,9 @@ DECLARE
   v_has_champions boolean;
   v_has_auto_promo boolean;
   v_has_auto_rel boolean;
+  v_div_complete boolean;
+  v_backfill record;
+  v_backfill_n int := 0;
 BEGIN
   -- Bulk admin deploy sets this so May multipass does not re-scan every result
   IF current_setting('gpsl.skip_clinch_scan', true) = 'on' THEN
@@ -144,6 +147,26 @@ BEGIN
     ) THEN
       CONTINUE;
     END IF;
+
+    -- Final table is authoritative once every side has played 38, OR May has locked
+    -- (GPSL league programme ends at May lock even if a fixture was left unplayed).
+    SELECT
+      NOT EXISTS (
+        SELECT 1
+        FROM public.competition_standings_public o
+        WHERE o.season_id = v_season_id
+          AND o.division = v_div
+          AND greatest(0, 38 - coalesce(o.mp, 0)) > 0
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM public.competition_season_calendar c
+        WHERE c.season_id = v_season_id
+          AND c.gpsl_month = 'may'
+          AND c.lock_at IS NOT NULL
+          AND c.lock_at <= now()
+      )
+    INTO v_div_complete;
 
     FOR t IN
       SELECT
@@ -217,24 +240,43 @@ BEGIN
           AND c.clinch_type = 'auto_relegation'
       ) INTO v_has_auto_rel;
 
-      -- 1) Division / league champions (clinched 1st)
-      IF NOT v_has_champions AND v_can_above = 0 THEN
+      -- 1) Division / league champions (clinched 1st, or final table #1 when division complete)
+      -- Note: can_above uses >= pts, so a points-tied 2nd blocks mid-season math; final table catches that.
+      IF NOT v_has_champions
+         AND (
+           v_can_above = 0
+           OR (t.table_position = 1 AND coalesce(v_div_complete, false))
+         ) THEN
         v_clinch_type := 'champions';
         v_tone := 'celebrate';
         IF v_div = 'superleague' THEN
           v_headline := format('🏆 CHAMPIONS — %s are SuperLeague champions!', t.club_name);
-          v_body := format(
-            '%s have mathematically won the SuperLeague with %s points and %s game%s left. No side can catch them.',
-            t.club_name, t.pts::text, v_games_left::text,
-            CASE WHEN v_games_left = 1 THEN '' ELSE 's' END
-          );
+          IF coalesce(v_div_complete, false) OR v_games_left = 0 THEN
+            v_body := format(
+              '%s finish top of the SuperLeague with %s points and are champions.',
+              t.club_name, t.pts::text
+            );
+          ELSE
+            v_body := format(
+              '%s have mathematically won the SuperLeague with %s points and %s game%s left. No side can catch them.',
+              t.club_name, t.pts::text, v_games_left::text,
+              CASE WHEN v_games_left = 1 THEN '' ELSE 's' END
+            );
+          END IF;
         ELSE
           v_headline := format('🏆 CHAMPIONS — %s are %s champions!', t.club_name, v_div_label);
-          v_body := format(
-            '%s have mathematically won %s with %s points and %s game%s left — and sealed automatic promotion to the SuperLeague.',
-            t.club_name, v_div_label, t.pts::text, v_games_left::text,
-            CASE WHEN v_games_left = 1 THEN '' ELSE 's' END
-          );
+          IF coalesce(v_div_complete, false) OR v_games_left = 0 THEN
+            v_body := format(
+              '%s finish top of %s with %s points — champions, with automatic promotion to the SuperLeague.',
+              t.club_name, v_div_label, t.pts::text
+            );
+          ELSE
+            v_body := format(
+              '%s have mathematically won %s with %s points and %s game%s left — and sealed automatic promotion to the SuperLeague.',
+              t.club_name, v_div_label, t.pts::text, v_games_left::text,
+              CASE WHEN v_games_left = 1 THEN '' ELSE 's' END
+            );
+          END IF;
         END IF;
 
       -- 2) Championship automatic promotion (top 2) — skip if already division champions
@@ -425,6 +467,64 @@ BEGIN
     END LOOP;
   END LOOP;
 
+  -- Backfill Discord for clinches recorded earlier without a news queue row
+  FOR v_backfill IN
+    SELECT
+      c.id,
+      c.division,
+      c.club_short_name,
+      c.clinch_type,
+      c.headline,
+      c.body,
+      c.metadata
+    FROM public.competition_league_clinches c
+    WHERE c.season_id = v_season_id
+      AND coalesce((c.metadata->>'silent')::boolean, false) IS NOT TRUE
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.gpsl_discord_feed_queue q
+        WHERE q.dedupe_key =
+          'clinch_news:' || c.season_id::text || ':' || c.division || ':'
+          || c.club_short_name || ':' || c.clinch_type
+      )
+    ORDER BY c.id
+  LOOP
+    BEGIN
+      PERFORM public.gpsl_discord_feed_enqueue(
+        'league_clinch',
+        v_backfill.headline,
+        v_backfill.body,
+        CASE
+          WHEN coalesce(v_backfill.metadata->>'tone', '') = 'celebrate' THEN 16766720
+          ELSE 10038562
+        END,
+        'clinch_news:' || v_season_id::text || ':' || v_backfill.division || ':'
+          || v_backfill.club_short_name || ':' || v_backfill.clinch_type,
+        jsonb_build_object(
+          'channel', 'news',
+          'clinch_type', v_backfill.clinch_type,
+          'division', v_backfill.division,
+          'club_short_name', v_backfill.club_short_name,
+          'tone', coalesce(v_backfill.metadata->>'tone', 'celebrate'),
+          'backfill', true
+        )
+      );
+      v_backfill_n := v_backfill_n + 1;
+      v_announced := v_announced || jsonb_build_array(
+        jsonb_build_object(
+          'id', v_backfill.id,
+          'division', v_backfill.division,
+          'club', v_backfill.club_short_name,
+          'type', v_backfill.clinch_type,
+          'headline', v_backfill.headline,
+          'backfill', true
+        )
+      );
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END;
+  END LOOP;
+
   BEGIN
     PERFORM public.gpsl_discord_feed_request_flush();
   EXCEPTION WHEN OTHERS THEN
@@ -435,6 +535,7 @@ BEGIN
     'ok', true,
     'season_id', v_season_id,
     'new_clinches', v_new,
+    'discord_backfill', v_backfill_n,
     'announced', v_announced
   );
 END;

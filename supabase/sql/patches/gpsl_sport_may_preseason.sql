@@ -341,6 +341,7 @@ DECLARE
   v_lines text[] := ARRAY[]::text[];
   v_promoted text := '';
   v_relegated text := '';
+  v_rel_playoff text := '';
   v_cup_lines text := '';
   v_award_lines text := '';
   v_season_label text;
@@ -393,6 +394,7 @@ BEGIN
       AND x.table_position <= 2;
   END IF;
 
+  -- Auto-relegated = bottom 3 only (18–20). 16th vs 17th is the Playoffs week match.
   SELECT string_agg(
     public.gpsl_sport_club_display_name(x.club_short_name) || ' (' || x.final_position::text || 'th)',
     ', ' ORDER BY x.final_position DESC
@@ -401,7 +403,7 @@ BEGIN
   FROM public.competition_club_season_archive x
   WHERE x.season_id = p_season_id
     AND x.division = 'superleague'
-    AND x.final_position >= 17;
+    AND x.final_position >= 18;
 
   IF v_relegated IS NULL THEN
     SELECT string_agg(
@@ -412,7 +414,29 @@ BEGIN
     FROM public.competition_standings_public x
     WHERE x.season_id = p_season_id
       AND x.division = 'superleague'
-      AND x.table_position >= 17;
+      AND x.table_position >= 18;
+  END IF;
+
+  SELECT string_agg(
+    public.gpsl_sport_club_display_name(x.club_short_name) || ' (' || x.final_position::text || 'th)',
+    ' vs ' ORDER BY x.final_position
+  )
+  INTO v_rel_playoff
+  FROM public.competition_club_season_archive x
+  WHERE x.season_id = p_season_id
+    AND x.division = 'superleague'
+    AND x.final_position IN (16, 17);
+
+  IF v_rel_playoff IS NULL THEN
+    SELECT string_agg(
+      public.gpsl_sport_club_display_name(x.club_short_name) || ' (' || x.table_position::text || 'th)',
+      ' vs ' ORDER BY x.table_position
+    )
+    INTO v_rel_playoff
+    FROM public.competition_standings_public x
+    WHERE x.season_id = p_season_id
+      AND x.division = 'superleague'
+      AND x.table_position IN (16, 17);
   END IF;
 
   FOR v_cup IN
@@ -471,8 +495,16 @@ BEGIN
     ELSE
       'Another GPSL season reaches its conclusion. GPSL Sport reviews the month that settled the table.'
     END,
-    CASE WHEN coalesce(v_promoted, '') <> '' THEN 'Promoted: ' || v_promoted ELSE NULL END,
-    CASE WHEN coalesce(v_relegated, '') <> '' THEN 'Relegated from SuperLeague: ' || v_relegated ELSE NULL END,
+    CASE WHEN coalesce(v_promoted, '') <> '' THEN
+      'Automatically promoted: ' || v_promoted
+    ELSE NULL END,
+    CASE WHEN coalesce(v_relegated, '') <> '' THEN
+      'Automatically relegated from SuperLeague: ' || v_relegated
+    ELSE NULL END,
+    CASE WHEN coalesce(v_rel_playoff, '') <> '' THEN
+      'SuperLeague relegation playoff (Playoffs week): ' || v_rel_playoff
+        || ' — loser also relegated'
+    ELSE NULL END,
     CASE WHEN coalesce(v_cup_lines, '') <> '' THEN E'Cup winners:\n' || v_cup_lines ELSE NULL END,
     CASE WHEN coalesce(v_award_lines, '') <> '' THEN E'Season awards:\n' || v_award_lines ELSE NULL END
   );

@@ -277,10 +277,8 @@ BEGIN
   END IF;
 
   IF p_target.target_kind = 'avoid_relegation' THEN
-    IF p_division = 'superleague' THEN
-      RETURN p_actual_position <= 18;
-    END IF;
-    RETURN p_actual_position <= 18;
+    -- SuperLeague: 18–20 auto down; 16–17 playoff. "Avoided" = finished 16th or better.
+    RETURN p_actual_position <= 16;
   END IF;
 
   RETURN NULL;
