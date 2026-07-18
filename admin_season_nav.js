@@ -65,6 +65,12 @@ export const SEASON_ADMIN_NAV = [
     label: "Assign Divisions",
     items: [
       {
+        label: "Seed from previous movements",
+        href: "admin_season.html",
+        hash: "wf-divisions",
+        page: "admin_season",
+      },
+      {
         label: "Setup superleague teams",
         href: "admin_season.html",
         hash: "wf-divisions",

@@ -105,6 +105,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compArchiveSeasonBtn").onclick = archiveSeasonStats;
   document.getElementById("compManagerSeasonEndBtn").onclick = processManagerSeasonEnd;
   document.getElementById("compSetupSeasonSelect").onchange = onCompSeasonSelected;
+  document.getElementById("compSeedMovementsBtn").onclick = seedDivisionsFromMovements;
   document.getElementById("compSaveAssignBtn").onclick = saveCompetitionAssignments;
   document.getElementById("compAssignBody").addEventListener("change", (e) => {
     if (e.target.classList.contains("comp-div-select")) {
@@ -458,6 +459,37 @@ function updateCompSetupCounts() {
   startBtn.disabled = !ready;
   document.getElementById("compResetDrawBtn").disabled =
     counts.championship_a === 0 && counts.championship_b === 0;
+}
+
+async function seedDivisionsFromMovements() {
+  if (!compSelectedSeasonId) {
+    setCompStatus("Select a pre-season year.", false);
+    return;
+  }
+  if (
+    !confirm(
+      "Seed SuperLeague (20) and Championship pool (40) from the previous season’s promotions, relegations and playoff results?\n\nRequires Apply movements on the previous season. Overwrites current SL / pool / A–B assignments on this pre-season."
+    )
+  ) {
+    return;
+  }
+
+  setCompStatus("Seeding from previous movements…");
+  const { data, error } = await supabase.rpc(
+    "admin_competition_seed_divisions_from_movements",
+    { p_season_id: compSelectedSeasonId }
+  );
+
+  if (error) {
+    setCompStatus("❌ " + error.message, false);
+    return;
+  }
+
+  const prev = data?.previous_season_label || data?.previous_season_id || "?";
+  setCompStatus(
+    `✅ Seeded from ${prev} — SL ${data?.superleague ?? 20}, pool ${data?.championship_pool ?? 40}. Draw A/B next.`
+  );
+  await loadCompSeasonData(compSelectedSeasonId);
 }
 
 async function saveCompetitionAssignments() {
