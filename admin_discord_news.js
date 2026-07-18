@@ -143,26 +143,92 @@ async function testAutoFlush() {
   await loadQueue();
 }
 
-async function loadQueue() {
-  const { data, error } = await supabase
-    .from("gpsl_discord_feed_queue")
-    .select("id, event_type, headline, body, status, last_error, created_at, posted_at")
-    .order("id", { ascending: false })
-    .limit(40);
+/** Default: stuck/pending rows (not the latest 40 posted). */
+let queueFilter = "open";
 
+async function countStatus(status) {
+  const { count, error } = await supabase
+    .from("gpsl_discord_feed_queue")
+    .select("id", { count: "exact", head: true })
+    .eq("status", status);
+  if (error) return null;
+  return count ?? 0;
+}
+
+async function loadQueueCounts() {
+  const [pending, posting, error, posted] = await Promise.all([
+    countStatus("pending"),
+    countStatus("posting"),
+    countStatus("error"),
+    countStatus("posted"),
+  ]);
+  const el = document.getElementById("queueSummary");
+  if (!el) return { pending, posting, error, posted };
+  const totalOpen =
+    (pending ?? 0) + (posting ?? 0) + (error ?? 0);
+  el.innerHTML = `
+    <span class="pill pending">pending ${pending ?? "?"}</span>
+    <span class="pill posting">posting ${posting ?? "?"}</span>
+    <span class="pill error">error ${error ?? "?"}</span>
+    <span class="pill posted">posted ${posted ?? "?"}</span>
+    <span class="pill">open ${totalOpen}</span>
+  `;
+  return { pending, posting, error, posted };
+}
+
+async function loadQueue() {
   const wrap = document.getElementById("newsTableWrap");
+  const counts = await loadQueueCounts();
+
+  let query = supabase
+    .from("gpsl_discord_feed_queue")
+    .select("id, event_type, headline, body, status, last_error, created_at, posted_at");
+
+  if (queueFilter === "open") {
+    query = query
+      .in("status", ["pending", "posting", "error"])
+      .order("id", { ascending: true })
+      .limit(500);
+  } else if (queueFilter === "all") {
+    query = query.order("id", { ascending: false }).limit(100);
+  } else if (queueFilter === "posted") {
+    query = query.eq("status", "posted").order("id", { ascending: false }).limit(100);
+  } else {
+    query = query
+      .eq("status", queueFilter)
+      .order("id", { ascending: true })
+      .limit(500);
+  }
+
+  const { data, error } = await query;
   if (error) {
     wrap.innerHTML = `<p class="note">Could not load queue: ${escapeHtml(error.message)}. Run the SQL patch first.</p>`;
     return;
   }
 
   const rows = data || [];
+  const filterLabel =
+    queueFilter === "open"
+      ? "needs attention"
+      : queueFilter === "all"
+        ? "recent (all statuses)"
+        : queueFilter;
+
   if (!rows.length) {
-    wrap.innerHTML = `<p class="note">Queue empty — nothing pending yet.</p>`;
+    const openHint =
+      queueFilter === "open" && (counts.posted ?? 0) > 0
+        ? ` All open items cleared — ${counts.posted} already posted (use Posted / All to browse).`
+        : "";
+    wrap.innerHTML = `<p class="note">No rows for “${escapeHtml(filterLabel)}”.${openHint}</p>`;
     return;
   }
 
   wrap.innerHTML = `
+    <p class="note" style="margin-bottom:8px">
+      Showing ${rows.length} “${escapeHtml(filterLabel)}”
+      ${queueFilter === "open" ? "(oldest first — stuck May results appear here)" : ""}.
+      Unstick / Push still act on the whole queue, not just this list.
+    </p>
     <table class="news-table">
       <thead>
         <tr>
@@ -512,7 +578,7 @@ document.getElementById("rateLimitRetryBtn")?.addEventListener("click", () => {
   (async () => {
     setStatus("newsStatus", "Unsticking posting / reopening 429 errors…");
     const { data, error } = await supabase.rpc("admin_discord_requeue_rate_limited", {
-      p_limit: 200,
+      p_limit: 500,
     });
     if (error) {
       setStatus(
@@ -535,6 +601,17 @@ document.getElementById("rateLimitRetryBtn")?.addEventListener("click", () => {
 });
 document.getElementById("routingCheckBtn")?.addEventListener("click", () => {
   checkRouting().catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
+document.getElementById("queueFilters")?.addEventListener("click", (ev) => {
+  const btn = ev.target?.closest?.("button[data-filter]");
+  if (!btn) return;
+  queueFilter = btn.getAttribute("data-filter") || "open";
+  document.querySelectorAll("#queueFilters button").forEach((b) => {
+    b.classList.toggle("active", b === btn);
+  });
+  loadQueue()
+    .then(() => setStatus("newsStatus", `Filter: ${queueFilter}.`))
+    .catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
 document.getElementById("newsRefreshBtn")?.addEventListener("click", () => {
   loadQueue()

@@ -23,6 +23,23 @@
     .news-status.posted { color:#8d8; }
     .news-status.error { color:#f88; }
     .news-body { color:#aaa; white-space:pre-wrap; }
+    .queue-summary {
+      display:flex; flex-wrap:wrap; gap:8px; margin:0 0 10px; font-size:13px;
+    }
+    .queue-summary .pill {
+      padding:4px 10px; border:1px solid #333; border-radius:4px; background:#1a1a1a; color:#ccc;
+    }
+    .queue-summary .pill.pending { border-color:#a70; color:#fc9; }
+    .queue-summary .pill.posting { border-color:#48a; color:#9cf; }
+    .queue-summary .pill.error { border-color:#a44; color:#f88; }
+    .queue-summary .pill.posted { border-color:#484; color:#8d8; }
+    .queue-filters { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; }
+    .queue-filters button {
+      padding:5px 10px; font-size:12px; background:#222; color:#ccc;
+      border:1px solid #444; border-radius:4px; cursor:pointer;
+    }
+    .queue-filters button:hover { background:#333; }
+    .queue-filters button.active { background:#3a2a00; border-color:#ff9900; color:#ff9900; }
     code { background:#1a1a1a; padding:1px 5px; border-radius:3px; }
     .auto-form { display:grid; gap:10px; max-width:640px; margin-bottom:12px; }
     .auto-form label { display:grid; gap:4px; font-size:13px; color:#ccc; }
@@ -131,10 +148,19 @@
           <button type="button" id="newsRefreshBtn" class="button secondary">Refresh queue</button>
         </div>
         <div id="newsStatus" class="status-line"></div>
+        <div id="queueSummary" class="queue-summary" aria-live="polite"></div>
+        <div id="queueFilters" class="queue-filters">
+          <button type="button" data-filter="open" class="active">Needs attention</button>
+          <button type="button" data-filter="pending">Pending</button>
+          <button type="button" data-filter="posting">Posting</button>
+          <button type="button" data-filter="error">Error</button>
+          <button type="button" data-filter="posted">Posted</button>
+          <button type="button" data-filter="all">All (recent)</button>
+        </div>
         <div id="newsTableWrap" style="overflow-x:auto;"></div>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_discord_news.js?v=20260718-clinch"></script>
+  <script type="module" src="admin_discord_news.js?v=20260718-queue-view"></script>
 </body>
 </html>
