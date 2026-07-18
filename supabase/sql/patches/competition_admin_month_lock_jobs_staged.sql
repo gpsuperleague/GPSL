@@ -30,12 +30,16 @@ DECLARE
   v_do_sport boolean;
   v_do_tv boolean;
   v_do_tables boolean;
+  v_do_playoffs boolean;
+  v_do_clinches boolean;
   v_do_scheduling boolean;
   v_out jsonb := jsonb_build_object('ok', true, 'season_id', p_season_id);
   v_totm jsonb;
   v_sport jsonb;
   v_tv jsonb;
   v_tables jsonb;
+  v_playoffs jsonb;
+  v_clinches jsonb;
   v_response_track jsonb;
   v_sched_fines jsonb;
   v_response_fines jsonb;
@@ -43,10 +47,13 @@ DECLARE
   v_last_scheduling timestamptz;
   v_run_scheduling boolean := false;
   v_month text := nullif(lower(btrim(coalesce(p_locked_gpsl_month, ''))), '');
+  v_month_label text;
   v_scope text;
   v_job_key text;
   v_res jsonb;
   v_id bigint;
+  v_qid bigint;
+  v_snap jsonb;
   v_totm_results jsonb := '[]'::jsonb;
   v_sport_results jsonb := '[]'::jsonb;
 BEGIN
@@ -57,6 +64,8 @@ BEGIN
     v_do_sport := true;
     v_do_tv := true;
     v_do_tables := true;
+    v_do_playoffs := true;
+    v_do_clinches := true;
     v_do_scheduling := true;
   ELSIF v_stage = 'awards' THEN
     -- Legacy bundle
@@ -64,42 +73,71 @@ BEGIN
     v_do_sport := true;
     v_do_tv := true;
     v_do_tables := false;
+    v_do_playoffs := false;
+    v_do_clinches := false;
     v_do_scheduling := false;
   ELSIF v_stage = 'totm' THEN
     v_do_totm := true;
     v_do_sport := false;
     v_do_tv := false;
     v_do_tables := false;
+    v_do_playoffs := false;
+    v_do_clinches := false;
     v_do_scheduling := false;
   ELSIF v_stage = 'sport' THEN
     v_do_totm := false;
     v_do_sport := true;
     v_do_tv := false;
     v_do_tables := false;
+    v_do_playoffs := false;
+    v_do_clinches := false;
     v_do_scheduling := false;
   ELSIF v_stage = 'tv' THEN
     v_do_totm := false;
     v_do_sport := false;
     v_do_tv := true;
     v_do_tables := false;
+    v_do_playoffs := false;
+    v_do_clinches := false;
     v_do_scheduling := false;
   ELSIF v_stage IN ('tables', 'league_tables') THEN
+    -- Discord standings only (no playoffs/clinches/flush)
     v_do_totm := false;
     v_do_sport := false;
     v_do_tv := false;
     v_do_tables := true;
+    v_do_playoffs := false;
+    v_do_clinches := false;
+    v_do_scheduling := false;
+  ELSIF v_stage = 'playoffs' THEN
+    v_do_totm := false;
+    v_do_sport := false;
+    v_do_tv := false;
+    v_do_tables := false;
+    v_do_playoffs := true;
+    v_do_clinches := false;
+    v_do_scheduling := false;
+  ELSIF v_stage = 'clinches' THEN
+    v_do_totm := false;
+    v_do_sport := false;
+    v_do_tv := false;
+    v_do_tables := false;
+    v_do_playoffs := false;
+    v_do_clinches := true;
     v_do_scheduling := false;
   ELSIF v_stage IN ('scheduling', 'fines') THEN
     v_do_totm := false;
     v_do_sport := false;
     v_do_tv := false;
     v_do_tables := false;
+    v_do_playoffs := false;
+    v_do_clinches := false;
     v_do_scheduling := true;
   ELSE
     RETURN jsonb_build_object(
       'ok', false,
       'reason', 'bad_stage',
-      'hint', 'Use totm | sport | tv | awards | tables | scheduling | all'
+      'hint', 'Use totm | sport | tv | tables | playoffs | clinches | scheduling | all'
     );
   END IF;
 
@@ -229,21 +267,131 @@ BEGIN
   END IF;
 
   IF v_do_tables THEN
-    -- One clinch pass inside tables RPC; avoid stacking with awards work
+    -- Lightweight: one locked month → Discord queue only (no playoffs/clinches/flush)
     BEGIN
-      PERFORM set_config('gpsl.skip_clinch_scan', 'off', true);
-      IF to_regprocedure('public.competition_process_month_league_tables(bigint)') IS NOT NULL THEN
-        v_tables := public.competition_process_month_league_tables(p_season_id);
-        v_out := v_out || jsonb_build_object('league_tables', v_tables);
+      IF v_month IS NULL THEN
+        SELECT c.gpsl_month INTO v_month
+        FROM public.competition_season_calendar c
+        WHERE c.season_id = p_season_id
+          AND c.gpsl_month IS NOT NULL
+          AND c.gpsl_month <> 'playoffs'
+          AND c.lock_at IS NOT NULL
+          AND c.lock_at <= now()
+        ORDER BY c.lock_at DESC
+        LIMIT 1;
+      END IF;
+
+      IF v_month IS NULL THEN
+        v_tables := jsonb_build_object('ok', false, 'reason', 'no_locked_month');
+      ELSIF EXISTS (
+        SELECT 1
+        FROM public.competition_season_calendar_jobs j
+        WHERE j.season_id = p_season_id
+          AND j.job_key = 'league_tables:' || v_month
+          AND coalesce((j.result->>'ok')::boolean, false) IS TRUE
+      ) THEN
+        v_tables := jsonb_build_object(
+          'ok', true,
+          'skipped', true,
+          'reason', 'already_done',
+          'gpsl_month', v_month
+        );
+      ELSIF to_regprocedure('public.competition_league_tables_snapshot(bigint)') IS NULL
+            OR to_regprocedure('public.gpsl_discord_feed_enqueue(text,text,text,integer,text,jsonb)') IS NULL THEN
+        v_tables := jsonb_build_object('ok', false, 'reason', 'tables_helpers_missing');
       ELSE
-        v_out := v_out || jsonb_build_object(
-          'league_tables', jsonb_build_object('skipped', true, 'reason', 'tables_rpc_missing')
+        BEGIN
+          v_month_label := public.competition_gpsl_month_label(v_month);
+        EXCEPTION WHEN OTHERS THEN
+          v_month_label := initcap(v_month);
+        END;
+
+        v_snap := public.competition_league_tables_snapshot(p_season_id);
+        v_qid := public.gpsl_discord_feed_enqueue(
+          'tables',
+          format('📊 LEAGUE TABLES — %s', coalesce(v_month_label, initcap(v_month))),
+          format(
+            'End of %s standings for SuperLeague, Championship A and Championship B.',
+            coalesce(v_month_label, initcap(v_month))
+          ),
+          5793266,
+          'league_tables:' || p_season_id::text || ':' || v_month,
+          jsonb_build_object(
+            'channel', 'tables',
+            'render', true,
+            'season_id', p_season_id,
+            'gpsl_month', v_month,
+            'month_label', v_month_label,
+            'standings', coalesce(v_snap->'standings', '[]'::jsonb)
+          )
+        );
+
+        INSERT INTO public.competition_season_calendar_jobs (
+          season_id, job_key, gpsl_month, result
+        )
+        VALUES (
+          p_season_id,
+          'league_tables:' || v_month,
+          v_month,
+          jsonb_build_object(
+            'ok', v_qid IS NOT NULL,
+            'queue_id', v_qid,
+            'enqueued_at', now(),
+            'lite', true
+          )
+        )
+        ON CONFLICT (season_id, job_key) DO UPDATE
+          SET result = excluded.result,
+              gpsl_month = excluded.gpsl_month,
+              ran_at = now();
+
+        v_tables := jsonb_build_object(
+          'ok', v_qid IS NOT NULL,
+          'gpsl_month', v_month,
+          'queue_id', v_qid,
+          'lite', true
         );
       END IF;
+
+      v_out := v_out || jsonb_build_object('league_tables', v_tables);
     EXCEPTION
       WHEN OTHERS THEN
         v_out := v_out || jsonb_build_object(
           'league_tables', jsonb_build_object('ok', false, 'error', SQLERRM)
+        );
+    END;
+  END IF;
+
+  IF v_do_playoffs THEN
+    BEGIN
+      IF to_regprocedure('public.competition_generate_playoffs(bigint,boolean)') IS NOT NULL THEN
+        v_playoffs := public.competition_generate_playoffs(p_season_id, false);
+      ELSIF to_regprocedure('public.admin_competition_generate_playoffs(bigint,boolean)') IS NOT NULL THEN
+        v_playoffs := public.admin_competition_generate_playoffs(p_season_id, false);
+      ELSE
+        v_playoffs := jsonb_build_object('skipped', true, 'reason', 'playoffs_rpc_missing');
+      END IF;
+      v_out := v_out || jsonb_build_object('playoffs', v_playoffs);
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_out := v_out || jsonb_build_object(
+          'playoffs', jsonb_build_object('ok', false, 'error', SQLERRM)
+        );
+    END;
+  END IF;
+
+  IF v_do_clinches THEN
+    BEGIN
+      IF to_regprocedure('public.competition_process_league_clinches(bigint)') IS NOT NULL THEN
+        v_clinches := public.competition_process_league_clinches(p_season_id);
+      ELSE
+        v_clinches := jsonb_build_object('skipped', true, 'reason', 'clinches_rpc_missing');
+      END IF;
+      v_out := v_out || jsonb_build_object('clinches', v_clinches);
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_out := v_out || jsonb_build_object(
+          'clinches', jsonb_build_object('ok', false, 'error', SQLERRM)
         );
     END;
   END IF;
