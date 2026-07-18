@@ -1,14 +1,7 @@
 -- =============================================================================
--- Admin: club season checklist (all clubs — owner, nation, squad, wages, fines)
--- Run once in Supabase SQL Editor. UI: admin_club_checklist.html
---
--- Prerequisites (most GPSL DBs already have these):
---   competition_wages_taxes.sql  → competition_club_wage_bill_total
---   voluntary_contract_release.sql → Clubs.voluntary_contract_releases_remaining
---   club_squad_designations.sql  → OooO + star min (optional; degrades gracefully)
---   competition_international.sql → active nation assignment
--- If this function already exists with an older return shape, run
--- admin_club_season_checklist_nation.sql instead (drops + recreates).
+-- Club season checklist: add active nation (issue in UI if owned club has none).
+-- Run after admin_club_season_checklist.sql + competition_international.sql.
+-- Safe re-run.
 -- =============================================================================
 
 DROP FUNCTION IF EXISTS public.admin_club_season_checklist();
@@ -227,15 +220,4 @@ $function$;
 
 GRANT EXECUTE ON FUNCTION public.admin_club_season_checklist() TO authenticated;
 
-DO $verify$
-BEGIN
-  IF to_regprocedure('public.admin_club_season_checklist()') IS NULL THEN
-    RAISE EXCEPTION 'admin_club_season_checklist was not created — check errors above';
-  END IF;
-END;
-$verify$;
-
 NOTIFY pgrst, 'reload schema';
-
--- After apply, confirm in SQL Editor:
---   SELECT count(*) FROM public.admin_club_season_checklist();

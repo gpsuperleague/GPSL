@@ -44,6 +44,7 @@ function evaluateRowIssues(row) {
 
   if (!hasOwner) issues.add("owner");
   if (hasOwner && !row.manager_name) issues.add("manager");
+  if (hasOwner && !(row.nation_code || row.nation_name)) issues.add("nation");
   if (hasOwner && !row.ooo_player_name) issues.add("ooo");
   if (squad < MIN_SQUAD_SIZE) issues.add("squad_low");
   if (squad > SQUAD_SIZE) issues.add("squad_high");
@@ -192,6 +193,7 @@ function renderTable() {
     ["owner_tag", "Owner"],
     ["club_name", "Club"],
     ["manager_name", "Manager"],
+    ["nation_name", "Nation"],
     ["ooo_player_name", "OooO"],
     ["squad_size", "Squad"],
     ["star_count", "Stars"],
@@ -237,6 +239,10 @@ function renderTable() {
                 }`
               : "—";
 
+            const nation = row.nation_name || row.nation_code
+              ? escapeHtml(row.nation_name || row.nation_code)
+              : "—";
+
             const ooo = row.ooo_player_name ? escapeHtml(row.ooo_player_name) : "—";
 
             let squadLevel = "ok";
@@ -268,6 +274,7 @@ function renderTable() {
               }</div>
             </td>
             ${textCell(manager, issues.has("manager") ? "bad" : "ok")}
+            ${textCell(nation, issues.has("nation") ? "bad" : "ok")}
             ${textCell(ooo, issues.has("ooo") ? "bad" : "ok")}
             ${numCell(row.squad_size, squadLevel)}
             ${numCell(row.star_count)}
@@ -347,7 +354,7 @@ async function loadTable() {
     const msg = [error.message, error.hint].filter(Boolean).join(" — ");
     setStatus(
       "pageStatus",
-      `❌ ${msg}. Run supabase/sql/patches/admin_club_season_checklist.sql in Supabase.`,
+      `❌ ${msg}. Run supabase/sql/patches/admin_club_season_checklist_nation.sql in Supabase.`,
       false
     );
     if (wrap) wrap.innerHTML = `<p class="note">${escapeHtml(msg)}</p>`;
