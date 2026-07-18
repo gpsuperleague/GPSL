@@ -119,7 +119,7 @@ BEGIN
   END IF;
 
   UPDATE public.competition_seasons
-  SET status = 'complete', is_current = false, updated_at = now()
+  SET status = 'complete', is_current = false, ended_at = coalesce(ended_at, now())
   WHERE id = v_season.id;
 
   UPDATE public.global_settings
