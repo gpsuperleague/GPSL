@@ -258,7 +258,7 @@ export const SEASON_BREAK_NAV = [
         page: "admin_international",
       },
       {
-        label: "Set Owner Rankings",
+        label: "Verify owner rankings",
         href: "admin_international.html",
         hash: "sb-owner-rankings",
         page: "admin_international",

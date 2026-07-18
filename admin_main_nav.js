@@ -89,7 +89,7 @@ export const ADMIN_MAIN_NAV = [
         L("Manual National Team Selection", "admin_international.html", "sb-nation-assign"),
         L("Close Nation Selection", "admin_international.html", "sb-nation-selection"),
         L("Clear Nation Selection", "admin_international.html", "sb-nation-selection"),
-        L("Set Owner Rankings", "admin_international.html", "sb-owner-rankings"),
+        L("Verify owner rankings", "admin_international.html", "sb-owner-rankings"),
       ]),
     ],
   },

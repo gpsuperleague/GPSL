@@ -167,6 +167,7 @@ export const DASHBOARD_PANELS = [
   p("clubs", "Clubs", "clubs.html"),
   p("inbox", "Inbox", "inbox.html"),
   p("owner_rankings", "Owner Rankings", "owner_rankings.html"),
+  p("owner_profile", "Owner Profile", "owner_profile.html"),
   p("learning_gpsl", "Learning GPSL", "learning_gpsl.html"),
   p("waiting_list", "Waiting List", "waiting_list.html"),
   p("member_home", "Member Home", "member_home.html"),

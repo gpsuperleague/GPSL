@@ -211,6 +211,32 @@ function renderTrophies(trophies) {
     </ul>`;
 }
 
+function renderMotm(rows) {
+  const el = document.getElementById("motmPanel");
+  if (!el) return;
+  if (!rows?.length) {
+    el.innerHTML =
+      '<p class="empty">No Manager of the Month awards yet. Run patches/manager_of_the_month.sql — awarded on End GPSL Month.</p>';
+    return;
+  }
+  el.innerHTML = `
+    <ul class="trophy-list">
+      ${rows
+        .map(
+          (a) => `
+        <li class="trophy-item">
+          <div>
+            <div class="trophy-title">Manager of the Month — ${escapeHtml(a.gpsl_month || "")}</div>
+            <div class="trophy-meta">${escapeHtml(a.season_label || "")} · ${clubCell(
+              a.club_short_name
+            )} · ${a.won ?? 0}-${a.drawn ?? 0}-${a.lost ?? 0} (${a.pts ?? 0} pts)</div>
+          </div>
+        </li>`
+        )
+        .join("")}
+    </ul>`;
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
 
@@ -253,4 +279,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderStints(data.stints || []);
   renderTransfers(data.transfers || []);
   renderTrophies(data.trophies || []);
+
+  const { data: motmRows, error: motmErr } = await supabase
+    .from("competition_manager_month_awards_public")
+    .select("*")
+    .eq("manager_id", managerId)
+    .order("season_id", { ascending: false })
+    .order("gpsl_month", { ascending: false });
+  if (motmErr && /competition_manager_month/.test(motmErr.message || "")) {
+    renderMotm([]);
+  } else {
+    renderMotm(motmRows || []);
+  }
 });

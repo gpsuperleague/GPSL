@@ -21,10 +21,24 @@ function isSchemaMissingError(err) {
   );
 }
 
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function fmtPts(n) {
   const v = Number(n);
   if (!Number.isFinite(v)) return "—";
   return v % 1 === 0 ? String(v) : v.toFixed(2);
+}
+
+function ownerLink(r) {
+  const label = escapeHtml(r.owner_tag || r.owner_name || "—");
+  if (!r.owner_id) return label;
+  return `<a class="gpsl-link" href="owner_profile.html?owner=${encodeURIComponent(r.owner_id)}">${label}</a>`;
 }
 
 function renderBreakdown(rows) {
@@ -82,8 +96,8 @@ async function loadRolling() {
     (r) => `
     <tr class="${rowClass(r.club_short_name)}">
       <td class="num">${r.rank_position}</td>
-      <td>${r.owner_tag || r.owner_name}</td>
-      <td>${r.club_name || r.club_short_name}</td>
+      <td>${ownerLink(r)}</td>
+      <td>${escapeHtml(r.club_name || r.club_short_name)}</td>
       <td>${renderNationCell(r)}</td>
       <td class="num"><b>${fmtPts(r.rolling_points)}</b></td>
       <td class="num">${r.seasons_count}/4</td>
@@ -109,7 +123,7 @@ async function loadAllTime() {
     (r) => `
     <tr>
       <td class="num">${r.rank_position}</td>
-      <td>${r.owner_name}</td>
+      <td>${ownerLink(r)}</td>
       <td class="num">${fmtPts(r.club_points)}</td>
       <td class="num">${fmtPts(r.wc_points)}</td>
       <td class="num"><b>${fmtPts(r.total_points)}</b></td>
@@ -155,8 +169,8 @@ async function loadSeason(seasonId) {
     (r, i) => `
     <tr class="${rowClass(r.club_short_name)}">
       <td class="num">${i + 1}</td>
-      <td>${r.owner_tag || r.owner_name}</td>
-      <td>${r.club_name || r.club_short_name}</td>
+      <td>${ownerLink(r)}</td>
+      <td>${escapeHtml(r.club_name || r.club_short_name)}</td>
       <td class="num">${fmtPts(r.league_points)}</td>
       <td class="num">${fmtPts(r.super8_points)}</td>
       <td class="num">${fmtPts(r.plate_points)}</td>
