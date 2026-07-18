@@ -295,10 +295,22 @@ async function loadProfile(ownerId) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
-  const ownerId = qs("owner");
+
+  let ownerId = qs("owner");
   if (!ownerId) {
-    showError("Missing owner id. Open this page from Owner rankings.");
-    return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      window.location = "login.html";
+      return;
+    }
+    ownerId = user.id;
+    // Keep a shareable URL for "my profile"
+    const url = new URL(window.location.href);
+    url.searchParams.set("owner", ownerId);
+    window.history.replaceState({}, "", url);
   }
+
   await loadProfile(ownerId);
 });

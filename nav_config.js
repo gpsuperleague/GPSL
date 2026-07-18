@@ -315,7 +315,7 @@ export const NAV_SECTIONS = [
       { href: "learning_gpsl.html", label: "Learning GPSL", page: "learning_gpsl" },
       { href: "waiting_list.html", label: "Waiting list", page: "waiting_list" },
       { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings" },
-      { href: "owner_profile.html", label: "Owner profile", page: "owner_profile", hidden: true },
+      { href: "owner_profile.html", label: "My owner profile", page: "owner_profile" },
       { href: "season_calendar.html", label: "Season calendar", page: "season_calendar" },
       { href: "natter.html", label: "Natter", page: "natter" },
       { href: "challenges.html", label: "Season challenges", page: "challenges" },
