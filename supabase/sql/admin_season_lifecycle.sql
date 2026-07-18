@@ -115,6 +115,12 @@ BEGIN
     THEN
       PERFORM public.competition_admin_copy_league_prizes(v_prev, v_season_id);
     END IF;
+
+    -- Season N → N+1: decrement contracts even when prior year is already complete
+    -- (Summer Break / no is_current). Inaugural season (no v_prev) skips this.
+    IF to_regprocedure('public.contract_tick_season_rollover()') IS NOT NULL THEN
+      PERFORM public.contract_tick_season_rollover();
+    END IF;
   END IF;
 
   RETURN v_season_id;

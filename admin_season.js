@@ -154,23 +154,14 @@ async function createNextSeason() {
 
   setStatus("compCreateStatus", "Working…");
 
+  // Legacy player/transfer year rollover only while a competition season is still live.
+  // Contract tick runs inside competition_create_season whenever a prior season exists
+  // (including Summer Break) — see patches/contract_tick_on_create_season.sql.
   const active = await loadCurrentSeason(supabase);
   if (active) {
     const { error: rollErr } = await supabase.rpc("rollover_season");
     if (rollErr) {
       setStatus("compCreateStatus", "❌ Rollover failed: " + rollErr.message, false);
-      return;
-    }
-    const { error: tickErr } = await supabase.rpc("contract_tick_season_rollover");
-    if (tickErr) {
-      const msg = String(tickErr.message || "");
-      setStatus(
-        "compCreateStatus",
-        msg.includes("contract_tick_season_rollover")
-          ? "✅ Rollover done. Run player_contracts_phase2.sql, then create the season again for contract tick."
-          : "✅ Rollover done but contract tick failed: " + msg,
-        false
-      );
       return;
     }
   }
@@ -185,7 +176,10 @@ async function createNextSeason() {
   }
 
   document.getElementById("compSeasonLabel").value = "";
-  setStatus("compCreateStatus", `✅ Pre-season created (id ${data}). Assign divisions below.`);
+  setStatus(
+    "compCreateStatus",
+    `✅ Pre-season created (id ${data}). Contracts ticked if a prior season existed. Assign divisions below.`
+  );
   await refreshCompetitionAdmin();
   if (data) {
     document.getElementById("compSetupSeasonSelect").value = String(data);
@@ -389,12 +383,21 @@ async function refreshCompetitionAdmin() {
   const startBtn = document.getElementById("compStartSeasonBtn");
 
   if (!setupSeasons.length) {
-    select.innerHTML = `<option value="">No pre-season years</option>`;
+    select.innerHTML = active
+      ? `<option value="">None — ${active.label} is live</option>`
+      : `<option value="">No pre-season years</option>`;
     compSelectedSeasonId = null;
     compRegistrations = [];
     renderCompAssignTable();
     updateCompSetupCounts();
     startBtn.style.display = "none";
+    const startStatus = document.getElementById("compStartStatus");
+    if (active && startStatus && !startStatus.textContent?.trim()) {
+      setStatus(
+        "compStartStatus",
+        `✅ ${active.label} is the live season. Pre-season dropdowns clear after Start — that is expected.`
+      );
+    }
     await loadSeedFromSeasonOptions(null);
     return;
   }

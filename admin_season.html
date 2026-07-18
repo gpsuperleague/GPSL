@@ -114,7 +114,7 @@
         <section id="wf-kickoff" class="admin-season-panel" data-panel="wf-kickoff" hidden>
           <div class="card">
             <h2>Create new season</h2>
-            <p class="note">Creates a pre-season competition year (60 clubs). If the legacy league year is still open, runs <code>rollover_season</code> and contract tick first.</p>
+            <p class="note">Creates a pre-season competition year (60 clubs). If a prior season exists, contracts tick automatically (including after Summer Break). If the legacy league year is still open, also runs <code>rollover_season</code> first.</p>
             <div id="compActiveSummary" class="note"></div>
             <div class="row">
               <div>
@@ -130,7 +130,7 @@
               <button id="compStartSeasonBtn" class="button" style="background:#228822;display:none;">Start season (go live)</button>
             </div>
             <div id="compStartStatus" class="status-line"></div>
-            <p class="note">Use <b>Start season</b> after divisions and calendar are set. League and cup fixtures are generated <b>after</b> go live.</p>
+            <p class="note">Use <b>Start season</b> after divisions and calendar are set. League and cup fixtures are generated <b>after</b> go live. After Start, the pre-season dropdown empties — check <b>Live season</b> above; that is expected.</p>
           </div>
         </section>
 
