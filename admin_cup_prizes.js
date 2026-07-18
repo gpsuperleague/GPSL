@@ -9,7 +9,9 @@ const CUP_PRIZE_STAGE_LABELS = {
   r2: "Round 2",
   qf: "Quarter-final",
   sf: "Semi-final",
-  final: "Final",
+  winner: "Winner",
+  runner_up: "Runner-up",
+  final: "Final (legacy — both clubs)",
 };
 
 /** @type {{ id: number, label?: string, status?: string, is_current?: boolean }[]} */
@@ -110,7 +112,7 @@ async function loadCupPrizeConfig() {
     return;
   }
 
-  const order = ["appearance", "r1", "r2", "qf", "sf", "final"];
+  const order = ["appearance", "r1", "r2", "qf", "sf", "winner", "runner_up", "final"];
   const sorted = [...data].sort(
     (a, b) => order.indexOf(a.stage) - order.indexOf(b.stage)
   );

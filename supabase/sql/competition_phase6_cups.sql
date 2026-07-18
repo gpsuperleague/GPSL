@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS public.competition_cup_prize_config (
     cup_code IN ('super8', 'plate', 'shield', 'bowl', 'league_cup')
   ),
   stage text NOT NULL CHECK (
-    stage IN ('appearance', 'r1', 'r2', 'qf', 'sf', 'final', 'winner')
+    stage IN ('appearance', 'r1', 'r2', 'qf', 'sf', 'final', 'winner', 'runner_up')
   ),
   amount numeric(14, 2) NOT NULL DEFAULT 0 CHECK (amount >= 0),
   CONSTRAINT competition_cup_prize_config_unique UNIQUE (season_id, cup_code, stage)

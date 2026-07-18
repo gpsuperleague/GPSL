@@ -14,9 +14,11 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <p class="note">
-          Round fee is paid to <b>both</b> clubs when a tie is confirmed. Set amounts per cup + stage
-          (run <code>competition_cup_prizes_fix.sql</code>). Creating a new season auto-copies the
-          previous season’s cup (and league) prize tables — or copy manually below
+          Round fees (R1–SF) are paid to <b>both</b> clubs when a tie is confirmed.
+          The final pays separate <b>Winner</b> and <b>Runner-up</b> amounts.
+          Run <code>competition_cup_prizes_fix.sql</code> and
+          <code>patches/cup_prize_winner_runner_up.sql</code>. Creating a new season auto-copies
+          prize tables — or copy manually below
           (<code>patches/prize_config_persist_across_seasons.sql</code>).
         </p>
         <div class="row">
@@ -49,7 +51,8 @@
         <h2 class="admin-subheading" style="margin-top:14px;">Prize amounts</h2>
         <div class="row">
           <select id="compPrizeStage">
-            <option value="final">Final</option>
+            <option value="winner">Winner</option>
+            <option value="runner_up">Runner-up</option>
             <option value="sf">Semi-final</option>
             <option value="qf">Quarter-final</option>
             <option value="r2">Round 2</option>
@@ -78,7 +81,8 @@
             <label>Stage (optional)</label>
             <select id="compOverrideStage">
               <option value="">Auto (from fixture round)</option>
-              <option value="final">Final</option>
+              <option value="winner">Winner</option>
+              <option value="runner_up">Runner-up</option>
               <option value="sf">Semi-final</option>
               <option value="qf">Quarter-final</option>
               <option value="r2">Round 2</option>
@@ -95,6 +99,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_cup_prizes.js?v=20260718-persist"></script>
+  <script type="module" src="admin_cup_prizes.js?v=20260718-winner-runner"></script>
 </body>
 </html>
