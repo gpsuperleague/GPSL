@@ -439,7 +439,6 @@ DECLARE
   v_active_sort int;
   v_deadline_sort int;
   v_deadline text := lower(btrim(coalesce(p_gpsl_month_to, '')));
-  v_phase text := lower(btrim(coalesce(p_window_phase, '')));
 BEGIN
   v_active := public.competition_active_gpsl_month(p_season_id, now());
   v_deadline_sort := public.competition_gpsl_month_sort(p_gpsl_month_to);
@@ -450,12 +449,8 @@ BEGIN
 
   v_active := lower(btrim(v_active));
 
-  -- Mid-season (deadline May): remain open through Playoffs week
-  IF v_active = 'playoffs'
-     AND (
-       v_phase = 'mid'
-       OR v_deadline = 'may'
-     ) THEN
+  -- Only May-deadline challenges stay open through Playoffs (not Jan/Feb/Mar-only)
+  IF v_active = 'playoffs' AND v_deadline = 'may' THEN
     RETURN true;
   END IF;
 

@@ -68,9 +68,24 @@ function renderError(msg) {
   if (awards) awards.innerHTML = "";
 }
 
+function monthWindowLabel(c) {
+  const from = c.gpsl_month_from_label || c.gpsl_month_from;
+  const to = c.gpsl_month_to_label || c.gpsl_month_to;
+  if (!from && !to) return "";
+  if (from && to && String(from).toLowerCase() === String(to).toLowerCase()) {
+    return String(from);
+  }
+  return `${from || "?"}–${to || "?"}`;
+}
+
 function progressLabel(c) {
   if (c.awarded) return { text: "Awarded", className: "challenge-status-awarded" };
-  if (c.expired) return { text: "Window closed", className: "challenge-status-expired" };
+  if (c.expired) {
+    return {
+      text: `Closed · ${c.current_value ?? 0} / ${c.target_value}`,
+      className: "challenge-status-expired",
+    };
+  }
   return {
     text: `${c.current_value ?? 0} / ${c.target_value}`,
     className: "",
@@ -82,12 +97,14 @@ function renderChallengeCards(items) {
     .map((c) => {
       const phaseClass = c.window_phase === "mid" ? "mid" : "start";
       const st = progressLabel(c);
+      const months = monthWindowLabel(c);
       return `
-        <div class="challenge-card">
+        <div class="challenge-card${c.expired && !c.awarded ? " is-expired" : ""}">
           <span class="window-tag ${phaseClass}">${windowLabel(c.window_phase)}</span>
           <h3>${c.title}</h3>
           <p class="challenge-progress ${st.className}">${st.text}</p>
           <p class="challenge-meta">
+            ${months ? `${months}<br>` : ""}
             ${STAT_LABELS[c.stat_type] || c.stat_type}${
               c.stat_param ? ` (${c.stat_param})` : ""
             }
