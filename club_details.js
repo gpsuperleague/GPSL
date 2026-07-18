@@ -400,11 +400,53 @@ function formatChartBands(row) {
   return parts.join(" · ");
 }
 
+function formatOrdinal(n) {
+  const num = Number(n);
+  if (!Number.isFinite(num)) return String(n ?? "—");
+  const mod10 = num % 10;
+  const mod100 = num % 100;
+  let suffix = "th";
+  if (mod10 === 1 && mod100 !== 11) suffix = "st";
+  else if (mod10 === 2 && mod100 !== 12) suffix = "nd";
+  else if (mod10 === 3 && mod100 !== 13) suffix = "rd";
+  return `${num}${suffix}`;
+}
+
+/** Live / archived league position vs manager deal target for Club Details. */
 function formatTargetProgress(row) {
-  if (row.target_met === true) return "On course ✓";
-  if (row.target_met === false) return "Off course ✗";
-  if (row.season_position != null) return `Position ${row.season_position} (pending evaluation)`;
-  return "Season in progress";
+  const pos = row?.season_position;
+  const posLabel = pos != null ? ` (currently ${formatOrdinal(pos)})` : "";
+
+  if (row?.pending_owner_renewal) {
+    const hits = Number(row.deal_target_hits) || 0;
+    return {
+      text: `Deal complete — renewal available (${hits} target hit${hits === 1 ? "" : "s"})`,
+      className: "manager-target--on",
+    };
+  }
+
+  if (row?.target_met === true) {
+    return {
+      text: `On target${posLabel}`,
+      className: "manager-target--on",
+    };
+  }
+  if (row?.target_met === false) {
+    return {
+      text: `Off target${posLabel}`,
+      className: "manager-target--off",
+    };
+  }
+  if (pos != null) {
+    return {
+      text: `Position ${formatOrdinal(pos)} — target status unavailable`,
+      className: "manager-target--pending",
+    };
+  }
+  return {
+    text: "No league position yet this season",
+    className: "manager-target--pending",
+  };
 }
 
 function formatClubTierLabel(tier) {
@@ -578,6 +620,9 @@ async function loadManagerSection(clubShortName) {
 
   const pendingRenewal = Boolean(data.pending_owner_renewal);
   const dealRecord = formatDealRecord(data);
+  const targetProgress = formatTargetProgress(data);
+  const currentPos =
+    data.season_position != null ? formatOrdinal(data.season_position) : "—";
 
   if (statusEl) {
     statusEl.innerHTML = `
@@ -591,8 +636,9 @@ async function loadManagerSection(clubShortName) {
         }</dd>
         <dt>Weekly wage</dt><dd>${formatMoney(Number(data.weekly_wage || 0))}</dd>
         <dt>Division</dt><dd>${formatDivisionLabel(data.division)}</dd>
+        <dt>League position</dt><dd>${currentPos}</dd>
         <dt>Target</dt><dd>${formatManagerTarget(data)}</dd>
-        <dt>Progress</dt><dd>${formatTargetProgress(data)}</dd>
+        <dt>On target?</dt><dd><span class="${targetProgress.className}">${targetProgress.text}</span></dd>
         ${dealRecord ? `<dt>Deal record</dt><dd>${dealRecord}</dd>` : ""}
         ${formatChartBands(data) ? `<dt>Impact chart</dt><dd>${formatChartBands(data)}</dd>` : ""}
         <dt>Sack allowance</dt><dd>${data.manager_sacks_remaining ? "Available this season" : "Used"}</dd>
@@ -600,7 +646,7 @@ async function loadManagerSection(clubShortName) {
       ${
         pendingRenewal
           ? `<p class="expectation-note" style="margin-top:10px;">They hit their target in at least one season of the deal. Renew for another 2 seasons.</p>`
-          : ""
+          : `<p class="expectation-note" style="margin-top:10px;">On target uses the live league table vs their deal target for this season. Final hit/miss is locked when you run Process manager contracts.</p>`
       }
     `;
   }
