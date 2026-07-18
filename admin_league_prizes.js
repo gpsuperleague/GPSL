@@ -6,11 +6,13 @@ primeAdminPageChrome();
 const LEAGUE_PRIZE_POSITIONS = 20;
 
 let currentSeasonId = null;
+/** @type {{ id: number, label?: string, status?: string, is_current?: boolean }[]} */
+let seasons = [];
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
-  await loadCurrentSeasonId();
+  await loadSeasons();
   buildLeaguePrizeGrid();
   await loadLeaguePrizeSettings();
 
@@ -19,12 +21,105 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("payLeaguePrizesBtn").onclick = payLeaguePrizes;
   document.getElementById("copyLeaguePrizesBtn").onclick = () => copyLeaguePrizes(false);
   document.getElementById("copySaveLeaguePrizesBtn").onclick = () => copyLeaguePrizes(true);
+  document.getElementById("copyLeaguePrizesSeasonBtn").onclick = copyLeaguePrizesFromSeason;
+  document.getElementById("leaguePrizeSeasonSelect")?.addEventListener("change", () => {
+    const v = Number(document.getElementById("leaguePrizeSeasonSelect")?.value);
+    currentSeasonId = Number.isFinite(v) ? v : null;
+    syncCopySeasonOptions();
+    loadLeaguePrizeSettings();
+  });
   document.getElementById("leaguePrizeDivision").onchange = () => {
     syncCopyFromOptions();
     loadLeaguePrizeSettings();
   };
   syncCopyFromOptions();
 });
+
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/"/g, "&quot;");
+}
+
+function seasonOptionHtml(s) {
+  const tag = s.is_current ? " (current)" : ` (${s.status || ""})`;
+  return `<option value="${s.id}">${escapeHtml(s.label || `Season ${s.id}`)}${tag}</option>`;
+}
+
+function syncCopySeasonOptions() {
+  const copySel = document.getElementById("leaguePrizeCopySeasonFrom");
+  if (!copySel) return;
+  const others = seasons.filter((s) => Number(s.id) !== Number(currentSeasonId));
+  copySel.innerHTML =
+    `<option value="">Select season…</option>` + others.map(seasonOptionHtml).join("");
+  const prior = others.find((s) => Number(s.id) < Number(currentSeasonId)) || others[0];
+  if (prior) copySel.value = String(prior.id);
+}
+
+async function loadSeasons() {
+  const { data, error } = await supabase
+    .from("competition_seasons")
+    .select("id, label, status, is_current")
+    .order("id", { ascending: false });
+  if (error) throw error;
+  seasons = data || [];
+  const sel = document.getElementById("leaguePrizeSeasonSelect");
+  if (sel) {
+    sel.innerHTML = seasons.map(seasonOptionHtml).join("");
+    const current = seasons.find((s) => s.is_current) || seasons[0];
+    if (current) {
+      sel.value = String(current.id);
+      currentSeasonId = current.id;
+    }
+  } else {
+    await loadCurrentSeasonId();
+  }
+  syncCopySeasonOptions();
+}
+
+async function copyLeaguePrizesFromSeason() {
+  const toId = currentSeasonId;
+  const fromRaw = document.getElementById("leaguePrizeCopySeasonFrom")?.value;
+  const fromId = fromRaw ? Number(fromRaw) : null;
+  if (!toId || !fromId) {
+    setStatus("leaguePrizeStatus", "Choose source and target seasons.", false);
+    return;
+  }
+  if (fromId === toId) {
+    setStatus("leaguePrizeStatus", "Source and target are the same.", false);
+    return;
+  }
+  if (
+    !confirm(
+      `Copy all league prize amounts from season ${fromId} into season ${toId}?\n\nAll divisions on the target are overwritten.`
+    )
+  ) {
+    return;
+  }
+
+  setStatus("leaguePrizeStatus", "Copying…");
+  const { data, error } = await supabase.rpc("competition_admin_copy_league_prizes", {
+    p_from_season_id: fromId,
+    p_to_season_id: toId,
+  });
+  if (error) {
+    setStatus(
+      "leaguePrizeStatus",
+      error.message.includes("competition_admin_copy_league_prizes")
+        ? "Run patches/prize_config_persist_across_seasons.sql first."
+        : "❌ " + error.message,
+      false
+    );
+    return;
+  }
+  await loadLeaguePrizeSettings();
+  setStatus(
+    "leaguePrizeStatus",
+    `✅ Copied ${data?.rows_copied ?? 0} league prize row(s) from season ${fromId} → ${toId}.`,
+    true
+  );
+}
 
 const DIVISION_LABELS = {
   superleague: "SuperLeague",

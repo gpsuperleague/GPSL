@@ -78,15 +78,15 @@ BEGIN
     RAISE EXCEPTION 'Expected 60 clubs, found %', v_club_count;
   END IF;
 
-  -- Carry GPDB exclusions forward when the previous season had any.
-  IF to_regprocedure('public.admin_gpdb_copy_season_exclusions(bigint, bigint)') IS NOT NULL THEN
-    SELECT s.id INTO v_prev
-    FROM public.competition_seasons s
-    WHERE s.id < v_season_id
-    ORDER BY s.id DESC
-    LIMIT 1;
+  SELECT s.id INTO v_prev
+  FROM public.competition_seasons s
+  WHERE s.id < v_season_id
+  ORDER BY s.id DESC
+  LIMIT 1;
 
-    IF v_prev IS NOT NULL
+  IF v_prev IS NOT NULL THEN
+    -- Carry GPDB exclusions forward when the previous season had any.
+    IF to_regprocedure('public.admin_gpdb_copy_season_exclusions(bigint, bigint)') IS NOT NULL
        AND (
          EXISTS (
            SELECT 1 FROM public.gpdb_season_excluded_players ep WHERE ep.season_id = v_prev
@@ -97,6 +97,23 @@ BEGIN
        )
     THEN
       PERFORM public.admin_gpdb_copy_season_exclusions(v_prev, v_season_id);
+    END IF;
+
+    IF to_regprocedure('public.competition_admin_copy_cup_prizes(bigint, bigint)') IS NOT NULL
+       AND EXISTS (
+         SELECT 1 FROM public.competition_cup_prize_config c WHERE c.season_id = v_prev
+       )
+    THEN
+      PERFORM public.competition_admin_copy_cup_prizes(v_prev, v_season_id);
+    END IF;
+
+    IF to_regprocedure('public.competition_admin_copy_league_prizes(bigint, bigint)') IS NOT NULL
+       AND to_regclass('public.competition_league_prize_config') IS NOT NULL
+       AND EXISTS (
+         SELECT 1 FROM public.competition_league_prize_config c WHERE c.season_id = v_prev
+       )
+    THEN
+      PERFORM public.competition_admin_copy_league_prizes(v_prev, v_season_id);
     END IF;
   END IF;
 

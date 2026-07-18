@@ -13,7 +13,27 @@
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <div class="card">
-        <p class="note">Round fee is paid to <b>both</b> clubs when a tie is confirmed. Set amounts per cup + stage (run <code>competition_cup_prizes_fix.sql</code>).</p>
+        <p class="note">
+          Round fee is paid to <b>both</b> clubs when a tie is confirmed. Set amounts per cup + stage
+          (run <code>competition_cup_prizes_fix.sql</code>). Creating a new season auto-copies the
+          previous season’s cup (and league) prize tables — or copy manually below
+          (<code>patches/prize_config_persist_across_seasons.sql</code>).
+        </p>
+        <div class="row">
+          <div>
+            <label>Season</label>
+            <select id="cupPrizeSeasonSelect"></select>
+          </div>
+          <div>
+            <label>Copy all cups from</label>
+            <select id="cupPrizeCopyFrom">
+              <option value="">Select season…</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button type="button" id="copyCupPrizesBtn" class="button secondary">Copy into season</button>
+          </div>
+        </div>
         <div class="row">
           <div>
             <label>Cup</label>
@@ -75,6 +95,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_cup_prizes.js"></script>
+  <script type="module" src="admin_cup_prizes.js?v=20260718-persist"></script>
 </body>
 </html>

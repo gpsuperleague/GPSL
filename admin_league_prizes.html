@@ -17,7 +17,24 @@
         <p class="note">
           Paid automatically when all <b>38</b> league matches in a division are played
           (or use <b>Pay league prizes</b> manually). Run <code>competition_league_prizes.sql</code> once.
+          New seasons auto-copy the previous season’s table
+          (<code>patches/prize_config_persist_across_seasons.sql</code>).
         </p>
+        <div class="row">
+          <div>
+            <label>Season</label>
+            <select id="leaguePrizeSeasonSelect"></select>
+          </div>
+          <div>
+            <label>Copy all divisions from season</label>
+            <select id="leaguePrizeCopySeasonFrom">
+              <option value="">Select season…</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button type="button" id="copyLeaguePrizesSeasonBtn" class="button secondary">Copy season</button>
+          </div>
+        </div>
         <div class="row">
           <div>
             <label>Division (editing)</label>
@@ -28,7 +45,7 @@
             </select>
           </div>
           <div>
-            <label>Copy prizes from</label>
+            <label>Copy prizes from division</label>
             <select id="leaguePrizeCopyFrom">
               <option value="">Select division…</option>
               <option value="superleague">SuperLeague</option>
@@ -42,7 +59,8 @@
           </div>
         </div>
         <p class="note" style="margin-top:0;">
-          Copy fills the grid for the division you’re editing. <b>Copy &amp; save</b> also writes it to the database.
+          Division copy fills the grid for the division you’re editing. <b>Copy &amp; save</b> also writes it.
+          <b>Copy season</b> copies all divisions from another season into the selected season.
         </p>
         <div id="leaguePrizeGrid" class="league-prize-grid"></div>
         <div class="row" style="margin-top:12px;">
@@ -54,6 +72,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_league_prizes.js?v=20260718-copy"></script>
+  <script type="module" src="admin_league_prizes.js?v=20260718-persist"></script>
 </body>
 </html>
