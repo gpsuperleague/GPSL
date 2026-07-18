@@ -95,8 +95,15 @@ async function loadCupByePanel() {
 
   panel.hidden = false;
 
+  const qualFrom = data?.qualification_season_label
+    ? ` Qualifying from ${data.qualification_season_label}` +
+      (data.qualification_season_id != null
+        ? ` (id ${data.qualification_season_id}).`
+        : ".")
+    : "";
+
   if (required === 0) {
-    summary.textContent = `${qualified.length} qualified clubs — first round is full (${slots} slots, ${r1Fixtures} fixtures). No byes needed.`;
+    summary.textContent = `${qualified.length} qualified clubs — first round is full (${slots} slots, ${r1Fixtures} fixtures). No byes needed.${qualFrom}`;
     grid.innerHTML = "";
     countEl.textContent = "Ready to draw";
     countEl.className = "bye-count ready";
@@ -107,7 +114,9 @@ async function loadCupByePanel() {
 
   document.getElementById("compSaveByesBtn").disabled = false;
   document.getElementById("compRandomByesBtn").disabled = false;
-  summary.textContent = `${qualified.length} qualified clubs · ${slots} first-round slots (${r1Fixtures} fixtures) → pick exactly ${required} club(s) to receive a bye into round 2.`;
+  summary.textContent =
+    `${qualified.length} qualified clubs · ${slots} first-round slots (${r1Fixtures} fixtures) → pick exactly ${required} club(s) to receive a bye into round 2.` +
+    qualFrom;
 
   grid.innerHTML = qualified
     .map((shortName) => {
