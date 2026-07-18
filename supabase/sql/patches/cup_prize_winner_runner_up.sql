@@ -38,6 +38,18 @@ WHERE c.stage = 'final'
   )
 ON CONFLICT (season_id, cup_code, stage) DO NOTHING;
 
+-- Drop legacy Final rows once Winner exists for that cup/season
+-- (safe: finals now pay winner / runner_up; Final was only a fallback)
+DELETE FROM public.competition_cup_prize_config f
+WHERE f.stage = 'final'
+  AND EXISTS (
+    SELECT 1
+    FROM public.competition_cup_prize_config w
+    WHERE w.season_id = f.season_id
+      AND w.cup_code = f.cup_code
+      AND w.stage = 'winner'
+  );
+
 CREATE OR REPLACE FUNCTION public.competition_admin_set_cup_prize(
   p_season_id bigint,
   p_cup_code text,
