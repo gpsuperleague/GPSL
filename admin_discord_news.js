@@ -203,6 +203,7 @@ function renderRoutingStatus(data) {
   const resultsOk = !!data?.results_webhook_configured;
   const natterOk = !!data?.natter_webhook_configured;
   const notifyOk = !!data?.notifications_webhook_configured;
+  const tablesOk = !!data?.tables_webhook_configured;
   el.innerHTML = `
     <div class="${newsOk ? "ok" : "bad"}">#gpsl-news webhook: ${
       newsOk ? "configured" : "missing DISCORD_WEBHOOK_URL"
@@ -220,6 +221,11 @@ function renderRoutingStatus(data) {
     <div class="${notifyOk ? "ok" : "bad"}">#gpsl-notifications webhook: ${
       notifyOk
         ? "configured (DISCORD_NOTIFICATIONS_WEBHOOK_URL)"
+        : "MISSING — set secret + redeploy discord-sky-feed"
+    }</div>
+    <div class="${tablesOk ? "ok" : "bad"}">#gpsl-tables webhook: ${
+      tablesOk
+        ? "configured (DISCORD_TABLES_WEBHOOK_URL)"
         : "MISSING — set secret + redeploy discord-sky-feed"
     }</div>
     ${
@@ -240,6 +246,7 @@ async function checkRouting() {
       results_webhook_configured: false,
       natter_webhook_configured: false,
       notifications_webhook_configured: false,
+      tables_webhook_configured: false,
       note: error.message,
     });
     return;
@@ -249,6 +256,7 @@ async function checkRouting() {
   if (!data?.results_webhook_configured) missing.push("results");
   if (!data?.natter_webhook_configured) missing.push("natter");
   if (!data?.notifications_webhook_configured) missing.push("notifications");
+  if (!data?.tables_webhook_configured) missing.push("tables");
   if (missing.length) {
     setStatus(
       "newsStatus",
@@ -259,7 +267,7 @@ async function checkRouting() {
   }
   setStatus(
     "newsStatus",
-    "Routing OK — news, results, natter, and notifications webhooks are configured."
+    "Routing OK — news, results, natter, notifications, and tables webhooks are configured."
   );
 }
 
@@ -273,13 +281,15 @@ async function pushNews() {
   if (
     data?.results_webhook_configured === false ||
     data?.natter_webhook_configured === false ||
-    data?.notifications_webhook_configured === false
+    data?.notifications_webhook_configured === false ||
+    data?.tables_webhook_configured === false
   ) {
     renderRoutingStatus({
       news_webhook_configured: true,
       results_webhook_configured: !!data?.results_webhook_configured,
       natter_webhook_configured: !!data?.natter_webhook_configured,
       notifications_webhook_configured: !!data?.notifications_webhook_configured,
+      tables_webhook_configured: !!data?.tables_webhook_configured,
       note: "Missing channel secrets block those items (they do not fall back to #gpsl-news).",
     });
   }
@@ -294,8 +304,9 @@ async function pushNews() {
     data?.posted_results != null ||
     data?.posted_news != null ||
     data?.posted_natter != null ||
-    data?.posted_notifications != null
-      ? ` (news ${data?.posted_news ?? 0}, results ${data?.posted_results ?? 0}, natter ${data?.posted_natter ?? 0}, notify ${data?.posted_notifications ?? 0})`
+    data?.posted_notifications != null ||
+    data?.posted_tables != null
+      ? ` (news ${data?.posted_news ?? 0}, results ${data?.posted_results ?? 0}, natter ${data?.posted_natter ?? 0}, notify ${data?.posted_notifications ?? 0}, tables ${data?.posted_tables ?? 0})`
       : "";
   setStatus(
     "newsStatus",
@@ -312,7 +323,9 @@ async function sendTest(channel = "news") {
         ? "#gpsl-natter"
         : channel === "notifications"
           ? "#gpsl-notifications"
-          : "#gpsl-news";
+          : channel === "tables"
+            ? "#gpsl-tables"
+            : "#gpsl-news";
   setStatus("newsStatus", `Sending test to ${label}…`);
   const { data, error } = await invokeFeed({
     test: true,
@@ -323,20 +336,24 @@ async function sendTest(channel = "news") {
           ? "natter"
           : channel === "notifications"
             ? "notifications"
-            : "news",
+            : channel === "tables"
+              ? "tables"
+              : "news",
   });
   if (error) {
     setStatus("newsStatus", error.message, false);
     if (
       channel === "results" ||
       channel === "natter" ||
-      channel === "notifications"
+      channel === "notifications" ||
+      channel === "tables"
     ) {
       renderRoutingStatus({
         news_webhook_configured: true,
         results_webhook_configured: channel !== "results",
         natter_webhook_configured: channel !== "natter",
         notifications_webhook_configured: channel !== "notifications",
+        tables_webhook_configured: channel !== "tables",
         note: error.message,
       });
     }
@@ -372,6 +389,46 @@ document.getElementById("notificationsTestBtn")?.addEventListener("click", () =>
   sendTest("notifications").catch((e) =>
     setStatus("newsStatus", e.message || String(e), false)
   );
+});
+document.getElementById("tablesTestBtn")?.addEventListener("click", () => {
+  sendTest("tables").catch((e) =>
+    setStatus("newsStatus", e.message || String(e), false)
+  );
+});
+document.getElementById("tablesPublishBtn")?.addEventListener("click", () => {
+  (async () => {
+    setStatus("newsStatus", "Queueing league tables for Discord…");
+    const { data, error } = await supabase.rpc(
+      "admin_discord_publish_league_tables",
+      {
+        p_gpsl_month: null,
+        p_season_id: null,
+      }
+    );
+    if (error) {
+      setStatus(
+        "newsStatus",
+        error.message.includes("admin_discord_publish_league_tables")
+          ? "❌ Run gpsl_discord_league_tables.sql in Supabase first."
+          : "❌ " + error.message,
+        false
+      );
+      return;
+    }
+    if (!data?.ok) {
+      setStatus(
+        "newsStatus",
+        data?.hint || data?.reason || "Publish failed.",
+        false
+      );
+      return;
+    }
+    setStatus(
+      "newsStatus",
+      `Queued tables for ${data?.gpsl_month || "month"} (queue #${data?.queue_id}). Pushing…`
+    );
+    await pushNews();
+  })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
 document.getElementById("notificationsTickBtn")?.addEventListener("click", () => {
   (async () => {
