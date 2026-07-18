@@ -21,6 +21,7 @@ const GPSL_MONTHS = [
   "march",
   "april",
   "may",
+  // playoffs week has no Sport edition
 ];
 
 function selectedSeasonId() {

@@ -67,6 +67,7 @@ export const GPSL_MONTH_LABELS = {
   march: "March",
   april: "April",
   may: "May",
+  playoffs: "Playoffs",
 };
 
 export const GPSL_MONTH_ORDER = [
@@ -80,6 +81,7 @@ export const GPSL_MONTH_ORDER = [
   "march",
   "april",
   "may",
+  "playoffs",
 ];
 
 /** Human-readable competition name for a fixture (league division or cup). */

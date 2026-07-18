@@ -1,5 +1,6 @@
 /**
- * Real-world calendar: Fri 19:00 UK → Fri 19:00 UK = one GPSL month (Aug–May).
+ * Real-world calendar: Fri 19:00 UK → Fri 19:00 UK = one GPSL month
+ * (Aug–May league/cup programme, then Playoffs week).
  */
 
 import { GPSL_MONTH_LABELS } from "./competition.js";
@@ -126,7 +127,7 @@ export function navGpslMonthTitle(status) {
     return `Between GPSL months — ${next} unlocks ${formatUkDateTime(status.next_unlock_at)} UK`;
   }
   if (status?.calendar_phase === "after_season") {
-    return "GPSL season calendar complete (May locked)";
+    return "GPSL season calendar complete (Playoffs locked)";
   }
   return label;
 }
@@ -148,12 +149,16 @@ export function calendarStatusBanner(status) {
     GPSL_MONTH_LABELS[status.active_gpsl_month] ||
     status.active_gpsl_month_label ||
     "—";
+  const isPlayoffs = String(status.active_gpsl_month || "").toLowerCase() === "playoffs";
 
   if (phase === "in_month") {
+    if (isPlayoffs) {
+      return `GPSL Playoffs is live — promotion & relegation playoffs until ${formatUkDateTime(status.active_lock_at)} UK. End-of-season processing follows when Playoffs locks.`;
+    }
     return `GPSL ${activeLabel} is live — league & cup fixtures for ${activeLabel} can be played until ${formatUkDateTime(status.active_lock_at)} UK.`;
   }
   if (phase === "after_season") {
-    return "GPSL season calendar has ended (May locked).";
+    return "GPSL season calendar has ended (Playoffs locked). Ready for end-of-season archive.";
   }
   if (phase === "between_months") {
     const next =

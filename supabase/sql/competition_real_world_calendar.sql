@@ -9,10 +9,10 @@ CREATE TABLE IF NOT EXISTS public.competition_season_calendar (
   gpsl_month text NOT NULL CHECK (
     gpsl_month IN (
       'august', 'september', 'october', 'november', 'december',
-      'january', 'february', 'march', 'april', 'may'
+      'january', 'february', 'march', 'april', 'may', 'playoffs'
     )
   ),
-  sort_order smallint NOT NULL CHECK (sort_order >= 1 AND sort_order <= 10),
+  sort_order smallint NOT NULL CHECK (sort_order >= 1 AND sort_order <= 11),
   unlock_at timestamptz NOT NULL,
   lock_at timestamptz NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -39,7 +39,7 @@ RETURNS smallint
 LANGUAGE sql
 IMMUTABLE
 AS $$
-  SELECT CASE p_month
+  SELECT CASE lower(btrim(coalesce(p_month, '')))
     WHEN 'august' THEN 1
     WHEN 'september' THEN 2
     WHEN 'october' THEN 3
@@ -50,6 +50,7 @@ AS $$
     WHEN 'march' THEN 8
     WHEN 'april' THEN 9
     WHEN 'may' THEN 10
+    WHEN 'playoffs' THEN 11
     ELSE NULL
   END;
 $$;
@@ -59,7 +60,10 @@ RETURNS text
 LANGUAGE sql
 IMMUTABLE
 AS $$
-  SELECT initcap(p_month);
+  SELECT CASE lower(btrim(coalesce(p_month, '')))
+    WHEN 'playoffs' THEN 'Playoffs'
+    ELSE initcap(lower(btrim(coalesce(p_month, ''))))
+  END;
 $$;
 
 /** Active GPSL month for season at p_at (default now()), or NULL if none / calendar off. */
@@ -194,7 +198,7 @@ DECLARE
   v_anchor timestamptz;
   v_months text[] := ARRAY[
     'august', 'september', 'october', 'november', 'december',
-    'january', 'february', 'march', 'april', 'may'
+    'january', 'february', 'march', 'april', 'may', 'playoffs'
   ];
   v_month text;
   v_i int;
@@ -249,9 +253,10 @@ BEGIN
     'season_id', p_season_id,
     'anchor_uk',
     to_char(v_anchor AT TIME ZONE 'Europe/London', 'YYYY-MM-DD HH24:MI'),
-    'months', 10,
+    'months', 11,
     'season_ends_uk',
-    to_char((v_anchor + interval '70 days') AT TIME ZONE 'Europe/London', 'YYYY-MM-DD HH24:MI')
+    to_char((v_anchor + interval '77 days') AT TIME ZONE 'Europe/London', 'YYYY-MM-DD HH24:MI'),
+    'note', 'Week 11 is Playoffs (after May league/cup programme).'
   );
 END;
 $function$;

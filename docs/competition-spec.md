@@ -105,15 +105,16 @@ Qualification from **final league positions** that season:
 | **Super8** | Places **1–8** | — |
 | **Plate** | Places **9–16** | Places **1–4** |
 | **Shield** | — | Places **5–15** + **winners** of 16th vs 17th playoff |
-| **Spoon** | — | Places **18–20** + **losers** of 16th vs 17th playoff |
+| **Bowl** | — | Places **18–20** + **losers** of 16th vs 17th playoff |
 
-### Championship 16th vs 17th (Prestige)
+### Championship 16th vs 17th (Prestige — Shield/Bowl)
 
-- **16th** vs **17th** in each Championship division.
-- **Winner** → qualifies for **Shield** (in addition to places 5–15).
-- **Loser** → **Spoon** (with places 18–20 in that division).
+- **16th** vs **17th** in each Championship division — played in **Playoffs week (Week 11)**.
+- **Winner** → qualifies for next season **Shield** (with places 5–15).
+- **Loser** → next season **Bowl** (with places 18–20 in that division).
+- Admin can still record the outcome via playoff qualifier slots until fixtures are auto-generated (Phase 7).
 
-*Note: This 16v17 match is the **Championship** Shield/Spoon playoff — separate from the **SuperLeague** 16v17 relegation playoff.*
+*Note: This is the **Championship** Shield/Bowl playoff — separate from the **SuperLeague** 16v17 relegation playoff.*
 
 ### Admin (`admin.html`)
 
@@ -145,11 +146,26 @@ Qualification from **final league positions** that season:
 | August | Week 1 | **3** |
 | September–April | 8 weeks | **4** each |
 | May | Week 10 | **3** |
+| **Playoffs** | **Week 11** | League playoffs only (not part of the 38) |
 
-**Total:** 3 + 8×4 + 3 = **38**.
+**Total league games:** 3 + 8×4 + 3 = **38**.
 
 - **One GPSL month = one real-world week.**
+- **May** finishes the league programme (MD 36–38) and the League Cup final.
+- **Playoffs (Week 11)** after May locks. End-of-season archive / rollover waits until Playoffs locks.
+- Season length with calendar set: **11 UK weeks** (anchor Friday 19:00 → Playoffs lock = anchor + 77 days).
 - **Weather** for each fixture derived from **GPSL month** (gameplay TBD).
+
+### Playoffs week (Week 11) — ties to schedule
+
+| Tie | Purpose |
+|-----|---------|
+| **SuperLeague 16th vs 17th** | Winner → SL playoff final; loser **relegated** |
+| **Championship A & B — places 3–6** | Promotion playoff brackets → division finals → Championships playoff final → SL playoff final |
+| **Championship A & B — 16th vs 17th** | **Shield/Bowl prestige playoff** (separate from promotion). Winner → next season **Shield**; loser → **Bowl** |
+| **SuperLeague playoff final** | SL 16v17 winner vs Championships playoff winner — SuperLeague place next season |
+
+Suggested pacing in the real week: early — CH semis + both 16v17s (SL + Shield/Bowl A/B); mid — CH division finals; late — Championships final + SL playoff final.
 
 ### Cup fixtures
 
@@ -221,7 +237,7 @@ Formula inputs (to detail in finance spec):
 5. **Phase 4 — Player stats** — G/A/apps, ratings, leaderboards.
 6. **Phase 5 — Gate receipts & finances ledger** — league home 100%, cup 50/50.
 7. **Phase 6 — Prestige cups + League cup** — draws, brackets, admin prize instant payout.
-8. **Phase 7 — Playoffs & end of season** — bracket engine, promotion/relegation, SL playoff final.
+8. **Phase 7 — Playoffs & end of season** — Week 11 calendar exists; still TODO: generate all Week 11 ties (SL 16v17, CH 3–6 promotion brackets, **CH Shield/Bowl 16v17 A+B**), schedule in `playoffs` month, apply promotion/relegation + prestige qualifiers after finals.
 9. **Phase 8 — Matchday v2** — formation / pitch / pre-match squad.
 
 ---

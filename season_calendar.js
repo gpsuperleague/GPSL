@@ -1,5 +1,5 @@
 /**
- * Season calendar — month-by-month guide for owners (pre-season + Aug–May).
+ * Season calendar — month-by-month guide (pre-season + Aug–May + Playoffs).
  */
 import { supabase, initGlobal, getAuthUserFast } from "./global.js";
 import {
@@ -66,6 +66,13 @@ const CUP_BY_MONTH = {
   march: [{ cup: "league_cup", label: "League Cup — Quarter-final" }],
   april: [{ cup: "league_cup", label: "League Cup — Semi-final" }],
   may: [{ cup: "league_cup", label: "League Cup — Final" }],
+  playoffs: [
+    {
+      cup: "playoffs",
+      label:
+        "Playoffs — SL 16v17 · CH promotion (3–6) · CH Shield/Bowl 16v17 (A+B) · finals",
+    },
+  ],
 };
 
 /** Transfer window by calendar month key (owner-facing season guide). */
@@ -82,6 +89,7 @@ const TRANSFER_BY_MONTH = {
   march: "closed",
   april: "closed",
   may: "closed",
+  playoffs: "closed",
 };
 
 const SEASON_MONTH_ORDER = [
@@ -97,6 +105,7 @@ const SEASON_MONTH_ORDER = [
   "march",
   "april",
   "may",
+  "playoffs",
 ];
 
 const MONTH_LABELS = {
@@ -134,7 +143,10 @@ function messagingDeadlineText(monthKey) {
   }
   const next = nextPlayMonth(monthKey);
   if (!next) {
-    return "Finish arranging any remaining May fixtures before the season calendar locks.";
+    if (monthKey === "playoffs") {
+      return "Finish playoff ties before Playoffs locks — then end-of-season archive can run.";
+    }
+    return "Finish arranging any remaining fixtures before the season calendar locks.";
   }
   const nextLabel = MONTH_LABELS[next] || next;
   const thisLabel = MONTH_LABELS[monthKey] || monthKey;
@@ -177,7 +189,21 @@ function staticEventsForMonth(monthKey) {
     });
   }
 
+  if (monthKey === "playoffs") {
+    events.push({
+      kind: "phase",
+      short: "League playoffs",
+      detail:
+        "Week 11 after May. Includes: (1) SuperLeague 16th vs 17th relegation playoff; (2) Championship A & B promotion playoffs (3rd–6th) through to the Championships final and SuperLeague playoff final; (3) Championship A & B Shield/Bowl playoffs (16th vs 17th) — winner → next season Shield, loser → Bowl. Direct promotions (CH 1–2) and auto-relegations (SL 18–20) are already settled at May lock. End-of-season archive runs after Playoffs locks.",
+      links: [
+        { href: "progress.html", label: "League tables" },
+        { href: "admin_fixtures-playoffs.html", label: "Playoffs admin" },
+      ],
+    });
+  }
+
   for (const cup of CUP_BY_MONTH[monthKey] || []) {
+    if (cup.cup === "playoffs") continue;
     events.push({
       kind: "cup",
       short: cup.label,
@@ -855,9 +881,9 @@ async function renderPage(user) {
     `</div>` +
     `<p class="sc-footnote">` +
     `Click a bullet for details and links. League matchdays: Aug 1–3, then four per month Sep–Apr, May 36–38. ` +
-    `Cup rounds follow the published schedule. Live drafts and special auctions appear when scheduled. ` +
+    `Playoffs is Week 11 after May (promotion/relegation ties). Cup rounds follow the published schedule. ` +
     `Your World Cup internationals appear in their GPSL month (Aug/Oct/Dec/Feb/Apr for qualifying).` +
-    ` <span class="sc-build">Calendar build 20260710-intl</span>` +
+    ` <span class="sc-build">Calendar build 20260718-playoffs2</span>` +
     `</p>`;
 
   wireBulletToggles(root);
