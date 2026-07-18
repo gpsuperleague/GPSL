@@ -101,6 +101,34 @@
       </div>
 
       <div class="card" style="margin-top:16px;">
+        <h2>Retry month-lock jobs</h2>
+        <p class="note" style="margin-top:0;">
+          If End Month locked the calendar but jobs timed out (common for May), run
+          <code>competition_admin_month_lock_jobs_staged.sql</code> once, then retry here.
+          Stages: TOTM → Sport → TV → tables (Discord + playoffs) → scheduling fines.
+        </p>
+        <div class="form-row">
+          <label>
+            Locked month
+            <select id="retryJobsMonth">
+              <option value="may" selected>May</option>
+              <option value="april">April</option>
+              <option value="march">March</option>
+              <option value="february">February</option>
+              <option value="january">January</option>
+              <option value="december">December</option>
+              <option value="november">November</option>
+              <option value="october">October</option>
+              <option value="september">September</option>
+              <option value="august">August</option>
+            </select>
+          </label>
+          <button type="button" id="retryJobsBtn" class="button" style="background:#336699;">Retry month-lock jobs</button>
+        </div>
+        <div id="retryJobsStatus" class="status-line"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
         <h2>GPSL Sport missing after month lock?</h2>
         <p class="note" style="margin-top:0;">
           Use <a href="admin_gpsl_sport.html" style="color:#ff9900;"><b>Admin → Season Management → Republish GPSL Sport</b></a>
@@ -129,6 +157,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_end_month.js?v=20260717-sport-link"></script>
+  <script type="module" src="admin_test_end_month.js?v=20260718-lock-jobs-staged"></script>
 </body>
 </html>

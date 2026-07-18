@@ -311,32 +311,24 @@ async function endGpslMonthEarly() {
   // Sport/TOTM timeout cannot roll back the calendar lock.
   let jobs = data.month_lock_jobs || null;
   if (data.lock_jobs_deferred !== false) {
-    setStatus(
-      "endMonthStatus",
-      `✅ ${data.gpsl_month_label} locked. Running month-lock jobs (TOTM, Sport, fines)…`
-    );
-    const { data: jobData, error: jobErr } = await supabase.rpc(
-      "competition_admin_run_month_lock_jobs",
-      {
-        p_season_id: data.season_id || seasonId || null,
-        p_gpsl_month: data.gpsl_month || null,
-        p_force_scheduling: true,
-      }
-    );
-    if (jobErr) {
-      const missing = /competition_admin_run_month_lock_jobs/i.test(jobErr.message || "");
+    const jobRun = await runMonthLockJobsStaged({
+      seasonId: data.season_id || seasonId || null,
+      gpslMonth: data.gpsl_month || null,
+      statusEl: "endMonthStatus",
+      lockedLabel: data.gpsl_month_label,
+    });
+    if (!jobRun.ok) {
       setStatus(
         "endMonthStatus",
-        missing
-          ? `✅ ${data.gpsl_month_label} locked, but job RPC missing — run competition_admin_end_gpsl_month_timeout_fix.sql then retry jobs.`
-          : `✅ ${data.gpsl_month_label} locked, but jobs failed: ${jobErr.message}`,
+        `✅ ${data.gpsl_month_label} locked, but jobs failed: ${jobRun.error}. ` +
+          `Run competition_admin_month_lock_jobs_staged.sql then use “Retry month-lock jobs”.`,
         false
       );
       await loadCalendarTable();
       return;
     }
-    jobs = jobData;
-    data.month_lock_jobs = jobData;
+    jobs = jobRun.data;
+    data.month_lock_jobs = jobRun.data;
     renderEndMonthPreview(data);
   }
 
@@ -386,6 +378,103 @@ async function endGpslMonthEarly() {
   }
 
   setStatus("endMonthStatus", statusMsg, jobErrors.length === 0 && Boolean(sportPublish?.ok || sportCount));
+  await loadCalendarTable();
+}
+
+/**
+ * May packs TOTM + Sport + tables/playoffs + fines into one RPC and times out.
+ * Run awards → tables → scheduling as separate calls (each with own timeout).
+ */
+async function runMonthLockJobsStaged({
+  seasonId,
+  gpslMonth,
+  statusEl = "endMonthStatus",
+  lockedLabel = null,
+}) {
+  const stages = ["totm", "sport", "tv", "tables", "scheduling"];
+  const merged = { ok: true, stages: [] };
+  const label = lockedLabel || gpslMonth || "month";
+
+  for (const stage of stages) {
+    setStatus(
+      statusEl,
+      `✅ ${label} locked. Month-lock jobs: ${stage}…`
+    );
+    const { data, error } = await supabase.rpc(
+      "competition_admin_run_month_lock_jobs",
+      {
+        p_season_id: seasonId || null,
+        p_gpsl_month: gpslMonth || null,
+        p_force_scheduling: stage === "scheduling",
+        p_stage: stage,
+      }
+    );
+
+    if (error) {
+      const timedOut = /statement timeout|canceling statement/i.test(
+        error.message || ""
+      );
+      const missing = /competition_admin_run_month_lock_jobs|p_stage/i.test(
+        error.message || ""
+      );
+      return {
+        ok: false,
+        error: timedOut
+          ? `${stage} timed out — re-run competition_admin_month_lock_jobs_staged.sql and retry`
+          : missing
+            ? `staged jobs RPC missing — run competition_admin_month_lock_jobs_staged.sql`
+            : `${stage}: ${error.message}`,
+        data: merged,
+        failedStage: stage,
+      };
+    }
+
+    if (data && typeof data === "object") {
+      Object.assign(merged, data);
+      merged.stages.push(stage);
+    }
+  }
+
+  return { ok: true, data: merged };
+}
+
+async function retryMonthLockJobs() {
+  const seasonId = selectedSeasonId();
+  const month =
+    document.getElementById("retryJobsMonth")?.value?.trim().toLowerCase() ||
+    "may";
+
+  if (!confirm(`Retry month-lock jobs for ${month}? (TOTM → Sport → TV → tables → fines)`)) {
+    return;
+  }
+
+  const jobRun = await runMonthLockJobsStaged({
+    seasonId,
+    gpslMonth: month,
+    statusEl: "retryJobsStatus",
+    lockedLabel: month,
+  });
+
+  if (!jobRun.ok) {
+    setStatus("retryJobsStatus", `❌ ${jobRun.error}`, false);
+    return;
+  }
+
+  const totm = jobRun.data?.team_of_month?.processed;
+  const tables = jobRun.data?.league_tables;
+  const playoffs = tables?.playoffs;
+  setStatus(
+    "retryJobsStatus",
+    `✅ Jobs finished for ${month}. TOTM scopes: ${
+      Array.isArray(totm) ? totm.length : 0
+    }. Tables ok: ${tables?.ok !== false}. Playoffs: ${
+      playoffs?.ok === false
+        ? playoffs.error || "failed"
+        : playoffs
+          ? "generated/checked"
+          : "n/a"
+    }. Also publish GPSL Sport below if needed.`
+  );
   await loadCalendarTable();
 }
 
@@ -550,6 +639,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("openNextCheck")?.addEventListener("change", updateEndMonthPhraseHint);
   document.getElementById("previewEndBtn").onclick = previewEndGpslMonth;
   document.getElementById("endMonthBtn").onclick = endGpslMonthEarly;
+  document.getElementById("retryJobsBtn")?.addEventListener("click", () => {
+    retryMonthLockJobs().catch((e) =>
+      setStatus("retryJobsStatus", e.message || String(e), false)
+    );
+  });
   document.getElementById("previewOpenNextBtn").onclick = previewOpenNextGpslMonth;
   document.getElementById("openNextBtn").onclick = openNextGpslMonth;
 
