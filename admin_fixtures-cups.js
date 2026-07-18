@@ -292,7 +292,11 @@ async function drawCompetitionCup() {
   setStatus("compCupStatus", "Drawing…");
   const result =
     cup === "league_cup"
-      ? await supabase.rpc("competition_draw_league_cup", { p_season_id: seasonId })
+      ? await supabase.rpc("competition_draw_league_cup", {
+          p_season_id: seasonId,
+          p_player_order: null,
+          p_bye_match_nos: null,
+        })
       : await supabase.rpc("competition_draw_prestige_cup", {
           p_season_id: seasonId,
           p_cup_code: cup,
