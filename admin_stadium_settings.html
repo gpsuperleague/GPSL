@@ -38,7 +38,7 @@
           </div>
           <h3 class="admin-subheading admin-settings-sheet-heading">Club tier cutoffs (prestige rank)</h3>
           <p class="admin-settings-sheet-blurb">
-            Maps prestige rank to <b>big</b>, <b>medium</b>, or <b>low</b> club tier (drives sensitivity and manager lift).
+            Maps prestige rank to <b>big</b>, <b>medium</b>, or <b>low</b> club tier (drives expectations and manager lift).
             Clubs ranked ≤ big cutoff are big; ≤ medium cutoff are medium; the rest are low.
             <b>Capacity weight</b> and <b>ref seats</b> add a small stadium-size bonus when computing prestige rank.
           </p>
@@ -57,32 +57,6 @@
           <div class="admin-settings-field">
             <label>Capacity ref seats</label>
             <input type="number" id="attCapRef" min="1000" step="1000" class="field-wide">
-          </div>
-          <h3 class="admin-subheading admin-settings-sheet-heading">Sensitivity &amp; gap scale</h3>
-          <p class="admin-settings-sheet-blurb">
-            How strongly live performance vs expectation moves fill in the legacy model.
-            Each tier has its own multiplier. <b>Points gap scale</b> converts the performance gap (actual − expected
-            composite points) into a fill % change. <b>Overperform cap</b> limits upside when a club beats expectations.
-          </p>
-          <div class="admin-settings-field">
-            <label>Big club sensitivity</label>
-            <input type="number" id="attBigSens" min="0" max="3" step="0.05" class="field-decimal">
-          </div>
-          <div class="admin-settings-field">
-            <label>Medium sensitivity</label>
-            <input type="number" id="attMedSens" min="0" max="3" step="0.05" class="field-decimal">
-          </div>
-          <div class="admin-settings-field">
-            <label>Low sensitivity</label>
-            <input type="number" id="attLowSens" min="0" max="3" step="0.05" class="field-decimal">
-          </div>
-          <div class="admin-settings-field">
-            <label>Overperform cap</label>
-            <input type="number" id="attOverCap" min="0" max="2" step="0.05" class="field-decimal">
-          </div>
-          <div class="admin-settings-field">
-            <label>Points gap scale</label>
-            <input type="number" id="attGapScale" min="0" max="10" step="0.1" class="field-decimal">
           </div>
           <h3 class="admin-subheading admin-settings-sheet-heading">Expectation vs performance weights</h3>
           <p class="admin-settings-sheet-blurb">
