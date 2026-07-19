@@ -2,6 +2,9 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 
 primeAdminPageChrome();
 
+const DEFAULT_URL =
+  "https://omyyogfumrjoaweuawjn.supabase.co/functions/v1/discord-friendlies-ingest";
+
 function escapeHtml(s) {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
@@ -138,6 +141,78 @@ function renderConfirmed(rows) {
     </table>`;
 }
 
+async function loadAutoSettings() {
+  const urlEl = document.getElementById("autoUrl");
+  const keyEl = document.getElementById("autoKey");
+  const enEl = document.getElementById("autoEnabled");
+  if (!urlEl) return;
+
+  const { data, error } = await supabase
+    .from("gpsl_discord_friendlies_settings")
+    .select("edge_function_url, invoke_key, auto_poll_enabled")
+    .eq("id", 1)
+    .maybeSingle();
+
+  if (error) {
+    setStatus(
+      "autoStatus",
+      `Auto-poll settings unavailable — run discord_friendlies_cron.sql (${error.message})`,
+      false
+    );
+    if (!urlEl.value) urlEl.value = DEFAULT_URL;
+    return;
+  }
+
+  urlEl.value = data?.edge_function_url || DEFAULT_URL;
+  if (data?.invoke_key) keyEl.placeholder = "•••• saved (enter to replace)";
+  enEl.checked = data?.auto_poll_enabled === true;
+
+  if (data?.edge_function_url && data?.invoke_key && data?.auto_poll_enabled) {
+    setStatus("autoStatus", "Auto-poll ON — Discord is checked every 2 minutes.");
+  } else {
+    setStatus(
+      "autoStatus",
+      "Auto-poll OFF — run discord_friendlies_cron.sql, then save URL + service_role key.",
+      false
+    );
+  }
+}
+
+async function saveAutoSettings() {
+  const url = document.getElementById("autoUrl")?.value?.trim() || "";
+  const key = document.getElementById("autoKey")?.value?.trim() || "";
+  const enabled = !!document.getElementById("autoEnabled")?.checked;
+
+  const { data, error } = await supabase.rpc("admin_discord_friendlies_set_auto", {
+    p_edge_function_url: url || DEFAULT_URL,
+    p_invoke_key: key || null,
+    p_enabled: enabled,
+  });
+
+  if (error) {
+    setStatus(
+      "autoStatus",
+      error.message?.includes("admin_discord_friendlies_set_auto")
+        ? "Run discord_friendlies_cron.sql first, then save again."
+        : error.message,
+      false
+    );
+    return;
+  }
+
+  document.getElementById("autoKey").value = "";
+  await loadAutoSettings();
+  setStatus(
+    "autoStatus",
+    data?.has_key
+      ? enabled
+        ? "Saved — auto-poll enabled (every 2 minutes)."
+        : "Saved — auto-poll disabled."
+      : "Saved URL, but still need service_role key (same as Discord News).",
+    !!data?.has_key && enabled
+  );
+}
+
 async function loadOverview() {
   const { data, error } = await supabase.rpc("admin_gpsl_friendlies_overview", {
     p_limit: 50,
@@ -210,8 +285,14 @@ document.getElementById("btnPoll")?.addEventListener("click", () => {
 document.getElementById("btnRefresh")?.addEventListener("click", () => {
   loadOverview().catch((e) => setStatus("pollStatus", e.message || String(e), false));
 });
+document.getElementById("autoSaveBtn")?.addEventListener("click", () => {
+  saveAutoSettings().catch((e) => setStatus("autoStatus", e.message || String(e), false));
+});
 
 initAdminPage({
   page: "admin_discord_friendlies",
   title: "Discord Friendlies",
-}).then(() => loadOverview());
+}).then(async () => {
+  await loadAutoSettings();
+  await loadOverview();
+});

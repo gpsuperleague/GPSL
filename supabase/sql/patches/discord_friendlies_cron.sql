@@ -4,12 +4,11 @@
 -- Run AFTER discord_friendlies_gate.sql and after deploying
 -- discord-friendlies-ingest with secrets set.
 --
--- Then configure once (Admin SQL or here):
---   SELECT public.admin_discord_friendlies_set_auto(
---     'https://<project-ref>.supabase.co/functions/v1/discord-friendlies-ingest',
---     '<DISCORD_FRIENDLIES_INVOKE_KEY or service_role JWT>',
---     true
---   );
+-- This schedules a job every 2 minutes. Also tries to copy the service_role
+-- key + project URL from Discord News auto-post settings (if already saved).
+--
+-- Or enable from Admin → Discord Friendlies → Save auto-poll settings
+-- (use the same service_role key as Discord News auto-post).
 --
 -- Safe re-run.
 -- =============================================================================
@@ -128,6 +127,60 @@ $function$;
 REVOKE ALL ON FUNCTION public.gpsl_discord_friendlies_request_poll() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.gpsl_discord_friendlies_request_poll() TO postgres;
 GRANT EXECUTE ON FUNCTION public.gpsl_discord_friendlies_request_poll() TO service_role;
+
+-- Bootstrap URL + key from Discord News settings when available
+DO $boot$
+DECLARE
+  v_feed_url text;
+  v_feed_key text;
+  v_friendlies_url text;
+  v_cur_url text;
+  v_cur_key text;
+BEGIN
+  SELECT nullif(btrim(edge_function_url), ''), nullif(btrim(invoke_key), '')
+  INTO v_feed_url, v_feed_key
+  FROM public.gpsl_discord_feed_settings
+  WHERE id = 1;
+
+  SELECT nullif(btrim(edge_function_url), ''), nullif(btrim(invoke_key), '')
+  INTO v_cur_url, v_cur_key
+  FROM public.gpsl_discord_friendlies_settings
+  WHERE id = 1;
+
+  IF v_feed_url IS NOT NULL THEN
+    v_friendlies_url := regexp_replace(
+      v_feed_url,
+      'discord-sky-feed/?$',
+      'discord-friendlies-ingest'
+    );
+    IF v_friendlies_url = v_feed_url THEN
+      v_friendlies_url :=
+        'https://omyyogfumrjoaweuawjn.supabase.co/functions/v1/discord-friendlies-ingest';
+    END IF;
+  ELSE
+    v_friendlies_url :=
+      'https://omyyogfumrjoaweuawjn.supabase.co/functions/v1/discord-friendlies-ingest';
+  END IF;
+
+  UPDATE public.gpsl_discord_friendlies_settings
+  SET edge_function_url = coalesce(v_cur_url, v_friendlies_url),
+      invoke_key = coalesce(v_cur_key, v_feed_key),
+      auto_poll_enabled = CASE
+        WHEN coalesce(v_cur_key, v_feed_key) IS NOT NULL THEN true
+        ELSE auto_poll_enabled
+      END,
+      updated_at = now()
+  WHERE id = 1;
+EXCEPTION WHEN undefined_table THEN
+  UPDATE public.gpsl_discord_friendlies_settings
+  SET edge_function_url = coalesce(
+        edge_function_url,
+        'https://omyyogfumrjoaweuawjn.supabase.co/functions/v1/discord-friendlies-ingest'
+      ),
+      updated_at = now()
+  WHERE id = 1;
+END;
+$boot$;
 
 DO $do$
 DECLARE

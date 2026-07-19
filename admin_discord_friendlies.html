@@ -32,6 +32,12 @@
     .status-matched { color:#8d8; }
     code { background:#1a1a1a; padding:1px 5px; border-radius:3px; }
     h2.section { color:#ffcc66; font-size:16px; margin:22px 0 10px; }
+    .auto-form { display:grid; gap:10px; max-width:640px; margin-bottom:12px; }
+    .auto-form label { display:grid; gap:4px; font-size:13px; color:#ccc; }
+    .auto-form input[type="text"], .auto-form input[type="password"] {
+      padding:8px 10px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px;
+    }
+    .auto-form .check { display:flex; align-items:center; gap:8px; }
   </style>
 </head>
 <body class="admin-page">
@@ -40,26 +46,45 @@
 
   <div class="card">
     <p class="note">
-      Owners post a result in the Discord friendlies channel. When the opponent posts the
-      <strong>same result</strong> (clubs + scores; order may flip), GPSL pays
-      <strong>₿5,000</strong> each as gate receipts (friendlies), up to
-      <strong>10 per GPSL month</strong> and <strong>₿500,000 per season</strong>.
+      Owners post a result in Discord. When the opponent posts the matching result,
+      GPSL pays <strong>₿5,000</strong> each (first 10 / GPSL month, ₿500,000 season cap).
     </p>
     <div class="fmt">JUB 2 - 2 BEN</div>
-    <p class="note" style="margin-top:0">
-      Required format: <code>CLUB score - score CLUB</code>. Bot reacts ⏳ while waiting, ✅ when matched.
-    </p>
+  </div>
 
-    <div class="actions">
-      <button type="button" class="button" id="btnPoll">Poll Discord now</button>
-      <button type="button" class="button secondary" id="btnRefresh">Refresh lists</button>
+  <div class="card">
+    <h2 class="section">Auto-detect (hands-free)</h2>
+    <p class="note">
+      Once enabled, Postgres polls Discord every <strong>2 minutes</strong> — no Poll now needed.
+      Use the same <code>service_role</code> key as Discord News auto-post
+      (Supabase → Project Settings → API → <code>service_role</code>).
+    </p>
+    <p class="note">
+      First run <code>supabase/sql/patches/discord_friendlies_cron.sql</code> in the SQL editor
+      (schedules the cron job; copies News key if already saved).
+    </p>
+    <div class="auto-form">
+      <label>
+        Edge function URL
+        <input type="text" id="autoUrl" placeholder="https://….supabase.co/functions/v1/discord-friendlies-ingest">
+      </label>
+      <label>
+        API key for auto-poll (service_role)
+        <input type="password" id="autoKey" autocomplete="off" placeholder="eyJ… service_role secret">
+      </label>
+      <label class="check">
+        <input type="checkbox" id="autoEnabled" checked>
+        Auto-poll enabled
+      </label>
+      <div class="actions" style="margin:0">
+        <button type="button" class="button" id="autoSaveBtn">Save auto-poll settings</button>
+        <button type="button" class="button secondary" id="btnPoll">Poll once now (test)</button>
+        <button type="button" class="button secondary" id="btnRefresh">Refresh lists</button>
+      </div>
     </div>
+    <div id="autoStatus" class="status"></div>
     <div id="pollStatus" class="status"></div>
     <div id="metaPills" class="meta-pills"></div>
-    <p class="note" id="autoNote">
-      Auto-detect: <strong>off</strong> until you run <code>discord_friendlies_cron.sql</code>
-      and save the edge URL + invoke key (same pattern as Discord News). Until then, use Poll now.
-    </p>
   </div>
 
   <div class="card">
@@ -72,19 +97,6 @@
     <div id="confirmedWrap"><p class="note">Loading…</p></div>
   </div>
 
-  <div class="card">
-    <h2 class="section">Setup</h2>
-    <p class="note">
-      1. Run <code>discord_friendlies_gate.sql</code> (done)<br>
-      2. Edge secrets: <code>DISCORD_BOT_TOKEN</code>, <code>DISCORD_GUILD_ID</code> (done),
-      <code>DISCORD_FRIENDLIES_CHANNEL_ID</code> (channel id — Discord: right‑click channel → Copy Channel ID; enable Developer Mode if needed)<br>
-      3. Deploy <code>discord-friendlies-ingest</code><br>
-      4. Optional auto-poll: run <code>discord_friendlies_cron.sql</code>, then
-      <code>SELECT admin_discord_friendlies_set_auto('https://…/functions/v1/discord-friendlies-ingest', '&lt;invoke key&gt;', true);</code>
-      — or use <strong>Poll now</strong> below.
-    </p>
-  </div>
-
-  <script type="module" src="admin_discord_friendlies.js?v=20260719-friendlies"></script>
+  <script type="module" src="admin_discord_friendlies.js?v=20260719-auto"></script>
 </body>
 </html>
