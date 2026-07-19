@@ -1196,6 +1196,7 @@ BEGIN
     RAISE EXCEPTION 'Quote is no longer valid — capacity headroom changed';
   END IF;
 
+  -- Lock finances for the ledger debit (no balance gate — debt is allowed)
   SELECT balance INTO v_balance
   FROM public."Club_Finances"
   WHERE club_name = v_club
@@ -1203,11 +1204,6 @@ BEGIN
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Club finances not found';
-  END IF;
-
-  IF v_balance < v_quote.total_cost THEN
-    RAISE EXCEPTION 'Insufficient balance (need %, have %)',
-      v_quote.total_cost, v_balance;
   END IF;
 
   v_ledger_id := public.post_club_ledger(
