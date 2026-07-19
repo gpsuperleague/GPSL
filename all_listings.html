@@ -57,20 +57,14 @@ a.button:hover, button.button:hover {
       max-width: 1220px;
       margin: 0 auto 10px auto;
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      font-size: 14px;
+      justify-content: flex-start;
       flex-wrap: wrap;
-    }
-
-    .filters-left label {
-      margin-right: 10px;
-      cursor: pointer;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
     }
 
     .filters-right {
-      margin-left: auto;
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
@@ -173,25 +167,58 @@ a.button:hover, button.button:hover {
       margin: 0 auto 16px auto;
       background: #1a1a1a;
       border: 1px solid #333;
-      padding: 15px 18px;
+      padding: 16px 18px 18px;
       border-radius: 8px;
       font-size: 13px;
-      line-height: 1.55;
+      line-height: 1.45;
       color: #ccc;
     }
 
-    .info-box b {
+    .info-box > h2 {
+      margin: 0 0 12px;
       color: #ff9900;
-      font-size: 14px;
+      font-size: 15px;
+      font-weight: bold;
     }
 
-    .info-box ul {
-      margin: 8px 0 0 0;
-      padding-left: 20px;
+    .rules-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px 14px;
     }
 
-    .info-box li {
+    .rules-card {
+      background: #151515;
+      border: 1px solid #2e2e2e;
+      border-radius: 6px;
+      padding: 12px 14px;
+    }
+
+    .rules-card h3 {
+      margin: 0 0 8px;
+      color: #ffcc66;
+      font-size: 13px;
+      font-weight: bold;
+      letter-spacing: 0.02em;
+    }
+
+    .rules-card ul {
+      margin: 0;
+      padding-left: 1.1em;
+    }
+
+    .rules-card li {
       margin-bottom: 6px;
+      color: #bbb;
+    }
+
+    .rules-card li:last-child {
+      margin-bottom: 0;
+    }
+
+    .rules-card b {
+      color: #eee;
+      font-weight: 600;
     }
 
     table.gpsl-table {
@@ -533,23 +560,52 @@ a.button:hover, button.button:hover {
   <div id="nav"></div>
 
   <div class="filters-bar">
-    <div class="filters-left">
-      <label>
-        <input type="checkbox" id="filter-active" checked>
-        Active
-      </label>
-      <label>
-        <input type="checkbox" id="filter-closed">
-        Seller review (reserve not met)
-      </label>
-    </div>
     <div class="filters-right">
       <a href="season_transfers.html" class="button">Season transfers</a>
       <a href="season_club_purchases.html" class="button">Season club purchases</a>
     </div>
   </div>
 
+  <div class="info-box">
+    <h2>Transfer market rules</h2>
+    <div class="rules-grid">
+      <section class="rules-card">
+        <h3>Listing &amp; bidding</h3>
+        <ul>
+          <li>Runs at least <b>24 hours</b>, until the later of that or <b>7pm UK</b>.</li>
+          <li>First bid ≥ <b>market value</b> (Value column).</li>
+          <li>Later bids ≥ highest + <b>₿500,000</b> (and still ≥ market value).</li>
+          <li><b>Direct offers</b> (GPDB → Make Offer) also ≥ market value; seller reviews in Transfer Centre.</li>
+        </ul>
+      </section>
+      <section class="rules-card">
+        <h3>When time ends</h3>
+        <ul>
+          <li><b>Reserve met</b> → highest bidder wins automatically.</li>
+          <li><b>Reserve not met</b> (with bids) → seller has <b>24 hours</b> to accept or reject (Seller review).</li>
+          <li><b>No bids</b> → listing closes; player stays with seller.</li>
+        </ul>
+      </section>
+      <section class="rules-card">
+        <h3>Extra time &amp; clocks</h3>
+        <ul>
+          <li>Bid in final <b>2 hours</b> → +<b>1 hour</b> once.</li>
+          <li>Then bid in final <b>5 minutes</b> → +<b>5 minutes</b> (can repeat).</li>
+          <li>Countdown shows time left, <b>UK end</b>, and <b>your local</b> time. Settlement follows shortly after zero.</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
   <div class="listing-filters" role="search" aria-label="Filter transfer listings">
+    <label class="filter-check">
+      <input type="checkbox" id="filter-active" checked>
+      <span>Active</span>
+    </label>
+    <label class="filter-check">
+      <input type="checkbox" id="filter-closed">
+      <span>Seller review</span>
+    </label>
     <label>
       Player name
       <input type="text" id="listingsPlayerSearch" placeholder="Search name (ignores accents)…" autocomplete="off">
@@ -573,21 +629,6 @@ a.button:hover, button.button:hover {
   </div>
   <p id="listingsRefreshNote" class="listing-refresh-note">Auto-refresh every 30s</p>
   <p id="listingsFilterSummary" class="listing-filter-summary" hidden></p>
-
-  <div class="info-box">
-    <b>Transfer market rules</b>
-    <ul>
-      <li><b>Listing length:</b> at least <b>24 hours</b>, and the auction runs until the later of that or <b>7pm UK</b> on the relevant day (so the countdown can show a little over 24 hours).</li>
-      <li><b>Minimum bid = market value</b> for all listed contracted players. Your first bid cannot be below the player’s market value (see the Value column).</li>
-      <li>If there is already a highest bid, you must bid at least <b>₿500,000</b> more than that amount (and still at least market value).</li>
-      <li><b>Direct offers</b> to a contracted player (GPDB → Make Offer) must also be at least <b>market value</b>; the seller reviews the offer in Transfer Centre.</li>
-      <li><b>Reserve met</b> when the timer ends → the highest bidder wins automatically: player moves, buyer pays, seller receives the fee.</li>
-      <li><b>Reserve not met</b> but there are bids → the seller has <b>24 hours</b> in Transfer Centre to accept or reject the best offer (listed under “Seller review” here if you tick that filter).</li>
-      <li><b>No bids</b> when time runs out → the listing closes; the player stays with the seller.</li>
-      <li><b>Extra time (anti-sniping):</b> if someone bids in the <b>final 2 hours</b> before the listed end time, the auction is extended by <b>1 hour</b> (once per listing). After that, any bid in the <b>final 5 minutes</b> adds <b>5 more minutes</b> — and that 5-minute extension can happen again if another late bid comes in.</li>
-      <li>Countdowns show time left plus the <b>UK end time</b> and the same moment in <b>your local time</b>. Settlement runs shortly after the clock hits zero (usually within a few minutes).</li>
-    </ul>
-  </div>
 
   <table class="gpsl-table">
     <thead>
