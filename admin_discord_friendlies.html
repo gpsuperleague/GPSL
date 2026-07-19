@@ -38,6 +38,10 @@
       padding:8px 10px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px;
     }
     .auto-form .check { display:flex; align-items:center; gap:8px; }
+    #pollStatus, #autoStatus {
+      white-space: pre-wrap; margin:8px 0; font-size:13px; color:#ccc;
+    }
+    #pollStatus.status-line.error, #autoStatus.status-line.error { color:#f88; }
   </style>
 </head>
 <body class="admin-page">
@@ -99,6 +103,6 @@
     <div id="confirmedWrap"><p class="note">Loading…</p></div>
   </div>
 
-  <script type="module" src="admin_discord_friendlies.js?v=20260719-auto"></script>
+  <script type="module" src="admin_discord_friendlies.js?v=20260719-refresh"></script>
 </body>
 </html>

@@ -279,20 +279,31 @@ async function pollNow() {
   await loadOverview();
 }
 
-document.getElementById("btnPoll")?.addEventListener("click", () => {
-  pollNow().catch((e) => setStatus("pollStatus", e.message || String(e), false));
-});
-document.getElementById("btnRefresh")?.addEventListener("click", () => {
-  loadOverview().catch((e) => setStatus("pollStatus", e.message || String(e), false));
-});
-document.getElementById("autoSaveBtn")?.addEventListener("click", () => {
-  saveAutoSettings().catch((e) => setStatus("autoStatus", e.message || String(e), false));
-});
+async function refreshLists() {
+  setStatus("pollStatus", "Refreshing lists…");
+  await loadOverview();
+  setStatus("pollStatus", "Lists refreshed.");
+}
+
+function wireButtons() {
+  document.getElementById("btnPoll")?.addEventListener("click", () => {
+    pollNow().catch((e) => setStatus("pollStatus", e.message || String(e), false));
+  });
+  document.getElementById("btnRefresh")?.addEventListener("click", () => {
+    refreshLists().catch((e) => setStatus("pollStatus", e.message || String(e), false));
+  });
+  document.getElementById("autoSaveBtn")?.addEventListener("click", () => {
+    saveAutoSettings().catch((e) =>
+      setStatus("autoStatus", e.message || String(e), false)
+    );
+  });
+}
 
 initAdminPage({
   page: "admin_discord_friendlies",
   title: "Discord Friendlies",
 }).then(async () => {
+  wireButtons();
   await loadAutoSettings();
   await loadOverview();
 });
