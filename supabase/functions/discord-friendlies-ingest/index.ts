@@ -119,6 +119,34 @@ async function fetchGuildMember(
   return (await res.json()) as DiscordMember;
 }
 
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function asIdList(value: unknown, fallback?: string): string[] {
+  const out: string[] = [];
+  if (Array.isArray(value)) {
+    for (const v of value) {
+      const id = String(v || "").trim();
+      if (id) out.push(id);
+    }
+  } else if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        for (const v of parsed) {
+          const id = String(v || "").trim();
+          if (id) out.push(id);
+        }
+      }
+    } catch {
+      out.push(value.trim());
+    }
+  }
+  if (fallback) out.push(fallback);
+  return [...new Set(out)];
+}
+
 async function addReaction(
   botToken: string,
   channelId: string,
@@ -126,16 +154,42 @@ async function addReaction(
   emoji: string
 ) {
   const encoded = encodeURIComponent(emoji);
-  try {
-    await fetch(
-      `${DISCORD_API}/channels/${channelId}/messages/${messageId}/reactions/${encoded}/@me`,
-      {
+  const url =
+    `${DISCORD_API}/channels/${channelId}/messages/${messageId}/reactions/${encoded}/@me`;
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(url, {
         method: "PUT",
-        headers: { Authorization: `Bot ${botToken}` },
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          "Content-Length": "0",
+        },
+      });
+      if (res.status === 204 || res.status === 200) return;
+      if (res.status === 429) {
+        const retry = Number(res.headers.get("retry-after") || "1");
+        await sleep(Math.max(300, retry * 1000));
+        continue;
       }
-    );
-  } catch {
-    /* non-fatal */
+      // Already reacted / unknown — stop retrying
+      return;
+    } catch {
+      await sleep(300);
+    }
+  }
+}
+
+async function reactMany(
+  botToken: string,
+  channelId: string,
+  messageIds: string[],
+  emoji: string
+) {
+  for (const id of messageIds) {
+    if (!id) continue;
+    await addReaction(botToken, channelId, id, emoji);
+    await sleep(250);
   }
 }
 
@@ -360,17 +414,22 @@ Deno.serve(async (req) => {
 
       if (status === "matched") {
         matched += 1;
-        const ids = Array.isArray(row.discord_message_ids)
-          ? (row.discord_message_ids as string[])
-          : [msg.id];
-        for (const id of ids) {
-          if (id) await addReaction(botToken, channelId, String(id), "✅");
-        }
+        const ids = asIdList(row.discord_message_ids, msg.id);
+        await reactMany(botToken, channelId, ids, "✅");
       } else if (status === "pending") {
         pending += 1;
         await addReaction(botToken, channelId, msg.id, "⏳");
       } else if (status === "duplicate") {
         duplicates += 1;
+        // Backfill ✅ if this message already belongs to a confirmed friendly
+        const { data: prior } = await adminClient
+          .from("gpsl_friendly_reports")
+          .select("status, matched_friendly_id")
+          .eq("discord_message_id", msg.id)
+          .maybeSingle();
+        if (prior?.status === "matched" || prior?.matched_friendly_id) {
+          await addReaction(botToken, channelId, msg.id, "✅");
+        }
       } else {
         ignored += 1;
       }
