@@ -186,19 +186,35 @@ CREATE OR REPLACE FUNCTION public.gpsl_rumour_discord_headline(
 )
 RETURNS text
 LANGUAGE plpgsql
-STABLE
+VOLATILE
+SECURITY DEFINER
+SET search_path = public
 AS $function$
 DECLARE
   v_club text := coalesce(nullif(btrim(p_club_name), ''), 'A GPSL club');
   v_player text := coalesce(nullif(btrim(p_player_name), ''), 'a target');
-  v_pick int := 1 + floor(random() * 5)::int;
+  v_n int;
+  v_pick int;
 BEGIN
+  -- Round-robin through the 5 Discord rumour lines (not random)
+  SELECT count(*)::int INTO v_n
+  FROM public.gpsl_transfer_rumours
+  WHERE source = 'discord';
+
+  v_pick := (coalesce(v_n, 0) % 5) + 1;
+
   RETURN CASE v_pick
     WHEN 1 THEN format('RUMOUR: %s are tracking %s', v_club, v_player)
     WHEN 2 THEN format('RUMOUR: %s are considering an approach for %s', v_club, v_player)
-    WHEN 3 THEN format('RUMOUR: %s have been scouting %s — offer imminent, say sources', v_club, v_player)
-    WHEN 4 THEN format('RUMOUR: %s in private talks with %s', v_player, v_club)
-    ELSE format('RUMOUR: %s sporting director and manager split over %s', v_club, v_player)
+    WHEN 3 THEN format(
+      'RUMOUR: %s have been scouting %s, offer imminent according to sources',
+      v_club, v_player
+    )
+    WHEN 4 THEN format('RUMOUR: %s in private discussions with %s', v_player, v_club)
+    ELSE format(
+      'RUMOUR: %s sporting director at odds with manager on transfer targets as %s causes divide',
+      v_club, v_player
+    )
   END;
 END;
 $function$;
