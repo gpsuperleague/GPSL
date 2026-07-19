@@ -384,13 +384,20 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadClubsMap();
   clubShortName = club.ShortName;
 
-  const { data: gs } = await supabase
-    .from("global_settings_public")
-    .select("stadium_new_build_max_capacity")
-    .eq("id", 1)
-    .maybeSingle();
-  if (gs?.stadium_new_build_max_capacity != null) {
-    expansionBuildCap = Number(gs.stadium_new_build_max_capacity) || 55000;
+  const { data: buildCap, error: buildCapErr } = await supabase.rpc(
+    "stadium_expansion_new_build_max"
+  );
+  if (!buildCapErr && buildCap != null) {
+    expansionBuildCap = Number(buildCap) || 55000;
+  } else {
+    const { data: gs } = await supabase
+      .from("global_settings_public")
+      .select("stadium_new_build_max_capacity")
+      .eq("id", 1)
+      .maybeSingle();
+    if (gs?.stadium_new_build_max_capacity != null) {
+      expansionBuildCap = Number(gs.stadium_new_build_max_capacity) || 55000;
+    }
   }
 
   document.getElementById("pageTitle").textContent =

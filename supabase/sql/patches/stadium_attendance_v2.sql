@@ -1064,9 +1064,9 @@ DECLARE
   v_quote_id bigint;
   v_max_build int;
 BEGIN
-  v_club := public.competition_current_club_short_name();
+  v_club := public.my_club_shortname();
 
-  IF v_club IS NULL THEN
+  IF v_club IS NULL OR btrim(v_club) = '' THEN
     RAISE EXCEPTION 'No club linked to this account';
   END IF;
 
