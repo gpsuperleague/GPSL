@@ -159,6 +159,13 @@ async function pollNow() {
   const lines = [
     `Fetched ${data.messages_fetched ?? "?"} · scan ${data.scanned || 0} · rumours ${data.rumours || 0} · ignored ${data.ignored || 0} · dup ${data.duplicates || 0}`,
   ];
+  if (data.channel_id_tail) lines.push(`Channel …${data.channel_id_tail}`);
+  if (data.empty_content) lines.push(`Empty content: ${data.empty_content}`);
+  if (data.skipped_format) lines.push(`Bad format skipped: ${data.skipped_format}`);
+  if (data.hint) lines.push(String(data.hint));
+  if (Array.isArray(data.samples) && data.samples.length) {
+    lines.push("Samples: " + data.samples.map((s) => `"${s}"`).join(" · "));
+  }
   const detail = (Array.isArray(data.results) ? data.results : [])
     .slice(-6)
     .map((r) => `${r.status || "?"}: ${r.headline || r.reason || r.content || ""}`);

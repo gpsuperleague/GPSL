@@ -160,7 +160,8 @@ function paintMarquee(stories) {
     return;
   }
 
-  const duration = Math.max(18, stories.length * 7);
+  // Slower marquee — ~12s per story, floor 32s for short lists
+  const duration = Math.max(32, stories.length * 12);
 
   el.innerHTML =
     `<div class="tn-shell">` +

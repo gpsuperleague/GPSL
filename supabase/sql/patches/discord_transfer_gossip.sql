@@ -360,6 +360,12 @@ BEGIN
 
   v_raw := regexp_replace(v_raw, E'[\\u2013\\u2014\\u2212]', '-', 'g');
   v_raw := regexp_replace(v_raw, E'[\\u200B-\\u200D\\uFEFF]', '', 'g');
+  -- Mentions / extra lines break the phrase match (e.g. @owner under the scoreline)
+  v_raw := split_part(v_raw, E'\n', 1);
+  v_raw := regexp_replace(v_raw, '<@!?[0-9]+>', '', 'g');
+  v_raw := regexp_replace(v_raw, '<@&[0-9]+>', '', 'g');
+  v_raw := regexp_replace(v_raw, '@[A-Za-z0-9_./-]+', '', 'g');
+  v_raw := regexp_replace(v_raw, '\s+', ' ', 'g');
   v_raw := btrim(v_raw);
 
   -- "{Club} are interested in {Player}"
@@ -592,7 +598,10 @@ BEGIN
       v_kind := 'transfer';
       v_headline := format('DONE DEAL — %s', v_name);
       v_body := format('%s → %s · %s', v_seller, v_buyer, v_fee_label);
-      IF v_method IS NOT NULL THEN
+      -- Skip "Foreign sale — Club" — buyer already shows the foreign club
+      IF v_method IS NOT NULL
+         AND coalesce(v_row.buyer_club_id, '') <> 'FOREIGN'
+         AND v_method NOT ILIKE 'Foreign sale%' THEN
         v_body := v_body || ' · ' || v_method;
       END IF;
     END IF;

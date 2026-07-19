@@ -31,9 +31,15 @@ type DiscordMessage = {
 };
 
 function cleanContent(raw: string): string {
-  return String(raw || "")
+  const firstLine = String(raw || "")
     .replace(/[\u200B-\u200D\uFEFF]/g, "")
     .replace(/[\u2013\u2014\u2212]/g, "-")
+    .split(/\r?\n/)[0] || "";
+  return firstLine
+    .replace(/<@!?\d+>/g, "")
+    .replace(/<@&\d+>/g, "")
+    .replace(/@[A-Za-z0-9_./-]+/g, "")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -175,15 +181,31 @@ Deno.serve(async (req) => {
 
     const ordered = [...messages].reverse();
     const results: Record<string, unknown>[] = [];
+    const samples: string[] = [];
     let scanned = 0;
     let rumours = 0;
     let ignored = 0;
     let duplicates = 0;
+    let empty_content = 0;
+    let skipped_format = 0;
 
     for (const msg of ordered) {
       if (!msg?.id || !msg.author || msg.author.bot) continue;
-      const content = cleanContent(String(msg.content || ""));
-      if (!content || !looksLikeGossip(content)) continue;
+      const raw = String(msg.content || "");
+      const content = cleanContent(raw);
+      if (samples.length < 5) {
+        samples.push(
+          (content || raw || "(empty)").replace(/\s+/g, " ").slice(0, 100)
+        );
+      }
+      if (!raw.trim()) {
+        empty_content += 1;
+        continue;
+      }
+      if (!content || !looksLikeGossip(content)) {
+        skipped_format += 1;
+        continue;
+      }
       scanned += 1;
 
       const { data, error } = await adminClient.rpc(
@@ -220,6 +242,18 @@ Deno.serve(async (req) => {
       results.push({ message_id: msg.id, content, ...row });
     }
 
+    let hint: string | null = null;
+    if (messages.length === 0) {
+      hint =
+        "No messages returned — wrong DISCORD_TRANSFER_GOSSIP_CHANNEL_ID or bot still can't read the channel";
+    } else if (empty_content > 0 && scanned === 0) {
+      hint =
+        "Messages found but content empty — enable Message Content Intent, then restart/redeploy the bot function";
+    } else if (scanned === 0) {
+      hint =
+        "Messages found but none matched: Club are interested in Player";
+    }
+
     return jsonResponse({
       ok: true,
       messages_fetched: messages.length,
@@ -227,6 +261,11 @@ Deno.serve(async (req) => {
       rumours,
       ignored,
       duplicates,
+      empty_content,
+      skipped_format,
+      channel_id_tail: String(channelId).slice(-6),
+      samples,
+      hint,
       results: results.slice(-30),
     });
   } catch (err) {

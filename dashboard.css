@@ -1657,7 +1657,7 @@ button.nav-admin-trigger {
   width: max-content;
   height: 100%;
   align-items: center;
-  animation: tn-marquee var(--tn-duration, 28s) linear infinite;
+  animation: tn-marquee var(--tn-duration, 48s) linear infinite;
   will-change: transform;
 }
 
