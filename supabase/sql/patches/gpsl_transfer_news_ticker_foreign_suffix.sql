@@ -1,8 +1,9 @@
-﻿-- =============================================================================
--- Transfer news ticker: drop redundant "Foreign sale — Club" suffix
+-- =============================================================================
+-- Transfer news ticker: drop redundant Foreign sale suffix on body
 -- Buyer already shows the foreign club (e.g. Sporting Gijon).
 -- Safe re-run.
 -- =============================================================================
+
 CREATE OR REPLACE FUNCTION public.gpsl_transfer_news_feed(
   p_force_month text DEFAULT NULL
 )
@@ -135,17 +136,17 @@ BEGIN
 
     IF v_listing_type = 'draft' OR v_method ILIKE 'Draft%' THEN
       v_kind := 'draft';
-      v_headline := format('DRAFT DEAL 窶・%s joins %s', v_name, v_buyer);
+      v_headline := format('DRAFT DEAL — %s joins %s', v_name, v_buyer);
       v_body := coalesce(v_method, 'Draft auction');
     ELSE
       v_kind := 'transfer';
-      v_headline := format('DONE DEAL 窶・%s', v_name);
-      v_body := format('%s 竊・%s ﾂｷ %s', v_seller, v_buyer, v_fee_label);
-      -- Skip "Foreign sale 窶・Club" 窶・buyer already shows the foreign club
+      v_headline := format('DONE DEAL — %s', v_name);
+      v_body := format('%s → %s · %s', v_seller, v_buyer, v_fee_label);
+      -- Skip Foreign sale suffix; buyer already shows the foreign club
       IF v_method IS NOT NULL
          AND coalesce(v_row.buyer_club_id, '') <> 'FOREIGN'
          AND v_method NOT ILIKE 'Foreign sale%' THEN
-        v_body := v_body || ' ﾂｷ ' || v_method;
+        v_body := v_body || ' · ' || v_method;
       END IF;
     END IF;
 
@@ -211,12 +212,12 @@ BEGIN
       v_listing_type := lower(coalesce(v_row.listing_type, ''));
       IF v_listing_type = 'draft' THEN
         v_kind := 'draft';
-        v_headline := format('DRAFT DEAL 窶・%s joins %s', v_name, v_buyer);
+        v_headline := format('DRAFT DEAL — %s joins %s', v_name, v_buyer);
         v_body := 'Draft auction';
       ELSE
         v_kind := 'transfer';
-        v_headline := format('DONE DEAL 窶・%s', v_name);
-        v_body := format('%s 竊・%s ﾂｷ %s', v_seller, v_buyer, v_fee_label);
+        v_headline := format('DONE DEAL — %s', v_name);
+        v_body := format('%s → %s · %s', v_seller, v_buyer, v_fee_label);
       END IF;
 
       v_stories := v_stories || jsonb_build_array(
@@ -235,7 +236,7 @@ BEGIN
     END LOOP;
   END IF;
 
-  -- 3) Discord rumours (rest of UK day), newest first 窶・leave room if empty day
+  -- 3) Discord rumours (rest of UK day), newest first — leave room if empty day
   IF v_count < 5 THEN
     IF v_count < 2 THEN
       PERFORM public.gpsl_rumour_ensure_idle(v_season_id, 2);
@@ -283,4 +284,3 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.gpsl_transfer_news_feed(text) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
-

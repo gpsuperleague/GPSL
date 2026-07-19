@@ -598,7 +598,7 @@ BEGIN
       v_kind := 'transfer';
       v_headline := format('DONE DEAL — %s', v_name);
       v_body := format('%s → %s · %s', v_seller, v_buyer, v_fee_label);
-      -- Skip "Foreign sale — Club" — buyer already shows the foreign club
+      -- Skip Foreign sale suffix; buyer already shows the foreign club
       IF v_method IS NOT NULL
          AND coalesce(v_row.buyer_club_id, '') <> 'FOREIGN'
          AND v_method NOT ILIKE 'Foreign sale%' THEN
