@@ -615,7 +615,8 @@ body.squad-page tr.squad-section-cols-row th.squad-col-action {
   position: sticky;
   right: 0;
   z-index: 4;
-  background: inherit;
+  /* Same tint as other section column headers (not inherit from <tr>) */
+  background: rgba(255, 153, 0, 0.06);
   box-shadow: none;
 }
 
