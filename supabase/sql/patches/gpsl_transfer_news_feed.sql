@@ -146,7 +146,9 @@ BEGIN
       v_kind := 'transfer';
       v_headline := format('DONE DEAL — %s', v_name);
       v_body := format('%s → %s · %s', v_seller, v_buyer, v_fee_label);
-      IF v_method IS NOT NULL THEN
+      IF v_method IS NOT NULL
+         AND coalesce(v_row.buyer_club_id, '') <> 'FOREIGN'
+         AND v_method NOT ILIKE 'Foreign sale%' THEN
         v_body := v_body || ' · ' || v_method;
       END IF;
     END IF;
