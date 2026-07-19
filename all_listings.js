@@ -22,6 +22,7 @@ import {
   gpslPlayerCareerUrl,
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
+import { textMatchesSearch } from "./search_normalize.js";
 
 // Use global Supabase client (created in all_listings.html)
 const supabase = window.supabase;
@@ -34,6 +35,14 @@ let reviewListings = [];
 let selectedListing = null;
 let renderGeneration = 0;
 let favouriteListingIds = new Set();
+let listingsRefreshTimer = null;
+let listingsRefreshMs = null;
+let listingsLoading = false;
+
+const LISTINGS_REFRESH_DEFAULT_SEC = 30;
+const LISTINGS_REFRESH_MIN_SEC = 1;
+const LISTINGS_REFRESH_MAX_SEC = 300;
+const LISTINGS_FILTER_STORAGE_PREFIX = "gpsl_all_listings_filters:";
 
 // Load club map immediately
 await loadClubsMap();
@@ -90,16 +99,17 @@ function parseMoneyInput(value) {
   }
 
   await loadShortNameFromSupabase(user.id);
-  await loadListings();
-
+  restorePersistedListingFilters();
   wireFilterCheckboxes();
+  wireListingFilters();
+  wireListingRefreshButton();
   wireModalControls();
   wirePlaceBidButton();
   wireIncrementButtons();
   wireQuickBidButton();
 
-  // ⭐ Auto-refresh listings every 30 seconds so status/time stay live
-  setInterval(loadListings, 30000);
+  await loadListings();
+  applyListingsRefreshInterval();
 
   console.log("all_listings.js initialized successfully");
 })();
@@ -133,36 +143,43 @@ async function loadShortNameFromSupabase(userId) {
 // MODULE B: LOAD LISTINGS
 // ======================================================
 async function loadListings() {
-  const nowIso = new Date().toISOString();
+  if (listingsLoading) return;
+  listingsLoading = true;
+  try {
+    const nowIso = new Date().toISOString();
 
-  const [openRes, reviewRes] = await Promise.all([
-    supabase
-      .from("Player_Transfer_Listings")
-      .select("*")
-      .neq("listing_type", "draft")
-      .eq("status", "Active")
-      .gt("end_time", nowIso)
-      .order("end_time", { ascending: true }),
-    supabase
-      .from("Player_Transfer_Listings")
-      .select("*")
-      .neq("listing_type", "draft")
-      .in("status", ["Review", "Seller Review"])
-      .order("end_time", { ascending: true }),
-  ]);
+    const [openRes, reviewRes] = await Promise.all([
+      supabase
+        .from("Player_Transfer_Listings")
+        .select("*")
+        .neq("listing_type", "draft")
+        .eq("status", "Active")
+        .gt("end_time", nowIso)
+        .order("end_time", { ascending: true }),
+      supabase
+        .from("Player_Transfer_Listings")
+        .select("*")
+        .neq("listing_type", "draft")
+        .in("status", ["Review", "Seller Review"])
+        .order("end_time", { ascending: true }),
+    ]);
 
-  if (openRes.error) {
-    console.error("Open listings error", openRes.error);
-    return;
+    if (openRes.error) {
+      console.error("Open listings error", openRes.error);
+      return;
+    }
+    if (reviewRes.error) {
+      console.error("Review listings error", reviewRes.error);
+      return;
+    }
+
+    openListings = dedupeOpenListingsByPlayer(openRes.data || []);
+    reviewListings = reviewRes.data || [];
+    await renderListings();
+    updateListingsRefreshNote(`Updated ${new Date().toLocaleTimeString("en-GB")}`);
+  } finally {
+    listingsLoading = false;
   }
-  if (reviewRes.error) {
-    console.error("Review listings error", reviewRes.error);
-    return;
-  }
-
-  openListings = dedupeOpenListingsByPlayer(openRes.data || []);
-  reviewListings = reviewRes.data || [];
-  await renderListings();
 }
 
 function listingHighBidScore(listing) {
@@ -350,19 +367,204 @@ function highestClubLabel(listing, userBidListingIds) {
 }
 
 // ======================================================
-// MODULE C: FILTER CHECKBOXES
+// MODULE C: FILTERS + AUTO-REFRESH
 // ======================================================
+function listingFilterStorageKey() {
+  return `${LISTINGS_FILTER_STORAGE_PREFIX}${currentUserShort || "anonymous"}`;
+}
+
+function getListingFilterState() {
+  return {
+    nameQuery: document.getElementById("listingsPlayerSearch")?.value.trim() || "",
+    myBidsOnly: document.getElementById("listingsMyBidsOnly")?.checked === true,
+    showActive: document.getElementById("filter-active")?.checked !== false,
+    showClosed: document.getElementById("filter-closed")?.checked === true,
+    refreshIntervalSec: getListingsRefreshIntervalSec(),
+  };
+}
+
+function savePersistedListingFilters() {
+  try {
+    localStorage.setItem(
+      listingFilterStorageKey(),
+      JSON.stringify(getListingFilterState())
+    );
+  } catch {
+    /* private mode / quota */
+  }
+}
+
+function restorePersistedListingFilters() {
+  let saved = null;
+  try {
+    const raw = localStorage.getItem(listingFilterStorageKey());
+    if (raw) saved = JSON.parse(raw);
+  } catch {
+    saved = null;
+  }
+  if (!saved || typeof saved !== "object") return;
+
+  const search = document.getElementById("listingsPlayerSearch");
+  const myBids = document.getElementById("listingsMyBidsOnly");
+  const active = document.getElementById("filter-active");
+  const closed = document.getElementById("filter-closed");
+  const refreshInterval = document.getElementById("listingsRefreshInterval");
+
+  if (search && typeof saved.nameQuery === "string") search.value = saved.nameQuery;
+  if (myBids && currentUserShort && typeof saved.myBidsOnly === "boolean") {
+    myBids.checked = saved.myBidsOnly;
+  }
+  if (active && typeof saved.showActive === "boolean") active.checked = saved.showActive;
+  if (closed && typeof saved.showClosed === "boolean") closed.checked = saved.showClosed;
+  if (refreshInterval && typeof saved.refreshIntervalSec === "number") {
+    refreshInterval.value = String(
+      Math.min(
+        LISTINGS_REFRESH_MAX_SEC,
+        Math.max(LISTINGS_REFRESH_MIN_SEC, Math.round(saved.refreshIntervalSec))
+      )
+    );
+  }
+}
+
+function getListingsRefreshIntervalSec() {
+  const el = document.getElementById("listingsRefreshInterval");
+  const n = Number(el?.value);
+  if (!Number.isFinite(n)) return LISTINGS_REFRESH_DEFAULT_SEC;
+  return Math.min(
+    LISTINGS_REFRESH_MAX_SEC,
+    Math.max(LISTINGS_REFRESH_MIN_SEC, Math.round(n))
+  );
+}
+
+function clampListingsRefreshIntervalInput() {
+  const el = document.getElementById("listingsRefreshInterval");
+  if (!el) return;
+  el.value = String(getListingsRefreshIntervalSec());
+}
+
+function formatAutoRefreshLabel(sec) {
+  if (sec < 60) return `Auto-refresh every ${sec}s`;
+  if (sec === 60) return "Auto-refresh every minute";
+  if (sec % 60 === 0) return `Auto-refresh every ${sec / 60} min`;
+  return `Auto-refresh every ${sec}s`;
+}
+
+function updateListingsRefreshNote(lastUpdatedText) {
+  const note = document.getElementById("listingsRefreshNote");
+  if (!note) return;
+  const base = formatAutoRefreshLabel(getListingsRefreshIntervalSec());
+  note.textContent = lastUpdatedText ? `${lastUpdatedText} · ${base}` : base;
+}
+
+function stopListingsRefresh() {
+  if (listingsRefreshTimer) clearInterval(listingsRefreshTimer);
+  listingsRefreshTimer = null;
+  listingsRefreshMs = null;
+}
+
+function applyListingsRefreshInterval() {
+  clampListingsRefreshIntervalInput();
+  const ms = getListingsRefreshIntervalSec() * 1000;
+  if (listingsRefreshMs === ms && listingsRefreshTimer) {
+    updateListingsRefreshNote();
+    return;
+  }
+  stopListingsRefresh();
+  listingsRefreshMs = ms;
+  listingsRefreshTimer = setInterval(() => {
+    void loadListings();
+  }, ms);
+  updateListingsRefreshNote();
+}
+
+function wireListingRefreshButton() {
+  document.getElementById("listingsRefreshBtn")?.addEventListener("click", () => {
+    void refreshListingsManual();
+  });
+}
+
+async function refreshListingsManual() {
+  if (listingsLoading) return;
+  const btn = document.getElementById("listingsRefreshBtn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Refreshing…";
+  }
+  try {
+    await loadListings();
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Refresh now";
+    }
+  }
+}
+
 function wireFilterCheckboxes() {
-  document
-    .getElementById("filter-active")
-    .addEventListener("change", () => {
+  document.getElementById("filter-active")?.addEventListener("change", () => {
+    savePersistedListingFilters();
+    void renderListings();
+  });
+  document.getElementById("filter-closed")?.addEventListener("change", () => {
+    savePersistedListingFilters();
+    void renderListings();
+  });
+}
+
+function wireListingFilters() {
+  const search = document.getElementById("listingsPlayerSearch");
+  const myBids = document.getElementById("listingsMyBidsOnly");
+  const refreshInterval = document.getElementById("listingsRefreshInterval");
+  const clearBtn = document.getElementById("listingsClearFilters");
+
+  let searchTimer = null;
+  search?.addEventListener("input", () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      savePersistedListingFilters();
       void renderListings();
-    });
-  document
-    .getElementById("filter-closed")
-    .addEventListener("change", () => {
-      void renderListings();
-    });
+    }, 200);
+  });
+  myBids?.addEventListener("change", () => {
+    savePersistedListingFilters();
+    void renderListings();
+  });
+  refreshInterval?.addEventListener("change", () => {
+    applyListingsRefreshInterval();
+    savePersistedListingFilters();
+  });
+  refreshInterval?.addEventListener("blur", () => {
+    applyListingsRefreshInterval();
+    savePersistedListingFilters();
+  });
+  clearBtn?.addEventListener("click", () => {
+    if (search) search.value = "";
+    if (myBids) myBids.checked = false;
+    savePersistedListingFilters();
+    void renderListings();
+  });
+
+  if (myBids && !currentUserShort) {
+    myBids.disabled = true;
+    myBids.title = "Link a club to your account to use this filter";
+  }
+}
+
+function updateListingsFilterSummary(shown, total) {
+  const el = document.getElementById("listingsFilterSummary");
+  if (!el) return;
+  const { nameQuery, myBidsOnly } = getListingFilterState();
+  const active = nameQuery || myBidsOnly;
+  if (!active || total === 0) {
+    el.hidden = true;
+    el.textContent = "";
+    return;
+  }
+  el.hidden = false;
+  el.textContent =
+    shown === total
+      ? `Showing all ${total} listing${total === 1 ? "" : "s"} (filtered)`
+      : `Showing ${shown} of ${total} listing${total === 1 ? "" : "s"}`;
 }
 
 // ======================================================
@@ -381,6 +583,7 @@ async function renderListings() {
   if (showClosed) rows.push(...reviewListings);
 
   if (rows.length === 0) {
+    updateListingsFilterSummary(0, 0);
     const tr = document.createElement("tr");
     tr.innerHTML =
       `<td colspan="13" style="text-align:center;color:#888;">No listings to show.</td>`;
@@ -405,9 +608,33 @@ async function renderListings() {
   ]);
   if (gen !== renderGeneration) return;
 
+  const { nameQuery, myBidsOnly } = getListingFilterState();
+  let filteredRows = sortedRows;
+  if (nameQuery) {
+    filteredRows = filteredRows.filter((listing) => {
+      const name = playerMap.get(String(listing.player_id))?.Name || "";
+      return textMatchesSearch(name, nameQuery);
+    });
+  }
+  if (myBidsOnly && currentUserShort) {
+    filteredRows = filteredRows.filter((listing) =>
+      userBidListingIds.has(String(listing.id))
+    );
+  }
+
+  updateListingsFilterSummary(filteredRows.length, sortedRows.length);
+
+  if (filteredRows.length === 0) {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td colspan="13" style="text-align:center;color:#888;">No listings match these filters.</td>`;
+    tbody.appendChild(tr);
+    return;
+  }
+
   const now = new Date();
 
-  for (const listing of sortedRows) {
+  for (const listing of filteredRows) {
     const player = playerMap.get(String(listing.player_id));
 
     const extendedLabel = listing.was_extended
