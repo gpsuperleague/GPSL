@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Reset stadium capacity — GPSL Admin Testing</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .form-grid { display: grid; gap: 12px; max-width: 520px; margin-bottom: 16px; }
+    .form-grid label { display: block; font-size: 13px; color: #bbb; }
+    .form-grid select {
+      width: 100%; max-width: 520px; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .club-meta { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.45; }
+    .danger-card { border-color: #844; background: #1a1212; }
+    .danger-card h2 { color: #f66; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Reset stadium capacity</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Testing — set a club’s live capacity back to its <b>original</b> (<code>base_capacity</code>).
+        Cancels in-progress expansion orders. Does <b>not</b> auto-refund ledger payments.
+      </p>
+
+      <div class="card danger-card">
+        <h2>Reset one club</h2>
+        <div class="form-grid">
+          <label>
+            Club
+            <select id="clubSelect">
+              <option value="">Loading clubs…</option>
+            </select>
+            <div id="clubMeta" class="club-meta"></div>
+          </label>
+        </div>
+        <button type="button" id="resetBtn" class="button" style="background:#990000;">Reset to original capacity</button>
+        <div id="resetStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>SQL</h2>
+        <p class="note">Run once: <code>supabase/sql/patches/admin_stadium_reset_capacity.sql</code></p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_test_stadium_reset.js?v=20260719"></script>
+</body>
+</html>

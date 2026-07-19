@@ -58,6 +58,12 @@ export const TESTING_ADMIN_NAV = [
     page: "admin_test_club_availability",
   },
   {
+    label: "Reset stadium capacity",
+    href: "admin_test_stadium_reset.html",
+    page: "admin_test_stadium_reset",
+    navDanger: true,
+  },
+  {
     label: "Injuries & suspensions (test seed)",
     href: "admin_injuries.html",
     page: "admin_injuries",
