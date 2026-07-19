@@ -44,7 +44,11 @@ function cleanContent(raw: string): string {
 }
 
 function looksLikeGossip(content: string): boolean {
-  return /^.+?\s+are\s+interested\s+in\s+.+$/i.test(cleanContent(content));
+  const c = cleanContent(content);
+  return (
+    /^.+?\s+are\s+interested\s+in\s+.+$/i.test(c) ||
+    /^.+?\s+is\s+interested\s+in\s+.+$/i.test(c)
+  );
 }
 
 async function fetchChannelMessages(
@@ -251,7 +255,7 @@ Deno.serve(async (req) => {
         "Messages found but content empty — enable Message Content Intent, then restart/redeploy the bot function";
     } else if (scanned === 0) {
       hint =
-        "Messages found but none matched: Club are interested in Player";
+        "Messages found but none matched: 'Club are interested in Player' or 'Player is interested in Club'";
     }
 
     return jsonResponse({
