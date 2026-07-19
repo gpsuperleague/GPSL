@@ -38,9 +38,15 @@ type DiscordMessage = {
   member?: DiscordMember;
 };
 
+function cleanContent(raw: string): string {
+  return String(raw || "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .trim();
+}
+
 function scorelineLooksValid(content: string): boolean {
   return /^[A-Za-z0-9]{2,8}\s+\d{1,2}\s*-\s*\d{1,2}\s+[A-Za-z0-9]{2,8}$/.test(
-    content.trim()
+    cleanContent(content)
   );
 }
 
@@ -265,6 +271,8 @@ Deno.serve(async (req) => {
     let pending = 0;
     let ignored = 0;
     let duplicates = 0;
+    let skipped_format = 0;
+    let empty_content = 0;
 
     const inject = body.message as DiscordMessage | undefined;
     const messages = inject?.id
@@ -280,8 +288,15 @@ Deno.serve(async (req) => {
 
     for (const msg of ordered) {
       if (!msg?.id || !msg.author || msg.author.bot) continue;
-      const content = String(msg.content || "").trim();
-      if (!content || !scorelineLooksValid(content)) continue;
+      const content = cleanContent(String(msg.content || ""));
+      if (!content) {
+        empty_content += 1;
+        continue;
+      }
+      if (!scorelineLooksValid(content)) {
+        skipped_format += 1;
+        continue;
+      }
 
       scanned += 1;
 
@@ -308,6 +323,8 @@ Deno.serve(async (req) => {
           status: "ignored",
           reason: "No GPSL club for Discord user",
           content,
+          discord_user: usernameTag(msg.author) || msg.author.username,
+          lookup_keys: keys.filter(Boolean),
         });
         continue;
       }
@@ -364,11 +381,22 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       ok: true,
+      messages_fetched: messages.length,
       scanned,
       matched,
       pending,
       ignored,
       duplicates,
+      skipped_format,
+      empty_content,
+      hint:
+        empty_content > 0 && scanned === 0
+          ? "Discord returned messages with empty content — enable Message Content Intent and ensure the bot can read #gpsl-friendly-results"
+          : scanned === 0 && messages.length > 0
+            ? "Messages found but none matched CLUB score - score CLUB format"
+            : messages.length === 0
+              ? "No messages in channel — check DISCORD_FRIENDLIES_CHANNEL_ID"
+              : null,
       results: results.slice(-30),
     });
   } catch (err) {

@@ -178,9 +178,28 @@ async function pollNow() {
     setStatus("pollStatus", error.message, false);
     return;
   }
+
+  const lines = [
+    `Fetched ${data.messages_fetched ?? "?"} · scan ${data.scanned || 0} · matched ${data.matched || 0} · pending ${data.pending || 0} · ignored ${data.ignored || 0} · dup ${data.duplicates || 0}`,
+  ];
+  if (data.empty_content) lines.push(`Empty content: ${data.empty_content}`);
+  if (data.skipped_format) lines.push(`Bad format skipped: ${data.skipped_format}`);
+  if (data.hint) lines.push(String(data.hint));
+
+  const detail = (Array.isArray(data.results) ? data.results : [])
+    .slice(-8)
+    .map((r) => {
+      const who = r.club || r.discord_user || "?";
+      const st = r.status || "?";
+      const reason = r.reason || r.scoreline || "";
+      return `${who}: ${st}${reason ? ` — ${reason}` : ""}`;
+    });
+  if (detail.length) lines.push(detail.join(" | "));
+
   setStatus(
     "pollStatus",
-    `Scan ${data.scanned || 0} · matched ${data.matched || 0} · pending ${data.pending || 0} · ignored ${data.ignored || 0} · dup ${data.duplicates || 0}`
+    lines.join("\n"),
+    (data.matched || 0) + (data.pending || 0) > 0
   );
   await loadOverview();
 }
