@@ -232,9 +232,9 @@ function renderTable() {
   }
 
   const headers = [
-    ["_issues", "Issues"],
     ["owner_tag", "Owner"],
     ["club_name", "Club"],
+    ["_issues", "Issues"],
     ["manager_name", "Manager"],
     ["nation_name", "Nation"],
     ["ooo_player_name", "OooO"],
@@ -328,9 +328,6 @@ function renderTable() {
 
             return `
           <tr class="${rowFlagged.trim()}" data-club="${escapeHtml(row.club_short_name)}">
-            <td class="chk-issues-cell ${issues.size ? cellClass("bad") : cellClass("ok")}">${issueTagsHtml(
-              issues
-            )}</td>
             ${textCell(
               ownerHtml,
               issues.has("owner") ? "bad" : "ok",
@@ -342,6 +339,9 @@ function renderTable() {
                 row.division ? ` · ${escapeHtml(row.division)}` : ""
               }</div>
             </td>
+            <td class="chk-issues-cell ${issues.size ? cellClass("bad") : cellClass("ok")}">${issueTagsHtml(
+              issues
+            )}</td>
             ${textCell(
               manager,
               issues.has("manager") ? "bad" : "ok",
