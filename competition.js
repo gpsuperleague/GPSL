@@ -1347,6 +1347,7 @@ export function formatMoney(amount) {
 export const GATE_ENTRY_LABELS = {
   gate_league_home: "Gate receipts (league home)",
   gate_cup_share: "Gate receipts (cup 50%)",
+  gate_friendlies: "Gate receipts (friendlies)",
   prize: "Prize money",
   prize_league: "League prize money",
   prize_cup: "Cup prize money",
@@ -1396,6 +1397,7 @@ export const FINANCE_ENTRY_LABELS = GATE_ENTRY_LABELS;
 const INCOME_TYPES = new Set([
   "gate_league_home",
   "gate_cup_share",
+  "gate_friendlies",
   "prize",
   "prize_league",
   "prize_cup",

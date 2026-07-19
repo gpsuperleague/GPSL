@@ -20,6 +20,7 @@ export const LEDGER_TYPE_TO_LINE = {
   transfer_agent_fee: "transfer_purchases",
   gate_league_home: "infra_gates",
   gate_cup_share: "infra_gates",
+  gate_friendlies: "infra_gates",
   prize: "prize_other",
   prize_league: "prize_league",
   prize_cup: "prize_cup",
@@ -128,9 +129,9 @@ export const FINANCE_UI_SECTIONS = [
       {
         id: "infra_gates",
         label: "Gate receipts",
-        types: ["gate_league_home", "gate_cup_share"],
+        types: ["gate_league_home", "gate_cup_share", "gate_friendlies"],
         note:
-          "League home 100% / away 0%; cup 50/50. Per match: capacity × ₿20; grows as results are confirmed.",
+          "League home 100% / away 0%; cup 50/50; Discord friendlies ₿5,000 each (mutual confirm, monthly/season caps).",
       },
       {
         id: "infra_maintenance",

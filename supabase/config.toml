@@ -16,3 +16,7 @@ verify_jwt = false
 # Auth checked inside (admin JWT / feed invoke key / service_role).
 [functions.discord-sky-feed]
 verify_jwt = false
+
+# Auth checked inside (admin JWT / friendlies invoke key / service_role).
+[functions.discord-friendlies-ingest]
+verify_jwt = false
