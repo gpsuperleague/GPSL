@@ -12,13 +12,34 @@ let allRows = [];
 let sortKey = "club_name";
 let sortDir = "asc";
 
+const ISSUE_META = {
+  owner: { label: "Owner", level: "bad", tip: "No owner assigned" },
+  manager: { label: "Manager", level: "bad", tip: "Owned club has no manager" },
+  nation: { label: "Nation", level: "bad", tip: "Owned club has no nation" },
+  ooo: { label: "OooO", level: "bad", tip: "Missing One of Our Own player" },
+  squad_low: {
+    label: `Squad <${MIN_SQUAD_SIZE}`,
+    level: "bad",
+    tip: `Squad below minimum (${MIN_SQUAD_SIZE})`,
+  },
+  squad_high: {
+    label: `Squad >${SQUAD_SIZE}`,
+    level: "bad",
+    tip: `Squad above maximum (${SQUAD_SIZE})`,
+  },
+  u21: { label: `U21 <${MIN_U21}`, level: "bad", tip: `Fewer than ${MIN_U21} U21 players` },
+  balance: { label: "Balance", level: "bad", tip: "Current balance is negative" },
+  proj: { label: "Proj EOS", level: "warn", tip: "Projected end-of-season balance is negative" },
+  fines: { label: "Fines", level: "warn", tip: "Outstanding fines on record" },
+};
+
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
-  document.getElementById("reloadBtn").onclick = () => loadTable();
-  document.getElementById("filterOwner").onchange = renderTable;
-  document.getElementById("filterDivision").onchange = renderTable;
-  document.getElementById("filterIssuesOnly").onchange = renderTable;
+  document.getElementById("reloadBtn")?.addEventListener("click", () => loadTable());
+  document.getElementById("filterOwner")?.addEventListener("change", renderTable);
+  document.getElementById("filterDivision")?.addEventListener("change", renderTable);
+  document.getElementById("filterIssuesOnly")?.addEventListener("change", renderTable);
 
   await loadTable();
 });
@@ -62,7 +83,25 @@ function evaluateRowIssues(row) {
   return issues;
 }
 
+/** @param {Set<string>} issues */
+function issueTagsHtml(issues) {
+  if (!issues.size) return '<span class="muted">—</span>';
+  return [...issues]
+    .map((key) => {
+      const meta = ISSUE_META[key] || { label: key, level: "bad" };
+      const cls = meta.level === "warn" ? "chk-issue-tag warn" : "chk-issue-tag";
+      return `<span class="${cls}" title="${escapeHtml(meta.tip || meta.label)}">${escapeHtml(
+        meta.label
+      )}</span>`;
+    })
+    .join("");
+}
+
 function compareValues(a, b, key) {
+  if (key === "_issues") {
+    return evaluateRowIssues(a).size - evaluateRowIssues(b).size;
+  }
+
   const va = a?.[key];
   const vb = b?.[key];
 
@@ -150,23 +189,26 @@ function cellClass(level) {
   return "chk-cell-ok";
 }
 
-function moneyCell(value, level = "ok") {
+function moneyCell(value, level = "ok", title = "") {
+  const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
   if (value === undefined) {
-    return '<td class="money chk-cell-ok proj-loading">…</td>';
+    return `<td class="money chk-cell-ok proj-loading"${titleAttr}>…</td>`;
   }
   if (value == null || value === "" || Number.isNaN(Number(value))) {
-    return `<td class="money ${cellClass("bad")}">—</td>`;
+    return `<td class="money ${cellClass("bad")}"${titleAttr || ' title="Missing value"'}>—</td>`;
   }
-  return `<td class="money ${cellClass(level)}">${formatMoney(Number(value))}</td>`;
+  return `<td class="money ${cellClass(level)}"${titleAttr}>${formatMoney(Number(value))}</td>`;
 }
 
-function numCell(value, level = "ok") {
+function numCell(value, level = "ok", title = "") {
   const n = Number(value ?? 0);
-  return `<td class="num ${cellClass(level)}">${n}</td>`;
+  const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+  return `<td class="num ${cellClass(level)}"${titleAttr}>${n}</td>`;
 }
 
-function textCell(content, level = "ok") {
-  return `<td class="${cellClass(level)}">${content}</td>`;
+function textCell(content, level = "ok", title = "") {
+  const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+  return `<td class="${cellClass(level)}"${titleAttr}>${content}</td>`;
 }
 
 function renderTable() {
@@ -190,6 +232,7 @@ function renderTable() {
   }
 
   const headers = [
+    ["_issues", "Issues"],
     ["owner_tag", "Owner"],
     ["club_name", "Club"],
     ["manager_name", "Manager"],
@@ -246,45 +289,83 @@ function renderTable() {
             const ooo = row.ooo_player_name ? escapeHtml(row.ooo_player_name) : "—";
 
             let squadLevel = "ok";
-            if (squad < MIN_SQUAD_SIZE || squad > SQUAD_SIZE) squadLevel = "bad";
+            let squadTip = "";
+            if (squad < MIN_SQUAD_SIZE) {
+              squadLevel = "bad";
+              squadTip = ISSUE_META.squad_low.tip;
+            } else if (squad > SQUAD_SIZE) {
+              squadLevel = "bad";
+              squadTip = ISSUE_META.squad_high.tip;
+            }
 
             let u21Level = "ok";
-            if (hasOwner && u21 < MIN_U21) u21Level = "bad";
+            let u21Tip = "";
+            if (hasOwner && u21 < MIN_U21) {
+              u21Level = "bad";
+              u21Tip = ISSUE_META.u21.tip;
+            }
 
-            let balanceLevel = Number(row.current_balance) < 0 ? "bad" : "ok";
+            let balanceLevel = "ok";
+            let balanceTip = "";
+            if (Number(row.current_balance) < 0) {
+              balanceLevel = "bad";
+              balanceTip = ISSUE_META.balance.tip;
+            }
 
             let projLevel = "ok";
+            let projTip = "";
             if (
               row.projected_eos_balance != null &&
               row.projected_eos_balance !== "" &&
               Number(row.projected_eos_balance) < 0
             ) {
               projLevel = "warn";
+              projTip = ISSUE_META.proj.tip;
             }
 
             const finesLevel = Number(row.fines_count) > 0 ? "warn" : "ok";
+            const finesTip = finesLevel === "warn" ? ISSUE_META.fines.tip : "";
 
             return `
           <tr class="${rowFlagged.trim()}" data-club="${escapeHtml(row.club_short_name)}">
-            ${textCell(ownerHtml, issues.has("owner") ? "bad" : "ok")}
+            <td class="chk-issues-cell ${issues.size ? cellClass("bad") : cellClass("ok")}">${issueTagsHtml(
+              issues
+            )}</td>
+            ${textCell(
+              ownerHtml,
+              issues.has("owner") ? "bad" : "ok",
+              issues.has("owner") ? ISSUE_META.owner.tip : ""
+            )}
             <td class="club-cell ${cellClass("ok")}">
               <div class="club-name">${escapeHtml(row.club_name || row.club_short_name)}</div>
               <div class="club-short">${escapeHtml(row.club_short_name)}${
                 row.division ? ` · ${escapeHtml(row.division)}` : ""
               }</div>
             </td>
-            ${textCell(manager, issues.has("manager") ? "bad" : "ok")}
-            ${textCell(nation, issues.has("nation") ? "bad" : "ok")}
-            ${textCell(ooo, issues.has("ooo") ? "bad" : "ok")}
-            ${numCell(row.squad_size, squadLevel)}
+            ${textCell(
+              manager,
+              issues.has("manager") ? "bad" : "ok",
+              issues.has("manager") ? ISSUE_META.manager.tip : ""
+            )}
+            ${textCell(
+              nation,
+              issues.has("nation") ? "bad" : "ok",
+              issues.has("nation") ? ISSUE_META.nation.tip : ""
+            )}
+            ${textCell(
+              ooo,
+              issues.has("ooo") ? "bad" : "ok",
+              issues.has("ooo") ? ISSUE_META.ooo.tip : ""
+            )}
+            ${numCell(row.squad_size, squadLevel, squadTip)}
             ${numCell(row.star_count)}
-            ${moneyCell(row.current_balance, balanceLevel)}
-            ${moneyCell(row.projected_eos_balance, projLevel)}
+            ${moneyCell(row.current_balance, balanceLevel, balanceTip)}
+            ${moneyCell(row.projected_eos_balance, projLevel, projTip)}
             ${moneyCell(row.total_wages)}
             ${numCell(row.contract_releases_remaining)}
             ${numCell(row.foreign_sales_remaining)}
-            ${numCell(row.fines_count, finesLevel)}
-            ${numCell(row.u21_count, u21Level)}
+            ${numCell(row.fines_count, finesLevel, finesTip)}
+            ${numCell(row.u21_count, u21Level, u21Tip)}
           </tr>`;
           })
           .join("")}

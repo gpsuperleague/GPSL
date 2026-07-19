@@ -25,18 +25,60 @@
     .chk-table .vacant { color:#888; font-style:italic; }
     .chk-table .money { text-align:right; font-variant-numeric:tabular-nums; }
     .chk-table .num { text-align:center; font-variant-numeric:tabular-nums; }
-    .chk-cell-warn { background:rgba(232,160,71,0.14); color:#f0c878; }
-    .chk-cell-bad { background:rgba(232,92,92,0.18); color:#f5a8a8; font-weight:600; }
     .chk-cell-ok { color:#bbb; }
+    .chk-cell-warn {
+      background:rgba(232,160,71,0.22) !important;
+      color:#ffd28a;
+      font-weight:600;
+      box-shadow: inset 3px 0 0 #e8a047;
+    }
+    .chk-cell-bad {
+      background:rgba(232,92,92,0.28) !important;
+      color:#ffb0b0;
+      font-weight:700;
+      box-shadow: inset 3px 0 0 #e85c5c;
+    }
     .chk-table .proj-loading { color:#666; font-style:italic; }
-    .chk-row-flagged td { background:rgba(232,92,92,0.05); }
-    .chk-row-flagged:hover td { background:rgba(232,92,92,0.09); }
+    /* Row wash must NOT override failing cell colours (specificity was hiding them). */
+    .chk-row-flagged td.chk-cell-ok,
+    .chk-row-flagged td.club-cell {
+      background:rgba(232,92,92,0.04);
+    }
+    .chk-row-flagged:hover td.chk-cell-ok,
+    .chk-row-flagged:hover td.club-cell {
+      background:rgba(232,92,92,0.08);
+    }
+    .chk-issues-cell {
+      white-space: normal;
+      min-width: 140px;
+      max-width: 220px;
+      font-size: 11px;
+      line-height: 1.35;
+    }
+    .chk-issue-tag {
+      display: inline-block;
+      margin: 1px 3px 1px 0;
+      padding: 1px 6px;
+      border-radius: 3px;
+      background: rgba(232,92,92,0.25);
+      color: #ffc0c0;
+      border: 1px solid rgba(232,92,92,0.45);
+      font-weight: 600;
+    }
+    .chk-issue-tag.warn {
+      background: rgba(232,160,71,0.22);
+      color: #ffd28a;
+      border-color: rgba(232,160,71,0.5);
+    }
     .chk-legend { display:flex; flex-wrap:wrap; gap:12px; font-size:12px; color:#999; margin-bottom:10px; }
     .chk-legend span { display:inline-flex; align-items:center; gap:6px; }
     .chk-legend i { display:inline-block; width:12px; height:12px; border-radius:2px; }
     .chk-legend .lg-bad i { background:rgba(232,92,92,0.35); border:1px solid #e85c5c; }
     .chk-legend .lg-warn i { background:rgba(232,160,71,0.25); border:1px solid #e8a047; }
+    .chk-filter { display:inline-flex; align-items:center; gap:6px; color:#ccc; font-size:13px; }
     .chk-filter select { background:#222; color:#ddd; border:1px solid #444; padding:4px 8px; border-radius:4px; }
+    .chk-filter input[type="checkbox"] { margin:0; }
+    .chk-table .muted { color:#777; }
   </style>
 </head>
 <body class="admin-page">
@@ -71,14 +113,15 @@
               <option value="unassigned">Unassigned</option>
             </select>
           </label>
-          <label class="chk-filter">
+          <label class="chk-filter" title="Show clubs with at least one red/amber requirement fail (includes vacant = no owner)">
             <input type="checkbox" id="filterIssuesOnly"> Issues only
           </label>
           <span id="rowCount" class="note"></span>
         </div>
         <div class="chk-legend">
-          <span class="lg-bad"><i></i> Missing / below rule</span>
-          <span class="lg-warn"><i></i> Warning (fines, low projected balance)</span>
+          <span class="lg-bad"><i></i> Missing / below rule (red column + left bar)</span>
+          <span class="lg-warn"><i></i> Warning (fines, negative projected EOS)</span>
+          <span>Issues column lists each fail</span>
         </div>
         <div id="summaryStrip" class="chk-summary"></div>
         <div id="pageStatus" class="status-line"></div>
@@ -88,6 +131,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_club_checklist.js?v=20260718-nation"></script>
+  <script type="module" src="admin_club_checklist.js?v=20260719-issues-clarity"></script>
 </body>
 </html>
