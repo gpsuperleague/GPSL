@@ -28,6 +28,11 @@ export const OWNER_ADMIN_NAV = [
         page: "admin_discord_friendlies",
       },
       {
+        label: "Transfer gossip",
+        href: "admin_discord_transfer_gossip.html",
+        page: "admin_discord_transfer_gossip",
+      },
+      {
         label: "Add member",
         href: "admin_owners_add_member.html",
         page: "admin_owners_add_member",

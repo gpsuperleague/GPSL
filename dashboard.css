@@ -1700,6 +1700,19 @@ button.nav-admin-trigger {
   color: #7eb8ff;
 }
 
+.tn-kind-rumour .tn-bullet {
+  color: #e8a45a;
+}
+
+.tn-kind-idle .tn-bullet {
+  color: #9a8f7a;
+}
+
+.tn-kind-rumour .tn-text,
+.tn-kind-idle .tn-text {
+  color: #f0d9a8;
+}
+
 .tn-kind-window .tn-text {
   color: #ffe566;
 }

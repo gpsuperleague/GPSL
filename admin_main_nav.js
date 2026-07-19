@@ -48,6 +48,7 @@ export const ADMIN_MAIN_NAV = [
       link("Discord Join Order", "admin_owners_discord.html"),
       link("Discord News Feed", "admin_discord_news.html"),
       link("Discord Friendlies", "admin_discord_friendlies.html"),
+      link("Transfer Gossip", "admin_discord_transfer_gossip.html"),
       link("Create New Owner & Add to Waiting List", "admin_owners_add_member.html"),
       link("Create New Owner & Add Directly to Club", "admin_owners_add_direct.html"),
       link("Remove Owner From Club", "admin_owners_remove.html"),
