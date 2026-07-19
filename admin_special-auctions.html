@@ -74,8 +74,13 @@
             <input id="saPrizeCash" placeholder="e.g. 5000000">
           </div>
           <div>
-            <label>Discount label</label>
-            <input id="saPrizeDiscount" placeholder="e.g. 10% off next signing">
+            <label>Discount % (1–50)</label>
+            <input id="saPrizeDiscountPct" type="number" min="1" max="50" step="1" placeholder="e.g. 25" style="width:120px;">
+            <p class="note" style="margin:6px 0 0;">Grants a Club Prizes fee discount on settle. Number only — no % symbol.</p>
+          </div>
+          <div>
+            <label>Discount label (optional)</label>
+            <input id="saPrizeDiscount" placeholder="Auto: 25% fee discount">
           </div>
         </div>
         <div class="snap-only">
@@ -151,6 +156,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_special-auctions.js"></script>
+  <script type="module" src="admin_special-auctions.js?v=20260719-discount-pct"></script>
 </body>
 </html>

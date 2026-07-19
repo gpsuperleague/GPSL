@@ -488,7 +488,11 @@ export function prizeDescription(auction) {
     return `Cash prize ${formatMoney(auction.prize_cash_amount)}`;
   }
   if (auction.prize_type === "discount") {
-    return auction.prize_discount_label || "Discount prize";
+    if (auction.prize_discount_label) return auction.prize_discount_label;
+    if (auction.prize_discount_pct != null) {
+      return `${auction.prize_discount_pct}% fee discount`;
+    }
+    return "Discount prize";
   }
   return "Prize TBC";
 }

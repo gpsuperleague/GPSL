@@ -145,6 +145,21 @@ async function createAuction() {
     return;
   }
 
+  let discountPct = null;
+  let discountLabel = document.getElementById("saPrizeDiscount")?.value?.trim() || null;
+  if (prizeType === "discount") {
+    discountPct = Math.round(Number(document.getElementById("saPrizeDiscountPct")?.value));
+    if (!Number.isFinite(discountPct) || discountPct < 1 || discountPct > 50) {
+      setStatus(
+        "saCreateStatus",
+        "❌ Enter Discount % as a number from 1 to 50 (no % symbol).",
+        false
+      );
+      return;
+    }
+    if (!discountLabel) discountLabel = `${discountPct}% fee discount`;
+  }
+
   const row = {
     auction_type: type,
     title: document.getElementById("saTitle").value.trim() || "Special auction",
@@ -155,7 +170,8 @@ async function createAuction() {
     prize_player_id: prizeType === "player" ? prizePlayerId : null,
     prize_cash_amount:
       Number(document.getElementById("saPrizeCash").value.replace(/[^\d]/g, "")) || null,
-    prize_discount_label: document.getElementById("saPrizeDiscount").value.trim() || null,
+    prize_discount_pct: prizeType === "discount" ? discountPct : null,
+    prize_discount_label: prizeType === "discount" ? discountLabel : null,
     player_mode: document.getElementById("saPlayerMode").value,
     mystery_clue: document.getElementById("saMysteryClue").value.trim() || null,
     known_player_id: document.getElementById("saKnownPlayerId").value.trim() || null,
@@ -189,11 +205,13 @@ async function createAuction() {
     .single();
 
   if (error) {
-    setStatus(
-      "saCreateStatus",
-      "❌ " + error.message + (type === "blind_gauntlet" ? " — run special_auction_blind_gauntlet.sql" : ""),
-      false
-    );
+    const hint =
+      error.message?.includes("prize_discount_pct")
+        ? " — run special_auction_discount_pct_grant.sql"
+        : type === "blind_gauntlet"
+          ? " — run special_auction_blind_gauntlet.sql"
+          : "";
+    setStatus("saCreateStatus", "❌ " + error.message + hint, false);
     return;
   }
 
