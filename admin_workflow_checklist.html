@@ -65,10 +65,12 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <p class="wf-note">
-          Manual ticks for Admin menu tasks (excludes <b>Testing</b> and <b>Owners</b>).
-          Progress is stored per current season — run
-          <code>supabase/sql/patches/admin_workflow_checklist.sql</code> in Supabase so ticks are shared.
-          Until then, ticks stay in this browser only.
+          Manual ticks for Admin menu tasks (excludes <b>Testing</b> and <b>Owners</b>),
+          scoped to the <b>current</b> season.
+          Check the status line below for storage mode:
+          <b>Shared</b> = Supabase (all admins); <b>Browser-only</b> = this device until you run
+          <code>supabase/sql/patches/admin_workflow_checklist.sql</code>.
+          Browser ticks are imported automatically once shared storage is available.
         </p>
         <div class="wf-summary">
           <span class="pill" id="wfSeasonLabel">Season: …</span>
@@ -85,6 +87,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_workflow_checklist.js?v=20260718-playoffs-lock-note"></script>
+  <script type="module" src="admin_workflow_checklist.js?v=20260719-local-migrate"></script>
 </body>
 </html>

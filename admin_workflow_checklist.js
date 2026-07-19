@@ -82,13 +82,52 @@ async function loadSeason() {
   if (el) el.textContent = `Season: ${seasonLabel}`;
 }
 
+async function migrateLocalTicksToDb(localDone) {
+  if (!seasonId || !localDone?.size) return 0;
+  let migrated = 0;
+  for (const [taskKey, isDone] of localDone) {
+    if (!isDone) continue;
+    if (doneMap.get(taskKey)) continue;
+    const { error } = await supabase.rpc("admin_workflow_checklist_set", {
+      p_season_id: seasonId,
+      p_task_key: taskKey,
+      p_is_done: true,
+    });
+    if (error) {
+      setStatus(
+        "wfStatus",
+        `Shared storage OK, but could not import browser ticks (${error.message}).`,
+        false
+      );
+      return migrated;
+    }
+    doneMap.set(taskKey, true);
+    migrated += 1;
+  }
+  if (migrated > 0) {
+    try {
+      localStorage.removeItem(localStorageKey());
+    } catch {
+      /* ignore */
+    }
+  }
+  return migrated;
+}
+
 async function loadDoneState() {
   doneMap = new Map();
   if (!seasonId) {
     storageMode = "local";
     doneMap = readLocalDone();
+    setStatus(
+      "wfStatus",
+      "No current season — ticks saved in this browser only.",
+      false
+    );
     return;
   }
+
+  const localDone = readLocalDone();
 
   const { data, error } = await supabase
     .from("admin_workflow_checklist")
@@ -97,10 +136,10 @@ async function loadDoneState() {
 
   if (error) {
     storageMode = "local";
-    doneMap = readLocalDone();
+    doneMap = localDone;
     setStatus(
       "wfStatus",
-      `Using browser-only ticks (${error.message}). Run admin_workflow_checklist.sql for shared storage.`,
+      `Browser-only mode (${error.message}). Run admin_workflow_checklist.sql in Supabase for shared ticks.`,
       false
     );
     return;
@@ -110,7 +149,22 @@ async function loadDoneState() {
   for (const row of data || []) {
     doneMap.set(row.task_key, Boolean(row.is_done));
   }
-  setStatus("wfStatus", "Shared checklist loaded for this season.", true);
+
+  const migrated = await migrateLocalTicksToDb(localDone);
+  if (migrated > 0) {
+    setStatus(
+      "wfStatus",
+      `Shared checklist loaded — imported ${migrated} tick(s) from this browser.`,
+      true
+    );
+    return;
+  }
+
+  setStatus(
+    "wfStatus",
+    "Shared checklist loaded for this season (saved in Supabase).",
+    true
+  );
 }
 
 function allTasks() {
