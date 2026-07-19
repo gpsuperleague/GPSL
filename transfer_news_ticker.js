@@ -66,9 +66,16 @@ function demoStories(month) {
     },
     {
       id: "demo-4",
-      kind: "transfer",
-      headline: "DONE DEAL — Demo Winger",
-      body: "Everton → City · ₿ 28,000,000",
+      kind: "rumour",
+      headline: "RUMOUR: Demo United are tracking Demo Striker",
+      body: "",
+      href: "transfer_center.html",
+    },
+    {
+      id: "demo-5",
+      kind: "idle",
+      headline: "RUMOUR: Demo City owner bans ketchup in the canteen; manager quietly puts it back",
+      body: "",
       href: "transfer_center.html",
     },
   ];
