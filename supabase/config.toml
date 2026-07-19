@@ -20,3 +20,7 @@ verify_jwt = false
 # Auth checked inside (admin JWT / friendlies invoke key / service_role).
 [functions.discord-friendlies-ingest]
 verify_jwt = false
+
+# Auth checked inside (admin JWT / gossip invoke key / service_role).
+[functions.discord-transfer-gossip-ingest]
+verify_jwt = false

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Transfer Gossip — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    .fmt {
+      display:inline-block; margin:4px 0 10px; padding:6px 10px;
+      background:#1a1a1a; border:1px solid #333; border-radius:4px;
+      font-family:ui-monospace, Consolas, monospace; color:#ffcc66;
+    }
+    .actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+    button.button.secondary { background:#444; color:#ddd; }
+    .gossip-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .gossip-table th, .gossip-table td {
+      border-bottom:1px solid #333; padding:8px 10px; text-align:left; vertical-align:top;
+    }
+    .gossip-table th { color:#ff9900; font-size:12px; text-transform:uppercase; }
+    h2.section { color:#ffcc66; font-size:16px; margin:22px 0 10px; }
+    .auto-form { display:grid; gap:10px; max-width:640px; margin-bottom:12px; }
+    .auto-form label { display:grid; gap:4px; font-size:13px; color:#ccc; }
+    .auto-form input[type="text"], .auto-form input[type="password"] {
+      padding:8px 10px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:4px;
+    }
+    .auto-form .check { display:flex; align-items:center; gap:8px; }
+    #pollStatus, #autoStatus { white-space:pre-wrap; margin:8px 0; font-size:13px; color:#ccc; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Transfer Gossip</h1>
+
+  <div class="card">
+    <p class="note">
+      Posts in Discord <code>#gpsl-transfer-gossip</code> become Transfer News ticker rumours
+      (with real deals). Idle mild gossip fills quiet days in Jun/Jul/Aug/Jan. Expires end of UK day.
+    </p>
+    <div class="fmt">Jubilo are interested in Alexander Isak</div>
+  </div>
+
+  <div class="card">
+    <h2 class="section">Auto-poll</h2>
+    <p class="note">
+      Run <code>discord_transfer_gossip.sql</code> then <code>discord_transfer_gossip_cron.sql</code>.
+      Secret: <code>DISCORD_TRANSFER_GOSSIP_CHANNEL_ID</code>. Deploy
+      <code>discord-transfer-gossip-ingest</code>. Use same <code>service_role</code> as Friendlies/News.
+    </p>
+    <div class="auto-form">
+      <label>
+        Edge function URL
+        <input type="text" id="autoUrl"
+          placeholder="https://….supabase.co/functions/v1/discord-transfer-gossip-ingest">
+      </label>
+      <label>
+        API key (service_role)
+        <input type="password" id="autoKey" autocomplete="off" placeholder="eyJ…">
+      </label>
+      <label class="check">
+        <input type="checkbox" id="autoEnabled" checked>
+        Auto-poll enabled
+      </label>
+      <div class="actions" style="margin:0">
+        <button type="button" class="button" id="autoSaveBtn">Save auto-poll</button>
+        <button type="button" class="button secondary" id="btnPoll">Poll once now</button>
+        <button type="button" class="button secondary" id="btnRefresh">Refresh</button>
+      </div>
+    </div>
+    <div id="autoStatus"></div>
+    <div id="pollStatus"></div>
+  </div>
+
+  <div class="card">
+    <h2 class="section">Active rumours (today)</h2>
+    <div id="activeWrap"><p class="note">Loading…</p></div>
+  </div>
+
+  <script type="module" src="admin_discord_transfer_gossip.js?v=20260719-gossip"></script>
+</body>
+</html>
