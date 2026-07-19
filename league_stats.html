@@ -21,6 +21,28 @@
     }
     .stats-tab:hover { background:#2a2a2a; color:#ddd; }
     .stats-tab.active { background:#332200; border-color:#ff9900; color:#ff9900; }
+    .totm-season-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 12px;
+    }
+    .totm-season-tab {
+      padding: 6px 12px;
+      background: #222;
+      border: 1px solid #444;
+      border-radius: 6px;
+      color: #aaa;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .totm-season-tab:hover { background: #2a2a2a; color: #ddd; }
+    .totm-season-tab.active {
+      background: #332200;
+      border-color: #ff9900;
+      color: #ff9900;
+    }
     .toolbar { margin-bottom:20px; }
     .toolbar label { display:inline; margin-right:8px; }
     .toolbar select {
@@ -302,13 +324,15 @@
           <div id="disciplineTable"></div>
         </div>
         <div class="panel panel--wide">
-          <h2>Super League — Team of the Month</h2>
-          <p class="meta" style="margin:0 0 8px;font-size:12px;">Super League XI from confirmed league stats each GPSL month (min. 2 apps). Picked when the month locks.</p>
+          <h2>Team of the Month</h2>
+          <p class="meta" style="margin:0 0 8px;font-size:12px;">
+            Most recent XI for the selected season (min. 2 apps). Awarded when a GPSL month locks.
+          </p>
+          <div class="totm-season-tabs" id="totmSeasonTabs" role="tablist" aria-label="TOTM season"></div>
+          <h3 style="margin:14px 0 6px;color:#ff9900;font-size:16px;">Super League</h3>
           <div id="totmSuperPanel"><span class="empty">Loading…</span></div>
-        </div>
-        <div class="panel panel--wide">
-          <h2>Championship — Team of the Month</h2>
-          <p class="meta" style="margin:0 0 8px;font-size:12px;">Combined Championship A &amp; B XI from confirmed league stats each GPSL month (min. 2 apps). Picked when the month locks.</p>
+          <h3 style="margin:18px 0 6px;color:#ff9900;font-size:16px;">Championship</h3>
+          <p class="meta" style="margin:0 0 8px;font-size:12px;">Combined Championship A &amp; B XI.</p>
           <div id="totmChampionshipPanel"><span class="empty">Loading…</span></div>
         </div>
       </div>
@@ -400,6 +424,6 @@
       </p>
     </div>
   </div>
-  <script type="module" src="league_stats.js"></script>
+  <script type="module" src="league_stats.js?v=20260719-totm-seasons"></script>
 </body>
 </html>

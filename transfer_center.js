@@ -43,6 +43,10 @@ import {
   scoutingSetupHint,
 } from "./scouting_targets.js";
 import { playerNameLinkHtml } from "./player_links.js";
+import { loadCurrentSeasonStart } from "./finance_transfers.js";
+
+/** Current competition season start — scopes Season Signings / Sales / Closed Listings. */
+let currentSeasonStartedAt = null;
 
 function playerLinkCell(playerId, player, fallbackName) {
   const pid = String(playerId ?? player?.Konami_ID ?? "").trim();
@@ -79,6 +83,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("pageTitle").textContent = `${fullName} — Transfer Centre`;
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${shortName}.png`;
+
+  currentSeasonStartedAt = await loadCurrentSeasonStart(supabase);
 
   loadGpdbScoutingSummary(shortName);
   loadDraftFavouritesSection(shortName);
@@ -983,15 +989,21 @@ async function loadClosedListings(shortName) {
   const container = document.getElementById("closedListingsContainer");
   container.innerHTML = "Loading…";
 
-  const { data: listings } = await supabase
+  let q = supabase
     .from("Player_Transfer_Listings")
     .select("*")
     .eq("seller_club_id", shortName)
     .eq("status", "Closed")
     .order("end_time", { ascending: false });
 
+  if (currentSeasonStartedAt) {
+    q = q.gte("end_time", currentSeasonStartedAt);
+  }
+
+  const { data: listings } = await q;
+
   if (!listings || listings.length === 0) {
-    container.innerHTML = "<i>No closed listings.</i>";
+    container.innerHTML = "<i>No closed listings this season.</i>";
     return;
   }
 
@@ -1029,11 +1041,17 @@ async function loadSeasonSignings(shortName) {
   const container = document.getElementById("seasonSigningsContainer");
   container.innerHTML = "Loading…";
 
-  const { data: transfers } = await supabase
+  let q = supabase
     .from("Transfer_History")
     .select("*")
     .eq("buyer_club_id", shortName)
     .order("transfer_time", { ascending: false });
+
+  if (currentSeasonStartedAt) {
+    q = q.gte("transfer_time", currentSeasonStartedAt);
+  }
+
+  const { data: transfers } = await q;
 
   if (!transfers || transfers.length === 0) {
     container.innerHTML = "<i>No signings this season.</i>";
@@ -1076,11 +1094,17 @@ async function loadSeasonSales(shortName) {
   const container = document.getElementById("seasonSalesContainer");
   container.innerHTML = "Loading…";
 
-  const { data: transfers } = await supabase
+  let q = supabase
     .from("Transfer_History")
     .select("*")
     .eq("seller_club_id", shortName)
     .order("transfer_time", { ascending: false });
+
+  if (currentSeasonStartedAt) {
+    q = q.gte("transfer_time", currentSeasonStartedAt);
+  }
+
+  const { data: transfers } = await q;
 
   if (!transfers || transfers.length === 0) {
     container.innerHTML = "<i>No sales this season.</i>";

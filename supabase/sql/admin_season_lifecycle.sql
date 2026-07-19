@@ -244,11 +244,21 @@ BEGIN
     PERFORM public.competition_club_prestige_lock_season(p_season_id);
   END IF;
 
-  -- Per-season club quotas (voluntary releases + foreign interest)
+  -- Per-season club quotas (voluntary / foreign / manager sacks)
   IF to_regprocedure('public.competition_reset_club_season_quotas()') IS NOT NULL THEN
     PERFORM public.competition_reset_club_season_quotas();
-  ELSIF to_regprocedure('public.club_reset_voluntary_contract_releases()') IS NOT NULL THEN
-    PERFORM public.club_reset_voluntary_contract_releases();
+  ELSE
+    IF to_regprocedure('public.club_reset_voluntary_contract_releases()') IS NOT NULL THEN
+      PERFORM public.club_reset_voluntary_contract_releases();
+    END IF;
+    IF to_regprocedure('public.manager_reset_season_quotas()') IS NOT NULL THEN
+      PERFORM public.manager_reset_season_quotas();
+    END IF;
+  END IF;
+
+  -- Weekly match availability carries forward across seasons
+  IF to_regprocedure('public.club_owner_availability_carry_forward(bigint)') IS NOT NULL THEN
+    PERFORM public.club_owner_availability_carry_forward(p_season_id);
   END IF;
 END;
 $function$;

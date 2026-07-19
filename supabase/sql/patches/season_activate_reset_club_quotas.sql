@@ -81,6 +81,7 @@ AS $function$
 DECLARE
   v_voluntary int;
   v_foreign int;
+  v_manager boolean := false;
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -88,6 +89,11 @@ BEGIN
 
   PERFORM public.club_reset_voluntary_contract_releases();
   PERFORM public.club_reset_foreign_interest_season();
+
+  IF to_regprocedure('public.manager_reset_season_quotas()') IS NOT NULL THEN
+    PERFORM public.manager_reset_season_quotas();
+    v_manager := true;
+  END IF;
 
   SELECT count(*)::int
   INTO v_voluntary
@@ -104,7 +110,8 @@ BEGIN
   RETURN jsonb_build_object(
     'ok', true,
     'clubs_voluntary_at_3', v_voluntary,
-    'clubs_foreign_interest_at_3', v_foreign
+    'clubs_foreign_interest_at_3', v_foreign,
+    'manager_sacks_reset', v_manager
   );
 END;
 $function$;
@@ -195,6 +202,11 @@ BEGIN
 
   -- Per-season club quotas (voluntary releases + foreign interest)
   PERFORM public.competition_reset_club_season_quotas();
+
+  -- Weekly match availability carries forward across seasons
+  IF to_regprocedure('public.club_owner_availability_carry_forward(bigint)') IS NOT NULL THEN
+    PERFORM public.club_owner_availability_carry_forward(p_season_id);
+  END IF;
 END;
 $function$;
 

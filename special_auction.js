@@ -212,8 +212,15 @@ export async function fetchActiveSpecialAuction(supabase) {
   }
   if (live) return sanitizeAuctionForOwner(live);
 
-  // Client fallback: pending prize for any settled row, then recent settled/revealed
+  // Client fallback: pending prize (any season — winner must resolve), then
+  // recent settled/revealed from the current competition season only.
   const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: seasonRow } = await supabase
+    .from("competition_season_public")
+    .select("started_at")
+    .eq("is_current", true)
+    .maybeSingle();
+  const seasonStart = seasonRow?.started_at || null;
 
   const { data: pendingPrize } = await supabase
     .from("special_auctions")
@@ -225,24 +232,26 @@ export async function fetchActiveSpecialAuction(supabase) {
     .maybeSingle();
   if (pendingPrize) return sanitizeAuctionForOwner(pendingPrize);
 
-  const { data: settled } = await supabase
+  let settledQ = supabase
     .from("special_auctions")
     .select("*")
     .eq("status", "settled")
     .gt("end_time", cutoff)
     .order("id", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+  if (seasonStart) settledQ = settledQ.gte("end_time", seasonStart);
+  const { data: settled } = await settledQ.maybeSingle();
   if (settled) return sanitizeAuctionForOwner(settled);
 
-  const { data: revealed, error: revealedErr } = await supabase
+  let revealedQ = supabase
     .from("special_auctions")
     .select("*")
     .eq("status", "revealed")
     .gt("end_time", cutoff)
     .order("id", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+  if (seasonStart) revealedQ = revealedQ.gte("end_time", seasonStart);
+  const { data: revealed, error: revealedErr } = await revealedQ.maybeSingle();
 
   if (revealedErr) {
     console.error("fetchActiveSpecialAuction (revealed):", revealedErr);

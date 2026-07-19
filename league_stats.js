@@ -558,18 +558,101 @@ function buildTotmStatsTable(rows) {
     </table>`;
 }
 
+/** @type {{ id: number, label: string }[]} */
+let totmSeasons = [];
+/** @type {number|null} */
+let totmSelectedSeasonId = null;
+
+async function loadTotmSeasonOptions(currentSeason) {
+  const byId = new Map();
+  if (currentSeason?.id != null) {
+    byId.set(Number(currentSeason.id), {
+      id: Number(currentSeason.id),
+      label: currentSeason.label || `Season ${currentSeason.id}`,
+    });
+  }
+
+  const { data, error } = await supabase
+    .from("competition_period_team")
+    .select("season_id, season_label")
+    .eq("period_kind", "month")
+    .order("season_id", { ascending: false });
+
+  if (error) {
+    console.warn("competition_period_team seasons:", error);
+  } else {
+    for (const row of data || []) {
+      const id = Number(row.season_id);
+      if (!Number.isFinite(id) || byId.has(id)) continue;
+      byId.set(id, {
+        id,
+        label: row.season_label || `Season ${id}`,
+      });
+    }
+  }
+
+  totmSeasons = [...byId.values()].sort((a, b) => b.id - a.id);
+  if (
+    totmSelectedSeasonId == null ||
+    !totmSeasons.some((s) => s.id === totmSelectedSeasonId)
+  ) {
+    totmSelectedSeasonId =
+      currentSeason?.id != null
+        ? Number(currentSeason.id)
+        : totmSeasons[0]?.id ?? null;
+  }
+}
+
+function renderTotmSeasonTabs() {
+  const root = document.getElementById("totmSeasonTabs");
+  if (!root) return;
+
+  if (!totmSeasons.length) {
+    root.innerHTML = "";
+    return;
+  }
+
+  root.innerHTML = totmSeasons
+    .map(
+      (s) => `
+      <button type="button"
+        class="totm-season-tab${s.id === totmSelectedSeasonId ? " active" : ""}"
+        data-season-id="${s.id}"
+        role="tab"
+        aria-selected="${s.id === totmSelectedSeasonId ? "true" : "false"}">
+        ${s.label}
+      </button>`
+    )
+    .join("");
+
+  root.querySelectorAll(".totm-season-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = Number(btn.dataset.seasonId);
+      if (!Number.isFinite(id) || id === totmSelectedSeasonId) return;
+      totmSelectedSeasonId = id;
+      renderTotmSeasonTabs();
+      void renderTeamOfMonth();
+    });
+  });
+}
+
 async function renderTeamOfMonthPanel(panelId, divisionScope, emptyLabel) {
   const el = document.getElementById(panelId);
   if (!el) return;
 
-  const { data: team, error: teamErr } = await supabase
+  let q = supabase
     .from("competition_period_team")
-    .select("id, season_label, gpsl_month, formation_id, computed_at")
+    .select("id, season_id, season_label, gpsl_month, formation_id, computed_at")
     .eq("period_kind", "month")
     .eq("division_scope", divisionScope)
     .order("id", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+
+  if (totmSelectedSeasonId != null) {
+    q = q.eq("season_id", totmSelectedSeasonId);
+  }
+
+  const { data: team, error: teamErr } = await q.maybeSingle();
 
   if (teamErr) {
     el.innerHTML = `<p class="empty">${teamErr.message}</p>`;
@@ -629,16 +712,18 @@ async function renderTeamOfMonthPanel(panelId, divisionScope, emptyLabel) {
 }
 
 async function renderTeamOfMonth() {
+  const seasonLabel =
+    totmSeasons.find((s) => s.id === totmSelectedSeasonId)?.label || "this season";
   await Promise.all([
     renderTeamOfMonthPanel(
       "totmSuperPanel",
       "superleague",
-      "No Super League Team of the Month yet — awarded when a GPSL month locks after confirmed league games."
+      `No Super League Team of the Month for ${seasonLabel} yet — awarded when a GPSL month locks after confirmed league games.`
     ),
     renderTeamOfMonthPanel(
       "totmChampionshipPanel",
       "championship",
-      "No Championship Team of the Month yet — awarded when a GPSL month locks after confirmed league games."
+      `No Championship Team of the Month for ${seasonLabel} yet — awarded when a GPSL month locks after confirmed league games.`
     ),
   ]);
 }
@@ -697,6 +782,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
   meta.textContent = `${season.label || "Season"} — league, cup, and international leaderboards`;
+
+  await loadTotmSeasonOptions(season);
+  renderTotmSeasonTabs();
 
   [leagueRows, cupRows, internationalRows] = await Promise.all([
     loadPlayerSeasonStats(supabase),

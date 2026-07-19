@@ -1,6 +1,6 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
-import { formatMoney } from "./competition.js";
+import { formatMoney, loadCurrentSeason } from "./competition.js";
 
 const STAT_LABELS = {
   player_max_goals: "Player max goals",
@@ -164,11 +164,18 @@ async function loadAwards(clubShortName) {
   const list = document.getElementById("challengeAwardsList");
   if (!list) return;
 
-  const { data, error } = await supabase
+  const season = await loadCurrentSeason(supabase);
+  let q = supabase
     .from("competition_challenge_awards_public")
     .select("*")
     .eq("club_short_name", clubShortName)
     .order("awarded_at", { ascending: false });
+
+  if (season?.id != null) {
+    q = q.eq("season_id", season.id);
+  }
+
+  const { data, error } = await q;
 
   if (error) {
     list.innerHTML = `<li class="meta">Could not load awards.</li>`;
@@ -176,7 +183,7 @@ async function loadAwards(clubShortName) {
   }
 
   if (!data?.length) {
-    list.innerHTML = '<li class="meta">No challenge prizes awarded yet.</li>';
+    list.innerHTML = '<li class="meta">No challenge prizes awarded this season.</li>';
     return;
   }
 
