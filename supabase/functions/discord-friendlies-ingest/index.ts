@@ -41,12 +41,16 @@ type DiscordMessage = {
 function cleanContent(raw: string): string {
   return String(raw || "")
     .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .replace(/[\u2013\u2014\u2212\u2010\u2011]/g, "-")
     .trim();
 }
 
+/** A) JUB 2 - 2 BEN  or  B) ROS 2 - JUB 3 */
 function scorelineLooksValid(content: string): boolean {
-  return /^[A-Za-z0-9]{2,8}\s+\d{1,2}\s*-\s*\d{1,2}\s+[A-Za-z0-9]{2,8}$/.test(
-    cleanContent(content)
+  const c = cleanContent(content);
+  return (
+    /^[A-Za-z0-9]{2,8}\s+\d{1,2}\s*-\s*\d{1,2}\s+[A-Za-z0-9]{2,8}$/.test(c) ||
+    /^[A-Za-z0-9]{2,8}\s+\d{1,2}\s*-\s*[A-Za-z0-9]{2,8}\s+\d{1,2}$/.test(c)
   );
 }
 

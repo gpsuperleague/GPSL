@@ -164,8 +164,8 @@ async function loadPage() {
   if (!months.length) {
     root.innerHTML = `
       <p class="empty">
-        No friendlies yet. Post results in Discord <b>#gpsl-friendly-results</b> as
-        <code style="color:#ffcc66">CLUB score - score CLUB</code> (e.g. JUB 2 - 2 BEN).
+        No friendlies yet. Post in Discord <b>#gpsl-friendly-results</b> as
+        <code style="color:#ffcc66">JUB 2 - 2 BEN</code> or <code style="color:#ffcc66">ROS 2 - JUB 3</code>.
         When your opponent posts the matching scoreline, it appears here.
       </p>`;
     return;
