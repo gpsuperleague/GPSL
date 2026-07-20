@@ -257,6 +257,9 @@ async function pollNow() {
   const lines = [
     `Fetched ${data.messages_fetched ?? "?"} · scan ${data.scanned || 0} · matched ${data.matched || 0} · pending ${data.pending || 0} · ignored ${data.ignored || 0} · dup ${data.duplicates || 0}`,
   ];
+  if (data.last_ingested_message_id) {
+    lines.push(`Watermark: ${data.last_ingested_message_id}`);
+  }
   if (data.empty_content) lines.push(`Empty content: ${data.empty_content}`);
   if (data.skipped_format) lines.push(`Bad format skipped: ${data.skipped_format}`);
   if (data.hint) lines.push(String(data.hint));
