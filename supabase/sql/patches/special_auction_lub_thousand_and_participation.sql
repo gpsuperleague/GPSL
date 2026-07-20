@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Special auction LUB: ₿1,000 bid increments + anonymous participation stats
 --
--- 1) LUB bids round to nearest ₿1,000 (min still ₿1,000,000). Snap unchanged.
+-- 1) LUB bids round to nearest ₿1,000 (min ₿1,000). Snap unchanged.
 -- 2) special_auction_participation_stats — owners_total / clubs_bid / pct
 --    (no club ids, no bid amounts).
 --
@@ -71,8 +71,8 @@ BEGIN
       RAISE EXCEPTION 'You already submitted your secret bid';
     END IF;
     v_amount := public.round_bid_to_thousand(p_amount);
-    IF v_amount < 1000000 THEN
-      RAISE EXCEPTION 'Bid must be at least ₿1,000,000 (rounded to nearest ₿1,000)';
+    IF v_amount < 1000 THEN
+      RAISE EXCEPTION 'Bid must be at least ₿1,000 (rounded to nearest ₿1,000)';
     END IF;
   ELSE
     v_amount := round(p_amount);
@@ -101,7 +101,7 @@ END;
 $function$;
 
 COMMENT ON FUNCTION public.special_auction_submit_bid(bigint, numeric) IS
-  'LUB: one secret bid (nearest ₿1k, min ₿1m). Snap: each bid ≥ ₿1m and ≥ high + ₿500k.';
+  'LUB: one secret bid (nearest ₿1k, min ₿1k). Snap: each bid ≥ ₿1m and ≥ high + ₿500k.';
 
 CREATE OR REPLACE FUNCTION public.special_auction_participation_stats(p_auction_id bigint)
 RETURNS jsonb
