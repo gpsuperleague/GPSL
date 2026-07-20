@@ -16,12 +16,86 @@
       background: #1a1a1a;
       border: 1px solid #333;
       border-radius: 8px;
-      margin: 20px;
-      padding: 20px;
-      max-width: 900px;
+      margin: 20px auto;
+      padding: 22px 24px;
+      max-width: 920px;
     }
-    .panel h2 { color: #ff9900; margin-top: 0; }
-    .timer { font-family: monospace; font-size: 18px; color: #ff9900; }
+    .panel h2 { color: #ff9900; margin: 0 0 8px; font-size: 22px; }
+    .sa-type-badge {
+      display: inline-block;
+      background: #2a2200;
+      border: 1px solid #664400;
+      color: #ffcc66;
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      margin-bottom: 12px;
+    }
+    .sa-meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin: 14px 0 18px;
+    }
+    .sa-meta-card {
+      background: #151515;
+      border: 1px solid #2e2e2e;
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .sa-meta-card .label {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #888;
+      margin-bottom: 6px;
+    }
+    .sa-prize-card {
+      border-color: #4a3a12;
+      background: linear-gradient(145deg, #221a08 0%, #151515 70%);
+    }
+    .sa-prize-card .headline {
+      color: #ffd27a;
+      font-size: 18px;
+      font-weight: 700;
+      margin: 0 0 6px;
+    }
+    .sa-prize-card .detail {
+      margin: 0;
+      color: #bbb;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .sa-participation .headline {
+      color: #eee;
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0 0 4px;
+    }
+    .sa-participation .detail {
+      margin: 0;
+      color: #999;
+      font-size: 12px;
+    }
+    .sa-participation-bar {
+      margin-top: 10px;
+      height: 8px;
+      background: #222;
+      border-radius: 999px;
+      overflow: hidden;
+      border: 1px solid #333;
+    }
+    .sa-participation-bar > span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #cc7a00, #ff9900);
+      width: 0%;
+      transition: width 0.35s ease;
+    }
+    .timer { font-family: monospace; font-size: 20px; color: #ff9900; margin: 0; }
     .timer.countup { color: #ff6666; }
     .timer-sub { display: block; font-size: 12px; color: #ccc; margin-top: 4px; font-family: Arial, sans-serif; }
     .clue-box {
@@ -204,7 +278,7 @@
       border-radius: 8px;
       padding: 24px;
       width: 90%;
-      max-width: 420px;
+      max-width: 480px;
     }
     .bid-modal input[type="text"] {
       flex: 1;
@@ -255,11 +329,27 @@
   <div id="mainPanel" class="panel">
     <p id="emptyMsg">Loading…</p>
     <div id="auctionContent" style="display:none;">
+      <div id="auctionTypeBadge" class="sa-type-badge"></div>
       <h2 id="auctionTitle"></h2>
-      <p id="auctionType"></p>
       <p class="timer" id="auctionTimer"></p>
       <span class="timer-sub" id="auctionTimerSub"></span>
-      <p id="prizeLine"></p>
+
+      <div class="sa-meta-grid">
+        <div class="sa-meta-card sa-prize-card" id="prizeCard">
+          <span class="label">Prize</span>
+          <div class="headline" id="prizeHeadline">—</div>
+          <p class="detail" id="prizeDetail"></p>
+        </div>
+        <div class="sa-meta-card sa-participation" id="participationCard">
+          <span class="label">Owner participation</span>
+          <div class="headline" id="participationHeadline">—</div>
+          <p class="detail" id="participationDetail">Bids stay secret until the auction ends.</p>
+          <div class="sa-participation-bar" aria-hidden="true"><span id="participationFill"></span></div>
+        </div>
+      </div>
+
+      <p id="prizeLine" hidden></p>
+      <p id="auctionType" hidden></p>
       <div id="winnerLine" class="winner-banner" style="display:none;"></div>
       <div id="waitingReveal" class="waiting-banner" style="display:none;"></div>
       <div id="prizeOptionsPanel" class="prize-options" style="display:none;">
@@ -314,7 +404,7 @@
         <span class="bid-amount-prefix" aria-hidden="true">₿</span>
         <input type="text" id="bidAmountInput" inputmode="numeric" autocomplete="off" placeholder="1,000,000">
       </div>
-      <div class="bid-step-row">
+      <div class="bid-step-row" id="bidStepRow">
         <button type="button" class="button secondary dec-btn" data-delta="-5000000">−5m</button>
         <button type="button" class="button secondary dec-btn" data-delta="-1000000">−1m</button>
         <button type="button" class="button secondary dec-btn" data-delta="-500000">−500k</button>
@@ -339,7 +429,7 @@
     import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
     import {
       formatMoney,
-      roundToMillion,
+      roundToThousand,
       fetchActiveSpecialAuction,
       fetchAuctionById,
       refreshAuctionRecord,
@@ -350,6 +440,8 @@
       timeRemainingLabel,
       formatAuctionTimerText,
       prizeDescription,
+      prizePresentation,
+      fetchParticipationStats,
       formatBidTimeHtml,
       formatBidTimePlain,
       fetchVisibleClues,
@@ -372,7 +464,7 @@
       winnerReleaseSquadForKeep,
       fetchSquadPlayersForPrizeKeepPrep,
       SPECIAL_AUCTION_SQUAD_MAX,
-    } from "./special_auction.js?v=20260719-season-scope";
+    } from "./special_auction.js?v=20260720-lub-ui";
     import {
       playerThumbLinkHtml,
       playerNameLinkHtml,
@@ -385,6 +477,22 @@
 
     const MIN_BID = 1000000;
     const BID_INCREMENT = 500000;
+    const LUB_STEP_HTML = `
+        <button type="button" class="button secondary" data-delta="-100000">−100k</button>
+        <button type="button" class="button secondary" data-delta="-10000">−10k</button>
+        <button type="button" class="button secondary" data-delta="-1000">−1k</button>
+        <button type="button" class="button secondary" id="bidQuickMin">Min ₿1m</button>
+        <button type="button" class="button secondary" data-delta="1000">+1k</button>
+        <button type="button" class="button secondary" data-delta="10000">+10k</button>
+        <button type="button" class="button secondary" data-delta="100000">+100k</button>`;
+    const SNAP_STEP_HTML = `
+        <button type="button" class="button secondary" data-delta="-5000000">−5m</button>
+        <button type="button" class="button secondary" data-delta="-1000000">−1m</button>
+        <button type="button" class="button secondary" data-delta="-500000">−500k</button>
+        <button type="button" class="button secondary" id="bidQuickMin">Min ₿1m</button>
+        <button type="button" class="button secondary" data-delta="500000">+500k</button>
+        <button type="button" class="button secondary" data-delta="1000000">+1m</button>
+        <button type="button" class="button secondary" data-delta="5000000">+5m</button>`;
 
     let auction = null;
     let clubShort = null;
@@ -399,9 +507,15 @@
       content: document.getElementById("auctionContent"),
       title: document.getElementById("auctionTitle"),
       type: document.getElementById("auctionType"),
+      typeBadge: document.getElementById("auctionTypeBadge"),
       timer: document.getElementById("auctionTimer"),
       timerSub: document.getElementById("auctionTimerSub"),
       prize: document.getElementById("prizeLine"),
+      prizeHeadline: document.getElementById("prizeHeadline"),
+      prizeDetail: document.getElementById("prizeDetail"),
+      participationHeadline: document.getElementById("participationHeadline"),
+      participationDetail: document.getElementById("participationDetail"),
+      participationFill: document.getElementById("participationFill"),
       playerReveal: document.getElementById("playerReveal"),
       rules: document.getElementById("rulesLine"),
       myBidLine: document.getElementById("myBidLine"),
@@ -438,9 +552,43 @@
     function updateRoundedPreview(amount) {
       const preview = document.getElementById("roundedPreview");
       if (auction?.auction_type === "lowest_unique" && amount > 0) {
-        preview.textContent = `Rounded bid: ${formatMoney(roundToMillion(amount))}`;
+        preview.textContent = `Stored bid: ${formatMoney(roundToThousand(amount))} (nearest ₿1,000)`;
       } else {
         preview.textContent = "";
+      }
+    }
+
+    function syncBidStepButtons(isLub) {
+      const row = document.getElementById("bidStepRow");
+      if (!row) return;
+      row.innerHTML = isLub ? LUB_STEP_HTML : SNAP_STEP_HTML;
+    }
+
+    async function refreshParticipation() {
+      if (!auction?.id || !els.participationHeadline) return;
+      const stats = await fetchParticipationStats(supabase, auction.id);
+      if (!stats) {
+        els.participationHeadline.textContent = "Participation unavailable";
+        if (els.participationDetail) {
+          els.participationDetail.textContent =
+            "Run special_auction_lub_thousand_and_participation.sql for live owner %.";
+        }
+        if (els.participationFill) els.participationFill.style.width = "0%";
+        return;
+      }
+      const bid = Number(stats.clubs_bid) || 0;
+      const total = Number(stats.owners_total) || 0;
+      const pct = Number(stats.pct) || 0;
+      els.participationHeadline.textContent =
+        total > 0 ? `${pct}% of owners have bid` : `${bid} club(s) have bid`;
+      if (els.participationDetail) {
+        els.participationDetail.textContent =
+          total > 0
+            ? `${bid} of ${total} owned clubs · amounts stay secret until reveal`
+            : `${bid} club(s) have placed a bid · amounts stay secret until reveal`;
+      }
+      if (els.participationFill) {
+        els.participationFill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
       }
     }
 
@@ -485,11 +633,12 @@
       const isLub = auction.auction_type === "lowest_unique";
       snapMinBid = isLub ? MIN_BID : snapMinimumBid(latestBids);
       modalStartAmount = snapMinBid;
+      syncBidStepButtons(isLub);
       document.getElementById("bidModalTitle").textContent = isLub
         ? "Secret bid (one only)"
         : "Snap auction bid";
       document.getElementById("bidModalHint").textContent = isLub
-        ? "Only you will see your bid until the window ends. Amount is rounded to the nearest ₿1,000,000."
+        ? "Only you will see your bid until the window ends. Amount is stored to the nearest ₿1,000 (minimum ₿1,000,000)."
         : `Each bid costs ₿300,000. Must raise by at least ${formatMoney(BID_INCREMENT)} (min ${formatMoney(snapMinBid)}). Highest bid wins. Winner pays full bid fees + discounted winning bid; non-winners pay 25% of their bid fees. First-bid timing sets your win discount (20% / 10% / 5% / 0%).`;
       document.getElementById("bidQuickMin").textContent = isLub
         ? "Min ₿1m"
@@ -513,22 +662,17 @@
         onChange: updateRoundedPreview,
       });
 
-      document.querySelectorAll("#bidModalBackdrop .inc-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          bidAmountControl?.adjust(Number(btn.dataset.delta) || 0);
-        });
-      });
-
-      document.querySelectorAll("#bidModalBackdrop .dec-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          bidAmountControl?.adjust(Number(btn.dataset.delta) || 0);
-        });
-      });
-
-      document.getElementById("bidQuickMin")?.addEventListener("click", () => {
-        const min =
-          auction?.auction_type === "snap" ? snapMinBid : MIN_BID;
-        bidAmountControl?.set(min);
+      document.getElementById("bidStepRow")?.addEventListener("click", (e) => {
+        const deltaBtn = e.target.closest("[data-delta]");
+        if (deltaBtn) {
+          bidAmountControl?.adjust(Number(deltaBtn.dataset.delta) || 0);
+          return;
+        }
+        if (e.target.closest("#bidQuickMin")) {
+          const min =
+            auction?.auction_type === "snap" ? snapMinBid : MIN_BID;
+          bidAmountControl?.set(min);
+        }
       });
     }
 
@@ -852,8 +996,16 @@
       const revealed =
         auction.status === "revealed" || auction.status === "settled";
       els.title.textContent = auction.title;
-      els.type.textContent = isLub ? "Lowest unique bid" : "Snap auction";
-      els.prize.textContent = prizeDescription(auction);
+      if (els.type) els.type.textContent = isLub ? "Lowest unique bid" : "Snap auction";
+      if (els.typeBadge) {
+        els.typeBadge.textContent = isLub
+          ? "Lowest unique bid · secret until reveal"
+          : "Snap auction";
+      }
+      const prize = prizePresentation(auction);
+      if (els.prizeHeadline) els.prizeHeadline.textContent = prize.headline;
+      if (els.prizeDetail) els.prizeDetail.textContent = prize.detail;
+      if (els.prize) els.prize.textContent = prizeDescription(auction);
 
       const phase = auctionPhase(auction);
       lastKnownPhase = phase;
@@ -863,10 +1015,11 @@
       updateTimerOnly();
 
       els.rules.textContent = isLub
-        ? "Submit one secret bid (nearest ₿1m). When the window ends, all bids are revealed; the lowest amount that only one club chose wins and pays that amount."
+        ? "Submit one secret bid (nearest ₿1,000, minimum ₿1m). When the window ends, all bids are revealed; the lowest amount that only one club chose wins and pays that amount."
         : "Snap (~1 hour). Countdown until the final 10 minutes, then a count-up timer — auction ends at a random moment in that window. Each bid costs ₿300k and must be at least ₿500k above the current highest. Winner pays 100% of bid fees + winning bid (minus first-bid discount 20/10/5/0%). Non-winners pay 25% of bid fees. Clues unlock at 0 / 20 / 40 / 50 minutes.";
 
       await renderPlayerBlock();
+      await refreshParticipation();
 
       const bids = await fetchAuctionBids(supabase, auction.id);
       latestBids = bids || [];

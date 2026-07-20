@@ -108,6 +108,13 @@ export function roundToMillion(n) {
   return Math.round(x / 1000000) * 1000000;
 }
 
+/** LUB bids: nearest ₿1,000. */
+export function roundToThousand(n) {
+  const x = Number(n);
+  if (!Number.isFinite(x)) return 0;
+  return Math.round(x / 1000) * 1000;
+}
+
 /** True while a snap is still before its random finish — player identity must stay hidden. */
 export function snapIdentityHidden(auction) {
   if (!auction || auction.auction_type !== "snap") return false;
@@ -488,13 +495,83 @@ export function prizeDescription(auction) {
     return `Cash prize ${formatMoney(auction.prize_cash_amount)}`;
   }
   if (auction.prize_type === "discount") {
-    if (auction.prize_discount_label) return auction.prize_discount_label;
-    if (auction.prize_discount_pct != null) {
-      return `${auction.prize_discount_pct}% fee discount`;
+    const pct = resolveDiscountPct(auction);
+    if (pct != null) {
+      return `${pct}% off your next signing fee`;
     }
-    return "Discount prize";
+    const label = String(auction.prize_discount_label || "").trim();
+    if (label) return label;
+    return "Fee discount prize";
   }
   return "Prize TBC";
+}
+
+/** Resolve fee-discount % from column or label like "25 %". */
+export function resolveDiscountPct(auction) {
+  if (!auction) return null;
+  const direct = Number(auction.prize_discount_pct);
+  if (Number.isFinite(direct) && direct > 0 && direct <= 50) return Math.round(direct);
+  const label = String(auction.prize_discount_label || "");
+  const m = label.match(/(\d{1,2})\s*%?/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) && n > 0 && n <= 50 ? n : null;
+}
+
+/**
+ * Rich prize block HTML for the owner auction page.
+ * @returns {{ headline: string, detail: string, kind: string }}
+ */
+export function prizePresentation(auction) {
+  if (!auction) {
+    return { headline: "Prize TBC", detail: "", kind: "unknown" };
+  }
+  if (auction.prize_type === "discount") {
+    const pct = resolveDiscountPct(auction);
+    const headline =
+      pct != null ? `${pct}% fee discount` : "Fee discount prize";
+    return {
+      kind: "discount",
+      headline,
+      detail:
+        pct != null
+          ? `Winner receives a Club Prizes token for ${pct}% off the fee on their next transfer market purchase or special-auction buy. Lock it when you bid or buy — seller still gets full fee; GPSL tops up the difference.`
+          : "Winner receives a Club Prizes fee-discount token for their next signing.",
+    };
+  }
+  if (auction.prize_type === "cash") {
+    return {
+      kind: "cash",
+      headline: auction.prize_cash_amount
+        ? `Cash ${formatMoney(auction.prize_cash_amount)}`
+        : "Cash prize",
+      detail: "Paid to the winning club’s balance when the auction settles.",
+    };
+  }
+  if (auction.prize_type === "player") {
+    return {
+      kind: "player",
+      headline: snapIdentityHidden(auction)
+        ? "Mystery player"
+        : "Player prize",
+      detail: snapIdentityHidden(auction)
+        ? "Identity stays hidden until this snap finishes."
+        : "Winner takes the player (squad rules apply).",
+    };
+  }
+  return { headline: prizeDescription(auction), detail: "", kind: "other" };
+}
+
+export async function fetchParticipationStats(supabase, auctionId) {
+  if (!auctionId) return null;
+  const { data, error } = await supabase.rpc("special_auction_participation_stats", {
+    p_auction_id: auctionId,
+  });
+  if (error) {
+    console.warn("fetchParticipationStats:", error);
+    return null;
+  }
+  return data?.ok ? data : null;
 }
 
 export const SPECIAL_AUCTION_SQUAD_MAX = 28;
