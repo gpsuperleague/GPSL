@@ -275,10 +275,14 @@ BEGIN
     RETURN 0;
   END IF;
 
-  SELECT coalesce(cf."Balance", 0)
+  SELECT coalesce(cf.balance, 0)
   INTO v_balance
   FROM public."Club_Finances" cf
-  WHERE cf."ShortName" = v_loan.club_short_name;
+  WHERE cf.club_name = v_loan.club_short_name;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Club_Finances row missing';
+  END IF;
 
   IF coalesce(v_balance, 0) < v_pay THEN
     RAISE EXCEPTION 'Insufficient balance to repay % (balance %)', v_pay, v_balance;
