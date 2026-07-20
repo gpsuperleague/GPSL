@@ -61,6 +61,58 @@
       border-color: #ff9900;
       text-decoration: none;
     }
+
+    table.gpsl-table th.countdown-col,
+    table.gpsl-table td.countdown-cell {
+      min-width: 220px;
+      width: 220px;
+      vertical-align: top;
+    }
+
+    .countdown-cell .countdown-duration,
+    .tc-deadline-live .countdown-duration {
+      display: block;
+      font-weight: bold;
+      color: #ff9900;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .countdown-cell .countdown-times,
+    .tc-deadline-live .countdown-times {
+      display: block;
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 3px;
+      line-height: 1.35;
+      font-weight: normal;
+    }
+
+    .countdown-cell .countdown-uk,
+    .countdown-cell .countdown-local,
+    .tc-deadline-live .countdown-uk,
+    .tc-deadline-live .countdown-local {
+      display: block;
+    }
+
+    .tc-deadline-urgent .countdown-duration {
+      color: #ff6b4a;
+      animation: tc-deadline-pulse 1.2s ease-in-out infinite;
+    }
+
+    .tc-deadline-expired .countdown-duration {
+      color: #d9534f;
+      animation: none;
+    }
+
+    .tc-deadline-empty {
+      color: #888;
+      font-size: 12px;
+    }
+
+    @keyframes tc-deadline-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.55; }
+    }
   </style>
 
   <style>
@@ -244,7 +296,7 @@
   <!-- ================================
        TRANSFER CENTRE JS (new file)
        ================================ -->
-  <script type="module" src="transfer_center.js?v=20260720-awaiting-seller"></script>
+  <script type="module" src="transfer_center.js?v=20260720-bid-time-label"></script>
 
 </body>
 </html>

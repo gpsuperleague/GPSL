@@ -606,7 +606,7 @@ async function renderBuyerBidTable(bids, listingMap, emptyText, options = {}) {
         ${showSeller ? "<th>Seller</th>" : ""}
         <th>Type</th>
         ${showSeller ? '<th class="countdown-col">Seller cutoff</th>' : ""}
-        <th>Time</th>
+        <th>Bid time</th>
       </tr>
       ${bids
         .map((row) => {
@@ -702,6 +702,7 @@ async function loadAwaitingSellerBids(shortName) {
     "Nothing awaiting the seller.",
     { showSeller: true }
   );
+  tickSellerDeadlineCells();
 }
 
 // ============================================================
@@ -1065,6 +1066,8 @@ async function loadSellerReview(shortName) {
       rejectDirectBid(btn.dataset.id, shortName);
     });
   });
+
+  tickSellerDeadlineCells();
 }
 
 // ============================================================
