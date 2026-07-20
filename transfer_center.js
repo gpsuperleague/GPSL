@@ -1103,16 +1103,29 @@ async function loadClosedListings(shortName) {
     <table class="gpsl-table">
       <tr>
         <th>Player</th>
-        <th>Final Price</th>
+        <th>Final price</th>
+        <th>Buyer</th>
         <th>Ended</th>
       </tr>
       ${listings
         .map((row) => {
           const player = playerFromMap(players, row.player_id);
+          const sold = row.transfer_completed === true;
+          const price = Number(
+            row.winning_bid ?? row.final_price ?? row.current_highest_bid ?? 0
+          );
+          const buyer =
+            row.winning_club || row.current_highest_bidder || null;
+          const priceCell = sold
+            ? `₿ ${price.toLocaleString("en-GB")}`
+            : price > 0
+              ? `Unsold (best ₿ ${price.toLocaleString("en-GB")})`
+              : "Unsold";
           return `
         <tr>
           <td>${playerLinkCell(row.player_id, player)}</td>
-          <td>₿ ${Number(row.final_price || 0).toLocaleString("en-GB")}</td>
+          <td>${priceCell}</td>
+          <td>${sold ? displayClubName(buyer) || buyer || "—" : "—"}</td>
           <td>${new Date(row.end_time).toLocaleString()}</td>
         </tr>
       `;
