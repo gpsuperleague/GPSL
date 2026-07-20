@@ -150,7 +150,8 @@ export function renderFinanceSeasonHistoryNav(
   const pageFile =
     window.location.pathname.split("/").pop() || "finances.html";
 
-  const links = [];
+  const currentLinks = [];
+  const pastLinks = [];
 
   if (currentSeasonId) {
     const active = activeSeasonId === currentSeasonId ? " active" : "";
@@ -158,8 +159,8 @@ export function renderFinanceSeasonHistoryNav(
     const label = currentSeasonLabel
       ? `Current (${currentSeasonLabel})`
       : "Current season";
-    links.push(
-      `<a href="${href}" class="fin-season-link${active}">${label}</a>`
+    currentLinks.push(
+      `<a href="${href}" class="fin-season-link fin-season-current${active}">${label}</a>`
     );
   }
 
@@ -174,21 +175,39 @@ export function renderFinanceSeasonHistoryNav(
     );
     const net = Number(row.net_total || 0);
     const netClass = net >= 0 ? "positive" : "negative";
-    links.push(
-      `<a href="${href}" class="fin-season-link${active}" title="Closing balance ${formatMoney(row.closing_balance)}">
+    pastLinks.push(
+      `<a href="${href}" class="fin-season-link fin-season-past${active}" title="Closing balance ${formatMoney(row.closing_balance)}">
         <span>${row.season_label}</span>
         <span class="fin-season-net ${netClass}">${formatMoney(row.closing_balance)}</span>
       </a>`
     );
   }
 
-  if (!links.length) {
+  if (!currentLinks.length && !pastLinks.length) {
     container.innerHTML =
       '<p class="empty">No archived finance seasons yet — snapshots are created when admins archive a completed season.</p>';
     return;
   }
 
-  container.innerHTML = `<nav class="fin-season-nav" aria-label="Finance season history">${links.join("")}</nav>`;
+  const parts = [];
+  if (currentLinks.length) {
+    parts.push(
+      `<div class="fin-season-group fin-season-group-current">
+        <span class="fin-season-group-label">Live</span>
+        <div class="fin-season-group-links">${currentLinks.join("")}</div>
+      </div>`
+    );
+  }
+  if (pastLinks.length) {
+    parts.push(
+      `<div class="fin-season-group fin-season-group-past">
+        <span class="fin-season-group-label">Past seasons</span>
+        <div class="fin-season-group-links">${pastLinks.join("")}</div>
+      </div>`
+    );
+  }
+
+  container.innerHTML = `<nav class="fin-season-nav" aria-label="Finance season history">${parts.join('<div class="fin-season-divider" role="separator" aria-hidden="true"></div>')}</nav>`;
 }
 
 export function applyHistoricalFinanceBanner(seasonView) {

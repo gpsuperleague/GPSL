@@ -31,13 +31,37 @@ h1 { color:#ff9900; margin:0; }
 }
 .finance-season-history { margin-top:10px; }
 .fin-season-nav {
+  display:flex; flex-wrap:wrap; align-items:stretch; gap:0;
+}
+.fin-season-group {
+  display:flex; flex-direction:column; gap:6px;
+  min-width:0;
+}
+.fin-season-group-label {
+  font-size:10px; font-weight:bold; letter-spacing:0.06em;
+  text-transform:uppercase; color:#888;
+}
+.fin-season-group-current .fin-season-group-label { color:#c9a227; }
+.fin-season-group-past .fin-season-group-label { color:#7a7a7a; }
+.fin-season-group-links {
   display:flex; flex-wrap:wrap; gap:8px;
+}
+.fin-season-divider {
+  width:1px; align-self:stretch; min-height:48px;
+  margin:0 14px; background:#444;
+  flex-shrink:0;
 }
 .fin-season-link {
   display:inline-flex; flex-direction:column; gap:2px;
   padding:8px 12px; font-size:12px; text-decoration:none;
   color:#ccc; background:#222; border:1px solid #444; border-radius:8px;
   min-width:120px;
+}
+.fin-season-link.fin-season-current {
+  border-color:#665522; background:#1f1c12;
+}
+.fin-season-link.fin-season-past {
+  border-color:#3a3a3a; background:#1a1a1a; color:#bbb;
 }
 .fin-season-link:hover { border-color:#ff9900; color:#ff9900; }
 .fin-season-link.active {
@@ -46,6 +70,12 @@ h1 { color:#ff9900; margin:0; }
 .fin-season-net { font-size:11px; color:#aaa; }
 .fin-season-net.positive { color:#6f6; }
 .fin-season-net.negative { color:#f88; }
+@media (max-width:640px) {
+  .fin-season-nav { flex-direction:column; gap:12px; }
+  .fin-season-divider {
+    width:auto; height:1px; min-height:0; margin:0; align-self:stretch;
+  }
+}
 .ledger-summary {
   font-size:14px; color:#ccc; margin:0 0 14px; font-weight:bold;
 }
