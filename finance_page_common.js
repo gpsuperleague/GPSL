@@ -173,9 +173,11 @@ export function renderFinanceSeasonHistoryNav(
       adminPreview,
       row.season_id
     );
-    const seasonTag = row.season_label || `Season ${row.season_id}`;
+    const seasonTag = row.season_label || String(row.season_id);
     pastLinks.push(
-      `<a href="${href}" class="fin-season-link fin-season-past${active}" title="${seasonTag} closing balance ${formatMoney(row.closing_balance)}">Closing balance (${seasonTag})</a>`
+      `<a href="${href}" class="fin-season-link fin-season-past${active}" title="${seasonTag} closing balance">
+        ${formatMoney(row.closing_balance)} (${seasonTag})
+      </a>`
     );
   }
 

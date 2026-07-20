@@ -10,7 +10,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20260720-season-sep2";
+} from "./finance_page_common.js?v=20260720-season-sep3";
 
 function renderArchive(rows) {
   const el = document.getElementById("archiveList");
