@@ -1,24 +1,20 @@
+-- Prefer the newer repair patch instead of re-running invent-full-schedule logic:
+--   supabase/sql/patches/loan_schedule_20_months_two_seasons.sql
+--
 -- =============================================================================
 -- Loan repayments on Season accounts (Season 1 backfill + Season 2+ fix)
 --
 -- Product split:
---   • Season accounts = payments actually made (ledger principal + interest)
---   • Central Bank → Service counter = full terms / remaining / early repay
+--   • Season accounts = that season’s payments only (≈10 months per loan)
+--   • Central Bank → Service counter / League loans = full terms + interest
 --
 -- This patch:
 --   A) Posts new principal/interest to installment due_season_id (Season 2+)
 --   B) Retags existing installment-linked ledger rows to due_season_id
---   C) Removes any invented schedule-reconstruct Season 1 ledger lines, then
---      backfills only installments that were actually paid (paid_amount /
---      interest_paid > 0) onto Season 1 accounts — no cash debit
+--   C) Season 1: only due_season_offset = 0 paid installments (not full 20)
 --   D) Re-snapshots Season 1 finance archive
 --
--- If Season 1 still shows ₿0 repayments after this, monthly settlement never
--- collected those installments — that is correct for the accounts sheet.
--- Outstanding / schedule live on the Service counter.
---
--- Run in Supabase SQL Editor. Safe re-run.
--- Then hard-refresh finances_accounts.html?season=1
+-- Run loan_schedule_20_months_two_seasons.sql first for August 10+10 schedules.
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -408,14 +404,18 @@ BEGIN
       v_diag.interest_due_sum, v_diag.interest_paid_sum;
   END LOOP;
 
-  -- C) Season accounts = payments made only.
-  -- Drop invented schedule-reconstruct lines from an earlier aggressive backfill.
+  -- C) Season accounts = payments for THIS season only (due_season_offset = 0 for S1 loans).
+  -- Drop invented / wrong full-schedule lines from earlier backfills.
   DELETE FROM public.competition_finance_ledger l
   WHERE l.season_id = v_sid
     AND l.entry_type IN ('loan_repayment_principal', 'loan_interest_payment')
-    AND coalesce((l.metadata->>'season1_schedule_reconstruct')::boolean, false) = true;
+    AND (
+      coalesce((l.metadata->>'season1_schedule_reconstruct')::boolean, false) = true
+      OR coalesce(l.description, '') ILIKE '%Season 2%'
+      OR coalesce(l.description, '') ILIKE '%Season 3%'
+    );
 
-  -- Backfill ledger rows only where installments were actually paid.
+  -- Backfill ledger rows only where installments were actually paid AND due in Season 1.
   FOR v_inst IN
     SELECT
       i.id AS installment_id,
@@ -435,12 +435,10 @@ BEGIN
       l.season_id AS loan_season_id
     FROM public.club_loan_installments i
     JOIN public.club_loans l ON l.id = i.loan_id
-    WHERE (
+    WHERE coalesce(i.due_season_offset, 0) = 0
+      AND (
         i.due_season_id = v_sid
-        OR (
-          l.season_id = v_sid
-          AND coalesce(i.due_season_offset, 0) = 0
-        )
+        OR l.season_id = v_sid
       )
       AND (
         coalesce(i.paid_amount, 0) > 0.005
