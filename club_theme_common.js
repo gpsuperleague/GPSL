@@ -23,7 +23,7 @@ export const THEME_SCOPES = {
   clubPages: "club_pages",
 };
 
-/** @typedef {'dashboard'|'club_details'} ThemePageKey */
+/** @typedef {'dashboard'|'club_details'|'owner_details'} ThemePageKey */
 
 export function normalizeThemeScope(value) {
   const v = String(value ?? "")
@@ -37,7 +37,9 @@ export function themeAppliesOnPage(theme, pageKey) {
   if (!theme?.enabled) return false;
   const scope = normalizeThemeScope(theme.theme_scope);
   if (pageKey === "dashboard") return true;
-  if (pageKey === "club_details") return scope === THEME_SCOPES.clubPages;
+  if (pageKey === "club_details" || pageKey === "owner_details") {
+    return scope === THEME_SCOPES.clubPages;
+  }
   return false;
 }
 

@@ -485,7 +485,7 @@ function render() {
         !selectableSlots.length
           ? slots.length
             ? '<p class="meta" style="color:#f88;">All mutual slots are in the past for your timezone — update availability for later weeks or wait for the next GPSL month.</p>'
-            : '<p class="meta" style="color:#f88;">No mutual slots — update your availability on <a href="club_details.html" style="color:#ff9900;">Club Details</a> and ask your opponent to do the same.</p>'
+            : '<p class="meta" style="color:#f88;">No mutual slots — update your availability on <a href="owner_details.html" style="color:#ff9900;">Owner Details</a> and ask your opponent to do the same.</p>'
           : ""
       }
       ${

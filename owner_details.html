@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script>
+    window.CURRENT_PAGE = "owner_details";
+  </script>
+
+  <meta charset="UTF-8">
+  <title>Owner Details — GPSL</title>
+  <link rel="icon" href="favicon.ico">
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="club_dashboard_theme.css">
+
+  <style>
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    .page-container {
+      width: 95%;
+      max-width: 1400px;
+      margin: 20px auto 40px auto;
+    }
+
+    h1 {
+      color: #ff9900;
+      margin-bottom: 8px;
+    }
+
+    .page-intro {
+      color: #aaa;
+      font-size: 13px;
+      line-height: 1.45;
+      margin: 0 0 16px;
+    }
+
+    #ownerDetailsError {
+      color: #f88;
+      background: #2a1515;
+      border: 1px solid #633;
+      border-radius: 6px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    #ownerDetailsError[hidden] {
+      display: none;
+    }
+
+    .holiday-list {
+      margin: 12px 0 16px;
+    }
+
+    .holiday-item {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+      padding: 8px 10px;
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .holiday-item-dates {
+      flex: 1 1 180px;
+    }
+
+    .holiday-item-meta {
+      color: #888;
+      font-size: 12px;
+    }
+
+    .holiday-status {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #333;
+      color: #bbb;
+    }
+
+    .holiday-status--active {
+      background: #3d3200;
+      color: #ffcc66;
+    }
+
+    .holiday-book-form {
+      border-top: 1px solid #333;
+      padding-top: 14px;
+    }
+
+    .holiday-date-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .holiday-date-row label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    .holiday-date-row input[type="date"] {
+      padding: 8px 10px;
+      background: #222;
+      border: 1px solid #444;
+      color: #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .holiday-day-preview {
+      font-size: 12px;
+      color: #888;
+      padding-bottom: 8px;
+    }
+
+    .holiday-empty {
+      color: #666;
+      font-size: 13px;
+      margin: 0;
+    }
+
+    .account-hint {
+      font-size: 12px;
+      color: #888;
+      margin: 0 0 10px;
+      line-height: 1.4;
+    }
+
+    .account-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 360px;
+    }
+
+    .account-fields input {
+      padding: 8px 10px;
+      background: #222;
+      border: 1px solid #444;
+      color: #ddd;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+
+    .account-status {
+      display: block;
+      font-size: 12px;
+      color: #8c8;
+      margin-top: 8px;
+      min-height: 1.2em;
+    }
+
+    .account-status.is-error {
+      color: #f88;
+    }
+
+    .account-quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 14px;
+      margin-top: 6px;
+    }
+
+    .account-quick-link {
+      font-size: 12px;
+      color: #6cf;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      text-decoration: none;
+      font-family: inherit;
+    }
+
+    .account-quick-link:hover {
+      text-decoration: underline;
+      color: #9df;
+    }
+
+    .club-account-expand {
+      margin-top: 12px;
+      padding: 12px 14px;
+      background: #1c1c1c;
+      border: 1px solid #333;
+      border-radius: 6px;
+    }
+
+    .club-account-expand[hidden] {
+      display: none !important;
+    }
+
+    .club-account-expand-title {
+      margin: 0 0 6px;
+      font-size: 14px;
+      color: #ffcc66;
+    }
+
+    .owner-info-panel {
+      margin-bottom: 20px;
+    }
+
+    .owner-details-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    @media (max-width: 720px) {
+      .owner-details-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .owner-detail-cell {
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 12px 14px;
+      min-width: 0;
+    }
+
+    .owner-detail-cell--wide {
+      grid-column: 1 / -1;
+    }
+
+    .owner-detail-label {
+      display: block;
+      color: #ff9900;
+      font-weight: bold;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    .owner-detail-value {
+      color: #ddd;
+      font-size: 14px;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .owner-detail-value.detail-muted {
+      color: #aaa;
+      font-size: 13px;
+    }
+
+    .owner-detail-summary {
+      margin: 0 0 8px;
+      font-size: 12px;
+      color: #888;
+      line-height: 1.4;
+    }
+
+    .owner-detail-link {
+      font-size: 12px;
+      color: #6cf;
+      text-decoration: none;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .owner-detail-link:hover {
+      text-decoration: underline;
+      color: #9df;
+    }
+
+    .owner-detail-cell--owner .owner-tag-field {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 6px;
+    }
+
+    .owner-detail-cell--owner .owner-tag-field #ownerInput {
+      flex: none;
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+
+    .owner-detail-cell--owner .owner-tag-field .small-btn {
+      align-self: flex-start;
+    }
+
+    .owner-detail-cell--owner .owner-tag-hint {
+      font-size: 11px;
+    }
+
+    .owner-badge-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #2a2a2a;
+    }
+
+    .owner-badge-preview {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #222;
+      border: 1px solid #444;
+      flex-shrink: 0;
+    }
+
+    .owner-badge-fallback {
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #222;
+      border: 1px solid #444;
+      color: #ff9900;
+      font-size: 14px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .owner-badge-preview[hidden],
+    .owner-badge-fallback[hidden] {
+      display: none !important;
+    }
+
+    .owner-badge-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .owner-badge-controls input[type="file"] {
+      font-size: 12px;
+      color: #ccc;
+      max-width: 100%;
+    }
+
+    .owner-badge-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .owner-profile-link {
+      margin-top: 8px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+
+  <div class="page-container">
+    <h1>Owner Details</h1>
+    <p class="page-intro">
+      Login, Discord tag, profile badge, match availability, and holiday booking.
+      Club identity, kits, and theme stay on
+      <a href="club_details.html" class="owner-detail-link">Club Details</a>.
+    </p>
+
+    <p id="ownerDetailsError" hidden role="alert"></p>
+
+    <div class="panel owner-info-panel" id="ownerDetailsPanel">
+      <div class="owner-details-grid">
+        <div class="owner-detail-cell" id="loginEmailCell">
+          <span class="owner-detail-label">Login email</span>
+          <span class="owner-detail-value detail-muted" id="accountEmail">—</span>
+          <div class="account-quick-links">
+            <button
+              type="button"
+              class="account-quick-link"
+              id="toggleEmailChangeBtn"
+              aria-expanded="false"
+              aria-controls="accountEmailChange"
+            >
+              Change email
+            </button>
+            <button
+              type="button"
+              class="account-quick-link"
+              id="togglePasswordChangeBtn"
+              aria-expanded="false"
+              aria-controls="accountPasswordChange"
+            >
+              Change password
+            </button>
+          </div>
+        </div>
+
+        <div class="owner-detail-cell" id="availabilityCell">
+          <span class="owner-detail-label">Match availability</span>
+          <p class="owner-detail-summary">Weekly slots for league and cup scheduling.</p>
+          <button type="button" id="editAvailabilityBtn" class="owner-detail-link">Edit availability</button>
+        </div>
+
+        <div class="owner-detail-cell owner-detail-cell--wide owner-detail-cell--owner">
+          <label class="owner-detail-label" for="ownerInput">Owner tag (Discord username)</label>
+          <div class="owner-tag-field">
+            <input
+              type="text"
+              id="ownerInput"
+              maxlength="64"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button type="button" id="editOwnerTagBtn" class="small-btn is-hidden">Edit</button>
+            <button type="button" id="saveOwnerBtn" class="small-btn">Save</button>
+            <span id="ownerTagHint" class="owner-tag-hint" role="status"></span>
+          </div>
+          <div class="owner-badge-row">
+            <img id="ownerBadgePreview" class="owner-badge-preview" alt="" hidden>
+            <div id="ownerBadgeFallback" class="owner-badge-fallback">?</div>
+            <div class="owner-badge-controls">
+              <span class="owner-detail-label" style="margin:0">Profile badge</span>
+              <p class="owner-detail-summary" style="margin:0">
+                Your owner icon (not the club badge). Choose a file, then click
+                <b>Save badge</b> to apply it. <b>Remove badge</b> clears it.
+              </p>
+              <p class="owner-detail-summary" style="margin:0;color:#888">
+                Tip: use a square image, ideally <b>512×512</b>, and keep the file
+                under <b>1&nbsp;MB</b> (PNG, JPEG, or WebP).
+              </p>
+              <input type="file" id="ownerBadgeFile" accept="image/png,image/jpeg,image/webp">
+              <div class="owner-badge-actions">
+                <button type="button" id="ownerBadgeUploadBtn" class="small-btn">Save badge</button>
+                <button type="button" id="ownerBadgeClearBtn" class="small-btn">Remove badge</button>
+              </div>
+              <span id="ownerBadgeHint" class="owner-tag-hint" role="status">No badge yet — choose a file, then Save badge.</span>
+            </div>
+          </div>
+          <p class="owner-profile-link">
+            <a id="ownerProfileLink" class="owner-detail-link" href="owner_rankings.html">View public owner profile</a>
+          </p>
+        </div>
+
+        <div class="owner-detail-cell owner-detail-cell--wide" id="holidayCell">
+          <span class="owner-detail-label">Holiday booking</span>
+          <p id="holidayQuota" class="owner-detail-summary">Loading allowance…</p>
+          <button
+            type="button"
+            class="owner-detail-link"
+            id="toggleHolidayBookingBtn"
+            aria-expanded="false"
+            aria-controls="holidayBookingExpand"
+          >
+            Book holiday
+          </button>
+        </div>
+      </div>
+
+      <div class="club-account-expand" id="holidayBookingExpand" hidden>
+        <h3 class="club-account-expand-title">Holiday booking</h3>
+        <p class="account-hint">
+          Book real-world dates (up to <b>14 days per season</b>). Overlapping GPSL months unlock early on
+          <a href="matchday.html" class="gpsl-content-link">Match Day</a>.
+        </p>
+        <p id="holidayHint" class="owner-tag-hint" role="status"></p>
+        <div id="holidayList" class="holiday-list"></div>
+        <div class="holiday-book-form">
+          <div class="holiday-date-row">
+            <label>
+              From
+              <input type="date" id="holidayStartDate">
+            </label>
+            <label>
+              To
+              <input type="date" id="holidayEndDate">
+            </label>
+            <span id="holidayDayPreview" class="holiday-day-preview"></span>
+          </div>
+          <button type="button" id="bookHolidayBtn" class="small-btn">Book holiday</button>
+        </div>
+      </div>
+
+      <div class="club-account-expand" id="accountEmailChange" hidden>
+        <h3 class="club-account-expand-title">Change email</h3>
+        <p class="account-hint">
+          Enter a new address and your current password. Supabase sends a confirmation link to the
+          <b>new</b> email — your login only updates after you click it.
+        </p>
+        <div class="account-fields">
+          <input
+            type="email"
+            id="newEmailInput"
+            autocomplete="email"
+            placeholder="New email address"
+          />
+          <input
+            type="password"
+            id="emailCurrentPassword"
+            autocomplete="current-password"
+            placeholder="Current password"
+          />
+          <button type="button" id="changeEmailBtn" class="small-btn">Update email</button>
+          <span id="emailChangeStatus" class="account-status" role="status"></span>
+        </div>
+      </div>
+
+      <div class="club-account-expand" id="accountPasswordChange" hidden>
+        <h3 class="club-account-expand-title">Change password</h3>
+        <p class="account-hint">Choose a new password (minimum 6 characters). Enter your current password to confirm.</p>
+        <div class="account-fields">
+          <input
+            type="password"
+            id="currentPasswordInput"
+            autocomplete="current-password"
+            placeholder="Current password"
+          />
+          <input
+            type="password"
+            id="newPasswordInput"
+            autocomplete="new-password"
+            placeholder="New password"
+          />
+          <input
+            type="password"
+            id="confirmPasswordInput"
+            autocomplete="new-password"
+            placeholder="Confirm new password"
+          />
+          <button type="button" id="changePasswordBtn" class="small-btn">Update password</button>
+          <span id="passwordChangeStatus" class="account-status" role="status"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="owner_details.js?v=20260714-owner-details"></script>
+</body>
+</html>

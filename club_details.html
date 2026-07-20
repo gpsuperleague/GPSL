@@ -864,69 +864,12 @@
           <span class="club-detail-value" id="clubNation">—</span>
         </div>
 
-        <div class="club-detail-cell" id="loginEmailCell">
-          <span class="club-detail-label">Login email</span>
-          <span class="club-detail-value detail-muted" id="accountEmail">—</span>
-          <div class="account-quick-links">
-            <button
-              type="button"
-              class="account-quick-link"
-              id="toggleEmailChangeBtn"
-              aria-expanded="false"
-              aria-controls="accountEmailChange"
-            >
-              Change email
-            </button>
-            <button
-              type="button"
-              class="account-quick-link"
-              id="togglePasswordChangeBtn"
-              aria-expanded="false"
-              aria-controls="accountPasswordChange"
-            >
-              Change password
-            </button>
-          </div>
-        </div>
-
-        <div class="club-detail-cell club-detail-cell--owner">
-          <label class="club-detail-label" for="ownerInput">Owner tag (Discord username)</label>
-          <div class="owner-tag-field">
-            <input
-              type="text"
-              id="ownerInput"
-              maxlength="64"
-              autocomplete="off"
-              spellcheck="false"
-            />
-            <button type="button" id="editOwnerTagBtn" class="small-btn is-hidden">Edit</button>
-            <button type="button" id="saveOwnerBtn" class="small-btn">Save</button>
-            <span id="ownerTagHint" class="owner-tag-hint" role="status"></span>
-          </div>
-          <div class="owner-badge-row">
-            <img id="ownerBadgePreview" class="owner-badge-preview" alt="" hidden>
-            <div id="ownerBadgeFallback" class="owner-badge-fallback">?</div>
-            <div class="owner-badge-controls">
-              <span class="club-detail-label" style="margin:0">Profile badge</span>
-              <p class="club-detail-summary" style="margin:0">
-                Your owner icon (not the club badge). Choose a file, then click
-                <b>Save badge</b> to apply it. <b>Remove badge</b> clears it.
-              </p>
-              <p class="club-detail-summary" style="margin:0;color:#888">
-                Tip: use a square image, ideally <b>512×512</b>, and keep the file
-                under <b>1&nbsp;MB</b> (PNG, JPEG, or WebP).
-              </p>
-              <input type="file" id="ownerBadgeFile" accept="image/png,image/jpeg,image/webp">
-              <div class="owner-badge-actions">
-                <button type="button" id="ownerBadgeUploadBtn" class="small-btn">Save badge</button>
-                <button type="button" id="ownerBadgeClearBtn" class="small-btn">Remove badge</button>
-              </div>
-              <span id="ownerBadgeHint" class="owner-tag-hint" role="status">No badge yet — choose a file, then Save badge.</span>
-            </div>
-          </div>
-          <p class="owner-profile-link">
-            <a id="ownerProfileLink" class="club-detail-link" href="owner_rankings.html">View public owner profile</a>
+        <div class="club-detail-cell club-detail-cell--compact" id="ownerDetailsCell">
+          <span class="club-detail-label">Owner details</span>
+          <p class="club-detail-summary">
+            Login email, password, Discord tag, profile badge, match availability, and holidays.
           </p>
+          <a href="owner_details.html" class="club-detail-link">Open Owner Details</a>
         </div>
 
         <div class="club-detail-cell club-detail-cell--compact" id="natterCell">
@@ -935,26 +878,6 @@
             One GPSL-month post (club news). Appears in next month&apos;s GPSL Sport.
           </p>
           <a href="natter.html" class="club-detail-link">Open Natter</a>
-        </div>
-
-        <div class="club-detail-cell club-detail-cell--compact" id="availabilityCell">
-          <span class="club-detail-label">Match availability</span>
-          <p class="club-detail-summary">Weekly slots for league and cup scheduling.</p>
-          <button type="button" id="editAvailabilityBtn" class="club-detail-link">Edit availability</button>
-        </div>
-
-        <div class="club-detail-cell club-detail-cell--compact" id="holidayCell">
-          <span class="club-detail-label">Holiday booking</span>
-          <p id="holidayQuota" class="club-detail-summary">Loading allowance…</p>
-          <button
-            type="button"
-            class="club-detail-link"
-            id="toggleHolidayBookingBtn"
-            aria-expanded="false"
-            aria-controls="holidayBookingExpand"
-          >
-            Book holiday
-          </button>
         </div>
 
         <div class="club-detail-cell club-detail-cell--compact" id="challengeCell">
@@ -985,80 +908,6 @@
         </div>
       </div>
 
-      <div class="club-account-expand" id="holidayBookingExpand" hidden>
-        <h3 class="club-account-expand-title">Holiday booking</h3>
-        <p class="account-hint">
-          Book real-world dates (up to <b>14 days per season</b>). Overlapping GPSL months unlock early on
-          <a href="matchday.html" class="gpsl-content-link">Match Day</a>.
-        </p>
-        <p id="holidayHint" class="owner-tag-hint" role="status"></p>
-        <div id="holidayList" class="holiday-list"></div>
-        <div class="holiday-book-form">
-          <div class="holiday-date-row">
-            <label>
-              From
-              <input type="date" id="holidayStartDate">
-            </label>
-            <label>
-              To
-              <input type="date" id="holidayEndDate">
-            </label>
-            <span id="holidayDayPreview" class="holiday-day-preview"></span>
-          </div>
-          <button type="button" id="bookHolidayBtn" class="small-btn">Book holiday</button>
-        </div>
-      </div>
-
-      <div class="club-account-expand" id="accountEmailChange" hidden>
-        <h3 class="club-account-expand-title">Change email</h3>
-        <p class="account-hint">
-          Enter a new address and your current password. Supabase sends a confirmation link to the
-          <b>new</b> email — your login only updates after you click it.
-        </p>
-        <div class="account-fields">
-          <input
-            type="email"
-            id="newEmailInput"
-            autocomplete="email"
-            placeholder="New email address"
-          />
-          <input
-            type="password"
-            id="emailCurrentPassword"
-            autocomplete="current-password"
-            placeholder="Current password"
-          />
-          <button type="button" id="changeEmailBtn" class="small-btn">Update email</button>
-          <span id="emailChangeStatus" class="account-status" role="status"></span>
-        </div>
-      </div>
-
-      <div class="club-account-expand" id="accountPasswordChange" hidden>
-        <h3 class="club-account-expand-title">Change password</h3>
-        <p class="account-hint">Choose a new password (minimum 6 characters). Enter your current password to confirm.</p>
-        <div class="account-fields">
-          <input
-            type="password"
-            id="currentPasswordInput"
-            autocomplete="current-password"
-            placeholder="Current password"
-          />
-          <input
-            type="password"
-            id="newPasswordInput"
-            autocomplete="new-password"
-            placeholder="New password"
-          />
-          <input
-            type="password"
-            id="confirmPasswordInput"
-            autocomplete="new-password"
-            placeholder="Confirm new password"
-          />
-          <button type="button" id="changePasswordBtn" class="small-btn">Update password</button>
-          <span id="passwordChangeStatus" class="account-status" role="status"></span>
-        </div>
-      </div>
     </div>
 
     <div class="panel panel-bg club-kits-panel" id="clubKitsPanel">
@@ -1095,7 +944,7 @@
           <input type="radio" name="themeScope" id="themeScopeClubPages" value="club_pages">
           <span>
             <strong>Dashboard and club pages</strong>
-            <span class="theme-scope-hint">Also Club Details and other owner pages below the menu</span>
+            <span class="theme-scope-hint">Also Club Details, Owner Details, and other owner pages below the menu</span>
           </span>
         </label>
         <p class="theme-scope-note">The top GPSL menu always stays standard orange.</p>
@@ -1181,7 +1030,7 @@
 
   </div>
 
-  <script type="module" src="club_details.js?v=20260718-status-after-month1"></script>
+  <script type="module" src="club_details.js?v=20260714-owner-details-split"></script>
 
 </body>
 </html>

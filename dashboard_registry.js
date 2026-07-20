@@ -5,6 +5,7 @@ const PANEL_BG = "images/panel_bg";
 /** Original GPSL watermark artwork (do not replace with generated placeholders). */
 const TILE_IMAGE_BY_ID = {
   club_details: `${PANEL_BG}/Club_Details.png`,
+  owner_details: `${PANEL_BG}/Club_Details.png`,
   stadium: `${PANEL_BG}/stadium.png`,
   medical_room: `${PANEL_BG}/MatchDay.png`,
   finances: `${PANEL_BG}/Finances.png`,
@@ -130,6 +131,7 @@ function p(
 
 export const DASHBOARD_PANELS = [
   p("club_details", "Club Details", "club_details.html", { defaultOn: true }),
+  p("owner_details", "Owner Details", "owner_details.html", { defaultOn: true }),
   p("stadium", "Stadium", "stadium.html", { defaultOn: true }),
   p("medical_room", "Medical Room", "medical_room.html", { defaultOn: true }),
   p("finances", "Club Finances", "finances.html", { defaultOn: true }),
