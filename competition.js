@@ -1697,6 +1697,19 @@ export async function checkClubLoanCredit(supabase) {
   };
 }
 
+/** True if this club already drew a loan in the current season. */
+export async function clubTookLoanThisSeason(supabase) {
+  const { data, error } = await supabase.rpc("club_loan_taken_this_season", {
+    p_club: null,
+    p_season_id: null,
+  });
+  if (error) {
+    console.warn("clubTookLoanThisSeason:", error);
+    return false;
+  }
+  return data === true;
+}
+
 /** @returns {{ repaid: number } | { error: string }} */
 export async function repayClubLoan(supabase, amount, loanId = null) {
   const params = { p_amount: amount };

@@ -11,6 +11,7 @@ import {
   loadClubLoans,
   loadClubLoanInstallments,
   checkClubLoanCredit,
+  clubTookLoanThisSeason,
 } from "./competition.js";
 
 function sumInterestDue(inst, pendingOnly = false) {
@@ -183,33 +184,39 @@ function outstandingTotal(loans) {
     .reduce((s, l) => s + Number(l.outstanding_principal || 0), 0);
 }
 
-function paintLimits(bank, loans) {
+function paintLimits(bank, loans, options = {}) {
   const outstanding = outstandingTotal(loans);
   const headroom = clubLoanHeadroom(bank, outstanding);
   const min = Number(bank?.loan_min_drawdown || 1000000);
   const maxDraw = Number(bank?.loan_max_drawdown || 50000000);
-  const effectiveMax = Math.min(maxDraw, headroom);
+  const seasonLoanUsed = options.seasonLoanUsed === true;
+  const effectiveMax = seasonLoanUsed ? 0 : Math.min(maxDraw, headroom);
 
   const limitsEl = document.getElementById("loanLimits");
   if (limitsEl) {
-    limitsEl.textContent = `Min ${formatMoney(min)} · Max ${formatMoney(
-      maxDraw
-    )} per visit · Your headroom ${formatMoney(
-      headroom
-    )} · Term 20 GPSL months + season interest`;
+    limitsEl.textContent = seasonLoanUsed
+      ? `One loan per season already taken · Max ${formatMoney(maxDraw)} per loan`
+      : `Max 1 loan per season · Min ${formatMoney(min)} · Max ${formatMoney(
+          maxDraw
+        )} per loan · Headroom ${formatMoney(headroom)} · Term 20 GPSL months`;
   }
 
   const headroomEl = document.getElementById("counterHeadroom");
-  if (headroomEl) headroomEl.textContent = formatMoney(headroom);
+  if (headroomEl) {
+    headroomEl.textContent = seasonLoanUsed
+      ? "0 (season loan used)"
+      : formatMoney(headroom);
+  }
 
   const amountInput = document.getElementById("loanAmount");
   if (amountInput) {
     amountInput.min = String(min);
     amountInput.max = effectiveMax > 0 ? String(effectiveMax) : String(min);
+    amountInput.disabled = seasonLoanUsed;
   }
 
   const takeBtn = document.getElementById("loanTakeBtn");
-  if (takeBtn) takeBtn.disabled = effectiveMax < min;
+  if (takeBtn) takeBtn.disabled = seasonLoanUsed || effectiveMax < min;
 
   const repayBtn = document.getElementById("loanRepayBtn");
   const repayAllBtn = document.getElementById("loanRepayAllBtn");
@@ -233,7 +240,7 @@ function paintLimits(bank, loans) {
   }
 
   fillRepaySelect(loans);
-  return { outstanding, min, maxDraw, headroom, effectiveMax };
+  return { outstanding, min, maxDraw, headroom, effectiveMax, seasonLoanUsed };
 }
 
 function sleep(ms) {
@@ -328,6 +335,9 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
 
   paintLimits(bank, loans);
   hideLoanCreditPanels();
+  void clubTookLoanThisSeason(supabase).then((seasonLoanUsed) => {
+    paintLimits(bank, loans, { seasonLoanUsed });
+  });
   void renderMyLoansAtCounter(supabase, loans).then(() => {
     wireEarlyButtons(supabase, onSuccess);
   });
@@ -345,6 +355,17 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
     const takeBtn = document.getElementById("loanTakeBtn");
     const latest = await loadClubLoans(supabase);
     const bankNow = bank;
+    const seasonLoanUsed = await clubTookLoanThisSeason(supabase);
+    if (seasonLoanUsed) {
+      paintLimits(bankNow, latest, { seasonLoanUsed: true });
+      showCounterMsg(
+        "loanTakeMsg",
+        "Maximum one loan per season. Your club has already taken a loan this season.",
+        false
+      );
+      return;
+    }
+
     const outstanding = outstandingTotal(latest);
     const headroom = clubLoanHeadroom(bankNow, outstanding);
     const min = Number(bankNow?.loan_min_drawdown || 1000000);
