@@ -14,6 +14,7 @@ import {
   loadClubsMap,
   fullClubName,
   displayClubName,
+  clubWithOwnerHtml,
   formatSeasonSaleDestination,
   formatSeasonSaleType,
 } from "./clubs_lookup.js";
@@ -527,7 +528,9 @@ async function loadBuyerBidSections(shortName) {
   return { liveBids, awaitingBids, listingMap };
 }
 
-async function renderBuyerBidTable(bids, listingMap, emptyText) {
+async function renderBuyerBidTable(bids, listingMap, emptyText, options = {}) {
+  const showSeller = options.showSeller === true;
+
   if (!bids.length) {
     return `<i>${emptyText}</i>`;
   }
@@ -550,6 +553,7 @@ async function renderBuyerBidTable(bids, listingMap, emptyText) {
       <tr>
         <th>Player</th>
         <th>Bid</th>
+        ${showSeller ? "<th>Seller</th>" : ""}
         <th>Type</th>
         <th>Time</th>
       </tr>
@@ -558,11 +562,13 @@ async function renderBuyerBidTable(bids, listingMap, emptyText) {
           let playerId = "";
           let player = null;
           let typeLabel = "Listing bid";
+          let sellerShort = "";
 
           if (row.listing_id != null) {
             const listing = listingMap.get(row.listing_id);
             playerId = listing?.player_id;
             player = playerFromMap(playersFromListings, playerId);
+            sellerShort = String(listing?.seller_club_id || "").trim();
             const st = String(listing?.status || "");
             if (st === "Review" || st === "Seller Review") {
               typeLabel = "Leading — seller review";
@@ -576,13 +582,27 @@ async function renderBuyerBidTable(bids, listingMap, emptyText) {
           } else if (isPendingContractedDirectOffer(row)) {
             playerId = getBidPlayerId(row);
             player = playerFromMap(directPlayers, playerId);
+            sellerShort = String(row.seller_club_id || "").trim();
             typeLabel = "Direct offer — awaiting seller";
           }
+
+          const sellerCell = showSeller
+            ? `<td>${
+                sellerShort
+                  ? clubWithOwnerHtml(
+                      displayClubName(sellerShort) || sellerShort,
+                      sellerShort,
+                      "inline"
+                    )
+                  : "—"
+              }</td>`
+            : "";
 
           return `
           <tr>
             <td>${playerLinkCell(playerId, player)}</td>
             <td>₿ ${Number(row.bid_amount).toLocaleString("en-GB")}</td>
+            ${sellerCell}
             <td>${typeLabel}</td>
             <td>${new Date(row.bid_time).toLocaleString()}</td>
           </tr>
@@ -615,7 +635,8 @@ async function loadAwaitingSellerBids(shortName) {
   container.innerHTML = await renderBuyerBidTable(
     awaitingBids,
     listingMap,
-    "Nothing awaiting the seller."
+    "Nothing awaiting the seller.",
+    { showSeller: true }
   );
 }
 
