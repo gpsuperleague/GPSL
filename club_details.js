@@ -121,6 +121,11 @@ function showLoadError(message) {
   }
 }
 
+function setBtnVisible(btn, visible) {
+  if (!btn) return;
+  btn.classList.toggle("is-hidden", !visible);
+}
+
 function renderChallengeSummary(progress, loadError) {
   const summary = document.getElementById("challengeSummary");
   if (!summary) return;
