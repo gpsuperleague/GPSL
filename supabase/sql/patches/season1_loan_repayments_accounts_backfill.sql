@@ -1,21 +1,20 @@
 -- =============================================================================
 -- Loan repayments on Season accounts (Season 1 backfill + Season 2+ fix)
 --
--- Problems:
---   1) Principal/interest posts used club_loans.season_id (drawdown season),
---      so payments due in a later season landed on the wrong season ledger.
---   2) Season 1 finance archive often missed loan lines (archived before
---      installments posted, or never re-snapshotted after bank activity).
+-- Why Season 1 still shows ₿0 repayments with ₿100M drawdowns:
+--   Monthly installment settlement often never ran in Season 1, so rows stay
+--   pending (paid_amount = 0). An earlier paid-only backfill found nothing.
 --
 -- This patch:
---   A) Posts new principal/interest to installment due_season_id (or current
---      season for early repayments) — so Season 2 accounts show Season 2 dues.
+--   A) Posts new principal/interest to installment due_season_id (Season 2+)
 --   B) Retags existing installment-linked ledger rows to due_season_id
---   C) Inserts missing ledger lines from paid installments (NO cash change)
---   D) Re-snapshots Season 1 finance archive (keeps archived opening/closing)
+--   C) Reconstructs Season 1 dues from the installment SCHEDULE onto the ledger
+--      (even when still pending), marks those installments paid, reduces
+--      outstanding — NO Club_Finances debit (season already closed)
+--   D) Re-snapshots Season 1 finance archive
 --
--- Requires: competition_archive_club_finances_for_season that preserves past
--- opening/closing (season1_finance_*_archive_repair.sql). Safe re-run.
+-- Run in Supabase SQL Editor. Safe re-run.
+-- Then hard-refresh finances_accounts.html?season=1
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -374,185 +373,8 @@ BEGIN
   )
   SELECT count(*)::int INTO v_retagged FROM updated;
 
-  -- C) Missing principal lines from paid installments (ledger only — no cash)
-  FOR v_inst IN
-    SELECT
-      i.id AS installment_id,
-      i.loan_id,
-      i.installment_no,
-      i.due_season_id,
-      i.due_gpsl_month,
-      i.paid_amount,
-      i.interest_paid,
-      i.paid_at,
-      i.status,
-      l.club_short_name,
-      l.repayment_months,
-      l.season_id AS loan_season_id
-    FROM public.club_loan_installments i
-    JOIN public.club_loans l ON l.id = i.loan_id
-    WHERE coalesce(i.paid_amount, 0) > 0.005
-      AND i.due_season_id IS NOT NULL
-      AND NOT EXISTS (
-        SELECT 1
-        FROM public.competition_finance_ledger x
-        WHERE x.entry_type = 'loan_repayment_principal'
-          AND x.club_short_name = l.club_short_name
-          AND x.season_id = i.due_season_id
-          AND (
-            (
-              nullif(btrim(coalesce(x.metadata->>'installment_id', '')), '') IS NOT NULL
-              AND (x.metadata->>'installment_id')::bigint = i.id
-            )
-            OR (
-              nullif(btrim(coalesce(x.metadata->>'loan_id', '')), '') IS NOT NULL
-              AND (x.metadata->>'loan_id')::bigint = i.loan_id
-              AND abs(abs(x.amount) - i.paid_amount) < 0.02
-              AND coalesce(x.description, '') ILIKE
-                ('%inst ' || i.installment_no::text || '/%')
-            )
-          )
-      )
-  LOOP
-    v_month_label := public.competition_gpsl_month_label(v_inst.due_gpsl_month);
-    BEGIN
-      v_season_label := public.club_loan_due_season_label(
-        v_inst.loan_season_id,
-        coalesce(
-          (SELECT i2.due_season_offset
-           FROM public.club_loan_installments i2
-           WHERE i2.id = v_inst.installment_id),
-          0
-        )
-      );
-    EXCEPTION
-      WHEN undefined_function THEN
-        SELECT coalesce(s.label, v_inst.due_season_id::text)
-        INTO v_season_label
-        FROM public.competition_seasons s
-        WHERE s.id = v_inst.due_season_id;
-    END;
-
-    v_desc := format(
-      'Scheduled loan repayment — %s %s (inst %s/%s, loan #%s) [accounts backfill]',
-      coalesce(v_month_label, v_inst.due_gpsl_month),
-      coalesce(v_season_label, ''),
-      v_inst.installment_no,
-      coalesce(v_inst.repayment_months, 20),
-      v_inst.loan_id
-    );
-
-    INSERT INTO public.competition_finance_ledger (
-      season_id, fixture_id, club_short_name, entry_type, amount,
-      description, metadata, created_at
-    )
-    VALUES (
-      v_inst.due_season_id,
-      NULL,
-      v_inst.club_short_name,
-      'loan_repayment_principal',
-      -abs(v_inst.paid_amount),
-      v_desc,
-      jsonb_build_object(
-        'loan_id', v_inst.loan_id,
-        'installment_id', v_inst.installment_id,
-        'accounts_backfill', true
-      ),
-      coalesce(v_inst.paid_at, now())
-    );
-    v_principal := v_principal + 1;
-  END LOOP;
-
-  -- C2) Missing interest lines
-  FOR v_inst IN
-    SELECT
-      i.id AS installment_id,
-      i.loan_id,
-      i.installment_no,
-      i.due_season_id,
-      i.due_gpsl_month,
-      i.interest_paid,
-      i.paid_at,
-      l.club_short_name,
-      l.repayment_months,
-      l.season_id AS loan_season_id
-    FROM public.club_loan_installments i
-    JOIN public.club_loans l ON l.id = i.loan_id
-    WHERE coalesce(i.interest_paid, 0) > 0.005
-      AND i.due_season_id IS NOT NULL
-      AND NOT EXISTS (
-        SELECT 1
-        FROM public.competition_finance_ledger x
-        WHERE x.entry_type = 'loan_interest_payment'
-          AND x.club_short_name = l.club_short_name
-          AND x.season_id = i.due_season_id
-          AND (
-            (
-              nullif(btrim(coalesce(x.metadata->>'installment_id', '')), '') IS NOT NULL
-              AND (x.metadata->>'installment_id')::bigint = i.id
-            )
-            OR (
-              nullif(btrim(coalesce(x.metadata->>'loan_id', '')), '') IS NOT NULL
-              AND (x.metadata->>'loan_id')::bigint = i.loan_id
-              AND abs(abs(x.amount) - i.interest_paid) < 0.02
-              AND coalesce(x.description, '') ILIKE
-                ('%inst ' || i.installment_no::text || '/%')
-            )
-          )
-      )
-  LOOP
-    v_month_label := public.competition_gpsl_month_label(v_inst.due_gpsl_month);
-    BEGIN
-      v_season_label := public.club_loan_due_season_label(
-        v_inst.loan_season_id,
-        coalesce(
-          (SELECT i2.due_season_offset
-           FROM public.club_loan_installments i2
-           WHERE i2.id = v_inst.installment_id),
-          0
-        )
-      );
-    EXCEPTION
-      WHEN undefined_function THEN
-        SELECT coalesce(s.label, v_inst.due_season_id::text)
-        INTO v_season_label
-        FROM public.competition_seasons s
-        WHERE s.id = v_inst.due_season_id;
-    END;
-
-    v_desc := format(
-      'Loan interest — %s %s (inst %s/%s, loan #%s) [accounts backfill]',
-      coalesce(v_month_label, v_inst.due_gpsl_month),
-      coalesce(v_season_label, ''),
-      v_inst.installment_no,
-      coalesce(v_inst.repayment_months, 20),
-      v_inst.loan_id
-    );
-
-    INSERT INTO public.competition_finance_ledger (
-      season_id, fixture_id, club_short_name, entry_type, amount,
-      description, metadata, created_at
-    )
-    VALUES (
-      v_inst.due_season_id,
-      NULL,
-      v_inst.club_short_name,
-      'loan_interest_payment',
-      -abs(v_inst.interest_paid),
-      v_desc,
-      jsonb_build_object(
-        'loan_id', v_inst.loan_id,
-        'installment_id', v_inst.installment_id,
-        'accounts_backfill', true
-      ),
-      coalesce(v_inst.paid_at, now())
-    );
-    v_interest := v_interest + 1;
-  END LOOP;
-
   IF v_sid IS NULL THEN
-    RAISE NOTICE 'Loan accounts fix: retagged=% principal_backfill=% interest_backfill=% (no Season 1 found to re-archive)',
-      v_retagged, v_principal, v_interest;
+    RAISE NOTICE 'Loan accounts fix: retagged=% (no Season 1 found)', v_retagged;
     RETURN;
   END IF;
 
@@ -560,6 +382,224 @@ BEGIN
   FROM public.competition_finance_ledger l
   WHERE l.season_id = v_sid
     AND l.entry_type IN ('loan_repayment_principal', 'loan_interest_payment');
+
+  RAISE NOTICE 'Season % id=% — installment snapshot before backfill:', v_label, v_sid;
+  FOR v_diag IN
+    SELECT
+      i.status,
+      count(*)::int AS n,
+      coalesce(sum(i.principal_due), 0) AS principal_due_sum,
+      coalesce(sum(i.paid_amount), 0) AS paid_principal_sum,
+      coalesce(sum(i.interest_due), 0) AS interest_due_sum,
+      coalesce(sum(i.interest_paid), 0) AS interest_paid_sum
+    FROM public.club_loan_installments i
+    JOIN public.club_loans l ON l.id = i.loan_id
+    WHERE i.due_season_id = v_sid
+       OR (l.season_id = v_sid AND coalesce(i.due_season_offset, 0) = 0)
+    GROUP BY i.status
+    ORDER BY i.status
+  LOOP
+    RAISE NOTICE '  status=% count=% principal_due=₿% paid=₿% interest_due=₿% interest_paid=₿%',
+      v_diag.status, v_diag.n, v_diag.principal_due_sum, v_diag.paid_principal_sum,
+      v_diag.interest_due_sum, v_diag.interest_paid_sum;
+  END LOOP;
+
+  -- C) Reconstruct Season 1 installment dues onto the ledger.
+  -- Monthly settlement often never ran in Season 1, so paid_amount stays 0 while
+  -- principal_due/interest_due are set. We post ledger lines for every S1-due
+  -- installment that lacks a matching ledger row, mark them paid, and reduce
+  -- outstanding — WITHOUT debiting Club_Finances (season already closed; cash
+  -- was never taken at the time). Season 2 will not re-collect these rows.
+  FOR v_inst IN
+    SELECT
+      i.id AS installment_id,
+      i.loan_id,
+      i.installment_no,
+      i.due_season_id,
+      i.due_gpsl_month,
+      i.due_season_offset,
+      i.principal_due,
+      i.interest_due,
+      i.paid_amount,
+      i.interest_paid,
+      i.paid_at,
+      i.status,
+      l.club_short_name,
+      l.repayment_months,
+      l.season_id AS loan_season_id,
+      l.outstanding_principal
+    FROM public.club_loan_installments i
+    JOIN public.club_loans l ON l.id = i.loan_id
+    WHERE i.status IN ('pending', 'paid')
+      AND (
+        i.due_season_id = v_sid
+        OR (
+          l.season_id = v_sid
+          AND coalesce(i.due_season_offset, 0) = 0
+        )
+      )
+      AND (
+        coalesce(i.principal_due, 0) > 0.005
+        OR coalesce(i.interest_due, 0) > 0.005
+        OR coalesce(i.paid_amount, 0) > 0.005
+        OR coalesce(i.interest_paid, 0) > 0.005
+      )
+    ORDER BY l.club_short_name, i.loan_id, i.installment_no
+  LOOP
+    v_month_label := public.competition_gpsl_month_label(v_inst.due_gpsl_month);
+    BEGIN
+      v_season_label := public.club_loan_due_season_label(
+        v_inst.loan_season_id,
+        coalesce(v_inst.due_season_offset, 0)
+      );
+    EXCEPTION
+      WHEN undefined_function THEN
+        SELECT coalesce(s.label, v_inst.due_season_id::text)
+        INTO v_season_label
+        FROM public.competition_seasons s
+        WHERE s.id = v_inst.due_season_id;
+    END;
+
+    -- Principal: prefer amount already paid; else scheduled due
+    IF greatest(coalesce(v_inst.paid_amount, 0), coalesce(v_inst.principal_due, 0)) > 0.005
+       AND NOT EXISTS (
+         SELECT 1
+         FROM public.competition_finance_ledger x
+         WHERE x.entry_type = 'loan_repayment_principal'
+           AND (
+             (
+               nullif(btrim(coalesce(x.metadata->>'installment_id', '')), '') IS NOT NULL
+               AND (x.metadata->>'installment_id')::bigint = v_inst.installment_id
+             )
+             OR (
+               x.club_short_name = v_inst.club_short_name
+               AND x.season_id = v_sid
+               AND nullif(btrim(coalesce(x.metadata->>'loan_id', '')), '') IS NOT NULL
+               AND (x.metadata->>'loan_id')::bigint = v_inst.loan_id
+               AND coalesce(x.description, '') ILIKE
+                 ('%inst ' || v_inst.installment_no::text || '/%')
+             )
+           )
+       )
+    THEN
+      v_desc := format(
+        'Scheduled loan repayment — %s %s (inst %s/%s, loan #%s) [Season 1 accounts backfill]',
+        coalesce(v_month_label, v_inst.due_gpsl_month),
+        coalesce(v_season_label, ''),
+        v_inst.installment_no,
+        coalesce(v_inst.repayment_months, 20),
+        v_inst.loan_id
+      );
+
+      INSERT INTO public.competition_finance_ledger (
+        season_id, fixture_id, club_short_name, entry_type, amount,
+        description, metadata, created_at
+      )
+      VALUES (
+        v_sid,
+        NULL,
+        v_inst.club_short_name,
+        'loan_repayment_principal',
+        -abs(greatest(coalesce(v_inst.paid_amount, 0), coalesce(v_inst.principal_due, 0))),
+        v_desc,
+        jsonb_build_object(
+          'loan_id', v_inst.loan_id,
+          'installment_id', v_inst.installment_id,
+          'accounts_backfill', true,
+          'season1_schedule_reconstruct', true
+        ),
+        coalesce(v_inst.paid_at, now())
+      );
+      v_principal := v_principal + 1;
+    END IF;
+
+    -- Interest
+    IF greatest(coalesce(v_inst.interest_paid, 0), coalesce(v_inst.interest_due, 0)) > 0.005
+       AND NOT EXISTS (
+         SELECT 1
+         FROM public.competition_finance_ledger x
+         WHERE x.entry_type = 'loan_interest_payment'
+           AND (
+             (
+               nullif(btrim(coalesce(x.metadata->>'installment_id', '')), '') IS NOT NULL
+               AND (x.metadata->>'installment_id')::bigint = v_inst.installment_id
+             )
+             OR (
+               x.club_short_name = v_inst.club_short_name
+               AND x.season_id = v_sid
+               AND nullif(btrim(coalesce(x.metadata->>'loan_id', '')), '') IS NOT NULL
+               AND (x.metadata->>'loan_id')::bigint = v_inst.loan_id
+               AND coalesce(x.description, '') ILIKE
+                 ('%inst ' || v_inst.installment_no::text || '/%')
+             )
+           )
+       )
+    THEN
+      v_desc := format(
+        'Loan interest — %s %s (inst %s/%s, loan #%s) [Season 1 accounts backfill]',
+        coalesce(v_month_label, v_inst.due_gpsl_month),
+        coalesce(v_season_label, ''),
+        v_inst.installment_no,
+        coalesce(v_inst.repayment_months, 20),
+        v_inst.loan_id
+      );
+
+      INSERT INTO public.competition_finance_ledger (
+        season_id, fixture_id, club_short_name, entry_type, amount,
+        description, metadata, created_at
+      )
+      VALUES (
+        v_sid,
+        NULL,
+        v_inst.club_short_name,
+        'loan_interest_payment',
+        -abs(greatest(coalesce(v_inst.interest_paid, 0), coalesce(v_inst.interest_due, 0))),
+        v_desc,
+        jsonb_build_object(
+          'loan_id', v_inst.loan_id,
+          'installment_id', v_inst.installment_id,
+          'accounts_backfill', true,
+          'season1_schedule_reconstruct', true
+        ),
+        coalesce(v_inst.paid_at, now())
+      );
+      v_interest := v_interest + 1;
+    END IF;
+
+    -- Align installment + outstanding so Season 2 does not re-collect
+    IF v_inst.status = 'pending' THEN
+      UPDATE public.club_loan_installments
+      SET paid_amount = greatest(coalesce(paid_amount, 0), coalesce(principal_due, 0)),
+          interest_paid = greatest(coalesce(interest_paid, 0), coalesce(interest_due, 0)),
+          status = 'paid',
+          paid_at = coalesce(paid_at, now())
+      WHERE id = v_inst.installment_id
+        AND status = 'pending';
+
+      UPDATE public.club_loans
+      SET outstanding_principal = greatest(
+            0,
+            round(outstanding_principal - coalesce(v_inst.principal_due, 0), 2)
+          ),
+          installments_paid = least(
+            coalesce(repayment_months, 20),
+            coalesce(installments_paid, 0) + 1
+          ),
+          updated_at = now(),
+          status = CASE
+            WHEN outstanding_principal - coalesce(v_inst.principal_due, 0) <= 0.005
+              THEN 'paid'
+            ELSE status
+          END,
+          closed_at = CASE
+            WHEN outstanding_principal - coalesce(v_inst.principal_due, 0) <= 0.005
+              THEN coalesce(closed_at, now())
+            ELSE closed_at
+          END
+      WHERE id = v_inst.loan_id
+        AND status = 'active';
+    END IF;
+  END LOOP;
 
   -- D) Re-snapshot Season 1 archive
   IF to_regprocedure('public.competition_archive_club_finances_for_season(bigint)') IS NOT NULL THEN
@@ -575,7 +615,6 @@ BEGIN
     'Loan accounts fix Season % (id=%): retagged=% principal_inserted=% interest_inserted=% ledger_loan_lines=%→% clubs_archived=%',
     v_label, v_sid, v_retagged, v_principal, v_interest, v_before, v_after, v_archived;
 
-  -- Diagnose grid (paste if still blank on Season 1 accounts)
   RAISE NOTICE '--- Season 1 loan ledger by club ---';
   FOR v_diag IN
     SELECT
@@ -599,3 +638,16 @@ BEGIN
   END LOOP;
 END;
 $loan_accounts_fix$;
+
+-- Easy grid in SQL editor (Season 1 loan lines after backfill)
+SELECT
+  l.club_short_name,
+  l.entry_type,
+  count(*) AS lines,
+  round(sum(abs(l.amount)), 2) AS total
+FROM public.competition_finance_ledger l
+JOIN public.competition_seasons s ON s.id = l.season_id
+WHERE s.label IN ('1', 'Season 1')
+  AND l.entry_type IN ('loan_repayment_principal', 'loan_interest_payment')
+GROUP BY l.club_short_name, l.entry_type
+ORDER BY l.club_short_name, l.entry_type;
