@@ -4,7 +4,7 @@ import {
   renderBankSubnav,
   renderHeroStats,
   renderLeagueLoans,
-} from "./central_bank_common.js";
+} from "./central_bank_common.js?v=20260720-loan-20mo";
 import { loadGpslBankPublic, loadLeagueLoans } from "./competition.js";
 
 document.addEventListener("DOMContentLoaded", async () => {

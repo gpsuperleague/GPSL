@@ -307,7 +307,7 @@ export const FINANCE_UI_SECTIONS = [
     id: "loans",
     title: "Central Bank loans",
     intro:
-      "Payments made this season only (drawdowns, principal, and interest posted to the ledger). Loan terms, remaining balance, full-term interest, and early repayment are on Central Bank → Service counter.",
+      "Payments made this season only. Two loans in the same month = two lines (one per loan). Full terms and remaining interest are on Central Bank → Service counter / League loans.",
     lines: [
       {
         id: "loan_drawdowns",
@@ -320,13 +320,13 @@ export const FINANCE_UI_SECTIONS = [
         label: "Loan repayments (principal)",
         types: ["loan_repayment_principal"],
         note:
-          "Principal actually paid this season (monthly installments and early repayments). Not the full remaining schedule.",
+          "Principal paid this season only — typically 10 equal installments per loan across Aug–May. Not the other season’s schedule.",
       },
       {
         id: "loan_interest",
         label: "Loan interest payments",
         types: ["loan_interest_payment"],
-        note: "Interest actually paid with installments this season.",
+        note: "Interest paid with this season’s installments (pre-calculated at drawdown; falls as the loan is paid).",
       },
     ],
   },

@@ -69,7 +69,7 @@ function loanSummaryHtml(l, inst) {
       </div>
       <dl class="loan-summary-dl">
         <div><dt>Borrowed</dt><dd>${formatMoney(drawn)}</dd></div>
-        <div><dt>Repayment period</dt><dd>${months} GPSL months from ${fromMonth}</dd></div>
+        <div><dt>Repayment period</dt><dd>${months} GPSL months from ${fromMonth} (two seasons when drawn in August)</dd></div>
         <div><dt>Interest over full term</dt><dd>${formatMoney(interestFullTerm)} on top of the loan</dd></div>
         <div><dt>Interest paid so far</dt><dd>${formatMoney(interestPaid)}</dd></div>
         <div><dt>Interest still due</dt><dd>${formatMoney(interestRemaining)}</dd></div>
