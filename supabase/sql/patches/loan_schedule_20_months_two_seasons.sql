@@ -517,7 +517,6 @@ DECLARE
   v_retagged int := 0;
   v_deleted int := 0;
   v_archived int := 0;
-  v_paid_principal numeric;
   v_out numeric;
 BEGIN
   SELECT s.id, s.label INTO v_s1, v_s1_label
@@ -588,17 +587,7 @@ BEGIN
       AND lower(btrim(coalesce(l.drawdown_gpsl_month, ''))) IN ('august', 'aug')
       AND l.status IN ('active', 'paid')
   LOOP
-    -- Capture how much principal was genuinely paid before rebuild (non-backfill)
-    SELECT coalesce(sum(abs(x.amount)), 0)
-    INTO v_paid_principal
-    FROM public.competition_finance_ledger x
-    WHERE x.entry_type = 'loan_repayment_principal'
-      AND nullif(btrim(coalesce(x.metadata->>'loan_id', '')), '') IS NOT NULL
-      AND (x.metadata->>'loan_id')::bigint = v_loan.id
-      AND NOT coalesce((x.metadata->>'accounts_backfill')::boolean, false)
-      AND NOT coalesce((x.metadata->>'season1_schedule_reconstruct')::boolean, false)
-      AND coalesce(x.description, '') NOT ILIKE '%Season 1 accounts backfill%';
-
+    -- Rebuild schedule (interest pre-calculated again)
     PERFORM public.club_loan_generate_installments(
       v_loan.id,
       v_loan.principal_drawn,
