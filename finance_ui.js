@@ -324,7 +324,7 @@ export const FINANCE_UI_SECTIONS = [
       },
       {
         id: "loan_interest",
-        label: "Loan interest",
+        label: "Loan interest payments",
         types: ["loan_interest_payment"],
         note: "Interest charged with installments this season (separate from principal).",
       },

@@ -11,7 +11,7 @@ import {
   aggregateLedgerByLine,
   renderFinanceSections,
   summariseLedgerTotals,
-} from "./finance_ui.js?v=20260720-eos-map";
+} from "./finance_ui.js?v=20260720-loan-interest-label";
 import { buildFinanceProjections } from "./finance_projections.js?v=20260720-loan-section";
 import {
   appendAssignmentInfraPurchaseLedger,
@@ -623,7 +623,7 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
 
   const balanceRow = await loadClubBalance(supabase, shortName);
   const balanceNow = Number(balanceRow?.balance ?? 0);
-  let ledger = await loadFinanceLedger(supabase, shortName, 300);
+  let ledger = await loadFinanceLedger(supabase, shortName, 1000);
   const currentSeason = await loadCurrentSeasonId(supabase);
   const continuingClub = await clubHadPriorFinanceSeason(
     supabase,
