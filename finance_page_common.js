@@ -39,14 +39,77 @@ export const FINANCE_SUBNAV = [
 export function parseFinanceSeasonParam() {
   const raw = new URLSearchParams(window.location.search).get("season");
   if (!raw) return null;
-  const id = Number(raw);
-  return Number.isFinite(id) && id > 0 ? id : null;
+  const trimmed = String(raw).trim();
+  return trimmed ? trimmed : null;
 }
 
-export function financePageQuery(shortName, adminPreview, seasonId = null) {
+/**
+ * Resolve ?season= to a season id. Prefers human label (e.g. "1") over raw DB id.
+ * Legacy links with numeric season_id still work as a fallback.
+ */
+export async function resolveSeasonIdFromParam(
+  supabase,
+  seasonParam,
+  { archives = [], currentSeason = null } = {}
+) {
+  if (seasonParam == null || seasonParam === "") {
+    return { seasonId: null, seasonLabel: null };
+  }
+
+  const param = String(seasonParam).trim();
+
+  if (currentSeason?.label != null && String(currentSeason.label) === param) {
+    return { seasonId: currentSeason.id ?? null, seasonLabel: currentSeason.label };
+  }
+
+  const archiveByLabel = archives.find((a) => String(a.season_label) === param);
+  if (archiveByLabel) {
+    return {
+      seasonId: archiveByLabel.season_id,
+      seasonLabel: archiveByLabel.season_label,
+    };
+  }
+
+  // Label lookup before treating digits as DB id (Season "1" may be id 4)
+  try {
+    const { data } = await supabase
+      .from("competition_season_public")
+      .select("id, label")
+      .eq("label", param)
+      .maybeSingle();
+    if (data?.id != null) {
+      return { seasonId: data.id, seasonLabel: data.label };
+    }
+  } catch {
+    /* ignore */
+  }
+
+  // Legacy: ?season=<database id> only when no label match
+  const asId = Number(param);
+  if (Number.isFinite(asId) && asId > 0 && Number.isInteger(asId)) {
+    if (currentSeason?.id === asId) {
+      return { seasonId: asId, seasonLabel: currentSeason.label ?? null };
+    }
+    const archiveById = archives.find((a) => Number(a.season_id) === asId);
+    if (archiveById) {
+      return {
+        seasonId: archiveById.season_id,
+        seasonLabel: archiveById.season_label,
+      };
+    }
+    return { seasonId: asId, seasonLabel: null };
+  }
+
+  return { seasonId: null, seasonLabel: null };
+}
+
+export function financePageQuery(shortName, adminPreview, seasonRef = null) {
   const params = new URLSearchParams();
   if (adminPreview && shortName) params.set("club", shortName);
-  if (seasonId) params.set("season", String(seasonId));
+  // Prefer human season label in the URL (e.g. season=1), not DB id
+  if (seasonRef != null && seasonRef !== "") {
+    params.set("season", String(seasonRef));
+  }
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 }
@@ -56,9 +119,9 @@ export function financeClubQuery(shortName) {
   return financePageQuery(shortName, true);
 }
 
-export function financePageHref(pageFile, shortName, adminPreview, seasonId = null) {
+export function financePageHref(pageFile, shortName, adminPreview, seasonRef = null) {
   const base = pageFile.endsWith(".html") ? pageFile : `${pageFile}.html`;
-  return `${base}${financePageQuery(shortName, adminPreview, seasonId)}`;
+  return `${base}${financePageQuery(shortName, adminPreview, seasonRef)}`;
 }
 
 export async function loadCurrentSeasonId(supabase) {
@@ -111,9 +174,16 @@ export async function loadClubFinanceSeasonArchive(supabase, clubShortName, seas
 }
 
 export async function resolveFinanceSeasonView(supabase, shortName) {
-  const requestedSeasonId = parseFinanceSeasonParam();
+  const seasonParam = parseFinanceSeasonParam();
   const currentSeason = await loadCurrentSeasonId(supabase);
   const archives = await loadClubFinanceSeasonArchives(supabase, shortName, 5);
+
+  const resolved = await resolveSeasonIdFromParam(supabase, seasonParam, {
+    archives,
+    currentSeason,
+  });
+  const requestedSeasonId = resolved.seasonId;
+  const requestedSeasonLabel = resolved.seasonLabel;
 
   const activeSeasonId = requestedSeasonId ?? currentSeason.id;
   const isHistorical =
@@ -132,6 +202,10 @@ export async function resolveFinanceSeasonView(supabase, shortName) {
 
   return {
     requestedSeasonId,
+    requestedSeasonLabel:
+      requestedSeasonLabel ??
+      archiveRow?.season_label ??
+      (isHistorical ? null : currentSeason.label),
     currentSeasonId: currentSeason.id,
     currentSeasonLabel: currentSeason.label,
     activeSeasonId,
@@ -167,13 +241,13 @@ export function renderFinanceSeasonHistoryNav(
   for (const row of archives) {
     if (row.season_id === currentSeasonId) continue;
     const active = activeSeasonId === row.season_id ? " active" : "";
+    const seasonTag = row.season_label || String(row.season_id);
     const href = financePageHref(
       pageFile,
       shortName,
       adminPreview,
-      row.season_id
+      seasonTag
     );
-    const seasonTag = row.season_label || String(row.season_id);
     pastLinks.push(
       `<a href="${href}" class="fin-season-link fin-season-past${active}" title="${seasonTag} closing balance">
         ${formatMoney(row.closing_balance)} (${seasonTag})
@@ -519,17 +593,14 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
     const { incomeTotal, costTotal, net } = summariseLedgerTotals(ledger);
     const byLine = aggregateLedgerByLine(ledger);
     const balanceNow = Number(archiveRow.closing_balance ?? 0);
-    const inferredOpeningAdjusted = await resolveSeasonOpeningBalance(
-      supabase,
-      shortName,
-      {
-        ledger,
-        balanceNow,
-        net: Number(archiveRow.net_total ?? net),
-        transferGap: 0,
-        seasonId: archiveRow.season_id,
-      }
-    );
+
+    // Use the archived opening — do not look up prior-season archives by id
+    // (test seasons with lower ids can poison Season "1" opening balance).
+    let inferredOpeningAdjusted = Number(archiveRow.opening_balance);
+    if (!Number.isFinite(inferredOpeningAdjusted)) {
+      inferredOpeningAdjusted =
+        balanceNow - Number(archiveRow.net_total ?? net);
+    }
 
     return {
       isHistorical: true,
@@ -641,7 +712,11 @@ export async function initFinanceAccountsPage() {
 
   const { shortName, clubLabel, adminPreview } = ctx;
   const seasonView = await resolveFinanceSeasonView(supabase, shortName);
-  const seasonId = seasonView.isHistorical ? seasonView.requestedSeasonId : null;
+  const seasonRef = seasonView.isHistorical
+    ? seasonView.requestedSeasonLabel ||
+      seasonView.archiveRow?.season_label ||
+      seasonView.requestedSeasonId
+    : null;
 
   await applyFinanceClubHeader(shortName, clubLabel, {
     adminPreview,
@@ -659,11 +734,11 @@ export async function initFinanceAccountsPage() {
     adminPreview,
   });
 
-  renderFinanceSubnav("finances_accounts", shortName, adminPreview, seasonId);
+  renderFinanceSubnav("finances_accounts", shortName, adminPreview, seasonRef);
 
   const overviewLink = document.getElementById("backToFinances");
   if (overviewLink) {
-    overviewLink.href = financePageHref("finances.html", shortName, adminPreview, seasonId);
+    overviewLink.href = financePageHref("finances.html", shortName, adminPreview, seasonRef);
   }
 
   const data = await loadFinanceSeasonContext(supabase, shortName, { seasonView });
@@ -719,7 +794,11 @@ export async function initFinanceSubPage({
 
   const { shortName, clubLabel, adminPreview } = ctx;
   const seasonView = await resolveFinanceSeasonView(supabase, shortName);
-  const seasonId = seasonView.isHistorical ? seasonView.requestedSeasonId : null;
+  const seasonRef = seasonView.isHistorical
+    ? seasonView.requestedSeasonLabel ||
+      seasonView.archiveRow?.season_label ||
+      seasonView.requestedSeasonId
+    : null;
 
   await applyFinanceClubHeader(shortName, clubLabel, {
     adminPreview,
@@ -737,11 +816,11 @@ export async function initFinanceSubPage({
     adminPreview,
   });
 
-  renderFinanceSubnav(pageId, shortName, adminPreview, seasonId);
+  renderFinanceSubnav(pageId, shortName, adminPreview, seasonRef);
 
   const overviewLink = document.getElementById("backToFinances");
   if (overviewLink) {
-    overviewLink.href = financePageHref("finances.html", shortName, adminPreview, seasonId);
+    overviewLink.href = financePageHref("finances.html", shortName, adminPreview, seasonRef);
   }
 
   let ledger = [];

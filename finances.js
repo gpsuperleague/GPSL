@@ -10,7 +10,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20260720-season-sep3";
+} from "./finance_page_common.js?v=20260720-season-label";
 
 function renderArchive(rows) {
   const el = document.getElementById("archiveList");
@@ -36,7 +36,11 @@ function renderArchive(rows) {
 
 async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false } = {}) {
   const seasonView = await resolveFinanceSeasonView(supabase, shortName);
-  const seasonId = seasonView.isHistorical ? seasonView.requestedSeasonId : null;
+  const seasonRef = seasonView.isHistorical
+    ? seasonView.requestedSeasonLabel ||
+      seasonView.archiveRow?.season_label ||
+      seasonView.requestedSeasonId
+    : null;
 
   await applyFinanceClubHeader(shortName, clubLabel, {
     adminPreview,
@@ -54,8 +58,8 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     adminPreview,
   });
 
-  renderFinanceSubnav("finances", shortName, adminPreview, seasonId);
-  wireFinanceStatLinks(shortName, adminPreview, seasonId);
+  renderFinanceSubnav("finances", shortName, adminPreview, seasonRef);
+  wireFinanceStatLinks(shortName, adminPreview, seasonRef);
 
   if (!adminPreview && !seasonView.isHistorical) {
     await processMyDueLoanInstallments(supabase);
