@@ -45,9 +45,11 @@ import {
 } from "./scouting_targets.js";
 import { playerNameLinkHtml } from "./player_links.js";
 import { loadCurrentSeasonStart } from "./finance_transfers.js";
+import { formatTimeRemainingHtml, getCountdownParts } from "./countdown_display.js";
 
 /** Current competition season start — scopes Season Signings / Sales / Closed Listings. */
 let currentSeasonStartedAt = null;
+let sellerDeadlineTicker = null;
 
 function playerLinkCell(playerId, player, fallbackName) {
   const pid = String(playerId ?? player?.Konami_ID ?? "").trim();
@@ -55,6 +57,53 @@ function playerLinkCell(playerId, player, fallbackName) {
     player?.Name || fallbackName || (pid ? `Player ${pid}` : "Unknown");
   if (!pid) return name;
   return playerNameLinkHtml(pid, name);
+}
+
+/** Live countdown + cutoff wall times for seller review windows. */
+function sellerDeadlineInnerHtml(iso, emptyLabel = "No timed cutoff") {
+  if (!iso) {
+    return `<span class="tc-deadline-empty">${emptyLabel}</span>`;
+  }
+  const end = new Date(iso);
+  if (Number.isNaN(end.getTime())) {
+    return `<span class="tc-deadline-empty">${emptyLabel}</span>`;
+  }
+  const parts = getCountdownParts(end);
+  const msLeft = end.getTime() - Date.now();
+  const urgent = !parts.expired && msLeft > 0 && msLeft < 60 * 60 * 1000;
+  const cls = [
+    "tc-deadline-live",
+    parts.expired ? "tc-deadline-expired" : "",
+    urgent ? "tc-deadline-urgent" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  return `<span class="${cls}" data-deadline="${end.toISOString()}">${formatTimeRemainingHtml(
+    end.toISOString()
+  )}</span>`;
+}
+
+function tickSellerDeadlineCells() {
+  document.querySelectorAll(".tc-deadline-live[data-deadline]").forEach((el) => {
+    const iso = el.getAttribute("data-deadline");
+    if (!iso) return;
+    const end = new Date(iso);
+    if (Number.isNaN(end.getTime())) return;
+    const parts = getCountdownParts(end);
+    const msLeft = end.getTime() - Date.now();
+    el.classList.toggle("tc-deadline-expired", parts.expired);
+    el.classList.toggle(
+      "tc-deadline-urgent",
+      !parts.expired && msLeft > 0 && msLeft < 60 * 60 * 1000
+    );
+    el.innerHTML = formatTimeRemainingHtml(iso);
+  });
+}
+
+function startSellerDeadlineTicker() {
+  if (sellerDeadlineTicker) return;
+  tickSellerDeadlineCells();
+  sellerDeadlineTicker = setInterval(tickSellerDeadlineCells, 1000);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -98,6 +147,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   loadSeasonSales(shortName);
 
   setupListPlayerModal(shortName);
+  startSellerDeadlineTicker();
 
   window.__gpslCurrentSeasonLabel = await loadCurrentGpslSeasonLabel(supabase);
 
@@ -555,6 +605,7 @@ async function renderBuyerBidTable(bids, listingMap, emptyText, options = {}) {
         <th>Bid</th>
         ${showSeller ? "<th>Seller</th>" : ""}
         <th>Type</th>
+        ${showSeller ? '<th class="countdown-col">Seller cutoff</th>' : ""}
         <th>Time</th>
       </tr>
       ${bids
@@ -563,12 +614,14 @@ async function renderBuyerBidTable(bids, listingMap, emptyText, options = {}) {
           let player = null;
           let typeLabel = "Listing bid";
           let sellerShort = "";
+          let deadlineIso = null;
 
           if (row.listing_id != null) {
             const listing = listingMap.get(row.listing_id);
             playerId = listing?.player_id;
             player = playerFromMap(playersFromListings, playerId);
             sellerShort = String(listing?.seller_club_id || "").trim();
+            deadlineIso = listing?.seller_review_deadline || null;
             const st = String(listing?.status || "");
             if (st === "Review" || st === "Seller Review") {
               typeLabel = "Leading — seller review";
@@ -584,6 +637,7 @@ async function renderBuyerBidTable(bids, listingMap, emptyText, options = {}) {
             player = playerFromMap(directPlayers, playerId);
             sellerShort = String(row.seller_club_id || "").trim();
             typeLabel = "Direct offer — awaiting seller";
+            deadlineIso = null;
           }
 
           const sellerCell = showSeller
@@ -598,12 +652,22 @@ async function renderBuyerBidTable(bids, listingMap, emptyText, options = {}) {
               }</td>`
             : "";
 
+          const cutoffCell = showSeller
+            ? `<td class="countdown-cell">${sellerDeadlineInnerHtml(
+                deadlineIso,
+                row.listing_id == null
+                  ? "Open until seller decides"
+                  : "24h from auction end"
+              )}</td>`
+            : "";
+
           return `
           <tr>
             <td>${playerLinkCell(playerId, player)}</td>
             <td>₿ ${Number(row.bid_amount).toLocaleString("en-GB")}</td>
             ${sellerCell}
             <td>${typeLabel}</td>
+            ${cutoffCell}
             <td>${new Date(row.bid_time).toLocaleString()}</td>
           </tr>
         `;
@@ -736,14 +800,10 @@ async function hydrateListingHighBids(listings) {
 }
 
 function sellerReviewDeadlineLabel(listing) {
-  if (!listing?.seller_review_deadline) return "24h from auction end";
-  const deadline = new Date(listing.seller_review_deadline);
-  const now = new Date();
-  if (deadline <= now) {
-    return `<span style="color:#d9534f;">Expired ${deadline.toLocaleString()}</span>`;
-  }
-  const hrs = Math.max(0, Math.ceil((deadline - now) / (60 * 60 * 1000)));
-  return `${hrs}h left — until ${deadline.toLocaleString()}`;
+  return sellerDeadlineInnerHtml(
+    listing?.seller_review_deadline,
+    "24h from auction end"
+  );
 }
 
 function isSellerReviewExpired(listing) {
@@ -864,7 +924,7 @@ async function loadSellerReview(shortName) {
           <th>Best bid</th>
           <th>Shortfall</th>
           <th>Bidder</th>
-          <th>Review by</th>
+          <th class="countdown-col">Accept by</th>
           <th>Actions</th>
         </tr>
         ${reviewListings
@@ -916,7 +976,7 @@ async function loadSellerReview(shortName) {
               <td>${bid > 0 ? formatMoney(bid) : "—"}</td>
               <td>${shortfall > 0 ? formatMoney(shortfall) : "—"}</td>
               <td>${displayClubName(row.current_highest_bidder) || "—"}</td>
-              <td>${sellerReviewDeadlineLabel(row)}</td>
+              <td class="countdown-cell">${sellerReviewDeadlineLabel(row)}</td>
               <td>${actions}</td>
             </tr>`;
           })
@@ -931,6 +991,7 @@ async function loadSellerReview(shortName) {
           <th>Player</th>
           <th>Bidder</th>
           <th>Amount</th>
+          <th class="countdown-col">Cutoff</th>
           <th>Time</th>
           <th>Actions</th>
         </tr>
@@ -957,6 +1018,10 @@ async function loadSellerReview(shortName) {
               <td>${playerLinkCell(pid, player, name)}</td>
               <td>${displayClubName(row.bidder_club_id)}</td>
               <td>${formatMoney(row.bid_amount)}</td>
+              <td class="countdown-cell">${sellerDeadlineInnerHtml(
+                null,
+                "Open until you decide"
+              )}</td>
               <td>${new Date(row.bid_time).toLocaleString()}</td>
               <td>${actions}</td>
             </tr>`;
