@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS public.gpsl_discord_friendlies_settings (
   edge_function_url text,
   invoke_key text,
   auto_poll_enabled boolean NOT NULL DEFAULT false,
+  last_ingested_message_id text,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
