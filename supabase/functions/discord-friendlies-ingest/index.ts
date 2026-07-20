@@ -78,10 +78,14 @@ function matchClubByTags(
 async function fetchChannelMessages(
   botToken: string,
   channelId: string,
-  limit = 40
+  limit = 40,
+  afterMessageId?: string | null
 ): Promise<DiscordMessage[]> {
   const url = new URL(`${DISCORD_API}/channels/${channelId}/messages`);
   url.searchParams.set("limit", String(Math.max(1, Math.min(limit, 100))));
+  if (afterMessageId) {
+    url.searchParams.set("after", afterMessageId);
+  }
 
   const res = await fetch(url, {
     headers: {
@@ -99,6 +103,16 @@ async function fetchChannelMessages(
 
   const batch = (await res.json()) as DiscordMessage[];
   return Array.isArray(batch) ? batch : [];
+}
+
+function maxSnowflake(a: string | null | undefined, b: string | null | undefined): string | null {
+  if (!a) return b || null;
+  if (!b) return a;
+  try {
+    return BigInt(a) >= BigInt(b) ? a : b;
+  } catch {
+    return a > b ? a : b;
+  }
 }
 
 async function fetchGuildMember(
@@ -333,19 +347,38 @@ Deno.serve(async (req) => {
     let empty_content = 0;
 
     const inject = body.message as DiscordMessage | undefined;
+    const forceRescan = body.rescan === true || body.force === true;
+    let lastIngestedId: string | null = null;
+
+    if (!inject?.id && !forceRescan) {
+      const { data: settingsRow } = await adminClient
+        .from("gpsl_discord_friendlies_settings")
+        .select("last_ingested_message_id")
+        .eq("id", 1)
+        .maybeSingle();
+      lastIngestedId =
+        (settingsRow?.last_ingested_message_id as string | null) || null;
+    }
+
     const messages = inject?.id
       ? [inject]
       : await fetchChannelMessages(
           botToken,
           channelId,
-          Number(body.limit) > 0 ? Number(body.limit) : 40
+          Number(body.limit) > 0 ? Number(body.limit) : 40,
+          lastIngestedId
         );
+
+    let newestSeenId = lastIngestedId;
 
     // Oldest first so the original poster becomes report_1
     const ordered = [...messages].reverse();
 
     for (const msg of ordered) {
-      if (!msg?.id || !msg.author || msg.author.bot) continue;
+      if (!msg?.id) continue;
+      newestSeenId = maxSnowflake(newestSeenId, msg.id);
+
+      if (!msg.author || msg.author.bot) continue;
       const content = cleanContent(String(msg.content || ""));
       if (!content) {
         empty_content += 1;
@@ -414,6 +447,7 @@ Deno.serve(async (req) => {
 
       if (status === "matched") {
         matched += 1;
+        // React only on first match — never on later polls (stops Discord ping spam)
         const ids = asIdList(row.discord_message_ids, msg.id);
         await reactMany(botToken, channelId, ids, "✅");
       } else if (status === "pending") {
@@ -421,15 +455,7 @@ Deno.serve(async (req) => {
         await addReaction(botToken, channelId, msg.id, "⏳");
       } else if (status === "duplicate") {
         duplicates += 1;
-        // Backfill ✅ if this message already belongs to a confirmed friendly
-        const { data: prior } = await adminClient
-          .from("gpsl_friendly_reports")
-          .select("status, matched_friendly_id")
-          .eq("discord_message_id", msg.id)
-          .maybeSingle();
-        if (prior?.status === "matched" || prior?.matched_friendly_id) {
-          await addReaction(botToken, channelId, msg.id, "✅");
-        }
+        // Already ingested — do not re-react (was notifying posters every 2 min)
       } else {
         ignored += 1;
       }
@@ -442,6 +468,20 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Advance watermark so the 2-minute cron only sees new posts
+    if (!inject?.id && newestSeenId && newestSeenId !== lastIngestedId) {
+      const { error: wmErr } = await adminClient
+        .from("gpsl_discord_friendlies_settings")
+        .update({
+          last_ingested_message_id: newestSeenId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", 1);
+      if (wmErr) {
+        console.warn("friendlies watermark update failed:", wmErr.message);
+      }
+    }
+
     return jsonResponse({
       ok: true,
       messages_fetched: messages.length,
@@ -452,13 +492,16 @@ Deno.serve(async (req) => {
       duplicates,
       skipped_format,
       empty_content,
+      last_ingested_message_id: newestSeenId,
       hint:
         empty_content > 0 && scanned === 0
           ? "Discord returned messages with empty content — enable Message Content Intent and ensure the bot can read #gpsl-friendly-results"
           : scanned === 0 && messages.length > 0
             ? "Messages found but none matched CLUB score - score CLUB format"
             : messages.length === 0
-              ? "No messages in channel — check DISCORD_FRIENDLIES_CHANNEL_ID"
+              ? lastIngestedId
+                ? "No new messages since last poll"
+                : "No messages in channel — check DISCORD_FRIENDLIES_CHANNEL_ID"
               : null,
       results: results.slice(-30),
     });
