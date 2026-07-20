@@ -307,7 +307,7 @@ export const FINANCE_UI_SECTIONS = [
     id: "loans",
     title: "Central Bank loans",
     intro:
-      "Drawdowns and scheduled / early repayments posted to the season ledger. Outstanding principal (what you still owe) is on Central Bank → Service counter — not this page.",
+      "Payments made this season only (drawdowns, principal, and interest posted to the ledger). Loan terms, remaining balance, full-term interest, and early repayment are on Central Bank → Service counter.",
     lines: [
       {
         id: "loan_drawdowns",
@@ -320,13 +320,13 @@ export const FINANCE_UI_SECTIONS = [
         label: "Loan repayments (principal)",
         types: ["loan_repayment_principal"],
         note:
-          "Each principal payment listed in Breakdown (monthly installments and early repayments). Posted amount is the season total.",
+          "Principal actually paid this season (monthly installments and early repayments). Not the full remaining schedule.",
       },
       {
         id: "loan_interest",
         label: "Loan interest payments",
         types: ["loan_interest_payment"],
-        note: "Interest charged with installments this season (separate from principal).",
+        note: "Interest actually paid with installments this season.",
       },
     ],
   },

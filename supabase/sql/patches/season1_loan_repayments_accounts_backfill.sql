@@ -1,17 +1,21 @@
 -- =============================================================================
 -- Loan repayments on Season accounts (Season 1 backfill + Season 2+ fix)
 --
--- Why Season 1 still shows ₿0 repayments with ₿100M drawdowns:
---   Monthly installment settlement often never ran in Season 1, so rows stay
---   pending (paid_amount = 0). An earlier paid-only backfill found nothing.
+-- Product split:
+--   • Season accounts = payments actually made (ledger principal + interest)
+--   • Central Bank → Service counter = full terms / remaining / early repay
 --
 -- This patch:
 --   A) Posts new principal/interest to installment due_season_id (Season 2+)
 --   B) Retags existing installment-linked ledger rows to due_season_id
---   C) Reconstructs Season 1 dues from the installment SCHEDULE onto the ledger
---      (even when still pending), marks those installments paid, reduces
---      outstanding — NO Club_Finances debit (season already closed)
+--   C) Removes any invented schedule-reconstruct Season 1 ledger lines, then
+--      backfills only installments that were actually paid (paid_amount /
+--      interest_paid > 0) onto Season 1 accounts — no cash debit
 --   D) Re-snapshots Season 1 finance archive
+--
+-- If Season 1 still shows ₿0 repayments after this, monthly settlement never
+-- collected those installments — that is correct for the accounts sheet.
+-- Outstanding / schedule live on the Service counter.
 --
 -- Run in Supabase SQL Editor. Safe re-run.
 -- Then hard-refresh finances_accounts.html?season=1
@@ -404,12 +408,14 @@ BEGIN
       v_diag.interest_due_sum, v_diag.interest_paid_sum;
   END LOOP;
 
-  -- C) Reconstruct Season 1 installment dues onto the ledger.
-  -- Monthly settlement often never ran in Season 1, so paid_amount stays 0 while
-  -- principal_due/interest_due are set. We post ledger lines for every S1-due
-  -- installment that lacks a matching ledger row, mark them paid, and reduce
-  -- outstanding — WITHOUT debiting Club_Finances (season already closed; cash
-  -- was never taken at the time). Season 2 will not re-collect these rows.
+  -- C) Season accounts = payments made only.
+  -- Drop invented schedule-reconstruct lines from an earlier aggressive backfill.
+  DELETE FROM public.competition_finance_ledger l
+  WHERE l.season_id = v_sid
+    AND l.entry_type IN ('loan_repayment_principal', 'loan_interest_payment')
+    AND coalesce((l.metadata->>'season1_schedule_reconstruct')::boolean, false) = true;
+
+  -- Backfill ledger rows only where installments were actually paid.
   FOR v_inst IN
     SELECT
       i.id AS installment_id,
@@ -426,12 +432,10 @@ BEGIN
       i.status,
       l.club_short_name,
       l.repayment_months,
-      l.season_id AS loan_season_id,
-      l.outstanding_principal
+      l.season_id AS loan_season_id
     FROM public.club_loan_installments i
     JOIN public.club_loans l ON l.id = i.loan_id
-    WHERE i.status IN ('pending', 'paid')
-      AND (
+    WHERE (
         i.due_season_id = v_sid
         OR (
           l.season_id = v_sid
@@ -439,9 +443,7 @@ BEGIN
         )
       )
       AND (
-        coalesce(i.principal_due, 0) > 0.005
-        OR coalesce(i.interest_due, 0) > 0.005
-        OR coalesce(i.paid_amount, 0) > 0.005
+        coalesce(i.paid_amount, 0) > 0.005
         OR coalesce(i.interest_paid, 0) > 0.005
       )
     ORDER BY l.club_short_name, i.loan_id, i.installment_no
@@ -460,8 +462,8 @@ BEGIN
         WHERE s.id = v_inst.due_season_id;
     END;
 
-    -- Principal: prefer amount already paid; else scheduled due
-    IF greatest(coalesce(v_inst.paid_amount, 0), coalesce(v_inst.principal_due, 0)) > 0.005
+    -- Principal paid
+    IF coalesce(v_inst.paid_amount, 0) > 0.005
        AND NOT EXISTS (
          SELECT 1
          FROM public.competition_finance_ledger x
@@ -500,21 +502,20 @@ BEGIN
         NULL,
         v_inst.club_short_name,
         'loan_repayment_principal',
-        -abs(greatest(coalesce(v_inst.paid_amount, 0), coalesce(v_inst.principal_due, 0))),
+        -abs(v_inst.paid_amount),
         v_desc,
         jsonb_build_object(
           'loan_id', v_inst.loan_id,
           'installment_id', v_inst.installment_id,
-          'accounts_backfill', true,
-          'season1_schedule_reconstruct', true
+          'accounts_backfill', true
         ),
         coalesce(v_inst.paid_at, now())
       );
       v_principal := v_principal + 1;
     END IF;
 
-    -- Interest
-    IF greatest(coalesce(v_inst.interest_paid, 0), coalesce(v_inst.interest_due, 0)) > 0.005
+    -- Interest paid
+    IF coalesce(v_inst.interest_paid, 0) > 0.005
        AND NOT EXISTS (
          SELECT 1
          FROM public.competition_finance_ledger x
@@ -553,51 +554,16 @@ BEGIN
         NULL,
         v_inst.club_short_name,
         'loan_interest_payment',
-        -abs(greatest(coalesce(v_inst.interest_paid, 0), coalesce(v_inst.interest_due, 0))),
+        -abs(v_inst.interest_paid),
         v_desc,
         jsonb_build_object(
           'loan_id', v_inst.loan_id,
           'installment_id', v_inst.installment_id,
-          'accounts_backfill', true,
-          'season1_schedule_reconstruct', true
+          'accounts_backfill', true
         ),
         coalesce(v_inst.paid_at, now())
       );
       v_interest := v_interest + 1;
-    END IF;
-
-    -- Align installment + outstanding so Season 2 does not re-collect
-    IF v_inst.status = 'pending' THEN
-      UPDATE public.club_loan_installments
-      SET paid_amount = greatest(coalesce(paid_amount, 0), coalesce(principal_due, 0)),
-          interest_paid = greatest(coalesce(interest_paid, 0), coalesce(interest_due, 0)),
-          status = 'paid',
-          paid_at = coalesce(paid_at, now())
-      WHERE id = v_inst.installment_id
-        AND status = 'pending';
-
-      UPDATE public.club_loans
-      SET outstanding_principal = greatest(
-            0,
-            round(outstanding_principal - coalesce(v_inst.principal_due, 0), 2)
-          ),
-          installments_paid = least(
-            coalesce(repayment_months, 20),
-            coalesce(installments_paid, 0) + 1
-          ),
-          updated_at = now(),
-          status = CASE
-            WHEN outstanding_principal - coalesce(v_inst.principal_due, 0) <= 0.005
-              THEN 'paid'
-            ELSE status
-          END,
-          closed_at = CASE
-            WHEN outstanding_principal - coalesce(v_inst.principal_due, 0) <= 0.005
-              THEN coalesce(closed_at, now())
-            ELSE closed_at
-          END
-      WHERE id = v_inst.loan_id
-        AND status = 'active';
     END IF;
   END LOOP;
 

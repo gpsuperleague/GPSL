@@ -290,3 +290,60 @@ body.bank-page {
 .loan-schedule-head { font-size: 12px; color: #bbb; margin: 0 0 8px; line-height: 1.45; }
 .loan-schedule-table { font-size: 11px; }
 .loan-schedule-table th, .loan-schedule-table td { padding: 4px 6px; }
+
+.loan-summary-card {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid #3d3520;
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.loan-summary-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  color: #e8c86a;
+}
+.loan-summary-badge {
+  font-size: 11px;
+  color: #9a8a5a;
+  border: 1px solid #5a4a28;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.loan-summary-dl {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.loan-summary-dl > div {
+  display: grid;
+  grid-template-columns: minmax(110px, 38%) 1fr;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.loan-summary-dl dt {
+  margin: 0;
+  color: #888;
+}
+.loan-summary-dl dd {
+  margin: 0;
+  color: #ddd;
+}
+.loan-summary-dl dd.loan-owing { color: #e8c86a; font-weight: bold; }
+.loan-summary-actions { margin-top: 10px; }
+.loan-summary-actions .counter-btn { display: inline-block; margin-top: 0; }
+.loan-schedule-details {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #aaa;
+}
+.loan-schedule-details summary {
+  cursor: pointer;
+  color: #c9a227;
+  margin-bottom: 6px;
+}
+.bank-hint { font-size: 12px; color: #888; margin: 4px 0 10px; line-height: 1.4; }

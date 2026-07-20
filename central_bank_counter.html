@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <title>Service counter — GPSL Central Bank</title>
   <link rel="stylesheet" href="dashboard.css">
-  <link rel="stylesheet" href="central_bank.css">
+  <link rel="stylesheet" href="central_bank.css?v=20260714-loan-terms">
 </head>
 <body class="bank-page">
   <div id="nav"></div>
@@ -35,7 +35,8 @@
 
         <div class="counter-desk" id="counterDesk">
           <div class="counter-your-account">
-            <h3>Your account</h3>
+            <h3>Your loans</h3>
+            <p class="bank-hint">Full terms, interest, and early repayment — Season accounts only lists payments already made.</p>
             <p>Available to borrow: <strong id="counterHeadroom">—</strong></p>
             <div id="counterLoanList"></div>
           </div>
@@ -51,13 +52,14 @@
             </form>
 
             <form class="counter-form" id="loanRepayForm">
-              <h3>Repay loan</h3>
+              <h3>Repay / early settle</h3>
+              <p class="bank-hint" id="loanEarlyHint">Early repayment is principal only — remaining interest is waived.</p>
               <label for="repayAmount">Amount (₿)</label>
               <input type="number" id="repayAmount" step="1000000" required>
               <label for="repayLoanId">Loan</label>
               <select id="repayLoanId"></select>
               <button type="submit" id="loanRepayBtn" class="counter-btn secondary">Make repayment</button>
-              <button type="button" id="loanRepayAllBtn" class="counter-btn ghost">Repay all outstanding</button>
+              <button type="button" id="loanRepayAllBtn" class="counter-btn ghost">Early settle all outstanding</button>
               <div class="counter-msg" id="loanRepayMsg"></div>
             </form>
           </div>
@@ -70,6 +72,6 @@
     </section>
   </main>
 
-  <script type="module" src="central_bank_counter.js"></script>
+  <script type="module" src="central_bank_counter.js?v=20260714-loan-terms"></script>
 </body>
 </html>

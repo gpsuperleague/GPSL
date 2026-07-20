@@ -9,7 +9,7 @@ import {
   loadClubLoans,
   processMyDueLoanInstallments,
 } from "./competition.js";
-import { initBankCounter } from "./bank_counter.js";
+import { initBankCounter } from "./bank_counter.js?v=20260714-loan-terms";
 
 async function refreshCounter(shortName) {
   if (shortName) {
