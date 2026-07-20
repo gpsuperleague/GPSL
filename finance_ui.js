@@ -49,9 +49,9 @@ export const LEDGER_TYPE_TO_LINE = {
   admin_one_off_injection: "eos_injection",
   adjustment: "other_adjustment",
   admin_purchase_payment: "other_admin",
-  loan_drawdown: "other_loans",
-  loan_repayment_principal: "other_loans",
-  loan_interest_payment: "other_loans",
+  loan_drawdown: "loan_drawdowns",
+  loan_repayment_principal: "loan_repayments",
+  loan_interest_payment: "loan_interest",
 };
 
 export const FINANCE_UI_SECTIONS = [
@@ -300,15 +300,32 @@ export const FINANCE_UI_SECTIONS = [
         label: "Admin purchase payment",
         types: ["admin_purchase_payment"],
       },
+    ],
+  },
+  {
+    id: "loans",
+    title: "Central Bank loans",
+    intro:
+      "Drawdowns and scheduled / early repayments posted to the season ledger. Outstanding principal (what you still owe) is on Central Bank → Service counter — not this page.",
+    lines: [
       {
-        id: "other_loans",
-        label: "Loans",
-        types: [
-          "loan_drawdown",
-          "loan_repayment_principal",
-          "loan_interest_payment",
-        ],
-        note: "Drawdowns and repayments at the GPSL Central Bank service counter (central_bank_counter.html).",
+        id: "loan_drawdowns",
+        label: "Loan drawdowns",
+        types: ["loan_drawdown"],
+        note: "Money borrowed this season (posted when you take a loan at the service counter).",
+      },
+      {
+        id: "loan_repayments",
+        label: "Loan repayments (principal)",
+        types: ["loan_repayment_principal"],
+        note:
+          "Each principal payment listed in Breakdown (monthly installments and early repayments). Posted amount is the season total.",
+      },
+      {
+        id: "loan_interest",
+        label: "Loan interest",
+        types: ["loan_interest_payment"],
+        note: "Interest charged with installments this season (separate from principal).",
       },
     ],
   },
@@ -320,6 +337,35 @@ export const FINANCE_UI_SECTIONS = [
  */
 function ledgerBreakdownLabel(row) {
   const type = row.entry_type || "other";
+  if (
+    type === "loan_drawdown" ||
+    type === "loan_repayment_principal" ||
+    type === "loan_interest_payment"
+  ) {
+    const desc = String(row.description || "").trim();
+    let label = desc;
+    if (!label) {
+      const md = parseMetadata(row.metadata);
+      if (md.loan_id != null) {
+        const kind =
+          type === "loan_drawdown"
+            ? "Drawdown"
+            : type === "loan_interest_payment"
+              ? "Interest"
+              : "Repayment";
+        label = `${kind} — loan #${md.loan_id}`;
+      } else {
+        label = financeEntryLabel(type);
+      }
+    }
+    if (row.created_at) {
+      const d = new Date(row.created_at);
+      if (!Number.isNaN(d.getTime())) {
+        label = `${label} · ${d.toLocaleDateString("en-GB")}`;
+      }
+    }
+    return label;
+  }
   if (type === "infra_purchase") {
     const md = parseMetadata(row.metadata);
     if (md.stadium_name) return String(md.stadium_name);
@@ -477,12 +523,27 @@ function formatBreakdownColumn(bucket) {
   if (!bucket?.detail) return '<span class="amt zero">—</span>';
   const rows = Object.entries(bucket.detail)
     .filter(([, v]) => Math.abs(v) > 0.001)
+    .sort((a, b) => {
+      // Keep loan schedule lines roughly chronological by installment number when present
+      const ia = Number((a[0].match(/inst\s+(\d+)/i) || [])[1]);
+      const ib = Number((b[0].match(/inst\s+(\d+)/i) || [])[1]);
+      if (Number.isFinite(ia) && Number.isFinite(ib) && ia !== ib) return ia - ib;
+      return String(a[0]).localeCompare(String(b[0]), undefined, { sensitivity: "base" });
+    })
     .map(([t, v]) => {
       const n = Number(v);
       const sign = n >= 0 ? "+" : "−";
-      return `<div class="detail-line"><span>${financeEntryLabel(t)}</span><span>${sign}${formatMoney(Math.abs(n))}</span></div>`;
+      return `<div class="detail-line"><span>${escapeFinanceHtml(t)}</span><span>${sign}${formatMoney(Math.abs(n))}</span></div>`;
     });
   return rows.length ? rows.join("") : '<span class="amt zero">—</span>';
+}
+
+function escapeFinanceHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 /**

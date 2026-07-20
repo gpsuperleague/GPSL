@@ -354,18 +354,27 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
     .eq("status", "pending");
 
   if (!loanInstErr && loanInst?.length) {
-    const loanPending = loanInst.reduce((s, r) => {
-      const total =
-        Number(r.total_due) ||
-        Number(r.principal_due || 0) + Number(r.interest_due || 0);
-      return s + total;
-    }, 0);
-    if (loanPending > 0.5) {
+    let principalPending = 0;
+    let interestPending = 0;
+    for (const r of loanInst) {
+      principalPending += Number(r.principal_due || 0);
+      interestPending += Number(r.interest_due || 0);
+    }
+    if (principalPending > 0.5) {
       setPendingForecast(
         pendingByLine,
-        "other_loans",
-        -loanPending,
-        `${loanInst.length} scheduled loan installment${loanInst.length === 1 ? "" : "s"} (principal + interest)`,
+        "loan_repayments",
+        -principalPending,
+        `${loanInst.length} scheduled installment${loanInst.length === 1 ? "" : "s"} (principal still due)`,
+        byLine
+      );
+    }
+    if (interestPending > 0.5) {
+      setPendingForecast(
+        pendingByLine,
+        "loan_interest",
+        -interestPending,
+        `${loanInst.length} scheduled installment${loanInst.length === 1 ? "" : "s"} (interest still due)`,
         byLine
       );
     }
