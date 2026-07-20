@@ -59,11 +59,14 @@ export async function appendAssignmentInfraPurchaseLedger(supabase, clubShortNam
     return rows;
   }
 
+  // Already paid in a prior season (or current) — never synthesise again
+  if (data?.ledger_posted) return rows;
+
   if (!data?.show_in_accounts || Number(data.total_debit) <= 0) {
     return rows;
   }
 
-  // Append when season accounts has no infra line yet (missing ledger or public view gap).
+  // Append when assignment charged cash but ledger line is still missing (first season only).
   const stadiumName = String(data.stadium_name || data.club_name || "Stadium purchase").trim();
   const amount = -Math.abs(Number(data.total_debit));
 

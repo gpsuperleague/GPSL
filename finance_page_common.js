@@ -13,7 +13,7 @@ import {
   summariseLedgerTotals,
 } from "./finance_ui.js?v=20260720-loan-section";
 import { buildFinanceProjections } from "./finance_projections.js?v=20260720-loan-section";
-import { appendAssignmentInfraPurchaseLedger, ledgerStartingBudget } from "./finance_assignment_ledger.js";
+import { appendAssignmentInfraPurchaseLedger, ledgerStartingBudget } from "./finance_assignment_ledger.js?v=20260720-infra-once";
 import {
   aggregateClubTransfersFromHistory,
   loadClubTransferHistoryForSeason,
