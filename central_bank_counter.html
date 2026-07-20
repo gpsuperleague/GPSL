@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <title>Service counter — GPSL Central Bank</title>
   <link rel="stylesheet" href="dashboard.css">
-  <link rel="stylesheet" href="central_bank.css?v=20260720-loan-credit">
+  <link rel="stylesheet" href="central_bank.css?v=20260720-loan-reject-ui">
 </head>
 <body class="bank-page">
   <div id="nav"></div>
@@ -44,12 +44,29 @@
           <div class="counter-forms">
             <form class="counter-form" id="loanTakeForm">
               <h3>Take a loan</h3>
-              <p class="bank-hint" id="loanCreditHint">Credit check runs when you apply.</p>
               <label for="loanAmount">Amount (₿)</label>
               <input type="number" id="loanAmount" step="1000000" required>
               <p class="bank-hint" id="loanLimits"></p>
               <button type="submit" id="loanTakeBtn" class="counter-btn">Request loan</button>
               <div class="counter-msg" id="loanTakeMsg"></div>
+              <div class="loan-credit-check" id="loanCreditCheck" hidden aria-live="polite">
+                <p class="loan-credit-check-flash" id="loanCreditCheckFlash">Running credit check…</p>
+              </div>
+              <div class="loan-credit-reject" id="loanCreditReject" hidden aria-live="polite">
+                <div class="loan-credit-reject-stage">
+                  <img
+                    class="loan-credit-manager"
+                    src="images/bank/bank_manager.png"
+                    alt="GPSL Central Bank manager"
+                    width="160"
+                    height="200"
+                  >
+                  <div class="loan-credit-speech">
+                    <p class="loan-credit-speech-label">Bank manager</p>
+                    <p class="loan-credit-speech-text" id="loanCreditRejectText"></p>
+                  </div>
+                </div>
+              </div>
             </form>
 
             <form class="counter-form" id="loanRepayForm">
@@ -73,6 +90,6 @@
     </section>
   </main>
 
-  <script type="module" src="central_bank_counter.js?v=20260720-loan-credit"></script>
+  <script type="module" src="central_bank_counter.js?v=20260720-loan-reject-ui"></script>
 </body>
 </html>

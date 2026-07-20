@@ -236,38 +236,35 @@ function paintLimits(bank, loans) {
   return { outstanding, min, maxDraw, headroom, effectiveMax };
 }
 
-async function applyCreditGate(supabase) {
-  const credit = await checkClubLoanCredit(supabase);
-  const hint = document.getElementById("loanCreditHint");
-  const takeBtn = document.getElementById("loanTakeBtn");
-  const amountInput = document.getElementById("loanAmount");
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  if (credit.ok) {
-    if (hint) {
-      hint.textContent =
-        credit.negative_seasons > 0
-          ? `Credit check clear (${credit.negative_seasons} overdrawn season on file — still within limit).`
-          : "Credit check clear — you may apply for a loan.";
-      hint.classList.remove("credit-declined");
-    }
-    return credit;
-  }
+function hideLoanCreditPanels() {
+  document.getElementById("loanCreditCheck")?.setAttribute("hidden", "");
+  document.getElementById("loanCreditReject")?.setAttribute("hidden", "");
+  const flash = document.getElementById("loanCreditCheckFlash");
+  if (flash) flash.textContent = "Running credit check…";
+}
 
-  if (hint) {
-    hint.textContent =
-      credit.message ||
-      "Application declined — unfavourable creditworthiness report.";
-    hint.classList.add("credit-declined");
+function showLoanCreditCheckFlash(message = "Running credit check…") {
+  hideLoanCreditPanels();
+  const panel = document.getElementById("loanCreditCheck");
+  const flash = document.getElementById("loanCreditCheckFlash");
+  if (flash) flash.textContent = message;
+  panel?.removeAttribute("hidden");
+}
+
+function showLoanCreditRejection(message) {
+  document.getElementById("loanCreditCheck")?.setAttribute("hidden", "");
+  const panel = document.getElementById("loanCreditReject");
+  const text = document.getElementById("loanCreditRejectText");
+  if (text) {
+    text.textContent =
+      message ||
+      "Application declined. The bank manager checked the club's creditworthiness and an unfavourable report was received.";
   }
-  if (takeBtn) takeBtn.disabled = true;
-  if (amountInput) amountInput.disabled = true;
-  showCounterMsg(
-    "loanTakeMsg",
-    credit.message ||
-      "Application declined. The bank manager received an unfavourable creditworthiness report.",
-    false
-  );
-  return credit;
+  panel?.removeAttribute("hidden");
 }
 
 function wireEarlyButtons(supabase, onSuccess) {
@@ -330,7 +327,7 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
   counterDesk?.removeAttribute("hidden");
 
   paintLimits(bank, loans);
-  void applyCreditGate(supabase);
+  hideLoanCreditPanels();
   void renderMyLoansAtCounter(supabase, loans).then(() => {
     wireEarlyButtons(supabase, onSuccess);
   });
@@ -369,22 +366,31 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
     }
 
     if (takeBtn) takeBtn.disabled = true;
-    showCounterMsg("loanTakeMsg", "Processing at the counter…", true);
+    hideLoanCreditPanels();
+    showCounterMsg("loanTakeMsg", "", true);
+    showLoanCreditCheckFlash("Running credit check…");
+    await sleep(900);
+    showLoanCreditCheckFlash("Reviewing club creditworthiness…");
+
     const credit = await checkClubLoanCredit(supabase);
     if (!credit.ok) {
+      await sleep(700);
       if (takeBtn) takeBtn.disabled = false;
-      showCounterMsg(
-        "loanTakeMsg",
-        credit.message ||
-          "Application declined. The bank manager received an unfavourable creditworthiness report.",
-        false
-      );
-      await applyCreditGate(supabase);
+      showLoanCreditRejection(credit.message);
+      showCounterMsg("loanTakeMsg", "Application declined.", false);
       return;
     }
+
+    showLoanCreditCheckFlash("Credit check clear — processing drawdown…");
     const res = await takeClubLoan(supabase, amt);
+    hideLoanCreditPanels();
     if (takeBtn) takeBtn.disabled = false;
     if (res.error) {
+      if (/creditworthiness|unfavourable|overdrawn for two seasons/i.test(res.error)) {
+        showLoanCreditRejection(res.error);
+        showCounterMsg("loanTakeMsg", "Application declined.", false);
+        return;
+      }
       showCounterMsg("loanTakeMsg", res.error, false);
       return;
     }

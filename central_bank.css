@@ -347,4 +347,94 @@ body.bank-page {
   margin-bottom: 6px;
 }
 .bank-hint { font-size: 12px; color: #888; margin: 4px 0 10px; line-height: 1.4; }
-.bank-hint.credit-declined { color: #e99; }
+
+.loan-credit-check {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #5a4a28;
+  border-radius: 6px;
+  background: rgba(201, 162, 39, 0.08);
+}
+.loan-credit-check-flash {
+  margin: 0;
+  font-size: 13px;
+  color: #e8c86a;
+  letter-spacing: 0.04em;
+  animation: loan-credit-pulse 0.9s ease-in-out infinite;
+}
+@keyframes loan-credit-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.loan-credit-reject {
+  margin-top: 14px;
+}
+.loan-credit-reject-stage {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid #4a4030;
+  border-radius: 8px;
+  background:
+    linear-gradient(160deg, rgba(40, 34, 22, 0.95) 0%, rgba(18, 16, 20, 0.98) 100%);
+}
+@media (max-width: 560px) {
+  .loan-credit-reject-stage { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+}
+.loan-credit-manager {
+  width: 120px;
+  height: auto;
+  border-radius: 6px;
+  border: 1px solid #6a5a30;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+  object-fit: cover;
+  display: block;
+}
+.loan-credit-speech {
+  position: relative;
+  background: #f4efdf;
+  color: #1a1610;
+  border-radius: 12px;
+  padding: 12px 14px 14px;
+  border: 1px solid #c9a227;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.loan-credit-speech::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  top: 28px;
+  width: 14px;
+  height: 14px;
+  background: #f4efdf;
+  border-left: 1px solid #c9a227;
+  border-bottom: 1px solid #c9a227;
+  transform: rotate(45deg);
+}
+@media (max-width: 560px) {
+  .loan-credit-speech::before {
+    left: 50%;
+    top: -7px;
+    margin-left: -7px;
+    border-left: 1px solid #c9a227;
+    border-bottom: none;
+    border-top: 1px solid #c9a227;
+  }
+}
+.loan-credit-speech-label {
+  margin: 0 0 6px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #7a6540;
+}
+.loan-credit-speech-text {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+  line-height: 1.45;
+  color: #221c14;
+}
