@@ -148,12 +148,15 @@ export function renderLeagueLoans(rows, myShortName) {
       <thead>
         <tr>
           <th>Club</th>
+          <th>Loan</th>
           <th>Status</th>
           <th>Drawn</th>
-          <th>Owing</th>
+          <th>Principal left</th>
+          <th>Interest (full term)</th>
+          <th>Interest left</th>
           <th>Term</th>
           <th>Rate</th>
-          <th>Since</th>
+          <th>From</th>
         </tr>
       </thead>
       <tbody>
@@ -162,15 +165,32 @@ export function renderLeagueLoans(rows, myShortName) {
             const mine = l.club_short_name === myShortName;
             const statusCls =
               l.status === "active" ? "status-active" : "status-paid";
+            const interestTotal = Number(
+              l.interest_total_scheduled ?? l.interest_total ?? 0
+            );
+            const interestLeft = Number(l.interest_remaining ?? 0);
+            const fromLabel =
+              l.drawdown_gpsl_month_label ||
+              l.drawdown_gpsl_month ||
+              new Date(l.created_at).toLocaleDateString("en-GB");
             return `
           <tr class="${mine ? "row-mine" : ""}">
             <td>${l.club_name || l.club_short_name}${mine ? " <em>(you)</em>" : ""}</td>
+            <td>#${l.id}</td>
             <td class="${statusCls}">${l.status}</td>
             <td>${formatMoney(l.principal_drawn)}</td>
-            <td class="owing">${l.status === "active" ? formatMoney(l.outstanding_principal) : "—"}</td>
+            <td class="owing">${
+              l.status === "active"
+                ? formatMoney(l.outstanding_principal)
+                : "—"
+            }</td>
+            <td>${formatMoney(interestTotal)}</td>
+            <td>${
+              l.status === "active" ? formatMoney(interestLeft) : "—"
+            }</td>
             <td>${l.repayment_months || 20} mo</td>
-            <td>${Number(l.interest_rate_pct).toFixed(1)}%</td>
-            <td>${new Date(l.created_at).toLocaleDateString("en-GB")}</td>
+            <td>${Number(l.interest_rate_pct || 0).toFixed(1)}%</td>
+            <td>${fromLabel}</td>
           </tr>`;
           })
           .join("")}
