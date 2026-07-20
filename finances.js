@@ -10,7 +10,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20260720-season-label";
+} from "./finance_page_common.js?v=20260720-eos-map";
 
 function renderArchive(rows) {
   const el = document.getElementById("archiveList");

@@ -1385,6 +1385,7 @@ export const GATE_ENTRY_LABELS = {
   contract_termination: "Contract termination",
   eos_debt_interest: "Debt interest",
   eos_ffp_charge: "FFP charge",
+  eos_balance_interest: "Balance interest",
   eos_injection: "End of season injection",
   loan_drawdown: "Loan drawdown",
   loan_repayment_principal: "Loan repayment",
@@ -1412,6 +1413,10 @@ const INCOME_TYPES = new Set([
   "transfer_foreign_sale",
   "transfer_overflow_release",
   "loan_drawdown",
+  "eos_balance_interest",
+  "eos_injection",
+  "contract_release_comp_received",
+  "special_auction_prize",
 ]);
 
 export function financeEntryLabel(type) {

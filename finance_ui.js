@@ -45,6 +45,7 @@ export const LEDGER_TYPE_TO_LINE = {
   contract_termination: "staff_termination",
   eos_debt_interest: "eos_debt_interest",
   eos_ffp_charge: "eos_ffp",
+  eos_balance_interest: "eos_balance_interest",
   eos_injection: "eos_injection",
   admin_one_off_injection: "eos_injection",
   adjustment: "other_adjustment",
