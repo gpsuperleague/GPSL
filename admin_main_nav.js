@@ -202,14 +202,19 @@ export const ADMIN_MAIN_NAV = [
         null,
         "Confirm amounts per division, then Pay league prizes (only pays divisions with 38/38 played; safe to re-run)."
       ),
-      link("Archive season stats & awards", "admin_season.html", "wf-close-season"),
+      link(
+        "Archive season stats & awards",
+        "admin_season.html",
+        "wf-close-season",
+        "Locks tables/awards (and an early finance snapshot). OK to run before Close Finances — Close Finances refreshes the finance archive afterward."
+      ),
       link("Process manager contracts (season end)", "admin_season.html", "wf-close-season"),
       link("Charge Emergency Tax", "admin_emergency_tax.html"),
       link(
         "Close Finances",
         "admin_wage_bills.html",
         null,
-        "Wage bills, debt interest, FFP, credit interest — then refreshes the season finance archive so Season accounts include wages. Skips lines already posted."
+        "LAST money step: wages + manager salary + 34+ + star tax → debt interest → FFP → balance interest, then refreshes season finance archive. Safe to re-run (skips posted lines)."
       ),
     ],
   },

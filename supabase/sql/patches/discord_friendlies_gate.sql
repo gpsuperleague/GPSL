@@ -42,7 +42,11 @@ BEGIN
     SELECT unnest(ARRAY[
       'gate_league_home',
       'gate_cup_share',
-      'gate_friendlies'
+      'gate_friendlies',
+      'eos_debt_interest',
+      'eos_ffp_charge',
+      'eos_balance_interest',
+      'eos_injection'
     ])
   ) s;
 

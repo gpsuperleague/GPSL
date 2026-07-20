@@ -21,15 +21,18 @@
           <li><b>Wage bills</b> — player wages, manager salary (weekly × 52), 34+ fee, star tax</li>
           <li><b>Debt interest</b> — bank rate (default 5%) on overdrawn balances</li>
           <li><b>FFP</b> — flat ₿10M fine if balance ≤ −₿100M (after interest)</li>
-          <li><b>Balance interest</b> — 0.5% credit on positive balances</li>
+          <li><b>Balance interest</b> — 0.5% credit on positive balances only</li>
+          <li><b>Finance archive refresh</b> — updates Season accounts snapshot (so Archive-before-this is safe)</li>
         </ol>
         <p class="note">
           Each line is skipped if already posted for that club/season.
-          Run <code>patches/close_finances_eos_interest_ffp.sql</code> in Supabase first.
-          Rates/threshold live on <code>gpsl_bank_account</code>
-          (<code>eos_balance_interest_pct</code>, <code>eos_debt_interest_pct</code> or
-          <code>policy_interest_rate_pct</code>, <code>eos_ffp_debt_threshold</code>,
-          <code>eos_ffp_flat_fine</code>).
+          Ensure these patches are applied in Supabase:
+          <code>close_finances_eos_interest_ffp.sql</code>,
+          <code>manager_season_salary_wage_bills.sql</code>,
+          and if debt/FFP inserts fail a type check, re-run
+          <code>season1_eos_interest_ffp_backfill.sql</code> ( widens entry types ) or
+          <code>competition_finance_ledger_entry_types_repair.sql</code>.
+          Rates/threshold live on <code>gpsl_bank_account</code>.
         </p>
         <button type="button" id="closeFinancesBtn" class="button">Close Finances</button>
         <button type="button" id="postWageBillsBtn" class="button" style="margin-left:8px">
