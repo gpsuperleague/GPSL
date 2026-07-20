@@ -306,6 +306,7 @@ DECLARE
   v_debt int := 0;
   v_ffp int := 0;
   v_credit int := 0;
+  v_finance_archived int := 0;
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -337,13 +338,20 @@ BEGIN
   -- 4) Credit interest on positive balances
   v_credit := public.competition_post_eos_balance_interest(v_season_id);
 
+  -- 5) Refresh finance archive so Season accounts include wages even if
+  --    "Archive season stats" ran earlier in the checklist.
+  IF to_regprocedure('public.competition_archive_club_finances_for_season(bigint)') IS NOT NULL THEN
+    v_finance_archived := public.competition_archive_club_finances_for_season(v_season_id);
+  END IF;
+
   RETURN jsonb_build_object(
     'ok', true,
     'season_id', v_season_id,
     'wages', v_wages,
     'debt_interest_clubs', v_debt,
     'ffp_clubs', v_ffp,
-    'balance_interest_clubs', v_credit
+    'balance_interest_clubs', v_credit,
+    'finance_archive_clubs', v_finance_archived
   );
 END;
 $function$;

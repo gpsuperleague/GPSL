@@ -209,7 +209,7 @@ export const ADMIN_MAIN_NAV = [
         "Close Finances",
         "admin_wage_bills.html",
         null,
-        "Wage bills, debt interest on overdrafts, FFP (−₿100M+), and 0.5% interest on positive balances. Skips lines already posted."
+        "Wage bills, debt interest, FFP, credit interest — then refreshes the season finance archive so Season accounts include wages. Skips lines already posted."
       ),
     ],
   },
