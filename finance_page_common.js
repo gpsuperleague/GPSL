@@ -13,7 +13,11 @@ import {
   summariseLedgerTotals,
 } from "./finance_ui.js?v=20260720-loan-section";
 import { buildFinanceProjections } from "./finance_projections.js?v=20260720-loan-section";
-import { appendAssignmentInfraPurchaseLedger, ledgerStartingBudget } from "./finance_assignment_ledger.js?v=20260720-infra-once";
+import {
+  appendAssignmentInfraPurchaseLedger,
+  ledgerStartingBudget,
+  clubHadPriorFinanceSeason,
+} from "./finance_assignment_ledger.js?v=20260720-infra-strip2";
 import {
   aggregateClubTransfersFromHistory,
   loadClubTransferHistoryForSeason,
@@ -449,11 +453,12 @@ async function resolveSeasonOpeningBalance(
   shortName,
   { ledger, balanceNow, net, transferGap, seasonId }
 ) {
-  const fromLedger = ledgerStartingBudget(ledger);
-  if (fromLedger != null) return fromLedger;
-
+  // Continuing clubs: prior season closing beats any (wrong) stadium starting_budget
   const prevClosing = await loadPreviousSeasonClosingBalance(supabase, shortName, seasonId);
   if (prevClosing != null) return prevClosing;
+
+  const fromLedger = ledgerStartingBudget(ledger);
+  if (fromLedger != null) return fromLedger;
 
   const { data: assign, error } = await supabase.rpc("club_assignment_finance_display", {
     p_club_short_name: shortName,
@@ -531,7 +536,16 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
   const balanceRow = await loadClubBalance(supabase, shortName);
   const balanceNow = Number(balanceRow?.balance ?? 0);
   let ledger = await loadFinanceLedger(supabase, shortName, 300);
-  ledger = await appendAssignmentInfraPurchaseLedger(supabase, shortName, ledger);
+  const currentSeason = await loadCurrentSeasonId(supabase);
+  const continuingClub = await clubHadPriorFinanceSeason(
+    supabase,
+    shortName,
+    currentSeason?.id ?? null
+  );
+  ledger = await appendAssignmentInfraPurchaseLedger(supabase, shortName, ledger, {
+    continuingClub,
+    currentSeasonId: currentSeason?.id ?? null,
+  });
   const { incomeTotal, costTotal, net } = summariseLedgerTotals(ledger);
   const byLine = aggregateLedgerByLine(ledger);
 
@@ -547,7 +561,6 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
   const transferGap = transferHistoryBalanceGap(transferAgg, byLine);
   mergeTransferHistoryIntoByLine(byLine, transferAgg);
 
-  const currentSeason = await loadCurrentSeasonId(supabase);
   const inferredOpeningAdjusted = await resolveSeasonOpeningBalance(
     supabase,
     shortName,
@@ -556,7 +569,7 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
       balanceNow,
       net,
       transferGap,
-      seasonId: currentSeason.id,
+      seasonId: currentSeason?.id ?? null,
     }
   );
   const { pendingByLine, totalPending, subsidyPreview } = await buildFinanceProjections(
@@ -721,6 +734,10 @@ export async function initFinanceSubPage({
     ledger = [];
   } else {
     ledger = await loadFinanceLedger(supabase, shortName, 500);
+    const currentSeason = await loadCurrentSeasonId(supabase);
+    ledger = await appendAssignmentInfraPurchaseLedger(supabase, shortName, ledger, {
+      currentSeasonId: currentSeason?.id ?? null,
+    });
   }
 
   const filtered = filterLedgerRows(ledger, filter);
