@@ -10,6 +10,7 @@ import {
   clubLoanHeadroom,
   loadClubLoans,
   loadClubLoanInstallments,
+  checkClubLoanCredit,
 } from "./competition.js";
 
 function sumInterestDue(inst, pendingOnly = false) {
@@ -235,6 +236,40 @@ function paintLimits(bank, loans) {
   return { outstanding, min, maxDraw, headroom, effectiveMax };
 }
 
+async function applyCreditGate(supabase) {
+  const credit = await checkClubLoanCredit(supabase);
+  const hint = document.getElementById("loanCreditHint");
+  const takeBtn = document.getElementById("loanTakeBtn");
+  const amountInput = document.getElementById("loanAmount");
+
+  if (credit.ok) {
+    if (hint) {
+      hint.textContent =
+        credit.negative_seasons > 0
+          ? `Credit check clear (${credit.negative_seasons} overdrawn season on file — still within limit).`
+          : "Credit check clear — you may apply for a loan.";
+      hint.classList.remove("credit-declined");
+    }
+    return credit;
+  }
+
+  if (hint) {
+    hint.textContent =
+      credit.message ||
+      "Application declined — unfavourable creditworthiness report.";
+    hint.classList.add("credit-declined");
+  }
+  if (takeBtn) takeBtn.disabled = true;
+  if (amountInput) amountInput.disabled = true;
+  showCounterMsg(
+    "loanTakeMsg",
+    credit.message ||
+      "Application declined. The bank manager received an unfavourable creditworthiness report.",
+    false
+  );
+  return credit;
+}
+
 function wireEarlyButtons(supabase, onSuccess) {
   document.querySelectorAll(".loan-early-btn").forEach((btn) => {
     if (btn.dataset.bound === "1") return;
@@ -295,6 +330,7 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
   counterDesk?.removeAttribute("hidden");
 
   paintLimits(bank, loans);
+  void applyCreditGate(supabase);
   void renderMyLoansAtCounter(supabase, loans).then(() => {
     wireEarlyButtons(supabase, onSuccess);
   });
@@ -334,6 +370,18 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
 
     if (takeBtn) takeBtn.disabled = true;
     showCounterMsg("loanTakeMsg", "Processing at the counter…", true);
+    const credit = await checkClubLoanCredit(supabase);
+    if (!credit.ok) {
+      if (takeBtn) takeBtn.disabled = false;
+      showCounterMsg(
+        "loanTakeMsg",
+        credit.message ||
+          "Application declined. The bank manager received an unfavourable creditworthiness report.",
+        false
+      );
+      await applyCreditGate(supabase);
+      return;
+    }
     const res = await takeClubLoan(supabase, amt);
     if (takeBtn) takeBtn.disabled = false;
     if (res.error) {

@@ -359,12 +359,8 @@ function ledgerBreakdownLabel(row) {
         label = financeEntryLabel(type);
       }
     }
-    if (row.created_at) {
-      const d = new Date(row.created_at);
-      if (!Number.isNaN(d.getTime())) {
-        label = `${label} · ${d.toLocaleDateString("en-GB")}`;
-      }
-    }
+    // Drop noisy backfill tags so the amount column stays readable
+    label = label.replace(/\s*\[Season 1 accounts backfill\]/gi, "").trim();
     return label;
   }
   if (type === "infra_purchase") {

@@ -1678,6 +1678,25 @@ export async function takeClubLoan(supabase, amount) {
   return { loanId: data };
 }
 
+/**
+ * Credit check before / with loan applications.
+ * @returns {{ ok: boolean, negative_seasons?: number, message?: string|null }}
+ */
+export async function checkClubLoanCredit(supabase) {
+  const { data, error } = await supabase.rpc("club_loan_credit_check", {
+    p_club: null,
+  });
+  if (error) {
+    console.warn("checkClubLoanCredit:", error);
+    return { ok: true, message: null };
+  }
+  return {
+    ok: data?.ok !== false,
+    negative_seasons: Number(data?.negative_seasons || 0),
+    message: data?.message || null,
+  };
+}
+
 /** @returns {{ repaid: number } | { error: string }} */
 export async function repayClubLoan(supabase, amount, loanId = null) {
   const params = { p_amount: amount };
