@@ -195,8 +195,8 @@ function paintLimits(bank, loans, options = {}) {
   const limitsEl = document.getElementById("loanLimits");
   if (limitsEl) {
     limitsEl.textContent = seasonLoanUsed
-      ? `One loan per season already taken · Max ${formatMoney(maxDraw)} per loan`
-      : `Max 1 loan per season · Min ${formatMoney(min)} · Max ${formatMoney(
+      ? `Season loan already used (even if repaid) · Max ${formatMoney(maxDraw)} per loan`
+      : `Max 1 loan per season (even if repaid) · Min ${formatMoney(min)} · Max ${formatMoney(
           maxDraw
         )} per loan · Headroom ${formatMoney(headroom)} · Term 20 GPSL months`;
   }
@@ -360,7 +360,7 @@ export function initBankCounter(supabase, bank, loans, onSuccess) {
       paintLimits(bankNow, latest, { seasonLoanUsed: true });
       showCounterMsg(
         "loanTakeMsg",
-        "Maximum one loan per season. Your club has already taken a loan this season.",
+        "Maximum one loan per season. Your club has already taken a loan this season (repaying it does not allow another).",
         false
       );
       return;

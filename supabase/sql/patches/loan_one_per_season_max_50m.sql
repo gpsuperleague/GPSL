@@ -1,5 +1,6 @@
 -- =============================================================================
--- One Central Bank loan per club per season (max ₿50M per drawdown)
+-- One Central Bank loan per club per season (max ₿50M per drawdown).
+-- A repaid / closed loan still counts — only one drawdown per season.
 --
 -- Run in Supabase SQL Editor. Safe re-run.
 -- =============================================================================
@@ -46,6 +47,7 @@ BEGIN
     FROM public.club_loans l
     WHERE l.club_short_name = v_club
       AND l.season_id = v_season_id
+      -- Any status counts (active, paid, etc.) — one drawdown per season only
   );
 END;
 $function$;
@@ -101,7 +103,7 @@ BEGIN
 
   IF public.club_loan_taken_this_season(v_club, v_season_id) THEN
     RAISE EXCEPTION
-      'Maximum one loan per season. Your club has already taken a loan this season.';
+      'Maximum one loan per season. Your club has already taken a loan this season (repaying it does not allow another).';
   END IF;
 
   v_drawdown_month := public.competition_active_gpsl_month(v_season_id, now());
