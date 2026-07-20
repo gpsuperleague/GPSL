@@ -173,13 +173,9 @@ export function renderFinanceSeasonHistoryNav(
       adminPreview,
       row.season_id
     );
-    const net = Number(row.net_total || 0);
-    const netClass = net >= 0 ? "positive" : "negative";
+    const seasonTag = row.season_label || `Season ${row.season_id}`;
     pastLinks.push(
-      `<a href="${href}" class="fin-season-link fin-season-past${active}" title="Closing balance ${formatMoney(row.closing_balance)}">
-        <span>${row.season_label}</span>
-        <span class="fin-season-net ${netClass}">${formatMoney(row.closing_balance)}</span>
-      </a>`
+      `<a href="${href}" class="fin-season-link fin-season-past${active}" title="${seasonTag} closing balance ${formatMoney(row.closing_balance)}">Closing balance (${seasonTag})</a>`
     );
   }
 

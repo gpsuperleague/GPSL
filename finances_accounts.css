@@ -50,10 +50,9 @@ a { color:#ff9900; }
   flex-shrink:0;
 }
 .fin-season-link {
-  display:inline-flex; flex-direction:column; gap:2px;
+  display:inline-flex; align-items:center;
   padding:8px 12px; font-size:12px; text-decoration:none;
   color:#ccc; background:#222; border:1px solid #444; border-radius:8px;
-  min-width:120px;
 }
 .fin-season-link.fin-season-current {
   border-color:#665522; background:#1f1c12;
