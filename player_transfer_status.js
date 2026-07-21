@@ -405,6 +405,10 @@ export function buildGpdbContractedBidCellHtml({
     return formatTransferStatusMessageHtml(status);
   }
 
+  if (!viewerClubShort) {
+    return `<span class="locked-msg" title="Waiting-list members cannot bid until they own a club">Club required</span>`;
+  }
+
   if (
     !isMyClub &&
     transferWindowOpen &&

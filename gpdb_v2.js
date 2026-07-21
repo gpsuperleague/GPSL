@@ -1766,7 +1766,9 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
             const inDraft = ACTIVE_DRAFT_PLAYERS.has(String(player.Konami_ID).trim());
 
-            if (inDraft) {
+            if (!CURRENT_USER_CLUB_SHORT) {
+              bidCell = `<span class="locked-msg" title="Waiting-list members cannot bid until they own a club">Club required</span>`;
+            } else if (inDraft) {
               bidCell = `<span class="locked-msg">In Draft Auction</span>`;
             } else if (GLOBAL_SETTINGS.draftAuctionEnabled) {
               const nowLocal = getUKNow();
@@ -1913,6 +1915,11 @@ document.addEventListener("DOMContentLoaded", () => {
   async function openMakeOfferModal(konamiId) {
     const row = document.querySelector(`tr[data-konami-id="${konamiId}"]`);
     if (!row) return;
+
+    if (!CURRENT_USER_CLUB_SHORT) {
+      alert("You need a GPSL club to make offers. Waiting-list members can browse GPDB but cannot bid until assigned a club.");
+      return;
+    }
 
     if (
       row.dataset.auctionExcluded === "1" ||
