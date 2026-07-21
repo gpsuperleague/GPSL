@@ -1,65 +1,19 @@
 -- =============================================================================
--- Reverse premature loan collections (Service Counter due bug follow-up)
+-- Fix loan due-check: Season 1 payments must stay counted
 --
--- The first repair only fixed double-charges on still-pending rows. Instalments
--- that were collected early were left status=paid, so "Principal left" /
--- early settlement stayed far too low (e.g. ₿5M / ₿2.5M instead of ~₿20M+).
+-- Bug: club_loan_installment_is_due() treated June/July as "nothing Aug–May is
+-- due" for ALL seasons. During Season 2 June/July soft months that made every
+-- Season 1 Aug–May instalment look "not due", so
+-- club_loan_reverse_premature_collections() refunded and re-opened them —
+-- settlement reset to full principal.
 --
--- This patch:
---   • Ensures ledger allows entry_type = adjustment (refund lines)
---   • Finds paid instalments that are NOT yet due (same due rules as the fix)
---   • Refunds principal + interest to the club
---   • Re-opens those instalments as pending
---   • Restores outstanding_principal / installments_paid
+-- Fix:
+--   1) June/July soft-month gate only applies to the instalment's own season
+--      bucket (same due_ord as current). Past season buckets stay due.
+--   2) Reverse-premature only reopens CURRENT/FUTURE buckets (never past).
+--   3) Re-collect truly due pending instalments so Season 1 is factored back in.
 --
--- Run AFTER loan_due_process_no_overcharge.sql. Safe re-run (only touches
--- paid rows that are still not due).
--- =============================================================================
-
--- ---------------------------------------------------------------------------
--- 0) Allow adjustment (and keep every live entry_type already in use)
--- ---------------------------------------------------------------------------
-
-DO $ledger_types$
-DECLARE
-  v_list text;
-BEGIN
-  SELECT string_agg(quote_literal(t), ', ' ORDER BY t)
-  INTO v_list
-  FROM (
-    SELECT DISTINCT entry_type AS t
-    FROM public.competition_finance_ledger
-    WHERE entry_type IS NOT NULL
-    UNION
-    SELECT unnest(ARRAY[
-      'adjustment',
-      'admin_one_off_injection',
-      'admin_purchase_payment',
-      'loan_drawdown',
-      'loan_repayment_principal',
-      'loan_interest_payment',
-      'eos_injection',
-      'medical_physio_hire',
-      'medical_doctor_hire',
-      'infra_maintenance'
-    ])
-  ) s;
-
-  ALTER TABLE public.competition_finance_ledger
-    DROP CONSTRAINT IF EXISTS competition_finance_ledger_entry_type_check;
-
-  EXECUTE format(
-    'ALTER TABLE public.competition_finance_ledger
-       ADD CONSTRAINT competition_finance_ledger_entry_type_check
-       CHECK (entry_type IN (%s))',
-    v_list
-  );
-END;
-$ledger_types$;
-
--- =============================================================================
--- Reverse premature loan collections (Service Counter due bug follow-up)
--- (functions below)
+-- Safe re-run.
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.club_loan_installment_is_due(
@@ -126,52 +80,7 @@ BEGIN
 END;
 $function$;
 
--- As-of GPSL month for repairs: active window, else last locked month,
--- else earliest currently-open unlocked month (never "max unlocked" which
--- can be May if the whole calendar was unlocked early).
-CREATE OR REPLACE FUNCTION public.club_loan_as_of_gpsl_month(p_season_id bigint)
-RETURNS text
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_month text;
-BEGIN
-  v_month := public.competition_active_gpsl_month(p_season_id, now());
-  IF v_month IS NOT NULL THEN
-    RETURN v_month;
-  END IF;
-
-  -- Last fully locked month = how far the season has actually progressed
-  SELECT m.gpsl_month
-  INTO v_month
-  FROM public.competition_season_calendar m
-  WHERE m.season_id = p_season_id
-    AND m.lock_at IS NOT NULL
-    AND m.lock_at <= now()
-  ORDER BY m.sort_order DESC
-  LIMIT 1;
-
-  IF v_month IS NOT NULL THEN
-    RETURN v_month;
-  END IF;
-
-  -- Earliest open unlocked window
-  SELECT m.gpsl_month
-  INTO v_month
-  FROM public.competition_season_calendar m
-  WHERE m.season_id = p_season_id
-    AND m.unlock_at <= now()
-    AND (m.lock_at IS NULL OR m.lock_at > now())
-  ORDER BY m.sort_order ASC
-  LIMIT 1;
-
-  RETURN v_month;
-END;
-$function$;
-
+-- Tighten reverse: never reopen past-season (already-due) instalments
 CREATE OR REPLACE FUNCTION public.club_loan_reverse_premature_collections(
   p_club_short_name text DEFAULT NULL
 )
@@ -191,6 +100,9 @@ DECLARE
   v_prin_sum numeric := 0;
   v_int_sum numeric := 0;
   v_loans int := 0;
+  v_loan_ord integer;
+  v_cur_ord integer;
+  v_due_ord integer;
 BEGIN
   SELECT id INTO v_season_id
   FROM public.competition_seasons
@@ -206,6 +118,8 @@ BEGIN
   IF v_as_of IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'reason', 'no_as_of_gpsl_month', 'season_id', v_season_id);
   END IF;
+
+  v_cur_ord := public.competition_season_ordinal(v_season_id);
 
   FOR v_row IN
     SELECT
@@ -233,6 +147,13 @@ BEGIN
       )
     ORDER BY l.club_short_name, i.loan_id, i.installment_no DESC
   LOOP
+    -- Extra guard: never reverse a past season-bucket instalment
+    v_loan_ord := public.competition_season_ordinal(v_row.loan_season_id);
+    v_due_ord := coalesce(v_loan_ord, 0) + greatest(coalesce(v_row.due_season_offset, 0), 0);
+    IF v_cur_ord IS NOT NULL AND v_due_ord < v_cur_ord THEN
+      CONTINUE;
+    END IF;
+
     v_prin := round(greatest(coalesce(v_row.paid_amount, 0), 0), 2);
     v_int := round(greatest(coalesce(v_row.interest_paid, 0), 0), 2);
     v_total := v_prin + v_int;
@@ -246,7 +167,6 @@ BEGIN
       CONTINUE;
     END IF;
 
-    -- Re-open instalment
     UPDATE public.club_loan_installments
     SET status = 'pending',
         paid_amount = 0,
@@ -254,7 +174,6 @@ BEGIN
         paid_at = NULL
     WHERE id = v_row.installment_id;
 
-    -- Restore principal on the loan
     UPDATE public.club_loans
     SET outstanding_principal = outstanding_principal + v_prin,
         status = 'active',
@@ -262,7 +181,6 @@ BEGIN
         updated_at = now()
     WHERE id = v_row.loan_id;
 
-    -- Refund club cash
     UPDATE public."Club_Finances"
     SET balance = balance + v_total
     WHERE club_name = v_row.club_short_name;
@@ -304,7 +222,6 @@ BEGIN
     v_int_sum := v_int_sum + v_int;
   END LOOP;
 
-  -- Refresh paid counts / outstanding sync from pending schedule
   UPDATE public.club_loans l
   SET installments_paid = (
         SELECT count(*)::int
@@ -356,10 +273,36 @@ BEGIN
 END;
 $function$;
 
-GRANT EXECUTE ON FUNCTION public.club_loan_as_of_gpsl_month(bigint) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.club_loan_reverse_premature_collections(text) TO authenticated;
+-- Re-apply Season 1 (and any other truly due) pending instalments after the bad reverse
+DO $recollect$
+DECLARE
+  r record;
+  v_res jsonb;
+  v_clubs int := 0;
+  v_paid numeric := 0;
+  v_proc int := 0;
+BEGIN
+  FOR r IN
+    SELECT DISTINCT l.club_short_name
+    FROM public.club_loans l
+    WHERE l.status = 'active'
+    ORDER BY 1
+  LOOP
+    v_res := public.club_loan_process_due_for_club(r.club_short_name);
+    v_clubs := v_clubs + 1;
+    v_proc := v_proc + coalesce((v_res->>'processed')::int, 0);
+    v_paid := v_paid + coalesce((v_res->>'total_paid')::numeric, 0);
+  END LOOP;
 
--- Run for all clubs once
-SELECT public.club_loan_reverse_premature_collections(NULL);
+  RAISE NOTICE
+    'loan_due_season1_restore: clubs=% processed_instalments=% total_paid=%',
+    v_clubs, v_proc, v_paid;
+END;
+$recollect$;
+
+GRANT EXECUTE ON FUNCTION public.club_loan_installment_is_due(bigint, integer, text, bigint, text)
+  TO authenticated;
+GRANT EXECUTE ON FUNCTION public.club_loan_reverse_premature_collections(text)
+  TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

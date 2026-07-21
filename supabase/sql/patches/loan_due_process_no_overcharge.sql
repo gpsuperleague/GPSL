@@ -48,13 +48,6 @@ BEGIN
     RETURN false;
   END IF;
 
-  -- Soft months before the loan calendar (Aug–May): nothing Aug+ is due yet
-  IF v_active IN ('june', 'july') THEN
-    IF v_due NOT IN ('june', 'july') THEN
-      RETURN false;
-    END IF;
-  END IF;
-
   -- Playoffs = end of season → treat as May for dues
   IF v_active = 'playoffs' THEN
     v_active := 'may';
@@ -68,10 +61,19 @@ BEGIN
 
   v_due_ord := v_loan_ord + greatest(coalesce(p_due_season_offset, 0), 0);
 
+  -- Past season bucket (e.g. Season 1 schedule while living in Season 2) → due
   IF v_cur_ord > v_due_ord THEN
     RETURN true;
   END IF;
+
+  -- Future season bucket → not due
   IF v_cur_ord < v_due_ord THEN
+    RETURN false;
+  END IF;
+
+  -- Same season as this instalment's due bucket:
+  -- June/July soft months do not unlock Aug–May dues yet
+  IF v_active IN ('june', 'july') AND v_due NOT IN ('june', 'july') THEN
     RETURN false;
   END IF;
 
