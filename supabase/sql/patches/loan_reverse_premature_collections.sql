@@ -6,6 +6,7 @@
 -- early settlement stayed far too low (e.g. ₿5M / ₿2.5M instead of ~₿20M+).
 --
 -- This patch:
+--   • Ensures ledger allows entry_type = adjustment (refund lines)
 --   • Finds paid instalments that are NOT yet due (same due rules as the fix)
 --   • Refunds principal + interest to the club
 --   • Re-opens those instalments as pending
@@ -13,6 +14,52 @@
 --
 -- Run AFTER loan_due_process_no_overcharge.sql. Safe re-run (only touches
 -- paid rows that are still not due).
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- 0) Allow adjustment (and keep every live entry_type already in use)
+-- ---------------------------------------------------------------------------
+
+DO $ledger_types$
+DECLARE
+  v_list text;
+BEGIN
+  SELECT string_agg(quote_literal(t), ', ' ORDER BY t)
+  INTO v_list
+  FROM (
+    SELECT DISTINCT entry_type AS t
+    FROM public.competition_finance_ledger
+    WHERE entry_type IS NOT NULL
+    UNION
+    SELECT unnest(ARRAY[
+      'adjustment',
+      'admin_one_off_injection',
+      'admin_purchase_payment',
+      'loan_drawdown',
+      'loan_repayment_principal',
+      'loan_interest_payment',
+      'eos_injection',
+      'medical_physio_hire',
+      'medical_doctor_hire',
+      'infra_maintenance'
+    ])
+  ) s;
+
+  ALTER TABLE public.competition_finance_ledger
+    DROP CONSTRAINT IF EXISTS competition_finance_ledger_entry_type_check;
+
+  EXECUTE format(
+    'ALTER TABLE public.competition_finance_ledger
+       ADD CONSTRAINT competition_finance_ledger_entry_type_check
+       CHECK (entry_type IN (%s))',
+    v_list
+  );
+END;
+$ledger_types$;
+
+-- =============================================================================
+-- Reverse premature loan collections (Service Counter due bug follow-up)
+-- (functions below)
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.club_loan_installment_is_due(
