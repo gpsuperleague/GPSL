@@ -23,6 +23,11 @@ import {
   PESDB_FALLBACK_CARD_IMG,
 } from "./player_links.js";
 import { textMatchesSearch } from "./search_normalize.js";
+import {
+  loadScoutingTargetMap,
+  isScoutingAvailable,
+  scoutingSetupHint,
+} from "./scouting_targets.js";
 
 // Use global Supabase client (created in all_listings.html)
 const supabase = window.supabase;
@@ -38,6 +43,49 @@ let favouriteListingIds = new Set();
 let listingsRefreshTimer = null;
 let listingsRefreshMs = null;
 let listingsLoading = false;
+/** @type {Map<string, number>} */
+let scoutingTargetMap = new Map();
+let scoutingTargetsOnly = false;
+let advancedFiltersWired = false;
+
+const POSITION_ORDER = [
+  "GK", "LB", "CB", "RB",
+  "DMF", "LMF", "CMF", "RMF",
+  "AMF", "LWF", "SS", "RWF", "CF",
+];
+
+const MULTI_FILTER_COLS = ["Nation", "Position", "Playstyle"];
+const RANGE_FILTER_COLS = ["Age", "Rating", "listed_price", "contract_wage"];
+
+/** @type {Record<string, string[]>} */
+const MULTI_SELECTED = {
+  Nation: [],
+  Position: [],
+  Playstyle: [],
+};
+
+/** @type {Record<string, { value: string, label: string }[]>} */
+const MULTI_OPTIONS = {
+  Nation: [],
+  Position: [],
+  Playstyle: [],
+};
+
+/** @type {Record<string, { min: number, max: number } | null>} */
+const RANGE_BOUNDS = {
+  Age: null,
+  Rating: null,
+  listed_price: null,
+  contract_wage: null,
+};
+
+/** @type {Record<string, { min: number, max: number }>} */
+const RANGE_ACTIVE = {
+  Age: { min: 0, max: 0 },
+  Rating: { min: 0, max: 0 },
+  listed_price: { min: 0, max: 0 },
+  contract_wage: { min: 0, max: 0 },
+};
 
 const LISTINGS_REFRESH_DEFAULT_SEC = 30;
 const LISTINGS_REFRESH_MIN_SEC = 1;
@@ -99,9 +147,11 @@ function parseMoneyInput(value) {
   }
 
   await loadShortNameFromSupabase(user.id);
+  await loadScoutingTargetsForClub();
   restorePersistedListingFilters();
   wireFilterCheckboxes();
   wireListingFilters();
+  wireAdvancedListingFilters();
   wireListingRefreshButton();
   wireModalControls();
   wirePlaceBidButton();
@@ -380,6 +430,18 @@ function getListingFilterState() {
     showActive: document.getElementById("filter-active")?.checked !== false,
     showClosed: document.getElementById("filter-closed")?.checked === true,
     refreshIntervalSec: getListingsRefreshIntervalSec(),
+    scoutingTargetsOnly,
+    multi: {
+      Nation: [...MULTI_SELECTED.Nation],
+      Position: [...MULTI_SELECTED.Position],
+      Playstyle: [...MULTI_SELECTED.Playstyle],
+    },
+    ranges: {
+      Age: { ...RANGE_ACTIVE.Age },
+      Rating: { ...RANGE_ACTIVE.Rating },
+      listed_price: { ...RANGE_ACTIVE.listed_price },
+      contract_wage: { ...RANGE_ACTIVE.contract_wage },
+    },
   };
 }
 
@@ -424,6 +486,25 @@ function restorePersistedListingFilters() {
       )
     );
   }
+  if (typeof saved.scoutingTargetsOnly === "boolean") {
+    scoutingTargetsOnly = saved.scoutingTargetsOnly;
+  }
+  if (saved.multi && typeof saved.multi === "object") {
+    for (const col of MULTI_FILTER_COLS) {
+      if (Array.isArray(saved.multi[col])) {
+        MULTI_SELECTED[col] = saved.multi[col].map(String);
+      }
+    }
+  }
+  if (saved.ranges && typeof saved.ranges === "object") {
+    for (const col of RANGE_FILTER_COLS) {
+      const r = saved.ranges[col];
+      if (r && Number.isFinite(Number(r.min)) && Number.isFinite(Number(r.max))) {
+        RANGE_ACTIVE[col] = { min: Number(r.min), max: Number(r.max) };
+      }
+    }
+  }
+  syncScoutingTargetsButton();
 }
 
 function getListingsRefreshIntervalSec() {
@@ -516,6 +597,7 @@ function wireListingFilters() {
   const myBids = document.getElementById("listingsMyBidsOnly");
   const refreshInterval = document.getElementById("listingsRefreshInterval");
   const clearBtn = document.getElementById("listingsClearFilters");
+  const scoutBtn = document.getElementById("listingsScoutingTargetsBtn");
 
   let searchTimer = null;
   search?.addEventListener("input", () => {
@@ -540,6 +622,26 @@ function wireListingFilters() {
   clearBtn?.addEventListener("click", () => {
     if (search) search.value = "";
     if (myBids) myBids.checked = false;
+    scoutingTargetsOnly = false;
+    for (const col of MULTI_FILTER_COLS) MULTI_SELECTED[col] = [];
+    resetRangeFiltersToBounds();
+    syncScoutingTargetsButton();
+    refreshMultiFilterDisplays();
+    savePersistedListingFilters();
+    void renderListings();
+  });
+
+  scoutBtn?.addEventListener("click", () => {
+    if (!currentUserShort) {
+      alert("Link a club to your account to use scouting targets.");
+      return;
+    }
+    if (!isScoutingAvailable() && scoutingTargetMap.size === 0) {
+      alert(scoutingSetupHint());
+      return;
+    }
+    scoutingTargetsOnly = !scoutingTargetsOnly;
+    syncScoutingTargetsButton();
     savePersistedListingFilters();
     void renderListings();
   });
@@ -548,13 +650,436 @@ function wireListingFilters() {
     myBids.disabled = true;
     myBids.title = "Link a club to your account to use this filter";
   }
+  if (scoutBtn && !currentUserShort) {
+    scoutBtn.disabled = true;
+    scoutBtn.title = "Link a club to your account to use this filter";
+  }
+  syncScoutingTargetsButton();
+}
+
+async function loadScoutingTargetsForClub() {
+  if (!currentUserShort) {
+    scoutingTargetMap = new Map();
+    return;
+  }
+  try {
+    scoutingTargetMap = await loadScoutingTargetMap(supabase, currentUserShort);
+  } catch (err) {
+    console.warn("scouting targets:", err);
+    scoutingTargetMap = new Map();
+  }
+}
+
+function syncScoutingTargetsButton() {
+  const btn = document.getElementById("listingsScoutingTargetsBtn");
+  if (!btn) return;
+  btn.classList.toggle("button-filter-on", scoutingTargetsOnly);
+  const n = scoutingTargetMap.size;
+  btn.textContent = scoutingTargetsOnly
+    ? `★ Scouting targets (${n})`
+    : `★ My scouting targets`;
+}
+
+function closeAllMultiFilters() {
+  document
+    .querySelectorAll("#listingsAdvancedFilters .multi-filter.open")
+    .forEach((el) => el.classList.remove("open"));
+}
+
+function wireAdvancedListingFilters() {
+  if (advancedFiltersWired) return;
+  advancedFiltersWired = true;
+
+  document.addEventListener("click", () => closeAllMultiFilters());
+
+  document.querySelectorAll("#listingsAdvancedFilters .multi-filter").forEach((wrapper) => {
+    const control = wrapper.querySelector(".multi-filter-control");
+    const search = wrapper.querySelector(".multi-filter-search");
+    const optionsEl = wrapper.querySelector(".multi-filter-options");
+
+    control?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const wasOpen = wrapper.classList.contains("open");
+      closeAllMultiFilters();
+      if (!wasOpen) {
+        wrapper.classList.add("open");
+        search?.focus();
+        search?.select();
+      }
+    });
+
+    wrapper.querySelector(".multi-filter-panel")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+    });
+
+    search?.addEventListener("input", () => {
+      const col = wrapper.dataset.col;
+      renderMultiFilterOptions(col, search.value);
+    });
+
+    optionsEl?.addEventListener("change", (e) => {
+      const input = e.target;
+      if (!(input instanceof HTMLInputElement) || input.type !== "checkbox") return;
+      const col = wrapper.dataset.col;
+      const val = input.value;
+      const set = new Set(MULTI_SELECTED[col] || []);
+      if (input.checked) set.add(val);
+      else set.delete(val);
+      MULTI_SELECTED[col] = [...set];
+      updateMultiFilterDisplay(col);
+      savePersistedListingFilters();
+      void renderListings();
+    });
+  });
+
+  for (const col of RANGE_FILTER_COLS) {
+    const minEl = document.getElementById(`listingsRange-${col}-min`);
+    const maxEl = document.getElementById(`listingsRange-${col}-max`);
+    if (!minEl || !maxEl) continue;
+
+    const onInput = () => {
+      let lo = Number(minEl.value);
+      let hi = Number(maxEl.value);
+      if (!Number.isFinite(lo) || !Number.isFinite(hi)) return;
+      if (document.activeElement === minEl && lo > hi) {
+        hi = lo;
+        maxEl.value = String(hi);
+      } else if (document.activeElement === maxEl && hi < lo) {
+        lo = hi;
+        minEl.value = String(lo);
+      }
+      RANGE_ACTIVE[col] = { min: lo, max: hi };
+      updateRangeReadout(col);
+      updateRangeTrack(col);
+      savePersistedListingFilters();
+      void renderListings();
+    };
+
+    minEl.addEventListener("input", onInput);
+    maxEl.addEventListener("input", onInput);
+  }
+}
+
+function sortMultiOptions(col, values) {
+  const uniq = [...new Set(values.filter(Boolean).map(String))];
+  if (col === "Position") {
+    return uniq.sort((a, b) => {
+      const ai = POSITION_ORDER.indexOf(a);
+      const bi = POSITION_ORDER.indexOf(b);
+      if (ai === -1 && bi === -1) return a.localeCompare(b);
+      if (ai === -1) return 1;
+      if (bi === -1) return -1;
+      return ai - bi;
+    });
+  }
+  return uniq.sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+}
+
+function renderMultiFilterOptions(col, searchText = "") {
+  const wrapper = document.querySelector(
+    `#listingsAdvancedFilters .multi-filter[data-col="${col}"]`
+  );
+  const optionsEl = wrapper?.querySelector(".multi-filter-options");
+  if (!optionsEl) return;
+
+  const q = String(searchText || "").trim().toLowerCase();
+  const opts = MULTI_OPTIONS[col] || [];
+  const filtered = q
+    ? opts.filter((o) => o.label.toLowerCase().includes(q))
+    : opts;
+  const selected = new Set(MULTI_SELECTED[col] || []);
+
+  if (!filtered.length) {
+    optionsEl.innerHTML = `<div class="multi-filter-empty">No options</div>`;
+    return;
+  }
+
+  optionsEl.innerHTML = filtered
+    .map(
+      (o) => `
+      <label class="multi-filter-option">
+        <input type="checkbox" value="${escapeAttr(o.value)}" ${
+          selected.has(o.value) ? "checked" : ""
+        }>
+        <span>${escapeHtml(o.label)}</span>
+      </label>`
+    )
+    .join("");
+}
+
+function updateMultiFilterDisplay(col) {
+  const wrapper = document.querySelector(
+    `#listingsAdvancedFilters .multi-filter[data-col="${col}"]`
+  );
+  const control = wrapper?.querySelector(".multi-filter-control");
+  if (!control) return;
+  const selected = MULTI_SELECTED[col] || [];
+  if (!selected.length) {
+    control.textContent = "All";
+    return;
+  }
+  if (selected.length <= 2) {
+    control.textContent = selected.join(", ");
+    return;
+  }
+  control.textContent = `${selected.length} selected`;
+}
+
+function refreshMultiFilterDisplays() {
+  for (const col of MULTI_FILTER_COLS) {
+    renderMultiFilterOptions(
+      col,
+      document.querySelector(
+        `#listingsAdvancedFilters .multi-filter[data-col="${col}"] .multi-filter-search`
+      )?.value || ""
+    );
+    updateMultiFilterDisplay(col);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function escapeAttr(s) {
+  return escapeHtml(s).replace(/'/g, "&#39;");
+}
+
+function formatMoneyCompact(n) {
+  const v = Number(n) || 0;
+  if (v >= 1_000_000) {
+    const m = v / 1_000_000;
+    return `₿${m % 1 === 0 ? m.toFixed(0) : m.toFixed(1)}m`;
+  }
+  if (v >= 1_000) return `₿${Math.round(v / 1000)}k`;
+  return formatMoney(v);
+}
+
+function updateRangeReadout(col) {
+  const el = document.getElementById(`listingsRange-${col}`);
+  const bounds = RANGE_BOUNDS[col];
+  const active = RANGE_ACTIVE[col];
+  if (!el || !bounds || !active) {
+    if (el) el.textContent = "(—)";
+    return;
+  }
+  const fmt =
+    col === "listed_price" || col === "contract_wage"
+      ? formatMoneyCompact
+      : (n) => String(n);
+  el.textContent = `(${fmt(active.min)} – ${fmt(active.max)})`;
+}
+
+function updateRangeTrack(col) {
+  const sliders = document.getElementById(`listingsSliders-${col}`);
+  const bounds = RANGE_BOUNDS[col];
+  const active = RANGE_ACTIVE[col];
+  if (!sliders || !bounds || !active) return;
+  const span = bounds.max - bounds.min;
+  const pct = (v) => (span <= 0 ? 0 : ((v - bounds.min) / span) * 100);
+  sliders.style.setProperty("--range-min", `${pct(active.min)}%`);
+  sliders.style.setProperty("--range-max", `${pct(active.max)}%`);
+}
+
+function syncRangeInputs(col) {
+  const bounds = RANGE_BOUNDS[col];
+  const active = RANGE_ACTIVE[col];
+  const minEl = document.getElementById(`listingsRange-${col}-min`);
+  const maxEl = document.getElementById(`listingsRange-${col}-max`);
+  if (!bounds || !minEl || !maxEl) return;
+
+  const step =
+    col === "listed_price" || col === "contract_wage"
+      ? Math.max(1, Math.round((bounds.max - bounds.min) / 100) || 1)
+      : 1;
+
+  minEl.min = String(bounds.min);
+  minEl.max = String(bounds.max);
+  maxEl.min = String(bounds.min);
+  maxEl.max = String(bounds.max);
+  minEl.step = String(step);
+  maxEl.step = String(step);
+
+  let lo = Math.max(bounds.min, Math.min(bounds.max, active.min));
+  let hi = Math.max(bounds.min, Math.min(bounds.max, active.max));
+  if (lo > hi) [lo, hi] = [hi, lo];
+  RANGE_ACTIVE[col] = { min: lo, max: hi };
+
+  minEl.value = String(lo);
+  maxEl.value = String(hi);
+  minEl.disabled = bounds.max <= bounds.min;
+  maxEl.disabled = bounds.max <= bounds.min;
+  updateRangeReadout(col);
+  updateRangeTrack(col);
+}
+
+function resetRangeFiltersToBounds() {
+  for (const col of RANGE_FILTER_COLS) {
+    const bounds = RANGE_BOUNDS[col];
+    if (!bounds) {
+      RANGE_ACTIVE[col] = { min: 0, max: 0 };
+      continue;
+    }
+    RANGE_ACTIVE[col] = { min: bounds.min, max: bounds.max };
+    syncRangeInputs(col);
+  }
+}
+
+function isRangeNarrowed(col) {
+  const bounds = RANGE_BOUNDS[col];
+  const active = RANGE_ACTIVE[col];
+  if (!bounds || !active) return false;
+  return active.min > bounds.min || active.max < bounds.max;
+}
+
+function rebuildAdvancedFiltersFromData(listings, playerMap) {
+  const nations = [];
+  const positions = [];
+  const playstyles = [];
+  const ages = [];
+  const ratings = [];
+  const prices = [];
+  const wages = [];
+
+  for (const listing of listings) {
+    const player = playerMap.get(String(listing.player_id));
+    if (player?.Nation) nations.push(String(player.Nation));
+    if (player?.Position) positions.push(String(player.Position));
+    if (player?.Playstyle) playstyles.push(String(player.Playstyle));
+    const age = Number(player?.Age);
+    if (Number.isFinite(age)) ages.push(age);
+    const rating = Number(player?.Rating);
+    if (Number.isFinite(rating)) ratings.push(rating);
+    const price = Number(listing.market_value);
+    if (Number.isFinite(price) && price >= 0) prices.push(price);
+    const wage = Number(player?.contract_wage);
+    if (Number.isFinite(wage) && wage >= 0) wages.push(wage);
+  }
+
+  MULTI_OPTIONS.Nation = sortMultiOptions("Nation", nations).map((v) => ({
+    value: v,
+    label: v,
+  }));
+  MULTI_OPTIONS.Position = sortMultiOptions("Position", positions).map((v) => ({
+    value: v,
+    label: v,
+  }));
+  MULTI_OPTIONS.Playstyle = sortMultiOptions("Playstyle", playstyles).map((v) => ({
+    value: v,
+    label: v,
+  }));
+
+  for (const col of MULTI_FILTER_COLS) {
+    const allowed = new Set(MULTI_OPTIONS[col].map((o) => o.value));
+    MULTI_SELECTED[col] = (MULTI_SELECTED[col] || []).filter((v) => allowed.has(v));
+  }
+
+  const setBound = (col, values, fallbackMin, fallbackMax) => {
+    const b = values.length
+      ? { min: Math.min(...values), max: Math.max(...values) }
+      : { min: fallbackMin, max: fallbackMax };
+    if (b.max < b.min) b.max = b.min;
+
+    const prevBounds = RANGE_BOUNDS[col];
+    const prev = RANGE_ACTIVE[col];
+    const prevWasFull =
+      !prevBounds ||
+      !prev ||
+      (prev.min === prevBounds.min && prev.max === prevBounds.max) ||
+      (prev.min === 0 && prev.max === 0 && !prevBounds);
+
+    RANGE_BOUNDS[col] = b;
+
+    if (prevWasFull) {
+      RANGE_ACTIVE[col] = { min: b.min, max: b.max };
+    } else {
+      let lo = Math.max(b.min, Math.min(b.max, prev.min));
+      let hi = Math.max(b.min, Math.min(b.max, prev.max));
+      if (lo > hi) [lo, hi] = [b.min, b.max];
+      RANGE_ACTIVE[col] = { min: lo, max: hi };
+    }
+    syncRangeInputs(col);
+  };
+
+  setBound("Age", ages, 15, 45);
+  setBound("Rating", ratings, 40, 99);
+  setBound("listed_price", prices, 0, 1_000_000);
+  setBound("contract_wage", wages, 0, 1_000_000);
+
+  refreshMultiFilterDisplays();
+}
+
+function listingPassesAdvancedFilters(listing, player) {
+  if (scoutingTargetsOnly) {
+    if (!scoutingTargetMap.has(String(listing.player_id))) return false;
+  }
+
+  for (const col of MULTI_FILTER_COLS) {
+    const selected = MULTI_SELECTED[col] || [];
+    if (!selected.length) continue;
+    const val = String(player?.[col] ?? "");
+    if (!selected.includes(val)) return false;
+  }
+
+  if (isRangeNarrowed("Age")) {
+    const age = Number(player?.Age);
+    if (!Number.isFinite(age)) return false;
+    if (age < RANGE_ACTIVE.Age.min || age > RANGE_ACTIVE.Age.max) return false;
+  }
+
+  if (isRangeNarrowed("Rating")) {
+    const rating = Number(player?.Rating);
+    if (!Number.isFinite(rating)) return false;
+    if (rating < RANGE_ACTIVE.Rating.min || rating > RANGE_ACTIVE.Rating.max) {
+      return false;
+    }
+  }
+
+  if (isRangeNarrowed("listed_price")) {
+    const price = Number(listing.market_value);
+    if (!Number.isFinite(price)) return false;
+    if (
+      price < RANGE_ACTIVE.listed_price.min ||
+      price > RANGE_ACTIVE.listed_price.max
+    ) {
+      return false;
+    }
+  }
+
+  if (isRangeNarrowed("contract_wage")) {
+    const wage = Number(player?.contract_wage);
+    if (!Number.isFinite(wage)) return false;
+    if (
+      wage < RANGE_ACTIVE.contract_wage.min ||
+      wage > RANGE_ACTIVE.contract_wage.max
+    ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function advancedFiltersActive() {
+  if (scoutingTargetsOnly) return true;
+  for (const col of MULTI_FILTER_COLS) {
+    if ((MULTI_SELECTED[col] || []).length) return true;
+  }
+  for (const col of RANGE_FILTER_COLS) {
+    if (isRangeNarrowed(col)) return true;
+  }
+  return false;
 }
 
 function updateListingsFilterSummary(shown, total) {
   const el = document.getElementById("listingsFilterSummary");
   if (!el) return;
   const { nameQuery, myBidsOnly } = getListingFilterState();
-  const active = nameQuery || myBidsOnly;
+  const active = nameQuery || myBidsOnly || advancedFiltersActive();
   if (!active || total === 0) {
     el.hidden = true;
     el.textContent = "";
@@ -609,6 +1134,8 @@ async function renderListings() {
   if (gen !== renderGeneration) return;
 
   const { nameQuery, myBidsOnly } = getListingFilterState();
+  rebuildAdvancedFiltersFromData(sortedRows, playerMap);
+
   let filteredRows = sortedRows;
   if (nameQuery) {
     filteredRows = filteredRows.filter((listing) => {
@@ -621,6 +1148,12 @@ async function renderListings() {
       userBidListingIds.has(String(listing.id))
     );
   }
+  filteredRows = filteredRows.filter((listing) =>
+    listingPassesAdvancedFilters(
+      listing,
+      playerMap.get(String(listing.player_id))
+    )
+  );
 
   updateListingsFilterSummary(filteredRows.length, sortedRows.length);
 
