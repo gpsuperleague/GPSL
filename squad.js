@@ -1941,7 +1941,7 @@ async function releasePlayerFromContract(playerId) {
   const confirmed = window.confirm(
     `Release ${player.Name} from their contract?\n\n` +
       `No market value received.\n` +
-      `Buy-out cost: ${formatMoney(cost)} (${seasons} season${seasons === 1 ? "" : "s"} × ${formatWage(wage)}).\n\n` +
+      `Buy-out cost: ${formatMoney(cost)} (${seasons} season${seasons === 1 ? "" : "s"} × ${formatWage(wage)}) — debited even if overdrawn.\n\n` +
       `${unlockNote}\n\n` +
       `${voluntaryReleasesRemaining - 1} voluntary release(s) will remain this season.`
   );

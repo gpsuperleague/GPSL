@@ -211,12 +211,7 @@ BEGIN
     RAISE EXCEPTION 'Club finances not found for %', v_club;
   END IF;
 
-  IF v_balance < v_cost THEN
-    RAISE EXCEPTION
-      'Insufficient balance. Contract buy-out costs ₿ % (balance ₿ %).',
-      to_char(v_cost, 'FM999999999999'),
-      to_char(v_balance, 'FM999999999999');
-  END IF;
+  -- Buy-out always debits (may deepen a negative balance); owners manage FFP themselves.
 
   UPDATE public."Player_Transfer_Listings" l
   SET status = 'Closed',

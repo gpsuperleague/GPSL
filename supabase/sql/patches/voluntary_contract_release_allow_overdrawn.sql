@@ -1,5 +1,8 @@
--- Hotfix: Transfer_History.buyer_club_id NOT NULL — use FOREIGN sentinel
--- Run once in Supabase SQL Editor (after voluntary_contract_release.sql)
+-- =============================================================================
+-- Voluntary contract release: allow buy-out when overdrawn
+-- Buy-out still debits Club_Finances; owners manage FFP themselves.
+-- Safe re-run (replaces player_voluntary_contract_release).
+-- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.player_voluntary_contract_release(p_player_id text)
 RETURNS jsonb
