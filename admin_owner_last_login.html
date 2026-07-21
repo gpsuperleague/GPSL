@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Owner Last Login — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .login-toolbar {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+      margin-bottom: 12px;
+    }
+    .login-toolbar input[type="search"] {
+      padding: 8px 10px; min-width: 220px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .login-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .login-table th,
+    .login-table td {
+      border-bottom: 1px solid #333; padding: 8px 6px; text-align: left; vertical-align: top;
+    }
+    .login-table th { color: #ff9900; font-weight: 600; white-space: nowrap; }
+    .login-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .login-table .muted { color: #888; font-size: 12px; }
+    .login-table .never { color: #f88; }
+    .login-table .stale { color: #fc6; }
+    button.button.secondary { background: #444; color: #ddd; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Owner Last Login</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Last sign-in</h2>
+        <p class="note">
+          Most recent logins at the top; longest time since login at the bottom.
+          Uses Supabase Auth <code>last_sign_in_at</code>.
+          Requires <code>patches/admin_owner_last_logins.sql</code>.
+        </p>
+        <div class="login-toolbar">
+          <input type="search" id="loginSearch" placeholder="Filter tag / club / status…">
+          <button type="button" id="loginRefreshBtn" class="button secondary">Refresh</button>
+        </div>
+        <div id="loginStatus" class="status-line"></div>
+        <div style="overflow-x:auto;">
+          <table class="login-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Owner</th>
+                <th>Club</th>
+                <th>Status</th>
+                <th>Last login (UK)</th>
+                <th class="num">Time since</th>
+              </tr>
+            </thead>
+            <tbody id="loginTableBody">
+              <tr><td colspan="6">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_owner_last_login.js"></script>
+</body>
+</html>

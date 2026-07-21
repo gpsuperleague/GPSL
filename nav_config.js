@@ -234,6 +234,12 @@ export const NAV_SECTIONS = [
       { href: "waiting_list.html", label: "Waiting list", page: "waiting_list" },
       { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings" },
       { href: "owner_profile.html", label: "My owner profile", page: "owner_profile" },
+      {
+        href: "admin_owner_last_login.html",
+        label: "Owner Last Login",
+        page: "admin_owner_last_login",
+        adminOnly: true,
+      },
       { href: "season_calendar.html", label: "Season calendar", page: "season_calendar" },
       { href: "natter.html", label: "Natter", page: "natter" },
       { href: "challenges.html", label: "Season challenges", page: "challenges" },

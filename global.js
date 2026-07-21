@@ -1933,6 +1933,7 @@ export async function buildNav() {
 
     const items = (section.items || [])
       .filter((item) => {
+        if (item.adminOnly && !isGpslAdminNav) return false;
         if (item.requiresDraft && !draftEnabled) return false;
         if (item.requiresSpecialAuction && !specialAuctionNavVisible) return false;
         if (isWaitingListMember && item.page === "club_auction") return false;
