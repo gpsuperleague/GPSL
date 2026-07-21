@@ -48,6 +48,16 @@
           Then use <a href="admin_owners_waiting_list.html">Waiting list</a> to invite to auction.
         </p>
         <p class="note">
+          <b>Self-serve join:</b> post
+          <a href="join_gpsl.html" style="color:#ff9900;">join_gpsl.html</a>
+          in Discord. Members verify via Discord OAuth, set email/password, accept fair play,
+          and land on the waiting list ordered by Discord join date.
+          Requires SQL <code>discord_join_gpsl.sql</code> plus edge functions
+          <code>discord-join-*</code> and secrets <code>DISCORD_CLIENT_ID</code> /
+          <code>DISCORD_CLIENT_SECRET</code> (OAuth app redirect =
+          <code>https://gpsuperleague.github.io/GPSL/join_gpsl.html</code>).
+        </p>
+        <p class="note">
           Deploy edge function <code>discord-guild-members</code> and set secrets
           <code>DISCORD_BOT_TOKEN</code> + <code>DISCORD_GUILD_ID</code>.
           Also redeploy <code>create-owner-club-auction</code> (supports Discord tag).

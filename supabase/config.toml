@@ -6,7 +6,13 @@ verify_jwt = false
 [functions.set-owner-password]
 verify_jwt = false
 
-[functions.create-owner-club-auction]
+[functions.discord-join-config]
+verify_jwt = false
+
+[functions.discord-join-callback]
+verify_jwt = false
+
+[functions.discord-join-complete]
 verify_jwt = false
 
 # Auth checked inside (admin email). Gateway JWT on OPTIONS breaks CORS preflight.

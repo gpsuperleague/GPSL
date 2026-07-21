@@ -7,6 +7,7 @@ export const AUTH_PAGES = new Set([
   "login",
   "reset_password",
   "index",
+  "join_gpsl",
 ]);
 
 /** Members on the waiting list (no club). */
