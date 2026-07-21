@@ -145,7 +145,7 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
       pendingByLine,
       "infra_maintenance",
       cost,
-      "12.5% × capacity × ₿1,500 (season charge, not posted yet)",
+      "Stadium maintenance — posted at end of season (Close Finances). 12.5% × capacity × ₿1,500.",
       byLine
     );
   }

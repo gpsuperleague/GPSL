@@ -138,8 +138,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "infra_maintenance",
         label: "Stadium maintenance",
         types: ["infra_maintenance"],
-        planned: true,
-        note: "12.5% of stadium value per season; value = capacity × ₿1,500.",
+        note: "Posted at Close Finances — 12.5% of stadium value (capacity × ₿1,500).",
       },
       {
         id: "infra_purchase",

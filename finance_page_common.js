@@ -11,7 +11,7 @@ import {
   aggregateLedgerByLine,
   renderFinanceSections,
   summariseLedgerTotals,
-} from "./finance_ui.js?v=20260720-loan-amt-visible";
+} from "./finance_ui.js?v=20260721-stadium-maint";
 import { buildFinanceProjections } from "./finance_projections.js?v=20260720-loan-section";
 import {
   appendAssignmentInfraPurchaseLedger,
