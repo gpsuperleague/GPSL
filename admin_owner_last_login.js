@@ -1,6 +1,11 @@
-import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+import { supabase, initGlobal, getAuthUser } from "./global.js";
 
-primeAdminPageChrome();
+function setStatus(elementId, msg, ok = true) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  el.textContent = msg || "";
+  el.className = ok ? "status-line" : "status-line error";
+}
 
 /** @type {Array<Record<string, unknown>>} */
 let rows = [];
@@ -205,7 +210,13 @@ async function refresh() {
 }
 
 async function main() {
-  if (!(await initAdminPage())) return;
+  const user = await getAuthUser();
+  if (!user) {
+    window.location = "login.html";
+    return;
+  }
+
+  await initGlobal();
 
   document.getElementById("loginRefreshBtn")?.addEventListener("click", () => {
     void refresh();

@@ -1,12 +1,19 @@
 <!DOCTYPE html>
-<html lang="en" class="admin-root">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <style>html,body{background:#111;color:#ddd;margin:0}</style>
-  <title>Owner Last Login — GPSL Admin</title>
+  <title>Owner Last Login — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
-  <link rel="stylesheet" href="admin.css">
   <style>
+    .login-page { max-width: 1100px; margin: 0 auto; padding: 16px 20px 40px; }
+    .login-page h1 { color: #ff9900; margin: 12px 0 16px; font-size: 1.5rem; }
+    .login-page .card {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 16px 18px;
+    }
+    .login-page .note { color: #aaa; font-size: 13px; margin: 0 0 10px; line-height: 1.45; }
+    .login-page .status-line { margin: 8px 0 12px; color: #ccc; font-size: 13px; }
+    .login-page .status-line.error { color: #f88; }
     .login-toolbar {
       display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
       margin-bottom: 12px;
@@ -25,49 +32,42 @@
     .login-table .muted { color: #888; font-size: 12px; }
     .login-table .never { color: #f88; }
     .login-table .stale { color: #fc6; }
-    button.button.secondary { background: #444; color: #ddd; }
+    button.button.secondary { background: #444; color: #ddd; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
   </style>
 </head>
-<body class="admin-page">
+<body>
   <div id="nav"></div>
-  <h1 class="admin-title">Owner Last Login</h1>
-  <div id="adminLayout">
-    <div class="admin-main" id="adminMain">
-      <div class="card">
-        <h2>GPSL site last login</h2>
-        <p class="note">
-          <b>Website sign-in only</b> — last login time, plus how many times each owner signed in
-          during the <b>previous</b> and <b>current</b> GPSL month windows (Fri 19:00 UK unlock → lock).
-          Most recent last-login at the top. No emails are shown.
-        </p>
-        <p class="note">
-          Login counts use site login events plus active Auth sessions in each GPSL month window.
-          Re-run <code>patches/admin_owner_last_logins.sql</code> if counts stay at 0 after a fresh sign-in.
-        </p>
-        <div class="login-toolbar">
-          <input type="search" id="loginSearch" placeholder="Filter tag / club / status…">
-          <button type="button" id="loginRefreshBtn" class="button secondary">Refresh</button>
-        </div>
-        <div id="loginStatus" class="status-line"></div>
-        <div style="overflow-x:auto;">
-          <table class="login-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Owner</th>
-                <th>Club</th>
-                <th>Status</th>
-                <th>Last login (UK)</th>
-                <th class="num">Time since</th>
-                <th class="num" id="prevMonthCol">Prev month logins</th>
-                <th class="num" id="curMonthCol">Current month logins</th>
-              </tr>
-            </thead>
-            <tbody id="loginTableBody">
-              <tr><td colspan="8">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
+  <div class="login-page">
+    <h1>Owner Last Login</h1>
+    <div class="card">
+      <p class="note">
+        See when other owners last signed in to the GPSL site, and how often during the
+        <b>previous</b> and <b>current</b> GPSL months. Useful when arranging fixtures or checking who is active.
+        Most recent at the top. No emails are shown.
+      </p>
+      <div class="login-toolbar">
+        <input type="search" id="loginSearch" placeholder="Filter tag / club / status…">
+        <button type="button" id="loginRefreshBtn" class="button secondary">Refresh</button>
+      </div>
+      <div id="loginStatus" class="status-line"></div>
+      <div style="overflow-x:auto;">
+        <table class="login-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Owner</th>
+              <th>Club</th>
+              <th>Status</th>
+              <th>Last login (UK)</th>
+              <th class="num">Time since</th>
+              <th class="num" id="prevMonthCol">Prev month logins</th>
+              <th class="num" id="curMonthCol">Current month logins</th>
+            </tr>
+          </thead>
+          <tbody id="loginTableBody">
+            <tr><td colspan="8">Loading…</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>

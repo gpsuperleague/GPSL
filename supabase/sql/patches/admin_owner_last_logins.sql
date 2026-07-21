@@ -79,8 +79,9 @@ DECLARE
   v_cur_end timestamptz;
   v_prev_end timestamptz;
 BEGIN
-  IF NOT public.is_gpsl_admin() THEN
-    RAISE EXCEPTION 'Admin only';
+  -- Any signed-in owner/member may view (helps gauge who is active).
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Not signed in';
   END IF;
 
   SELECT s.id INTO v_season_id

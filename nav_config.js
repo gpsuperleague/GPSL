@@ -238,7 +238,6 @@ export const NAV_SECTIONS = [
         href: "admin_owner_last_login.html",
         label: "Owner Last Login",
         page: "admin_owner_last_login",
-        adminOnly: true,
       },
       { href: "season_calendar.html", label: "Season calendar", page: "season_calendar" },
       { href: "natter.html", label: "Natter", page: "natter" },
