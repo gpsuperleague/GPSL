@@ -1,5 +1,13 @@
--- GPDB: effective (per-season) wage for filters — actual contract wage or forecast from MV.
--- Self-contained: does not require calculate_standard_player_wage() (inline Championship %).
+-- =============================================================================
+-- GPDB: numeric market_value for range filters
+--
+-- Players.market_value is often text (or filtered as text). PostgREST
+-- .gte()/.lte() then compare lexicographically, so e.g. "39975000" passes
+-- lte "4000000" ('3' < '4') while "900000" can fail ('9' > '4').
+--
+-- Adds market_value_n on gpdb_players_view for correct numeric MV filters.
+-- Safe re-run.
+-- =============================================================================
 
 CREATE OR REPLACE VIEW public.gpdb_players_view
 WITH (security_invoker = true) AS
@@ -21,3 +29,5 @@ LEFT JOIN public.global_settings gs ON gs.id = 1;
 
 GRANT SELECT ON public.gpdb_players_view TO authenticated;
 GRANT SELECT ON public.gpdb_players_view TO anon;
+
+NOTIFY pgrst, 'reload schema';

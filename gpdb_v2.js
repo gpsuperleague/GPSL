@@ -263,6 +263,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let WAGE_FORECAST_SETTINGS = { superleague: 5, championship: 4 };
   const GPDB_PLAYERS_VIEW = "gpdb_players_view";
   let gpdbUseEffectiveWageView = false;
+  let gpdbHasMarketValueN = false;
 
   async function probeGpdbPlayersView() {
     const { error } = await supabase
@@ -270,10 +271,24 @@ document.addEventListener("DOMContentLoaded", () => {
       .select("Konami_ID", { head: true, count: "exact" });
 
     gpdbUseEffectiveWageView = !error;
+    gpdbHasMarketValueN = false;
     if (error) {
       console.warn(
         "GPDB effective_wage view unavailable — run supabase/sql/patches/gpdb_effective_wage_view.sql",
         error
+      );
+      return;
+    }
+
+    const probeN = await supabase
+      .from(GPDB_PLAYERS_VIEW)
+      .select("market_value_n", { head: true })
+      .limit(1);
+    gpdbHasMarketValueN = !probeN.error;
+    if (probeN.error) {
+      console.warn(
+        "GPDB market_value_n missing — run supabase/sql/patches/gpdb_market_value_numeric_filter.sql",
+        probeN.error
       );
     }
   }
@@ -286,6 +301,25 @@ document.addEventListener("DOMContentLoaded", () => {
     const stored = Number(player?.contract_wage);
     if (Number.isFinite(stored) && stored > 0) return stored;
     return forecastWageFromMarketValue(player.market_value);
+  }
+
+  function refinePlayersByMarketValue(players, mvMin, mvMax) {
+    const lo = Number(mvMin);
+    const hi = Number(mvMax);
+    if (!Number.isFinite(lo) || !Number.isFinite(hi)) return players;
+    return players.filter((player) => {
+      const mv = Number(
+        nullifNumeric(player?.market_value_n ?? player?.market_value)
+      );
+      if (!Number.isFinite(mv)) return false;
+      return mv >= lo && mv <= hi;
+    });
+  }
+
+  function nullifNumeric(value) {
+    if (value == null || value === "") return NaN;
+    const n = Number(String(value).replace(/,/g, "").trim());
+    return Number.isFinite(n) ? n : NaN;
   }
 
   function refinePlayersByContractWage(players, wMin, wMax) {
@@ -1016,7 +1050,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const bounds = RANGE_BOUNDS[col];
         const active = normalizedRangeActive(col);
         if (bounds && active && isRangeFilterActive(col)) {
-          query = query.gte(col, active.min).lte(col, active.max);
+          // Prefer numeric view column — text market_value compares lexicographically
+          // ("39975000" incorrectly passes lte "4000000").
+          if (gpdbUseEffectiveWageView && gpdbHasMarketValueN) {
+            query = query.gte("market_value_n", active.min).lte("market_value_n", active.max);
+          } else {
+            query = query.gte("market_value", active.min).lte("market_value", active.max);
+          }
         }
         continue;
       }
@@ -1078,6 +1118,20 @@ document.addEventListener("DOMContentLoaded", () => {
     if (error && gpdbUseEffectiveWageView && String(error.message || "").includes("effective_wage")) {
       console.warn("GPDB falling back from effective_wage view:", error);
       gpdbUseEffectiveWageView = false;
+      gpdbHasMarketValueN = false;
+      return loadPage(page);
+    }
+
+    if (
+      error &&
+      gpdbHasMarketValueN &&
+      String(error.message || "").includes("market_value_n")
+    ) {
+      console.warn(
+        "GPDB market_value_n filter failed — run gpdb_market_value_numeric_filter.sql",
+        error
+      );
+      gpdbHasMarketValueN = false;
       return loadPage(page);
     }
 
@@ -1103,6 +1157,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     let filtered = data || [];
+
+    const mvBounds = RANGE_BOUNDS.market_value;
+    const mvActive = normalizedRangeActive("market_value");
+    if (mvBounds && mvActive && isRangeFilterActive("market_value")) {
+      filtered = refinePlayersByMarketValue(filtered, mvActive.min, mvActive.max);
+    }
 
     const wageBounds = RANGE_BOUNDS.contract_wage;
     const wageActive = normalizedRangeActive("contract_wage");
