@@ -5,15 +5,6 @@ import { APP_VERSION } from "./app_version.js";
 /** Bumped when admin nav structure changes — keeps dynamic import cache fresh. */
 export const NAV_CONFIG_VERSION = APP_VERSION;
 
-const seasonNavMod = await import(
-  `./admin_season_nav.js?v=${NAV_CONFIG_VERSION}`
-);
-const seasonBreakNavMod = await import(
-  `./admin_season_break_nav.js?v=${NAV_CONFIG_VERSION}`
-);
-const ownerNavMod = await import(
-  `./admin_owners_nav.js?v=${NAV_CONFIG_VERSION}`
-);
 const testingNavMod = await import(
   `./admin_testing_nav.js?v=${NAV_CONFIG_VERSION}`
 );
@@ -21,95 +12,20 @@ const adminMainNavMod = await import(
   `./admin_main_nav.js?v=${NAV_CONFIG_VERSION}`
 );
 
-const {
-  seasonAdminNavHasActive,
-  renderSeasonAdminNavHtml,
-  seasonMgmtAdminNavHasActive,
-  renderSeasonMgmtAdminNavHtml,
-} = seasonNavMod;
-const { seasonBreakNavHasActive, renderSeasonBreakNavHtml } = seasonBreakNavMod;
-const { ownerAdminNavHasActive, renderOwnerAdminNavHtml } = ownerNavMod;
 const { testingAdminNavHasActive, renderTestingAdminNavHtml } = testingNavMod;
 const {
   renderAdminMainSectionHtml,
   adminMainSectionHasActive,
 } = adminMainNavMod;
 
-/** Render admin mega-menu blocks (new Admin + legacy Admin2). */
-function ensureTestingNavLinks(html, pathname) {
-  const file = normalizeNavPath(pathname);
-  let out = html;
-
-  if (!out.includes("admin_site_map.html")) {
-    const active = file === "admin_site_map.html" ? " active" : "";
-    out = out.replace(
-      /class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">/,
-      `class="nav-subgroup-panel nav-subgroup-panel-mega" role="group"><a href="admin_site_map.html" class="nav-link nav-link-sub${active}">Site map</a>`
-    );
-  }
-
-  if (!out.includes("admin_test_deploy_fixture.html")) {
-    const active = file === "admin_test_deploy_fixture.html" ? " active" : "";
-    out = out.replace(
-      /(<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">[\s\S]*)(<\/div>\s*<\/div>\s*)$/,
-      `$1<a href="admin_test_deploy_fixture.html" class="nav-link nav-link-sub nav-link-danger${active}">Deploy single fixture</a>$2`
-    );
-  }
-
-  if (!out.includes("admin_test_end_month.html")) {
-    const active = file === "admin_test_end_month.html" ? " active" : "";
-    out = out.replace(
-      /(<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">[\s\S]*)(<\/div>\s*<\/div>\s*)$/,
-      `$1<a href="admin_test_end_month.html" class="nav-link nav-link-sub nav-link-danger${active}">End Month Early</a>$2`
-    );
-  }
-
-  if (!out.includes("admin_test_club_availability.html")) {
-    const active = file === "admin_test_club_availability.html" ? " active" : "";
-    out = out.replace(
-      /(<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">[\s\S]*)(<\/div>\s*<\/div>\s*)$/,
-      `$1<a href="admin_test_club_availability.html" class="nav-link nav-link-sub${active}">Club availability &amp; timezone</a>$2`
-    );
-  }
-
-  return out;
-}
-
-function ensureSeasonManagementNavLinks(html, pathname) {
-  const file = normalizeNavPath(pathname);
-  let out = html;
-
-  if (!out.includes("admin_gpsl_sport.html")) {
-    const active = file === "admin_gpsl_sport.html" ? " active" : "";
-    out = out.replace(
-      /class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">/,
-      `class="nav-subgroup-panel nav-subgroup-panel-mega" role="group"><a href="admin_gpsl_sport.html" class="nav-link nav-link-sub${active}">Republish GPSL Sport</a>`
-    );
-  }
-
-  return out;
-}
-
+/** Render Admin mega-menu blocks (adminMainMega + Testing only). */
 export function renderAdminMegaNavHtml(item, pathname, search = "") {
   if (item?.adminMainMega && item.section) {
-    let html = renderAdminMainSectionHtml(item.section, pathname, search);
-    if (item.section === "season_management") {
-      html = ensureSeasonManagementNavLinks(html, pathname);
-    }
-    return html;
+    return renderAdminMainSectionHtml(item.section, pathname, search);
   }
   if (item?.testingMega) {
-    return ensureTestingNavLinks(renderTestingAdminNavHtml(pathname, search), pathname);
+    return renderTestingAdminNavHtml(pathname, search);
   }
-  if (item?.seasonMega) return renderSeasonAdminNavHtml(pathname, search);
-  if (item?.seasonMgmtMega) {
-    return ensureSeasonManagementNavLinks(
-      renderSeasonMgmtAdminNavHtml(pathname, search),
-      pathname
-    );
-  }
-  if (item?.seasonBreakMega) return renderSeasonBreakNavHtml(pathname, search);
-  if (item?.ownersMega) return renderOwnerAdminNavHtml(pathname, search);
   return "";
 }
 
@@ -403,17 +319,8 @@ export function sectionHasActiveItem(section, pathname, search) {
       return adminMainSectionHasActive(item.section, pathname, search);
     }
     if (item.testingMega) {
-      return (
-        testingAdminNavHasActive(pathname, search)
-        || normalizeNavPath(pathname) === "admin_site_map.html"
-        || normalizeNavPath(pathname) === "admin_test_club_availability.html"
-        || normalizeNavPath(pathname) === "admin_test_end_month.html"
-      );
+      return testingAdminNavHasActive(pathname, search);
     }
-    if (item.seasonMega) return seasonAdminNavHasActive(pathname, search);
-    if (item.seasonMgmtMega) return seasonMgmtAdminNavHasActive(pathname, search);
-    if (item.seasonBreakMega) return seasonBreakNavHasActive(pathname, search);
-    if (item.ownersMega) return ownerAdminNavHasActive(pathname, search);
     if (item.heading || !item.href) return false;
     return isNavItemActive(item, pathname, search);
   });

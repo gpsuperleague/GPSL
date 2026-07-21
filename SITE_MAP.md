@@ -14,6 +14,6 @@ Sources of truth for nav structure:
 
 - `nav_config.js` — owner top nav + admin mega-menu entries
 - `dashboard_registry.js` — dashboard pin targets
-- `admin_season_nav.js`, `admin_season_break_nav.js`, `admin_owners_nav.js`, `admin_testing_nav.js` — admin submenus
+- `admin_main_nav.js`, `admin_testing_nav.js` — Admin mega-menus + checklist; season sidebars reuse `admin_main_nav`
 
 Cursor agents are reminded via `.cursor/rules/site-map-maintenance.mdc`.

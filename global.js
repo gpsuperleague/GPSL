@@ -1513,11 +1513,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     (item) =>
       item.heading ||
       item.adminMainMega ||
-      item.testingMega ||
-      item.seasonMega ||
-      item.seasonMgmtMega ||
-      item.seasonBreakMega ||
-      item.ownersMega
+      item.testingMega
   );
   if (!hasHeadings) {
     let flat = "";
@@ -1582,11 +1578,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
   for (const item of items) {
     if (
       item.adminMainMega ||
-      item.testingMega ||
-      item.seasonMega ||
-      item.seasonMgmtMega ||
-      item.seasonBreakMega ||
-      item.ownersMega
+      item.testingMega
     ) {
       if (renderMegaNavHtml) {
         flushPanel();

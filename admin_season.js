@@ -1,9 +1,8 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import {
-  renderSeasonAdminNavHtml,
-  renderSeasonMgmtAdminNavHtml,
-  isSeasonAdminNavItemActive,
-} from "./admin_season_nav.js";
+  renderAdminSidebarHtml,
+  wireAdminSidebarNav,
+} from "./admin_main_nav.js";
 
 primeAdminPageChrome();
 import {
@@ -25,6 +24,16 @@ import {
 let compRegistrations = [];
 let compSelectedSeasonId = null;
 
+/** Sidebar mirrors live Admin mega sections for season workflow. */
+const SEASON_SIDEBAR_SECTIONS = [
+  "create_season",
+  "pre_season",
+  "season_management",
+  "season_checklist",
+  "close_season",
+  "end_of_season",
+];
+
 const SEASON_PANEL_IDS = new Set([
   "wf-overview",
   "wf-calendar",
@@ -38,9 +47,7 @@ function renderSeasonSidebar() {
   if (!root) return;
   const pathname = window.location.pathname;
   const search = window.location.search || "";
-  root.innerHTML =
-    renderSeasonAdminNavHtml(pathname, search) +
-    renderSeasonMgmtAdminNavHtml(pathname, search);
+  root.innerHTML = renderAdminSidebarHtml(SEASON_SIDEBAR_SECTIONS, pathname, search);
 }
 
 function showSeasonPanel(panelId) {
@@ -63,17 +70,7 @@ function wireSeasonSidebar() {
   const root = document.getElementById("adminSeasonNav");
   if (!root) return;
 
-  root.querySelectorAll("[data-nav-subgroup]").forEach((subgroup) => {
-    const btn = subgroup.querySelector(".nav-subgroup-summary");
-    if (!btn) return;
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const willOpen = !subgroup.classList.contains("open");
-      subgroup.classList.toggle("open", willOpen);
-      btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
-    });
-  });
+  wireAdminSidebarNav(root);
 
   root.querySelectorAll('a.nav-link-sub[href*="admin_season.html#"]').forEach((link) => {
     link.addEventListener("click", (e) => {

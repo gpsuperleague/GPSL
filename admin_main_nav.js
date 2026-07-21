@@ -7,13 +7,12 @@ import { TESTING_ADMIN_NAV } from "./admin_testing_nav.js";
  * ~ groups → nested headers
  * links → pages (hash when needed)
  *
- * This file is the source of truth for the live Admin mega-menus and the
- * Admin checklist (getAdminWorkflowChecklist). Prefer editing here over
- * admin_season_nav.js / admin_season_break_nav.js / admin_owners_nav.js.
+ * This file is the source of truth for the live Admin mega-menus, Admin
+ * checklist, and season / season-break page sidebars.
  *
  * Testing links: maintain only in admin_testing_nav.js (TESTING_ADMIN_NAV).
  *
- * After editing this file (or any admin_*_nav.js), bump APP_VERSION in
+ * After editing this file (or admin_testing_nav.js), bump APP_VERSION in
  * app_version.js — otherwise browsers keep the old menu via module cache.
  */
 
@@ -399,4 +398,32 @@ export function renderAdminMainSectionHtml(sectionId, pathname, search = "") {
 
   html += `</div></div>`;
   return html;
+}
+
+/**
+ * Page sidebars (admin_season / admin_season_break) — same sections as the
+ * live Admin mega, so there is only one link tree to maintain.
+ * @param {string[]} sectionIds
+ */
+export function renderAdminSidebarHtml(sectionIds, pathname, search = "") {
+  return (sectionIds || [])
+    .map((id) => renderAdminMainSectionHtml(id, pathname, search))
+    .filter(Boolean)
+    .join("");
+}
+
+/** Wire expand/collapse for sidebar mega subgroups. */
+export function wireAdminSidebarNav(root) {
+  if (!root) return;
+  root.querySelectorAll("[data-nav-subgroup]").forEach((subgroup) => {
+    const btn = subgroup.querySelector(":scope > .nav-subgroup-summary");
+    if (!btn) return;
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const willOpen = !subgroup.classList.contains("open");
+      subgroup.classList.toggle("open", willOpen);
+      btn.setAttribute("aria-expanded", willOpen ? "true" : "false");
+    });
+  });
 }
