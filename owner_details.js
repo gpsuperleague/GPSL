@@ -616,7 +616,7 @@ function wireHolidayBooking() {
     if (startInput) startInput.value = "";
     if (endInput) endInput.value = "";
     updateHolidayDayPreview();
-    setHolidayHint("Holiday booked — overlapping match months unlock for early play.");
+    setHolidayHint("Holiday booked — overlapping match months unlock for early arrange/play (min 24 squad).");
     await refreshHolidaySection();
   });
 }

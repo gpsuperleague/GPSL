@@ -971,6 +971,15 @@ function rangesOverlap(aStart, aEnd, bStart, bEnd) {
 }
 
 export function isFixtureHolidayPlayable(fixture, clubIdentity, ctx) {
+  if (!fixture) return false;
+
+  if (fixture.is_holiday_early === true) return true;
+
+  if (ctx?.earlyFixtureIds instanceof Set) {
+    const id = Number(fixture.id);
+    if (Number.isFinite(id) && ctx.earlyFixtureIds.has(id)) return true;
+  }
+
   if (!ctx?.holidays?.length || !ctx?.calendarMonths?.length) return false;
 
   const monthRow = ctx.calendarMonths.find(

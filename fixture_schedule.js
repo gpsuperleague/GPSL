@@ -110,6 +110,21 @@ function catchUpBannerHtml() {
   </div>`;
 }
 
+function holidayEarlyBannerHtml() {
+  if (!ctx?.is_holiday_early) return "";
+  const playMonth =
+    GPSL_MONTH_LABELS[ctx.fixture?.gpsl_month] || ctx.fixture?.gpsl_month || "later";
+  const prop = ctx.proposal_window || {};
+  const schedMonth =
+    prop.gpsl_month && GPSL_MONTH_LABELS[prop.gpsl_month]
+      ? GPSL_MONTH_LABELS[prop.gpsl_month]
+      : prop.gpsl_month || "the current GPSL month";
+  return `<div class="catch-up-banner holiday-early-banner">
+    <strong>Holiday early play</strong> — this <b>${playMonth}</b> fixture is unlocked now.
+    Arrange and play during <b>${schedMonth}</b> (both clubs need a full squad, min 24).
+  </div>`;
+}
+
 function renderAgreedPanel(root, f, sch) {
   const homeTz = ctx.home_timezone || UK_TZ;
   const awayTz = ctx.away_timezone || UK_TZ;
@@ -171,6 +186,7 @@ function renderAgreedPanel(root, f, sch) {
 
   root.innerHTML = `
     ${catchUpBannerHtml()}
+    ${holidayEarlyBannerHtml()}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
       <p class="status-agreed"><b>Kick-off agreed:</b> ${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
@@ -462,7 +478,7 @@ function render() {
   const propMonth =
     ctx.proposal_window?.gpsl_month && GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
       ? GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
-      : ctx.is_catch_up
+      : ctx.is_catch_up || ctx.is_holiday_early
         ? "the current GPSL month"
         : "this GPSL month";
 
@@ -473,6 +489,7 @@ function render() {
 
   root.innerHTML = `
     ${catchUpBannerHtml()}
+    ${holidayEarlyBannerHtml()}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
       ${responseHtml}

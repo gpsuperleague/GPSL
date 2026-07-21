@@ -59,16 +59,28 @@ export function isFixtureHolidayPlayable(fixture, clubIdentity, ctx) {
 }
 
 export async function loadHolidayPlayContext() {
-  const [holidayState, calendarMonths] = await Promise.all([
+  const [holidayState, calendarMonths, earlyRes] = await Promise.all([
     loadOwnerHolidays(),
     loadSeasonCalendarMonths(supabase),
+    supabase.rpc("match_schedule_my_holiday_early_fixture_ids"),
   ]);
+
+  const earlyFixtureIds = new Set();
+  if (!earlyRes.error && Array.isArray(earlyRes.data)) {
+    for (const id of earlyRes.data) {
+      const n = Number(id);
+      if (Number.isFinite(n)) earlyFixtureIds.add(n);
+    }
+  } else if (earlyRes.error) {
+    console.warn("holiday early fixture ids:", earlyRes.error.message);
+  }
 
   return {
     holidays: holidayState.holidays,
     calendarMonths,
     daysUsed: holidayState.daysUsed,
     daysRemaining: holidayState.daysRemaining,
+    earlyFixtureIds,
   };
 }
 

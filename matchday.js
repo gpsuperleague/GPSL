@@ -1440,7 +1440,7 @@ async function updateFixturePreview() {
     setStatus(
       "submitStatus",
       holidayEarly
-        ? "Holiday unlock — pre-play this match before its GPSL month opens."
+        ? "Holiday unlock — arrange/play this match in the current GPSL week (before its month). Both clubs need min 24 players."
         : "Enter home and away goals, then submit."
     );
   } else {
