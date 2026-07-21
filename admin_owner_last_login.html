@@ -34,10 +34,19 @@
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <div class="card">
-        <h2>Last sign-in</h2>
+        <h2>GPSL site last login</h2>
         <p class="note">
-          Most recent logins at the top; longest time since login at the bottom.
-          Uses Supabase Auth <code>last_sign_in_at</code>.
+          <b>This is website sign-in only</b> — when the owner last logged into the GPSL site
+          (Supabase Auth). Most recent at the top; longest time since login at the bottom.
+          No emails are shown.
+        </p>
+        <p class="note">
+          <b>Discord “last login” to the GPSL server is not available from Discord.</b>
+          Their API does not give bots a last-seen / last-login time for server members
+          (only join date, which is not shown here). To track Discord presence we would need
+          a always-on Discord bot that records when members appear online — say if you want that built.
+        </p>
+        <p class="note">
           Requires <code>patches/admin_owner_last_logins.sql</code>.
         </p>
         <div class="login-toolbar">
@@ -53,7 +62,7 @@
                 <th>Owner</th>
                 <th>Club</th>
                 <th>Status</th>
-                <th>Last login (UK)</th>
+                <th>Site last login (UK)</th>
                 <th class="num">Time since</th>
               </tr>
             </thead>

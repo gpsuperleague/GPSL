@@ -130,7 +130,6 @@ async function refresh() {
   }
 
   rows = Array.isArray(data) ? data : [];
-  // Most recent first (SQL already orders); never-login last via NULLS LAST
   rows.sort((a, b) => {
     const ta = a.last_sign_in_at ? new Date(a.last_sign_in_at).getTime() : -1;
     const tb = b.last_sign_in_at ? new Date(b.last_sign_in_at).getTime() : -1;
