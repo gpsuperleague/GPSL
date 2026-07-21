@@ -76,7 +76,11 @@
     .chk-legend .lg-bad i { background:rgba(232,92,92,0.35); border:1px solid #e85c5c; }
     .chk-legend .lg-warn i { background:rgba(232,160,71,0.25); border:1px solid #e8a047; }
     .chk-filter { display:inline-flex; align-items:center; gap:6px; color:#ccc; font-size:13px; }
-    .chk-filter select { background:#222; color:#ddd; border:1px solid #444; padding:4px 8px; border-radius:4px; }
+    .chk-filter select,
+    .chk-filter input[type="search"] {
+      background:#222; color:#ddd; border:1px solid #444; padding:4px 8px; border-radius:4px;
+    }
+    .chk-filter input[type="search"] { min-width:160px; }
     .chk-filter input[type="checkbox"] { margin:0; }
     .chk-table .muted { color:#777; }
   </style>
@@ -102,6 +106,10 @@
               <option value="owned">With owner</option>
               <option value="vacant">Vacant</option>
             </select>
+          </label>
+          <label class="chk-filter" title="Substring match on owner tag / email (e.g. bot matches Robot66)">
+            Name
+            <input type="search" id="filterOwnerName" placeholder="e.g. bot…" autocomplete="off" spellcheck="false">
           </label>
           <label class="chk-filter">
             Division

@@ -38,6 +38,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   document.getElementById("reloadBtn")?.addEventListener("click", () => loadTable());
   document.getElementById("filterOwner")?.addEventListener("change", renderTable);
+  document.getElementById("filterOwnerName")?.addEventListener("input", renderTable);
   document.getElementById("filterDivision")?.addEventListener("change", renderTable);
   document.getElementById("filterIssuesOnly")?.addEventListener("change", renderTable);
 
@@ -130,6 +131,9 @@ function compareValues(a, b, key) {
 
 function filteredRows() {
   const ownerFilter = document.getElementById("filterOwner")?.value || "";
+  const ownerNameQ = String(document.getElementById("filterOwnerName")?.value || "")
+    .trim()
+    .toLowerCase();
   const divisionFilter = document.getElementById("filterDivision")?.value || "";
   const issuesOnly = document.getElementById("filterIssuesOnly")?.checked;
 
@@ -137,6 +141,13 @@ function filteredRows() {
     const hasOwner = rowHasOwner(row);
     if (ownerFilter === "owned" && !hasOwner) return false;
     if (ownerFilter === "vacant" && hasOwner) return false;
+
+    if (ownerNameQ) {
+      const hay = [row.owner_tag, row.owner_email]
+        .map((x) => String(x || "").toLowerCase())
+        .join(" ");
+      if (!hay.includes(ownerNameQ)) return false;
+    }
 
     const div = row.division || "unassigned";
     if (divisionFilter && div !== divisionFilter) return false;
