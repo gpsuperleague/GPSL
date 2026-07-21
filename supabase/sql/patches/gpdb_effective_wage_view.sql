@@ -5,7 +5,6 @@ CREATE OR REPLACE VIEW public.gpdb_players_view
 WITH (security_invoker = true) AS
 SELECT
   p.*,
-  nullif(btrim(p.market_value::text), '')::numeric AS market_value_n,
   COALESCE(
     NULLIF(p.contract_wage, 0),
     round(
@@ -15,7 +14,8 @@ SELECT
       ) * coalesce(gs.wage_pct_championship, 4::numeric) / 100.0,
       0
     )
-  ) AS effective_wage
+  ) AS effective_wage,
+  nullif(btrim(p.market_value::text), '')::numeric AS market_value_n
 FROM public."Players" p
 LEFT JOIN public.global_settings gs ON gs.id = 1;
 
