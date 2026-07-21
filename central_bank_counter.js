@@ -11,11 +11,12 @@ import {
 } from "./competition.js";
 import { initBankCounter } from "./bank_counter.js?v=20260721-loan-due-fix";
 
+// DIAG: auto-collect on visit is PAUSED while we diagnose June S2 over-collection.
+// Re-enable only after loan due logic is proven correct.
+const AUTO_COLLECT_DUE_LOANS_ON_VISIT = false;
+
 async function refreshCounter(shortName) {
-  if (shortName) {
-    // Due collections only (server uses Aug–May loan calendar; June/July
-    // will not pull Season 2 Aug+ instalments). Requires
-    // loan_force_june_s2_reconcile.sql if balances were drained.
+  if (shortName && AUTO_COLLECT_DUE_LOANS_ON_VISIT) {
     try {
       await processMyDueLoanInstallments(supabase);
     } catch (e) {

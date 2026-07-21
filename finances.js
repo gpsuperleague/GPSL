@@ -61,9 +61,10 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
   renderFinanceSubnav("finances", shortName, adminPreview, seasonRef);
   wireFinanceStatLinks(shortName, adminPreview, seasonRef);
 
-  if (!adminPreview && !seasonView.isHistorical) {
-    await processMyDueLoanInstallments(supabase);
-  }
+  // DIAG: auto-collect paused (same as Service Counter) — was draining loans on every visit.
+  // if (!adminPreview && !seasonView.isHistorical) {
+  //   await processMyDueLoanInstallments(supabase);
+  // }
 
   const data = await loadFinanceSeasonContext(supabase, shortName, { seasonView });
 
