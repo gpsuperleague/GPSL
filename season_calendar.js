@@ -623,16 +623,17 @@ function formatClubFixtureLine(f) {
 
 function isCurrentMonth(monthKey, status) {
   if (!status) return false;
-  if (isPreSeasonPhase(status)) {
-    return monthKey === "june" || monthKey === "july";
-  }
-  if (status.calendar_phase === "in_month") {
-    return (
-      String(status.active_gpsl_month || "").toLowerCase() === monthKey
-    );
+  // Prefer the unlocked active month (June must not also light up July).
+  const active = String(status.active_gpsl_month || "").toLowerCase();
+  if (active) {
+    return active === monthKey;
   }
   if (status.calendar_phase === "between_months") {
     return String(status.next_gpsl_month || "").toLowerCase() === monthKey;
+  }
+  // True pre-season (nothing unlocked yet): only June is "now"
+  if (isPreSeasonPhase(status)) {
+    return monthKey === "june";
   }
   return false;
 }
