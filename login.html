@@ -95,6 +95,12 @@
         return;
       }
 
+      try {
+        await supabase.rpc("record_owner_site_login");
+      } catch (_) {
+        /* Patch not applied yet — ignore */
+      }
+
       let dest = "dashboard.html";
       try {
         const { data: self } = await supabase.rpc("owner_registry_get_self");

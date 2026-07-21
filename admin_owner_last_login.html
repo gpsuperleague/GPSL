@@ -41,9 +41,9 @@
           Most recent last-login at the top. No emails are shown.
         </p>
         <p class="note">
-          Login counts come from Supabase Auth audit logs (<code>login</code> events).
-          If Auth → Audit Logs → “write to database” is disabled, counts will show 0.
-          Requires <code>patches/admin_owner_last_logins.sql</code>.
+          Login counts are recorded when someone signs in via the login page
+          (<code>owner_site_login_events</code>). They start from when the patch was applied —
+          older history is not backfilled. Requires <code>patches/admin_owner_last_logins.sql</code>.
         </p>
         <div class="login-toolbar">
           <input type="search" id="loginSearch" placeholder="Filter tag / club / status…">
