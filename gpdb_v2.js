@@ -250,9 +250,11 @@ document.addEventListener("DOMContentLoaded", () => {
     "contract_wage",
   ];
 
-  const MARKET_VALUE_FILTER_MIN = 1;
+  const MARKET_VALUE_FILTER_MIN = 0;
   const MARKET_VALUE_FILTER_MAX = 200_000_000;
   const MARKET_VALUE_FILTER_STEP = 1_000_000;
+  /** Dual-range UI uses whole millions (0–200) so step aligns with the browser. */
+  const MARKET_VALUE_SLIDER_MAX_M = 200;
 
   /** Championship % of MV — forecast wage for unsigned players in GPDB filters. */
   const WAGE_FORECAST_TIER = "championship";
@@ -410,7 +412,20 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     const snapped =
       Math.round(clamped / MARKET_VALUE_FILTER_STEP) * MARKET_VALUE_FILTER_STEP;
-    return Math.max(MARKET_VALUE_FILTER_MIN, Math.min(snapped, MARKET_VALUE_FILTER_MAX));
+    return Math.max(
+      MARKET_VALUE_FILTER_MIN,
+      Math.min(snapped, MARKET_VALUE_FILTER_MAX)
+    );
+  }
+
+  function marketValueToSlider(value) {
+    return Math.round(snapMarketValue(value) / MARKET_VALUE_FILTER_STEP);
+  }
+
+  function marketValueFromSlider(sliderVal) {
+    const n = Number(sliderVal);
+    if (!Number.isFinite(n)) return MARKET_VALUE_FILTER_MIN;
+    return snapMarketValue(n * MARKET_VALUE_FILTER_STEP);
   }
 
   function normalizeMarketValueActive() {
@@ -1368,10 +1383,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const active = normalizedRangeActive(col);
-    const sliderMin = bounds.type === "numeric" ? bounds.min : 0;
-    const sliderMax =
+    let sliderMin = bounds.type === "numeric" ? bounds.min : 0;
+    let sliderMax =
       bounds.type === "numeric" ? bounds.max : Math.max(bounds.values.length - 1, 0);
-    const step = rangeFilterStep(col);
+    let step = rangeFilterStep(col);
+    let minVal = active.min;
+    let maxVal = active.max;
+
+    // Market value: UI in whole millions so min/step/max stay browser-valid.
+    if (col === "market_value") {
+      sliderMin = 0;
+      sliderMax = MARKET_VALUE_SLIDER_MAX_M;
+      step = 1;
+      minVal = marketValueToSlider(active.min);
+      maxVal = marketValueToSlider(active.max);
+    }
+
     const disabled = sliderMax <= sliderMin ? "disabled" : "";
 
     const wageHint = col === "contract_wage" ? contractWageFilterHintHtml() : "";
@@ -1381,8 +1408,8 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="range-filter-label">${label} <span class="range-filter-range" id="filter-${col}-range">${formatRangeBracket(col)}</span></div>
         <div class="range-filter-sliders" id="filter-${col}-sliders">
           <div class="range-filter-track"></div>
-          <input type="range" class="range-filter-min" id="filter-${col}-min" min="${sliderMin}" max="${sliderMax}" value="${active.min}" step="${step}" aria-label="${label} minimum" ${disabled}>
-          <input type="range" class="range-filter-max" id="filter-${col}-max" min="${sliderMin}" max="${sliderMax}" value="${active.max}" step="${step}" aria-label="${label} maximum" ${disabled}>
+          <input type="range" class="range-filter-min" id="filter-${col}-min" min="${sliderMin}" max="${sliderMax}" value="${minVal}" step="${step}" aria-label="${label} minimum" ${disabled}>
+          <input type="range" class="range-filter-max" id="filter-${col}-max" min="${sliderMin}" max="${sliderMax}" value="${maxVal}" step="${step}" aria-label="${label} maximum" ${disabled}>
         </div>
         ${wageHint}
       </div>
@@ -1400,20 +1427,25 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       const minEl = document.getElementById(`filter-${col}-min`);
       const maxEl = document.getElementById(`filter-${col}-max`);
-      if (minEl) minEl.value = String(RANGE_ACTIVE[col].min);
-      if (maxEl) maxEl.value = String(RANGE_ACTIVE[col].max);
+      if (col === "market_value") {
+        if (minEl) minEl.value = String(marketValueToSlider(RANGE_ACTIVE[col].min));
+        if (maxEl) maxEl.value = String(marketValueToSlider(RANGE_ACTIVE[col].max));
+      } else {
+        if (minEl) minEl.value = String(RANGE_ACTIVE[col].min);
+        if (maxEl) maxEl.value = String(RANGE_ACTIVE[col].max);
+      }
       updateRangeReadout(col);
       updateRangeTrack(col);
     }
   }
 
   function setupRangeFilters() {
-    let debounceTimer = null;
-
     for (const col of RANGE_FILTER_COLUMNS) {
       const minEl = document.getElementById(`filter-${col}-min`);
       const maxEl = document.getElementById(`filter-${col}-max`);
       if (!minEl || !maxEl) continue;
+
+      let debounceTimer = null;
 
       const syncThumbZIndex = () => {
         const lo = Number(minEl.value);
@@ -1433,33 +1465,44 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       };
 
-      const apply = () => {
+      const readSliderPair = () => {
         let lo = Number(minEl.value);
         let hi = Number(maxEl.value);
         if (isNaN(lo)) lo = 0;
         if (isNaN(hi)) hi = lo;
 
         if (col === "market_value") {
-          lo = snapMarketValue(lo);
-          hi = snapMarketValue(hi);
-          minEl.value = String(lo);
-          maxEl.value = String(hi);
-        }
-
-        if (col === "contract_wage") {
+          lo = marketValueFromSlider(lo);
+          hi = marketValueFromSlider(hi);
+        } else if (col === "contract_wage") {
           lo = snapContractWage(lo);
           hi = snapContractWage(hi);
+        }
+
+        return { lo, hi };
+      };
+
+      const writeSliderPair = (lo, hi) => {
+        if (col === "market_value") {
+          minEl.value = String(marketValueToSlider(lo));
+          maxEl.value = String(marketValueToSlider(hi));
+        } else {
           minEl.value = String(lo);
           maxEl.value = String(hi);
         }
+      };
 
+      const apply = () => {
+        let { lo, hi } = readSliderPair();
+
+        // Keep the thumb being dragged; only nudge the other if they cross.
         if (lo > hi) {
           if (document.activeElement === minEl) {
             hi = lo;
-            maxEl.value = String(hi);
-          } else {
+          } else if (document.activeElement === maxEl) {
             lo = hi;
-            minEl.value = String(lo);
+          } else {
+            [lo, hi] = [hi, lo];
           }
         }
 
@@ -1467,8 +1510,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (col === "market_value") normalizeMarketValueActive();
         if (col === "contract_wage") normalizeContractWageActive();
         const active = normalizedRangeActive(col);
-        minEl.value = String(active.min);
-        maxEl.value = String(active.max);
+        writeSliderPair(active.min, active.max);
         RANGE_ACTIVE[col] = { min: active.min, max: active.max };
         updateRangeReadout(col);
         updateRangeTrack(col);
