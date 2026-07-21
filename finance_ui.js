@@ -39,6 +39,8 @@ export const LEDGER_TYPE_TO_LINE = {
   wage_renewal_34plus: "upkeep_34plus",
   wage_star_tax: "upkeep_star_tax",
   staff_manager_salary: "staff_manager",
+  medical_doctor_hire: "staff_medical",
+  medical_physio_hire: "staff_medical",
   contract_signing_offer: "staff_offers",
   contract_release_comp: "staff_release",
   contract_release_comp_received: "staff_release",
@@ -227,13 +229,19 @@ export const FINANCE_UI_SECTIONS = [
   {
     id: "staff",
     title: "Staff",
-    intro: "Manager salary, renewals, releases, and mid-season termination.",
+    intro: "Manager salary, medical hires, renewals, releases, and mid-season termination.",
     lines: [
       {
         id: "staff_manager",
         label: "Manager salary",
         types: ["staff_manager_salary"],
         note: "Season manager salary (weekly wage × 52) — posted with admin Close Finances / Post season wage bills.",
+      },
+      {
+        id: "staff_medical",
+        label: "Medical hires",
+        types: ["medical_doctor_hire", "medical_physio_hire"],
+        note: "Club doctor and physio hiring fees from the Medical Room.",
       },
       {
         id: "staff_offers",
