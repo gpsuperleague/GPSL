@@ -1,21 +1,29 @@
-/* Season accounts — same layout as original finances.html panel */
+/* =============================================================================
+   Season accounts — page chrome, sheet grid, loan breakdown density
+   ============================================================================= */
+
+/* ---------------------------------------------------------------------------
+   Page shell
+   --------------------------------------------------------------------------- */
 body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
 .page-container { width:95%; max-width:1280px; margin:20px auto 40px; }
 h1 { color:#ff9900; margin:0; }
 h2 { color:#ff9900; font-size:18px; margin:0 0 12px; }
 .meta { color:#aaa; margin-bottom:12px; }
+a { color:#ff9900; }
+.footer-note { color:#888; font-size:12px; line-height:1.5; margin:8px 0 0; }
+.legend { font-size:11px; color:#777; margin-top:8px; }
+
+/* ---------------------------------------------------------------------------
+   Club / season chrome
+   --------------------------------------------------------------------------- */
+.fin-accounts-chrome { margin-bottom:4px; }
 .header-row {
   display:flex; align-items:center; gap:20px; margin-bottom:24px; flex-wrap:wrap;
 }
 #clubBadgeHeader { width:80px; height:80px; object-fit:contain; }
-.panel {
-  background:#1a1a1a; border:1px solid #333; border-radius:8px;
-  padding:20px; margin-bottom:24px;
-}
-.footer-note { color:#888; font-size:12px; line-height:1.5; margin:8px 0 0; }
-a { color:#ff9900; }
-.toolbar { margin-bottom:12px; }
-.toolbar a.button { font-size:13px; margin-right:8px; }
+.fin-accounts-chrome-text { min-width:0; flex:1; }
+
 .finance-subnav {
   display:flex; flex-wrap:wrap; gap:6px; margin-top:10px;
 }
@@ -27,6 +35,7 @@ a { color:#ff9900; }
 .fin-subnav-link.active {
   background:#332a00; border-color:#ff9900; color:#ff9900; font-weight:bold;
 }
+
 .finance-season-history { margin-top:10px; }
 .fin-season-nav {
   display:flex; flex-wrap:wrap; align-items:stretch; gap:0;
@@ -73,12 +82,41 @@ a { color:#ff9900; }
     width:auto; height:1px; min-height:0; margin:0; align-self:stretch;
   }
 }
-.legend { font-size:11px; color:#777; margin-top:8px; }
 
-#financeSections {
+/* ---------------------------------------------------------------------------
+   Panel: guide + workbook
+   --------------------------------------------------------------------------- */
+.panel,
+.fin-accounts-panel {
+  background:#1a1a1a; border:1px solid #333; border-radius:8px;
+  padding:20px; margin-bottom:24px;
+}
+.fin-accounts-panel-head {
+  display:flex; flex-wrap:wrap; align-items:flex-start;
+  justify-content:space-between; gap:12px; margin-bottom:4px;
+}
+.fin-accounts-panel-head h2 { margin:0; }
+.toolbar { margin:0 0 12px; }
+.fin-accounts-panel-head .toolbar { margin:0; }
+.toolbar a.button { font-size:13px; margin-right:8px; }
+
+.fin-accounts-guide {
+  margin:0 0 16px;
+  padding:10px 12px;
+  background:#151515;
+  border:1px solid #2a2a2a;
+  border-radius:6px;
+}
+.fin-accounts-legend { margin-top:12px; }
+
+/* ---------------------------------------------------------------------------
+   Workbook grid (shared column track)
+   --------------------------------------------------------------------------- */
+#financeSections,
+.fin-accounts-workbook {
   --fin-col-label: minmax(7.5rem, 1.1fr);
   --fin-col-posted: minmax(8.75rem, 9.25rem);
-  --fin-col-breakdown: minmax(12rem, 1.6fr);
+  --fin-col-breakdown: minmax(10.5rem, 1.45fr);
   --fin-col-running: minmax(8.75rem, 9.25rem);
   --fin-col-pending: minmax(8.75rem, 9.25rem);
   --fin-col-gap: 16px;
@@ -189,7 +227,6 @@ a { color:#ff9900; }
 }
 .fin-col-breakdown:has(.detail-line) {
   display:grid;
-  /* Label flexes/wraps; amount column stays visible on the right */
   grid-template-columns: minmax(0, 1fr) max-content;
   column-gap:12px;
   row-gap:3px;
@@ -231,6 +268,40 @@ a { color:#ff9900; }
   border-top:1px solid #333;
   font-size:12px; color:#aaa; font-weight:normal;
 }
+
+/* ---------------------------------------------------------------------------
+   Loan repayments / interest — compact breakdown
+   --------------------------------------------------------------------------- */
+.fin-line-loans {
+  margin-bottom:8px;
+}
+.fin-line-loans .fin-line-note {
+  font-size:9px;
+  color:#666;
+  line-height:1.3;
+  max-width:14rem;
+}
+.fin-line-loans .fin-col-breakdown:has(.detail-line) {
+  column-gap:8px;
+  row-gap:1px;
+  font-size:10px;
+  line-height:1.25;
+}
+.fin-line-loans .fin-col-breakdown .detail-line span:first-child {
+  overflow-wrap:normal;
+  word-break:normal;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  padding:0;
+  font-variant-numeric: tabular-nums;
+  letter-spacing:0.01em;
+}
+.fin-line-loans .fin-col-breakdown .detail-line span:last-child {
+  padding:0;
+  font-size:10px;
+}
+
 .fin-pending-note { color:#6a8; font-style:italic; }
 .fin-subsidy-preview { color:#8aa; font-size:12px; font-style:italic; }
 .pending-amt { opacity:0.95; }

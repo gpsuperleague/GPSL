@@ -5,43 +5,56 @@
   <meta charset="UTF-8">
   <title>Season accounts — GPSL Finances</title>
   <link rel="stylesheet" href="dashboard.css">
-  <link rel="stylesheet" href="finances_accounts.css?v=20260720-loan-amt-visible">
+  <link rel="stylesheet" href="finances_accounts.css?v=20260721-accounts-tidy">
 </head>
 <body>
   <div id="nav"></div>
-  <div class="page-container">
-    <div class="header-row">
-      <img id="clubBadgeHeader" src="" alt="">
-      <div>
-        <h1 id="pageTitle">Club Finances</h1>
-        <div id="userEmail" class="meta"></div>
-        <p id="pageMeta" class="meta" style="margin:0;"></p>
-        <nav id="financeSubnav" class="finance-subnav" aria-label="Finances sections"></nav>
-        <div id="financeSeasonHistory" class="finance-season-history"></div>
-      </div>
-    </div>
 
-    <div class="panel">
-      <h2>Season accounts</h2>
-      <p class="toolbar">
-        <a class="button" id="backToFinances" href="finances.html">← Finances overview</a>
-        <a class="button" href="challenges.html">Season challenges</a>
-      </p>
-      <p class="footer-note" style="margin-top:0;">
+  <div class="page-container fin-accounts-page">
+    <!-- Club + season chrome -->
+    <header class="fin-accounts-chrome">
+      <div class="header-row">
+        <img id="clubBadgeHeader" src="" alt="">
+        <div class="fin-accounts-chrome-text">
+          <h1 id="pageTitle">Club Finances</h1>
+          <div id="userEmail" class="meta"></div>
+          <p id="pageMeta" class="meta" style="margin:0;"></p>
+          <nav id="financeSubnav" class="finance-subnav" aria-label="Finances sections"></nav>
+          <div id="financeSeasonHistory" class="finance-season-history"></div>
+        </div>
+      </div>
+    </header>
+
+    <main class="panel fin-accounts-panel">
+      <!-- Title + quick links -->
+      <header class="fin-accounts-panel-head">
+        <h2>Season accounts</h2>
+        <p class="toolbar">
+          <a class="button" id="backToFinances" href="finances.html">← Finances overview</a>
+          <a class="button" href="challenges.html">Season challenges</a>
+        </p>
+      </header>
+
+      <!-- How to read the sheet -->
+      <aside class="fin-accounts-guide footer-note" aria-label="How to read season accounts">
         Same structure as the classic Excel workbook.
         <b>Posted</b> = total already on your balance (ledger this season);
         <b>Breakdown</b> = individual posted amounts per type;
         <b>Running total</b> = season opening + posted lines so far;
         <b>Pending</b> = known future income/costs not yet posted (upcoming gates, wages, maintenance, etc.).
         Footer shows <b>projected balance</b>.
-      </p>
-      <div id="financeSections"></div>
-      <p class="legend">
+      </aside>
+
+      <!-- Excel-style workbook (sections injected by JS) -->
+      <div id="financeSections" class="fin-accounts-workbook"></div>
+
+      <footer class="legend fin-accounts-legend">
         Posted — = nothing on ledger yet &nbsp;|&nbsp; Pending — = no forecast for that line yet &nbsp;|&nbsp;
         green/red = income / cost
-      </p>
-    </div>
+      </footer>
+    </main>
   </div>
-  <script type="module" src="finances_accounts.js?v=20260720-eos-map"></script>
+
+  <script type="module" src="finances_accounts.js?v=20260721-accounts-tidy"></script>
 </body>
 </html>

@@ -306,61 +306,118 @@ export const FINANCE_UI_SECTIONS = [
     id: "loans",
     title: "Central Bank loans",
     intro:
-      "Payments made this season only. Two loans in the same month = two lines (one per loan). Full terms and remaining interest are on Central Bank → Service counter / League loans.",
+      "This season’s payments only. Full terms / remaining interest: Central Bank → Service counter.",
     lines: [
       {
         id: "loan_drawdowns",
         label: "Loan drawdowns",
         types: ["loan_drawdown"],
-        note: "Money borrowed this season (posted when you take a loan at the service counter).",
+        note: "Borrowed this season at the service counter.",
       },
       {
         id: "loan_repayments",
         label: "Loan repayments (principal)",
         types: ["loan_repayment_principal"],
-        note:
-          "Principal paid this season only — typically 10 equal installments per loan across Aug–May. Not the other season’s schedule.",
+        note: "Principal paid this season (usually ~10 instalments Aug–May per loan).",
       },
       {
         id: "loan_interest",
         label: "Loan interest payments",
         types: ["loan_interest_payment"],
-        note: "Interest paid with this season’s installments (pre-calculated at drawdown; falls as the loan is paid).",
+        note: "Interest on this season’s instalments (set at drawdown).",
       },
     ],
   },
 ];
 
-/**
- * @param {Array<{ entry_type?: string, amount?: number, description?: string, metadata?: object, club_name?: string }>} rows
- * @returns {Map<string, { amount: number, detail: Record<string, number> }>}
- */
+const LOAN_LEDGER_TYPES = new Set([
+  "loan_drawdown",
+  "loan_repayment_principal",
+  "loan_interest_payment",
+]);
+
+const LOAN_LINE_IDS = new Set(["loan_drawdowns", "loan_repayments", "loan_interest"]);
+
+const MONTH_SHORT = {
+  january: "Jan",
+  february: "Feb",
+  march: "Mar",
+  april: "Apr",
+  may: "May",
+  june: "Jun",
+  july: "Jul",
+  august: "Aug",
+  september: "Sep",
+  october: "Oct",
+  november: "Nov",
+  december: "Dec",
+};
+
+/** Compact loan breakdown: "Aug · #12 · 3/20" instead of long scheduled descriptions. */
+function compactLoanBreakdownLabel(row) {
+  const type = row.entry_type || "other";
+  const md = parseMetadata(row.metadata);
+  let desc = String(row.description || "")
+    .replace(/\s*\[Season 1 accounts backfill\]/gi, "")
+    .trim();
+
+  if (!desc && md.loan_id != null) {
+    const kind =
+      type === "loan_drawdown"
+        ? "Drawdown"
+        : type === "loan_interest_payment"
+          ? "Interest"
+          : "Repayment";
+    return `${kind} · #${md.loan_id}`;
+  }
+  if (!desc) return financeEntryLabel(type);
+
+  const instMatch = desc.match(/inst\s+(\d+)\s*\/\s*(\d+)/i);
+  const loanMatch = desc.match(/loan\s*#\s*(\d+)/i);
+  const loanId = loanMatch?.[1] ?? (md.loan_id != null ? String(md.loan_id) : null);
+
+  let monthRaw =
+    (desc.match(/—\s*([A-Za-z]+)/) || [])[1] ||
+    (desc.match(
+      /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/i
+    ) || [])[1];
+  const monthShort = monthRaw
+    ? MONTH_SHORT[String(monthRaw).toLowerCase()] || String(monthRaw).slice(0, 3)
+    : null;
+
+  if (type === "loan_drawdown" && loanId != null) {
+    return monthShort ? `${monthShort} · #${loanId}` : `Drawdown · #${loanId}`;
+  }
+
+  if (monthShort && loanId != null) {
+    const parts = [monthShort, `#${loanId}`];
+    if (instMatch) parts.push(`${instMatch[1]}/${instMatch[2]}`);
+    return parts.join(" · ");
+  }
+
+  if (loanId != null && instMatch) {
+    return `#${loanId} · ${instMatch[1]}/${instMatch[2]}`;
+  }
+
+  if (loanId != null) {
+    return type === "loan_interest_payment"
+      ? `Interest · #${loanId}`
+      : `Repayment · #${loanId}`;
+  }
+
+  return (
+    desc
+      .replace(/^Scheduled loan repayment\s*—\s*/i, "")
+      .replace(/^Loan interest(?:\s*payment)?\s*—\s*/i, "")
+      .replace(/^Loan principal repayment\s*/i, "")
+      .trim() || financeEntryLabel(type)
+  );
+}
+
 function ledgerBreakdownLabel(row) {
   const type = row.entry_type || "other";
-  if (
-    type === "loan_drawdown" ||
-    type === "loan_repayment_principal" ||
-    type === "loan_interest_payment"
-  ) {
-    const desc = String(row.description || "").trim();
-    let label = desc;
-    if (!label) {
-      const md = parseMetadata(row.metadata);
-      if (md.loan_id != null) {
-        const kind =
-          type === "loan_drawdown"
-            ? "Drawdown"
-            : type === "loan_interest_payment"
-              ? "Interest"
-              : "Repayment";
-        label = `${kind} — loan #${md.loan_id}`;
-      } else {
-        label = financeEntryLabel(type);
-      }
-    }
-    // Drop noisy backfill tags so the amount column stays readable
-    label = label.replace(/\s*\[Season 1 accounts backfill\]/gi, "").trim();
-    return label;
+  if (LOAN_LEDGER_TYPES.has(type)) {
+    return compactLoanBreakdownLabel(row);
   }
   if (type === "infra_purchase") {
     const md = parseMetadata(row.metadata);
@@ -384,6 +441,7 @@ function parseMetadata(raw) {
 }
 
 export function aggregateLedgerByLine(rows) {
+  /** @type {Map<string, { amount: number, detail: Record<string, number> }>} */
   const byLine = new Map();
 
   const ensure = (id) => {
@@ -515,22 +573,38 @@ function resolvePendingForLine(lineId, pending, byLine) {
   return pending;
 }
 
-function formatBreakdownColumn(bucket) {
-  if (!bucket?.detail) return '<span class="amt zero">—</span>';
-  const rows = Object.entries(bucket.detail)
-    .filter(([, v]) => Math.abs(v) > 0.001)
-    .sort((a, b) => {
-      // Keep loan schedule lines roughly chronological by installment number when present
+function sortBreakdownEntries(entries, { loans = false } = {}) {
+  return entries.sort((a, b) => {
+    if (loans) {
+      const loanA = Number((a[0].match(/#(\d+)/) || [])[1]);
+      const loanB = Number((b[0].match(/#(\d+)/) || [])[1]);
+      if (Number.isFinite(loanA) && Number.isFinite(loanB) && loanA !== loanB) {
+        return loanA - loanB;
+      }
+      const instA = Number((a[0].match(/(\d+)\s*\/\s*\d+/) || [])[1]);
+      const instB = Number((b[0].match(/(\d+)\s*\/\s*\d+/) || [])[1]);
+      if (Number.isFinite(instA) && Number.isFinite(instB) && instA !== instB) {
+        return instA - instB;
+      }
+    } else {
       const ia = Number((a[0].match(/inst\s+(\d+)/i) || [])[1]);
       const ib = Number((b[0].match(/inst\s+(\d+)/i) || [])[1]);
       if (Number.isFinite(ia) && Number.isFinite(ib) && ia !== ib) return ia - ib;
-      return String(a[0]).localeCompare(String(b[0]), undefined, { sensitivity: "base" });
-    })
-    .map(([t, v]) => {
-      const n = Number(v);
-      const sign = n >= 0 ? "+" : "−";
-      return `<div class="detail-line"><span>${escapeFinanceHtml(t)}</span><span>${sign}${formatMoney(Math.abs(n))}</span></div>`;
-    });
+    }
+    return String(a[0]).localeCompare(String(b[0]), undefined, { sensitivity: "base" });
+  });
+}
+
+function formatBreakdownColumn(bucket, { loans = false } = {}) {
+  if (!bucket?.detail) return '<span class="amt zero">—</span>';
+  const rows = sortBreakdownEntries(
+    Object.entries(bucket.detail).filter(([, v]) => Math.abs(v) > 0.001),
+    { loans }
+  ).map(([t, v]) => {
+    const n = Number(v);
+    const sign = n >= 0 ? "+" : "−";
+    return `<div class="detail-line"><span>${escapeFinanceHtml(t)}</span><span>${sign}${formatMoney(Math.abs(n))}</span></div>`;
+  });
   return rows.length ? rows.join("") : '<span class="amt zero">—</span>';
 }
 
@@ -540,6 +614,88 @@ function escapeFinanceHtml(text) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+function renderSheetColumnsHead() {
+  return `<div class="fin-columns-head">
+    <span class="fin-col-label">Line</span>
+    <span class="fin-col-posted">Posted</span>
+    <span class="fin-col-breakdown">Breakdown</span>
+    <span class="fin-col-running">Running total</span>
+    <span class="fin-col-pending">Pending</span>
+  </div>`;
+}
+
+function renderFinanceLineRow(line, bucket, running, pending, subsidyPreview) {
+  const hasData = bucket && Math.abs(bucket.amount) > 0.001;
+  const planned = line.planned && !hasData;
+  const isLoan = LOAN_LINE_IDS.has(line.id);
+
+  const pendingNote =
+    pending?.note && Math.abs(pending.amount) > 0.001
+      ? `<p class="fin-line-note fin-pending-note">${pending.note}</p>`
+      : "";
+
+  const subsidyNote =
+    subsidyPreview && (!pending || Math.abs(pending.amount) < 0.001)
+      ? subsidyQualifyingNote(line.id, subsidyPreview)
+      : "";
+  const subsidyNoteHtml = subsidyNote
+    ? `<p class="fin-line-note fin-subsidy-preview">${subsidyNote}</p>`
+    : "";
+
+  const lineClass = [
+    "fin-line",
+    planned ? "planned-line" : "",
+    isLoan ? "fin-line-loans" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return `
+    <div class="${lineClass}" data-line="${escapeFinanceHtml(line.id)}">
+      <div class="fin-line-head fin-line-cols">
+        <span class="fin-line-label">${line.label}</span>
+        <span class="fin-col-posted">${formatLineAmount(bucket?.amount ?? 0, hasData, line.planned)}</span>
+        <span class="fin-col-breakdown">${
+          hasData
+            ? formatBreakdownColumn(bucket, { loans: isLoan })
+            : '<span class="amt zero">—</span>'
+        }</span>
+        <span class="fin-col-running">${formatRunningAmount(running)}</span>
+        <span class="fin-col-pending">${formatPendingAmount(pending)}</span>
+      </div>
+      ${line.note ? `<p class="fin-line-note">${line.note}</p>` : ""}
+      ${
+        bucket?.fromHistory
+          ? `<p class="fin-line-note">Season total from completed transfers (transfer history).</p>`
+          : ""
+      }
+      ${pendingNote}
+      ${subsidyNoteHtml}
+    </div>
+  `;
+}
+
+function renderProjectedFooter(currentBalance, totalPending, running) {
+  const projected =
+    currentBalance != null
+      ? Number(currentBalance) + totalPending
+      : running + totalPending;
+  const bal = Number(currentBalance) || 0;
+  const pendingSign = totalPending >= 0 ? "+" : "−";
+  return `
+    <div class="fin-projected-footer">
+      <div class="fin-projected-main">
+        <span><b>Projected balance</b></span>
+        <span class="fin-projected-value amt ${projected >= 0 ? "income-amt" : "cost-amt"}">${formatMoney(projected)}</span>
+      </div>
+      <p class="fin-projected-sub">
+        Current ${formatMoney(bal)} ${pendingSign} pending ${formatMoney(Math.abs(totalPending))}
+        · Running total (posted only) ${formatMoney(running)}
+      </p>
+    </div>
+  `;
 }
 
 /**
@@ -560,16 +716,7 @@ export function renderFinanceSections(byLine, options = {}) {
     if (resolved) totalPending += Number(resolved.amount) || 0;
   }
 
-  const parts = [
-    `<div class="fin-sheet">
-      <div class="fin-columns-head">
-        <span class="fin-col-label">Line</span>
-        <span class="fin-col-posted">Posted</span>
-        <span class="fin-col-breakdown">Breakdown</span>
-        <span class="fin-col-running">Running total</span>
-        <span class="fin-col-pending">Pending</span>
-      </div>`,
-  ];
+  const parts = [`<div class="fin-sheet">${renderSheetColumnsHead()}`];
 
   for (const section of FINANCE_UI_SECTIONS) {
     let sectionNet = 0;
@@ -578,7 +725,6 @@ export function renderFinanceSections(byLine, options = {}) {
       .map((line) => {
         const bucket = byLine.get(line.id);
         const hasData = bucket && Math.abs(bucket.amount) > 0.001;
-        const planned = line.planned && !hasData;
         const postedAmt = hasData ? bucket.amount : 0;
         if (hasData) sectionNet += bucket.amount;
         running += postedAmt;
@@ -592,44 +738,11 @@ export function renderFinanceSections(byLine, options = {}) {
           sectionPending += pending.amount;
         }
 
-        const pendingNote =
-          pending?.note && Math.abs(pending.amount) > 0.001
-            ? `<p class="fin-line-note fin-pending-note">${pending.note}</p>`
-            : "";
-
-        const subsidyNote =
-          subsidyPreview &&
-          (!pending || Math.abs(pending.amount) < 0.001)
-            ? subsidyQualifyingNote(line.id, subsidyPreview)
-            : "";
-        const subsidyNoteHtml = subsidyNote
-          ? `<p class="fin-line-note fin-subsidy-preview">${subsidyNote}</p>`
-          : "";
-
-        return `
-          <div class="fin-line ${planned ? "planned-line" : ""}">
-            <div class="fin-line-head fin-line-cols">
-              <span class="fin-line-label">${line.label}</span>
-              <span class="fin-col-posted">${formatLineAmount(bucket?.amount ?? 0, hasData, line.planned)}</span>
-              <span class="fin-col-breakdown">${hasData ? formatBreakdownColumn(bucket) : '<span class="amt zero">—</span>'}</span>
-              <span class="fin-col-running">${formatRunningAmount(running)}</span>
-              <span class="fin-col-pending">${formatPendingAmount(pending)}</span>
-            </div>
-            ${line.note ? `<p class="fin-line-note">${line.note}</p>` : ""}
-            ${
-              bucket?.fromHistory
-                ? `<p class="fin-line-note">Season total from completed transfers (transfer history).</p>`
-                : ""
-            }
-            ${pendingNote}
-            ${subsidyNoteHtml}
-          </div>
-        `;
+        return renderFinanceLineRow(line, bucket, running, pending, subsidyPreview);
       })
       .join("");
 
-    const sectionPendingCls =
-      sectionPending >= 0 ? "income-amt" : "cost-amt";
+    const sectionPendingCls = sectionPending >= 0 ? "income-amt" : "cost-amt";
     const sectionPendingSign = sectionPending >= 0 ? "+" : "−";
 
     parts.push(`
@@ -666,26 +779,10 @@ export function renderFinanceSections(byLine, options = {}) {
     `);
   }
 
-  const currentBalance = Number(options.currentBalance) || 0;
-  const projected =
-    options.currentBalance != null
-      ? currentBalance + totalPending
-      : running + totalPending;
-
-  const pendingSign = totalPending >= 0 ? "+" : "−";
-  parts.push(`
-      <div class="fin-projected-footer">
-        <div class="fin-projected-main">
-          <span><b>Projected balance</b></span>
-          <span class="fin-projected-value amt ${projected >= 0 ? "income-amt" : "cost-amt"}">${formatMoney(projected)}</span>
-        </div>
-        <p class="fin-projected-sub">
-          Current ${formatMoney(currentBalance)} ${pendingSign} pending ${formatMoney(Math.abs(totalPending))}
-          · Running total (posted only) ${formatMoney(running)}
-        </p>
-      </div>
-    </div>
-  `);
+  parts.push(
+    renderProjectedFooter(options.currentBalance, totalPending, running),
+    "</div>"
+  );
 
   return parts.join("");
 }
