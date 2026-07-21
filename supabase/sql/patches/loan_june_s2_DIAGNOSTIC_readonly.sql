@@ -7,7 +7,7 @@
 
 -- A) Calendar / as-of (what the server thinks "now" is)
 WITH cur AS (
-  SELECT id AS season_id, name, season_number, is_current, status
+  SELECT id AS season_id, label, is_current, status
   FROM public.competition_seasons
   WHERE is_current = true
   ORDER BY id DESC
@@ -16,8 +16,9 @@ WITH cur AS (
 SELECT
   'A_as_of' AS section,
   c.season_id,
-  c.name,
-  c.season_number,
+  c.label AS season_label,
+  public.competition_season_ordinal(c.season_id) AS season_ordinal,
+  c.status,
   public.competition_active_gpsl_month(c.season_id, now()) AS active_gpsl_month,
   public.club_loan_as_of_gpsl_month(c.season_id) AS loan_as_of_month,
   (
