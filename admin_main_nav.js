@@ -214,7 +214,7 @@ export const ADMIN_MAIN_NAV = [
         "Close Finances",
         "admin_wage_bills.html",
         null,
-        "LAST money step: wages + manager salary + 34+ + star tax → debt interest → FFP → balance interest, then refreshes season finance archive. Safe to re-run (skips posted lines)."
+        "LAST money step: wages + manager salary + 34+ + star tax → stadium maintenance → debt interest → FFP (₿50M + MV releases + next-window buy embargo) → balance interest, then refreshes season finance archive. Safe to re-run (skips posted lines)."
       ),
     ],
   },

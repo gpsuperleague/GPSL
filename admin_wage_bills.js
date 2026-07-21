@@ -43,7 +43,8 @@ async function closeFinances() {
   if (
     !confirm(
       "Close Finances for the current season?\n\n" +
-        "This posts wage bills, debt interest on overdrafts, FFP (−₿100M+), " +
+        "This posts wage bills, stadium maintenance, debt interest, " +
+        "FFP (₿50M + MV player releases until above −₿99,999,999 + next-window buy embargo), " +
         "and 0.5% interest on positive balances.\n\n" +
         "Already-posted lines are skipped."
     )
@@ -61,7 +62,7 @@ async function closeFinances() {
       "wageBillsStatus",
       "❌ " +
         error.message +
-        " — run supabase/sql/patches/close_finances_eos_interest_ffp.sql in Supabase.",
+        " — run supabase/sql/patches/ffp_50m_mv_release_embargo.sql (and stadium/maintenance patches) in Supabase.",
       false
     );
     return;
@@ -72,6 +73,7 @@ async function closeFinances() {
     "wageBillsStatus",
     `✅ Close Finances complete (season ${data?.season_id ?? "—"}). ` +
       `Wages: ${wages.charge_lines ?? 0} line(s) / ${wages.clubs_charged ?? 0} club(s). ` +
+      `Maintenance: ${data?.infra_maintenance_clubs ?? 0}. ` +
       `Debt interest: ${data?.debt_interest_clubs ?? 0}. ` +
       `FFP: ${data?.ffp_clubs ?? 0}. ` +
       `Balance interest: ${data?.balance_interest_clubs ?? 0}.`,

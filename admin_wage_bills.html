@@ -19,8 +19,9 @@
         </p>
         <ol class="note" style="margin:0 0 12px 18px;line-height:1.5">
           <li><b>Wage bills</b> — player wages, manager salary (weekly × 52), 34+ fee, star tax</li>
+          <li><b>Stadium maintenance</b> — capacity × ₿1,500 × 12.5%</li>
           <li><b>Debt interest</b> — bank rate (default 5%) on overdrawn balances</li>
-          <li><b>FFP</b> — flat ₿10M fine if balance ≤ −₿100M (after interest)</li>
+          <li><b>FFP</b> — flat ₿50M if balance ≤ −₿100M; then release highest-MV players @ MV until balance &gt; −₿99,999,999; buy embargo for the next transfer window</li>
           <li><b>Balance interest</b> — 0.5% credit on positive balances only</li>
           <li><b>Finance archive refresh</b> — updates Season accounts snapshot (so Archive-before-this is safe)</li>
         </ol>
@@ -28,6 +29,8 @@
           Each line is skipped if already posted for that club/season.
           Ensure these patches are applied in Supabase:
           <code>close_finances_eos_interest_ffp.sql</code>,
+          <code>stadium_maintenance_eos_and_season1_backfill.sql</code>,
+          <code>ffp_50m_mv_release_embargo.sql</code>,
           <code>manager_season_salary_wage_bills.sql</code>,
           and if debt/FFP inserts fail a type check, re-run
           <code>season1_eos_interest_ffp_backfill.sql</code> ( widens entry types ) or
@@ -42,6 +45,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_wage_bills.js?v=20260718-close-eos"></script>
+  <script type="module" src="admin_wage_bills.js?v=20260721-ffp50"></script>
 </body>
 </html>

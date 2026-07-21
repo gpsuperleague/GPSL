@@ -91,7 +91,7 @@ Grouped like the spreadsheet. Each row should eventually map to a **ledger `entr
 |------|-------------|-----------|--------|
 | `eos_debt_interest` | **Debt interest** | Debit | On **negative** balances at EOS (and loans when live) |
 | `eos_balance_interest` | **Balance interest** | Credit | **0.5%** on **positive** balances at EOS — paid from central bank |
-| `eos_ffp_charge` | **FFP charges** | Debit | Fine if debt **> ₿99M** at any point in season — paid **to** central bank |
+| `eos_ffp_charge` | **FFP charges** | Debit | Flat **₿50M** if balance **≤ −₿100M** at Close Finances (after wages/maintenance/debt interest); then highest-MV players released @ MV until balance **> −₿99,999,999**; those players cannot rejoin that club next season; club gets a **one-window buy embargo** (next window; skips current if already open) |
 | `eos_injection` | **End of season injection** | Credit | Individual or mass; same family as emergency tax — **admin** |
 
 ### 1.9 Balance summary (UI only, not ledger types)
