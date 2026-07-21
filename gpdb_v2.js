@@ -1293,17 +1293,30 @@ document.addEventListener("DOMContentLoaded", () => {
     const active = RANGE_ACTIVE[col];
     if (!bounds || !active) return "(—)";
 
+    const activeFilter = isRangeFilterActive(col);
+
     if (bounds.type === "numeric") {
       if (col === "market_value" || col === "contract_wage") {
         const { min: lo, max: hi } = normalizedRangeActive(col);
+        if (!activeFilter) {
+          return `(all · ${formatMoney(bounds.min)}–${formatMoney(bounds.max)})`;
+        }
         return `(${formatMoney(lo)}-${formatMoney(hi)})`;
       }
       const { min: lo, max: hi } = normalizedRangeActive(col);
+      if (!activeFilter) {
+        return `(all · ${bounds.min}–${bounds.max})`;
+      }
       return `(${lo}-${hi})`;
     }
 
     const lo = bounds.values[active.min] ?? "—";
     const hi = bounds.values[active.max] ?? "—";
+    if (!activeFilter) {
+      const bLo = bounds.values[0] ?? "—";
+      const bHi = bounds.values[bounds.values.length - 1] ?? "—";
+      return `(all · ${bLo}–${bHi})`;
+    }
     return `(${lo}-${hi})`;
   }
 
