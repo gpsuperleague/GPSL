@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Owner holidays — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .holiday-admin-filters {
+      display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px;
+    }
+    .holiday-admin-filters label { display: block; font-size: 13px; color: #bbb; }
+    .holiday-admin-filters select,
+    .holiday-admin-filters input[type="date"] {
+      display: block; margin-top: 4px; padding: 8px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+      min-width: 160px;
+    }
+    .holiday-admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .holiday-admin-table th,
+    .holiday-admin-table td {
+      border-bottom: 1px solid #333; padding: 8px 6px; text-align: left; vertical-align: middle;
+    }
+    .holiday-admin-table th { color: #999; font-weight: 600; }
+    .holiday-status { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #aaa; }
+    .holiday-status--active { color: #ff9900; }
+    .holiday-row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .holiday-book-grid {
+      display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      max-width: 720px; margin-bottom: 12px;
+    }
+    .holiday-book-grid label { display: block; font-size: 13px; color: #bbb; }
+    .holiday-book-grid select,
+    .holiday-book-grid input {
+      width: 100%; box-sizing: border-box; margin-top: 4px; padding: 8px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    button.button.secondary { background: #444; color: #ddd; }
+    button.button.secondary:hover { background: #555; }
+    button.button.danger { background: #662222; color: #fcc; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Owner holidays</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Season holidays</h2>
+        <p class="note">
+          Owners can cancel/amend only <b>before</b> a holiday starts.
+          Use this page to amend or remove active/ended bookings, or book on behalf of a club.
+          Requires <code>patches/club_holiday_amend_and_admin.sql</code>.
+        </p>
+        <div class="holiday-admin-filters">
+          <label>
+            Filter club
+            <select id="holidayClubFilter">
+              <option value="">All clubs</option>
+            </select>
+          </label>
+          <button type="button" id="holidayRefreshBtn" class="button secondary">Refresh</button>
+        </div>
+        <div id="holidayAdminStatus" class="status-line"></div>
+        <div style="overflow-x:auto;">
+          <table class="holiday-admin-table">
+            <thead>
+              <tr>
+                <th>Club</th>
+                <th>Owner</th>
+                <th>Dates</th>
+                <th>Days</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="holidayAdminBody">
+              <tr><td colspan="6">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" id="holidayAmendCard" hidden>
+        <h2>Amend holiday</h2>
+        <p id="holidayAmendMeta" class="note"></p>
+        <div class="holiday-book-grid">
+          <label>
+            From
+            <input type="date" id="amendStartDate">
+          </label>
+          <label>
+            To
+            <input type="date" id="amendEndDate">
+          </label>
+        </div>
+        <button type="button" id="amendSaveBtn" class="button">Save amend</button>
+        <button type="button" id="amendCancelBtn" class="button secondary">Close</button>
+        <div id="amendStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Book holiday for club</h2>
+        <div class="holiday-book-grid">
+          <label>
+            Club
+            <select id="bookClubSelect">
+              <option value="">— Select —</option>
+            </select>
+          </label>
+          <label>
+            From
+            <input type="date" id="bookStartDate">
+          </label>
+          <label>
+            To
+            <input type="date" id="bookEndDate">
+          </label>
+        </div>
+        <button type="button" id="bookAdminHolidayBtn" class="button">Book holiday</button>
+        <div id="bookAdminStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_owner_holidays.js"></script>
+</body>
+</html>

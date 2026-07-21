@@ -13,6 +13,7 @@ import {
   needsInboxConfirm,
   normalizeClubKey,
   LEAGUE_DIVISIONS,
+  deferredResultNote,
 } from "./competition.js";
 import {
   loadCalendarStatus,
@@ -1440,8 +1441,14 @@ async function updateFixturePreview() {
     setStatus(
       "submitStatus",
       holidayEarly
-        ? "Holiday unlock — arrange/play this match in the current GPSL week (before its month). Both clubs need min 24 players."
+        ? "Holiday unlock — arrange/play this match in the current GPSL week (before its month). Both clubs need min 24 players. Result will not count on the table until that GPSL month."
         : "Enter home and away goals, then submit."
+    );
+  } else if (f.status === "played") {
+    const deferred = deferredResultNote(f, calendarStatus);
+    setStatus(
+      "submitStatus",
+      deferred || "Result confirmed."
     );
   } else {
     setStatus("submitStatus", "This fixture cannot accept a new result.");

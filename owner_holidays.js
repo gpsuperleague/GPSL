@@ -54,6 +54,43 @@ export async function cancelOwnerHoliday(holidayId) {
   return { ok: true };
 }
 
+export async function amendOwnerHoliday(holidayId, startDate, endDate) {
+  const { error } = await supabase.rpc("club_holiday_amend", {
+    p_holiday_id: holidayId,
+    p_start_date: startDate,
+    p_end_date: endDate,
+  });
+
+  if (error) {
+    return { ok: false, msg: error.message || "Could not amend holiday." };
+  }
+
+  return { ok: true };
+}
+
+/** Convert holiday starts_at / ends_at (exclusive end) to UK date inputs YYYY-MM-DD */
+export function holidayRowToDateInputs(row) {
+  const opts = {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  };
+  const start = new Date(row.starts_at);
+  const endExclusive = new Date(row.ends_at);
+  const endInclusive = new Date(endExclusive.getTime() - 1);
+
+  const fmt = (d) => {
+    const parts = new Intl.DateTimeFormat("en-CA", opts).formatToParts(d);
+    const y = parts.find((p) => p.type === "year")?.value;
+    const m = parts.find((p) => p.type === "month")?.value;
+    const day = parts.find((p) => p.type === "day")?.value;
+    return `${y}-${m}-${day}`;
+  };
+
+  return { startDate: fmt(start), endDate: fmt(endInclusive) };
+}
+
 export function isFixtureHolidayPlayable(fixture, clubIdentity, ctx) {
   return isFixtureHolidayPlayableCore(fixture, clubIdentity, ctx);
 }

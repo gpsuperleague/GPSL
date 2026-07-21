@@ -13,6 +13,7 @@ import {
   GPSL_MONTH_LABELS,
   canSubmitResult,
   needsInboxConfirm,
+  deferredResultNote,
 } from "./competition.js";
 import {
   loadCalendarStatus,
@@ -91,6 +92,10 @@ function actionCell(fixture) {
   }
 
   if (fixture.status === "played") {
+    const deferred = deferredResultNote(fixture, calendarStatus);
+    if (deferred) {
+      return `<span style="color:#c9a227;font-size:12px;" title="${deferred}">Played · pending table</span>`;
+    }
     return `<span style="color:#888;font-size:12px;">Played</span>`;
   }
 

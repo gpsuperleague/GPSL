@@ -478,7 +478,8 @@
           Book real-world dates (up to <b>14 days per season</b>). If your holiday overlaps a future GPSL
           month (e.g. August–September), those fixtures unlock for arrange/play during the
           <b>current</b> GPSL week (including June/July) — both clubs need a full squad (min 24).
-          Book before that GPSL month opens.
+          Book before that GPSL month opens. You can <b>cancel or amend</b> only while the holiday is
+          still upcoming; once it starts, ask admin via Season Management.
         </p>
         <p id="holidayHint" class="owner-tag-hint" role="status"></p>
         <div id="holidayList" class="holiday-list"></div>
@@ -494,7 +495,10 @@
             </label>
             <span id="holidayDayPreview" class="holiday-day-preview"></span>
           </div>
-          <button type="button" id="bookHolidayBtn" class="small-btn">Book holiday</button>
+          <div class="holiday-book-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+            <button type="button" id="bookHolidayBtn" class="small-btn">Book holiday</button>
+            <button type="button" id="cancelHolidayEditBtn" class="small-btn" hidden>Cancel edit</button>
+          </div>
         </div>
       </div>
 

@@ -102,6 +102,44 @@ export const GPSL_MONTH_ORDER = [
   "playoffs",
 ];
 
+/** Sort index for GPSL month labels (lower = earlier). Unknown → null. */
+export function gpslMonthSortIndex(month) {
+  if (!month) return null;
+  const i = GPSL_MONTH_ORDER.indexOf(String(month).toLowerCase());
+  return i >= 0 ? i : null;
+}
+
+/**
+ * True when a played fixture should already affect league tables / season stats.
+ * Early holiday results wait until their gpsl_month is active (or earlier).
+ */
+export function fixtureCountsInTables(fixture, calendarStatus = null) {
+  if (!fixture || fixture.status !== "played") return false;
+  if (fixture.home_goals == null || fixture.away_goals == null) return false;
+
+  const active = calendarStatus?.active_gpsl_month;
+  if (!active) {
+    // No active month yet — treat as not counting until a month unlocks
+    return false;
+  }
+
+  const fSort = gpslMonthSortIndex(fixture.gpsl_month);
+  const aSort = gpslMonthSortIndex(active);
+  if (fSort == null || aSort == null) return true;
+  return fSort <= aSort;
+}
+
+/** Short note when result is confirmed but tables/stats wait for the GPSL month. */
+export function deferredResultNote(fixture, calendarStatus = null) {
+  if (!fixture || fixture.status !== "played") return null;
+  if (fixtureCountsInTables(fixture, calendarStatus)) return null;
+  const label =
+    GPSL_MONTH_LABELS[String(fixture.gpsl_month || "").toLowerCase()] ||
+    fixture.gpsl_month ||
+    "its GPSL month";
+  return `Result saved — counts on the table and in player stats from ${label}.`;
+}
+
 /** Human-readable competition name for a fixture (league division or cup). */
 export function formatFixtureCompetition(f) {
   if (!f) return "";

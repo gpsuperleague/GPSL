@@ -154,6 +154,7 @@ export const ADMIN_MAIN_NAV = [
     label: "Season Management",
     entries: [
       link("Club Season Checklist", "admin_club_checklist.html"),
+      link("Owner holidays", "admin_owner_holidays.html"),
       link("Apply fines", "admin_fines.html"),
       link("Red card appeal review", "admin_prize_appeals.html"),
       link("Republish GPSL Sport", "admin_gpsl_sport.html"),

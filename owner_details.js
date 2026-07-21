@@ -7,6 +7,8 @@ import {
   loadOwnerHolidays,
   bookOwnerHoliday,
   cancelOwnerHoliday,
+  amendOwnerHoliday,
+  holidayRowToDateInputs,
   formatUkDateRange,
   holidayStatusLabel,
   inclusiveDayCountFromDates,
@@ -301,11 +303,45 @@ function showLoadError(message) {
   }
 }
 
+let holidayEditingId = null;
+
 function setHolidayHint(message, isError = false) {
   const el = document.getElementById("holidayHint");
   if (!el) return;
   el.textContent = message || "";
   el.classList.toggle("owner-tag-hint--error", isError);
+}
+
+function clearHolidayEditMode() {
+  holidayEditingId = null;
+  const bookBtn = document.getElementById("bookHolidayBtn");
+  const cancelEditBtn = document.getElementById("cancelHolidayEditBtn");
+  if (bookBtn) bookBtn.textContent = "Book holiday";
+  if (cancelEditBtn) cancelEditBtn.hidden = true;
+  const start = document.getElementById("holidayStartDate");
+  const end = document.getElementById("holidayEndDate");
+  if (start) start.value = "";
+  if (end) end.value = "";
+  updateHolidayDayPreview();
+}
+
+function beginHolidayEdit(row) {
+  holidayEditingId = row.id;
+  const { startDate, endDate } = holidayRowToDateInputs(row);
+  const start = document.getElementById("holidayStartDate");
+  const end = document.getElementById("holidayEndDate");
+  if (start) start.value = startDate;
+  if (end) end.value = endDate;
+  const bookBtn = document.getElementById("bookHolidayBtn");
+  const cancelEditBtn = document.getElementById("cancelHolidayEditBtn");
+  if (bookBtn) bookBtn.textContent = "Save changes";
+  if (cancelEditBtn) cancelEditBtn.hidden = false;
+  updateHolidayDayPreview();
+  setHolidayHint("Editing upcoming holiday — change dates and save, or cancel edit.");
+  document.getElementById("holidayBookingExpand")?.removeAttribute("hidden");
+  document
+    .getElementById("toggleHolidayBookingBtn")
+    ?.setAttribute("aria-expanded", "true");
 }
 
 function renderHolidayList(holidays) {
@@ -325,9 +361,16 @@ function renderHolidayList(holidays) {
         status === "Active"
           ? "holiday-status holiday-status--active"
           : "holiday-status";
-      const cancelBtn = h.is_upcoming
-        ? `<button type="button" class="small-btn holiday-cancel-btn" data-id="${h.id}">Cancel</button>`
-        : "";
+      const actions = h.is_upcoming
+        ? `<span style="display:flex;gap:6px;">
+            <button type="button" class="small-btn holiday-amend-btn" data-id="${h.id}">Amend</button>
+            <button type="button" class="small-btn holiday-cancel-btn" data-id="${h.id}">Cancel</button>
+          </span>`
+        : `<span class="holiday-item-meta">${
+            h.is_active
+              ? "Active — ask admin to change"
+              : "Ended — ask admin to change"
+          }</span>`;
       return `
         <div class="holiday-item">
           <div class="holiday-item-dates">
@@ -335,7 +378,7 @@ function renderHolidayList(holidays) {
             <span class="holiday-item-meta"> · ${h.day_count} day${h.day_count === 1 ? "" : "s"}</span>
           </div>
           <span class="${statusClass}">${status}</span>
-          ${cancelBtn}
+          ${actions}
         </div>
       `;
     })
@@ -344,6 +387,7 @@ function renderHolidayList(holidays) {
   list.querySelectorAll(".holiday-cancel-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const id = Number(btn.dataset.id);
+      if (!window.confirm("Cancel this holiday booking?")) return;
       btn.disabled = true;
       const result = await cancelOwnerHoliday(id);
       btn.disabled = false;
@@ -351,8 +395,17 @@ function renderHolidayList(holidays) {
         setHolidayHint(result.msg, true);
         return;
       }
+      if (holidayEditingId === id) clearHolidayEditMode();
       setHolidayHint("Holiday cancelled.");
       await refreshHolidaySection();
+    });
+  });
+
+  list.querySelectorAll(".holiday-amend-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = Number(btn.dataset.id);
+      const row = holidays.find((h) => Number(h.id) === id);
+      if (row) beginHolidayEdit(row);
     });
   });
 }
@@ -582,10 +635,16 @@ function wireHolidayBooking() {
   const startInput = document.getElementById("holidayStartDate");
   const endInput = document.getElementById("holidayEndDate");
   const bookBtn = document.getElementById("bookHolidayBtn");
+  const cancelEditBtn = document.getElementById("cancelHolidayEditBtn");
 
   const onDateChange = () => updateHolidayDayPreview();
   startInput?.addEventListener("change", onDateChange);
   endInput?.addEventListener("change", onDateChange);
+
+  cancelEditBtn?.addEventListener("click", () => {
+    clearHolidayEditMode();
+    setHolidayHint("Edit cancelled.");
+  });
 
   bookBtn?.addEventListener("click", async () => {
     const start = startInput?.value;
@@ -597,14 +656,21 @@ function wireHolidayBooking() {
     }
 
     bookBtn.disabled = true;
-    const result = await bookOwnerHoliday(start, end);
+    const editingId = holidayEditingId;
+    const result = editingId
+      ? await amendOwnerHoliday(editingId, start, end)
+      : await bookOwnerHoliday(start, end);
     bookBtn.disabled = false;
 
     if (!result.ok) {
       const msg = result.msg || "";
-      if (msg.includes("club_holiday_book") || msg.includes("function")) {
+      if (
+        msg.includes("club_holiday_book") ||
+        msg.includes("club_holiday_amend") ||
+        msg.includes("function")
+      ) {
         setHolidayHint(
-          "Holiday booking unavailable. Run supabase/sql/club_owner_holidays.sql in Supabase.",
+          "Holiday update unavailable. Run supabase/sql/patches/club_holiday_amend_and_admin.sql in Supabase.",
           true
         );
       } else {
@@ -613,10 +679,12 @@ function wireHolidayBooking() {
       return;
     }
 
-    if (startInput) startInput.value = "";
-    if (endInput) endInput.value = "";
-    updateHolidayDayPreview();
-    setHolidayHint("Holiday booked — overlapping match months unlock for early arrange/play (min 24 squad).");
+    clearHolidayEditMode();
+    setHolidayHint(
+      editingId
+        ? "Holiday updated."
+        : "Holiday booked — overlapping match months unlock for early arrange/play (min 24 squad)."
+    );
     await refreshHolidaySection();
   });
 }
