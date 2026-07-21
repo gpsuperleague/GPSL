@@ -235,9 +235,9 @@ export const NAV_SECTIONS = [
       { href: "owner_rankings.html", label: "Owner rankings", page: "owner_rankings" },
       { href: "owner_profile.html", label: "My owner profile", page: "owner_profile" },
       {
-        href: "admin_owner_last_login.html",
+        href: "owner_last_login.html",
         label: "Owner Last Login",
-        page: "admin_owner_last_login",
+        page: "owner_last_login",
       },
       { href: "season_calendar.html", label: "Season calendar", page: "season_calendar" },
       { href: "natter.html", label: "Natter", page: "natter" },

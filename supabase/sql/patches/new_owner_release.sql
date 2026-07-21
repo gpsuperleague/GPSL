@@ -184,7 +184,7 @@ BEGIN
     RETURN false;
   END IF;
 
-  -- Full pre-season (before August)
+  -- Full pre-season status (before calendar months unlock)
   IF lower(coalesce(v_status, '')) = 'preseason' THEN
     RETURN true;
   END IF;
@@ -197,6 +197,11 @@ BEGIN
 
   -- Between activate and first GPSL month (no live month yet) while TW open
   IF v_month = '' AND coalesce(v_tw, false) THEN
+    RETURN true;
+  END IF;
+
+  -- GPSL pre-season months (June / July) — same window as status = preseason
+  IF v_month IN ('june', 'july') THEN
     RETURN true;
   END IF;
 

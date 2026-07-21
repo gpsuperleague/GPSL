@@ -49,6 +49,7 @@ export const MEMBER_ALLOWED_PAGES = new Set([
   // Owners
   "owner_rankings",
   "owner_profile",
+  "owner_last_login",
   "admin_owner_last_login",
   "season_calendar",
   "natter",

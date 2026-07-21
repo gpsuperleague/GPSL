@@ -70,7 +70,7 @@ export const ADMIN_MAIN_NAV = [
         L("Unarchive Owner (return to GPSL)", "admin_owners_unarchive.html"),
       ]),
       group("Login & email", [
-        L("Owner Last Login", "admin_owner_last_login.html"),
+        L("Owner Last Login", "owner_last_login.html"),
         L("Set Owner Tag", "admin_owners_tag.html"),
         L("Update Email", "admin_owners_email.html"),
         L("Set Password", "admin_owners_password.html"),
