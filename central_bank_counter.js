@@ -9,10 +9,12 @@ import {
   loadClubLoans,
   processMyDueLoanInstallments,
 } from "./competition.js";
-import { initBankCounter } from "./bank_counter.js?v=20260720-one-loan-even-repaid";
+import { initBankCounter } from "./bank_counter.js?v=20260721-loan-due-fix";
 
 async function refreshCounter(shortName) {
   if (shortName) {
+    // Collect only instalments that are actually due (server-side).
+    // Requires loan_due_process_no_overcharge.sql — must not drain future months.
     await processMyDueLoanInstallments(supabase);
   }
 
