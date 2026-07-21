@@ -14,7 +14,8 @@ import { initBankCounter } from "./bank_counter.js?v=20260721-loan-due-fix";
 async function refreshCounter(shortName) {
   if (shortName) {
     // Collect only instalments that are actually due (server-side).
-    // Requires loan_due_process_no_overcharge.sql — must not drain future months.
+    // Requires loan_expected_schedule_june_fix.sql — June/July must not
+    // collect the next season's Aug–May schedule.
     await processMyDueLoanInstallments(supabase);
   }
 
