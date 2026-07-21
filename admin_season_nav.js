@@ -1,7 +1,13 @@
 import { formatNavLabel } from "./nav_label.js";
 
-/** Season management workflow — shared by admin nav + admin_season.html sidebar */
-export const SEASON_ADMIN_NAV_VERSION = "20260717-republish-sport";
+/**
+ * Legacy Pre-Season / Season Management mega helpers (admin_season.html sidebars).
+ *
+ * LIVE Admin megas for Create Season / Pre-Season / Season Management /
+ * Season Checklist / Close Season are defined in admin_main_nav.js.
+ * Prefer editing that file for the top-bar Admin menu and Admin checklist.
+ */
+export const SEASON_ADMIN_NAV_VERSION = "20260721-main-nav-source";
 
 const SEASON_CALENDAR_NAV_ITEM = {
   label: "GPSL season calendar",

@@ -7,6 +7,10 @@ import { TESTING_ADMIN_NAV } from "./admin_testing_nav.js";
  * ~ groups → nested headers
  * links → pages (hash when needed)
  *
+ * This file is the source of truth for the live Admin mega-menus and the
+ * Admin checklist (getAdminWorkflowChecklist). Prefer editing here over
+ * admin_season_nav.js / admin_season_break_nav.js / admin_owners_nav.js.
+ *
  * Testing links: maintain only in admin_testing_nav.js (TESTING_ADMIN_NAV).
  *
  * After editing this file (or any admin_*_nav.js), bump APP_VERSION in
@@ -43,24 +47,36 @@ export const ADMIN_MAIN_NAV = [
     id: "owners",
     label: "Owners",
     entries: [
-      link("Manage Waiting List", "admin_owners_waiting_list.html"),
-      link("Owner Waiting List", "admin_owners_waiting_list.html"),
-      link("Discord Join Order", "admin_owners_discord.html"),
-      link("Discord News Feed", "admin_discord_news.html"),
-      link("Discord Friendlies", "admin_discord_friendlies.html"),
-      link("Transfer Gossip", "admin_discord_transfer_gossip.html"),
-      link("Create New Owner & Add to Waiting List", "admin_owners_add_member.html"),
-      link("Create New Owner & Add Directly to Club", "admin_owners_add_direct.html"),
-      link("Remove Owner From Club", "admin_owners_remove.html"),
-      link("Archive Owner(left GPSL)", "admin_owners_archive.html"),
-      link("Unarchive Owner(Return to GPSL)", "admin_owners_unarchive.html"),
-      link("Change Owner Club", "admin_owners_change_club.html"),
-      link("Link existing login to club", "admin_owners_link.html"),
-      link("Set Owner Tag", "admin_owners_tag.html"),
-      link("Update Email", "admin_owners_email.html"),
-      link("Set Password", "admin_owners_password.html"),
-      link("Send Reset Email", "admin_owners_reset.html"),
-      link("Assign Manager to club", "admin_test_manager_assign.html"),
+      group("Waiting list", [
+        L("Manage waiting list", "admin_owners_waiting_list.html"),
+        L("Discord join order", "admin_owners_discord.html"),
+      ]),
+      group("Discord feeds", [
+        L("Discord News Feed", "admin_discord_news.html"),
+        L("Discord Friendlies", "admin_discord_friendlies.html"),
+        L("Transfer Gossip", "admin_discord_transfer_gossip.html"),
+      ]),
+      group("New owners", [
+        L("Create New Owner & Add to Waiting List", "admin_owners_add_member.html"),
+        L("Create New Owner & Add Directly to Club", "admin_owners_add_direct.html"),
+      ]),
+      group("Club assignment", [
+        L("Link existing login to club", "admin_owners_link.html"),
+        L("Change Owner Club", "admin_owners_change_club.html"),
+        L("Remove Owner From Club", "admin_owners_remove.html"),
+        L("Assign Manager to club", "admin_test_manager_assign.html"),
+      ]),
+      group("Archive", [
+        L("Archive Owner (left GPSL)", "admin_owners_archive.html"),
+        L("Unarchive Owner (return to GPSL)", "admin_owners_unarchive.html"),
+      ]),
+      group("Login & email", [
+        L("Set Owner Tag", "admin_owners_tag.html"),
+        L("Update Email", "admin_owners_email.html"),
+        L("Set Password", "admin_owners_password.html"),
+        L("Send Reset Email", "admin_owners_reset.html"),
+      ]),
+      group("Natter", [L("Remove Natter posts", "admin_natter.html")]),
     ],
   },
   {
@@ -87,10 +103,10 @@ export const ADMIN_MAIN_NAV = [
       group("Internationals", [
         L("Nation Setup", "admin_international.html", "sb-nation-setup"),
         L("World Cup Cycle", "admin_international.html", "sb-wc-cycle"),
-        L("Open Nation Selection", "admin_international.html", "sb-nation-selection"),
+        L("Open Nation Selection", "admin_international_selection_open.html"),
         L("Manual National Team Selection", "admin_international.html", "sb-nation-assign"),
-        L("Close Nation Selection", "admin_international.html", "sb-nation-selection"),
-        L("Clear Nation Selection", "admin_international.html", "sb-nation-selection"),
+        L("Close Nation Selection", "admin_international_selection_close.html"),
+        L("Clear Nation Assignments", "admin_international_selection_clear.html"),
         L("Verify owner rankings", "admin_international.html", "sb-owner-rankings"),
       ]),
     ],
@@ -169,17 +185,21 @@ export const ADMIN_MAIN_NAV = [
       group("March", []),
       group("April", []),
       group("May", [
-        L("Lock May (End Month Early)", "admin_test_end_month.html"),
+        L("Lock May (end GPSL month early)", "admin_test_end_month.html"),
         L("Retry May month-lock jobs if timed out", "admin_test_end_month.html"),
         L("Republish GPSL Sport (May)", "admin_gpsl_sport.html"),
         L("Generate playoffs", "admin_fixtures-playoffs.html"),
       ]),
       group("Playoffs", [
-        L("Complete playoff fixtures", "admin_test_deploy_month.html"),
+        L("Setup Playoffs", "admin_fixtures-playoffs.html"),
+        L(
+          "Complete playoff fixtures (deploy results)",
+          "admin_test_deploy_month.html"
+        ),
         L("Apply playoff movements", "admin_fixtures-playoffs.html"),
         L("Push Discord queue (results / news)", "admin_discord_news.html"),
         L(
-          "Lock Playoffs month (End Month Early)",
+          "Lock Playoffs month (end GPSL month early)",
           "admin_test_end_month.html",
           null,
           null,
@@ -192,7 +212,6 @@ export const ADMIN_MAIN_NAV = [
     id: "close_season",
     label: "Close Season",
     entries: [
-      link("Setup Playoffs", "admin_fixtures-playoffs.html"),
       link("Apply playoff movements", "admin_fixtures-playoffs.html"),
       link("Mid-Season Challenge payouts", "admin_challenges.html"),
       link("Pay government subsidies", "admin_gov_subsidies.html"),

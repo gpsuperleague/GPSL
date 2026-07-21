@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Open Nation Selection — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Open Nation Selection</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="note">
+          <a href="admin_international.html" style="color:#ff9900;">← International hub</a>
+          · Also:
+          <a href="admin_international_selection_close.html" style="color:#8cf;">Close</a> ·
+          <a href="admin_international_selection_clear.html" style="color:#8cf;">Clear</a>
+        </p>
+        <p class="note">
+          <b>Open selection</b> — owners pick nations in rank order.<br>
+          <b>Open free-for-all</b> — any club still without a nation can claim immediately (no pick clock).
+        </p>
+        <div id="selectionLive" class="note" style="color:#ccc;margin-bottom:12px;"></div>
+        <div class="row" style="display:flex;flex-wrap:wrap;gap:10px;">
+          <button type="button" class="button" id="openInitialBtn">Open selection</button>
+          <button type="button" class="button" id="openFfaBtn">Open free-for-all</button>
+        </div>
+        <div id="selectionStatus" class="status-line" style="margin-top:10px;font-size:13px;color:#ffcc00;"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_international_selection_page.js"></script>
+</body>
+</html>

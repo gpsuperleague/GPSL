@@ -1,7 +1,13 @@
 import { formatNavLabel } from "./nav_label.js";
 
-/** Season Break workflow — shared by admin nav + admin_season_break.html sidebar */
-export const SEASON_BREAK_NAV_VERSION = "20260714-injuries";
+/**
+ * Season Break sidebar on admin_season_break.html.
+ *
+ * LIVE Admin mega for Season Break is admin_main_nav.js (adminMainMega).
+ * Prefer editing that file for the top-bar menu / Admin checklist.
+ * Keep this sidebar roughly aligned when changing Break tasks.
+ */
+export const SEASON_BREAK_NAV_VERSION = "20260721-selection-pages";
 
 export const SEASON_BREAK_NAV = [
   {
@@ -235,9 +241,8 @@ export const SEASON_BREAK_NAV = [
       },
       {
         label: "Open Nation Selection",
-        href: "admin_international.html",
-        hash: "sb-nation-selection",
-        page: "admin_international",
+        href: "admin_international_selection_open.html",
+        page: "admin_international_selection_open",
       },
       {
         label: "Manual National Team Assignment",
@@ -247,15 +252,13 @@ export const SEASON_BREAK_NAV = [
       },
       {
         label: "Close Nation Selection",
-        href: "admin_international.html",
-        hash: "sb-nation-selection",
-        page: "admin_international",
+        href: "admin_international_selection_close.html",
+        page: "admin_international_selection_close",
       },
       {
-        label: "Clear Nation Selection",
-        href: "admin_international.html",
-        hash: "sb-nation-selection",
-        page: "admin_international",
+        label: "Clear Nation Assignments",
+        href: "admin_international_selection_clear.html",
+        page: "admin_international_selection_clear",
       },
       {
         label: "Verify owner rankings",

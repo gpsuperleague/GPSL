@@ -1,6 +1,13 @@
 import { formatNavLabel } from "./nav_label.js";
 
-/** Owner administration — shared by admin nav mega menu */
+/**
+ * Owners sidebar / legacy mega helper.
+ *
+ * LIVE Admin mega menu for Owners comes from admin_main_nav.js (adminMainMega).
+ * Keep this list aligned with that Owners section when editing.
+ * nav_config.js only uses this file if `ownersMega: true` is wired (currently unused
+ * for the primary Admin menu).
+ */
 
 export const OWNER_ADMIN_NAV = [
   {
@@ -17,25 +24,26 @@ export const OWNER_ADMIN_NAV = [
         href: "admin_owners_discord.html",
         page: "admin_owners_discord",
       },
+    ],
+  },
+  {
+    id: "discord_feeds",
+    label: "Discord feeds",
+    items: [
       {
-        label: "Discord news feed",
+        label: "Discord News Feed",
         href: "admin_discord_news.html",
         page: "admin_discord_news",
       },
       {
-        label: "Discord friendlies",
+        label: "Discord Friendlies",
         href: "admin_discord_friendlies.html",
         page: "admin_discord_friendlies",
       },
       {
-        label: "Transfer gossip",
+        label: "Transfer Gossip",
         href: "admin_discord_transfer_gossip.html",
         page: "admin_discord_transfer_gossip",
-      },
-      {
-        label: "Add member",
-        href: "admin_owners_add_member.html",
-        page: "admin_owners_add_member",
       },
     ],
   },
@@ -44,14 +52,14 @@ export const OWNER_ADMIN_NAV = [
     label: "New owners",
     items: [
       {
-        label: "Add owner",
-        href: "admin_owners_add_direct.html",
-        page: "admin_owners_add_direct",
-      },
-      {
-        label: "Add member (waiting list)",
+        label: "Create New Owner & Add to Waiting List",
         href: "admin_owners_add_member.html",
         page: "admin_owners_add_member",
+      },
+      {
+        label: "Create New Owner & Add Directly to Club",
+        href: "admin_owners_add_direct.html",
+        page: "admin_owners_add_direct",
       },
     ],
   },
@@ -65,20 +73,19 @@ export const OWNER_ADMIN_NAV = [
         page: "admin_owners_link",
       },
       {
-        label: "Change owner club",
+        label: "Change Owner Club",
         href: "admin_owners_change_club.html",
         page: "admin_owners_change_club",
       },
-    ],
-  },
-  {
-    id: "break",
-    label: "Short break",
-    items: [
       {
-        label: "Remove owner from club",
+        label: "Remove Owner From Club",
         href: "admin_owners_remove.html",
         page: "admin_owners_remove",
+      },
+      {
+        label: "Assign Manager to club",
+        href: "admin_test_manager_assign.html",
+        page: "admin_test_manager_assign",
       },
     ],
   },
@@ -87,12 +94,12 @@ export const OWNER_ADMIN_NAV = [
     label: "Archive",
     items: [
       {
-        label: "Archive owner (left GPSL)",
+        label: "Archive Owner (left GPSL)",
         href: "admin_owners_archive.html",
         page: "admin_owners_archive",
       },
       {
-        label: "Unarchive owner",
+        label: "Unarchive Owner (return to GPSL)",
         href: "admin_owners_unarchive.html",
         page: "admin_owners_unarchive",
       },
@@ -103,22 +110,22 @@ export const OWNER_ADMIN_NAV = [
     label: "Login & email",
     items: [
       {
-        label: "Set owner tag",
+        label: "Set Owner Tag",
         href: "admin_owners_tag.html",
         page: "admin_owners_tag",
       },
       {
-        label: "Update email",
+        label: "Update Email",
         href: "admin_owners_email.html",
         page: "admin_owners_email",
       },
       {
-        label: "Set password",
+        label: "Set Password",
         href: "admin_owners_password.html",
         page: "admin_owners_password",
       },
       {
-        label: "Send reset email",
+        label: "Send Reset Email",
         href: "admin_owners_reset.html",
         page: "admin_owners_reset",
       },
@@ -156,7 +163,12 @@ function escapeNavText(text) {
 function isOwnerAdminPage(file) {
   return (
     file === "admin_owners.html" ||
-    /^admin_owners_[a-z0-9_]+\.html$/.test(file)
+    /^admin_owners_[a-z0-9_]+\.html$/.test(file) ||
+    file === "admin_natter.html" ||
+    file === "admin_discord_news.html" ||
+    file === "admin_discord_friendlies.html" ||
+    file === "admin_discord_transfer_gossip.html" ||
+    file === "admin_test_manager_assign.html"
   );
 }
 

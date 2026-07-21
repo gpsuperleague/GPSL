@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Close Nation Selection — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Close Nation Selection</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="note">
+          <a href="admin_international.html" style="color:#ff9900;">← International hub</a>
+          · Also:
+          <a href="admin_international_selection_open.html" style="color:#8cf;">Open</a> ·
+          <a href="admin_international_selection_clear.html" style="color:#8cf;">Clear</a>
+        </p>
+        <p class="note">
+          Closes the current selection window. Owners can no longer claim nations until you open again.
+          <b>Skip current pick</b> advances the draft clock without assigning (draft-order mode only).
+        </p>
+        <div id="selectionLive" class="note" style="color:#ccc;margin-bottom:12px;"></div>
+        <div class="row" style="display:flex;flex-wrap:wrap;gap:10px;">
+          <button type="button" class="button" id="closeSelectionBtn">Close selection</button>
+          <button type="button" class="button secondary" id="skipCurrentPickBtn" hidden>
+            Skip current pick
+          </button>
+        </div>
+        <p class="note" id="skipPickHint" hidden>
+          Moves the clock to the next owner without a nation. The skipped owner can still pick later.
+          Not used in free-for-all mode.
+        </p>
+        <div id="selectionStatus" class="status-line" style="margin-top:10px;font-size:13px;color:#ffcc00;"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_international_selection_page.js"></script>
+</body>
+</html>

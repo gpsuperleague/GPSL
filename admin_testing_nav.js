@@ -4,6 +4,9 @@ import { formatNavLabel } from "./nav_label.js";
  * Canonical Admin → Testing mega-menu links.
  * Wired from nav_config.js via `testingMega: true`.
  * Do not maintain a second Testing list in admin_main_nav.js.
+ *
+ * Season-ops tools (end month / deploy month) also appear under Season Checklist
+ * with ops-facing labels — same pages, not “test only”.
  */
 export const TESTING_ADMIN_NAV = [
   {
@@ -15,12 +18,6 @@ export const TESTING_ADMIN_NAV = [
     label: "Reset League (vanilla)",
     href: "admin_test_reset.html",
     page: "admin_test_reset",
-    navDanger: true,
-  },
-  {
-    label: "Assign manager to club",
-    href: "admin_test_manager_assign.html",
-    page: "admin_test_manager_assign",
     navDanger: true,
   },
   {
@@ -42,7 +39,7 @@ export const TESTING_ADMIN_NAV = [
     navDanger: true,
   },
   {
-    label: "End Month Early",
+    label: "End GPSL month early",
     href: "admin_test_end_month.html",
     page: "admin_test_end_month",
     navDanger: true,

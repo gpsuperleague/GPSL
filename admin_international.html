@@ -201,27 +201,16 @@
     </div>
 
     <div class="card" id="sb-nation-selection">
-      <h2>Nation selection window</h2>
+      <h2>Nation selection</h2>
       <p class="note">
-        <b>Open selection</b> — owners pick nations in rank order.<br>
-        <b>Open free-for-all</b> — any club still without a nation can claim immediately (no pick clock).<br>
-        <b>Clear assignments</b> — wipes all club↔nation links and closes any open window (use before a full re-draft).
+        Open, close, and clear each have their own admin page (separate checklist ticks):
       </p>
-      <div id="selectionLive" class="note" style="color:#ccc;margin-bottom:12px;"></div>
-      <div class="row">
-        <button type="button" class="button" id="openInitialBtn">Open selection</button>
-        <button type="button" class="button" id="openFfaBtn">Open free-for-all</button>
-        <button type="button" class="button secondary" id="clearAssignmentsBtn">Clear all assignments</button>
-        <button type="button" class="button" id="closeSelectionBtn">Close selection</button>
-        <button type="button" class="button secondary" id="skipCurrentPickBtn" hidden>
-          Skip current pick
-        </button>
-      </div>
-      <p class="note" id="skipPickHint" hidden>
-        Moves the clock to the next owner without a nation. The skipped owner can still pick later when the draft returns to them.
-        Not used in free-for-all mode.
+      <p>
+        <a class="button" href="admin_international_selection_open.html">Open Nation Selection</a>
+        <a class="button secondary" href="admin_international_selection_close.html">Close Nation Selection</a>
+        <a class="button secondary" href="admin_international_selection_clear.html">Clear Nation Assignments</a>
       </p>
-      <div id="selectionStatus" class="status-line"></div>
+      <div id="selectionLive" class="note" style="color:#ccc;margin-top:12px;"></div>
     </div>
 
     <div class="card">
