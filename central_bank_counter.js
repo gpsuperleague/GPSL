@@ -13,10 +13,14 @@ import { initBankCounter } from "./bank_counter.js?v=20260721-loan-due-fix";
 
 async function refreshCounter(shortName) {
   if (shortName) {
-    // Collect only instalments that are actually due (server-side).
-    // Requires loan_expected_schedule_june_fix.sql — June/July must not
-    // collect the next season's Aug–May schedule.
-    await processMyDueLoanInstallments(supabase);
+    // Due collections only (server uses Aug–May loan calendar; June/July
+    // will not pull Season 2 Aug+ instalments). Requires
+    // loan_force_june_s2_reconcile.sql if balances were drained.
+    try {
+      await processMyDueLoanInstallments(supabase);
+    } catch (e) {
+      console.warn("processMyDueLoanInstallments:", e);
+    }
   }
 
   const [bank, myLoans] = await Promise.all([
