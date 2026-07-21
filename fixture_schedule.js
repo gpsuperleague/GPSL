@@ -1,5 +1,5 @@
 import { supabase, initGlobal } from "./global.js";
-import { GPSL_MONTH_LABELS, formatFixtureCompetition } from "./competition.js";
+import { GPSL_MONTH_LABELS, formatFixtureCompetition, formatGpslMonthRangeList } from "./competition.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import {
   loadScheduleContext,
@@ -112,16 +112,15 @@ function catchUpBannerHtml() {
 
 function holidayEarlyBannerHtml() {
   if (!ctx?.is_holiday_early) return "";
+  const playMonthKey = String(ctx.fixture?.gpsl_month || "").toLowerCase();
   const playMonth =
-    GPSL_MONTH_LABELS[ctx.fixture?.gpsl_month] || ctx.fixture?.gpsl_month || "later";
+    GPSL_MONTH_LABELS[playMonthKey] || ctx.fixture?.gpsl_month || "later";
   const prop = ctx.proposal_window || {};
-  const schedMonth =
-    prop.gpsl_month && GPSL_MONTH_LABELS[prop.gpsl_month]
-      ? GPSL_MONTH_LABELS[prop.gpsl_month]
-      : prop.gpsl_month || "the current GPSL month";
+  const fromMonth = prop.gpsl_month || playMonthKey;
+  const windowLabel = formatGpslMonthRangeList(fromMonth, playMonthKey);
   return `<div class="catch-up-banner holiday-early-banner">
     <strong>Holiday early play</strong> — this <b>${playMonth}</b> fixture is unlocked now.
-    Arrange and play during <b>${schedMonth}</b> (both clubs need a full squad, min 24).
+    Arrange and play during <b>${windowLabel}</b> (both clubs need a full squad, min 24).
   </div>`;
 }
 
@@ -476,11 +475,16 @@ function render() {
       : "";
 
   const propMonth =
-    ctx.proposal_window?.gpsl_month && GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
-      ? GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
-      : ctx.is_catch_up || ctx.is_holiday_early
-        ? "the current GPSL month"
-        : "this GPSL month";
+    ctx.is_holiday_early
+      ? formatGpslMonthRangeList(
+          ctx.proposal_window?.gpsl_month || ctx.fixture?.gpsl_month,
+          ctx.fixture?.gpsl_month
+        )
+      : ctx.proposal_window?.gpsl_month && GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
+        ? GPSL_MONTH_LABELS[ctx.proposal_window.gpsl_month]
+        : ctx.is_catch_up
+          ? "the current GPSL month"
+          : "this GPSL month";
 
   const slotCountLine =
     selectableSlots.length === slots.length

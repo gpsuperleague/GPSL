@@ -110,6 +110,30 @@ export function gpslMonthSortIndex(month) {
 }
 
 /**
+ * Human list of GPSL months from `fromMonth` inclusive up to (not including) `beforeMonth`.
+ * e.g. june → august ⇒ "June and July"
+ */
+export function formatGpslMonthRangeList(fromMonth, beforeMonth) {
+  const from = gpslMonthSortIndex(fromMonth);
+  const before = gpslMonthSortIndex(beforeMonth);
+  const fallback =
+    GPSL_MONTH_LABELS[String(fromMonth || "").toLowerCase()] ||
+    fromMonth ||
+    "the current GPSL month";
+
+  if (from == null) return fallback;
+  const end = before == null ? from + 1 : before;
+  if (end <= from) return fallback;
+
+  const labels = GPSL_MONTH_ORDER.slice(from, end).map(
+    (m) => GPSL_MONTH_LABELS[m] || m
+  );
+  if (labels.length === 1) return labels[0];
+  if (labels.length === 2) return `${labels[0]} and ${labels[1]}`;
+  return `${labels.slice(0, -1).join(", ")}, and ${labels[labels.length - 1]}`;
+}
+
+/**
  * True when a played fixture should already affect league tables / season stats.
  * Early holiday results wait until their gpsl_month is active (or earlier).
  */
