@@ -36,17 +36,13 @@
       <div class="card">
         <h2>GPSL site last login</h2>
         <p class="note">
-          <b>This is website sign-in only</b> — when the owner last logged into the GPSL site
-          (Supabase Auth). Most recent at the top; longest time since login at the bottom.
-          No emails are shown.
+          <b>Website sign-in only</b> — last login time, plus how many times each owner signed in
+          during the <b>previous</b> and <b>current</b> GPSL month windows (Fri 19:00 UK unlock → lock).
+          Most recent last-login at the top. No emails are shown.
         </p>
         <p class="note">
-          <b>Discord “last login” to the GPSL server is not available from Discord.</b>
-          Their API does not give bots a last-seen / last-login time for server members
-          (only join date, which is not shown here). To track Discord presence we would need
-          a always-on Discord bot that records when members appear online — say if you want that built.
-        </p>
-        <p class="note">
+          Login counts come from Supabase Auth audit logs (<code>login</code> events).
+          If Auth → Audit Logs → “write to database” is disabled, counts will show 0.
           Requires <code>patches/admin_owner_last_logins.sql</code>.
         </p>
         <div class="login-toolbar">
@@ -62,12 +58,14 @@
                 <th>Owner</th>
                 <th>Club</th>
                 <th>Status</th>
-                <th>Site last login (UK)</th>
+                <th>Last login (UK)</th>
                 <th class="num">Time since</th>
+                <th class="num" id="prevMonthCol">Prev month logins</th>
+                <th class="num" id="curMonthCol">Current month logins</th>
               </tr>
             </thead>
             <tbody id="loginTableBody">
-              <tr><td colspan="6">Loading…</td></tr>
+              <tr><td colspan="8">Loading…</td></tr>
             </tbody>
           </table>
         </div>

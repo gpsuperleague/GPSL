@@ -4,6 +4,10 @@ primeAdminPageChrome();
 
 /** @type {Array<Record<string, unknown>>} */
 let rows = [];
+let monthMeta = {
+  previousLabel: "Previous month",
+  currentLabel: "Current month",
+};
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -61,6 +65,21 @@ function ownerLabel(row) {
   return "Owner";
 }
 
+function updateMonthHeaders() {
+  const prev = document.getElementById("prevMonthCol");
+  const cur = document.getElementById("curMonthCol");
+  if (prev) {
+    prev.textContent = monthMeta.previousLabel
+      ? `${monthMeta.previousLabel} logins`
+      : "Prev month logins";
+  }
+  if (cur) {
+    cur.textContent = monthMeta.currentLabel
+      ? `${monthMeta.currentLabel} logins`
+      : "Current month logins";
+  }
+}
+
 function renderTable(filterText = "") {
   const body = document.getElementById("loginTableBody");
   if (!body) return;
@@ -84,7 +103,7 @@ function renderTable(filterText = "") {
       });
 
   if (!filtered.length) {
-    body.innerHTML = `<tr><td colspan="6">${
+    body.innerHTML = `<tr><td colspan="8">${
       rows.length ? "No matches." : "No owners found."
     }</td></tr>`;
     return;
@@ -107,6 +126,9 @@ function renderTable(filterText = "") {
           ? escapeHtml(r.club_short_name)
           : '<span class="muted">—</span>';
 
+      const prevN = Number(r.logins_previous_month) || 0;
+      const curN = Number(r.logins_current_month) || 0;
+
       return `<tr>
         <td class="num">${i + 1}</td>
         <td>${escapeHtml(ownerLabel(r))}</td>
@@ -114,9 +136,29 @@ function renderTable(filterText = "") {
         <td>${escapeHtml(r.registry_status || "—")}</td>
         <td>${escapeHtml(formatUkDateTime(r.last_sign_in_at))}</td>
         <td class="num ${sinceClass}">${escapeHtml(since.text)}</td>
+        <td class="num">${prevN}</td>
+        <td class="num">${curN}</td>
       </tr>`;
     })
     .join("");
+}
+
+function parseRpcPayload(data) {
+  if (Array.isArray(data)) {
+    return {
+      owners: data,
+      previousLabel: "Previous month",
+      currentLabel: "Current month",
+    };
+  }
+  if (data && typeof data === "object") {
+    return {
+      owners: Array.isArray(data.owners) ? data.owners : [],
+      previousLabel: data.previous_gpsl_month_label || "Previous month",
+      currentLabel: data.current_gpsl_month_label || "Current month",
+    };
+  }
+  return { owners: [], previousLabel: "Previous month", currentLabel: "Current month" };
 }
 
 async function refresh() {
@@ -129,7 +171,14 @@ async function refresh() {
     return;
   }
 
-  rows = Array.isArray(data) ? data : [];
+  const parsed = parseRpcPayload(data);
+  monthMeta = {
+    previousLabel: parsed.previousLabel,
+    currentLabel: parsed.currentLabel,
+  };
+  updateMonthHeaders();
+
+  rows = parsed.owners;
   rows.sort((a, b) => {
     const ta = a.last_sign_in_at ? new Date(a.last_sign_in_at).getTime() : -1;
     const tb = b.last_sign_in_at ? new Date(b.last_sign_in_at).getTime() : -1;
@@ -139,9 +188,18 @@ async function refresh() {
     );
   });
 
+  const monthBits = [
+    monthMeta.previousLabel ? `prev ${monthMeta.previousLabel}` : null,
+    monthMeta.currentLabel ? `current ${monthMeta.currentLabel}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   setStatus(
     "loginStatus",
-    `${rows.length} owner${rows.length === 1 ? "" : "s"} (archived hidden)`
+    `${rows.length} owner${rows.length === 1 ? "" : "s"} (archived hidden)${
+      monthBits ? ` · ${monthBits}` : ""
+    }`
   );
   renderTable(document.getElementById("loginSearch")?.value);
 }
