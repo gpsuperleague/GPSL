@@ -1,9 +1,10 @@
 -- =============================================================================
 -- Admin: owner last login + login counts (previous & current GPSL month)
 --
--- Counts from public.owner_site_login_events (written on password sign-in).
--- auth.audit_log_entries is often empty when "Disable writing auth audit logs
--- to project database" is on — do not rely on it.
+-- Primary: public.owner_site_login_events (written on password sign-in).
+-- Fallback: auth.sessions.created_at (covers logins when the client hook missed).
+-- Per window we take GREATEST(events, sessions) so one login is not double-counted
+-- when both sources have it, but we still see a login if only sessions has it.
 -- Safe re-run.
 -- =============================================================================
 
@@ -27,8 +28,6 @@ CREATE POLICY owner_site_login_events_select_admin
   FOR SELECT
   TO authenticated
   USING (public.is_gpsl_admin());
-
--- No direct INSERT policy: clients call record_owner_site_login() only.
 
 GRANT SELECT ON public.owner_site_login_events TO authenticated;
 
@@ -113,11 +112,15 @@ BEGIN
     END IF;
   END IF;
 
-  -- Active month: unlock → now (while it is still the active month).
+  -- Active GPSL month window is unlock ≤ now < lock; count unlock → now.
   v_cur_end := now();
-
   -- Previous month: unlock → lock (or current unlock if lock missing).
   v_prev_end := coalesce(v_prev_lock, v_cur_unlock, now());
+
+  -- If calendar unlock is missing, still count recent activity in a wide window.
+  IF v_cur IS NOT NULL AND v_cur_unlock IS NULL THEN
+    v_cur_unlock := now() - interval '45 days';
+  END IF;
 
   RETURN jsonb_build_object(
     'current_gpsl_month', v_cur,
@@ -131,25 +134,46 @@ BEGIN
           UNION
           SELECT cl.owner_id FROM public."Clubs" cl WHERE cl.owner_id IS NOT NULL
         ),
-        login_counts AS (
+        event_counts AS (
           SELECT
             e.owner_id,
             count(*) FILTER (
               WHERE v_cur_unlock IS NOT NULL
                 AND e.logged_in_at >= v_cur_unlock
                 AND e.logged_in_at <= v_cur_end
-            )::int AS logins_current_month,
+            )::int AS cur_n,
             count(*) FILTER (
               WHERE v_prev_unlock IS NOT NULL
                 AND e.logged_in_at >= v_prev_unlock
                 AND e.logged_in_at < v_prev_end
-            )::int AS logins_previous_month
+            )::int AS prev_n
           FROM public.owner_site_login_events e
-          WHERE (
-              (v_prev_unlock IS NOT NULL AND e.logged_in_at >= v_prev_unlock)
-              OR (v_cur_unlock IS NOT NULL AND e.logged_in_at >= v_cur_unlock)
-            )
           GROUP BY e.owner_id
+        ),
+        session_counts AS (
+          SELECT
+            s.user_id AS owner_id,
+            count(*) FILTER (
+              WHERE v_cur_unlock IS NOT NULL
+                AND s.created_at >= v_cur_unlock
+                AND s.created_at <= v_cur_end
+            )::int AS cur_n,
+            count(*) FILTER (
+              WHERE v_prev_unlock IS NOT NULL
+                AND s.created_at >= v_prev_unlock
+                AND s.created_at < v_prev_end
+            )::int AS prev_n
+          FROM auth.sessions s
+          GROUP BY s.user_id
+        ),
+        login_counts AS (
+          SELECT
+            o.owner_id,
+            greatest(coalesce(ec.cur_n, 0), coalesce(sc.cur_n, 0)) AS logins_current_month,
+            greatest(coalesce(ec.prev_n, 0), coalesce(sc.prev_n, 0)) AS logins_previous_month
+          FROM owner_ids o
+          LEFT JOIN event_counts ec ON ec.owner_id = o.owner_id
+          LEFT JOIN session_counts sc ON sc.owner_id = o.owner_id
         )
         SELECT jsonb_agg(
           row_to_json(x)::jsonb

@@ -95,10 +95,10 @@
         return;
       }
 
-      try {
-        await supabase.rpc("record_owner_site_login");
-      } catch (_) {
-        /* Patch not applied yet — ignore */
+      // supabase.rpc does not throw — must check error
+      const { error: loginLogErr } = await supabase.rpc("record_owner_site_login");
+      if (loginLogErr) {
+        console.warn("record_owner_site_login:", loginLogErr.message);
       }
 
       let dest = "dashboard.html";

@@ -41,9 +41,8 @@
           Most recent last-login at the top. No emails are shown.
         </p>
         <p class="note">
-          Login counts are recorded when someone signs in via the login page
-          (<code>owner_site_login_events</code>). They start from when the patch was applied —
-          older history is not backfilled. Requires <code>patches/admin_owner_last_logins.sql</code>.
+          Login counts use site login events plus active Auth sessions in each GPSL month window.
+          Re-run <code>patches/admin_owner_last_logins.sql</code> if counts stay at 0 after a fresh sign-in.
         </p>
         <div class="login-toolbar">
           <input type="search" id="loginSearch" placeholder="Filter tag / club / status…">
