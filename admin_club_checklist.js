@@ -16,7 +16,6 @@ const ISSUE_META = {
   owner: { label: "Owner", level: "bad", tip: "No owner assigned" },
   manager: { label: "Manager", level: "bad", tip: "Owned club has no manager" },
   nation: { label: "Nation", level: "bad", tip: "Owned club has no nation" },
-  ooo: { label: "OooO", level: "bad", tip: "Missing One of Our Own player" },
   squad_low: {
     label: `Squad <${MIN_SQUAD_SIZE}`,
     level: "bad",
@@ -67,7 +66,6 @@ function evaluateRowIssues(row) {
   if (!hasOwner) issues.add("owner");
   if (hasOwner && !row.manager_name) issues.add("manager");
   if (hasOwner && !(row.nation_code || row.nation_name)) issues.add("nation");
-  if (hasOwner && !row.ooo_player_name) issues.add("ooo");
   if (squad < MIN_SQUAD_SIZE) issues.add("squad_low");
   if (squad > SQUAD_SIZE) issues.add("squad_high");
   if (hasOwner && u21 < MIN_U21) issues.add("u21");
@@ -365,8 +363,8 @@ function renderTable() {
             )}
             ${textCell(
               ooo,
-              issues.has("ooo") ? "bad" : "ok",
-              issues.has("ooo") ? ISSUE_META.ooo.tip : ""
+              "ok",
+              row.ooo_player_name ? "" : "One of Our Own not set (optional)"
             )}
             ${numCell(row.squad_size, squadLevel, squadTip)}
             ${numCell(row.star_count)}
