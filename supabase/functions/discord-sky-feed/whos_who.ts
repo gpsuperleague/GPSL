@@ -46,9 +46,16 @@ export function buildWhosWhoEmbeds(roster: WhosWhoRoster): Record<string, unknow
       clubs.length === 0
         ? ["(no clubs registered)"]
         : clubs.map((c) => {
-            const tag = padTag(c.owner_tag || "—", maxTag);
+            const rawTag = (c.owner_tag || "").trim();
+            const short = String(c.short_name || "").trim();
+            const vacant =
+              c.vacant === true ||
+              !rawTag ||
+              rawTag === "—" ||
+              (short && rawTag.toUpperCase() === short.toUpperCase());
+            const tag = vacant ? "—" : padTag(rawTag, maxTag);
             const club = (c.club_name || c.short_name || "—").trim();
-            return `${tag}  ${club}`;
+            return vacant ? `${padTag("—", maxTag)}  ${club}` : `${tag}  ${club}`;
           });
 
     // Discord embed description limit 4096; keep a safety margin

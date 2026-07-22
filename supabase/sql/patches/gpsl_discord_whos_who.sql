@@ -89,13 +89,30 @@ BEGIN
     FROM (
       SELECT
         jsonb_build_object(
-          'owner_tag', coalesce(
-            nullif(btrim(public.owner_registry_resolve_tag(c.owner_id)), ''),
-            nullif(btrim(c.owner), ''),
-            '—'
-          ),
+          'owner_tag', CASE
+            WHEN upper(btrim(coalesce(
+              nullif(btrim(public.owner_registry_resolve_tag(c.owner_id)), ''),
+              nullif(btrim(c.owner), ''),
+              ''
+            ))) = upper(btrim(c."ShortName"))
+              THEN '—'
+            WHEN nullif(btrim(public.owner_registry_resolve_tag(c.owner_id)), '') IS NOT NULL
+              THEN nullif(btrim(public.owner_registry_resolve_tag(c.owner_id)), '')
+            WHEN nullif(btrim(c.owner), '') IS NOT NULL
+             AND upper(btrim(c.owner)) IS DISTINCT FROM upper(btrim(c."ShortName"))
+              THEN nullif(btrim(c.owner), '')
+            ELSE '—'
+          END,
           'club_name', coalesce(nullif(btrim(c."Club"), ''), c."ShortName"),
-          'short_name', c."ShortName"
+          'short_name', c."ShortName",
+          'vacant', (
+            upper(btrim(coalesce(
+              nullif(btrim(public.owner_registry_resolve_tag(c.owner_id)), ''),
+              nullif(btrim(c.owner), ''),
+              c."ShortName"
+            ))) = upper(btrim(c."ShortName"))
+            OR c.owner_id IS NULL
+          )
         ) AS row_obj,
         lower(coalesce(
           nullif(btrim(public.owner_registry_resolve_tag(c.owner_id)), ''),
