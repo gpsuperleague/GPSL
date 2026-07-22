@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Inject cash — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .admin-club-picker {
+      margin-top: 12px;
+      max-height: 280px;
+      overflow: auto;
+      border: 1px solid #333;
+      border-radius: 6px;
+      padding: 10px 12px;
+      background: #161616;
+    }
+    .admin-club-check {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin: 4px 0;
+      font-size: 13px;
+      color: #ddd;
+      cursor: pointer;
+    }
+    .admin-club-check-short { color: #888; font-size: 12px; }
+    .admin-scope-row { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 8px; }
+    .admin-scope-row label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+    .admin-club-picker-actions { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Inject cash</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Cash injection</h2>
+        <p class="note">
+          Credits a fixed ₿ amount to <b>all</b> season clubs or <b>selected</b> clubs.
+          Posts <code>admin_one_off_injection</code> (Finances → End of season / bank injection)
+          via GPSL Central Bank and notifies each club inbox.
+          Run <code>supabase/sql/patches/admin_cash_inject_emergency_tax_flat.sql</code> once.
+        </p>
+        <div class="row gov-subsidy-row">
+          <div>
+            <label for="injectAmount">Amount (₿)</label>
+            <input type="number" id="injectAmount" min="1" step="1000000" style="width:160px;" placeholder="e.g. 5000000">
+          </div>
+          <div style="flex:1 1 240px;">
+            <label for="injectNote">Note (optional)</label>
+            <input type="text" id="injectNote" style="width:100%;max-width:420px;" placeholder="Shown on ledger + inbox">
+          </div>
+        </div>
+        <div style="margin-top:14px;">
+          <label>Target clubs</label>
+          <div class="admin-scope-row">
+            <label><input type="radio" name="injectScope" value="all" checked> All season clubs</label>
+            <label><input type="radio" name="injectScope" value="selected"> Selected clubs</label>
+          </div>
+        </div>
+        <div id="injectClubPicker" hidden>
+          <div class="admin-club-picker-actions">
+            <button type="button" id="injectSelectAllBtn" class="button">Select all</button>
+            <button type="button" id="injectClearBtn" class="button">Clear</button>
+          </div>
+          <div id="injectClubList" class="admin-club-picker"></div>
+        </div>
+        <div class="row" style="margin-top:14px;">
+          <button type="button" id="injectCashBtn" class="button" style="background:#446633;">Inject cash</button>
+        </div>
+        <div id="injectCashStatus" class="status-line"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_cash_injection.js"></script>
+</body>
+</html>

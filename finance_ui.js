@@ -190,7 +190,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "gov_emergency_tax",
         label: "Emergency tax",
         types: ["gov_emergency_tax"],
-        note: "Admin % on balance above threshold — apply from Admin → Emergency tax.",
+        note: "Admin set-amount levy or season-end % above threshold — Admin → Season Management → Charge Emergency Tax.",
       },
       {
         id: "gov_income_tax",
@@ -266,7 +266,7 @@ export const FINANCE_UI_SECTIONS = [
   {
     id: "eos",
     title: "End of season",
-    intro: "Debt interest, FFP, balance interest, and admin injections (via Close Finances).",
+    intro: "Debt interest, FFP, balance interest, and admin cash injections.",
     lines: [
       {
         id: "eos_debt_interest",
@@ -290,7 +290,7 @@ export const FINANCE_UI_SECTIONS = [
         id: "eos_injection",
         label: "End of season injection",
         types: ["eos_injection", "admin_one_off_injection"],
-        note: "Boost for struggling clubs; also one-off central bank credits.",
+        note: "Admin cash injection (Season Management → Inject cash) and other one-off central bank credits.",
       },
     ],
   },

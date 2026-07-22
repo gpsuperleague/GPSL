@@ -234,6 +234,7 @@ export const DASHBOARD_PANELS = [
   p("admin_star_tax", "Star tax", "admin_star_tax.html", { adminOnly: true }),
   p("admin_wage_pct", "Wage %", "admin_wage_pct.html", { adminOnly: true }),
   p("admin_tax_pct", "Tax %", "admin_tax_pct.html", { adminOnly: true }),
+  p("admin_cash_injection", "Inject cash", "admin_cash_injection.html", { adminOnly: true }),
   p("admin_emergency_tax", "Emergency tax", "admin_emergency_tax.html", { adminOnly: true }),
   p("admin_league_prizes", "League prizes", "admin_league_prizes.html", { adminOnly: true }),
   p("admin_stadium_settings", "Stadium settings", "admin_stadium_settings.html", { adminOnly: true }),

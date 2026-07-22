@@ -11,6 +11,8 @@ export const INBOX_ACTION_DEFAULTS = {
   transfer_upcoming: { label: "Transfer Centre", href: "transfer_center.html" },
   draft_scheduled: { label: "Draft auction", href: "draftauction.html" },
   fine_applied: { label: "Finances", href: "finances.html" },
+  admin_cash_injection: { label: "Finances", href: "finances.html" },
+  admin_emergency_tax: { label: "Finances", href: "finances.html" },
   loan_drawdown: { label: "League loans", href: "central_bank_loans.html" },
   loan_repayment: { label: "Service counter", href: "central_bank_counter.html" },
   loan_interest: { label: "Service counter", href: "central_bank_counter.html" },

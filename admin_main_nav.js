@@ -157,6 +157,18 @@ export const ADMIN_MAIN_NAV = [
       link("Club Season Checklist", "admin_club_checklist.html"),
       link("Owner holidays", "admin_owner_holidays.html"),
       link("Apply fines", "admin_fines.html"),
+      link(
+        "Inject cash",
+        "admin_cash_injection.html",
+        null,
+        "Credit a fixed ₿ amount to all season clubs or selected clubs (admin_one_off_injection + inbox)."
+      ),
+      link(
+        "Charge Emergency Tax",
+        "admin_emergency_tax.html",
+        null,
+        "Debit a fixed ₿ amount from all or selected clubs (gov_emergency_tax + inbox). Also hosts season-end threshold % formula."
+      ),
       link("Red card appeal review", "admin_prize_appeals.html"),
       link("Republish GPSL Sport", "admin_gpsl_sport.html"),
     ],
