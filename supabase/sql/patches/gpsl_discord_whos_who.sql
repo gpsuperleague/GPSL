@@ -213,8 +213,8 @@ AS $function$
 DECLARE
   v_req bigint;
 BEGIN
-  IF NOT public.is_admin() THEN
-    RAISE EXCEPTION 'admin only';
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
   END IF;
 
   IF coalesce(p_force, true) THEN
