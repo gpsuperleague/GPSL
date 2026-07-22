@@ -1,11 +1,11 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import { formatMoney } from "./competition.js";
 import { loadFinanceSeasonContext } from "./finance_page_common.js";
-import { MIN_SQUAD_SIZE, SQUAD_SIZE } from "./squad_rules.js";
+import { MIN_HOME_GROWN, MIN_SQUAD_SIZE, MIN_UNDER_21, SQUAD_SIZE } from "./squad_rules.js";
 
 primeAdminPageChrome();
 
-const MIN_U21 = 5;
+const MIN_U21 = MIN_UNDER_21;
 
 /** @type {Array<Record<string, unknown>>} */
 let allRows = [];
@@ -27,6 +27,11 @@ const ISSUE_META = {
     tip: `Squad above maximum (${SQUAD_SIZE})`,
   },
   u21: { label: `U21 <${MIN_U21}`, level: "bad", tip: `Fewer than ${MIN_U21} U21 players` },
+  hg: {
+    label: `HG <${MIN_HOME_GROWN}`,
+    level: "bad",
+    tip: `Fewer than ${MIN_HOME_GROWN} home-grown players (nation must match club)`,
+  },
   balance: { label: "Balance", level: "bad", tip: "Current balance is negative" },
   proj: { label: "Proj EOS", level: "warn", tip: "Projected end-of-season balance is negative" },
   fines: { label: "Fines", level: "warn", tip: "Outstanding fines on record" },
@@ -62,6 +67,7 @@ function evaluateRowIssues(row) {
   const hasOwner = rowHasOwner(row);
   const squad = Number(row.squad_size ?? 0);
   const u21 = Number(row.u21_count ?? 0);
+  const hg = Number(row.hg_count ?? 0);
 
   if (!hasOwner) issues.add("owner");
   if (hasOwner && !row.manager_name) issues.add("manager");
@@ -69,6 +75,7 @@ function evaluateRowIssues(row) {
   if (squad < MIN_SQUAD_SIZE) issues.add("squad_low");
   if (squad > SQUAD_SIZE) issues.add("squad_high");
   if (hasOwner && u21 < MIN_U21) issues.add("u21");
+  if (hasOwner && hg < MIN_HOME_GROWN) issues.add("hg");
   if (Number(row.current_balance) < 0) issues.add("balance");
   if (
     row.projected_eos_balance != null &&
@@ -117,6 +124,7 @@ function compareValues(a, b, key) {
     key === "foreign_sales_remaining" ||
     key === "fines_count" ||
     key === "u21_count" ||
+    key === "hg_count" ||
     key === "manager_rating"
   ) {
     const na = Number(va);
@@ -172,6 +180,7 @@ function renderSummary(rows) {
   let owned = 0;
   let vacant = 0;
   let underMin = 0;
+  let hgShort = 0;
   let negative = 0;
   let flagged = 0;
 
@@ -179,6 +188,7 @@ function renderSummary(rows) {
     if (rowHasOwner(row)) owned += 1;
     else vacant += 1;
     if (Number(row.squad_size) < MIN_SQUAD_SIZE) underMin += 1;
+    if (rowHasOwner(row) && Number(row.hg_count ?? 0) < MIN_HOME_GROWN) hgShort += 1;
     if (Number(row.current_balance) < 0) negative += 1;
     if (evaluateRowIssues(row).size > 0) flagged += 1;
   }
@@ -188,6 +198,7 @@ function renderSummary(rows) {
     <span>${owned} owned · ${vacant} vacant</span>
     <span>${flagged} with issues</span>
     <span>${underMin} below ${MIN_SQUAD_SIZE} squad</span>
+    <span>${hgShort} below ${MIN_HOME_GROWN} HG</span>
     <span>${negative} negative balance</span>
   `;
 }
@@ -255,6 +266,7 @@ function renderTable() {
     ["contract_releases_remaining", "Releases"],
     ["foreign_sales_remaining", "Foreign"],
     ["fines_count", "Fines"],
+    ["hg_count", "HG"],
     ["u21_count", "U21"],
   ];
 
@@ -278,6 +290,7 @@ function renderTable() {
             const hasOwner = rowHasOwner(row);
             const squad = Number(row.squad_size ?? 0);
             const u21 = Number(row.u21_count ?? 0);
+            const hg = Number(row.hg_count ?? 0);
             const rowFlagged = issues.size > 0 ? " chk-row-flagged" : "";
 
             const owner = row.owner_tag || row.owner_email;
@@ -312,6 +325,13 @@ function renderTable() {
             if (hasOwner && u21 < MIN_U21) {
               u21Level = "bad";
               u21Tip = ISSUE_META.u21.tip;
+            }
+
+            let hgLevel = "ok";
+            let hgTip = "";
+            if (hasOwner && hg < MIN_HOME_GROWN) {
+              hgLevel = "bad";
+              hgTip = ISSUE_META.hg.tip;
             }
 
             let balanceLevel = "ok";
@@ -374,6 +394,7 @@ function renderTable() {
             ${numCell(row.contract_releases_remaining)}
             ${numCell(row.foreign_sales_remaining)}
             ${numCell(row.fines_count, finesLevel, finesTip)}
+            ${numCell(row.hg_count, hgLevel, hgTip)}
             ${numCell(row.u21_count, u21Level, u21Tip)}
           </tr>`;
           })
@@ -444,7 +465,7 @@ async function loadTable() {
     const msg = [error.message, error.hint].filter(Boolean).join(" — ");
     setStatus(
       "pageStatus",
-      `❌ ${msg}. Run supabase/sql/patches/admin_club_season_checklist_nation.sql in Supabase.`,
+      `❌ ${msg}. Run supabase/sql/patches/admin_club_season_checklist_hg.sql in Supabase.`,
       false
     );
     if (wrap) wrap.innerHTML = `<p class="note">${escapeHtml(msg)}</p>`;
