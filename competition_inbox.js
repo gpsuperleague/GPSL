@@ -40,6 +40,7 @@ const INBOX_CATEGORY_TYPES = {
     "prize_appeal_submitted",
     "prize_appeal_resolved",
     "points_deduction",
+    "club_checklist_issues",
   ]),
   fines: new Set(["fine_applied", "admin_emergency_tax"]),
   bank: new Set(["loan_drawdown", "loan_repayment", "loan_interest", "admin_cash_injection"]),

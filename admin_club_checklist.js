@@ -41,6 +41,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
 
   document.getElementById("reloadBtn")?.addEventListener("click", () => loadTable());
+  document.getElementById("notifyIssuesBtn")?.addEventListener("click", () => notifyOwnersOfIssues());
   document.getElementById("filterOwner")?.addEventListener("change", renderTable);
   document.getElementById("filterOwnerName")?.addEventListener("input", renderTable);
   document.getElementById("filterDivision")?.addEventListener("change", renderTable);
@@ -101,6 +102,116 @@ function issueTagsHtml(issues) {
       )}</span>`;
     })
     .join("");
+}
+
+/** @param {Record<string, unknown>} row @param {Set<string>} issues */
+function buildChecklistIssueBody(row, issues) {
+  const club = row.club_name || row.club_short_name || "your club";
+  const lines = [...issues].map((key) => {
+    const meta = ISSUE_META[key] || { label: key, tip: key };
+    return `• ${meta.label} — ${meta.tip}`;
+  });
+
+  const extras = [];
+  if (issues.has("hg")) {
+    extras.push(`Home-grown count: ${Number(row.hg_count ?? 0)} (minimum ${MIN_HOME_GROWN})`);
+  }
+  if (issues.has("u21")) {
+    extras.push(`U21 count: ${Number(row.u21_count ?? 0)} (minimum ${MIN_U21})`);
+  }
+  if (issues.has("squad_low") || issues.has("squad_high")) {
+    extras.push(`Squad size: ${Number(row.squad_size ?? 0)} (range ${MIN_SQUAD_SIZE}–${SQUAD_SIZE})`);
+  }
+  if (issues.has("balance")) {
+    extras.push(`Current balance: ${formatMoney(row.current_balance)}`);
+  }
+  if (issues.has("proj") && row.projected_eos_balance != null) {
+    extras.push(`Projected EOS balance: ${formatMoney(row.projected_eos_balance)}`);
+  }
+
+  return [
+    `Club checklist for ${club}`,
+    "",
+    "The league admin has flagged the following deficiencies on your club:",
+    "",
+    ...lines,
+    ...(extras.length ? ["", ...extras] : []),
+    "",
+    "Please review Squad / Finances and resolve these as soon as possible.",
+  ].join("\n");
+}
+
+async function notifyOwnersOfIssues() {
+  if (!allRows.length) {
+    setStatus("pageStatus", "Load the checklist first.", false);
+    return;
+  }
+
+  const useFiltered = document.getElementById("notifyFilteredOnly")?.checked;
+  const source = useFiltered ? filteredRows() : allRows;
+
+  const targets = source
+    .map((row) => {
+      const issues = evaluateRowIssues(row);
+      return { row, issues };
+    })
+    .filter(({ row, issues }) => rowHasOwner(row) && issues.size > 0);
+
+  if (!targets.length) {
+    setStatus(
+      "pageStatus",
+      useFiltered
+        ? "No owned clubs with issues in the current filter."
+        : "No owned clubs currently have checklist issues.",
+      false
+    );
+    return;
+  }
+
+  const sample = targets
+    .slice(0, 8)
+    .map(({ row }) => row.club_name || row.club_short_name)
+    .join(", ");
+  const more = targets.length > 8 ? "…" : "";
+
+  if (
+    !window.confirm(
+      `Send inbox notifications to ${targets.length} owner(s) with checklist issues?\n\n` +
+        `${sample}${more}\n\n` +
+        (useFiltered ? "(Using current filters.)\n\n" : "") +
+        "Each owner gets a list of their deficiencies."
+    )
+  ) {
+    return;
+  }
+
+  const items = targets.map(({ row, issues }) => ({
+    club_short_name: row.club_short_name,
+    title: "Club checklist — issues to fix",
+    body: buildChecklistIssueBody(row, issues),
+  }));
+
+  setStatus("pageStatus", `Notifying ${items.length} owner(s)…`);
+  const { data, error } = await supabase.rpc("admin_notify_club_checklist_issues", {
+    p_items: items,
+  });
+
+  if (error) {
+    setStatus(
+      "pageStatus",
+      "❌ " + error.message + " — run patches/admin_club_checklist_notify_issues.sql",
+      false
+    );
+    return;
+  }
+
+  setStatus(
+    "pageStatus",
+    `✅ Notified ${data?.sent ?? 0} owner(s)` +
+      (data?.skipped ? ` (${data.skipped} skipped)` : "") +
+      ".",
+    true
+  );
 }
 
 function compareValues(a, b, key) {

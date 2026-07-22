@@ -13,6 +13,7 @@ export const INBOX_ACTION_DEFAULTS = {
   fine_applied: { label: "Finances", href: "finances.html" },
   admin_cash_injection: { label: "Finances", href: "finances.html" },
   admin_emergency_tax: { label: "Finances", href: "finances.html" },
+  club_checklist_issues: { label: "Squad", href: "squad.html" },
   loan_drawdown: { label: "League loans", href: "central_bank_loans.html" },
   loan_repayment: { label: "Service counter", href: "central_bank_counter.html" },
   loan_interest: { label: "Service counter", href: "central_bank_counter.html" },

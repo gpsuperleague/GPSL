@@ -94,11 +94,15 @@
         <p class="chk-note">
           All GPSL clubs at a glance for the active season. <b>Projected EOS balance</b> loads after the table
           (pending gates, prizes, wages, etc.). Owned clubs without a nation are flagged.
-          Run <code>admin_club_season_checklist_nation.sql</code> in Supabase first.
-          Nav: <b>Admin → Pre-Season → Club season checklist</b>.
+          Run <code>admin_club_season_checklist_hg.sql</code> (and notify patch if using the button) in Supabase.
+          Nav: <b>Admin → Season Management → Club Season Checklist</b>.
+          Use <b>Notify owners of issues</b> to inbox each owned club with current deficiencies.
         </p>
         <div class="chk-toolbar">
           <button type="button" id="reloadBtn" class="button">Reload</button>
+          <button type="button" id="notifyIssuesBtn" class="button" style="background:#663333;" title="Inbox each owned club that currently fails checklist rules">
+            Notify owners of issues
+          </button>
           <label class="chk-filter">
             Owner
             <select id="filterOwner">
@@ -124,6 +128,9 @@
           <label class="chk-filter" title="Show clubs with at least one red/amber requirement fail (includes vacant = no owner)">
             <input type="checkbox" id="filterIssuesOnly"> Issues only
           </label>
+          <label class="chk-filter" title="When notifying, only message clubs that match the filters above (not every club with issues)">
+            <input type="checkbox" id="notifyFilteredOnly"> Notify filtered only
+          </label>
           <span id="rowCount" class="note"></span>
         </div>
         <div class="chk-legend">
@@ -139,6 +146,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_club_checklist.js?v=20260722-hg-check"></script>
+  <script type="module" src="admin_club_checklist.js?v=20260722-notify-issues"></script>
 </body>
 </html>
