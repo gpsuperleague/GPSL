@@ -397,6 +397,12 @@
       margin-top:2px;
     }
 
+    #draftScoutedFilterBtn.is-active {
+      background: #3d3200;
+      border-color: #ff9900;
+      color: #ffcc66;
+    }
+
     .draft-filter-summary {
       font-size:12px;
       color:#888;
@@ -450,7 +456,7 @@
     • No free agent bids after 6pm<br>
     • All rules are based on <b>UK time</b>, but times you see are in <b>your local time</b><br>
     • Click <b>☆</b> on a row to save a thread — saved auctions appear at the top here and in <b>Transfer Centre → Saved Draft Auctions</b><br>
-    • Use filters above the table to search by player, leading club, or threads your club has bid on
+    • Use filters above the table to search by player, leading club, your bids, or <b>My scouting targets</b>
   </div>
 
   <div class="draft-filters" role="search" aria-label="Filter draft auctions">
@@ -468,6 +474,14 @@
       <input type="checkbox" id="draftMyBidsOnly">
       <span>My club&apos;s bids only</span>
     </label>
+    <div class="filter-action">
+      <span class="filter-action-label">Scouting</span>
+      <div class="filter-action-btns">
+        <button type="button" id="draftScoutedFilterBtn" class="button button-secondary" hidden>
+          ★ My scouting targets
+        </button>
+      </div>
+    </div>
     <label>
       Auto-refresh (sec)
       <input type="number" id="draftRefreshInterval" min="1" max="300" step="1" value="60" aria-describedby="draftRefreshHint">
@@ -537,6 +551,11 @@
       playerNameLinkHtml,
     } from "./player_links.js";
     import { textMatchesSearch } from "./search_normalize.js";
+    import {
+      loadScoutingTargetMap,
+      isScoutingAvailable,
+      scoutingSetupHint,
+    } from "./scouting_targets.js";
 
     /* ============================================================
        MODULE A: Global State
@@ -547,6 +566,9 @@
     let draftEnabled = false;
     let draftAuctionStartTimeUK = null;
     let favouriteIds = new Set();
+    /** @type {Map<string, number>} */
+    let scoutingTargetMap = new Map();
+    let scoutedOnly = false;
     let draftTableWired = false;
     let draftListingsPoll = null;
     let draftListingsPollMs = null;
@@ -590,6 +612,7 @@
       const search = document.getElementById("draftPlayerSearch");
       const leading = document.getElementById("draftLeadingClubFilter");
       const myBids = document.getElementById("draftMyBidsOnly");
+      const scoutedBtn = document.getElementById("draftScoutedFilterBtn");
 
       if (search && typeof saved.nameQuery === "string") {
         search.value = saved.nameQuery;
@@ -601,6 +624,10 @@
       }
       if (myBids && buyerShortName && typeof saved.myBidsOnly === "boolean") {
         myBids.checked = saved.myBidsOnly;
+      }
+      if (typeof saved.scoutedOnly === "boolean") {
+        scoutedOnly = saved.scoutedOnly && Boolean(buyerShortName);
+        if (scoutedBtn) scoutedBtn.classList.toggle("is-active", scoutedOnly);
       }
 
       const refreshInterval = document.getElementById("draftRefreshInterval");
@@ -768,6 +795,7 @@
       draftEnabled = settings.draftEnabled;
       draftAuctionStartTimeUK = settings.draftStart;
       await loadBuyerClubShortName(user.id);
+      await loadDraftScoutingTargets();
       await populateLeadingClubFilter();
       restorePersistedDraftFilters();
       applyDraftRefreshInterval();
@@ -778,6 +806,34 @@
       await updateCreditPanel();
       await loadDraftListings();
     });
+
+    async function loadDraftScoutingTargets() {
+      const btn = document.getElementById("draftScoutedFilterBtn");
+      scoutingTargetMap = new Map();
+      if (!buyerShortName) {
+        scoutedOnly = false;
+        if (btn) {
+          btn.hidden = true;
+          btn.classList.remove("is-active");
+        }
+        return;
+      }
+      try {
+        scoutingTargetMap = await loadScoutingTargetMap(supabase, buyerShortName);
+      } catch (err) {
+        console.warn("draft scouting targets:", err);
+        scoutingTargetMap = new Map();
+      }
+      if (btn) {
+        btn.hidden = false;
+        btn.classList.toggle("is-active", scoutedOnly);
+        if (!isScoutingAvailable()) {
+          btn.title = scoutingSetupHint();
+        } else {
+          btn.title = "Show only draft threads for players on your scouting list";
+        }
+      }
+    }
 
     function applyDraftFavouriteLocal(konamiId, isFav) {
       const key = String(konamiId);
@@ -880,6 +936,7 @@
       const search = document.getElementById("draftPlayerSearch");
       const leading = document.getElementById("draftLeadingClubFilter");
       const myBids = document.getElementById("draftMyBidsOnly");
+      const scoutedBtn = document.getElementById("draftScoutedFilterBtn");
       const refreshInterval = document.getElementById("draftRefreshInterval");
       const clearBtn = document.getElementById("draftClearFilters");
 
@@ -899,6 +956,17 @@
         renderDraftTable();
         savePersistedDraftFilters();
       });
+      scoutedBtn?.addEventListener("click", () => {
+        if (!buyerShortName) return;
+        if (!isScoutingAvailable()) {
+          alert(scoutingSetupHint());
+          return;
+        }
+        scoutedOnly = !scoutedOnly;
+        scoutedBtn.classList.toggle("is-active", scoutedOnly);
+        renderDraftTable();
+        savePersistedDraftFilters();
+      });
       refreshInterval?.addEventListener("change", () => {
         applyDraftRefreshInterval();
         savePersistedDraftFilters();
@@ -911,6 +979,8 @@
         if (search) search.value = "";
         if (leading) leading.value = "";
         if (myBids) myBids.checked = false;
+        scoutedOnly = false;
+        scoutedBtn?.classList.remove("is-active");
         renderDraftTable();
         savePersistedDraftFilters();
       });
@@ -926,6 +996,7 @@
         nameQuery: document.getElementById("draftPlayerSearch")?.value.trim() || "",
         leadingClub: document.getElementById("draftLeadingClubFilter")?.value || "",
         myBidsOnly: document.getElementById("draftMyBidsOnly")?.checked === true,
+        scoutedOnly,
         refreshIntervalSec: getDraftRefreshIntervalSec(),
       };
     }
@@ -948,6 +1019,16 @@
         filtered = filtered.filter((row) => row.myClubBid);
       }
 
+      if (scoutedOnly) {
+        if (!scoutingTargetMap.size) {
+          filtered = [];
+        } else {
+          filtered = filtered.filter((row) =>
+            scoutingTargetMap.has(String(row.player?.Konami_ID ?? ""))
+          );
+        }
+      }
+
       return filtered;
     }
 
@@ -956,7 +1037,7 @@
       if (!el) return;
 
       const { nameQuery, leadingClub, myBidsOnly } = getDraftFilterState();
-      const active = nameQuery || leadingClub || myBidsOnly;
+      const active = nameQuery || leadingClub || myBidsOnly || scoutedOnly;
 
       if (!active || total === 0) {
         el.hidden = true;
