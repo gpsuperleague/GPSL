@@ -1894,7 +1894,7 @@ document.addEventListener("DOMContentLoaded", () => {
               const phase = getDraftPhaseFromStart(nowLocal, draftStart);
 
               if (isGpdbFreeAgentOfferAllowed(nowLocal, draftStart)) {
-                bidCell = `<button class="button make-offer-btn" data-player-id="${player.Konami_ID}">Draft Offer</button>`;
+                bidCell = `<button class="button draft-offer-btn" data-player-id="${player.Konami_ID}">Draft Offer</button>`;
               } else {
                 const lockMsg = gpdbFreeAgentLockMessage(phase) || "Draft Closed";
                 bidCell = `<span class="locked-msg">${lockMsg}</span>`;
@@ -1965,7 +1965,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Array.from(tableBody.querySelectorAll("tr")).forEach(row => {
       row.style.cursor = "pointer";
       row.addEventListener("click", e => {
-        if (e.target.closest(".make-offer-btn, .call-up-btn, .release-callup-btn, .scout-btn, a")) return;
+        if (e.target.closest(".make-offer-btn, .draft-offer-btn, .call-up-btn, .release-callup-btn, .scout-btn, a")) return;
         const konamiId = row.getAttribute("data-konami-id");
         if (konamiId) {
           window.open(pesdbPlayerUrl(konamiId), "_blank", "noopener");
@@ -1973,7 +1973,7 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    document.querySelectorAll(".make-offer-btn").forEach(btn => {
+    document.querySelectorAll(".make-offer-btn, .draft-offer-btn").forEach(btn => {
       btn.addEventListener("click", () => openMakeOfferModal(btn.dataset.playerId));
     });
 
