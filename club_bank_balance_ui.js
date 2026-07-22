@@ -14,11 +14,30 @@ export function ensureClubBankBalanceStyles() {
   const style = document.createElement("style");
   style.id = STYLE_ID;
   style.textContent = `
+    .club-bank-status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px 16px;
+      margin: 0 0 16px;
+    }
+    .club-bank-status-row.inset {
+      margin-left: 20px;
+      margin-right: 20px;
+    }
+    .club-bank-status-left {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      min-width: 0;
+    }
     .club-bank-balance {
       display: inline-flex;
       align-items: baseline;
       gap: 8px;
-      margin: 0 0 12px;
+      margin: 0;
       padding: 6px 12px;
       background: #1a1a1a;
       border: 1px solid #333;
@@ -26,6 +45,7 @@ export function ensureClubBankBalanceStyles() {
       font-size: 13px;
       color: #ccc;
       line-height: 1.3;
+      flex-shrink: 0;
     }
     .club-bank-balance[hidden] { display: none !important; }
     .club-bank-balance .cbb-label { color: #888; }

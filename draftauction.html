@@ -240,11 +240,18 @@
 
     .draft-header-row {
       display:flex;
-      align-items:flex-start;
+      align-items:center;
       justify-content:space-between;
       flex-wrap:wrap;
       gap:12px;
       margin:0 20px 15px 20px;
+    }
+    .club-bank-status-left {
+      display:flex;
+      align-items:center;
+      flex-wrap:wrap;
+      gap:10px 14px;
+      min-width:0;
     }
 
     .draft-timer {
@@ -412,12 +419,13 @@
 
   <h1>Draft Auction</h1>
 
-  <div id="clubBankBalance" class="club-bank-balance" hidden style="margin:0 20px 12px;"></div>
-
   <div class="draft-header-row">
-    <div>
-      <p id="draftStatus" class="status-note" style="margin:0 0 6px 0;"></p>
-      <p id="creditPanel" class="status-note" style="margin:0;"></p>
+    <div class="club-bank-status-left">
+      <div id="clubBankBalance" class="club-bank-balance" hidden></div>
+      <div>
+        <p id="draftStatus" class="status-note" style="margin:0 0 6px 0;"></p>
+        <p id="creditPanel" class="status-note" style="margin:0;"></p>
+      </div>
     </div>
     <div id="draftCountdownContainer" class="draft-timer">
       <span id="draftCountdown"></span>

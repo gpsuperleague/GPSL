@@ -787,12 +787,13 @@ a.button:hover, button.button:hover {
 
   <div id="nav"></div>
 
-  <div id="clubBankBalance" class="club-bank-balance" hidden style="margin:0 auto 12px; width:fit-content;"></div>
-
   <div class="filters-bar">
-    <div class="filters-right">
-      <a href="season_transfers.html" class="button">Season transfers</a>
-      <a href="season_club_purchases.html" class="button">Season club purchases</a>
+    <div class="filters-right" style="width:100%; justify-content:space-between;">
+      <div id="clubBankBalance" class="club-bank-balance" hidden></div>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+        <a href="season_transfers.html" class="button">Season transfers</a>
+        <a href="season_club_purchases.html" class="button">Season club purchases</a>
+      </div>
     </div>
   </div>
 
@@ -1016,7 +1017,7 @@ a.button:hover, button.button:hover {
   <script type="module" src="clubs_lookup.js"></script>
 
   <!-- ALL LISTINGS LOGIC -->
-  <script type="module" src="all_listings.js?v=20260722-bank-bal"></script>
+  <script type="module" src="all_listings.js?v=20260722-bank-bal-row"></script>
 
 </body>
 </html>

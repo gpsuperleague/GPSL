@@ -11,8 +11,11 @@
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     h1 { margin:20px; color:#ff9900; }
     .draft-header-row {
-      display:flex; justify-content:space-between; align-items:flex-start;
+      display:flex; justify-content:space-between; align-items:center;
       flex-wrap:wrap; gap:16px; margin:0 20px 16px;
+    }
+    .club-bank-status-left {
+      display:flex; align-items:center; flex-wrap:wrap; gap:10px 14px; min-width:0;
     }
     .status-note { font-size:13px; color:#ccc; }
     .important-notice {
@@ -48,12 +51,13 @@
   <div id="nav"></div>
   <h1>Manager Draft Auction</h1>
 
-  <div id="clubBankBalance" class="club-bank-balance" hidden style="margin:0 20px 12px;"></div>
-
   <div class="draft-header-row">
-    <div>
-      <p id="draftStatus" class="status-note" style="margin:0 0 6px;"></p>
-      <p id="leadPanel" class="status-note" style="margin:0;"></p>
+    <div class="club-bank-status-left">
+      <div id="clubBankBalance" class="club-bank-balance" hidden></div>
+      <div>
+        <p id="draftStatus" class="status-note" style="margin:0 0 6px;"></p>
+        <p id="leadPanel" class="status-note" style="margin:0;"></p>
+      </div>
     </div>
     <div id="draftCountdownContainer" class="draft-timer" style="flex-direction:column; align-items:flex-end;">
       <span id="draftCountdown"></span>
@@ -93,7 +97,7 @@
     </table>
   </div>
 
-  <script type="module" src="global.js?v=20260722-bank-bal"></script>
-  <script type="module" src="manager_draftauction.js?v=20260722-bank-bal"></script>
+  <script type="module" src="global.js?v=20260722-bank-bal-row"></script>
+  <script type="module" src="manager_draftauction.js?v=20260722-bank-bal-row"></script>
 </body>
 </html>
