@@ -412,6 +412,8 @@
 
   <h1>Draft Auction</h1>
 
+  <div id="clubBankBalance" class="club-bank-balance" hidden style="margin:0 20px 12px;"></div>
+
   <div class="draft-header-row">
     <div>
       <p id="draftStatus" class="status-note" style="margin:0 0 6px 0;"></p>
@@ -500,6 +502,7 @@
        ============================================================ */
 
     import { initGlobal, loadGlobalSettings } from "./global.js";
+    import { mountClubBankBalance } from "./club_bank_balance_ui.js";
     import {
       supabase,
       getUKNow,
@@ -749,6 +752,9 @@
       }
 
       await initGlobal();
+      mountClubBankBalance("clubBankBalance").catch((err) =>
+        console.warn("club bank balance:", err)
+      );
 
       const settings = await loadGlobalSettings();
       draftEnabled = settings.draftEnabled;

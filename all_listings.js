@@ -28,6 +28,7 @@ import {
   isScoutingAvailable,
   scoutingSetupHint,
 } from "./scouting_targets.js";
+import { mountClubBankBalance } from "./club_bank_balance_ui.js";
 
 // Use global Supabase client (created in all_listings.html)
 const supabase = window.supabase;
@@ -147,6 +148,9 @@ function parseMoneyInput(value) {
   }
 
   await loadShortNameFromSupabase(user.id);
+  mountClubBankBalance("clubBankBalance", {
+    clubShortName: currentUserShort,
+  }).catch((err) => console.warn("club bank balance:", err));
   await loadScoutingTargetsForClub();
   restorePersistedListingFilters();
   wireFilterCheckboxes();

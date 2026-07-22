@@ -13,6 +13,7 @@ import {
 
 import { formatMoney } from "./competition.js";
 import { loadWagePercentages, wageFromMarketValue } from "./wages.js";
+import { mountClubBankBalance } from "./club_bank_balance_ui.js";
 
 import {
   loadGlobalSettings as loadGlobalSettingsEngine,
@@ -2976,6 +2977,9 @@ document.addEventListener("DOMContentLoaded", () => {
   async function init() {
     // Initialize global settings and build navigation
     await initGlobal();
+    mountClubBankBalance("clubBankBalance").catch((err) =>
+      console.warn("club bank balance:", err)
+    );
 
     await loadUser();
 

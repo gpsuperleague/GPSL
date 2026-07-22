@@ -19,6 +19,7 @@ import {
 import { loadClubsMap, fullClubName, ownerTagForClub } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 import { managerListCellHtml, loadManagerPortraitManifest } from "./manager_images.js";
+import { mountClubBankBalance } from "./club_bank_balance_ui.js";
 
 let buyerShortName = null;
 let managerDraftEnabled = false;
@@ -290,6 +291,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   await initGlobal();
+  mountClubBankBalance("clubBankBalance").catch((err) =>
+    console.warn("club bank balance:", err)
+  );
   managerDraftEnabled = getManagerDraftEnabled();
   draftAuctionStartTime = getDraftAuctionStartTime();
   await loadBuyerClub(user.id);

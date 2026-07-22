@@ -87,6 +87,8 @@
       <a href="draftauction.html" class="button">← Back to Draft Auction</a>
     </p>
 
+    <div id="clubBankBalance" class="club-bank-balance" hidden></div>
+
     <div class="player-header">
       <div>
         <a id="playerImgLink" href="#" target="_blank" rel="noopener">
@@ -153,6 +155,7 @@
       refreshDraftBiddingOpen,
       getDraftBiddingOpen,
     } from "./global.js";
+    import { mountClubBankBalance } from "./club_bank_balance_ui.js";
     import {
       supabase,
       getUKNow,
@@ -227,6 +230,9 @@
       await buildNav();
       await loadClubsMap();
       await loadBuyerClubShortName(user.id);
+      mountClubBankBalance("clubBankBalance").catch((err) =>
+        console.warn("club bank balance:", err)
+      );
       wireDraftFavouriteButton();
       await loadPlayerAndBids();
       setupBidControls();

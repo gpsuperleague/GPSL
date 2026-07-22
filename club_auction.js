@@ -18,6 +18,7 @@ import {
   clubAuctionPhaseLabel,
 } from "./draft_timeline.js";
 import { stadiumImageUrl } from "./stadium_images.js";
+import { mountClubBankBalance, setClubBankBalance } from "./club_bank_balance_ui.js";
 
 const GATE_PRICE_PER_SEAT = 20;
 const STADIUM_VALUE_PER_SEAT = 1500;
@@ -210,12 +211,14 @@ async function loadOwnerContext() {
     ownerTag = self?.owner_tag || null;
     budget = 0;
     applyViewOnlyIntro(isAdmin);
+    await mountClubBankBalance("clubBankBalance");
     return true;
   }
 
   if (error) {
     ownerTag = null;
     budget = 0;
+    setClubBankBalance("clubBankBalance", null);
     return true;
   }
 
@@ -224,6 +227,9 @@ async function loadOwnerContext() {
   needsOnboardingTimezone = Boolean(self?.needs_onboarding_timezone);
   needsOnboardingAvailability = Boolean(self?.needs_onboarding_availability);
   budget = Number(self?.pending_starting_balance) || 0;
+  setClubBankBalance("clubBankBalance", budget, {
+    href: "awaiting_club.html",
+  });
 
   const intro = document.getElementById("clubAuctionIntro");
   if (intro && budget > 0) {
@@ -714,6 +720,7 @@ async function placeBid(shortName, rawAmount, btn) {
   }
   budget = Number(data?.remaining_budget) ?? budget;
   document.getElementById("clubBidModalBudget").textContent = formatMoney(budget);
+  setClubBankBalance("clubBankBalance", budget, { href: "awaiting_club.html" });
   await refreshAuctionState();
   renderStatus();
   await updateLeadPanel();

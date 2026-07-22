@@ -37,6 +37,7 @@ import {
   setMoneyInputValue,
   wireMoneyBidInput,
 } from "./money_input.js";
+import { mountClubBankBalance } from "./club_bank_balance_ui.js";
 
 let buyerShortName = null;
 let managerDraftEnabled = false;
@@ -409,6 +410,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await buildNav();
   await loadBuyerClub(user.id);
+  mountClubBankBalance("clubBankBalance", {
+    clubShortName: buyerShortName,
+  }).catch((err) => console.warn("club bank balance:", err));
   if (buyerShortName) {
     const vacancy = await getClubManagerVacancy(buyerShortName);
     if (!vacancy.vacant) {
