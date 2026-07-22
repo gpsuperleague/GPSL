@@ -6,6 +6,53 @@
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
+-- Widen competition_finance_ledger entry_type check
+-- (live DB may lack admin_one_off_injection / gov_emergency_tax)
+-- ---------------------------------------------------------------------------
+DO $ledger_types$
+DECLARE
+  v_list text;
+BEGIN
+  SELECT string_agg(quote_literal(t), ', ' ORDER BY t)
+  INTO v_list
+  FROM (
+    SELECT DISTINCT entry_type AS t
+    FROM public.competition_finance_ledger
+    WHERE entry_type IS NOT NULL
+    UNION
+    SELECT unnest(ARRAY[
+      'admin_one_off_injection',
+      'admin_purchase_payment',
+      'eos_injection',
+      'gov_emergency_tax',
+      'gov_fine_compensation',
+      'gov_hg_subsidy',
+      'gov_youth_subsidy',
+      'gov_bnb_subsidy',
+      'gov_income_tax'
+    ])
+  ) s;
+
+  IF v_list IS NULL OR btrim(v_list) = '' THEN
+    RAISE EXCEPTION 'Could not build finance ledger entry_type allow-list';
+  END IF;
+
+  ALTER TABLE public.competition_finance_ledger
+    DROP CONSTRAINT IF EXISTS competition_finance_ledger_entry_type_check;
+
+  EXECUTE format(
+    'ALTER TABLE public.competition_finance_ledger
+       ADD CONSTRAINT competition_finance_ledger_entry_type_check
+       CHECK (entry_type IN (%s)) NOT VALID',
+    v_list
+  );
+
+  ALTER TABLE public.competition_finance_ledger
+    VALIDATE CONSTRAINT competition_finance_ledger_entry_type_check;
+END;
+$ledger_types$;
+
+-- ---------------------------------------------------------------------------
 -- Inbox message types
 -- ---------------------------------------------------------------------------
 DO $inbox_types$
