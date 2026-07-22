@@ -270,6 +270,7 @@ function renderRoutingStatus(data) {
   const natterOk = !!data?.natter_webhook_configured;
   const notifyOk = !!data?.notifications_webhook_configured;
   const tablesOk = !!data?.tables_webhook_configured;
+  const whosOk = !!data?.whos_who_webhook_configured;
   el.innerHTML = `
     <div class="${newsOk ? "ok" : "bad"}">#gpsl-news webhook: ${
       newsOk ? "configured" : "missing DISCORD_WEBHOOK_URL"
@@ -294,6 +295,11 @@ function renderRoutingStatus(data) {
         ? "configured (DISCORD_TABLES_WEBHOOK_URL)"
         : "MISSING — set secret + redeploy discord-sky-feed"
     }</div>
+    <div class="${whosOk ? "ok" : "bad"}">#whos-who webhook: ${
+      whosOk
+        ? "configured (DISCORD_WHOS_WHO_WEBHOOK_URL) — silent daily edit"
+        : "MISSING — set secret + redeploy discord-sky-feed"
+    }</div>
     ${
       data?.note
         ? `<div class="note" style="margin-top:8px;">${escapeHtml(data.note)}</div>`
@@ -313,6 +319,7 @@ async function checkRouting() {
       natter_webhook_configured: false,
       notifications_webhook_configured: false,
       tables_webhook_configured: false,
+      whos_who_webhook_configured: false,
       note: error.message,
     });
     return;
@@ -494,6 +501,37 @@ document.getElementById("tablesPublishBtn")?.addEventListener("click", () => {
       `Queued tables for ${data?.gpsl_month || "month"} (queue #${data?.queue_id}). Pushing…`
     );
     await pushNews();
+  })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
+document.getElementById("whosWhoPublishBtn")?.addEventListener("click", () => {
+  (async () => {
+    setStatus("newsStatus", "Publishing Who's Who roster to Discord…");
+    const { data, error } = await supabase.rpc("admin_discord_publish_whos_who", {
+      p_force: true,
+    });
+    if (error) {
+      setStatus(
+        "newsStatus",
+        error.message.includes("admin_discord_publish_whos_who")
+          ? "❌ Run gpsl_discord_whos_who.sql in Supabase first."
+          : "❌ " + error.message,
+        false
+      );
+      return;
+    }
+    if (!data?.ok) {
+      setStatus(
+        "newsStatus",
+        data?.hint || data?.error || "Who's Who publish failed.",
+        false
+      );
+      return;
+    }
+    setStatus(
+      "newsStatus",
+      data?.hint ||
+        `Who's Who sync requested (pg_net #${data?.request_id ?? "—"}). Check #whos-who in ~30s.`
+    );
   })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
 document.getElementById("clinchesBtn")?.addEventListener("click", () => {

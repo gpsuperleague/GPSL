@@ -1,6 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { publishLeagueTables, type StandingRow } from "./league_tables.ts";
+import {
+  publishWhosWho,
+  rosterContentHash,
+  type WhosWhoRoster,
+} from "./whos_who.ts";
 
 const DISCORD_API = "https://discord.com/api/v10";
 
@@ -344,6 +349,10 @@ Deno.serve(async (req) => {
       Deno.env.get("DISCORD_TABLES_WEBHOOK_URL") ||
       Deno.env.get("DISCORD_WEBHOOK_TABLES_URL") ||
       "";
+    const whosWhoWebhookUrl =
+      Deno.env.get("DISCORD_WHOS_WHO_WEBHOOK_URL") ||
+      Deno.env.get("DISCORD_WHOSWHO_WEBHOOK_URL") ||
+      "";
     const feedKey = Deno.env.get("DISCORD_FEED_INVOKE_KEY") ||
       Deno.env.get("CRON_API_KEY") ||
       "";
@@ -415,6 +424,7 @@ Deno.serve(async (req) => {
         natter_webhook_configured: Boolean(natterWebhookUrl),
         notifications_webhook_configured: Boolean(notificationsWebhookUrl),
         tables_webhook_configured: Boolean(tablesWebhookUrl),
+        whos_who_webhook_configured: Boolean(whosWhoWebhookUrl),
         routing: {
           result_events: resultsWebhookUrl
             ? "DISCORD_RESULTS_WEBHOOK_URL → #gpsl-results"
@@ -428,11 +438,99 @@ Deno.serve(async (req) => {
           table_events: tablesWebhookUrl
             ? "DISCORD_TABLES_WEBHOOK_URL → #gpsl-tables"
             : "BLOCKED until DISCORD_TABLES_WEBHOOK_URL is set",
+          whos_who: whosWhoWebhookUrl
+            ? "DISCORD_WHOS_WHO_WEBHOOK_URL → #whos-who (silent daily edit)"
+            : "BLOCKED until DISCORD_WHOS_WHO_WEBHOOK_URL is set",
           other_events: "DISCORD_WEBHOOK_URL → #gpsl-news",
         },
         note:
           "Create each webhook inside its Discord channel. Secrets live under Edge Functions → Secrets (project-wide), then redeploy discord-sky-feed.",
       });
+    }
+
+    // Who's Who roster — post once, then edit daily (no @pings)
+    if (
+      body?.action === "whos_who" ||
+      body?.whos_who === true ||
+      body?.publish_whos_who === true
+    ) {
+      if (!whosWhoWebhookUrl) {
+        return jsonResponse(
+          {
+            ok: false,
+            error:
+              "DISCORD_WHOS_WHO_WEBHOOK_URL secret missing — create a webhook in #whos-who, add the secret, redeploy discord-sky-feed.",
+          },
+          500
+        );
+      }
+
+      const { data: rosterRaw, error: rosterErr } = await adminClient.rpc(
+        "competition_whos_who_roster",
+        { p_season_id: body?.season_id ?? null }
+      );
+      if (rosterErr) {
+        return jsonResponse(
+          {
+            ok: false,
+            error: rosterErr.message,
+            hint: "Run gpsl_discord_whos_who.sql in Supabase SQL Editor.",
+          },
+          500
+        );
+      }
+      const roster = (rosterRaw || {}) as WhosWhoRoster;
+      if (!roster.ok) {
+        return jsonResponse({
+          ok: false,
+          error: roster.reason || "roster_failed",
+          roster,
+        });
+      }
+
+      const { data: stateRow } = await adminClient
+        .from("gpsl_discord_whos_who_state")
+        .select("webhook_message_id, last_content_hash")
+        .eq("id", 1)
+        .maybeSingle();
+
+      const contentHash = rosterContentHash(roster);
+      const force = body?.force === true;
+      const pub = await publishWhosWho({
+        webhookUrl: whosWhoWebhookUrl,
+        roster,
+        existingMessageId: stateRow?.webhook_message_id || null,
+        previousHash: stateRow?.last_content_hash || null,
+        contentHash,
+        force,
+      });
+
+      await adminClient.from("gpsl_discord_whos_who_state").upsert({
+        id: 1,
+        season_id: roster.season_id ?? null,
+        last_synced_at: new Date().toISOString(),
+        last_content_hash: pub.ok
+          ? contentHash
+          : stateRow?.last_content_hash ?? null,
+        webhook_message_id:
+          pub.message_id || stateRow?.webhook_message_id || null,
+        last_error: pub.ok ? null : pub.error || "publish_failed",
+        last_action: pub.action,
+      });
+
+      return jsonResponse(
+        {
+          ok: pub.ok,
+          whos_who: true,
+          action: pub.action,
+          message_id: pub.message_id || null,
+          club_count: pub.club_count ?? null,
+          season_id: roster.season_id ?? null,
+          season_label: roster.season_label ?? null,
+          error: pub.error || null,
+        },
+        pub.ok ? 200 : 500
+      );
     }
 
     // Optional: post a one-off test embed

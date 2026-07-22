@@ -70,11 +70,12 @@
           <b>#gpsl-notifications</b> — auctions, transfer window, month ticks, season start, challenges,
           nation pick turns (@owner), match reminders, OOC batch, vacant clubs.<br>
           <b>#gpsl-tables</b> — league table images when a GPSL month locks (SuperLeague + both Championships).<br>
+          <b>#whos-who</b> — live owner · club roster by division (posted once, then <b>silently edited</b> daily — no notifications).<br>
           <b>League clinches</b> — when a title / auto promotion / playoff place / relegation is mathematically certain:
           club inbox (+ broadcast for major outcomes) and <b>#gpsl-news only</b>. Use <b>Scan league clinches</b> to backfill.
         </p>
         <ol class="note" style="margin:0 0 12px;padding-left:1.2em;line-height:1.55;">
-          <li>In Discord: create <code>#gpsl-results</code>, <code>#gpsl-natter</code>, <code>#gpsl-notifications</code>, <code>#gpsl-tables</code> if needed.</li>
+          <li>In Discord: create <code>#gpsl-results</code>, <code>#gpsl-natter</code>, <code>#gpsl-notifications</code>, <code>#gpsl-tables</code>, <code>#whos-who</code> if needed.</li>
           <li>For each: Channel settings → Integrations → Webhooks → New Webhook → Copy URL
             (create the webhook <b>inside</b> that channel).</li>
           <li>Supabase → Edge Functions → <b>Secrets</b> (project-wide, not inside a function):
@@ -84,11 +85,12 @@
               <li><code>DISCORD_NATTER_WEBHOOK_URL</code> = #gpsl-natter</li>
               <li><code>DISCORD_NOTIFICATIONS_WEBHOOK_URL</code> = #gpsl-notifications</li>
               <li><code>DISCORD_TABLES_WEBHOOK_URL</code> = #gpsl-tables</li>
+              <li><code>DISCORD_WHOS_WHO_WEBHOOK_URL</code> = #whos-who</li>
             </ul>
           </li>
-          <li>SQL: notifications patch + <code>gpsl_discord_league_tables.sql</code> (and claim-pending if not already).</li>
+          <li>SQL: notifications patch + <code>gpsl_discord_league_tables.sql</code> + <code>gpsl_discord_whos_who.sql</code>.</li>
           <li>Redeploy: <code>supabase functions deploy discord-sky-feed</code>.</li>
-          <li>Use <b>Check routing</b>, channel tests, then <b>Publish league tables now</b> for a live standings post.</li>
+          <li>Use <b>Check routing</b>, then <b>Publish Who's Who now</b> for the first roster post.</li>
         </ol>
         <div id="routingStatus"></div>
       </div>
@@ -141,6 +143,7 @@
           <button type="button" id="notificationsTestBtn" class="button secondary">Test #gpsl-notifications</button>
           <button type="button" id="tablesTestBtn" class="button secondary">Test #gpsl-tables</button>
           <button type="button" id="tablesPublishBtn" class="button secondary">Publish league tables now</button>
+          <button type="button" id="whosWhoPublishBtn" class="button secondary">Publish Who's Who now</button>
           <button type="button" id="clinchesBtn" class="button secondary">Scan league clinches</button>
           <button type="button" id="notificationsTickBtn" class="button secondary">Notifications tick</button>
           <button type="button" id="natterRequeueBtn" class="button secondary">Requeue Natters</button>
@@ -161,6 +164,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_discord_news.js?v=20260718-queue-view"></script>
+    <script type="module" src="admin_discord_news.js?v=20260722-whos-who"></script>
 </body>
 </html>
