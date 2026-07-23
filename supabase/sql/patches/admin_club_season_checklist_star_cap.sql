@@ -6,6 +6,9 @@
 -- Run after admin_club_season_checklist_hg.sql. Safe re-run.
 -- =============================================================================
 
+ALTER TABLE public."Managers"
+  ADD COLUMN IF NOT EXISTS weekly_wage bigint NOT NULL DEFAULT 0;
+
 DROP FUNCTION IF EXISTS public.admin_club_season_checklist();
 
 CREATE OR REPLACE FUNCTION public.admin_club_season_checklist()
@@ -148,7 +151,7 @@ BEGIN
     LEFT JOIN auth.users u ON u.id = c.owner_id
     -- Active manager = contracted to club (not stale Clubs.manager_id alone).
     LEFT JOIN LATERAL (
-      SELECT m2.name, m2.rating
+      SELECT m2.name, m2.rating, coalesce(m2.weekly_wage, 0)::numeric AS weekly_wage
       FROM public."Managers" m2
       WHERE nullif(btrim(m2.contracted_club), '') = c."ShortName"
       ORDER BY m2.id
@@ -248,7 +251,7 @@ BEGIN
       AND ccs.season_id = v_season_id
     LEFT JOIN auth.users u ON u.id = c.owner_id
     LEFT JOIN LATERAL (
-      SELECT m2.name, m2.rating
+      SELECT m2.name, m2.rating, coalesce(m2.weekly_wage, 0)::numeric AS weekly_wage
       FROM public."Managers" m2
       WHERE nullif(btrim(m2.contracted_club), '') = c."ShortName"
       ORDER BY m2.id
