@@ -23,6 +23,18 @@ function starCapForDivision(division) {
   return STAR_CAP_CHAMPIONSHIP;
 }
 
+/** Prefer RPC star_cap; fall back to division (SL 3 / Champ 2). */
+function rowStarCap(row) {
+  const fromRpc = Number(row?.star_cap);
+  if (Number.isFinite(fromRpc) && fromRpc > 0) return fromRpc;
+  return starCapForDivision(row?.division);
+}
+
+function rowStarCount(row) {
+  const n = Number(row?.star_count ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
 const ISSUE_META = {
   owner: { label: "Owner", level: "bad", tip: "No owner assigned" },
   manager: { label: "Manager", level: "bad", tip: "Owned club has no manager" },
@@ -38,7 +50,7 @@ const ISSUE_META = {
     tip: `Squad above maximum (${SQUAD_SIZE})`,
   },
   stars: {
-    label: "Stars over",
+    label: "Stars",
     level: "bad",
     tip: "Star players over registration limit (SL 3 / Champ 2; One of Our Own excluded)",
   },
@@ -83,8 +95,8 @@ function evaluateRowIssues(row) {
   const issues = new Set();
   const hasOwner = rowHasOwner(row);
   const squad = Number(row.squad_size ?? 0);
-  const stars = Number(row.star_count ?? 0);
-  const starCap = starCapForDivision(row.division);
+  const stars = rowStarCount(row);
+  const starCap = rowStarCap(row);
   const u21 = Number(row.u21_count ?? 0);
   const hg = Number(row.hg_count ?? 0);
 
@@ -109,15 +121,19 @@ function evaluateRowIssues(row) {
   return issues;
 }
 
-/** @param {Set<string>} issues */
-function issueTagsHtml(issues) {
+/** @param {Set<string>} issues @param {Record<string, unknown>} [row] */
+function issueTagsHtml(issues, row = null) {
   if (!issues.size) return '<span class="muted">—</span>';
   return [...issues]
     .map((key) => {
       const meta = ISSUE_META[key] || { label: key, level: "bad" };
+      let label = meta.label;
+      if (key === "stars" && row) {
+        label = `Stars ${rowStarCount(row)}/${rowStarCap(row)}`;
+      }
       const cls = meta.level === "warn" ? "chk-issue-tag warn" : "chk-issue-tag";
       return `<span class="${cls}" title="${escapeHtml(meta.tip || meta.label)}">${escapeHtml(
-        meta.label
+        label
       )}</span>`;
     })
     .join("");
@@ -142,9 +158,9 @@ function buildChecklistIssueBody(row, issues) {
     extras.push(`Squad size: ${Number(row.squad_size ?? 0)} (range ${MIN_SQUAD_SIZE}–${SQUAD_SIZE})`);
   }
   if (issues.has("stars")) {
-    const cap = starCapForDivision(row.division);
+    const cap = rowStarCap(row);
     extras.push(
-      `Star players: ${Number(row.star_count ?? 0)} (maximum ${cap} for this division; One of Our Own excluded)`
+      `Star players: ${rowStarCount(row)} / ${cap} (over registration limit; One of Our Own excluded)`
     );
   }
   if (issues.has("balance")) {
@@ -325,7 +341,7 @@ function renderSummary(rows) {
     if (rowHasOwner(row)) owned += 1;
     else vacant += 1;
     if (Number(row.squad_size) < MIN_SQUAD_SIZE) underMin += 1;
-    if (Number(row.star_count ?? 0) > starCapForDivision(row.division)) starsOver += 1;
+    if (rowStarCount(row) > rowStarCap(row)) starsOver += 1;
     if (rowHasOwner(row) && Number(row.hg_count ?? 0) < MIN_HOME_GROWN) hgShort += 1;
     if (Number(row.current_balance) < 0) negative += 1;
     if (evaluateRowIssues(row).size > 0) flagged += 1;
@@ -363,6 +379,14 @@ function numCell(value, level = "ok", title = "") {
   const n = Number(value ?? 0);
   const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
   return `<td class="num ${cellClass(level)}"${titleAttr}>${n}</td>`;
+}
+
+/** Stars column: always show count/cap so over-limit is obvious in the value cell. */
+function starsCell(row, level, title) {
+  const stars = rowStarCount(row);
+  const cap = rowStarCap(row);
+  const titleAttr = title ? ` title="${escapeHtml(title)}"` : "";
+  return `<td class="num ${cellClass(level)}"${titleAttr}><strong>${stars}</strong>/${cap}</td>`;
 }
 
 function textCell(content, level = "ok", title = "") {
@@ -428,8 +452,8 @@ function renderTable() {
             const issues = evaluateRowIssues(row);
             const hasOwner = rowHasOwner(row);
             const squad = Number(row.squad_size ?? 0);
-            const stars = Number(row.star_count ?? 0);
-            const starCap = starCapForDivision(row.division);
+            const stars = rowStarCount(row);
+            const starCap = rowStarCap(row);
             const u21 = Number(row.u21_count ?? 0);
             const hg = Number(row.hg_count ?? 0);
             const rowFlagged = issues.size > 0 ? " chk-row-flagged" : "";
@@ -461,12 +485,11 @@ function renderTable() {
               squadTip = ISSUE_META.squad_high.tip;
             }
 
-            let starLevel = "ok";
-            let starTip = `${stars} / ${starCap} (cap for this division)`;
-            if (stars > starCap) {
-              starLevel = "bad";
-              starTip = `Over star limit: ${stars} / ${starCap}`;
-            }
+            const starsOver = stars > starCap;
+            const starLevel = starsOver ? "bad" : "ok";
+            const starTip = starsOver
+              ? `Over star limit: ${stars} / ${starCap}`
+              : `${stars} / ${starCap} (cap for this division)`;
 
             let u21Level = "ok";
             let u21Tip = "";
@@ -517,7 +540,8 @@ function renderTable() {
               }</div>
             </td>
             <td class="chk-issues-cell ${issues.size ? cellClass("bad") : cellClass("ok")}">${issueTagsHtml(
-              issues
+              issues,
+              row
             )}</td>
             ${textCell(
               manager,
@@ -535,7 +559,7 @@ function renderTable() {
               row.ooo_player_name ? "" : "One of Our Own not set (optional)"
             )}
             ${numCell(row.squad_size, squadLevel, squadTip)}
-            ${numCell(row.star_count, starLevel, starTip)}
+            ${starsCell(row, starLevel, starTip)}
             ${moneyCell(row.current_balance, balanceLevel, balanceTip)}
             ${moneyCell(row.projected_eos_balance, projLevel, projTip)}
             ${moneyCell(row.total_wages)}
