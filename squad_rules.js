@@ -420,7 +420,7 @@ export function squadComplianceRuleRows(c, clubNation, minimumStatus = null) {
 
   const punishmentsActive = !!minimumStatus?.punishments_active;
   const minNote = punishmentsActive
-    ? "₿5m fine + HG loan (≤72) + ₿5m loan fee per missing player at August start"
+    ? "₿2.5m fine + loan (≤72, prefer HG / position gaps) + ₿2.5m loan fee per missing player at August start"
     : "No penalty until August — build to 24 before the season month starts";
 
   return [
@@ -441,7 +441,9 @@ export function squadComplianceRuleRows(c, clubNation, minimumStatus = null) {
       rule: "Home-grown",
       whoCounts: nationHint,
       requirement: `At least ${MIN_HOME_GROWN}`,
-      note: "No upper limit",
+      note: punishmentsActive
+        ? "August: ₿2.5m + HG loan ≤72 per shortfall (release non-HG if at 28; OooO protected)"
+        : "No upper limit",
       count: c.homeGrown,
       ok: c.homeGrownOk,
       status: c.homeGrownOk
@@ -452,7 +454,9 @@ export function squadComplianceRuleRows(c, clubNation, minimumStatus = null) {
       rule: "Under-21",
       whoCounts: "Age 21 or younger",
       requirement: `At least ${MIN_UNDER_21}`,
-      note: "No upper limit",
+      note: punishmentsActive
+        ? "August: ₿2.5m + U21 loan ≤72 per shortfall (release non-U21 if at 28; OooO protected)"
+        : "No upper limit",
       count: c.under21,
       ok: c.under21Ok,
       status: c.under21Ok

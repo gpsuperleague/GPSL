@@ -261,6 +261,16 @@
         <li>If a foreign sale slot is available, that route is used (no fine). Otherwise the player is released for market value, your club is fined <b>₿10,000,000</b>, and the player cannot be signed until next season.</li>
         <li><b>Home-grown</b> — minimum <b>8</b> players whose nation matches your club nation.</li>
         <li><b>Under-21</b> — minimum <b>5</b> players aged 21 or younger.</li>
+        <li><b>Star players</b> — automatic from rating (OooO excluded from the cap). Super League max <b>3</b>, Championship max <b>2</b>.</li>
+        <li><b>August enforcement</b> — from GPSL August, clubs still short on size / HG / U21, or over the star cap, are auto-fixed once:
+          <ul>
+            <li><b>₿2.5m fine</b> per missing player (or per star released) + <b>₿2.5m</b> season-loan fee when a loan is issued.</li>
+            <li>Emergency loans are rating <b>≤72</b>, prefer home-grown, else any nation; picks favour positional gaps (2 GK / 8 DEF / 8 MID / 6 ATT) for the loan only.</li>
+            <li>At 28 players, lowest eligible players are released (100% MV) to make room — never HG when fixing HG, never U21 when fixing U21, and <b>never OooO</b>.</li>
+            <li>Over the star cap: lowest-rated stars released at <b>125% MV</b> + ₿2.5m fine each (OooO protected); if that would drop under 24, a loan is taken first.</li>
+            <li>Released players are unavailable for auction until next season.</li>
+          </ul>
+        </li>
       </ul>
       <h3>Contracts (summary)</h3>
       <ul>
