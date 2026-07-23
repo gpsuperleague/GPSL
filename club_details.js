@@ -381,10 +381,21 @@ async function loadExpectationSection(clubShortName) {
   `;
 }
 
-async function isGpslJanuary() {
+async function isManagerListSackWindow() {
+  try {
+    const { data, error } = await supabase.rpc("manager_list_sack_window_open");
+    if (!error && data != null) return Boolean(data);
+  } catch (_) {
+    /* fall through */
+  }
   const status = await loadCalendarStatus(supabase);
   if (!status?.calendar_configured) return false;
-  return String(status.active_gpsl_month || "").toLowerCase() === "january";
+  const m = String(status.active_gpsl_month || "").toLowerCase();
+  return ["june", "july", "august", "january"].includes(m);
+}
+
+async function isGpslJanuary() {
+  return isManagerListSackWindow();
 }
 
 function formatDealRecord(data) {
@@ -464,7 +475,7 @@ async function loadManagerSection(clubShortName) {
     `;
   }
 
-  const januaryWindow = await isGpslJanuary();
+  const januaryWindow = await isManagerListSackWindow();
 
   setBtnVisible(renewBtn, pendingRenewal);
   setBtnVisible(listBtn, januaryWindow && !pendingRenewal);
@@ -484,9 +495,10 @@ async function loadManagerSection(clubShortName) {
       hintEl.textContent = "Renewal available — also shown on Squad.";
     } else if (!januaryWindow) {
       hintEl.textContent =
-        "List for transfer and sack are available in January only.";
+        "List for transfer and sack are available in June, July, August, and January.";
     } else {
-      hintEl.textContent = "";
+      hintEl.textContent =
+        "Sack: not until mid-season of this spell (summer signing → January; January signing → next June–August).";
     }
   }
 }

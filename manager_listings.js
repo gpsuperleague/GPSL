@@ -47,8 +47,14 @@ async function loadListings() {
   body.innerHTML = listings
     .map((l) => {
       const mgr = l.Managers || {};
-      const seller = l.seller_club_id ? fullClubName(l.seller_club_id) : "—";
-      const canBid = currentClub && l.seller_club_id !== currentClub;
+      const seller = l.seller_club_id
+        ? fullClubName(l.seller_club_id)
+        : l.listing_type === "window_fa"
+          ? "League FA"
+          : "Free agent";
+      const canBid =
+        currentClub &&
+        (!l.seller_club_id || l.seller_club_id !== currentClub);
       return `<tr>
         <td>${mgr.name || "—"}</td>
         <td>${mgr.rating ?? "—"}</td>
