@@ -94,7 +94,8 @@
         <p class="chk-note">
           All GPSL clubs at a glance for the active season. <b>Projected EOS balance</b> loads after the table
           (pending gates, prizes, wages, etc.). Owned clubs without a nation are flagged.
-          Run <code>admin_club_season_checklist_hg.sql</code> (and notify patch if using the button) in Supabase.
+          Run <code>admin_club_season_checklist_star_cap.sql</code> (and notify patch if using the button) in Supabase.
+          Stars show as <b>count/cap</b> (SL 3 / Champ 2); over-cap clubs get a red Stars cell and an Issues tag.
           Nav: <b>Admin → Season Management → Club Season Checklist</b>.
           Use <b>Notify owners of issues</b> to inbox each owned club with current deficiencies.
         </p>
@@ -146,6 +147,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_club_checklist.js?v=20260723-star-issues"></script>
+  <script type="module" src="admin_club_checklist.js?v=20260723-star-cap-cell"></script>
 </body>
 </html>
