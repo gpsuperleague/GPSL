@@ -11,9 +11,19 @@
 
   <link rel="stylesheet" href="dashboard.css">
   <style>
-    /* Page-specific tweaks */
-    .panel-transfer::after {
-      background-image: url("images/panel_bg/Transfer.png");
+    body {
+      background: #111;
+      color: #ddd;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1 {
+      text-align: left;
+      color: #ff9900;
+      margin: 0;
+      font-size: 26px;
     }
 
     .fav-btn, .draft-fav-remove {
@@ -30,7 +40,6 @@
       color: #ff9900;
     }
 
-    /* In-page links — GPSL orange, never underlined */
     .page-container a.gpsl-link {
       color: #ff9900;
       text-decoration: none;
@@ -43,7 +52,6 @@
       text-decoration: none;
     }
 
-    /* Table action links (Bid / View) */
     .page-container a.gpsl-link.tc-action-link {
       display: inline-block;
       padding: 4px 10px;
@@ -113,35 +121,114 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.55; }
     }
+
+    /* ---- Modular 2-column Transfer Centre ---- */
+    .tc-jump {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 18px;
+    }
+
+    .tc-jump a {
+      display: inline-block;
+      padding: 5px 12px;
+      font-size: 12px;
+      text-decoration: none;
+      color: #ccc;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 999px;
+    }
+
+    .tc-jump a:hover {
+      border-color: #ff9900;
+      color: #ff9900;
+    }
+
+    .tc-block {
+      margin-bottom: 28px;
+    }
+
+    .tc-block-header {
+      color: #ff9900;
+      font-size: 18px;
+      margin: 0 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #333;
+      letter-spacing: 0.02em;
+    }
+
+    .tc-block-header span {
+      color: #888;
+      font-size: 12px;
+      font-weight: normal;
+      margin-left: 10px;
+    }
+
+    .tc-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+
+    .tc-panel {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 16px 18px;
+      margin: 0;
+      min-width: 0;
+    }
+
+    .tc-panel::after {
+      display: none !important;
+      content: none !important;
+    }
+
+    .tc-panel > h2 {
+      color: #ff9900;
+      font-size: 16px;
+      margin: 0 0 10px;
+    }
+
+    .tc-panel > h3 {
+      color: #ffcc66;
+      font-size: 14px;
+      margin: 0 0 8px;
+    }
+
+    .tc-panel .tc-note {
+      font-size: 13px;
+      color: #aaa;
+      margin: 0 0 10px;
+      line-height: 1.45;
+    }
+
+    .tc-panel .tc-scroll {
+      overflow-x: auto;
+      max-width: 100%;
+    }
+
+    .tc-panel .gpsl-table {
+      font-size: 12px;
+    }
+
+    @media (max-width: 960px) {
+      .tc-grid {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
-
-  <style>
-  body {
-    background: #111;
-    color: #ddd;
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-  }
-
-  h1 {
-    text-align: left;
-    color: #ff9900;
-    margin: 0;
-    font-size: 26px;
-  }
-</style>
-
 </head>
 
 <body class="dashboard-page">
 
-  <!-- NAV BAR -->
   <div id="nav"></div>
 
   <div class="page-container">
 
-    <!-- HEADER (matches squad.html layout) -->
     <div id="headerContainer">
       <div id="headerLeft">
         <img id="clubBadgeHeader" src="" alt="Club Badge">
@@ -159,106 +246,106 @@
       </div>
     </div>
 
+    <nav class="tc-jump" aria-label="Transfer Centre sections">
+      <a href="#transfers-in">Transfers In</a>
+      <a href="#transfers-out">Transfers Out</a>
+      <a href="#scouting-targets">Scouting</a>
+      <a href="#active-bids">Active Bids</a>
+      <a href="#active-listings">Active Listings</a>
+      <a href="#seller-review">Seller Review</a>
+    </nav>
+
     <!-- ================================
-         TRANSFER CENTRE PANELS
+         TRANSFERS IN
          ================================ -->
+    <section id="transfers-in" class="tc-block" aria-labelledby="tc-in-heading">
+      <h2 id="tc-in-heading" class="tc-block-header">
+        Transfers In
+        <span>buying · bids · signings</span>
+      </h2>
 
-    <!-- GPDB SCOUTING TARGETS -->
-    <div id="scouting-targets" data-dashboard-panel="tc_scouting" class="panel panel-bg panel-transfer">
-      <h2>Scouting targets</h2>
-      <p style="font-size:13px;color:#aaa;margin:0 0 10px 0;">
-        Star players in <a href="GPDB.html" class="gpsl-link">GPDB</a> (☆ column) to build a tiered shortlist — top, backup, third and fourth choice.
-        Open draft auctions and manage bids on the <a href="scouting.html" class="gpsl-link">scouting board</a>.
-      </p>
-      <div id="gpdbScoutingSummary">
-        <i>Loading…</i>
+      <div class="tc-grid">
+        <div id="scouting-targets" data-dashboard-panel="tc_scouting" class="panel tc-panel">
+          <h2>Scouting targets</h2>
+          <p class="tc-note">
+            Star players in <a href="GPDB.html" class="gpsl-link">GPDB</a> (☆ column) for a tiered shortlist.
+            Manage draft bids on the <a href="scouting.html" class="gpsl-link">scouting board</a>.
+          </p>
+          <div id="gpdbScoutingSummary" class="tc-scroll">
+            <i>Loading…</i>
+          </div>
+          <p style="margin:12px 0 0;">
+            <a href="scouting.html" class="button secondary" style="display:inline-block;padding:8px 14px;background:#333;color:#ff9900;border:1px solid #666;border-radius:6px;text-decoration:none;font-weight:bold;">Open scouting board →</a>
+          </p>
+          <hr style="border:none;border-top:1px solid #333;margin:18px 0 14px;">
+          <h3>Saved draft auctions</h3>
+          <p class="tc-note">Threads you starred on the Draft Auction page.</p>
+          <div id="draftFavouritesContainer" class="tc-scroll">
+            <i>Loading…</i>
+          </div>
+        </div>
+
+        <div id="active-bids" data-dashboard-panel="tc_active_bids" class="panel tc-panel">
+          <h2>Active Bids</h2>
+          <p class="tc-note">
+            Open transfer-list auctions where you are the high bidder.
+          </p>
+          <div id="activeBidsContainer" class="tc-scroll"></div>
+        </div>
+
+        <div id="awaiting-seller" data-dashboard-panel="tc_awaiting_seller" class="panel tc-panel">
+          <h2>Awaiting seller</h2>
+          <p class="tc-note">
+            Auction ended below reserve, direct offers, or seller review — not on the open market.
+            Below-reserve items show the accept/reject cutoff with a live countdown.
+          </p>
+          <div id="awaitingSellerBidsContainer" class="tc-scroll"></div>
+        </div>
+
+        <div id="season-signings" data-dashboard-panel="tc_season_signings" class="panel tc-panel">
+          <h2>Season Signings</h2>
+          <div id="seasonSigningsContainer" class="tc-scroll"></div>
+        </div>
       </div>
-      <p style="margin:12px 0 0;">
-        <a href="scouting.html" class="button secondary" style="display:inline-block;padding:8px 14px;background:#333;color:#ff9900;border:1px solid #666;border-radius:6px;text-decoration:none;font-weight:bold;">Open scouting board →</a>
-      </p>
-      <hr style="border:none;border-top:1px solid #333;margin:20px 0 16px;">
-      <h3 style="color:#ff9900;font-size:15px;margin:0 0 8px;">Saved draft auctions</h3>
-      <p style="font-size:13px;color:#aaa;margin:0 0 10px 0;">
-        Threads you starred on the Draft Auction page.
-      </p>
-      <div id="draftFavouritesContainer">
-        <i>Loading…</i>
+    </section>
+
+    <!-- ================================
+         TRANSFERS OUT
+         ================================ -->
+    <section id="transfers-out" class="tc-block" aria-labelledby="tc-out-heading">
+      <h2 id="tc-out-heading" class="tc-block-header">
+        Transfers Out
+        <span>listings · sales · seller decisions</span>
+      </h2>
+
+      <div class="tc-grid">
+        <div id="active-listings" data-dashboard-panel="tc_active_listings" class="panel tc-panel">
+          <h2>Active Listings</h2>
+          <div id="activeListingsContainer" class="tc-scroll"></div>
+        </div>
+
+        <div id="closed-listings" data-dashboard-panel="tc_closed_listings" class="panel tc-panel">
+          <h2>Closed Listings</h2>
+          <div id="closedListingsContainer" class="tc-scroll"></div>
+        </div>
+
+        <div id="seller-review" data-dashboard-panel="tc_seller_review" class="panel tc-panel">
+          <h2>Seller Review</h2>
+          <p class="tc-note">
+            <b>Below reserve:</b> accept or reject before the cutoff (live countdown).
+            <b>Direct offers:</b> GPDB offers awaiting your decision.
+          </p>
+          <div id="sellerReviewContainer" class="tc-scroll"></div>
+        </div>
+
+        <div id="season-sales" data-dashboard-panel="tc_season_sales" class="panel tc-panel">
+          <h2>Season Sales</h2>
+          <div id="seasonSalesContainer" class="tc-scroll"></div>
+        </div>
       </div>
-    </div>
+    </section>
 
-    <!-- ACTIVE LISTINGS -->
-    <div id="active-listings" data-dashboard-panel="tc_active_listings" class="panel panel-bg panel-transfer">
-      <h2>Active Listings</h2>
-      <div id="activeListingsContainer">
-        <!-- Populated by JS -->
-      </div>
-    </div>
-
-    <!-- ACTIVE BIDS -->
-    <div id="active-bids" data-dashboard-panel="tc_active_bids" class="panel panel-bg panel-transfer">
-      <h2>Active Bids</h2>
-      <p style="font-size:13px;color:#aaa;margin:0 0 10px 0;">
-        Open transfer-list auctions where you are the high bidder (same as the market Active list).
-      </p>
-      <div id="activeBidsContainer">
-        <!-- Populated by JS -->
-      </div>
-    </div>
-
-    <!-- AWAITING SELLER -->
-    <div id="awaiting-seller" data-dashboard-panel="tc_awaiting_seller" class="panel panel-bg panel-transfer">
-      <h2>Awaiting seller</h2>
-      <p style="font-size:13px;color:#aaa;margin:0 0 10px 0;">
-        Auction ended below reserve, direct offers, or seller review — not on the open market list.
-        Below-reserve items show the seller's accept/reject cutoff with a live countdown.
-      </p>
-      <div id="awaitingSellerBidsContainer">
-        <!-- Populated by JS -->
-      </div>
-    </div>
-
-    <!-- SELLER REVIEW -->
-    <div id="seller-review" data-dashboard-panel="tc_seller_review" class="panel panel-bg panel-transfer">
-      <h2>Seller Review</h2>
-      <p style="font-size:13px;color:#aaa;margin:0 0 10px 0;">
-        <b>Below reserve:</b> auction ended with bids under your reserve — accept or reject before the cutoff (live countdown).
-        <b>Direct offers:</b> GPDB offers awaiting your decision (no timed cutoff).
-      </p>
-      <div id="sellerReviewContainer">
-        <!-- Populated by JS -->
-      </div>
-    </div>
-
-    <!-- CLOSED LISTINGS -->
-    <div id="closed-listings" data-dashboard-panel="tc_closed_listings" class="panel panel-bg panel-transfer">
-      <h2>Closed Listings</h2>
-      <div id="closedListingsContainer">
-        <!-- Populated by JS -->
-      </div>
-    </div>
-
-    <!-- SEASON SIGNINGS -->
-    <div id="season-signings" data-dashboard-panel="tc_season_signings" class="panel panel-bg panel-transfer">
-      <h2>Season Signings</h2>
-      <div id="seasonSigningsContainer">
-        <!-- Populated by JS -->
-      </div>
-    </div>
-
-    <!-- SEASON SALES -->
-    <div id="season-sales" data-dashboard-panel="tc_season_sales" class="panel panel-bg panel-transfer">
-      <h2>Season Sales</h2>
-      <div id="seasonSalesContainer">
-        <!-- Populated by JS -->
-      </div>
-    </div>
-
-  </div> <!-- end page-container -->
-
-
-  <!-- ================================
-       LIST PLAYER MODAL (unchanged)
-       ================================ -->
+  </div>
 
   <div id="list-player-modal-backdrop">
     <div id="list-player-modal">
@@ -284,19 +371,11 @@
     </div>
   </div>
 
-
-  <!-- ================================
-       GLOBAL JS
-       ================================ -->
   <script type="module" src="supabase_client.js"></script>
   <script type="module" src="global.js?v=20260706-v18"></script>
   <script type="module" src="global_ui.js"></script>
   <script type="module" src="clubs_lookup.js"></script>
-
-  <!-- ================================
-       TRANSFER CENTRE JS (new file)
-       ================================ -->
-  <script type="module" src="transfer_center.js?v=20260720-closed-winning-bid"></script>
+  <script type="module" src="transfer_center.js?v=20260723-tc-2col"></script>
 
 </body>
 </html>
