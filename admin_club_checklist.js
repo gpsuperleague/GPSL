@@ -637,7 +637,7 @@ async function loadTable() {
     const msg = [error.message, error.hint].filter(Boolean).join(" — ");
     setStatus(
       "pageStatus",
-      `❌ ${msg}. Run supabase/sql/patches/admin_club_season_checklist_hg.sql in Supabase.`,
+      `❌ ${msg}. Run supabase/sql/patches/admin_club_season_checklist_star_cap.sql in Supabase.`,
       false
     );
     if (wrap) wrap.innerHTML = `<p class="note">${escapeHtml(msg)}</p>`;
