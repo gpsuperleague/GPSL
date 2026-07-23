@@ -187,6 +187,78 @@ body.squad-page .squad-compliance-wrap {
   margin-bottom: 18px;
 }
 
+body.squad-page .squad-wage-bill-wrap {
+  margin-bottom: 14px;
+}
+
+body.squad-page .squad-wage-bill-panel {
+  border-radius: 8px;
+  padding: 12px 14px 10px;
+  border: 1px solid #3a3428;
+  background: rgba(40, 34, 20, 0.45);
+}
+
+body.squad-page .squad-wage-bill-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: #ff9900;
+  font-weight: 600;
+}
+
+body.squad-page .wage-bill-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+body.squad-page .wage-bill-stat {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 10px 12px;
+  text-align: center;
+}
+
+body.squad-page .wage-bill-stat--total {
+  border-color: #665522;
+  background: #1f1c12;
+}
+
+body.squad-page .wage-bill-label {
+  color: #aaa;
+  font-size: 11px;
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+body.squad-page .wage-bill-value {
+  color: #ff9900;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+body.squad-page .wage-bill-stat--total .wage-bill-value {
+  color: #ffcc66;
+  font-size: 18px;
+}
+
+body.squad-page .wage-bill-note {
+  margin: 8px 0 0;
+  color: #888;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+body.squad-page .squad-wage-fin-link {
+  color: #ff9900;
+  text-decoration: none;
+  margin-left: 4px;
+}
+
+body.squad-page .squad-wage-fin-link:hover {
+  text-decoration: underline;
+}
+
 body.squad-page .squad-rules-panel {
   border-radius: 8px;
   padding: 14px 16px 12px;

@@ -137,6 +137,29 @@
     </div>
 
     <div class="panel">
+      <h2>Seasonal wage bill</h2>
+      <div class="balance-grid" id="wageBillGrid">
+        <div class="stat-box">
+          <div class="label">Player wages (season)</div>
+          <div class="value neutral" id="wageBillPlayers">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Manager salary (season)</div>
+          <div class="value neutral" id="wageBillManager">—</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Total wage bill</div>
+          <div class="value" id="wageBillTotal" style="color:#ffcc66;">—</div>
+        </div>
+      </div>
+      <p class="footer-note">
+        Seasonal wage commitments for the current squad and signed manager.
+        Player wages are contract season amounts; manager salary is weekly wage × 52.
+        These are charged at <b>Close Finances</b> / Post season wage bills (not weekly).
+      </p>
+    </div>
+
+    <div class="panel">
       <h2>Balance</h2>
       <div class="balance-grid">
         <div class="stat-box">
@@ -178,7 +201,7 @@
       <p class="footer-note">
         <b>Predicted end-of-season balance</b> uses your current balance plus <b>pending</b> forecasts
         in <a href="finances_accounts.html" id="linkAccountsInline">Season accounts</a> (upcoming home gates,
-        stadium maintenance, squad wages where calculable).
+        stadium maintenance, player wages and manager salary where calculable).
       </p>
     </div>
 
@@ -210,6 +233,6 @@
       <div id="financeSeasonHistory"></div>
     </div>
   </div>
-  <script type="module" src="finances.js?v=20260720-eos-map"></script>
+  <script type="module" src="finances.js?v=20260723-wage-bill"></script>
 </body>
 </html>

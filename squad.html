@@ -9,7 +9,7 @@
   <title>Squad</title>
 
   <link rel="stylesheet" href="dashboard.css">
-  <link rel="stylesheet" href="squad.css?v=20260719-action-header">
+  <link rel="stylesheet" href="squad.css?v=20260723-wage-bill">
 
   <style>
     body {
@@ -105,6 +105,13 @@
       Transfer window is currently CLOSED. Direct listings are disabled.
     </div>
 
+    <div id="squadWageBillPanel" class="squad-wage-bill-wrap" aria-live="polite">
+      <div class="squad-wage-bill-panel">
+        <h2 class="squad-wage-bill-title">Seasonal wage bill</h2>
+        <div id="squadWageBillBody" class="wage-bill-body"><p class="note" style="margin:0;color:#888;">Loading…</p></div>
+      </div>
+    </div>
+
     <div id="squadCompliancePanel" class="squad-compliance-wrap"></div>
 
     <div class="panel">
@@ -191,7 +198,7 @@
   </div>
 
   <!-- LOAD SQUAD LOGIC (nav via initGlobal in squad.js) -->
-  <script type="module" src="squad.js?v=20260719-action-sticky"></script>
+  <script type="module" src="squad.js?v=20260723-wage-bill"></script>
 
 </body>
 </html>

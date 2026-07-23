@@ -163,7 +163,19 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
         pendingByLine,
         "upkeep_wages",
         -(wageBill - postedWages),
-        `Remaining wage bill est. ${formatMoney(wageBill - postedWages)} (${formatMoney(postedWages)} already posted)`,
+        `Remaining player wage bill est. ${formatMoney(wageBill - postedWages)} (${formatMoney(postedWages)} already posted)`,
+        byLine
+      );
+    }
+
+    const postedMgr = Math.abs(byLine.get("staff_manager")?.amount || 0);
+    const mgrSalary = Number(upkeepPreview.manager_salary || 0);
+    if (mgrSalary > postedMgr + 0.5) {
+      setPendingForecast(
+        pendingByLine,
+        "staff_manager",
+        -(mgrSalary - postedMgr),
+        `Manager season salary est. ${formatMoney(mgrSalary - postedMgr)} (weekly × 52)`,
         byLine
       );
     }

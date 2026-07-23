@@ -1,5 +1,6 @@
 import { supabase, initGlobal } from "./global.js";
 import { formatMoney, loadClubSeasonArchive, processMyDueLoanInstallments } from "./competition.js";
+import { loadClubWageBillSummary } from "./club_wage_bill.js";
 import {
   applyFinanceClubHeader,
   applyHistoricalFinanceBanner,
@@ -10,7 +11,25 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20260720-eos-map";
+} from "./finance_page_common.js?v=20260723-wage-bill";
+
+function setWageBillDisplay(bill) {
+  const playersEl = document.getElementById("wageBillPlayers");
+  const managerEl = document.getElementById("wageBillManager");
+  const totalEl = document.getElementById("wageBillTotal");
+  if (!playersEl || !managerEl || !totalEl) return;
+
+  if (!bill) {
+    playersEl.textContent = "—";
+    managerEl.textContent = "—";
+    totalEl.textContent = "—";
+    return;
+  }
+
+  playersEl.textContent = formatMoney(bill.players);
+  managerEl.textContent = formatMoney(bill.manager);
+  totalEl.textContent = formatMoney(bill.total);
+}
 
 function renderArchive(rows) {
   const el = document.getElementById("archiveList");
@@ -75,7 +94,19 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     document.getElementById("netSeasonTotal").textContent = "—";
     document.getElementById("openingBalance").textContent = "—";
     document.getElementById("predictedBalance").textContent = "—";
+    setWageBillDisplay(null);
     return;
+  }
+
+  if (seasonView.isHistorical) {
+    setWageBillDisplay(null);
+  } else {
+    try {
+      setWageBillDisplay(await loadClubWageBillSummary(supabase, shortName));
+    } catch (err) {
+      console.warn("wage bill summary:", err);
+      setWageBillDisplay(null);
+    }
   }
 
   document.getElementById("balanceAmount").textContent = formatMoney(data.balanceNow);

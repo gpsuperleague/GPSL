@@ -60,6 +60,10 @@ import {
 import { isHgContractProtected } from "./squad_rules.js";
 import { formatWage } from "./wages.js";
 import {
+  loadClubWageBillSummary,
+  wageBillSummaryHtml,
+} from "./club_wage_bill.js";
+import {
   escapeHtml,
   formatForeignTrackingMessage,
   foreignSaleOptionsHtml,
@@ -1003,6 +1007,21 @@ async function loadSquad() {
     patchSquadEnrichment(transferStatusState, statsMap);
     // Rebuild Action menus so season unlock / appeals / foreign sales stay current
     refreshSquadDesignationSelects(list, squadDesignationsState);
+  }
+
+  await refreshSquadWageBill();
+}
+
+async function refreshSquadWageBill() {
+  const body = document.getElementById("squadWageBillBody");
+  if (!body || !currentUserShort) return;
+
+  try {
+    const bill = await loadClubWageBillSummary(supabase, currentUserShort);
+    body.innerHTML = wageBillSummaryHtml(bill, { linkFinances: true });
+  } catch (err) {
+    console.warn("refreshSquadWageBill:", err);
+    body.innerHTML = `<p class="note" style="margin:0;color:#f88;">Could not load wage bill.</p>`;
   }
 }
 
