@@ -8,6 +8,8 @@ import {
 } from "./money_input.js";
 
 let currentClub = null;
+/** True when this club already has a signed manager (cannot bid on market). */
+let clubHasManager = false;
 let selectedListing = null;
 let currentMinBid = 0;
 let bidAmountControl = null;
@@ -19,6 +21,48 @@ function getBidInput() {
 function formatEndTime(iso) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("en-GB", { timeZone: "Europe/London" });
+}
+
+function updateHasManagerBanner() {
+  const el = document.getElementById("hasManagerBanner");
+  if (!el) return;
+  if (!currentClub) {
+    el.hidden = true;
+    return;
+  }
+  if (clubHasManager) {
+    el.hidden = false;
+    el.textContent =
+      "Your club already has a manager — bidding is locked. Sack or transfer them before hiring another.";
+  } else {
+    el.hidden = true;
+    el.textContent = "";
+  }
+}
+
+async function refreshClubManagerState() {
+  if (!currentClub) {
+    clubHasManager = false;
+    updateHasManagerBanner();
+    return;
+  }
+
+  const [{ data: club }, { data: contracted }] = await Promise.all([
+    supabase
+      .from("Clubs")
+      .select("manager_id")
+      .eq("ShortName", currentClub)
+      .maybeSingle(),
+    supabase
+      .from("Managers")
+      .select("id")
+      .eq("contracted_club", currentClub)
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  clubHasManager = club?.manager_id != null || contracted?.id != null;
+  updateHasManagerBanner();
 }
 
 async function loadListings() {
@@ -52,9 +96,14 @@ async function loadListings() {
         : l.listing_type === "window_fa"
           ? "League FA"
           : "Free agent";
-      const canBid =
-        currentClub &&
-        (!l.seller_club_id || l.seller_club_id !== currentClub);
+      const ownListing = currentClub && l.seller_club_id === currentClub;
+      const canBid = currentClub && !ownListing && !clubHasManager;
+      let actionHtml = "";
+      if (canBid) {
+        actionHtml = `<button class="button bid-btn" data-id="${l.id}">Bid</button>`;
+      } else if (clubHasManager && currentClub && !ownListing) {
+        actionHtml = `<span class="muted" title="Sack or transfer your current manager first">Has manager</span>`;
+      }
       return `<tr>
         <td>${mgr.name || "—"}</td>
         <td>${mgr.rating ?? "—"}</td>
@@ -62,7 +111,7 @@ async function loadListings() {
         <td>${formatMoney(l.market_value ?? mgr.market_value)}</td>
         <td>${l.current_highest_bid ? formatMoney(l.current_highest_bid) : "—"}</td>
         <td>${formatEndTime(l.end_time)}</td>
-        <td>${canBid ? `<button class="button bid-btn" data-id="${l.id}">Bid</button>` : ""}</td>
+        <td>${actionHtml}</td>
       </tr>`;
     })
     .join("");
@@ -82,6 +131,12 @@ function listingMinBid(listing) {
 }
 
 function openBidModal(listing) {
+  if (clubHasManager) {
+    alert(
+      "Your club already has a manager — sack or transfer them before bidding on another."
+    );
+    return;
+  }
   selectedListing = listing;
   const mgr = listing?.Managers || {};
   currentMinBid = listingMinBid(listing);
@@ -96,6 +151,11 @@ function openBidModal(listing) {
 
 async function submitBid() {
   if (!selectedListing) return;
+  if (clubHasManager) {
+    document.getElementById("bidError").textContent =
+      "Your club already has a manager — sack or transfer them before bidding.";
+    return;
+  }
   const amount = parseMoneyInput(getBidInput()?.value);
   const errEl = document.getElementById("bidError");
   const mgr = selectedListing.Managers || {};
@@ -119,6 +179,7 @@ async function submitBid() {
   alert(
     `Bid placed: ${formatMoney(amount)} for ${mgr.name || "manager"}.\n\nThe listing will update with your new highest bid.`
   );
+  await refreshClubManagerState();
   await loadListings();
 }
 
@@ -161,10 +222,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   const { data: club } = await supabase
     .from("Clubs")
-    .select("ShortName")
+    .select("ShortName, manager_id")
     .eq("owner_id", user.id)
     .maybeSingle();
   currentClub = club?.ShortName || null;
+  clubHasManager = club?.manager_id != null;
+
+  await refreshClubManagerState();
 
   wireBidModalControls();
 

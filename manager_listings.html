@@ -29,6 +29,7 @@
     #bidModal.open { display: flex; }
     .modal-box { background: #1a1a1a; border: 1px solid #444; padding: 20px; border-radius: 8px; width: 420px; }
     #bidError { color: #f88; font-size: 12px; min-height: 16px; }
+    .muted { color: #888; font-size: 12px; }
   </style>
 </head>
 <body>
@@ -36,8 +37,10 @@
   <h1>Manager Transfer Market</h1>
   <p style="text-align:center;color:#aaa;font-size:13px;max-width:720px;margin:0 auto 16px;">
     Club-listed managers and the monthly <b>free-agent board</b> (10 managers each June / July / August / January).
+    Clubs that already have a manager cannot bid — sack or transfer first.
     Draft free agents still appear in <a href="MGDB.html" style="color:#ff9900;">MGDB</a> when manager draft is on.
   </p>
+  <p id="hasManagerBanner" hidden style="text-align:center;color:#f88;font-size:13px;max-width:720px;margin:0 auto 16px;"></p>
   <table>
     <thead>
       <tr>
@@ -79,6 +82,6 @@
   </div>
 
   <script type="module" src="global.js?v=20260706-v18"></script>
-  <script type="module" src="manager_listings.js?v=2"></script>
+  <script type="module" src="manager_listings.js?v=20260723-has-mgr-block"></script>
 </body>
 </html>
