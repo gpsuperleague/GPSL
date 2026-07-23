@@ -7,6 +7,7 @@
 --
 -- Fix: stage the runner (awards | tables | scheduling | all) so each stage
 -- gets its own timeout. Admin UI retries stages in sequence.
+-- Playoffs generate only when the locked month is May (not every month lock).
 -- Safe re-run.
 -- =============================================================================
 
@@ -365,7 +366,17 @@ BEGIN
 
   IF v_do_playoffs THEN
     BEGIN
-      IF to_regprocedure('public.competition_generate_playoffs(bigint,boolean)') IS NOT NULL THEN
+      -- Playoff brackets generate after May locks (Week 11), not on every month lock.
+      IF to_regprocedure('public.competition_month_lock_try_generate_playoffs(bigint,text)') IS NOT NULL THEN
+        v_playoffs := public.competition_month_lock_try_generate_playoffs(p_season_id, v_month);
+      ELSIF lower(coalesce(v_month, '')) <> 'may' THEN
+        v_playoffs := jsonb_build_object(
+          'ok', true,
+          'skipped', true,
+          'reason', 'playoffs_only_on_may_lock',
+          'gpsl_month', v_month
+        );
+      ELSIF to_regprocedure('public.competition_generate_playoffs(bigint,boolean)') IS NOT NULL THEN
         v_playoffs := public.competition_generate_playoffs(p_season_id, false);
       ELSIF to_regprocedure('public.admin_competition_generate_playoffs(bigint,boolean)') IS NOT NULL THEN
         v_playoffs := public.admin_competition_generate_playoffs(p_season_id, false);

@@ -384,6 +384,7 @@ async function endGpslMonthEarly() {
 /**
  * May packs TOTM + Sport + tables/playoffs + fines into one RPC and times out.
  * Run awards → tables → scheduling as separate calls (each with own timeout).
+ * Playoffs stage only when the locked GPSL month is May.
  */
 async function runMonthLockJobsStaged({
   seasonId,
@@ -391,17 +392,23 @@ async function runMonthLockJobsStaged({
   statusEl = "endMonthStatus",
   lockedLabel = null,
 }) {
-  const stages = [
-    "totm",
-    "sport",
-    "tv",
-    "tables",
-    "playoffs",
-    "clinches",
-    "scheduling",
-  ];
+  const month = String(gpslMonth || "").trim().toLowerCase();
+  const stages = ["totm", "sport", "tv", "tables"];
+  if (month === "may") {
+    stages.push("playoffs");
+  }
+  stages.push("clinches", "scheduling");
   const merged = { ok: true, stages: [], warnings: [] };
   const label = lockedLabel || gpslMonth || "month";
+
+  if (month && month !== "may") {
+    merged.playoffs = {
+      ok: true,
+      skipped: true,
+      reason: "playoffs_only_on_may_lock",
+      gpsl_month: month,
+    };
+  }
 
   for (const stage of stages) {
     setStatus(
@@ -459,7 +466,9 @@ async function retryMonthLockJobs() {
 
   if (
     !confirm(
-      `Retry month-lock jobs for ${month}? (TOTM → Sport → TV → tables → playoffs → clinches → fines)`
+      `Retry month-lock jobs for ${month}? (TOTM → Sport → TV → tables` +
+        (month === "may" ? " → playoffs" : "") +
+        ` → clinches → fines)`
     )
   ) {
     return;
@@ -486,8 +495,14 @@ async function retryMonthLockJobs() {
     `✅ Jobs finished for ${month}. TOTM: ${
       Array.isArray(totm) ? totm.length : 0
     }. Tables: ${tables?.skipped ? "already done" : tables?.ok !== false ? "queued" : "failed"}. Playoffs: ${
-      playoffs?.ok === false ? playoffs.error || "failed" : playoffs ? "ok" : "n/a"
-    }.${warns.length ? ` Warnings: ${warns.join("; ")}` : ""} Push Discord queue for May tables if needed.`
+      playoffs?.skipped
+        ? `skipped (${playoffs.reason || "not May"})`
+        : playoffs?.ok === false
+          ? playoffs.error || "failed"
+          : playoffs
+            ? "ok"
+            : "n/a"
+    }.${warns.length ? ` Warnings: ${warns.join("; ")}` : ""} Push Discord queue for tables if needed.`
   );
   await loadCalendarTable();
 }
