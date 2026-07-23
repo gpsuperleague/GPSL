@@ -6,11 +6,22 @@ import { MIN_HOME_GROWN, MIN_SQUAD_SIZE, MIN_UNDER_21, SQUAD_SIZE } from "./squa
 primeAdminPageChrome();
 
 const MIN_U21 = MIN_UNDER_21;
+/** Super League star registration cap (matches club_squad_star_cap). */
+const STAR_CAP_SUPERLEAGUE = 3;
+/** Championship / unassigned star registration cap. */
+const STAR_CAP_CHAMPIONSHIP = 2;
 
 /** @type {Array<Record<string, unknown>>} */
 let allRows = [];
 let sortKey = "club_name";
 let sortDir = "asc";
+
+/** @param {unknown} division */
+function starCapForDivision(division) {
+  const d = String(division || "").toLowerCase();
+  if (d === "superleague" || d.includes("super")) return STAR_CAP_SUPERLEAGUE;
+  return STAR_CAP_CHAMPIONSHIP;
+}
 
 const ISSUE_META = {
   owner: { label: "Owner", level: "bad", tip: "No owner assigned" },
@@ -25,6 +36,11 @@ const ISSUE_META = {
     label: `Squad >${SQUAD_SIZE}`,
     level: "bad",
     tip: `Squad above maximum (${SQUAD_SIZE})`,
+  },
+  stars: {
+    label: "Stars over",
+    level: "bad",
+    tip: "Star players over registration limit (SL 3 / Champ 2; One of Our Own excluded)",
   },
   u21: { label: `U21 <${MIN_U21}`, level: "bad", tip: `Fewer than ${MIN_U21} U21 players` },
   hg: {
@@ -67,6 +83,8 @@ function evaluateRowIssues(row) {
   const issues = new Set();
   const hasOwner = rowHasOwner(row);
   const squad = Number(row.squad_size ?? 0);
+  const stars = Number(row.star_count ?? 0);
+  const starCap = starCapForDivision(row.division);
   const u21 = Number(row.u21_count ?? 0);
   const hg = Number(row.hg_count ?? 0);
 
@@ -75,6 +93,7 @@ function evaluateRowIssues(row) {
   if (hasOwner && !(row.nation_code || row.nation_name)) issues.add("nation");
   if (squad < MIN_SQUAD_SIZE) issues.add("squad_low");
   if (squad > SQUAD_SIZE) issues.add("squad_high");
+  if (stars > starCap) issues.add("stars");
   if (hasOwner && u21 < MIN_U21) issues.add("u21");
   if (hasOwner && hg < MIN_HOME_GROWN) issues.add("hg");
   if (Number(row.current_balance) < 0) issues.add("balance");
@@ -121,6 +140,12 @@ function buildChecklistIssueBody(row, issues) {
   }
   if (issues.has("squad_low") || issues.has("squad_high")) {
     extras.push(`Squad size: ${Number(row.squad_size ?? 0)} (range ${MIN_SQUAD_SIZE}–${SQUAD_SIZE})`);
+  }
+  if (issues.has("stars")) {
+    const cap = starCapForDivision(row.division);
+    extras.push(
+      `Star players: ${Number(row.star_count ?? 0)} (maximum ${cap} for this division; One of Our Own excluded)`
+    );
   }
   if (issues.has("balance")) {
     extras.push(`Current balance: ${formatMoney(row.current_balance)}`);
@@ -291,6 +316,7 @@ function renderSummary(rows) {
   let owned = 0;
   let vacant = 0;
   let underMin = 0;
+  let starsOver = 0;
   let hgShort = 0;
   let negative = 0;
   let flagged = 0;
@@ -299,6 +325,7 @@ function renderSummary(rows) {
     if (rowHasOwner(row)) owned += 1;
     else vacant += 1;
     if (Number(row.squad_size) < MIN_SQUAD_SIZE) underMin += 1;
+    if (Number(row.star_count ?? 0) > starCapForDivision(row.division)) starsOver += 1;
     if (rowHasOwner(row) && Number(row.hg_count ?? 0) < MIN_HOME_GROWN) hgShort += 1;
     if (Number(row.current_balance) < 0) negative += 1;
     if (evaluateRowIssues(row).size > 0) flagged += 1;
@@ -309,6 +336,7 @@ function renderSummary(rows) {
     <span>${owned} owned · ${vacant} vacant</span>
     <span>${flagged} with issues</span>
     <span>${underMin} below ${MIN_SQUAD_SIZE} squad</span>
+    <span>${starsOver} over star cap</span>
     <span>${hgShort} below ${MIN_HOME_GROWN} HG</span>
     <span>${negative} negative balance</span>
   `;
@@ -400,6 +428,8 @@ function renderTable() {
             const issues = evaluateRowIssues(row);
             const hasOwner = rowHasOwner(row);
             const squad = Number(row.squad_size ?? 0);
+            const stars = Number(row.star_count ?? 0);
+            const starCap = starCapForDivision(row.division);
             const u21 = Number(row.u21_count ?? 0);
             const hg = Number(row.hg_count ?? 0);
             const rowFlagged = issues.size > 0 ? " chk-row-flagged" : "";
@@ -429,6 +459,13 @@ function renderTable() {
             } else if (squad > SQUAD_SIZE) {
               squadLevel = "bad";
               squadTip = ISSUE_META.squad_high.tip;
+            }
+
+            let starLevel = "ok";
+            let starTip = `${stars} / ${starCap} (cap for this division)`;
+            if (stars > starCap) {
+              starLevel = "bad";
+              starTip = `Over star limit: ${stars} / ${starCap}`;
             }
 
             let u21Level = "ok";
@@ -498,7 +535,7 @@ function renderTable() {
               row.ooo_player_name ? "" : "One of Our Own not set (optional)"
             )}
             ${numCell(row.squad_size, squadLevel, squadTip)}
-            ${numCell(row.star_count)}
+            ${numCell(row.star_count, starLevel, starTip)}
             ${moneyCell(row.current_balance, balanceLevel, balanceTip)}
             ${moneyCell(row.projected_eos_balance, projLevel, projTip)}
             ${moneyCell(row.total_wages)}
