@@ -37,7 +37,11 @@ function rowStarCount(row) {
 
 const ISSUE_META = {
   owner: { label: "Owner", level: "bad", tip: "No owner assigned" },
-  manager: { label: "Manager", level: "bad", tip: "Owned club has no manager" },
+  manager: {
+    label: "No manager",
+    level: "bad",
+    tip: "Owned club has no signed manager — hire from Manager Market / FA window",
+  },
   nation: { label: "Nation", level: "bad", tip: "Owned club has no nation" },
   squad_low: {
     label: `Squad <${MIN_SQUAD_SIZE}`,
@@ -90,6 +94,11 @@ function rowHasOwner(row) {
   return Boolean(row.owner_tag || row.owner_email);
 }
 
+/** Signed manager present (RPC resolves via Managers.contracted_club). */
+function rowHasManager(row) {
+  return Boolean(String(row?.manager_name || "").trim());
+}
+
 /** @returns {Set<string>} */
 function evaluateRowIssues(row) {
   const issues = new Set();
@@ -101,7 +110,7 @@ function evaluateRowIssues(row) {
   const hg = Number(row.hg_count ?? 0);
 
   if (!hasOwner) issues.add("owner");
-  if (hasOwner && !row.manager_name) issues.add("manager");
+  if (hasOwner && !rowHasManager(row)) issues.add("manager");
   if (hasOwner && !(row.nation_code || row.nation_name)) issues.add("nation");
   if (squad < MIN_SQUAD_SIZE) issues.add("squad_low");
   if (squad > SQUAD_SIZE) issues.add("squad_high");
@@ -161,6 +170,11 @@ function buildChecklistIssueBody(row, issues) {
     const cap = rowStarCap(row);
     extras.push(
       `Star players: ${rowStarCount(row)} / ${cap} (over registration limit; One of Our Own excluded)`
+    );
+  }
+  if (issues.has("manager")) {
+    extras.push(
+      "No signed manager on contract — use Manager Market / FA window listings to hire one."
     );
   }
   if (issues.has("balance")) {
@@ -333,6 +347,7 @@ function renderSummary(rows) {
   let vacant = 0;
   let underMin = 0;
   let starsOver = 0;
+  let noManager = 0;
   let hgShort = 0;
   let negative = 0;
   let flagged = 0;
@@ -342,6 +357,7 @@ function renderSummary(rows) {
     else vacant += 1;
     if (Number(row.squad_size) < MIN_SQUAD_SIZE) underMin += 1;
     if (rowStarCount(row) > rowStarCap(row)) starsOver += 1;
+    if (rowHasOwner(row) && !rowHasManager(row)) noManager += 1;
     if (rowHasOwner(row) && Number(row.hg_count ?? 0) < MIN_HOME_GROWN) hgShort += 1;
     if (Number(row.current_balance) < 0) negative += 1;
     if (evaluateRowIssues(row).size > 0) flagged += 1;
@@ -351,6 +367,7 @@ function renderSummary(rows) {
     <span><b>${rows.length}</b> clubs shown</span>
     <span>${owned} owned · ${vacant} vacant</span>
     <span>${flagged} with issues</span>
+    <span>${noManager} without manager</span>
     <span>${underMin} below ${MIN_SQUAD_SIZE} squad</span>
     <span>${starsOver} over star cap</span>
     <span>${hgShort} below ${MIN_HOME_GROWN} HG</span>
@@ -463,11 +480,13 @@ function renderTable() {
               ? escapeHtml(owner)
               : '<span class="vacant">Vacant</span>';
 
-            const manager = row.manager_name
+            const manager = rowHasManager(row)
               ? `${escapeHtml(row.manager_name)}${
                   row.manager_rating != null ? ` (${row.manager_rating})` : ""
                 }`
-              : "—";
+              : issues.has("manager")
+                ? "<strong>None</strong>"
+                : "—";
 
             const nation = row.nation_name || row.nation_code
               ? escapeHtml(row.nation_name || row.nation_code)

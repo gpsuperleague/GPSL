@@ -1,6 +1,8 @@
 -- =============================================================================
 -- Club season checklist: return star_cap (SL 3 / Champ 2) with star_count
 -- so the admin UI can flag over-cap stars the same way as squad registration.
+-- Manager name/rating come from Managers.contracted_club (not stale Clubs.manager_id)
+-- so owned clubs without a signed manager flag correctly in the UI / notify flow.
 -- Run after admin_club_season_checklist_hg.sql. Safe re-run.
 -- =============================================================================
 
@@ -144,7 +146,14 @@ BEGIN
       ON ccs.club_short_name = c."ShortName"
       AND ccs.season_id = v_season_id
     LEFT JOIN auth.users u ON u.id = c.owner_id
-    LEFT JOIN public."Managers" m ON m.id = c.manager_id
+    -- Active manager = contracted to club (not stale Clubs.manager_id alone).
+    LEFT JOIN LATERAL (
+      SELECT m2.name, m2.rating
+      FROM public."Managers" m2
+      WHERE nullif(btrim(m2.contracted_club), '') = c."ShortName"
+      ORDER BY m2.id
+      LIMIT 1
+    ) m ON true
     LEFT JOIN public."Club_Finances" cf ON cf.club_name = c."ShortName"
     LEFT JOIN public.international_owner_nations ion
       ON ion.club_short_name = c."ShortName"
@@ -238,7 +247,13 @@ BEGIN
       ON ccs.club_short_name = c."ShortName"
       AND ccs.season_id = v_season_id
     LEFT JOIN auth.users u ON u.id = c.owner_id
-    LEFT JOIN public."Managers" m ON m.id = c.manager_id
+    LEFT JOIN LATERAL (
+      SELECT m2.name, m2.rating
+      FROM public."Managers" m2
+      WHERE nullif(btrim(m2.contracted_club), '') = c."ShortName"
+      ORDER BY m2.id
+      LIMIT 1
+    ) m ON true
     LEFT JOIN public."Club_Finances" cf ON cf.club_name = c."ShortName"
     LEFT JOIN public.international_owner_nations ion
       ON ion.club_short_name = c."ShortName"
