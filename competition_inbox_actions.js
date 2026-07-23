@@ -32,6 +32,7 @@ export const INBOX_ACTION_DEFAULTS = {
   match_rescheduled: { label: "Reschedule match", href: "fixture_schedule.html" },
   match_emergency_drop: { label: "Reschedule match", href: "fixture_schedule.html" },
   match_forfeit_applied: { label: "View fixture", href: "fixture_schedule.html" },
+  match_checkin_open: { label: "Check in", href: "fixture_schedule.html" },
   match_mutual_override_requested: { label: "Confirm kick-off change", href: "fixture_schedule.html" },
   match_mutual_override_applied: { label: "View schedule", href: "fixture_schedule.html" },
 };
@@ -74,6 +75,7 @@ export function inboxActionForMessage(msg) {
     (msg.message_type === "match_rescheduled" ||
       msg.message_type === "match_emergency_drop" ||
       msg.message_type === "match_forfeit_applied" ||
+      msg.message_type === "match_checkin_open" ||
       msg.message_type === "match_mutual_override_requested" ||
       msg.message_type === "match_mutual_override_applied") &&
     msg.fixture_id

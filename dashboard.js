@@ -20,6 +20,7 @@ import {
   applyClubDashboardTheme,
   loadClubDashboardTheme,
 } from "./club_theme_common.js";
+import { startDashboardMatchday } from "./dashboard_matchday.js";
 
 let ownerId = null;
 let isAdmin = false;
@@ -205,6 +206,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (err) {
     console.warn("Dashboard theme:", err);
   }
+
+  startDashboardMatchday(shortName);
 });
 
 async function refreshDashboardCtx() {
