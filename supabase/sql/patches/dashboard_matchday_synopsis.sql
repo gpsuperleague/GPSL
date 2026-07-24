@@ -238,12 +238,15 @@ BEGIN
       AND now() >= v_kickoff
       AND now() < v_checkin_end
       AND NOT v_my_in
+      AND public.club_has_signed_manager(v_club)
     );
     v_can_play := (
       v_row.status = 'scheduled'
       AND v_home_in AND v_away_in
       AND now() >= v_kickoff
       AND now() < v_closes
+      AND public.club_has_signed_manager(v_row.home_club_short_name)
+      AND public.club_has_signed_manager(v_row.away_club_short_name)
     );
 
     v_opponent := CASE

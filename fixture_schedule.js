@@ -191,6 +191,19 @@ function renderAgreedPanel(root, f, sch) {
       <p class="status-agreed"><b>Kick-off agreed:</b> ${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
       <p class="meta">${checkinStatus}</p>
       <p class="meta">Check-in opens at kick-off for <b>10 minutes</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
+      ${
+        ci.my_has_manager === false
+          ? `<p class="meta" style="color:#f88;"><b>No manager signed</b> — you cannot check in or play until you hire one from the <a href="manager_listings.html" style="color:#ff9900;">Manager Transfer Market</a>.</p>`
+          : ci.home_has_manager === false || ci.away_has_manager === false
+            ? `<p class="meta" style="color:#e8a87c;"><b>Manager required</b> — ${
+                ci.home_has_manager === false && ci.away_has_manager === false
+                  ? "both clubs"
+                  : ci.home_has_manager === false
+                    ? "the home club"
+                    : "the away club"
+              } must have a signed manager before Match Day unlocks.</p>`
+            : ""
+      }
       <p class="meta">Emergency drops remaining this season: <b>${al.emergency_drops_remaining ?? "—"}</b>/2 · Reschedule this GPSL month: <b>${al.reschedule_used_this_month ? "used" : "available"}</b></p>
       ${unavailablePanelHtml(f)}
       <div class="actions">

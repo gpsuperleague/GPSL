@@ -1,8 +1,10 @@
 -- =============================================================================
 -- Manager list/sack window: June, July, January only (not August)
 --
--- Fixtures have started by August — owners may still use the FA board month,
--- but cannot list or sack their signed manager in August.
+-- Fixtures have started by August — owners may still hire from the Manager
+-- Transfer Market / FA board when vacant, but cannot list or sack a signed
+-- manager in August. Playing without a manager is blocked separately
+-- (manager_required_for_matches.sql).
 --
 -- Safe re-run. Updates window + error messages + tenure month set.
 -- =============================================================================

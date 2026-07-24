@@ -62,7 +62,7 @@ export const SQUAD_TIPS = {
     "Player wages + manager salary. Plan signings against this — wages hit the books at Close Finances.",
 
   manager:
-    "Your club manager. Rating sets a season finish target for your division. Miss it and they may leave at season end; big/medium clubs can also face a forced player listing.\n\nList / Sack only in June, July, and January (not August). Sack costs half market value (once per season) and needs mid-spell tenure. List puts them on the Manager Transfer Market.",
+    "Your club manager. Rating sets a season finish target for your division. Miss it and they may leave at season end; big/medium clubs can also face a forced player listing.\n\nList / Sack only in June, July, and January (not August). Sack costs half market value (once per season) and needs mid-spell tenure. List puts them on the Manager Transfer Market.\n\nNo manager? You can still hire in August from the market, but you cannot check in or play fixtures until one is signed.",
 
   foreignInterest:
     "Foreign club sale slots left this season. Selling abroad at market value frees a squad place and can avoid overflow fines. Use Sell to foreign club in Action.",
