@@ -471,7 +471,19 @@ function render() {
     `;
   }
 
-  const canPick = ctx.can_propose_first || ctx.can_respond;
+  const canPick =
+    (ctx.can_propose_first || ctx.can_respond) && ctx.my_has_manager !== false;
+
+  const noManagerBanner =
+    ctx.my_has_manager === false
+      ? `<div class="panel" style="border-color:#662222;background:#1a0a0a;">
+          <p style="margin:0;color:#f88;">
+            <b>No manager signed</b> — you cannot arrange kick-off times or play fixtures until you hire one from the
+            <a href="manager_listings.html" style="color:#ff9900;">Manager Transfer Market</a>
+            (bidding while vacant is fine; scheduling unlocks once they are signed).
+          </p>
+        </div>`
+      : "";
 
   const proposeLabel = ctx.can_propose_first
     ? "Propose kick-off"
@@ -480,7 +492,11 @@ function render() {
       : "Suggest another time";
 
   const waitingForHomeHtml =
-    !canPick && !pending && sch.status === "unscheduled" && ctx.my_role === "away"
+    !canPick &&
+    !pending &&
+    sch.status === "unscheduled" &&
+    ctx.my_role === "away" &&
+    ctx.my_has_manager !== false
       ? `<p class="meta" style="margin-top:12px;">
           <b>${fullClubName(f.home_club_short_name)}</b> (home) must propose first.
           You will get an <a href="inbox.html" style="color:#ff9900;">Inbox</a> message to accept or counter-propose.
@@ -507,6 +523,7 @@ function render() {
   root.innerHTML = `
     ${catchUpBannerHtml()}
     ${holidayEarlyBannerHtml()}
+    ${noManagerBanner}
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
       ${responseHtml}
@@ -523,7 +540,8 @@ function render() {
           : ""
       }
       ${
-        ctx.allowances?.can_replay_reset || ctx.allowances?.can_catch_up_reset
+        ctx.my_has_manager !== false &&
+        (ctx.allowances?.can_replay_reset || ctx.allowances?.can_catch_up_reset)
           ? `<div class="actions">
               <button type="button" id="catchUpResetBtn" class="button secondary">${
                 ctx.allowances?.can_replay_reset
@@ -534,8 +552,11 @@ function render() {
           : ""
       }
     </div>
-    ${pendingHtml}
-    <div class="panel">
+    ${ctx.my_has_manager === false ? "" : pendingHtml}
+    ${
+      ctx.my_has_manager === false
+        ? ""
+        : `<div class="panel">
       <h2>Mutual slots</h2>
       <div class="slot-list" id="slotList"></div>
       ${
@@ -545,7 +566,8 @@ function render() {
             </div>`
           : waitingForHomeHtml
       }
-    </div>
+    </div>`
+    }
   `;
 
   const slotList = document.getElementById("slotList");

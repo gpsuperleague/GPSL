@@ -125,7 +125,36 @@ export async function loadScheduleContext(fixtureId) {
     p_fixture_id: fixtureId,
   });
   if (error) throw error;
-  return data;
+
+  const ctx = data || {};
+  // Fallback when DB context has not yet been patched with manager flags
+  if (ctx.my_has_manager == null) {
+    try {
+      const short =
+        ctx.my_role === "home"
+          ? ctx.fixture?.home_club_short_name
+          : ctx.my_role === "away"
+            ? ctx.fixture?.away_club_short_name
+            : null;
+      if (short) {
+        const { data: hasMgr } = await supabase.rpc("club_has_signed_manager", {
+          p_club_short: short,
+        });
+        ctx.my_has_manager = hasMgr === true;
+        if (!ctx.my_has_manager) {
+          ctx.can_propose_first = false;
+          ctx.can_respond = false;
+        }
+      }
+    } catch (_) {
+      /* RPC may be missing until patch is run */
+    }
+  } else if (ctx.my_has_manager === false) {
+    ctx.can_propose_first = false;
+    ctx.can_respond = false;
+  }
+
+  return ctx;
 }
 
 export async function loadAvailabilityContext() {
