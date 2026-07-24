@@ -48,6 +48,47 @@
         <p id="draftStartTime" class="note" style="margin-top:10px;"></p>
         <p class="note">Reset draft schedule clears start/finish times and turns player + manager + club draft off. Completed transfers and bids are kept.</p>
       </div>
+      <div class="card" id="sb-cancel-open">
+        <h2>Cancel open listings &amp; bids</h2>
+        <p class="note">
+          Soft-cancel only: open market / draft listings → <b>Closed</b> (not completed),
+          active bids &amp; pending direct offers → <b>rejected</b>.
+          Completed sales are never touched. Run
+          <code>patches/admin_cancel_open_transfers.sql</code> once if RPCs are missing.
+        </p>
+        <div class="row">
+          <div>
+            <label>Scope</label>
+            <select id="cancelScope">
+              <option value="all">All open (market + draft + direct + manager draft)</option>
+              <option value="market">Market listings (standard + direct)</option>
+              <option value="draft">Player draft listings &amp; bids</option>
+              <option value="direct_offers">Pending direct offers only</option>
+              <option value="manager_draft">Manager draft listings &amp; bids</option>
+            </select>
+          </div>
+          <div>
+            <label>Listing id (optional)</label>
+            <input type="number" id="cancelListingId" placeholder="e.g. 1234" min="1" step="1">
+          </div>
+          <div>
+            <label>Player Konami id (optional)</label>
+            <input type="text" id="cancelPlayerId" placeholder="Player id" autocomplete="off">
+          </div>
+          <div>
+            <label>Seller club short (optional)</label>
+            <input type="text" id="cancelSellerClub" placeholder="e.g. ARS" autocomplete="off">
+          </div>
+          <div>
+            <label>Manager id (optional, manager draft)</label>
+            <input type="text" id="cancelManagerId" placeholder="Manager id" autocomplete="off">
+          </div>
+        </div>
+        <button class="button" id="cancelPreviewBtn" type="button">Preview counts</button>
+        <button class="button" id="cancelExecuteBtn" type="button" style="background:#662222;">Cancel matching open items</button>
+        <div id="cancelPreviewOut" class="status-line" style="white-space:pre-wrap;"></div>
+        <div id="cancelStatus" class="status-line"></div>
+      </div>
       <div class="card" id="sb-club-auction">
         <h2>Club auction</h2>
         <p class="note">
@@ -69,6 +110,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_transfers.js"></script>
+  <script type="module" src="admin_transfers.js?v=20260724-cancel-open"></script>
 </body>
 </html>

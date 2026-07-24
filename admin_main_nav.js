@@ -171,6 +171,12 @@ export const ADMIN_MAIN_NAV = [
       ),
       link("Red card appeal review", "admin_prize_appeals.html"),
       link("Republish GPSL Sport", "admin_gpsl_sport.html"),
+      link(
+        "Cancel open listings & bids",
+        "admin_transfers.html",
+        "sb-cancel-open",
+        "Soft-cancel open market/draft listings, bids, and pending direct offers (not completed sales)."
+      ),
     ],
   },
   {

@@ -16,8 +16,140 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("settleManagerDraftsBtn").onclick = settleManagerDraftsNow;
   document.getElementById("seedClubAuctionBtn").onclick = seedClubAuctionListings;
   document.getElementById("settleClubAuctionsBtn").onclick = settleClubAuctionsNow;
+  document.getElementById("cancelPreviewBtn").onclick = previewCancelOpenTransfers;
+  document.getElementById("cancelExecuteBtn").onclick = executeCancelOpenTransfers;
+
+  const hash = (window.location.hash || "").replace("#", "");
+  if (hash) {
+    document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 });
 
+function cancelOpenParams() {
+  const listingRaw = document.getElementById("cancelListingId")?.value?.trim();
+  const listingId = listingRaw ? Number(listingRaw) : null;
+  return {
+    p_scope: document.getElementById("cancelScope")?.value || "all",
+    p_listing_id: Number.isFinite(listingId) && listingId > 0 ? listingId : null,
+    p_player_id: document.getElementById("cancelPlayerId")?.value?.trim() || null,
+    p_seller_club: document.getElementById("cancelSellerClub")?.value?.trim() || null,
+    p_manager_id: document.getElementById("cancelManagerId")?.value?.trim() || null,
+  };
+}
+
+function formatCancelPreview(data) {
+  if (!data) return "No preview data.";
+  const lines = [
+    `Scope: ${data.scope}`,
+    `Market listings: ${data.market_listings ?? 0} (bids: ${data.market_bids ?? 0})`,
+    `Player draft listings: ${data.draft_listings ?? 0} (bids: ${data.draft_bids ?? 0})`,
+    `Direct offers: ${data.direct_offers ?? 0}`,
+    `Manager draft listings: ${data.manager_draft_listings ?? 0} (bids: ${data.manager_draft_bids ?? 0})`,
+    `Perpetual / underperformance listings in match: ${data.perpetual_renew_listings ?? 0}`,
+    `Total listings/offers: ${data.total_items ?? 0}`,
+  ];
+  return lines.join("\n");
+}
+
+async function previewCancelOpenTransfers() {
+  setStatus("cancelStatus", "Loading preview…");
+  const out = document.getElementById("cancelPreviewOut");
+  try {
+    const { data, error } = await supabase.rpc(
+      "admin_cancel_open_transfers_preview",
+      cancelOpenParams()
+    );
+    if (error) throw error;
+    if (out) out.textContent = formatCancelPreview(data);
+    setStatus(
+      "cancelStatus",
+      `✅ Preview ready — ${(data?.total_items ?? 0)} open listing/offer row(s).`,
+      true
+    );
+  } catch (err) {
+    if (out) out.textContent = "";
+    setStatus(
+      "cancelStatus",
+      "❌ " +
+        (err.message || "Failed") +
+        " — run supabase/sql/patches/admin_cancel_open_transfers.sql.",
+      false
+    );
+  }
+}
+
+async function executeCancelOpenTransfers() {
+  const params = cancelOpenParams();
+  setStatus("cancelStatus", "Previewing before cancel…");
+  let preview;
+  try {
+    const { data, error } = await supabase.rpc(
+      "admin_cancel_open_transfers_preview",
+      params
+    );
+    if (error) throw error;
+    preview = data;
+  } catch (err) {
+    setStatus(
+      "cancelStatus",
+      "❌ " +
+        (err.message || "Failed") +
+        " — run supabase/sql/patches/admin_cancel_open_transfers.sql.",
+      false
+    );
+    return;
+  }
+
+  const out = document.getElementById("cancelPreviewOut");
+  if (out) out.textContent = formatCancelPreview(preview);
+
+  const total = preview?.total_items ?? 0;
+  if (total <= 0) {
+    setStatus("cancelStatus", "Nothing matching to cancel.", true);
+    return;
+  }
+
+  const perpetual = preview?.perpetual_renew_listings ?? 0;
+  const msg =
+    `Cancel ${total} open listing/offer row(s)?\n\n` +
+    formatCancelPreview(preview) +
+    (perpetual
+      ? `\n\n⚠ Includes ${perpetual} perpetual/underperformance listing(s).`
+      : "") +
+    "\n\nCompleted transfers are not affected.";
+
+  if (!confirm(msg)) {
+    setStatus("cancelStatus", "Cancelled.", true);
+    return;
+  }
+
+  setStatus("cancelStatus", "Cancelling…");
+  try {
+    const { data, error } = await supabase.rpc("admin_cancel_open_transfers", {
+      ...params,
+      p_confirm: true,
+    });
+    if (error) throw error;
+    const c = data?.cancelled || {};
+    setStatus(
+      "cancelStatus",
+      `✅ Cancelled — market ${c.market_listings ?? 0} listings / ${c.market_bids ?? 0} bids; ` +
+        `draft ${c.draft_listings ?? 0} / ${c.draft_bids ?? 0}; ` +
+        `direct offers ${c.direct_offers ?? 0}; ` +
+        `manager draft ${c.manager_draft_listings ?? 0} / ${c.manager_draft_bids ?? 0}.`,
+      true
+    );
+    await previewCancelOpenTransfers();
+  } catch (err) {
+    setStatus(
+      "cancelStatus",
+      "❌ " +
+        (err.message || "Failed") +
+        " — run supabase/sql/patches/admin_cancel_open_transfers.sql.",
+      false
+    );
+  }
+}
 async function loadSettings() {
   const { data } = await supabase.from("global_settings").select("*").eq("id", 1).single();
   if (!data) return;
