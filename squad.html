@@ -9,7 +9,8 @@
   <title>Squad</title>
 
   <link rel="stylesheet" href="dashboard.css">
-  <link rel="stylesheet" href="squad.css?v=20260723-wage-bill">
+  <link rel="stylesheet" href="gpsl_info_tips.css?v=20260724-squad-tips">
+  <link rel="stylesheet" href="squad.css?v=20260724-squad-tips">
 
   <style>
     body {
@@ -106,7 +107,7 @@
     </div>
 
     <div id="squadWageBillPanel" class="squad-wage-bill-wrap" aria-live="polite">
-      <div class="squad-wage-bill-panel">
+      <div class="squad-wage-bill-panel gpsl-has-tip" data-gpsl-tip="Estimated seasonal wage bill for Close Finances — player contract wages plus manager salary (weekly × 52)." tabindex="0">
         <h2 class="squad-wage-bill-title">Seasonal wage bill</h2>
         <div id="squadWageBillBody" class="wage-bill-body"><p class="note" style="margin:0;color:#888;">Loading…</p></div>
       </div>
@@ -116,8 +117,8 @@
 
     <div class="panel">
       <h2 class="section-header">Squad</h2>
-      <p class="note" style="margin:0 0 10px;color:#aaa;font-size:13px;">
-        Player actions (Transfer List, foreign sales, appeals) are in the sticky <b>Action</b> column on the right — scroll sideways if needed.
+      <p class="note gpsl-has-tip" style="margin:0 0 10px;color:#aaa;font-size:13px;" data-gpsl-tip="Player actions (Transfer List, foreign sales, appeals, renew/expire) live in the sticky Action column on the right — scroll sideways if needed." tabindex="0">
+        Player actions (Transfer List, foreign sales, appeals) are in the sticky <b>Action</b> column on the right — scroll sideways if needed. Hover column headers and cells for more GPSL help.
       </p>
 
       <div class="squad-table-scroll">
@@ -198,7 +199,7 @@
   </div>
 
   <!-- LOAD SQUAD LOGIC (nav via initGlobal in squad.js) -->
-  <script type="module" src="squad.js?v=20260723-wage-bill"></script>
+  <script type="module" src="squad.js?v=20260724-squad-tips"></script>
 
 </body>
 </html>

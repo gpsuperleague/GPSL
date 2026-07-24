@@ -1,0 +1,52 @@
+/* GPSL translucent info tips — used with data-gpsl-tip / .gpsl-has-tip */
+
+.gpsl-has-tip {
+  cursor: help;
+}
+
+.gpsl-has-tip:not(th):not(td):not(select):not(a) {
+  border-bottom: 1px dotted rgba(255, 153, 0, 0.45);
+}
+
+th.gpsl-has-tip,
+.gpsl-has-tip.squad-rules-title,
+.gpsl-has-tip.wage-bill-stat,
+.gpsl-has-tip.foreign-interest-badge,
+.gpsl-has-tip.manager-badge {
+  border-bottom: none;
+}
+
+.gpsl-info-tip {
+  position: fixed;
+  z-index: 10050;
+  max-width: min(320px, calc(100vw - 24px));
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 153, 0, 0.35);
+  background: rgba(18, 18, 22, 0.82);
+  color: #f0f0f0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  font-weight: normal;
+  letter-spacing: 0.01em;
+  white-space: pre-wrap;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.gpsl-info-tip.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 640px) {
+  .gpsl-info-tip {
+    max-width: calc(100vw - 16px);
+    font-size: 12px;
+  }
+}

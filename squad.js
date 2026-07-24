@@ -110,6 +110,12 @@ import {
   playerNameLinkHtml,
   pesdbPlayerUrl,
 } from "./player_links.js";
+import { initGpslInfoTips, withInfoTip, tipAttrs, tipDataAttrs } from "./gpsl_info_tips.js";
+import {
+  SQUAD_TIPS,
+  SQUAD_COLUMN_TIPS,
+  squadContractTip,
+} from "./squad_info_tips.js";
 
 window.supabase = supabase;
 
@@ -145,9 +151,20 @@ let squadColumnWidthResizeTimer = null;
 function createSquadSectionColumnHeaderRow() {
   const tr = document.createElement("tr");
   tr.className = "squad-section-cols-row";
-  tr.innerHTML = SQUAD_COLUMN_HEADER_CELLS.map(
-    ([cls, label]) => `<th scope="col" class="${cls}">${label}</th>`
-  ).join("");
+  tr.innerHTML = SQUAD_COLUMN_HEADER_CELLS.map(([cls, label]) => {
+    const tip =
+      SQUAD_COLUMN_TIPS[cls] ||
+      (label === "Apps"
+        ? SQUAD_TIPS.apps
+        : label === "G"
+          ? SQUAD_TIPS.goals
+          : label === "A"
+            ? SQUAD_TIPS.assists
+            : label === "Avg"
+              ? SQUAD_TIPS.avg
+              : "");
+    return `<th scope="col"${tipAttrs(tip, cls)}>${label}</th>`;
+  }).join("");
   return tr;
 }
 
@@ -228,6 +245,7 @@ let squadGhostPlayers = [];
 
 // ENTRY POINT
 document.addEventListener("DOMContentLoaded", async () => {
+  initGpslInfoTips();
   await initGlobal();
   await loadPlayerValueTables();
 
@@ -380,6 +398,10 @@ async function loadForeignInterestState() {
 function renderForeignInterestBadge() {
   const el = document.getElementById("foreignInterestBadge");
   if (!el) return;
+
+  el.classList.add("gpsl-has-tip");
+  el.setAttribute("data-gpsl-tip", SQUAD_TIPS.foreignInterest);
+  el.tabIndex = 0;
 
   const teams = foreignTrackingTeams.filter(Boolean);
   const n = teams.length || foreignInterestRemaining;
@@ -634,6 +656,10 @@ function renderVoluntaryReleaseBadge() {
   const el = document.getElementById("voluntaryReleaseBadge");
   if (!el) return;
 
+  el.classList.add("gpsl-has-tip");
+  el.setAttribute("data-gpsl-tip", SQUAD_TIPS.voluntaryRelease);
+  el.tabIndex = 0;
+
   const n = voluntaryReleasesRemaining;
   el.classList.toggle("foreign-interest-badge--empty", n <= 0);
   if (n <= 0) {
@@ -692,6 +718,9 @@ function renderNewOwnerReleaseBadge() {
   }
 
   el.hidden = false;
+  el.classList.add("gpsl-has-tip");
+  el.setAttribute("data-gpsl-tip", SQUAD_TIPS.newOwnerRelease);
+  el.tabIndex = 0;
   const n = newOwnerReleaseState.remaining;
   el.classList.toggle("foreign-interest-badge--empty", n <= 0);
 
@@ -768,6 +797,9 @@ function renderSquadManagerBadge() {
   }
 
   badge.hidden = false;
+  badge.classList.add("gpsl-has-tip");
+  badge.setAttribute("data-gpsl-tip", SQUAD_TIPS.manager);
+  badge.tabIndex = 0;
   const mv = formatMoney(squadManagerState.marketValue);
   const rating = squadManagerState.managerRating ?? "—";
   const pending = squadManagerState.pendingOwnerRenewal;
@@ -1251,8 +1283,8 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
   el.innerHTML = `
     <section class="${panelClass}" aria-label="Squad registration requirements">
       <header class="squad-rules-header squad-rules-header--compact">
-        <h2 class="squad-rules-title">Registration</h2>
-        <p class="squad-rules-intro squad-rules-intro--compact">
+        <h2 class="squad-rules-title gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.registration)}>Registration</h2>
+        <p class="squad-rules-intro squad-rules-intro--compact gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.registration)}>
           Contracted squad · min 24 from Aug · max 28
         </p>
       </header>
@@ -1271,6 +1303,37 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
       ${footnote}
     </section>
   `;
+}
+
+const GHOST_CONTRACT_TIP =
+  "Not contracted yet. If your winning bid settles, they join your squad on a new 3-season contract. Ghost rows count toward “If won” registration previews only.";
+
+function ghostPlayerRowHtml(p, playerCell) {
+  return `
+        <td class="squad-col-thumb">${withInfoTip(
+          playerThumbLinkHtml(p.Konami_ID, { alt: p.Name }),
+          SQUAD_TIPS.card
+        )}</td>
+        <td class="squad-col-player">${withInfoTip(playerCell, SQUAD_TIPS.name)}</td>
+        <td class="squad-col-nation gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.nation)}>${p.Nation || "-"}</td>
+        <td class="squad-col-position gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.position)}>${p.Position}</td>
+        <td class="num squad-col-age gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.age)}>${p.Age != null && p.Age !== "" ? p.Age : "—"}</td>
+        <td class="num squad-col-rating gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.rating)}>${formatRatingWithPotential(p)}</td>
+        <td class="num squad-col-apps squad-ghost-muted">—</td>
+        <td class="num squad-col-goals squad-ghost-muted">—</td>
+        <td class="num squad-col-assists squad-ghost-muted">—</td>
+        <td class="num squad-col-avg squad-ghost-muted">—</td>
+        <td class="squad-col-playstyle gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.playstyle)}>${p.Playstyle || "-"}</td>
+        <td class="squad-col-value gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.marketValue)}><span class="money squad-ghost-muted">₿ ${Number(p.market_value || 0).toLocaleString("en-GB")}</span></td>
+        <td class="squad-col-contract squad-ghost-muted gpsl-has-tip"${tipDataAttrs(GHOST_CONTRACT_TIP)}>If won</td>
+        <td class="squad-col-status gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.status)}>${formatGhostStatusHtml(p)}</td>
+        <td class="squad-col-action">
+          ${withInfoTip(
+            `<a href="${p.ghostHref}" class="squad-ghost-action-link">View bid${p.ghostBidAmount != null ? ` · ₿${Number(p.ghostBidAmount).toLocaleString("en-GB")}` : ""}</a>`,
+            "Open the listing or draft auction where you are leading this bid."
+          )}
+        </td>
+      `;
 }
 
 // RENDER SQUAD
@@ -1363,26 +1426,32 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
           : "";
 
       tr.innerHTML = `
-        <td class="squad-col-thumb">${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}</td>
-        <td class="squad-col-player">${playerNameLinkHtml(p.Konami_ID, p.Name)}${loanBadge}${roleBadge}${qualBadges}${ycBadge}</td>
-        <td class="squad-col-nation">${p.Nation || "-"}</td>
-        <td class="squad-col-position">${p.Position}</td>
-        <td class="num squad-col-age">${p.Age != null && p.Age !== "" ? p.Age : "—"}</td>
-        <td class="num squad-col-rating">${formatRatingWithPotential(p)}</td>
-        <td class="num squad-col-apps">${formatSeasonStat(st, "appearances", "0")}</td>
-        <td class="num squad-col-goals">${formatSeasonStat(st, "goals", "0")}</td>
-        <td class="num squad-col-assists">${formatSeasonStat(st, "assists", "0")}</td>
-        <td class="num squad-col-avg">${avg}</td>
-        <td class="squad-col-playstyle">${p.Playstyle || "-"}</td>
-        <td class="squad-col-value"><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
-        <td class="squad-col-contract">${formatSquadContractCell(p)}</td>
-        <td class="squad-col-status">
+        <td class="squad-col-thumb">${withInfoTip(
+          playerThumbLinkHtml(p.Konami_ID, { alt: p.Name }),
+          SQUAD_TIPS.card
+        )}</td>
+        <td class="squad-col-player">${withInfoTip(
+          `${playerNameLinkHtml(p.Konami_ID, p.Name)}${loanBadge}${roleBadge}${qualBadges}${ycBadge}`,
+          SQUAD_TIPS.name
+        )}</td>
+        <td class="squad-col-nation gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.nation)}>${p.Nation || "-"}</td>
+        <td class="squad-col-position gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.position)}>${p.Position}</td>
+        <td class="num squad-col-age gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.age)}>${p.Age != null && p.Age !== "" ? p.Age : "—"}</td>
+        <td class="num squad-col-rating gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.rating)}>${formatRatingWithPotential(p)}</td>
+        <td class="num squad-col-apps gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.apps)}>${formatSeasonStat(st, "appearances", "0")}</td>
+        <td class="num squad-col-goals gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.goals)}>${formatSeasonStat(st, "goals", "0")}</td>
+        <td class="num squad-col-assists gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.assists)}>${formatSeasonStat(st, "assists", "0")}</td>
+        <td class="num squad-col-avg gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.avg)}>${avg}</td>
+        <td class="squad-col-playstyle gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.playstyle)}>${p.Playstyle || "-"}</td>
+        <td class="squad-col-value gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.marketValue)}><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
+        <td class="squad-col-contract gpsl-has-tip"${tipDataAttrs(squadContractTip(p, clubNation))}>${formatSquadContractCell(p)}</td>
+        <td class="squad-col-status gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.status)}>
           <div class="squad-status-stack">
             ${status}
           </div>
         </td>
         <td class="squad-col-action">
-          <select class="squad-action-select" data-player-id="${pid}">
+          <select class="squad-action-select gpsl-has-tip" data-player-id="${pid}"${tipDataAttrs(SQUAD_TIPS.action)}>
             <option value="">Action</option>
             ${squadRoleActionOptionsHtml(p, designationsState, clubNation)}
             ${squadActionOptionsHtml(p)}
@@ -1402,25 +1471,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
       const qualBadges = playerSquadQualificationBadges(p, clubNation);
       const playerCell = formatGhostPlayerNameCell(p, qualBadges);
 
-      tr.innerHTML = `
-        <td class="squad-col-thumb">${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}</td>
-        <td class="squad-col-player">${playerCell}</td>
-        <td class="squad-col-nation">${p.Nation || "-"}</td>
-        <td class="squad-col-position">${p.Position}</td>
-        <td class="num squad-col-age">${p.Age != null && p.Age !== "" ? p.Age : "—"}</td>
-        <td class="num squad-col-rating">${formatRatingWithPotential(p)}</td>
-        <td class="num squad-col-apps squad-ghost-muted">—</td>
-        <td class="num squad-col-goals squad-ghost-muted">—</td>
-        <td class="num squad-col-assists squad-ghost-muted">—</td>
-        <td class="num squad-col-avg squad-ghost-muted">—</td>
-        <td class="squad-col-playstyle">${p.Playstyle || "-"}</td>
-        <td class="squad-col-value"><span class="money squad-ghost-muted">₿ ${Number(p.market_value || 0).toLocaleString("en-GB")}</span></td>
-        <td class="squad-col-contract squad-ghost-muted" title="Not contracted yet">If won</td>
-        <td class="squad-col-status">${formatGhostStatusHtml(p)}</td>
-        <td class="squad-col-action">
-          <a href="${p.ghostHref}" class="squad-ghost-action-link">View bid${p.ghostBidAmount != null ? ` · ₿${Number(p.ghostBidAmount).toLocaleString("en-GB")}` : ""}</a>
-        </td>
-      `;
+      tr.innerHTML = ghostPlayerRowHtml(p, playerCell);
 
       tbody.appendChild(tr);
     });
@@ -1442,25 +1493,7 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
         const qualBadges = playerSquadQualificationBadges(p, clubNation);
         const playerCell = formatGhostPlayerNameCell(p, qualBadges);
 
-        tr.innerHTML = `
-        <td class="squad-col-thumb">${playerThumbLinkHtml(p.Konami_ID, { alt: p.Name })}</td>
-        <td class="squad-col-player">${playerCell}</td>
-        <td class="squad-col-nation">${p.Nation || "-"}</td>
-        <td class="squad-col-position">${p.Position}</td>
-        <td class="num squad-col-age">${p.Age != null && p.Age !== "" ? p.Age : "—"}</td>
-        <td class="num squad-col-rating">${formatRatingWithPotential(p)}</td>
-        <td class="num squad-col-apps squad-ghost-muted">—</td>
-        <td class="num squad-col-goals squad-ghost-muted">—</td>
-        <td class="num squad-col-assists squad-ghost-muted">—</td>
-        <td class="num squad-col-avg squad-ghost-muted">—</td>
-        <td class="squad-col-playstyle">${p.Playstyle || "-"}</td>
-        <td class="squad-col-value"><span class="money squad-ghost-muted">₿ ${Number(p.market_value || 0).toLocaleString("en-GB")}</span></td>
-        <td class="squad-col-contract squad-ghost-muted" title="Not contracted yet">If won</td>
-        <td class="squad-col-status">${formatGhostStatusHtml(p)}</td>
-        <td class="squad-col-action">
-          <a href="${p.ghostHref}" class="squad-ghost-action-link">View bid${p.ghostBidAmount != null ? ` · ₿${Number(p.ghostBidAmount).toLocaleString("en-GB")}` : ""}</a>
-        </td>
-      `;
+        tr.innerHTML = ghostPlayerRowHtml(p, playerCell);
         tbody.appendChild(tr);
       });
     }

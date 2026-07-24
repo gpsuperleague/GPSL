@@ -85,19 +85,19 @@ export function wageBillSummaryHtml(bill, { linkFinances = false } = {}) {
     : "";
   return `
     <div class="wage-bill-grid">
-      <div class="wage-bill-stat">
+      <div class="wage-bill-stat gpsl-has-tip" data-gpsl-tip="Sum of contracted player wages for the season. Posted when finances are closed for the GPSL month / season step." tabindex="0">
         <div class="wage-bill-label">Player wages (season)</div>
         <div class="wage-bill-value">${p}</div>
       </div>
-      <div class="wage-bill-stat">
+      <div class="wage-bill-stat gpsl-has-tip" data-gpsl-tip="Your manager’s seasonal salary (weekly wage × 52). Included in the total wage bill on Finances." tabindex="0">
         <div class="wage-bill-label">Manager salary (season)</div>
         <div class="wage-bill-value">${m}</div>
       </div>
-      <div class="wage-bill-stat wage-bill-stat--total">
+      <div class="wage-bill-stat wage-bill-stat--total gpsl-has-tip" data-gpsl-tip="Player wages + manager salary. Plan signings against this — wages hit the books at Close Finances." tabindex="0">
         <div class="wage-bill-label">Total wage bill</div>
         <div class="wage-bill-value">${t}</div>
       </div>
     </div>
-    <p class="wage-bill-note">Seasonal amounts posted at Close Finances (player contract wages + manager weekly × 52).${finLink}</p>
+    <p class="wage-bill-note gpsl-has-tip" data-gpsl-tip="Estimated seasonal wage bill for Close Finances — player contract wages plus manager salary (weekly × 52)." tabindex="0">Seasonal amounts posted at Close Finances (player contract wages + manager weekly × 52).${finLink}</p>
   `;
 }
