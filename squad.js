@@ -774,6 +774,7 @@ async function loadSquadManagerState() {
 function renderSquadManagerBadge() {
   const badge = document.getElementById("managerBadge");
   const mainEl = document.getElementById("managerBadgeMain");
+  const listBtn = document.getElementById("listManagerBtn");
   const sackBtn = document.getElementById("sackManagerBtn");
   const renewBtn = document.getElementById("renewManagerBtn");
   if (!badge || !mainEl) return;
@@ -785,6 +786,10 @@ function renderSquadManagerBadge() {
   if (!hasManager) {
     badge.hidden = true;
     mainEl.textContent = "";
+    if (listBtn) {
+      listBtn.hidden = true;
+      listBtn.disabled = true;
+    }
     if (sackBtn) {
       sackBtn.hidden = true;
       sackBtn.disabled = true;
@@ -812,14 +817,20 @@ function renderSquadManagerBadge() {
     renewBtn.disabled = !pending;
   }
 
-  if (!sackBtn) return;
+  const windowOpen = !!squadManagerState.sackWindowOpen;
+  const canAct = !pending && windowOpen;
 
-  const canSack =
-    !pending &&
-    squadManagerState.sackWindowOpen &&
-    squadManagerState.sacksRemaining > 0;
-  sackBtn.hidden = !canSack;
-  sackBtn.disabled = !canSack;
+  if (listBtn) {
+    listBtn.hidden = !canAct;
+    listBtn.disabled = !canAct;
+    listBtn.dataset.managerId = String(squadManagerState.managerId);
+  }
+
+  if (sackBtn) {
+    const canSack = canAct && squadManagerState.sacksRemaining > 0;
+    sackBtn.hidden = !canSack;
+    sackBtn.disabled = !canSack;
+  }
 }
 
 async function loadSquadPurchaseFees(playerIds) {
@@ -2583,8 +2594,50 @@ function wireButtons() {
 
   if (confirmBtn) confirmBtn.onclick = validateAndCreateListing;
 
+  wireManagerListButton();
   wireManagerSackButton();
   wireManagerRenewButtons();
+}
+
+function wireManagerListButton() {
+  const listBtn = document.getElementById("listManagerBtn");
+  if (!listBtn || listBtn.dataset.wired) return;
+  listBtn.dataset.wired = "1";
+
+  listBtn.addEventListener("click", async () => {
+    const managerId = Number(
+      listBtn.dataset.managerId || squadManagerState.managerId
+    );
+    if (!managerId) return;
+
+    if (
+      !window.confirm(
+        `List ${squadManagerState.managerName} on the Manager Transfer Market?\n\n` +
+          `Other clubs can bid. Your club will have no manager once the sale completes.\n` +
+          `Listing is only available in June, July, or January.`
+      )
+    ) {
+      return;
+    }
+
+    listBtn.disabled = true;
+    const { error } = await supabase.rpc("manager_list_for_transfer", {
+      p_manager_id: managerId,
+    });
+    listBtn.disabled = false;
+
+    if (error) {
+      alert(error.message || "Could not list manager.");
+      return;
+    }
+
+    alert(
+      `${squadManagerState.managerName} listed on the Manager Transfer Market.`
+    );
+    if (currentUserShort) await refreshNavClubListingState(currentUserShort);
+    refreshNavListingIndicators();
+    await loadSquadManagerState();
+  });
 }
 
 function wireManagerRenewButtons() {

@@ -8,10 +8,10 @@
 --    while the month is still active.
 -- 2) Settlement: fee → buyer only (league FA), vacant club only — same idea
 --    as draft FA. Wired into transferengine_run_report.
--- 3) List + sack allowed in June / July / August / January (TW open for
---    August & January; June/July always during those months).
+-- 3) List + sack allowed in June / July / January only (not August — fixtures
+--    underway). TW open required for January; June/July always during those months.
 -- 4) Cannot sack immediately: summer signings first eligible in January;
---    January signings first eligible in the next season's June–August.
+--    January signings first eligible in the next season's June–July.
 --
 -- Run after managers_system.sql + new_owner_release_window_june_july.sql
 --       + manager_sack_rehire_block.sql (+ calendar / transferengine).
@@ -118,8 +118,8 @@ BEGIN
     RETURN true;
   END IF;
 
-  -- Summer TW months (always while that GPSL month is live)
-  IF v_month IN ('june', 'july', 'august') THEN
+  -- Summer list/sack: June & July only (not August — fixtures underway)
+  IF v_month IN ('june', 'july') THEN
     RETURN true;
   END IF;
 
@@ -194,10 +194,10 @@ BEGIN
         OR (v_season = p_signed_season_id AND v_month = 'january');
   END IF;
 
-  -- Signed January → first chance next season's June/July/August (or later)
+  -- Signed January → first chance next season's June/July/January (not August)
   RETURN v_season > p_signed_season_id
     AND (
-      v_month IN ('june', 'july', 'august', 'january')
+      v_month IN ('june', 'july', 'january')
       OR v_season > p_signed_season_id + 1
     );
 END;
@@ -393,7 +393,7 @@ BEGIN
 
   IF NOT public.manager_list_sack_window_open() THEN
     RAISE EXCEPTION
-      'Manager listing is only available in June, July, August, or the January transfer window';
+      'Manager listing is only available in June, July, or the January transfer window';
   END IF;
 
   v_club := public.my_club_shortname();
@@ -454,7 +454,7 @@ BEGIN
 
   IF NOT public.manager_list_sack_window_open() THEN
     RAISE EXCEPTION
-      'Manager sack is only available in June, July, August, or the January transfer window';
+      'Manager sack is only available in June, July, or the January transfer window';
   END IF;
 
   v_club := public.my_club_shortname();
@@ -492,7 +492,7 @@ BEGIN
     v_mgr.signed_season_id, v_mgr.signed_gpsl_month, v_season_id, v_month
   ) THEN
     RAISE EXCEPTION
-      'Cannot sack yet — managers must reach mid-season in their first spell (summer signings: January; January signings: next June–August)';
+      'Cannot sack yet — managers must reach mid-season in their first spell (summer signings: January; January signings: next June–July)';
   END IF;
 
   v_payout := round(greatest(v_mgr.market_value, 0)::numeric / 2.0, 0);

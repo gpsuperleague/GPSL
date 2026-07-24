@@ -10,7 +10,7 @@
 
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260724-squad-tips">
-  <link rel="stylesheet" href="squad.css?v=20260724-squad-tips">
+  <link rel="stylesheet" href="squad.css?v=20260724-mgr-list">
 
   <style>
     body {
@@ -85,6 +85,7 @@
         <div id="userEmail"></div>
         <p id="managerBadge" class="foreign-interest-badge manager-badge" aria-live="polite" hidden>
           <span id="managerBadgeMain" class="foreign-interest-main"></span>
+          <button type="button" id="listManagerBtn" class="squad-sack-btn squad-list-btn" hidden>List</button>
           <button type="button" id="renewManagerBtn" class="squad-sack-btn squad-renew-btn" hidden>Renew</button>
           <button type="button" id="sackManagerBtn" class="squad-sack-btn" hidden>Sack</button>
         </p>
@@ -199,7 +200,7 @@
   </div>
 
   <!-- LOAD SQUAD LOGIC (nav via initGlobal in squad.js) -->
-  <script type="module" src="squad.js?v=20260724-squad-tips"></script>
+  <script type="module" src="squad.js?v=20260724-mgr-list"></script>
 
 </body>
 </html>

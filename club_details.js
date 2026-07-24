@@ -391,7 +391,7 @@ async function isManagerListSackWindow() {
   const status = await loadCalendarStatus(supabase);
   if (!status?.calendar_configured) return false;
   const m = String(status.active_gpsl_month || "").toLowerCase();
-  return ["june", "july", "august", "january"].includes(m);
+  return ["june", "july", "january"].includes(m);
 }
 
 async function isGpslJanuary() {
@@ -495,10 +495,10 @@ async function loadManagerSection(clubShortName) {
       hintEl.textContent = "Renewal available — also shown on Squad.";
     } else if (!januaryWindow) {
       hintEl.textContent =
-        "List for transfer and sack are available in June, July, August, and January.";
+        "List for transfer and sack are available in June, July, and January (not August)."
     } else {
       hintEl.textContent =
-        "Sack: not until mid-season of this spell (summer signing → January; January signing → next June–August).";
+        "Sack: not until mid-season of this spell (summer signing → January; January signing → next June–July).";
     }
   }
 }

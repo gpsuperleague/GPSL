@@ -150,6 +150,16 @@ body.squad-page .squad-sack-btn:disabled {
   cursor: not-allowed;
 }
 
+body.squad-page .squad-list-btn {
+  color: #ffe8c8;
+  background: rgba(120, 80, 20, 0.9);
+  border-color: rgba(255, 170, 60, 0.7);
+}
+
+body.squad-page .squad-list-btn:hover:not(:disabled) {
+  background: rgba(150, 100, 30, 0.95);
+}
+
 body.squad-page .squad-renew-btn {
   color: #e8f5e8;
   background: rgba(40, 90, 50, 0.9);
