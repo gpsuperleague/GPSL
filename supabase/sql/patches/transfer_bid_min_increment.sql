@@ -40,13 +40,15 @@ BEGIN
   END IF;
 
   v_mv := coalesce(v_listing.market_value::numeric, 0);
-  v_high := coalesce(v_listing.current_highest_bid::numeric, 0);
 
-  -- Prefer the greater of listing high and live max (listing can be stale)
-  SELECT greatest(
-    v_high,
-    coalesce(max(b.bid_amount), 0)
-  )
+  -- accept_direct_offer seeds listing.current_highest_bid before inserting the
+  -- opening bid at the same amount — do not treat listing high alone as a prior bid.
+  -- +₿500k only applies when competing bid rows already exist.
+  IF current_setting('gpsl.bypass_bid_owner_check', true) = 'on' THEN
+    RETURN NEW;
+  END IF;
+
+  SELECT coalesce(max(b.bid_amount), 0)
   INTO v_high
   FROM public."Player_Transfer_Bids" b
   WHERE b.listing_id = NEW.listing_id
@@ -56,6 +58,10 @@ BEGIN
   IF v_high IS NULL OR v_high <= 0 THEN
     v_min := v_mv;
   ELSE
+    v_high := greatest(
+      coalesce(v_listing.current_highest_bid::numeric, 0),
+      v_high
+    );
     v_min := greatest(v_mv, v_high + 500000);
   END IF;
 
