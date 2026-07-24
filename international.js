@@ -224,6 +224,54 @@ export function gpdbNationFilterValues(nation, nationFilterOptions = []) {
     .map((opt) => opt.value);
 }
 
+/**
+ * Resolve Clubs.Nation / GPDB nation label to { code, name, flag_emoji }
+ * for filter buttons and flags.
+ */
+export async function resolveNationFromLabel(client = supabase, label) {
+  const raw = String(label || "").trim();
+  if (!raw) return null;
+
+  const { data, error } = await client
+    .from("international_nations_public")
+    .select("code, name, flag_emoji");
+  if (error) {
+    console.warn("resolveNationFromLabel:", error.message);
+    return { code: raw, name: raw };
+  }
+
+  const norm = normalizeNation(raw);
+  const rows = data || [];
+  const exact = rows.find(
+    (n) =>
+      normalizeNation(n.code) === norm || normalizeNation(n.name) === norm
+  );
+  if (exact) {
+    return {
+      code: exact.code,
+      name: exact.name,
+      flag_emoji: exact.flag_emoji,
+    };
+  }
+
+  const soft = rows.find((n) => {
+    const nn = normalizeNation(n.name);
+    return nn.includes(norm) || norm.includes(nn);
+  });
+  if (soft) {
+    return { code: soft.code, name: soft.name, flag_emoji: soft.flag_emoji };
+  }
+
+  return { code: raw, name: raw };
+}
+
+/** Filter option values matching a club/home-grown nation label. */
+export function clubNationFilterValues(clubNationLabel, nationFilterOptions = []) {
+  const raw = String(clubNationLabel || "").trim();
+  if (!raw) return [];
+  return gpdbNationFilterValues({ code: raw, name: raw }, nationFilterOptions);
+}
+
 /** Admin: GPDB pool counts by nation (rating bands, U21, position). Reads precomputed cache. */
 export async function loadNationPlayerPoolReport(client = supabase) {
   const { data, error } = await client.rpc("international_nation_player_pool_report");

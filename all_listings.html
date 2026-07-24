@@ -853,6 +853,17 @@ a.button:hover, button.button:hover {
         </button>
       </div>
     </div>
+    <div class="filter-action">
+      <span class="filter-action-label">Nation</span>
+      <div class="filter-action-btns">
+        <button type="button" id="listingsMyNationBtn" class="button button-secondary" hidden title="Filter to your national team nation">
+          My National Team
+        </button>
+        <button type="button" id="listingsMyClubNationBtn" class="button button-secondary" hidden title="Filter to your club home nation (HG)">
+          My Club Nation
+        </button>
+      </div>
+    </div>
     <label>
       Auto-refresh (sec)
       <input type="number" id="listingsRefreshInterval" min="1" max="300" step="1" value="30" aria-describedby="listingsRefreshHint">
@@ -1017,7 +1028,7 @@ a.button:hover, button.button:hover {
   <script type="module" src="clubs_lookup.js"></script>
 
   <!-- ALL LISTINGS LOGIC -->
-  <script type="module" src="all_listings.js?v=20260722-bank-bal-row"></script>
+  <script type="module" src="all_listings.js?v=20260724-club-nation-filter"></script>
 
 </body>
 </html>

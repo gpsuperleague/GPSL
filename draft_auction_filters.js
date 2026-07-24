@@ -475,6 +475,16 @@ export function createDraftAdvancedFilterController(opts = {}) {
     for (const col of DRAFT_RANGE_COLS) syncRangeInputs(col);
   }
 
+  function setMultiSelected(col, values) {
+    if (!DRAFT_MULTI_COLS.includes(col)) return;
+    multiSelected[col] = [...new Set((values || []).map(String))];
+    refreshMultiFilterDisplays();
+  }
+
+  function getMultiOptions(col) {
+    return multiOptions[col] || [];
+  }
+
   return {
     wire,
     setWageSettings,
@@ -484,5 +494,7 @@ export function createDraftAdvancedFilterController(opts = {}) {
     getPersistState,
     restorePersistState,
     clear,
+    setMultiSelected,
+    getMultiOptions,
   };
 }

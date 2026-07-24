@@ -69,6 +69,8 @@ import {
   playerBelongsToNation,
   summarizeNationalSquad,
   gpdbNationFilterValues,
+  clubNationFilterValues,
+  resolveNationFromLabel,
   renderNationFlag,
   NATIONAL_SQUAD_MAX,
 } from "./international.js";
@@ -777,6 +779,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let CLUB_SHORT_BY_FULL_NAME = {};
 
   let MY_NATION = null;
+  let MY_CLUB_NATION = null;
   let NATIONAL_CALLED_UP = new Set();
   let NATIONAL_SQUAD_SUMMARY = null;
   /** Season exclusions — grey out + block bids/call-ups (player ids + nation labels/codes). */
@@ -1669,6 +1672,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const panel = document.getElementById("nationalSquadPanel");
     const myNationBtn = document.getElementById("myNationFilterBtn");
+    const myClubNationBtn = document.getElementById("myClubNationFilterBtn");
+
+    const clubNationLabel = CURRENT_USER_CLUB_SHORT
+      ? CLUB_NATION_MAP[CURRENT_USER_CLUB_SHORT] || ""
+      : "";
+    MY_CLUB_NATION = clubNationLabel
+      ? await resolveNationFromLabel(supabase, clubNationLabel)
+      : null;
+
+    if (myClubNationBtn) {
+      if (MY_CLUB_NATION?.name) {
+        myClubNationBtn.hidden = false;
+        myClubNationBtn.innerHTML = `${renderNationFlag(MY_CLUB_NATION, "sm")} My Club Nation (${MY_CLUB_NATION.name})`;
+      } else {
+        myClubNationBtn.hidden = true;
+      }
+    }
 
     if (!MY_NATION?.code) {
       if (panel) panel.style.display = "none";
@@ -1682,7 +1702,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (myNationBtn) {
       myNationBtn.hidden = false;
-      myNationBtn.innerHTML = `${renderNationFlag(MY_NATION, "sm")} My nation (${MY_NATION.name})`;
+      myNationBtn.innerHTML = `${renderNationFlag(MY_NATION, "sm")} My National Team (${MY_NATION.name})`;
     }
 
     if (panel) {
@@ -1698,6 +1718,25 @@ document.addEventListener("DOMContentLoaded", () => {
         <a href="national_team.html?nation=${encodeURIComponent(MY_NATION.code)}" style="color:#ff9900;">view squad</a>
       `;
     }
+  }
+
+  function applyNationValuesToFilter(values, emptyAlert) {
+    if (!values.length) {
+      if (emptyAlert) alert(emptyAlert);
+      return false;
+    }
+
+    CURRENT_FILTERS.Nation = values;
+    const panel = document.getElementById("filter-Nation-panel");
+    if (panel) {
+      panel.querySelectorAll(".multi-filter-options input[type='checkbox']").forEach((cb) => {
+        cb.checked = values.includes(cb.value);
+      });
+    }
+    updateMultiFilterDisplay("Nation");
+    saveGpdbFilters();
+    loadPage(1);
+    return true;
   }
 
   function buildGpdbCallUpCellHtml(player) {
@@ -1781,22 +1820,27 @@ document.addEventListener("DOMContentLoaded", () => {
       MY_NATION,
       FILTER_OPTION_CACHE.Nation || []
     );
-    if (!values.length) {
-      alert(
-        `No GPDB nation values match ${MY_NATION.name}. Try filtering Nation manually.`
-      );
-      return;
-    }
+    applyNationValuesToFilter(
+      values,
+      `No GPDB nation values match ${MY_NATION.name}. Try filtering Nation manually.`
+    );
+  }
 
-    CURRENT_FILTERS.Nation = values;
-    const panel = document.getElementById("filter-Nation-panel");
-    if (panel) {
-      panel.querySelectorAll(".multi-filter-options input[type='checkbox']").forEach((cb) => {
-        cb.checked = values.includes(cb.value);
-      });
-    }
-    updateMultiFilterDisplay("Nation");
-    loadPage(1);
+  function applyMyClubNationFilter() {
+    const label =
+      MY_CLUB_NATION?.name ||
+      (CURRENT_USER_CLUB_SHORT
+        ? CLUB_NATION_MAP[CURRENT_USER_CLUB_SHORT]
+        : "");
+    if (!label) return;
+    const values = clubNationFilterValues(
+      label,
+      FILTER_OPTION_CACHE.Nation || []
+    );
+    applyNationValuesToFilter(
+      values,
+      `No GPDB nation values match club nation ${label}. Try filtering Nation manually.`
+    );
   }
 
   function toggleScoutedOnlyFilter() {
@@ -2907,6 +2951,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("myNationFilterBtn")?.addEventListener("click", () => {
       applyMyNationFilter();
+    });
+
+    document.getElementById("myClubNationFilterBtn")?.addEventListener("click", () => {
+      applyMyClubNationFilter();
     });
 
     document.getElementById("myScoutedFilterBtn")?.addEventListener("click", () => {

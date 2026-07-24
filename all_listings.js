@@ -29,12 +29,21 @@ import {
   scoutingSetupHint,
 } from "./scouting_targets.js";
 import { mountClubBankBalance } from "./club_bank_balance_ui.js";
+import {
+  loadMyNation,
+  resolveNationFromLabel,
+  gpdbNationFilterValues,
+  clubNationFilterValues,
+  renderNationFlag,
+} from "./international.js";
 
 // Use global Supabase client (created in all_listings.html)
 const supabase = window.supabase;
 
 let currentUserShort = null;
 let currentUserNation = null;
+let myNationalTeam = null;
+let myClubNation = null;
 let selectedBidPlayer = null;
 let openListings = [];
 let reviewListings = [];
@@ -152,6 +161,7 @@ function parseMoneyInput(value) {
     clubShortName: currentUserShort,
   }).catch((err) => console.warn("club bank balance:", err));
   await loadScoutingTargetsForClub();
+  await refreshNationFilterButtons();
   restorePersistedListingFilters();
   wireFilterCheckboxes();
   wireListingFilters();
@@ -191,6 +201,45 @@ async function loadShortNameFromSupabase(userId) {
   currentUserShort = data.ShortName;
   currentUserNation = data.Nation ?? null;
   favouriteListingIds = loadListingFavouriteIds(currentUserShort);
+}
+
+async function refreshNationFilterButtons() {
+  myNationalTeam = await loadMyNation(supabase);
+  myClubNation = currentUserNation
+    ? await resolveNationFromLabel(supabase, currentUserNation)
+    : null;
+
+  const natBtn = document.getElementById("listingsMyNationBtn");
+  const clubBtn = document.getElementById("listingsMyClubNationBtn");
+
+  if (natBtn) {
+    if (myNationalTeam?.code) {
+      natBtn.hidden = false;
+      natBtn.innerHTML = `${renderNationFlag(myNationalTeam, "sm")} My National Team (${myNationalTeam.name})`;
+    } else {
+      natBtn.hidden = true;
+    }
+  }
+
+  if (clubBtn) {
+    if (myClubNation?.name) {
+      clubBtn.hidden = false;
+      clubBtn.innerHTML = `${renderNationFlag(myClubNation, "sm")} My Club Nation (${myClubNation.name})`;
+    } else {
+      clubBtn.hidden = true;
+    }
+  }
+}
+
+function applyListingsNationFilter(values, emptyAlert) {
+  if (!values?.length) {
+    if (emptyAlert) alert(emptyAlert);
+    return;
+  }
+  MULTI_SELECTED.Nation = [...values];
+  refreshMultiFilterDisplays();
+  savePersistedListingFilters();
+  void renderListings();
 }
 
 // ======================================================
@@ -602,6 +651,8 @@ function wireListingFilters() {
   const refreshInterval = document.getElementById("listingsRefreshInterval");
   const clearBtn = document.getElementById("listingsClearFilters");
   const scoutBtn = document.getElementById("listingsScoutingTargetsBtn");
+  const myNationBtn = document.getElementById("listingsMyNationBtn");
+  const myClubNationBtn = document.getElementById("listingsMyClubNationBtn");
 
   let searchTimer = null;
   search?.addEventListener("input", () => {
@@ -648,6 +699,28 @@ function wireListingFilters() {
     syncScoutingTargetsButton();
     savePersistedListingFilters();
     void renderListings();
+  });
+
+  myNationBtn?.addEventListener("click", () => {
+    if (!myNationalTeam?.code) return;
+    const values = gpdbNationFilterValues(
+      myNationalTeam,
+      MULTI_OPTIONS.Nation || []
+    );
+    applyListingsNationFilter(
+      values,
+      `No listing nations match ${myNationalTeam.name}.`
+    );
+  });
+
+  myClubNationBtn?.addEventListener("click", () => {
+    const label = myClubNation?.name || currentUserNation;
+    if (!label) return;
+    const values = clubNationFilterValues(label, MULTI_OPTIONS.Nation || []);
+    applyListingsNationFilter(
+      values,
+      `No listing nations match club nation ${label}.`
+    );
   });
 
   if (myBids && !currentUserShort) {

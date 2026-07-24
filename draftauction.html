@@ -660,6 +660,17 @@
         </button>
       </div>
     </div>
+    <div class="filter-action">
+      <span class="filter-action-label">Nation</span>
+      <div class="filter-action-btns">
+        <button type="button" id="draftMyNationBtn" class="button button-secondary" hidden>
+          My National Team
+        </button>
+        <button type="button" id="draftMyClubNationBtn" class="button button-secondary" hidden>
+          My Club Nation
+        </button>
+      </div>
+    </div>
     <label>
       Auto-refresh (sec)
       <input type="number" id="draftRefreshInterval" min="1" max="300" step="1" value="60" aria-describedby="draftRefreshHint">
@@ -793,13 +804,23 @@
       scoutingSetupHint,
     } from "./scouting_targets.js";
     import { loadWagePercentages } from "./wages.js";
-    import { createDraftAdvancedFilterController } from "./draft_auction_filters.js";
+    import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260724-club-nation-filter";
+    import {
+      loadMyNation,
+      resolveNationFromLabel,
+      gpdbNationFilterValues,
+      clubNationFilterValues,
+      renderNationFlag,
+    } from "./international.js?v=20260724-club-nation-filter";
 
     /* ============================================================
        MODULE A: Global State
        ============================================================ */
 
     let buyerShortName = null;
+    let buyerClubNation = null;
+    let myNationalTeam = null;
+    let myClubNation = null;
 
     let draftEnabled = false;
     let draftAuctionStartTimeUK = null;
@@ -993,11 +1014,50 @@
     async function loadBuyerClubShortName(authId) {
       const { data, error } = await supabase
         .from("Clubs")
-        .select("ShortName")
+        .select("ShortName, Nation")
         .eq("owner_id", authId)
         .single();
 
       buyerShortName = error || !data ? null : data.ShortName;
+      buyerClubNation = error || !data ? null : data.Nation || null;
+    }
+
+    async function refreshDraftNationFilterButtons() {
+      myNationalTeam = await loadMyNation(supabase);
+      myClubNation = buyerClubNation
+        ? await resolveNationFromLabel(supabase, buyerClubNation)
+        : null;
+
+      const natBtn = document.getElementById("draftMyNationBtn");
+      const clubBtn = document.getElementById("draftMyClubNationBtn");
+
+      if (natBtn) {
+        if (myNationalTeam?.code) {
+          natBtn.hidden = false;
+          natBtn.innerHTML = `${renderNationFlag(myNationalTeam, "sm")} My National Team (${myNationalTeam.name})`;
+        } else {
+          natBtn.hidden = true;
+        }
+      }
+
+      if (clubBtn) {
+        if (myClubNation?.name) {
+          clubBtn.hidden = false;
+          clubBtn.innerHTML = `${renderNationFlag(myClubNation, "sm")} My Club Nation (${myClubNation.name})`;
+        } else {
+          clubBtn.hidden = true;
+        }
+      }
+    }
+
+    function applyDraftNationFilter(values, emptyAlert) {
+      if (!values?.length) {
+        if (emptyAlert) alert(emptyAlert);
+        return;
+      }
+      advancedFilters.setMultiSelected("Nation", values);
+      renderDraftTable();
+      savePersistedDraftFilters();
     }
 
     /* ============================================================
@@ -1043,6 +1103,7 @@
       draftEnabled = settings.draftEnabled;
       draftAuctionStartTimeUK = settings.draftStart;
       await loadBuyerClubShortName(user.id);
+      await refreshDraftNationFilterButtons();
       await loadDraftScoutingTargets();
       advancedFilters.setWageSettings(await loadWagePercentages(supabase));
       advancedFilters.wire();
@@ -1187,6 +1248,8 @@
       const leading = document.getElementById("draftLeadingClubFilter");
       const myBids = document.getElementById("draftMyBidsOnly");
       const scoutedBtn = document.getElementById("draftScoutedFilterBtn");
+      const myNationBtn = document.getElementById("draftMyNationBtn");
+      const myClubNationBtn = document.getElementById("draftMyClubNationBtn");
       const refreshInterval = document.getElementById("draftRefreshInterval");
       const clearBtn = document.getElementById("draftClearFilters");
 
@@ -1216,6 +1279,29 @@
         scoutedBtn.classList.toggle("is-active", scoutedOnly);
         renderDraftTable();
         savePersistedDraftFilters();
+      });
+      myNationBtn?.addEventListener("click", () => {
+        if (!myNationalTeam?.code) return;
+        const values = gpdbNationFilterValues(
+          myNationalTeam,
+          advancedFilters.getMultiOptions("Nation")
+        );
+        applyDraftNationFilter(
+          values,
+          `No draft nations match ${myNationalTeam.name}.`
+        );
+      });
+      myClubNationBtn?.addEventListener("click", () => {
+        const label = myClubNation?.name || buyerClubNation;
+        if (!label) return;
+        const values = clubNationFilterValues(
+          label,
+          advancedFilters.getMultiOptions("Nation")
+        );
+        applyDraftNationFilter(
+          values,
+          `No draft nations match club nation ${label}.`
+        );
       });
       refreshInterval?.addEventListener("change", () => {
         applyDraftRefreshInterval();
