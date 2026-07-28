@@ -6,8 +6,8 @@
    - Used exclusively by dashboard.html
    ============================================================ */
 
-@import url("mobile.css?v=20260728-nav-icons-row2");
-@import url("nav_force_horizontal.css?v=20260728-nav-icons-row2");
+@import url("mobile.css?v=20260728-dash-header-sm");
+@import url("nav_force_horizontal.css?v=20260728-dash-header-sm");
 
 :root {
   --gpsl-accent: #ff9900;
@@ -2300,6 +2300,45 @@ a.ssc-chip:hover {
     margin: 8px auto 24px;
     padding: 0 6px;
     box-sizing: border-box;
+  }
+
+  .page-dashboard #headerContainer {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 10px;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+  }
+
+  .page-dashboard #clubBadgeHeader {
+    width: 40px;
+    height: 40px;
+  }
+
+  .page-dashboard #dashboardTitle {
+    font-size: 15px;
+    line-height: 1.2;
+  }
+
+  .page-dashboard #userEmail {
+    font-size: 11px;
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: min(52vw, 220px);
+  }
+
+  .page-dashboard #draftCountdownContainer {
+    min-width: 0;
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  .page-dashboard #draftLocalStart {
+    font-size: 10px;
+    margin-top: 2px;
+    line-height: 1.25;
   }
 
   .dashboard-sections {

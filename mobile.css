@@ -93,7 +93,66 @@
     line-height: 1.25;
   }
 
-  #headerContainer,
+  /* Dashboard header: compact single-row chrome (not a tall stacked block) */
+  .page-dashboard #headerContainer {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px 10px !important;
+    padding: 8px 10px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .page-dashboard #headerLeft {
+    flex: 1 1 auto !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+  }
+
+  .page-dashboard #clubBadgeHeader {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .page-dashboard #dashboardTitle {
+    font-size: 15px !important;
+    line-height: 1.2 !important;
+  }
+
+  .page-dashboard #userEmail {
+    font-size: 11px !important;
+    margin-top: 2px !important;
+    color: #999 !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: min(52vw, 220px);
+  }
+
+  .page-dashboard #headerCenter {
+    order: 3;
+    flex: 1 1 100% !important;
+    max-width: none !important;
+  }
+
+  .page-dashboard #headerRight {
+    flex: 0 0 auto !important;
+  }
+
+  .page-dashboard #draftCountdownContainer {
+    min-width: 0 !important;
+    padding: 6px 8px !important;
+    font-size: 11px !important;
+  }
+
+  .page-dashboard #draftLocalStart {
+    font-size: 10px !important;
+    margin-top: 2px !important;
+    line-height: 1.25 !important;
+  }
+
+  /* Non-dashboard headers may stack; dashboard uses compact row rules above */
+  body:not(.page-dashboard) #headerContainer,
   .squad-header,
   .club-bank-status-row {
     flex-direction: column !important;

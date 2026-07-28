@@ -215,21 +215,86 @@
 
     @media (max-width: 900px) {
       #headerContainer {
-        flex-direction: column;
-        align-items: stretch;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 10px;
+        margin-bottom: 12px;
+        padding: 8px 10px;
       }
+
+      #headerLeft {
+        flex: 1 1 auto;
+        gap: 10px;
+        min-width: 0;
+      }
+
+      #clubBadgeHeader {
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+      }
+
+      h1,
+      #dashboardTitle {
+        font-size: 15px;
+        line-height: 1.2;
+      }
+
+      #userEmail {
+        font-size: 11px;
+        margin-top: 2px;
+        color: #999;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: min(52vw, 220px);
+      }
+
       #headerCenter {
         order: 3;
+        flex: 1 1 100%;
         max-width: none;
+        justify-content: stretch;
       }
+
+      #headerRight {
+        flex: 0 0 auto;
+        gap: 8px;
+      }
+
+      #draftCountdownContainer {
+        min-width: 0;
+        padding: 6px 8px;
+        font-size: 11px;
+        border-radius: 6px;
+      }
+
+      #draftLocalStart {
+        font-size: 10px;
+        margin-top: 2px;
+        line-height: 1.25;
+      }
+
       #dashboardMatchdayPanel {
         max-width: none;
+        padding: 8px 10px;
+      }
+    }
+
+    @media (max-width: 420px) {
+      #userEmail {
+        max-width: 42vw;
+      }
+
+      #draftCountdownContainer {
+        max-width: 42vw;
       }
     }
   </style>
 
-  <link rel="stylesheet" href="dashboard.css?v=20260728-nav-icons-row2">
-  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-icons-row2">
+  <link rel="stylesheet" href="dashboard.css?v=20260728-dash-header-sm">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-dash-header-sm">
   <link rel="stylesheet" href="club_dashboard_theme.css">
 </head>
 
@@ -294,7 +359,7 @@
   </div>
 
   <!-- MODULES (global via dashboard.js only — avoids double init) -->
-  <script type="module" src="dashboard.js?v=20260728-nav-icons-row2"></script>
+  <script type="module" src="dashboard.js?v=20260728-dash-header-sm"></script>
 
 </body>
 </html>
