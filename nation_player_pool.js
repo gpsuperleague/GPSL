@@ -27,6 +27,40 @@ const SECTIONS = [
 
 const SUMMARY_BANDS = ["le_65", "r66_69", "r70_72", "r73_75", "r76_78", "r79_plus"];
 
+function escapePoolHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Force multi-word / hyphenated nation names onto separate lines (e.g. North<br>Macedonia). */
+function formatNationNameHtml(name) {
+  const raw = String(name ?? "").trim();
+  if (!raw) return "";
+  const parts = raw.split(/(\s+|[\-–—])/);
+  const out = [];
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (!part) continue;
+    if (/^\s+$/.test(part)) {
+      out.push("<br>");
+      continue;
+    }
+    if (/^[\-–—]$/.test(part)) {
+      // Keep hyphen on previous line feel: break after hyphenated join
+      if (out.length) out.push(part);
+      out.push("<br>");
+      continue;
+    }
+    out.push(escapePoolHtml(part));
+  }
+  // Avoid trailing <br> from a trailing hyphen split
+  while (out.length && out[out.length - 1] === "<br>") out.pop();
+  return out.join("");
+}
+
 let reportRows = [];
 let expandedCode = null;
 let cacheMeta = null;
@@ -226,25 +260,24 @@ function fitNationColumn() {
     "position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none;font-size:12px;font-family:Arial,sans-serif;font-weight:700;line-height:1.25";
   document.body.appendChild(probe);
 
-  let maxToken = 0;
-  let maxSideLine = 0;
+  let maxLine = 0;
   for (const row of reportRows) {
     const name = String(row.nation_name || "");
-    // Width from longest word / hyphen segment so "Trinidad and Tobago" wraps
-    const tokens = name.split(/[\s\-–—/]+/).filter(Boolean);
+    // Each wrapped line is a word or hyphen segment
+    const tokens = name.split(/[\s\-–—]+/).filter(Boolean);
     for (const tok of tokens.length ? tokens : [name]) {
       probe.textContent = tok;
-      maxToken = Math.max(maxToken, probe.scrollWidth);
+      maxLine = Math.max(maxLine, probe.scrollWidth);
     }
 
     probe.style.fontWeight = "400";
     probe.style.fontSize = "11px";
     probe.textContent = `${row.nation_code} · seed ${row.seed_rank}`;
-    maxSideLine = Math.max(maxSideLine, probe.scrollWidth);
+    maxLine = Math.max(maxLine, probe.scrollWidth);
     probe.textContent = row.is_taken
       ? row.owner_tag || row.owner_club || "Assigned"
       : "Unassigned";
-    maxSideLine = Math.max(maxSideLine, probe.scrollWidth);
+    maxLine = Math.max(maxLine, probe.scrollWidth);
     probe.style.fontWeight = "700";
     probe.style.fontSize = "12px";
   }
@@ -252,9 +285,10 @@ function fitNationColumn() {
 
   const btn = document.querySelector("#poolBody .pool-expand-btn");
   const btnW = btn ? btn.offsetWidth : 76;
-  const metaW = Math.max(maxToken, maxSideLine, 64);
+  const metaW = Math.max(maxLine, 64);
   const colW = Math.ceil(metaW + 28 + 6 + 8 + btnW + 16);
   table.style.setProperty("--pool-nation-col-width", `${colW}px`);
+  table.style.setProperty("--pool-nation-name-max", `${metaW}px`);
 }
 
 function renderTable() {
@@ -292,7 +326,7 @@ function renderTable() {
             <div class="pool-nation-cell">
               ${renderNationFlag({ nation_code: row.nation_code, nation_name: row.nation_name }, "sm")}
               <span class="pool-nation-meta">
-                <strong class="pool-nation-name">${row.nation_name}</strong>
+                <strong class="pool-nation-name">${formatNationNameHtml(row.nation_name)}</strong>
                 <span class="pool-owner">${row.nation_code} · seed ${row.seed_rank}</span>
                 ${ownerLine}
               </span>

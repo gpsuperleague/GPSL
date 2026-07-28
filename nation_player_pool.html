@@ -134,17 +134,15 @@
       gap: 8px;
     }
     .pool-nation-meta {
+      flex: 1 1 auto;
       min-width: 0;
-      max-width: 100%;
+      max-width: var(--pool-nation-name-max, 9rem);
     }
     .pool-nation-name {
       display: block;
       white-space: normal;
-      overflow-wrap: break-word;
-      word-break: normal;
       line-height: 1.25;
-      /* Prefer wrapping at spaces / hyphens in double-barrel names */
-      hyphens: auto;
+      max-width: 100%;
     }
     .pool-owner {
       display: block;
@@ -275,6 +273,6 @@
     </div>
   </div>
 
-  <script type="module" src="nation_player_pool.js?v=20260728-nation-wrap"></script>
+  <script type="module" src="nation_player_pool.js?v=20260728-nation-br"></script>
 </body>
 </html>
