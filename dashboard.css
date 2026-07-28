@@ -6,7 +6,7 @@
    - Used exclusively by dashboard.html
    ============================================================ */
 
-@import url("mobile.css?v=20260728-table-scroll-fix");
+@import url("mobile.css?v=20260728-sticky-scroll-fix");
 @import url("nav_force_horizontal.css?v=20260728-nav-dropdown-fix");
 
 :root {

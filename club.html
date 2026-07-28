@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Club Squad</title>
 
-  <link rel="stylesheet" href="dashboard.css?v=20260728-club-freeze-thumb">
+  <link rel="stylesheet" href="dashboard.css?v=20260728-sticky-scroll-fix">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="history_trophy_cabinet.css?v=20260715-club-cabinet">
 
@@ -89,20 +89,28 @@
       margin: 20px;
       border-radius: 8px;
       border: 1px solid #333;
+      /* Must stay visible — overflow here breaks sticky player cards */
+      overflow: visible;
     }
 
     .club-table-scroll {
       overflow-x: auto;
+      overflow-y: visible;
       -webkit-overflow-scrolling: touch;
+      width: 100%;
       max-width: 100%;
+      min-width: 0;
+      scrollbar-gutter: stable;
+      padding-bottom: 4px;
     }
 
     table.gpsl-table {
-      width: 100%;
-      border-collapse: collapse;
+      width: max-content;
+      min-width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
       margin-bottom: 0;
       table-layout: auto;
-      min-width: 720px;
     }
 
     table.gpsl-table th,
@@ -114,6 +122,7 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       font-size: 13px;
+      background: #1a1a1a;
     }
 
     table.gpsl-table th {
@@ -121,14 +130,27 @@
       color: #ff9900;
     }
 
+    table.gpsl-table tr:nth-child(even) td {
+      background: #181818;
+    }
+
     tr.club-row-suspended {
       background: rgba(160, 55, 35, 0.22) !important;
+    }
+    tr.club-row-suspended td {
+      background: #2a1a18;
     }
     tr.club-row-injured {
       background: rgba(40, 90, 120, 0.22) !important;
     }
+    tr.club-row-injured td {
+      background: #152430;
+    }
     tr.club-row-recovery {
       background: rgba(60, 100, 40, 0.18) !important;
+    }
+    tr.club-row-recovery td {
+      background: #1a2416;
     }
     .suspension-badge,
     .injury-badge {

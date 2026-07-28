@@ -249,11 +249,20 @@
   .table-scroll,
   .listing-table-wrap,
   .club-table-scroll,
-  .panel:has(> table.gpsl-table),
-  .panel:has(> .club-table-scroll) {
+  .nat-table-scroll,
+  .panel:has(> table.gpsl-table) {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     max-width: 100%;
+  }
+
+  /* Nested overflow on .panel + .club-table-scroll breaks position:sticky
+     (card sticks briefly, then scrolls away with the outer scroller). */
+  .panel:has(> .club-table-scroll),
+  .panel:has(> .nat-table-scroll),
+  .panel:has(.squad-table-scroll),
+  .panel:has(.nat-table-scroll) {
+    overflow: visible;
   }
 
   input[type="text"],
