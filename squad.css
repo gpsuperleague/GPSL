@@ -1257,6 +1257,15 @@ body.squad-page .squad-section-row--ghost .squad-section-title {
     padding: 0 8px;
   }
 
+  /* Sticky Action overlays other cols when the table is squeezed — scroll with the row instead */
+  body.squad-page .squad-col-action,
+  body.squad-page tr.squad-section-cols-row th.squad-col-action {
+    position: static;
+    right: auto;
+    z-index: auto;
+    box-shadow: none;
+  }
+
   body.squad-page .squad-col-action {
     min-width: 7rem;
   }
