@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Club Squad</title>
 
-  <link rel="stylesheet" href="dashboard.css?v=20260728-table-scroll-fix">
+  <link rel="stylesheet" href="dashboard.css?v=20260728-club-freeze-thumb">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="history_trophy_cabinet.css?v=20260715-club-cabinet">
 
@@ -176,6 +176,46 @@
     table.gpsl-table td:nth-child(1) {
       width: 64px;
       min-width: 64px;
+    }
+
+    /* Freeze player card on horizontal scroll (same pattern as national team) */
+    table.gpsl-table th.club-col-thumb,
+    table.gpsl-table td.club-col-thumb {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      background: #1a1a1a;
+      box-shadow: 3px 0 6px rgba(0, 0, 0, 0.45);
+      text-align: center;
+      overflow: visible;
+    }
+    table.gpsl-table th.club-col-thumb {
+      z-index: 5;
+      background: #222;
+    }
+    table.gpsl-table tr:nth-child(even) td.club-col-thumb {
+      background: #181818;
+    }
+    table.gpsl-table tr:hover td.club-col-thumb {
+      background: #222;
+    }
+    tr.club-row-suspended td.club-col-thumb {
+      background: #2a1a18;
+    }
+    tr.club-row-suspended:hover td.club-col-thumb {
+      background: #33201c;
+    }
+    tr.club-row-injured td.club-col-thumb {
+      background: #152430;
+    }
+    tr.club-row-injured:hover td.club-col-thumb {
+      background: #1c2e3a;
+    }
+    tr.club-row-recovery td.club-col-thumb {
+      background: #1a2416;
+    }
+    tr.club-row-recovery:hover td.club-col-thumb {
+      background: #222e1c;
     }
 
     table.gpsl-table th:nth-child(2),
@@ -829,7 +869,7 @@
             <table class="gpsl-table">
               <thead>
                 <tr>
-                  <th></th>
+                  <th class="club-col-thumb"></th>
                   <th>Player</th>
                   <th>Nat</th>
                   <th>Pos</th>
@@ -858,7 +898,7 @@
                         : "";
                   return `
                   <tr${rowClass}>
-                    <td>${playerThumbLinkHtml(p.Konami_ID, {
+                    <td class="club-col-thumb">${playerThumbLinkHtml(p.Konami_ID, {
                       className: "club-thumb",
                       alt: p.Name,
                     })}</td>
