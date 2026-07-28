@@ -2023,37 +2023,45 @@ a.ssc-chip:hover {
   border-radius: 6px;
 }
 
+/* Narrow screens: keep top menus horizontal (scroll if needed). Desktop >900px unchanged. */
 @media (max-width: 900px) {
-  .gpsl-nav-row-menus {
-    flex-direction: column;
-  }
-
   .nav-natter-label,
   .nav-season-calendar-label {
     display: none;
   }
 
-  .gpsl-nav-shortcuts,
-  .gpsl-nav-admin-zone,
-  .gpsl-nav-actions,
-  .gpsl-nav-actions-primary,
-  .gpsl-nav-actions-secondary,
-  .gpsl-nav-actions-secondary .gpsl-nav-month {
-    border-right: none;
-    border-left: none;
-    border-bottom: 1px solid #333;
+  .gpsl-nav-row-menus {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
   }
 
-  .gpsl-nav-row-status {
-    justify-content: stretch;
+  .gpsl-nav-groups {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    width: auto;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nav-group {
+    flex: 0 0 auto;
   }
 
   .gpsl-nav-actions,
   .gpsl-nav-actions-primary,
   .gpsl-nav-actions-secondary {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    width: 100%;
+    flex-wrap: nowrap;
+    justify-content: center;
+    width: auto;
+    flex: 0 0 auto;
+    margin-left: auto;
   }
 
   .gpsl-nav-actions-secondary .gpsl-nav-month {
@@ -2061,27 +2069,19 @@ a.ssc-chip:hover {
     padding-left: 12px;
   }
 
-  .gpsl-nav-groups {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .nav-group {
-    border-right: none;
-    border-bottom: 1px solid #333;
-  }
-
+  /* Keep dropdowns as overlays (not accordion under each group) */
   .nav-dropdown {
-    position: static;
-    box-shadow: none;
-    border: none;
-    border-top: 1px solid #333;
-    border-radius: 0;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    border: 1px solid #444;
+    border-radius: 0 0 8px 8px;
   }
 
   .nav-dropdown-scrollable {
-    max-height: none;
-    overflow-y: visible;
+    max-height: min(60vh, 420px);
+    overflow-y: auto;
   }
 }
 
