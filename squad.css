@@ -677,11 +677,8 @@ body.squad-page select.squad-action-select {
   box-sizing: border-box;
 }
 
-/* Action stays sticky on horizontal scroll, but uses the same row colours as other cells */
+/* Action column scrolls with the table (not sticky) so it never overlays other columns */
 body.squad-page .squad-col-action {
-  position: sticky;
-  right: 0;
-  z-index: 3;
   text-align: center;
   overflow: visible;
   padding-left: 6px;
@@ -689,17 +686,11 @@ body.squad-page .squad-col-action {
   white-space: nowrap;
   min-width: 8.5rem;
   width: 8.5rem;
-  background: inherit;
-  box-shadow: none;
 }
 
 body.squad-page tr.squad-section-cols-row th.squad-col-action {
-  position: sticky;
-  right: 0;
-  z-index: 4;
   /* Same tint as other section column headers (not inherit from <tr>) */
   background: rgba(255, 153, 0, 0.06);
-  box-shadow: none;
 }
 
 body.squad-page tr[data-konami-id]:hover td.squad-col-action {
@@ -1257,15 +1248,7 @@ body.squad-page .squad-section-row--ghost .squad-section-title {
     padding: 0 8px;
   }
 
-  /* Sticky Action overlays other cols when the table is squeezed — scroll with the row instead */
-  body.squad-page .squad-col-action,
-  body.squad-page tr.squad-section-cols-row th.squad-col-action {
-    position: static;
-    right: auto;
-    z-index: auto;
-    box-shadow: none;
-  }
-
+  /* Action is never sticky — scrolls with the table on all widths */
   body.squad-page .squad-col-action {
     min-width: 7rem;
   }
