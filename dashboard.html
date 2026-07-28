@@ -215,40 +215,43 @@
 
     @media (max-width: 900px) {
       #headerContainer {
+        display: flex;
         flex-direction: row;
         flex-wrap: wrap;
         align-items: center;
-        gap: 8px 10px;
+        gap: 6px 8px;
         margin-bottom: 12px;
-        padding: 8px 10px;
+        padding: 6px 8px;
       }
 
       #headerLeft {
-        flex: 1 1 auto;
-        gap: 10px;
+        display: flex;
+        flex: 1 1 0;
+        align-items: center;
+        gap: 8px;
         min-width: 0;
       }
 
       #clubBadgeHeader {
-        width: 40px;
-        height: 40px;
+        width: 36px;
+        height: 36px;
         flex-shrink: 0;
       }
 
       h1,
       #dashboardTitle {
-        font-size: 15px;
-        line-height: 1.2;
+        font-size: 14px;
+        line-height: 1.15;
       }
 
       #userEmail {
-        font-size: 11px;
-        margin-top: 2px;
+        font-size: 10px;
+        margin-top: 1px;
         color: #999;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        max-width: min(52vw, 220px);
+        max-width: min(48vw, 200px);
       }
 
       #headerCenter {
@@ -259,21 +262,33 @@
       }
 
       #headerRight {
-        flex: 0 0 auto;
-        gap: 8px;
+        flex: 0 1 auto;
+        max-width: 46%;
+        gap: 6px;
+        justify-content: flex-end;
+        min-width: 0;
       }
 
       #draftCountdownContainer {
         min-width: 0;
-        padding: 6px 8px;
-        font-size: 11px;
-        border-radius: 6px;
+        max-width: 100%;
+        padding: 4px 6px;
+        font-size: 10px;
+        border-radius: 5px;
+        text-align: right;
+        line-height: 1.2;
+      }
+
+      #draftCountdown {
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
       }
 
       #draftLocalStart {
-        font-size: 10px;
-        margin-top: 2px;
-        line-height: 1.25;
+        display: none !important;
       }
 
       #dashboardMatchdayPanel {
@@ -284,17 +299,17 @@
 
     @media (max-width: 420px) {
       #userEmail {
-        max-width: 42vw;
+        max-width: 38vw;
       }
 
-      #draftCountdownContainer {
-        max-width: 42vw;
+      #headerRight {
+        max-width: 48%;
       }
     }
   </style>
 
-  <link rel="stylesheet" href="dashboard.css?v=20260728-dash-header-sm">
-  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-dash-header-sm">
+  <link rel="stylesheet" href="dashboard.css?v=20260728-ssc-header-tidy">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-ssc-header-tidy">
   <link rel="stylesheet" href="club_dashboard_theme.css">
 </head>
 
@@ -359,7 +374,7 @@
   </div>
 
   <!-- MODULES (global via dashboard.js only — avoids double init) -->
-  <script type="module" src="dashboard.js?v=20260728-dash-header-sm"></script>
+  <script type="module" src="dashboard.js?v=20260728-ssc-header-tidy"></script>
 
 </body>
 </html>

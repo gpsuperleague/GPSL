@@ -6,8 +6,8 @@
    - Used exclusively by dashboard.html
    ============================================================ */
 
-@import url("mobile.css?v=20260728-dash-header-sm");
-@import url("nav_force_horizontal.css?v=20260728-dash-header-sm");
+@import url("mobile.css?v=20260728-ssc-header-tidy");
+@import url("nav_force_horizontal.css?v=20260728-ssc-header-tidy");
 
 :root {
   --gpsl-accent: #ff9900;
@@ -1858,6 +1858,10 @@ a.ssc-chip:hover {
   color: #666;
 }
 
+.ssc-chip-label-short {
+  display: none;
+}
+
 .ssc-chip-value {
   font-weight: 600;
   color: #aaa;
@@ -1906,19 +1910,68 @@ a.ssc-chip:hover {
   color: #886622;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   .season-schedule-strip {
-    padding: 4px 10px 5px;
+    padding: 4px 8px 5px;
+  }
+
+  .season-schedule-inner {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 6px 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .ssc-gpsl-brand {
+    display: none;
+  }
+
+  .ssc-gpsl-headline {
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+
+  .ssc-chips {
+    flex-wrap: nowrap;
+    flex: 0 0 auto;
+    gap: 4px 6px;
+  }
+
+  .ssc-sep {
+    height: 12px;
+    margin: 0 1px;
+  }
+
+  .ssc-chip {
+    padding: 2px 6px;
+    gap: 4px;
+    font-size: 10px;
+  }
+
+  .ssc-chip-label-long {
+    display: none;
+  }
+
+  .ssc-chip-label-short {
+    display: inline;
+  }
+
+  .ssc-chip-label {
+    max-width: none;
+    overflow: visible;
+    text-overflow: clip;
   }
 
   .ssc-kicker {
     display: none;
   }
+}
 
-  .ssc-chip-label {
-    max-width: 72px;
-    overflow: hidden;
-    text-overflow: ellipsis;
+@media (max-width: 720px) {
+  .season-schedule-strip {
+    padding: 4px 8px 5px;
   }
 }
 
@@ -2305,40 +2358,46 @@ a.ssc-chip:hover {
   .page-dashboard #headerContainer {
     flex-wrap: wrap;
     align-items: center;
-    gap: 8px 10px;
-    padding: 8px 10px;
+    gap: 6px 8px;
+    padding: 6px 8px;
     margin-bottom: 12px;
   }
 
   .page-dashboard #clubBadgeHeader {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
   }
 
   .page-dashboard #dashboardTitle {
-    font-size: 15px;
-    line-height: 1.2;
+    font-size: 14px;
+    line-height: 1.15;
   }
 
   .page-dashboard #userEmail {
-    font-size: 11px;
-    margin-top: 2px;
+    font-size: 10px;
+    margin-top: 1px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: min(52vw, 220px);
+    max-width: min(48vw, 200px);
+  }
+
+  .page-dashboard #headerRight {
+    flex: 0 1 auto;
+    max-width: 46%;
+    min-width: 0;
   }
 
   .page-dashboard #draftCountdownContainer {
     min-width: 0;
-    padding: 6px 8px;
-    font-size: 11px;
+    max-width: 100%;
+    padding: 4px 6px;
+    font-size: 10px;
+    text-align: right;
   }
 
   .page-dashboard #draftLocalStart {
-    font-size: 10px;
-    margin-top: 2px;
-    line-height: 1.25;
+    display: none !important;
   }
 
   .dashboard-sections {

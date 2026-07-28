@@ -96,11 +96,19 @@ export function draftAuctionKindLabel(kind = "player") {
 }
 
 /** Conclusion banner once the draft window has fully ended. */
-export function formatDraftConclusionLines(finishInstant, kind = "player") {
+export function formatDraftConclusionLines(finishInstant, kind = "player", options = {}) {
   if (!isValidInstant(finishInstant)) {
     return { duration: "", subline: "" };
   }
   const noun = draftAuctionKindLabel(kind);
+  if (options.compact) {
+    const short =
+      kind === "manager" ? "Mgr draft" : kind === "club" ? "Club auction" : "Player draft";
+    return {
+      duration: `${short} done`,
+      subline: formatInstantUK(finishInstant, PRECISE),
+    };
+  }
   return {
     duration: `${noun} concluded — random finish ${formatInstantUK(finishInstant, PRECISE)}`,
     subline: formatClosedTimesSubline(finishInstant),
@@ -108,9 +116,15 @@ export function formatDraftConclusionLines(finishInstant, kind = "player") {
 }
 
 /** Prefix live countdown line so player vs manager draft is obvious on shared pages. */
-export function prefixDraftCountdownDuration(duration, kind = "player") {
+export function prefixDraftCountdownDuration(duration, kind = "player", options = {}) {
   const text = String(duration || "").trim();
   if (!text) return text;
+  if (options.compact) {
+    const short =
+      kind === "manager" ? "Mgr" : kind === "club" ? "Club" : "Player";
+    if (text.startsWith(short) || text.startsWith(draftAuctionKindLabel(kind))) return text;
+    return `${short}: ${text}`;
+  }
   const noun = draftAuctionKindLabel(kind);
   if (text.startsWith(noun)) return text;
   return `${noun}: ${text}`;

@@ -849,6 +849,9 @@ export function wireDraftCountdownUI() {
   if (!el) return;
 
   const localEl = ensureDraftLocalStartEl(el);
+  const compactCountdown = () =>
+    document.body.classList.contains("page-dashboard") &&
+    window.matchMedia("(max-width: 900px)").matches;
 
   if (!isDraftCountdownActive()) {
     if (container) container.style.display = "none";
@@ -861,16 +864,25 @@ export function wireDraftCountdownUI() {
   startDraftCountdown((tick) => {
     const { phase, ms, label, target, countUp, frozen, finishInstant } = tick;
     const kind = getPageDraftCountdownKind();
+    const compact = compactCountdown();
     const revealedFinish = resolveRevealedFinishInstant(finishInstant);
     if (phase === "ended") {
       if (isValidInstant(revealedFinish)) {
-        const { duration, subline } = formatDraftConclusionLines(revealedFinish, kind);
+        const { duration, subline } = formatDraftConclusionLines(
+          revealedFinish,
+          kind,
+          { compact }
+        );
         el.textContent = duration;
-        if (localEl) localEl.textContent = subline;
-      } else {
-        el.textContent = prefixDraftCountdownDuration(label, kind);
         if (localEl) {
-          localEl.textContent = draftCountdownEndedSubline(kind);
+          localEl.textContent = compact ? "" : subline;
+          localEl.hidden = compact;
+        }
+      } else {
+        el.textContent = prefixDraftCountdownDuration(label, kind, { compact });
+        if (localEl) {
+          localEl.textContent = compact ? "" : draftCountdownEndedSubline(kind);
+          localEl.hidden = compact;
         }
       }
       return;
@@ -881,10 +893,12 @@ export function wireDraftCountdownUI() {
       frozen,
       finishInstant: revealedFinish,
     });
-    el.textContent = prefixDraftCountdownDuration(duration, kind);
+    el.textContent = prefixDraftCountdownDuration(duration, kind, { compact });
     if (localEl) {
-      localEl.textContent =
+      const line =
         subline || (!frozen && target ? formatTargetTimesSubline(target) : "");
+      localEl.textContent = compact ? "" : line;
+      localEl.hidden = compact;
     }
   });
 }

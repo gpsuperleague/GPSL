@@ -174,7 +174,7 @@ export function formatSeasonStripLabel(raw) {
   return s;
 }
 
-function draftChipHtml(kind, label, data) {
+function draftChipHtml(kind, label, shortLabel, data) {
   const live = data.live;
   const remaining = data.remaining;
   const used = data.used;
@@ -194,7 +194,10 @@ function draftChipHtml(kind, label, data) {
     `<a href="${escapeHtml(data.href)}" class="ssc-chip ssc-draft${
       live ? " ssc-chip--live" : ""
     }" title="${escapeHtml(title)}">` +
-    `<span class="ssc-chip-label">${escapeHtml(label)}</span>` +
+    `<span class="ssc-chip-label">` +
+    `<span class="ssc-chip-label-long">${escapeHtml(label)}</span>` +
+    `<span class="ssc-chip-label-short">${escapeHtml(shortLabel)}</span>` +
+    `</span>` +
     `<span class="ssc-chip-value">${escapeHtml(countText)}</span>` +
     `</a>`
   );
@@ -208,8 +211,13 @@ function transferWindowChipHtml(data) {
     : "Transfer window is closed";
 
   return (
-    `<a href="${escapeHtml(data.href)}" class="ssc-chip ssc-transfer ssc-chip--live" title="${escapeHtml(title)}">` +
-    `<span class="ssc-chip-label">Transfer window</span>` +
+    `<a href="${escapeHtml(data.href)}" class="ssc-chip ssc-transfer${
+      open ? " ssc-chip--live" : ""
+    }" title="${escapeHtml(title)}">` +
+    `<span class="ssc-chip-label">` +
+    `<span class="ssc-chip-label-long">Transfer window</span>` +
+    `<span class="ssc-chip-label-short">Window</span>` +
+    `</span>` +
     `<span class="ssc-chip-value">${escapeHtml(statusText)}</span>` +
     `</a>`
   );
@@ -244,9 +252,9 @@ export function renderSeasonScheduleStripHtml(schedule) {
   if (!schedule) return "";
 
   const parts = [
-    draftChipHtml("player", "Player draft", schedule.player),
-    draftChipHtml("manager", "Manager draft", schedule.manager),
-    draftChipHtml("special", "Special auction", schedule.special),
+    draftChipHtml("player", "Player draft", "Player", schedule.player),
+    draftChipHtml("manager", "Manager draft", "Mgr", schedule.manager),
+    draftChipHtml("special", "Special auction", "Special", schedule.special),
     `<span class="ssc-sep" aria-hidden="true"></span>`,
     transferWindowChipHtml(schedule.transferWindow),
   ];
