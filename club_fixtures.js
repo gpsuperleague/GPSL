@@ -23,10 +23,13 @@ import {
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 import { scheduleActionLabel } from "./match_scheduling.js";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
+import { downloadIcs, fixtureKickoffEvent } from "./calendar_ics.js";
 
 let myClub = { short: null, name: null };
 let calendarStatus = null;
 let holidayContext = null;
+/** @type {any[]} */
+let lastFixtures = [];
 
 function showError(msg) {
   const el = document.getElementById("clubFixturesError");
@@ -124,22 +127,29 @@ function actionHtml(f) {
   if (!myClub.short || !fixtureInvolvesClub(f, myClub)) return "";
 
   const url = `matchday.html?fixture=${encodeURIComponent(String(f.id))}`;
+  const parts = [];
 
   if (canSubmitResult(f, myClub, calendarStatus, holidayContext)) {
-    return `<a href="${url}" class="btn-link">Enter result</a>`;
+    parts.push(`<a href="${url}" class="btn-link">Enter result</a>`);
+  } else if (needsInboxConfirm(f, myClub)) {
+    parts.push(`<a href="${url}" class="btn-link secondary">Confirm result</a>`);
+  } else {
+    const sched = scheduleActionLabel(f, myClub.short);
+    if (sched && f.status !== "played") {
+      const cls = sched.muted ? "btn-link secondary" : "btn-link";
+      parts.push(`<a href="${sched.href}" class="${cls}">${sched.label}</a>`);
+    } else if (f.status === "played") {
+      parts.push(`<a href="${url}" class="btn-link secondary">Match details</a>`);
+    }
   }
-  if (needsInboxConfirm(f, myClub)) {
-    return `<a href="${url}" class="btn-link secondary">Confirm result</a>`;
+
+  if (f.schedule_status === "agreed" && f.agreed_kickoff_at && f.status !== "played") {
+    parts.push(
+      `<button type="button" class="btn-link secondary cal-ics-btn" data-cal-fixture="${f.id}">Add to calendar</button>`
+    );
   }
-  const sched = scheduleActionLabel(f, myClub.short);
-  if (sched && f.status !== "played") {
-    const cls = sched.muted ? "btn-link secondary" : "btn-link";
-    return `<a href="${sched.href}" class="${cls}">${sched.label}</a>`;
-  }
-  if (f.status === "played") {
-    return `<a href="${url}" class="btn-link secondary">Match details</a>`;
-  }
-  return "";
+
+  return parts.join(" ");
 }
 
 function fixtureCardHtml(f) {
@@ -311,8 +321,56 @@ function requestedClubFixturesMonth() {
   return raw || null;
 }
 
+function downloadAgreedKickoffs(fixtures) {
+  const agreed = (fixtures || []).filter(
+    (f) => f.schedule_status === "agreed" && f.agreed_kickoff_at && f.status !== "played"
+  );
+  const events = agreed
+    .map((f) =>
+      fixtureKickoffEvent({
+        id: f.id,
+        home: f.home_club_name || f.home_club_short_name,
+        away: f.away_club_name || f.away_club_short_name,
+        kickoffAt: f.agreed_kickoff_at,
+      })
+    )
+    .filter(Boolean);
+  if (!events.length) {
+    showError("No agreed kick-offs to add yet.");
+    return;
+  }
+  showError("");
+  downloadIcs("gpsl-my-fixtures.ics", events);
+}
+
+function wireCalendarButtons(root) {
+  root?.querySelectorAll("[data-cal-fixture]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-cal-fixture");
+      const f = lastFixtures.find((row) => String(row.id) === String(id));
+      if (!f?.agreed_kickoff_at) return;
+      const ev = fixtureKickoffEvent({
+        id: f.id,
+        home: f.home_club_name || f.home_club_short_name,
+        away: f.away_club_name || f.away_club_short_name,
+        kickoffAt: f.agreed_kickoff_at,
+      });
+      downloadIcs(`gpsl-fixture-${f.id}.ics`, [ev]);
+    });
+  });
+  const bulk = document.getElementById("clubFixturesCalBulk");
+  if (bulk) {
+    bulk.onclick = () => downloadAgreedKickoffs(lastFixtures);
+  }
+}
+
 function renderFixtures(fixtures) {
   const root = document.getElementById("clubFixturesRoot");
+  lastFixtures = fixtures || [];
+  const agreedCount = lastFixtures.filter(
+    (f) => f.schedule_status === "agreed" && f.agreed_kickoff_at && f.status !== "played"
+  ).length;
+
   if (!fixtures.length) {
     root.innerHTML =
       '<p class="empty">No fixtures for your club this season yet.</p>';
@@ -321,19 +379,27 @@ function renderFixtures(fixtures) {
 
   const groups = groupByMonth(fixtures);
   const focusMonth = requestedClubFixturesMonth();
-  root.innerHTML = groups
-    .map((g) => {
-      const label = GPSL_MONTH_LABELS[g.gpsl_month] || g.gpsl_month || "—";
-      const cards = g.fixtures.map(fixtureCardHtml).join("");
-      const monthKey = String(g.gpsl_month || "").toLowerCase();
-      return `
+  const bulkBar =
+    agreedCount > 0
+      ? `<p class="cal-toolbar"><button type="button" id="clubFixturesCalBulk" class="btn-link secondary">Download all agreed kick-offs (${agreedCount})</button></p>`
+      : "";
+  root.innerHTML =
+    bulkBar +
+    groups
+      .map((g) => {
+        const label = GPSL_MONTH_LABELS[g.gpsl_month] || g.gpsl_month || "—";
+        const cards = g.fixtures.map(fixtureCardHtml).join("");
+        const monthKey = String(g.gpsl_month || "").toLowerCase();
+        return `
         <div class="month-block" id="month-${monthKey}" data-gpsl-month="${monthKey}">
           <div class="month-head">${label}</div>
           ${cards}
         </div>
       `;
-    })
-    .join("");
+      })
+      .join("");
+
+  wireCalendarButtons(root);
 
   if (focusMonth) {
     const target = root.querySelector(

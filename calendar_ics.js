@@ -1,0 +1,268 @@
+/**
+ * Client-side iCalendar (.ics) builders + download.
+ * Events use UTC (Z) timestamps; stable UIDs help calendars update on re-import.
+ */
+
+const PRODID = "-//GPSL//Calendar//EN";
+const DEFAULT_DURATION_MS = 90 * 60 * 1000; // match / auction open reminder window
+const ALARM_MINUTES = 30;
+
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+/** @param {Date|string|number} value */
+export function toIcsUtc(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return (
+    d.getUTCFullYear() +
+    pad2(d.getUTCMonth() + 1) +
+    pad2(d.getUTCDate()) +
+    "T" +
+    pad2(d.getUTCHours()) +
+    pad2(d.getUTCMinutes()) +
+    pad2(d.getUTCSeconds()) +
+    "Z"
+  );
+}
+
+/** Escape text per RFC 5545. */
+export function escapeIcsText(text) {
+  return String(text ?? "")
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r\n/g, "\\n")
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\n");
+}
+
+function foldLine(line) {
+  const s = String(line);
+  if (s.length <= 75) return s;
+  const parts = [];
+  let i = 0;
+  parts.push(s.slice(0, 75));
+  i = 75;
+  while (i < s.length) {
+    parts.push(" " + s.slice(i, i + 74));
+    i += 74;
+  }
+  return parts.join("\r\n");
+}
+
+function alarmBlock() {
+  return [
+    "BEGIN:VALARM",
+    "TRIGGER:-PT" + ALARM_MINUTES + "M",
+    "ACTION:DISPLAY",
+    "DESCRIPTION:GPSL reminder",
+    "END:VALARM",
+  ];
+}
+
+/**
+ * @param {{
+ *   uid: string,
+ *   title: string,
+ *   description?: string,
+ *   startAt: Date|string|number,
+ *   endAt?: Date|string|number|null,
+ *   durationMs?: number,
+ *   url?: string|null,
+ *   location?: string|null,
+ * }} opts
+ */
+export function buildVEvent(opts) {
+  const start = toIcsUtc(opts.startAt);
+  if (!start) return null;
+
+  let endAt = opts.endAt;
+  if (endAt == null) {
+    const startDate = opts.startAt instanceof Date ? opts.startAt : new Date(opts.startAt);
+    endAt = new Date(startDate.getTime() + (opts.durationMs ?? DEFAULT_DURATION_MS));
+  }
+  const end = toIcsUtc(endAt);
+  if (!end) return null;
+
+  const stamp = toIcsUtc(new Date());
+  const lines = [
+    "BEGIN:VEVENT",
+    `UID:${opts.uid}`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART:${start}`,
+    `DTEND:${end}`,
+    `SUMMARY:${escapeIcsText(opts.title)}`,
+  ];
+  if (opts.description) {
+    lines.push(`DESCRIPTION:${escapeIcsText(opts.description)}`);
+  }
+  if (opts.location) {
+    lines.push(`LOCATION:${escapeIcsText(opts.location)}`);
+  }
+  if (opts.url) {
+    lines.push(`URL:${escapeIcsText(opts.url)}`);
+  }
+  lines.push(...alarmBlock());
+  lines.push("END:VEVENT");
+  return lines.map(foldLine).join("\r\n");
+}
+
+/** @param {string[]} vevents */
+export function buildIcsCalendar(vevents) {
+  const body = vevents.filter(Boolean).join("\r\n");
+  return [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    `PRODID:${PRODID}`,
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    body,
+    "END:VCALENDAR",
+    "",
+  ].join("\r\n");
+}
+
+/**
+ * Trigger a .ics file download in the browser.
+ * @param {string} filename
+ * @param {string[]} vevents
+ */
+export function downloadIcs(filename, vevents) {
+  const list = (vevents || []).filter(Boolean);
+  if (!list.length) return false;
+  const ics = buildIcsCalendar(list);
+  const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename.endsWith(".ics") ? filename : `${filename}.ics`;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  return true;
+}
+
+function absolutePageUrl(pathWithQuery) {
+  try {
+    return new URL(pathWithQuery, window.location.href).href;
+  } catch {
+    return pathWithQuery || "";
+  }
+}
+
+/**
+ * Agreed fixture kick-off (90 min duration).
+ * @param {{ id: string|number, home: string, away: string, kickoffAt: string|Date, url?: string }} p
+ */
+export function fixtureKickoffEvent(p) {
+  const id = String(p.id ?? "").trim();
+  if (!id || !p.kickoffAt) return null;
+  const home = p.home || "Home";
+  const away = p.away || "Away";
+  const url = p.url || absolutePageUrl(`fixture_schedule.html?fixture=${encodeURIComponent(id)}`);
+  return buildVEvent({
+    uid: `gpsl-fixture-${id}@gpsl`,
+    title: `GPSL: ${home} vs ${away}`,
+    description: `Agreed kick-off (GPSL).\nOpen: ${url}`,
+    startAt: p.kickoffAt,
+    durationMs: DEFAULT_DURATION_MS,
+    url,
+    location: "GPSL Matchday",
+  });
+}
+
+/**
+ * GPSL month unlock + lock as two short events (15 min markers).
+ * @param {{ month: string, seasonLabel?: string, unlockAt?: string|Date|null, lockAt?: string|Date|null }} p
+ * @returns {string[]}
+ */
+export function gpslMonthEvents(p) {
+  const month = String(p.month || "").trim().toLowerCase();
+  if (!month) return [];
+  const label = (p.seasonLabel ? `${p.seasonLabel} ` : "") + monthLabel(month);
+  const seasonKey = String(p.seasonLabel || "season")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-");
+  const out = [];
+  const markerMs = 15 * 60 * 1000;
+
+  if (p.unlockAt) {
+    const ev = buildVEvent({
+      uid: `gpsl-month-${seasonKey}-${month}-unlock@gpsl`,
+      title: `GPSL ${label} starts`,
+      description: `GPSL month unlocks (UK week). Season calendar: ${absolutePageUrl("season_calendar.html")}`,
+      startAt: p.unlockAt,
+      durationMs: markerMs,
+      url: absolutePageUrl("season_calendar.html"),
+    });
+    if (ev) out.push(ev);
+  }
+  if (p.lockAt) {
+    const ev = buildVEvent({
+      uid: `gpsl-month-${seasonKey}-${month}-lock@gpsl`,
+      title: `GPSL ${label} ends`,
+      description: `GPSL month locks (UK week). Season calendar: ${absolutePageUrl("season_calendar.html")}`,
+      startAt: p.lockAt,
+      durationMs: markerMs,
+      url: absolutePageUrl("season_calendar.html"),
+    });
+    if (ev) out.push(ev);
+  }
+  return out;
+}
+
+function monthLabel(month) {
+  const map = {
+    june: "June",
+    july: "July",
+    august: "August",
+    september: "September",
+    october: "October",
+    november: "November",
+    december: "December",
+    january: "January",
+    february: "February",
+    march: "March",
+    april: "April",
+    may: "May",
+    playoffs: "Playoffs",
+  };
+  return map[month] || month.charAt(0).toUpperCase() + month.slice(1);
+}
+
+/**
+ * Auction open (and optional public end).
+ * @param {{ id: string, title: string, startAt: string|Date, endAt?: string|Date|null, url?: string }} p
+ * @returns {string[]}
+ */
+export function auctionWindowEvents(p) {
+  const id = String(p.id || "auction").trim();
+  const out = [];
+  if (p.startAt) {
+    const open = buildVEvent({
+      uid: `gpsl-auction-${id}-open@gpsl`,
+      title: p.title || "GPSL auction opens",
+      description: `Auction bidding opens.\n${p.url || absolutePageUrl("dashboard.html")}`,
+      startAt: p.startAt,
+      durationMs: 60 * 60 * 1000,
+      url: p.url || undefined,
+    });
+    if (open) out.push(open);
+  }
+  if (p.endAt) {
+    const end = buildVEvent({
+      uid: `gpsl-auction-${id}-end@gpsl`,
+      title: (p.title || "GPSL auction") + " ends",
+      description: `Auction hard end (public).\n${p.url || ""}`,
+      startAt: p.endAt,
+      durationMs: 15 * 60 * 1000,
+      url: p.url || undefined,
+    });
+    if (end) out.push(end);
+  }
+  return out;
+}

@@ -24,6 +24,7 @@ import {
   loadFixtureUnavailable,
   formatFixtureUnavailableHtml,
 } from "./player_discipline.js";
+import { downloadIcs, fixtureKickoffEvent } from "./calendar_ics.js";
 
 function replayResetConfirmMessage(allowances) {
   if (allowances?.can_replay_reset) {
@@ -189,6 +190,9 @@ function renderAgreedPanel(root, f, sch) {
     <div class="panel">
       <div class="fixture-head">${fixtureTitle(f)}</div>
       <p class="status-agreed"><b>Kick-off agreed:</b> ${formatKickoffPair(sch.agreed_kickoff_at, homeTz, awayTz)}</p>
+      <p class="meta" style="margin-top:6px;">
+        <button type="button" id="addKickoffCalendarBtn" class="button secondary">Add to calendar</button>
+      </p>
       <p class="meta">${checkinStatus}</p>
       <p class="meta">Check-in opens at kick-off for <b>10 minutes</b>. Both must check in before Match Day unlocks for the 30-minute block.</p>
       ${
@@ -219,6 +223,22 @@ function renderAgreedPanel(root, f, sch) {
   `;
 
   const checkInBtn = document.getElementById("checkInBtn");
+  const calBtn = document.getElementById("addKickoffCalendarBtn");
+  if (calBtn && sch.agreed_kickoff_at) {
+    calBtn.onclick = () => {
+      const home = fullClubName(f.home_club_short_name) || f.home_club_short_name;
+      const away = fullClubName(f.away_club_short_name) || f.away_club_short_name;
+      const ev = fixtureKickoffEvent({
+        id: f.id,
+        home,
+        away,
+        kickoffAt: sch.agreed_kickoff_at,
+      });
+      if (!downloadIcs(`gpsl-fixture-${f.id}.ics`, [ev])) {
+        setStatus("Could not build calendar file.", true);
+      }
+    };
+  }
   if (checkInBtn) {
     checkInBtn.onclick = async () => {
       checkInBtn.disabled = true;

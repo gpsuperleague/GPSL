@@ -12,6 +12,7 @@ import {
 import { GPSL_MONTH_LABELS, CUP_LABELS } from "./competition.js";
 import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
 import { formatKickoff, UK_TZ } from "./match_scheduling.js";
+import { downloadIcs, gpslMonthEvents } from "./calendar_ics.js";
 
 const CUP_NAME = {
   ...CUP_LABELS,
@@ -876,6 +877,25 @@ async function renderPage(user) {
     meta.textContent = bits.filter(Boolean).join(" · ");
   }
 
+  const calSyncBtn = document.getElementById("seasonCalendarIcsBtn");
+  if (calSyncBtn) {
+    const events = (calendarMonths || []).flatMap((row) =>
+      gpslMonthEvents({
+        month: row.gpsl_month,
+        seasonLabel,
+        unlockAt: row.unlock_at,
+        lockAt: row.lock_at,
+      })
+    );
+    calSyncBtn.hidden = events.length === 0;
+    calSyncBtn.onclick = () => {
+      if (!downloadIcs("gpsl-season-months.ics", events)) {
+        const err = document.getElementById("seasonCalendarError");
+        if (err) err.textContent = "No month unlock/lock times to export yet.";
+      }
+    };
+  }
+
   root.innerHTML =
     `<div class="sc-grid">` +
     SEASON_MONTH_ORDER.map((mk) => renderMonthCard(mk, ctx)).join("") +
@@ -884,7 +904,7 @@ async function renderPage(user) {
     `Click a bullet for details and links. League matchdays: Aug 1–3, then four per month Sep–Apr, May 36–38. ` +
     `Playoffs is Week 11 after May (promotion/relegation ties). Cup rounds follow the published schedule. ` +
     `Your World Cup internationals appear in their GPSL month (Aug/Oct/Dec/Feb/Apr for qualifying).` +
-    ` <span class="sc-build">Calendar build 20260718-playoffs2</span>` +
+    ` <span class="sc-build">Calendar build 20260728-ics</span>` +
     `</p>`;
 
   wireBulletToggles(root);

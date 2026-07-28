@@ -79,16 +79,19 @@
       text-decoration:none;
     }
     .btn-link.secondary { background:#444; color:#eee; }
+    .cal-toolbar { margin:0 0 14px; }
+    .fixture-actions .cal-ics-btn,
+    .fixture-actions .btn-link { margin:2px 4px 2px 0; }
   </style>
 </head>
 <body>
   <div id="nav"></div>
   <div class="page-container">
     <h1 id="clubFixturesTitle">My Club Fixtures</h1>
-    <p class="meta" id="clubFixturesMeta">Your season matches — grouped by month.</p>
+    <p class="meta" id="clubFixturesMeta">Your season matches — grouped by month. Agreed kick-offs can be added to your phone or desktop calendar.</p>
     <div id="clubFixturesError"></div>
     <div id="clubFixturesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_fixtures.js?v=20260620-club-fixtures"></script>
+  <script type="module" src="club_fixtures.js?v=20260728-ics"></script>
 </body>
 </html>

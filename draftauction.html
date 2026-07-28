@@ -616,6 +616,9 @@
     <div id="draftCountdownContainer" class="draft-timer">
       <span id="draftCountdown"></span>
       <div id="draftLocalStart"></div>
+      <p style="margin:6px 0 0;">
+        <button type="button" id="draftAuctionCalBtn" class="button secondary" style="font-size:12px;padding:6px 10px;">Add auction open to calendar</button>
+      </p>
     </div>
   </div>
 
@@ -774,6 +777,7 @@
 
     import { initGlobal, loadGlobalSettings } from "./global.js";
     import { mountClubBankBalance } from "./club_bank_balance_ui.js";
+    import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
     import {
       supabase,
       getUKNow,
@@ -1104,6 +1108,22 @@
       const settings = await loadGlobalSettings();
       draftEnabled = settings.draftEnabled;
       draftAuctionStartTimeUK = settings.draftStart;
+
+      const draftCalBtn = document.getElementById("draftAuctionCalBtn");
+      if (draftCalBtn) {
+        draftCalBtn.hidden = !draftAuctionStartTimeUK;
+        draftCalBtn.onclick = () => {
+          if (!draftAuctionStartTimeUK) return;
+          const events = auctionWindowEvents({
+            id: "player-draft",
+            title: "GPSL player draft auction opens",
+            startAt: draftAuctionStartTimeUK,
+            url: new URL("draftauction.html", window.location.href).href,
+          });
+          downloadIcs("gpsl-player-draft-open.ics", events);
+        };
+      }
+
       await loadBuyerClubShortName(user.id);
       await refreshDraftNationFilterButtons();
       await loadDraftScoutingTargets();

@@ -286,6 +286,15 @@
       font-size:12px;
       color:#888;
     }
+    .sc-cal-toolbar {
+      margin:0 0 14px;
+    }
+    .sc-cal-toolbar .sc-bullet-btn {
+      display:inline-block;
+      padding:8px 12px;
+      font-size:13px;
+      cursor:pointer;
+    }
     .sc-build {
       color:#555;
       font-size:11px;
@@ -297,6 +306,11 @@
   <div class="page-container">
     <h1>Season Calendar</h1>
     <p id="seasonCalendarMeta" class="meta">Loading…</p>
+    <p class="sc-cal-toolbar">
+      <button type="button" id="seasonCalendarIcsBtn" class="sc-bullet-btn" hidden>
+        Sync GPSL months to calendar
+      </button>
+    </p>
     <div id="seasonCalendarError"></div>
     <p class="sc-intro">
       Pre-season is June &amp; July, then August–May league/cup programme, then <b>Playoffs</b> (Week 11).
@@ -305,6 +319,6 @@
     <p class="sc-hint">Tip: your club fixtures appear as highlighted bullets when you own a club.</p>
     <div id="seasonCalendarRoot"></div>
   </div>
-  <script type="module" src="season_calendar.js?v=20260718-playoffs"></script>
+  <script type="module" src="season_calendar.js?v=20260728-ics"></script>
 </body>
 </html>

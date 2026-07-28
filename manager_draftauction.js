@@ -20,6 +20,7 @@ import { loadClubsMap, fullClubName, ownerTagForClub } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
 import { managerListCellHtml, loadManagerPortraitManifest } from "./manager_images.js";
 import { mountClubBankBalance } from "./club_bank_balance_ui.js";
+import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
 
 let buyerShortName = null;
 let managerDraftEnabled = false;
@@ -296,6 +297,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   );
   managerDraftEnabled = getManagerDraftEnabled();
   draftAuctionStartTime = getDraftAuctionStartTime();
+
+  const mgrCalBtn = document.getElementById("mgrDraftAuctionCalBtn");
+  if (mgrCalBtn) {
+    mgrCalBtn.hidden = !draftAuctionStartTime;
+    mgrCalBtn.onclick = () => {
+      if (!draftAuctionStartTime) return;
+      const events = auctionWindowEvents({
+        id: "manager-draft",
+        title: "GPSL manager draft auction opens",
+        startAt: draftAuctionStartTime,
+        url: new URL("manager_draftauction.html", window.location.href).href,
+      });
+      downloadIcs("gpsl-manager-draft-open.ics", events);
+    };
+  }
+
   await loadBuyerClub(user.id);
   wireTable();
   await updateLeadPanel();

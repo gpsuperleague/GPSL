@@ -19,6 +19,7 @@ import {
 } from "./draft_timeline.js";
 import { stadiumImageUrl } from "./stadium_images.js";
 import { mountClubBankBalance, setClubBankBalance } from "./club_bank_balance_ui.js";
+import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
 
 const GATE_PRICE_PER_SEAT = 20;
 const STADIUM_VALUE_PER_SEAT = 1500;
@@ -306,6 +307,24 @@ function renderClosedAuctionStatus(el) {
 function renderStatus() {
   const el = document.getElementById("auctionStatus");
   if (!el) return;
+
+  const calBtn = document.getElementById("clubAuctionCalBtn");
+  const startIso = auctionState?.start_time || getDraftAuctionStartTime();
+  if (calBtn) {
+    const show = Boolean(auctionState?.enabled && startIso);
+    calBtn.hidden = !show;
+    if (show) {
+      calBtn.onclick = () => {
+        const events = auctionWindowEvents({
+          id: "club",
+          title: "GPSL club auction opens",
+          startAt: startIso,
+          url: new URL("club_auction.html", window.location.href).href,
+        });
+        downloadIcs("gpsl-club-auction-open.ics", events);
+      };
+    }
+  }
 
   if (auctionState?.error) {
     el.textContent = `Auction unavailable — run patches/club_auction.sql. (${auctionState.error})`;

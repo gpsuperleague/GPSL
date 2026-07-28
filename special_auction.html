@@ -335,6 +335,9 @@
       <h2 id="auctionTitle"></h2>
       <p class="timer" id="auctionTimer"></p>
       <span class="timer-sub" id="auctionTimerSub"></span>
+      <p style="margin:8px 0 0;">
+        <button type="button" id="specialAuctionCalBtn" class="button secondary" hidden>Add to calendar</button>
+      </p>
 
       <div class="sa-meta-grid">
         <div class="sa-meta-card sa-prize-card" id="prizeCard">
@@ -476,6 +479,7 @@
       parseMoneyInput,
       wireMoneyBidInput,
     } from "./money_input.js";
+    import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
 
     const SNAP_MIN_BID = 1000000;
     const LUB_MIN_BID = 1000;
@@ -513,6 +517,7 @@
       typeBadge: document.getElementById("auctionTypeBadge"),
       timer: document.getElementById("auctionTimer"),
       timerSub: document.getElementById("auctionTimerSub"),
+      calBtn: document.getElementById("specialAuctionCalBtn"),
       prize: document.getElementById("prizeLine"),
       prizeHeadline: document.getElementById("prizeHeadline"),
       prizeDetail: document.getElementById("prizeDetail"),
@@ -1020,6 +1025,30 @@
       els.winnerLine.style.display = "none";
 
       updateTimerOnly();
+
+      if (els.calBtn) {
+        const startAt = auction.start_time;
+        // Public hard end only — never snap_random_end_at
+        const endAt =
+          auction.auction_type === "snap" ? null : auction.end_time || null;
+        const show = Boolean(startAt);
+        els.calBtn.hidden = !show;
+        if (show) {
+          els.calBtn.onclick = () => {
+            const events = auctionWindowEvents({
+              id: String(auction.id),
+              title: auction.title || "GPSL special auction",
+              startAt,
+              endAt,
+              url: new URL(
+                `special_auction.html?id=${encodeURIComponent(auction.id)}`,
+                window.location.href
+              ).href,
+            });
+            downloadIcs(`gpsl-special-auction-${auction.id}.ics`, events);
+          };
+        }
+      }
 
       els.rules.textContent = isLub
         ? "Submit one secret bid (nearest ₿1,000, minimum ₿1,000). When the window ends, all bids are revealed; the lowest amount that only one club chose wins and pays that amount."
