@@ -693,6 +693,79 @@ body.squad-page tr.squad-row-ghost:hover td.squad-col-player {
   background: #222c44;
 }
 
+/* Portrait / narrow: freeze image only — name scrolls so other columns stay usable */
+@media (max-width: 720px) {
+  body.squad-page table.gpsl-table.squad-table th.squad-col-player,
+  body.squad-page table.gpsl-table.squad-table td.squad-col-player {
+    position: static;
+    left: auto;
+    z-index: auto;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  body.squad-page .gpsl-table tr:hover td.squad-col-player,
+  body.squad-page tr.squad-row-suspended td.squad-col-player,
+  body.squad-page tr.squad-row-suspended:hover td.squad-col-player,
+  body.squad-page tr.squad-row-injured td.squad-col-player,
+  body.squad-page tr.squad-row-injured:hover td.squad-col-player,
+  body.squad-page tr.squad-row-recovery td.squad-col-player,
+  body.squad-page tr.squad-row-recovery:hover td.squad-col-player,
+  body.squad-page tr.squad-row-ghost td.squad-col-player,
+  body.squad-page tr.squad-row-ghost:hover td.squad-col-player {
+    background: inherit;
+  }
+
+  body.squad-page table.gpsl-table.squad-table th.squad-col-thumb,
+  body.squad-page table.gpsl-table.squad-table td.squad-col-thumb {
+    box-shadow: 3px 0 6px rgba(0, 0, 0, 0.45);
+  }
+
+  body.squad-page table.gpsl-table.squad-table th.squad-col-thumb {
+    background: #1e2430;
+  }
+
+  body.squad-page table.gpsl-table.squad-table td.squad-col-thumb {
+    background: #161b26;
+  }
+
+  body.squad-page .gpsl-table tr:hover td.squad-col-thumb {
+    background: #222836;
+  }
+
+  body.squad-page tr.squad-row-suspended td.squad-col-thumb {
+    background: #2a1a18;
+  }
+
+  body.squad-page tr.squad-row-suspended:hover td.squad-col-thumb {
+    background: #33201c;
+  }
+
+  body.squad-page tr.squad-row-injured td.squad-col-thumb {
+    background: #152430;
+  }
+
+  body.squad-page tr.squad-row-injured:hover td.squad-col-thumb {
+    background: #1a2e3a;
+  }
+
+  body.squad-page tr.squad-row-recovery td.squad-col-thumb {
+    background: #1a2818;
+  }
+
+  body.squad-page tr.squad-row-recovery:hover td.squad-col-thumb {
+    background: #203220;
+  }
+
+  body.squad-page tr.squad-row-ghost td.squad-col-thumb {
+    background: #1a2238;
+  }
+
+  body.squad-page tr.squad-row-ghost:hover td.squad-col-thumb {
+    background: #222c44;
+  }
+}
+
 body.squad-page .squad-col-nation,
 body.squad-page .squad-col-position,
 body.squad-page .squad-col-age {
