@@ -7,7 +7,7 @@
     flex-direction: row !important;
     flex-wrap: wrap !important;
     align-items: stretch !important;
-    overflow-x: visible !important;
+    overflow: visible !important;
   }
 
   #nav .gpsl-nav-groups {
@@ -19,10 +19,16 @@
     max-width: 100% !important;
     min-width: 0 !important;
     overflow-x: auto !important;
+    overflow-y: visible !important;
     -webkit-overflow-scrolling: touch;
   }
 
+  #nav .gpsl-nav-groups:has(.nav-group.open) {
+    overflow: visible !important;
+  }
+
   #nav .nav-group {
+    position: relative;
     flex: 0 0 auto !important;
     border-bottom: none !important;
   }
@@ -66,6 +72,12 @@
     position: absolute !important;
     top: 100% !important;
     left: 0 !important;
+    z-index: 1200 !important;
+  }
+
+  #nav .nav-group.open .nav-dropdown {
+    display: flex !important;
+    flex-direction: column !important;
   }
 }
 

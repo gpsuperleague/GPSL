@@ -2,7 +2,7 @@
 // DASHBOARD.JS — Customizable owner tiles (grouped sections)
 // ===============================
 
-import { supabase, initGlobal, isGpslAdminUser, wireDraftCountdownUI } from "./global.js?v=20260728-ssc-header-tidy";
+import { supabase, initGlobal, isGpslAdminUser, wireDraftCountdownUI } from "./global.js?v=20260728-nav-dropdown-fix";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
 import { fetchActiveSpecialAuction } from "./special_auction.js";
 import { getDashboardPanel, getDashboardTileUrl } from "./dashboard_registry.js";

@@ -1221,23 +1221,25 @@ function ensureNavStyles() {
     style.textContent = `
 #nav .gpsl-nav-row-menus{
   display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;
-  align-items:stretch!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch;
+  align-items:stretch!important;overflow:visible!important;
 }
 #nav .gpsl-nav-groups{
   display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;
   align-items:stretch!important;width:auto!important;min-width:0!important;flex:1 1 auto!important;
-  overflow-x:auto!important;-webkit-overflow-scrolling:touch;
+  overflow:visible!important;
 }
-#nav .nav-group{flex:0 0 auto!important;width:auto!important;max-width:none!important;}
+#nav .nav-group{position:relative;flex:0 0 auto!important;width:auto!important;max-width:none!important;}
 #nav .nav-group-summary{width:auto!important;white-space:nowrap;}
 #nav .gpsl-nav-actions-primary{
   display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;
   flex:0 0 auto!important;width:auto!important;margin-left:auto!important;
 }
-#nav .nav-dropdown{position:absolute!important;top:100%!important;left:0!important;}
+#nav .nav-dropdown{position:absolute!important;top:100%!important;left:0!important;z-index:1200!important;}
+#nav .nav-group.open .nav-dropdown{display:flex!important;flex-direction:column!important;}
 @media (max-width:900px){
-  #nav .gpsl-nav-row-menus{flex-wrap:wrap!important;overflow-x:visible!important;}
-  #nav .gpsl-nav-groups{flex:1 1 100%!important;width:100%!important;max-width:100%!important;}
+  #nav .gpsl-nav-row-menus{flex-wrap:wrap!important;overflow:visible!important;}
+  #nav .gpsl-nav-groups{flex:1 1 100%!important;width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:visible!important;}
+  #nav .gpsl-nav-groups:has(.nav-group.open){overflow:visible!important;}
   #nav .gpsl-nav-actions-primary{
     flex:1 1 100%!important;width:100%!important;max-width:100%!important;margin-left:0!important;
     justify-content:center!important;border-left:none!important;border-top:1px solid #333!important;

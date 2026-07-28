@@ -6,8 +6,8 @@
    - Used exclusively by dashboard.html
    ============================================================ */
 
-@import url("mobile.css?v=20260728-ssc-header-tidy");
-@import url("nav_force_horizontal.css?v=20260728-ssc-header-tidy");
+@import url("mobile.css?v=20260728-nav-dropdown-fix");
+@import url("nav_force_horizontal.css?v=20260728-nav-dropdown-fix");
 
 :root {
   --gpsl-accent: #ff9900;
@@ -1051,8 +1051,8 @@ button.nav-admin-trigger {
   flex: 1;
   gap: 0;
   min-width: 0;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  /* Do not use overflow-x:auto here — it clips absolute dropdowns on desktop. */
+  overflow: visible;
 }
 
 .nav-group {
@@ -2095,7 +2095,7 @@ a.ssc-chip:hover {
     flex-direction: row !important;
     flex-wrap: wrap !important;
     align-items: stretch !important;
-    overflow-x: visible !important;
+    overflow: visible !important;
     overflow-y: visible;
   }
 
@@ -2110,6 +2110,10 @@ a.ssc-chip:hover {
     overflow-x: auto !important;
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
+  }
+
+  .gpsl-nav-groups:has(.nav-group.open) {
+    overflow: visible !important;
   }
 
   .nav-group {

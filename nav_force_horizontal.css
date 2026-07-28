@@ -1,12 +1,12 @@
-/* Force top menus horizontal; on narrow screens icons sit on a second row. */
+/* Force top menus horizontal; on narrow screens icons sit on a second row.
+   IMPORTANT: do not put overflow-x:auto on menu parents on desktop — it clips dropdowns. */
 
 #nav .gpsl-nav-row-menus {
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   align-items: stretch !important;
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible !important;
 }
 
 #nav .gpsl-nav-groups {
@@ -17,11 +17,11 @@
   width: auto !important;
   min-width: 0 !important;
   flex: 1 1 auto !important;
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible !important;
 }
 
 #nav .nav-group {
+  position: relative;
   flex: 0 0 auto !important;
   width: auto !important;
   max-width: none !important;
@@ -47,13 +47,19 @@
   position: absolute !important;
   top: 100% !important;
   left: 0 !important;
+  z-index: 1200 !important;
+}
+
+#nav .nav-group.open .nav-dropdown {
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 /* Phones / tablets: menus get full top row; icons move to row below */
 @media (max-width: 900px) {
   #nav .gpsl-nav-row-menus {
     flex-wrap: wrap !important;
-    overflow-x: visible !important;
+    overflow: visible !important;
   }
 
   #nav .gpsl-nav-groups {
@@ -61,6 +67,13 @@
     width: 100% !important;
     max-width: 100% !important;
     overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* While a menu is open, stop clipping the dropdown */
+  #nav .gpsl-nav-groups:has(.nav-group.open) {
+    overflow: visible !important;
   }
 
   #nav .gpsl-nav-actions,
