@@ -1,0 +1,49 @@
+/* Force top menus horizontal on all viewports (overrides stale cached dashboard.css). */
+#nav .gpsl-nav-row-menus {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+#nav .gpsl-nav-groups {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: stretch !important;
+  width: auto !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+#nav .nav-group {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  max-width: none !important;
+  border-bottom: none !important;
+}
+
+#nav .nav-group-summary {
+  width: auto !important;
+  white-space: nowrap;
+}
+
+#nav .gpsl-nav-actions,
+#nav .gpsl-nav-actions-primary {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  margin-left: auto !important;
+}
+
+#nav .nav-dropdown {
+  position: absolute !important;
+  top: 100% !important;
+  left: 0 !important;
+}

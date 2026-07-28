@@ -1200,6 +1200,30 @@ export async function specialAuctionNavLinkHtml() {
 
 /** Load nav layout CSS on every page (many HTML files never linked dashboard.css). */
 function ensureNavStyles() {
+  /* Inline wins over stale cached dashboard.css?v=… (phones were stuck on vertical menus). */
+  if (!document.getElementById("gpsl-nav-horizontal-fix")) {
+    const style = document.createElement("style");
+    style.id = "gpsl-nav-horizontal-fix";
+    style.textContent = `
+#nav .gpsl-nav-row-menus{
+  display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;
+  align-items:stretch!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch;
+}
+#nav .gpsl-nav-groups{
+  display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;
+  align-items:stretch!important;width:auto!important;min-width:0!important;flex:1 1 auto!important;
+  overflow-x:auto!important;-webkit-overflow-scrolling:touch;
+}
+#nav .nav-group{flex:0 0 auto!important;width:auto!important;max-width:none!important;}
+#nav .nav-group-summary{width:auto!important;white-space:nowrap;}
+#nav .gpsl-nav-actions-primary{
+  display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;
+  flex:0 0 auto!important;width:auto!important;margin-left:auto!important;
+}
+#nav .nav-dropdown{position:absolute!important;top:100%!important;left:0!important;}
+`.replace(/\s+/g, " ").trim();
+    document.head.appendChild(style);
+  }
   if (!document.getElementById("gpsl-nav-styles")) {
     const link = document.createElement("link");
     link.id = "gpsl-nav-styles";
@@ -1210,6 +1234,20 @@ function ensureNavStyles() {
       link.href = `dashboard.css?v=${GLOBAL_JS_VERSION}`;
     }
     document.head.appendChild(link);
+  }
+  if (!document.getElementById("gpsl-nav-force-horizontal")) {
+    const force = document.createElement("link");
+    force.id = "gpsl-nav-force-horizontal";
+    force.rel = "stylesheet";
+    try {
+      force.href = new URL(
+        `nav_force_horizontal.css?v=${GLOBAL_JS_VERSION}`,
+        import.meta.url
+      ).href;
+    } catch {
+      force.href = `nav_force_horizontal.css?v=${GLOBAL_JS_VERSION}`;
+    }
+    document.head.appendChild(force);
   }
   if (!document.getElementById("gpsl-sport-styles")) {
     const sport = document.createElement("link");
