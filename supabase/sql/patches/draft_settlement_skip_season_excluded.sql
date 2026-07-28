@@ -388,6 +388,10 @@ BEGIN
     PERFORM public.transferengine_settle_player_draft_listings(200);
     PERFORM public.transferengine_settle_player_draft_listings(200);
     PERFORM public.transferengine_settle_player_draft_listings(200);
+  ELSIF v_player_draft_active > 0 THEN
+    RAISE NOTICE
+      'Player draft settlement deferred — blocked by same-evening 7pm transfer-list auction(s) (% active draft listings waiting)',
+      v_player_draft_active;
   END IF;
 
   IF to_regprocedure('public.transferengine_settle_manager_draft_auctions_only()') IS NOT NULL THEN
@@ -588,3 +592,89 @@ GRANT EXECUTE ON FUNCTION public.transferengine_run() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.transferengine_run() TO service_role;
 GRANT EXECUTE ON FUNCTION public.transferengine_run_report() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_transferengine_run() TO authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Admin: force player-draft settle (bypasses 7pm transfer-list gate)
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.admin_force_settle_player_drafts(p_batch_limit int DEFAULT 50)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_before int;
+  v_after int;
+  v_settled_fn int := 0;
+  v_finish timestamptz;
+  v_blocked boolean := false;
+  v_finish_passed boolean := false;
+  v_failures jsonb := '[]'::jsonb;
+  v_listing record;
+  v_limit int := greatest(coalesce(p_batch_limit, 50), 1);
+BEGIN
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  SELECT draft_random_finish_time INTO v_finish
+  FROM public.global_settings WHERE id = 1;
+
+  v_finish_passed := v_finish IS NOT NULL AND now() >= v_finish;
+  BEGIN
+    v_blocked := public.transferengine_standard_listings_block_draft_settlement(now(), v_finish);
+  EXCEPTION WHEN OTHERS THEN
+    v_blocked := false;
+  END;
+
+  SELECT count(*)::int INTO v_before
+  FROM public."Player_Transfer_Listings"
+  WHERE listing_type = 'draft' AND status = 'Active';
+
+  -- Direct settle — does NOT wait for 7pm list to clear
+  FOR v_listing IN
+    SELECT l.id, l.player_id, l.current_highest_bidder, l.current_highest_bid
+    FROM public."Player_Transfer_Listings" l
+    WHERE l.listing_type = 'draft' AND l.status = 'Active'
+    ORDER BY l.id
+    LIMIT v_limit
+  LOOP
+    BEGIN
+      PERFORM public.transferengine_accept_draft_sale(v_listing.id);
+    EXCEPTION WHEN OTHERS THEN
+      v_failures := v_failures || jsonb_build_array(jsonb_build_object(
+        'listing_id', v_listing.id,
+        'player_id', v_listing.player_id,
+        'buyer', v_listing.current_highest_bidder,
+        'error', SQLERRM
+      ));
+    END;
+  END LOOP;
+
+  SELECT count(*)::int INTO v_after
+  FROM public."Player_Transfer_Listings"
+  WHERE listing_type = 'draft' AND status = 'Active';
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'secret_finish_passed', v_finish_passed,
+    'was_blocked_by_7pm_list', v_blocked,
+    'active_before', v_before,
+    'active_after', v_after,
+    'closed_or_settled', v_before - v_after,
+    'failures', v_failures,
+    'note', CASE
+      WHEN NOT v_finish_passed THEN
+        'Secret finish has not passed yet — force settle still attempted on Active drafts'
+      WHEN v_blocked THEN
+        'Normal engine was waiting on same-evening 7pm transfer-list auctions; force settle bypassed that gate'
+      ELSE
+        'Force settle complete'
+    END
+  );
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.admin_force_settle_player_drafts(int) TO authenticated;
+
+NOTIFY pgrst, 'reload schema';

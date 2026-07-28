@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("saveSettingsBtn").onclick = saveSettings;
   document.getElementById("resetDraftBtn").onclick = resetDraftSchedule;
   document.getElementById("runTransferEngineBtn").onclick = runTransferEngine;
+  document.getElementById("settlePlayerDraftsBtn").onclick = forceSettlePlayerDrafts;
   document.getElementById("settleManagerDraftsBtn").onclick = settleManagerDraftsNow;
   document.getElementById("seedClubAuctionBtn").onclick = seedClubAuctionListings;
   document.getElementById("settleClubAuctionsBtn").onclick = settleClubAuctionsNow;
@@ -433,6 +434,47 @@ async function settleManagerDraftsNow() {
   }
 }
 
+async function forceSettlePlayerDrafts() {
+  setStatus("transferEngineStatus", "Force-settling player drafts…");
+  try {
+    const { data, error } = await supabase.rpc("admin_force_settle_player_drafts", {
+      p_batch_limit: 50,
+    });
+    if (error) throw error;
+    const fails = Array.isArray(data?.failures) ? data.failures : [];
+    const failNote = fails.length
+      ? ` Failures: ${fails
+          .slice(0, 5)
+          .map((f) => `${f.player_id || f.listing_id}: ${f.error}`)
+          .join(" · ")}`
+      : "";
+    const gate =
+      data?.was_blocked_by_7pm_list
+        ? " (normal engine was blocked by 7pm transfer-list)"
+        : data?.secret_finish_passed === false
+          ? " (secret finish not passed yet)"
+          : "";
+    setStatus(
+      "transferEngineStatus",
+      `✅ Force settle${gate}. Closed/settled: ${data?.closed_or_settled ?? "?"}. ` +
+        `Active before: ${data?.active_before ?? "?"}, after: ${data?.active_after ?? "?"}.` +
+        failNote,
+      fails.length === 0 && Number(data?.active_after || 0) === 0
+    );
+  } catch (err) {
+    const msg = err.message || "Failed";
+    setStatus(
+      "transferEngineStatus",
+      "❌ " +
+        msg +
+        (/admin_force_settle_player_drafts|Could not find the function/i.test(msg)
+          ? " — re-run supabase/sql/patches/draft_settlement_skip_season_excluded.sql in Supabase."
+          : ""),
+      false
+    );
+  }
+}
+
 async function runTransferEngine() {
   setStatus("transferEngineStatus", "Running…");
   try {
@@ -448,7 +490,12 @@ async function runTransferEngine() {
     const excluded = data?.active_excluded_listings_before;
     const exclNote =
       excluded > 0
-        ? ` Excluded listings skipped: ${excluded}.`
+        ? ` Excluded listings present: ${excluded}.`
+        : "";
+    const gateNote = data?.blocked_by_7pm_transfer_list
+      ? " ⚠ Player drafts waiting — blocked by same-evening 7pm transfer-list auctions. Use Force settle player drafts if you want them now."
+      : data?.secret_finish_passed === false
+        ? " ⚠ Secret draft finish has not passed yet."
         : "";
     setStatus(
       "transferEngineStatus",
@@ -457,7 +504,8 @@ async function runTransferEngine() {
         `Player drafts settled: ${data?.draft_settled_count ?? "?"}, left: ${data?.active_draft_after ?? "?"}. ` +
         `Manager drafts settled: ${mgrSettled}, still active: ${mgrLeft}. ` +
         `Club auctions settled: ${clubSettled}, still active: ${clubLeft}.` +
-        exclNote,
+        exclNote +
+        gateNote,
       true
     );
   } catch (err) {

@@ -106,12 +106,17 @@
         <h2>Run transfer engine</h2>
         <p class="note">Processes stuck listings and draft threads. Run <code>admin_transferengine_run.sql</code> once if the RPC is missing.</p>
         <button class="button" id="runTransferEngineBtn" style="background:#226622;">Run transfer engine</button>
+        <button class="button" id="settlePlayerDraftsBtn" style="background:#884400;margin-left:8px;">Force settle player drafts</button>
         <button class="button" id="settleManagerDraftsBtn" style="background:#335588;margin-left:8px;">Settle manager drafts now</button>
         <div id="transferEngineStatus" class="status-line"></div>
-        <p class="note">If manager auctions are stuck after the random finish, run <code>patches/manager_draft_settlement_fix.sql</code> once, then <b>Settle manager drafts now</b>.</p>
+        <p class="note">
+          If player drafts stay Active after the random finish, the engine may be waiting on same-evening 7pm transfer-list auctions.
+          Use <b>Force settle player drafts</b> (run <code>patches/draft_settlement_skip_season_excluded.sql</code> first if the RPC is missing).
+          Manager auctions: <code>patches/manager_draft_settlement_fix.sql</code> then <b>Settle manager drafts now</b>.
+        </p>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_transfers.js?v=20260728-draft-excl-skip-2"></script>
+  <script type="module" src="admin_transfers.js?v=20260728-force-settle-draft"></script>
 </body>
 </html>
