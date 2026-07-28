@@ -1074,9 +1074,48 @@ async function loadSellerReview(shortName) {
 // CLOSED LISTINGS
 // ============================================================
 
+function closedListingsDismissKey(shortName) {
+  return `gpsl_tc_closed_dismissed_${String(shortName || "").toUpperCase()}`;
+}
+
+function loadClosedDismissedIds(shortName) {
+  try {
+    const raw = localStorage.getItem(closedListingsDismissKey(shortName));
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveClosedDismissedIds(shortName, idSet) {
+  try {
+    localStorage.setItem(
+      closedListingsDismissKey(shortName),
+      JSON.stringify([...idSet])
+    );
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function dismissClosedListing(shortName, listingId) {
+  const ids = loadClosedDismissedIds(shortName);
+  ids.add(String(listingId));
+  saveClosedDismissedIds(shortName, ids);
+}
+
+function clearAllClosedListingsView(shortName, listingIds) {
+  const ids = loadClosedDismissedIds(shortName);
+  for (const id of listingIds) ids.add(String(id));
+  saveClosedDismissedIds(shortName, ids);
+}
+
 async function loadClosedListings(shortName) {
   const container = document.getElementById("closedListingsContainer");
+  const clearBtn = document.getElementById("clearClosedListingsBtn");
   container.innerHTML = "Loading…";
+  if (clearBtn) clearBtn.hidden = true;
 
   let q = supabase
     .from("Player_Transfer_Listings")
@@ -1096,18 +1135,39 @@ async function loadClosedListings(shortName) {
     return;
   }
 
-  const playerIds = listings.map((l) => l.player_id);
+  const dismissed = loadClosedDismissedIds(shortName);
+  const visible = listings.filter((row) => !dismissed.has(String(row.id)));
+
+  if (!visible.length) {
+    container.innerHTML =
+      "<i>No closed listings to show (cleared from this view).</i>";
+    return;
+  }
+
+  if (clearBtn) {
+    clearBtn.hidden = false;
+    clearBtn.onclick = () => {
+      clearAllClosedListingsView(
+        shortName,
+        visible.map((r) => r.id)
+      );
+      loadClosedListings(shortName);
+    };
+  }
+
+  const playerIds = visible.map((l) => l.player_id);
   const players = await fetchPlayersMap(playerIds);
 
   container.innerHTML = `
     <table class="gpsl-table">
       <tr>
+        <th></th>
         <th>Player</th>
         <th>Final price</th>
         <th>Buyer</th>
         <th>Ended</th>
       </tr>
-      ${listings
+      ${visible
         .map((row) => {
           const player = playerFromMap(players, row.player_id);
           const sold = row.transfer_completed === true;
@@ -1122,7 +1182,10 @@ async function loadClosedListings(shortName) {
               ? `Unsold (best ₿ ${price.toLocaleString("en-GB")})`
               : "Unsold";
           return `
-        <tr>
+        <tr data-closed-id="${row.id}">
+          <td>
+            <button type="button" class="tc-dismiss-closed" data-dismiss-closed="${row.id}" title="Hide from this list" aria-label="Hide">×</button>
+          </td>
           <td>${playerLinkCell(row.player_id, player)}</td>
           <td>${priceCell}</td>
           <td>${sold ? displayClubName(buyer) || buyer || "—" : "—"}</td>
@@ -1133,6 +1196,13 @@ async function loadClosedListings(shortName) {
         .join("")}
     </table>
   `;
+
+  container.querySelectorAll("[data-dismiss-closed]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      dismissClosedListing(shortName, btn.getAttribute("data-dismiss-closed"));
+      loadClosedListings(shortName);
+    });
+  });
 }
 
 // ============================================================

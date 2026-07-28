@@ -207,6 +207,33 @@
       margin: 0 0 10px;
       line-height: 1.45;
     }
+    .tc-panel h2 {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .tc-clear-closed {
+      border: 1px solid #555;
+      background: #333;
+      color: #ddd;
+      border-radius: 4px;
+      font-size: 11px;
+      padding: 2px 8px;
+      cursor: pointer;
+      font-weight: normal;
+    }
+    .tc-clear-closed:hover { background: #444; }
+    .tc-dismiss-closed {
+      border: none;
+      background: transparent;
+      color: #888;
+      font-size: 16px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+    .tc-dismiss-closed:hover { color: #f88; }
 
     .tc-panel .tc-scroll {
       overflow-x: auto;
@@ -327,7 +354,10 @@
         </div>
 
         <div id="closed-listings" data-dashboard-panel="tc_closed_listings" class="panel tc-panel">
-          <h2>Closed Listings</h2>
+          <h2>
+            Closed Listings
+            <button type="button" id="clearClosedListingsBtn" class="tc-clear-closed" title="Hide closed listings from this view" hidden>Clear</button>
+          </h2>
           <div id="closedListingsContainer" class="tc-scroll"></div>
         </div>
 
@@ -377,7 +407,7 @@
   <script type="module" src="global.js?v=20260706-v18"></script>
   <script type="module" src="global_ui.js"></script>
   <script type="module" src="clubs_lookup.js"></script>
-  <script type="module" src="transfer_center.js?v=20260723-tc-2col"></script>
+  <script type="module" src="transfer_center.js?v=20260728-closed-clear"></script>
 
 </body>
 </html>

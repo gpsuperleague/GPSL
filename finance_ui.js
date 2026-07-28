@@ -42,8 +42,8 @@ export const LEDGER_TYPE_TO_LINE = {
   medical_doctor_hire: "staff_medical",
   medical_physio_hire: "staff_medical",
   contract_signing_offer: "staff_offers",
-  contract_release_comp: "staff_release",
-  contract_release_comp_received: "staff_release",
+  contract_release_comp: "upkeep_release",
+  contract_release_comp_received: "upkeep_release",
   contract_termination: "staff_termination",
   eos_debt_interest: "eos_debt_interest",
   eos_ffp_charge: "eos_ffp",
@@ -224,12 +224,18 @@ export const FINANCE_UI_SECTIONS = [
         types: ["wage_star_tax"],
         note: "Per-player fee for squad players at or above admin star rating (default 70).",
       },
+      {
+        id: "upkeep_release",
+        label: "Contract releases",
+        types: ["contract_release_comp", "contract_release_comp_received"],
+        note: "Player contract buy-outs (wage × seasons remaining) and other release debits/credits.",
+      },
     ],
   },
   {
     id: "staff",
     title: "Staff",
-    intro: "Manager salary, medical hires, renewals, releases, and mid-season termination.",
+    intro: "Manager salary, medical hires, renewals, and mid-season termination.",
     lines: [
       {
         id: "staff_manager",
@@ -250,23 +256,17 @@ export const FINANCE_UI_SECTIONS = [
         note: "Manager signing fees (draft, market, admin assign) and renewal fees every two seasons.",
       },
       {
-        id: "staff_release",
-        label: "Contract releases",
-        types: ["contract_release_comp", "contract_release_comp_received"],
-        note: "Player contract buy-outs (wage × seasons remaining) and other release debits.",
-      },
-      {
         id: "staff_termination",
         label: "Contract termination",
         types: ["contract_termination"],
-        note: "Manager sack (January, half market value credit) and other termination payouts.",
+        note: "Manager sack (list/sack window) and other termination payouts.",
       },
     ],
   },
   {
     id: "eos",
     title: "End of season",
-    intro: "Debt interest, FFP, balance interest, and admin cash injections.",
+    intro: "Debt interest, FFP, balance interest, and central bank cash injections.",
     lines: [
       {
         id: "eos_debt_interest",
@@ -288,7 +288,7 @@ export const FINANCE_UI_SECTIONS = [
       },
       {
         id: "eos_injection",
-        label: "End of season injection",
+        label: "Central bank cash injection",
         types: ["eos_injection", "admin_one_off_injection"],
         note: "Admin cash injection (Season Management → Inject cash) and other one-off central bank credits.",
       },

@@ -1512,12 +1512,41 @@ export function refreshNavListingIndicators() {
   if (!nav) return;
 
   const currentFile = currentNavPageFile();
+  nav.querySelectorAll(".nav-listing-path").forEach((el) => {
+    if (el.matches(".nav-group, .nav-subgroup")) {
+      el.classList.remove("nav-listing-path");
+    }
+  });
+
+  let showPlayer = false;
+  let showManager = false;
+
   nav.querySelectorAll("[data-listing-nav]").forEach((link) => {
     const kind = link.dataset.listingNav;
     if (!kind) return;
     const show =
       isNavListingActive(kind) && !isOnNavListingTargetPage(kind, currentFile);
     link.classList.toggle("nav-listing-path", show);
+    if (kind === "player" && show) showPlayer = true;
+    if (kind === "manager" && show) showManager = true;
+  });
+
+  // Highlight parent Transfers group + Players/Managers subgroups (same green path as auctions)
+  const transfersGroup = nav.querySelector('[data-nav-auction-section="transfers"]');
+  if (transfersGroup && (showPlayer || showManager)) {
+    transfersGroup.classList.add("nav-listing-path");
+  }
+  nav.querySelectorAll(".nav-subgroup").forEach((subgroup) => {
+    const kinds = (subgroup.getAttribute("data-listing-section") || "")
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
+    if (
+      (kinds.includes("player") && showPlayer) ||
+      (kinds.includes("manager") && showManager)
+    ) {
+      subgroup.classList.add("nav-listing-path");
+    }
   });
 }
 
@@ -1603,6 +1632,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
   let panelLabel = "";
   let panelHasActive = false;
   let panelAuctionKinds = [];
+  let panelListingKinds = [];
   const currentFile = currentNavPageFile();
 
   const renderLink = (item, active) => {
@@ -1625,7 +1655,10 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     const kindsAttr = panelAuctionKinds.length
       ? ` data-auction-kinds="${panelAuctionKinds.join(",")}"`
       : "";
-    groupHtml += `<div class="nav-subgroup${panelHasActive ? " open" : ""}" data-nav-subgroup${kindsAttr}>`;
+    const listingKindsAttr = panelListingKinds.length
+      ? ` data-listing-section="${[...new Set(panelListingKinds)].join(",")}"`
+      : "";
+    groupHtml += `<div class="nav-subgroup${panelHasActive ? " open" : ""}" data-nav-subgroup${kindsAttr}${listingKindsAttr}>`;
     groupHtml += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
       panelHasActive ? "true" : "false"
     }">${escapeNavHtml(formatNavLabel(panelLabel))}</button>`;
@@ -1635,6 +1668,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
     panelLabel = "";
     panelHasActive = false;
     panelAuctionKinds = [];
+    panelListingKinds = [];
   };
 
   for (const item of items) {
@@ -1663,6 +1697,7 @@ function renderNavDropdownItems(items, pathname, search, isNavItemActive, render
 
     if (active) panelHasActive = true;
     if (item.auctionNav) panelAuctionKinds.push(item.auctionNav);
+    if (item.listingNav) panelListingKinds.push(item.listingNav);
     panelHtml += renderLink(item, active);
   }
   flushPanel();

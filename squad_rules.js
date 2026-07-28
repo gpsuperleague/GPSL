@@ -262,6 +262,9 @@ export const MIN_HOME_GROWN = 8;
 /** Players aged 21 or younger. */
 export const MIN_UNDER_21 = 5;
 
+/** At least one goalkeeper in the registered squad. */
+export const MIN_GOALKEEPERS = 1;
+
 /** Home-grown contract protection: HG + this age or younger. */
 export const HG_CONTRACT_MAX_AGE = 23;
 
@@ -309,6 +312,11 @@ export function isUnder21(player) {
   return Number.isFinite(age) && age <= 21;
 }
 
+export function isGoalkeeper(player) {
+  const pos = String(player?.Position || "").trim().toUpperCase();
+  return pos === "GK" || pos === "GOALKEEPER";
+}
+
 /** Inline badges beside player name on Squad (HG, U21, or HG & U21). */
 export function playerSquadQualificationBadges(player, clubNation) {
   const hg = isHomeGrownPlayer(player, clubNation);
@@ -351,10 +359,12 @@ export function analyseSquadComposition(players, clubNation) {
 
   let homeGrown = 0;
   let under21 = 0;
+  let goalkeepers = 0;
 
   for (const p of list) {
     if (isHomeGrownPlayer(p, clubNation)) homeGrown += 1;
     if (isUnder21(p)) under21 += 1;
+    if (isGoalkeeper(p)) goalkeepers += 1;
   }
 
   const issues = [];
@@ -362,6 +372,11 @@ export function analyseSquadComposition(players, clubNation) {
   if (total > SQUAD_SIZE) {
     issues.push(
       `Squad size: you have ${total} players — maximum is ${SQUAD_SIZE}.`
+    );
+  }
+  if (goalkeepers < MIN_GOALKEEPERS) {
+    issues.push(
+      `Goalkeepers: you have ${goalkeepers} — need at least ${MIN_GOALKEEPERS}.`
     );
   }
   if (homeGrown < MIN_HOME_GROWN) {
@@ -379,17 +394,21 @@ export function analyseSquadComposition(players, clubNation) {
     total,
     homeGrown,
     under21,
+    goalkeepers,
     squadSize: SQUAD_SIZE,
     minHomeGrown: MIN_HOME_GROWN,
     minUnder21: MIN_UNDER_21,
+    minGoalkeepers: MIN_GOALKEEPERS,
     compliant: issues.length === 0,
     issues,
     homeGrownOk: homeGrown >= MIN_HOME_GROWN,
     under21Ok: under21 >= MIN_UNDER_21,
+    goalkeepersOk: goalkeepers >= MIN_GOALKEEPERS,
     squadSizeOk: total <= SQUAD_SIZE,
     minSquadOk: total >= MIN_SQUAD_SIZE,
     homeGrownShort: Math.max(0, MIN_HOME_GROWN - homeGrown),
     under21Short: Math.max(0, MIN_UNDER_21 - under21),
+    goalkeepersShort: Math.max(0, MIN_GOALKEEPERS - goalkeepers),
     squadOver: Math.max(0, total - SQUAD_SIZE),
     minSquadShort: Math.max(0, MIN_SQUAD_SIZE - total),
   };
@@ -438,6 +457,18 @@ export function squadComplianceRuleRows(c, clubNation, minimumStatus = null) {
           : `Need ${c.minSquadShort} more by August`,
     },
     {
+      rule: "Goalkeepers",
+      whoCounts: "Position GK",
+      requirement: `At least ${MIN_GOALKEEPERS}`,
+      note: "Keep at least one goalkeeper registered",
+      count: c.goalkeepers ?? 0,
+      ok: c.goalkeepersOk !== false && (c.goalkeepers ?? 0) >= MIN_GOALKEEPERS,
+      status:
+        (c.goalkeepersOk !== false && (c.goalkeepers ?? 0) >= MIN_GOALKEEPERS)
+          ? "Requirement met"
+          : `Need ${c.goalkeepersShort ?? MIN_GOALKEEPERS} more`,
+    },
+    {
       rule: "Home-grown",
       whoCounts: nationHint,
       requirement: `At least ${MIN_HOME_GROWN}`,
@@ -484,6 +515,7 @@ export function shortComplianceRequirement(row) {
   if (!row) return "";
   const rule = row.rule || "";
   if (rule === "Minimum squad") return `≥${MIN_SQUAD_SIZE} (Aug)`;
+  if (rule === "Goalkeepers") return `≥${MIN_GOALKEEPERS} GK`;
   if (rule === "Home-grown") return `≥${MIN_HOME_GROWN} HG`;
   if (rule === "Under-21") return `≥${MIN_UNDER_21} U21`;
   if (rule === "Maximum squad") return `≤${SQUAD_SIZE}`;

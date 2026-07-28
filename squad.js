@@ -2677,7 +2677,7 @@ function wireManagerListButton() {
       !window.confirm(
         `List ${squadManagerState.managerName} on the Manager Transfer Market?\n\n` +
           `Other clubs can bid. Your club will have no manager once the sale completes.\n` +
-          `Listing is only available in June, July, or January.`
+          `Listing is only available in June, July, August, or January.`
       )
     ) {
       return;

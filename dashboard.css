@@ -7,7 +7,7 @@
    ============================================================ */
 
 @import url("mobile.css?v=20260728-progress-sticky");
-@import url("nav_force_horizontal.css?v=20260728-nav-dropdown-fix");
+@import url("nav_force_horizontal.css?v=20260728-nav-listing-path");
 
 :root {
   --gpsl-accent: #ff9900;
@@ -1556,6 +1556,12 @@ button.nav-admin-trigger {
 
 /* Green bar on Transfer / Manager Market when your club has a live listing. */
 .nav-link.nav-listing-path {
+  box-shadow: inset 3px 0 0 #5cb85c;
+}
+
+/* Same green path on Transfers + Players/Managers subgroup while you have a live listing. */
+.nav-group.nav-listing-path > .nav-group-summary,
+.nav-subgroup.nav-listing-path > .nav-subgroup-summary {
   box-shadow: inset 3px 0 0 #5cb85c;
 }
 

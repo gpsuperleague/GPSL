@@ -47,7 +47,7 @@ export const SQUAD_TIPS = {
     "Contract length + seasonal wage.\n\nStandard deals are 3 seasons. When 1 season remains (“Final year”), the player cannot be listed or sold — they enter the expiry wage auction unless legacy / young HG rules apply.",
 
   registration:
-    "Squad registration rules for your club this season.\n\nAim for at least 24 contracted players from August, never more than 28, plus home-grown / U21 / star-cap rules. Failures can mean fines and emergency loans in August.",
+    "Squad registration rules for your club this season.\n\nAim for at least 24 contracted players from August, never more than 28, at least 1 GK, plus home-grown / U21 / star-cap rules. Failures can mean fines and emergency loans in August.",
 
   wageBillTitle:
     "Estimated seasonal wage bill for Close Finances — player contract wages plus manager salary (weekly × 52).",
@@ -62,7 +62,7 @@ export const SQUAD_TIPS = {
     "Player wages + manager salary. Plan signings against this — wages hit the books at Close Finances.",
 
   manager:
-    "Your club manager. Rating sets a season finish target for your division. Miss it and they may leave at season end; big/medium clubs can also face a forced player listing.\n\nList / Sack only in June, July, and January (not August). Sack costs half market value (once per season) and needs mid-spell tenure. List puts them on the Manager Transfer Market.\n\nNo manager? You can still hire in August from the market, but you cannot check in or play fixtures until one is signed.",
+    "Your club manager. Rating sets a season finish target for your division. Miss it and they may leave at season end; big/medium clubs can also face a forced player listing.\n\nList / Sack only in June, July, August, and January (January needs the transfer window open). Sack costs half market value (once per season) and needs mid-spell tenure. List puts them on the Manager Transfer Market.\n\nNo manager? You cannot check in or play fixtures until one is signed.",
 
   foreignInterest:
     "Foreign club sale slots left this season. Selling abroad at market value frees a squad place and can avoid overflow fines. Use Sell to foreign club in Action.",
