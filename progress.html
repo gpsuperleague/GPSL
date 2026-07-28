@@ -7,7 +7,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Competition Progress — GPSL</title>
-  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="dashboard.css?v=20260728-progress-sticky">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="competition_themes.css">
   <style>
@@ -80,7 +80,8 @@
       border: 1px solid #333;
       border-radius: 8px;
       padding: 16px;
-      overflow-x: auto;
+      /* overflow on the panel breaks sticky pos/club — scroll the wrapper only */
+      overflow: visible;
     }
     .division-panel h2 {
       color: #ff9900;
@@ -88,15 +89,27 @@
       font-size: 20px;
     }
 
-    table.standings-table {
+    .standings-table-scroll {
+      overflow-x: auto;
+      overflow-y: visible;
+      -webkit-overflow-scrolling: touch;
       width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      min-width: 960px;
+      max-width: 100%;
+      min-width: 0;
+      scrollbar-gutter: stable;
+      padding-bottom: 4px;
+    }
+
+    table.standings-table {
+      width: max-content;
+      min-width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: auto;
     }
     table.standings-table col.col-pos { width: 40px; }
-    table.standings-table col.col-club { width: 24%; }
-    table.standings-table col.col-status { width: 14%; }
+    table.standings-table col.col-club { width: 9.5rem; }
+    table.standings-table col.col-status { width: 8rem; }
     table.standings-table col.col-stat { width: 44px; }
     table.standings-table col.col-prize { width: 76px; }
     table.standings-table col.col-form { width: 96px; }
@@ -108,6 +121,7 @@
       font-size: 13px;
       overflow: hidden;
       text-overflow: ellipsis;
+      background: #1a1a1a;
     }
     table.standings-table th {
       background: #222;
@@ -115,10 +129,51 @@
       text-align: center;
       white-space: nowrap;
     }
+    table.standings-table th.pos-col,
+    table.standings-table td.pos-col {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      width: 40px;
+      min-width: 40px;
+      max-width: 40px;
+      text-align: center;
+      white-space: nowrap;
+    }
     table.standings-table th.club-col,
     table.standings-table td.club-col {
+      position: sticky;
+      left: var(--standings-sticky-pos-w, 40px);
+      z-index: 3;
       text-align: left;
-      white-space: nowrap;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: unset;
+      min-width: 8.5rem;
+      max-width: 11rem;
+      box-shadow: 3px 0 6px rgba(0, 0, 0, 0.45);
+      line-height: 1.25;
+      vertical-align: middle;
+    }
+    table.standings-table th.pos-col,
+    table.standings-table th.club-col {
+      z-index: 5;
+      background: #222;
+    }
+
+    /* Owner tag stacked under club name (narrower column on mobile) */
+    table.standings-table .standings-club {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 1px;
+      line-height: 1.25;
+    }
+    table.standings-table .standings-club .club-owner-tag {
+      margin-left: 0;
+      display: block;
+      font-size: 10px;
+      color: #888;
     }
     table.standings-table th.status-col,
     table.standings-table td.status-col {
@@ -198,38 +253,42 @@
     }
 
     /* Left bar = prestige cup (position column only) */
-    table.standings-table tbody tr td:first-child {
+    table.standings-table tbody tr td.pos-col {
       box-shadow: inset 5px 0 0 transparent;
     }
-    table.standings-table tbody tr.prestige-super8 td:first-child { box-shadow: inset 5px 0 0 var(--cup-super8); }
-    table.standings-table tbody tr.prestige-plate td:first-child { box-shadow: inset 5px 0 0 var(--cup-plate); }
-    table.standings-table tbody tr.prestige-shield td:first-child { box-shadow: inset 5px 0 0 var(--cup-shield); }
-    table.standings-table tbody tr.prestige-bowl td:first-child { box-shadow: inset 5px 0 0 var(--cup-bowl); }
+    table.standings-table tbody tr.prestige-super8 td.pos-col { box-shadow: inset 5px 0 0 var(--cup-super8); }
+    table.standings-table tbody tr.prestige-plate td.pos-col { box-shadow: inset 5px 0 0 var(--cup-plate); }
+    table.standings-table tbody tr.prestige-shield td.pos-col { box-shadow: inset 5px 0 0 var(--cup-shield); }
+    table.standings-table tbody tr.prestige-bowl td.pos-col { box-shadow: inset 5px 0 0 var(--cup-bowl); }
 
     table.standings-table tbody tr.my-club td {
       background: #2a2418 !important;
       box-shadow: inset 0 0 0 1px #ff990066;
     }
-    table.standings-table tbody tr.my-club.prestige-super8 td:first-child {
+    table.standings-table tbody tr.my-club.prestige-super8 td.pos-col {
       box-shadow: inset 5px 0 0 var(--cup-super8), inset 0 0 0 1px #ff990066 !important;
     }
-    table.standings-table tbody tr.my-club.prestige-plate td:first-child {
+    table.standings-table tbody tr.my-club.prestige-plate td.pos-col {
       box-shadow: inset 5px 0 0 var(--cup-plate), inset 0 0 0 1px #ff990066 !important;
     }
-    table.standings-table tbody tr.my-club.prestige-shield td:first-child {
+    table.standings-table tbody tr.my-club.prestige-shield td.pos-col {
       box-shadow: inset 5px 0 0 var(--cup-shield), inset 0 0 0 1px #ff990066 !important;
     }
-    table.standings-table tbody tr.my-club.prestige-bowl td:first-child {
+    table.standings-table tbody tr.my-club.prestige-bowl td.pos-col {
       box-shadow: inset 5px 0 0 var(--cup-bowl), inset 0 0 0 1px #ff990066 !important;
     }
-    table.standings-table tbody tr.my-club.prestige-none td:first-child {
+    table.standings-table tbody tr.my-club.prestige-none td.pos-col {
       box-shadow: inset 0 0 0 1px #ff990066;
+    }
+    /* Keep freeze shadow on club when my-club outline is applied */
+    table.standings-table tbody tr.my-club td.club-col {
+      box-shadow: inset 0 0 0 1px #ff990066, 3px 0 6px rgba(0, 0, 0, 0.45);
     }
     /* Table leader — bold rank; prestige bar + champion tint unchanged */
     table.standings-table tbody tr.row-leader td {
       box-shadow: inset 0 0 0 1px #ff990044;
     }
-    table.standings-table tbody tr.row-leader td:first-child {
+    table.standings-table tbody tr.row-leader td.pos-col {
       color: #ffcc66 !important;
       font-weight: bold;
       font-size: 14px;
@@ -237,6 +296,7 @@
     table.standings-table tbody tr.row-leader td.club-col {
       font-weight: bold;
       color: #f0f0f0;
+      box-shadow: inset 0 0 0 1px #ff990044, 3px 0 6px rgba(0, 0, 0, 0.45);
     }
     table.standings-table tbody tr.row-leader a.standings-club-link {
       color: #f0f0f0;
@@ -253,8 +313,12 @@
       color: #eee;
     }
 
-    table.standings-table tbody tr.my-club.row-leader td:first-child {
+    table.standings-table tbody tr.my-club.row-leader td.pos-col {
       color: #ffcc66 !important;
+    }
+
+    table.standings-table tbody tr.my-club.row-leader td.club-col {
+      box-shadow: inset 0 0 0 1px #ff990066, 3px 0 6px rgba(0, 0, 0, 0.45);
     }
 
     .form-cell { letter-spacing: 2px; font-weight: bold; text-align: center; white-space: nowrap; }
@@ -323,6 +387,6 @@
       · <a href="league_stats.html" style="color:#ff9900;">League stats</a>
     </p>
   </div>
-  <script type="module" src="progress.js?v=20260621-progress-division-filter"></script>
+  <script type="module" src="progress.js?v=20260728-progress-sticky"></script>
 </body>
 </html>

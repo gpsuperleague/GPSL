@@ -250,18 +250,20 @@
   .listing-table-wrap,
   .club-table-scroll,
   .nat-table-scroll,
+  .standings-table-scroll,
   .panel:has(> table.gpsl-table) {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     max-width: 100%;
   }
 
-  /* Nested overflow on .panel + .club-table-scroll breaks position:sticky
-     (card sticks briefly, then scrolls away with the outer scroller). */
+  /* Nested overflow on .panel + inner scroll wrapper breaks position:sticky */
   .panel:has(> .club-table-scroll),
   .panel:has(> .nat-table-scroll),
   .panel:has(.squad-table-scroll),
-  .panel:has(.nat-table-scroll) {
+  .panel:has(.nat-table-scroll),
+  .panel:has(.standings-table-scroll),
+  .division-panel:has(> .standings-table-scroll) {
     overflow: visible;
   }
 

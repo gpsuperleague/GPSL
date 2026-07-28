@@ -301,7 +301,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
 
       return `
         <tr class="prestige-${prestigeKey} league-${tintKey}${prestigeBoundary ? " zone-boundary" : ""}${playoffBoundary ? " zone-boundary-playoff" : ""}${relegationBoundary || bowlBoundary ? " zone-boundary zone-boundary-relegation" : ""}${leader}${mine}">
-          <td class="num">${displayRank}</td>
+          <td class="num pos-col">${displayRank}</td>
           <td class="club-col">${clubWithOwnerHtml(row.club_name, row.club_short_name)}</td>
           <td class="status-col">${statusText}</td>
           <td class="num">${row.mp}</td>
@@ -321,11 +321,12 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
 
   panel.innerHTML = `
     <h2>${panelTitle}</h2>
+    <div class="standings-table-scroll">
     <table class="${tableClass}">
       ${STANDINGS_COLGROUP}
       <thead>
         <tr>
-          <th>${rankHeader}</th>
+          <th class="pos-col">${rankHeader}</th>
           <th class="club-col">Club</th>
           <th class="status-col">Status</th>
           <th>MP</th>
@@ -342,6 +343,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
       </thead>
       <tbody>${tbody}</tbody>
     </table>
+    </div>
   `;
 
   panel.dataset.division = division;
