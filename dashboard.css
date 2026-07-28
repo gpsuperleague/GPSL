@@ -6,8 +6,8 @@
    - Used exclusively by dashboard.html
    ============================================================ */
 
-@import url("mobile.css?v=20260728-nav-horizontal");
-@import url("nav_force_horizontal.css?v=20260728-nav-horizontal");
+@import url("mobile.css?v=20260728-nav-icons-row2");
+@import url("nav_force_horizontal.css?v=20260728-nav-icons-row2");
 
 :root {
   --gpsl-accent: #ff9900;
@@ -2029,7 +2029,7 @@ a.ssc-chip:hover {
   border-radius: 6px;
 }
 
-/* Narrow screens: keep top menus horizontal (scroll if needed). Desktop >900px unchanged. */
+/* Narrow screens: menus full top row (scroll); icons on second row. Desktop >900px unchanged. */
 @media (max-width: 900px) {
   .nav-natter-label,
   .nav-season-calendar-label,
@@ -2040,19 +2040,19 @@ a.ssc-chip:hover {
   .gpsl-nav-row-menus {
     display: flex !important;
     flex-direction: row !important;
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap !important;
     align-items: stretch !important;
-    overflow-x: auto !important;
+    overflow-x: visible !important;
     overflow-y: visible;
-    -webkit-overflow-scrolling: touch;
   }
 
   .gpsl-nav-groups {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    width: auto !important;
-    flex: 1 1 auto !important;
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
     min-width: 0 !important;
     overflow-x: auto !important;
     overflow-y: visible;
@@ -2075,10 +2075,14 @@ a.ssc-chip:hover {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    justify-content: center;
-    width: auto !important;
-    flex: 0 0 auto !important;
-    margin-left: auto;
+    justify-content: center !important;
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    border-left: none !important;
+    border-top: 1px solid #333;
+    box-sizing: border-box;
   }
 
   .gpsl-nav-actions-secondary .gpsl-nav-month {
@@ -2288,9 +2292,71 @@ a.ssc-chip:hover {
   }
 }
 
+/* Mobile dashboard: keep 2 columns + denser tiles (don't collapse to one tall column) */
 @media (max-width: 700px) {
+  .page-dashboard .page-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 8px auto 24px;
+    padding: 0 6px;
+    box-sizing: border-box;
+  }
+
   .dashboard-sections {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .dashboard-section {
+    min-height: 0;
+    border-radius: 6px;
+  }
+
+  .dashboard-section-head {
+    padding: 6px 8px;
+    gap: 6px;
+  }
+
+  .dashboard-section-title,
+  .dashboard-section-title-input {
+    font-size: 12px;
+  }
+
+  .dashboard-section-grid,
+  .tile-grid,
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .tile,
+  .dashboard-tile {
+    min-height: 64px;
+    font-size: 10px;
+    padding: 4px;
+  }
+}
+
+@media (max-width: 380px) {
+  .dashboard-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .dashboard-section-grid,
+  .tile-grid,
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .tile,
+  .dashboard-tile {
+    min-height: 56px;
+    font-size: 9px;
   }
 }
 

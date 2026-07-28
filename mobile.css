@@ -1,21 +1,22 @@
 /* GPSL mobile — max-width 720px only (except nav, which also applies to landscape phones). Desktop chrome unchanged above 900px via dashboard.css. */
 
-/* Phone + landscape phone: always keep top menus in one horizontal row */
+/* Phone + landscape phone: menus full width on row 1; icons on row 2 */
 @media (max-width: 900px) {
   #nav .gpsl-nav-row-menus {
     display: flex !important;
     flex-direction: row !important;
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap !important;
     align-items: stretch !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch;
+    overflow-x: visible !important;
   }
 
   #nav .gpsl-nav-groups {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    width: auto !important;
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
     min-width: 0 !important;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
@@ -39,11 +40,15 @@
     flex-wrap: nowrap !important;
     justify-content: center !important;
     align-items: center !important;
-    width: auto !important;
-    flex: 0 0 auto !important;
-    margin-left: auto !important;
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    border-left: none !important;
+    border-top: 1px solid #333 !important;
     padding: 6px 8px !important;
-    gap: 4px !important;
+    gap: 6px !important;
+    box-sizing: border-box;
   }
 
   #nav .nav-dashboard-home-label,
@@ -95,6 +100,38 @@
     align-items: flex-start !important;
     gap: 12px !important;
     padding: 12px !important;
+  }
+
+  /* Denser dashboard: 2 section columns, smaller tiles */
+  .page-dashboard .page-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 8px auto 24px !important;
+    padding: 0 6px !important;
+    box-sizing: border-box;
+  }
+
+  .dashboard-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .dashboard-section-grid,
+  .tile-grid,
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)) !important;
+    gap: 6px !important;
+    padding: 8px !important;
+  }
+
+  .tile,
+  .dashboard-tile {
+    min-height: 64px !important;
+    padding: 4px !important;
+  }
+
+  .dashboard-tile-label {
+    font-size: 10px !important;
   }
 
   .panel,

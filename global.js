@@ -1221,6 +1221,14 @@ function ensureNavStyles() {
   flex:0 0 auto!important;width:auto!important;margin-left:auto!important;
 }
 #nav .nav-dropdown{position:absolute!important;top:100%!important;left:0!important;}
+@media (max-width:900px){
+  #nav .gpsl-nav-row-menus{flex-wrap:wrap!important;overflow-x:visible!important;}
+  #nav .gpsl-nav-groups{flex:1 1 100%!important;width:100%!important;max-width:100%!important;}
+  #nav .gpsl-nav-actions-primary{
+    flex:1 1 100%!important;width:100%!important;max-width:100%!important;margin-left:0!important;
+    justify-content:center!important;border-left:none!important;border-top:1px solid #333!important;
+  }
+}
 `.replace(/\s+/g, " ").trim();
     document.head.appendChild(style);
   }
