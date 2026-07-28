@@ -283,12 +283,13 @@ function fitNationColumn() {
   }
   probe.remove();
 
-  const btn = document.querySelector("#poolBody .pool-expand-btn");
-  const btnW = btn ? btn.offsetWidth : 76;
   const metaW = Math.max(maxLine, 64);
-  const colW = Math.ceil(metaW + 28 + 6 + 8 + btnW + 16);
+  const colW = Math.ceil(metaW + 28 + 6 + 8 + 12);
+  const btn = document.querySelector("#poolBody .pool-expand-btn");
+  const actionW = Math.ceil((btn ? btn.offsetWidth : 76) + 12);
   table.style.setProperty("--pool-nation-col-width", `${colW}px`);
   table.style.setProperty("--pool-nation-name-max", `${metaW}px`);
+  table.style.setProperty("--pool-action-col-width", `${actionW}px`);
 }
 
 function renderTable() {
@@ -300,7 +301,7 @@ function renderTable() {
 
   if (!visible.length) {
     tbody.innerHTML =
-      '<tr><td colspan="14" style="padding:20px;color:#888;">No nations match this filter.</td></tr>';
+      '<tr><td colspan="15" style="padding:20px;color:#888;">No nations match this filter.</td></tr>';
     return;
   }
 
@@ -330,10 +331,12 @@ function renderTable() {
                 <span class="pool-owner">${row.nation_code} · seed ${row.seed_rank}</span>
                 ${ownerLine}
               </span>
-              <button type="button" class="pool-expand-btn" data-expand="${row.nation_code}">
-                ${isOpen ? "Hide" : "Breakdown"}
-              </button>
             </div>
+          </td>
+          <td class="pool-sticky-action">
+            <button type="button" class="pool-expand-btn" data-expand="${row.nation_code}">
+              ${isOpen ? "Hide" : "Breakdown"}
+            </button>
           </td>
           <td>${countCell(all.total)}</td>
           <td>${countCell(u21.total)}</td>
@@ -346,7 +349,7 @@ function renderTable() {
         </tr>`;
 
       const detailRow = isOpen
-        ? `<tr class="pool-detail-row"><td colspan="14">${detailTable(row)}</td></tr>`
+        ? `<tr class="pool-detail-row"><td colspan="15">${detailTable(row)}</td></tr>`
         : "";
 
       return mainRow + detailRow;

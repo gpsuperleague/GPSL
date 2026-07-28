@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Club Squad</title>
 
-  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="dashboard.css?v=20260728-table-scroll-fix">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="history_trophy_cabinet.css?v=20260715-club-cabinet">
 
@@ -91,11 +91,18 @@
       border: 1px solid #333;
     }
 
+    .club-table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      max-width: 100%;
+    }
+
     table.gpsl-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 30px;
-      table-layout: fixed;
+      margin-bottom: 0;
+      table-layout: auto;
+      min-width: 720px;
     }
 
     table.gpsl-table th,
@@ -135,8 +142,8 @@
       border-radius: 4px;
       padding: 2px 6px;
       white-space: normal;
-      overflow-wrap: anywhere;
-      word-break: break-word;
+      overflow-wrap: break-word;
+      word-break: normal;
       line-height: 1.35;
     }
     .suspension-badge {
@@ -166,54 +173,82 @@
     }
 
     table.gpsl-table th:nth-child(1),
-    table.gpsl-table td:nth-child(1) { width: 9%; }
+    table.gpsl-table td:nth-child(1) {
+      width: 64px;
+      min-width: 64px;
+    }
 
     table.gpsl-table th:nth-child(2),
     table.gpsl-table td:nth-child(2) {
-      width: 22%;
+      min-width: 11rem;
+      max-width: 18rem;
       white-space: normal;
       overflow: visible;
       text-overflow: unset;
-      overflow-wrap: anywhere;
-      word-break: break-word;
+      overflow-wrap: break-word;
+      word-break: normal;
       line-height: 1.35;
       vertical-align: middle;
     }
 
     table.gpsl-table th:nth-child(3),
-    table.gpsl-table td:nth-child(3) { width: 8%; }
+    table.gpsl-table td:nth-child(3) { min-width: 3rem; }
 
     table.gpsl-table th:nth-child(4),
-    table.gpsl-table td:nth-child(4) { width: 8%; }
+    table.gpsl-table td:nth-child(4) { min-width: 3rem; }
 
     table.gpsl-table th:nth-child(5),
-    table.gpsl-table td:nth-child(5) { width: 9%; }
+    table.gpsl-table td:nth-child(5) { min-width: 3.5rem; }
 
     table.gpsl-table th:nth-child(6),
-    table.gpsl-table td:nth-child(6) { width: 15%; }
+    table.gpsl-table td:nth-child(6) { min-width: 5.5rem; }
 
     table.gpsl-table th:nth-child(7),
-    table.gpsl-table td:nth-child(7) { width: 12%; }
+    table.gpsl-table td:nth-child(7) { min-width: 6rem; }
 
     table.gpsl-table th:nth-child(8),
     table.gpsl-table td:nth-child(8) {
-      width: 18%;
+      min-width: 7rem;
       text-align: center;
       white-space: normal;
       overflow: visible;
       text-overflow: unset;
-      overflow-wrap: anywhere;
-      word-break: break-word;
+      overflow-wrap: break-word;
+      word-break: normal;
       line-height: 1.35;
       vertical-align: middle;
     }
 
     table.gpsl-table td:nth-child(7) {
       white-space: normal;
-      overflow-wrap: anywhere;
-      word-break: break-word;
+      overflow-wrap: break-word;
+      word-break: normal;
       font-size: 12px;
       line-height: 1.3;
+    }
+
+    @media (max-width: 720px) {
+      .club-header {
+        flex-wrap: wrap;
+        gap: 12px;
+        margin: 12px;
+        padding: 12px;
+      }
+      .club-header img {
+        width: 72px;
+        height: 72px;
+      }
+      .club-thumb {
+        height: 48px;
+      }
+      .panel {
+        margin: 12px;
+        padding: 10px;
+      }
+      h2.section-title {
+        margin-left: 12px;
+        margin-top: 24px;
+      }
     }
 
     .player-link {
@@ -250,8 +285,8 @@
       font-weight: bold;
       line-height: 1.35;
       white-space: normal;
-      overflow-wrap: anywhere;
-      word-break: break-word;
+      overflow-wrap: break-word;
+      word-break: normal;
     }
 
     table.gpsl-table td:nth-child(8) .offer-btn {
@@ -790,6 +825,7 @@
                container.innerHTML += `
           <h2 class="section-title">${groupName}</h2>
           <div class="panel">
+            <div class="club-table-scroll">
             <table class="gpsl-table">
               <thead>
                 <tr>
@@ -837,6 +873,7 @@
                 }).join("")}
               </tbody>
             </table>
+            </div>
           </div>
         `;
       }

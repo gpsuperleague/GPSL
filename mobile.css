@@ -228,25 +228,29 @@
     padding-right: 12px;
   }
 
-  /* Wide tables: horizontal scroll, don't crush columns.
-     Keep squad / national squad as real tables so sticky freeze columns work. */
-  table.gpsl-table:not(.squad-table):not(.nat-squad-table),
-  .gpsl-table:not(.squad-table):not(.nat-squad-table) {
-    display: block;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  /* Wide tables: keep real table layout so % / fixed columns don't collapse
+     to ~1 character (which causes letter-by-letter name wrapping).
+     Scroll horizontally on a wrapper / panel instead of display:block on <table>. */
+  table.gpsl-table,
+  .gpsl-table {
+    display: table;
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
   }
 
   body.squad-page table.gpsl-table.squad-table,
   body.squad-page table.gpsl-table.nat-squad-table {
     display: table;
+    width: 100%;
   }
 
   .squad-table-scroll,
   .table-scroll,
-  .listing-table-wrap {
+  .listing-table-wrap,
+  .club-table-scroll,
+  .panel:has(> table.gpsl-table),
+  .panel:has(> .club-table-scroll) {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     max-width: 100%;

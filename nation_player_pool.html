@@ -96,7 +96,25 @@
       min-width: var(--pool-nation-col-width, auto);
       max-width: var(--pool-nation-col-width, none);
     }
-    .pool-table th.pool-sticky { z-index: 3; background: #222; }
+    .pool-table th.pool-sticky-action,
+    .pool-table td.pool-sticky-action {
+      position: sticky;
+      left: var(--pool-nation-col-width, 10rem);
+      z-index: 1;
+      background: #181818;
+      width: var(--pool-action-col-width, 5.5rem);
+      min-width: var(--pool-action-col-width, 5.5rem);
+      max-width: var(--pool-action-col-width, 5.5rem);
+      text-align: center;
+      padding-left: 6px;
+      padding-right: 6px;
+      box-shadow: 4px 0 8px rgba(0, 0, 0, 0.25);
+    }
+    .pool-table th.pool-sticky,
+    .pool-table th.pool-sticky-action {
+      z-index: 3;
+      background: #222;
+    }
     .pool-table tr.pool-detail-row td {
       background: #101010;
       padding: 0;
@@ -158,7 +176,8 @@
       color: #666;
       background: #121212;
     }
-    .pool-table tr.pool-row-faint td.pool-sticky {
+    .pool-table tr.pool-row-faint td.pool-sticky,
+    .pool-table tr.pool-row-faint td.pool-sticky-action {
       background: #121212;
     }
     .pool-table tr.pool-row-faint .nat-flag-img {
@@ -175,8 +194,7 @@
       color: #666;
     }
     .pool-expand-btn {
-      flex: 0 0 auto;
-      margin-left: auto;
+      display: inline-block;
       padding: 4px 8px;
       font-size: 11px;
       background: #333;
@@ -184,6 +202,7 @@
       border: 1px solid #555;
       border-radius: 4px;
       cursor: pointer;
+      white-space: nowrap;
     }
     .pool-expand-btn:hover { background: #444; }
     .pool-zero { color: #666; }
@@ -253,6 +272,7 @@
         <thead>
           <tr>
             <th class="pool-sticky">Nation</th>
+            <th class="pool-sticky-action">Breakdown</th>
             <th>Total</th>
             <th>U21</th>
             <th>≤65</th>
@@ -273,6 +293,6 @@
     </div>
   </div>
 
-  <script type="module" src="nation_player_pool.js?v=20260728-nation-br"></script>
+  <script type="module" src="nation_player_pool.js?v=20260728-breakdown-col"></script>
 </body>
 </html>
