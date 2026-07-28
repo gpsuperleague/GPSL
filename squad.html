@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260724-squad-tips">
-  <link rel="stylesheet" href="squad.css?v=20260728-action-no-sticky">
+  <link rel="stylesheet" href="squad.css?v=20260728-freeze-player">
 
   <style>
     body {
@@ -120,8 +120,8 @@
 
     <div class="panel">
       <h2 class="section-header">Squad</h2>
-      <p class="note gpsl-has-tip" style="margin:0 0 10px;color:#aaa;font-size:13px;" data-gpsl-tip="Player actions (Transfer List, foreign sales, appeals, renew/expire) live in the Action column on the right — scroll the table sideways if needed." tabindex="0">
-        Player actions (Transfer List, foreign sales, appeals) are in the <b>Action</b> column on the right — scroll the table sideways if needed. Hover column headers and cells for more GPSL help.
+      <p class="note gpsl-has-tip" style="margin:0 0 10px;color:#aaa;font-size:13px;" data-gpsl-tip="Player image and name stay pinned on the left while you scroll sideways. Actions are in the Action column on the right." tabindex="0">
+        Player image and name stay pinned on the left while you scroll. Actions (Transfer List, foreign sales, appeals) are in the <b>Action</b> column on the right. Hover column headers and cells for more GPSL help.
       </p>
 
       <div class="squad-table-scroll">
@@ -202,7 +202,7 @@
   </div>
 
   <!-- LOAD SQUAD LOGIC (nav via initGlobal in squad.js) -->
-  <script type="module" src="squad.js?v=20260724-mgr-list"></script>
+  <script type="module" src="squad.js?v=20260728-freeze-player"></script>
 
 </body>
 </html>

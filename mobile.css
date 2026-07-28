@@ -228,14 +228,19 @@
     padding-right: 12px;
   }
 
-  /* Wide tables: horizontal scroll, don't crush columns */
-  table.gpsl-table,
-  .gpsl-table {
+  /* Wide tables: horizontal scroll, don't crush columns.
+     Keep squad as a real table so sticky freeze columns work. */
+  table.gpsl-table:not(.squad-table),
+  .gpsl-table:not(.squad-table) {
     display: block;
     width: 100%;
     max-width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+  }
+
+  body.squad-page table.gpsl-table.squad-table {
+    display: table;
   }
 
   .squad-table-scroll,

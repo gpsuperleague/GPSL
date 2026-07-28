@@ -1535,6 +1535,7 @@ const SQUAD_COL_MIN_WIDTHS = {
   "squad-col-status": 110,
   "squad-col-contract": 72,
   "squad-col-player": 120,
+  "squad-col-thumb": 48,
 };
 
 function syncSquadTableColumnWidths() {
@@ -1578,6 +1579,9 @@ function syncSquadTableColumnWidths() {
     col.style.maxWidth = `${w}px`;
     total += w;
   });
+
+  const thumbW = Math.max(widths[0] || 0, SQUAD_COL_MIN_WIDTHS["squad-col-thumb"] || 48);
+  table.style.setProperty("--squad-sticky-thumb-w", `${thumbW}px`);
 
   table.style.tableLayout = "fixed";
   table.style.width = total > 0 ? `${total}px` : "max-content";
