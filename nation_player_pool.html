@@ -135,16 +135,23 @@
     }
     .pool-nation-meta {
       min-width: 0;
+      max-width: 100%;
     }
     .pool-nation-name {
       display: block;
-      white-space: nowrap;
+      white-space: normal;
+      overflow-wrap: break-word;
+      word-break: normal;
+      line-height: 1.25;
+      /* Prefer wrapping at spaces / hyphens in double-barrel names */
+      hyphens: auto;
     }
     .pool-owner {
       display: block;
       font-size: 11px;
       color: #888;
       margin-top: 2px;
+      white-space: nowrap;
     }
     .pool-status-ok { color: #8c8; }
     .pool-status-warn { color: #fc8; }
@@ -268,6 +275,6 @@
     </div>
   </div>
 
-  <script type="module" src="nation_player_pool.js?v=20260709-healthy-pct"></script>
+  <script type="module" src="nation_player_pool.js?v=20260728-nation-wrap"></script>
 </body>
 </html>

@@ -222,33 +222,38 @@ function fitNationColumn() {
   if (!table || !reportRows.length) return;
 
   const probe = document.createElement("div");
-  probe.className = "pool-nation-meta";
   probe.style.cssText =
-    "position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none;font-size:12px;font-family:Arial,sans-serif";
+    "position:absolute;left:-9999px;top:0;visibility:hidden;pointer-events:none;font-size:12px;font-family:Arial,sans-serif;font-weight:700;line-height:1.25";
   document.body.appendChild(probe);
 
-  let maxMeta = 0;
+  let maxToken = 0;
+  let maxSideLine = 0;
   for (const row of reportRows) {
-    probe.replaceChildren();
-    const name = document.createElement("strong");
-    name.className = "pool-nation-name";
-    name.textContent = row.nation_name || "";
-    const seed = document.createElement("span");
-    seed.className = "pool-owner";
-    seed.textContent = `${row.nation_code} · seed ${row.seed_rank}`;
-    const owner = document.createElement("span");
-    owner.className = "pool-owner";
-    owner.textContent = row.is_taken
+    const name = String(row.nation_name || "");
+    // Width from longest word / hyphen segment so "Trinidad and Tobago" wraps
+    const tokens = name.split(/[\s\-–—/]+/).filter(Boolean);
+    for (const tok of tokens.length ? tokens : [name]) {
+      probe.textContent = tok;
+      maxToken = Math.max(maxToken, probe.scrollWidth);
+    }
+
+    probe.style.fontWeight = "400";
+    probe.style.fontSize = "11px";
+    probe.textContent = `${row.nation_code} · seed ${row.seed_rank}`;
+    maxSideLine = Math.max(maxSideLine, probe.scrollWidth);
+    probe.textContent = row.is_taken
       ? row.owner_tag || row.owner_club || "Assigned"
       : "Unassigned";
-    probe.append(name, seed, owner);
-    maxMeta = Math.max(maxMeta, probe.scrollWidth);
+    maxSideLine = Math.max(maxSideLine, probe.scrollWidth);
+    probe.style.fontWeight = "700";
+    probe.style.fontSize = "12px";
   }
   probe.remove();
 
   const btn = document.querySelector("#poolBody .pool-expand-btn");
   const btnW = btn ? btn.offsetWidth : 76;
-  const colW = Math.ceil(maxMeta + 28 + 6 + 8 + btnW + 16);
+  const metaW = Math.max(maxToken, maxSideLine, 64);
+  const colW = Math.ceil(metaW + 28 + 6 + 8 + btnW + 16);
   table.style.setProperty("--pool-nation-col-width", `${colW}px`);
 }
 
