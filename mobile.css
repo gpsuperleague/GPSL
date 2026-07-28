@@ -1,0 +1,113 @@
+/* GPSL mobile — max-width 720px only. Desktop unchanged. */
+
+@media (max-width: 720px) {
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
+  body {
+    font-size: 15px;
+  }
+
+  #nav {
+    padding: 8px 10px !important;
+    margin-bottom: 12px !important;
+  }
+
+  #nav a,
+  #nav .nav-link,
+  .nav-link {
+    font-size: 13px;
+  }
+
+  h1,
+  .admin-title,
+  #dashboardTitle,
+  #pageTitle {
+    font-size: 22px !important;
+    line-height: 1.25;
+  }
+
+  #headerContainer,
+  .squad-header,
+  .club-bank-status-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+
+  .panel,
+  .card,
+  .listing-filters,
+  .draft-filters,
+  .filter-group {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  /* Wide tables: horizontal scroll, don't crush columns */
+  table.gpsl-table,
+  .gpsl-table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .squad-table-scroll,
+  .table-scroll,
+  .listing-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  input[type="search"],
+  input[type="email"],
+  input[type="password"],
+  select,
+  textarea {
+    max-width: 100%;
+    box-sizing: border-box;
+    font-size: 16px; /* reduces iOS zoom-on-focus */
+  }
+
+  .button,
+  a.button,
+  button.button {
+    min-height: 40px;
+    padding: 10px 14px;
+  }
+
+  .filter-action-btns,
+  .filter-row,
+  .listing-filters,
+  .draft-filters {
+    flex-wrap: wrap !important;
+  }
+
+  .modal-box,
+  #list-player-modal,
+  .modal {
+    width: calc(100vw - 24px) !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  .wage-bill-grid,
+  .treasury-split,
+  .counter-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  img.player-thumb,
+  .player-thumb {
+    max-width: 48px;
+    height: auto;
+  }
+}

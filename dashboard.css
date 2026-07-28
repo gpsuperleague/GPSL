@@ -6,6 +6,8 @@
    - Used exclusively by dashboard.html
    ============================================================ */
 
+@import url("mobile.css");
+
 :root {
   --gpsl-accent: #ff9900;
   --gpsl-accent-rgb: 255, 153, 0;

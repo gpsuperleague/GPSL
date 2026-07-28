@@ -481,3 +481,26 @@ html.admin-root body.admin-page {
   background: #7a1c1c !important;
 }
 
+@media (max-width: 720px) {
+  .admin-layout,
+  #adminLayout {
+    width: 100%;
+    padding: 0 10px 24px;
+  }
+
+  .admin-page .card .row {
+    flex-direction: column;
+  }
+
+  .admin-page .card .row > div {
+    width: 100%;
+  }
+
+  .admin-page input,
+  .admin-page select {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+}
+

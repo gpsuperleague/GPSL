@@ -336,3 +336,12 @@ a { color:#ff9900; }
 .amt.zero { color:#666; font-weight:normal; }
 .income-amt { color:#8d8; }
 .cost-amt { color:#e99; }
+
+@media (max-width: 720px) {
+  .page-container {
+    width: 100%;
+    margin: 12px auto 28px;
+    padding: 0 10px;
+    box-sizing: border-box;
+  }
+}

@@ -1231,3 +1231,38 @@ body.squad-page .squad-section-row--ghost .squad-section-title {
   color: #9ec5ff;
   font-style: italic;
 }
+
+@media (max-width: 720px) {
+  body.squad-page .squad-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  body.squad-page .squad-header-badges {
+    width: 100%;
+  }
+
+  body.squad-page .squad-wage-bill-panel,
+  body.squad-page .squad-rules-panel {
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  body.squad-page .wage-bill-grid {
+    grid-template-columns: 1fr;
+  }
+
+  body.squad-page .squad-table-scroll {
+    margin: 0 -8px;
+    padding: 0 8px;
+  }
+
+  body.squad-page .squad-col-action {
+    min-width: 7rem;
+  }
+
+  body.squad-page .squad-action-select {
+    font-size: 14px;
+    min-height: 36px;
+  }
+}
