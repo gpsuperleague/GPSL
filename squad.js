@@ -1084,7 +1084,7 @@ async function loadSquad() {
   }
 
   const statsMap = statsMapByPlayerId(seasonStats);
-  if (!hadSquad || tbody?.dataset.squadIds !== idsKey) {
+  if (!hadSquad || root?.dataset.squadIds !== idsKey) {
     renderSquad(
       list,
       transferStatusState,
@@ -1092,7 +1092,7 @@ async function loadSquad() {
       squadDesignationsState,
       squadGhostPlayers
     );
-    if (tbody) tbody.dataset.squadIds = idsKey;
+    if (root) root.dataset.squadIds = idsKey;
   } else {
     patchSquadEnrichment(transferStatusState, statsMap);
     // Rebuild Action menus so season unlock / appeals / foreign sales stay current
