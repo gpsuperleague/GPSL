@@ -229,9 +229,9 @@
   }
 
   /* Wide tables: horizontal scroll, don't crush columns.
-     Keep squad as a real table so sticky freeze columns work. */
-  table.gpsl-table:not(.squad-table),
-  .gpsl-table:not(.squad-table) {
+     Keep squad / national squad as real tables so sticky freeze columns work. */
+  table.gpsl-table:not(.squad-table):not(.nat-squad-table),
+  .gpsl-table:not(.squad-table):not(.nat-squad-table) {
     display: block;
     width: 100%;
     max-width: 100%;
@@ -239,7 +239,8 @@
     -webkit-overflow-scrolling: touch;
   }
 
-  body.squad-page table.gpsl-table.squad-table {
+  body.squad-page table.gpsl-table.squad-table,
+  body.squad-page table.gpsl-table.nat-squad-table {
     display: table;
   }
 

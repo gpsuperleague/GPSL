@@ -23,6 +23,74 @@ const POSITION_GROUPS = {
   Attackers: ["LW", "LWF", "SS", "RW", "RWF", "CF"],
 };
 
+const NAT_COL_HEADERS = [
+  ["nat-col-thumb", ""],
+  ["nat-col-player", "Player"],
+  ["nat-col-club", "Club"],
+  ["nat-col-pos", "Pos"],
+  ["nat-col-rating", "Rating"],
+  ["nat-col-caps", "Caps"],
+  ["nat-col-g", "G"],
+  ["nat-col-a", "A"],
+  ["nat-col-potm", "POTM"],
+  ["nat-col-cs", "CS"],
+  ["nat-col-avg", "Avg"],
+  ["nat-col-action", "Action"],
+];
+
+const NAT_COLGROUP_HTML = `<colgroup>
+  <col class="nat-col-thumb" />
+  <col class="nat-col-player" />
+  <col class="nat-col-club" />
+  <col class="nat-col-pos" />
+  <col class="nat-col-rating" />
+  <col class="nat-col-caps" />
+  <col class="nat-col-g" />
+  <col class="nat-col-a" />
+  <col class="nat-col-potm" />
+  <col class="nat-col-cs" />
+  <col class="nat-col-avg" />
+  <col class="nat-col-action" />
+</colgroup>`;
+
+function createNatSectionColumnHeaderRow() {
+  const tr = document.createElement("tr");
+  tr.className = "nat-section-cols-row";
+  tr.innerHTML = NAT_COL_HEADERS.map(
+    ([cls, label]) => `<th scope="col" class="${cls}">${label}</th>`
+  ).join("");
+  return tr;
+}
+
+function createNatPosSection(groupName) {
+  const section = document.createElement("section");
+  section.className = "nat-pos-section";
+  section.dataset.natGroup = groupName;
+
+  const title = document.createElement("h3");
+  title.className = "nat-pos-section-title";
+  title.textContent = groupName;
+  section.appendChild(title);
+
+  const scroll = document.createElement("div");
+  scroll.className = "nat-table-scroll";
+
+  const table = document.createElement("table");
+  table.className = "gpsl-table nat-squad-table";
+  table.innerHTML = NAT_COLGROUP_HTML;
+
+  const thead = document.createElement("thead");
+  thead.appendChild(createNatSectionColumnHeaderRow());
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  table.appendChild(tbody);
+
+  scroll.appendChild(table);
+  section.appendChild(scroll);
+  return { section, table, tbody, scroll };
+}
+
 function getNationCode() {
   return new URLSearchParams(window.location.search).get("nation")?.toUpperCase() || null;
 }
@@ -125,11 +193,11 @@ function renderSummary(summary, isMyNation) {
 }
 
 function renderSquad(rows, isMyNation) {
-  const tbody = document.getElementById("squad-body");
+  const root = document.getElementById("natSquadSections");
   const emptyEl = document.getElementById("emptySquad");
-  if (!tbody) return;
+  if (!root) return;
 
-  tbody.innerHTML = "";
+  root.innerHTML = "";
 
   if (!rows.length) {
     if (emptyEl) emptyEl.hidden = false;
@@ -145,45 +213,48 @@ function renderSquad(rows, isMyNation) {
 
   const used = new Set();
 
+  const appendPlayerRow = (tbody, r, showRelease) => {
+    used.add(String(r.player_id));
+    const rating = r.player_rating ?? "—";
+    const avg =
+      r.intl_avg_rating != null ? Number(r.intl_avg_rating).toFixed(2) : "—";
+    const club = r.club_short_name
+      ? fullClubName(r.club_short_name) || r.club_short_name
+      : "Free agent";
+    const releaseBtn =
+      showRelease && isMyNation
+        ? `<button type="button" class="squad-release-btn" data-release="${r.player_id}">Release</button>`
+        : "";
+
+    const tr = document.createElement("tr");
+    tr.dataset.playerId = String(r.player_id);
+    tr.innerHTML = `
+      <td class="nat-col-thumb">${playerThumbLinkHtml(r.player_id, { alt: r.player_name })}</td>
+      <td class="nat-col-player">${playerNameLinkHtml(r.player_id, r.player_name || r.player_id)}</td>
+      <td class="nat-col-club">${club}</td>
+      <td class="nat-col-pos">${r.player_position || "—"}</td>
+      <td class="nat-col-rating">${rating}</td>
+      <td class="num nat-col-caps">${r.intl_caps ?? 0}</td>
+      <td class="num nat-col-g">${r.intl_goals ?? 0}</td>
+      <td class="num nat-col-a">${r.intl_assists ?? 0}</td>
+      <td class="num nat-col-potm">${r.intl_potm ?? 0}</td>
+      <td class="num nat-col-cs">${r.intl_clean_sheets ?? 0}</td>
+      <td class="num nat-col-avg">${avg}</td>
+      <td class="nat-col-action">${releaseBtn}</td>
+    `;
+    tbody.appendChild(tr);
+  };
+
   for (const [groupName, positions] of Object.entries(POSITION_GROUPS)) {
     const groupPlayers = byPosition(positions).sort(
       (a, b) => (Number(b.player_rating) || 0) - (Number(a.player_rating) || 0)
     );
     if (!groupPlayers.length) continue;
 
-    const headerRow = document.createElement("tr");
-    headerRow.classList.add("squad-section-row");
-    headerRow.innerHTML = `<td colspan="12" class="squad-section-title">${groupName}</td>`;
-    tbody.appendChild(headerRow);
-
+    const { section, tbody } = createNatPosSection(groupName);
+    root.appendChild(section);
     for (const r of groupPlayers) {
-      used.add(String(r.player_id));
-      const rating = r.player_rating ?? "—";
-      const avg =
-        r.intl_avg_rating != null ? Number(r.intl_avg_rating).toFixed(2) : "—";
-      const club = r.club_short_name
-        ? fullClubName(r.club_short_name) || r.club_short_name
-        : "Free agent";
-      const releaseBtn = isMyNation
-        ? `<button type="button" class="squad-release-btn" data-release="${r.player_id}">Release</button>`
-        : "";
-
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${playerThumbLinkHtml(r.player_id, { alt: r.player_name })}</td>
-        <td>${playerNameLinkHtml(r.player_id, r.player_name || r.player_id)}</td>
-        <td>${club}</td>
-        <td>${r.player_position || "—"}</td>
-        <td>${rating}</td>
-        <td class="num">${r.intl_caps ?? 0}</td>
-        <td class="num">${r.intl_goals ?? 0}</td>
-        <td class="num">${r.intl_assists ?? 0}</td>
-        <td class="num">${r.intl_potm ?? 0}</td>
-        <td class="num">${r.intl_clean_sheets ?? 0}</td>
-        <td class="num">${avg}</td>
-        <td>${releaseBtn}</td>
-      `;
-      tbody.appendChild(tr);
+      appendPlayerRow(tbody, r, true);
     }
   }
 
@@ -192,33 +263,15 @@ function renderSquad(rows, isMyNation) {
     .sort((a, b) => (Number(b.player_rating) || 0) - (Number(a.player_rating) || 0));
 
   if (other.length) {
-    const headerRow = document.createElement("tr");
-    headerRow.classList.add("squad-section-row");
-    headerRow.innerHTML = `<td colspan="12" class="squad-section-title">Other</td>`;
-    tbody.appendChild(headerRow);
-
+    const { section, tbody } = createNatPosSection("Other");
+    root.appendChild(section);
     for (const r of other) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${playerThumbLinkHtml(r.player_id, { alt: r.player_name })}</td>
-        <td>${playerNameLinkHtml(r.player_id, r.player_name || r.player_id)}</td>
-        <td>${fullClubName(r.club_short_name) || r.club_short_name || "—"}</td>
-        <td>${r.player_position || "—"}</td>
-        <td>${r.player_rating ?? "—"}</td>
-        <td class="num">${r.intl_caps ?? 0}</td>
-        <td class="num">${r.intl_goals ?? 0}</td>
-        <td class="num">${r.intl_assists ?? 0}</td>
-        <td class="num">${r.intl_potm ?? 0}</td>
-        <td class="num">${r.intl_clean_sheets ?? 0}</td>
-        <td class="num">${r.intl_avg_rating != null ? Number(r.intl_avg_rating).toFixed(2) : "—"}</td>
-        <td></td>
-      `;
-      tbody.appendChild(tr);
+      appendPlayerRow(tbody, r, false);
     }
   }
 
   if (isMyNation) {
-    tbody.querySelectorAll("[data-release]").forEach((btn) => {
+    root.querySelectorAll("[data-release]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const res = await releaseCallup(btn.dataset.release, supabase);
         if (res.error) {

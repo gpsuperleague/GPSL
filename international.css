@@ -504,3 +504,93 @@
   gap: 10px 16px;
   font-size: 14px;
 }
+
+/* National team squad — per-position sections (like club Squad) */
+.nat-squad-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.nat-pos-section {
+  margin: 0;
+  min-width: 0;
+}
+
+.nat-pos-section-title {
+  margin: 0 0 6px;
+  padding: 0 2px;
+  color: #ff9900;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.nat-table-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  scrollbar-gutter: stable;
+  padding-bottom: 4px;
+}
+
+table.gpsl-table.nat-squad-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+table.gpsl-table.nat-squad-table th,
+table.gpsl-table.nat-squad-table td {
+  border-right: 1px solid #333;
+  white-space: nowrap;
+}
+
+table.gpsl-table.nat-squad-table th:last-child,
+table.gpsl-table.nat-squad-table td:last-child {
+  border-right: none;
+}
+
+table.gpsl-table.nat-squad-table th {
+  background: rgba(255, 153, 0, 0.06);
+  color: #ff9900;
+  padding: 8px 10px;
+  font-size: 12px;
+  text-align: center;
+}
+
+table.gpsl-table.nat-squad-table td {
+  padding: 8px 10px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+table.gpsl-table.nat-squad-table td.nat-col-player,
+table.gpsl-table.nat-squad-table td.nat-col-club {
+  text-align: left;
+}
+
+table.gpsl-table.nat-squad-table th.nat-col-thumb,
+table.gpsl-table.nat-squad-table td.nat-col-thumb {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #161b26;
+  box-shadow: 3px 0 6px rgba(0, 0, 0, 0.45);
+  min-width: 48px;
+}
+
+table.gpsl-table.nat-squad-table th.nat-col-thumb {
+  z-index: 5;
+  background: #1e2430;
+}
+
+table.gpsl-table.nat-squad-table tr:hover td.nat-col-thumb {
+  background: #222836;
+}
+
+table.gpsl-table.nat-squad-table .nat-col-action {
+  min-width: 5.5rem;
+}
