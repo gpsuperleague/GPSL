@@ -491,8 +491,42 @@ body.squad-page .section-header {
 
 body.squad-page .squad-table-scroll {
   overflow-x: auto;
+  overflow-y: visible;
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
+  scrollbar-gutter: stable;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+
+/* One scrollbar under each position group (GK / DEF / MID / ATT) */
+body.squad-page .squad-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+body.squad-page .squad-pos-section {
+  margin: 0;
+  min-width: 0;
+}
+
+body.squad-page .squad-pos-section-title {
+  margin: 0 0 6px;
+  padding: 0 2px;
+  color: #ff9900;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+body.squad-page .squad-pos-section-title--ghost,
+body.squad-page .squad-pos-section--ghost .squad-pos-section-title {
+  color: #8af;
+}
+
+body.squad-page .squad-loading-msg {
+  margin: 0;
 }
 
 body.squad-page table.gpsl-table.squad-table {

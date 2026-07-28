@@ -128,6 +128,24 @@ const SQUAD_PLAYER_COLUMNS_LEGACY =
 
 const SQUAD_TABLE_COLS = 15;
 
+const SQUAD_COLGROUP_HTML = `<colgroup>
+  <col class="squad-col-thumb" />
+  <col class="squad-col-player" />
+  <col class="squad-col-nation" />
+  <col class="squad-col-position" />
+  <col class="squad-col-age" />
+  <col class="squad-col-rating" />
+  <col class="squad-col-stat" />
+  <col class="squad-col-stat" />
+  <col class="squad-col-stat" />
+  <col class="squad-col-stat" />
+  <col class="squad-col-playstyle" />
+  <col class="squad-col-value" />
+  <col class="squad-col-contract" />
+  <col class="squad-col-status" />
+  <col class="squad-col-action" />
+</colgroup>`;
+
 const SQUAD_COLUMN_HEADER_CELLS = [
   ["squad-col-thumb", ""],
   ["squad-col-player", "Player"],
@@ -168,14 +186,47 @@ function createSquadSectionColumnHeaderRow() {
   return tr;
 }
 
-function appendSquadSectionHeader(tbody, groupName, { ghost = false } = {}) {
-  const titleRow = document.createElement("tr");
-  titleRow.className = ghost
-    ? "squad-section-row squad-section-row--ghost"
-    : "squad-section-row";
-  titleRow.innerHTML = `<td colspan="${SQUAD_TABLE_COLS}" class="squad-section-title">${groupName}</td>`;
-  tbody.appendChild(titleRow);
-  tbody.appendChild(createSquadSectionColumnHeaderRow());
+/** One scrollable table per position group so each section has its own scrollbar. */
+function createSquadPosSection(groupName, { ghost = false } = {}) {
+  const section = document.createElement("section");
+  section.className = ghost
+    ? "squad-pos-section squad-pos-section--ghost"
+    : "squad-pos-section";
+  section.dataset.squadGroup = groupName;
+
+  const title = document.createElement("h3");
+  title.className = ghost
+    ? "squad-pos-section-title squad-pos-section-title--ghost"
+    : "squad-pos-section-title";
+  title.textContent = groupName;
+  section.appendChild(title);
+
+  const scroll = document.createElement("div");
+  scroll.className = "squad-table-scroll";
+
+  const table = document.createElement("table");
+  table.className = "gpsl-table squad-table";
+  table.innerHTML = SQUAD_COLGROUP_HTML;
+
+  const thead = document.createElement("thead");
+  thead.appendChild(createSquadSectionColumnHeaderRow());
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  table.appendChild(tbody);
+
+  scroll.appendChild(table);
+  section.appendChild(scroll);
+  return { section, table, tbody, scroll };
+}
+
+function squadSectionsRoot() {
+  return document.getElementById("squadSections");
+}
+
+function squadPlayerRows(root = squadSectionsRoot()) {
+  if (!root) return [];
+  return [...root.querySelectorAll("tr[data-konami-id]")];
 }
 
 function isMissingEconomicsColumnError(error) {
@@ -965,14 +1016,12 @@ async function loadFreshTransferStatusState() {
 
 // LOAD SQUAD — render actions ASAP; patch stats/listings without rebuilding dropdowns
 async function loadSquad() {
-  const tbody = document.getElementById("squad-body");
-  const hadSquad = !!tbody?.querySelector("tr[data-konami-id]");
+  const root = squadSectionsRoot();
+  const hadSquad = !!root?.querySelector("tr[data-konami-id]");
 
-  if (tbody && !hadSquad) {
-    tbody.innerHTML =
-      '<tr data-squad-loading><td colspan="' +
-      SQUAD_TABLE_COLS +
-      '" style="color:#888;padding:16px;">Loading squad…</td></tr>';
+  if (root && !hadSquad) {
+    root.innerHTML =
+      '<p class="squad-loading-msg" style="color:#888;padding:16px;">Loading squad…</p>';
   }
 
   let { data: players, error } = await supabase
@@ -991,11 +1040,9 @@ async function loadSquad() {
 
   if (error) {
     console.error("Squad load error", error);
-    if (tbody) {
-      tbody.innerHTML =
-        '<tr><td colspan="' +
-        SQUAD_TABLE_COLS +
-        '" style="color:#f88;">Failed to load squad.</td></tr>';
+    if (root) {
+      root.innerHTML =
+        '<p class="squad-loading-msg" style="color:#f88;padding:16px;">Failed to load squad.</p>';
     }
     return;
   }
@@ -1356,10 +1403,10 @@ function formatSeasonStat(row, key, fallback = "—") {
 }
 
 function renderSquad(players, transferState, statsByPlayer = new Map(), designationsState = null, ghostPlayers = []) {
-  const tbody = document.getElementById("squad-body");
-  if (!tbody) return;
+  const root = squadSectionsRoot();
+  if (!root) return;
 
-  tbody.innerHTML = "";
+  root.innerHTML = "";
 
   const groups = {
     "Goalkeepers": ["GK"],
@@ -1381,7 +1428,8 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
 
     if (!groupPlayers.length && !groupGhosts.length) continue;
 
-    appendSquadSectionHeader(tbody, groupName);
+    const { section, tbody } = createSquadPosSection(groupName);
+    root.appendChild(section);
 
     groupPlayers.forEach(p => {
       const pid = String(p.Konami_ID);
@@ -1494,7 +1542,10 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
       return !Object.values(groups).some((arr) => arr.includes(pos));
     });
     if (orphanGhosts.length) {
-      appendSquadSectionHeader(tbody, "Pending acquisitions", { ghost: true });
+      const { section, tbody } = createSquadPosSection("Pending acquisitions", {
+        ghost: true,
+      });
+      root.appendChild(section);
       orphanGhosts.forEach((p) => {
         const tr = document.createElement("tr");
         tr.classList.add("squad-row-ghost");
@@ -1539,23 +1590,12 @@ const SQUAD_COL_MIN_WIDTHS = {
 };
 
 function syncSquadTableColumnWidths() {
-  const table = document.querySelector("table.gpsl-table.squad-table");
-  if (!table) return;
+  const tables = [
+    ...document.querySelectorAll("#squadSections table.gpsl-table.squad-table"),
+  ];
+  if (!tables.length) return;
 
-  const cols = table.querySelectorAll("colgroup col");
-  const sectionColRows = table.querySelectorAll("tr.squad-section-cols-row");
-  if (!cols.length || !sectionColRows.length) return;
-  const thCount = sectionColRows[0].querySelectorAll("th").length;
-  if (thCount !== cols.length) return;
-
-  cols.forEach((col) => {
-    col.style.width = "";
-    col.style.minWidth = "";
-    col.style.maxWidth = "";
-  });
-  table.style.width = "";
-  table.style.tableLayout = "auto";
-
+  const thCount = SQUAD_COLUMN_HEADER_CELLS.length;
   const widths = Array.from({ length: thCount }, () => 0);
 
   const measureCell = (cell, i) => {
@@ -1563,28 +1603,47 @@ function syncSquadTableColumnWidths() {
     widths[i] = Math.max(widths[i], measureSquadTableCellWidth(cell));
   };
 
-  table.querySelectorAll("tr.squad-section-cols-row").forEach((row) => {
-    row.querySelectorAll("th").forEach((th, i) => measureCell(th, i));
-  });
-  table.querySelectorAll("tbody tr[data-konami-id]").forEach((row) => {
-    row.querySelectorAll("td").forEach((td, i) => measureCell(td, i));
+  tables.forEach((table) => {
+    const cols = table.querySelectorAll("colgroup col");
+    cols.forEach((col) => {
+      col.style.width = "";
+      col.style.minWidth = "";
+      col.style.maxWidth = "";
+    });
+    table.style.width = "";
+    table.style.tableLayout = "auto";
+
+    table.querySelectorAll("tr.squad-section-cols-row th").forEach((th, i) => {
+      measureCell(th, i);
+    });
+    table.querySelectorAll("tbody tr[data-konami-id] td").forEach((td, i) => {
+      measureCell(td, i);
+    });
   });
 
   let total = 0;
-  cols.forEach((col, i) => {
-    const minFromClass = SQUAD_COL_MIN_WIDTHS[col.className] || 40;
-    const w = Math.max(widths[i] || 0, minFromClass);
-    col.style.width = `${w}px`;
-    col.style.minWidth = `${w}px`;
-    col.style.maxWidth = `${w}px`;
-    total += w;
+  const finalWidths = widths.map((w, i) => {
+    const colClass = SQUAD_COLUMN_HEADER_CELLS[i]?.[0] || "";
+    const minFromClass = SQUAD_COL_MIN_WIDTHS[colClass] || 40;
+    const fw = Math.max(w || 0, minFromClass);
+    total += fw;
+    return fw;
   });
 
-  const thumbW = Math.max(widths[0] || 0, SQUAD_COL_MIN_WIDTHS["squad-col-thumb"] || 48);
-  table.style.setProperty("--squad-sticky-thumb-w", `${thumbW}px`);
+  const thumbW = finalWidths[0] || SQUAD_COL_MIN_WIDTHS["squad-col-thumb"] || 48;
 
-  table.style.tableLayout = "fixed";
-  table.style.width = total > 0 ? `${total}px` : "max-content";
+  tables.forEach((table) => {
+    const cols = table.querySelectorAll("colgroup col");
+    cols.forEach((col, i) => {
+      const w = finalWidths[i] || 40;
+      col.style.width = `${w}px`;
+      col.style.minWidth = `${w}px`;
+      col.style.maxWidth = `${w}px`;
+    });
+    table.style.setProperty("--squad-sticky-thumb-w", `${thumbW}px`);
+    table.style.tableLayout = "fixed";
+    table.style.width = total > 0 ? `${total}px` : "max-content";
+  });
 }
 
 function ensureSquadTableColumnWidthSync() {
@@ -1598,10 +1657,10 @@ function ensureSquadTableColumnWidthSync() {
 
 /** Update stats + listing pills only — keeps action dropdowns mounted and clickable. */
 function patchSquadEnrichment(transferState, statsByPlayer) {
-  const tbody = document.getElementById("squad-body");
-  if (!tbody) return;
+  const root = squadSectionsRoot();
+  if (!root) return;
 
-  tbody.querySelectorAll("tr[data-konami-id]:not([data-ghost-player])").forEach((row) => {
+  root.querySelectorAll("tr[data-konami-id]:not([data-ghost-player])").forEach((row) => {
     const id = String(row.dataset.konamiId);
     const st = statsByPlayer.get(id);
     const apps = row.querySelector(".squad-col-apps");
@@ -1667,17 +1726,17 @@ function playerContractClubKey(contractedTeam) {
 }
 
 function wireSquadTable() {
-  const tbody = document.getElementById("squad-body");
-  if (!tbody || tbody.dataset.squadTableWired === "1") return;
-  tbody.dataset.squadTableWired = "1";
+  const root = squadSectionsRoot();
+  if (!root || root.dataset.squadTableWired === "1") return;
+  root.dataset.squadTableWired = "1";
 
-  tbody.addEventListener("mousedown", (e) => {
+  root.addEventListener("mousedown", (e) => {
     if (e.target.closest("select.squad-action-select")) {
       e.stopPropagation();
     }
   });
 
-  tbody.addEventListener("click", (e) => {
+  root.addEventListener("click", (e) => {
     if (e.target.closest("a.squad-player-link")) {
       return;
     }
@@ -1703,7 +1762,7 @@ function wireSquadTable() {
     window.open(pesdbPlayerUrl(row.dataset.konamiId), "_blank", "noopener");
   });
 
-  tbody.addEventListener("change", (e) => {
+  root.addEventListener("change", (e) => {
     const sel = e.target.closest("select.squad-action-select");
     if (!sel) return;
     e.stopPropagation();

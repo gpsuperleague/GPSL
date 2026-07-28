@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260724-squad-tips">
-  <link rel="stylesheet" href="squad.css?v=20260728-freeze-player">
+  <link rel="stylesheet" href="squad.css?v=20260728-section-scroll">
 
   <style>
     body {
@@ -120,32 +120,11 @@
 
     <div class="panel">
       <h2 class="section-header">Squad</h2>
-      <p class="note gpsl-has-tip" style="margin:0 0 10px;color:#aaa;font-size:13px;" data-gpsl-tip="Player image and name stay pinned on the left while you scroll sideways. Actions are in the Action column on the right." tabindex="0">
-        Player image and name stay pinned on the left while you scroll. Actions (Transfer List, foreign sales, appeals) are in the <b>Action</b> column on the right. Hover column headers and cells for more GPSL help.
+      <p class="note gpsl-has-tip" style="margin:0 0 10px;color:#aaa;font-size:13px;" data-gpsl-tip="Each position group has its own horizontal scrollbar under that section. Player image and name stay pinned on the left while you scroll sideways." tabindex="0">
+        Each position group has its own scrollbar underneath. Player image and name stay pinned on the left while you scroll. Actions are in the <b>Action</b> column on the right.
       </p>
 
-      <div class="squad-table-scroll">
-      <table class="gpsl-table squad-table">
-        <colgroup>
-          <col class="squad-col-thumb" />
-          <col class="squad-col-player" />
-          <col class="squad-col-nation" />
-          <col class="squad-col-position" />
-          <col class="squad-col-age" />
-          <col class="squad-col-rating" />
-          <col class="squad-col-stat" />
-          <col class="squad-col-stat" />
-          <col class="squad-col-stat" />
-          <col class="squad-col-stat" />
-          <col class="squad-col-playstyle" />
-          <col class="squad-col-value" />
-          <col class="squad-col-contract" />
-          <col class="squad-col-status" />
-          <col class="squad-col-action" />
-        </colgroup>
-        <tbody id="squad-body"></tbody>
-      </table>
-      </div>
+      <div id="squadSections" class="squad-sections"></div>
     </div>
 
   </div>
@@ -202,7 +181,7 @@
   </div>
 
   <!-- LOAD SQUAD LOGIC (nav via initGlobal in squad.js) -->
-  <script type="module" src="squad.js?v=20260728-freeze-player"></script>
+  <script type="module" src="squad.js?v=20260728-section-scroll"></script>
 
 </body>
 </html>
