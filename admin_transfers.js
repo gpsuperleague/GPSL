@@ -452,12 +452,12 @@ async function runTransferEngine() {
       true
     );
   } catch (err) {
-    setStatus(
-      "transferEngineStatus",
-      "❌ " +
-        (err.message || "Failed") +
-        " — run admin_transferengine_run.sql in Supabase.",
-      false
-    );
+    const msg = err.message || "Failed";
+    let hint = " — run admin_transferengine_run.sql in Supabase.";
+    if (/excluded from GPSL|season exclusion/i.test(msg)) {
+      hint =
+        " — a season-excluded player is blocking draft settlement. Run supabase/sql/patches/draft_settlement_skip_season_excluded.sql in Supabase, then Run transfer engine again.";
+    }
+    setStatus("transferEngineStatus", "❌ " + msg + hint, false);
   }
 }
