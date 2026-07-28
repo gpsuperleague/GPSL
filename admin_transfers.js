@@ -438,17 +438,26 @@ async function runTransferEngine() {
   try {
     const { data, error } = await supabase.rpc("admin_transferengine_run");
     if (error) throw error;
+    if (data && data.ok === false) {
+      throw new Error(data.error || data.note || "Transfer engine reported failure");
+    }
     const mgrSettled = data?.manager_draft_settled_count ?? 0;
     const mgrLeft = data?.active_manager_draft_after ?? "?";
     const clubSettled = data?.club_auction_settled_count ?? 0;
     const clubLeft = data?.active_club_auction_after ?? "?";
+    const excluded = data?.active_excluded_listings_before;
+    const exclNote =
+      excluded > 0
+        ? ` Excluded listings skipped: ${excluded}.`
+        : "";
     setStatus(
       "transferEngineStatus",
       `✅ Ran at ${new Date(data?.ran_at || Date.now()).toLocaleString("en-GB")}. ` +
         `Stuck standard: ${data?.stuck_standard_before ?? "?"}. ` +
-        `Player drafts left: ${data?.active_draft_after ?? "?"}. ` +
+        `Player drafts settled: ${data?.draft_settled_count ?? "?"}, left: ${data?.active_draft_after ?? "?"}. ` +
         `Manager drafts settled: ${mgrSettled}, still active: ${mgrLeft}. ` +
-        `Club auctions settled: ${clubSettled}, still active: ${clubLeft}.`,
+        `Club auctions settled: ${clubSettled}, still active: ${clubLeft}.` +
+        exclNote,
       true
     );
   } catch (err) {
@@ -456,7 +465,7 @@ async function runTransferEngine() {
     let hint = " — run admin_transferengine_run.sql in Supabase.";
     if (/excluded from GPSL|season exclusion/i.test(msg)) {
       hint =
-        " — a season-excluded player is blocking draft settlement. Run supabase/sql/patches/draft_settlement_skip_season_excluded.sql in Supabase, then Run transfer engine again.";
+        " — re-run the FULL file supabase/sql/patches/draft_settlement_skip_season_excluded.sql in Supabase SQL Editor (must succeed with no errors), then Run transfer engine again.";
     }
     setStatus("transferEngineStatus", "❌ " + msg + hint, false);
   }
