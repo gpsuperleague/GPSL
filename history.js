@@ -9,6 +9,7 @@ import {
 import { DIVISION_LABELS } from "./competition.js";
 import { renderTrophyCabinet } from "./history_trophies.js";
 import { playerNameLinkHtml } from "./player_links.js";
+import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
 import {
   Chart,
   LineController,
@@ -57,6 +58,17 @@ function signingSourceLabel(row) {
 function playerLink(id, name) {
   if (!id) return name || "—";
   return playerNameLinkHtml(id, name || id);
+}
+
+function seasonLabelText(raw) {
+  if (raw == null || String(raw).trim() === "") return null;
+  return formatSeasonStripLabel(raw);
+}
+
+function appsText(n) {
+  const apps = Number(n);
+  if (!Number.isFinite(apps)) return null;
+  return `${apps} game${apps === 1 ? "" : "s"}`;
 }
 
 function showError(msg) {
@@ -436,7 +448,7 @@ function renderSeasons(seasons) {
           .map(
             (s) => `
           <tr>
-            <td>${s.season_label}</td>
+            <td>${seasonLabelText(s.season_label) || s.season_label || "—"}</td>
             <td>${divisionLabel(s.division)}</td>
             <td class="num">${s.final_position ?? "—"}</td>
             <td class="num">${s.mp ?? "—"}</td>
@@ -474,36 +486,57 @@ function recordCard(title, row, valueFmt) {
 function renderRecords(records) {
   const el = document.getElementById("recordsPanel");
   const r = records || {};
+
+  const seasonMeta = (x, main) => {
+    const season = seasonLabelText(x.season_label);
+    const apps = appsText(x.appearances ?? x.total_apps);
+    const bits = [main];
+    if (apps) bits.push(apps);
+    if (season) bits.push(season);
+    return bits.join(" · ");
+  };
+
   el.innerHTML = [
     recordCard(
       "All-time top scorer",
       r.all_time_top_scorer,
-      (x) => `${x.total_goals ?? 0} goals · ${x.total_apps ?? 0} apps`
+      (x) =>
+        seasonMeta(x, `${x.total_goals ?? 0} goals`) ||
+        `${x.total_goals ?? 0} goals`
     ),
     recordCard(
       "All-time top assists",
       r.all_time_top_assists,
-      (x) => `${x.total_assists ?? 0} assists`
+      (x) =>
+        seasonMeta(x, `${x.total_assists ?? 0} assists`) ||
+        `${x.total_assists ?? 0} assists`
+    ),
+    recordCard(
+      "All-time most appearances",
+      r.all_time_top_apps,
+      (x) => `${x.total_apps ?? 0} games · ${x.total_goals ?? 0} goals · ${x.total_assists ?? 0} assists`
     ),
     recordCard(
       "All-time most POTM",
       r.all_time_top_potm,
-      (x) => `${x.total_potm ?? 0} awards`
+      (x) =>
+        seasonMeta(x, `${x.total_potm ?? 0} awards`) ||
+        `${x.total_potm ?? 0} awards`
     ),
     recordCard(
       "Most goals in a season",
       r.season_top_goals,
-      (x) => `${x.goals ?? 0} goals (${x.season_label || "season"})`
+      (x) => seasonMeta(x, `${x.goals ?? 0} goals`)
     ),
     recordCard(
       "Most assists in a season",
       r.season_top_assists,
-      (x) => `${x.assists ?? 0} assists (${x.season_label || "season"})`
+      (x) => seasonMeta(x, `${x.assists ?? 0} assists`)
     ),
     recordCard(
       "Most POTM in a season",
       r.season_top_potm,
-      (x) => `${x.potm_awards ?? 0} awards (${x.season_label || "season"})`
+      (x) => seasonMeta(x, `${x.potm_awards ?? 0} awards`)
     ),
     recordCard(
       "Record signing",
@@ -513,15 +546,18 @@ function renderRecords(records) {
         if (Number(x.agent_fee) > 0) {
           line += ` (+ ${formatMoney(x.agent_fee)} agent)`;
         }
-        line += ` · ${x.season_label || "—"} · from ${signingSourceLabel(x)}`;
+        const season = seasonLabelText(x.season_label) || "—";
+        line += ` · ${season} · from ${signingSourceLabel(x)}`;
         return line;
       }
     ),
     recordCard(
       "Record sale",
       r.record_sale,
-      (x) =>
-        `${formatMoney(x.fee)} · ${x.season_label || "—"} · ${formatSeasonSaleDestination(x)} (${formatSeasonSaleType(x)})`
+      (x) => {
+        const season = seasonLabelText(x.season_label) || "—";
+        return `${formatMoney(x.fee)} · ${season} · ${formatSeasonSaleDestination(x)} (${formatSeasonSaleType(x)})`;
+      }
     ),
   ].join("");
 }
@@ -543,7 +579,7 @@ function renderBallon(rows) {
           .map(
             (a) => `
           <tr>
-            <td>${a.season_label}</td>
+            <td>${seasonLabelText(a.season_label) || a.season_label || "—"}</td>
             <td>${playerLink(a.player_id, a.player_name)}</td>
             <td class="num">${Number(a.stat_value).toFixed(1)}</td>
           </tr>`

@@ -706,18 +706,47 @@
     }
 
     const params = new URLSearchParams(window.location.search);
-    const fullClubName = params.get("club");
+    const clubParam = (params.get("club") || params.get("short") || "").trim();
 
     let clubShortName = null;
 
-    async function loadClub() {
-      const { data: club, error } = await supabase
+    async function loadClubByParam(param) {
+      if (!param) return null;
+
+      // Canonical links use ShortName; older links may use full Club name.
+      let { data: club } = await supabase
         .from("Clubs")
         .select("*")
-        .eq("Club", fullClubName)
-        .single();
+        .eq("ShortName", param)
+        .maybeSingle();
+      if (club) return club;
 
-      if (error || !club) {
+      ({ data: club } = await supabase
+        .from("Clubs")
+        .select("*")
+        .eq("Club", param)
+        .maybeSingle());
+      if (club) return club;
+
+      ({ data: club } = await supabase
+        .from("Clubs")
+        .select("*")
+        .ilike("ShortName", param)
+        .maybeSingle());
+      if (club) return club;
+
+      ({ data: club } = await supabase
+        .from("Clubs")
+        .select("*")
+        .ilike("Club", param)
+        .maybeSingle());
+      return club || null;
+    }
+
+    async function loadClub() {
+      const club = await loadClubByParam(clubParam);
+
+      if (!club) {
         document.getElementById("clubHeader").innerHTML = "<h1>Club not found</h1>";
         return;
       }

@@ -1,6 +1,6 @@
 import { supabase, initGlobal } from "./global.js";
 import { formatMoney } from "./competition.js";
-import { displayClubName, clubPageHref } from "./clubs_lookup.js";
+import { loadClubsMap, displayClubName, clubPageHref } from "./clubs_lookup.js";
 
 function escapeHtml(text) {
   return String(text ?? "")
@@ -295,6 +295,7 @@ async function loadProfile(ownerId) {
 
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
+  await loadClubsMap();
 
   let ownerId = qs("owner");
   if (!ownerId) {

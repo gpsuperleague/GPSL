@@ -167,9 +167,10 @@ export function formatSeasonSaleType(row) {
   return "Transfer";
 }
 
-/** Link to club squad page (same as clubs.html grid). */
+/** Link to club page. Uses ShortName (club.html resolves ShortName or full Club name). */
 export function clubPageHref(shortName) {
   if (isForeignBuyerClub(shortName)) return null;
-  const club = fullClubName(shortName);
-  return `club.html?club=${encodeURIComponent(club)}`;
+  const short = resolveClubShortName(shortName);
+  if (!short || isForeignBuyerClub(short)) return null;
+  return `club.html?club=${encodeURIComponent(short)}`;
 }
