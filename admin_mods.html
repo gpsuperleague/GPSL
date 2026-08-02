@@ -33,9 +33,11 @@
           Requires <code>supabase/sql/patches/gpsl_mods.sql</code>.
         </p>
         <div class="row">
-          <div>
-            <label for="modEmail">Owner email</label>
-            <input id="modEmail" type="email" placeholder="owner@example.com" autocomplete="off">
+          <div style="flex:1; min-width:260px;">
+            <label for="modEmailSelect">Owner</label>
+            <select id="modEmailSelect">
+              <option value="">Loading owners…</option>
+            </select>
           </div>
           <div>
             <label for="modNote">Note (optional)</label>

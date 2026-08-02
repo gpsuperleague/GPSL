@@ -1,6 +1,10 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+import { GPSL_ADMIN_EMAILS } from "./global.js";
 
 primeAdminPageChrome();
+
+/** @type {Set<string>} */
+let grantedEmails = new Set();
 
 function escapeHtml(s) {
   return String(s ?? "")
@@ -26,6 +30,56 @@ function formatWhen(iso) {
   }
 }
 
+function statusLabel(row) {
+  if (row.club_short_name) return row.club_short_name;
+  if (row.registry_status === "archived") return "ARCHIVED";
+  if (row.registry_status === "on_break") return "ON BREAK";
+  if (row.registry_status === "member") return "WAITING LIST";
+  if (row.registry_status === "on_absence") return "ABSENCE";
+  if (row.registry_status === "awaiting_club_auction") return "CLUB AUCTION";
+  return "NO CLUB";
+}
+
+function optionLabel(row) {
+  const club = statusLabel(row);
+  const tag = String(row.owner_tag || "").trim();
+  const email = String(row.email || "").trim().toLowerCase();
+  if (tag) return `${club} — ${tag} — ${email}`;
+  return `${club} — ${email}`;
+}
+
+async function loadOwnerSelect() {
+  const sel = document.getElementById("modEmailSelect");
+  if (!sel) return;
+
+  const keep = sel.value;
+  const { data, error } = await supabase.rpc("admin_owner_list");
+  if (error) {
+    sel.innerHTML = `<option value="">❌ Could not load owners</option>`;
+    return;
+  }
+
+  const adminSet = new Set(GPSL_ADMIN_EMAILS.map((e) => e.toLowerCase()));
+  const owners = (Array.isArray(data) ? data : [])
+    .filter((r) => r?.email)
+    .filter((r) => !adminSet.has(String(r.email).toLowerCase()))
+    .filter((r) => !grantedEmails.has(String(r.email).toLowerCase()))
+    .sort((a, b) => optionLabel(a).localeCompare(optionLabel(b), "en"));
+
+  sel.innerHTML = `<option value="">— Select owner —</option>`;
+  for (const row of owners) {
+    const email = String(row.email).trim().toLowerCase();
+    const opt = document.createElement("option");
+    opt.value = email;
+    opt.textContent = optionLabel(row);
+    sel.appendChild(opt);
+  }
+
+  if (keep && [...sel.options].some((o) => o.value === keep)) {
+    sel.value = keep;
+  }
+}
+
 async function loadMods() {
   const wrap = document.getElementById("modListWrap");
   setStatus("modStatus", "Loading…");
@@ -43,6 +97,11 @@ async function loadMods() {
   }
 
   const rows = Array.isArray(data) ? data : [];
+  grantedEmails = new Set(
+    rows.map((r) => String(r.email || "").toLowerCase()).filter(Boolean)
+  );
+  await loadOwnerSelect();
+
   if (!rows.length) {
     wrap.innerHTML = `<p class="note">No mods granted yet.</p>`;
     setStatus("modStatus", "0 mods", true);
@@ -89,10 +148,10 @@ async function loadMods() {
 }
 
 async function grantMod() {
-  const email = document.getElementById("modEmail")?.value?.trim().toLowerCase() || "";
+  const email = document.getElementById("modEmailSelect")?.value?.trim().toLowerCase() || "";
   const note = document.getElementById("modNote")?.value?.trim() || "";
   if (!email) {
-    setStatus("modStatus", "Enter an owner email.", false);
+    setStatus("modStatus", "Select an owner.", false);
     return;
   }
   setStatus("modStatus", `Granting mod to ${email}…`);
@@ -104,7 +163,7 @@ async function grantMod() {
     setStatus("modStatus", `❌ ${error.message}`, false);
     return;
   }
-  document.getElementById("modEmail").value = "";
+  document.getElementById("modEmailSelect").value = "";
   document.getElementById("modNote").value = "";
   setStatus("modStatus", `✅ Granted mod to ${email}`, true);
   await loadMods();
