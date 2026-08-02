@@ -311,8 +311,13 @@ document.addEventListener("DOMContentLoaded", async () => {
       .maybeSingle();
     ownerTag = clubRow?.owner?.trim() || nation.owner_club.trim();
   }
+  const managerLine = nation.manager_name
+    ? ` · Manager <b>${nation.manager_name}</b>${
+        nation.manager_rating != null ? ` (${nation.manager_rating})` : ""
+      }`
+    : "";
   document.getElementById("natMeta").innerHTML = nation.owner_club
-    ? `Managed by <b>${ownerTag}</b>`
+    ? `Managed by <b>${ownerTag}</b>${managerLine}`
     : "Unassigned — available in nation selection";
 
   if (!code && nation.code) {

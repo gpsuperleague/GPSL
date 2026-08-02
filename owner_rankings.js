@@ -1,5 +1,6 @@
 import { supabase, initGlobal } from "./global.js";
 import { renderNationFlag } from "./international_flags.js";
+import { nationLink } from "./international.js";
 
 let myClub = null;
 let activeTab = "rolling";
@@ -79,7 +80,7 @@ function renderNationCell(r) {
     `<span class="nation-cell">${renderNationFlag(
       { code: r.nation_code, flag_emoji: r.flag_emoji, name: label },
       "sm"
-    )} ${label}</span>`
+    )} ${nationLink(r.nation_code, label, { isTaken: true })}</span>`
   );
 }
 

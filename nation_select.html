@@ -21,6 +21,62 @@
     #statusMsg.ok { color:#8d8; }
     #statusMsg.err { color:#f88; }
     a { color:#ff9900; }
+    .nat-pick-card .nat-mgr {
+      display: block;
+      font-size: 10px;
+      color: #888;
+      margin-top: 2px;
+    }
+    .nat-pick-card a.nat-card-link { color: #ff9900; text-decoration: none; }
+    .nat-pick-card a.nat-card-link:hover { text-decoration: underline; }
+    #managerModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.75);
+      z-index: 80;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    #managerModal.open { display: flex; }
+    .manager-modal-box {
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      padding: 20px;
+      width: min(440px, 100%);
+    }
+    .manager-modal-box h3 { color: #ff9900; margin: 0 0 8px; }
+    .manager-modal-box p { color: #aaa; font-size: 12px; margin: 0 0 12px; line-height: 1.4; }
+    .manager-modal-box select {
+      width: 100%;
+      padding: 8px;
+      background: #111;
+      border: 1px solid #444;
+      color: #ddd;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    #managerModalError { color: #f88; font-size: 12px; min-height: 16px; margin: 0 0 10px; }
+    .manager-modal-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .manager-modal-actions .button {
+      padding: 8px 14px;
+      background: #222;
+      border: 1px solid #666;
+      color: #ff9900;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .manager-modal-actions .button.primary {
+      background: #332200;
+      border-color: #ff9900;
+    }
   </style>
 </head>
 <body>
@@ -31,6 +87,9 @@
       Owners pick a national team in <b>rank order</b> (rolling points from the last four seasons).
       Initial selection opens after Season 1; re-selection after each World Cup.
       Your nation is locked until the next World Cup cycle.
+      When you claim, you also appoint a <b>national manager</b> (no fee, cannot be used by another nation).
+      National managers are separate from club managers and leave after the next World Cup finals.
+      Assigned nations link through to that nation’s squad page.
       Nations greyed out on the grid cannot be selected — the GPDB player pool is too small for a 23-man squad or a GPSL club.
     </p>
 
@@ -57,6 +116,24 @@
       <div id="nationGrid" class="nat-pick-grid"></div>
     </div>
   </div>
-  <script type="module" src="nation_select.js?v=20260716-ffa"></script>
+
+  <div id="managerModal" aria-modal="true" role="dialog" aria-labelledby="managerModalTitle">
+    <div class="manager-modal-box">
+      <h3 id="managerModalTitle">Appoint manager</h3>
+      <p>
+        National managers are free, separate from club managers, and exclusive —
+        if you take a manager, no other nation can appoint them until after the next World Cup finals.
+      </p>
+      <label for="managerSelect" style="display:block;font-size:12px;color:#aaa;margin-bottom:4px;">National manager</label>
+      <select id="managerSelect"></select>
+      <p id="managerModalError"></p>
+      <div class="manager-modal-actions">
+        <button type="button" class="button" id="managerModalCancel">Cancel</button>
+        <button type="button" class="button primary" id="managerModalSubmit">Claim &amp; appoint</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="nation_select.js?v=20260802-nation-managers"></script>
 </body>
 </html>

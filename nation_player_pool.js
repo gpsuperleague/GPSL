@@ -4,6 +4,7 @@ import {
   loadNationPlayerPoolCacheMeta,
   refreshNationPlayerPoolCache,
   renderNationFlag,
+  nationLink,
   NATIONAL_SQUAD_MIN_GK,
   NATION_HEALTHY_CLUB_REQUIREMENTS,
   nationPoolSection,
@@ -316,6 +317,13 @@ function renderTable() {
       const ownerLine = row.is_taken
         ? `<span class="pool-owner">${row.owner_tag || row.owner_club || "Assigned"}</span>`
         : `<span class="pool-owner">Unassigned</span>`;
+      const nationNameInner = formatNationNameHtml(row.nation_name);
+      const nationNameHtml = row.is_taken
+        ? `<strong class="pool-nation-name">${nationLink(row.nation_code, nationNameInner, {
+            isTaken: true,
+            className: "pool-nation-name-link",
+          })}</strong>`
+        : `<strong class="pool-nation-name">${nationNameInner}</strong>`;
 
       const bandCells = SUMMARY_BANDS.map(
         (key) => `<td>${countCell(section(row, key).total)}</td>`
@@ -327,7 +335,7 @@ function renderTable() {
             <div class="pool-nation-cell">
               ${renderNationFlag({ nation_code: row.nation_code, nation_name: row.nation_name }, "sm")}
               <span class="pool-nation-meta">
-                <strong class="pool-nation-name">${formatNationNameHtml(row.nation_name)}</strong>
+                ${nationNameHtml}
                 <span class="pool-owner">${row.nation_code} · seed ${row.seed_rank}</span>
                 ${ownerLine}
               </span>

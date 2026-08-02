@@ -349,12 +349,26 @@ export async function loadInternationalCareerMap(playerIds, client = supabase) {
   return map;
 }
 
-export async function claimNation(nationCode, client = supabase) {
+export async function claimNation(nationCode, managerId, client = supabase) {
   const { data, error } = await client.rpc("international_claim_nation", {
     p_nation_code: nationCode,
+    p_manager_id: managerId,
   });
   if (error) return { error: error.message };
   return { data };
+}
+
+/** Managers free for national appointment (not already on another nation). */
+export async function loadAvailableNationManagers(client = supabase) {
+  const { data, error } = await client
+    .from("international_available_nation_managers_public")
+    .select("id, name, nation, rating, age")
+    .order("rating", { ascending: false });
+  if (error) {
+    console.error("loadAvailableNationManagers:", error);
+    return [];
+  }
+  return data || [];
 }
 
 export async function callUpPlayer(playerId, client = supabase) {
@@ -373,9 +387,24 @@ export async function releaseCallup(playerId, client = supabase) {
   return { ok: true };
 }
 
-export function nationLink(code, label) {
-  const text = label || code;
-  return `<a href="national_team.html?nation=${encodeURIComponent(code)}">${text}</a>`;
+/**
+ * Link to national squad. When `ownedOnly` is true, only owners get a link.
+ * @param {string} code
+ * @param {string} [label]
+ * @param {{ ownedOnly?: boolean, isTaken?: boolean, className?: string }} [opts]
+ */
+export function nationLink(code, label, opts = {}) {
+  const text = label || code || "—";
+  if (!code) return text;
+  if (opts.ownedOnly && !opts.isTaken) return text;
+  const cls = opts.className ? ` class="${opts.className}"` : "";
+  return `<a href="national_team.html?nation=${encodeURIComponent(code)}"${cls}>${text}</a>`;
+}
+
+/** Squad href when nation has an owner; otherwise null. */
+export function ownedNationSquadHref(code, isTaken) {
+  if (!code || !isTaken) return null;
+  return `national_team.html?nation=${encodeURIComponent(code)}`;
 }
 
 function sortGroupRows(rows) {
