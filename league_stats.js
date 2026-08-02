@@ -5,6 +5,8 @@ import {
   loadPlayerCupStats,
   loadInternationalPlayerStats,
   CUP_LABELS,
+  GPSL_MONTH_LABELS,
+  gpslMonthSortIndex,
 } from "./competition.js";
 import { loadClubsMap } from "./clubs_lookup.js";
 import {
