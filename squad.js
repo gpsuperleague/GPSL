@@ -2677,6 +2677,7 @@ function wireManagerListButton() {
       !window.confirm(
         `List ${squadManagerState.managerName} on the Manager Transfer Market?\n\n` +
           `Other clubs can bid. Your club will have no manager once the sale completes.\n` +
+          `Auction runs at least 24 hours and ends at 7pm UK (same as player listings).\n` +
           `Listing is only available in June, July, August, or January.`
       )
     ) {
@@ -2684,7 +2685,7 @@ function wireManagerListButton() {
     }
 
     listBtn.disabled = true;
-    const { error } = await supabase.rpc("manager_list_for_transfer", {
+    const { data, error } = await supabase.rpc("manager_list_for_transfer", {
       p_manager_id: managerId,
     });
     listBtn.disabled = false;
@@ -2694,8 +2695,13 @@ function wireManagerListButton() {
       return;
     }
 
+    const endIso = data?.end_time;
+    const endLabel = endIso
+      ? new Date(endIso).toLocaleString("en-GB", { timeZone: "Europe/London" })
+      : null;
     alert(
-      `${squadManagerState.managerName} listed on the Manager Transfer Market.`
+      `${squadManagerState.managerName} listed on the Manager Transfer Market.` +
+        (endLabel ? `\n\nEnds: ${endLabel} UK` : "")
     );
     if (currentUserShort) await refreshNavClubListingState(currentUserShort);
     refreshNavListingIndicators();
