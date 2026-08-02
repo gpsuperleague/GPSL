@@ -16,6 +16,7 @@ import {
   wrapWordsHtml,
 } from "./player_links.js";
 import { renderFormationPitchHtml } from "./pitch_display.js";
+import { formatSeasonStripLabel } from "./season_transfer_schedule.js";
 
 const DIVISION_TITLES = {
   superleague: "Super League",
@@ -589,7 +590,7 @@ function buildPeriodTeamStatsTable(rows) {
     </table>`;
 }
 
-/** @type {{ id: number, label: string }[]} */
+/** @type {{ id: number, label: string, gameNumber: number|null }[]} */
 let rollingSeasons = [];
 /** @type {number|null} */
 let totmSelectedSeasonId = null;
@@ -600,61 +601,151 @@ let totmMonths = [];
 /** @type {number|null} */
 let totySelectedSeasonId = null;
 
+/** Game season number from label ("2" / "Season 2" → 2). Ignores bare DB ordinals. */
+function gameSeasonNumberFromLabel(label) {
+  const raw = String(label ?? "").trim();
+  if (!raw) return null;
+  if (/^\d+$/.test(raw)) return Number(raw);
+  const match = raw.match(/(\d+)/);
+  return match ? Number(match[1]) : null;
+}
+
+function seasonTabLabel(label, gameNumber, seasonId) {
+  if (gameNumber != null) return `Season ${gameNumber}`;
+  return formatSeasonStripLabel(label || seasonId);
+}
+
+/**
+ * Rolling history by *game* season number (1, 2, …), not DB id.
+ * Test rows labelled Season 3/4/5 are dropped when the live game season is 2.
+ */
 async function loadRollingSeasonOptions(currentSeason) {
-  const byId = new Map();
+  const currentId =
+    currentSeason?.id != null ? Number(currentSeason.id) : null;
+  const currentGame =
+    gameSeasonNumberFromLabel(currentSeason?.label) ??
+    (Number.isFinite(currentId) ? null : null);
 
   const { data, error } = await supabase
     .from("competition_seasons")
-    .select("id, label, is_current")
-    .order("id", { ascending: false })
-    .limit(ROLLING_SEASON_LIMIT);
+    .select("id, label, is_current, status")
+    .order("id", { ascending: true });
 
   if (error) {
     console.warn("competition_seasons (award history):", error);
+  }
+
+  const awardSeasonIds = new Set();
+  const { data: awardRows, error: awardErr } = await supabase
+    .from("competition_period_team")
+    .select("season_id");
+  if (awardErr) {
+    console.warn("competition_period_team seasons:", awardErr);
   } else {
-    for (const row of data || []) {
-      const id = Number(row.id);
-      if (!Number.isFinite(id)) continue;
-      byId.set(id, {
-        id,
-        label: row.label || `Season ${id}`,
-      });
+    for (const row of awardRows || []) {
+      const id = Number(row.season_id);
+      if (Number.isFinite(id)) awardSeasonIds.add(id);
     }
   }
 
-  if (currentSeason?.id != null) {
-    const id = Number(currentSeason.id);
-    if (Number.isFinite(id) && !byId.has(id)) {
-      byId.set(id, {
-        id,
-        label: currentSeason.label || `Season ${id}`,
-      });
-    }
+  const candidates = [];
+  for (const row of data || []) {
+    const id = Number(row.id);
+    if (!Number.isFinite(id)) continue;
+    const label = row.label || "";
+    const gameNumber = gameSeasonNumberFromLabel(label);
+    const isCurrent = Boolean(row.is_current) || id === currentId;
+    const status = String(row.status || "").toLowerCase();
+    const isSetupOnly =
+      (status === "setup" || status === "preseason") && !isCurrent;
+    if (isSetupOnly && !awardSeasonIds.has(id)) continue;
+
+    candidates.push({
+      id,
+      label,
+      gameNumber,
+      isCurrent,
+      hasAwards: awardSeasonIds.has(id),
+      plainNumericLabel: /^\d+$/.test(String(label).trim()),
+    });
   }
 
-  if (!byId.size) {
-    const { data: awardRows, error: awardErr } = await supabase
-      .from("competition_period_team")
-      .select("season_id, season_label")
-      .order("season_id", { ascending: false });
-    if (awardErr) {
-      console.warn("competition_period_team seasons:", awardErr);
-    } else {
-      for (const row of awardRows || []) {
-        const id = Number(row.season_id);
-        if (!Number.isFinite(id) || byId.has(id)) continue;
-        byId.set(id, {
-          id,
-          label: row.season_label || `Season ${id}`,
-        });
-        if (byId.size >= ROLLING_SEASON_LIMIT) break;
-      }
-    }
+  if (
+    currentId != null &&
+    !candidates.some((c) => c.id === currentId) &&
+    currentSeason
+  ) {
+    candidates.push({
+      id: currentId,
+      label: currentSeason.label || String(currentId),
+      gameNumber: gameSeasonNumberFromLabel(currentSeason.label),
+      isCurrent: true,
+      hasAwards: awardSeasonIds.has(currentId),
+      plainNumericLabel: /^\d+$/.test(String(currentSeason.label || "").trim()),
+    });
   }
 
-  rollingSeasons = [...byId.values()]
-    .sort((a, b) => b.id - a.id)
-    .slice(0, ROLLING_SEASON_LIMIT);
+  const windowEnd =
+    currentGame != null
+      ? currentGame
+      : Math.max(
+          0,
+          ...candidates.map((c) => c.gameNumber).filter((n) => n != null)
+        );
+  const windowStart =
+    windowEnd > 0
+      ? Math.max(1, windowEnd - ROLLING_SEASON_LIMIT + 1)
+      : null;
+
+  /** @type {Map<number, (typeof candidates)[number]>} */
+  const byGame = new Map();
+  /** @type {(typeof candidates)[number][]} */
+  const undated = [];
+
+  const prefer = (a, b) => {
+    if (a.isCurrent !== b.isCurrent) return a.isCurrent ? a : b;
+    if (a.hasAwards !== b.hasAwards) return a.hasAwards ? a : b;
+    if (a.plainNumericLabel !== b.plainNumericLabel) {
+      return a.plainNumericLabel ? a : b;
+    }
+    return a.id <= b.id ? a : b;
+  };
+
+  for (const c of candidates) {
+    if (c.gameNumber == null) {
+      if (c.isCurrent || c.hasAwards) undated.push(c);
+      continue;
+    }
+    if (windowStart != null && windowEnd != null) {
+      if (c.gameNumber < windowStart || c.gameNumber > windowEnd) continue;
+    }
+    const prev = byGame.get(c.gameNumber);
+    byGame.set(c.gameNumber, prev ? prefer(prev, c) : c);
+  }
+
+  let selected = [...byGame.values()].sort(
+    (a, b) => (b.gameNumber || 0) - (a.gameNumber || 0)
+  );
+
+  if (!selected.length) {
+    selected = candidates
+      .filter((c) => c.isCurrent || c.hasAwards)
+      .sort((a, b) => b.id - a.id)
+      .slice(0, ROLLING_SEASON_LIMIT);
+  }
+
+  // Keep current even if parse failed; append undated award seasons sparingly.
+  for (const c of undated) {
+    if (selected.some((s) => s.id === c.id)) continue;
+    if (c.isCurrent) selected.unshift(c);
+    else if (selected.length < ROLLING_SEASON_LIMIT) selected.push(c);
+  }
+
+  rollingSeasons = selected.slice(0, ROLLING_SEASON_LIMIT).map((s) => ({
+    id: s.id,
+    gameNumber: s.gameNumber,
+    label: seasonTabLabel(s.label, s.gameNumber, s.id),
+  }));
 
   const ensureSelected = (selectedId) => {
     if (
@@ -664,10 +755,10 @@ async function loadRollingSeasonOptions(currentSeason) {
       return selectedId;
     }
     if (
-      currentSeason?.id != null &&
-      rollingSeasons.some((s) => s.id === Number(currentSeason.id))
+      currentId != null &&
+      rollingSeasons.some((s) => s.id === currentId)
     ) {
-      return Number(currentSeason.id);
+      return currentId;
     }
     return rollingSeasons[0]?.id ?? null;
   };
@@ -861,10 +952,15 @@ async function renderPeriodTeamPanel({
     (team.gpsl_month
       ? formatGpslMonthLabel(team.gpsl_month)
       : "Team of the Year");
+  const seasonMeta = seasonTabLabel(
+    team.season_label,
+    gameSeasonNumberFromLabel(team.season_label),
+    team.season_id
+  );
 
   const metaHtml = `
     <p class="meta" style="margin:0 0 4px;text-align:center;">
-      <b>${title}</b> · ${team.season_label}
+      <b>${title}</b> · ${seasonMeta}
     </p>`;
 
   el.innerHTML = renderFormationPitchHtml({
