@@ -212,7 +212,7 @@ async function loadOwnerContext() {
     ownerTag = self?.owner_tag || null;
     budget = 0;
     applyViewOnlyIntro(isAdmin);
-    await mountClubBankBalance("clubBankBalance");
+    await mountClubBankBalance("clubBankBalance", { advisory: true });
     return true;
   }
 

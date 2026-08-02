@@ -3025,8 +3025,8 @@ document.addEventListener("DOMContentLoaded", () => {
   async function init() {
     // Initialize global settings and build navigation
     await initGlobal();
-    mountClubBankBalance("clubBankBalance").catch((err) =>
-      console.warn("club bank balance:", err)
+    mountClubBankBalance("clubBankBalance", { advisory: true }).catch((err) =>
+      console.warn("advisory transfer budget:", err)
     );
 
     await loadUser();

@@ -177,6 +177,11 @@
           <div class="label">Predicted end-of-season balance</div>
           <div class="value muted" id="predictedBalance">—</div>
         </div>
+        <a class="stat-box stat-link" id="linkAdvisoryBudget" href="transfer_center.html" title="Advisory season transfer budget">
+          <div class="label">Advisory transfer budget</div>
+          <div class="value muted" id="advisoryTransferBudget">—</div>
+          <span class="link-hint" id="advisoryTransferBudgetHint">Ops forecast excl. transfers →</span>
+        </a>
         <a class="stat-box stat-link" id="linkIncoming" href="finances_incoming.html" title="View posted income lines">
           <div class="label">Posted income (season ledger)</div>
           <div class="value positive" id="incomeSeasonTotal">—</div>
@@ -203,7 +208,13 @@
       <p class="footer-note">
         <b>Predicted end-of-season balance</b> uses your current balance plus <b>pending</b> forecasts
         in <a href="finances_accounts.html" id="linkAccountsInline">Season accounts</a> (upcoming home gates,
-        stadium maintenance, player wages and manager salary where calculable).
+        stadium maintenance, player wages and manager salary where calculable, including unsettled winning bids).
+      </p>
+      <p class="footer-note" id="advisoryTransferBudgetNote">
+        <b>Advisory transfer budget</b> is spend guidance: current balance + predicted income − predicted
+        expenditure (excluding transfer sales/purchases), then minus your live winning bids on players and
+        managers. Shown as <b>₿0</b> minimum for spend; if projected runway is negative a warning appears.
+        League prize pending follows your <b>current table position</b> (if that finish holds). Soft only — does not block bids.
       </p>
     </div>
 
@@ -235,6 +246,6 @@
       <div id="financeSeasonHistory"></div>
     </div>
   </div>
-  <script type="module" src="finances.js?v=20260723-wage-bill"></script>
+  <script type="module" src="finances.js?v=20260802-advisory-budget"></script>
 </body>
 </html>

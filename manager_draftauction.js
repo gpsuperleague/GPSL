@@ -292,8 +292,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   await initGlobal();
-  mountClubBankBalance("clubBankBalance").catch((err) =>
-    console.warn("club bank balance:", err)
+  mountClubBankBalance("clubBankBalance", { advisory: true }).catch((err) =>
+    console.warn("advisory transfer budget:", err)
   );
   managerDraftEnabled = getManagerDraftEnabled();
   draftAuctionStartTime = getDraftAuctionStartTime();

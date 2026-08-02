@@ -1,6 +1,10 @@
 import { supabase, initGlobal } from "./global.js";
-import { formatMoney, loadClubSeasonArchive, processMyDueLoanInstallments } from "./competition.js";
+import { formatMoney, loadClubSeasonArchive } from "./competition.js";
 import { loadClubWageBillSummary } from "./club_wage_bill.js";
+import {
+  advisoryBudgetTitle,
+  computeAdvisoryTransferBudget,
+} from "./finance_advisory_budget.js";
 import {
   applyFinanceClubHeader,
   applyHistoricalFinanceBanner,
@@ -12,6 +16,38 @@ import {
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
 } from "./finance_page_common.js?v=20260723-wage-bill";
+
+function setAdvisoryBudgetDisplay(advisory, { historical = false } = {}) {
+  const el = document.getElementById("advisoryTransferBudget");
+  const hint = document.getElementById("advisoryTransferBudgetHint");
+  const note = document.getElementById("advisoryTransferBudgetNote");
+  const box = document.getElementById("linkAdvisoryBudget");
+  if (!el) return;
+
+  if (historical || !advisory) {
+    el.textContent = "—";
+    el.className = "value muted";
+    if (hint) hint.textContent = "Current season only →";
+    if (box) box.removeAttribute("title");
+    if (note) note.hidden = historical;
+    return;
+  }
+
+  el.textContent = formatMoney(advisory.spendable);
+  el.className = `value ${advisory.spendable > 0.5 ? "positive" : "negative"}`;
+  if (box) box.title = advisoryBudgetTitle(advisory);
+
+  if (hint) {
+    if (advisory.runwayNegative) {
+      hint.textContent = `Runway ${formatMoney(advisory.raw)} — spend shown as ₿0 →`;
+    } else if (advisory.bidExposure > 0.5) {
+      hint.textContent = `${advisory.bidCount} winning bid${advisory.bidCount === 1 ? "" : "s"} (−${formatMoney(advisory.bidExposure)}) →`;
+    } else {
+      hint.textContent = "Ops forecast excl. transfers →";
+    }
+  }
+  if (note) note.hidden = false;
+}
 
 function setWageBillDisplay(bill) {
   const playersEl = document.getElementById("wageBillPlayers");
@@ -94,6 +130,7 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     document.getElementById("netSeasonTotal").textContent = "—";
     document.getElementById("openingBalance").textContent = "—";
     document.getElementById("predictedBalance").textContent = "—";
+    setAdvisoryBudgetDisplay(null, { historical: true });
     setWageBillDisplay(null);
     return;
   }
@@ -133,11 +170,25 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
     if (predictedLabel) predictedLabel.textContent = "Projections (archived seasons)";
     predictedEl.textContent = "—";
     predictedEl.className = "value muted";
+    setAdvisoryBudgetDisplay(null, { historical: true });
   } else {
     if (balanceLabel) balanceLabel.textContent = "Current balance";
     if (predictedLabel) predictedLabel.textContent = "Predicted end-of-season balance";
     predictedEl.textContent = formatMoney(data.projectedBalance);
     predictedEl.className = `value ${data.projectedBalance >= 0 ? "positive" : "negative"}`;
+
+    try {
+      const advisory = await computeAdvisoryTransferBudget(supabase, shortName, {
+        balanceNow: data.balanceNow,
+        byLine: data.byLine,
+        pendingByLine: data.pendingByLine,
+        bidExposure: data.bidExposure,
+      });
+      setAdvisoryBudgetDisplay(advisory);
+    } catch (err) {
+      console.warn("advisory transfer budget:", err);
+      setAdvisoryBudgetDisplay(null);
+    }
   }
 
   renderArchive(await loadClubSeasonArchive(supabase, shortName));

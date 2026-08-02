@@ -12,7 +12,7 @@ import {
   renderFinanceSections,
   summariseLedgerTotals,
 } from "./finance_ui.js?v=20260728-accounts-labels";
-import { buildFinanceProjections } from "./finance_projections.js?v=20260723-mgr-wage";
+import { buildFinanceProjections } from "./finance_projections.js?v=20260802-advisory-budget";
 import {
   appendAssignmentInfraPurchaseLedger,
   ledgerStartingBudget,
@@ -660,11 +660,8 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
       seasonId: currentSeason?.id ?? null,
     }
   );
-  const { pendingByLine, totalPending, subsidyPreview } = await buildFinanceProjections(
-    supabase,
-    shortName,
-    { byLine }
-  );
+  const { pendingByLine, totalPending, subsidyPreview, bidExposure } =
+    await buildFinanceProjections(supabase, shortName, { byLine });
 
   return {
     isHistorical: false,
@@ -678,6 +675,7 @@ export async function loadFinanceSeasonContext(supabase, shortName, options = {}
     pendingByLine,
     totalPending,
     subsidyPreview,
+    bidExposure,
     inferredOpeningAdjusted,
     projectedBalance: balanceNow + totalPending,
   };

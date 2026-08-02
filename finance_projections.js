@@ -15,45 +15,68 @@ import {
 const STADIUM_VALUE_PER_SEAT = 1500;
 const MAINTENANCE_RATE = 0.125;
 
-/** Active draft listings this club leads (unsettled winning bids). */
-async function loadClubLeadingDraftExposure(supabase, clubShortName) {
-  if (!clubShortName) return { total: 0, listings: [] };
+const BUYER_COMMITTED_STATUSES = ["Active", "Review", "Seller Review"];
 
-  const { data: settings } = await supabase
-    .from("global_settings_public")
-    .select("draft_auction_enabled, draft_auction_start_time")
-    .eq("id", 1)
-    .maybeSingle();
-
-  if (!settings?.draft_auction_enabled) {
-    return { total: 0, listings: [] };
+/**
+ * Unsettled player/manager listings this club leads (winning bids).
+ * Soft exposure only — drops when outbid or the listing settles/closes.
+ */
+export async function loadClubWinningBidExposure(supabase, clubShortName) {
+  if (!clubShortName) {
+    return { total: 0, count: 0, players: [], managers: [] };
   }
 
-  const draftStart = settings.draft_auction_start_time
-    ? new Date(settings.draft_auction_start_time)
-    : null;
-  if (!draftStart || Number.isNaN(draftStart.getTime()) || new Date() < draftStart) {
-    return { total: 0, listings: [] };
+  const [playerRes, managerRes] = await Promise.all([
+    supabase
+      .from("Player_Transfer_Listings")
+      .select(
+        "id, player_id, listing_type, status, current_highest_bid"
+      )
+      .eq("current_highest_bidder", clubShortName)
+      .in("status", BUYER_COMMITTED_STATUSES)
+      .gt("current_highest_bid", 0),
+    supabase
+      .from("Manager_Transfer_Listings")
+      .select(
+        "id, manager_id, listing_type, status, current_highest_bid"
+      )
+      .eq("current_highest_bidder", clubShortName)
+      .in("status", BUYER_COMMITTED_STATUSES)
+      .gt("current_highest_bid", 0),
+  ]);
+
+  if (playerRes.error) {
+    console.warn("winning bid exposure (players):", playerRes.error);
+  }
+  if (managerRes.error) {
+    console.warn("winning bid exposure (managers):", managerRes.error);
   }
 
-  const { data, error } = await supabase
-    .from("Player_Transfer_Listings")
-    .select("player_id, current_highest_bid")
-    .eq("listing_type", "draft")
-    .eq("status", "Active")
-    .eq("current_highest_bidder", clubShortName)
-    .gt("current_highest_bid", 0);
-
-  if (error || !data?.length) {
-    return { total: 0, listings: [] };
-  }
-
-  const listings = data.map((row) => ({
+  const players = (playerRes.data || []).map((row) => ({
+    id: row.id,
     player_id: row.player_id,
-    current_highest_bid: Number(row.current_highest_bid) || 0,
+    listing_type: row.listing_type,
+    status: row.status,
+    amount: Number(row.current_highest_bid) || 0,
   }));
-  const total = listings.reduce((sum, row) => sum + row.current_highest_bid, 0);
-  return { total, listings };
+  const managers = (managerRes.data || []).map((row) => ({
+    id: row.id,
+    manager_id: row.manager_id,
+    listing_type: row.listing_type,
+    status: row.status,
+    amount: Number(row.current_highest_bid) || 0,
+  }));
+
+  const total =
+    players.reduce((s, r) => s + r.amount, 0) +
+    managers.reduce((s, r) => s + r.amount, 0);
+
+  return {
+    total,
+    count: players.length + managers.length,
+    players,
+    managers,
+  };
 }
 
 function setPendingForecast(map, lineId, amount, note, byLine) {
@@ -85,10 +108,14 @@ function filterPendingAgainstLedger(map, byLine) {
 /**
  * @param {import("@supabase/supabase-js").SupabaseClient} supabase
  * @param {string} clubShortName
- * @param {{ byLine: Map<string, { amount: number }> }} ctx
- * @returns {Promise<{ pendingByLine: Map<string, { amount: number, note?: string }>, totalPending: number }>}
+ * @param {{ byLine: Map<string, { amount: number }>, winningBidExposure?: { total: number, count: number, players?: any[], managers?: any[] } }} ctx
+ * @returns {Promise<{ pendingByLine: Map<string, { amount: number, note?: string }>, totalPending: number, bidExposure?: object }>}
  */
-export async function buildFinanceProjections(supabase, clubShortName, { byLine }) {
+export async function buildFinanceProjections(
+  supabase,
+  clubShortName,
+  { byLine, winningBidExposure = null }
+) {
   /** @type {Map<string, { amount: number, note?: string }>} */
   const pendingByLine = new Map();
   const clubKey = normalizeClubKey(clubShortName);
@@ -392,18 +419,30 @@ export async function buildFinanceProjections(supabase, clubShortName, { byLine 
     }
   }
 
-  const draftExposure = await loadClubLeadingDraftExposure(supabase, clubShortName);
-  if (draftExposure.total > 0.5) {
-    const count = draftExposure.listings.length;
+  const bidExposure =
+    winningBidExposure ||
+    (await loadClubWinningBidExposure(supabase, clubShortName));
+  if (bidExposure.total > 0.5) {
+    const count = bidExposure.count;
+    const draftCount = (bidExposure.players || []).filter(
+      (r) => String(r.listing_type || "").toLowerCase() === "draft"
+    ).length;
+    const mgrCount = (bidExposure.managers || []).length;
+    const bits = [];
+    if (count - mgrCount - draftCount > 0) {
+      bits.push(`${count - mgrCount - draftCount} market`);
+    }
+    if (draftCount > 0) bits.push(`${draftCount} draft`);
+    if (mgrCount > 0) bits.push(`${mgrCount} manager`);
     setPendingForecast(
       pendingByLine,
       "transfer_purchases",
-      -draftExposure.total,
-      `${count} winning draft auction bid${count === 1 ? "" : "s"} (unsettled — drops if outbid)`,
+      -bidExposure.total,
+      `${count} winning bid${count === 1 ? "" : "s"} (${bits.join(", ") || "transfer"} — unsettled, drops if outbid)`,
       byLine
     );
   }
 
   const result = filterPendingAgainstLedger(pendingByLine, byLine);
-  return { ...result, subsidyPreview };
+  return { ...result, subsidyPreview, bidExposure };
 }

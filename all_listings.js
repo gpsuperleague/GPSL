@@ -159,7 +159,8 @@ function parseMoneyInput(value) {
   await loadShortNameFromSupabase(user.id);
   mountClubBankBalance("clubBankBalance", {
     clubShortName: currentUserShort,
-  }).catch((err) => console.warn("club bank balance:", err));
+    advisory: true,
+  }).catch((err) => console.warn("advisory transfer budget:", err));
   await loadScoutingTargetsForClub();
   await refreshNationFilterButtons();
   restorePersistedListingFilters();
@@ -1694,4 +1695,8 @@ async function placeBid() {
 
   document.getElementById("bid-modal").style.display = "none";
   await loadListings();
+  mountClubBankBalance("clubBankBalance", {
+    clubShortName: currentUserShort,
+    advisory: true,
+  }).catch((err) => console.warn("advisory transfer budget:", err));
 }

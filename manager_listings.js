@@ -6,6 +6,15 @@ import {
   setMoneyInputValue,
   wireMoneyBidInput,
 } from "./money_input.js";
+import { mountClubBankBalance } from "./club_bank_balance_ui.js";
+
+function refreshAdvisoryBudget() {
+  if (!currentClub) return;
+  mountClubBankBalance("clubBankBalance", {
+    clubShortName: currentClub,
+    advisory: true,
+  }).catch((err) => console.warn("advisory transfer budget:", err));
+}
 
 let currentClub = null;
 /** True when this club already has a signed manager (cannot bid on market). */
@@ -181,6 +190,7 @@ async function submitBid() {
   );
   await refreshClubManagerState();
   await loadListings();
+  refreshAdvisoryBudget();
 }
 
 function wireBidModalControls() {
@@ -229,6 +239,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   clubHasManager = club?.manager_id != null;
 
   await refreshClubManagerState();
+  refreshAdvisoryBudget();
 
   wireBidModalControls();
 

@@ -1,11 +1,16 @@
 /**
- * Small “Current Bank Balance” badge for market / draft pages.
- * Uses Club_Finances for owned clubs, or an explicit balance override
- * (e.g. club auction starting budget).
+ * Bank / advisory budget badge for market / draft / transfer pages.
+ * Uses Club_Finances for owned clubs, advisory transfer budget when requested,
+ * or an explicit balance override (e.g. club auction starting budget).
  */
 
 import { supabase } from "./supabase_client.js";
 import { formatMoney, loadClubBalance } from "./competition.js";
+import {
+  advisoryBudgetTitle,
+  computeAdvisoryTransferBudget,
+  renderAdvisoryBudgetBadgeHtml,
+} from "./finance_advisory_budget.js";
 
 const STYLE_ID = "club-bank-balance-style";
 
@@ -55,6 +60,11 @@ export function ensureClubBankBalanceStyles() {
       font-variant-numeric: tabular-nums;
     }
     .club-bank-balance.is-negative .cbb-amount { color: #f88; }
+    .club-bank-balance.is-zero-advisory .cbb-amount { color: #f88; }
+    .club-bank-balance.is-runway-warn {
+      border-color: #664444;
+      background: #221818;
+    }
     .club-bank-balance a {
       color: inherit;
       text-decoration: none;
@@ -63,6 +73,26 @@ export function ensureClubBankBalanceStyles() {
       gap: 8px;
     }
     .club-bank-balance a:hover .cbb-amount { color: #ffcc66; }
+    .club-bank-balance .cbb-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      align-items: flex-start;
+    }
+    .club-bank-balance .cbb-row {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .club-bank-balance .cbb-subline {
+      font-size: 11px;
+      color: #888;
+    }
+    .club-bank-balance .cbb-warn {
+      font-size: 11px;
+      color: #f88;
+      font-weight: bold;
+    }
   `;
   document.head.appendChild(style);
 }
@@ -80,6 +110,13 @@ async function resolveOwnerClubShort() {
   return data?.ShortName ? String(data.ShortName).trim() : null;
 }
 
+function hideBadge(el) {
+  el.hidden = true;
+  el.textContent = "";
+  el.className = "club-bank-balance";
+  el.removeAttribute("title");
+}
+
 /**
  * @param {string|HTMLElement|null} target
  * @param {{
@@ -88,6 +125,7 @@ async function resolveOwnerClubShort() {
  *   label?: string,
  *   href?: string|null,
  *   hideIfUnknown?: boolean,
+ *   advisory?: boolean,
  * }} [opts]
  */
 export async function mountClubBankBalance(target, opts = {}) {
@@ -96,6 +134,10 @@ export async function mountClubBankBalance(target, opts = {}) {
   const el =
     typeof target === "string" ? document.getElementById(target) : target;
   if (!el) return null;
+
+  if (opts.advisory) {
+    return mountAdvisoryTransferBudget(el, opts);
+  }
 
   const label = opts.label || "Current Bank Balance";
   const href = opts.href === undefined ? "finances.html" : opts.href;
@@ -107,8 +149,7 @@ export async function mountClubBankBalance(target, opts = {}) {
     if (!clubShort) clubShort = await resolveOwnerClubShort();
     if (!clubShort) {
       if (opts.hideIfUnknown !== false) {
-        el.hidden = true;
-        el.textContent = "";
+        hideBadge(el);
       } else {
         el.hidden = false;
         el.className = "club-bank-balance";
@@ -122,8 +163,7 @@ export async function mountClubBankBalance(target, opts = {}) {
 
   if (balance == null || !Number.isFinite(Number(balance))) {
     if (opts.hideIfUnknown !== false) {
-      el.hidden = true;
-      el.textContent = "";
+      hideBadge(el);
     }
     return null;
   }
@@ -147,6 +187,58 @@ export async function mountClubBankBalance(target, opts = {}) {
 }
 
 /**
+ * Advisory season transfer budget badge (floored at ₿0 for spend).
+ * @param {string|HTMLElement|null} target
+ * @param {{
+ *   clubShortName?: string|null,
+ *   href?: string|null,
+ *   hideIfUnknown?: boolean,
+ * }} [opts]
+ */
+export async function mountAdvisoryTransferBudget(target, opts = {}) {
+  ensureClubBankBalanceStyles();
+
+  const el =
+    typeof target === "string" ? document.getElementById(target) : target;
+  if (!el) return null;
+
+  let clubShort = opts.clubShortName ?? null;
+  if (!clubShort) clubShort = await resolveOwnerClubShort();
+
+  if (!clubShort) {
+    if (opts.hideIfUnknown !== false) hideBadge(el);
+    return null;
+  }
+
+  let advisory;
+  try {
+    advisory = await computeAdvisoryTransferBudget(supabase, clubShort);
+  } catch (err) {
+    console.warn("advisory transfer budget:", err);
+    if (opts.hideIfUnknown !== false) hideBadge(el);
+    return null;
+  }
+
+  const href = opts.href === undefined ? "finances.html" : opts.href;
+  const zeroSpend = advisory.spendable < 0.5;
+  const classes = [
+    "club-bank-balance",
+    "is-advisory",
+    zeroSpend ? "is-zero-advisory" : "",
+    advisory.runwayNegative ? "is-runway-warn" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  el.hidden = false;
+  el.className = classes;
+  el.title = advisoryBudgetTitle(advisory);
+  el.innerHTML = renderAdvisoryBudgetBadgeHtml(advisory, { href });
+
+  return { clubShortName: clubShort, advisory };
+}
+
+/**
  * Update an existing badge with a known balance (e.g. club auction budget refresh).
  * Pass null/undefined to hide.
  * @param {string|HTMLElement|null} target
@@ -157,10 +249,7 @@ export function setClubBankBalance(target, balance, opts = {}) {
   if (balance == null || !Number.isFinite(Number(balance))) {
     const el =
       typeof target === "string" ? document.getElementById(target) : target;
-    if (el) {
-      el.hidden = true;
-      el.textContent = "";
-    }
+    if (el) hideBadge(el);
     return Promise.resolve(null);
   }
   return mountClubBankBalance(target, {

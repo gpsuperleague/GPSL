@@ -239,8 +239,8 @@
       await buildNav();
       await loadClubsMap();
       await loadBuyerClubShortName(user.id);
-      mountClubBankBalance("clubBankBalance").catch((err) =>
-        console.warn("club bank balance:", err)
+      mountClubBankBalance("clubBankBalance", { advisory: true }).catch((err) =>
+        console.warn("advisory transfer budget:", err)
       );
       wireDraftFavouriteButton();
       await loadPlayerAndBids();
@@ -759,6 +759,10 @@
       document.getElementById("bidStatus").innerHTML =
         'Bid submitted. <a href="draftauction.html" style="color:#ff9900;font-weight:bold;">Return to Draft Auction</a>';
       await loadPlayerAndBids();
+      mountClubBankBalance("clubBankBalance", {
+        clubShortName: buyerShortName,
+        advisory: true,
+      }).catch((err) => console.warn("advisory transfer budget:", err));
     }
   </script>
 </body>

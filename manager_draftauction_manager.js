@@ -392,6 +392,10 @@ function wireBidControls() {
     );
     await refreshBids();
     await refreshLeadPanel();
+    mountClubBankBalance("clubBankBalance", {
+      clubShortName: buyerShortName,
+      advisory: true,
+    }).catch((err) => console.warn("advisory transfer budget:", err));
   });
 }
 
@@ -412,7 +416,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   await loadBuyerClub(user.id);
   mountClubBankBalance("clubBankBalance", {
     clubShortName: buyerShortName,
-  }).catch((err) => console.warn("club bank balance:", err));
+    advisory: true,
+  }).catch((err) => console.warn("advisory transfer budget:", err));
   if (buyerShortName) {
     const vacancy = await getClubManagerVacancy(buyerShortName);
     if (!vacancy.vacant) {
