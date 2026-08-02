@@ -46,6 +46,7 @@ import {
 import { playerNameLinkHtml } from "./player_links.js";
 import { loadCurrentSeasonStart } from "./finance_transfers.js";
 import { formatTimeRemainingHtml, getCountdownParts } from "./countdown_display.js";
+import { mountClubBankBalance } from "./club_bank_balance_ui.js";
 
 /** Current competition season start — scopes Season Signings / Sales / Closed Listings. */
 let currentSeasonStartedAt = null;
@@ -133,6 +134,11 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("pageTitle").textContent = `${fullName} — Transfer Centre`;
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${shortName}.png`;
+
+  mountClubBankBalance("clubBankBalance", {
+    clubShortName: shortName,
+    advisory: true,
+  }).catch((err) => console.warn("advisory transfer budget:", err));
 
   currentSeasonStartedAt = await loadCurrentSeasonStart(supabase);
 
