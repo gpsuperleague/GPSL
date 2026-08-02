@@ -18,7 +18,7 @@ async function loadClubAuctionConfig() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage())) return;
+  if (!(await initAdminPage({ allowMod: true }))) return;
 
   const needsAuctionConfig = !!document.getElementById("clubAuctionRegisterBtn");
   const needsOwnerList =

@@ -50,7 +50,7 @@
   <div class="admin-wrap">
     <h1>International &amp; World Cup</h1>
 
-    <div class="card" id="sb-nation-setup">
+    <div class="card" id="sb-nation-setup" data-admin-only>
       <h2>Setup</h2>
       <p class="note">
         Run these <b>one step at a time</b> (each can take up to ~1–2 min). Do not combine them in one SQL query —
@@ -76,7 +76,7 @@
       <div id="topSeedsPreview"></div>
     </div>
 
-    <div class="card" id="sb-wc-cycle">
+    <div class="card" id="sb-wc-cycle" data-admin-only>
       <h2>World Cup cycle</h2>
       <p class="note">
         Create a cycle, bind the two qualifying seasons and the season whose <b>pre-season</b> hosts the finals,
@@ -210,7 +210,7 @@
       <p>
         <a class="button" href="admin_international_selection_open.html">Open Nation Selection</a>
         <a class="button secondary" href="admin_international_selection_close.html">Close Nation Selection</a>
-        <a class="button secondary" href="admin_international_selection_clear.html">Clear Nation Assignments</a>
+        <a class="button secondary" href="admin_international_selection_clear.html" data-admin-only>Clear Nation Assignments</a>
       </p>
       <div id="selectionLive" class="note" style="color:#ccc;margin-top:12px;"></div>
     </div>

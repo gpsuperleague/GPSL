@@ -177,6 +177,32 @@ export function isGpslAdminUser(user) {
   return GPSL_ADMIN_EMAILS.some((a) => a.toLowerCase() === email);
 }
 
+/** Cached from gpsl_am_mod() for the current session (buildNav / initAdminPage). */
+let isGpslModNav = false;
+
+export function isGpslModUserCached() {
+  return isGpslModNav === true;
+}
+
+/** Refresh mod flag from Supabase (admins are never shown the Mod menu). */
+export async function fetchIsGpslModUser(force = false) {
+  if (!force && isGpslModNav === true) return true;
+  try {
+    const { data, error } = await supabase.rpc("gpsl_am_mod");
+    if (error) {
+      console.warn("gpsl_am_mod:", error.message);
+      isGpslModNav = false;
+      return false;
+    }
+    isGpslModNav = data === true;
+    return isGpslModNav;
+  } catch (err) {
+    console.warn("gpsl_am_mod failed:", err);
+    isGpslModNav = false;
+    return false;
+  }
+}
+
 export function isAdminPagePath(pathNorm) {
   const p = (pathNorm || "").toLowerCase();
   return p === "admin.html" || /^admin[_-]/.test(p);
@@ -201,6 +227,7 @@ let specialAuctionNavVisible = false;
 /** Active GPSL month key for conditional nav (e.g. playoffs). */
 let activeGpslMonthNav = "";
 let isGpslAdminNav = false;
+let isGpslModOnlyNav = false;
 let navClubPlayerListed = false;
 let navClubManagerListed = false;
 let draftRandomLockedMs = null; // frozen count-up offset when secret finish fires
@@ -1837,6 +1864,7 @@ export async function buildNav() {
   try {
   let NAV_SECTIONS;
   let ADMIN_NAV_SECTION;
+  let MOD_NAV_SECTION;
   let isNavItemActive;
   let sectionHasActiveItem;
   let firstActiveNavSectionId;
@@ -1846,6 +1874,7 @@ export async function buildNav() {
     const navMod = await import(`./nav_config.js?v=${GLOBAL_JS_VERSION}`);
     NAV_SECTIONS = navMod.NAV_SECTIONS;
     ADMIN_NAV_SECTION = navMod.ADMIN_NAV_SECTION;
+    MOD_NAV_SECTION = navMod.MOD_NAV_SECTION;
     isNavItemActive = navMod.isNavItemActive;
     sectionHasActiveItem = navMod.sectionHasActiveItem;
     firstActiveNavSectionId = navMod.firstActiveNavSectionId;
@@ -1918,6 +1947,12 @@ export async function buildNav() {
     console.warn("Nav calendar month skipped:", calErr);
   }
   isGpslAdminNav = isGpslAdminUser(user);
+  isGpslModOnlyNav = false;
+  if (!isGpslAdminNav) {
+    isGpslModOnlyNav = await fetchIsGpslModUser(true);
+  } else {
+    isGpslModNav = false;
+  }
 
   let myNation = null;
   try {
@@ -1962,8 +1997,10 @@ export async function buildNav() {
     return;
   }
 
-  if (isGpslAdminUser(user) && ADMIN_NAV_SECTION?.items?.length) {
+  if (isGpslAdminNav && ADMIN_NAV_SECTION?.items?.length) {
     navSections.push(ADMIN_NAV_SECTION);
+  } else if (isGpslModOnlyNav && MOD_NAV_SECTION?.items?.length) {
+    navSections.push(MOD_NAV_SECTION);
   }
 
   let html = `<div class="gpsl-nav-bar">`;
@@ -2085,7 +2122,7 @@ export async function buildNav() {
       isTransfersSection ? navGroupAuctionBadgeHtml(anyAuctionActive) : ""
     )}</button>`;
     const dropdownClass =
-      section.id === "admin" || section.id === "transfers"
+      section.id === "admin" || section.id === "mod" || section.id === "transfers"
         ? "nav-dropdown nav-dropdown-scrollable"
         : "nav-dropdown";
     html += `<div class="${dropdownClass}" role="menu">`;

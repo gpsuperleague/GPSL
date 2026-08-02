@@ -337,7 +337,7 @@ async function confirmSetTag(discordId) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage())) return;
+  if (!(await initAdminPage({ allowMod: true }))) return;
 
   await loadClubAuctionConfig();
 

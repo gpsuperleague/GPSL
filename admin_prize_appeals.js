@@ -5,7 +5,7 @@ primeAdminPageChrome();
 let filterStatus = "pending";
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage())) return;
+  if (!(await initAdminPage({ allowMod: true }))) return;
   document.getElementById("filterPendingBtn").onclick = () => {
     filterStatus = "pending";
     loadAppeals();

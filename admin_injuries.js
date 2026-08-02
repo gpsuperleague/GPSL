@@ -261,7 +261,7 @@ async function seedDiscipline(force = false) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  await initAdminPage();
+  await initAdminPage({ allowMod: true });
   await loadClubsMap();
   await loadCurrentSeasonId();
   await loadSettings();

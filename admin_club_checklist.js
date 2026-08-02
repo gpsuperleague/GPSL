@@ -70,7 +70,7 @@ const ISSUE_META = {
 };
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage())) return;
+  if (!(await initAdminPage({ allowMod: true }))) return;
 
   document.getElementById("reloadBtn")?.addEventListener("click", () => loadTable());
   document.getElementById("notifyIssuesBtn")?.addEventListener("click", () => notifyOwnersOfIssues());

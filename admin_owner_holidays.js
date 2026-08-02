@@ -203,7 +203,7 @@ function wireBook() {
 }
 
 async function main() {
-  if (!(await initAdminPage())) return;
+  if (!(await initAdminPage({ allowMod: true }))) return;
   await loadClubs();
   document.getElementById("holidayClubFilter")?.addEventListener("change", () => {
     void refreshHolidays();

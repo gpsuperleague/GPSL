@@ -1,4 +1,5 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+import { isGpslAdminUser } from "./global.js";
 import {
   loadOwnerDraftOrder,
   loadInternationalNations,
@@ -367,22 +368,27 @@ async function ensureSeasonsThrough(through, { quiet = false } = {}) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage())) return;
+  const user = await initAdminPage({ allowMod: true });
+  if (!user) return;
 
-  await loadSeasonOptions();
-  // First WC needs Season 5 as finals pre-season host — create placeholders if missing
-  const ensureEl = document.getElementById("wcEnsureThrough");
-  const through = Math.max(5, Number(ensureEl?.value || 5));
-  if (ensureEl) ensureEl.value = String(through);
-  const ensured = await ensureSeasonsThrough(through, { quiet: true });
-  if (!ensured) {
-    setStatus(
-      "wcStatus",
-      "Season 5 not available yet — click Create missing seasons (through #5), or run international_wc_ensure_future_seasons.sql",
-      false
-    );
+  const isAdmin = isGpslAdminUser(user);
+
+  if (isAdmin) {
+    await loadSeasonOptions();
+    // First WC needs Season 5 as finals pre-season host — create placeholders if missing
+    const ensureEl = document.getElementById("wcEnsureThrough");
+    const through = Math.max(5, Number(ensureEl?.value || 5));
+    if (ensureEl) ensureEl.value = String(through);
+    const ensured = await ensureSeasonsThrough(through, { quiet: true });
+    if (!ensured) {
+      setStatus(
+        "wcStatus",
+        "Season 5 not available yet — click Create missing seasons (through #5), or run international_wc_ensure_future_seasons.sql",
+        false
+      );
+    }
+    await refreshWcCycleLive();
   }
-  await refreshWcCycleLive();
   await refreshSelectionLive();
   scrollToAdminHash();
   window.addEventListener("hashchange", scrollToAdminHash);

@@ -191,6 +191,7 @@ function wireButtons() {
 initAdminPage({
   page: "admin_discord_transfer_gossip",
   title: "Transfer Gossip",
+  allowMod: true,
 }).then(async () => {
   wireButtons();
   await loadAuto();

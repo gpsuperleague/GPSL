@@ -305,6 +305,7 @@ function wireButtons() {
 initAdminPage({
   page: "admin_discord_friendlies",
   title: "Discord Friendlies",
+  allowMod: true,
 }).then(async () => {
   wireButtons();
   await loadAutoSettings();

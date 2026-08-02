@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Manage mods — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    .mod-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .mod-table th, .mod-table td { border-bottom:1px solid #333; padding:8px 6px; text-align:left; }
+    .mod-table th { color:#aaa; font-weight:600; }
+    button.button.secondary { background:#444; color:#ddd; }
+    button.button.secondary:hover { background:#555; }
+    button.button.danger { background:#722; }
+    button.button.danger:hover { background:#933; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Manage mods</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <h2>Grant mod access</h2>
+        <p class="note">
+          Mods get a <b>Mod</b> menu with community ops (waiting list, Discord feeds, fines,
+          internationals selection, cancel open transfers, etc.). They do <b>not</b> get season
+          lifecycle, fixtures, money, draft, or testing tools.
+          Requires <code>supabase/sql/patches/gpsl_mods.sql</code>.
+        </p>
+        <div class="row">
+          <div>
+            <label for="modEmail">Owner email</label>
+            <input id="modEmail" type="email" placeholder="owner@example.com" autocomplete="off">
+          </div>
+          <div>
+            <label for="modNote">Note (optional)</label>
+            <input id="modNote" type="text" placeholder="e.g. community lead" maxlength="120" autocomplete="off">
+          </div>
+        </div>
+        <div class="row" style="margin-top:12px;">
+          <button type="button" class="button" id="modGrantBtn">Grant mod</button>
+          <button type="button" class="button secondary" id="modRefreshBtn">Refresh list</button>
+        </div>
+        <div id="modStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Current mods</h2>
+        <div id="modListWrap"><p class="note">Loading…</p></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_mods.js"></script>
+</body>
+</html>

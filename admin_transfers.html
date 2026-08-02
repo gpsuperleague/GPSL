@@ -14,7 +14,7 @@
   <h1 class="admin-title">Transfer window &amp; engine</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
-      <div class="card" id="sb-draft-auctions">
+      <div class="card" id="sb-draft-auctions" data-admin-only>
         <h2>Draft auctions &amp; schedule</h2>
         <p class="note">
           Open/close the owner transfer market on
@@ -91,7 +91,7 @@
         <div id="cancelPreviewOut" class="status-line" style="white-space:pre-wrap;"></div>
         <div id="cancelStatus" class="status-line"></div>
       </div>
-      <div class="card" id="sb-club-auction">
+      <div class="card" id="sb-club-auction" data-admin-only>
         <h2>Club auction</h2>
         <p class="note">
           Turn <b>Club auction</b> on above and <b>Save transfer settings</b> to share the draft schedule
@@ -102,7 +102,7 @@
         <button class="button" id="settleClubAuctionsBtn" style="background:#335588;margin-left:8px;">Settle club auctions now</button>
         <div id="clubAuctionStatus" class="status-line"></div>
       </div>
-      <div class="card">
+      <div class="card" data-admin-only>
         <h2>Run transfer engine</h2>
         <p class="note">Processes stuck listings and draft threads. Run <code>admin_transferengine_run.sql</code> once if the RPC is missing.</p>
         <button class="button" id="runTransferEngineBtn" style="background:#226622;">Run transfer engine</button>

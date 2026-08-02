@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { isGpslAdminOrMod } from "../_shared/gpsl_staff.ts";
 
 const GPSL_ADMIN_EMAIL = "rotavator66@outlook.com";
 const DISCORD_API = "https://discord.com/api/v10";
@@ -134,8 +135,8 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Unauthorized" }, 401);
     }
 
-    if ((adminUser.email || "").toLowerCase() !== GPSL_ADMIN_EMAIL) {
-      return jsonResponse({ error: "Admin only" }, 403);
+    if (!(await isGpslAdminOrMod(userClient, adminUser, GPSL_ADMIN_EMAIL))) {
+      return jsonResponse({ error: "Admin or mod only" }, 403);
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);

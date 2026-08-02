@@ -187,7 +187,7 @@ async function republishSport() {
 }
 
 whenDomReady(async () => {
-  if (!(await initAdminPage())) return;
+  if (!(await initAdminPage({ allowMod: true }))) return;
 
   document.getElementById("sportPublishBtn").onclick = republishSport;
   document.getElementById("sportRefreshBtn").onclick = loadEditions;

@@ -398,6 +398,9 @@ Deno.serve(async (req) => {
       } = await userClient.auth.getUser();
       if (user && (user.email || "").toLowerCase() === adminEmail) {
         authorized = true;
+      } else if (user) {
+        const { data: staffFlag } = await userClient.rpc("is_gpsl_admin_or_mod");
+        if (staffFlag === true) authorized = true;
       }
     }
 

@@ -11,6 +11,9 @@ const testingNavMod = await import(
 const adminMainNavMod = await import(
   `./admin_main_nav.js?v=${NAV_CONFIG_VERSION}`
 );
+const modNavMod = await import(`./mod_nav.js?v=${NAV_CONFIG_VERSION}`);
+
+export const MOD_NAV_SECTION = modNavMod.MOD_NAV_SECTION;
 
 const { testingAdminNavHasActive, renderTestingAdminNavHtml } = testingNavMod;
 const {

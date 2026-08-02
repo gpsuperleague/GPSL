@@ -14,7 +14,7 @@ let tariffs = [];
 let currentSeasonId = null;
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage())) return;
+  if (!(await initAdminPage({ allowMod: true }))) return;
 
   const season = await loadCurrentSeason(supabase);
   currentSeasonId = season?.id ?? null;

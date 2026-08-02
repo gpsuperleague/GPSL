@@ -144,8 +144,12 @@ Deno.serve(async (req) => {
         data: { user },
       } = await userClient.auth.getUser();
       if (user) {
-        const { data: adminFlag } = await userClient.rpc("is_gpsl_admin");
-        if (adminFlag === true) allow = true;
+        const { data: staffFlag } = await userClient.rpc("is_gpsl_admin_or_mod");
+        if (staffFlag === true) allow = true;
+        if (!allow) {
+          const { data: adminFlag } = await userClient.rpc("is_gpsl_admin");
+          if (adminFlag === true) allow = true;
+        }
         if (
           !allow &&
           (user.email || "").toLowerCase() === GPSL_ADMIN_EMAIL

@@ -8,7 +8,7 @@ import {
 primeAdminPageChrome();
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage())) return;
+  if (!(await initAdminPage({ allowMod: true }))) return;
   await loadSettings();
   document.getElementById("saveSettingsBtn").onclick = saveSettings;
   document.getElementById("resetDraftBtn").onclick = resetDraftSchedule;

@@ -3,7 +3,7 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 primeAdminPageChrome();
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if (!(await initAdminPage())) return;
+  if (!(await initAdminPage({ allowMod: true }))) return;
 
   document.getElementById("natterAdminRefresh")?.addEventListener("click", () => void loadPosts());
   document.getElementById("natterAdminMonth")?.addEventListener("change", () => void loadPosts());

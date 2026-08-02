@@ -663,7 +663,7 @@ document.getElementById("autoTestBtn")?.addEventListener("click", () => {
   testAutoFlush().catch((e) => setStatus("autoStatus", e.message || String(e), false));
 });
 
-initAdminPage()
+initAdminPage({ allowMod: true })
   .then(async (user) => {
     if (!user) return;
     await loadAutoSettings();
