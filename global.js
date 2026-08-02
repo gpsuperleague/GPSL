@@ -1233,10 +1233,15 @@ function ensureNavStyles() {
 #nav .gpsl-nav-actions-primary{
   display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;
   flex:0 0 auto!important;width:auto!important;margin-left:auto!important;
+  position:relative;z-index:2;background:#1a1a1a;
 }
 #nav .nav-dropdown{position:absolute!important;top:100%!important;left:0!important;z-index:1200!important;}
 #nav .nav-group.open .nav-dropdown{display:flex!important;flex-direction:column!important;}
-@media (max-width:900px){
+@media (max-width:1400px){
+  #nav .nav-natter-label,#nav .nav-season-calendar-label,
+  #nav .nav-dashboard-home-label,#nav .nav-gpsl-sport-label{display:none!important;}
+}
+@media (max-width:1280px){
   #nav .gpsl-nav-row-menus{flex-wrap:wrap!important;overflow:visible!important;}
   #nav .gpsl-nav-groups{flex:1 1 100%!important;width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:visible!important;}
   #nav .gpsl-nav-groups:has(.nav-group.open){overflow:visible!important;}

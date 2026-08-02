@@ -7,7 +7,7 @@
    ============================================================ */
 
 @import url("mobile.css?v=20260728-progress-sticky");
-@import url("nav_force_horizontal.css?v=20260728-nav-listing-path");
+@import url("nav_force_horizontal.css?v=20260802-nav-overlap-fix");
 
 :root {
   --gpsl-accent: #ff9900;
@@ -2088,11 +2088,22 @@ a.ssc-chip:hover {
   border-radius: 6px;
 }
 
-/* Narrow screens: menus full top row (scroll); icons on second row. Desktop >900px unchanged. */
-@media (max-width: 900px) {
+/* Mid widths: icon-only shortcuts before the full wrap */
+@media (max-width: 1400px) {
   .nav-natter-label,
   .nav-season-calendar-label,
-  .nav-dashboard-home-label {
+  .nav-dashboard-home-label,
+  .nav-gpsl-sport-label {
+    display: none !important;
+  }
+}
+
+/* Narrow / mid screens: menus top row (scroll); icons on second row — no overlap. */
+@media (max-width: 1280px) {
+  .nav-natter-label,
+  .nav-season-calendar-label,
+  .nav-dashboard-home-label,
+  .nav-gpsl-sport-label {
     display: none !important;
   }
 
@@ -2146,6 +2157,9 @@ a.ssc-chip:hover {
     border-left: none !important;
     border-top: 1px solid #333;
     box-sizing: border-box;
+    position: relative;
+    z-index: 2;
+    background: #1a1a1a;
   }
 
   .gpsl-nav-actions-secondary .gpsl-nav-month {

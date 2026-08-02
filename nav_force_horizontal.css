@@ -1,5 +1,10 @@
-/* Force top menus horizontal; on narrow screens icons sit on a second row.
-   IMPORTANT: do not put overflow-x:auto on menu parents on desktop — it clips dropdowns. */
+/* Force top menus horizontal; when space is tight, icons sit on a second row.
+   IMPORTANT: do not put overflow-x:auto on menu parents on desktop — it clips dropdowns.
+
+   Breakpoints:
+   - ≤1400px: hide Calendar / Natter / Dashboard text labels (icons only)
+   - ≤1280px: wrap icon cluster onto its own row so it cannot overlap Admin
+*/
 
 #nav .gpsl-nav-row-menus {
   display: flex !important;
@@ -41,6 +46,9 @@
   flex: 0 0 auto !important;
   width: auto !important;
   margin-left: auto !important;
+  position: relative;
+  z-index: 2;
+  background: #1a1a1a;
 }
 
 #nav .nav-dropdown {
@@ -55,8 +63,18 @@
   flex-direction: column !important;
 }
 
-/* Phones / tablets: menus get full top row; icons move to row below */
-@media (max-width: 900px) {
+/* Mid widths: icon-only shortcuts free space before the full wrap */
+@media (max-width: 1400px) {
+  #nav .nav-natter-label,
+  #nav .nav-season-calendar-label,
+  #nav .nav-dashboard-home-label,
+  #nav .nav-gpsl-sport-label {
+    display: none !important;
+  }
+}
+
+/* Menus keep the top row (scroll if needed); icons move below — no overlap */
+@media (max-width: 1280px) {
   #nav .gpsl-nav-row-menus {
     flex-wrap: wrap !important;
     overflow: visible !important;

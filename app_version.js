@@ -1,2 +1,2 @@
-/** Single cache-bust string — bump when global.js, nav_config, or admin_*_nav.js changes. */
-export const APP_VERSION = "20260728-nav-dropdown-fix";
+/** Bump when shipping cache-sensitive global/nav assets. */
+export const APP_VERSION = "20260802-nav-overlap-fix";
