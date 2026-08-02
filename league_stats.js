@@ -512,14 +512,43 @@ function renderWorldCup() {
   scheduleLeaderboardSync();
 }
 
+const ROLLING_SEASON_LIMIT = 5;
+
+const PERIOD_TEAM_SLOT_ORDER = [
+  "GK",
+  "LB",
+  "CB1",
+  "CB2",
+  "RB",
+  "LMF",
+  "CMF",
+  "RMF",
+  "LWF",
+  "CF",
+  "RWF",
+];
+
 function formatGpslMonthLabel(month) {
   if (!month) return "—";
+  const key = String(month).toLowerCase();
+  if (GPSL_MONTH_LABELS[key]) return GPSL_MONTH_LABELS[key];
   return String(month)
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function buildTotmStatsTable(rows) {
+function sortGpslMonths(months) {
+  return [...months].sort((a, b) => {
+    const ai = gpslMonthSortIndex(a);
+    const bi = gpslMonthSortIndex(b);
+    if (ai == null && bi == null) return String(a).localeCompare(String(b));
+    if (ai == null) return 1;
+    if (bi == null) return -1;
+    return ai - bi;
+  });
+}
+
+function buildPeriodTeamStatsTable(rows) {
   return `
     <table class="lb lb-totm">
       <thead>
@@ -561,97 +590,236 @@ function buildTotmStatsTable(rows) {
 }
 
 /** @type {{ id: number, label: string }[]} */
-let totmSeasons = [];
+let rollingSeasons = [];
 /** @type {number|null} */
 let totmSelectedSeasonId = null;
+/** @type {string|null} */
+let totmSelectedMonth = null;
+/** @type {string[]} */
+let totmMonths = [];
+/** @type {number|null} */
+let totySelectedSeasonId = null;
 
-async function loadTotmSeasonOptions(currentSeason) {
+async function loadRollingSeasonOptions(currentSeason) {
   const byId = new Map();
-  if (currentSeason?.id != null) {
-    byId.set(Number(currentSeason.id), {
-      id: Number(currentSeason.id),
-      label: currentSeason.label || `Season ${currentSeason.id}`,
-    });
-  }
 
   const { data, error } = await supabase
-    .from("competition_period_team")
-    .select("season_id, season_label")
-    .eq("period_kind", "month")
-    .order("season_id", { ascending: false });
+    .from("competition_seasons")
+    .select("id, label, is_current")
+    .order("id", { ascending: false })
+    .limit(ROLLING_SEASON_LIMIT);
 
   if (error) {
-    console.warn("competition_period_team seasons:", error);
+    console.warn("competition_seasons (award history):", error);
   } else {
     for (const row of data || []) {
-      const id = Number(row.season_id);
-      if (!Number.isFinite(id) || byId.has(id)) continue;
+      const id = Number(row.id);
+      if (!Number.isFinite(id)) continue;
       byId.set(id, {
         id,
-        label: row.season_label || `Season ${id}`,
+        label: row.label || `Season ${id}`,
       });
     }
   }
 
-  totmSeasons = [...byId.values()].sort((a, b) => b.id - a.id);
-  if (
-    totmSelectedSeasonId == null ||
-    !totmSeasons.some((s) => s.id === totmSelectedSeasonId)
-  ) {
-    totmSelectedSeasonId =
-      currentSeason?.id != null
-        ? Number(currentSeason.id)
-        : totmSeasons[0]?.id ?? null;
+  if (currentSeason?.id != null) {
+    const id = Number(currentSeason.id);
+    if (Number.isFinite(id) && !byId.has(id)) {
+      byId.set(id, {
+        id,
+        label: currentSeason.label || `Season ${id}`,
+      });
+    }
   }
+
+  if (!byId.size) {
+    const { data: awardRows, error: awardErr } = await supabase
+      .from("competition_period_team")
+      .select("season_id, season_label")
+      .order("season_id", { ascending: false });
+    if (awardErr) {
+      console.warn("competition_period_team seasons:", awardErr);
+    } else {
+      for (const row of awardRows || []) {
+        const id = Number(row.season_id);
+        if (!Number.isFinite(id) || byId.has(id)) continue;
+        byId.set(id, {
+          id,
+          label: row.season_label || `Season ${id}`,
+        });
+        if (byId.size >= ROLLING_SEASON_LIMIT) break;
+      }
+    }
+  }
+
+  rollingSeasons = [...byId.values()]
+    .sort((a, b) => b.id - a.id)
+    .slice(0, ROLLING_SEASON_LIMIT);
+
+  const ensureSelected = (selectedId) => {
+    if (
+      selectedId != null &&
+      rollingSeasons.some((s) => s.id === selectedId)
+    ) {
+      return selectedId;
+    }
+    if (
+      currentSeason?.id != null &&
+      rollingSeasons.some((s) => s.id === Number(currentSeason.id))
+    ) {
+      return Number(currentSeason.id);
+    }
+    return rollingSeasons[0]?.id ?? null;
+  };
+
+  totmSelectedSeasonId = ensureSelected(totmSelectedSeasonId);
+  totySelectedSeasonId = ensureSelected(totySelectedSeasonId);
 }
 
-function renderTotmSeasonTabs() {
-  const root = document.getElementById("totmSeasonTabs");
+function renderAwardSeasonTabs({
+  rootId,
+  selectedSeasonId,
+  onSelect,
+  ariaLabel,
+}) {
+  const root = document.getElementById(rootId);
   if (!root) return;
 
-  if (!totmSeasons.length) {
+  if (!rollingSeasons.length) {
     root.innerHTML = "";
     return;
   }
 
-  root.innerHTML = totmSeasons
+  root.innerHTML = rollingSeasons
     .map(
       (s) => `
       <button type="button"
-        class="totm-season-tab${s.id === totmSelectedSeasonId ? " active" : ""}"
+        class="award-season-tab${s.id === selectedSeasonId ? " active" : ""}"
         data-season-id="${s.id}"
         role="tab"
-        aria-selected="${s.id === totmSelectedSeasonId ? "true" : "false"}">
+        aria-label="${ariaLabel || "Season"}"
+        aria-selected="${s.id === selectedSeasonId ? "true" : "false"}">
         ${s.label}
       </button>`
     )
     .join("");
 
-  root.querySelectorAll(".totm-season-tab").forEach((btn) => {
+  root.querySelectorAll(".award-season-tab").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = Number(btn.dataset.seasonId);
-      if (!Number.isFinite(id) || id === totmSelectedSeasonId) return;
-      totmSelectedSeasonId = id;
-      renderTotmSeasonTabs();
+      if (!Number.isFinite(id) || id === selectedSeasonId) return;
+      onSelect(id);
+    });
+  });
+}
+
+async function loadTotmMonthsForSeason(seasonId) {
+  if (seasonId == null) {
+    totmMonths = [];
+    totmSelectedMonth = null;
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("competition_period_team")
+    .select("gpsl_month")
+    .eq("period_kind", "month")
+    .eq("season_id", seasonId);
+
+  if (error) {
+    console.warn("TOTM months:", error);
+    totmMonths = [];
+    totmSelectedMonth = null;
+    return;
+  }
+
+  const unique = [
+    ...new Set(
+      (data || [])
+        .map((r) => String(r.gpsl_month || "").toLowerCase())
+        .filter(Boolean)
+    ),
+  ];
+  totmMonths = sortGpslMonths(unique);
+
+  if (!totmMonths.length) {
+    totmSelectedMonth = null;
+    return;
+  }
+
+  if (!totmMonths.includes(String(totmSelectedMonth || "").toLowerCase())) {
+    totmSelectedMonth = totmMonths[totmMonths.length - 1];
+  } else {
+    totmSelectedMonth = String(totmSelectedMonth).toLowerCase();
+  }
+}
+
+function renderTotmMonthTabs() {
+  const root = document.getElementById("totmMonthTabs");
+  if (!root) return;
+
+  if (!totmMonths.length) {
+    root.innerHTML =
+      '<span class="meta" style="font-size:12px;">No Team of the Month awards for this season yet.</span>';
+    return;
+  }
+
+  root.innerHTML = totmMonths
+    .map(
+      (month) => `
+      <button type="button"
+        class="award-month-tab${month === totmSelectedMonth ? " active" : ""}"
+        data-month="${month}"
+        role="tab"
+        aria-selected="${month === totmSelectedMonth ? "true" : "false"}">
+        ${formatGpslMonthLabel(month)}
+      </button>`
+    )
+    .join("");
+
+  root.querySelectorAll(".award-month-tab").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const month = String(btn.dataset.month || "").toLowerCase();
+      if (!month || month === totmSelectedMonth) return;
+      totmSelectedMonth = month;
+      renderTotmMonthTabs();
       void renderTeamOfMonth();
     });
   });
 }
 
-async function renderTeamOfMonthPanel(panelId, divisionScope, emptyLabel) {
+async function renderPeriodTeamPanel({
+  panelId,
+  periodKind,
+  divisionScope,
+  seasonId,
+  gpslMonth = null,
+  emptyLabel,
+  metaTitle = null,
+}) {
   const el = document.getElementById(panelId);
   if (!el) return;
+
+  if (seasonId == null) {
+    el.innerHTML = `<p class="empty">${emptyLabel}</p>`;
+    return;
+  }
 
   let q = supabase
     .from("competition_period_team")
     .select("id, season_id, season_label, gpsl_month, formation_id, computed_at")
-    .eq("period_kind", "month")
+    .eq("period_kind", periodKind)
     .eq("division_scope", divisionScope)
+    .eq("season_id", seasonId)
     .order("id", { ascending: false })
     .limit(1);
 
-  if (totmSelectedSeasonId != null) {
-    q = q.eq("season_id", totmSelectedSeasonId);
+  if (periodKind === "month") {
+    if (!gpslMonth) {
+      el.innerHTML = `<p class="empty">${emptyLabel}</p>`;
+      return;
+    }
+    q = q.eq("gpsl_month", gpslMonth);
   }
 
   const { data: team, error: teamErr } = await q.maybeSingle();
@@ -682,26 +850,21 @@ async function renderTeamOfMonthPanel(panelId, divisionScope, emptyLabel) {
     return;
   }
 
-  const slotOrder = [
-    "GK",
-    "LB",
-    "CB1",
-    "CB2",
-    "RB",
-    "LMF",
-    "CMF",
-    "RMF",
-    "LWF",
-    "CF",
-    "RWF",
-  ];
   const sorted = [...rows].sort(
-    (a, b) => slotOrder.indexOf(a.pitch_slot) - slotOrder.indexOf(b.pitch_slot)
+    (a, b) =>
+      PERIOD_TEAM_SLOT_ORDER.indexOf(a.pitch_slot) -
+      PERIOD_TEAM_SLOT_ORDER.indexOf(b.pitch_slot)
   );
+
+  const title =
+    metaTitle ||
+    (team.gpsl_month
+      ? formatGpslMonthLabel(team.gpsl_month)
+      : "Team of the Year");
 
   const metaHtml = `
     <p class="meta" style="margin:0 0 4px;text-align:center;">
-      <b>${formatGpslMonthLabel(team.gpsl_month)}</b> · ${team.season_label}
+      <b>${title}</b> · ${team.season_label}
     </p>`;
 
   el.innerHTML = renderFormationPitchHtml({
@@ -709,25 +872,87 @@ async function renderTeamOfMonthPanel(panelId, divisionScope, emptyLabel) {
     members: sorted,
     metaHtml,
     highlightClub: myClubShort,
-    tableHtml: buildTotmStatsTable(sorted),
+    tableHtml: buildPeriodTeamStatsTable(sorted),
   });
+}
+
+async function onTotmSeasonSelect(id) {
+  if (!Number.isFinite(id) || id === totmSelectedSeasonId) return;
+  totmSelectedSeasonId = id;
+  totmSelectedMonth = null;
+  await refreshTotmSelectorsAndPanels();
+}
+
+async function refreshTotmSelectorsAndPanels() {
+  renderAwardSeasonTabs({
+    rootId: "totmSeasonTabs",
+    selectedSeasonId: totmSelectedSeasonId,
+    ariaLabel: "TOTM season",
+    onSelect: (id) => {
+      void onTotmSeasonSelect(id);
+    },
+  });
+
+  await loadTotmMonthsForSeason(totmSelectedSeasonId);
+  renderTotmMonthTabs();
+  await renderTeamOfMonth();
 }
 
 async function renderTeamOfMonth() {
   const seasonLabel =
-    totmSeasons.find((s) => s.id === totmSelectedSeasonId)?.label || "this season";
+    rollingSeasons.find((s) => s.id === totmSelectedSeasonId)?.label ||
+    "this season";
+  const monthLabel = totmSelectedMonth
+    ? formatGpslMonthLabel(totmSelectedMonth)
+    : null;
+
+  const emptyBase = monthLabel
+    ? `${monthLabel} · ${seasonLabel}`
+    : seasonLabel;
+
   await Promise.all([
-    renderTeamOfMonthPanel(
-      "totmSuperPanel",
-      "superleague",
-      `No Super League Team of the Month for ${seasonLabel} yet — awarded when a GPSL month locks after confirmed league games.`
-    ),
-    renderTeamOfMonthPanel(
-      "totmChampionshipPanel",
-      "championship",
-      `No Championship Team of the Month for ${seasonLabel} yet — awarded when a GPSL month locks after confirmed league games.`
-    ),
+    renderPeriodTeamPanel({
+      panelId: "totmSuperPanel",
+      periodKind: "month",
+      divisionScope: "superleague",
+      seasonId: totmSelectedSeasonId,
+      gpslMonth: totmSelectedMonth,
+      emptyLabel: `No Super League Team of the Month for ${emptyBase} yet — awarded when a GPSL month locks after confirmed league games.`,
+    }),
+    renderPeriodTeamPanel({
+      panelId: "totmChampionshipPanel",
+      periodKind: "month",
+      divisionScope: "championship",
+      seasonId: totmSelectedSeasonId,
+      gpslMonth: totmSelectedMonth,
+      emptyLabel: `No Championship Team of the Month for ${emptyBase} yet — awarded when a GPSL month locks after confirmed league games.`,
+    }),
   ]);
+}
+
+async function renderTeamOfYear() {
+  const seasonLabel =
+    rollingSeasons.find((s) => s.id === totySelectedSeasonId)?.label ||
+    "this season";
+
+  renderAwardSeasonTabs({
+    rootId: "totySeasonTabs",
+    selectedSeasonId: totySelectedSeasonId,
+    ariaLabel: "Team of the Year season",
+    onSelect: (id) => {
+      totySelectedSeasonId = id;
+      void renderTeamOfYear();
+    },
+  });
+
+  await renderPeriodTeamPanel({
+    panelId: "totySuperPanel",
+    periodKind: "season",
+    divisionScope: "superleague",
+    seasonId: totySelectedSeasonId,
+    metaTitle: "Team of the Year",
+    emptyLabel: `No Super League Team of the Year for ${seasonLabel} yet — awarded when the season closes.`,
+  });
 }
 
 function setActiveTab(tab) {
@@ -743,7 +968,8 @@ function setActiveTab(tab) {
 
   if (tab === "league") {
     renderLeague();
-    renderTeamOfMonth();
+    void refreshTotmSelectorsAndPanels();
+    void renderTeamOfYear();
   } else if (tab === "cups") renderCups();
   else renderWorldCup();
 }
@@ -785,8 +1011,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
   meta.textContent = `${season.label || "Season"} — league, cup, and international leaderboards`;
 
-  await loadTotmSeasonOptions(season);
-  renderTotmSeasonTabs();
+  await loadRollingSeasonOptions(season);
 
   [leagueRows, cupRows, internationalRows] = await Promise.all([
     loadPlayerSeasonStats(supabase),
