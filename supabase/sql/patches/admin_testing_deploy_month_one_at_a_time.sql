@@ -159,16 +159,9 @@ BEGIN
     END;
   END LOOP;
 
-  -- One clinch scan for the whole batch (not per fixture)
+  -- Do NOT clinch every batch — one league fixture + full clinch still times out.
+  -- Clinch once when the month has no scheduled fixtures left (with discipline).
   PERFORM set_config('gpsl.skip_clinch_scan', 'off', true);
-  IF v_league_deployed > 0
-     AND to_regprocedure('public.competition_process_league_clinches(bigint)') IS NOT NULL THEN
-    BEGIN
-      v_clinches := public.competition_process_league_clinches(v_season_id);
-    EXCEPTION WHEN OTHERS THEN
-      v_clinches := jsonb_build_object('ok', false, 'error', SQLERRM);
-    END;
-  END IF;
 
   IF v_last_fixture_id IS NOT NULL THEN
     SELECT EXISTS (
@@ -194,16 +187,25 @@ BEGIN
 
   v_remaining := v_scheduled_left;
 
-  IF coalesce(v_scheduled_left, 0) = 0
-     AND to_regprocedure('public.admin_testing_seed_month_discipline(bigint,text,int,int)') IS NOT NULL THEN
-    BEGIN
-      v_discipline := public.admin_testing_seed_month_discipline(
-        v_season_id, v_month, 15, 1
-      );
-    EXCEPTION
-      WHEN OTHERS THEN
-        v_discipline := jsonb_build_object('ok', false, 'error', SQLERRM);
-    END;
+  IF coalesce(v_scheduled_left, 0) = 0 THEN
+    -- Clinch is too heavy to run inside this RPC (can still timeout the last fixture).
+    -- Use Admin → Discord News → Scan league clinches afterwards.
+    v_clinches := jsonb_build_object(
+      'ok', true,
+      'skipped', true,
+      'reason', 'run_admin_scan_league_clinches'
+    );
+
+    IF to_regprocedure('public.admin_testing_seed_month_discipline(bigint,text,int,int)') IS NOT NULL THEN
+      BEGIN
+        v_discipline := public.admin_testing_seed_month_discipline(
+          v_season_id, v_month, 15, 1
+        );
+      EXCEPTION
+        WHEN OTHERS THEN
+          v_discipline := jsonb_build_object('ok', false, 'error', SQLERRM);
+      END;
+    END IF;
   END IF;
 
   SELECT coalesce(jsonb_object_agg(err, cnt), '{}'::jsonb)
