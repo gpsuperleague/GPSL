@@ -106,11 +106,11 @@
       <div class="card" style="margin-top:16px;">
         <h2>Retry month-lock jobs</h2>
         <p class="note" style="margin-top:0;">
-          If End Month locked the calendar but jobs timed out (common for May), retry here.
-          Stages: TOTM → Sport → TV → tables → clinches → fines.
-          <b>Playoffs</b> only when the locked month is <b>May</b> (brackets + Discord).
-          Run <code>month_lock_playoffs_may_only.sql</code> (then optionally
-          <code>competition_admin_month_lock_jobs_staged.sql</code>) so non-May locks cannot generate playoffs.
+          If End Month locked the calendar but jobs timed out, retry here.
+          Stages: TOTM → Sport → TV → tables → stadium → MotM → clinches → fines
+          (playoffs only when the locked month is <b>May</b>).
+          If <b>tables</b> keeps timing out, run
+          <code>competition_admin_month_lock_tables_split.sql</code> first, hard-refresh, then retry.
         </p>
         <div class="form-row">
           <label>
@@ -162,6 +162,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_end_month.js?v=20260723-playoffs-may-only"></script>
+  <script type="module" src="admin_test_end_month.js?v=20260803-tables-split"></script>
 </body>
 </html>

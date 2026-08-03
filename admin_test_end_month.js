@@ -321,7 +321,7 @@ async function endGpslMonthEarly() {
       setStatus(
         "endMonthStatus",
         `✅ ${data.gpsl_month_label} locked, but jobs failed: ${jobRun.error}. ` +
-          `Run competition_admin_month_lock_jobs_staged.sql then use “Retry month-lock jobs”.`,
+          `Run competition_admin_month_lock_tables_split.sql then use “Retry month-lock jobs”.`,
         false
       );
       await loadCalendarTable();
@@ -382,9 +382,9 @@ async function endGpslMonthEarly() {
 }
 
 /**
- * May packs TOTM + Sport + tables/playoffs + fines into one RPC and times out.
- * Run awards → tables → scheduling as separate calls (each with own timeout).
- * Playoffs stage only when the locked GPSL month is May.
+ * Month-lock jobs as separate RPCs (each with own timeout).
+ * tables = Discord standings only; stadium + MotM are separate stages.
+ * Playoffs only when locked GPSL month is May.
  */
 async function runMonthLockJobsStaged({
   seasonId,
@@ -393,7 +393,7 @@ async function runMonthLockJobsStaged({
   lockedLabel = null,
 }) {
   const month = String(gpslMonth || "").trim().toLowerCase();
-  const stages = ["totm", "sport", "tv", "tables"];
+  const stages = ["totm", "sport", "tv", "tables", "stadium", "motm"];
   if (month === "may") {
     stages.push("playoffs");
   }
@@ -426,23 +426,29 @@ async function runMonthLockJobsStaged({
     );
 
     if (error) {
-      const timedOut = /statement timeout|canceling statement/i.test(
+      const timedOut = /statement timeout|canceling statement|57014|Timed out|500/i.test(
         error.message || ""
       );
       const missing = /competition_admin_run_month_lock_jobs|p_stage/i.test(
         error.message || ""
       );
-      // Soft-continue past optional stages so one timeout does not block fines
-      if (timedOut && (stage === "clinches" || stage === "playoffs")) {
+      // Soft-continue optional / heavy follow-on stages
+      if (
+        timedOut &&
+        (stage === "clinches" ||
+          stage === "playoffs" ||
+          stage === "stadium" ||
+          stage === "motm")
+      ) {
         merged.warnings.push(`${stage} timed out — retry that stage alone later`);
         continue;
       }
       return {
         ok: false,
         error: timedOut
-          ? `${stage} timed out — re-run competition_admin_month_lock_jobs_staged.sql (latest) and retry`
+          ? `${stage} timed out — run competition_admin_month_lock_tables_split.sql then retry`
           : missing
-            ? `staged jobs RPC missing — run competition_admin_month_lock_jobs_staged.sql`
+            ? `staged jobs RPC missing — run competition_admin_month_lock_tables_split.sql`
             : `${stage}: ${error.message}`,
         data: merged,
         failedStage: stage,
@@ -466,7 +472,7 @@ async function retryMonthLockJobs() {
 
   if (
     !confirm(
-      `Retry month-lock jobs for ${month}? (TOTM → Sport → TV → tables` +
+      `Retry month-lock jobs for ${month}? (TOTM → Sport → TV → tables → stadium → MotM` +
         (month === "may" ? " → playoffs" : "") +
         ` → clinches → fines)`
     )
