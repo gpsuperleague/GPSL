@@ -67,7 +67,8 @@
         <p class="note">
           <b>#gpsl-news</b> — transfers (filtered), managers, owners, cups, titles, etc.<br>
           Transfer filter: age ≤20 need rating ≥70; age ≥21 need rating ≥76.<br>
-          <b>#gpsl-results</b> — confirmed match results only (month · competition · score).<br>
+          <b>#gpsl-results</b> — match results as a <b>daily digest</b> (by division + matchday / cup round),
+          not one Discord ping per fixture. Cron ~20:00 UTC; use <b>Publish results digest now</b> to flush early.<br>
           <b>#gpsl-natter</b> — owner Natter posts (text + image).<br>
           <b>#gpsl-notifications</b> — auctions, transfer window, month ticks, season start, challenges,
           nation pick turns (@owner), match reminders, OOC batch, vacant clubs.<br>
@@ -140,6 +141,7 @@
           <button type="button" id="newsPushBtn" class="button">Push queue to Discord</button>
           <button type="button" id="routingCheckBtn" class="button secondary">Check routing</button>
           <button type="button" id="newsTestBtn" class="button secondary">Test #gpsl-news</button>
+          <button type="button" id="resultsDigestBtn" class="button secondary">Publish results digest now</button>
           <button type="button" id="resultsTestBtn" class="button secondary">Test #gpsl-results</button>
           <button type="button" id="natterTestBtn" class="button secondary">Test #gpsl-natter</button>
           <button type="button" id="notificationsTestBtn" class="button secondary">Test #gpsl-notifications</button>
@@ -166,6 +168,6 @@
       </div>
     </div>
   </div>
-    <script type="module" src="admin_discord_news.js?v=20260722-whos-who"></script>
+    <script type="module" src="admin_discord_news.js?v=20260803-results-digest"></script>
 </body>
 </html>

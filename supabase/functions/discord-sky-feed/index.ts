@@ -45,7 +45,9 @@ type DiscordMember = {
 };
 
 function isResultsEvent(row: FeedRow): boolean {
-  if (row.event_type === "result") return true;
+  if (row.event_type === "result" || row.event_type === "results_digest") {
+    return true;
+  }
   const channel = String(row.metadata?.channel || "").toLowerCase();
   return channel === "results";
 }
@@ -131,7 +133,9 @@ function embedFor(row: FeedRow, supabaseUrl = "") {
     ...(imageUrl ? { image: { url: imageUrl } } : {}),
     footer: {
       text: results
-        ? "GPSL Results"
+        ? row.metadata?.digest
+          ? "GPSL Results · Daily digest"
+          : "GPSL Results"
         : natter
           ? "GPSL Natter"
           : tables

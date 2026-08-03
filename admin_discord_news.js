@@ -455,6 +455,43 @@ document.getElementById("newsTestBtn")?.addEventListener("click", () => {
 document.getElementById("resultsTestBtn")?.addEventListener("click", () => {
   sendTest("results").catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
+document.getElementById("resultsDigestBtn")?.addEventListener("click", () => {
+  (async () => {
+    setStatus("newsStatus", "Building daily results digests…");
+    const { data, error } = await supabase.rpc("admin_discord_results_digest_now", {
+      p_max_posts: 10,
+    });
+    if (error) {
+      setStatus(
+        "newsStatus",
+        error.message.includes("admin_discord_results_digest_now")
+          ? "❌ Run gpsl_discord_results_daily_digest.sql in Supabase first."
+          : "❌ " + error.message,
+        false
+      );
+      return;
+    }
+    if (!data?.ok) {
+      setStatus("newsStatus", data?.reason || "Results digest failed.", false);
+      return;
+    }
+    const n = data?.posts_queued ?? 0;
+    const fx = data?.fixtures_marked ?? 0;
+    if (n === 0) {
+      setStatus(
+        "newsStatus",
+        "No undigested results waiting — nothing queued.",
+        true
+      );
+      return;
+    }
+    setStatus(
+      "newsStatus",
+      `Queued ${n} digest post(s) covering ${fx} fixture(s). Pushing…`
+    );
+    await pushNews();
+  })().catch((e) => setStatus("newsStatus", e.message || String(e), false));
+});
 document.getElementById("natterTestBtn")?.addEventListener("click", () => {
   sendTest("natter").catch((e) => setStatus("newsStatus", e.message || String(e), false));
 });
