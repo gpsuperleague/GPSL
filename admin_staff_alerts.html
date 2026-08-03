@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Staff alerts — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    .alert-list { display:flex; flex-direction:column; gap:10px; }
+    .alert-card {
+      border:1px solid #333; background:#1a1a1a; border-radius:6px; padding:12px 14px;
+    }
+    .alert-card.unread { border-color:#886622; background:#221c12; }
+    .alert-card h3 { margin:0 0 6px; color:#ff9900; font-size:15px; }
+    .alert-meta { color:#888; font-size:12px; margin-bottom:8px; }
+    .alert-body { white-space:pre-wrap; font-size:13px; line-height:1.45; color:#ccc; }
+    .alert-actions { margin-top:10px; display:flex; flex-wrap:wrap; gap:8px; }
+    .badge-new {
+      display:inline-block; font-size:10px; font-weight:bold; letter-spacing:0.04em;
+      color:#111; background:#ff9900; border-radius:3px; padding:1px 6px; margin-left:8px;
+      vertical-align:middle;
+    }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Staff alerts</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <div class="card">
+        <p class="note">
+          Alerts for league admins and mods — e.g. when someone joins GPSL via Discord.
+          Run <code>supabase/sql/patches/gpsl_staff_alerts.sql</code> and redeploy
+          <code>discord-join-complete</code> if you have not already.
+        </p>
+        <div class="row" style="margin-bottom:12px;">
+          <button type="button" id="refreshBtn" class="button secondary">Refresh</button>
+          <button type="button" id="markAllBtn" class="button secondary">Mark all read</button>
+        </div>
+        <div id="status" class="status-line"></div>
+        <div id="alertList" class="alert-list"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_staff_alerts.js"></script>
+</body>
+</html>

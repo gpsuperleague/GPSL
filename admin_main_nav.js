@@ -47,6 +47,7 @@ export const ADMIN_MAIN_NAV = [
     label: "Owners",
     entries: [
       group("Waiting list", [
+        L("Staff alerts", "admin_staff_alerts.html"),
         L("Manage waiting list", "admin_owners_waiting_list.html"),
         L("Discord join order", "admin_owners_discord.html"),
       ]),

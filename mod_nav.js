@@ -17,6 +17,7 @@ export const MOD_NAV_SECTION = {
   id: "mod",
   label: "Mod",
   items: [
+    L("Staff alerts", "admin_staff_alerts.html"),
     L("Waiting list", "admin_owners_waiting_list.html"),
     L("Discord join order", "admin_owners_discord.html"),
     L("Set Owner Tag", "admin_owners_tag.html"),

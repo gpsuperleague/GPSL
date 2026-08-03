@@ -200,6 +200,25 @@ Deno.serve(async (req) => {
       .update({ consumed_at: nowIso })
       .eq("ticket_token", ticket);
 
+    try {
+      const { error: alertErr } = await admin.rpc(
+        "gpsl_staff_alert_notify_member_joined",
+        {
+          p_owner_id: userId,
+          p_email: email,
+          p_owner_tag: ownerTag,
+          p_discord_user_id: discordUserId,
+          p_discord_username: ticketRow.discord_username || null,
+          p_discord_joined_at: ticketRow.discord_joined_at || null,
+        }
+      );
+      if (alertErr) {
+        console.warn("staff alert notify failed:", alertErr.message);
+      }
+    } catch (alertCatch) {
+      console.warn("staff alert notify exception:", alertCatch);
+    }
+
     return jsonResponse({
       ok: true,
       email,

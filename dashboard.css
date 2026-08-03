@@ -1043,6 +1043,43 @@ button.nav-admin-trigger {
   box-sizing: border-box;
 }
 
+.nav-staff-alerts {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  text-decoration: none;
+  color: #ccc;
+}
+.nav-staff-alerts.active,
+.nav-staff-alerts:hover {
+  color: #ff9900;
+}
+.nav-staff-alerts-mark {
+  font-size: 18px;
+  line-height: 1;
+}
+.nav-staff-alerts.has-unread .nav-staff-alerts-mark {
+  color: #ff9900;
+  filter: drop-shadow(0 0 4px rgba(255, 153, 0, 0.7));
+}
+.nav-group-staff-badge {
+  display: inline-block;
+  margin-left: 6px;
+  min-width: 16px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: #e65c00;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 16px;
+  text-align: center;
+  vertical-align: middle;
+}
+
 .gpsl-nav-groups {
   display: flex;
   flex-direction: row;

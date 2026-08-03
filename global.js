@@ -1126,6 +1126,36 @@ function renderNavInboxLink(inboxActive, unread) {
   );
 }
 
+function renderNavStaffAlertsLink(active, unread) {
+  const n = Number(unread) || 0;
+  return (
+    `<a href="admin_staff_alerts.html" class="nav-shortcut nav-staff-alerts${
+      active ? " active" : ""
+    }${n > 0 ? " has-unread" : ""}" title="Staff alerts" aria-label="Staff alerts${
+      n > 0 ? `, ${n} unread` : ""
+    }">` +
+    `<span class="nav-staff-alerts-mark" aria-hidden="true">⚠</span>` +
+    (n > 0
+      ? `<span class="nav-inbox-badge">${n > 99 ? "99+" : n}</span>`
+      : "") +
+    `</a>`
+  );
+}
+
+async function countStaffAlertsUnread() {
+  try {
+    const { data, error } = await supabase.rpc("gpsl_staff_alerts_unread_count");
+    if (error) {
+      console.warn("gpsl_staff_alerts_unread_count:", error.message);
+      return 0;
+    }
+    return Number(data) || 0;
+  } catch (err) {
+    console.warn("staff alerts unread:", err);
+    return 0;
+  }
+}
+
 function renderNavMonthBlock(navMonthLabel, navMonthTitle, calendarStatus, calMod) {
   if (!navMonthLabel) return "";
   const isPre = calMod?.isPreSeasonPhase?.(calendarStatus) ?? false;
@@ -1900,6 +1930,7 @@ export async function buildNav() {
 
   let unread = 0;
   let natterUnread = 0;
+  let staffAlertsUnread = 0;
   try {
     unread =
       clubShort || user?.id
@@ -1952,6 +1983,17 @@ export async function buildNav() {
     isGpslModOnlyNav = await fetchIsGpslModUser(true);
   } else {
     isGpslModNav = false;
+  }
+
+  if (isGpslAdminNav || isGpslModOnlyNav) {
+    try {
+      staffAlertsUnread = await Promise.race([
+        countStaffAlertsUnread(),
+        new Promise((resolve) => setTimeout(() => resolve(0), 4000)),
+      ]);
+    } catch (err) {
+      console.warn("Staff alerts unread skipped:", err);
+    }
   }
 
   let myNation = null;
@@ -2119,7 +2161,16 @@ export async function buildNav() {
       section.label,
       escapeNavHtml,
       activePageLabel,
-      isTransfersSection ? navGroupAuctionBadgeHtml(anyAuctionActive) : ""
+      [
+        isTransfersSection ? navGroupAuctionBadgeHtml(anyAuctionActive) : "",
+        (section.id === "admin" || section.id === "mod") && staffAlertsUnread > 0
+          ? `<span class="nav-group-staff-badge" title="Unread staff alerts">${
+              staffAlertsUnread > 99 ? "99+" : staffAlertsUnread
+            }</span>`
+          : "",
+      ]
+        .filter(Boolean)
+        .join("")
     )}</button>`;
     const dropdownClass =
       section.id === "admin" || section.id === "mod" || section.id === "transfers"
@@ -2144,6 +2195,10 @@ export async function buildNav() {
   html += renderNavGpslSportButton();
   html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
   html += renderNavInboxLink(inboxActive, unread);
+  if (isGpslAdminNav || isGpslModOnlyNav) {
+    const staffActive = pathNorm === "admin_staff_alerts.html";
+    html += renderNavStaffAlertsLink(staffActive, staffAlertsUnread);
+  }
   html += `<button type="button" id="logoutBtn" class="nav-logout">Logout</button>`;
   html += `</div></div></div>`;
 
