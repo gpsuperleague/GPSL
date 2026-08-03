@@ -15,7 +15,7 @@ Authoritative design from league owner (2026). Align with legacy spreadsheet whe
 | **Selling** | Allowed only while **2+ seasons remain** — **cannot sell** in final year |
 | **Final year (1 left)** | Player **automatically** on expiring-contract / FA list — no transfer list |
 | **Owner choices (final year, standard)** | Renew (≥ wage) · Expire (MV) · hidden wage bids — **no sell** |
-| **Renew wage (standard)** | New offer must be **≥ current contract wage** |
+| **Renew wage (standard)** | New offer must be **> current contract wage**, in **₿250,000** steps |
 | **Home-grown** | `Players.Nation` = `Clubs.Nation` — **at least 8** (no maximum) |
 | **Under-21** | Age **≤ 21** — **at least 5** (no maximum) |
 | **Squad size** | **Max 28** players |
@@ -165,8 +165,8 @@ Applies when `expiry_auction_applies` is true and **1 season remains** (not home
 
 ### 1. Renew contract
 
-- Owner offers a **new 3-season contract** (often via winning their own hidden bid if others bid too).
-- **Wage offered must not be lower than today** — owner can keep them on the same wage or **pay more**; cannot renew on a pay cut.
+- Owner offers a **new 3-season contract** (via winning their own hidden bid if others bid too).
+- **Wage offered must be higher than today**, in **₿250,000** steps — cannot renew on the same wage or a pay cut.
 - Contract resets to **3 seasons remaining** at the chosen wage.
 
 ### 2. Allow contract to expire
@@ -190,17 +190,22 @@ At **1 season left**, **standard** players are **automatically** on the **expiri
 |------|--------|
 | **Who can bid** | Any owner (including **current** club) |
 | **Bids per club** | **One** wage offer per player per expiry cycle |
+| **Floor** | Must be **strictly higher** than current contract wage |
+| **Step** | Offers in **₿250,000** increments only |
 | **Visibility** | **Hidden** — other owners do not see competing amounts |
 | **Timing** | For contract **expiry** (end of final season), not immediate transfer |
 | **Winner** | **Highest wage** at resolution |
-| **Current club wins tie?** | **→ confirm** (same amount: prefer current club vs earliest bid vs random) |
+| **Current club wins tie?** | **Yes** — equal highest wage → holding club retains |
 | **Outcome** | Winner’s club gets player on **new 3-season contract** at **bid wage** |
+| **No bids** | Player → draft free-agent list; wage resets to **calculated norm**; holding club credited **MV** |
+| **Other club wins** | Pays **market value** compensation to holding club; player moves at rollover |
+| **Champ ← SL** | If winner is Championship and holder is Super League: extra **₿10m** signing-on fee to **Central Bank** (separate from wage) |
 
-If **current owner** wins: player **stays**, wage updates to winning (their) bid, contract **renews** (3 seasons).
+If **current owner** wins: player **stays**, wage updates to winning bid, contract **renews** (3 seasons).
 
-If **other owner** wins: player moves at **season rollover** (admin **Start New Season**) with bid wage and **3 seasons** — not before.
+If **other owner** wins: player moves at **season rollover** (admin **Start New Season**) with bid wage and **3 seasons** — not before. Winner pays MV to the selling club; Championship winners of SL players also pay the ₿10m Central Bank fee.
 
-If **current owner** wins: player **stays** at the same club; new **3-season** contract at winning bid wage from rollover onward.
+SQL patch: `supabase/sql/patches/contract_expiry_wage_rules_v2.sql` (also mirrored in `player_contracts_phase3_expiry.sql`).
 
 ---
 

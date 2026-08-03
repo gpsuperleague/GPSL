@@ -1,6 +1,6 @@
 import { initGlobal, supabase } from "./global.js";
 import { loadClubsMap, displayClubName } from "./clubs_lookup.js";
-import { formatWage } from "./wages.js";
+import { formatWage, expiryWageBidStep, minExpiryWageOffer } from "./wages.js";
 
 let myClubShort = null;
 let marketRows = [];
@@ -60,7 +60,7 @@ async function loadMarket() {
     return;
   }
 
-  status.textContent = `${marketRows.length} player(s) — hidden bids until season rollover.`;
+  status.textContent = `${marketRows.length} player(s) — hidden bids until season rollover (₿250,000 steps).`;
 
   tbody.innerHTML = marketRows
     .map((row) => {
@@ -108,18 +108,19 @@ function openBidModal(row) {
 
   bidTarget = row;
   const modal = document.getElementById("bidModal");
-  const isHolder = row.holding_club === myClubShort;
+  const step = Number(row.wage_step) || expiryWageBidStep();
+  const minOffer =
+    row.min_wage_offer != null
+      ? Number(row.min_wage_offer)
+      : minExpiryWageOffer(row.current_wage, step);
 
   document.getElementById("bidModalTitle").textContent = `Bid — ${row.player_name}`;
-  document.getElementById("bidModalHint").textContent = isHolder
-    ? `You hold this player. Bid must be at least current wage (${formatWage(row.current_wage)}).`
-    : "Highest wage wins at season rollover. Other clubs cannot see your amount.";
+  document.getElementById("bidModalHint").textContent =
+    `Current wage ${formatWage(row.current_wage)}. Offer must be higher, in ${formatWage(step)} steps (minimum ${formatWage(minOffer)}). Bids stay hidden until season rollover.`;
   document.getElementById("bidWageInput").value =
     row.my_wage_bid != null
       ? String(row.my_wage_bid)
-      : row.current_wage != null
-        ? String(row.current_wage)
-        : "";
+      : String(minOffer);
   document.getElementById("bidModalError").textContent = "";
   modal.style.display = "flex";
 }
@@ -136,8 +137,22 @@ async function submitBid() {
 
   const raw = document.getElementById("bidWageInput").value;
   const wage = Number(String(raw).replace(/[^\d]/g, ""));
+  const step = Number(bidTarget.wage_step) || expiryWageBidStep();
+  const minOffer =
+    bidTarget.min_wage_offer != null
+      ? Number(bidTarget.min_wage_offer)
+      : minExpiryWageOffer(bidTarget.current_wage, step);
+
   if (!Number.isFinite(wage) || wage <= 0) {
     errEl.textContent = "Enter a valid wage amount.";
+    return;
+  }
+  if (wage % step !== 0) {
+    errEl.textContent = `Wage offers must be in ${formatWage(step)} increments.`;
+    return;
+  }
+  if (wage < minOffer) {
+    errEl.textContent = `Minimum offer is ${formatWage(minOffer)} (above current wage).`;
     return;
   }
 
