@@ -1050,18 +1050,25 @@ button.nav-admin-trigger {
   justify-content: center;
   min-width: 36px;
   height: 36px;
+  padding: 8px 12px;
   text-decoration: none;
-  color: #ccc;
+  color: var(--club-accent, #ff9900);
+}
+.nav-staff-alerts:hover {
+  color: var(--club-accent, #ff9900);
 }
 .nav-staff-alerts.active,
-.nav-staff-alerts:hover {
-  color: #ff9900;
+.nav-staff-alerts.active .nav-staff-alerts-mark {
+  /* Active shortcut uses orange background — keep glyph dark for contrast */
+  color: #111;
+  filter: none;
 }
 .nav-staff-alerts-mark {
   font-size: 18px;
   line-height: 1;
+  color: inherit;
 }
-.nav-staff-alerts.has-unread .nav-staff-alerts-mark {
+.nav-staff-alerts.has-unread:not(.active) .nav-staff-alerts-mark {
   color: #ff9900;
   filter: drop-shadow(0 0 4px rgba(255, 153, 0, 0.7));
 }
