@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Season expectations — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .exp-note { font-size:13px; color:#999; line-height:1.5; max-width:960px; margin:0 0 14px; }
+    .exp-summary { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:12px; font-size:13px; }
+    .exp-summary span { padding:6px 10px; background:#1a1a1a; border:1px solid #333; border-radius:4px; }
+    .exp-filter { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:10px; font-size:13px; }
+    .exp-filter select {
+      background:#222; color:#ddd; border:1px solid #444; padding:4px 8px; border-radius:4px;
+    }
+    .exp-table-wrap {
+      overflow:auto; max-height:calc(100vh - 240px);
+      border:1px solid #333; border-radius:6px;
+    }
+    .exp-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .exp-table th, .exp-table td {
+      padding:7px 8px; border-bottom:1px solid #2a2a2a; text-align:left; vertical-align:top;
+    }
+    .exp-table th {
+      position:sticky; top:0; background:#1e1e1e; z-index:1; white-space:nowrap; color:#ff9900;
+    }
+    .exp-table tbody tr:hover { background:#1a1a1a; }
+    .club-name { font-weight:600; white-space:nowrap; }
+    .club-short { color:#888; font-size:11px; }
+    .conseq { font-size:11px; color:#bbb; line-height:1.4; max-width:280px; }
+    .conseq.warn { color:#e8c547; }
+    .conseq.bad { color:#e85c5c; }
+    .conseq.ok { color:#7ddf7d; }
+    .band-pill {
+      display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px;
+      font-weight:bold; text-transform:lowercase; white-space:nowrap;
+    }
+    .band-on_target { background:#1a3d1a; color:#7ddf7d; }
+    .band-slight { background:#3d3a1a; color:#e8c547; }
+    .band-bad { background:#3d261a; color:#e8a047; }
+    .band-abysmal { background:#3d1a1a; color:#e85c5c; }
+    .tier-big { color:#ff9900; font-weight:600; }
+    .tier-medium { color:#8ec8ff; font-weight:600; }
+    .tier-low { color:#aaa; }
+    .met-yes { color:#7ddf7d; font-weight:600; }
+    .met-no { color:#e85c5c; font-weight:600; }
+    .met-pend { color:#888; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Season expectations</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="exp-note">
+        Live board for the current season: club prestige expectation vs actual, manager deal target vs league position,
+        and <b>projected end-of-season consequences</b> if Close Season / archive ran today.
+        Club misses (big/medium only) force a perpetual MV listing; manager deal-end with 0 hits releases for full MV + 2-season rehire ban.
+        <a href="admin_club_attendance.html" style="color:#ff9900;">Club attendance</a>
+        · <a href="admin_manager_targets.html" style="color:#ff9900;">Manager targets</a>
+        · <a href="admin_season.html#wf-close-season" style="color:#ff9900;">Close Season</a>
+      </p>
+
+      <div class="news-actions" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+        <button type="button" id="refreshBtn" class="button">Refresh</button>
+      </div>
+      <div id="statusLine" class="status-line"></div>
+      <div id="summaryStrip" class="exp-summary"></div>
+
+      <div class="exp-filter">
+        <label>Division
+          <select id="filterDivision">
+            <option value="">All</option>
+            <option value="superleague">SuperLeague</option>
+            <option value="championship_a">Championship A</option>
+            <option value="championship_b">Championship B</option>
+          </select>
+        </label>
+        <label>Tier
+          <select id="filterTier">
+            <option value="">All</option>
+            <option value="big">Big</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </label>
+        <label>Club band
+          <select id="filterBand">
+            <option value="">All</option>
+            <option value="on_target">On target</option>
+            <option value="slight">Slight</option>
+            <option value="bad">Bad</option>
+            <option value="abysmal">Abysmal</option>
+          </select>
+        </label>
+        <label>Manager
+          <select id="filterMgr">
+            <option value="">All</option>
+            <option value="hit">Target hit</option>
+            <option value="miss">Target miss</option>
+            <option value="risk">EOS risk (0 hits projected)</option>
+            <option value="vacant">No manager</option>
+          </select>
+        </label>
+        <span id="rowCount" style="color:#888;"></span>
+      </div>
+
+      <div id="tableWrap" class="exp-table-wrap"></div>
+    </div>
+  </div>
+  <script type="module" src="admin_season_expectations.js?v=20260803-exp-board"></script>
+</body>
+</html>

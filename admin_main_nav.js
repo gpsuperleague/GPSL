@@ -157,6 +157,12 @@ export const ADMIN_MAIN_NAV = [
     label: "Season Management",
     entries: [
       link("Club Season Checklist", "admin_club_checklist.html"),
+      link(
+        "Season expectations",
+        "admin_season_expectations.html",
+        null,
+        "Club/owner/manager board: prestige & manager expect vs actual, plus projected end-of-season consequences."
+      ),
       link("Owner holidays", "admin_owner_holidays.html"),
       link("Apply fines", "admin_fines.html"),
       link(
