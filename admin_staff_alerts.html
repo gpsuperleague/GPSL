@@ -33,8 +33,9 @@
       <div class="card">
         <p class="note">
           Alerts for league admins and mods — e.g. when someone joins GPSL via Discord.
-          Run <code>supabase/sql/patches/gpsl_staff_alerts.sql</code> and redeploy
-          <code>discord-join-complete</code> if you have not already.
+          Run <code>supabase/sql/patches/gpsl_staff_alerts.sql</code> then
+          <code>gpsl_staff_alerts_join_trigger_fix.sql</code>. Also redeploy
+          <code>discord-join-complete</code>.
         </p>
         <div class="row" style="margin-bottom:12px;">
           <button type="button" id="refreshBtn" class="button secondary">Refresh</button>

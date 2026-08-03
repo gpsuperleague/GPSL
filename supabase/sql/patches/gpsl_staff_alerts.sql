@@ -189,14 +189,15 @@ BEGIN
       'public.gpsl_discord_feed_enqueue_notification(text,text,text,integer,text,jsonb)'
     ) IS NOT NULL THEN
       PERFORM public.gpsl_discord_feed_enqueue_notification(
-        'member_joined',
-        v_headline,
+        'notification',
+        '🆕 ' || v_headline,
         v_body,
         5763719, -- green-ish
         'member_joined:' || p_owner_id::text,
         jsonb_build_object(
           'owner_id', p_owner_id,
           'owner_tag', p_owner_tag,
+          'kind', 'member_joined',
           'channel', 'notifications'
         )
       );
