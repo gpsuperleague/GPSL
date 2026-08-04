@@ -140,20 +140,27 @@ function setCompStatus(msg, ok = true) {
 async function tickContractsOnly() {
   if (
     !confirm(
-      "Tick all player contracts now?\n\nDecrements multi-year deals, resolves expiry wage bids, and releases players with 0 seasons left (MV to holding club)."
+      "Tick all PLAYER contracts now?\n\nDecrements multi-year deals, resolves expiry wage bids, and releases players with 0 seasons left (MV to holding club).\n\nManagers are separate: Close season → Process manager contracts (or SQL catch-up)."
     )
   ) {
     return;
   }
 
-  setStatus("compCreateStatus", "Ticking contracts…");
-  const { data, error } = await supabase.rpc("contract_tick_season_rollover");
+  setStatus("compCreateStatus", "Ticking player contracts…");
+  // Prefer catch-up wrapper (logs tick) when deployed; fall back to raw tick.
+  let { data, error } = await supabase.rpc("admin_catchup_player_contract_tick", {
+    p_force: false,
+  });
+  if (error?.message?.includes("admin_catchup_player_contract_tick")) {
+    ({ data, error } = await supabase.rpc("contract_tick_season_rollover"));
+  }
+
   if (error) {
     setStatus(
       "compCreateStatus",
       `❌ ${error.message}${
         /timeout|canceling statement/i.test(error.message || "")
-          ? " — run patches/create_season_timeout_split_tick.sql (batched release) then retry."
+          ? " — run in SQL Editor: SELECT public.admin_catchup_player_contract_tick(); (after season_contract_tick_catchup.sql)"
           : ""
       }`,
       false
@@ -161,11 +168,21 @@ async function tickContractsOnly() {
     return;
   }
 
+  if (data?.ok === false && data?.reason === "already_ticked") {
+    setStatus(
+      "compCreateStatus",
+      `⚠ Player tick already logged for ${data.for_season_label || "this season"}. Check SELECT public.admin_season_contract_tick_status(); before forcing.`,
+      false
+    );
+    return;
+  }
+
+  const tick = data?.tick || data;
   setStatus(
     "compCreateStatus",
-    `✅ Contracts ticked — ${data?.players_decremented ?? "—"} decremented, ${
-      data?.players_released_zero_years ?? "—"
-    } released as free agents.`,
+    `✅ Player contracts ticked — ${tick?.players_decremented ?? "—"} decremented, ${
+      tick?.players_released_zero_years ?? "—"
+    } released, ${tick?.players_final_year ?? "—"} now final-year (expiring market).`,
     true
   );
 }
@@ -179,16 +196,14 @@ async function createNextSeason() {
 
   if (
     !confirm(
-      `Create competition season “${label}” in pre-season?\n\nIf the legacy league year is still open, this runs season rollover first. Contracts tick in a second step after create.`
+      `Create competition season “${label}” in pre-season?\n\nThis will automatically:\n• create the pre-season\n• tick PLAYER contracts (decrement / expiry market)\n• catch up MANAGER season-end if that was skipped when ending the prior season`
     )
   ) {
     return;
   }
 
-  setStatus("compCreateStatus", "Creating pre-season…");
+  setStatus("compCreateStatus", "Creating pre-season + ticking contracts…");
 
-  // Legacy player/transfer year rollover only while a competition season is still live.
-  // Contract tick runs AFTER create (separate RPC) so create is not killed by API timeout.
   const active = await loadCurrentSeason(supabase);
   if (active) {
     const { error: rollErr } = await supabase.rpc("rollover_season");
@@ -198,55 +213,91 @@ async function createNextSeason() {
     }
   }
 
-  const { data, error } = await supabase.rpc("competition_create_season", {
+  // Preferred: one RPC (create + player tick + manager safety-net)
+  let { data, error } = await supabase.rpc("competition_create_season_full", {
     p_label: label,
   });
+
+  // Fallback if full RPC not deployed yet
+  if (error?.message?.includes("competition_create_season_full")) {
+    const created = await supabase.rpc("competition_create_season", {
+      p_label: label,
+    });
+    if (created.error) {
+      setStatus(
+        "compCreateStatus",
+        `❌ ${created.error.message} — run patches/season_rollover_auto_contracts.sql`,
+        false
+      );
+      return;
+    }
+    const tick = await supabase.rpc("admin_catchup_player_contract_tick", {
+      p_force: false,
+    });
+    const tickFallback =
+      tick.error?.message?.includes("admin_catchup_player_contract_tick")
+        ? await supabase.rpc("contract_tick_season_rollover")
+        : tick;
+    if (tickFallback.error) {
+      setStatus(
+        "compCreateStatus",
+        `✅ Season created (id ${created.data}) but PLAYER tick failed: ${tickFallback.error.message}. Run Tick contracts / SQL catch-up before go-live.`,
+        false
+      );
+      await refreshCompetitionAdmin();
+      return;
+    }
+    data = {
+      ok: true,
+      season_id: created.data,
+      player_tick: tickFallback.data?.tick || tickFallback.data,
+      manager_catchup: null,
+    };
+    error = null;
+  }
 
   if (error) {
     setStatus(
       "compCreateStatus",
       `❌ ${error.message}${
         /timeout|canceling statement/i.test(error.message || "")
-          ? " — run patches/create_season_timeout_split_tick.sql then retry."
-          : ""
+          ? " — run in SQL Editor: SELECT public.competition_create_season_full('…'); after season_rollover_auto_contracts.sql"
+          : " — run patches/season_rollover_auto_contracts.sql (+ season_contract_tick_catchup.sql)"
       }`,
       false
     );
     return;
   }
 
+  const seasonId = data?.season_id ?? data;
+  const tick = data?.player_tick || {};
+  const mgr = data?.manager_catchup;
+  const mgrNote =
+    mgr == null
+      ? ""
+      : mgr.skipped || mgr.reason === "already_processed"
+        ? " Managers already processed for prior season."
+        : mgr.ok === false
+          ? ` Manager catch-up: ${mgr.reason || "failed"} — run admin_catchup_manager_season_end(NULL).`
+          : ` Managers caught up for prior season.`;
+
   document.getElementById("compSeasonLabel").value = "";
   setStatus(
     "compCreateStatus",
-    `✅ Pre-season created (id ${data}). Ticking contracts…`
+    `✅ Pre-season created (id ${seasonId}). Players: ${
+      tick?.players_decremented ?? "—"
+    } decremented, ${tick?.players_final_year ?? "—"} final-year, ${
+      tick?.players_released_zero_years ?? "—"
+    } released.${mgrNote}`,
+    !(mgr && mgr.ok === false)
   );
-
-  const { data: tickData, error: tickErr } = await supabase.rpc(
-    "contract_tick_season_rollover"
-  );
-
-  if (tickErr) {
-    setStatus(
-      "compCreateStatus",
-      `✅ Pre-season created (id ${data}), but contract tick failed: ${tickErr.message}. Run Tick contracts below or: SELECT public.contract_tick_season_rollover();`,
-      false
-    );
-  } else {
-    const released = tickData?.players_released_zero_years ?? "—";
-    const decremented = tickData?.players_decremented ?? "—";
-    setStatus(
-      "compCreateStatus",
-      `✅ Pre-season created (id ${data}). Contracts ticked — ${decremented} decremented, ${released} released as free agents.`,
-      true
-    );
-  }
 
   await refreshCompetitionAdmin();
-  if (data) {
-    document.getElementById("compSetupSeasonSelect").value = String(data);
-    compSelectedSeasonId = data;
-    await loadCompSeasonData(data);
-    await refreshCompCalendarForSeason(data);
+  if (seasonId) {
+    document.getElementById("compSetupSeasonSelect").value = String(seasonId);
+    compSelectedSeasonId = seasonId;
+    await loadCompSeasonData(seasonId);
+    await refreshCompCalendarForSeason(seasonId);
   }
 }
 

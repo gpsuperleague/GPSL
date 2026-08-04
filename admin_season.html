@@ -122,7 +122,7 @@
         <section id="wf-kickoff" class="admin-season-panel" data-panel="wf-kickoff" hidden>
           <div class="card">
             <h2>Create new season</h2>
-            <p class="note">Creates a pre-season competition year (60 clubs), then ticks contracts in a second step (so create is not killed by API timeout). If the legacy league year is still open, also runs <code>rollover_season</code> first. Run <code>patches/create_season_timeout_split_tick.sql</code> if create/tick fails.</p>
+            <p class="note">Creates a pre-season year (60 clubs) and <b>automatically</b> ticks player contracts (and catches up managers if End Season skipped them). Run <code>patches/season_contract_tick_catchup.sql</code> then <code>patches/season_rollover_auto_contracts.sql</code> before the next live rollover. If the legacy league year is still open, also runs <code>rollover_season</code> first.</p>
             <div id="compActiveSummary" class="note"></div>
             <div class="row">
               <div>
@@ -177,6 +177,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_season.js?v=20260804-go-live-nav"></script>
+  <script type="module" src="admin_season.js?v=20260804-auto-rollover"></script>
 </body>
 </html>
