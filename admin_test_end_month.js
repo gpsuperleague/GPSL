@@ -384,6 +384,7 @@ async function endGpslMonthEarly() {
 /**
  * Month-lock jobs as separate RPCs (each with own timeout).
  * tables = Discord standings only; stadium + MotM are separate stages.
+ * stadium / clinches are batched (gateway ~60s) via dedicated RPCs.
  * Playoffs only when locked GPSL month is May.
  */
 async function runMonthLockJobsStaged({
@@ -411,10 +412,40 @@ async function runMonthLockJobsStaged({
   }
 
   for (const stage of stages) {
-    setStatus(
-      statusEl,
-      `✅ ${label} locked. Month-lock jobs: ${stage}…`
-    );
+    setStatus(statusEl, `✅ ${label} locked. Month-lock jobs: ${stage}…`);
+
+    if (stage === "stadium") {
+      const stadium = await runStadiumSyncBatched({
+        seasonId,
+        statusEl,
+        label,
+      });
+      merged.stadium_fill_sync = stadium;
+      if (stadium?.ok === false) {
+        merged.warnings.push(`stadium: ${stadium.error || stadium.reason || "failed"}`);
+      } else if (stadium?.warnings?.length) {
+        merged.warnings.push(...stadium.warnings);
+      }
+      merged.stages.push(stage);
+      continue;
+    }
+
+    if (stage === "clinches") {
+      const clinches = await runClinchesByDivision({
+        seasonId,
+        statusEl,
+        label,
+      });
+      merged.clinches = clinches;
+      if (clinches?.ok === false) {
+        merged.warnings.push(`clinches: ${clinches.error || "failed"}`);
+      } else if (clinches?.warnings?.length) {
+        merged.warnings.push(...clinches.warnings);
+      }
+      merged.stages.push(stage);
+      continue;
+    }
+
     const { data, error } = await supabase.rpc(
       "competition_admin_run_month_lock_jobs",
       {
@@ -432,8 +463,6 @@ async function runMonthLockJobsStaged({
       const missing = /competition_admin_run_month_lock_jobs|p_stage/i.test(
         error.message || ""
       );
-      // Soft-continue: TV must not abort the whole Retry (May→Playoffs used to
-      // 500 on gpsl_month check). Heavy stages soft-continue on timeout only.
       if (stage === "tv") {
         merged.warnings.push(`tv: ${error.message}`);
         merged.tv_selection = { ok: false, error: error.message };
@@ -441,10 +470,7 @@ async function runMonthLockJobsStaged({
       }
       if (
         timedOut &&
-        (stage === "clinches" ||
-          stage === "playoffs" ||
-          stage === "stadium" ||
-          stage === "motm")
+        (stage === "playoffs" || stage === "motm" || stage === "scheduling")
       ) {
         merged.warnings.push(`${stage} timed out — retry that stage alone later`);
         continue;
@@ -468,6 +494,119 @@ async function runMonthLockJobsStaged({
   }
 
   return { ok: true, data: merged };
+}
+
+async function runStadiumSyncBatched({ seasonId, statusEl, label }) {
+  const warnings = [];
+  let after = null;
+  let total = 0;
+  let passes = 0;
+  const maxPasses = 40;
+
+  while (passes < maxPasses) {
+    passes += 1;
+    setStatus(
+      statusEl,
+      `✅ ${label} locked. Month-lock jobs: stadium (batch ${passes}` +
+        (after ? `, after ${after}` : "") +
+        ")…"
+    );
+
+    const { data, error } = await supabase.rpc("competition_stadium_sync_clubs_batch", {
+      p_season_id: seasonId || null,
+      p_limit: 8,
+      p_after_club: after,
+    });
+
+    if (error) {
+      const missing = /competition_stadium_sync_clubs_batch/i.test(error.message || "");
+      return {
+        ok: false,
+        error: missing
+          ? "stadium batch RPC missing — run month_lock_stadium_clinches_batch.sql"
+          : error.message,
+        clubs_synced: total,
+        warnings,
+      };
+    }
+
+    total += Number(data?.clubs_synced || 0);
+    after = data?.after_club || null;
+
+    if (data?.done || !after) {
+      return {
+        ok: true,
+        clubs: total,
+        passes,
+        done: true,
+        warnings,
+      };
+    }
+  }
+
+  warnings.push(`stadium stopped after ${maxPasses} batches (${total} clubs)`);
+  return { ok: true, clubs: total, passes, done: false, warnings };
+}
+
+async function runClinchesByDivision({ seasonId, statusEl, label }) {
+  const divisions = ["superleague", "championship_a", "championship_b"];
+  const byDivision = {};
+  const warnings = [];
+
+  for (const division of divisions) {
+    setStatus(
+      statusEl,
+      `✅ ${label} locked. Month-lock jobs: clinches (${division})…`
+    );
+
+    const { data, error } = await supabase.rpc(
+      "competition_process_league_clinches_division",
+      {
+        p_season_id: seasonId || null,
+        p_division: division,
+      }
+    );
+
+    if (error) {
+      const missing = /competition_process_league_clinches_division/i.test(
+        error.message || ""
+      );
+      if (missing) {
+        // Fallback: one full scan (may still 500)
+        setStatus(statusEl, `✅ ${label} locked. Month-lock jobs: clinches (full)…`);
+        const full = await supabase.rpc("competition_admin_run_month_lock_jobs", {
+          p_season_id: seasonId || null,
+          p_gpsl_month: null,
+          p_force_scheduling: false,
+          p_stage: "clinches",
+        });
+        if (full.error) {
+          return {
+            ok: false,
+            error:
+              "clinches division RPC missing — run month_lock_stadium_clinches_batch.sql. " +
+              `Full scan also failed: ${full.error.message}`,
+            warnings,
+          };
+        }
+        return { ok: true, ...(full.data?.clinches || full.data || {}), warnings };
+      }
+      warnings.push(`${division}: ${error.message}`);
+      byDivision[division] = { ok: false, error: error.message };
+      continue;
+    }
+
+    byDivision[division] = data || { ok: true };
+    if (data?.ok === false) {
+      warnings.push(`${division}: ${data.error || data.reason || "failed"}`);
+    }
+  }
+
+  return {
+    ok: warnings.length === 0,
+    by_division: byDivision,
+    warnings,
+  };
 }
 
 async function retryMonthLockJobs() {

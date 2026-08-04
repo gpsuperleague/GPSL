@@ -107,10 +107,13 @@
         <h2>Retry month-lock jobs</h2>
         <p class="note" style="margin-top:0;">
           If End Month locked the calendar but jobs timed out, retry here.
-          Stages: TOTM → Sport → TV → tables → stadium → MotM → clinches → fines
+          Stages: TOTM → Sport → TV → tables → <b>stadium (batched)</b> → MotM →
+          <b>clinches (per division)</b> → fines
           (playoffs only when the locked month is <b>May</b>).
+          If stadium/clinches still fail, run
+          <code>month_lock_stadium_clinches_batch.sql</code>, hard-refresh, retry.
           If <b>tables</b> keeps timing out, run
-          <code>competition_admin_month_lock_tables_split.sql</code> first, hard-refresh, then retry.
+          <code>competition_admin_month_lock_tables_split.sql</code> first.
         </p>
         <div class="form-row">
           <label>
@@ -162,6 +165,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_end_month.js?v=20260803-tables-split"></script>
+  <script type="module" src="admin_test_end_month.js?v=20260804-stadium-batch"></script>
 </body>
 </html>

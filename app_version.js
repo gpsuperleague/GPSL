@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260804-tv-playoffs";
+export const APP_VERSION = "20260804-stadium-batch";
