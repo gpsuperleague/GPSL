@@ -170,6 +170,11 @@ function seasonSortKey(label) {
   return m ? Number(m[1]) : 0;
 }
 
+/** Destination club for a transfer (buyer / foreign name key). */
+function transferDestClub(t) {
+  return String(t.buyer_club_short_name || t.foreign_buyer_name || "").trim();
+}
+
 function renderStints(stints, transfers = []) {
   const el = document.getElementById("stintsPanel");
   if (!el) return;
@@ -178,6 +183,7 @@ function renderStints(stints, transfers = []) {
     kind: "stint",
     season_label: s.season_label,
     season_key: seasonSortKey(s.season_label),
+    club_key: String(s.club_short_name || "").trim(),
     sort_time: 0,
     data: s,
   }));
@@ -186,18 +192,21 @@ function renderStints(stints, transfers = []) {
     kind: "transfer",
     season_label: t.season_label,
     season_key: seasonSortKey(t.season_label),
+    club_key: transferDestClub(t),
     sort_time: t.transfer_time ? new Date(t.transfer_time).getTime() : 0,
     data: t,
   }));
 
+  // Season desc → club → transfer(s) immediately before that club's stint
   const rows = [...stintRows, ...transferRows].sort((a, b) => {
     if (b.season_key !== a.season_key) return b.season_key - a.season_key;
-    // Within a season: transfers (by date desc), then stint stats
-    if (a.kind !== b.kind) return a.kind === "transfer" ? -1 : 1;
-    if (a.kind === "transfer") return b.sort_time - a.sort_time;
-    return String(a.data.club_short_name || "").localeCompare(
-      String(b.data.club_short_name || "")
+    const clubCmp = String(a.club_key || "\uffff").localeCompare(
+      String(b.club_key || "\uffff")
     );
+    if (clubCmp !== 0) return clubCmp;
+    if (a.kind !== b.kind) return a.kind === "transfer" ? -1 : 1;
+    if (a.kind === "transfer") return a.sort_time - b.sort_time;
+    return 0;
   });
 
   if (!rows.length) {
