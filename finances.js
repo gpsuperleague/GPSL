@@ -15,7 +15,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20260804-loan-bucket";
+} from "./finance_page_common.js?v=20260804-loan-catchup";
 
 function setAdvisoryBudgetDisplay(advisory, { historical = false } = {}) {
   const el = document.getElementById("advisoryTransferBudget");
@@ -116,10 +116,8 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
   renderFinanceSubnav("finances", shortName, adminPreview, seasonRef);
   wireFinanceStatLinks(shortName, adminPreview, seasonRef);
 
-  // DIAG: auto-collect paused (same as Service Counter) — was draining loans on every visit.
-  // if (!adminPreview && !seasonView.isHistorical) {
-  //   await processMyDueLoanInstallments(supabase);
-  // }
+  // Loan dues: month lock is primary; Service Counter also auto-collects on visit.
+  // Finances stays read-only here so opening accounts does not surprise-debit.
 
   const data = await loadFinanceSeasonContext(supabase, shortName, { seasonView });
 

@@ -9,11 +9,10 @@ import {
   loadClubLoans,
   processMyDueLoanInstallments,
 } from "./competition.js";
-import { initBankCounter } from "./bank_counter.js?v=20260721-loan-due-fix";
+import { initBankCounter } from "./bank_counter.js?v=20260804-loan-catchup";
 
-// DIAG: auto-collect on visit is PAUSED while we diagnose June S2 over-collection.
-// Re-enable only after loan due logic is proven correct.
-const AUTO_COLLECT_DUE_LOANS_ON_VISIT = false;
+// Month lock is primary; visit catch-up settles installment_no <= expected only.
+const AUTO_COLLECT_DUE_LOANS_ON_VISIT = true;
 
 async function refreshCounter(shortName) {
   if (shortName && AUTO_COLLECT_DUE_LOANS_ON_VISIT) {

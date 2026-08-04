@@ -452,13 +452,11 @@ export async function buildFinanceProjections(
         : "";
     const dueNote =
       dueNow.length > 0
-        ? `${dueNow.length} unpaid this-season installment${dueNow.length === 1 ? "" : "s"}${monthHint} — month lock / Service Counter, not Close Finances`
+        ? `${dueNow.length} instalment${dueNow.length === 1 ? "" : "s"} still unpaid for this season${monthHint} (should post on month lock / Service Counter — not Close Finances)`
         : null;
     const futureNote =
-      futureLeft > 0
-        ? dueNow.length > 0
-          ? `${futureLeft} more next season+ (not in this total)`
-          : null
+      futureLeft > 0 && dueNow.length > 0
+        ? `${futureLeft} further instalment${futureLeft === 1 ? "" : "s"} remain for later seasons (not pending here)`
         : null;
 
     if (principalPending > 0.5) {

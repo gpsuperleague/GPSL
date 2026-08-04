@@ -314,7 +314,7 @@ export const FINANCE_UI_SECTIONS = [
     id: "loans",
     title: "Central Bank loans",
     intro:
-      "This season’s payments only. Full terms / remaining interest: Central Bank → Service counter.",
+      "This season’s ledger only. Monthly dues post on month lock (Service Counter can catch up). Next-season schedule is not shown as pending here — see Central Bank for the full term.",
     lines: [
       {
         id: "loan_drawdowns",
@@ -326,13 +326,13 @@ export const FINANCE_UI_SECTIONS = [
         id: "loan_repayments",
         label: "Loan repayments (principal)",
         types: ["loan_repayment_principal"],
-        note: "Principal paid this season (usually ~10 instalments Aug–May per loan).",
+        note: "Principal paid this season (~10 instalments Aug–May per loan year). Pending = this season’s unpaid dues only.",
       },
       {
         id: "loan_interest",
         label: "Loan interest payments",
         types: ["loan_interest_payment"],
-        note: "Interest on this season’s instalments (set at drawdown).",
+        note: "Interest on this season’s instalments. Early settle at the counter is principal-only (remaining interest not charged).",
       },
     ],
   },

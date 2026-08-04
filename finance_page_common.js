@@ -11,8 +11,8 @@ import {
   aggregateLedgerByLine,
   renderFinanceSections,
   summariseLedgerTotals,
-} from "./finance_ui.js?v=20260728-accounts-labels";
-import { buildFinanceProjections } from "./finance_projections.js?v=20260804-loan-bucket";
+} from "./finance_ui.js?v=20260804-loan-catchup";
+import { buildFinanceProjections } from "./finance_projections.js?v=20260804-loan-catchup";
 import {
   appendAssignmentInfraPurchaseLedger,
   ledgerStartingBudget,
