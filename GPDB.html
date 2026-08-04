@@ -96,10 +96,27 @@
       color: #ff9900;
     }
 
-    #myScoutedFilterBtn.is-active {
+    #myScoutedFilterBtn.is-active,
+    #finalYearFilterBtn.is-active {
       background: #3d3200;
       border-color: #ff9900;
       color: #ffcc66;
+    }
+
+    .gpdb-status-final {
+      color: #ffcc66;
+      font-weight: bold;
+      font-size: 12px;
+    }
+
+    .gpdb-status-mid {
+      color: #aaa;
+      font-size: 12px;
+    }
+
+    .gpdb-status-fa {
+      color: #8c8;
+      font-size: 12px;
     }
 
     button.call-up-btn {
@@ -725,6 +742,7 @@
   <div id="controls">
     <div class="filter-group">
       <button id="clearFiltersBtn" class="button">Clear Filters</button>
+      <button id="finalYearFilterBtn" class="button secondary" type="button">Final year only</button>
       <button id="myScoutedFilterBtn" class="button secondary" type="button" hidden>★ My scouting targets</button>
       <button id="myNationFilterBtn" class="button secondary" type="button" hidden>My National Team</button>
       <button id="myClubNationFilterBtn" class="button secondary" type="button" hidden>My Club Nation</button>
@@ -806,7 +824,7 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js?v=20260722-bank-bal-row"></script>
-  <script type="module" src="gpdb_v2.js?v=20260724-club-nation-filter"></script>
+  <script type="module" src="gpdb_v2.js?v=20260804-final-year"></script>
 
 </body>
 </html>

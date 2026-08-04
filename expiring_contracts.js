@@ -2,6 +2,12 @@ import { initGlobal, supabase } from "./global.js";
 import { loadClubsMap, displayClubName } from "./clubs_lookup.js";
 import { formatWage, expiryWageBidStep, minExpiryWageOffer } from "./wages.js";
 
+const POSITION_ORDER = [
+  "GK", "LB", "CB", "RB",
+  "DMF", "LMF", "CMF", "RMF",
+  "AMF", "LWF", "SS", "RWF", "CF",
+];
+
 let myClubShort = null;
 let marketRows = [];
 let bidTarget = null;
@@ -27,6 +33,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   myClubShort = club?.ShortName ?? null;
 
   wireBidModal();
+  wireFilters();
   await loadMarket();
 
   const params = new URLSearchParams(window.location.search);
@@ -37,32 +44,160 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-async function loadMarket() {
+function wireFilters() {
+  const ids = [
+    "fName",
+    "fPosition",
+    "fNation",
+    "fPlaystyle",
+    "fClub",
+    "fRatingMin",
+    "fRatingMax",
+    "fAgeMin",
+    "fAgeMax",
+    "fMyBid",
+  ];
+  for (const id of ids) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    el.addEventListener(el.tagName === "SELECT" ? "change" : "input", () =>
+      renderMarket()
+    );
+  }
+  document.getElementById("fClearBtn")?.addEventListener("click", () => {
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el) el.value = "";
+    }
+    renderMarket();
+  });
+}
+
+function fillSelect(id, values, labelFn = (v) => v) {
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  const current = sel.value;
+  const opts = ['<option value="">All</option>'].concat(
+    values.map((v) => `<option value="${escapeAttr(v)}">${escapeHtml(labelFn(v))}</option>`)
+  );
+  sel.innerHTML = opts.join("");
+  if (current && values.includes(current)) sel.value = current;
+}
+
+function escapeHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function escapeAttr(text) {
+  return escapeHtml(text).replace(/'/g, "&#39;");
+}
+
+function rebuildFilterOptions() {
+  const positions = [
+    ...new Set(marketRows.map((r) => r.position).filter(Boolean)),
+  ].sort((a, b) => {
+    const ai = POSITION_ORDER.indexOf(a);
+    const bi = POSITION_ORDER.indexOf(b);
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+  });
+  const nations = [...new Set(marketRows.map((r) => r.nation).filter(Boolean))].sort(
+    (a, b) => a.localeCompare(b)
+  );
+  const playstyles = [
+    ...new Set(marketRows.map((r) => r.playstyle).filter(Boolean)),
+  ].sort((a, b) => a.localeCompare(b));
+  const clubs = [
+    ...new Set(marketRows.map((r) => r.holding_club).filter(Boolean)),
+  ].sort((a, b) =>
+    displayClubName(a).localeCompare(displayClubName(b), undefined, {
+      sensitivity: "base",
+    })
+  );
+
+  fillSelect("fPosition", positions);
+  fillSelect("fNation", nations);
+  fillSelect("fPlaystyle", playstyles);
+  fillSelect("fClub", clubs, (v) => displayClubName(v));
+}
+
+function filteredRows() {
+  const name = (document.getElementById("fName")?.value || "").trim().toLowerCase();
+  const position = document.getElementById("fPosition")?.value || "";
+  const nation = document.getElementById("fNation")?.value || "";
+  const playstyle = document.getElementById("fPlaystyle")?.value || "";
+  const club = document.getElementById("fClub")?.value || "";
+  const ratingMin = Number(document.getElementById("fRatingMin")?.value);
+  const ratingMax = Number(document.getElementById("fRatingMax")?.value);
+  const ageMin = Number(document.getElementById("fAgeMin")?.value);
+  const ageMax = Number(document.getElementById("fAgeMax")?.value);
+  const myBid = document.getElementById("fMyBid")?.value || "";
+
+  return marketRows.filter((row) => {
+    if (name && !String(row.player_name || "").toLowerCase().includes(name)) {
+      return false;
+    }
+    if (position && row.position !== position) return false;
+    if (nation && row.nation !== nation) return false;
+    if (playstyle && row.playstyle !== playstyle) return false;
+    if (club && row.holding_club !== club) return false;
+
+    const rating = Number(row.rating);
+    if (Number.isFinite(ratingMin) && document.getElementById("fRatingMin")?.value !== "") {
+      if (!Number.isFinite(rating) || rating < ratingMin) return false;
+    }
+    if (Number.isFinite(ratingMax) && document.getElementById("fRatingMax")?.value !== "") {
+      if (!Number.isFinite(rating) || rating > ratingMax) return false;
+    }
+
+    const age = Number(row.age);
+    if (Number.isFinite(ageMin) && document.getElementById("fAgeMin")?.value !== "") {
+      if (!Number.isFinite(age) || age < ageMin) return false;
+    }
+    if (Number.isFinite(ageMax) && document.getElementById("fAgeMax")?.value !== "") {
+      if (!Number.isFinite(age) || age > ageMax) return false;
+    }
+
+    if (myBid === "yes" && row.my_wage_bid == null) return false;
+    if (myBid === "no" && row.my_wage_bid != null) return false;
+
+    return true;
+  });
+}
+
+function formatMv(value) {
+  if (value == null || value === "") return "—";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return `<span class="money">₿ ${n.toLocaleString("en-GB")}</span>`;
+}
+
+function renderMarket() {
   const status = document.getElementById("marketStatus");
   const tbody = document.getElementById("marketBody");
-
-  const { data, error } = await supabase.rpc("list_expiring_contract_market");
-
-  if (error) {
-    status.textContent = "Could not load market.";
-    tbody.innerHTML = "";
-    console.error(error);
-    return;
-  }
-
-  marketRows = Array.isArray(data) ? data : [];
+  const rows = filteredRows();
 
   if (!marketRows.length) {
     status.textContent =
       "No players on the expiring-contract market right now (final-year standard players only).";
-    tbody.innerHTML =
-      '<tr><td colspan="7">—</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11">—</td></tr>';
     return;
   }
 
-  status.textContent = `${marketRows.length} player(s) — hidden bids until season rollover (₿250,000 steps).`;
+  status.textContent =
+    rows.length === marketRows.length
+      ? `${marketRows.length} player(s) — hidden bids until season rollover (₿250,000 steps).`
+      : `Showing ${rows.length} of ${marketRows.length} — hidden bids until season rollover.`;
 
-  tbody.innerHTML = marketRows
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="11">No players match these filters.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows
     .map((row) => {
       const myBid =
         row.my_wage_bid != null
@@ -70,10 +205,14 @@ async function loadMarket() {
           : "—";
       return `
         <tr data-player-id="${row.player_id}">
-          <td>${row.player_name}</td>
-          <td>${row.position || "—"}</td>
+          <td class="name-cell">${escapeHtml(row.player_name)}</td>
+          <td>${escapeHtml(row.position || "—")}</td>
+          <td>${escapeHtml(row.nation || "—")}</td>
+          <td>${row.age ?? "—"}</td>
           <td>${row.rating ?? "—"}</td>
-          <td>${displayClubName(row.holding_club)}</td>
+          <td>${escapeHtml(row.playstyle || "—")}</td>
+          <td>${formatMv(row.market_value)}</td>
+          <td>${escapeHtml(displayClubName(row.holding_club))}</td>
           <td>${formatWage(row.current_wage)}</td>
           <td>${myBid}</td>
           <td>
@@ -93,6 +232,26 @@ async function loadMarket() {
       if (row) openBidModal(row);
     });
   });
+}
+
+async function loadMarket() {
+  const status = document.getElementById("marketStatus");
+  const tbody = document.getElementById("marketBody");
+  status.textContent = "Loading…";
+
+  const { data, error } = await supabase.rpc("list_expiring_contract_market");
+
+  if (error) {
+    status.textContent =
+      "Could not load market — run patches/expiring_contracts_gpdb_filters.sql if filters/columns are missing.";
+    tbody.innerHTML = "";
+    console.error(error);
+    return;
+  }
+
+  marketRows = Array.isArray(data) ? data : [];
+  rebuildFilterOptions();
+  renderMarket();
 }
 
 function wireBidModal() {

@@ -51,7 +51,10 @@ import {
   SAME_SEASON_TRANSFER_MESSAGE,
   FINAL_YEAR_TRANSFER_MESSAGE,
 } from "./player_season_transfer.js";
-import { isContractFinalYear } from "./player_contracts.js";
+import {
+  contractYearsLabel,
+  isContractFinalYear,
+} from "./player_contracts.js";
 import {
   confirmSquadRulesBeforeBid,
   squadRulesBidWarningLines,
@@ -189,6 +192,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "Maximum_Reserve_Price",
     "market_value",
     "Contracted_Team",
+    "contract_status",
     "Season_Signed",
     "intl_caps",
     "intl_goals",
@@ -212,6 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
     "Konami_ID",
     "Potential",
     "Calc_Potential",
+    "contract_status",
     "foreign_contract_club",
     "foreign_contract_sold_season_id",
     "foreign_contract_unlock_season_label",
@@ -586,6 +591,7 @@ document.addEventListener("DOMContentLoaded", () => {
   /** @type {Map<string, number>} */
   let SCOUTING_TARGET_MAP = new Map();
   let SCOUTED_ONLY = false;
+  let FINAL_YEAR_ONLY = false;
 
   const GPDB_FILTER_STORAGE_PREFIX = "gpsl_gpdb_filters_";
 
@@ -671,6 +677,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (typeof saved.scoutedOnly === "boolean") {
       SCOUTED_ONLY = saved.scoutedOnly;
+    if (typeof saved.finalYearOnly === "boolean") {
+      FINAL_YEAR_ONLY = saved.finalYearOnly;
+    }
     }
     if (saved.sortColumn) CURRENT_SORT_COLUMN = saved.sortColumn;
     if (saved.sortDir === "asc" || saved.sortDir === "desc") {
@@ -699,6 +708,7 @@ document.addEventListener("DOMContentLoaded", () => {
       filters: CURRENT_FILTERS,
       range,
       scoutedOnly: SCOUTED_ONLY,
+      finalYearOnly: FINAL_YEAR_ONLY,
       sortColumn: CURRENT_SORT_COLUMN,
       sortDir: CURRENT_SORT_DIR,
     };
@@ -771,6 +781,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const scoutedBtn = document.getElementById("myScoutedFilterBtn");
     if (scoutedBtn) scoutedBtn.classList.toggle("is-active", SCOUTED_ONLY);
+    const finalYearBtn = document.getElementById("finalYearFilterBtn");
+    if (finalYearBtn) finalYearBtn.classList.toggle("is-active", FINAL_YEAR_ONLY);
   }
 
   let CLUB_NAME_MAP = {};
@@ -1090,6 +1102,10 @@ document.addEventListener("DOMContentLoaded", () => {
       query = query.in("Konami_ID", scoutIds);
     }
 
+    if (FINAL_YEAR_ONLY) {
+      query = query.eq("contract_seasons_remaining", 1);
+    }
+
     if (CURRENT_SORT_COLUMN) {
       if (CURRENT_SORT_COLUMN === "Rating") {
         query = query
@@ -1104,6 +1120,11 @@ document.addEventListener("DOMContentLoaded", () => {
         INTL_STAT_COLUMNS.has(CURRENT_SORT_COLUMN)
       ) {
         // client-side sort (intl stats joined after fetch)
+      } else if (CURRENT_SORT_COLUMN === "contract_status") {
+        query = query.order("contract_seasons_remaining", {
+          ascending: CURRENT_SORT_DIR === "asc",
+          nullsFirst: CURRENT_SORT_DIR === "asc",
+        });
       } else {
         query = query.order(CURRENT_SORT_COLUMN, {
           ascending: CURRENT_SORT_DIR === "asc"
@@ -1215,6 +1236,8 @@ document.addEventListener("DOMContentLoaded", () => {
   function formatHeader(col) {
     if (col === "market_value") return "Market Value";
     if (col === "contract_wage") return "Contract wage (per season)";
+    if (col === "contract_seasons_remaining") return "Yrs left";
+    if (col === "contract_status") return "Status";
     if (col === "Maximum_Reserve_Price") return "Maximum Reserve Price";
     if (col === "Potential") return "Pot.";
     if (col === "Contracted_Team") return "Contracted Team";
@@ -1225,6 +1248,20 @@ document.addEventListener("DOMContentLoaded", () => {
     if (col === "intl_clean_sheets") return "Intl CS";
     if (col === "intl_avg_rating") return "Intl Avg";
     return col.replace(/_/g, " ");
+  }
+
+  function gpdbContractStatusHtml(player) {
+    if (!player?.Contracted_Team || String(player.Contracted_Team).trim() === "") {
+      return `<span class="gpdb-status-fa">Free agent</span>`;
+    }
+    if (isContractFinalYear(player)) {
+      return `<span class="gpdb-status-final" title="Final contract year — wage bids on Expiring Contracts (standard players)">Final year</span>`;
+    }
+    const years = contractYearsLabel(player?.contract_seasons_remaining);
+    if (years === "—" || years === "Expired") {
+      return `<span class="gpdb-status-mid">${years}</span>`;
+    }
+    return `<span class="gpdb-status-mid">${years}</span>`;
   }
 
   /** Filter panel labels (Contracted Team highlights draft free agents). */
@@ -1630,6 +1667,10 @@ document.addEventListener("DOMContentLoaded", () => {
       return CLUB_NAME_MAP[value] || value;
     }
 
+    if (col === "contract_status") {
+      return gpdbContractStatusHtml(player);
+    }
+
     if (col === "Name") {
       return playerNameLinkHtml(player.Konami_ID, value);
     }
@@ -1848,6 +1889,14 @@ document.addEventListener("DOMContentLoaded", () => {
     SCOUTED_ONLY = !SCOUTED_ONLY;
     const btn = document.getElementById("myScoutedFilterBtn");
     if (btn) btn.classList.toggle("is-active", SCOUTED_ONLY);
+    saveGpdbFilters();
+    loadPage(1);
+  }
+
+  function toggleFinalYearOnlyFilter() {
+    FINAL_YEAR_ONLY = !FINAL_YEAR_ONLY;
+    const btn = document.getElementById("finalYearFilterBtn");
+    if (btn) btn.classList.toggle("is-active", FINAL_YEAR_ONLY);
     saveGpdbFilters();
     loadPage(1);
   }
@@ -2961,12 +3010,19 @@ document.addEventListener("DOMContentLoaded", () => {
       toggleScoutedOnlyFilter();
     });
 
+    document.getElementById("finalYearFilterBtn")?.addEventListener("click", () => {
+      toggleFinalYearOnlyFilter();
+    });
+
     document.getElementById("clearFiltersBtn").addEventListener("click", () => {
       CURRENT_FILTERS = {};
       SCOUTED_ONLY = false;
+      FINAL_YEAR_ONLY = false;
       clearGpdbFilterStorage();
       const scoutedBtn = document.getElementById("myScoutedFilterBtn");
       if (scoutedBtn) scoutedBtn.classList.remove("is-active");
+      const finalYearBtn = document.getElementById("finalYearFilterBtn");
+      if (finalYearBtn) finalYearBtn.classList.remove("is-active");
       CURRENT_SORT_COLUMN = "Rating";
       CURRENT_SORT_DIR = "desc";
 
