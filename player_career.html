@@ -24,7 +24,12 @@
     .gpsl-table th { text-align:left; padding:8px; background:#222; color:#ff9900; }
     .gpsl-table td { padding:8px; border-bottom:1px solid #2a2a2a; }
     .num { text-align:right; font-variant-numeric:tabular-nums; }
-    .empty { color:#777; font-style:italic; }
+    .gpsl-table .move-row td { color:#bbb; }
+    .gpsl-table .move-meta { color:#999; font-size:12px; margin-top:3px; }
+    .gpsl-table .row-kind {
+      display:inline-block; font-size:11px; text-transform:uppercase; letter-spacing:0.04em;
+      color:#888; margin-right:6px;
+    }
     .gpsl-link { color:#6cf; text-decoration:none; }
     .discipline-active { background: rgba(160, 55, 35, 0.2); }
     .card-pill {
@@ -66,6 +71,9 @@
 
     <div class="panel">
       <h2>GPSL clubs &amp; seasons</h2>
+      <p class="sub" style="margin-top:-6px;">
+        Season stints (apps &amp; stats) and completed transfers in one history.
+      </p>
       <div id="stintsPanel"><span class="empty">Loading…</span></div>
     </div>
 
@@ -73,11 +81,6 @@
       <h2>Cards &amp; suspensions</h2>
       <p class="sub" style="margin-top:-6px;">Yellow/red cards from confirmed match reports and resulting bans (red = 2 matches; every 8 yellows = 2 matches).</p>
       <div id="disciplinePanel"><span class="empty">Loading…</span></div>
-    </div>
-
-    <div class="panel">
-      <h2>Transfer history</h2>
-      <div id="transfersPanel"><span class="empty">Loading…</span></div>
     </div>
 
     <div class="panel">
@@ -97,6 +100,6 @@
       <div id="awardsPanel"><span class="empty">Loading…</span></div>
     </div>
   </div>
-  <script type="module" src="player_career.js"></script>
+  <script type="module" src="player_career.js?v=20260804-career-all-seasons"></script>
 </body>
 </html>

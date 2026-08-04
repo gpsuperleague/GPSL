@@ -29,6 +29,7 @@ whenDomReady(async () => {
     if (btn) btn.textContent = hideDone ? "Show completed" : "Hide completed";
     render();
   });
+  document.getElementById("wfClearAll")?.addEventListener("click", () => clearAllTicks());
 
   await loadSeason();
   await loadDoneState();
@@ -64,9 +65,10 @@ function writeLocalDone() {
 }
 
 async function loadSeason() {
-  const { data, error } = await supabase
+  // 1) Live current season (active / preseason with is_current)
+  let { data, error } = await supabase
     .from("competition_seasons")
-    .select("id, label")
+    .select("id, label, status, is_current")
     .eq("is_current", true)
     .order("id", { ascending: false })
     .limit(1)
@@ -76,10 +78,70 @@ async function loadSeason() {
     setStatus("wfStatus", `Could not load season: ${error.message}`, false);
     return;
   }
+
+  // 2) Summer break: no is_current — bind to next preseason/setup (blank checklist)
+  //    Do NOT reopen a completed season's ticks as the live workflow list.
+  if (!data || data.status === "complete") {
+    const { data: nextRow, error: nextErr } = await supabase
+      .from("competition_seasons")
+      .select("id, label, status, is_current")
+      .in("status", ["preseason", "setup"])
+      .order("id", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (nextErr) {
+      setStatus("wfStatus", `Could not load next season: ${nextErr.message}`, false);
+      return;
+    }
+    data = nextRow || null;
+  }
+
   seasonId = data?.id ?? null;
-  seasonLabel = data?.label || (seasonId ? `Season ${seasonId}` : "No current season");
+  const statusBit = data?.status ? ` · ${data.status}` : "";
+  seasonLabel = data
+    ? `${data.label || `Season ${data.id}`}${statusBit}`
+    : "Summer break — create Pre-Season for a fresh checklist";
   const el = document.getElementById("wfSeasonLabel");
   if (el) el.textContent = `Season: ${seasonLabel}`;
+}
+
+async function clearAllTicks() {
+  if (!seasonId && storageMode !== "local") {
+    setStatus("wfStatus", "No season to clear.", false);
+    return;
+  }
+  if (
+    !confirm(
+      `Clear ALL checklist ticks for ${seasonLabel}?\n\nThis cannot be undone.`
+    )
+  ) {
+    return;
+  }
+
+  const keys = allTasks().map((t) => t.taskKey);
+  doneMap = new Map();
+
+  if (storageMode === "db" && seasonId != null) {
+    for (const key of keys) {
+      const { error } = await supabase.rpc("admin_workflow_checklist_set", {
+        p_season_id: seasonId,
+        p_task_key: key,
+        p_is_done: false,
+      });
+      if (error) {
+        setStatus("wfStatus", `Clear failed: ${error.message}`, false);
+        await loadDoneState();
+        render();
+        return;
+      }
+    }
+    setStatus("wfStatus", "All ticks cleared for this season.", true);
+  } else {
+    writeLocalDone();
+    setStatus("wfStatus", "All ticks cleared (this browser).", true);
+  }
+  render();
 }
 
 async function migrateLocalTicksToDb(localDone) {

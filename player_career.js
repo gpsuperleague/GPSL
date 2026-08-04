@@ -165,11 +165,44 @@ function renderDiscipline(rows) {
     </table>`;
 }
 
-function renderStints(stints) {
+function seasonSortKey(label) {
+  const m = String(label || "").match(/(\d+)/);
+  return m ? Number(m[1]) : 0;
+}
+
+function renderStints(stints, transfers = []) {
   const el = document.getElementById("stintsPanel");
-  if (!stints?.length) {
+  if (!el) return;
+
+  const stintRows = (stints || []).map((s) => ({
+    kind: "stint",
+    season_label: s.season_label,
+    season_key: seasonSortKey(s.season_label),
+    sort_time: 0,
+    data: s,
+  }));
+
+  const transferRows = (transfers || []).map((t) => ({
+    kind: "transfer",
+    season_label: t.season_label,
+    season_key: seasonSortKey(t.season_label),
+    sort_time: t.transfer_time ? new Date(t.transfer_time).getTime() : 0,
+    data: t,
+  }));
+
+  const rows = [...stintRows, ...transferRows].sort((a, b) => {
+    if (b.season_key !== a.season_key) return b.season_key - a.season_key;
+    // Within a season: transfers (by date desc), then stint stats
+    if (a.kind !== b.kind) return a.kind === "transfer" ? -1 : 1;
+    if (a.kind === "transfer") return b.sort_time - a.sort_time;
+    return String(a.data.club_short_name || "").localeCompare(
+      String(b.data.club_short_name || "")
+    );
+  });
+
+  if (!rows.length) {
     el.innerHTML =
-      '<p class="empty">No GPSL match stats yet — stats appear after confirmed league &amp; cup games.</p>';
+      '<p class="empty">No GPSL match stats or transfers yet — stats appear after confirmed league &amp; cup games.</p>';
     return;
   }
 
@@ -178,7 +211,7 @@ function renderStints(stints) {
       <thead>
         <tr>
           <th>Season</th>
-          <th>Club</th>
+          <th>Club / move</th>
           <th>Div</th>
           <th class="num">Apps</th>
           <th class="num">G</th>
@@ -189,9 +222,34 @@ function renderStints(stints) {
         </tr>
       </thead>
       <tbody>
-        ${stints
-          .map(
-            (s) => `
+        ${rows
+          .map((row) => {
+            if (row.kind === "transfer") {
+              const t = row.data;
+              const when = t.transfer_time
+                ? new Date(t.transfer_time).toLocaleDateString("en-GB")
+                : null;
+              const type = MOVE_LABELS[t.move_kind] || t.move_kind || "Transfer";
+              const fee = formatTransferFee(t);
+              return `
+          <tr class="move-row">
+            <td>${t.season_label || "—"}</td>
+            <td>
+              <span class="row-kind">Transfer</span>${formatTransferParties(t)}
+              <div class="move-meta">${[when, type, fee !== "—" ? fee : null].filter(Boolean).join(" · ")}</div>
+            </td>
+            <td>—</td>
+            <td class="num">—</td>
+            <td class="num">—</td>
+            <td class="num">—</td>
+            <td class="num">—</td>
+            <td class="num">—</td>
+            <td class="num">—</td>
+          </tr>`;
+            }
+
+            const s = row.data;
+            return `
           <tr>
             <td>${s.season_label}${s.is_live ? " <small>(live)</small>" : ""}</td>
             <td>${clubLink(s.club_short_name, s.club_name)}</td>
@@ -202,8 +260,8 @@ function renderStints(stints) {
             <td class="num">${s.potm_awards ?? 0}</td>
             <td class="num">${s.clean_sheets ?? 0}</td>
             <td class="num">${s.avg_rating != null ? Number(s.avg_rating).toFixed(2) : "—"}</td>
-          </tr>`
-          )
+          </tr>`;
+          })
           .join("")}
       </tbody>
     </table>`;
@@ -227,44 +285,6 @@ function formatTransferFee(row) {
     return `${formatMoney(fee)} (+ ${formatMoney(agent)} agent)`;
   }
   return formatMoney(fee);
-}
-
-function renderTransfers(transfers) {
-  const el = document.getElementById("transfersPanel");
-  if (!el) return;
-
-  if (!transfers?.length) {
-    el.innerHTML =
-      '<p class="empty">No completed GPSL transfers recorded for this player yet.</p>';
-    return;
-  }
-
-  el.innerHTML = `
-    <table class="gpsl-table">
-      <thead>
-        <tr>
-          <th>Season</th>
-          <th>When</th>
-          <th>Move</th>
-          <th>Type</th>
-          <th class="num">Fee</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${transfers
-          .map(
-            (t) => `
-          <tr>
-            <td>${t.season_label || "—"}</td>
-            <td>${t.transfer_time ? new Date(t.transfer_time).toLocaleDateString("en-GB") : "—"}</td>
-            <td>${formatTransferParties(t)}</td>
-            <td>${MOVE_LABELS[t.move_kind] || t.move_kind || "Transfer"}</td>
-            <td class="num">${formatTransferFee(t)}</td>
-          </tr>`
-          )
-          .join("")}
-      </tbody>
-    </table>`;
 }
 
 function renderHonours(honours) {
@@ -359,7 +379,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.error("competition_player_career_bundle:", error);
     showError(
       error.message.includes("competition_player_career_bundle")
-        ? "Run supabase/sql/competition_history.sql and patches/player_career_transfers.sql in Supabase first."
+        ? "Run supabase/sql/competition_history.sql and patches/player_career_all_seasons_fix.sql in Supabase first."
         : error.message
     );
     return;
@@ -390,9 +410,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (imgLink) imgLink.href = pesdbPlayerUrl(playerId);
 
   renderTotals(bundle.totals);
-  renderStints(bundle.stints || []);
+  renderStints(bundle.stints || [], bundle.transfers || []);
   renderDiscipline(bundle.discipline || []);
-  renderTransfers(bundle.transfers || []);
   careerHonoursReal = bundle.honours || [];
   setupMedalsPreviewToggle();
   if (params.get("preview") === "medals") {

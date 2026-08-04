@@ -67,8 +67,11 @@
     <div class="admin-main" id="adminMain">
       <div class="card">
         <p class="wf-note">
-          Manual ticks for Admin menu tasks (excludes <b>Testing</b> and <b>Owners</b>),
-          scoped to the <b>current</b> season.
+          Manual ticks for Admin menu tasks (excludes <b>Testing</b> and <b>Owners</b>).
+          Bound to the <b>current</b> season while one is live; after
+          <b>End season → Summer Break</b>, it follows the next <b>preseason/setup</b>
+          season (blank) so finished-season ticks are not reused.
+          Use <b>Clear all ticks</b> if you need a reset on the season shown above.
           Check the status line below for storage mode:
           <b>Shared</b> = Supabase (all admins); <b>Browser-only</b> = this device until you run
           <code>supabase/sql/patches/admin_workflow_checklist.sql</code>.
@@ -83,12 +86,13 @@
           <button type="button" id="wfExpandAll" class="button secondary">Expand all</button>
           <button type="button" id="wfCollapseAll" class="button secondary">Collapse all</button>
           <button type="button" id="wfHideDone" class="button secondary">Hide completed</button>
+          <button type="button" id="wfClearAll" class="button secondary">Clear all ticks</button>
         </div>
         <div id="wfRoot"></div>
         <div id="wfStatus" class="status-line"></div>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_workflow_checklist.js?v=20260719-local-migrate"></script>
+  <script type="module" src="admin_workflow_checklist.js?v=20260804-summer-checklist"></script>
 </body>
 </html>

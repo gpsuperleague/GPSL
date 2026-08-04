@@ -316,7 +316,11 @@ async function endCurrentSeason() {
 
   setStatus(
     "compEndStatus",
-    `✅ ${data?.label || "Season"} ended — league phase: Summer Break.`
+    `✅ ${data?.label || "Season"} ended — league phase: Summer Break.${
+      data?.next_season_id
+        ? " Admin checklist now follows the next preseason/setup season (blank ticks)."
+        : " Create Pre-Season next — checklist will start blank for that season."
+    }`
   );
   await refreshCompetitionAdmin();
   await refreshCompCalendarAdmin();
