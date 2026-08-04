@@ -26,7 +26,8 @@
               <b>One real UK week (Fri 19:00 → Fri 19:00) = one GPSL month</b> for every month,
               including pre-season. Set <b>season start</b> = when <b>June</b> begins.
               Then: June (week 1) → July (week 2) → August league start (week 3) → … → Playoffs.
-              Run <code>patches/calendar_set_text_anchor_fix.sql</code> (or <code>calendar_june_july_weeks.sql</code>) in Supabase first.
+              Run <code>patches/calendar_allow_any_weekday_testing.sql</code> in Supabase first.
+              For a mid-week test start: <b>Tonight 19:00</b> + tick <b>Allow any weekday</b>.
             </p>
             <div id="compCalendarActiveNote" class="note"></div>
             <div class="row">
@@ -39,10 +40,15 @@
                 <input type="datetime-local" id="compCalendarAnchor" step="60">
               </div>
               <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;">
+                <button type="button" id="compCalendarSuggestTonightBtn" class="button" style="background:#664422;">Tonight 19:00</button>
                 <button type="button" id="compCalendarSuggestFriBtn" class="button" style="background:#555;">Next Friday 19:00</button>
                 <button type="button" id="compCalendarSuggest2wBtn" class="button" style="background:#555;">Friday in 2 weeks 19:00</button>
               </div>
             </div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;">
+              <input type="checkbox" id="compCalendarAllowAnyWeekday">
+              <span>Allow any weekday (testing) — still 19:00 UK; skips Friday-only rule</span>
+            </label>
             <p class="note" id="compCalendarPreview" style="margin-top:8px;"></p>
             <div class="row">
               <button id="compCalendarSetBtn" class="button" style="background:#336699;">Set / replace calendar</button>
@@ -171,6 +177,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_season.js?v=20260804-calendar-seed-fix"></script>
+  <script type="module" src="admin_season.js?v=20260804-calendar-any-weekday"></script>
 </body>
 </html>

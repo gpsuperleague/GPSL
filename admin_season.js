@@ -118,6 +118,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compCalendarClearBtn").onclick = clearCompCalendar;
   document.getElementById("compInboxMonthBtn").onclick = sendMonthPreviewInbox;
   document.getElementById("compCalendarAnchor").addEventListener("input", updateCalendarPreview);
+  document.getElementById("compCalendarSuggestTonightBtn").onclick = () =>
+    fillCalendarAnchor(tonight1900Uk());
   document.getElementById("compCalendarSuggestFriBtn").onclick = () =>
     fillCalendarAnchor(nextFriday1900Uk(0));
   document.getElementById("compCalendarSuggest2wBtn").onclick = () =>
@@ -772,6 +774,14 @@ function formatPartsReadable(parts) {
   return `${weekday} ${pad(parts.d)}/${pad(parts.mo)}/${parts.y} ${pad(parts.h)}:${pad(parts.mi)} UK`;
 }
 
+/** Tonight 19:00 UK wall clock (for testing mid-week starts). */
+function tonight1900Uk() {
+  const now = new Date();
+  const uk = new Date(now.toLocaleString("en-US", { timeZone: "Europe/London" }));
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${uk.getFullYear()}-${pad(uk.getMonth() + 1)}-${pad(uk.getDate())}T19:00`;
+}
+
 /** Next Friday 19:00 UK wall clock, at least `minDaysFromNow` days ahead. */
 function nextFriday1900Uk(minDaysFromNow = 0) {
   const now = new Date();
@@ -913,13 +923,27 @@ async function loadCalendarTableForSeason(seasonId) {
 async function setCompCalendar() {
   const seasonId = Number(document.getElementById("compCalendarSeason").value);
   const june = resolveSeasonStartParts();
+  const allowAny = !!document.getElementById("compCalendarAllowAnyWeekday")?.checked;
   if (!seasonId || !june) {
     setStatus(
       "compCalendarStatus",
-      "Pick season and season start Friday 19:00 UK (that Friday = June).",
+      "Pick season and season start 19:00 UK (that moment = June week 1).",
       false
     );
     return;
+  }
+
+  if (!allowAny) {
+    const dt = new Date(Date.UTC(june.y, june.mo - 1, june.d, 12, 0, 0));
+    const weekday = dt.getUTCDay(); // 5 = Friday
+    if (weekday !== 5) {
+      setStatus(
+        "compCalendarStatus",
+        "Not a Friday — tick “Allow any weekday (testing)” or use Next Friday 19:00.",
+        false
+      );
+      return;
+    }
   }
 
   const juneLocal = formatPartsLocal(june).replace("T", " ") + ":00";
@@ -932,6 +956,9 @@ async function setCompCalendar() {
         `Season start / June: ${formatPartsReadable(june)}\n` +
         `July: ${formatPartsReadable(july)}\n` +
         `August (league): ${formatPartsReadable(august)}\n\n` +
+        (allowAny
+          ? `TESTING: any-weekday override is on.\n\n`
+          : "") +
         `Each GPSL month = one real week.`
     )
   ) {
@@ -942,17 +969,18 @@ async function setCompCalendar() {
   const { data, error } = await supabase.rpc("competition_admin_set_season_calendar", {
     p_season_id: seasonId,
     p_anchor_local: juneLocal.length >= 19 ? juneLocal.slice(0, 19) : juneLocal,
+    p_allow_any_weekday: allowAny,
   });
   if (error) {
     const detail = [error.message, error.details, error.hint].filter(Boolean).join(" — ");
     setStatus(
       "compCalendarStatus",
       `❌ ${detail}${
-        /check constraint|gpsl_month|sort_order/i.test(detail)
-          ? " — run patches/calendar_set_text_anchor_fix.sql then retry."
-          : /Friday|19:00|parse/i.test(detail)
-            ? " — use Next Friday 19:00 (UK wall clock)."
-            : " — run patches/calendar_set_text_anchor_fix.sql if not done."
+        /Friday|weekday/i.test(detail)
+          ? " — tick “Allow any weekday (testing)” or run patches/calendar_allow_any_weekday_testing.sql."
+          : /check constraint|gpsl_month|sort_order|Could not find/i.test(detail)
+            ? " — run patches/calendar_allow_any_weekday_testing.sql then retry."
+            : ""
       }`,
       false
     );
@@ -960,7 +988,8 @@ async function setCompCalendar() {
   }
   setStatus(
     "compCalendarStatus",
-    `✅ Calendar set. June ${data.june_uk || data.anchor_uk}; ` +
+    `✅ Calendar set${data?.allow_any_weekday ? " (testing weekday override)" : ""}. ` +
+      `June ${data.june_uk || data.anchor_uk}; ` +
       `July ${data.july_uk || "?"}; August ${data.august_uk || "?"}; ends ${data.season_ends_uk}.`
   );
   await loadCalendarTableForSeason(seasonId);
