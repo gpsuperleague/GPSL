@@ -1,16 +1,16 @@
 /**
  * Expiring Contracts — owner-facing rules copy (modular cards).
  */
-import { expiryWageMinUpliftPct, formatWage } from "./wages.js";
+import { expiryWageMinUpliftPct } from "./wages.js";
 
-const CHAMP_SL_SIGNING_FEE = 10_000_000;
+/** Champ→SL expiry signing-on fee as % of market value (paid to the player). */
+export const CHAMP_SL_SIGNING_FEE_PCT = 15;
 
 /**
  * @returns {{ title: string, cards: { heading: string, items: string[] }[] }}
  */
 export function getExpiringContractRules() {
   const uplift = expiryWageMinUpliftPct();
-  const signingFee = formatWage(CHAMP_SL_SIGNING_FEE);
 
   return {
     title: "Hidden wage bid rules",
@@ -38,7 +38,7 @@ export function getExpiringContractRules() {
           "<b>Highest wage</b> wins a new <b>3-season</b> contract at that wage.",
           "<b>Ties</b> favour the holding club.",
           "Another club winning pays <b>market value</b> to the holder.",
-          `Championship club taking a Super League player also pays <b>${signingFee}</b> to the player as a signing-on fee.`,
+          `Championship club taking a Super League player also pays <b>${CHAMP_SL_SIGNING_FEE_PCT}% of market value</b> to the player as a signing-on fee.`,
           "<b>No mid-season expire.</b> If nobody re-signs them, they become a free agent — holding club receives market value then.",
         ],
       },

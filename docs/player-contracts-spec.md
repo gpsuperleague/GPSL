@@ -175,7 +175,7 @@ At **1 season left**, contested players are **automatically** on the **expiring-
 | **Outcome** | Winner’s club gets player on **new 3-season contract** at **bid wage** |
 | **No bids** | Player → draft free-agent list; wage resets to **calculated norm**; holding club credited **MV** |
 | **Other club wins** | Pays **market value** compensation to holding club; player moves at rollover |
-| **Champ ← SL** | If winner is Championship and holder is Super League: extra **₿10m** signing-on fee **to the player** (separate from wage; debit buying club only) |
+| **Champ ← SL** | If winner is Championship and holder is Super League: extra **15% of market value** signing-on fee **to the player** (separate from wage; debit buying club only) |
 
 If **current owner** wins: player **stays**, wage updates to winning bid, contract **renews** (3 seasons).
 

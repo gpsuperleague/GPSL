@@ -1,9 +1,27 @@
--- Champ→SL expiry signing-on fee: paid to the player (club debit only),
--- not to the Central Bank.
+-- Champ→SL expiry signing-on fee: 15% of player market value, paid to the player
+-- (Championship buying-club debit only — not Central Bank / seller).
 -- Safe re-run.
 
+CREATE OR REPLACE FUNCTION public.contract_expiry_champ_sl_signing_fee_pct()
+RETURNS numeric
+LANGUAGE sql
+IMMUTABLE
+AS $$ SELECT 15::numeric; $$;
+
+COMMENT ON FUNCTION public.contract_expiry_champ_sl_signing_fee_pct() IS
+  'Championship club signing-on fee when winning a Super League player on expiry — % of market value, paid to the player.';
+
+-- Legacy flat helper (unused by resolve); kept for older callers.
+CREATE OR REPLACE FUNCTION public.contract_expiry_champ_sl_signing_fee()
+RETURNS numeric
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT 0::numeric;
+$$;
+
 COMMENT ON FUNCTION public.contract_expiry_champ_sl_signing_fee() IS
-  'Championship club signing-on fee when winning a Super League player on expiry — paid to the player (₿10m debit from buying club; no bank/seller credit).';
+  'Deprecated flat fee — resolve uses contract_expiry_champ_sl_signing_fee_pct() × market value.';
 
 CREATE OR REPLACE FUNCTION public.contract_resolve_all_expiry_bids()
 RETURNS jsonb
@@ -21,7 +39,8 @@ DECLARE
   v_player_name  text;
   v_holder_tier  text;
   v_winner_tier  text;
-  v_signing_fee  numeric := public.contract_expiry_champ_sl_signing_fee();
+  v_signing_fee  numeric;
+  v_fee_pct      numeric := public.contract_expiry_champ_sl_signing_fee_pct();
   v_meta         jsonb;
 BEGIN
   v_season := coalesce(public.current_gpsl_season_label(), 'unknown');
@@ -104,24 +123,31 @@ BEGIN
       v_winner_tier := public.competition_club_division_tier(v_bid.bidder_club_short_name);
 
       IF v_holder_tier = 'superleague' AND v_winner_tier = 'championship' THEN
-        -- Signing-on fee to the player: debit buying club only (leaves the game economy)
-        PERFORM public.post_club_ledger(
-          v_bid.bidder_club_short_name,
-          'contract_expiry_champ_signing_fee',
-          -v_signing_fee,
-          'Championship signing-on fee to player (SL expiry): '
-            || coalesce(v_player_name, v_player.player_id),
-          v_meta || jsonb_build_object(
-            'signing_fee', v_signing_fee,
-            'signing_fee_to', 'player',
-            'holder_tier', v_holder_tier,
-            'winner_tier', v_winner_tier
-          ),
-          NULL,
-          NULL,
-          false,  -- not Central Bank
-          true
-        );
+        v_signing_fee := round(v_mv * v_fee_pct / 100.0);
+        IF v_signing_fee > 0 THEN
+          -- Signing-on fee to the player: debit buying club only
+          PERFORM public.post_club_ledger(
+            v_bid.bidder_club_short_name,
+            'contract_expiry_champ_signing_fee',
+            -v_signing_fee,
+            'Championship signing-on fee to player ('
+              || to_char(v_fee_pct, 'FM999')
+              || '% MV, SL expiry): '
+              || coalesce(v_player_name, v_player.player_id),
+            v_meta || jsonb_build_object(
+              'signing_fee', v_signing_fee,
+              'signing_fee_pct', v_fee_pct,
+              'signing_fee_to', 'player',
+              'market_value', v_mv,
+              'holder_tier', v_holder_tier,
+              'winner_tier', v_winner_tier
+            ),
+            NULL,
+            NULL,
+            false,  -- not Central Bank
+            true
+          );
+        END IF;
       END IF;
 
       INSERT INTO public."Transfer_History" (
@@ -165,6 +191,8 @@ BEGIN
 END;
 $function$;
 
+GRANT EXECUTE ON FUNCTION public.contract_expiry_champ_sl_signing_fee_pct() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.contract_expiry_champ_sl_signing_fee() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.contract_resolve_all_expiry_bids() TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
