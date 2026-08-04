@@ -14,9 +14,29 @@
     #nav { padding:15px; background:#1a1a1a; border-bottom:1px solid #333; text-align:center; }
     h1 { margin:20px; color:#ff9900; }
     .info-box {
-      background:#1a1a1a; border:1px solid #333; padding:15px; margin:20px;
-      border-radius:8px; font-size:13px; line-height:1.55; max-width:1100px;
+      background:#1a1a1a; border:1px solid #333; padding:16px 18px 18px;
+      margin:20px; border-radius:8px; font-size:13px; line-height:1.45;
+      max-width:1100px; color:#ccc;
     }
+    .info-box > h2 {
+      margin:0 0 12px; color:#ff9900; font-size:15px; font-weight:bold;
+    }
+    .rules-grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));
+      gap:12px 14px;
+    }
+    .rules-card {
+      background:#151515; border:1px solid #2e2e2e;
+      border-radius:6px; padding:12px 14px;
+    }
+    .rules-card h3 {
+      margin:0 0 8px; color:#ffcc66; font-size:13px; font-weight:bold;
+    }
+    .rules-card ul { margin:0; padding-left:1.1em; }
+    .rules-card li { margin-bottom:6px; color:#bbb; }
+    .rules-card li:last-child { margin-bottom:0; }
+    .rules-card b { color:#eee; font-weight:600; }
     .panel { margin:20px; padding:20px; background:#1a1a1a; border:1px solid #333; border-radius:8px; }
     .filter-bar {
       display:flex; flex-wrap:wrap; gap:10px 14px; align-items:flex-end;
@@ -104,14 +124,8 @@
   <div id="nav"></div>
   <h1>Expiring Contracts</h1>
 
-  <div class="info-box">
-    <b>Hidden wage bids</b> — players in their <b>final contract year</b> on the contested market
-    (everyone except <b>home-grown ≤23</b> and <b>non-home-grown ≤21</b>, who renew/release uncontested on Squad).
-    The player <b>stays at the holding club</b> all season while bids are collected.
-    One wage offer per club; must be at least <b>10% above current wage</b> (any whole ₿ amount at or above that floor). Competing amounts stay hidden.
-    At <b>season rollover</b>, the highest bid wins a <b>new 3-season contract</b>. Ties favour the holding club.
-    Another club winning pays <b>market value</b> to the holder; Championship clubs signing a Super League player also pay a <b>₿10m</b> signing-on fee to the Central Bank.
-    <b>No mid-season expire</b> — if nobody re-signs them, they become a free agent at rollover and the holding club receives market value then.
+  <div class="info-box" id="expiringRules" aria-label="Expiring contract rules">
+    <!-- Filled by expiring_contracts_rules.js -->
   </div>
 
   <div class="panel">
@@ -194,6 +208,6 @@
     </div>
   </div>
 
-  <script type="module" src="expiring_contracts.js?v=20260804-wage-pct"></script>
+  <script type="module" src="expiring_contracts.js?v=20260804-rules-cards"></script>
 </body>
 </html>

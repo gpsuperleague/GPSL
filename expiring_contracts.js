@@ -5,6 +5,7 @@ import {
   expiryWageMinUpliftPct,
   minExpiryWageOffer,
 } from "./wages.js";
+import { renderExpiringContractRules } from "./expiring_contracts_rules.js";
 
 const POSITION_ORDER = [
   "GK", "LB", "CB", "RB",
@@ -37,6 +38,7 @@ let bidTarget = null;
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
   await loadClubsMap();
+  renderExpiringContractRules();
 
   const {
     data: { user },
