@@ -65,6 +65,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (pid) {
     const row = marketRows.find((r) => String(r.player_id) === String(pid));
     if (row) openBidModal(row);
+    // Drop ?player= so refresh does not reopen the bid modal.
+    params.delete("player");
+    const next = params.toString();
+    const cleanUrl = `${window.location.pathname}${next ? `?${next}` : ""}${
+      window.location.hash || ""
+    }`;
+    window.history.replaceState({}, "", cleanUrl);
   }
 });
 
