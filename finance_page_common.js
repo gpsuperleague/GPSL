@@ -12,7 +12,7 @@ import {
   renderFinanceSections,
   summariseLedgerTotals,
 } from "./finance_ui.js?v=20260728-accounts-labels";
-import { buildFinanceProjections } from "./finance_projections.js?v=20260802-advisory-budget";
+import { buildFinanceProjections } from "./finance_projections.js?v=20260804-loan-pending";
 import {
   appendAssignmentInfraPurchaseLedger,
   ledgerStartingBudget,

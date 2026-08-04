@@ -15,7 +15,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20260723-wage-bill";
+} from "./finance_page_common.js?v=20260804-loan-pending";
 
 function setAdvisoryBudgetDisplay(advisory, { historical = false } = {}) {
   const el = document.getElementById("advisoryTransferBudget");

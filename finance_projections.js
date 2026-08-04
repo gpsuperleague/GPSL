@@ -387,24 +387,55 @@ export async function buildFinanceProjections(
     }
   }
 
+  // Loan installments: only THIS season + overdue prior seasons.
+  // Close Finances never collects loans (month lock / Service Counter do).
+  // Multi-season schedules leave future rows as "pending" — that is normal and
+  // must not appear as unfinished end-of-season work.
   const { data: loanInst, error: loanInstErr } = await supabase
     .from("club_loan_installments_public")
-    .select("principal_due, interest_due, total_due, status")
+    .select(
+      "principal_due, interest_due, total_due, status, due_season_id, due_gpsl_month, due_gpsl_month_label"
+    )
     .eq("status", "pending");
 
   if (!loanInstErr && loanInst?.length) {
+    const seasonId = Number(season?.id) || 0;
+    const dueNow = loanInst.filter((r) => {
+      const dueSeason = Number(r.due_season_id) || 0;
+      // Past seasons always overdue; unpaid current-season months still due
+      return dueSeason > 0 && (seasonId <= 0 || dueSeason <= seasonId);
+    });
+
     let principalPending = 0;
     let interestPending = 0;
-    for (const r of loanInst) {
+    for (const r of dueNow) {
       principalPending += Number(r.principal_due || 0);
       interestPending += Number(r.interest_due || 0);
     }
+
+    const futureLeft = loanInst.length - dueNow.length;
+    const monthBits = dueNow
+      .map((r) => r.due_gpsl_month_label || r.due_gpsl_month)
+      .filter(Boolean);
+    const monthHint =
+      monthBits.length > 0 && monthBits.length <= 4
+        ? ` (${[...new Set(monthBits)].join(", ")})`
+        : "";
+    const dueNote =
+      dueNow.length > 0
+        ? `${dueNow.length} unpaid installment${dueNow.length === 1 ? "" : "s"} this season/overdue${monthHint} — collected on month lock, not Close Finances`
+        : null;
+    const futureNote =
+      futureLeft > 0 && dueNow.length > 0
+        ? `${futureLeft} more scheduled next season+ (not in this total)`
+        : null;
+
     if (principalPending > 0.5) {
       setPendingForecast(
         pendingByLine,
         "loan_repayments",
         -principalPending,
-        `${loanInst.length} scheduled installment${loanInst.length === 1 ? "" : "s"} (principal still due)`,
+        [dueNote, futureNote].filter(Boolean).join(" · "),
         byLine
       );
     }
@@ -413,7 +444,7 @@ export async function buildFinanceProjections(
         pendingByLine,
         "loan_interest",
         -interestPending,
-        `${loanInst.length} scheduled installment${loanInst.length === 1 ? "" : "s"} (interest still due)`,
+        [dueNote, futureNote].filter(Boolean).join(" · "),
         byLine
       );
     }
