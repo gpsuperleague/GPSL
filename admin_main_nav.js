@@ -212,10 +212,29 @@ export const ADMIN_MAIN_NAV = [
       group("March", []),
       group("April", []),
       group("May", [
-        L("Lock May (end GPSL month early)", "admin_test_end_month.html"),
+        L(
+          "Deploy May results",
+          "admin_test_deploy_month.html",
+          null,
+          null,
+          "Play all scheduled May league/cup fixtures first. Do this before locking May."
+        ),
+        L(
+          "Lock May (end GPSL month early)",
+          "admin_test_end_month.html",
+          null,
+          null,
+          "After May is fully deployed. Check “Also unlock next month” to open Playoffs."
+        ),
         L("Retry May month-lock jobs if timed out", "admin_test_end_month.html"),
         L("Republish GPSL Sport (May)", "admin_gpsl_sport.html"),
-        L("Generate playoffs", "admin_fixtures-playoffs.html"),
+        L(
+          "Generate playoffs",
+          "admin_fixtures-playoffs.html",
+          null,
+          null,
+          "Usually auto on May lock — use if ties are missing, then continue under Playoffs."
+        ),
       ]),
       group("Playoffs", [
         L("Setup Playoffs", "admin_fixtures-playoffs.html"),
