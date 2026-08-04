@@ -224,13 +224,36 @@ async function fetchOverviewRows() {
   return { data, error: rpcError || error };
 }
 
+async function mergeLiveMetrics(rows) {
+  const { data, error } = await supabase.rpc(
+    "competition_club_stadium_overview_live_metrics"
+  );
+  if (error || !Array.isArray(data)) return rows;
+
+  const byClub = new Map(data.map((m) => [m.club_short_name, m]));
+  return rows.map((row) => {
+    const m = byClub.get(row.club_short_name);
+    if (!m) return row;
+    return {
+      ...row,
+      expected_points: m.expected_points ?? row.expected_points,
+      actual_points: m.actual_points ?? row.actual_points,
+      performance_gap: m.performance_gap ?? row.performance_gap,
+      performance_band: m.performance_band ?? row.performance_band,
+      prestige_base_fill_pct: m.prestige_base_fill_pct ?? row.prestige_base_fill_pct,
+      expected_position: m.expected_position ?? row.expected_position,
+      actual_position: m.actual_position ?? row.actual_position,
+      stadium_fill_target_pct: m.stadium_fill_target_pct ?? row.stadium_fill_target_pct,
+    };
+  });
+}
+
 async function loadTable() {
   setStatus("pageStatus", "Loading…");
   const wrap = document.getElementById("tableWrap");
   if (wrap) wrap.innerHTML = '<p class="note">Loading clubs…</p>';
 
-  await supabase.rpc("competition_stadium_sync_all_clubs");
-
+  // Fast list only — sync-all on every load was a common timeout cause.
   const { data, error } = await fetchOverviewRows();
 
   if (error) {
@@ -238,7 +261,7 @@ async function loadTable() {
       "pageStatus",
       "❌ " +
         formatLoadError(error) +
-        " — run stadium_attendance_v2_fix_projection_note.sql (or stadium_attendance_v2_rest_access.sql) in Supabase.",
+        " — run patches/stadium_attendance_overview_timeout_fix.sql in Supabase.",
       false
     );
     if (wrap) wrap.innerHTML = "";
@@ -257,8 +280,28 @@ async function loadTable() {
     return;
   }
 
-  setStatus("pageStatus", `✅ Loaded ${allRows.length} clubs (prestige rank 1–${allRows.length}).`, true);
+  setStatus(
+    "pageStatus",
+    `✅ Loaded ${allRows.length} clubs. Fetching live season metrics…`,
+    true
+  );
   renderTable();
+
+  try {
+    allRows = await mergeLiveMetrics(allRows);
+    renderTable();
+    setStatus(
+      "pageStatus",
+      `✅ Loaded ${allRows.length} clubs (prestige rank 1–${allRows.length}).`,
+      true
+    );
+  } catch (_) {
+    setStatus(
+      "pageStatus",
+      `✅ Loaded ${allRows.length} clubs (prestige/fill). Live exp/act metrics timed out — use Sync fill drift and retry.`,
+      true
+    );
+  }
 }
 
 async function syncFill() {
