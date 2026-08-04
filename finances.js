@@ -15,7 +15,7 @@ import {
   resolveFinanceClubContext,
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
-} from "./finance_page_common.js?v=20260804-loan-pending";
+} from "./finance_page_common.js?v=20260804-loan-bucket";
 
 function setAdvisoryBudgetDisplay(advisory, { historical = false } = {}) {
   const el = document.getElementById("advisoryTransferBudget");

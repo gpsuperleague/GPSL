@@ -387,23 +387,48 @@ export async function buildFinanceProjections(
     }
   }
 
-  // Loan installments: only THIS season + overdue prior seasons.
+  // Loan pending = this season's installment bucket only (Aug–May × 1).
+  // Do NOT trust due_season_id: when Season N+1 does not exist yet, the
+  // resolver pins the next-season half of a 20-month loan onto this season id,
+  // which wrongly showed e.g. ₿50m / 20 instalments as EOS pending.
+  // due_season_label / due_season_offset identify the real bucket.
   // Close Finances never collects loans (month lock / Service Counter do).
-  // Multi-season schedules leave future rows as "pending" — that is normal and
-  // must not appear as unfinished end-of-season work.
   const { data: loanInst, error: loanInstErr } = await supabase
     .from("club_loan_installments_public")
     .select(
-      "principal_due, interest_due, total_due, status, due_season_id, due_gpsl_month, due_gpsl_month_label"
+      "loan_id, principal_due, interest_due, total_due, status, due_season_id, due_season_offset, due_season_label, due_gpsl_month, due_gpsl_month_label"
     )
     .eq("status", "pending");
 
   if (!loanInstErr && loanInst?.length) {
-    const seasonId = Number(season?.id) || 0;
+    const curId = Number(season?.id) || 0;
+    const curLabel = String(season?.label || "").trim().toLowerCase();
+    const { data: loans } = await supabase
+      .from("club_loans_public")
+      .select("id, season_id");
+    const loanSeasonById = new Map(
+      (loans || []).map((l) => [Number(l.id), Number(l.season_id) || 0])
+    );
+
     const dueNow = loanInst.filter((r) => {
-      const dueSeason = Number(r.due_season_id) || 0;
-      // Past seasons always overdue; unpaid current-season months still due
-      return dueSeason > 0 && (seasonId <= 0 || dueSeason <= seasonId);
+      const label = String(r.due_season_label || "").trim().toLowerCase();
+      if (curLabel && label && label === curLabel) return true;
+
+      // Label may be a bare year number ("2") while season.label is "Season 2"
+      if (curLabel && label && (curLabel === label || curLabel.endsWith(` ${label}`))) {
+        return true;
+      }
+
+      const offset = Math.max(0, Number(r.due_season_offset) || 0);
+      const loanSeasonId = loanSeasonById.get(Number(r.loan_id)) || 0;
+      // Drawn this season → only the first 10-month bucket belongs here
+      if (curId && loanSeasonId === curId) return offset === 0;
+      // Drawn earlier → only the bucket that lands on the current season
+      if (curId && loanSeasonId > 0 && loanSeasonId < curId) {
+        // Without a full season list, offset 1 is the next GPSL year (typical 20-mo loan)
+        return offset === 1;
+      }
+      return false;
     });
 
     let principalPending = 0;
@@ -414,20 +439,26 @@ export async function buildFinanceProjections(
     }
 
     const futureLeft = loanInst.length - dueNow.length;
-    const monthBits = dueNow
-      .map((r) => r.due_gpsl_month_label || r.due_gpsl_month)
-      .filter(Boolean);
+    const monthBits = [
+      ...new Set(
+        dueNow
+          .map((r) => r.due_gpsl_month_label || r.due_gpsl_month)
+          .filter(Boolean)
+      ),
+    ];
     const monthHint =
-      monthBits.length > 0 && monthBits.length <= 4
-        ? ` (${[...new Set(monthBits)].join(", ")})`
+      monthBits.length > 0 && monthBits.length <= 6
+        ? ` (${monthBits.join(", ")})`
         : "";
     const dueNote =
       dueNow.length > 0
-        ? `${dueNow.length} unpaid installment${dueNow.length === 1 ? "" : "s"} this season/overdue${monthHint} — collected on month lock, not Close Finances`
+        ? `${dueNow.length} unpaid this-season installment${dueNow.length === 1 ? "" : "s"}${monthHint} — month lock / Service Counter, not Close Finances`
         : null;
     const futureNote =
-      futureLeft > 0 && dueNow.length > 0
-        ? `${futureLeft} more scheduled next season+ (not in this total)`
+      futureLeft > 0
+        ? dueNow.length > 0
+          ? `${futureLeft} more next season+ (not in this total)`
+          : null
         : null;
 
     if (principalPending > 0.5) {
