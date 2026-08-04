@@ -82,6 +82,21 @@ export const ADMIN_MAIN_NAV = [
     ],
   },
   {
+    id: "create_season",
+    label: "Create Season",
+    entries: [
+      link("Create Pre-Season", "admin_season.html", "wf-kickoff"),
+      group("Assign divisions", [
+        L("Setup Superleague Teams", "admin_season.html", "wf-divisions"),
+        L("Setup Championship Teams", "admin_season.html", "wf-divisions"),
+        L("Draw Championship Divisions", "admin_season.html", "wf-divisions"),
+      ]),
+      link("Create Season Calendar", "admin_season.html", "wf-calendar"),
+      link("Create League Fixtures", "admin_fixtures-league.html"),
+      link("Setup Cups", "admin_fixtures-cups.html"),
+    ],
+  },
+  {
     id: "season_break",
     label: "Season Break",
     entries: [
@@ -111,21 +126,6 @@ export const ADMIN_MAIN_NAV = [
         L("Clear Nation Assignments", "admin_international_selection_clear.html"),
         L("Verify owner rankings", "admin_international.html", "sb-owner-rankings"),
       ]),
-    ],
-  },
-  {
-    id: "create_season",
-    label: "Create Season",
-    entries: [
-      link("Create Pre-Season", "admin_season.html", "wf-kickoff"),
-      group("Assign divisions", [
-        L("Setup Superleague Teams", "admin_season.html", "wf-divisions"),
-        L("Setup Championship Teams", "admin_season.html", "wf-divisions"),
-        L("Draw Championship Divisions", "admin_season.html", "wf-divisions"),
-      ]),
-      link("Create Season Calendar", "admin_season.html", "wf-calendar"),
-      link("Create League Fixtures", "admin_fixtures-league.html"),
-      link("Setup Cups", "admin_fixtures-cups.html"),
     ],
   },
   {
