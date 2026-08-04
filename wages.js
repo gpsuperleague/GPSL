@@ -34,14 +34,28 @@ export function formatWage(amount) {
   return `₿ ${n.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`;
 }
 
-/** Expiring-contract hidden wage offers must use this step. */
-export function expiryWageBidStep() {
-  return 250000;
+/** Minimum uplift above current wage for expiring-contract bids (%). */
+export function expiryWageMinUpliftPct() {
+  return 10;
 }
 
-/** Next valid offer: next ₿250k step strictly above current wage. */
-export function minExpiryWageOffer(currentWage, step = expiryWageBidStep()) {
+/** @deprecated Step removed — use expiryWageMinUpliftPct / minExpiryWageOffer. */
+export function expiryWageBidStep() {
+  return 1;
+}
+
+/** Minimum expiry wage offer: current wage + uplift % (ceil), strictly above current. */
+export function minExpiryWageOffer(
+  currentWage,
+  upliftPct = expiryWageMinUpliftPct()
+) {
   const cur = Math.max(0, Number(currentWage) || 0);
-  const s = Number(step) || expiryWageBidStep();
-  return Math.floor(cur / s) * s + s;
+  const pct = Number(upliftPct);
+  const usePct = Number.isFinite(pct) && pct > 0 ? pct : expiryWageMinUpliftPct();
+
+  if (cur <= 0) return 10000;
+
+  let min = Math.ceil(cur * (1 + usePct / 100));
+  if (min <= cur) min = cur + 1;
+  return min;
 }

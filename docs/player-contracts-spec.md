@@ -15,7 +15,7 @@ Authoritative design from league owner (2026). Align with legacy spreadsheet whe
 | **Selling** | Allowed only while **2+ seasons remain** — **cannot sell** in final year |
 | **Final year (1 left)** | Player **automatically** on expiring-contract / FA list — no transfer list |
 | **Owner choices (final year, contested)** | Wage bid only — **no mid-season renew/expire**; FA+MV only at rollover if unsigned |
-| **Renew wage (standard)** | New offer must be **> current contract wage**, in **₿250,000** steps |
+| **Expiry wage bid floor** | At least **+10%** above current contract wage (whole ₿; no fixed step) |
 | **Home-grown** | `Players.Nation` = `Clubs.Nation` — **at least 8** (no maximum) |
 | **Under-21** | Age **≤ 21** — **at least 5** (no maximum) |
 | **Squad size** | **Max 28** players |
@@ -143,7 +143,7 @@ Applies when `expiry_auction_applies` is true and **1 season remains** (not unco
 ### 1. Renew contract
 
 - Owner offers a **new 3-season contract** (via winning their own hidden bid if others bid too).
-- **Wage offered must be higher than today**, in **₿250,000** steps — cannot renew on the same wage or a pay cut.
+- **Wage offered must be at least +10% above today** (whole ₿) — cannot renew on the same wage or a pay cut.
 - Contract resets to **3 seasons remaining** at the chosen wage.
 
 ### 2. Contract ends unsigned (season rollover only)
@@ -166,8 +166,8 @@ At **1 season left**, contested players are **automatically** on the **expiring-
 |------|--------|
 | **Who can bid** | Any owner (including **current** club) |
 | **Bids per club** | **One** wage offer per player per expiry cycle |
-| **Floor** | Must be **strictly higher** than current contract wage |
-| **Step** | Offers in **₿250,000** increments only |
+| **Floor** | At least **+10%** above current contract wage |
+| **Step** | Any whole ₿ amount at or above the floor |
 | **Visibility** | **Hidden** — other owners do not see competing amounts |
 | **Timing** | For contract **expiry** (end of final season), not immediate transfer |
 | **Winner** | **Highest wage** at resolution |
