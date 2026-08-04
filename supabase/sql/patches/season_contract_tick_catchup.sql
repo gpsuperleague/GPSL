@@ -284,18 +284,11 @@ BEGIN
     v_resolve := jsonb_build_object('skipped', true);
   END IF;
 
-  IF to_regprocedure('public.player_expiry_auction_applies(text)') IS NOT NULL THEN
-    UPDATE public."Players" p
-    SET contract_seasons_remaining = 0
-    WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
-      AND p.contract_seasons_remaining = 1
-      AND public.player_expiry_auction_applies(p."Konami_ID"::text);
-  ELSE
-    UPDATE public."Players" p
-    SET contract_seasons_remaining = 0
-    WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
-      AND p.contract_seasons_remaining = 1;
-  END IF;
+  -- Anyone still at remaining=1 was not re-signed → end (FA + MV)
+  UPDATE public."Players" p
+  SET contract_seasons_remaining = 0
+  WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
+    AND p.contract_seasons_remaining = 1;
 
   GET DIAGNOSTICS v_ended = ROW_COUNT;
 
@@ -318,10 +311,11 @@ BEGIN
   v_out := jsonb_build_object(
     'ok', true,
     'expiry_resolved', v_resolve,
-    'players_contract_ended_no_bid', v_ended,
+    'players_contract_ended_unsigned', v_ended,
     'players_released_zero_years', v_released,
     'players_decremented', v_updated,
-    'players_final_year', v_final
+    'players_final_year', v_final,
+    'note', 'Resolve bids; end all remaining=1 (FA+MV); then decrement into new final year.'
   );
 
   SELECT s.id, s.label INTO v_newest

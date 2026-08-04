@@ -1922,7 +1922,11 @@ async function handlePlayerAction(playerId, action, selectEl) {
 
     if (action === "expire") {
       resetActionSelect(selectEl);
-      await expirePlayerContract(playerId);
+      alert(
+        "Contracts cannot be expired mid-season. " +
+          "Re-sign via renew / wage bid, or they become free agents at season rollover " +
+          "(holding club receives market value then)."
+      );
     }
   } catch (err) {
     console.error("Squad action failed:", err);

@@ -14,12 +14,12 @@ Authoritative design from league owner (2026). Align with legacy spreadsheet whe
 | **Decision window** | After **2 seasons played** (start of **final contract year**) |
 | **Selling** | Allowed only while **2+ seasons remain** — **cannot sell** in final year |
 | **Final year (1 left)** | Player **automatically** on expiring-contract / FA list — no transfer list |
-| **Owner choices (final year, standard)** | Renew (≥ wage) · Expire (MV) · hidden wage bids — **no sell** |
+| **Owner choices (final year, contested)** | Wage bid / renew-now (≥ wage) — **no mid-season expire**; FA+MV only at rollover if unsigned |
 | **Renew wage (standard)** | New offer must be **> current contract wage**, in **₿250,000** steps |
 | **Home-grown** | `Players.Nation` = `Clubs.Nation` — **at least 8** (no maximum) |
 | **Under-21** | Age **≤ 21** — **at least 5** (no maximum) |
 | **Squad size** | **Max 28** players |
-| **Uncontested renew** | **HG ≤23** or **non-HG ≤21** — same wage renew / release for MV (no auction) |
+| **Uncontested renew** | **HG ≤23** or **non-HG ≤21** — same wage renew during season (no auction); if unsigned at rollover → FA + MV |
 | **Expiry auction** | Everyone else in final year — one hidden bid per club; highest wins |
 | **Winner wage** | Winning bid becomes player’s **contract wage** at new club (or stay) |
 | **Free agent again** | Wage reverts to **standard calculated wage** (formula TBD from spreadsheet) |
@@ -70,12 +70,12 @@ When **1 season remains**, these brackets skip the contested expiry market (age/
 
 ### Owner options (uncontested)
 
-1. **Renew** — new **3-season** deal at the **same wage they are on now**.
-2. **Release** — player leaves; club receives **market value**; player becomes free agent with **standard calculated wage**.
+1. **Renew** during the season — new **3-season** deal at the **same wage**.
+2. **No mid-season expire** — if not renewed, at **season rollover** they become a free agent and the holding club receives **market value**.
 
 ### Contested (everyone else)
 
-Including **home-grown aged 24+** and **non-HG aged 22+**: auto-listed on Expiring Contracts; hidden wage bids; highest wins at season rollover.
+Including **home-grown aged 24+** and **non-HG aged 22+**: auto-listed on Expiring Contracts; hidden wage bids; highest wins at season rollover. Unsigned (no winning bid) → FA + MV to holder at rollover.
 
 **Cannot sell** in the final contract year (all brackets) — sell only with **2+ seasons** left.
 
@@ -146,11 +146,10 @@ Applies when `expiry_auction_applies` is true and **1 season remains** (not unco
 - **Wage offered must be higher than today**, in **₿250,000** steps — cannot renew on the same wage or a pay cut.
 - Contract resets to **3 seasons remaining** at the chosen wage.
 
-### 2. Allow contract to expire
+### 2. Contract ends unsigned (season rollover only)
 
-- Player becomes **free agent** (`Contracted_Team` null).
-- **Current club** receives **market value** (`Players.market_value`) as a one-off credit (`Club_Finances` / ledger — confirm with spreadsheet).
-- Player wage resets to **standard calculated wage** for FA.
+- **No mid-season expire-for-MV** action.
+- At rollover, if not re-signed (bid win or renew): player becomes **free agent**; holding club receives **market value**.
 
 ### 3. Sell — not available
 

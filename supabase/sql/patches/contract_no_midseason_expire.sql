@@ -1,19 +1,22 @@
--- =============================================================================
--- Fix contract tick ORDER (critical before any catch-up)
---
--- Bug: tick did 2→1 first, then immediately set remaining=1 → 0 and released.
--- That wiped the new final-year cohort in the same rollover — expiring market
--- never had a season to collect bids.
---
--- Correct order when entering Season N+1:
---   1) Resolve / end players who ALREADY spent Season N at remaining=1
---   2) THEN decrement 3→2 and 2→1 (new final-year cohort for Season N+1)
---
--- Run this, then:
---   SELECT public.admin_catchup_player_contract_tick();
---   SELECT public.admin_season_contract_tick_status();
+-- Final-year contracts: no mid-season "expire for MV".
+-- Release / FA + MV only at season rollover if not re-signed (bid win or renew).
+-- Also: end ALL remaining=1 after bid resolve (incl. uncontested brackets).
 -- Safe re-run.
--- =============================================================================
+
+CREATE OR REPLACE FUNCTION public.player_contract_expire(p_player_id text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+BEGIN
+  RAISE EXCEPTION
+    'Contracts cannot be expired mid-season. '
+    'Final-year players stay until season rollover — '
+    're-sign via renew / wage bid, or they become free agents then '
+    '(holding club receives market value).';
+END;
+$function$;
 
 CREATE OR REPLACE FUNCTION public.contract_tick_season_rollover()
 RETURNS jsonb
@@ -36,14 +39,14 @@ BEGIN
 
   PERFORM set_config('statement_timeout', '180s', true);
 
-  -- 1) Finish the PRIOR final-year cohort (spent last season at remaining=1)
+  -- 1) Resolve contested wage bids for the prior final-year cohort
   IF to_regprocedure('public.contract_resolve_all_expiry_bids()') IS NOT NULL THEN
     v_resolve := public.contract_resolve_all_expiry_bids();
   ELSE
     v_resolve := jsonb_build_object('skipped', true);
   END IF;
 
-  -- Anyone still at remaining=1 was not re-signed (bid/renew) → end contract
+  -- Anyone still at remaining=1 was not re-signed → contract ends (MV release next)
   UPDATE public."Players" p
   SET contract_seasons_remaining = 0
   WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
@@ -56,7 +59,7 @@ BEGIN
     v_released := public.contract_release_zero_year_players();
   END IF;
 
-  -- 2) Open the NEW final-year cohort for the season being entered (2→1, 3→2)
+  -- 2) Open the NEW final-year cohort (2→1, 3→2)
   UPDATE public."Players" p
   SET contract_seasons_remaining = contract_seasons_remaining - 1
   WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
@@ -101,6 +104,7 @@ BEGIN
 END;
 $function$;
 
+GRANT EXECUTE ON FUNCTION public.player_contract_expire(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.contract_tick_season_rollover() TO authenticated;
 
 NOTIFY pgrst, 'reload schema';

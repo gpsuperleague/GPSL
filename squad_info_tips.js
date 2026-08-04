@@ -83,7 +83,8 @@ export function squadContractTip(player, clubNation) {
     if (isContractFinalYear(player)) {
       return (
         "Legacy card (no longer on pesdb.net) — final contract year.\n\n" +
-        "Cannot be sold or listed. Not on the expiry wage auction. Use Action → Renew (1 season at a time) or Expire — release for MV.\n\n" +
+        "Cannot be sold or listed. Not on the expiry wage auction. Use Action → Renew (1 season at a time). " +
+        "If not renewed, they become a free agent at season rollover (club receives market value then).\n\n" +
         wageNote
       );
     }
@@ -97,14 +98,17 @@ export function squadContractTip(player, clubNation) {
     if (isExpiryAuctionExempt(player, clubNation)) {
       return (
         "Final contract year — uncontested renewal (home-grown ≤23, or non-home-grown ≤21).\n\n" +
-        "Protected from the expiry wage auction. Use Action to renew at the same wage (fresh 3-season deal) or expire for MV. Cannot Transfer List or sell while in the final year.\n\n" +
+        "Protected from the expiry wage auction. Use Action to renew at the same wage (fresh 3-season deal). " +
+        "Cannot expire mid-season — if you do not renew, they become a free agent at season rollover and your club receives market value then. " +
+        "Cannot Transfer List or sell while in the final year.\n\n" +
         wageNote
       );
     }
     return (
       "Final contract year (1 season left of a 3-season deal).\n\n" +
       "Cannot Transfer List or sell. They are on the Expiring Contracts market — other clubs (and you) may place one hidden wage bid; highest wins at season rollover.\n\n" +
-      "Action → Renew now locks a new 3-season deal immediately at a wage you choose (≥ current) and takes them off that market. Expire releases them for MV now.\n\n" +
+      "Action → Renew now locks a new 3-season deal immediately (≥ current wage) and takes them off that market. " +
+      "Cannot expire mid-season — with no winning re-sign they become a free agent at rollover (holding club receives market value).\n\n" +
       wageNote
     );
   }

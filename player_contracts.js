@@ -87,6 +87,5 @@ export function squadContractActionOptionsHtml(
   return `
             <option value="renew">${renewLabel}</option>
             ${bidOpt}
-            <option value="expire">Expire now — release for MV</option>
             ${releaseOpt}`;
 }
