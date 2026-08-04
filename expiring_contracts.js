@@ -8,6 +8,24 @@ const POSITION_ORDER = [
   "AMF", "LWF", "SS", "RWF", "CF",
 ];
 
+const RANGE_COLS = ["Rating", "Age"];
+const RANGE_DEFAULTS = {
+  Rating: { min: 40, max: 99 },
+  Age: { min: 15, max: 45 },
+};
+
+/** @type {Record<string, { min: number, max: number }>} */
+const RANGE_BOUNDS = {
+  Rating: { ...RANGE_DEFAULTS.Rating },
+  Age: { ...RANGE_DEFAULTS.Age },
+};
+
+/** @type {Record<string, { min: number, max: number }>} */
+const RANGE_ACTIVE = {
+  Rating: { ...RANGE_DEFAULTS.Rating },
+  Age: { ...RANGE_DEFAULTS.Age },
+};
+
 let myClubShort = null;
 let marketRows = [];
 let bidTarget = null;
@@ -45,18 +63,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function wireFilters() {
-  const ids = [
-    "fName",
-    "fPosition",
-    "fNation",
-    "fPlaystyle",
-    "fClub",
-    "fRatingMin",
-    "fRatingMax",
-    "fAgeMin",
-    "fAgeMax",
-    "fMyBid",
-  ];
+  const ids = ["fName", "fPosition", "fNation", "fPlaystyle", "fClub", "fMyBid"];
   for (const id of ids) {
     const el = document.getElementById(id);
     if (!el) continue;
@@ -65,11 +72,13 @@ function wireFilters() {
       renderMarket();
     });
   }
+  wireRangeFilters();
   document.getElementById("fClearBtn")?.addEventListener("click", () => {
     for (const id of ids) {
       const el = document.getElementById(id);
       if (el) el.value = "";
     }
+    resetRangeFilters();
     syncMyClubFilterBtn();
     renderMarket();
   });
@@ -86,6 +95,137 @@ function wireFilters() {
       syncMyClubFilterBtn();
       renderMarket();
     });
+  }
+}
+
+function isRangeNarrowed(col) {
+  const bounds = RANGE_BOUNDS[col];
+  const active = RANGE_ACTIVE[col];
+  if (!bounds || !active) return false;
+  return active.min > bounds.min || active.max < bounds.max;
+}
+
+function updateRangeReadout(col) {
+  const el = document.getElementById(`filter-${col}-range`);
+  const active = RANGE_ACTIVE[col];
+  if (!el || !active) return;
+  el.textContent = `(${active.min}-${active.max})`;
+}
+
+function updateRangeTrack(col) {
+  const wrap = document.getElementById(`filter-${col}-sliders`);
+  const bounds = RANGE_BOUNDS[col];
+  const active = RANGE_ACTIVE[col];
+  if (!wrap || !bounds || !active) return;
+  const span = Math.max(bounds.max - bounds.min, 1);
+  const minPct = ((active.min - bounds.min) / span) * 100;
+  const maxPct = ((active.max - bounds.min) / span) * 100;
+  wrap.style.setProperty("--range-min", `${minPct}%`);
+  wrap.style.setProperty("--range-max", `${maxPct}%`);
+}
+
+function applyRangeToInputs(col) {
+  const bounds = RANGE_BOUNDS[col];
+  const active = RANGE_ACTIVE[col];
+  const minEl = document.getElementById(`filter-${col}-min`);
+  const maxEl = document.getElementById(`filter-${col}-max`);
+  if (!bounds || !active || !minEl || !maxEl) return;
+
+  minEl.min = String(bounds.min);
+  minEl.max = String(bounds.max);
+  maxEl.min = String(bounds.min);
+  maxEl.max = String(bounds.max);
+  minEl.value = String(active.min);
+  maxEl.value = String(active.max);
+  const disabled = bounds.max <= bounds.min;
+  minEl.disabled = disabled;
+  maxEl.disabled = disabled;
+  updateRangeReadout(col);
+  updateRangeTrack(col);
+}
+
+function resetRangeFilters() {
+  for (const col of RANGE_COLS) {
+    RANGE_ACTIVE[col] = { ...RANGE_BOUNDS[col] };
+    applyRangeToInputs(col);
+  }
+}
+
+function syncRangeBoundsFromMarket() {
+  for (const col of RANGE_COLS) {
+    const key = col === "Rating" ? "rating" : "age";
+    const values = marketRows
+      .map((r) => Number(r[key]))
+      .filter((n) => Number.isFinite(n));
+    const fallback = RANGE_DEFAULTS[col];
+    const prevBounds = { ...RANGE_BOUNDS[col] };
+    const prevActive = { ...(RANGE_ACTIVE[col] || fallback) };
+    const wasFull =
+      prevActive.min === prevBounds.min && prevActive.max === prevBounds.max;
+
+    RANGE_BOUNDS[col] = values.length
+      ? { min: Math.min(...values), max: Math.max(...values) }
+      : { ...fallback };
+
+    const b = RANGE_BOUNDS[col];
+    if (wasFull) {
+      RANGE_ACTIVE[col] = { ...b };
+    } else {
+      const lo = Math.min(Math.max(prevActive.min, b.min), b.max);
+      const hi = Math.max(Math.min(prevActive.max, b.max), b.min);
+      RANGE_ACTIVE[col] =
+        lo <= hi ? { min: lo, max: hi } : { ...b };
+    }
+    applyRangeToInputs(col);
+  }
+}
+
+function wireRangeFilters() {
+  for (const col of RANGE_COLS) {
+    const minEl = document.getElementById(`filter-${col}-min`);
+    const maxEl = document.getElementById(`filter-${col}-max`);
+    if (!minEl || !maxEl) continue;
+
+    const syncThumbZIndex = () => {
+      const lo = Number(minEl.value);
+      const hi = Number(maxEl.value);
+      if (document.activeElement === minEl) {
+        minEl.style.zIndex = "5";
+        maxEl.style.zIndex = "4";
+      } else if (document.activeElement === maxEl) {
+        maxEl.style.zIndex = "5";
+        minEl.style.zIndex = "4";
+      } else if (lo > hi) {
+        minEl.style.zIndex = "5";
+        maxEl.style.zIndex = "4";
+      } else {
+        minEl.style.zIndex = "3";
+        maxEl.style.zIndex = "4";
+      }
+    };
+
+    const onInput = () => {
+      let lo = Number(minEl.value);
+      let hi = Number(maxEl.value);
+      if (!Number.isFinite(lo)) lo = RANGE_BOUNDS[col].min;
+      if (!Number.isFinite(hi)) hi = RANGE_BOUNDS[col].max;
+      if (lo > hi) {
+        // Allow crossing while dragging; store ordered values.
+        RANGE_ACTIVE[col] = { min: hi, max: lo };
+      } else {
+        RANGE_ACTIVE[col] = { min: lo, max: hi };
+      }
+      syncThumbZIndex();
+      updateRangeReadout(col);
+      updateRangeTrack(col);
+      renderMarket();
+    };
+
+    minEl.addEventListener("input", onInput);
+    maxEl.addEventListener("input", onInput);
+    minEl.addEventListener("focus", syncThumbZIndex);
+    maxEl.addEventListener("focus", syncThumbZIndex);
+    applyRangeToInputs(col);
   }
 }
 
@@ -149,6 +289,7 @@ function rebuildFilterOptions() {
   fillSelect("fNation", nations);
   fillSelect("fPlaystyle", playstyles);
   fillSelect("fClub", clubs, (v) => displayClubName(v));
+  syncRangeBoundsFromMarket();
   syncMyClubFilterBtn();
 }
 
@@ -158,11 +299,9 @@ function filteredRows() {
   const nation = document.getElementById("fNation")?.value || "";
   const playstyle = document.getElementById("fPlaystyle")?.value || "";
   const club = document.getElementById("fClub")?.value || "";
-  const ratingMin = Number(document.getElementById("fRatingMin")?.value);
-  const ratingMax = Number(document.getElementById("fRatingMax")?.value);
-  const ageMin = Number(document.getElementById("fAgeMin")?.value);
-  const ageMax = Number(document.getElementById("fAgeMax")?.value);
   const myBid = document.getElementById("fMyBid")?.value || "";
+  const ratingActive = isRangeNarrowed("Rating") ? RANGE_ACTIVE.Rating : null;
+  const ageActive = isRangeNarrowed("Age") ? RANGE_ACTIVE.Age : null;
 
   return marketRows.filter((row) => {
     if (name && !String(row.player_name || "").toLowerCase().includes(name)) {
@@ -173,20 +312,18 @@ function filteredRows() {
     if (playstyle && row.playstyle !== playstyle) return false;
     if (club && row.holding_club !== club) return false;
 
-    const rating = Number(row.rating);
-    if (Number.isFinite(ratingMin) && document.getElementById("fRatingMin")?.value !== "") {
-      if (!Number.isFinite(rating) || rating < ratingMin) return false;
-    }
-    if (Number.isFinite(ratingMax) && document.getElementById("fRatingMax")?.value !== "") {
-      if (!Number.isFinite(rating) || rating > ratingMax) return false;
+    if (ratingActive) {
+      const rating = Number(row.rating);
+      if (!Number.isFinite(rating) || rating < ratingActive.min || rating > ratingActive.max) {
+        return false;
+      }
     }
 
-    const age = Number(row.age);
-    if (Number.isFinite(ageMin) && document.getElementById("fAgeMin")?.value !== "") {
-      if (!Number.isFinite(age) || age < ageMin) return false;
-    }
-    if (Number.isFinite(ageMax) && document.getElementById("fAgeMax")?.value !== "") {
-      if (!Number.isFinite(age) || age > ageMax) return false;
+    if (ageActive) {
+      const age = Number(row.age);
+      if (!Number.isFinite(age) || age < ageActive.min || age > ageActive.max) {
+        return false;
+      }
     }
 
     if (myBid === "yes" && row.my_wage_bid == null) return false;

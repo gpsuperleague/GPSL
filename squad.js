@@ -25,6 +25,10 @@ import {
   loadSquadGhostAcquisitions,
   formatGhostPlayerNameCell,
   formatGhostStatusHtml,
+  ghostContractCellLabel,
+  ghostContractTip,
+  ghostActionLinkHtml,
+  ghostActionTip,
 } from "./squad_ghost_acquisitions.js";
 import {
   loadPlayerValueTables,
@@ -1324,7 +1328,7 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
 
   let footnote = "";
   if (hasGhosts) {
-    footnote = `<p class="squad-rules-footnote">👻 <strong>If won</strong> includes ${ghosts.length} player${ghosts.length === 1 ? "" : "s"} you lead on market/draft — not contracted yet (ghost rows below).</p>`;
+    footnote = `<p class="squad-rules-footnote">👻 <strong>If won</strong> includes ${ghosts.length} player${ghosts.length === 1 ? "" : "s"} from market/draft/expiring wage bids — not contracted yet (ghost rows below).</p>`;
   }
   if (failCount > 0) {
     const issues = c.issues
@@ -1363,9 +1367,6 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
   `;
 }
 
-const GHOST_CONTRACT_TIP =
-  "Not contracted yet. If your winning bid settles, they join your squad on a new 3-season contract. Ghost rows count toward “If won” registration previews only.";
-
 function ghostPlayerRowHtml(p, playerCell) {
   return `
         <td class="squad-col-thumb">${withInfoTip(
@@ -1383,13 +1384,10 @@ function ghostPlayerRowHtml(p, playerCell) {
         <td class="num squad-col-avg squad-ghost-muted">—</td>
         <td class="squad-col-playstyle gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.playstyle)}>${p.Playstyle || "-"}</td>
         <td class="squad-col-value gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.marketValue)}><span class="money squad-ghost-muted">₿ ${Number(p.market_value || 0).toLocaleString("en-GB")}</span></td>
-        <td class="squad-col-contract squad-ghost-muted gpsl-has-tip"${tipDataAttrs(GHOST_CONTRACT_TIP)}>If won</td>
+        <td class="squad-col-contract squad-ghost-muted gpsl-has-tip"${tipDataAttrs(ghostContractTip(p))}>${ghostContractCellLabel(p)}</td>
         <td class="squad-col-status gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.status)}>${formatGhostStatusHtml(p)}</td>
         <td class="squad-col-action">
-          ${withInfoTip(
-            `<a href="${p.ghostHref}" class="squad-ghost-action-link">View bid${p.ghostBidAmount != null ? ` · ₿${Number(p.ghostBidAmount).toLocaleString("en-GB")}` : ""}</a>`,
-            "Open the listing or draft auction where you are leading this bid."
-          )}
+          ${withInfoTip(ghostActionLinkHtml(p), ghostActionTip(p))}
         </td>
       `;
 }

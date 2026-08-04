@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260804-my-club-filter";
+export const APP_VERSION = "20260804-expiry-sliders";

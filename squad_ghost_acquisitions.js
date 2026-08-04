@@ -1,5 +1,6 @@
 /**
- * Pending squad entries — players the club is winning on transfer market or draft auction.
+ * Pending squad entries — players the club is winning on transfer market / draft,
+ * or has a wage bid on for expiring contracts (hidden until season rollover).
  * Shown as ghost rows on squad.html (not contracted yet).
  */
 import { getUKNow, loadGlobalSettings, isDraftAuctionEnded } from "./global.js";
@@ -19,12 +20,14 @@ export const GHOST_SOURCE = {
   TRANSFER_LIVE: "transfer_live",
   DRAFT_AUCTION: "draft_auction",
   AWAITING_SELLER: "awaiting_seller",
+  EXPIRY_WAGE: "expiry_wage",
 };
 
 export const GHOST_SOURCE_LABELS = {
   [GHOST_SOURCE.TRANSFER_LIVE]: "Transfer market · winning bid",
   [GHOST_SOURCE.DRAFT_AUCTION]: "Draft auction · winning bid",
   [GHOST_SOURCE.AWAITING_SELLER]: "Transfer market · awaiting seller",
+  [GHOST_SOURCE.EXPIRY_WAGE]: "Expiring contract · wage bid",
 };
 
 function isMissingEconomicsColumnError(error) {
@@ -36,6 +39,9 @@ function ghostHref(source, konamiId) {
   const id = encodeURIComponent(String(konamiId));
   if (source === GHOST_SOURCE.DRAFT_AUCTION) {
     return `draftauction_player.html?player=${id}`;
+  }
+  if (source === GHOST_SOURCE.EXPIRY_WAGE) {
+    return `expiring_contracts.html?player=${id}`;
   }
   return `GPDB.html?player=${id}`;
 }
@@ -49,7 +55,35 @@ function ghostPlayerFromRow(player, meta) {
     ghostLabel: GHOST_SOURCE_LABELS[source] || "Pending signing",
     ghostHref: ghostHref(source, player.Konami_ID),
     ghostBidAmount: meta?.bidAmount != null ? Number(meta.bidAmount) : null,
+    ghostIsWage: source === GHOST_SOURCE.EXPIRY_WAGE,
   };
+}
+
+/**
+ * Merge any active expiring-contract wage bids for this club (winning or losing —
+ * rivals' offers stay hidden until rollover).
+ */
+async function loadExpiryWagePending(supabase, pendingByPlayer) {
+  const { data, error } = await supabase.rpc("list_expiring_contract_market");
+  if (error) {
+    console.warn("loadSquadGhostAcquisitions expiry market:", error);
+    return;
+  }
+
+  const rows = Array.isArray(data) ? data : [];
+  for (const row of rows) {
+    if (row?.my_wage_bid == null) continue;
+    const pid = String(row.player_id || "").trim();
+    if (!pid) continue;
+
+    // Prefer an existing live transfer/draft ghost for the same player.
+    if (pendingByPlayer.has(pid)) continue;
+
+    pendingByPlayer.set(pid, {
+      source: GHOST_SOURCE.EXPIRY_WAGE,
+      bidAmount: Number(row.my_wage_bid),
+    });
+  }
 }
 
 /**
@@ -64,6 +98,9 @@ export async function loadSquadGhostAcquisitions(supabase, clubShort) {
   const draftEnded = isDraftAuctionEnded(now, settings.draftStart);
   const filterOpts = { now, draftAuctionEnded: draftEnded };
 
+  /** @type {Map<string, { source: string, bidAmount: number|null }>} */
+  const pendingByPlayer = new Map();
+
   const { data: bidsRaw, error: bidsErr } = await supabase
     .from("Player_Transfer_Bids")
     .select("*")
@@ -73,58 +110,56 @@ export async function loadSquadGhostAcquisitions(supabase, clubShort) {
 
   if (bidsErr) {
     console.warn("loadSquadGhostAcquisitions bids:", bidsErr);
-    return [];
-  }
+  } else {
+    const listingIds = [
+      ...new Set(
+        (bidsRaw || [])
+          .map((b) => b.listing_id)
+          .filter((id) => id != null)
+      ),
+    ];
 
-  const listingIds = [
-    ...new Set(
-      (bidsRaw || [])
-        .map((b) => b.listing_id)
-        .filter((id) => id != null)
-    ),
-  ];
-
-  const listingMap = new Map();
-  if (listingIds.length) {
-    const { data: listings } = await supabase
-      .from("Player_Transfer_Listings")
-      .select("*")
-      .in("id", listingIds);
-    listings?.forEach((l) => listingMap.set(l.id, l));
-  }
-
-  /** @type {Map<string, { source: string, bidAmount: number|null }>} */
-  const pendingByPlayer = new Map();
-
-  for (const row of bidsRaw || []) {
-    const listing = listingMap.get(row.listing_id);
-    const pid = getBidPlayerId(row);
-    if (!pid) continue;
-
-    let source = null;
-    if (isBuyerBidOnLiveAuction(row, listing, clubShort, filterOpts)) {
-      const isDraft =
-        String(listing?.listing_type || "").toLowerCase() === "draft" ||
-        row.is_first_draft_bid ||
-        row.is_draft_join;
-      source = isDraft ? GHOST_SOURCE.DRAFT_AUCTION : GHOST_SOURCE.TRANSFER_LIVE;
-    } else if (
-      isBuyerBidAwaitingSellerReview(row, listing, clubShort, filterOpts)
-    ) {
-      source = GHOST_SOURCE.AWAITING_SELLER;
+    const listingMap = new Map();
+    if (listingIds.length) {
+      const { data: listings } = await supabase
+        .from("Player_Transfer_Listings")
+        .select("*")
+        .in("id", listingIds);
+      listings?.forEach((l) => listingMap.set(l.id, l));
     }
 
-    if (!source) continue;
+    for (const row of bidsRaw || []) {
+      const listing = listingMap.get(row.listing_id);
+      const pid = getBidPlayerId(row);
+      if (!pid) continue;
 
-    const existing = pendingByPlayer.get(pid);
-    if (!existing) {
-      pendingByPlayer.set(pid, {
-        source,
-        bidAmount:
-          row.bid_amount != null ? Number(row.bid_amount) : null,
-      });
+      let source = null;
+      if (isBuyerBidOnLiveAuction(row, listing, clubShort, filterOpts)) {
+        const isDraft =
+          String(listing?.listing_type || "").toLowerCase() === "draft" ||
+          row.is_first_draft_bid ||
+          row.is_draft_join;
+        source = isDraft ? GHOST_SOURCE.DRAFT_AUCTION : GHOST_SOURCE.TRANSFER_LIVE;
+      } else if (
+        isBuyerBidAwaitingSellerReview(row, listing, clubShort, filterOpts)
+      ) {
+        source = GHOST_SOURCE.AWAITING_SELLER;
+      }
+
+      if (!source) continue;
+
+      const existing = pendingByPlayer.get(pid);
+      if (!existing) {
+        pendingByPlayer.set(pid, {
+          source,
+          bidAmount:
+            row.bid_amount != null ? Number(row.bid_amount) : null,
+        });
+      }
     }
   }
+
+  await loadExpiryWagePending(supabase, pendingByPlayer);
 
   if (!pendingByPlayer.size) return [];
 
@@ -168,6 +203,7 @@ export function ghostAcquisitionTypeLabel(ghost) {
   if (source === GHOST_SOURCE.DRAFT_AUCTION) return "DRAFT";
   if (source === GHOST_SOURCE.AWAITING_SELLER) return "TRANSFER";
   if (source === GHOST_SOURCE.TRANSFER_LIVE) return "TRANSFER";
+  if (source === GHOST_SOURCE.EXPIRY_WAGE) return "EXPIRY";
   return "PENDING";
 }
 
@@ -200,12 +236,55 @@ export function formatGhostAcquisitionBadge(ghost) {
 }
 
 export function formatGhostStatusHtml(ghost) {
-  const bid =
+  const amount =
     ghost?.ghostBidAmount != null && Number.isFinite(ghost.ghostBidAmount)
-      ? `<span class="squad-ghost-bid">Bid ₿${Number(ghost.ghostBidAmount).toLocaleString("en-GB")}</span>`
+      ? Number(ghost.ghostBidAmount).toLocaleString("en-GB")
+      : null;
+  const bid =
+    amount != null
+      ? ghost?.ghostIsWage || ghost?.ghostSource === GHOST_SOURCE.EXPIRY_WAGE
+        ? `<span class="squad-ghost-bid">Wage ₿${amount}</span>`
+        : `<span class="squad-ghost-bid">Bid ₿${amount}</span>`
       : "";
   return `<div class="squad-status-stack">
     <span class="status-pill status-ghost-pending">Pending</span>
     ${bid}
   </div>`;
+}
+
+export function ghostContractCellLabel(ghost) {
+  if (ghost?.ghostSource === GHOST_SOURCE.EXPIRY_WAGE) {
+    return "If successful";
+  }
+  return "If won";
+}
+
+export function ghostContractTip(ghost) {
+  if (ghost?.ghostSource === GHOST_SOURCE.EXPIRY_WAGE) {
+    return "Not contracted yet. Your wage bid stays hidden until season rollover — if you win, they join on a new 3-season contract. Ghost rows count toward “If won” registration previews only.";
+  }
+  return "Not contracted yet. If your winning bid settles, they join your squad on a new 3-season contract. Ghost rows count toward “If won” registration previews only.";
+}
+
+export function ghostActionLinkHtml(ghost) {
+  const amount =
+    ghost?.ghostBidAmount != null && Number.isFinite(ghost.ghostBidAmount)
+      ? Number(ghost.ghostBidAmount).toLocaleString("en-GB")
+      : null;
+  const href = ghost?.ghostHref || "#";
+  if (ghost?.ghostSource === GHOST_SOURCE.EXPIRY_WAGE) {
+    return `<a href="${href}" class="squad-ghost-action-link">Wage bid${
+      amount != null ? ` · ₿${amount}` : ""
+    }</a>`;
+  }
+  return `<a href="${href}" class="squad-ghost-action-link">View bid${
+    amount != null ? ` · ₿${amount}` : ""
+  }</a>`;
+}
+
+export function ghostActionTip(ghost) {
+  if (ghost?.ghostSource === GHOST_SOURCE.EXPIRY_WAGE) {
+    return "Open Expiring Contracts — rival wage bids stay hidden until season rollover.";
+  }
+  return "Open the listing or draft auction where you are leading this bid.";
 }
