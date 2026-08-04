@@ -576,8 +576,27 @@ function updateCompSetupCounts() {
   document.getElementById("compDrawBtn").disabled = !canDrawChampionshipAb(counts);
   const ready = canActivateSeason(counts);
   const startBtn = document.getElementById("compStartSeasonBtn");
-  startBtn.style.display = compSelectedSeasonId && ready ? "inline-block" : "none";
-  startBtn.disabled = !ready;
+  const startStatus = document.getElementById("compStartStatus");
+  if (!compSelectedSeasonId) {
+    startBtn.style.display = "none";
+    startBtn.disabled = true;
+  } else {
+    startBtn.style.display = "inline-block";
+    startBtn.disabled = !ready;
+    if (!ready && startStatus && !/Starting season|✅|❌/.test(startStatus.textContent || "")) {
+      setStatus(
+        "compStartStatus",
+        `Not ready yet — need SL 20, CH A 20, CH B 20 (now SL ${counts.superleague}, A ${counts.championship_a}, B ${counts.championship_b}). Draw A/B after seeding the pool, set the calendar, then Start.`,
+        false
+      );
+    } else if (ready && startStatus && /Not ready yet/.test(startStatus.textContent || "")) {
+      setStatus(
+        "compStartStatus",
+        "Divisions look ready (20+20+20). Set the GPSL calendar if needed, then Start season (go live).",
+        true
+      );
+    }
+  }
   document.getElementById("compResetDrawBtn").disabled =
     counts.championship_a === 0 && counts.championship_b === 0;
 }

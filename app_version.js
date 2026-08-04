@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260804-calendar-any-weekday";
+export const APP_VERSION = "20260804-go-live-nav";

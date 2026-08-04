@@ -92,6 +92,7 @@ export const ADMIN_MAIN_NAV = [
         L("Draw Championship Divisions", "admin_season.html", "wf-divisions"),
       ]),
       link("Create Season Calendar", "admin_season.html", "wf-calendar"),
+      link("Start season (go live)", "admin_season.html", "wf-kickoff"),
       link("Create League Fixtures", "admin_fixtures-league.html"),
       link("Setup Cups", "admin_fixtures-cups.html"),
     ],
