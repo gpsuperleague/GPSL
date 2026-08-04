@@ -610,7 +610,15 @@ async function seedDivisionsFromMovements() {
   );
 
   if (error) {
-    setCompStatus("❌ " + error.message, false);
+    const detail = [error.message, error.details, error.hint].filter(Boolean).join(" — ");
+    setCompStatus(
+      `❌ ${detail}${
+        /auto_rel|auto_pro|incomplete_table|invalid counts|standings/i.test(detail)
+          ? " — re-run patches/seed_divisions_standings_any_season_fix.sql then retry."
+          : ""
+      }`,
+      false
+    );
     return;
   }
 
@@ -933,10 +941,21 @@ async function setCompCalendar() {
   setStatus("compCalendarStatus", "Saving…");
   const { data, error } = await supabase.rpc("competition_admin_set_season_calendar", {
     p_season_id: seasonId,
-    p_anchor_local: juneLocal.slice(0, 19),
+    p_anchor_local: juneLocal.length >= 19 ? juneLocal.slice(0, 19) : juneLocal,
   });
   if (error) {
-    setStatus("compCalendarStatus", "❌ " + error.message, false);
+    const detail = [error.message, error.details, error.hint].filter(Boolean).join(" — ");
+    setStatus(
+      "compCalendarStatus",
+      `❌ ${detail}${
+        /check constraint|gpsl_month|sort_order/i.test(detail)
+          ? " — run patches/calendar_set_text_anchor_fix.sql then retry."
+          : /Friday|19:00|parse/i.test(detail)
+            ? " — use Next Friday 19:00 (UK wall clock)."
+            : " — run patches/calendar_set_text_anchor_fix.sql if not done."
+      }`,
+      false
+    );
     return;
   }
   setStatus(

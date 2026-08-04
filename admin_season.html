@@ -26,7 +26,7 @@
               <b>One real UK week (Fri 19:00 → Fri 19:00) = one GPSL month</b> for every month,
               including pre-season. Set <b>season start</b> = when <b>June</b> begins.
               Then: June (week 1) → July (week 2) → August league start (week 3) → … → Playoffs.
-              Run <code>patches/calendar_june_july_weeks.sql</code> in Supabase first.
+              Run <code>patches/calendar_set_text_anchor_fix.sql</code> (or <code>calendar_june_july_weeks.sql</code>) in Supabase first.
             </p>
             <div id="compCalendarActiveNote" class="note"></div>
             <div class="row">
@@ -171,6 +171,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_season.js?v=20260804-create-tick-split"></script>
+  <script type="module" src="admin_season.js?v=20260804-calendar-seed-fix"></script>
 </body>
 </html>

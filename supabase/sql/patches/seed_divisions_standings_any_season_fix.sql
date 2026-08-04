@@ -77,7 +77,9 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Live compute from fixtures for this season (works after End Season too)
+  -- Live compute from fixtures for this season (works after End Season too).
+  -- Do NOT use competition_fixture_counts_in_tables here — that defers rows by the
+  -- *live* calendar month and blanks finished-season tables used for movements.
   RETURN QUERY
   WITH registered AS (
     SELECT
@@ -98,10 +100,6 @@ BEGIN
       AND f.status = 'played'
       AND f.home_goals IS NOT NULL
       AND f.away_goals IS NOT NULL
-      AND (
-        to_regprocedure('public.competition_fixture_counts_in_tables(bigint)') IS NULL
-        OR public.competition_fixture_counts_in_tables(f.id)
-      )
   ),
   home_apps AS (
     SELECT
