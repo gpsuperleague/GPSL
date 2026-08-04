@@ -38,7 +38,7 @@ export function getExpiringContractRules() {
           "<b>Highest wage</b> wins a new <b>3-season</b> contract at that wage.",
           "<b>Ties</b> favour the holding club.",
           "Another club winning pays <b>market value</b> to the holder.",
-          `Championship club taking a Super League player also pays <b>${signingFee}</b> to the Central Bank.`,
+          `Championship club taking a Super League player also pays <b>${signingFee}</b> to the player as a signing-on fee.`,
           "<b>No mid-season expire.</b> If nobody re-signs them, they become a free agent — holding club receives market value then.",
         ],
       },
