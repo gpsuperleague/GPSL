@@ -71,11 +71,22 @@ export function squadContractActionOptionsHtml(
   const releaseOpt = voluntaryRelease?.optionHtml ?? "";
 
   const renewLabel = legacy
-    ? (hg ? "Renew legacy card (1 season, same wage)" : "Renew legacy card (1 season)")
-    : (hg ? "Renew (same wage, 3 Seasons)" : "Renew contract (3 Seasons)");
+    ? (hg
+        ? "Renew legacy card now (1 season, same wage)"
+        : "Renew legacy card now (1 season — choose wage)")
+    : (hg
+        ? "Renew now at same wage (3 seasons)"
+        : "Renew now — choose wage (3 seasons)");
+
+  // Contested final-year: also point owners at the hidden wage auction.
+  const bidOpt =
+    !hg && !legacy
+      ? `<option value="expiry_bid">Offer wage bid (competes at season end)</option>`
+      : "";
 
   return `
             <option value="renew">${renewLabel}</option>
-            <option value="expire">Expire — release for MV</option>
+            ${bidOpt}
+            <option value="expire">Expire now — release for MV</option>
             ${releaseOpt}`;
 }

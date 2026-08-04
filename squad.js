@@ -1912,6 +1912,14 @@ async function handlePlayerAction(playerId, action, selectEl) {
       return;
     }
 
+    if (action === "expiry_bid") {
+      resetActionSelect(selectEl);
+      window.location.href = `expiring_contracts.html?player=${encodeURIComponent(
+        String(playerId)
+      )}`;
+      return;
+    }
+
     if (action === "expire") {
       resetActionSelect(selectEl);
       await expirePlayerContract(playerId);
@@ -1947,7 +1955,10 @@ async function renewPlayerContract(playerId) {
 
   if (!hg) {
     const raw = window.prompt(
-      `Renew ${player.Name} for 3 seasons.\nMinimum wage: ${formatWage(wage)}\nEnter wage (₿):`,
+      `Renew ${player.Name} NOW for 3 seasons (takes them off the expiry wage market).\n` +
+        `Minimum wage: ${formatWage(wage)}\n` +
+        `To compete with other clubs instead, cancel and use “Offer wage bid”.\n\n` +
+        `Enter new wage (₿):`,
       String(wage)
     );
     if (raw == null) return;
@@ -1958,7 +1969,7 @@ async function renewPlayerContract(playerId) {
     }
   } else if (
     !window.confirm(
-      `Renew ${player.Name} for 3 seasons at the same wage (${formatWage(wage)})?`
+      `Renew ${player.Name} now for 3 seasons at the same wage (${formatWage(wage)})?`
     )
   ) {
     return;
