@@ -282,14 +282,7 @@ BEGIN
 
   PERFORM set_config('statement_timeout', '180s', true);
 
-  UPDATE public."Players" p
-  SET contract_seasons_remaining = contract_seasons_remaining - 1
-  WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
-    AND p.contract_seasons_remaining IS NOT NULL
-    AND p.contract_seasons_remaining >= 2;
-
-  GET DIAGNOSTICS v_updated = ROW_COUNT;
-
+  -- Prior final-year first (resolve/release), THEN decrement into new final-year
   IF to_regprocedure('public.contract_resolve_all_expiry_bids()') IS NOT NULL THEN
     v_resolve := public.contract_resolve_all_expiry_bids();
   ELSE
@@ -313,6 +306,14 @@ BEGIN
 
   v_released := public.contract_release_zero_year_players();
 
+  UPDATE public."Players" p
+  SET contract_seasons_remaining = contract_seasons_remaining - 1
+  WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
+    AND p.contract_seasons_remaining IS NOT NULL
+    AND p.contract_seasons_remaining >= 2;
+
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+
   SELECT count(*)::int
   INTO v_final
   FROM public."Players" p
@@ -322,9 +323,9 @@ BEGIN
   v_out := jsonb_build_object(
     'ok', true,
     'expiry_resolved', v_resolve,
-    'players_decremented', v_updated,
     'players_contract_ended_no_bid', v_ended,
     'players_released_zero_years', v_released,
+    'players_decremented', v_updated,
     'players_final_year', v_final
   );
 
