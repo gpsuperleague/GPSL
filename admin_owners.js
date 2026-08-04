@@ -25,6 +25,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     !!document.getElementById("updateOwnerSelect") ||
     !!document.getElementById("tagOwnerSelect");
   const needsWaitingList = !!document.getElementById("wlAdminTableWrap");
+  const needsClubOwnerRemove = !!document.getElementById("clubOwnersTableWrap");
 
   if (needsAuctionConfig) await loadClubAuctionConfig();
   if (needsOwnerList) await loadOwnerList();
@@ -38,15 +39,22 @@ document.addEventListener("DOMContentLoaded", async () => {
   bind("changeOwnerBtn", changeOwnerClub);
   bind("clubAuctionRegisterBtn", registerForClubAuction);
   bind("linkOwnerBtn", linkOwner);
-  bind("breakOwnerBtn", removeFromClub);
+  bind("breakOwnerBtn", () => removeFromClub({ addToWaitingList: false }));
+  bind("breakOwnerWaitingBtn", () => removeFromClub({ addToWaitingList: true }));
   bind("archiveOwnerBtn", archiveOwner);
   bind("unarchiveOwnerBtn", unarchiveOwner);
   bind("updateEmailBtn", updateEmail);
   bind("setOwnerTagBtn", setOwnerTag);
   bind("setPasswordBtn", setOwnerPassword);
   bind("resetPasswordBtn", resetPassword);
+  bind("refreshClubOwnersBtn", loadClubOwnersRemoveList);
+  bind("removeAllWaitingBtn", () => bulkRemoveClubOwners({ addToWaitingList: true }));
+  bind("removeAllOnlyBtn", () => bulkRemoveClubOwners({ addToWaitingList: false }));
 
   document.getElementById("tagOwnerSelect")?.addEventListener("change", syncOwnerTagInputFromSelect);
+  document.getElementById("clubOwnerFilter")?.addEventListener("input", () =>
+    renderClubOwnersRemoveList(window.__clubOwnersRemoveCache || [])
+  );
 
   document.getElementById("wlRefreshBtn")?.addEventListener("click", loadWaitingListAdmin);
   document.getElementById("wlRestoreOrderBtn")?.addEventListener("click", restoreWaitingListOrder);
@@ -59,6 +67,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("wlAbsenceOffBtn")?.addEventListener("click", () => setWaitingListAbsence(false));
 
   if (needsWaitingList) await loadWaitingListAdmin();
+  if (needsClubOwnerRemove) await loadClubOwnersRemoveList();
 });
 
 async function loadOwnerList() {
@@ -311,35 +320,232 @@ async function addOwner() {
   await loadOwnerList();
 }
 
-async function removeFromClub() {
-  const email = document.getElementById("breakOwnerEmail")?.value?.trim();
-  if (!email) {
-    setStatus("breakOwnerStatus", "Enter owner email.", false);
-    return;
+async function removeFromClub({
+  addToWaitingList = false,
+  email: emailArg = null,
+  ownerId = null,
+  label = null,
+  skipConfirm = false,
+} = {}) {
+  const email =
+    emailArg || document.getElementById("breakOwnerEmail")?.value?.trim() || null;
+  if (!email && !ownerId) {
+    setStatus("breakOwnerStatus", "Enter owner email or pick someone from the list.", false);
+    return false;
+  }
+
+  const who = label || email || ownerId;
+  const waitBit = addToWaitingList
+    ? "They will be added to the waiting list as a returning member."
+    : "They will NOT be added to the waiting list (club/nation cleared only).";
+
+  if (
+    !skipConfirm &&
+    !confirm(
+      `Remove ${who} from their club?\n\n${waitBit}\nHistory is kept.`
+    )
+  ) {
+    return false;
+  }
+
+  setStatus("breakOwnerStatus", "Removing…");
+  const payload = {
+    p_add_to_waiting_list: !!addToWaitingList,
+  };
+  if (ownerId) payload.p_owner_id = ownerId;
+  if (email) payload.p_owner_email = email;
+
+  const { data, error } = await supabase.rpc("admin_owner_remove_from_club", payload);
+  if (error) {
+    setStatus(
+      "breakOwnerStatus",
+      `❌ ${error.message}${
+        /admin_owner_remove_from_club|schema cache|Could not find/i.test(error.message || "")
+          ? " — run supabase/sql/patches/admin_owners_remove_list.sql"
+          : ""
+      }`,
+      false
+    );
+    return false;
+  }
+
+  const waiting =
+    data?.added_to_waiting_list === true
+      ? " · added to waiting list"
+      : " · not on waiting list";
+  setStatus(
+    "breakOwnerStatus",
+    `✅ ${data?.owner_tag || email || who} removed from ${
+      data?.club_name || data?.club_short_name || "club"
+    }${data?.nation_code ? ` · nation ${data.nation_code} released` : ""}${waiting}`,
+    true
+  );
+
+  if (document.getElementById("clubOwnersTableWrap")) {
+    await loadClubOwnersRemoveList();
   }
   if (
+    document.getElementById("updateOwnerSelect") ||
+    document.getElementById("tagOwnerSelect")
+  ) {
+    await loadOwnerList();
+  }
+  return true;
+}
+
+function escapeOwnerHtml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function loadClubOwnersRemoveList() {
+  const wrap = document.getElementById("clubOwnersTableWrap");
+  if (!wrap) return;
+  wrap.innerHTML = `<p class="note">Loading…</p>`;
+  const owners = (await fetchAdminOwnerRows()).filter((r) => r.clubShortName);
+  window.__clubOwnersRemoveCache = owners;
+  renderClubOwnersRemoveList(owners);
+}
+
+function renderClubOwnersRemoveList(owners) {
+  const wrap = document.getElementById("clubOwnersTableWrap");
+  if (!wrap) return;
+
+  const q = String(document.getElementById("clubOwnerFilter")?.value || "")
+    .trim()
+    .toLowerCase();
+  const rows = (owners || []).filter((r) => {
+    if (!q) return true;
+    const hay = `${r.clubShortName || ""} ${r.ownerTag || ""} ${r.email || ""}`.toLowerCase();
+    return hay.includes(q);
+  });
+
+  if (!owners?.length) {
+    wrap.innerHTML = `<p class="note">No owners currently linked to a club.</p>`;
+    return;
+  }
+  if (!rows.length) {
+    wrap.innerHTML = `<p class="note">No owners match the filter.</p>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <table class="owner-remove-table">
+      <thead>
+        <tr>
+          <th>Club</th>
+          <th>Tag</th>
+          <th>Email</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map((r) => {
+            const label = escapeOwnerHtml(
+              `${r.ownerTag || "—"} (${r.clubShortName})`
+            );
+            return `
+          <tr>
+            <td><code>${escapeOwnerHtml(r.clubShortName)}</code></td>
+            <td>${escapeOwnerHtml(r.ownerTag || "—")}</td>
+            <td>${escapeOwnerHtml(r.email || "—")}</td>
+            <td>
+              <div class="actions">
+                <button type="button" class="button secondary remove-only-btn"
+                  data-owner-id="${escapeOwnerHtml(r.id)}"
+                  data-email="${escapeOwnerHtml(r.email || "")}"
+                  data-label="${label}">Remove from club</button>
+                <button type="button" class="button remove-waiting-btn"
+                  data-owner-id="${escapeOwnerHtml(r.id)}"
+                  data-email="${escapeOwnerHtml(r.email || "")}"
+                  data-label="${label}">Remove + waiting list</button>
+              </div>
+            </td>
+          </tr>`;
+          })
+          .join("")}
+      </tbody>
+    </table>
+    <p class="note">${rows.length} owner${rows.length === 1 ? "" : "s"} shown.</p>`;
+
+  wrap.querySelectorAll(".remove-only-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      try {
+        await removeFromClub({
+          addToWaitingList: false,
+          ownerId: btn.dataset.ownerId,
+          email: btn.dataset.email || null,
+          label: btn.dataset.label,
+        });
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+  wrap.querySelectorAll(".remove-waiting-btn").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      try {
+        await removeFromClub({
+          addToWaitingList: true,
+          ownerId: btn.dataset.ownerId,
+          email: btn.dataset.email || null,
+          label: btn.dataset.label,
+        });
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+}
+
+async function bulkRemoveClubOwners({ addToWaitingList }) {
+  const owners = (window.__clubOwnersRemoveCache || []).filter((r) => r.clubShortName);
+  if (!owners.length) {
+    setStatus("breakOwnerStatus", "No club owners to remove.", false);
+    return;
+  }
+
+  const mode = addToWaitingList ? "waiting list" : "remove only (no waiting list)";
+  if (
     !confirm(
-      `Remove ${email} from their club?\n\nClub and nation links will clear. History is kept. They can return via Link club.`
+      `Remove ALL ${owners.length} club owner${owners.length === 1 ? "" : "s"}?\n\nMode: ${mode}.\nThis cannot be undone from this screen.`
     )
   ) {
     return;
   }
-  setStatus("breakOwnerStatus", "Removing…");
-  const { data, error } = await supabase.rpc("admin_owner_remove_from_club", {
-    p_owner_email: email,
-  });
-  if (error) {
-    setStatus("breakOwnerStatus", "❌ " + error.message, false);
-    return;
+
+  setStatus("breakOwnerStatus", `Removing ${owners.length}…`);
+  let ok = 0;
+  let fail = 0;
+  let lastErr = "";
+  for (const r of owners) {
+    const payload = {
+      p_add_to_waiting_list: !!addToWaitingList,
+      p_owner_id: r.id,
+    };
+    if (r.email) payload.p_owner_email = r.email;
+    const { error } = await supabase.rpc("admin_owner_remove_from_club", payload);
+    if (error) {
+      fail += 1;
+      lastErr = error.message;
+    } else {
+      ok += 1;
+    }
   }
   setStatus(
     "breakOwnerStatus",
-    `✅ ${data?.owner_tag || email} removed from ${data?.club_name || data?.club_short_name || "club"}${
-      data?.nation_code ? ` · nation ${data.nation_code} released` : ""
-    }`,
-    true
+    `✅ Bulk done — ${ok} removed${fail ? `, ${fail} failed (${lastErr})` : ""}${
+      addToWaitingList ? " (waiting list)" : " (no waiting list)"
+    }.`,
+    fail === 0
   );
-  await loadOwnerList();
+  await loadClubOwnersRemoveList();
 }
 
 async function archiveOwner() {

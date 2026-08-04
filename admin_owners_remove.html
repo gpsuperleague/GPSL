@@ -12,6 +12,24 @@
     .card .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
     button.button.secondary { background:#444; color:#ddd; }
     button.button.secondary:hover { background:#555; }
+    .owner-remove-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:10px; }
+    .owner-remove-table th {
+      text-align:left; padding:8px 10px; background:#222; color:#ff9900;
+      border-bottom:1px solid #333;
+    }
+    .owner-remove-table td {
+      padding:8px 10px; border-bottom:1px solid #2a2a2a; vertical-align:middle;
+    }
+    .owner-remove-table .actions {
+      display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end;
+    }
+    .owner-remove-table .actions .button { font-size:12px; padding:5px 10px; }
+    .bulk-row { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; align-items:center; }
+    .filter-row { margin:8px 0 4px; }
+    .filter-row input {
+      max-width:320px; width:100%; padding:8px; background:#111;
+      border:1px solid #444; color:#ddd; border-radius:4px;
+    }
   </style>
 </head>
 <body class="admin-page">
@@ -20,19 +38,38 @@
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <div class="card" id="ow-break">
-        <h2>Remove owner from club (short break)</h2>
+        <h2>Owners currently linked to a club</h2>
         <p class="note">
-          Detaches the owner from their club and national team. They rejoin the waiting list as a
-          <b>returning member</b> (above new joins). Season history is retained.
+          <b>Remove from club</b> — clears club + nation only (not on the waiting list; can Link club later).<br>
+          <b>Remove + waiting list</b> — same, and adds them as a <b>returning</b> member on the waiting list.
+          Season history is kept either way.
+          Run <code>supabase/sql/patches/admin_owners_remove_list.sql</code> if remove fails.
         </p>
+        <div class="filter-row">
+          <input id="clubOwnerFilter" type="search" placeholder="Filter by club, tag, or email…">
+        </div>
+        <div class="bulk-row">
+          <button type="button" id="refreshClubOwnersBtn" class="button secondary">Refresh</button>
+          <button type="button" id="removeAllWaitingBtn" class="button">All → waiting list</button>
+          <button type="button" id="removeAllOnlyBtn" class="button secondary">All → remove only</button>
+        </div>
+        <div id="clubOwnersTableWrap"><p class="note">Loading…</p></div>
+        <div id="breakOwnerStatus" class="status-line"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <h2>Remove by email</h2>
+        <p class="note">Fallback if someone is missing from the list above.</p>
         <div class="row">
           <div><input id="breakOwnerEmail" placeholder="Owner email"></div>
         </div>
-        <button id="breakOwnerBtn" class="button secondary">Remove from club</button>
-        <div id="breakOwnerStatus" class="status-line"></div>
+        <div class="bulk-row">
+          <button type="button" id="breakOwnerBtn" class="button secondary">Remove from club</button>
+          <button type="button" id="breakOwnerWaitingBtn" class="button">Remove + waiting list</button>
+        </div>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js"></script>
+  <script type="module" src="admin_owners.js?v=20260804-remove-list"></script>
 </body>
 </html>
