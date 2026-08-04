@@ -26,7 +26,7 @@ export function getExpiringContractRules() {
       {
         heading: "How to bid",
         items: [
-          "<b>One</b> wage offer per club per player (you can update it).",
+          "<b>One</b> wage offer per club per player — <b>locked in</b> once submitted (cannot be changed).",
           `Minimum offer: <b>+${uplift}%</b> above the player’s current wage.`,
           "Any <b>whole ₿</b> amount at or above that floor is allowed.",
           "Rival amounts stay <b>hidden</b> until season rollover.",

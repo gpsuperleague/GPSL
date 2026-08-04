@@ -104,6 +104,8 @@ BEGIN
 
   v_season := coalesce(public.current_gpsl_season_label(), 'unknown');
 
+  -- Prefer contract_expiry_wage_bid_locked.sql if already applied (one-shot bids).
+  -- This upsert path is superseded by that patch.
   INSERT INTO public.contract_expiry_wage_bids (
     player_id,
     bidder_club_short_name,

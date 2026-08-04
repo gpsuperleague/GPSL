@@ -165,7 +165,7 @@ At **1 season left**, contested players are **automatically** on the **expiring-
 | Rule | Detail |
 |------|--------|
 | **Who can bid** | Any owner (including **current** club) |
-| **Bids per club** | **One** wage offer per player per expiry cycle |
+| **Bids per club** | **One** wage offer per player per expiry cycle — **locked** once submitted (cannot change) |
 | **Floor** | At least **+10%** above current contract wage |
 | **Step** | Any whole ₿ amount at or above the floor |
 | **Visibility** | **Hidden** — other owners do not see competing amounts |

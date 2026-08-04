@@ -5,7 +5,7 @@ import {
   expiryWageMinUpliftPct,
   minExpiryWageOffer,
 } from "./wages.js";
-import { renderExpiringContractRules } from "./expiring_contracts_rules.js";
+import { renderExpiringContractRules } from "./expiring_contracts_rules.js?v=20260804-bid-locked";
 
 const POSITION_ORDER = [
   "GK", "LB", "CB", "RB",
@@ -394,9 +394,11 @@ function renderMarket() {
           <td>${formatWage(row.current_wage)}</td>
           <td>${myBid}</td>
           <td>
-            <button type="button" class="bid-btn" data-player-id="${row.player_id}">
-              ${row.my_wage_bid != null ? "Update bid" : "Place bid"}
-            </button>
+            ${
+              row.my_wage_bid != null
+                ? `<span class="my-bid" title="Wage bid locked — cannot be changed">Locked</span>`
+                : `<button type="button" class="bid-btn" data-player-id="${row.player_id}">Place bid</button>`
+            }
           </td>
         </tr>
       `;
@@ -443,6 +445,13 @@ function openBidModal(row) {
     return;
   }
 
+  if (row.my_wage_bid != null) {
+    alert(
+      `Your wage bid for ${row.player_name} is locked at ${formatWage(row.my_wage_bid)} and cannot be changed.`
+    );
+    return;
+  }
+
   bidTarget = row;
   const modal = document.getElementById("bidModal");
   const uplift = expiryWageMinUpliftPct();
@@ -453,11 +462,11 @@ function openBidModal(row) {
 
   document.getElementById("bidModalTitle").textContent = `Bid — ${row.player_name}`;
   document.getElementById("bidModalHint").textContent =
-    `Current wage ${formatWage(row.current_wage)}. Minimum offer ${formatWage(minOffer)} (+${uplift}% or more). Any whole ₿ amount at or above the minimum. Bids stay hidden until season rollover.`;
-  document.getElementById("bidWageInput").value =
-    row.my_wage_bid != null
-      ? String(row.my_wage_bid)
-      : String(minOffer);
+    `Current wage ${formatWage(row.current_wage)}. Minimum offer ${formatWage(minOffer)} (+${uplift}% or more). ` +
+    `Any whole ₿ amount at or above the minimum. Your bid is locked once submitted and cannot be changed. Bids stay hidden until season rollover.`;
+  document.getElementById("bidWageInput").value = String(minOffer);
+  document.getElementById("bidWageInput").disabled = false;
+  document.getElementById("bidSubmitBtn").disabled = false;
   document.getElementById("bidModalError").textContent = "";
   modal.style.display = "flex";
 }
