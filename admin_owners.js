@@ -511,7 +511,9 @@ async function bulkRemoveClubOwners({ addToWaitingList }) {
     return;
   }
 
-  const mode = addToWaitingList ? "waiting list" : "remove only (no waiting list)";
+  const mode = addToWaitingList
+    ? "remove + waiting list"
+    : "remove only (no waiting list)";
   if (
     !confirm(
       `Remove ALL ${owners.length} club owner${owners.length === 1 ? "" : "s"}?\n\nMode: ${mode}.\nThis cannot be undone from this screen.`
@@ -541,7 +543,7 @@ async function bulkRemoveClubOwners({ addToWaitingList }) {
   setStatus(
     "breakOwnerStatus",
     `✅ Bulk done — ${ok} removed${fail ? `, ${fail} failed (${lastErr})` : ""}${
-      addToWaitingList ? " (waiting list)" : " (no waiting list)"
+      addToWaitingList ? " (remove + waiting list)" : " (remove only)"
     }.`,
     fail === 0
   );
