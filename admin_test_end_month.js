@@ -432,7 +432,13 @@ async function runMonthLockJobsStaged({
       const missing = /competition_admin_run_month_lock_jobs|p_stage/i.test(
         error.message || ""
       );
-      // Soft-continue optional / heavy follow-on stages
+      // Soft-continue: TV must not abort the whole Retry (May→Playoffs used to
+      // 500 on gpsl_month check). Heavy stages soft-continue on timeout only.
+      if (stage === "tv") {
+        merged.warnings.push(`tv: ${error.message}`);
+        merged.tv_selection = { ok: false, error: error.message };
+        continue;
+      }
       if (
         timedOut &&
         (stage === "clinches" ||
