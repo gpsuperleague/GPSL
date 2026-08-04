@@ -56,6 +56,7 @@ let listingsLoading = false;
 /** @type {Map<string, number>} */
 let scoutingTargetMap = new Map();
 let scoutingTargetsOnly = false;
+let myClubListingsOnly = false;
 let advancedFiltersWired = false;
 
 const POSITION_ORDER = [
@@ -485,6 +486,7 @@ function getListingFilterState() {
     showClosed: document.getElementById("filter-closed")?.checked === true,
     refreshIntervalSec: getListingsRefreshIntervalSec(),
     scoutingTargetsOnly,
+    myClubListingsOnly,
     multi: {
       Nation: [...MULTI_SELECTED.Nation],
       Position: [...MULTI_SELECTED.Position],
@@ -543,6 +545,9 @@ function restorePersistedListingFilters() {
   if (typeof saved.scoutingTargetsOnly === "boolean") {
     scoutingTargetsOnly = saved.scoutingTargetsOnly;
   }
+  if (typeof saved.myClubListingsOnly === "boolean") {
+    myClubListingsOnly = saved.myClubListingsOnly && Boolean(currentUserShort);
+  }
   if (saved.multi && typeof saved.multi === "object") {
     for (const col of MULTI_FILTER_COLS) {
       if (Array.isArray(saved.multi[col])) {
@@ -559,6 +564,7 @@ function restorePersistedListingFilters() {
     }
   }
   syncScoutingTargetsButton();
+  syncMyClubListingsButton();
 }
 
 function getListingsRefreshIntervalSec() {
@@ -652,6 +658,7 @@ function wireListingFilters() {
   const refreshInterval = document.getElementById("listingsRefreshInterval");
   const clearBtn = document.getElementById("listingsClearFilters");
   const scoutBtn = document.getElementById("listingsScoutingTargetsBtn");
+  const myClubBtn = document.getElementById("listingsMyClubBtn");
   const myNationBtn = document.getElementById("listingsMyNationBtn");
   const myClubNationBtn = document.getElementById("listingsMyClubNationBtn");
 
@@ -679,9 +686,11 @@ function wireListingFilters() {
     if (search) search.value = "";
     if (myBids) myBids.checked = false;
     scoutingTargetsOnly = false;
+    myClubListingsOnly = false;
     for (const col of MULTI_FILTER_COLS) MULTI_SELECTED[col] = [];
     resetRangeFiltersToBounds();
     syncScoutingTargetsButton();
+    syncMyClubListingsButton();
     refreshMultiFilterDisplays();
     savePersistedListingFilters();
     void renderListings();
@@ -698,6 +707,17 @@ function wireListingFilters() {
     }
     scoutingTargetsOnly = !scoutingTargetsOnly;
     syncScoutingTargetsButton();
+    savePersistedListingFilters();
+    void renderListings();
+  });
+
+  myClubBtn?.addEventListener("click", () => {
+    if (!currentUserShort) {
+      alert("Link a club to your account to use My Club.");
+      return;
+    }
+    myClubListingsOnly = !myClubListingsOnly;
+    syncMyClubListingsButton();
     savePersistedListingFilters();
     void renderListings();
   });
@@ -756,6 +776,13 @@ function syncScoutingTargetsButton() {
   btn.textContent = scoutingTargetsOnly
     ? `★ Scouting targets (${n})`
     : `★ My scouting targets`;
+}
+
+function syncMyClubListingsButton() {
+  const btn = document.getElementById("listingsMyClubBtn");
+  if (!btn) return;
+  btn.hidden = !currentUserShort;
+  btn.classList.toggle("button-filter-on", myClubListingsOnly);
 }
 
 function closeAllMultiFilters() {
@@ -1144,6 +1171,7 @@ function listingPassesAdvancedFilters(listing, player) {
 
 function advancedFiltersActive() {
   if (scoutingTargetsOnly) return true;
+  if (myClubListingsOnly) return true;
   for (const col of MULTI_FILTER_COLS) {
     if ((MULTI_SELECTED[col] || []).length) return true;
   }
@@ -1156,8 +1184,9 @@ function advancedFiltersActive() {
 function updateListingsFilterSummary(shown, total) {
   const el = document.getElementById("listingsFilterSummary");
   if (!el) return;
-  const { nameQuery, myBidsOnly } = getListingFilterState();
-  const active = nameQuery || myBidsOnly || advancedFiltersActive();
+  const { nameQuery, myBidsOnly, myClubListingsOnly: myClubOnly } =
+    getListingFilterState();
+  const active = nameQuery || myBidsOnly || myClubOnly || advancedFiltersActive();
   if (!active || total === 0) {
     el.hidden = true;
     el.textContent = "";
@@ -1224,6 +1253,11 @@ async function renderListings() {
   if (myBidsOnly && currentUserShort) {
     filteredRows = filteredRows.filter((listing) =>
       userBidListingIds.has(String(listing.id))
+    );
+  }
+  if (myClubListingsOnly && currentUserShort) {
+    filteredRows = filteredRows.filter(
+      (listing) => listing.seller_club_id === currentUserShort
     );
   }
   filteredRows = filteredRows.filter((listing) =>

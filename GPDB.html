@@ -97,7 +97,8 @@
     }
 
     #myScoutedFilterBtn.is-active,
-    #finalYearFilterBtn.is-active {
+    #finalYearFilterBtn.is-active,
+    #myClubFilterBtn.is-active {
       background: #3d3200;
       border-color: #ff9900;
       color: #ffcc66;
@@ -742,6 +743,7 @@
   <div id="controls">
     <div class="filter-group">
       <button id="clearFiltersBtn" class="button">Clear Filters</button>
+      <button id="myClubFilterBtn" class="button secondary" type="button" hidden>My Club</button>
       <button id="finalYearFilterBtn" class="button secondary" type="button">Final year only</button>
       <button id="myScoutedFilterBtn" class="button secondary" type="button" hidden>★ My scouting targets</button>
       <button id="myNationFilterBtn" class="button secondary" type="button" hidden>My National Team</button>
@@ -824,7 +826,7 @@
 
   <!-- MODULES: global first, then page logic -->
   <script type="module" src="global.js?v=20260722-bank-bal-row"></script>
-  <script type="module" src="gpdb_v2.js?v=20260804-final-year"></script>
+  <script type="module" src="gpdb_v2.js?v=20260804-my-club"></script>
 
 </body>
 </html>

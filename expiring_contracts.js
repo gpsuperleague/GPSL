@@ -60,17 +60,44 @@ function wireFilters() {
   for (const id of ids) {
     const el = document.getElementById(id);
     if (!el) continue;
-    el.addEventListener(el.tagName === "SELECT" ? "change" : "input", () =>
-      renderMarket()
-    );
+    el.addEventListener(el.tagName === "SELECT" ? "change" : "input", () => {
+      if (id === "fClub") syncMyClubFilterBtn();
+      renderMarket();
+    });
   }
   document.getElementById("fClearBtn")?.addEventListener("click", () => {
     for (const id of ids) {
       const el = document.getElementById(id);
       if (el) el.value = "";
     }
+    syncMyClubFilterBtn();
     renderMarket();
   });
+
+  const myClubBtn = document.getElementById("fMyClubBtn");
+  if (myClubBtn) {
+    myClubBtn.hidden = !myClubShort;
+    myClubBtn.addEventListener("click", () => {
+      if (!myClubShort) return;
+      const clubSel = document.getElementById("fClub");
+      if (!clubSel) return;
+      const already = clubSel.value === myClubShort;
+      clubSel.value = already ? "" : myClubShort;
+      syncMyClubFilterBtn();
+      renderMarket();
+    });
+  }
+}
+
+function syncMyClubFilterBtn() {
+  const btn = document.getElementById("fMyClubBtn");
+  const clubSel = document.getElementById("fClub");
+  if (!btn) return;
+  const active = Boolean(myClubShort && clubSel?.value === myClubShort);
+  btn.classList.toggle("is-active", active);
+  btn.style.background = active ? "#3d3200" : "";
+  btn.style.borderColor = active ? "#ff9900" : "";
+  btn.style.color = active ? "#ffcc66" : "";
 }
 
 function fillSelect(id, values, labelFn = (v) => v) {
@@ -122,6 +149,7 @@ function rebuildFilterOptions() {
   fillSelect("fNation", nations);
   fillSelect("fPlaystyle", playstyles);
   fillSelect("fClub", clubs, (v) => displayClubName(v));
+  syncMyClubFilterBtn();
 }
 
 function filteredRows() {

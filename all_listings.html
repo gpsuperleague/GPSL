@@ -848,6 +848,14 @@ a.button:hover, button.button:hover {
       <span>My club&apos;s bids only</span>
     </label>
     <div class="filter-action">
+      <span class="filter-action-label">Club</span>
+      <div class="filter-action-btns">
+        <button type="button" id="listingsMyClubBtn" class="button button-secondary" hidden title="Show only listings of your club&apos;s players">
+          My Club
+        </button>
+      </div>
+    </div>
+    <div class="filter-action">
       <span class="filter-action-label">Scouting</span>
       <div class="filter-action-btns">
         <button type="button" id="listingsScoutingTargetsBtn" class="button button-secondary" title="Show only players on your scouting list that are currently listed">
@@ -1030,7 +1038,7 @@ a.button:hover, button.button:hover {
   <script type="module" src="clubs_lookup.js"></script>
 
   <!-- ALL LISTINGS LOGIC -->
-  <script type="module" src="all_listings.js?v=20260802-advisory-budget"></script>
+  <script type="module" src="all_listings.js?v=20260804-my-club"></script>
 
 </body>
 </html>

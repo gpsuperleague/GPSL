@@ -592,6 +592,8 @@ document.addEventListener("DOMContentLoaded", () => {
   let SCOUTING_TARGET_MAP = new Map();
   let SCOUTED_ONLY = false;
   let FINAL_YEAR_ONLY = false;
+  let MY_CLUB_ONLY = false;
+  let CURRENT_USER_CLUB_FULL = null;
 
   const GPDB_FILTER_STORAGE_PREFIX = "gpsl_gpdb_filters_";
 
@@ -677,9 +679,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (typeof saved.scoutedOnly === "boolean") {
       SCOUTED_ONLY = saved.scoutedOnly;
+    }
     if (typeof saved.finalYearOnly === "boolean") {
       FINAL_YEAR_ONLY = saved.finalYearOnly;
     }
+    if (typeof saved.myClubOnly === "boolean") {
+      MY_CLUB_ONLY = saved.myClubOnly;
     }
     if (saved.sortColumn) CURRENT_SORT_COLUMN = saved.sortColumn;
     if (saved.sortDir === "asc" || saved.sortDir === "desc") {
@@ -709,6 +714,7 @@ document.addEventListener("DOMContentLoaded", () => {
       range,
       scoutedOnly: SCOUTED_ONLY,
       finalYearOnly: FINAL_YEAR_ONLY,
+      myClubOnly: MY_CLUB_ONLY,
       sortColumn: CURRENT_SORT_COLUMN,
       sortDir: CURRENT_SORT_DIR,
     };
@@ -729,10 +735,19 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     const hasRange = Object.keys(payload.range || {}).length > 0;
     const hasScouted = !!payload.scoutedOnly;
+    const hasFinalYear = !!payload.finalYearOnly;
+    const hasMyClub = !!payload.myClubOnly;
     const hasCustomSort =
       payload.sortColumn !== "Rating" || payload.sortDir !== "desc";
 
-    if (!hasDropdownOrText && !hasRange && !hasScouted && !hasCustomSort) {
+    if (
+      !hasDropdownOrText &&
+      !hasRange &&
+      !hasScouted &&
+      !hasFinalYear &&
+      !hasMyClub &&
+      !hasCustomSort
+    ) {
       localStorage.removeItem(key);
       return;
     }
@@ -783,6 +798,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (scoutedBtn) scoutedBtn.classList.toggle("is-active", SCOUTED_ONLY);
     const finalYearBtn = document.getElementById("finalYearFilterBtn");
     if (finalYearBtn) finalYearBtn.classList.toggle("is-active", FINAL_YEAR_ONLY);
+    const myClubBtn = document.getElementById("myClubFilterBtn");
+    if (myClubBtn) myClubBtn.classList.toggle("is-active", MY_CLUB_ONLY);
   }
 
   let CLUB_NAME_MAP = {};
@@ -901,15 +918,21 @@ document.addEventListener("DOMContentLoaded", () => {
     if (user) {
       const { data: club } = await supabase
         .from("Clubs")
-        .select("ShortName")
+        .select("ShortName, Club")
         .eq("owner_id", user.id)
         .maybeSingle();
 
       CURRENT_USER_CLUB_SHORT = club?.ShortName ?? null;
+      CURRENT_USER_CLUB_FULL = club?.Club ?? null;
       const scoutedBtn = document.getElementById("myScoutedFilterBtn");
       if (scoutedBtn) {
         scoutedBtn.hidden = !CURRENT_USER_CLUB_SHORT;
         scoutedBtn.classList.toggle("is-active", SCOUTED_ONLY);
+      }
+      const myClubBtn = document.getElementById("myClubFilterBtn");
+      if (myClubBtn) {
+        myClubBtn.hidden = !CURRENT_USER_CLUB_SHORT;
+        myClubBtn.classList.toggle("is-active", MY_CLUB_ONLY);
       }
       if (CURRENT_USER_CLUB_SHORT) {
         try {
@@ -1104,6 +1127,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (FINAL_YEAR_ONLY) {
       query = query.eq("contract_seasons_remaining", 1);
+    }
+
+    if (MY_CLUB_ONLY && CURRENT_USER_CLUB_SHORT) {
+      const clubs = [CURRENT_USER_CLUB_SHORT];
+      if (
+        CURRENT_USER_CLUB_FULL &&
+        CURRENT_USER_CLUB_FULL !== CURRENT_USER_CLUB_SHORT
+      ) {
+        clubs.push(CURRENT_USER_CLUB_FULL);
+      }
+      const orClause = buildContractedTeamOrClause(clubs);
+      if (orClause) query = query.or(orClause);
     }
 
     if (CURRENT_SORT_COLUMN) {
@@ -1897,6 +1932,15 @@ document.addEventListener("DOMContentLoaded", () => {
     FINAL_YEAR_ONLY = !FINAL_YEAR_ONLY;
     const btn = document.getElementById("finalYearFilterBtn");
     if (btn) btn.classList.toggle("is-active", FINAL_YEAR_ONLY);
+    saveGpdbFilters();
+    loadPage(1);
+  }
+
+  function toggleMyClubOnlyFilter() {
+    if (!CURRENT_USER_CLUB_SHORT) return;
+    MY_CLUB_ONLY = !MY_CLUB_ONLY;
+    const btn = document.getElementById("myClubFilterBtn");
+    if (btn) btn.classList.toggle("is-active", MY_CLUB_ONLY);
     saveGpdbFilters();
     loadPage(1);
   }
@@ -3014,15 +3058,22 @@ document.addEventListener("DOMContentLoaded", () => {
       toggleFinalYearOnlyFilter();
     });
 
+    document.getElementById("myClubFilterBtn")?.addEventListener("click", () => {
+      toggleMyClubOnlyFilter();
+    });
+
     document.getElementById("clearFiltersBtn").addEventListener("click", () => {
       CURRENT_FILTERS = {};
       SCOUTED_ONLY = false;
       FINAL_YEAR_ONLY = false;
+      MY_CLUB_ONLY = false;
       clearGpdbFilterStorage();
       const scoutedBtn = document.getElementById("myScoutedFilterBtn");
       if (scoutedBtn) scoutedBtn.classList.remove("is-active");
       const finalYearBtn = document.getElementById("finalYearFilterBtn");
       if (finalYearBtn) finalYearBtn.classList.remove("is-active");
+      const myClubBtn = document.getElementById("myClubFilterBtn");
+      if (myClubBtn) myClubBtn.classList.remove("is-active");
       CURRENT_SORT_COLUMN = "Rating";
       CURRENT_SORT_DIR = "desc";
 

@@ -399,7 +399,8 @@
       margin-top:2px;
     }
 
-    #draftScoutedFilterBtn.is-active {
+    #draftScoutedFilterBtn.is-active,
+    #draftMyClubFilterBtn.is-active {
       background: #3d3200;
       border-color: #ff9900;
       color: #ffcc66;
@@ -658,6 +659,14 @@
       <span>My club&apos;s bids only</span>
     </label>
     <div class="filter-action">
+      <span class="filter-action-label">Club</span>
+      <div class="filter-action-btns">
+        <button type="button" id="draftMyClubFilterBtn" class="button button-secondary" hidden title="Show only auctions your club is currently leading">
+          My Club
+        </button>
+      </div>
+    </div>
+    <div class="filter-action">
       <span class="filter-action-label">Scouting</span>
       <div class="filter-action-btns">
         <button type="button" id="draftScoutedFilterBtn" class="button button-secondary" hidden>
@@ -834,6 +843,7 @@
     /** @type {Map<string, number>} */
     let scoutingTargetMap = new Map();
     let scoutedOnly = false;
+    let myClubLeadingOnly = false;
     let advancedFiltersRestored = false;
 
     const advancedFilters = createDraftAdvancedFilterController({
@@ -902,6 +912,15 @@
       if (typeof saved.scoutedOnly === "boolean") {
         scoutedOnly = saved.scoutedOnly && Boolean(buyerShortName);
         if (scoutedBtn) scoutedBtn.classList.toggle("is-active", scoutedOnly);
+      }
+      if (typeof saved.myClubLeadingOnly === "boolean") {
+        myClubLeadingOnly = saved.myClubLeadingOnly && Boolean(buyerShortName);
+        syncDraftMyClubButton();
+        if (myClubLeadingOnly && leading && buyerShortName) {
+          if ([...leading.options].some((o) => o.value === buyerShortName)) {
+            leading.value = buyerShortName;
+          }
+        }
       }
       // Advanced multi/range restored after first rebuildFromRows (needs live bounds)
 
@@ -1140,17 +1159,27 @@
       await loadDraftListings();
     });
 
+    function syncDraftMyClubButton() {
+      const btn = document.getElementById("draftMyClubFilterBtn");
+      if (!btn) return;
+      btn.hidden = !buyerShortName;
+      btn.classList.toggle("is-active", myClubLeadingOnly && Boolean(buyerShortName));
+    }
+
     async function loadDraftScoutingTargets() {
       const btn = document.getElementById("draftScoutedFilterBtn");
       scoutingTargetMap = new Map();
       if (!buyerShortName) {
         scoutedOnly = false;
+        myClubLeadingOnly = false;
+        syncDraftMyClubButton();
         if (btn) {
           btn.hidden = true;
           btn.classList.remove("is-active");
         }
         return;
       }
+      syncDraftMyClubButton();
       try {
         scoutingTargetMap = await loadScoutingTargetMap(supabase, buyerShortName);
       } catch (err) {
@@ -1270,6 +1299,7 @@
       const leading = document.getElementById("draftLeadingClubFilter");
       const myBids = document.getElementById("draftMyBidsOnly");
       const scoutedBtn = document.getElementById("draftScoutedFilterBtn");
+      const myClubBtn = document.getElementById("draftMyClubFilterBtn");
       const myNationBtn = document.getElementById("draftMyNationBtn");
       const myClubNationBtn = document.getElementById("draftMyClubNationBtn");
       const refreshInterval = document.getElementById("draftRefreshInterval");
@@ -1284,6 +1314,10 @@
         }, 200);
       });
       leading?.addEventListener("change", () => {
+        myClubLeadingOnly = Boolean(
+          buyerShortName && leading.value === buyerShortName
+        );
+        syncDraftMyClubButton();
         renderDraftTable();
         savePersistedDraftFilters();
       });
@@ -1299,6 +1333,18 @@
         }
         scoutedOnly = !scoutedOnly;
         scoutedBtn.classList.toggle("is-active", scoutedOnly);
+        renderDraftTable();
+        savePersistedDraftFilters();
+      });
+      myClubBtn?.addEventListener("click", () => {
+        if (!buyerShortName) return;
+        myClubLeadingOnly = !myClubLeadingOnly;
+        syncDraftMyClubButton();
+        // Keep Leading club select in sync when My Club is on
+        const leadingSel = document.getElementById("draftLeadingClubFilter");
+        if (leadingSel) {
+          leadingSel.value = myClubLeadingOnly ? buyerShortName : "";
+        }
         renderDraftTable();
         savePersistedDraftFilters();
       });
@@ -1338,7 +1384,9 @@
         if (leading) leading.value = "";
         if (myBids) myBids.checked = false;
         scoutedOnly = false;
+        myClubLeadingOnly = false;
         scoutedBtn?.classList.remove("is-active");
+        syncDraftMyClubButton();
         advancedFilters.clear();
         renderDraftTable();
         savePersistedDraftFilters();
@@ -1356,6 +1404,7 @@
         leadingClub: document.getElementById("draftLeadingClubFilter")?.value || "",
         myBidsOnly: document.getElementById("draftMyBidsOnly")?.checked === true,
         scoutedOnly,
+        myClubLeadingOnly,
         refreshIntervalSec: getDraftRefreshIntervalSec(),
         ...advancedFilters.getPersistState(),
       };
@@ -1373,6 +1422,10 @@
 
       if (leadingClub) {
         filtered = filtered.filter((row) => row.leadingClubShort === leadingClub);
+      } else if (myClubLeadingOnly && buyerShortName) {
+        filtered = filtered.filter(
+          (row) => row.leadingClubShort === buyerShortName
+        );
       }
 
       if (myBidsOnly && buyerShortName) {
@@ -1400,7 +1453,12 @@
 
       const { nameQuery, leadingClub, myBidsOnly } = getDraftFilterState();
       const active =
-        nameQuery || leadingClub || myBidsOnly || scoutedOnly || advancedFilters.isActive();
+        nameQuery ||
+        leadingClub ||
+        myBidsOnly ||
+        scoutedOnly ||
+        myClubLeadingOnly ||
+        advancedFilters.isActive();
 
       if (!active || total === 0) {
         el.hidden = true;
