@@ -144,15 +144,15 @@ BEGIN
   v_exempt := public.is_player_expiry_auction_exempt(v_pid, v_club);
   v_wage := coalesce(p_wage, v_player.contract_wage);
 
-  IF v_exempt THEN
-    v_wage := coalesce(v_player.contract_wage, v_wage);
-  ELSE
-    IF v_wage IS NULL OR v_wage < coalesce(v_player.contract_wage, 0) THEN
-      RAISE EXCEPTION
-        'Renewal wage must be at least the current contract wage (₿ %)',
-        coalesce(v_player.contract_wage, 0);
-    END IF;
+  -- Contested final-year (not exempt, not legacy): must use expiry wage auction
+  IF NOT v_exempt AND NOT coalesce(v_player.pesdb_unavailable, false) THEN
+    RAISE EXCEPTION
+      'This player is on the contested expiry wage market. '
+      'Place a wage bid on Expiring Contracts — contracts resolve at season rollover.';
   END IF;
+
+  -- Uncontested / legacy: renew at current wage only
+  v_wage := coalesce(v_player.contract_wage, v_wage);
 
   v_season := public.current_gpsl_season_label();
 

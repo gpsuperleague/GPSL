@@ -60,6 +60,7 @@ import {
   formatSquadContractCell,
   squadContractActionOptionsHtml,
   isContractFinalYear,
+  isPesdbLegacyCard,
 } from "./player_contracts.js";
 import { isExpiryAuctionExempt } from "./squad_rules.js";
 import { formatWage } from "./wages.js";
@@ -1957,21 +1958,15 @@ async function renewPlayerContract(playerId) {
   const exempt = isExpiryAuctionExempt(player, clubNation);
   let wage = Number(player.contract_wage) || 0;
 
-  if (!exempt) {
-    const raw = window.prompt(
-      `Renew ${player.Name} NOW for 3 seasons (takes them off the expiry wage market).\n` +
-        `Minimum wage: ${formatWage(wage)}\n` +
-        `To compete with other clubs instead, cancel and use “Offer wage bid”.\n\n` +
-        `Enter new wage (₿):`,
-      String(wage)
+  if (!exempt && !isPesdbLegacyCard(player)) {
+    alert(
+      "This player is on the contested expiry market. " +
+        "Use Action → Offer wage bid (competes at season end)."
     );
-    if (raw == null) return;
-    wage = Number(String(raw).replace(/[^\d.]/g, ""));
-    if (!Number.isFinite(wage) || wage < Number(player.contract_wage)) {
-      alert(`Wage must be at least ${formatWage(player.contract_wage)}.`);
-      return;
-    }
-  } else if (
+    return;
+  }
+
+  if (
     !window.confirm(
       `Renew ${player.Name} now for 3 seasons at the same wage (${formatWage(wage)})?`
     )

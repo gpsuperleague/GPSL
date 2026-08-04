@@ -14,7 +14,7 @@ Authoritative design from league owner (2026). Align with legacy spreadsheet whe
 | **Decision window** | After **2 seasons played** (start of **final contract year**) |
 | **Selling** | Allowed only while **2+ seasons remain** — **cannot sell** in final year |
 | **Final year (1 left)** | Player **automatically** on expiring-contract / FA list — no transfer list |
-| **Owner choices (final year, contested)** | Wage bid / renew-now (≥ wage) — **no mid-season expire**; FA+MV only at rollover if unsigned |
+| **Owner choices (final year, contested)** | Wage bid only — **no mid-season renew/expire**; FA+MV only at rollover if unsigned |
 | **Renew wage (standard)** | New offer must be **> current contract wage**, in **₿250,000** steps |
 | **Home-grown** | `Players.Nation` = `Clubs.Nation` — **at least 8** (no maximum) |
 | **Under-21** | Age **≤ 21** — **at least 5** (no maximum) |

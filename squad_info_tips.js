@@ -107,8 +107,7 @@ export function squadContractTip(player, clubNation) {
     return (
       "Final contract year (1 season left of a 3-season deal).\n\n" +
       "Cannot Transfer List or sell. They are on the Expiring Contracts market — other clubs (and you) may place one hidden wage bid; highest wins at season rollover.\n\n" +
-      "Action → Renew now locks a new 3-season deal immediately (≥ current wage) and takes them off that market. " +
-      "Cannot expire mid-season — with no winning re-sign they become a free agent at rollover (holding club receives market value).\n\n" +
+      "Use Action → Offer wage bid to compete. No mid-season renew or expire — if nobody wins them at rollover they become a free agent (holding club receives market value).\n\n" +
       wageNote
     );
   }

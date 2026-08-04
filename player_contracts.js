@@ -70,22 +70,19 @@ export function squadContractActionOptionsHtml(
   const legacy = isPesdbLegacyCard(player);
   const releaseOpt = voluntaryRelease?.optionHtml ?? "";
 
-  const renewLabel = legacy
-    ? (exempt
-        ? "Renew legacy card now (1 season, same wage)"
-        : "Renew legacy card now (1 season — choose wage)")
-    : (exempt
-        ? "Renew now at same wage (3 seasons)"
-        : "Renew now — choose wage (3 seasons)");
+  // Contested: wage auction only (no mid-season unilateral renew).
+  if (!exempt && !legacy) {
+    return `
+            <option value="expiry_bid">Offer wage bid (competes at season end)</option>
+            ${releaseOpt}`;
+  }
 
-  // Contested final-year: also point owners at the hidden wage auction.
-  const bidOpt =
-    !exempt && !legacy
-      ? `<option value="expiry_bid">Offer wage bid (competes at season end)</option>`
-      : "";
+  // Uncontested (HG≤23 / non-HG≤21) or legacy: renew at same wage path.
+  const renewLabel = legacy
+    ? "Renew legacy card now (1 season, same wage)"
+    : "Renew now at same wage (3 seasons)";
 
   return `
             <option value="renew">${renewLabel}</option>
-            ${bidOpt}
             ${releaseOpt}`;
 }
