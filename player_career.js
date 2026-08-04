@@ -197,14 +197,14 @@ function renderStints(stints, transfers = []) {
     data: t,
   }));
 
-  // Season desc → club → transfer(s) immediately before that club's stint
+  // Season desc → club → stint stats, then signed/transfer for that club
   const rows = [...stintRows, ...transferRows].sort((a, b) => {
     if (b.season_key !== a.season_key) return b.season_key - a.season_key;
     const clubCmp = String(a.club_key || "\uffff").localeCompare(
       String(b.club_key || "\uffff")
     );
     if (clubCmp !== 0) return clubCmp;
-    if (a.kind !== b.kind) return a.kind === "transfer" ? -1 : 1;
+    if (a.kind !== b.kind) return a.kind === "stint" ? -1 : 1;
     if (a.kind === "transfer") return a.sort_time - b.sort_time;
     return 0;
   });
@@ -244,7 +244,7 @@ function renderStints(stints, transfers = []) {
           <tr class="move-row">
             <td>${t.season_label || "—"}</td>
             <td>
-              <span class="row-kind">Transfer</span>${formatTransferParties(t)}
+              <span class="row-kind">Signed</span>${formatTransferParties(t)}
               <div class="move-meta">${[when, type, fee !== "—" ? fee : null].filter(Boolean).join(" · ")}</div>
             </td>
             <td>—</td>
