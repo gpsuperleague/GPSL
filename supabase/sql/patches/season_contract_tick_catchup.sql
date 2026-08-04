@@ -104,12 +104,7 @@ BEGIN
 
   SELECT count(*)::int INTO v_market
   FROM public."Players" p
-  WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
-    AND coalesce(p.contract_seasons_remaining, 0) = 1
-    AND NOT public.is_player_homegrown_u23(
-      p."Konami_ID"::text,
-      public.player_contracted_club_key(p."Contracted_Team")
-    );
+  WHERE public.player_expiry_auction_applies(p."Konami_ID"::text);
 
   SELECT s.id, s.label, s.status, s.is_current
   INTO v_last_complete

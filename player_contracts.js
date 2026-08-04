@@ -2,7 +2,7 @@
  * Player contract helpers (3-year deals, final-year renew/expire).
  */
 
-import { isHgContractProtected } from "./squad_rules.js";
+import { isExpiryAuctionExempt } from "./squad_rules.js";
 import { formatWage } from "./wages.js";
 
 export const CONTRACT_YEARS_DEFAULT = 3;
@@ -53,10 +53,10 @@ export function formatSquadContractCell(player) {
   </div>`;
 }
 
-/** Standard final-year players on hidden wage bid market (not HG ≤23). */
+/** Final-year players on hidden wage bid market (not uncontested brackets). */
 export function isOnExpiryWageMarket(player, clubNation) {
   if (isPesdbLegacyCard(player)) return false;
-  return isContractFinalYear(player) && !isHgContractProtected(player, clubNation);
+  return isContractFinalYear(player) && !isExpiryAuctionExempt(player, clubNation);
 }
 
 export function squadContractActionOptionsHtml(
@@ -66,21 +66,21 @@ export function squadContractActionOptionsHtml(
 ) {
   if (!isContractFinalYear(player)) return null;
 
-  const hg = isHgContractProtected(player, clubNation);
+  const exempt = isExpiryAuctionExempt(player, clubNation);
   const legacy = isPesdbLegacyCard(player);
   const releaseOpt = voluntaryRelease?.optionHtml ?? "";
 
   const renewLabel = legacy
-    ? (hg
+    ? (exempt
         ? "Renew legacy card now (1 season, same wage)"
         : "Renew legacy card now (1 season — choose wage)")
-    : (hg
+    : (exempt
         ? "Renew now at same wage (3 seasons)"
         : "Renew now — choose wage (3 seasons)");
 
   // Contested final-year: also point owners at the hidden wage auction.
   const bidOpt =
-    !hg && !legacy
+    !exempt && !legacy
       ? `<option value="expiry_bid">Offer wage bid (competes at season end)</option>`
       : "";
 

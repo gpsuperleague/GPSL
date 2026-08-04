@@ -19,8 +19,8 @@ Authoritative design from league owner (2026). Align with legacy spreadsheet whe
 | **Home-grown** | `Players.Nation` = `Clubs.Nation` — **at least 8** (no maximum) |
 | **Under-21** | Age **≤ 21** — **at least 5** (no maximum) |
 | **Squad size** | **Max 28** players |
-| **Home-grown ≤23** | Same sell rules; **uncontested renewal** (current wage or MV) |
-| **Expiry auction** | **Standard players only** — one hidden bid per club; highest wins |
+| **Uncontested renew** | **HG ≤23** or **non-HG ≤21** — same wage renew / release for MV (no auction) |
+| **Expiry auction** | Everyone else in final year — one hidden bid per club; highest wins |
 | **Winner wage** | Winning bid becomes player’s **contract wage** at new club (or stay) |
 | **Free agent again** | Wage reverts to **standard calculated wage** (formula TBD from spreadsheet) |
 
@@ -49,15 +49,18 @@ flowchart LR
 | **Final year** | **1** | **Auto-listed** on expiring-contract market; **no selling**; renew **or** expire | **One hidden wage bid** each (incl. current club) |
 | Resolution | 0 | Renew → new 3-year deal; or expire → **MV** credit + FA | Highest wage bid wins player at bid wage |
 
-**Home-grown ≤23** (see below): same sell/no-sell rules; at renewal use **uncontested** path if still ≤23; from age **24** use **full** expiry rules on the next contract cycle that ends.
+**Uncontested brackets** (see below): HG≤23 or non-HG≤21 use uncontested renew/release; everyone else (incl. HG 24+) uses the contested wage auction.
 
 **Open with spreadsheet:** whether “3 seasons” means three full rollovers after signing season, or signing season counts as year 1 inclusive (spec above uses **inclusive: years at S, S+1, S+2**).
 
 ---
 
-## Home-grown players (age ≤ 23) — uncontested renewal
+## Uncontested renewal (exempt from wage auction)
 
-**Home-grown** and **23 or younger** (re-checked each rollover) are **exempt from the contested expiry market**:
+When **1 season remains**, these brackets skip the contested expiry market (age/HG re-checked at decision time):
+
+1. **Home-grown and age ≤ 23**
+2. **Not home-grown and age ≤ 21**
 
 | They skip | They still get |
 |-----------|----------------|
@@ -65,60 +68,34 @@ flowchart LR
 | Hidden wage bids from **other** clubs | Choice: **renew** or **release for market value** |
 | Competing against external highest wage | No other club can poach via expiry auction |
 
-### Owner options (home-grown, uncontested)
+### Owner options (uncontested)
 
-When **1 season remains** on the contract **and** the player is still **home-grown and age ≤ 23** at that rollover/decision point:
+1. **Renew** — new **3-season** deal at the **same wage they are on now**.
+2. **Release** — player leaves; club receives **market value**; player becomes free agent with **standard calculated wage**.
 
-1. **Renew** — new **3-season** deal at the **same wage they are on now** (no other clubs involved; owner is not forced to pay more to keep them).
-2. **Release** — player leaves; club receives **market value**; player becomes free agent with **standard calculated wage** (`market_value × division %`).
+### Contested (everyone else)
 
-No third-party wage bids. Current owner does not need to outbid anyone to keep the player.
+Including **home-grown aged 24+** and **non-HG aged 22+**: auto-listed on Expiring Contracts; hidden wage bids; highest wins at season rollover.
 
-### Same sell rules as everyone else
-
-**Confirmed:** home-grown ≤23 **cannot sell** in the final contract year either — same as standard players (sell only with **2+ seasons** left).
-
-### When they turn 24
-
-**Confirmed:** HG protection **ends at 24**. On the **next 3-season contract cycle that reaches its end**, normal rules apply:
-
-- Auto-listed on expiring-contract market (if standard path applies)
-- Hidden wage bids from other clubs
-- Renew must be **at least** current wage (and owner may need to win the auction — see standard rules)
-
-If they are **still ≤23** when that contract’s final year starts, uncontested renewal still applies for **that** expiry.
+**Cannot sell** in the final contract year (all brackets) — sell only with **2+ seasons** left.
 
 **Implementation:**
 
 ```text
 is_homegrown(player, club) :=
-  Players.Nation = Clubs.Nation
+  normalize(Players.Nation) = normalize(Clubs.Nation)
 
-is_homegrown_u23(player, club) :=
-  is_homegrown(player, club) AND player.age <= 23
+expiry_auction_exempt(player, club) :=
+  (is_homegrown AND age <= 23) OR (NOT is_homegrown AND age <= 21)
 
 expiry_auction_applies(player) :=
-  contract_rules_apply(player) AND NOT is_homegrown_u23(player)
-
-homegrown_renewal_applies(player) :=
-  is_homegrown_u23(player) AND seasons_remaining = 1
-
--- Age re-checked each rollover; age >= 24 at decision => full expiry_auction_applies
-```
-
-**Home-grown definition (confirmed):**
-
-```text
-homegrown(player, club) :=
-  normalize(Players.Nation) = normalize(Clubs.Nation)
+  final_year AND contracted AND NOT expiry_auction_exempt(player)
 ```
 
 - Club nation: `Clubs.Nation`
 - Player nation: `Players.Nation`
-- SQL: `is_player_homegrown(player_id, club_short)`
-- JS: `squad_rules.js` → `isHomeGrownPlayer()`
-
-HG contract protection (≤23): `is_homegrown AND age <= 23` at renewal rollover.
+- SQL: `is_player_expiry_auction_exempt`, `player_expiry_auction_applies`
+- JS: `squad_rules.js` → `isExpiryAuctionExempt()`
 
 ---
 
@@ -161,7 +138,7 @@ So a club that wanted to cash out must do it **before** the last contract season
 
 ## Owner options (final contract year only — standard players)
 
-Applies when `expiry_auction_applies` is true and **1 season remains** (not home-grown ≤23).
+Applies when `expiry_auction_applies` is true and **1 season remains** (not uncontested: HG≤23 or non-HG≤21).
 
 ### 1. Renew contract
 
@@ -184,7 +161,7 @@ Applies when `expiry_auction_applies` is true and **1 season remains** (not home
 
 ## Hidden wage bids (1 season remaining)
 
-At **1 season left**, **standard** players are **automatically** on the **expiring-contracts market** (no owner action required). **Home-grown ≤23 are not listed there.** Visibility: GPDB + dedicated page (TBD).
+At **1 season left**, contested players are **automatically** on the **expiring-contracts market** (no owner action required). **HG≤23 and non-HG≤21 are not listed there** (Squad renew/release only).
 
 | Rule | Detail |
 |------|--------|
@@ -315,18 +292,19 @@ RPCs (examples):
 ## Plain language (owner Q&A)
 
 **“Same 3-season clock and final-year timing?”**  
-Every signed player (including HG) gets a **3-year deal**. Year 3 is the **last year** — that is when renewal / expiry / (for most players) the bidding market kicks in. HG use the **same calendar**; only **what happens in that last year** differs if they are still ≤23.
+Every signed player gets a **3-year deal**. Year 3 is the **last year** — renew / expire / wage auction (for contested players) happens then. Same calendar for all; only the final-year path differs for uncontested brackets.
 
 **“Renew exactly current wage vs ≥ current?”**  
-- **Standard players:** to keep them via renew/auction, you must offer **at least** what they earn now (you **may** offer more).  
-- **HG ≤23:** renew is **uncontested** — you keep them on **the same wage as now** (no auction, no need to beat other clubs).
+- **Contested (everyone else):** wage auction / renew-now must be **at least** current wage.  
+- **Uncontested (HG≤23 or non-HG≤21):** renew at **the same wage as now** (no auction).
 
 **Resolved from owner (2026):**
 
 | Question | Answer |
 |----------|--------|
 | HG sell in final year? | **No** — same as standard |
-| Age 24+ | HG protection **ends**; **next** 3-year cycle that **ends** uses **full** rules |
+| HG age 24+ | **Contested** wage auction (no HG protection) |
+| Non-HG ≤21 | **Uncontested** renew/release |
 
 ## Open questions (spreadsheet)
 

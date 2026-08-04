@@ -265,8 +265,11 @@ export const MIN_UNDER_21 = 5;
 /** At least one goalkeeper in the registered squad. */
 export const MIN_GOALKEEPERS = 1;
 
-/** Home-grown contract protection: HG + this age or younger. */
+/** Uncontested renew (no expiry wage auction): HG + this age or younger. */
 export const HG_CONTRACT_MAX_AGE = 23;
+
+/** Uncontested renew (no expiry wage auction): non-HG + this age or younger. */
+export const NON_HG_UNCONTESTED_MAX_AGE = 21;
 
 /**
  * Compare key for home-grown (Nation match). Handles "United States" vs "UnitedStates".
@@ -340,13 +343,23 @@ export function playerSquadQualificationBadges(player, clubNation) {
   return ` <span class="squad-qual-badge" title="${title}">${label}</span>`;
 }
 
-export function isHgContractProtected(player, clubNation) {
+/**
+ * Final-year players exempt from the contested expiry wage auction:
+ * - Home-grown and age ≤ 23
+ * - Not home-grown and age ≤ 21
+ */
+export function isExpiryAuctionExempt(player, clubNation) {
   const age = Number(player?.Age);
-  return (
-    isHomeGrownPlayer(player, clubNation) &&
-    Number.isFinite(age) &&
-    age <= HG_CONTRACT_MAX_AGE
-  );
+  if (!Number.isFinite(age)) return false;
+  const hg = isHomeGrownPlayer(player, clubNation);
+  if (hg && age <= HG_CONTRACT_MAX_AGE) return true;
+  if (!hg && age <= NON_HG_UNCONTESTED_MAX_AGE) return true;
+  return false;
+}
+
+/** @deprecated Use isExpiryAuctionExempt — kept as alias for older imports. */
+export function isHgContractProtected(player, clubNation) {
+  return isExpiryAuctionExempt(player, clubNation);
 }
 
 /**

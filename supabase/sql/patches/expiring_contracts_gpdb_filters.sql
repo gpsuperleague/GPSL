@@ -1,4 +1,6 @@
 -- Expand expiring-contract market rows for GPDB-style filters (nation, playstyle).
+-- Contested final-year only via player_expiry_auction_applies
+-- (HG≤23 and non-HG≤21 are exempt — see contract_expiry_uncontested_brackets.sql).
 -- Safe re-run.
 
 CREATE OR REPLACE FUNCTION public.list_expiring_contract_market()
@@ -38,12 +40,7 @@ BEGIN
       p."Contracted_Team" AS holding_club,
       p.contract_wage AS current_wage
     FROM public."Players" p
-    WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
-      AND coalesce(p.contract_seasons_remaining, 0) = 1
-      AND NOT public.is_player_homegrown_u23(
-        p."Konami_ID"::text,
-        public.player_contracted_club_key(p."Contracted_Team")
-      )
+    WHERE public.player_expiry_auction_applies(p."Konami_ID"::text)
     ORDER BY p."Name"
   LOOP
     v_my_bid := NULL;
@@ -81,5 +78,3 @@ END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.list_expiring_contract_market() TO authenticated;
-
-NOTIFY pgrst, 'reload schema';

@@ -61,7 +61,7 @@ import {
   squadContractActionOptionsHtml,
   isContractFinalYear,
 } from "./player_contracts.js";
-import { isHgContractProtected } from "./squad_rules.js";
+import { isExpiryAuctionExempt } from "./squad_rules.js";
 import { formatWage } from "./wages.js";
 import {
   loadClubWageBillSummary,
@@ -1950,10 +1950,10 @@ async function renewPlayerContract(playerId) {
     return;
   }
 
-  const hg = isHgContractProtected(player, clubNation);
+  const exempt = isExpiryAuctionExempt(player, clubNation);
   let wage = Number(player.contract_wage) || 0;
 
-  if (!hg) {
+  if (!exempt) {
     const raw = window.prompt(
       `Renew ${player.Name} NOW for 3 seasons (takes them off the expiry wage market).\n` +
         `Minimum wage: ${formatWage(wage)}\n` +

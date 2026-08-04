@@ -3,7 +3,7 @@
  */
 
 import { isContractFinalYear, isPesdbLegacyCard } from "./player_contracts.js";
-import { isHgContractProtected } from "./squad_rules.js";
+import { isExpiryAuctionExempt } from "./squad_rules.js";
 
 export const SQUAD_TIPS = {
   card:
@@ -94,10 +94,10 @@ export function squadContractTip(player, clubNation) {
   }
 
   if (isContractFinalYear(player)) {
-    if (isHgContractProtected(player, clubNation)) {
+    if (isExpiryAuctionExempt(player, clubNation)) {
       return (
-        "Final contract year — home-grown aged 23 or under.\n\n" +
-        "Protected from the expiry wage auction. Use Action to renew (often same wage, fresh deal) or expire for MV. Cannot Transfer List or sell while in the final year.\n\n" +
+        "Final contract year — uncontested renewal (home-grown ≤23, or non-home-grown ≤21).\n\n" +
+        "Protected from the expiry wage auction. Use Action to renew at the same wage (fresh 3-season deal) or expire for MV. Cannot Transfer List or sell while in the final year.\n\n" +
         wageNote
       );
     }
