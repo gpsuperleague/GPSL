@@ -242,7 +242,13 @@ export const ADMIN_MAIN_NAV = [
           "Complete playoff fixtures (deploy results)",
           "admin_test_deploy_month.html"
         ),
-        L("Apply playoff movements", "admin_fixtures-playoffs.html"),
+        L(
+          "Apply playoff movements",
+          "admin_fixtures-playoffs.html",
+          null,
+          null,
+          "Usually automatic when the SL playoff final is played. Use only to re-run/repair."
+        ),
         L("Push Discord queue (results / news)", "admin_discord_news.html"),
         L(
           "Lock Playoffs month (end GPSL month early)",
@@ -258,7 +264,12 @@ export const ADMIN_MAIN_NAV = [
     id: "close_season",
     label: "Close Season",
     entries: [
-      link("Apply playoff movements", "admin_fixtures-playoffs.html"),
+      link(
+        "Apply playoff movements",
+        "admin_fixtures-playoffs.html",
+        null,
+        "Usually automatic when the SL playoff final is played. Use only to re-run/repair."
+      ),
       link("Mid-Season Challenge payouts", "admin_challenges.html"),
       link("Pay government subsidies", "admin_gov_subsidies.html"),
       link(
