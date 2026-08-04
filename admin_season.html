@@ -116,15 +116,16 @@
         <section id="wf-kickoff" class="admin-season-panel" data-panel="wf-kickoff" hidden>
           <div class="card">
             <h2>Create new season</h2>
-            <p class="note">Creates a pre-season competition year (60 clubs). If a prior season exists, contracts tick automatically (including after Summer Break). If the legacy league year is still open, also runs <code>rollover_season</code> first.</p>
+            <p class="note">Creates a pre-season competition year (60 clubs), then ticks contracts in a second step (so create is not killed by API timeout). If the legacy league year is still open, also runs <code>rollover_season</code> first. Run <code>patches/create_season_timeout_split_tick.sql</code> if create/tick fails.</p>
             <div id="compActiveSummary" class="note"></div>
             <div class="row">
               <div>
                 <label>Label for next season</label>
                 <input id="compSeasonLabel" placeholder="e.g. 2026/27">
               </div>
-              <div style="display:flex;align-items:flex-end;">
+              <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;">
                 <button id="compCreateNextBtn" class="button" style="background:#cc6600;">Create next season (pre-season)</button>
+                <button id="compTickContractsBtn" class="button secondary" type="button">Tick contracts only</button>
               </div>
             </div>
             <div id="compCreateStatus" class="status-line"></div>
@@ -170,6 +171,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_season.js?v=20260804-summer-checklist"></script>
+  <script type="module" src="admin_season.js?v=20260804-create-tick-split"></script>
 </body>
 </html>

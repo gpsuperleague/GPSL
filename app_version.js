@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260804-nav-create-before-break";
+export const APP_VERSION = "20260804-create-tick-split";

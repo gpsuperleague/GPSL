@@ -98,6 +98,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   wireSeasonSidebar();
 
   document.getElementById("compCreateNextBtn").onclick = createNextSeason;
+  document.getElementById("compTickContractsBtn").onclick = tickContractsOnly;
   document.getElementById("compEndSeasonBtn").onclick = endCurrentSeason;
   document.getElementById("compArchiveSeasonBtn").onclick = archiveSeasonStats;
   document.getElementById("compManagerSeasonEndBtn").onclick = processManagerSeasonEnd;
@@ -134,6 +135,39 @@ function setCompStatus(msg, ok = true) {
   setStatus("compSeasonStatus", msg, ok);
 }
 
+async function tickContractsOnly() {
+  if (
+    !confirm(
+      "Tick all player contracts now?\n\nDecrements multi-year deals, resolves expiry wage bids, and releases players with 0 seasons left (MV to holding club)."
+    )
+  ) {
+    return;
+  }
+
+  setStatus("compCreateStatus", "Ticking contracts…");
+  const { data, error } = await supabase.rpc("contract_tick_season_rollover");
+  if (error) {
+    setStatus(
+      "compCreateStatus",
+      `❌ ${error.message}${
+        /timeout|canceling statement/i.test(error.message || "")
+          ? " — run patches/create_season_timeout_split_tick.sql (batched release) then retry."
+          : ""
+      }`,
+      false
+    );
+    return;
+  }
+
+  setStatus(
+    "compCreateStatus",
+    `✅ Contracts ticked — ${data?.players_decremented ?? "—"} decremented, ${
+      data?.players_released_zero_years ?? "—"
+    } released as free agents.`,
+    true
+  );
+}
+
 async function createNextSeason() {
   const label = document.getElementById("compSeasonLabel").value.trim();
   if (!label) {
@@ -143,17 +177,16 @@ async function createNextSeason() {
 
   if (
     !confirm(
-      `Create competition season “${label}” in pre-season?\n\nIf the legacy league year is still open, this runs season rollover and contract tick first (replaces the old Start New Season button).`
+      `Create competition season “${label}” in pre-season?\n\nIf the legacy league year is still open, this runs season rollover first. Contracts tick in a second step after create.`
     )
   ) {
     return;
   }
 
-  setStatus("compCreateStatus", "Working…");
+  setStatus("compCreateStatus", "Creating pre-season…");
 
   // Legacy player/transfer year rollover only while a competition season is still live.
-  // Contract tick runs inside competition_create_season whenever a prior season exists
-  // (including Summer Break) — see patches/contract_tick_on_create_season.sql.
+  // Contract tick runs AFTER create (separate RPC) so create is not killed by API timeout.
   const active = await loadCurrentSeason(supabase);
   if (active) {
     const { error: rollErr } = await supabase.rpc("rollover_season");
@@ -168,15 +201,44 @@ async function createNextSeason() {
   });
 
   if (error) {
-    setStatus("compCreateStatus", "❌ " + error.message, false);
+    setStatus(
+      "compCreateStatus",
+      `❌ ${error.message}${
+        /timeout|canceling statement/i.test(error.message || "")
+          ? " — run patches/create_season_timeout_split_tick.sql then retry."
+          : ""
+      }`,
+      false
+    );
     return;
   }
 
   document.getElementById("compSeasonLabel").value = "";
   setStatus(
     "compCreateStatus",
-    `✅ Pre-season created (id ${data}). Contracts ticked if a prior season existed. Assign divisions below.`
+    `✅ Pre-season created (id ${data}). Ticking contracts…`
   );
+
+  const { data: tickData, error: tickErr } = await supabase.rpc(
+    "contract_tick_season_rollover"
+  );
+
+  if (tickErr) {
+    setStatus(
+      "compCreateStatus",
+      `✅ Pre-season created (id ${data}), but contract tick failed: ${tickErr.message}. Run Tick contracts below or: SELECT public.contract_tick_season_rollover();`,
+      false
+    );
+  } else {
+    const released = tickData?.players_released_zero_years ?? "—";
+    const decremented = tickData?.players_decremented ?? "—";
+    setStatus(
+      "compCreateStatus",
+      `✅ Pre-season created (id ${data}). Contracts ticked — ${decremented} decremented, ${released} released as free agents.`,
+      true
+    );
+  }
+
   await refreshCompetitionAdmin();
   if (data) {
     document.getElementById("compSetupSeasonSelect").value = String(data);
