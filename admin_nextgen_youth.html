@@ -1,0 +1,78 @@
+<script>window.CURRENT_PAGE = "admin_nextgen_youth";</script>
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Next Gen Youth — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .note { color:#999; font-size:13px; line-height:1.45; margin:0 0 12px; }
+    .muted { color:#888; font-size:12px; }
+    textarea#playerIds {
+      width:100%; min-height:160px; box-sizing:border-box;
+      background:#111; color:#ddd; border:1px solid #444; border-radius:4px;
+      padding:10px; font-family:Consolas,monospace; font-size:13px;
+    }
+    table.gpsl-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }
+    table.gpsl-table th, table.gpsl-table td { border:1px solid #333; padding:8px; text-align:left; }
+    table.gpsl-table th { background:#222; color:#ff9900; }
+    .status-line { margin-top:10px; font-size:13px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Next Gen Youth</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Maintain the <b>current season</b> Next Gen Youth list.
+        Players on this list get a <b>+10% market value</b> boost.
+        Refresh replaces the list; players who leave drop back to normal MV.
+        Requires <code>patches/nextgen_youth_mv_boost.sql</code>.
+        Owner view: <a href="nextgen_youth.html" style="color:#ff9900;">nextgen_youth.html</a>.
+      </p>
+
+      <div class="card">
+        <h2>Refresh list</h2>
+        <p class="note" id="listMeta">Loading…</p>
+        <label for="playerIds" class="muted">Konami IDs — one per line (or comma / space separated)</label>
+        <textarea id="playerIds" placeholder="e.g.&#10;45234&#10;89102"></textarea>
+        <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
+          <button type="button" class="button" id="refreshBtn">Refresh Next Gen list</button>
+          <button type="button" class="button secondary" id="reloadBtn">Reload current</button>
+          <button type="button" class="button secondary" id="clearBtn">Clear list</button>
+        </div>
+        <div id="listStatus" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>Current season members</h2>
+        <div style="overflow:auto;max-height:520px;">
+          <table class="gpsl-table">
+            <thead>
+              <tr>
+                <th>Player</th>
+                <th>Club</th>
+                <th>Pos</th>
+                <th>Age</th>
+                <th>OVR</th>
+                <th>MV</th>
+                <th>Konami ID</th>
+              </tr>
+            </thead>
+            <tbody id="playerBody">
+              <tr><td colspan="7" class="muted">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_nextgen_youth.js?v=20260805"></script>
+</body>
+</html>

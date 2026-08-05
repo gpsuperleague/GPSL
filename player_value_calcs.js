@@ -135,10 +135,14 @@ function xlookupExactOrInterpolate(map, key, defaultValue = 0) {
 export const INTERNATIONAL_SQUAD_MV_BOOST = 0.05;
 export const INTERNATIONAL_SQUAD_MV_BOOST_MIN_APPS = 4;
 
+/** +10% while on the current-season Next Gen Youth list. */
+export const NEXTGEN_YOUTH_MV_BOOST = 0.1;
+
 /**
  * Market Value (col J) — uses GPSL extended base value; other lookups match Excel.
  * @param {object} [opts]
  * @param {boolean} [opts.internationalBoost] — apply 5% boost (≥4 apps in squad window)
+ * @param {boolean} [opts.nextgenBoost] — apply 10% Next Gen Youth boost
  */
 export function calculateMarketValue(rating, calcPotential, age, position, opts = {}) {
   const r = Math.round(Number(rating));
@@ -167,6 +171,9 @@ export function calculateMarketValue(rating, calcPotential, age, position, opts 
   let mv = Math.max(floor, Math.round(valueCalc));
   if (opts.internationalBoost) {
     mv = Math.round(mv * (1 + INTERNATIONAL_SQUAD_MV_BOOST));
+  }
+  if (opts.nextgenBoost) {
+    mv = Math.round(mv * (1 + NEXTGEN_YOUTH_MV_BOOST));
   }
   return mv;
 }

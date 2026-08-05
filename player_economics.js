@@ -63,6 +63,7 @@ export function computedEconomicsForPlayer(player, opts = {}) {
 
   const market_value = calculateMarketValue(rating, calc, age, pos, {
     internationalBoost: !!opts.internationalBoost,
+    nextgenBoost: !!opts.nextgenBoost,
   });
   return {
     calcPotential: calc,

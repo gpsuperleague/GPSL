@@ -105,6 +105,7 @@ export const ADMIN_MAIN_NAV = [
         L("GPDB Player Sync", "admin_gpdb_sync.html"),
         L("GPDB Player Deduplication", "admin_gpdb_dedup.html"),
         L("GPDB Player Exclusions", "admin_gpdb_exclusions.html"),
+        L("Refresh Next Gen Youth", "admin_nextgen_youth.html"),
       ]),
       group("OooO", [L("Homegrown Star Draw", "admin_one_of_our_own.html")]),
       group("Club Kits", [L("Download Latest Kits", "admin_club_kits.html")]),
@@ -194,6 +195,7 @@ export const ADMIN_MAIN_NAV = [
     entries: [
       group("August", [
         L("Special Auction", "admin_special-auctions.html"),
+        L("Refresh Next Gen Youth", "admin_nextgen_youth.html"),
       ]),
       group("September", [
         L("Close Transfer Window", "admin_transfer_window.html", "closed"),

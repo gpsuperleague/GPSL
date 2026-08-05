@@ -1,0 +1,67 @@
+<script>window.CURRENT_PAGE = "nextgen_youth";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Next Gen Youth — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <style>
+    body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
+    .page-container { width:95%; max-width:1100px; margin:20px auto 40px; }
+    h1 { color:#ff9900; margin:0 0 8px; }
+    .meta { color:#aaa; font-size:14px; line-height:1.5; margin:0 0 16px; }
+    .meta a { color:#ff9900; }
+    .panel {
+      background:#1a1a1a; border:1px solid #333; border-radius:8px;
+      padding:18px 20px; margin-bottom:20px;
+    }
+    .boost-tag {
+      display:inline-block; margin-left:8px; padding:2px 8px;
+      font-size:11px; font-weight:bold; border-radius:999px;
+      background:#2a3d2a; color:#9fdf9f; vertical-align:middle;
+    }
+    table.gpsl-table { width:100%; border-collapse:collapse; font-size:13px; }
+    table.gpsl-table th, table.gpsl-table td {
+      border:1px solid #333; padding:8px 10px; text-align:left;
+    }
+    table.gpsl-table th { background:#222; color:#ff9900; }
+    .muted { color:#888; }
+    .empty { color:#888; padding:16px; text-align:center; }
+  </style>
+</head>
+<body>
+  <div id="nav"></div>
+  <div class="page-container">
+    <h1>Next Gen Youth <span class="boost-tag" id="boostTag">+10% MV</span></h1>
+    <p class="meta" id="pageMeta">
+      Players on the current-season Next Gen list. Membership is refreshed by admin;
+      market value includes a boost while they remain on the list.
+    </p>
+
+    <div class="panel">
+      <div id="listStatus" class="muted" style="margin-bottom:10px;">Loading…</div>
+      <div style="overflow:auto;">
+        <table class="gpsl-table">
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Club</th>
+              <th>Nation</th>
+              <th>Pos</th>
+              <th>Age</th>
+              <th>OVR</th>
+              <th>Market value</th>
+            </tr>
+          </thead>
+          <tbody id="playerBody">
+            <tr><td colspan="7" class="empty">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="nextgen_youth.js?v=20260805"></script>
+</body>
+</html>
