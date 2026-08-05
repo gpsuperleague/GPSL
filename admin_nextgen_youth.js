@@ -5,6 +5,10 @@ import { NXGN_DEFAULT_SOURCE_URL, nxgnSearchQueries } from "./nextgen_nxgn_2026.
 
 const FETCH_FUNCTION = "nextgen-goal-fetch";
 
+/** @type {{ entry: { rank: number, name: string, club?: string }, hit: object|null, score: number }[]} */
+let matchResults = [];
+let matchSourceUrl = "";
+
 primeAdminPageChrome();
 
 function escapeHtml(text) {
@@ -108,6 +112,18 @@ function sourceUrlInput() {
   return document.getElementById("sourceUrl");
 }
 
+function syncIdsFromMatches() {
+  const ids = matchResults
+    .filter((r) => r.hit)
+    .map((r) => String(r.hit.player_id));
+  const ta = document.getElementById("playerIds");
+  if (ta) {
+    ta.value = ids.join("\n");
+    ta.dataset.dirty = "1";
+  }
+  return ids;
+}
+
 function renderList(data) {
   const meta = document.getElementById("listMeta");
   const body = document.getElementById("playerBody");
@@ -153,28 +169,201 @@ function renderList(data) {
     .join("");
 }
 
-function renderMatchReport(results, sourceUrl) {
+function renderMatchReport() {
   const el = document.getElementById("matchReport");
   if (!el) return;
-  const matched = results.filter((r) => r.hit);
-  const missing = results.filter((r) => !r.hit);
+
+  if (!matchResults.length) {
+    el.innerHTML = "";
+    return;
+  }
+
+  const matched = matchResults.filter((r) => r.hit);
+  const missing = matchResults.filter((r) => !r.hit);
+  const sourceUrl = matchSourceUrl || sourceUrlInput()?.value || "#";
+
   el.innerHTML = `
-    <p class="note" style="margin:0 0 8px;">
-      Matched <b>${matched.length}</b> / ${results.length} names from
+    <p class="note" style="margin:0 0 10px;">
+      Matched <b>${matched.length}</b> / ${matchResults.length} from
       <a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener" style="color:#ff9900;">Goal list</a>.
-      ${missing.length ? `<span style="color:#e88;">Missing ${missing.length}.</span>` : "All found."}
+      ${
+        missing.length
+          ? `<span style="color:#e88;">${missing.length} still missing — search GPDB on the right and click a player to attach.</span>`
+          : "All found."
+      }
     </p>
     ${
       missing.length
-        ? `<ul class="muted" style="margin:0;padding-left:18px;">${missing
-            .map(
-              (r) =>
-                `<li>#${r.entry.rank} ${escapeHtml(r.entry.name)} (${escapeHtml(r.entry.club || "—")})</li>`
-            )
-            .join("")}</ul>`
+        ? `<div class="nxgn-missing-wrap">
+            <table class="gpsl-table nxgn-missing-table">
+              <thead>
+                <tr>
+                  <th style="width:42%;">Missing from Goal</th>
+                  <th>Manual GPDB match</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${missing
+                  .map((r) => {
+                    const idx = matchResults.indexOf(r);
+                    const defaultQ = escapeHtml(r.entry.name || "");
+                    return `
+                  <tr data-match-idx="${idx}">
+                    <td>
+                      <b>#${escapeHtml(r.entry.rank)}</b>
+                      ${escapeHtml(r.entry.name)}
+                      <div class="muted">${escapeHtml(r.entry.club || "—")}</div>
+                    </td>
+                    <td>
+                      <div class="nxgn-manual-row">
+                        <input
+                          type="search"
+                          class="nxgn-manual-q"
+                          data-match-idx="${idx}"
+                          value="${defaultQ}"
+                          placeholder="Search GPDB name…"
+                          autocomplete="off"
+                        />
+                        <button type="button" class="button secondary nxgn-manual-search" data-match-idx="${idx}">
+                          Search
+                        </button>
+                      </div>
+                      <div class="nxgn-manual-hits muted" data-hits-for="${idx}">Type a name and Search.</div>
+                    </td>
+                  </tr>`;
+                  })
+                  .join("")}
+              </tbody>
+            </table>
+          </div>`
+        : ""
+    }
+    ${
+      matched.length
+        ? `<details style="margin-top:10px;">
+            <summary class="muted" style="cursor:pointer;">Show ${matched.length} auto-matched</summary>
+            <ul class="muted" style="margin:8px 0 0;padding-left:18px;">
+              ${matched
+                .map(
+                  (r) =>
+                    `<li>#${r.entry.rank} ${escapeHtml(r.entry.name)} → <b>${escapeHtml(
+                      r.hit.player_name
+                    )}</b> (<code>${escapeHtml(r.hit.player_id)}</code>)</li>`
+                )
+                .join("")}
+            </ul>
+          </details>`
         : ""
     }
   `;
+}
+
+function applyManualMatch(idx, hit) {
+  const row = matchResults[idx];
+  if (!row || !hit?.player_id) return;
+  row.hit = {
+    player_id: String(hit.player_id),
+    player_name: hit.player_name,
+    club: hit.club,
+    position: hit.position,
+    age: hit.age,
+    rating: hit.rating,
+    nation: hit.nation,
+  };
+  row.score = 100;
+  const ids = syncIdsFromMatches();
+  renderMatchReport();
+  setStatus(
+    "listStatus",
+    `Attached ${hit.player_name}. ${ids.length}/${matchResults.length} IDs ready — Refresh when done.`,
+    true
+  );
+}
+
+async function runManualSearch(idx) {
+  const row = matchResults[idx];
+  const hitsEl = document.querySelector(`[data-hits-for="${idx}"]`);
+  const input = document.querySelector(`.nxgn-manual-q[data-match-idx="${idx}"]`);
+  if (!row || !hitsEl) return;
+
+  const q = (input?.value || row.entry.name || "").trim();
+  if (q.length < 2) {
+    hitsEl.innerHTML = `<span class="muted">Type at least 2 characters.</span>`;
+    return;
+  }
+
+  hitsEl.textContent = "Searching…";
+  let hits;
+  try {
+    hits = await searchGpdb(q);
+  } catch (e) {
+    hitsEl.innerHTML = `<span style="color:#e88;">${escapeHtml(e.message || String(e))}</span>`;
+    return;
+  }
+
+  if (!hits.length) {
+    hitsEl.innerHTML = `<span class="muted">No GPDB matches for “${escapeHtml(q)}”.</span>`;
+    return;
+  }
+
+  hitsEl.innerHTML = hits
+    .map((h) => {
+      const club = h.club ? displayClubName(h.club) || h.club : "—";
+      return `
+      <div class="nxgn-hit">
+        <button
+          type="button"
+          class="button nxgn-pick"
+          data-match-idx="${idx}"
+          data-player-id="${escapeHtml(h.player_id)}"
+          data-player-name="${escapeHtml(h.player_name)}"
+          data-club="${escapeHtml(h.club || "")}"
+          data-position="${escapeHtml(h.position || "")}"
+          data-age="${escapeHtml(h.age ?? "")}"
+          data-rating="${escapeHtml(h.rating ?? "")}"
+          data-nation="${escapeHtml(h.nation || "")}"
+        >Use ${escapeHtml(h.player_name)}</button>
+        <span class="muted"> · ${escapeHtml(club)} · ${escapeHtml(h.position || "—")} · age ${escapeHtml(
+          h.age ?? "—"
+        )} · OVR ${escapeHtml(h.rating ?? "—")} · <code>${escapeHtml(h.player_id)}</code></span>
+      </div>`;
+    })
+    .join("");
+}
+
+function wireMatchReportEvents() {
+  const el = document.getElementById("matchReport");
+  if (!el || el.dataset.wired) return;
+  el.dataset.wired = "1";
+
+  el.addEventListener("click", async (e) => {
+    const pick = e.target.closest(".nxgn-pick");
+    if (pick) {
+      const idx = Number(pick.dataset.matchIdx);
+      applyManualMatch(idx, {
+        player_id: pick.dataset.playerId,
+        player_name: pick.dataset.playerName,
+        club: pick.dataset.club,
+        position: pick.dataset.position,
+        age: pick.dataset.age,
+        rating: pick.dataset.rating,
+        nation: pick.dataset.nation,
+      });
+      return;
+    }
+    const searchBtn = e.target.closest(".nxgn-manual-search");
+    if (searchBtn) {
+      await runManualSearch(Number(searchBtn.dataset.matchIdx));
+    }
+  });
+
+  el.addEventListener("keydown", async (e) => {
+    if (e.key !== "Enter") return;
+    const input = e.target.closest(".nxgn-manual-q");
+    if (!input) return;
+    e.preventDefault();
+    await runManualSearch(Number(input.dataset.matchIdx));
+  });
 }
 
 async function loadSettingsUrl() {
@@ -269,6 +458,9 @@ async function refreshList(ids) {
 
   const ta = document.getElementById("playerIds");
   if (ta) delete ta.dataset.dirty;
+  matchResults = [];
+  matchSourceUrl = "";
+  renderMatchReport();
   await reloadList();
   setStatus(
     "listStatus",
@@ -294,7 +486,7 @@ async function invokeGoalFetch(url) {
     }
     if (data?.error) detail = String(data.error);
     const hint = /Failed to send|FunctionsFetchError|not found/i.test(detail)
-      ? ` — deploy edge function ${FETCH_FUNCTION} in Supabase`
+      ? ` — deploy edge function ${FETCH_FUNCTION} (see scripts/README_nextgen_goal_fetch.md)`
       : "";
     throw new Error(detail + hint);
   }
@@ -325,17 +517,16 @@ async function fetchAndMatchFromUrl() {
   const players = Array.isArray(fetched?.players) ? fetched.players : [];
   const sourceUrl = fetched?.source_url || url;
   if (sourceUrlInput()) sourceUrlInput().value = sourceUrl;
+  matchSourceUrl = sourceUrl;
 
   if (!players.length) {
+    matchResults = [];
+    renderMatchReport();
     setStatus("listStatus", "No players parsed from that URL.", false);
     return;
   }
 
-  setStatus(
-    "listStatus",
-    `Parsed ${players.length} names — matching in GPDB…`,
-    true
-  );
+  setStatus("listStatus", `Parsed ${players.length} names — matching in GPDB…`, true);
   if (report) report.innerHTML = `<p class="muted">Matching ${players.length} names…</p>`;
 
   const results = [];
@@ -347,18 +538,14 @@ async function fetchAndMatchFromUrl() {
     }
   }
 
-  renderMatchReport(results, sourceUrl);
+  matchResults = results;
+  syncIdsFromMatches();
+  renderMatchReport();
 
-  const ids = results.filter((r) => r.hit).map((r) => String(r.hit.player_id));
-  const ta = document.getElementById("playerIds");
-  if (ta) {
-    ta.value = ids.join("\n");
-    ta.dataset.dirty = "1";
-  }
-
+  const ids = matchResults.filter((r) => r.hit);
   setStatus(
     "listStatus",
-    `Loaded ${ids.length}/${players.length} Konami IDs from Goal. Review, then click Refresh Next Gen list.`,
+    `Loaded ${ids.length}/${matchResults.length} Konami IDs. Fix missing rows below, then Refresh Next Gen list.`,
     ids.length > 0
   );
 }
@@ -367,6 +554,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   await initAdminPage();
   await loadClubsMap();
   await loadSettingsUrl();
+  wireMatchReportEvents();
 
   document.getElementById("playerIds")?.addEventListener("input", (e) => {
     e.target.dataset.dirty = "1";
