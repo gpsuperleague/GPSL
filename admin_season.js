@@ -366,7 +366,7 @@ async function archiveSeasonStats() {
 async function processManagerRenewalDeadline() {
   if (
     !confirm(
-      "Process manager renewal deadline?\n\nReleases managers still awaiting owner renewal once August has ended (club receives market value). Safe to re-run."
+      "Process manager renewal deadline?\n\nReleases managers still awaiting owner renewal once July has ended / August has started (club receives market value). Safe to re-run."
     )
   ) {
     return;
@@ -391,7 +391,7 @@ async function processManagerRenewalDeadline() {
   if (data?.skipped) {
     setStatus(
       "compManagerRenewalDeadlineStatus",
-      `⏭ Skipped — renewal window still open (${data.active_gpsl_month || data.locked_gpsl_month || "month unknown"}). Deadline fires when August ends.`,
+      `⏭ Skipped — renewal window still open (${data.active_gpsl_month || data.locked_gpsl_month || "month unknown"}). Deadline fires at end of July / start of August.`,
       true
     );
     return;
@@ -408,7 +408,7 @@ async function processManagerRenewalDeadline() {
 async function processManagerSeasonEnd() {
   if (
     !confirm(
-      "Process manager contracts for season end?\n\nTicks mid-deal seasons; at deal end offers owner renewal if they hit ≥1 target, or releases for MV with a 2-season rehire ban if they missed both. Unrenewed pending renewals past August are also released for MV."
+      "Process manager contracts for season end?\n\nTicks mid-deal seasons; at deal end offers owner renewal if they hit ≥1 target, or releases for MV with a 2-season rehire ban if they missed both. Unrenewed pending renewals from the start of August are also released for MV."
     )
   ) {
     return;

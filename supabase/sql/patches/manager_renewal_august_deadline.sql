@@ -1,10 +1,10 @@
 -- =============================================================================
--- Manager renewal deadline: renew by August or release for market value
+-- Manager renewal deadline: renew in June/July or release at start of August
 --
 -- After a successful 2-season deal (pending_owner_renewal), the owner may renew
--- in June / July / August of the following season. When August ends (month lock)
--- — or if still pending later — the manager is released for full market value.
--- No rehire ban (unlike failed-target releases).
+-- in June or July only. By the start of August they must already be renewed —
+-- otherwise they are released for full market value (July month-lock / August
+-- active catch-up). No rehire ban (unlike failed-target releases).
 --
 -- Safe re-run.
 -- =============================================================================
@@ -107,7 +107,7 @@ RETURNS boolean
 LANGUAGE sql
 IMMUTABLE
 AS $function$
-  SELECT lower(btrim(coalesce(p_gpsl_month, ''))) IN ('june', 'july', 'august');
+  SELECT lower(btrim(coalesce(p_gpsl_month, ''))) IN ('june', 'july');
 $function$;
 
 CREATE OR REPLACE FUNCTION public.manager_renewal_deadline_passed(
@@ -122,14 +122,14 @@ DECLARE
   v_locked text := lower(btrim(coalesce(p_locked_gpsl_month, '')));
   v_active text := lower(btrim(coalesce(p_active_gpsl_month, '')));
 BEGIN
-  -- End of August lock → deadline fires
-  IF v_locked = 'august' THEN
+  -- End of July lock → must be clear before August starts
+  IF v_locked = 'july' THEN
     RETURN true;
   END IF;
 
-  -- Catch-up once the calendar has moved past August
+  -- Catch-up from start of August onward
   IF v_active IN (
-    'september', 'october', 'november', 'december',
+    'august', 'september', 'october', 'november', 'december',
     'january', 'february', 'march', 'april', 'may', 'playoffs'
   ) THEN
     RETURN true;
@@ -141,7 +141,7 @@ $function$;
 
 DROP FUNCTION IF EXISTS public.manager_process_pending_renewal_deadline(bigint, text);
 
--- Release managers still awaiting renewal after the August window
+-- Release managers still awaiting renewal once August is due to start
 CREATE OR REPLACE FUNCTION public.manager_process_pending_renewal_deadline(
   p_season_id bigint DEFAULT NULL,
   p_locked_gpsl_month text DEFAULT NULL,
@@ -202,12 +202,12 @@ BEGIN
       v_mgr.market_value::numeric,
       'transfer_sale'::text,
       format(
-        'Manager released — renewal not completed by August (%s)',
+        'Manager released — not renewed before August (%s)',
         coalesce(v_mgr.name, v_mgr.id::text)
       )::text,
       jsonb_build_object(
         'renewal_deadline', true,
-        'gpsl_month', coalesce(v_locked, v_active, 'august'),
+        'gpsl_month', coalesce(v_locked, v_active, 'july'),
         'season_id', v_season_id
       )::jsonb
     );
@@ -226,14 +226,14 @@ BEGIN
     PERFORM public.owner_inbox_notify_manager_season_end(v_results);
   END IF;
 
-  IF v_locked = 'august' THEN
+  IF v_locked IN ('july', 'august') OR v_active = 'august' THEN
     INSERT INTO public.competition_season_calendar_jobs (
       season_id, job_key, gpsl_month, result
     )
     VALUES (
       v_season_id,
-      'manager_renewal_deadline:august',
-      'august',
+      'manager_renewal_deadline:start_august',
+      coalesce(v_locked, v_active, 'july'),
       jsonb_build_object(
         'ok', true,
         'released', jsonb_array_length(v_results),
@@ -261,7 +261,7 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.manager_process_pending_renewal_deadline(bigint, text, boolean)
   TO authenticated, service_role;
 
--- Owner renew: only June / July / August
+-- Owner renew: June / July only (must be done before August starts)
 CREATE OR REPLACE FUNCTION public.manager_owner_renew()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -298,7 +298,7 @@ BEGIN
 
   IF v_month <> '' AND NOT public.manager_renewal_window_open(v_month) THEN
     RAISE EXCEPTION
-      'Manager renewal window closed after August. Unrenewed managers are released for market value.';
+      'Manager renewal window closed at the start of August. Unrenewed managers are released for market value.';
   END IF;
 
   UPDATE public."Managers"
@@ -358,7 +358,7 @@ BEGIN
 
   v_month := lower(coalesce(public.competition_active_gpsl_month(v_season.id, now()), ''));
 
-  -- Catch-up: lapse any pending renewals once past August (inbox via with_inbox wrapper)
+  -- Catch-up: lapse any pending renewals from start of August (inbox via with_inbox wrapper)
   IF public.manager_renewal_deadline_passed(NULL, v_month) THEN
     v_deadline := public.manager_process_pending_renewal_deadline(
       v_season.id, NULL, false
@@ -549,7 +549,7 @@ BEGIN
         coalesce(v_row ->> 'seasons_remaining', '?')
       )
       WHEN 'renewal_available' THEN format(
-        'Your manager completed their 2-season deal (finished %s this season). They hit their target in at least one season — renew them from Club Details or Squad by August, or they are released for market value.',
+        'Your manager completed their 2-season deal (finished %s this season). They hit their target in at least one season — renew them from Club Details or Squad in June or July. If not renewed before August starts, they are released for market value.',
         coalesce(v_row ->> 'position', '?')
       )
       WHEN 'released_failed_deal' THEN format(
@@ -557,13 +557,13 @@ BEGIN
         coalesce(v_row ->> 'position', '?')
       )
       WHEN 'released_renewal_lapsed' THEN
-        'Your manager was eligible for renewal but was not renewed by August. They have been released for market value.'
+        'Your manager was eligible for renewal but was not renewed before August. They have been released for market value.'
       WHEN 'released' THEN format(
         'Your manager missed the league target (finished %s). They have been released; your club received market-value compensation.',
         coalesce(v_row ->> 'position', '?')
       )
       WHEN 'awaiting_renewal' THEN
-        'Your manager is still awaiting renewal on Club Details / Squad. Renew by August or they will be released for market value.'
+        'Your manager is still awaiting renewal on Club Details / Squad. Renew in June or July — if not renewed before August starts, they will be released for market value.'
       ELSE format('Manager review: %s', v_action)
     END;
 
@@ -581,7 +581,7 @@ BEGIN
 END;
 $function$;
 
--- Soft-wire into month-lock jobs (August lock / catch-up)
+-- Soft-wire into month-lock jobs (July lock → clear before August; August catch-up)
 DO $wire$
 DECLARE
   v_def text;
