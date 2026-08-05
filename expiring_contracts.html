@@ -165,10 +165,14 @@
     }
     table.gpsl-table th { background:#222; color:#ff9900; }
     table.gpsl-table td.name-cell { text-align:left; }
+    table.gpsl-table td.wage-cell {
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
     .bid-btn { padding:4px 10px; font-size:12px; background:#2f5a2f; color:#fff; border:none; border-radius:4px; cursor:pointer; }
     .bid-btn:hover { background:#3a7a3a; }
-    .my-bid { color:#9cf; font-size:12px; }
-    .money { color:#9c9; }
+    .my-bid { color:#9cf; font-size:12px; white-space: nowrap; }
+    .money { color:#9c9; white-space: nowrap; }
     #bidModal {
       display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7);
       align-items:center; justify-content:center; z-index:100;
@@ -336,6 +340,6 @@
     </div>
   </div>
 
-  <script type="module" src="expiring_contracts.js?v=20260805-modal-tidy"></script>
+  <script type="module" src="expiring_contracts.js?v=20260805-wage-nowrap"></script>
 </body>
 </html>

@@ -4,7 +4,7 @@ import {
   formatWage,
   expiryWageMinUpliftPct,
   minExpiryWageOffer,
-} from "./wages.js";
+} from "./wages.js?v=20260805-nbsp";
 import { renderExpiringContractRules } from "./expiring_contracts_rules.js?v=20260805-shared";
 import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260805-multi";
 import { textMatchesSearch } from "./search_normalize.js";
@@ -396,7 +396,7 @@ function formatMv(value) {
   if (value == null || value === "") return "—";
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";
-  return `<span class="money">₿ ${n.toLocaleString("en-GB")}</span>`;
+  return `<span class="money">₿\u00a0${n.toLocaleString("en-GB")}</span>`;
 }
 
 function renderMarket() {
@@ -435,10 +435,10 @@ function renderMarket() {
           <td>${row.age ?? "—"}</td>
           <td>${row.rating ?? "—"}</td>
           <td>${escapeHtml(row.playstyle || "—")}</td>
-          <td>${formatMv(row.market_value)}</td>
+          <td class="wage-cell">${formatMv(row.market_value)}</td>
           <td>${escapeHtml(displayClubName(row.holding_club))}</td>
-          <td>${formatWage(row.current_wage)}</td>
-          <td>${myBid}</td>
+          <td class="wage-cell">${formatWage(row.current_wage)}</td>
+          <td class="wage-cell">${myBid}</td>
           <td>
             ${
               row.my_wage_bid != null

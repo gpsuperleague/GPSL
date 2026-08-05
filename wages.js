@@ -31,7 +31,8 @@ export function wageFromMarketValue(marketValue, divisionTier, settings) {
 export function formatWage(amount) {
   const n = Number(amount);
   if (!Number.isFinite(n)) return "—";
-  return `₿ ${n.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`;
+  // Non-breaking space so "₿ 12,058,200" stays on one line in tight table cells
+  return `₿\u00a0${n.toLocaleString("en-GB", { maximumFractionDigits: 0 })}`;
 }
 
 /** Minimum uplift above current wage for expiring-contract bids (%). */
