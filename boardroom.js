@@ -175,20 +175,24 @@ function setBoardCrestName(clubLabel) {
   if (!textEl) return;
 
   const name = String(clubLabel || "Club").trim() || "Club";
-  const len = name.length;
-  let fontSize = 14;
-  if (len > 22) fontSize = 9;
-  else if (len > 16) fontSize = 11;
-  else if (len > 12) fontSize = 12;
+  const label = `${name} Boardroom`;
+  const len = label.length;
+  let fontSize = 13;
+  if (len > 28) fontSize = 8;
+  else if (len > 22) fontSize = 9;
+  else if (len > 18) fontSize = 11;
+  else if (len > 14) fontSize = 12;
 
-  // Widen plaque a little for long names
   if (plate) {
-    if (len > 18) {
-      plate.setAttribute("x", "80");
-      plate.setAttribute("width", "240");
+    if (len > 24) {
+      plate.setAttribute("x", "55");
+      plate.setAttribute("width", "290");
+    } else if (len > 18) {
+      plate.setAttribute("x", "70");
+      plate.setAttribute("width", "260");
     } else if (len > 12) {
-      plate.setAttribute("x", "95");
-      plate.setAttribute("width", "210");
+      plate.setAttribute("x", "90");
+      plate.setAttribute("width", "220");
     } else {
       plate.setAttribute("x", "110");
       plate.setAttribute("width", "180");
@@ -196,7 +200,7 @@ function setBoardCrestName(clubLabel) {
   }
 
   textEl.setAttribute("font-size", String(fontSize));
-  textEl.textContent = name;
+  textEl.textContent = label;
 }
 
 function renderHeroStats({ clubLabel, tier, managerName }) {
