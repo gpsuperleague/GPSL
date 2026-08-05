@@ -479,9 +479,47 @@ async function loadMarket() {
   renderMarket();
 }
 
+function formatWageInputValue(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v < 0) return "";
+  return Math.round(v).toLocaleString("en-GB");
+}
+
+function parseWageInputValue(raw) {
+  const n = Number(String(raw || "").replace(/[^\d]/g, ""));
+  return Number.isFinite(n) ? n : NaN;
+}
+
 function wireBidModal() {
   document.getElementById("bidCancelBtn").onclick = closeBidModal;
   document.getElementById("bidSubmitBtn").onclick = submitBid;
+
+  const input = document.getElementById("bidWageInput");
+  if (!input || input.dataset.wired === "1") return;
+  input.dataset.wired = "1";
+
+  input.addEventListener("input", () => {
+    const caretAtEnd = input.selectionStart === input.value.length;
+    const n = parseWageInputValue(input.value);
+    if (!Number.isFinite(n) || n <= 0) {
+      // Allow clearing / partial typing of leading digits only
+      const digits = String(input.value).replace(/[^\d]/g, "");
+      input.value = digits ? formatWageInputValue(Number(digits)) : "";
+      return;
+    }
+    input.value = formatWageInputValue(n);
+    if (caretAtEnd) {
+      const len = input.value.length;
+      input.setSelectionRange(len, len);
+    }
+  });
+
+  input.addEventListener("blur", () => {
+    const n = parseWageInputValue(input.value);
+    if (Number.isFinite(n) && n > 0) {
+      input.value = formatWageInputValue(n);
+    }
+  });
 }
 
 function openBidModal(row) {
@@ -509,7 +547,7 @@ function openBidModal(row) {
   document.getElementById("bidModalHint").textContent =
     `Current wage ${formatWage(row.current_wage)}. Minimum offer ${formatWage(minOffer)} (+${uplift}% or more). ` +
     `Any whole ₿ amount at or above the minimum. Your bid is locked once submitted and cannot be changed. Bids stay hidden until season rollover.`;
-  document.getElementById("bidWageInput").value = String(minOffer);
+  document.getElementById("bidWageInput").value = formatWageInputValue(minOffer);
   document.getElementById("bidWageInput").disabled = false;
   document.getElementById("bidSubmitBtn").disabled = false;
   document.getElementById("bidModalError").textContent = "";
@@ -526,8 +564,7 @@ async function submitBid() {
   errEl.textContent = "";
   if (!bidTarget) return;
 
-  const raw = document.getElementById("bidWageInput").value;
-  const wage = Number(String(raw).replace(/[^\d]/g, ""));
+  const wage = parseWageInputValue(document.getElementById("bidWageInput").value);
   const uplift = expiryWageMinUpliftPct();
   const minOffer =
     bidTarget.min_wage_offer != null
