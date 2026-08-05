@@ -40,11 +40,26 @@
       <div class="card">
         <h2>Refresh list</h2>
         <p class="note" id="listMeta">Loading…</p>
-        <div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;">
-          <button type="button" class="button" id="loadNxgnBtn">
-            Load Goal NXGN 2026 (50 names → Konami IDs)
+
+        <label for="sourceUrl" class="muted">Goal.com NXGN list URL</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:stretch;margin:4px 0 10px;">
+          <input
+            type="url"
+            id="sourceUrl"
+            placeholder="https://www.goal.com/en/lists/nxgn-…/…"
+            style="flex:1;min-width:220px;box-sizing:border-box;background:#111;color:#ddd;border:1px solid #444;border-radius:4px;padding:8px 10px;font-size:13px;"
+          />
+          <button type="button" class="button secondary" id="saveUrlBtn">Save URL</button>
+          <button type="button" class="button" id="fetchNxgnBtn">
+            Fetch list → Konami IDs
           </button>
         </div>
+        <p class="muted" style="margin:0 0 10px;">
+          Paste the latest Goal NXGN article URL when it changes, save it, then fetch.
+          Requires edge function <code>nextgen-goal-fetch</code> and
+          <code>patches/nextgen_youth_source_url.sql</code> (or updated
+          <code>nextgen_youth_mv_boost.sql</code>).
+        </p>
         <div id="matchReport" style="margin-bottom:10px;"></div>
         <label for="playerIds" class="muted">Konami IDs — one per line (or comma / space separated)</label>
         <textarea id="playerIds" placeholder="e.g.&#10;45234&#10;89102"></textarea>
@@ -79,6 +94,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_nextgen_youth.js?v=20260805-nxgn2026"></script>
+  <script type="module" src="admin_nextgen_youth.js?v=20260805-nxgn-url"></script>
 </body>
 </html>

@@ -1,11 +1,9 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import { formatMoney } from "./competition.js";
 import { loadClubsMap, displayClubName } from "./clubs_lookup.js";
-import {
-  NXGN_2026_PLAYERS,
-  NXGN_2026_SOURCE_URL,
-  nxgn2026SearchQueries,
-} from "./nextgen_nxgn_2026.js";
+import { NXGN_DEFAULT_SOURCE_URL, nxgnSearchQueries } from "./nextgen_nxgn_2026.js";
+
+const FETCH_FUNCTION = "nextgen-goal-fetch";
 
 primeAdminPageChrome();
 
@@ -57,10 +55,9 @@ async function searchGpdb(query) {
     p_limit: 15,
   });
   if (error) {
-    // Fallback: direct Players name search
     const { data: rows, error: err2 } = await supabase
       .from("Players")
-      .select('Konami_ID, Name, Position, Age, Rating, Contracted_Team, Nation')
+      .select("Konami_ID, Name, Position, Age, Rating, Contracted_Team, Nation")
       .ilike("Name", `%${query}%`)
       .limit(15);
     if (err2) throw error;
@@ -78,7 +75,7 @@ async function searchGpdb(query) {
 }
 
 async function resolveNxgnEntry(entry) {
-  const queries = nxgn2026SearchQueries(entry);
+  const queries = nxgnSearchQueries(entry);
   let best = null;
   let bestScore = 0;
 
@@ -86,11 +83,14 @@ async function resolveNxgnEntry(entry) {
     const hits = await searchGpdb(q);
     for (const hit of hits) {
       const score = scoreNameMatch(entry.name, hit.player_name);
-      // Prefer exact-ish name; slight bump if club text overlaps
       let adj = score;
       const clubN = normalizeName(entry.club);
       const hitClub = normalizeName(hit.club || "");
-      if (clubN && hitClub && (hitClub.includes(clubN.split(" ")[0]) || clubN.includes(hitClub.split(" ")[0]))) {
+      if (
+        clubN &&
+        hitClub &&
+        (hitClub.includes(clubN.split(" ")[0]) || clubN.includes(hitClub.split(" ")[0]))
+      ) {
         adj += 5;
       }
       if (adj > bestScore) {
@@ -104,12 +104,17 @@ async function resolveNxgnEntry(entry) {
   return { entry, hit: bestScore >= 50 ? best : null, score: bestScore };
 }
 
+function sourceUrlInput() {
+  return document.getElementById("sourceUrl");
+}
+
 function renderList(data) {
   const meta = document.getElementById("listMeta");
   const body = document.getElementById("playerBody");
   const ta = document.getElementById("playerIds");
   const players = data?.players || [];
   const boost = Math.round(Number(data?.boost_pct || 0.1) * 100);
+  const url = sourceUrlInput()?.value?.trim() || NXGN_DEFAULT_SOURCE_URL;
 
   if (meta) {
     const when = data?.refreshed_at
@@ -118,7 +123,7 @@ function renderList(data) {
     meta.innerHTML = `Season <b>${escapeHtml(data?.season_label || data?.season_id || "—")}</b>
       · ${players.length} player(s) · +${boost}% MV boost
       · last refresh ${escapeHtml(when)}.
-      Source list: <a href="${NXGN_2026_SOURCE_URL}" target="_blank" rel="noopener" style="color:#ff9900;">Goal NXGN 2026</a> (${NXGN_2026_PLAYERS.length} names).`;
+      Source: <a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="color:#ff9900;">Goal NXGN</a>.`;
   }
 
   if (ta && !ta.dataset.dirty) {
@@ -148,14 +153,15 @@ function renderList(data) {
     .join("");
 }
 
-function renderMatchReport(results) {
+function renderMatchReport(results, sourceUrl) {
   const el = document.getElementById("matchReport");
   if (!el) return;
   const matched = results.filter((r) => r.hit);
   const missing = results.filter((r) => !r.hit);
   el.innerHTML = `
     <p class="note" style="margin:0 0 8px;">
-      Matched <b>${matched.length}</b> / ${results.length} NXGN names in GPDB.
+      Matched <b>${matched.length}</b> / ${results.length} names from
+      <a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener" style="color:#ff9900;">Goal list</a>.
       ${missing.length ? `<span style="color:#e88;">Missing ${missing.length}.</span>` : "All found."}
     </p>
     ${
@@ -163,12 +169,50 @@ function renderMatchReport(results) {
         ? `<ul class="muted" style="margin:0;padding-left:18px;">${missing
             .map(
               (r) =>
-                `<li>#${r.entry.rank} ${escapeHtml(r.entry.name)} (${escapeHtml(r.entry.club)})</li>`
+                `<li>#${r.entry.rank} ${escapeHtml(r.entry.name)} (${escapeHtml(r.entry.club || "—")})</li>`
             )
             .join("")}</ul>`
         : ""
     }
   `;
+}
+
+async function loadSettingsUrl() {
+  const input = sourceUrlInput();
+  if (!input) return;
+  try {
+    const { data, error } = await supabase.rpc("nextgen_youth_settings_get");
+    if (error) throw error;
+    input.value = String(data?.source_url || NXGN_DEFAULT_SOURCE_URL);
+  } catch {
+    input.value = NXGN_DEFAULT_SOURCE_URL;
+  }
+}
+
+async function saveSourceUrl() {
+  const url = sourceUrlInput()?.value?.trim() || "";
+  if (!url) {
+    setStatus("listStatus", "Enter a Goal.com NXGN list URL first.", false);
+    return;
+  }
+  setStatus("listStatus", "Saving source URL…", true);
+  const { data, error } = await supabase.rpc("admin_nextgen_youth_settings_set", {
+    p_source_url: url,
+  });
+  if (error) {
+    setStatus(
+      "listStatus",
+      error.message.includes("admin_nextgen_youth_settings_set")
+        ? "Run supabase/sql/patches/nextgen_youth_source_url.sql (or the updated nextgen_youth_mv_boost.sql) first."
+        : error.message,
+      false
+    );
+    return;
+  }
+  if (sourceUrlInput() && data?.source_url) {
+    sourceUrlInput().value = data.source_url;
+  }
+  setStatus("listStatus", "Source URL saved.", true);
 }
 
 async function reloadList() {
@@ -206,10 +250,11 @@ async function refreshList(ids) {
   }
 
   setStatus("listStatus", "Refreshing list and recalculating market values…");
+  const note = sourceUrlInput()?.value?.trim() || "Goal NXGN";
   const { data, error } = await supabase.rpc("admin_nextgen_youth_refresh", {
     p_player_ids: ids,
     p_season_id: null,
-    p_note: "Goal NXGN 2026",
+    p_note: note,
   });
   if (error) {
     setStatus(
@@ -232,14 +277,69 @@ async function refreshList(ids) {
   );
 }
 
-async function loadNxgn2026IntoForm() {
-  setStatus("listStatus", `Matching ${NXGN_2026_PLAYERS.length} NXGN 2026 names in GPDB…`, true);
+async function invokeGoalFetch(url) {
+  const { data, error } = await supabase.functions.invoke(FETCH_FUNCTION, {
+    body: { url, save_url: true },
+  });
+  if (error) {
+    let detail = error.message || "Fetch failed";
+    try {
+      const ctx = error.context;
+      if (ctx && typeof ctx.json === "function") {
+        const payload = await ctx.json();
+        if (payload?.error) detail = String(payload.error);
+      }
+    } catch {
+      /* ignore */
+    }
+    if (data?.error) detail = String(data.error);
+    const hint = /Failed to send|FunctionsFetchError|not found/i.test(detail)
+      ? ` — deploy edge function ${FETCH_FUNCTION} in Supabase`
+      : "";
+    throw new Error(detail + hint);
+  }
+  if (data?.error) throw new Error(String(data.error));
+  return data;
+}
+
+async function fetchAndMatchFromUrl() {
+  const url = sourceUrlInput()?.value?.trim() || "";
+  if (!url) {
+    setStatus("listStatus", "Enter a Goal.com NXGN list URL first.", false);
+    return;
+  }
+
+  setStatus("listStatus", "Fetching Goal NXGN list…", true);
   const report = document.getElementById("matchReport");
-  if (report) report.innerHTML = `<p class="muted">Searching…</p>`;
+  if (report) report.innerHTML = `<p class="muted">Fetching article…</p>`;
+
+  let fetched;
+  try {
+    fetched = await invokeGoalFetch(url);
+  } catch (e) {
+    if (report) report.innerHTML = "";
+    setStatus("listStatus", e.message || String(e), false);
+    return;
+  }
+
+  const players = Array.isArray(fetched?.players) ? fetched.players : [];
+  const sourceUrl = fetched?.source_url || url;
+  if (sourceUrlInput()) sourceUrlInput().value = sourceUrl;
+
+  if (!players.length) {
+    setStatus("listStatus", "No players parsed from that URL.", false);
+    return;
+  }
+
+  setStatus(
+    "listStatus",
+    `Parsed ${players.length} names — matching in GPDB…`,
+    true
+  );
+  if (report) report.innerHTML = `<p class="muted">Matching ${players.length} names…</p>`;
 
   const results = [];
-  // Sequential to avoid hammering PostgREST; still fine for 50
-  for (const entry of NXGN_2026_PLAYERS) {
+  for (const entry of players) {
     try {
       results.push(await resolveNxgnEntry(entry));
     } catch (e) {
@@ -247,7 +347,7 @@ async function loadNxgn2026IntoForm() {
     }
   }
 
-  renderMatchReport(results);
+  renderMatchReport(results, sourceUrl);
 
   const ids = results.filter((r) => r.hit).map((r) => String(r.hit.player_id));
   const ta = document.getElementById("playerIds");
@@ -258,7 +358,7 @@ async function loadNxgn2026IntoForm() {
 
   setStatus(
     "listStatus",
-    `Loaded ${ids.length}/${NXGN_2026_PLAYERS.length} Konami IDs from Goal NXGN 2026. Review the list, then click Refresh Next Gen list.`,
+    `Loaded ${ids.length}/${players.length} Konami IDs from Goal. Review, then click Refresh Next Gen list.`,
     ids.length > 0
   );
 }
@@ -266,6 +366,7 @@ async function loadNxgn2026IntoForm() {
 document.addEventListener("DOMContentLoaded", async () => {
   await initAdminPage();
   await loadClubsMap();
+  await loadSettingsUrl();
 
   document.getElementById("playerIds")?.addEventListener("input", (e) => {
     e.target.dataset.dirty = "1";
@@ -283,7 +384,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     refreshList([]);
   });
-  document.getElementById("loadNxgnBtn")?.addEventListener("click", () => loadNxgn2026IntoForm());
+  document.getElementById("saveUrlBtn")?.addEventListener("click", () => saveSourceUrl());
+  document.getElementById("fetchNxgnBtn")?.addEventListener("click", () => fetchAndMatchFromUrl());
 
   try {
     await reloadList();
