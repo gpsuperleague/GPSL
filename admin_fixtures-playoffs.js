@@ -1,15 +1,9 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
-import { loadCurrentSeason } from "./competition.js";
 
 primeAdminPageChrome();
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!(await initAdminPage())) return;
-  document.getElementById("compSavePlayoffBtn").onclick = saveCompetitionPlayoffQualifier;
-  const syncSbBtn = document.getElementById("compSyncSbQualBtn");
-  if (syncSbBtn) syncSbBtn.onclick = fixShieldBowlQualifiers;
-  const rebuildSbBtn = document.getElementById("compRebuildSbBtn");
-  if (rebuildSbBtn) rebuildSbBtn.onclick = rebuildChSbFromTable;
   document.getElementById("genPlayoffsBtn").onclick = () =>
     runGen(false).catch((e) => setStatus("genPlayoffStatus", e.message || String(e), false));
   document.getElementById("forcePlayoffsBtn").onclick = () => {
@@ -18,15 +12,69 @@ document.addEventListener("DOMContentLoaded", async () => {
   };
   document.getElementById("applyMovementsBtn").onclick = () =>
     runApply().catch((e) => setStatus("genPlayoffStatus", e.message || String(e), false));
+
+  document.getElementById("compRebuildSbBtn").onclick = rebuildChSbFromTable;
+  document.getElementById("compLoadSbOptsBtn").onclick = loadChSbOptions;
+  document.getElementById("compSaveSbWinnersBtn").onclick = saveChSbWinners;
 });
+
+function fillWinnerSelect(sel, tie) {
+  if (!sel || !tie) return;
+  const home = tie.home;
+  const away = tie.away;
+  sel.innerHTML = `
+    <option value="">— pick Shield winner —</option>
+    <option value="${home}">${tie.home_name || home} (16th)</option>
+    <option value="${away}">${tie.away_name || away} (17th)</option>
+  `;
+  if (tie.winner) sel.value = tie.winner;
+}
+
+async function loadChSbOptions() {
+  setStatus("compSyncSbQualStatus", "Loading 16v17 pairs…");
+  const { data, error } = await supabase.rpc("competition_admin_ch_sb_tie_options", {
+    p_season_id: null,
+  });
+  if (error?.message?.includes("competition_admin_ch_sb_tie_options")) {
+    setStatus(
+      "compSyncSbQualStatus",
+      "❌ Run patches/shield_bowl_rebuild_16v17_from_table.sql in Supabase, then retry.",
+      false
+    );
+    return null;
+  }
+  if (error) {
+    setStatus("compSyncSbQualStatus", "❌ " + error.message, false);
+    return null;
+  }
+  if (!data?.ok) {
+    setStatus("compSyncSbQualStatus", `❌ ${data?.reason || "Load failed"}`, false);
+    return null;
+  }
+
+  const ties = Array.isArray(data.ties) ? data.ties : [];
+  const a = ties.find((t) => t.division === "championship_a" || t.bracket === "ch_sb_a");
+  const b = ties.find((t) => t.division === "championship_b" || t.bracket === "ch_sb_b");
+  fillWinnerSelect(document.getElementById("compSbWinnerA"), a);
+  fillWinnerSelect(document.getElementById("compSbWinnerB"), b);
+
+  const line = ties
+    .map((t) => `${t.division}: ${t.home_name || t.home} vs ${t.away_name || t.away}`)
+    .join(" | ");
+  setStatus(
+    "compSyncSbQualStatus",
+    `✅ Season ${data.season_id}. ${line || "No ties — rebuild first."}`,
+    true
+  );
+  return data;
+}
 
 async function rebuildChSbFromTable() {
   if (
     !confirm(
-      "Rebuild Championship Shield/Bowl ties from the FINAL table (16th vs 17th)?\n\n" +
-        "This deletes the wrong mid-table “16v17” fixtures/results and creates the correct ties " +
-        "(e.g. Marseille vs Man City / Atletico Nacional vs Celtic).\n\n" +
-        "You must then PLAY those two matches before writing Shield qualifiers."
+      "Rebuild Championship Shield/Bowl ties from the FINAL Season 2 table (16th vs 17th)?\n\n" +
+        "Wrong mid-table results are cleared. Correct pairs are set (e.g. Marseille vs Man City).\n\n" +
+        "You will NOT play matchdays — next you pick each winner in the dropdowns."
     )
   ) {
     return;
@@ -59,79 +107,75 @@ async function rebuildChSbFromTable() {
     return;
   }
 
-  const ties = Array.isArray(data.ties) ? data.ties : [];
-  const line = ties
-    .map((t) => `${t.division}: ${t.home_16} vs ${t.away_17}`)
-    .join(" | ");
+  await loadChSbOptions();
   setStatus(
     "compSyncSbQualStatus",
-    `✅ Rebuilt. ${line}. ${data.message || "Play those fixtures next."}`,
+    `✅ Rebuilt season ${data.season_id}. Pick Champ A + Champ B winners below, then Save.`,
     true
   );
 }
 
-/**
- * After correct 16v17 results exist: rewrite Shield/Bowl qualifier rows.
- */
-async function fixShieldBowlQualifiers() {
-  setStatus(
-    "compSyncSbQualStatus",
-    "Looking up Championship 16th vs 17th results and fixing Shield/Bowl qualifiers…"
-  );
-
-  let { data, error } = await supabase.rpc(
-    "competition_admin_fix_shield_bowl_qualifiers"
-  );
-
-  // Fallback if newer one-click RPC not deployed yet
-  if (error?.message?.includes("competition_admin_fix_shield_bowl_qualifiers")) {
-    ({ data, error } = await supabase.rpc(
-      "competition_sync_shield_bowl_qualifiers_from_playoffs",
-      { p_season_id: null }
-    ));
-    if (error?.message?.includes("competition_sync_shield_bowl_qualifiers_from_playoffs")) {
-      setStatus(
-        "compSyncSbQualStatus",
-        "❌ Run patches/shield_bowl_playoff_qualifier_fix.sql in Supabase SQL Editor, then click again.",
-        false
-      );
-      return;
-    }
-    if (error) {
-      setStatus("compSyncSbQualStatus", "❌ " + error.message, false);
-      return;
-    }
+async function saveChSbWinners() {
+  const a = document.getElementById("compSbWinnerA")?.value?.trim();
+  const b = document.getElementById("compSbWinnerB")?.value?.trim();
+  if (!a || !b) {
     setStatus(
       "compSyncSbQualStatus",
-      data?.ok
-        ? `✅ Synced ${data.rows_upserted ?? 0} row(s). Re-run the full patch for named winners, then open Cups → Shield.`
-        : `❌ ${data?.reason || "Failed"}`,
-      !!data?.ok
+      "Pick both Champ A and Champ B Shield winners first.",
+      false
     );
     return;
   }
 
-  if (error) {
-    setStatus("compSyncSbQualStatus", "❌ " + error.message, false);
+  if (
+    !confirm(
+      `Award Shield playoff winners (no matchday)?\n\n` +
+        `Champ A → Shield: ${a} (other → Bowl)\n` +
+        `Champ B → Shield: ${b} (other → Bowl)\n\n` +
+        `Then open Cups → Shield → reload byes → re-draw.`
+    )
+  ) {
     return;
   }
 
-  if (!data?.ok && data?.reason === "no_ch_sb_ties") {
-    setStatus("compSyncSbQualStatus", `❌ ${data.message}`, false);
+  setStatus("compSyncSbQualStatus", "Saving winners and writing qualifiers…");
+
+  const r1 = await supabase.rpc("competition_admin_set_ch_sb_winner", {
+    p_division: "championship_a",
+    p_winner_club: a,
+    p_season_id: null,
+  });
+  if (r1.error?.message?.includes("competition_admin_set_ch_sb_winner")) {
+    setStatus(
+      "compSyncSbQualStatus",
+      "❌ Run patches/shield_bowl_rebuild_16v17_from_table.sql in Supabase, then retry.",
+      false
+    );
+    return;
+  }
+  if (r1.error) {
+    setStatus("compSyncSbQualStatus", "❌ Champ A: " + r1.error.message, false);
     return;
   }
 
-  const lines = Array.isArray(data?.summary_lines) ? data.summary_lines : [];
-  const header = data?.season_label
-    ? `Season: ${data.season_label}`
-    : `Season id: ${data?.season_id ?? "?"}`;
-  const body = lines.length ? lines.join(" | ") : "No 16v17 ties found.";
-  const next = data?.message || "";
+  const r2 = await supabase.rpc("competition_admin_set_ch_sb_winner", {
+    p_division: "championship_b",
+    p_winner_club: b,
+    p_season_id: null,
+  });
+  if (r2.error) {
+    setStatus("compSyncSbQualStatus", "❌ Champ B: " + r2.error.message, false);
+    return;
+  }
 
+  const d1 = r1.data;
+  const d2 = r2.data;
   setStatus(
     "compSyncSbQualStatus",
-    `${data?.ok ? "✅" : "⚠"} ${header}. ${body} ${next}`,
-    !!data?.ok
+    `✅ Done. Shield: ${d1?.shield_winner_name || a} + ${d2?.shield_winner_name || b}. ` +
+      `Bowl: ${d1?.bowl_loser_name || "?"} + ${d2?.bowl_loser_name || "?"}. ` +
+      `Next: Admin Cups → Shield → reload byes → re-draw.`,
+    true
   );
 }
 
@@ -156,7 +200,7 @@ async function runGen(force) {
       const missing = Array.isArray(data.missing) ? data.missing.join(", ") : "";
       setStatus(
         "genPlayoffStatus",
-        `❌ Missing 16th/17th standings (${missing}). Shield/Bowl playoffs need those places filled first.`,
+        `❌ Missing 16th/17th standings (${missing}).`,
         false
       );
       return;
@@ -192,31 +236,4 @@ async function runApply() {
     return;
   }
   setStatus("genPlayoffStatus", `✅ Recorded ${data.movements ?? 0} movement(s).`);
-}
-
-async function saveCompetitionPlayoffQualifier() {
-  const active = await loadCurrentSeason(supabase);
-  if (!active?.id) {
-    setStatus("compPlayoffStatus", "No active season.", false);
-    return;
-  }
-
-  const cup =
-    document.getElementById("compPlayoffRole").value === "shield_playoff_winner"
-      ? "shield"
-      : "bowl";
-
-  const { error } = await supabase.rpc("competition_admin_set_playoff_qualifier", {
-    p_season_id: active.id,
-    p_cup_code: cup,
-    p_division: document.getElementById("compPlayoffDiv").value,
-    p_club_short_name: document.getElementById("compPlayoffClub").value.trim(),
-    p_role: document.getElementById("compPlayoffRole").value,
-  });
-
-  setStatus(
-    "compPlayoffStatus",
-    error ? "❌ " + error.message : "✅ Playoff qualifier saved.",
-    !error
-  );
 }

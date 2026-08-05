@@ -262,21 +262,183 @@ BEGIN
     ));
   END LOOP;
 
-  v_scheduled := public.competition_playoff_try_schedule_ready(v_season);
+  -- Do not force live fixtures — season may already be finished (e.g. repairing S2 while on S3).
+  -- Admins set winners via competition_admin_set_ch_sb_winner.
 
   RETURN jsonb_build_object(
     'ok', true,
     'season_id', v_season,
     'ties', v_details,
-    'fixtures_scheduled', v_scheduled,
     'message',
       'Championship Shield/Bowl ties rebuilt as true 16th vs 17th. '
-      || 'Play those two fixtures (or enter results), then run Fix Shield/Bowl qualifiers, then re-draw Shield.'
+      || 'Season may already be finished — pick each winner with Set 16v17 winners (no need to replay matchdays), then re-draw Shield.'
   );
 END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.competition_admin_rebuild_ch_sb_ties_from_table(bigint)
+  TO authenticated;
+
+-- Load current 16v17 pairings (for admin winner dropdowns)
+CREATE OR REPLACE FUNCTION public.competition_admin_ch_sb_tie_options(
+  p_season_id bigint DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_season bigint := p_season_id;
+  v_out jsonb := '[]'::jsonb;
+  v_row record;
+  v_hname text;
+  v_aname text;
+BEGIN
+  IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  IF v_season IS NULL THEN
+    SELECT t.season_id INTO v_season
+    FROM public.competition_playoff_ties t
+    WHERE t.bracket IN ('ch_sb_a', 'ch_sb_b')
+    GROUP BY t.season_id
+    ORDER BY t.season_id DESC
+    LIMIT 1;
+  END IF;
+
+  IF v_season IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'reason', 'no_season');
+  END IF;
+
+  FOR v_row IN
+    SELECT *
+    FROM public.competition_playoff_shield_bowl_winners(v_season)
+    ORDER BY bracket
+  LOOP
+    SELECT c."Club" INTO v_hname FROM public."Clubs" c WHERE c."ShortName" = v_row.home_club;
+    SELECT c."Club" INTO v_aname FROM public."Clubs" c WHERE c."ShortName" = v_row.away_club;
+    v_out := v_out || jsonb_build_array(jsonb_build_object(
+      'division', v_row.division,
+      'bracket', v_row.bracket,
+      'status', v_row.status,
+      'home', v_row.home_club,
+      'home_name', coalesce(v_hname, v_row.home_club),
+      'away', v_row.away_club,
+      'away_name', coalesce(v_aname, v_row.away_club),
+      'winner', v_row.winner_club
+    ));
+  END LOOP;
+
+  RETURN jsonb_build_object('ok', true, 'season_id', v_season, 'ties', v_out);
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.competition_admin_ch_sb_tie_options(bigint)
+  TO authenticated;
+
+-- Set 16v17 winner without playing a live fixture (for finished seasons)
+CREATE OR REPLACE FUNCTION public.competition_admin_set_ch_sb_winner(
+  p_division text,
+  p_winner_club text,
+  p_season_id bigint DEFAULT NULL
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_season bigint := p_season_id;
+  v_div text := lower(btrim(coalesce(p_division, '')));
+  v_winner text := upper(btrim(coalesce(p_winner_club, '')));
+  v_bracket text;
+  v_tie public.competition_playoff_ties%rowtype;
+  v_loser text;
+  v_win_name text;
+  v_lose_name text;
+BEGIN
+  IF NOT public.is_gpsl_admin() THEN
+    RAISE EXCEPTION 'Admin only';
+  END IF;
+
+  IF v_div NOT IN ('championship_a', 'championship_b') THEN
+    RAISE EXCEPTION 'Division must be championship_a or championship_b';
+  END IF;
+  IF v_winner = '' THEN
+    RAISE EXCEPTION 'Winner club required';
+  END IF;
+
+  v_bracket := CASE v_div WHEN 'championship_a' THEN 'ch_sb_a' ELSE 'ch_sb_b' END;
+
+  IF v_season IS NULL THEN
+    SELECT t.season_id INTO v_season
+    FROM public.competition_playoff_ties t
+    WHERE t.bracket = v_bracket
+    ORDER BY t.season_id DESC
+    LIMIT 1;
+  END IF;
+
+  SELECT * INTO v_tie
+  FROM public.competition_playoff_ties t
+  WHERE t.season_id = v_season AND t.bracket = v_bracket
+  LIMIT 1;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'No % Shield/Bowl tie for season % — run Rebuild 16v17 from final table first',
+      v_div, v_season;
+  END IF;
+
+  IF v_winner NOT IN (
+    upper(btrim(coalesce(v_tie.home_club_short_name, ''))),
+    upper(btrim(coalesce(v_tie.away_club_short_name, '')))
+  ) THEN
+    RAISE EXCEPTION
+      '% is not in this 16v17 tie (% vs %). Rebuild from final table first.',
+      v_winner,
+      v_tie.home_club_short_name,
+      v_tie.away_club_short_name;
+  END IF;
+
+  v_loser := CASE
+    WHEN upper(btrim(v_tie.home_club_short_name)) = v_winner
+      THEN upper(btrim(v_tie.away_club_short_name))
+    ELSE upper(btrim(v_tie.home_club_short_name))
+  END;
+
+  UPDATE public.competition_playoff_ties
+  SET winner_club_short_name = v_winner,
+      loser_club_short_name = v_loser,
+      status = 'played',
+      fixture_id = NULL
+  WHERE id = v_tie.id;
+
+  INSERT INTO public.competition_cup_manual_qualifiers (
+    season_id, cup_code, division, club_short_name, qualifier_role
+  ) VALUES
+    (v_season, 'shield', v_div, v_winner, 'shield_playoff_winner'),
+    (v_season, 'bowl', v_div, v_loser, 'bowl_playoff_loser')
+  ON CONFLICT (season_id, cup_code, division, qualifier_role)
+  DO UPDATE SET club_short_name = excluded.club_short_name;
+
+  SELECT c."Club" INTO v_win_name FROM public."Clubs" c WHERE c."ShortName" = v_winner;
+  SELECT c."Club" INTO v_lose_name FROM public."Clubs" c WHERE c."ShortName" = v_loser;
+
+  RETURN jsonb_build_object(
+    'ok', true,
+    'season_id', v_season,
+    'division', v_div,
+    'shield_winner', v_winner,
+    'shield_winner_name', coalesce(v_win_name, v_winner),
+    'bowl_loser', v_loser,
+    'bowl_loser_name', coalesce(v_lose_name, v_loser)
+  );
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.competition_admin_set_ch_sb_winner(text, text, bigint)
   TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
