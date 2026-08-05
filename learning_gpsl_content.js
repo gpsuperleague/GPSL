@@ -146,8 +146,8 @@ export const LEARNING_GPSL_SECTIONS = [
       {
         type: "ul",
         items: [
-          `<b><a href="club_details.html">Club Details</a></b> — badge, division, nation, government subsidy cards (HG / Youth / B&amp;B), kits, dashboard colours, and club overview.`,
-          `<b><a href="boardroom.html">Boardroom</a></b> — club prestige expectations, season delivery, and manager deal (renew / list / sack).`,
+          `<b><a href="club_details.html">Club Details</a></b> — badge, division, nation, kits, dashboard colours, and club overview.`,
+          `<b><a href="boardroom.html">Boardroom</a></b> — club prestige expectations, season delivery, manager deal (renew / list / sack), and government subsidies (HG / Youth / Weak squad).`,
           `<b><a href="owner_details.html">Owner Details</a></b> — login email/password, Discord owner tag, profile badge, <b>match availability</b> (weekly calendar), and <b>holiday booking</b>.`,
           `<b><a href="squad.html">Squad</a></b> — registered players, home-grown and under-21 counts, contracts, list/sell actions.`,
           `<b><a href="finances.html">Finances</a></b> — current balance and links to ledger, income, costs, and season accounts.`,
@@ -182,7 +182,7 @@ export const LEARNING_GPSL_SECTIONS = [
           `<b>Balance</b> — your spendable club cash. Transfers, wages, fines, and prizes all post here via the ledger.`,
           `<b>Gate receipts</b> — league home matches: 100% to the home club. Formula: capacity × fill rate × <b>₿20/seat</b>. Fill depends on table position and recent history. Cup ties split 50/50.`,
           `<b>Stadium maintenance</b> — seasonal cost based on capacity (12.5% × capacity × ₿1,500). Shown on <a href="stadium.html">Stadium</a> and in season accounts.`,
-          `<b>Government subsidies</b> — HG, Youth, and B&amp;B targets on <a href="club_details.html">Club Details</a>; payments appear in season accounts when earned.`,
+          `<b>Government subsidies</b> — HG, Youth, and B&amp;B targets on <a href="boardroom.html">Boardroom</a>; payments appear in season accounts when earned.`,
           `<b>Season accounts</b> — workbook-style view: <b>Posted</b> (ledger total this season), <b>Breakdown</b> by type, <b>Running total</b>, and <b>Pending</b> (forecast not yet on the ledger). Projected balance = current + pending.`,
         ],
       },

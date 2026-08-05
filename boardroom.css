@@ -263,3 +263,42 @@ body.boardroom-page {
   color: #888;
   font-size: 13px;
 }
+
+.subsidy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.subsidy-card {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid #3d2c20;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.subsidy-card h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #c4a35a;
+}
+
+.subsidy-status {
+  font-size: 15px;
+  font-weight: 600;
+  color: #eee;
+  margin: 0 0 6px;
+}
+
+.subsidy-meta {
+  font-size: 12px;
+  color: #888;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.subsidy-amount {
+  font-size: 13px;
+  color: #9c9;
+  margin-top: 8px;
+}
