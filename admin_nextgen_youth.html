@@ -40,6 +40,12 @@
       <div class="card">
         <h2>Refresh list</h2>
         <p class="note" id="listMeta">Loading…</p>
+        <div style="margin-bottom:10px;display:flex;flex-wrap:wrap;gap:8px;">
+          <button type="button" class="button" id="loadNxgnBtn">
+            Load Goal NXGN 2026 (50 names → Konami IDs)
+          </button>
+        </div>
+        <div id="matchReport" style="margin-bottom:10px;"></div>
         <label for="playerIds" class="muted">Konami IDs — one per line (or comma / space separated)</label>
         <textarea id="playerIds" placeholder="e.g.&#10;45234&#10;89102"></textarea>
         <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
@@ -73,6 +79,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_nextgen_youth.js?v=20260805"></script>
+  <script type="module" src="admin_nextgen_youth.js?v=20260805-nxgn2026"></script>
 </body>
 </html>
