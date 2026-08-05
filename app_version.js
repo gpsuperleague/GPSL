@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260804-signing-15pct";
+export const APP_VERSION = "20260805-boardroom";

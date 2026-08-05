@@ -1,0 +1,110 @@
+<script>window.CURRENT_PAGE = "boardroom";</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Boardroom — GPSL</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="boardroom.css?v=20260805-boardroom">
+</head>
+<body class="boardroom-page">
+  <div id="nav"></div>
+
+  <header class="board-hero">
+    <div class="board-hero-graphic" aria-hidden="true">
+      <svg viewBox="0 0 400 220" xmlns="http://www.w3.org/2000/svg" class="board-svg">
+        <defs>
+          <linearGradient id="wood" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#3a2418"/>
+            <stop offset="50%" style="stop-color:#2a1810"/>
+            <stop offset="100%" style="stop-color:#1e120c"/>
+          </linearGradient>
+          <linearGradient id="brass" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#f0d080"/>
+            <stop offset="100%" style="stop-color:#a07830"/>
+          </linearGradient>
+        </defs>
+        <!-- Room floor -->
+        <rect x="0" y="170" width="400" height="50" fill="#0e0a08"/>
+        <!-- Back wall panels -->
+        <rect x="20" y="40" width="360" height="130" fill="url(#wood)" stroke="#5a4030" stroke-width="2"/>
+        <line x1="100" y1="40" x2="100" y2="170" stroke="#4a3020" stroke-width="1"/>
+        <line x1="200" y1="40" x2="200" y2="170" stroke="#4a3020" stroke-width="1"/>
+        <line x1="300" y1="40" x2="300" y2="170" stroke="#4a3020" stroke-width="1"/>
+        <!-- Window / crest -->
+        <rect x="155" y="55" width="90" height="50" rx="2" fill="#0a0806" stroke="url(#brass)" stroke-width="1.5"/>
+        <text x="200" y="78" text-anchor="middle" fill="url(#brass)" font-family="Georgia,serif" font-size="11" font-weight="bold">GPSL</text>
+        <text x="200" y="94" text-anchor="middle" fill="#c4a35a" font-family="Georgia,serif" font-size="9">BOARDROOM</text>
+        <!-- Conference table -->
+        <ellipse cx="200" cy="155" rx="130" ry="22" fill="#1a100c" stroke="#6a4a30" stroke-width="2"/>
+        <ellipse cx="200" cy="150" rx="120" ry="16" fill="#2a1a12" stroke="url(#brass)" stroke-width="1"/>
+        <!-- Chairs hint -->
+        <rect x="70" y="128" width="18" height="14" rx="2" fill="#241810" stroke="#5a4030"/>
+        <rect x="115" y="122" width="18" height="14" rx="2" fill="#241810" stroke="#5a4030"/>
+        <rect x="267" y="122" width="18" height="14" rx="2" fill="#241810" stroke="#5a4030"/>
+        <rect x="312" y="128" width="18" height="14" rx="2" fill="#241810" stroke="#5a4030"/>
+        <!-- Ceiling lamp -->
+        <line x1="200" y1="20" x2="200" y2="40" stroke="#8a7340" stroke-width="2"/>
+        <ellipse cx="200" cy="42" rx="28" ry="6" fill="#3a2a18" stroke="url(#brass)" stroke-width="1"/>
+        <ellipse cx="200" cy="200" rx="100" ry="6" fill="#000" opacity="0.45"/>
+      </svg>
+    </div>
+    <div class="board-hero-text">
+      <p class="board-welcome">Committee in session</p>
+      <h1 id="boardTitle">The Boardroom</h1>
+      <p class="board-tagline" id="boardTagline">Club expectations · Manager deal · Season delivery</p>
+      <div class="board-hero-stats" id="heroStats"></div>
+    </div>
+  </header>
+
+  <main class="board-main">
+    <div id="boardError" class="board-error" hidden></div>
+
+    <section class="board-panel">
+      <h2>Today’s agenda</h2>
+      <p class="board-intro" id="boardIntro"><!-- Filled by boardroom_rules.js --></p>
+      <div class="board-agenda" id="boardAgenda"></div>
+    </section>
+
+    <div class="board-grid">
+      <section class="board-panel" id="expectationPanel">
+        <h2>Club expectations</h2>
+        <p class="board-intro">
+          Prestige sets your club baseline. A strong manager can raise the bar on medium and low clubs.
+        </p>
+        <div id="expectationStatus" class="board-meta">Loading…</div>
+      </section>
+
+      <section class="board-panel" id="managerPanel">
+        <h2>Manager</h2>
+        <p class="board-intro">
+          Managers sign <b>2-season</b> deals. Targets are reviewed each season; at the end of the deal
+          you can renew if they hit in at least one season, or they leave (market value) with a 2-season rehire ban if they miss both.
+          List for transfer or sack once per season in <b>June, July, or January</b> (not August) — half market value on sack.
+        </p>
+        <div id="managerStatus" class="board-meta">Loading…</div>
+        <div class="board-actions">
+          <button type="button" id="renewManagerBtn" class="board-btn is-hidden">Renew contract (2 seasons)</button>
+          <button type="button" id="listManagerBtn" class="board-btn secondary is-hidden">List for transfer</button>
+          <button type="button" id="sackManagerBtn" class="board-btn secondary is-hidden">Sack manager</button>
+        </div>
+        <p id="managerHint" class="board-hint" role="status"></p>
+      </section>
+    </div>
+
+    <section class="board-panel">
+      <h2>Further reading</h2>
+      <p class="board-intro" style="margin:0;">
+        Full rules in <a href="learning_gpsl.html#club-expectations">Learning GPSL</a>
+        · gate fill on <a href="stadium.html">Stadium</a>
+        · club profile on <a href="club_details.html">Club Details</a>
+        · browse managers in <a href="MGDB.html">MGDB</a>.
+      </p>
+    </section>
+  </main>
+
+  <script type="module" src="boardroom.js?v=20260805-boardroom"></script>
+</body>
+</html>

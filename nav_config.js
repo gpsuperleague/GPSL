@@ -38,6 +38,7 @@ export const NAV_SECTIONS = [
     label: "My Club",
     items: [
       { href: "club_details.html", label: "Club Details", page: "club_details" },
+      { href: "boardroom.html", label: "Boardroom", page: "boardroom" },
       { href: "owner_details.html", label: "Owner Details", page: "owner_details" },
       { href: "finances.html", label: "Finances", page: "finances" },
       { href: "squad.html", label: "Squad", page: "squad" },

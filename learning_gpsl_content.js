@@ -107,6 +107,7 @@ export const LEARNING_GPSL_SECTIONS = [
         type: "links",
         items: [
           { href: "club_details.html", label: "Club Details" },
+          { href: "boardroom.html", label: "Boardroom" },
           { href: "finances.html", label: "Finances" },
           { href: "squad.html", label: "Squad" },
           { href: "history.html", label: "Club History" },
@@ -146,6 +147,7 @@ export const LEARNING_GPSL_SECTIONS = [
         type: "ul",
         items: [
           `<b><a href="club_details.html">Club Details</a></b> — badge, division, nation, government subsidy cards (HG / Youth / B&amp;B), kits, dashboard colours, and club overview.`,
+          `<b><a href="boardroom.html">Boardroom</a></b> — club prestige expectations, season delivery, and manager deal (renew / list / sack).`,
           `<b><a href="owner_details.html">Owner Details</a></b> — login email/password, Discord owner tag, profile badge, <b>match availability</b> (weekly calendar), and <b>holiday booking</b>.`,
           `<b><a href="squad.html">Squad</a></b> — registered players, home-grown and under-21 counts, contracts, list/sell actions.`,
           `<b><a href="finances.html">Finances</a></b> — current balance and links to ledger, income, costs, and season accounts.`,
@@ -241,11 +243,12 @@ export const LEARNING_GPSL_SECTIONS = [
       {
         type: "warn",
         html: `This is separate from <b>manager retention</b> (manager released if league target missed) — you can face both in the same season.
-        See <a href="#managers">Managers</a> below.`,
+        See <a href="boardroom.html">Boardroom</a> and <a href="#managers">Managers</a> below.`,
       },
       {
         type: "links",
         items: [
+          { href: "boardroom.html", label: "Boardroom" },
           { href: "stadium.html", label: "Stadium (expectations)" },
           { href: "club_details.html", label: "Club Details" },
           { href: "transfer_center.html", label: "Transfer Centre" },
