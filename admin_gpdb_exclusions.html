@@ -24,6 +24,7 @@
     .search-hits { margin-top: 8px; font-size: 12px; }
     .search-hits button { margin: 2px 0; }
     .muted { color: #888; font-size: 12px; }
+    .excl-count { color: #ff9900; font-weight: 600; }
   </style>
 </head>
 <body class="admin-page">
@@ -41,6 +42,57 @@
         <code>patches/gpdb_season_exclusions.sql</code> and
         <code>patches/gpdb_season_exclusions_persist.sql</code>.
       </p>
+
+      <div class="card">
+        <h2>Currently in effect</h2>
+        <p class="note">
+          What GPDB / transfers / call-ups treat as excluded right now — any exclusion on a
+          <b>current or open</b> season (<code>active</code>, <code>preseason</code>,
+          <code>summer_break</code>, <code>setup</code>).
+        </p>
+        <div id="activeStatus" class="status-line"></div>
+        <div class="excl-grid" style="margin-top:12px;">
+          <div>
+            <h3 style="margin:0 0 6px;font-size:14px;color:#ff9900;">
+              Players <span class="excl-count" id="activePlayerCount">(0)</span>
+            </h3>
+            <div class="excl-table-wrap" style="max-height:280px;">
+              <table class="excl-table">
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>Nation</th>
+                    <th>Season</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="activePlayerBody">
+                  <tr><td colspan="4" class="muted">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <h3 style="margin:0 0 6px;font-size:14px;color:#ff9900;">
+              Nations <span class="excl-count" id="activeNationCount">(0)</span>
+            </h3>
+            <div class="excl-table-wrap" style="max-height:280px;">
+              <table class="excl-table">
+                <thead>
+                  <tr>
+                    <th>Nation</th>
+                    <th>Season</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="activeNationBody">
+                  <tr><td colspan="3" class="muted">Loading…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div class="card">
         <h2>Season</h2>
@@ -66,8 +118,8 @@
 
       <div class="excl-grid">
         <div class="card">
-          <h2>Excluded players</h2>
-          <p class="note">Search by name or Konami ID, then add with an optional reason.</p>
+          <h2>Excluded players <span class="excl-count" id="seasonPlayerCount"></span></h2>
+          <p class="note">Stored for the selected season. Search by name or Konami ID, then add with an optional reason.</p>
           <div class="excl-search">
             <input id="playerQuery" type="text" placeholder="Player name or Konami ID" autocomplete="off">
             <button type="button" class="button" id="playerSearchBtn">Search</button>
@@ -84,14 +136,16 @@
                   <th></th>
                 </tr>
               </thead>
-              <tbody id="playerBody"></tbody>
+              <tbody id="playerBody">
+                <tr><td colspan="4" class="muted">Loading…</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
 
         <div class="card">
-          <h2>Excluded nations</h2>
-          <p class="note">Pick a nation code from the international catalog.</p>
+          <h2>Excluded nations <span class="excl-count" id="seasonNationCount"></span></h2>
+          <p class="note">Stored for the selected season. Pick a nation code from the international catalog.</p>
           <div class="excl-search">
             <select id="nationSelect"></select>
             <button type="button" class="button" id="nationAddBtn">Exclude nation</button>
@@ -106,7 +160,9 @@
                   <th></th>
                 </tr>
               </thead>
-              <tbody id="nationBody"></tbody>
+              <tbody id="nationBody">
+                <tr><td colspan="3" class="muted">Loading…</td></tr>
+              </tbody>
             </table>
           </div>
         </div>
@@ -121,6 +177,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_gpdb_exclusions.js?v=20260718-persist"></script>
+  <script type="module" src="admin_gpdb_exclusions.js?v=20260805-active-list"></script>
 </body>
 </html>

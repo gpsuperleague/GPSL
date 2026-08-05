@@ -127,8 +127,138 @@ async function loadNations() {
       .join("");
 }
 
+function isOpenSeason(s) {
+  if (!s) return false;
+  if (s.is_current) return true;
+  const st = String(s.status || "").toLowerCase();
+  return ["active", "preseason", "summer_break", "setup"].includes(st);
+}
+
+function setCount(elId, n) {
+  const el = document.getElementById(elId);
+  if (el) el.textContent = n == null ? "" : `(${n})`;
+}
+
+function renderActiveExclusions(playerRows, nationRows) {
+  const pBody = document.getElementById("activePlayerBody");
+  const nBody = document.getElementById("activeNationBody");
+  setCount("activePlayerCount", playerRows.length);
+  setCount("activeNationCount", nationRows.length);
+
+  if (pBody) {
+    if (!playerRows.length) {
+      pBody.innerHTML = `<tr><td colspan="4" class="muted">No players currently excluded.</td></tr>`;
+    } else {
+      pBody.innerHTML = playerRows
+        .map(
+          (r) => `
+        <tr>
+          <td>
+            <b>${escapeHtml(r.player_name || r.player_id)}</b><br>
+            <small>${escapeHtml(r.player_id)} · ${escapeHtml(r.position || "—")} · OVR ${escapeHtml(
+              r.rating ?? "—"
+            )}</small>
+          </td>
+          <td>${escapeHtml(r.nation || "—")}</td>
+          <td>${escapeHtml(r.season_label || `Season ${r.season_id}`)}</td>
+          <td>${escapeHtml(r.reason || "—")}</td>
+        </tr>`
+        )
+        .join("");
+    }
+  }
+
+  if (nBody) {
+    if (!nationRows.length) {
+      nBody.innerHTML = `<tr><td colspan="3" class="muted">No nations currently excluded.</td></tr>`;
+    } else {
+      nBody.innerHTML = nationRows
+        .map(
+          (r) => `
+        <tr>
+          <td><b>${escapeHtml(r.nation_name || r.nation_code)}</b><br><small>${escapeHtml(
+            r.nation_code
+          )}</small></td>
+          <td>${escapeHtml(r.season_label || `Season ${r.season_id}`)}</td>
+          <td>${escapeHtml(r.reason || "—")}</td>
+        </tr>`
+        )
+        .join("");
+    }
+  }
+
+  setStatus(
+    "activeStatus",
+    `${playerRows.length} player(s), ${nationRows.length} nation(s) in effect across open seasons.`,
+    true
+  );
+}
+
+async function reloadActiveExclusions() {
+  setStatus("activeStatus", "Loading current exclusions…", true);
+  const open = seasons.filter(isOpenSeason);
+  const targets = open.length ? open : seasons.slice(0, 1);
+  if (!targets.length) {
+    renderActiveExclusions([], []);
+    setStatus("activeStatus", "No competition seasons found.", false);
+    return;
+  }
+
+  const playerMap = new Map();
+  const nationMap = new Map();
+  let lastError = null;
+
+  for (const s of targets) {
+    const { data, error } = await supabase.rpc("admin_gpdb_exclusions_list", {
+      p_season_id: s.id,
+    });
+    if (error) {
+      lastError = error;
+      continue;
+    }
+    const seasonLabel = data?.season_label || s.label || `Season ${s.id}`;
+    const seasonIdVal = data?.season_id ?? s.id;
+    for (const p of data?.players || []) {
+      const key = String(p.player_id || "").trim();
+      if (!key || playerMap.has(key)) continue;
+      playerMap.set(key, { ...p, season_id: seasonIdVal, season_label: seasonLabel });
+    }
+    for (const n of data?.nations || []) {
+      const key = String(n.nation_code || "").trim().toUpperCase();
+      if (!key || nationMap.has(key)) continue;
+      nationMap.set(key, { ...n, season_id: seasonIdVal, season_label: seasonLabel });
+    }
+  }
+
+  if (lastError && !playerMap.size && !nationMap.size) {
+    setStatus(
+      "activeStatus",
+      lastError.message.includes("admin_gpdb_exclusions_list")
+        ? "Run supabase/sql/patches/gpdb_season_exclusions.sql first."
+        : lastError.message,
+      false
+    );
+    const pBody = document.getElementById("activePlayerBody");
+    const nBody = document.getElementById("activeNationBody");
+    if (pBody) pBody.innerHTML = `<tr><td colspan="4" class="muted">Could not load.</td></tr>`;
+    if (nBody) nBody.innerHTML = `<tr><td colspan="3" class="muted">Could not load.</td></tr>`;
+    setCount("activePlayerCount", 0);
+    setCount("activeNationCount", 0);
+    return;
+  }
+
+  const players = [...playerMap.values()].sort((a, b) =>
+    String(a.player_name || a.player_id).localeCompare(String(b.player_name || b.player_id))
+  );
+  const nationsRows = [...nationMap.values()].sort((a, b) =>
+    String(a.nation_name || a.nation_code).localeCompare(String(b.nation_name || b.nation_code))
+  );
+  renderActiveExclusions(players, nationsRows);
+}
+
 function renderPlayers(rows) {
   const tbody = document.getElementById("playerBody");
+  setCount("seasonPlayerCount", rows?.length || 0);
   if (!tbody) return;
   if (!rows?.length) {
     tbody.innerHTML = `<tr><td colspan="4" class="muted">No excluded players.</td></tr>`;
@@ -172,6 +302,7 @@ function renderPlayers(rows) {
 
 function renderNations(rows) {
   const tbody = document.getElementById("nationBody");
+  setCount("seasonNationCount", rows?.length || 0);
   if (!tbody) return;
   if (!rows?.length) {
     tbody.innerHTML = `<tr><td colspan="3" class="muted">No excluded nations.</td></tr>`;
@@ -234,9 +365,10 @@ async function reloadLists() {
   renderNations(data?.nations || []);
   setStatus(
     "listStatus",
-    `${(data?.players || []).length} player(s), ${(data?.nations || []).length} nation(s) excluded.`,
+    `${(data?.players || []).length} player(s), ${(data?.nations || []).length} nation(s) excluded for this season.`,
     true
   );
+  await reloadActiveExclusions();
 }
 
 async function searchPlayers() {
