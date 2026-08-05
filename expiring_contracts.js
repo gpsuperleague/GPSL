@@ -6,12 +6,8 @@ import {
   minExpiryWageOffer,
 } from "./wages.js";
 import { renderExpiringContractRules } from "./expiring_contracts_rules.js?v=20260805-shared";
-
-const POSITION_ORDER = [
-  "GK", "LB", "CB", "RB",
-  "DMF", "LMF", "CMF", "RMF",
-  "AMF", "LWF", "SS", "RWF", "CF",
-];
+import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260805-multi";
+import { textMatchesSearch } from "./search_normalize.js";
 
 const RANGE_COLS = ["Rating", "Age"];
 const RANGE_DEFAULTS = {
@@ -35,10 +31,29 @@ let myClubShort = null;
 let marketRows = [];
 let bidTarget = null;
 
+const multiFilters = createDraftAdvancedFilterController({
+  rootId: "expiryMultiFilters",
+  onChange: () => renderMarket(),
+});
+
+function marketRowAsFilterRow(row) {
+  return {
+    player: {
+      Position: row.position,
+      Nation: row.nation,
+      Playstyle: row.playstyle,
+      Age: row.age,
+      Rating: row.rating,
+    },
+    highestAmount: 0,
+  };
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   await initGlobal();
   await loadClubsMap();
   renderExpiringContractRules();
+  multiFilters.wire();
 
   const {
     data: { user },
@@ -76,7 +91,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function wireFilters() {
-  const ids = ["fName", "fPosition", "fNation", "fPlaystyle", "fClub", "fMyBid"];
+  const ids = ["fName", "fClub", "fMyBid"];
   for (const id of ids) {
     const el = document.getElementById(id);
     if (!el) continue;
@@ -91,6 +106,7 @@ function wireFilters() {
       const el = document.getElementById(id);
       if (el) el.value = "";
     }
+    multiFilters.clear();
     resetRangeFilters();
     syncMyClubFilterBtn();
     renderMarket();
@@ -277,19 +293,6 @@ function escapeAttr(text) {
 }
 
 function rebuildFilterOptions() {
-  const positions = [
-    ...new Set(marketRows.map((r) => r.position).filter(Boolean)),
-  ].sort((a, b) => {
-    const ai = POSITION_ORDER.indexOf(a);
-    const bi = POSITION_ORDER.indexOf(b);
-    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-  });
-  const nations = [...new Set(marketRows.map((r) => r.nation).filter(Boolean))].sort(
-    (a, b) => a.localeCompare(b)
-  );
-  const playstyles = [
-    ...new Set(marketRows.map((r) => r.playstyle).filter(Boolean)),
-  ].sort((a, b) => a.localeCompare(b));
   const clubs = [
     ...new Set(marketRows.map((r) => r.holding_club).filter(Boolean)),
   ].sort((a, b) =>
@@ -298,31 +301,24 @@ function rebuildFilterOptions() {
     })
   );
 
-  fillSelect("fPosition", positions);
-  fillSelect("fNation", nations);
-  fillSelect("fPlaystyle", playstyles);
+  multiFilters.rebuildFromRows(marketRows.map(marketRowAsFilterRow));
   fillSelect("fClub", clubs, (v) => displayClubName(v));
   syncRangeBoundsFromMarket();
   syncMyClubFilterBtn();
 }
 
 function filteredRows() {
-  const name = (document.getElementById("fName")?.value || "").trim().toLowerCase();
-  const position = document.getElementById("fPosition")?.value || "";
-  const nation = document.getElementById("fNation")?.value || "";
-  const playstyle = document.getElementById("fPlaystyle")?.value || "";
+  const name = (document.getElementById("fName")?.value || "").trim();
   const club = document.getElementById("fClub")?.value || "";
   const myBid = document.getElementById("fMyBid")?.value || "";
   const ratingActive = isRangeNarrowed("Rating") ? RANGE_ACTIVE.Rating : null;
   const ageActive = isRangeNarrowed("Age") ? RANGE_ACTIVE.Age : null;
 
   return marketRows.filter((row) => {
-    if (name && !String(row.player_name || "").toLowerCase().includes(name)) {
+    if (name && !textMatchesSearch(row.player_name || "", name)) {
       return false;
     }
-    if (position && row.position !== position) return false;
-    if (nation && row.nation !== nation) return false;
-    if (playstyle && row.playstyle !== playstyle) return false;
+    if (!multiFilters.rowPasses(marketRowAsFilterRow(row))) return false;
     if (club && row.holding_club !== club) return false;
 
     if (ratingActive) {

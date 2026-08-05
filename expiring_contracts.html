@@ -28,6 +28,88 @@
     }
     .filter-bar input[type="number"] { width:72px; min-width:72px; }
     .filter-bar .filter-actions { display:flex; gap:8px; align-items:flex-end; padding-bottom:2px; }
+    .filter-bar .expiry-multi-filters { display:contents; }
+    .filter-bar .multi-filter {
+      position:relative;
+      min-width:160px;
+    }
+    .filter-bar .multi-filter-label {
+      font-size:12px;
+      color:#aaa;
+      margin-bottom:4px;
+    }
+    .filter-bar .multi-filter-control {
+      background:#111;
+      color:#ddd;
+      border:1px solid #444;
+      padding:6px 8px;
+      border-radius:4px;
+      font-size:13px;
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      min-height:28px;
+      min-width:150px;
+    }
+    .filter-bar .multi-filter-control::after {
+      content:"▾";
+      font-size:10px;
+      color:#888;
+      margin-left:6px;
+    }
+    .filter-bar .multi-filter-panel {
+      position:absolute;
+      top:100%;
+      left:0;
+      z-index:40;
+      background:#111;
+      border:1px solid #444;
+      border-radius:4px;
+      margin-top:2px;
+      max-height:280px;
+      min-width:220px;
+      width:max-content;
+      max-width:320px;
+      display:none;
+      box-shadow:0 8px 24px rgba(0,0,0,0.45);
+    }
+    .filter-bar .multi-filter.open .multi-filter-panel { display:block; }
+    .filter-bar .multi-filter-search {
+      display:block;
+      width:100%;
+      box-sizing:border-box;
+      background:#1a1a1a;
+      color:#ddd;
+      border:none;
+      border-bottom:1px solid #333;
+      padding:8px 10px;
+      font-size:12px;
+      border-radius:4px 4px 0 0;
+      min-width:0;
+    }
+    .filter-bar .multi-filter-options {
+      max-height:220px;
+      overflow:auto;
+      padding:4px 0;
+    }
+    .filter-bar .multi-filter-empty {
+      padding:10px 12px;
+      color:#888;
+      font-size:12px;
+      font-style:italic;
+    }
+    .filter-bar .multi-filter-option {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:5px 10px;
+      font-size:12px;
+      color:#ddd;
+      cursor:pointer;
+    }
+    .filter-bar .multi-filter-option:hover { background:#222; }
+    .filter-bar .multi-filter-option input { margin:0; min-width:0; }
     .range-filter {
       display:flex; flex-direction:column; gap:4px;
       min-width:168px; max-width:220px; font-size:12px; color:#ffaa22;
@@ -110,15 +192,32 @@
       <label>Name
         <input type="text" id="fName" placeholder="Search name" autocomplete="off">
       </label>
-      <label>Position
-        <select id="fPosition"><option value="">All</option></select>
-      </label>
-      <label>Nation
-        <select id="fNation"><option value="">All</option></select>
-      </label>
-      <label>Playstyle
-        <select id="fPlaystyle"><option value="">All</option></select>
-      </label>
+      <div id="expiryMultiFilters" class="expiry-multi-filters">
+        <div class="multi-filter" data-col="Position">
+          <div class="multi-filter-label">Position</div>
+          <div class="multi-filter-control" tabindex="0">All</div>
+          <div class="multi-filter-panel">
+            <input type="search" class="multi-filter-search" placeholder="Type to find…" autocomplete="off">
+            <div class="multi-filter-options"></div>
+          </div>
+        </div>
+        <div class="multi-filter" data-col="Nation">
+          <div class="multi-filter-label">Nation</div>
+          <div class="multi-filter-control" tabindex="0">All</div>
+          <div class="multi-filter-panel">
+            <input type="search" class="multi-filter-search" placeholder="Type to find…" autocomplete="off">
+            <div class="multi-filter-options"></div>
+          </div>
+        </div>
+        <div class="multi-filter" data-col="Playstyle">
+          <div class="multi-filter-label">Playstyle</div>
+          <div class="multi-filter-control" tabindex="0">All</div>
+          <div class="multi-filter-panel">
+            <input type="search" class="multi-filter-search" placeholder="Type to find…" autocomplete="off">
+            <div class="multi-filter-options"></div>
+          </div>
+        </div>
+      </div>
       <label>Club
         <select id="fClub"><option value="">All</option></select>
       </label>
@@ -185,6 +284,6 @@
     </div>
   </div>
 
-  <script type="module" src="expiring_contracts.js?v=20260804-signing-15pct"></script>
+  <script type="module" src="expiring_contracts.js?v=20260805-multi-filters"></script>
 </body>
 </html>

@@ -3,6 +3,7 @@
  */
 
 import { wageFromMarketValue } from "./wages.js";
+import { textMatchesSearch } from "./search_normalize.js";
 
 const POSITION_ORDER = [
   "GK", "LB", "CB", "RB",
@@ -114,10 +115,10 @@ export function createDraftAdvancedFilterController(opts = {}) {
     const optionsEl = wrapper?.querySelector(".multi-filter-options");
     if (!optionsEl) return;
 
-    const q = String(searchText || "").trim().toLowerCase();
+    const q = String(searchText || "").trim();
     const opts = multiOptions[col] || [];
     const filtered = q
-      ? opts.filter((o) => o.label.toLowerCase().includes(q))
+      ? opts.filter((o) => textMatchesSearch(o.label, q) || textMatchesSearch(o.value, q))
       : opts;
     const selected = new Set(multiSelected[col] || []);
 
