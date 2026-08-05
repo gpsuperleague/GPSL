@@ -650,8 +650,12 @@ function squadActionOptionsHtml(player) {
   const newOwnerOpt = newOwnerReleaseOptionHtml(player);
   const newOwnerListOpt = newOwnerListOptionHtml(player);
   const releaseGroup = `${releaseOpt}${newOwnerOpt}${newOwnerListOpt}`;
+  const pidKey = String(player?.Konami_ID ?? "").trim();
+  const hasWageBid =
+    !!transferStatusState?.myExpiryWageBidPlayerIds?.has(pidKey);
   const contractOpts = squadContractActionOptionsHtml(player, clubNation, {
     optionHtml: `${rewardOpts}${releaseGroup}`,
+    hasWageBid,
   });
   if (contractOpts) return contractOpts;
 
@@ -1575,7 +1579,17 @@ function renderSquad(players, transferState, statsByPlayer = new Map(), designat
         <td class="num squad-col-avg gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.avg)}>${avg}</td>
         <td class="squad-col-playstyle gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.playstyle)}>${p.Playstyle || "-"}</td>
         <td class="squad-col-value gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.marketValue)}><span class="money">₿ ${Number(p.market_value).toLocaleString("en-GB")}</span></td>
-        <td class="squad-col-contract gpsl-has-tip"${tipDataAttrs(squadContractTip(p, clubNation))}>${formatSquadContractCell(p)}</td>
+        <td class="squad-col-contract gpsl-has-tip"${tipDataAttrs(
+          squadContractTip(
+            {
+              ...p,
+              hasExpiryWageBid: !!transferState?.myExpiryWageBidPlayerIds?.has(
+                String(p.Konami_ID ?? "").trim()
+              ),
+            },
+            clubNation
+          )
+        )}>${formatSquadContractCell(p)}</td>
         <td class="squad-col-status gpsl-has-tip"${tipDataAttrs(SQUAD_TIPS.status)}>
           <div class="squad-status-stack">
             ${status}

@@ -69,9 +69,15 @@ export function squadContractActionOptionsHtml(
   const exempt = isExpiryAuctionExempt(player, clubNation);
   const legacy = isPesdbLegacyCard(player);
   const releaseOpt = voluntaryRelease?.optionHtml ?? "";
+  const hasWageBid = !!voluntaryRelease?.hasWageBid;
 
   // Contested: wage auction only (no mid-season unilateral renew).
   if (!exempt && !legacy) {
+    if (hasWageBid) {
+      return `
+            <option value="" disabled>Wage bid locked — Pending EOS</option>
+            ${releaseOpt}`;
+    }
     return `
             <option value="expiry_bid">Offer wage bid (competes at season end)</option>
             ${releaseOpt}`;

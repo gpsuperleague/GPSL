@@ -104,6 +104,14 @@ export function squadContractTip(player, clubNation) {
         wageNote
       );
     }
+    if (player?.hasExpiryWageBid) {
+      return (
+        "Contract offered — Pending EOS.\n\n" +
+        "Your wage bid is locked for this player on the Expiring Contracts market. " +
+        "Highest bid wins at season rollover (end of season). You cannot change the bid.\n\n" +
+        wageNote
+      );
+    }
     return (
       "Final contract year (1 season left of a 3-season deal).\n\n" +
       "Cannot Transfer List or sell. They are on the Expiring Contracts market — other clubs (and you) may place one hidden wage bid; highest wins at season rollover.\n\n" +

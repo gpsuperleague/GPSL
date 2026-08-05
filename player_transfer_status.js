@@ -56,7 +56,7 @@ export const TRANSFER_STATUS_LABELS = {
     "Recently signed — not available for transfer until next season",
   [TRANSFER_STATUS.CONTRACT_FINAL_YEAR]:
     "Final contract year — renew or expire in Squad",
-  [TRANSFER_STATUS.EXPIRY_WAGE_BID]: "Expiring contract — wage bid",
+  [TRANSFER_STATUS.EXPIRY_WAGE_BID]: "Contract offered — Pending EOS",
   [TRANSFER_STATUS.FOREIGN_CONTRACT]:
     "Unavailable — sold to foreign club until next season",
   [TRANSFER_STATUS.OVERFLOW_PAID_UP]:
@@ -73,6 +73,7 @@ const PILL_CLASS = {
   [TRANSFER_STATUS.NOT_LISTED]: "status-not-listed",
   [TRANSFER_STATUS.SIGNED_THIS_SEASON]: "status-signed-season",
   [TRANSFER_STATUS.CONTRACT_FINAL_YEAR]: "status-contract-final",
+  [TRANSFER_STATUS.EXPIRY_WAGE_BID]: "status-expiry-bid",
   [TRANSFER_STATUS.FOREIGN_CONTRACT]: "status-foreign-contract",
   [TRANSFER_STATUS.OVERFLOW_PAID_UP]: "status-foreign-contract",
   [TRANSFER_STATUS.PESDB_LEGACY]: "status-contract-final",
@@ -129,19 +130,21 @@ function playerHasPendingOfferForSeller(state, konamiId, sellerRaw) {
 export async function loadTransferStatusState(supabase) {
   const nowIso = new Date().toISOString();
 
-  const [pendingState, clubsRes, activeRes, reviewRes] = await Promise.all([
-    loadPendingDirectOfferState(supabase),
-    supabase.from("Clubs").select("ShortName, Club"),
-    supabase
-      .from("Player_Transfer_Listings")
-      .select("player_id, listing_type, status, end_time")
-      .eq("status", "Active")
-      .gt("end_time", nowIso),
-    supabase
-      .from("Player_Transfer_Listings")
-      .select("player_id, listing_type, status")
-      .in("status", ["Review", "Seller Review"]),
-  ]);
+  const [pendingState, clubsRes, activeRes, reviewRes, expiryMarketRes] =
+    await Promise.all([
+      loadPendingDirectOfferState(supabase),
+      supabase.from("Clubs").select("ShortName, Club"),
+      supabase
+        .from("Player_Transfer_Listings")
+        .select("player_id, listing_type, status, end_time")
+        .eq("status", "Active")
+        .gt("end_time", nowIso),
+      supabase
+        .from("Player_Transfer_Listings")
+        .select("player_id, listing_type, status")
+        .in("status", ["Review", "Seller Review"]),
+      supabase.rpc("list_expiring_contract_market"),
+    ]);
 
   const activeListedPlayerIds = new Set();
   if (!activeRes.error) {
@@ -167,6 +170,21 @@ export async function loadTransferStatusState(supabase) {
     console.error("loadTransferStatusState seller review:", reviewRes.error);
   }
 
+  /** Players the viewer has already bid on in the contested expiry wage market. */
+  const myExpiryWageBidPlayerIds = new Set();
+  if (!expiryMarketRes.error && Array.isArray(expiryMarketRes.data)) {
+    for (const row of expiryMarketRes.data) {
+      if (row?.my_wage_bid == null || row?.player_id == null) continue;
+      myExpiryWageBidPlayerIds.add(String(row.player_id).trim());
+    }
+  } else if (expiryMarketRes.error) {
+    // Market RPC may be missing on older DBs — leave set empty
+    console.warn(
+      "loadTransferStatusState expiry market:",
+      expiryMarketRes.error.message || expiryMarketRes.error
+    );
+  }
+
   const clubShortByKey = buildClubShortLookup(clubsRes.data);
   const pendingDirectBySeller = rebuildPendingBySeller(
     pendingState.bySeller,
@@ -184,6 +202,7 @@ export async function loadTransferStatusState(supabase) {
     pendingDirectBySeller,
     activeListedPlayerIds,
     sellerReviewPlayerIds,
+    myExpiryWageBidPlayerIds,
     currentSeasonLabel,
     currentSeasonId,
   };
@@ -233,6 +252,13 @@ export function resolvePlayerTransferStatus({
     isViewerSeller &&
     isContractFinalYear({ contract_seasons_remaining: contractSeasonsRemaining })
   ) {
+    if (state?.myExpiryWageBidPlayerIds?.has(pid)) {
+      return {
+        code: TRANSFER_STATUS.EXPIRY_WAGE_BID,
+        label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.EXPIRY_WAGE_BID],
+        pillClass: PILL_CLASS[TRANSFER_STATUS.EXPIRY_WAGE_BID],
+      };
+    }
     return {
       code: TRANSFER_STATUS.CONTRACT_FINAL_YEAR,
       label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.CONTRACT_FINAL_YEAR],
@@ -369,11 +395,25 @@ export function buildGpdbContractedBidCellHtml({
   }
 
   if (isOnExpiryWageMarket(player, holdingClubNation)) {
+    const pid = String(konamiId ?? "").trim();
+    if (state?.myExpiryWageBidPlayerIds?.has(pid)) {
+      return formatTransferStatusMessageHtml({
+        code: TRANSFER_STATUS.EXPIRY_WAGE_BID,
+        label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.EXPIRY_WAGE_BID],
+      });
+    }
     const href = `expiring_contracts.html?player=${encodeURIComponent(konamiId)}`;
     return `<a href="${href}" class="button" style="font-size:11px;padding:4px 8px;">Wage bid</a>`;
   }
 
   if (isContractFinalYear(player)) {
+    const pid = String(konamiId ?? "").trim();
+    if (state?.myExpiryWageBidPlayerIds?.has(pid)) {
+      return formatTransferStatusMessageHtml({
+        code: TRANSFER_STATUS.EXPIRY_WAGE_BID,
+        label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.EXPIRY_WAGE_BID],
+      });
+    }
     return formatTransferStatusMessageHtml({
       code: TRANSFER_STATUS.CONTRACT_FINAL_YEAR,
       label: TRANSFER_STATUS_LABELS[TRANSFER_STATUS.CONTRACT_FINAL_YEAR],

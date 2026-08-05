@@ -1121,6 +1121,12 @@ body.squad-page .status-contract-final {
   border: 1px solid #6a3080;
 }
 
+body.squad-page .status-expiry-bid {
+  background: #1a3a2a;
+  color: #9fd4b0;
+  border: 1px solid #3a6a4a;
+}
+
 body.squad-page .status-signed-season {
   background: #4a3a10;
   color: #f0d878;
