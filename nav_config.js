@@ -155,6 +155,7 @@ export const NAV_SECTIONS = [
         label: "Expiring Contracts",
         page: "expiring_contracts",
         indent: true,
+        auctionNav: "expiring",
       },
       {
         href: "season_transfers.html",

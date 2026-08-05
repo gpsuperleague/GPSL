@@ -224,6 +224,8 @@ let managerDraftBiddingOpen = null;
 let clubAuctionBiddingOpen = null;
 let specialAuctionNavLive = false;
 let specialAuctionNavVisible = false;
+/** Contested final-year wage market has at least one player. */
+let expiringContractMarketLive = false;
 /** Active GPSL month key for conditional nav (e.g. playoffs). */
 let activeGpslMonthNav = "";
 let isGpslAdminNav = false;
@@ -268,6 +270,9 @@ export function isNavAuctionActive(kind) {
   if (kind === "special") {
     return specialAuctionNavLive;
   }
+  if (kind === "expiring") {
+    return expiringContractMarketLive;
+  }
   return false;
 }
 
@@ -277,7 +282,8 @@ export function hasAnyNavAuctionActive() {
     isNavAuctionActive("player") ||
     isNavAuctionActive("manager") ||
     isNavAuctionActive("club") ||
-    isNavAuctionActive("special")
+    isNavAuctionActive("special") ||
+    isNavAuctionActive("expiring")
   );
 }
 
@@ -1259,6 +1265,22 @@ async function refreshSpecialAuctionNavLive() {
   }
 }
 
+/** Contested final-year market — Active badge when any players are listed. */
+async function refreshExpiringContractNavLive() {
+  try {
+    const { data, error } = await supabase.rpc("list_expiring_contract_market");
+    if (error) {
+      // Schema not applied yet — fail quiet
+      expiringContractMarketLive = false;
+      return;
+    }
+    expiringContractMarketLive = Array.isArray(data) && data.length > 0;
+  } catch (err) {
+    console.warn("refreshExpiringContractNavLive:", err);
+    expiringContractMarketLive = false;
+  }
+}
+
 /** Legacy inline navs (draftauction.html, etc.) */
 export async function specialAuctionNavLinkHtml() {
   const path = window.location.pathname.toLowerCase();
@@ -1363,7 +1385,11 @@ function escapeNavAttr(s) {
 function navAuctionActiveBadgeHtml(kind, visible = isNavAuctionActive(kind)) {
   if (!kind) return "";
   const hidden = visible ? "" : " is-hidden";
-  return `<span class="nav-auction-active${hidden}" title="Bidding is open" aria-hidden="${visible ? "false" : "true"}">Active</span>`;
+  const title =
+    kind === "expiring"
+      ? "Contested expiring-contract market has players"
+      : "Bidding is open";
+  return `<span class="nav-auction-active${hidden}" title="${title}" aria-hidden="${visible ? "false" : "true"}">Active</span>`;
 }
 
 function navLinkLeadingHtml(item) {
@@ -1445,6 +1471,7 @@ const NAV_AUCTION_RELATED_PAGES = {
   manager: ["manager_draftauction.html", "mgdb.html"],
   club: ["club_auction.html", "club_database.html"],
   special: ["special_auction.html"],
+  expiring: ["expiring_contracts.html"],
 };
 
 function isOnNavAuctionRelatedPage(kind, currentFile) {
@@ -1459,6 +1486,7 @@ const NAV_AUCTION_TARGETS = {
   manager: "manager_draftauction.html",
   club: "club_auction.html",
   special: "special_auction.html",
+  expiring: "expiring_contracts.html",
 };
 
 const NAV_LISTING_TARGETS = {
@@ -1654,6 +1682,7 @@ function startNavAuctionBadgeRefresh() {
           })
         : Promise.resolve(),
       refreshSpecialAuctionNavLive().then(() => refreshNavAuctionIndicators()),
+      refreshExpiringContractNavLive().then(() => refreshNavAuctionIndicators()),
       refreshNavClubListingState().then(() => refreshNavListingIndicators()),
     ]).catch((err) => {
       console.warn("nav badge refresh:", err);
@@ -1968,6 +1997,7 @@ export async function buildNav() {
   }
 
   await refreshSpecialAuctionNavLive();
+  await refreshExpiringContractNavLive();
 
   activeGpslMonthNav = "";
   try {
