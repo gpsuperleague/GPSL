@@ -8,6 +8,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compSavePlayoffBtn").onclick = saveCompetitionPlayoffQualifier;
   const syncSbBtn = document.getElementById("compSyncSbQualBtn");
   if (syncSbBtn) syncSbBtn.onclick = fixShieldBowlQualifiers;
+  const rebuildSbBtn = document.getElementById("compRebuildSbBtn");
+  if (rebuildSbBtn) rebuildSbBtn.onclick = rebuildChSbFromTable;
   document.getElementById("genPlayoffsBtn").onclick = () =>
     runGen(false).catch((e) => setStatus("genPlayoffStatus", e.message || String(e), false));
   document.getElementById("forcePlayoffsBtn").onclick = () => {
@@ -18,8 +20,58 @@ document.addEventListener("DOMContentLoaded", async () => {
     runApply().catch((e) => setStatus("genPlayoffStatus", e.message || String(e), false));
 });
 
+async function rebuildChSbFromTable() {
+  if (
+    !confirm(
+      "Rebuild Championship Shield/Bowl ties from the FINAL table (16th vs 17th)?\n\n" +
+        "This deletes the wrong mid-table “16v17” fixtures/results and creates the correct ties " +
+        "(e.g. Marseille vs Man City / Atletico Nacional vs Celtic).\n\n" +
+        "You must then PLAY those two matches before writing Shield qualifiers."
+    )
+  ) {
+    return;
+  }
+
+  setStatus("compSyncSbQualStatus", "Rebuilding 16v17 ties from final table…");
+  const { data, error } = await supabase.rpc(
+    "competition_admin_rebuild_ch_sb_ties_from_table",
+    { p_season_id: null }
+  );
+
+  if (error?.message?.includes("competition_admin_rebuild_ch_sb_ties_from_table")) {
+    setStatus(
+      "compSyncSbQualStatus",
+      "❌ Run patches/shield_bowl_rebuild_16v17_from_table.sql in Supabase, then retry.",
+      false
+    );
+    return;
+  }
+  if (error) {
+    setStatus("compSyncSbQualStatus", "❌ " + error.message, false);
+    return;
+  }
+  if (!data?.ok) {
+    setStatus(
+      "compSyncSbQualStatus",
+      `❌ ${data?.reason || "Rebuild failed"} ${data?.hint || ""}`,
+      false
+    );
+    return;
+  }
+
+  const ties = Array.isArray(data.ties) ? data.ties : [];
+  const line = ties
+    .map((t) => `${t.division}: ${t.home_16} vs ${t.away_17}`)
+    .join(" | ");
+  setStatus(
+    "compSyncSbQualStatus",
+    `✅ Rebuilt. ${line}. ${data.message || "Play those fixtures next."}`,
+    true
+  );
+}
+
 /**
- * One click: find the 16v17 ties, show who won, rewrite Shield/Bowl qualifier rows.
+ * After correct 16v17 results exist: rewrite Shield/Bowl qualifier rows.
  */
 async function fixShieldBowlQualifiers() {
   setStatus(

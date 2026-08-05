@@ -31,13 +31,15 @@
         <div id="genPlayoffStatus" class="status-line"></div>
       </div>
       <div class="card">
-        <h2>Fix Shield / Bowl qualifiers</h2>
+        <h2>Fix Shield / Bowl (16th vs 17th)</h2>
         <p class="note">
-          One click: reads the real Championship <b>16th vs 17th</b> playoff results, shows who won,
-          and writes the correct Shield winner / Bowl loser (replacing bad rows like mid-table clubs).
+          If the “16v17” ties were played by the wrong clubs (e.g. mid-table), use
+          <b>Rebuild 16v17 from final table</b> first — that sets the ties to the real
+          16th vs 17th. Play those two matches, then <b>Write Shield/Bowl qualifiers</b>.
         </p>
         <div class="row">
-          <button id="compSyncSbQualBtn" class="button" style="background:#336699;">Fix Shield/Bowl from 16v17 results</button>
+          <button id="compRebuildSbBtn" class="button" style="background:#990000;">Rebuild 16v17 from final table</button>
+          <button id="compSyncSbQualBtn" class="button" style="background:#336699;">Write Shield/Bowl qualifiers from results</button>
         </div>
         <div id="compSyncSbQualStatus" class="status-line"></div>
         <div class="row" style="margin-top:12px;">
@@ -56,6 +58,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fixtures-playoffs.js?v=20260806-sb-fix"></script>
+  <script type="module" src="admin_fixtures-playoffs.js?v=20260806-sb-rebuild"></script>
 </body>
 </html>
