@@ -31,9 +31,16 @@
         <div id="genPlayoffStatus" class="status-line"></div>
       </div>
       <div class="card">
-        <h2>Manual Shield / Bowl qualifiers</h2>
-        <p class="note">Fallback if prestige 16v17 was decided outside auto fixtures. Prefer playing the generated Shield/Bowl ties.</p>
+        <h2>Fix Shield / Bowl qualifiers</h2>
+        <p class="note">
+          One click: reads the real Championship <b>16th vs 17th</b> playoff results, shows who won,
+          and writes the correct Shield winner / Bowl loser (replacing bad rows like mid-table clubs).
+        </p>
         <div class="row">
+          <button id="compSyncSbQualBtn" class="button" style="background:#336699;">Fix Shield/Bowl from 16v17 results</button>
+        </div>
+        <div id="compSyncSbQualStatus" class="status-line"></div>
+        <div class="row" style="margin-top:12px;">
           <select id="compPlayoffDiv">
             <option value="championship_a">Championship A</option>
             <option value="championship_b">Championship B</option>
@@ -43,12 +50,12 @@
             <option value="shield_playoff_winner">Shield playoff winner</option>
             <option value="bowl_playoff_loser">Bowl playoff loser</option>
           </select>
-          <button id="compSavePlayoffBtn" class="button">Save qualifier</button>
+          <button id="compSavePlayoffBtn" class="button">Save qualifier (manual fallback)</button>
         </div>
         <div id="compPlayoffStatus" class="status-line"></div>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_fixtures-playoffs.js"></script>
+  <script type="module" src="admin_fixtures-playoffs.js?v=20260806-sb-fix"></script>
 </body>
 </html>
