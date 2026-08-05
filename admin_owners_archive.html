@@ -26,14 +26,22 @@
           History is retained. Unarchive before linking them to a club again.
         </p>
         <div class="row">
-          <div><input id="archiveOwnerEmail" placeholder="Owner email"></div>
-          <div><input id="archiveOwnerNote" placeholder="Optional note"></div>
+          <div>
+            <label for="archiveOwnerSelect">Owner</label>
+            <select id="archiveOwnerSelect">
+              <option value="">Loading owners…</option>
+            </select>
+          </div>
+          <div>
+            <label for="archiveOwnerNote">Optional note</label>
+            <input id="archiveOwnerNote" placeholder="Optional note">
+          </div>
         </div>
         <button id="archiveOwnerBtn" class="button secondary">Archive owner</button>
         <div id="archiveOwnerStatus" class="status-line"></div>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_owners.js"></script>
+  <script type="module" src="admin_owners.js?v=20260805-archive-select"></script>
 </body>
 </html>

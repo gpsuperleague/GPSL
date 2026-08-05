@@ -23,7 +23,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   const needsAuctionConfig = !!document.getElementById("clubAuctionRegisterBtn");
   const needsOwnerList =
     !!document.getElementById("updateOwnerSelect") ||
-    !!document.getElementById("tagOwnerSelect");
+    !!document.getElementById("tagOwnerSelect") ||
+    !!document.getElementById("archiveOwnerSelect");
   const needsWaitingList = !!document.getElementById("wlAdminTableWrap");
   const needsClubOwnerRemove = !!document.getElementById("clubOwnersTableWrap");
 
@@ -73,17 +74,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 async function loadOwnerList() {
   const dropdown = document.getElementById("updateOwnerSelect");
   const tagDropdown = document.getElementById("tagOwnerSelect");
+  const archiveDropdown = document.getElementById("archiveOwnerSelect");
 
   const owners = await fetchAdminOwnerRows();
   if (!owners.length) {
-    const errHtml = `<option>Error loading owners</option>`;
+    const errHtml = `<option value="">Error loading owners</option>`;
     if (dropdown) dropdown.innerHTML = errHtml;
     if (tagDropdown) tagDropdown.innerHTML = errHtml;
+    if (archiveDropdown) archiveDropdown.innerHTML = errHtml;
     return;
   }
 
   if (dropdown) dropdown.innerHTML = "";
   if (tagDropdown) tagDropdown.innerHTML = "";
+  if (archiveDropdown) {
+    archiveDropdown.innerHTML = `<option value="">Select owner…</option>`;
+  }
 
   const statusLabel = (row) => {
     if (row.clubShortName) return row.clubShortName;
@@ -119,6 +125,14 @@ async function loadOwnerList() {
       tagOption.textContent = formatTagOptionLabel(shortName, row.email, currentTag);
       if (currentTag) tagOption.dataset.currentTag = currentTag;
       tagDropdown.appendChild(tagOption);
+    }
+
+    if (archiveDropdown) {
+      const archiveOption = document.createElement("option");
+      archiveOption.value = row.email;
+      archiveOption.dataset.ownerId = row.id;
+      archiveOption.textContent = formatTagOptionLabel(shortName, row.email, currentTag);
+      archiveDropdown.appendChild(archiveOption);
     }
   });
 
@@ -551,15 +565,20 @@ async function bulkRemoveClubOwners({ addToWaitingList }) {
 }
 
 async function archiveOwner() {
-  const email = document.getElementById("archiveOwnerEmail")?.value?.trim();
+  const select = document.getElementById("archiveOwnerSelect");
+  const email =
+    select?.value?.trim() ||
+    document.getElementById("archiveOwnerEmail")?.value?.trim() ||
+    "";
   const note = document.getElementById("archiveOwnerNote")?.value?.trim() || null;
-  if (!email) {
-    setStatus("archiveOwnerStatus", "Enter owner email.", false);
+  const label = select?.selectedOptions?.[0]?.textContent?.trim() || email;
+  if (!email || email.includes("Error")) {
+    setStatus("archiveOwnerStatus", "Select an owner.", false);
     return;
   }
   if (
     !confirm(
-      `Archive ${email}?\n\nThey will be detached from club and nation. Unarchive before linking a club again.`
+      `Archive ${label}?\n\nThey will be detached from club and nation. Unarchive before linking a club again.`
     )
   ) {
     return;
@@ -578,6 +597,9 @@ async function archiveOwner() {
     `✅ Archived ${data?.owner_tag || email} (was ${data?.club_short_name || "club"})`,
     true
   );
+  if (document.getElementById("archiveOwnerNote")) {
+    document.getElementById("archiveOwnerNote").value = "";
+  }
   await loadOwnerList();
 }
 
