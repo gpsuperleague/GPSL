@@ -1,6 +1,7 @@
 import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
 import { formatMoney } from "./competition.js";
 import { loadClubsMap, displayClubName } from "./clubs_lookup.js";
+import { normalizeSearchText } from "./search_normalize.js";
 import { NXGN_DEFAULT_SOURCE_URL, nxgnSearchQueries } from "./nextgen_nxgn_2026.js";
 
 const FETCH_FUNCTION = "nextgen-goal-fetch";
@@ -30,13 +31,7 @@ function parsePlayerIds(raw) {
 }
 
 function normalizeName(s) {
-  return String(s || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normalizeSearchText(s);
 }
 
 function scoreNameMatch(query, playerName) {
@@ -53,29 +48,64 @@ function scoreNameMatch(query, playerName) {
   return 0;
 }
 
+function mapPlayerRows(rows) {
+  return (rows || []).map((r) => ({
+    player_id: String(r.player_id ?? r.Konami_ID),
+    player_name: r.player_name ?? r.Name,
+    position: r.position ?? r.Position,
+    age: r.age ?? r.Age,
+    rating: r.rating ?? r.Rating,
+    club: r.club ?? r.Contracted_Team,
+    nation: r.nation ?? r.Nation,
+  }));
+}
+
+/** Accent-tolerant GPDB search (Joao ↔ João) via name_search_key. */
 async function searchGpdb(query) {
-  const { data, error } = await supabase.rpc("admin_gpdb_search_players_for_exclusion", {
-    p_query: query,
-    p_limit: 15,
-  });
-  if (error) {
-    const { data: rows, error: err2 } = await supabase
+  const raw = String(query || "").trim();
+  const norm = normalizeSearchText(raw);
+  if (norm.length < 2 && raw.length < 2) return [];
+
+  // Prefer accent-folded column used by GPDB
+  if (norm.length >= 2) {
+    const { data, error } = await supabase
       .from("Players")
       .select("Konami_ID, Name, Position, Age, Rating, Contracted_Team, Nation")
-      .ilike("Name", `%${query}%`)
+      .ilike("name_search_key", `%${norm}%`)
+      .order("Rating", { ascending: false, nullsFirst: false })
       .limit(15);
-    if (err2) throw error;
-    return (rows || []).map((r) => ({
-      player_id: String(r.Konami_ID),
-      player_name: r.Name,
-      position: r.Position,
-      age: r.Age,
-      rating: r.Rating,
-      club: r.Contracted_Team,
-      nation: r.Nation,
-    }));
+    if (!error && Array.isArray(data) && data.length) {
+      return mapPlayerRows(data);
+    }
+    // Column missing or RLS — fall through
+    if (error && !String(error.message || "").includes("name_search_key")) {
+      // keep trying other paths
+    }
   }
-  return Array.isArray(data) ? data : [];
+
+  const { data, error } = await supabase.rpc("admin_gpdb_search_players_for_exclusion", {
+    p_query: raw || norm,
+    p_limit: 15,
+  });
+  if (!error && Array.isArray(data) && data.length) {
+    return mapPlayerRows(data);
+  }
+
+  // Last resort: plain Name ilike + client-side accent filter
+  const { data: rows, error: err2 } = await supabase
+    .from("Players")
+    .select("Konami_ID, Name, Position, Age, Rating, Contracted_Team, Nation")
+    .ilike("Name", `%${raw || norm}%`)
+    .limit(40);
+  if (err2) {
+    if (error) throw error;
+    throw err2;
+  }
+  const mapped = mapPlayerRows(rows);
+  if (!norm) return mapped.slice(0, 15);
+  return mapped
+    .filter((r) => normalizeSearchText(r.player_name).includes(norm))
+    .slice(0, 15);
 }
 
 async function resolveNxgnEntry(entry) {

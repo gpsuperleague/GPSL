@@ -38,7 +38,6 @@ export const NAV_SECTIONS = [
     label: "My Club",
     items: [
       { href: "boardroom.html", label: "Boardroom", page: "boardroom" },
-      { href: "nextgen_youth.html", label: "Next Gen Youth", page: "nextgen_youth" },
       { href: "club_details.html", label: "Club Details", page: "club_details" },
       { href: "owner_details.html", label: "Owner Details", page: "owner_details" },
       { href: "finances.html", label: "Finances", page: "finances" },
@@ -170,6 +169,12 @@ export const NAV_SECTIONS = [
         indent: true,
         auctionNav: "special",
         requiresSpecialAuction: true,
+      },
+      {
+        href: "nextgen_youth.html",
+        label: "Next Gen Youth",
+        page: "nextgen_youth",
+        indent: true,
       },
       { heading: true, label: "Managers" },
       {
