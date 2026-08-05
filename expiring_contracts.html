@@ -194,8 +194,33 @@
       cursor:pointer;
     }
     #bidModal .bid-step-btn:hover { background:#3a3a3a; border-color:#777; }
-    #bidModal .bid-step-btn.bid-step-minus { color:#f99; border-color:#633; }
-    #bidModal .bid-step-btn.bid-step-plus { color:#9d9; border-color:#363; }
+    #bidModal .bid-modal-hint {
+      font-size:12px;
+      color:#aaa;
+      line-height:1.45;
+      margin:0 0 14px;
+    }
+    #bidModal .bid-modal-hint dl {
+      margin:0 0 10px;
+      display:grid;
+      grid-template-columns:auto 1fr;
+      gap:4px 12px;
+    }
+    #bidModal .bid-modal-hint dt {
+      color:#888;
+      margin:0;
+    }
+    #bidModal .bid-modal-hint dd {
+      margin:0;
+      color:#ddd;
+      font-weight:bold;
+    }
+    #bidModal .bid-modal-hint ul {
+      margin:0;
+      padding-left:18px;
+      color:#999;
+    }
+    #bidModal .bid-modal-hint li { margin:2px 0; }
   </style>
 </head>
 <body>
@@ -294,7 +319,7 @@
   <div id="bidModal">
     <div class="modal-inner">
       <h3 id="bidModalTitle" style="color:#ff9900;margin-top:0;">Wage bid</h3>
-      <p id="bidModalHint" style="font-size:12px;color:#aaa;"></p>
+      <div id="bidModalHint" class="bid-modal-hint"></div>
       <label>Wage offer (₿)</label>
       <input type="text" id="bidWageInput" inputmode="numeric">
       <div class="bid-step-row" id="bidStepRow" aria-label="Adjust wage offer">
@@ -311,6 +336,6 @@
     </div>
   </div>
 
-  <script type="module" src="expiring_contracts.js?v=20260805-wage-steps"></script>
+  <script type="module" src="expiring_contracts.js?v=20260805-modal-tidy"></script>
 </body>
 </html>

@@ -569,9 +569,18 @@ function openBidModal(row) {
   bidMinOffer = Number.isFinite(minOffer) ? minOffer : 0;
 
   document.getElementById("bidModalTitle").textContent = `Bid — ${row.player_name}`;
-  document.getElementById("bidModalHint").textContent =
-    `Current wage ${formatWage(row.current_wage)}. Minimum offer ${formatWage(minOffer)} (+${uplift}% or more). ` +
-    `Any whole ₿ amount at or above the minimum. Your bid is locked once submitted and cannot be changed. Bids stay hidden until season rollover.`;
+  document.getElementById("bidModalHint").innerHTML = `
+    <dl>
+      <dt>Current wage</dt>
+      <dd>${formatWage(row.current_wage)}</dd>
+      <dt>Minimum offer</dt>
+      <dd>${formatWage(minOffer)} <span style="font-weight:normal;color:#999;">(+${uplift}%)</span></dd>
+    </dl>
+    <ul>
+      <li>Bid any whole ₿ amount at or above the minimum</li>
+      <li>Locked once submitted — cannot be changed</li>
+      <li>Bids stay hidden until season rollover</li>
+    </ul>`;
   document.getElementById("bidWageInput").value = formatWageInputValue(minOffer);
   document.getElementById("bidWageInput").disabled = false;
   document.getElementById("bidSubmitBtn").disabled = false;
