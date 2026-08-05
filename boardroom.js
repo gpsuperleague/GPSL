@@ -160,21 +160,61 @@ function formatDealRecord(data) {
   return `${h} hit · ${m} miss (this deal)`;
 }
 
+function escapeXml(text) {
+  return String(text ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** Fit club name onto the boardroom crest plaque. */
+function setBoardCrestName(clubLabel) {
+  const textEl = document.getElementById("boardCrestName");
+  const plate = document.getElementById("boardCrestPlate");
+  if (!textEl) return;
+
+  const name = String(clubLabel || "Club").trim() || "Club";
+  const len = name.length;
+  let fontSize = 14;
+  if (len > 22) fontSize = 9;
+  else if (len > 16) fontSize = 11;
+  else if (len > 12) fontSize = 12;
+
+  // Widen plaque a little for long names
+  if (plate) {
+    if (len > 18) {
+      plate.setAttribute("x", "80");
+      plate.setAttribute("width", "240");
+    } else if (len > 12) {
+      plate.setAttribute("x", "95");
+      plate.setAttribute("width", "210");
+    } else {
+      plate.setAttribute("x", "110");
+      plate.setAttribute("width", "180");
+    }
+  }
+
+  textEl.setAttribute("font-size", String(fontSize));
+  textEl.textContent = name;
+}
+
 function renderHeroStats({ clubLabel, tier, managerName }) {
+  setBoardCrestName(clubLabel);
   const el = document.getElementById("heroStats");
   if (!el) return;
   el.innerHTML = `
     <div class="board-stat">
       <div class="label">Club</div>
-      <div class="value">${clubLabel || "—"}</div>
+      <div class="value">${escapeXml(clubLabel) || "—"}</div>
     </div>
     <div class="board-stat">
       <div class="label">Tier</div>
-      <div class="value">${tier || "—"}</div>
+      <div class="value">${escapeXml(tier) || "—"}</div>
     </div>
     <div class="board-stat">
       <div class="label">Manager</div>
-      <div class="value">${managerName || "Vacant"}</div>
+      <div class="value">${escapeXml(managerName) || "Vacant"}</div>
     </div>
   `;
 }
@@ -484,9 +524,12 @@ async function initBoardroom() {
 
   pageClubShort = club.ShortName;
   const clubLabel = fullClubName(club.ShortName) || club.Club || club.ShortName;
+  setBoardCrestName(clubLabel);
+  const title = document.getElementById("boardTitle");
+  if (title) title.textContent = `${clubLabel} Boardroom`;
   const tagline = document.getElementById("boardTagline");
   if (tagline) {
-    tagline.textContent = `${clubLabel} — expectations & manager deal`;
+    tagline.textContent = `Expectations & manager deal`;
   }
 
   wireManagerActions();
