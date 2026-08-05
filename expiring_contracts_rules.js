@@ -2,6 +2,7 @@
  * Expiring Contracts — owner-facing rules copy (modular cards).
  */
 import { expiryWageMinUpliftPct } from "./wages.js";
+import { renderRulesPanel } from "./gpsl_rules_cards.js";
 
 /** Champ→SL expiry signing-on fee as % of market value (paid to the player). */
 export const CHAMP_SL_SIGNING_FEE_PCT = 15;
@@ -52,23 +53,5 @@ export function renderExpiringContractRules(rootEl) {
     rootEl ||
     document.getElementById("expiringRules") ||
     document.querySelector(".info-box");
-  if (!root) return;
-
-  const { title, cards } = getExpiringContractRules();
-  root.innerHTML = `
-    <h2>${title}</h2>
-    <div class="rules-grid">
-      ${cards
-        .map(
-          (card) => `
-        <section class="rules-card">
-          <h3>${card.heading}</h3>
-          <ul>
-            ${card.items.map((item) => `<li>${item}</li>`).join("")}
-          </ul>
-        </section>`
-        )
-        .join("")}
-    </div>
-  `;
+  renderRulesPanel(root, getExpiringContractRules());
 }

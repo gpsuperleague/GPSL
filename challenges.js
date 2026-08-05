@@ -1,6 +1,7 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, fullClubName, clubPageHref } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
+import { renderChallengesIntro } from "./challenges_rules.js";
 
 let standingsData = null;
 let myClubShort = null;
@@ -49,6 +50,7 @@ function phaseWindowOpen(progressItems, phase) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  renderChallengesIntro();
   await initGlobal();
   await loadClubsMap();
 

@@ -1,4 +1,5 @@
 import { initGlobal, supabase, getAuthUserFast } from "./global.js";
+import { renderMedicalRoomIntros } from "./medical_room_rules.js";
 
 let state = null;
 
@@ -394,6 +395,7 @@ async function applyToken(injuryId, pickValue = null) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  renderMedicalRoomIntros();
   await initGlobal();
   const user = await getAuthUserFast();
   if (!user) {

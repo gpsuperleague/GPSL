@@ -18,6 +18,7 @@ import {
 import { playerNameLinkHtml, playerThumbLinkHtml } from "./player_links.js";
 import { parseMoneyInput, wireMoneyBidInput } from "./money_input.js";
 import { renderHonoursHtml } from "./player_career_medals.js";
+import { renderBlindGauntletRules } from "./special_auction_gauntlet_rules.js";
 
 let state = null;
 let auctionId = null;
@@ -534,6 +535,7 @@ async function submitBid() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  renderBlindGauntletRules();
   await initGlobal();
   await loadClubsMap();
   const user = await getAuthUserFast();

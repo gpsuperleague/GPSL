@@ -6,8 +6,11 @@ import {
   renderLeagueLoans,
 } from "./central_bank_common.js?v=20260720-loan-20mo";
 import { loadGpslBankPublic, loadLeagueLoans } from "./competition.js";
+import { renderCentralBankLoansIntro } from "./central_bank_loans_rules.js";
 
 document.addEventListener("DOMContentLoaded", async () => {
+  renderCentralBankLoansIntro();
+
   const ctx = await initBankPage();
   if (!ctx) return;
 

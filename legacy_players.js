@@ -5,6 +5,7 @@ import {
   playerThumbLinkHtml,
   playerNameLinkHtml,
 } from "./player_links.js";
+import { renderLegacyPlayersRules } from "./legacy_players_rules.js";
 
 function escapeHtml(text) {
   return String(text ?? "")
@@ -27,6 +28,7 @@ function formatLegacySince(iso) {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  renderLegacyPlayersRules();
   await initGlobal();
   await loadClubsMap();
 

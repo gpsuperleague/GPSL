@@ -5,7 +5,7 @@ import {
   expiryWageMinUpliftPct,
   minExpiryWageOffer,
 } from "./wages.js";
-import { renderExpiringContractRules } from "./expiring_contracts_rules.js?v=20260804-signing-15pct";
+import { renderExpiringContractRules } from "./expiring_contracts_rules.js?v=20260805-shared";
 
 const POSITION_ORDER = [
   "GK", "LB", "CB", "RB",

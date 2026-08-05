@@ -36,6 +36,7 @@ import {
   clubNationFilterValues,
   renderNationFlag,
 } from "./international.js";
+import { renderTransferMarketRules } from "./all_listings_rules.js";
 
 // Use global Supabase client (created in all_listings.html)
 const supabase = window.supabase;
@@ -141,6 +142,8 @@ function parseMoneyInput(value) {
 // MODULE A: AUTH + INITIAL LOAD (SUPABASE)
 // ======================================================
 (async function init() {
+  renderTransferMarketRules();
+
   const {
     data: { user },
     error: userError,

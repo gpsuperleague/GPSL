@@ -1,0 +1,96 @@
+/* Shared owner-facing rules panels (info-box + modular cards). */
+
+.info-box {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  padding: 16px 18px 18px;
+  margin: 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 1100px;
+  color: #ccc;
+}
+
+.info-box > h2,
+.info-box .rules-title {
+  margin: 0 0 12px;
+  color: #ff9900;
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.info-box .rules-lead {
+  margin: 0 0 12px;
+  color: #bbb;
+}
+
+.info-box .rules-lead:last-child {
+  margin-bottom: 0;
+}
+
+.rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px 14px;
+}
+
+.rules-card {
+  background: #151515;
+  border: 1px solid #2e2e2e;
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+
+.rules-card h3 {
+  margin: 0 0 8px;
+  color: #ffcc66;
+  font-size: 13px;
+  font-weight: bold;
+  letter-spacing: 0.02em;
+}
+
+.rules-card ul,
+.info-box > ul.rules-bullets {
+  margin: 0;
+  padding-left: 1.1em;
+}
+
+.rules-card li,
+.info-box > ul.rules-bullets li {
+  margin-bottom: 6px;
+  color: #bbb;
+}
+
+.rules-card li:last-child,
+.info-box > ul.rules-bullets li:last-child {
+  margin-bottom: 0;
+}
+
+.rules-card b,
+.info-box b {
+  color: #eee;
+  font-weight: 600;
+}
+
+.info-box a {
+  color: #ff9900;
+}
+
+/* Transfer market page: full-width panel under the toolbar */
+.info-box.info-box--wide {
+  width: 90%;
+  max-width: 1220px;
+  margin: 0 auto 16px auto;
+}
+
+/* Legacy accent rail */
+.info-box.info-box--accent {
+  border-left: 4px solid #c90;
+}
+
+.info-box.info-box--accent > h2,
+.info-box.info-box--accent .rules-title {
+  color: #fc8;
+  font-size: 16px;
+}

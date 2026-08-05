@@ -10,6 +10,7 @@
   <title>Draft Auction</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260805-rules">
 
   <style>
     body {
@@ -54,21 +55,6 @@
       font-size:13px;
       color:#ccc;
       margin:0 20px 10px 20px;
-    }
-
-    .info-box {
-      background:#1a1a1a;
-      border:1px solid #333;
-      padding:15px;
-      margin:20px;
-      border-radius:8px;
-      font-size:13px;
-      line-height:1.5;
-    }
-
-    .info-box b {
-      color:#ff9900;
-      font-size:14px;
     }
 
     .important-notice {
@@ -632,15 +618,8 @@
     <a href="GPDB.html" class="button gpdb-notice-btn" style="margin-top:10px;">Go to GPDB — earn credits</a>
   </div>
 
-  <div class="info-box">
-    <b>Draft Rules</b><br>
-    • Earn credits by being the first to bid on a free agent in GPDB<br>
-    • Joining an existing draft auction costs <b>1 credit</b><br>
-    • No bids by 6pm → no bids after 6pm<br>
-    • No free agent bids after 6pm<br>
-    • All rules are based on <b>UK time</b>, but times you see are in <b>your local time</b><br>
-    • Click <b>☆</b> on a row to save a thread — saved auctions appear at the top here and in <b>Transfer Centre → Saved Draft Auctions</b><br>
-    • Use filters above the table for name, club, your bids, scouting targets, nation / position / playstyle, and age / rating / bid / wage ranges
+  <div class="info-box" id="draftAuctionRules" aria-label="Draft auction rules">
+    <!-- Filled by draftauction_rules.js -->
   </div>
 
   <div class="draft-filters" role="search" aria-label="Filter draft auctions">
@@ -787,6 +766,7 @@
     import { initGlobal, loadGlobalSettings } from "./global.js";
     import { mountClubBankBalance } from "./club_bank_balance_ui.js";
     import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
+    import { renderDraftAuctionRules } from "./draftauction_rules.js";
     import {
       supabase,
       getUKNow,
@@ -1113,6 +1093,8 @@
        ============================================================ */
 
     document.addEventListener("DOMContentLoaded", async () => {
+      renderDraftAuctionRules();
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         window.location = "login.html";

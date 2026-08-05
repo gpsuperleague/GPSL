@@ -10,6 +10,7 @@
   <title>GPSL Transfer Market</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260805-rules">
 
   <style>
     body {
@@ -391,66 +392,6 @@ a.button:hover, button.button:hover {
       background: #555;
     }
 
-    .info-box {
-      width: 90%;
-      max-width: 1220px;
-      margin: 0 auto 16px auto;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      padding: 16px 18px 18px;
-      border-radius: 8px;
-      font-size: 13px;
-      line-height: 1.45;
-      color: #ccc;
-    }
-
-    .info-box > h2 {
-      margin: 0 0 12px;
-      color: #ff9900;
-      font-size: 15px;
-      font-weight: bold;
-    }
-
-    .rules-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 12px 14px;
-    }
-
-    .rules-card {
-      background: #151515;
-      border: 1px solid #2e2e2e;
-      border-radius: 6px;
-      padding: 12px 14px;
-    }
-
-    .rules-card h3 {
-      margin: 0 0 8px;
-      color: #ffcc66;
-      font-size: 13px;
-      font-weight: bold;
-      letter-spacing: 0.02em;
-    }
-
-    .rules-card ul {
-      margin: 0;
-      padding-left: 1.1em;
-    }
-
-    .rules-card li {
-      margin-bottom: 6px;
-      color: #bbb;
-    }
-
-    .rules-card li:last-child {
-      margin-bottom: 0;
-    }
-
-    .rules-card b {
-      color: #eee;
-      font-weight: 600;
-    }
-
     table.gpsl-table {
       width: 90%;
       max-width: 1220px;
@@ -799,35 +740,8 @@ a.button:hover, button.button:hover {
     </div>
   </div>
 
-  <div class="info-box">
-    <h2>Transfer market rules</h2>
-    <div class="rules-grid">
-      <section class="rules-card">
-        <h3>Listing &amp; bidding</h3>
-        <ul>
-          <li>Runs at least <b>24 hours</b>, until the later of that or <b>7pm UK</b>.</li>
-          <li>First bid ≥ <b>market value</b> (Value column).</li>
-          <li>Later bids ≥ highest + <b>₿500,000</b> (and still ≥ market value).</li>
-          <li><b>Direct offers</b> (GPDB → Make Offer) also ≥ market value; seller reviews in Transfer Centre.</li>
-        </ul>
-      </section>
-      <section class="rules-card">
-        <h3>When time ends</h3>
-        <ul>
-          <li><b>Reserve met</b> → highest bidder wins automatically.</li>
-          <li><b>Reserve not met</b> (with bids) → seller has <b>24 hours</b> to accept or reject (Seller review).</li>
-          <li><b>No bids</b> → listing closes; player stays with seller.</li>
-        </ul>
-      </section>
-      <section class="rules-card">
-        <h3>Extra time &amp; clocks</h3>
-        <ul>
-          <li>Bid in final <b>2 hours</b> → +<b>1 hour</b> once.</li>
-          <li>Then bid in final <b>5 minutes</b> → +<b>5 minutes</b> (can repeat).</li>
-          <li>Countdown shows time left, <b>UK end</b>, and <b>your local</b> time. Settlement follows shortly after zero.</li>
-        </ul>
-      </section>
-    </div>
+  <div class="info-box info-box--wide" id="transferMarketRules" aria-label="Transfer market rules">
+    <!-- Filled by all_listings_rules.js -->
   </div>
 
   <div class="listing-filters" role="search" aria-label="Filter transfer listings">
@@ -1038,7 +952,7 @@ a.button:hover, button.button:hover {
   <script type="module" src="clubs_lookup.js"></script>
 
   <!-- ALL LISTINGS LOGIC -->
-  <script type="module" src="all_listings.js?v=20260804-my-club"></script>
+  <script type="module" src="all_listings.js?v=20260805-rules"></script>
 
 </body>
 </html>

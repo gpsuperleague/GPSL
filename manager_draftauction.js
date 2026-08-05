@@ -21,6 +21,7 @@ import { formatMoney } from "./competition.js";
 import { managerListCellHtml, loadManagerPortraitManifest } from "./manager_images.js";
 import { mountClubBankBalance } from "./club_bank_balance_ui.js";
 import { downloadIcs, auctionWindowEvents } from "./calendar_ics.js";
+import { renderManagerDraftAuctionRules } from "./manager_draftauction_rules.js";
 
 let buyerShortName = null;
 let managerDraftEnabled = false;
@@ -283,6 +284,8 @@ function wireTable() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  renderManagerDraftAuctionRules();
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -9,6 +9,7 @@
   <title>Manager Draft Auction</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260805-rules">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     h1 { margin:20px; color:#ff9900; }
@@ -25,10 +26,6 @@
       padding:14px 16px; margin:0 20px 16px; border-radius:8px; font-size:13px; line-height:1.55;
     }
     .important-notice a { color:#ffcc66; font-weight:bold; }
-    .info-box {
-      background:#1a1a1a; border:1px solid #333; padding:15px; margin:20px;
-      border-radius:8px; font-size:13px; line-height:1.5;
-    }
     .bid-btn {
       padding:6px 12px; border-radius:4px; border:none; font-weight:bold; cursor:pointer;
     }
@@ -76,12 +73,8 @@
     Same start time as the <a href="draftauction.html">player draft auction</a> (Day 1 7pm UK) — but <b>no 6pm cutoff</b>.
   </div>
 
-  <div class="info-box">
-    <b>Rules</b> (UK time, shown locally on countdown)<br>
-    • Bidding stays open until the <b>6:50pm UK random window</b> on Day 2<br>
-    • You may hold the <b>highest bid on only one</b> manager auction at a time<br>
-    • Get outbid elsewhere, or wait for that auction to settle, before leading another<br>
-    • Settles after evening transfer auctions, same as players
+  <div class="info-box" id="managerDraftAuctionRules" aria-label="Manager draft auction rules">
+    <!-- Filled by manager_draftauction_rules.js -->
   </div>
 
   <div class="panel" style="margin:20px;">
@@ -103,6 +96,6 @@
   </div>
 
   <script type="module" src="global.js?v=20260722-bank-bal-row"></script>
-  <script type="module" src="manager_draftauction.js?v=20260728-ics"></script>
+  <script type="module" src="manager_draftauction.js?v=20260805-rules"></script>
 </body>
 </html>
