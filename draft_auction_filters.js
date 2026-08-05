@@ -131,10 +131,10 @@ export function createDraftAdvancedFilterController(opts = {}) {
       .map(
         (o) => `
       <label class="multi-filter-option">
+        <span>${escapeHtml(o.label)}</span>
         <input type="checkbox" value="${escapeAttr(o.value)}" ${
           selected.has(o.value) ? "checked" : ""
         }>
-        <span>${escapeHtml(o.label)}</span>
       </label>`
       )
       .join("");

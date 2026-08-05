@@ -109,15 +109,31 @@
     }
     .filter-bar .multi-filter-option {
       display:flex;
+      flex-direction:row;
       align-items:center;
-      gap:8px;
-      padding:5px 10px;
+      justify-content:space-between;
+      gap:10px;
+      padding:6px 10px;
       font-size:12px;
       color:#ddd;
       cursor:pointer;
     }
     .filter-bar .multi-filter-option:hover { background:#222; }
-    .filter-bar .multi-filter-option input { margin:0; min-width:0; }
+    .filter-bar .multi-filter-option span {
+      flex:1 1 auto;
+      text-align:left;
+      min-width:0;
+    }
+    .filter-bar .multi-filter-option input[type="checkbox"] {
+      margin:0;
+      min-width:16px;
+      width:16px;
+      height:16px;
+      padding:0;
+      flex:0 0 auto;
+      appearance:auto;
+      -webkit-appearance:checkbox;
+    }
     .range-filter {
       display:flex; flex-direction:column; gap:4px;
       min-width:168px; max-width:220px; font-size:12px; color:#ffaa22;
@@ -348,6 +364,6 @@
     </div>
   </div>
 
-  <script type="module" src="expiring_contracts.js?v=20260805-filter-inline"></script>
+  <script type="module" src="expiring_contracts.js?v=20260805-opt-row"></script>
 </body>
 </html>

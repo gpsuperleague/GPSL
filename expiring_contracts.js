@@ -6,7 +6,7 @@ import {
   minExpiryWageOffer,
 } from "./wages.js?v=20260805-nbsp";
 import { renderExpiringContractRules } from "./expiring_contracts_rules.js?v=20260805-shared";
-import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260805-multi";
+import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260805-opt-row";
 import { textMatchesSearch } from "./search_normalize.js";
 
 const POSITION_ORDER = [
