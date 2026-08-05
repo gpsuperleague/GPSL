@@ -27,7 +27,7 @@ import {
   loadScoutingTargetMap,
   isScoutingAvailable,
   scoutingSetupHint,
-} from "./scouting_targets.js";
+} from "./scouting_targets.js?v=20260805-owner-scout";
 import { mountClubBankBalance } from "./club_bank_balance_ui.js";
 import {
   loadMyNation,

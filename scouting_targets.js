@@ -1,7 +1,7 @@
-// GPDB scouting shortlist — tiered targets per club
+// Owner scouting shortlist — tiered targets + tactic board (follows the owner)
 
 const SQL_SETUP_HINT =
-  "Run supabase/sql/patches/club_scouting_targets.sql in the Supabase SQL Editor, then reload.";
+  "Run supabase/sql/patches/owner_scouting_persist.sql in the Supabase SQL Editor (after club_scouting_targets.sql), then reload.";
 
 export const SCOUTING_TIER_LABELS = {
   1: "Top targets",
@@ -17,8 +17,10 @@ function isScoutingSchemaMissingError(error) {
   if (error.code === "PGRST205" || error.code === "42P01") return true;
   const msg = String(error.message || "");
   return (
+    msg.includes("owner_scouting_targets") ||
     msg.includes("club_scouting_targets") ||
-    msg.includes("scouting_toggle_target")
+    msg.includes("scouting_toggle_target") ||
+    msg.includes("owner_scouting_planner")
   );
 }
 
@@ -34,13 +36,25 @@ export function scoutingStarChar(isScouted) {
   return isScouted ? "★" : "☆";
 }
 
-export async function loadScoutingTargets(supabase, clubShortName) {
-  if (!clubShortName) return [];
+async function currentOwnerId(supabase) {
+  const { data, error } = await supabase.auth.getUser();
+  if (error) throw error;
+  return data?.user?.id || null;
+}
+
+/**
+ * Load the signed-in owner's scouting shortlist.
+ * @param {*} supabase
+ * @param {string} [_clubShortName] ignored — kept for call-site compatibility
+ */
+export async function loadScoutingTargets(supabase, _clubShortName) {
+  const ownerId = await currentOwnerId(supabase);
+  if (!ownerId) return [];
 
   const { data, error } = await supabase
-    .from("club_scouting_targets")
+    .from("owner_scouting_targets")
     .select("player_id, tier, sort_order, created_at")
-    .eq("club_id", clubShortName)
+    .eq("owner_id", ownerId)
     .order("tier")
     .order("sort_order")
     .order("created_at");
@@ -110,21 +124,26 @@ export async function setScoutingTargetTier(supabase, playerId, tier) {
   return data;
 }
 
-export async function loadScoutingPlannerState(supabase, clubShortName) {
-  if (!clubShortName) {
+/**
+ * @param {*} supabase
+ * @param {string} [_clubShortName] ignored — kept for call-site compatibility
+ */
+export async function loadScoutingPlannerState(supabase, _clubShortName) {
+  const ownerId = await currentOwnerId(supabase);
+  if (!ownerId) {
     return { pitchLayout: null, rows: [] };
   }
 
   const [layoutRes, rowsRes] = await Promise.all([
     supabase
-      .from("club_scouting_planner")
+      .from("owner_scouting_planner")
       .select("pitch_layout")
-      .eq("club_short_name", clubShortName)
+      .eq("owner_id", ownerId)
       .maybeSingle(),
     supabase
-      .from("club_scouting_planner_player")
+      .from("owner_scouting_planner_player")
       .select("player_id, slot_kind, pitch_slot, sort_order")
-      .eq("club_short_name", clubShortName)
+      .eq("owner_id", ownerId)
       .order("slot_kind")
       .order("sort_order"),
   ]);

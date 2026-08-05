@@ -15,7 +15,7 @@ import {
   toggleScoutingTarget,
   loadScoutingPlannerState,
   saveScoutingPlanner,
-} from "./scouting_targets.js";
+} from "./scouting_targets.js?v=20260805-owner-scout";
 import { initMatchdaySquadPanel } from "./matchday_squad.js";
 import {
   loadScoutingDraftContext,

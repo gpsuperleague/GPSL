@@ -42,7 +42,7 @@ import {
   SCOUTING_TIER_LABELS,
   isScoutingAvailable,
   scoutingSetupHint,
-} from "./scouting_targets.js";
+} from "./scouting_targets.js?v=20260805-owner-scout";
 import { playerNameLinkHtml } from "./player_links.js";
 import { loadCurrentSeasonStart } from "./finance_transfers.js";
 import { formatTimeRemainingHtml, getCountdownParts } from "./countdown_display.js";

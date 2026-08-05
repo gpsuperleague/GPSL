@@ -87,7 +87,7 @@ import {
   toggleScoutingTarget,
   scoutingStarChar,
   isScoutingAvailable,
-} from "./scouting_targets.js";
+} from "./scouting_targets.js?v=20260805-owner-scout";
 
 let draftAuctionStartTime = null;
 let draftJoinWindowEnd = null;

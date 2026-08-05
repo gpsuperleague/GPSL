@@ -1,6 +1,9 @@
 -- =============================================================================
--- GPDB scouting targets (per club) — tiered shortlists + tactic planner
--- Run once in Supabase SQL Editor. UI: scouting.html, GPDB ☆, Transfer Centre
+-- GPDB scouting targets (legacy club-scoped) — superseded for writes by
+-- owner_scouting_persist.sql (owner-scoped tables + RPCs).
+-- Keep for one-time migrate / historical rows. New installs: run this, then
+-- owner_scouting_persist.sql.
+-- UI: scouting.html, GPDB ☆, Transfer Centre
 -- Requires: my_club_shortname() from special_auctions.sql
 -- =============================================================================
 
