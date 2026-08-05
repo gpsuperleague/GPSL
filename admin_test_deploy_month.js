@@ -229,32 +229,36 @@ async function runDeploy() {
     });
 
     if (error) {
+      const errText = [error.message, error.details, error.hint]
+        .filter(Boolean)
+        .join(" — ");
       const timedOut = /statement timeout|canceling statement|Timed out|57014/i.test(
-        error.message || ""
+        errText || ""
       );
       const needsPatch =
-        error.message.includes("p_limit") ||
-        error.message.includes("admin_testing_deploy_month_results") ||
-        error.message.includes("seed_month_discipline");
+        /p_limit|admin_testing_deploy_month_results|seed_month_discipline|Could not find the function|PGRST202|42883/i.test(
+          errText || ""
+        );
 
       if (timedOut && timeoutRetries < MAX_TIMEOUT_RETRIES) {
         timeoutRetries += 1;
         setStatus(
           "deployStatus",
           `Timed out — retrying in 2s (${timeoutRetries}/${MAX_TIMEOUT_RETRIES}). ` +
-            `If this keeps happening, run admin_testing_deploy_month_one_at_a_time.sql in Supabase.`
+            `If this keeps happening, run fix_list_expiring_and_deploy_month_500.sql in Supabase.`
         );
         await sleep(2000);
         continue;
       }
 
+      console.error("admin_testing_deploy_month_results failed:", error);
       setStatus(
         "deployStatus",
         timedOut
-          ? "❌ Timed out repeatedly — run supabase/sql/patches/admin_testing_deploy_month_one_at_a_time.sql in Supabase, hard-refresh this page, then retry. Already-played fixtures stay deployed."
+          ? "❌ Timed out repeatedly — run supabase/sql/patches/fix_list_expiring_and_deploy_month_500.sql in Supabase, hard-refresh, retry."
           : needsPatch
-            ? "❌ Run admin_testing_deploy_month_one_at_a_time.sql in Supabase, then retry."
-            : error.message,
+            ? `❌ RPC missing/ambiguous — run supabase/sql/patches/fix_list_expiring_and_deploy_month_500.sql then hard-refresh.\n${errText}`
+            : `❌ ${errText || "Deploy failed (HTTP 500)"}`,
         false
       );
       await runPreview();
