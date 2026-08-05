@@ -105,7 +105,8 @@ async function resolveNxgnEntry(entry) {
     if (bestScore >= 80) break;
   }
 
-  return { entry, hit: bestScore >= 50 ? best : null, score: bestScore };
+  // Require a solid name match — weak last-name-only hits hide "missing" wrongly
+  return { entry, hit: bestScore >= 70 ? best : null, score: bestScore };
 }
 
 function sourceUrlInput() {
@@ -169,93 +170,154 @@ function renderList(data) {
     .join("");
 }
 
+function persistMatchReview() {
+  try {
+    if (!matchResults.length) {
+      sessionStorage.removeItem("nxgn_match_review");
+      return;
+    }
+    sessionStorage.setItem(
+      "nxgn_match_review",
+      JSON.stringify({ sourceUrl: matchSourceUrl, results: matchResults })
+    );
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function restoreMatchReview() {
+  try {
+    const raw = sessionStorage.getItem("nxgn_match_review");
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.results) || !parsed.results.length) return false;
+    matchResults = parsed.results;
+    matchSourceUrl = String(parsed.sourceUrl || "");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function renderMatchReport() {
   const el = document.getElementById("matchReport");
+  const card = document.getElementById("matchCard");
+  const summary = document.getElementById("matchSummary");
   if (!el) return;
 
   if (!matchResults.length) {
     el.innerHTML = "";
+    if (card) card.hidden = true;
+    if (summary) summary.textContent = "Fetch a Goal NXGN list to review matches here.";
     return;
   }
+
+  if (card) card.hidden = false;
 
   const matched = matchResults.filter((r) => r.hit);
   const missing = matchResults.filter((r) => !r.hit);
   const sourceUrl = matchSourceUrl || sourceUrlInput()?.value || "#";
 
-  el.innerHTML = `
-    <p class="note" style="margin:0 0 10px;">
-      Matched <b>${matched.length}</b> / ${matchResults.length} from
+  // Unmatched first (by Goal rank), then matched
+  const orderedIdx = [
+    ...matchResults
+      .map((r, i) => ({ r, i }))
+      .filter((x) => !x.r.hit)
+      .sort((a, b) => (a.r.entry.rank || 0) - (b.r.entry.rank || 0)),
+    ...matchResults
+      .map((r, i) => ({ r, i }))
+      .filter((x) => x.r.hit)
+      .sort((a, b) => (a.r.entry.rank || 0) - (b.r.entry.rank || 0)),
+  ];
+
+  if (summary) {
+    summary.innerHTML = `Matched <b>${matched.length}</b> / ${matchResults.length} from
       <a href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener" style="color:#ff9900;">Goal list</a>.
       ${
         missing.length
-          ? `<span style="color:#e88;">${missing.length} still missing — search GPDB on the right and click a player to attach.</span>`
-          : "All found."
+          ? `<span class="nxgn-status-miss">${missing.length} unmatched</span> listed first — search GPDB and click <b>Use</b> to attach.`
+          : `<span class="nxgn-status-ok">All matched.</span>`
       }
-    </p>
-    ${
-      missing.length
-        ? `<div class="nxgn-missing-wrap">
-            <table class="gpsl-table nxgn-missing-table">
-              <thead>
-                <tr>
-                  <th style="width:42%;">Missing from Goal</th>
-                  <th>Manual GPDB match</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${missing
-                  .map((r) => {
-                    const idx = matchResults.indexOf(r);
-                    const defaultQ = escapeHtml(r.entry.name || "");
-                    return `
-                  <tr data-match-idx="${idx}">
-                    <td>
-                      <b>#${escapeHtml(r.entry.rank)}</b>
-                      ${escapeHtml(r.entry.name)}
-                      <div class="muted">${escapeHtml(r.entry.club || "—")}</div>
-                    </td>
-                    <td>
-                      <div class="nxgn-manual-row">
-                        <input
-                          type="search"
-                          class="nxgn-manual-q"
-                          data-match-idx="${idx}"
-                          value="${defaultQ}"
-                          placeholder="Search GPDB name…"
-                          autocomplete="off"
-                        />
-                        <button type="button" class="button secondary nxgn-manual-search" data-match-idx="${idx}">
-                          Search
-                        </button>
-                      </div>
-                      <div class="nxgn-manual-hits muted" data-hits-for="${idx}">Type a name and Search.</div>
-                    </td>
-                  </tr>`;
-                  })
-                  .join("")}
-              </tbody>
-            </table>
-          </div>`
-        : ""
-    }
-    ${
-      matched.length
-        ? `<details style="margin-top:10px;">
-            <summary class="muted" style="cursor:pointer;">Show ${matched.length} auto-matched</summary>
-            <ul class="muted" style="margin:8px 0 0;padding-left:18px;">
-              ${matched
-                .map(
-                  (r) =>
-                    `<li>#${r.entry.rank} ${escapeHtml(r.entry.name)} → <b>${escapeHtml(
-                      r.hit.player_name
-                    )}</b> (<code>${escapeHtml(r.hit.player_id)}</code>)</li>`
-                )
-                .join("")}
-            </ul>
-          </details>`
-        : ""
-    }
+      This panel stays until you fetch again.`;
+  }
+
+  el.innerHTML = `
+    <div class="nxgn-missing-wrap">
+      <table class="gpsl-table nxgn-missing-table">
+        <thead>
+          <tr>
+            <th style="width:8%;">Status</th>
+            <th style="width:28%;">Goal name</th>
+            <th>GPDB match</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${orderedIdx
+            .map(({ r, i: idx }) => {
+              if (!r.hit) {
+                const defaultQ = escapeHtml(r.entry.name || "");
+                return `
+              <tr class="nxgn-row-miss" data-match-idx="${idx}">
+                <td><span class="nxgn-status-miss">Missing</span></td>
+                <td>
+                  <b>#${escapeHtml(r.entry.rank)}</b> ${escapeHtml(r.entry.name)}
+                  <div class="muted">${escapeHtml(r.entry.club || "—")}</div>
+                </td>
+                <td>
+                  <div class="nxgn-manual-row">
+                    <input
+                      type="search"
+                      class="nxgn-manual-q"
+                      data-match-idx="${idx}"
+                      value="${defaultQ}"
+                      placeholder="Search GPDB name…"
+                      autocomplete="off"
+                    />
+                    <button type="button" class="button secondary nxgn-manual-search" data-match-idx="${idx}">
+                      Search
+                    </button>
+                  </div>
+                  <div class="nxgn-manual-hits muted" data-hits-for="${idx}">Type a name and Search.</div>
+                </td>
+              </tr>`;
+              }
+              const club = r.hit.club ? displayClubName(r.hit.club) || r.hit.club : "—";
+              return `
+              <tr class="nxgn-row-ok" data-match-idx="${idx}">
+                <td><span class="nxgn-status-ok">Matched</span></td>
+                <td>
+                  <b>#${escapeHtml(r.entry.rank)}</b> ${escapeHtml(r.entry.name)}
+                  <div class="muted">${escapeHtml(r.entry.club || "—")}</div>
+                </td>
+                <td>
+                  <b>${escapeHtml(r.hit.player_name)}</b>
+                  <span class="muted"> · ${escapeHtml(club)} · <code>${escapeHtml(r.hit.player_id)}</code></span>
+                  <div class="nxgn-manual-row" style="margin-top:6px;">
+                    <input
+                      type="search"
+                      class="nxgn-manual-q"
+                      data-match-idx="${idx}"
+                      value="${escapeHtml(r.entry.name || "")}"
+                      placeholder="Change match…"
+                      autocomplete="off"
+                    />
+                    <button type="button" class="button secondary nxgn-manual-search" data-match-idx="${idx}">
+                      Re-search
+                    </button>
+                    <button type="button" class="button secondary nxgn-clear-match" data-match-idx="${idx}">
+                      Clear
+                    </button>
+                  </div>
+                  <div class="nxgn-manual-hits muted" data-hits-for="${idx}"></div>
+                </td>
+              </tr>`;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
   `;
+  persistMatchReview();
 }
 
 function applyManualMatch(idx, hit) {
@@ -276,6 +338,20 @@ function applyManualMatch(idx, hit) {
   setStatus(
     "listStatus",
     `Attached ${hit.player_name}. ${ids.length}/${matchResults.length} IDs ready — Refresh when done.`,
+    true
+  );
+}
+
+function clearManualMatch(idx) {
+  const row = matchResults[idx];
+  if (!row) return;
+  row.hit = null;
+  row.score = 0;
+  const ids = syncIdsFromMatches();
+  renderMatchReport();
+  setStatus(
+    "listStatus",
+    `Cleared match. ${ids.length}/${matchResults.length} IDs ready.`,
     true
   );
 }
@@ -349,6 +425,11 @@ function wireMatchReportEvents() {
         rating: pick.dataset.rating,
         nation: pick.dataset.nation,
       });
+      return;
+    }
+    const clearBtn = e.target.closest(".nxgn-clear-match");
+    if (clearBtn) {
+      clearManualMatch(Number(clearBtn.dataset.matchIdx));
       return;
     }
     const searchBtn = e.target.closest(".nxgn-manual-search");
@@ -458,13 +539,15 @@ async function refreshList(ids) {
 
   const ta = document.getElementById("playerIds");
   if (ta) delete ta.dataset.dirty;
-  matchResults = [];
-  matchSourceUrl = "";
-  renderMatchReport();
+  // Keep Goal match review (incl. unmatched) so admin can still see who was missing
+  persistMatchReview();
   await reloadList();
+  const stillMissing = matchResults.filter((r) => !r.hit).length;
   setStatus(
     "listStatus",
-    `✅ Refreshed ${data?.season_label || "season"}: ${data?.player_count ?? 0} on list (added ${data?.added ?? 0}, removed ${data?.removed ?? 0}, recalculated ${data?.recalculated ?? 0}).`,
+    `✅ Refreshed ${data?.season_label || "season"}: ${data?.player_count ?? 0} on list (added ${data?.added ?? 0}, removed ${data?.removed ?? 0}, recalculated ${data?.recalculated ?? 0}).${
+      stillMissing ? ` ${stillMissing} Goal names still unmatched in the review panel above.` : ""
+    }`,
     true
   );
 }
@@ -545,7 +628,7 @@ async function fetchAndMatchFromUrl() {
   const ids = matchResults.filter((r) => r.hit);
   setStatus(
     "listStatus",
-    `Loaded ${ids.length}/${matchResults.length} Konami IDs. Fix missing rows below, then Refresh Next Gen list.`,
+    `Loaded ${ids.length}/${matchResults.length} Konami IDs. Unmatched (Missing) rows are listed first in the review table — search and attach, then Refresh.`,
     ids.length > 0
   );
 }
@@ -576,6 +659,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("fetchNxgnBtn")?.addEventListener("click", () => fetchAndMatchFromUrl());
 
   try {
+    if (restoreMatchReview()) {
+      syncIdsFromMatches();
+      renderMatchReport();
+    }
     await reloadList();
   } catch (e) {
     setStatus("listStatus", e.message || String(e), false);

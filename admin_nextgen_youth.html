@@ -21,8 +21,12 @@
     table.gpsl-table th, table.gpsl-table td { border:1px solid #333; padding:8px; text-align:left; }
     table.gpsl-table th { background:#222; color:#ff9900; }
     .status-line { margin-top:10px; font-size:13px; }
-    .nxgn-missing-wrap { overflow:auto; max-height:420px; border:1px solid #333; }
+    .nxgn-missing-wrap { overflow:auto; max-height:560px; border:1px solid #333; }
     .nxgn-missing-table { margin-top:0; }
+    .nxgn-row-miss td { background:#1a1010; }
+    .nxgn-row-ok td { background:#101610; }
+    .nxgn-status-miss { color:#e88; font-weight:600; }
+    .nxgn-status-ok { color:#8c8; font-weight:600; }
     .nxgn-manual-row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
     .nxgn-manual-q {
       flex:1; min-width:140px; box-sizing:border-box;
@@ -66,13 +70,17 @@
           </button>
         </div>
         <p class="muted" style="margin:0 0 10px;">
-          Paste the latest Goal NXGN article URL when it changes, save it, then fetch.
-          Requires edge function <code>nextgen-goal-fetch</code>
-          (see <code>scripts/README_nextgen_goal_fetch.md</code>) and
-          <code>patches/nextgen_youth_source_url.sql</code>.
-          Unmatched names appear below with a GPDB search to attach manually.
+          Paste the latest Goal NXGN article URL when it changes, then fetch.
+          Unmatched names appear in the review table below (red <b>Missing</b> rows) with a GPDB search.
+          Requires <code>nextgen-goal-fetch</code> + <code>nextgen_youth_source_url.sql</code>.
         </p>
-        <div id="matchReport" style="margin-bottom:10px;"></div>
+
+        <div class="card" id="matchCard" hidden style="margin:0 0 14px;background:#161616;">
+          <h2 style="margin-top:0;">Goal list match review</h2>
+          <p class="note" id="matchSummary">Fetch a Goal NXGN list to review matches here.</p>
+          <div id="matchReport"></div>
+        </div>
+
         <label for="playerIds" class="muted">Konami IDs — one per line (or comma / space separated)</label>
         <textarea id="playerIds" placeholder="e.g.&#10;45234&#10;89102"></textarea>
         <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
@@ -106,6 +114,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_nextgen_youth.js?v=20260805-nxgn-manual"></script>
+  <script type="module" src="admin_nextgen_youth.js?v=20260805-nxgn-review2"></script>
 </body>
 </html>
