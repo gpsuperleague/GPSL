@@ -38,25 +38,19 @@
       </header>
 
       <!-- How to read the sheet -->
-      <aside class="fin-accounts-guide footer-note" aria-label="How to read season accounts">
-        Same structure as the classic Excel workbook.
-        <b>Posted</b> = total already on your balance (ledger this season);
-        <b>Breakdown</b> = individual posted amounts per type;
-        <b>Running total</b> = season opening + posted lines so far;
-        <b>Pending</b> = known future income/costs not yet posted (upcoming gates, wages, maintenance, etc.).
-        Footer shows <b>projected balance</b>.
+      <aside class="fin-accounts-guide footer-note" id="finAccountsGuide" aria-label="How to read season accounts">
+        <!-- Filled by finances_rules.js -->
       </aside>
 
       <!-- Excel-style workbook (sections injected by JS) -->
       <div id="financeSections" class="fin-accounts-workbook"></div>
 
-      <footer class="legend fin-accounts-legend">
-        Posted — = nothing on ledger yet &nbsp;|&nbsp; Pending — = no forecast for that line yet &nbsp;|&nbsp;
-        green/red = income / cost
+      <footer class="legend fin-accounts-legend" id="finAccountsLegend">
+        <!-- Filled by finances_rules.js -->
       </footer>
     </main>
   </div>
 
-  <script type="module" src="finances_accounts.js?v=20260804-loan-catchup"></script>
+  <script type="module" src="finances_accounts.js?v=20260805-rules"></script>
 </body>
 </html>

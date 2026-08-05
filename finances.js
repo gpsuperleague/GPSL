@@ -16,6 +16,7 @@ import {
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
 } from "./finance_page_common.js?v=20260804-loan-catchup";
+import { renderFinancesOverviewNotes } from "./finances_rules.js";
 
 function setAdvisoryBudgetDisplay(advisory, { historical = false } = {}) {
   const el = document.getElementById("advisoryTransferBudget");
@@ -193,6 +194,7 @@ async function loadFinancesForClub(shortName, clubLabel, { adminPreview = false 
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
+  renderFinancesOverviewNotes();
   await initGlobal();
 
   const {
