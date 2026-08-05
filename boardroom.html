@@ -7,7 +7,7 @@
   <title>Boardroom — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
-  <link rel="stylesheet" href="boardroom.css?v=20260805-boardroom">
+  <link rel="stylesheet" href="boardroom.css?v=20260805-finances">
 </head>
 <body class="boardroom-page">
   <div id="nav"></div>
@@ -67,6 +67,15 @@
       <div class="board-agenda" id="boardAgenda"></div>
     </section>
 
+    <section class="board-panel" id="boardFinancePanel">
+      <h2>Finances</h2>
+      <p class="board-intro" id="boardFinanceIntro"><!-- Filled by boardroom_rules.js --></p>
+      <div class="board-finance-grid" id="boardFinanceGrid">
+        <p class="board-meta">Loading…</p>
+      </div>
+      <div class="board-rating" id="boardFinanceRating" hidden></div>
+    </section>
+
     <div class="board-grid">
       <section class="board-panel" id="expectationPanel">
         <h2>Club expectations</h2>
@@ -113,6 +122,6 @@
     </section>
   </main>
 
-  <script type="module" src="boardroom.js?v=20260805-subsidies"></script>
+  <script type="module" src="boardroom.js?v=20260805-finances"></script>
 </body>
 </html>

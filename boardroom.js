@@ -8,9 +8,18 @@ import {
   refreshNavListingIndicators,
 } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
-import { formatMoney } from "./competition.js";
+import { formatMoney, loadClubLoans } from "./competition.js";
 import { loadCalendarStatus } from "./competition_calendar.js";
-import { renderBoardroomIntro } from "./boardroom_rules.js";
+import { loadClubWageBillSummary } from "./club_wage_bill.js";
+import { computeAdvisoryTransferBudget } from "./finance_advisory_budget.js";
+import {
+  loadFinanceSeasonContext,
+  resolveFinanceSeasonView,
+} from "./finance_page_common.js";
+import {
+  computeBoardFinanceRating,
+  renderBoardroomIntro,
+} from "./boardroom_rules.js";
 
 let pageClubShort = null;
 
@@ -353,6 +362,149 @@ async function loadSubsidyStatus(clubShortName) {
   renderSubsidyGrid(data, null);
 }
 
+function moneyClass(n) {
+  const v = Number(n) || 0;
+  if (v > 0.5) return "positive";
+  if (v < -0.5) return "negative";
+  return "muted";
+}
+
+function renderBoardFinanceSection({
+  balance,
+  wages,
+  transferBudget,
+  projected,
+  loansOutstanding,
+  loanCount,
+  advisory,
+}) {
+  const grid = document.getElementById("boardFinanceGrid");
+  const ratingEl = document.getElementById("boardFinanceRating");
+  if (!grid) return;
+
+  const wageHint =
+    wages?.players != null
+      ? `Players ${formatMoney(wages.players)} · Manager ${formatMoney(wages.manager)}`
+      : "";
+  const transferHint = advisory?.runwayNegative
+    ? `Runway ${formatMoney(advisory.raw)} — spend shown as ₿0`
+    : advisory?.bidExposure > 0.5
+      ? `${advisory.bidCount} winning bid${advisory.bidCount === 1 ? "" : "s"} (−${formatMoney(advisory.bidExposure)})`
+      : "Ops forecast excl. transfers";
+  const loanHint =
+    loanCount > 0
+      ? `${loanCount} open loan${loanCount === 1 ? "" : "s"}`
+      : "No open Central Bank loans";
+
+  grid.innerHTML = `
+    <a class="board-finance-stat" href="finances.html">
+      <div class="label">Balance</div>
+      <div class="value ${moneyClass(balance)}">${formatMoney(balance)}</div>
+      <span class="hint">Current spendable cash →</span>
+    </a>
+    <a class="board-finance-stat" href="finances.html">
+      <div class="label">Wage bill</div>
+      <div class="value muted">${formatMoney(wages?.total ?? 0)}</div>
+      <span class="hint">${wageHint || "Seasonal players + manager"} →</span>
+    </a>
+    <a class="board-finance-stat" href="transfer_center.html">
+      <div class="label">Transfer budget</div>
+      <div class="value ${moneyClass(transferBudget)}">${formatMoney(transferBudget)}</div>
+      <span class="hint">${transferHint} →</span>
+    </a>
+    <a class="board-finance-stat" href="finances_accounts.html">
+      <div class="label">Projected EOS</div>
+      <div class="value ${moneyClass(projected)}">${formatMoney(projected)}</div>
+      <span class="hint">Balance + pending forecasts →</span>
+    </a>
+    <a class="board-finance-stat" href="central_bank_counter.html">
+      <div class="label">Loans</div>
+      <div class="value ${loansOutstanding > 0.5 ? "negative" : "muted"}">${formatMoney(loansOutstanding)}</div>
+      <span class="hint">${loanHint} →</span>
+    </a>
+  `;
+
+  const rating = computeBoardFinanceRating({
+    balance,
+    projected,
+    wages: wages?.total ?? 0,
+    loansOutstanding,
+    transferBudget,
+  });
+
+  if (ratingEl) {
+    ratingEl.hidden = false;
+    ratingEl.innerHTML = `
+      <div class="board-rating-grade ${rating.className}" title="Score ${rating.score}/100">${rating.grade}</div>
+      <div class="board-rating-copy">
+        <p class="title">Board finance rating — ${rating.label}</p>
+        <p class="detail">${rating.detail}</p>
+      </div>
+    `;
+  }
+
+  return rating;
+}
+
+async function loadBoardFinanceSection(clubShortName) {
+  const grid = document.getElementById("boardFinanceGrid");
+  try {
+    const seasonView = await resolveFinanceSeasonView(supabase, clubShortName);
+    const [data, wageBill, loans] = await Promise.all([
+      loadFinanceSeasonContext(supabase, clubShortName, { seasonView }),
+      loadClubWageBillSummary(supabase, clubShortName).catch((err) => {
+        console.warn("boardroom wage bill:", err);
+        return { players: 0, manager: 0, total: 0 };
+      }),
+      loadClubLoans(supabase).catch((err) => {
+        console.warn("boardroom loans:", err);
+        return [];
+      }),
+    ]);
+
+    if (data?.missingArchive) {
+      if (grid) grid.innerHTML = `<p class="board-meta">Finance snapshot unavailable.</p>`;
+      return null;
+    }
+
+    const openLoans = (loans || []).filter(
+      (l) => Number(l.outstanding_principal || 0) > 0.5
+    );
+    const loansOutstanding = openLoans.reduce(
+      (s, l) => s + Number(l.outstanding_principal || 0),
+      0
+    );
+
+    let advisory = null;
+    try {
+      advisory = await computeAdvisoryTransferBudget(supabase, clubShortName, {
+        balanceNow: data.balanceNow,
+        byLine: data.byLine,
+        pendingByLine: data.pendingByLine,
+        bidExposure: data.bidExposure,
+      });
+    } catch (err) {
+      console.warn("boardroom advisory budget:", err);
+    }
+
+    return renderBoardFinanceSection({
+      balance: data.balanceNow,
+      wages: wageBill,
+      transferBudget: advisory?.spendable ?? 0,
+      projected: data.projectedBalance,
+      loansOutstanding,
+      loanCount: openLoans.length,
+      advisory,
+    });
+  } catch (err) {
+    console.warn("boardroom finances:", err);
+    if (grid) {
+      grid.innerHTML = `<p class="board-meta">${escapeXml(err.message || "Could not load finances.")}</p>`;
+    }
+    return null;
+  }
+}
+
 async function isManagerListSackWindow() {
   try {
     const { data, error } = await supabase.rpc("manager_list_sack_window_open");
@@ -595,7 +747,7 @@ async function initBoardroom() {
   if (title) title.textContent = `${clubLabel} Boardroom`;
   const tagline = document.getElementById("boardTagline");
   if (tagline) {
-    tagline.textContent = `Expectations & manager deal`;
+    tagline.textContent = `Finances · expectations · manager deal · subsidies`;
   }
 
   wireManagerActions();
@@ -604,6 +756,7 @@ async function initBoardroom() {
     loadExpectationSection(club.ShortName),
     loadManagerSection(club.ShortName),
     loadSubsidyStatus(club.ShortName),
+    loadBoardFinanceSection(club.ShortName),
   ]);
 
   renderHeroStats({

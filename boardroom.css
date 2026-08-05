@@ -302,3 +302,93 @@ body.boardroom-page {
   color: #9c9;
   margin-top: 8px;
 }
+
+.board-finance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.board-finance-stat {
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid #3d2c20;
+  border-radius: 8px;
+  padding: 12px 14px;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+}
+
+a.board-finance-stat:hover {
+  border-color: #c4a35a;
+}
+
+.board-finance-stat .label {
+  font-size: 11px;
+  color: #8a7a6a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.board-finance-stat .value {
+  font-size: 18px;
+  font-weight: bold;
+  color: #e8d5a3;
+}
+
+.board-finance-stat .value.positive { color: #9c9; }
+.board-finance-stat .value.negative { color: #e88; }
+.board-finance-stat .value.muted { color: #888; font-size: 16px; }
+
+.board-finance-stat .hint {
+  display: block;
+  font-size: 11px;
+  color: #777;
+  margin-top: 4px;
+}
+
+.board-rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid #5a4030;
+  border-radius: 8px;
+}
+
+.board-rating-grade {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 28px;
+  font-weight: bold;
+  min-width: 2.2em;
+  text-align: center;
+}
+
+.board-rating-grade.excellent { color: #9c9; }
+.board-rating-grade.strong { color: #b8d98a; }
+.board-rating-grade.sound { color: #e8d5a3; }
+.board-rating-grade.fragile { color: #e8a87c; }
+.board-rating-grade.distressed { color: #e88; }
+
+.board-rating-copy {
+  flex: 1;
+  min-width: 180px;
+}
+
+.board-rating-copy .title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  color: #e8d5a3;
+}
+
+.board-rating-copy .detail {
+  margin: 0;
+  font-size: 12px;
+  color: #888;
+  line-height: 1.45;
+}
