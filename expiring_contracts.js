@@ -51,6 +51,7 @@ const RANGE_ACTIVE = {
 let myClubShort = null;
 let marketRows = [];
 let bidTarget = null;
+let bidMinOffer = 0;
 
 const multiFilters = createDraftAdvancedFilterController({
   rootId: "expiryMultiFilters",
@@ -490,9 +491,32 @@ function parseWageInputValue(raw) {
   return Number.isFinite(n) ? n : NaN;
 }
 
+function adjustBidWage(delta) {
+  const input = document.getElementById("bidWageInput");
+  if (!input || input.disabled) return;
+  const current = parseWageInputValue(input.value);
+  const base = Number.isFinite(current) && current > 0 ? current : bidMinOffer;
+  const next = Math.max(bidMinOffer || 0, Math.round(base + Number(delta)));
+  input.value = formatWageInputValue(next);
+  const errEl = document.getElementById("bidModalError");
+  if (errEl) errEl.textContent = "";
+}
+
 function wireBidModal() {
   document.getElementById("bidCancelBtn").onclick = closeBidModal;
   document.getElementById("bidSubmitBtn").onclick = submitBid;
+
+  const stepRow = document.getElementById("bidStepRow");
+  if (stepRow && stepRow.dataset.wired !== "1") {
+    stepRow.dataset.wired = "1";
+    stepRow.addEventListener("click", (e) => {
+      const btn = e.target.closest(".bid-step-btn");
+      if (!btn) return;
+      const delta = Number(btn.dataset.delta);
+      if (!Number.isFinite(delta)) return;
+      adjustBidWage(delta);
+    });
+  }
 
   const input = document.getElementById("bidWageInput");
   if (!input || input.dataset.wired === "1") return;
@@ -542,6 +566,7 @@ function openBidModal(row) {
     row.min_wage_offer != null
       ? Number(row.min_wage_offer)
       : minExpiryWageOffer(row.current_wage, uplift);
+  bidMinOffer = Number.isFinite(minOffer) ? minOffer : 0;
 
   document.getElementById("bidModalTitle").textContent = `Bid — ${row.player_name}`;
   document.getElementById("bidModalHint").textContent =
@@ -557,6 +582,7 @@ function openBidModal(row) {
 function closeBidModal() {
   document.getElementById("bidModal").style.display = "none";
   bidTarget = null;
+  bidMinOffer = 0;
 }
 
 async function submitBid() {

@@ -174,9 +174,28 @@
       align-items:center; justify-content:center; z-index:100;
     }
     #bidModal .modal-inner {
-      background:#1a1a1a; border:1px solid #444; padding:20px; border-radius:8px; width:320px;
+      background:#1a1a1a; border:1px solid #444; padding:20px; border-radius:8px;
+      width:min(420px, 94vw);
     }
-    #bidModal input { width:100%; padding:8px; margin:10px 0; background:#111; color:#ddd; border:1px solid #444; }
+    #bidModal input { width:100%; padding:8px; margin:10px 0; background:#111; color:#ddd; border:1px solid #444; box-sizing:border-box; }
+    #bidModal .bid-step-row {
+      display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px;
+    }
+    #bidModal .bid-step-btn {
+      flex:1 1 auto;
+      min-width:4.8em;
+      padding:6px 4px;
+      font-size:11px;
+      font-weight:bold;
+      border-radius:4px;
+      border:1px solid #555;
+      background:#2a2a2a;
+      color:#ddd;
+      cursor:pointer;
+    }
+    #bidModal .bid-step-btn:hover { background:#3a3a3a; border-color:#777; }
+    #bidModal .bid-step-btn.bid-step-minus { color:#f99; border-color:#633; }
+    #bidModal .bid-step-btn.bid-step-plus { color:#9d9; border-color:#363; }
   </style>
 </head>
 <body>
@@ -278,12 +297,20 @@
       <p id="bidModalHint" style="font-size:12px;color:#aaa;"></p>
       <label>Wage offer (₿)</label>
       <input type="text" id="bidWageInput" inputmode="numeric">
+      <div class="bid-step-row" id="bidStepRow" aria-label="Adjust wage offer">
+        <button type="button" class="bid-step-btn bid-step-minus" data-delta="-100000">−100,000</button>
+        <button type="button" class="bid-step-btn bid-step-minus" data-delta="-10000">−10,000</button>
+        <button type="button" class="bid-step-btn bid-step-minus" data-delta="-1000">−1,000</button>
+        <button type="button" class="bid-step-btn bid-step-plus" data-delta="1000">+1,000</button>
+        <button type="button" class="bid-step-btn bid-step-plus" data-delta="10000">+10,000</button>
+        <button type="button" class="bid-step-btn bid-step-plus" data-delta="100000">+100,000</button>
+      </div>
       <p id="bidModalError" style="color:#f66;font-size:12px;"></p>
       <button type="button" id="bidSubmitBtn" class="button">Submit bid</button>
       <button type="button" id="bidCancelBtn" class="button" style="background:#444;margin-left:8px;">Cancel</button>
     </div>
   </div>
 
-  <script type="module" src="expiring_contracts.js?v=20260805-wage-commas"></script>
+  <script type="module" src="expiring_contracts.js?v=20260805-wage-steps"></script>
 </body>
 </html>
