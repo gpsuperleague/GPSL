@@ -76,7 +76,7 @@ function formatTargetProgress(row) {
   if (row?.pending_owner_renewal) {
     const hits = Number(row.deal_target_hits) || 0;
     return {
-      text: `Deal complete — renewal available (${hits} target hit${hits === 1 ? "" : "s"})`,
+      text: `Deal complete — renew by August (${hits} target hit${hits === 1 ? "" : "s"})`,
       className: "manager-target--on",
     };
   }
@@ -565,7 +565,7 @@ async function loadManagerSection(clubShortName) {
         <dt>Market value</dt><dd>${formatMoney(Number(data.market_value || 0))}</dd>
         <dt>Contract</dt><dd>${
           pendingRenewal
-            ? "Deal complete — renew to keep them"
+            ? "Deal complete — renew by August to keep them"
             : `${data.contract_seasons_remaining ?? 0} season(s) remaining`
         }</dd>
         <dt>Weekly wage</dt><dd>${formatMoney(Number(data.weekly_wage || 0))}</dd>
@@ -579,7 +579,7 @@ async function loadManagerSection(clubShortName) {
       </dl>
       ${
         pendingRenewal
-          ? `<p class="expectation-note">They hit their target in at least one season of the deal. Renew for another 2 seasons.</p>`
+          ? `<p class="expectation-note">They hit their target in at least one season of the deal. Renew for another 2 seasons by August, or they are released for market value.</p>`
           : `<p class="expectation-note">On target uses the live league table vs their deal target for this season. Final hit/miss is locked when you run Process manager contracts.</p>`
       }
     `;
@@ -602,7 +602,8 @@ async function loadManagerSection(clubShortName) {
 
   if (hintEl) {
     if (pendingRenewal) {
-      hintEl.textContent = "Renewal available — also shown on Squad.";
+      hintEl.textContent =
+        "Renewal available until August (also on Squad). Miss the deadline and they leave for market value.";
     } else if (!januaryWindow) {
       hintEl.textContent =
         "List for transfer and sack are available in June, July, and January (not August).";
@@ -634,7 +635,13 @@ function wireManagerActions() {
   if (renewBtn && !renewBtn.dataset.wired) {
     renewBtn.dataset.wired = "1";
     renewBtn.addEventListener("click", async () => {
-      if (!confirm("Renew manager for another 2-season deal?")) return;
+      if (
+        !confirm(
+          "Renew manager for another 2-season deal?\n\nIf you do not renew by August they are released for market value."
+        )
+      ) {
+        return;
+      }
       renewBtn.disabled = true;
       const ok = await renewManagerContract(hintEl);
       renewBtn.disabled = false;

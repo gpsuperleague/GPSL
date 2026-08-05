@@ -102,6 +102,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("compEndSeasonBtn").onclick = endCurrentSeason;
   document.getElementById("compArchiveSeasonBtn").onclick = archiveSeasonStats;
   document.getElementById("compManagerSeasonEndBtn").onclick = processManagerSeasonEnd;
+  const renewDeadlineBtn = document.getElementById("compManagerRenewalDeadlineBtn");
+  if (renewDeadlineBtn) {
+    renewDeadlineBtn.onclick = processManagerRenewalDeadline;
+  }
   document.getElementById("compSetupSeasonSelect").onchange = onCompSeasonSelected;
   document.getElementById("compSeedMovementsBtn").onclick = seedDivisionsFromMovements;
   document.getElementById("compSaveAssignBtn").onclick = saveCompetitionAssignments;
@@ -359,10 +363,52 @@ async function archiveSeasonStats() {
   );
 }
 
+async function processManagerRenewalDeadline() {
+  if (
+    !confirm(
+      "Process manager renewal deadline?\n\nReleases managers still awaiting owner renewal once August has ended (club receives market value). Safe to re-run."
+    )
+  ) {
+    return;
+  }
+
+  setStatus("compManagerRenewalDeadlineStatus", "Processing renewal deadline…");
+  const { data, error } = await supabase.rpc(
+    "manager_process_pending_renewal_deadline"
+  );
+
+  if (error) {
+    setStatus(
+      "compManagerRenewalDeadlineStatus",
+      error.message.includes("manager_process_pending_renewal_deadline")
+        ? "❌ Run manager_renewal_august_deadline.sql in Supabase, then retry."
+        : "❌ " + error.message,
+      false
+    );
+    return;
+  }
+
+  if (data?.skipped) {
+    setStatus(
+      "compManagerRenewalDeadlineStatus",
+      `⏭ Skipped — renewal window still open (${data.active_gpsl_month || data.locked_gpsl_month || "month unknown"}). Deadline fires when August ends.`,
+      true
+    );
+    return;
+  }
+
+  const released = Number(data?.released || 0);
+  setStatus(
+    "compManagerRenewalDeadlineStatus",
+    `✅ Renewal deadline done — ${released} manager(s) released for MV.`,
+    true
+  );
+}
+
 async function processManagerSeasonEnd() {
   if (
     !confirm(
-      "Process manager contracts for season end?\n\nTicks mid-deal seasons; at deal end offers owner renewal if they hit ≥1 target, or releases for MV with a 2-season rehire ban if they missed both."
+      "Process manager contracts for season end?\n\nTicks mid-deal seasons; at deal end offers owner renewal if they hit ≥1 target, or releases for MV with a 2-season rehire ban if they missed both. Unrenewed pending renewals past August are also released for MV."
     )
   ) {
     return;

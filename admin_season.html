@@ -158,8 +158,13 @@
             <div class="row" style="margin-top:16px;">
               <button id="compManagerSeasonEndBtn" class="button" style="background:#664422;">Process manager contracts (season end)</button>
             </div>
-            <p class="note">Runs 2-season deal evaluation (tick / renewal available / release + rehire ban). Requires <code>manager_two_season_deal_eval.sql</code>.</p>
+            <p class="note">Runs 2-season deal evaluation (tick / renewal available / release + rehire ban). Eligible renewals must be taken by August or the manager is released for MV. Requires <code>manager_two_season_deal_eval.sql</code> + <code>manager_renewal_august_deadline.sql</code>.</p>
             <div id="compManagerSeasonEndStatus" class="status-line"></div>
+            <div class="row" style="margin-top:12px;">
+              <button id="compManagerRenewalDeadlineBtn" class="button" style="background:#553311;">Process manager renewal deadline (August)</button>
+            </div>
+            <p class="note">Releases managers still on <b>pending renewal</b> once August has ended (or later catch-up). Also runs automatically on August month-lock. Safe to re-run.</p>
+            <div id="compManagerRenewalDeadlineStatus" class="status-line"></div>
             <div class="row" style="margin-top:16px;">
               <button id="compEndSeasonBtn" class="button" style="background:#990000;">End current season (Summer Break)</button>
             </div>
@@ -177,6 +182,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_season.js?v=20260804-auto-rollover"></script>
+  <script type="module" src="admin_season.js?v=20260805-mgr-renew-august"></script>
 </body>
 </html>

@@ -872,7 +872,7 @@ function renderSquadManagerBadge() {
   const rating = squadManagerState.managerRating ?? "—";
   const pending = squadManagerState.pendingOwnerRenewal;
   mainEl.textContent = pending
-    ? `Manager: ${squadManagerState.managerName} (rating ${rating}) · renewal available`
+    ? `Manager: ${squadManagerState.managerName} (rating ${rating}) · renew by August`
     : `Manager: ${squadManagerState.managerName} (rating ${rating}) · MV ${mv}`;
 
   if (renewBtn) {
@@ -2815,7 +2815,7 @@ function wireManagerRenewButtons() {
     }
     if (
       !window.confirm(
-        `Renew ${squadManagerState.managerName} for another 2-season deal?`
+        `Renew ${squadManagerState.managerName} for another 2-season deal?\n\nIf you do not renew by August they are released for market value.`
       )
     ) {
       return;
