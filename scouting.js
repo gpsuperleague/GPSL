@@ -55,6 +55,14 @@ const SCOUTING_POSITION_ORDER = [
   "CF",
 ];
 
+/** Same groups as squad.html — used inside each scouting tier. */
+const SCOUTING_POSITION_GROUPS = {
+  Goalkeepers: ["GK"],
+  Defenders: ["LB", "CB", "RB"],
+  Midfielders: ["DMF", "LMF", "CMF", "RMF", "AMF"],
+  Attackers: ["LW", "LWF", "SS", "RW", "RWF", "CF"],
+};
+
 const SCOUTING_POSITION_ALIASES = {
   LW: "LWF",
   RW: "RWF",
@@ -69,6 +77,15 @@ function scoutingPositionSortIndex(position) {
   const p = normalizeScoutingPosition(position);
   const i = SCOUTING_POSITION_ORDER.indexOf(p);
   return i >= 0 ? i : 999;
+}
+
+function scoutingPositionGroupName(position) {
+  const raw = String(position || "").trim().toUpperCase();
+  const norm = normalizeScoutingPosition(raw);
+  for (const [groupName, positions] of Object.entries(SCOUTING_POSITION_GROUPS)) {
+    if (positions.includes(raw) || positions.includes(norm)) return groupName;
+  }
+  return "Other";
 }
 
 function sortScoutingRowsByPosition(rows, playerMap) {
@@ -95,6 +112,73 @@ function sortPlayersByScoutingPosition(players) {
       sensitivity: "base",
     });
   });
+}
+
+function tierBalanceSummary(tierRows, playerMap) {
+  const counts = {
+    Goalkeepers: 0,
+    Defenders: 0,
+    Midfielders: 0,
+    Attackers: 0,
+    Other: 0,
+  };
+  for (const row of tierRows) {
+    const p = playerMap.get(String(row.player_id));
+    const g = scoutingPositionGroupName(p?.Position);
+    counts[g] = (counts[g] || 0) + 1;
+  }
+  const parts = [
+    `GK ${counts.Goalkeepers}`,
+    `Def ${counts.Defenders}`,
+    `Mid ${counts.Midfielders}`,
+    `Att ${counts.Attackers}`,
+  ];
+  if (counts.Other) parts.push(`Other ${counts.Other}`);
+  return parts.join(" · ");
+}
+
+function groupTierRowsByPosition(tierRows, playerMap) {
+  const grouped = Object.fromEntries(
+    Object.keys(SCOUTING_POSITION_GROUPS).map((name) => [name, []])
+  );
+  grouped.Other = [];
+
+  for (const row of tierRows) {
+    const p = playerMap.get(String(row.player_id));
+    const g = scoutingPositionGroupName(p?.Position);
+    if (!grouped[g]) grouped[g] = [];
+    grouped[g].push(row);
+  }
+
+  for (const name of Object.keys(grouped)) {
+    grouped[name] = sortScoutingRowsByPosition(grouped[name], playerMap);
+  }
+  return grouped;
+}
+
+function renderTierByPositionGroups(tier, tierRows, playerMap, draftUiByPlayer) {
+  if (!tierRows.length) {
+    return `<p class="scout-empty">No players — star targets in GPDB (☆).</p>`;
+  }
+
+  const grouped = groupTierRowsByPosition(tierRows, playerMap);
+  const groupNames = [...Object.keys(SCOUTING_POSITION_GROUPS), "Other"];
+
+  return groupNames
+    .filter((name) => name !== "Other" || (grouped.Other || []).length)
+    .map((groupName) => {
+      const rows = grouped[groupName] || [];
+      return `
+        <div class="scout-pos-group" data-pos-group="${groupName}">
+          <h4 class="scout-pos-heading">${groupName} (${rows.length})</h4>
+          ${
+            rows.length
+              ? renderTierTable(tier, rows, playerMap, draftUiByPlayer)
+              : `<p class="scout-empty scout-pos-empty">None in this tier</p>`
+          }
+        </div>`;
+    })
+    .join("");
 }
 
 function parseBidAmount(raw) {
@@ -337,10 +421,14 @@ async function renderScoutingLists() {
         scoutingRows.filter((r) => Number(r.tier) === tier),
         playerMap
       );
+      const balance = tierRows.length
+        ? `<div class="scout-tier-balance">${tierBalanceSummary(tierRows, playerMap)}</div>`
+        : "";
       return `
         <div class="tier-block" data-tier="${tier}">
           <h3>${SCOUTING_TIER_LABELS[tier]} (${tierRows.length})</h3>
-          ${renderTierTable(tier, tierRows, playerMap, draftUiByPlayer)}
+          ${balance}
+          ${renderTierByPositionGroups(tier, tierRows, playerMap, draftUiByPlayer)}
         </div>`;
     })
     .join("");
