@@ -9,6 +9,27 @@ import { renderExpiringContractRules } from "./expiring_contracts_rules.js?v=202
 import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260805-multi";
 import { textMatchesSearch } from "./search_normalize.js";
 
+const POSITION_ORDER = [
+  "GK",
+  "LB",
+  "CB",
+  "RB",
+  "DMF",
+  "LMF",
+  "CMF",
+  "RMF",
+  "AMF",
+  "LWF",
+  "SS",
+  "RWF",
+  "CF",
+];
+
+const POSITION_ALIASES = {
+  LW: "LWF",
+  RW: "RWF",
+};
+
 const RANGE_COLS = ["Rating", "Age"];
 const RANGE_DEFAULTS = {
   Rating: { min: 40, max: 99 },
@@ -307,6 +328,32 @@ function rebuildFilterOptions() {
   syncMyClubFilterBtn();
 }
 
+function positionSortIndex(position) {
+  const raw = String(position || "").trim().toUpperCase();
+  const p = POSITION_ALIASES[raw] || raw;
+  const i = POSITION_ORDER.indexOf(p);
+  return i >= 0 ? i : 999;
+}
+
+function sortMarketRows(rows) {
+  return [...rows].sort((a, b) => {
+    const ra = Number(a.rating);
+    const rb = Number(b.rating);
+    const aOk = Number.isFinite(ra);
+    const bOk = Number.isFinite(rb);
+    if (aOk && bOk && rb !== ra) return rb - ra; // highest rating first
+    if (aOk !== bOk) return aOk ? -1 : 1;
+    const pos =
+      positionSortIndex(a.position) - positionSortIndex(b.position);
+    if (pos !== 0) return pos;
+    return String(a.player_name || "").localeCompare(
+      String(b.player_name || ""),
+      "en",
+      { sensitivity: "base" }
+    );
+  });
+}
+
 function filteredRows() {
   const name = (document.getElementById("fName")?.value || "").trim();
   const club = document.getElementById("fClub")?.value || "";
@@ -314,7 +361,7 @@ function filteredRows() {
   const ratingActive = isRangeNarrowed("Rating") ? RANGE_ACTIVE.Rating : null;
   const ageActive = isRangeNarrowed("Age") ? RANGE_ACTIVE.Age : null;
 
-  return marketRows.filter((row) => {
+  const rows = marketRows.filter((row) => {
     if (name && !textMatchesSearch(row.player_name || "", name)) {
       return false;
     }
@@ -340,6 +387,8 @@ function filteredRows() {
 
     return true;
   });
+
+  return sortMarketRows(rows);
 }
 
 function formatMv(value) {
