@@ -47,7 +47,7 @@ export const SQUAD_TIPS = {
     "Contract length + seasonal wage.\n\nStandard deals are 3 seasons. When 1 season remains (“Final year”), the player cannot be listed or sold — they enter the expiry wage auction unless legacy / young HG rules apply.",
 
   registration:
-    "Squad registration rules for your club this season.\n\nAim for at least 24 contracted players from August, never more than 28, at least 1 GK, plus home-grown / U21 / star-cap rules. Failures can mean fines and emergency loans in August.",
+    "Squad registration rules for your club this season.\n\nAim for at least 24 contracted players from August, never more than 28, at least 1 GK, plus home-grown / U21 / star-cap rules. Failures can mean fines and emergency loans in August.\n\nContract outlook (below the table): in December/January, players with 2 seasons left get a January-window sell warning; final-year players show leavers vs re-signable (HG≤23 / non-HG≤21).",
 
   wageBillTitle:
     "Estimated seasonal wage bill for Close Finances — player contract wages plus manager salary (weekly × 52).",

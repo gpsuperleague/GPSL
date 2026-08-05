@@ -61,8 +61,10 @@ import {
   squadContractActionOptionsHtml,
   isContractFinalYear,
   isPesdbLegacyCard,
+  analyseSquadContractOutlook,
 } from "./player_contracts.js";
 import { isExpiryAuctionExempt } from "./squad_rules.js";
+import { loadCalendarStatus } from "./competition_calendar.js";
 import { formatWage } from "./wages.js";
 import {
   loadClubWageBillSummary,
@@ -266,6 +268,7 @@ let squadRewardCtx = {
   appealableByPlayer: new Map(),
 };
 let currentGpslSeasonLabel = "";
+let activeGpslMonth = null;
 
 const MAX_FOREIGN_INTEREST = 3;
 let foreignInterestRemaining = MAX_FOREIGN_INTEREST;
@@ -1042,6 +1045,14 @@ async function loadSquad() {
   }
 
   currentGpslSeasonLabel = await loadCurrentGpslSeasonLabel(supabase);
+  try {
+    const cal = await loadCalendarStatus(supabase);
+    activeGpslMonth = cal?.active_gpsl_month
+      ? String(cal.active_gpsl_month).toLowerCase()
+      : null;
+  } catch {
+    activeGpslMonth = null;
+  }
 
   if (error) {
     console.error("Squad load error", error);
@@ -1261,6 +1272,65 @@ async function applySquadAppeal(suspensionId) {
   await loadSquad();
 }
 
+function renderContractOutlookHtml(players) {
+  const outlook = analyseSquadContractOutlook(
+    players,
+    clubNation,
+    activeGpslMonth
+  );
+  if (!outlook.midDealCount && !outlook.finalYearCount) return "";
+
+  const parts = [];
+
+  if (outlook.midDealSellWindow && outlook.midDealCount > 0) {
+    const names = outlook.midDeal
+      .slice(0, 8)
+      .map((p) => escapeHtml(p.Name || `Player ${p.Konami_ID}`))
+      .join(", ");
+    const more =
+      outlook.midDealCount > 8
+        ? ` +${outlook.midDealCount - 8} more`
+        : "";
+    const monthLabel =
+      outlook.activeGpslMonth === "january" ? "January" : "December";
+    parts.push(`
+      <div class="squad-contract-outlook-block squad-contract-outlook-block--warn">
+        <strong>${monthLabel} transfer heads-up</strong>
+        <p>
+          <strong>${outlook.midDealCount}</strong> player${outlook.midDealCount === 1 ? "" : "s"}
+          on <b>2 seasons</b> remaining (~5 months before their final season starts).
+          Consider selling in the January window while they can still be listed:
+          ${names}${more}.
+        </p>
+      </div>`);
+  }
+
+  if (outlook.finalYearCount > 0) {
+    parts.push(`
+      <div class="squad-contract-outlook-block">
+        <strong>Final-year contracts</strong>
+        <p>
+          <strong>${outlook.finalYearCount}</strong> potentially leaving at season end
+          if not renewed / won.
+          · Re-signable on Squad (HG ≤23 or non-HG ≤21 / legacy):
+          <strong>${outlook.reSignableCount}</strong>
+          · Contested wage market:
+          <strong>${outlook.contestedCount}</strong>${
+            outlook.contestedCount
+              ? ` — <a href="expiring_contracts.html">Expiring Contracts</a>`
+              : ""
+          }
+        </p>
+      </div>`);
+  }
+
+  return `
+    <div class="squad-contract-outlook" aria-label="Contract outlook">
+      <h3 class="squad-contract-outlook-title">Contract outlook</h3>
+      ${parts.join("")}
+    </div>`;
+}
+
 function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
   const el = document.getElementById("squadCompliancePanel");
   if (!el) return;
@@ -1343,6 +1413,8 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
     footnote += `<p class="squad-rules-footnote squad-rules-footnote--ok">All rules would be met if pending signings complete.</p>`;
   }
 
+  const contractOutlook = renderContractOutlookHtml(players);
+
   el.innerHTML = `
     <section class="${panelClass}" aria-label="Squad registration requirements">
       <header class="squad-rules-header squad-rules-header--compact">
@@ -1364,6 +1436,7 @@ function renderSquadCompliance(players, designationsState, ghostPlayers = []) {
         <tbody>${tableRows}</tbody>
       </table>
       ${footnote}
+      ${contractOutlook}
     </section>
   `;
 }

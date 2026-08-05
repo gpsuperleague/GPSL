@@ -395,6 +395,44 @@ body.squad-page .squad-rules-footnote {
 body.squad-page .squad-rules-footnote--warn { color: #c9a080; }
 body.squad-page .squad-rules-footnote--ok { color: #7a9; }
 
+body.squad-page .squad-contract-outlook {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+body.squad-page .squad-contract-outlook-title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ff9900;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+body.squad-page .squad-contract-outlook-block {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  line-height: 1.45;
+  color: #bbb;
+}
+body.squad-page .squad-contract-outlook-block strong {
+  color: #eee;
+}
+body.squad-page .squad-contract-outlook-block p {
+  margin: 4px 0 0;
+}
+body.squad-page .squad-contract-outlook-block a {
+  color: #ff9900;
+}
+body.squad-page .squad-contract-outlook-block--warn {
+  border-color: rgba(201, 160, 128, 0.45);
+  background: rgba(90, 50, 20, 0.28);
+  color: #e0c4a8;
+}
+
 body.squad-page .muted { color: #666; }
 
 body.squad-page .squad-rules-table th,

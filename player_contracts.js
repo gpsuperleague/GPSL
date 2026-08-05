@@ -86,3 +86,51 @@ export function squadContractActionOptionsHtml(
             <option value="renew">${renewLabel}</option>
             ${releaseOpt}`;
 }
+
+/**
+ * Contract outlook for Squad registration panel.
+ * - Mid-deal (remaining=2): season 2 of a standard 3-season deal — Dec/Jan sell window notice.
+ * - Final year (remaining=1): potential leavers + re-signable (HG≤23 / non-HG≤21) subtotal.
+ *
+ * @param {object[]} players
+ * @param {string|null|undefined} clubNation
+ * @param {string|null|undefined} activeGpslMonth
+ */
+export function analyseSquadContractOutlook(players, clubNation, activeGpslMonth) {
+  const list = Array.isArray(players) ? players : [];
+  const month = String(activeGpslMonth || "")
+    .trim()
+    .toLowerCase();
+  const midDealSellWindow = month === "december" || month === "january";
+
+  const midDeal = list.filter((p) => Number(p?.contract_seasons_remaining) === 2);
+  const finalYear = list.filter((p) => Number(p?.contract_seasons_remaining) === 1);
+
+  const reSignable = [];
+  const contested = [];
+  for (const p of finalYear) {
+    if (isPesdbLegacyCard(p) || isExpiryAuctionExempt(p, clubNation)) {
+      reSignable.push(p);
+    } else {
+      contested.push(p);
+    }
+  }
+
+  const reSignableHg = reSignable.filter(
+    (p) => !isPesdbLegacyCard(p) && isExpiryAuctionExempt(p, clubNation)
+  );
+
+  return {
+    activeGpslMonth: month || null,
+    midDealSellWindow,
+    midDeal,
+    midDealCount: midDeal.length,
+    finalYear,
+    finalYearCount: finalYear.length,
+    reSignable,
+    reSignableCount: reSignable.length,
+    reSignableExemptCount: reSignableHg.length,
+    contested,
+    contestedCount: contested.length,
+  };
+}
