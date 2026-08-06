@@ -313,6 +313,10 @@ html.admin-root body.admin-page {
   color: #f66;
 }
 
+.admin-page .status-line.warn {
+  color: #e8c547;
+}
+
 .admin-page .hub-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

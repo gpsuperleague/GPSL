@@ -361,6 +361,8 @@ DECLARE
   v_label text;
   v_under jsonb := NULL;
   v_inbox_ok boolean := false;
+  v_inbox_error text := NULL;
+  v_under_error text := NULL;
 BEGIN
   PERFORM set_config('statement_timeout', '300s', true);
 
@@ -386,23 +388,38 @@ BEGIN
   END IF;
 
   IF to_regprocedure('public.owner_inbox_notify_club_season_archive(bigint,text)') IS NOT NULL THEN
-    PERFORM public.owner_inbox_notify_club_season_archive(
-      v_season_id,
-      coalesce(v_label, 'Season')
-    );
-    v_inbox_ok := true;
+    BEGIN
+      PERFORM public.owner_inbox_notify_club_season_archive(
+        v_season_id,
+        coalesce(v_label, 'Season')
+      );
+      v_inbox_ok := true;
+    EXCEPTION WHEN OTHERS THEN
+      v_inbox_error := SQLERRM;
+    END;
   END IF;
 
   IF to_regprocedure('public.club_underperformance_process_season(bigint)') IS NOT NULL THEN
-    v_under := public.club_underperformance_process_season(v_season_id);
+    BEGIN
+      v_under := public.club_underperformance_process_season(v_season_id);
+    EXCEPTION WHEN OTHERS THEN
+      v_under_error := SQLERRM;
+    END;
   END IF;
 
   RETURN jsonb_build_object(
-    'ok', true,
+    'ok', v_inbox_error IS NULL AND v_under_error IS NULL,
     'season_id', v_season_id,
     'season_label', v_label,
     'inbox_notified', v_inbox_ok,
-    'underperformance', v_under
+    'inbox_error', v_inbox_error,
+    'underperformance', v_under,
+    'underperformance_error', v_under_error,
+    'hint', CASE
+      WHEN v_inbox_error ILIKE '%message_type_check%'
+      THEN 'Widen inbox types: re-run this patch (inbox types section) or archive_season_inbox_message_types_fix.sql'
+      ELSE NULL
+    END
   );
 END;
 $function$;
@@ -442,5 +459,83 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.competition_admin_archive_season(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_admin_archive_season_followup(bigint) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.competition_admin_archive_season_with_inbox(bigint) TO authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Inbox types: season_overview + player_awards (archive notify) must be allowed.
+-- Later patches sometimes rewrote the CHECK without these; widen safely.
+-- ---------------------------------------------------------------------------
+DO $inbox_types$
+DECLARE
+  v_list text;
+BEGIN
+  SELECT string_agg(quote_literal(t), ', ' ORDER BY t)
+  INTO v_list
+  FROM (
+    SELECT DISTINCT message_type AS t
+    FROM public.competition_inbox
+    WHERE message_type IS NOT NULL
+    UNION
+    SELECT unnest(ARRAY[
+      'welcome_gpsl',
+      'result_submitted',
+      'result_to_confirm',
+      'result_rejected',
+      'result_confirmed',
+      'transfer_signed',
+      'transfer_sold',
+      'transfer_upcoming',
+      'underperformance_transfer',
+      'draft_scheduled',
+      'special_auction_scheduled',
+      'fine_applied',
+      'loan_drawdown',
+      'loan_repayment',
+      'loan_interest',
+      'points_deduction',
+      'nation_pick_turn',
+      'nation_selection_open',
+      'season_expectations',
+      'season_overview',
+      'player_awards',
+      'monthly_fixtures',
+      'match_time_proposed',
+      'match_time_countered',
+      'match_time_proposal_sent',
+      'match_time_counter_sent',
+      'match_time_accepted',
+      'match_rescheduled',
+      'match_emergency_drop',
+      'match_forfeit_applied',
+      'match_checkin_open',
+      'match_mutual_override_requested',
+      'match_mutual_override_applied',
+      'challenge_period_bonus',
+      'prize_appeal_submitted',
+      'prize_appeal_resolved',
+      'intl_result_to_confirm',
+      'intl_kickoff_proposal',
+      'admin_cash_injection',
+      'admin_emergency_tax'
+    ])
+  ) s;
+
+  IF v_list IS NULL OR btrim(v_list) = '' THEN
+    RAISE EXCEPTION 'No inbox message types to install';
+  END IF;
+
+  ALTER TABLE public.competition_inbox
+    DROP CONSTRAINT IF EXISTS competition_inbox_message_type_check;
+
+  EXECUTE format(
+    'ALTER TABLE public.competition_inbox
+       ADD CONSTRAINT competition_inbox_message_type_check
+       CHECK (message_type IN (%s)) NOT VALID',
+    v_list
+  );
+
+  ALTER TABLE public.competition_inbox
+    VALIDATE CONSTRAINT competition_inbox_message_type_check;
+END;
+$inbox_types$;
 
 NOTIFY pgrst, 'reload schema';

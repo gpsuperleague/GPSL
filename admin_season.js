@@ -1,4 +1,4 @@
-import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js";
+import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admin_common.js?v=20260807-archive-inbox-types";
 import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
@@ -336,6 +336,7 @@ async function archiveSeasonStats() {
 
   const seasonId = data?.season_id;
   let followNote = "";
+  let followWarn = false;
   if (seasonId != null) {
     setStatus("compArchiveStatus", "Archive saved — running inbox & underperformance…");
     const { data: followData, error: followErr } = await supabase.rpc(
@@ -343,10 +344,28 @@ async function archiveSeasonStats() {
       { p_season_id: seasonId }
     );
     if (followErr?.message?.includes("competition_admin_archive_season_followup")) {
+      followWarn = true;
       followNote =
-        " Inbox/underperformance skipped — run archive_season_statement_timeout_fix.sql for the followup RPC. Stats archive is saved.";
+        " ⚠ Inbox/underperformance skipped — re-run archive_season_statement_timeout_fix.sql.";
     } else if (followErr) {
-      followNote = ` Inbox/underperformance failed (${followErr.message}). Stats archive is saved — re-run followup or check SQL.`;
+      followWarn = true;
+      followNote = followErr.message.includes("message_type_check")
+        ? " ⚠ Inbox blocked (message_type check) — re-run archive_season_statement_timeout_fix.sql (or archive_season_inbox_message_types_fix.sql), then Archive again (safe)."
+        : ` ⚠ Inbox/underperformance: ${followErr.message}`;
+    } else if (followData?.inbox_error || followData?.underperformance_error) {
+      followWarn = true;
+      const bits = [];
+      if (followData.inbox_error) {
+        bits.push(
+          followData.inbox_error.includes("message_type_check")
+            ? "inbox types — re-run archive_season_statement_timeout_fix.sql then Archive again"
+            : `inbox: ${followData.inbox_error}`
+        );
+      }
+      if (followData.underperformance_error) {
+        bits.push(`underperformance: ${followData.underperformance_error}`);
+      }
+      followNote = ` ⚠ ${bits.join("; ")}.`;
     } else {
       const triggered = followData?.underperformance?.triggered_count;
       followNote =
@@ -357,29 +376,36 @@ async function archiveSeasonStats() {
   }
 
   let rankNote = "";
+  let rankWarn = false;
   if (seasonId != null) {
     const { error: rankErr } = await supabase.rpc(
       "competition_owner_ranking_recompute_season",
       { p_season_id: seasonId }
     );
-    rankNote = rankErr
-      ? ` Owner ranking not updated (${rankErr.message}). Run competition_owner_ranking.sql.`
-      : " Owner ranking updated.";
+    if (rankErr) {
+      rankWarn = true;
+      rankNote = ` ⚠ Owner ranking not updated (${rankErr.message}).`;
+    } else {
+      rankNote = " Owner ranking updated.";
+    }
 
     const { error: clubRankErr } = await supabase.rpc(
       "competition_club_ranking_recompute_season",
       { p_season_id: seasonId }
     );
-    rankNote += clubRankErr
-      ? ` Club ranking not updated (${clubRankErr.message}). Run competition_club_stadium_attendance.sql.`
-      : " Club ranking updated.";
+    if (clubRankErr) {
+      rankWarn = true;
+      rankNote += ` ⚠ Club ranking not updated (${clubRankErr.message}).`;
+    } else {
+      rankNote += " Club ranking updated.";
+    }
   }
 
-  const ok = !followNote.includes("failed") && !followNote.includes("skipped") && !rankNote.includes("not updated");
+  // Archive itself succeeded — never paint full red for a follow-up-only issue
   setStatus(
     "compArchiveStatus",
     `✅ Archived ${data?.season_label || "season"} — ${data?.clubs_archived ?? 0} clubs, ${data?.players_archived ?? 0} players, ${data?.cups_archived ?? 0} cups.${followNote}${rankNote}`,
-    ok
+    followWarn || rankWarn ? "warn" : true
   );
 }
 

@@ -73,7 +73,11 @@ export function setStatus(elementId, msg, ok = true) {
   const el = document.getElementById(elementId);
   if (!el) return;
   el.textContent = msg;
-  el.className = ok ? "status-line" : "status-line error";
+  if (ok === "warn") {
+    el.className = "status-line warn";
+  } else {
+    el.className = ok ? "status-line" : "status-line error";
+  }
 }
 
 export { supabase, APP_VERSION };
