@@ -5,7 +5,7 @@ import {
   expiryWageMinUpliftPct,
   minExpiryWageOffer,
 } from "./wages.js?v=20260805-nbsp";
-import { renderExpiringContractRules, CHAMP_SL_SIGNING_FEE_PCT } from "./expiring_contracts_rules.js?v=20260806-league-fee";
+import { renderExpiringContractRules, CHAMP_SL_SIGNING_FEE_PCT } from "./expiring_contracts_rules.js?v=20260806-league-fee2";
 import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260805-opt-row";
 import { textMatchesSearch } from "./search_normalize.js";
 
@@ -488,6 +488,15 @@ async function loadMarket() {
   marketRows = Array.isArray(data) ? data : [];
   rebuildFilterOptions();
   renderMarket();
+
+  if (
+    marketRows.length &&
+    marketRows.every((r) => r.holding_league == null && r.champ_sl_fee_applies == null)
+  ) {
+    status.textContent =
+      (status.textContent || "") +
+      " — League/fee columns need SQL: run supabase/sql/patches/expiring_contracts_league_fee_badge.sql then hard-refresh.";
+  }
 }
 
 function formatWageInputValue(n) {
