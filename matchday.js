@@ -14,6 +14,7 @@ import {
   normalizeClubKey,
   LEAGUE_DIVISIONS,
   deferredResultNote,
+  leagueBadgeHtml,
 } from "./competition.js";
 import {
   loadCalendarStatus,
@@ -1404,7 +1405,7 @@ async function updateFixturePreview() {
   });
 
   preview.innerHTML = `
-    <b>${comp}</b>${f.competition_type === "league" ? ` · Matchday ${f.matchday}` : ""} · ${month}<br>
+    ${leagueBadgeHtml(f.division, { size: "sm" })}<b>${comp}</b>${f.competition_type === "league" ? ` · Matchday ${f.matchday}` : ""} · ${month}<br>
     ${f.home_club_name} vs ${f.away_club_name}<br>
     <span style="color:#aaa;font-size:13px;">${formatMatchConditions(f)}</span>${extra}${aggregateHtml}
     ${unavailableHtml}

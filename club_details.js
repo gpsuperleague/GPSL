@@ -11,6 +11,7 @@ import {
   loadActiveSeasonRegistrations,
   divisionSlugForClub,
   LEAGUE_DIVISIONS,
+  leagueBadgeHtml,
 } from "./competition.js";
 import { loadClubKits, renderKitsPanelHtml } from "./club_kits_common.js";
 import {
@@ -91,11 +92,11 @@ function renderDivisionCell(el, division) {
   const fixturesHref = fixturesDivisionHref(division);
   const label = formatDivisionLabel(division);
   if (!tableHref || !fixturesHref) {
-    el.textContent = label;
+    el.innerHTML = `${leagueBadgeHtml(division, { size: "sm" })}${escapeHtml(label)}`;
     return;
   }
   el.innerHTML = `
-    <span class="club-detail-division-label">${escapeHtml(label)}</span>
+    <span class="club-detail-division-label">${leagueBadgeHtml(division, { size: "sm" })}${escapeHtml(label)}</span>
     <div class="club-detail-quick-links">
       <a href="${tableHref}" class="club-detail-link">Table</a>
       <a href="${fixturesHref}" class="club-detail-link">Fixtures</a>

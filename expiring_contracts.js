@@ -8,6 +8,7 @@ import {
 import { renderExpiringContractRules, CHAMP_SL_SIGNING_FEE_PCT } from "./expiring_contracts_rules.js?v=20260806-league-fee2";
 import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260805-opt-row";
 import { textMatchesSearch } from "./search_normalize.js";
+import { leagueBadgeHtml } from "./competition.js";
 
 const POSITION_ORDER = [
   "GK",
@@ -497,6 +498,10 @@ function renderMarket() {
             feeEst != null ? ` (≈ ${formatWage(feeEst)})` : ""
           }.">+${feePct}% MV fee</span>`
         : "";
+      const leagueBadge = leagueBadgeHtml(
+        row.holding_division || row.holding_league,
+        { size: "xs" }
+      );
       return `
         <tr data-player-id="${row.player_id}">
           <td class="name-cell">${escapeHtml(row.player_name)}</td>
@@ -507,7 +512,7 @@ function renderMarket() {
           <td>${escapeHtml(row.playstyle || "—")}</td>
           <td class="wage-cell">${formatMv(row.market_value)}</td>
           <td>${escapeHtml(displayClubName(row.holding_club))}</td>
-          <td class="league-cell">${escapeHtml(league)}${feeBadge}</td>
+          <td class="league-cell">${leagueBadge}${escapeHtml(league)}${feeBadge}</td>
           <td class="wage-cell">${formatWage(row.current_wage)}</td>
           <td class="wage-cell">${myBid}</td>
           <td>
@@ -657,7 +662,10 @@ function openBidModal(row) {
       <dd>${formatWage(minOffer)} <span style="font-weight:normal;color:#999;">(+${uplift}%)</span></dd>
       ${
         row.holding_league
-          ? `<dt>League</dt><dd>${escapeHtml(row.holding_league)}</dd>`
+          ? `<dt>League</dt><dd>${leagueBadgeHtml(
+              row.holding_division || row.holding_league,
+              { size: "xs" }
+            )}${escapeHtml(row.holding_league)}</dd>`
           : ""
       }
     </dl>

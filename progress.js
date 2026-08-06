@@ -18,6 +18,7 @@ import {
   LEAGUE_TINT_LEGEND_COLORS,
   formatFormHtml,
   formatMoney,
+  divisionLabelWithBadgeHtml,
   normalizeClubKey,
 } from "./competition.js";
 
@@ -220,7 +221,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
 
   if (!rows.length) {
     panel.innerHTML = `
-      <h2>${panelTitle}</h2>
+      <h2>${divisionLabelWithBadgeHtml(division, { size: "md", label: panelTitle })}</h2>
       <p class="empty-msg">No standings for this division.</p>
     `;
     return panel;
@@ -320,7 +321,7 @@ function renderStandingsTable(division, rows, myClub, opts = {}) {
     .join("");
 
   panel.innerHTML = `
-    <h2>${panelTitle}</h2>
+    <h2>${divisionLabelWithBadgeHtml(division, { size: "md", label: panelTitle })}</h2>
     <div class="standings-table-scroll">
     <table class="${tableClass}">
       ${STANDINGS_COLGROUP}

@@ -10,6 +10,7 @@ import {
   canSubmitResult,
   needsInboxConfirm,
   fixtureInvolvesClub,
+  leagueBadgeHtml,
 } from "./competition.js";
 import {
   formatWeatherLabel,
@@ -223,7 +224,7 @@ function fixtureCardHtml(f) {
   return `
     <div class="fixture-card">
       <div class="fixture-top">
-        <span class="fixture-badge ${badgeCls}">${competitionLabel(f)}</span>
+        <span class="fixture-badge ${badgeCls}">${leagueBadgeHtml(f.division || f.cup_code, { size: "xs" })}${competitionLabel(f)}</span>
         ${tvFixtureBadgeHtml(f.id)}
         <span class="fixture-match">${matchLineHtml(f)}</span>
         <span class="fixture-score">${score}</span>

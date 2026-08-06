@@ -21,6 +21,12 @@ import {
   loadClubDashboardTheme,
 } from "./club_theme_common.js";
 import { startDashboardMatchday } from "./dashboard_matchday.js";
+import {
+  leagueBadgeSrc,
+  leagueTierForDivision,
+  loadActiveSeasonRegistrations,
+  divisionSlugForClub,
+} from "./competition.js";
 
 let ownerId = null;
 let isAdmin = false;
@@ -34,6 +40,29 @@ let dashboardCtx = null;
 let activeTileDrag = null;
 let activeSectionDrag = null;
 let focusSectionId = null;
+
+async function setDashboardLeagueBadge(clubShort) {
+  const el = document.getElementById("leagueBadgeHeader");
+  if (!el || !clubShort) return;
+  try {
+    const regs = await loadActiveSeasonRegistrations(supabase);
+    const div = divisionSlugForClub(regs, clubShort);
+    const src = leagueBadgeSrc(div);
+    if (!src) {
+      el.hidden = true;
+      el.removeAttribute("src");
+      return;
+    }
+    const tier = leagueTierForDivision(div);
+    el.src = src;
+    el.alt = tier === "superleague" ? "Super League" : "Championship";
+    el.title = el.alt;
+    el.hidden = false;
+  } catch (e) {
+    console.warn("setDashboardLeagueBadge", e);
+    el.hidden = true;
+  }
+}
 
 const DRAG_SCROLL_EDGE = 80;
 const DRAG_SCROLL_MAX_SPEED = 22;
@@ -199,6 +228,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("dashboardTitle").textContent = `${fullName} Dashboard`;
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${shortName}.png`;
+  await setDashboardLeagueBadge(shortName);
 
   try {
     const theme = await loadClubDashboardTheme(supabase, shortName);

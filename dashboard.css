@@ -2982,3 +2982,40 @@ a.gpsl-club-link:focus {
   vertical-align: middle;
   cursor: help;
 }
+
+/* —— League competition badges (Super League / Championship) —— */
+.league-badge {
+  display: inline-block;
+  object-fit: contain;
+  vertical-align: middle;
+  flex-shrink: 0;
+  margin-right: 6px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+.league-badge--xs { width: 18px; height: 18px; }
+.league-badge--sm { width: 24px; height: 24px; }
+.league-badge--md { width: 36px; height: 36px; }
+.league-badge--lg { width: 56px; height: 56px; }
+.league-badge-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+}
+.league-badge-label {
+  vertical-align: middle;
+}
+img.squad-header-league-badge,
+img.header-league-badge {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  margin-left: 4px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+.division-panel h2 .league-badge {
+  margin-right: 8px;
+}
+.fixture-badge .league-badge {
+  margin-right: 4px;
+}

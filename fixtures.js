@@ -14,6 +14,8 @@ import {
   canSubmitResult,
   needsInboxConfirm,
   deferredResultNote,
+  leagueBadgeHtml,
+  divisionLabelWithBadgeHtml,
 } from "./competition.js";
 import {
   loadCalendarStatus,
@@ -194,7 +196,7 @@ function renderDivisionToolbar() {
   for (const div of LEAGUE_DIVISIONS) {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = DIVISION_LABELS[div];
+    btn.innerHTML = divisionLabelWithBadgeHtml(div, { size: "xs" });
     btn.className = currentDivision === div ? "active" : "";
     btn.onclick = () => {
       currentDivision = div;
@@ -417,7 +419,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     calEl.textContent = calendarStatusBanner(calendarStatus);
   }
 
-  meta.textContent = `${season.label} · ${DIVISION_LABELS[currentDivision]} · your games highlighted in gold`;
+  meta.innerHTML = `${leagueBadgeHtml(currentDivision, { size: "sm" })} ${season.label} · ${DIVISION_LABELS[currentDivision]} · your games highlighted in gold`;
 
   const league = await loadLeagueFixtures(supabase);
   const cups = await loadCupFixtures(supabase);

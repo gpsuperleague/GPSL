@@ -11,6 +11,10 @@ import {
 import {
   loadPlayerSeasonStatsForSquad,
   statsMapByPlayerId,
+  leagueBadgeSrc,
+  leagueTierForDivision,
+  loadActiveSeasonRegistrations,
+  divisionSlugForClub,
 } from "./competition.js";
 import {
   analyseSquadComposition,
@@ -302,6 +306,29 @@ let seasonLoanPlayerIds = new Set();
 /** @type {object[]} */
 let squadGhostPlayers = [];
 
+async function setSquadLeagueBadge(clubShort) {
+  const el = document.getElementById("leagueBadgeHeader");
+  if (!el || !clubShort) return;
+  try {
+    const regs = await loadActiveSeasonRegistrations(supabase);
+    const div = divisionSlugForClub(regs, clubShort);
+    const src = leagueBadgeSrc(div);
+    if (!src) {
+      el.hidden = true;
+      el.removeAttribute("src");
+      return;
+    }
+    const tier = leagueTierForDivision(div);
+    el.src = src;
+    el.alt = tier === "superleague" ? "Super League" : "Championship";
+    el.title = el.alt;
+    el.hidden = false;
+  } catch (e) {
+    console.warn("setSquadLeagueBadge", e);
+    el.hidden = true;
+  }
+}
+
 // ENTRY POINT
 document.addEventListener("DOMContentLoaded", async () => {
   initGpslInfoTips();
@@ -357,6 +384,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("dashboardTitle").textContent = `${club.Club} Squad`;
   document.getElementById("clubBadgeHeader").src =
     `images/club_badges/${currentUserShort}.png`;
+  await setSquadLeagueBadge(currentUserShort);
 
   foreignInterestRemaining = normalizeForeignInterest(
     club.foreign_interest_remaining

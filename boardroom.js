@@ -8,7 +8,7 @@ import {
   refreshNavListingIndicators,
 } from "./global.js";
 import { loadClubsMap, fullClubName } from "./clubs_lookup.js";
-import { formatMoney, loadClubLoans } from "./competition.js";
+import { formatMoney, loadClubLoans, leagueBadgeHtml } from "./competition.js";
 import { loadCalendarStatus } from "./competition_calendar.js";
 import { loadClubWageBillSummary } from "./club_wage_bill.js";
 import { computeAdvisoryTransferBudget } from "./finance_advisory_budget.js";
@@ -569,7 +569,7 @@ async function loadManagerSection(clubShortName) {
             : `${data.contract_seasons_remaining ?? 0} season(s) remaining`
         }</dd>
         <dt>Weekly wage</dt><dd>${formatMoney(Number(data.weekly_wage || 0))}</dd>
-        <dt>Division</dt><dd>${formatDivisionLabel(data.division)}</dd>
+        <dt>Division</dt><dd>${leagueBadgeHtml(data.division, { size: "sm" })}${formatDivisionLabel(data.division)}</dd>
         <dt>League position</dt><dd>${currentPos}</dd>
         <dt>Target</dt><dd>${formatManagerTarget(data)}</dd>
         <dt>On target?</dt><dd><span class="${targetProgress.className}">${targetProgress.text}</span></dd>

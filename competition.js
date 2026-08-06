@@ -8,6 +8,72 @@ export const DIVISION_LABELS = {
   championship_b: "Championship B",
 };
 
+/**
+ * Branding tier for league badges. Championship A/B/pool → one Championship badge.
+ * @returns {'superleague'|'championship'|null}
+ */
+export function leagueTierForDivision(divisionOrLabel) {
+  if (divisionOrLabel == null || divisionOrLabel === "") return null;
+  const d = String(divisionOrLabel)
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
+  if (d === "superleague" || d === "super_league") return "superleague";
+  if (
+    d === "championship" ||
+    d === "championship_a" ||
+    d === "championship_b" ||
+    d === "championship_pool" ||
+    d.startsWith("championship")
+  ) {
+    return "championship";
+  }
+  if (d.includes("super") && d.includes("league")) return "superleague";
+  if (d.includes("champ")) return "championship";
+  return null;
+}
+
+/** @returns {string|null} */
+export function leagueBadgeSrc(divisionOrTier) {
+  const tier =
+    divisionOrTier === "superleague" || divisionOrTier === "championship"
+      ? divisionOrTier
+      : leagueTierForDivision(divisionOrTier);
+  if (!tier) return null;
+  return `images/league_badges/${tier}.png`;
+}
+
+/**
+ * Inline <img> for Super League / Championship branding.
+ * @param {string|null|undefined} divisionOrTier
+ * @param {{ size?: 'xs'|'sm'|'md'|'lg', className?: string }} [opts]
+ */
+export function leagueBadgeHtml(divisionOrTier, opts = {}) {
+  const tier =
+    divisionOrTier === "superleague" || divisionOrTier === "championship"
+      ? divisionOrTier
+      : leagueTierForDivision(divisionOrTier);
+  if (!tier) return "";
+  const size = opts.size || "sm";
+  const extra = opts.className ? ` ${opts.className}` : "";
+  const src = `images/league_badges/${tier}.png`;
+  const alt = tier === "superleague" ? "Super League" : "Championship";
+  return `<img class="league-badge league-badge--${size}${extra}" src="${src}" alt="${alt}" title="${alt}" loading="lazy" decoding="async" />`;
+}
+
+/** Badge + division label (A/B text kept; badge is shared for Championship). */
+export function divisionLabelWithBadgeHtml(division, opts = {}) {
+  const size = opts.size || "sm";
+  const label =
+    opts.label != null
+      ? opts.label
+      : DIVISION_LABELS[division] || division || "";
+  const badge = leagueBadgeHtml(division, { size, className: opts.className });
+  if (!badge) return label ? `<span class="league-badge-label">${label}</span>` : "";
+  if (!label) return badge;
+  return `<span class="league-badge-inline">${badge}<span class="league-badge-label">${label}</span></span>`;
+}
+
 export const SETUP_DIVISION_OPTIONS = [
   { value: "unassigned", label: "Unassigned" },
   { value: "superleague", label: "SuperLeague" },
