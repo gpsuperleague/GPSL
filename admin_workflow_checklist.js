@@ -2,8 +2,8 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase, whenDomReady 
 import {
   adminMainNavHref,
   getAdminWorkflowChecklist,
-} from "./admin_main_nav.js?v=20260807-season-break-nav";
-import { renderAdminWorkflowChecklistRules } from "./admin_workflow_checklist_rules.js?v=20260807-season-break-nav";
+} from "./admin_main_nav.js?v=20260807-create-before-break";
+import { renderAdminWorkflowChecklistRules } from "./admin_workflow_checklist_rules.js?v=20260807-create-before-break";
 
 primeAdminPageChrome();
 

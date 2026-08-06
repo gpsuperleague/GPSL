@@ -746,8 +746,8 @@ export const ADMIN_CHECKLIST_EXCLUDE_SECTION_IDS = new Set(["testing", "owners"]
  * Close Season / End Of Season sit at the end of the season year.
  */
 export const ADMIN_CHECKLIST_SECTION_ORDER = [
-  "season_break",
   "create_season",
+  "season_break",
   "pre_season",
   "season_management",
   "season_checklist",
@@ -768,7 +768,7 @@ export function adminChecklistTaskKey(sectionId, groupLabel, item) {
 /**
  * Flatten Admin menu into checklist sections (excludes Testing & Owners).
  * Empty groups (e.g. months with no tasks) are omitted.
- * Order: Season Break → Create Season → … → Close Season → End Of Season.
+ * Order: Create Season → Season Break → … → Close Season → End Of Season.
  */
 export function getAdminWorkflowChecklist() {
   const byId = new Map();
