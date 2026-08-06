@@ -720,7 +720,15 @@ function entryHasActive(entry, pathname, search) {
 export function adminMainSectionHasActive(sectionId, pathname, search = "") {
   const section = getAdminMainSection(sectionId);
   if (!section) return false;
-  return (section.entries || []).some((e) => entryHasActive(e, pathname, search));
+  if ((section.entries || []).some((e) => entryHasActive(e, pathname, search))) {
+    return true;
+  }
+  // Season Checklist is nested under Season Management in the Admin menu
+  if (sectionId === "season_management") {
+    const checklist = getAdminMainSection("season_checklist");
+    return (checklist?.entries || []).some((e) => entryHasActive(e, pathname, search));
+  }
+  return false;
 }
 
 export function adminMainNavHasActive(pathname, search = "") {
@@ -838,7 +846,35 @@ export function renderAdminMainSectionHtml(sectionId, pathname, search = "") {
   }">${escapeNavText(formatNavLabel(section.label))}</button>`;
   html += `<div class="nav-subgroup-panel nav-subgroup-panel-mega" role="group">`;
 
-  for (const entry of section.entries || []) {
+  html += renderAdminEntriesHtml(section.entries || [], pathname, search);
+
+  // Nest monthly Season Checklist under Season Management in the Admin menu
+  if (sectionId === "season_management") {
+    const checklist = getAdminMainSection("season_checklist");
+    const checklistEntries = (checklist?.entries || []).filter(
+      (e) => e.type === "group" && (e.items || []).some((i) => i?.href)
+    );
+    if (checklistEntries.length) {
+      const nestedOpen = checklistEntries.some((e) =>
+        entryHasActive(e, pathname, search)
+      );
+      html += `<div class="nav-subgroup nav-subgroup-nested" data-nav-subgroup>`;
+      html += `<button type="button" class="nav-subgroup-summary" aria-expanded="${
+        nestedOpen ? "true" : "false"
+      }">${escapeNavText(formatNavLabel(checklist?.label || "Season Checklist"))}</button>`;
+      html += `<div class="nav-subgroup-panel" role="group">`;
+      html += renderAdminEntriesHtml(checklistEntries, pathname, search);
+      html += `</div></div>`;
+    }
+  }
+
+  html += `</div></div>`;
+  return html;
+}
+
+function renderAdminEntriesHtml(entries, pathname, search = "") {
+  let html = "";
+  for (const entry of entries || []) {
     if (entry.type === "link") {
       html += renderLinkHtml(entry, pathname, search);
       continue;
@@ -856,8 +892,6 @@ export function renderAdminMainSectionHtml(sectionId, pathname, search = "") {
       html += `</div></div>`;
     }
   }
-
-  html += `</div></div>`;
   return html;
 }
 

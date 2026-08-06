@@ -1,7 +1,7 @@
 /**
  * Admin workflow checklist — intro copy (modular cards).
  */
-import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-nav-sb-first";
+import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-nav-checklist-nested";
 
 export function getAdminWorkflowChecklistRules() {
   return {
