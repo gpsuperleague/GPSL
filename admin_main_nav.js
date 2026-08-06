@@ -98,19 +98,52 @@ export const ADMIN_MAIN_NAV = [
         "Only if Create Pre-Season did not finish the tick. Same expiry resolve → new-season ledger. Skips if already logged for that preseason."
       ),
       group("Assign divisions", [
-        L("Setup Superleague Teams", "admin_season.html", "wf-divisions"),
-        L("Setup Championship Teams", "admin_season.html", "wf-divisions"),
-        L("Draw Championship Divisions", "admin_season.html", "wf-divisions"),
+        L(
+          "Setup Superleague Teams",
+          "admin_season.html",
+          "wf-divisions",
+          null,
+          "Place / confirm the 20 Super League clubs for the new season before Championship draw."
+        ),
+        L(
+          "Setup Championship Teams",
+          "admin_season.html",
+          "wf-divisions",
+          null,
+          "Place remaining clubs into the Championship pool ready for the A/B draw."
+        ),
+        L(
+          "Draw Championship Divisions",
+          "admin_season.html",
+          "wf-divisions",
+          null,
+          "Randomly split the Championship pool into Championship A and B."
+        ),
       ]),
-      link("Create Season Calendar", "admin_season.html", "wf-calendar"),
+      link(
+        "Create Season Calendar",
+        "admin_season.html",
+        "wf-calendar",
+        "Build the GPSL month calendar for the new season (needed before going live)."
+      ),
       link(
         "Start season (go live)",
         "admin_season.html",
         "wf-kickoff",
         "After Season Break + Pre-Season setup (divisions, calendar). Makes the new season current/active."
       ),
-      link("Create League Fixtures", "admin_fixtures-league.html"),
-      link("Setup Cups", "admin_fixtures-cups.html"),
+      link(
+        "Create League Fixtures",
+        "admin_fixtures-league.html",
+        null,
+        "Generate the full league fixture list for Super League and both Championships."
+      ),
+      link(
+        "Setup Cups",
+        "admin_fixtures-cups.html",
+        null,
+        "Configure / draw domestic cups for the new season."
+      ),
     ],
   },
   {
@@ -118,31 +151,149 @@ export const ADMIN_MAIN_NAV = [
     label: "Season Break",
     entries: [
       group("GPDB Update", [
-        L("GPDB Player Sync", "admin_gpdb_sync.html"),
-        L("GPDB Player Deduplication", "admin_gpdb_dedup.html"),
-        L("GPDB Player Exclusions", "admin_gpdb_exclusions.html"),
-        L("Refresh Next Gen Youth", "admin_nextgen_youth.html"),
+        L(
+          "GPDB Player Sync",
+          "admin_gpdb_sync.html",
+          null,
+          null,
+          "Pull latest player data from GPDB into GPSL (ratings, attributes, etc.)."
+        ),
+        L(
+          "GPDB Player Deduplication",
+          "admin_gpdb_dedup.html",
+          null,
+          null,
+          "Merge / resolve duplicate player records after a sync."
+        ),
+        L(
+          "GPDB Player Exclusions",
+          "admin_gpdb_exclusions.html",
+          null,
+          null,
+          "Maintain the exclusion list so unwanted players are not imported."
+        ),
+        L(
+          "Refresh Next Gen Youth",
+          "admin_nextgen_youth.html",
+          null,
+          null,
+          "Regenerate / refresh the Next Gen youth pool for the coming season."
+        ),
       ]),
-      group("OooO", [L("Homegrown Star Draw", "admin_one_of_our_own.html")]),
-      group("Club Kits", [L("Download Latest Kits", "admin_club_kits.html")]),
+      group("OooO", [
+        L(
+          "Homegrown Star Draw",
+          "admin_one_of_our_own.html",
+          null,
+          null,
+          "Run the One of Our Own / homegrown star draw for eligible clubs."
+        ),
+      ]),
+      group("Club Kits", [
+        L(
+          "Download Latest Kits",
+          "admin_club_kits.html",
+          null,
+          null,
+          "Refresh club kit images for the new season."
+        ),
+      ]),
       group("Prize Money", [
-        L("Cup Prize Money", "admin_cup_prizes.html"),
-        L("League Prize Money", "admin_league_prizes.html"),
+        L(
+          "Cup Prize Money",
+          "admin_cup_prizes.html",
+          null,
+          null,
+          "Review / set cup prize tables for the upcoming season."
+        ),
+        L(
+          "League Prize Money",
+          "admin_league_prizes.html",
+          null,
+          null,
+          "Review / set league finishing prize tables per division."
+        ),
       ]),
       group("Club, Stadium & Manager", [
-        L("Club Attendance & Prestige", "admin_club_attendance.html"),
-        L("Stadium Settings", "admin_stadium_settings.html"),
-        L("Weather & Pitch conditions", "admin_weather.html"),
-        L("Manager Contract Targets", "admin_manager_targets.html"),
+        L(
+          "Club Attendance & Prestige",
+          "admin_club_attendance.html",
+          null,
+          null,
+          "Update attendance bands and prestige for clubs."
+        ),
+        L(
+          "Stadium Settings",
+          "admin_stadium_settings.html",
+          null,
+          null,
+          "Stadium capacity / upgrade / settings for the new season."
+        ),
+        L(
+          "Weather & Pitch conditions",
+          "admin_weather.html",
+          null,
+          null,
+          "Configure weather and pitch condition tables used on matchday."
+        ),
+        L(
+          "Manager Contract Targets",
+          "admin_manager_targets.html",
+          null,
+          null,
+          "Set or refresh manager board targets for the new season."
+        ),
       ]),
       group("Internationals", [
-        L("Nation Setup", "admin_international.html", "sb-nation-setup"),
-        L("World Cup Cycle", "admin_international.html", "sb-wc-cycle"),
-        L("Open Nation Selection", "admin_international_selection_open.html"),
-        L("Manual National Team Selection", "admin_international.html", "sb-nation-assign"),
-        L("Close Nation Selection", "admin_international_selection_close.html"),
-        L("Clear Nation Assignments", "admin_international_selection_clear.html"),
-        L("Verify owner rankings", "admin_international.html", "sb-owner-rankings"),
+        L(
+          "Nation Setup",
+          "admin_international.html",
+          "sb-nation-setup",
+          null,
+          "Confirm nations and international competition setup."
+        ),
+        L(
+          "World Cup Cycle",
+          "admin_international.html",
+          "sb-wc-cycle",
+          null,
+          "Advance or configure the World Cup cycle when due."
+        ),
+        L(
+          "Open Nation Selection",
+          "admin_international_selection_open.html",
+          null,
+          null,
+          "Open the window for owners to pick national team players."
+        ),
+        L(
+          "Manual National Team Selection",
+          "admin_international.html",
+          "sb-nation-assign",
+          null,
+          "Admin override / assign national team squads if needed."
+        ),
+        L(
+          "Close Nation Selection",
+          "admin_international_selection_close.html",
+          null,
+          null,
+          "Close the owner selection window when the deadline has passed."
+        ),
+        L(
+          "Clear Nation Assignments",
+          "admin_international_selection_clear.html",
+          null,
+          null,
+          "Clear nation squad assignments (repair / reset)."
+        ),
+        L(
+          "Verify owner rankings",
+          "admin_international.html",
+          "sb-owner-rankings",
+          null,
+          "Check owner nation ranking inputs before internationals."
+        ),
       ]),
     ],
   },
@@ -151,38 +302,127 @@ export const ADMIN_MAIN_NAV = [
     label: "Pre-Season (June & July)",
     entries: [
       group("Challenges", [
-        L("Set Initial Season Challenges", "admin_challenges.html"),
+        L(
+          "Set Initial Season Challenges",
+          "admin_challenges.html",
+          null,
+          null,
+          "Publish start-of-season challenges for clubs."
+        ),
       ]),
       group("Bills & Income", [
-        L("Set TV Revenue", "admin_tv_revenue.html"),
-        L("Set Government Subsidies", "admin_gov_subsidies.html"),
-        L("Set 34+ Fee", "admin_tax_34.html"),
-        L("Set Star Fee", "admin_star_tax.html"),
-        L("Set Wage %", "admin_wage_pct.html"),
-        L("Set Tax %", "admin_tax_pct.html"),
-        L("Set stadium costs", "admin_stadium_costs.html"),
+        L(
+          "Set TV Revenue",
+          "admin_tv_revenue.html",
+          null,
+          null,
+          "Set TV / broadcast income figures for the season."
+        ),
+        L(
+          "Set Government Subsidies",
+          "admin_gov_subsidies.html",
+          null,
+          null,
+          "Configure government subsidy amounts (paid later at close)."
+        ),
+        L(
+          "Set 34+ Fee",
+          "admin_tax_34.html",
+          null,
+          null,
+          "Set the over-34 player fee parameters."
+        ),
+        L(
+          "Set Star Fee",
+          "admin_star_tax.html",
+          null,
+          null,
+          "Set star-player fee / tax parameters."
+        ),
+        L(
+          "Set Wage %",
+          "admin_wage_pct.html",
+          null,
+          null,
+          "Set wage-bill percentage rules for the season."
+        ),
+        L(
+          "Set Tax %",
+          "admin_tax_pct.html",
+          null,
+          null,
+          "Set tax percentage parameters used in close finances."
+        ),
+        L(
+          "Set stadium costs",
+          "admin_stadium_costs.html",
+          null,
+          null,
+          "Set stadium maintenance / cost tables for close finances."
+        ),
       ]),
       group("Auctions", [
-        L("Set Draft Auction On/Off", "admin_transfers.html"),
-        L("Auction Exclusions", "admin_auction_exclusions.html"),
-        L("Special Auction", "admin_special-auctions.html"),
+        L(
+          "Set Draft Auction On/Off",
+          "admin_transfers.html",
+          null,
+          null,
+          "Enable or disable the player draft auction for pre-season."
+        ),
+        L(
+          "Auction Exclusions",
+          "admin_auction_exclusions.html",
+          null,
+          null,
+          "Exclude specific players from draft / auction pools."
+        ),
+        L(
+          "Special Auction",
+          "admin_special-auctions.html",
+          null,
+          null,
+          "Configure or run a special auction event."
+        ),
       ]),
-      group("Transfers", [L("Set on/off", "admin_transfer_window.html")]),
+      group("Transfers", [
+        L(
+          "Set on/off",
+          "admin_transfer_window.html",
+          null,
+          null,
+          "Open or close the transfer window for pre-season trading."
+        ),
+      ]),
     ],
   },
   {
     id: "season_management",
     label: "Season Management",
     entries: [
-      link("Club Season Checklist", "admin_club_checklist.html"),
+      link(
+        "Club Season Checklist",
+        "admin_club_checklist.html",
+        null,
+        "Review owned clubs against season compliance rules (squad, manager, etc.)."
+      ),
       link(
         "Season expectations",
         "admin_season_expectations.html",
         null,
         "Club/owner/manager board: prestige & manager expect vs actual, plus projected end-of-season consequences."
       ),
-      link("Owner holidays", "admin_owner_holidays.html"),
-      link("Apply fines", "admin_fines.html"),
+      link(
+        "Owner holidays",
+        "admin_owner_holidays.html",
+        null,
+        "View / manage owner holiday periods that affect arranging fixtures."
+      ),
+      link(
+        "Apply fines",
+        "admin_fines.html",
+        null,
+        "Issue admin fines to clubs (ledger + inbox)."
+      ),
       link(
         "Inject cash",
         "admin_cash_injection.html",
@@ -195,8 +435,18 @@ export const ADMIN_MAIN_NAV = [
         null,
         "Debit a fixed ₿ amount from all or selected clubs (gov_emergency_tax + inbox). Also hosts season-end threshold % formula."
       ),
-      link("Red card appeal review", "admin_prize_appeals.html"),
-      link("Republish GPSL Sport", "admin_gpsl_sport.html"),
+      link(
+        "Red card appeal review",
+        "admin_prize_appeals.html",
+        null,
+        "Review owner red-card / prize appeals and apply outcomes."
+      ),
+      link(
+        "Republish GPSL Sport",
+        "admin_gpsl_sport.html",
+        null,
+        "Rebuild / republish the GPSL Sport public pages after results or awards change."
+      ),
       link(
         "Cancel open listings & bids",
         "admin_transfers.html",
@@ -210,22 +460,70 @@ export const ADMIN_MAIN_NAV = [
     label: "Season Checklist",
     entries: [
       group("August", [
-        L("Special Auction", "admin_special-auctions.html"),
-        L("Refresh Next Gen Youth", "admin_nextgen_youth.html"),
+        L(
+          "Special Auction",
+          "admin_special-auctions.html",
+          null,
+          null,
+          "Run / close the August special auction if scheduled."
+        ),
+        L(
+          "Refresh Next Gen Youth",
+          "admin_nextgen_youth.html",
+          null,
+          null,
+          "Refresh Next Gen youth during August if required."
+        ),
       ]),
       group("September", [
-        L("Close Transfer Window", "admin_transfer_window.html", "closed"),
+        L(
+          "Close Transfer Window",
+          "admin_transfer_window.html",
+          "closed",
+          null,
+          "Close the summer transfer window for September."
+        ),
       ]),
       group("October", []),
       group("November", []),
       group("December", [
-        L("Start of Season challenge Payouts", "admin_challenges.html"),
+        L(
+          "Start of Season challenge Payouts",
+          "admin_challenges.html",
+          null,
+          null,
+          "Pay out start-of-season challenges once December criteria are met."
+        ),
       ]),
       group("January", [
-        L("Set Mid-Season Challenges", "admin_challenges.html"),
-        L("Special Auction", "admin_special-auctions.html"),
-        L("Open Transfer Window", "admin_transfer_window.html", "open"),
-        L("Close Transfer Window", "admin_transfer_window.html", "closed"),
+        L(
+          "Set Mid-Season Challenges",
+          "admin_challenges.html",
+          null,
+          null,
+          "Publish mid-season challenges for the second half."
+        ),
+        L(
+          "Special Auction",
+          "admin_special-auctions.html",
+          null,
+          null,
+          "Run the January special auction if scheduled."
+        ),
+        L(
+          "Open Transfer Window",
+          "admin_transfer_window.html",
+          "open",
+          null,
+          "Open the January transfer window."
+        ),
+        L(
+          "Close Transfer Window",
+          "admin_transfer_window.html",
+          "closed",
+          null,
+          "Close the January transfer window when the window ends."
+        ),
       ]),
       group("February", []),
       group("March", []),
@@ -245,8 +543,20 @@ export const ADMIN_MAIN_NAV = [
           null,
           "After May is fully deployed. Check “Also unlock next month” to open Playoffs."
         ),
-        L("Retry May month-lock jobs if timed out", "admin_test_end_month.html"),
-        L("Republish GPSL Sport (May)", "admin_gpsl_sport.html"),
+        L(
+          "Retry May month-lock jobs if timed out",
+          "admin_test_end_month.html",
+          null,
+          null,
+          "Re-run month-lock side jobs if the May lock timed out part-way."
+        ),
+        L(
+          "Republish GPSL Sport (May)",
+          "admin_gpsl_sport.html",
+          null,
+          null,
+          "Refresh GPSL Sport after May results / awards."
+        ),
         L(
           "Generate playoffs",
           "admin_fixtures-playoffs.html",
@@ -256,10 +566,19 @@ export const ADMIN_MAIN_NAV = [
         ),
       ]),
       group("Playoffs", [
-        L("Setup Playoffs", "admin_fixtures-playoffs.html"),
+        L(
+          "Setup Playoffs",
+          "admin_fixtures-playoffs.html",
+          null,
+          null,
+          "Confirm playoff bracket / fixtures are in place."
+        ),
         L(
           "Complete playoff fixtures (deploy results)",
-          "admin_test_deploy_month.html"
+          "admin_test_deploy_month.html",
+          null,
+          null,
+          "Deploy results for all playoff ties as they are played."
         ),
         L(
           "Apply playoff movements",
@@ -268,7 +587,13 @@ export const ADMIN_MAIN_NAV = [
           null,
           "Usually automatic when the SL playoff final is played. Use only to re-run/repair."
         ),
-        L("Push Discord queue (results / news)", "admin_discord_news.html"),
+        L(
+          "Push Discord queue (results / news)",
+          "admin_discord_news.html",
+          null,
+          null,
+          "Flush queued Discord result / news posts after playoffs."
+        ),
         L(
           "Lock Playoffs month (end GPSL month early)",
           "admin_test_end_month.html",
@@ -289,8 +614,18 @@ export const ADMIN_MAIN_NAV = [
         null,
         "Usually automatic when the SL playoff final is played. Use only to re-run/repair."
       ),
-      link("Mid-Season Challenge payouts", "admin_challenges.html"),
-      link("Pay government subsidies", "admin_gov_subsidies.html"),
+      link(
+        "Mid-Season Challenge payouts",
+        "admin_challenges.html",
+        null,
+        "Pay mid-season challenges that settle at season close."
+      ),
+      link(
+        "Pay government subsidies",
+        "admin_gov_subsidies.html",
+        null,
+        "Pay the configured government subsidies to clubs for the closing season."
+      ),
       link(
         "Pay league prize money",
         "admin_league_prizes.html",
@@ -303,8 +638,18 @@ export const ADMIN_MAIN_NAV = [
         "wf-close-season",
         "Locks tables/awards (and an early finance snapshot). OK to run before Close Finances — Close Finances refreshes the finance archive afterward."
       ),
-      link("Process manager contracts (season end)", "admin_season.html", "wf-close-season"),
-      link("Charge Emergency Tax", "admin_emergency_tax.html"),
+      link(
+        "Process manager contracts (season end)",
+        "admin_season.html",
+        "wf-close-season",
+        "Resolve manager targets / renewals / releases for the ending season."
+      ),
+      link(
+        "Charge Emergency Tax",
+        "admin_emergency_tax.html",
+        null,
+        "Apply end-of-season emergency tax if required before Close Finances."
+      ),
       link(
         "Close Finances",
         "admin_wage_bills.html",
@@ -323,7 +668,12 @@ export const ADMIN_MAIN_NAV = [
         "wf-close-season",
         "Marks the season complete (not current). Next: Create Pre-Season (player contract tick → new season ledger), then Season Break workflow."
       ),
-      link("Start Season Break workflow", "admin_season_break.html"),
+      link(
+        "Start Season Break workflow",
+        "admin_season_break.html",
+        null,
+        "Open the Season Break hub / sidebar workflow after the season is ended."
+      ),
     ],
   },
 ];

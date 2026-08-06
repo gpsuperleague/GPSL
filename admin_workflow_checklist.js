@@ -2,7 +2,8 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase, whenDomReady 
 import {
   adminMainNavHref,
   getAdminWorkflowChecklist,
-} from "./admin_main_nav.js?v=20260806-checklist-order";
+} from "./admin_main_nav.js?v=20260806-checklist-rules";
+import { renderAdminWorkflowChecklistRules } from "./admin_workflow_checklist_rules.js?v=20260806-checklist-rules";
 
 primeAdminPageChrome();
 
@@ -20,6 +21,8 @@ let hideDone = false;
 
 whenDomReady(async () => {
   if (!(await initAdminPage())) return;
+
+  renderAdminWorkflowChecklistRules();
 
   document.getElementById("wfExpandAll")?.addEventListener("click", () => setAllDetails(true));
   document.getElementById("wfCollapseAll")?.addEventListener("click", () => setAllDetails(false));

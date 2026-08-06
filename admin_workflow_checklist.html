@@ -8,8 +8,9 @@
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260806-checklist-rules">
   <style>
-    .wf-note { color:#999; font-size:13px; line-height:1.45; margin:0 0 14px; max-width:900px; }
+    .wf-rules { margin-bottom: 18px; }
     .wf-summary {
       display:flex; flex-wrap:wrap; gap:10px; align-items:center;
       margin-bottom:16px; font-size:13px;
@@ -66,21 +67,7 @@
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <div class="card">
-        <p class="wf-note">
-          Manual ticks for Admin menu tasks (excludes <b>Testing</b> and <b>Owners</b>).
-          Ordered for a live season cycle:
-          <b>Season Management → Close Season → End Of Season → Create Pre-Season</b>
-          (player contract tick / expiry money on the <b>new</b> year) →
-          <b>Season Break → Pre-Season → Start season / fixtures</b>.
-          Bound to the <b>current</b> season while one is live; after
-          <b>End season → Summer Break</b>, it follows the next <b>preseason/setup</b>
-          season (blank) so finished-season ticks are not reused.
-          Use <b>Clear all ticks</b> if you need a reset on the season shown above.
-          Check the status line below for storage mode:
-          <b>Shared</b> = Supabase (all admins); <b>Browser-only</b> = this device until you run
-          <code>supabase/sql/patches/admin_workflow_checklist.sql</code>.
-          Browser ticks are imported automatically once shared storage is available.
-        </p>
+        <div id="wfRules" class="wf-rules"></div>
         <div class="wf-summary">
           <span class="pill" id="wfSeasonLabel">Season: …</span>
           <span class="pill"><strong id="wfDoneCount">0</strong> / <span id="wfTotalCount">0</span> done</span>
@@ -97,6 +84,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_workflow_checklist.js?v=20260806-checklist-order"></script>
+  <script type="module" src="admin_workflow_checklist.js?v=20260806-checklist-rules"></script>
 </body>
 </html>
