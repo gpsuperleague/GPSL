@@ -314,29 +314,48 @@ async function archiveSeasonStats() {
     return;
   }
 
-  setStatus("compArchiveStatus", "Archiving…");
-  let { data, error } = await supabase.rpc("competition_admin_archive_season_with_inbox", {
+  // Archive stats/awards first (own timeout). Inbox + underperformance run as a
+  // second RPC so a slow follow-up cannot roll back a successful archive.
+  setStatus("compArchiveStatus", "Archiving season stats & awards…");
+  let { data, error } = await supabase.rpc("competition_admin_archive_season", {
     p_season_id: null,
   });
-
-  if (error?.message?.includes("competition_admin_archive_season_with_inbox")) {
-    ({ data, error } = await supabase.rpc("competition_admin_archive_season", {
-      p_season_id: null,
-    }));
-  }
 
   if (error) {
     setStatus(
       "compArchiveStatus",
-      error.message.includes("competition_admin_archive_season")
-        ? "❌ Run supabase/sql/competition_history.sql and patches/owner_inbox_notifications.sql in Supabase, then retry."
-        : "❌ " + error.message,
+      error.message.includes("statement timeout")
+        ? "❌ Timed out. Run supabase/sql/patches/archive_season_statement_timeout_fix.sql in Supabase SQL Editor, then retry."
+        : error.message.includes("competition_admin_archive_season")
+          ? "❌ Run supabase/sql/patches/archive_season_statement_timeout_fix.sql (or competition_history.sql) in Supabase, then retry."
+          : "❌ " + error.message,
       false
     );
     return;
   }
 
   const seasonId = data?.season_id;
+  let followNote = "";
+  if (seasonId != null) {
+    setStatus("compArchiveStatus", "Archive saved — running inbox & underperformance…");
+    const { data: followData, error: followErr } = await supabase.rpc(
+      "competition_admin_archive_season_followup",
+      { p_season_id: seasonId }
+    );
+    if (followErr?.message?.includes("competition_admin_archive_season_followup")) {
+      followNote =
+        " Inbox/underperformance skipped — run archive_season_statement_timeout_fix.sql for the followup RPC. Stats archive is saved.";
+    } else if (followErr) {
+      followNote = ` Inbox/underperformance failed (${followErr.message}). Stats archive is saved — re-run followup or check SQL.`;
+    } else {
+      const triggered = followData?.underperformance?.triggered_count;
+      followNote =
+        triggered != null
+          ? ` Inbox notified. Underperformance triggers: ${triggered}.`
+          : " Inbox/underperformance done.";
+    }
+  }
+
   let rankNote = "";
   if (seasonId != null) {
     const { error: rankErr } = await supabase.rpc(
@@ -356,10 +375,11 @@ async function archiveSeasonStats() {
       : " Club ranking updated.";
   }
 
+  const ok = !followNote.includes("failed") && !followNote.includes("skipped") && !rankNote.includes("not updated");
   setStatus(
     "compArchiveStatus",
-    `✅ Archived ${data?.season_label || "season"} — ${data?.clubs_archived ?? 0} clubs, ${data?.players_archived ?? 0} players, ${data?.cups_archived ?? 0} cups.${rankNote}`,
-    !rankNote.includes("not updated")
+    `✅ Archived ${data?.season_label || "season"} — ${data?.clubs_archived ?? 0} clubs, ${data?.players_archived ?? 0} players, ${data?.cups_archived ?? 0} cups.${followNote}${rankNote}`,
+    ok
   );
 }
 
