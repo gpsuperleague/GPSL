@@ -30,6 +30,7 @@ import {
   getDefaultBenchIds,
   getSquadPlayerIds,
 } from "./matchday_squad.js";
+import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260806-rules";
 import { playerNameLinkHtml } from "./player_links.js";
 import {
   loadActiveSuspensions,
@@ -1018,6 +1019,7 @@ async function saveMatchdaySquad(slots, pitchLayout = null) {
 }
 
 function initSquadPanel() {
+  renderMatchdaySquadRules();
   const root = document.getElementById("matchdaySquadRoot");
   if (!root) return;
 

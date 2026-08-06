@@ -656,13 +656,6 @@ export function initMatchdaySquadPanel({
         };
 
   root.innerHTML = `
-    <p class="squad-hint">
-      Drag player cards onto the pitch (11 starters) and bench (12 subs) for your
-      <b>default 23-man matchday squad</b>. <b>Click</b> a position label or player on the pitch (or <b>right-click</b> the slot) to change its role (DMF, CMF, etc.).
-      Use <b>Move positions</b> to drag markers. Save up to <b>5 custom formations</b> (Custom 1–5).
-      Formation presets only apply when you click <b>Apply Default Formation</b>. Custom layouts must follow <b>GPSL mirroring</b>
-      (LB↔RB, LMF↔RMF, LWF↔RWF; max 2 CF/SS combined). Starters auto-tick <b>Started</b> on match stats.
-    </p>
     <div class="squad-formations-bar">
       <div class="formation-section-row">
         <span class="formation-section-label">Default formations</span>
