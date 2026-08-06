@@ -150,13 +150,13 @@
         <h2>SQL patches</h2>
         <ul class="note" style="margin:0;padding-left:1.2em;line-height:1.5;">
           <li>Base tools: <code>admin_testing_tools.sql</code></li>
-          <li>Deploy 500 / timeout: <code>fix_list_expiring_and_deploy_month_500.sql</code></li>
+          <li>Deploy 500 / timeout: <code>fix_list_expiring_and_deploy_month_500.sql</code> then <code>SELECT public.admin_diagnose_month_deploy_rpcs('december');</code></li>
           <li>Discipline cards: <code>admin_testing_deploy_month_discipline.sql</code></li>
           <li>Stats column errors: <code>competition_match_stats_started_columns.sql</code></li>
         </ul>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_deploy_month.js?v=20260806-deploy-500-fix"></script>
+  <script type="module" src="admin_test_deploy_month.js?v=20260806-deploy-500-fix2"></script>
 </body>
 </html>

@@ -229,14 +229,14 @@ async function runDeploy() {
     });
 
     if (error) {
-      const errText = [error.message, error.details, error.hint]
+      const errText = [error.code, error.message, error.details, error.hint]
         .filter(Boolean)
         .join(" — ");
-      const timedOut = /statement timeout|canceling statement|Timed out|57014/i.test(
+      const timedOut = /statement timeout|canceling statement|Timed out|57014|502|504|upstream/i.test(
         errText || ""
       );
       const needsPatch =
-        /p_limit|admin_testing_deploy_month_results|seed_month_discipline|Could not find the function|PGRST202|42883/i.test(
+        /p_limit|admin_testing_deploy_month_results|seed_month_discipline|Could not find the function|PGRST202|PGRST203|42883/i.test(
           errText || ""
         );
 
@@ -245,7 +245,7 @@ async function runDeploy() {
         setStatus(
           "deployStatus",
           `Timed out — retrying in 2s (${timeoutRetries}/${MAX_TIMEOUT_RETRIES}). ` +
-            `If this keeps happening, run fix_list_expiring_and_deploy_month_500.sql in Supabase.`
+            `If this keeps happening, re-run fix_list_expiring_and_deploy_month_500.sql in Supabase.`
         );
         await sleep(2000);
         continue;
@@ -255,10 +255,22 @@ async function runDeploy() {
       setStatus(
         "deployStatus",
         timedOut
-          ? "❌ Timed out repeatedly — run supabase/sql/patches/fix_list_expiring_and_deploy_month_500.sql in Supabase, hard-refresh, retry."
+          ? "❌ Timed out repeatedly — re-run supabase/sql/patches/fix_list_expiring_and_deploy_month_500.sql in Supabase SQL Editor, then: SELECT public.admin_diagnose_month_deploy_rpcs('december');"
           : needsPatch
-            ? `❌ RPC missing/ambiguous — run supabase/sql/patches/fix_list_expiring_and_deploy_month_500.sql then hard-refresh.\n${errText}`
-            : `❌ ${errText || "Deploy failed (HTTP 500)"}`,
+            ? `❌ RPC missing/ambiguous — re-run fix_list_expiring_and_deploy_month_500.sql then hard-refresh.\n${errText}`
+            : `❌ ${errText || "Deploy failed (HTTP 500) — re-run fix_list_expiring_and_deploy_month_500.sql"}`,
+        false
+      );
+      await runPreview();
+      return;
+    }
+
+    // Patched RPC returns {ok:false,error} instead of raising HTTP 500
+    if (data && data.ok === false) {
+      console.error("admin_testing_deploy_month_results soft-fail:", data);
+      setStatus(
+        "deployStatus",
+        `❌ ${data.error || "Deploy failed"}${data.sqlstate ? ` (${data.sqlstate})` : ""}`,
         false
       );
       await runPreview();

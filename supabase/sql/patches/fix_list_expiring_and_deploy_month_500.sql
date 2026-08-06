@@ -3,13 +3,87 @@
 --   • list_expiring_contract_market  (nav Active badge / squad status)
 --   • admin_testing_deploy_month_results (admin_test_deploy_month.html)
 --
--- Typical causes:
---   1) list_expiring: missing wage helpers, pesdb_unavailable, or bad Age casts
---   2) deploy_month: old 2-arg overload ambiguity, or broken clinch rename wrap
+-- Run this WHOLE file once in Supabase SQL Editor, then:
+--   SELECT public.admin_diagnose_month_deploy_rpcs('december');
+-- Hard-refresh the admin page and retry Deploy.
 -- Safe re-run.
 -- =============================================================================
 
--- Wage helpers (no-op if already present)
+-- ---------------------------------------------------------------------------
+-- 0) Clinch skip wrap (December deploy often 500s without this — each result
+--    re-scans clinches and blows the API gateway timeout)
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+  v_def text;
+BEGIN
+  IF to_regprocedure('public.competition_process_league_clinches(bigint)') IS NULL THEN
+    RAISE NOTICE 'competition_process_league_clinches missing — skip wrap';
+    RETURN;
+  END IF;
+
+  SELECT pg_get_functiondef('public.competition_process_league_clinches(bigint)'::regprocedure)
+  INTO v_def;
+
+  IF v_def LIKE '%competition_process_league_clinches_impl%' THEN
+    RAISE NOTICE 'clinch skip wrap already installed';
+    RETURN;
+  END IF;
+
+  IF v_def LIKE '%gpsl.skip_clinch_scan%' THEN
+    RAISE NOTICE 'clinch already has skip GUC — no wrap needed';
+    RETURN;
+  END IF;
+
+  IF to_regprocedure('public.competition_process_league_clinches_impl(bigint)') IS NOT NULL THEN
+    DROP FUNCTION public.competition_process_league_clinches_impl(bigint);
+  END IF;
+
+  ALTER FUNCTION public.competition_process_league_clinches(bigint)
+    RENAME TO competition_process_league_clinches_impl;
+
+  EXECUTE $wrap$
+    CREATE OR REPLACE FUNCTION public.competition_process_league_clinches(
+      p_season_id bigint DEFAULT NULL
+    )
+    RETURNS jsonb
+    LANGUAGE plpgsql
+    SECURITY DEFINER
+    SET search_path = public
+    AS $function$
+    BEGIN
+      IF current_setting('gpsl.skip_clinch_scan', true) = 'on' THEN
+        RETURN jsonb_build_object('ok', true, 'skipped', true, 'reason', 'bulk_deploy');
+      END IF;
+
+      RETURN public.competition_process_league_clinches_impl(p_season_id);
+    END;
+    $function$;
+  $wrap$;
+
+  GRANT EXECUTE ON FUNCTION public.competition_process_league_clinches(bigint)
+    TO authenticated, service_role;
+
+  RAISE NOTICE 'clinch skip wrap installed';
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE NOTICE 'clinch wrap skipped: %', SQLERRM;
+END $$;
+
+-- Repair if a previous patch left only _impl (no public wrapper)
+DO $$
+BEGIN
+  IF to_regprocedure('public.competition_process_league_clinches_impl(bigint)') IS NOT NULL
+     AND to_regprocedure('public.competition_process_league_clinches(bigint)') IS NULL THEN
+    ALTER FUNCTION public.competition_process_league_clinches_impl(bigint)
+      RENAME TO competition_process_league_clinches;
+    RAISE NOTICE 'restored competition_process_league_clinches from _impl';
+  END IF;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- 1) Wage helpers
+-- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.contract_expiry_min_wage_uplift_pct()
 RETURNS numeric
 LANGUAGE sql
@@ -28,73 +102,34 @@ LANGUAGE plpgsql
 IMMUTABLE
 AS $function$
 DECLARE
-  v_cur numeric := greatest(coalesce(p_current_wage, 0), 0);
-  v_pct numeric := public.contract_expiry_min_wage_uplift_pct();
-  v_min numeric;
+  v_wage numeric := greatest(coalesce(p_current_wage, 0), 0);
+  v_pct  numeric := 10;
 BEGIN
-  IF v_cur <= 0 THEN
-    RETURN 10000::numeric;
-  END IF;
-  v_min := ceil(v_cur * (1 + (v_pct / 100.0)));
-  IF v_min <= v_cur THEN
-    v_min := v_cur + 1;
-  END IF;
-  RETURN v_min;
+  BEGIN
+    v_pct := public.contract_expiry_min_wage_uplift_pct();
+  EXCEPTION
+    WHEN OTHERS THEN
+      v_pct := 10;
+  END;
+  RETURN greatest(round(v_wage * (1 + v_pct / 100.0), 0), v_wage + 1, 10000);
 END;
 $function$;
 
-CREATE OR REPLACE FUNCTION public.is_player_expiry_auction_exempt(
-  p_player_id text,
-  p_club_short_name text
-)
-RETURNS boolean
-LANGUAGE plpgsql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $function$
-DECLARE
-  v_pid  text := btrim(p_player_id);
-  v_club text := btrim(p_club_short_name);
-  v_age  numeric;
-  v_hg   boolean;
-  v_age_txt text;
+-- Do NOT replace is_player_expiry_auction_exempt — real logic lives in
+-- contract_expiry_uncontested_brackets.sql. Only stub if missing.
+DO $$
 BEGIN
-  IF v_pid IS NULL OR v_pid = '' OR v_club IS NULL OR v_club = '' THEN
-    RETURN false;
+  IF to_regprocedure('public.is_player_expiry_auction_exempt(text, text)') IS NULL THEN
+    EXECUTE $stub$
+      CREATE FUNCTION public.is_player_expiry_auction_exempt(p_player_id text, p_club text)
+      RETURNS boolean
+      LANGUAGE sql
+      STABLE
+      AS $f$ SELECT false $f$;
+    $stub$;
+    GRANT EXECUTE ON FUNCTION public.is_player_expiry_auction_exempt(text, text) TO authenticated;
   END IF;
-
-  SELECT nullif(btrim(p."Age"::text), '') INTO v_age_txt
-  FROM public."Players" p
-  WHERE p."Konami_ID"::text = v_pid;
-
-  IF NOT FOUND OR v_age_txt IS NULL THEN
-    RETURN false;
-  END IF;
-
-  BEGIN
-    v_age := v_age_txt::numeric;
-  EXCEPTION
-    WHEN OTHERS THEN
-      RETURN false;
-  END;
-
-  BEGIN
-    v_hg := public.is_player_homegrown(v_pid, v_club);
-  EXCEPTION
-    WHEN OTHERS THEN
-      v_hg := false;
-  END;
-
-  IF v_hg AND v_age <= 23 THEN
-    RETURN true;
-  END IF;
-  IF (NOT v_hg) AND v_age <= 21 THEN
-    RETURN true;
-  END IF;
-  RETURN false;
-END;
-$function$;
+END $$;
 
 CREATE OR REPLACE FUNCTION public.player_expiry_auction_applies(p_player_id text)
 RETURNS boolean
@@ -104,11 +139,15 @@ SECURITY DEFINER
 SET search_path = public
 AS $function$
 DECLARE
-  v_player public."Players"%rowtype;
   v_club text;
+  v_seasons int;
   v_unavail boolean := false;
+  v_team text;
 BEGIN
-  SELECT * INTO v_player
+  SELECT
+    p."Contracted_Team",
+    coalesce(p.contract_seasons_remaining, 0)
+  INTO v_team, v_seasons
   FROM public."Players" p
   WHERE p."Konami_ID"::text = btrim(p_player_id);
 
@@ -116,10 +155,16 @@ BEGIN
     RETURN false;
   END IF;
 
+  -- Safe: column may be missing on older DBs
   BEGIN
-    v_unavail := coalesce(v_player.pesdb_unavailable, false);
+    EXECUTE
+      'SELECT coalesce(pesdb_unavailable, false)
+       FROM public."Players"
+       WHERE "Konami_ID"::text = $1'
+    INTO v_unavail
+    USING btrim(p_player_id);
   EXCEPTION
-    WHEN undefined_column THEN
+    WHEN OTHERS THEN
       v_unavail := false;
   END;
 
@@ -127,24 +172,29 @@ BEGIN
     RETURN false;
   END IF;
 
+  IF v_seasons <> 1 THEN
+    RETURN false;
+  END IF;
+
   BEGIN
-    v_club := public.player_contracted_club_key(v_player."Contracted_Team");
+    v_club := public.player_contracted_club_key(v_team);
   EXCEPTION
     WHEN OTHERS THEN
-      v_club := nullif(btrim(coalesce(v_player."Contracted_Team", '')), '');
+      v_club := nullif(btrim(coalesce(v_team, '')), '');
   END;
 
   IF v_club IS NULL THEN
     RETURN false;
   END IF;
 
-  IF coalesce(v_player.contract_seasons_remaining, 0) <> 1 THEN
-    RETURN false;
-  END IF;
-
-  IF public.is_player_expiry_auction_exempt(btrim(p_player_id), v_club) THEN
-    RETURN false;
-  END IF;
+  BEGIN
+    IF public.is_player_expiry_auction_exempt(btrim(p_player_id), v_club) THEN
+      RETURN false;
+    END IF;
+  EXCEPTION
+    WHEN OTHERS THEN
+      NULL;
+  END;
 
   RETURN true;
 EXCEPTION
@@ -153,6 +203,9 @@ EXCEPTION
 END;
 $function$;
 
+-- ---------------------------------------------------------------------------
+-- 2) list_expiring — never raise to the client
+-- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.list_expiring_contract_market()
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -168,6 +221,7 @@ DECLARE
   v_my_bid numeric;
   v_step   numeric := 1;
   v_min    numeric;
+  v_applies boolean;
 BEGIN
   BEGIN
     v_season := coalesce(public.current_gpsl_season_label(), 'unknown');
@@ -205,9 +259,18 @@ BEGIN
     FROM public."Players" p
     WHERE coalesce(p.contract_seasons_remaining, 0) = 1
       AND nullif(btrim(coalesce(p."Contracted_Team", '')), '') IS NOT NULL
-      AND public.player_expiry_auction_applies(p."Konami_ID"::text)
     ORDER BY p."Name"
   LOOP
+    BEGIN
+      v_applies := public.player_expiry_auction_applies(v_row.player_id);
+    EXCEPTION
+      WHEN OTHERS THEN
+        v_applies := false;
+    END;
+    IF NOT coalesce(v_applies, false) THEN
+      CONTINUE;
+    END IF;
+
     v_my_bid := NULL;
     IF v_viewer IS NOT NULL THEN
       BEGIN
@@ -218,8 +281,6 @@ BEGIN
           AND b.season_label = v_season
           AND b.bidder_club_short_name = v_viewer;
       EXCEPTION
-        WHEN undefined_table THEN
-          v_my_bid := NULL;
         WHEN OTHERS THEN
           v_my_bid := NULL;
       END;
@@ -232,53 +293,70 @@ BEGIN
         v_min := greatest(coalesce(v_row.current_wage, 0) + 1, 10000);
     END;
 
-    v_out := v_out || jsonb_build_array(
-      jsonb_build_object(
-        'player_id', v_row.player_id,
-        'player_name', v_row.player_name,
-        'position', v_row.position,
-        'nation', v_row.nation,
-        'playstyle', v_row.playstyle,
-        'rating', v_row.rating,
-        'age', v_row.age,
-        'market_value', v_row.market_value,
-        'holding_club', v_row.holding_club,
-        'current_wage', v_row.current_wage,
-        'min_wage_offer', v_min,
-        'wage_step', v_step,
-        'my_wage_bid', v_my_bid,
-        'season_label', v_season
-      )
-    );
+    BEGIN
+      v_out := v_out || jsonb_build_array(
+        jsonb_build_object(
+          'player_id', v_row.player_id,
+          'player_name', v_row.player_name,
+          'position', v_row.position,
+          'nation', v_row.nation,
+          'playstyle', v_row.playstyle,
+          'rating', v_row.rating,
+          'age', v_row.age,
+          'market_value', v_row.market_value,
+          'holding_club', v_row.holding_club,
+          'current_wage', v_row.current_wage,
+          'min_wage_offer', v_min,
+          'wage_step', v_step,
+          'my_wage_bid', v_my_bid,
+          'season_label', v_season
+        )
+      );
+    EXCEPTION
+      WHEN OTHERS THEN
+        NULL; -- skip bad row
+    END;
   END LOOP;
 
   RETURN coalesce(v_out, '[]'::jsonb);
 EXCEPTION
   WHEN OTHERS THEN
-    -- Never 500 the nav / squad — return empty market
     RETURN '[]'::jsonb;
 END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.list_expiring_contract_market() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.player_expiry_auction_applies(text) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.is_player_expiry_auction_exempt(text, text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.contract_expiry_wage_bid_step() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.contract_expiry_min_wage_offer(numeric) TO authenticated;
-
--- Drop legacy 2-arg deploy overload (causes PostgREST ambiguity / odd 500s)
-DROP FUNCTION IF EXISTS public.admin_testing_deploy_month_results(text, text);
-
--- Repair clinch wrap if rename left a broken state
 DO $$
 BEGIN
-  IF to_regprocedure('public.competition_process_league_clinches_impl(bigint)') IS NOT NULL
-     AND to_regprocedure('public.competition_process_league_clinches(bigint)') IS NULL THEN
-    ALTER FUNCTION public.competition_process_league_clinches_impl(bigint)
-      RENAME TO competition_process_league_clinches;
+  IF to_regprocedure('public.is_player_expiry_auction_exempt(text, text)') IS NOT NULL THEN
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.is_player_expiry_auction_exempt(text, text) TO authenticated';
   END IF;
 END $$;
 
+-- ---------------------------------------------------------------------------
+-- 3) Drop ALL deploy_month overloads (kills PostgREST ambiguity 500s)
+-- ---------------------------------------------------------------------------
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT p.oid::regprocedure AS sig
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'admin_testing_deploy_month_results'
+  LOOP
+    EXECUTE 'DROP FUNCTION IF EXISTS ' || r.sig || ' CASCADE';
+  END LOOP;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- 4) Safe deploy_month — returns {ok:false,error:...} instead of HTTP 500
+-- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.admin_testing_deploy_month_results(
   p_gpsl_month text,
   p_confirm_phrase text DEFAULT NULL,
@@ -312,19 +390,28 @@ DECLARE
   v_limit int := greatest(1, least(coalesce(p_limit, 1), 2));
 BEGIN
   IF NOT public.is_gpsl_admin() THEN
-    RAISE EXCEPTION 'Admin only';
+    RETURN jsonb_build_object('ok', false, 'error', 'Admin only');
   END IF;
 
   IF v_month = '' THEN
-    RAISE EXCEPTION 'gpsl_month required';
+    RETURN jsonb_build_object('ok', false, 'error', 'gpsl_month required');
   END IF;
 
   IF p_after_fixture_id IS NULL
      AND coalesce(trim(p_confirm_phrase), '') <> 'DEPLOY TEST MONTH' THEN
-    RAISE EXCEPTION 'Confirmation phrase required — type exactly: DEPLOY TEST MONTH';
+    RETURN jsonb_build_object(
+      'ok', false,
+      'error', 'Confirmation phrase required — type exactly: DEPLOY TEST MONTH'
+    );
   END IF;
 
-  PERFORM set_config('statement_timeout', '180s', true);
+  BEGIN
+    PERFORM set_config('statement_timeout', '180s', true);
+  EXCEPTION
+    WHEN OTHERS THEN
+      NULL;
+  END;
+
   BEGIN
     PERFORM set_config('gpsl.skip_clinch_scan', 'on', true);
   EXCEPTION
@@ -339,18 +426,21 @@ BEGIN
   LIMIT 1;
 
   IF v_season_id IS NULL THEN
-    RAISE EXCEPTION 'No current competition season';
+    RETURN jsonb_build_object('ok', false, 'error', 'No current competition season');
   END IF;
 
   IF to_regprocedure('public.admin_testing_deploy_scheduled_fixture(bigint)') IS NULL THEN
-    RAISE EXCEPTION 'admin_testing_deploy_scheduled_fixture missing — run admin_testing_deploy_fix.sql';
+    RETURN jsonb_build_object(
+      'ok', false,
+      'error', 'admin_testing_deploy_scheduled_fixture missing — run admin_testing_deploy_fix.sql'
+    );
   END IF;
 
   FOR v_fixture IN
     SELECT f.*
     FROM public.competition_fixtures f
     WHERE f.season_id = v_season_id
-      AND f.gpsl_month = v_month
+      AND lower(trim(coalesce(f.gpsl_month, ''))) = v_month
       AND f.status = 'scheduled'
       AND f.competition_type IN ('league', 'cup')
       AND (p_after_fixture_id IS NULL OR f.id > p_after_fixture_id)
@@ -395,12 +485,21 @@ BEGIN
       NULL;
   END;
 
+  -- Do NOT run full clinch mid-month here (timeout risk). Admin can scan separately.
+  IF v_league_deployed > 0 THEN
+    v_clinches := jsonb_build_object(
+      'ok', true,
+      'skipped', true,
+      'reason', 'deferred_until_month_complete'
+    );
+  END IF;
+
   IF v_last_fixture_id IS NOT NULL THEN
     SELECT EXISTS (
       SELECT 1
       FROM public.competition_fixtures f
       WHERE f.season_id = v_season_id
-        AND f.gpsl_month = v_month
+        AND lower(trim(coalesce(f.gpsl_month, ''))) = v_month
         AND f.status = 'scheduled'
         AND f.competition_type IN ('league', 'cup')
         AND f.id > v_last_fixture_id
@@ -412,7 +511,7 @@ BEGIN
   INTO v_scheduled_left
   FROM public.competition_fixtures f
   WHERE f.season_id = v_season_id
-    AND f.gpsl_month = v_month
+    AND lower(trim(coalesce(f.gpsl_month, ''))) = v_month
     AND f.status = 'scheduled'
     AND f.competition_type IN ('league', 'cup');
 
@@ -478,10 +577,124 @@ BEGIN
     'deployed', CASE WHEN coalesce(p_include_details, false) THEN v_deployed ELSE NULL END,
     'errors', v_errors
   );
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'error', SQLERRM,
+      'sqlstate', SQLSTATE
+    );
 END;
 $function$;
 
 GRANT EXECUTE ON FUNCTION public.admin_testing_deploy_month_results(text, text, integer, bigint, boolean)
   TO authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 5) Diagnostic — run after applying this file
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.admin_diagnose_month_deploy_rpcs(
+  p_gpsl_month text DEFAULT 'december'
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE
+  v_month text := lower(trim(coalesce(p_gpsl_month, 'december')));
+  v_out jsonb := '{}'::jsonb;
+  v_tmp jsonb;
+  v_season_id bigint;
+  v_n int;
+  v_overloads text[];
+  v_clinch_def text;
+BEGIN
+  IF NOT public.is_gpsl_admin()
+     AND current_user NOT IN ('postgres', 'supabase_admin', 'service_role') THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'Admin only');
+  END IF;
+
+  SELECT array_agg(p.oid::regprocedure::text ORDER BY p.oid)
+  INTO v_overloads
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.proname = 'admin_testing_deploy_month_results';
+
+  v_out := v_out || jsonb_build_object(
+    'deploy_month_overloads', coalesce(to_jsonb(v_overloads), '[]'::jsonb),
+    'deploy_scheduled_fixture',
+      to_regprocedure('public.admin_testing_deploy_scheduled_fixture(bigint)') IS NOT NULL,
+    'list_expiring_exists',
+      to_regprocedure('public.list_expiring_contract_market()') IS NOT NULL,
+    'clinch_exists',
+      to_regprocedure('public.competition_process_league_clinches(bigint)') IS NOT NULL,
+    'clinch_impl_exists',
+      to_regprocedure('public.competition_process_league_clinches_impl(bigint)') IS NOT NULL
+  );
+
+  IF to_regprocedure('public.competition_process_league_clinches(bigint)') IS NOT NULL THEN
+    SELECT pg_get_functiondef('public.competition_process_league_clinches(bigint)'::regprocedure)
+    INTO v_clinch_def;
+    v_out := v_out || jsonb_build_object(
+      'clinch_has_skip_guc',
+      coalesce(v_clinch_def LIKE '%gpsl.skip_clinch_scan%'
+               OR v_clinch_def LIKE '%competition_process_league_clinches_impl%', false)
+    );
+  END IF;
+
+  SELECT id INTO v_season_id
+  FROM public.competition_seasons
+  WHERE is_current = true
+  ORDER BY id DESC
+  LIMIT 1;
+
+  SELECT count(*)::int INTO v_n
+  FROM public.competition_fixtures f
+  WHERE f.season_id = v_season_id
+    AND lower(trim(coalesce(f.gpsl_month, ''))) = v_month
+    AND f.status = 'scheduled'
+    AND f.competition_type IN ('league', 'cup');
+
+  v_out := v_out || jsonb_build_object(
+    'season_id', v_season_id,
+    'month', v_month,
+    'scheduled_league_cup', v_n
+  );
+
+  BEGIN
+    v_tmp := public.list_expiring_contract_market();
+    v_out := v_out || jsonb_build_object(
+      'list_expiring_ok', true,
+      'list_expiring_count', coalesce(jsonb_array_length(v_tmp), 0)
+    );
+  EXCEPTION
+    WHEN OTHERS THEN
+      v_out := v_out || jsonb_build_object(
+        'list_expiring_ok', false,
+        'list_expiring_error', SQLERRM
+      );
+  END;
+
+  BEGIN
+    PERFORM set_config('gpsl.skip_clinch_scan', 'on', true);
+    v_out := v_out || jsonb_build_object('skip_clinch_guc_ok', true);
+  EXCEPTION
+    WHEN OTHERS THEN
+      v_out := v_out || jsonb_build_object(
+        'skip_clinch_guc_ok', false,
+        'skip_clinch_guc_error', SQLERRM
+      );
+  END;
+
+  RETURN v_out || jsonb_build_object('ok', true);
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN jsonb_build_object('ok', false, 'error', SQLERRM, 'partial', v_out);
+END;
+$function$;
+
+GRANT EXECUTE ON FUNCTION public.admin_diagnose_month_deploy_rpcs(text) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
