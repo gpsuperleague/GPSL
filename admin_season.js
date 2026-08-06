@@ -266,7 +266,9 @@ async function createNextSeason() {
       `❌ ${error.message}${
         /timeout|canceling statement/i.test(error.message || "")
           ? " — run in SQL Editor: SELECT public.competition_create_season_full('…'); after season_rollover_auto_contracts.sql"
-          : " — run patches/season_rollover_auto_contracts.sql (+ season_contract_tick_catchup.sql)"
+          : error.message?.includes("player_assign_to_club")
+            ? " — run patches/player_assign_to_club_overload_fix.sql, then retry (or Tick contracts catch-up if season row exists)"
+            : " — run patches/season_rollover_auto_contracts.sql (+ season_contract_tick_catchup.sql)"
       }`,
       false
     );

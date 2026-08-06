@@ -276,10 +276,12 @@ BEGIN
       );
     END IF;
 
+    -- Explicit 4-arg call — avoids overload ambiguity with (text,text,numeric)
     PERFORM public.player_assign_to_club(
       v_player.player_id,
       v_bid.bidder_club_short_name,
-      v_bid.wage_offer
+      v_bid.wage_offer,
+      false
     );
 
     -- Assign uses current_gpsl_season_label() which is often NULL after End Season
