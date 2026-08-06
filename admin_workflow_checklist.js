@@ -2,8 +2,8 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase, whenDomReady 
 import {
   adminMainNavHref,
   getAdminWorkflowChecklist,
-} from "./admin_main_nav.js?v=20260806-nav-checklist-nested";
-import { renderAdminWorkflowChecklistRules } from "./admin_workflow_checklist_rules.js?v=20260806-nav-checklist-nested";
+} from "./admin_main_nav.js?v=20260807-mgr-renewal-checklist";
+import { renderAdminWorkflowChecklistRules } from "./admin_workflow_checklist_rules.js?v=20260807-mgr-renewal-checklist";
 
 primeAdminPageChrome();
 

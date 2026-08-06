@@ -393,6 +393,15 @@ export const ADMIN_MAIN_NAV = [
           "Open or close the transfer window for pre-season trading."
         ),
       ]),
+      group("Managers", [
+        L(
+          "Process manager renewal deadline (before August)",
+          "admin_season.html",
+          "wf-close-season",
+          null,
+          "End of July / start of August: release managers still on pending renewal (club gets MV). Season-end “Process manager contracts” (Close Season) creates those offers in June/July — this deadline closes the window. Safe to re-run."
+        ),
+      ]),
     ],
   },
   {
