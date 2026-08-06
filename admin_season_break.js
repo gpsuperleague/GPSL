@@ -2,7 +2,7 @@ import { initAdminPage, primeAdminPageChrome } from "./admin_common.js";
 import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
-} from "./admin_main_nav.js?v=20260807-create-before-break";
+} from "./admin_main_nav.js?v=20260807-prizes-in-create";
 
 primeAdminPageChrome();
 

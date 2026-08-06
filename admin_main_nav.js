@@ -97,6 +97,54 @@ export const ADMIN_MAIN_NAV = [
         "wf-kickoff",
         "Only if Create Pre-Season did not finish the tick. Same expiry resolve → new-season ledger. Skips if already logged for that preseason."
       ),
+      group("Prize Money", [
+        L(
+          "Cup Prize Money",
+          "admin_cup_prizes.html",
+          null,
+          null,
+          "Review / set cup prize tables for the upcoming season (after Create Pre-Season)."
+        ),
+        L(
+          "League Prize Money",
+          "admin_league_prizes.html",
+          null,
+          null,
+          "Review / set league finishing prize tables per division (after Create Pre-Season)."
+        ),
+      ]),
+      group("Transfers", [
+        L(
+          "Set transfer window on/off",
+          "admin_transfer_window.html",
+          null,
+          null,
+          "Open or close the transfer window for pre-season trading."
+        ),
+      ]),
+      group("Auctions", [
+        L(
+          "Set Draft Auction On/Off",
+          "admin_transfers.html",
+          null,
+          null,
+          "Enable or disable the player draft auction for pre-season."
+        ),
+        L(
+          "Auction Exclusions",
+          "admin_auction_exclusions.html",
+          null,
+          null,
+          "Exclude specific players from draft / auction pools."
+        ),
+        L(
+          "Special Auction",
+          "admin_special-auctions.html",
+          null,
+          null,
+          "Configure or run a special auction event."
+        ),
+      ]),
       group("Assign divisions", [
         L(
           "Setup Superleague Teams",
@@ -198,22 +246,6 @@ export const ADMIN_MAIN_NAV = [
           "Refresh club kit images for the new season."
         ),
       ]),
-      group("Prize Money", [
-        L(
-          "Cup Prize Money",
-          "admin_cup_prizes.html",
-          null,
-          null,
-          "Review / set cup prize tables for the upcoming season."
-        ),
-        L(
-          "League Prize Money",
-          "admin_league_prizes.html",
-          null,
-          null,
-          "Review / set league finishing prize tables per division."
-        ),
-      ]),
       group("Club, Stadium & Manager", [
         L(
           "Club Attendance & Prestige",
@@ -302,38 +334,6 @@ export const ADMIN_MAIN_NAV = [
           null,
           null,
           "Set stadium maintenance / cost tables for close finances."
-        ),
-      ]),
-      group("Transfers", [
-        L(
-          "Set transfer window on/off",
-          "admin_transfer_window.html",
-          null,
-          null,
-          "Open or close the transfer window for season-break / pre-season trading."
-        ),
-      ]),
-      group("Auctions", [
-        L(
-          "Set Draft Auction On/Off",
-          "admin_transfers.html",
-          null,
-          null,
-          "Enable or disable the player draft auction for pre-season."
-        ),
-        L(
-          "Auction Exclusions",
-          "admin_auction_exclusions.html",
-          null,
-          null,
-          "Exclude specific players from draft / auction pools."
-        ),
-        L(
-          "Special Auction",
-          "admin_special-auctions.html",
-          null,
-          null,
-          "Configure or run a special auction event."
         ),
       ]),
       group("Internationals", [
@@ -746,8 +746,8 @@ export const ADMIN_CHECKLIST_EXCLUDE_SECTION_IDS = new Set(["testing", "owners"]
  * Close Season / End Of Season sit at the end of the season year.
  */
 export const ADMIN_CHECKLIST_SECTION_ORDER = [
-  "create_season",
   "season_break",
+  "create_season",
   "pre_season",
   "season_management",
   "season_checklist",
@@ -768,7 +768,8 @@ export function adminChecklistTaskKey(sectionId, groupLabel, item) {
 /**
  * Flatten Admin menu into checklist sections (excludes Testing & Owners).
  * Empty groups (e.g. months with no tasks) are omitted.
- * Order: Create Season → Season Break → … → Close Season → End Of Season.
+ * Order: Season Break → Create Season → … → Close Season → End Of Season.
+ * (Prize money / transfers / auctions live under Create Season, after Create Pre-Season.)
  */
 export function getAdminWorkflowChecklist() {
   const byId = new Map();
