@@ -29,8 +29,8 @@ import {
   getDefaultStarters,
   getDefaultBenchIds,
   getSquadPlayerIds,
-} from "./matchday_squad.js";
-import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260806-rules";
+} from "./matchday_squad.js?v=20260806-squad-rules2";
+import { renderMatchdaySquadRules } from "./matchday_rules.js?v=20260806-squad-rules2";
 import { playerNameLinkHtml } from "./player_links.js";
 import {
   loadActiveSuspensions,

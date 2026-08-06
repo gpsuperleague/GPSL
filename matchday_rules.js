@@ -1,7 +1,7 @@
 /**
  * Match Day — owner-facing squad help (modular cards).
  */
-import { renderRulesPanel } from "./gpsl_rules_cards.js";
+import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-squad-rules2";
 
 /**
  * @returns {{ cards: { heading: string, items: string[] }[] }}
