@@ -9,10 +9,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Squad</title>
 
-  <link rel="stylesheet" href="dashboard.css?v=20260806-league-badges">
+  <link rel="stylesheet" href="dashboard.css?v=20260806-league-badges2">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="gpsl_info_tips.css?v=20260724-squad-tips">
-  <link rel="stylesheet" href="squad.css?v=20260805-expiry-bid-status">
+  <link rel="stylesheet" href="squad.css?v=20260806-league-badge-pos">
 
   <style>
     body {
@@ -82,9 +82,11 @@
   <div id="headerContainer" class="squad-header">
     <div class="squad-header-identity">
       <img id="clubBadgeHeader" src="" alt="Club Badge" class="squad-header-badge">
-      <img id="leagueBadgeHeader" src="" alt="" class="squad-header-league-badge" hidden>
       <div class="squad-header-titles">
-        <h1 id="dashboardTitle">Squad</h1>
+        <div class="squad-header-title-row">
+          <h1 id="dashboardTitle">Squad</h1>
+          <img id="leagueBadgeHeader" src="" alt="" class="squad-header-league-badge" hidden>
+        </div>
         <div id="userEmail"></div>
         <p id="managerBadge" class="foreign-interest-badge manager-badge" aria-live="polite" hidden>
           <span id="managerBadgeMain" class="foreign-interest-main"></span>
@@ -182,7 +184,7 @@
   </div>
 
   <!-- LOAD SQUAD LOGIC (nav via initGlobal in squad.js) -->
-  <script type="module" src="squad.js?v=20260806-league-badges"></script>
+  <script type="module" src="squad.js?v=20260806-league-badge-pos"></script>
 
 </body>
 </html>
