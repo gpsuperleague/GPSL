@@ -122,7 +122,7 @@
         <section id="wf-kickoff" class="admin-season-panel" data-panel="wf-kickoff" hidden>
           <div class="card">
             <h2>Create new season</h2>
-            <p class="note">Creates a pre-season year (60 clubs) and <b>automatically</b> ticks player contracts (and catches up managers if End Season skipped them). Run <code>patches/season_contract_tick_catchup.sql</code> then <code>patches/season_rollover_auto_contracts.sql</code> before the next live rollover. If the legacy league year is still open, also runs <code>rollover_season</code> first.</p>
+            <p class="note">Creates a pre-season year (60 clubs) and <b>automatically</b> ticks player contracts (and catches up managers if End Season skipped them). Expiry wage bids / FA releases post money to the <b>new</b> season — run <code>patches/contract_expiry_rollover_new_season_ledger.sql</code> before rollover. Also: <code>season_contract_tick_catchup.sql</code> + <code>season_rollover_auto_contracts.sql</code>. If the legacy league year is still open, also runs <code>rollover_season</code> first. Large markets: if Tick times out in the browser, run <code>SELECT public.admin_catchup_player_contract_tick();</code> in the SQL Editor.</p>
             <div id="compActiveSummary" class="note"></div>
             <div class="row">
               <div>
@@ -182,6 +182,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_season.js?v=20260805-mgr-renew-pre-aug"></script>
+  <script type="module" src="admin_season.js?v=20260806-expiry-new-season"></script>
 </body>
 </html>

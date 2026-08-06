@@ -85,14 +85,30 @@ export const ADMIN_MAIN_NAV = [
     id: "create_season",
     label: "Create Season",
     entries: [
-      link("Create Pre-Season", "admin_season.html", "wf-kickoff"),
+      link(
+        "Create Pre-Season",
+        "admin_season.html",
+        "wf-kickoff",
+        "Do this AFTER Close Finances + End season. Creates Season N+1 and ticks player contracts: expiry wage bids / FA releases post money to the NEW season (not the closed year). Run patches/contract_expiry_rollover_new_season_ledger.sql first. If the browser times out, use Tick contracts only / SQL catch-up."
+      ),
+      link(
+        "Tick player contracts (catch-up)",
+        "admin_season.html",
+        "wf-kickoff",
+        "Only if Create Pre-Season did not finish the tick. Same expiry resolve → new-season ledger. Skips if already logged for that preseason."
+      ),
       group("Assign divisions", [
         L("Setup Superleague Teams", "admin_season.html", "wf-divisions"),
         L("Setup Championship Teams", "admin_season.html", "wf-divisions"),
         L("Draw Championship Divisions", "admin_season.html", "wf-divisions"),
       ]),
       link("Create Season Calendar", "admin_season.html", "wf-calendar"),
-      link("Start season (go live)", "admin_season.html", "wf-kickoff"),
+      link(
+        "Start season (go live)",
+        "admin_season.html",
+        "wf-kickoff",
+        "After Season Break + Pre-Season setup (divisions, calendar). Makes the new season current/active."
+      ),
       link("Create League Fixtures", "admin_fixtures-league.html"),
       link("Setup Cups", "admin_fixtures-cups.html"),
     ],
@@ -293,7 +309,7 @@ export const ADMIN_MAIN_NAV = [
         "Close Finances",
         "admin_wage_bills.html",
         null,
-        "LAST money step: wages + manager salary + 34+ + star tax → stadium maintenance → debt interest → FFP (₿50M + MV releases + next-window buy embargo) → balance interest, then refreshes season finance archive. Safe to re-run (skips posted lines)."
+        "LAST money step on the OLD season: wages + manager salary + 34+ + star tax → stadium maintenance → debt interest → FFP → balance interest, then refreshes season finance archive. Do this BEFORE End season / Create Pre-Season. Expiry transfers are NOT here — they post on Create Pre-Season to the new year."
       ),
     ],
   },
@@ -301,7 +317,12 @@ export const ADMIN_MAIN_NAV = [
     id: "end_of_season",
     label: "End Of Season",
     entries: [
-      link("End current season {summer break}", "admin_season.html", "wf-close-season"),
+      link(
+        "End current season {summer break}",
+        "admin_season.html",
+        "wf-close-season",
+        "Marks the season complete (not current). Next: Create Pre-Season (player contract tick → new season ledger), then Season Break workflow."
+      ),
       link("Start Season Break workflow", "admin_season_break.html"),
     ],
   },
@@ -360,6 +381,27 @@ export function adminMainNavHasActive(pathname, search = "") {
 export const ADMIN_CHECKLIST_EXCLUDE_SECTION_IDS = new Set(["testing", "owners"]);
 
 /**
+ * Chronological order for the Admin checklist (menu order can differ).
+ * Live season → close books → end year → create next (contract tick) →
+ * season break → June/July prep → go live + fixtures.
+ */
+export const ADMIN_CHECKLIST_SECTION_ORDER = [
+  "season_management",
+  "close_season",
+  "end_of_season",
+  "create_season_rollover",
+  "season_break",
+  "pre_season",
+  "create_season_golive",
+];
+
+/** Labels inside Create Season that belong with rollover (before Season Break). */
+const CREATE_SEASON_ROLLOVER_LABELS = new Set([
+  "Create Pre-Season",
+  "Tick player contracts (catch-up)",
+]);
+
+/**
  * Stable key for checklist persistence (season-scoped in DB / localStorage).
  * @param {string} sectionId
  * @param {string|null} groupLabel
@@ -372,9 +414,11 @@ export function adminChecklistTaskKey(sectionId, groupLabel, item) {
 /**
  * Flatten Admin menu into checklist sections (excludes Testing & Owners).
  * Empty groups (e.g. months with no tasks) are omitted.
+ * Ordered for a live-season rollover, not raw menu order.
+ * Create Season is split: Pre-Season/tick early; Start + fixtures after Pre-Season setup.
  */
 export function getAdminWorkflowChecklist() {
-  const sections = [];
+  const byId = new Map();
 
   for (const section of ADMIN_MAIN_NAV) {
     if (ADMIN_CHECKLIST_EXCLUDE_SECTION_IDS.has(section.id)) continue;
@@ -408,11 +452,67 @@ export function getAdminWorkflowChecklist() {
     }
 
     if (!blocks.length) continue;
-    sections.push({
+
+    if (section.id === "create_season") {
+      const rolloverBlocks = [];
+      const goliveBlocks = [];
+      for (const block of blocks) {
+        if (block.groupLabel) {
+          // Divisions / other groups → go-live half
+          goliveBlocks.push(block);
+          continue;
+        }
+        const rolloverItems = [];
+        const goliveItems = [];
+        for (const item of block.items) {
+          if (CREATE_SEASON_ROLLOVER_LABELS.has(item.label)) {
+            rolloverItems.push(item);
+          } else {
+            goliveItems.push(item);
+          }
+        }
+        if (rolloverItems.length) {
+          rolloverBlocks.push({ groupLabel: null, items: rolloverItems });
+        }
+        if (goliveItems.length) {
+          goliveBlocks.push({ groupLabel: null, items: goliveItems });
+        }
+      }
+      if (rolloverBlocks.length) {
+        byId.set("create_season_rollover", {
+          id: "create_season_rollover",
+          label: "Create Season — rollover",
+          blocks: rolloverBlocks,
+        });
+      }
+      if (goliveBlocks.length) {
+        byId.set("create_season_golive", {
+          id: "create_season_golive",
+          label: "Create Season — go live",
+          blocks: goliveBlocks,
+        });
+      }
+      continue;
+    }
+
+    byId.set(section.id, {
       id: section.id,
       label: section.label,
       blocks,
     });
+  }
+
+  const sections = [];
+  const seen = new Set();
+  for (const id of ADMIN_CHECKLIST_SECTION_ORDER) {
+    const sec = byId.get(id);
+    if (!sec) continue;
+    sections.push(sec);
+    seen.add(id);
+  }
+  for (const [id, sec] of byId) {
+    if (seen.has(id)) continue;
+    sections.push(sec);
   }
 
   return sections;

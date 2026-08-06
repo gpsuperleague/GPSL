@@ -2,7 +2,7 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase, whenDomReady 
 import {
   adminMainNavHref,
   getAdminWorkflowChecklist,
-} from "./admin_main_nav.js";
+} from "./admin_main_nav.js?v=20260806-checklist-order";
 
 primeAdminPageChrome();
 
