@@ -1,9 +1,9 @@
--- =============================================================================
--- Contract expiry rollover → post money on the NEW season
+﻿-- =============================================================================
+-- Contract expiry rollover 竊・post money on the NEW season
 --
 -- Problem:
 --   Bids are stored under the ending season label. Resolve used
---   current_gpsl_season_label() + post_club_ledger(NULL season) → wrong/
+--   current_gpsl_season_label() + post_club_ledger(NULL season) 竊・wrong/
 --   missing season after Close Finances + End Season. FA releases bumped
 --   cash with no ledger season line.
 --
@@ -45,7 +45,7 @@ BEGIN
 
   IF v_ledger.id IS NULL THEN
     RAISE EXCEPTION
-      'Create the next pre-season first — expiry transfers and FA releases must post to the new season (not the closed year).';
+      'Create the next pre-season first 窶・expiry transfers and FA releases must post to the new season (not the closed year).';
   END IF;
 
   SELECT s.id, s.label
@@ -70,7 +70,7 @@ END;
 $function$;
 
 COMMENT ON FUNCTION public.contract_rollover_finance_context() IS
-  'Expiry rollover: ledger posts → newest preseason/setup; wage bids → previous season label.';
+  'Expiry rollover: ledger posts 竊・newest preseason/setup; wage bids 竊・previous season label.';
 
 GRANT EXECUTE ON FUNCTION public.contract_rollover_finance_context() TO authenticated;
 
@@ -78,7 +78,7 @@ GRANT EXECUTE ON FUNCTION public.contract_rollover_finance_context() TO authenti
 DROP FUNCTION IF EXISTS public.contract_resolve_all_expiry_bids();
 
 -- ---------------------------------------------------------------------------
--- Resolve expiry bids → new season ledger
+-- Resolve expiry bids 竊・new season ledger
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.contract_resolve_all_expiry_bids(
   p_ledger_season_id bigint DEFAULT NULL,
@@ -162,7 +162,7 @@ BEGIN
       b.created_at ASC
     LIMIT 1;
 
-    -- Fallback: label drift / testing — take best bid for this player
+    -- Fallback: label drift / testing 窶・take best bid for this player
     IF NOT FOUND THEN
       SELECT b.bidder_club_short_name, b.wage_offer
       INTO v_bid
@@ -317,7 +317,7 @@ GRANT EXECUTE ON FUNCTION public.contract_resolve_all_expiry_bids(bigint, text) 
 DROP FUNCTION IF EXISTS public.contract_release_zero_year_players();
 
 -- ---------------------------------------------------------------------------
--- FA / unsigned release → new season ledger + Transfer_History
+-- FA / unsigned release 竊・new season ledger + Transfer_History
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.contract_release_zero_year_players(
   p_ledger_season_id bigint DEFAULT NULL
@@ -453,7 +453,7 @@ $function$;
 GRANT EXECUTE ON FUNCTION public.contract_release_zero_year_players(bigint) TO authenticated;
 
 -- ---------------------------------------------------------------------------
--- Contract tick — uses new-season ledger context
+-- Contract tick 窶・uses new-season ledger context
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.contract_tick_season_rollover()
 RETURNS jsonb
@@ -483,7 +483,7 @@ BEGIN
     v_ctx.bid_season_label
   );
 
-  -- Anyone still at remaining=1 was not re-signed → end (FA + MV)
+  -- Anyone still at remaining=1 was not re-signed 竊・end (FA + MV)
   UPDATE public."Players" p
   SET contract_seasons_remaining = 0
   WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
@@ -604,4 +604,3 @@ GRANT EXECUTE ON FUNCTION public.admin_catchup_player_contract_tick(boolean)
   TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
-)
