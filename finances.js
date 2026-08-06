@@ -16,7 +16,7 @@ import {
   resolveFinanceSeasonView,
   wireFinanceStatLinks,
 } from "./finance_page_common.js?v=20260804-loan-catchup";
-import { renderFinancesOverviewNotes } from "./finances_rules.js";
+import { renderFinancesOverviewNotes } from "./finances_rules.js?v=20260806-help-blocks";
 
 function setAdvisoryBudgetDisplay(advisory, { historical = false } = {}) {
   const el = document.getElementById("advisoryTransferBudget");

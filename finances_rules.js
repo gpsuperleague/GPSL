@@ -7,18 +7,31 @@ export function getFinancesOverviewNotes() {
     wageBill: `Seasonal wage commitments for the current squad and signed manager.
         Player wages are contract season amounts; manager salary is weekly wage × 52.
         These are charged at <b>Close Finances</b> / Post season wage bills (not weekly).`,
-    balance: `<b>Season opening balance</b> is your GPSL starting budget for the season (before club or
-        player auctions), or your archived closing balance carried over from the previous season.
-        <b>Current balance</b> is your spendable cash: opening balance plus all income and costs
-        posted to date. Click the balance box for the full <a href="finances_ledger.html" id="linkLedgerInline">activity ledger</a>.
-        Used by <a href="transfer_center.html">Transfer Centre</a> and the market.`,
-    predicted: `<b>Predicted end-of-season balance</b> uses your current balance plus <b>pending</b> forecasts
-        in <a href="finances_accounts.html" id="linkAccountsInline">Season accounts</a> (upcoming home gates,
-        stadium maintenance, player wages and manager salary where calculable, including unsettled winning bids).`,
-    advisory: `<b>Advisory transfer budget</b> is spend guidance: current balance + predicted income − predicted
-        expenditure (excluding transfer sales/purchases), then minus your live winning bids on players and
-        managers. Shown as <b>₿0</b> minimum for spend; if projected runway is negative a warning appears.
-        League prize pending follows your <b>current table position</b> (if that finish holds). Soft only — does not block bids.`,
+    balance: `
+      <h3>Opening &amp; current balance</h3>
+      <ul>
+        <li><b>Season opening</b> — GPSL starting budget for the season (before club or player auctions), or the archived closing balance carried over from last season.</li>
+        <li><b>Current balance</b> — spendable cash: opening plus all income and costs posted to date.</li>
+        <li>Click the balance box for the full <a href="finances_ledger.html" id="linkLedgerInline">activity ledger</a>.</li>
+      </ul>
+      <p class="fin-help-foot">Used by <a href="transfer_center.html">Transfer Centre</a> and the market.</p>`,
+    predicted: `
+      <h3>Predicted end-of-season balance</h3>
+      <ul>
+        <li>Starts from your <b>current balance</b>.</li>
+        <li>Adds <b>pending</b> forecasts from <a href="finances_accounts.html" id="linkAccountsInline">Season accounts</a>.</li>
+        <li>Includes upcoming home gates, stadium maintenance, player wages, and manager salary where calculable.</li>
+        <li>Also includes unsettled winning bids.</li>
+      </ul>`,
+    advisory: `
+      <h3>Advisory transfer budget</h3>
+      <ul>
+        <li><b>Spend guidance</b> — current balance + predicted income − predicted expenditure (excluding transfer sales/purchases).</li>
+        <li>Then minus your live winning bids on players and managers.</li>
+        <li>Shown as <b>₿0</b> minimum for spend; a warning appears if projected runway is negative.</li>
+        <li>League prize pending follows your <b>current table position</b> (if that finish holds).</li>
+      </ul>
+      <p class="fin-help-foot">Soft only — does not block bids.</p>`,
     banking: `Loans, treasury, and repayments are handled at the
             <strong style="color:#e8c86a;">GPSL Central Bank</strong> — separate from your club accounts.`,
     seasonHistory: `Final finances for up to the last five completed seasons. Select a season to view its archived accounts and ledger.`,

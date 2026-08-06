@@ -35,6 +35,38 @@
     .stat-box .value.neutral { color:#ff9900; }
     .stat-box .value.muted { color:#888; font-size:16px; }
     .footer-note { color:#888; font-size:12px; line-height:1.5; margin:8px 0 0; }
+    .fin-help-blocks {
+      display:grid;
+      gap:10px;
+      margin-top:12px;
+    }
+    .fin-help-block {
+      background:#181818;
+      border:1px solid #2e2e2e;
+      border-radius:6px;
+      padding:10px 12px;
+    }
+    .fin-help-block h3 {
+      margin:0 0 6px;
+      font-size:12px;
+      color:#ccc;
+      font-weight:700;
+      letter-spacing:0.02em;
+    }
+    .fin-help-block ul {
+      margin:0;
+      padding-left:1.15em;
+      color:#888;
+      font-size:12px;
+      line-height:1.45;
+    }
+    .fin-help-block li + li { margin-top:4px; }
+    .fin-help-block .fin-help-foot {
+      margin:8px 0 0;
+      color:#777;
+      font-size:11px;
+      line-height:1.4;
+    }
     .bank-note {
       background:#222; border:1px solid #444; border-radius:6px;
       padding:12px; font-size:13px; color:#bbb;
@@ -194,9 +226,11 @@
           <span class="link-hint">View season accounts →</span>
         </a>
       </div>
-      <p class="footer-note" id="finBalanceNote"><!-- Filled by finances_rules.js --></p>
-      <p class="footer-note" id="finPredictedNote"><!-- Filled by finances_rules.js --></p>
-      <p class="footer-note" id="advisoryTransferBudgetNote"><!-- Filled by finances_rules.js --></p>
+      <div class="fin-help-blocks" aria-label="How to read balance figures">
+        <div class="fin-help-block" id="finBalanceNote"><!-- Filled by finances_rules.js --></div>
+        <div class="fin-help-block" id="finPredictedNote"><!-- Filled by finances_rules.js --></div>
+        <div class="fin-help-block" id="advisoryTransferBudgetNote"><!-- Filled by finances_rules.js --></div>
+      </div>
     </div>
 
     <div class="panel">
@@ -222,6 +256,6 @@
       <div id="financeSeasonHistory"></div>
     </div>
   </div>
-  <script type="module" src="finances.js?v=20260805-rules"></script>
+  <script type="module" src="finances.js?v=20260806-help-blocks"></script>
 </body>
 </html>
