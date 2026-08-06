@@ -2,7 +2,8 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
-} from "./admin_main_nav.js";
+} from "./admin_main_nav.js?v=20260807-prizes-in-create";
+import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260807-create-season-rules";
 
 primeAdminPageChrome();
 import {
@@ -96,6 +97,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   renderSeasonSidebar();
   wireSeasonSidebar();
+  renderAdminSeasonCreateRules();
 
   document.getElementById("compCreateNextBtn").onclick = createNextSeason;
   document.getElementById("compTickContractsBtn").onclick = tickContractsOnly;
