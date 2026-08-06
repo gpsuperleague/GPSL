@@ -735,8 +735,8 @@ export const ADMIN_CHECKLIST_EXCLUDE_SECTION_IDS = new Set(["testing", "owners"]
  * Close Season / End Of Season sit at the end of the season year.
  */
 export const ADMIN_CHECKLIST_SECTION_ORDER = [
-  "create_season",
   "season_break",
+  "create_season",
   "pre_season",
   "season_management",
   "season_checklist",
