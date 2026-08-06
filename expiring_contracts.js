@@ -5,7 +5,7 @@ import {
   expiryWageMinUpliftPct,
   minExpiryWageOffer,
 } from "./wages.js?v=20260805-nbsp";
-import { renderExpiringContractRules } from "./expiring_contracts_rules.js?v=20260805-shared";
+import { renderExpiringContractRules, CHAMP_SL_SIGNING_FEE_PCT } from "./expiring_contracts_rules.js?v=20260806-league-fee";
 import { createDraftAdvancedFilterController } from "./draft_auction_filters.js?v=20260805-opt-row";
 import { textMatchesSearch } from "./search_normalize.js";
 
@@ -407,7 +407,7 @@ function renderMarket() {
   if (!marketRows.length) {
     status.textContent =
       "No players on the expiring-contract market right now (final-year standard players only).";
-    tbody.innerHTML = '<tr><td colspan="11">—</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12">—</td></tr>';
     return;
   }
 
@@ -417,7 +417,7 @@ function renderMarket() {
       : `Showing ${rows.length} of ${marketRows.length} — hidden bids until season rollover (min +${expiryWageMinUpliftPct()}% wage).`;
 
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="11">No players match these filters.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12">No players match these filters.</td></tr>';
     return;
   }
 
@@ -427,6 +427,15 @@ function renderMarket() {
         row.my_wage_bid != null
           ? `<span class="my-bid">${formatWage(row.my_wage_bid)}</span>`
           : "—";
+      const league = row.holding_league || "—";
+      const feePct = Number(row.champ_sl_fee_pct) || CHAMP_SL_SIGNING_FEE_PCT;
+      const feeBadge = row.champ_sl_fee_applies
+        ? `<span class="fee-badge" title="Championship club winning this Super League player pays ${feePct}% of market value to the player as a signing-on fee${
+            row.champ_sl_fee_estimate != null
+              ? ` (≈ ${formatWage(row.champ_sl_fee_estimate)})`
+              : ""
+          }.">+${feePct}% MV fee</span>`
+        : "";
       return `
         <tr data-player-id="${row.player_id}">
           <td class="name-cell">${escapeHtml(row.player_name)}</td>
@@ -437,6 +446,7 @@ function renderMarket() {
           <td>${escapeHtml(row.playstyle || "—")}</td>
           <td class="wage-cell">${formatMv(row.market_value)}</td>
           <td>${escapeHtml(displayClubName(row.holding_club))}</td>
+          <td class="league-cell">${escapeHtml(league)}${feeBadge}</td>
           <td class="wage-cell">${formatWage(row.current_wage)}</td>
           <td class="wage-cell">${myBid}</td>
           <td>
@@ -469,7 +479,7 @@ async function loadMarket() {
 
   if (error) {
     status.textContent =
-      "Could not load market — run patches/expiring_contracts_gpdb_filters.sql if filters/columns are missing.";
+      "Could not load market — run patches/expiring_contracts_league_fee_badge.sql in Supabase.";
     tbody.innerHTML = "";
     console.error(error);
     return;
@@ -575,11 +585,27 @@ function openBidModal(row) {
       <dd>${formatWage(row.current_wage)}</dd>
       <dt>Minimum offer</dt>
       <dd>${formatWage(minOffer)} <span style="font-weight:normal;color:#999;">(+${uplift}%)</span></dd>
+      ${
+        row.holding_league
+          ? `<dt>League</dt><dd>${escapeHtml(row.holding_league)}</dd>`
+          : ""
+      }
     </dl>
     <ul>
       <li>Bid any whole ₿ amount at or above the minimum</li>
       <li>Locked once submitted — cannot be changed</li>
       <li>Bids stay hidden until season rollover</li>
+      ${
+        row.champ_sl_fee_applies
+          ? `<li style="color:#e8b84a;"><b>Championship signing-on fee:</b> if you win this Super League player you also pay <b>${
+              Number(row.champ_sl_fee_pct) || CHAMP_SL_SIGNING_FEE_PCT
+            }% of MV</b> to the player${
+              row.champ_sl_fee_estimate != null
+                ? ` (≈ ${formatWage(row.champ_sl_fee_estimate)})`
+                : ""
+            }.</li>`
+          : ""
+      }
     </ul>`;
   document.getElementById("bidWageInput").value = formatWageInputValue(minOffer);
   document.getElementById("bidWageInput").disabled = false;

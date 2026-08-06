@@ -197,6 +197,22 @@
     .bid-btn:hover { background:#3a7a3a; }
     .my-bid { color:#9cf; font-size:12px; white-space: nowrap; }
     .money { color:#9c9; white-space: nowrap; }
+    .league-cell { white-space: nowrap; font-size:12px; color:#ccc; }
+    .fee-badge {
+      display:inline-block;
+      margin-left:6px;
+      padding:2px 6px;
+      font-size:10px;
+      font-weight:bold;
+      letter-spacing:0.02em;
+      color:#1a1208;
+      background:#e8b84a;
+      border:1px solid #c4922a;
+      border-radius:3px;
+      vertical-align:middle;
+      white-space:nowrap;
+    }
+    .fee-badge[title] { cursor:help; }
     #bidModal {
       display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7);
       align-items:center; justify-content:center; z-index:100;
@@ -334,6 +350,7 @@
             <th>Playstyle</th>
             <th>MV</th>
             <th>Holding club</th>
+            <th>League</th>
             <th>Current wage</th>
             <th>Your bid</th>
             <th></th>
@@ -364,6 +381,6 @@
     </div>
   </div>
 
-  <script type="module" src="expiring_contracts.js?v=20260805-opt-row"></script>
+  <script type="module" src="expiring_contracts.js?v=20260806-league-fee"></script>
 </body>
 </html>
