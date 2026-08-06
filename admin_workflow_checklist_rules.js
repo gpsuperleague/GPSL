@@ -11,12 +11,12 @@ export function getAdminWorkflowChecklistRules() {
       {
         heading: "Order of work",
         items: [
-          "<b>Season Break</b> — GPDB, kits, prizes, internationals, etc. (after the old year is ended).",
+          "<b>Season Break</b> — GPDB, One of our Own, kits, prizes, club/stadium, challenges, bills, transfers, auctions, internationals (after the old year is ended).",
           "<b>Create Season</b> — Pre-Season record, divisions, calendar, go live, fixtures, cups.",
-          "<b>Pre-Season (June &amp; July)</b> — challenges, bills, auctions, transfers.",
+          "<b>Pre-Season (June &amp; July)</b> — manager renewal deadline before August.",
           "<b>Season Management</b> — live-season ops (club checklist, fines, holidays…).",
           "<b>Season Checklist</b> — month-by-month tasks through Playoffs.",
-          "<b>Close Season</b> then <b>End Of Season</b> — wrap the year (Close Finances last on the old season).",
+          "<b>Close Season</b> then <b>End Of Season</b> — wrap the year (Close Finances last on the old season). After End season, jump back to <b>Create Season</b> (Create Pre-Season), then <b>Season Break</b> tasks.",
         ],
       },
       {

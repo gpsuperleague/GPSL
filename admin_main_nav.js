@@ -180,13 +180,13 @@ export const ADMIN_MAIN_NAV = [
           "Regenerate / refresh the Next Gen youth pool for the coming season."
         ),
       ]),
-      group("OooO", [
+      group("One of our Own", [
         L(
           "Homegrown Star Draw",
           "admin_one_of_our_own.html",
           null,
           null,
-          "Run the One of Our Own / homegrown star draw for eligible clubs."
+          "Run the One of our Own / homegrown star draw for eligible clubs."
         ),
       ]),
       group("Club Kits", [
@@ -244,63 +244,6 @@ export const ADMIN_MAIN_NAV = [
           "Set or refresh manager board targets for the new season."
         ),
       ]),
-      group("Internationals", [
-        L(
-          "Nation Setup",
-          "admin_international.html",
-          "sb-nation-setup",
-          null,
-          "Confirm nations and international competition setup."
-        ),
-        L(
-          "World Cup Cycle",
-          "admin_international.html",
-          "sb-wc-cycle",
-          null,
-          "Advance or configure the World Cup cycle when due."
-        ),
-        L(
-          "Open Nation Selection",
-          "admin_international_selection_open.html",
-          null,
-          null,
-          "Open the window for owners to pick national team players."
-        ),
-        L(
-          "Manual National Team Selection",
-          "admin_international.html",
-          "sb-nation-assign",
-          null,
-          "Admin override / assign national team squads if needed."
-        ),
-        L(
-          "Close Nation Selection",
-          "admin_international_selection_close.html",
-          null,
-          null,
-          "Close the owner selection window when the deadline has passed."
-        ),
-        L(
-          "Clear Nation Assignments",
-          "admin_international_selection_clear.html",
-          null,
-          null,
-          "Clear nation squad assignments (repair / reset)."
-        ),
-        L(
-          "Verify owner rankings",
-          "admin_international.html",
-          "sb-owner-rankings",
-          null,
-          "Check owner nation ranking inputs before internationals."
-        ),
-      ]),
-    ],
-  },
-  {
-    id: "pre_season",
-    label: "Pre-Season (June & July)",
-    entries: [
       group("Challenges", [
         L(
           "Set Initial Season Challenges",
@@ -361,6 +304,15 @@ export const ADMIN_MAIN_NAV = [
           "Set stadium maintenance / cost tables for close finances."
         ),
       ]),
+      group("Transfers", [
+        L(
+          "Set transfer window on/off",
+          "admin_transfer_window.html",
+          null,
+          null,
+          "Open or close the transfer window for season-break / pre-season trading."
+        ),
+      ]),
       group("Auctions", [
         L(
           "Set Draft Auction On/Off",
@@ -384,15 +336,63 @@ export const ADMIN_MAIN_NAV = [
           "Configure or run a special auction event."
         ),
       ]),
-      group("Transfers", [
+      group("Internationals", [
         L(
-          "Set on/off",
-          "admin_transfer_window.html",
+          "Nation Setup",
+          "admin_international.html",
+          "sb-nation-setup",
+          null,
+          "Confirm nations and international competition setup."
+        ),
+        L(
+          "World Cup Cycle",
+          "admin_international.html",
+          "sb-wc-cycle",
+          null,
+          "Advance or configure the World Cup cycle when due."
+        ),
+        L(
+          "Open Nation Selection",
+          "admin_international_selection_open.html",
           null,
           null,
-          "Open or close the transfer window for pre-season trading."
+          "Open the window for owners to pick national team players."
+        ),
+        L(
+          "Manual National Team Selection",
+          "admin_international.html",
+          "sb-nation-assign",
+          null,
+          "Admin override / assign national team squads if needed."
+        ),
+        L(
+          "Close Nation Selection",
+          "admin_international_selection_close.html",
+          null,
+          null,
+          "Close the owner selection window when the deadline has passed."
+        ),
+        L(
+          "Clear Nation Assignments",
+          "admin_international_selection_clear.html",
+          null,
+          null,
+          "Clear nation squad assignments (repair / reset)."
+        ),
+        L(
+          "Verify owner rankings",
+          "admin_international.html",
+          "sb-owner-rankings",
+          null,
+          "Check owner nation ranking inputs before internationals."
         ),
       ]),
+    ],
+  },
+  {
+    id: "pre_season",
+    label: "Pre-Season (June & July)",
+    entries: [
       group("Managers", [
         L(
           "Process manager renewal deadline (before August)",
@@ -675,13 +675,7 @@ export const ADMIN_MAIN_NAV = [
         "End current season {summer break}",
         "admin_season.html",
         "wf-close-season",
-        "Marks the season complete (not current). Next: Create Pre-Season (player contract tick → new season ledger), then Season Break workflow."
-      ),
-      link(
-        "Start Season Break workflow",
-        "admin_season_break.html",
-        null,
-        "Open the Season Break hub / sidebar workflow after the season is ended."
+        "Marks the season complete (not current). Next: Create Season → Create Pre-Season (contract tick + new-season ledger). Then work through the Season Break section (GPDB, kits, prizes…) — that is not Create Season."
       ),
     ],
   },
