@@ -49,6 +49,8 @@ const RANGE_ACTIVE = {
 };
 
 let myClubShort = null;
+/** @type {'superleague'|'championship'|null} */
+let myViewerTier = null;
 let marketRows = [];
 let bidTarget = null;
 let bidMinOffer = 0;
@@ -92,11 +94,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     .maybeSingle();
 
   myClubShort = club?.ShortName ?? null;
+  myViewerTier = await loadMyViewerTier(myClubShort);
 
   wireBidModal();
   wireFilters();
   await loadMarket();
 
+  // Prefer tier from market RPC if present
+  if (marketRows[0]?.viewer_tier === "superleague" || marketRows[0]?.viewer_tier === "championship") {
+    myViewerTier = marketRows[0].viewer_tier;
+  }
   const params = new URLSearchParams(window.location.search);
   const pid = params.get("player");
   if (pid) {
@@ -111,6 +118,60 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.history.replaceState({}, "", cleanUrl);
   }
 });
+
+async function loadMyViewerTier(clubShort) {
+  if (!clubShort) return null;
+  try {
+    const { data: season } = await supabase
+      .from("competition_seasons")
+      .select("id, status, is_current")
+      .order("id", { ascending: false })
+      .limit(8);
+    const seasons = Array.isArray(season) ? season : [];
+    const ordered = [...seasons].sort((a, b) => {
+      const cur = (b.is_current === true) - (a.is_current === true);
+      if (cur) return cur;
+      const rank = (s) =>
+        s.status === "active" ? 0 : s.status === "preseason" ? 1 : 2;
+      return rank(a) - rank(b) || Number(b.id) - Number(a.id);
+    });
+    for (const s of ordered) {
+      const { data: row } = await supabase
+        .from("competition_club_seasons")
+        .select("division")
+        .eq("season_id", s.id)
+        .eq("club_short_name", clubShort)
+        .maybeSingle();
+      const div = row?.division;
+      if (div === "superleague") return "superleague";
+      if (div === "championship_a" || div === "championship_b") {
+        return "championship";
+      }
+    }
+  } catch (e) {
+    console.warn("loadMyViewerTier failed", e);
+  }
+  return null;
+}
+
+function champSlFeeApplies(row) {
+  if (row?.champ_sl_fee_applies === true) return true;
+  if (row?.champ_sl_fee_applies === false && row?.viewer_tier) return false;
+  const holderTier = row?.holding_tier || (
+    row?.holding_division === "superleague" || row?.holding_league === "Super League"
+      ? "superleague"
+      : null
+  );
+  return myViewerTier === "championship" && holderTier === "superleague";
+}
+
+function champSlFeeEstimate(row) {
+  if (row?.champ_sl_fee_estimate != null) return Number(row.champ_sl_fee_estimate);
+  const pct = Number(row?.champ_sl_fee_pct) || CHAMP_SL_SIGNING_FEE_PCT;
+  const mv = Number(row?.market_value);
+  if (!Number.isFinite(mv) || mv <= 0) return null;
+  return Math.round((mv * pct) / 100);
+}
 
 function wireFilters() {
   const ids = ["fName", "fClub", "fMyBid"];
@@ -427,13 +488,13 @@ function renderMarket() {
         row.my_wage_bid != null
           ? `<span class="my-bid">${formatWage(row.my_wage_bid)}</span>`
           : "—";
-      const league = row.holding_league || "—";
+      const league = row.holding_league || row.holding_division || "—";
       const feePct = Number(row.champ_sl_fee_pct) || CHAMP_SL_SIGNING_FEE_PCT;
-      const feeBadge = row.champ_sl_fee_applies
+      const feeApplies = champSlFeeApplies(row);
+      const feeEst = feeApplies ? champSlFeeEstimate(row) : null;
+      const feeBadge = feeApplies
         ? `<span class="fee-badge" title="Championship club winning this Super League player pays ${feePct}% of market value to the player as a signing-on fee${
-            row.champ_sl_fee_estimate != null
-              ? ` (≈ ${formatWage(row.champ_sl_fee_estimate)})`
-              : ""
+            feeEst != null ? ` (≈ ${formatWage(feeEst)})` : ""
           }.">+${feePct}% MV fee</span>`
         : "";
       return `
@@ -605,13 +666,14 @@ function openBidModal(row) {
       <li>Locked once submitted — cannot be changed</li>
       <li>Bids stay hidden until season rollover</li>
       ${
-        row.champ_sl_fee_applies
+        champSlFeeApplies(row)
           ? `<li style="color:#e8b84a;"><b>Championship signing-on fee:</b> if you win this Super League player you also pay <b>${
               Number(row.champ_sl_fee_pct) || CHAMP_SL_SIGNING_FEE_PCT
             }% of MV</b> to the player${
-              row.champ_sl_fee_estimate != null
-                ? ` (≈ ${formatWage(row.champ_sl_fee_estimate)})`
-                : ""
+              (() => {
+                const est = champSlFeeEstimate(row);
+                return est != null ? ` (≈ ${formatWage(est)})` : "";
+              })()
             }.</li>`
           : ""
       }
