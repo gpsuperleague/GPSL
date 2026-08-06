@@ -7,11 +7,17 @@
   <title>Friendlies — GPSL</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="gpsl_rules_cards.css?v=20260806-friendlies">
   <style>
     body { background:#111; color:#ddd; font-family:Arial,sans-serif; margin:0; }
     .page-container { width:95%; max-width:1100px; margin:20px auto 40px; }
     h1 { color:#ff9900; margin-bottom:8px; }
     .meta { color:#aaa; margin-bottom:16px; font-size:14px; line-height:1.45; }
+    #clubFriendliesRules {
+      margin:0 0 18px;
+      max-width:none;
+      padding:12px 14px;
+    }
     #friendliesError {
       color:#f88; background:#2a1515; border:1px solid #633;
       border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:13px;
@@ -69,14 +75,35 @@
   <div id="nav"></div>
   <div class="page-container">
     <h1 id="friendliesTitle">Friendlies</h1>
-    <p class="meta" id="friendliesMeta">
-      Discord-confirmed friendlies for your club — grouped by GPSL month.
-      First 10 paid friendlies each month earn ₿5,000 gate receipts. Standalone only (no league/cup/player records).
-    </p>
+    <div class="info-box" id="clubFriendliesRules" aria-label="Friendlies help">
+      <div class="rules-grid">
+        <section class="rules-card">
+          <h3>What you see</h3>
+          <ul>
+            <li><b>Discord-confirmed</b> friendlies for your club.</li>
+            <li>Grouped by <b>GPSL month</b>.</li>
+          </ul>
+        </section>
+        <section class="rules-card">
+          <h3>Gate receipts</h3>
+          <ul>
+            <li>First <b>10 paid</b> friendlies each month earn <b>₿5,000</b> each.</li>
+            <li>Season cap: <b>₿500,000</b> total from friendlies.</li>
+          </ul>
+        </section>
+        <section class="rules-card">
+          <h3>Standalone only</h3>
+          <ul>
+            <li>No league or cup fixtures.</li>
+            <li>No player match records from these games.</li>
+          </ul>
+        </section>
+      </div>
+    </div>
     <div id="friendliesError"></div>
     <div id="friendliesSummary" class="summary"></div>
     <div id="friendliesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_friendlies.js?v=20260719-friendlies"></script>
+  <script type="module" src="club_friendlies.js?v=20260806-friendlies-rules"></script>
 </body>
 </html>

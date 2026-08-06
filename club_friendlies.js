@@ -1,6 +1,7 @@
 import { supabase, initGlobal } from "./global.js";
 import { loadClubsMap, clubWithOwnerHtml } from "./clubs_lookup.js";
 import { formatMoney } from "./competition.js";
+import { renderClubFriendliesRules } from "./club_friendlies_rules.js?v=20260806-friendlies";
 
 let myClub = { short: null };
 
@@ -177,6 +178,7 @@ async function loadPage() {
 
 async function main() {
   await initGlobal();
+  renderClubFriendliesRules();
   await loadClubsMap(supabase);
   await loadPage();
 }
