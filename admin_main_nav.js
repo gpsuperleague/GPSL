@@ -757,7 +757,7 @@ export function adminChecklistTaskKey(sectionId, groupLabel, item) {
 /**
  * Flatten Admin menu into checklist sections (excludes Testing & Owners).
  * Empty groups (e.g. months with no tasks) are omitted.
- * Order matches the Admin menu: Create Season → … → Close Season → End Of Season.
+ * Order: Season Break → Create Season → … → Close Season → End Of Season.
  */
 export function getAdminWorkflowChecklist() {
   const byId = new Map();
