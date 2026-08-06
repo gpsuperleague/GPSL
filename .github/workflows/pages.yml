@@ -2,7 +2,7 @@ name: Deploy static site
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -10,15 +10,30 @@ permissions:
   pages: write
   id-token: write
 
+# One Pages deploy at a time (avoids queued-forever locks)
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
 jobs:
   deploy:
     environment:
       name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # Shrink the artifact — static site does not need SQL patches / git history fluff
+      - name: Trim non-site files
+        shell: bash
+        run: |
+          rm -rf supabase .github .cursor agent-transcripts 2>/dev/null || true
+          rm -f pesdb_full.csv pesdb_list.csv 2>/dev/null || true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
@@ -26,4 +41,8 @@ jobs:
           path: ./
 
       - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4
+        with:
+          # Default is 10 minutes; give Pages a bit longer when the queue is slow
+          timeout: 1200000
