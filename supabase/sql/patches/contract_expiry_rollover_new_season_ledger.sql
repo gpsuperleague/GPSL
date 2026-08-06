@@ -480,21 +480,42 @@ BEGIN
 
   SELECT * INTO v_ctx FROM public.contract_rollover_finance_context();
 
-  v_resolve := public.contract_resolve_all_expiry_bids(
-    v_ctx.ledger_season_id,
-    v_ctx.bid_season_label
-  );
-
-  -- Anyone still at remaining=1 was not re-signed 竊・end (FA + MV)
+  -- 1) Unrenewed final-year first (no open expiry bids) → FA + MV.
+  --    Frees squad slots before contested winners are assigned.
   UPDATE public."Players" p
   SET contract_seasons_remaining = 0
   WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
-    AND p.contract_seasons_remaining = 1;
+    AND p.contract_seasons_remaining = 1
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.contract_expiry_wage_bids b
+      WHERE b.player_id = p."Konami_ID"::text
+        AND (
+          b.season_label = v_ctx.bid_season_label
+          OR b.season_label IS NOT DISTINCT FROM v_ctx.bid_season_label
+        )
+    );
 
   GET DIAGNOSTICS v_ended = ROW_COUNT;
 
   v_released := public.contract_release_zero_year_players(v_ctx.ledger_season_id);
 
+  -- 2) Contested expiry market (wage-bid winners) after FA releases
+  v_resolve := public.contract_resolve_all_expiry_bids(
+    v_ctx.ledger_season_id,
+    v_ctx.bid_season_label
+  );
+
+  -- Safety: any leftover remaining=1 (e.g. bid row cleared without assign)
+  UPDATE public."Players" p
+  SET contract_seasons_remaining = 0
+  WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
+    AND p.contract_seasons_remaining = 1;
+
+  v_released := v_released
+    + public.contract_release_zero_year_players(v_ctx.ledger_season_id);
+
+  -- 3) Multi-year deals tick down into the new season
   UPDATE public."Players" p
   SET contract_seasons_remaining = contract_seasons_remaining - 1
   WHERE public.player_contracted_club_key(p."Contracted_Team") IS NOT NULL
@@ -519,7 +540,7 @@ BEGIN
     'players_released_zero_years', v_released,
     'players_decremented', v_updated,
     'players_final_year', v_final,
-    'note', 'Bids from ending season; money + FA on new preseason; then decrement into new final year.'
+    'note', 'FA unrenewed first (MV), then contested bid assigns, then multi-year decrement. Money on new preseason.'
   );
 
   IF NOT EXISTS (
