@@ -1,7 +1,7 @@
 /**
  * Admin workflow checklist — intro copy (modular cards).
  */
-import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-checklist-rules";
+import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260806-checklist-menu-order";
 
 export function getAdminWorkflowChecklistRules() {
   return {
@@ -11,12 +11,13 @@ export function getAdminWorkflowChecklistRules() {
       {
         heading: "Order of work",
         items: [
-          "<b>Season Management</b> — live-season ops (checklist, fines, holidays, etc.).",
-          "<b>Close Season</b> — final money &amp; archive on the <b>old</b> year (Close Finances last).",
-          "<b>End Of Season</b> — mark complete / summer break.",
-          "<b>Create Season — rollover</b> — Create Pre-Season (+ contract tick / expiry money on the <b>new</b> year).",
-          "<b>Season Break</b> then <b>Pre-Season</b> — GPDB, prizes, bills, auctions.",
-          "<b>Create Season — go live</b> — Start season, league fixtures, cups.",
+          "Same order as the Admin menu (Testing / Owners excluded).",
+          "<b>Create Season</b> — Pre-Season, divisions, calendar, go live, fixtures, cups.",
+          "<b>Season Break</b> — GPDB, kits, prizes, internationals, etc.",
+          "<b>Pre-Season (June &amp; July)</b> — challenges, bills, auctions, transfers.",
+          "<b>Season Management</b> — live-season ops (club checklist, fines, holidays…).",
+          "<b>Season Checklist</b> — month-by-month tasks through Playoffs.",
+          "<b>Close Season</b> then <b>End Of Season</b> — wrap the year (Close Finances last on the old season).",
         ],
       },
       {

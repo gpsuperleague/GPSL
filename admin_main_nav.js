@@ -731,25 +731,18 @@ export function adminMainNavHasActive(pathname, search = "") {
 export const ADMIN_CHECKLIST_EXCLUDE_SECTION_IDS = new Set(["testing", "owners"]);
 
 /**
- * Chronological order for the Admin checklist (menu order can differ).
- * Live season → close books → end year → create next (contract tick) →
- * season break → June/July prep → go live + fixtures.
+ * Checklist section order — same as Admin menu (Testing/Owners excluded).
+ * Close Season / End Of Season sit at the end of the season year.
  */
 export const ADMIN_CHECKLIST_SECTION_ORDER = [
-  "season_management",
-  "close_season",
-  "end_of_season",
-  "create_season_rollover",
+  "create_season",
   "season_break",
   "pre_season",
-  "create_season_golive",
+  "season_management",
+  "season_checklist",
+  "close_season",
+  "end_of_season",
 ];
-
-/** Labels inside Create Season that belong with rollover (before Season Break). */
-const CREATE_SEASON_ROLLOVER_LABELS = new Set([
-  "Create Pre-Season",
-  "Tick player contracts (catch-up)",
-]);
 
 /**
  * Stable key for checklist persistence (season-scoped in DB / localStorage).
@@ -764,8 +757,7 @@ export function adminChecklistTaskKey(sectionId, groupLabel, item) {
 /**
  * Flatten Admin menu into checklist sections (excludes Testing & Owners).
  * Empty groups (e.g. months with no tasks) are omitted.
- * Ordered for a live-season rollover, not raw menu order.
- * Create Season is split: Pre-Season/tick early; Start + fixtures after Pre-Season setup.
+ * Order matches the Admin menu: Create Season → … → Close Season → End Of Season.
  */
 export function getAdminWorkflowChecklist() {
   const byId = new Map();
@@ -802,48 +794,6 @@ export function getAdminWorkflowChecklist() {
     }
 
     if (!blocks.length) continue;
-
-    if (section.id === "create_season") {
-      const rolloverBlocks = [];
-      const goliveBlocks = [];
-      for (const block of blocks) {
-        if (block.groupLabel) {
-          // Divisions / other groups → go-live half
-          goliveBlocks.push(block);
-          continue;
-        }
-        const rolloverItems = [];
-        const goliveItems = [];
-        for (const item of block.items) {
-          if (CREATE_SEASON_ROLLOVER_LABELS.has(item.label)) {
-            rolloverItems.push(item);
-          } else {
-            goliveItems.push(item);
-          }
-        }
-        if (rolloverItems.length) {
-          rolloverBlocks.push({ groupLabel: null, items: rolloverItems });
-        }
-        if (goliveItems.length) {
-          goliveBlocks.push({ groupLabel: null, items: goliveItems });
-        }
-      }
-      if (rolloverBlocks.length) {
-        byId.set("create_season_rollover", {
-          id: "create_season_rollover",
-          label: "Create Season — rollover",
-          blocks: rolloverBlocks,
-        });
-      }
-      if (goliveBlocks.length) {
-        byId.set("create_season_golive", {
-          id: "create_season_golive",
-          label: "Create Season — go live",
-          blocks: goliveBlocks,
-        });
-      }
-      continue;
-    }
 
     byId.set(section.id, {
       id: section.id,
