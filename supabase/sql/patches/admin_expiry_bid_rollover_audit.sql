@@ -1,22 +1,13 @@
 -- =============================================================================
--- Expiry wage-bid audit — contested players WITH bids
+-- Expiry wage-bid rollover audit (one script — run before AND after tick)
 --
--- Use this around season rollover to see what should happen, then what did.
+-- Run the WHOLE file in Supabase SQL Editor.
+-- You should always see a results table (players, or one DIAGNOSTIC row).
 --
--- BEFORE Create Pre-Season / Tick:
---   1) Run STEP A (creates/refreshes snapshot table)
---   2) Run STEP B (export / review expected outcomes) — download as CSV if you like
---
--- AFTER Create Pre-Season + Tick:
---   3) Run STEP C (compare snapshot → live squad / wages / ledger / transfers)
---      (uncomment the STEP C query block at the bottom)
---
--- Safe re-run. Run in Supabase SQL Editor.
+-- BEFORE tick: report_mode = BEFORE_TICK (expected winners / fees)
+-- AFTER tick:  report_mode = AFTER_TICK  (OK / CHECK vs snapshot)
 -- =============================================================================
 
--- ---------------------------------------------------------------------------
--- STEP A — Snapshot contested players that have at least one wage bid
--- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.admin_expiry_bid_audit_snapshot (
   snapshot_id bigserial PRIMARY KEY,
   snapped_at timestamptz NOT NULL DEFAULT now(),
@@ -26,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.admin_expiry_bid_audit_snapshot (
   position text,
   age text,
   nation text,
-  rating numeric,
+  rating text,
   market_value numeric,
   holding_club text,
   holding_tier text,
@@ -48,41 +39,54 @@ CREATE INDEX IF NOT EXISTS admin_expiry_bid_audit_snapshot_at_idx
 CREATE INDEX IF NOT EXISTS admin_expiry_bid_audit_snapshot_player_idx
   ON public.admin_expiry_bid_audit_snapshot (player_id, snapped_at DESC);
 
-COMMENT ON TABLE public.admin_expiry_bid_audit_snapshot IS
-  'Pre-rollover snapshot of contested expiry players who have wage bids — for post-tick audit.';
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'admin_expiry_bid_audit_snapshot'
+      AND column_name = 'rating'
+      AND data_type = 'numeric'
+  ) THEN
+    ALTER TABLE public.admin_expiry_bid_audit_snapshot
+      ALTER COLUMN rating TYPE text USING rating::text;
+  END IF;
+END $$;
 
--- Fresh snapshot batch (keeps older batches for history)
 DO $$
 DECLARE
   v_bid_label text;
   v_fee_pct numeric := 15;
   v_batch timestamptz := now();
+  v_open_bids int := 0;
   v_count int := 0;
+  v_labels text;
 BEGIN
-  -- Prefer previous season relative to newest preseason; else current label; else latest bid label
-  BEGIN
-    SELECT c.bid_season_label INTO v_bid_label
-    FROM public.contract_rollover_finance_context() c;
-  EXCEPTION
-    WHEN OTHERS THEN
-      v_bid_label := NULL;
-  END;
+  SELECT count(*)::int INTO v_open_bids
+  FROM public.contract_expiry_wage_bids;
 
-  IF v_bid_label IS NULL THEN
-    v_bid_label := public.current_gpsl_season_label();
+  IF v_open_bids = 0 THEN
+    RAISE NOTICE 'No open expiry wage bids — AFTER mode if a prior snapshot exists.';
+    RETURN;
   END IF;
 
-  IF v_bid_label IS NULL THEN
-    SELECT b.season_label INTO v_bid_label
-    FROM public.contract_expiry_wage_bids b
-    GROUP BY b.season_label
-    ORDER BY max(b.created_at) DESC
-    LIMIT 1;
-  END IF;
+  -- Season label that actually has the most bids (avoids wrong-label empty snapshot)
+  SELECT b.season_label INTO v_bid_label
+  FROM public.contract_expiry_wage_bids b
+  GROUP BY b.season_label
+  ORDER BY count(*) DESC, max(b.created_at) DESC
+  LIMIT 1;
 
-  IF v_bid_label IS NULL OR btrim(v_bid_label) = '' THEN
-    RAISE EXCEPTION 'No season_label found for expiry bids — nothing to snapshot';
-  END IF;
+  SELECT string_agg(x.lbl || ' (' || x.n::text || ')', ', ' ORDER BY x.n DESC)
+  INTO v_labels
+  FROM (
+    SELECT season_label AS lbl, count(*)::int AS n
+    FROM public.contract_expiry_wage_bids
+    GROUP BY season_label
+  ) x;
+
+  RAISE NOTICE 'Open bids=%; using season_label=%; all: %',
+    v_open_bids, v_bid_label, coalesce(v_labels, '(none)');
 
   BEGIN
     v_fee_pct := public.contract_expiry_champ_sl_signing_fee_pct();
@@ -117,60 +121,67 @@ BEGIN
   SELECT
     v_batch,
     v_bid_label,
-    p."Konami_ID"::text,
+    d.player_id,
     p."Name",
     p."Position",
     p."Age"::text,
     p."Nation",
-    p."Rating",
+    p."Rating"::text,
     greatest(coalesce(p.market_value::numeric, 0), 0),
-    public.player_contracted_club_key(p."Contracted_Team"),
-    public.competition_club_division_tier(
-      public.player_contracted_club_key(p."Contracted_Team")
-    ),
-    p.contract_wage,
-    p.contract_seasons_remaining,
-    agg.bid_count,
-    agg.expected_winner_club,
-    agg.expected_winning_wage,
-    (agg.expected_winner_club = public.player_contracted_club_key(p."Contracted_Team")),
+    d.holding_club,
     CASE
-      WHEN agg.expected_winner_club IS DISTINCT FROM public.player_contracted_club_key(p."Contracted_Team")
+      WHEN d.holding_club IS NULL THEN NULL
+      ELSE public.competition_club_division_tier(d.holding_club)
+    END,
+    p.contract_wage,
+    p.contract_seasons_remaining::int,
+    d.bid_count,
+    d.expected_winner_club,
+    d.expected_winning_wage,
+    (d.expected_winner_club IS NOT DISTINCT FROM d.holding_club),
+    CASE
+      WHEN d.expected_winner_club IS DISTINCT FROM d.holding_club
         THEN greatest(coalesce(p.market_value::numeric, 0), 0)
       ELSE 0
     END,
     CASE
-      WHEN agg.expected_winner_club IS DISTINCT FROM public.player_contracted_club_key(p."Contracted_Team")
-       AND public.competition_club_division_tier(
-             public.player_contracted_club_key(p."Contracted_Team")
-           ) = 'superleague'
-       AND public.competition_club_division_tier(agg.expected_winner_club) = 'championship'
+      WHEN d.expected_winner_club IS DISTINCT FROM d.holding_club
+       AND d.holding_club IS NOT NULL
+       AND public.competition_club_division_tier(d.holding_club) = 'superleague'
+       AND public.competition_club_division_tier(d.expected_winner_club) = 'championship'
         THEN round(greatest(coalesce(p.market_value::numeric, 0), 0) * v_fee_pct / 100.0)
       ELSE 0
     END,
-    agg.all_bids,
+    d.all_bids,
     CASE
-      WHEN NOT public.player_expiry_auction_applies(p."Konami_ID"::text)
-        THEN 'WARNING: bids exist but player_expiry_auction_applies=false'
+      WHEN p."Konami_ID" IS NULL THEN 'WARNING: player_id not in Players'
+      WHEN to_regprocedure('public.player_expiry_auction_applies(text)') IS NOT NULL
+       AND NOT public.player_expiry_auction_applies(d.player_id)
+        THEN 'WARNING: bids exist but auction_applies=false'
       WHEN coalesce(p.contract_seasons_remaining, 0) <> 1
         THEN 'WARNING: not remaining=1'
       ELSE 'contested + has bid(s)'
     END
-  FROM public."Players" p
-  JOIN LATERAL (
+  FROM (
     SELECT
+      b.player_id,
       count(*)::int AS bid_count,
+      public.player_contracted_club_key(
+        (SELECT p2."Contracted_Team" FROM public."Players" p2
+         WHERE p2."Konami_ID"::text = b.player_id)
+      ) AS holding_club,
       (
         SELECT b2.bidder_club_short_name
         FROM public.contract_expiry_wage_bids b2
-        WHERE b2.player_id = p."Konami_ID"::text
+        WHERE b2.player_id = b.player_id
           AND b2.season_label = v_bid_label
         ORDER BY
           b2.wage_offer DESC,
           CASE
-            WHEN b2.bidder_club_short_name
-              = public.player_contracted_club_key(p."Contracted_Team")
-              THEN 0 ELSE 1
+            WHEN b2.bidder_club_short_name = public.player_contracted_club_key(
+              (SELECT p3."Contracted_Team" FROM public."Players" p3
+               WHERE p3."Konami_ID"::text = b.player_id)
+            ) THEN 0 ELSE 1
           END,
           b2.created_at ASC
         LIMIT 1
@@ -178,14 +189,15 @@ BEGIN
       (
         SELECT b2.wage_offer
         FROM public.contract_expiry_wage_bids b2
-        WHERE b2.player_id = p."Konami_ID"::text
+        WHERE b2.player_id = b.player_id
           AND b2.season_label = v_bid_label
         ORDER BY
           b2.wage_offer DESC,
           CASE
-            WHEN b2.bidder_club_short_name
-              = public.player_contracted_club_key(p."Contracted_Team")
-              THEN 0 ELSE 1
+            WHEN b2.bidder_club_short_name = public.player_contracted_club_key(
+              (SELECT p3."Contracted_Team" FROM public."Players" p3
+               WHERE p3."Konami_ID"::text = b.player_id)
+            ) THEN 0 ELSE 1
           END,
           b2.created_at ASC
         LIMIT 1
@@ -201,156 +213,144 @@ BEGIN
             ORDER BY b3.wage_offer DESC, b3.created_at ASC
           )
           FROM public.contract_expiry_wage_bids b3
-          WHERE b3.player_id = p."Konami_ID"::text
+          WHERE b3.player_id = b.player_id
             AND b3.season_label = v_bid_label
         ),
         '[]'::jsonb
       ) AS all_bids
     FROM public.contract_expiry_wage_bids b
-    WHERE b.player_id = p."Konami_ID"::text
-      AND b.season_label = v_bid_label
-  ) agg ON agg.bid_count > 0
-  WHERE public.player_expiry_auction_applies(p."Konami_ID"::text)
-     OR EXISTS (
-       SELECT 1
-       FROM public.contract_expiry_wage_bids bx
-       WHERE bx.player_id = p."Konami_ID"::text
-         AND bx.season_label = v_bid_label
-     );
+    WHERE b.season_label = v_bid_label
+    GROUP BY b.player_id
+  ) d
+  LEFT JOIN public."Players" p
+    ON p."Konami_ID"::text = d.player_id;
 
   GET DIAGNOSTICS v_count = ROW_COUNT;
-
-  RAISE NOTICE 'Snapshot % — % contested player(s) with bids for season_label=%',
-    v_batch, v_count, v_bid_label;
+  RAISE NOTICE 'Snapshot saved: % player(s) at %', v_count, v_batch;
 END $$;
 
--- ---------------------------------------------------------------------------
--- STEP B — Export / review expected outcomes (latest snapshot batch)
--- In Supabase: run this alone if needed, then Download as CSV
--- ---------------------------------------------------------------------------
-SELECT
-  s.snapped_at,
-  s.bid_season_label,
-  s.player_id,
-  s.player_name,
-  s.position,
-  s.age,
-  s.holding_club,
-  s.holding_tier,
-  s.current_wage AS wage_before,
-  s.market_value,
-  s.bid_count,
-  s.expected_winner_club,
-  s.expected_winning_wage,
-  s.expected_holder_wins AS stays_at_holder,
-  s.expected_mv_to_holder AS expected_mv_fee,
-  s.expected_champ_sl_signing_fee,
-  s.all_bids,
-  s.notes
-FROM public.admin_expiry_bid_audit_snapshot s
-WHERE s.snapped_at = (
-  SELECT max(s2.snapped_at) FROM public.admin_expiry_bid_audit_snapshot s2
+-- Always return rows: player report, or a single diagnostic row
+WITH latest AS (
+  SELECT max(snapped_at) AS snapped_at
+  FROM public.admin_expiry_bid_audit_snapshot
+),
+open_bids AS (
+  SELECT count(*)::int AS n FROM public.contract_expiry_wage_bids
+),
+bid_labels AS (
+  SELECT coalesce(
+    string_agg(season_label || ' (' || n::text || ')', ', ' ORDER BY n DESC),
+    '(none)'
+  ) AS labels
+  FROM (
+    SELECT season_label, count(*)::int AS n
+    FROM public.contract_expiry_wage_bids
+    GROUP BY season_label
+  ) x
+),
+report AS (
+  SELECT
+    CASE WHEN (SELECT n FROM open_bids) > 0 THEN 'BEFORE_TICK' ELSE 'AFTER_TICK' END
+      AS report_mode,
+    s.snapped_at,
+    s.bid_season_label,
+    s.player_id,
+    s.player_name,
+    s.holding_club AS club_before,
+    s.expected_winner_club,
+    s.expected_winning_wage,
+    s.current_wage AS wage_before,
+    s.market_value,
+    s.bid_count,
+    s.expected_holder_wins AS stays_at_holder,
+    s.expected_mv_to_holder,
+    s.expected_champ_sl_signing_fee,
+    CASE WHEN (SELECT n FROM open_bids) > 0 THEN NULL
+         ELSE public.player_contracted_club_key(p."Contracted_Team")
+    END AS club_after,
+    CASE WHEN (SELECT n FROM open_bids) > 0 THEN NULL ELSE p.contract_wage END
+      AS wage_after,
+    CASE WHEN (SELECT n FROM open_bids) > 0 THEN NULL ELSE p.contract_seasons_remaining END
+      AS seasons_after,
+    CASE WHEN (SELECT n FROM open_bids) > 0 THEN NULL ELSE p."Season_Signed" END
+      AS season_signed_after,
+    CASE
+      WHEN (SELECT n FROM open_bids) > 0 THEN s.notes
+      WHEN p."Konami_ID" IS NULL THEN 'FAIL: player row missing'
+      WHEN public.player_contracted_club_key(p."Contracted_Team") IS NULL
+        THEN 'UNEXPECTED FA (had winning bid expected)'
+      WHEN public.player_contracted_club_key(p."Contracted_Team")
+           IS NOT DISTINCT FROM s.expected_winner_club
+       AND round(coalesce(p.contract_wage, 0), 0)
+           = round(coalesce(s.expected_winning_wage, 0), 0)
+       AND coalesce(p.contract_seasons_remaining, 0) = 3
+        THEN 'OK'
+      WHEN public.player_contracted_club_key(p."Contracted_Team")
+           IS NOT DISTINCT FROM s.expected_winner_club
+       AND coalesce(p.contract_seasons_remaining, 0) = 3
+        THEN 'CHECK wage'
+      ELSE 'CHECK club/wage/seasons'
+    END AS contract_status,
+    CASE WHEN (SELECT n FROM open_bids) > 0 THEN NULL ELSE coalesce(led.purchase_amt, 0) END
+      AS ledger_purchase,
+    CASE WHEN (SELECT n FROM open_bids) > 0 THEN NULL ELSE coalesce(led.sale_amt, 0) END
+      AS ledger_sale,
+    CASE WHEN (SELECT n FROM open_bids) > 0 THEN NULL ELSE coalesce(led.signing_fee_amt, 0) END
+      AS ledger_champ_signing_fee,
+    CASE
+      WHEN (SELECT n FROM open_bids) > 0 THEN NULL
+      WHEN s.expected_mv_to_holder <= 0 THEN 'n/a (holder won / no MV)'
+      WHEN coalesce(led.sale_amt, 0) >= s.expected_mv_to_holder * 0.999
+       AND coalesce(led.purchase_amt, 0) <= -s.expected_mv_to_holder * 0.999
+        THEN 'OK MV posted'
+      ELSE 'CHECK MV ledger'
+    END AS mv_status,
+    CASE
+      WHEN (SELECT n FROM open_bids) > 0 THEN NULL
+      WHEN s.expected_champ_sl_signing_fee <= 0 THEN 'n/a'
+      WHEN coalesce(led.signing_fee_amt, 0) <= -s.expected_champ_sl_signing_fee * 0.999
+        THEN 'OK signing fee'
+      ELSE 'CHECK signing fee'
+    END AS signing_fee_status,
+    s.all_bids::text AS all_bids
+  FROM public.admin_expiry_bid_audit_snapshot s
+  CROSS JOIN latest
+  LEFT JOIN public."Players" p
+    ON p."Konami_ID"::text = s.player_id
+  LEFT JOIN LATERAL (
+    SELECT
+      sum(CASE WHEN l.entry_type = 'transfer_purchase' THEN l.amount ELSE 0 END) AS purchase_amt,
+      sum(CASE WHEN l.entry_type = 'transfer_sale' THEN l.amount ELSE 0 END) AS sale_amt,
+      sum(CASE WHEN l.entry_type = 'contract_expiry_champ_signing_fee' THEN l.amount ELSE 0 END)
+        AS signing_fee_amt
+    FROM public.competition_finance_ledger l
+    WHERE l.metadata->>'player_id' = s.player_id
+      AND coalesce(l.metadata->>'source', '') = 'contract_expiry'
+      AND l.season_id = (
+        SELECT cs.id
+        FROM public.competition_seasons cs
+        WHERE cs.status IN ('preseason', 'setup', 'active')
+        ORDER BY cs.id DESC
+        LIMIT 1
+      )
+  ) led ON true
+  WHERE latest.snapped_at IS NOT NULL
+    AND s.snapped_at = latest.snapped_at
 )
-ORDER BY
-  s.expected_holder_wins ASC,
-  s.expected_mv_to_holder DESC,
-  s.player_name;
-
--- ---------------------------------------------------------------------------
--- STEP C — AFTER tick: compare snapshot → actual outcomes
--- Uncomment and run AFTER Create Pre-Season / Tick
--- ---------------------------------------------------------------------------
-
--- SELECT
---   s.player_id,
---   s.player_name,
---   s.holding_club AS club_before,
---   s.expected_winner_club,
---   s.expected_winning_wage,
---   public.player_contracted_club_key(p."Contracted_Team") AS club_after,
---   p.contract_wage AS wage_after,
---   p.contract_seasons_remaining AS seasons_after,
---   p."Season_Signed" AS season_signed_after,
---   CASE
---     WHEN p."Konami_ID" IS NULL THEN 'FAIL: player row missing'
---     WHEN public.player_contracted_club_key(p."Contracted_Team") IS NULL
---       THEN 'UNEXPECTED FA (had winning bid expected)'
---     WHEN public.player_contracted_club_key(p."Contracted_Team")
---          IS NOT DISTINCT FROM s.expected_winner_club
---      AND round(coalesce(p.contract_wage, 0), 0)
---          = round(coalesce(s.expected_winning_wage, 0), 0)
---      AND coalesce(p.contract_seasons_remaining, 0) = 3
---       THEN 'OK'
---     WHEN public.player_contracted_club_key(p."Contracted_Team")
---          IS NOT DISTINCT FROM s.expected_winner_club
---      AND coalesce(p.contract_seasons_remaining, 0) = 3
---       THEN 'CHECK wage'
---     ELSE 'CHECK club/wage/seasons'
---   END AS contract_status,
---   s.expected_mv_to_holder,
---   coalesce(led.purchase_amt, 0) AS ledger_purchase_on_new_season,
---   coalesce(led.sale_amt, 0) AS ledger_sale_on_new_season,
---   coalesce(led.signing_fee_amt, 0) AS ledger_champ_signing_fee,
---   CASE
---     WHEN s.expected_mv_to_holder <= 0 THEN 'n/a (holder won / no MV)'
---     WHEN coalesce(led.sale_amt, 0) >= s.expected_mv_to_holder * 0.999
---      AND coalesce(led.purchase_amt, 0) <= -s.expected_mv_to_holder * 0.999
---       THEN 'OK MV posted'
---     ELSE 'CHECK MV ledger'
---   END AS mv_status,
---   CASE
---     WHEN s.expected_champ_sl_signing_fee <= 0 THEN 'n/a'
---     WHEN coalesce(led.signing_fee_amt, 0) <= -s.expected_champ_sl_signing_fee * 0.999
---       THEN 'OK signing fee'
---     ELSE 'CHECK signing fee'
---   END AS signing_fee_status,
---   th.transfer_time AS transfer_history_at,
---   th.buyer_club_id AS th_buyer,
---   th.fee AS th_fee
--- FROM public.admin_expiry_bid_audit_snapshot s
--- LEFT JOIN public."Players" p
---   ON p."Konami_ID"::text = s.player_id
--- LEFT JOIN LATERAL (
---   SELECT
---     sum(CASE WHEN l.entry_type = 'transfer_purchase' THEN l.amount ELSE 0 END) AS purchase_amt,
---     sum(CASE WHEN l.entry_type = 'transfer_sale' THEN l.amount ELSE 0 END) AS sale_amt,
---     sum(CASE WHEN l.entry_type = 'contract_expiry_champ_signing_fee' THEN l.amount ELSE 0 END)
---       AS signing_fee_amt
---   FROM public.competition_finance_ledger l
---   WHERE l.metadata->>'player_id' = s.player_id
---     AND coalesce(l.metadata->>'source', '') = 'contract_expiry'
---     AND l.season_id = (
---       SELECT cs.id
---       FROM public.competition_seasons cs
---       WHERE cs.status IN ('preseason', 'setup', 'active')
---       ORDER BY cs.id DESC
---       LIMIT 1
---     )
--- ) led ON true
--- LEFT JOIN LATERAL (
---   SELECT h.transfer_time, h.buyer_club_id, h.fee
---   FROM public."Transfer_History" h
---   WHERE h.player_id = s.player_id
---     AND h.transfer_time >= s.snapped_at
---   ORDER BY h.transfer_time DESC
---   LIMIT 1
--- ) th ON true
--- WHERE s.snapped_at = (
---   SELECT max(s2.snapped_at) FROM public.admin_expiry_bid_audit_snapshot s2
--- )
--- ORDER BY
---   CASE
---     WHEN public.player_contracted_club_key(p."Contracted_Team")
---          IS NOT DISTINCT FROM s.expected_winner_club
---      AND round(coalesce(p.contract_wage, 0), 0)
---          = round(coalesce(s.expected_winning_wage, 0), 0)
---       THEN 1
---     ELSE 0
---   END,
---   s.player_name;
-
--- Optional: list snapshot batches
--- SELECT snapped_at, bid_season_label, count(*) AS players
--- FROM public.admin_expiry_bid_audit_snapshot
--- GROUP BY 1, 2
--- ORDER BY 1 DESC;
+SELECT * FROM report
+UNION ALL
+SELECT
+  'DIAGNOSTIC' AS report_mode,
+  NULL, NULL,
+  NULL,
+  'No snapshot rows — check open bids / season labels' AS player_name,
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+  NULL, NULL, NULL, NULL,
+  'open_bids=' || (SELECT n::text FROM open_bids)
+    || '; labels=' || (SELECT labels FROM bid_labels)
+    || '; snapshot_rows=' || (
+      SELECT count(*)::text FROM public.admin_expiry_bid_audit_snapshot
+    ) AS contract_status,
+  NULL, NULL, NULL, NULL, NULL, NULL
+WHERE NOT EXISTS (SELECT 1 FROM report)
+ORDER BY 1, 5;
