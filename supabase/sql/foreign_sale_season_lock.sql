@@ -49,6 +49,17 @@ BEGIN
   ORDER BY s.id DESC
   LIMIT 1;
 
+  IF v_id IS NOT NULL THEN
+    RETURN v_id;
+  END IF;
+
+  SELECT s.id
+  INTO v_id
+  FROM public.competition_seasons s
+  WHERE s.status IN ('preseason', 'setup')
+  ORDER BY s.id DESC
+  LIMIT 1;
+
   RETURN v_id;
 END;
 $function$;

@@ -59,7 +59,7 @@ import {
   playerBlockedFromTransferMarket,
   SAME_SEASON_TRANSFER_MESSAGE,
   FINAL_YEAR_TRANSFER_MESSAGE,
-} from "./player_season_transfer.js";
+} from "./player_season_transfer.js?v=20260807-preseason-season-lock";
 import {
   formatSquadContractCell,
   squadContractActionOptionsHtml,

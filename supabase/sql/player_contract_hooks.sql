@@ -44,7 +44,7 @@ AS $function$
 DECLARE
   v_label text;
 BEGIN
-  SELECT s.label
+  SELECT btrim(s.label)
   INTO v_label
   FROM public.competition_seasons s
   WHERE s.is_current = true
@@ -52,18 +52,30 @@ BEGIN
   ORDER BY s.id DESC
   LIMIT 1;
 
-  IF v_label IS NOT NULL AND btrim(v_label) <> '' THEN
-    RETURN btrim(v_label);
+  IF v_label IS NOT NULL AND v_label <> '' THEN
+    RETURN v_label;
   END IF;
 
-  SELECT s.label
+  SELECT btrim(s.label)
   INTO v_label
   FROM public.competition_seasons s
   WHERE s.is_current = true
   ORDER BY s.id DESC
   LIMIT 1;
 
-  RETURN NULLIF(btrim(coalesce(v_label, '')), '');
+  IF v_label IS NOT NULL AND v_label <> '' THEN
+    RETURN v_label;
+  END IF;
+
+  -- Preseason / summer break: newest setup shell (for same-season sale lock)
+  SELECT btrim(s.label)
+  INTO v_label
+  FROM public.competition_seasons s
+  WHERE s.status IN ('preseason', 'setup')
+  ORDER BY s.id DESC
+  LIMIT 1;
+
+  RETURN NULLIF(v_label, '');
 END;
 $function$;
 

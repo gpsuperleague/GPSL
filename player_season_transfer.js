@@ -43,11 +43,24 @@ export async function loadCurrentGpslSeasonLabel(supabase) {
     .eq("is_current", true)
     .maybeSingle();
 
-  if (error) {
-    console.error("loadCurrentGpslSeasonLabel:", error);
+  if (!error && row?.label) {
+    return normalizeSeasonLabel(row.label);
+  }
+
+  // Preseason / summer break: newest setup shell (matches SQL fallback)
+  const { data: pre, error: preErr } = await supabase
+    .from("competition_seasons")
+    .select("label")
+    .in("status", ["preseason", "setup"])
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (preErr) {
+    console.error("loadCurrentGpslSeasonLabel:", error || preErr);
     return "";
   }
-  return normalizeSeasonLabel(row?.label);
+  return normalizeSeasonLabel(pre?.label);
 }
 
 export async function loadCurrentGpslSeasonId(supabase) {
@@ -64,9 +77,21 @@ export async function loadCurrentGpslSeasonId(supabase) {
     .eq("is_current", true)
     .maybeSingle();
 
-  if (error) {
-    console.error("loadCurrentGpslSeasonId:", error);
+  if (!error && row?.id != null) {
+    return Number(row.id);
+  }
+
+  const { data: pre, error: preErr } = await supabase
+    .from("competition_seasons")
+    .select("id")
+    .in("status", ["preseason", "setup"])
+    .order("id", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (preErr) {
+    console.error("loadCurrentGpslSeasonId:", error || preErr);
     return null;
   }
-  return row?.id != null ? Number(row.id) : null;
+  return pre?.id != null ? Number(pre.id) : null;
 }
