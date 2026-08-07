@@ -56,6 +56,7 @@ SELECT
     cn.n
   ) AS club_expectation,
   coalesce(sm.club_market_value, 0)::numeric AS club_market_value,
+  round(coalesce(c."Capacity", 0)::numeric * 1500) AS stadium_value,
   round(coalesce(c."Capacity", 0)::numeric * 1500 * 0.125) AS stadium_maintenance_cost,
   round(coalesce(c."Capacity", 0)::numeric * 20) AS gate_money_full,
   round(coalesce(c."Capacity", 0)::numeric * 20 * 0.8) AS gate_money_80,

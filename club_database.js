@@ -8,7 +8,8 @@ const COLUMNS = [
   { key: "stadium_max_capacity", label: "Max capacity", sort: "stadium_max_capacity" },
   { key: "stadium_expansion_potential", label: "Expansion headroom", sort: "stadium_expansion_potential" },
   { key: "club_expectation", label: "Expectation", sort: "club_expectation" },
-  { key: "club_market_value", label: "Club MV", sort: "club_market_value" },
+  { key: "club_market_value", label: "Squad MV", sort: "club_market_value" },
+  { key: "stadium_value", label: "Stadium value", sort: "stadium_value" },
   { key: "stadium_maintenance_cost", label: "Stadium maintenance", sort: "stadium_maintenance_cost" },
   { key: "gate_money_full", label: "Gate 100%", sort: "gate_money_full" },
   { key: "gate_money_80", label: "Gate 80%", sort: "gate_money_80" },
@@ -125,7 +126,8 @@ function render() {
         <td>${fmtInt(r.stadium_max_capacity)}</td>
         <td>${fmtInt(r.stadium_expansion_potential)}</td>
         <td>${r.club_expectation != null ? escapeHtml(String(r.club_expectation)) : "—"}</td>
-        <td>${moneyCell(r.club_market_value)}</td>
+        <td title="Sum of contracted players’ market values">${moneyCell(r.club_market_value)}</td>
+        <td title="Capacity × ₿1,500">${moneyCell(r.stadium_value)}</td>
         <td>${moneyCell(r.stadium_maintenance_cost)}</td>
         <td>${moneyCell(r.gate_money_full)}</td>
         <td>${moneyCell(r.gate_money_80)}</td>
