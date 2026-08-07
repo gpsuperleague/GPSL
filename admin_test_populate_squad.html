@@ -76,8 +76,10 @@
         <h2>Position minimums (this club only)</h2>
         <p class="hint" style="margin:0 0 10px;">
           Defaults: GK 2 · DEF 8 · MID 8 · FWD 6 (sum 24). Adjust temporarily for this club;
-          changing the club dropdown restores defaults. Fixed rules: min 8 home-grown, min 5 under-21,
-          stars ≤ division cap. Does not replace existing players — only fills empty slots up to 24.
+          changing the club dropdown restores defaults. Registration rules are filled first:
+          min 8 home-grown, min 5 under-21, and the division star quota (SL 3 / Champ 2).
+          Does not replace existing players — only fills empty slots up to 24.
+          Preview lists signings in position order (GK → CF).
         </p>
         <div class="pos-grid">
           <label>GK min<input type="number" id="posGk" min="0" max="24" value="2"></label>
@@ -96,6 +98,6 @@
       </div>
     </div>
   </div>
-  <script type="module" src="admin_test_populate_squad.js?v=20260807-populate-squad"></script>
+  <script type="module" src="admin_test_populate_squad.js?v=20260807-populate-squad-v2"></script>
 </body>
 </html>

@@ -11,6 +11,22 @@ const POS_INPUTS = [
   { id: "posFwd", key: "fwd" },
 ];
 
+/** Preview top→bottom order (exact Position codes). */
+const POSITION_SORT_ORDER = [
+  "GK",
+  "LB",
+  "CB",
+  "RB",
+  "DMF",
+  "LMF",
+  "CMF",
+  "RMF",
+  "LWF",
+  "SS",
+  "RWF",
+  "CF",
+];
+
 /** @type {object|null} */
 let lastSnapshot = null;
 
@@ -138,7 +154,7 @@ function renderCounts(snap) {
   const u21Ok = (snap.under_21 ?? 0) >= (snap.min_under_21 ?? 5);
   const stars = snap.stars ?? 0;
   const starCap = snap.star_cap ?? 0;
-  const starOk = stars <= starCap;
+  const starOk = stars >= starCap;
 
   box.hidden = false;
   box.innerHTML = `
@@ -161,7 +177,7 @@ function renderCounts(snap) {
         U21 ${u21Ok ? "✓" : "⚠"} ${snap.under_21 ?? 0}/${snap.min_under_21 ?? 5}
       </span>
       <span class="${starOk ? "compliance-ok" : "compliance-warn"}">
-        Stars ${starOk ? "✓" : "⚠"} ${stars}/${starCap} (cap, ≥${snap.star_min_rating ?? 79})
+        Stars ${starOk ? "✓" : "⚠"} ${stars}/${starCap} (quota, ≥${snap.star_min_rating ?? 79})
       </span>
     </div>
   `;
@@ -226,7 +242,7 @@ function complianceLine(proj) {
   const u21Ok = (proj?.under_21 ?? 0) >= (targets.min_u21 ?? 5);
   const stars = proj?.stars ?? 0;
   const starCap = targets.star_cap ?? proj?.star_cap ?? 0;
-  const starOk = stars <= starCap;
+  const starOk = stars >= starCap;
   const gkOk = (pos.gk ?? 0) >= (targets.gk ?? 0);
   const defOk = (pos.def ?? 0) >= (targets.def ?? 0);
   const midOk = (pos.mid ?? 0) >= (targets.mid ?? 0);
@@ -235,13 +251,30 @@ function complianceLine(proj) {
   const bits = [
     `HG ${hgOk ? "✓" : "⚠"} ${proj?.home_grown ?? 0}/${targets.min_hg ?? 8}`,
     `U21 ${u21Ok ? "✓" : "⚠"} ${proj?.under_21 ?? 0}/${targets.min_u21 ?? 5}`,
-    `Stars ${starOk ? "✓" : "⚠"} ${stars}/${starCap}`,
+    `Stars ${starOk ? "✓" : "⚠"} ${stars}/${starCap} (quota)`,
     `GK ${gkOk ? "✓" : "⚠"} ${pos.gk ?? 0}/${targets.gk ?? 0}`,
     `DEF ${defOk ? "✓" : "⚠"} ${pos.def ?? 0}/${targets.def ?? 0}`,
     `MID ${midOk ? "✓" : "⚠"} ${pos.mid ?? 0}/${targets.mid ?? 0}`,
     `FWD ${fwdOk ? "✓" : "⚠"} ${pos.fwd ?? 0}/${targets.fwd ?? 0}`,
   ];
   return `<span class="${allOk ? "compliance-ok" : "compliance-warn"}">${bits.join(" · ")}</span>`;
+}
+
+function positionSortKey(position) {
+  const code = String(position ?? "")
+    .trim()
+    .toUpperCase();
+  const idx = POSITION_SORT_ORDER.indexOf(code);
+  return idx >= 0 ? idx : 1000;
+}
+
+function sortSignedByPosition(signed) {
+  return [...signed].sort((a, b) => {
+    const pa = positionSortKey(a.position);
+    const pb = positionSortKey(b.position);
+    if (pa !== pb) return pa - pb;
+    return String(a.player_name || "").localeCompare(String(b.player_name || ""));
+  });
 }
 
 function renderPreview(result) {
@@ -254,10 +287,11 @@ function renderPreview(result) {
     return;
   }
 
-  const signed = Array.isArray(result.signed) ? result.signed : [];
+  const signed = sortSignedByPosition(Array.isArray(result.signed) ? result.signed : []);
   const skipped = Array.isArray(result.skipped) ? result.skipped : [];
   const proj = result.projected_after || {};
   const posT = result.position_targets || {};
+  const regOk = result.registration_met !== false;
 
   const rows = signed
     .map((p) => {
@@ -288,6 +322,11 @@ function renderPreview(result) {
     </p>
     <p>Position mins used: GK ${posT.gk ?? "—"} · DEF ${posT.def ?? "—"} · MID ${posT.mid ?? "—"} · FWD ${posT.fwd ?? "—"}</p>
     <p>${complianceLine(proj)}</p>
+    ${
+      regOk
+        ? ""
+        : `<p class="compliance-warn"><b>Registration not met</b> — projected squad is still short of HG / U21 / star quota / position mins. Re-run SQL patch if this keeps happening on an empty club.</p>`
+    }
     ${
       signed.length
         ? `<table>

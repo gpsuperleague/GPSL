@@ -186,6 +186,14 @@ DECLARE
   v_def_mid int;
   v_def_fwd int;
   v_compliance_met boolean;
+  v_registration_met boolean;
+  v_slots_left int;
+  v_need_hg int;
+  v_need_u21 int;
+  v_need_star int;
+  v_force_hg boolean;
+  v_force_u21 boolean;
+  v_force_star boolean;
   v_rating int;
   v_is_hg boolean;
   v_is_u21 boolean;
@@ -290,6 +298,15 @@ BEGIN
       'balance_after', v_balance,
       'signed', '[]'::jsonb,
       'skipped', '[]'::jsonb,
+      'registration_met', (
+        v_hg >= v_min_hg
+        AND v_u21 >= v_min_u21
+        AND v_stars >= v_star_cap
+        AND v_gk >= v_target_gk
+        AND v_def >= v_target_def
+        AND v_mid >= v_target_mid
+        AND v_fwd >= v_target_fwd
+      ),
       'position_targets', jsonb_build_object(
         'gk', v_target_gk, 'def', v_target_def, 'mid', v_target_mid, 'fwd', v_target_fwd
       ),
@@ -326,6 +343,11 @@ BEGIN
   FOR v_i IN 1..v_need LOOP
     EXIT WHEN v_squad >= v_target_size;
 
+    v_slots_left := v_target_size - v_squad;
+    v_need_hg := greatest(v_min_hg - v_hg, 0);
+    v_need_u21 := greatest(v_min_u21 - v_u21, 0);
+    v_need_star := greatest(v_star_cap - v_stars, 0);
+
     v_def_gk := greatest(v_target_gk - v_gk, 0);
     v_def_def := greatest(v_target_def - v_def, 0);
     v_def_mid := greatest(v_target_mid - v_mid, 0);
@@ -350,28 +372,45 @@ BEGIN
       v_pos_deficit := v_def_fwd;
     END IF;
 
+    -- Registration first: HG / U21 / division star quota must be filled.
+    -- Force a constraint when remaining slots would otherwise make it impossible.
+    v_force_star := v_need_star > 0 AND v_slots_left <= v_need_star;
+    v_force_hg := v_need_hg > 0 AND v_slots_left <= v_need_hg;
+    v_force_u21 := v_need_u21 > 0 AND v_slots_left <= v_need_u21;
+
     v_compliance_met := (
-      v_hg >= v_min_hg
-      AND v_u21 >= v_min_u21
+      v_need_hg = 0
+      AND v_need_u21 = 0
+      AND v_need_star = 0
       AND v_gk >= v_target_gk
       AND v_def >= v_target_def
       AND v_mid >= v_target_mid
       AND v_fwd >= v_target_fwd
     );
 
-    IF v_compliance_met THEN
+    IF v_force_star THEN
+      v_pick_modes := ARRAY['star', 'hg', 'u21', 'pos', 'any'];
+    ELSIF v_force_hg THEN
+      v_pick_modes := ARRAY['hg', 'star', 'u21', 'pos', 'any'];
+    ELSIF v_force_u21 THEN
+      v_pick_modes := ARRAY['u21', 'hg', 'star', 'pos', 'any'];
+    ELSIF v_compliance_met THEN
       v_pick_modes := ARRAY['any'];
     ELSE
-      v_pick_modes := ARRAY['pos', 'hg', 'u21', 'any'];
+      -- Fill star quota + HG + U21 before pure position chart fill.
+      v_pick_modes := ARRAY['star', 'hg', 'u21', 'pos', 'any'];
     END IF;
 
     v_player_found := false;
 
     FOREACH v_mode IN ARRAY v_pick_modes LOOP
-      IF v_mode = 'hg' AND v_hg >= v_min_hg THEN
+      IF v_mode = 'star' AND v_need_star <= 0 THEN
         CONTINUE;
       END IF;
-      IF v_mode = 'u21' AND v_u21 >= v_min_u21 THEN
+      IF v_mode = 'hg' AND v_need_hg <= 0 THEN
+        CONTINUE;
+      END IF;
+      IF v_mode = 'u21' AND v_need_u21 <= 0 THEN
         CONTINUE;
       END IF;
       IF v_mode = 'pos' AND (v_need_pos IS NULL OR v_pos_deficit <= 0) THEN
@@ -412,6 +451,10 @@ BEGIN
             AND l.status = 'Active'
         )
         AND (
+          v_mode <> 'star'
+          OR public.club_squad_player_rating(p."Konami_ID"::text) >= v_star_min
+        )
+        AND (
           v_mode <> 'hg'
           OR (
             public.normalize_nation_key(p."Nation") = public.normalize_nation_key(v_club_nation)
@@ -426,7 +469,46 @@ BEGIN
           v_mode <> 'pos'
           OR public.international_player_pool_position_group(p."Position") = v_need_pos
         )
-      ORDER BY random()
+        -- When forced, also stack other unmet registration needs if possible.
+        AND (
+          NOT v_force_hg
+          OR (
+            public.normalize_nation_key(p."Nation") = public.normalize_nation_key(v_club_nation)
+            AND public.normalize_nation_key(p."Nation") <> ''
+          )
+        )
+        AND (
+          NOT v_force_u21
+          OR public.club_squad_player_age(p."Konami_ID"::text) <= 21
+        )
+        AND (
+          NOT v_force_star
+          OR public.club_squad_player_rating(p."Konami_ID"::text) >= v_star_min
+        )
+      ORDER BY
+        -- Prefer players who also help unmet registration / position deficits.
+        CASE
+          WHEN v_need_star > 0
+            AND public.club_squad_player_rating(p."Konami_ID"::text) >= v_star_min
+          THEN 0 ELSE 1
+        END,
+        CASE
+          WHEN v_need_hg > 0
+            AND public.normalize_nation_key(p."Nation") = public.normalize_nation_key(v_club_nation)
+            AND public.normalize_nation_key(p."Nation") <> ''
+          THEN 0 ELSE 1
+        END,
+        CASE
+          WHEN v_need_u21 > 0
+            AND public.club_squad_player_age(p."Konami_ID"::text) <= 21
+          THEN 0 ELSE 1
+        END,
+        CASE
+          WHEN v_need_pos IS NOT NULL
+            AND public.international_player_pool_position_group(p."Position") = v_need_pos
+          THEN 0 ELSE 1
+        END,
+        random()
       LIMIT 1;
 
       IF FOUND THEN
@@ -541,6 +623,38 @@ BEGIN
     );
   END LOOP;
 
+  v_registration_met := (
+    v_hg >= v_min_hg
+    AND v_u21 >= v_min_u21
+    AND v_stars >= v_star_cap
+    AND v_gk >= v_target_gk
+    AND v_def >= v_target_def
+    AND v_mid >= v_target_mid
+    AND v_fwd >= v_target_fwd
+    AND v_squad >= v_target_size
+  );
+
+  IF NOT v_registration_met THEN
+    v_skipped := v_skipped || jsonb_build_array(
+      jsonb_build_object(
+        'reason', 'registration_shortfall',
+        'home_grown', v_hg,
+        'min_home_grown', v_min_hg,
+        'under_21', v_u21,
+        'min_under_21', v_min_u21,
+        'stars', v_stars,
+        'star_cap', v_star_cap,
+        'positions', jsonb_build_object(
+          'gk', v_gk, 'def', v_def, 'mid', v_mid, 'fwd', v_fwd
+        ),
+        'position_targets', jsonb_build_object(
+          'gk', v_target_gk, 'def', v_target_def, 'mid', v_target_mid, 'fwd', v_target_fwd
+        ),
+        'squad_size', v_squad
+      )
+    );
+  END IF;
+
   RETURN jsonb_build_object(
     'ok', true,
     'dry_run', p_dry_run,
@@ -551,6 +665,7 @@ BEGIN
     'squad_size_before', v_squad_before,
     'squad_size_after', v_squad,
     'target_squad_size', v_target_size,
+    'registration_met', v_registration_met,
     'total_spend', v_spent,
     'balance_before', v_balance,
     'balance_after', CASE
