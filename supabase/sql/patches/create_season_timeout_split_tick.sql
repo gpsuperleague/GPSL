@@ -131,7 +131,8 @@ BEGIN
     fee numeric NOT NULL DEFAULT 0
   ) ON COMMIT DROP;
 
-  DELETE FROM _contract_expire_batch;
+  -- WHERE true: Supabase rejects DELETE without a WHERE clause
+  DELETE FROM _contract_expire_batch WHERE true;
 
   INSERT INTO _contract_expire_batch (player_id, club, fee)
   SELECT

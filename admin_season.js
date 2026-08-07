@@ -272,7 +272,9 @@ async function createNextSeason() {
             ? " — run patches/player_assign_to_club_overload_fix.sql, then retry (or Tick contracts catch-up if season row exists)"
             : /foreign contract lock|paid-up overflow lock/i.test(error.message || "")
               ? " — run patches/foreign_lock_preseason_fallback.sql, then retry (or Tick contracts catch-up if season row exists)"
-              : " — run patches/contract_tick_fa_before_contested.sql (+ foreign_lock_preseason_fallback / assign overload if needed), then retry"
+              : /DELETE requires a WHERE clause/i.test(error.message || "")
+                ? " — run patches/contract_release_delete_where_fix.sql, then retry (or Tick contracts catch-up if season row exists)"
+                : " — run patches/contract_tick_fa_before_contested.sql (+ foreign_lock / assign overload / delete-where fixes if needed), then retry"
       }`,
       false
     );
