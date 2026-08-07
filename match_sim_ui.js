@@ -322,8 +322,10 @@ export function playMatchMomentum(data, labels = {}) {
     let htShown = false;
     scoreEl.textContent = "0 – 0";
     clockEl.textContent = "0'";
-    if (phaseNode) phaseNode.textContent = `1st half · +${add1} mins`;
+    if (phaseNode) phaseNode.textContent = "1st half";
     if (htNode) htNode.hidden = true;
+    let add1Announced = false;
+    let add2Announced = false;
 
     if (!overlay.querySelector("#msimFeedHome")) {
       feed.innerHTML = `
@@ -499,7 +501,43 @@ export function playMatchMomentum(data, labels = {}) {
 
     function hideHalfTime() {
       if (htNode) htNode.hidden = true;
-      if (phaseNode) phaseNode.textContent = `2nd half · +${add2} mins`;
+      if (phaseNode) phaseNode.textContent = "2nd half";
+    }
+
+    function updatePhaseLabel(state) {
+      if (!phaseNode) return;
+      if (state.phase === "ht") {
+        phaseNode.textContent = "Half time";
+        return;
+      }
+      if (state.phase === "ft") {
+        phaseNode.textContent = "Full time";
+        return;
+      }
+      if (state.phase === "fh") {
+        // Announce added time from 40' (5 mins before end of regulation)
+        if (state.matchMin >= 40) {
+          phaseNode.textContent = `1st half · +${add1} mins`;
+          if (!add1Announced) {
+            add1Announced = true;
+            pushFeed({ type: "halftime", text: `Added time +${add1}` });
+          }
+        } else {
+          phaseNode.textContent = "1st half";
+        }
+        return;
+      }
+      if (state.phase === "sh") {
+        if (state.matchMin >= 85) {
+          phaseNode.textContent = `2nd half · +${add2} mins`;
+          if (!add2Announced) {
+            add2Announced = true;
+            pushFeed({ type: "halftime", text: `Added time +${add2}` });
+          }
+        } else {
+          phaseNode.textContent = "2nd half";
+        }
+      }
     }
 
     function finish() {
@@ -532,6 +570,7 @@ export function playMatchMomentum(data, labels = {}) {
       } else if (state.phase === "sh" && htShown) {
         hideHalfTime();
       }
+      updatePhaseLabel(state);
 
       while (idx < events.length && Number(events[idx].at) <= tSec) {
         const ev = events[idx++];
