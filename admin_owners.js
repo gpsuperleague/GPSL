@@ -578,7 +578,7 @@ async function archiveOwner() {
   }
   if (
     !confirm(
-      `Archive ${label}?\n\nThey will be detached from club and nation. Unarchive before linking a club again.`
+      `Archive ${label}?\n\nThey will be archived (detached from any club/nation and removed from the waiting list). Unarchive before linking a club again.`
     )
   ) {
     return;
@@ -592,9 +592,10 @@ async function archiveOwner() {
     setStatus("archiveOwnerStatus", "❌ " + error.message, false);
     return;
   }
+  const wasClub = data?.club_short_name || (data?.had_club === false ? "no club" : "club");
   setStatus(
     "archiveOwnerStatus",
-    `✅ Archived ${data?.owner_tag || email} (was ${data?.club_short_name || "club"})`,
+    `✅ Archived ${data?.owner_tag || email} (was ${wasClub})`,
     true
   );
   if (document.getElementById("archiveOwnerNote")) {
