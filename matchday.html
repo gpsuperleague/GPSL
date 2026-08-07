@@ -371,10 +371,13 @@
         <button type="button" id="rejectResultBtn" class="button danger">Reject result</button>
       </div>
       <button type="button" id="submitResultBtn" class="button">Submit for confirmation</button>
-      <button type="button" id="simulateResultBtn" class="button" style="display:none;background:#2a5535;margin-left:8px;">Simulate result</button>
+      <span id="simulateActions" style="display:none;margin-left:8px;" class="sim-actions">
+        <button type="button" id="instantResultBtn" class="button sim-instant-btn" style="background:#333;">Instant result</button>
+        <button type="button" id="simulateResultBtn" class="button sim-play-btn" style="background:#2a5535;">Simulate match</button>
+      </span>
       <div id="submitStatus"></div>
     </div>
   </div>
-  <script type="module" src="matchday.js?v=20260807-match-sim-v2"></script>
+  <script type="module" src="matchday.js?v=20260807-sim-play"></script>
 </body>
 </html>

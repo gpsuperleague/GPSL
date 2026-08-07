@@ -1,2 +1,2 @@
 /** Bump when shipping cache-sensitive global/nav assets. */
-export const APP_VERSION = "20260807-cards-match";
+export const APP_VERSION = "20260807-sim-play";

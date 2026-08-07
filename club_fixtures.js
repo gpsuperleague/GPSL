@@ -384,14 +384,17 @@ function wireCalendarButtons(root) {
   }
 }
 
-async function simulateFixture(fixtureId, btn) {
+async function simulateFixture(fixtureId, btn, mode = "instant") {
   const f = lastFixtures.find((row) => String(row.id) === String(fixtureId));
   const label = f
     ? `${f.home_club_name || f.home_club_short_name} vs ${f.away_club_name || f.away_club_short_name}`
     : `fixture ${fixtureId}`;
+  const play = mode === "play";
   if (
     !confirm(
-      `Simulate result for ${label}?\n\nThis finalises the match immediately (opponent cannot overwrite).`
+      play
+        ? `Simulate match for ${label}?\n\nPlays a ~20s momentum graphic, then finalises (opponent cannot overwrite).`
+        : `Instant result for ${label}?\n\nFinalises immediately (opponent cannot overwrite).`
     )
   ) {
     return;
@@ -399,7 +402,10 @@ async function simulateFixture(fixtureId, btn) {
 
   showError("");
   try {
-    await runMatchSimulation(fixtureId, btn);
+    await runMatchSimulation(fixtureId, btn, mode, {
+      homeName: f?.home_club_name || f?.home_club_short_name,
+      awayName: f?.away_club_name || f?.away_club_short_name,
+    });
     await refreshFixtures();
   } catch (err) {
     showError(err?.message || "Simulation failed");
@@ -407,7 +413,7 @@ async function simulateFixture(fixtureId, btn) {
 }
 
 function wireSimButtons(root) {
-  wireMatchSimButtons(root, (id, btn) => simulateFixture(id, btn));
+  wireMatchSimButtons(root, (id, btn, mode) => simulateFixture(id, btn, mode));
 }
 
 function renderSimBanner() {

@@ -1434,16 +1434,24 @@ async function updateFixturePreview() {
   setScoreInputsEnabled(canSubmit);
   updateCupScoreSections();
 
+  const simWrap = document.getElementById("simulateActions");
   const simBtn = document.getElementById("simulateResultBtn");
-  if (simBtn) {
+  const instantBtn = document.getElementById("instantResultBtn");
+  if (simWrap) {
     const showSim =
       matchSimEnabled &&
       f.status === "scheduled" &&
       fixtureInvolvesClub(f, myClub) &&
       !needsInboxConfirm(f, myClub);
-    simBtn.style.display = showSim ? "inline-block" : "none";
-    simBtn.disabled = false;
-    simBtn.textContent = "Simulate result";
+    simWrap.style.display = showSim ? "inline-flex" : "none";
+    if (simBtn) {
+      simBtn.disabled = false;
+      simBtn.textContent = "Simulate match";
+    }
+    if (instantBtn) {
+      instantBtn.disabled = false;
+      instantBtn.textContent = "Instant result";
+    }
   }
 
   if (
@@ -1474,7 +1482,7 @@ async function updateFixturePreview() {
     setStatus(
       "submitStatus",
       matchSimEnabled && f.status === "scheduled"
-        ? "Use Simulate result (test mode) or arrange kick-off / wait for the play month to enter manually."
+        ? "Use Instant result or Simulate match (test mode), or arrange kick-off / wait for the play month."
         : "This fixture cannot accept a new result."
     );
   }
@@ -1733,19 +1741,27 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("submitResultBtn").onclick = submitResult;
   document.getElementById("rejectResultBtn").onclick = rejectPendingResult;
   document.getElementById("fillTestStatsBtn")?.addEventListener("click", fillTestMatchStats);
-  document.getElementById("simulateResultBtn")?.addEventListener("click", async () => {
+  async function runMatchdaySim(mode) {
     const f = selectedFixture();
     if (!f) return;
+    const play = mode === "play";
     if (
       !confirm(
-        `Simulate result for ${f.home_club_name} vs ${f.away_club_name}?\n\nFinalises immediately.`
+        play
+          ? `Simulate match for ${f.home_club_name} vs ${f.away_club_name}?\n\nPlays a ~20s momentum graphic, then finalises.`
+          : `Instant result for ${f.home_club_name} vs ${f.away_club_name}?\n\nFinalises immediately.`
       )
     ) {
       return;
     }
-    const btn = document.getElementById("simulateResultBtn");
+    const btn = play
+      ? document.getElementById("simulateResultBtn")
+      : document.getElementById("instantResultBtn");
     try {
-      const data = await runMatchSimulation(f.id, btn);
+      const data = await runMatchSimulation(f.id, btn, mode, {
+        homeName: f.home_club_name,
+        awayName: f.away_club_name,
+      });
       setStatus(
         "submitStatus",
         data
@@ -1759,7 +1775,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     } catch (err) {
       setStatus("submitStatus", err?.message || "Simulation failed", true);
     }
-  });
+  }
+  document.getElementById("simulateResultBtn")?.addEventListener("click", () => runMatchdaySim("play"));
+  document.getElementById("instantResultBtn")?.addEventListener("click", () => runMatchdaySim("instant"));
 
   const simStatus = await loadMatchSimStatus();
   matchSimEnabled = !!simStatus.enabled;

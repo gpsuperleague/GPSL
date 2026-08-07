@@ -62,6 +62,12 @@ const DEFAULTS = {
   cards_enabled: true,
   injuries_enabled: true,
   max_subs_on: 5,
+  star_min_rating: 79,
+  star_outcome_pct: 8,
+  star_goal_boost_pct: 12,
+  star_concede_cut_pct: 10,
+  star_assist_boost_pct: 12,
+  playback_seconds: 20,
   outcome_bands: DEFAULT_BANDS,
 };
 
@@ -263,6 +269,12 @@ function applySettingsToForm(settings) {
     yellowPerMatch: s.yellow_per_match,
     redChancePct: s.red_chance_pct,
     maxSubsOn: s.max_subs_on,
+    starMinRating: s.star_min_rating,
+    starOutcomePct: s.star_outcome_pct,
+    starGoalBoostPct: s.star_goal_boost_pct,
+    starConcedeCutPct: s.star_concede_cut_pct,
+    starAssistBoostPct: s.star_assist_boost_pct,
+    playbackSeconds: s.playback_seconds,
   };
   for (const [id, val] of Object.entries(map)) {
     const el = document.getElementById(id);
@@ -289,6 +301,12 @@ function readSettingsFromForm() {
     cards_enabled: !!document.getElementById("cardsEnabled")?.checked,
     injuries_enabled: !!document.getElementById("injuriesEnabled")?.checked,
     max_subs_on: Math.max(0, Math.min(5, Math.trunc(num("maxSubsOn", 5)))),
+    star_min_rating: Math.max(70, Math.min(99, Math.trunc(num("starMinRating", 79)))),
+    star_outcome_pct: Math.max(0, Math.min(25, num("starOutcomePct", 8))),
+    star_goal_boost_pct: Math.max(0, Math.min(30, num("starGoalBoostPct", 12))),
+    star_concede_cut_pct: Math.max(0, Math.min(30, num("starConcedeCutPct", 10))),
+    star_assist_boost_pct: Math.max(0, Math.min(30, num("starAssistBoostPct", 12))),
+    playback_seconds: Math.max(8, Math.min(60, Math.trunc(num("playbackSeconds", 20)))),
     outcome_bands: bandsState,
   };
 }

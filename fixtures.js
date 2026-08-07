@@ -386,20 +386,26 @@ function renderSimBanner() {
 }
 
 function wireFixtureSimButtons(root) {
-  wireMatchSimButtons(root, async (id, btn) => {
+  wireMatchSimButtons(root, async (id, btn, mode) => {
     const f = allFixtures.find((row) => String(row.id) === String(id));
     const label = f
       ? `${f.home_club_name || f.home_club_short_name} vs ${f.away_club_name || f.away_club_short_name}`
       : `fixture ${id}`;
+    const play = mode === "play";
     if (
       !confirm(
-        `Simulate result for ${label}?\n\nThis finalises the match immediately (opponent cannot overwrite).`
+        play
+          ? `Simulate match for ${label}?\n\nPlays a ~20s momentum graphic, then finalises.`
+          : `Instant result for ${label}?\n\nFinalises immediately.`
       )
     ) {
       return;
     }
     try {
-      const result = await runMatchSimulation(id, btn);
+      const result = await runMatchSimulation(id, btn, mode, {
+        homeName: f?.home_club_name || f?.home_club_short_name,
+        awayName: f?.away_club_name || f?.away_club_short_name,
+      });
       if (f && result) {
         f.status = "played";
         f.home_goals = result.home_goals;
