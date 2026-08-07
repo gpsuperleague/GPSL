@@ -188,7 +188,11 @@ function ensureOverlay() {
           <div class="msim-arrow" id="msimArrow" aria-hidden="true">▶</div>
         </div>
       </div>
-      <div class="msim-feed" id="msimFeed"></div>
+      <div class="msim-feed" id="msimFeed">
+        <div class="msim-feed-col msim-feed-home" id="msimFeedHome"></div>
+        <div class="msim-feed-col msim-feed-away" id="msimFeedAway"></div>
+        <div class="msim-feed-center" id="msimFeedCenter"></div>
+      </div>
       <div class="msim-foot">
         <button type="button" class="btn-link msim-skip" id="msimSkip">Skip to result</button>
       </div>
@@ -233,7 +237,24 @@ export function playMatchMomentum(data, labels = {}) {
     let ag = 0;
     scoreEl.textContent = "0 – 0";
     clockEl.textContent = "1'";
-    feed.innerHTML = "";
+
+    // Recreate feed columns if overlay was already built with old markup
+    if (!overlay.querySelector("#msimFeedHome")) {
+      feed.innerHTML = `
+        <div class="msim-feed-col msim-feed-home" id="msimFeedHome"></div>
+        <div class="msim-feed-col msim-feed-away" id="msimFeedAway"></div>
+        <div class="msim-feed-center" id="msimFeedCenter"></div>
+      `;
+    }
+    const feedHome = overlay.querySelector("#msimFeedHome");
+    const feedAway = overlay.querySelector("#msimFeedAway");
+    const feedCenter = overlay.querySelector("#msimFeedCenter");
+    feedHome.innerHTML = "";
+    feedAway.innerHTML = "";
+    feedCenter.innerHTML = "";
+
+    /** @type {{ home: HTMLElement|null, away: HTMLElement|null }} */
+    const lastGoalBlock = { home: null, away: null };
 
     // Momentum 0 = deep away attack (left), 1 = deep home attack (right)
     let momentum = 0.5;
@@ -270,12 +291,76 @@ export function playMatchMomentum(data, labels = {}) {
       arrow.style.color = homeAttack ? homeColor : awayColor;
     }
 
+    function shortEventLabel(ev) {
+      const min = ev.minute != null ? `${ev.minute}' ` : "";
+      const name = ev.player || "";
+      if (ev.type === "goal") return `${min}${name || "Goal"}`;
+      if (ev.type === "assist") return name ? `a ${name}` : "assist";
+      if (ev.type === "yellow") return `${min}Y ${name || "Yellow"}`;
+      if (ev.type === "red") return `${min}R ${name || "Red"}`;
+      if (ev.type === "injury") return `${min}Inj ${name || "Injury"}`;
+      if (ev.type === "fulltime") return ev.text || "Full time";
+      return ev.text || ev.type || "";
+    }
+
+    function colFor(side) {
+      if (side === "away") return feedAway;
+      if (side === "home") return feedHome;
+      return feedCenter;
+    }
+
     function pushFeed(ev) {
+      const side = ev.side === "away" ? "away" : ev.side === "home" ? "home" : null;
+
+      // Assists nest under the latest goal on that side
+      if (ev.type === "assist" && side) {
+        const block = lastGoalBlock[side];
+        if (block) {
+          let assistEl = block.querySelector(".msim-ev-assist");
+          if (!assistEl) {
+            assistEl = document.createElement("div");
+            assistEl.className = "msim-ev-assist";
+            block.appendChild(assistEl);
+          }
+          assistEl.textContent = shortEventLabel(ev);
+          return;
+        }
+      }
+
+      if (ev.type === "fulltime" || !side) {
+        const row = document.createElement("div");
+        row.className = `msim-ev msim-ev--${escapeHtml(ev.type || "info")} msim-ev--center`;
+        row.textContent = shortEventLabel(ev);
+        feedCenter.prepend(row);
+        return;
+      }
+
+      if (ev.type === "goal") {
+        const block = document.createElement("div");
+        block.className = `msim-goal-block msim-ev--${side}`;
+        const goalEl = document.createElement("div");
+        goalEl.className = "msim-ev msim-ev--goal";
+        goalEl.textContent = shortEventLabel(ev);
+        block.appendChild(goalEl);
+        colFor(side).prepend(block);
+        lastGoalBlock[side] = block;
+
+        // If the next playback event is an assist for the same side, attach it now
+        const next = events[idx];
+        if (next && next.type === "assist" && next.side === side) {
+          idx += 1;
+          const assistEl = document.createElement("div");
+          assistEl.className = "msim-ev-assist";
+          assistEl.textContent = shortEventLabel(next);
+          block.appendChild(assistEl);
+        }
+        return;
+      }
+
       const row = document.createElement("div");
-      row.className = `msim-ev msim-ev--${escapeHtml(ev.type || "info")}`;
-      if (ev.side) row.classList.add(`msim-ev--${ev.side}`);
-      row.textContent = ev.text || ev.type || "";
-      feed.prepend(row);
+      row.className = `msim-ev msim-ev--${escapeHtml(ev.type || "info")} msim-ev--${side}`;
+      row.textContent = shortEventLabel(ev);
+      colFor(side).prepend(row);
     }
 
     function finish() {
@@ -428,16 +513,33 @@ export const MATCH_SIM_BANNER_STYLE = `
   100%{transform:translate(-50%,-50%) scale(1)}
 }
 .msim-feed {
-  max-height:160px; overflow:auto; font-size:13px; line-height:1.45;
+  display:grid; grid-template-columns:1fr 1fr; gap:8px 12px; align-items:start;
+  max-height:200px; overflow:auto; font-size:13px; line-height:1.35;
   border:1px solid #2a2a2a; border-radius:6px; background:#0d0d0d; padding:8px 10px;
-  min-height:72px;
+  min-height:88px; position:relative;
 }
-.msim-ev { padding:3px 0; border-bottom:1px solid #1c1c1c; color:#ccc; }
-.msim-ev--goal { color:#9fd4b0; font-weight:700; }
+.msim-feed-col { display:flex; flex-direction:column; gap:6px; min-width:0; }
+.msim-feed-home { text-align:left; }
+.msim-feed-away { text-align:right; }
+.msim-feed-center {
+  grid-column:1 / -1; text-align:center; display:flex; flex-direction:column; gap:4px;
+}
+.msim-goal-block { display:flex; flex-direction:column; gap:1px; }
+.msim-feed-away .msim-goal-block { align-items:flex-end; }
+.msim-feed-home .msim-goal-block { align-items:flex-start; }
+.msim-ev { padding:2px 0; color:#ccc; }
+.msim-ev--goal { color:#9fd4b0; font-weight:700; font-size:13px; }
+.msim-ev-assist {
+  color:#8aa; font-size:10px; font-weight:500; line-height:1.2; opacity:.9;
+  margin-top:0; padding:0 2px 2px;
+}
+.msim-feed-away .msim-ev-assist { text-align:right; }
+.msim-feed-home .msim-ev-assist { text-align:left; }
 .msim-ev--red { color:#f88; font-weight:700; }
 .msim-ev--yellow { color:#e6c35c; }
 .msim-ev--injury { color:#f0a070; }
 .msim-ev--fulltime { color:#ff9900; font-weight:700; }
+.msim-ev--center { width:100%; }
 .msim-foot { margin-top:10px; text-align:right; }
 .msim-skip { background:#333; color:#ddd; border:0; padding:6px 12px; border-radius:4px; cursor:pointer; }
 `;
