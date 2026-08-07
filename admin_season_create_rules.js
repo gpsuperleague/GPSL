@@ -21,7 +21,7 @@ export function getAdminSeasonCreateRules() {
         heading: "Money &amp; tick order",
         items: [
           "Expiry wage bids and FA releases post money to the <b>new</b> season ledger — not the closed year.",
-          "Tick order: <b>unrenewed</b> final-year players FA for MV first, then <b>contested</b> bid winners, then multi-year decrement (avoids needless squad overflow).",
+          "Tick order: <b>FA</b> unrenewed → <b>decrement</b> mid-deal (3→2, 2→1) → <b>contested</b> assign (fresh 3-season deals, not decremented in the same tick).",
           "Run <code>patches/contract_expiry_rollover_new_season_ledger.sql</code> before the first rollover of a cycle.",
           "Also keep <code>season_contract_tick_catchup.sql</code> + <code>season_rollover_auto_contracts.sql</code> current.",
           "If overflow / assign errors appear: <code>player_assign_to_club_overload_fix.sql</code>, <code>foreign_lock_preseason_fallback.sql</code>, <code>contract_tick_fa_before_contested.sql</code>.",

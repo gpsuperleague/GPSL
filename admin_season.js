@@ -3,7 +3,7 @@ import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
 } from "./admin_main_nav.js?v=20260807-prizes-in-create";
-import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260807-tick-staged";
+import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260807-tick-order-repair";
 
 primeAdminPageChrome();
 import {
@@ -145,18 +145,19 @@ function setCompStatus(msg, ok = true) {
 
 /** Staged tick: FA → contested → decrement (separate RPCs / timeouts). */
 async function runStagedPlayerContractTick(statusElId = "compCreateStatus") {
+  // Order: FA → decrement mid-deal → contested assign (new deals keep 3 seasons)
   const steps = [
     {
       rpc: "contract_tick_rollover_step_fa",
       label: "1/3 FA unrenewed (MV)…",
     },
     {
-      rpc: "contract_tick_rollover_step_contested",
-      label: "2/3 Contested expiry bids…",
+      rpc: "contract_tick_rollover_step_decrement",
+      label: "2/3 Multi-year decrement…",
     },
     {
-      rpc: "contract_tick_rollover_step_decrement",
-      label: "3/3 Multi-year decrement…",
+      rpc: "contract_tick_rollover_step_contested",
+      label: "3/3 Contested expiry bids…",
     },
   ];
 
@@ -185,7 +186,7 @@ async function runStagedPlayerContractTick(statusElId = "compCreateStatus") {
 async function tickContractsOnly() {
   if (
     !confirm(
-      "Tick all PLAYER contracts now?\n\nRuns in 3 steps (avoids timeout):\n1) FA unrenewed for MV\n2) Contested expiry bid winners\n3) Multi-year decrement\n\nManagers are separate: Close season → Process manager contracts."
+      "Tick all PLAYER contracts now?\n\nRuns in 3 steps (avoids timeout):\n1) FA unrenewed for MV\n2) Multi-year decrement (3→2, 2→1)\n3) Contested expiry bid winners (fresh 3-season deals)\n\nManagers are separate: Close season → Process manager contracts."
     )
   ) {
     return;
@@ -241,15 +242,17 @@ async function tickContractsOnly() {
   }
 
   const fa = staged.results.contract_tick_rollover_step_fa || {};
-  const contested = staged.results.contract_tick_rollover_step_contested || {};
   const dec = staged.results.contract_tick_rollover_step_decrement || {};
+  const contested = staged.results.contract_tick_rollover_step_contested || {};
   setStatus(
     "compCreateStatus",
     `✅ Player contracts ticked — ${fa.players_released_zero_years ?? "—"} FA-released, ${
-      contested.expiry_resolved?.players_resolved ?? "—"
-    } contested resolved, ${dec.players_decremented ?? "—"} multi-year decremented, ${
-      dec.players_final_year ?? "—"
-    } now final-year.`,
+      dec.players_decremented ?? "—"
+    } multi-year decremented, ${
+      contested.expiry_resolved?.players_resolved ??
+      contested.players_contested_resolved ??
+      "—"
+    } contested signed (3 seasons), ${dec.players_final_year ?? "—"} now final-year.`,
     true
   );
 }
@@ -257,7 +260,7 @@ async function tickContractsOnly() {
 function createSeasonTickErrorHint(message) {
   const msg = message || "";
   if (/timeout|canceling statement/i.test(msg)) {
-    return " — run patches/contract_tick_staged_steps.sql, then in SQL: SELECT public.contract_tick_rollover_step_fa(); SELECT public.contract_tick_rollover_step_contested(); SELECT public.contract_tick_rollover_step_decrement();";
+    return " — run patches/contract_tick_order_and_repair.sql, then in SQL: SELECT public.contract_tick_rollover_step_fa(); SELECT public.contract_tick_rollover_step_decrement(); SELECT public.contract_tick_rollover_step_contested();";
   }
   if (msg.includes("player_assign_to_club")) {
     return " — run patches/player_assign_to_club_overload_fix.sql, then continue staged tick";
@@ -344,8 +347,8 @@ async function createNextSeason() {
   }
 
   const fa = staged.results.contract_tick_rollover_step_fa || {};
-  const contested = staged.results.contract_tick_rollover_step_contested || {};
   const dec = staged.results.contract_tick_rollover_step_decrement || {};
+  const contested = staged.results.contract_tick_rollover_step_contested || {};
 
   setStatus("compCreateStatus", "Checking manager season-end catch-up…");
   let mgrNote = "";
@@ -370,9 +373,11 @@ async function createNextSeason() {
     "compCreateStatus",
     `✅ Pre-season created (id ${seasonId}). Players: ${
       fa.players_released_zero_years ?? "—"
-    } FA-released, ${contested.expiry_resolved?.players_resolved ?? "—"} contested resolved, ${
-      dec.players_decremented ?? "—"
-    } multi-year decremented, ${dec.players_final_year ?? "—"} now final-year.${mgrNote}`,
+    } FA-released, ${dec.players_decremented ?? "—"} multi-year decremented, ${
+      contested.expiry_resolved?.players_resolved ??
+      contested.players_contested_resolved ??
+      "—"
+    } contested signed (3 seasons), ${dec.players_final_year ?? "—"} now final-year.${mgrNote}`,
     mgrNote.includes("⚠") ? "warn" : true
   );
 
