@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Set default squad — GPSL Admin Testing</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .form-grid { display: grid; gap: 12px; max-width: 560px; }
+    .form-grid label { display: block; font-size: 13px; color: #bbb; }
+    .form-grid select {
+      width: 100%; max-width: 560px; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .hint { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.45; }
+    .counts-box {
+      margin-top: 12px; padding: 12px; background: #161616; border: 1px solid #333;
+      border-radius: 6px; font-size: 13px; line-height: 1.55;
+    }
+    .counts-box strong { color: #ff9900; }
+    .preview-box {
+      margin-top: 16px; padding: 12px; background: #161616; border: 1px solid #333;
+      border-radius: 6px; font-size: 12px; line-height: 1.5; max-height: 480px; overflow: auto;
+    }
+    .preview-box table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .preview-box th, .preview-box td { padding: 5px 8px; border-bottom: 1px solid #2a2a2a; text-align: left; }
+    .preview-box th { color: #ff9900; }
+    .actions { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Set default squad</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Saves a Matchday default squad for the selected club: best XI in a
+        <b>4-3-3</b> (by rating + position), plus up to 12 bench. Same data owners
+        save on Matchday. Run <code>admin_test_set_default_matchday_squad.sql</code> first.
+      </p>
+
+      <div class="card">
+        <h2>Club</h2>
+        <div class="form-grid">
+          <label>
+            Squad
+            <select id="clubSelect"><option value="">Loading…</option></select>
+          </label>
+        </div>
+        <div id="countsBox" class="counts-box" hidden></div>
+        <div class="actions">
+          <button type="button" class="button" id="previewBtn">Preview XI</button>
+          <button type="button" class="button" id="applyBtn" style="background:#228822;">Set default squad</button>
+        </div>
+        <div id="pageStatus" class="status-line"></div>
+        <div id="previewBox" class="preview-box" hidden></div>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_test_set_default_squad.js?v=20260807-default-squad"></script>
+</body>
+</html>

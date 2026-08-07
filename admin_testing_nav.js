@@ -33,6 +33,12 @@ export const TESTING_ADMIN_NAV = [
     navDanger: true,
   },
   {
+    label: "Set default squad",
+    href: "admin_test_set_default_squad.html",
+    page: "admin_test_set_default_squad",
+    navDanger: true,
+  },
+  {
     label: "Match result simulation",
     href: "admin_match_sim.html",
     page: "admin_match_sim",
