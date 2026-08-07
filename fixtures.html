@@ -54,6 +54,15 @@
     }
     .catch-up-cell { display:block; margin-top:4px; }
     .my-actions { text-align:center; white-space:nowrap; }
+    .match-sim-banner { font-size:13px; color:#bbb; margin:0 0 12px; padding:8px 12px; background:#1a221a; border:1px solid #345; border-radius:6px; }
+    .match-sim-banner--err { background:#2a1515; border-color:#633; color:#f88; }
+    .match-sim-on { color:#9fd4b0; font-weight:bold; }
+    .match-sim-off { color:#f88; font-weight:bold; }
+    .match-sim-toggle { margin-left:8px; background:#444; color:#eee; border:0; display:inline-block; padding:4px 10px; font-size:12px; font-weight:bold; border-radius:4px; cursor:pointer; }
+    button.sim-result-btn {
+      display:inline-block; padding:4px 10px; font-size:12px; font-weight:bold;
+      background:#2a5535; color:#cfc; border:1px solid #3a6; border-radius:4px; cursor:pointer; margin:2px 4px 2px 0;
+    }
   </style>
 </head>
 <body>
@@ -61,6 +70,7 @@
   <div class="page-container">
     <h1>Fixtures</h1>
     <p id="seasonMeta" class="meta">Loading…</p>
+    <div id="matchSimBannerHost"></div>
     <p id="calendarBanner" class="meta" style="display:none;margin-top:-8px;border:1px solid #444;background:#1a1a22;padding:10px 12px;border-radius:6px;"></p>
     <p id="fixturesHint" class="meta" style="margin-top:-8px;">
       Your club’s games are highlighted. <b>Stadium</b> and <b>Continent</b> are the home venue (yours at home; opponent’s when away); cup finals are at Wembley. Weeks run 1–38 through the season.
@@ -73,6 +83,6 @@
     <div id="fixturesRoot"></div>
   </div>
 
-  <script type="module" src="fixtures.js?v=20260806-league-badges"></script>
+  <script type="module" src="fixtures.js?v=20260807-match-sim-v2"></script>
 </body>
 </html>

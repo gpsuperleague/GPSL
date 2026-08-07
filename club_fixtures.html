@@ -84,6 +84,11 @@
     .fixture-actions .btn-link { margin:2px 4px 2px 0; }
     .btn-link.sim-result-btn { background:#2a5535; color:#cfc; border:1px solid #3a6; cursor:pointer; }
     .btn-link.sim-result-btn:disabled { opacity:.6; cursor:wait; }
+    .match-sim-banner { font-size:13px; color:#bbb; margin:0 0 12px; padding:8px 12px; background:#1a221a; border:1px solid #345; border-radius:6px; }
+    .match-sim-banner--err { background:#2a1515; border-color:#633; color:#f88; }
+    .match-sim-on { color:#9fd4b0; font-weight:bold; }
+    .match-sim-off { color:#f88; font-weight:bold; }
+    .match-sim-toggle { margin-left:8px; background:#444; color:#eee; border:0; display:inline-block; padding:4px 10px; font-size:12px; font-weight:bold; border-radius:4px; cursor:pointer; }
   </style>
 </head>
 <body>
@@ -91,9 +96,10 @@
   <div class="page-container">
     <h1 id="clubFixturesTitle">My Club Fixtures</h1>
     <p class="meta" id="clubFixturesMeta">Your season matches — grouped by month. Agreed kick-offs can be added to your phone or desktop calendar.</p>
+    <div id="matchSimBannerHost"></div>
     <div id="clubFixturesError"></div>
     <div id="clubFixturesRoot"><p class="empty">Loading…</p></div>
   </div>
-  <script type="module" src="club_fixtures.js?v=20260807-match-sim"></script>
+  <script type="module" src="club_fixtures.js?v=20260807-match-sim-v2"></script>
 </body>
 </html>

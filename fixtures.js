@@ -30,6 +30,14 @@ import {
 import { loadHolidayPlayContext } from "./owner_holidays.js";
 import { scheduleActionLabel, formatKickoff, UK_TZ, catchUpBadgeHtml, isCatchUpFixture } from "./match_scheduling.js";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
+import {
+  loadMatchSimStatus,
+  matchSimBannerHtml,
+  matchSimButtonHtml,
+  wireMatchSimBannerToggle,
+  wireMatchSimButtons,
+  runMatchSimulation,
+} from "./match_sim_ui.js";
 
 let calendarStatus = null;
 let holidayContext = null;
@@ -38,6 +46,8 @@ let myClub = { short: null, name: null };
 let currentDivision = "superleague";
 let fixtureView = "league";
 let currentCup = "league_cup";
+/** @type {{ enabled: boolean, isAdmin: boolean, error: string|null }} */
+let matchSimStatus = { enabled: false, isAdmin: false, error: null };
 let allFixtures = [];
 
 const FIXTURE_TABLE_HEAD = `
@@ -77,47 +87,60 @@ function actionCell(fixture) {
     return "";
   }
 
+  const parts = [];
+
   if (canSubmitResult(fixture, myClub, calendarStatus, holidayContext)) {
-    return `<a href="${matchdayUrl(fixture.id)}" class="btn-result" style="text-decoration:none;display:inline-block;">Enter result</a>`;
-  }
-
-  if (needsInboxConfirm(fixture, myClub)) {
-    return `<a href="${matchdayUrl(fixture.id)}" class="btn-result secondary" style="text-decoration:none;display:inline-block;">Confirm result</a>`;
-  }
-
-  if (
+    parts.push(
+      `<a href="${matchdayUrl(fixture.id)}" class="btn-result" style="text-decoration:none;display:inline-block;">Enter result</a>`
+    );
+  } else if (needsInboxConfirm(fixture, myClub)) {
+    parts.push(
+      `<a href="${matchdayUrl(fixture.id)}" class="btn-result secondary" style="text-decoration:none;display:inline-block;">Confirm result</a>`
+    );
+  } else if (
     fixture.submission_status === "pending" &&
     fixture.submitted_by_club &&
     fixture.submitted_by_club.toUpperCase() === (myClub.short || "").toUpperCase()
   ) {
-    return `<span style="color:#888;font-size:12px;">Awaiting confirm</span>`;
-  }
-
-  if (fixture.status === "played") {
+    parts.push(`<span style="color:#888;font-size:12px;">Awaiting confirm</span>`);
+  } else if (fixture.status === "played") {
     const deferred = deferredResultNote(fixture, calendarStatus);
     if (deferred) {
-      return `<span style="color:#c9a227;font-size:12px;" title="${deferred}">Played · pending table</span>`;
+      parts.push(
+        `<span style="color:#c9a227;font-size:12px;" title="${deferred}">Played · pending table</span>`
+      );
+    } else {
+      parts.push(`<span style="color:#888;font-size:12px;">Played</span>`);
     }
-    return `<span style="color:#888;font-size:12px;">Played</span>`;
+  } else {
+    const sched = scheduleActionLabel(fixture, myClub.short);
+    if (sched) {
+      const agreed =
+        fixture.schedule_status === "agreed" && fixture.agreed_kickoff_at;
+      let kickoffLabel = "";
+      if (agreed) {
+        const ci =
+          fixture.home_checked_in && fixture.away_checked_in
+            ? "Both checked in"
+            : "Check in at kick-off";
+        kickoffLabel = `<span style="display:block;color:#8c8;font-size:11px;margin-top:2px;">${formatKickoff(fixture.agreed_kickoff_at, UK_TZ)} UK · ${ci}</span>`;
+      }
+      const cls = sched.muted ? "btn-result secondary" : "btn-result";
+      parts.push(
+        `<a href="${sched.href}" class="${cls}" style="text-decoration:none;display:inline-block;">${sched.label}</a>${kickoffLabel}`
+      );
+    }
   }
 
-  const sched = scheduleActionLabel(fixture, myClub.short);
-  if (sched) {
-    const agreed =
-      fixture.schedule_status === "agreed" && fixture.agreed_kickoff_at;
-    let kickoffLabel = "";
-    if (agreed) {
-      const ci =
-        fixture.home_checked_in && fixture.away_checked_in
-          ? "Both checked in"
-          : "Check in at kick-off";
-      kickoffLabel = `<span style="display:block;color:#8c8;font-size:11px;margin-top:2px;">${formatKickoff(fixture.agreed_kickoff_at, UK_TZ)} UK · ${ci}</span>`;
-    }
-    const cls = sched.muted ? "btn-result secondary" : "btn-result";
-    return `<a href="${sched.href}" class="${cls}" style="text-decoration:none;display:inline-block;">${sched.label}</a>${kickoffLabel}`;
+  if (
+    matchSimStatus.enabled &&
+    fixture.status === "scheduled" &&
+    !needsInboxConfirm(fixture, myClub)
+  ) {
+    parts.push(matchSimButtonHtml(fixture.id));
   }
 
-  return "";
+  return parts.join(" ");
 }
 
 function fixtureRowHtml(fixture) {
@@ -247,6 +270,7 @@ function renderCupFixtures() {
     }
     root.appendChild(block);
   }
+  wireFixtureSimButtons(root);
 }
 
 function requestedFixturesMonth() {
@@ -347,6 +371,45 @@ function renderFixtures() {
   }
 
   scrollToActiveMonthFixtures();
+  wireFixtureSimButtons(root);
+}
+
+function renderSimBanner() {
+  const host = document.getElementById("matchSimBannerHost");
+  if (!host) return;
+  host.innerHTML = matchSimBannerHtml(matchSimStatus);
+  wireMatchSimBannerToggle(async () => {
+    matchSimStatus = await loadMatchSimStatus();
+    renderSimBanner();
+    renderFixtures();
+  });
+}
+
+function wireFixtureSimButtons(root) {
+  wireMatchSimButtons(root, async (id, btn) => {
+    const f = allFixtures.find((row) => String(row.id) === String(id));
+    const label = f
+      ? `${f.home_club_name || f.home_club_short_name} vs ${f.away_club_name || f.away_club_short_name}`
+      : `fixture ${id}`;
+    if (
+      !confirm(
+        `Simulate result for ${label}?\n\nThis finalises the match immediately (opponent cannot overwrite).`
+      )
+    ) {
+      return;
+    }
+    try {
+      const result = await runMatchSimulation(id, btn);
+      if (f && result) {
+        f.status = "played";
+        f.home_goals = result.home_goals;
+        f.away_goals = result.away_goals;
+      }
+      renderFixtures();
+    } catch (err) {
+      alert(err?.message || "Simulation failed");
+    }
+  });
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -413,6 +476,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   calendarStatus = await loadCalendarStatus(supabase);
   holidayContext = await loadHolidayPlayContext();
+  matchSimStatus = await loadMatchSimStatus();
+  renderSimBanner();
   const calEl = document.getElementById("calendarBanner");
   if (calEl && calendarStatus?.calendar_configured) {
     calEl.style.display = "block";

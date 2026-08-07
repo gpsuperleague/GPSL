@@ -26,6 +26,10 @@ import {
   isFixtureHolidayPlayable,
 } from "./owner_holidays.js";
 import {
+  loadMatchSimStatus,
+  runMatchSimulation,
+} from "./match_sim_ui.js";
+import {
   initMatchdaySquadPanel,
   getDefaultStarters,
   getDefaultBenchIds,
@@ -46,6 +50,7 @@ import {
 let myClub = { short: null, name: null };
 let calendarStatus = null;
 let holidayContext = null;
+let matchSimEnabled = false;
 let confirmMode = null;
 let myDivision = null;
 let upcomingFixtures = [];
@@ -1429,6 +1434,18 @@ async function updateFixturePreview() {
   setScoreInputsEnabled(canSubmit);
   updateCupScoreSections();
 
+  const simBtn = document.getElementById("simulateResultBtn");
+  if (simBtn) {
+    const showSim =
+      matchSimEnabled &&
+      f.status === "scheduled" &&
+      fixtureInvolvesClub(f, myClub) &&
+      !needsInboxConfirm(f, myClub);
+    simBtn.style.display = showSim ? "inline-block" : "none";
+    simBtn.disabled = false;
+    simBtn.textContent = "Simulate result";
+  }
+
   if (
     f.submission_id &&
     f.submitted_by_club &&
@@ -1454,7 +1471,12 @@ async function updateFixturePreview() {
       deferred || "Result confirmed."
     );
   } else {
-    setStatus("submitStatus", "This fixture cannot accept a new result.");
+    setStatus(
+      "submitStatus",
+      matchSimEnabled && f.status === "scheduled"
+        ? "Use Simulate result (test mode) or arrange kick-off / wait for the play month to enter manually."
+        : "This fixture cannot accept a new result."
+    );
   }
 }
 
@@ -1711,6 +1733,36 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("submitResultBtn").onclick = submitResult;
   document.getElementById("rejectResultBtn").onclick = rejectPendingResult;
   document.getElementById("fillTestStatsBtn")?.addEventListener("click", fillTestMatchStats);
+  document.getElementById("simulateResultBtn")?.addEventListener("click", async () => {
+    const f = selectedFixture();
+    if (!f) return;
+    if (
+      !confirm(
+        `Simulate result for ${f.home_club_name} vs ${f.away_club_name}?\n\nFinalises immediately.`
+      )
+    ) {
+      return;
+    }
+    const btn = document.getElementById("simulateResultBtn");
+    try {
+      const data = await runMatchSimulation(f.id, btn);
+      setStatus(
+        "submitStatus",
+        data
+          ? `Simulated ${data.home_goals}–${data.away_goals}. Refreshing…`
+          : "Simulated. Refreshing…"
+      );
+      f.status = "played";
+      f.home_goals = data?.home_goals;
+      f.away_goals = data?.away_goals;
+      await selectFixture(f);
+    } catch (err) {
+      setStatus("submitStatus", err?.message || "Simulation failed", true);
+    }
+  });
+
+  const simStatus = await loadMatchSimStatus();
+  matchSimEnabled = !!simStatus.enabled;
 
   wireAllMatchdaySelectOnFocus();
 

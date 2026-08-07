@@ -25,13 +25,22 @@ import { loadHolidayPlayContext } from "./owner_holidays.js";
 import { scheduleActionLabel } from "./match_scheduling.js";
 import { loadTvFixtureIds, tvFixtureBadgeHtml } from "./tv_fixtures.js";
 import { downloadIcs, fixtureKickoffEvent } from "./calendar_ics.js";
+import {
+  loadMatchSimStatus,
+  matchSimBannerHtml,
+  matchSimButtonHtml,
+  wireMatchSimBannerToggle,
+  wireMatchSimButtons,
+  runMatchSimulation,
+} from "./match_sim_ui.js";
 
 let myClub = { short: null, name: null };
 let calendarStatus = null;
 let holidayContext = null;
 /** @type {any[]} */
 let lastFixtures = [];
-let matchSimEnabled = false;
+/** @type {{ enabled: boolean, isAdmin: boolean, error: string|null }} */
+let matchSimStatus = { enabled: false, isAdmin: false, error: null };
 
 function showError(msg) {
   const el = document.getElementById("clubFixturesError");
@@ -146,14 +155,12 @@ function actionHtml(f) {
   }
 
   if (
-    matchSimEnabled &&
+    matchSimStatus.enabled &&
     f.status === "scheduled" &&
     fixtureInvolvesClub(f, myClub) &&
     !needsInboxConfirm(f, myClub)
   ) {
-    parts.push(
-      `<button type="button" class="btn-link sim-result-btn" data-sim-fixture="${f.id}">Simulate</button>`
-    );
+    parts.push(matchSimButtonHtml(f.id));
   }
 
   if (f.schedule_status === "agreed" && f.agreed_kickoff_at && f.status !== "played") {
@@ -390,38 +397,27 @@ async function simulateFixture(fixtureId, btn) {
     return;
   }
 
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = "Simulating…";
-  }
   showError("");
-
-  const { data, error } = await supabase.rpc("competition_simulate_fixture_result", {
-    p_fixture_id: Number(fixtureId),
-  });
-
-  if (error) {
-    showError(error.message || "Simulation failed");
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "Simulate";
-    }
-    return;
+  try {
+    await runMatchSimulation(fixtureId, btn);
+    await refreshFixtures();
+  } catch (err) {
+    showError(err?.message || "Simulation failed");
   }
-
-  showError("");
-  const score = data ? `${data.home_goals}–${data.away_goals}` : "";
-  if (btn) btn.textContent = score ? `Done ${score}` : "Done";
-  await refreshFixtures();
 }
 
 function wireSimButtons(root) {
-  root?.querySelectorAll("[data-sim-fixture]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.getAttribute("data-sim-fixture");
-      if (!id) return;
-      simulateFixture(id, btn);
-    });
+  wireMatchSimButtons(root, (id, btn) => simulateFixture(id, btn));
+}
+
+function renderSimBanner() {
+  const host = document.getElementById("matchSimBannerHost");
+  if (!host) return;
+  host.innerHTML = matchSimBannerHtml(matchSimStatus);
+  wireMatchSimBannerToggle(async () => {
+    matchSimStatus = await loadMatchSimStatus();
+    renderSimBanner();
+    await refreshFixtures();
   });
 }
 
@@ -517,12 +513,8 @@ async function refreshFixtures() {
 }
 
 async function loadMatchSimEnabled() {
-  const { data, error } = await supabase.rpc("match_result_simulation_status");
-  if (error) {
-    matchSimEnabled = false;
-    return;
-  }
-  matchSimEnabled = !!data?.enabled;
+  matchSimStatus = await loadMatchSimStatus();
+  renderSimBanner();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
