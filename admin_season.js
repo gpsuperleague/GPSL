@@ -3,7 +3,7 @@ import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
 } from "./admin_main_nav.js?v=20260807-prizes-in-create";
-import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260807-create-split-tick";
+import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260807-tick-staged";
 
 primeAdminPageChrome();
 import {
@@ -143,52 +143,113 @@ function setCompStatus(msg, ok = true) {
   setStatus("compSeasonStatus", msg, ok);
 }
 
+/** Staged tick: FA → contested → decrement (separate RPCs / timeouts). */
+async function runStagedPlayerContractTick(statusElId = "compCreateStatus") {
+  const steps = [
+    {
+      rpc: "contract_tick_rollover_step_fa",
+      label: "1/3 FA unrenewed (MV)…",
+    },
+    {
+      rpc: "contract_tick_rollover_step_contested",
+      label: "2/3 Contested expiry bids…",
+    },
+    {
+      rpc: "contract_tick_rollover_step_decrement",
+      label: "3/3 Multi-year decrement…",
+    },
+  ];
+
+  const results = {};
+  for (const step of steps) {
+    setStatus(statusElId, `Ticking player contracts — ${step.label}`);
+    const { data, error } = await supabase.rpc(step.rpc);
+    if (error) {
+      if (error.message?.includes(step.rpc)) {
+        return {
+          ok: false,
+          missingStaged: true,
+          error,
+          results,
+          failedStep: step.rpc,
+        };
+      }
+      return { ok: false, error, results, failedStep: step.rpc };
+    }
+    results[step.rpc] = data;
+  }
+
+  return { ok: true, results };
+}
+
 async function tickContractsOnly() {
   if (
     !confirm(
-      "Tick all PLAYER contracts now?\n\nDecrements multi-year deals, resolves expiry wage bids, and releases players with 0 seasons left (MV to holding club).\n\nManagers are separate: Close season → Process manager contracts (or SQL catch-up)."
+      "Tick all PLAYER contracts now?\n\nRuns in 3 steps (avoids timeout):\n1) FA unrenewed for MV\n2) Contested expiry bid winners\n3) Multi-year decrement\n\nManagers are separate: Close season → Process manager contracts."
     )
   ) {
     return;
   }
 
-  setStatus("compCreateStatus", "Ticking player contracts…");
-  // Prefer catch-up wrapper (logs tick) when deployed; fall back to raw tick.
-  let { data, error } = await supabase.rpc("admin_catchup_player_contract_tick", {
-    p_force: false,
-  });
-  if (error?.message?.includes("admin_catchup_player_contract_tick")) {
-    ({ data, error } = await supabase.rpc("contract_tick_season_rollover"));
-  }
+  const staged = await runStagedPlayerContractTick("compCreateStatus");
 
-  if (error) {
+  if (staged.missingStaged) {
+    // Older DB: one-shot catch-up
+    setStatus("compCreateStatus", "Staged tick RPCs missing — trying one-shot catch-up…");
+    let { data, error } = await supabase.rpc("admin_catchup_player_contract_tick", {
+      p_force: false,
+    });
+    if (error?.message?.includes("admin_catchup_player_contract_tick")) {
+      ({ data, error } = await supabase.rpc("contract_tick_season_rollover"));
+    }
+    if (error) {
+      setStatus(
+        "compCreateStatus",
+        `❌ ${error.message} — run patches/contract_tick_staged_steps.sql, then retry Tick contracts only.`,
+        false
+      );
+      return;
+    }
+    if (data?.ok === false && data?.reason === "already_ticked") {
+      setStatus(
+        "compCreateStatus",
+        `⚠ Player tick already logged for ${data.for_season_label || "this season"}.`,
+        "warn"
+      );
+      return;
+    }
+    const tick = data?.tick || data;
     setStatus(
       "compCreateStatus",
-      `❌ ${error.message}${
-        /timeout|canceling statement/i.test(error.message || "")
-          ? " — run in SQL Editor: SELECT public.admin_catchup_player_contract_tick(); (after season_contract_tick_catchup.sql)"
-          : ""
-      }`,
+      `✅ Player contracts ticked — ${tick?.players_released_zero_years ?? "—"} FA, ${
+        tick?.expiry_resolved?.players_resolved ?? "—"
+      } contested, ${tick?.players_decremented ?? "—"} decremented.`,
+      true
+    );
+    return;
+  }
+
+  if (!staged.ok) {
+    setStatus(
+      "compCreateStatus",
+      `❌ ${staged.failedStep}: ${staged.error?.message || "failed"}${createSeasonTickErrorHint(
+        staged.error?.message
+      )}`,
       false
     );
     return;
   }
 
-  if (data?.ok === false && data?.reason === "already_ticked") {
-    setStatus(
-      "compCreateStatus",
-      `⚠ Player tick already logged for ${data.for_season_label || "this season"}. Check SELECT public.admin_season_contract_tick_status(); before forcing.`,
-      false
-    );
-    return;
-  }
-
-  const tick = data?.tick || data;
+  const fa = staged.results.contract_tick_rollover_step_fa || {};
+  const contested = staged.results.contract_tick_rollover_step_contested || {};
+  const dec = staged.results.contract_tick_rollover_step_decrement || {};
   setStatus(
     "compCreateStatus",
-    `✅ Player contracts ticked — ${tick?.players_decremented ?? "—"} decremented, ${
-      tick?.players_released_zero_years ?? "—"
-    } released, ${tick?.players_final_year ?? "—"} now final-year (expiring market).`,
+    `✅ Player contracts ticked — ${fa.players_released_zero_years ?? "—"} FA-released, ${
+      contested.expiry_resolved?.players_resolved ?? "—"
+    } contested resolved, ${dec.players_decremented ?? "—"} multi-year decremented, ${
+      dec.players_final_year ?? "—"
+    } now final-year.`,
     true
   );
 }
@@ -196,18 +257,18 @@ async function tickContractsOnly() {
 function createSeasonTickErrorHint(message) {
   const msg = message || "";
   if (/timeout|canceling statement/i.test(msg)) {
-    return " — run in SQL Editor: SELECT public.admin_catchup_player_contract_tick(false); (or contract_tick_season_rollover). Season create is a separate step.";
+    return " — run patches/contract_tick_staged_steps.sql, then in SQL: SELECT public.contract_tick_rollover_step_fa(); SELECT public.contract_tick_rollover_step_contested(); SELECT public.contract_tick_rollover_step_decrement();";
   }
   if (msg.includes("player_assign_to_club")) {
-    return " — run patches/player_assign_to_club_overload_fix.sql, then Tick contracts only";
+    return " — run patches/player_assign_to_club_overload_fix.sql, then continue staged tick";
   }
   if (/foreign contract lock|paid-up overflow lock/i.test(msg)) {
-    return " — run patches/foreign_lock_preseason_fallback.sql, then Tick contracts only";
+    return " — run patches/foreign_lock_preseason_fallback.sql, then continue staged tick";
   }
   if (/DELETE requires a WHERE clause/i.test(msg)) {
-    return " — run patches/contract_release_delete_where_fix.sql, then Tick contracts only";
+    return " — run patches/contract_release_delete_where_fix.sql, then continue staged tick";
   }
-  return " — run patches/contract_tick_fa_before_contested.sql (+ prior tick fixes), then Tick contracts only";
+  return " — run patches/contract_tick_staged_steps.sql, then Tick contracts only";
 }
 
 async function createNextSeason() {
@@ -258,21 +319,17 @@ async function createNextSeason() {
   const seasonId = created.data;
   setStatus(
     "compCreateStatus",
-    `Pre-season created (id ${seasonId}) — ticking player contracts…`
+    `Pre-season created (id ${seasonId}) — ticking player contracts (staged)…`
   );
 
-  let tickRpc = await supabase.rpc("admin_catchup_player_contract_tick", {
-    p_force: false,
-  });
-  if (tickRpc.error?.message?.includes("admin_catchup_player_contract_tick")) {
-    tickRpc = await supabase.rpc("contract_tick_season_rollover");
-  }
-
-  if (tickRpc.error) {
+  const staged = await runStagedPlayerContractTick("compCreateStatus");
+  if (!staged.ok) {
     setStatus(
       "compCreateStatus",
-      `✅ Season created (id ${seasonId}) but PLAYER tick failed: ${tickRpc.error.message}${createSeasonTickErrorHint(
-        tickRpc.error.message
+      `✅ Season created (id ${seasonId}) but PLAYER tick failed at ${
+        staged.failedStep || "tick"
+      }: ${staged.error?.message || "unknown"}${createSeasonTickErrorHint(
+        staged.error?.message
       )}`,
       "warn"
     );
@@ -286,17 +343,9 @@ async function createNextSeason() {
     return;
   }
 
-  if (tickRpc.data?.ok === false && tickRpc.data?.reason === "already_ticked") {
-    setStatus(
-      "compCreateStatus",
-      `✅ Season created (id ${seasonId}). Player tick already logged for ${
-        tickRpc.data.for_season_label || "this season"
-      }.`,
-      true
-    );
-  }
-
-  const tick = tickRpc.data?.tick || tickRpc.data || {};
+  const fa = staged.results.contract_tick_rollover_step_fa || {};
+  const contested = staged.results.contract_tick_rollover_step_contested || {};
+  const dec = staged.results.contract_tick_rollover_step_decrement || {};
 
   setStatus("compCreateStatus", "Checking manager season-end catch-up…");
   let mgrNote = "";
@@ -320,10 +369,10 @@ async function createNextSeason() {
   setStatus(
     "compCreateStatus",
     `✅ Pre-season created (id ${seasonId}). Players: ${
-      tick?.players_released_zero_years ?? "—"
-    } FA-released, ${tick?.expiry_resolved?.players_resolved ?? "—"} contested resolved, ${
-      tick?.players_decremented ?? "—"
-    } multi-year decremented, ${tick?.players_final_year ?? "—"} now final-year.${mgrNote}`,
+      fa.players_released_zero_years ?? "—"
+    } FA-released, ${contested.expiry_resolved?.players_resolved ?? "—"} contested resolved, ${
+      dec.players_decremented ?? "—"
+    } multi-year decremented, ${dec.players_final_year ?? "—"} now final-year.${mgrNote}`,
     mgrNote.includes("⚠") ? "warn" : true
   );
 

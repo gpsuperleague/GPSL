@@ -31,7 +31,7 @@ export function getAdminSeasonCreateRules() {
         heading: "Timeouts &amp; catch-up",
         items: [
           "Create and tick run as <b>separate RPCs</b> so a slow tick cannot roll back the season row.",
-          "If tick times out: run <code>patches/contract_tick_statement_timeout_300s.sql</code>, then <b>Tick contracts only</b> or SQL: <code>SELECT public.admin_catchup_player_contract_tick(false);</code>",
+          "Tick runs in <b>3 RPC steps</b> (FA → contested → decrement). If one fails: run <code>patches/contract_tick_staged_steps.sql</code>, then continue from that step in SQL or <b>Tick contracts only</b>.",
           "Optional audit: run <code>admin_expiry_bid_rollover_audit.sql</code> before and after the tick.",
         ],
       },
