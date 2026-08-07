@@ -98,7 +98,7 @@ BEGIN
     FROM public."Transfer_History" h
     LEFT JOIN public."Player_Transfer_Listings" l ON l.id = h.listing_id
     WHERE coalesce(h.transfer_sale_note, '') NOT IN (
-      'voluntary_contract_release', 'squad_overflow', 'new_owner_release'
+      'voluntary_contract_release', 'squad_overflow', 'new_owner_release', 'contract_expiry'
     )
       AND (h.transfer_time AT TIME ZONE 'Europe/London')::date = v_uk_today
     ORDER BY coalesce(h.fee, 0) DESC, h.transfer_time DESC, h.id DESC
@@ -178,7 +178,7 @@ BEGIN
       FROM public."Transfer_History" h
       LEFT JOIN public."Player_Transfer_Listings" l ON l.id = h.listing_id
       WHERE coalesce(h.transfer_sale_note, '') NOT IN (
-        'voluntary_contract_release', 'squad_overflow', 'new_owner_release'
+        'voluntary_contract_release', 'squad_overflow', 'new_owner_release', 'contract_expiry'
       )
         AND NOT (h.id = ANY (v_ids))
         AND (

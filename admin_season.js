@@ -3,7 +3,7 @@ import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
 } from "./admin_main_nav.js?v=20260807-prizes-in-create";
-import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260807-tick-order-repair";
+import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260807-expiry-fa";
 
 primeAdminPageChrome();
 import {

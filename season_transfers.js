@@ -43,6 +43,7 @@ function classifyDeal(row) {
   }
   if (listingType === "draft") return "draft";
   if (note === "squad_overflow") return "release";
+  if (note === "contract_expiry") return "expiry";
   if (isForeignBuyerClub(row.buyer_club_id)) return "foreign";
   if (!row.seller_club_id && row.buyer_club_id && !isForeignBuyerClub(row.buyer_club_id)) {
     return "draft";
@@ -63,6 +64,8 @@ function dealTypeLabel(kind) {
       return "Foreign sale";
     case "release":
       return "Squad release";
+    case "expiry":
+      return "Contract Run Down";
     case "special":
       return "Special auction";
     default:
@@ -124,7 +127,7 @@ function renderTable() {
       const name = playerNameById.get(pid) || "Unknown";
       const kind = classifyDeal(row);
       const detail =
-        kind === "release" || kind === "foreign"
+        kind === "release" || kind === "foreign" || kind === "expiry"
           ? formatSeasonSaleDestination(row)
           : "";
 

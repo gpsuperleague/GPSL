@@ -63,7 +63,9 @@ export function aggregateClubTransfersFromHistory(rows, clubShortName) {
 
     if (seller === me && fee > 0) {
       let type = "transfer_sale";
-      if (note === "squad_overflow") {
+      if (note === "contract_expiry") {
+        type = "contract_expiry_compensation";
+      } else if (note === "squad_overflow") {
         type = isForeignBuyerClub(r.buyer_club_id)
           ? "transfer_foreign_sale"
           : "transfer_overflow_release";

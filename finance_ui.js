@@ -13,6 +13,7 @@ export const LEDGER_TYPE_TO_LINE = {
   transfer_sale: "transfer_sales",
   transfer_foreign_sale: "transfer_sales",
   transfer_overflow_release: "transfer_sales",
+  contract_expiry_compensation: "transfer_sales",
   new_owner_release: "transfer_sales",
   special_auction_fee: "transfer_purchases",
   special_auction_prize: "prize_other",
@@ -71,10 +72,11 @@ export const FINANCE_UI_SECTIONS = [
           "transfer_sale",
           "transfer_foreign_sale",
           "transfer_overflow_release",
+          "contract_expiry_compensation",
           "new_owner_release",
         ],
         note:
-          "All players sold: transfer list, direct offers accepted, foreign sales, squad overflow releases, New Owner release refunds, etc.",
+          "All players sold: transfer list, direct offers, foreign sales, contract-end Central Bank compensation, squad overflow releases, New Owner release refunds, etc.",
       },
       {
         id: "transfer_purchases",

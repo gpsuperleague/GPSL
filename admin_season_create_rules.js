@@ -22,6 +22,7 @@ export function getAdminSeasonCreateRules() {
         items: [
           "Expiry wage bids and FA releases post money to the <b>new</b> season ledger — not the closed year.",
           "Tick order: <b>FA</b> unrenewed → <b>decrement</b> mid-deal (3→2, 2→1) → <b>contested</b> assign (fresh 3-season deals, not decremented in the same tick).",
+          "Unrenewed / unbid expiry players become GPDB free agents: Central Bank pays MV (<code>contract_expiry_compensation</code>), not a foreign sale. Former club cannot re-sign them — run <code>patches/contract_expiry_fa_central_bank.sql</code>.",
           "Run <code>patches/contract_expiry_rollover_new_season_ledger.sql</code> before the first rollover of a cycle.",
           "Also keep <code>season_contract_tick_catchup.sql</code> + <code>season_rollover_auto_contracts.sql</code> current.",
           "If overflow / assign errors appear: <code>player_assign_to_club_overload_fix.sql</code>, <code>foreign_lock_preseason_fallback.sql</code>, <code>contract_tick_fa_before_contested.sql</code>.",

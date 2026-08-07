@@ -85,6 +85,7 @@ const MOVE_LABELS = {
   free: "Free transfer",
   foreign_sale: "Foreign sale",
   overflow_release: "Squad release",
+  contract_expiry: "Contract ended",
 };
 
 function divisionLabel(div) {

@@ -44,6 +44,7 @@ import {
 import {
   playerForeignContractLocked,
   playerForeignContractStatusLabel,
+  playerExpiryFaBlockedForClub,
 } from "./player_foreign_contract.js";
 import {
   playerBlockedSameSeasonTransfer,
@@ -2016,6 +2017,10 @@ document.addEventListener("DOMContentLoaded", () => {
             );
             if (foreignLockHtml) {
               bidCell = foreignLockHtml;
+            } else if (
+              playerExpiryFaBlockedForClub(player, CURRENT_USER_CLUB_SHORT)
+            ) {
+              bidCell = `<span class="locked-msg" title="${playerForeignContractStatusLabel(player)}">Former club — cannot re-sign</span>`;
             } else {
             const inDraft = ACTIVE_DRAFT_PLAYERS.has(String(player.Konami_ID).trim());
 
@@ -2346,6 +2351,16 @@ document.addEventListener("DOMContentLoaded", () => {
         CURRENT_OFFER_PLAYER,
         TRANSFER_STATUS_STATE?.currentSeasonId
       )
+    ) {
+      errorBox.textContent = playerForeignContractStatusLabel(
+        CURRENT_OFFER_PLAYER
+      );
+      return;
+    }
+
+    if (
+      !sellerClub &&
+      playerExpiryFaBlockedForClub(CURRENT_OFFER_PLAYER, CURRENT_USER_CLUB_SHORT)
     ) {
       errorBox.textContent = playerForeignContractStatusLabel(
         CURRENT_OFFER_PLAYER

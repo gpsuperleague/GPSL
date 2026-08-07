@@ -152,6 +152,10 @@ export function formatSeasonSaleDestination(row) {
     return "Free agent — squad over 28 (market value)";
   }
 
+  if (note === "contract_expiry") {
+    return foreignName || "Contract Run Down - Central Bank Compensation";
+  }
+
   if (!row.buyer_club_id && foreignName) {
     return foreignName;
   }
@@ -162,6 +166,7 @@ export function formatSeasonSaleDestination(row) {
 export function formatSeasonSaleType(row) {
   const note = String(row?.transfer_sale_note || "").trim();
   if (note === "squad_overflow") return "Squad over 28";
+  if (note === "contract_expiry") return "Contract Run Down";
   if (isForeignBuyerClub(row?.buyer_club_id)) return "Foreign sale";
   if (!row?.buyer_club_id) return "Released";
   return "Transfer";
