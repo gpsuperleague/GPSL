@@ -24,9 +24,53 @@
     .check-row input { width: auto; }
     .hint { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.45; }
     .actions { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; }
-    .odds-table { width: 100%; max-width: 720px; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-    .odds-table th, .odds-table td { padding: 7px 10px; border-bottom: 1px solid #2a2a2a; text-align: left; }
-    .odds-table th { color: #ff9900; }
+    .steps {
+      list-style: none; margin: 0 0 14px; padding: 0;
+      display: grid; gap: 8px; max-width: 720px;
+    }
+    .steps li {
+      display: grid; grid-template-columns: 26px 1fr; gap: 10px;
+      padding: 10px 12px; background: #161616; border: 1px solid #2a2a2a; border-radius: 6px;
+      font-size: 13px; color: #ccc; line-height: 1.4;
+    }
+    .steps .n {
+      width: 26px; height: 26px; border-radius: 4px;
+      display: grid; place-items: center;
+      font-size: 12px; font-weight: 800; color: #ff9900;
+      background: #222; border: 1px solid #444;
+    }
+    .band-card {
+      max-width: 720px; margin-top: 10px; padding: 12px 14px;
+      background: #161616; border: 1px solid #2a2a2a; border-radius: 6px;
+    }
+    .band-head {
+      display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 12px;
+      margin-bottom: 4px;
+    }
+    .band-title { margin: 0; font-size: 14px; color: #ff9900; }
+    .band-range {
+      font-size: 12px; font-weight: 700; color: #9fd4b0;
+      font-variant-numeric: tabular-nums;
+    }
+    .band-blurb { margin: 0 0 10px; font-size: 12px; color: #888; line-height: 1.4; }
+    .band-mode {
+      display: inline-block; margin: 0 0 10px; padding: 2px 8px;
+      font-size: 11px; font-weight: 700; color: #bbb;
+      background: #222; border: 1px solid #444; border-radius: 4px;
+    }
+    .band-fields {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 10px 14px;
+    }
+    .band-fields label { display: block; font-size: 12px; color: #bbb; }
+    .band-fields input[type="number"] {
+      width: 100%; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .band-sum { margin-top: 8px; font-size: 12px; font-weight: 700; }
+    .band-sum.ok { color: #9fd4b0; }
+    .band-sum.bad { color: #f88; }
     .odds-calc {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
       gap: 10px 14px; max-width: 520px; margin-top: 10px;
@@ -38,18 +82,9 @@
     }
     .odds-result {
       margin-top: 12px; padding: 12px; background: #161616; border: 1px solid #333;
-      border-radius: 6px; font-size: 14px; line-height: 1.55; max-width: 520px;
+      border-radius: 6px; font-size: 14px; line-height: 1.55; max-width: 560px;
     }
     .odds-result strong { color: #ff9900; }
-    .band-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-      gap: 10px 14px; max-width: 720px; margin-top: 8px;
-    }
-    .band-grid label { display: block; font-size: 12px; color: #bbb; }
-    .band-grid input[type="number"] {
-      width: 100%; padding: 8px; margin-top: 4px;
-      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
-    }
   </style>
 </head>
 <body class="admin-page">
@@ -59,7 +94,7 @@
     <div class="admin-main" id="adminMain">
       <p class="note">
         <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
-        · Owners get <b>Simulate</b> on fixtures when enabled. Tune cards / injuries / win bands for test seasons.
+        · Owners get <b>Simulate</b> on fixtures when enabled. Tune win bands, cards, and injuries for test seasons.
         Run <code>match_result_simulation_settings.sql</code> then <code>match_result_simulation_outcome_bands.sql</code>.
       </p>
 
@@ -74,33 +109,21 @@
       </div>
 
       <div class="card" style="margin-top:14px;">
-        <h2>Win % by XI strength difference</h2>
-        <p class="hint" style="margin:0 0 8px;">
-          Outcome uses combined starting-XI Rating sum (home − away). Stars do <b>not</b> change these
-          win odds — they nudge goal totals after the result is chosen.
-        </p>
-        <table class="odds-table" id="oddsBandsTable">
-          <thead>
-            <tr><th>XI strength gap</th><th>Favourite win</th><th>Draw</th><th>Upset</th></tr>
-          </thead>
-          <tbody id="oddsBandsBody"></tbody>
-        </table>
+        <h2>Win % by XI strength gap</h2>
+        <ol class="steps">
+          <li><span class="n">1</span><span><b>XI strength</b> — sum each club’s starting XI ratings. Gap = |home − away|.</span></li>
+          <li><span class="n">2</span><span><b>Pick a band</b> — use the highest band whose “from gap” the difference meets.</span></li>
+          <li><span class="n">3</span><span><b>Roll</b> — that band’s three % must total 100.</span></li>
+          <li><span class="n">4</span><span><b>Stars</b> — nudge goals after the result is fixed; they do not change these odds.</span></li>
+        </ol>
 
-        <h3 style="color:#ff9900;font-size:14px;margin:18px 0 6px;">Band thresholds &amp; %</h3>
-        <div class="band-grid">
-          <label>Strong gap ≥<input type="number" id="strongDiff" min="0" max="500" value="50"></label>
-          <label>Blowout gap ≥<input type="number" id="blowoutDiff" min="1" max="500" value="100"></label>
-          <label>Strong fav %<input type="number" id="strongFavPct" min="0" max="100" value="60"></label>
-          <label>Strong draw %<input type="number" id="strongDrawPct" min="0" max="100" value="20"></label>
-          <label>Close home %<input type="number" id="closeHomePct" min="0" max="100" value="20"></label>
-          <label>Close away %<input type="number" id="closeAwayPct" min="0" max="100" value="20"></label>
-        </div>
-        <p class="hint" id="bandSumHint">Close draw % and strong upset % fill the remainder to 100.</p>
+        <div id="bandsHost"></div>
 
         <h3 style="color:#ff9900;font-size:14px;margin:18px 0 6px;">Try a fixture</h3>
+        <p class="hint" style="margin:0;">Uses the numbers on this page (even before Save).</p>
         <div class="odds-calc">
-          <label>Home XI strength<input type="number" id="calcHomeStr" min="0" max="2000" step="1" value="800"></label>
-          <label>Away XI strength<input type="number" id="calcAwayStr" min="0" max="2000" step="1" value="780"></label>
+          <label>Home XI strength<input type="number" id="calcHomeStr" min="0" max="2000" step="1" value="850"></label>
+          <label>Away XI strength<input type="number" id="calcAwayStr" min="0" max="2000" step="1" value="785"></label>
         </div>
         <div class="actions">
           <button type="button" class="button" id="calcOddsBtn">Calculate win %</button>
@@ -148,13 +171,13 @@
         <h2>How it works</h2>
         <ul class="rules">
           <li>Uses each club’s saved matchday starting XI (else top 11 by Rating).</li>
-          <li>XI Rating sum decides home/draw/away via the bands above.</li>
+          <li>XI Rating sum picks a band; that band rolls home / draw / away.</li>
           <li>Star players nudge goal totals (~10%), not the win/draw/loss roll.</li>
           <li>Assists + POTM always generated; cards/injuries follow the settings above.</li>
         </ul>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_match_sim.js?v=20260807-sim-odds"></script>
+  <script type="module" src="admin_match_sim.js?v=20260807-sim-bands"></script>
 </body>
 </html>

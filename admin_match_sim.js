@@ -2,20 +2,71 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase } from "./admi
 
 primeAdminPageChrome();
 
+/** Keep in sync with match_sim_default_outcome_bands() in SQL. */
+const DEFAULT_BANDS = [
+  {
+    id: "even",
+    title: "Even contest",
+    blurb: "XI strengths are almost identical. Small home lean; draws common.",
+    min_diff: 0,
+    mode: "sides",
+    home_pct: 40,
+    draw_pct: 50,
+    away_pct: 10,
+  },
+  {
+    id: "slight",
+    title: "Slight edge",
+    blurb: "One XI is a bit stronger. Favourite usually wins; upsets still happen.",
+    min_diff: 15,
+    mode: "fav",
+    fav_pct: 55,
+    draw_pct: 25,
+    upset_pct: 20,
+  },
+  {
+    id: "clear",
+    title: "Clear favourite",
+    blurb: "A clear gap on paper. Favourite wins most of the time.",
+    min_diff: 30,
+    mode: "fav",
+    fav_pct: 65,
+    draw_pct: 20,
+    upset_pct: 15,
+  },
+  {
+    id: "strong",
+    title: "Strong favourite",
+    blurb: "Big XI gap. Upsets are uncommon.",
+    min_diff: 50,
+    mode: "fav",
+    fav_pct: 75,
+    draw_pct: 15,
+    upset_pct: 10,
+  },
+  {
+    id: "mismatch",
+    title: "Mismatch",
+    blurb: "Huge gap — favourite almost always wins.",
+    min_diff: 80,
+    mode: "fav",
+    fav_pct: 100,
+    draw_pct: 0,
+    upset_pct: 0,
+  },
+];
+
 const DEFAULTS = {
   yellow_per_month: 15,
   red_per_month: 1,
   cards_enabled: true,
   injuries_enabled: true,
   max_subs_on: 5,
-  blowout_diff: 100,
-  strong_diff: 50,
-  strong_fav_pct: 60,
-  strong_draw_pct: 20,
-  close_home_pct: 20,
-  close_away_pct: 20,
-  close_draw_pct: 60,
+  outcome_bands: DEFAULT_BANDS,
 };
+
+/** @type {Array<object>} */
+let bandsState = structuredClone(DEFAULT_BANDS);
 
 function updateBadge(enabled) {
   const badge = document.getElementById("armBadge");
@@ -29,18 +80,189 @@ function num(id, fallback) {
   return Number.isFinite(raw) ? raw : fallback;
 }
 
+function clampPct(n) {
+  const v = Math.trunc(Number(n));
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(0, Math.min(100, v));
+}
+
+function normalizeBand(raw) {
+  const mode = String(raw?.mode || "fav").toLowerCase() === "sides" ? "sides" : "fav";
+  const minDiff = Math.max(0, Math.min(500, Math.trunc(Number(raw?.min_diff) || 0)));
+  const base = {
+    id: String(raw?.id || `band_${minDiff}`),
+    title: String(raw?.title || `Band from ${minDiff}`),
+    blurb: String(raw?.blurb || ""),
+    min_diff: minDiff,
+    mode,
+  };
+  if (mode === "sides") {
+    const home = clampPct(raw?.home_pct ?? 40);
+    const draw = clampPct(Math.min(100 - home, raw?.draw_pct ?? 50));
+    return { ...base, home_pct: home, draw_pct: draw, away_pct: Math.max(0, 100 - home - draw) };
+  }
+  const fav = clampPct(raw?.fav_pct ?? 60);
+  const draw = clampPct(Math.min(100 - fav, raw?.draw_pct ?? 20));
+  return { ...base, fav_pct: fav, draw_pct: draw, upset_pct: Math.max(0, 100 - fav - draw) };
+}
+
+function normalizeBands(list) {
+  const src = Array.isArray(list) && list.length ? list : DEFAULT_BANDS;
+  const sorted = src
+    .map((b) => normalizeBand(b))
+    .sort((a, b) => a.min_diff - b.min_diff || String(a.id).localeCompare(String(b.id)));
+  let prev = -1;
+  return sorted.map((b) => {
+    let min = b.min_diff;
+    if (min < prev) min = prev;
+    prev = min;
+    return { ...b, min_diff: min };
+  });
+}
+
+function bandRangeLabel(band, nextMin) {
+  if (nextMin == null) return `${band.min_diff}+ rating points`;
+  return `${band.min_diff}–${nextMin - 1} rating points`;
+}
+
+function bandSum(band) {
+  if (band.mode === "sides") {
+    return (band.home_pct ?? 0) + (band.draw_pct ?? 0) + (band.away_pct ?? 0);
+  }
+  return (band.fav_pct ?? 0) + (band.draw_pct ?? 0) + (band.upset_pct ?? 0);
+}
+
+function pickBandFromForm(absDiff) {
+  const bands = normalizeBands(bandsState);
+  let best = bands[0];
+  for (const b of bands) {
+    if (absDiff >= b.min_diff) best = b;
+  }
+  return { band: best, bands };
+}
+
+function oddsFromBand(band, homeStr, awayStr) {
+  const diff = homeStr - awayStr;
+  const abs = Math.abs(diff);
+  const homeFav = diff >= 0;
+  let homePct;
+  let drawPct;
+  let awayPct;
+  if (band.mode === "sides") {
+    homePct = band.home_pct;
+    drawPct = band.draw_pct;
+    awayPct = band.away_pct;
+  } else if (homeFav) {
+    homePct = band.fav_pct;
+    drawPct = band.draw_pct;
+    awayPct = band.upset_pct;
+  } else {
+    homePct = band.upset_pct;
+    drawPct = band.draw_pct;
+    awayPct = band.fav_pct;
+  }
+  return { diff, abs, homeFav, homePct, drawPct, awayPct };
+}
+
+function renderBands() {
+  const host = document.getElementById("bandsHost");
+  if (!host) return;
+  bandsState = normalizeBands(bandsState);
+
+  host.innerHTML = bandsState
+    .map((band, i) => {
+      const next = bandsState[i + 1];
+      const range = bandRangeLabel(band, next?.min_diff);
+      const sum = bandSum(band);
+      const sumOk = sum === 100;
+      const modeLabel =
+        band.mode === "sides"
+          ? "Home / Draw / Away (no favourite)"
+          : "Favourite / Draw / Upset";
+
+      const fields =
+        band.mode === "sides"
+          ? `
+          <label>From gap ≥
+            <input type="number" data-band="${i}" data-key="min_diff" min="0" max="500" value="${band.min_diff}">
+          </label>
+          <label>Home %
+            <input type="number" data-band="${i}" data-key="home_pct" min="0" max="100" value="${band.home_pct}">
+          </label>
+          <label>Draw %
+            <input type="number" data-band="${i}" data-key="draw_pct" min="0" max="100" value="${band.draw_pct}">
+          </label>
+          <label>Away % <span style="color:#666;font-weight:400">(auto)</span>
+            <input type="number" value="${band.away_pct}" disabled title="Fills the remainder to 100%">
+          </label>`
+          : `
+          <label>From gap ≥
+            <input type="number" data-band="${i}" data-key="min_diff" min="0" max="500" value="${band.min_diff}">
+          </label>
+          <label>Favourite win %
+            <input type="number" data-band="${i}" data-key="fav_pct" min="0" max="100" value="${band.fav_pct}">
+          </label>
+          <label>Draw %
+            <input type="number" data-band="${i}" data-key="draw_pct" min="0" max="100" value="${band.draw_pct}">
+          </label>
+          <label>Upset % <span style="color:#666;font-weight:400">(auto)</span>
+            <input type="number" value="${band.upset_pct}" disabled title="Fills the remainder to 100%">
+          </label>`;
+
+      return `
+        <div class="band-card" data-band-card="${i}">
+          <div class="band-head">
+            <h3 class="band-title">${escapeHtml(band.title)}</h3>
+            <span class="band-range">${escapeHtml(range)}</span>
+          </div>
+          <p class="band-blurb">${escapeHtml(band.blurb)}</p>
+          <span class="band-mode">${escapeHtml(modeLabel)}</span>
+          <div class="band-fields">${fields}</div>
+          <div class="band-sum ${sumOk ? "ok" : "bad"}" data-sum="${i}">
+            ${sumOk ? `Totals ${sum}% ✓` : `Totals ${sum}% — must be 100`}
+          </div>
+        </div>`;
+    })
+    .join("");
+
+  host.querySelectorAll("input[data-band]").forEach((el) => {
+    el.addEventListener("change", onBandInput);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function onBandInput(ev) {
+  const el = ev.target;
+  const i = Number(el.dataset.band);
+  const key = el.dataset.key;
+  if (!Number.isFinite(i) || !bandsState[i] || !key) return;
+
+  const raw = Number(el.value);
+  if (!Number.isFinite(raw)) return;
+
+  if (key === "min_diff") {
+    bandsState[i].min_diff = Math.max(0, Math.min(500, Math.trunc(raw)));
+  } else {
+    bandsState[i][key] = clampPct(raw);
+  }
+
+  bandsState = normalizeBands(bandsState);
+  renderBands();
+}
+
 function applySettingsToForm(settings) {
   const s = { ...DEFAULTS, ...(settings || {}) };
   const map = {
     yellowPerMonth: s.yellow_per_month,
     redPerMonth: s.red_per_month,
     maxSubsOn: s.max_subs_on,
-    blowoutDiff: s.blowout_diff,
-    strongDiff: s.strong_diff,
-    strongFavPct: s.strong_fav_pct,
-    strongDrawPct: s.strong_draw_pct,
-    closeHomePct: s.close_home_pct,
-    closeAwayPct: s.close_away_pct,
   };
   for (const [id, val] of Object.entries(map)) {
     const el = document.getElementById(id);
@@ -50,69 +272,21 @@ function applySettingsToForm(settings) {
   const injuries = document.getElementById("injuriesEnabled");
   if (cards) cards.checked = s.cards_enabled !== false;
   if (injuries) injuries.checked = s.injuries_enabled !== false;
-  renderBandsTable(s);
-  updateBandHint(s);
+
+  bandsState = normalizeBands(s.outcome_bands);
+  renderBands();
 }
 
 function readSettingsFromForm() {
-  const strongFav = Math.max(0, Math.min(100, Math.trunc(num("strongFavPct", 60))));
-  const strongDraw = Math.max(0, Math.min(100 - strongFav, Math.trunc(num("strongDrawPct", 20))));
-  const closeHome = Math.max(0, Math.min(100, Math.trunc(num("closeHomePct", 20))));
-  const closeAway = Math.max(0, Math.min(100 - closeHome, Math.trunc(num("closeAwayPct", 20))));
-  const blowout = Math.max(1, Math.min(500, Math.trunc(num("blowoutDiff", 100))));
-  const strong = Math.max(0, Math.min(blowout, Math.trunc(num("strongDiff", 50))));
-
+  bandsState = normalizeBands(bandsState);
   return {
     yellow_per_month: Math.max(0, Math.min(200, Math.trunc(num("yellowPerMonth", 15)))),
     red_per_month: Math.max(0, Math.min(50, Math.trunc(num("redPerMonth", 1)))),
     cards_enabled: !!document.getElementById("cardsEnabled")?.checked,
     injuries_enabled: !!document.getElementById("injuriesEnabled")?.checked,
     max_subs_on: Math.max(0, Math.min(5, Math.trunc(num("maxSubsOn", 5)))),
-    blowout_diff: blowout,
-    strong_diff: strong,
-    strong_fav_pct: strongFav,
-    strong_draw_pct: strongDraw,
-    strong_upset_pct: Math.max(0, 100 - strongFav - strongDraw),
-    close_home_pct: closeHome,
-    close_away_pct: closeAway,
-    close_draw_pct: Math.max(0, 100 - closeHome - closeAway),
+    outcome_bands: bandsState,
   };
-}
-
-function updateBandHint(s) {
-  const el = document.getElementById("bandSumHint");
-  if (!el) return;
-  const settings = s || readSettingsFromForm();
-  const upset = Math.max(0, 100 - (settings.strong_fav_pct ?? 60) - (settings.strong_draw_pct ?? 20));
-  const closeDraw = Math.max(0, 100 - (settings.close_home_pct ?? 20) - (settings.close_away_pct ?? 20));
-  el.textContent =
-    `Strong upset auto = ${upset}% · Close draw auto = ${closeDraw}% (bands must sum to 100).`;
-}
-
-function renderBandsTable(settings) {
-  const body = document.getElementById("oddsBandsBody");
-  if (!body) return;
-  const s = { ...DEFAULTS, ...(settings || {}) };
-  const upset = Math.max(0, 100 - s.strong_fav_pct - s.strong_draw_pct);
-  const closeDraw = Math.max(0, 100 - s.close_home_pct - s.close_away_pct);
-  body.innerHTML = `
-    <tr>
-      <td>0 – ${s.strong_diff - 1} (close)</td>
-      <td colspan="3">Home ${s.close_home_pct}% · Draw ${closeDraw}% · Away ${s.close_away_pct}% <span style="color:#888">(no favourite)</span></td>
-    </tr>
-    <tr>
-      <td>${s.strong_diff} – ${s.blowout_diff - 1} (strong)</td>
-      <td>${s.strong_fav_pct}%</td>
-      <td>${s.strong_draw_pct}%</td>
-      <td>${upset}%</td>
-    </tr>
-    <tr>
-      <td>${s.blowout_diff}+ (blowout)</td>
-      <td>100%</td>
-      <td>0%</td>
-      <td>0%</td>
-    </tr>
-  `;
 }
 
 async function loadStatus() {
@@ -156,6 +330,11 @@ async function setEnabled(enabled) {
 
 async function saveSettings() {
   const settings = readSettingsFromForm();
+  const bad = settings.outcome_bands.find((b) => bandSum(b) !== 100);
+  if (bad) {
+    setStatus("settingsStatus", `"${bad.title}" percentages must total 100.`, false);
+    return;
+  }
   setStatus("settingsStatus", "Saving…");
   const { data, error } = await supabase.rpc("admin_set_match_sim_settings", {
     p_settings: settings,
@@ -163,81 +342,58 @@ async function saveSettings() {
   if (error) {
     setStatus(
       "settingsStatus",
-      `Failed: ${error.message}. Run match_result_simulation_outcome_bands.sql if win-band fields fail.`,
+      `Failed: ${error.message}. Run match_result_simulation_outcome_bands.sql.`,
       false
     );
     return;
   }
   applySettingsToForm(data?.settings);
   const s = data?.settings || settings;
+  const n = Array.isArray(s.outcome_bands) ? s.outcome_bands.length : 0;
   setStatus(
     "settingsStatus",
-    `Saved bands + ${s.yellow_per_month}Y/${s.red_per_month}R` +
+    `Saved ${n} win bands · ${s.yellow_per_month}Y/${s.red_per_month}R` +
       `${s.cards_enabled ? "" : " · cards off"}` +
       `${s.injuries_enabled ? "" : " · injuries off"}.`,
     true
   );
 }
 
-async function calculateOdds() {
-  const home = num("calcHomeStr", 800);
-  const away = num("calcAwayStr", 780);
+function calculateOdds() {
+  const home = num("calcHomeStr", 850);
+  const away = num("calcAwayStr", 785);
   const box = document.getElementById("oddsResult");
   if (!box) return;
 
-  // Prefer live RPC (uses saved DB settings). Fall back to form bands if RPC missing.
-  const { data, error } = await supabase.rpc("match_sim_outcome_odds", {
-    p_home_str: home,
-    p_away_str: away,
-  });
+  const { band, bands } = pickBandFromForm(Math.abs(home - away));
+  const odds = oddsFromBand(band, home, away);
+  const idx = bands.findIndex((b) => b.id === band.id && b.min_diff === band.min_diff);
+  const next = bands[idx + 1];
+  const range = bandRangeLabel(band, next?.min_diff);
+  const favLabel =
+    band.mode === "sides"
+      ? "no favourite (home lean)"
+      : odds.homeFav
+        ? "Home favourite"
+        : "Away favourite";
 
-  if (!error && data?.ok) {
-    box.hidden = false;
-    box.innerHTML = `
-      <div><strong>Diff</strong> ${Number(data.diff).toFixed(0)} (abs ${Number(data.abs_diff).toFixed(0)}) · band <strong>${data.band}</strong></div>
-      <div style="margin-top:8px;">
-        Home <strong>${data.home_pct}%</strong>
-        · Draw <strong>${data.draw_pct}%</strong>
-        · Away <strong>${data.away_pct}%</strong>
-      </div>
-      <div class="hint" style="margin-top:8px;">${data.note || ""}</div>
-    `;
-    return;
-  }
-
-  // Client-side fallback from form
-  const s = readSettingsFromForm();
-  const diff = home - away;
-  const abs = Math.abs(diff);
-  const homeFav = diff >= 0;
-  let homePct;
-  let drawPct;
-  let awayPct;
-  let band;
-  if (abs >= s.blowout_diff) {
-    band = "blowout";
-    homePct = homeFav ? 100 : 0;
-    drawPct = 0;
-    awayPct = homeFav ? 0 : 100;
-  } else if (abs >= s.strong_diff) {
-    band = "strong";
-    const upset = s.strong_upset_pct;
-    homePct = homeFav ? s.strong_fav_pct : upset;
-    drawPct = s.strong_draw_pct;
-    awayPct = homeFav ? upset : s.strong_fav_pct;
-  } else {
-    band = "close";
-    homePct = s.close_home_pct;
-    drawPct = s.close_draw_pct;
-    awayPct = s.close_away_pct;
-  }
   box.hidden = false;
   box.innerHTML = `
-    <div><strong>Diff</strong> ${diff.toFixed(0)} · band <strong>${band}</strong>${error ? " (local preview — save/run SQL for live RPC)" : ""}</div>
-    <div style="margin-top:8px;">
-      Home <strong>${homePct}%</strong>
-      · Draw <strong>${drawPct}%</strong>
-      · Away <strong>${awayPct}%</strong>
+    <div>
+      Gap <strong>${odds.abs.toFixed(0)}</strong>
+      (home ${home.toFixed(0)} − away ${away.toFixed(0)} = ${odds.diff >= 0 ? "+" : ""}${odds.diff.toFixed(0)})
+    </div>
+    <div style="margin-top:6px;">
+      Band <strong>${escapeHtml(band.title)}</strong> · ${escapeHtml(range)}
+    </div>
+    <div style="margin-top:6px;color:#aaa;font-size:13px;">${escapeHtml(favLabel)}</div>
+    <div style="margin-top:10px;">
+      Home <strong>${odds.homePct}%</strong>
+      · Draw <strong>${odds.drawPct}%</strong>
+      · Away <strong>${odds.awayPct}%</strong>
+    </div>
+    <div class="hint" style="margin-top:8px;">
+      Preview from the form above — Save to apply to Simulate.
     </div>
   `;
 }
@@ -253,13 +409,4 @@ document.addEventListener("DOMContentLoaded", async () => {
     setStatus("settingsStatus", "Defaults loaded in form — click Save settings to apply.", true);
   });
   document.getElementById("calcOddsBtn")?.addEventListener("click", () => calculateOdds());
-  ["strongDiff", "blowoutDiff", "strongFavPct", "strongDrawPct", "closeHomePct", "closeAwayPct"].forEach(
-    (id) => {
-      document.getElementById(id)?.addEventListener("input", () => {
-        const s = readSettingsFromForm();
-        renderBandsTable(s);
-        updateBandHint(s);
-      });
-    }
-  );
 });
