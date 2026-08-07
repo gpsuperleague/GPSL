@@ -3,7 +3,9 @@
 -- Safe re-run.
 -- =============================================================================
 
-CREATE OR REPLACE VIEW public.clubs_database_public
+DROP VIEW IF EXISTS public.clubs_database_public;
+
+CREATE VIEW public.clubs_database_public
 WITH (security_invoker = false)
 AS
 WITH club_n AS (
