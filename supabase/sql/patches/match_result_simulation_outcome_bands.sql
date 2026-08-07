@@ -179,8 +179,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
   SELECT jsonb_build_object(
-    'yellow_per_month', coalesce((s->>'yellow_per_month')::int, 15),
-    'red_per_month', coalesce((s->>'red_per_month')::int, 1),
+    'yellow_per_match', coalesce((s->>'yellow_per_match')::int, 3),
+    'red_chance_pct', coalesce((s->>'red_chance_pct')::numeric, 5),
     'cards_enabled', coalesce((s->>'cards_enabled')::boolean, true),
     'injuries_enabled', coalesce((s->>'injuries_enabled')::boolean, true),
     'max_subs_on', greatest(0, least(5, coalesce((s->>'max_subs_on')::int, 5))),
@@ -203,7 +203,7 @@ DECLARE
   v_in jsonb := coalesce(p_settings, '{}'::jsonb);
   v_out jsonb;
   v_yellow int;
-  v_red int;
+  v_red_chance numeric;
   v_max_subs int;
   v_bands jsonb;
 BEGIN
@@ -211,14 +211,14 @@ BEGIN
     RAISE EXCEPTION 'Admin only';
   END IF;
 
-  v_yellow := greatest(0, least(200, coalesce((v_in->>'yellow_per_month')::int, 15)));
-  v_red := greatest(0, least(50, coalesce((v_in->>'red_per_month')::int, 1)));
+  v_yellow := greatest(0, least(22, coalesce((v_in->>'yellow_per_match')::int, 3)));
+  v_red_chance := greatest(0, least(100, coalesce((v_in->>'red_chance_pct')::numeric, 5)));
   v_max_subs := greatest(0, least(5, coalesce((v_in->>'max_subs_on')::int, 5)));
   v_bands := public.match_sim_normalize_outcome_bands(v_in->'outcome_bands');
 
   v_out := jsonb_build_object(
-    'yellow_per_month', v_yellow,
-    'red_per_month', v_red,
+    'yellow_per_match', v_yellow,
+    'red_chance_pct', v_red_chance,
     'cards_enabled', coalesce((v_in->>'cards_enabled')::boolean, true),
     'injuries_enabled', coalesce((v_in->>'injuries_enabled')::boolean, true),
     'max_subs_on', v_max_subs,

@@ -57,8 +57,8 @@ const DEFAULT_BANDS = [
 ];
 
 const DEFAULTS = {
-  yellow_per_month: 15,
-  red_per_month: 1,
+  yellow_per_match: 3,
+  red_chance_pct: 5,
   cards_enabled: true,
   injuries_enabled: true,
   max_subs_on: 5,
@@ -260,8 +260,8 @@ function onBandInput(ev) {
 function applySettingsToForm(settings) {
   const s = { ...DEFAULTS, ...(settings || {}) };
   const map = {
-    yellowPerMonth: s.yellow_per_month,
-    redPerMonth: s.red_per_month,
+    yellowPerMatch: s.yellow_per_match,
+    redChancePct: s.red_chance_pct,
     maxSubsOn: s.max_subs_on,
   };
   for (const [id, val] of Object.entries(map)) {
@@ -280,8 +280,12 @@ function applySettingsToForm(settings) {
 function readSettingsFromForm() {
   bandsState = normalizeBands(bandsState);
   return {
-    yellow_per_month: Math.max(0, Math.min(200, Math.trunc(num("yellowPerMonth", 15)))),
-    red_per_month: Math.max(0, Math.min(50, Math.trunc(num("redPerMonth", 1)))),
+    yellow_per_match: Math.max(0, Math.min(22, Math.trunc(num("yellowPerMatch", 3)))),
+    red_chance_pct: (() => {
+      const raw = Number(document.getElementById("redChancePct")?.value);
+      const v = Number.isFinite(raw) ? raw : 5;
+      return Math.max(0, Math.min(100, v));
+    })(),
     cards_enabled: !!document.getElementById("cardsEnabled")?.checked,
     injuries_enabled: !!document.getElementById("injuriesEnabled")?.checked,
     max_subs_on: Math.max(0, Math.min(5, Math.trunc(num("maxSubsOn", 5)))),
@@ -352,7 +356,7 @@ async function saveSettings() {
   const n = Array.isArray(s.outcome_bands) ? s.outcome_bands.length : 0;
   setStatus(
     "settingsStatus",
-    `Saved ${n} win bands · ${s.yellow_per_month}Y/${s.red_per_month}R` +
+    `Saved ${n} win bands · ${s.yellow_per_match}Y/match · ${s.red_chance_pct}% red` +
       `${s.cards_enabled ? "" : " · cards off"}` +
       `${s.injuries_enabled ? "" : " · injuries off"}.`,
     true

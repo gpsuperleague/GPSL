@@ -134,8 +134,7 @@
       <div class="card" style="margin-top:14px;">
         <h2>Simulation rules</h2>
         <p class="hint" style="margin:0 0 8px;">
-          Card targets match the month-deploy discipline defaults (15 yellow / 1 red per GPSL calendar month).
-          Remaining fixtures in the month share whatever quota is left.
+          Cards are rolled <b>per match</b>: a fixed number of yellows, plus a % chance of one red.
         </p>
         <div class="form-grid">
           <label class="check-row">
@@ -143,12 +142,13 @@
             Assign yellow / red cards on simulate
           </label>
           <label>
-            Yellow cards per GPSL month
-            <input type="number" id="yellowPerMonth" min="0" max="200" value="15">
+            Yellow cards per match
+            <input type="number" id="yellowPerMatch" min="0" max="22" value="3">
           </label>
           <label>
-            Red cards per GPSL month
-            <input type="number" id="redPerMonth" min="0" max="50" value="1">
+            Red card chance % (one red)
+            <input type="number" id="redChancePct" min="0" max="100" step="0.1" value="5">
+            <div class="hint">e.g. 5 = 5% chance of a single red this match (never more than one from this roll).</div>
           </label>
           <label class="check-row">
             <input type="checkbox" id="injuriesEnabled" checked>
@@ -173,11 +173,11 @@
           <li>Uses each club’s saved matchday starting XI (else top 11 by Rating).</li>
           <li>XI Rating sum picks a band; that band rolls home / draw / away.</li>
           <li>Star players nudge goal totals (~10%), not the win/draw/loss roll.</li>
-          <li>Assists + POTM always generated; cards/injuries follow the settings above.</li>
+          <li>Assists + POTM always generated; cards = yellows per match + % chance of one red.</li>
         </ul>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_match_sim.js?v=20260807-sim-bands"></script>
+  <script type="module" src="admin_match_sim.js?v=20260807-cards-match"></script>
 </body>
 </html>
