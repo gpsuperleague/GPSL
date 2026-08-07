@@ -922,12 +922,14 @@ async function loadWaitingListAdmin() {
   if (!rows.length) {
     tableWrap.innerHTML = "<p class='note'>No one on the waiting list.</p>";
   } else {
+    const testTotal = rows.filter((r) => !!r.confirmed_test_season).length;
+    const liveTotal = rows.filter((r) => !!r.confirmed_live_season).length;
     let html =
       "<table class='admin-table' style='width:100%;font-size:13px;border-collapse:collapse'>" +
       "<thead><tr>" +
       "<th>#</th><th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>" +
-      "<th title='Confirmed for test season'>Test</th>" +
-      "<th title='Confirmed for live season'>Live</th>" +
+      `<th title='Confirmed for test season' style="text-align:center;line-height:1.25">Test<br><span id="wlTestTotal" style="color:#ff9900">${testTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
+      `<th title='Confirmed for live season' style="text-align:center;line-height:1.25">Live<br><span id="wlLiveTotal" style="color:#ff9900">${liveTotal}</span><span style="color:#888;font-weight:normal"> / ${rows.length}</span></th>` +
       "<th></th></tr></thead><tbody>";
     for (const row of rows) {
       const email = row.email || "";
@@ -1000,6 +1002,17 @@ function escapeWl(s) {
     .replace(/"/g, "&quot;");
 }
 
+function refreshWaitingListConfirmTotals() {
+  const wrap = document.getElementById("wlAdminTableWrap");
+  if (!wrap) return;
+  const testBoxes = [...wrap.querySelectorAll('.wl-confirm-season[data-which="test"]')];
+  const liveBoxes = [...wrap.querySelectorAll('.wl-confirm-season[data-which="live"]')];
+  const testEl = document.getElementById("wlTestTotal");
+  const liveEl = document.getElementById("wlLiveTotal");
+  if (testEl) testEl.textContent = String(testBoxes.filter((c) => c.checked).length);
+  if (liveEl) liveEl.textContent = String(liveBoxes.filter((c) => c.checked).length);
+}
+
 async function setWaitingListSeasonConfirmed(ownerId, which, confirmed, checkboxEl) {
   const { error } = await supabase.rpc("admin_waiting_list_set_season_confirmed", {
     p_owner_id: ownerId,
@@ -1011,6 +1024,7 @@ async function setWaitingListSeasonConfirmed(ownerId, which, confirmed, checkbox
     setWlActionStatus("❌ " + error.message, false);
     return;
   }
+  refreshWaitingListConfirmTotals();
   const label = which === "live" ? "live" : "test";
   setWlActionStatus(
     confirmed
