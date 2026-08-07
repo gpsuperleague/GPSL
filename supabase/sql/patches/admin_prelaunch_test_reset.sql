@@ -438,16 +438,17 @@ BEGIN
   GET DIAGNOSTICS v_deleted = ROW_COUNT;
   v_result := v_result || jsonb_build_object('players_contract_cleared', v_deleted);
 
-  -- Bulk clear manager contracts (skip per-manager release side-effects for speed)
+  -- Bulk clear manager contracts (seasons/wage are NOT NULL — use 0)
   UPDATE public."Managers"
   SET contracted_club = NULL,
-      contract_seasons_remaining = NULL,
-      weekly_wage = NULL,
+      contract_seasons_remaining = 0,
+      weekly_wage = 0,
       signed_season_id = NULL,
       updated_at = now()
   WHERE contracted_club IS NOT NULL
-     OR weekly_wage IS NOT NULL
-     OR signed_season_id IS NOT NULL;
+     OR weekly_wage <> 0
+     OR signed_season_id IS NOT NULL
+     OR contract_seasons_remaining <> 0;
 
   UPDATE public."Clubs"
   SET manager_id = NULL,
