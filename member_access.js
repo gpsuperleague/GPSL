@@ -1,5 +1,6 @@
 /**
- * Pages GPSL members (no club) may view — full browse menus, view-only actions.
+ * Pages owners without a club may use until assigned a club.
+ * Waiting-list members and club-auction invitees share this surface.
  */
 
 /** Pages always allowed without a club (auth flows). */
@@ -10,60 +11,21 @@ export const AUTH_PAGES = new Set([
   "join_gpsl",
 ]);
 
-/** Members on the waiting list (no club) — browse / view-only. */
+/**
+ * Pre-club owners (waiting list + club auction invitees):
+ * waiting list, databases, owner setup (tag/timezone/availability/bank), club draft auction.
+ */
 export const MEMBER_ALLOWED_PAGES = new Set([
-  "member_home",
   "waiting_list",
-  "learning_gpsl",
-  "inbox",
-  "dashboard",
-  // League
-  "clubs",
-  "club",
-  "fixtures",
-  "progress",
-  "league_stats",
-  "challenges",
-  "cups",
-  "world_cup",
-  "international_matchday",
-  "competition",
-  "friendlies",
-  // Transfers (market / databases — mutations blocked in view-only chrome)
-  "gpdb",
-  "player_career",
-  "all_listings",
-  "draftauction",
-  "legacy_players",
-  "expiring_contracts",
-  "season_transfers",
-  "mgdb",
-  "manager_listings",
-  "manager_draftauction",
-  "season_manager_transfers",
-  "manager_career",
-  "club_database",
-  "season_club_purchases",
-  "special_auction",
-  // Central bank (league)
-  "central_bank",
-  "central_bank_loans",
-  "central_bank_counter",
-  // Owners
-  "owner_rankings",
-  "owner_profile",
-  "owner_last_login",
-  "admin_owner_last_login",
-  "season_calendar",
-  "natter",
-]);
-
-/** Club auction onboarding — invited from waiting list only. */
-export const AUCTION_ONBOARDING_PAGES = new Set([
   "awaiting_club",
   "club_auction",
-  ...MEMBER_ALLOWED_PAGES,
+  "club_database",
+  "gpdb",
+  "mgdb",
 ]);
+
+/** Same surface for auction invitees (kept for callers / clarity). */
+export const AUCTION_ONBOARDING_PAGES = new Set([...MEMBER_ALLOWED_PAGES]);
 
 /** Club-specific — owners with a club only (caretakers TBD). */
 export const CLUB_OWNER_PAGES = new Set([
@@ -107,13 +69,13 @@ export function isAuctionOnboardingPage(page = normalizePageId()) {
   return AUCTION_ONBOARDING_PAGES.has(page);
 }
 
-/** Sticky home for waiting-list browse sessions. */
+/** Sticky home for waiting-list / pre-club sessions. */
 export function memberDefaultHome() {
   return "waiting_list.html";
 }
 
 export function memberHubHome() {
-  return "member_home.html";
+  return "waiting_list.html";
 }
 
 export function auctionOnboardingHome() {
@@ -123,3 +85,25 @@ export function auctionOnboardingHome() {
 export function archivedHome() {
   return "member_home.html?archived=1";
 }
+
+/** Flat nav for owners without a club. */
+export const PRE_CLUB_NAV_ITEMS = [
+  { href: "waiting_list.html", label: "Waiting list", page: "waiting_list" },
+  {
+    href: "awaiting_club.html",
+    label: "Owner details",
+    page: "awaiting_club",
+  },
+  {
+    href: "club_database.html",
+    label: "Club Database",
+    page: "club_database",
+  },
+  { href: "GPDB.html", label: "Player Database", page: "gpdb" },
+  { href: "MGDB.html", label: "Manager Database", page: "mgdb" },
+  {
+    href: "club_auction.html",
+    label: "Club draft auction",
+    page: "club_auction",
+  },
+];

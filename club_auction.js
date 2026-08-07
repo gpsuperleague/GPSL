@@ -228,15 +228,21 @@ async function loadOwnerContext() {
   needsOnboardingTimezone = Boolean(self?.needs_onboarding_timezone);
   needsOnboardingAvailability = Boolean(self?.needs_onboarding_availability);
   budget = Number(self?.pending_starting_balance) || 0;
-  setClubBankBalance("clubBankBalance", budget, {
+  setClubBankBalance("clubBankBalance", budget > 0 ? budget : null, {
     href: "awaiting_club.html",
   });
 
   const intro = document.getElementById("clubAuctionIntro");
-  if (intro && budget > 0) {
-    intro.innerHTML =
-      `Bid for a GPSL club from your <b>${formatMoney(budget)}</b> starting budget. You may only lead one club at a time. ` +
-      "When the auction closes, the highest bidder wins the club and your balance is set to budget minus your winning bid.";
+  if (intro) {
+    if (self?.is_member && !self?.needs_club_auction) {
+      intro.innerHTML =
+        "You are on the <b>owner waiting list</b>. Bidding unlocks when admin invites you to the club draft auction. " +
+        'Set your tag, timezone, and availability on <a href="awaiting_club.html" style="color:#ff9900;">Owner details</a> meanwhile.';
+    } else if (budget > 0) {
+      intro.innerHTML =
+        `Bid for a GPSL club from your <b>${formatMoney(budget)}</b> starting budget. You may only lead one club at a time. ` +
+        "When the auction closes, the highest bidder wins the club and your balance is set to budget minus your winning bid.";
+    }
   }
   return true;
 }

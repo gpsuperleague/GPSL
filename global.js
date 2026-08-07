@@ -2057,13 +2057,17 @@ export async function buildNav() {
     console.warn("Nav registry self skipped:", regErr);
   }
 
-  const isWaitingListMember =
-    registrySelf?.is_member === true && registrySelf?.has_club !== true;
+  const isPreClubOwner =
+    registrySelf?.has_club !== true &&
+    (registrySelf?.is_member === true ||
+      registrySelf?.needs_club_auction === true ||
+      registrySelf?.status === "awaiting_club_auction");
   const memberHomeHref = "waiting_list.html";
-  const homeHref =
-    isWaitingListMember && !registrySelf?.needs_club_auction
-      ? memberHomeHref
-      : "dashboard.html";
+  const homeHref = isPreClubOwner
+    ? registrySelf?.needs_club_auction
+      ? "awaiting_club.html"
+      : memberHomeHref
+    : "dashboard.html";
 
   const dashActive = pathNorm === normalizeNavPath(homeHref);
   const inboxActive = pathNorm === "inbox.html";
@@ -2077,6 +2081,41 @@ export async function buildNav() {
     return;
   }
 
+  if (isPreClubOwner) {
+    window.GPSL_PRE_CLUB = true;
+    window.GPSL_MEMBER_HOME = homeHref;
+    try {
+      const accessMod = await import(`./member_access.js?v=${GLOBAL_JS_VERSION}`);
+      navSections = [
+        {
+          id: "preclub",
+          label: "Before club",
+          items: [...(accessMod.PRE_CLUB_NAV_ITEMS || [])],
+        },
+      ];
+    } catch (preErr) {
+      console.warn("Pre-club nav items skipped:", preErr);
+      navSections = [
+        {
+          id: "preclub",
+          label: "Before club",
+          items: [
+            { href: "waiting_list.html", label: "Waiting list", page: "waiting_list" },
+            { href: "awaiting_club.html", label: "Owner details", page: "awaiting_club" },
+            { href: "club_database.html", label: "Club Database", page: "club_database" },
+            { href: "GPDB.html", label: "Player Database", page: "gpdb" },
+            { href: "MGDB.html", label: "Manager Database", page: "mgdb" },
+            {
+              href: "club_auction.html",
+              label: "Club draft auction",
+              page: "club_auction",
+            },
+          ],
+        },
+      ];
+    }
+  }
+
   if (isGpslAdminNav && ADMIN_NAV_SECTION?.items?.length) {
     navSections.push(ADMIN_NAV_SECTION);
   } else if (isGpslModOnlyNav && MOD_NAV_SECTION?.items?.length) {
@@ -2088,36 +2127,6 @@ export async function buildNav() {
   html += `<div class="gpsl-nav-groups">`;
 
   const navItemsForSection = (section) => {
-    // Waiting list: browse equivalents (view-only) instead of owner club/nation tools
-    if (isWaitingListMember && section.id === "myclub") {
-      return [
-        {
-          href: "club_database.html",
-          label: "Club Database",
-          page: "club_database",
-        },
-        { href: "clubs.html", label: "Clubs", page: "clubs" },
-        {
-          href: "season_club_purchases.html",
-          label: "Season club purchases",
-          page: "season_club_purchases",
-        },
-        { href: "fixtures.html", label: "Fixtures", page: "fixtures" },
-        { href: "central_bank.html", label: "Central Bank", page: "central_bank" },
-      ];
-    }
-
-    if (isWaitingListMember && section.id === "mynation") {
-      return [
-        { href: "world_cup.html", label: "World Cup", page: "world_cup" },
-        {
-          href: "international_matchday.html",
-          label: "International matchday",
-          page: "international_matchday",
-        },
-      ];
-    }
-
     if (section.id === "mynation") {
       const items = [];
       if (myNation?.code) {
@@ -2178,7 +2187,6 @@ export async function buildNav() {
         if (item.adminOnly && !isGpslAdminNav) return false;
         if (item.requiresDraft && !draftEnabled) return false;
         if (item.requiresSpecialAuction && !specialAuctionNavVisible) return false;
-        if (isWaitingListMember && item.page === "club_auction") return false;
         if (item.showWhenGpslMonth) {
           const want = String(item.showWhenGpslMonth).toLowerCase();
           const onPage = item.page && pathNorm === `${item.page}.html`;
@@ -2251,11 +2259,23 @@ export async function buildNav() {
   html += `</div>`;
 
   html += `<div class="gpsl-nav-actions gpsl-nav-actions-primary">`;
-  html += renderNavSeasonCalendarLink(calendarActive);
-  html += renderNavNatterLink(natterActive, natterUnread);
-  html += renderNavGpslSportButton();
+  if (!isPreClubOwner) {
+    html += renderNavSeasonCalendarLink(calendarActive);
+    html += renderNavNatterLink(natterActive, natterUnread);
+    html += renderNavGpslSportButton();
+  } else {
+    const bal = Number(registrySelf?.pending_starting_balance);
+    if (Number.isFinite(bal) && bal > 0) {
+      html +=
+        `<a href="awaiting_club.html" class="nav-shortcut" title="Starting bank balance" ` +
+        `style="color:#9f9;font-weight:bold;white-space:nowrap;">` +
+        `₿${Math.round(bal).toLocaleString("en-GB")}</a>`;
+    }
+  }
   html += renderNavDashboardHomeLink(ownerClub, homeHref, dashActive);
-  html += renderNavInboxLink(inboxActive, unread);
+  if (!isPreClubOwner) {
+    html += renderNavInboxLink(inboxActive, unread);
+  }
   if (isGpslAdminNav || isGpslModOnlyNav) {
     const staffActive = pathNorm === "admin_staff_alerts.html";
     html += renderNavStaffAlertsLink(staffActive, staffAlertsUnread);
@@ -2270,19 +2290,23 @@ export async function buildNav() {
   refreshNavListingIndicators();
   startNavAuctionBadgeRefresh();
   refreshGpslSportNavUi();
-  try {
-    const sched = await import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`);
-    sched.ensureSeasonScheduleStripMount();
-    sched.refreshSeasonScheduleStrip();
-  } catch (schedErr) {
-    console.warn("Season schedule strip skipped:", schedErr);
-  }
-  try {
-    const tn = await import(`./transfer_news_ticker.js?v=${GLOBAL_JS_VERSION}`);
-    tn.ensureTransferNewsStripMount();
-    tn.refreshTransferNewsStrip();
-  } catch (tnErr) {
-    console.warn("Transfer news strip skipped:", tnErr);
+  if (!isPreClubOwner) {
+    try {
+      const sched = await import(
+        `./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`
+      );
+      sched.ensureSeasonScheduleStripMount();
+      sched.refreshSeasonScheduleStrip();
+    } catch (schedErr) {
+      console.warn("Season schedule strip skipped:", schedErr);
+    }
+    try {
+      const tn = await import(`./transfer_news_ticker.js?v=${GLOBAL_JS_VERSION}`);
+      tn.ensureTransferNewsStripMount();
+      tn.refreshTransferNewsStrip();
+    } catch (tnErr) {
+      console.warn("Transfer news strip skipped:", tnErr);
+    }
   }
   } catch (err) {
     console.error("buildNav failed:", err);
@@ -2305,6 +2329,13 @@ export async function initGlobal() {
   } catch (err) {
     console.warn("owner club gate:", err);
   }
+  wireDraftCountdownUI();
+  try {
+    await buildNav();
+  } catch (err) {
+    console.error("initGlobal buildNav:", err);
+    await renderFallbackNav();
+  }
   try {
     const { applyMemberViewOnlyChrome } = await import(
       `./member_view_only.js?v=${GLOBAL_JS_VERSION}`
@@ -2315,27 +2346,22 @@ export async function initGlobal() {
   } catch (err) {
     console.warn("member view-only chrome:", err);
   }
-  wireDraftCountdownUI();
-  try {
-    await buildNav();
-  } catch (err) {
-    console.error("initGlobal buildNav:", err);
-    await renderFallbackNav();
-  }
 
   if (document.getElementById("nav")) {
     initDashboardPinUi(supabase).catch((err) => {
       console.warn("Dashboard pin UI skipped:", err);
     });
-    refreshGpslSportNavUi();
-    refreshNatterNavBadge().catch((err) => {
-      console.warn("Natter nav badge skipped:", err);
-    });
-    import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`)
-      .then((m) => m.initSeasonScheduleStrip())
-      .catch((err) => console.warn("Season schedule strip skipped:", err));
-    import(`./transfer_news_ticker.js?v=${GLOBAL_JS_VERSION}`)
-      .then((m) => m.initTransferNewsStrip())
-      .catch((err) => console.warn("Transfer news strip skipped:", err));
+    if (!window.GPSL_PRE_CLUB) {
+      refreshGpslSportNavUi();
+      refreshNatterNavBadge().catch((err) => {
+        console.warn("Natter nav badge skipped:", err);
+      });
+      import(`./season_transfer_schedule.js?v=${GLOBAL_JS_VERSION}`)
+        .then((m) => m.initSeasonScheduleStrip())
+        .catch((err) => console.warn("Season schedule strip skipped:", err));
+      import(`./transfer_news_ticker.js?v=${GLOBAL_JS_VERSION}`)
+        .then((m) => m.initTransferNewsStrip())
+        .catch((err) => console.warn("Transfer news strip skipped:", err));
+    }
   }
 }

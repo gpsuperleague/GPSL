@@ -26,6 +26,13 @@ function redirectTo(url) {
   window.location.assign(url);
 }
 
+function markPreClubSession(homeHref) {
+  window.GPSL_PRE_CLUB = true;
+  window.GPSL_MEMBER_HOME = homeHref;
+  // No full-site view-only chrome — menu is already restricted.
+  window.GPSL_MEMBER_VIEW_ONLY = false;
+}
+
 export async function enforceOwnerClubGate() {
   const page = normalizePageId(
     window.CURRENT_PAGE ? String(window.CURRENT_PAGE) : undefined
@@ -53,14 +60,14 @@ export async function enforceOwnerClubGate() {
   }
 
   if (self?.needs_club_auction || self?.status === "awaiting_club_auction") {
+    markPreClubSession(auctionOnboardingHome());
     if (isAuctionOnboardingPage(page)) return;
     redirectTo(auctionOnboardingHome());
     return;
   }
 
   if (self?.is_member) {
-    window.GPSL_MEMBER_VIEW_ONLY = true;
-    window.GPSL_MEMBER_HOME = memberDefaultHome();
+    markPreClubSession(memberDefaultHome());
     if (isMemberAllowedPage(page)) return;
     if (isClubOwnerPage(page)) {
       redirectTo(memberDefaultHome());
@@ -70,12 +77,15 @@ export async function enforceOwnerClubGate() {
     return;
   }
 
-  // Unknown no-club state — treat as member waiting list
-  window.GPSL_MEMBER_VIEW_ONLY = true;
-  window.GPSL_MEMBER_HOME = memberDefaultHome();
+  // Unknown no-club state — treat as waiting-list surface
+  markPreClubSession(memberDefaultHome());
   if (!isMemberAllowedPage(page)) {
     redirectTo(memberDefaultHome());
   }
 }
 
-export { isMemberAllowedPage, isClubOwnerPage, normalizePageId } from "./member_access.js";
+export {
+  isMemberAllowedPage,
+  isClubOwnerPage,
+  normalizePageId,
+} from "./member_access.js";

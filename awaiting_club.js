@@ -18,18 +18,33 @@ function formatMoney(n) {
 
 function updateAuctionRoomGate() {
   const ready = Boolean(registrySelf?.auction_onboarding_ready);
+  const invited = Boolean(registrySelf?.needs_club_auction);
   const linkWrap = document.getElementById("auctionRoomLinkWrap");
   const blocked = document.getElementById("auctionRoomBlocked");
   const readyLine = document.getElementById("availabilityReadyLine");
 
-  if (linkWrap) linkWrap.hidden = !ready;
-  if (blocked) blocked.hidden = ready;
+  if (linkWrap) linkWrap.hidden = !(invited && ready);
+  if (blocked) {
+    if (!invited) {
+      blocked.hidden = false;
+      blocked.textContent =
+        "Club draft auction bidding opens when admin invites you from the waiting list. You can still set your details above now.";
+    } else {
+      blocked.hidden = ready;
+      blocked.textContent =
+        "Complete your owner tag, timezone, and match availability above before entering the club auction room.";
+    }
+  }
 
   if (readyLine) {
-    if (ready) {
+    if (invited && ready) {
       readyLine.hidden = false;
       readyLine.textContent =
         "Owner tag, timezone, and availability are set — you can enter the club auction room.";
+    } else if (!invited && registrySelf?.owner_tag && registrySelf?.owner_timezone) {
+      readyLine.hidden = false;
+      readyLine.textContent =
+        "Details saved. You will use these when invited to the club draft auction.";
     } else {
       readyLine.hidden = true;
       readyLine.textContent = "";
@@ -142,57 +157,95 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // Members belong on member home; only auction invitees use this page
-  if (self?.is_member) {
-    window.location = "member_home.html";
-    return;
-  }
-
   if (self?.is_archived) {
     window.location = "member_home.html?archived=1";
     return;
   }
 
   if (self?.status === "on_break") {
-    window.location = "member_home.html";
+    window.location = "waiting_list.html";
     return;
   }
 
-  await showWonAwaitingSettlement(user.id, statusEl);
+  const isWaitingList = Boolean(self?.is_member);
+  const isAuctionInvitee = Boolean(self?.needs_club_auction);
+
+  const introEl = document.getElementById("introBudgetLine");
+  if (introEl) {
+    if (isWaitingList) {
+      introEl.innerHTML =
+        "You are on the <b>owner waiting list</b>. Set your owner tag, timezone, and match availability here. " +
+        "Your starting bank balance is shown below. When admin invites you, you can bid in the <b>club draft auction</b>.";
+    } else {
+      introEl.innerHTML =
+        "You are registered for GPSL but do not have a club yet. The <b>club auction</b> is the first step — " +
+        "you will bid from your starting budget (shown below). When the auction completes, your club is assigned, " +
+        "your balance is set, and the full site opens.";
+    }
+  }
+
+  if (isAuctionInvitee) {
+    await showWonAwaitingSettlement(user.id, statusEl);
+  }
   updateAuctionRoomGate();
 
   const displayTag = (self?.owner_tag || "").trim();
   if (displayTag && tagInput) {
     tagInput.value = displayTag;
-    tagInput.disabled = true;
-    if (saveTagBtn) saveTagBtn.disabled = true;
-    if (tagLockedLine) {
-      tagLockedLine.hidden = false;
-      tagLockedLine.textContent =
-        `Tag locked: “${displayTag}” — shown on club auction bids and your club if you win.`;
+    // Tag locked only for auction invitees (waiting-list members may still change it).
+    if (isAuctionInvitee) {
+      tagInput.disabled = true;
+      if (saveTagBtn) saveTagBtn.disabled = true;
+      if (tagLockedLine) {
+        tagLockedLine.hidden = false;
+        tagLockedLine.textContent =
+          `Tag locked: “${displayTag}” — shown on club auction bids and your club if you win.`;
+      }
     }
   }
-  if (budgetEl && self?.pending_starting_balance > 0) {
-    budgetEl.hidden = false;
-    budgetEl.textContent = `Starting budget: ${formatMoney(self.pending_starting_balance)}`;
+  if (budgetEl) {
+    const bal = Number(self?.pending_starting_balance) || 0;
+    if (bal > 0) {
+      budgetEl.hidden = false;
+      budgetEl.textContent = `Starting bank balance: ${formatMoney(bal)}`;
+    } else if (isWaitingList) {
+      budgetEl.hidden = false;
+      budgetEl.textContent =
+        "Starting bank balance will appear when you are invited to the club auction.";
+      budgetEl.style.color = "#aaa";
+      budgetEl.style.fontSize = "14px";
+    }
   }
+
+  const learningNote = document.getElementById("learningNote");
+  if (learningNote) learningNote.hidden = true;
 
   const { data: auctionState } = await supabase.rpc("club_auction_get_state");
   const scheduleEl = document.getElementById("scheduleLine");
-  if (scheduleEl && auctionState) {
-    if (!auctionState.enabled) {
-      scheduleEl.textContent = "Club auction is not enabled yet (admin: Transfer management).";
-      scheduleEl.style.color = "#faa";
-    } else if (auctionState.bidding_open) {
-      scheduleEl.textContent = "Bidding is open now — complete onboarding above, then use the club auction room.";
-      scheduleEl.style.color = "#9f9";
-    } else if (auctionState.start_time) {
-      const start = new Date(auctionState.start_time);
-      scheduleEl.textContent = `Auction opens: ${start.toLocaleString("en-GB", { timeZone: "Europe/London" })} UK`;
-    } else {
+  if (scheduleEl) {
+    if (isWaitingList && !isAuctionInvitee) {
       scheduleEl.textContent =
-        "No start time scheduled — admin: Transfer management → Club auction On → Save settings.";
-      scheduleEl.style.color = "#faa";
+        "You are on the waiting list. Auction schedule appears here when you are invited to bid.";
+      scheduleEl.style.color = "#aaa";
+    } else if (auctionState) {
+      if (!auctionState.enabled) {
+        scheduleEl.textContent =
+          "Club auction is not enabled yet (admin: Transfer management).";
+        scheduleEl.style.color = "#faa";
+      } else if (auctionState.bidding_open) {
+        scheduleEl.textContent =
+          "Bidding is open now — complete onboarding above, then use the club auction room.";
+        scheduleEl.style.color = "#9f9";
+      } else if (auctionState.start_time) {
+        const start = new Date(auctionState.start_time);
+        scheduleEl.textContent = `Auction opens: ${start.toLocaleString("en-GB", {
+          timeZone: "Europe/London",
+        })} UK`;
+      } else {
+        scheduleEl.textContent =
+          "No start time scheduled — admin: Transfer management → Club auction On → Save settings.";
+        scheduleEl.style.color = "#faa";
+      }
     }
   }
 
@@ -216,18 +269,28 @@ document.addEventListener("DOMContentLoaded", async () => {
       return;
     }
     if (statusEl) {
-      statusEl.textContent = `Saved tag “${data?.owner_tag || tag}”. It is now locked for the club auction.`;
+      statusEl.textContent = data?.locked
+        ? `Saved tag “${data?.owner_tag || tag}”. It is now locked for the club auction.`
+        : `Saved tag “${data?.owner_tag || tag}”.`;
       statusEl.style.color = "#9f9";
     }
     if (tagInput) {
-      tagInput.disabled = true;
       tagInput.value = data?.owner_tag || tag;
+      if (data?.locked) tagInput.disabled = true;
     }
-    if (saveTagBtn) saveTagBtn.disabled = true;
-    if (tagLockedLine) {
+    if (saveTagBtn && data?.locked) saveTagBtn.disabled = true;
+    if (tagLockedLine && data?.locked) {
       tagLockedLine.hidden = false;
       tagLockedLine.textContent =
         `Tag locked: “${data?.owner_tag || tag}” — shown on club auction bids and your club if you win.`;
+    }
+    if (budgetEl && data?.pending_starting_balance > 0) {
+      budgetEl.hidden = false;
+      budgetEl.style.color = "#9f9";
+      budgetEl.style.fontSize = "18px";
+      budgetEl.textContent = `Starting bank balance: ${formatMoney(
+        data.pending_starting_balance
+      )}`;
     }
     await refreshRegistrySelf();
   });

@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>GPSL — Club auction</title>
+  <title>GPSL — Owner details</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <style>
@@ -26,14 +26,13 @@
 <body>
   <div id="nav"></div>
   <div class="wrap">
-    <h1>Club auction</h1>
+    <h1>Owner details</h1>
     <p class="note" id="introBudgetLine">
-      You are registered for GPSL but do not have a club yet. The <b>club auction</b> is the first step —
-      you will bid from your starting budget (shown below). When the auction completes, your club is assigned,
-      your balance is set, and the full site opens.
+      Set your owner tag, timezone, and match availability. Your starting bank balance is shown below.
+      When you are invited to the club draft auction, you bid from this balance.
     </p>
     <div class="card">
-      <p class="note">Set your <b>owner tag</b> before bidding (shown as the auction leader and on club pages once you win). <b>It cannot be changed</b> after you save it for the club auction.</p>
+      <p class="note">Set your <b>owner tag</b> (shown on the waiting list and as the auction leader). Once you are invited to the club auction, the tag <b>cannot be changed</b>.</p>
       <label for="ownerTag">Owner tag</label>
       <input id="ownerTag" type="text" maxlength="64" placeholder="e.g. Rotavator" autocomplete="nickname">
       <button type="button" class="button" id="saveTagBtn">Save tag</button>
@@ -59,10 +58,8 @@
     <p class="note" id="auctionRoomBlocked" hidden style="margin-top:16px;color:#faa;">
       Complete your owner tag, timezone, and match availability above before entering the club auction room.
     </p>
-    <p class="note" style="margin-top:12px;">
-      Read <a href="learning_gpsl.html" style="color:#ff9900;">Learning GPSL</a> while you wait.
-    </p>
+    <p class="note" style="margin-top:12px;" id="learningNote" hidden></p>
   </div>
-  <script type="module" src="awaiting_club.js?v=20260704-onboard-avail"></script>
+  <script type="module" src="awaiting_club.js?v=20260807-preclub"></script>
 </body>
 </html>
