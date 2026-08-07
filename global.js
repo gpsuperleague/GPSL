@@ -2091,7 +2091,7 @@ export async function buildNav() {
       navSections = [
         {
           id: "preclub",
-          label: "Before club",
+          label: "The Waiting Room",
           items: [...(accessMod.PRE_CLUB_NAV_ITEMS || [])],
         },
       ];
@@ -2100,7 +2100,7 @@ export async function buildNav() {
       navSections = [
         {
           id: "preclub",
-          label: "Before club",
+          label: "The Waiting Room",
           items: [
             { href: "waiting_list.html", label: "Waiting list", page: "waiting_list" },
             { href: "awaiting_club.html", label: "Owner details", page: "awaiting_club" },
