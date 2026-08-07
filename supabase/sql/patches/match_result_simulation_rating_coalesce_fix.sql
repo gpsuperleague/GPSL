@@ -3,6 +3,8 @@
 -- Prefer this over re-running the full match_result_simulation.sql
 -- (avoids ALTER TABLE locks that can deadlock against live traffic).
 --
+-- Also caps Subbed on at 5 (matchday bench may list 12).
+--
 -- Close any Simulate tabs, then run this once in Supabase SQL Editor.
 -- If it deadlocks, wait 10s and retry — do not click Simulate while it runs.
 -- =============================================================================
@@ -107,25 +109,37 @@ BEGIN
       (
         SELECT jsonb_agg(
           jsonb_build_object(
-            'player_id', sp.player_id,
-            'name', p."Name",
-            'rating', public.match_sim_player_rating_num(p."Rating"::text, 70),
-            'role', public.match_sim_role_from_slot(NULL, p."Position"),
+            'player_id', b.player_id,
+            'name', b.name,
+            'rating', b.rating,
+            'role', b.role,
             'pitch_slot', NULL,
             'started', false,
+            -- Matchday allows 12 on the bench list; only top 5 are used as Subbed on.
             'subbed_on', true,
-            'is_star', public.match_sim_is_star(
-              public.match_sim_player_rating_num(p."Rating"::text, 70)
-            )
+            'is_star', b.is_star
           )
-          ORDER BY sp.sort_order NULLS LAST, p."Name"
+          ORDER BY b.ord
         )
-        FROM public.club_matchday_squad_player sp
-        JOIN public."Players" p ON p."Konami_ID"::text = sp.player_id
-        WHERE sp.club_short_name = v_club
-          AND sp.slot_kind = 'bench'
-          AND p."Contracted_Team" = v_club
-        LIMIT 5
+        FROM (
+          SELECT
+            sp.player_id,
+            p."Name" AS name,
+            public.match_sim_player_rating_num(p."Rating"::text, 70) AS rating,
+            public.match_sim_role_from_slot(NULL, p."Position") AS role,
+            public.match_sim_is_star(
+              public.match_sim_player_rating_num(p."Rating"::text, 70)
+            ) AS is_star,
+            row_number() OVER (
+              ORDER BY sp.sort_order NULLS LAST, p."Name"
+            ) AS ord
+          FROM public.club_matchday_squad_player sp
+          JOIN public."Players" p ON p."Konami_ID"::text = sp.player_id
+          WHERE sp.club_short_name = v_club
+            AND sp.slot_kind = 'bench'
+            AND p."Contracted_Team" = v_club
+        ) b
+        WHERE b.ord <= 5
       ),
       '[]'::jsonb
     )
@@ -158,8 +172,8 @@ BEGIN
               FROM jsonb_array_elements(v_rows) e
               WHERE e->>'player_id' = p."Konami_ID"::text
             )
-          LIMIT 5
         ) y
+        WHERE y.ord <= 5
       ),
       '[]'::jsonb
     )
