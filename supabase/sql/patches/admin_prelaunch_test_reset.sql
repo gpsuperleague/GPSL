@@ -262,13 +262,12 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SET statement_timeout = '600s'
 AS $function$
 DECLARE
   v_enabled boolean;
   v_audit_id bigint;
   v_preview jsonb;
-  v_club text;
-  v_mgr record;
   v_starting numeric;
   v_reset_owners boolean;
   v_clear_history boolean;
@@ -276,6 +275,9 @@ DECLARE
   v_deleted int;
   v_result jsonb := '{}'::jsonb;
 BEGIN
+  -- Hosted Supabase default timeout is often too short for a full wipe
+  PERFORM set_config('statement_timeout', '600s', true);
+
   IF NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
   END IF;
@@ -367,17 +369,27 @@ BEGIN
   WHERE r.owner_id = x.owner_id
     AND nullif(btrim(r.owner_tag), '') IS NULL;
 
-  -- Phase B: detach all owners
-  FOR v_club IN
-    SELECT c."ShortName"
-    FROM public."Clubs" c
-    WHERE c.owner_id IS NOT NULL
-    ORDER BY c."ShortName"
-  LOOP
-    PERFORM public.admin_club_vacate(v_club);
-  END LOOP;
+  -- Phase B: detach all owners (bulk — faster than per-club vacate)
+  UPDATE public.international_owner_nations
+  SET is_active = false,
+      released_at = now()
+  WHERE is_active = true;
 
-  PERFORM public.international_admin_clear_nation_assignments();
+  UPDATE public."Clubs"
+  SET owner_id = NULL,
+      owner = NULL
+  WHERE owner_id IS NOT NULL;
+
+  IF to_regclass('public.gpsl_club_caretaker') IS NOT NULL THEN
+    UPDATE public.gpsl_club_caretaker
+    SET ended_at = now(),
+        ended_by = 'TEST_RESET'
+    WHERE ended_at IS NULL;
+  END IF;
+
+  IF to_regprocedure('public.international_admin_clear_nation_assignments()') IS NOT NULL THEN
+    PERFORM public.international_admin_clear_nation_assignments();
+  END IF;
 
   -- Phase C: transfer market + auctions (WHERE true — Supabase blocks bare DELETE)
   DELETE FROM public."Player_Transfer_Bids" WHERE true;
@@ -402,6 +414,9 @@ BEGIN
 
   v_result := v_result || public.admin_club_auction_reset();
 
+  IF to_regclass('public.special_auction_gauntlet_bids') IS NOT NULL THEN
+    DELETE FROM public.special_auction_gauntlet_bids WHERE true;
+  END IF;
   DELETE FROM public.special_auction_bids WHERE true;
   DELETE FROM public.special_auctions WHERE true;
 
@@ -423,23 +438,16 @@ BEGIN
   GET DIAGNOSTICS v_deleted = ROW_COUNT;
   v_result := v_result || jsonb_build_object('players_contract_cleared', v_deleted);
 
-  FOR v_mgr IN
-    SELECT m.id
-    FROM public."Managers" m
-    WHERE m.contracted_club IS NOT NULL AND btrim(m.contracted_club) <> ''
-  LOOP
-    BEGIN
-      PERFORM public.manager_release_from_club(v_mgr.id, NULL, NULL, 'transfer_sale');
-    EXCEPTION WHEN OTHERS THEN
-      UPDATE public."Managers"
-      SET contracted_club = NULL,
-          contract_seasons_remaining = NULL,
-          weekly_wage = NULL,
-          signed_season_id = NULL,
-          updated_at = now()
-      WHERE id = v_mgr.id;
-    END;
-  END LOOP;
+  -- Bulk clear manager contracts (skip per-manager release side-effects for speed)
+  UPDATE public."Managers"
+  SET contracted_club = NULL,
+      contract_seasons_remaining = NULL,
+      weekly_wage = NULL,
+      signed_season_id = NULL,
+      updated_at = now()
+  WHERE contracted_club IS NOT NULL
+     OR weekly_wage IS NOT NULL
+     OR signed_season_id IS NOT NULL;
 
   UPDATE public."Clubs"
   SET manager_id = NULL,
