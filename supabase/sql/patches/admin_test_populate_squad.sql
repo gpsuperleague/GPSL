@@ -4,7 +4,9 @@
 --
 -- Instant GPDB free-agent signings (not draft bids):
 --   player_assign_to_club → Transfer_History (fee = MV) → post_transfer_ledger_for_history
--- Defaults: 2 GK · 8 DEF · 8 MID · 6 FWD; min HG 8; min U21 5; stars ≤ division cap.
+-- Defaults: 2 GK · 8 DEF · 8 MID · 6 FWD; min HG 8; min U21 5; stars = division quota.
+--
+-- Performance: builds a one-shot free-agent pool (temp table), then picks from it.
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION public.club_squad_position_counts(p_club_short_name text)
@@ -99,7 +101,10 @@ BEGIN
   INTO v_stars
   FROM public."Players" p
   WHERE p."Contracted_Team" = v_club
-    AND public.club_squad_player_rating(p."Konami_ID"::text) >= v_star_min
+    AND coalesce(
+      nullif(regexp_replace(coalesce(btrim(p."Rating"::text), ''), '[^0-9]', '', 'g'), ''),
+      '0'
+    )::integer >= v_star_min
     AND (v_ooo IS NULL OR p."Konami_ID"::text <> v_ooo);
 
   RETURN jsonb_build_object(
@@ -141,10 +146,12 @@ RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
+SET statement_timeout = '120s'
 AS $function$
 DECLARE
   v_club text := btrim(p_club_short_name);
   v_club_nation text;
+  v_club_nation_key text;
   v_target_size constant int := 24;
   v_min_hg constant int := 8;
   v_min_u21 constant int := 5;
@@ -170,7 +177,6 @@ DECLARE
   v_fwd int;
   v_squad_before int;
   v_need int;
-  v_exclude text[] := ARRAY[]::text[];
   v_signed jsonb := '[]'::jsonb;
   v_skipped jsonb := '[]'::jsonb;
   v_placed int := 0;
@@ -200,7 +206,7 @@ DECLARE
   v_pos_group text;
   v_amount numeric;
   v_history_id bigint;
-  v_assign jsonb;
+  v_pool_count int := 0;
 BEGIN
   IF auth.uid() IS NOT NULL AND NOT public.is_gpsl_admin() THEN
     RAISE EXCEPTION 'Admin only';
@@ -238,6 +244,7 @@ BEGIN
   SELECT c."Nation" INTO v_club_nation
   FROM public."Clubs" c
   WHERE c."ShortName" = v_club;
+  v_club_nation_key := public.normalize_nation_key(v_club_nation);
 
   SELECT cf.balance INTO v_balance
   FROM public."Club_Finances" cf
@@ -270,7 +277,10 @@ BEGIN
   INTO v_stars
   FROM public."Players" p
   WHERE p."Contracted_Team" = v_club
-    AND public.club_squad_player_rating(p."Konami_ID"::text) >= v_star_min
+    AND coalesce(
+      nullif(regexp_replace(coalesce(btrim(p."Rating"::text), ''), '[^0-9]', '', 'g'), ''),
+      '0'
+    )::integer >= v_star_min
     AND (v_ooo IS NULL OR p."Konami_ID"::text <> v_ooo);
 
   IF v_squad > v_target_size THEN
@@ -340,6 +350,77 @@ BEGIN
     );
   END IF;
 
+  -- One scan of free agents → temp pool. Picks are O(1) filters from here.
+  CREATE TEMP TABLE _admin_populate_pool (
+    player_id text PRIMARY KEY,
+    player_name text,
+    player_position text,
+    market_value numeric,
+    rating int,
+    age int,
+    is_home_grown boolean,
+    is_u21 boolean,
+    is_star boolean,
+    pos_group text,
+    pick_rand double precision
+  ) ON COMMIT DROP;
+
+  INSERT INTO _admin_populate_pool (
+    player_id, player_name, player_position, market_value,
+    rating, age, is_home_grown, is_u21, is_star, pos_group, pick_rand
+  )
+  SELECT
+    p."Konami_ID"::text,
+    p."Name",
+    p."Position",
+    coalesce(p.market_value::numeric, 0),
+    coalesce(
+      nullif(regexp_replace(coalesce(btrim(p."Rating"::text), ''), '[^0-9]', '', 'g'), ''),
+      '0'
+    )::integer,
+    nullif(btrim(p."Age"::text), '')::integer,
+    (
+      public.normalize_nation_key(p."Nation") = v_club_nation_key
+      AND v_club_nation_key <> ''
+    ),
+    coalesce(nullif(btrim(p."Age"::text), '')::integer, 99) <= 21,
+    coalesce(
+      nullif(regexp_replace(coalesce(btrim(p."Rating"::text), ''), '[^0-9]', '', 'g'), ''),
+      '0'
+    )::integer >= v_star_min,
+    public.international_player_pool_position_group(p."Position"),
+    random()
+  FROM public."Players" p
+  WHERE (p."Contracted_Team" IS NULL OR btrim(p."Contracted_Team") = '')
+    AND coalesce(p.pesdb_unavailable, false) = false
+    AND NOT public.player_signed_this_season(p."Season_Signed")
+    AND (
+      p.contract_seasons_remaining IS NULL
+      OR p.contract_seasons_remaining > 1
+    )
+    AND coalesce(p.market_value::numeric, 0) > 0
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public."Player_Transfer_Listings" l
+      WHERE l.player_id = p."Konami_ID"::text
+        AND l.status = 'Active'
+    );
+
+  CREATE INDEX ON _admin_populate_pool (pos_group);
+  CREATE INDEX ON _admin_populate_pool (is_home_grown) WHERE is_home_grown;
+  CREATE INDEX ON _admin_populate_pool (is_u21) WHERE is_u21;
+  CREATE INDEX ON _admin_populate_pool (is_star) WHERE is_star;
+
+  SELECT count(*)::int INTO v_pool_count FROM _admin_populate_pool;
+
+  IF v_pool_count = 0 THEN
+    RETURN jsonb_build_object(
+      'ok', false,
+      'reason', 'no_eligible_free_agents',
+      'club', v_club
+    );
+  END IF;
+
   FOR v_i IN 1..v_need LOOP
     EXIT WHEN v_squad >= v_target_size;
 
@@ -372,8 +453,6 @@ BEGIN
       v_pos_deficit := v_def_fwd;
     END IF;
 
-    -- Registration first: HG / U21 / division star quota must be filled.
-    -- Force a constraint when remaining slots would otherwise make it impossible.
     v_force_star := v_need_star > 0 AND v_slots_left <= v_need_star;
     v_force_hg := v_need_hg > 0 AND v_slots_left <= v_need_hg;
     v_force_u21 := v_need_u21 > 0 AND v_slots_left <= v_need_u21;
@@ -397,118 +476,42 @@ BEGIN
     ELSIF v_compliance_met THEN
       v_pick_modes := ARRAY['any'];
     ELSE
-      -- Fill star quota + HG + U21 before pure position chart fill.
       v_pick_modes := ARRAY['star', 'hg', 'u21', 'pos', 'any'];
     END IF;
 
     v_player_found := false;
 
     FOREACH v_mode IN ARRAY v_pick_modes LOOP
-      IF v_mode = 'star' AND v_need_star <= 0 THEN
-        CONTINUE;
-      END IF;
-      IF v_mode = 'hg' AND v_need_hg <= 0 THEN
-        CONTINUE;
-      END IF;
-      IF v_mode = 'u21' AND v_need_u21 <= 0 THEN
-        CONTINUE;
-      END IF;
-      IF v_mode = 'pos' AND (v_need_pos IS NULL OR v_pos_deficit <= 0) THEN
-        CONTINUE;
-      END IF;
+      IF v_mode = 'star' AND v_need_star <= 0 THEN CONTINUE; END IF;
+      IF v_mode = 'hg' AND v_need_hg <= 0 THEN CONTINUE; END IF;
+      IF v_mode = 'u21' AND v_need_u21 <= 0 THEN CONTINUE; END IF;
+      IF v_mode = 'pos' AND (v_need_pos IS NULL OR v_pos_deficit <= 0) THEN CONTINUE; END IF;
 
       SELECT
-        p."Konami_ID"::text AS player_id,
-        p."Name" AS player_name,
-        p."Position" AS player_position,
-        coalesce(p.market_value::numeric, 0) AS market_value,
-        public.club_squad_player_rating(p."Konami_ID"::text) AS rating,
-        public.club_squad_player_age(p."Konami_ID"::text) AS age,
-        (
-          public.normalize_nation_key(p."Nation") = public.normalize_nation_key(v_club_nation)
-          AND public.normalize_nation_key(p."Nation") <> ''
-        ) AS is_home_grown,
-        public.international_player_pool_position_group(p."Position") AS pos_group
+        pool.player_id,
+        pool.player_name,
+        pool.player_position,
+        pool.market_value,
+        pool.rating,
+        pool.age,
+        pool.is_home_grown,
+        pool.pos_group
       INTO v_player
-      FROM public."Players" p
-      WHERE (p."Contracted_Team" IS NULL OR btrim(p."Contracted_Team") = '')
-        AND coalesce(p.pesdb_unavailable, false) = false
-        AND NOT public.player_signed_this_season(p."Season_Signed")
-        AND (
-          p.contract_seasons_remaining IS NULL
-          OR p.contract_seasons_remaining > 1
-        )
-        AND coalesce(p.market_value::numeric, 0) > 0
-        AND NOT (p."Konami_ID"::text = ANY (v_exclude))
-        AND (
-          public.club_squad_player_rating(p."Konami_ID"::text) < v_star_min
-          OR v_stars < v_star_cap
-        )
-        AND NOT EXISTS (
-          SELECT 1
-          FROM public."Player_Transfer_Listings" l
-          WHERE l.player_id = p."Konami_ID"::text
-            AND l.status = 'Active'
-        )
-        AND (
-          v_mode <> 'star'
-          OR public.club_squad_player_rating(p."Konami_ID"::text) >= v_star_min
-        )
-        AND (
-          v_mode <> 'hg'
-          OR (
-            public.normalize_nation_key(p."Nation") = public.normalize_nation_key(v_club_nation)
-            AND public.normalize_nation_key(p."Nation") <> ''
-          )
-        )
-        AND (
-          v_mode <> 'u21'
-          OR public.club_squad_player_age(p."Konami_ID"::text) <= 21
-        )
-        AND (
-          v_mode <> 'pos'
-          OR public.international_player_pool_position_group(p."Position") = v_need_pos
-        )
-        -- When forced, also stack other unmet registration needs if possible.
-        AND (
-          NOT v_force_hg
-          OR (
-            public.normalize_nation_key(p."Nation") = public.normalize_nation_key(v_club_nation)
-            AND public.normalize_nation_key(p."Nation") <> ''
-          )
-        )
-        AND (
-          NOT v_force_u21
-          OR public.club_squad_player_age(p."Konami_ID"::text) <= 21
-        )
-        AND (
-          NOT v_force_star
-          OR public.club_squad_player_rating(p."Konami_ID"::text) >= v_star_min
-        )
+      FROM _admin_populate_pool pool
+      WHERE (NOT v_force_star OR pool.is_star)
+        AND (NOT v_force_hg OR pool.is_home_grown)
+        AND (NOT v_force_u21 OR pool.is_u21)
+        AND (v_mode <> 'star' OR pool.is_star)
+        AND (v_mode <> 'hg' OR pool.is_home_grown)
+        AND (v_mode <> 'u21' OR pool.is_u21)
+        AND (v_mode <> 'pos' OR pool.pos_group = v_need_pos)
+        AND (NOT pool.is_star OR v_stars < v_star_cap)
       ORDER BY
-        -- Prefer players who also help unmet registration / position deficits.
-        CASE
-          WHEN v_need_star > 0
-            AND public.club_squad_player_rating(p."Konami_ID"::text) >= v_star_min
-          THEN 0 ELSE 1
-        END,
-        CASE
-          WHEN v_need_hg > 0
-            AND public.normalize_nation_key(p."Nation") = public.normalize_nation_key(v_club_nation)
-            AND public.normalize_nation_key(p."Nation") <> ''
-          THEN 0 ELSE 1
-        END,
-        CASE
-          WHEN v_need_u21 > 0
-            AND public.club_squad_player_age(p."Konami_ID"::text) <= 21
-          THEN 0 ELSE 1
-        END,
-        CASE
-          WHEN v_need_pos IS NOT NULL
-            AND public.international_player_pool_position_group(p."Position") = v_need_pos
-          THEN 0 ELSE 1
-        END,
-        random()
+        CASE WHEN v_need_star > 0 AND pool.is_star THEN 0 ELSE 1 END,
+        CASE WHEN v_need_hg > 0 AND pool.is_home_grown THEN 0 ELSE 1 END,
+        CASE WHEN v_need_u21 > 0 AND pool.is_u21 THEN 0 ELSE 1 END,
+        CASE WHEN v_need_pos IS NOT NULL AND pool.pos_group = v_need_pos THEN 0 ELSE 1 END,
+        pool.pick_rand
       LIMIT 1;
 
       IF FOUND THEN
@@ -522,7 +525,8 @@ BEGIN
         jsonb_build_object(
           'reason', 'no_eligible_player',
           'attempt', v_i,
-          'slots_left', v_target_size - v_squad
+          'slots_left', v_target_size - v_squad,
+          'pool_remaining', (SELECT count(*)::int FROM _admin_populate_pool)
         )
       );
       EXIT;
@@ -534,8 +538,9 @@ BEGIN
     v_pos_group := v_player.pos_group;
     v_amount := coalesce(v_player.market_value, 0);
 
+    DELETE FROM _admin_populate_pool WHERE player_id = v_player.player_id;
+
     IF v_amount <= 0 THEN
-      v_exclude := array_append(v_exclude, v_player.player_id);
       CONTINUE;
     END IF;
 
@@ -545,7 +550,7 @@ BEGIN
           PERFORM public.assert_player_available_for_signing(v_player.player_id);
         END IF;
 
-        v_assign := public.player_assign_to_club(
+        PERFORM public.player_assign_to_club(
           v_player.player_id,
           v_club,
           NULL::numeric,
@@ -588,14 +593,12 @@ BEGIN
             'player_name', v_player.player_name
           )
         );
-        v_exclude := array_append(v_exclude, v_player.player_id);
         CONTINUE;
       END;
     END IF;
 
     v_placed := v_placed + 1;
     v_spent := v_spent + v_amount;
-    v_exclude := array_append(v_exclude, v_player.player_id);
     v_squad := v_squad + 1;
     IF v_is_hg THEN v_hg := v_hg + 1; END IF;
     IF v_is_u21 THEN v_u21 := v_u21 + 1; END IF;
@@ -622,6 +625,8 @@ BEGIN
       )
     );
   END LOOP;
+
+  DROP TABLE IF EXISTS _admin_populate_pool;
 
   v_registration_met := (
     v_hg >= v_min_hg
@@ -662,6 +667,7 @@ BEGIN
     'placed', v_placed,
     'planned', jsonb_array_length(v_signed),
     'slots_requested', v_need,
+    'pool_size', v_pool_count,
     'squad_size_before', v_squad_before,
     'squad_size_after', v_squad,
     'target_squad_size', v_target_size,
