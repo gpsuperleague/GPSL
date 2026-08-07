@@ -504,6 +504,7 @@ DECLARE
   v_role text;
   v_pr numeric;
   v_started boolean;
+  v_i int;
 BEGIN
   FOR r IN
     SELECT * FROM jsonb_to_recordset(p_side) AS x(
@@ -564,11 +565,15 @@ BEGIN
     v_goals_left := v_goals_left - 1;
   END LOOP;
 
-  -- Assists: typically a bit fewer than goals
-  v_assists_target := CASE
-    WHEN p_goals <= 0 THEN 0
-    ELSE greatest(0, least(p_goals, floor(p_goals * (0.55 + random() * 0.35))::int))
-  END;
+  -- Each goal independently has a 90% chance of an assist
+  v_assists_target := 0;
+  IF p_goals > 0 THEN
+    FOR v_i IN 1..p_goals LOOP
+      IF random() < 0.90 THEN
+        v_assists_target := v_assists_target + 1;
+      END IF;
+    END LOOP;
+  END IF;
   v_assists_left := v_assists_target;
   WHILE v_assists_left > 0 LOOP
     v_roll := random() * v_assist_pool;
