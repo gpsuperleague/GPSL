@@ -87,6 +87,27 @@ AS $$
   SELECT coalesce(p_role, '') IN ('gk', 'def', 'dmf');
 $$;
 
+-- Active star boost only if: star + on natural position + correct role group
+CREATE OR REPLACE FUNCTION public.match_sim_star_boost_active(
+  p_is_star boolean,
+  p_on_natural boolean,
+  p_role text,
+  p_kind text
+)
+RETURNS boolean
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT coalesce(p_is_star, false)
+    AND coalesce(p_on_natural, false)
+    AND CASE lower(coalesce(p_kind, ''))
+      WHEN 'fin' THEN public.match_sim_star_is_finisher(p_role)
+      WHEN 'create' THEN public.match_sim_star_is_creator(p_role)
+      WHEN 'stop' THEN public.match_sim_star_is_stopper(p_role)
+      ELSE false
+    END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.match_sim_side_star_powers(p_side jsonb)
 RETURNS jsonb
 LANGUAGE sql
@@ -98,7 +119,7 @@ AS $$
         (e->>'is_star')::boolean,
         coalesce((e->>'on_natural')::boolean, false),
         e->>'role',
-        'stop'
+        'stop'::text
       ) THEN public.match_sim_star_quality((e->>'rating')::numeric) ELSE 0 END
     ), 0),
     'create', coalesce(sum(
@@ -106,7 +127,7 @@ AS $$
         (e->>'is_star')::boolean,
         coalesce((e->>'on_natural')::boolean, false),
         e->>'role',
-        'create'
+        'create'::text
       ) THEN public.match_sim_star_quality((e->>'rating')::numeric) ELSE 0 END
     ), 0),
     'fin', coalesce(sum(
@@ -114,7 +135,7 @@ AS $$
         (e->>'is_star')::boolean,
         coalesce((e->>'on_natural')::boolean, false),
         e->>'role',
-        'fin'
+        'fin'::text
       ) THEN public.match_sim_star_quality((e->>'rating')::numeric) ELSE 0 END
     ), 0),
     'total', coalesce(sum(
@@ -151,7 +172,7 @@ DECLARE
   v_boost numeric := coalesce((v_s->>'star_goal_boost_pct')::numeric, 12) / 100.0;
   v_q numeric;
 BEGIN
-  IF NOT public.match_sim_star_boost_active(p_is_star, p_on_natural, p_role, 'fin') THEN
+  IF NOT public.match_sim_star_boost_active(p_is_star, p_on_natural, p_role, 'fin'::text) THEN
     RETURN 1.0;
   END IF;
   v_q := public.match_sim_star_quality(p_rating);
@@ -176,7 +197,7 @@ DECLARE
   v_boost numeric := coalesce((v_s->>'star_assist_boost_pct')::numeric, 12) / 100.0;
   v_q numeric;
 BEGIN
-  IF NOT public.match_sim_star_boost_active(p_is_star, p_on_natural, p_role, 'create') THEN
+  IF NOT public.match_sim_star_boost_active(p_is_star, p_on_natural, p_role, 'create'::text) THEN
     RETURN 1.0;
   END IF;
   v_q := public.match_sim_star_quality(p_rating);
