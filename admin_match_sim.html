@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" class="admin-root">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>html,body{background:#111;color:#ddd;margin:0}</style>
+  <title>Match simulation toggle — GPSL Admin</title>
+  <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
+  <link rel="stylesheet" href="admin.css">
+  <style>
+    .arm-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+    .arm-badge { padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+    .arm-off { background: #333; color: #aaa; }
+    .arm-on { background: #1e3a2f; color: #9fd4b0; border: 1px solid #3a6; }
+    .rules { color: #aaa; font-size: 13px; line-height: 1.5; margin: 8px 0 0; padding-left: 18px; }
+  </style>
+</head>
+<body class="admin-page">
+  <div id="nav"></div>
+  <h1 class="admin-title">Match result simulation</h1>
+  <div id="adminLayout">
+    <div class="admin-main" id="adminMain">
+      <p class="note">
+        <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
+        · Owners get a <b>Simulate</b> button on My Club Fixtures when this is on.
+        Turn <b>off</b> before the first proper live season.
+      </p>
+
+      <div class="card">
+        <h2>Toggle</h2>
+        <div class="arm-row">
+          <span id="armBadge" class="arm-badge arm-off">OFF</span>
+          <button type="button" class="button" id="enableBtn" style="background:#2a5535;">Enable simulation</button>
+          <button type="button" class="button" id="disableBtn" style="background:#444;">Disable simulation</button>
+        </div>
+        <div id="status" class="status-line"></div>
+      </div>
+
+      <div class="card">
+        <h2>How it works</h2>
+        <ul class="rules">
+          <li>Uses each club’s saved matchday starting XI (else top 11 by Rating).</li>
+          <li>XI combined Rating decides favourites; star players nudge chances ~10%.</li>
+          <li>One owner click finalises the match (score, stats, MOTM, gates) in a few seconds.</li>
+          <li>Opponent is locked out while a simulation is running / once the fixture is played.</li>
+        </ul>
+        <p class="note">SQL: <code>supabase/sql/patches/match_result_simulation.sql</code></p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="admin_match_sim.js?v=20260807-sim"></script>
+</body>
+</html>

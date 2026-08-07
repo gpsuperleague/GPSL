@@ -31,6 +31,7 @@ let calendarStatus = null;
 let holidayContext = null;
 /** @type {any[]} */
 let lastFixtures = [];
+let matchSimEnabled = false;
 
 function showError(msg) {
   const el = document.getElementById("clubFixturesError");
@@ -142,6 +143,17 @@ function actionHtml(f) {
     } else if (f.status === "played") {
       parts.push(`<a href="${url}" class="btn-link secondary">Match details</a>`);
     }
+  }
+
+  if (
+    matchSimEnabled &&
+    f.status === "scheduled" &&
+    fixtureInvolvesClub(f, myClub) &&
+    !needsInboxConfirm(f, myClub)
+  ) {
+    parts.push(
+      `<button type="button" class="btn-link sim-result-btn" data-sim-fixture="${f.id}">Simulate</button>`
+    );
   }
 
   if (f.schedule_status === "agreed" && f.agreed_kickoff_at && f.status !== "played") {
@@ -365,6 +377,54 @@ function wireCalendarButtons(root) {
   }
 }
 
+async function simulateFixture(fixtureId, btn) {
+  const f = lastFixtures.find((row) => String(row.id) === String(fixtureId));
+  const label = f
+    ? `${f.home_club_name || f.home_club_short_name} vs ${f.away_club_name || f.away_club_short_name}`
+    : `fixture ${fixtureId}`;
+  if (
+    !confirm(
+      `Simulate result for ${label}?\n\nThis finalises the match immediately (opponent cannot overwrite).`
+    )
+  ) {
+    return;
+  }
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Simulating…";
+  }
+  showError("");
+
+  const { data, error } = await supabase.rpc("competition_simulate_fixture_result", {
+    p_fixture_id: Number(fixtureId),
+  });
+
+  if (error) {
+    showError(error.message || "Simulation failed");
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Simulate";
+    }
+    return;
+  }
+
+  showError("");
+  const score = data ? `${data.home_goals}–${data.away_goals}` : "";
+  if (btn) btn.textContent = score ? `Done ${score}` : "Done";
+  await refreshFixtures();
+}
+
+function wireSimButtons(root) {
+  root?.querySelectorAll("[data-sim-fixture]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.getAttribute("data-sim-fixture");
+      if (!id) return;
+      simulateFixture(id, btn);
+    });
+  });
+}
+
 function renderFixtures(fixtures) {
   const root = document.getElementById("clubFixturesRoot");
   lastFixtures = fixtures || [];
@@ -401,6 +461,7 @@ function renderFixtures(fixtures) {
       .join("");
 
   wireCalendarButtons(root);
+  wireSimButtons(root);
 
   if (focusMonth) {
     const target = root.querySelector(
@@ -434,6 +495,34 @@ async function loadMyClub(user) {
       myClub.name = reg.club_name || myClub.name;
     }
   }
+}
+
+async function refreshFixtures() {
+  const root = document.getElementById("clubFixturesRoot");
+  const { data, error } = await supabase.rpc("club_fixtures_my_club");
+  if (error) {
+    showError(error.message || "Could not refresh fixtures");
+    return;
+  }
+  const publicFixtures = await loadPublicFixturesForClub();
+  const fixtures = mergeFixtureActions(
+    Array.isArray(data) ? data : [],
+    publicFixtures
+  );
+  renderFixtures(fixtures);
+  if (root && !fixtures.length) {
+    root.innerHTML =
+      '<p class="empty">No fixtures for your club this season yet.</p>';
+  }
+}
+
+async function loadMatchSimEnabled() {
+  const { data, error } = await supabase.rpc("match_result_simulation_status");
+  if (error) {
+    matchSimEnabled = false;
+    return;
+  }
+  matchSimEnabled = !!data?.enabled;
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -473,26 +562,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     await loadTvFixtureIds(supabase, season.id);
+    await loadMatchSimEnabled();
 
     calendarStatus = await loadCalendarStatus(supabase);
     holidayContext = await loadHolidayPlayContext(supabase, myClub.short);
 
-    const { data, error } = await supabase.rpc("club_fixtures_my_club");
-    if (error) {
-      console.error("club_fixtures_my_club:", error);
-      showError(
-        "Could not load club fixtures. Run supabase/sql/patches/club_fixtures_discipline_injuries.sql in Supabase, then refresh."
-      );
-      root.innerHTML = '<p class="empty">Fixtures unavailable.</p>';
-      return;
-    }
-
-    const publicFixtures = await loadPublicFixturesForClub();
-    const fixtures = mergeFixtureActions(
-      Array.isArray(data) ? data : [],
-      publicFixtures
-    );
-    renderFixtures(fixtures);
+    await refreshFixtures();
   } catch (err) {
     console.error(err);
     showError(err.message || "Failed to load fixtures.");

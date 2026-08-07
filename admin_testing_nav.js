@@ -27,6 +27,12 @@ export const TESTING_ADMIN_NAV = [
     navDanger: true,
   },
   {
+    label: "Match result simulation",
+    href: "admin_match_sim.html",
+    page: "admin_match_sim",
+    navDanger: true,
+  },
+  {
     label: "Deploy month results",
     href: "admin_test_deploy_month.html",
     page: "admin_test_deploy_month",
