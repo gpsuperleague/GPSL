@@ -1,7 +1,7 @@
 /**
  * Admin Season — Create new season panel (modular rules cards).
  */
-import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260807-create-season-rules";
+import { renderRulesPanel } from "./gpsl_rules_cards.js?v=20260807-create-split-tick";
 
 export function getAdminSeasonCreateRules() {
   return {
@@ -30,8 +30,8 @@ export function getAdminSeasonCreateRules() {
       {
         heading: "Timeouts &amp; catch-up",
         items: [
-          "Large markets can time out in the browser — the season row may already exist.",
-          "Use <b>Tick contracts only</b>, or in SQL Editor: <code>SELECT public.admin_catchup_player_contract_tick();</code>",
+          "Create and tick run as <b>separate RPCs</b> so a slow tick cannot roll back the season row.",
+          "If tick times out: run <code>patches/contract_tick_statement_timeout_300s.sql</code>, then <b>Tick contracts only</b> or SQL: <code>SELECT public.admin_catchup_player_contract_tick(false);</code>",
           "Optional audit: run <code>admin_expiry_bid_rollover_audit.sql</code> before and after the tick.",
         ],
       },

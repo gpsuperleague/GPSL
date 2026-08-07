@@ -3,7 +3,7 @@ import {
   renderAdminSidebarHtml,
   wireAdminSidebarNav,
 } from "./admin_main_nav.js?v=20260807-prizes-in-create";
-import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260807-create-season-rules";
+import { renderAdminSeasonCreateRules } from "./admin_season_create_rules.js?v=20260807-create-split-tick";
 
 primeAdminPageChrome();
 import {
@@ -193,6 +193,23 @@ async function tickContractsOnly() {
   );
 }
 
+function createSeasonTickErrorHint(message) {
+  const msg = message || "";
+  if (/timeout|canceling statement/i.test(msg)) {
+    return " — run in SQL Editor: SELECT public.admin_catchup_player_contract_tick(false); (or contract_tick_season_rollover). Season create is a separate step.";
+  }
+  if (msg.includes("player_assign_to_club")) {
+    return " — run patches/player_assign_to_club_overload_fix.sql, then Tick contracts only";
+  }
+  if (/foreign contract lock|paid-up overflow lock/i.test(msg)) {
+    return " — run patches/foreign_lock_preseason_fallback.sql, then Tick contracts only";
+  }
+  if (/DELETE requires a WHERE clause/i.test(msg)) {
+    return " — run patches/contract_release_delete_where_fix.sql, then Tick contracts only";
+  }
+  return " — run patches/contract_tick_fa_before_contested.sql (+ prior tick fixes), then Tick contracts only";
+}
+
 async function createNextSeason() {
   const label = document.getElementById("compSeasonLabel").value.trim();
   if (!label) {
@@ -202,16 +219,15 @@ async function createNextSeason() {
 
   if (
     !confirm(
-      `Create competition season “${label}” in pre-season?\n\nThis will automatically:\n• create the pre-season\n• tick PLAYER contracts (decrement / expiry market)\n• catch up MANAGER season-end if that was skipped when ending the prior season`
+      `Create competition season “${label}” in pre-season?\n\nSteps (separate RPCs so a slow tick cannot undo create):\n• create the pre-season row\n• tick PLAYER contracts (expiry market / FA)\n• catch up MANAGER season-end if End Season skipped them`
     )
   ) {
     return;
   }
 
-  setStatus("compCreateStatus", "Creating pre-season + ticking contracts…");
-
   const active = await loadCurrentSeason(supabase);
   if (active) {
+    setStatus("compCreateStatus", "Rolling over legacy open year…");
     const { error: rollErr } = await supabase.rpc("rollover_season");
     if (rollErr) {
       setStatus("compCreateStatus", "❌ Rollover failed: " + rollErr.message, false);
@@ -219,89 +235,96 @@ async function createNextSeason() {
     }
   }
 
-  // Preferred: one RPC (create + player tick + manager safety-net)
-  let { data, error } = await supabase.rpc("competition_create_season_full", {
+  // Split create vs tick (same pattern as archive / month-lock) — one TX was timing out.
+  setStatus("compCreateStatus", "Creating pre-season…");
+  const created = await supabase.rpc("competition_create_season", {
     p_label: label,
   });
-
-  // Fallback if full RPC not deployed yet
-  if (error?.message?.includes("competition_create_season_full")) {
-    const created = await supabase.rpc("competition_create_season", {
-      p_label: label,
-    });
-    if (created.error) {
-      setStatus(
-        "compCreateStatus",
-        `❌ ${created.error.message} — run patches/season_rollover_auto_contracts.sql`,
-        false
-      );
-      return;
-    }
-    const tick = await supabase.rpc("admin_catchup_player_contract_tick", {
-      p_force: false,
-    });
-    const tickFallback =
-      tick.error?.message?.includes("admin_catchup_player_contract_tick")
-        ? await supabase.rpc("contract_tick_season_rollover")
-        : tick;
-    if (tickFallback.error) {
-      setStatus(
-        "compCreateStatus",
-        `✅ Season created (id ${created.data}) but PLAYER tick failed: ${tickFallback.error.message}. Run Tick contracts / SQL catch-up before go-live.`,
-        false
-      );
-      await refreshCompetitionAdmin();
-      return;
-    }
-    data = {
-      ok: true,
-      season_id: created.data,
-      player_tick: tickFallback.data?.tick || tickFallback.data,
-      manager_catchup: null,
-    };
-    error = null;
-  }
-
-  if (error) {
+  if (created.error) {
+    const already =
+      /already exists/i.test(created.error.message || "") ||
+      /duplicate/i.test(created.error.message || "");
     setStatus(
       "compCreateStatus",
-      `❌ ${error.message}${
-        /timeout|canceling statement/i.test(error.message || "")
-          ? " — run in SQL Editor: SELECT public.competition_create_season_full('…'); after season_rollover_auto_contracts.sql"
-          : error.message?.includes("player_assign_to_club")
-            ? " — run patches/player_assign_to_club_overload_fix.sql, then retry (or Tick contracts catch-up if season row exists)"
-            : /foreign contract lock|paid-up overflow lock/i.test(error.message || "")
-              ? " — run patches/foreign_lock_preseason_fallback.sql, then retry (or Tick contracts catch-up if season row exists)"
-              : /DELETE requires a WHERE clause/i.test(error.message || "")
-                ? " — run patches/contract_release_delete_where_fix.sql, then retry (or Tick contracts catch-up if season row exists)"
-                : " — run patches/contract_tick_fa_before_contested.sql (+ foreign_lock / assign overload / delete-where fixes if needed), then retry"
-      }`,
+      already
+        ? `⚠ Season “${label}” may already exist — use Tick contracts only, or SQL: SELECT public.admin_catchup_player_contract_tick(false);`
+        : `❌ ${created.error.message}`,
       false
     );
+    if (already) await refreshCompetitionAdmin();
     return;
   }
 
-  const seasonId = data?.season_id ?? data;
-  const tick = data?.player_tick || {};
-  const mgr = data?.manager_catchup;
-  const mgrNote =
-    mgr == null
-      ? ""
-      : mgr.skipped || mgr.reason === "already_processed"
-        ? " Managers already processed for prior season."
-        : mgr.ok === false
-          ? ` Manager catch-up: ${mgr.reason || "failed"} — run admin_catchup_manager_season_end(NULL).`
-          : ` Managers caught up for prior season.`;
+  const seasonId = created.data;
+  setStatus(
+    "compCreateStatus",
+    `Pre-season created (id ${seasonId}) — ticking player contracts…`
+  );
+
+  let tickRpc = await supabase.rpc("admin_catchup_player_contract_tick", {
+    p_force: false,
+  });
+  if (tickRpc.error?.message?.includes("admin_catchup_player_contract_tick")) {
+    tickRpc = await supabase.rpc("contract_tick_season_rollover");
+  }
+
+  if (tickRpc.error) {
+    setStatus(
+      "compCreateStatus",
+      `✅ Season created (id ${seasonId}) but PLAYER tick failed: ${tickRpc.error.message}${createSeasonTickErrorHint(
+        tickRpc.error.message
+      )}`,
+      "warn"
+    );
+    await refreshCompetitionAdmin();
+    if (seasonId) {
+      document.getElementById("compSetupSeasonSelect").value = String(seasonId);
+      compSelectedSeasonId = seasonId;
+      await loadCompSeasonData(seasonId);
+      await refreshCompCalendarForSeason(seasonId);
+    }
+    return;
+  }
+
+  if (tickRpc.data?.ok === false && tickRpc.data?.reason === "already_ticked") {
+    setStatus(
+      "compCreateStatus",
+      `✅ Season created (id ${seasonId}). Player tick already logged for ${
+        tickRpc.data.for_season_label || "this season"
+      }.`,
+      true
+    );
+  }
+
+  const tick = tickRpc.data?.tick || tickRpc.data || {};
+
+  setStatus("compCreateStatus", "Checking manager season-end catch-up…");
+  let mgrNote = "";
+  const mgrRpc = await supabase.rpc("admin_catchup_manager_season_end", {
+    p_season_id: null,
+    p_force: false,
+  });
+  if (mgrRpc.error?.message?.includes("admin_catchup_manager_season_end")) {
+    mgrNote = " Manager catch-up RPC not deployed (optional).";
+  } else if (mgrRpc.error) {
+    mgrNote = ` ⚠ Manager catch-up: ${mgrRpc.error.message}`;
+  } else if (mgrRpc.data?.skipped || mgrRpc.data?.reason === "already_processed") {
+    mgrNote = " Managers already processed for prior season.";
+  } else if (mgrRpc.data?.ok === false) {
+    mgrNote = ` ⚠ Manager catch-up: ${mgrRpc.data.reason || "failed"}.`;
+  } else if (mgrRpc.data) {
+    mgrNote = " Managers caught up for prior season.";
+  }
 
   document.getElementById("compSeasonLabel").value = "";
   setStatus(
     "compCreateStatus",
     `✅ Pre-season created (id ${seasonId}). Players: ${
-      tick?.players_decremented ?? "—"
-    } decremented, ${tick?.players_final_year ?? "—"} final-year, ${
       tick?.players_released_zero_years ?? "—"
-    } released.${mgrNote}`,
-    !(mgr && mgr.ok === false)
+    } FA-released, ${tick?.expiry_resolved?.players_resolved ?? "—"} contested resolved, ${
+      tick?.players_decremented ?? "—"
+    } multi-year decremented, ${tick?.players_final_year ?? "—"} now final-year.${mgrNote}`,
+    mgrNote.includes("⚠") ? "warn" : true
   );
 
   await refreshCompetitionAdmin();
