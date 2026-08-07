@@ -623,42 +623,58 @@ async function loadSeedFromSeasonOptions(targetSeasonId) {
   if (!select) return;
 
   const prevValue = select.value;
-  select.innerHTML = `<option value="">Auto (first with movements / finished playoffs)</option>`;
+  select.innerHTML = `<option value="">Auto — newest season with promotions applied</option>`;
 
   const { data: seasons, error } = await supabase
     .from("competition_seasons")
     .select("id, label, status")
-    .order("id", { ascending: true });
+    .order("id", { ascending: false });
 
   if (error || !seasons?.length) return;
 
   const { data: moveRows } = await supabase
     .from("competition_season_movements")
     .select("season_id");
-  const withMoves = new Set((moveRows || []).map((r) => r.season_id));
+  const withMoves = new Set((moveRows || []).map((r) => Number(r.season_id)));
+
+  // Only seasons that can actually supply division structure.
+  // Hide leftover empty setup/preseason shells from failed Create Pre-Season runs.
+  const candidates = seasons.filter((s) => {
+    if (targetSeasonId && Number(s.id) === Number(targetSeasonId)) return false;
+    const status = String(s.status || "").toLowerCase();
+    if (withMoves.has(Number(s.id))) return true;
+    if (status === "complete" || status === "archived") return true;
+    // Keep "ended"/active only if somehow still useful — usually not for seeding into new preseason
+    return false;
+  });
 
   let preferred = "";
-  for (const s of seasons) {
-    if (targetSeasonId && s.id === targetSeasonId) continue;
+  for (const s of candidates) {
     const opt = document.createElement("option");
     opt.value = String(s.id);
-    const tag = withMoves.has(s.id) ? " · has movements" : "";
-    opt.textContent = `${s.label} (id ${s.id}, ${s.status})${tag}`;
+    const label = String(s.label || `Season ${s.id}`).trim();
+    const moves = withMoves.has(Number(s.id));
+    opt.textContent = moves
+      ? `${label} — promotions applied`
+      : `${label} — finished (no movements row yet)`;
     select.appendChild(opt);
-    if (!preferred && withMoves.has(s.id)) preferred = String(s.id);
-    // Prefer explicitly labelled Season 1 when present and no movements elsewhere yet
-    if (
-      !preferred &&
-      /^season\s*1$/i.test(String(s.label || "").trim())
-    ) {
-      preferred = String(s.id);
-    }
+    if (!preferred && moves) preferred = String(s.id);
+  }
+
+  if (!candidates.length) {
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.disabled = true;
+    empty.textContent = "No finished seasons available yet";
+    select.appendChild(empty);
   }
 
   if (prevValue && [...select.options].some((o) => o.value === prevValue)) {
     select.value = prevValue;
   } else if (preferred) {
     select.value = preferred;
+  } else {
+    select.value = "";
   }
 }
 
