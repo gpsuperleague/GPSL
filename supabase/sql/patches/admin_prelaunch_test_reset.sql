@@ -460,6 +460,14 @@ BEGIN
   WHERE loan_id IN (SELECT id FROM public.club_loans);
   DELETE FROM public.club_loans WHERE true;
 
+  -- Applied fines reference fixtures + ledger; clear before ledger/season wipe.
+  -- Keep competition_fine_tariff (admin config).
+  IF to_regclass('public.competition_fine_applied') IS NOT NULL THEN
+    DELETE FROM public.competition_fine_applied WHERE true;
+    GET DIAGNOSTICS v_deleted = ROW_COUNT;
+    v_result := v_result || jsonb_build_object('deleted_fines_applied', v_deleted);
+  END IF;
+
   DELETE FROM public.bank_ledger WHERE true;
   DELETE FROM public.competition_finance_ledger WHERE true;
 
@@ -672,6 +680,44 @@ BEGIN
     UPDATE public."Clubs"
     SET stadium_fill_season_id = NULL
     WHERE stadium_fill_season_id IS NOT NULL;
+  END IF;
+
+  -- Extra season/fixture dependents that can block or trip FK updates on wipe
+  IF to_regclass('public.competition_result_submissions') IS NOT NULL THEN
+    DELETE FROM public.competition_result_submissions WHERE true;
+  END IF;
+  IF to_regclass('public.competition_league_points_adjustments') IS NOT NULL THEN
+    DELETE FROM public.competition_league_points_adjustments WHERE true;
+  END IF;
+  IF to_regclass('public.competition_suspension_appeals') IS NOT NULL THEN
+    DELETE FROM public.competition_suspension_appeals WHERE true;
+  END IF;
+  IF to_regclass('public.competition_player_suspension_matches') IS NOT NULL THEN
+    DELETE FROM public.competition_player_suspension_matches WHERE true;
+  END IF;
+  IF to_regclass('public.competition_player_suspensions') IS NOT NULL THEN
+    DELETE FROM public.competition_player_suspensions WHERE true;
+  END IF;
+  IF to_regclass('public.competition_player_injury_fixtures') IS NOT NULL THEN
+    DELETE FROM public.competition_player_injury_fixtures WHERE true;
+  END IF;
+  IF to_regclass('public.competition_player_injuries') IS NOT NULL THEN
+    DELETE FROM public.competition_player_injuries WHERE true;
+  END IF;
+  IF to_regclass('public.competition_fixture_injury_roll') IS NOT NULL THEN
+    DELETE FROM public.competition_fixture_injury_roll WHERE true;
+  END IF;
+  IF to_regclass('public.competition_club_injury_season') IS NOT NULL THEN
+    DELETE FROM public.competition_club_injury_season WHERE true;
+  END IF;
+  IF to_regclass('public.competition_injury_preseason_tick') IS NOT NULL THEN
+    DELETE FROM public.competition_injury_preseason_tick WHERE true;
+  END IF;
+  IF to_regclass('public.competition_contract_tick_log') IS NOT NULL THEN
+    DELETE FROM public.competition_contract_tick_log WHERE true;
+  END IF;
+  IF to_regclass('public.admin_expiry_bid_audit_snapshot') IS NOT NULL THEN
+    DELETE FROM public.admin_expiry_bid_audit_snapshot WHERE true;
   END IF;
 
   DELETE FROM public.competition_seasons WHERE true;
