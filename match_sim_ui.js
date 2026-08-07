@@ -179,7 +179,12 @@ function ensureOverlay() {
           <span class="msim-score" id="msimScore">0 – 0</span>
           <span class="msim-away-name" id="msimAwayName">Away</span>
         </div>
-        <div class="msim-clock" id="msimClock">1'</div>
+        <div class="msim-clock" id="msimClock">0'</div>
+        <div class="msim-phase" id="msimPhase">1st half</div>
+      </div>
+      <div class="msim-ht" id="msimHt" hidden>
+        <div class="msim-ht-label">HALF TIME</div>
+        <div class="msim-ht-score" id="msimHtScore">0 – 0</div>
       </div>
       <div class="msim-pitch">
         <div class="msim-bar" id="msimBar">
@@ -212,10 +217,34 @@ export function playMatchMomentum(data, labels = {}) {
     const feed = overlay.querySelector("#msimFeed");
     const scoreEl = overlay.querySelector("#msimScore");
     const clockEl = overlay.querySelector("#msimClock");
+    const phaseEl = overlay.querySelector("#msimPhase");
+    const htEl = overlay.querySelector("#msimHt");
+    const htScoreEl = overlay.querySelector("#msimHtScore");
     const arrow = overlay.querySelector("#msimArrow");
     const homeZone = overlay.querySelector("#msimHomeZone");
     const awayZone = overlay.querySelector("#msimAwayZone");
     const skipBtn = overlay.querySelector("#msimSkip");
+
+    // Ensure HT / phase nodes exist on older overlay markup
+    if (!phaseEl) {
+      const clock = overlay.querySelector("#msimClock");
+      const phase = document.createElement("div");
+      phase.className = "msim-phase";
+      phase.id = "msimPhase";
+      clock?.after(phase);
+    }
+    if (!htEl) {
+      const pitch = overlay.querySelector(".msim-pitch");
+      const ht = document.createElement("div");
+      ht.className = "msim-ht";
+      ht.id = "msimHt";
+      ht.hidden = true;
+      ht.innerHTML = `<div class="msim-ht-label">HALF TIME</div><div class="msim-ht-score" id="msimHtScore">0 – 0</div>`;
+      pitch?.before(ht);
+    }
+    const phaseNode = overlay.querySelector("#msimPhase");
+    const htNode = overlay.querySelector("#msimHt");
+    const htScoreNode = overlay.querySelector("#msimHtScore");
 
     const homeColor = data?.colours?.home?.primary || "#3b82f6";
     const awayColor = data?.colours?.away?.primary || "#ef4444";
@@ -228,17 +257,74 @@ export function playMatchMomentum(data, labels = {}) {
       labels.awayName || data?.away_name || data?.away_club || "Away";
 
     const playback = data?.playback || {};
-    const duration = Math.max(8, Number(playback.duration_sec) || 20) * 1000;
-    const durationSec = duration / 1000;
-    const events = Array.isArray(playback.events) ? [...playback.events] : [];
-    events.sort((a, b) => Number(a.t) - Number(b.t));
+    // Total graphic length: play both halves + HT pause
+    const htPauseSec = 3;
+    const playBudgetSec = Math.max(10, Number(playback.duration_sec) || 20);
+    const totalSec = playBudgetSec + htPauseSec;
+
+    const add1 = 1 + Math.floor(Math.random() * 5); // 1–5
+    const add2 = 1 + Math.floor(Math.random() * 5);
+    const fhMins = 45 + add1;
+    const shMins = 45 + add2;
+    const matchMins = fhMins + shMins;
+    const fhPlaySec = playBudgetSec * (fhMins / matchMins);
+    const shPlaySec = playBudgetSec - fhPlaySec;
+    const fhEndSec = fhPlaySec;
+    const htEndSec = fhEndSec + htPauseSec;
+    const ftSec = htEndSec + shPlaySec;
+
+    const rawEvents = Array.isArray(playback.events) ? [...playback.events] : [];
+    // Remap events onto half-aware timeline by match minute
+    const events = rawEvents
+      .filter((e) => e && e.type !== "kickoff")
+      .map((e) => {
+        let minute = Number(e.minute);
+        if (!Number.isFinite(minute)) {
+          const t0 = Number(e.t) || 0;
+          const dur0 = Math.max(1, Number(playback.duration_sec) || 20);
+          minute = Math.max(1, Math.min(90 + add2, Math.round((t0 / dur0) * (90 + add2))));
+        }
+        // Clamp into match span (0..fhMins for 1H, 45..90+add2 for 2H)
+        if (minute <= 45) {
+          // keep; stoppage shown via clock when >45 in FH remap below
+        } else if (minute > 45 && minute < 46) {
+          minute = 45;
+        }
+        // Spread old 46-90 into second half; stoppage 90+ into add2
+        let at = 0;
+        if (e.type === "fulltime") {
+          at = ftSec;
+        } else if (minute <= 45) {
+          // Scale 0-45 across first 45 mins of FH play (before added time window)
+          const inReg = minute / 45;
+          at = inReg * (45 / fhMins) * fhPlaySec;
+        } else if (minute <= 90) {
+          const shProg = (minute - 45) / 45;
+          at = htEndSec + shProg * (45 / shMins) * shPlaySec;
+        } else {
+          // 90+ stoppage
+          const stop = Math.min(add2, minute - 90);
+          at = htEndSec + ((45 + stop) / shMins) * shPlaySec;
+        }
+        // First-half stoppage events (minute 45 with late t): place into FH added time
+        if (e.type !== "fulltime" && minute === 45 && Number(e.t) > (Number(playback.duration_sec) || 20) * 0.45) {
+          at = fhPlaySec * (45 / fhMins) + (fhPlaySec * (add1 / fhMins)) * 0.5;
+        }
+        return { ...e, minute, at };
+      })
+      .sort((a, b) => a.at - b.at);
+
+    // Inject synthetic stoppage / HT markers (display only)
+    // (clock handles added-time labels; HT banner from phase)
 
     let hg = 0;
     let ag = 0;
+    let htShown = false;
     scoreEl.textContent = "0 – 0";
-    clockEl.textContent = "1'";
+    clockEl.textContent = "0'";
+    if (phaseNode) phaseNode.textContent = `1st half · +${add1} mins`;
+    if (htNode) htNode.hidden = true;
 
-    // Recreate feed columns if overlay was already built with old markup
     if (!overlay.querySelector("#msimFeedHome")) {
       feed.innerHTML = `
         <div class="msim-feed-col msim-feed-home" id="msimFeedHome"></div>
@@ -256,7 +342,6 @@ export function playMatchMomentum(data, labels = {}) {
     /** @type {{ home: HTMLElement|null, away: HTMLElement|null }} */
     const lastGoalBlock = { home: null, away: null };
 
-    // Momentum 0 = deep away attack (left), 1 = deep home attack (right)
     let momentum = 0.5;
     let target = 0.55;
     let surgeUntil = 0;
@@ -271,18 +356,17 @@ export function playMatchMomentum(data, labels = {}) {
 
     function eventTarget(ev) {
       const pressure = Math.max(0.35, Math.min(0.95, Number(ev.pressure) || 0.7));
-      if (ev.side === "away") return (1 - pressure) * 0.42; // push left
-      if (ev.side === "home") return 0.58 + pressure * 0.38; // push right
+      if (ev.side === "away") return (1 - pressure) * 0.42;
+      if (ev.side === "home") return 0.58 + pressure * 0.38;
       return 0.5;
     }
 
     function paintArrow(m) {
-      const pct = 8 + m * 84; // 8%..92%
+      const pct = 8 + m * 84;
       const homeAttack = m >= 0.5;
       arrow.style.left = `${pct}%`;
       if (homeAttack !== (lastSide === "home")) {
         arrow.classList.remove("msim-arrow--pulse");
-        // force reflow so pulse restarts on direction change
         void arrow.offsetWidth;
         arrow.classList.add("msim-arrow--pulse");
       }
@@ -291,14 +375,53 @@ export function playMatchMomentum(data, labels = {}) {
       arrow.style.color = homeAttack ? homeColor : awayColor;
     }
 
+    function formatClock(matchMin, phase) {
+      if (phase === "ht") return "HT";
+      if (phase === "ft") return "FT";
+      if (phase === "fh") {
+        if (matchMin <= 45) return `${Math.max(0, Math.floor(matchMin))}'`;
+        const extra = Math.min(add1, Math.max(1, Math.ceil(matchMin - 45)));
+        return `45+${extra}'`;
+      }
+      // second half
+      if (matchMin <= 90) return `${Math.max(45, Math.floor(matchMin))}'`;
+      const extra = Math.min(add2, Math.max(1, Math.ceil(matchMin - 90)));
+      return `90+${extra}'`;
+    }
+
+    function timelineState(tSec) {
+      if (tSec < fhEndSec) {
+        const p = tSec / fhPlaySec;
+        const matchMin = p * fhMins;
+        return { phase: "fh", matchMin, playing: true };
+      }
+      if (tSec < htEndSec) {
+        return { phase: "ht", matchMin: 45, playing: false };
+      }
+      if (tSec < ftSec) {
+        const p = (tSec - htEndSec) / shPlaySec;
+        const matchMin = 45 + p * shMins;
+        return { phase: "sh", matchMin, playing: true };
+      }
+      return { phase: "ft", matchMin: 90 + add2, playing: false };
+    }
+
     function shortEventLabel(ev) {
-      const min = ev.minute != null ? `${ev.minute}' ` : "";
+      const minLabel =
+        ev.minute != null
+          ? ev.minute > 90
+            ? `90+${Math.min(add2, ev.minute - 90)}' `
+            : ev.minute > 45 && ev.minute <= 45 + add1 && ev.at < htEndSec
+              ? `45+${Math.min(add1, Math.max(1, Math.round(ev.minute - 45) || 1))}' `
+              : `${ev.minute}' `
+          : "";
       const name = ev.player || "";
-      if (ev.type === "goal") return `${min}${name || "Goal"}`;
+      if (ev.type === "goal") return `${minLabel}${name || "Goal"}`;
       if (ev.type === "assist") return name ? `a ${name}` : "assist";
-      if (ev.type === "yellow") return `${min}Y ${name || "Yellow"}`;
-      if (ev.type === "red") return `${min}R ${name || "Red"}`;
-      if (ev.type === "injury") return `${min}Inj ${name || "Injury"}`;
+      if (ev.type === "yellow") return `${minLabel}Y ${name || "Yellow"}`;
+      if (ev.type === "red") return `${minLabel}R ${name || "Red"}`;
+      if (ev.type === "injury") return `${minLabel}Inj ${name || "Injury"}`;
+      if (ev.type === "halftime") return ev.text || "HALF TIME";
       if (ev.type === "fulltime") return ev.text || "Full time";
       return ev.text || ev.type || "";
     }
@@ -312,7 +435,6 @@ export function playMatchMomentum(data, labels = {}) {
     function pushFeed(ev) {
       const side = ev.side === "away" ? "away" : ev.side === "home" ? "home" : null;
 
-      // Assists nest under the latest goal on that side
       if (ev.type === "assist" && side) {
         const block = lastGoalBlock[side];
         if (block) {
@@ -327,7 +449,7 @@ export function playMatchMomentum(data, labels = {}) {
         }
       }
 
-      if (ev.type === "fulltime" || !side) {
+      if (ev.type === "fulltime" || ev.type === "halftime" || !side) {
         const row = document.createElement("div");
         row.className = `msim-ev msim-ev--${escapeHtml(ev.type || "info")} msim-ev--center`;
         row.textContent = shortEventLabel(ev);
@@ -345,7 +467,6 @@ export function playMatchMomentum(data, labels = {}) {
         colFor(side).prepend(block);
         lastGoalBlock[side] = block;
 
-        // If the next playback event is an assist for the same side, attach it now
         const next = events[idx];
         if (next && next.type === "assist" && next.side === side) {
           idx += 1;
@@ -363,6 +484,24 @@ export function playMatchMomentum(data, labels = {}) {
       colFor(side).prepend(row);
     }
 
+    function showHalfTime() {
+      if (htShown) return;
+      htShown = true;
+      if (htNode) htNode.hidden = false;
+      if (htScoreNode) htScoreNode.textContent = `${hg} – ${ag}`;
+      if (phaseNode) phaseNode.textContent = "Half time";
+      clockEl.textContent = "HT";
+      pushFeed({
+        type: "halftime",
+        text: `HALF TIME ${hg} – ${ag}`,
+      });
+    }
+
+    function hideHalfTime() {
+      if (htNode) htNode.hidden = true;
+      if (phaseNode) phaseNode.textContent = `2nd half · +${add2} mins`;
+    }
+
     function finish() {
       if (done) return;
       done = true;
@@ -371,10 +510,12 @@ export function playMatchMomentum(data, labels = {}) {
       ag = data?.away_goals ?? ag;
       scoreEl.textContent = `${hg} – ${ag}`;
       clockEl.textContent = "FT";
+      if (phaseNode) phaseNode.textContent = "Full time";
+      if (htNode) htNode.hidden = true;
       setTimeout(() => {
         overlay.hidden = true;
         resolve(data);
-      }, 700);
+      }, 900);
     }
 
     function tick(now) {
@@ -384,14 +525,29 @@ export function playMatchMomentum(data, labels = {}) {
       const dt = Math.min(0.05, (now - prevNow) / 1000);
       prevNow = now;
 
-      while (idx < events.length && Number(events[idx].t) <= tSec) {
+      const state = timelineState(tSec);
+
+      if (state.phase === "ht") {
+        showHalfTime();
+      } else if (state.phase === "sh" && htShown) {
+        hideHalfTime();
+      }
+
+      while (idx < events.length && Number(events[idx].at) <= tSec) {
         const ev = events[idx++];
+        if (ev.type === "momentum") {
+          if (ev.side === "home" || ev.side === "away") {
+            target = eventTarget(ev);
+            surgeUntil = tSec + 0.85;
+            momentum += (target - momentum) * 0.35;
+          }
+          continue;
+        }
         if (
-          (ev.type === "momentum" || ev.type === "goal" || ev.type === "red") &&
+          (ev.type === "goal" || ev.type === "red") &&
           (ev.side === "home" || ev.side === "away")
         ) {
           target = eventTarget(ev);
-          // Hard surge toward scoring / pressure side, then keep drifting
           surgeUntil = tSec + (ev.type === "goal" ? 1.4 : 0.85);
           momentum += (target - momentum) * (ev.type === "goal" ? 0.55 : 0.35);
         }
@@ -402,7 +558,6 @@ export function playMatchMomentum(data, labels = {}) {
           scoreEl.classList.add("msim-score--flash");
           setTimeout(() => scoreEl.classList.remove("msim-score--flash"), 400);
         }
-        if (ev.minute != null) clockEl.textContent = `${ev.minute}'`;
         if (ev.type !== "momentum") pushFeed(ev);
         if (ev.type === "fulltime") {
           finish();
@@ -410,37 +565,28 @@ export function playMatchMomentum(data, labels = {}) {
         }
       }
 
-      // Live sway: layered waves so the arrow constantly moves both ways
-      const wave =
-        Math.sin(tSec * 2.4) * 0.14 +
-        Math.sin(tSec * 5.1 + 1.3) * 0.08 +
-        Math.sin(tSec * 0.9 + 0.4) * 0.1;
-      // Slow bias drift across the match so it isn't stuck midfield
-      const bias = 0.5 + Math.sin(tSec * 0.55) * 0.12;
-      let liveTarget = bias + wave;
-
-      if (tSec < surgeUntil) {
-        // During/after events, blend event target with live motion
-        const blend = Math.min(1, (surgeUntil - tSec) / 0.9);
-        liveTarget = target * (0.55 + 0.35 * blend) + liveTarget * (0.45 - 0.25 * blend);
-      }
-
-      liveTarget = Math.max(0.06, Math.min(0.94, liveTarget));
-      // Smooth chase — snappy enough to feel live
-      const chase = tSec < surgeUntil ? 7.5 : 4.2;
-      momentum += (liveTarget - momentum) * (1 - Math.exp(-chase * dt));
-      momentum = Math.max(0.04, Math.min(0.96, momentum));
-      paintArrow(momentum);
-
-      // Soft clock advance even between events
-      if (durationSec > 0) {
-        const approxMin = Math.max(1, Math.min(90, Math.round((tSec / durationSec) * 90)));
-        if (!events[idx] || Number(events[idx].minute) == null) {
-          clockEl.textContent = `${approxMin}'`;
+      if (state.playing) {
+        const wave =
+          Math.sin(tSec * 2.4) * 0.14 +
+          Math.sin(tSec * 5.1 + 1.3) * 0.08 +
+          Math.sin(tSec * 0.9 + 0.4) * 0.1;
+        const bias = 0.5 + Math.sin(tSec * 0.55) * 0.12;
+        let liveTarget = bias + wave;
+        if (tSec < surgeUntil) {
+          const blend = Math.min(1, (surgeUntil - tSec) / 0.9);
+          liveTarget = target * (0.55 + 0.35 * blend) + liveTarget * (0.45 - 0.25 * blend);
         }
+        liveTarget = Math.max(0.06, Math.min(0.94, liveTarget));
+        const chase = tSec < surgeUntil ? 7.5 : 4.2;
+        momentum += (liveTarget - momentum) * (1 - Math.exp(-chase * dt));
+        momentum = Math.max(0.04, Math.min(0.96, momentum));
+        paintArrow(momentum);
+        clockEl.textContent = formatClock(state.matchMin, state.phase);
+      } else if (state.phase === "ht") {
+        clockEl.textContent = "HT";
       }
 
-      if (elapsed >= duration) {
+      if (tSec >= ftSec) {
         finish();
         return;
       }
@@ -494,7 +640,16 @@ export const MATCH_SIM_BANNER_STYLE = `
 .msim-away-name { text-align:right; }
 .msim-score { font-size:22px; font-variant-numeric:tabular-nums; color:#ff9900; min-width:4.5ch; text-align:center; }
 .msim-score--flash { transform:scale(1.12); transition:transform .15s ease; }
-.msim-clock { font-size:12px; color:#888; text-align:center; }
+.msim-clock { font-size:14px; color:#ff9900; text-align:center; font-weight:700; font-variant-numeric:tabular-nums; }
+.msim-phase { font-size:11px; color:#888; text-align:center; margin-top:2px; }
+.msim-ht {
+  margin:8px 0 10px; padding:12px 10px; text-align:center;
+  border:1px solid #445; border-radius:8px; background:#161a22;
+}
+.msim-ht[hidden] { display:none !important; }
+.msim-ht-label { font-size:12px; font-weight:800; letter-spacing:.08em; color:#9ab; }
+.msim-ht-score { font-size:26px; font-weight:800; color:#ff9900; margin-top:4px; font-variant-numeric:tabular-nums; }
+.msim-ev--halftime { color:#9ab; font-weight:700; }
 .msim-pitch { margin:8px 0 12px; }
 .msim-bar {
   position:relative; height:36px; border-radius:6px; overflow:hidden;
