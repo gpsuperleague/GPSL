@@ -1,5 +1,5 @@
 /**
- * Pages GPSL members (no club) may view — league & transfers, not My Club.
+ * Pages GPSL members (no club) may view — full browse menus, view-only actions.
  */
 
 /** Pages always allowed without a club (auth flows). */
@@ -10,7 +10,7 @@ export const AUTH_PAGES = new Set([
   "join_gpsl",
 ]);
 
-/** Members on the waiting list (no club). */
+/** Members on the waiting list (no club) — browse / view-only. */
 export const MEMBER_ALLOWED_PAGES = new Set([
   "member_home",
   "waiting_list",
@@ -19,6 +19,7 @@ export const MEMBER_ALLOWED_PAGES = new Set([
   "dashboard",
   // League
   "clubs",
+  "club",
   "fixtures",
   "progress",
   "league_stats",
@@ -27,8 +28,10 @@ export const MEMBER_ALLOWED_PAGES = new Set([
   "world_cup",
   "international_matchday",
   "competition",
-  // Transfers (market / databases — not club-specific actions)
+  "friendlies",
+  // Transfers (market / databases — mutations blocked in view-only chrome)
   "gpdb",
+  "player_career",
   "all_listings",
   "draftauction",
   "legacy_players",
@@ -76,8 +79,6 @@ export const CLUB_OWNER_PAGES = new Set([
   "national_team",
   "nation_select",
   "nation_player_pool",
-  "club",
-  "natter",
 ]);
 
 export function normalizePageId(page) {
@@ -106,7 +107,12 @@ export function isAuctionOnboardingPage(page = normalizePageId()) {
   return AUCTION_ONBOARDING_PAGES.has(page);
 }
 
+/** Sticky home for waiting-list browse sessions. */
 export function memberDefaultHome() {
+  return "waiting_list.html";
+}
+
+export function memberHubHome() {
   return "member_home.html";
 }
 

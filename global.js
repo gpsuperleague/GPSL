@@ -1097,8 +1097,16 @@ function renderNavOwnerClubBadge(ownerClub) {
 
 function renderNavDashboardHomeLink(ownerClub, homeHref, dashActive) {
   const active = dashActive ? " active" : "";
+  const isMemberHome =
+    String(homeHref || "").toLowerCase().includes("waiting_list") ||
+    String(homeHref || "").toLowerCase().includes("member_home");
+  const label = isMemberHome ? "Home" : "Dashboard";
   const title = escapeNavAttr(
-    ownerClub?.name ? `${ownerClub.name} — Dashboard` : "Dashboard"
+    isMemberHome
+      ? "Waiting list home"
+      : ownerClub?.name
+        ? `${ownerClub.name} — Dashboard`
+        : "Dashboard"
   );
   let badgeHtml = "";
   if (ownerClub?.short) {
@@ -1112,7 +1120,7 @@ function renderNavDashboardHomeLink(ownerClub, homeHref, dashActive) {
   return (
     `<a href="${homeHref}" class="nav-shortcut nav-dashboard-home${active}" title="${title}" aria-label="${title}">` +
     badgeHtml +
-    `<span class="nav-dashboard-home-label">Dashboard</span>` +
+    `<span class="nav-dashboard-home-label">${label}</span>` +
     `</a>`
   );
 }
@@ -2051,7 +2059,7 @@ export async function buildNav() {
 
   const isWaitingListMember =
     registrySelf?.is_member === true && registrySelf?.has_club !== true;
-  const memberHomeHref = "member_home.html";
+  const memberHomeHref = "waiting_list.html";
   const homeHref =
     isWaitingListMember && !registrySelf?.needs_club_auction
       ? memberHomeHref
@@ -2080,11 +2088,34 @@ export async function buildNav() {
   html += `<div class="gpsl-nav-groups">`;
 
   const navItemsForSection = (section) => {
-    if (
-      (section.id === "myclub" || section.id === "mynation") &&
-      isWaitingListMember
-    ) {
-      return [];
+    // Waiting list: browse equivalents (view-only) instead of owner club/nation tools
+    if (isWaitingListMember && section.id === "myclub") {
+      return [
+        {
+          href: "club_database.html",
+          label: "Club Database",
+          page: "club_database",
+        },
+        { href: "clubs.html", label: "Clubs", page: "clubs" },
+        {
+          href: "season_club_purchases.html",
+          label: "Season club purchases",
+          page: "season_club_purchases",
+        },
+        { href: "fixtures.html", label: "Fixtures", page: "fixtures" },
+        { href: "central_bank.html", label: "Central Bank", page: "central_bank" },
+      ];
+    }
+
+    if (isWaitingListMember && section.id === "mynation") {
+      return [
+        { href: "world_cup.html", label: "World Cup", page: "world_cup" },
+        {
+          href: "international_matchday.html",
+          label: "International matchday",
+          page: "international_matchday",
+        },
+      ];
     }
 
     if (section.id === "mynation") {
@@ -2267,10 +2298,22 @@ export async function initGlobal() {
   ensureNavStyles();
   await loadGlobalSettings();
   try {
-    const { enforceOwnerClubGate } = await import("./owner_gate.js?v=20260617-ios-auth");
+    const { enforceOwnerClubGate } = await import(
+      `./owner_gate.js?v=${GLOBAL_JS_VERSION}`
+    );
     await enforceOwnerClubGate();
   } catch (err) {
     console.warn("owner club gate:", err);
+  }
+  try {
+    const { applyMemberViewOnlyChrome } = await import(
+      `./member_view_only.js?v=${GLOBAL_JS_VERSION}`
+    );
+    applyMemberViewOnlyChrome({
+      homeHref: window.GPSL_MEMBER_HOME || "waiting_list.html",
+    });
+  } catch (err) {
+    console.warn("member view-only chrome:", err);
   }
   wireDraftCountdownUI();
   try {

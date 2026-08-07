@@ -14,59 +14,134 @@
       background: #111;
       color: #ddd;
       font-family: Arial, sans-serif;
+      padding: 20px;
       margin: 0;
     }
-
-    h1 {
+    #pageTitle {
       background: #222;
       color: #ff9900;
       padding: 10px 16px;
       border-radius: 6px;
-      width: fit-content;
-      margin: 20px auto 12px;
-      font-size: 26px;
-    }
-
-    .page-wrap {
-      width: 92%;
-      max-width: 720px;
-      margin: 0 auto 40px;
-      line-height: 1.6;
-    }
-
-    .note {
-      background: #1a1a1a;
-      border: 1px solid #444;
-      border-radius: 8px;
-      padding: 20px;
-      color: #ccc;
-    }
-
-    a.button {
       display: inline-block;
-      padding: 8px 16px;
+      margin-bottom: 12px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .filter-group {
+      background: #1a1a1a;
+      color: #ff9900;
+      padding: 10px 14px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+      border: 1px solid #333;
+    }
+    .filter-group label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      color: #ffaa22;
+    }
+    input, select {
+      background: #222;
+      color: #ddd;
+      border: 1px solid #444;
+      padding: 4px 6px;
+      border-radius: 4px;
+    }
+    #statusNote { color: #aaa; font-size: 12px; margin-bottom: 10px; }
+    #cdbError { color: #f88; margin-bottom: 10px; }
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1a1a1a;
+      color: #ddd;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 8px;
+      min-width: 1100px;
+    }
+    th {
+      background: #222;
+      color: #ff9900;
+      padding: 8px;
+      font-size: 12px;
+      border-bottom: 2px solid #444;
+      border-right: 1px solid #333;
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      cursor: pointer;
+      text-align: center;
+      white-space: nowrap;
+    }
+    th.sort-asc::after { content: " ▲"; font-size: 10px; }
+    th.sort-desc::after { content: " ▼"; font-size: 10px; }
+    td {
+      padding: 6px 8px;
+      border-bottom: 1px solid #333;
+      border-right: 1px solid #333;
+      font-size: 12px;
+      text-align: center;
+    }
+    td.left { text-align: left; }
+    tbody tr:nth-child(odd) { background: #1f1f1f; }
+    tbody tr:nth-child(even) { background: #262626; }
+    tbody tr:hover { background: #333 !important; }
+    .money { white-space: nowrap; }
+    a.club-link { color: #6cf; text-decoration: none; font-weight: bold; }
+    a.club-link:hover { text-decoration: underline; }
+    .pager { margin-top: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    a.button, button.button {
+      display: inline-block;
+      padding: 6px 12px;
       background: #1a1a1a;
       color: #ff9900;
       border: 1px solid #666;
       border-radius: 6px;
       text-decoration: none;
       font-weight: bold;
-      margin-top: 16px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1>Club Database</h1>
+  <div id="pageTitle">Club Database</div>
   <div id="nav"></div>
 
-  <div class="page-wrap">
-    <div class="note">
-      <p><b>Coming soon.</b> Browse every GPSL club with prestige, capacity, nation, and owner — similar to the Player Database.</p>
-      <p>Until then, use the league <a href="clubs.html" style="color:#6cf;">Clubs</a> grid or <a href="season_club_purchases.html" style="color:#6cf;">Season club purchases</a> for auction results.</p>
-      <a href="clubs.html" class="button">Open Clubs grid</a>
-    </div>
+  <p id="statusNote">Loading clubs…</p>
+  <div id="cdbError"></div>
+
+  <div class="filter-group">
+    <label>Search
+      <input id="filterSearch" type="search" placeholder="Club, stadium, nation, owner…" autocomplete="off">
+    </label>
+    <label>Nation
+      <select id="filterNation"><option value="">All</option></select>
+    </label>
+    <label>Page size
+      <select id="pageSize">
+        <option value="50">50</option>
+        <option value="100" selected>100</option>
+        <option value="200">200</option>
+      </select>
+    </label>
+    <button type="button" class="button gpsl-view-ok" id="clearFiltersBtn">Clear filters</button>
   </div>
 
-  <script type="module" src="club_database.js"></script>
+  <div class="table-wrap">
+    <table>
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+  <div class="pager" id="pager"></div>
+
+  <script type="module" src="club_database.js?v=20260807-cdb"></script>
 </body>
 </html>

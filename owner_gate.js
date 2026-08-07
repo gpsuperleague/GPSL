@@ -59,6 +59,8 @@ export async function enforceOwnerClubGate() {
   }
 
   if (self?.is_member) {
+    window.GPSL_MEMBER_VIEW_ONLY = true;
+    window.GPSL_MEMBER_HOME = memberDefaultHome();
     if (isMemberAllowedPage(page)) return;
     if (isClubOwnerPage(page)) {
       redirectTo(memberDefaultHome());
@@ -69,6 +71,8 @@ export async function enforceOwnerClubGate() {
   }
 
   // Unknown no-club state — treat as member waiting list
+  window.GPSL_MEMBER_VIEW_ONLY = true;
+  window.GPSL_MEMBER_HOME = memberDefaultHome();
   if (!isMemberAllowedPage(page)) {
     redirectTo(memberDefaultHome());
   }
