@@ -163,7 +163,8 @@
 
         <h3 style="color:#ff9900;font-size:14px;margin:18px 0 6px;">Star players (rating ≥ threshold)</h3>
         <p class="hint" style="margin:0 0 8px;">
-          Higher ratings above the threshold have more impact. Stars nudge win %, goals scored/conceded, and assist odds.
+          Higher ratings above the threshold hit harder. Each % only applies to its position group,
+          and only when the player’s <b>profile Position</b> matches the <b>pitch slot</b> (out of position = no star boost).
         </p>
         <div class="form-grid" style="max-width:560px;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));display:grid;gap:12px;">
           <label>
@@ -173,19 +174,22 @@
           <label>
             Win % swing (max)
             <input type="number" id="starOutcomePct" min="0" max="25" step="0.5" value="8">
-            <div class="hint">Max swing from relative star power.</div>
+            <div class="hint">All started stars (any position).</div>
           </label>
           <label>
             Goal boost %
             <input type="number" id="starGoalBoostPct" min="0" max="30" step="0.5" value="12">
+            <div class="hint">LWF · RWF · SS · CF only.</div>
           </label>
           <label>
             Concede cut %
             <input type="number" id="starConcedeCutPct" min="0" max="30" step="0.5" value="10">
+            <div class="hint">GK · CB · DMF only.</div>
           </label>
           <label>
             Assist boost %
             <input type="number" id="starAssistBoostPct" min="0" max="30" step="0.5" value="12">
+            <div class="hint">LB · RB · CMF · AMF · LMF · RMF only.</div>
           </label>
           <label>
             Playback seconds
@@ -205,13 +209,13 @@
         <ul class="rules">
           <li>Uses each club’s saved matchday starting XI (else top 11 by Rating).</li>
           <li>XI Rating sum picks a win band; star power can nudge those %.</li>
-          <li>Stars (default 79+) scale goals scored / conceded / assists by rating quality.</li>
+          <li>Stars (default 79+): goal = LWF/RWF/SS/CF · assist = LB/RB/CMF/AMF/LMF/RMF · concede = GK/CB/DMF — only if profile Position matches pitch slot.</li>
           <li><b>Instant result</b> finalises immediately; <b>Simulate match</b> plays a ~20s momentum graphic first.</li>
           <li>Cards = yellows per match + % chance of one red.</li>
         </ul>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_match_sim.js?v=20260807-sim-play"></script>
+  <script type="module" src="admin_match_sim.js?v=20260807-star-natural"></script>
 </body>
 </html>
