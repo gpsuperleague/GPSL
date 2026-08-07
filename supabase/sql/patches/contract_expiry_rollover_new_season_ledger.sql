@@ -35,6 +35,8 @@ AS $function$
 DECLARE
   v_ledger record;
   v_bid record;
+  v_bid_label_from_bids text;
+  v_bid_id_from_label bigint;
 BEGIN
   SELECT s.id, s.label, s.status
   INTO v_ledger
@@ -45,15 +47,26 @@ BEGIN
 
   IF v_ledger.id IS NULL THEN
     RAISE EXCEPTION
-      'Create the next pre-season first 窶・expiry transfers and FA releases must post to the new season (not the closed year).';
+      'Create the next pre-season first — expiry transfers and FA releases must post to the new season (not the closed year).';
   END IF;
 
+  -- Prefer last complete/active year (skip empty preseason shells from failed ticks)
   SELECT s.id, s.label
   INTO v_bid
   FROM public.competition_seasons s
   WHERE s.id < v_ledger.id
+    AND s.status IN ('complete', 'active')
   ORDER BY s.id DESC
   LIMIT 1;
+
+  IF v_bid.id IS NULL THEN
+    SELECT s.id, s.label
+    INTO v_bid
+    FROM public.competition_seasons s
+    WHERE s.id < v_ledger.id
+    ORDER BY s.id DESC
+    LIMIT 1;
+  END IF;
 
   IF v_bid.id IS NULL THEN
     RAISE EXCEPTION
@@ -65,12 +78,38 @@ BEGIN
   ledger_season_label := btrim(v_ledger.label);
   bid_season_id := v_bid.id;
   bid_season_label := btrim(v_bid.label);
+
+  -- Prefer label that actually has open bids when it differs
+  SELECT b.season_label
+  INTO v_bid_label_from_bids
+  FROM public.contract_expiry_wage_bids b
+  GROUP BY b.season_label
+  ORDER BY count(*) DESC, max(b.created_at) DESC
+  LIMIT 1;
+
+  IF v_bid_label_from_bids IS NOT NULL
+     AND btrim(v_bid_label_from_bids) <> ''
+     AND btrim(v_bid_label_from_bids) IS DISTINCT FROM bid_season_label
+  THEN
+    SELECT s.id
+    INTO v_bid_id_from_label
+    FROM public.competition_seasons s
+    WHERE lower(btrim(s.label)) = lower(btrim(v_bid_label_from_bids))
+    ORDER BY s.id DESC
+    LIMIT 1;
+
+    bid_season_label := btrim(v_bid_label_from_bids);
+    IF v_bid_id_from_label IS NOT NULL THEN
+      bid_season_id := v_bid_id_from_label;
+    END IF;
+  END IF;
+
   RETURN NEXT;
 END;
 $function$;
 
 COMMENT ON FUNCTION public.contract_rollover_finance_context() IS
-  'Expiry rollover: ledger posts 竊・newest preseason/setup; wage bids 竊・previous season label.';
+  'Expiry rollover: ledger = newest preseason/setup; bids = last complete/active (or open-bid label).';
 
 GRANT EXECUTE ON FUNCTION public.contract_rollover_finance_context() TO authenticated;
 
