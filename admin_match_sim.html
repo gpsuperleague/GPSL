@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>html,body{background:#111;color:#ddd;margin:0}</style>
-  <title>Match simulation toggle — GPSL Admin</title>
+  <title>Match simulation settings — GPSL Admin</title>
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="nav_force_horizontal.css?v=20260728-nav-dropdown-fix">
   <link rel="stylesheet" href="admin.css">
@@ -14,17 +14,27 @@
     .arm-off { background: #333; color: #aaa; }
     .arm-on { background: #1e3a2f; color: #9fd4b0; border: 1px solid #3a6; }
     .rules { color: #aaa; font-size: 13px; line-height: 1.5; margin: 8px 0 0; padding-left: 18px; }
+    .form-grid { display: grid; gap: 12px; max-width: 420px; margin-top: 10px; }
+    .form-grid label { display: block; font-size: 13px; color: #bbb; }
+    .form-grid input[type="number"] {
+      width: 100%; max-width: 200px; padding: 8px; margin-top: 4px;
+      background: #111; border: 1px solid #444; color: #ddd; border-radius: 4px;
+    }
+    .check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #ccc; }
+    .check-row input { width: auto; }
+    .hint { font-size: 12px; color: #888; margin-top: 4px; line-height: 1.45; }
+    .actions { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; }
   </style>
 </head>
 <body class="admin-page">
   <div id="nav"></div>
-  <h1 class="admin-title">Match result simulation</h1>
+  <h1 class="admin-title">Match simulation settings</h1>
   <div id="adminLayout">
     <div class="admin-main" id="adminMain">
       <p class="note">
         <a href="admin.html" style="color:#ff9900;">← Admin hub</a>
-        · Owners get a <b>Simulate</b> button on My Club Fixtures when this is on.
-        Turn <b>off</b> before the first proper live season.
+        · Owners get <b>Simulate</b> on fixtures when enabled. Tune cards / injuries for test seasons.
+        Run <code>match_result_simulation_settings.sql</code> in Supabase first.
       </p>
 
       <div class="card">
@@ -37,18 +47,53 @@
         <div id="status" class="status-line"></div>
       </div>
 
-      <div class="card">
+      <div class="card" style="margin-top:14px;">
+        <h2>Simulation rules</h2>
+        <p class="hint" style="margin:0 0 8px;">
+          Card targets match the month-deploy discipline defaults (15 yellow / 1 red per GPSL calendar month).
+          Remaining fixtures in the month share whatever quota is left.
+        </p>
+        <div class="form-grid">
+          <label class="check-row">
+            <input type="checkbox" id="cardsEnabled" checked>
+            Assign yellow / red cards on simulate
+          </label>
+          <label>
+            Yellow cards per GPSL month
+            <input type="number" id="yellowPerMonth" min="0" max="200" value="15">
+          </label>
+          <label>
+            Red cards per GPSL month
+            <input type="number" id="redPerMonth" min="0" max="50" value="1">
+          </label>
+          <label class="check-row">
+            <input type="checkbox" id="injuriesEnabled" checked>
+            Roll injuries (same engine as Matchday confirm)
+          </label>
+          <label>
+            Max players subbed on
+            <input type="number" id="maxSubsOn" min="0" max="5" value="5">
+            <div class="hint">Matchday hard cap is 5. Sim uses the first N bench players.</div>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="button" class="button" id="saveSettingsBtn" style="background:#228822;">Save settings</button>
+          <button type="button" class="button" id="resetDefaultsBtn" style="background:#333;">Reset defaults</button>
+        </div>
+        <div id="settingsStatus" class="status-line"></div>
+      </div>
+
+      <div class="card" style="margin-top:14px;">
         <h2>How it works</h2>
         <ul class="rules">
           <li>Uses each club’s saved matchday starting XI (else top 11 by Rating).</li>
           <li>XI combined Rating decides favourites; star players nudge chances ~10%.</li>
-          <li>One owner click finalises the match (score, stats, MOTM, gates) in a few seconds.</li>
-          <li>Opponent is locked out while a simulation is running / once the fixture is played.</li>
+          <li>Assists + POTM always generated; cards/injuries follow the settings above.</li>
+          <li>One owner click finalises the match (score, stats, MOTM, gates).</li>
         </ul>
-        <p class="note">SQL: <code>supabase/sql/patches/match_result_simulation.sql</code></p>
       </div>
     </div>
   </div>
-  <script type="module" src="admin_match_sim.js?v=20260807-sim"></script>
+  <script type="module" src="admin_match_sim.js?v=20260807-sim-settings"></script>
 </body>
 </html>

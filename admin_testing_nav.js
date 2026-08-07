@@ -39,7 +39,7 @@ export const TESTING_ADMIN_NAV = [
     navDanger: true,
   },
   {
-    label: "Match result simulation",
+    label: "Match simulation settings",
     href: "admin_match_sim.html",
     page: "admin_match_sim",
     navDanger: true,
