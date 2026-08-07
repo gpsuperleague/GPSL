@@ -2057,7 +2057,9 @@ export async function buildNav() {
     console.warn("Nav registry self skipped:", regErr);
   }
 
+  // Admins always get full menus (even without a club). Pre-club lock is for owners only.
   const isPreClubOwner =
+    !isGpslAdminNav &&
     registrySelf?.has_club !== true &&
     (registrySelf?.is_member === true ||
       registrySelf?.needs_club_auction === true ||
