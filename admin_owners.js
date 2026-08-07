@@ -924,15 +924,29 @@ async function loadWaitingListAdmin() {
   } else {
     let html =
       "<table class='admin-table' style='width:100%;font-size:13px;border-collapse:collapse'>" +
-      "<thead><tr><th>#</th><th>Tag</th><th>Email</th><th>Tier</th><th>Status</th><th></th></tr></thead><tbody>";
+      "<thead><tr>" +
+      "<th>#</th><th>Tag</th><th>Email</th><th>Tier</th><th>Status</th>" +
+      "<th title='Confirmed for test season'>Test</th>" +
+      "<th title='Confirmed for live season'>Live</th>" +
+      "<th></th></tr></thead><tbody>";
     for (const row of rows) {
       const email = row.email || "";
+      const testOn = !!row.confirmed_test_season;
+      const liveOn = !!row.confirmed_live_season;
       html += `<tr>
         <td>${row.position}</td>
         <td>${escapeWl(row.owner_tag)}</td>
         <td>${escapeWl(email)}</td>
         <td>${escapeWl(row.tier || "—")}</td>
         <td>${escapeWl(row.status)}</td>
+        <td style="text-align:center">
+          <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="test"
+            title="Confirmed test season" ${testOn ? "checked" : ""}>
+        </td>
+        <td style="text-align:center">
+          <input type="checkbox" class="wl-confirm-season" data-id="${row.owner_id}" data-which="live"
+            title="Confirmed live season" ${liveOn ? "checked" : ""}>
+        </td>
         <td style="white-space:nowrap">
           <button type="button" class="button secondary wl-up" data-id="${row.owner_id}" data-email="${escapeWl(email)}">↑</button>
           <button type="button" class="button secondary wl-down" data-id="${row.owner_id}" data-email="${escapeWl(email)}">↓</button>
@@ -958,6 +972,11 @@ async function loadWaitingListAdmin() {
         })
       );
     });
+    tableWrap.querySelectorAll(".wl-confirm-season").forEach((cb) => {
+      cb.addEventListener("change", () =>
+        setWaitingListSeasonConfirmed(cb.dataset.id, cb.dataset.which, cb.checked, cb)
+      );
+    });
   }
 
   const invited = data?.invited_to_auction || [];
@@ -979,6 +998,26 @@ function escapeWl(s) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/"/g, "&quot;");
+}
+
+async function setWaitingListSeasonConfirmed(ownerId, which, confirmed, checkboxEl) {
+  const { error } = await supabase.rpc("admin_waiting_list_set_season_confirmed", {
+    p_owner_id: ownerId,
+    p_which: which,
+    p_confirmed: !!confirmed,
+  });
+  if (error) {
+    if (checkboxEl) checkboxEl.checked = !confirmed;
+    setWlActionStatus("❌ " + error.message, false);
+    return;
+  }
+  const label = which === "live" ? "live" : "test";
+  setWlActionStatus(
+    confirmed
+      ? `✅ Marked confirmed for ${label} season.`
+      : `✅ Cleared ${label} season confirmation.`,
+    true
+  );
 }
 
 async function moveWaitingList(ownerId, direction) {

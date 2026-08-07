@@ -229,6 +229,7 @@ DECLARE
     'admin_waiting_list_move',
     'admin_waiting_list_restore_join_order',
     'admin_waiting_list_set_absence',
+    'admin_waiting_list_set_season_confirmed',
     'admin_waiting_list_invite_auction',
     'admin_waiting_list_assign_club',
     'admin_waiting_list_remove',
