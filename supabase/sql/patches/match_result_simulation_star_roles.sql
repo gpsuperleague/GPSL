@@ -234,7 +234,7 @@ BEGIN
         'name', p."Name",
         'rating', public.match_sim_player_rating_num(p."Rating"::text, 70),
         -- Pitch role drives match play; profile used for natural-position check
-        'role', public.match_sim_role_from_slot(sp.pitch_slot, NULL),
+        'role', public.match_sim_role_from_slot(sp.pitch_slot, NULL::text),
         'pitch_slot', sp.pitch_slot,
         'profile_pos', p."Position",
         'on_natural', public.match_sim_on_natural_position(sp.pitch_slot, p."Position"),
@@ -269,7 +269,7 @@ BEGIN
           'player_id', p."Konami_ID"::text,
           'name', p."Name",
           'rating', public.match_sim_player_rating_num(p."Rating"::text, 70),
-          'role', public.match_sim_role_from_slot(NULL, p."Position"),
+          'role', public.match_sim_role_from_slot(NULL::text, p."Position"),
           'pitch_slot', NULL,
           'profile_pos', p."Position",
           'on_natural', true,
@@ -323,7 +323,7 @@ BEGIN
             sp.player_id,
             p."Name" AS name,
             public.match_sim_player_rating_num(p."Rating"::text, 70) AS rating,
-            public.match_sim_role_from_slot(NULL, p."Position") AS role,
+            public.match_sim_role_from_slot(NULL::text, p."Position") AS role,
             p."Position" AS profile_pos,
             public.match_sim_is_star(
               public.match_sim_player_rating_num(p."Rating"::text, 70)
@@ -352,7 +352,7 @@ BEGIN
               'player_id', p."Konami_ID"::text,
               'name', p."Name",
               'rating', public.match_sim_player_rating_num(p."Rating"::text, 70),
-              'role', public.match_sim_role_from_slot(NULL, p."Position"),
+              'role', public.match_sim_role_from_slot(NULL::text, p."Position"),
               'pitch_slot', NULL,
               'profile_pos', p."Position",
               'on_natural', true,

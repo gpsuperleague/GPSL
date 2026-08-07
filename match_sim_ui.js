@@ -139,7 +139,10 @@ export async function runMatchSimulation(fixtureId, btn, mode = "instant", meta 
       else if (b.classList.contains("sim-instant-btn")) b.textContent = "Instant result";
       else b.textContent = "Simulate";
     });
-    throw error;
+    const detail = [error.message, error.details, error.hint].filter(Boolean).join(" — ");
+    const err = new Error(detail || "Simulation failed");
+    err.code = error.code;
+    throw err;
   }
 
   const score =
