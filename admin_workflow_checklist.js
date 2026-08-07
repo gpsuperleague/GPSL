@@ -2,8 +2,8 @@ import { initAdminPage, primeAdminPageChrome, setStatus, supabase, whenDomReady 
 import {
   adminMainNavHref,
   getAdminWorkflowChecklist,
-} from "./admin_main_nav.js?v=20260807-prizes-in-create";
-import { renderAdminWorkflowChecklistRules } from "./admin_workflow_checklist_rules.js?v=20260807-prizes-in-create";
+} from "./admin_main_nav.js?v=20260807-first-season2";
+import { renderAdminWorkflowChecklistRules } from "./admin_workflow_checklist_rules.js?v=20260807-first-season2";
 
 primeAdminPageChrome();
 
@@ -255,7 +255,7 @@ function updateSummary() {
 }
 
 function setAllDetails(open) {
-  document.querySelectorAll("#wfRoot details, #wfFirstSeason").forEach((el) => {
+  document.querySelectorAll("#wfRoot details").forEach((el) => {
     el.open = open;
   });
 }

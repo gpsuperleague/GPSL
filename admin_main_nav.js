@@ -746,6 +746,7 @@ export const ADMIN_CHECKLIST_EXCLUDE_SECTION_IDS = new Set(["testing", "owners"]
  * Close Season / End Of Season sit at the end of the season year.
  */
 export const ADMIN_CHECKLIST_SECTION_ORDER = [
+  "first_season",
   "season_break",
   "create_season",
   "pre_season",
@@ -771,8 +772,53 @@ export function adminChecklistTaskKey(sectionId, groupLabel, item) {
  * Order: Season Break → Create Season → … → Close Season → End Of Season.
  * (Prize money / transfers / auctions live under Create Season, after Create Pre-Season.)
  */
+/** Day-zero / first-season setup (not in the normal Admin menu tree). */
+function getFirstSeasonChecklistSection() {
+  const items = [
+    {
+      label: "Auction switches (club / manager / player draft)",
+      href: "admin_transfers.html",
+      hash: "sb-draft-auctions",
+      note:
+        "Enable Club auction, Manager draft auction, and Player draft auction, then Save transfer settings.",
+    },
+    {
+      label: "Club auction — seed vacant clubs",
+      href: "admin_transfers.html",
+      hash: "sb-club-auction",
+      note: "Seed listings after owners are invited / awaiting club auction.",
+    },
+    {
+      label: "Club auction (owner view)",
+      href: "club_auction.html",
+      note: "Check the live club auction board.",
+    },
+    {
+      label: "Manager draft auction",
+      href: "manager_draftauction.html",
+      note: "Run when manager draft is enabled.",
+    },
+    {
+      label: "Player draft auction",
+      href: "draftauction.html",
+      note: "Run when player draft is enabled.",
+    },
+  ].map((item) => ({
+    ...item,
+    taskKey: adminChecklistTaskKey("first_season", "Auctions", item),
+  }));
+
+  return {
+    id: "first_season",
+    label: "First Season",
+    blocks: [{ groupLabel: "Auctions", items }],
+  };
+}
+
 export function getAdminWorkflowChecklist() {
   const byId = new Map();
+
+  byId.set("first_season", getFirstSeasonChecklistSection());
 
   for (const section of ADMIN_MAIN_NAV) {
     if (ADMIN_CHECKLIST_EXCLUDE_SECTION_IDS.has(section.id)) continue;
